@@ -13,10 +13,14 @@ Legal/rules research lives in `LEGAL_REVIEW.md`.
 
 ## Current Focus
 
-1. `#41` Restore clean verification.
-2. `#42` Correct bAV minimum-conversion warning.
-3. `#43` Correct GRV-reduction estimate around the RV BBG.
-4. `#15` PDF report after the accuracy blockers are cleared.
+Wave 3 (P1, mostly independent — accuracy-first, no label-downgrade shortcuts):
+
+1. `#54` Replace bAV/insurance capital-drawdown payout with Leibrente/Zeitrente — material accuracy gap surfaced while fixing the `Kapitalverzehr bis` input bug.
+2. `#49` Deep-validate share URL and localStorage state.
+3. `#51` Separate statutory bAV subsidy from contractual employer match.
+4. `#52` Model child-age eligibility for Pflegeversicherung (full modeling, not label downgrade).
+5. `#50` Model PKV premiums (sequence after the others; integrates with the #46 retirement pipeline).
+6. `#53` Synchronize project documentation — last, after Wave 3 lands.
 
 ---
 
@@ -107,6 +111,31 @@ Expose separate controls and labels for:
 The `children` count changes PV rates, but the model has no child ages or eligibility windows. The childless surcharge and child discounts do not depend only on the number of children in all cases.
 
 Add child-age/eligibility inputs or downgrade the child-adjusted PV output to a clearly simplified assumption.
+
+### #54 Model bAV And Private-Insurance As Leibrente / Zeitrente Instead Of Capital Drawdown
+
+`simulate.ts` computes `payoutYears = retirementEndAge - retirementAge` and uses `monthlyPayoutFromCapital(capital, payoutReturn, payoutYears)` for **all three products** (ETF, bAV, private insurance). That is correct for ETF (the user controls the drawdown horizon) but materially wrong for bAV-Renten and pAV-Renten:
+
+- A typical bAV pays a **Leibrente** (lifelong annuity, paid until death) priced via a contractual *Rentenfaktor* (e.g. 30 EUR per 10,000 EUR Kapital per month). Capital is consumed actuarially; the policyholder does not bear longevity risk.
+- Some bAV products instead offer a **Zeitrente** (fixed-term annuity, e.g. 10/15/20 years) — closer to the current depletion model but still contractually fixed, not driven by `retirementEndAge`.
+- Private annuity insurance follows the same pattern: a Rentenfaktor in the contract, often with a guarantee period.
+
+Effects of the current simplification:
+- `Kapitalverzehr bis` controls bAV/insurance payouts as if they were drawdown plans, even though the Rentenfaktor has nothing to do with the user's chosen end-age.
+- bAV gross monthly payout fluctuates with `retirementEndAge`, when in reality it would be locked at retirement based on the contract.
+- Comparison vs. ETF is biased by whichever payout horizon the user picks.
+
+Required changes:
+- `BavAssumptions`: add `payoutMode: 'leibrente' | 'zeitrente' | 'kapitalverzehr'`, `bavRentenfaktor: number` (EUR per 10k per month), and an optional `zeitrenteYears: number` for the fixed-term mode.
+- `InsuranceAssumptions`: same shape, separate values (private contracts have their own Rentenfaktor).
+- `simulate.ts` / `projections.ts`: when `payoutMode === 'leibrente'`, compute `grossMonthlyPayout = capital / 10_000 × rentenfaktor`; the calculator does not model actuarial payments past the user's end-age cap (assume payments continue indefinitely; show the per-month figure). When `'zeitrente'`, use `zeitrenteYears` instead of `payoutYears`. Only `'kapitalverzehr'` continues to use the current annuity formula.
+- `Kapitalverzehr bis` UI label and tooltip: clarify that it only affects products in `kapitalverzehr` mode.
+- Default scenarios: `bav.payoutMode = 'leibrente'`, `bavRentenfaktor` defaulting to the current market range (research a sensible 2026 default — typical bracket is 25–35 EUR/10k for unisex, age-67 starts).
+- Tests: golden values shift materially; document.
+
+Note: bAV products vary; not all guarantee Leibrente. Some have Wahlrechte (Rente vs. Kapital vs. Zeitrente). The data shape above lets the user pick the mode they're actually offered.
+
+LEGAL_REVIEW.md: cite §1 BetrAVG (Leistungsformen), §1b BetrAVG (Anwartschaft), and reference the typical Versicherungsbedingungen language for Rentenfaktor + Garantierter Mindestrentenfaktor.
 
 ---
 

@@ -136,6 +136,7 @@ function NumberField({
   step = 1,
   suffix,
   onChange,
+  onCommit,
 }: {
   label: string
   value: number
@@ -143,9 +144,22 @@ function NumberField({
   max?: number
   step?: number
   suffix?: string
-  onChange: (value: string) => void
+  /** Fires on every keystroke. Use for live preview of unconstrained inputs. */
+  onChange?: (value: string) => void
+  /** Fires on blur or Enter. Use for clamped/validated inputs so partial keystrokes don't trigger range corrections. */
+  onCommit?: (value: string) => void
 }) {
-  const displayValue = Number.isFinite(value) ? Number(value.toFixed(6)).toString() : '0'
+  const [draft, setDraft] = useState<string | null>(null)
+  const canonical = Number.isFinite(value) ? Number(value.toFixed(6)).toString() : '0'
+  const displayValue = draft ?? canonical
+
+  const commit = () => {
+    if (draft === null) return
+    const raw = draft
+    setDraft(null)
+    if (!Number.isFinite(Number(raw))) return
+    onCommit?.(raw)
+  }
 
   return (
     <label className="field">
@@ -157,7 +171,17 @@ function NumberField({
           max={max}
           step={step}
           value={displayValue}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            onChange?.(event.target.value)
+          }}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              commit()
+              event.currentTarget.blur()
+            }
+          }}
         />
         {suffix ? <em>{suffix}</em> : null}
       </div>
@@ -389,7 +413,7 @@ function App() {
               min={18}
               max={profile.retirementAge - 1}
               suffix="Jahre"
-              onChange={(value) =>
+              onCommit={(value) =>
                 setProfile((current) => ({
                   ...current,
                   age: clampNumber(Number(value), 18, current.retirementAge - 1),
@@ -402,7 +426,7 @@ function App() {
               min={Math.max(55, profile.age + 1)}
               max={75}
               suffix="Jahre"
-              onChange={(value) =>
+              onCommit={(value) =>
                 setProfile((current) => ({
                   ...current,
                   retirementAge: clampNumber(Number(value), current.age + 1, 75),
@@ -735,7 +759,7 @@ function App() {
               max={110}
               step={1}
               suffix="Jahre"
-              onChange={(value) =>
+              onCommit={(value) =>
                 setAssumptions((current) => ({
                   ...current,
                   retirementEndAge: clampNumber(Number(value), profile.retirementAge + 1, 110),
