@@ -1085,7 +1085,7 @@ function App() {
                   <dt>Krankenversicherung</dt>
                   <dd>
                     {profile.publicHealthInsurance
-                      ? `GKV, Zusatzbeitrag ${profile.healthAdditionalContributionPct} %`
+                      ? `GKV, Zusatzbeitrag ${profile.healthAdditionalContributionPct} %`
                       : 'PKV (vereinfacht – Prämien nicht modelliert)'}
                   </dd>
                 </div>

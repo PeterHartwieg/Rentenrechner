@@ -61,7 +61,7 @@ export function buildExportCsv(opts: ExportOptions): string {
     const isEtf = r.productId === 'etf'
     const annualSavings = isBav ? bavAnnualTaxSvSavings : 0
     for (const row of r.rows) {
-      let afterTax: number | null = null
+      let afterTax: number | null
       if (isBav) {
         afterTax = afterTaxBavLumpSum(
           row.balance,

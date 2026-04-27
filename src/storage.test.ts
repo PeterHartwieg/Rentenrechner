@@ -45,10 +45,11 @@ describe('parseStateFromJson (#40)', () => {
 
   it('fills missing nested fee fields from defaults', () => {
     // Simulate a saved state where bav.fees is missing fixedMonthlyFee
+    // Cast to unknown then BavAssumptions to represent intentionally incomplete saved data
     const partial = {
       ...defaultAssumptions.bav,
       fees: { annualAssetFee: 0.01, contributionFee: 0.02, acquisitionCostPct: 0.03, acquisitionCostSpreadYears: 5 },
-    }
+    } as unknown as typeof defaultAssumptions.bav
     const raw = buildStateJson(defaultProfile, { ...defaultAssumptions, bav: partial })
     const result = parseStateFromJson(raw)
     expect(result).not.toBeNull()
