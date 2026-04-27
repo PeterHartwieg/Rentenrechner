@@ -1,5 +1,6 @@
 import type {
   BavFundingResult,
+  EtfPayoutRow,
   FeeModel,
   GermanRules,
   PersonalProfile,
@@ -12,6 +13,7 @@ import type {
 import { calculateBavFunding } from './salary'
 import {
   afterTaxInvestmentCapital,
+  etfPayoutSchedule,
   monthlyPayoutFromCapital,
   netBavPayout,
   netEtfPayout,
@@ -77,6 +79,7 @@ function buildProductResult(params: {
 
   let afterTaxLumpSum: number | null = projection.capital
   let netMonthlyPayout = grossMonthlyPayout
+  let etfPayoutRows: EtfPayoutRow[] | undefined
 
   if (params.taxMode === 'etf') {
     const partialExemption = params.partialExemption ?? 0
@@ -87,14 +90,20 @@ function buildProductResult(params: {
       partialExemption,
       projection.cumulativeVorabpauschale,
     )
-    netMonthlyPayout = netEtfPayout(
-      grossMonthlyPayout,
+    etfPayoutRows = etfPayoutSchedule(
       projection.capital,
       projection.totalContributionsBeforeFees,
+      projection.cumulativeVorabpauschale,
+      grossMonthlyPayout,
+      payoutYears,
+      payoutReturn,
+      params.profile.retirementAge,
       params.rules,
       partialExemption,
-      projection.cumulativeVorabpauschale,
     )
+    netMonthlyPayout = etfPayoutRows.length > 0
+      ? etfPayoutRows[0].netMonthlyPayout
+      : grossMonthlyPayout
   }
 
   if (params.taxMode === 'insurance-normal') {
@@ -120,7 +129,12 @@ function buildProductResult(params: {
 
   if (params.taxMode === 'bav') {
     afterTaxLumpSum = null
-    netMonthlyPayout = netBavPayout(grossMonthlyPayout, params.profile, params.rules)
+    const otherIncome = params.assumptions.bav.monthlyOtherRetirementIncome
+    let rawNet = netBavPayout(grossMonthlyPayout, params.profile, params.rules, otherIncome)
+    if (params.assumptions.bav.includeGrvReduction) {
+      rawNet = Math.max(0, rawNet - params.bavFunding.estimatedMonthlyGrvReduction)
+    }
+    netMonthlyPayout = rawNet
   }
 
   return {
@@ -152,6 +166,7 @@ function buildProductResult(params: {
         ? capitalMultipleAnnualized(afterTaxLumpSum, projection.totalUserCost, yearsToRetirement)
         : 0,
     rows: projection.rows,
+    etfPayoutRows,
   }
 }
 

@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   Line,
   LineChart,
@@ -17,25 +18,9 @@ import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { afterTaxInvestmentCapital } from './engine/projections'
 import { simulateRetirementComparison } from './engine/simulate'
 import { de2026Rules } from './rules/de2026'
+import { STORAGE_KEY, buildStateJson, loadSavedState } from './storage'
 import { formatCurrency, formatNumber, formatPercent } from './utils/format'
 import './App.css'
-
-const STORAGE_KEY = 'rentenrechner-state-v1'
-
-function loadSavedState(): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as { profile?: unknown; assumptions?: unknown }
-    if (!parsed.profile || !parsed.assumptions) return null
-    return {
-      profile: parsed.profile as PersonalProfile,
-      assumptions: parsed.assumptions as ScenarioAssumptions,
-    }
-  } catch {
-    return null
-  }
-}
 
 type WarningStatus = 'implementiert' | 'vereinfacht' | 'nicht-modelliert'
 
@@ -53,12 +38,12 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   {
     category: 'Lohnsteuer-Engine',
     status: 'implementiert',
-    note: 'BMF-PAP 2026 Vorsorgepauschale (RV + GKV + PV, ohne AV) für Steuerklasse I / GKV. Kirchensteuer und PKV nicht modelliert.',
+    note: 'BMF-PAP 2026 Vorsorgepauschale (RV + GKV + PV, ohne AV) für Steuerklasse I / GKV. PKV vereinfacht (SV-Abzüge ohne Prämienmodellierung). Kirchensteuer nicht berechnet (immer 0 %).',
   },
   {
     category: 'ETF-Vorabpauschale',
     status: 'implementiert',
-    note: 'Jährliche Vorabpauschale nach InvStG §18 (Basisertrag = Jahresanfangswert × Basiszins × 0,7; begrenzt auf tatsächliches Jahreswachstum); Sparerpauschbetrag 1.000 EUR p.a. angesetzt; vorausgezahlte VP mindert den Veräußerungsgewinn bei Entnahme (§19 InvStG). Basiszins 2026: 3,20 % (BMF-Schreiben 2026-01-13). (#7, #31)',
+    note: 'Jährliche Vorabpauschale nach InvStG §18; Jahresanfangswert (Vollperiode) + Monatsbeiträge × (verbleibende Monate / 12) als Basisertrag-Bemessungsgrundlage; begrenzt auf tatsächliches Jahreswachstum; Sparerpauschbetrag 1.000 EUR p.a. angesetzt; vorausgezahlte VP mindert den Veräußerungsgewinn bei Entnahme (§19 InvStG). Basiszins 2026: 3,20 % (BMF-Schreiben 2026-01-13), für alle Projektionsjahre konstant angesetzt. (#7, #31, #36)',
   },
   {
     category: 'ETF-Sparerpauschbetrag',
@@ -73,7 +58,7 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   {
     category: 'bAV Rentenphase',
     status: 'vereinfacht',
-    note: 'Einkommensteuer auf bAV-Rente ohne weiteres Renteneinkommen; KVdR nicht konfigurierbar. (#6)',
+    note: 'Grenzsteuer auf bAV konfigurierbar (Eingabe "Sonst. Renteneinkommen"). KVdR weiterhin vereinfacht (AN+AG-PV, kein Wechsel zu freiwilliger GKV). (#6)',
   },
   {
     category: 'bAV Kapitalabfindung',
@@ -82,8 +67,8 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   },
   {
     category: 'Gesetzliche Rente',
-    status: 'nicht-modelliert',
-    note: 'Minderung der RV-Ansprüche durch Entgeltumwandlung nicht eingerechnet. (#5)',
+    status: 'vereinfacht',
+    note: 'Optionale GRV-Minderungsschätzung: (Umwandlung ÷ Durchschnittsentgelt) × Jahre × Rentenwert. Tatsächliche Rente hängt von vollständiger Biografie ab. (#5)',
   },
   {
     category: 'Rendite-Szenarien',
@@ -229,9 +214,11 @@ function App() {
   const [selectedScenarioId, setSelectedScenarioId] = useState('basis')
   const [showRealValues, setShowRealValues] = useState(true)
   const [cashflowProductId, setCashflowProductId] = useState<ProductId>('bav')
+  const [tarifgebunden, setTarifgebunden] = useState(false)
+  const [showAssumptions, setShowAssumptions] = useState(false)
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile, assumptions }))
+    localStorage.setItem(STORAGE_KEY, buildStateJson(profile, assumptions))
   }, [profile, assumptions])
 
   function resetToDefaults() {
@@ -247,6 +234,10 @@ function App() {
     (de2026Rules.bav.statutoryEmployerSubsidyPct +
       assumptions.bav.extraEmployerContributionPct) *
     100
+  // §1a BetrAVG minimum: 1/160 of monthly Bezugsgröße West per year; maximum: 4% of pension BBG per month
+  const bavMinAnnual = de2026Rules.socialSecurity.bezugsgroesseMonthly / 160
+  const bavEntitlementMax =
+    (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap) / 12
   const selectedScenario = assumptions.returnScenarios.find(
     (scenario) => scenario.id === selectedScenarioId,
   )
@@ -381,7 +372,41 @@ function App() {
                 updateNumber(setProfile, 'healthAdditionalContributionPct', value)
               }
             />
+            <NumberField
+              label="Kinder"
+              value={profile.children}
+              min={0}
+              max={5}
+              step={1}
+              onChange={(value) =>
+                setProfile((current) => ({
+                  ...current,
+                  children: clampNumber(Number(value), 0, 5),
+                }))
+              }
+            />
           </div>
+
+          <label className="field">
+            <span>Krankenversicherung</span>
+            <select
+              value={profile.publicHealthInsurance ? 'gkv' : 'pkv'}
+              onChange={(event) =>
+                setProfile((current) => ({
+                  ...current,
+                  publicHealthInsurance: event.target.value === 'gkv',
+                }))
+              }
+            >
+              <option value="gkv">GKV (gesetzlich)</option>
+              <option value="pkv">PKV (privat, vereinfacht)</option>
+            </select>
+            {!profile.publicHealthInsurance && (
+              <small className="field-hint">
+                PKV: AG-Zuschuss und Prämien werden nicht modelliert. SV-Beiträge vereinfacht.
+              </small>
+            )}
+          </label>
 
           <div className="divider" />
 
@@ -421,7 +446,87 @@ function App() {
             />
           </div>
 
+          {assumptions.bav.monthlyGrossConversion > 0 &&
+            assumptions.bav.monthlyGrossConversion * 12 < bavMinAnnual && (
+              <p className="field-warning">
+                Unterschreitet das gesetzliche Minimum von {formatCurrency(bavMinAnnual, 2)}/Jahr
+                für den §1a-BetrAVG-Anspruch.
+              </p>
+            )}
+          {assumptions.bav.monthlyGrossConversion > bavEntitlementMax && (
+            <p className="field-warning">
+              Überschreitet den gesetzlichen Entgeltumwandlungsanspruch (
+              {formatCurrency(bavEntitlementMax, 0)}/Monat = 4 % der BBG nach §1a BetrAVG). Höhere
+              Beträge erfordern Arbeitgebereinverständnis.
+            </p>
+          )}
+
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={tarifgebunden}
+              onChange={(event) => setTarifgebunden(event.target.checked)}
+            />
+            <span>Tarifgebunden</span>
+          </label>
+          {tarifgebunden && (
+            <p className="field-warning">
+              Bei tarifgebundenem Arbeitsverhältnis kann die Entgeltumwandlung im Tarifvertrag
+              eingeschränkt oder ausgeschlossen sein (§17 Abs. 3 BetrAVG / §20 BetrAVG).
+            </p>
+          )}
+
           <BavWaterfall f={simulation.bavFunding} />
+
+          <div className="subsection-heading">
+            <h3>bAV-Rentenphase</h3>
+            <p>Grenzsteuer- und GRV-Optionen für die Auszahlungsphase.</p>
+          </div>
+
+          <div className="field-grid">
+            <NumberField
+              label="Sonst. Renteneinkommen"
+              value={assumptions.bav.monthlyOtherRetirementIncome}
+              min={0}
+              step={50}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: { ...current.bav, monthlyOtherRetirementIncome: Number(value) },
+                }))
+              }
+            />
+          </div>
+          {assumptions.bav.monthlyOtherRetirementIncome > 0 && (
+            <p className="field-hint">
+              Grenzsteuer auf bAV = Steuer(bAV + {formatCurrency(assumptions.bav.monthlyOtherRetirementIncome, 0)}/Monat) −
+              Steuer({formatCurrency(assumptions.bav.monthlyOtherRetirementIncome, 0)}/Monat).
+            </p>
+          )}
+
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={assumptions.bav.includeGrvReduction}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: { ...current.bav, includeGrvReduction: event.target.checked },
+                }))
+              }
+            />
+            <span>GRV-Minderung einrechnen</span>
+          </label>
+          {assumptions.bav.monthlyGrossConversion > 0 && (
+            <p className="field-hint">
+              Geschätzte Minderung:{' '}
+              ~{formatCurrency(simulation.bavFunding.estimatedMonthlyGrvReduction, 0)}/Monat
+              ({profile.retirementAge - profile.age} Jahre ×{' '}
+              {formatCurrency(assumptions.bav.monthlyGrossConversion, 0)}/Monat,
+              Rentenwert {formatCurrency(de2026Rules.socialSecurity.aktuellerRentenwert, 2)}/EP).
+            </p>
+          )}
 
           <div className="divider" />
 
@@ -858,11 +963,23 @@ function App() {
               <dl>
                 <div>
                   <dt>Steuerprofil</dt>
-                  <dd>Klasse I, keine Kinder, keine Kirchensteuer</dd>
+                  <dd>
+                    Klasse I,{' '}
+                    {profile.children === 0
+                      ? 'keine Kinder'
+                      : profile.children === 1
+                        ? '1 Kind'
+                        : `${profile.children} Kinder`}
+                    , Kirchensteuer nicht berechnet
+                  </dd>
                 </div>
                 <div>
-                  <dt>GKV</dt>
-                  <dd>öffentlich, Zusatzbeitrag {profile.healthAdditionalContributionPct}%</dd>
+                  <dt>Krankenversicherung</dt>
+                  <dd>
+                    {profile.publicHealthInsurance
+                      ? `GKV, Zusatzbeitrag ${profile.healthAdditionalContributionPct} %`
+                      : 'PKV (vereinfacht – Prämien nicht modelliert)'}
+                  </dd>
                 </div>
                 <div>
                   <dt>Steuervereinfachungen</dt>
@@ -923,6 +1040,44 @@ function App() {
                   </dd>
                 </div>
               </dl>
+            </div>
+          </section>
+
+          <section className="chart-panel fee-drag-panel">
+            <div className="section-heading">
+              <Coins size={18} aria-hidden="true" />
+              <div>
+                <h2>Gebühren-Vergleich</h2>
+                <p>Gebühren (rot) vs. verbleibendes Kapital nach Steuer – im gewählten Szenario.</p>
+              </div>
+            </div>
+            <div className="chart-frame small">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={selectedResults.map((r) => ({
+                    name: r.label,
+                    'Kapital n. St.': r.afterTaxLumpSum ?? r.capitalAtRetirement,
+                    'Gebühren gesamt': r.totalFees,
+                    productId: r.productId,
+                  }))}
+                  margin={{ top: 12, right: 8, left: 0, bottom: 18 }}
+                >
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} />
+                  <YAxis
+                    tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
+                    width={64}
+                  />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value), 0)} />
+                  <Legend />
+                  <Bar dataKey="Kapital n. St." stackId="a">
+                    {selectedResults.map((r) => (
+                      <Cell key={r.productId} fill={productColors[r.productId]} />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="Gebühren gesamt" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </section>
 
@@ -1087,6 +1242,119 @@ function App() {
                 </table>
               </div>
             ) : null}
+            {cashflowResult?.etfPayoutRows && cashflowResult.etfPayoutRows.length > 0 && (
+              <div className="payout-phase">
+                <h3 className="payout-phase-heading">Rentenphase (ETF-Entnahme)</h3>
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Alter</th>
+                        <th>Kapital</th>
+                        <th>Brutto mtl.</th>
+                        <th>Steuerpfl. Gewinn</th>
+                        <th>Sparerpauschb.</th>
+                        <th>Steuer</th>
+                        <th>Netto mtl.</th>
+                        <th>Kapital Ende</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cashflowResult.etfPayoutRows.map((row) => (
+                        <tr key={row.year}>
+                          <td style={{ textAlign: 'left' }}>{row.age}</td>
+                          <td>{formatCurrency(row.capitalAtStart, 0)}</td>
+                          <td>{formatCurrency(row.grossAnnualPayout / 12, 0)}</td>
+                          <td>{formatCurrency(row.taxableGain, 0)}</td>
+                          <td>{formatCurrency(row.saverAllowanceUsed, 0)}</td>
+                          <td>{formatCurrency(row.taxDue, 0)}</td>
+                          <td>{formatCurrency(row.netMonthlyPayout, 0)}</td>
+                          <td>{formatCurrency(row.capitalAtEnd, 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="assumptions-section">
+            <button
+              type="button"
+              className="assumptions-toggle"
+              onClick={() => setShowAssumptions((v) => !v)}
+              aria-expanded={showAssumptions}
+            >
+              Regelwerte & Quellen 2026 {showAssumptions ? '▲' : '▼'}
+            </button>
+            {showAssumptions && (
+              <div className="assumptions-content">
+                <div className="assumptions-group">
+                  <h3>Einkommensteuer 2026</h3>
+                  <dl>
+                    <div><dt>Grundfreibetrag</dt><dd>{formatCurrency(de2026Rules.incomeTax.basicAllowance, 0)} EUR · <a href="https://www.gesetze-im-internet.de/estg/__32a.html" target="_blank" rel="noreferrer">EStG §32a</a></dd></div>
+                    <div><dt>Progressionszone 1 bis</dt><dd>{formatCurrency(de2026Rules.incomeTax.firstProgressionEnd, 0)} EUR</dd></div>
+                    <div><dt>Progressionszone 2 bis</dt><dd>{formatCurrency(de2026Rules.incomeTax.secondProgressionEnd, 0)} EUR</dd></div>
+                    <div><dt>Spitzensteuersatz ab</dt><dd>{formatCurrency(de2026Rules.incomeTax.topTaxStart, 0)} EUR</dd></div>
+                    <div><dt>Soli-Freigrenze (Einkommensteuer)</dt><dd>{formatCurrency(de2026Rules.incomeTax.solidarityFreeTax, 0)} EUR</dd></div>
+                    <div><dt>Arbeitnehmer-Pauschbetrag</dt><dd>{formatCurrency(de2026Rules.employeeAllowance, 0)} EUR · <a href="https://www.gesetze-im-internet.de/estg/__9a.html" target="_blank" rel="noreferrer">EStG §9a</a></dd></div>
+                    <div><dt>Sonderausgaben-Pauschbetrag</dt><dd>{formatCurrency(de2026Rules.specialExpensesAllowance, 0)} EUR · <a href="https://www.gesetze-im-internet.de/estg/__10c.html" target="_blank" rel="noreferrer">EStG §10c</a></dd></div>
+                  </dl>
+                </div>
+
+                <div className="assumptions-group">
+                  <h3>Sozialversicherung 2026</h3>
+                  <dl>
+                    <div><dt>BBG Rente/AV</dt><dd>{formatCurrency(de2026Rules.socialSecurity.pensionCapYear, 0)} EUR/Jahr · <a href="https://www.bundesregierung.de/breg-de/aktuelles/beitragsgemessungsgrenzen-2386514" target="_blank" rel="noreferrer">Bundesregierung</a></dd></div>
+                    <div><dt>BBG KV/PV</dt><dd>{formatCurrency(de2026Rules.socialSecurity.healthCareCapYear, 0)} EUR/Jahr</dd></div>
+                    <div><dt>RV Arbeitnehmer/Arbeitgeber</dt><dd>{formatPercent(de2026Rules.socialSecurity.pensionEmployeeRate)} / {formatPercent(de2026Rules.socialSecurity.pensionEmployerRate)} · <a href="https://www.gesetze-im-internet.de/sgb_6/__158.html" target="_blank" rel="noreferrer">SGB VI §158</a></dd></div>
+                    <div><dt>AV Arbeitnehmer/Arbeitgeber</dt><dd>{formatPercent(de2026Rules.socialSecurity.unemploymentEmployeeRate)} / {formatPercent(de2026Rules.socialSecurity.unemploymentEmployerRate)}</dd></div>
+                    <div><dt>GKV allgemeiner Beitragssatz</dt><dd>{formatPercent(de2026Rules.socialSecurity.healthGeneralRate)} · <a href="https://www.gesetze-im-internet.de/sgb_5/__241.html" target="_blank" rel="noreferrer">SGB V §241</a></dd></div>
+                    <div><dt>GKV ermäßigter Satz (VPS-Grundlage)</dt><dd>{formatPercent(de2026Rules.socialSecurity.healthReducedRate)} · <a href="https://www.gesetze-im-internet.de/sgb_5/__243.html" target="_blank" rel="noreferrer">SGB V §243</a></dd></div>
+                    <div><dt>PV AN (kinderlos)</dt><dd>{formatPercent(de2026Rules.socialSecurity.careEmployeeChildlessRate)} · <a href="https://www.gesetze-im-internet.de/sgb_11/__55.html" target="_blank" rel="noreferrer">SGB XI §55</a></dd></div>
+                    <div><dt>PV AN (Grundsatz)</dt><dd>{formatPercent(de2026Rules.socialSecurity.careEmployeeBaseRate)}</dd></div>
+                    <div><dt>PV Arbeitgeber</dt><dd>{formatPercent(de2026Rules.socialSecurity.careEmployerRate)}</dd></div>
+                    <div><dt>PV Altersrentner (kinderlos)</dt><dd>{formatPercent(de2026Rules.socialSecurity.careRetirementChildlessRate)} · <a href="https://www.gesetze-im-internet.de/sgb_11/__57.html" target="_blank" rel="noreferrer">SGB XI §57</a></dd></div>
+                    <div><dt>KV-Freibetrag Versorgungsbezüge</dt><dd>{formatCurrency(de2026Rules.socialSecurity.kvFreibetragVersorgungMonthly, 2)} EUR/Monat · <a href="https://www.gesetze-im-internet.de/sgb_5/__226.html" target="_blank" rel="noreferrer">SGB V §226(2)</a></dd></div>
+                    <div><dt>Bezugsgröße West</dt><dd>{formatCurrency(de2026Rules.socialSecurity.bezugsgroesseMonthly, 0)} EUR/Monat · <a href="https://www.gesetze-im-internet.de/sgb_4/__18.html" target="_blank" rel="noreferrer">SGB IV §18</a></dd></div>
+                  </dl>
+                </div>
+
+                <div className="assumptions-group">
+                  <h3>bAV-Grenzen 2026</h3>
+                  <dl>
+                    <div><dt>Steuerfreie Grenze (8 % BBG)</dt><dd>{formatCurrency(de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap, 0)} EUR/Jahr · <a href="https://www.gesetze-im-internet.de/estg/__3.html" target="_blank" rel="noreferrer">EStG §3 Nr. 63</a></dd></div>
+                    <div><dt>SV-freie Grenze (4 % BBG)</dt><dd>{formatCurrency(de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap, 0)} EUR/Jahr · SvEV §1</dd></div>
+                    <div><dt>Pflicht-AG-Zuschuss</dt><dd>{formatPercent(de2026Rules.bav.statutoryEmployerSubsidyPct)} (begrenzt auf AG-SV-Ersparnis) · <a href="https://www.gesetze-im-internet.de/betravg/__1a.html" target="_blank" rel="noreferrer">BetrAVG §1a</a></dd></div>
+                    <div><dt>Mindest-Entgeltumwandlung (§1a-Anspruch)</dt><dd>{formatCurrency(de2026Rules.socialSecurity.bezugsgroesseMonthly / 160, 2)} EUR/Jahr</dd></div>
+                  </dl>
+                </div>
+
+                <div className="assumptions-group">
+                  <h3>Kapitalertragsteuer 2026</h3>
+                  <dl>
+                    <div><dt>Abgeltungsteuer</dt><dd>{formatPercent(de2026Rules.capitalGains.taxRate)} · <a href="https://www.gesetze-im-internet.de/estg/__32d.html" target="_blank" rel="noreferrer">EStG §32d</a></dd></div>
+                    <div><dt>Solidaritätszuschlag</dt><dd>{formatPercent(de2026Rules.capitalGains.solidarityRate)}</dd></div>
+                    <div><dt>Sparerpauschbetrag</dt><dd>{formatCurrency(de2026Rules.capitalGains.saverAllowance, 0)} EUR/Jahr · <a href="https://www.gesetze-im-internet.de/estg/__20.html" target="_blank" rel="noreferrer">EStG §20 Abs. 9</a></dd></div>
+                    <div><dt>Basiszins 2026 (Vorabpauschale)</dt><dd>{formatPercent(de2026Rules.capitalGains.basiszins)} · <a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Investmentsteuer/2026-01-13-basiszins-berechnung-vorabpauschale.html" target="_blank" rel="noreferrer">BMF 2026-01-13</a> · <a href="https://www.gesetze-im-internet.de/invstg_2018/__18.html" target="_blank" rel="noreferrer">InvStG §18</a></dd></div>
+                  </dl>
+                </div>
+
+                <div className="assumptions-group">
+                  <h3>Gesetzliche Rente (Schätzwerte für #5)</h3>
+                  <dl>
+                    <div><dt>Vorläufiges Durchschnittsentgelt 2026</dt><dd>{formatCurrency(de2026Rules.socialSecurity.durchschnittsentgelt, 0)} EUR · SGB VI Anlage 1</dd></div>
+                    <div><dt>Aktueller Rentenwert West</dt><dd>{formatCurrency(de2026Rules.socialSecurity.aktuellerRentenwert, 2)} EUR/EP (ab 1.7.2025, 2026-Anpassung ausstehend)</dd></div>
+                    <div><dt>Zugangsfaktor / Rentenartfaktor</dt><dd>1,0 / 1,0 (vereinfacht: Regelaltersrente ohne Abschläge)</dd></div>
+                  </dl>
+                  <p className="assumptions-note">
+                    Diese Schätzwerte dienen nur zur Abschätzung der GRV-Minderung durch Entgeltumwandlung.
+                    Die tatsächliche Rente hängt von der vollständigen Erwerbsbiografie ab.
+                  </p>
+                </div>
+              </div>
+            )}
           </section>
         </section>
       </section>

@@ -40,6 +40,10 @@ export interface BavAssumptions {
   extraEmployerContributionPct: number
   extraEmployerContributionMonthly: number
   fees: FeeModel
+  // #6: other monthly retirement income (GRV + other) for marginal-tax calculation
+  monthlyOtherRetirementIncome: number
+  // #5: when true, subtract estimatedMonthlyGrvReduction from bAV net payout
+  includeGrvReduction: boolean
 }
 
 export interface InsuranceAssumptions {
@@ -82,6 +86,12 @@ export interface GermanRules {
     careEmployerRate: number
     careRetirementChildlessRate: number
     kvFreibetragVersorgungMonthly: number
+    // §18 SGB IV Bezugsgröße West — used for bAV minimum entitlement (§1a BetrAVG)
+    bezugsgroesseMonthly: number
+    // SGB VI Anlage 1 vorläufiges Durchschnittsentgelt — denominator for Entgeltpunkte
+    durchschnittsentgelt: number
+    // Aktueller Rentenwert West (monthly EUR per Entgeltpunkt) — for GRV pension estimation
+    aktuellerRentenwert: number
   }
   bav: {
     taxFreePctOfPensionCap: number
@@ -136,6 +146,8 @@ export interface BavFundingResult {
   svFreePortionAnnual: number
   taxableOverflowAnnual: number
   svLiableOverflowAnnual: number
+  // #5: estimated monthly GRV pension loss from salary conversion (see BACKLOG #5)
+  estimatedMonthlyGrvReduction: number
 }
 
 export interface YearlyProjection {
@@ -153,6 +165,21 @@ export interface YearlyProjection {
   cumulativeProductContributions: number
   // Gross Vorabpauschale accumulated so far (0 for bAV/insurance); reduces exit taxable gain
   cumulativeVorabpauschale: number
+}
+
+// Year-by-year ETF payout schedule tracking cost basis depletion (#37)
+export interface EtfPayoutRow {
+  year: number              // 1-based retirement year
+  age: number               // age at start of this retirement year
+  capitalAtStart: number    // capital before withdrawal
+  grossAnnualPayout: number
+  taxableGain: number       // gain portion of withdrawal subject to tax
+  saverAllowanceUsed: number // Sparerpauschbetrag consumed this year
+  taxDue: number
+  netAnnualPayout: number
+  netMonthlyPayout: number
+  capitalAtEnd: number      // capital after withdrawal and annual growth
+  remainingCostBasis: number
 }
 
 export interface ProductResult {
@@ -177,6 +204,7 @@ export interface ProductResult {
   valueMultipleOnUserCost: number | null
   capitalMultipleAnnualized: number
   rows: YearlyProjection[]
+  etfPayoutRows?: EtfPayoutRow[]
 }
 
 export interface SimulationResult {

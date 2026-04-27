@@ -136,6 +136,38 @@
   line-height: 1.4;
 }
 
+.field-warning {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: #b45309;
+  line-height: 1.4;
+}
+
+.field-inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.field-inline input[type='checkbox'] {
+  width: auto;
+  accent-color: #2563eb;
+}
+
+.payout-phase {
+  margin-top: 24px;
+}
+
+.payout-phase-heading {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 8px;
+}
+
 .input-shell em {
   flex: 0 0 auto;
   padding-right: 10px;
@@ -568,6 +600,106 @@ tfoot .totals-row td {
 .wf-total dd {
   color: #0f766e;
   font-size: 0.93rem;
+}
+
+/* Fee drag chart */
+.fee-drag-panel {
+  padding: 20px;
+}
+
+/* Assumptions drawer */
+.assumptions-section {
+  padding: 0;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.assumptions-toggle {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #344054;
+  background: #f4f7fb;
+  border: none;
+  cursor: pointer;
+}
+
+.assumptions-toggle:hover {
+  background: #e8eef6;
+}
+
+.assumptions-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0;
+  padding: 0;
+  border-top: 1px solid #d9e1ea;
+}
+
+.assumptions-group {
+  padding: 16px 20px;
+  border-right: 1px solid #d9e1ea;
+  border-bottom: 1px solid #d9e1ea;
+}
+
+.assumptions-group:last-child {
+  border-right: none;
+}
+
+.assumptions-group h3 {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #667085;
+}
+
+.assumptions-group dl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.assumptions-group dl div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.assumptions-group dt {
+  font-size: 0.78rem;
+  color: #667085;
+  font-weight: 600;
+}
+
+.assumptions-group dd {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #172033;
+  font-weight: 600;
+}
+
+.assumptions-group dd a {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+
+.assumptions-group dd a:hover {
+  text-decoration: underline;
+}
+
+.assumptions-note {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  color: #667085;
 }
 
 @media (max-width: 1180px) {

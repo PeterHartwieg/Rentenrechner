@@ -1,236 +1,206 @@
-# Rentenrechner Implementation Backlog
+# Rentenrechner Backlog
+
+This file tracks what still matters for accuracy, usability, and future publishing. Completed audit items are intentionally short; implementation detail belongs in code and tests.
+
+Legal/rules research lives in `LEGAL_REVIEW.md`.
 
 ## Priority Legend
 
-- `P0`: Required before the calculator should be treated as decision-support.
+- `P0`: Required before results should be treated as decision-support.
 - `P1`: Important for a credible personal v1.
-- `P2`: Useful for usability, publishing, or broader audiences.
+- `P2`: Useful for publishing or broader use.
 - `P3`: Later expansion.
 
----
+## Current Focus
 
-## Done
+1. `#38` Law-based private-insurance tax modes.
+2. `#6` Remaining bAV retirement refinements (KVdR toggle, lump-sum payout mode).
 
-- **#17** GKV Zusatzbeitrag default → 2.9 %
-- **#18** PV cliff fix — `max(0, gross − Freibetrag)` in `netBavPayout` (superseded by **#32**: PV needs Freigrenze, not KV Freibetrag)
-- **#19** bAV lump-sum hidden until 1/120 KV/PV spreading is modeled
-- **#20** ETF saver-allowance: lump-sum uses no Sparerpauschbetrag; payout applies 1 000 EUR/yr
-- **#21** Explicit `insurance-tax-free` branch in `simulate.ts`
-- **#22** `careEmployeeBaseRate` rule field + `careEmployeeRateForChildren` helper; magic 0.018 removed
-- **#23** `topTaxStart` corrected to 277 826
-- **#24** `retirementHealthAllowanceMonthly` renamed to `kvFreibetragVersorgungMonthly` with §226 SGB V comment (KV only; see **#32**)
-- **#26** `retirementEndAge` number input ("Kapitalverzehr bis")
-- **#30** Age/retirement-age clamping (invalid combinations not reachable via inputs)
-- **#29** Dead fields removed: `monthlyInvestment`, `monthlyPremium`, `contributionMode`, `PrivateContributionMode`
-- **#3** Berechnungshinweise warnings panel (implementiert / vereinfacht / nicht modelliert)
-- **#2** Jahres-Cashflows audit table (per-year user cost, contribution, employer share, fees, capital, real capital)
-- **#1** Initial BMF PAP 2026 Vorsorgepauschale implementation; `SalaryResult.vorsorgepauschale` field; tests at 50 k / 75 k / 100 k and bAV conversions 100 / 300 / 500 EUR/month (superseded by **#33**: §39b EStG 2026 includes more detail)
-- **#4** bAV contribution limits: two-pass computation applies §3 Nr. 63 EStG (8 % BBG) and §1 SvEV (4 % BBG) to total bAV (employee + employer); `BavFundingResult` exposes overflow fields; UI shows classification
-- **#27** ETF partial-exemption selector — InvStG §20 fund categories in input panel
-- **#28** Insurance steuerfrei tooltip explaining §20 Abs. 1 Nr. 6 EStG / Halbeinkünfteverfahren condition
-- **#7** ETF Vorabpauschale + annual Sparerpauschbetrag: InvStG §18 annual tax drag; initial Basiszins 2,53%; gross VP reduces exit gain (§19 InvStG); Sparerpauschbetrag 1.000 EUR applied in accumulation + payout (superseded by **#31** and **#36**)
-- **#9** bAV waterfall: Bruttoumwandlung → −Steuerersparnis → −SV-Ersparnis → =Nettoaufwand → +AG-Zuschuss → =Monatlicher Beitrag; displayed as inline panel in sidebar
-- **#11** localStorage persistence: state saved to `rentenrechner-state-v1`; restored on reload; Reset button in sidebar heading restores defaults
-- **#31** Official 2026 Basiszins: `de2026Rules.capitalGains.basiszins` updated to `0.032` (BMF-Schreiben 2026-01-13); UI text updated; regression test added
-- **#32** bAV retirement KV/PV base corrected: KV uses §226(2) SGB V Freibetrag (deduct 197.75 EUR before rate); PV uses §57(1) SGB XI Freigrenze (zero PV ≤ 197.75 EUR, full-amount PV > 197.75 EUR); test replaced with correct Freigrenze assertions
-- **#33** §39b EStG 2026 Vorsorgepauschale reworked: `calculateVorsorgepauschale2026` helper uses steuerlicher Arbeitslohn, ermäßigter GKV rate (14 %), PV childcare discount, AV Teilbetrag capped by 1,900 EUR rule; `healthReducedRate` added to rules; all salary tests updated
+## Recommended Implementation Sessions
 
----
+### Session A: Transparency First
 
-## April 2026 Legal / Implementation Review
+Items: `#12`
 
-Added 2026-04-27 after checking the implementation, design file, current backlog, and official legal/rate sources available in April 2026.
+Priority: recommended next.
 
-Primary sources checked:
-- BMF basiszins for InvStG §18 Vorabpauschale 2026: https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Investmentsteuer/2026-01-13-basiszins-berechnung-vorabpauschale.html
-- BMF Vorsorgepauschale from 2026 / §39b EStG: https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Lohnsteuer/2025-08-14-vorsorgepau-lohnsteuerabzugsverfahren.html and https://www.gesetze-im-internet.de/estg/__39b.html
-- 2026 income-tax tariff: https://www.gesetze-im-internet.de/estg/__32a.html
-- 2026 GKV rates and BBG: https://www.bundesgesundheitsministerium.de/beitraege
-- 2026 social-security thresholds: https://www.bundesregierung.de/breg-de/aktuelles/beitragsgemessungsgrenzen-2386514
-- 2026 Pflegeversicherung rates and Bezugsgröße: https://www.bundesgesundheitsministerium.de/themen/pflege/online-ratgeber-pflege/die-pflegeversicherung/finanzierung
-- bAV entitlement/subsidy/tax rules: https://www.gesetze-im-internet.de/betravg/__1a.html and https://www.gesetze-im-internet.de/estg/__3.html
-- ETF tax basis and partial exemptions: https://www.gesetze-im-internet.de/invstg_2018/__18.html, https://www.gesetze-im-internet.de/invstg_2018/__19.html, https://www.gesetze-im-internet.de/invstg_2018/__20.html
-- Private insurance tax: https://www.gesetze-im-internet.de/estg/__20.html and https://www.gesetze-im-internet.de/estg/__52.html
+Why: surfacing all assumptions, rule values, source links, and simplified areas makes the calculator more trustworthy before deeper model work.
 
-### P1: Accuracy Gaps
+Likely files:
+- `src/rules/de2026.ts`
+- `src/domain/types.ts`
+- `src/App.tsx`
+- `src/App.css`
+- `LEGAL_REVIEW.md`
 
-#### 34. Make bAV Employer Subsidy / Limit Handling Converge
+### Session B: bAV Retirement Accuracy
 
-`calculateBavFunding` uses an approximate employer contribution to allocate the 4 % / 8 % BBG limits, then recalculates the final statutory subsidy. Near the 4 % SV-free limit, the final subsidy can differ from the value used to compute `effectiveSvFreeConversion`.
+Items: `#5`, `#6`
 
-**Target:** solve the bAV funding waterfall as a fixed point or deterministic iteration so salary, statutory subsidy, total bAV contribution, and tax/SV-free portions reconcile.
+Priority: highest model-accuracy bundle.
 
-**Acceptance criteria:**
-- Tests around 500 EUR/month conversion and high extra employer matches show no mismatch between final employer contribution and effective tax/SV-free conversion.
-- `BavFundingResult` exposes values derived from the final contribution state only.
+Why: statutory-pension reduction, bAV retirement tax, KV/PV handling, and payout assumptions all affect the same headline bAV outcome.
 
----
+Likely files:
+- `src/engine/salary.ts`
+- `src/engine/projections.ts`
+- `src/engine/simulate.ts`
+- `src/domain/types.ts`
+- `src/App.tsx`
+- `LEGAL_REVIEW.md`
 
-#### 35. Turn Profile Flags Into Real Legal Inputs
+### Session C: Private Insurance Tax
 
-`PersonalProfile` contains `churchTax`, `publicHealthInsurance`, and `children`, but the UI still hard-codes "Klasse I, keine Kinder, keine Kirchensteuer". The engine only partly honors the fields: children affect employee PV during accumulation, but not bAV retirement PV; church tax is not calculated; PKV mode currently removes GKV/PV contributions instead of modeling private premiums and employer subsidies.
+Items: `#38`
 
-**Target:** either fully wire these fields into UI and calculations or remove/disable them until supported.
+Priority: separate focused session.
 
-**Acceptance criteria:**
-- UI exposes live children, church-tax/state, and GKV/PKV inputs or clearly marks them unsupported.
-- Income tax / capital-gains tax / church tax behavior cannot silently diverge from displayed assumptions.
-- PKV mode includes private KV/PV contributions, employer subsidy, and §39b private Vorsorgepauschale handling.
+Why: pAV taxation needs contract-date/runtime/payout-age logic and should not be mixed with bAV retirement modeling.
+
+Likely files:
+- `src/domain/types.ts`
+- `src/data/defaultScenario.ts`
+- `src/engine/simulate.ts`
+- `src/engine/projections.ts`
+- `src/App.tsx`
+- `LEGAL_REVIEW.md`
+
+### Session D: Comparison UX
+
+Items: `#10`, optionally `#13`
+
+Priority: after transparency or bAV accuracy.
+
+Why: fee drag and exports both consume existing product-result data and improve decision support without changing legal rules.
+
+Likely files:
+- `src/App.tsx`
+- `src/App.css`
+- `src/engine/simulate.ts`
+- `src/domain/types.ts`
 
 ---
 
-#### 36. Improve ETF Vorabpauschale Timing and Future-Year Assumptions
+## Open P1 Accuracy
 
-The ETF model applies one static 2026 basiszins to every projection year and only uses the balance at the start of each year. InvStG §18 prorates the Vorabpauschale in the acquisition year; monthly savings during a year should therefore not be completely ignored until the following year.
+### #6 bAV Retirement Phase Detail (remaining)
 
-**Target:** model acquisition-year proration for monthly purchases and make the "2026 basiszins held constant for future projection years" assumption explicit/configurable.
+Marginal-tax calculation with other retirement income is now implemented. Still open:
+- KVdR vs voluntary GKV toggle.
+- Lump-sum vs pension payout mode.
+- Visible GKV/PV contribution base.
 
-**Acceptance criteria:**
-- Tests cover first-year monthly ETF purchases and partial-year acquisition proration.
-- UI/source drawer states whether future years reuse 2026 law values or a supplied rule table.
+### #38 Law-Based Private Insurance Tax Modes
 
----
+Current private insurance still uses a simplified `normal` / `steuerfrei` model.
 
-#### 37. Track ETF Withdrawal Tax Basis Through the Payout Phase
+Target:
+- Add contract start date.
+- Add payout age and runtime.
+- Distinguish pre-2005 tax-free contracts.
+- Model post-2004 rules under EStG §20.
+- Model age-62 / 12-year half-income treatment where eligible.
+- Keep simple mode as a convenience layer.
 
-`netEtfPayout` applies a constant untaxed-gain ratio and a fresh annual Sparerpauschbetrag to the projected payout. This is directionally useful but does not model actual disposal lots, remaining cost basis, already-taxed Vorabpauschalen, or year-by-year allowance usage during capital depletion.
-
-**Target:** add a payout schedule that tracks remaining capital, cost basis, cumulative Vorabpauschale, realised gain, tax, and remaining balance per retirement year.
-
-**Acceptance criteria:**
-- Annual payout rows reconcile from retirement capital to zero/end balance.
-- Sparerpauschbetrag is applied once per year and visibly consumed.
-- After-tax lump sum and monthly payout are both derived from the same tax-basis model.
-
----
-
-#### 38. Replace Insurance `normal` / `steuerfrei` With Law-Based Contract Modes
-
-The private insurance model treats `normal` like an ETF without Teilfreistellung and `steuerfrei` as fully tax-free. Current law distinguishes old pre-2005 contracts, post-2004 contracts under §20 Abs. 1 Nr. 6 EStG, post-2011 age-62/12-year half-income treatment under §52 EStG, and a 15 % exemption for certain fondsgebundene life-insurance investment income.
-
-**Target:** expand **#8** into concrete contract-date, payout-age, runtime, fund-linked, and payout-form logic.
-
-**Acceptance criteria:**
-- Contract start date, insured/payout age, runtime, and capital vs annuity payout determine tax mode.
-- Half-income method is explicit and uses personal income tax, not depot-style Abgeltungsteuer.
-- Pre-2005 tax-free mode requires the legal eligibility fields instead of a blind toggle.
+Done when:
+- Tax treatment is derived from contract fields instead of a blind toggle.
+- Half-income method uses personal income-tax logic, not ETF-style Abgeltungsteuer.
+- The simple mode clearly states what it assumes.
 
 ---
 
-#### 39. Add bAV Entitlement, Minimum, and Tarifvertrag Warnings
+## Open P2 Publishing / Product
 
-The UI lets users enter any bAV conversion amount. BetrAVG §1a gives an entitlement up to 4 % of the general RV BBG and requires at least 1/160 of the Bezugsgröße annually when the claim is exercised; §20 BetrAVG can restrict salary conversion for collectively agreed pay unless a Tarifvertrag allows it.
+### #13 CSV Export
 
-**Target:** show legal-range warnings rather than silently treating all inputs as equally claimable.
+Export:
+- summary comparison
+- yearly cashflows
+- ETF payout rows where available
 
-**Acceptance criteria:**
-- Inputs below the annual minimum and above the 4 % entitlement threshold show a clear warning.
-- Voluntary higher contributions remain possible but are labeled as contract/employer-dependent.
-- Optional "tarifgebunden" flag warns that salary conversion may require a collective-agreement basis.
+### #14 Shareable Scenario URL
 
----
+Serialize assumptions into a compressed query parameter.
 
-#### 40. Harden localStorage Persistence
+### #15 PDF Report
 
-**#11** is marked done, but `loadSavedState` accepts unknown JSON via type casts and no schema version/migration check. A stale or malformed saved state can silently create impossible assumptions or missing nested fee fields.
+Generate a readable comparison report for offline review.
 
-**Target:** validate persisted profile/assumption shape and version before use.
+### #16 Input Presets
 
-**Acceptance criteria:**
-- Saved state includes a version field.
-- Invalid, partial, or older states fall back to defaults or migrate explicitly.
-- Tests cover malformed JSON, missing nested fields, and a future unknown version.
-
----
-
-## P1: German Product Precision
-
-### 25. Expose Profile Toggles
-
-`PersonalProfile` has `churchTax`, `publicHealthInsurance`, and `children` but the UI hard-codes "Klasse I, keine Kinder, keine Kirchensteuer". The engine reads the live values; the UI can't change them.
-
-**Target:** add toggles/inputs for church tax, public/private health insurance, and number of children; update the Fairness panel to reflect live values.
-
-**Acceptance criteria:** no hard-coded assumption text in the UI that can diverge from what the engine computes.
+Add presets:
+- low-cost ETF only
+- standard bAV minimum employer subsidy
+- generous employer bAV match
+- high-cost private insurance
+- old-contract insurance
 
 ---
 
-### 5. Statutory Pension Reduction From bAV
+## Open P3 Expansion
 
-Salary conversion reduces pension-insurance contributions, potentially lowering future statutory pension entitlements.
-
-**Target:** optional toggle; when on, estimate lost Rentenpunkte and reduce bAV retirement income accordingly.
-
-**Acceptance criteria:** default off; when on, method and estimated impact visible in UI.
-
----
-
-### 6. bAV Retirement Phase Detail
-
-Current bAV payout uses simplified income tax without other retirement income, fixed KVdR status, and no lump-sum vs pension choice.
-
-**Target:** configurable retirement income context (statutory pension estimate, KVdR vs voluntary GKV, lump-sum payout option).
-
-**Acceptance criteria:** bAV pension tax includes other taxable retirement income; GKV/PV contribution base is shown.
-
----
-
-### 8. Insurance Tax and Contract Model
-
-Private insurance is reduced to fee drag + steuerfrei/normal. Too coarse for real German offers.
-
-**Target:** advanced mode with contract start year, runtime, guaranteed annuity factor, surrender value, and half-income method eligibility. Simple steuerfrei/normal mode remains as default.
-
----
-
-## P1: UX for Decision Support
-
-### 10. Fee Drag Comparison
-
-**Target:** chart showing gross contributions, fees, and ending capital side by side for all three products — makes the fee cost visible.
-
----
-
-## P2: Publishable Product
-
-- **#12** Source and assumption drawer (legal source links, rule values, last-verified date)
-- **#13** CSV export (summary + yearly cashflows)
-- **#14** Shareable scenario URL (compressed query parameter)
-- **#15** PDF report
-- **#16** Input presets (low-cost ETF only; standard/generous bAV; high-cost/old-contract insurance)
-
----
-
-## P3: Future Expansion
-
-- Riester, Rürup.
-- Statutory pension module.
+- Riester.
+- Rürup.
+- statutory pension module.
 - Monte Carlo simulation.
-- Salary growth and contribution escalation.
-- Multi-ETF portfolio.
-- Bilingual UI / public deployment.
-
----
-
-## Recommended Implementation Order
-
-1. ~~**#31** Update 2026 ETF Basiszins to 3.20 %.~~ ✓ done
-2. ~~**#32** Correct bAV retirement KV/PV base handling.~~ ✓ done
-3. ~~**#33** Rework the 2026 Vorsorgepauschale helper and tests.~~ ✓ done
-4. **#34** Make bAV employer subsidy / contribution-limit handling converge.
-5. **#35 / #25** Turn profile flags into real inputs and remove hard-coded assumption text.
-6. **#36 / #37** Finish ETF tax timing and payout-basis tracking.
-7. **#5 / #6 / #38** Complete statutory-pension impact, bAV retirement phase, and insurance contract tax detail.
-8. **#40 / #12** Harden persistence and add the source/assumption drawer.
-9. P2 publishing features.
+- salary growth and contribution escalation.
+- multi-ETF portfolio.
+- bilingual UI.
+- public deployment.
 
 ---
 
 ## Remaining Test Gaps
 
-- `calculateSolidarityTax`: Milderungszone transition near `incomeTax = 20 350`.
-- `calculateCapitalGainsTax`: all `partialExemption` values from InvStG §20.
-- `calculateBavFunding`: SV-savings cap at the 4 %-BBG threshold (~338 EUR/month); tax-free overflow above 8 % BBG.
-- ETF tax: acquisition-year Vorabpauschale proration for monthly purchases and payout-phase basis depletion.
-- `loadSavedState`: malformed, stale, partial, and future-version localStorage payloads.
-- Default-profile end-to-end snapshot: `capitalAtRetirement`, `afterTaxLumpSum`, `netMonthlyPayout` for each product × scenario cell.
+- `calculateSolidarityTax`: Milderungszone transition near `incomeTax = 20,350`.
+- `calculateCapitalGainsTax`: all partial-exemption values from InvStG §20.
+- `calculateBavFunding`: SV-savings cap near the 4% BBG threshold.
+- `calculateBavFunding`: tax-free overflow above 8% BBG.
+- Default-profile end-to-end snapshot for each product x scenario:
+  - `capitalAtRetirement`
+  - `afterTaxLumpSum`
+  - `netMonthlyPayout`
+
+---
+
+## Done
+
+- `#1` Initial BMF PAP 2026 Vorsorgepauschale helper and salary tests.
+- `#2` Yearly cashflow audit table.
+- `#3` Visible calculation warnings panel.
+- `#4` bAV contribution-limit handling for total contribution.
+- `#7` ETF Vorabpauschale and annual Sparerpauschbetrag model.
+- `#9` bAV tax/SV waterfall panel.
+- `#11` localStorage persistence with reset.
+- `#17` GKV Zusatzbeitrag default updated to 2.9%.
+- `#18` bAV retirement PV/KV cliff initially fixed, later corrected by `#32`.
+- `#19` bAV lump-sum after-tax hidden until exact 1/120 handling exists.
+- `#20` ETF saver allowance no longer applied to lump-sum exit tax.
+- `#21` Explicit private-insurance `steuerfrei` branch.
+- `#22` Care-insurance child-rate helper.
+- `#23` 2026 top-tax boundary corrected to 277,826 EUR.
+- `#24` KV Versorgungsbezüge Freibetrag renamed and documented.
+- `#26` Editable retirement end age.
+- `#27` ETF partial-exemption selector.
+- `#28` Private-insurance tax-mode explanation.
+- `#29` Removed dead private-contribution defaults.
+- `#30` Age and retirement-age input clamping.
+- `#31` 2026 InvStG Basiszins updated to 3.20%.
+- `#32` bAV retirement KV/PV base corrected: KV Freibetrag, PV Freigrenze.
+- `#33` §39b EStG 2026 Vorsorgepauschale reworked.
+- `#34` bAV employer subsidy and contribution-limit fixed-point loop.
+- `#35` Profile inputs wired: children and GKV/PKV; church tax marked unsupported.
+- `#36` ETF Vorabpauschale acquisition-year timing improved.
+- `#37` ETF withdrawal tax-basis tracking through payout phase.
+- `#39` bAV entitlement, minimum, tariff-agreement warnings.
+- `#40` Hardened localStorage parser and state schema tests.
+- `#5` GRV-Minderung estimate: toggle to subtract estimated statutory-pension loss from bAV net payout; formula (EP/year × years × Rentenwert).
+- `#6` Marginal-tax bAV payout: `netBavPayout` now uses total(bAV + other) − total(other) for correct income-tax on bAV when other retirement income is configured.
+- `#10` Fee drag stacked bar chart: capital n. St. (product color) + Gebühren gesamt (red) stacked per product in the selected scenario.
+- `#12` Regelwerte & Quellen 2026 drawer: collapsible panel with all rule values, source links (EStG, SGB V/VI/XI, InvStG, BBG), and GRV estimation notes.
+
+---
+
+## Legal Review
+
+See `LEGAL_REVIEW.md` for source links, 2026 baseline values, and legal interpretation notes.

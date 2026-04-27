@@ -27,6 +27,12 @@ export const de2026Rules: GermanRules = {
     careRetirementChildlessRate: 0.042,
     // §226(2) SGB V KV-Freibetrag (= §57(1) SGB XI PV-Freigrenze): 1/20 of monthly Bezugsgröße West 2026 (3,955 EUR)
     kvFreibetragVersorgungMonthly: 197.75,
+    // Bezugsgröße West 2026 nach §18 Abs. 1 SGB IV
+    bezugsgroesseMonthly: 3_955,
+    // SGB VI Anlage 1: vorläufiges Durchschnittsentgelt 2026 — denominator for Entgeltpunkte
+    durchschnittsentgelt: 45_358,
+    // Aktueller Rentenwert West ab 1.7.2025; 2026 update usually effective 1.7.2026
+    aktuellerRentenwert: 39.32,
   },
   bav: {
     taxFreePctOfPensionCap: 0.08,

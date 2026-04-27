@@ -176,27 +176,41 @@ export function calculateBavFunding(
   const salaryWithoutBav = calculateSalaryResult(profile, rules, 0)
   const employerSocialBefore = calculateEmployerSocialContributions(profile.grossSalaryYear, profile, rules)
 
-  // Pass 1: approximate employer subsidy using employee-only SV-free limit
-  const approxSvFreeConversion = Math.min(annualGrossConversion, svFreeLimit)
-  const approxEmployerSocialAfter = calculateEmployerSocialContributions(
-    profile.grossSalaryYear - approxSvFreeConversion,
-    profile,
-    rules,
-  )
-  const approxEmployerSvSaving = Math.max(0, employerSocialBefore.total - approxEmployerSocialAfter.total)
-  const approxStatutorySubsidy = Math.min(annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct, approxEmployerSvSaving)
-  const approxEmployerTotal = approxStatutorySubsidy + extraSubsidyAnnual
+  // Iterative fixed-point: employerContribution → effectiveSvFreeConversion →
+  // employerSvSaving → statutorySubsidy → employerContribution.
+  // Converges because the feedback gain (employer SV rate ≪ 1) is contractive.
+  let employerContribution = extraSubsidyAnnual
+  let effectiveTaxFreeConversion = Math.min(annualGrossConversion, taxFreeLimit)
+  let effectiveSvFreeConversion = Math.min(annualGrossConversion, svFreeLimit)
+  let statutorySubsidyAnnual = 0
+  let employerSocialSecuritySavingAnnual = 0
 
-  // Apply §3 Nr. 63 EStG (8% BBG) and §1 SvEV (4% BBG) to total bAV
-  const approxTotalBav = annualGrossConversion + approxEmployerTotal
-  const totalTaxFree = Math.min(approxTotalBav, taxFreeLimit)
-  const totalSvFree = Math.min(approxTotalBav, svFreeLimit)
+  for (let iter = 0; iter < 20; iter++) {
+    const totalBav = annualGrossConversion + employerContribution
+    const totalTaxFree = Math.min(totalBav, taxFreeLimit)
+    const totalSvFree = Math.min(totalBav, svFreeLimit)
+    effectiveTaxFreeConversion = Math.max(0, Math.min(annualGrossConversion, totalTaxFree - employerContribution))
+    effectiveSvFreeConversion = Math.max(0, Math.min(annualGrossConversion, totalSvFree - employerContribution))
 
-  // Effective employee amounts after subtracting the employer's portion of each limit
-  const effectiveTaxFreeConversion = Math.max(0, Math.min(annualGrossConversion, totalTaxFree - approxEmployerTotal))
-  const effectiveSvFreeConversion = Math.max(0, Math.min(annualGrossConversion, totalSvFree - approxEmployerTotal))
+    const employerSocialAfter = calculateEmployerSocialContributions(
+      profile.grossSalaryYear - effectiveSvFreeConversion,
+      profile,
+      rules,
+    )
+    employerSocialSecuritySavingAnnual = Math.max(0, employerSocialBefore.total - employerSocialAfter.total)
+    statutorySubsidyAnnual = Math.min(
+      annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct,
+      employerSocialSecuritySavingAnnual,
+    )
+    const next = statutorySubsidyAnnual + extraSubsidyAnnual
+    if (Math.abs(next - employerContribution) < 0.01) {
+      employerContribution = next
+      break
+    }
+    employerContribution = next
+  }
 
-  // Pass 2: salary with corrected limits
+  const annualEmployerContribution = employerContribution
   const salaryWithBav = calculateSalaryResult(
     profile,
     rules,
@@ -204,16 +218,6 @@ export function calculateBavFunding(
     effectiveTaxFreeConversion,
     effectiveSvFreeConversion,
   )
-
-  // Final employer SV saving using corrected employee SV-free amount
-  const finalEmployerSocialAfter = calculateEmployerSocialContributions(
-    profile.grossSalaryYear - effectiveSvFreeConversion,
-    profile,
-    rules,
-  )
-  const employerSocialSecuritySavingAnnual = Math.max(0, employerSocialBefore.total - finalEmployerSocialAfter.total)
-  const statutorySubsidyAnnual = Math.min(annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct, employerSocialSecuritySavingAnnual)
-  const annualEmployerContribution = statutorySubsidyAnnual + extraSubsidyAnnual
 
   const totalBavContributionAnnual = annualGrossConversion + annualEmployerContribution
   const taxFreePortionAnnual = Math.min(totalBavContributionAnnual, taxFreeLimit)
@@ -223,6 +227,15 @@ export function calculateBavFunding(
 
   const annualNetCost = salaryWithoutBav.annualNet - salaryWithBav.annualNet
   const annualTaxAndSvSavings = annualGrossConversion - annualNetCost
+
+  // #5: each year of conversion reduces pensionable earnings → fewer Entgeltpunkte → lower GRV.
+  // Formula: (EP lost per year) × years = (annualConversion / DE) × yearsToRetirement
+  // Monthly pension loss = EP_lost × aktuellerRentenwert
+  const yearsToRetirement = Math.max(0, profile.retirementAge - profile.age)
+  const estimatedMonthlyGrvReduction =
+    yearsToRetirement *
+    (annualGrossConversion / rules.socialSecurity.durchschnittsentgelt) *
+    rules.socialSecurity.aktuellerRentenwert
 
   return {
     monthlyGrossConversion: bav.monthlyGrossConversion,
@@ -243,5 +256,6 @@ export function calculateBavFunding(
     svFreePortionAnnual,
     taxableOverflowAnnual,
     svLiableOverflowAnnual,
+    estimatedMonthlyGrvReduction,
   }
 }

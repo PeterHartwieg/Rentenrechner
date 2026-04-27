@@ -27,6 +27,8 @@ export const defaultAssumptions: ScenarioAssumptions = {
     monthlyGrossConversion: 300,
     extraEmployerContributionPct: 0,
     extraEmployerContributionMonthly: 0,
+    monthlyOtherRetirementIncome: 0,
+    includeGrvReduction: false,
     fees: {
       annualAssetFee: 0.005,
       contributionFee: 0.03,
