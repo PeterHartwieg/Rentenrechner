@@ -73,7 +73,7 @@ function buildProductResult(params: {
         ? { rules: params.rules, partialExemption: params.partialExemption ?? 0 }
         : undefined,
   })
-  const payoutReturn = Math.max(0, params.scenario.annualReturn - params.fees.annualAssetFee)
+  const payoutReturn = params.scenario.annualReturn - params.fees.annualAssetFee
   const grossMonthlyPayout = monthlyPayoutFromCapital(
     projection.capital,
     payoutReturn,

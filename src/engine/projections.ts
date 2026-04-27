@@ -225,8 +225,10 @@ export function etfPayoutSchedule(
   // C_end = C_start*(1+r) − PMT*(r/r_m) depletes to 0 in exactly payoutYears years when
   // PMT = monthlyPayoutFromCapital(C0, r, payoutYears). Derivation: substituting r_m into the
   // monthly annuity formula collapses to the same recurrence. When return is 0, factor = 12.
-  const r_m = payoutReturn > 0 ? monthlyRate(payoutReturn) : 0
-  const annuityFactor = r_m > 0 ? payoutReturn / r_m : 12
+  // For negative payoutReturn, r_m is negative too; r/r_m is still a positive ratio so the
+  // recurrence correctly decays faster than straight-line drawdown.
+  const r_m = Math.abs(payoutReturn) < 1e-9 ? 0 : monthlyRate(payoutReturn)
+  const annuityFactor = Math.abs(r_m) < 1e-9 ? 12 : payoutReturn / r_m
 
   const rows: EtfPayoutRow[] = []
 
@@ -249,7 +251,9 @@ export function etfPayoutSchedule(
     // Cost basis shrinks proportionally to gross withdrawal vs. start-of-year capital
     const fractionWithdrawn = capitalAtStart > 0 ? Math.min(1, annualWithdrawal / capitalAtStart) : 0
     costBasis = Math.max(0, costBasis * (1 - fractionWithdrawn))
-    // Exact year-end capital: C*(1+r) − PMT*(r/r_m) ensures depletion to 0 at year payoutYears
+    // Exact year-end capital: C*(1+r) − PMT*(r/r_m) ensures depletion to 0 at year payoutYears.
+    // Works for positive, zero, and negative payoutReturn because annuityFactor = r/r_m is always
+    // a finite, positive ratio derived from the annuity formula (limit is 12 when r → 0).
     capital = Math.max(0, capitalAtStart * (1 + payoutReturn) - grossMonthlyPayout * annuityFactor)
 
     rows.push({

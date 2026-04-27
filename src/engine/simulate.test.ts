@@ -573,6 +573,71 @@ describe('#6/#19 afterTaxBavLumpSum — §229 SGB V 1/120 + §34 EStG Fünftelre
   })
 })
 
+describe('etfPayoutSchedule — negative, zero, and positive rates', () => {
+  // Shared setup: 200k capital, 100k contributions, no Vorabpauschale, 20-year payout,
+  // no partial exemption, no saver allowance to keep tax effects out of the depletion check.
+  const pv = 200_000
+  const contributions = 0 // all gain, but we just check depletion here
+  const cumulativeVP = 0
+  const n = 20
+  const retirementAge = 67
+  const noExemption = 0
+  // use rules but set saverAllowance to 0 via a custom rules object to isolate PMT math
+  const taxRules = { ...de2026Rules, capitalGains: { ...de2026Rules.capitalGains, saverAllowance: 0 } }
+
+  it('r = 0: PMT equals PV/n per month and balance decays linearly to zero', () => {
+    const r = 0
+    const grossMonthly = monthlyPayoutFromCapital(pv, r, n)
+    expect(grossMonthly).toBeCloseTo(pv / (n * 12), 4)
+
+    const rows = etfPayoutSchedule(pv, contributions, cumulativeVP, grossMonthly, n, r, retirementAge, taxRules, noExemption)
+    expect(rows).toHaveLength(n)
+
+    // Linear decay: after k years, capitalAtEnd ≈ PV * (1 - k/n)
+    for (let k = 1; k <= n; k++) {
+      const expected = pv * (1 - k / n)
+      expect(rows[k - 1].capitalAtEnd).toBeCloseTo(expected, 0)
+    }
+
+    // End balance is ~0
+    expect(rows[n - 1].capitalAtEnd).toBeCloseTo(0, 1)
+  })
+
+  it('r = -0.01: PMT slightly below PV/n; balance reaches ~0 at end-age', () => {
+    const r = -0.01
+    const grossMonthly = monthlyPayoutFromCapital(pv, r, n)
+    // With negative return, sustainable PMT is smaller than PV/(n*12)
+    expect(grossMonthly).toBeLessThan(pv / (n * 12))
+
+    const rows = etfPayoutSchedule(pv, contributions, cumulativeVP, grossMonthly, n, r, retirementAge, taxRules, noExemption)
+    expect(rows).toHaveLength(n)
+
+    // Balance must be ~0 at end
+    expect(rows[n - 1].capitalAtEnd).toBeCloseTo(0, 0)
+  })
+
+  it('r = +0.04: PMT above PV/n; balance reaches ~0 at end-age (regression)', () => {
+    const r = 0.04
+    const grossMonthly = monthlyPayoutFromCapital(pv, r, n)
+    // With positive return, sustainable PMT exceeds simple PV/(n*12)
+    expect(grossMonthly).toBeGreaterThan(pv / (n * 12))
+
+    const rows = etfPayoutSchedule(pv, contributions, cumulativeVP, grossMonthly, n, r, retirementAge, taxRules, noExemption)
+    expect(rows).toHaveLength(n)
+
+    // End balance ~0 (annuity formula guarantees depletion)
+    expect(rows[n - 1].capitalAtEnd).toBeCloseTo(0, 0)
+  })
+
+  it('all three rates deplete to ~0 at the configured end-age', () => {
+    for (const r of [0, -0.01, 0.04]) {
+      const grossMonthly = monthlyPayoutFromCapital(pv, r, n)
+      const rows = etfPayoutSchedule(pv, contributions, cumulativeVP, grossMonthly, n, r, retirementAge, taxRules, noExemption)
+      expect(rows[n - 1].capitalAtEnd).toBeCloseTo(0, 0)
+    }
+  })
+})
+
 describe('#37 ETF payout schedule (etfPayoutSchedule)', () => {
   const capital = 400_000
   const contributions = 200_000
