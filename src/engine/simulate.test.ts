@@ -300,6 +300,11 @@ describe('social-security helpers', () => {
 })
 
 describe('#5 GRV reduction estimate', () => {
+  // Shared constants for BBG-regime tests:
+  // RV BBG = 101_400, svFreeLimit = 4% × 101_400 = 4_056/year
+  // durchschnittsentgelt = 45_358, aktuellerRentenwert = 39.32
+  // yearsToRetirement = 67 - 28 = 39 (defaultProfile)
+
   it('estimatedMonthlyGrvReduction is zero when conversion is zero', () => {
     const f = calculateBavFunding(defaultProfile, de2026Rules, {
       ...defaultAssumptions.bav,
@@ -308,17 +313,68 @@ describe('#5 GRV reduction estimate', () => {
     expect(f.estimatedMonthlyGrvReduction).toBe(0)
   })
 
-  it('estimatedMonthlyGrvReduction scales linearly with conversion and years', () => {
-    const f300 = calculateBavFunding(defaultProfile, de2026Rules, {
+  it('scales linearly when both conversions are fully SV-free and salary is below RV BBG', () => {
+    // Use 100/month (1_200/year) and 200/month (2_400/year): both < svFreeLimit 4_056
+    // For 75k salary (below 101_400 BBG): lostBase = full SV-free conversion → linear
+    const f100 = calculateBavFunding(defaultProfile, de2026Rules, {
       ...defaultAssumptions.bav,
-      monthlyGrossConversion: 300,
+      monthlyGrossConversion: 100,
     })
-    const f600 = calculateBavFunding(defaultProfile, de2026Rules, {
+    const f200 = calculateBavFunding(defaultProfile, de2026Rules, {
       ...defaultAssumptions.bav,
-      monthlyGrossConversion: 600,
+      monthlyGrossConversion: 200,
     })
-    // doubling conversion → doubling reduction (linear in annualConversion)
-    expect(f600.estimatedMonthlyGrvReduction).toBeCloseTo(f300.estimatedMonthlyGrvReduction * 2, 3)
+    // doubling conversion → doubling reduction (linear when below BBG and within SV-free limit)
+    expect(f200.estimatedMonthlyGrvReduction).toBeCloseTo(f100.estimatedMonthlyGrvReduction * 2, 3)
+  })
+
+  it('below RV BBG: full SV-free conversion is lost — 200/month at 50k salary', () => {
+    // grossSalary = 50_000 < RV_BBG 101_400
+    // annualConversion = 2_400, effectiveSvFreeConversion = 2_400 (< svFreeLimit 4_056)
+    // lostPensionableBase = min(50_000, 101_400) - min(47_600, 101_400) = 50_000 - 47_600 = 2_400
+    // EP_per_year = 2_400 / 45_358 = 0.052913
+    // estimatedMonthlyGrvReduction = 0.052913 × 39 × 39.32 ≈ 81.14
+    const profile50k: PersonalProfile = { ...defaultProfile, grossSalaryYear: 50_000 }
+    const f = calculateBavFunding(profile50k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 200,
+      extraEmployerContributionPct: 0,
+      extraEmployerContributionMonthly: 0,
+    })
+    const expectedLostBase = 2_400
+    const expected = 39 * (expectedLostBase / de2026Rules.socialSecurity.durchschnittsentgelt) * de2026Rules.socialSecurity.aktuellerRentenwert
+    expect(f.estimatedMonthlyGrvReduction).toBeCloseTo(expected, 2)
+  })
+
+  it('crossing RV BBG: only the portion below the ceiling is lost — 200/month at 102k salary', () => {
+    // grossSalary = 102_000, RV_BBG = 101_400, annualConversion = 2_400 (< svFreeLimit 4_056)
+    // effectiveSvFreeConversion = 2_400
+    // grossAfterSvFree = 102_000 - 2_400 = 99_600
+    // lostPensionableBase = min(102_000, 101_400) - min(99_600, 101_400) = 101_400 - 99_600 = 1_800
+    // (not the full 2_400 — the 600 EUR that was already above BBG contributes nothing)
+    const profile102k: PersonalProfile = { ...defaultProfile, grossSalaryYear: 102_000 }
+    const f = calculateBavFunding(profile102k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 200,
+      extraEmployerContributionPct: 0,
+      extraEmployerContributionMonthly: 0,
+    })
+    const expectedLostBase = 1_800
+    const expected = 39 * (expectedLostBase / de2026Rules.socialSecurity.durchschnittsentgelt) * de2026Rules.socialSecurity.aktuellerRentenwert
+    expect(f.estimatedMonthlyGrvReduction).toBeCloseTo(expected, 2)
+  })
+
+  it('fully above RV BBG: zero loss — 200/month at 150k salary', () => {
+    // grossSalary = 150_000 > RV_BBG 101_400
+    // min(150_000, 101_400) - min(147_600, 101_400) = 101_400 - 101_400 = 0
+    const profile150k: PersonalProfile = { ...defaultProfile, grossSalaryYear: 150_000 }
+    const f = calculateBavFunding(profile150k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 200,
+      extraEmployerContributionPct: 0,
+      extraEmployerContributionMonthly: 0,
+    })
+    expect(f.estimatedMonthlyGrvReduction).toBe(0)
   })
 
   it('bAV net payout with includeGrvReduction subtracts the estimate', () => {

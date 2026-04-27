@@ -229,12 +229,20 @@ export function calculateBavFunding(
   const annualTaxAndSvSavings = annualGrossConversion - annualNetCost
 
   // #5: each year of conversion reduces pensionable earnings → fewer Entgeltpunkte → lower GRV.
-  // Formula: (EP lost per year) × years = (annualConversion / DE) × yearsToRetirement
-  // Monthly pension loss = EP_lost × aktuellerRentenwert
+  // Only the SV-free portion of the employee conversion reduces the pensionable base.
+  // Salary already above RV BBG has no reduction (already capped); salary crossing BBG → partial loss.
+  // Formula:
+  //   lostPensionableBase = min(grossBefore, RV_BBG) - min(grossBefore - svFreeConversion, RV_BBG)
+  // where svFreeConversion = effectiveSvFreeConversion (employee portion that is actually SV-free).
+  // Monthly pension loss = (lostPensionableBase / Durchschnittsentgelt) × yearsToRetirement × Rentenwert
   const yearsToRetirement = Math.max(0, profile.retirementAge - profile.age)
+  const rvBbg = rules.socialSecurity.pensionCapYear
+  const lostPensionableBase =
+    Math.min(profile.grossSalaryYear, rvBbg) -
+    Math.min(profile.grossSalaryYear - effectiveSvFreeConversion, rvBbg)
   const estimatedMonthlyGrvReduction =
     yearsToRetirement *
-    (annualGrossConversion / rules.socialSecurity.durchschnittsentgelt) *
+    (lostPensionableBase / rules.socialSecurity.durchschnittsentgelt) *
     rules.socialSecurity.aktuellerRentenwert
 
   return {
