@@ -17,6 +17,7 @@ import type { BavFundingResult, InsuranceTaxMode, PersonalProfile, ProductId, Pr
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveInsuranceTaxMode } from './engine/projections'
 import { careEmployeeRateForChildren } from './engine/salary'
+import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { simulateRetirementComparison } from './engine/simulate'
 import { de2026Rules } from './rules/de2026'
 import { STORAGE_KEY, buildStateJson, loadSavedState } from './storage'
@@ -237,8 +238,8 @@ function App() {
     (de2026Rules.bav.statutoryEmployerSubsidyPct +
       assumptions.bav.extraEmployerContributionPct) *
     100
-  // §1a BetrAVG minimum: 1/160 of monthly Bezugsgröße West per year; maximum: 4% of pension BBG per month
-  const bavMinAnnual = de2026Rules.socialSecurity.bezugsgroesseMonthly / 160
+  // §1a BetrAVG minimum: 1/160 of annual Bezugsgröße West; maximum: 4% of pension BBG per month
+  const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
   const bavEntitlementMax =
     (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap) / 12
   const selectedScenario = assumptions.returnScenarios.find(
@@ -1472,7 +1473,7 @@ function App() {
                     <div><dt>Steuerfreie Grenze (8 % BBG)</dt><dd>{formatCurrency(de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap, 0)} EUR/Jahr · <a href="https://www.gesetze-im-internet.de/estg/__3.html" target="_blank" rel="noreferrer">EStG §3 Nr. 63</a></dd></div>
                     <div><dt>SV-freie Grenze (4 % BBG)</dt><dd>{formatCurrency(de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap, 0)} EUR/Jahr · SvEV §1</dd></div>
                     <div><dt>Pflicht-AG-Zuschuss</dt><dd>{formatPercent(de2026Rules.bav.statutoryEmployerSubsidyPct)} (begrenzt auf AG-SV-Ersparnis) · <a href="https://www.gesetze-im-internet.de/betravg/__1a.html" target="_blank" rel="noreferrer">BetrAVG §1a</a></dd></div>
-                    <div><dt>Mindest-Entgeltumwandlung (§1a-Anspruch)</dt><dd>{formatCurrency(de2026Rules.socialSecurity.bezugsgroesseMonthly / 160, 2)} EUR/Jahr</dd></div>
+                    <div><dt>Mindest-Entgeltumwandlung (§1a-Anspruch)</dt><dd>{formatCurrency(bavMinAnnual, 2)} EUR/Jahr · {formatCurrency(bavMinMonthly, 2)} EUR/Monat</dd></div>
                   </dl>
                 </div>
 
