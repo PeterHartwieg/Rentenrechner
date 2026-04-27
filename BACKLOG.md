@@ -13,33 +13,116 @@ Legal/rules research lives in `LEGAL_REVIEW.md`.
 
 ## Current Focus
 
-1. `#6 (lump-sum)` bAV lump-sum payout mode — blocked by 1/120 KV/PV spreading rule.
-2. `#13` CSV export.
+1. `#41` Restore clean verification.
+2. `#42` Correct bAV minimum-conversion warning.
+3. `#43` Correct GRV-reduction estimate around the RV BBG.
+4. `#15` PDF report after the accuracy blockers are cleared.
 
 ---
 
-## Open P1 Accuracy
+## Open P0 Verification / Release Blockers
 
-### #6 bAV Retirement Phase Detail (remaining)
+### #41 Restore Clean Build And Lint
 
-KVdR toggle and visible GKV/PV contribution base are now implemented. Still open:
+Runtime tests currently pass, but the implementation is not in a clean shippable state:
 
-- Lump-sum vs pension payout mode (blocked by #19 — 1/120 KV/PV spreading rule under §229 SGB V not yet modeled).
+- `npm run build` fails on an unused `ScenarioAssumptions` import in `src/engine/simulate.test.ts`.
+- `npm run build` fails because `src/storage.test.ts` intentionally creates a partial `fees` object, but TypeScript still checks it as a full `BavAssumptions`.
+- `npm run lint` fails on an irregular whitespace character in `src/App.tsx`.
+- `npm run lint` fails on `no-useless-assignment` in `src/utils/csvExport.ts`.
+
+Acceptance: `npm test`, `npm run build`, and `npm run lint` are all green.
+
+---
+
+## Open P1 Accuracy / Correctness
+
+### #42 Correct bAV Minimum-Conversion Warning
+
+The UI calculates the `§1a BetrAVG` minimum as `bezugsgroesseMonthly / 160`, which displays roughly `24.72 EUR/year`. The statutory minimum is `1/160` of the annual Bezugsgröße: with `3,955 EUR/month` in 2026, that is `296.63 EUR/year` or `24.72 EUR/month`.
+
+Fix the sidebar warning and assumptions drawer so the annual and monthly labels are not off by a factor of 12. Add a boundary test for the warning helper once extracted.
+
+### #43 Correct GRV-Reduction Estimate Around The RV BBG
+
+The optional bAV GRV-reduction estimate currently uses the full salary-conversion amount for every salary. That overstates the loss when income is already above the RV/AV contribution ceiling, and it also ignores cases where only part of the conversion is SV-free.
+
+Estimate lost pensionable earnings as:
+
+```text
+min(grossBefore, RV_BBG) - min(grossAfterSvFreeConversion, RV_BBG)
+```
+
+Then convert that lost base into Entgeltpunkte. Add tests for below-BBG, crossing-BBG, and fully-above-BBG salaries.
+
+### #44 Derive Private-Insurance Runtime From Calendar Years
+
+`deriveInsuranceTaxMode()` receives `retirementAge - age` as the contract runtime. That ignores `contractStartYear`; a contract started before or after the current rule year can be classified into the wrong `halbeinkuenfte` / `abgeltungsteuer` branch.
+
+Use `payoutYear = rules.year + (retirementAge - age)` and `contractRuntimeYears = payoutYear - contractStartYear`. Also replace unconditional pre-2005 tax-free handling with explicit old-contract eligibility fields.
+
+### #45 Allow Negative Or Fee-Drag Payout Returns
+
+`simulate.ts` clamps payout return to `max(0, annualReturn - annualAssetFee)`. This overstates retirement income when product fees exceed returns or when the user enters a negative return scenario.
+
+Let payout returns go negative where mathematically valid. Update `etfPayoutSchedule()` so its annual recurrence also supports negative returns instead of falling back to a `12x` withdrawal factor.
+
+### #46 Add A Real Retirement-Taxable-Income Pipeline
+
+bAV and private-insurance retirement tax helpers currently feed gross retirement income directly into `calculateIncomeTax2026()`. That treats gross payout as taxable income and does not model retirement deductions, income categories, pension allowances, health/care deductions, or other taxable income composition.
+
+Add a dedicated retirement taxable-income helper before marking retirement-phase net values as decision-support grade.
+
+### #47 Apply Retirement KV/PV Caps And Aggregate Income Context
+
+`netBavPayout()` and `afterTaxBavLumpSum()` apply KV/PV to the bAV amount without checking the monthly KV/PV contribution ceiling or aggregate retirement income. For large pensions or lump sums, this can overstate deductions; for other income near the ceiling, it can also misstate the marginal bAV burden.
+
+Model monthly BBG caps across statutory pension, other retirement income, and bAV Versorgungsbezüge. For lump sums, apply the cap to the `1/120` monthly base over the 120-month period.
+
+### #48 Make bAV Lump-Sum Income Tax Configurable
+
+`afterTaxBavLumpSum()` always applies the `§34 EStG` Fünftelregelung. That is not a universally safe assumption for all bAV Durchführungswege and capital-choice designs.
+
+Add a tax treatment input for bAV lump sums, including at least regular full taxation vs. eligible Fünftelregelung, and document the legal eligibility assumptions in `LEGAL_REVIEW.md`.
+
+### #49 Deep-Validate Share URL And localStorage State
+
+The parser merges objects by shallow runtime type and accepts any non-empty saved array. A malformed or stale `returnScenarios` array, invalid age relation, non-finite number, extreme fee, or retirement end age before retirement can produce `NaN` calculations or misleading charts.
+
+Add schema/range validation for persisted and URL state:
+
+- finite numeric fields only
+- age / retirement / end-age invariants
+- fee and rate ranges
+- exact return-scenario ids and array shape
+- safe fallback to defaults for invalid nested data
+
+### #50 Model PKV Premiums Before Treating PKV As Comparable
+
+The PKV toggle currently removes GKV/PV payroll contributions but does not add private health/care premiums or employer subsidy logic. This can materially overstate net salary and distort the fair private-vs-bAV net-cost benchmark.
+
+Add PKV/pPV premium inputs and employer-subsidy handling, or keep PKV mode visibly non-comparable until implemented.
+
+### #51 Separate Statutory bAV Subsidy From Contractual Employer Match
+
+The UI field `AG-Zuschuss Vertrag` starts from the statutory `15%`, but the engine caps the statutory part by actual employer SV savings. A user entering a contractual `15%` or `20%` match may reasonably expect that full percentage to be paid, while the current model may pay less when the statutory cap binds.
+
+Expose separate controls and labels for:
+
+- statutory minimum subsidy, computed and capped
+- explicit employer match percentage
+- explicit fixed monthly employer contribution
+- effective employer contribution actually modeled
+
+### #52 Model Child-Age Eligibility For Pflegeversicherung
+
+The `children` count changes PV rates, but the model has no child ages or eligibility windows. The childless surcharge and child discounts do not depend only on the number of children in all cases.
+
+Add child-age/eligibility inputs or downgrade the child-adjusted PV output to a clearly simplified assumption.
 
 ---
 
 ## Open P2 Publishing / Product
-
-### #13 CSV Export
-
-Export:
-- summary comparison
-- yearly cashflows
-- ETF payout rows where available
-
-### #14 Shareable Scenario URL
-
-Serialize assumptions into a compressed query parameter.
 
 ### #15 PDF Report
 
@@ -54,6 +137,12 @@ Add presets:
 - high-cost private insurance
 - old-contract insurance
 
+### #53 Synchronize Project Documentation
+
+`DESIGN.md`, `LEGAL_REVIEW.md`, and `CLAUDE.md` still contain statements that conflict with the current implementation and backlog state, especially around bAV lump-sum output, CSV/share URL work, and private-insurance tax handling.
+
+Update the docs so future reviews do not start from stale assumptions.
+
 ---
 
 ## Open P3 Expansion
@@ -64,21 +153,14 @@ Add presets:
 - Monte Carlo simulation.
 - salary growth and contribution escalation.
 - multi-ETF portfolio.
+- break-even age view.
+- sensitivity heatmap.
+- saved scenario library and scenario duplication.
+- guaranteed annuity factors and surrender-value modeling.
 - bilingual UI.
 - public deployment.
 
 ---
-
-## Remaining Test Gaps
-
-- `calculateSolidarityTax`: Milderungszone transition near `incomeTax = 20,350`.
-- `calculateCapitalGainsTax`: all partial-exemption values from InvStG §20.
-- `calculateBavFunding`: SV-savings cap near the 4% BBG threshold.
-- `calculateBavFunding`: tax-free overflow above 8% BBG.
-- Default-profile end-to-end snapshot for each product x scenario:
-  - `capitalAtRetirement`
-  - `afterTaxLumpSum`
-  - `netMonthlyPayout`
 
 ---
 
@@ -116,7 +198,10 @@ Add presets:
 - `#37` ETF withdrawal tax-basis tracking through payout phase.
 - `#39` bAV entitlement, minimum, tariff-agreement warnings.
 - `#40` Hardened localStorage parser and state schema tests.
-- `#6 (partial)` Marginal-tax bAV payout: `netBavPayout` uses total(bAV + other) − total(other); `monthlyOtherRetirementIncome` input added; KVdR-/freiwillig-toggle added (KV Freibetrag §226(2) vs §240 SGB V); KV/PV breakdown visible. Lump-sum payout mode still blocked by #19.
+- `#13` CSV export: summary comparison, yearly cashflows (all products/scenarios), ETF payout schedule. Single file with three labeled sections. UTF-8 BOM for Excel compatibility.
+- `#14` Shareable scenario URL: base64url-encoded `?s=` query parameter. `src/utils/urlShare.ts` — `readUrlState` / `buildShareUrl`. On load: URL param takes priority over localStorage. "Link kopieren" button updates URL via `history.replaceState` and copies to clipboard with 1.5 s "Kopiert!" feedback.
+- `#6` bAV retirement phase: marginal-tax payout (`netBavPayout`), KVdR/freiwillig toggle, KV/PV breakdown. Lump-sum: `afterTaxBavLumpSum` — §229 SGB V 1/120 spreading (KV/PV) + §34 Abs. 2 Nr. 4 EStG Fünftelregelung (income tax). `#19` resolved together.
+- `#19` 1/120 KV/PV spreading rule — implemented as part of #6 lump-sum.
 - `#38` Law-based private-insurance tax: contract year → `pre2005` / `halbeinkuenfte` / `abgeltungsteuer`; `deriveInsuranceTaxMode` / `netInsurancePayout` / `afterTaxInsuranceLumpSum` in `projections.ts`; Halbeinkünfteverfahren uses personal income-tax marginal rate on half the gain.
 
 ---

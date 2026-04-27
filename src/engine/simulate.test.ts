@@ -9,8 +9,8 @@ import {
   calculateVorsorgepauschale2026,
 } from './salary'
 import { simulateRetirementComparison } from './simulate'
-import { calculateIncomeTax2026 } from './tax'
-import { etfPayoutSchedule, monthlyPayoutFromCapital, netBavPayout, projectAccumulation } from './projections'
+import { calculateCapitalGainsTax, calculateIncomeTax2026, calculateSolidarityTax } from './tax'
+import { afterTaxBavLumpSum, etfPayoutSchedule, monthlyPayoutFromCapital, netBavPayout, projectAccumulation } from './projections'
 
 // Base profile for payroll tax tests: Steuerklasse I, no kids, no church, GKV 2.9%
 const testProfile75k: PersonalProfile = {
@@ -133,6 +133,47 @@ describe('bAV contribution limit handling (#4)', () => {
   })
 })
 
+describe('calculateBavFunding — SV and tax-free overflow boundaries', () => {
+  const svFreeLimit = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap  // 4,056
+  const taxFreeLimit = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap            // 8,112
+
+  it('300 EUR/month: total bAV below 4% BBG — no SV-liable overflow', () => {
+    // total ≈ 300×12 + subsidy(~32)×12 = 3,984 < 4,056
+    const f = calculateBavFunding(testProfile75k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 300,
+      extraEmployerContributionPct: 0,
+    })
+    expect(f.svLiableOverflowAnnual).toBe(0)
+    expect(f.taxableOverflowAnnual).toBe(0)
+  })
+
+  it('310 EUR/month: total bAV crosses 4% BBG — small SV-liable overflow, svFree capped', () => {
+    // total ≈ 310×12 + subsidy×12 > 4,056 → svLiableOverflow > 0
+    const f = calculateBavFunding(testProfile75k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 310,
+      extraEmployerContributionPct: 0,
+    })
+    expect(f.svLiableOverflowAnnual).toBeGreaterThan(0)
+    expect(f.svLiableOverflowAnnual).toBeLessThan(300) // small overflow, not hundreds
+    expect(f.svFreePortionAnnual).toBeCloseTo(svFreeLimit, 0)
+    expect(f.taxableOverflowAnnual).toBe(0) // still well below 8% BBG
+  })
+
+  it('650 EUR/month: total bAV crosses 8% BBG — taxableOverflow > 0, taxFree capped', () => {
+    // total ≈ 650×12 + subsidy ≈ 7,800 + 430 = 8,230 > 8,112 → taxableOverflow > 0
+    const f = calculateBavFunding(testProfile75k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 650,
+      extraEmployerContributionPct: 0,
+    })
+    expect(f.taxableOverflowAnnual).toBeGreaterThan(0)
+    expect(f.taxFreePortionAnnual).toBeCloseTo(taxFreeLimit, 0)
+    expect(f.svLiableOverflowAnnual).toBeGreaterThan(0) // also above 4% BBG
+  })
+})
+
 describe('German 2026 tax helper', () => {
   it('keeps income below the basic allowance tax-free', () => {
     expect(calculateIncomeTax2026(12_348, de2026Rules)).toBe(0)
@@ -146,6 +187,70 @@ describe('German 2026 tax helper', () => {
     expect(calculateIncomeTax2026(277_825, de2026Rules)).toBe(105_550)
     expect(calculateIncomeTax2026(277_826, de2026Rules)).toBe(105_551)
     expect(calculateIncomeTax2026(277_827, de2026Rules)).toBe(105_551)
+  })
+})
+
+describe('calculateSolidarityTax — Milderungszone', () => {
+  const freeTax = de2026Rules.incomeTax.solidarityFreeTax // 20,350
+
+  it('returns 0 at and below the solidarity-free threshold', () => {
+    expect(calculateSolidarityTax(freeTax, de2026Rules)).toBe(0)
+    expect(calculateSolidarityTax(10_000, de2026Rules)).toBe(0)
+  })
+
+  it('applies Milderungszone rate just above the threshold (much less than full 5.5%)', () => {
+    // At incomeTax = freeTax + 1: transition = 1 × 0.119 = 0.119 << regular 20351 × 0.055 = 1119
+    expect(calculateSolidarityTax(freeTax + 1, de2026Rules)).toBeCloseTo(0.119, 3)
+  })
+
+  it('Milderungszone rate is lower than 5.5% in the transition range', () => {
+    // At it = 25,000: transition = 4650 × 0.119 = 553.35 < regular 1375
+    const soli = calculateSolidarityTax(25_000, de2026Rules)
+    expect(soli).toBeCloseTo(553.35, 0)
+    expect(soli).toBeLessThan(25_000 * 0.055)
+  })
+
+  it('exits Milderungszone and applies full 5.5% above the crossover (~37,838)', () => {
+    // Crossover: (it - freeTax) × 0.119 = it × 0.055 → it ≈ 37,838
+    expect(calculateSolidarityTax(38_000, de2026Rules)).toBeCloseTo(38_000 * 0.055, 0)
+    expect(calculateSolidarityTax(40_000, de2026Rules)).toBeCloseTo(40_000 * 0.055, 0)
+  })
+})
+
+describe('calculateCapitalGainsTax — InvStG §20 partial exemptions', () => {
+  const gain = 10_000
+  const rules = de2026Rules
+  // effective rate = 25% × (1 + 5.5% Soli) = 26.375%
+  const effectiveRate = rules.capitalGains.taxRate * (1 + rules.capitalGains.solidarityRate)
+
+  it('0% exemption (Anleihe-ETF / Sonstige): full gain taxed', () => {
+    expect(calculateCapitalGainsTax(gain, rules, 0, 0)).toBeCloseTo(gain * effectiveRate, 0)
+  })
+
+  it('15% exemption (Mischfonds): 85% of gain taxed', () => {
+    expect(calculateCapitalGainsTax(gain, rules, 0.15, 0)).toBeCloseTo(gain * 0.85 * effectiveRate, 0)
+  })
+
+  it('30% exemption (Aktienfonds): 70% of gain taxed', () => {
+    expect(calculateCapitalGainsTax(gain, rules, 0.3, 0)).toBeCloseTo(gain * 0.7 * effectiveRate, 0)
+  })
+
+  it('60% exemption (inl. Immobilienfonds): 40% of gain taxed', () => {
+    expect(calculateCapitalGainsTax(gain, rules, 0.6, 0)).toBeCloseTo(gain * 0.4 * effectiveRate, 0)
+  })
+
+  it('80% exemption (ausl. Immobilienfonds): 20% of gain taxed', () => {
+    expect(calculateCapitalGainsTax(gain, rules, 0.8, 0)).toBeCloseTo(gain * 0.2 * effectiveRate, 0)
+  })
+
+  it('Sparerpauschbetrag fully covers tax when exempted gain < allowance', () => {
+    // gain=1000, 30% exemption: taxable = 1000×0.7 = 700 < saverAllowance 1000 → no tax
+    expect(calculateCapitalGainsTax(1_000, rules, 0.3, 1_000)).toBe(0)
+  })
+
+  it('Sparerpauschbetrag partially reduces tax', () => {
+    // gain=5000, 30% exemption, allowance=1000: taxable = 5000×0.7 - 1000 = 2500
+    expect(calculateCapitalGainsTax(5_000, rules, 0.3, 1_000)).toBeCloseTo(2_500 * effectiveRate, 0)
   })
 })
 
@@ -358,14 +463,16 @@ describe('bAV funding model', () => {
     expect(bav?.monthlyProductContribution).toBeGreaterThan(bav?.monthlyUserCost ?? 0)
   })
 
-  it('hides bAV lump-sum after-tax capital until exact lump-sum treatment is modeled', () => {
+  it('bAV lump-sum after-tax is computed and less than gross capital', () => {
     const result = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
     const bav = result.products.find(
       (product) => product.productId === 'bav' && product.scenarioId === 'basis',
     )
 
-    expect(bav?.afterTaxLumpSum).toBeNull()
-    expect(bav?.valueMultipleOnUserCost).toBeNull()
+    expect(bav?.afterTaxLumpSum).not.toBeNull()
+    expect(bav?.afterTaxLumpSum).toBeGreaterThan(0)
+    expect(bav?.afterTaxLumpSum).toBeLessThan(bav?.capitalAtRetirement ?? 0)
+    expect(bav?.valueMultipleOnUserCost).not.toBeNull()
   })
 
   it('derives insurance tax modes: pre2005 tax-free, halbeinkuenfte half-income tax, abgeltungsteuer full Abgeltungsteuer', () => {
@@ -398,6 +505,71 @@ describe('bAV funding model', () => {
     ).products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
     expect(abgelt?.afterTaxLumpSum ?? 0).toBeLessThan(abgelt?.capitalAtRetirement ?? 0)
     expect(abgelt?.netMonthlyPayout ?? 0).toBeLessThan(abgelt?.grossMonthlyPayout ?? 0)
+  })
+})
+
+describe('#6/#19 afterTaxBavLumpSum — §229 SGB V 1/120 + §34 EStG Fünftelregelung', () => {
+  const threshold = de2026Rules.socialSecurity.kvFreibetragVersorgungMonthly // 197.75
+
+  it('returns 0 for a zero lump sum', () => {
+    expect(afterTaxBavLumpSum(0, defaultProfile, de2026Rules)).toBe(0)
+  })
+
+  it('below KVdR threshold × 120: no KV and no PV (only income tax via Fünftelregelung)', () => {
+    // threshold × 120 = 197.75 × 120 = 23,730 EUR; monthlyBase = 23,730/120 = 197.75 = threshold (not strictly above)
+    // With 0 other income and small lump sum below threshold×120: no KV, no PV
+    const lumpSum = threshold * 120 // exactly at threshold
+    // income tax: Fünftelregelung on 23,730 — with basicAllowance 12,348, annual lumpSum/5 = 4,746 < basicAllowance
+    // → 5×(tax(4746)-tax(0)) = 5×0 = 0 income tax too
+    const result = afterTaxBavLumpSum(lumpSum, defaultProfile, de2026Rules, 0, true)
+    expect(result).toBeCloseTo(lumpSum, 0) // no deductions
+  })
+
+  it('above threshold × 120 (KVdR): KV on excess, PV on full amount, Fünftelregelung on income tax', () => {
+    // lumpSum = 120,000 EUR; threshold×120 = 23,730 → KV excess = 96,270 EUR
+    const lumpSum = 120_000
+    const healthRate = de2026Rules.socialSecurity.healthGeneralRate + defaultProfile.healthAdditionalContributionPct / 100
+    const expectedKv = Math.max(0, lumpSum - threshold * 120) * healthRate
+    const pvRate = de2026Rules.socialSecurity.careRetirementChildlessRate
+    const monthlyBase = lumpSum / 120 // 1000 EUR > 197.75
+    const expectedPv = monthlyBase > threshold ? lumpSum * pvRate : 0
+    // Income tax via Fünftelregelung with 0 other income; lumpSum/5 = 24,000 > basicAllowance 12,348
+    const result = afterTaxBavLumpSum(lumpSum, defaultProfile, de2026Rules, 0, true)
+    expect(result).toBeLessThan(lumpSum - expectedKv - expectedPv)
+    expect(result).toBeGreaterThan(0)
+  })
+
+  it('freiwillig versichert: KV on full lump sum (no Freibetrag), higher deduction than KVdR', () => {
+    const lumpSum = 100_000
+    const kvdrResult = afterTaxBavLumpSum(lumpSum, defaultProfile, de2026Rules, 0, true)
+    const freiwilligResult = afterTaxBavLumpSum(lumpSum, defaultProfile, de2026Rules, 0, false)
+    expect(freiwilligResult).toBeLessThan(kvdrResult)
+  })
+
+  it('PKV member: no KV/PV deduction, only income tax', () => {
+    const pkvProfile = { ...defaultProfile, publicHealthInsurance: false }
+    const lumpSum = 100_000
+    const gkvResult = afterTaxBavLumpSum(lumpSum, defaultProfile, de2026Rules, 0, true)
+    const pkvResult = afterTaxBavLumpSum(lumpSum, pkvProfile, de2026Rules, 0, true)
+    // PKV: same income tax but no KV/PV → higher net
+    expect(pkvResult).toBeGreaterThan(gkvResult)
+  })
+
+  it('Fünftelregelung reduces income tax compared to simple marginal rate', () => {
+    // With high other income (3,000/month = 36,000/year) and large lump sum, Fünftelregelung saves tax
+    const lumpSum = 200_000
+    const otherAnnual = 36_000
+    const pkvProfile = { ...defaultProfile, publicHealthInsurance: false }
+    const withFuenftel = afterTaxBavLumpSum(lumpSum, pkvProfile, de2026Rules, otherAnnual, true)
+    // Without Fünftelregelung (simple marginal via tax function):
+    const totalTax = (income: number) => {
+      const it = calculateIncomeTax2026(income, de2026Rules)
+      return it + calculateSolidarityTax(it, de2026Rules)
+    }
+    const simpleTax = totalTax(otherAnnual + lumpSum) - totalTax(otherAnnual)
+    const simpleNet = lumpSum - simpleTax
+    // Fünftelregelung net > simple marginal net (lower effective tax rate on the spike)
+    expect(withFuenftel).toBeGreaterThan(simpleNet)
   })
 })
 
@@ -456,5 +628,65 @@ describe('#37 ETF payout schedule (etfPayoutSchedule)', () => {
     expect(etfBasis?.etfPayoutRows?.length).toBeGreaterThan(0)
     // netMonthlyPayout is derived from year-1 of the schedule
     expect(etfBasis?.netMonthlyPayout).toBeCloseTo(etfBasis?.etfPayoutRows?.[0]?.netMonthlyPayout ?? 0, 2)
+  })
+})
+
+describe('default-profile end-to-end snapshot', () => {
+  // Locks in the three key output metrics for the default profile and assumptions.
+  // Captures regression when any part of the engine changes.
+  // Note: uses defaultAssumptions.retirementEndAge = 90 (payoutYears = 23).
+  const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+  const find = (productId: string, scenarioId: string) =>
+    sim.products.find((p) => p.productId === productId && p.scenarioId === scenarioId)!
+
+  it('ETF: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
+    const k = find('etf', 'konservativ')
+    expect(Math.round(k.capitalAtRetirement)).toBe(136_659)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(134_815)
+    expect(Math.round(k.netMonthlyPayout)).toBe(670)
+
+    const b = find('etf', 'basis')
+    expect(Math.round(b.capitalAtRetirement)).toBe(214_546)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(201_503)
+    expect(Math.round(b.netMonthlyPayout)).toBe(1_217)
+
+    const o = find('etf', 'optimistisch')
+    expect(Math.round(o.capitalAtRetirement)).toBe(347_498)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(314_676)
+    expect(Math.round(o.netMonthlyPayout)).toBe(2_240)
+  })
+
+  it('bAV: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
+    const k = find('bav', 'konservativ')
+    expect(Math.round(k.capitalAtRetirement)).toBe(243_214)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(144_219)
+    expect(Math.round(k.netMonthlyPayout)).toBe(920)
+
+    const b = find('bav', 'basis')
+    expect(Math.round(b.capitalAtRetirement)).toBe(379_719)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(197_428)
+    expect(Math.round(b.netMonthlyPayout)).toBe(1_484)
+
+    const o = find('bav', 'optimistisch')
+    expect(Math.round(o.capitalAtRetirement)).toBe(611_164)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(270_634)
+    expect(Math.round(o.netMonthlyPayout)).toBe(2_434)
+  })
+
+  it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
+    const k = find('versicherung', 'konservativ')
+    expect(Math.round(k.capitalAtRetirement)).toBe(96_525)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(96_525) // gain < basicAllowance → no Halbeinkünfte tax
+    expect(Math.round(k.netMonthlyPayout)).toBe(418)
+
+    const b = find('versicherung', 'basis')
+    expect(Math.round(b.capitalAtRetirement)).toBe(147_636)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(141_936)
+    expect(Math.round(b.netMonthlyPayout)).toBe(783)
+
+    const o = find('versicherung', 'optimistisch')
+    expect(Math.round(o.capitalAtRetirement)).toBe(233_291)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(211_549)
+    expect(Math.round(o.netMonthlyPayout)).toBe(1_486)
   })
 })

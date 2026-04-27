@@ -342,6 +342,49 @@ export function afterTaxInsuranceLumpSum(
   return Math.max(0, capital - (totalTax(otherAnnualIncome + taxableGain) - totalTax(otherAnnualIncome)))
 }
 
+// §229 SGB V 1/120: after-tax bAV lump sum payout.
+// Income tax: §22 Nr. 5 EStG — full lump sum is taxable income.
+//   §34 Abs. 2 Nr. 4 EStG Fünftelregelung applied (multi-year accumulation qualifies as extraordinary income).
+// KV/PV: spread over 120 months per §229 SGB V.
+//   KVdR (§226(2) SGB V): KV Freibetrag applies per month → max(0, lumpSum − threshold×120) × rate.
+//   freiwillig (§240 SGB V): no Freibetrag → lumpSum × rate.
+//   PV (§57(1) SGB XI): same threshold; full pvRate on lumpSum if monthlyBase > threshold, else 0.
+// PKV members: no GKV/PV deductions.
+export function afterTaxBavLumpSum(
+  lumpSum: number,
+  profile: PersonalProfile,
+  rules: GermanRules,
+  otherAnnualIncome = 0,
+  kvdrMember = true,
+): number {
+  if (lumpSum <= 0) return 0
+
+  const totalTax = (income: number) => {
+    const it = calculateIncomeTax2026(income, rules)
+    return it + calculateSolidarityTax(it, rules)
+  }
+  // Fünftelregelung §34 EStG: 5 × (tax(other + lumpSum/5) − tax(other))
+  const incomeTax = Math.max(0, 5 * (totalTax(otherAnnualIncome + lumpSum / 5) - totalTax(otherAnnualIncome)))
+
+  if (!profile.publicHealthInsurance) {
+    return Math.max(0, lumpSum - incomeTax)
+  }
+
+  const additionalHealthRate = profile.healthAdditionalContributionPct / 100
+  const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
+  const threshold = rules.socialSecurity.kvFreibetragVersorgungMonthly
+  const monthlyBase = lumpSum / 120
+
+  const kvBurden = kvdrMember
+    ? Math.max(0, lumpSum - threshold * 120) * healthRate
+    : lumpSum * healthRate
+
+  const pvRate = careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
+  const pvBurden = monthlyBase > threshold ? lumpSum * pvRate : 0
+
+  return Math.max(0, lumpSum - incomeTax - kvBurden - pvBurden)
+}
+
 // #6: marginal-tax approach — income tax on (bAV + other) minus tax on (other alone).
 // When otherMonthlyIncome = 0 and bAV is below the basic allowance, result equals the simple formula.
 // kvdrMember: true = KVdR (KV Freibetrag §226(2) SGB V); false = freiwillig versichert (no Freibetrag, §240 SGB V).

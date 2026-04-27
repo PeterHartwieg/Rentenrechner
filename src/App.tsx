@@ -12,15 +12,17 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Calculator, Coins, RotateCcw, Settings, TrendingUp } from 'lucide-react'
+import { Calculator, Check, Coins, Download, Link, RotateCcw, Settings, TrendingUp } from 'lucide-react'
 import type { BavFundingResult, InsuranceTaxMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
-import { afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveInsuranceTaxMode } from './engine/projections'
+import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveInsuranceTaxMode } from './engine/projections'
 import { careEmployeeRateForChildren } from './engine/salary'
 import { simulateRetirementComparison } from './engine/simulate'
 import { de2026Rules } from './rules/de2026'
 import { STORAGE_KEY, buildStateJson, loadSavedState } from './storage'
 import { formatCurrency, formatNumber, formatPercent } from './utils/format'
+import { buildExportCsv, downloadCsv } from './utils/csvExport'
+import { buildShareUrl, readUrlState } from './utils/urlShare'
 import './App.css'
 
 type WarningStatus = 'implementiert' | 'vereinfacht' | 'nicht-modelliert'
@@ -58,13 +60,13 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   },
   {
     category: 'bAV Rentenphase',
-    status: 'vereinfacht',
-    note: 'Grenzsteuer konfigurierbar; KVdR-/freiwillig-GKV-Toggle: KVdR mit Freibetrag §226(2) SGB V, freiwillig ohne. KV/PV-Aufschlüsselung sichtbar. Kapitalabfindung wegen 1/120-Regel nicht modelliert. (#6)',
+    status: 'implementiert',
+    note: 'Grenzsteuer konfigurierbar; KVdR-/freiwillig-GKV-Toggle: KVdR mit Freibetrag §226(2) SGB V, freiwillig ohne. KV/PV-Aufschlüsselung sichtbar. (#6)',
   },
   {
     category: 'bAV Kapitalabfindung',
-    status: 'nicht-modelliert',
-    note: '1/120-KV/PV-Verteilung nach §229 SGB V fehlt; Wert wird bewusst nicht ausgewiesen. (#19)',
+    status: 'implementiert',
+    note: 'KV/PV nach §229 SGB V 1/120-Verteilung (120 Monate); Einkommensteuer nach §22 Nr. 5 EStG mit Fünftelregelung §34 Abs. 2 Nr. 4 EStG. PKV-Mitglieder ohne KV/PV-Abzug. (#6/#19)',
   },
   {
     category: 'Gesetzliche Rente',
@@ -207,10 +209,10 @@ function BavWaterfall({ f }: { f: BavFundingResult }) {
 
 function App() {
   const [profile, setProfile] = useState<PersonalProfile>(
-    () => loadSavedState()?.profile ?? defaultProfile,
+    () => (readUrlState() ?? loadSavedState())?.profile ?? defaultProfile,
   )
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(
-    () => loadSavedState()?.assumptions ?? defaultAssumptions,
+    () => (readUrlState() ?? loadSavedState())?.assumptions ?? defaultAssumptions,
   )
   const [selectedScenarioId, setSelectedScenarioId] = useState('basis')
   const [showRealValues, setShowRealValues] = useState(true)
@@ -292,7 +294,15 @@ function App() {
     cumulativeContributions: number,
     cumulativeVorabpauschale: number,
   ): number | null {
-    if (cashflowProductId === 'bav') return null
+    if (cashflowProductId === 'bav') {
+      return afterTaxBavLumpSum(
+        balance,
+        profile,
+        de2026Rules,
+        assumptions.bav.monthlyOtherRetirementIncome * 12,
+        kvdrMember,
+      )
+    }
     if (cashflowProductId === 'etf') {
       return afterTaxInvestmentCapital(
         balance,
@@ -304,6 +314,32 @@ function App() {
     }
     const otherAnnual = assumptions.insurance.monthlyOtherRetirementIncome * 12
     return afterTaxInsuranceLumpSum(balance, cumulativeContributions, insuranceTaxMode, de2026Rules, otherAnnual)
+  }
+
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  function handleCopyLink() {
+    const url = buildShareUrl(profile, assumptions)
+    history.replaceState(null, '', url)
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 1500)
+    })
+  }
+
+  function handleExportCsv() {
+    const csv = buildExportCsv({
+      products: simulation.products,
+      bavAnnualTaxSvSavings: simulation.bavFunding.annualTaxAndSvSavings,
+      bavProfile: profile,
+      bavKvdrMember: kvdrMember,
+      bavOtherAnnualIncome: assumptions.bav.monthlyOtherRetirementIncome * 12,
+      insuranceTaxMode,
+      equityPartialExemption: assumptions.etf.equityPartialExemption,
+      insuranceOtherAnnualIncome: assumptions.insurance.monthlyOtherRetirementIncome * 12,
+      rules: de2026Rules,
+    })
+    downloadCsv('rentenrechner-export.csv', csv)
   }
 
   return (
@@ -1057,8 +1093,8 @@ function App() {
                   <dt>Steuervereinfachungen</dt>
                   <dd>
                     ETF-Einmalkapital ohne Sparerpauschbetrag; ETF-Entnahme mit jährlichem
-                    Sparerpauschbetrag. bAV-Einmalkapital wird wegen 1/120-Regel noch nicht
-                    ausgewiesen.
+                    Sparerpauschbetrag. bAV-Einmalkapital: §22 Nr. 5 EStG mit Fünftelregelung
+                    §34 Abs. 2 Nr. 4 EStG; KV/PV nach §229 SGB V 1/120-Methode.
                   </dd>
                 </div>
                 <div>
@@ -1169,7 +1205,21 @@ function App() {
           </section>
 
           <section className="table-panel">
-            <h2>Detailvergleich</h2>
+            <div className="section-header">
+              <h2>Detailvergleich</h2>
+              <div className="section-actions">
+                <button type="button" className="export-btn" onClick={handleCopyLink}>
+                  {linkCopied
+                    ? <Check size={14} aria-hidden="true" />
+                    : <Link size={14} aria-hidden="true" />}
+                  {linkCopied ? 'Kopiert!' : 'Link kopieren'}
+                </button>
+                <button type="button" className="export-btn" onClick={handleExportCsv}>
+                  <Download size={14} aria-hidden="true" />
+                  CSV exportieren
+                </button>
+              </div>
+            </div>
             <div className="table-scroll">
               <table>
                 <thead>
@@ -1179,7 +1229,7 @@ function App() {
                     <th>Nettoaufwand mtl.</th>
                     <th>Beitrag mtl.</th>
                     <th>Kapital</th>
-                    <th>Kapital nach Steuer*</th>
+                    <th>Kapital nach Steuer</th>
                     <th>Netto-Rente</th>
                     <th>Kosten</th>
                     <th>Faktor</th>
@@ -1210,11 +1260,6 @@ function App() {
                 </tbody>
               </table>
             </div>
-            <p className="table-note">
-              *bAV-Einmalkapital wird bewusst nicht ausgewiesen, bis die 1/120-Verteilung der
-              KV/PV-Beiträge und die Rentensteuer sauber modelliert sind. Für bAV ist aktuell die
-              monatliche Netto-Rente die belastbarere Vergleichsgröße.
-            </p>
           </section>
 
           <section className="table-panel cashflow-panel">

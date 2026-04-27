@@ -12,6 +12,7 @@ import type {
 } from '../domain/types'
 import { calculateBavFunding } from './salary'
 import {
+  afterTaxBavLumpSum,
   afterTaxInsuranceLumpSum,
   afterTaxInvestmentCapital,
   deriveInsuranceTaxMode,
@@ -132,7 +133,13 @@ function buildProductResult(params: {
   }
 
   if (params.taxMode === 'bav') {
-    afterTaxLumpSum = null
+    afterTaxLumpSum = afterTaxBavLumpSum(
+      projection.capital,
+      params.profile,
+      params.rules,
+      params.assumptions.bav.monthlyOtherRetirementIncome * 12,
+      params.assumptions.bav.kvdrMember,
+    )
     const otherIncome = params.assumptions.bav.monthlyOtherRetirementIncome
     let rawNet = netBavPayout(
       grossMonthlyPayout,
