@@ -16,11 +16,12 @@ npm run build           # production build
 
 | File | Role |
 |------|------|
-| `src/rules/de2026.ts` | All 2026 statutory values (BBG, rates, limits). Single source of truth — never hardcode numbers in the engine. |
+| `src/rules/de2026.ts` | All 2026 statutory values (BBG, rates, limits). Single source of truth — never hardcode numbers in the engine. Also exports `besteuerungsanteilGrv`, `versorgungsfreibetrag`, and Pauschbeträge constants. |
 | `src/domain/types.ts` | All shared types. Read this first. |
 | `src/data/defaultScenario.ts` | Default profile and assumptions used by tests and initial UI state. |
 | `src/engine/tax.ts` | `calculateIncomeTax2026`, `calculateSolidarityTax`, `calculateCapitalGainsTax`. |
 | `src/engine/salary.ts` | `calculateSalaryResult` (BMF PAP Vorsorgepauschale), `calculateBavFunding` (two-pass bAV limit logic). |
+| `src/engine/retirementTax.ts` | `calculateRetirementTax` — retirement-phase taxable-income pipeline. All retirement payout helpers must go through this. |
 | `src/engine/projections.ts` | `projectAccumulation` (accumulation loop), `netBavPayout`, `netInsurancePayout`, `afterTaxInvestmentCapital`, `afterTaxInsuranceLumpSum`, `deriveInsuranceTaxMode`, `etfPayoutSchedule`. |
 | `src/engine/simulate.ts` | Top-level `simulateRetirementComparison` — wires salary + projections into `ProductResult[]`. |
 | `src/App.tsx` | Single-page UI. All state lives here. |
@@ -41,9 +42,11 @@ npm run build           # production build
 
 **`rowAfterTaxBalance`** in `App.tsx`: a closure that captures `assumptions` and `cashflowProductId` to compute the per-row after-tax balance for the cashflow table. It lives just before the `return` statement.
 
-**Private insurance tax** (`projections.ts` / `simulate.ts`): `deriveInsuranceTaxMode(contractStartYear, runtimeYears, retirementAge)` returns `'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'`. `netInsurancePayout` and `afterTaxInsuranceLumpSum` implement each branch — Halbeinkünfteverfahren uses `calculateIncomeTax2026` (personal rate, not Abgeltungsteuer) on half the annual gain. Contract runtime is auto-derived as `retirementAge - age`.
+**Private insurance tax** (`projections.ts` / `simulate.ts`): `deriveInsuranceTaxMode(contractStartYear, runtimeYears, retirementAge)` returns `'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'`. `netInsurancePayout` and `afterTaxInsuranceLumpSum` implement each branch — routing through `calculateRetirementTax`. Contract runtime is auto-derived as `retirementAge - age`.
 
 **KVdR toggle** (`projections.ts`): `netBavPayout(..., kvdrMember = true)`. When `true`: KV Freibetrag §226(2) SGB V; when `false` (freiwillig versichert): KV on full amount §240 SGB V. PV (Freigrenze + Versorgungsträger employer share) is the same in both cases.
+
+**Retirement tax pipeline** (`retirementTax.ts`): All retirement-phase income-tax flows go through `calculateRetirementTax(components, rules, filingStatus)`. It applies cohort-based allowances (`besteuerungsanteilGrv`, `versorgungsfreibetrag`), routes private insurance by tax mode (halbeinkuenfte / abgeltungsteuer / pre2005), and deducts Werbungskosten-Pauschbeträge + Sonderausgaben before calling `calculateIncomeTax2026`. The `bavIsLumpSum` flag on `RetirementIncomeComponents` suppresses the Versorgungsfreibetrag for one-time payouts (Fünftelregelung context). The `retirementYear` parameter is required by all callers so cohort tables lock to the correct year.
 
 ## Current State
 

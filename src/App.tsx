@@ -305,6 +305,7 @@ function App() {
         de2026Rules,
         assumptions.bav.monthlyOtherRetirementIncome * 12,
         kvdrMember,
+        insurancePayoutYear,
       )
     }
     if (cashflowProductId === 'etf') {
@@ -317,7 +318,7 @@ function App() {
       )
     }
     const otherAnnual = assumptions.insurance.monthlyOtherRetirementIncome * 12
-    return afterTaxInsuranceLumpSum(balance, cumulativeContributions, insuranceTaxMode, de2026Rules, otherAnnual)
+    return afterTaxInsuranceLumpSum(balance, cumulativeContributions, insuranceTaxMode, de2026Rules, otherAnnual, insurancePayoutYear)
   }
 
   const [linkCopied, setLinkCopied] = useState(false)

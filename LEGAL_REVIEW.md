@@ -183,3 +183,133 @@ When creating `DE-2027` or later:
 8. Update bAV tax/SV limits from BBG.
 9. Update InvStG Basiszins.
 10. Add tests comparing old and new rule years.
+11. Check whether Besteuerungsanteil progression has changed (Wachstumschancengesetz amended this).
+12. Check whether Versorgungsfreibetrag progression has changed (same amendment).
+
+---
+
+## Retirement Tax Pipeline (#46)
+
+Added in #46 (`src/engine/retirementTax.ts`). Implements the full retirement-phase taxable-income
+pipeline used by `netBavPayout`, `afterTaxBavLumpSum`, `netInsurancePayout`, and `afterTaxInsuranceLumpSum`.
+
+### Besteuerungsanteil (§22 Nr. 1 Satz 3 Buchstabe a Doppelbuchstabe aa EStG)
+
+Fraction of statutory GRV pension that is taxable. The remainder is the Rentenfreibetrag, which
+locks in at the first full year of pension receipt and does not change in subsequent years.
+
+**Statutory basis:**
+- §22 Nr. 1 Satz 3 Buchstabe a aa EStG (primary)
+- Amended by Wachstumschancengesetz (BGBl. 2024 I Nr. 101, in force 28 March 2024), which slowed
+  the progression to 0.5 percentage points per year (down from up to 2 pp/year in the original 2005 schedule)
+- §52 Abs. 34 EStG (transition table)
+- https://www.gesetze-im-internet.de/estg/__22.html
+
+**Schedule implemented:**
+
+| Retirement year | Besteuerungsanteil |
+|---|---|
+| ≤ 2005 | 50.0 % |
+| 2006–2020 | 50 % + (year − 2005) × 2 pp |
+| 2021–2022 | 80 % + (year − 2020) × 1 pp |
+| 2023 | 82.5 % (anchor — Wachstumschancengesetz start) |
+| 2024–2057 | 82.5 % + (year − 2023) × 0.5 pp |
+| ≥ 2058 | 100 % |
+
+The 2023 anchor value of 82.5 % is the last value set by the old schedule (pre-Wachstumschancengesetz
+2022: 82 %, then +0.5 pp → 82.5 % for 2023 under the new pace).
+
+### Versorgungsfreibetrag (§19 Abs. 2 EStG)
+
+For bAV-Renten (Direktzusage, Pensionskasse, Direktversicherung) and other Versorgungsbezüge.
+The Freibetrag locks in at the retirement year (§19 Abs. 2 Satz 7 EStG: "maßgeblicher
+Versorgungsbeginn") and does not change in subsequent years.
+
+Two components:
+1. **Prozentbetrag**: `prozent × gross`, capped at `hoechstbetrag`
+2. **Zuschlag**: unconditional fixed addition (not capped by hoechstbetrag)
+
+**Statutory basis:**
+- §19 Abs. 2 EStG (primary)
+- Amended by Wachstumschancengesetz (BGBl. 2024 I Nr. 101) to slow progression to zero by 2058
+  (original table would have reached 0 by 2040)
+- https://www.gesetze-im-internet.de/estg/__19.html
+
+**Schedule implemented (post-Wachstumschancengesetz, 2023–2058):**
+
+| Retirement year | prozent | hoechstbetrag | zuschlag |
+|---|---|---|---|
+| 2023 | 14.0 % | 1,050 EUR | 315 EUR |
+| 2024 | 13.6 % | 1,020 EUR | 306 EUR |
+| 2025 | 13.2 % |   990 EUR | 297 EUR |
+| 2026 | 12.8 % |   960 EUR | 288 EUR |
+| 2030 | 11.2 % |   840 EUR | 252 EUR |
+| 2040 |  7.2 % |   540 EUR | 162 EUR |
+| 2058 |  0.0 % |     0 EUR |   0 EUR |
+| ≥ 2058 | 0 % |   0 EUR |   0 EUR |
+
+Pre-Wachstumschancengesetz years (2005–2022) use the original faster schedule (−1.6 pp/year,
+−120 EUR/year, −36 EUR/year from 2005: 40 %/3,000/900). Years before 2005 return the 2005 anchor.
+
+**Not applied to lump-sum payouts**: §19 Abs. 2 EStG Satz 1 refers to "laufende Bezüge" (ongoing
+pension payments). A one-time capital payout is not a laufender Versorgungsbezug. The pipeline
+implements this via the `bavIsLumpSum` flag on `RetirementIncomeComponents`, which suppresses the
+Versorgungsfreibetrag entirely for the lump-sum tax context (used in `afterTaxBavLumpSum` /
+Fünftelregelung calculation).
+
+### Pauschbeträge
+
+| Pauschbetrag | Amount | Statutory basis |
+|---|---|---|
+| Werbungskosten für Versorgungsbezüge | 102 EUR/year | §9a Satz 1 Nr. 1b EStG |
+| Werbungskosten für Renten (sonstige Einkünfte) | 102 EUR/year | §9a Satz 1 Nr. 3 EStG |
+| Sonderausgaben-Pauschbetrag (single) | 36 EUR/year | §10c EStG |
+| Sonderausgaben-Pauschbetrag (married) | 72 EUR/year | §10c EStG |
+
+Sources:
+- §9a EStG: https://www.gesetze-im-internet.de/estg/__9a.html
+- §10c EStG: https://www.gesetze-im-internet.de/estg/__10c.html
+
+Cap rules: each Werbungskosten-Pauschbetrag is capped at the corresponding gross income from
+that source (cannot deduct more than earned). Werbungskosten Versorgung is capped at `bavPensionAnnual`;
+Werbungskosten Renten is capped at `statutoryPensionTaxable` (after Rentenfreibetrag). Sonderausgaben
+is applied once to the total zvE without a per-source cap.
+
+### Private-Insurance Tax-Mode Routing
+
+| Mode | Routing | Basis |
+|---|---|---|
+| `pre2005` | Entirely tax-free; no addition to any base | §52 Abs. 28 EStG a.F. |
+| `halbeinkuenfte` | Half the gain enters personal income-tax base (marginal rate) | §20 Abs. 1 Nr. 6 EStG |
+| `abgeltungsteuer` | Full gain taxed at flat 25 % + Soli; removed from personal base | §20 Abs. 2 EStG |
+
+For `halbeinkuenfte`: `privateInsuranceTaxableAnnual / 2` is added to the personal base along
+with bAV and statutory pension. The marginal tax on the insurance gain is computed as
+`totalTax(baseWithGain) − totalTax(baseWithoutGain)`.
+
+For `abgeltungsteuer`: the flat tax is `gain × 25 % × (1 + 5.5 %)`. The gain is not included
+in the personal base at all. If both ordinary income and abgeltungsteuer income exist in the
+same pipeline call, the personal base and flat base are separate.
+
+### Versorgungsfreibetrag-Not-On-Lump-Sum Convention
+
+The Versorgungsfreibetrag in §19 Abs. 2 EStG applies only to "laufende Versorgungsbezüge"
+(recurring pension payments). A one-time bAV capital payout does not qualify because it is
+not "laufend". The `bavIsLumpSum = true` flag suppresses the allowance for the Fünftelregelung
+calculation in `afterTaxBavLumpSum`, where the lump sum / 5 is passed as a hypothetical annual
+income. This prevents over-deducting a recurring allowance from a one-time spike.
+
+### Non-Modeling Notes
+
+- **Ehegattensplitting**: only `filingStatus = 'single'` is implemented. Calling with `'married'`
+  throws an error. Joint assessment (Ehegattensplitting, double allowances, half-income tariff)
+  is tracked in a future backlog item.
+- **Außerordentliche Einkünfte**: only the Fünftelregelung for bAV lump sums is modeled.
+  Other extraordinary income forms (§34 Abs. 1 EStG) are not implemented.
+- **Kirchensteuer**: not modeled anywhere in the pipeline.
+- **Sparerpauschbetrag for private insurance**: callers are responsible for passing the gain
+  net of any Sparerpauschbetrag (relevant for abgeltungsteuer mode). The pipeline does not
+  deduct it internally to avoid double-counting with ETF usage.
+- **KV/PV deductions from zvE**: KV/PV contributions in retirement can in theory be deducted
+  as Sonderausgaben under §10 EStG. This is not modeled; the pipeline focuses on gross income
+  decomposition and statutory Pauschbeträge only. Tracked as #47.

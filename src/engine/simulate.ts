@@ -53,6 +53,8 @@ function buildProductResult(params: {
   fees: FeeModel
   taxMode: 'etf' | 'bav' | 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'
   partialExemption?: number
+  /** Calendar year the user reaches retirement age — used for cohort-table lookups in #46 pipeline. */
+  retirementYear: number
 }): ProductResult {
   const yearsToRetirement = params.profile.retirementAge - params.profile.age
   const monthsToRetirement = yearsToRetirement * 12
@@ -121,6 +123,7 @@ function buildProductResult(params: {
       params.taxMode,
       params.rules,
       otherAnnual,
+      params.retirementYear,
     )
     netMonthlyPayout = netInsurancePayout(
       grossMonthlyPayout,
@@ -129,6 +132,7 @@ function buildProductResult(params: {
       params.taxMode,
       params.rules,
       params.assumptions.insurance.monthlyOtherRetirementIncome,
+      params.retirementYear,
     )
   }
 
@@ -139,6 +143,7 @@ function buildProductResult(params: {
       params.rules,
       params.assumptions.bav.monthlyOtherRetirementIncome * 12,
       params.assumptions.bav.kvdrMember,
+      params.retirementYear,
     )
     const otherIncome = params.assumptions.bav.monthlyOtherRetirementIncome
     let rawNet = netBavPayout(
@@ -147,6 +152,7 @@ function buildProductResult(params: {
       params.rules,
       otherIncome,
       params.assumptions.bav.kvdrMember,
+      params.retirementYear,
     )
     if (params.assumptions.bav.includeGrvReduction) {
       rawNet = Math.max(0, rawNet - params.bavFunding.estimatedMonthlyGrvReduction)
@@ -222,6 +228,7 @@ export function simulateRetirementComparison(
       fees: { ...zeroFeeModel, annualAssetFee: assumptions.etf.annualAssetFee },
       taxMode: 'etf',
       partialExemption: assumptions.etf.equityPartialExemption,
+      retirementYear: payoutYear,
     }),
     buildProductResult({
       productId: 'bav',
@@ -237,6 +244,7 @@ export function simulateRetirementComparison(
       monthlyEmployerContribution: bavFunding.monthlyEmployerContribution,
       fees: assumptions.bav.fees,
       taxMode: 'bav',
+      retirementYear: payoutYear,
     }),
     buildProductResult({
       productId: 'versicherung',
@@ -251,6 +259,7 @@ export function simulateRetirementComparison(
       monthlyEmployerContribution: 0,
       fees: assumptions.insurance.fees,
       taxMode: insuranceTaxMode,
+      retirementYear: payoutYear,
     }),
   ])
 

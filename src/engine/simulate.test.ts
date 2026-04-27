@@ -778,36 +778,42 @@ describe('default-profile end-to-end snapshot', () => {
   })
 
   it('bAV: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
+    // after #46: afterTaxBavLumpSum now routes Fünftelregelung through calculateRetirementTax,
+    // applying Sonderausgaben-Pauschbetrag (36 EUR) to each Fünftel slice → slightly lower tax → higher net lump sum.
+    // netMonthlyPayout also slightly higher: Versorgungsfreibetrag (2065 cohort: 0%) + Pauschbeträge reduce zvE.
     const k = find('bav', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(243_214)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(144_219)
-    expect(Math.round(k.netMonthlyPayout)).toBe(920)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(144_459)  // was 144_219 before #46 (+240)
+    expect(Math.round(k.netMonthlyPayout)).toBe(922)      // was 920 before #46 (+2)
 
     const b = find('bav', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(379_719)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(197_428)
-    expect(Math.round(b.netMonthlyPayout)).toBe(1_484)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(197_753)  // was 197_428 before #46 (+325)
+    expect(Math.round(b.netMonthlyPayout)).toBe(1_487)    // was 1_484 before #46 (+3)
 
     const o = find('bav', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(611_164)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(270_634)
-    expect(Math.round(o.netMonthlyPayout)).toBe(2_434)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(270_940)  // was 270_634 before #46 (+306)
+    expect(Math.round(o.netMonthlyPayout)).toBe(2_438)    // was 2_434 before #46 (+4)
   })
 
   it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
+    // after #46: afterTaxInsuranceLumpSum now routes through calculateRetirementTax;
+    // Sonderausgaben-Pauschbetrag reduces zvE → slightly lower tax → slightly higher net lump sum.
+    // netMonthlyPayout unchanged (Halbeinkünfte gain already small relative to zvE threshold).
     const k = find('versicherung', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(96_525)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(96_525) // gain < basicAllowance → no Halbeinkünfte tax
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(96_525) // gain < basicAllowance → still no Halbeinkünfte tax
     expect(Math.round(k.netMonthlyPayout)).toBe(418)
 
     const b = find('versicherung', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(147_636)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(141_936)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(141_947)  // was 141_936 before #46 (+11)
     expect(Math.round(b.netMonthlyPayout)).toBe(783)
 
     const o = find('versicherung', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(233_291)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(211_549)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(211_565)  // was 211_549 before #46 (+16)
     expect(Math.round(o.netMonthlyPayout)).toBe(1_486)
   })
 })

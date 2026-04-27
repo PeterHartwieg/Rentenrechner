@@ -223,3 +223,107 @@ export interface SimulationResult {
   bavFunding: BavFundingResult
   products: ProductResult[]
 }
+
+// ---------------------------------------------------------------------------
+// Retirement tax pipeline (#46)
+// ---------------------------------------------------------------------------
+
+/**
+ * All annual income components entering the retirement-phase tax calculation.
+ * Amounts are EUR/year.
+ *
+ * Convention: each source is passed gross (before deductions). The pipeline
+ * applies cohort-based allowances, Pauschbeträge, and routing rules internally.
+ *
+ * For callers that do not yet model GRV separately, set `statutoryPensionAnnual = 0`
+ * and route everything else through `otherTaxableAnnual`. TODO #47: split
+ * otherTaxableAnnual into statutory pension + other when the GRV module is added.
+ */
+export interface RetirementIncomeComponents {
+  /** Gross GRV statutory pension (annual EUR). Besteuerungsanteil applied inside pipeline. */
+  statutoryPensionAnnual: number
+  /**
+   * Gross bAV pension (annual EUR). Versorgungsfreibetrag + Zuschlag applied inside pipeline.
+   * Set `bavIsLumpSum = true` to suppress the Versorgungsfreibetrag for one-time capital payouts
+   * (only laufende Versorgungsbezüge qualify — §19 Abs. 2 EStG Satz 1 requires "laufende Bezüge").
+   */
+  bavPensionAnnual: number
+  /**
+   * When true, the bAV amount is a one-time capital payout (e.g. Fünftelregelung context) rather
+   * than a recurring pension. Versorgungsfreibetrag is suppressed in that case.
+   */
+  bavIsLumpSum: boolean
+  /**
+   * Gain portion of private-insurance payout that enters the tax routing.
+   * - halbeinkuenfte: half the gain → personal tax base
+   * - abgeltungsteuer: full gain → flat 25 % Abgeltungsteuer separately, NOT in personal base
+   * - pre2005: entirely tax-free (do not add to this component)
+   */
+  privateInsuranceTaxableAnnual: number
+  privateInsuranceTaxMode: InsuranceTaxMode
+  /** Other ordinary taxable income (rental, part-time job, etc.) — enters personal base directly. */
+  otherTaxableAnnual: number
+  /**
+   * Calendar year the pension/payout first begins — used for cohort-based table lookups.
+   * For accumulation scenarios this equals the profile.retirementAge's calendar year.
+   */
+  retirementYear: number
+}
+
+/**
+ * Detailed breakdown produced by `calculateRetirementTax`.
+ * All amounts are EUR/year unless otherwise noted.
+ */
+export interface RetirementTaxBreakdown {
+  // --- Taxable amounts after source-specific allowances ---
+  /** GRV pension after Rentenfreibetrag (= gross × Besteuerungsanteil). */
+  statutoryPensionTaxable: number
+  /**
+   * bAV pension after Versorgungsfreibetrag and Zuschlag.
+   * Zero when bavIsLumpSum = true (Versorgungsfreibetrag suppressed).
+   */
+  bavPensionTaxable: number
+  /**
+   * Private-insurance component in the personal-tax base.
+   * = privateInsuranceTaxableAnnual / 2  when mode === 'halbeinkuenfte'
+   * = 0                                  when mode === 'abgeltungsteuer' (taxed separately)
+   * = 0                                  when mode === 'pre2005' (tax-free)
+   */
+  privateInsuranceTaxable: number
+  /** Other taxable income — passes through unchanged. */
+  otherTaxable: number
+
+  // --- Pauschbeträge deducted from the personal-tax base ---
+  /** §9a Nr. 1b EStG: 102 EUR if bavPensionAnnual > 0, capped at bavPensionAnnual. */
+  werbungskostenVersorgung: number
+  /** §9a Nr. 3 EStG: 102 EUR if statutoryPensionAnnual > 0, capped at statutoryPensionTaxable. */
+  werbungskostenRenten: number
+  /** §10c EStG: 36 EUR (single) or 72 EUR (married). */
+  sonderausgaben: number
+
+  // --- Income-tax result ---
+  /** Sum of all components minus all Pauschbeträge, floored at 0. */
+  zuVersteuerndesEinkommen: number
+  /** Income tax on zvE (personal rate). */
+  einkommensteuer: number
+  /** Solidaritätszuschlag on Einkommensteuer. */
+  solidaritaetszuschlag: number
+  /**
+   * Flat 25 % + Soli on privateInsuranceTaxableAnnual when mode === 'abgeltungsteuer'.
+   * Zero for all other modes.
+   */
+  abgeltungsteuerOnPrivateInsurance: number
+  /** einkommensteuer + solidaritaetszuschlag + abgeltungsteuerOnPrivateInsurance */
+  totalTaxAnnual: number
+  /**
+   * Net after-tax retirement income:
+   * = (statutoryPensionAnnual + bavPensionAnnual + otherTaxableAnnual
+   *    + privateInsuranceTaxableAnnual [gross, before any routing])
+   *   − totalTaxAnnual
+   *
+   * Note: for abgeltungsteuer mode, privateInsuranceTaxableAnnual is the gain only.
+   * The contributions portion is already implicitly included by callers (they compute
+   * gain separately). This field reflects only what the pipeline received.
+   */
+  netRetirementIncomeAnnual: number
+}

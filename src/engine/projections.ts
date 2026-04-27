@@ -8,8 +8,9 @@ import type {
   ReturnScenario,
   YearlyProjection,
 } from '../domain/types'
-import { calculateCapitalGainsTax, calculateIncomeTax2026, calculateSolidarityTax } from './tax'
+import { calculateCapitalGainsTax } from './tax'
 import { careEmployeeRateForChildren } from './salary'
+import { calculateRetirementTax } from './retirementTax'
 
 interface AccumulationInput {
   productId: ProductId
@@ -297,6 +298,8 @@ export function deriveInsuranceTaxMode(
 // Halbeinkünfteverfahren: only half the gain is taxable at the personal income tax rate (§20 Abs. 1 Nr. 6 EStG).
 // Abgeltungsteuer: full gain taxed at 25% + Soli (§20 Abs. 2 EStG).
 // pre2005: no tax.
+// Routed through calculateRetirementTax so retirement deductions (Pauschbeträge, cohort allowances)
+// are applied before computing the marginal rate. (#46)
 export function netInsurancePayout(
   grossMonthlyPayout: number,
   capital: number,
@@ -304,56 +307,99 @@ export function netInsurancePayout(
   taxMode: InsuranceTaxMode,
   rules: GermanRules,
   otherMonthlyIncome = 0,
+  retirementYear = rules.year,
 ): number {
   const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
   const annualGain = grossMonthlyPayout * 12 * gainRatio
 
   if (taxMode === 'pre2005') return grossMonthlyPayout
 
-  if (taxMode === 'abgeltungsteuer') {
-    return Math.max(0, grossMonthlyPayout - calculateCapitalGainsTax(annualGain, rules, 0, 0) / 12)
-  }
-
-  // Halbeinkünfteverfahren: only half the gain at personal income tax rate
-  const taxableAnnualGain = annualGain / 2
-  const otherAnnual = otherMonthlyIncome * 12
-  const totalTax = (income: number) => {
-    const it = calculateIncomeTax2026(income, rules)
-    return it + calculateSolidarityTax(it, rules)
-  }
-  const marginalTax = totalTax(otherAnnual + taxableAnnualGain) - totalTax(otherAnnual)
+  // Build RetirementIncomeComponents with the gain and other income, then compare tax
+  // with and without the insurance gain to get the marginal tax on the gain.
+  const taxWithGain = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: annualGain,
+      privateInsuranceTaxMode: taxMode,
+      otherTaxableAnnual: otherMonthlyIncome * 12,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const taxWithoutGain = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: taxMode,
+      otherTaxableAnnual: otherMonthlyIncome * 12,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const marginalTax = taxWithGain.totalTaxAnnual - taxWithoutGain.totalTaxAnnual
   return Math.max(0, grossMonthlyPayout - marginalTax / 12)
 }
 
 // After-tax lump-sum insurance capital.
 // otherAnnualIncome is only used for the Halbeinkünfteverfahren marginal-tax calculation.
+// Routed through calculateRetirementTax so retirement deductions (Pauschbeträge, cohort allowances)
+// are applied consistently with the monthly-payout path. (#46)
 export function afterTaxInsuranceLumpSum(
   capital: number,
   totalContributions: number,
   taxMode: InsuranceTaxMode,
   rules: GermanRules,
   otherAnnualIncome = 0,
+  retirementYear = rules.year,
 ): number {
   const gain = Math.max(0, capital - totalContributions)
 
   if (taxMode === 'pre2005') return capital
 
-  if (taxMode === 'abgeltungsteuer') {
-    return capital - calculateCapitalGainsTax(gain, rules, 0, 0)
-  }
-
-  // Halbeinkünfteverfahren: only half the gain at personal income tax rate
-  const taxableGain = gain / 2
-  const totalTax = (income: number) => {
-    const it = calculateIncomeTax2026(income, rules)
-    return it + calculateSolidarityTax(it, rules)
-  }
-  return Math.max(0, capital - (totalTax(otherAnnualIncome + taxableGain) - totalTax(otherAnnualIncome)))
+  // Marginal-tax approach: tax(other + gain) − tax(other)
+  const taxWithGain = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: gain,
+      privateInsuranceTaxMode: taxMode,
+      otherTaxableAnnual: otherAnnualIncome,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const taxWithoutGain = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: taxMode,
+      otherTaxableAnnual: otherAnnualIncome,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const marginalTax = taxWithGain.totalTaxAnnual - taxWithoutGain.totalTaxAnnual
+  return Math.max(0, capital - marginalTax)
 }
 
 // §229 SGB V 1/120: after-tax bAV lump sum payout.
 // Income tax: §22 Nr. 5 EStG — full lump sum is taxable income.
 //   §34 Abs. 2 Nr. 4 EStG Fünftelregelung applied (multi-year accumulation qualifies as extraordinary income).
+//   The Fünftelregelung itself is unchanged (#48); only its internal tax computation is now routed
+//   through calculateRetirementTax with bavIsLumpSum=true so retirement Pauschbeträge are applied. (#46)
+//   Versorgungsfreibetrag is suppressed (bavIsLumpSum=true) because a one-time payout is NOT a
+//   "laufender Versorgungsbezug" per §19 Abs. 2 EStG Satz 1.
 // KV/PV: spread over 120 months per §229 SGB V.
 //   KVdR (§226(2) SGB V): KV Freibetrag applies per month → max(0, lumpSum − threshold×120) × rate.
 //   freiwillig (§240 SGB V): no Freibetrag → lumpSum × rate.
@@ -365,15 +411,37 @@ export function afterTaxBavLumpSum(
   rules: GermanRules,
   otherAnnualIncome = 0,
   kvdrMember = true,
+  retirementYear = rules.year,
 ): number {
   if (lumpSum <= 0) return 0
 
-  const totalTax = (income: number) => {
-    const it = calculateIncomeTax2026(income, rules)
-    return it + calculateSolidarityTax(it, rules)
+  // Fünftelregelung §34 EStG: 5 × (tax(other + lumpSum/5) − tax(other)).
+  // Both tax calls go through calculateRetirementTax with bavIsLumpSum=true so that:
+  //   - retirement Pauschbeträge (Werbungskosten + Sonderausgaben) apply to the zvE, and
+  //   - Versorgungsfreibetrag is suppressed (lump sum is not "laufend").
+  // otherAnnualIncome is routed as otherTaxableAnnual (opaque other income context).
+  const taxOnFuenftel = (bavFuenftel: number): number => {
+    const bd = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 0,
+        bavPensionAnnual: bavFuenftel,
+        bavIsLumpSum: true,      // suppress Versorgungsfreibetrag
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant (gain=0)
+        otherTaxableAnnual: otherAnnualIncome,
+        retirementYear,
+      },
+      rules,
+      'single',
+    )
+    return bd.einkommensteuer + bd.solidaritaetszuschlag
   }
-  // Fünftelregelung §34 EStG: 5 × (tax(other + lumpSum/5) − tax(other))
-  const incomeTax = Math.max(0, 5 * (totalTax(otherAnnualIncome + lumpSum / 5) - totalTax(otherAnnualIncome)))
+
+  // Fünftelregelung: 5 × (T(otherIncome + lumpSum/5) − T(otherIncome))
+  const incomeTax = Math.max(
+    0,
+    5 * (taxOnFuenftel(lumpSum / 5) - taxOnFuenftel(0)),
+  )
 
   if (!profile.publicHealthInsurance) {
     return Math.max(0, lumpSum - incomeTax)
@@ -398,20 +466,48 @@ export function afterTaxBavLumpSum(
 // When otherMonthlyIncome = 0 and bAV is below the basic allowance, result equals the simple formula.
 // kvdrMember: true = KVdR (KV Freibetrag §226(2) SGB V); false = freiwillig versichert (no Freibetrag, §240 SGB V).
 // PKV members: no GKV/PV deductions applied.
+// Routed through calculateRetirementTax (#46) so Versorgungsfreibetrag, Werbungskosten-Pauschbeträge,
+// and Sonderausgaben-Pauschbetrag are applied before computing the marginal rate.
+// otherMonthlyIncome is treated as opaque other taxable income (otherTaxableAnnual) since the
+// calculator does not yet model GRV separately. TODO #47: split into statutoryPension + other.
 export function netBavPayout(
   grossMonthlyPayout: number,
   profile: PersonalProfile,
   rules: GermanRules,
   otherMonthlyIncome = 0,
   kvdrMember = true,
+  retirementYear = rules.year,
 ): number {
-  const totalIncomeTax = (annualIncome: number) => {
-    const it = calculateIncomeTax2026(annualIncome, rules)
-    return it + calculateSolidarityTax(it, rules)
-  }
   const bavAnnual = grossMonthlyPayout * 12
   const otherAnnual = otherMonthlyIncome * 12
-  const marginalAnnualTax = totalIncomeTax(bavAnnual + otherAnnual) - totalIncomeTax(otherAnnual)
+
+  const taxWith = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: bavAnnual,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant (gain=0)
+      otherTaxableAnnual: otherAnnual,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const taxWithout = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant (gain=0)
+      otherTaxableAnnual: otherAnnual,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const marginalAnnualTax = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
 
   if (!profile.publicHealthInsurance) {
     return Math.max(0, grossMonthlyPayout - marginalAnnualTax / 12)
