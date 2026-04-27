@@ -43,7 +43,7 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   {
     category: '2026 Steuerregeln',
     status: 'implementiert',
-    note: 'EStG §32a Tarif, SV-Beiträge 2026, bAV §3 Nr. 63 EStG, Pflege-Freibetrag §226 SGB V.',
+    note: 'EStG §32a Tarif, SV-Beiträge 2026, bAV §3 Nr. 63 EStG. KV-Freibetrag §226(2) SGB V und PV-Freigrenze §57(1) SGB XI für Versorgungsbezüge. (#32)',
   },
   {
     category: 'bAV-Förderung',
@@ -58,7 +58,7 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   {
     category: 'ETF-Vorabpauschale',
     status: 'implementiert',
-    note: 'Jährliche Vorabpauschale nach InvStG §18 (Basisertrag = Jahresanfangswert × Basiszins × 0,7; begrenzt auf tatsächliches Jahreswachstum); Sparerpauschbetrag 1.000 EUR p.a. angesetzt; vorausgezahlte VP mindert den Veräußerungsgewinn bei Entnahme (§19 InvStG). Basiszins 2,53 % (Schätzwert 2026). (#7)',
+    note: 'Jährliche Vorabpauschale nach InvStG §18 (Basisertrag = Jahresanfangswert × Basiszins × 0,7; begrenzt auf tatsächliches Jahreswachstum); Sparerpauschbetrag 1.000 EUR p.a. angesetzt; vorausgezahlte VP mindert den Veräußerungsgewinn bei Entnahme (§19 InvStG). Basiszins 2026: 3,20 % (BMF-Schreiben 2026-01-13). (#7, #31)',
   },
   {
     category: 'ETF-Sparerpauschbetrag',

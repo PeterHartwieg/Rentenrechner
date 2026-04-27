@@ -87,6 +87,37 @@ function calculateEmployerSocialContributions(
   }
 }
 
+// §39b EStG 2026 Vorsorgepauschale for Steuerklasse I-V, GKV-insured.
+// Uses steuerlicher Arbeitslohn (gross minus tax-free bAV conversion) as the base.
+// GKV Teilbetrag uses ermäßigter Beitragssatz (§243 SGB V) per §39b(2)Nr.3 EStG.
+// AV Teilbetrag is included up to the 1,900 EUR cap (GKV + PV + AV ≤ 1,900 EUR).
+export function calculateVorsorgepauschale2026(
+  steuerlichArbeitslohn: number,
+  profile: PersonalProfile,
+  rules: GermanRules,
+): number {
+  const rvBase = contributionBase(steuerlichArbeitslohn, rules.socialSecurity.pensionCapYear)
+  const kvBase = contributionBase(steuerlichArbeitslohn, rules.socialSecurity.healthCareCapYear)
+  const additionalHealthRate = profile.healthAdditionalContributionPct / 100
+
+  const rvTeilbetrag = rvBase * rules.socialSecurity.pensionEmployeeRate
+
+  const kvTeilbetrag = profile.publicHealthInsurance
+    ? kvBase * (rules.socialSecurity.healthReducedRate / 2 + additionalHealthRate / 2)
+    : 0
+
+  const pvTeilbetrag = profile.publicHealthInsurance
+    ? kvBase * careEmployeeRateForChildren(profile.children, rules)
+    : 0
+
+  // AV Teilbetrag: only included if GKV + PV + AV does not exceed 1,900 EUR
+  const kvpvSum = kvTeilbetrag + pvTeilbetrag
+  const avActual = rvBase * rules.socialSecurity.unemploymentEmployeeRate
+  const avTeilbetrag = Math.max(0, Math.min(avActual, 1_900 - kvpvSum))
+
+  return rvTeilbetrag + kvTeilbetrag + pvTeilbetrag + avTeilbetrag
+}
+
 export function calculateSalaryResult(
   profile: PersonalProfile,
   rules: GermanRules,
@@ -105,12 +136,12 @@ export function calculateSalaryResult(
     profile,
     rules,
   )
-  // BMF PAP 2026: Vorsorgepauschale = RV + GKV + PV (Arbeitslosenversicherung excluded)
-  const vorsorgepauschale = social.pension + social.health + social.care
+  // §39b EStG 2026 Vorsorgepauschale based on steuerlicher Arbeitslohn
+  const steuerlichArbeitslohn = profile.grossSalaryYear - taxFreeConversion
+  const vorsorgepauschale = calculateVorsorgepauschale2026(steuerlichArbeitslohn, profile, rules)
   const taxableIncome = Math.max(
     0,
-    profile.grossSalaryYear -
-      taxFreeConversion -
+    steuerlichArbeitslohn -
       vorsorgepauschale -
       rules.employeeAllowance -
       rules.specialExpensesAllowance,

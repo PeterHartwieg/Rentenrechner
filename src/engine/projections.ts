@@ -192,16 +192,15 @@ export function netBavPayout(
   const annualIncomeTax = calculateIncomeTax2026(grossMonthlyPayout * 12, rules)
   const additionalHealthRate = profile.healthAdditionalContributionPct / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
-  const healthBaseMonthly = Math.max(
-    0,
-    grossMonthlyPayout - rules.socialSecurity.kvFreibetragVersorgungMonthly,
-  )
-  const careBaseMonthly = Math.max(
-    0,
-    grossMonthlyPayout - rules.socialSecurity.kvFreibetragVersorgungMonthly,
-  )
+  const threshold = rules.socialSecurity.kvFreibetragVersorgungMonthly
+  // KV §226(2) SGB V: Freibetrag — only the excess above the threshold is subject to GKV
+  const healthBaseMonthly = Math.max(0, grossMonthlyPayout - threshold)
+  // PV §57(1) SGB XI: Freigrenze — if at or below threshold, no PV; above threshold, PV on full amount
+  const careMonthly =
+    grossMonthlyPayout > threshold
+      ? grossMonthlyPayout * rules.socialSecurity.careRetirementChildlessRate
+      : 0
   const healthMonthly = healthBaseMonthly * healthRate
-  const careMonthly = careBaseMonthly * rules.socialSecurity.careRetirementChildlessRate
 
   return Math.max(0, grossMonthlyPayout - annualIncomeTax / 12 - healthMonthly - careMonthly)
 }

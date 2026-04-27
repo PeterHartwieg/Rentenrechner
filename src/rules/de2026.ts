@@ -19,11 +19,13 @@ export const de2026Rules: GermanRules = {
     unemploymentEmployeeRate: 0.013,
     unemploymentEmployerRate: 0.013,
     healthGeneralRate: 0.146,
+    // ermäßigter Beitragssatz (§243 SGB V, without Krankengeld entitlement): used in §39b EStG Vorsorgepauschale
+    healthReducedRate: 0.14,
     careEmployeeBaseRate: 0.018,
     careEmployeeChildlessRate: 0.024,
     careEmployerRate: 0.018,
     careRetirementChildlessRate: 0.042,
-    // SGB V section 226: 1/20 of the 2026 monthly Bezugsgröße West (3,955 EUR).
+    // §226(2) SGB V KV-Freibetrag (= §57(1) SGB XI PV-Freigrenze): 1/20 of monthly Bezugsgröße West 2026 (3,955 EUR)
     kvFreibetragVersorgungMonthly: 197.75,
   },
   bav: {
@@ -35,7 +37,7 @@ export const de2026Rules: GermanRules = {
     taxRate: 0.25,
     solidarityRate: 0.055,
     saverAllowance: 1_000,
-    // BMF Basiszins nach §203 BewG: 2.53 % (2025 value; 2026 value not yet published at model date)
-    basiszins: 0.0253,
+    // BMF Basiszins nach §203 BewG für Vorabpauschale 2026: 3.20 % (BMF-Schreiben 2026-01-13)
+    basiszins: 0.032,
   },
 }

@@ -31,6 +31,9 @@
 - **#7** ETF Vorabpauschale + annual Sparerpauschbetrag: InvStG §18 annual tax drag; initial Basiszins 2,53%; gross VP reduces exit gain (§19 InvStG); Sparerpauschbetrag 1.000 EUR applied in accumulation + payout (superseded by **#31** and **#36**)
 - **#9** bAV waterfall: Bruttoumwandlung → −Steuerersparnis → −SV-Ersparnis → =Nettoaufwand → +AG-Zuschuss → =Monatlicher Beitrag; displayed as inline panel in sidebar
 - **#11** localStorage persistence: state saved to `rentenrechner-state-v1`; restored on reload; Reset button in sidebar heading restores defaults
+- **#31** Official 2026 Basiszins: `de2026Rules.capitalGains.basiszins` updated to `0.032` (BMF-Schreiben 2026-01-13); UI text updated; regression test added
+- **#32** bAV retirement KV/PV base corrected: KV uses §226(2) SGB V Freibetrag (deduct 197.75 EUR before rate); PV uses §57(1) SGB XI Freigrenze (zero PV ≤ 197.75 EUR, full-amount PV > 197.75 EUR); test replaced with correct Freigrenze assertions
+- **#33** §39b EStG 2026 Vorsorgepauschale reworked: `calculateVorsorgepauschale2026` helper uses steuerlicher Arbeitslohn, ermäßigter GKV rate (14 %), PV childcare discount, AV Teilbetrag capped by 1,900 EUR rule; `healthReducedRate` added to rules; all salary tests updated
 
 ---
 
@@ -48,54 +51,6 @@ Primary sources checked:
 - bAV entitlement/subsidy/tax rules: https://www.gesetze-im-internet.de/betravg/__1a.html and https://www.gesetze-im-internet.de/estg/__3.html
 - ETF tax basis and partial exemptions: https://www.gesetze-im-internet.de/invstg_2018/__18.html, https://www.gesetze-im-internet.de/invstg_2018/__19.html, https://www.gesetze-im-internet.de/invstg_2018/__20.html
 - Private insurance tax: https://www.gesetze-im-internet.de/estg/__20.html and https://www.gesetze-im-internet.de/estg/__52.html
-
-### P0: Correctness Blockers
-
-#### 31. Update ETF Basiszins to the Official 2026 Value
-
-`src/rules/de2026.ts` still uses `basiszins: 0.0253` and UI text calls it a 2026 estimate. The BMF published the official basiszins for the 2026 Vorabpauschale on 2026-01-13: **3.20 %**.
-
-**Target:** update `de2026Rules.capitalGains.basiszins` to `0.032`, update comments/UI text, and add a test that fails if the 2026 rule value regresses.
-
-**Acceptance criteria:**
-- Rule value is `0.032`.
-- Berechnungshinweise no longer say "Schätzwert 2026" or 2.53 %.
-- Test covers the official 2026 basiszins and a basic Vorabpauschale calculation.
-
----
-
-#### 32. Correct bAV Retirement KV/PV Contribution Base
-
-`netBavPayout` subtracts `kvFreibetragVersorgungMonthly` from both health and care bases. The 2026 Betriebsrentenfreibetrag applies to statutory health-insurance contributions; Pflegeversicherung still uses the threshold/Freigrenze behavior and has no equivalent Freibetrag. The current test around `netBavPayout` asserts the wrong legal model.
-
-**Target:** split the retirement health and care contribution bases:
-- KV: apply the 1/20 Bezugsgröße Freibetrag to qualifying bAV/Versorgungsbezüge.
-- PV: if the relevant Versorgungsbezüge are at or below the threshold, no PV; if above it, PV applies to the full relevant amount.
-- Keep room for aggregation with other Versorgungsbezüge in **#6**.
-
-**Acceptance criteria:**
-- Tests cover below/equal/above the 197.75 EUR 2026 threshold for both KV and PV.
-- Existing test "applies the same KV Freibetrag base to bAV health and care deductions" is removed/replaced.
-- UI wording stops referring to a "Pflege-Freibetrag §226 SGB V".
-
----
-
-#### 33. Rework the 2026 Vorsorgepauschale to Match §39b EStG
-
-The code currently sets `vorsorgepauschale = social.pension + social.health + social.care` and explicitly excludes Arbeitslosenversicherung. Under §39b EStG from 2026, the Vorsorgepauschale has separate Teilbeträge for RV, GKV, PV, private KV/PV, and AV. The AV Teilbetrag is included for Steuerklassen I-V only to the extent that AV plus KV/PV/private Teilbeträge do not exceed 1,900 EUR. The GKV Teilbetrag uses the ermäßigten Beitragssatz plus Zusatzbeitrag, not the full 14.6 % Krankengeld rate.
-
-**Target:** implement a dedicated `calculateVorsorgepauschale2026` helper instead of reusing actual social contributions.
-
-**Acceptance criteria:**
-- Uses steuerlicher Arbeitslohn and each applicable Beitragsbemessungsgrenze per §39b.
-- RV Teilbetrag = typified employee share (50 % of general RV contribution).
-- GKV Teilbetrag uses ermäßigter Beitragssatz + Zusatzbeitrag.
-- PV Teilbetrag uses current childless/children logic.
-- AV Teilbetrag is included/capped according to the 1,900 EUR rule.
-- Handles public and private health-insurance profiles explicitly.
-- Tests include low-income cases where AV is partly or fully included, default 75k where AV is capped out, and bAV conversion cases where taxable wage and SV wage differ.
-
----
 
 ### P1: Accuracy Gaps
 
@@ -259,9 +214,9 @@ Private insurance is reduced to fee drag + steuerfrei/normal. Too coarse for rea
 
 ## Recommended Implementation Order
 
-1. **#31** Update 2026 ETF Basiszins to 3.20 %.
-2. **#32** Correct bAV retirement KV/PV base handling.
-3. **#33** Rework the 2026 Vorsorgepauschale helper and tests.
+1. ~~**#31** Update 2026 ETF Basiszins to 3.20 %.~~ ✓ done
+2. ~~**#32** Correct bAV retirement KV/PV base handling.~~ ✓ done
+3. ~~**#33** Rework the 2026 Vorsorgepauschale helper and tests.~~ ✓ done
 4. **#34** Make bAV employer subsidy / contribution-limit handling converge.
 5. **#35 / #25** Turn profile flags into real inputs and remove hard-coded assumption text.
 6. **#36 / #37** Finish ETF tax timing and payout-basis tracking.
@@ -276,9 +231,6 @@ Private insurance is reduced to fee drag + steuerfrei/normal. Too coarse for rea
 - `calculateSolidarityTax`: Milderungszone transition near `incomeTax = 20 350`.
 - `calculateCapitalGainsTax`: all `partialExemption` values from InvStG §20.
 - `calculateBavFunding`: SV-savings cap at the 4 %-BBG threshold (~338 EUR/month); tax-free overflow above 8 % BBG.
-- `de2026Rules.capitalGains.basiszins`: official 2026 BMF value 3.20 %.
-- `netBavPayout`: KV Freibetrag vs PV Freigrenze around 197.75 EUR/month.
-- `calculateVorsorgepauschale2026`: low/default/high salary, public/private health insurance, bAV conversion, and AV 1,900 EUR cap cases.
-- ETF tax: first-year monthly purchases, acquisition-year Vorabpauschale proration, and payout-phase basis depletion.
+- ETF tax: acquisition-year Vorabpauschale proration for monthly purchases and payout-phase basis depletion.
 - `loadSavedState`: malformed, stale, partial, and future-version localStorage payloads.
 - Default-profile end-to-end snapshot: `capitalAtRetirement`, `afterTaxLumpSum`, `netMonthlyPayout` for each product × scenario cell.

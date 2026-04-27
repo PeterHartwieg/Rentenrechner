@@ -75,6 +75,8 @@ export interface GermanRules {
     unemploymentEmployeeRate: number
     unemploymentEmployerRate: number
     healthGeneralRate: number
+    // ermäßigter Beitragssatz (without Krankengeld) — used for Vorsorgepauschale §39b EStG
+    healthReducedRate: number
     careEmployeeBaseRate: number
     careEmployeeChildlessRate: number
     careEmployerRate: number
