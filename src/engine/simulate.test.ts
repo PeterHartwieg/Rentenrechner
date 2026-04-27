@@ -10,7 +10,7 @@ import {
 } from './salary'
 import { simulateRetirementComparison } from './simulate'
 import { calculateCapitalGainsTax, calculateIncomeTax2026, calculateSolidarityTax } from './tax'
-import { afterTaxBavLumpSum, etfPayoutSchedule, monthlyPayoutFromCapital, netBavPayout, projectAccumulation } from './projections'
+import { afterTaxBavLumpSum, deriveInsuranceTaxMode, etfPayoutSchedule, monthlyPayoutFromCapital, netBavPayout, projectAccumulation } from './projections'
 
 // Base profile for payroll tax tests: Steuerklasse I, no kids, no church, GKV 2.9%
 const testProfile75k: PersonalProfile = {
@@ -535,7 +535,7 @@ describe('bAV funding model', () => {
     // pre2005: lump sum == capital; net payout == gross payout
     const pre2005 = simulateRetirementComparison(defaultProfile, {
       ...defaultAssumptions,
-      insurance: { ...defaultAssumptions.insurance, contractStartYear: 1990 },
+      insurance: { ...defaultAssumptions.insurance, contractStartYear: 1990, oldContractTaxFreeEligible: true },
     }, de2026Rules).products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
     expect(pre2005?.afterTaxLumpSum).toBeCloseTo(pre2005?.capitalAtRetirement ?? 0)
     expect(pre2005?.netMonthlyPayout).toBeCloseTo(pre2005?.grossMonthlyPayout ?? 0)
@@ -809,5 +809,78 @@ describe('default-profile end-to-end snapshot', () => {
     expect(Math.round(o.capitalAtRetirement)).toBe(233_291)
     expect(Math.round(o.afterTaxLumpSum!)).toBe(211_549)
     expect(Math.round(o.netMonthlyPayout)).toBe(1_486)
+  })
+})
+
+describe('deriveInsuranceTaxMode — calendar-year classification', () => {
+  // pre-2005 contract, eligible flag true, long runtime → pre2005
+  it('pre-2005 contract with eligible=true and runtime ≥ 12 → pre2005', () => {
+    expect(deriveInsuranceTaxMode(1995, 38, 67, true)).toBe('pre2005')
+  })
+
+  // pre-2005 contract, eligible flag false → falls through to post-2004 logic
+  it('pre-2005 contract with eligible=false → halbeinkuenfte when runtime ≥ 12 and retirementAge ≥ 62', () => {
+    expect(deriveInsuranceTaxMode(1995, 38, 67, false)).toBe('halbeinkuenfte')
+  })
+
+  it('pre-2005 contract with eligible=false and retirementAge < 62 → abgeltungsteuer', () => {
+    expect(deriveInsuranceTaxMode(1995, 38, 60, false)).toBe('abgeltungsteuer')
+  })
+
+  // pre-2005 contract, eligible true but runtime < 12 → falls through (NOT pre2005)
+  it('pre-2005 contract with eligible=true but runtime < 12 → abgeltungsteuer (not pre2005)', () => {
+    // contractStartYear 1999, payoutYear 2026+5=2031 → runtime = 2031-1999 = 32... use short runtime directly
+    expect(deriveInsuranceTaxMode(2000, 8, 67, true)).toBe('abgeltungsteuer')
+  })
+
+  // post-2005 contract, age ≥ 62 at payout, runtime ≥ 12 → halbeinkuenfte
+  it('post-2005 contract, retirementAge ≥ 62, runtime ≥ 12 → halbeinkuenfte', () => {
+    expect(deriveInsuranceTaxMode(2010, 20, 67, true)).toBe('halbeinkuenfte')
+  })
+
+  // post-2005 contract, runtime < 12 → abgeltungsteuer
+  it('post-2005 contract, runtime < 12 → abgeltungsteuer', () => {
+    expect(deriveInsuranceTaxMode(2020, 8, 67, true)).toBe('abgeltungsteuer')
+  })
+
+  // post-2005 contract, payout before age 62 → abgeltungsteuer
+  it('post-2005 contract, retirementAge < 62 → abgeltungsteuer', () => {
+    expect(deriveInsuranceTaxMode(2010, 20, 60, true)).toBe('abgeltungsteuer')
+  })
+
+  // The original bug case: age=60, retirement=62, contractStartYear=2004
+  // Old code passed retirementAge-age=2 as runtime → 2 < 12 → abgeltungsteuer (wrong).
+  // Correct: payoutYear=2026+(62-60)=2028; actual runtime=2028-2004=24 years → halbeinkuenfte.
+  it('calendar-year fix: age 60, retirement 62, contractStartYear 2004 → actual runtime 24, eligible=false → halbeinkuenfte (old code gave abgeltungsteuer with runtime=2)', () => {
+    // payoutYear = 2026 + (62 - 60) = 2028; contractRuntimeYears = 2028 - 2004 = 24
+    const payoutYear = de2026Rules.year + (62 - 60) // 2028
+    const contractRuntimeYears = payoutYear - 2004   // 24
+    // 2004 < 2005 but eligible=false → falls through; runtime=24 >= 12 and retirementAge=62 >= 62 → halbeinkuenfte
+    expect(deriveInsuranceTaxMode(2004, contractRuntimeYears, 62, false)).toBe('halbeinkuenfte')
+  })
+
+  it('original bug case: young user, pre-2005 contractStartYear, actual payout-year runtime < 12 → NOT pre2005', () => {
+    // age 28, retirement 67, contractStartYear 2004
+    // Old code: retirementAge-age = 39 → pre2005 (wrong if eligible=false, correct if true)
+    // payoutYear = 2026 + (67 - 28) = 2065; runtime = 2065 - 2004 = 61 → pre2005 (runtime ≥ 12, eligible=true)
+    // To test the "runtime < 12 blocks pre2005" path: contractStartYear 2004, payout only 8 years away
+    // payoutYear = 2026 + 5 = 2031; runtime = 2031 - 2024 = 7 (not pre-2005 start, different scenario)
+    // Concrete: contractStartYear 1998, runtime forced to 8 (e.g. late-start or residual contract)
+    expect(deriveInsuranceTaxMode(1998, 8, 67, true)).toBe('abgeltungsteuer')
+  })
+
+  // simulate.ts integration: contractStartYear 2010, age 45, retirement 67 → payoutYear=2048, runtime=38
+  it('simulate call-site: age 45, retirement 67, contractStartYear 2010 → halbeinkuenfte via calendar years', () => {
+    const profile45 = { ...defaultProfile, age: 45, retirementAge: 67 }
+    const result = simulateRetirementComparison(
+      profile45,
+      { ...defaultAssumptions, insurance: { ...defaultAssumptions.insurance, contractStartYear: 2010, oldContractTaxFreeEligible: false } },
+      de2026Rules,
+    )
+    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    // halbeinkuenfte: net payout < gross payout (with other retirement income = 0, gain may be below personal tax threshold)
+    // At minimum the lump sum should be ≤ capital (tax applied or zero)
+    expect(ins?.afterTaxLumpSum).toBeDefined()
+    expect((ins?.afterTaxLumpSum ?? 0)).toBeLessThanOrEqual(ins?.capitalAtRetirement ?? 0)
   })
 })

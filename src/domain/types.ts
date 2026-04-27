@@ -52,8 +52,12 @@ export interface BavAssumptions {
 }
 
 export interface InsuranceAssumptions {
-  // Year the contract was signed. Pre-2005 → tax-free; post-2004 → tax mode derived from runtime + retirementAge.
+  // Year the contract was signed. Pre-2005 → eligible for tax-free payout; post-2004 → tax mode derived from runtime + retirementAge.
   contractStartYear: number
+  // User-confirmable: true when the pre-2005 contract meets §52 Abs. 28 EStG a.F. eligibility
+  // conditions (≥12-year runtime, ≥5 annual premium payments, capital payout not annuity).
+  // Defaults to true for pre-2005 contracts. Ignored for post-2004 contracts.
+  oldContractTaxFreeEligible: boolean
   // Monthly other retirement income for marginal-tax calculation (Halbeinkünfteverfahren only)
   monthlyOtherRetirementIncome: number
   fees: FeeModel

@@ -275,15 +275,20 @@ export function etfPayoutSchedule(
 }
 
 // Derives the private-insurance tax treatment from the contract year, accumulation period, and retirement age.
-// pre2005: §52 Abs. 28 EStG a.F. — payout is tax-free.
+// pre2005: §52 Abs. 28 EStG a.F. — payout is tax-free. Requires contractStartYear < 2005,
+//   oldContractTaxFreeEligible = true (user-confirmed: ≥5 annual premiums, capital payout),
+//   AND contractRuntimeYears ≥ 12.
 // halbeinkuenfte: §20 Abs. 1 Nr. 6 EStG — ≥12-year contract, payout at age ≥62: only half the gain taxable at personal income tax rate.
 // abgeltungsteuer: §20 Abs. 2 EStG — all other post-2004 contracts: full gain at 25% Abgeltungsteuer.
 export function deriveInsuranceTaxMode(
   contractStartYear: number,
   contractRuntimeYears: number,
   retirementAge: number,
+  oldContractTaxFreeEligible = true,
 ): InsuranceTaxMode {
-  if (contractStartYear < 2005) return 'pre2005'
+  if (contractStartYear < 2005 && oldContractTaxFreeEligible && contractRuntimeYears >= 12) {
+    return 'pre2005'
+  }
   if (contractRuntimeYears >= 12 && retirementAge >= 62) return 'halbeinkuenfte'
   return 'abgeltungsteuer'
 }

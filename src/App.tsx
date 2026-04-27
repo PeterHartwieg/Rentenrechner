@@ -281,10 +281,13 @@ function App() {
   const cashflowAnnualTaxSvSavings =
     cashflowProductId === 'bav' ? simulation.bavFunding.annualTaxAndSvSavings : 0
 
+  const insurancePayoutYear = de2026Rules.year + (profile.retirementAge - profile.age)
+  const insuranceContractRuntime = insurancePayoutYear - assumptions.insurance.contractStartYear
   const insuranceTaxMode: InsuranceTaxMode = deriveInsuranceTaxMode(
     assumptions.insurance.contractStartYear,
-    profile.retirementAge - profile.age,
+    insuranceContractRuntime,
     profile.retirementAge,
+    assumptions.insurance.oldContractTaxFreeEligible,
   )
   // Treat absent kvdrMember (pre-migration state) as true — matches the netBavPayout default parameter
   const kvdrMember = assumptions.bav.kvdrMember !== false
@@ -822,6 +825,31 @@ function App() {
               <>Abgeltungsteuer: voller Ertrag mit 25 % + Soli · §20 Abs. 2 EStG</>
             )}
           </small>
+          {assumptions.insurance.contractStartYear < 2005 && (
+            <>
+              <label className="field field-inline">
+                <input
+                  type="checkbox"
+                  checked={assumptions.insurance.oldContractTaxFreeEligible}
+                  onChange={(event) =>
+                    setAssumptions((current) => ({
+                      ...current,
+                      insurance: {
+                        ...current.insurance,
+                        oldContractTaxFreeEligible: event.target.checked,
+                      },
+                    }))
+                  }
+                />
+                <span>Altvertrag steuerfrei nach §52 Abs. 28 EStG a.F. (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre)</span>
+              </label>
+              {assumptions.insurance.contractStartYear < 2005 && !assumptions.insurance.oldContractTaxFreeEligible && (
+                <p className="field-hint">
+                  Steuerfreiheit abgewählt — es gelten die Post-2004-Regeln (Halbeinkünfteverfahren oder Abgeltungsteuer).
+                </p>
+              )}
+            </>
+          )}
           {insuranceTaxMode === 'halbeinkuenfte' && (
             <>
               <NumberField

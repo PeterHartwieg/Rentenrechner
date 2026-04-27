@@ -195,10 +195,16 @@ export function simulateRetirementComparison(
   const bavFunding = calculateBavFunding(profile, rules, assumptions.bav)
   const etfMonthly = bavFunding.monthlyNetCost
   const insuranceMonthly = bavFunding.monthlyNetCost
+  // Use calendar years so the classification is correct regardless of when the contract started.
+  // payoutYear = the calendar year the user reaches retirementAge.
+  // contractRuntimeYears = years from contract start to payout (actual duration as insurer sees it).
+  const payoutYear = rules.year + (profile.retirementAge - profile.age)
+  const contractRuntimeYears = payoutYear - assumptions.insurance.contractStartYear
   const insuranceTaxMode = deriveInsuranceTaxMode(
     assumptions.insurance.contractStartYear,
-    profile.retirementAge - profile.age,
+    contractRuntimeYears,
     profile.retirementAge,
+    assumptions.insurance.oldContractTaxFreeEligible,
   )
 
   const products = assumptions.returnScenarios.flatMap((scenario) => [

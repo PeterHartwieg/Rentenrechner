@@ -40,6 +40,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
   },
   insurance: {
     contractStartYear: 2024,
+    oldContractTaxFreeEligible: false,
     monthlyOtherRetirementIncome: 0,
     fees: {
       annualAssetFee: 0.014,
