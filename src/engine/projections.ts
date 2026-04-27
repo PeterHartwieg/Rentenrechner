@@ -13,6 +13,7 @@ import type {
 import { calculateCapitalGainsTax } from './tax'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
+import { legalConstants } from '../rules/legalConstants'
 
 interface AccumulationInput {
   productId: ProductId
@@ -289,10 +290,17 @@ export function deriveInsuranceTaxMode(
   retirementAge: number,
   oldContractTaxFreeEligible = true,
 ): InsuranceTaxMode {
-  if (contractStartYear < 2005 && oldContractTaxFreeEligible && contractRuntimeYears >= 12) {
+  const { pre2005YearBoundary, halbeinkuenfteMinRuntimeYears, halbeinkuenfteMinAge } = legalConstants.insurance
+  if (
+    contractStartYear < pre2005YearBoundary &&
+    oldContractTaxFreeEligible &&
+    contractRuntimeYears >= halbeinkuenfteMinRuntimeYears
+  ) {
     return 'pre2005'
   }
-  if (contractRuntimeYears >= 12 && retirementAge >= 62) return 'halbeinkuenfte'
+  if (contractRuntimeYears >= halbeinkuenfteMinRuntimeYears && retirementAge >= halbeinkuenfteMinAge) {
+    return 'halbeinkuenfte'
+  }
   return 'abgeltungsteuer'
 }
 
@@ -330,7 +338,9 @@ export function deriveInsuranceTaxMode(
  *   Nr. 4 EStG because the tax benefit during accumulation (§3 Nr. 63 steuerfrei) distinguishes
  *   them from the §19 EStG Direktzusage/Unterstützungskasse context where Fünftelregelung
  *   historically applied (§22 Nr. 5 Satz 2 EStG explicitly excludes the §34 route for
- *   §3-Nr.-63 funded contracts). See LEGAL_REVIEW.md §"bAV Lump-Sum Tax Routing (#48)".
+ *   §3-Nr.-63 funded contracts). Confirmed by BFH X R 25/23 (2025-10-30): a §3 Nr. 63
+ *   capital payout with a free capital option is not "Vergütung für mehrjährige Tätigkeit"
+ *   within §34 EStG. See LEGAL_REVIEW.md §"bAV Lump-Sum Tax Routing (#48)".
  */
 export function deriveBavLumpSumTaxMode(
   durchfuehrungsweg: BavDurchfuehrungsweg,
@@ -611,7 +621,8 @@ export function afterTaxBavLumpSum(
       )
       return bd.einkommensteuer + bd.solidaritaetszuschlag
     }
-    incomeTax = Math.max(0, 5 * (taxOnFuenftel(lumpSum / 5) - taxOnFuenftel(0)))
+    const fuenftel = legalConstants.bav.fuenftelregelungDivisor
+    incomeTax = Math.max(0, fuenftel * (taxOnFuenftel(lumpSum / fuenftel) - taxOnFuenftel(0)))
 
   } else {
     // voll_versorgungsbezug: §22 Nr. 5 EStG — full marginal rate in the payout year.
@@ -654,10 +665,11 @@ export function afterTaxBavLumpSum(
   // Note: applies to ALL taxModes (including pre2005_steuerfrei) because §40b contracts
   // are Versorgungsbezüge under §229 Abs. 1 Satz 1 Nr. 5 SGB V regardless of EStG treatment.
   // -------------------------------------------------------------------------
+  const spreadingMonths = legalConstants.bav.versorgungsbezugSpreadingMonths
   const additionalHealthRate = profile.healthAdditionalContributionPct / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
   const careRate = careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
-  const monthlyBase = lumpSum / 120
+  const monthlyBase = lumpSum / spreadingMonths
   const monthlyOtherIncome = otherAnnualIncome / 12
 
   const kvPv = calculateRetirementKvPv({
@@ -673,9 +685,9 @@ export function afterTaxBavLumpSum(
     careRate,
   })
 
-  // Total KV/PV over 120 months = 120 × per-month deduction on the bAV portion alone.
-  const kvBurden = kvPv.bavKvMonthly * 120
-  const pvBurden = kvPv.bavPvMonthly * 120
+  // Total KV/PV over the spreading period = spreadingMonths × per-month deduction on the bAV portion alone.
+  const kvBurden = kvPv.bavKvMonthly * spreadingMonths
+  const pvBurden = kvPv.bavPvMonthly * spreadingMonths
 
   return Math.max(0, lumpSum - incomeTax - kvBurden - pvBurden)
 }

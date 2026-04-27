@@ -8,7 +8,7 @@ import type { GermanRules } from '../domain/types'
  * Fraction of statutory pension (GRV-Rente) that is taxable, per cohort.
  *
  * Statutory basis: §22 Nr. 1 Satz 3 Buchstabe a Doppelbuchstabe aa EStG,
- *   as amended by the Wachstumschancengesetz (BGBl. 2024 I Nr. 101, in
+ *   as amended by the Wachstumschancengesetz (BGBl. 2024 I Nr. 108, in
  *   force 28 March 2024) which slowed the pace of increase from 1 pp/year
  *   to 0.5 pp/year starting from the 2023 cohort.
  *
@@ -169,15 +169,22 @@ export const de2026Rules: GermanRules = {
     // KV/PV Beitragsbemessungsgrenze monthly ceiling (§6 Abs. 7 SGB V / §55 Abs. 2 SGB XI).
     // = healthCareCapYear / 12 = 69,750 / 12 = 5,812.50 EUR/month.
     // Source: BMAS BBG-Bekanntmachung 2026 (Verordnung über maßgebende Rechengrößen der
-    //   Sozialversicherung für 2026, BGBl. 2025 I Nr. 349, § 5 Abs. 1 Nr. 2) — 69,750 EUR/year.
+    //   Sozialversicherung für 2026 (SVBezGrV 2026), BGBl. 2025 I Nr. 278, §2 Abs. 2) — 69,750 EUR/year.
     //   https://www.bundesgesundheitsministerium.de/beitraege
     healthAndCareCapMonth: 5_812.50,
     // Bezugsgröße West 2026 nach §18 Abs. 1 SGB IV
     bezugsgroesseMonthly: 3_955,
-    // SGB VI Anlage 1: vorläufiges Durchschnittsentgelt 2026 — denominator for Entgeltpunkte
-    durchschnittsentgelt: 45_358,
-    // Aktueller Rentenwert West ab 1.7.2025; 2026 update usually effective 1.7.2026
-    aktuellerRentenwert: 39.32,
+    // SGB VI Anlage 1: vorläufiges Durchschnittsentgelt 2026 — denominator for Entgeltpunkte.
+    // Source: SVBezGrV 2026 §3 Abs. 2 (BGBl. 2025 I Nr. 278).
+    durchschnittsentgelt: 51_944,
+    // Aktueller Rentenwert. The value steps up mid-year per §69 SGB VI:
+    //   2026-01-01 .. 2026-06-30: 40.79 EUR/EP
+    //   2026-07-01 onwards:       42.52 EUR/EP
+    // The calculator treats this as constant across the projection horizon, so we
+    // use the latest prevailing value (post-July 2026) — most representative of
+    // the "today" semantics the engine projects forward.
+    // Source: Deutsche Rentenversicherung — 2026 Rentenanpassung.
+    aktuellerRentenwert: 42.52,
   },
   bav: {
     taxFreePctOfPensionCap: 0.08,

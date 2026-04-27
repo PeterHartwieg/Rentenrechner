@@ -16,7 +16,9 @@ npm run build           # production build
 
 | File | Role |
 |------|------|
-| `src/rules/de2026.ts` | All 2026 statutory values (BBG, rates, limits). Single source of truth — never hardcode numbers in the engine. Also exports `besteuerungsanteilGrv`, `versorgungsfreibetrag`, and Pauschbeträge constants. |
+| `src/rules/de2026.ts` | All 2026 year-specific statutory values (BBG, GKV/PV rates, Rentenwert, Basiszins, cohort tables, Pauschbeträge). Update once a year when the BBG-Bekanntmachung and rate adjustments are published. Never hardcode statutory numbers in the engine. |
+| `src/rules/legalConstants.ts` | Cross-year statutory constants: 1/120 SGB V spreading, §34 EStG Fünftelregelung divisor, §20 Abs. 1 Nr. 6 EStG age/runtime thresholds, halbeinkünfte factor. Change only when the underlying law changes (not on the annual rate-update cycle). |
+| `src/rules/index.ts` | Re-exports `activeRules` (year-specific) and `legalConstants`. To swap rule years: add `de2027.ts`, change one line in `index.ts` to point `activeRules` at the new year, run tests. |
 | `src/domain/types.ts` | All shared types. Read this first. |
 | `src/data/defaultScenario.ts` | Default profile and assumptions used by tests and initial UI state. |
 | `src/engine/tax.ts` | `calculateIncomeTax2026`, `calculateSolidarityTax`, `calculateCapitalGainsTax`. |

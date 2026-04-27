@@ -65,6 +65,7 @@ import {
   werbungskostenPauschalRenten,
   werbungskostenPauschalVersorgungsbezuege,
 } from '../rules/de2026'
+import { legalConstants } from '../rules/legalConstants'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 export function calculateRetirementTax(
@@ -130,7 +131,7 @@ export function calculateRetirementTax(
     abgeltungsteuerOnPrivateInsurance = flatTax + flatTax * rules.capitalGains.solidarityRate
   } else {
     // halbeinkuenfte: only half the gain enters the personal-income-tax base (§20 Abs. 1 Nr. 6).
-    privateInsuranceTaxable = Math.max(0, privateInsuranceTaxableAnnual) / 2
+    privateInsuranceTaxable = Math.max(0, privateInsuranceTaxableAnnual) * legalConstants.insurance.halbeinkuenfteFactor
     abgeltungsteuerOnPrivateInsurance = 0
   }
 

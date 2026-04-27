@@ -302,7 +302,7 @@ describe('social-security helpers', () => {
 describe('#5 GRV reduction estimate', () => {
   // Shared constants for BBG-regime tests:
   // RV BBG = 101_400, svFreeLimit = 4% × 101_400 = 4_056/year
-  // durchschnittsentgelt = 45_358, aktuellerRentenwert = 39.32
+  // durchschnittsentgelt = 51_944 (SVBezGrV 2026), aktuellerRentenwert = 42.52 EUR/EP (DRV 2026, post-July)
   // yearsToRetirement = 67 - 28 = 39 (defaultProfile)
 
   it('estimatedMonthlyGrvReduction is zero when conversion is zero', () => {
@@ -332,8 +332,8 @@ describe('#5 GRV reduction estimate', () => {
     // grossSalary = 50_000 < RV_BBG 101_400
     // annualConversion = 2_400, effectiveSvFreeConversion = 2_400 (< svFreeLimit 4_056)
     // lostPensionableBase = min(50_000, 101_400) - min(47_600, 101_400) = 50_000 - 47_600 = 2_400
-    // EP_per_year = 2_400 / 45_358 = 0.052913
-    // estimatedMonthlyGrvReduction = 0.052913 × 39 × 39.32 ≈ 81.14
+    // EP_per_year = 2_400 / 51_944 ≈ 0.046204
+    // estimatedMonthlyGrvReduction ≈ 0.046204 × 39 × 42.52 ≈ 76.61
     const profile50k: PersonalProfile = { ...defaultProfile, grossSalaryYear: 50_000 }
     const f = calculateBavFunding(profile50k, de2026Rules, {
       ...defaultAssumptions.bav,
