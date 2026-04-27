@@ -8,7 +8,7 @@ export const de2026Rules: GermanRules = {
     basicAllowance: 12_348,
     firstProgressionEnd: 17_799,
     secondProgressionEnd: 69_878,
-    topTaxStart: 277_825,
+    topTaxStart: 277_826,
     solidarityFreeTax: 20_350,
   },
   socialSecurity: {
@@ -19,10 +19,12 @@ export const de2026Rules: GermanRules = {
     unemploymentEmployeeRate: 0.013,
     unemploymentEmployerRate: 0.013,
     healthGeneralRate: 0.146,
+    careEmployeeBaseRate: 0.018,
     careEmployeeChildlessRate: 0.024,
     careEmployerRate: 0.018,
     careRetirementChildlessRate: 0.042,
-    retirementHealthAllowanceMonthly: 197.75,
+    // SGB V section 226: 1/20 of the 2026 monthly Bezugsgröße West (3,955 EUR).
+    kvFreibetragVersorgungMonthly: 197.75,
   },
   bav: {
     taxFreePctOfPensionCap: 0.08,

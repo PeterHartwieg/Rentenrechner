@@ -32,16 +32,14 @@ export interface AccumulationResult {
   rows: YearlyProjection[]
 }
 
-function annualNetRate(annualReturn: number, annualAssetFee: number): number {
-  return (1 + annualReturn) * (1 - annualAssetFee) - 1
-}
-
 export function monthlyRate(annualRate: number): number {
   return Math.pow(1 + annualRate, 1 / 12) - 1
 }
 
 export function projectAccumulation(input: AccumulationInput): AccumulationResult {
-  const monthlyNetRate = monthlyRate(annualNetRate(input.annualReturn, input.fees.annualAssetFee))
+  const monthlyGrossRate = monthlyRate(input.annualReturn)
+  // (1-f)^(1/12): portion of capital retained after TER each month
+  const monthlyRetentionFactor = Math.pow(1 - input.fees.annualAssetFee, 1 / 12)
   const acquisitionMonths = Math.max(1, input.fees.acquisitionCostSpreadYears * 12)
   const plannedContributions = input.monthlyProductContribution * input.months
   const monthlyAcquisitionCost =
@@ -61,18 +59,25 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     const acquisitionCost = month <= acquisitionMonths ? monthlyAcquisitionCost : 0
     const contributionFee = input.monthlyProductContribution * input.fees.contributionFee
     const fixedFee = input.fees.fixedMonthlyFee
-    const fees = Math.min(
+    const explicitFees = Math.min(
       input.monthlyProductContribution,
       contributionFee + fixedFee + acquisitionCost,
     )
-    const investedContribution = Math.max(0, input.monthlyProductContribution - fees)
+    const investedContribution = Math.max(0, input.monthlyProductContribution - explicitFees)
 
-    capital = (capital + investedContribution) * (1 + monthlyNetRate)
+    // Apply gross return, then deduct TER from the resulting balance.
+    // Mathematically identical to the old (1 + monthlyNetRate) combined rate,
+    // but now the TER drag is visible as a separate tracked fee.
+    const capitalAfterGrowth = (capital + investedContribution) * (1 + monthlyGrossRate)
+    const assetFee = capitalAfterGrowth * (1 - monthlyRetentionFactor)
+    capital = capitalAfterGrowth - assetFee
+
+    const monthlyFees = explicitFees + assetFee
     totalUserCost += input.monthlyUserCost
     totalProductContributions += input.monthlyProductContribution
     totalEmployerContributions += input.monthlyEmployerContribution
-    totalFees += fees
-    feesInCurrentYear += fees
+    totalFees += monthlyFees
+    feesInCurrentYear += monthlyFees
 
     if (month % 12 === 0 || month === input.months) {
       const year = Math.ceil(month / 12)
@@ -88,6 +93,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
         yearlyEmployerContribution: input.monthlyEmployerContribution * 12,
         yearlyFees: feesInCurrentYear,
         cumulativeFees: totalFees,
+        cumulativeProductContributions: totalProductContributions,
       })
       feesInCurrentYear = 0
     }
@@ -146,7 +152,7 @@ export function afterTaxInvestmentCapital(
   partialExemption: number,
 ): number {
   const gain = Math.max(0, capital - totalContributions)
-  return capital - calculateCapitalGainsTax(gain, rules, partialExemption)
+  return capital - calculateCapitalGainsTax(gain, rules, partialExemption, 0)
 }
 
 export function netBavPayout(
@@ -159,35 +165,14 @@ export function netBavPayout(
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
   const healthBaseMonthly = Math.max(
     0,
-    grossMonthlyPayout - rules.socialSecurity.retirementHealthAllowanceMonthly,
+    grossMonthlyPayout - rules.socialSecurity.kvFreibetragVersorgungMonthly,
   )
-  const careBaseMonthly =
-    grossMonthlyPayout > rules.socialSecurity.retirementHealthAllowanceMonthly
-      ? grossMonthlyPayout
-      : 0
+  const careBaseMonthly = Math.max(
+    0,
+    grossMonthlyPayout - rules.socialSecurity.kvFreibetragVersorgungMonthly,
+  )
   const healthMonthly = healthBaseMonthly * healthRate
   const careMonthly = careBaseMonthly * rules.socialSecurity.careRetirementChildlessRate
 
   return Math.max(0, grossMonthlyPayout - annualIncomeTax / 12 - healthMonthly - careMonthly)
-}
-
-export function afterTaxBavLumpSum(
-  capital: number,
-  profile: PersonalProfile,
-  rules: GermanRules,
-): number {
-  const incomeTax = calculateIncomeTax2026(capital, rules)
-  const additionalHealthRate = profile.healthAdditionalContributionPct / 100
-  const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
-  const healthBase = Math.max(
-    0,
-    capital - rules.socialSecurity.retirementHealthAllowanceMonthly * 12,
-  )
-  const health = healthBase * healthRate
-  const care =
-    capital > rules.socialSecurity.retirementHealthAllowanceMonthly * 12
-      ? capital * rules.socialSecurity.careRetirementChildlessRate
-      : 0
-
-  return Math.max(0, capital - incomeTax - health - care)
 }

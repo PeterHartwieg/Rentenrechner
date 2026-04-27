@@ -2,7 +2,6 @@ export type ProductId = 'etf' | 'bav' | 'versicherung'
 
 export type InsuranceTaxMode = 'steuerfrei' | 'normal'
 
-export type PrivateContributionMode = 'same-as-bav-net-cost' | 'custom'
 
 export type ReturnScenarioId = 'konservativ' | 'basis' | 'optimistisch'
 
@@ -32,8 +31,6 @@ export interface FeeModel {
 }
 
 export interface EtfAssumptions {
-  monthlyInvestment: number
-  contributionMode: PrivateContributionMode
   annualAssetFee: number
   equityPartialExemption: number
 }
@@ -46,8 +43,6 @@ export interface BavAssumptions {
 }
 
 export interface InsuranceAssumptions {
-  monthlyPremium: number
-  contributionMode: PrivateContributionMode
   taxMode: InsuranceTaxMode
   fees: FeeModel
 }
@@ -80,10 +75,11 @@ export interface GermanRules {
     unemploymentEmployeeRate: number
     unemploymentEmployerRate: number
     healthGeneralRate: number
+    careEmployeeBaseRate: number
     careEmployeeChildlessRate: number
     careEmployerRate: number
     careRetirementChildlessRate: number
-    retirementHealthAllowanceMonthly: number
+    kvFreibetragVersorgungMonthly: number
   }
   bav: {
     taxFreePctOfPensionCap: number
@@ -104,6 +100,8 @@ export interface SalaryResult {
   incomeTax: number
   solidarityTax: number
   social: SocialContributionBreakdown
+  // BMF PAP §3: RV + GKV + PV only (no unemployment)
+  vorsorgepauschale: number
 }
 
 export interface SocialContributionBreakdown {
@@ -128,6 +126,12 @@ export interface BavFundingResult {
   employerSocialSecuritySavingAnnual: number
   salaryWithoutBav: SalaryResult
   salaryWithBav: SalaryResult
+  // §3 Nr. 63 EStG (8% BBG) and §1 SvEV (4% BBG) limits applied to total bAV
+  totalBavContributionAnnual: number
+  taxFreePortionAnnual: number
+  svFreePortionAnnual: number
+  taxableOverflowAnnual: number
+  svLiableOverflowAnnual: number
 }
 
 export interface YearlyProjection {
@@ -142,6 +146,7 @@ export interface YearlyProjection {
   yearlyEmployerContribution: number
   yearlyFees: number
   cumulativeFees: number
+  cumulativeProductContributions: number
 }
 
 export interface ProductResult {
@@ -159,11 +164,11 @@ export interface ProductResult {
   totalFees: number
   capitalAtRetirement: number
   realCapitalAtRetirement: number
-  afterTaxLumpSum: number
+  afterTaxLumpSum: number | null
   grossMonthlyPayout: number
   netMonthlyPayout: number
   taxAndSvSavings: number
-  valueMultipleOnUserCost: number
+  valueMultipleOnUserCost: number | null
   capitalMultipleAnnualized: number
   rows: YearlyProjection[]
 }

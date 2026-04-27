@@ -129,6 +129,13 @@
   background: #ffffff;
 }
 
+.field-hint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #667085;
+  line-height: 1.4;
+}
+
 .input-shell em {
   flex: 0 0 auto;
   padding-right: 10px;
@@ -335,6 +342,120 @@ th {
   margin: 12px 0 0;
   color: #667085;
   font-size: 0.86rem;
+}
+
+/* Warnings panel */
+.warnings-panel {
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.warnings-panel h2 {
+  margin: 0 0 14px;
+  letter-spacing: 0;
+}
+
+.warnings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.warning-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #e5ebf2;
+  border-radius: 6px;
+}
+
+.warning-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.warning-item-category {
+  font-weight: 700;
+  font-size: 0.87rem;
+  color: #172033;
+}
+
+.warning-item-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #667085;
+}
+
+.badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-implementiert {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.badge-vereinfacht {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.badge-nicht-modelliert {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+/* Cashflow panel */
+.cashflow-panel .cashflow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.cashflow-panel .cashflow-header h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.cashflow-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #344054;
+}
+
+.cashflow-selector select {
+  border: 1px solid #c9d7e5;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  color: #172033;
+}
+
+.cashflow-panel table {
+  min-width: 1120px;
+}
+
+tfoot .totals-row td {
+  font-weight: 700;
+  border-top: 2px solid #c9d7e5;
 }
 
 @media (max-width: 1180px) {

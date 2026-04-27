@@ -8,7 +8,7 @@ export const defaultProfile: PersonalProfile = {
   children: 0,
   churchTax: false,
   publicHealthInsurance: true,
-  healthAdditionalContributionPct: 2.2,
+  healthAdditionalContributionPct: 2.9,
 }
 
 export const defaultAssumptions: ScenarioAssumptions = {
@@ -20,8 +20,6 @@ export const defaultAssumptions: ScenarioAssumptions = {
     { id: 'optimistisch', label: 'Optimistisch', annualReturn: 0.07 },
   ],
   etf: {
-    monthlyInvestment: 180,
-    contributionMode: 'same-as-bav-net-cost',
     annualAssetFee: 0.002,
     equityPartialExemption: 0.3,
   },
@@ -38,8 +36,6 @@ export const defaultAssumptions: ScenarioAssumptions = {
     },
   },
   insurance: {
-    monthlyPremium: 180,
-    contributionMode: 'same-as-bav-net-cost',
     taxMode: 'normal',
     fees: {
       annualAssetFee: 0.014,

@@ -1,5 +1,4 @@
 import type {
-  BavFundingResult,
   FeeModel,
   GermanRules,
   PersonalProfile,
@@ -11,7 +10,6 @@ import type {
 } from '../domain/types'
 import { calculateBavFunding } from './salary'
 import {
-  afterTaxBavLumpSum,
   afterTaxInvestmentCapital,
   monthlyPayoutFromCapital,
   netBavPayout,
@@ -33,14 +31,6 @@ function capitalMultipleAnnualized(finalValue: number, totalUserCost: number, ye
   }
 
   return Math.pow(finalValue / totalUserCost, 1 / years) - 1
-}
-
-function privateMonthlyContribution(
-  mode: 'same-as-bav-net-cost' | 'custom',
-  customMonthly: number,
-  bavFunding: BavFundingResult,
-): number {
-  return mode === 'same-as-bav-net-cost' ? bavFunding.monthlyNetCost : customMonthly
 }
 
 function buildProductResult(params: {
@@ -80,7 +70,7 @@ function buildProductResult(params: {
     payoutYears,
   )
 
-  let afterTaxLumpSum = projection.capital
+  let afterTaxLumpSum: number | null = projection.capital
   let netMonthlyPayout = grossMonthlyPayout
 
   if (params.taxMode === 'etf') {
@@ -116,8 +106,13 @@ function buildProductResult(params: {
     )
   }
 
+  if (params.taxMode === 'insurance-tax-free') {
+    afterTaxLumpSum = projection.capital
+    netMonthlyPayout = grossMonthlyPayout
+  }
+
   if (params.taxMode === 'bav') {
-    afterTaxLumpSum = afterTaxBavLumpSum(projection.capital, params.profile, params.rules)
+    afterTaxLumpSum = null
     netMonthlyPayout = netBavPayout(grossMonthlyPayout, params.profile, params.rules)
   }
 
@@ -142,12 +137,13 @@ function buildProductResult(params: {
     taxAndSvSavings:
       params.productId === 'bav' ? params.bavFunding.annualTaxAndSvSavings * yearsToRetirement : 0,
     valueMultipleOnUserCost:
-      projection.totalUserCost > 0 ? afterTaxLumpSum / projection.totalUserCost : 0,
-    capitalMultipleAnnualized: capitalMultipleAnnualized(
-      afterTaxLumpSum,
-      projection.totalUserCost,
-      yearsToRetirement,
-    ),
+      projection.totalUserCost > 0 && afterTaxLumpSum !== null
+        ? afterTaxLumpSum / projection.totalUserCost
+        : null,
+    capitalMultipleAnnualized:
+      afterTaxLumpSum !== null
+        ? capitalMultipleAnnualized(afterTaxLumpSum, projection.totalUserCost, yearsToRetirement)
+        : 0,
     rows: projection.rows,
   }
 }
@@ -158,16 +154,8 @@ export function simulateRetirementComparison(
   rules: GermanRules,
 ): SimulationResult {
   const bavFunding = calculateBavFunding(profile, rules, assumptions.bav)
-  const etfMonthly = privateMonthlyContribution(
-    assumptions.etf.contributionMode,
-    assumptions.etf.monthlyInvestment,
-    bavFunding,
-  )
-  const insuranceMonthly = privateMonthlyContribution(
-    assumptions.insurance.contributionMode,
-    assumptions.insurance.monthlyPremium,
-    bavFunding,
-  )
+  const etfMonthly = bavFunding.monthlyNetCost
+  const insuranceMonthly = bavFunding.monthlyNetCost
 
   const products = assumptions.returnScenarios.flatMap((scenario) => [
     buildProductResult({

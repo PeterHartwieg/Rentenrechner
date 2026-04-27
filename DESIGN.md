@@ -35,7 +35,7 @@ The first version is built for personal use with one German tax profile, while t
   - children: `0`
   - church tax: no
   - public health insurance
-  - default GKV additional contribution: `2.2%`
+  - default GKV additional contribution: `2.9%`
 - Products:
   - private ETF depot
   - `bAV` / employer pension via salary conversion
@@ -315,7 +315,7 @@ tax class: I
 children: 0
 church tax: false
 public health insurance: true
-GKV additional contribution: 2.2%
+GKV additional contribution: 2.9%
 ```
 
 ### bAV

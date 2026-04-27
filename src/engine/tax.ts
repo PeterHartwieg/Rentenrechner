@@ -24,7 +24,7 @@ export function calculateIncomeTax2026(
     return Math.floor((173.1 * z + 2_397) * z + 1_034.87)
   }
 
-  if (x <= topTaxStart) {
+  if (x < topTaxStart) {
     return Math.floor(0.42 * x - 11_135.63)
   }
 

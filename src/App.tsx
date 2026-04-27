@@ -12,12 +12,74 @@ import {
   YAxis,
 } from 'recharts'
 import { Calculator, Coins, Settings, TrendingUp } from 'lucide-react'
-import type { PersonalProfile, ProductResult, ScenarioAssumptions } from './domain/types'
+import type { PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
+import { afterTaxInvestmentCapital } from './engine/projections'
 import { simulateRetirementComparison } from './engine/simulate'
 import { de2026Rules } from './rules/de2026'
 import { formatCurrency, formatNumber, formatPercent } from './utils/format'
 import './App.css'
+
+type WarningStatus = 'implementiert' | 'vereinfacht' | 'nicht-modelliert'
+
+const warnings: { category: string; status: WarningStatus; note: string }[] = [
+  {
+    category: '2026 Steuerregeln',
+    status: 'implementiert',
+    note: 'EStG §32a Tarif, SV-Beiträge 2026, bAV §3 Nr. 63 EStG, Pflege-Freibetrag §226 SGB V.',
+  },
+  {
+    category: 'bAV-Förderung',
+    status: 'implementiert',
+    note: 'Entgeltumwandlung, Steuer- und SV-Ersparnis, AG-Pflicht- und Extra-Zuschuss.',
+  },
+  {
+    category: 'Lohnsteuer-Engine',
+    status: 'implementiert',
+    note: 'BMF-PAP 2026 Vorsorgepauschale (RV + GKV + PV, ohne AV) für Steuerklasse I / GKV. Kirchensteuer und PKV nicht modelliert.',
+  },
+  {
+    category: 'ETF-Vorabpauschale',
+    status: 'nicht-modelliert',
+    note: 'Jährliche Vorabpauschale nach InvStG §18 nicht modelliert; ETF-Kapital leicht überschätzt. (#7)',
+  },
+  {
+    category: 'ETF-Sparerpauschbetrag',
+    status: 'vereinfacht',
+    note: 'Kein Pauschbetrag beim Einmalkapital; 1.000 EUR/Jahr nur in der Entnahmephase angesetzt. Teilfreistellung (InvStG §20) ist konfigurierbar. (#20)',
+  },
+  {
+    category: 'Versicherungssteuer',
+    status: 'vereinfacht',
+    note: 'Nur steuerfrei/normal – kein Halbeinkünfteverfahren, kein detailliertes Vertragsmodell. (#8)',
+  },
+  {
+    category: 'bAV Rentenphase',
+    status: 'vereinfacht',
+    note: 'Einkommensteuer auf bAV-Rente ohne weiteres Renteneinkommen; KVdR nicht konfigurierbar. (#6)',
+  },
+  {
+    category: 'bAV Kapitalabfindung',
+    status: 'nicht-modelliert',
+    note: '1/120-KV/PV-Verteilung nach §229 SGB V fehlt; Wert wird bewusst nicht ausgewiesen. (#19)',
+  },
+  {
+    category: 'Gesetzliche Rente',
+    status: 'nicht-modelliert',
+    note: 'Minderung der RV-Ansprüche durch Entgeltumwandlung nicht eingerechnet. (#5)',
+  },
+  {
+    category: 'Rendite-Szenarien',
+    status: 'vereinfacht',
+    note: 'Feste Rendite, keine stochastische Simulation. Planrechnungen, keine Prognosen.',
+  },
+]
+
+const badgeLabel: Record<WarningStatus, string> = {
+  implementiert: '✓ implementiert',
+  vereinfacht: '⚠ vereinfacht',
+  'nicht-modelliert': '✗ nicht modelliert',
+}
 
 const productColors: Record<string, string> = {
   etf: '#2563eb',
@@ -26,6 +88,10 @@ const productColors: Record<string, string> = {
 }
 
 const productOrder = ['etf', 'bav', 'versicherung']
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
 
 function updateNumber<T extends object>(
   setter: React.Dispatch<React.SetStateAction<T>>,
@@ -93,7 +159,7 @@ function NumberField({
   )
 }
 
-function bestResult(results: ProductResult[], selector: (result: ProductResult) => number) {
+function bestResult<T extends ProductResult>(results: T[], selector: (result: T) => number) {
   return results.reduce((best, result) => (selector(result) > selector(best) ? result : best))
 }
 
@@ -102,6 +168,7 @@ function App() {
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(defaultAssumptions)
   const [selectedScenarioId, setSelectedScenarioId] = useState('basis')
   const [showRealValues, setShowRealValues] = useState(true)
+  const [cashflowProductId, setCashflowProductId] = useState<ProductId>('bav')
 
   const simulation = useMemo(
     () => simulateRetirementComparison(profile, assumptions, de2026Rules),
@@ -137,12 +204,28 @@ function App() {
     value: result.netMonthlyPayout,
     fill: productColors[result.productId],
   }))
-  const bestCapital = selectedResults.length
-    ? bestResult(selectedResults, (result) => result.afterTaxLumpSum)
+  const comparableCapitalResults = selectedResults.filter(
+    (result): result is ProductResult & { afterTaxLumpSum: number } =>
+      result.afterTaxLumpSum !== null,
+  )
+  const bestCapital = comparableCapitalResults.length
+    ? bestResult(comparableCapitalResults, (result) => result.afterTaxLumpSum)
     : undefined
   const bestPension = selectedResults.length
     ? bestResult(selectedResults, (result) => result.netMonthlyPayout)
     : undefined
+  const cashflowResult = selectedResults.find((r) => r.productId === cashflowProductId)
+  const cashflowAnnualTaxSvSavings =
+    cashflowProductId === 'bav' ? simulation.bavFunding.annualTaxAndSvSavings : 0
+
+  function rowAfterTaxBalance(balance: number, cumulativeContributions: number): number | null {
+    if (cashflowProductId === 'bav') return null
+    if (cashflowProductId === 'etf') {
+      return afterTaxInvestmentCapital(balance, cumulativeContributions, de2026Rules, assumptions.etf.equityPartialExemption)
+    }
+    if (assumptions.insurance.taxMode === 'steuerfrei') return balance
+    return afterTaxInvestmentCapital(balance, cumulativeContributions, de2026Rules, 0)
+  }
 
   return (
     <main className="app-shell">
@@ -169,17 +252,27 @@ function App() {
               label="Alter"
               value={profile.age}
               min={18}
-              max={66}
+              max={profile.retirementAge - 1}
               suffix="Jahre"
-              onChange={(value) => updateNumber(setProfile, 'age', value)}
+              onChange={(value) =>
+                setProfile((current) => ({
+                  ...current,
+                  age: clampNumber(Number(value), 18, current.retirementAge - 1),
+                }))
+              }
             />
             <NumberField
               label="Rentenbeginn"
               value={profile.retirementAge}
-              min={55}
+              min={Math.max(55, profile.age + 1)}
               max={75}
               suffix="Jahre"
-              onChange={(value) => updateNumber(setProfile, 'retirementAge', value)}
+              onChange={(value) =>
+                setProfile((current) => ({
+                  ...current,
+                  retirementAge: clampNumber(Number(value), current.age + 1, 75),
+                }))
+              }
             />
             <NumberField
               label="Jahresbrutto"
@@ -252,6 +345,24 @@ function App() {
                 }))
               }
             />
+            <label className="field">
+              <span>ETF-Fondsart (InvStG §20)</span>
+              <select
+                value={assumptions.etf.equityPartialExemption}
+                onChange={(event) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    etf: { ...current.etf, equityPartialExemption: Number(event.target.value) },
+                  }))
+                }
+              >
+                <option value={0.3}>Aktienfonds (30% steuerfrei)</option>
+                <option value={0.15}>Mischfonds (15% steuerfrei)</option>
+                <option value={0.6}>Inl. Immobilienfonds (60% steuerfrei)</option>
+                <option value={0.8}>Ausl. Immobilienfonds (80% steuerfrei)</option>
+                <option value={0}>Anleihe-ETF / Sonstige (0% steuerfrei)</option>
+              </select>
+            </label>
             <NumberField
               label="Inflation"
               value={assumptions.inflationRate * 100}
@@ -263,6 +374,20 @@ function App() {
                 setAssumptions((current) => ({
                   ...current,
                   inflationRate: Number(value) / 100,
+                }))
+              }
+            />
+            <NumberField
+              label="Kapitalverzehr bis"
+              value={assumptions.retirementEndAge}
+              min={profile.retirementAge + 1}
+              max={110}
+              step={1}
+              suffix="Jahre"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  retirementEndAge: clampNumber(Number(value), profile.retirementAge + 1, 110),
                 }))
               }
             />
@@ -403,9 +528,14 @@ function App() {
                 }))
               }
             >
-              <option value="normal">normal besteuert</option>
-              <option value="steuerfrei">steuerfrei</option>
+              <option value="normal">normal besteuert (Abgeltungsteuer 25%)</option>
+              <option value="steuerfrei">steuerfrei (Halbeinkünfteverfahren)</option>
             </select>
+            <small className="field-hint">
+              {assumptions.insurance.taxMode === 'steuerfrei'
+                ? 'Gilt für Verträge ab 2005 mit ≥ 12 Jahren Laufzeit und Auszahlung ab 62 Jahren (§20 Abs. 1 Nr. 6 EStG) – nur die Hälfte des Ertrags ist steuerpflichtig.'
+                : 'Gilt für Verträge ab 2005 ohne Halbeinkünfte-Voraussetzungen. Kursgewinne unterliegen der Abgeltungsteuer (25% + Soli).'}
+            </small>
           </label>
 
           <div className="subsection-heading">
@@ -640,6 +770,14 @@ function App() {
                   <dd>öffentlich, Zusatzbeitrag {profile.healthAdditionalContributionPct}%</dd>
                 </div>
                 <div>
+                  <dt>Steuervereinfachungen</dt>
+                  <dd>
+                    ETF-Einmalkapital ohne Sparerpauschbetrag; ETF-Entnahme mit jährlichem
+                    Sparerpauschbetrag. bAV-Einmalkapital wird wegen 1/120-Regel noch nicht
+                    ausgewiesen.
+                  </dd>
+                </div>
+                <div>
                   <dt>Rechtsstand</dt>
                   <dd>DE 2026, konfigurierbare Regeldatei</dd>
                 </div>
@@ -659,7 +797,52 @@ function App() {
                     {formatPercent(assumptions.insurance.fees.annualAssetFee)} p.a. Kapitalgebühr
                   </dd>
                 </div>
+                <div>
+                  <dt>bAV-Beitragsklassifizierung</dt>
+                  <dd>
+                    {(() => {
+                      const f = simulation.bavFunding
+                      const taxFreeMonthly = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap / 12
+                      const svFreeMonthly = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap / 12
+                      const totalMonthly = f.totalBavContributionAnnual / 12
+                      if (f.taxableOverflowAnnual === 0 && f.svLiableOverflowAnnual === 0) {
+                        return (
+                          <>
+                            Gesamt {formatCurrency(totalMonthly, 0)} mtl. — vollständig steuer-
+                            und SV-frei (Limit: {formatCurrency(svFreeMonthly, 0)} / {formatCurrency(taxFreeMonthly, 0)} mtl.)
+                          </>
+                        )
+                      }
+                      return (
+                        <>
+                          Gesamt {formatCurrency(totalMonthly, 0)} mtl.
+                          {f.svLiableOverflowAnnual > 0 && (
+                            <> · SV-pflichtig: {formatCurrency(f.svLiableOverflowAnnual / 12, 0)} mtl. (über 4%-BBG {formatCurrency(svFreeMonthly, 0)})</>
+                          )}
+                          {f.taxableOverflowAnnual > 0 && (
+                            <> · Steuerpflichtig: {formatCurrency(f.taxableOverflowAnnual / 12, 0)} mtl. (über 8%-BBG {formatCurrency(taxFreeMonthly, 0)})</>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </dd>
+                </div>
               </dl>
+            </div>
+          </section>
+
+          <section className="warnings-panel">
+            <h2>Berechnungshinweise</h2>
+            <div className="warnings-grid">
+              {warnings.map((w) => (
+                <div key={w.category} className="warning-item">
+                  <div className="warning-item-header">
+                    <span className="warning-item-category">{w.category}</span>
+                    <span className={`badge badge-${w.status}`}>{badgeLabel[w.status]}</span>
+                  </div>
+                  <p className="warning-item-note">{w.note}</p>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -688,20 +871,127 @@ function App() {
                       <td>{formatCurrency(result.monthlyUserCost, 0)}</td>
                       <td>{formatCurrency(result.monthlyProductContribution, 0)}</td>
                       <td>{formatCurrency(result.capitalAtRetirement, 0)}</td>
-                      <td>{formatCurrency(result.afterTaxLumpSum, 0)}</td>
+                      <td>
+                        {result.afterTaxLumpSum === null
+                          ? '-'
+                          : formatCurrency(result.afterTaxLumpSum, 0)}
+                      </td>
                       <td>{formatCurrency(result.netMonthlyPayout, 0)}</td>
                       <td>{formatCurrency(result.totalFees, 0)}</td>
-                      <td>{formatNumber(result.valueMultipleOnUserCost, 1)}x</td>
+                      <td>
+                        {result.valueMultipleOnUserCost === null
+                          ? '-'
+                          : `${formatNumber(result.valueMultipleOnUserCost, 1)}x`}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <p className="table-note">
-              *Bei bAV ist das eine grobe Einmalzahlungs-Schätzung mit voller Besteuerung sowie
-              GKV/PV-Abzug. Für bAV ist die monatliche Netto-Rente derzeit die aussagekräftigere
-              Vergleichsgröße.
+              *bAV-Einmalkapital wird bewusst nicht ausgewiesen, bis die 1/120-Verteilung der
+              KV/PV-Beiträge und die Rentensteuer sauber modelliert sind. Für bAV ist aktuell die
+              monatliche Netto-Rente die belastbarere Vergleichsgröße.
             </p>
+          </section>
+
+          <section className="table-panel cashflow-panel">
+            <div className="cashflow-header">
+              <h2>Jahres-Cashflows</h2>
+              <div className="cashflow-selector">
+                <label htmlFor="cashflow-product">Produkt</label>
+                <select
+                  id="cashflow-product"
+                  value={cashflowProductId}
+                  onChange={(event) => setCashflowProductId(event.target.value as ProductId)}
+                >
+                  {selectedResults.map((r) => (
+                    <option key={r.productId} value={r.productId}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {cashflowResult ? (
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Alter</th>
+                      <th>Nettoaufwand p.a.</th>
+                      <th>Beitrag p.a.</th>
+                      <th>AG-Anteil p.a.</th>
+                      <th>Steuer-/SV-Ersparnis</th>
+                      <th>Gebühren p.a.</th>
+                      <th>Kum. Gebühren</th>
+                      <th>Kapital</th>
+                      <th>Kapital n. St.</th>
+                      <th>Reales Kapital</th>
+                      <th>Real n. St.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cashflowResult.rows.map((row) => {
+                      const afterTax = rowAfterTaxBalance(row.balance, row.cumulativeProductContributions)
+                      const realAfterTax = afterTax !== null && row.balance > 0
+                        ? afterTax * (row.realBalance / row.balance)
+                        : null
+                      return (
+                        <tr key={row.year}>
+                          <td style={{ textAlign: 'left' }}>{row.age}</td>
+                          <td>{formatCurrency(row.yearlyUserCost, 0)}</td>
+                          <td>{formatCurrency(row.yearlyProductContribution, 0)}</td>
+                          <td>{formatCurrency(row.yearlyEmployerContribution, 0)}</td>
+                          <td>
+                            {cashflowAnnualTaxSvSavings > 0
+                              ? formatCurrency(cashflowAnnualTaxSvSavings, 0)
+                              : '—'}
+                          </td>
+                          <td>{formatCurrency(row.yearlyFees, 0)}</td>
+                          <td>{formatCurrency(row.cumulativeFees, 0)}</td>
+                          <td>{formatCurrency(row.balance, 0)}</td>
+                          <td>{afterTax !== null ? formatCurrency(afterTax, 0) : '—'}</td>
+                          <td>{formatCurrency(row.realBalance, 0)}</td>
+                          <td>{realAfterTax !== null ? formatCurrency(realAfterTax, 0) : '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="totals-row">
+                      <td style={{ textAlign: 'left' }}>Gesamt</td>
+                      <td>{formatCurrency(cashflowResult.totalUserCost, 0)}</td>
+                      <td>{formatCurrency(cashflowResult.totalProductContributions, 0)}</td>
+                      <td>{formatCurrency(cashflowResult.totalEmployerContributions, 0)}</td>
+                      <td>
+                        {cashflowResult.taxAndSvSavings > 0
+                          ? formatCurrency(cashflowResult.taxAndSvSavings, 0)
+                          : '—'}
+                      </td>
+                      <td>{formatCurrency(cashflowResult.totalFees, 0)}</td>
+                      <td>{formatCurrency(cashflowResult.totalFees, 0)}</td>
+                      <td>{formatCurrency(cashflowResult.capitalAtRetirement, 0)}</td>
+                      <td>
+                        {cashflowResult.afterTaxLumpSum !== null
+                          ? formatCurrency(cashflowResult.afterTaxLumpSum, 0)
+                          : '—'}
+                      </td>
+                      <td>{formatCurrency(cashflowResult.realCapitalAtRetirement, 0)}</td>
+                      <td>
+                        {cashflowResult.afterTaxLumpSum !== null && cashflowResult.capitalAtRetirement > 0
+                          ? formatCurrency(
+                              cashflowResult.afterTaxLumpSum *
+                                (cashflowResult.realCapitalAtRetirement / cashflowResult.capitalAtRetirement),
+                              0,
+                            )
+                          : '—'}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : null}
           </section>
         </section>
       </section>
