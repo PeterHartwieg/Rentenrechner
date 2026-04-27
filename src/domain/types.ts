@@ -90,6 +90,8 @@ export interface GermanRules {
     taxRate: number
     solidarityRate: number
     saverAllowance: number
+    // Basiszins nach §203 BewG — published by BMF each January, used for InvStG §18 Vorabpauschale
+    basiszins: number
   }
 }
 
@@ -147,6 +149,8 @@ export interface YearlyProjection {
   yearlyFees: number
   cumulativeFees: number
   cumulativeProductContributions: number
+  // Gross Vorabpauschale accumulated so far (0 for bAV/insurance); reduces exit taxable gain
+  cumulativeVorabpauschale: number
 }
 
 export interface ProductResult {

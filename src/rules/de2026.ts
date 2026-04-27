@@ -35,5 +35,7 @@ export const de2026Rules: GermanRules = {
     taxRate: 0.25,
     solidarityRate: 0.055,
     saverAllowance: 1_000,
+    // BMF Basiszins nach §203 BewG: 2.53 % (2025 value; 2026 value not yet published at model date)
+    basiszins: 0.0253,
   },
 }

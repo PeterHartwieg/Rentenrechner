@@ -1,4 +1,5 @@
 import type {
+  BavFundingResult,
   FeeModel,
   GermanRules,
   PersonalProfile,
@@ -62,6 +63,10 @@ function buildProductResult(params: {
     inflationRate: params.assumptions.inflationRate,
     scenario: params.scenario,
     fees: params.fees,
+    etfVorabpauschale:
+      params.taxMode === 'etf'
+        ? { rules: params.rules, partialExemption: params.partialExemption ?? 0 }
+        : undefined,
   })
   const payoutReturn = Math.max(0, params.scenario.annualReturn - params.fees.annualAssetFee)
   const grossMonthlyPayout = monthlyPayoutFromCapital(
@@ -80,6 +85,7 @@ function buildProductResult(params: {
       projection.totalContributionsBeforeFees,
       params.rules,
       partialExemption,
+      projection.cumulativeVorabpauschale,
     )
     netMonthlyPayout = netEtfPayout(
       grossMonthlyPayout,
@@ -87,6 +93,7 @@ function buildProductResult(params: {
       projection.totalContributionsBeforeFees,
       params.rules,
       partialExemption,
+      projection.cumulativeVorabpauschale,
     )
   }
 

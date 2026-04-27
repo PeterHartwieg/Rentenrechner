@@ -19,6 +19,8 @@ interface AccumulationInput {
   inflationRate: number
   scenario: ReturnScenario
   fees: FeeModel
+  // When set, applies InvStG §18 Vorabpauschale each year and tracks the gross cumulative amount
+  etfVorabpauschale?: { rules: GermanRules; partialExemption: number }
 }
 
 export interface AccumulationResult {
@@ -29,6 +31,7 @@ export interface AccumulationResult {
   totalEmployerContributions: number
   totalFees: number
   totalContributionsBeforeFees: number
+  cumulativeVorabpauschale: number
   rows: YearlyProjection[]
 }
 
@@ -53,6 +56,9 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   let totalEmployerContributions = 0
   let totalFees = 0
   let feesInCurrentYear = 0
+  let contributionsInCurrentYear = 0
+  let balanceAtYearStart = 0
+  let cumulativeVorabpauschale = 0
   const rows: YearlyProjection[] = []
 
   for (let month = 1; month <= input.months; month += 1) {
@@ -78,8 +84,22 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     totalEmployerContributions += input.monthlyEmployerContribution
     totalFees += monthlyFees
     feesInCurrentYear += monthlyFees
+    contributionsInCurrentYear += input.monthlyProductContribution
 
     if (month % 12 === 0 || month === input.months) {
+      // InvStG §18 Vorabpauschale: annual tax event for accumulating ETF funds.
+      // Basisertrag = startValue × Basiszins × 0.7; capped at actual annual growth.
+      // Tax is deducted from capital; gross VP accumulates to reduce exit taxable gain.
+      if (input.etfVorabpauschale) {
+        const { rules, partialExemption } = input.etfVorabpauschale
+        const annualGrowth = capital - balanceAtYearStart - contributionsInCurrentYear
+        const basisertrag = balanceAtYearStart * rules.capitalGains.basiszins * 0.7
+        const vp = Math.max(0, Math.min(basisertrag, annualGrowth))
+        const vpTax = calculateCapitalGainsTax(vp, rules, partialExemption, rules.capitalGains.saverAllowance)
+        capital -= vpTax
+        cumulativeVorabpauschale += vp
+      }
+
       const year = Math.ceil(month / 12)
       rows.push({
         year,
@@ -94,8 +114,11 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
         yearlyFees: feesInCurrentYear,
         cumulativeFees: totalFees,
         cumulativeProductContributions: totalProductContributions,
+        cumulativeVorabpauschale,
       })
+      balanceAtYearStart = capital
       feesInCurrentYear = 0
+      contributionsInCurrentYear = 0
     }
   }
 
@@ -107,6 +130,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     totalEmployerContributions,
     totalFees,
     totalContributionsBeforeFees: totalProductContributions,
+    cumulativeVorabpauschale,
     rows,
   }
 }
@@ -132,8 +156,11 @@ export function netEtfPayout(
   totalContributions: number,
   rules: GermanRules,
   partialExemption: number,
+  cumulativeVorabpauschale = 0,
 ): number {
-  const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
+  // Vorabpauschale already taxed during accumulation reduces remaining taxable gain at payout
+  const untaxedGain = Math.max(0, capital - totalContributions - cumulativeVorabpauschale)
+  const gainRatio = capital > 0 ? untaxedGain / capital : 0
   const annualTaxableGain = grossMonthlyPayout * 12 * gainRatio
   const annualTax = calculateCapitalGainsTax(
     annualTaxableGain,
@@ -150,8 +177,10 @@ export function afterTaxInvestmentCapital(
   totalContributions: number,
   rules: GermanRules,
   partialExemption: number,
+  cumulativeVorabpauschale = 0,
 ): number {
-  const gain = Math.max(0, capital - totalContributions)
+  // Vorabpauschale already taxed during accumulation reduces the remaining taxable exit gain (§19 InvStG)
+  const gain = Math.max(0, capital - totalContributions - cumulativeVorabpauschale)
   return capital - calculateCapitalGainsTax(gain, rules, partialExemption, 0)
 }
 

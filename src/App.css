@@ -458,6 +458,118 @@ tfoot .totals-row td {
   border-top: 2px solid #c9d7e5;
 }
 
+/* Reset button in sidebar heading */
+.panel-heading {
+  justify-content: space-between;
+}
+
+.reset-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid #c9d7e5;
+  border-radius: 6px;
+  background: #f4f7fb;
+  color: #344054;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reset-btn:hover {
+  background: #e8eef6;
+}
+
+/* bAV waterfall breakdown */
+.bav-waterfall {
+  padding: 12px 14px;
+  border: 1px solid #d0e6e2;
+  border-radius: 8px;
+  background: #f7fbfa;
+}
+
+.bav-waterfall h3 {
+  margin: 0 0 10px;
+  font-size: 0.87rem;
+  color: #344054;
+}
+
+.bav-waterfall dl {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+
+.wf-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.88rem;
+}
+
+.wf-row dt {
+  color: #344054;
+  font-weight: 600;
+}
+
+.wf-row dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wf-base dt,
+.wf-base dd {
+  color: #172033;
+}
+
+.wf-minus dt {
+  color: #667085;
+  padding-left: 8px;
+}
+
+.wf-minus dd {
+  color: #b45309;
+}
+
+.wf-result {
+  border-top: 1px solid #c9d7e5;
+  margin-top: 2px;
+  padding-top: 5px;
+}
+
+.wf-result dt,
+.wf-result dd {
+  color: #172033;
+}
+
+.wf-plus dt {
+  color: #667085;
+  padding-left: 8px;
+}
+
+.wf-plus dd {
+  color: #065f46;
+}
+
+.wf-total {
+  border-top: 1px solid #c9d7e5;
+  margin-top: 2px;
+  padding-top: 5px;
+}
+
+.wf-total dt,
+.wf-total dd {
+  color: #0f766e;
+  font-size: 0.93rem;
+}
+
 @media (max-width: 1180px) {
   .dashboard {
     grid-template-columns: 1fr;

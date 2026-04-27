@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -11,14 +11,31 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Calculator, Coins, Settings, TrendingUp } from 'lucide-react'
-import type { PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
+import { Calculator, Coins, RotateCcw, Settings, TrendingUp } from 'lucide-react'
+import type { BavFundingResult, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { afterTaxInvestmentCapital } from './engine/projections'
 import { simulateRetirementComparison } from './engine/simulate'
 import { de2026Rules } from './rules/de2026'
 import { formatCurrency, formatNumber, formatPercent } from './utils/format'
 import './App.css'
+
+const STORAGE_KEY = 'rentenrechner-state-v1'
+
+function loadSavedState(): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { profile?: unknown; assumptions?: unknown }
+    if (!parsed.profile || !parsed.assumptions) return null
+    return {
+      profile: parsed.profile as PersonalProfile,
+      assumptions: parsed.assumptions as ScenarioAssumptions,
+    }
+  } catch {
+    return null
+  }
+}
 
 type WarningStatus = 'implementiert' | 'vereinfacht' | 'nicht-modelliert'
 
@@ -40,13 +57,13 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   },
   {
     category: 'ETF-Vorabpauschale',
-    status: 'nicht-modelliert',
-    note: 'Jährliche Vorabpauschale nach InvStG §18 nicht modelliert; ETF-Kapital leicht überschätzt. (#7)',
+    status: 'implementiert',
+    note: 'Jährliche Vorabpauschale nach InvStG §18 (Basisertrag = Jahresanfangswert × Basiszins × 0,7; begrenzt auf tatsächliches Jahreswachstum); Sparerpauschbetrag 1.000 EUR p.a. angesetzt; vorausgezahlte VP mindert den Veräußerungsgewinn bei Entnahme (§19 InvStG). Basiszins 2,53 % (Schätzwert 2026). (#7)',
   },
   {
     category: 'ETF-Sparerpauschbetrag',
-    status: 'vereinfacht',
-    note: 'Kein Pauschbetrag beim Einmalkapital; 1.000 EUR/Jahr nur in der Entnahmephase angesetzt. Teilfreistellung (InvStG §20) ist konfigurierbar. (#20)',
+    status: 'implementiert',
+    note: '1.000 EUR/Jahr in der Ansparphase auf Vorabpauschale; 1.000 EUR/Jahr in der Entnahmephase auf laufende Gewinne. Teilfreistellung (InvStG §20) konfigurierbar. Kein Pauschbetrag auf das Einmalkapital. (#7, #20)',
   },
   {
     category: 'Versicherungssteuer',
@@ -163,12 +180,64 @@ function bestResult<T extends ProductResult>(results: T[], selector: (result: T)
   return results.reduce((best, result) => (selector(result) > selector(best) ? result : best))
 }
 
+function BavWaterfall({ f }: { f: BavFundingResult }) {
+  const monthlyTaxSavings =
+    (f.salaryWithoutBav.incomeTax + f.salaryWithoutBav.solidarityTax -
+      f.salaryWithBav.incomeTax - f.salaryWithBav.solidarityTax) / 12
+  const monthlySvSavings = (f.salaryWithoutBav.social.total - f.salaryWithBav.social.total) / 12
+
+  return (
+    <div className="bav-waterfall">
+      <h3>bAV-Förderung im Überblick</h3>
+      <dl>
+        <div className="wf-row wf-base">
+          <dt>Bruttoumwandlung</dt>
+          <dd>{formatCurrency(f.monthlyGrossConversion, 0)}</dd>
+        </div>
+        <div className="wf-row wf-minus">
+          <dt>− Steuerersparnis</dt>
+          <dd>{formatCurrency(monthlyTaxSavings, 0)}</dd>
+        </div>
+        <div className="wf-row wf-minus">
+          <dt>− SV-Ersparnis</dt>
+          <dd>{formatCurrency(monthlySvSavings, 0)}</dd>
+        </div>
+        <div className="wf-row wf-result">
+          <dt>= Nettoaufwand AN</dt>
+          <dd>{formatCurrency(f.monthlyNetCost, 0)}</dd>
+        </div>
+        <div className="wf-row wf-plus">
+          <dt>+ AG-Zuschuss</dt>
+          <dd>{formatCurrency(f.monthlyEmployerContribution, 0)}</dd>
+        </div>
+        <div className="wf-row wf-total">
+          <dt>= Monatl. Beitrag</dt>
+          <dd>{formatCurrency(f.monthlyGrossConversion + f.monthlyEmployerContribution, 0)}</dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
 function App() {
-  const [profile, setProfile] = useState<PersonalProfile>(defaultProfile)
-  const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(defaultAssumptions)
+  const [profile, setProfile] = useState<PersonalProfile>(
+    () => loadSavedState()?.profile ?? defaultProfile,
+  )
+  const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(
+    () => loadSavedState()?.assumptions ?? defaultAssumptions,
+  )
   const [selectedScenarioId, setSelectedScenarioId] = useState('basis')
   const [showRealValues, setShowRealValues] = useState(true)
   const [cashflowProductId, setCashflowProductId] = useState<ProductId>('bav')
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile, assumptions }))
+  }, [profile, assumptions])
+
+  function resetToDefaults() {
+    setProfile(defaultProfile)
+    setAssumptions(defaultAssumptions)
+  }
 
   const simulation = useMemo(
     () => simulateRetirementComparison(profile, assumptions, de2026Rules),
@@ -218,10 +287,20 @@ function App() {
   const cashflowAnnualTaxSvSavings =
     cashflowProductId === 'bav' ? simulation.bavFunding.annualTaxAndSvSavings : 0
 
-  function rowAfterTaxBalance(balance: number, cumulativeContributions: number): number | null {
+  function rowAfterTaxBalance(
+    balance: number,
+    cumulativeContributions: number,
+    cumulativeVorabpauschale: number,
+  ): number | null {
     if (cashflowProductId === 'bav') return null
     if (cashflowProductId === 'etf') {
-      return afterTaxInvestmentCapital(balance, cumulativeContributions, de2026Rules, assumptions.etf.equityPartialExemption)
+      return afterTaxInvestmentCapital(
+        balance,
+        cumulativeContributions,
+        de2026Rules,
+        assumptions.etf.equityPartialExemption,
+        cumulativeVorabpauschale,
+      )
     }
     if (assumptions.insurance.taxMode === 'steuerfrei') return balance
     return afterTaxInvestmentCapital(balance, cumulativeContributions, de2026Rules, 0)
@@ -245,6 +324,15 @@ function App() {
           <div className="panel-heading">
             <Settings size={18} aria-hidden="true" />
             <h2>Eingaben</h2>
+            <button
+              type="button"
+              className="reset-btn"
+              title="Auf Standardwerte zurücksetzen"
+              onClick={resetToDefaults}
+            >
+              <RotateCcw size={14} aria-hidden="true" />
+              Reset
+            </button>
           </div>
 
           <div className="field-grid">
@@ -331,6 +419,13 @@ function App() {
                 }))
               }
             />
+          </div>
+
+          <BavWaterfall f={simulation.bavFunding} />
+
+          <div className="divider" />
+
+          <div className="field-grid">
             <NumberField
               label="ETF TER"
               value={assumptions.etf.annualAssetFee * 100}
@@ -933,7 +1028,7 @@ function App() {
                   </thead>
                   <tbody>
                     {cashflowResult.rows.map((row) => {
-                      const afterTax = rowAfterTaxBalance(row.balance, row.cumulativeProductContributions)
+                      const afterTax = rowAfterTaxBalance(row.balance, row.cumulativeProductContributions, row.cumulativeVorabpauschale)
                       const realAfterTax = afterTax !== null && row.balance > 0
                         ? afterTax * (row.realBalance / row.balance)
                         : null
