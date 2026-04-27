@@ -16,76 +16,14 @@ Legal/rules research lives in `LEGAL_REVIEW.md`.
 1. `#38` Law-based private-insurance tax modes.
 2. `#6` Remaining bAV retirement refinements (KVdR toggle, lump-sum payout mode).
 
-## Recommended Implementation Sessions
-
-### Session A: Transparency First
-
-Items: `#12`
-
-Priority: recommended next.
-
-Why: surfacing all assumptions, rule values, source links, and simplified areas makes the calculator more trustworthy before deeper model work.
-
-Likely files:
-- `src/rules/de2026.ts`
-- `src/domain/types.ts`
-- `src/App.tsx`
-- `src/App.css`
-- `LEGAL_REVIEW.md`
-
-### Session B: bAV Retirement Accuracy
-
-Items: `#5`, `#6`
-
-Priority: highest model-accuracy bundle.
-
-Why: statutory-pension reduction, bAV retirement tax, KV/PV handling, and payout assumptions all affect the same headline bAV outcome.
-
-Likely files:
-- `src/engine/salary.ts`
-- `src/engine/projections.ts`
-- `src/engine/simulate.ts`
-- `src/domain/types.ts`
-- `src/App.tsx`
-- `LEGAL_REVIEW.md`
-
-### Session C: Private Insurance Tax
-
-Items: `#38`
-
-Priority: separate focused session.
-
-Why: pAV taxation needs contract-date/runtime/payout-age logic and should not be mixed with bAV retirement modeling.
-
-Likely files:
-- `src/domain/types.ts`
-- `src/data/defaultScenario.ts`
-- `src/engine/simulate.ts`
-- `src/engine/projections.ts`
-- `src/App.tsx`
-- `LEGAL_REVIEW.md`
-
-### Session D: Comparison UX
-
-Items: `#10`, optionally `#13`
-
-Priority: after transparency or bAV accuracy.
-
-Why: fee drag and exports both consume existing product-result data and improve decision support without changing legal rules.
-
-Likely files:
-- `src/App.tsx`
-- `src/App.css`
-- `src/engine/simulate.ts`
-- `src/domain/types.ts`
-
 ---
 
 ## Open P1 Accuracy
 
 ### #6 bAV Retirement Phase Detail (remaining)
 
-Marginal-tax calculation with other retirement income is now implemented. Still open:
+Marginal-tax calculation with other retirement income is implemented. Still open:
+
 - KVdR vs voluntary GKV toggle.
 - Lump-sum vs pension payout mode.
 - Visible GKV/PV contribution base.
@@ -106,6 +44,8 @@ Done when:
 - Tax treatment is derived from contract fields instead of a blind toggle.
 - Half-income method uses personal income-tax logic, not ETF-style Abgeltungsteuer.
 - The simple mode clearly states what it assumes.
+
+Likely files: `src/domain/types.ts`, `src/data/defaultScenario.ts`, `src/engine/simulate.ts`, `src/engine/projections.ts`, `src/App.tsx`, `LEGAL_REVIEW.md`.
 
 ---
 
@@ -169,9 +109,12 @@ Add presets:
 - `#2` Yearly cashflow audit table.
 - `#3` Visible calculation warnings panel.
 - `#4` bAV contribution-limit handling for total contribution.
+- `#5` GRV-Minderung estimate: toggle subtracts estimated statutory-pension loss (EP/year × years × Rentenwert) from bAV net payout.
 - `#7` ETF Vorabpauschale and annual Sparerpauschbetrag model.
 - `#9` bAV tax/SV waterfall panel.
+- `#10` Fee drag stacked bar chart: capital n. St. (product color) + Gebühren gesamt (red) per scenario.
 - `#11` localStorage persistence with reset.
+- `#12` Regelwerte & Quellen 2026 drawer: all rule values with source links (EStG, SGB, InvStG, BBG).
 - `#17` GKV Zusatzbeitrag default updated to 2.9%.
 - `#18` bAV retirement PV/KV cliff initially fixed, later corrected by `#32`.
 - `#19` bAV lump-sum after-tax hidden until exact 1/120 handling exists.
@@ -194,10 +137,7 @@ Add presets:
 - `#37` ETF withdrawal tax-basis tracking through payout phase.
 - `#39` bAV entitlement, minimum, tariff-agreement warnings.
 - `#40` Hardened localStorage parser and state schema tests.
-- `#5` GRV-Minderung estimate: toggle to subtract estimated statutory-pension loss from bAV net payout; formula (EP/year × years × Rentenwert).
-- `#6` Marginal-tax bAV payout: `netBavPayout` now uses total(bAV + other) − total(other) for correct income-tax on bAV when other retirement income is configured.
-- `#10` Fee drag stacked bar chart: capital n. St. (product color) + Gebühren gesamt (red) stacked per product in the selected scenario.
-- `#12` Regelwerte & Quellen 2026 drawer: collapsible panel with all rule values, source links (EStG, SGB V/VI/XI, InvStG, BBG), and GRV estimation notes.
+- `#6 (partial)` Marginal-tax bAV payout: `netBavPayout` uses total(bAV + other) − total(other); `monthlyOtherRetirementIncome` input added. KVdR/lump-sum still open.
 
 ---
 
