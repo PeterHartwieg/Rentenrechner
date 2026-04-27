@@ -2,6 +2,7 @@ import type {
   EtfPayoutRow,
   FeeModel,
   GermanRules,
+  InsuranceTaxMode,
   PersonalProfile,
   ProductId,
   ReturnScenario,
@@ -269,13 +270,88 @@ export function etfPayoutSchedule(
   return rows
 }
 
+// Derives the private-insurance tax treatment from the contract year, accumulation period, and retirement age.
+// pre2005: §52 Abs. 28 EStG a.F. — payout is tax-free.
+// halbeinkuenfte: §20 Abs. 1 Nr. 6 EStG — ≥12-year contract, payout at age ≥62: only half the gain taxable at personal income tax rate.
+// abgeltungsteuer: §20 Abs. 2 EStG — all other post-2004 contracts: full gain at 25% Abgeltungsteuer.
+export function deriveInsuranceTaxMode(
+  contractStartYear: number,
+  contractRuntimeYears: number,
+  retirementAge: number,
+): InsuranceTaxMode {
+  if (contractStartYear < 2005) return 'pre2005'
+  if (contractRuntimeYears >= 12 && retirementAge >= 62) return 'halbeinkuenfte'
+  return 'abgeltungsteuer'
+}
+
+// Net monthly insurance payout after tax.
+// Halbeinkünfteverfahren: only half the gain is taxable at the personal income tax rate (§20 Abs. 1 Nr. 6 EStG).
+// Abgeltungsteuer: full gain taxed at 25% + Soli (§20 Abs. 2 EStG).
+// pre2005: no tax.
+export function netInsurancePayout(
+  grossMonthlyPayout: number,
+  capital: number,
+  totalContributions: number,
+  taxMode: InsuranceTaxMode,
+  rules: GermanRules,
+  otherMonthlyIncome = 0,
+): number {
+  const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
+  const annualGain = grossMonthlyPayout * 12 * gainRatio
+
+  if (taxMode === 'pre2005') return grossMonthlyPayout
+
+  if (taxMode === 'abgeltungsteuer') {
+    return Math.max(0, grossMonthlyPayout - calculateCapitalGainsTax(annualGain, rules, 0, 0) / 12)
+  }
+
+  // Halbeinkünfteverfahren: only half the gain at personal income tax rate
+  const taxableAnnualGain = annualGain / 2
+  const otherAnnual = otherMonthlyIncome * 12
+  const totalTax = (income: number) => {
+    const it = calculateIncomeTax2026(income, rules)
+    return it + calculateSolidarityTax(it, rules)
+  }
+  const marginalTax = totalTax(otherAnnual + taxableAnnualGain) - totalTax(otherAnnual)
+  return Math.max(0, grossMonthlyPayout - marginalTax / 12)
+}
+
+// After-tax lump-sum insurance capital.
+// otherAnnualIncome is only used for the Halbeinkünfteverfahren marginal-tax calculation.
+export function afterTaxInsuranceLumpSum(
+  capital: number,
+  totalContributions: number,
+  taxMode: InsuranceTaxMode,
+  rules: GermanRules,
+  otherAnnualIncome = 0,
+): number {
+  const gain = Math.max(0, capital - totalContributions)
+
+  if (taxMode === 'pre2005') return capital
+
+  if (taxMode === 'abgeltungsteuer') {
+    return capital - calculateCapitalGainsTax(gain, rules, 0, 0)
+  }
+
+  // Halbeinkünfteverfahren: only half the gain at personal income tax rate
+  const taxableGain = gain / 2
+  const totalTax = (income: number) => {
+    const it = calculateIncomeTax2026(income, rules)
+    return it + calculateSolidarityTax(it, rules)
+  }
+  return Math.max(0, capital - (totalTax(otherAnnualIncome + taxableGain) - totalTax(otherAnnualIncome)))
+}
+
 // #6: marginal-tax approach — income tax on (bAV + other) minus tax on (other alone).
 // When otherMonthlyIncome = 0 and bAV is below the basic allowance, result equals the simple formula.
+// kvdrMember: true = KVdR (KV Freibetrag §226(2) SGB V); false = freiwillig versichert (no Freibetrag, §240 SGB V).
+// PKV members: no GKV/PV deductions applied.
 export function netBavPayout(
   grossMonthlyPayout: number,
   profile: PersonalProfile,
   rules: GermanRules,
   otherMonthlyIncome = 0,
+  kvdrMember = true,
 ): number {
   const totalIncomeTax = (annualIncome: number) => {
     const it = calculateIncomeTax2026(annualIncome, rules)
@@ -284,21 +360,28 @@ export function netBavPayout(
   const bavAnnual = grossMonthlyPayout * 12
   const otherAnnual = otherMonthlyIncome * 12
   const marginalAnnualTax = totalIncomeTax(bavAnnual + otherAnnual) - totalIncomeTax(otherAnnual)
+
+  if (!profile.publicHealthInsurance) {
+    return Math.max(0, grossMonthlyPayout - marginalAnnualTax / 12)
+  }
+
   const additionalHealthRate = profile.healthAdditionalContributionPct / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
   const threshold = rules.socialSecurity.kvFreibetragVersorgungMonthly
-  // KV §226(2) SGB V: Freibetrag — only the excess above the threshold is subject to GKV
-  const healthBaseMonthly = Math.max(0, grossMonthlyPayout - threshold)
-  // PV §57(1) SGB XI: Freigrenze — if at or below threshold, no PV; above threshold, PV on full amount.
-  // KVdR retirees pay both employee and employer PV shares; employee side follows children discount.
+  // PV §57(1) SGB XI: Freigrenze applies for all GKV members. Versorgungsträger pays employer share in both KVdR and freiwillig.
   // = careEmployeeRateForChildren(children) + careEmployerRate == careRetirementChildlessRate for 0 children.
   const retirementCareRate =
     careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
-  const careMonthly =
-    grossMonthlyPayout > threshold
-      ? grossMonthlyPayout * retirementCareRate
-      : 0
-  const healthMonthly = healthBaseMonthly * healthRate
+  const careMonthly = grossMonthlyPayout > threshold ? grossMonthlyPayout * retirementCareRate : 0
+
+  let healthMonthly: number
+  if (kvdrMember) {
+    // KVdR: KV Freibetrag §226(2) SGB V — only the excess above the threshold is subject to GKV
+    healthMonthly = Math.max(0, grossMonthlyPayout - threshold) * healthRate
+  } else {
+    // freiwillig versichert: KV on full amount §240 SGB V (no Freibetrag)
+    healthMonthly = grossMonthlyPayout * healthRate
+  }
 
   return Math.max(0, grossMonthlyPayout - marginalAnnualTax / 12 - healthMonthly - careMonthly)
 }

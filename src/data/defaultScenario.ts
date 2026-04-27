@@ -29,6 +29,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
     extraEmployerContributionMonthly: 0,
     monthlyOtherRetirementIncome: 0,
     includeGrvReduction: false,
+    kvdrMember: true,
     fees: {
       annualAssetFee: 0.005,
       contributionFee: 0.03,
@@ -38,7 +39,8 @@ export const defaultAssumptions: ScenarioAssumptions = {
     },
   },
   insurance: {
-    taxMode: 'normal',
+    contractStartYear: 2024,
+    monthlyOtherRetirementIncome: 0,
     fees: {
       annualAssetFee: 0.014,
       contributionFee: 0.03,

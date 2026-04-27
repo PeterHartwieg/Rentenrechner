@@ -13,8 +13,8 @@ Legal/rules research lives in `LEGAL_REVIEW.md`.
 
 ## Current Focus
 
-1. `#38` Law-based private-insurance tax modes.
-2. `#6` Remaining bAV retirement refinements (KVdR toggle, lump-sum payout mode).
+1. `#6 (lump-sum)` bAV lump-sum payout mode — blocked by 1/120 KV/PV spreading rule.
+2. `#13` CSV export.
 
 ---
 
@@ -22,30 +22,9 @@ Legal/rules research lives in `LEGAL_REVIEW.md`.
 
 ### #6 bAV Retirement Phase Detail (remaining)
 
-Marginal-tax calculation with other retirement income is implemented. Still open:
+KVdR toggle and visible GKV/PV contribution base are now implemented. Still open:
 
-- KVdR vs voluntary GKV toggle.
-- Lump-sum vs pension payout mode.
-- Visible GKV/PV contribution base.
-
-### #38 Law-Based Private Insurance Tax Modes
-
-Current private insurance still uses a simplified `normal` / `steuerfrei` model.
-
-Target:
-- Add contract start date.
-- Add payout age and runtime.
-- Distinguish pre-2005 tax-free contracts.
-- Model post-2004 rules under EStG §20.
-- Model age-62 / 12-year half-income treatment where eligible.
-- Keep simple mode as a convenience layer.
-
-Done when:
-- Tax treatment is derived from contract fields instead of a blind toggle.
-- Half-income method uses personal income-tax logic, not ETF-style Abgeltungsteuer.
-- The simple mode clearly states what it assumes.
-
-Likely files: `src/domain/types.ts`, `src/data/defaultScenario.ts`, `src/engine/simulate.ts`, `src/engine/projections.ts`, `src/App.tsx`, `LEGAL_REVIEW.md`.
+- Lump-sum vs pension payout mode (blocked by #19 — 1/120 KV/PV spreading rule under §229 SGB V not yet modeled).
 
 ---
 
@@ -137,7 +116,8 @@ Add presets:
 - `#37` ETF withdrawal tax-basis tracking through payout phase.
 - `#39` bAV entitlement, minimum, tariff-agreement warnings.
 - `#40` Hardened localStorage parser and state schema tests.
-- `#6 (partial)` Marginal-tax bAV payout: `netBavPayout` uses total(bAV + other) − total(other); `monthlyOtherRetirementIncome` input added. KVdR/lump-sum still open.
+- `#6 (partial)` Marginal-tax bAV payout: `netBavPayout` uses total(bAV + other) − total(other); `monthlyOtherRetirementIncome` input added; KVdR-/freiwillig-toggle added (KV Freibetrag §226(2) vs §240 SGB V); KV/PV breakdown visible. Lump-sum payout mode still blocked by #19.
+- `#38` Law-based private-insurance tax: contract year → `pre2005` / `halbeinkuenfte` / `abgeltungsteuer`; `deriveInsuranceTaxMode` / `netInsurancePayout` / `afterTaxInsuranceLumpSum` in `projections.ts`; Halbeinkünfteverfahren uses personal income-tax marginal rate on half the gain.
 
 ---
 

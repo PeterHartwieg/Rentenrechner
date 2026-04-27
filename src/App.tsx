@@ -13,9 +13,10 @@ import {
   YAxis,
 } from 'recharts'
 import { Calculator, Coins, RotateCcw, Settings, TrendingUp } from 'lucide-react'
-import type { BavFundingResult, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
+import type { BavFundingResult, InsuranceTaxMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
-import { afterTaxInvestmentCapital } from './engine/projections'
+import { afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveInsuranceTaxMode } from './engine/projections'
+import { careEmployeeRateForChildren } from './engine/salary'
 import { simulateRetirementComparison } from './engine/simulate'
 import { de2026Rules } from './rules/de2026'
 import { STORAGE_KEY, buildStateJson, loadSavedState } from './storage'
@@ -52,13 +53,13 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   },
   {
     category: 'Versicherungssteuer',
-    status: 'vereinfacht',
-    note: 'Nur steuerfrei/normal – kein Halbeinkünfteverfahren, kein detailliertes Vertragsmodell. (#8)',
+    status: 'implementiert',
+    note: 'Steuerbehandlung automatisch aus Vertragsjahr abgeleitet: vor 2005 steuerfrei (§52 Abs. 28 EStG a.F.), ab 2005 mit ≥12 Jahren Laufzeit und Auszahlung ab 62 Halbeinkünfteverfahren (§20 Abs. 1 Nr. 6 EStG – halber Ertrag mit persönlichem Steuersatz), sonst Abgeltungsteuer 25 % + Soli (§20 Abs. 2 EStG). (#38)',
   },
   {
     category: 'bAV Rentenphase',
     status: 'vereinfacht',
-    note: 'Grenzsteuer auf bAV konfigurierbar (Eingabe "Sonst. Renteneinkommen"). KVdR weiterhin vereinfacht (AN+AG-PV, kein Wechsel zu freiwilliger GKV). (#6)',
+    note: 'Grenzsteuer konfigurierbar; KVdR-/freiwillig-GKV-Toggle: KVdR mit Freibetrag §226(2) SGB V, freiwillig ohne. KV/PV-Aufschlüsselung sichtbar. Kapitalabfindung wegen 1/120-Regel nicht modelliert. (#6)',
   },
   {
     category: 'bAV Kapitalabfindung',
@@ -278,6 +279,14 @@ function App() {
   const cashflowAnnualTaxSvSavings =
     cashflowProductId === 'bav' ? simulation.bavFunding.annualTaxAndSvSavings : 0
 
+  const insuranceTaxMode: InsuranceTaxMode = deriveInsuranceTaxMode(
+    assumptions.insurance.contractStartYear,
+    profile.retirementAge - profile.age,
+    profile.retirementAge,
+  )
+  // Treat absent kvdrMember (pre-migration state) as true — matches the netBavPayout default parameter
+  const kvdrMember = assumptions.bav.kvdrMember !== false
+
   function rowAfterTaxBalance(
     balance: number,
     cumulativeContributions: number,
@@ -293,8 +302,8 @@ function App() {
         cumulativeVorabpauschale,
       )
     }
-    if (assumptions.insurance.taxMode === 'steuerfrei') return balance
-    return afterTaxInvestmentCapital(balance, cumulativeContributions, de2026Rules, 0)
+    const otherAnnual = assumptions.insurance.monthlyOtherRetirementIncome * 12
+    return afterTaxInsuranceLumpSum(balance, cumulativeContributions, insuranceTaxMode, de2026Rules, otherAnnual)
   }
 
   return (
@@ -528,6 +537,45 @@ function App() {
             </p>
           )}
 
+          {profile.publicHealthInsurance && (
+            <>
+              <label className="field field-inline">
+                <input
+                  type="checkbox"
+                  checked={kvdrMember}
+                  onChange={(event) =>
+                    setAssumptions((current) => ({
+                      ...current,
+                      bav: { ...current.bav, kvdrMember: event.target.checked },
+                    }))
+                  }
+                />
+                <span>KVdR-Mitglied in Rente</span>
+              </label>
+              {(() => {
+                const bavResult = selectedResults.find((r) => r.productId === 'bav')
+                const grossPayout = bavResult?.grossMonthlyPayout ?? 0
+                if (grossPayout <= 0) return null
+                const healthRate = de2026Rules.socialSecurity.healthGeneralRate + profile.healthAdditionalContributionPct / 100
+                const threshold = de2026Rules.socialSecurity.kvFreibetragVersorgungMonthly
+                const kvBase = kvdrMember ? Math.max(0, grossPayout - threshold) : grossPayout
+                const kvMonthly = kvBase * healthRate
+                const pvRate = careEmployeeRateForChildren(profile.children, de2026Rules) + de2026Rules.socialSecurity.careEmployerRate
+                const pvMonthly = grossPayout > threshold ? grossPayout * pvRate : 0
+                return (
+                  <p className="field-hint">
+                    Brutto-bAV-Rente: ~{formatCurrency(grossPayout, 0)}/Monat ·
+                    KV-Basis: {formatCurrency(kvBase, 0)} · KV: {formatCurrency(kvMonthly, 0)} ·
+                    PV: {formatCurrency(pvMonthly, 0)}{' '}
+                    {kvdrMember
+                      ? '(KVdR: Freibetrag 197,75 EUR · §226 SGB V)'
+                      : '(freiwillig: volle Rente als Grundlage · §240 SGB V)'}
+                  </p>
+                )
+              })()}
+            </>
+          )}
+
           <div className="divider" />
 
           <div className="field-grid">
@@ -714,29 +762,53 @@ function App() {
             ))}
           </div>
 
-          <label className="field">
-            <span>Besteuerung private Versicherung</span>
-            <select
-              value={assumptions.insurance.taxMode}
-              onChange={(event) =>
-                setAssumptions((current) => ({
-                  ...current,
-                  insurance: {
-                    ...current.insurance,
-                    taxMode: event.target.value === 'steuerfrei' ? 'steuerfrei' : 'normal',
-                  },
-                }))
-              }
-            >
-              <option value="normal">normal besteuert (Abgeltungsteuer 25%)</option>
-              <option value="steuerfrei">steuerfrei (Halbeinkünfteverfahren)</option>
-            </select>
-            <small className="field-hint">
-              {assumptions.insurance.taxMode === 'steuerfrei'
-                ? 'Gilt für Verträge ab 2005 mit ≥ 12 Jahren Laufzeit und Auszahlung ab 62 Jahren (§20 Abs. 1 Nr. 6 EStG) – nur die Hälfte des Ertrags ist steuerpflichtig.'
-                : 'Gilt für Verträge ab 2005 ohne Halbeinkünfte-Voraussetzungen. Kursgewinne unterliegen der Abgeltungsteuer (25% + Soli).'}
-            </small>
-          </label>
+          <NumberField
+            label="Vertragsjahr (pAV)"
+            value={assumptions.insurance.contractStartYear}
+            min={1970}
+            max={2030}
+            step={1}
+            onChange={(value) =>
+              setAssumptions((current) => ({
+                ...current,
+                insurance: { ...current.insurance, contractStartYear: Number(value) },
+              }))
+            }
+          />
+          <small className="field-hint">
+            {insuranceTaxMode === 'pre2005' && (
+              <>Vor 2005: steuerfrei · §52 Abs. 28 EStG a.F.</>
+            )}
+            {insuranceTaxMode === 'halbeinkuenfte' && (
+              <>Halbeinkünfteverfahren: ½ des Ertrags mit persönl. Steuersatz · §20 Abs. 1 Nr. 6 EStG · (≥ 12 Jahre Laufzeit, Auszahlung ab 62)</>
+            )}
+            {insuranceTaxMode === 'abgeltungsteuer' && (
+              <>Abgeltungsteuer: voller Ertrag mit 25 % + Soli · §20 Abs. 2 EStG</>
+            )}
+          </small>
+          {insuranceTaxMode === 'halbeinkuenfte' && (
+            <>
+              <NumberField
+                label="Sonst. Renteneinkommen (pAV)"
+                value={assumptions.insurance.monthlyOtherRetirementIncome}
+                min={0}
+                step={50}
+                suffix="EUR mtl."
+                onChange={(value) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    insurance: { ...current.insurance, monthlyOtherRetirementIncome: Number(value) },
+                  }))
+                }
+              />
+              {assumptions.insurance.monthlyOtherRetirementIncome > 0 && (
+                <p className="field-hint">
+                  Steuer(½ Ertrag + {formatCurrency(assumptions.insurance.monthlyOtherRetirementIncome, 0)}/Monat) −
+                  Steuer({formatCurrency(assumptions.insurance.monthlyOtherRetirementIncome, 0)}/Monat).
+                </p>
+              )}
+            </>
+          )}
 
           <div className="subsection-heading">
             <h3>pAV-Kosten</h3>

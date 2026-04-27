@@ -1,6 +1,9 @@
 export type ProductId = 'etf' | 'bav' | 'versicherung'
 
-export type InsuranceTaxMode = 'steuerfrei' | 'normal'
+// pre2005: old-law contract (§52 Abs. 28 EStG) — tax-free payout
+// halbeinkuenfte: post-2004, ≥12 years, payout ≥ age 62 — half the gain at personal income tax rate (§20 Abs. 1 Nr. 6 EStG)
+// abgeltungsteuer: post-2004, all other cases — full gain at 25% Abgeltungsteuer (§20 Abs. 2 EStG)
+export type InsuranceTaxMode = 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'
 
 
 export type ReturnScenarioId = 'konservativ' | 'basis' | 'optimistisch'
@@ -44,10 +47,15 @@ export interface BavAssumptions {
   monthlyOtherRetirementIncome: number
   // #5: when true, subtract estimatedMonthlyGrvReduction from bAV net payout
   includeGrvReduction: boolean
+  // #6: true = KVdR (KV Freibetrag §226(2) SGB V, combined AN+AG PV); false = freiwillig versichert (no Freibetrag)
+  kvdrMember: boolean
 }
 
 export interface InsuranceAssumptions {
-  taxMode: InsuranceTaxMode
+  // Year the contract was signed. Pre-2005 → tax-free; post-2004 → tax mode derived from runtime + retirementAge.
+  contractStartYear: number
+  // Monthly other retirement income for marginal-tax calculation (Halbeinkünfteverfahren only)
+  monthlyOtherRetirementIncome: number
   fees: FeeModel
 }
 

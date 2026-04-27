@@ -368,25 +368,36 @@ describe('bAV funding model', () => {
     expect(bav?.valueMultipleOnUserCost).toBeNull()
   })
 
-  it('explicitly handles normal and tax-free private insurance modes', () => {
-    const taxFreeAssumptions: ScenarioAssumptions = {
+  it('derives insurance tax modes: pre2005 tax-free, halbeinkuenfte half-income tax, abgeltungsteuer full Abgeltungsteuer', () => {
+    // pre2005: lump sum == capital; net payout == gross payout
+    const pre2005 = simulateRetirementComparison(defaultProfile, {
+      ...defaultAssumptions,
+      insurance: { ...defaultAssumptions.insurance, contractStartYear: 1990 },
+    }, de2026Rules).products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(pre2005?.afterTaxLumpSum).toBeCloseTo(pre2005?.capitalAtRetirement ?? 0)
+    expect(pre2005?.netMonthlyPayout).toBeCloseTo(pre2005?.grossMonthlyPayout ?? 0)
+
+    // halbeinkuenfte: with 3,000 EUR/month other income the half-gain sits in the 42% bracket
+    // → marginalTax(other + halfGain) - marginalTax(other) > 0 → net < gross
+    const halbein = simulateRetirementComparison(defaultProfile, {
       ...defaultAssumptions,
       insurance: {
         ...defaultAssumptions.insurance,
-        taxMode: 'steuerfrei',
+        contractStartYear: 2024,
+        monthlyOtherRetirementIncome: 3_000,
       },
-    }
-    const normal = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
-      .products.filter((product) => product.productId === 'versicherung')
-      .find((product) => product.scenarioId === 'basis')
-    const taxFree = simulateRetirementComparison(defaultProfile, taxFreeAssumptions, de2026Rules)
-      .products.filter((product) => product.productId === 'versicherung')
-      .find((product) => product.scenarioId === 'basis')
+    }, de2026Rules).products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(halbein?.afterTaxLumpSum ?? 0).toBeLessThan(halbein?.capitalAtRetirement ?? 0)
+    expect(halbein?.netMonthlyPayout ?? 0).toBeLessThan(halbein?.grossMonthlyPayout ?? 0)
 
-    expect(taxFree?.afterTaxLumpSum).toBeCloseTo(taxFree?.capitalAtRetirement ?? 0)
-    expect(taxFree?.netMonthlyPayout).toBeCloseTo(taxFree?.grossMonthlyPayout ?? 0)
-    expect(normal?.afterTaxLumpSum ?? 0).toBeLessThan(taxFree?.afterTaxLumpSum ?? 0)
-    expect(normal?.netMonthlyPayout ?? 0).toBeLessThan(taxFree?.netMonthlyPayout ?? 0)
+    // abgeltungsteuer: retirementAge 60 < 62 → full 25% Abgeltungsteuer on gain
+    const abgelt = simulateRetirementComparison(
+      { ...defaultProfile, retirementAge: 60 },
+      { ...defaultAssumptions, insurance: { ...defaultAssumptions.insurance, contractStartYear: 2024 } },
+      de2026Rules,
+    ).products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(abgelt?.afterTaxLumpSum ?? 0).toBeLessThan(abgelt?.capitalAtRetirement ?? 0)
+    expect(abgelt?.netMonthlyPayout ?? 0).toBeLessThan(abgelt?.grossMonthlyPayout ?? 0)
   })
 })
 

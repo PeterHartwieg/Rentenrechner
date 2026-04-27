@@ -12,11 +12,13 @@ import type {
 } from '../domain/types'
 import { calculateBavFunding } from './salary'
 import {
+  afterTaxInsuranceLumpSum,
   afterTaxInvestmentCapital,
+  deriveInsuranceTaxMode,
   etfPayoutSchedule,
   monthlyPayoutFromCapital,
   netBavPayout,
-  netEtfPayout,
+  netInsurancePayout,
   projectAccumulation,
 } from './projections'
 
@@ -48,7 +50,7 @@ function buildProductResult(params: {
   monthlyProductContribution: number
   monthlyEmployerContribution: number
   fees: FeeModel
-  taxMode: 'etf' | 'bav' | 'insurance-tax-free' | 'insurance-normal'
+  taxMode: 'etf' | 'bav' | 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'
   partialExemption?: number
 }): ProductResult {
   const yearsToRetirement = params.profile.retirementAge - params.profile.age
@@ -106,31 +108,39 @@ function buildProductResult(params: {
       : grossMonthlyPayout
   }
 
-  if (params.taxMode === 'insurance-normal') {
-    afterTaxLumpSum = afterTaxInvestmentCapital(
+  if (
+    params.taxMode === 'pre2005' ||
+    params.taxMode === 'halbeinkuenfte' ||
+    params.taxMode === 'abgeltungsteuer'
+  ) {
+    const otherAnnual = params.assumptions.insurance.monthlyOtherRetirementIncome * 12
+    afterTaxLumpSum = afterTaxInsuranceLumpSum(
       projection.capital,
       projection.totalContributionsBeforeFees,
+      params.taxMode,
       params.rules,
-      0,
+      otherAnnual,
     )
-    netMonthlyPayout = netEtfPayout(
+    netMonthlyPayout = netInsurancePayout(
       grossMonthlyPayout,
       projection.capital,
       projection.totalContributionsBeforeFees,
+      params.taxMode,
       params.rules,
-      0,
+      params.assumptions.insurance.monthlyOtherRetirementIncome,
     )
-  }
-
-  if (params.taxMode === 'insurance-tax-free') {
-    afterTaxLumpSum = projection.capital
-    netMonthlyPayout = grossMonthlyPayout
   }
 
   if (params.taxMode === 'bav') {
     afterTaxLumpSum = null
     const otherIncome = params.assumptions.bav.monthlyOtherRetirementIncome
-    let rawNet = netBavPayout(grossMonthlyPayout, params.profile, params.rules, otherIncome)
+    let rawNet = netBavPayout(
+      grossMonthlyPayout,
+      params.profile,
+      params.rules,
+      otherIncome,
+      params.assumptions.bav.kvdrMember,
+    )
     if (params.assumptions.bav.includeGrvReduction) {
       rawNet = Math.max(0, rawNet - params.bavFunding.estimatedMonthlyGrvReduction)
     }
@@ -178,6 +188,11 @@ export function simulateRetirementComparison(
   const bavFunding = calculateBavFunding(profile, rules, assumptions.bav)
   const etfMonthly = bavFunding.monthlyNetCost
   const insuranceMonthly = bavFunding.monthlyNetCost
+  const insuranceTaxMode = deriveInsuranceTaxMode(
+    assumptions.insurance.contractStartYear,
+    profile.retirementAge - profile.age,
+    profile.retirementAge,
+  )
 
   const products = assumptions.returnScenarios.flatMap((scenario) => [
     buildProductResult({
@@ -222,10 +237,7 @@ export function simulateRetirementComparison(
       monthlyProductContribution: insuranceMonthly,
       monthlyEmployerContribution: 0,
       fees: assumptions.insurance.fees,
-      taxMode:
-        assumptions.insurance.taxMode === 'steuerfrei'
-          ? 'insurance-tax-free'
-          : 'insurance-normal',
+      taxMode: insuranceTaxMode,
     }),
   ])
 
