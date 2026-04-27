@@ -39,10 +39,10 @@ src/rules/de2026.ts
 | General GKV rate | 14.6% | implemented |
 | Reduced GKV rate | 14.0% | implemented where PAP helper needs it |
 | Avg Zusatzbeitrag | 2.9% | default profile updated |
-| PV employee, childless | 2.4% | implemented |
-| PV employee, one child | 1.8% | implemented |
+| PV employee, childless | 2.4% standard / 2.9% Saxony | standard implemented; Saxony not modeled |
+| PV employee, one child | 1.8% standard / 2.3% Saxony | standard implemented; Saxony not modeled |
 | PV child discount | 0.25 pp for children 2-5 | implemented helper |
-| PV employer | 1.8% | implemented |
+| PV employer | 1.8% standard / 1.3% Saxony | standard implemented; Saxony not modeled |
 | Retiree PV childless | 4.2% | implemented |
 | bAV tax-free limit | 8% RV BBG | implemented |
 | bAV SV-free limit | 4% RV BBG | implemented |
@@ -52,6 +52,17 @@ src/rules/de2026.ts
 | 2026 InvStG Basiszins | 3.20% | implemented |
 | KV Freibetrag Versorgungsbezüge | 197.75 EUR/month | implemented |
 | PV treatment for Versorgungsbezüge | Freigrenze, not Freibetrag | implemented |
+
+## April 2026 Official Source Recheck
+
+Checked against official sources on 2026-04-27:
+
+- Confirmed: 2026 income-tax tariff thresholds, Soli Freigrenze, social-security ceilings, GKV/PV rates, average Zusatzbeitrag, bAV limits, Sparerpauschbetrag, Abgeltungsteuer, 2026 InvStG Basiszins, and KV/PV treatment for Versorgungsbezüge.
+- Clarified: the implemented PV employee/employer split is the standard non-Saxony split. Saxony has a different split (employee +0.5 pp, employer -0.5 pp) and is not modeled.
+- Corrected citation: Wachstumschancengesetz is BGBl. 2024 I Nr. 108, not Nr. 101.
+- Corrected citation: Sozialversicherungsrechengrößen-Verordnung 2026 is BGBl. 2025 I Nr. 278; the KV/PV 69,750 EUR/year figure is in §2 Abs. 2, and the RV 101,400 EUR/year figure is in §4 Abs. 1.
+- Extra checked value not yet in the baseline table: the official preliminary Durchschnittsentgelt 2026 is 51,944 EUR under SVBezGrV 2026 §3 Abs. 2. `src/rules/de2026.ts` currently has `durchschnittsentgelt: 45_358`, which is stale if used for 2026 Entgeltpunkte estimates.
+- Extra checked value not yet in the baseline table: the current Rentenwert is 40.79 EUR/EP through 2026-06-30 and rises to 42.52 EUR/EP from 2026-07-01 per Deutsche Rentenversicherung. `src/rules/de2026.ts` currently has `aktuellerRentenwert: 39.32`, which is stale for April 2026 unless intentionally modeling the pre-2025-07 value.
 
 ## Source Links
 
@@ -69,20 +80,58 @@ Primary sources used during the April 2026 review:
   https://www.gesetze-im-internet.de/estg/__3.html
 - EStG §20:
   https://www.gesetze-im-internet.de/estg/__20.html
+- EStG §32d:
+  https://www.gesetze-im-internet.de/estg/__32d.html
 - EStG §52:
   https://www.gesetze-im-internet.de/estg/__52.html
+- EStG §19:
+  https://www.gesetze-im-internet.de/estg/__19.html
+- EStG §22:
+  https://www.gesetze-im-internet.de/estg/__22.html
+- EStG §34:
+  https://www.gesetze-im-internet.de/estg/__34.html
+- EStG §9a:
+  https://www.gesetze-im-internet.de/estg/__9a.html
+- EStG §10c:
+  https://www.gesetze-im-internet.de/estg/__10c.html
+- SolzG 1995 §3:
+  https://www.gesetze-im-internet.de/solzg_1995/__3.html
 - BetrAVG §1a:
   https://www.gesetze-im-internet.de/betravg/__1a.html
 - BetrAVG §17:
   https://www.gesetze-im-internet.de/betravg/__17.html
 - BetrAVG §20:
   https://www.gesetze-im-internet.de/betravg/__20.html
+- SvEV §1:
+  https://www.gesetze-im-internet.de/svev/__1.html
 - SGB V §226:
   https://www.gesetze-im-internet.de/sgb_5/__226.html
 - SGB V §229:
   https://www.gesetze-im-internet.de/sgb_5/__229.html
+- SGB V §241:
+  https://www.gesetze-im-internet.de/sgb_5/__241.html
+- SGB V §243:
+  https://www.gesetze-im-internet.de/sgb_5/__243.html
+- SGB V §240:
+  https://www.gesetze-im-internet.de/sgb_5/__240.html
+- SGB V §248:
+  https://www.gesetze-im-internet.de/sgb_5/__248.html
+- SGB V §249a:
+  https://www.gesetze-im-internet.de/sgb_5/__249a.html
+- SGB V §250:
+  https://www.gesetze-im-internet.de/sgb_5/__250.html
+- SGB VI §106:
+  https://www.gesetze-im-internet.de/sgb_6/__106.html
+- SGB III §341:
+  https://www.gesetze-im-internet.de/sgb_3/__341.html
+- SGB XI §55:
+  https://www.gesetze-im-internet.de/sgb_11/__55.html
 - SGB XI §57:
   https://www.gesetze-im-internet.de/sgb_11/__57.html
+- SVBezGrV 2026:
+  https://www.gesetze-im-internet.de/svbezgrv_2026/
+- RVBeitrSBek 2026:
+  https://www.gesetze-im-internet.de/rvbeitrsbek_2026/BJNR1230A0025.html
 - InvStG §18:
   https://www.gesetze-im-internet.de/invstg_2018/__18.html
 - InvStG §19:
@@ -97,6 +146,12 @@ Primary sources used during the April 2026 review:
   https://www.bundesregierung.de/breg-de/aktuelles/beitragsgemessungsgrenzen-2386514
 - BMG Pflegeversicherung financing:
   https://www.bundesgesundheitsministerium.de/themen/pflege/online-ratgeber-pflege/die-pflegeversicherung/finanzierung
+- Deutsche Rentenversicherung 2026 Rentenanpassung:
+  https://www.deutsche-rentenversicherung.de/DRV/DE/Ueber-uns-und-Presse/Presse/Meldungen/2026/260305-rentenanpassung-2026.html
+- BFH X R 25/23, 2025-10-30, bAV capital payout / no reduced rate where free capital option:
+  https://www.bundesfinanzhof.de/de/entscheidung/entscheidungen-online/detail/STRE202620036/
+- Bundesgesetzblatt Wachstumschancengesetz:
+  https://www.recht.bund.de/bgbl/1/2024/108/VO.html
 
 ## Important Interpretation Notes
 
@@ -127,7 +182,7 @@ This distinction has already caused implementation mistakes, so keep it visible 
 
 ### bAV Lump Sum
 
-bAV lump-sum after-tax capital is currently intentionally hidden in the app. It should remain hidden until 1/120 spreading under SGB V §229 is implemented.
+bAV lump-sum after-tax capital is no longer hidden: #47/#48 implemented the §229 SGB V 1/120 KV/PV spreading and tax-mode routing by Durchführungsweg. Keep this section visible because a future refactor must preserve the distinction between income-tax routing and KV/PV routing.
 
 ### ETF Vorabpauschale
 
@@ -135,14 +190,16 @@ The app currently uses the 2026 Basiszins across the projection unless future-ye
 
 ### Private Insurance Tax
 
-The current pAV model still needs a law-based contract mode. Important branches:
+The pAV model now routes by law-based tax mode (`pre2005`, `halbeinkuenfte`, `abgeltungsteuer`).
+Important branches:
 
 - pre-2005 potentially tax-free contracts
 - post-2004 EStG §20 treatment
 - age-62 / 12-year half-income method
 - fund-linked insurance special treatment
 
-See `BACKLOG.md` item `#38`.
+Remaining known issue: `BACKLOG.md` item `#44` tracks deriving contract runtime from calendar
+years instead of using only `retirementAge - age`.
 
 ## Open Legal Modeling Questions
 
@@ -163,11 +220,12 @@ Need a configurable retirement-income model:
 
 Tracked in `BACKLOG.md` item `#6`.
 
-### Private Insurance Tax Modes
+### Private Insurance Tax Runtime
 
-Need to convert simplified pAV taxation into contract-field driven logic.
+Need to derive pAV contract runtime from `contractStartYear` and payout year so old and
+post-2004 contracts are classified correctly.
 
-Tracked in `BACKLOG.md` item `#38`.
+Tracked in `BACKLOG.md` item `#44`.
 
 ## Review Checklist For Future Rule Years
 
@@ -200,7 +258,7 @@ locks in at the first full year of pension receipt and does not change in subseq
 
 **Statutory basis:**
 - §22 Nr. 1 Satz 3 Buchstabe a aa EStG (primary)
-- Amended by Wachstumschancengesetz (BGBl. 2024 I Nr. 101, in force 28 March 2024), which slowed
+- Amended by Wachstumschancengesetz (BGBl. 2024 I Nr. 108, in force 28 March 2024), which slowed
   the progression to 0.5 percentage points per year (down from up to 2 pp/year in the original 2005 schedule)
 - §52 Abs. 34 EStG (transition table)
 - https://www.gesetze-im-internet.de/estg/__22.html
@@ -231,7 +289,7 @@ Two components:
 
 **Statutory basis:**
 - §19 Abs. 2 EStG (primary)
-- Amended by Wachstumschancengesetz (BGBl. 2024 I Nr. 101) to slow progression to zero by 2058
+- Amended by Wachstumschancengesetz (BGBl. 2024 I Nr. 108) to slow progression to zero by 2058
   (original table would have reached 0 by 2040)
 - https://www.gesetze-im-internet.de/estg/__19.html
 
@@ -362,19 +420,28 @@ the KVdR base to specific categories).
 
 Source: §240 SGB V — https://www.gesetze-im-internet.de/sgb_5/__240.html
 
-### §249a SGB V — Beitragstragung für Versorgungsbezüge
+### §§248, 249a, 250 SGB V — KV rates and contribution bearing
 
 For Versorgungsbezüge (e.g. bAV pension), the retiree pays the **full healthRate** (both
-the employee and employer shares). The Versorgungsträger (e.g. employer, Pensionskasse) does
-not pay a KV employer share. The healthRate passed to `calculateRetirementKvPv` must be the
-combined rate (e.g. 14.6 % + Zusatzbeitrag 2.9 % = 17.5 % in the default profile).
+the employee and employer halves). The Versorgungsträger (e.g. employer, Pensionskasse) does
+not pay a KV employer share. The statutory basis is §248 SGB V (general contribution rate
+for Versorgungsbezüge) plus §250 Abs. 1 SGB V (member bears these contributions alone),
+not §249a SGB V. The healthRate passed to `calculateRetirementKvPv` must be the combined
+rate (e.g. 14.6 % + Zusatzbeitrag 2.9 % = 17.5 % in the default profile).
 
 For statutory GRV pension: the Rentenversicherungsträger pays half the healthRate as
 Beitragszuschuss zur Krankenversicherung der Rentner (§249a SGB V). The retiree only pays
 `healthRate / 2` on the GRV pension (KVdR members). For freiwillig Versicherte, the
-pensioner pays the full rate on GRV pension too (§240 SGB V — no institutional half-rate).
+pension is assessed under §240 SGB V; voluntary GKV retirees can also receive a statutory
+health-insurance subsidy from the pension insurance carrier under §106 SGB VI. This is
+not the same mechanism as the §249a direct KVdR split, so a full total-retirement-net model
+must represent the subsidy explicitly instead of assuming the pension has no half-rate relief.
 
-Source: §249a SGB V — https://www.gesetze-im-internet.de/sgb_5/__249a.html
+Sources:
+- §248 SGB V — https://www.gesetze-im-internet.de/sgb_5/__248.html
+- §249a SGB V — https://www.gesetze-im-internet.de/sgb_5/__249a.html
+- §250 SGB V — https://www.gesetze-im-internet.de/sgb_5/__250.html
+- §106 SGB VI — https://www.gesetze-im-internet.de/sgb_6/__106.html
 
 ### §57 Abs. 1 SGB XI — PV-Freigrenze for Versorgungsbezüge
 
@@ -390,8 +457,8 @@ Source: §57 Abs. 1 SGB XI — https://www.gesetze-im-internet.de/sgb_11/__57.ht
 ### KV/PV Beitragsbemessungsgrenze in retirement
 
 The monthly KV/PV BBG in 2026 is **5,812.50 EUR/month** (= 69,750 EUR/year ÷ 12).
-Source: BMAS BBG-Bekanntmachung 2026 (Verordnung über maßgebende Rechengrößen der
-Sozialversicherung für 2026, BGBl. 2025 I Nr. 349, § 5 Abs. 1 Nr. 2).
+Source: Verordnung über maßgebende Rechengrößen der Sozialversicherung für 2026
+(SVBezGrV 2026, BGBl. 2025 I Nr. 278, §2 Abs. 2).
 https://www.bundesgesundheitsministerium.de/beitraege
 
 The BBG caps the **aggregate KV/PV assessment base** across all income sources in a given month.
@@ -416,13 +483,19 @@ about source ordering.
 (PV uses the Freigrenze path, which can differ from the KV Freibetrag path), so the scale
 factors for KV and PV are computed independently.
 
-### Beitragszuschuss zur KVdR (statutory pension KV split)
+### Beitragszuschuss / KV split for statutory pension
 
-The Deutsche Rentenversicherung pays a Beitragszuschuss to KVdR members covering half the
-healthRate on the statutory GRV pension (§249a SGB V). The implementation models the
-pensioner's share only (`healthRate / 2` for GRV pension, KVdR path). This is correct for
-the purpose of computing the retiree's net income (the DRV payment is an institutional
-transfer that does not affect net retirement income directly).
+For KVdR members, Deutsche Rentenversicherung and the retiree each bear half the healthRate
+on the statutory GRV pension (§249a SGB V). The implementation models the pensioner's share
+only (`healthRate / 2` for GRV pension, KVdR path), which is correct when computing the
+pensioner's own deduction.
+
+For freiwillig Versicherte, statutory pension is part of the §240 SGB V assessment base.
+However, §106 SGB VI provides a health-insurance subsidy from the pension insurance carrier
+for eligible voluntary or private-health-insured pensioners. The current calculator mostly
+uses `monthlyOtherRetirementIncome` as GRV context for BBG apportionment and subtracts only
+the bAV/private-insurance KV/PV burden from the product under comparison. If the app later
+shows a full "total retirement net income" figure, it should model the §106 SGB VI subsidy.
 
 ### otherMonthlyIncome = monthlyStatutoryPension — simplification
 
@@ -477,10 +550,11 @@ Statutory basis:
 - §34 Abs. 2 Nr. 4 EStG (Fünftelregelung only for "Vergütung für mehrjährige Tätigkeit" — does not reach §3 Nr. 63 capital payouts under current tax authority practice)
 - https://www.gesetze-im-internet.de/estg/__22.html
 - https://www.gesetze-im-internet.de/estg/__34.html
+- BFH X R 25/23 (2025-10-30): https://www.bundesfinanzhof.de/de/entscheidung/entscheidungen-online/detail/STRE202620036/
 
-Note on case law: The proposition that §34 Fünftelregelung does not apply to capital
-payouts from §3 Nr. 63 contracts is consistent with the dominant interpretation in the
-German tax commentary literature and administrative practice. The Fünftelregelung has
+Note on case law: The proposition that §34 Fünftelregelung does not apply to normal capital
+payouts from §3 Nr. 63 external Durchführungswege is now supported by BFH X R 25/23
+(2025-10-30) where the beneficiary had a contractual capital option. The Fünftelregelung has
 historically been applied to Direktzusage/Unterstützungskasse capital payments (§19 EStG
 context), where the legal basis in §34 Abs. 2 Nr. 4 EStG is well-established. For §3 Nr. 63
 contracts, the routing through §22 Nr. 5 EStG rather than §19 EStG means the §34 route is
