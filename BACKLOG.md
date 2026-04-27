@@ -73,12 +73,6 @@ bAV and private-insurance retirement tax helpers currently feed gross retirement
 
 Add a dedicated retirement taxable-income helper before marking retirement-phase net values as decision-support grade.
 
-### #48 Make bAV Lump-Sum Income Tax Configurable
-
-`afterTaxBavLumpSum()` always applies the `§34 EStG` Fünftelregelung. That is not a universally safe assumption for all bAV Durchführungswege and capital-choice designs.
-
-Add a tax treatment input for bAV lump sums, including at least regular full taxation vs. eligible Fünftelregelung, and document the legal eligibility assumptions in `LEGAL_REVIEW.md`.
-
 ### #49 Deep-Validate Share URL And localStorage State
 
 The parser merges objects by shallow runtime type and accepts any non-empty saved array. A malformed or stale `returnScenarios` array, invalid age relation, non-finite number, extreme fee, or retirement end age before retirement can produce `NaN` calculations or misleading charts.
@@ -197,6 +191,7 @@ Update the docs so future reviews do not start from stale assumptions.
 - `#6` bAV retirement phase: marginal-tax payout (`netBavPayout`), KVdR/freiwillig toggle, KV/PV breakdown. Lump-sum: `afterTaxBavLumpSum` — §229 SGB V 1/120 spreading (KV/PV) + §34 Abs. 2 Nr. 4 EStG Fünftelregelung (income tax). `#19` resolved together.
 - `#47` Retirement KV/PV caps and aggregate income context: `calculateRetirementKvPv` in `retirementTax.ts` applies monthly BBG cap (5,812.50 EUR) across bAV Versorgungsbezüge, GRV pension, and freiwillig-other income; KV Freibetrag once-per-month on aggregate; PV Freigrenze all-or-nothing; §249a half-rate on GRV for KVdR; freiwillig private insurance now subject to KV/PV; 1/120 lump-sum context-aware.
 - `#19` 1/120 KV/PV spreading rule — implemented as part of #6 lump-sum.
+- `#48` bAV lump-sum income-tax routing by Durchführungsweg: `BavDurchfuehrungsweg` type + `deriveBavLumpSumTaxMode` in `projections.ts`; `afterTaxBavLumpSum` refactored with `taxMode` parameter; UI selector in assumptions drawer; storage migration (mergeDeep defaults). §3 Nr. 63 → voll_versorgungsbezug (§22 Nr. 5 EStG, no Fünftelregelung); §40b a.F. eligible → pre2005_steuerfrei; Direktzusage/U-Kasse → fuenftelregelung (§34 EStG). Default afterTaxLumpSum drops ~46–58k EUR for default profile (basis scenario: from 197,753 to 141,809 EUR).
 - `#38` Law-based private-insurance tax: contract year → `pre2005` / `halbeinkuenfte` / `abgeltungsteuer`; `deriveInsuranceTaxMode` / `netInsurancePayout` / `afterTaxInsuranceLumpSum` in `projections.ts`; Halbeinkünfteverfahren uses personal income-tax marginal rate on half the gain.
 
 ---

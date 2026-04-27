@@ -778,23 +778,30 @@ describe('default-profile end-to-end snapshot', () => {
   })
 
   it('bAV: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
-    // after #46: afterTaxBavLumpSum now routes Fünftelregelung through calculateRetirementTax,
-    // applying Sonderausgaben-Pauschbetrag (36 EUR) to each Fünftel slice → slightly lower tax → higher net lump sum.
-    // netMonthlyPayout also slightly higher: Versorgungsfreibetrag (2065 cohort: 0%) + Pauschbeträge reduce zvE.
+    // after #48: default Durchführungsweg is direktversicherung_3_63 → voll_versorgungsbezug
+    // (full marginal rate, no Fünftelregelung). afterTaxLumpSum drops materially vs. pre-#48
+    // Fünftelregelung values. netMonthlyPayout is unchanged (laufende Versorgungsbezüge routing unaffected).
+    //
+    // Pre-#48 values (Fünftelregelung for reference):
+    //   konservativ: 144_459   basis: 197_753   optimistisch: 270_940
+    // Post-#48 values (voll_versorgungsbezug, default §3 Nr. 63):
+    //   konservativ: 98_632    basis: 141_809   optimistisch: 213_152
+    // Delta (lower because full marginal rate > Fünftelregelung on a large spike):
+    //   konservativ: -45_827   basis: -55_944   optimistisch: -57_788
     const k = find('bav', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(243_214)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(144_459)  // was 144_219 before #46 (+240)
-    expect(Math.round(k.netMonthlyPayout)).toBe(922)      // was 920 before #46 (+2)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(98_632)   // was 144_459 before #48 (-45_827); voll_versorgungsbezug §22 Nr. 5 EStG
+    expect(Math.round(k.netMonthlyPayout)).toBe(922)
 
     const b = find('bav', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(379_719)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(197_753)  // was 197_428 before #46 (+325)
-    expect(Math.round(b.netMonthlyPayout)).toBe(1_487)    // was 1_484 before #46 (+3)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(141_809)  // was 197_753 before #48 (-55_944); voll_versorgungsbezug §22 Nr. 5 EStG
+    expect(Math.round(b.netMonthlyPayout)).toBe(1_487)
 
     const o = find('bav', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(611_164)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(270_940)  // was 270_634 before #46 (+306)
-    expect(Math.round(o.netMonthlyPayout)).toBe(2_438)    // was 2_434 before #46 (+4)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(213_152)  // was 270_940 before #48 (-57_788); voll_versorgungsbezug §22 Nr. 5 EStG
+    expect(Math.round(o.netMonthlyPayout)).toBe(2_438)
   })
 
   it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {

@@ -13,9 +13,9 @@ import {
   YAxis,
 } from 'recharts'
 import { Calculator, Check, Coins, Download, Link, RotateCcw, Settings, TrendingUp } from 'lucide-react'
-import type { BavFundingResult, InsuranceTaxMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
+import type { BavDurchfuehrungsweg, BavFundingResult, InsuranceTaxMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
-import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveInsuranceTaxMode } from './engine/projections'
+import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from './engine/projections'
 import { careEmployeeRateForChildren } from './engine/salary'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { simulateRetirementComparison } from './engine/simulate'
@@ -67,7 +67,7 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   {
     category: 'bAV Kapitalabfindung',
     status: 'implementiert',
-    note: 'KV/PV nach §229 SGB V 1/120-Verteilung (120 Monate); Einkommensteuer nach §22 Nr. 5 EStG mit Fünftelregelung §34 Abs. 2 Nr. 4 EStG. PKV-Mitglieder ohne KV/PV-Abzug. (#6/#19)',
+    note: 'KV/PV nach §229 SGB V 1/120-Verteilung (120 Monate); Auszahlungsbesteuerung wird aus dem Durchführungsweg abgeleitet: §3 Nr. 63 EStG (Direktversicherung, Pensionskasse, Pensionsfonds) → voller Steuersatz §22 Nr. 5 EStG ohne Fünftelregelung; §40b EStG a.F. + Voraussetzungen erfüllt → steuerfrei §52 Abs. 28 EStG a.F.; Direktzusage/U-Kasse → Fünftelregelung §34 Abs. 2 Nr. 4 EStG. PKV-Mitglieder ohne KV/PV-Abzug. (#6/#19/#48)',
   },
   {
     category: 'Gesetzliche Rente',
@@ -292,6 +292,11 @@ function App() {
   )
   // Treat absent kvdrMember (pre-migration state) as true — matches the netBavPayout default parameter
   const kvdrMember = assumptions.bav.kvdrMember !== false
+  // #48: bAV lump-sum tax mode derived from Durchführungsweg
+  const bavLumpSumTaxMode = deriveBavLumpSumTaxMode(
+    assumptions.bav.durchfuehrungsweg,
+    assumptions.bav.pre2005EligibleTaxFree,
+  )
 
   function rowAfterTaxBalance(
     balance: number,
@@ -306,6 +311,7 @@ function App() {
         assumptions.bav.monthlyOtherRetirementIncome * 12,
         kvdrMember,
         insurancePayoutYear,
+        bavLumpSumTaxMode,
       )
     }
     if (cashflowProductId === 'etf') {
@@ -614,6 +620,62 @@ function App() {
                   </p>
                 )
               })()}
+            </>
+          )}
+
+          <label className="field">
+            <span>Durchführungsweg (bAV)</span>
+            <select
+              value={assumptions.bav.durchfuehrungsweg}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    durchfuehrungsweg: event.target.value as BavDurchfuehrungsweg,
+                  },
+                }))
+              }
+            >
+              <option value="direktversicherung_3_63">Direktversicherung (§3 Nr. 63 EStG, ab 2005)</option>
+              <option value="pensionskasse_3_63">Pensionskasse (§3 Nr. 63 EStG)</option>
+              <option value="pensionsfonds_3_63">Pensionsfonds (§3 Nr. 63 EStG)</option>
+              <option value="direktversicherung_40b_alt">Direktversicherung (§40b EStG a.F., vor 2005)</option>
+              <option value="direktzusage">Direktzusage (§19 EStG)</option>
+              <option value="unterstuetzungskasse">Unterstützungskasse (§19 EStG)</option>
+            </select>
+            <small className="field-hint">
+              {bavLumpSumTaxMode === 'voll_versorgungsbezug' && (
+                <>Kapitalabfindung: voller Steuersatz nach §22 Nr. 5 EStG (keine Fünftelregelung).</>
+              )}
+              {bavLumpSumTaxMode === 'fuenftelregelung' && (
+                <>Kapitalabfindung: Fünftelregelung §34 Abs. 2 Nr. 4 EStG anwendbar.</>
+              )}
+              {bavLumpSumTaxMode === 'pre2005_steuerfrei' && (
+                <>Kapitalabfindung: steuerfrei nach §52 Abs. 28 EStG a.F. KV/PV gilt weiterhin (§229 SGB V).</>
+              )}
+            </small>
+          </label>
+          {assumptions.bav.durchfuehrungsweg === 'direktversicherung_40b_alt' && (
+            <>
+              <label className="field field-inline">
+                <input
+                  type="checkbox"
+                  checked={assumptions.bav.pre2005EligibleTaxFree}
+                  onChange={(event) =>
+                    setAssumptions((current) => ({
+                      ...current,
+                      bav: { ...current.bav, pre2005EligibleTaxFree: event.target.checked },
+                    }))
+                  }
+                />
+                <span>Altvertrag steuerfrei nach §52 Abs. 28 EStG a.F. (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre, Kapitalleistung)</span>
+              </label>
+              {!assumptions.bav.pre2005EligibleTaxFree && (
+                <p className="field-hint">
+                  Steuerfreiheit abgewählt — voller Steuersatz auf Kapitalabfindung.
+                </p>
+              )}
             </>
           )}
 

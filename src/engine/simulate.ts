@@ -1,5 +1,6 @@
 import type {
   BavFundingResult,
+  BavLumpSumTaxMode,
   EtfPayoutRow,
   FeeModel,
   GermanRules,
@@ -15,6 +16,7 @@ import {
   afterTaxBavLumpSum,
   afterTaxInsuranceLumpSum,
   afterTaxInvestmentCapital,
+  deriveBavLumpSumTaxMode,
   deriveInsuranceTaxMode,
   etfPayoutSchedule,
   monthlyPayoutFromCapital,
@@ -55,6 +57,8 @@ function buildProductResult(params: {
   partialExemption?: number
   /** Calendar year the user reaches retirement age — used for cohort-table lookups in #46 pipeline. */
   retirementYear: number
+  /** #48: derived bAV lump-sum tax mode (only used when taxMode === 'bav') */
+  bavLumpSumTaxMode?: BavLumpSumTaxMode
 }): ProductResult {
   const yearsToRetirement = params.profile.retirementAge - params.profile.age
   const monthsToRetirement = yearsToRetirement * 12
@@ -151,6 +155,7 @@ function buildProductResult(params: {
       params.assumptions.bav.monthlyOtherRetirementIncome * 12,
       params.assumptions.bav.kvdrMember,
       params.retirementYear,
+      params.bavLumpSumTaxMode,
     )
     const otherIncome = params.assumptions.bav.monthlyOtherRetirementIncome
     let rawNet = netBavPayout(
@@ -219,6 +224,11 @@ export function simulateRetirementComparison(
     profile.retirementAge,
     assumptions.insurance.oldContractTaxFreeEligible,
   )
+  // #48: derive bAV lump-sum tax mode from Durchführungsweg
+  const bavLumpSumTaxMode = deriveBavLumpSumTaxMode(
+    assumptions.bav.durchfuehrungsweg,
+    assumptions.bav.pre2005EligibleTaxFree,
+  )
 
   const products = assumptions.returnScenarios.flatMap((scenario) => [
     buildProductResult({
@@ -252,6 +262,7 @@ export function simulateRetirementComparison(
       fees: assumptions.bav.fees,
       taxMode: 'bav',
       retirementYear: payoutYear,
+      bavLumpSumTaxMode,
     }),
     buildProductResult({
       productId: 'versicherung',

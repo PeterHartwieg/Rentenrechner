@@ -30,6 +30,10 @@ export const defaultAssumptions: ScenarioAssumptions = {
     monthlyOtherRetirementIncome: 0,
     includeGrvReduction: false,
     kvdrMember: true,
+    // #48: default to modern §3 Nr. 63 EStG Direktversicherung
+    durchfuehrungsweg: 'direktversicherung_3_63' as const,
+    // #48: pre-2005 eligibility flag — only relevant for direktversicherung_40b_alt
+    pre2005EligibleTaxFree: false,
     fees: {
       annualAssetFee: 0.005,
       contributionFee: 0.03,

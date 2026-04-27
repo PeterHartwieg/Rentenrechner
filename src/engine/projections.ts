@@ -1,4 +1,6 @@
 import type {
+  BavDurchfuehrungsweg,
+  BavLumpSumTaxMode,
   EtfPayoutRow,
   FeeModel,
   GermanRules,
@@ -294,6 +296,56 @@ export function deriveInsuranceTaxMode(
   return 'abgeltungsteuer'
 }
 
+/**
+ * Derives the income-tax mode for a bAV capital payout (Kapitalabfindung) from the
+ * Durchführungsweg and (where relevant) the pre-2005 eligibility flag. (#48)
+ *
+ * Mapping:
+ *
+ * - direktversicherung_40b_alt + pre2005EligibleTaxFree=true
+ *   → pre2005_steuerfrei
+ *   Basis: §52 Abs. 28 EStG a.F. (qualifying old-law §40b contract: ≥12-year runtime,
+ *   ≥5 annual premium payments, capital payout not annuity). Income-tax-free at the EStG
+ *   level. KV/PV as Versorgungsbezug still applies per §229 Abs. 1 Satz 1 Nr. 5 SGB V.
+ *
+ * - direktversicherung_40b_alt + pre2005EligibleTaxFree=false
+ *   → voll_versorgungsbezug
+ *   The contract is §40b but the user has indicated the §52 Abs. 28 EStG a.F. conditions
+ *   are not met (e.g. runtime < 12 years, payout as annuity, fewer than 5 premium years).
+ *   Full marginal rate applies to the payout. Fünftelregelung §34 is not available for
+ *   §40b contracts where the §52 a.F. steuerfrei conditions are not met.
+ *
+ * - direktzusage or unterstuetzungskasse
+ *   → fuenftelregelung
+ *   Basis: §34 Abs. 2 Nr. 4 EStG. Capital payments from Direktzusage and Unterstützungskasse
+ *   are Versorgungsbezüge under §19 EStG. The payment qualifies as "Vergütung für mehrjährige
+ *   Tätigkeit" (multi-year service), making §34 EStG Fünftelregelung available and typically
+ *   applied.
+ *
+ * - all *_3_63 Durchführungswege
+ *   → voll_versorgungsbezug
+ *   Basis: §22 Nr. 5 Satz 1 EStG. Capital payouts from §3 Nr. 63 EStG contracts are taxable
+ *   as Versorgungsbezüge at the full personal marginal rate. §34 Fünftelregelung does NOT
+ *   apply: these payments are not "Vergütungen für mehrjährige Tätigkeit" per §34 Abs. 2
+ *   Nr. 4 EStG because the tax benefit during accumulation (§3 Nr. 63 steuerfrei) distinguishes
+ *   them from the §19 EStG Direktzusage/Unterstützungskasse context where Fünftelregelung
+ *   historically applied (§22 Nr. 5 Satz 2 EStG explicitly excludes the §34 route for
+ *   §3-Nr.-63 funded contracts). See LEGAL_REVIEW.md §"bAV Lump-Sum Tax Routing (#48)".
+ */
+export function deriveBavLumpSumTaxMode(
+  durchfuehrungsweg: BavDurchfuehrungsweg,
+  pre2005EligibleTaxFree: boolean,
+): BavLumpSumTaxMode {
+  if (durchfuehrungsweg === 'direktversicherung_40b_alt') {
+    return pre2005EligibleTaxFree ? 'pre2005_steuerfrei' : 'voll_versorgungsbezug'
+  }
+  if (durchfuehrungsweg === 'direktzusage' || durchfuehrungsweg === 'unterstuetzungskasse') {
+    return 'fuenftelregelung'
+  }
+  // All *_3_63 Durchführungswege → full marginal rate (no Fünftelregelung)
+  return 'voll_versorgungsbezug'
+}
+
 // Net monthly insurance payout after tax and KV/PV where applicable. (#46, #47)
 // Halbeinkünfteverfahren: only half the gain is taxable at the personal income tax rate (§20 Abs. 1 Nr. 6 EStG).
 // Abgeltungsteuer: full gain taxed at 25% + Soli (§20 Abs. 2 EStG).
@@ -486,22 +538,36 @@ export function afterTaxInsuranceLumpSum(
   return Math.max(0, capital - marginalTax - kvPvBurden)
 }
 
-// §229 SGB V 1/120: after-tax bAV lump sum payout.
-// Income tax: §22 Nr. 5 EStG — full lump sum is taxable income.
-//   §34 Abs. 2 Nr. 4 EStG Fünftelregelung applied (multi-year accumulation qualifies as extraordinary income).
-//   The Fünftelregelung itself is unchanged (#48); only its internal tax computation is now routed
-//   through calculateRetirementTax with bavIsLumpSum=true so retirement Pauschbeträge are applied. (#46)
-//   Versorgungsfreibetrag is suppressed (bavIsLumpSum=true) because a one-time payout is NOT a
-//   "laufender Versorgungsbezug" per §19 Abs. 2 EStG Satz 1.
-// KV/PV: spread over 120 months per §229 SGB V. (#47)
-//   Each of the 120 months is evaluated via calculateRetirementKvPv with:
-//     - bavMonthlyVersorgungsbezuege = lumpSum / 120
-//     - monthlyStatutoryPension = otherAnnualIncome / 12 (treated as statutory pension — most common scenario)
-//   KVdR: Freibetrag applies per-month to the 1/120 base. freiwillig: no Freibetrag.
-//   PV Freigrenze applies per-month to the 1/120 base.
-//   BBG cap is evaluated per-month across the aggregate income context.
-//   120 months × per-month deduction = total KV/PV deduction on lump sum.
-// PKV members: no GKV/PV deductions.
+/**
+ * §229 SGB V 1/120: after-tax bAV capital payout (Kapitalabfindung). (#6, #19, #46, #47, #48)
+ *
+ * Income tax routing is determined by `taxMode` (derived via `deriveBavLumpSumTaxMode`):
+ *
+ * a. pre2005_steuerfrei (§40b EStG a.F. + §52 Abs. 28 EStG a.F. eligible):
+ *    Income tax = 0. The lump sum is steuerfrei for EStG purposes.
+ *    KV/PV via §229 Abs. 1 Satz 3 SGB V (1/120 rule) still applies because §40b contracts
+ *    are Versorgungsbezüge under §229 Abs. 1 Satz 1 Nr. 5 SGB V regardless of EStG treatment.
+ *
+ * b. fuenftelregelung (§34 Abs. 2 Nr. 4 EStG — Direktzusage / Unterstützungskasse):
+ *    5 × (tax(other + lumpSum/5) − tax(other)), routed through calculateRetirementTax with
+ *    bavIsLumpSum=true (suppresses Versorgungsfreibetrag for one-time payouts).
+ *    KV/PV via §229 Abs. 1 Satz 3 SGB V (1/120 rule).
+ *
+ * c. voll_versorgungsbezug (§22 Nr. 5 EStG — all §3 Nr. 63 Durchführungswege):
+ *    Full marginal-rate computation: tax(other + lumpSum) − tax(other), routed through
+ *    calculateRetirementTax with bavIsLumpSum=true (suppresses Versorgungsfreibetrag).
+ *    KV/PV via §229 Abs. 1 Satz 3 SGB V (1/120 rule).
+ *
+ * KV/PV (all modes): Spread over 120 months per §229 Abs. 1 Satz 3 SGB V.
+ *   Each of the 120 months is evaluated via calculateRetirementKvPv:
+ *   - bavMonthlyVersorgungsbezuege = lumpSum / 120
+ *   - monthlyStatutoryPension = otherAnnualIncome / 12 (treated as GRV — most common scenario)
+ *   KVdR: Freibetrag applies per-month to the 1/120 base. freiwillig: no Freibetrag.
+ *   PV Freigrenze applies per-month to the 1/120 base.
+ *   BBG cap evaluated per-month across the aggregate income context.
+ *   Total KV/PV = 120 × per-month deduction on the bAV portion alone.
+ * PKV members: no GKV/PV deductions.
+ */
 export function afterTaxBavLumpSum(
   lumpSum: number,
   profile: PersonalProfile,
@@ -509,46 +575,85 @@ export function afterTaxBavLumpSum(
   otherAnnualIncome = 0,
   kvdrMember = true,
   retirementYear = rules.year,
+  taxMode: BavLumpSumTaxMode = 'fuenftelregelung',
 ): number {
   if (lumpSum <= 0) return 0
 
-  // Fünftelregelung §34 EStG: 5 × (tax(other + lumpSum/5) − tax(other)).
-  // Both tax calls go through calculateRetirementTax with bavIsLumpSum=true so that:
-  //   - retirement Pauschbeträge (Werbungskosten + Sonderausgaben) apply to the zvE, and
-  //   - Versorgungsfreibetrag is suppressed (lump sum is not "laufend").
-  // otherAnnualIncome is routed as otherTaxableAnnual (opaque other income context).
-  const taxOnFuenftel = (bavFuenftel: number): number => {
-    const bd = calculateRetirementTax(
+  // -------------------------------------------------------------------------
+  // Income tax based on taxMode
+  // -------------------------------------------------------------------------
+  let incomeTax: number
+
+  if (taxMode === 'pre2005_steuerfrei') {
+    // §52 Abs. 28 EStG a.F.: qualifying §40b contract — no income tax.
+    incomeTax = 0
+
+  } else if (taxMode === 'fuenftelregelung') {
+    // §34 Abs. 2 Nr. 4 EStG Fünftelregelung: 5 × (T(other + lumpSum/5) − T(other)).
+    // Both tax calls go through calculateRetirementTax with bavIsLumpSum=true so that:
+    //   - retirement Pauschbeträge (Werbungskosten + Sonderausgaben) apply to the zvE, and
+    //   - Versorgungsfreibetrag is suppressed (lump sum is not a "laufender Versorgungsbezug"
+    //     per §19 Abs. 2 EStG Satz 1).
+    // otherAnnualIncome is routed as otherTaxableAnnual (opaque other income context).
+    const taxOnFuenftel = (bavFuenftel: number): number => {
+      const bd = calculateRetirementTax(
+        {
+          statutoryPensionAnnual: 0,
+          bavPensionAnnual: bavFuenftel,
+          bavIsLumpSum: true,      // suppress Versorgungsfreibetrag
+          privateInsuranceTaxableAnnual: 0,
+          privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant (gain=0)
+          otherTaxableAnnual: otherAnnualIncome,
+          retirementYear,
+        },
+        rules,
+        'single',
+      )
+      return bd.einkommensteuer + bd.solidaritaetszuschlag
+    }
+    incomeTax = Math.max(0, 5 * (taxOnFuenftel(lumpSum / 5) - taxOnFuenftel(0)))
+
+  } else {
+    // voll_versorgungsbezug: §22 Nr. 5 EStG — full marginal rate in the payout year.
+    // tax(other + lumpSum) − tax(other), both with bavIsLumpSum=true to suppress Versorgungsfreibetrag.
+    const taxWith = calculateRetirementTax(
       {
         statutoryPensionAnnual: 0,
-        bavPensionAnnual: bavFuenftel,
-        bavIsLumpSum: true,      // suppress Versorgungsfreibetrag
+        bavPensionAnnual: otherAnnualIncome + lumpSum,
+        bavIsLumpSum: true,
         privateInsuranceTaxableAnnual: 0,
-        privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant (gain=0)
-        otherTaxableAnnual: otherAnnualIncome,
+        privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant
+        otherTaxableAnnual: 0,
         retirementYear,
       },
       rules,
       'single',
     )
-    return bd.einkommensteuer + bd.solidaritaetszuschlag
+    const taxWithout = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 0,
+        bavPensionAnnual: otherAnnualIncome,
+        bavIsLumpSum: true,
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant
+        otherTaxableAnnual: 0,
+        retirementYear,
+      },
+      rules,
+      'single',
+    )
+    incomeTax = Math.max(0, taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual)
   }
-
-  // Fünftelregelung: 5 × (T(otherIncome + lumpSum/5) − T(otherIncome))
-  const incomeTax = Math.max(
-    0,
-    5 * (taxOnFuenftel(lumpSum / 5) - taxOnFuenftel(0)),
-  )
 
   if (!profile.publicHealthInsurance) {
     return Math.max(0, lumpSum - incomeTax)
   }
 
+  // -------------------------------------------------------------------------
   // KV/PV via §229 Abs. 1 Satz 3 SGB V: 1/120 monthly base, evaluated 120 times.
-  // Each month uses calculateRetirementKvPv to apply the BBG cap with the aggregate
-  // income context. otherAnnualIncome is treated as monthlyStatutoryPension (most
-  // common scenario: the user's "other income" is their GRV pension). Simplification
-  // documented in LEGAL_REVIEW.md.
+  // Note: applies to ALL taxModes (including pre2005_steuerfrei) because §40b contracts
+  // are Versorgungsbezüge under §229 Abs. 1 Satz 1 Nr. 5 SGB V regardless of EStG treatment.
+  // -------------------------------------------------------------------------
   const additionalHealthRate = profile.healthAdditionalContributionPct / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
   const careRate = careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate

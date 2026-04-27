@@ -449,3 +449,110 @@ For freiwillig Versicherte receiving a private insurance lump sum, there is no s
 SGB V). The implementation applies the monthly BBG cap assuming the lump sum is received
 in one month. In practice, insurance companies may structure payouts differently, and
 the actual KV/PV treatment may differ. This is a known simplification.
+
+---
+
+## bAV Lump-Sum Tax Routing (#48)
+
+Implemented in `src/engine/projections.ts` (`deriveBavLumpSumTaxMode`, `afterTaxBavLumpSum`)
+and wired through `src/engine/simulate.ts` and `src/App.tsx`.
+
+The income-tax treatment of a bAV capital payout (Kapitalabfindung) depends on the
+Durchführungsweg. The `deriveBavLumpSumTaxMode` function maps each Durchführungsweg to
+one of three routing modes: `voll_versorgungsbezug`, `fuenftelregelung`, or `pre2005_steuerfrei`.
+
+### §22 Nr. 5 EStG — §3 Nr. 63 Durchführungswege (Direktversicherung, Pensionskasse, Pensionsfonds)
+
+Capital payouts from §3 Nr. 63 EStG contracts are taxable at the full personal marginal
+rate as Versorgungsbezüge under §22 Nr. 5 Satz 1 EStG. §34 EStG Fünftelregelung does NOT
+apply: §22 Nr. 5 Satz 2 EStG subjects the payout to the same tax treatment as laufende
+bAV-Renten, and §34 Abs. 2 Nr. 4 EStG applies only to "Vergütungen für mehrjährige
+Tätigkeit" in the §19 EStG context (Direktzusage, Unterstützungskasse). For §3 Nr. 63
+contracts, the capital payment represents the tax-privileged accumulation being accessed
+at once — it does not meet the "Vergütung für mehrjährige Tätigkeit" threshold for §34.
+
+Statutory basis:
+- §22 Nr. 5 Satz 1 EStG (primary: Leistungen aus Altersvorsorgevertrag / bAV)
+- §22 Nr. 5 Satz 2 EStG (§3 Nr. 63 contracts: taxation as laufende Versorgungsbezüge applies)
+- §34 Abs. 2 Nr. 4 EStG (Fünftelregelung only for "Vergütung für mehrjährige Tätigkeit" — does not reach §3 Nr. 63 capital payouts under current tax authority practice)
+- https://www.gesetze-im-internet.de/estg/__22.html
+- https://www.gesetze-im-internet.de/estg/__34.html
+
+Note on case law: The proposition that §34 Fünftelregelung does not apply to capital
+payouts from §3 Nr. 63 contracts is consistent with the dominant interpretation in the
+German tax commentary literature and administrative practice. The Fünftelregelung has
+historically been applied to Direktzusage/Unterstützungskasse capital payments (§19 EStG
+context), where the legal basis in §34 Abs. 2 Nr. 4 EStG is well-established. For §3 Nr. 63
+contracts, the routing through §22 Nr. 5 EStG rather than §19 EStG means the §34 route is
+not available. The calculator applies this interpretation conservatively (no Fünftelregelung
+for §3 Nr. 63) — which matches the statutory language and is the more cautious assumption
+for tax planning. If a taxpayer believes their specific contract qualifies under §34, they
+should use the Direktzusage route or consult a Steuerberater.
+
+### §52 Abs. 28 EStG a.F. — §40b EStG a.F. Pre-2005 contracts (direktversicherung_40b_alt)
+
+Pre-2005 Direktversicherungen taxed under §40b EStG a.F. (pauschalbesteuert) may qualify
+for a steuerfrei capital payout under §52 Abs. 28 EStG a.F. if all of the following
+conditions are met:
+1. Contract started before 1 January 2005
+2. Runtime of at least 12 years
+3. At least 5 annual premium payments
+4. Payout as capital lump sum (not annuity)
+5. Pauschalbesteuerung under §40b EStG a.F. was actually applied
+
+When these conditions are met (`pre2005EligibleTaxFree = true`), the income-tax leg returns
+zero. If conditions are not met (`pre2005EligibleTaxFree = false`), the full marginal rate
+applies (`voll_versorgungsbezug`).
+
+Statutory basis:
+- §52 Abs. 28 EStG (transition provision for pre-2005 contracts)
+- §40b EStG a.F. (pauschalbesteuerung of employer-funded Direktversicherung)
+- https://www.gesetze-im-internet.de/estg/__52.html
+
+### §19 EStG — Direktzusage and Unterstützungskasse (fuenftelregelung)
+
+Capital payments from Direktzusage and Unterstützungskasse are Versorgungsbezüge under
+§19 Abs. 1 Nr. 2 EStG. The payment constitutes "Vergütung für mehrjährige Tätigkeit"
+within the meaning of §34 Abs. 2 Nr. 4 EStG when it is paid in lieu of a multi-year
+employer pension promise — which is typically the case for these Durchführungswege.
+The Fünftelregelung (§34 Abs. 1 EStG) then applies: 5 × (T(other + lumpSum/5) − T(other)).
+
+Statutory basis:
+- §19 Abs. 1 Nr. 2 EStG (Versorgungsbezüge from employer)
+- §34 Abs. 1 EStG (Fünftelregelung)
+- §34 Abs. 2 Nr. 4 EStG (qualifying criterion: "Vergütung für mehrjährige Tätigkeit")
+- https://www.gesetze-im-internet.de/estg/__19.html
+- https://www.gesetze-im-internet.de/estg/__34.html
+
+### §229 Abs. 1 Satz 1 Nr. 5 SGB V — KV/PV status for §40b contracts
+
+All bAV Durchführungswege — including §40b EStG a.F. Direktversicherungen — qualify as
+Versorgungsbezüge under §229 Abs. 1 Satz 1 Nr. 5 SGB V for health and care insurance
+purposes. This means the §229 Abs. 1 Satz 3 SGB V 1/120 spreading rule applies to capital
+payouts from §40b contracts, and KV/PV is assessed even when the income-tax leg is zero
+(`pre2005_steuerfrei` mode). The EStG and SGB V assessments are legally independent.
+
+Statutory basis:
+- §229 Abs. 1 Satz 1 Nr. 5 SGB V (bAV payouts as Versorgungsbezüge for KV purposes)
+- §229 Abs. 1 Satz 3 SGB V (1/120 spreading for lump sums)
+- https://www.gesetze-im-internet.de/sgb_5/__229.html
+
+### Versorgungsfreibetrag suppression for all lump-sum modes
+
+The Versorgungsfreibetrag (§19 Abs. 2 EStG) applies only to "laufende Versorgungsbezüge"
+(recurring pension payments). All three lump-sum tax modes pass `bavIsLumpSum=true` to
+`calculateRetirementTax`, which suppresses the Versorgungsfreibetrag. This is consistent
+with the `LEGAL_REVIEW.md §"Versorgungsfreibetrag-Not-On-Lump-Sum Convention"` established
+in #46.
+
+### Durchführungsweg truth table
+
+| Durchführungsweg | pre2005EligibleTaxFree | BavLumpSumTaxMode |
+|---|---|---|
+| direktversicherung_3_63 | any | voll_versorgungsbezug |
+| pensionskasse_3_63 | any | voll_versorgungsbezug |
+| pensionsfonds_3_63 | any | voll_versorgungsbezug |
+| direktversicherung_40b_alt | true | pre2005_steuerfrei |
+| direktversicherung_40b_alt | false | voll_versorgungsbezug |
+| direktzusage | any | fuenftelregelung |
+| unterstuetzungskasse | any | fuenftelregelung |

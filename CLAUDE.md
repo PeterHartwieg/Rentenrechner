@@ -22,7 +22,7 @@ npm run build           # production build
 | `src/engine/tax.ts` | `calculateIncomeTax2026`, `calculateSolidarityTax`, `calculateCapitalGainsTax`. |
 | `src/engine/salary.ts` | `calculateSalaryResult` (BMF PAP Vorsorgepauschale), `calculateBavFunding` (two-pass bAV limit logic). |
 | `src/engine/retirementTax.ts` | `calculateRetirementTax` — retirement-phase taxable-income pipeline. All retirement payout helpers must go through this. |
-| `src/engine/projections.ts` | `projectAccumulation` (accumulation loop), `netBavPayout`, `netInsurancePayout`, `afterTaxInvestmentCapital`, `afterTaxInsuranceLumpSum`, `deriveInsuranceTaxMode`, `etfPayoutSchedule`. |
+| `src/engine/projections.ts` | `projectAccumulation` (accumulation loop), `netBavPayout`, `netInsurancePayout`, `afterTaxInvestmentCapital`, `afterTaxInsuranceLumpSum`, `afterTaxBavLumpSum`, `deriveInsuranceTaxMode`, `deriveBavLumpSumTaxMode`, `etfPayoutSchedule`. |
 | `src/engine/simulate.ts` | Top-level `simulateRetirementComparison` — wires salary + projections into `ProductResult[]`. |
 | `src/App.tsx` | Single-page UI. All state lives here. |
 
@@ -36,7 +36,7 @@ npm run build           # production build
 
 **ETF Vorabpauschale** (`projections.ts` / `simulate.ts`): `projectAccumulation` receives an optional `etfVorabpauschale` config and accumulates `cumulativeVorabpauschale` on each row. `afterTaxInvestmentCapital` and `netEtfPayout` accept this to reduce the taxable gain at exit. Only wired for `taxMode === 'etf'`.
 
-**bAV lump sum is intentionally `null`**: the 1/120 KV/PV spreading rule (§229 SGB V) is not modeled, so `afterTaxLumpSum` stays `null` for bAV throughout. Monthly net pension is the reliable comparator.
+**bAV lump sum** (`projections.ts` / `simulate.ts`): `afterTaxBavLumpSum` now routes the income-tax leg via `deriveBavLumpSumTaxMode(durchfuehrungsweg, pre2005EligibleTaxFree)` → `BavLumpSumTaxMode`. §3 Nr. 63 Durchführungswege → `voll_versorgungsbezug` (full marginal rate, §22 Nr. 5 EStG); §40b a.F. eligible → `pre2005_steuerfrei`; Direktzusage/Unterstützungskasse → `fuenftelregelung` (§34 Abs. 2 Nr. 4 EStG). KV/PV via §229 Abs. 1 Satz 3 SGB V 1/120 rule applies to all modes. Default is `direktversicherung_3_63`.
 
 **Fair comparison**: ETF and insurance always invest `bavFunding.monthlyNetCost` — the same net cash the user actually pays for bAV. This is fixed; there is no "custom amount" toggle.
 
@@ -51,4 +51,5 @@ npm run build           # production build
 ## Current State
 
 See `BACKLOG.md` for open items and recommended order.
-Next priority: **#6 lump-sum** (blocked by 1/120 KV/PV spreading rule), **#13** CSV export.
+Wave 2 complete: #46 retirement-tax pipeline, #47 KV/PV BBG caps, #48 bAV lump-sum tax routing.
+Next: #41 restore clean build/lint, #42 bAV minimum-conversion warning fix.

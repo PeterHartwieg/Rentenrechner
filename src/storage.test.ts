@@ -76,4 +76,24 @@ describe('parseStateFromJson (#40)', () => {
     expect(result).not.toBeNull()
     expect(result!.profile.grossSalaryYear).toBe(defaultProfile.grossSalaryYear)
   })
+
+  it('#48 migration: old saved state missing durchfuehrungsweg defaults to direktversicherung_3_63', () => {
+    // Simulate a pre-#48 saved state where bav lacks the new fields
+    const oldBav = {
+      monthlyGrossConversion: 300,
+      extraEmployerContributionPct: 0,
+      extraEmployerContributionMonthly: 0,
+      monthlyOtherRetirementIncome: 0,
+      includeGrvReduction: false,
+      kvdrMember: true,
+      fees: defaultAssumptions.bav.fees,
+      // durchfuehrungsweg and pre2005EligibleTaxFree are absent (old state)
+    }
+    const raw = JSON.stringify({ version: 1, profile: defaultProfile, assumptions: { ...defaultAssumptions, bav: oldBav } })
+    const result = parseStateFromJson(raw)
+    expect(result).not.toBeNull()
+    // Missing fields should default to the defaultAssumptions values
+    expect(result!.assumptions.bav.durchfuehrungsweg).toBe('direktversicherung_3_63')
+    expect(result!.assumptions.bav.pre2005EligibleTaxFree).toBe(false)
+  })
 })
