@@ -54,6 +54,8 @@
 import type {
   GermanRules,
   RetirementIncomeComponents,
+  RetirementKvPvBreakdown,
+  RetirementKvPvContext,
   RetirementTaxBreakdown,
 } from '../domain/types'
 import {
@@ -199,5 +201,239 @@ export function calculateRetirementTax(
     abgeltungsteuerOnPrivateInsurance,
     totalTaxAnnual,
     netRetirementIncomeAnnual,
+  }
+}
+
+/**
+ * BBG-aware KV/PV contribution calculation across multiple retirement income sources. (#47)
+ *
+ * Design decisions:
+ *
+ * KV FREIBETRAG (§226 Abs. 2 SGB V):
+ *   The Freibetrag is granted ONCE per month on the AGGREGATE of all Versorgungsbezüge,
+ *   not once per source. We sum all Versorgungsbezüge, deduct the single monthly Freibetrag,
+ *   then split the KV-relevant base back proportionally to each source's share. This matches
+ *   §226 Abs. 2 SGB V, which reads "Versorgungsbezüge" in the aggregate.
+ *
+ * PV FREIGRENZE (§57 Abs. 1 SGB XI):
+ *   The Freigrenze is all-or-nothing on the AGGREGATE of Versorgungsbezüge per month.
+ *   Below the Freigrenze: zero PV on ALL Versorgungsbezüge. Above: the full aggregate
+ *   amount is subject to PV (no deduction — Freigrenze, not Freibetrag). Per-source PV is
+ *   then split proportionally to each source's share of the aggregate.
+ *
+ * STATUTORY PENSION KV (§249a SGB V):
+ *   For KVdR members: the pensioner pays the employee half of healthRate (the Rentenversicherung
+ *   pays the other half as Beitragszuschuss). Effective rate = healthRate / 2.
+ *   For freiwillig Versicherte: §240 SGB V applies — the pensioner pays the full healthRate
+ *   on statutory pension income just like on all other income. (No institutional half-rate split.)
+ *
+ * STATUTORY PENSION PV:
+ *   The Versorgungsträger (DRV) does not pay an employer share of PV. The pensioner pays
+ *   the full careRate on statutory pension in both KVdR and freiwillig scenarios.
+ *
+ * BBG APPORTIONMENT (§224 Abs. 1 SGB V by analogy):
+ *   When the uncapped aggregate assessment base exceeds the monthly BBG (5,812.50 EUR in 2026),
+ *   per-source amounts are scaled down proportionally so the capped totals sum to
+ *   BBG × applicable rate. Proportional scaling is administratively analogous to the
+ *   multi-employer apportionment in §22 Abs. 1 SGB IV and §6 Abs. 7 SGB V.
+ *   (Documented choice — see LEGAL_REVIEW.md §"Retirement KV/PV (#47)".)
+ *
+ * FREIWILLIG VERSICHERTE — PRIVATE INSURANCE:
+ *   Private insurance Renten are NOT Versorgungsbezüge under §229 SGB V but are subject to
+ *   KV/PV for freiwillig Versicherte under §240 SGB V (full income basis up to BBG).
+ *   Pass these via `freiwilligOtherMonthlyIncome`; ignored for KVdR members.
+ *
+ * MINDESTBEITRAG:
+ *   The minimum contribution (Mindestbeitrag) for freiwillig Versicherte (§240 Abs. 4 SGB V)
+ *   is not modeled. This function may produce zero contributions for very low incomes, which
+ *   would be corrected upward in reality. Documented simplification in LEGAL_REVIEW.md.
+ */
+export function calculateRetirementKvPv(ctx: RetirementKvPvContext): RetirementKvPvBreakdown {
+  const {
+    bavMonthlyVersorgungsbezuege,
+    otherMonthlyVersorgungsbezuege,
+    monthlyStatutoryPension,
+    freiwilligOtherMonthlyIncome,
+    isFreiwilligVersichert,
+    kvFreibetragVersorgungMonthly,
+    pvFreigrenzeVersorgungMonthly,
+    monthlyKvPvBbg,
+    healthRate,
+    careRate,
+  } = ctx
+
+  // -------------------------------------------------------------------------
+  // 1. KV on Versorgungsbezüge (§226 Abs. 2 SGB V)
+  //    One Freibetrag applied to the aggregate of all Versorgungsbezüge, then
+  //    the KV-relevant excess is split proportionally back to each source.
+  //    Retiree pays the FULL healthRate on Versorgungsbezüge (§249a SGB V — no
+  //    employer/Versorgungsträger half for KV on Versorgungsbezüge).
+  //
+  //    IMPORTANT: §226 Abs. 2 SGB V Freibetrag applies ONLY to KVdR-Pflichtversicherte
+  //    (§5 Abs. 1 Nr. 11 SGB V). For freiwillig Versicherte under §240 SGB V, the full
+  //    amount of all income is the assessment base — no Freibetrag.
+  //
+  //    Similarly, the PV Freigrenze (§57 Abs. 1 SGB XI) applies only in the context of
+  //    compulsory KVdR membership. For freiwillig Versicherte, the full care-contribution
+  //    base is all income up to the BBG (§57 Abs. 4 SGB XI → §240 SGB V by reference).
+  //    We maintain the Freigrenze for consistency but the freiwillig KV/PV path below
+  //    routes through freiwilligBase rather than the Versorgungsbezüge fields.
+  // -------------------------------------------------------------------------
+  const totalVersorgungsbezuege = Math.max(0, bavMonthlyVersorgungsbezuege) +
+    Math.max(0, otherMonthlyVersorgungsbezuege)
+  // KVdR Freibetrag applies only when NOT freiwillig (§226 Abs. 2 SGB V)
+  const kvRelevantVersorgung = isFreiwilligVersichert
+    ? totalVersorgungsbezuege
+    : Math.max(0, totalVersorgungsbezuege - kvFreibetragVersorgungMonthly)
+
+  // Per-source proportional share of the KV-relevant Versorgungsbezüge base
+  const versorgungShareBav = totalVersorgungsbezuege > 0
+    ? Math.max(0, bavMonthlyVersorgungsbezuege) / totalVersorgungsbezuege
+    : 0
+  const versorgungShareOther = totalVersorgungsbezuege > 0
+    ? Math.max(0, otherMonthlyVersorgungsbezuege) / totalVersorgungsbezuege
+    : 0
+
+  const bavKvVersorgungBase = kvRelevantVersorgung * versorgungShareBav
+  const otherKvVersorgungBase = kvRelevantVersorgung * versorgungShareOther
+
+  // -------------------------------------------------------------------------
+  // 2. PV on Versorgungsbezüge (§57 Abs. 1 SGB XI, all-or-nothing Freigrenze)
+  //    PV-relevant Versorgungsbezüge aggregate (no deduction — Freigrenze):
+  //    below Freigrenze → 0 for all; above → full aggregate at careRate.
+  // -------------------------------------------------------------------------
+  const pvRelevantVersorgung = totalVersorgungsbezuege > pvFreigrenzeVersorgungMonthly
+    ? totalVersorgungsbezuege
+    : 0
+
+  const bavPvVersorgungBase = pvRelevantVersorgung * versorgungShareBav
+  const otherPvVersorgungBase = pvRelevantVersorgung * versorgungShareOther
+
+  // -------------------------------------------------------------------------
+  // 3. KV on statutory pension (§249a SGB V: half-rate for KVdR; full rate for freiwillig)
+  //    PV on statutory pension: full careRate in both cases (DRV has no employer PV share).
+  // -------------------------------------------------------------------------
+  const statutoryPensionKvHalfRate = isFreiwilligVersichert ? healthRate : healthRate / 2
+  const statutoryPensionKvBase = Math.max(0, monthlyStatutoryPension)
+  const statutoryPensionPvBase = Math.max(0, monthlyStatutoryPension)
+
+  // -------------------------------------------------------------------------
+  // 4. KV/PV on other income for freiwillig Versicherte only (§240 SGB V)
+  // -------------------------------------------------------------------------
+  const freiwilligBase = isFreiwilligVersichert ? Math.max(0, freiwilligOtherMonthlyIncome) : 0
+
+  // -------------------------------------------------------------------------
+  // 5. Uncapped totals (used as scaling reference and diagnostic output)
+  //    For KV: Versorgungsbezüge base × fullRate + statutory × halfOrFullRate + freiwillig × fullRate
+  //    For PV: all bases × careRate
+  // -------------------------------------------------------------------------
+  const uncappedKvMonthly =
+    bavKvVersorgungBase * healthRate +
+    otherKvVersorgungBase * healthRate +
+    statutoryPensionKvBase * statutoryPensionKvHalfRate +
+    freiwilligBase * healthRate
+
+  const uncappedPvMonthly =
+    bavPvVersorgungBase * careRate +
+    otherPvVersorgungBase * careRate +
+    statutoryPensionPvBase * careRate +
+    freiwilligBase * careRate
+
+  // -------------------------------------------------------------------------
+  // 6. BBG cap via proportional scaling
+  //
+  //    The assessment base for KV and PV is capped at monthlyKvPvBbg (§6 Abs. 7 SGB V).
+  //    We compute an "uncapped assessment base" for each tax separately (accounting for the
+  //    different effective rates per source) and then scale down if it exceeds BBG.
+  //
+  //    For KV:
+  //      uncapped KV assessment base = bavKvVersorgungBase + otherKvVersorgungBase
+  //                                   + statutoryPensionKvBase (weighted by halfOrFull)
+  //                                   + freiwilligBase
+  //    Simplification: since sources have different per-unit KV rates (full vs. half on
+  //    GRV), we work with the total *contribution amounts* and scale those proportionally.
+  //
+  //    Scale factor = min(1, BBG_contributions / uncapped_contributions)
+  //    where BBG_contributions = BBG × weighted_avg_rate (already implicit in uncappedKV).
+  //    Actually simpler: scale each contribution amount proportionally so their SUM =
+  //    min(uncappedKV, BBG_max_contribution_at_applicable_rate).
+  //
+  //    But since sources have different rates, the cleanest approach is:
+  //    if uncappedKvMonthly ≤ BBG × healthRate → no cap needed
+  //    else scale each per-source KV contribution proportionally:
+  //      scaled_source = source_contribution × (cappedTotal / uncappedTotal)
+  //
+  //    The "cap" for KV is: total_KV_contributions ≤ effectiveCapKv
+  //    where effectiveCapKv is not simply BBG × healthRate because the GRV portion uses
+  //    halfRate. We cap the underlying assessment bases instead:
+  //      aggregate assessment base = bavKvVersorgungBase + otherKvVersorgungBase
+  //                                  + statutoryPensionKvBase + freiwilligBase
+  //    Cap: aggregate_base ≤ monthlyKvPvBbg
+  //    If over: scale = monthlyKvPvBbg / aggregate_base
+  //    Apply scale to each base, then multiply by the source's own rate.
+  //
+  //    Same logic for PV, using the PV aggregate bases.
+  // -------------------------------------------------------------------------
+
+  // KV aggregate assessment base (before applying rates)
+  const kvAggregateBase =
+    bavKvVersorgungBase +
+    otherKvVersorgungBase +
+    statutoryPensionKvBase +
+    freiwilligBase
+
+  const kvScale = kvAggregateBase > monthlyKvPvBbg
+    ? monthlyKvPvBbg / kvAggregateBase
+    : 1
+
+  // PV aggregate assessment base (Versorgungsbezüge after Freigrenze; statutory pension; freiwillig other)
+  const pvAggregateBase =
+    bavPvVersorgungBase +
+    otherPvVersorgungBase +
+    statutoryPensionPvBase +
+    freiwilligBase
+
+  const pvScale = pvAggregateBase > monthlyKvPvBbg
+    ? monthlyKvPvBbg / pvAggregateBase
+    : 1
+
+  // -------------------------------------------------------------------------
+  // 7. Apply scaled bases × rates to get final per-source monthly deductions
+  // -------------------------------------------------------------------------
+  const bavKvMonthly = bavKvVersorgungBase * kvScale * healthRate
+  const otherVersorgungsbezuegeKvMonthly = otherKvVersorgungBase * kvScale * healthRate
+  const statutoryPensionKvMonthly = statutoryPensionKvBase * kvScale * statutoryPensionKvHalfRate
+  const freiwilligOtherKvMonthly = freiwilligBase * kvScale * healthRate
+
+  const bavPvMonthly = bavPvVersorgungBase * pvScale * careRate
+  const otherVersorgungsbezuegePvMonthly = otherPvVersorgungBase * pvScale * careRate
+  const statutoryPensionPvMonthly = statutoryPensionPvBase * pvScale * careRate
+  const freiwilligOtherPvMonthly = freiwilligBase * pvScale * careRate
+
+  const totalKvMonthly =
+    bavKvMonthly +
+    otherVersorgungsbezuegeKvMonthly +
+    statutoryPensionKvMonthly +
+    freiwilligOtherKvMonthly
+
+  const totalPvMonthly =
+    bavPvMonthly +
+    otherVersorgungsbezuegePvMonthly +
+    statutoryPensionPvMonthly +
+    freiwilligOtherPvMonthly
+
+  return {
+    bavKvMonthly,
+    bavPvMonthly,
+    otherVersorgungsbezuegeKvMonthly,
+    otherVersorgungsbezuegePvMonthly,
+    statutoryPensionKvMonthly,
+    statutoryPensionPvMonthly,
+    freiwilligOtherKvMonthly,
+    freiwilligOtherPvMonthly,
+    totalKvMonthly,
+    totalPvMonthly,
+    uncappedKvMonthly,
+    uncappedPvMonthly,
   }
 }

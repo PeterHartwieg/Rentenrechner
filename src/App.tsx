@@ -318,7 +318,7 @@ function App() {
       )
     }
     const otherAnnual = assumptions.insurance.monthlyOtherRetirementIncome * 12
-    return afterTaxInsuranceLumpSum(balance, cumulativeContributions, insuranceTaxMode, de2026Rules, otherAnnual, insurancePayoutYear)
+    return afterTaxInsuranceLumpSum(balance, cumulativeContributions, insuranceTaxMode, de2026Rules, otherAnnual, insurancePayoutYear, profile, kvdrMember)
   }
 
   const [linkCopied, setLinkCopied] = useState(false)

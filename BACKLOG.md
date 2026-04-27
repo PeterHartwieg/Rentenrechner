@@ -73,12 +73,6 @@ bAV and private-insurance retirement tax helpers currently feed gross retirement
 
 Add a dedicated retirement taxable-income helper before marking retirement-phase net values as decision-support grade.
 
-### #47 Apply Retirement KV/PV Caps And Aggregate Income Context
-
-`netBavPayout()` and `afterTaxBavLumpSum()` apply KV/PV to the bAV amount without checking the monthly KV/PV contribution ceiling or aggregate retirement income. For large pensions or lump sums, this can overstate deductions; for other income near the ceiling, it can also misstate the marginal bAV burden.
-
-Model monthly BBG caps across statutory pension, other retirement income, and bAV Versorgungsbezüge. For lump sums, apply the cap to the `1/120` monthly base over the 120-month period.
-
 ### #48 Make bAV Lump-Sum Income Tax Configurable
 
 `afterTaxBavLumpSum()` always applies the `§34 EStG` Fünftelregelung. That is not a universally safe assumption for all bAV Durchführungswege and capital-choice designs.
@@ -201,6 +195,7 @@ Update the docs so future reviews do not start from stale assumptions.
 - `#13` CSV export: summary comparison, yearly cashflows (all products/scenarios), ETF payout schedule. Single file with three labeled sections. UTF-8 BOM for Excel compatibility.
 - `#14` Shareable scenario URL: base64url-encoded `?s=` query parameter. `src/utils/urlShare.ts` — `readUrlState` / `buildShareUrl`. On load: URL param takes priority over localStorage. "Link kopieren" button updates URL via `history.replaceState` and copies to clipboard with 1.5 s "Kopiert!" feedback.
 - `#6` bAV retirement phase: marginal-tax payout (`netBavPayout`), KVdR/freiwillig toggle, KV/PV breakdown. Lump-sum: `afterTaxBavLumpSum` — §229 SGB V 1/120 spreading (KV/PV) + §34 Abs. 2 Nr. 4 EStG Fünftelregelung (income tax). `#19` resolved together.
+- `#47` Retirement KV/PV caps and aggregate income context: `calculateRetirementKvPv` in `retirementTax.ts` applies monthly BBG cap (5,812.50 EUR) across bAV Versorgungsbezüge, GRV pension, and freiwillig-other income; KV Freibetrag once-per-month on aggregate; PV Freigrenze all-or-nothing; §249a half-rate on GRV for KVdR; freiwillig private insurance now subject to KV/PV; 1/120 lump-sum context-aware.
 - `#19` 1/120 KV/PV spreading rule — implemented as part of #6 lump-sum.
 - `#38` Law-based private-insurance tax: contract year → `pre2005` / `halbeinkuenfte` / `abgeltungsteuer`; `deriveInsuranceTaxMode` / `netInsurancePayout` / `afterTaxInsuranceLumpSum` in `projections.ts`; Halbeinkünfteverfahren uses personal income-tax marginal rate on half the gain.
 

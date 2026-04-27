@@ -166,6 +166,12 @@ export const de2026Rules: GermanRules = {
     careRetirementChildlessRate: 0.042,
     // §226(2) SGB V KV-Freibetrag (= §57(1) SGB XI PV-Freigrenze): 1/20 of monthly Bezugsgröße West 2026 (3,955 EUR)
     kvFreibetragVersorgungMonthly: 197.75,
+    // KV/PV Beitragsbemessungsgrenze monthly ceiling (§6 Abs. 7 SGB V / §55 Abs. 2 SGB XI).
+    // = healthCareCapYear / 12 = 69,750 / 12 = 5,812.50 EUR/month.
+    // Source: BMAS BBG-Bekanntmachung 2026 (Verordnung über maßgebende Rechengrößen der
+    //   Sozialversicherung für 2026, BGBl. 2025 I Nr. 349, § 5 Abs. 1 Nr. 2) — 69,750 EUR/year.
+    //   https://www.bundesgesundheitsministerium.de/beitraege
+    healthAndCareCapMonth: 5_812.50,
     // Bezugsgröße West 2026 nach §18 Abs. 1 SGB IV
     bezugsgroesseMonthly: 3_955,
     // SGB VI Anlage 1: vorläufiges Durchschnittsentgelt 2026 — denominator for Entgeltpunkte

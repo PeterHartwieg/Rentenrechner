@@ -10,7 +10,7 @@ import type {
 } from '../domain/types'
 import { calculateCapitalGainsTax } from './tax'
 import { careEmployeeRateForChildren } from './salary'
-import { calculateRetirementTax } from './retirementTax'
+import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
 
 interface AccumulationInput {
   productId: ProductId
@@ -294,12 +294,18 @@ export function deriveInsuranceTaxMode(
   return 'abgeltungsteuer'
 }
 
-// Net monthly insurance payout after tax.
+// Net monthly insurance payout after tax and KV/PV where applicable. (#46, #47)
 // Halbeinkünfteverfahren: only half the gain is taxable at the personal income tax rate (§20 Abs. 1 Nr. 6 EStG).
 // Abgeltungsteuer: full gain taxed at 25% + Soli (§20 Abs. 2 EStG).
 // pre2005: no tax.
 // Routed through calculateRetirementTax so retirement deductions (Pauschbeträge, cohort allowances)
 // are applied before computing the marginal rate. (#46)
+// KV/PV (#47): Private insurance payouts are NOT Versorgungsbezüge under §229 SGB V.
+//   For KVdR-Pflichtversicherte: private insurance income does NOT trigger KV/PV.
+//   For freiwillig Versicherte: §240 SGB V — all income up to BBG is subject to KV/PV.
+//   The BBG cap is applied via calculateRetirementKvPv with the insurance payout as
+//   freiwilligOtherMonthlyIncome. otherMonthlyIncome is treated as statutory pension.
+//   PKV members: no KV/PV deductions.
 export function netInsurancePayout(
   grossMonthlyPayout: number,
   capital: number,
@@ -308,48 +314,92 @@ export function netInsurancePayout(
   rules: GermanRules,
   otherMonthlyIncome = 0,
   retirementYear = rules.year,
+  profile?: PersonalProfile,
+  kvdrMember = true,
 ): number {
   const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
   const annualGain = grossMonthlyPayout * 12 * gainRatio
 
-  if (taxMode === 'pre2005') return grossMonthlyPayout
+  if (taxMode === 'pre2005') {
+    // pre2005: no income tax on the payout. KV/PV applies for freiwillig versichert.
+    // Fall through to KV/PV block below (annualGain is 0 or irrelevant for tax but payout
+    // may still be subject to KV/PV). We still need to apply KV/PV for freiwillig.
+    if (!profile?.publicHealthInsurance || kvdrMember || !profile) {
+      // KVdR or PKV or no profile: no KV/PV → return full payout
+      return grossMonthlyPayout
+    }
+    // freiwillig versichert: apply KV/PV below (marginalTax = 0 since pre2005)
+  }
 
-  // Build RetirementIncomeComponents with the gain and other income, then compare tax
-  // with and without the insurance gain to get the marginal tax on the gain.
-  const taxWithGain = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: 0,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: annualGain,
-      privateInsuranceTaxMode: taxMode,
-      otherTaxableAnnual: otherMonthlyIncome * 12,
-      retirementYear,
-    },
-    rules,
-    'single',
-  )
-  const taxWithoutGain = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: 0,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: taxMode,
-      otherTaxableAnnual: otherMonthlyIncome * 12,
-      retirementYear,
-    },
-    rules,
-    'single',
-  )
-  const marginalTax = taxWithGain.totalTaxAnnual - taxWithoutGain.totalTaxAnnual
-  return Math.max(0, grossMonthlyPayout - marginalTax / 12)
+  let marginalTax = 0
+  if (taxMode !== 'pre2005') {
+    // Build RetirementIncomeComponents with the gain and other income, then compare tax
+    // with and without the insurance gain to get the marginal tax on the gain.
+    const taxWithGain = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 0,
+        bavPensionAnnual: 0,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: annualGain,
+        privateInsuranceTaxMode: taxMode,
+        otherTaxableAnnual: otherMonthlyIncome * 12,
+        retirementYear,
+      },
+      rules,
+      'single',
+    )
+    const taxWithoutGain = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 0,
+        bavPensionAnnual: 0,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: taxMode,
+        otherTaxableAnnual: otherMonthlyIncome * 12,
+        retirementYear,
+      },
+      rules,
+      'single',
+    )
+    marginalTax = taxWithGain.totalTaxAnnual - taxWithoutGain.totalTaxAnnual
+  }
+
+  // KV/PV for freiwillig Versicherte only (#47).
+  // Private insurance is NOT a Versorgungsbezug — pass as freiwilligOtherMonthlyIncome.
+  let kvPvMonthly = 0
+  if (profile?.publicHealthInsurance && !kvdrMember) {
+    const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
+    const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
+    const retirementCareRate =
+      careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
+    const kvPv = calculateRetirementKvPv({
+      bavMonthlyVersorgungsbezuege: 0,
+      otherMonthlyVersorgungsbezuege: 0,
+      monthlyStatutoryPension: otherMonthlyIncome,
+      freiwilligOtherMonthlyIncome: grossMonthlyPayout,
+      isFreiwilligVersichert: true,
+      kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+      pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+      monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
+      healthRate,
+      careRate: retirementCareRate,
+    })
+    kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
+  }
+
+  return Math.max(0, grossMonthlyPayout - marginalTax / 12 - kvPvMonthly)
 }
 
-// After-tax lump-sum insurance capital.
+// After-tax lump-sum insurance capital. (#46, #47)
 // otherAnnualIncome is only used for the Halbeinkünfteverfahren marginal-tax calculation.
 // Routed through calculateRetirementTax so retirement deductions (Pauschbeträge, cohort allowances)
 // are applied consistently with the monthly-payout path. (#46)
+// KV/PV (#47): For KVdR-Pflichtversicherte, private insurance lump sums do NOT trigger KV/PV.
+//   For freiwillig Versicherte (§240 SGB V), the lump sum IS subject to KV/PV up to the BBG.
+//   Simplified: the full lump sum is treated as received in a single period (no spreading for
+//   lump-sum insurance — unlike the bAV 1/120 rule which is statutory). The BBG cap is applied
+//   assuming the lump sum is income in the payout month alongside otherMonthlyIncome context.
+//   PKV members: no KV/PV. Profile is optional for backwards compatibility.
 export function afterTaxInsuranceLumpSum(
   capital: number,
   totalContributions: number,
@@ -357,40 +407,83 @@ export function afterTaxInsuranceLumpSum(
   rules: GermanRules,
   otherAnnualIncome = 0,
   retirementYear = rules.year,
+  profile?: PersonalProfile,
+  kvdrMember = true,
 ): number {
   const gain = Math.max(0, capital - totalContributions)
 
-  if (taxMode === 'pre2005') return capital
+  if (taxMode === 'pre2005') {
+    // pre2005: no income tax. KV/PV may still apply for freiwillig versichert.
+    // For lump sum: treat as one-time payment (no 1/120 spreading for non-bAV insurance).
+    // In practice freiwillig versichert KV/PV on a large lump sum would be capped at BBG.
+    // Fall through to KV/PV block with zero marginalTax.
+    if (!profile?.publicHealthInsurance || kvdrMember || !profile) return capital
+    // freiwillig versichert: apply KV/PV below (marginalTax = 0)
+  }
 
-  // Marginal-tax approach: tax(other + gain) − tax(other)
-  const taxWithGain = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: 0,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: gain,
-      privateInsuranceTaxMode: taxMode,
-      otherTaxableAnnual: otherAnnualIncome,
-      retirementYear,
-    },
-    rules,
-    'single',
-  )
-  const taxWithoutGain = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: 0,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: taxMode,
-      otherTaxableAnnual: otherAnnualIncome,
-      retirementYear,
-    },
-    rules,
-    'single',
-  )
-  const marginalTax = taxWithGain.totalTaxAnnual - taxWithoutGain.totalTaxAnnual
-  return Math.max(0, capital - marginalTax)
+  let marginalTax = 0
+  if (taxMode !== 'pre2005') {
+    // Marginal-tax approach: tax(other + gain) − tax(other)
+    const taxWithGain = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 0,
+        bavPensionAnnual: 0,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: gain,
+        privateInsuranceTaxMode: taxMode,
+        otherTaxableAnnual: otherAnnualIncome,
+        retirementYear,
+      },
+      rules,
+      'single',
+    )
+    const taxWithoutGain = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 0,
+        bavPensionAnnual: 0,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: taxMode,
+        otherTaxableAnnual: otherAnnualIncome,
+        retirementYear,
+      },
+      rules,
+      'single',
+    )
+    marginalTax = taxWithGain.totalTaxAnnual - taxWithoutGain.totalTaxAnnual
+  }
+
+  // KV/PV for freiwillig Versicherte (#47): private insurance is not a Versorgungsbezug.
+  // For freiwillig: §240 SGB V applies — lump sum income subject to KV/PV up to BBG.
+  // We apply the rate to the lump sum in the context of one month (BBG cap applies).
+  // Note: for lump sums there is no 1/120 statutory spreading for non-bAV private insurance.
+  // Using the monthly BBG implies the KV/PV is capped per-month of receipt. Practical
+  // simplification: treat the lump sum as received in one month, capped at BBG.
+  let kvPvBurden = 0
+  if (profile?.publicHealthInsurance && !kvdrMember) {
+    const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
+    const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
+    const retirementCareRate =
+      careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
+    const otherMonthlyIncome = otherAnnualIncome / 12
+    // For lump sum: use the full lump sum as monthly income (it's a one-off event).
+    // The BBG cap in calculateRetirementKvPv limits the deduction.
+    const kvPv = calculateRetirementKvPv({
+      bavMonthlyVersorgungsbezuege: 0,
+      otherMonthlyVersorgungsbezuege: 0,
+      monthlyStatutoryPension: otherMonthlyIncome,
+      freiwilligOtherMonthlyIncome: capital,
+      isFreiwilligVersichert: true,
+      kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+      pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+      monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
+      healthRate,
+      careRate: retirementCareRate,
+    })
+    kvPvBurden = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
+  }
+
+  return Math.max(0, capital - marginalTax - kvPvBurden)
 }
 
 // §229 SGB V 1/120: after-tax bAV lump sum payout.
@@ -400,10 +493,14 @@ export function afterTaxInsuranceLumpSum(
 //   through calculateRetirementTax with bavIsLumpSum=true so retirement Pauschbeträge are applied. (#46)
 //   Versorgungsfreibetrag is suppressed (bavIsLumpSum=true) because a one-time payout is NOT a
 //   "laufender Versorgungsbezug" per §19 Abs. 2 EStG Satz 1.
-// KV/PV: spread over 120 months per §229 SGB V.
-//   KVdR (§226(2) SGB V): KV Freibetrag applies per month → max(0, lumpSum − threshold×120) × rate.
-//   freiwillig (§240 SGB V): no Freibetrag → lumpSum × rate.
-//   PV (§57(1) SGB XI): same threshold; full pvRate on lumpSum if monthlyBase > threshold, else 0.
+// KV/PV: spread over 120 months per §229 SGB V. (#47)
+//   Each of the 120 months is evaluated via calculateRetirementKvPv with:
+//     - bavMonthlyVersorgungsbezuege = lumpSum / 120
+//     - monthlyStatutoryPension = otherAnnualIncome / 12 (treated as statutory pension — most common scenario)
+//   KVdR: Freibetrag applies per-month to the 1/120 base. freiwillig: no Freibetrag.
+//   PV Freigrenze applies per-month to the 1/120 base.
+//   BBG cap is evaluated per-month across the aggregate income context.
+//   120 months × per-month deduction = total KV/PV deduction on lump sum.
 // PKV members: no GKV/PV deductions.
 export function afterTaxBavLumpSum(
   lumpSum: number,
@@ -447,29 +544,47 @@ export function afterTaxBavLumpSum(
     return Math.max(0, lumpSum - incomeTax)
   }
 
+  // KV/PV via §229 Abs. 1 Satz 3 SGB V: 1/120 monthly base, evaluated 120 times.
+  // Each month uses calculateRetirementKvPv to apply the BBG cap with the aggregate
+  // income context. otherAnnualIncome is treated as monthlyStatutoryPension (most
+  // common scenario: the user's "other income" is their GRV pension). Simplification
+  // documented in LEGAL_REVIEW.md.
   const additionalHealthRate = profile.healthAdditionalContributionPct / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
-  const threshold = rules.socialSecurity.kvFreibetragVersorgungMonthly
+  const careRate = careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
   const monthlyBase = lumpSum / 120
+  const monthlyOtherIncome = otherAnnualIncome / 12
 
-  const kvBurden = kvdrMember
-    ? Math.max(0, lumpSum - threshold * 120) * healthRate
-    : lumpSum * healthRate
+  const kvPv = calculateRetirementKvPv({
+    bavMonthlyVersorgungsbezuege: monthlyBase,
+    otherMonthlyVersorgungsbezuege: 0,
+    monthlyStatutoryPension: monthlyOtherIncome,
+    freiwilligOtherMonthlyIncome: 0,
+    isFreiwilligVersichert: !kvdrMember,
+    kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+    pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+    monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
+    healthRate,
+    careRate,
+  })
 
-  const pvRate = careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
-  const pvBurden = monthlyBase > threshold ? lumpSum * pvRate : 0
+  // Total KV/PV over 120 months = 120 × per-month deduction on the bAV portion alone.
+  const kvBurden = kvPv.bavKvMonthly * 120
+  const pvBurden = kvPv.bavPvMonthly * 120
 
   return Math.max(0, lumpSum - incomeTax - kvBurden - pvBurden)
 }
 
-// #6: marginal-tax approach — income tax on (bAV + other) minus tax on (other alone).
+// #6/#47: marginal-tax approach — income tax on (bAV + other) minus tax on (other alone).
 // When otherMonthlyIncome = 0 and bAV is below the basic allowance, result equals the simple formula.
 // kvdrMember: true = KVdR (KV Freibetrag §226(2) SGB V); false = freiwillig versichert (no Freibetrag, §240 SGB V).
 // PKV members: no GKV/PV deductions applied.
 // Routed through calculateRetirementTax (#46) so Versorgungsfreibetrag, Werbungskosten-Pauschbeträge,
 // and Sonderausgaben-Pauschbetrag are applied before computing the marginal rate.
-// otherMonthlyIncome is treated as opaque other taxable income (otherTaxableAnnual) since the
-// calculator does not yet model GRV separately. TODO #47: split into statutoryPension + other.
+// otherMonthlyIncome is treated as monthlyStatutoryPension in the KV/PV context (#47) — the most
+// common scenario (the user's "other income" is their GRV pension). Income-tax context still routes
+// it as otherTaxableAnnual for simplicity. See LEGAL_REVIEW.md for this documented simplification.
+// KV/PV now computed via calculateRetirementKvPv to apply the monthly BBG cap across all income sources (#47).
 export function netBavPayout(
   grossMonthlyPayout: number,
   profile: PersonalProfile,
@@ -515,21 +630,25 @@ export function netBavPayout(
 
   const additionalHealthRate = profile.healthAdditionalContributionPct / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
-  const threshold = rules.socialSecurity.kvFreibetragVersorgungMonthly
   // PV §57(1) SGB XI: Freigrenze applies for all GKV members. Versorgungsträger pays employer share in both KVdR and freiwillig.
   // = careEmployeeRateForChildren(children) + careEmployerRate == careRetirementChildlessRate for 0 children.
   const retirementCareRate =
     careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
-  const careMonthly = grossMonthlyPayout > threshold ? grossMonthlyPayout * retirementCareRate : 0
 
-  let healthMonthly: number
-  if (kvdrMember) {
-    // KVdR: KV Freibetrag §226(2) SGB V — only the excess above the threshold is subject to GKV
-    healthMonthly = Math.max(0, grossMonthlyPayout - threshold) * healthRate
-  } else {
-    // freiwillig versichert: KV on full amount §240 SGB V (no Freibetrag)
-    healthMonthly = grossMonthlyPayout * healthRate
-  }
+  // KV/PV via calculateRetirementKvPv: applies BBG cap across all income sources (#47).
+  // otherMonthlyIncome treated as statutory pension for the KV/PV assessment base (documented simplification).
+  const kvPv = calculateRetirementKvPv({
+    bavMonthlyVersorgungsbezuege: grossMonthlyPayout,
+    otherMonthlyVersorgungsbezuege: 0,
+    monthlyStatutoryPension: otherMonthlyIncome,
+    freiwilligOtherMonthlyIncome: 0,
+    isFreiwilligVersichert: !kvdrMember,
+    kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+    pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+    monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
+    healthRate,
+    careRate: retirementCareRate,
+  })
 
-  return Math.max(0, grossMonthlyPayout - marginalAnnualTax / 12 - healthMonthly - careMonthly)
+  return Math.max(0, grossMonthlyPayout - marginalAnnualTax / 12 - kvPv.bavKvMonthly - kvPv.bavPvMonthly)
 }

@@ -98,6 +98,9 @@ export interface GermanRules {
     careEmployerRate: number
     careRetirementChildlessRate: number
     kvFreibetragVersorgungMonthly: number
+    // §6 Abs. 7 SGB V / §55 Abs. 2 SGB XI: KV/PV Beitragsbemessungsgrenze monthly ceiling
+    // (= healthCareCapYear / 12; same ceiling applies to both KV and PV in retirement)
+    healthAndCareCapMonth: number
     // §18 SGB IV Bezugsgröße West — used for bAV minimum entitlement (§1a BetrAVG)
     bezugsgroesseMonthly: number
     // SGB VI Anlage 1 vorläufiges Durchschnittsentgelt — denominator for Entgeltpunkte
@@ -326,4 +329,66 @@ export interface RetirementTaxBreakdown {
    * gain separately). This field reflects only what the pipeline received.
    */
   netRetirementIncomeAnnual: number
+}
+
+// ---------------------------------------------------------------------------
+// Retirement KV/PV BBG-aware calculation (#47)
+// ---------------------------------------------------------------------------
+
+/**
+ * All inputs needed to compute BBG-capped KV/PV deductions across multiple
+ * retirement income sources for a single month.
+ */
+export interface RetirementKvPvContext {
+  /** bAV Versorgungsbezüge before any caps, monthly EUR */
+  bavMonthlyVersorgungsbezuege: number
+  /** Other Versorgungsbezüge (§229 SGB V — e.g. occupational pension, direct insurance) monthly EUR */
+  otherMonthlyVersorgungsbezuege: number
+  /** GRV statutory pension monthly EUR */
+  monthlyStatutoryPension: number
+  /**
+   * Only for freiwillig Versicherte (§240 SGB V): other monthly income (rental, dividends, etc.).
+   * Ignored for KVdR members.
+   */
+  freiwilligOtherMonthlyIncome: number
+  /** false = KVdR (§226 SGB V); true = freiwillig versichert (§240 SGB V) */
+  isFreiwilligVersichert: boolean
+  /**
+   * §226(2) SGB V KV-Freibetrag — granted ONCE per month on the AGGREGATE
+   * of all Versorgungsbezüge (not per source).
+   */
+  kvFreibetragVersorgungMonthly: number
+  /**
+   * §57(1) SGB XI PV-Freigrenze — all-or-nothing threshold on aggregate Versorgungsbezüge.
+   * Below: zero PV on Versorgungsbezüge. Above: full amount at careRate.
+   */
+  pvFreigrenzeVersorgungMonthly: number
+  /** §6 Abs. 7 SGB V monthly BBG ceiling (same value for both KV and PV) */
+  monthlyKvPvBbg: number
+  /** Total KV rate (healthGeneralRate + Zusatzbeitrag) */
+  healthRate: number
+  /** Total PV rate applicable to retirees (employee share + employer/Versorgungsträger share) */
+  careRate: number
+}
+
+/**
+ * Per-source KV/PV deductions after the aggregate BBG cap, all monthly EUR.
+ */
+export interface RetirementKvPvBreakdown {
+  bavKvMonthly: number
+  bavPvMonthly: number
+  otherVersorgungsbezuegeKvMonthly: number
+  otherVersorgungsbezuegePvMonthly: number
+  /** Employee share of KV on statutory pension (half rate per §249a SGB V) */
+  statutoryPensionKvMonthly: number
+  statutoryPensionPvMonthly: number
+  /** Only nonzero for freiwillig Versicherte */
+  freiwilligOtherKvMonthly: number
+  freiwilligOtherPvMonthly: number
+  totalKvMonthly: number
+  totalPvMonthly: number
+  /** Diagnostic: what total KV would have been without the BBG cap */
+  uncappedKvMonthly: number
+  /** Diagnostic: what total PV would have been without the BBG cap */
+  uncappedPvMonthly: number
 }

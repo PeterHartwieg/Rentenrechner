@@ -312,4 +312,140 @@ income. This prevents over-deducting a recurring allowance from a one-time spike
   deduct it internally to avoid double-counting with ETF usage.
 - **KV/PV deductions from zvE**: KV/PV contributions in retirement can in theory be deducted
   as Sonderausgaben under §10 EStG. This is not modeled; the pipeline focuses on gross income
-  decomposition and statutory Pauschbeträge only. Tracked as #47.
+  decomposition and statutory Pauschbeträge only.
+
+---
+
+## Retirement KV/PV (#47)
+
+Implemented in `src/engine/retirementTax.ts` (`calculateRetirementKvPv`) and wired into
+`netBavPayout`, `afterTaxBavLumpSum`, `netInsurancePayout`, and `afterTaxInsuranceLumpSum`
+in `src/engine/projections.ts`.
+
+### §226 Abs. 2 SGB V — KV-Freibetrag for Versorgungsbezüge
+
+The monthly KV-Freibetrag (197.75 EUR/month in 2026, = 1/20 of monthly Bezugsgröße West 3,955 EUR)
+is granted **once per month on the aggregate** of all Versorgungsbezüge, not once per source.
+Implementation: sum all Versorgungsbezüge sources first, deduct one Freibetrag from the total,
+then split the KV-relevant excess proportionally back to each source.
+
+**Important:** §226 Abs. 2 SGB V applies only to KVdR-Pflichtversicherte (§5 Abs. 1 Nr. 11 SGB V).
+For freiwillig Versicherte under §240 SGB V, the FULL Versorgungsbezüge amount is the KV base
+(no Freibetrag). The implementation conditions the Freibetrag deduction on `!isFreiwilligVersichert`.
+
+Source: §226 Abs. 2 SGB V — https://www.gesetze-im-internet.de/sgb_5/__226.html
+
+### §229 SGB V — Versorgungsbezüge definition
+
+§229 Abs. 1 SGB V defines which income categories count as Versorgungsbezüge for KV purposes:
+bAV Renten (Direktzusage, Pensionskasse, Direktversicherung, Pensionsfonds), Beamtenpensionen,
+and similar occupational pensions. Private life-insurance/annuity payouts are explicitly
+NOT Versorgungsbezüge — they are private capital income.
+
+Source: §229 SGB V — https://www.gesetze-im-internet.de/sgb_5/__229.html
+
+### §240 SGB V — Beitragsrecht für freiwillig Versicherte
+
+For freiwillig Versicherte, the full income up to the monthly BBG is the contribution base
+(§240 Abs. 1 SGB V). This includes:
+- Statutory pension (GRV-Rente)
+- Versorgungsbezüge (bAV pensions, etc.)
+- Private insurance income (NOT categorized as Versorgungsbezüge, but still counted under §240)
+- Rental income, dividends, etc.
+
+Implementation: private insurance income flows through `freiwilligOtherMonthlyIncome` in
+`RetirementKvPvContext` and is only assessed for freiwillig Versicherte.
+
+For KVdR-Pflichtversicherte, private insurance income does NOT trigger KV/PV — consistent
+with §226 SGB V (which does not list private life insurance as Versorgungsbezug and limits
+the KVdR base to specific categories).
+
+Source: §240 SGB V — https://www.gesetze-im-internet.de/sgb_5/__240.html
+
+### §249a SGB V — Beitragstragung für Versorgungsbezüge
+
+For Versorgungsbezüge (e.g. bAV pension), the retiree pays the **full healthRate** (both
+the employee and employer shares). The Versorgungsträger (e.g. employer, Pensionskasse) does
+not pay a KV employer share. The healthRate passed to `calculateRetirementKvPv` must be the
+combined rate (e.g. 14.6 % + Zusatzbeitrag 2.9 % = 17.5 % in the default profile).
+
+For statutory GRV pension: the Rentenversicherungsträger pays half the healthRate as
+Beitragszuschuss zur Krankenversicherung der Rentner (§249a SGB V). The retiree only pays
+`healthRate / 2` on the GRV pension (KVdR members). For freiwillig Versicherte, the
+pensioner pays the full rate on GRV pension too (§240 SGB V — no institutional half-rate).
+
+Source: §249a SGB V — https://www.gesetze-im-internet.de/sgb_5/__249a.html
+
+### §57 Abs. 1 SGB XI — PV-Freigrenze for Versorgungsbezüge
+
+The PV Freigrenze (197.75 EUR/month = same value as KV-Freibetrag) is **all-or-nothing**:
+below the Freigrenze, zero PV on Versorgungsbezüge; above, the full aggregate amount at
+the full careRate. No deduction (unlike the KV Freibetrag, which IS a deduction).
+
+The Freigrenze applies to the **aggregate** of all Versorgungsbezüge per month, not per source.
+Per-source PV is split proportionally after the Freigrenze check on the aggregate.
+
+Source: §57 Abs. 1 SGB XI — https://www.gesetze-im-internet.de/sgb_11/__57.html
+
+### KV/PV Beitragsbemessungsgrenze in retirement
+
+The monthly KV/PV BBG in 2026 is **5,812.50 EUR/month** (= 69,750 EUR/year ÷ 12).
+Source: BMAS BBG-Bekanntmachung 2026 (Verordnung über maßgebende Rechengrößen der
+Sozialversicherung für 2026, BGBl. 2025 I Nr. 349, § 5 Abs. 1 Nr. 2).
+https://www.bundesgesundheitsministerium.de/beitraege
+
+The BBG caps the **aggregate KV/PV assessment base** across all income sources in a given month.
+The cap is evaluated on the underlying assessment bases (before applying rates), not on the
+contribution amounts directly. This correctly handles the mixed-rate situation where GRV pension
+uses healthRate/2 for KV (KVdR) while Versorgungsbezüge use the full rate.
+
+### Apportionment rule for over-BBG aggregates
+
+When the aggregate assessment base exceeds the monthly BBG, per-source amounts are scaled
+down **proportionally** so the total aggregate base equals BBG. The scale factor is:
+`min(1, BBG / aggregate_base)` applied uniformly to all sources.
+
+**Rationale for proportional scaling**: proportional apportionment is administratively
+consistent with multi-employer apportionment under §22 Abs. 1 SGB IV and §6 Abs. 7 SGB V.
+It avoids creating artificial priority rules between income sources and produces a
+predictable, defensible result. The legal alternative (sequential reduction by priority)
+is not prescribed by statute for the single-member case and would require judgment calls
+about source ordering.
+
+**KV and PV are capped separately**: the KV aggregate base and PV aggregate base may differ
+(PV uses the Freigrenze path, which can differ from the KV Freibetrag path), so the scale
+factors for KV and PV are computed independently.
+
+### Beitragszuschuss zur KVdR (statutory pension KV split)
+
+The Deutsche Rentenversicherung pays a Beitragszuschuss to KVdR members covering half the
+healthRate on the statutory GRV pension (§249a SGB V). The implementation models the
+pensioner's share only (`healthRate / 2` for GRV pension, KVdR path). This is correct for
+the purpose of computing the retiree's net income (the DRV payment is an institutional
+transfer that does not affect net retirement income directly).
+
+### otherMonthlyIncome = monthlyStatutoryPension — simplification
+
+`BavAssumptions.monthlyOtherRetirementIncome` (a single number) is treated as GRV statutory
+pension for the KV/PV assessment in `calculateRetirementKvPv`. This matches the most common
+scenario (retirees with a GRV pension as their main "other income"), and is more defensible
+than ignoring the income context entirely (the previous approach). If the user's other income
+includes non-GRV sources (rental, etc.), the KV/PV computation is slightly over-stated for
+KVdR members (GRV gets half-rate; non-GRV would get full rate) and slightly under-stated for
+freiwillig Versicherte. A future improvement would split `monthlyOtherRetirementIncome` into
+named sub-fields; this is tracked in the backlog.
+
+### Mindestbeitrag for freiwillig Versicherte — known simplification
+
+The Mindestbeitrag (minimum contribution, §240 Abs. 4 SGB V) for freiwillig Versicherte
+is not modeled. For very low retirement incomes, the actual KV/PV contribution would be
+floored at the Mindestbeitrag, which this calculator may understate. This simplification
+is acceptable for normal retirement scenarios where income exceeds the minimum threshold.
+
+### Private insurance lump sum — freiwillig KV/PV simplification
+
+For freiwillig Versicherte receiving a private insurance lump sum, there is no statutory
+1/120 spreading rule (that rule applies specifically to bAV lump sums under §229 Abs. 1 Satz 3
+SGB V). The implementation applies the monthly BBG cap assuming the lump sum is received
+in one month. In practice, insurance companies may structure payouts differently, and
+the actual KV/PV treatment may differ. This is a known simplification.

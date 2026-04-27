@@ -117,6 +117,9 @@ function buildProductResult(params: {
     params.taxMode === 'abgeltungsteuer'
   ) {
     const otherAnnual = params.assumptions.insurance.monthlyOtherRetirementIncome * 12
+    // kvdrMember shared across products: if the user is freiwillig versichert for bAV,
+    // they are also freiwillig versichert for private insurance (same retirement GKV status).
+    const kvdrMember = params.assumptions.bav.kvdrMember !== false
     afterTaxLumpSum = afterTaxInsuranceLumpSum(
       projection.capital,
       projection.totalContributionsBeforeFees,
@@ -124,6 +127,8 @@ function buildProductResult(params: {
       params.rules,
       otherAnnual,
       params.retirementYear,
+      params.profile,
+      kvdrMember,
     )
     netMonthlyPayout = netInsurancePayout(
       grossMonthlyPayout,
@@ -133,6 +138,8 @@ function buildProductResult(params: {
       params.rules,
       params.assumptions.insurance.monthlyOtherRetirementIncome,
       params.retirementYear,
+      params.profile,
+      kvdrMember,
     )
   }
 
