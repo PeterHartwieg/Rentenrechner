@@ -235,6 +235,38 @@ export interface InsuranceAssumptions {
   payoutMode: PayoutMode
   rentenfaktor: number
   zeitrenteYears: number
+  // #65: Optional paid-up / surrender scenario.
+  // paidUpAge: age at which contributions stop (undefined = contributions continue to retirement).
+  // surrenderHaircutPct: fraction of capital deducted on immediate surrender (0 = no penalty).
+  paidUpAge?: number
+  surrenderHaircutPct: number
+}
+
+/**
+ * Paid-up / early surrender scenario for private insurance (#65).
+ *
+ * Computed when InsuranceAssumptions.paidUpAge is set and lies strictly between
+ * the user's current age and retirementAge. Models two outcomes branching from paidUpAge:
+ *
+ * 1. Immediate surrender: policyholder receives surrenderValue = capitalAtPaidUp × (1 − haircut).
+ * 2. Paid-up continuation: no more contributions; contract grows under asset fees until retirement.
+ */
+export interface InsurancePaidUpScenario {
+  paidUpAge: number
+  /** Capital accumulated at paidUpAge (before any surrender haircut). */
+  capitalAtPaidUp: number
+  /** Total fees paid during the contribution phase (up to paidUpAge). */
+  feesAtPaidUp: number
+  /** Immediate surrender value = capitalAtPaidUp × (1 − surrenderHaircutPct). */
+  surrenderValue: number
+  /** Capital at retirement under paid-up continuation (no contributions after paidUpAge). */
+  retirementCapital: number
+  /** Gross monthly payout from retirementCapital under the configured payoutMode. */
+  grossMonthlyPayout: number
+  /** Net monthly payout after income tax and KV/PV. */
+  netMonthlyPayout: number
+  /** After-tax lump sum from retirementCapital (null for pre-2005 Leibrente — Ertragsanteil path). */
+  afterTaxLumpSum: number | null
 }
 
 // ---------------------------------------------------------------------------
@@ -647,6 +679,8 @@ export interface ProductResult {
   //   grossBreakEvenAge = retirementAge + capitalAtRetirement / (grossMonthlyPayout * 12)
   //   Only set when payoutMode === 'leibrente'; undefined for other payout modes.
   leibrenteBreakEvenAge?: number
+  // #65: paid-up / surrender scenario (only set for productId === 'versicherung' when paidUpAge is configured).
+  paidUpScenario?: InsurancePaidUpScenario
   rows: YearlyProjection[]
   etfPayoutRows?: EtfPayoutRow[]
 }

@@ -181,5 +181,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
       acquisitionCostSpreadYears: 5,
       pensionPayoutFeePct: 0,
     },
+    // #65: no paid-up scenario by default; zero surrender haircut
+    surrenderHaircutPct: 0,
   },
 }

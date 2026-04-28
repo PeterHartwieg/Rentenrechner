@@ -15,6 +15,7 @@ import {
 import { Calculator, Check, Coins, Download, Link, RotateCcw, Settings, TrendingUp } from 'lucide-react'
 import type { AltersvorsorgedepotPayoutMode, AltersvorsorgedepotSubtype, BavDurchfuehrungsweg, BavFundingResult, FeeModel, InsuranceTaxMode, PayoutMode, PersonalProfile, ProductId, ProductResult, RiesterAssumptions, ScenarioAssumptions, StatutoryPensionAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
+import { SCENARIO_PRESETS } from './data/presets'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from './engine/projections'
 import { validateAvdPayoutAge } from './engine/altersvorsorgedepot'
 import { careEmployeeRateForChildren } from './engine/salary'
@@ -469,6 +470,24 @@ function App() {
               Reset
             </button>
           </div>
+
+          <details className="scenario-presets-panel">
+            <summary>Szenarien-Vorlagen</summary>
+            <p className="preset-intro">Lädt eine Beispielkonfiguration und überschreibt alle Annahmen (Persönliches Profil bleibt erhalten).</p>
+            <div className="scenario-preset-buttons">
+              {SCENARIO_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className="scenario-preset-btn"
+                  title={preset.description}
+                  onClick={() => setAssumptions(preset.assumptions)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </details>
 
           <div className="field-grid">
             <NumberField
@@ -1433,6 +1452,72 @@ function App() {
           )}
 
           <div className="subsection-heading">
+            <h3>Beitragsfreistellung / Kündigung (pAV)</h3>
+            <p>Modelliert das vorzeitige Ende der Beitragszahlung. Das Kapital wächst danach unter laufenden Kosten weiter bis zum Rentenbeginn. Die Kündigung ermittelt den geschätzten Rückkaufswert zum gewählten Alter.</p>
+          </div>
+
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={assumptions.insurance.paidUpAge !== undefined}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  insurance: {
+                    ...current.insurance,
+                    paidUpAge: event.target.checked
+                      ? Math.max(profile.age + 1, Math.min(profile.retirementAge - 1, profile.age + Math.floor((profile.retirementAge - profile.age) / 2)))
+                      : undefined,
+                  },
+                }))
+              }
+            />
+            <span>Beitragsfreistellung / Kündigung modellieren</span>
+          </label>
+
+          {assumptions.insurance.paidUpAge !== undefined && (
+            <>
+              <NumberField
+                label="Beitragsfrei ab Alter"
+                value={assumptions.insurance.paidUpAge}
+                min={profile.age + 1}
+                max={profile.retirementAge - 1}
+                step={1}
+                suffix="Jahre"
+                onChange={(value) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    insurance: {
+                      ...current.insurance,
+                      paidUpAge: Math.max(profile.age + 1, Math.min(profile.retirementAge - 1, Number(value))),
+                    },
+                  }))
+                }
+              />
+              <NumberField
+                label="Stornoabschlag (Kündigung)"
+                value={assumptions.insurance.surrenderHaircutPct * 100}
+                min={0}
+                max={50}
+                step={0.5}
+                suffix="%"
+                onChange={(value) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    insurance: {
+                      ...current.insurance,
+                      surrenderHaircutPct: Number(value) / 100,
+                    },
+                  }))
+                }
+              />
+              <small className="field-hint">
+                Rückkaufswert = Kapital bei Beitragsfreistellung × (1 − Stornoabschlag). Nach Beitragsfreistellung wachsen noch Mantel- und Fondsgebühren; keine Beitrags-, Fixkosten oder Abschlussgebühren mehr.
+              </small>
+            </>
+          )}
+
+          <div className="subsection-heading">
             <h3>pAV-Kosten (Schicht 3)</h3>
             <p>Private Rentenversicherung (Schicht 3) — gleiche Kostenlogik wie bAV, separat konfigurierbar. Vorlagen setzen alle Felder. Basisrente (Schicht 1) und Riester (Schicht 2) sind in diesem Produkt nicht abgebildet.</p>
           </div>
@@ -1610,6 +1695,56 @@ function App() {
                 {riy > 0.015 && riy <= 0.02 && (
                   <p className="field-warning">Effektivkosten {formatPercent(riy)} liegen im kritischen Bereich (1,5–2,0 %) — Nettotarife erzielen typisch 0,6–1,0 %.</p>
                 )}
+              </div>
+            )
+          })()}
+
+          {(() => {
+            const pavProduct = simulation.products.find(
+              (p) => p.productId === 'versicherung' && p.scenarioId === selectedScenarioId,
+            )
+            const pu = pavProduct?.paidUpScenario
+            if (!pu) return null
+            return (
+              <div className="paid-up-summary">
+                <h4>Beitragsfreistellung ab Alter {pu.paidUpAge}</h4>
+                <table className="paid-up-table">
+                  <tbody>
+                    <tr>
+                      <td>Kapital bei Beitragsfreistellung</td>
+                      <td className="num">{formatCurrency(pu.capitalAtPaidUp, 0)}</td>
+                    </tr>
+                    <tr>
+                      <td>Rückkaufswert (Kündigung jetzt)</td>
+                      <td className="num">{formatCurrency(pu.surrenderValue, 0)}</td>
+                    </tr>
+                    <tr>
+                      <td>Kosten bis Alter {pu.paidUpAge}</td>
+                      <td className="num">{formatCurrency(pu.feesAtPaidUp, 0)}</td>
+                    </tr>
+                    <tr className="paid-up-separator">
+                      <td colSpan={2}>Weiterlaufendes Kapital bis Rentenbeginn (beitragsfrei)</td>
+                    </tr>
+                    <tr>
+                      <td>Kapital bei Rentenbeginn (beitragsfrei)</td>
+                      <td className="num">{formatCurrency(pu.retirementCapital, 0)}</td>
+                    </tr>
+                    <tr>
+                      <td>Brutto-Rente (beitragsfrei)</td>
+                      <td className="num">{formatCurrency(pu.grossMonthlyPayout, 0)} / Monat</td>
+                    </tr>
+                    <tr>
+                      <td>Netto-Rente (beitragsfrei)</td>
+                      <td className="num">{formatCurrency(pu.netMonthlyPayout, 0)} / Monat</td>
+                    </tr>
+                    {pu.afterTaxLumpSum !== null && (
+                      <tr>
+                        <td>Kapitalwahl nach Steuer (beitragsfrei)</td>
+                        <td className="num">{formatCurrency(pu.afterTaxLumpSum, 0)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             )
           })()}

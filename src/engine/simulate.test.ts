@@ -1662,3 +1662,121 @@ describe('#61 netBasisrentePayout', () => {
     expect(netHighOther).toBeLessThan(netLowOther)
   })
 })
+
+describe('#65 InsurancePaidUpScenario', () => {
+  const baseAssumptions = {
+    ...defaultAssumptions,
+    insurance: {
+      ...defaultAssumptions.insurance,
+      surrenderHaircutPct: 0.05,
+    },
+  }
+
+  it('paidUpScenario is undefined when paidUpAge is not set', () => {
+    const result = simulateRetirementComparison(defaultProfile, baseAssumptions, de2026Rules)
+    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(ins?.paidUpScenario).toBeUndefined()
+  })
+
+  it('paidUpScenario is defined when paidUpAge is between current age and retirementAge', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: 45 },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(ins?.paidUpScenario).toBeDefined()
+    expect(ins?.paidUpScenario?.paidUpAge).toBe(45)
+  })
+
+  it('paidUpScenario is undefined when paidUpAge equals current age', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: defaultProfile.age },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(ins?.paidUpScenario).toBeUndefined()
+  })
+
+  it('paidUpScenario is undefined when paidUpAge equals retirementAge', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: defaultProfile.retirementAge },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(ins?.paidUpScenario).toBeUndefined()
+  })
+
+  it('surrenderValue = capitalAtPaidUp * (1 - surrenderHaircutPct)', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: 45 },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const pu = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')?.paidUpScenario
+    expect(pu).toBeDefined()
+    expect(pu!.surrenderValue).toBeCloseTo(pu!.capitalAtPaidUp * (1 - 0.05), 4)
+  })
+
+  it('surrenderValue = capitalAtPaidUp when surrenderHaircutPct is 0', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: 45, surrenderHaircutPct: 0 },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const pu = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')?.paidUpScenario
+    expect(pu).toBeDefined()
+    expect(pu!.surrenderValue).toBeCloseTo(pu!.capitalAtPaidUp, 4)
+  })
+
+  it('paid-up retirementCapital < normal retirementCapital (fewer contributions)', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: 45, surrenderHaircutPct: 0 },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const insProduct = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(insProduct).toBeDefined()
+    expect(insProduct!.paidUpScenario!.retirementCapital).toBeLessThan(insProduct!.capitalAtRetirement)
+  })
+
+  it('paid-up netMonthlyPayout < normal netMonthlyPayout', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: 45, surrenderHaircutPct: 0 },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const insProduct = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    expect(insProduct).toBeDefined()
+    expect(insProduct!.paidUpScenario!.netMonthlyPayout).toBeLessThan(insProduct!.netMonthlyPayout)
+  })
+
+  it('feesAtPaidUp is positive when fees are non-zero', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: 45 },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const pu = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')?.paidUpScenario
+    expect(pu!.feesAtPaidUp).toBeGreaterThan(0)
+  })
+
+  it('paidUpScenario is computed for all return scenarios independently', () => {
+    const assumptions = {
+      ...baseAssumptions,
+      insurance: { ...baseAssumptions.insurance, paidUpAge: 45, surrenderHaircutPct: 0 },
+    }
+    const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+    const insProducts = result.products.filter((p) => p.productId === 'versicherung')
+    expect(insProducts).toHaveLength(3)
+    for (const p of insProducts) {
+      expect(p.paidUpScenario).toBeDefined()
+    }
+    // Higher return scenario → higher capital at retirement
+    const konservativ = insProducts.find((p) => p.scenarioId === 'konservativ')!.paidUpScenario!
+    const optimistisch = insProducts.find((p) => p.scenarioId === 'optimistisch')!.paidUpScenario!
+    expect(optimistisch.retirementCapital).toBeGreaterThan(konservativ.retirementCapital)
+  })
+})

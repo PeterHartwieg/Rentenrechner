@@ -96,40 +96,11 @@ Suggested order:
 
 ---
 
-## Open P1 Product Scope
-
-### #65 Add Surrender / Paid-Up Scenario For Private Insurance
-
-Private Rentenversicherung contracts are often terminated, reduced, or made paid-up before retirement. The current model assumes contributions continue unchanged to retirement.
-
-Required changes:
-
-- Add an optional scenario where contributions stop at a user-selected age.
-- Continue applying ongoing asset / wrapper fees after paid-up status if applicable.
-- Allow a surrender-value haircut or `Stornoabschlag` input.
-- Show projected surrender value, paid-up retirement value, sunk fees, and comparison with continuing the contract / ETF alternative.
-- Keep Basisrente separate: ordinary free surrender should not be available for Basisrente.
-
-Acceptance: a user can model "stop paying at age 45" for Schicht-3 private insurance and see both paid-up retirement value and immediate surrender value assumptions.
-
----
-
 ## Open P2 Publishing / Product
 
 ### #15 PDF Report
 
 Generate a readable comparison report for offline review.
-
-### #16 Input Presets
-
-Add scenario presets:
-
-- low-cost ETF only,
-- standard bAV minimum employer subsidy,
-- generous employer bAV match,
-- high-cost private insurance,
-- old-contract insurance,
-- future: statutory pension + ETF + bAV + Altersvorsorgedepot.
 
 ---
 
@@ -167,7 +138,10 @@ Completed items are kept here as a compact index only.
 - Altersvorsorgedepot 2027 (`#66`–`#71`): types, 2027 constants in `de2026.ts`, tiered allowances + Günstigerprüfung, Standarddepot glidepath, §22 Nr. 5 payout taxation, payout-age validation, transfer-cost inputs and cap constants. Engine in `src/engine/altersvorsorgedepot.ts`. `#71` Riester-to-AVD transition: `riesterTransferCapital` field on AVD assumptions, `initialCapital` in `projectAccumulation`, dynamic label "Riester-Übertrag" on the AVD product when transfer capital is set.
 - Legacy Riester / Altvertrag (`#62`, `#71`): old-law 2026 constants in `de2026.ts`; engine in `src/engine/riester.ts` (§84–§86 EStG allowances, Mindesteigenbeitrag proration, §10a Günstigerprüfung, §22 Nr. 5 net payout, §93 Abs. 2 partial lump sum); productId `riester`; UI section in `src/App.tsx`; schema validation in `src/utils/scenarioSchema.ts`.
 
-Latest documented baseline: 373 tests after `#62`/`#71`.
+- Private insurance lifecycle: `#65` — surrender / paid-up scenario. `InsurancePaidUpScenario` on `ProductResult`; `paidUpAge?` + `surrenderHaircutPct` on `InsuranceAssumptions`; two-phase accumulation in `simulate.ts`; results panel in assumptions drawer. 383 tests (+10).
+- Input presets: `#16` — 5 scenario presets in `src/data/presets.ts` (ETF Nettotarif, bAV Standard, bAV AG-Match 50 %, pAV Hochkosten, pAV Altvertrag). Collapsible `<details>` panel at top of input drawer replaces full assumptions on click.
+
+Latest documented baseline: 383 tests after `#65`.
 
 ---
 
