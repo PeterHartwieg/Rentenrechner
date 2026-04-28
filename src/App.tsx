@@ -7,7 +7,7 @@ import { de2026Rules } from './rules/de2026'
 import { formatPercent } from './utils/format'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useSimulationViewModel } from './app/useSimulationViewModel'
-import { PRODUCT_COLORS } from './app/productPresentation'
+import { PRODUCT_MANIFEST } from './app/productPresentation'
 import { ScenarioPresetPanel } from './features/inputs/ScenarioPresetPanel'
 import { ProfileInputs } from './features/inputs/ProfileInputs'
 import { GRVInputs } from './features/inputs/GRVInputs'
@@ -27,6 +27,8 @@ import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import './App.css'
+
+const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 
 function App() {
   const { profile, setProfile, assumptions, setAssumptions, resetToDefaults } = useCalculatorState()

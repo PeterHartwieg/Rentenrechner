@@ -5,7 +5,7 @@ import { simulateRetirementComparison } from '../engine/simulate'
 import { de2026Rules } from '../rules/de2026'
 import { buildExportCsv, downloadCsv } from '../utils/csvExport'
 import { buildShareUrl } from '../utils/urlShare'
-import { PRODUCT_COLORS, PRODUCT_ORDER } from './productPresentation'
+import { GRV_COLOR, getProductMeta } from './productPresentation'
 
 export function useSimulationViewModel(
   profile: PersonalProfile,
@@ -28,7 +28,7 @@ export function useSimulationViewModel(
   )
   const selectedResults = simulation.products
     .filter((product) => product.scenarioId === selectedScenarioId)
-    .sort((a, b) => PRODUCT_ORDER.indexOf(a.productId) - PRODUCT_ORDER.indexOf(b.productId))
+    .sort((a, b) => (getProductMeta(a.productId)?.order ?? 99) - (getProductMeta(b.productId)?.order ?? 99))
 
   const capitalChartData = selectedResults[0]?.rows.map((row) => {
     const point: Record<string, string | number> = { age: row.age, year: row.year }
@@ -45,12 +45,12 @@ export function useSimulationViewModel(
     {
       name: 'Gesetzl. Rente',
       value: simulation.statutoryPension.netMonthlyPension,
-      fill: PRODUCT_COLORS.grv,
+      fill: GRV_COLOR,
     },
     ...selectedResults.map((result) => ({
       name: result.label,
       value: result.netMonthlyPayout,
-      fill: PRODUCT_COLORS[result.productId],
+      fill: getProductMeta(result.productId)?.color ?? '#888888',
     })),
   ]
 

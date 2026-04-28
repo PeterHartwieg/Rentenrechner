@@ -1,4 +1,8 @@
 import type { FeeModel } from '../domain/types'
+export { getProductMeta, PRODUCT_MANIFEST } from '../engine/productManifest'
+
+/** GRV has no product module — keep its colour here as a standalone constant. */
+export const GRV_COLOR = '#16a34a'
 
 export type WarningStatus = 'implementiert' | 'vereinfacht' | 'nicht-modelliert'
 
@@ -113,14 +117,3 @@ export const BADGE_LABEL: Record<WarningStatus, string> = {
   'nicht-modelliert': '✗ nicht modelliert',
 }
 
-export const PRODUCT_COLORS: Record<string, string> = {
-  etf: '#2563eb',
-  bav: '#0f766e',
-  versicherung: '#b45309',
-  grv: '#16a34a',
-  basisrente: '#7c3aed',
-  altersvorsorgedepot: '#0e7490',
-  riester: '#be185d',
-}
-
-export const PRODUCT_ORDER = ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester']
