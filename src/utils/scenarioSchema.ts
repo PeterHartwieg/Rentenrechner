@@ -55,12 +55,17 @@ export function validateReturnScenarios(input: unknown): ReturnScenario[] | null
   return input as ReturnScenario[]
 }
 
+const VALID_PENSION_BASELINE_TYPES = ['grv', 'versorgungswerk', 'beamtenpension', 'none'] as const
+
 function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
+  if (sp.pensionBaselineType !== undefined && !VALID_PENSION_BASELINE_TYPES.includes(sp.pensionBaselineType)) return false
   if (sp.manualMonthlyGross !== null && !inRange(sp.manualMonthlyGross, 0, 100_000)) return false
   if (!inRange(sp.currentEntgeltpunkte, 0, 200)) return false
   if (typeof sp.includeGrvReduction !== 'boolean') return false
   if (!inRange(sp.annualSalaryGrowthRate ?? 0, -0.1, 0.2)) return false
   if (!inRange(sp.rentenwertGrowthRate ?? 0, -0.05, 0.1)) return false
+  if (!inRange(sp.versorgungswerkMonthlyContribution ?? 0, 0, 10_000)) return false
+  if (!inRange(sp.versorgungswerkEmployerMonthly ?? 0, 0, 10_000)) return false
   return true
 }
 

@@ -417,3 +417,197 @@ describe('#72 projectStatutoryPension (via simulateRetirementComparison)', () =>
     expect(sim.statutoryPension.grossMonthlyPension).toBeCloseTo(manualGross, 2)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Wave 15: pensionBaselineType variants
+// ---------------------------------------------------------------------------
+
+describe('Wave 15 pensionBaselineType: versorgungswerk', () => {
+  const vwSp = {
+    ...defaultAssumptions.statutoryPension,
+    pensionBaselineType: 'versorgungswerk' as const,
+    versorgungswerkMonthlyContribution: 400,
+    versorgungswerkEmployerMonthly: 400,
+  }
+
+  it('produces the same gross pension as GRV given identical EP inputs', () => {
+    const grvSim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const vwSim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: vwSp },
+      de2026Rules,
+    )
+    expect(vwSim.statutoryPension.grossMonthlyPension).toBeCloseTo(
+      grvSim.statutoryPension.grossMonthlyPension,
+      2,
+    )
+  })
+
+  it('grvReductionApplied is always 0 (bAV does not reduce VW pension)', () => {
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: { ...vwSp, includeGrvReduction: true } },
+      de2026Rules,
+    )
+    expect(sim.statutoryPension.grvReductionApplied).toBe(0)
+  })
+
+  it('KV/PV differs from GRV (full health rate on Versorgungsbezug vs §249a half-rate)', () => {
+    const vwSim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: { ...vwSp, manualMonthlyGross: 2000, versorgungswerkMonthlyContribution: 0, versorgungswerkEmployerMonthly: 0 } },
+      de2026Rules,
+    )
+    const grvManualSim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: { ...defaultAssumptions.statutoryPension, manualMonthlyGross: 2000 } },
+      de2026Rules,
+    )
+    // VW uses full health rate (minus Freibetrag), GRV uses half rate → VW KV/PV differs
+    // The VW Freibetrag can make it higher or similar; just verify they are treated differently
+    expect(vwSim.statutoryPension.kvPvMonthly).not.toBeCloseTo(
+      grvManualSim.statutoryPension.kvPvMonthly,
+      0,
+    )
+  })
+
+  it('VW contributions reduce the Schicht-1 cap for Basisrente', () => {
+    const noVwSim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: { ...vwSp, versorgungswerkMonthlyContribution: 0, versorgungswerkEmployerMonthly: 0 } },
+      de2026Rules,
+    )
+    const highVwSim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: { ...vwSp, versorgungswerkMonthlyContribution: 800, versorgungswerkEmployerMonthly: 800 } },
+      de2026Rules,
+    )
+    expect(highVwSim.basisrenteFunding.annualPensionContributionsTowardsCap).toBeGreaterThan(
+      noVwSim.basisrenteFunding.annualPensionContributionsTowardsCap,
+    )
+    expect(highVwSim.basisrenteFunding.remainingSchicht1Cap).toBeLessThan(
+      noVwSim.basisrenteFunding.remainingSchicht1Cap,
+    )
+  })
+})
+
+describe('Wave 15 pensionBaselineType: beamtenpension', () => {
+  const beamteSp = {
+    ...defaultAssumptions.statutoryPension,
+    pensionBaselineType: 'beamtenpension' as const,
+    manualMonthlyGross: 2_500,
+  }
+
+  it('gross equals the manual input (no EP estimation)', () => {
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: beamteSp },
+      de2026Rules,
+    )
+    expect(sim.statutoryPension.grossMonthlyPension).toBeCloseTo(2_500, 1)
+    expect(sim.statutoryPension.projectedEntgeltpunkte).toBe(0)
+  })
+
+  it('income tax is routed differently from GRV (§19 EStG Versorgungsfreibetrag vs §22 Besteuerungsanteil)', () => {
+    // For the same gross, GRV and Beamtenpension use different tax pipelines.
+    // GRV: gross × Besteuerungsanteil enters the base (e.g. ~88.6% for 2040 cohort).
+    // Beamtenpension: full gross enters but reduced by the remaining Versorgungsfreibetrag.
+    // Which is lower depends on cohort; we just verify the two routes produce different results,
+    // proving Beamtenpension is correctly routed through bavPensionAnnual (not statutoryPensionAnnual).
+    const profile2040 = { ...defaultProfile, age: 53 }  // retires 2040
+    const beamteSim = simulateRetirementComparison(
+      profile2040,
+      { ...defaultAssumptions, statutoryPension: { ...beamteSp, manualMonthlyGross: 2_500 } },
+      de2026Rules,
+    )
+    const grvManualSim = simulateRetirementComparison(
+      profile2040,
+      { ...defaultAssumptions, statutoryPension: { ...defaultAssumptions.statutoryPension, manualMonthlyGross: 2_500 } },
+      de2026Rules,
+    )
+    expect(beamteSim.statutoryPension.taxMonthly).toBeGreaterThan(0)
+    expect(grvManualSim.statutoryPension.taxMonthly).toBeGreaterThan(0)
+    // Different routing → different tax amounts (confirms §19 vs §22 code path distinction).
+    expect(beamteSim.statutoryPension.taxMonthly).not.toBeCloseTo(
+      grvManualSim.statutoryPension.taxMonthly,
+      0,
+    )
+  })
+
+  it('PKV holder: KV/PV is 0 (Beamte typically have Beihilfe + supplemental PKV)', () => {
+    const pkvProfile = { ...defaultProfile, publicHealthInsurance: false }
+    const sim = simulateRetirementComparison(
+      pkvProfile,
+      { ...defaultAssumptions, statutoryPension: beamteSp },
+      de2026Rules,
+    )
+    expect(sim.statutoryPension.kvPvMonthly).toBe(0)
+  })
+
+  it('GKV holder: KV/PV positive (routes as Versorgungsbezug with Freibetrag)', () => {
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: beamteSp },
+      de2026Rules,
+    )
+    expect(sim.statutoryPension.kvPvMonthly).toBeGreaterThan(0)
+  })
+
+  it('grvReductionApplied is 0 (bAV does not affect Beamtenpension)', () => {
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: { ...beamteSp, includeGrvReduction: true } },
+      de2026Rules,
+    )
+    expect(sim.statutoryPension.grvReductionApplied).toBe(0)
+  })
+
+  it('Schicht-1 cap is not reduced by Beamtenpension (no pension contributions toward cap)', () => {
+    const beamteSim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: beamteSp },
+      de2026Rules,
+    )
+    // Beamtenpension contributions are 0 → cap fully available for Basisrente
+    expect(beamteSim.basisrenteFunding.annualPensionContributionsTowardsCap).toBe(0)
+    expect(beamteSim.basisrenteFunding.remainingSchicht1Cap).toBeCloseTo(
+      de2026Rules.basisrente.schicht1CapSingle,
+      0,
+    )
+  })
+})
+
+describe('Wave 15 pensionBaselineType: none', () => {
+  const noneSp = {
+    ...defaultAssumptions.statutoryPension,
+    pensionBaselineType: 'none' as const,
+  }
+
+  it('returns all zeros', () => {
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: noneSp },
+      de2026Rules,
+    )
+    const { grossMonthlyPension, netMonthlyPension, taxMonthly, kvPvMonthly, grvReductionApplied } =
+      sim.statutoryPension
+    expect(grossMonthlyPension).toBe(0)
+    expect(netMonthlyPension).toBe(0)
+    expect(taxMonthly).toBe(0)
+    expect(kvPvMonthly).toBe(0)
+    expect(grvReductionApplied).toBe(0)
+  })
+
+  it('Schicht-1 cap is fully available (no pension-system contributions)', () => {
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: noneSp },
+      de2026Rules,
+    )
+    expect(sim.basisrenteFunding.annualPensionContributionsTowardsCap).toBe(0)
+    expect(sim.basisrenteFunding.remainingSchicht1Cap).toBeCloseTo(
+      de2026Rules.basisrente.schicht1CapSingle,
+      0,
+    )
+  })
+})

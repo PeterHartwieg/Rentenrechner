@@ -151,16 +151,17 @@ export const defaultAssumptions: ScenarioAssumptions = {
     },
   },
   statutoryPension: {
+    pensionBaselineType: 'grv' as const,
     // null = use EP-based estimation; set to a specific number to use a Renteninformation override
     manualMonthlyGross: null,
     // Seed with a realistic EP count for the default 28-year-old profile (~6 years at avg salary).
     // Users should replace this with the value from their last Renteninformation letter.
     currentEntgeltpunkte: 8,
     includeGrvReduction: false,
-    // Default: no salary growth (constant salary, original behaviour).
     annualSalaryGrowthRate: 0,
-    // Default: no Rentenwert indexation (constant Rentenwert, original behaviour).
     rentenwertGrowthRate: 0,
+    versorgungswerkMonthlyContribution: 0,
+    versorgungswerkEmployerMonthly: 0,
   },
   altersvorsorgedepot: {
     ...defaultAvdAssumptions,

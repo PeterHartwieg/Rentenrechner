@@ -86,7 +86,7 @@ export function BasisrenteInputs({
           {' '}· Nettoaufwand: <strong>{formatCurrency(basisrenteFunding.monthlyNetCost, 0)}/Monat</strong>
           {' '}· Schicht-1-Rest: {formatCurrency(basisrenteFunding.remainingSchicht1Cap, 0)} EUR/Jahr
           {basisrenteFunding.annualDeductible < basisrenteFunding.annualGrossContribution && (
-            <> · <span className="riy-warn">GRV füllt Teile des Caps — nur {formatCurrency(basisrenteFunding.annualDeductible, 0)} absetzbar</span></>
+            <> · <span className="riy-warn">Pflichtversorgung füllt Teile des Caps — nur {formatCurrency(basisrenteFunding.annualDeductible, 0)} absetzbar</span></>
           )}
           {basisrenteProductResult && <> · Nettorente: <strong>{formatCurrency(basisrenteProductResult.netMonthlyPayout, 0)}/Monat</strong></>}
         </p>

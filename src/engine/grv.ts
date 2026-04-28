@@ -1,25 +1,40 @@
 /**
- * Statutory pension (GRV) projection (#72, salary-growth + Rentenwert-indexation Group E).
+ * Statutory/occupational pension projection (Wave 15: Versorgungswerk + Beamtenpension).
  *
- * Two modes:
- * - Manual: user enters the projected gross monthly pension from their official
- *   Renteninformation letter. Rentenwert growth is applied on top.
- * - EP-based: remaining years earn EP at salary / Durchschnittsentgelt.
- *   Salary can grow at `annualSalaryGrowthRate` p.a. (decimal); BBG cap applies each year.
- *   `currentEntgeltpunkte` (from the Renteninformation letter) seeds the projection.
+ * Handles four pension baseline types (PensionBaselineType):
  *
- * After computing the gross pension:
- * - Income tax is applied via calculateRetirementTax (§22 Nr. 1 Satz 3 a aa EStG
- *   Besteuerungsanteil — cohort-based, handled inside the pipeline).
- * - KV/PV is applied via calculateRetirementKvPv (§249a SGB V half-rate for GRV
- *   pensioners in KVdR; full careRate because DRV has no employer PV share).
+ * 'grv' (default):
+ *   Deutsche Rentenversicherung. EP-based or manual estimate.
+ *   Tax: §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil cohort table.
+ *   KV/PV: §249a SGB V half-rate for KVdR members.
+ *   bAV GRV reduction applied when includeGrvReduction = true.
+ *
+ * 'versorgungswerk':
+ *   Berufsständisches Versorgungswerk (lawyers, doctors, engineers, etc.).
+ *   Same EP-based or manual projection logic as GRV.
+ *   Tax: §22 Nr. 1 Satz 3 a aa EStG — VW pensions are taxed identically to GRV.
+ *   KV/PV: §229 Abs. 1 Nr. 3 SGB V Versorgungsbezüge — full health rate, §226 Abs. 2 KV-Freibetrag.
+ *   (No §249a SGB V half-rate — VW is not statutory GRV.)
+ *   bAV GRV reduction NOT applied (bAV does not reduce VW pension entitlement).
+ *
+ * 'beamtenpension':
+ *   Beamtenversorgungsgesetz pension (civil servants).
+ *   Manual-only mode (Ruhegehaltssatz depends on plan; user enters Versorgungsauskunft amount).
+ *   Tax: §19 EStG Versorgungsbezug — Versorgungsfreibetrag §19 Abs. 2 and Werbungskosten-
+ *   Pauschbetrag §9a Nr. 1b apply (same routing as bAV in the retirement tax pipeline).
+ *   KV/PV: §229 Abs. 1 Nr. 1 SGB V — full health rate, §226 Abs. 2 KV-Freibetrag.
+ *   Zero KV/PV for PKV holders (Beamte typically have Beihilfe + supplemental PKV).
+ *   bAV GRV reduction NOT applied.
+ *
+ * 'none':
+ *   No mandatory pension system. Returns zeros for all fields.
  *
  * Modeled simplifications (see LEGAL_REVIEW.md):
- * - Assumes KVdR membership (§5 Abs. 1 Nr. 11 SGB V) — no freiwillig-versichert path.
- * - Durchschnittsentgelt held constant at rules.year value (national average wage growth
- *   is embedded in `rentenwertGrowthRate`; personal outperformance shows up in EP/year).
- * - BBG held constant at rules.year value (conservative for high earners near the cap).
- * - GRV reduction from bAV is the estimate already in BavFundingResult.
+ * - GRV assumes KVdR membership (§5 Abs. 1 Nr. 11 SGB V).
+ * - VW assumes GKV (freiwillig) or PKV; KV/PV zeroed when publicHealthInsurance = false.
+ * - Beamtenpension assumes PKV (Beihilfe) zeroes KV/PV when publicHealthInsurance = false.
+ * - Durchschnittsentgelt and BBG held constant (conservative, see #72 comment).
+ * - GRV EP-based mode: salary growth iterates year-by-year; constant-salary fast path at 0 %.
  */
 
 import type {
@@ -41,6 +56,7 @@ export function projectStatutoryPension(
   retirementYear: number,
 ): StatutoryPensionResult {
   const {
+    pensionBaselineType = 'grv',
     manualMonthlyGross,
     currentEntgeltpunkte,
     includeGrvReduction,
@@ -48,78 +64,75 @@ export function projectStatutoryPension(
     rentenwertGrowthRate = 0,
   } = assumptions
 
+  // 'none': all zeros — user has no mandatory pension system.
+  if (pensionBaselineType === 'none') {
+    return {
+      grossMonthlyPension: 0,
+      netMonthlyPension: 0,
+      taxMonthly: 0,
+      kvPvMonthly: 0,
+      projectedEntgeltpunkte: 0,
+      grvReductionApplied: 0,
+    }
+  }
+
+  const remainingYears = Math.max(0, profile.retirementAge - profile.age)
+
   // -------------------------------------------------------------------------
   // 1. Gross monthly pension
   // -------------------------------------------------------------------------
-  const remainingYears = Math.max(0, profile.retirementAge - profile.age)
-
-  // Rentenwert at retirement — applies in both modes.
-  const rentenwertAtRetirement =
-    rules.socialSecurity.aktuellerRentenwert * Math.pow(1 + rentenwertGrowthRate, remainingYears)
-
-  let projectedEntgeltpunkte: number
   let grossMonthlyPension: number
+  let projectedEntgeltpunkte: number
 
-  if (manualMonthlyGross !== null) {
-    // Renteninformation already captures EP accumulation at today's salary.
-    // Scale the letter value by expected Rentenwert growth to arrive at retirement value.
-    grossMonthlyPension = Math.max(0, manualMonthlyGross) *
-      Math.pow(1 + rentenwertGrowthRate, remainingYears)
-    // Reverse-engineer EP from gross for display (uses the projected Rentenwert for consistency)
-    projectedEntgeltpunkte = rentenwertAtRetirement > 0
-      ? grossMonthlyPension / rentenwertAtRetirement
-      : 0
+  if (pensionBaselineType === 'beamtenpension') {
+    // Manual-only: user enters the Bruttopension from their Versorgungsauskunft.
+    // Apply pension value growth (analogous to Rentenwert growth) up to retirement.
+    const manual = Math.max(0, manualMonthlyGross ?? 0)
+    grossMonthlyPension = manual * Math.pow(1 + rentenwertGrowthRate, remainingYears)
+    projectedEntgeltpunkte = 0 // N/A for Beamtenpension
   } else {
-    // EP-based accumulation.
-    // When salary grows, iterate year-by-year so the BBG cap applies each year independently.
-    let futureEP = 0
-    if (annualSalaryGrowthRate === 0) {
-      // Fast path: constant salary → constant EP per year (original behaviour).
-      const cappedSalary = Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear)
-      const epPerYear = rules.socialSecurity.durchschnittsentgelt > 0
-        ? cappedSalary / rules.socialSecurity.durchschnittsentgelt
-        : 0
-      futureEP = remainingYears * epPerYear
+    // GRV or Versorgungswerk: identical EP-based or manual projection logic.
+    const rentenwertAtRetirement =
+      rules.socialSecurity.aktuellerRentenwert * Math.pow(1 + rentenwertGrowthRate, remainingYears)
+
+    if (manualMonthlyGross !== null) {
+      grossMonthlyPension =
+        Math.max(0, manualMonthlyGross) * Math.pow(1 + rentenwertGrowthRate, remainingYears)
+      projectedEntgeltpunkte =
+        rentenwertAtRetirement > 0 ? grossMonthlyPension / rentenwertAtRetirement : 0
     } else {
-      for (let t = 0; t < remainingYears; t++) {
-        const salaryT = profile.grossSalaryYear * Math.pow(1 + annualSalaryGrowthRate, t)
-        const cappedT = Math.min(salaryT, rules.socialSecurity.pensionCapYear)
-        futureEP += rules.socialSecurity.durchschnittsentgelt > 0
-          ? cappedT / rules.socialSecurity.durchschnittsentgelt
-          : 0
+      let futureEP = 0
+      if (annualSalaryGrowthRate === 0) {
+        const cappedSalary = Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear)
+        const epPerYear =
+          rules.socialSecurity.durchschnittsentgelt > 0
+            ? cappedSalary / rules.socialSecurity.durchschnittsentgelt
+            : 0
+        futureEP = remainingYears * epPerYear
+      } else {
+        for (let t = 0; t < remainingYears; t++) {
+          const salaryT = profile.grossSalaryYear * Math.pow(1 + annualSalaryGrowthRate, t)
+          const cappedT = Math.min(salaryT, rules.socialSecurity.pensionCapYear)
+          futureEP +=
+            rules.socialSecurity.durchschnittsentgelt > 0
+              ? cappedT / rules.socialSecurity.durchschnittsentgelt
+              : 0
+        }
       }
+      projectedEntgeltpunkte = currentEntgeltpunkte + futureEP
+      grossMonthlyPension = projectedEntgeltpunkte * rentenwertAtRetirement
     }
-    projectedEntgeltpunkte = currentEntgeltpunkte + futureEP
-    grossMonthlyPension = projectedEntgeltpunkte * rentenwertAtRetirement
   }
 
-  // Subtract bAV-induced GRV loss if requested
-  const grvReductionApplied = includeGrvReduction ? Math.max(0, grvReductionMonthly) : 0
+  // GRV reduction from bAV applies only to GRV, not VW or Beamtenpension.
+  const grvReductionApplied =
+    pensionBaselineType === 'grv' && includeGrvReduction
+      ? Math.max(0, grvReductionMonthly)
+      : 0
   grossMonthlyPension = Math.max(0, grossMonthlyPension - grvReductionApplied)
 
   // -------------------------------------------------------------------------
-  // 2. Income tax via retirement tax pipeline
-  //    §22 Nr. 1 Satz 3 a aa EStG: Besteuerungsanteil applied inside calculateRetirementTax.
-  // -------------------------------------------------------------------------
-  const taxResult = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grossMonthlyPension * 12,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant (no insurance income)
-      otherTaxableAnnual: 0,
-      retirementYear,
-    },
-    rules,
-    'single',
-  )
-  const taxMonthly = taxResult.totalTaxAnnual / 12
-
-  // -------------------------------------------------------------------------
-  // 3. KV/PV: KVdR default (§5 Abs. 1 Nr. 11 SGB V)
-  //    §249a SGB V: pensioner pays half healthRate; DRV pays the other half.
-  //    PV: full careRate (DRV has no employer PV share).
+  // 2. Income tax
   // -------------------------------------------------------------------------
   const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
@@ -127,19 +140,86 @@ export function projectStatutoryPension(
     careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) +
     rules.socialSecurity.careEmployerRate
 
-  const kvPvResult = calculateRetirementKvPv({
-    bavMonthlyVersorgungsbezuege: 0,
-    otherMonthlyVersorgungsbezuege: 0,
-    monthlyStatutoryPension: grossMonthlyPension,
-    freiwilligOtherMonthlyIncome: 0,
-    isFreiwilligVersichert: false,
-    kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
-    pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
-    monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
-    healthRate,
-    careRate,
-  })
-  const kvPvMonthly = kvPvResult.totalKvMonthly + kvPvResult.totalPvMonthly
+  let taxMonthly: number
+
+  if (pensionBaselineType === 'beamtenpension') {
+    // §19 EStG: Versorgungsbezug — Versorgungsfreibetrag §19 Abs. 2 applies.
+    // Route through bavPensionAnnual (same channel as bAV Versorgungsbezüge in the pipeline).
+    const taxResult = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 0,
+        bavPensionAnnual: grossMonthlyPension * 12,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: 'abgeltungsteuer',
+        otherTaxableAnnual: 0,
+        retirementYear,
+      },
+      rules,
+      'single',
+    )
+    taxMonthly = taxResult.totalTaxAnnual / 12
+  } else {
+    // GRV and Versorgungswerk: §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil.
+    const taxResult = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: grossMonthlyPension * 12,
+        bavPensionAnnual: 0,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: 'abgeltungsteuer',
+        otherTaxableAnnual: 0,
+        retirementYear,
+      },
+      rules,
+      'single',
+    )
+    taxMonthly = taxResult.totalTaxAnnual / 12
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. KV/PV
+  // -------------------------------------------------------------------------
+  let kvPvMonthly: number
+
+  if (!profile.publicHealthInsurance && pensionBaselineType !== 'grv') {
+    // PKV holders: no GKV contributions on VW or Beamtenpension income.
+    // (GRV stays as-is: KVdR is independent of PKV for GRV pensioners — documented simplification.)
+    kvPvMonthly = 0
+  } else if (pensionBaselineType === 'grv') {
+    // §249a SGB V: KVdR members pay half healthRate on GRV pension; DRV pays the other half.
+    // PV: full careRate (DRV has no employer PV share).
+    const kvPvResult = calculateRetirementKvPv({
+      bavMonthlyVersorgungsbezuege: 0,
+      otherMonthlyVersorgungsbezuege: 0,
+      monthlyStatutoryPension: grossMonthlyPension,
+      freiwilligOtherMonthlyIncome: 0,
+      isFreiwilligVersichert: false,
+      kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+      pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+      monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
+      healthRate,
+      careRate,
+    })
+    kvPvMonthly = kvPvResult.totalKvMonthly + kvPvResult.totalPvMonthly
+  } else {
+    // Versorgungswerk (§229 Abs. 1 Nr. 3 SGB V) and Beamtenpension (§229 Abs. 1 Nr. 1 SGB V):
+    // both are Versorgungsbezüge — full health rate, §226 Abs. 2 KV-Freibetrag applies.
+    // Route through otherMonthlyVersorgungsbezuege (not monthlyStatutoryPension).
+    const kvPvResult = calculateRetirementKvPv({
+      bavMonthlyVersorgungsbezuege: 0,
+      otherMonthlyVersorgungsbezuege: grossMonthlyPension,
+      monthlyStatutoryPension: 0,
+      freiwilligOtherMonthlyIncome: 0,
+      isFreiwilligVersichert: false,
+      kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+      pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+      monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
+      healthRate,
+      careRate,
+    })
+    kvPvMonthly = kvPvResult.totalKvMonthly + kvPvResult.totalPvMonthly
+  }
 
   const netMonthlyPension = Math.max(0, grossMonthlyPension - taxMonthly - kvPvMonthly)
 

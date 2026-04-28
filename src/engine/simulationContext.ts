@@ -49,8 +49,24 @@ export function buildContext(
     assumptions.bav.durchfuehrungsweg,
     assumptions.bav.pre2005EligibleTaxFree,
   )
+  // Schicht-1 cap: when the user is in a Versorgungswerk, their VW contributions (not GRV)
+  // count toward the §10 Abs. 3 EStG cap. For Beamtenpension/none: no pension contributions.
+  const { pensionBaselineType, versorgungswerkMonthlyContribution, versorgungswerkEmployerMonthly } =
+    assumptions.statutoryPension
+  let pensionSystemAnnualContributionOverride: number | undefined
+  if (pensionBaselineType === 'versorgungswerk') {
+    pensionSystemAnnualContributionOverride =
+      ((versorgungswerkMonthlyContribution ?? 0) + (versorgungswerkEmployerMonthly ?? 0)) * 12
+  } else if (pensionBaselineType === 'beamtenpension' || pensionBaselineType === 'none') {
+    pensionSystemAnnualContributionOverride = 0
+  }
   // All three Schicht-2/-1 funding calculations share the same salary zvE base from bavFunding.
-  const basisrenteFunding = calculateBasisrenteFunding(rules, bavFunding.salaryWithBav, assumptions.basisrente)
+  const basisrenteFunding = calculateBasisrenteFunding(
+    rules,
+    bavFunding.salaryWithBav,
+    assumptions.basisrente,
+    pensionSystemAnnualContributionOverride,
+  )
   const altersvorsorgedepotFunding = calculateAvdFunding(rules, bavFunding.salaryWithBav, assumptions.altersvorsorgedepot)
   const riesterFunding = calculateRiesterFunding(rules, bavFunding.salaryWithBav, assumptions.riester, profile)
 

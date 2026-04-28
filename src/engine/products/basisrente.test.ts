@@ -29,7 +29,7 @@ describe('#61 calculateBasisrenteFunding', () => {
     const result = calculateBasisrenteFunding(de2026Rules, baseSalary, defaultAssumptions.basisrente)
     const expectedGrv =
       baseSalary.social.pension * (1 + de2026Rules.socialSecurity.pensionEmployerRate / de2026Rules.socialSecurity.pensionEmployeeRate)
-    expect(result.annualGrvCountedTowardsCap).toBeCloseTo(expectedGrv, 1)
+    expect(result.annualPensionContributionsTowardsCap).toBeCloseTo(expectedGrv, 1)
     expect(result.remainingSchicht1Cap).toBeCloseTo(
       de2026Rules.basisrente.schicht1CapSingle - expectedGrv,
       1,

@@ -43,34 +43,44 @@ import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
  * @param rules        - Year-specific German rules (Schicht-1 cap, tax rates)
  * @param salaryResult - Salary calculation result (provides the salary-phase zvE and GRV amounts)
  * @param basisrente   - Basisrente assumption block
+ * @param pensionSystemAnnualContributionOverride
+ *   When provided, replaces the GRV-derived pension-system contribution toward the Schicht-1 cap.
+ *   Use for Versorgungswerk members: pass (employeeMonthly + employerMonthly) × 12.
+ *   Pass 0 for Beamtenpension/none (no GRV-equivalent contributions).
  */
 export function calculateBasisrenteFunding(
   rules: GermanRules,
   salaryResult: SalaryResult,
   basisrente: BasisrenteAssumptions,
+  pensionSystemAnnualContributionOverride?: number,
 ): BasisrenteFundingResult {
   const annualGrossContribution = basisrente.monthlyGrossContribution * 12
 
   // -------------------------------------------------------------------------
-  // 1. GRV contributions that count against the Schicht-1 cap.
-  //    §10 Abs. 3 Satz 2 Nr. 1 EStG: employee + employer GRV contributions both count.
-  //    Derive employer GRV from salary.social.pension by scaling to employer rate.
+  // 1. Pension-system contributions that count against the Schicht-1 cap.
+  //    §10 Abs. 3 Satz 2 Nr. 1 EStG: GRV employee + employer contributions count.
+  //    §10 Abs. 3 Satz 2 Nr. 2 EStG: berufsständische Versorgungswerk contributions count similarly.
+  //    When override provided (VW members), use it directly instead of deriving from salary.
   // -------------------------------------------------------------------------
-  const annualGrvEmployee = salaryResult.social.pension
-  // Same base; scale by employer rate in case rates differ from employee rate.
-  const annualGrvEmployer =
-    rules.socialSecurity.pensionEmployeeRate > 0
-      ? (annualGrvEmployee / rules.socialSecurity.pensionEmployeeRate) *
-        rules.socialSecurity.pensionEmployerRate
-      : annualGrvEmployee
-  const annualGrvCountedTowardsCap = annualGrvEmployee + annualGrvEmployer
+  let annualPensionContributionsTowardsCap: number
+  if (pensionSystemAnnualContributionOverride !== undefined) {
+    annualPensionContributionsTowardsCap = pensionSystemAnnualContributionOverride
+  } else {
+    const annualGrvEmployee = salaryResult.social.pension
+    const annualGrvEmployer =
+      rules.socialSecurity.pensionEmployeeRate > 0
+        ? (annualGrvEmployee / rules.socialSecurity.pensionEmployeeRate) *
+          rules.socialSecurity.pensionEmployerRate
+        : annualGrvEmployee
+    annualPensionContributionsTowardsCap = annualGrvEmployee + annualGrvEmployer
+  }
 
   // -------------------------------------------------------------------------
   // 2. Remaining Schicht-1 cap and deductible Basisrente portion.
   // -------------------------------------------------------------------------
   const remainingSchicht1Cap = Math.max(
     0,
-    rules.basisrente.schicht1CapSingle - annualGrvCountedTowardsCap,
+    rules.basisrente.schicht1CapSingle - annualPensionContributionsTowardsCap,
   )
   const annualDeductible =
     Math.min(annualGrossContribution, remainingSchicht1Cap) * rules.basisrente.deductibleFraction
@@ -97,7 +107,7 @@ export function calculateBasisrenteFunding(
   return {
     monthlyGrossContribution: basisrente.monthlyGrossContribution,
     annualGrossContribution,
-    annualGrvCountedTowardsCap,
+    annualPensionContributionsTowardsCap,
     remainingSchicht1Cap,
     annualDeductible,
     annualTaxSaving,

@@ -66,7 +66,7 @@ Items: P3 GRV / Basisrente refinements
 Suggested order:
 
 1. ~~Salary growth and Rentenwert indexation for GRV.~~ ✓
-2. Versorgungswerk / Beamtenpension variants.
+2. ~~Versorgungswerk / Beamtenpension variants.~~ ✓
 3. Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.
 
 Shared code areas: `src/engine/grv.ts`, `src/engine/basisrente.ts`, retirement tax/KV-PV helpers, profile assumptions UI.
@@ -96,7 +96,7 @@ Suggested order:
 
 - Monte Carlo simulation.
 - ~~Salary growth, contribution escalation, and GRV Rentenwert indexation.~~ ✓ (Wave 14)
-- Versorgungswerk / Beamtenpension baseline variants.
+- ~~Versorgungswerk / Beamtenpension baseline variants.~~ ✓ (Wave 15)
 - Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.
 - Multi-ETF portfolio.
 - Sensitivity heatmap.

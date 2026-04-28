@@ -29,7 +29,9 @@ export interface BasisrenteAssumptions {
 export interface BasisrenteFundingResult {
   monthlyGrossContribution: number
   annualGrossContribution: number
-  annualGrvCountedTowardsCap: number
+  /** Annual pension-system contributions counted toward the §10 Abs. 3 Schicht-1 cap
+   *  (GRV employee + employer, or Versorgungswerk contributions). */
+  annualPensionContributionsTowardsCap: number
   remainingSchicht1Cap: number
   annualDeductible: number
   annualTaxSaving: number
