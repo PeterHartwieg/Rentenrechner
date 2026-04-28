@@ -1,4 +1,4 @@
-# Rentenrechner — Developer Guide (Claude Code)
+# Rentenrechner — Developer Guide (Codex / OpenAI agents)
 
 German retirement calculator comparing ETF, bAV, private insurance, Basisrente, Altersvorsorgedepot, and Riester.
 Stack: React + TypeScript + Vite. No backend.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
+import type { EtfProductResult } from '../../domain/types'
 import { de2026Rules } from '../../rules/de2026'
 import { calculateCapitalGainsTax, calculateIncomeTax2026, calculateSolidarityTax } from '../tax'
 import { etfPayoutSchedule, monthlyPayoutFromCapital, projectAccumulation, computeGrossMonthlyPayout } from '../projections'
@@ -252,7 +253,7 @@ describe('#37 ETF payout schedule (etfPayoutSchedule)', () => {
 
   it('simulate produces etfPayoutRows for ETF product', () => {
     const result = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
-    const etfBasis = result.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')
+    const etfBasis = result.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis') as EtfProductResult | undefined
     expect(etfBasis?.etfPayoutRows).toBeDefined()
     expect(etfBasis?.etfPayoutRows?.length).toBeGreaterThan(0)
     // netMonthlyPayout is derived from year-1 of the schedule

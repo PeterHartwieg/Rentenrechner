@@ -39,7 +39,11 @@ The first version is built for personal use with one German tax profile, while t
 - Products:
   - private ETF depot
   - `bAV` / employer pension via salary conversion
-  - private fund/ETF insurance
+  - private fund/ETF insurance (Schicht 3)
+  - Basisrente / Rürup (Schicht 1)
+  - Altersvorsorgedepot / AVD (Schicht 2, Reform 2026)
+  - Riester Altvertrag (Schicht 2)
+  - gesetzliche Rente (GRV baseline)
 - Fixed return scenarios:
   - conservative
   - base
@@ -51,7 +55,7 @@ The first version is built for personal use with one German tax profile, while t
 ### Explicitly Out of Scope for v1
 
 - Monte Carlo simulation.
-- Riester, Ruerup, statutory pension, real estate, crypto, or other asset classes.
+- Real estate, crypto, or other non-pension asset classes.
 - Multi-user publishing workflow.
 - Backend, accounts, database, or server-side persistence.
 - Full financial/tax advisory completeness.
@@ -101,32 +105,52 @@ Current structure:
 
 ```text
 src/
-  data/
-    defaultScenario.ts
-  domain/
-    types.ts
-  engine/
-    fees.ts / fees.test.ts
-    projections.ts
-    retirementTax.ts / retirementTax.test.ts / retirementKvPv.test.ts
-    bavLumpSumTax.test.ts
-    bavWarnings.ts / bavWarnings.test.ts
-    salary.ts
-    simulate.ts / simulate.test.ts
-    tax.ts
   rules/
-    de2026.ts
-    index.ts
-    legalConstants.ts
-  storage.ts / storage.test.ts
+    de2026.ts / legalConstants.ts / index.ts
+  domain/
+    index.ts                     (main import surface)
+    profile.ts / fees.ts / rules.ts / salary.ts / results.ts / retirementTax.ts
+    products/
+      bav.ts / etf.ts / insurance.ts / basisrente.ts
+      altersvorsorgedepot.ts / riester.ts / grv.ts / common.ts / index.ts
+    validation/
+      primitives.ts
+  data/
+    defaultScenario.ts / presets.ts
+  engine/
+    tax.ts / salary.ts / retirementTax.ts / projections.ts
+    fees.ts / bavWarnings.ts / grv.ts / basisrente.ts
+    altersvorsorgedepot.ts / riester.ts / buildResult.ts
+    simulationContext.ts / simulate.ts / productManifest.ts
+    products/
+      etf.ts / etf.validation.ts / etf.test.ts
+      bav.ts / bav.validation.ts / bav.test.ts
+      insurance.ts / insurance.validation.ts / insurance.test.ts
+      basisrente.ts / basisrente.validation.ts / basisrente.test.ts
+      altersvorsorgedepot.ts / altersvorsorgedepot.validation.ts
+      riester.ts / riester.validation.ts
+      README.md
+    simulate.integration.test.ts
+  app/
+    useCalculatorState.ts / useSimulationViewModel.ts / productPresentation.ts
+  features/
+    inputs/   ProfileInputs.tsx / BavInputs.tsx / InsuranceInputs.tsx /
+              BasisrenteInputs.tsx / AltersvorsorgedepotInputs.tsx /
+              RiesterInputs.tsx / GRVInputs.tsx /
+              ReturnScenarioEditor.tsx / ScenarioPresetPanel.tsx
+    results/  SummaryMetrics.tsx / CapitalChart.tsx / PensionChart.tsx /
+              FeeDragChart.tsx / DetailComparisonTable.tsx /
+              FairnessPanel.tsx / CalculationWarnings.tsx
+    cashflows/ CashflowTable.tsx
+    assumptions/ AssumptionsPanel.tsx
+  ui/
+    NumberField.tsx / ResultMetric.tsx / BavWaterfall.tsx
+    formatting.ts / helpers.ts
   utils/
-    csvExport.ts
-    format.ts
-    scenarioSchema.ts / scenarioSchema.test.ts
-    urlShare.ts
-  App.tsx
-  App.css
-  index.css
+    scenarioSchema.ts / urlShare.ts / csvExport.ts / format.ts
+  test/
+    factories.ts
+  storage.ts / App.tsx / App.css / index.css
 ```
 
 ## Calculation Architecture
@@ -430,14 +454,7 @@ Important references:
 
 ### Private Insurance Precision
 
-- Add correct §22 EStG Ertragsanteil taxation for Schicht-3 Leibrente (BACKLOG #59).
-- Label product explicitly as Schicht 3 / ungefoerdert (BACKLOG #60).
-- Derive contract runtime from calendar years for accurate tax-mode classification (BACKLOG #44).
-- Add Basisrente (Rürup, Schicht 1) as a separate product (BACKLOG #61).
-- Add Riester / certified Altersvorsorgevertrag (BACKLOG #62).
-- Add surrender value and paid-up scenario (BACKLOG #65).
 - Add death benefit / survivor assumptions.
-- Add break-even age and Rentenfaktor diagnostics (BACKLOG #64).
 
 ### Visualization
 
@@ -465,16 +482,15 @@ Important references:
 - The current app is not financial, tax, or legal advice.
 - The tax model implements §39b EStG Vorsorgepauschale, not the full BMF PAP wage-tax engine; edge cases (bonus months, multi-employer) are not modeled.
 - Only tax class I / single filing is supported. No Ehegattensplitting, church tax, or child tax credits in the income-tax calculation.
-- Schicht 1 (Basisrente) and Schicht 2 (Riester) are not modeled.
-- Private Rentenversicherung Leibrente is taxed using a gain-ratio approximation; the correct §22 EStG Ertragsanteil method (BACKLOG #59) is not yet implemented.
 - Saxony's split PV employer/employee rates (§55 Abs. 3 Satz 6 SGB XI) are not modeled.
 - All projections use fixed annual returns, not stochastic simulation.
 - Future law changes are not automatically fetched or updated.
+- AVD constants sourced from Bundesrat-Drucksache 206/26; verify after BGBl. publication.
 
 ## Next Recommended Milestones
 
-1. Correct private Rentenversicherung Leibrente taxation to §22 EStG Ertragsanteil (BACKLOG #59).
-2. Explicitly label and scope the private product as Schicht 3 (BACKLOG #60).
-3. Derive pAV contract runtime from calendar years for accurate tax-mode classification (BACKLOG #44).
-4. Add break-even age and Rentenfaktor quality diagnostics for Leibrente products (BACKLOG #64).
-5. Consider adding Basisrente (Schicht 1) as a separate product (BACKLOG #61).
+See `BACKLOG.md` for the current prioritized list. High-level sequence:
+
+1. Scenario UX: presets for common profiles, scenario duplication.
+2. Retirement-income refinements: GRV salary growth / Rentenwert indexation, Versorgungswerk variants.
+3. Later: Monte Carlo, sensitivity heatmap, bilingual UI, public deployment.

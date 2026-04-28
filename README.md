@@ -1,70 +1,63 @@
 # Rentenrechner
 
-Interactive German retirement comparison tool for evaluating:
+Interactive German retirement comparison tool evaluating:
 
 - private ETF investing
-- betriebliche Altersversorgung / bAV
-- private fund or ETF insurance
+- betriebliche Altersversorgung (bAV)
+- private fund/ETF insurance (Schicht 3)
+- Basisrente / Rürup (Schicht 1)
+- Altersvorsorgedepot / AVD (Schicht 2, Reform 2026)
+- Riester Altvertrag (Schicht 2)
+- gesetzliche Rente (GRV baseline)
 
-The current version is a local-first React/Vite prototype for personal analysis. It compares products by monthly net burden, projected retirement capital, and estimated monthly net retirement income.
-
-## Current Scope
-
-- German market only
-- German UI
-- default personal profile:
-  - 28 years old
-  - 67 retirement age
-  - 75,000 EUR gross salary
-  - tax class I
-  - no children
-  - no church tax
-  - public health insurance
-- fixed return scenarios
-- ETF, bAV, and private insurance products
-- configurable product costs
-- nominal and inflation-adjusted charts
+The current version is a local-first React/Vite prototype for personal analysis. It compares products by monthly net burden, projected retirement capital, and estimated monthly net retirement income, using official 2026 German tax and social-security values.
 
 ## Important Limitation
 
 This app is not financial, tax, or legal advice.
 
-The current model is intentionally transparent but not yet complete. Some German tax, social-security, ETF tax, insurance tax, and retirement-phase rules are simplified. See `DESIGN.md` and `BACKLOG.md` for details.
+The model is intentionally transparent but not complete. Some German tax, social-security, and retirement-phase rules are simplified. See `BACKLOG.md` for details.
 
 ## Development
 
-Install dependencies:
-
 ```bash
 npm install
-```
-
-Start the local app:
-
-```bash
-npm run dev
-```
-
-Run verification:
-
-```bash
-npm test
-npm run lint
-npm run build
+npm run dev         # local dev server
+npm run verify      # lint + tests + build
+npm test            # unit tests only
 ```
 
 ## Project Documents
 
-- `DESIGN.md`: design vision, architecture, product assumptions, deferred items
-- `BACKLOG.md`: prioritized accuracy and product backlog
+| Doc | Purpose |
+|-----|---------|
+| `CLAUDE.md` / `AGENTS.md` | Developer guide for AI coding agents (Claude Code / Codex). Start here. |
+| `docs/context/products.md` | Product routing table: simulator, validator, types, tests, UI input per product |
+| `docs/context/rules-and-tax.md` | Legal area → engine file mapping |
+| `docs/context/ui.md` | UI section → component and CSS mapping |
+| `DESIGN.md` | Design vision, architecture, product assumptions |
+| `BACKLOG.md` | Prioritized accuracy and product backlog |
+| `LEGAL_REVIEW.md` | Source links and legal interpretation notes |
+| `BAV_RESEARCH.md` | bAV-specific research |
+| `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md` | Private insurance research |
+| `ALTERSVORSORGEDEPOT_2027_RESEARCH.md` | AVD Reform 2026 research |
 
-## Main Source Files
+## Source Structure
 
-- `src/App.tsx`: UI and charts
-- `src/data/defaultScenario.ts`: personal and product defaults
-- `src/domain/types.ts`: domain model
-- `src/rules/de2026.ts`: German 2026 rule values
-- `src/engine/salary.ts`: salary and bAV funding model
-- `src/engine/projections.ts`: accumulation and payout helpers
-- `src/engine/simulate.ts`: product comparison orchestration
-
+```
+src/
+  rules/          de2026.ts, legalConstants.ts, index.ts
+  domain/         index.ts, profile.ts, results.ts, fees.ts, rules.ts, salary.ts, retirementTax.ts
+  domain/products/ bav.ts, etf.ts, insurance.ts, basisrente.ts, altersvorsorgedepot.ts, riester.ts, grv.ts
+  data/           defaultScenario.ts, presets.ts
+  engine/         tax.ts, salary.ts, retirementTax.ts, projections.ts, fees.ts, grv.ts,
+                  basisrente.ts, altersvorsorgedepot.ts, riester.ts, bavWarnings.ts,
+                  simulationContext.ts, buildResult.ts, simulate.ts, productManifest.ts
+  engine/products/ etf.ts/.validation.ts/.test.ts, bav, insurance, basisrente, altersvorsorgedepot, riester
+  app/            useCalculatorState.ts, useSimulationViewModel.ts, productPresentation.ts
+  features/       inputs/, results/, cashflows/, assumptions/
+  ui/             NumberField.tsx, ResultMetric.tsx, BavWaterfall.tsx, formatting.ts, helpers.ts
+  utils/          scenarioSchema.ts, urlShare.ts, csvExport.ts, format.ts
+  test/           factories.ts
+  storage.ts, App.tsx, App.css, index.css
+```
