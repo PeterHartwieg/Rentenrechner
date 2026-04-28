@@ -1,4 +1,4 @@
-import type { EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain/types'
+import type { EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital } from '../engine/projections'
 
 type ExportOptions = {

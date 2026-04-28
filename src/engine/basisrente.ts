@@ -31,7 +31,7 @@ import type {
   GermanRules,
   PersonalProfile,
   SalaryResult,
-} from '../domain/types'
+} from '../domain'
 import { besteuerungsanteilGrv } from '../rules/de2026'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'

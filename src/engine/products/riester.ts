@@ -1,6 +1,14 @@
-import type { RiesterProductResult, ReturnScenario } from '../../domain/types'
+import type { RiesterProductResult, ReturnScenario } from '../../domain'
 import type { SimulationContext } from '../simulationContext'
-import { buildProductResult } from '../buildResult'
+import {
+  buildProductResult,
+  calculateLeibrenteBreakEvenAge,
+} from '../buildResult'
+import {
+  afterTaxRiesterLumpSum,
+  netRiesterPayout,
+} from '../riester'
+import { computeGrossMonthlyPayout } from '../projections'
 
 export const metadata = {
   id: 'riester' as const,
@@ -14,7 +22,7 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): RiesterProductResult {
-  const { profile, assumptions, rules, bavFunding, riesterFunding, payoutYear } = ctx
+  const { profile, assumptions, rules, riesterFunding, payoutYear } = ctx
   return buildProductResult({
     productId: 'riester',
     label: metadata.label,
@@ -22,17 +30,49 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     profile,
     rules,
     assumptions,
-    bavFunding,
-    riesterFunding,
     monthlyUserCost: riesterFunding.monthlyNetCost,
     monthlyProductContribution:
       riesterFunding.monthlyOwnContribution + riesterFunding.totalAllowanceAnnual / 12,
     monthlyEmployerContribution: 0,
     fees: assumptions.riester.fees,
-    taxMode: 'riester',
-    retirementYear: payoutYear,
     initialCapital: assumptions.riester.existingCapital > 0
       ? assumptions.riester.existingCapital
       : undefined,
-  }) as RiesterProductResult
+    taxAndSvSavings:
+      (riesterFunding.totalAllowanceAnnual + riesterFunding.guenstigerpruefungBenefitAnnual) *
+      ctx.yearsToRetirement,
+    buildPayout: ({ projection, payoutYears, payoutReturn }) => {
+      const riester = assumptions.riester
+      const grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
+        mode: riester.payoutMode,
+        rentenfaktor: riester.rentenfaktor,
+        zeitrenteYears: riester.zeitrenteYears,
+        kapitalverzehrYears: payoutYears,
+        payoutReturn,
+      })
+      const partialPct = Math.min(riester.partialCapitalPct, 0.30)
+      const partialCapital = projection.capital * partialPct
+      const otherAnnual = riester.monthlyOtherRetirementIncome * 12
+
+      return {
+        afterTaxLumpSum: partialPct > 0
+          ? afterTaxRiesterLumpSum(partialCapital, profile, rules, otherAnnual, payoutYear)
+          : null,
+        grossMonthlyPayout,
+        netMonthlyPayout: netRiesterPayout(
+          grossMonthlyPayout,
+          profile,
+          rules,
+          riester.monthlyOtherRetirementIncome,
+          payoutYear,
+        ),
+        leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
+          profile.retirementAge,
+          projection.capital,
+          grossMonthlyPayout,
+          riester.payoutMode === 'leibrente',
+        ),
+      }
+    },
+  })
 }

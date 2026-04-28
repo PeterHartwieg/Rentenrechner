@@ -5,11 +5,11 @@ Each product has a self-contained module here. To touch a product, read only its
 | Product | Simulator | Validator | Domain types | Tests | UI input |
 |---------|-----------|-----------|--------------|-------|----------|
 | ETF-Depot | `etf.ts` | `etf.validation.ts` | `src/domain/products/etf.ts` | `etf.test.ts` | `features/inputs/ProfileInputs.tsx` (inline) |
-| bAV | `bav.ts` | `bav.validation.ts` | `src/domain/products/bav.ts` | `bav.test.ts` | `features/inputs/BavInputs.tsx` |
+| bAV | `bav.ts` | `bav.validation.ts` | `src/domain/products/bav.ts` | `bav.test.ts`, `bav.payout.test.ts` | `features/inputs/BavInputs.tsx` |
 | Private RV (pAV) | `insurance.ts` | `insurance.validation.ts` | `src/domain/products/insurance.ts` | `insurance.test.ts` | `features/inputs/InsuranceInputs.tsx` |
 | Basisrente (Rürup) | `basisrente.ts` | `basisrente.validation.ts` | `src/domain/products/basisrente.ts` | `basisrente.test.ts` | `features/inputs/BasisrenteInputs.tsx` |
-| Altersvorsorgedepot | `altersvorsorgedepot.ts` | `altersvorsorgedepot.validation.ts` | `src/domain/products/altersvorsorgedepot.ts` | `engine/altersvorsorgedepot.test.ts` | `features/inputs/AltersvorsorgedepotInputs.tsx` |
-| Riester (Altvertrag) | `riester.ts` | `riester.validation.ts` | `src/domain/products/riester.ts` | `engine/riester.test.ts` | `features/inputs/RiesterInputs.tsx` |
+| Altersvorsorgedepot | `altersvorsorgedepot.ts` | `altersvorsorgedepot.validation.ts` | `src/domain/products/altersvorsorgedepot.ts` | `altersvorsorgedepot.test.ts` | `features/inputs/AltersvorsorgedepotInputs.tsx` |
+| Riester (Altvertrag) | `riester.ts` | `riester.validation.ts` | `src/domain/products/riester.ts` | `riester.test.ts` | `features/inputs/RiesterInputs.tsx` |
 
 ## Adding a product
 

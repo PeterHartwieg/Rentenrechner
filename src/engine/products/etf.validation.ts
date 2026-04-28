@@ -1,4 +1,4 @@
-import type { EtfAssumptions } from '../../domain/types'
+import type { EtfAssumptions } from '../../domain'
 import { inRange, isFiniteNumber } from '../../domain/validation/primitives'
 
 const VALID_PARTIAL_EXEMPTIONS = [0, 0.15, 0.3, 0.6, 0.8] as const

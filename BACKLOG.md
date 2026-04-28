@@ -13,13 +13,11 @@ Legal/rules research lives in `LEGAL_REVIEW.md`. Product-specific research lives
 
 ## Current Focus
 
-**Active workstream: agent-readability refactor.** Before starting new feature additions, work through `AGENT_READABILITY_REFACTOR_PLAN.md`. The goal is to reduce `App.tsx`, split tests, localize product simulators/validators/types, and update docs so future feature work needs much less context.
+**Agent-readability refactor complete.** Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
 
-Phases complete: 0–11 (lint/build baseline, UI primitives, app state hooks, JSX feature extraction, CSS co-location, test fixtures, product simulator registry, domain type split, discriminated product result unions, product manifest, test split, documentation + agent navigation map). Agent-readability refactor is complete.
+Resume feature work in this order. Each group touches overlapping code paths or creates prerequisites for later groups.
 
-After that refactor is complete, resume feature work in this order. Each group touches overlapping code paths or creates prerequisites for later groups.
-
-1. **Scenario UX and exports**: `#16`, then the useful slice of P3 "saved scenario library and scenario duplication", then `#15`.
+1. **Scenario UX and exports**: saved scenario library and scenario duplication, then `#15`.
 2. **Retirement-income refinements**: GRV salary growth / Rentenwert indexation, Versorgungswerk / Beamtenpension variants, and Basisrente edge cases.
 3. **Later analytical/publishing work**: Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
 
@@ -44,20 +42,9 @@ Suggested order:
 
 Shared code areas: accumulation engine, return scenarios, fee/RIY helpers, product assumptions UI, charts.
 
-### Group C: Schicht-3 Private Insurance Lifecycle
-
-Items: `#65`
-
-Why separate:
-
-- Paid-up/surrender logic is product-lifecycle work for Schicht-3 insurance and should not complicate the certified-product transfer model.
-- It can reuse fee, accumulation, and comparison plumbing after the larger pension-source work is stable.
-
-Shared code areas: private-insurance assumptions, accumulation engine, yearly cashflows, comparison UI.
-
 ### Group D: Scenario UX, Saved Workflows, Reports
 
-Items: `#16`, useful slice of P3 saved scenario library / duplication, `#15`
+Items: useful slice of P3 saved scenario library / duplication, `#15`
 
 Why later:
 
@@ -67,9 +54,8 @@ Why later:
 
 Suggested order:
 
-1. `#16` presets for current stable product combinations.
-2. Scenario duplication / saved scenario library.
-3. `#15` PDF report.
+1. Scenario duplication / saved scenario library.
+2. `#15` PDF report.
 
 Shared code areas: default scenarios, storage/schema, URL sharing, CSV/report formatting, UI controls.
 
@@ -141,10 +127,11 @@ Completed items are kept here as a compact index only.
 - Altersvorsorgedepot 2027 (`#66`–`#71`): types, 2027 constants in `de2026.ts`, tiered allowances + Günstigerprüfung, Standarddepot glidepath, §22 Nr. 5 payout taxation, payout-age validation, transfer-cost inputs and cap constants. Engine in `src/engine/altersvorsorgedepot.ts`. `#71` Riester-to-AVD transition: `riesterTransferCapital` field on AVD assumptions, `initialCapital` in `projectAccumulation`, dynamic label "Riester-Übertrag" on the AVD product when transfer capital is set.
 - Legacy Riester / Altvertrag (`#62`, `#71`): old-law 2026 constants in `de2026.ts`; engine in `src/engine/riester.ts` (§84–§86 EStG allowances, Mindesteigenbeitrag proration, §10a Günstigerprüfung, §22 Nr. 5 net payout, §93 Abs. 2 partial lump sum); productId `riester`; UI section in `src/App.tsx`; schema validation in `src/utils/scenarioSchema.ts`.
 
-- Private insurance lifecycle: `#65` — surrender / paid-up scenario. `InsurancePaidUpScenario` on `ProductResult`; `paidUpAge?` + `surrenderHaircutPct` on `InsuranceAssumptions`; two-phase accumulation in `simulate.ts`; results panel in assumptions drawer. 383 tests (+10).
+- Private insurance lifecycle: `#65` — surrender / paid-up scenario. `InsurancePaidUpScenario` on `ProductResult`; `paidUpAge?` + `surrenderHaircutPct` on `InsuranceAssumptions`; two-phase accumulation in `src/engine/products/insurance.ts`; results panel in assumptions drawer.
 - Input presets: `#16` — 5 scenario presets in `src/data/presets.ts` (ETF Nettotarif, bAV Standard, bAV AG-Match 50 %, pAV Hochkosten, pAV Altvertrag). Collapsible `<details>` panel at top of input drawer replaces full assumptions on click.
+- Agent-readability refactor: phases 0-11 complete. `App.tsx` is a composition shell; product simulators, validators, metadata, and tests live under `src/engine/products`; domain types are split under `src/domain`; agent routing docs live in `AGENTS.md` and `docs/context/`.
 
-Latest documented baseline: 383 tests after `#65`.
+Latest documented baseline: 399 tests after the agent-readability refactor.
 
 ---
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
-import type { EtfProductResult } from '../../domain/types'
+import type { EtfProductResult } from '../../domain'
 import { de2026Rules } from '../../rules/de2026'
 import { calculateCapitalGainsTax, calculateIncomeTax2026, calculateSolidarityTax } from '../tax'
 import { etfPayoutSchedule, monthlyPayoutFromCapital, projectAccumulation, computeGrossMonthlyPayout } from '../projections'

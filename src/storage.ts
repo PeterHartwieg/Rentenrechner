@@ -1,4 +1,4 @@
-import type { PersonalProfile, ScenarioAssumptions } from './domain/types'
+import type { PersonalProfile, ScenarioAssumptions } from './domain'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { validateState } from './utils/scenarioSchema'
 

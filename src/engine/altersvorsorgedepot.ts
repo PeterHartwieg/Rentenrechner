@@ -30,7 +30,7 @@ import type {
   GermanRules,
   PersonalProfile,
   SalaryResult,
-} from '../domain/types'
+} from '../domain'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'

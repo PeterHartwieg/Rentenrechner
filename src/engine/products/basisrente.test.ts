@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
-import type { PersonalProfile } from '../../domain/types'
+import type { PersonalProfile } from '../../domain'
 import { calculateBasisrenteFunding, netBasisrentePayout } from '../basisrente'
 import { calculateSalaryResult } from '../salary'
 import { simulateRetirementComparison } from '../simulate'

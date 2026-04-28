@@ -3,10 +3,10 @@ import {
   afterTaxRiesterLumpSum,
   computeRiesterChildAllowance,
   netRiesterPayout,
-} from './riester'
-import { de2026Rules } from '../rules/de2026'
-import { defaultAssumptions, defaultProfile, defaultRiesterAssumptions } from '../data/defaultScenario'
-import { simulateRetirementComparison } from './simulate'
+} from '../riester'
+import { de2026Rules } from '../../rules/de2026'
+import { defaultAssumptions, defaultProfile, defaultRiesterAssumptions } from '../../data/defaultScenario'
+import { simulateRetirementComparison } from '../simulate'
 
 const rules = de2026Rules
 const r = rules.riester
@@ -411,13 +411,13 @@ describe('#71: AVD with riesterTransferCapital', () => {
 
 describe('validateState includes Riester', () => {
   it('valid default assumptions pass validation', async () => {
-    const { validateState } = await import('../utils/scenarioSchema')
+    const { validateState } = await import('../../utils/scenarioSchema')
     const result = validateState(defaultProfile, defaultAssumptions)
     expect(result).not.toBeNull()
   })
 
   it('invalid Riester payoutMode fails validation', async () => {
-    const { validateState } = await import('../utils/scenarioSchema')
+    const { validateState } = await import('../../utils/scenarioSchema')
     const bad = {
       ...defaultAssumptions,
       riester: { ...defaultAssumptions.riester, payoutMode: 'kapitalverzehr' },
@@ -427,7 +427,7 @@ describe('validateState includes Riester', () => {
   })
 
   it('negative existingCapital fails validation', async () => {
-    const { validateState } = await import('../utils/scenarioSchema')
+    const { validateState } = await import('../../utils/scenarioSchema')
     const bad = {
       ...defaultAssumptions,
       riester: { ...defaultAssumptions.riester, existingCapital: -100 },
@@ -437,7 +437,7 @@ describe('validateState includes Riester', () => {
   })
 
   it('negative riesterTransferCapital on AVD fails validation', async () => {
-    const { validateState } = await import('../utils/scenarioSchema')
+    const { validateState } = await import('../../utils/scenarioSchema')
     const bad = {
       ...defaultAssumptions,
       altersvorsorgedepot: {

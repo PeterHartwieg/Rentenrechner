@@ -1,4 +1,4 @@
-import type { InsuranceAssumptions, PayoutMode } from '../../domain/types'
+import type { InsuranceAssumptions, PayoutMode } from '../../domain'
 import { inRange, intInRange, isFiniteNumber, validateFees } from '../../domain/validation/primitives'
 
 const VALID_PAYOUT_MODES: readonly PayoutMode[] = ['leibrente', 'zeitrente', 'kapitalverzehr']

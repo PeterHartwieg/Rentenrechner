@@ -5,7 +5,7 @@ import type {
   PersonalProfile,
   SalaryResult,
   SocialContributionBreakdown,
-} from '../domain/types'
+} from '../domain'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 function contributionBase(annualGross: number, cap: number): number {

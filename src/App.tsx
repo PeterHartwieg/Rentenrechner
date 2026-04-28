@@ -1,5 +1,5 @@
 import { Calculator, RotateCcw, Settings } from 'lucide-react'
-import type { ProductId } from './domain/types'
+import type { ProductId } from './domain'
 import { NumberField } from './ui/NumberField'
 import { clampNumber } from './ui/formatting'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'

@@ -1,4 +1,4 @@
-import type { PersonalProfile, ScenarioAssumptions } from '../domain/types'
+import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import { buildStateJson, parseStateFromJson } from '../storage'
 
 const URL_PARAM = 's'

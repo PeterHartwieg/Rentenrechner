@@ -10,7 +10,7 @@ import type {
   PersonalProfile,
   ProductResult,
   ScenarioAssumptions,
-} from '../../domain/types'
+} from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { BavWaterfall } from '../../ui/BavWaterfall'
 import { formatCurrency, formatPercent } from '../../utils/format'

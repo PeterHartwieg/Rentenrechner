@@ -8,9 +8,9 @@ import {
   calculateAvdFunding,
   netAvdPayout,
   validateAvdPayoutAge,
-} from './altersvorsorgedepot'
-import { de2026Rules } from '../rules/de2026'
-import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
+} from '../altersvorsorgedepot'
+import { de2026Rules } from '../../rules/de2026'
+import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 
 const rules = de2026Rules
 const avd = rules.altersvorsorgedepot

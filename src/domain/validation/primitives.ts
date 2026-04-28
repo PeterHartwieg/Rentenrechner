@@ -1,6 +1,6 @@
 // Primitive validation guards shared by all product validators and the top-level scenarioSchema.
 
-import type { FeeModel } from '../types'
+import type { FeeModel } from '../index'
 
 export function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v)

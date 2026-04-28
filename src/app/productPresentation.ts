@@ -1,4 +1,4 @@
-import type { FeeModel } from '../domain/types'
+import type { FeeModel } from '../domain'
 export { getProductMeta, PRODUCT_MANIFEST } from '../engine/productManifest'
 
 /** GRV has no product module — keep its colour here as a standalone constant. */

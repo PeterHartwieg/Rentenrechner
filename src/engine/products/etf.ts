@@ -1,6 +1,11 @@
-import type { EtfProductResult, ReturnScenario } from '../../domain/types'
+import type { EtfProductResult, ReturnScenario } from '../../domain'
 import type { SimulationContext } from '../simulationContext'
 import { buildProductResult, zeroFeeModel } from '../buildResult'
+import {
+  afterTaxInvestmentCapital,
+  etfPayoutSchedule,
+  monthlyPayoutFromCapital,
+} from '../projections'
 
 export const metadata = {
   id: 'etf' as const,
@@ -21,13 +26,43 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): EtfP
     profile: ctx.profile,
     rules: ctx.rules,
     assumptions: ctx.assumptions,
-    bavFunding: ctx.bavFunding,
     monthlyUserCost: ctx.bavFunding.monthlyNetCost,
     monthlyProductContribution: ctx.bavFunding.monthlyNetCost,
     monthlyEmployerContribution: 0,
     fees: { ...zeroFeeModel, fundAssetFee: ctx.assumptions.etf.annualAssetFee },
-    taxMode: 'etf',
-    partialExemption: ctx.assumptions.etf.equityPartialExemption,
-    retirementYear: ctx.payoutYear,
-  }) as EtfProductResult
+    etfVorabpauschale: {
+      partialExemption: ctx.assumptions.etf.equityPartialExemption,
+    },
+    buildPayout: ({ projection, payoutYears, payoutReturn }) => {
+      const partialExemption = ctx.assumptions.etf.equityPartialExemption
+      const grossMonthlyPayout = monthlyPayoutFromCapital(projection.capital, payoutReturn, payoutYears)
+      const afterTaxLumpSum = afterTaxInvestmentCapital(
+        projection.capital,
+        projection.totalContributionsBeforeFees,
+        ctx.rules,
+        partialExemption,
+        projection.cumulativeVorabpauschale,
+      )
+      const etfPayoutRows = etfPayoutSchedule(
+        projection.capital,
+        projection.totalContributionsBeforeFees,
+        projection.cumulativeVorabpauschale,
+        grossMonthlyPayout,
+        payoutYears,
+        payoutReturn,
+        ctx.profile.retirementAge,
+        ctx.rules,
+        partialExemption,
+      )
+
+      return {
+        afterTaxLumpSum,
+        grossMonthlyPayout,
+        netMonthlyPayout: etfPayoutRows.length > 0
+          ? etfPayoutRows[0].netMonthlyPayout
+          : grossMonthlyPayout,
+        etfPayoutRows,
+      }
+    },
+  })
 }

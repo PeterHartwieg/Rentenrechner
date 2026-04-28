@@ -1,7 +1,7 @@
 import '../../ui/forms.css'
 import '../../ui/fees.css'
 import type React from 'react'
-import type { BasisrenteFundingResult, GermanRules, ProductResult, ScenarioAssumptions } from '../../domain/types'
+import type { BasisrenteFundingResult, GermanRules, ProductResult, ScenarioAssumptions } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
 

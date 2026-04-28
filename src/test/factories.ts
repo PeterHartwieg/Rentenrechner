@@ -7,7 +7,7 @@ import type {
   ReturnScenarioId,
   ScenarioAssumptions,
   SimulationResult,
-} from '../domain/types'
+} from '../domain'
 import { simulateRetirementComparison } from '../engine/simulate'
 
 export function makeProfile(overrides?: Partial<PersonalProfile>): PersonalProfile {

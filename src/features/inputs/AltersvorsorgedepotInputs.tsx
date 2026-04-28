@@ -9,7 +9,7 @@ import type {
   PersonalProfile,
   ProductResult,
   ScenarioAssumptions,
-} from '../../domain/types'
+} from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { validateAvdPayoutAge } from '../../engine/altersvorsorgedepot'

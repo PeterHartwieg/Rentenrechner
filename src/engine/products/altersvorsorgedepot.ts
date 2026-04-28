@@ -1,7 +1,15 @@
-import type { AltersvorsorgedepotProductResult, ReturnScenario } from '../../domain/types'
+import type { AltersvorsorgedepotProductResult, ReturnScenario } from '../../domain'
 import type { SimulationContext } from '../simulationContext'
-import { buildProductResult } from '../buildResult'
-import { computeAvdGlidepathReturn } from '../altersvorsorgedepot'
+import {
+  buildProductResult,
+  calculateLeibrenteBreakEvenAge,
+} from '../buildResult'
+import {
+  afterTaxAvdLumpSum,
+  computeAvdGlidepathReturn,
+  netAvdPayout,
+} from '../altersvorsorgedepot'
+import { monthlyPayoutFromCapital } from '../projections'
 
 export const metadata = {
   id: 'altersvorsorgedepot' as const,
@@ -15,7 +23,7 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): AltersvorsorgedepotProductResult {
-  const { profile, assumptions, rules, bavFunding, altersvorsorgedepotFunding, payoutYear, yearsToRetirement } = ctx
+  const { profile, assumptions, rules, altersvorsorgedepotFunding, payoutYear, yearsToRetirement } = ctx
   const avd = assumptions.altersvorsorgedepot
 
   // Total monthly contribution = own contribution + state allowances flowing in each month.
@@ -62,15 +70,49 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     profile,
     rules,
     assumptions,
-    bavFunding,
-    avdFunding: altersvorsorgedepotFunding,
     monthlyUserCost: altersvorsorgedepotFunding.monthlyNetCost,
     monthlyProductContribution: avdMonthlyContribution,
     monthlyEmployerContribution: 0,
     fees: avd.fees,
-    taxMode: 'altersvorsorgedepot',
-    retirementYear: payoutYear,
     yearlyReturnFn,
     initialCapital: transferInitialCapital,
-  }) as AltersvorsorgedepotProductResult
+    taxAndSvSavings:
+      (altersvorsorgedepotFunding.totalAllowanceAnnual +
+        altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual) * yearsToRetirement,
+    buildPayout: ({ projection, payoutReturn }) => {
+      const partialPct = Math.min(avd.partialCapitalPct, rules.altersvorsorgedepot.partialCapitalMaxPct)
+      const monthlyCapital = projection.capital * (1 - partialPct)
+      const grossMonthlyPayout =
+        avd.payoutMode === 'lifelong_annuity'
+          ? (monthlyCapital / 10_000) * avd.rentenfaktor
+          : monthlyPayoutFromCapital(
+              monthlyCapital,
+              payoutReturn,
+              Math.max(avd.payoutPlanEndAge, rules.altersvorsorgedepot.payoutPlanMinEndAge) -
+                profile.retirementAge,
+            )
+      const partialCapital = projection.capital * partialPct - avd.transferCostEUR
+      const otherAnnual = avd.monthlyOtherRetirementIncome * 12
+
+      return {
+        afterTaxLumpSum: partialPct > 0
+          ? afterTaxAvdLumpSum(Math.max(0, partialCapital), profile, rules, otherAnnual, payoutYear)
+          : null,
+        grossMonthlyPayout,
+        netMonthlyPayout: netAvdPayout(
+          grossMonthlyPayout,
+          profile,
+          rules,
+          avd.monthlyOtherRetirementIncome,
+          payoutYear,
+        ),
+        leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
+          profile.retirementAge,
+          projection.capital,
+          grossMonthlyPayout,
+          avd.payoutMode === 'lifelong_annuity',
+        ),
+      }
+    },
+  })
 }

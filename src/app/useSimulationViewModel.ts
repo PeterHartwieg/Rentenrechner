@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { InsuranceProductResult, InsuranceTaxMode, PersonalProfile, ProductId, ScenarioAssumptions } from '../domain/types'
+import type { InsuranceProductResult, InsuranceTaxMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from '../domain'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from '../engine/projections'
 import { simulateRetirementComparison } from '../engine/simulate'
 import { de2026Rules } from '../rules/de2026'
@@ -55,15 +55,14 @@ export function useSimulationViewModel(
   ]
 
   const comparableCapitalResults = selectedResults.filter(
-    (result): result is Exclude<typeof result, { afterTaxLumpSum: null }> =>
+    (result): result is ProductResult & { afterTaxLumpSum: number } =>
       result.afterTaxLumpSum !== null,
   )
 
-  // afterTaxLumpSum is guaranteed non-null by the filter above; cast is safe.
   const bestCapital = comparableCapitalResults.length
     ? comparableCapitalResults.reduce((best, r) =>
-        (r.afterTaxLumpSum as number) > (best.afterTaxLumpSum as number) ? r : best,
-      ) as { afterTaxLumpSum: number; label: string }
+        r.afterTaxLumpSum > best.afterTaxLumpSum ? r : best,
+      )
     : undefined
   const bestPension = selectedResults.length
     ? selectedResults.reduce((best, r) => r.netMonthlyPayout > best.netMonthlyPayout ? r : best)

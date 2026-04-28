@@ -65,7 +65,7 @@ import type {
   RetirementKvPvBreakdown,
   RetirementKvPvContext,
   RetirementTaxBreakdown,
-} from '../domain/types'
+} from '../domain'
 import {
   besteuerungsanteilGrv,
   sonderausgabenPauschbetrag,

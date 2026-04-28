@@ -1,5 +1,5 @@
 import './ScenarioPresetPanel.css'
-import type { ScenarioAssumptions } from '../../domain/types'
+import type { ScenarioAssumptions } from '../../domain'
 import { SCENARIO_PRESETS } from '../../data/presets'
 
 interface Props {

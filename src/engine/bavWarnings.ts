@@ -1,4 +1,4 @@
-import type { GermanRules } from '../domain/types'
+import type { GermanRules } from '../domain'
 
 export interface BavMinimumEntitlement {
   /** Minimum annual conversion — 1/160 of annual Bezugsgröße West (§1a BetrAVG) */

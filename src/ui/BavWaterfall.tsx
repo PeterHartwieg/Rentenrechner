@@ -1,5 +1,5 @@
 import './BavWaterfall.css'
-import type { BavFundingResult } from '../domain/types'
+import type { BavFundingResult } from '../domain'
 import { formatCurrency } from '../utils/format'
 
 export function BavWaterfall({ f }: { f: BavFundingResult }) {

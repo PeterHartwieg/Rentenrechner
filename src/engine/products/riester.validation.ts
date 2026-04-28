@@ -1,4 +1,4 @@
-import type { RiesterAssumptions } from '../../domain/types'
+import type { RiesterAssumptions } from '../../domain'
 import { inRange, intInRange, isFiniteNumber, validateFees } from '../../domain/validation/primitives'
 
 const VALID_RIESTER_PAYOUT_MODES: readonly string[] = ['leibrente', 'zeitrente']

@@ -1,4 +1,4 @@
-import type { PersonalProfile, ScenarioAssumptions, BavFundingResult, GermanRules } from '../../domain/types'
+import type { PersonalProfile, ScenarioAssumptions, BavFundingResult, GermanRules } from '../../domain'
 import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {

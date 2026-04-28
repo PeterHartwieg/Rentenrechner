@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { PersonalProfile, ScenarioAssumptions } from '../domain/types'
+import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { STORAGE_KEY, buildStateJson, loadSavedState } from '../storage'
 import { readUrlState } from '../utils/urlShare'

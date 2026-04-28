@@ -3,7 +3,7 @@ import type {
   PersonalProfile,
   ScenarioAssumptions,
   SimulationResult,
-} from '../domain/types'
+} from '../domain'
 import { buildContext } from './simulationContext'
 import { projectStatutoryPension } from './grv'
 import { simulate as simulateEtf } from './products/etf'

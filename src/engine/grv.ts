@@ -25,7 +25,7 @@ import type {
   PersonalProfile,
   StatutoryPensionAssumptions,
   StatutoryPensionResult,
-} from '../domain/types'
+} from '../domain'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
 

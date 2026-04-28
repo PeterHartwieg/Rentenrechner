@@ -9,7 +9,7 @@
  */
 
 import { defaultAssumptions } from './defaultScenario'
-import type { ScenarioAssumptions } from '../domain/types'
+import type { ScenarioAssumptions } from '../domain'
 
 export interface ScenarioPreset {
   id: string

@@ -1,6 +1,10 @@
-import type { FeeModel, InsurancePaidUpScenario, InsuranceProductResult, ReturnScenario } from '../../domain/types'
+import type { FeeModel, InsurancePaidUpScenario, InsuranceProductResult, ReturnScenario } from '../../domain'
 import type { SimulationContext } from '../simulationContext'
-import { buildProductResult } from '../buildResult'
+import {
+  applyPensionPayoutFee,
+  buildProductResult,
+  calculateLeibrenteBreakEvenAge,
+} from '../buildResult'
 import {
   afterTaxInsuranceLumpSum,
   computeGrossMonthlyPayout,
@@ -31,14 +35,60 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
     profile,
     rules,
     assumptions,
-    bavFunding,
     monthlyUserCost: insuranceMonthly,
     monthlyProductContribution: insuranceMonthly,
     monthlyEmployerContribution: 0,
     fees: ins.fees,
-    taxMode: insuranceTaxMode,
-    retirementYear: payoutYear,
-  }) as InsuranceProductResult
+    buildPayout: ({ projection, payoutYears, payoutReturn }) => {
+      const grossMonthlyPayout = applyPensionPayoutFee(
+        computeGrossMonthlyPayout(projection.capital, {
+          mode: ins.payoutMode,
+          rentenfaktor: ins.rentenfaktor,
+          zeitrenteYears: ins.zeitrenteYears,
+          kapitalverzehrYears: payoutYears,
+          payoutReturn,
+        }),
+        ins.fees,
+      )
+      const kvdrMember = assumptions.bav.kvdrMember !== false
+      const otherAnnual = ins.monthlyOtherRetirementIncome * 12
+      const afterTaxLumpSum = afterTaxInsuranceLumpSum(
+        projection.capital,
+        projection.totalContributionsBeforeFees,
+        insuranceTaxMode,
+        rules,
+        otherAnnual,
+        payoutYear,
+        profile,
+        kvdrMember,
+      )
+      const netMonthlyPayout = netInsurancePayout(
+        grossMonthlyPayout,
+        projection.capital,
+        projection.totalContributionsBeforeFees,
+        insuranceTaxMode,
+        rules,
+        ins.monthlyOtherRetirementIncome,
+        payoutYear,
+        profile,
+        kvdrMember,
+        ins.payoutMode,
+        profile.retirementAge,
+      )
+
+      return {
+        afterTaxLumpSum,
+        grossMonthlyPayout,
+        netMonthlyPayout,
+        leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
+          profile.retirementAge,
+          projection.capital,
+          grossMonthlyPayout,
+          ins.payoutMode === 'leibrente',
+        ),
+      }
+    },
+  })
 
   // #65: compute paid-up / surrender scenario when paidUpAge is configured.
   const paidUpAge = ins.paidUpAge
@@ -89,16 +139,13 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
     const payoutYears = assumptions.retirementEndAge - profile.retirementAge
     const payoutReturn = scenario.annualReturn - (ins.fees.wrapperAssetFee + ins.fees.fundAssetFee)
 
-    let grossMonthlyPayout = computeGrossMonthlyPayout(retirementCapital, {
+    const grossMonthlyPayout = applyPensionPayoutFee(computeGrossMonthlyPayout(retirementCapital, {
       mode: ins.payoutMode,
       rentenfaktor: ins.rentenfaktor,
       zeitrenteYears: ins.zeitrenteYears,
       kapitalverzehrYears: payoutYears,
       payoutReturn,
-    })
-    if (ins.fees.pensionPayoutFeePct > 0) {
-      grossMonthlyPayout = grossMonthlyPayout * (1 - ins.fees.pensionPayoutFeePct)
-    }
+    }), ins.fees)
 
     const kvdrMember = assumptions.bav.kvdrMember !== false
     const otherAnnual = ins.monthlyOtherRetirementIncome * 12
@@ -140,5 +187,5 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
     }
   }
 
-  return { ...insResult, paidUpScenario } as InsuranceProductResult
+  return { ...insResult, paidUpScenario }
 }

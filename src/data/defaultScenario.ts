@@ -1,4 +1,4 @@
-import type { AltersvorsorgedepotAssumptions, PersonalProfile, RiesterAssumptions, ScenarioAssumptions } from '../domain/types'
+import type { AltersvorsorgedepotAssumptions, PersonalProfile, RiesterAssumptions, ScenarioAssumptions } from '../domain'
 
 export const defaultProfile: PersonalProfile = {
   age: 28,

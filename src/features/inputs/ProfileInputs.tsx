@@ -1,6 +1,6 @@
 import '../../ui/forms.css'
 import type React from 'react'
-import type { PersonalProfile } from '../../domain/types'
+import type { PersonalProfile } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { clampNumber, updateNumber } from '../../ui/formatting'
 import { de2026Rules } from '../../rules/de2026'

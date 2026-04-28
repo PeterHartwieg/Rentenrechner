@@ -9,7 +9,7 @@ import type {
   PayoutMode,
   PersonalProfile,
   ScenarioAssumptions,
-} from '../../domain/types';
+} from '../../domain';
 import { NumberField } from '../../ui/NumberField';
 import { formatCurrency, formatPercent } from '../../utils/format';
 import { PAV_FEE_PRESETS } from '../../app/productPresentation';

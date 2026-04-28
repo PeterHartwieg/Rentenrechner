@@ -1,5 +1,5 @@
 import './CashflowTable.css'
-import type { ProductResult } from '../../domain/types'
+import type { ProductResult } from '../../domain'
 import { formatCurrency } from '../../utils/format'
 
 type Props = {

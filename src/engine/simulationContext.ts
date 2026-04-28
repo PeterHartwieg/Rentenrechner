@@ -7,7 +7,7 @@ import type {
   PersonalProfile,
   RiesterFundingResult,
   ScenarioAssumptions,
-} from '../domain/types'
+} from '../domain'
 import { calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding } from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'

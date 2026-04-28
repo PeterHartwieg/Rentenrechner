@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
-import type { InsuranceProductResult } from '../../domain/types'
+import type { InsuranceProductResult } from '../../domain'
 import { de2026Rules } from '../../rules/de2026'
 import { ertragsanteilByAge } from '../../rules/legalConstants'
 import { deriveInsuranceTaxMode, monthlyPayoutFromCapital, netInsurancePayout } from '../projections'

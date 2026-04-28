@@ -34,7 +34,7 @@ import type {
   RiesterAssumptions,
   RiesterFundingResult,
   SalaryResult,
-} from '../domain/types'
+} from '../domain'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'

@@ -1,4 +1,4 @@
-import type { BavAssumptions, BavDurchfuehrungsweg, PayoutMode } from '../../domain/types'
+import type { BavAssumptions, BavDurchfuehrungsweg, PayoutMode } from '../../domain'
 import { inRange, intInRange, isFiniteNumber, validateFees } from '../../domain/validation/primitives'
 
 const VALID_DURCHFUEHRUNGSWEGE: readonly BavDurchfuehrungsweg[] = [

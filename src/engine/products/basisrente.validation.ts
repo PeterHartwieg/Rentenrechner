@@ -1,4 +1,4 @@
-import type { BasisrenteAssumptions } from '../../domain/types'
+import type { BasisrenteAssumptions } from '../../domain'
 import { inRange, intInRange, isFiniteNumber, validateFees } from '../../domain/validation/primitives'
 
 const VALID_BASISRENTE_PAYOUT_MODES: readonly string[] = ['leibrente', 'zeitrente']

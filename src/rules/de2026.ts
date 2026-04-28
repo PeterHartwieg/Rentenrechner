@@ -1,4 +1,4 @@
-import type { GermanRules } from '../domain/types'
+import type { GermanRules } from '../domain'
 
 // ---------------------------------------------------------------------------
 // Cohort lookup helpers for retirement-phase income tax (added in #46)

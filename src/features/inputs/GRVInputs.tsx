@@ -1,6 +1,6 @@
 import '../../ui/forms.css'
 import type React from 'react'
-import type { ScenarioAssumptions, StatutoryPensionAssumptions } from '../../domain/types';
+import type { ScenarioAssumptions, StatutoryPensionAssumptions } from '../../domain';
 import { NumberField } from '../../ui/NumberField';
 import { formatCurrency, formatNumber } from '../../utils/format';
 

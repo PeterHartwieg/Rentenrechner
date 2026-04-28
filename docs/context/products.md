@@ -7,11 +7,11 @@ For each product: simulator, validator, domain types, tests, UI input, engine he
 | Product | Simulator | Validator | Domain types | Tests | UI input |
 |---------|-----------|-----------|--------------|-------|----------|
 | ETF-Depot | `src/engine/products/etf.ts` | `etf.validation.ts` | `src/domain/products/etf.ts` | `products/etf.test.ts` | `features/inputs/ProfileInputs.tsx` (inline) |
-| bAV | `src/engine/products/bav.ts` | `bav.validation.ts` | `src/domain/products/bav.ts` | `products/bav.test.ts` | `features/inputs/BavInputs.tsx` |
+| bAV | `src/engine/products/bav.ts` | `bav.validation.ts` | `src/domain/products/bav.ts` | `products/bav.test.ts`, `products/bav.payout.test.ts` | `features/inputs/BavInputs.tsx` |
 | Private RV (pAV) | `src/engine/products/insurance.ts` | `insurance.validation.ts` | `src/domain/products/insurance.ts` | `products/insurance.test.ts` | `features/inputs/InsuranceInputs.tsx` |
 | Basisrente (Rürup) | `src/engine/products/basisrente.ts` | `basisrente.validation.ts` | `src/domain/products/basisrente.ts` | `products/basisrente.test.ts` | `features/inputs/BasisrenteInputs.tsx` |
-| Altersvorsorgedepot | `src/engine/products/altersvorsorgedepot.ts` | `altersvorsorgedepot.validation.ts` | `src/domain/products/altersvorsorgedepot.ts` | `engine/altersvorsorgedepot.test.ts` | `features/inputs/AltersvorsorgedepotInputs.tsx` |
-| Riester (Altvertrag) | `src/engine/products/riester.ts` | `riester.validation.ts` | `src/domain/products/riester.ts` | `engine/riester.test.ts` | `features/inputs/RiesterInputs.tsx` |
+| Altersvorsorgedepot | `src/engine/products/altersvorsorgedepot.ts` | `altersvorsorgedepot.validation.ts` | `src/domain/products/altersvorsorgedepot.ts` | `products/altersvorsorgedepot.test.ts` | `features/inputs/AltersvorsorgedepotInputs.tsx` |
+| Riester (Altvertrag) | `src/engine/products/riester.ts` | `riester.validation.ts` | `src/domain/products/riester.ts` | `products/riester.test.ts` | `features/inputs/RiesterInputs.tsx` |
 | GRV (statutory) | *(no product module — computed in SimulationContext)* | — | `src/domain/products/grv.ts` | `simulate.integration.test.ts` | `features/inputs/GRVInputs.tsx` |
 
 ## Engine helpers per product

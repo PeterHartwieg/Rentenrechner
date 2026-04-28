@@ -2,7 +2,7 @@ import type {
   AltersvorsorgedepotAssumptions,
   AltersvorsorgedepotPayoutMode,
   AltersvorsorgedepotSubtype,
-} from '../../domain/types'
+} from '../../domain'
 import { inRange, intInRange, isFiniteNumber, validateFees } from '../../domain/validation/primitives'
 
 const VALID_AVD_SUBTYPES: readonly AltersvorsorgedepotSubtype[] = [

@@ -1,5 +1,5 @@
 import './ReturnScenarioEditor.css'
-import type { ReturnScenario } from '../../domain/types'
+import type { ReturnScenario } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 
 type Props = {

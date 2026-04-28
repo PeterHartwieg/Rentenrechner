@@ -10,7 +10,7 @@ import type {
   ProductId,
   ReturnScenario,
   YearlyProjection,
-} from '../domain/types'
+} from '../domain'
 import { calculateCapitalGainsTax } from './tax'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'

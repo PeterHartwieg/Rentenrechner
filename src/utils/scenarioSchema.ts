@@ -4,7 +4,7 @@ import type {
   ReturnScenarioId,
   ScenarioAssumptions,
   StatutoryPensionAssumptions,
-} from '../domain/types'
+} from '../domain'
 import { inRange, isFiniteNumber, isInt } from '../domain/validation/primitives'
 import { validateEtf } from '../engine/products/etf.validation'
 import { validateBav } from '../engine/products/bav.validation'

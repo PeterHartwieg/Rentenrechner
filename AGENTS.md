@@ -44,7 +44,6 @@ For a task, read the matching context capsule first — it is faster than readin
 | `src/domain/products/<product>.ts` | Per-product assumption and result types (BavAssumptions, InsuranceAssumptions, etc.). Six files: `bav`, `etf`, `insurance`, `basisrente`, `altersvorsorgedepot`, `riester`. |
 | `src/domain/profile.ts` | `PersonalProfile`, `FilingStatus`. |
 | `src/domain/results.ts` | `BaseProductResult`, discriminated `ProductResult` union, `SimulationResult`. |
-| `src/domain/types.ts` | Legacy compatibility barrel — do not add new types here; use the focused modules above. |
 
 ### Engine — tax, salary, and retirement
 

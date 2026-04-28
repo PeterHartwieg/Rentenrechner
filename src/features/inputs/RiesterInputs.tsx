@@ -6,7 +6,7 @@ import type {
   RiesterAssumptions,
   RiesterFundingResult,
   ScenarioAssumptions,
-} from '../../domain/types'
+} from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
 

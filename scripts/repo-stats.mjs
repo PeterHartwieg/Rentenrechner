@@ -1,6 +1,7 @@
 // Prints a concise inventory of the repo for agent context.
 // Run with: node scripts/repo-stats.mjs
-import { readFileSync, readdirSync, statSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { existsSync, readFileSync, readdirSync } from 'fs'
 import { join, relative, extname } from 'path'
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')
@@ -8,6 +9,17 @@ const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'
 const SRC_EXTS = new Set(['.ts', '.tsx', '.mjs', '.mts'])
 const TEST_RE = /\.(test|spec)\.(ts|tsx)$/
 const DOC_EXTS = new Set(['.md'])
+
+function trackedFiles() {
+  try {
+    return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean)
+      .filter(f => existsSync(join(ROOT, f)))
+  } catch {
+    return walk(ROOT).map(rel)
+  }
+}
 
 function walk(dir, files = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -43,7 +55,7 @@ function rel(p) {
   return relative(ROOT, p).replace(/\\/g, '/')
 }
 
-const allFiles = walk(ROOT)
+const allFiles = trackedFiles()
 
 const srcFiles = allFiles.filter(f => {
   const ext = extname(f)
@@ -52,15 +64,15 @@ const srcFiles = allFiles.filter(f => {
 const testFiles = allFiles.filter(f => TEST_RE.test(f))
 const docFiles = allFiles.filter(f => DOC_EXTS.has(extname(f)))
 
-const srcStats = srcFiles.map(f => ({ path: rel(f), lines: countLines(f), exports: countExports(f) }))
-const testStats = testFiles.map(f => ({ path: rel(f), lines: countLines(f) }))
+const srcStats = srcFiles.map(f => ({ path: f, lines: countLines(join(ROOT, f)), exports: countExports(join(ROOT, f)) }))
+const testStats = testFiles.map(f => ({ path: f, lines: countLines(join(ROOT, f)) }))
 
 srcStats.sort((a, b) => b.lines - a.lines)
 testStats.sort((a, b) => b.lines - a.lines)
 
 const totalSrc = srcStats.reduce((s, f) => s + f.lines, 0)
 const totalTest = testStats.reduce((s, f) => s + f.lines, 0)
-const totalDoc = docFiles.reduce((s, f) => s + countLines(f), 0)
+const totalDoc = docFiles.reduce((s, f) => s + countLines(join(ROOT, f)), 0)
 
 console.log('=== Largest source files (top 15) ===')
 for (const f of srcStats.slice(0, 15)) {

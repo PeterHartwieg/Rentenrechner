@@ -1,4 +1,4 @@
-import type { GermanRules } from '../domain/types'
+import type { GermanRules } from '../domain'
 
 const floorEuro = (value: number) => Math.floor(Math.max(0, value))
 
