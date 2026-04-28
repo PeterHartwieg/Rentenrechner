@@ -25,8 +25,10 @@ export const defaultAssumptions: ScenarioAssumptions = {
   },
   bav: {
     monthlyGrossConversion: 300,
-    extraEmployerContributionPct: 0,
-    extraEmployerContributionMonthly: 0,
+    // #51: §1a Abs. 1a BetrAVG default — statutory subsidy on, no contractual extras.
+    statutoryMinimumSubsidyEnabled: true,
+    contractualMatchPercent: 0,
+    contractualFixedMonthly: 0,
     monthlyOtherRetirementIncome: 0,
     includeGrvReduction: false,
     kvdrMember: true,

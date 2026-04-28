@@ -170,8 +170,9 @@ export function calculateBavFunding(
   const annualGrossConversion = bav.monthlyGrossConversion * 12
   const taxFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
   const svFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.socialSecurityFreePctOfPensionCap
-  const extraSubsidyAnnual =
-    annualGrossConversion * bav.extraEmployerContributionPct + bav.extraEmployerContributionMonthly * 12
+  // #51: contractual employer share (uncapped, stacks on top of statutory).
+  const contractualSubsidyAnnual =
+    annualGrossConversion * bav.contractualMatchPercent + bav.contractualFixedMonthly * 12
 
   const salaryWithoutBav = calculateSalaryResult(profile, rules, 0)
   const employerSocialBefore = calculateEmployerSocialContributions(profile.grossSalaryYear, profile, rules)
@@ -179,7 +180,7 @@ export function calculateBavFunding(
   // Iterative fixed-point: employerContribution → effectiveSvFreeConversion →
   // employerSvSaving → statutorySubsidy → employerContribution.
   // Converges because the feedback gain (employer SV rate ≪ 1) is contractive.
-  let employerContribution = extraSubsidyAnnual
+  let employerContribution = contractualSubsidyAnnual
   let effectiveTaxFreeConversion = Math.min(annualGrossConversion, taxFreeLimit)
   let effectiveSvFreeConversion = Math.min(annualGrossConversion, svFreeLimit)
   let statutorySubsidyAnnual = 0
@@ -198,11 +199,13 @@ export function calculateBavFunding(
       rules,
     )
     employerSocialSecuritySavingAnnual = Math.max(0, employerSocialBefore.total - employerSocialAfter.total)
-    statutorySubsidyAnnual = Math.min(
-      annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct,
-      employerSocialSecuritySavingAnnual,
-    )
-    const next = statutorySubsidyAnnual + extraSubsidyAnnual
+    statutorySubsidyAnnual = bav.statutoryMinimumSubsidyEnabled
+      ? Math.min(
+          annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct,
+          employerSocialSecuritySavingAnnual,
+        )
+      : 0
+    const next = statutorySubsidyAnnual + contractualSubsidyAnnual
     if (Math.abs(next - employerContribution) < 0.01) {
       employerContribution = next
       break
@@ -252,8 +255,9 @@ export function calculateBavFunding(
     annualNetCost,
     monthlyTaxAndSvSavings: annualTaxAndSvSavings / 12,
     annualTaxAndSvSavings,
-    monthlyMandatoryEmployerSubsidy: statutorySubsidyAnnual / 12,
-    monthlyExtraEmployerSubsidy: extraSubsidyAnnual / 12,
+    monthlyStatutoryEmployerSubsidy: statutorySubsidyAnnual / 12,
+    monthlyContractualEmployerContribution: contractualSubsidyAnnual / 12,
+    monthlyEffectiveEmployerContribution: annualEmployerContribution / 12,
     monthlyEmployerContribution: annualEmployerContribution / 12,
     annualEmployerContribution,
     employerSocialSecuritySavingAnnual,

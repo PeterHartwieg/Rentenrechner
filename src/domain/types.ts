@@ -99,8 +99,13 @@ export interface EtfAssumptions {
 
 export interface BavAssumptions {
   monthlyGrossConversion: number
-  extraEmployerContributionPct: number
-  extraEmployerContributionMonthly: number
+  // #51: §1a Abs. 1a BetrAVG statutory minimum subsidy (15 % capped by employer SV savings).
+  // Disable when the employer is fully waived under a collective agreement.
+  statutoryMinimumSubsidyEnabled: boolean
+  // #51: contractual employer match (fraction of monthlyGrossConversion); uncapped, stacks on top of statutory.
+  contractualMatchPercent: number
+  // #51: contractual fixed monthly employer contribution (EUR/month); uncapped, stacks on top of statutory.
+  contractualFixedMonthly: number
   fees: FeeModel
   // #6: other monthly retirement income (GRV + other) for marginal-tax calculation
   monthlyOtherRetirementIncome: number
@@ -223,8 +228,13 @@ export interface BavFundingResult {
   annualNetCost: number
   monthlyTaxAndSvSavings: number
   annualTaxAndSvSavings: number
-  monthlyMandatoryEmployerSubsidy: number
-  monthlyExtraEmployerSubsidy: number
+  // #51: §1a Abs. 1a BetrAVG statutory minimum subsidy (15 % conversion, capped by employer SV savings).
+  monthlyStatutoryEmployerSubsidy: number
+  // #51: contractual employer match + fixed contribution (uncapped).
+  monthlyContractualEmployerContribution: number
+  // #51: effective employer contribution actually paid into the bAV (= statutory + contractual).
+  monthlyEffectiveEmployerContribution: number
+  // Same as monthlyEffectiveEmployerContribution; retained as the canonical field consumed downstream.
   monthlyEmployerContribution: number
   annualEmployerContribution: number
   employerSocialSecuritySavingAnnual: number

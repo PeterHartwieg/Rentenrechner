@@ -96,4 +96,24 @@ describe('parseStateFromJson (#40)', () => {
     expect(result!.assumptions.bav.durchfuehrungsweg).toBe('direktversicherung_3_63')
     expect(result!.assumptions.bav.pre2005EligibleTaxFree).toBe(false)
   })
+
+  it('#51 migration: legacy extraEmployerContribution* fields map to contractualMatchPercent / contractualFixedMonthly', () => {
+    const oldBav = {
+      monthlyGrossConversion: 300,
+      extraEmployerContributionPct: 0.2,
+      extraEmployerContributionMonthly: 25,
+      monthlyOtherRetirementIncome: 0,
+      includeGrvReduction: false,
+      kvdrMember: true,
+      durchfuehrungsweg: 'direktversicherung_3_63',
+      pre2005EligibleTaxFree: false,
+      fees: defaultAssumptions.bav.fees,
+    }
+    const raw = JSON.stringify({ version: 1, profile: defaultProfile, assumptions: { ...defaultAssumptions, bav: oldBav } })
+    const result = parseStateFromJson(raw)
+    expect(result).not.toBeNull()
+    expect(result!.assumptions.bav.contractualMatchPercent).toBe(0.2)
+    expect(result!.assumptions.bav.contractualFixedMonthly).toBe(25)
+    expect(result!.assumptions.bav.statutoryMinimumSubsidyEnabled).toBe(true)
+  })
 })

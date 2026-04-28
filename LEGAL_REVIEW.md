@@ -159,6 +159,8 @@ Primary sources used during the April 2026 review:
 
 The default statutory employer subsidy is modeled as 15% of salary conversion, capped by actual employer social-security savings. This avoids treating the 15% as an unconditional extra contribution.
 
+`#51`: statutory and contractual employer contributions are modeled as **two distinct concepts** that **stack**. The statutory part (§1a Abs. 1a BetrAVG) is a *minimum* — 15 % of the SV-free conversion, capped by actual employer SV savings — and is toggleable via `statutoryMinimumSubsidyEnabled` (e.g. when fully waived under a collective agreement). The contractual part (`contractualMatchPercent`, `contractualFixedMonthly`) is the uncapped match the employer actually promised on top. The effective employer contribution paid into the bAV is the sum.
+
 ### bAV Tax And SV Limits
 
 The app tracks total bAV contribution context, including:

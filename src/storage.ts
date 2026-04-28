@@ -43,10 +43,27 @@ export function parseStateFromJson(
   if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
   if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
 
-  return {
-    profile: mergeDeep(obj.profile, defaultProfile),
-    assumptions: mergeDeep(obj.assumptions, defaultAssumptions),
+  const profile = mergeDeep(obj.profile, defaultProfile)
+  const assumptions = mergeDeep(obj.assumptions, defaultAssumptions)
+
+  // #51: migrate legacy extraEmployerContribution* fields onto contractualMatchPercent / contractualFixedMonthly.
+  const savedBav = (obj.assumptions as Record<string, unknown>).bav as Record<string, unknown> | undefined
+  if (savedBav) {
+    if (
+      typeof savedBav.extraEmployerContributionPct === 'number' &&
+      assumptions.bav.contractualMatchPercent === defaultAssumptions.bav.contractualMatchPercent
+    ) {
+      assumptions.bav.contractualMatchPercent = savedBav.extraEmployerContributionPct
+    }
+    if (
+      typeof savedBav.extraEmployerContributionMonthly === 'number' &&
+      assumptions.bav.contractualFixedMonthly === defaultAssumptions.bav.contractualFixedMonthly
+    ) {
+      assumptions.bav.contractualFixedMonthly = savedBav.extraEmployerContributionMonthly
+    }
   }
+
+  return { profile, assumptions }
 }
 
 export function buildStateJson(

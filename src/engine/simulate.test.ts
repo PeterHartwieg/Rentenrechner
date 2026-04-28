@@ -122,7 +122,7 @@ describe('bAV contribution limit handling (#4)', () => {
     const f = calculateBavFunding(testProfile75k, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 300,
-      extraEmployerContributionPct: 1.0, // 100% match → 300 extra/month = 3600/year
+      contractualMatchPercent: 1.0, // 100% match → 300 extra/month = 3600/year
     })
     // total ≈ 3600 (employee) + 3600 (extra) + ~32 (statutory) >> 4056
     expect(f.svLiableOverflowAnnual).toBeGreaterThan(0)
@@ -142,7 +142,7 @@ describe('calculateBavFunding — SV and tax-free overflow boundaries', () => {
     const f = calculateBavFunding(testProfile75k, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 300,
-      extraEmployerContributionPct: 0,
+      contractualMatchPercent: 0,
     })
     expect(f.svLiableOverflowAnnual).toBe(0)
     expect(f.taxableOverflowAnnual).toBe(0)
@@ -153,7 +153,7 @@ describe('calculateBavFunding — SV and tax-free overflow boundaries', () => {
     const f = calculateBavFunding(testProfile75k, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 310,
-      extraEmployerContributionPct: 0,
+      contractualMatchPercent: 0,
     })
     expect(f.svLiableOverflowAnnual).toBeGreaterThan(0)
     expect(f.svLiableOverflowAnnual).toBeLessThan(300) // small overflow, not hundreds
@@ -166,7 +166,7 @@ describe('calculateBavFunding — SV and tax-free overflow boundaries', () => {
     const f = calculateBavFunding(testProfile75k, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 650,
-      extraEmployerContributionPct: 0,
+      contractualMatchPercent: 0,
     })
     expect(f.taxableOverflowAnnual).toBeGreaterThan(0)
     expect(f.taxFreePortionAnnual).toBeCloseTo(taxFreeLimit, 0)
@@ -338,8 +338,8 @@ describe('#5 GRV reduction estimate', () => {
     const f = calculateBavFunding(profile50k, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 200,
-      extraEmployerContributionPct: 0,
-      extraEmployerContributionMonthly: 0,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 0,
     })
     const expectedLostBase = 2_400
     const expected = 39 * (expectedLostBase / de2026Rules.socialSecurity.durchschnittsentgelt) * de2026Rules.socialSecurity.aktuellerRentenwert
@@ -356,8 +356,8 @@ describe('#5 GRV reduction estimate', () => {
     const f = calculateBavFunding(profile102k, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 200,
-      extraEmployerContributionPct: 0,
-      extraEmployerContributionMonthly: 0,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 0,
     })
     const expectedLostBase = 1_800
     const expected = 39 * (expectedLostBase / de2026Rules.socialSecurity.durchschnittsentgelt) * de2026Rules.socialSecurity.aktuellerRentenwert
@@ -371,8 +371,8 @@ describe('#5 GRV reduction estimate', () => {
     const f = calculateBavFunding(profile150k, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 200,
-      extraEmployerContributionPct: 0,
-      extraEmployerContributionMonthly: 0,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 0,
     })
     expect(f.estimatedMonthlyGrvReduction).toBe(0)
   })
@@ -447,7 +447,7 @@ describe('#34 bAV convergence', () => {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 350,
     })
-    const subsidyAnnual = f.monthlyMandatoryEmployerSubsidy * 12
+    const subsidyAnnual = f.monthlyStatutoryEmployerSubsidy * 12
     expect(subsidyAnnual).toBeCloseTo(
       Math.min(
         f.annualGrossConversion * de2026Rules.bav.statutoryEmployerSubsidyPct,
@@ -461,9 +461,9 @@ describe('#34 bAV convergence', () => {
     const f = calculateBavFunding(testProfile75k, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: 200,
-      extraEmployerContributionPct: 1.0,
+      contractualMatchPercent: 1.0,
     })
-    const subsidyAnnual = f.monthlyMandatoryEmployerSubsidy * 12
+    const subsidyAnnual = f.monthlyStatutoryEmployerSubsidy * 12
     expect(subsidyAnnual).toBeCloseTo(
       Math.min(
         f.annualGrossConversion * de2026Rules.bav.statutoryEmployerSubsidyPct,
@@ -472,6 +472,68 @@ describe('#34 bAV convergence', () => {
       1,
     )
     expect(f.svLiableOverflowAnnual).toBeGreaterThan(0)
+  })
+})
+
+describe('#51 statutory vs. contractual employer contribution', () => {
+  it('statutory enabled, no contractual: only §1a Abs. 1a subsidy, capped by SV savings', () => {
+    const f = calculateBavFunding(testProfile75k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 300,
+      statutoryMinimumSubsidyEnabled: true,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 0,
+    })
+    expect(f.monthlyContractualEmployerContribution).toBe(0)
+    expect(f.monthlyStatutoryEmployerSubsidy).toBeGreaterThan(0)
+    expect(f.monthlyEffectiveEmployerContribution).toBeCloseTo(f.monthlyStatutoryEmployerSubsidy, 5)
+    expect(f.monthlyEmployerContribution).toBeCloseTo(f.monthlyStatutoryEmployerSubsidy, 5)
+    // Cap holds: subsidy ≤ employer SV saving
+    expect(f.monthlyStatutoryEmployerSubsidy * 12).toBeLessThanOrEqual(f.employerSocialSecuritySavingAnnual + 0.01)
+  })
+
+  it('statutory disabled + 15% contractual: contractual paid uncapped, no statutory part', () => {
+    const f = calculateBavFunding(testProfile75k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 300,
+      statutoryMinimumSubsidyEnabled: false,
+      contractualMatchPercent: 0.15,
+      contractualFixedMonthly: 0,
+    })
+    expect(f.monthlyStatutoryEmployerSubsidy).toBe(0)
+    // 15 % of 300 = 45 EUR/month — paid in full, not clipped to employer SV savings
+    expect(f.monthlyContractualEmployerContribution).toBeCloseTo(45, 2)
+    expect(f.monthlyEffectiveEmployerContribution).toBeCloseTo(45, 2)
+  })
+
+  it('statutory enabled + 15% contractual: both stack', () => {
+    const f = calculateBavFunding(testProfile75k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 300,
+      statutoryMinimumSubsidyEnabled: true,
+      contractualMatchPercent: 0.15,
+      contractualFixedMonthly: 0,
+    })
+    expect(f.monthlyContractualEmployerContribution).toBeCloseTo(45, 2)
+    expect(f.monthlyStatutoryEmployerSubsidy).toBeGreaterThan(0)
+    expect(f.monthlyEffectiveEmployerContribution).toBeCloseTo(
+      f.monthlyStatutoryEmployerSubsidy + f.monthlyContractualEmployerContribution,
+      2,
+    )
+    expect(f.monthlyEmployerContribution).toBeCloseTo(f.monthlyEffectiveEmployerContribution, 5)
+  })
+
+  it('contractual fixed monthly only: paid as a flat add-on independent of conversion', () => {
+    const f = calculateBavFunding(testProfile75k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 300,
+      statutoryMinimumSubsidyEnabled: false,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 50,
+    })
+    expect(f.monthlyStatutoryEmployerSubsidy).toBe(0)
+    expect(f.monthlyContractualEmployerContribution).toBeCloseTo(50, 2)
+    expect(f.monthlyEffectiveEmployerContribution).toBeCloseTo(50, 2)
   })
 })
 
@@ -505,8 +567,8 @@ describe('bAV funding model', () => {
     const funding = calculateBavFunding(defaultProfile, de2026Rules, defaultAssumptions.bav)
 
     expect(funding.monthlyGrossConversion).toBe(300)
-    expect(funding.monthlyMandatoryEmployerSubsidy).toBeGreaterThan(25)
-    expect(funding.monthlyMandatoryEmployerSubsidy).toBeLessThan(45)
+    expect(funding.monthlyStatutoryEmployerSubsidy).toBeGreaterThan(25)
+    expect(funding.monthlyStatutoryEmployerSubsidy).toBeLessThan(45)
   })
 
   it('compares private products against the same net cost as bAV by default', () => {

@@ -258,10 +258,6 @@ function App() {
     () => simulateRetirementComparison(profile, assumptions, de2026Rules),
     [profile, assumptions],
   )
-  const employerContributionContractPct =
-    (de2026Rules.bav.statutoryEmployerSubsidyPct +
-      assumptions.bav.extraEmployerContributionPct) *
-    100
   // §1a BetrAVG minimum: 1/160 of annual Bezugsgröße West; maximum: 4% of pension BBG per month
   const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
   const bavEntitlementMax =
@@ -505,8 +501,8 @@ function App() {
               }
             />
             <NumberField
-              label="AG-Zuschuss Vertrag"
-              value={employerContributionContractPct}
+              label="Vertraglicher AG-Zuschuss"
+              value={assumptions.bav.contractualMatchPercent * 100}
               min={0}
               max={100}
               step={1}
@@ -516,15 +512,44 @@ function App() {
                   ...current,
                   bav: {
                     ...current.bav,
-                    extraEmployerContributionPct: Math.max(
-                      0,
-                      Number(value) / 100 - de2026Rules.bav.statutoryEmployerSubsidyPct,
-                    ),
+                    contractualMatchPercent: Math.max(0, Number(value) / 100),
                   },
                 }))
               }
             />
+            <NumberField
+              label="Vertraglicher AG-Festbetrag"
+              value={assumptions.bav.contractualFixedMonthly}
+              min={0}
+              step={5}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: { ...current.bav, contractualFixedMonthly: Math.max(0, Number(value)) },
+                }))
+              }
+            />
           </div>
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={assumptions.bav.statutoryMinimumSubsidyEnabled}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: { ...current.bav, statutoryMinimumSubsidyEnabled: event.target.checked },
+                }))
+              }
+            />
+            <span>Gesetzlicher AG-Pflichtzuschuss (§1a Abs. 1a BetrAVG)</span>
+          </label>
+          <p className="field-hint">
+            Effektiver AG-Beitrag:{' '}
+            {formatCurrency(simulation.bavFunding.monthlyEffectiveEmployerContribution, 0)}/Monat
+            {' '}(gesetzlich {formatCurrency(simulation.bavFunding.monthlyStatutoryEmployerSubsidy, 0)}
+            {' '}+ vertraglich {formatCurrency(simulation.bavFunding.monthlyContractualEmployerContribution, 0)}).
+          </p>
 
           {assumptions.bav.monthlyGrossConversion > 0 &&
             assumptions.bav.monthlyGrossConversion * 12 < bavMinAnnual && (
@@ -1220,7 +1245,7 @@ function App() {
             />
             <ResultMetric
               label="Mindest-AG-Zuschuss"
-              value={formatCurrency(simulation.bavFunding.monthlyMandatoryEmployerSubsidy, 0)}
+              value={formatCurrency(simulation.bavFunding.monthlyStatutoryEmployerSubsidy, 0)}
               detail="begrenzt durch SV-Ersparnis"
             />
             <ResultMetric
