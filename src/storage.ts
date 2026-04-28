@@ -1,5 +1,6 @@
 import type { PersonalProfile, ScenarioAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
+import { validateState } from './utils/scenarioSchema'
 
 export const STORAGE_KEY = 'rentenrechner-state-v1'
 const CURRENT_VERSION = 1
@@ -63,7 +64,7 @@ export function parseStateFromJson(
     }
   }
 
-  return { profile, assumptions }
+  return validateState(profile, assumptions)
 }
 
 export function buildStateJson(
