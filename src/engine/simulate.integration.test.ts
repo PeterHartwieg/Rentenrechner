@@ -317,12 +317,12 @@ describe('#72 projectStatutoryPension (via simulateRetirementComparison)', () =>
   it('salary above BBG is capped at pensionCapYear for EP calculation', () => {
     const highSim = simulateRetirementComparison(
       { ...defaultProfile, grossSalaryYear: 200_000 },
-      { ...defaultAssumptions, statutoryPension: { manualMonthlyGross: null, currentEntgeltpunkte: 0, includeGrvReduction: false } },
+      { ...defaultAssumptions, statutoryPension: { manualMonthlyGross: null, currentEntgeltpunkte: 0, includeGrvReduction: false, annualSalaryGrowthRate: 0, rentenwertGrowthRate: 0 } },
       de2026Rules,
     )
     const cappedSim = simulateRetirementComparison(
       { ...defaultProfile, grossSalaryYear: de2026Rules.socialSecurity.pensionCapYear },
-      { ...defaultAssumptions, statutoryPension: { manualMonthlyGross: null, currentEntgeltpunkte: 0, includeGrvReduction: false } },
+      { ...defaultAssumptions, statutoryPension: { manualMonthlyGross: null, currentEntgeltpunkte: 0, includeGrvReduction: false, annualSalaryGrowthRate: 0, rentenwertGrowthRate: 0 } },
       de2026Rules,
     )
     // 200k and BBG cap should produce identical projectedEP (both capped)
@@ -330,5 +330,90 @@ describe('#72 projectStatutoryPension (via simulateRetirementComparison)', () =>
       cappedSim.statutoryPension.projectedEntgeltpunkte,
       4,
     )
+  })
+
+  // --- Group E: salary growth and Rentenwert indexation ---
+
+  it('annualSalaryGrowthRate=0 matches zero-growth baseline (backward compat)', () => {
+    const flat = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const explicit = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        statutoryPension: { ...defaultAssumptions.statutoryPension, annualSalaryGrowthRate: 0, rentenwertGrowthRate: 0 },
+      },
+      de2026Rules,
+    )
+    expect(explicit.statutoryPension.projectedEntgeltpunkte).toBeCloseTo(flat.statutoryPension.projectedEntgeltpunkte, 6)
+    expect(explicit.statutoryPension.grossMonthlyPension).toBeCloseTo(flat.statutoryPension.grossMonthlyPension, 6)
+  })
+
+  it('annualSalaryGrowthRate > 0 produces more EP than flat salary (EP mode)', () => {
+    const flat = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const growing = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        statutoryPension: { ...defaultAssumptions.statutoryPension, annualSalaryGrowthRate: 0.02, rentenwertGrowthRate: 0 },
+      },
+      de2026Rules,
+    )
+    expect(growing.statutoryPension.projectedEntgeltpunkte).toBeGreaterThan(flat.statutoryPension.projectedEntgeltpunkte)
+  })
+
+  it('salary growth matches year-by-year manual sum', () => {
+    // Simple case: salary=40k (well below BBG), 5 years, g=0.05 → EP = sum(40k*(1.05)^t / DE for t=0..4)
+    const profile5yr = { ...defaultProfile, age: 62, retirementAge: 67, grossSalaryYear: 40_000 }
+    const sp5yr = { manualMonthlyGross: null as null, currentEntgeltpunkte: 0, includeGrvReduction: false, annualSalaryGrowthRate: 0.05, rentenwertGrowthRate: 0 }
+    const sim = simulateRetirementComparison(profile5yr, { ...defaultAssumptions, statutoryPension: sp5yr }, de2026Rules)
+    const de = de2026Rules.socialSecurity.durchschnittsentgelt
+    const expectedEP = [0, 1, 2, 3, 4].reduce((acc, t) => acc + 40_000 * Math.pow(1.05, t) / de, 0)
+    expect(sim.statutoryPension.projectedEntgeltpunkte).toBeCloseTo(expectedEP, 6)
+  })
+
+  it('rentenwertGrowthRate scales gross pension (EP mode)', () => {
+    const noGrowth = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const growthRate = 0.01
+    const withGrowth = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        statutoryPension: { ...defaultAssumptions.statutoryPension, rentenwertGrowthRate: growthRate },
+      },
+      de2026Rules,
+    )
+    const remainingYears = defaultProfile.retirementAge - defaultProfile.age
+    const expectedGross = noGrowth.statutoryPension.projectedEntgeltpunkte *
+      de2026Rules.socialSecurity.aktuellerRentenwert * Math.pow(1 + growthRate, remainingYears)
+    expect(withGrowth.statutoryPension.grossMonthlyPension).toBeCloseTo(expectedGross, 2)
+  })
+
+  it('rentenwertGrowthRate scales manual override pension', () => {
+    const manualGross = 2_000
+    const growthRate = 0.015
+    const remainingYears = defaultProfile.retirementAge - defaultProfile.age
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        statutoryPension: { ...defaultAssumptions.statutoryPension, manualMonthlyGross: manualGross, rentenwertGrowthRate: growthRate },
+      },
+      de2026Rules,
+    )
+    const expectedGross = manualGross * Math.pow(1 + growthRate, remainingYears)
+    expect(sim.statutoryPension.grossMonthlyPension).toBeCloseTo(expectedGross, 2)
+  })
+
+  it('zero rentenwertGrowthRate leaves manual override unchanged', () => {
+    const manualGross = 1_500
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        statutoryPension: { ...defaultAssumptions.statutoryPension, manualMonthlyGross: manualGross, rentenwertGrowthRate: 0 },
+      },
+      de2026Rules,
+    )
+    expect(sim.statutoryPension.grossMonthlyPension).toBeCloseTo(manualGross, 2)
   })
 })

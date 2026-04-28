@@ -19,6 +19,18 @@ export interface StatutoryPensionAssumptions {
   currentEntgeltpunkte: number
   /** When true, subtracts the estimated monthly GRV reduction from bAV salary conversion from the gross pension. */
   includeGrvReduction: boolean
+  /**
+   * Assumed annual growth rate of gross salary (as decimal, e.g. 0.02 = 2 % p.a.).
+   * Used only in EP-based mode: each future year's pensionable salary is scaled by this factor
+   * before being divided by Durchschnittsentgelt to compute EP. Default 0 (constant salary).
+   */
+  annualSalaryGrowthRate?: number
+  /**
+   * Assumed annual growth rate of the Rentenwert until retirement (as decimal, e.g. 0.01 = 1 % p.a.).
+   * Applied in both modes: EP-based → scales rentenwertAtRetirement; manual → scales manualMonthlyGross.
+   * Default 0 (constant Rentenwert, current behaviour).
+   */
+  rentenwertGrowthRate?: number
 }
 
 export interface StatutoryPensionResult {

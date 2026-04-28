@@ -92,7 +92,7 @@ export const CALCULATION_WARNINGS: { category: string; status: WarningStatus; no
   {
     category: 'Gesetzliche Rente',
     status: 'vereinfacht',
-    note: 'GRV-Schätzung: Entgeltpunkte × Rentenwert oder manueller Renteninformation-Wert; Steuerpipeline (§22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil) und KV/PV (§249a SGB V KVdR-Halbierung) vollständig modelliert. Vereinfachungen: konstantes Gehalt bis Rente, kein Rentenwert-Wachstum, nur KVdR-Modus. (#72)',
+    note: 'GRV-Schätzung: Entgeltpunkte × Rentenwert oder manueller Renteninformation-Wert; optionales Gehaltswachstum und Rentenwert-Indexierung konfigurierbar. Steuerpipeline (§22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil) und KV/PV (§249a SGB V KVdR-Halbierung) vollständig modelliert. Vereinfachung: nur KVdR-Modus; BBG/Durchschnittsentgelt zum aktuellen Jahr fixiert. (#72, Group E)',
   },
   {
     category: 'Basisrente (Rürup)',

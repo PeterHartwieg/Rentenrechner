@@ -157,6 +157,10 @@ export const defaultAssumptions: ScenarioAssumptions = {
     // Users should replace this with the value from their last Renteninformation letter.
     currentEntgeltpunkte: 8,
     includeGrvReduction: false,
+    // Default: no salary growth (constant salary, original behaviour).
+    annualSalaryGrowthRate: 0,
+    // Default: no Rentenwert indexation (constant Rentenwert, original behaviour).
+    rentenwertGrowthRate: 0,
   },
   altersvorsorgedepot: {
     ...defaultAvdAssumptions,

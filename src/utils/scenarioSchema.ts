@@ -59,6 +59,8 @@ function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
   if (sp.manualMonthlyGross !== null && !inRange(sp.manualMonthlyGross, 0, 100_000)) return false
   if (!inRange(sp.currentEntgeltpunkte, 0, 200)) return false
   if (typeof sp.includeGrvReduction !== 'boolean') return false
+  if (!inRange(sp.annualSalaryGrowthRate ?? 0, -0.1, 0.2)) return false
+  if (!inRange(sp.rentenwertGrowthRate ?? 0, -0.05, 0.1)) return false
   return true
 }
 

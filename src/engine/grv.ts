@@ -1,10 +1,11 @@
 /**
- * Statutory pension (GRV) projection (#72).
+ * Statutory pension (GRV) projection (#72, salary-growth + Rentenwert-indexation Group E).
  *
  * Two modes:
  * - Manual: user enters the projected gross monthly pension from their official
- *   Renteninformation letter. All estimation is bypassed.
- * - EP-based: remaining years earn EP at current salary / Durchschnittsentgelt.
+ *   Renteninformation letter. Rentenwert growth is applied on top.
+ * - EP-based: remaining years earn EP at salary / Durchschnittsentgelt.
+ *   Salary can grow at `annualSalaryGrowthRate` p.a. (decimal); BBG cap applies each year.
  *   `currentEntgeltpunkte` (from the Renteninformation letter) seeds the projection.
  *
  * After computing the gross pension:
@@ -15,8 +16,9 @@
  *
  * Modeled simplifications (see LEGAL_REVIEW.md):
  * - Assumes KVdR membership (§5 Abs. 1 Nr. 11 SGB V) — no freiwillig-versichert path.
- * - Assumes constant salary until retirement (no salary growth).
- * - Assumes constant Rentenwert and Durchschnittsentgelt (no indexation).
+ * - Durchschnittsentgelt held constant at rules.year value (national average wage growth
+ *   is embedded in `rentenwertGrowthRate`; personal outperformance shows up in EP/year).
+ * - BBG held constant at rules.year value (conservative for high earners near the cap).
  * - GRV reduction from bAV is the estimate already in BavFundingResult.
  */
 
@@ -38,29 +40,57 @@ export function projectStatutoryPension(
   /** Calendar year pension payments begin (rules.year + retirementAge − age). */
   retirementYear: number,
 ): StatutoryPensionResult {
-  const { manualMonthlyGross, currentEntgeltpunkte, includeGrvReduction } = assumptions
+  const {
+    manualMonthlyGross,
+    currentEntgeltpunkte,
+    includeGrvReduction,
+    annualSalaryGrowthRate = 0,
+    rentenwertGrowthRate = 0,
+  } = assumptions
 
   // -------------------------------------------------------------------------
   // 1. Gross monthly pension
   // -------------------------------------------------------------------------
+  const remainingYears = Math.max(0, profile.retirementAge - profile.age)
+
+  // Rentenwert at retirement — applies in both modes.
+  const rentenwertAtRetirement =
+    rules.socialSecurity.aktuellerRentenwert * Math.pow(1 + rentenwertGrowthRate, remainingYears)
+
   let projectedEntgeltpunkte: number
   let grossMonthlyPension: number
 
   if (manualMonthlyGross !== null) {
-    grossMonthlyPension = Math.max(0, manualMonthlyGross)
-    // Reverse-engineer EP from gross for display purposes only
-    projectedEntgeltpunkte = rules.socialSecurity.aktuellerRentenwert > 0
-      ? grossMonthlyPension / rules.socialSecurity.aktuellerRentenwert
+    // Renteninformation already captures EP accumulation at today's salary.
+    // Scale the letter value by expected Rentenwert growth to arrive at retirement value.
+    grossMonthlyPension = Math.max(0, manualMonthlyGross) *
+      Math.pow(1 + rentenwertGrowthRate, remainingYears)
+    // Reverse-engineer EP from gross for display (uses the projected Rentenwert for consistency)
+    projectedEntgeltpunkte = rentenwertAtRetirement > 0
+      ? grossMonthlyPension / rentenwertAtRetirement
       : 0
   } else {
-    const remainingYears = Math.max(0, profile.retirementAge - profile.age)
-    // Cap pensionable salary at Beitragsbemessungsgrenze
-    const cappedSalary = Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear)
-    const epPerYear = rules.socialSecurity.durchschnittsentgelt > 0
-      ? cappedSalary / rules.socialSecurity.durchschnittsentgelt
-      : 0
-    projectedEntgeltpunkte = currentEntgeltpunkte + remainingYears * epPerYear
-    grossMonthlyPension = projectedEntgeltpunkte * rules.socialSecurity.aktuellerRentenwert
+    // EP-based accumulation.
+    // When salary grows, iterate year-by-year so the BBG cap applies each year independently.
+    let futureEP = 0
+    if (annualSalaryGrowthRate === 0) {
+      // Fast path: constant salary → constant EP per year (original behaviour).
+      const cappedSalary = Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear)
+      const epPerYear = rules.socialSecurity.durchschnittsentgelt > 0
+        ? cappedSalary / rules.socialSecurity.durchschnittsentgelt
+        : 0
+      futureEP = remainingYears * epPerYear
+    } else {
+      for (let t = 0; t < remainingYears; t++) {
+        const salaryT = profile.grossSalaryYear * Math.pow(1 + annualSalaryGrowthRate, t)
+        const cappedT = Math.min(salaryT, rules.socialSecurity.pensionCapYear)
+        futureEP += rules.socialSecurity.durchschnittsentgelt > 0
+          ? cappedT / rules.socialSecurity.durchschnittsentgelt
+          : 0
+      }
+    }
+    projectedEntgeltpunkte = currentEntgeltpunkte + futureEP
+    grossMonthlyPension = projectedEntgeltpunkte * rentenwertAtRetirement
   }
 
   // Subtract bAV-induced GRV loss if requested

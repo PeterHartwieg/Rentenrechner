@@ -80,12 +80,53 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
               }))
             }
           />
+          <NumberField
+            label="Gehaltswachstum p.a."
+            value={(assumptions.statutoryPension.annualSalaryGrowthRate ?? 0) * 100}
+            min={-10}
+            max={20}
+            step={0.5}
+            suffix="% p.a."
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                statutoryPension: {
+                  ...current.statutoryPension,
+                  annualSalaryGrowthRate: Number(value) / 100,
+                },
+              }))
+            }
+          />
           <p className="field-hint">
             EP bei Rentenbeginn: ~{formatNumber(statutoryPensionResult.projectedEntgeltpunkte, 1)} EP
             {' '}· Bruttorente: ~{formatCurrency(statutoryPensionResult.grossMonthlyPension, 0)}/Monat
           </p>
         </>
       )}
+
+      <NumberField
+        label="Rentenwert-Wachstum p.a."
+        value={(assumptions.statutoryPension.rentenwertGrowthRate ?? 0) * 100}
+        min={-5}
+        max={10}
+        step={0.5}
+        suffix="% p.a."
+        onChange={(value) =>
+          onAssumptionsChange((current) => ({
+            ...current,
+            statutoryPension: {
+              ...current.statutoryPension,
+              rentenwertGrowthRate: Number(value) / 100,
+            },
+          }))
+        }
+      />
+      <p className="field-hint">
+        Jährliches Wachstum des Rentenwerts bis Rentenbeginn (§69 SGB VI). Historisch ca. 2–3 % p.a. (nominell).
+        {assumptions.statutoryPension.manualMonthlyGross !== null && (
+          <> Wird auf den Renteninformation-Wert angewendet.</>
+        )}
+      </p>
 
       <label className="field field-inline">
         <input
