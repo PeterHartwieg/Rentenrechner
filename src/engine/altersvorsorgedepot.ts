@@ -1,0 +1,426 @@
+/**
+ * Altersvorsorgedepot 2027 engine (#66–#71).
+ *
+ * The Altersvorsorgedepot is a certified, locked, tax-subsidized old-age product
+ * introduced by the Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent
+ * expected 2026-05-08). It replaces the old Riester scheme for new contracts from 2027.
+ *
+ * Key characteristics:
+ * - State allowances during accumulation (tiered basic + child + career-starter).
+ * - §10a EStG Günstigerprüfung: additional tax refund when marginal tax exceeds allowances.
+ * - Certified and locked — no free withdrawal; certified payout rules apply.
+ * - Payout taxed under §22 Nr. 5 EStG (fully taxable at personal marginal rate;
+ *   no Besteuerungsanteil, no Versorgungsfreibetrag).
+ * - No ETF Vorabpauschale / partial exemption during accumulation (deferred-tax regime).
+ * - Standarddepot subtype has a 1.0 pp Effektivkosten cap and mandatory glidepath de-risking.
+ *
+ * KV/PV simplification (documented):
+ *   AVD payouts are not Versorgungsbezüge under §229 SGB V. Official health-insurance
+ *   guidance for the new product does not yet exist. This engine uses the freiwillig
+ *   §240 SGB V path (full healthRate, no §226 Abs. 2 KV-Freibetrag) — the same
+ *   documented choice as Basisrente. See ALTERSVORSORGEDEPOT_2027_RESEARCH.md.
+ *
+ * Sources:
+ *   Altersvorsorgereformgesetz; Bundesrat Drucksache 206/26; ALTERSVORSORGEDEPOT_2027_RESEARCH.md.
+ */
+
+import type {
+  AltersvorsorgedepotAssumptions,
+  AltersvorsorgedepotFundingResult,
+  GermanRules,
+  PersonalProfile,
+  SalaryResult,
+} from '../domain/types'
+import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
+import { careEmployeeRateForChildren } from './salary'
+import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
+
+// ---------------------------------------------------------------------------
+// Allowance formulas
+// ---------------------------------------------------------------------------
+
+/**
+ * Basic allowance (Grundzulage) for a directly eligible saver.
+ *
+ * Tier 1: 50% of own contributions up to 360 EUR/year → max 180 EUR.
+ * Tier 2: 25% of own contributions from 360 EUR to 1 800 EUR/year → max 360 EUR.
+ * Maximum: 540 EUR/year at 1 800 EUR own contribution.
+ * Below 120 EUR minimum own contribution: zero.
+ *
+ * §10a EStG i.d.F. Altersvorsorgereformgesetz; Bundesrat Drucksache 206/26.
+ */
+export function computeBasicAllowance(ownContributionAnnual: number, rules: GermanRules): number {
+  const avd = rules.altersvorsorgedepot
+  if (ownContributionAnnual < avd.minimumOwnContributionAnnual) return 0
+  const tier1 = avd.basicAllowanceTier1Rate * Math.min(ownContributionAnnual, avd.basicAllowanceTier1MaxContribution)
+  const tier2 =
+    avd.basicAllowanceTier2Rate *
+    Math.max(0, Math.min(ownContributionAnnual, avd.basicAllowanceTier2MaxContribution) - avd.basicAllowanceTier1MaxContribution)
+  return Math.min(tier1 + tier2, avd.basicAllowanceMax)
+}
+
+/**
+ * Child allowance (Kinderzulage) per year.
+ *
+ * 100% of own contribution per eligible child, capped at 300 EUR/child/year.
+ * Requires own contribution ≥ 120 EUR (minimum). See research file for Kindergeld attribution.
+ */
+export function computeChildAllowance(
+  ownContributionAnnual: number,
+  eligibleChildren: number,
+  rules: GermanRules,
+): number {
+  if (ownContributionAnnual < rules.altersvorsorgedepot.minimumOwnContributionAnnual) return 0
+  const perChild = Math.min(ownContributionAnnual, rules.altersvorsorgedepot.childAllowanceMax)
+  return perChild * eligibleChildren
+}
+
+/**
+ * All annual allowances for one saver.
+ *
+ * Returns: basic, child, career-starter bonus (one-time → capped to first year only
+ * when `isFirstContributionYear = true`), indirect spouse allowance.
+ */
+export function computeAvdAllowances(
+  ownContributionAnnual: number,
+  eligibility: AltersvorsorgedepotAssumptions['eligibility'],
+  rules: GermanRules,
+  isFirstContributionYear = false,
+): {
+  basicAllowanceAnnual: number
+  childAllowanceAnnual: number
+  careerStarterBonusAnnual: number
+  indirectSpouseAllowanceAnnual: number
+  totalAllowanceAnnual: number
+} {
+  const avd = rules.altersvorsorgedepot
+
+  const basic = eligibility.directlyEligible
+    ? computeBasicAllowance(ownContributionAnnual, rules)
+    : 0
+
+  const child = eligibility.directlyEligible
+    ? computeChildAllowance(ownContributionAnnual, eligibility.eligibleChildren, rules)
+    : 0
+
+  // Career-starter bonus: one-time, only in first contribution year, age ≤ careerStarterMaxAge.
+  const careerStarter =
+    eligibility.directlyEligible &&
+    isFirstContributionYear &&
+    !eligibility.careerStarterBonusUsed &&
+    eligibility.ageAtContractStart <= avd.careerStarterMaxAge &&
+    ownContributionAnnual >= avd.minimumOwnContributionAnnual
+      ? avd.careerStarterBonus
+      : 0
+
+  // Indirect spouse gets a separate capped basic allowance (does NOT get child allowance).
+  const indirectSpouse =
+    eligibility.indirectSpouseEligible &&
+    ownContributionAnnual >= avd.minimumOwnContributionAnnual
+      ? Math.min(computeBasicAllowance(ownContributionAnnual, rules), avd.indirectSpouseBasicAllowanceMax)
+      : 0
+
+  const total = basic + child + careerStarter + indirectSpouse
+  return {
+    basicAllowanceAnnual: basic,
+    childAllowanceAnnual: child,
+    careerStarterBonusAnnual: careerStarter,
+    indirectSpouseAllowanceAnnual: indirectSpouse,
+    totalAllowanceAnnual: total,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Full AVD funding calculation (§10a Günstigerprüfung)
+// ---------------------------------------------------------------------------
+
+/**
+ * Computes the full AVD subsidy picture: allowances, §10a deductible base,
+ * Günstigerprüfung extra tax refund, and net monthly cost.
+ *
+ * The net monthly cost is what actually leaves the user's pocket each month:
+ *   ownContribution − guenstigerpruefungBenefit / 12
+ *
+ * The allowances flow directly into the contract (not reducing net cost here);
+ * the Günstigerprüfung is the only cash flow that reduces the user's tax bill.
+ *
+ * @param rules        - Year-specific rules (must include altersvorsorgedepot block)
+ * @param salaryResult - Salary calculation result (provides salary-phase zvE for Günstigerprüfung)
+ * @param avd          - Altersvorsorgedepot assumption block
+ */
+export function calculateAvdFunding(
+  rules: GermanRules,
+  salaryResult: SalaryResult,
+  avd: AltersvorsorgedepotAssumptions,
+): AltersvorsorgedepotFundingResult {
+  const avdRules = rules.altersvorsorgedepot
+  const annualOwnContribution = avd.monthlyOwnContribution * 12
+
+  // -------------------------------------------------------------------------
+  // 1. Allowances (using first-year logic: career bonus only in year 1).
+  //    For steady-state projection, we assume the bonus was used in year 1
+  //    and careerStarterBonusUsed = true for subsequent years. The UI should
+  //    let the user toggle this.
+  // -------------------------------------------------------------------------
+  const {
+    basicAllowanceAnnual,
+    childAllowanceAnnual,
+    careerStarterBonusAnnual,
+    indirectSpouseAllowanceAnnual,
+    totalAllowanceAnnual,
+  } = computeAvdAllowances(annualOwnContribution, avd.eligibility, rules, !avd.eligibility.careerStarterBonusUsed)
+
+  // -------------------------------------------------------------------------
+  // 2. Contract contribution = own + allowances, capped at annual contract limit.
+  // -------------------------------------------------------------------------
+  const totalContractContributionAnnual = Math.min(
+    annualOwnContribution + totalAllowanceAnnual,
+    avdRules.contractContributionCapAnnual,
+  )
+
+  // -------------------------------------------------------------------------
+  // 3. §10a EStG special-expense deductible base.
+  //    = min(ownContribution, 1 800) + allowanceEntitlement
+  //    Contributions above 1 800 EUR increase neither allowance nor §10a.
+  // -------------------------------------------------------------------------
+  const specialExpenseBaseAnnual =
+    Math.min(annualOwnContribution, avdRules.specialExpenseOwnContributionCap) + totalAllowanceAnnual
+
+  // -------------------------------------------------------------------------
+  // 4. Günstigerprüfung: compare the income-tax saving from §10a deduction
+  //    against the allowance value. Only the excess above the allowance is
+  //    an additional tax refund (the allowance itself already funds the contract).
+  // -------------------------------------------------------------------------
+  const zvEWithout = salaryResult.taxableIncome
+  const zvEWith = Math.max(0, zvEWithout - specialExpenseBaseAnnual)
+
+  const taxWithout =
+    calculateIncomeTax2026(zvEWithout, rules) +
+    calculateSolidarityTax(calculateIncomeTax2026(zvEWithout, rules), rules)
+  const taxWith =
+    calculateIncomeTax2026(zvEWith, rules) +
+    calculateSolidarityTax(calculateIncomeTax2026(zvEWith, rules), rules)
+
+  const totalTaxSavingAnnual = Math.max(0, taxWithout - taxWith)
+  // Extra refund above the allowance = Günstigerprüfung benefit.
+  const guenstigerpruefungBenefitAnnual = Math.max(0, totalTaxSavingAnnual - totalAllowanceAnnual)
+
+  // -------------------------------------------------------------------------
+  // 5. Net monthly cost: the actual net cash the user pays after the
+  //    Günstigerprüfung refund. Allowances go to the contract, not the user.
+  // -------------------------------------------------------------------------
+  const monthlyNetCost = Math.max(0, avd.monthlyOwnContribution - guenstigerpruefungBenefitAnnual / 12)
+
+  return {
+    monthlyOwnContribution: avd.monthlyOwnContribution,
+    annualOwnContribution,
+    basicAllowanceAnnual,
+    childAllowanceAnnual,
+    careerStarterBonusAnnual,
+    indirectSpouseAllowanceAnnual,
+    totalAllowanceAnnual,
+    totalContractContributionAnnual,
+    specialExpenseBaseAnnual,
+    guenstigerpruefungBenefitAnnual,
+    monthlyNetCost,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Standarddepot glidepath
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the effective blended annual return for a given accumulation year,
+ * applying Standarddepot glidepath constraints.
+ *
+ * Five years before payout: high-risk allocation clamped to 50%.
+ * Two years before payout (and at payout start): high-risk allocation clamped to 30%.
+ *
+ * @param yearIndex        - 0-based year within accumulation (0 = first year)
+ * @param yearsToRetirement - Total years to retirement (= accumulation horizon)
+ * @param riskReturn       - Expected annual return of the high-risk sleeve
+ * @param lowRiskReturn    - Expected annual return of the low-risk sleeve
+ * @param defaultRiskAlloc - User-configured high-risk allocation before glidepath clamps
+ * @param rules            - Rules with altersvorsorgedepot glidepath constants
+ */
+export function computeAvdGlidepathReturn(
+  yearIndex: number,
+  yearsToRetirement: number,
+  riskReturn: number,
+  lowRiskReturn: number,
+  defaultRiskAlloc: number,
+  rules: GermanRules,
+): number {
+  const avd = rules.altersvorsorgedepot
+  const yearsToGo = yearsToRetirement - yearIndex
+  let riskAlloc = defaultRiskAlloc
+  if (yearsToGo <= 2) {
+    riskAlloc = Math.min(riskAlloc, avd.glidepathHighRiskMax2YearsBefore)
+  } else if (yearsToGo <= 5) {
+    riskAlloc = Math.min(riskAlloc, avd.glidepathHighRiskMax5YearsBefore)
+  }
+  return riskAlloc * riskReturn + (1 - riskAlloc) * lowRiskReturn
+}
+
+// ---------------------------------------------------------------------------
+// Payout helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Net monthly payout from an Altersvorsorgedepot after §22 Nr. 5 EStG income tax
+ * and KV/PV (freiwillig §240 SGB V path).
+ *
+ * §22 Nr. 5 EStG: benefits from certified Altersvorsorgeverträge are fully taxable
+ * at the personal marginal rate. No Besteuerungsanteil (that applies only to §22 Nr. 1
+ * Satz 3 a aa — GRV / Basisrente). No Versorgungsfreibetrag (§19 Abs. 2 EStG applies
+ * only to §19 Versorgungsbezüge, not to §22 Nr. 5 income).
+ * The payout enters the income-tax pipeline as fully taxable sonstige Einkünfte.
+ *
+ * KV/PV: not a Versorgungsbezug per §229 SGB V → freiwillig §240 SGB V path,
+ * full rate, no §226 Abs. 2 KV-Freibetrag. Zero when PKV (publicHealthInsurance = false).
+ *
+ * @param grossMonthlyPayout      - Gross monthly AVD payout (before tax and KV/PV)
+ * @param profile                 - Personal profile (health insurance, children, etc.)
+ * @param rules                   - Year-specific rules
+ * @param otherMonthlyIncome      - Other monthly retirement income for marginal-tax context
+ * @param retirementYear          - Calendar year payout starts (for cohort tables elsewhere)
+ */
+export function netAvdPayout(
+  grossMonthlyPayout: number,
+  profile: PersonalProfile,
+  rules: GermanRules,
+  otherMonthlyIncome = 0,
+  retirementYear = rules.year,
+): number {
+  // -------------------------------------------------------------------------
+  // 1. Income tax — §22 Nr. 5 EStG: fully taxable, no Besteuerungsanteil.
+  //    Route through otherTaxableAnnual (no special Pauschbetrag for §22 Nr. 5).
+  //    Marginal approach: tax with AVD minus tax without AVD.
+  // -------------------------------------------------------------------------
+  const avdAnnual = grossMonthlyPayout * 12
+  const otherAnnual = otherMonthlyIncome * 12
+
+  const taxWith = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer',
+      otherTaxableAnnual: avdAnnual + otherAnnual,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const taxWithout = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer',
+      otherTaxableAnnual: otherAnnual,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const marginalTaxAnnual = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
+
+  if (!profile.publicHealthInsurance) {
+    return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. KV/PV — freiwillig §240 SGB V path (not a Versorgungsbezug).
+  //    Full health rate (no §249a SGB V half-rate), no §226 Abs. 2 Freibetrag.
+  //    Same approach as Basisrente.
+  // -------------------------------------------------------------------------
+  const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
+  const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
+  const careRate =
+    careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) +
+    rules.socialSecurity.careEmployerRate
+
+  const kvPv = calculateRetirementKvPv({
+    bavMonthlyVersorgungsbezuege: 0,
+    otherMonthlyVersorgungsbezuege: 0,
+    monthlyStatutoryPension: 0,
+    freiwilligOtherMonthlyIncome: grossMonthlyPayout,
+    isFreiwilligVersichert: true,
+    kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+    pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
+    monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
+    healthRate,
+    careRate,
+  })
+
+  const kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
+  return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
+}
+
+/**
+ * After-tax value of the partial capital lump sum (up to 30% of capital at payout start).
+ * Taxed under §22 Nr. 5 EStG as a one-time extraordinary sonstige Einkünfte payment.
+ * No Fünftelregelung (§34 EStG) applies to §22 Nr. 5 EStG payouts.
+ *
+ * KV/PV: §229 Abs. 1 Satz 3 SGB V 1/120 spreading applies if the lump sum is
+ * a Versorgungsbezug — but AVD is not classified as such (see KV/PV note above).
+ * This engine treats the partial capital as ordinary income in the payout year.
+ */
+export function afterTaxAvdLumpSum(
+  partialCapital: number,
+  profile: PersonalProfile,
+  rules: GermanRules,
+  otherAnnualIncome: number,
+  retirementYear = rules.year,
+): number {
+  if (partialCapital <= 0) return 0
+
+  const taxWith = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer',
+      otherTaxableAnnual: partialCapital + otherAnnualIncome,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const taxWithout = calculateRetirementTax(
+    {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer',
+      otherTaxableAnnual: otherAnnualIncome,
+      retirementYear,
+    },
+    rules,
+    'single',
+  )
+  const lumpSumTax = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
+  return Math.max(0, partialCapital - lumpSumTax)
+}
+
+/**
+ * Validate payout start age against the certified AVD rules.
+ * Returns a warning string when the retirement age falls outside the 65–70 window,
+ * or null when it is valid.
+ */
+export function validateAvdPayoutAge(retirementAge: number, rules: GermanRules): string | null {
+  const avd = rules.altersvorsorgedepot
+  if (retirementAge < avd.payoutMinAge) {
+    return `Auszahlungsbeginn Alter ${retirementAge} liegt unter dem Mindestbeginn (${avd.payoutMinAge}). Nur bei vorgezogener gesetzlicher Rente möglich.`
+  }
+  if (retirementAge > avd.payoutMaxFirstAge) {
+    return `Auszahlungsbeginn Alter ${retirementAge} überschreitet das maximale Erstbezugsalter (${avd.payoutMaxFirstAge}).`
+  }
+  return null
+}

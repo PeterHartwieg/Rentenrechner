@@ -29,6 +29,12 @@ interface AccumulationInput {
   fees: FeeModel
   // When set, applies InvStG §18 Vorabpauschale each year and tracks the gross cumulative amount
   etfVorabpauschale?: { rules: GermanRules; partialExemption: number }
+  // When set, overrides annualReturn for each year (yearIndex = 0-based year).
+  // Used for Standarddepot glidepath de-risking where the risk allocation changes over time.
+  yearlyReturnFn?: (yearIndex: number) => number
+  // #71: starting capital for products that begin with transferred capital (Riester → AVD).
+  // When set, the accumulation loop begins from this balance instead of zero.
+  initialCapital?: number
 }
 
 export interface AccumulationResult {
@@ -48,7 +54,6 @@ export function monthlyRate(annualRate: number): number {
 }
 
 export function projectAccumulation(input: AccumulationInput): AccumulationResult {
-  const monthlyGrossRate = monthlyRate(input.annualReturn)
   // (1-f)^(1/12): portion of capital retained after TER each month
   const totalAssetFee = input.fees.wrapperAssetFee + input.fees.fundAssetFee
   const monthlyRetentionFactor = Math.pow(1 - totalAssetFee, 1 / 12)
@@ -59,7 +64,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
       ? (plannedContributions * input.fees.acquisitionCostPct) / acquisitionMonths
       : 0
 
-  let capital = 0
+  let capital = input.initialCapital ?? 0
   let totalUserCost = 0
   let totalProductContributions = 0
   let totalEmployerContributions = 0
@@ -73,7 +78,15 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   let vpAcquisitionBaseInYear = 0
   const rows: YearlyProjection[] = []
 
+  // When yearlyReturnFn is set, the gross rate is recomputed at the start of each year.
+  let currentMonthlyGrossRate = monthlyRate(input.annualReturn)
+
   for (let month = 1; month <= input.months; month += 1) {
+    // Recompute monthly rate at year boundaries when glidepath is active.
+    if (input.yearlyReturnFn && (month === 1 || month % 12 === 1)) {
+      const yearIndex = Math.floor((month - 1) / 12)
+      currentMonthlyGrossRate = monthlyRate(input.yearlyReturnFn(yearIndex))
+    }
     const acquisitionCost = month <= acquisitionMonths ? monthlyAcquisitionCost : 0
     const contributionFee = input.monthlyProductContribution * input.fees.contributionFee
     const fixedFee = input.fees.fixedMonthlyFee
@@ -86,7 +99,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     // Apply gross return, then deduct TER from the resulting balance.
     // Mathematically identical to the old (1 + monthlyNetRate) combined rate,
     // but now the TER drag is visible as a separate tracked fee.
-    const capitalAfterGrowth = (capital + investedContribution) * (1 + monthlyGrossRate)
+    const capitalAfterGrowth = (capital + investedContribution) * (1 + currentMonthlyGrossRate)
     const assetFee = capitalAfterGrowth * (1 - monthlyRetentionFactor)
     capital = capitalAfterGrowth - assetFee
 

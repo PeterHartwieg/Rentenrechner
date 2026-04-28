@@ -143,6 +143,35 @@ export const de2026Rules: GermanRules = {
   year: 2026,
   employeeAllowance: 1_230,
   specialExpensesAllowance: 36,
+  // Altersvorsorgedepot 2027 — Altersvorsorgereformgesetz (Bundestag 2026-03-27).
+  // Constants from Bundesrat Drucksache 206/26 (Bundestag-adopted text).
+  // Bundesrat consent expected 2026-05-08; re-verify against BGBl. before relying on
+  // any constant that might change in the Bundesrat consent step.
+  altersvorsorgedepot: {
+    productStartYear: 2027,
+    specialExpenseOwnContributionCap: 1_800,
+    contractContributionCapAnnual: 6_840,
+    minimumOwnContributionAnnual: 120,
+    basicAllowanceTier1MaxContribution: 360,
+    basicAllowanceTier1Rate: 0.50,
+    basicAllowanceTier2MaxContribution: 1_800,
+    basicAllowanceTier2Rate: 0.25,
+    basicAllowanceMax: 540,
+    indirectSpouseBasicAllowanceMax: 175,
+    careerStarterBonus: 200,
+    careerStarterMaxAge: 24,
+    childAllowanceRate: 1.0,
+    childAllowanceMax: 300,
+    standarddepotEffektivkostenCap: 0.01,
+    glidepathHighRiskMax5YearsBefore: 0.50,
+    glidepathHighRiskMax2YearsBefore: 0.30,
+    payoutMinAge: 65,
+    payoutMaxFirstAge: 70,
+    partialCapitalMaxPct: 0.30,
+    payoutPlanMinEndAge: 85,
+    transferCostOldProviderWithin5YearsEUR: 150,
+    transferCostNewProviderEUR: 150,
+  },
   incomeTax: {
     basicAllowance: 12_348,
     firstProgressionEnd: 17_799,
@@ -202,6 +231,32 @@ export const de2026Rules: GermanRules = {
     // §10 Abs. 3 EStG: 100% deductible from 2023 onwards (Wachstumschancengesetz fast-tracked
     // the original 2025 milestone to 2023; no further progression needed).
     deductibleFraction: 1.0,
+  },
+  // Legacy Riester / Altersvorsorgevertrag old-law constants for 2026.
+  // Source: §84–§86 EStG, §10a EStG (Altersvorsorgezulagenrecht).
+  // No new Riester contracts from 2027 under the Altersvorsorgereformgesetz; existing contracts continue.
+  // https://www.gesetze-im-internet.de/estg/__84.html
+  // https://www.gesetze-im-internet.de/estg/__85.html
+  // https://www.gesetze-im-internet.de/estg/__86.html
+  // https://www.gesetze-im-internet.de/estg/__10a.html
+  riester: {
+    // §84 EStG: Grundzulage 175 EUR/year for directly eligible savers.
+    // Source: §84 Satz 1 EStG i.d.F. 2021 (raised from 154 to 175 via Jahressteuergesetz 2018).
+    grundzulage: 175,
+    // §85 Abs. 1 EStG: Kinderzulage 185 EUR/year for children born before 2008.
+    childAllowancePre2008: 185,
+    // §85 Abs. 1 EStG: Kinderzulage 300 EUR/year for children born from 2008 onwards.
+    childAllowancePost2007: 300,
+    // §84 EStG: one-time Berufseinsteiger-Bonus 200 EUR for savers under 25 at contract start.
+    careerStarterBonus: 200,
+    // Maximum age (inclusive) for career-starter bonus: under 25 = age ≤ 24.
+    careerStarterMaxAge: 24,
+    // §86 Abs. 1 EStG: Mindesteigenbeitrag = max(Sockelbetrag, 4% × RV-Pflichtentgelt − Zulagen).
+    minEigenbeitragPct: 0.04,
+    // §86 Abs. 1 Satz 4 EStG: Sockelbetrag 60 EUR/year.
+    sockelbetrag: 60,
+    // §10a Abs. 1 EStG: annual Sonderausgabenabzug cap = 2,100 EUR (own contribution + allowances).
+    annualCapInclAllowances: 2_100,
   },
   capitalGains: {
     taxRate: 0.25,

@@ -1,4 +1,82 @@
-export type ProductId = 'etf' | 'bav' | 'versicherung' | 'basisrente'
+export type ProductId = 'etf' | 'bav' | 'versicherung' | 'basisrente' | 'altersvorsorgedepot' | 'riester'
+
+/**
+ * Altersvorsorgedepot subtype — determines guarantee level and investment constraints.
+ * Source: Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent expected 2026-05-08).
+ *
+ * - depot_no_guarantee: Standard no-guarantee depot; full equity risk allowed (SRI ≤ 5).
+ * - standarddepot: Standarddepot-Vertrag with mandatory two-bucket allocation and 1.0 pp RIY cap.
+ * - guarantee_80: Contract guaranteeing 80% of contributions + allowances at payout start.
+ * - guarantee_100: Contract guaranteeing 100% of contributions + allowances at payout start.
+ */
+export type AltersvorsorgedepotSubtype =
+  | 'depot_no_guarantee'
+  | 'standarddepot'
+  | 'guarantee_80'
+  | 'guarantee_100'
+
+/**
+ * Payout mode for the Altersvorsorgedepot.
+ *
+ * - lifelong_annuity: Full lifelong Leibrente via a certified annuity insurer. Contractual
+ *   Rentenfaktor applies (EUR/Monat per 10 000 EUR Kapital).
+ * - certified_payout_plan: Recalculating drawdown plan ending no earlier than age 85
+ *   (§1 Abs. 1 Nr. 4a AltZertG). Monthly amount reset at intervals up to 3 years;
+ *   at least 80% of remaining capital / remaining months at each reset.
+ * - hybrid_80_annuity: 80% of capital → lifelong Leibrente; 20% → variable lifelong sleeve
+ *   invested at user risk (§1 Abs. 1 Nr. 4c AltZertG planned variant).
+ */
+export type AltersvorsorgedepotPayoutMode =
+  | 'lifelong_annuity'
+  | 'certified_payout_plan'
+  | 'hybrid_80_annuity'
+
+/** Eligibility inputs for AVD subsidy calculation. */
+export interface AltersvorsorgedepotEligibility {
+  /** Direct eligibility (GRV member, civil servant, self-employed under 67, etc.) */
+  directlyEligible: boolean
+  /** Indirect eligibility via a directly eligible spouse. */
+  indirectSpouseEligible: boolean
+  /** Number of children with Kindergeld attribution for child allowance. */
+  eligibleChildren: number
+  /** Age at the start of the contribution year (for career-starter bonus check). */
+  ageAtContractStart: number
+  /** True when the one-time 200 EUR career-starter bonus has already been used. */
+  careerStarterBonusUsed: boolean
+}
+
+export interface AltersvorsorgedepotAssumptions {
+  subtype: AltersvorsorgedepotSubtype
+  /** Monthly own contribution (before allowances). */
+  monthlyOwnContribution: number
+  eligibility: AltersvorsorgedepotEligibility
+  // Allocation and returns for Standarddepot / no-guarantee subtypes.
+  /** Fraction of capital in the high-risk sleeve (SRI 3–5), before glidepath clamps. */
+  riskAllocationPct: number
+  /** Expected annual return of the high-risk fund sleeve. */
+  riskAnnualReturn: number
+  /** Expected annual return of the low-risk fund sleeve (SRI 1–2). */
+  lowRiskAnnualReturn: number
+  fees: FeeModel
+  payoutMode: AltersvorsorgedepotPayoutMode
+  /** For certified_payout_plan: end age (must be ≥ 85 per §1 AltZertG). */
+  payoutPlanEndAge: number
+  /** Partial capital payout at retirement start (0.0 – 0.30). Capped at 30% by certification rules. */
+  partialCapitalPct: number
+  /** One-time transfer cost deducted from capital (0–300 EUR; see transfer rules). */
+  transferCostEUR: number
+  /** Monthly other retirement income for marginal-tax calculation in payout phase. */
+  monthlyOtherRetirementIncome: number
+  /** Contractual Rentenfaktor in EUR/Monat per 10 000 EUR Kapital (lifelong_annuity mode). */
+  rentenfaktor: number
+  /**
+   * #71: Capital transferred from an existing Riester contract (EUR).
+   * When > 0, the AVD accumulation starts from this initial capital (minus transferCostEUR)
+   * instead of zero. Models the Riester-to-AVD transition under AltZertG — not a taxable sale.
+   * Set to the existing Riester capital (e.g. from riesterFunding.existingCapital or a manual entry).
+   */
+  riesterTransferCapital: number
+}
 
 // pre2005: old-law contract (§52 Abs. 28 EStG) — tax-free capital payout; Leibrente still uses Ertragsanteil.
 // halbeinkuenfte: post-2004, ≥12 years, payout ≥ age 62 — half the gain at personal income tax rate (§20 Abs. 1 Nr. 6 EStG). Capital payouts only.
@@ -160,6 +238,78 @@ export interface InsuranceAssumptions {
 }
 
 // ---------------------------------------------------------------------------
+// Legacy Riester / Certified Altersvorsorgevertrag (#62)
+// ---------------------------------------------------------------------------
+
+/**
+ * Eligibility inputs for Riester allowance calculation (§84–§86 EStG old law).
+ */
+export interface RiesterEligibility {
+  /** True when directly eligible (GRV member, civil servant, self-employed in GRV, etc.). */
+  directlyEligible: boolean
+  /** Age at the start of the first contribution year (for career-starter bonus check). */
+  ageAtContractStart: number
+  /** True when the one-time 200 EUR Berufseinsteiger-Bonus (§84 EStG) has already been paid. */
+  careerStarterBonusUsed: boolean
+}
+
+/**
+ * Inputs for modeling a legacy Riester Altersvorsorgevertrag (§10a / §82 EStG).
+ *
+ * Old-law Riester contracts continue under the 2026 rules. No new contracts are
+ * available from 2027 under the reform law. Payout is taxed under §22 Nr. 5 EStG
+ * (fully taxable at personal marginal rate — same as §10a-certified products).
+ */
+export interface RiesterAssumptions {
+  /** Monthly own contribution (before state allowances). */
+  monthlyOwnContribution: number
+  /** Capital already accumulated in the existing contract (0 for new contracts). */
+  existingCapital: number
+  eligibility: RiesterEligibility
+  fees: FeeModel
+  /**
+   * Payout mode. Capital lump-sum is partially available (up to 30% at payout start
+   * per §93 Abs. 2 EStG). The remainder must be paid out as lifelong annuity or
+   * certified payout plan. Only 'leibrente' and 'zeitrente' are modeled here.
+   */
+  payoutMode: Extract<PayoutMode, 'leibrente' | 'zeitrente'>
+  rentenfaktor: number
+  zeitrenteYears: number
+  /** Partial capital payout at payout start (0.0 – 0.30; §93 Abs. 2 EStG). */
+  partialCapitalPct: number
+  /** Monthly other retirement income for marginal-tax calculation in payout phase. */
+  monthlyOtherRetirementIncome: number
+}
+
+export interface RiesterFundingResult {
+  monthlyOwnContribution: number
+  annualOwnContribution: number
+  /** §84 EStG Grundzulage (175 EUR/year, prorated when contribution insufficient). */
+  grundzulageAnnual: number
+  /** §85 EStG Kinderzulage per year (185/300 EUR per child, prorated). */
+  childAllowanceAnnual: number
+  /** §84 EStG Berufseinsteiger-Bonus: one-time 200 EUR in first contribution year. */
+  careerStarterBonusAnnual: number
+  /** Total state allowances per year (Grundzulage + Kinderzulage + Berufseinsteiger). */
+  totalAllowanceAnnual: number
+  /**
+   * §86 EStG Mindesteigenbeitrag: required own contribution for full allowances.
+   * = max(Sockelbetrag, 4% × relevant income − full allowance claim).
+   */
+  minEigenbeitragAnnual: number
+  /** Whether the own contribution meets the Mindesteigenbeitrag (no proration). */
+  meetsMinContribution: boolean
+  /** Proration factor (0–1) applied to allowances when contribution < minimum. */
+  prorationFactor: number
+  /** §10a EStG special expense deductible = min(ownContrib + allowances, 2,100 EUR). */
+  specialExpenseDeductibleAnnual: number
+  /** Additional income-tax saving from §10a Günstigerprüfung above the allowance value. */
+  guenstigerpruefungBenefitAnnual: number
+  /** Net monthly cost = own contribution minus Günstigerprüfung extra refund / 12. */
+  monthlyNetCost: number
+}
+
+// ---------------------------------------------------------------------------
 // Statutory pension (#72)
 // ---------------------------------------------------------------------------
 
@@ -222,6 +372,29 @@ export interface BasisrenteAssumptions {
   monthlyOtherRetirementIncome: number
 }
 
+export interface AltersvorsorgedepotFundingResult {
+  monthlyOwnContribution: number
+  annualOwnContribution: number
+  /** Basic allowance (Grundzulage) per year — tiered formula, max 540 EUR. */
+  basicAllowanceAnnual: number
+  /** Child allowance (Kinderzulage) per year — 100% of own contribution, max 300 EUR/child. */
+  childAllowanceAnnual: number
+  /** One-time career-starter bonus (200 EUR) if eligible and not yet used. */
+  careerStarterBonusAnnual: number
+  /** Indirect spouse basic allowance (max 175 EUR) if indirectly eligible. */
+  indirectSpouseAllowanceAnnual: number
+  /** Total of all annual allowances. */
+  totalAllowanceAnnual: number
+  /** Total contract contribution = own + allowances (capped at 6 840 EUR/year limit). */
+  totalContractContributionAnnual: number
+  /** §10a EStG deductible base = min(ownContribution, 1 800) + allowanceEntitlement. */
+  specialExpenseBaseAnnual: number
+  /** Additional income-tax saving from §10a Günstigerprüfung above the allowance value. */
+  guenstigerpruefungBenefitAnnual: number
+  /** Net monthly cost = own contribution minus Günstigerprüfung extra tax refund / 12. */
+  monthlyNetCost: number
+}
+
 export interface ScenarioAssumptions {
   inflationRate: number
   retirementEndAge: number
@@ -231,12 +404,65 @@ export interface ScenarioAssumptions {
   insurance: InsuranceAssumptions
   statutoryPension: StatutoryPensionAssumptions
   basisrente: BasisrenteAssumptions
+  altersvorsorgedepot: AltersvorsorgedepotAssumptions
+  riester: RiesterAssumptions
 }
 
 export interface GermanRules {
   year: number
   employeeAllowance: number
   specialExpensesAllowance: number
+  /**
+   * Altersvorsorgedepot 2027 constants.
+   * Source: Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent expected 2026-05-08).
+   * Values are from the Bundestag-adopted text (Bundesrat Drucksache 206/26).
+   */
+  altersvorsorgedepot: {
+    /** First year new AVD contracts are available (2027). */
+    productStartYear: number
+    /** §10a EStG: own contributions deductible up to this amount per year. */
+    specialExpenseOwnContributionCap: number
+    /** Maximum annual contract own contribution (no extra allowance above subsidy band). */
+    contractContributionCapAnnual: number
+    /** Minimum own contribution required for any allowances (120 EUR/year). */
+    minimumOwnContributionAnnual: number
+    /** Tier-1 basic allowance: 50% of own contributions up to this amount (360 EUR). */
+    basicAllowanceTier1MaxContribution: number
+    basicAllowanceTier1Rate: number
+    /** Tier-2 basic allowance: 25% of own contributions from tier-1 max up to 1 800 EUR. */
+    basicAllowanceTier2MaxContribution: number
+    basicAllowanceTier2Rate: number
+    /** Maximum direct basic allowance per year (540 EUR). */
+    basicAllowanceMax: number
+    /** Maximum indirect spouse basic allowance per year (175 EUR). */
+    indirectSpouseBasicAllowanceMax: number
+    /** One-time career-starter bonus in EUR (200 EUR). */
+    careerStarterBonus: number
+    /** Maximum age (inclusive) for career-starter bonus (under 25 = age ≤ 24). */
+    careerStarterMaxAge: number
+    /** Child allowance rate: 100% of own contribution per eligible child. */
+    childAllowanceRate: number
+    /** Maximum child allowance per eligible child per year (300 EUR). */
+    childAllowanceMax: number
+    /** Standarddepot Effektivkosten cap in decimal (1.0 pp = 0.01). */
+    standarddepotEffektivkostenCap: number
+    /** High-risk allocation max 5 years before payout start (Standarddepot glidepath). */
+    glidepathHighRiskMax5YearsBefore: number
+    /** High-risk allocation max 2 years before and at payout start (Standarddepot glidepath). */
+    glidepathHighRiskMax2YearsBefore: number
+    /** Minimum payout start age (65). */
+    payoutMinAge: number
+    /** Maximum first payout age (70). */
+    payoutMaxFirstAge: number
+    /** Maximum partial capital payout fraction at payout start (30%). */
+    partialCapitalMaxPct: number
+    /** Minimum payout plan end age (85). */
+    payoutPlanMinEndAge: number
+    /** Max transfer cost from old provider within first 5 years (150 EUR). */
+    transferCostOldProviderWithin5YearsEUR: number
+    /** Max one-time admin fee from new provider (150 EUR). */
+    transferCostNewProviderEUR: number
+  }
   incomeTax: {
     basicAllowance: number
     firstProgressionEnd: number
@@ -279,6 +505,28 @@ export interface GermanRules {
     schicht1CapSingle: number
     /** Deductible fraction of contributions (§10 Abs. 3 EStG: 100% from 2023). */
     deductibleFraction: number
+  }
+  /**
+   * Legacy Riester / Altersvorsorgevertrag constants (§84–§86, §10a EStG old law).
+   * Applies to existing contracts in 2026. No new contracts from 2027 under the reform.
+   */
+  riester: {
+    /** §84 EStG Grundzulage per year (175 EUR in 2026). */
+    grundzulage: number
+    /** §85 EStG Kinderzulage for children born before 2008 (185 EUR/year). */
+    childAllowancePre2008: number
+    /** §85 EStG Kinderzulage for children born from 2008 onwards (300 EUR/year). */
+    childAllowancePost2007: number
+    /** §84 EStG Berufseinsteiger-Bonus: one-time 200 EUR for new savers under 25. */
+    careerStarterBonus: number
+    /** Maximum age (inclusive) for career-starter bonus (under 25 = age ≤ 24). */
+    careerStarterMaxAge: number
+    /** §86 EStG Mindesteigenbeitragssatz: 4% of prior-year relevant income. */
+    minEigenbeitragPct: number
+    /** §86 EStG Sockelbetrag: minimum own contribution regardless of income (60 EUR/year). */
+    sockelbetrag: number
+    /** §10a EStG annual deductible cap including own contributions + allowances (2,100 EUR). */
+    annualCapInclAllowances: number
   }
   capitalGains: {
     taxRate: number
@@ -419,6 +667,8 @@ export interface SimulationResult {
   products: ProductResult[]
   statutoryPension: StatutoryPensionResult
   basisrenteFunding: BasisrenteFundingResult
+  altersvorsorgedepotFunding: AltersvorsorgedepotFundingResult
+  riesterFunding: RiesterFundingResult
 }
 
 // ---------------------------------------------------------------------------

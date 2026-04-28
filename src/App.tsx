@@ -13,9 +13,10 @@ import {
   YAxis,
 } from 'recharts'
 import { Calculator, Check, Coins, Download, Link, RotateCcw, Settings, TrendingUp } from 'lucide-react'
-import type { BavDurchfuehrungsweg, BavFundingResult, FeeModel, InsuranceTaxMode, PayoutMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions, StatutoryPensionAssumptions } from './domain/types'
+import type { AltersvorsorgedepotPayoutMode, AltersvorsorgedepotSubtype, BavDurchfuehrungsweg, BavFundingResult, FeeModel, InsuranceTaxMode, PayoutMode, PersonalProfile, ProductId, ProductResult, RiesterAssumptions, ScenarioAssumptions, StatutoryPensionAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from './engine/projections'
+import { validateAvdPayoutAge } from './engine/altersvorsorgedepot'
 import { careEmployeeRateForChildren } from './engine/salary'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { simulateRetirementComparison } from './engine/simulate'
@@ -122,6 +123,11 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
     note: 'Schicht-1 Deductibility: §10 Abs. 3 EStG Höchstbetrag 30.826 EUR; GRV-Beiträge (AN+AG) reduzieren den Restbetrag; 100% Abzugsfähigkeit (§10 Abs. 3 Satz 1 EStG 2026). Steuerpipeline: §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil (identisch GRV). KV/PV: §240 SGB V (voller GKV-Beitragssatz ohne §226(2)-Freibetrag). Vereinfachungen: freiwillig-Pfad für KV unabhängig vom tatsächlichen GKV-Status im Rentenalter; kein Kapitalwahlrecht modelliert. (#61)',
   },
   {
+    category: 'Altersvorsorgedepot (Schicht 2)',
+    status: 'vereinfacht',
+    note: 'Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat-Zustimmung erwartet 2026-05-08). Modelliert: Grundzulage (Zweistufenformel, max. 540 EUR), Kinderzulage (100 %, max. 300 EUR/Kind), Berufseinsteiger-Bonus (200 EUR einmalig), indirekter Ehegatte (max. 175 EUR), §10a Günstigerprüfung. Standarddepot-Gleitpfad: 5 Jahre vor Rentenbeginn max. 50 % Risikoanlage, 2 Jahre vor Rentenbeginn max. 30 %. Effektivkosten-Warnung bei > 1,0 pp. Auszahlung: §22 Nr. 5 EStG (volle Progression, kein Besteuerungsanteil), KV/PV freiwillig-Pfad §240 SGB V. Nicht modelliert: Altvertrag-Riester-Fortführung (#62); Wohn-Riester; Kleinbetragsrenten-Kommutierung. Konstanten aus Bundesrat-Drucksache 206/26 — prüfen nach BGBl.-Veröffentlichung. (#66–#71)',
+  },
+  {
     category: 'Rendite-Szenarien',
     status: 'vereinfacht',
     note: 'Feste Rendite, keine stochastische Simulation. Planrechnungen, keine Prognosen.',
@@ -140,9 +146,11 @@ const productColors: Record<string, string> = {
   versicherung: '#b45309',
   grv: '#16a34a',
   basisrente: '#7c3aed',
+  altersvorsorgedepot: '#0e7490',
+  riester: '#be185d',
 }
 
-const productOrder = ['etf', 'bav', 'versicherung']
+const productOrder = ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester']
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
@@ -398,6 +406,10 @@ function App() {
         assumptions.etf.equityPartialExemption,
         cumulativeVorabpauschale,
       )
+    }
+    if (cashflowProductId === 'altersvorsorgedepot' || cashflowProductId === 'basisrente' || cashflowProductId === 'riester') {
+      // Locked products: no free liquidation — show gross balance only.
+      return null
     }
     const otherAnnual = assumptions.insurance.monthlyOtherRetirementIncome * 12
     return afterTaxInsuranceLumpSum(balance, cumulativeContributions, insuranceTaxMode, de2026Rules, otherAnnual, insurancePayoutYear, profile, kvdrMember)
@@ -1796,6 +1808,599 @@ function App() {
               </div>
             )
           })()}
+
+          <div className="divider" />
+
+          <div className="subsection-heading">
+            <h3>Altersvorsorgedepot (Schicht 2, 2027)</h3>
+            <p>
+              Neues zertifiziertes Altersvorsorgeprodukt nach dem Altersvorsorgereformgesetz
+              (Bundestag 2026-03-27). Staatliche Zulage + §10a Günstigerprüfung. Kapital
+              gesperrt bis Rentenbeginn (Alter 65–70).
+            </p>
+            {validateAvdPayoutAge(profile.retirementAge, de2026Rules) && (
+              <p className="field-warning">
+                {validateAvdPayoutAge(profile.retirementAge, de2026Rules)}
+              </p>
+            )}
+          </div>
+
+          <label className="field">
+            <span>Produktvariante</span>
+            <select
+              value={assumptions.altersvorsorgedepot.subtype}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    subtype: event.target.value as AltersvorsorgedepotSubtype,
+                  },
+                }))
+              }
+            >
+              <option value="standarddepot">Standarddepot (Gleitpfad, max. 1,0 % Effektivkosten)</option>
+              <option value="depot_no_guarantee">Freies Depot ohne Garantie</option>
+              <option value="guarantee_80">80%-Garantieprodukt</option>
+              <option value="guarantee_100">100%-Garantieprodukt</option>
+            </select>
+          </label>
+
+          <div className="field-grid">
+            <NumberField
+              label="Eigenbeitrag (monatlich)"
+              value={assumptions.altersvorsorgedepot.monthlyOwnContribution}
+              min={0}
+              step={10}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    monthlyOwnContribution: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Förderberechtigte Kinder"
+              value={assumptions.altersvorsorgedepot.eligibility.eligibleChildren}
+              min={0}
+              max={10}
+              step={1}
+              suffix="Kinder"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    eligibility: {
+                      ...current.altersvorsorgedepot.eligibility,
+                      eligibleChildren: Math.max(0, Math.round(Number(value))),
+                    },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Risikoanteil (vor Gleitpfad)"
+              value={assumptions.altersvorsorgedepot.riskAllocationPct * 100}
+              min={0}
+              max={100}
+              step={5}
+              suffix="%"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    riskAllocationPct: Math.min(1, Math.max(0, Number(value) / 100)),
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Rendite Sicherheitsanlage p.a."
+              value={assumptions.altersvorsorgedepot.lowRiskAnnualReturn * 100}
+              min={-10}
+              max={20}
+              step={0.1}
+              suffix="%"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    lowRiskAnnualReturn: Number(value) / 100,
+                  },
+                }))
+              }
+            />
+          </div>
+
+          <div className="field-grid">
+            <label className="field field-inline">
+              <input
+                type="checkbox"
+                checked={assumptions.altersvorsorgedepot.eligibility.directlyEligible}
+                onChange={(event) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    altersvorsorgedepot: {
+                      ...current.altersvorsorgedepot,
+                      eligibility: {
+                        ...current.altersvorsorgedepot.eligibility,
+                        directlyEligible: event.target.checked,
+                      },
+                    },
+                  }))
+                }
+              />
+              <span>Unmittelbar förderberechtigt</span>
+            </label>
+            <label className="field field-inline">
+              <input
+                type="checkbox"
+                checked={assumptions.altersvorsorgedepot.eligibility.indirectSpouseEligible}
+                onChange={(event) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    altersvorsorgedepot: {
+                      ...current.altersvorsorgedepot,
+                      eligibility: {
+                        ...current.altersvorsorgedepot.eligibility,
+                        indirectSpouseEligible: event.target.checked,
+                      },
+                    },
+                  }))
+                }
+              />
+              <span>Mittelbar (Ehegatte)</span>
+            </label>
+          </div>
+
+          {(() => {
+            const avdFunding = simulation.altersvorsorgedepotFunding
+            const avdProduct = simulation.products.find(
+              (p) => p.productId === 'altersvorsorgedepot' && p.scenarioId === selectedScenarioId,
+            )
+            return avdFunding.annualOwnContribution > 0 ? (
+              <p className="field-hint">
+                Grundzulage: <strong>{formatCurrency(avdFunding.basicAllowanceAnnual, 0)}/Jahr</strong>
+                {avdFunding.childAllowanceAnnual > 0 && (
+                  <> · Kinderzulage: <strong>{formatCurrency(avdFunding.childAllowanceAnnual, 0)}/Jahr</strong></>
+                )}
+                {avdFunding.careerStarterBonusAnnual > 0 && (
+                  <> · Berufseinsteiger: <strong>+{formatCurrency(avdFunding.careerStarterBonusAnnual, 0)}</strong></>
+                )}
+                {avdFunding.guenstigerpruefungBenefitAnnual > 0 && (
+                  <> · Günstigerprüfung: <strong>+{formatCurrency(avdFunding.guenstigerpruefungBenefitAnnual, 0)}/Jahr</strong></>
+                )}
+                {' '}· Nettoaufwand: <strong>{formatCurrency(avdFunding.monthlyNetCost, 0)}/Monat</strong>
+                {avdProduct && (
+                  <> · Nettorente: <strong>{formatCurrency(avdProduct.netMonthlyPayout, 0)}/Monat</strong></>
+                )}
+              </p>
+            ) : null
+          })()}
+
+          <label className="field">
+            <span>Auszahlungsform</span>
+            <select
+              value={assumptions.altersvorsorgedepot.payoutMode}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    payoutMode: event.target.value as AltersvorsorgedepotPayoutMode,
+                  },
+                }))
+              }
+            >
+              <option value="certified_payout_plan">Entnahmeplan bis mind. Alter 85</option>
+              <option value="lifelong_annuity">Lebenslange Leibrente</option>
+              <option value="hybrid_80_annuity">80 % Leibrente + 20 % variabler Anteil</option>
+            </select>
+          </label>
+
+          {assumptions.altersvorsorgedepot.payoutMode === 'lifelong_annuity' && (
+            <NumberField
+              label="Rentenfaktor"
+              value={assumptions.altersvorsorgedepot.rentenfaktor}
+              min={0}
+              max={100}
+              step={0.5}
+              suffix="EUR/10k"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    rentenfaktor: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+          )}
+
+          {assumptions.altersvorsorgedepot.payoutMode !== 'lifelong_annuity' && (
+            <NumberField
+              label="Entnahmeplan bis Alter"
+              value={assumptions.altersvorsorgedepot.payoutPlanEndAge}
+              min={85}
+              max={110}
+              step={1}
+              suffix="Jahre"
+              onCommit={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    payoutPlanEndAge: Math.max(85, Math.round(Number(value))),
+                  },
+                }))
+              }
+            />
+          )}
+
+          <div className="field-grid">
+            <NumberField
+              label="Teilkapital bei Rentenbeginn"
+              value={assumptions.altersvorsorgedepot.partialCapitalPct * 100}
+              min={0}
+              max={30}
+              step={5}
+              suffix="% (max. 30 %)"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    partialCapitalPct: Math.min(0.30, Math.max(0, Number(value) / 100)),
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Übertragungs­kosten"
+              value={assumptions.altersvorsorgedepot.transferCostEUR}
+              min={0}
+              max={300}
+              step={50}
+              suffix="EUR einmalig"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    transferCostEUR: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Sonstige Renteneinnahmen"
+              value={assumptions.altersvorsorgedepot.monthlyOtherRetirementIncome}
+              min={0}
+              step={50}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    monthlyOtherRetirementIncome: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+          </div>
+
+          <div className="subsection-heading" style={{ marginTop: 12 }}>
+            <h3>Altersvorsorgedepot-Kosten</h3>
+          </div>
+
+          <div className="field-grid">
+            <NumberField
+              label="Verwaltungsgebühr p.a."
+              value={assumptions.altersvorsorgedepot.fees.wrapperAssetFee * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="%"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    fees: { ...current.altersvorsorgedepot.fees, wrapperAssetFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Fondsgebühr p.a."
+              value={assumptions.altersvorsorgedepot.fees.fundAssetFee * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="%"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    fees: { ...current.altersvorsorgedepot.fees, fundAssetFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+          </div>
+          {(() => {
+            const f = assumptions.altersvorsorgedepot.fees
+            const totalAsset = f.wrapperAssetFee + f.fundAssetFee
+            const avdProduct = simulation.products.find(
+              (p) => p.productId === 'altersvorsorgedepot' && p.scenarioId === selectedScenarioId,
+            )
+            const riy = avdProduct?.accumulationRiy ?? 0
+            const isStandarddepot = assumptions.altersvorsorgedepot.subtype === 'standarddepot'
+            const overCap = isStandarddepot && riy > de2026Rules.altersvorsorgedepot.standarddepotEffektivkostenCap
+            return (
+              <div className="fee-summary">
+                <span>
+                  Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
+                </span>
+                <span className={riy > 0.02 ? 'riy-high' : overCap ? 'riy-warn' : ''}>
+                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
+                  {isStandarddepot && <> (Standarddepot-Cap: 1,0 %)</>}
+                </span>
+                {overCap && (
+                  <p className="field-warning">
+                    Effektivkosten {formatPercent(riy)} überschreiten die Standarddepot-Obergrenze von 1,0 % — das Produkt wäre nicht zertifizierungsfähig.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+          <div className="divider" />
+
+          <div className="subsection-heading">
+            <h3>Riester (Schicht 2, Altvertrag)</h3>
+            <p>
+              Bestehender Riester-Altersvorsorgevertrag nach altem Recht (§82–§93, §10a EStG).
+              Keine Neuverträge ab 2027. Auszahlung vollständig steuerpflichtig (§22 Nr. 5 EStG).
+              Bis zu 30% des Kapitals als Einmalbetrag zu Rentenbeginn möglich (§93 Abs. 2 EStG).
+            </p>
+          </div>
+
+          <div className="field-grid">
+            <NumberField
+              label="Eigenbeitrag (monatlich)"
+              value={assumptions.riester.monthlyOwnContribution}
+              min={0}
+              step={10}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  riester: {
+                    ...current.riester,
+                    monthlyOwnContribution: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Vorhandenes Kapital"
+              value={assumptions.riester.existingCapital}
+              min={0}
+              step={1000}
+              suffix="EUR"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  riester: {
+                    ...current.riester,
+                    existingCapital: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+          </div>
+
+          <div className="field-grid">
+            <label className="field field-inline">
+              <input
+                type="checkbox"
+                checked={assumptions.riester.eligibility.directlyEligible}
+                onChange={(event) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    riester: {
+                      ...current.riester,
+                      eligibility: {
+                        ...current.riester.eligibility,
+                        directlyEligible: event.target.checked,
+                      },
+                    },
+                  }))
+                }
+              />
+              <span>Unmittelbar förderberechtigt</span>
+            </label>
+            <label className="field field-inline">
+              <input
+                type="checkbox"
+                checked={assumptions.riester.eligibility.careerStarterBonusUsed}
+                onChange={(event) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    riester: {
+                      ...current.riester,
+                      eligibility: {
+                        ...current.riester.eligibility,
+                        careerStarterBonusUsed: event.target.checked,
+                      },
+                    },
+                  }))
+                }
+              />
+              <span>Berufseinsteiger-Bonus bereits erhalten</span>
+            </label>
+          </div>
+
+          {(() => {
+            const rf = simulation.riesterFunding
+            const riesterProduct = simulation.products.find(
+              (p) => p.productId === 'riester' && p.scenarioId === selectedScenarioId,
+            )
+            if (rf.annualOwnContribution <= 0) return null
+            return (
+              <p className="field-hint">
+                Grundzulage: <strong>{formatCurrency(rf.grundzulageAnnual, 0)}/Jahr</strong>
+                {rf.childAllowanceAnnual > 0 && (
+                  <> · Kinderzulage: <strong>{formatCurrency(rf.childAllowanceAnnual, 0)}/Jahr</strong></>
+                )}
+                {rf.careerStarterBonusAnnual > 0 && (
+                  <> · Berufseinsteiger: <strong>+{formatCurrency(rf.careerStarterBonusAnnual, 0)}</strong></>
+                )}
+                {rf.guenstigerpruefungBenefitAnnual > 0 && (
+                  <> · Günstigerprüfung: <strong>+{formatCurrency(rf.guenstigerpruefungBenefitAnnual, 0)}/Jahr</strong></>
+                )}
+                {!rf.meetsMinContribution && (
+                  <> · <span className="field-warning">
+                    Eigenbeitrag unter Mindesteigenbeitrag ({formatCurrency(rf.minEigenbeitragAnnual, 0)}/Jahr) — Zulagen werden anteilig ({formatPercent(rf.prorationFactor, 0)}) gewährt.
+                  </span></>
+                )}
+                {' '}· Nettoaufwand: <strong>{formatCurrency(rf.monthlyNetCost, 0)}/Monat</strong>
+                {riesterProduct && (
+                  <> · Nettorente: <strong>{formatCurrency(riesterProduct.netMonthlyPayout, 0)}/Monat</strong></>
+                )}
+              </p>
+            )
+          })()}
+
+          <label className="field">
+            <span>Auszahlungsform</span>
+            <select
+              value={assumptions.riester.payoutMode}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  riester: {
+                    ...current.riester,
+                    payoutMode: event.target.value as RiesterAssumptions['payoutMode'],
+                  },
+                }))
+              }
+            >
+              <option value="leibrente">Lebenslange Leibrente</option>
+              <option value="zeitrente">Zeitrente (Festlaufzeit)</option>
+            </select>
+          </label>
+
+          {assumptions.riester.payoutMode === 'leibrente' && (
+            <NumberField
+              label="Rentenfaktor"
+              value={assumptions.riester.rentenfaktor}
+              min={1}
+              max={60}
+              step={0.5}
+              suffix="EUR/10 000 EUR/Monat"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  riester: {
+                    ...current.riester,
+                    rentenfaktor: Math.max(1, Number(value)),
+                  },
+                }))
+              }
+            />
+          )}
+          {assumptions.riester.payoutMode === 'zeitrente' && (
+            <NumberField
+              label="Laufzeit Zeitrente"
+              value={assumptions.riester.zeitrenteYears}
+              min={1}
+              max={50}
+              step={1}
+              suffix="Jahre"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  riester: {
+                    ...current.riester,
+                    zeitrenteYears: Math.max(1, Math.round(Number(value))),
+                  },
+                }))
+              }
+            />
+          )}
+
+          <NumberField
+            label="Einmalbetrag bei Rentenbeginn"
+            value={assumptions.riester.partialCapitalPct * 100}
+            min={0}
+            max={30}
+            step={5}
+            suffix="% des Kapitals"
+            onChange={(value) =>
+              setAssumptions((current) => ({
+                ...current,
+                riester: {
+                  ...current.riester,
+                  partialCapitalPct: Math.min(0.3, Math.max(0, Number(value) / 100)),
+                },
+              }))
+            }
+          />
+
+          <NumberField
+            label="Sonstiges Renteneinkommen"
+            value={assumptions.riester.monthlyOtherRetirementIncome}
+            min={0}
+            step={100}
+            suffix="EUR mtl."
+            onChange={(value) =>
+              setAssumptions((current) => ({
+                ...current,
+                riester: {
+                  ...current.riester,
+                  monthlyOtherRetirementIncome: Math.max(0, Number(value)),
+                },
+              }))
+            }
+          />
+
+          <div className="subsection-heading" style={{ marginTop: '0.5rem' }}>
+            <h4>Riester → AVD Übertrag (#71)</h4>
+            <p>
+              Vorhandenes Riester-Kapital in ein neues Altersvorsorgedepot übertragen (kein steuerpflichtiger
+              Verkauf). Das AVD-Produkt startet mit diesem Kapital minus Übertragungskosten als Startguthaben.
+              Übertragungskosten beim AVD separat eintragen.
+            </p>
+          </div>
+
+          <NumberField
+            label="Riester-Kapital für AVD-Übertrag"
+            value={assumptions.altersvorsorgedepot.riesterTransferCapital}
+            min={0}
+            step={1000}
+            suffix="EUR"
+            onChange={(value) =>
+              setAssumptions((current) => ({
+                ...current,
+                altersvorsorgedepot: {
+                  ...current.altersvorsorgedepot,
+                  riesterTransferCapital: Math.max(0, Number(value)),
+                },
+              }))
+            }
+          />
+
         </aside>
 
         <section className="main-panel">

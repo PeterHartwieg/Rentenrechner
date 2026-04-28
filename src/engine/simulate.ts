@@ -1,4 +1,5 @@
 import type {
+  AltersvorsorgedepotFundingResult,
   BavFundingResult,
   BavLumpSumTaxMode,
   BasisrenteFundingResult,
@@ -9,11 +10,19 @@ import type {
   ProductId,
   ProductResult,
   ReturnScenario,
+  RiesterFundingResult,
   ScenarioAssumptions,
   SimulationResult,
 } from '../domain/types'
 import { calculateBasisrenteFunding, netBasisrentePayout } from './basisrente'
-
+import {
+  afterTaxAvdLumpSum,
+  calculateAvdFunding,
+  computeAvdGlidepathReturn,
+  netAvdPayout,
+  validateAvdPayoutAge,
+} from './altersvorsorgedepot'
+import { afterTaxRiesterLumpSum, calculateRiesterFunding, netRiesterPayout } from './riester'
 import { computeRIY } from './fees'
 import { projectStatutoryPension } from './grv'
 import { calculateBavFunding } from './salary'
@@ -61,14 +70,22 @@ function buildProductResult(params: {
   monthlyProductContribution: number
   monthlyEmployerContribution: number
   fees: FeeModel
-  taxMode: 'etf' | 'bav' | 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer' | 'basisrente'
+  taxMode: 'etf' | 'bav' | 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer' | 'basisrente' | 'altersvorsorgedepot' | 'riester'
   /** Required when taxMode === 'basisrente' to populate taxAndSvSavings. */
   basisrenteFunding?: BasisrenteFundingResult
+  /** Required when taxMode === 'altersvorsorgedepot'. */
+  avdFunding?: AltersvorsorgedepotFundingResult
+  /** Required when taxMode === 'riester' to populate taxAndSvSavings. */
+  riesterFunding?: RiesterFundingResult
+  /** #71: initial capital for the accumulation (e.g. transferred Riester capital). */
+  initialCapital?: number
   partialExemption?: number
   /** Calendar year the user reaches retirement age — used for cohort-table lookups in #46 pipeline. */
   retirementYear: number
   /** #48: derived bAV lump-sum tax mode (only used when taxMode === 'bav') */
   bavLumpSumTaxMode?: BavLumpSumTaxMode
+  /** Year-varying return function for Standarddepot glidepath. */
+  yearlyReturnFn?: (yearIndex: number) => number
 }): ProductResult {
   const yearsToRetirement = params.profile.retirementAge - params.profile.age
   const monthsToRetirement = yearsToRetirement * 12
@@ -88,6 +105,8 @@ function buildProductResult(params: {
       params.taxMode === 'etf'
         ? { rules: params.rules, partialExemption: params.partialExemption ?? 0 }
         : undefined,
+    yearlyReturnFn: params.yearlyReturnFn,
+    initialCapital: params.initialCapital,
   })
   const totalAssetFee = params.fees.wrapperAssetFee + params.fees.fundAssetFee
   const payoutReturn = params.scenario.annualReturn - totalAssetFee
@@ -110,6 +129,27 @@ function buildProductResult(params: {
       mode: params.assumptions.basisrente.payoutMode,
       rentenfaktor: params.assumptions.basisrente.rentenfaktor,
       zeitrenteYears: params.assumptions.basisrente.zeitrenteYears,
+      kapitalverzehrYears: payoutYears,
+      payoutReturn,
+    })
+  } else if (params.taxMode === 'altersvorsorgedepot') {
+    const avdAssumptions = params.assumptions.altersvorsorgedepot
+    // Partial capital payout reduces the capital available for monthly payout.
+    const partialPct = Math.min(avdAssumptions.partialCapitalPct, params.rules.altersvorsorgedepot.partialCapitalMaxPct)
+    const monthlyCapital = projection.capital * (1 - partialPct)
+    if (avdAssumptions.payoutMode === 'lifelong_annuity') {
+      grossMonthlyPayout = (monthlyCapital / 10_000) * avdAssumptions.rentenfaktor
+    } else {
+      // certified_payout_plan or hybrid_80_annuity: drawdown to max(payoutPlanEndAge, 85)
+      const planEndAge = Math.max(avdAssumptions.payoutPlanEndAge, params.rules.altersvorsorgedepot.payoutPlanMinEndAge)
+      const planYears = planEndAge - params.profile.retirementAge
+      grossMonthlyPayout = monthlyPayoutFromCapital(monthlyCapital, payoutReturn, planYears)
+    }
+  } else if (params.taxMode === 'riester') {
+    grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
+      mode: params.assumptions.riester.payoutMode,
+      rentenfaktor: params.assumptions.riester.rentenfaktor,
+      zeitrenteYears: params.assumptions.riester.zeitrenteYears,
       kapitalverzehrYears: payoutYears,
       payoutReturn,
     })
@@ -205,6 +245,43 @@ function buildProductResult(params: {
     )
   }
 
+  if (params.taxMode === 'altersvorsorgedepot') {
+    const avdAssumptions = params.assumptions.altersvorsorgedepot
+    const partialPct = Math.min(avdAssumptions.partialCapitalPct, params.rules.altersvorsorgedepot.partialCapitalMaxPct)
+    const partialCapital = projection.capital * partialPct - avdAssumptions.transferCostEUR
+    const otherAnnual = avdAssumptions.monthlyOtherRetirementIncome * 12
+    // Partial capital at payout start taxed as §22 Nr. 5 EStG; null when no partial capital.
+    afterTaxLumpSum = partialPct > 0
+      ? afterTaxAvdLumpSum(Math.max(0, partialCapital), params.profile, params.rules, otherAnnual, params.retirementYear)
+      : null
+    // Monthly net payout from the remaining capital.
+    netMonthlyPayout = netAvdPayout(
+      grossMonthlyPayout,
+      params.profile,
+      params.rules,
+      avdAssumptions.monthlyOtherRetirementIncome,
+      params.retirementYear,
+    )
+  }
+
+  if (params.taxMode === 'riester') {
+    const riesterAssumptions = params.assumptions.riester
+    const partialPct = Math.min(riesterAssumptions.partialCapitalPct, 0.30)
+    const partialCapital = projection.capital * partialPct
+    const otherAnnual = riesterAssumptions.monthlyOtherRetirementIncome * 12
+    // Partial capital at payout start taxed under §22 Nr. 5 EStG.
+    afterTaxLumpSum = partialPct > 0
+      ? afterTaxRiesterLumpSum(partialCapital, params.profile, params.rules, otherAnnual, params.retirementYear)
+      : null
+    netMonthlyPayout = netRiesterPayout(
+      grossMonthlyPayout,
+      params.profile,
+      params.rules,
+      riesterAssumptions.monthlyOtherRetirementIncome,
+      params.retirementYear,
+    )
+  }
+
   if (params.taxMode === 'bav') {
     afterTaxLumpSum = afterTaxBavLumpSum(
       projection.capital,
@@ -253,7 +330,11 @@ function buildProductResult(params: {
         ? params.bavFunding.annualTaxAndSvSavings * yearsToRetirement
         : params.productId === 'basisrente' && params.basisrenteFunding
           ? params.basisrenteFunding.annualTaxSaving * yearsToRetirement
-          : 0,
+          : params.productId === 'altersvorsorgedepot' && params.avdFunding
+            ? (params.avdFunding.totalAllowanceAnnual + params.avdFunding.guenstigerpruefungBenefitAnnual) * yearsToRetirement
+            : params.productId === 'riester' && params.riesterFunding
+              ? (params.riesterFunding.totalAllowanceAnnual + params.riesterFunding.guenstigerpruefungBenefitAnnual) * yearsToRetirement
+              : 0,
     valueMultipleOnUserCost:
       projection.totalUserCost > 0 && afterTaxLumpSum !== null
         ? afterTaxLumpSum / projection.totalUserCost
@@ -276,7 +357,11 @@ function buildProductResult(params: {
         ? params.assumptions.bav.payoutMode === 'leibrente'
         : params.taxMode === 'basisrente'
           ? params.assumptions.basisrente.payoutMode === 'leibrente'
-          : params.assumptions.insurance.payoutMode === 'leibrente') &&
+          : params.taxMode === 'altersvorsorgedepot'
+            ? params.assumptions.altersvorsorgedepot.payoutMode === 'lifelong_annuity'
+            : params.taxMode === 'riester'
+              ? params.assumptions.riester.payoutMode === 'leibrente'
+              : params.assumptions.insurance.payoutMode === 'leibrente') &&
       grossMonthlyPayout > 0
         ? params.profile.retirementAge + projection.capital / (grossMonthlyPayout * 12)
         : undefined,
@@ -316,6 +401,23 @@ export function simulateRetirementComparison(
     bavFunding.salaryWithBav,
     assumptions.basisrente,
   )
+
+  // AVD Günstigerprüfung also uses the salary zvE (same zvE base as Basisrente).
+  const altersvorsorgedepotFunding = calculateAvdFunding(
+    rules,
+    bavFunding.salaryWithBav,
+    assumptions.altersvorsorgedepot,
+  )
+
+  // Riester Günstigerprüfung: uses the same salary zvE base.
+  const riesterFunding = calculateRiesterFunding(
+    rules,
+    bavFunding.salaryWithBav,
+    assumptions.riester,
+    profile,
+  )
+
+  const yearsToRetirement = profile.retirementAge - profile.age
 
   const products = assumptions.returnScenarios.flatMap((scenario) => [
     buildProductResult({
@@ -382,6 +484,85 @@ export function simulateRetirementComparison(
       taxMode: 'basisrente',
       retirementYear: payoutYear,
     }),
+    (() => {
+      const avd = assumptions.altersvorsorgedepot
+      // Total monthly contribution entering the product = own + allowances flowing in each month.
+      const avdMonthlyContribution =
+        altersvorsorgedepotFunding.monthlyOwnContribution +
+        altersvorsorgedepotFunding.totalAllowanceAnnual / 12
+
+      // Blended return for current scenario based on allocation.
+      // For Standarddepot: apply glidepath; otherwise use constant blend.
+      const blendedReturn =
+        avd.riskAllocationPct * scenario.annualReturn +
+        (1 - avd.riskAllocationPct) * avd.lowRiskAnnualReturn
+
+      // Build a per-year return function for Standarddepot glidepath.
+      const yearlyReturnFn =
+        avd.subtype === 'standarddepot'
+          ? (yearIndex: number) =>
+              computeAvdGlidepathReturn(
+                yearIndex,
+                yearsToRetirement,
+                scenario.annualReturn,
+                avd.lowRiskAnnualReturn,
+                avd.riskAllocationPct,
+                rules,
+              )
+          : undefined
+
+      // For non-Standarddepot, use constant blend; for Standarddepot, yearlyReturnFn overrides.
+      const baseReturn = avd.subtype === 'standarddepot' ? scenario.annualReturn : blendedReturn
+
+      // #71: When riesterTransferCapital > 0, the AVD starts with the transferred
+      // Riester capital (minus transfer costs) as initial capital instead of zero.
+      // This models the Riester → AVD transition under AltZertG — not a taxable sale.
+      const transferInitialCapital =
+        avd.riesterTransferCapital > 0
+          ? Math.max(0, avd.riesterTransferCapital - avd.transferCostEUR)
+          : undefined
+
+      return buildProductResult({
+        productId: 'altersvorsorgedepot',
+        label: avd.riesterTransferCapital > 0
+          ? 'Altersvorsorgedepot (Schicht 2, Riester-Übertrag)'
+          : 'Altersvorsorgedepot (Schicht 2, 2027)',
+        scenario: { ...scenario, annualReturn: baseReturn },
+        profile,
+        rules,
+        assumptions,
+        bavFunding,
+        avdFunding: altersvorsorgedepotFunding,
+        monthlyUserCost: altersvorsorgedepotFunding.monthlyNetCost,
+        monthlyProductContribution: avdMonthlyContribution,
+        monthlyEmployerContribution: 0,
+        fees: avd.fees,
+        taxMode: 'altersvorsorgedepot',
+        retirementYear: payoutYear,
+        yearlyReturnFn,
+        initialCapital: transferInitialCapital,
+      })
+    })(),
+    buildProductResult({
+      productId: 'riester',
+      label: 'Riester (Schicht 2, Altvertrag)',
+      scenario,
+      profile,
+      rules,
+      assumptions,
+      bavFunding,
+      riesterFunding,
+      monthlyUserCost: riesterFunding.monthlyNetCost,
+      monthlyProductContribution:
+        riesterFunding.monthlyOwnContribution + riesterFunding.totalAllowanceAnnual / 12,
+      monthlyEmployerContribution: 0,
+      fees: assumptions.riester.fees,
+      taxMode: 'riester',
+      retirementYear: payoutYear,
+      initialCapital: assumptions.riester.existingCapital > 0
+        ? assumptions.riester.existingCapital
+        : undefined,
+    }),
   ])
 
   const statutoryPension = projectStatutoryPension(
@@ -397,5 +578,7 @@ export function simulateRetirementComparison(
     products,
     statutoryPension,
     basisrenteFunding,
+    altersvorsorgedepotFunding,
+    riesterFunding,
   }
 }

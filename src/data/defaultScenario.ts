@@ -1,4 +1,4 @@
-import type { PersonalProfile, ScenarioAssumptions } from '../domain/types'
+import type { AltersvorsorgedepotAssumptions, PersonalProfile, RiesterAssumptions, ScenarioAssumptions } from '../domain/types'
 
 export const defaultProfile: PersonalProfile = {
   age: 28,
@@ -14,6 +14,78 @@ export const defaultProfile: PersonalProfile = {
   // 28-year-old; users should enter their actual premium from their PKV offer.
   pkvMonthlyPremium: 0,
   pPVMonthlyPremium: 0,
+}
+
+// Exported separately so tests can import without pulling the whole defaultAssumptions object.
+export const defaultAvdAssumptions: AltersvorsorgedepotAssumptions = {
+  // Standarddepot is the lowest-cost certified product variant with the RIY cap.
+  subtype: 'standarddepot',
+  // 150 EUR/month = 1 800 EUR/year → maximum basic allowance (540 EUR) at minimum cost.
+  monthlyOwnContribution: 150,
+  eligibility: {
+    directlyEligible: true,
+    indirectSpouseEligible: false,
+    eligibleChildren: 0,
+    // Default profile is 28 years old; career-starter bonus already passed for simplicity.
+    ageAtContractStart: 28,
+    careerStarterBonusUsed: true,
+  },
+  // Standarddepot default allocation: 80% high-risk OGAW (SRI 3–5), 20% low-risk.
+  // Actual allocation de-risks automatically via glidepath near retirement.
+  riskAllocationPct: 0.80,
+  // High-risk sleeve return matches the user's selected return scenario in simulate.ts.
+  // Low-risk sleeve: 2% p.a. market-typical for bond / money-market OGAW (SRI 1–2).
+  riskAnnualReturn: 0.05,   // placeholder; overridden by scenario in simulate.ts
+  lowRiskAnnualReturn: 0.02,
+  fees: {
+    // Standarddepot cost cap = 1.0 pp Effektivkosten. Defaults to a competitive provider.
+    wrapperAssetFee: 0.003,   // 0.30 % Depot-/Vertragsverwaltungsgebühr
+    fundAssetFee: 0.002,      // 0.20 % Fonds-TER — total 0.50 % p.a. well within the 1.0 pp cap
+    contributionFee: 0,
+    fixedMonthlyFee: 0,
+    acquisitionCostPct: 0,
+    acquisitionCostSpreadYears: 5,
+    pensionPayoutFeePct: 0,
+  },
+  payoutMode: 'certified_payout_plan',
+  payoutPlanEndAge: 85,    // minimum allowed; can extend to e.g. 90
+  partialCapitalPct: 0,    // no partial capital by default
+  transferCostEUR: 0,
+  monthlyOtherRetirementIncome: 0,
+  // Rentenfaktor for lifelong_annuity mode: 28 EUR/10k/Monat market-typical for age-67 starts.
+  rentenfaktor: 28,
+}
+
+export const defaultRiesterAssumptions: RiesterAssumptions = {
+  // 100 EUR/month own contribution = 1,200 EUR/year.
+  // Mindesteigenbeitrag for 75k EUR salary: 4% × 75,000 = 3,000, minus 175 Grundzulage = 2,825 EUR.
+  // 1,200 EUR < 2,825 EUR → proration applies. Set to meet minimum: user should adjust.
+  monthlyOwnContribution: 100,
+  // Existing capital from a prior contract — 0 for a new/hypothetical contract.
+  existingCapital: 0,
+  eligibility: {
+    directlyEligible: true,
+    // Default profile is 28; assume the career-starter bonus was not yet claimed.
+    ageAtContractStart: 28,
+    careerStarterBonusUsed: false,
+  },
+  // Typical Riester insurance cost structure (similar to private insurance).
+  fees: {
+    wrapperAssetFee: 0.012,
+    fundAssetFee: 0.002,
+    contributionFee: 0.03,
+    fixedMonthlyFee: 5,
+    acquisitionCostPct: 0.025,
+    acquisitionCostSpreadYears: 5,
+    pensionPayoutFeePct: 0,
+  },
+  // Lifelong annuity is the typical Riester payout form.
+  payoutMode: 'leibrente' as const,
+  rentenfaktor: 28,
+  zeitrenteYears: 20,
+  // No partial capital payout by default (most users keep full annuity).
+  partialCapitalPct: 0,
+  monthlyOtherRetirementIncome: 0,
 }
 
 export const defaultAssumptions: ScenarioAssumptions = {
@@ -85,6 +157,11 @@ export const defaultAssumptions: ScenarioAssumptions = {
     currentEntgeltpunkte: 8,
     includeGrvReduction: false,
   },
+  altersvorsorgedepot: {
+    ...defaultAvdAssumptions,
+    riesterTransferCapital: 0,
+  },
+  riester: defaultRiesterAssumptions,
   insurance: {
     contractStartYear: 2024,
     oldContractTaxFreeEligible: false,

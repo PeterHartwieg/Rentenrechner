@@ -1,4 +1,7 @@
 import type {
+  AltersvorsorgedepotAssumptions,
+  AltersvorsorgedepotPayoutMode,
+  AltersvorsorgedepotSubtype,
   BasisrenteAssumptions,
   BavAssumptions,
   BavDurchfuehrungsweg,
@@ -9,6 +12,7 @@ import type {
   PersonalProfile,
   ReturnScenario,
   ReturnScenarioId,
+  RiesterAssumptions,
   ScenarioAssumptions,
   StatutoryPensionAssumptions,
 } from '../domain/types'
@@ -32,6 +36,18 @@ const VALID_PARTIAL_EXEMPTIONS = [0, 0.15, 0.3, 0.6, 0.8] as const
 
 const VALID_PAYOUT_MODES: readonly PayoutMode[] = ['leibrente', 'zeitrente', 'kapitalverzehr']
 const VALID_BASISRENTE_PAYOUT_MODES: readonly string[] = ['leibrente', 'zeitrente']
+const VALID_RIESTER_PAYOUT_MODES: readonly string[] = ['leibrente', 'zeitrente']
+const VALID_AVD_SUBTYPES: readonly AltersvorsorgedepotSubtype[] = [
+  'depot_no_guarantee',
+  'standarddepot',
+  'guarantee_80',
+  'guarantee_100',
+]
+const VALID_AVD_PAYOUT_MODES: readonly AltersvorsorgedepotPayoutMode[] = [
+  'lifelong_annuity',
+  'certified_payout_plan',
+  'hybrid_80_annuity',
+]
 
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v)
@@ -148,6 +164,53 @@ function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
   return true
 }
 
+function validateAltersvorsorgedepot(avd: AltersvorsorgedepotAssumptions): boolean {
+  if (!VALID_AVD_SUBTYPES.includes(avd.subtype)) return false
+  if (!isFiniteNumber(avd.monthlyOwnContribution) || avd.monthlyOwnContribution < 0) return false
+  // eligibility
+  const e = avd.eligibility
+  if (!e || typeof e !== 'object') return false
+  if (typeof e.directlyEligible !== 'boolean') return false
+  if (typeof e.indirectSpouseEligible !== 'boolean') return false
+  if (!intInRange(e.eligibleChildren, 0, 20)) return false
+  if (!intInRange(e.ageAtContractStart, 0, 120)) return false
+  if (typeof e.careerStarterBonusUsed !== 'boolean') return false
+  // allocation / returns
+  if (!inRange(avd.riskAllocationPct, 0, 1)) return false
+  if (!inRange(avd.riskAnnualReturn, -0.5, 0.5)) return false
+  if (!inRange(avd.lowRiskAnnualReturn, -0.5, 0.5)) return false
+  // payout
+  if (!VALID_AVD_PAYOUT_MODES.includes(avd.payoutMode)) return false
+  if (!intInRange(avd.payoutPlanEndAge, 60, 120)) return false
+  if (!inRange(avd.partialCapitalPct, 0, 0.3)) return false
+  if (!inRange(avd.transferCostEUR, 0, 1_000)) return false
+  if (!isFiniteNumber(avd.monthlyOtherRetirementIncome) || avd.monthlyOtherRetirementIncome < 0) return false
+  if (!inRange(avd.rentenfaktor, 0, 100)) return false
+  if (!avd.fees || typeof avd.fees !== 'object') return false
+  if (!validateFees(avd.fees)) return false
+  if (!isFiniteNumber(avd.riesterTransferCapital) || avd.riesterTransferCapital < 0) return false
+  return true
+}
+
+function validateRiester(r: RiesterAssumptions): boolean {
+  if (!isFiniteNumber(r.monthlyOwnContribution) || r.monthlyOwnContribution < 0) return false
+  if (!isFiniteNumber(r.existingCapital) || r.existingCapital < 0) return false
+  // eligibility
+  const e = r.eligibility
+  if (!e || typeof e !== 'object') return false
+  if (typeof e.directlyEligible !== 'boolean') return false
+  if (!intInRange(e.ageAtContractStart, 0, 120)) return false
+  if (typeof e.careerStarterBonusUsed !== 'boolean') return false
+  // payout
+  if (!VALID_RIESTER_PAYOUT_MODES.includes(r.payoutMode)) return false
+  if (!inRange(r.rentenfaktor, 0, 100)) return false
+  if (!intInRange(r.zeitrenteYears, 1, 50)) return false
+  if (!inRange(r.partialCapitalPct, 0, 0.3)) return false
+  if (!isFiniteNumber(r.monthlyOtherRetirementIncome) || r.monthlyOtherRetirementIncome < 0) return false
+  if (!r.fees || typeof r.fees !== 'object') return false
+  return validateFees(r.fees)
+}
+
 export function validateAssumptions(input: unknown): ScenarioAssumptions | null {
   if (!input || typeof input !== 'object') return null
   const a = input as ScenarioAssumptions
@@ -159,6 +222,8 @@ export function validateAssumptions(input: unknown): ScenarioAssumptions | null 
   if (!a.insurance || typeof a.insurance !== 'object' || !validateInsurance(a.insurance)) return null
   if (!a.statutoryPension || typeof a.statutoryPension !== 'object' || !validateStatutoryPension(a.statutoryPension)) return null
   if (!a.basisrente || typeof a.basisrente !== 'object' || !validateBasisrente(a.basisrente)) return null
+  if (!a.altersvorsorgedepot || typeof a.altersvorsorgedepot !== 'object' || !validateAltersvorsorgedepot(a.altersvorsorgedepot)) return null
+  if (!a.riester || typeof a.riester !== 'object' || !validateRiester(a.riester)) return null
   return a
 }
 
