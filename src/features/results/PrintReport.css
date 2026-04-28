@@ -1,0 +1,180 @@
+/* Screen: hide the report — only shown when printing */
+#print-report {
+  display: none;
+}
+
+/* ─── Print styles ─────────────────────────────────────────────────── */
+@page {
+  size: A4 landscape;
+  margin: 12mm 15mm;
+}
+
+@media print {
+  #print-report {
+    display: block;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #000;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+  }
+
+  /* Override global th styles that bleed in from App.css */
+  #print-report th {
+    color: #000 !important;
+    font-size: inherit !important;
+    text-transform: none !important;
+    background: #e8e8e8 !important;
+    font-weight: bold !important;
+    padding: 3pt 4pt !important;
+    border: 0.5pt solid #aaa !important;
+    text-align: left !important;
+  }
+
+  /* Shared fixed-layout table base */
+  .pr-layout-fixed {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  /* Header table */
+  .pr-header-table {
+    margin-bottom: 8pt;
+    border-bottom: 2pt solid #000;
+    padding-bottom: 0;
+  }
+
+  .pr-header-left {
+    vertical-align: top;
+    padding-bottom: 6pt;
+  }
+
+  .pr-header-right {
+    width: 35%;
+    vertical-align: top;
+    text-align: right;
+    font-size: 7pt;
+    color: #666;
+    padding-bottom: 6pt;
+  }
+
+  .pr-title {
+    font-size: 13pt;
+    font-weight: bold;
+    margin: 0 0 2pt;
+  }
+
+  .pr-subtitle {
+    font-size: 8pt;
+    color: #444;
+    margin: 0;
+  }
+
+  /* Two-column summary table */
+  .pr-summary-table {
+    margin-bottom: 10pt;
+  }
+
+  .pr-col-left {
+    width: 50%;
+    vertical-align: top;
+    padding-right: 12pt;
+  }
+
+  .pr-col-right {
+    width: 50%;
+    vertical-align: top;
+    padding-left: 12pt;
+    border-left: 0.5pt solid #ddd;
+  }
+
+  /* Section title (replaces <h2> to stay outside th/h2 global styles) */
+  .pr-section-title {
+    font-size: 10pt;
+    font-weight: bold;
+    margin: 0 0 4pt;
+    padding-bottom: 2pt;
+    border-bottom: 1pt solid #555;
+    color: #000;
+  }
+
+  /* Key-value table — uses td+td, no th, to avoid global th overrides */
+  .pr-kv {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+  }
+
+  .pr-kv-label {
+    color: #444;
+    padding: 1.5pt 6pt 1.5pt 0;
+    width: 55%;
+    vertical-align: top;
+  }
+
+  .pr-kv td {
+    padding: 1.5pt 0;
+    vertical-align: top;
+  }
+
+  /* Generic section wrapper */
+  .pr-section {
+    margin-bottom: 10pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Generic data tables */
+  .pr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    margin-top: 4pt;
+  }
+
+  .pr-table td {
+    padding: 2.5pt 4pt;
+    border: 0.5pt solid #ccc;
+    vertical-align: top;
+  }
+
+  .pr-num {
+    text-align: right !important;
+  }
+
+  /* Main comparison table */
+  .pr-main-table {
+    font-size: 7.5pt;
+  }
+
+  .pr-main-table th {
+    font-size: 7.5pt !important;
+  }
+
+  .pr-main-table .pr-basis {
+    font-weight: bold;
+    background: #f0f0f0;
+  }
+
+  .pr-note {
+    font-size: 7pt;
+    color: #555;
+  }
+
+  .pr-table-note {
+    display: block;
+    margin-top: 4pt;
+  }
+
+  /* Footer */
+  .pr-footer {
+    margin-top: 14pt;
+    padding-top: 4pt;
+    border-top: 0.5pt solid #999;
+    font-size: 7pt;
+    color: #666;
+    text-align: center;
+  }
+}

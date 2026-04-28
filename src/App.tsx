@@ -6,9 +6,11 @@ import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { de2026Rules } from './rules/de2026'
 import { formatPercent } from './utils/format'
 import { useCalculatorState } from './app/useCalculatorState'
+import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useSimulationViewModel } from './app/useSimulationViewModel'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
 import { ScenarioPresetPanel } from './features/inputs/ScenarioPresetPanel'
+import { ScenarioLibraryPanel } from './features/inputs/ScenarioLibraryPanel'
 import { ProfileInputs } from './features/inputs/ProfileInputs'
 import { GRVInputs } from './features/inputs/GRVInputs'
 import { BavInputs } from './features/inputs/BavInputs'
@@ -24,6 +26,7 @@ import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
+import { PrintReport } from './features/results/PrintReport'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import './App.css'
@@ -32,6 +35,7 @@ const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.col
 
 function App() {
   const { profile, setProfile, assumptions, setAssumptions, resetToDefaults } = useCalculatorState()
+  const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const vm = useSimulationViewModel(profile, assumptions)
   const {
     selectedScenarioId, setSelectedScenarioId,
@@ -92,6 +96,15 @@ function App() {
           </div>
 
           <ScenarioPresetPanel onSelectPreset={setAssumptions} />
+
+          <ScenarioLibraryPanel
+            library={scenarioLib.library}
+            onSave={scenarioLib.save}
+            onLoad={scenarioLib.load}
+            onDuplicate={scenarioLib.duplicate}
+            onDelete={scenarioLib.remove}
+            onRename={scenarioLib.rename}
+          />
 
           <ProfileInputs
             profile={profile}
@@ -311,6 +324,7 @@ function App() {
             linkCopied={linkCopied}
             onCopyLink={handleCopyLink}
             onExportCsv={handleExportCsv}
+            onPrint={() => window.print()}
           />
 
           <CashflowTable
@@ -331,6 +345,8 @@ function App() {
           />
         </section>
       </section>
+
+      <PrintReport profile={profile} assumptions={assumptions} simulation={simulation} />
     </main>
   )
 }

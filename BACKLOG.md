@@ -55,7 +55,7 @@ Why later:
 Suggested order:
 
 1. Scenario duplication / saved scenario library.
-2. `#15` PDF report.
+2. ~~`#15` PDF report.~~ ✓
 
 Shared code areas: default scenarios, storage/schema, URL sharing, CSV/report formatting, UI controls.
 
@@ -87,9 +87,8 @@ Suggested order:
 
 ## Open P2 Publishing / Product
 
-### #15 PDF Report
-
-Generate a readable comparison report for offline review.
+~~### #15 PDF Report~~
+~~Generate a readable comparison report for offline review.~~
 
 ---
 
@@ -101,7 +100,7 @@ Generate a readable comparison report for offline review.
 - Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.
 - Multi-ETF portfolio.
 - Sensitivity heatmap.
-- Saved scenario library and scenario duplication.
+- ~~Saved scenario library and scenario duplication.~~ ✓
 - Real estate / owner-occupied housing module.
 - Retirement cash / bond buffer module.
 - Bilingual UI.
@@ -130,6 +129,8 @@ Completed items are kept here as a compact index only.
 - Private insurance lifecycle: `#65` — surrender / paid-up scenario. `InsurancePaidUpScenario` on `ProductResult`; `paidUpAge?` + `surrenderHaircutPct` on `InsuranceAssumptions`; two-phase accumulation in `src/engine/products/insurance.ts`; results panel in assumptions drawer.
 - Input presets: `#16` — 5 scenario presets in `src/data/presets.ts` (ETF Nettotarif, bAV Standard, bAV AG-Match 50 %, pAV Hochkosten, pAV Altvertrag). Collapsible `<details>` panel at top of input drawer replaces full assumptions on click.
 - Agent-readability refactor: phases 0-11 complete. `App.tsx` is a composition shell; product simulators, validators, metadata, and tests live under `src/engine/products`; domain types are split under `src/domain`; agent routing docs live in `AGENTS.md` and `docs/context/`.
+- PDF report (#15): `src/features/results/PrintReport.tsx` + CSS — always-rendered hidden component (`display: none` on screen, `display: block` in `@media print`). Sections: profile summary, GRV/bAV key metrics, return-scenario assumptions, full comparison table (all products × scenarios, basis rows bold). "PDF drucken" button added to `DetailComparisonTable` action bar alongside CSV/link. `window.print()` triggers browser print-to-PDF. App.css `@media print` hides `.topbar` and `.dashboard`. No new dependencies.
+- Saved scenario library (Group D step 1): `src/data/scenarioLibrary.ts` (CRUD helpers, `rentenrechner-library-v1` localStorage key), `src/app/useScenarioLibrary.ts` (hook), `src/features/inputs/ScenarioLibraryPanel.tsx` + CSS. Panel in input sidebar: name input → Speichern, list with Laden / Kopie / ✕, inline rename on name click. Count badge on collapsed summary.
 
 Latest documented baseline: 399 tests after the agent-readability refactor.
 

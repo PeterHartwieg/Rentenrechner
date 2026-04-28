@@ -263,3 +263,10 @@ th {
     flex: 0 0 auto;
   }
 }
+
+@media print {
+  .topbar,
+  .dashboard {
+    display: none !important;
+  }
+}

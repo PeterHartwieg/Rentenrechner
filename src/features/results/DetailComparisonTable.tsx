@@ -1,5 +1,5 @@
 import './DetailComparisonTable.css'
-import { Check, Link, Download } from 'lucide-react';
+import { Check, Link, Download, Printer } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/format';
 
 interface DetailComparisonTableProps {
@@ -20,6 +20,7 @@ interface DetailComparisonTableProps {
   linkCopied: boolean;
   onCopyLink: () => void;
   onExportCsv: () => void;
+  onPrint: () => void;
 }
 
 export function DetailComparisonTable({
@@ -27,6 +28,7 @@ export function DetailComparisonTable({
   linkCopied,
   onCopyLink,
   onExportCsv,
+  onPrint,
 }: DetailComparisonTableProps) {
   return (
     <section className="table-panel">
@@ -42,6 +44,10 @@ export function DetailComparisonTable({
           <button type="button" className="export-btn" onClick={onExportCsv}>
             <Download size={14} aria-hidden="true" />
             CSV exportieren
+          </button>
+          <button type="button" className="export-btn" onClick={onPrint}>
+            <Printer size={14} aria-hidden="true" />
+            PDF drucken
           </button>
         </div>
       </div>
