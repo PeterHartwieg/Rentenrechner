@@ -21,7 +21,6 @@ import {
   calculateAvdFunding,
   computeAvdGlidepathReturn,
   netAvdPayout,
-  validateAvdPayoutAge,
 } from './altersvorsorgedepot'
 import { afterTaxRiesterLumpSum, calculateRiesterFunding, netRiesterPayout } from './riester'
 import { computeRIY } from './fees'

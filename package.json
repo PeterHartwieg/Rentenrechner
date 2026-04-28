@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify": "npm run lint && npm test && npm run build",
+    "repo:stats": "node scripts/repo-stats.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.11.0",

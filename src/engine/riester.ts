@@ -322,7 +322,7 @@ export function netRiesterPayout(
  */
 export function afterTaxRiesterLumpSum(
   partialCapital: number,
-  profile: PersonalProfile,
+  _profile: PersonalProfile,
   rules: GermanRules,
   otherAnnualIncome: number,
   retirementYear = rules.year,

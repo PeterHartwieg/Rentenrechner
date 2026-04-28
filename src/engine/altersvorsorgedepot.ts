@@ -372,7 +372,7 @@ export function netAvdPayout(
  */
 export function afterTaxAvdLumpSum(
   partialCapital: number,
-  profile: PersonalProfile,
+  _profile: PersonalProfile,
   rules: GermanRules,
   otherAnnualIncome: number,
   retirementYear = rules.year,

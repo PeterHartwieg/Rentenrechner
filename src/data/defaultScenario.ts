@@ -51,6 +51,7 @@ export const defaultAvdAssumptions: AltersvorsorgedepotAssumptions = {
   payoutPlanEndAge: 85,    // minimum allowed; can extend to e.g. 90
   partialCapitalPct: 0,    // no partial capital by default
   transferCostEUR: 0,
+  riesterTransferCapital: 0,
   monthlyOtherRetirementIncome: 0,
   // Rentenfaktor for lifelong_annuity mode: 28 EUR/10k/Monat market-typical for age-67 starts.
   rentenfaktor: 28,
