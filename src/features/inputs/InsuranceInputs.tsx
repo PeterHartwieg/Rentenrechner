@@ -4,10 +4,10 @@ import './InsuranceInputs.css'
 import type React from 'react'
 import type {
   GermanRules,
+  InsuranceProductResult,
   InsuranceTaxMode,
   PayoutMode,
   PersonalProfile,
-  ProductResult,
   ScenarioAssumptions,
 } from '../../domain/types';
 import { NumberField } from '../../ui/NumberField';
@@ -19,7 +19,7 @@ type Props = {
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>;
   profile: PersonalProfile;
   insuranceTaxMode: InsuranceTaxMode;
-  insuranceProductResult: ProductResult | undefined;
+  insuranceProductResult: InsuranceProductResult | undefined;
   rules: GermanRules;
 };
 

@@ -122,7 +122,7 @@ export function CashflowTable({
           </table>
         </div>
       ) : null}
-      {cashflowResult?.etfPayoutRows && cashflowResult.etfPayoutRows.length > 0 && (
+      {cashflowResult !== undefined && cashflowResult.productId === 'etf' && cashflowResult.etfPayoutRows.length > 0 && (
         <div className="payout-phase">
           <h3 className="payout-phase-heading">Rentenphase (ETF-Entnahme)</h3>
           <div className="table-scroll">

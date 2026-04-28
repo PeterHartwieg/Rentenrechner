@@ -46,6 +46,7 @@ function App() {
     bestCapital,
     bestPension,
     cashflowResult,
+    insuranceResult,
     cashflowAnnualTaxSvSavings,
     insuranceTaxMode,
     kvdrMember,
@@ -203,7 +204,7 @@ function App() {
             onAssumptionsChange={setAssumptions}
             profile={profile}
             insuranceTaxMode={insuranceTaxMode}
-            insuranceProductResult={selectedResults.find((r) => r.productId === 'versicherung')}
+            insuranceProductResult={insuranceResult}
             rules={de2026Rules}
           />
 

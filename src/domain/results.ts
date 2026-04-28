@@ -40,8 +40,8 @@ export interface EtfPayoutRow {
   remainingCostBasis: number
 }
 
-export interface ProductResult {
-  productId: ProductId
+// Shared fields present on every product result.
+export interface BaseProductResult {
   label: string
   scenarioId: ReturnScenarioId
   scenarioLabel: string
@@ -63,15 +63,50 @@ export interface ProductResult {
   capitalMultipleAnnualized: number
   // #57: Effektivkosten / Reduction in Yield for the accumulation phase (pp)
   accumulationRiy: number
-  // #64: nominal break-even age for Leibrente mode — age at which cumulative gross payouts equal capitalAtRetirement.
-  //   grossBreakEvenAge = retirementAge + capitalAtRetirement / (grossMonthlyPayout * 12)
-  //   Only set when payoutMode === 'leibrente'; undefined for other payout modes.
+  // #64: nominal break-even age for Leibrente mode
   leibrenteBreakEvenAge?: number
-  // #65: paid-up / surrender scenario (only set for productId === 'versicherung' when paidUpAge is configured).
-  paidUpScenario?: InsurancePaidUpScenario
   rows: YearlyProjection[]
-  etfPayoutRows?: EtfPayoutRow[]
 }
+
+export interface EtfProductResult extends BaseProductResult {
+  productId: 'etf'
+  afterTaxLumpSum: number       // ETF always has an after-tax value (never locked)
+  etfPayoutRows: EtfPayoutRow[] // required; only ETF produces a payout schedule
+}
+
+export interface BavProductResult extends BaseProductResult {
+  productId: 'bav'
+  afterTaxLumpSum: number       // bAV always has an after-tax lump-sum value
+}
+
+export interface InsuranceProductResult extends BaseProductResult {
+  productId: 'versicherung'
+  afterTaxLumpSum: number       // private insurance always has an after-tax value
+  paidUpScenario?: InsurancePaidUpScenario // only set when paidUpAge is configured
+}
+
+export interface BasisrenteProductResult extends BaseProductResult {
+  productId: 'basisrente'
+  afterTaxLumpSum: null          // capital payout legally prohibited (§10 Abs. 1 Nr. 2 EStG)
+}
+
+export interface AltersvorsorgedepotProductResult extends BaseProductResult {
+  productId: 'altersvorsorgedepot'
+  // afterTaxLumpSum: number | null — null when partialCapitalPct === 0
+}
+
+export interface RiesterProductResult extends BaseProductResult {
+  productId: 'riester'
+  // afterTaxLumpSum: number | null — null when partialCapitalPct === 0
+}
+
+export type ProductResult =
+  | EtfProductResult
+  | BavProductResult
+  | InsuranceProductResult
+  | BasisrenteProductResult
+  | AltersvorsorgedepotProductResult
+  | RiesterProductResult
 
 export interface ScenarioAssumptions {
   inflationRate: number

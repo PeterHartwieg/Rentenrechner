@@ -13,6 +13,8 @@ import type {
   RiesterFundingResult,
   ScenarioAssumptions,
 } from '../domain/types'
+// ProductResult is the discriminated union; individual product simulate() functions
+// narrow the return to the specific member via type assertions at their call sites.
 import {
   afterTaxBavLumpSum,
   afterTaxInsuranceLumpSum,
@@ -355,5 +357,5 @@ export function buildProductResult(params: {
         : undefined,
     rows: projection.rows,
     etfPayoutRows,
-  }
+  } as ProductResult
 }

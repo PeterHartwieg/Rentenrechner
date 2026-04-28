@@ -1,4 +1,4 @@
-import type { GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain/types'
+import type { EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain/types'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital } from '../engine/projections'
 
 type ExportOptions = {
@@ -109,13 +109,13 @@ export function buildExportCsv(opts: ExportOptions): string {
   }
 
   // Section 3: ETF payout schedule
-  const etfWithPayouts = products.filter(r => r.productId === 'etf' && r.etfPayoutRows && r.etfPayoutRows.length > 0)
+  const etfWithPayouts = products.filter((r): r is EtfProductResult => r.productId === 'etf' && r.etfPayoutRows.length > 0)
   if (etfWithPayouts.length > 0) {
     lines.push('')
     lines.push('Rentenphase (ETF-Entnahme)')
     lines.push(csvRow('Szenario', 'Alter', 'Kapital Anfang (EUR)', 'Brutto p.a. (EUR)', 'Steuerpfl. Gewinn (EUR)', 'Sparerpauschb. (EUR)', 'Steuer (EUR)', 'Netto mtl. (EUR)', 'Kapital Ende (EUR)'))
     for (const r of etfWithPayouts) {
-      for (const row of r.etfPayoutRows!) {
+      for (const row of r.etfPayoutRows) {
         lines.push(csvRow(
           r.scenarioLabel,
           row.age,

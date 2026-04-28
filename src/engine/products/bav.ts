@@ -1,4 +1,4 @@
-import type { ProductResult, ReturnScenario } from '../../domain/types'
+import type { BavProductResult, ReturnScenario } from '../../domain/types'
 import type { SimulationContext } from '../simulationContext'
 import { buildProductResult } from '../buildResult'
 
@@ -13,7 +13,7 @@ export const metadata = {
   hasEmployerContribution: true,
 }
 
-export function simulate(ctx: SimulationContext, scenario: ReturnScenario): ProductResult {
+export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavProductResult {
   const { profile, assumptions, rules, bavFunding, bavLumpSumTaxMode, payoutYear } = ctx
   return buildProductResult({
     productId: 'bav',
@@ -31,5 +31,5 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Prod
     taxMode: 'bav',
     retirementYear: payoutYear,
     bavLumpSumTaxMode,
-  })
+  }) as BavProductResult
 }

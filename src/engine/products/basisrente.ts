@@ -1,4 +1,4 @@
-import type { ProductResult, ReturnScenario } from '../../domain/types'
+import type { BasisrenteProductResult, ReturnScenario } from '../../domain/types'
 import type { SimulationContext } from '../simulationContext'
 import { buildProductResult } from '../buildResult'
 
@@ -13,7 +13,7 @@ export const metadata = {
   hasEmployerContribution: false,
 }
 
-export function simulate(ctx: SimulationContext, scenario: ReturnScenario): ProductResult {
+export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BasisrenteProductResult {
   const { profile, assumptions, rules, bavFunding, basisrenteFunding, payoutYear } = ctx
   return buildProductResult({
     productId: 'basisrente',
@@ -30,5 +30,5 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Prod
     fees: assumptions.basisrente.fees,
     taxMode: 'basisrente',
     retirementYear: payoutYear,
-  })
+  }) as BasisrenteProductResult
 }

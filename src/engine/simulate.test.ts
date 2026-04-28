@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
-import type { PersonalProfile } from '../domain/types'
+import type { EtfProductResult, InsuranceProductResult, PersonalProfile } from '../domain/types'
 import {
   careEmployeeRateForChildren,
   calculateBavFunding,
@@ -832,7 +832,7 @@ describe('#37 ETF payout schedule (etfPayoutSchedule)', () => {
 
   it('simulate produces etfPayoutRows for ETF product', () => {
     const result = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
-    const etfBasis = result.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')
+    const etfBasis = result.products.find((p): p is EtfProductResult => p.productId === 'etf' && p.scenarioId === 'basis')
     expect(etfBasis?.etfPayoutRows).toBeDefined()
     expect(etfBasis?.etfPayoutRows?.length).toBeGreaterThan(0)
     // netMonthlyPayout is derived from year-1 of the schedule
@@ -1672,9 +1672,13 @@ describe('#65 InsurancePaidUpScenario', () => {
     },
   }
 
+  function findIns(products: { productId: string; scenarioId: string }[], scenarioId = 'basis') {
+    return products.find((p): p is InsuranceProductResult => p.productId === 'versicherung' && p.scenarioId === scenarioId)
+  }
+
   it('paidUpScenario is undefined when paidUpAge is not set', () => {
     const result = simulateRetirementComparison(defaultProfile, baseAssumptions, de2026Rules)
-    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    const ins = findIns(result.products)
     expect(ins?.paidUpScenario).toBeUndefined()
   })
 
@@ -1684,7 +1688,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: 45 },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    const ins = findIns(result.products)
     expect(ins?.paidUpScenario).toBeDefined()
     expect(ins?.paidUpScenario?.paidUpAge).toBe(45)
   })
@@ -1695,7 +1699,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: defaultProfile.age },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    const ins = findIns(result.products)
     expect(ins?.paidUpScenario).toBeUndefined()
   })
 
@@ -1705,7 +1709,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: defaultProfile.retirementAge },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    const ins = findIns(result.products)
     expect(ins?.paidUpScenario).toBeUndefined()
   })
 
@@ -1715,7 +1719,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: 45 },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const pu = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')?.paidUpScenario
+    const pu = findIns(result.products)?.paidUpScenario
     expect(pu).toBeDefined()
     expect(pu!.surrenderValue).toBeCloseTo(pu!.capitalAtPaidUp * (1 - 0.05), 4)
   })
@@ -1726,7 +1730,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: 45, surrenderHaircutPct: 0 },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const pu = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')?.paidUpScenario
+    const pu = findIns(result.products)?.paidUpScenario
     expect(pu).toBeDefined()
     expect(pu!.surrenderValue).toBeCloseTo(pu!.capitalAtPaidUp, 4)
   })
@@ -1737,7 +1741,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: 45, surrenderHaircutPct: 0 },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const insProduct = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    const insProduct = findIns(result.products)
     expect(insProduct).toBeDefined()
     expect(insProduct!.paidUpScenario!.retirementCapital).toBeLessThan(insProduct!.capitalAtRetirement)
   })
@@ -1748,7 +1752,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: 45, surrenderHaircutPct: 0 },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const insProduct = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    const insProduct = findIns(result.products)
     expect(insProduct).toBeDefined()
     expect(insProduct!.paidUpScenario!.netMonthlyPayout).toBeLessThan(insProduct!.netMonthlyPayout)
   })
@@ -1759,7 +1763,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: 45 },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const pu = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')?.paidUpScenario
+    const pu = findIns(result.products)?.paidUpScenario
     expect(pu!.feesAtPaidUp).toBeGreaterThan(0)
   })
 
@@ -1769,7 +1773,7 @@ describe('#65 InsurancePaidUpScenario', () => {
       insurance: { ...baseAssumptions.insurance, paidUpAge: 45, surrenderHaircutPct: 0 },
     }
     const result = simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
-    const insProducts = result.products.filter((p) => p.productId === 'versicherung')
+    const insProducts = result.products.filter((p): p is InsuranceProductResult => p.productId === 'versicherung')
     expect(insProducts).toHaveLength(3)
     for (const p of insProducts) {
       expect(p.paidUpScenario).toBeDefined()

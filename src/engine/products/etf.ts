@@ -1,4 +1,4 @@
-import type { ProductResult, ReturnScenario } from '../../domain/types'
+import type { EtfProductResult, ReturnScenario } from '../../domain/types'
 import type { SimulationContext } from '../simulationContext'
 import { buildProductResult, zeroFeeModel } from '../buildResult'
 
@@ -13,7 +13,7 @@ export const metadata = {
   hasEmployerContribution: false,
 }
 
-export function simulate(ctx: SimulationContext, scenario: ReturnScenario): ProductResult {
+export function simulate(ctx: SimulationContext, scenario: ReturnScenario): EtfProductResult {
   return buildProductResult({
     productId: 'etf',
     label: metadata.label,
@@ -29,5 +29,5 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Prod
     taxMode: 'etf',
     partialExemption: ctx.assumptions.etf.equityPartialExemption,
     retirementYear: ctx.payoutYear,
-  })
+  }) as EtfProductResult
 }

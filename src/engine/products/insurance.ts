@@ -1,4 +1,4 @@
-import type { FeeModel, InsurancePaidUpScenario, ProductResult, ReturnScenario } from '../../domain/types'
+import type { FeeModel, InsurancePaidUpScenario, InsuranceProductResult, ReturnScenario } from '../../domain/types'
 import type { SimulationContext } from '../simulationContext'
 import { buildProductResult } from '../buildResult'
 import {
@@ -19,7 +19,7 @@ export const metadata = {
   hasEmployerContribution: false,
 }
 
-export function simulate(ctx: SimulationContext, scenario: ReturnScenario): ProductResult {
+export function simulate(ctx: SimulationContext, scenario: ReturnScenario): InsuranceProductResult {
   const { profile, assumptions, rules, bavFunding, insuranceTaxMode, payoutYear } = ctx
   const ins = assumptions.insurance
   const insuranceMonthly = bavFunding.monthlyNetCost
@@ -38,7 +38,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Prod
     fees: ins.fees,
     taxMode: insuranceTaxMode,
     retirementYear: payoutYear,
-  })
+  }) as InsuranceProductResult
 
   // #65: compute paid-up / surrender scenario when paidUpAge is configured.
   const paidUpAge = ins.paidUpAge
@@ -140,5 +140,5 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Prod
     }
   }
 
-  return { ...insResult, paidUpScenario }
+  return { ...insResult, paidUpScenario } as InsuranceProductResult
 }

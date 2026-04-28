@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { InsuranceTaxMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from '../domain/types'
+import type { InsuranceProductResult, InsuranceTaxMode, PersonalProfile, ProductId, ScenarioAssumptions } from '../domain/types'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from '../engine/projections'
 import { simulateRetirementComparison } from '../engine/simulate'
 import { de2026Rules } from '../rules/de2026'
@@ -55,18 +55,22 @@ export function useSimulationViewModel(
   ]
 
   const comparableCapitalResults = selectedResults.filter(
-    (result): result is ProductResult & { afterTaxLumpSum: number } =>
+    (result): result is Exclude<typeof result, { afterTaxLumpSum: null }> =>
       result.afterTaxLumpSum !== null,
   )
 
+  // afterTaxLumpSum is guaranteed non-null by the filter above; cast is safe.
   const bestCapital = comparableCapitalResults.length
-    ? comparableCapitalResults.reduce((best, r) => r.afterTaxLumpSum > best.afterTaxLumpSum ? r : best)
+    ? comparableCapitalResults.reduce((best, r) =>
+        (r.afterTaxLumpSum as number) > (best.afterTaxLumpSum as number) ? r : best,
+      ) as { afterTaxLumpSum: number; label: string }
     : undefined
   const bestPension = selectedResults.length
     ? selectedResults.reduce((best, r) => r.netMonthlyPayout > best.netMonthlyPayout ? r : best)
     : undefined
 
   const cashflowResult = selectedResults.find((r) => r.productId === cashflowProductId)
+  const insuranceResult = selectedResults.find((r): r is InsuranceProductResult => r.productId === 'versicherung')
   const cashflowAnnualTaxSvSavings =
     cashflowProductId === 'bav' ? simulation.bavFunding.annualTaxAndSvSavings : 0
 
@@ -172,6 +176,7 @@ export function useSimulationViewModel(
     bestCapital,
     bestPension,
     cashflowResult,
+    insuranceResult,
     cashflowAnnualTaxSvSavings,
     // Tax helpers
     insurancePayoutYear,

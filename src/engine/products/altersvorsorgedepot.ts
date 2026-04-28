@@ -1,4 +1,4 @@
-import type { ProductResult, ReturnScenario } from '../../domain/types'
+import type { AltersvorsorgedepotProductResult, ReturnScenario } from '../../domain/types'
 import type { SimulationContext } from '../simulationContext'
 import { buildProductResult } from '../buildResult'
 import { computeAvdGlidepathReturn } from '../altersvorsorgedepot'
@@ -14,7 +14,7 @@ export const metadata = {
   hasEmployerContribution: false,
 }
 
-export function simulate(ctx: SimulationContext, scenario: ReturnScenario): ProductResult {
+export function simulate(ctx: SimulationContext, scenario: ReturnScenario): AltersvorsorgedepotProductResult {
   const { profile, assumptions, rules, bavFunding, altersvorsorgedepotFunding, payoutYear, yearsToRetirement } = ctx
   const avd = assumptions.altersvorsorgedepot
 
@@ -72,5 +72,5 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Prod
     retirementYear: payoutYear,
     yearlyReturnFn,
     initialCapital: transferInitialCapital,
-  })
+  }) as AltersvorsorgedepotProductResult
 }
