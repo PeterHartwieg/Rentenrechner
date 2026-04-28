@@ -10,7 +10,7 @@ import {
 } from './salary'
 import { simulateRetirementComparison } from './simulate'
 import { calculateCapitalGainsTax, calculateIncomeTax2026, calculateSolidarityTax } from './tax'
-import { afterTaxBavLumpSum, deriveInsuranceTaxMode, etfPayoutSchedule, monthlyPayoutFromCapital, netBavPayout, projectAccumulation } from './projections'
+import { afterTaxBavLumpSum, computeGrossMonthlyPayout, deriveInsuranceTaxMode, etfPayoutSchedule, monthlyPayoutFromCapital, netBavPayout, projectAccumulation } from './projections'
 
 // Base profile for payroll tax tests: Steuerklasse I, no kids, no church, GKV 2.9%
 const testProfile75k: PersonalProfile = {
@@ -752,6 +752,114 @@ describe('#37 ETF payout schedule (etfPayoutSchedule)', () => {
   })
 })
 
+describe('payoutMode (#54) — Leibrente / Zeitrente / Kapitalverzehr', () => {
+  it('leibrente: gross monthly payout = capital / 10 000 × rentenfaktor (independent of payout horizon)', () => {
+    const gross = computeGrossMonthlyPayout(300_000, {
+      mode: 'leibrente',
+      rentenfaktor: 30,
+      zeitrenteYears: 20,
+      kapitalverzehrYears: 23,
+      payoutReturn: 0.04,
+    })
+    expect(gross).toBeCloseTo(900, 6) // 300_000 / 10_000 × 30
+  })
+
+  it('leibrente: changing kapitalverzehrYears does not change the payout (rentenfaktor only)', () => {
+    const a = computeGrossMonthlyPayout(300_000, {
+      mode: 'leibrente', rentenfaktor: 30, zeitrenteYears: 20, kapitalverzehrYears: 5, payoutReturn: 0.04,
+    })
+    const b = computeGrossMonthlyPayout(300_000, {
+      mode: 'leibrente', rentenfaktor: 30, zeitrenteYears: 20, kapitalverzehrYears: 50, payoutReturn: 0.04,
+    })
+    expect(a).toBe(b)
+  })
+
+  it('zeitrente: uses zeitrenteYears, ignoring kapitalverzehrYears', () => {
+    const gross = computeGrossMonthlyPayout(300_000, {
+      mode: 'zeitrente', rentenfaktor: 30, zeitrenteYears: 15, kapitalverzehrYears: 23, payoutReturn: 0.04,
+    })
+    const expected = monthlyPayoutFromCapital(300_000, 0.04, 15)
+    expect(gross).toBeCloseTo(expected, 6)
+  })
+
+  it('kapitalverzehr: matches the legacy depletion annuity over kapitalverzehrYears', () => {
+    const gross = computeGrossMonthlyPayout(300_000, {
+      mode: 'kapitalverzehr', rentenfaktor: 30, zeitrenteYears: 15, kapitalverzehrYears: 23, payoutReturn: 0.04,
+    })
+    const expected = monthlyPayoutFromCapital(300_000, 0.04, 23)
+    expect(gross).toBeCloseTo(expected, 6)
+  })
+
+  it('zero/negative capital returns zero payout in any mode', () => {
+    const cfg = { rentenfaktor: 30, zeitrenteYears: 15, kapitalverzehrYears: 23, payoutReturn: 0.04 }
+    expect(computeGrossMonthlyPayout(0, { ...cfg, mode: 'leibrente' })).toBe(0)
+    expect(computeGrossMonthlyPayout(-100, { ...cfg, mode: 'zeitrente' })).toBe(0)
+    expect(computeGrossMonthlyPayout(0, { ...cfg, mode: 'kapitalverzehr' })).toBe(0)
+  })
+
+  it('simulate: bAV in leibrente mode → gross = capital × rentenfaktor / 10 000 (insensitive to retirementEndAge)', () => {
+    const a = simulateRetirementComparison(defaultProfile, { ...defaultAssumptions, retirementEndAge: 80 }, de2026Rules)
+    const b = simulateRetirementComparison(defaultProfile, { ...defaultAssumptions, retirementEndAge: 100 }, de2026Rules)
+    const aBavBasis = a.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
+    const bBavBasis = b.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
+    // Same capital (accumulation phase identical) and same rentenfaktor → identical gross monthly payout.
+    expect(aBavBasis.grossMonthlyPayout).toBeCloseTo(bBavBasis.grossMonthlyPayout, 6)
+    // Sanity: matches the formula directly.
+    expect(aBavBasis.grossMonthlyPayout).toBeCloseTo(
+      (aBavBasis.capitalAtRetirement / 10_000) * defaultAssumptions.bav.rentenfaktor,
+      6,
+    )
+  })
+
+  it('simulate: bAV in kapitalverzehr mode → gross matches monthlyPayoutFromCapital over end-age horizon', () => {
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        bav: { ...defaultAssumptions.bav, payoutMode: 'kapitalverzehr' },
+      },
+      de2026Rules,
+    )
+    const bavBasis = sim.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
+    const payoutYears = defaultAssumptions.retirementEndAge - defaultProfile.retirementAge
+    const payoutReturn = bavBasis.annualReturn - defaultAssumptions.bav.fees.annualAssetFee
+    const expected = monthlyPayoutFromCapital(bavBasis.capitalAtRetirement, payoutReturn, payoutYears)
+    expect(bavBasis.grossMonthlyPayout).toBeCloseTo(expected, 6)
+  })
+
+  it('simulate: pAV in zeitrente mode → gross matches monthlyPayoutFromCapital over zeitrenteYears', () => {
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        insurance: { ...defaultAssumptions.insurance, payoutMode: 'zeitrente', zeitrenteYears: 12 },
+      },
+      de2026Rules,
+    )
+    const pavBasis = sim.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
+    const payoutReturn = pavBasis.annualReturn - defaultAssumptions.insurance.fees.annualAssetFee
+    const expected = monthlyPayoutFromCapital(pavBasis.capitalAtRetirement, payoutReturn, 12)
+    expect(pavBasis.grossMonthlyPayout).toBeCloseTo(expected, 6)
+  })
+
+  it('simulate: ETF payout is unaffected by bAV/pAV payoutMode (always self-managed drawdown)', () => {
+    const a = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const b = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        bav: { ...defaultAssumptions.bav, payoutMode: 'kapitalverzehr' },
+        insurance: { ...defaultAssumptions.insurance, payoutMode: 'zeitrente', zeitrenteYears: 10 },
+      },
+      de2026Rules,
+    )
+    const aEtfBasis = a.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')!
+    const bEtfBasis = b.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')!
+    expect(aEtfBasis.grossMonthlyPayout).toBeCloseTo(bEtfBasis.grossMonthlyPayout, 6)
+    expect(aEtfBasis.netMonthlyPayout).toBeCloseTo(bEtfBasis.netMonthlyPayout, 6)
+  })
+})
+
 describe('default-profile end-to-end snapshot', () => {
   // Locks in the three key output metrics for the default profile and assumptions.
   // Captures regression when any part of the engine changes.
@@ -778,50 +886,56 @@ describe('default-profile end-to-end snapshot', () => {
   })
 
   it('bAV: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
-    // after #48: default Durchführungsweg is direktversicherung_3_63 → voll_versorgungsbezug
-    // (full marginal rate, no Fünftelregelung). afterTaxLumpSum drops materially vs. pre-#48
-    // Fünftelregelung values. netMonthlyPayout is unchanged (laufende Versorgungsbezüge routing unaffected).
+    // #54: bAV now defaults to Leibrente with Rentenfaktor 30 EUR/10k/Monat. Gross monthly payout
+    // is now capital/10000 × 30 (lifelong annuity) instead of monthlyPayoutFromCapital(...,23 yr).
+    // capitalAtRetirement and afterTaxLumpSum are unchanged. netMonthlyPayout drops because the
+    // Rentenfaktor-based gross is materially lower than the depletion annuity over 23 years
+    // (which over-pays by drawing down principal as well as return).
     //
-    // Pre-#48 values (Fünftelregelung for reference):
-    //   konservativ: 144_459   basis: 197_753   optimistisch: 270_940
-    // Post-#48 values (voll_versorgungsbezug, default §3 Nr. 63):
-    //   konservativ: 98_632    basis: 141_809   optimistisch: 213_152
-    // Delta (lower because full marginal rate > Fünftelregelung on a large spike):
-    //   konservativ: -45_827   basis: -55_944   optimistisch: -57_788
+    // Pre-#54 netMonthlyPayout (capital drawdown, payoutYears = 23):
+    //   konservativ: 922  basis: 1_487  optimistisch: 2_438
+    // Post-#54 netMonthlyPayout (Leibrente, rentenfaktor 30 EUR/10k):
+    //   konservativ: 606  basis:   912  optimistisch: 1_300
     const k = find('bav', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(243_214)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(98_632)   // was 144_459 before #48 (-45_827); voll_versorgungsbezug §22 Nr. 5 EStG
-    expect(Math.round(k.netMonthlyPayout)).toBe(922)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(98_632)   // unchanged from #48
+    expect(Math.round(k.netMonthlyPayout)).toBe(606)      // was 922 pre-#54 (Leibrente vs. 23-yr drawdown)
 
     const b = find('bav', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(379_719)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(141_809)  // was 197_753 before #48 (-55_944); voll_versorgungsbezug §22 Nr. 5 EStG
-    expect(Math.round(b.netMonthlyPayout)).toBe(1_487)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(141_809)  // unchanged from #48
+    expect(Math.round(b.netMonthlyPayout)).toBe(912)      // was 1_487 pre-#54
 
     const o = find('bav', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(611_164)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(213_152)  // was 270_940 before #48 (-57_788); voll_versorgungsbezug §22 Nr. 5 EStG
-    expect(Math.round(o.netMonthlyPayout)).toBe(2_438)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(213_152)  // unchanged from #48
+    expect(Math.round(o.netMonthlyPayout)).toBe(1_300)    // was 2_438 pre-#54
   })
 
   it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
-    // after #46: afterTaxInsuranceLumpSum now routes through calculateRetirementTax;
-    // Sonderausgaben-Pauschbetrag reduces zvE → slightly lower tax → slightly higher net lump sum.
-    // netMonthlyPayout unchanged (Halbeinkünfte gain already small relative to zvE threshold).
+    // #54: pAV now defaults to Leibrente with Rentenfaktor 28 EUR/10k/Monat (slightly lower
+    // than the bAV default to reflect typical private-contract pricing). capitalAtRetirement
+    // and afterTaxLumpSum are unchanged. netMonthlyPayout drops because Rentenfaktor-based
+    // gross is materially lower than the 23-year depletion annuity used pre-#54.
+    //
+    // Pre-#54 netMonthlyPayout (capital drawdown, payoutYears = 23):
+    //   konservativ: 418  basis: 783  optimistisch: 1_486
+    // Post-#54 netMonthlyPayout (Leibrente, rentenfaktor 28 EUR/10k):
+    //   konservativ: 270  basis: 413  optimistisch:   653
     const k = find('versicherung', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(96_525)
     expect(Math.round(k.afterTaxLumpSum!)).toBe(96_525) // gain < basicAllowance → still no Halbeinkünfte tax
-    expect(Math.round(k.netMonthlyPayout)).toBe(418)
+    expect(Math.round(k.netMonthlyPayout)).toBe(270)    // was 418 pre-#54
 
     const b = find('versicherung', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(147_636)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(141_947)  // was 141_936 before #46 (+11)
-    expect(Math.round(b.netMonthlyPayout)).toBe(783)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(141_947)  // unchanged from #46
+    expect(Math.round(b.netMonthlyPayout)).toBe(413)      // was 783 pre-#54
 
     const o = find('versicherung', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(233_291)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(211_565)  // was 211_549 before #46 (+16)
-    expect(Math.round(o.netMonthlyPayout)).toBe(1_486)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(211_565)  // unchanged from #46
+    expect(Math.round(o.netMonthlyPayout)).toBe(653)      // was 1_486 pre-#54
   })
 })
 

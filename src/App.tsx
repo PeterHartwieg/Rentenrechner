@@ -13,7 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Calculator, Check, Coins, Download, Link, RotateCcw, Settings, TrendingUp } from 'lucide-react'
-import type { BavDurchfuehrungsweg, BavFundingResult, InsuranceTaxMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
+import type { BavDurchfuehrungsweg, BavFundingResult, InsuranceTaxMode, PayoutMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from './engine/projections'
 import { careEmployeeRateForChildren } from './engine/salary'
@@ -703,6 +703,66 @@ function App() {
             </>
           )}
 
+          <label className="field">
+            <span>Auszahlungsform (bAV)</span>
+            <select
+              value={assumptions.bav.payoutMode}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: { ...current.bav, payoutMode: event.target.value as PayoutMode },
+                }))
+              }
+            >
+              <option value="leibrente">Leibrente (Rentenfaktor · §1 BetrAVG)</option>
+              <option value="zeitrente">Zeitrente (fester Auszahlungszeitraum)</option>
+              <option value="kapitalverzehr">Kapitalverzehr (selbstgesteuerte Entnahme)</option>
+            </select>
+            <small className="field-hint">
+              {assumptions.bav.payoutMode === 'leibrente' && (
+                <>Lebenslange Rente nach Vertrags-Rentenfaktor; Kapitalverzehr-Endalter wird ignoriert.</>
+              )}
+              {assumptions.bav.payoutMode === 'zeitrente' && (
+                <>Vertraglich befristete Rente über die unten gewählte Anzahl Jahre.</>
+              )}
+              {assumptions.bav.payoutMode === 'kapitalverzehr' && (
+                <>Eigenverwaltete Entnahme bis zum globalen Endalter (Annuitätenformel).</>
+              )}
+            </small>
+          </label>
+          {assumptions.bav.payoutMode === 'leibrente' && (
+            <NumberField
+              label="Rentenfaktor (bAV)"
+              value={assumptions.bav.rentenfaktor}
+              min={1}
+              max={80}
+              step={0.5}
+              suffix="EUR/10k mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: { ...current.bav, rentenfaktor: Number(value) },
+                }))
+              }
+            />
+          )}
+          {assumptions.bav.payoutMode === 'zeitrente' && (
+            <NumberField
+              label="Zeitrente-Dauer (bAV)"
+              value={assumptions.bav.zeitrenteYears}
+              min={1}
+              max={50}
+              step={1}
+              suffix="Jahre"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: { ...current.bav, zeitrenteYears: Number(value) },
+                }))
+              }
+            />
+          )}
+
           <div className="divider" />
 
           <div className="field-grid">
@@ -767,6 +827,11 @@ function App() {
               }
             />
           </div>
+          <p className="field-hint">
+            „Kapitalverzehr bis" gilt nur für ETF und für bAV/pAV im Modus „Kapitalverzehr".
+            Im Modus „Leibrente" oder „Zeitrente" steuert der Vertrag (Rentenfaktor bzw.
+            Vertragslaufzeit) die monatliche Auszahlung.
+          </p>
 
           <div className="subsection-heading">
             <h3>bAV-Kosten</h3>
@@ -960,6 +1025,66 @@ function App() {
                 </p>
               )}
             </>
+          )}
+
+          <label className="field">
+            <span>Auszahlungsform (pAV)</span>
+            <select
+              value={assumptions.insurance.payoutMode}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  insurance: { ...current.insurance, payoutMode: event.target.value as PayoutMode },
+                }))
+              }
+            >
+              <option value="leibrente">Leibrente (Rentenfaktor)</option>
+              <option value="zeitrente">Zeitrente (fester Auszahlungszeitraum)</option>
+              <option value="kapitalverzehr">Kapitalverzehr (selbstgesteuerte Entnahme)</option>
+            </select>
+            <small className="field-hint">
+              {assumptions.insurance.payoutMode === 'leibrente' && (
+                <>Lebenslange Rente nach Vertrags-Rentenfaktor; Kapitalverzehr-Endalter wird ignoriert.</>
+              )}
+              {assumptions.insurance.payoutMode === 'zeitrente' && (
+                <>Vertraglich befristete Rente über die unten gewählte Anzahl Jahre.</>
+              )}
+              {assumptions.insurance.payoutMode === 'kapitalverzehr' && (
+                <>Eigenverwaltete Entnahme bis zum globalen Endalter (Annuitätenformel).</>
+              )}
+            </small>
+          </label>
+          {assumptions.insurance.payoutMode === 'leibrente' && (
+            <NumberField
+              label="Rentenfaktor (pAV)"
+              value={assumptions.insurance.rentenfaktor}
+              min={1}
+              max={80}
+              step={0.5}
+              suffix="EUR/10k mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  insurance: { ...current.insurance, rentenfaktor: Number(value) },
+                }))
+              }
+            />
+          )}
+          {assumptions.insurance.payoutMode === 'zeitrente' && (
+            <NumberField
+              label="Zeitrente-Dauer (pAV)"
+              value={assumptions.insurance.zeitrenteYears}
+              min={1}
+              max={50}
+              step={1}
+              suffix="Jahre"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  insurance: { ...current.insurance, zeitrenteYears: Number(value) },
+                }))
+              }
+            />
           )}
 
           <div className="subsection-heading">

@@ -630,3 +630,62 @@ in #46.
 | direktversicherung_40b_alt | false | voll_versorgungsbezug |
 | direktzusage | any | fuenftelregelung |
 | unterstuetzungskasse | any | fuenftelregelung |
+
+## Payout Form: Leibrente / Zeitrente / Kapitalverzehr (#54)
+
+bAV and private-insurance retirement payouts were previously modelled as a self-managed
+capital-drawdown over `retirementEndAge − retirementAge` for all three products. That is
+correct for ETF (the user controls the drawdown horizon) but materially wrong for bAV and
+pAV, which pay an actuarially-priced annuity defined by the contract.
+
+### §1 Abs. 1 Satz 1 BetrAVG — Versorgungsleistungen
+
+Source: https://www.gesetze-im-internet.de/betravg/__1.html
+
+> Werden einem Arbeitnehmer Leistungen der Alters-, Invaliditäts- oder Hinterbliebenen-
+> versorgung aus Anlass seines Arbeitsverhältnisses vom Arbeitgeber zugesagt
+> (betriebliche Altersversorgung), gelten die Vorschriften dieses Gesetzes.
+
+The classical bAV Leistungsformen are Leibrente (lifelong), Kapitalleistung (single sum),
+and Auszahlungsplan / Zeitrente (fixed-term). §1b BetrAVG governs Anwartschaften
+(unverfallbar). §3 BetrAVG governs the limited Abfindung options. The calculator does
+not model invalidity / survivor benefits.
+
+### Rentenfaktor in Versicherungsbedingungen
+
+The Rentenfaktor is the contractual quotient that converts accumulated capital into a
+guaranteed monthly annuity:
+
+```
+gross_monthly_payout = capital / 10 000 EUR × Rentenfaktor
+```
+
+A Garantierter Mindestrentenfaktor is typically named alongside the planned/projected
+Rentenfaktor in the Versicherungsbedingungen. Typical 2026 unisex values for age-67
+starts cluster between 25 and 35 EUR per 10 000 EUR Kapital per month, depending on
+provider, cost class, and guarantee duration. The calculator's defaults (bAV: 30,
+pAV: 28) sit inside this band. The user can override the Rentenfaktor for both products.
+
+### Modeling Choices
+
+- `payoutMode === 'leibrente'`: gross monthly payout is rentenfaktor-driven, independent
+  of `retirementEndAge`. Payments continue past `retirementEndAge`; the calculator does
+  not model death timing or actuarial mortality. Net is computed by passing the gross
+  through the existing tax / KV / PV pipeline (§19 EStG laufende Versorgungsbezüge,
+  §229 Abs. 1 Satz 1 Nr. 5 SGB V Versorgungsbezüge for KV/PV).
+- `payoutMode === 'zeitrente'`: gross monthly payout uses the existing depletion-annuity
+  formula over the contractual `zeitrenteYears`, independent of `retirementEndAge`. After
+  the term, payouts stop.
+- `payoutMode === 'kapitalverzehr'`: previous behavior — gross uses the depletion-annuity
+  formula over `retirementEndAge − retirementAge`. Models a self-managed withdrawal,
+  appropriate for ETF and for bAV/pAV products that offer Wahlrecht and the user has
+  chosen Kapital plus self-managed drawdown.
+
+ETF always uses `kapitalverzehr` semantics internally (no contractual Rentenfaktor).
+
+### Tax / SV Implications Unchanged
+
+The income-tax and KV/PV routing for laufende bAV-Renten and pAV-Renten continues to use
+the existing `netBavPayout` / `netInsurancePayout` paths. Only the gross monthly figure
+that enters those helpers changes. Lump-sum (Kapitalabfindung) tax routing — driven by
+`Durchführungsweg` for bAV and `InsuranceTaxMode` for pAV — is untouched by #54.

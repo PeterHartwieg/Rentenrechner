@@ -50,6 +50,23 @@ export type BavLumpSumTaxMode =
 
 export type ReturnScenarioId = 'konservativ' | 'basis' | 'optimistisch'
 
+/**
+ * Retirement-phase payout mode for bAV and private-insurance contracts. (#54)
+ *
+ * - leibrente: Lifelong annuity priced via the contractual Rentenfaktor (EUR/Monat per
+ *   10 000 EUR Kapital). Payments continue past `retirementEndAge`; the calculator does
+ *   not model actuarial death timing. Capital is consumed by the insurer; the policyholder
+ *   does not bear longevity risk. Basis: §1 Abs. 1 Satz 1 BetrAVG (Versorgungsleistungen
+ *   "auf das Leben"). The Rentenfaktor lives in the Versicherungsbedingungen of each
+ *   contract; a Garantierter Mindestrentenfaktor is typically named alongside the planned
+ *   value.
+ * - zeitrente: Fixed-term annuity over `zeitrenteYears`. Capital depletes over that
+ *   contractual horizon, independent of the user's chosen `retirementEndAge`.
+ * - kapitalverzehr: Drawdown plan — capital depletes over `retirementEndAge - retirementAge`.
+ *   Models a self-managed withdrawal (the ETF default), not a contractual annuity.
+ */
+export type PayoutMode = 'leibrente' | 'zeitrente' | 'kapitalverzehr'
+
 export interface PersonalProfile {
   age: number
   retirementAge: number
@@ -96,6 +113,12 @@ export interface BavAssumptions {
   // #48: for direktversicherung_40b_alt only — true when §52 Abs. 28 EStG a.F. conditions met
   // (≥12-year runtime, ≥5 annual premium payments, capital payout not annuity)
   pre2005EligibleTaxFree: boolean
+  // #54: retirement-phase payout mode — see PayoutMode docstring.
+  payoutMode: PayoutMode
+  // #54: contractual Rentenfaktor in EUR/Monat per 10 000 EUR Kapital (used when payoutMode === 'leibrente').
+  rentenfaktor: number
+  // #54: fixed-term horizon in years (used when payoutMode === 'zeitrente').
+  zeitrenteYears: number
 }
 
 export interface InsuranceAssumptions {
@@ -108,6 +131,11 @@ export interface InsuranceAssumptions {
   // Monthly other retirement income for marginal-tax calculation (Halbeinkünfteverfahren only)
   monthlyOtherRetirementIncome: number
   fees: FeeModel
+  // #54: retirement-phase payout mode — see PayoutMode docstring. Private annuity contracts
+  // typically have their own Rentenfaktor distinct from the bAV contract's value.
+  payoutMode: PayoutMode
+  rentenfaktor: number
+  zeitrenteYears: number
 }
 
 export interface ScenarioAssumptions {

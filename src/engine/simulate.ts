@@ -16,6 +16,7 @@ import {
   afterTaxBavLumpSum,
   afterTaxInsuranceLumpSum,
   afterTaxInvestmentCapital,
+  computeGrossMonthlyPayout,
   deriveBavLumpSumTaxMode,
   deriveInsuranceTaxMode,
   etfPayoutSchedule,
@@ -80,11 +81,29 @@ function buildProductResult(params: {
         : undefined,
   })
   const payoutReturn = params.scenario.annualReturn - params.fees.annualAssetFee
-  const grossMonthlyPayout = monthlyPayoutFromCapital(
-    projection.capital,
-    payoutReturn,
-    payoutYears,
-  )
+  // #54: ETF stays in capital-drawdown mode (user-managed depletion). bAV and private
+  // insurance branch on the contractual `payoutMode` — Leibrente uses the contract's
+  // Rentenfaktor instead of `payoutYears`.
+  let grossMonthlyPayout: number
+  if (params.taxMode === 'etf') {
+    grossMonthlyPayout = monthlyPayoutFromCapital(projection.capital, payoutReturn, payoutYears)
+  } else if (params.taxMode === 'bav') {
+    grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
+      mode: params.assumptions.bav.payoutMode,
+      rentenfaktor: params.assumptions.bav.rentenfaktor,
+      zeitrenteYears: params.assumptions.bav.zeitrenteYears,
+      kapitalverzehrYears: payoutYears,
+      payoutReturn,
+    })
+  } else {
+    grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
+      mode: params.assumptions.insurance.payoutMode,
+      rentenfaktor: params.assumptions.insurance.rentenfaktor,
+      zeitrenteYears: params.assumptions.insurance.zeitrenteYears,
+      kapitalverzehrYears: payoutYears,
+      payoutReturn,
+    })
+  }
 
   let afterTaxLumpSum: number | null = projection.capital
   let netMonthlyPayout = grossMonthlyPayout
