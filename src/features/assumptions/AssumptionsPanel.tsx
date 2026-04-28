@@ -1,3 +1,4 @@
+import './AssumptionsPanel.css'
 import type { GermanRules } from '../../domain/types';
 import { formatCurrency, formatPercent } from '../../utils/format';
 

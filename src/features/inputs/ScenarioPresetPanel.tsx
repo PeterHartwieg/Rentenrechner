@@ -1,3 +1,4 @@
+import './ScenarioPresetPanel.css'
 import type { ScenarioAssumptions } from '../../domain/types'
 import { SCENARIO_PRESETS } from '../../data/presets'
 

@@ -1,3 +1,5 @@
+import '../../ui/forms.css'
+import '../../ui/fees.css'
 import type React from 'react'
 import type {
   AltersvorsorgedepotFundingResult,

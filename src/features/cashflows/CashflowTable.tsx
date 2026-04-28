@@ -1,3 +1,4 @@
+import './CashflowTable.css'
 import type { ProductResult } from '../../domain/types'
 import { formatCurrency } from '../../utils/format'
 

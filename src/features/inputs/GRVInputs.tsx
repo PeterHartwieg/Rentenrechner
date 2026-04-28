@@ -1,3 +1,4 @@
+import '../../ui/forms.css'
 import type React from 'react'
 import type { ScenarioAssumptions, StatutoryPensionAssumptions } from '../../domain/types';
 import { NumberField } from '../../ui/NumberField';

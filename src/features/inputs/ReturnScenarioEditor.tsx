@@ -1,3 +1,4 @@
+import './ReturnScenarioEditor.css'
 import type { ReturnScenario } from '../../domain/types'
 import { NumberField } from '../../ui/NumberField'
 

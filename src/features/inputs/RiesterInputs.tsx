@@ -1,3 +1,4 @@
+import '../../ui/forms.css'
 import type React from 'react'
 import type {
   PersonalProfile,

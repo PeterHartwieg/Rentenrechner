@@ -1,3 +1,6 @@
+import '../../ui/forms.css'
+import '../../ui/fees.css'
+import './InsuranceInputs.css'
 import type React from 'react'
 import type {
   GermanRules,

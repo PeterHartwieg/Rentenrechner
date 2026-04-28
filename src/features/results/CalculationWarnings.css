@@ -1,0 +1,69 @@
+.warnings-panel {
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.warnings-panel h2 {
+  margin: 0 0 14px;
+  letter-spacing: 0;
+}
+
+.warnings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.warning-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #e5ebf2;
+  border-radius: 6px;
+}
+
+.warning-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.warning-item-category {
+  font-weight: 700;
+  font-size: 0.87rem;
+  color: #172033;
+}
+
+.warning-item-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #667085;
+}
+
+.badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-implementiert {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.badge-vereinfacht {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.badge-nicht-modelliert {
+  color: #991b1b;
+  background: #fee2e2;
+}

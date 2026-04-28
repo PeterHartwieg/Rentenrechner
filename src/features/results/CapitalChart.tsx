@@ -1,3 +1,4 @@
+import '../../ui/charts.css'
 import {
   CartesianGrid,
   Legend,

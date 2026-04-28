@@ -1,3 +1,4 @@
+import './DetailComparisonTable.css'
 import { Check, Link, Download } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/format';
 

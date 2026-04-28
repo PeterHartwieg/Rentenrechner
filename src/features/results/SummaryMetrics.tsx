@@ -1,3 +1,4 @@
+import './SummaryMetrics.css'
 import { ResultMetric } from '../../ui/ResultMetric'
 import { formatCurrency, formatNumber } from '../../utils/format'
 

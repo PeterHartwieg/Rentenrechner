@@ -1,3 +1,5 @@
+import '../../ui/charts.css'
+import './FeeDragChart.css'
 import {
   Bar,
   BarChart,

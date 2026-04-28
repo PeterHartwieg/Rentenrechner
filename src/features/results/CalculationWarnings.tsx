@@ -1,3 +1,4 @@
+import './CalculationWarnings.css'
 import { CALCULATION_WARNINGS, BADGE_LABEL } from '../../app/productPresentation';
 
 export function CalculationWarnings() {

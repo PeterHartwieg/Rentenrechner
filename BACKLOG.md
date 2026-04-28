@@ -13,12 +13,15 @@ Legal/rules research lives in `LEGAL_REVIEW.md`. Product-specific research lives
 
 ## Current Focus
 
-Work in this order. Each group touches overlapping code paths or creates prerequisites for later groups.
+**Active workstream: agent-readability refactor.** Before starting new feature additions, work through `AGENT_READABILITY_REFACTOR_PLAN.md`. The goal is to reduce `App.tsx`, split tests, localize product simulators/validators/types, and update docs so future feature work needs much less context.
 
-1. **Private-insurance lifecycle**: `#65`.
-3. **Scenario UX and exports**: `#16`, then the useful slice of P3 "saved scenario library and scenario duplication", then `#15`.
-4. **Retirement-income refinements**: GRV salary growth / Rentenwert indexation, Versorgungswerk / Beamtenpension variants, and Basisrente edge cases.
-5. **Later analytical/publishing work**: Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
+Phases complete: 0 (lint/build baseline), 1 (UI primitives), 2 (app state hooks), 3 (JSX feature extraction), 4 (CSS co-location). Next: Phase 5 (test fixtures + integration baseline).
+
+After that refactor is complete, resume feature work in this order. Each group touches overlapping code paths or creates prerequisites for later groups.
+
+1. **Scenario UX and exports**: `#16`, then the useful slice of P3 "saved scenario library and scenario duplication", then `#15`.
+2. **Retirement-income refinements**: GRV salary growth / Rentenwert indexation, Versorgungswerk / Beamtenpension variants, and Basisrente edge cases.
+3. **Later analytical/publishing work**: Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
 
 ---
 

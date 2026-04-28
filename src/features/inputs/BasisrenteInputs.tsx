@@ -1,3 +1,5 @@
+import '../../ui/forms.css'
+import '../../ui/fees.css'
 import type React from 'react'
 import type { BasisrenteFundingResult, GermanRules, ProductResult, ScenarioAssumptions } from '../../domain/types'
 import { NumberField } from '../../ui/NumberField'
