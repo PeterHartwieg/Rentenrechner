@@ -44,11 +44,10 @@ describe('parseStateFromJson (#40)', () => {
   })
 
   it('fills missing nested fee fields from defaults', () => {
-    // Simulate a saved state where bav.fees is missing fixedMonthlyFee
-    // Cast to unknown then BavAssumptions to represent intentionally incomplete saved data
+    // Simulate a saved state where bav.fees is missing fixedMonthlyFee and pensionPayoutFeePct
     const partial = {
       ...defaultAssumptions.bav,
-      fees: { annualAssetFee: 0.01, contributionFee: 0.02, acquisitionCostPct: 0.03, acquisitionCostSpreadYears: 5 },
+      fees: { wrapperAssetFee: 0.008, fundAssetFee: 0.002, contributionFee: 0.02, acquisitionCostPct: 0.03, acquisitionCostSpreadYears: 5 },
     } as unknown as typeof defaultAssumptions.bav
     const raw = buildStateJson(defaultProfile, { ...defaultAssumptions, bav: partial })
     const result = parseStateFromJson(raw)
@@ -56,7 +55,8 @@ describe('parseStateFromJson (#40)', () => {
     // Missing fixedMonthlyFee should fall back to the default value
     expect(result!.assumptions.bav.fees.fixedMonthlyFee).toBe(defaultAssumptions.bav.fees.fixedMonthlyFee)
     // Present fields are preserved
-    expect(result!.assumptions.bav.fees.annualAssetFee).toBe(0.01)
+    expect(result!.assumptions.bav.fees.wrapperAssetFee).toBe(0.008)
+    expect(result!.assumptions.bav.fees.fundAssetFee).toBe(0.002)
   })
 
   it('preserves user-customized values in a valid saved state', () => {
@@ -115,5 +115,43 @@ describe('parseStateFromJson (#40)', () => {
     expect(result!.assumptions.bav.contractualMatchPercent).toBe(0.2)
     expect(result!.assumptions.bav.contractualFixedMonthly).toBe(25)
     expect(result!.assumptions.bav.statutoryMinimumSubsidyEnabled).toBe(true)
+  })
+
+  it('#55 migration: old annualAssetFee is moved to wrapperAssetFee, fundAssetFee defaults to 0', () => {
+    // Simulate a pre-#55 saved state where fees use the old single annualAssetFee field
+    const oldFees = {
+      annualAssetFee: 0.008,
+      contributionFee: 0.04,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0.025,
+      acquisitionCostSpreadYears: 5,
+    }
+    const oldBav = { ...defaultAssumptions.bav, fees: oldFees }
+    const raw = JSON.stringify({ version: 1, profile: defaultProfile, assumptions: { ...defaultAssumptions, bav: oldBav } })
+    const result = parseStateFromJson(raw)
+    expect(result).not.toBeNull()
+    // Old annualAssetFee value is preserved in wrapperAssetFee
+    expect(result!.assumptions.bav.fees.wrapperAssetFee).toBe(0.008)
+    // fundAssetFee defaults to 0 (not split automatically — user sets it explicitly)
+    expect(result!.assumptions.bav.fees.fundAssetFee).toBe(0)
+    // Other fields are preserved
+    expect(result!.assumptions.bav.fees.contributionFee).toBe(0.04)
+  })
+
+  it('#55 migration: old annualAssetFee on insurance also migrates correctly', () => {
+    const oldFees = {
+      annualAssetFee: 0.014,
+      contributionFee: 0.03,
+      fixedMonthlyFee: 5,
+      acquisitionCostPct: 0.025,
+      acquisitionCostSpreadYears: 5,
+    }
+    const oldInsurance = { ...defaultAssumptions.insurance, fees: oldFees }
+    const raw = JSON.stringify({ version: 1, profile: defaultProfile, assumptions: { ...defaultAssumptions, insurance: oldInsurance } })
+    const result = parseStateFromJson(raw)
+    expect(result).not.toBeNull()
+    expect(result!.assumptions.insurance.fees.wrapperAssetFee).toBe(0.014)
+    expect(result!.assumptions.insurance.fees.fundAssetFee).toBe(0)
+    expect(result!.assumptions.insurance.fees.fixedMonthlyFee).toBe(5)
   })
 })

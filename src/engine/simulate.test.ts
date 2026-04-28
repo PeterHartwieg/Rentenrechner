@@ -5,6 +5,7 @@ import type { PersonalProfile } from '../domain/types'
 import {
   careEmployeeRateForChildren,
   calculateBavFunding,
+  calculatePkv257Subsidy,
   calculateSalaryResult,
   calculateVorsorgepauschale2026,
 } from './salary'
@@ -416,7 +417,7 @@ describe('ETF rules — #31 Basiszins and #7/#36 Vorabpauschale', () => {
       annualReturn: 0.07,
       inflationRate: 0.02,
       scenario: { id: 'basis', label: 'Basis', annualReturn: 0.07 },
-      fees: { annualAssetFee: 0, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, acquisitionCostSpreadYears: 1 },
+      fees: { wrapperAssetFee: 0, fundAssetFee: 0, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, acquisitionCostSpreadYears: 1, pensionPayoutFeePct: 0 },
       etfVorabpauschale: { rules: de2026Rules, partialExemption: 0.3 },
     })
     // Year 1: prorated contributions → VP > 0 (unlike old opening-balance-only formula)
@@ -440,7 +441,7 @@ describe('ETF rules — #31 Basiszins and #7/#36 Vorabpauschale', () => {
       annualReturn: 0.1,
       inflationRate: 0,
       scenario: { id: 'basis', label: 'Basis', annualReturn: 0.1 },
-      fees: { annualAssetFee: 0, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, acquisitionCostSpreadYears: 1 },
+      fees: { wrapperAssetFee: 0, fundAssetFee: 0, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, acquisitionCostSpreadYears: 1, pensionPayoutFeePct: 0 },
       etfVorabpauschale: { rules: de2026Rules, partialExemption: 0 },
     })
     // Expected prorated acquisition base: c × sum(12+11+...+1)/12 = c × 78/12 = c × 6.5
@@ -897,7 +898,7 @@ describe('payoutMode (#54) — Leibrente / Zeitrente / Kapitalverzehr', () => {
     )
     const bavBasis = sim.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
     const payoutYears = defaultAssumptions.retirementEndAge - defaultProfile.retirementAge
-    const payoutReturn = bavBasis.annualReturn - defaultAssumptions.bav.fees.annualAssetFee
+    const payoutReturn = bavBasis.annualReturn - (defaultAssumptions.bav.fees.wrapperAssetFee + defaultAssumptions.bav.fees.fundAssetFee)
     const expected = monthlyPayoutFromCapital(bavBasis.capitalAtRetirement, payoutReturn, payoutYears)
     expect(bavBasis.grossMonthlyPayout).toBeCloseTo(expected, 6)
   })
@@ -912,7 +913,7 @@ describe('payoutMode (#54) — Leibrente / Zeitrente / Kapitalverzehr', () => {
       de2026Rules,
     )
     const pavBasis = sim.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
-    const payoutReturn = pavBasis.annualReturn - defaultAssumptions.insurance.fees.annualAssetFee
+    const payoutReturn = pavBasis.annualReturn - (defaultAssumptions.insurance.fees.wrapperAssetFee + defaultAssumptions.insurance.fees.fundAssetFee)
     const expected = monthlyPayoutFromCapital(pavBasis.capitalAtRetirement, payoutReturn, 12)
     expect(pavBasis.grossMonthlyPayout).toBeCloseTo(expected, 6)
   })
@@ -1084,5 +1085,190 @@ describe('deriveInsuranceTaxMode — calendar-year classification', () => {
     // At minimum the lump sum should be ≤ capital (tax applied or zero)
     expect(ins?.afterTaxLumpSum).toBeDefined()
     expect((ins?.afterTaxLumpSum ?? 0)).toBeLessThanOrEqual(ins?.capitalAtRetirement ?? 0)
+  })
+})
+
+describe('#56 pension payout fee', () => {
+  it('grossMonthlyPayout is reduced by pensionPayoutFeePct for bAV Leibrente', () => {
+    const noFee = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const withFee = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        bav: { ...defaultAssumptions.bav, fees: { ...defaultAssumptions.bav.fees, pensionPayoutFeePct: 0.0175 } },
+      },
+      de2026Rules,
+    )
+    const bavNoFee = noFee.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
+    const bavFee = withFee.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
+    // Capital at retirement is unaffected by pension payout fee (accumulation only)
+    expect(bavFee.capitalAtRetirement).toBeCloseTo(bavNoFee.capitalAtRetirement, 0)
+    // grossMonthlyPayout with 1.75% fee ≈ no-fee × (1 - 0.0175)
+    expect(bavFee.grossMonthlyPayout).toBeCloseTo(bavNoFee.grossMonthlyPayout * (1 - 0.0175), 2)
+    // Net payout is lower after fee
+    expect(bavFee.netMonthlyPayout).toBeLessThan(bavNoFee.netMonthlyPayout)
+  })
+
+  it('pensionPayoutFeePct does not affect ETF payout', () => {
+    // ETF uses zeroFeeModel (pensionPayoutFeePct=0); adding a non-zero fee to bAV must not bleed into ETF
+    const withBavFee = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, bav: { ...defaultAssumptions.bav, fees: { ...defaultAssumptions.bav.fees, pensionPayoutFeePct: 0.05 } } },
+      de2026Rules,
+    )
+    const base = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const etfBase = base.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')!
+    const etfWithFee = withBavFee.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')!
+    // ETF gross payout is unchanged even when bAV pension fee is set
+    expect(etfWithFee.grossMonthlyPayout).toBeCloseTo(etfBase.grossMonthlyPayout, 6)
+  })
+})
+
+describe('#57 accumulationRiy', () => {
+  it('accumulationRiy is positive when fees > 0', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const bav = sim.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
+    // Default bAV has contribution fee 3%, asset fee 0.5%, acquisition cost 2.5% → RIY > 0
+    expect(bav.accumulationRiy).toBeGreaterThan(0)
+  })
+
+  it('accumulationRiy is near zero for ETF with only a small TER', () => {
+    // Default ETF has annualAssetFee = 0.2% and no other fees → very small RIY
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const etf = sim.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')!
+    // 0.2% TER → RIY should be close to 0.2%
+    expect(etf.accumulationRiy).toBeCloseTo(0.002, 2)
+  })
+
+  it('accumulationRiy is lower for zero-fee product vs. high-fee product', () => {
+    const zeroFeeAssumptions = {
+      ...defaultAssumptions,
+      bav: {
+        ...defaultAssumptions.bav,
+        fees: {
+          wrapperAssetFee: 0,
+          fundAssetFee: 0,
+          contributionFee: 0,
+          fixedMonthlyFee: 0,
+          acquisitionCostPct: 0,
+          acquisitionCostSpreadYears: 5,
+          pensionPayoutFeePct: 0,
+        },
+      },
+    }
+    const highFeeAssumptions = {
+      ...defaultAssumptions,
+      bav: {
+        ...defaultAssumptions.bav,
+        fees: {
+          wrapperAssetFee: 0.007,
+          fundAssetFee: 0.002,
+          contributionFee: 0.0975,
+          fixedMonthlyFee: 0,
+          acquisitionCostPct: 0.025,
+          acquisitionCostSpreadYears: 5,
+          pensionPayoutFeePct: 0.0175,
+        },
+      },
+    }
+    const simZero = simulateRetirementComparison(defaultProfile, zeroFeeAssumptions, de2026Rules)
+    const simHigh = simulateRetirementComparison(defaultProfile, highFeeAssumptions, de2026Rules)
+    const bavZero = simZero.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
+    const bavHigh = simHigh.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')!
+    // RIY with zero fees: the closed-form FV and the accumulation loop may differ by floating-point epsilon
+    expect(bavZero.accumulationRiy).toBeCloseTo(0, 10)
+    expect(bavHigh.accumulationRiy).toBeGreaterThan(bavZero.accumulationRiy)
+    // Hochkosten RIY should be well above 1.5 pp
+    expect(bavHigh.accumulationRiy).toBeGreaterThan(0.015)
+  })
+})
+
+describe('#50 PKV premium modeling', () => {
+  const pkvBase: PersonalProfile = {
+    ...defaultProfile,
+    publicHealthInsurance: false,
+    pkvMonthlyPremium: 0,
+    pPVMonthlyPremium: 0,
+  }
+  const pkv500: PersonalProfile = {
+    ...pkvBase,
+    pkvMonthlyPremium: 500,
+    pPVMonthlyPremium: 50,
+  }
+
+  it('calculatePkv257Subsidy: half the premium, capped at GKV employer equivalent', () => {
+    // monthlyGross = 75000/12 = 6250; healthAndCareCapMonth = 5812.50
+    // maxSubsidy = (0.146/2 + 0.018) * 5812.50 = (0.073 + 0.018) * 5812.50 = 0.091 * 5812.50 = 528.9375
+    // halfPremium = (500 + 50) / 2 = 275 → subsidy = min(275, 528.94) = 275
+    const subsidy = calculatePkv257Subsidy(75_000 / 12, 500, 50, de2026Rules)
+    expect(subsidy).toBeCloseTo(275, 1)
+  })
+
+  it('calculatePkv257Subsidy: capped when premium exceeds GKV employer equivalent', () => {
+    // Very high PKV premium: halfPremium = (2000 + 200) / 2 = 1100 > maxSubsidy (528.94)
+    // Expected: subsidy = maxSubsidy ≈ 528.94
+    const subsidy = calculatePkv257Subsidy(75_000 / 12, 2_000, 200, de2026Rules)
+    const monthlyBase = de2026Rules.socialSecurity.healthAndCareCapMonth // 5812.50
+    const maxSubsidy = (de2026Rules.socialSecurity.healthGeneralRate / 2 + de2026Rules.socialSecurity.careEmployerRate) * monthlyBase
+    expect(subsidy).toBeCloseTo(maxSubsidy, 2)
+  })
+
+  it('PKV with zero premiums: salary result identical to GKV=false baseline (no KV/PV social, no premium deduction)', () => {
+    const gkvFalseNoPrems = calculateSalaryResult(pkvBase, de2026Rules)
+    // Social contributions: no health, no care (as before)
+    expect(gkvFalseNoPrems.social.health).toBe(0)
+    expect(gkvFalseNoPrems.social.care).toBe(0)
+    // PKV cost fields are zero
+    expect(gkvFalseNoPrems.pkv257SubsidyMonthly).toBe(0)
+    expect(gkvFalseNoPrems.pkvNetMonthlyCost).toBe(0)
+  })
+
+  it('PKV with 500 + 50 EUR/month: annualNet decreases by net PKV cost (premium minus §257 subsidy)', () => {
+    const noPrems = calculateSalaryResult(pkvBase, de2026Rules)
+    const withPrems = calculateSalaryResult(pkv500, de2026Rules)
+    // §257 subsidy = 275 EUR/month → net PKV cost = 550 - 275 = 275 EUR/month = 3300/year
+    // Income tax LOWER for withPrems (higher Vorsorgepauschale via PKV KV/PV Teilbetrag)
+    expect(withPrems.incomeTax).toBeLessThan(noPrems.incomeTax)
+    // annualNet is lower by net PKV cost minus tax saving
+    expect(withPrems.annualNet).toBeLessThan(noPrems.annualNet)
+    const expectedNetCost = (500 + 50 - 275) * 12 // 3300
+    expect(noPrems.annualNet - withPrems.annualNet).toBeGreaterThan(0)
+    // The difference should be close to expectedNetCost minus the income-tax saving
+    const taxSaving = noPrems.incomeTax - withPrems.incomeTax
+    expect(noPrems.annualNet - withPrems.annualNet).toBeCloseTo(expectedNetCost - taxSaving, 0)
+  })
+
+  it('Vorsorgepauschale for PKV includes annual PKV + pPV premiums as KV/PV Teilbetrag', () => {
+    const vpNoPrems = calculateVorsorgepauschale2026(75_000, pkvBase, de2026Rules)
+    const vpWithPrems = calculateVorsorgepauschale2026(75_000, pkv500, de2026Rules)
+    // With 500+50 = 550/month = 6600/year premium, VP increases by 6600 for KV/PV
+    // but AV Teilbetrag (975) drops to 0 since kvpvSum (6600) exceeds the 1,900 EUR cap.
+    // Net change = +6600 - 975 = +5625.
+    expect(vpWithPrems).toBeGreaterThan(vpNoPrems)
+    expect(vpWithPrems - vpNoPrems).toBeCloseTo(5_625, 0)
+  })
+
+  it('PKV salary result exposes correct pkv257SubsidyMonthly and pkvNetMonthlyCost', () => {
+    const r = calculateSalaryResult(pkv500, de2026Rules)
+    expect(r.pkv257SubsidyMonthly).toBeCloseTo(275, 1)
+    expect(r.pkvNetMonthlyCost).toBeCloseTo(275, 1) // 550 - 275 = 275
+  })
+
+  it('GKV salary result always has zero PKV fields regardless of premium fields', () => {
+    const gkvProfile = { ...defaultProfile }
+    const r = calculateSalaryResult(gkvProfile, de2026Rules)
+    expect(r.pkv257SubsidyMonthly).toBe(0)
+    expect(r.pkvNetMonthlyCost).toBe(0)
+  })
+
+  it('bAV funding net cost differs slightly with PKV premiums (AV Teilbetrag no longer varies with bAV)', () => {
+    const bavFundingNoPkv = calculateBavFunding(pkvBase, de2026Rules, defaultAssumptions.bav)
+    const bavFundingPkv = calculateBavFunding(pkv500, de2026Rules, defaultAssumptions.bav)
+    // PKV: no KV/PV social savings from bAV conversion → higher net cost than GKV (~165/month).
+    // With high PKV premiums the AV Teilbetrag in Vorsorgepauschale is already capped at 0,
+    // so it no longer varies with bAV conversion → pkv500 has slightly higher net cost than pkvBase.
+    expect(bavFundingNoPkv.monthlyNetCost).toBeCloseTo(161, 0)
+    expect(bavFundingPkv.monthlyNetCost).toBeGreaterThan(bavFundingNoPkv.monthlyNetCost)
+    expect(Math.abs(bavFundingPkv.monthlyNetCost - bavFundingNoPkv.monthlyNetCost)).toBeLessThan(10)
   })
 })

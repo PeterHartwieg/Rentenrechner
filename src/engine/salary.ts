@@ -90,10 +90,26 @@ function calculateEmployerSocialContributions(
   }
 }
 
-// §39b EStG 2026 Vorsorgepauschale for Steuerklasse I-V, GKV-insured.
+// §257 SGB V + §61 SGB XI: employer subsidy for employees with private health/care insurance.
+// Employer pays half the premium, capped at the GKV employer equivalent (§3 Nr. 62 EStG: tax-free).
+// Cap = (healthGeneralRate/2 + careEmployerRate) × min(monthlyGross, healthAndCareCapMonth).
+export function calculatePkv257Subsidy(
+  monthlyGross: number,
+  pkvMonthlyPremium: number,
+  pPVMonthlyPremium: number,
+  rules: GermanRules,
+): number {
+  const monthlyBase = Math.min(monthlyGross, rules.socialSecurity.healthAndCareCapMonth)
+  const maxSubsidy =
+    (rules.socialSecurity.healthGeneralRate / 2 + rules.socialSecurity.careEmployerRate) * monthlyBase
+  return Math.min((pkvMonthlyPremium + pPVMonthlyPremium) / 2, maxSubsidy)
+}
+
+// §39b EStG 2026 Vorsorgepauschale for Steuerklasse I-V.
 // Uses steuerlicher Arbeitslohn (gross minus tax-free bAV conversion) as the base.
-// GKV Teilbetrag uses ermäßigter Beitragssatz (§243 SGB V) per §39b(2)Nr.3 EStG.
-// AV Teilbetrag is included up to the 1,900 EUR cap (GKV + PV + AV ≤ 1,900 EUR).
+// GKV: KV Teilbetrag uses ermäßigter Beitragssatz (§243 SGB V) per §39b(2)Nr.3 EStG.
+// PKV: KV/PV Teilbeträge = employee's own annual PKV/pPV premiums (§39b(2)Nr.3 EStG).
+// AV Teilbetrag is included up to the 1,900 EUR cap (KV + PV + AV ≤ 1,900 EUR).
 export function calculateVorsorgepauschale2026(
   steuerlichArbeitslohn: number,
   profile: PersonalProfile,
@@ -105,15 +121,18 @@ export function calculateVorsorgepauschale2026(
 
   const rvTeilbetrag = rvBase * rules.socialSecurity.pensionEmployeeRate
 
+  // PKV: employee's own annual KV/pPV premiums replace the GKV-based Teilbeträge.
+  // The employer's §257 subsidy is §3 Nr. 62 EStG tax-free; only the employee-paid amount
+  // enters the Vorsorgepauschale (the employee pays the gross premium, employer reimburses separately).
   const kvTeilbetrag = profile.publicHealthInsurance
     ? kvBase * (rules.socialSecurity.healthReducedRate / 2 + additionalHealthRate / 2)
-    : 0
+    : profile.pkvMonthlyPremium * 12
 
   const pvTeilbetrag = profile.publicHealthInsurance
     ? kvBase * careEmployeeRateForChildren(profile.childBirthYears, rules.year, rules)
-    : 0
+    : profile.pPVMonthlyPremium * 12
 
-  // AV Teilbetrag: only included if GKV + PV + AV does not exceed 1,900 EUR
+  // AV Teilbetrag: only included if KV + PV + AV does not exceed 1,900 EUR
   const kvpvSum = kvTeilbetrag + pvTeilbetrag
   const avActual = rvBase * rules.socialSecurity.unemploymentEmployeeRate
   const avTeilbetrag = Math.max(0, Math.min(avActual, 1_900 - kvpvSum))
@@ -151,8 +170,30 @@ export function calculateSalaryResult(
   )
   const incomeTax = calculateIncomeTax2026(taxableIncome, rules)
   const solidarityTax = calculateSolidarityTax(incomeTax, rules)
+
+  // #50: §257 SGB V employer subsidy + net PKV cost (zero for GKV members).
+  // The employer's §257 subsidy is §3 Nr. 62 EStG tax-free and is not subject to social
+  // contributions; the employee still pays the full premium and receives the subsidy separately.
+  // Net PKV cost = premium − §257 subsidy; this reduces actual take-home pay.
+  const pkv257SubsidyMonthly = !profile.publicHealthInsurance
+    ? calculatePkv257Subsidy(
+        profile.grossSalaryYear / 12,
+        profile.pkvMonthlyPremium,
+        profile.pPVMonthlyPremium,
+        rules,
+      )
+    : 0
+  const pkvNetMonthlyCost = !profile.publicHealthInsurance
+    ? profile.pkvMonthlyPremium + profile.pPVMonthlyPremium - pkv257SubsidyMonthly
+    : 0
+
   const annualNet =
-    profile.grossSalaryYear - annualBavConversion - social.total - incomeTax - solidarityTax
+    profile.grossSalaryYear -
+    annualBavConversion -
+    social.total -
+    incomeTax -
+    solidarityTax -
+    pkvNetMonthlyCost * 12
 
   return {
     annualGross: profile.grossSalaryYear,
@@ -162,6 +203,8 @@ export function calculateSalaryResult(
     solidarityTax,
     social,
     vorsorgepauschale,
+    pkv257SubsidyMonthly,
+    pkvNetMonthlyCost,
   }
 }
 

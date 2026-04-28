@@ -50,7 +50,8 @@ export function monthlyRate(annualRate: number): number {
 export function projectAccumulation(input: AccumulationInput): AccumulationResult {
   const monthlyGrossRate = monthlyRate(input.annualReturn)
   // (1-f)^(1/12): portion of capital retained after TER each month
-  const monthlyRetentionFactor = Math.pow(1 - input.fees.annualAssetFee, 1 / 12)
+  const totalAssetFee = input.fees.wrapperAssetFee + input.fees.fundAssetFee
+  const monthlyRetentionFactor = Math.pow(1 - totalAssetFee, 1 / 12)
   const acquisitionMonths = Math.max(1, input.fees.acquisitionCostSpreadYears * 12)
   const plannedContributions = input.monthlyProductContribution * input.months
   const monthlyAcquisitionCost =

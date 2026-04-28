@@ -11,6 +11,7 @@ import type {
   ScenarioAssumptions,
   SimulationResult,
 } from '../domain/types'
+import { computeRIY } from './fees'
 import { calculateBavFunding } from './salary'
 import {
   afterTaxBavLumpSum,
@@ -27,11 +28,13 @@ import {
 } from './projections'
 
 const zeroFeeModel: FeeModel = {
-  annualAssetFee: 0,
+  wrapperAssetFee: 0,
+  fundAssetFee: 0,
   contributionFee: 0,
   fixedMonthlyFee: 0,
   acquisitionCostPct: 0,
   acquisitionCostSpreadYears: 1,
+  pensionPayoutFeePct: 0,
 }
 
 function capitalMultipleAnnualized(finalValue: number, totalUserCost: number, years: number): number {
@@ -80,7 +83,8 @@ function buildProductResult(params: {
         ? { rules: params.rules, partialExemption: params.partialExemption ?? 0 }
         : undefined,
   })
-  const payoutReturn = params.scenario.annualReturn - params.fees.annualAssetFee
+  const totalAssetFee = params.fees.wrapperAssetFee + params.fees.fundAssetFee
+  const payoutReturn = params.scenario.annualReturn - totalAssetFee
   // #54: ETF stays in capital-drawdown mode (user-managed depletion). bAV and private
   // insurance branch on the contractual `payoutMode` — Leibrente uses the contract's
   // Rentenfaktor instead of `payoutYears`.
@@ -103,6 +107,13 @@ function buildProductResult(params: {
       kapitalverzehrYears: payoutYears,
       payoutReturn,
     })
+  }
+
+  // #56: pension-phase fee — applied to bAV and insurance annuity/Zeitrente payouts before
+  // income tax and KV/PV. Convention: grossMonthlyPayout is gross before this fee;
+  // the fee deducts from the gross figure before any tax/SV calculation.
+  if (params.taxMode !== 'etf' && params.fees.pensionPayoutFeePct > 0) {
+    grossMonthlyPayout = grossMonthlyPayout * (1 - params.fees.pensionPayoutFeePct)
   }
 
   let afterTaxLumpSum: number | null = projection.capital
@@ -219,6 +230,13 @@ function buildProductResult(params: {
       afterTaxLumpSum !== null
         ? capitalMultipleAnnualized(afterTaxLumpSum, projection.totalUserCost, yearsToRetirement)
         : 0,
+    // #57: Effektivkosten (accumulation phase) — RIY in pp
+    accumulationRiy: computeRIY(
+      params.monthlyProductContribution,
+      monthsToRetirement,
+      params.scenario.annualReturn,
+      projection.capital,
+    ),
     rows: projection.rows,
     etfPayoutRows,
   }
@@ -261,7 +279,7 @@ export function simulateRetirementComparison(
       monthlyUserCost: etfMonthly,
       monthlyProductContribution: etfMonthly,
       monthlyEmployerContribution: 0,
-      fees: { ...zeroFeeModel, annualAssetFee: assumptions.etf.annualAssetFee },
+      fees: { ...zeroFeeModel, fundAssetFee: assumptions.etf.annualAssetFee },
       taxMode: 'etf',
       partialExemption: assumptions.etf.equityPartialExemption,
       retirementYear: payoutYear,

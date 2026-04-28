@@ -9,6 +9,11 @@ export const defaultProfile: PersonalProfile = {
   churchTax: false,
   publicHealthInsurance: true,
   healthAdditionalContributionPct: 2.9,
+  // #50: PKV premiums — zero when GKV (publicHealthInsurance = true).
+  // 500 EUR/month KV + 50 EUR/month pPV are market-typical 2026 values for a healthy
+  // 28-year-old; users should enter their actual premium from their PKV offer.
+  pkvMonthlyPremium: 0,
+  pPVMonthlyPremium: 0,
 }
 
 export const defaultAssumptions: ScenarioAssumptions = {
@@ -42,11 +47,13 @@ export const defaultAssumptions: ScenarioAssumptions = {
     rentenfaktor: 30,
     zeitrenteYears: 20,
     fees: {
-      annualAssetFee: 0.005,
+      wrapperAssetFee: 0.003,   // 0.30 % Versicherungsmantel
+      fundAssetFee: 0.002,      // 0.20 % ETF-Fondskosten — total 0.50 % p.a.
       contributionFee: 0.03,
       fixedMonthlyFee: 0,
       acquisitionCostPct: 0.025,
       acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
     },
   },
   insurance: {
@@ -60,11 +67,13 @@ export const defaultAssumptions: ScenarioAssumptions = {
     rentenfaktor: 28,
     zeitrenteYears: 20,
     fees: {
-      annualAssetFee: 0.014,
+      wrapperAssetFee: 0.012,   // 1.20 % Versicherungsmantel
+      fundAssetFee: 0.002,      // 0.20 % ETF-Fondskosten — total 1.40 % p.a.
       contributionFee: 0.03,
       fixedMonthlyFee: 5,
       acquisitionCostPct: 0.025,
       acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
     },
   },
 }

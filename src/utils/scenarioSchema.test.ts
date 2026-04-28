@@ -170,7 +170,7 @@ describe('validateAssumptions', () => {
         ...defaultAssumptions,
         bav: {
           ...defaultAssumptions.bav,
-          fees: { ...defaultAssumptions.bav.fees, annualAssetFee: 0.51 },
+          fees: { ...defaultAssumptions.bav.fees, wrapperAssetFee: 0.51 },
         },
       }),
     ).toBeNull()
@@ -432,7 +432,7 @@ describe('parseStateFromJson + validation (#49)', () => {
       ...defaultAssumptions,
       bav: {
         ...defaultAssumptions.bav,
-        fees: { ...defaultAssumptions.bav.fees, annualAssetFee: 0.6 },
+        fees: { ...defaultAssumptions.bav.fees, wrapperAssetFee: 0.6 },
       },
     })
     expect(parseStateFromJson(raw)).toBeNull()

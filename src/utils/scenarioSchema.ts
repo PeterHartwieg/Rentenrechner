@@ -48,7 +48,9 @@ function intInRange(v: unknown, min: number, max: number): v is number {
 
 function validateFees(fees: FeeModel): boolean {
   return (
-    inRange(fees.annualAssetFee, 0, 0.5) &&
+    inRange(fees.wrapperAssetFee, 0, 0.5) &&
+    inRange(fees.fundAssetFee, 0, 0.5) &&
+    inRange(fees.pensionPayoutFeePct, 0, 0.5) &&
     inRange(fees.contributionFee, 0, 0.5) &&
     inRange(fees.fixedMonthlyFee, 0, 1_000_000) &&
     inRange(fees.acquisitionCostPct, 0, 0.5) &&
@@ -71,6 +73,8 @@ export function validateProfile(input: unknown): PersonalProfile | null {
   if (typeof p.churchTax !== 'boolean') return null
   if (typeof p.publicHealthInsurance !== 'boolean') return null
   if (!inRange(p.healthAdditionalContributionPct, 0, 10)) return null
+  if (!inRange(p.pkvMonthlyPremium, 0, 10_000)) return null
+  if (!inRange(p.pPVMonthlyPremium, 0, 10_000)) return null
   return p
 }
 

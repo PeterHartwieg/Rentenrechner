@@ -13,51 +13,33 @@ Legal/rules research lives in `LEGAL_REVIEW.md`.
 
 ## Current Focus
 
-Wave 3 (P1, mostly independent — accuracy-first, no label-downgrade shortcuts):
+Wave 3 complete:
 
-1. `#54` Replace bAV/insurance capital-drawdown payout with Leibrente/Zeitrente — ✓ done.
-2. `#49` Deep-validate share URL and localStorage state — ✓ done.
-3. `#51` Separate statutory bAV subsidy from contractual employer match — ✓ done.
-4. `#52` Model child-age eligibility for Pflegeversicherung — ✓ done.
-5. `#50` Model PKV premiums (sequence after the others; integrates with the #46 retirement pipeline).
-6. `#53` Synchronize project documentation — last, after Wave 3 lands.
+- `#54` ✓ Leibrente / Zeitrente payout modes
+- `#49` ✓ URL + localStorage schema validation
+- `#51` ✓ Statutory vs. contractual bAV employer split
+- `#52` ✓ Child-age PV eligibility (§55 Abs. 3a SGB XI)
 
----
+Wave 4 complete:
 
-## Open P0 Verification / Release Blockers
+- `#55` ✓ Split insurance wrapper fees from fund fees (`wrapperAssetFee` + `fundAssetFee` in `FeeModel`; split UI inputs; storage migration)
+- `#56` ✓ Pension-phase payout fee (`pensionPayoutFeePct`; applied before income tax/KV/PV for bAV/pAV annuities)
+- `#57` ✓ Effektivkosten / RIY (`computeRIY` in `src/engine/fees.ts`; `accumulationRiy` on `ProductResult`; displayed per product)
+- `#58` ✓ Fee quality warnings and presets (4 presets each for bAV/pAV; threshold warnings for contribution fee, acquisition cost, total asset fee, RIY)
 
-### #41 Restore Clean Build And Lint
+Wave 5 complete:
 
-Runtime tests currently pass, but the implementation is not in a clean shippable state:
+- `#50` ✓ PKV premium modeling — `pkvMonthlyPremium` + `pPVMonthlyPremium` on `PersonalProfile`; `calculatePkv257Subsidy` in `salary.ts` (§257 SGB V employer subsidy, §3 Nr. 62 EStG tax-free); Vorsorgepauschale KV/PV Teilbetrag now uses actual PKV premium for PKV members (§39b EStG); net PKV cost deducted from `annualNet`; `pkv257SubsidyMonthly` + `pkvNetMonthlyCost` on `SalaryResult`; UI inputs visible when PKV selected with live §257 display; schema validation; 8 new tests.
 
-- `npm run build` fails on an unused `ScenarioAssumptions` import in `src/engine/simulate.test.ts`.
-- `npm run build` fails because `src/storage.test.ts` intentionally creates a partial `fees` object, but TypeScript still checks it as a full `BavAssumptions`.
-- `npm run lint` fails on an irregular whitespace character in `src/App.tsx`.
-- `npm run lint` fails on `no-useless-assignment` in `src/utils/csvExport.ts`.
+Also resolved silently in prior waves: `#41` (build/lint), `#42` (bAV minimum label), `#43` (GRV-Minderung BBG-aware).
 
-Acceptance: `npm test`, `npm run build`, and `npm run lint` are all green.
+Remaining P1 open items:
+
+1. `#53` Synchronize project documentation (`DESIGN.md`, `LEGAL_REVIEW.md`, `CLAUDE.md`) — do last.
 
 ---
 
 ## Open P1 Accuracy / Correctness
-
-### #42 Correct bAV Minimum-Conversion Warning
-
-The UI calculates the `§1a BetrAVG` minimum as `bezugsgroesseMonthly / 160`, which displays roughly `24.72 EUR/year`. The statutory minimum is `1/160` of the annual Bezugsgröße: with `3,955 EUR/month` in 2026, that is `296.63 EUR/year` or `24.72 EUR/month`.
-
-Fix the sidebar warning and assumptions drawer so the annual and monthly labels are not off by a factor of 12. Add a boundary test for the warning helper once extracted.
-
-### #43 Correct GRV-Reduction Estimate Around The RV BBG
-
-The optional bAV GRV-reduction estimate currently uses the full salary-conversion amount for every salary. That overstates the loss when income is already above the RV/AV contribution ceiling, and it also ignores cases where only part of the conversion is SV-free.
-
-Estimate lost pensionable earnings as:
-
-```text
-min(grossBefore, RV_BBG) - min(grossAfterSvFreeConversion, RV_BBG)
-```
-
-Then convert that lost base into Entgeltpunkte. Add tests for below-BBG, crossing-BBG, and fully-above-BBG salaries.
 
 ### #44 Derive Private-Insurance Runtime From Calendar Years
 
@@ -227,6 +209,150 @@ Required changes:
 
 Acceptance: changing bAV fees to `9.75% contribution fee + 0.70% wrapper + 0.25% fund + 2.5% acquisition` triggers visible cost warnings and a high RIY display.
 
+### #59 Correct Schicht-3 Private Leibrente Taxation To Ertragsanteil
+
+The current private-insurance monthly payout path routes every pAV payout through the same gain-ratio logic used for capital payouts:
+
+- `deriveInsuranceTaxMode()` classifies the contract as `pre2005`, `halbeinkuenfte`, or `abgeltungsteuer`.
+- `netInsurancePayout()` computes the taxable portion from `gainRatio = (capital - contributions) / capital`.
+- That is reasonable for capital payout / capital drawdown approximations, but it is not the statutory method for an ordinary Schicht-3 lifelong private Leibrente.
+
+For an ungefoerderte private Leibrente, Sec. 22 EStG generally taxes only the Ertragsanteil of each pension payment. The taxable share depends on age at annuity start, e.g. 21% at age 62, 18% at age 65-66, 17% at age 67, and 15% at age 69-70. This is documented in `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md`.
+
+Required changes:
+
+- Add an `ertragsanteilByAge(age: number)` helper from the Sec. 22 EStG table.
+- In the private-insurance branch, when `insurance.payoutMode === 'leibrente'`, compute taxable annual income as `grossMonthlyPayout * 12 * ertragsanteil`.
+- Route that taxable amount through the retirement-tax pipeline at the personal rate.
+- Keep existing `halbeinkuenfte` / `abgeltungsteuer` logic for capital payout and `kapitalverzehr` / non-lifelong payout approximations.
+- Clarify in UI copy that the half-gain rule applies to capital payouts, not to ordinary lifelong private annuities.
+- Add tests for age 62, age 67, and a high-gain contract where Leibrente Ertragsanteil produces a materially different result from the current gain-ratio method.
+
+Acceptance: a Schicht-3 private `leibrente` starting at age 67 taxes only 17% of the annual gross pension before deductions, while the same contract in capital-payout mode still uses the Sec. 20 gain taxation logic.
+
+### #60 Make The Current Private Product Explicitly Schicht 3
+
+The product label `Private Versicherung` is too broad after the private Rentenversicherung research. Users may read it as Basisrente / Ruerup or Riester, but the current implementation mostly models an ungefoerderte Schicht-3 private pension wrapper.
+
+Current behavior that is Schicht-3-specific:
+
+- contributions are paid from net income with no Sec. 10 deduction,
+- no Riester allowance / Sec. 10a Guenstigerpruefung,
+- capital payout uses Sec. 20 private-insurance gain taxation,
+- no bAV Versorgungsbezug KV/PV handling for KVdR members.
+
+Required changes:
+
+- Rename labels from `Private Versicherung` to `Private Rentenversicherung (Schicht 3)` or similar in UI, CSV, and exports.
+- Add a short assumptions-drawer note that Basisrente and Riester are not included in this product.
+- Link the note to `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md`.
+- Update test snapshots / text assertions as needed.
+- Consider renaming internal product id only if migration cost is low; otherwise keep `versicherung` as storage-compatible id and fix display labels.
+
+Acceptance: a user cannot reasonably mistake the current private product for Ruerup or Riester, and saved scenarios continue to load.
+
+### #61 Add Basisrente / Ruerup Product Model
+
+Basisrente is not a variant of the current Schicht-3 private-insurance branch. It has separate contribution deduction rules, payout restrictions, and retirement taxation.
+
+Required changes:
+
+- Add a product model or product subtype for `basisrente`.
+- Contribution phase:
+  - apply 2026 Schicht-1 cap of 30,826 EUR single / 61,652 EUR jointly assessed,
+  - subtract employee and employer statutory pension contributions and any professional pension-scheme contributions from remaining cap,
+  - apply 100% deductible share for 2026,
+  - compute tax saving through the income-tax pipeline rather than treating contributions as net outlay.
+- Payout phase:
+  - force or default to `leibrente`; do not allow ordinary full lump-sum payout,
+  - tax using the Sec. 22 cohort taxable share, not Ertragsanteil and not Sec. 20 gain taxation,
+  - use the existing retirement-year cohort table where possible.
+- KV/PV:
+  - do not apply bAV Versorgungsbezug Freibetrag / Freigrenze logic for KVdR,
+  - include voluntary-GKV treatment through the broader Sec. 240 mode.
+- UI:
+  - show strong illiquidity warnings: no normal surrender, sale, lending, or free capital payout,
+  - expose Basisrente-specific assumptions separately from Schicht-3 assumptions.
+
+Acceptance: entering a 2026 Basisrente contribution above the user's remaining Schicht-1 cap only grants tax benefit up to the remaining cap, and payout is taxed by pension-start cohort rather than private-insurance gain logic.
+
+### #62 Add Riester / Certified Altersvorsorgevertrag Model
+
+Riester is also not represented by the current private-insurance product. It needs allowance logic, special-expense comparison, guarantee / partial-capital constraints, and fully deferred taxation.
+
+Required changes:
+
+- Add a product model or subtype for `riester`.
+- Model 2026 old-law values:
+  - 175 EUR Grundzulage,
+  - 185 EUR child allowance for pre-2008 children,
+  - 300 EUR child allowance for post-2007 children,
+  - one-time 200 EUR career-starter bonus when eligible before age 25,
+  - 4% minimum own contribution based on prior-year relevant income,
+  - 2,100 EUR cap including allowances,
+  - 60 EUR Sockelbetrag.
+- Add allowance proration when the minimum own contribution is not met.
+- Add Sec. 10a special-expense deduction / Guenstigerpruefung: only the tax effect above allowances should count as extra tax benefit.
+- Payout:
+  - tax benefits fully under Sec. 22 Nr. 5 EStG,
+  - allow partial capital payout up to 30% at start,
+  - model the remaining lifelong income separately from a free ETF-style drawdown.
+- Add explicit warning that old Riester products have contribution-plus-allowance guarantee constraints that can lower expected equity exposure.
+
+Acceptance: a parent with eligible post-2007 children can see allowances reduce the required own contribution, while a high-income user can see whether the Sec. 10a tax effect exceeds the allowances.
+
+### #63 Add 2027 Private-Altersvorsorge Reform Watch / Altersvorsorgedepot Placeholder
+
+The 2026 research found a live legal transition: the Bundestag passed private-altersvorsorge reform on 2026-03-27, with 2027 Altersvorsorgedepot / new subsidized product rules expected, but final operational details should be re-checked before implementation.
+
+Required changes:
+
+- Add a visible backlog / docs note that the app intentionally models 2026 old-law Riester only until final 2027 rules are implemented.
+- Once final law and provider rules are stable, add a new `altersvorsorgedepot` product rather than forcing it into insurance.
+- Track likely future inputs:
+  - guarantee level, possibly 0%, 80%, or 100% depending on final product type,
+  - subsidy formula,
+  - eligible assets,
+  - payout constraints,
+  - transfer rules from old Riester contracts,
+  - tax treatment of funded and unfunded portions.
+
+Acceptance: no 2027 reform assumptions are silently embedded in 2026 calculations, and the UI/docs make clear that Altersvorsorgedepot is not yet modeled.
+
+### #64 Add Private Leibrente Break-Even Age And Rentenfaktor Diagnostics
+
+`#54` added Rentenfaktor-based Leibrente payout, but the UI still does not explain how demanding a low Rentenfaktor can be. `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md` shows that a 28 EUR Rentenfaktor on 200,000 EUR capital pays 560 EUR/month and needs roughly 30 years to return nominal capital before tax.
+
+Required changes:
+
+- Add a simple break-even-age display for Leibrente mode:
+  - `grossBreakEvenYears = capitalAtRetirement / (grossMonthlyPayout * 12)`,
+  - `grossBreakEvenAge = retirementAge + grossBreakEvenYears`.
+- Show this as a diagnostic, not as an actuarial fair-value verdict.
+- Add warnings for very low Rentenfaktor values or break-even ages above a configurable threshold, e.g. age 95.
+- Separate `guaranteedRentenfaktor` and `current/projectedRentenfaktor` when the data model supports it.
+- Include death-benefit / Rentengarantiezeit caveat in the assumptions drawer once those inputs exist.
+
+Acceptance: in Leibrente mode, the user sees the implied nominal break-even age next to the Rentenfaktor, and a 28 EUR/10k factor starting at 67 on 200,000 EUR shows a break-even around age 97 before tax.
+
+### #65 Add Surrender / Paid-Up Scenario For Private Insurance
+
+Private Rentenversicherung contracts are often terminated, reduced, or made paid-up before retirement. The current model assumes contributions continue unchanged to retirement and only models scheduled accumulation fees. That misses one of the largest practical risks of provision-based insurance wrappers.
+
+Required changes:
+
+- Add an optional scenario where contributions stop at a user-selected age.
+- Continue applying ongoing asset / wrapper fees after paid-up status if applicable.
+- Allow a surrender-value haircut or Stornoabschlag input.
+- Show:
+  - projected surrender value,
+  - paid-up retirement value,
+  - fees already sunk,
+  - comparison with continuing the contract and with ETF alternative.
+- Keep Basisrente separate: ordinary free surrender should not be available for Basisrente.
+
+Acceptance: a user can model "stop paying at age 45" for Schicht-3 private insurance and see both paid-up value at retirement and immediate surrender value assumptions.
+
 ---
 
 ## Open P2 Publishing / Product
@@ -254,16 +380,12 @@ Update the docs so future reviews do not start from stale assumptions.
 
 ## Open P3 Expansion
 
-- Riester.
-- Rürup.
 - statutory pension module.
 - Monte Carlo simulation.
 - salary growth and contribution escalation.
 - multi-ETF portfolio.
-- break-even age view.
 - sensitivity heatmap.
 - saved scenario library and scenario duplication.
-- guaranteed annuity factors and surrender-value modeling.
 - bilingual UI.
 - public deployment.
 
@@ -313,6 +435,11 @@ Update the docs so future reviews do not start from stale assumptions.
 - `#48` bAV lump-sum income-tax routing by Durchführungsweg: `BavDurchfuehrungsweg` type + `deriveBavLumpSumTaxMode` in `projections.ts`; `afterTaxBavLumpSum` refactored with `taxMode` parameter; UI selector in assumptions drawer; storage migration (mergeDeep defaults). §3 Nr. 63 → voll_versorgungsbezug (§22 Nr. 5 EStG, no Fünftelregelung); §40b a.F. eligible → pre2005_steuerfrei; Direktzusage/U-Kasse → fuenftelregelung (§34 EStG). Default afterTaxLumpSum drops ~46–58k EUR for default profile (basis scenario: from 197,753 to 141,809 EUR).
 - `#38` Law-based private-insurance tax: contract year → `pre2005` / `halbeinkuenfte` / `abgeltungsteuer`; `deriveInsuranceTaxMode` / `netInsurancePayout` / `afterTaxInsuranceLumpSum` in `projections.ts`; Halbeinkünfteverfahren uses personal income-tax marginal rate on half the gain.
 - `#52` Child-age PV eligibility: `PersonalProfile.children: number` replaced by `childBirthYears: number[]`. `careEmployeeRateForChildren` now takes `(childBirthYears, currentYear, rules)`. §55 Abs. 3a SGB XI: Kinderlosenzuschlag (+0.6 %) applies only when array is empty; Beitragsabschlag (−0.25 % per child from 2nd) applies only to children under 25 in the contribution year. All four retirement-phase payout helpers use the existing `retirementYear` parameter for the age check. UI: dynamic "Kinder (Geburtsjahr)" list with add/remove. Old `children: number` in saved state silently migrates to `childBirthYears: []` via mergeDeep. 238 tests.
+- `#41` / `#42` / `#43` Build/lint, bAV minimum label, and GRV-Minderung BBG formula: resolved as part of prior waves. 238 tests at baseline.
+- `#55` Split insurance wrapper fees from fund fees: `FeeModel.annualAssetFee` replaced by `wrapperAssetFee` (Versicherungsmantel) + `fundAssetFee` (Fonds/ETF OGC). `projectAccumulation` uses their sum. Storage migration moves old `annualAssetFee` → `wrapperAssetFee` with `fundAssetFee=0`. UI: two separate p.a. inputs per product with labels. Defaults preserve old totals (bAV 0.50 %, pAV 1.40 %).
+- `#56` Pension-phase payout fee: `FeeModel.pensionPayoutFeePct` — fraction of gross monthly payout deducted before income tax and KV/PV. Applied for bAV and pAV only (ETF drawdown not affected). Default 0. UI: "Rentengebühr % je Rente" field in each product fee section.
+- `#57` Effektivkosten / RIY: `computeRIY(monthlyContribution, months, grossReturn, capitalWithFees)` in `src/engine/fees.ts` uses 60-iteration bisection on the beginning-of-period annuity FV formula. `ProductResult.accumulationRiy` (pp) exposed per product per scenario. Shown in fee-summary box per product in the assumptions drawer. ETF default (0.2 % TER) produces ~0.2 pp; bAV default produces ~1 pp.
+- `#58` Fee quality warnings and research-based presets: 4 one-click fee presets each for bAV (Nettotarif, Standard, Hochkosten, Hoher AG-Match) and pAV (Nettotarif, Standard, Hochkosten, Altvertrag). Threshold warnings displayed below fee grid: contribution fee >5 %, acquisition cost >2.5 %, total asset fee >1.0 %, RIY >1.5 % (Bereich), RIY >2.0 % (unwirtschaftlich). 253 tests.
 
 ---
 

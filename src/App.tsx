@@ -13,7 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Calculator, Check, Coins, Download, Link, RotateCcw, Settings, TrendingUp } from 'lucide-react'
-import type { BavDurchfuehrungsweg, BavFundingResult, InsuranceTaxMode, PayoutMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
+import type { BavDurchfuehrungsweg, BavFundingResult, FeeModel, InsuranceTaxMode, PayoutMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from './engine/projections'
 import { careEmployeeRateForChildren } from './engine/salary'
@@ -27,6 +27,48 @@ import { buildShareUrl, readUrlState } from './utils/urlShare'
 import './App.css'
 
 type WarningStatus = 'implementiert' | 'vereinfacht' | 'nicht-modelliert'
+
+// #55 / #58: Fee presets for bAV and pAV (all-in configurations for one-click loading).
+// Sources: BAV_RESEARCH.md — Allianz/AXA examples, typical ETF-Nettotarif benchmarks.
+const BASE_FEE: Pick<FeeModel, 'acquisitionCostSpreadYears'> = { acquisitionCostSpreadYears: 5 }
+
+const BAV_FEE_PRESETS: { label: string; fees: FeeModel }[] = [
+  {
+    label: 'Nettotarif',
+    fees: { wrapperAssetFee: 0.003, fundAssetFee: 0.002, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, pensionPayoutFeePct: 0, ...BASE_FEE },
+  },
+  {
+    label: 'Standard',
+    fees: { wrapperAssetFee: 0.006, fundAssetFee: 0.002, contributionFee: 0.045, fixedMonthlyFee: 0, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
+  },
+  {
+    label: 'Hochkosten',
+    fees: { wrapperAssetFee: 0.007, fundAssetFee: 0.002, contributionFee: 0.0975, fixedMonthlyFee: 0, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
+  },
+  {
+    label: 'Hoher AG-Match',
+    fees: { wrapperAssetFee: 0.007, fundAssetFee: 0.002, contributionFee: 0.045, fixedMonthlyFee: 0, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
+  },
+]
+
+const PAV_FEE_PRESETS: { label: string; fees: FeeModel }[] = [
+  {
+    label: 'Nettotarif',
+    fees: { wrapperAssetFee: 0.004, fundAssetFee: 0.002, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, pensionPayoutFeePct: 0, ...BASE_FEE },
+  },
+  {
+    label: 'Standard',
+    fees: { wrapperAssetFee: 0.007, fundAssetFee: 0.002, contributionFee: 0.045, fixedMonthlyFee: 5, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
+  },
+  {
+    label: 'Hochkosten',
+    fees: { wrapperAssetFee: 0.008, fundAssetFee: 0.0025, contributionFee: 0.09, fixedMonthlyFee: 5, acquisitionCostPct: 0.04, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
+  },
+  {
+    label: 'Altvertrag',
+    fees: { wrapperAssetFee: 0.012, fundAssetFee: 0.002, contributionFee: 0.03, fixedMonthlyFee: 5, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0, ...BASE_FEE },
+  },
+]
 
 const warnings: { category: string; status: WarningStatus; note: string }[] = [
   {
@@ -42,7 +84,7 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   {
     category: 'Lohnsteuer-Engine',
     status: 'implementiert',
-    note: 'BMF-PAP 2026 Vorsorgepauschale (RV + GKV + PV, ohne AV) für Steuerklasse I / GKV. PKV vereinfacht (SV-Abzüge ohne Prämienmodellierung). Kirchensteuer nicht berechnet (immer 0 %).',
+    note: 'BMF-PAP 2026 Vorsorgepauschale (RV + GKV + PV, ohne AV) für Steuerklasse I. PKV: Prämien als KV/PV-Teilbetrag der Vorsorgepauschale (§39b EStG), AG-Zuschuss §257 SGB V steuerfrei (§3 Nr. 62 EStG). Kirchensteuer nicht berechnet (immer 0 %).',
   },
   {
     category: 'ETF-Vorabpauschale',
@@ -512,14 +554,47 @@ function App() {
               }
             >
               <option value="gkv">GKV (gesetzlich)</option>
-              <option value="pkv">PKV (privat, vereinfacht)</option>
+              <option value="pkv">PKV (privat)</option>
             </select>
-            {!profile.publicHealthInsurance && (
-              <small className="field-hint">
-                PKV: AG-Zuschuss und Prämien werden nicht modelliert. SV-Beiträge vereinfacht.
-              </small>
-            )}
           </label>
+          {!profile.publicHealthInsurance && (
+            <div className="field-grid">
+              <NumberField
+                label="PKV-Prämie (KV)"
+                value={profile.pkvMonthlyPremium}
+                min={0}
+                step={10}
+                suffix="EUR mtl."
+                onCommit={(value) =>
+                  setProfile((current) => ({
+                    ...current,
+                    pkvMonthlyPremium: Math.max(0, Number(value)),
+                  }))
+                }
+              />
+              <NumberField
+                label="pPV-Prämie"
+                value={profile.pPVMonthlyPremium}
+                min={0}
+                step={5}
+                suffix="EUR mtl."
+                onCommit={(value) =>
+                  setProfile((current) => ({
+                    ...current,
+                    pPVMonthlyPremium: Math.max(0, Number(value)),
+                  }))
+                }
+              />
+            </div>
+          )}
+          {!profile.publicHealthInsurance && (
+            <p className="field-hint">
+              AG-Zuschuss §257 SGB V (steuerfrei):{' '}
+              {formatCurrency(simulation.bavFunding.salaryWithoutBav.pkv257SubsidyMonthly, 0)}/Monat.
+              Netto-PKV-Kosten:{' '}
+              {formatCurrency(simulation.bavFunding.salaryWithoutBav.pkvNetMonthlyCost, 0)}/Monat.
+            </p>
+          )}
 
           <div className="divider" />
 
@@ -898,7 +973,25 @@ function App() {
 
           <div className="subsection-heading">
             <h3>bAV-Kosten</h3>
-            <p>Benchmarkwerte: beitragsbezogene Kosten plus Kapital- und Abschlusskosten.</p>
+            <p>Benchmarkwerte: beitragsbezogene Kosten plus Kapital- und Abschlusskosten. Vorlagen setzen alle Felder.</p>
+          </div>
+
+          <div className="fee-presets">
+            {BAV_FEE_PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                className="preset-btn"
+                onClick={() =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    bav: { ...current.bav, fees: preset.fees },
+                  }))
+                }
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
 
           <div className="field-grid">
@@ -937,8 +1030,8 @@ function App() {
               }
             />
             <NumberField
-              label="Kapitalgebühr"
-              value={assumptions.bav.fees.annualAssetFee * 100}
+              label="Versicherungsmantel"
+              value={assumptions.bav.fees.wrapperAssetFee * 100}
               min={0}
               max={3}
               step={0.05}
@@ -948,7 +1041,41 @@ function App() {
                   ...current,
                   bav: {
                     ...current.bav,
-                    fees: { ...current.bav.fees, annualAssetFee: Number(value) / 100 },
+                    fees: { ...current.bav.fees, wrapperAssetFee: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Fonds-/ETF-Kosten"
+              value={assumptions.bav.fees.fundAssetFee * 100}
+              min={0}
+              max={3}
+              step={0.05}
+              suffix="% p.a."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: { ...current.bav.fees, fundAssetFee: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Rentengebühr"
+              value={assumptions.bav.fees.pensionPayoutFeePct * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="% je Rente"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: { ...current.bav.fees, pensionPayoutFeePct: Number(value) / 100 },
                   },
                 }))
               }
@@ -991,6 +1118,40 @@ function App() {
               }
             />
           </div>
+          {(() => {
+            const f = assumptions.bav.fees
+            const totalAsset = f.wrapperAssetFee + f.fundAssetFee
+            const bavProduct = simulation.products.find(
+              (p) => p.productId === 'bav' && p.scenarioId === selectedScenarioId,
+            )
+            const riy = bavProduct?.accumulationRiy ?? 0
+            return (
+              <div className="fee-summary">
+                <span>
+                  Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
+                  (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
+                </span>
+                <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
+                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
+                </span>
+                {f.contributionFee > 0.05 && (
+                  <p className="field-warning">Beitragskostenquote {formatPercent(f.contributionFee)} liegt über 5 % — typische Nettotarife erheben keine Kosten je Beitrag.</p>
+                )}
+                {f.acquisitionCostPct > 0.025 && (
+                  <p className="field-warning">Abschlusskosten {formatPercent(f.acquisitionCostPct)} übersteigen 2,5 % der Beitragssumme.</p>
+                )}
+                {totalAsset > 0.01 && (
+                  <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 % — prüfen Sie ETF-basierte Nettotarife (typisch 0,5–0,8 % all-in).</p>
+                )}
+                {riy > 0.02 && (
+                  <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — ETF-basierte Verträge über dieser Schwelle gelten i. d. R. als unwirtschaftlich.</p>
+                )}
+                {riy > 0.015 && riy <= 0.02 && (
+                  <p className="field-warning">Effektivkosten {formatPercent(riy)} liegen im kritischen Bereich (1,5–2,0 %) — Nettotarife erzielen typisch 0,6–1,0 %.</p>
+                )}
+              </div>
+            )
+          })()}
 
           <div className="return-editor">
             <h3>Rendite-Szenarien</h3>
@@ -1152,7 +1313,25 @@ function App() {
 
           <div className="subsection-heading">
             <h3>pAV-Kosten</h3>
-            <p>Private Versicherung: gleiche Kostenlogik, separat konfigurierbar.</p>
+            <p>Private Versicherung: gleiche Kostenlogik, separat konfigurierbar. Vorlagen setzen alle Felder.</p>
+          </div>
+
+          <div className="fee-presets">
+            {PAV_FEE_PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                className="preset-btn"
+                onClick={() =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    insurance: { ...current.insurance, fees: preset.fees },
+                  }))
+                }
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
 
           <div className="field-grid">
@@ -1191,8 +1370,8 @@ function App() {
               }
             />
             <NumberField
-              label="Kapitalgebühr"
-              value={assumptions.insurance.fees.annualAssetFee * 100}
+              label="Versicherungsmantel"
+              value={assumptions.insurance.fees.wrapperAssetFee * 100}
               min={0}
               max={3}
               step={0.05}
@@ -1202,7 +1381,41 @@ function App() {
                   ...current,
                   insurance: {
                     ...current.insurance,
-                    fees: { ...current.insurance.fees, annualAssetFee: Number(value) / 100 },
+                    fees: { ...current.insurance.fees, wrapperAssetFee: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Fonds-/ETF-Kosten"
+              value={assumptions.insurance.fees.fundAssetFee * 100}
+              min={0}
+              max={3}
+              step={0.05}
+              suffix="% p.a."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  insurance: {
+                    ...current.insurance,
+                    fees: { ...current.insurance.fees, fundAssetFee: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Rentengebühr"
+              value={assumptions.insurance.fees.pensionPayoutFeePct * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="% je Rente"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  insurance: {
+                    ...current.insurance,
+                    fees: { ...current.insurance.fees, pensionPayoutFeePct: Number(value) / 100 },
                   },
                 }))
               }
@@ -1245,6 +1458,40 @@ function App() {
               }
             />
           </div>
+          {(() => {
+            const f = assumptions.insurance.fees
+            const totalAsset = f.wrapperAssetFee + f.fundAssetFee
+            const pavProduct = simulation.products.find(
+              (p) => p.productId === 'versicherung' && p.scenarioId === selectedScenarioId,
+            )
+            const riy = pavProduct?.accumulationRiy ?? 0
+            return (
+              <div className="fee-summary">
+                <span>
+                  Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
+                  (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
+                </span>
+                <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
+                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
+                </span>
+                {f.contributionFee > 0.05 && (
+                  <p className="field-warning">Beitragskostenquote {formatPercent(f.contributionFee)} liegt über 5 % — typische Nettotarife erheben keine Kosten je Beitrag.</p>
+                )}
+                {f.acquisitionCostPct > 0.025 && (
+                  <p className="field-warning">Abschlusskosten {formatPercent(f.acquisitionCostPct)} übersteigen 2,5 % der Beitragssumme.</p>
+                )}
+                {totalAsset > 0.01 && (
+                  <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 % — prüfen Sie ETF-basierte Nettotarife (typisch 0,5–0,8 % all-in).</p>
+                )}
+                {riy > 0.02 && (
+                  <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — ETF-basierte Verträge über dieser Schwelle gelten i. d. R. als unwirtschaftlich.</p>
+                )}
+                {riy > 0.015 && riy <= 0.02 && (
+                  <p className="field-warning">Effektivkosten {formatPercent(riy)} liegen im kritischen Bereich (1,5–2,0 %) — Nettotarife erzielen typisch 0,6–1,0 %.</p>
+                )}
+              </div>
+            )
+          })()}
         </aside>
 
         <section className="main-panel">
@@ -1390,7 +1637,7 @@ function App() {
                   <dd>
                     {profile.publicHealthInsurance
                       ? `GKV, Zusatzbeitrag ${profile.healthAdditionalContributionPct} %`
-                      : 'PKV (vereinfacht – Prämien nicht modelliert)'}
+                      : `PKV, ${formatCurrency(profile.pkvMonthlyPremium, 0)} KV + ${formatCurrency(profile.pPVMonthlyPremium, 0)} pPV/Monat, AG-Zuschuss §257: ${formatCurrency(simulation.bavFunding.salaryWithoutBav.pkv257SubsidyMonthly, 0)}/Monat`}
                   </dd>
                 </div>
                 <div>
@@ -1409,7 +1656,7 @@ function App() {
                   <dt>bAV-Kostenbenchmark</dt>
                   <dd>
                     {formatPercent(assumptions.bav.fees.contributionFee)} je Beitrag,{' '}
-                    {formatPercent(assumptions.bav.fees.annualAssetFee)} p.a. Kapitalgebühr,{' '}
+                    {formatPercent(assumptions.bav.fees.wrapperAssetFee + assumptions.bav.fees.fundAssetFee)} p.a. Kapitalgebühr (Mantel {formatPercent(assumptions.bav.fees.wrapperAssetFee)} + Fonds {formatPercent(assumptions.bav.fees.fundAssetFee)}),{' '}
                     {formatPercent(assumptions.bav.fees.acquisitionCostPct)} Abschlusskosten
                   </dd>
                 </div>
@@ -1418,7 +1665,7 @@ function App() {
                   <dd>
                     {formatPercent(assumptions.insurance.fees.contributionFee)} je Beitrag,{' '}
                     {formatCurrency(assumptions.insurance.fees.fixedMonthlyFee, 1)} mtl.,{' '}
-                    {formatPercent(assumptions.insurance.fees.annualAssetFee)} p.a. Kapitalgebühr
+                    {formatPercent(assumptions.insurance.fees.wrapperAssetFee + assumptions.insurance.fees.fundAssetFee)} p.a. Kapitalgebühr (Mantel {formatPercent(assumptions.insurance.fees.wrapperAssetFee)} + Fonds {formatPercent(assumptions.insurance.fees.fundAssetFee)})
                   </dd>
                 </div>
                 <div>

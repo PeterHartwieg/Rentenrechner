@@ -79,6 +79,12 @@ export interface PersonalProfile {
   churchTax: boolean
   publicHealthInsurance: boolean
   healthAdditionalContributionPct: number
+  // #50: PKV premium inputs (used only when publicHealthInsurance = false).
+  // pkvMonthlyPremium: gross monthly PKV premium paid by the employee.
+  // pPVMonthlyPremium: monthly private Pflegeversicherung premium.
+  // Employer pays §257 SGB V subsidy (half the premium, capped at GKV employer equivalent).
+  pkvMonthlyPremium: number
+  pPVMonthlyPremium: number
 }
 
 export interface ReturnScenario {
@@ -88,11 +94,15 @@ export interface ReturnScenario {
 }
 
 export interface FeeModel {
-  annualAssetFee: number
+  // #55: split from combined annualAssetFee — sum is the total ongoing capital drag
+  wrapperAssetFee: number      // Versicherungsmantel / policy-value fee (% of capital p.a.)
+  fundAssetFee: number         // Fonds / ETF OGC or TER (% of capital p.a.)
   contributionFee: number
   fixedMonthlyFee: number
   acquisitionCostPct: number
   acquisitionCostSpreadYears: number
+  // #56: pension-phase administration fee (% of gross monthly payout, applied before income tax / KV/PV)
+  pensionPayoutFeePct: number
 }
 
 export interface EtfAssumptions {
@@ -214,6 +224,9 @@ export interface SalaryResult {
   social: SocialContributionBreakdown
   // BMF PAP §3: RV + GKV + PV only (no unemployment)
   vorsorgepauschale: number
+  // #50: PKV cost fields (0 when publicHealthInsurance = true)
+  pkv257SubsidyMonthly: number  // §257 SGB V employer subsidy (tax-free, §3 Nr. 62 EStG)
+  pkvNetMonthlyCost: number     // net PKV cost = premium + pPV premium − §257 subsidy
 }
 
 export interface SocialContributionBreakdown {
@@ -306,6 +319,8 @@ export interface ProductResult {
   taxAndSvSavings: number
   valueMultipleOnUserCost: number | null
   capitalMultipleAnnualized: number
+  // #57: Effektivkosten / Reduction in Yield for the accumulation phase (pp)
+  accumulationRiy: number
   rows: YearlyProjection[]
   etfPayoutRows?: EtfPayoutRow[]
 }

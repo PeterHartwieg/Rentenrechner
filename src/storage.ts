@@ -44,6 +44,19 @@ export function parseStateFromJson(
   if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
   if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
 
+  // #55: migrate annualAssetFee → wrapperAssetFee + fundAssetFee before mergeDeep
+  // so the user's old setting is preserved instead of being replaced by defaults.
+  const migrateFeesFields = (productData: Record<string, unknown> | undefined) => {
+    const fees = productData?.fees as Record<string, unknown> | undefined
+    if (fees && typeof fees.annualAssetFee === 'number' && fees.wrapperAssetFee === undefined) {
+      fees.wrapperAssetFee = fees.annualAssetFee
+      fees.fundAssetFee = 0
+    }
+  }
+  const rawAssumptions = obj.assumptions as Record<string, unknown>
+  migrateFeesFields(rawAssumptions.bav as Record<string, unknown> | undefined)
+  migrateFeesFields(rawAssumptions.insurance as Record<string, unknown> | undefined)
+
   const profile = mergeDeep(obj.profile, defaultProfile)
   const assumptions = mergeDeep(obj.assumptions, defaultAssumptions)
 
