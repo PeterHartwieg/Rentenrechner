@@ -18,8 +18,9 @@ Legal/rules research lives in `LEGAL_REVIEW.md`. Product-specific research lives
 Resume feature work in this order. Each group touches overlapping code paths or creates prerequisites for later groups.
 
 1. **Scenario UX and exports**: saved scenario library and scenario duplication, then `#15`.
-2. **Retirement-income refinements**: GRV salary growth / Rentenwert indexation, Versorgungswerk / Beamtenpension variants, and Basisrente edge cases.
-3. **Later analytical/publishing work**: Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
+2. **Comprehension-first UX pass**: plain-language onboarding, progressive disclosure, explanation surfaces, and decision-focused result summaries.
+3. **Retirement-income refinements**: GRV salary growth / Rentenwert indexation, Versorgungswerk / Beamtenpension variants, and Basisrente edge cases.
+4. **Later analytical/publishing work**: Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
 
 ---
 
@@ -59,6 +60,116 @@ Suggested order:
 
 Shared code areas: default scenarios, storage/schema, URL sharing, CSV/report formatting, UI controls.
 
+### Group UX: Comprehension-First Product Experience
+
+Items: `#UX1`-`#UX8`
+
+Why now:
+
+- The calculation engine is already more sophisticated than a typical user expects, but the UI currently asks the user to understand product law, tax abbreviations, and actuarial terms before they can trust the result.
+- The left panel exposes many expert controls at once. This is powerful for validation, but it makes a normal user feel the app is harder than the "simple calculator" they expected.
+- The result area surfaces correct numbers, but not enough decision framing: what changed the ranking, which assumptions are fragile, and what the user should inspect before acting.
+
+Suggested order:
+
+1. `#UX1`, `#UX2`, and `#UX3` first: these reduce cognitive load without changing engine behavior.
+2. `#UX4` and `#UX5` next: these improve trust by showing why the answer is not trivial.
+3. `#UX6` and `#UX7` after the main surfaces settle.
+4. `#UX8` last, because it depends on final terminology and result hierarchy.
+
+Shared code areas: `src/App.tsx`, `src/features/inputs/*`, `src/features/results/*`, `src/features/assumptions/*`, `src/app/productPresentation.ts`, `src/ui/*`, print report.
+
+#### #UX1 P1 Plain-Language Mode And Expert Mode
+
+Default the app to a plain-language mode and move legal/product-mechanics controls behind an "Erweitert" disclosure per product.
+
+Concrete changes:
+
+- Keep the initial visible input set to the user's actual situation and one or two product-offer values: age, retirement age, gross salary, health insurance, bAV gross conversion, employer contribution, ETF TER, return scenarios.
+- Hide controls such as `Durchfuehrungsweg`, `KVdR`, `Guenstigerpruefung`, `Schicht`, `Ertragsanteil`, detailed fee decomposition, and statutory eligibility toggles behind product-specific advanced sections.
+- For each hidden expert section, show a compact derived summary in plain German, e.g. "Der Rechner nimmt an: gesetzlich krankenversichert in der Rente, bAV als Direktversicherung, lebenslange Rente."
+- Acceptance criterion: a new user can complete a first comparison without seeing paragraph symbols or statutory abbreviations unless they open an advanced section.
+
+#### #UX2 P1 Terminology Translation Layer
+
+Create a central content layer for user-facing product terms and replace law-first labels with plain labels plus optional legal detail.
+
+Concrete changes:
+
+- Add a `src/content/terms.ts` or similar map with `plainLabel`, `shortHelp`, `legalReference`, and `expertLabel`.
+- Replace labels like "bAV Entgeltumwandlung", "Guenstigerpruefung", "Versicherungsmantel", "Kapitalverzehr", "Rentenfaktor", "KVdR", "Schicht 1/2/3" with plain-language labels and short helper text.
+- Use law references in expandable "Warum?" or "Rechtsgrundlage" details, not as the primary label.
+- Add a glossary drawer or inline term popover that answers "What does this mean for me?" in one sentence before giving the formal term.
+- Acceptance criterion: every visible input label can be understood without knowing German retirement/tax terminology.
+
+#### #UX3 P1 Guided First-Run Flow
+
+Add a lightweight guided setup before the full dashboard for users who arrive with the belief that the calculation should be simple.
+
+Concrete changes:
+
+- First screen asks: "Was moechtest du vergleichen?" with choices such as "Ich habe ein bAV-Angebot", "ETF gegen Versicherung vergleichen", "Rentenluecke grob schaetzen", and "Expertenmodus".
+- Collect the minimum viable inputs for the chosen path, then drop the user into the dashboard with relevant sections expanded.
+- Show a short "Warum mehr als ein Taschenrechner?" explanation after first result: taxes, employer subsidy, health insurance, fees, and payout rules can change the winner.
+- Persist a "skip guided setup" preference in localStorage.
+- Acceptance criterion: a first-time user reaches an interpretable result in under two minutes without scanning the full input sidebar.
+
+#### #UX4 P1 Decision Summary Above The Charts
+
+Replace the current metric-only opening with a decision-focused summary that explains the current winner and the biggest driver.
+
+Concrete changes:
+
+- Add a top result strip with: "Bestes Ergebnis fuer Kapital", "Beste monatliche Rente", "Groesster Kostentreiber", and "Achtung: Ergebnis kippt wahrscheinlich, wenn ...".
+- For each product, surface one plain reason: employer subsidy, high fees, tax deferral, locked capital, health-insurance burden, or guarantee drag.
+- Explain when capital and pension rankings disagree, instead of presenting both as equally obvious winners.
+- Acceptance criterion: a user can answer "which option looks best, and why?" without opening the detail table.
+
+#### #UX5 P1 Waterfall Explanations For "Surprising" Results
+
+Add visual "where the money goes" explanations for bAV, private insurance, Basisrente/Riester/AVD, and ETF.
+
+Concrete changes:
+
+- Extend the existing bAV waterfall pattern into a reusable component for contribution -> tax/SV relief or allowance -> invested amount -> fees -> taxes/KV/PV -> net payout.
+- Add result-side waterfall cards, not only input-side hints, because users look for explanations near the surprising number.
+- Highlight which parts are estimates and which are direct consequences of the selected offer.
+- Acceptance criterion: when bAV wins or loses, the user can see whether the cause is employer money, taxes, fees, lower GRV, or retirement KV/PV.
+
+#### #UX6 P2 Result Confidence And Assumption Sensitivity
+
+Show which assumptions the current ranking depends on before adding full Monte Carlo or heatmaps.
+
+Concrete changes:
+
+- Add a "Was muesste sich aendern?" panel with simple one-step sensitivity checks: return +/- 1 pp, fees +/- 0.5 pp, employer match 0/15/50%, retirement age +/- 2 years, KVdR on/off.
+- Show "robust", "knapp", or "annahmenabhaengig" badges for product rankings.
+- Link each badge to the assumption that drives it.
+- Acceptance criterion: the app warns users when a small assumption change flips the recommendation.
+
+#### #UX7 P2 Product Offer Entry Forms
+
+Add offer-shaped entry forms so users can copy values from real documents instead of translating them into internal model parameters.
+
+Concrete changes:
+
+- For bAV and private insurance, provide an "Angebot eingeben" mode with fields matching common offer PDFs: Eigenbeitrag/brutto, Arbeitgeberzuschuss, garantierter Rentenfaktor, Effektivkosten/RIY, Abschlusskosten, laufende Fondskosten, Kapital bei Rentenbeginn if provided.
+- If a document gives only all-in Effektivkosten, support that path and hide detailed fee fields with an explanation of the approximation.
+- Add validation prompts for missing high-impact values, e.g. "Rentenfaktor fehlt, daher ist die monatliche Rente nur grob."
+- Acceptance criterion: a user does not need to understand the internal fee model to enter a real offer.
+
+#### #UX8 P2 Empty, Error, And Trust States
+
+Make the interface feel safe when values are missing, invalid, or legally uncertain.
+
+Concrete changes:
+
+- Replace silent clamps and terse warnings with inline recovery text: what happened, why, and how to fix it.
+- Add "not a recommendation" and "legal values as of 2026" trust copy in a calm, visible place, not buried in the assumptions panel.
+- Add print/PDF summary copy that explains limitations in reader-friendly language.
+- Add mobile-specific review for long German labels, tables, and chart legends.
+- Acceptance criterion: invalid or edge-case inputs do not make the UI feel broken or punitive.
+
 ### Group E: Retirement-Income Refinements
 
 Items: P3 GRV / Basisrente refinements
@@ -67,7 +178,7 @@ Suggested order:
 
 1. ~~Salary growth and Rentenwert indexation for GRV.~~ ✓
 2. ~~Versorgungswerk / Beamtenpension variants.~~ ✓
-3. Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.
+3. ~~Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.~~ ✓
 
 Shared code areas: `src/engine/grv.ts`, `src/engine/basisrente.ts`, retirement tax/KV-PV helpers, profile assumptions UI.
 
@@ -97,7 +208,7 @@ Suggested order:
 - Monte Carlo simulation.
 - ~~Salary growth, contribution escalation, and GRV Rentenwert indexation.~~ ✓ (Wave 14)
 - ~~Versorgungswerk / Beamtenpension baseline variants.~~ ✓ (Wave 15)
-- Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.
+- ~~Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.~~ ✓ (Wave 16)
 - Multi-ETF portfolio.
 - Sensitivity heatmap.
 - ~~Saved scenario library and scenario duplication.~~ ✓

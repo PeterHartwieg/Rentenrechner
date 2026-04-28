@@ -48,20 +48,63 @@ export function BasisrenteInputs({
             }))
           }
         />
-        <NumberField
-          label="Rentenfaktor (Leibrente)"
-          value={assumptions.basisrente.rentenfaktor}
-          min={0}
-          max={100}
-          step={0.5}
-          suffix="EUR/10k"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              basisrente: { ...current.basisrente, rentenfaktor: Math.max(0, Number(value)) },
-            }))
-          }
-        />
+
+        <label className="field">
+          <span>Auszahlungsform</span>
+          <select
+            value={assumptions.basisrente.payoutMode}
+            onChange={(e) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                basisrente: {
+                  ...current.basisrente,
+                  payoutMode: e.target.value as 'leibrente' | 'zeitrente',
+                },
+              }))
+            }
+          >
+            <option value="leibrente">Leibrente (lebenslang)</option>
+            <option value="zeitrente">Zeitrente (befristet)</option>
+          </select>
+        </label>
+
+        {assumptions.basisrente.payoutMode === 'leibrente' && (
+          <NumberField
+            label="Rentenfaktor"
+            value={assumptions.basisrente.rentenfaktor}
+            min={0}
+            max={100}
+            step={0.5}
+            suffix="EUR/10k"
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                basisrente: { ...current.basisrente, rentenfaktor: Math.max(0, Number(value)) },
+              }))
+            }
+          />
+        )}
+
+        {assumptions.basisrente.payoutMode === 'zeitrente' && (
+          <NumberField
+            label="Zeitrente-Dauer"
+            value={assumptions.basisrente.zeitrenteYears}
+            min={1}
+            max={40}
+            step={1}
+            suffix="Jahre"
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                basisrente: {
+                  ...current.basisrente,
+                  zeitrenteYears: Math.max(1, Math.round(Number(value))),
+                },
+              }))
+            }
+          />
+        )}
+
         <NumberField
           label="Sonstige Renteneinnahmen"
           value={assumptions.basisrente.monthlyOtherRetirementIncome}
@@ -84,9 +127,10 @@ export function BasisrenteInputs({
         <p className="field-hint">
           Steuerersparnis: <strong>{formatCurrency(basisrenteFunding.monthlyTaxSaving, 0)}/Monat</strong>
           {' '}· Nettoaufwand: <strong>{formatCurrency(basisrenteFunding.monthlyNetCost, 0)}/Monat</strong>
-          {' '}· Schicht-1-Rest: {formatCurrency(basisrenteFunding.remainingSchicht1Cap, 0)} EUR/Jahr
+          {' '}· Schicht-1-Rest: <strong>{formatCurrency(basisrenteFunding.remainingSchicht1Cap, 0)}</strong> EUR/Jahr
+          {' '}(Pflichtvorsorge: {formatCurrency(basisrenteFunding.annualPensionContributionsTowardsCap, 0)} EUR/Jahr)
           {basisrenteFunding.annualDeductible < basisrenteFunding.annualGrossContribution && (
-            <> · <span className="riy-warn">Pflichtversorgung füllt Teile des Caps — nur {formatCurrency(basisrenteFunding.annualDeductible, 0)} absetzbar</span></>
+            <> · <span className="riy-warn">Nur {formatCurrency(basisrenteFunding.annualDeductible, 0)} EUR/Jahr absetzbar — Cap ausgeschöpft</span></>
           )}
           {basisrenteProductResult && <> · Nettorente: <strong>{formatCurrency(basisrenteProductResult.netMonthlyPayout, 0)}/Monat</strong></>}
         </p>

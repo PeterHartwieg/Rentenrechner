@@ -34,7 +34,7 @@ import type {
 } from '../domain'
 import { besteuerungsanteilGrv } from '../rules/de2026'
 import { careEmployeeRateForChildren } from './salary'
-import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
+import { calculateRetirementTax } from './retirementTax'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 /**
@@ -175,10 +175,13 @@ export function netBasisrentePayout(
   }
 
   // -------------------------------------------------------------------------
-  // 2. KV/PV — full health rate, no Freibetrag.
+  // 2. KV/PV — marginal freiwillig §240 SGB V.
   //    Basisrente is not a Versorgungsbezug (§229 SGB V); no §226 Abs. 2 KV-Freibetrag.
-  //    Use freiwillig path (isFreiwilligVersichert = true) to get full rate without
-  //    the KVdR half-rate that applies only to GRV (§249a SGB V).
+  //    For freiwillig Versicherte, contributions apply at the full rate on all income up
+  //    to the monthly BBG (§240 SGB V). otherMonthlyIncome (GRV + other) already occupies
+  //    part of that BBG headroom. The MARGINAL KV/PV from adding the Basisrente payout is:
+  //      rate × min(grossPayout, max(0, BBG − otherMonthlyIncome))
+  //    When other income fills the BBG entirely, the Basisrente adds zero KV/PV.
   // -------------------------------------------------------------------------
   const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
@@ -186,20 +189,9 @@ export function netBasisrentePayout(
     careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) +
     rules.socialSecurity.careEmployerRate
 
-  const kvPv = calculateRetirementKvPv({
-    bavMonthlyVersorgungsbezuege: 0,
-    otherMonthlyVersorgungsbezuege: 0,
-    monthlyStatutoryPension: 0,
-    freiwilligOtherMonthlyIncome: grossMonthlyPayout,
-    isFreiwilligVersichert: true,
-    kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
-    pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
-    monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
-    healthRate,
-    careRate,
-  })
-
-  const kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
+  const bbg = rules.socialSecurity.healthAndCareCapMonth
+  const kvPvBase = Math.min(grossMonthlyPayout, Math.max(0, bbg - otherMonthlyIncome))
+  const kvPvMonthly = kvPvBase * (healthRate + careRate)
 
   return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
 }

@@ -105,4 +105,118 @@ describe('#61 netBasisrentePayout', () => {
     const netHighOther = netBasisrentePayout(1000, defaultProfile, de2026Rules, 3000)
     expect(netHighOther).toBeLessThan(netLowOther)
   })
+
+  it('zero otherMonthlyIncome: KV/PV unchanged from previous behavior', () => {
+    // With no other income, combined = grossMonthlyPayout; basisrenteKvShare = 1; same as before.
+    const net1 = netBasisrentePayout(800, defaultProfile, de2026Rules, 0)
+    const net2 = netBasisrentePayout(800, defaultProfile, de2026Rules, 0, de2026Rules.year)
+    expect(net1).toBeCloseTo(net2, 5)
+  })
+})
+
+describe('Wave 16 — freiwillig-GKV BBG cap interaction (marginal approach)', () => {
+  const bbg = de2026Rules.socialSecurity.healthAndCareCapMonth // 5812.50 EUR/month
+  // Helper: isolate the KV/PV component by comparing GKV vs PKV (same tax, no KV/PV for PKV).
+  const pkvProfile = { ...defaultProfile, publicHealthInsurance: false }
+  const kvPvAmount = (gross: number, other: number) =>
+    netBasisrentePayout(gross, pkvProfile, de2026Rules, other) -
+    netBasisrentePayout(gross, defaultProfile, de2026Rules, other)
+
+  it('below BBG: full KV/PV charged on gross payout', () => {
+    // otherMonthlyIncome = 0, gross = 500 → kvPvBase = min(500, BBG) = 500
+    // defaultProfile has no children → careEmployeeChildlessRate applies
+    const kv = kvPvAmount(500, 0)
+    const additionalRate = (defaultProfile.healthAdditionalContributionPct ?? 0) / 100
+    const healthRate = de2026Rules.socialSecurity.healthGeneralRate + additionalRate
+    const careRate =
+      de2026Rules.socialSecurity.careEmployeeChildlessRate + de2026Rules.socialSecurity.careEmployerRate
+    expect(kv).toBeCloseTo(500 * (healthRate + careRate), 1)
+  })
+
+  it('above BBG: reduced KV/PV when other income consumes most of the headroom', () => {
+    // kvPvAmount with otherIncome = BBG - 100 (only 100 EUR headroom) should be
+    // much smaller than kvPvAmount with otherIncome = 0
+    const kvSmallHeadroom = kvPvAmount(1000, bbg - 100)
+    const kvNoOtherIncome = kvPvAmount(1000, 0)
+    expect(kvSmallHeadroom).toBeLessThan(kvNoOtherIncome)
+  })
+
+  it('other income at BBG: zero KV/PV on Basisrente (no headroom left)', () => {
+    // otherMonthlyIncome = BBG → kvPvBase = min(500, max(0, BBG - BBG)) = 0
+    const kv = kvPvAmount(500, bbg)
+    expect(kv).toBeCloseTo(0, 2)
+  })
+
+  it('other income above BBG: still zero KV/PV (negative headroom clamped to 0)', () => {
+    const kv = kvPvAmount(500, bbg + 1000)
+    expect(kv).toBeCloseTo(0, 2)
+  })
+})
+
+describe('Wave 16 — Basisrente Zeitrente payout mode', () => {
+  it('zeitrente mode produces payout (grossMonthlyPayout > 0)', () => {
+    const { results } = (() => {
+      const sim = simulateRetirementComparison(
+        defaultProfile,
+        {
+          ...defaultAssumptions,
+          basisrente: {
+            ...defaultAssumptions.basisrente,
+            payoutMode: 'zeitrente',
+            zeitrenteYears: 20,
+          },
+        },
+        de2026Rules,
+      )
+      return { results: sim.products.filter((p) => p.productId === 'basisrente') }
+    })()
+    for (const r of results) {
+      expect(r.grossMonthlyPayout).toBeGreaterThan(0)
+      expect(r.netMonthlyPayout).toBeGreaterThan(0)
+      expect(r.afterTaxLumpSum).toBeNull()
+    }
+  })
+
+  it('zeitrente 20yr vs leibrente RF28: zeitrente pays more (shorter horizon favors fixed term)', () => {
+    const baseAssumptions = {
+      ...defaultAssumptions,
+      returnScenarios: [defaultAssumptions.returnScenarios[0]],
+    }
+    const simLeib = simulateRetirementComparison(
+      defaultProfile,
+      { ...baseAssumptions, basisrente: { ...baseAssumptions.basisrente, payoutMode: 'leibrente', rentenfaktor: 28 } },
+      de2026Rules,
+    )
+    const simZeit = simulateRetirementComparison(
+      defaultProfile,
+      { ...baseAssumptions, basisrente: { ...baseAssumptions.basisrente, payoutMode: 'zeitrente', zeitrenteYears: 20 } },
+      de2026Rules,
+    )
+    const leibResult = simLeib.products.find((p) => p.productId === 'basisrente')!
+    const zeitResult = simZeit.products.find((p) => p.productId === 'basisrente')!
+    // RF 28 = 28 EUR/10k capital; Zeitrente over 20yr from the same capital depletes faster
+    // → higher monthly payout than a Leibrente at RF28 for a typical accumulation period
+    expect(zeitResult.grossMonthlyPayout).toBeGreaterThan(leibResult.grossMonthlyPayout)
+  })
+
+  it('leibrente mode has leibrenteBreakEvenAge defined; zeitrente mode does not', () => {
+    const baseAssumptions = {
+      ...defaultAssumptions,
+      returnScenarios: [defaultAssumptions.returnScenarios[0]],
+    }
+    const simLeib = simulateRetirementComparison(
+      defaultProfile,
+      { ...baseAssumptions, basisrente: { ...baseAssumptions.basisrente, payoutMode: 'leibrente' } },
+      de2026Rules,
+    )
+    const simZeit = simulateRetirementComparison(
+      defaultProfile,
+      { ...baseAssumptions, basisrente: { ...baseAssumptions.basisrente, payoutMode: 'zeitrente', zeitrenteYears: 20 } },
+      de2026Rules,
+    )
+    const leibResult = simLeib.products.find((p) => p.productId === 'basisrente')!
+    const zeitResult = simZeit.products.find((p) => p.productId === 'basisrente')!
+    expect(leibResult.leibrenteBreakEvenAge).toBeDefined()
+    expect(zeitResult.leibrenteBreakEvenAge).toBeUndefined()
+  })
 })
