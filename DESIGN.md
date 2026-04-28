@@ -106,15 +106,24 @@ src/
   domain/
     types.ts
   engine/
+    fees.ts / fees.test.ts
     projections.ts
+    retirementTax.ts / retirementTax.test.ts / retirementKvPv.test.ts
+    bavLumpSumTax.test.ts
+    bavWarnings.ts / bavWarnings.test.ts
     salary.ts
-    simulate.ts
-    simulate.test.ts
+    simulate.ts / simulate.test.ts
     tax.ts
   rules/
     de2026.ts
+    index.ts
+    legalConstants.ts
+  storage.ts / storage.test.ts
   utils/
+    csvExport.ts
     format.ts
+    scenarioSchema.ts / scenarioSchema.test.ts
+    urlShare.ts
   App.tsx
   App.css
   index.css
@@ -221,22 +230,25 @@ Modeled as:
 
 Decision: bAV output prioritizes net monthly retirement income and contribution leverage, not only gross capital.
 
-#### Private Insurance
+#### Private Insurance (Schicht 3)
 
 Modeled as:
 
-- monthly premium.
+- monthly premium equal to bAV net cost (fair comparison).
 - configurable fee model:
-  - annual asset fee
+  - wrapper asset fee (Versicherungsmantel, p.a.)
+  - fund/ETF asset fee (Fonds OGC/TER, p.a.)
   - contribution fee
   - fixed monthly fee
-  - acquisition cost
-  - acquisition-cost spread period
-- tax mode:
-  - `normal`
-  - `steuerfrei`
+  - acquisition cost and spread period
+  - pension payout fee (% of gross monthly annuity)
+- law-based tax mode derived from `contractStartYear` and contract runtime:
+  - `pre2005`: entirely tax-free (§52 Abs. 28 EStG a.F., 12-year/5-payment conditions)
+  - `halbeinkuenfte`: half the gain at personal marginal rate (§20 Abs. 1 Nr. 6 EStG, 12-year/age-62 rule)
+  - `abgeltungsteuer`: full gain at flat 25 % + Soli (§20 Abs. 2 EStG)
+- payout mode: `leibrente` (Rentenfaktor-driven, lifelong), `zeitrente` (contractual term), or `kapitalverzehr` (depletion to `retirementEndAge`).
 
-Decision: insurance tax is intentionally simplified in v1 to the two requested modes.
+This product models an ungefoerderte Schicht-3 private Rentenversicherung. Basisrente (Rürup) and Riester are out of scope.
 
 ## UI and Visualization Decisions
 
@@ -290,18 +302,23 @@ Decision: avoid marketing-page styling. This is a work-focused calculator.
 
 Implemented:
 
-- line chart for projected capital until retirement.
-- toggle for nominal vs inflation-adjusted values.
+- line chart for projected capital until retirement (nominal / inflation-adjusted toggle).
 - bar chart for monthly net retirement payout.
 - detailed comparison table across all products and return scenarios.
+- fee-drag stacked bar chart (capital net of tax + total fees) per product/scenario.
+- bAV tax/SV waterfall panel.
+- yearly cashflow audit table.
+- shareable scenario URLs (`?s=` base64url parameter).
+- CSV export (summary, yearly cashflows, ETF payout schedule).
+- assumptions drawer with Regelwerte & Quellen 2026.
+- fee presets (Nettotarif / Standard / Hochkosten) and threshold warnings per product.
+- Effektivkosten / RIY display per product.
 
 Planned:
 
-- fee-drag chart.
-- tax/social-security waterfall for bAV.
-- yearly cashflow table.
-- break-even view.
+- break-even age view for Leibrente products.
 - sensitivity heatmap.
+- PDF export.
 
 ## Current Defaults
 
@@ -312,20 +329,39 @@ age: 28
 retirement age: 67
 gross salary: 75,000 EUR/year
 tax class: I
-children: 0
+childBirthYears: []
 church tax: false
-public health insurance: true
+public health insurance: true (GKV)
 GKV additional contribution: 2.9%
+pkvMonthlyPremium: 0  (used when PKV = true)
+pPVMonthlyPremium: 0  (used when PKV = true)
 ```
 
 ### bAV
 
 ```text
 monthly gross conversion: 300 EUR
-extra employer contribution: 0%
-default contribution cost: 3%
-default capital fee: 0.5% p.a.
-default acquisition cost: 2.5% of contribution sum, spread over 5 years
+payout mode: leibrente, Rentenfaktor 30 EUR/10k/month
+statutory employer subsidy: enabled (§1a Abs. 1a BetrAVG)
+contractual employer match: 0 %
+wrapper asset fee: 0.30 % p.a.
+fund asset fee: 0.20 % p.a.  (total 0.50 %)
+contribution fee: 3 %
+acquisition cost: 2.5 % of contribution sum, spread over 5 years
+pension payout fee: 0 %
+```
+
+### Private Insurance
+
+```text
+contract start year: 2024  (→ halbeinkuenfte at retirement)
+payout mode: leibrente, Rentenfaktor 28 EUR/10k/month
+wrapper asset fee: 1.20 % p.a.
+fund asset fee: 0.20 % p.a.  (total 1.40 %)
+contribution fee: 3 %
+fixed monthly fee: 5 EUR
+acquisition cost: 2.5 % of contribution sum, spread over 5 years
+pension payout fee: 0 %
 ```
 
 ### Return Scenarios
@@ -371,74 +407,49 @@ Important references:
 
 ### Tax and Payroll Precision
 
-- Replace the simplified wage-tax helper with a full BMF PAP adapter.
+- Replace the §39b EStG Vorsorgepauschale helper with a full BMF PAP wage-tax adapter.
 - Add all tax classes.
-- Add married/splitting support.
-- Add children and child allowances.
+- Add married/splitting support (Ehegattensplitting).
+- Add child tax credits and child allowances.
 - Add church tax by state.
-- Add private health insurance mode.
 - Add optional monthly salary, bonus, and special-payment handling.
-- Add exact pension-phase taxation for bAV and insurance.
 - Add configurable future law years, e.g. `DE-2027`, `DE-2028`.
 - Add law-source metadata per rule field.
 
 ### bAV Precision
 
-- Model reduction of statutory pension entitlements due to lower pension contributions.
-- Model different bAV implementation routes:
-  - Direktversicherung
-  - Pensionskasse
-  - Pensionsfonds
-  - Unterstützungskasse
-  - Direktzusage
 - Add portability/job-change assumptions.
-- Add employer-specific matching rules.
-- Add guaranteed annuity factors.
-- Add lump-sum payout taxation and health/care contribution handling.
 - Add future health/care contribution assumptions during retirement.
+- Add correct Schicht-3 Ertragsanteil taxation for pAV Leibrente (BACKLOG #59).
 
 ### ETF Precision
 
-- Add detailed German ETF taxation:
-  - Vorabpauschale
-  - distributions vs accumulating funds
-  - partial exemption by fund type
-  - realized-gain sequencing during withdrawal
-  - unused Sparerpauschbetrag handling over time
+- Add support for distributing funds (Vorabpauschale / gain basis tracking already handles accumulating; distributing funds differ).
 - Add salary/investment contribution growth.
 - Add rebalancing or multiple ETF allocations.
 
 ### Private Insurance Precision
 
-- Add insurance-specific tax treatment beyond `steuerfrei` and `normal`.
-- Add old-contract rules.
-- Add half-income method / 12-year / age conditions where applicable.
-- Add guaranteed pension factors.
-- Add surrender value.
+- Add correct §22 EStG Ertragsanteil taxation for Schicht-3 Leibrente (BACKLOG #59).
+- Label product explicitly as Schicht 3 / ungefoerdert (BACKLOG #60).
+- Derive contract runtime from calendar years for accurate tax-mode classification (BACKLOG #44).
+- Add Basisrente (Rürup, Schicht 1) as a separate product (BACKLOG #61).
+- Add Riester / certified Altersvorsorgevertrag (BACKLOG #62).
+- Add surrender value and paid-up scenario (BACKLOG #65).
 - Add death benefit / survivor assumptions.
-- Add contract-specific cost import fields.
+- Add break-even age and Rentenfaktor diagnostics (BACKLOG #64).
 
 ### Visualization
 
-- Add tax/social-security waterfall for bAV.
-- Add fee-drag comparison.
+- Add break-even age view for Leibrente products.
 - Add net-cost versus retirement-value chart.
 - Add sensitivity heatmap.
-- Add break-even age view.
-- Add yearly and monthly audit tables.
-- Add exportable scenario report.
 
 ### Product and UX
 
-- Add saved scenarios via `localStorage`.
 - Add scenario duplication.
-- Add shareable URLs.
-- Add CSV export.
 - Add PDF export.
-- Add assumptions/source drawer.
-- Add onboarding presets for typical contracts.
-- Add bilingual support later, if publishing.
-- Add warning system for assumptions that are simplified or missing.
+- Add bilingual support (if publishing).
 
 ### Engineering
 
@@ -452,16 +463,18 @@ Important references:
 ## Known Limitations
 
 - The current app is not financial, tax, or legal advice.
-- The tax model is not yet a complete payroll implementation.
-- The retirement phase is simplified.
-- Private insurance taxation is simplified to the requested two modes.
+- The tax model implements §39b EStG Vorsorgepauschale, not the full BMF PAP wage-tax engine; edge cases (bonus months, multi-employer) are not modeled.
+- Only tax class I / single filing is supported. No Ehegattensplitting, church tax, or child tax credits in the income-tax calculation.
+- Schicht 1 (Basisrente) and Schicht 2 (Riester) are not modeled.
+- Private Rentenversicherung Leibrente is taxed using a gain-ratio approximation; the correct §22 EStG Ertragsanteil method (BACKLOG #59) is not yet implemented.
+- Saxony's split PV employer/employee rates (§55 Abs. 3 Satz 6 SGB XI) are not modeled.
+- All projections use fixed annual returns, not stochastic simulation.
 - Future law changes are not automatically fetched or updated.
-- All projections use fixed annual returns, not stochastic market behavior.
 
 ## Next Recommended Milestones
 
-1. Add full BMF PAP integration or a verified adapter for 2026 wage tax.
-2. Add a detailed yearly cashflow table so every result is auditable.
-3. Add the bAV tax/SV waterfall visualization.
-4. Add `localStorage` scenario save/load.
-5. Expand insurance contract inputs for real offers.
+1. Correct private Rentenversicherung Leibrente taxation to §22 EStG Ertragsanteil (BACKLOG #59).
+2. Explicitly label and scope the private product as Schicht 3 (BACKLOG #60).
+3. Derive pAV contract runtime from calendar years for accurate tax-mode classification (BACKLOG #44).
+4. Add break-even age and Rentenfaktor quality diagnostics for Leibrente products (BACKLOG #64).
+5. Consider adding Basisrente (Schicht 1) as a separate product (BACKLOG #61).

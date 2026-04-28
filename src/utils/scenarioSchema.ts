@@ -1,4 +1,5 @@
 import type {
+  BasisrenteAssumptions,
   BavAssumptions,
   BavDurchfuehrungsweg,
   EtfAssumptions,
@@ -9,6 +10,7 @@ import type {
   ReturnScenario,
   ReturnScenarioId,
   ScenarioAssumptions,
+  StatutoryPensionAssumptions,
 } from '../domain/types'
 
 // Range/shape validation for state loaded from URL share or localStorage (#49).
@@ -29,6 +31,7 @@ const VALID_SCENARIO_IDS: readonly ReturnScenarioId[] = ['konservativ', 'basis',
 const VALID_PARTIAL_EXEMPTIONS = [0, 0.15, 0.3, 0.6, 0.8] as const
 
 const VALID_PAYOUT_MODES: readonly PayoutMode[] = ['leibrente', 'zeitrente', 'kapitalverzehr']
+const VALID_BASISRENTE_PAYOUT_MODES: readonly string[] = ['leibrente', 'zeitrente']
 
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v)
@@ -128,6 +131,23 @@ function validateInsurance(ins: InsuranceAssumptions): boolean {
   return validateFees(ins.fees)
 }
 
+function validateBasisrente(br: BasisrenteAssumptions): boolean {
+  if (!isFiniteNumber(br.monthlyGrossContribution) || br.monthlyGrossContribution < 0) return false
+  if (!VALID_BASISRENTE_PAYOUT_MODES.includes(br.payoutMode)) return false
+  if (!inRange(br.rentenfaktor, 0, 100)) return false
+  if (!intInRange(br.zeitrenteYears, 1, 50)) return false
+  if (!isFiniteNumber(br.monthlyOtherRetirementIncome) || br.monthlyOtherRetirementIncome < 0) return false
+  if (!br.fees || typeof br.fees !== 'object') return false
+  return validateFees(br.fees)
+}
+
+function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
+  if (sp.manualMonthlyGross !== null && !inRange(sp.manualMonthlyGross, 0, 100_000)) return false
+  if (!inRange(sp.currentEntgeltpunkte, 0, 200)) return false
+  if (typeof sp.includeGrvReduction !== 'boolean') return false
+  return true
+}
+
 export function validateAssumptions(input: unknown): ScenarioAssumptions | null {
   if (!input || typeof input !== 'object') return null
   const a = input as ScenarioAssumptions
@@ -137,6 +157,8 @@ export function validateAssumptions(input: unknown): ScenarioAssumptions | null 
   if (!a.etf || typeof a.etf !== 'object' || !validateEtf(a.etf)) return null
   if (!a.bav || typeof a.bav !== 'object' || !validateBav(a.bav)) return null
   if (!a.insurance || typeof a.insurance !== 'object' || !validateInsurance(a.insurance)) return null
+  if (!a.statutoryPension || typeof a.statutoryPension !== 'object' || !validateStatutoryPension(a.statutoryPension)) return null
+  if (!a.basisrente || typeof a.basisrente !== 'object' || !validateBasisrente(a.basisrente)) return null
   return a
 }
 

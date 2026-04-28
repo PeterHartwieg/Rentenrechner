@@ -143,6 +143,13 @@
   line-height: 1.4;
 }
 
+.break-even-note {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: normal;
+}
+
 .field-inline {
   display: flex;
   flex-direction: row;

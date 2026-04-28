@@ -56,6 +56,35 @@ export const defaultAssumptions: ScenarioAssumptions = {
       pensionPayoutFeePct: 0,
     },
   },
+  basisrente: {
+    // Typical Rürup/Basisrente monthly premium for an employed single filer.
+    // Most Rürup contracts start around 100–300 EUR/month; 200 EUR is a reasonable default.
+    monthlyGrossContribution: 200,
+    // #54: Basisrente contracts typically quote Leibrente as the default payout form.
+    // 28 EUR/10k/Monat chosen as a 2026 market-typical value (similar to private insurance,
+    // as Basisrente insurers price annuities similarly to Schicht-3 providers).
+    payoutMode: 'leibrente' as const,
+    rentenfaktor: 28,
+    zeitrenteYears: 20,
+    monthlyOtherRetirementIncome: 0,
+    fees: {
+      wrapperAssetFee: 0.012,   // 1.20 % — typical Basisrente insurance wrapper
+      fundAssetFee: 0.002,      // 0.20 % ETF-Fondskosten — total 1.40 % p.a.
+      contributionFee: 0.03,
+      fixedMonthlyFee: 5,
+      acquisitionCostPct: 0.025,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+  },
+  statutoryPension: {
+    // null = use EP-based estimation; set to a specific number to use a Renteninformation override
+    manualMonthlyGross: null,
+    // Seed with a realistic EP count for the default 28-year-old profile (~6 years at avg salary).
+    // Users should replace this with the value from their last Renteninformation letter.
+    currentEntgeltpunkte: 8,
+    includeGrvReduction: false,
+  },
   insurance: {
     contractStartYear: 2024,
     oldContractTaxFreeEligible: false,

@@ -1,6 +1,7 @@
 import type {
   BavFundingResult,
   BavLumpSumTaxMode,
+  BasisrenteFundingResult,
   EtfPayoutRow,
   FeeModel,
   GermanRules,
@@ -11,7 +12,10 @@ import type {
   ScenarioAssumptions,
   SimulationResult,
 } from '../domain/types'
+import { calculateBasisrenteFunding, netBasisrentePayout } from './basisrente'
+
 import { computeRIY } from './fees'
+import { projectStatutoryPension } from './grv'
 import { calculateBavFunding } from './salary'
 import {
   afterTaxBavLumpSum,
@@ -57,7 +61,9 @@ function buildProductResult(params: {
   monthlyProductContribution: number
   monthlyEmployerContribution: number
   fees: FeeModel
-  taxMode: 'etf' | 'bav' | 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'
+  taxMode: 'etf' | 'bav' | 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer' | 'basisrente'
+  /** Required when taxMode === 'basisrente' to populate taxAndSvSavings. */
+  basisrenteFunding?: BasisrenteFundingResult
   partialExemption?: number
   /** Calendar year the user reaches retirement age — used for cohort-table lookups in #46 pipeline. */
   retirementYear: number
@@ -99,6 +105,14 @@ function buildProductResult(params: {
       kapitalverzehrYears: payoutYears,
       payoutReturn,
     })
+  } else if (params.taxMode === 'basisrente') {
+    grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
+      mode: params.assumptions.basisrente.payoutMode,
+      rentenfaktor: params.assumptions.basisrente.rentenfaktor,
+      zeitrenteYears: params.assumptions.basisrente.zeitrenteYears,
+      kapitalverzehrYears: payoutYears,
+      payoutReturn,
+    })
   } else {
     grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
       mode: params.assumptions.insurance.payoutMode,
@@ -109,9 +123,8 @@ function buildProductResult(params: {
     })
   }
 
-  // #56: pension-phase fee — applied to bAV and insurance annuity/Zeitrente payouts before
-  // income tax and KV/PV. Convention: grossMonthlyPayout is gross before this fee;
-  // the fee deducts from the gross figure before any tax/SV calculation.
+  // #56: pension-phase fee — applied to bAV, insurance, and Basisrente annuity payouts before
+  // income tax and KV/PV. Convention: grossMonthlyPayout is gross before this fee.
   if (params.taxMode !== 'etf' && params.fees.pensionPayoutFeePct > 0) {
     grossMonthlyPayout = grossMonthlyPayout * (1 - params.fees.pensionPayoutFeePct)
   }
@@ -174,6 +187,21 @@ function buildProductResult(params: {
       params.retirementYear,
       params.profile,
       kvdrMember,
+      params.assumptions.insurance.payoutMode,   // #59: Ertragsanteil for leibrente
+      params.profile.retirementAge,
+    )
+  }
+
+  if (params.taxMode === 'basisrente') {
+    // Basisrente: full capital payout is not permitted.
+    afterTaxLumpSum = null
+    const otherIncome = params.assumptions.basisrente.monthlyOtherRetirementIncome
+    netMonthlyPayout = netBasisrentePayout(
+      grossMonthlyPayout,
+      params.profile,
+      params.rules,
+      otherIncome,
+      params.retirementYear,
     )
   }
 
@@ -221,7 +249,11 @@ function buildProductResult(params: {
     grossMonthlyPayout,
     netMonthlyPayout,
     taxAndSvSavings:
-      params.productId === 'bav' ? params.bavFunding.annualTaxAndSvSavings * yearsToRetirement : 0,
+      params.productId === 'bav'
+        ? params.bavFunding.annualTaxAndSvSavings * yearsToRetirement
+        : params.productId === 'basisrente' && params.basisrenteFunding
+          ? params.basisrenteFunding.annualTaxSaving * yearsToRetirement
+          : 0,
     valueMultipleOnUserCost:
       projection.totalUserCost > 0 && afterTaxLumpSum !== null
         ? afterTaxLumpSum / projection.totalUserCost
@@ -237,6 +269,17 @@ function buildProductResult(params: {
       params.scenario.annualReturn,
       projection.capital,
     ),
+    // #64: nominal break-even age for Leibrente — years to recoup capital at gross payout rate
+    leibrenteBreakEvenAge:
+      params.taxMode !== 'etf' &&
+      (params.taxMode === 'bav'
+        ? params.assumptions.bav.payoutMode === 'leibrente'
+        : params.taxMode === 'basisrente'
+          ? params.assumptions.basisrente.payoutMode === 'leibrente'
+          : params.assumptions.insurance.payoutMode === 'leibrente') &&
+      grossMonthlyPayout > 0
+        ? params.profile.retirementAge + projection.capital / (grossMonthlyPayout * 12)
+        : undefined,
     rows: projection.rows,
     etfPayoutRows,
   }
@@ -265,6 +308,13 @@ export function simulateRetirementComparison(
   const bavLumpSumTaxMode = deriveBavLumpSumTaxMode(
     assumptions.bav.durchfuehrungsweg,
     assumptions.bav.pre2005EligibleTaxFree,
+  )
+
+  // Basisrente tax saving depends on the salary result (zvE) from bavFunding.
+  const basisrenteFunding = calculateBasisrenteFunding(
+    rules,
+    bavFunding.salaryWithBav,
+    assumptions.basisrente,
   )
 
   const products = assumptions.returnScenarios.flatMap((scenario) => [
@@ -303,7 +353,7 @@ export function simulateRetirementComparison(
     }),
     buildProductResult({
       productId: 'versicherung',
-      label: 'Private Versicherung',
+      label: 'Private Rentenversicherung (Schicht 3)',
       scenario,
       profile,
       rules,
@@ -316,10 +366,36 @@ export function simulateRetirementComparison(
       taxMode: insuranceTaxMode,
       retirementYear: payoutYear,
     }),
+    buildProductResult({
+      productId: 'basisrente',
+      label: 'Basisrente (Rürup, Schicht 1)',
+      scenario,
+      profile,
+      rules,
+      assumptions,
+      bavFunding,
+      basisrenteFunding,
+      monthlyUserCost: basisrenteFunding.monthlyNetCost,
+      monthlyProductContribution: basisrenteFunding.monthlyGrossContribution,
+      monthlyEmployerContribution: 0,
+      fees: assumptions.basisrente.fees,
+      taxMode: 'basisrente',
+      retirementYear: payoutYear,
+    }),
   ])
+
+  const statutoryPension = projectStatutoryPension(
+    profile,
+    rules,
+    assumptions.statutoryPension,
+    bavFunding.estimatedMonthlyGrvReduction,
+    payoutYear,
+  )
 
   return {
     bavFunding,
     products,
+    statutoryPension,
+    basisrenteFunding,
   }
 }

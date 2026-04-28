@@ -47,6 +47,7 @@ src/rules/de2026.ts
 | bAV tax-free limit | 8% RV BBG | implemented |
 | bAV SV-free limit | 4% RV BBG | implemented |
 | Statutory bAV employer subsidy | 15%, capped by employer SV savings | implemented |
+| PKV §257 SGB V employer subsidy | 50% of PKV premium, capped at GKV equivalent (§257 Abs. 2 SGB V); §3 Nr. 62 EStG tax-free | implemented (#50) |
 | Sparerpauschbetrag | 1,000 EUR | implemented in ETF model |
 | Abgeltungsteuer | 25% + Soli | implemented |
 | 2026 InvStG Basiszins | 3.20% | implemented |
@@ -205,29 +206,27 @@ years instead of using only `retirementAge - age`.
 
 ## Open Legal Modeling Questions
 
-### Statutory Pension Reduction From bAV
+### Private Insurance Tax Runtime (#44)
 
-Need a precise but understandable method for estimating lost Rentenpunkte from reduced pension-insurance contributions.
+`deriveInsuranceTaxMode()` receives `retirementAge - age` as the contract runtime, ignoring `contractStartYear`. A contract started before or after the current rule year can be classified into the wrong `halbeinkuenfte` / `abgeltungsteuer` branch.
 
-Tracked in `BACKLOG.md` item `#5`.
-
-### bAV Retirement Income Context
-
-Need a configurable retirement-income model:
-
-- statutory pension
-- other taxable income
-- KVdR vs voluntary GKV
-- lump-sum vs pension payout
-
-Tracked in `BACKLOG.md` item `#6`.
-
-### Private Insurance Tax Runtime
-
-Need to derive pAV contract runtime from `contractStartYear` and payout year so old and
-post-2004 contracts are classified correctly.
+Correct fix: `payoutYear = rules.year + (retirementAge - age)`, `contractRuntimeYears = payoutYear - contractStartYear`.
 
 Tracked in `BACKLOG.md` item `#44`.
+
+### Schicht-3 Leibrente Ertragsanteil Taxation (#59)
+
+Private Rentenversicherung monthly Leibrente payouts are currently taxed using a gain-ratio approximation (capital minus contributions over capital). The correct statutory method for an ungefoerderte private Leibrente is the §22 EStG Ertragsanteil (age-dependent fixed fraction, e.g. 17 % at age 67), not the gain ratio.
+
+Tracked in `BACKLOG.md` item `#59`.
+
+### PKV §257 SGB V — Employer Subsidy Cap Basis
+
+The current `calculatePkv257Subsidy` caps the employer subsidy at half the actual PKV premium. The statute (§257 Abs. 2 SGB V) also limits to the employer's hypothetical GKV share — meaning the cap is the lower of: half the PKV premium, and half of the GKV rate applied to salary up to KV/PV BBG. The current implementation uses only the PKV-premium cap and is directionally correct for typical cases where the PKV premium exceeds the GKV equivalent. A future refinement should cap against both limits.
+
+### §106 SGB VI Health-Insurance Subsidy for Freiwillig Versicherte
+
+For freiwillig Versicherte receiving a statutory GRV pension, the Deutsche Rentenversicherung pays a Beitragszuschuss (§106 SGB VI) toward the health-insurance contribution. This subsidy is not modeled; the calculator computes the full health-insurance share for freiwillig Versicherte without the offset. Impact is limited since the default profile uses KVdR.
 
 ## Review Checklist For Future Rule Years
 

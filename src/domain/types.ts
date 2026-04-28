@@ -1,9 +1,12 @@
-export type ProductId = 'etf' | 'bav' | 'versicherung'
+export type ProductId = 'etf' | 'bav' | 'versicherung' | 'basisrente'
 
-// pre2005: old-law contract (§52 Abs. 28 EStG) — tax-free payout
-// halbeinkuenfte: post-2004, ≥12 years, payout ≥ age 62 — half the gain at personal income tax rate (§20 Abs. 1 Nr. 6 EStG)
-// abgeltungsteuer: post-2004, all other cases — full gain at 25% Abgeltungsteuer (§20 Abs. 2 EStG)
-export type InsuranceTaxMode = 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'
+// pre2005: old-law contract (§52 Abs. 28 EStG) — tax-free capital payout; Leibrente still uses Ertragsanteil.
+// halbeinkuenfte: post-2004, ≥12 years, payout ≥ age 62 — half the gain at personal income tax rate (§20 Abs. 1 Nr. 6 EStG). Capital payouts only.
+// abgeltungsteuer: post-2004, all other cases — full gain at 25% Abgeltungsteuer (§20 Abs. 2 EStG). Capital payouts only.
+// ertragsanteil: lifelong Leibrente (payoutMode === 'leibrente') — §22 Nr. 1 Satz 3 a aa EStG Anlage 1.
+//   The taxable fraction is age-based (ertragsanteilByAge), independent of the contract year.
+//   Applies to ALL private Leibrenten regardless of contract era; set by netInsurancePayout, not deriveInsuranceTaxMode.
+export type InsuranceTaxMode = 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer' | 'ertragsanteil'
 
 /**
  * bAV Durchführungsweg — determines income-tax treatment of a capital payout (Kapitalabfindung). (#48)
@@ -156,6 +159,69 @@ export interface InsuranceAssumptions {
   zeitrenteYears: number
 }
 
+// ---------------------------------------------------------------------------
+// Statutory pension (#72)
+// ---------------------------------------------------------------------------
+
+/**
+ * Inputs for estimating or overriding the GRV statutory pension.
+ *
+ * Two modes:
+ * - Manual override: user enters the projected gross monthly pension from their
+ *   official Renteninformation letter. All estimation is bypassed.
+ * - EP-based estimate: user enters their accumulated Entgeltpunkte from the letter.
+ *   The remaining years are assumed to earn EP at the current salary / Durchschnittsentgelt ratio.
+ */
+export interface StatutoryPensionAssumptions {
+  /** Projected gross monthly pension from the official Renteninformation letter.
+   *  null → use EP-based estimation (currentEntgeltpunkte below). */
+  manualMonthlyGross: number | null
+  /** Accumulated Entgeltpunkte from the last Renteninformation (used when manualMonthlyGross is null). */
+  currentEntgeltpunkte: number
+  /** When true, subtracts the estimated monthly GRV reduction from bAV salary conversion from the gross pension. */
+  includeGrvReduction: boolean
+}
+
+export interface StatutoryPensionResult {
+  /** Gross monthly GRV pension (before income tax and KV/PV). */
+  grossMonthlyPension: number
+  /** Net monthly pension after income tax and KV/PV. */
+  netMonthlyPension: number
+  /** Income tax + Soli per month. */
+  taxMonthly: number
+  /** KV + PV per month (§249a SGB V half-rate on GRV). */
+  kvPvMonthly: number
+  /** Total projected Entgeltpunkte at retirement (earned + remaining years at current salary). */
+  projectedEntgeltpunkte: number
+  /** Monthly GRV reduction applied due to bAV salary conversion (0 when includeGrvReduction = false). */
+  grvReductionApplied: number
+}
+
+// ---------------------------------------------------------------------------
+// Basisrente / Rürup-Rente (#61)
+// ---------------------------------------------------------------------------
+
+/**
+ * Inputs for modeling a Basisrente (§10 Abs. 1 Nr. 2 EStG / §22 Nr. 1 Satz 3 a aa EStG).
+ *
+ * Basisrente (Rürup) is a Schicht-1 pension product. Contributions are deductible
+ * as Sonderausgaben up to the Schicht-1 cap (shared with GRV contributions).
+ * Payouts are taxed by the same §22 Besteuerungsanteil cohort table as GRV.
+ * Lump-sum payouts are not permitted; only lifelong annuity or Zeitrente.
+ */
+export interface BasisrenteAssumptions {
+  /** Monthly premium paid into the contract (before tax saving). */
+  monthlyGrossContribution: number
+  fees: FeeModel
+  // Only 'leibrente' and 'zeitrente' are legally available for Basisrente.
+  // 'kapitalverzehr' (full capital payout) is not permitted.
+  payoutMode: Extract<PayoutMode, 'leibrente' | 'zeitrente'>
+  rentenfaktor: number
+  zeitrenteYears: number
+  /** Monthly GRV + other retirement income for marginal-tax calculation in payout phase. */
+  monthlyOtherRetirementIncome: number
+}
+
 export interface ScenarioAssumptions {
   inflationRate: number
   retirementEndAge: number
@@ -163,6 +229,8 @@ export interface ScenarioAssumptions {
   etf: EtfAssumptions
   bav: BavAssumptions
   insurance: InsuranceAssumptions
+  statutoryPension: StatutoryPensionAssumptions
+  basisrente: BasisrenteAssumptions
 }
 
 export interface GermanRules {
@@ -205,6 +273,12 @@ export interface GermanRules {
     taxFreePctOfPensionCap: number
     socialSecurityFreePctOfPensionCap: number
     statutoryEmployerSubsidyPct: number
+  }
+  basisrente: {
+    /** §10 Abs. 3 EStG Höchstbetrag for single filers (Einzelveranlagung). */
+    schicht1CapSingle: number
+    /** Deductible fraction of contributions (§10 Abs. 3 EStG: 100% from 2023). */
+    deductibleFraction: number
   }
   capitalGains: {
     taxRate: number
@@ -321,13 +395,30 @@ export interface ProductResult {
   capitalMultipleAnnualized: number
   // #57: Effektivkosten / Reduction in Yield for the accumulation phase (pp)
   accumulationRiy: number
+  // #64: nominal break-even age for Leibrente mode — age at which cumulative gross payouts equal capitalAtRetirement.
+  //   grossBreakEvenAge = retirementAge + capitalAtRetirement / (grossMonthlyPayout * 12)
+  //   Only set when payoutMode === 'leibrente'; undefined for other payout modes.
+  leibrenteBreakEvenAge?: number
   rows: YearlyProjection[]
   etfPayoutRows?: EtfPayoutRow[]
+}
+
+export interface BasisrenteFundingResult {
+  monthlyGrossContribution: number
+  annualGrossContribution: number
+  annualGrvCountedTowardsCap: number
+  remainingSchicht1Cap: number
+  annualDeductible: number
+  annualTaxSaving: number
+  monthlyTaxSaving: number
+  monthlyNetCost: number
 }
 
 export interface SimulationResult {
   bavFunding: BavFundingResult
   products: ProductResult[]
+  statutoryPension: StatutoryPensionResult
+  basisrenteFunding: BasisrenteFundingResult
 }
 
 // ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ import type {
 import { calculateCapitalGainsTax } from './tax'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
-import { legalConstants } from '../rules/legalConstants'
+import { ertragsanteilByAge, legalConstants } from '../rules/legalConstants'
 
 interface AccumulationInput {
   productId: ProductId
@@ -321,7 +321,7 @@ export function deriveInsuranceTaxMode(
   contractRuntimeYears: number,
   retirementAge: number,
   oldContractTaxFreeEligible = true,
-): InsuranceTaxMode {
+): 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer' {
   const { pre2005YearBoundary, halbeinkuenfteMinRuntimeYears, halbeinkuenfteMinAge } = legalConstants.insurance
   if (
     contractStartYear < pre2005YearBoundary &&
@@ -388,17 +388,19 @@ export function deriveBavLumpSumTaxMode(
   return 'voll_versorgungsbezug'
 }
 
-// Net monthly insurance payout after tax and KV/PV where applicable. (#46, #47)
-// Halbeinkünfteverfahren: only half the gain is taxable at the personal income tax rate (§20 Abs. 1 Nr. 6 EStG).
-// Abgeltungsteuer: full gain taxed at 25% + Soli (§20 Abs. 2 EStG).
-// pre2005: no tax.
+// Net monthly insurance payout after tax and KV/PV where applicable. (#46, #47, #59)
+// For payoutMode === 'leibrente' (#59): §22 Nr. 1 Satz 3 a aa EStG Ertragsanteil method.
+//   Taxable = grossMonthlyPayout × 12 × ertragsanteilByAge(retirementAge).
+//   Applies regardless of contract era (even pre-2005 contracts pay Ertragsanteil on Leibrente).
+// For other payout modes: gain-ratio method — capital-payout tax modes (halbeinkuenfte / abgeltungsteuer / pre2005).
+//   Halbeinkünfteverfahren: only half the gain at the personal income tax rate (§20 Abs. 1 Nr. 6 EStG).
+//   Abgeltungsteuer: full gain taxed at 25% + Soli (§20 Abs. 2 EStG).
+//   pre2005: no income tax.
 // Routed through calculateRetirementTax so retirement deductions (Pauschbeträge, cohort allowances)
 // are applied before computing the marginal rate. (#46)
 // KV/PV (#47): Private insurance payouts are NOT Versorgungsbezüge under §229 SGB V.
 //   For KVdR-Pflichtversicherte: private insurance income does NOT trigger KV/PV.
 //   For freiwillig Versicherte: §240 SGB V — all income up to BBG is subject to KV/PV.
-//   The BBG cap is applied via calculateRetirementKvPv with the insurance payout as
-//   freiwilligOtherMonthlyIncome. otherMonthlyIncome is treated as statutory pension.
 //   PKV members: no KV/PV deductions.
 export function netInsurancePayout(
   grossMonthlyPayout: number,
@@ -410,32 +412,39 @@ export function netInsurancePayout(
   retirementYear = rules.year,
   profile?: PersonalProfile,
   kvdrMember = true,
+  payoutMode?: PayoutMode,
+  retirementAge?: number,
 ): number {
-  const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
-  const annualGain = grossMonthlyPayout * 12 * gainRatio
+  // #59: Leibrente → Ertragsanteil method (§22 EStG), ignoring capital-payout tax mode.
+  let effectiveTaxMode: InsuranceTaxMode = taxMode
+  let annualGain: number
+  if (payoutMode === 'leibrente' && retirementAge !== undefined) {
+    const ertragsanteil = ertragsanteilByAge(retirementAge)
+    annualGain = grossMonthlyPayout * 12 * ertragsanteil
+    effectiveTaxMode = 'ertragsanteil'
+  } else {
+    const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
+    annualGain = grossMonthlyPayout * 12 * gainRatio
+  }
 
-  if (taxMode === 'pre2005') {
-    // pre2005: no income tax on the payout. KV/PV applies for freiwillig versichert.
-    // Fall through to KV/PV block below (annualGain is 0 or irrelevant for tax but payout
-    // may still be subject to KV/PV). We still need to apply KV/PV for freiwillig.
+  // For pre-2005 capital payouts: no income tax (annualGain irrelevant for tax).
+  // For Leibrente: always tax via Ertragsanteil even on pre-2005 contracts (effectiveTaxMode='ertragsanteil').
+  if (effectiveTaxMode === 'pre2005') {
     if (!profile?.publicHealthInsurance || kvdrMember || !profile) {
-      // KVdR or PKV or no profile: no KV/PV → return full payout
       return grossMonthlyPayout
     }
     // freiwillig versichert: apply KV/PV below (marginalTax = 0 since pre2005)
   }
 
   let marginalTax = 0
-  if (taxMode !== 'pre2005') {
-    // Build RetirementIncomeComponents with the gain and other income, then compare tax
-    // with and without the insurance gain to get the marginal tax on the gain.
+  if (effectiveTaxMode !== 'pre2005') {
     const taxWithGain = calculateRetirementTax(
       {
         statutoryPensionAnnual: 0,
         bavPensionAnnual: 0,
         bavIsLumpSum: false,
         privateInsuranceTaxableAnnual: annualGain,
-        privateInsuranceTaxMode: taxMode,
+        privateInsuranceTaxMode: effectiveTaxMode,
         otherTaxableAnnual: otherMonthlyIncome * 12,
         retirementYear,
       },
@@ -448,7 +457,7 @@ export function netInsurancePayout(
         bavPensionAnnual: 0,
         bavIsLumpSum: false,
         privateInsuranceTaxableAnnual: 0,
-        privateInsuranceTaxMode: taxMode,
+        privateInsuranceTaxMode: effectiveTaxMode,
         otherTaxableAnnual: otherMonthlyIncome * 12,
         retirementYear,
       },

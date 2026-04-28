@@ -13,7 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { Calculator, Check, Coins, Download, Link, RotateCcw, Settings, TrendingUp } from 'lucide-react'
-import type { BavDurchfuehrungsweg, BavFundingResult, FeeModel, InsuranceTaxMode, PayoutMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions } from './domain/types'
+import type { BavDurchfuehrungsweg, BavFundingResult, FeeModel, InsuranceTaxMode, PayoutMode, PersonalProfile, ProductId, ProductResult, ScenarioAssumptions, StatutoryPensionAssumptions } from './domain/types'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital, deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from './engine/projections'
 import { careEmployeeRateForChildren } from './engine/salary'
@@ -114,7 +114,12 @@ const warnings: { category: string; status: WarningStatus; note: string }[] = [
   {
     category: 'Gesetzliche Rente',
     status: 'vereinfacht',
-    note: 'Optionale GRV-Minderungsschätzung: (Umwandlung ÷ Durchschnittsentgelt) × Jahre × Rentenwert. Tatsächliche Rente hängt von vollständiger Biografie ab. (#5)',
+    note: 'GRV-Schätzung: Entgeltpunkte × Rentenwert oder manueller Renteninformation-Wert; Steuerpipeline (§22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil) und KV/PV (§249a SGB V KVdR-Halbierung) vollständig modelliert. Vereinfachungen: konstantes Gehalt bis Rente, kein Rentenwert-Wachstum, nur KVdR-Modus. (#72)',
+  },
+  {
+    category: 'Basisrente (Rürup)',
+    status: 'vereinfacht',
+    note: 'Schicht-1 Deductibility: §10 Abs. 3 EStG Höchstbetrag 30.826 EUR; GRV-Beiträge (AN+AG) reduzieren den Restbetrag; 100% Abzugsfähigkeit (§10 Abs. 3 Satz 1 EStG 2026). Steuerpipeline: §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil (identisch GRV). KV/PV: §240 SGB V (voller GKV-Beitragssatz ohne §226(2)-Freibetrag). Vereinfachungen: freiwillig-Pfad für KV unabhängig vom tatsächlichen GKV-Status im Rentenalter; kein Kapitalwahlrecht modelliert. (#61)',
   },
   {
     category: 'Rendite-Szenarien',
@@ -133,6 +138,8 @@ const productColors: Record<string, string> = {
   etf: '#2563eb',
   bav: '#0f766e',
   versicherung: '#b45309',
+  grv: '#16a34a',
+  basisrente: '#7c3aed',
 }
 
 const productOrder = ['etf', 'bav', 'versicherung']
@@ -325,11 +332,18 @@ function App() {
 
     return point
   })
-  const pensionBars = selectedResults.map((result) => ({
-    name: result.label,
-    value: result.netMonthlyPayout,
-    fill: productColors[result.productId],
-  }))
+  const pensionBars = [
+    {
+      name: 'Gesetzl. Rente',
+      value: simulation.statutoryPension.netMonthlyPension,
+      fill: productColors.grv,
+    },
+    ...selectedResults.map((result) => ({
+      name: result.label,
+      value: result.netMonthlyPayout,
+      fill: productColors[result.productId],
+    })),
+  ]
   const comparableCapitalResults = selectedResults.filter(
     (result): result is ProductResult & { afterTaxLumpSum: number } =>
       result.afterTaxLumpSum !== null,
@@ -595,6 +609,101 @@ function App() {
               {formatCurrency(simulation.bavFunding.salaryWithoutBav.pkvNetMonthlyCost, 0)}/Monat.
             </p>
           )}
+
+          <div className="divider" />
+
+          <div className="subsection-heading">
+            <h3>Gesetzliche Rentenversicherung (GRV)</h3>
+            <p>Basisschutz aus der gesetzlichen Rente — geschätzt oder aus der Renteninformation.</p>
+          </div>
+
+          <label className="field">
+            <span>Grundlage</span>
+            <select
+              value={assumptions.statutoryPension.manualMonthlyGross !== null ? 'manual' : 'ep'}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  statutoryPension: {
+                    ...current.statutoryPension,
+                    manualMonthlyGross: event.target.value === 'manual' ? 0 : null,
+                  } as StatutoryPensionAssumptions,
+                }))
+              }
+            >
+              <option value="ep">Schätzen (Entgeltpunkte)</option>
+              <option value="manual">Aus Renteninformation (manuell)</option>
+            </select>
+          </label>
+
+          {assumptions.statutoryPension.manualMonthlyGross !== null ? (
+            <NumberField
+              label="Progn. Bruttorente (Renteninformation)"
+              value={assumptions.statutoryPension.manualMonthlyGross}
+              min={0}
+              step={10}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  statutoryPension: {
+                    ...current.statutoryPension,
+                    manualMonthlyGross: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+          ) : (
+            <>
+              <NumberField
+                label="Entgeltpunkte bisher (EP)"
+                value={assumptions.statutoryPension.currentEntgeltpunkte}
+                min={0}
+                max={200}
+                step={0.1}
+                suffix="EP"
+                onChange={(value) =>
+                  setAssumptions((current) => ({
+                    ...current,
+                    statutoryPension: {
+                      ...current.statutoryPension,
+                      currentEntgeltpunkte: Math.max(0, Number(value)),
+                    },
+                  }))
+                }
+              />
+              <p className="field-hint">
+                EP bei Rentenbeginn: ~{formatNumber(simulation.statutoryPension.projectedEntgeltpunkte, 1)} EP
+                {' '}· Bruttorente: ~{formatCurrency(simulation.statutoryPension.grossMonthlyPension, 0)}/Monat
+              </p>
+            </>
+          )}
+
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={assumptions.statutoryPension.includeGrvReduction}
+              onChange={(event) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  statutoryPension: {
+                    ...current.statutoryPension,
+                    includeGrvReduction: event.target.checked,
+                  },
+                }))
+              }
+            />
+            <span>GRV-Minderung durch bAV-Umwandlung abziehen</span>
+          </label>
+
+          <p className="field-hint">
+            GRV netto (KVdR): <strong>{formatCurrency(simulation.statutoryPension.netMonthlyPension, 0)}/Monat</strong>
+            {' '}(Steuer {formatCurrency(simulation.statutoryPension.taxMonthly, 0)} +
+            {' '}KV/PV {formatCurrency(simulation.statutoryPension.kvPvMonthly, 0)})
+            {simulation.statutoryPension.grvReductionApplied > 0 && (
+              <> · bAV-Minderung {formatCurrency(simulation.statutoryPension.grvReductionApplied, 0)}/Monat abgezogen</>
+            )}
+          </p>
 
           <div className="divider" />
 
@@ -1312,8 +1421,8 @@ function App() {
           )}
 
           <div className="subsection-heading">
-            <h3>pAV-Kosten</h3>
-            <p>Private Versicherung: gleiche Kostenlogik, separat konfigurierbar. Vorlagen setzen alle Felder.</p>
+            <h3>pAV-Kosten (Schicht 3)</h3>
+            <p>Private Rentenversicherung (Schicht 3) — gleiche Kostenlogik wie bAV, separat konfigurierbar. Vorlagen setzen alle Felder. Basisrente (Schicht 1) und Riester (Schicht 2) sind in diesem Produkt nicht abgebildet.</p>
           </div>
 
           <div className="fee-presets">
@@ -1492,6 +1601,201 @@ function App() {
               </div>
             )
           })()}
+
+          <div className="divider" />
+
+          <div className="subsection-heading">
+            <h3>Basisrente / Rürup (Schicht 1)</h3>
+            <p>
+              Steuergeförderte Altersvorsorge nach §10 Abs. 1 Nr. 2 EStG. Beiträge bis zum
+              Schicht-1-Höchstbetrag steuerlich absetzbar. Kein Kapitalwahlrecht —
+              nur lebenslange Rente oder Zeitrente.
+            </p>
+            <p className="field-hint" style={{ marginTop: 4 }}>
+              ⚠ Nicht beleihbar, nicht veräußerlich, keine vorzeitige Auszahlung möglich.
+              Kapital steht frühestens ab Alter 62 zur Verrentung zur Verfügung.
+            </p>
+          </div>
+
+          <div className="field-grid">
+            <NumberField
+              label="Monatlicher Beitrag (brutto)"
+              value={assumptions.basisrente.monthlyGrossContribution}
+              min={0}
+              step={25}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  basisrente: { ...current.basisrente, monthlyGrossContribution: Math.max(0, Number(value)) },
+                }))
+              }
+            />
+            <NumberField
+              label="Rentenfaktor (Leibrente)"
+              value={assumptions.basisrente.rentenfaktor}
+              min={0}
+              max={100}
+              step={0.5}
+              suffix="EUR/10k"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  basisrente: { ...current.basisrente, rentenfaktor: Math.max(0, Number(value)) },
+                }))
+              }
+            />
+            <NumberField
+              label="Sonstige Renteneinnahmen"
+              value={assumptions.basisrente.monthlyOtherRetirementIncome}
+              min={0}
+              step={50}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    monthlyOtherRetirementIncome: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+          </div>
+
+          {(() => {
+            const br = simulation.products.find(
+              (p) => p.productId === 'basisrente' && p.scenarioId === selectedScenarioId,
+            )
+            const brFunding = simulation.basisrenteFunding
+            return brFunding && brFunding.monthlyGrossContribution > 0 ? (
+              <p className="field-hint">
+                Steuerersparnis: <strong>{formatCurrency(brFunding.monthlyTaxSaving, 0)}/Monat</strong>
+                {' '}· Nettoaufwand: <strong>{formatCurrency(brFunding.monthlyNetCost, 0)}/Monat</strong>
+                {' '}· Schicht-1-Rest: {formatCurrency(brFunding.remainingSchicht1Cap, 0)} EUR/Jahr
+                {brFunding.annualDeductible < brFunding.annualGrossContribution && (
+                  <> · <span className="riy-warn">GRV füllt Teile des Caps — nur {formatCurrency(brFunding.annualDeductible, 0)} absetzbar</span></>
+                )}
+                {br && <> · Nettorente: <strong>{formatCurrency(br.netMonthlyPayout, 0)}/Monat</strong></>}
+              </p>
+            ) : null
+          })()}
+
+          <div className="subsection-heading" style={{ marginTop: 12 }}>
+            <h3>Basisrente-Kosten</h3>
+          </div>
+
+          <div className="field-grid">
+            <NumberField
+              label="Mantelgebühr p.a."
+              value={assumptions.basisrente.fees.wrapperAssetFee * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="%"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, wrapperAssetFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Fondsgebühr p.a."
+              value={assumptions.basisrente.fees.fundAssetFee * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="%"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, fundAssetFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Beitragskostenquote"
+              value={assumptions.basisrente.fees.contributionFee * 100}
+              min={0}
+              max={20}
+              step={0.5}
+              suffix="%"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, contributionFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Monatliche Grundgebühr"
+              value={assumptions.basisrente.fees.fixedMonthlyFee}
+              min={0}
+              step={1}
+              suffix="EUR"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, fixedMonthlyFee: Math.max(0, Number(value)) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Abschlusskosten"
+              value={assumptions.basisrente.fees.acquisitionCostPct * 100}
+              min={0}
+              max={10}
+              step={0.1}
+              suffix="% Beitragssumme"
+              onChange={(value) =>
+                setAssumptions((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, acquisitionCostPct: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+          </div>
+          {(() => {
+            const f = assumptions.basisrente.fees
+            const totalAsset = f.wrapperAssetFee + f.fundAssetFee
+            const brProduct = simulation.products.find(
+              (p) => p.productId === 'basisrente' && p.scenarioId === selectedScenarioId,
+            )
+            const riy = brProduct?.accumulationRiy ?? 0
+            return (
+              <div className="fee-summary">
+                <span>
+                  Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
+                  (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
+                </span>
+                <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
+                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
+                </span>
+                {totalAsset > 0.01 && (
+                  <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 %.</p>
+                )}
+                {riy > 0.02 && (
+                  <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — prüfen Sie ETF-Nettotarife.</p>
+                )}
+              </div>
+            )
+          })()}
         </aside>
 
         <section className="main-panel">
@@ -1520,6 +1824,11 @@ function App() {
 
           <section className="summary-grid" aria-label="Kennzahlen">
             <ResultMetric
+              label="GRV Nettorente"
+              value={formatCurrency(simulation.statutoryPension.netMonthlyPension, 0)}
+              detail={`${formatNumber(simulation.statutoryPension.projectedEntgeltpunkte, 1)} EP · brutto ${formatCurrency(simulation.statutoryPension.grossMonthlyPension, 0)}`}
+            />
+            <ResultMetric
               label="bAV Nettoaufwand"
               value={formatCurrency(simulation.bavFunding.monthlyNetCost, 0)}
               detail={`${formatCurrency(
@@ -1527,11 +1836,6 @@ function App() {
                   simulation.bavFunding.monthlyEmployerContribution,
                 0,
               )} Beitrag mtl.`}
-            />
-            <ResultMetric
-              label="Mindest-AG-Zuschuss"
-              value={formatCurrency(simulation.bavFunding.monthlyStatutoryEmployerSubsidy, 0)}
-              detail="begrenzt durch SV-Ersparnis"
             />
             <ResultMetric
               label="Bestes Kapital"
@@ -1606,7 +1910,11 @@ function App() {
                       width={54}
                     />
                     <Tooltip formatter={(value) => formatCurrency(Number(value), 0)} />
-                    <Bar dataKey="value" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                      {pensionBars.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1799,7 +2107,14 @@ function App() {
                           ? '-'
                           : formatCurrency(result.afterTaxLumpSum, 0)}
                       </td>
-                      <td>{formatCurrency(result.netMonthlyPayout, 0)}</td>
+                      <td>
+                        {formatCurrency(result.netMonthlyPayout, 0)}
+                        {result.leibrenteBreakEvenAge !== undefined && (
+                          <span className="break-even-note">
+                            {' '}(Break-even Alter {Math.round(result.leibrenteBreakEvenAge)})
+                          </span>
+                        )}
+                      </td>
                       <td>{formatCurrency(result.totalFees, 0)}</td>
                       <td>
                         {result.valueMultipleOnUserCost === null

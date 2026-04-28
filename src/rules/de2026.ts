@@ -191,6 +191,18 @@ export const de2026Rules: GermanRules = {
     socialSecurityFreePctOfPensionCap: 0.04,
     statutoryEmployerSubsidyPct: 0.15,
   },
+  basisrente: {
+    // §10 Abs. 3 EStG 2026: Höchstbetrag for Schicht-1 Vorsorgeaufwendungen.
+    // Anchored to 2 × (pensionCapYear West × Gesamtbeitragssatz GRV).
+    // 2 × 101,400 × 18.6% / 2 is the employee equivalent but the statutory cap
+    // is higher because it covers both employee AND employer shares together.
+    // Statutory value for 2026: 30,826 EUR (Einzelveranlagung).
+    // Source: §10 Abs. 3 Satz 1 EStG i.d.F. ab 2023.
+    schicht1CapSingle: 30_826,
+    // §10 Abs. 3 EStG: 100% deductible from 2023 onwards (Wachstumschancengesetz fast-tracked
+    // the original 2025 milestone to 2023; no further progression needed).
+    deductibleFraction: 1.0,
+  },
   capitalGains: {
     taxRate: 0.25,
     solidarityRate: 0.055,

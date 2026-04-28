@@ -18,9 +18,17 @@
  *   It is removed from the personal-income-tax base entirely and
  *   reported in `abgeltungsteuerOnPrivateInsurance`.
  *
+ * ERTRAGSANTEIL ROUTING (#59)
+ *   §22 Nr. 1 Satz 3 a aa EStG: for lifelong private Leibrenten, only the
+ *   age-based Ertragsanteil fraction enters the personal-income-tax base.
+ *   The caller (netInsurancePayout) pre-multiplies by the fraction and passes
+ *   the result as privateInsuranceTaxableAnnual; this branch passes it through
+ *   unchanged (no further halving or flat-tax treatment).
+ *
  * PRE-2005 ROUTING
- *   §52 Abs. 28 EStG a.F.: qualifying old-law contracts are entirely tax-free.
- *   Neither the gain nor anything else enters either tax base.
+ *   §52 Abs. 28 EStG a.F.: qualifying old-law contracts are entirely tax-free for
+ *   capital payouts. Even pre-2005 contracts pay Ertragsanteil on Leibrente — that
+ *   payout path uses 'ertragsanteil' mode, not 'pre2005'.
  *
  * VERSORGUNGSFREIBETRAG — LUMP-SUM SUPPRESSION
  *   §19 Abs. 2 EStG refers to "laufende Versorgungsbezüge" (ongoing pension payments).
@@ -121,7 +129,8 @@ export function calculateRetirementTax(
   let abgeltungsteuerOnPrivateInsurance: number
 
   if (privateInsuranceTaxMode === 'pre2005') {
-    // Entirely tax-free; nothing enters either base.
+    // Entirely tax-free for capital payouts; nothing enters either base.
+    // Note: even pre-2005 contracts pay Ertragsanteil on Leibrente — that path uses 'ertragsanteil' instead.
     privateInsuranceTaxable = 0
     abgeltungsteuerOnPrivateInsurance = 0
   } else if (privateInsuranceTaxMode === 'abgeltungsteuer') {
@@ -129,6 +138,12 @@ export function calculateRetirementTax(
     privateInsuranceTaxable = 0
     const flatTax = Math.max(0, privateInsuranceTaxableAnnual) * rules.capitalGains.taxRate
     abgeltungsteuerOnPrivateInsurance = flatTax + flatTax * rules.capitalGains.solidarityRate
+  } else if (privateInsuranceTaxMode === 'ertragsanteil') {
+    // §22 Nr. 1 Satz 3 a aa EStG: Ertragsanteil enters the personal-income-tax base directly.
+    // privateInsuranceTaxableAnnual already holds (grossMonthlyPayout × 12 × ertragsanteil);
+    // no further reduction — the age-based fraction is the statutory taxable share.
+    privateInsuranceTaxable = Math.max(0, privateInsuranceTaxableAnnual)
+    abgeltungsteuerOnPrivateInsurance = 0
   } else {
     // halbeinkuenfte: only half the gain enters the personal-income-tax base (§20 Abs. 1 Nr. 6).
     privateInsuranceTaxable = Math.max(0, privateInsuranceTaxableAnnual) * legalConstants.insurance.halbeinkuenfteFactor

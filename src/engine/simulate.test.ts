@@ -10,8 +10,10 @@ import {
   calculateVorsorgepauschale2026,
 } from './salary'
 import { simulateRetirementComparison } from './simulate'
+import { calculateBasisrenteFunding, netBasisrentePayout } from './basisrente'
 import { calculateCapitalGainsTax, calculateIncomeTax2026, calculateSolidarityTax } from './tax'
-import { afterTaxBavLumpSum, computeGrossMonthlyPayout, deriveInsuranceTaxMode, etfPayoutSchedule, monthlyPayoutFromCapital, netBavPayout, projectAccumulation } from './projections'
+import { afterTaxBavLumpSum, computeGrossMonthlyPayout, deriveInsuranceTaxMode, etfPayoutSchedule, monthlyPayoutFromCapital, netBavPayout, netInsurancePayout, projectAccumulation } from './projections'
+import { ertragsanteilByAge } from '../rules/legalConstants'
 
 // Base profile for payroll tax tests: Steuerklasse I, no kids, no church, GKV 2.9%
 const testProfile75k: PersonalProfile = {
@@ -629,10 +631,20 @@ describe('bAV funding model', () => {
     expect(halbein?.afterTaxLumpSum ?? 0).toBeLessThan(halbein?.capitalAtRetirement ?? 0)
     expect(halbein?.netMonthlyPayout ?? 0).toBeLessThan(halbein?.grossMonthlyPayout ?? 0)
 
-    // abgeltungsteuer: retirementAge 60 < 62 → full 25% Abgeltungsteuer on gain
+    // abgeltungsteuer: retirementAge 60 < 62 → full 25% Abgeltungsteuer on gain (lump sum).
+    // For monthly payout: leibrente uses Ertragsanteil (#59) regardless of contract era.
+    // kapitalverzehr mode keeps the gain-ratio path and shows net < gross on the monthly side.
     const abgelt = simulateRetirementComparison(
       { ...defaultProfile, retirementAge: 60 },
-      { ...defaultAssumptions, insurance: { ...defaultAssumptions.insurance, contractStartYear: 2024 } },
+      {
+        ...defaultAssumptions,
+        insurance: {
+          ...defaultAssumptions.insurance,
+          contractStartYear: 2024,
+          payoutMode: 'kapitalverzehr', // test gain-ratio path explicitly
+          monthlyOtherRetirementIncome: 2_000, // push gain into taxable bracket
+        },
+      },
       de2026Rules,
     ).products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
     expect(abgelt?.afterTaxLumpSum ?? 0).toBeLessThan(abgelt?.capitalAtRetirement ?? 0)
@@ -1270,5 +1282,383 @@ describe('#50 PKV premium modeling', () => {
     expect(bavFundingNoPkv.monthlyNetCost).toBeCloseTo(161, 0)
     expect(bavFundingPkv.monthlyNetCost).toBeGreaterThan(bavFundingNoPkv.monthlyNetCost)
     expect(Math.abs(bavFundingPkv.monthlyNetCost - bavFundingNoPkv.monthlyNetCost)).toBeLessThan(10)
+  })
+})
+
+describe('#59 ertragsanteilByAge — §22 EStG Anlage 1 table', () => {
+  it('confirmed values: 62→21%, 65→18%, 66→18%, 67→17%, 69→15%, 70→15%', () => {
+    expect(ertragsanteilByAge(62)).toBe(0.21)
+    expect(ertragsanteilByAge(65)).toBe(0.18)
+    expect(ertragsanteilByAge(66)).toBe(0.18)
+    expect(ertragsanteilByAge(67)).toBe(0.17)
+    expect(ertragsanteilByAge(69)).toBe(0.15)
+    expect(ertragsanteilByAge(70)).toBe(0.15)
+  })
+
+  it('table is monotonically non-increasing over ages 0–89', () => {
+    for (let age = 1; age <= 89; age++) {
+      expect(ertragsanteilByAge(age)).toBeLessThanOrEqual(ertragsanteilByAge(age - 1))
+    }
+  })
+
+  it('age 0 returns maximum (0.59) and age 89 returns minimum (0.01)', () => {
+    expect(ertragsanteilByAge(0)).toBe(0.59)
+    expect(ertragsanteilByAge(89)).toBe(0.01)
+  })
+
+  it('ages above 89 clamp to 0.01', () => {
+    expect(ertragsanteilByAge(95)).toBe(0.01)
+    expect(ertragsanteilByAge(100)).toBe(0.01)
+  })
+
+  it('fractional ages floor to integer', () => {
+    expect(ertragsanteilByAge(67.9)).toBe(ertragsanteilByAge(67))
+    expect(ertragsanteilByAge(62.1)).toBe(ertragsanteilByAge(62))
+  })
+})
+
+describe('#59 netInsurancePayout — Ertragsanteil for leibrente', () => {
+  // Reference: 200,000 EUR capital, 180,000 EUR contributions, Rentenfaktor 28 (pAV default)
+  // grossMonthlyPayout = 200_000 / 10_000 * 28 = 560 EUR/month
+  // At age 67: Ertragsanteil = 17%
+  // Taxable annual = 560 * 12 * 0.17 = 1,142.40 EUR → below Grundfreibetrag → no income tax
+  // → netMonthlyPayout ≈ grossMonthlyPayout (560 EUR) since taxable below threshold
+  const capital = 200_000
+  const contributions = 180_000
+  const grossMonthly = (capital / 10_000) * 28  // 560
+
+  it('leibrente age 67 (17%) — taxable income below Grundfreibetrag → net ≈ gross', () => {
+    const net = netInsurancePayout(
+      grossMonthly, capital, contributions,
+      'halbeinkuenfte', de2026Rules,
+      0, de2026Rules.year, undefined, true,
+      'leibrente', 67,
+    )
+    // Annual taxable = 560 * 12 * 0.17 = 1,142.40 → below 12,348 Grundfreibetrag → zero ESt
+    expect(net).toBeCloseTo(grossMonthly, 1)
+  })
+
+  it('leibrente age 62 (21%) — taxable fraction higher than 67 but still below Grundfreibetrag at this payout level', () => {
+    const net62 = netInsurancePayout(
+      grossMonthly, capital, contributions,
+      'abgeltungsteuer', de2026Rules,
+      0, de2026Rules.year, undefined, true,
+      'leibrente', 62,
+    )
+    const net67 = netInsurancePayout(
+      grossMonthly, capital, contributions,
+      'abgeltungsteuer', de2026Rules,
+      0, de2026Rules.year, undefined, true,
+      'leibrente', 67,
+    )
+    // age 62 has higher Ertragsanteil (21%) → marginally more tax → net ≤ net67
+    // At low payouts (560 EUR/month) both are below the Grundfreibetrag → both ≈ gross
+    expect(net62).toBeLessThanOrEqual(net67 + 0.01)
+  })
+
+  it('leibrente with high payout + other income shows Ertragsanteil lower tax than gain-ratio method', () => {
+    // High-gain contract: capital=500_000, contributions=100_000 (80% gain ratio)
+    // Rentenfaktor 28 → grossMonthly = 500_000 / 10_000 * 28 = 1400 EUR/month
+    // otherMonthlyIncome=2000 pushes the combined income into the taxable bracket for both methods.
+    // Gain-ratio taxable annual = 1400*12*0.8 = 13,440 → halbeinkuenfte: halved = 6,720 EUR in personal base
+    // Ertragsanteil at 67 = 17%: taxable annual = 1400*12*0.17 = 2,856 EUR in personal base
+    // Combined with 24,000 EUR other income: halbeinkuenfte base 30,720 > ertragsanteil base 26,856
+    // → marginal tax higher for gain-ratio path → Ertragsanteil net > gain-ratio net
+    const bigCapital = 500_000
+    const bigContribs = 100_000
+    const bigGross = (bigCapital / 10_000) * 28  // 1400 EUR/month
+    const otherIncome = 2_000  // 24,000 EUR/year pushes income into taxable bracket
+
+    const netErtragsanteil = netInsurancePayout(
+      bigGross, bigCapital, bigContribs,
+      'halbeinkuenfte', de2026Rules,
+      otherIncome, de2026Rules.year, undefined, true,
+      'leibrente', 67,
+    )
+    // Without leibrente flag → gain-ratio halbeinkuenfte path
+    const netGainRatio = netInsurancePayout(
+      bigGross, bigCapital, bigContribs,
+      'halbeinkuenfte', de2026Rules,
+      otherIncome, de2026Rules.year, undefined, true,
+    )
+    // Ertragsanteil (17% of gross in base) << halbeinkuenfte gain-ratio (40% of gross in base)
+    // → less marginal tax under Ertragsanteil → Ertragsanteil net is higher
+    expect(netErtragsanteil).toBeGreaterThan(netGainRatio)
+  })
+
+  it('leibrente overrides pre2005 tax-free treatment and applies Ertragsanteil', () => {
+    // pre2005 contract with minimal gain (2% gain ratio) + otherIncome to ensure taxable
+    // pre2005 capital-payout path: tax-free → net = gross
+    // leibrente path: Ertragsanteil 17% at age 67 → taxable = 1400*12*0.17 = 2856 + 24000 other > threshold
+    const bigCapital = 500_000
+    const bigContribs = 490_000
+    const bigGross = (bigCapital / 10_000) * 28  // 1400 EUR/month
+    const otherIncome = 2_000  // 24,000 EUR/year → combined income definitely in taxable bracket
+
+    const netPre2005Leibrente = netInsurancePayout(
+      bigGross, bigCapital, bigContribs,
+      'pre2005', de2026Rules,
+      otherIncome, de2026Rules.year, undefined, true,
+      'leibrente', 67,
+    )
+    // pre2005 without leibrente → tax-free on the payout (KV/PV skipped too; only freiwillig gets KV/PV)
+    const netPre2005NoLeib = netInsurancePayout(
+      bigGross, bigCapital, bigContribs,
+      'pre2005', de2026Rules,
+      otherIncome,
+    )
+    // leibrente overrides pre2005: Ertragsanteil taxable = 2856 EUR → marginal tax on otherIncome
+    // pushes it above threshold → net < gross. pre2005 no-leibrente: tax-free → net = gross.
+    expect(netPre2005Leibrente).toBeLessThan(netPre2005NoLeib)
+  })
+})
+
+describe('#60 product label — Private Rentenversicherung (Schicht 3)', () => {
+  it('insurance product label is "Private Rentenversicherung (Schicht 3)"', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const ins = sim.products.find((p) => p.productId === 'versicherung')
+    expect(ins?.label).toBe('Private Rentenversicherung (Schicht 3)')
+  })
+})
+
+describe('#64 leibrenteBreakEvenAge', () => {
+  it('is set for insurance in leibrente mode', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const ins = sim.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
+    // defaultAssumptions.insurance.payoutMode === 'leibrente'
+    expect(ins?.leibrenteBreakEvenAge).toBeDefined()
+    expect(ins?.leibrenteBreakEvenAge).toBeGreaterThan(defaultProfile.retirementAge)
+  })
+
+  it('break-even age = retirementAge + capital / (grossMonthlyPayout * 12)', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const ins = sim.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
+    const expected = ins.capitalAtRetirement / (ins.grossMonthlyPayout * 12) + defaultProfile.retirementAge
+    expect(ins.leibrenteBreakEvenAge).toBeCloseTo(expected, 4)
+  })
+
+  it('is undefined for ETF (drawdown mode)', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const etf = sim.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')
+    expect(etf?.leibrenteBreakEvenAge).toBeUndefined()
+  })
+
+  it('is undefined for bAV in kapitalverzehr mode', () => {
+    const kapAssumptions = {
+      ...defaultAssumptions,
+      bav: { ...defaultAssumptions.bav, payoutMode: 'kapitalverzehr' as const },
+    }
+    const sim = simulateRetirementComparison(defaultProfile, kapAssumptions, de2026Rules)
+    const bav = sim.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')
+    expect(bav?.leibrenteBreakEvenAge).toBeUndefined()
+  })
+})
+
+describe('#72 projectStatutoryPension (via simulateRetirementComparison)', () => {
+  // Default profile: age=28, retirementAge=67, grossSalaryYear=75,000, currentEntgeltpunkte=8
+  // pensionCapYear=101,400 (below cap); durchschnittsentgelt=51,944; aktuellerRentenwert=42.52
+  // remainingYears=39; epPerYear=75000/51944≈1.4439; projectedEP=8+39*1.4439≈64.31; gross≈2734 EUR/month
+
+  it('EP-based: gross monthly pension equals projectedEntgeltpunkte * aktuellerRentenwert', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const { grossMonthlyPension, projectedEntgeltpunkte } = sim.statutoryPension
+    const expectedGross = projectedEntgeltpunkte * de2026Rules.socialSecurity.aktuellerRentenwert
+    expect(grossMonthlyPension).toBeCloseTo(expectedGross, 2)
+  })
+
+  it('EP-based: projectedEntgeltpunkte = currentEP + remainingYears * (cappedSalary / durchschnittsentgelt)', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const cappedSalary = Math.min(defaultProfile.grossSalaryYear, de2026Rules.socialSecurity.pensionCapYear)
+    const epPerYear = cappedSalary / de2026Rules.socialSecurity.durchschnittsentgelt
+    const remainingYears = defaultProfile.retirementAge - defaultProfile.age
+    const expectedEP = defaultAssumptions.statutoryPension.currentEntgeltpunkte + remainingYears * epPerYear
+    expect(sim.statutoryPension.projectedEntgeltpunkte).toBeCloseTo(expectedEP, 4)
+    // Snapshot: ~64.3 EP → ~2,734 EUR/month gross for the default 28-year-old at 75k
+    expect(sim.statutoryPension.grossMonthlyPension).toBeCloseTo(2_734, 0)
+  })
+
+  it('manual override: gross pension equals manualMonthlyGross, EP-based estimation is bypassed', () => {
+    const manualGross = 1_800
+    const sim = simulateRetirementComparison(
+      defaultProfile,
+      {
+        ...defaultAssumptions,
+        statutoryPension: {
+          ...defaultAssumptions.statutoryPension,
+          manualMonthlyGross: manualGross,
+          currentEntgeltpunkte: 100, // ignored in manual mode
+        },
+      },
+      de2026Rules,
+    )
+    expect(sim.statutoryPension.grossMonthlyPension).toBeCloseTo(manualGross, 0)
+  })
+
+  it('net pension < gross pension (income tax + KV/PV both positive)', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    expect(sim.statutoryPension.taxMonthly).toBeGreaterThan(0)
+    expect(sim.statutoryPension.kvPvMonthly).toBeGreaterThan(0)
+    expect(sim.statutoryPension.netMonthlyPension).toBeLessThan(sim.statutoryPension.grossMonthlyPension)
+  })
+
+  it('net + tax + KV/PV ≈ gross (balance identity, floor at 0)', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const { grossMonthlyPension, netMonthlyPension, taxMonthly, kvPvMonthly } = sim.statutoryPension
+    expect(netMonthlyPension).toBeCloseTo(
+      Math.max(0, grossMonthlyPension - taxMonthly - kvPvMonthly),
+      1,
+    )
+  })
+
+  it('includeGrvReduction: gross drops by estimatedMonthlyGrvReduction from bAV', () => {
+    const reduction = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+      .bavFunding.estimatedMonthlyGrvReduction
+    // Only meaningful when bAV conversion > 0 (default: 300 EUR/month → reduction > 0)
+    expect(reduction).toBeGreaterThan(0)
+
+    const withRed = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, statutoryPension: { ...defaultAssumptions.statutoryPension, includeGrvReduction: true } },
+      de2026Rules,
+    )
+    const noRed = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    expect(withRed.statutoryPension.grossMonthlyPension).toBeCloseTo(
+      noRed.statutoryPension.grossMonthlyPension - reduction,
+      2,
+    )
+    expect(withRed.statutoryPension.grvReductionApplied).toBeCloseTo(reduction, 2)
+    expect(noRed.statutoryPension.grvReductionApplied).toBe(0)
+  })
+
+  it('zero EP, zero salary: gross and net are both 0', () => {
+    const sim = simulateRetirementComparison(
+      { ...defaultProfile, grossSalaryYear: 0 },
+      {
+        ...defaultAssumptions,
+        statutoryPension: { manualMonthlyGross: null, currentEntgeltpunkte: 0, includeGrvReduction: false },
+      },
+      de2026Rules,
+    )
+    expect(sim.statutoryPension.grossMonthlyPension).toBe(0)
+    expect(sim.statutoryPension.netMonthlyPension).toBe(0)
+  })
+
+  it('salary above BBG is capped at pensionCapYear for EP calculation', () => {
+    const highSim = simulateRetirementComparison(
+      { ...defaultProfile, grossSalaryYear: 200_000 },
+      { ...defaultAssumptions, statutoryPension: { manualMonthlyGross: null, currentEntgeltpunkte: 0, includeGrvReduction: false } },
+      de2026Rules,
+    )
+    const cappedSim = simulateRetirementComparison(
+      { ...defaultProfile, grossSalaryYear: de2026Rules.socialSecurity.pensionCapYear },
+      { ...defaultAssumptions, statutoryPension: { manualMonthlyGross: null, currentEntgeltpunkte: 0, includeGrvReduction: false } },
+      de2026Rules,
+    )
+    // 200k and BBG cap should produce identical projectedEP (both capped)
+    expect(highSim.statutoryPension.projectedEntgeltpunkte).toBeCloseTo(
+      cappedSim.statutoryPension.projectedEntgeltpunkte,
+      4,
+    )
+  })
+})
+
+describe('#61 calculateBasisrenteFunding', () => {
+  const baseSalary = calculateSalaryResult(defaultProfile, de2026Rules)
+
+  it('tax saving is positive for nonzero contribution within cap', () => {
+    const result = calculateBasisrenteFunding(de2026Rules, baseSalary, defaultAssumptions.basisrente)
+    expect(result.annualTaxSaving).toBeGreaterThan(0)
+    expect(result.monthlyTaxSaving).toBeCloseTo(result.annualTaxSaving / 12, 5)
+  })
+
+  it('monthlyNetCost = monthlyGross - monthlyTaxSaving', () => {
+    const result = calculateBasisrenteFunding(de2026Rules, baseSalary, defaultAssumptions.basisrente)
+    expect(result.monthlyNetCost).toBeCloseTo(
+      result.monthlyGrossContribution - result.monthlyTaxSaving,
+      5,
+    )
+  })
+
+  it('GRV contributions count against cap; high GRV reduces remaining cap', () => {
+    // At 75k salary, GRV employee = min(75000,101400) × 0.093 = 6975
+    // GRV employer = same = 6975; total GRV = 13950; remaining = 30826 - 13950 = 16876
+    const result = calculateBasisrenteFunding(de2026Rules, baseSalary, defaultAssumptions.basisrente)
+    const expectedGrv =
+      baseSalary.social.pension * (1 + de2026Rules.socialSecurity.pensionEmployerRate / de2026Rules.socialSecurity.pensionEmployeeRate)
+    expect(result.annualGrvCountedTowardsCap).toBeCloseTo(expectedGrv, 1)
+    expect(result.remainingSchicht1Cap).toBeCloseTo(
+      de2026Rules.basisrente.schicht1CapSingle - expectedGrv,
+      1,
+    )
+  })
+
+  it('deductible capped when contribution exceeds remaining cap', () => {
+    // Contribute 2000 EUR/month = 24000/year; remaining cap ~16876; deductible = 16876
+    const basisrente = { ...defaultAssumptions.basisrente, monthlyGrossContribution: 2000 }
+    const result = calculateBasisrenteFunding(de2026Rules, baseSalary, basisrente)
+    expect(result.annualDeductible).toBeLessThanOrEqual(result.remainingSchicht1Cap + 0.01)
+    expect(result.annualDeductible).toBeCloseTo(result.remainingSchicht1Cap, 0)
+  })
+
+  it('zero contribution → zero tax saving and zero net cost', () => {
+    const basisrente = { ...defaultAssumptions.basisrente, monthlyGrossContribution: 0 }
+    const result = calculateBasisrenteFunding(de2026Rules, baseSalary, basisrente)
+    expect(result.annualTaxSaving).toBe(0)
+    expect(result.monthlyNetCost).toBe(0)
+  })
+
+  it('full simulation includes basisrente product and basisrenteFunding', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    expect(sim.basisrenteFunding).toBeDefined()
+    expect(sim.basisrenteFunding.monthlyGrossContribution).toBe(
+      defaultAssumptions.basisrente.monthlyGrossContribution,
+    )
+    const brResults = sim.products.filter((p) => p.productId === 'basisrente')
+    expect(brResults.length).toBe(defaultAssumptions.returnScenarios.length)
+    for (const r of brResults) {
+      expect(r.afterTaxLumpSum).toBeNull()
+      expect(r.grossMonthlyPayout).toBeGreaterThan(0)
+      expect(r.netMonthlyPayout).toBeGreaterThan(0)
+      expect(r.netMonthlyPayout).toBeLessThanOrEqual(r.grossMonthlyPayout)
+    }
+  })
+})
+
+describe('#61 netBasisrentePayout', () => {
+  it('net < gross due to tax and KV/PV', () => {
+    const net = netBasisrentePayout(1000, defaultProfile, de2026Rules)
+    expect(net).toBeGreaterThan(0)
+    expect(net).toBeLessThan(1000)
+  })
+
+  it('net = gross for zero payout', () => {
+    expect(netBasisrentePayout(0, defaultProfile, de2026Rules)).toBe(0)
+  })
+
+  it('PKV holder: no KV/PV deducted (only tax)', () => {
+    const pkvProfile: PersonalProfile = {
+      ...defaultProfile,
+      publicHealthInsurance: false,
+      pkvMonthlyPremium: 500,
+      pPVMonthlyPremium: 50,
+    }
+    const netGkv = netBasisrentePayout(1000, defaultProfile, de2026Rules)
+    const netPkv = netBasisrentePayout(1000, pkvProfile, de2026Rules)
+    // PKV holder pays less (no KV/PV on Basisrente) → net is higher
+    expect(netPkv).toBeGreaterThan(netGkv)
+  })
+
+  it('taxable share follows Besteuerungsanteil for retirement year', () => {
+    // For the default profile (28 → retires 2065), Besteuerungsanteil should be 100%
+    // net should still be less than gross due to full marginal income tax
+    const net = netBasisrentePayout(2000, defaultProfile, de2026Rules, 0, 2065)
+    expect(net).toBeLessThan(2000)
+    expect(net).toBeGreaterThan(0)
+  })
+
+  it('higher otherMonthlyIncome → higher marginal tax → lower net', () => {
+    const netLowOther = netBasisrentePayout(1000, defaultProfile, de2026Rules, 500)
+    const netHighOther = netBasisrentePayout(1000, defaultProfile, de2026Rules, 3000)
+    expect(netHighOther).toBeLessThan(netLowOther)
   })
 })
