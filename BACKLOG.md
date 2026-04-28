@@ -15,7 +15,7 @@ Legal/rules research lives in `LEGAL_REVIEW.md`. Product-specific research lives
 
 **Active workstream: agent-readability refactor.** Before starting new feature additions, work through `AGENT_READABILITY_REFACTOR_PLAN.md`. The goal is to reduce `App.tsx`, split tests, localize product simulators/validators/types, and update docs so future feature work needs much less context.
 
-Phases complete: 0–8 (lint/build baseline, UI primitives, app state hooks, JSX feature extraction, CSS co-location, test fixtures, product simulator registry, domain type split, discriminated product result unions). Next: Phase 9 (product manifest) and Phase 10 (test split) — can run in parallel.
+Phases complete: 0–10 (lint/build baseline, UI primitives, app state hooks, JSX feature extraction, CSS co-location, test fixtures, product simulator registry, domain type split, discriminated product result unions, product manifest, test split). Next: Phase 11 (documentation cleanup and agent navigation map).
 
 After that refactor is complete, resume feature work in this order. Each group touches overlapping code paths or creates prerequisites for later groups.
 
