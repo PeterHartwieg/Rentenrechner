@@ -464,7 +464,7 @@ export function netInsurancePayout(
     const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
     const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
     const retirementCareRate =
-      careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
+      careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) + rules.socialSecurity.careEmployerRate
     const kvPv = calculateRetirementKvPv({
       bavMonthlyVersorgungsbezuege: 0,
       otherMonthlyVersorgungsbezuege: 0,
@@ -557,7 +557,7 @@ export function afterTaxInsuranceLumpSum(
     const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
     const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
     const retirementCareRate =
-      careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
+      careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) + rules.socialSecurity.careEmployerRate
     const otherMonthlyIncome = otherAnnualIncome / 12
     // For lump sum: use the full lump sum as monthly income (it's a one-off event).
     // The BBG cap in calculateRetirementKvPv limits the deduction.
@@ -699,7 +699,7 @@ export function afterTaxBavLumpSum(
   const spreadingMonths = legalConstants.bav.versorgungsbezugSpreadingMonths
   const additionalHealthRate = profile.healthAdditionalContributionPct / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
-  const careRate = careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
+  const careRate = careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) + rules.socialSecurity.careEmployerRate
   const monthlyBase = lumpSum / spreadingMonths
   const monthlyOtherIncome = otherAnnualIncome / 12
 
@@ -779,9 +779,9 @@ export function netBavPayout(
   const additionalHealthRate = profile.healthAdditionalContributionPct / 100
   const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
   // PV §57(1) SGB XI: Freigrenze applies for all GKV members. Versorgungsträger pays employer share in both KVdR and freiwillig.
-  // = careEmployeeRateForChildren(children) + careEmployerRate == careRetirementChildlessRate for 0 children.
+  // §55 Abs. 3a SGB XI: only children under 25 at retirementYear qualify for the Beitragsabschlag.
   const retirementCareRate =
-    careEmployeeRateForChildren(profile.children, rules) + rules.socialSecurity.careEmployerRate
+    careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) + rules.socialSecurity.careEmployerRate
 
   // KV/PV via calculateRetirementKvPv: applies BBG cap across all income sources (#47).
   // otherMonthlyIncome treated as statutory pension for the KV/PV assessment base (documented simplification).

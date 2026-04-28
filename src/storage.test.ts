@@ -60,11 +60,11 @@ describe('parseStateFromJson (#40)', () => {
   })
 
   it('preserves user-customized values in a valid saved state', () => {
-    const modified = { ...defaultProfile, age: 35, children: 2, grossSalaryYear: 90_000 }
+    const modified = { ...defaultProfile, age: 35, childBirthYears: [2005, 2008], grossSalaryYear: 90_000 }
     const raw = buildStateJson(modified, defaultAssumptions)
     const result = parseStateFromJson(raw)
     expect(result!.profile.age).toBe(35)
-    expect(result!.profile.children).toBe(2)
+    expect(result!.profile.childBirthYears).toEqual([2005, 2008])
     expect(result!.profile.grossSalaryYear).toBe(90_000)
   })
 

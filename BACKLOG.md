@@ -15,10 +15,10 @@ Legal/rules research lives in `LEGAL_REVIEW.md`.
 
 Wave 3 (P1, mostly independent — accuracy-first, no label-downgrade shortcuts):
 
-1. `#54` Replace bAV/insurance capital-drawdown payout with Leibrente/Zeitrente — material accuracy gap surfaced while fixing the `Kapitalverzehr bis` input bug.
-2. `#49` Deep-validate share URL and localStorage state.
-3. `#51` Separate statutory bAV subsidy from contractual employer match.
-4. `#52` Model child-age eligibility for Pflegeversicherung (full modeling, not label downgrade).
+1. `#54` Replace bAV/insurance capital-drawdown payout with Leibrente/Zeitrente — ✓ done.
+2. `#49` Deep-validate share URL and localStorage state — ✓ done.
+3. `#51` Separate statutory bAV subsidy from contractual employer match — ✓ done.
+4. `#52` Model child-age eligibility for Pflegeversicherung — ✓ done.
 5. `#50` Model PKV premiums (sequence after the others; integrates with the #46 retirement pipeline).
 6. `#53` Synchronize project documentation — last, after Wave 3 lands.
 
@@ -139,6 +139,96 @@ LEGAL_REVIEW.md: cite §1 BetrAVG (Leistungsformen), §1b BetrAVG (Anwartschaft)
 
 ---
 
+### #55 Split Insurance Wrapper Fees From Fund Fees
+
+`FeeModel.annualAssetFee` currently combines all ongoing capital-based costs into one field called `Kapitalgebuehr`. The bAV fee research in `BAV_RESEARCH.md` shows that real offers usually split at least:
+
+- wrapper / policy-value fee, e.g. 0.60-0.70% p.a. of policy value
+- selected fund / ETF OGC or TER, e.g. 0.18-0.25% p.a. for low-cost funds, higher for active funds
+- sometimes cost-surplus-adjusted values that differ from the maximum shown in PIB / IVI documents
+
+The current single field makes it too easy to compare a bAV wrapper fee against an ETF TER incorrectly, or to forget fund costs entirely. It also makes source mapping in the assumptions drawer vague.
+
+Required changes:
+
+- Extend `FeeModel` with separate fields such as `wrapperAssetFee` and `fundAssetFee`, or keep `annualAssetFee` as a derived total and store the components separately.
+- Update `projectAccumulation()` so the total annual fee drag is the sum of wrapper and fund fees, while the yearly fee table can show both components.
+- Update defaults: current bAV `annualAssetFee: 0.005` should become something like wrapper 0.005 plus explicit low-cost fund 0.002, unless intentionally modeling an all-in value.
+- Update UI labels: distinguish "Versicherungsmantel / Policenwert" from "Fonds / ETF-Kosten".
+- Update CSV export and assumptions drawer to show both components and the all-in total.
+- Add tests proving that wrapper + fund fee equals the previous all-in fee when configured equivalently.
+
+Acceptance: user can enter the Allianz-style `0.60% wrapper + 0.18% fund` and AXA-style `0.70% wrapper + 0.25% fund` examples directly without mental addition.
+
+### #56 Model Pension-Phase Fees For bAV And pAV
+
+Accumulation fees are modeled, but pension-phase administration fees are not. `simulate.ts` computes a gross monthly Leibrente from `capital / 10_000 * rentenfaktor` and then passes it into tax/KV/PV helpers. Real offer examples in `BAV_RESEARCH.md` include pension-phase fees such as `1.75% je gezahlter Rente`.
+
+This matters because:
+
+- Leibrente products may quote a Rentenfaktor before or after certain administration costs; product documents differ.
+- If the fee is applied to each paid pension, the net retirement income is overstated.
+- `totalFees` currently covers only accumulation-phase fees, so the fee chart understates lifetime product cost.
+
+Required changes:
+
+- Add `pensionPayoutFeePct` to `FeeModel` or to annuity-specific assumptions.
+- Decide convention: Rentenfaktor input should be gross before payout fee, unless the user marks it as already net of payout fees.
+- For bAV and pAV monthly payout paths, subtract `grossMonthlyPayout * pensionPayoutFeePct` before income tax / KV/PV, or show it as a separate deduction line.
+- For `afterTaxLumpSum`, do not apply pension payout fee unless the product document states a capital-payout fee.
+- Add the fee to CSV / yearly retirement summary once retirement cashflows are expanded.
+
+Acceptance: entering a `1.75%` pension payout fee reduces a `1,000 EUR` gross monthly annuity by `17.50 EUR` before the tax/KV/PV calculation, or clearly shows the same deduction after gross payout depending on chosen convention.
+
+### #57 Add Effektivkosten / RIY Calculation And Display
+
+The tool shows absolute `totalFees`, but users and bAV product sheets compare contracts via Effektivkosten / Reduction in Yield (RIY). `BAV_RESEARCH.md` includes examples ranging roughly from `0.8-1.0 pp` for better bAV examples to `1.3-1.7 pp` common offers and `2.0%+` warning territory.
+
+Current gap:
+
+- `projectAccumulation()` computes fees month-by-month, but the UI does not translate them into annual return drag.
+- Absolute fees are hard to compare across different contribution levels and durations.
+- The current chart "Gebuehren vs Kapital" can understate high annual drag when a product also has lower expected gross return due to guarantees.
+
+Required changes:
+
+- Add a helper to compute RIY by solving for the annual net return that produces the same ending capital from the same contribution stream with zero explicit fees.
+- Show RIY per product/scenario in the summary table, assumptions drawer, CSV, and fee chart tooltip.
+- Keep existing absolute `totalFees`; RIY complements, not replaces it.
+- Add tests using a simple fee-free baseline and known fee cases.
+- Document that RIY is scenario- and holding-period-dependent and not always comparable across different guarantee / risk classes.
+
+Acceptance: for a configured bAV example with 5% gross return and all-in fee drag near 1.5 pp, the UI shows approximately 3.5% net return / 1.5 pp Effektivkosten and the CSV exports both absolute fees and RIY.
+
+### #58 Add Fee Quality Warnings And Research-Based Presets
+
+The assumptions drawer exposes fee inputs but does not warn when values match known expensive bAV patterns. `BAV_RESEARCH.md` now contains concrete examples:
+
+- acquisition costs around 2.50% of gross contribution sum, spread over 5-6 years
+- contribution fees around 4.50% and 9.75%
+- wrapper asset fees around 0.60-0.70% p.a. before fund costs
+- pension payout fee example around 1.75% of paid pension
+- effective-cost warning heuristic: ETF-based contracts above about 2.0% RIY are usually too expensive; 0.6-1.0% RIY is a stronger range for low-cost ETF-based policies
+
+Required changes:
+
+- Add assumptions presets:
+  - low-cost bAV / net tariff
+  - common provision bAV
+  - high-cost bAV
+  - generous employer subsidy but high-cost product
+- Add warnings when:
+  - contribution fee exceeds 5%
+  - acquisition cost exceeds 2.5% or spread is strongly front-loaded
+  - all-in annual asset fee exceeds 1.0% for ETF-style products
+  - computed RIY exceeds 1.5% and 2.0% thresholds
+  - fixed monthly fee is high relative to contribution, e.g. >2% of monthly product contribution
+- Link warning text to `BAV_RESEARCH.md` and show the concrete examples as calibration, not advice.
+
+Acceptance: changing bAV fees to `9.75% contribution fee + 0.70% wrapper + 0.25% fund + 2.5% acquisition` triggers visible cost warnings and a high RIY display.
+
+---
+
 ## Open P2 Publishing / Product
 
 ### #15 PDF Report
@@ -222,6 +312,7 @@ Update the docs so future reviews do not start from stale assumptions.
 - `#19` 1/120 KV/PV spreading rule — implemented as part of #6 lump-sum.
 - `#48` bAV lump-sum income-tax routing by Durchführungsweg: `BavDurchfuehrungsweg` type + `deriveBavLumpSumTaxMode` in `projections.ts`; `afterTaxBavLumpSum` refactored with `taxMode` parameter; UI selector in assumptions drawer; storage migration (mergeDeep defaults). §3 Nr. 63 → voll_versorgungsbezug (§22 Nr. 5 EStG, no Fünftelregelung); §40b a.F. eligible → pre2005_steuerfrei; Direktzusage/U-Kasse → fuenftelregelung (§34 EStG). Default afterTaxLumpSum drops ~46–58k EUR for default profile (basis scenario: from 197,753 to 141,809 EUR).
 - `#38` Law-based private-insurance tax: contract year → `pre2005` / `halbeinkuenfte` / `abgeltungsteuer`; `deriveInsuranceTaxMode` / `netInsurancePayout` / `afterTaxInsuranceLumpSum` in `projections.ts`; Halbeinkünfteverfahren uses personal income-tax marginal rate on half the gain.
+- `#52` Child-age PV eligibility: `PersonalProfile.children: number` replaced by `childBirthYears: number[]`. `careEmployeeRateForChildren` now takes `(childBirthYears, currentYear, rules)`. §55 Abs. 3a SGB XI: Kinderlosenzuschlag (+0.6 %) applies only when array is empty; Beitragsabschlag (−0.25 % per child from 2nd) applies only to children under 25 in the contribution year. All four retirement-phase payout helpers use the existing `retirementYear` parameter for the age check. UI: dynamic "Kinder (Geburtsjahr)" list with add/remove. Old `children: number` in saved state silently migrates to `childBirthYears: []` via mergeDeep. 238 tests.
 
 ---
 

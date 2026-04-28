@@ -5,7 +5,7 @@ export const defaultProfile: PersonalProfile = {
   retirementAge: 67,
   grossSalaryYear: 75_000,
   taxClass: 1,
-  children: 0,
+  childBirthYears: [],
   churchTax: false,
   publicHealthInsurance: true,
   healthAdditionalContributionPct: 2.9,

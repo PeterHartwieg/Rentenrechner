@@ -255,13 +255,23 @@ describe('calculateCapitalGainsTax — InvStG §20 partial exemptions', () => {
 })
 
 describe('social-security helpers', () => {
-  it('calculates employee care-insurance rates by child count', () => {
-    expect(careEmployeeRateForChildren(0, de2026Rules)).toBeCloseTo(0.024)
-    expect(careEmployeeRateForChildren(1, de2026Rules)).toBeCloseTo(0.018)
-    expect(careEmployeeRateForChildren(2, de2026Rules)).toBeCloseTo(0.0155)
-    expect(careEmployeeRateForChildren(3, de2026Rules)).toBeCloseTo(0.013)
-    expect(careEmployeeRateForChildren(5, de2026Rules)).toBeCloseTo(0.008)
-    expect(careEmployeeRateForChildren(6, de2026Rules)).toBeCloseTo(0.008)
+  it('calculates employee care-insurance rates by child birth years (§55 Abs. 3a SGB XI)', () => {
+    // 0 children → Kinderlosenzuschlag (+0.6 %)
+    expect(careEmployeeRateForChildren([], 2026, de2026Rules)).toBeCloseTo(0.024)
+    // 1 qualifying child (under 25 in 2026) → base rate, no discount
+    expect(careEmployeeRateForChildren([2010], 2026, de2026Rules)).toBeCloseTo(0.018)
+    // 2 qualifying → 1 discount of 0.25 %
+    expect(careEmployeeRateForChildren([2010, 2012], 2026, de2026Rules)).toBeCloseTo(0.0155)
+    // 3 qualifying → 2 discounts
+    expect(careEmployeeRateForChildren([2010, 2012, 2014], 2026, de2026Rules)).toBeCloseTo(0.013)
+    // 5 qualifying → 4 discounts (statutory maximum)
+    expect(careEmployeeRateForChildren([2010, 2012, 2014, 2016, 2018], 2026, de2026Rules)).toBeCloseTo(0.008)
+    // 6 qualifying → still capped at 4 discounts
+    expect(careEmployeeRateForChildren([2010, 2012, 2014, 2016, 2018, 2020], 2026, de2026Rules)).toBeCloseTo(0.008)
+    // All children over 25 (born 1990, 1993) → exempt from Kinderlosenzuschlag but 0 discounts → base rate
+    expect(careEmployeeRateForChildren([1990, 1993], 2026, de2026Rules)).toBeCloseTo(0.018)
+    // Mixed: 2 over-25 + 1 qualifying → 1 qualifying child → base rate (no discount for single qualifying)
+    expect(careEmployeeRateForChildren([1990, 1993, 2010], 2026, de2026Rules)).toBeCloseTo(0.018)
   })
 
   it('applies KV-Freibetrag and PV-Freigrenze separately for bAV retirement deductions', () => {
@@ -541,7 +551,8 @@ describe('#35 children-adjusted retirement PV rate in netBavPayout', () => {
   it('childless rate (0 children) equals careRetirementChildlessRate by construction', () => {
     const threshold = de2026Rules.socialSecurity.kvFreibetragVersorgungMonthly
     const payout = threshold + 200  // annual = 4773 EUR < basicAllowance → tax = 0
-    const childless = netBavPayout(payout, { ...defaultProfile, children: 0 }, de2026Rules)
+    // defaultProfile has childBirthYears: [] → Kinderlosenzuschlag applies
+    const childless = netBavPayout(payout, defaultProfile, de2026Rules)
     const derived =
       de2026Rules.socialSecurity.careEmployeeChildlessRate +
       de2026Rules.socialSecurity.careEmployerRate
@@ -554,10 +565,12 @@ describe('#35 children-adjusted retirement PV rate in netBavPayout', () => {
     expect(childless).toBeCloseTo(expected, 1)
   })
 
-  it('2-child parent pays lower retirement PV than childless (higher net payout)', () => {
+  it('2-child parent (both qualifying under 25 at retirementYear) pays lower PV than childless', () => {
     const payout = de2026Rules.socialSecurity.kvFreibetragVersorgungMonthly + 200
-    const childless = netBavPayout(payout, { ...defaultProfile, children: 0 }, de2026Rules)
-    const twoChildren = netBavPayout(payout, { ...defaultProfile, children: 2 }, de2026Rules)
+    // childBirthYears: [] → Kinderlosenzuschlag; retirementYear defaults to rules.year (2026)
+    const childless = netBavPayout(payout, defaultProfile, de2026Rules)
+    // Born 2005, 2008 → ages 21 and 18 in 2026 → both qualifying → 1.55 % rate → lower PV
+    const twoChildren = netBavPayout(payout, { ...defaultProfile, childBirthYears: [2005, 2008] }, de2026Rules)
     expect(twoChildren).toBeGreaterThan(childless)
   })
 })

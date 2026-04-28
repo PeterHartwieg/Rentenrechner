@@ -448,19 +448,56 @@ function App() {
                 updateNumber(setProfile, 'healthAdditionalContributionPct', value)
               }
             />
-            <NumberField
-              label="Kinder"
-              value={profile.children}
-              min={0}
-              max={5}
-              step={1}
-              onChange={(value) =>
-                setProfile((current) => ({
-                  ...current,
-                  children: clampNumber(Number(value), 0, 5),
-                }))
-              }
-            />
+            <div className="field">
+              <span>Kinder (Geburtsjahr)</span>
+              {profile.childBirthYears.map((year, i) => (
+                <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.82rem', color: '#667085', minWidth: '52px' }}>Kind {i + 1}</span>
+                  <div className="input-shell" style={{ flex: 1 }}>
+                    <input
+                      type="number"
+                      min={1900}
+                      max={de2026Rules.year}
+                      step={1}
+                      value={year}
+                      onChange={(e) => {
+                        const val = Math.round(clampNumber(Number(e.target.value), 1900, de2026Rules.year))
+                        setProfile((cur) => ({
+                          ...cur,
+                          childBirthYears: cur.childBirthYears.map((y, j) => (j === i ? val : y)),
+                        }))
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    style={{ padding: '3px 7px', cursor: 'pointer' }}
+                    onClick={() =>
+                      setProfile((cur) => ({
+                        ...cur,
+                        childBirthYears: cur.childBirthYears.filter((_, j) => j !== i),
+                      }))
+                    }
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {profile.childBirthYears.length < 10 && (
+                <button
+                  type="button"
+                  style={{ alignSelf: 'flex-start', fontSize: '0.82rem', padding: '3px 10px', cursor: 'pointer', marginTop: '2px' }}
+                  onClick={() =>
+                    setProfile((cur) => ({
+                      ...cur,
+                      childBirthYears: [...cur.childBirthYears, de2026Rules.year - 5],
+                    }))
+                  }
+                >
+                  + Kind hinzufügen
+                </button>
+              )}
+            </div>
           </div>
 
           <label className="field">
@@ -656,7 +693,8 @@ function App() {
                 const threshold = de2026Rules.socialSecurity.kvFreibetragVersorgungMonthly
                 const kvBase = kvdrMember ? Math.max(0, grossPayout - threshold) : grossPayout
                 const kvMonthly = kvBase * healthRate
-                const pvRate = careEmployeeRateForChildren(profile.children, de2026Rules) + de2026Rules.socialSecurity.careEmployerRate
+                const retirementYearForPv = de2026Rules.year + (profile.retirementAge - profile.age)
+                const pvRate = careEmployeeRateForChildren(profile.childBirthYears, retirementYearForPv, de2026Rules) + de2026Rules.socialSecurity.careEmployerRate
                 const pvMonthly = grossPayout > threshold ? grossPayout * pvRate : 0
                 return (
                   <p className="field-hint">
@@ -1339,11 +1377,11 @@ function App() {
                   <dt>Steuerprofil</dt>
                   <dd>
                     Klasse I,{' '}
-                    {profile.children === 0
+                    {profile.childBirthYears.length === 0
                       ? 'keine Kinder'
-                      : profile.children === 1
+                      : profile.childBirthYears.length === 1
                         ? '1 Kind'
-                        : `${profile.children} Kinder`}
+                        : `${profile.childBirthYears.length} Kinder`}
                     , Kirchensteuer nicht berechnet
                   </dd>
                 </div>

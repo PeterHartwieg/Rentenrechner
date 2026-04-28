@@ -13,16 +13,19 @@ function contributionBase(annualGross: number, cap: number): number {
 }
 
 export function careEmployeeRateForChildren(
-  children: number,
+  childBirthYears: number[],
+  currentYear: number,
   rules: GermanRules,
 ): number {
-  if (children <= 0) {
+  if (childBirthYears.length === 0) {
     return rules.socialSecurity.careEmployeeChildlessRate
   }
-
-  const childDiscount = Math.min(Math.max(0, children - 1), 4) * 0.0025
-
-  return Math.max(0, rules.socialSecurity.careEmployeeBaseRate - childDiscount)
+  // §55 Abs. 3a SGB XI: only children under 25 in the contribution year qualify for
+  // the Beitragsabschlag. Having any child at all (regardless of age) exempts the
+  // member from the Kinderlosenzuschlag.
+  const qualifying = childBirthYears.filter((y) => currentYear - y < 25).length
+  const discount = Math.min(Math.max(0, qualifying - 1), 4) * 0.0025
+  return Math.max(0, rules.socialSecurity.careEmployeeBaseRate - discount)
 }
 
 export function calculateEmployeeSocialContributions(
@@ -45,7 +48,7 @@ export function calculateEmployeeSocialContributions(
   const unemployment = pensionBase * rules.socialSecurity.unemploymentEmployeeRate
   const health = profile.publicHealthInsurance ? healthBase * healthEmployeeRate : 0
   const care = profile.publicHealthInsurance
-    ? healthBase * careEmployeeRateForChildren(profile.children, rules)
+    ? healthBase * careEmployeeRateForChildren(profile.childBirthYears, rules.year, rules)
     : 0
 
   return {
@@ -107,7 +110,7 @@ export function calculateVorsorgepauschale2026(
     : 0
 
   const pvTeilbetrag = profile.publicHealthInsurance
-    ? kvBase * careEmployeeRateForChildren(profile.children, rules)
+    ? kvBase * careEmployeeRateForChildren(profile.childBirthYears, rules.year, rules)
     : 0
 
   // AV Teilbetrag: only included if GKV + PV + AV does not exceed 1,900 EUR

@@ -64,7 +64,10 @@ export function validateProfile(input: unknown): PersonalProfile | null {
   if (p.retirementAge < p.age || p.retirementAge > 120) return null
   if (!isFiniteNumber(p.grossSalaryYear) || p.grossSalaryYear < 0) return null
   if (p.taxClass !== 1) return null
-  if (!isInt(p.children) || p.children < 0) return null
+  if (!Array.isArray(p.childBirthYears) || p.childBirthYears.length > 20) return null
+  for (const y of p.childBirthYears) {
+    if (!isInt(y) || y < 1900 || y > 2200) return null
+  }
   if (typeof p.churchTax !== 'boolean') return null
   if (typeof p.publicHealthInsurance !== 'boolean') return null
   if (!inRange(p.healthAdditionalContributionPct, 0, 10)) return null

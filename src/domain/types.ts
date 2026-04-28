@@ -72,7 +72,10 @@ export interface PersonalProfile {
   retirementAge: number
   grossSalaryYear: number
   taxClass: 1
-  children: number
+  // §55 Abs. 3 / Abs. 3a SGB XI: birth year of each child.
+  // Kinderlosenzuschlag (+0.6 %) applies when empty. Discounts (−0.25 % per child
+  // starting from the 2nd) apply only to children under 25 in the contribution year.
+  childBirthYears: number[]
   churchTax: boolean
   publicHealthInsurance: boolean
   healthAdditionalContributionPct: number

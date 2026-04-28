@@ -40,9 +40,20 @@ describe('validateProfile', () => {
     expect(validateProfile({ ...defaultProfile, retirementAge: 121 })).toBeNull()
   })
 
-  it('rejects non-integer or negative children', () => {
-    expect(validateProfile({ ...defaultProfile, children: -1 })).toBeNull()
-    expect(validateProfile({ ...defaultProfile, children: 1.5 })).toBeNull()
+  it('rejects invalid childBirthYears', () => {
+    // not an array
+    expect(validateProfile({ ...defaultProfile, childBirthYears: 2 as unknown as number[] })).toBeNull()
+    // birth year out of valid range
+    expect(validateProfile({ ...defaultProfile, childBirthYears: [1800] })).toBeNull()
+    // non-integer birth year
+    expect(validateProfile({ ...defaultProfile, childBirthYears: [2005.5] })).toBeNull()
+    // more than 20 children
+    expect(validateProfile({ ...defaultProfile, childBirthYears: Array(21).fill(2000) })).toBeNull()
+  })
+
+  it('accepts valid childBirthYears including over-25 children', () => {
+    expect(validateProfile({ ...defaultProfile, childBirthYears: [] })).not.toBeNull()
+    expect(validateProfile({ ...defaultProfile, childBirthYears: [1990, 2010] })).not.toBeNull()
   })
 
   it('rejects taxClass !== 1', () => {
