@@ -1,0 +1,120 @@
+.decision-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid #d6dce5;
+  border-radius: 10px;
+  background: #fafbfd;
+}
+
+.decision-summary h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #667085;
+}
+
+.decision-headline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.decision-headline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e3e8ef;
+  border-left-width: 4px;
+}
+
+.decision-headline-card .decision-headline-label {
+  font-size: 0.78rem;
+  color: #667085;
+}
+
+.decision-headline-card .decision-headline-value {
+  font-size: clamp(1.25rem, 1.8vw, 1.7rem);
+  font-weight: 700;
+  color: #172033;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.decision-headline-card .decision-headline-product {
+  font-size: 0.92rem;
+  color: #344054;
+}
+
+.decision-callout {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.decision-callout.disagree {
+  background: #fffaf0;
+  border: 1px solid #f5c66c;
+  color: #7a4f00;
+}
+
+.decision-callout.driver {
+  background: #fef2f2;
+  border: 1px solid #f4b8b8;
+  color: #7a1d1d;
+}
+
+.decision-callout.sensitivity {
+  background: #f1f6ff;
+  border: 1px solid #c0d4f3;
+  color: #1d3a7a;
+}
+
+.decision-reasons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.decision-reason-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.decision-reason-card .reason-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+}
+
+.decision-reason-card .reason-body strong {
+  display: block;
+  color: #172033;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.decision-reason-card .reason-body span {
+  color: #475467;
+}
+
+@media (max-width: 760px) {
+  .decision-headline {
+    grid-template-columns: 1fr;
+  }
+}

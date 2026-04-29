@@ -22,6 +22,7 @@ import { BasisrenteInputs } from './features/inputs/BasisrenteInputs'
 import { AltersvorsorgedepotInputs } from './features/inputs/AltersvorsorgedepotInputs'
 import { RiesterInputs } from './features/inputs/RiesterInputs'
 import { SummaryMetrics } from './features/results/SummaryMetrics'
+import { DecisionSummary } from './features/results/DecisionSummary'
 import { CapitalChart } from './features/results/CapitalChart'
 import { PensionChart } from './features/results/PensionChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
@@ -338,6 +339,12 @@ function App() {
             onChange={(next) =>
               setAssumptions((current) => ({ ...current, visibleProducts: next }))
             }
+          />
+
+          <DecisionSummary
+            results={selectedResults}
+            bestCapital={bestCapital}
+            bestPension={bestPension}
           />
 
           <SummaryMetrics
