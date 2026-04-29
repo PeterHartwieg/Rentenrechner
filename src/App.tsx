@@ -23,6 +23,8 @@ import { AltersvorsorgedepotInputs } from './features/inputs/Altersvorsorgedepot
 import { RiesterInputs } from './features/inputs/RiesterInputs'
 import { SummaryMetrics } from './features/results/SummaryMetrics'
 import { DecisionSummary } from './features/results/DecisionSummary'
+import { ResultWaterfalls } from './features/results/ResultWaterfall'
+import { SensitivityPanel } from './features/results/SensitivityPanel'
 import { CapitalChart } from './features/results/CapitalChart'
 import { PensionChart } from './features/results/PensionChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
@@ -379,6 +381,14 @@ function App() {
               rules={de2026Rules}
             />
           </section>
+
+          <ResultWaterfalls results={selectedResults} />
+
+          <SensitivityPanel
+            profile={profile}
+            assumptions={assumptions}
+            visibleProducts={assumptions.visibleProducts}
+          />
 
           <FeeDragChart
             selectedResults={selectedResults}

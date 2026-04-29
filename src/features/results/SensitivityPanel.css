@@ -1,0 +1,118 @@
+.sensitivity-panel {
+  border: 1px solid #d6dce5;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sensitivity-panel > header h3 {
+  margin: 0 0 4px;
+  font-size: 0.92rem;
+  color: #172033;
+}
+
+.sensitivity-panel > header p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #667085;
+}
+
+.sensitivity-grid {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 4px 16px;
+  align-items: center;
+  font-size: 0.86rem;
+}
+
+.sensitivity-grid > .sg-head {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #667085;
+  border-bottom: 1px solid #e3e8ef;
+  padding-bottom: 4px;
+}
+
+.sensitivity-grid > .sg-row-label {
+  color: #344054;
+}
+
+.sensitivity-grid > .sg-row-label small {
+  display: block;
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.sensitivity-grid > .sg-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sensitivity-grid > .sg-cell .product-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-size: 0.8rem;
+  color: #172033;
+}
+
+.sensitivity-grid > .sg-cell .product-pill .pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sensitivity-grid > .sg-cell .product-pill.changed {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+}
+
+.robustness-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.robustness-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.robustness-pill .pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.robustness-pill.robust {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.robustness-pill.knapp {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.robustness-pill.annahmenabhaengig {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
