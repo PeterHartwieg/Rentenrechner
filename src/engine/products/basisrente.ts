@@ -37,9 +37,9 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
       const basisrente = assumptions.basisrente
       const grossMonthlyPayout = applyPensionPayoutFee(
         computeGrossMonthlyPayout(projection.capital, {
-          mode: basisrente.payoutMode,
+          mode: 'leibrente',
           rentenfaktor: basisrente.rentenfaktor,
-          zeitrenteYears: basisrente.zeitrenteYears,
+          zeitrenteYears: 0,
           kapitalverzehrYears: payoutYears,
           payoutReturn,
         }),
@@ -55,12 +55,13 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
           rules,
           basisrente.monthlyOtherRetirementIncome,
           payoutYear,
+          basisrente.retirementHealthStatus,
         ),
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,
           projection.capital,
           grossMonthlyPayout,
-          basisrente.payoutMode === 'leibrente',
+          true,
         ),
       }
     },

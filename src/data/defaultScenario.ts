@@ -136,13 +136,14 @@ export const defaultAssumptions: ScenarioAssumptions = {
     // Typical Rürup/Basisrente monthly premium for an employed single filer.
     // Most Rürup contracts start around 100–300 EUR/month; 200 EUR is a reasonable default.
     monthlyGrossContribution: 200,
-    // #54: Basisrente contracts typically quote Leibrente as the default payout form.
-    // 28 EUR/10k/Monat chosen as a 2026 market-typical value (similar to private insurance,
-    // as Basisrente insurers price annuities similarly to Schicht-3 providers).
+    // Basisrente old-age payout is always leibrente per AltZertG §2 / §10 Abs. 1 Nr. 2 EStG.
     payoutMode: 'leibrente' as const,
+    // 28 EUR/10k/Monat: 2026 market-typical Rentenfaktor for age-67 starts.
     rentenfaktor: 28,
-    zeitrenteYears: 20,
     monthlyOtherRetirementIncome: 0,
+    // KVdR is the typical retirement health status for employees; Basisrente is not a
+    // Versorgungsbezug (§229 SGB V), so KVdR members pay no KV/PV on Basisrente payouts.
+    retirementHealthStatus: 'kvdr' as const,
     fees: {
       wrapperAssetFee: 0.012,   // 1.20 % — typical Basisrente insurance wrapper
       fundAssetFee: 0.002,      // 0.20 % ETF-Fondskosten — total 1.40 % p.a.

@@ -11,6 +11,13 @@ type Props = {
   basisrenteFunding: BasisrenteFundingResult
   basisrenteProductResult: ProductResult | undefined
   rules: GermanRules
+  retirementAge: number
+}
+
+const HEALTH_STATUS_LABELS: Record<string, string> = {
+  kvdr: 'KVdR (kein KV/PV auf Rürup)',
+  freiwillig_gkv: 'Freiwillig GKV (voller Beitrag)',
+  pkv: 'PKV in Rente (kein KV/PV)',
 }
 
 export function BasisrenteInputs({
@@ -18,13 +25,16 @@ export function BasisrenteInputs({
   onAssumptionsChange,
   basisrenteFunding,
   basisrenteProductResult,
+  retirementAge,
 }: Props) {
   const riy = basisrenteProductResult?.accumulationRiy ?? 0
+  const healthStatus = assumptions.basisrente.retirementHealthStatus
   const otherIncome = assumptions.basisrente.monthlyOtherRetirementIncome
+
   const erweitertParts: string[] = []
   if (riy > 0) erweitertParts.push(`Kosten: ${formatPercent(riy)}`)
   if (otherIncome > 0) erweitertParts.push(`+${formatCurrency(otherIncome, 0)}/Mon. sonst. Einkommen`)
-  if (erweitertParts.length === 0) erweitertParts.push('Standard-Kosten')
+  erweitertParts.push(HEALTH_STATUS_LABELS[healthStatus] ?? healthStatus)
   const erweitertSummary = erweitertParts.join(' · ')
 
   return (
@@ -34,12 +44,19 @@ export function BasisrenteInputs({
         <p>
           Steuergeförderte Altersvorsorge nach §10 Abs. 1 Nr. 2 EStG. Beiträge bis zum
           Schicht-1-Höchstbetrag steuerlich absetzbar. Kein Kapitalwahlrecht —
-          nur lebenslange Rente oder Zeitrente.
+          nur lebenslange Rente (Leibrente).
         </p>
         <p className="field-hint" style={{ marginTop: 4 }}>
           ⚠ Nicht beleihbar, nicht veräußerlich, keine vorzeitige Auszahlung möglich.
           Kapital steht frühestens ab Alter 62 zur Verrentung zur Verfügung.
         </p>
+        {retirementAge < 62 && (
+          <p className="field-warning" style={{ marginTop: 4 }}>
+            Rentenbeginn mit {retirementAge} Jahren liegt unter der gesetzlichen Mindestgrenze
+            von 62 Jahren für Basisrente-Auszahlungen (§10 Abs. 1 Nr. 2 EStG / AltZertG §2).
+            Das Ergebnis ist für eine regelkonforme Basisrente nicht gültig.
+          </p>
+        )}
       </div>
 
       <div className="field-grid">
@@ -57,61 +74,20 @@ export function BasisrenteInputs({
           }
         />
 
-        <label className="field">
-          <span>Auszahlungsform</span>
-          <select
-            value={assumptions.basisrente.payoutMode}
-            onChange={(e) =>
-              onAssumptionsChange((current) => ({
-                ...current,
-                basisrente: {
-                  ...current.basisrente,
-                  payoutMode: e.target.value as 'leibrente' | 'zeitrente',
-                },
-              }))
-            }
-          >
-            <option value="leibrente">Leibrente (lebenslang)</option>
-            <option value="zeitrente">Zeitrente (befristet)</option>
-          </select>
-        </label>
-
-        {assumptions.basisrente.payoutMode === 'leibrente' && (
-          <NumberField
-            label="Rentenfaktor"
-            value={assumptions.basisrente.rentenfaktor}
-            min={0}
-            max={100}
-            step={0.5}
-            suffix="EUR/10k"
-            onChange={(value) =>
-              onAssumptionsChange((current) => ({
-                ...current,
-                basisrente: { ...current.basisrente, rentenfaktor: Math.max(0, Number(value)) },
-              }))
-            }
-          />
-        )}
-
-        {assumptions.basisrente.payoutMode === 'zeitrente' && (
-          <NumberField
-            label="Zeitrente-Dauer"
-            value={assumptions.basisrente.zeitrenteYears}
-            min={1}
-            max={40}
-            step={1}
-            suffix="Jahre"
-            onChange={(value) =>
-              onAssumptionsChange((current) => ({
-                ...current,
-                basisrente: {
-                  ...current.basisrente,
-                  zeitrenteYears: Math.max(1, Math.round(Number(value))),
-                },
-              }))
-            }
-          />
-        )}
+        <NumberField
+          label="Garantierter Rentenfaktor"
+          value={assumptions.basisrente.rentenfaktor}
+          min={0}
+          max={100}
+          step={0.5}
+          suffix="EUR/10k"
+          onChange={(value) =>
+            onAssumptionsChange((current) => ({
+              ...current,
+              basisrente: { ...current.basisrente, rentenfaktor: Math.max(0, Number(value)) },
+            }))
+          }
+        />
       </div>
 
       {basisrenteFunding && basisrenteFunding.monthlyGrossContribution > 0 ? (
@@ -149,6 +125,30 @@ export function BasisrenteInputs({
               }))
             }
           />
+
+          <label className="field">
+            <span>Krankenversicherung in Rente</span>
+            <select
+              value={healthStatus}
+              onChange={(e) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    retirementHealthStatus: e.target.value as 'kvdr' | 'freiwillig_gkv' | 'pkv',
+                  },
+                }))
+              }
+            >
+              <option value="kvdr">KVdR — kein KV/PV auf Basisrente</option>
+              <option value="freiwillig_gkv">Freiwillig GKV — voller §240 SGB V Beitrag</option>
+              <option value="pkv">PKV — kein gesetzlicher KV/PV-Abzug</option>
+            </select>
+          </label>
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            KVdR: Basisrente ist kein Versorgungsbezug (§229 SGB V) → kein KV/PV-Abzug für Pflichtmitglieder.
+            Freiwillig Versicherte zahlen auf alle Einkünfte bis zur BBG (§240 SGB V).
+          </p>
 
           <div className="subsection-heading" style={{ marginTop: 4 }}>
             <h3>Basisrente-Kosten</h3>

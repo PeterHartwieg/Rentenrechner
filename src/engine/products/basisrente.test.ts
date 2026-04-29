@@ -69,8 +69,8 @@ describe('#61 calculateBasisrenteFunding', () => {
 })
 
 describe('#61 netBasisrentePayout', () => {
-  it('net < gross due to tax and KV/PV', () => {
-    const net = netBasisrentePayout(1000, defaultProfile, de2026Rules)
+  it('net < gross due to income tax (freiwillig_gkv also deducts KV/PV)', () => {
+    const net = netBasisrentePayout(1000, defaultProfile, de2026Rules, 0, de2026Rules.year, 'freiwillig_gkv')
     expect(net).toBeGreaterThan(0)
     expect(net).toBeLessThan(1000)
   })
@@ -86,10 +86,10 @@ describe('#61 netBasisrentePayout', () => {
       pkvMonthlyPremium: 500,
       pPVMonthlyPremium: 50,
     }
-    const netGkv = netBasisrentePayout(1000, defaultProfile, de2026Rules)
+    const netFreiwillig = netBasisrentePayout(1000, defaultProfile, de2026Rules, 0, de2026Rules.year, 'freiwillig_gkv')
     const netPkv = netBasisrentePayout(1000, pkvProfile, de2026Rules)
-    // PKV holder pays less (no KV/PV on Basisrente) → net is higher
-    expect(netPkv).toBeGreaterThan(netGkv)
+    // PKV holder pays no KV/PV → net is higher than freiwillig_gkv
+    expect(netPkv).toBeGreaterThan(netFreiwillig)
   })
 
   it('taxable share follows Besteuerungsanteil for retirement year', () => {
@@ -105,22 +105,60 @@ describe('#61 netBasisrentePayout', () => {
     const netHighOther = netBasisrentePayout(1000, defaultProfile, de2026Rules, 3000)
     expect(netHighOther).toBeLessThan(netLowOther)
   })
+})
 
-  it('zero otherMonthlyIncome: KV/PV unchanged from previous behavior', () => {
-    // With no other income, combined = grossMonthlyPayout; basisrenteKvShare = 1; same as before.
-    const net1 = netBasisrentePayout(800, defaultProfile, de2026Rules, 0)
-    const net2 = netBasisrentePayout(800, defaultProfile, de2026Rules, 0, de2026Rules.year)
-    expect(net1).toBeCloseTo(net2, 5)
+describe('netBasisrentePayout — KV/PV health status (Group E step 3)', () => {
+  it('kvdr: no KV/PV — net equals PKV net (only income tax)', () => {
+    const pkvProfile: PersonalProfile = {
+      ...defaultProfile,
+      publicHealthInsurance: false,
+      pkvMonthlyPremium: 500,
+      pPVMonthlyPremium: 50,
+    }
+    const netKvdr = netBasisrentePayout(1000, defaultProfile, de2026Rules, 0, de2026Rules.year, 'kvdr')
+    const netPkv = netBasisrentePayout(1000, pkvProfile, de2026Rules)
+    // KVdR has no KV/PV on Basisrente (same as PKV)
+    expect(netKvdr).toBeCloseTo(netPkv, 5)
+  })
+
+  it('freiwillig_gkv: KV/PV applied — net lower than kvdr', () => {
+    const netKvdr = netBasisrentePayout(1000, defaultProfile, de2026Rules, 0, de2026Rules.year, 'kvdr')
+    const netFreiwillig = netBasisrentePayout(1000, defaultProfile, de2026Rules, 0, de2026Rules.year, 'freiwillig_gkv')
+    expect(netFreiwillig).toBeLessThan(netKvdr)
+  })
+
+  it('pkv health status with GKV profile: no KV/PV — net equals kvdr', () => {
+    const netKvdr = netBasisrentePayout(1000, defaultProfile, de2026Rules, 0, de2026Rules.year, 'kvdr')
+    const netPkvStatus = netBasisrentePayout(1000, defaultProfile, de2026Rules, 0, de2026Rules.year, 'pkv')
+    expect(netPkvStatus).toBeCloseTo(netKvdr, 5)
+  })
+
+  it('default retirementHealthStatus is freiwillig_gkv (backward compat)', () => {
+    const netDefault = netBasisrentePayout(1000, defaultProfile, de2026Rules)
+    const netFreiwillig = netBasisrentePayout(1000, defaultProfile, de2026Rules, 0, de2026Rules.year, 'freiwillig_gkv')
+    expect(netDefault).toBeCloseTo(netFreiwillig, 5)
+  })
+
+  it('simulation uses retirementHealthStatus from assumptions (kvdr default → no KV/PV)', () => {
+    // defaultAssumptions.basisrente.retirementHealthStatus = 'kvdr'
+    const simKvdr = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const simFreiwillig = simulateRetirementComparison(
+      defaultProfile,
+      { ...defaultAssumptions, basisrente: { ...defaultAssumptions.basisrente, retirementHealthStatus: 'freiwillig_gkv' } },
+      de2026Rules,
+    )
+    const kvdrResult = simKvdr.products.find((p) => p.productId === 'basisrente' && p.scenarioId === 'basis')!
+    const freiwilligResult = simFreiwillig.products.find((p) => p.productId === 'basisrente' && p.scenarioId === 'basis')!
+    expect(kvdrResult.netMonthlyPayout).toBeGreaterThan(freiwilligResult.netMonthlyPayout)
   })
 })
 
 describe('Wave 16 — freiwillig-GKV BBG cap interaction (marginal approach)', () => {
   const bbg = de2026Rules.socialSecurity.healthAndCareCapMonth // 5812.50 EUR/month
-  // Helper: isolate the KV/PV component by comparing GKV vs PKV (same tax, no KV/PV for PKV).
-  const pkvProfile = { ...defaultProfile, publicHealthInsurance: false }
+  // Helper: isolate the KV/PV component by comparing freiwillig vs kvdr (same tax, no KV/PV for kvdr).
   const kvPvAmount = (gross: number, other: number) =>
-    netBasisrentePayout(gross, pkvProfile, de2026Rules, other) -
-    netBasisrentePayout(gross, defaultProfile, de2026Rules, other)
+    netBasisrentePayout(gross, defaultProfile, de2026Rules, other, de2026Rules.year, 'kvdr') -
+    netBasisrentePayout(gross, defaultProfile, de2026Rules, other, de2026Rules.year, 'freiwillig_gkv')
 
   it('below BBG: full KV/PV charged on gross payout', () => {
     // otherMonthlyIncome = 0, gross = 500 → kvPvBase = min(500, BBG) = 500
@@ -153,70 +191,25 @@ describe('Wave 16 — freiwillig-GKV BBG cap interaction (marginal approach)', (
   })
 })
 
-describe('Wave 16 — Basisrente Zeitrente payout mode', () => {
-  it('zeitrente mode produces payout (grossMonthlyPayout > 0)', () => {
-    const { results } = (() => {
-      const sim = simulateRetirementComparison(
-        defaultProfile,
-        {
-          ...defaultAssumptions,
-          basisrente: {
-            ...defaultAssumptions.basisrente,
-            payoutMode: 'zeitrente',
-            zeitrenteYears: 20,
-          },
-        },
-        de2026Rules,
-      )
-      return { results: sim.products.filter((p) => p.productId === 'basisrente') }
-    })()
-    for (const r of results) {
-      expect(r.grossMonthlyPayout).toBeGreaterThan(0)
-      expect(r.netMonthlyPayout).toBeGreaterThan(0)
+describe('Basisrente legal compliance (Group E step 3)', () => {
+  it('payoutMode is always leibrente', () => {
+    expect(defaultAssumptions.basisrente.payoutMode).toBe('leibrente')
+  })
+
+  it('afterTaxLumpSum is null (capital payout prohibited)', () => {
+    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    for (const r of sim.products.filter((p) => p.productId === 'basisrente')) {
       expect(r.afterTaxLumpSum).toBeNull()
     }
   })
 
-  it('zeitrente 20yr vs leibrente RF28: zeitrente pays more (shorter horizon favors fixed term)', () => {
-    const baseAssumptions = {
-      ...defaultAssumptions,
-      returnScenarios: [defaultAssumptions.returnScenarios[0]],
-    }
-    const simLeib = simulateRetirementComparison(
+  it('leibrenteBreakEvenAge is defined (always leibrente)', () => {
+    const sim = simulateRetirementComparison(
       defaultProfile,
-      { ...baseAssumptions, basisrente: { ...baseAssumptions.basisrente, payoutMode: 'leibrente', rentenfaktor: 28 } },
+      { ...defaultAssumptions, returnScenarios: [defaultAssumptions.returnScenarios[0]] },
       de2026Rules,
     )
-    const simZeit = simulateRetirementComparison(
-      defaultProfile,
-      { ...baseAssumptions, basisrente: { ...baseAssumptions.basisrente, payoutMode: 'zeitrente', zeitrenteYears: 20 } },
-      de2026Rules,
-    )
-    const leibResult = simLeib.products.find((p) => p.productId === 'basisrente')!
-    const zeitResult = simZeit.products.find((p) => p.productId === 'basisrente')!
-    // RF 28 = 28 EUR/10k capital; Zeitrente over 20yr from the same capital depletes faster
-    // → higher monthly payout than a Leibrente at RF28 for a typical accumulation period
-    expect(zeitResult.grossMonthlyPayout).toBeGreaterThan(leibResult.grossMonthlyPayout)
-  })
-
-  it('leibrente mode has leibrenteBreakEvenAge defined; zeitrente mode does not', () => {
-    const baseAssumptions = {
-      ...defaultAssumptions,
-      returnScenarios: [defaultAssumptions.returnScenarios[0]],
-    }
-    const simLeib = simulateRetirementComparison(
-      defaultProfile,
-      { ...baseAssumptions, basisrente: { ...baseAssumptions.basisrente, payoutMode: 'leibrente' } },
-      de2026Rules,
-    )
-    const simZeit = simulateRetirementComparison(
-      defaultProfile,
-      { ...baseAssumptions, basisrente: { ...baseAssumptions.basisrente, payoutMode: 'zeitrente', zeitrenteYears: 20 } },
-      de2026Rules,
-    )
-    const leibResult = simLeib.products.find((p) => p.productId === 'basisrente')!
-    const zeitResult = simZeit.products.find((p) => p.productId === 'basisrente')!
-    expect(leibResult.leibrenteBreakEvenAge).toBeDefined()
-    expect(zeitResult.leibrenteBreakEvenAge).toBeUndefined()
+    const r = sim.products.find((p) => p.productId === 'basisrente')!
+    expect(r.leibrenteBreakEvenAge).toBeDefined()
   })
 })

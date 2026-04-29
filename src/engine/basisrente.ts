@@ -7,16 +7,17 @@
  *   (§10 Abs. 3 EStG). The cap is reduced by total GRV contributions (employee + employer).
  * - Payouts are taxed by the same §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil cohort
  *   table as GRV statutory pensions.
- * - Only lifelong annuity (Leibrente) or fixed-term annuity (Zeitrente) permitted;
- *   full capital payout (Kapitalabfindung) is prohibited by certification rules.
+ * - Only lifelong annuity (Leibrente) permitted for old-age Basisrente; full capital
+ *   payout (Kapitalabfindung) is prohibited by certification rules (AltZertG §2).
  * - No inheritance payout in the base form; capital is not available before age 62.
  *
- * KV/PV simplification (documented):
- *   Basisrente payouts are NOT Versorgungsbezüge under §229 SGB V. They are therefore
- *   assessed at the full health rate (no §249a SGB V half-rate) and without the
- *   §226 Abs. 2 SGB V KV-Freibetrag. This module uses the freiwillig-versichert
- *   §240 SGB V path regardless of the user's actual GKV status in retirement — the
- *   most common case for Rürup holders (self-employed). See LEGAL_REVIEW.md.
+ * KV/PV treatment depends on retiree status:
+ *   Basisrente payouts are NOT Versorgungsbezüge under §229 SGB V (§237 SGB V lists
+ *   the KVdR contribution bases; Basisrente is not among them). Therefore:
+ *   - KVdR / compulsory statutory pensioners: no KV/PV on Basisrente.
+ *   - Voluntary GKV (freiwillig_gkv): full §240 SGB V broad-income rate up to BBG.
+ *   - PKV retirees: no statutory KV/PV deduction.
+ *   The caller passes retirementHealthStatus to select the correct path.
  *
  * Schicht-1 cap:
  *   Total counted = GRV employee contributions + GRV employer contributions + Basisrente.
@@ -118,13 +119,17 @@ export function calculateBasisrenteFunding(
 
 /**
  * Net monthly Basisrente payout after income tax (§22 Nr. 1 Satz 3 a aa EStG
- * Besteuerungsanteil) and KV/PV (full health rate; no §226 Abs. 2 SGB V Freibetrag).
+ * Besteuerungsanteil) and KV/PV.
  *
  * Marginal-tax approach: the reported payout is taxed on top of `otherMonthlyIncome`
  * (GRV + other sources), matching how netBavPayout and netInsurancePayout work.
  *
- * KV/PV: computed via the freiwillig §240 SGB V path (full healthRate, full careRate,
- * no Freibetrag). Zero when publicHealthInsurance = false (PKV holder).
+ * KV/PV depends on `retirementHealthStatus`:
+ *   - 'kvdr': no KV/PV (Basisrente is not a Versorgungsbezug per §229 SGB V).
+ *   - 'freiwillig_gkv': §240 SGB V full broad-income rate up to monthly BBG.
+ *   - 'pkv': no statutory KV/PV.
+ * Also zero when profile.publicHealthInsurance = false (PKV in working phase).
+ * Default is 'freiwillig_gkv' for backward-compat with direct callers.
  */
 export function netBasisrentePayout(
   grossMonthlyPayout: number,
@@ -132,6 +137,7 @@ export function netBasisrentePayout(
   rules: GermanRules,
   otherMonthlyIncome = 0,
   retirementYear = rules.year,
+  retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv' = 'freiwillig_gkv',
 ): number {
   // -------------------------------------------------------------------------
   // 1. Income tax — §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil.
@@ -170,12 +176,14 @@ export function netBasisrentePayout(
   )
   const marginalTaxAnnual = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
 
-  if (!profile.publicHealthInsurance) {
+  // KVdR, PKV (working-phase profile), or explicit pkv retirement status: no KV/PV.
+  // Basisrente is not a Versorgungsbezug (§229 SGB V) so KVdR members owe no KV/PV on it.
+  if (!profile.publicHealthInsurance || retirementHealthStatus !== 'freiwillig_gkv') {
     return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
   }
 
   // -------------------------------------------------------------------------
-  // 2. KV/PV — marginal freiwillig §240 SGB V.
+  // 2. KV/PV — marginal freiwillig §240 SGB V (only for freiwillig_gkv).
   //    Basisrente is not a Versorgungsbezug (§229 SGB V); no §226 Abs. 2 KV-Freibetrag.
   //    For freiwillig Versicherte, contributions apply at the full rate on all income up
   //    to the monthly BBG (§240 SGB V). otherMonthlyIncome (GRV + other) already occupies

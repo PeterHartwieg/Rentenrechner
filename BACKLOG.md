@@ -62,7 +62,7 @@ Shared code areas: default scenarios, storage/schema, URL sharing, CSV/report fo
 
 ### Group UX: Comprehension-First Product Experience
 
-Items: `#UX1`-`#UX8`
+Items: `#UX1`-`#UX15`
 
 Why now:
 
@@ -72,10 +72,10 @@ Why now:
 
 Suggested order:
 
-1. `#UX1`, `#UX2`, and `#UX3` first: these reduce cognitive load without changing engine behavior.
-2. `#UX4` and `#UX5` next: these improve trust by showing why the answer is not trivial.
-3. `#UX6` and `#UX7` after the main surfaces settle.
-4. `#UX8` last, because it depends on final terminology and result hierarchy.
+1. Finish the information architecture work in `#UX9`, `#UX10`, and `#UX11`: the recent UX work added helpful components, but the app still presents too much in one scrolling workspace.
+2. Tighten the guided flow with `#UX12` and product-context editing with `#UX13`.
+3. Improve result comprehension with `#UX14` and `#UX15`.
+4. Keep earlier open items `#UX1`-`#UX6` as design principles / supporting implementation tracks; `#UX7` and `#UX8` are complete.
 
 Shared code areas: `src/App.tsx`, `src/features/inputs/*`, `src/features/results/*`, `src/features/assumptions/*`, `src/app/productPresentation.ts`, `src/ui/*`, print report.
 
@@ -155,6 +155,93 @@ Implemented: fee entry mode toggle (Einzelposten / Effektivkosten all-in) in bAV
 
 Implemented: `NumberField` shows an inline `field-warning` recovery hint while the user is typing a value outside the allowed range ("Wert wird auf X angehoben/begrenzt …"), so silent clamps no longer surprise the user. A persistent `.trust-strip` below the topbar carries the "Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung" copy plus the "Werte mit Stand 2026" sourcing line. The print/PDF report has a new "Hinweise und Grenzen der Rechnung" section with reader-friendly bullets on advice scope, legal vintage, assumption fragility, untracked product features, and uncovered risks. Mobile rules added at `≤760 px`: tightened topbar/trust-strip padding, shrunken chart heights (260 px / 220 px), tighter table cells, and smaller chart legend font. All 453 tests pass.
 
+#### #UX9 P1 Task-Based Workspace Navigation
+
+Replace the single long dashboard with a small set of task-based views. This is the highest-impact remaining UX improvement: current guidance and explanation components are useful, but they are stacked into one view and still create a "control room" feeling.
+
+Concrete changes:
+
+- Add a primary workspace switcher: `Start`, `Vergleich`, `Angebot eingeben`, `Warum?`, `Details & Export`.
+- Default first-run and guided users to `Start`, then route them to the relevant task view instead of dropping them into the complete dashboard.
+- In `Vergleich`, show only product chips, scenario selector, decision summary, one primary chart, and a compact "next best action".
+- Move waterfalls, sensitivity, fee chart, assumptions, cashflows, calculation warnings, CSV/PDF actions, and legal source tables out of the default comparison view.
+- Keep a persistent top summary while switching views: selected products, scenario, real/nominal toggle, and current winner.
+- Acceptance criterion: the default post-guidance screen fits above the fold on desktop except for the main chart; expert tables are one click away but not visually competing.
+
+#### #UX10 P1 Product-Focused Comparison Mode
+
+Make comparison explicitly about a small set of products, not all products with optional hiding.
+
+Concrete changes:
+
+- Turn product visibility chips into a "Vergleich zusammenstellen" step with a recommended baseline: usually ETF plus one offer/product.
+- Limit default comparison to 2-3 products based on the guided path. "Alle Produkte anzeigen" should be an explicit expert action.
+- In the input panel, show only the fields for the selected comparison set and collapse unrelated products into an "Weitere Produkte" launcher.
+- Add a focused product header for each selected product: purpose, liquidity, tax treatment, and the one input most likely to matter.
+- Add empty-state copy when a user hides everything except GRV / no private product: "Waehle mindestens ein Vorsorgeprodukt zum Vergleich."
+- Acceptance criterion: a bAV-offer user sees ETF vs. bAV as the main experience, not ETF + bAV + pAV + Basisrente + AVD + Riester plus many charts.
+
+#### #UX11 P1 Results Hierarchy And De-Duplication
+
+Restructure result modules into "What", "Why", and "Details" so the user is not asked to interpret every analytical view at once.
+
+Concrete changes:
+
+- Merge or reorder `DecisionSummary` and `SummaryMetrics`; avoid showing "best capital" and "best pension" twice.
+- Use a single primary outcome module: "Was lohnt sich in diesem Szenario?" with a plain recommendation-style sentence and clear caveat.
+- Put charts under tabs or segmented controls: `Kapital`, `Monatsrente`, `Kosten`, `Sensitivitaet`.
+- Put `ResultWaterfalls` behind "Warum ist das so?" and show only the selected/winning product by default, with compare expansion.
+- Move `DetailComparisonTable`, `CashflowTable`, `CalculationWarnings`, and `AssumptionsPanel` into `Details & Export`.
+- Acceptance criterion: above the fold contains one decision summary, one chart, and one next step; no tables or warnings panels appear in the primary path unless critical.
+
+#### #UX12 P1 Guided Setup As Persistent Journey
+
+The guided setup is currently a modal that collects a few values and then exits to the full app. Convert it into a persistent journey that continues through interpretation.
+
+Concrete changes:
+
+- After guided setup, show a checklist/stepper: `1 Profil`, `2 Angebot`, `3 Vergleich`, `4 Ergebnis verstehen`, `5 Export`.
+- Keep the "Warum mehr als ein Taschenrechner?" message near the result, but make it contextual: show only the factors that actually affected the current result.
+- Add "Weiter" / "Zurueck" actions for normal users and "Dashboard anzeigen" for experts.
+- If a user enters through "Ich habe ein bAV-Angebot", ask for the offer fields in the same journey instead of requiring the sidebar after the modal closes.
+- Acceptance criterion: a non-expert can complete one guided path without needing to understand the full dashboard layout.
+
+#### #UX13 P2 In-Context Product Editing
+
+Move high-impact product inputs closer to the result they affect, instead of keeping all editing in a separate left sidebar.
+
+Concrete changes:
+
+- On each product result card, add an "Annahmen bearbeiten" disclosure for only that product's core inputs.
+- For bAV: monthly gross conversion, employer subsidy, rentenfaktor, fee mode. For pAV: contract year, contribution proxy/fair comparison note, rentenfaktor, fee mode. For ETF: TER, fund type, return scenario.
+- Preserve the full sidebar for expert editing, but do not make it the only way to adjust a result.
+- Add inline "changed from guided/default" markers so users can see which assumptions are custom.
+- Acceptance criterion: a user can change the bAV employer match or insurance rentenfaktor while looking at that product's result card.
+
+#### #UX14 P2 Assumption Provenance And Confidence
+
+Explain whether a value came from the user, from a legal rule, from a default, or from a model approximation.
+
+Concrete changes:
+
+- Add small provenance badges: `von dir`, `aus Angebot`, `Standardwert`, `Gesetz 2026`, `Modellannahme`.
+- In result summaries, flag outputs based mostly on defaults, e.g. "Rente unsicher: Rentenfaktor ist noch Standardwert."
+- Add a "Was habe ich selbst eingegeben?" review panel before export/PDF.
+- Show legal-vintage warnings only where they matter, not as a permanent long trust strip competing with the app header.
+- Acceptance criterion: users can distinguish their own offer values from hidden assumptions before trusting or exporting the result.
+
+#### #UX15 P2 Plain-Language Microcopy Audit
+
+The terminology layer exists, but many visible labels still use formal product language. Run a second microcopy pass after the layout is simplified.
+
+Concrete changes:
+
+- Replace visible labels like "bAV Entgeltumwandlung", "Vertraglicher AG-Zuschuss", "Kapitalverzehr bis", "ETF-Fondsart (InvStG §20)", and "Sonst. Renteneinkommen" with user-task labels.
+- Use formal/legal terms as secondary text, tooltips, or glossary aliases.
+- Shorten warning panels and hints; prefer "what this means" before "why the law says so".
+- Make product names consistent across navigation, chips, result cards, charts, tables, CSV, and PDF.
+- Acceptance criterion: the main path contains no paragraph symbols or unexplained abbreviations; legal references remain available in expert/details views.
+
 ### Group E: Retirement-Income Refinements
 
 Items: P3 GRV / Basisrente refinements
@@ -163,7 +250,7 @@ Suggested order:
 
 1. ~~Salary growth and Rentenwert indexation for GRV.~~ ✓
 2. ~~Versorgungswerk / Beamtenpension variants.~~ ✓
-3. Basisrente legal-compliance follow-up from `LEGAL_IMPLEMENTATION_AUDIT_2026.md`: remove/disable non-lifelong `zeitrente`, add KVdR/freiwillig/PKV retirement-health status, and enforce or warn on payout before age 62.
+3. ~~Basisrente legal-compliance follow-up from `LEGAL_IMPLEMENTATION_AUDIT_2026.md`: remove/disable non-lifelong `zeitrente`, add KVdR/freiwillig/PKV retirement-health status, and enforce or warn on payout before age 62.~~ ✓
 
 Shared code areas: `src/engine/grv.ts`, `src/engine/basisrente.ts`, retirement tax/KV-PV helpers, profile assumptions UI.
 

@@ -287,6 +287,7 @@ function App() {
                 basisrenteFunding={simulation.basisrenteFunding}
                 basisrenteProductResult={selectedResults.find((r) => r.productId === 'basisrente')}
                 rules={de2026Rules}
+                retirementAge={profile.retirementAge}
               />
             </>
           )}

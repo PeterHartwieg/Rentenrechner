@@ -8,7 +8,7 @@ exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Alters
 
 exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > capitalAtRetirement 1`] = `179504.07586434096`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > netMonthlyPayout 1`] = `393.5447359249811`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > netMonthlyPayout 1`] = `502.6114124201547`;
 
 exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > afterTaxLumpSum 1`] = `201502.83776896182`;
 

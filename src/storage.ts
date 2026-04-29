@@ -57,6 +57,12 @@ export function parseStateFromJson(
   migrateFeesFields(rawAssumptions.bav as Record<string, unknown> | undefined)
   migrateFeesFields(rawAssumptions.insurance as Record<string, unknown> | undefined)
 
+  // Group E step 3: Basisrente zeitrente → leibrente (legal compliance; zeitrente no longer modeled).
+  const rawBasisrente = rawAssumptions.basisrente as Record<string, unknown> | undefined
+  if (rawBasisrente?.payoutMode === 'zeitrente') {
+    rawBasisrente.payoutMode = 'leibrente'
+  }
+
   const profile = mergeDeep(obj.profile, defaultProfile)
   const assumptions = mergeDeep(obj.assumptions, defaultAssumptions)
 
