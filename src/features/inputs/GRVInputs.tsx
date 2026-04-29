@@ -44,6 +44,16 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
   const isManual = sp.manualMonthlyGross !== null
   const isEp = !isManual
 
+  const salaryGrowth = sp.annualSalaryGrowthRate ?? 0
+  const rentenwertGrowth = sp.rentenwertGrowthRate ?? 0
+  const erweitertParts: string[] = []
+  if (salaryGrowth !== 0) erweitertParts.push(`Gehalt +${(salaryGrowth * 100).toFixed(1)} %/Jahr`)
+  else erweitertParts.push('kein Gehaltswachstum')
+  if (rentenwertGrowth !== 0) erweitertParts.push(`Rentenwert +${(rentenwertGrowth * 100).toFixed(1)} %/Jahr`)
+  else erweitertParts.push('kein Rentenwert-Wachstum')
+  if (baselineType === 'grv' && sp.includeGrvReduction) erweitertParts.push('bAV-Minderung')
+  const erweitertSummary = erweitertParts.join(' · ')
+
   return (
     <>
       <div className="subsection-heading">
@@ -56,7 +66,6 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
         </p>
       </div>
 
-      {/* Pension baseline type selector */}
       <label className="field">
         <span>Pflichtversorgungssystem</span>
         <select
@@ -66,7 +75,6 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
             onAssumptionsChange((current) =>
               patchSp(current, {
                 pensionBaselineType: newType,
-                // Force manual mode for Beamtenpension (no EP concept)
                 manualMonthlyGross:
                   newType === 'beamtenpension'
                     ? (current.statutoryPension.manualMonthlyGross ?? 0)
@@ -87,7 +95,6 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
 
       {baselineType !== 'none' && (
         <>
-          {/* Input mode selector (EP vs manual) — not shown for Beamtenpension */}
           {baselineType !== 'beamtenpension' && (
             <label className="field">
               <span>Grundlage</span>
@@ -111,7 +118,6 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
             </label>
           )}
 
-          {/* Manual input */}
           {(isManual || baselineType === 'beamtenpension') && (
             <NumberField
               label={
@@ -133,7 +139,6 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
             />
           )}
 
-          {/* EP-based inputs (GRV and Versorgungswerk only) */}
           {isEp && baselineType !== 'beamtenpension' && (
             <>
               <NumberField
@@ -153,19 +158,6 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                   )
                 }
               />
-              <NumberField
-                label="Gehaltswachstum p.a."
-                value={(sp.annualSalaryGrowthRate ?? 0) * 100}
-                min={-10}
-                max={20}
-                step={0.5}
-                suffix="% p.a."
-                onChange={(value) =>
-                  onAssumptionsChange((current) =>
-                    patchSp(current, { annualSalaryGrowthRate: Number(value) / 100 }),
-                  )
-                }
-              />
               <p className="field-hint">
                 EP bei Rentenbeginn: ~{formatNumber(statutoryPensionResult.projectedEntgeltpunkte, 1)} EP
                 {' '}· Bruttorente: ~{formatCurrency(statutoryPensionResult.grossMonthlyPension, 0)}/Monat
@@ -173,91 +165,6 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
             </>
           )}
 
-          {/* Pension value growth (all non-none types) */}
-          <NumberField
-            label={
-              baselineType === 'beamtenpension'
-                ? 'Pensionswert-Wachstum p.a.'
-                : 'Rentenwert-Wachstum p.a.'
-            }
-            value={(sp.rentenwertGrowthRate ?? 0) * 100}
-            min={-5}
-            max={10}
-            step={0.5}
-            suffix="% p.a."
-            onChange={(value) =>
-              onAssumptionsChange((current) =>
-                patchSp(current, { rentenwertGrowthRate: Number(value) / 100 }),
-              )
-            }
-          />
-          <p className="field-hint">
-            {baselineType === 'beamtenpension'
-              ? 'Jährliche Steigerung der Pension bis Rentenbeginn (Besoldungserhöhungen). Historisch ca. 2 % p.a.'
-              : 'Jährliches Wachstum des Rentenwerts bis Rentenbeginn (§69 SGB VI). Historisch ca. 2–3 % p.a. (nominell).'}
-            {(isManual || baselineType === 'beamtenpension') && (
-              <> Wird auf den Auskunftswert angewendet.</>
-            )}
-          </p>
-
-          {/* GRV reduction checkbox (GRV only) */}
-          {baselineType === 'grv' && (
-            <label className="field field-inline">
-              <input
-                type="checkbox"
-                checked={sp.includeGrvReduction}
-                onChange={(event) =>
-                  onAssumptionsChange((current) =>
-                    patchSp(current, { includeGrvReduction: event.target.checked }),
-                  )
-                }
-              />
-              <span>GRV-Minderung durch bAV-Umwandlung abziehen</span>
-            </label>
-          )}
-
-          {/* Versorgungswerk contribution inputs for Schicht-1 cap */}
-          {baselineType === 'versorgungswerk' && (
-            <>
-              <div className="subsection-heading" style={{ marginTop: 12 }}>
-                <h3>Beiträge (für Rürup-Schicht-1-Cap)</h3>
-              </div>
-              <p className="field-hint">
-                Ihre VW-Beiträge zählen nach §10 Abs. 3 Nr. 2 EStG wie GRV-Beiträge zum Schicht-1-Höchstbetrag.
-                Tragen Sie Ihre tatsächlichen Monatsbeiträge ein.
-              </p>
-              <NumberField
-                label="Eigener VW-Beitrag (Arbeitnehmeranteil)"
-                value={sp.versorgungswerkMonthlyContribution ?? 0}
-                min={0}
-                step={10}
-                suffix="EUR mtl."
-                onChange={(value) =>
-                  onAssumptionsChange((current) =>
-                    patchSp(current, {
-                      versorgungswerkMonthlyContribution: Math.max(0, Number(value)),
-                    }),
-                  )
-                }
-              />
-              <NumberField
-                label="AG-Anteil VW (falls angestellt)"
-                value={sp.versorgungswerkEmployerMonthly ?? 0}
-                min={0}
-                step={10}
-                suffix="EUR mtl."
-                onChange={(value) =>
-                  onAssumptionsChange((current) =>
-                    patchSp(current, {
-                      versorgungswerkEmployerMonthly: Math.max(0, Number(value)),
-                    }),
-                  )
-                }
-              />
-            </>
-          )}
-
-          {/* Result summary */}
           <p className="field-hint">
             {baselineType === 'beamtenpension' ? 'Pension' : 'GRV/VW'} netto
             {baselineType === 'grv' || baselineType === 'versorgungswerk'
@@ -271,6 +178,111 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
               <> · bAV-Minderung {formatCurrency(statutoryPensionResult.grvReductionApplied, 0)}/Monat abgezogen</>
             )}
           </p>
+
+          <details className="erweitert-section">
+            <summary>
+              <span className="erweitert-toggle">Erweitert</span>
+              <span className="erweitert-assumption">{erweitertSummary}</span>
+            </summary>
+            <div className="erweitert-content">
+              {isEp && baselineType !== 'beamtenpension' && (
+                <NumberField
+                  label="Gehaltswachstum p.a."
+                  value={(sp.annualSalaryGrowthRate ?? 0) * 100}
+                  min={-10}
+                  max={20}
+                  step={0.5}
+                  suffix="% p.a."
+                  onChange={(value) =>
+                    onAssumptionsChange((current) =>
+                      patchSp(current, { annualSalaryGrowthRate: Number(value) / 100 }),
+                    )
+                  }
+                />
+              )}
+
+              <NumberField
+                label={
+                  baselineType === 'beamtenpension'
+                    ? 'Pensionswert-Wachstum p.a.'
+                    : 'Rentenwert-Wachstum p.a.'
+                }
+                value={(sp.rentenwertGrowthRate ?? 0) * 100}
+                min={-5}
+                max={10}
+                step={0.5}
+                suffix="% p.a."
+                onChange={(value) =>
+                  onAssumptionsChange((current) =>
+                    patchSp(current, { rentenwertGrowthRate: Number(value) / 100 }),
+                  )
+                }
+              />
+              <p className="field-hint">
+                {baselineType === 'beamtenpension'
+                  ? 'Jährliche Steigerung der Pension bis Rentenbeginn (Besoldungserhöhungen). Historisch ca. 2 % p.a.'
+                  : 'Jährliches Wachstum des Rentenwerts bis Rentenbeginn (§69 SGB VI). Historisch ca. 2–3 % p.a. (nominell).'}
+                {(isManual || baselineType === 'beamtenpension') && (
+                  <> Wird auf den Auskunftswert angewendet.</>
+                )}
+              </p>
+
+              {baselineType === 'grv' && (
+                <label className="field field-inline">
+                  <input
+                    type="checkbox"
+                    checked={sp.includeGrvReduction}
+                    onChange={(event) =>
+                      onAssumptionsChange((current) =>
+                        patchSp(current, { includeGrvReduction: event.target.checked }),
+                      )
+                    }
+                  />
+                  <span>GRV-Minderung durch bAV-Umwandlung abziehen</span>
+                </label>
+              )}
+
+              {baselineType === 'versorgungswerk' && (
+                <>
+                  <div className="subsection-heading" style={{ marginTop: 4 }}>
+                    <h3>Beiträge (für Rürup-Schicht-1-Cap)</h3>
+                  </div>
+                  <p className="field-hint">
+                    Ihre VW-Beiträge zählen nach §10 Abs. 3 Nr. 2 EStG wie GRV-Beiträge zum Schicht-1-Höchstbetrag.
+                    Tragen Sie Ihre tatsächlichen Monatsbeiträge ein.
+                  </p>
+                  <NumberField
+                    label="Eigener VW-Beitrag (Arbeitnehmeranteil)"
+                    value={sp.versorgungswerkMonthlyContribution ?? 0}
+                    min={0}
+                    step={10}
+                    suffix="EUR mtl."
+                    onChange={(value) =>
+                      onAssumptionsChange((current) =>
+                        patchSp(current, {
+                          versorgungswerkMonthlyContribution: Math.max(0, Number(value)),
+                        }),
+                      )
+                    }
+                  />
+                  <NumberField
+                    label="AG-Anteil VW (falls angestellt)"
+                    value={sp.versorgungswerkEmployerMonthly ?? 0}
+                    min={0}
+                    step={10}
+                    suffix="EUR mtl."
+                    onChange={(value) =>
+                      onAssumptionsChange((current) =>
+                        patchSp(current, {
+                          versorgungswerkEmployerMonthly: Math.max(0, Number(value)),
+                        }),
+                      )
+                    }
+                  />
+                </>
+              )}
+            </div>
+          </details>
         </>
       )}
     </>

@@ -19,6 +19,14 @@ export function BasisrenteInputs({
   basisrenteFunding,
   basisrenteProductResult,
 }: Props) {
+  const riy = basisrenteProductResult?.accumulationRiy ?? 0
+  const otherIncome = assumptions.basisrente.monthlyOtherRetirementIncome
+  const erweitertParts: string[] = []
+  if (riy > 0) erweitertParts.push(`Kosten: ${formatPercent(riy)}`)
+  if (otherIncome > 0) erweitertParts.push(`+${formatCurrency(otherIncome, 0)}/Mon. sonst. Einkommen`)
+  if (erweitertParts.length === 0) erweitertParts.push('Standard-Kosten')
+  const erweitertSummary = erweitertParts.join(' · ')
+
   return (
     <>
       <div className="subsection-heading">
@@ -104,23 +112,6 @@ export function BasisrenteInputs({
             }
           />
         )}
-
-        <NumberField
-          label="Sonstige Renteneinnahmen"
-          value={assumptions.basisrente.monthlyOtherRetirementIncome}
-          min={0}
-          step={50}
-          suffix="EUR mtl."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              basisrente: {
-                ...current.basisrente,
-                monthlyOtherRetirementIncome: Math.max(0, Number(value)),
-              },
-            }))
-          }
-        />
       </div>
 
       {basisrenteFunding && basisrenteFunding.monthlyGrossContribution > 0 ? (
@@ -136,118 +127,142 @@ export function BasisrenteInputs({
         </p>
       ) : null}
 
-      <div className="subsection-heading" style={{ marginTop: 12 }}>
-        <h3>Basisrente-Kosten</h3>
-      </div>
+      <details className="erweitert-section">
+        <summary>
+          <span className="erweitert-toggle">Erweitert</span>
+          <span className="erweitert-assumption">{erweitertSummary}</span>
+        </summary>
+        <div className="erweitert-content">
+          <NumberField
+            label="Sonstige Renteneinnahmen"
+            value={otherIncome}
+            min={0}
+            step={50}
+            suffix="EUR mtl."
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                basisrente: {
+                  ...current.basisrente,
+                  monthlyOtherRetirementIncome: Math.max(0, Number(value)),
+                },
+              }))
+            }
+          />
 
-      <div className="field-grid">
-        <NumberField
-          label="Mantelgebühr p.a."
-          value={assumptions.basisrente.fees.wrapperAssetFee * 100}
-          min={0}
-          max={5}
-          step={0.05}
-          suffix="%"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              basisrente: {
-                ...current.basisrente,
-                fees: { ...current.basisrente.fees, wrapperAssetFee: Math.max(0, Number(value) / 100) },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Fondsgebühr p.a."
-          value={assumptions.basisrente.fees.fundAssetFee * 100}
-          min={0}
-          max={5}
-          step={0.05}
-          suffix="%"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              basisrente: {
-                ...current.basisrente,
-                fees: { ...current.basisrente.fees, fundAssetFee: Math.max(0, Number(value) / 100) },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Beitragskostenquote"
-          value={assumptions.basisrente.fees.contributionFee * 100}
-          min={0}
-          max={20}
-          step={0.5}
-          suffix="%"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              basisrente: {
-                ...current.basisrente,
-                fees: { ...current.basisrente.fees, contributionFee: Math.max(0, Number(value) / 100) },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Monatliche Grundgebühr"
-          value={assumptions.basisrente.fees.fixedMonthlyFee}
-          min={0}
-          step={1}
-          suffix="EUR"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              basisrente: {
-                ...current.basisrente,
-                fees: { ...current.basisrente.fees, fixedMonthlyFee: Math.max(0, Number(value)) },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Abschlusskosten"
-          value={assumptions.basisrente.fees.acquisitionCostPct * 100}
-          min={0}
-          max={10}
-          step={0.1}
-          suffix="% Beitragssumme"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              basisrente: {
-                ...current.basisrente,
-                fees: { ...current.basisrente.fees, acquisitionCostPct: Math.max(0, Number(value) / 100) },
-              },
-            }))
-          }
-        />
-      </div>
-      {(() => {
-        const f = assumptions.basisrente.fees
-        const totalAsset = f.wrapperAssetFee + f.fundAssetFee
-        const riy = basisrenteProductResult?.accumulationRiy ?? 0
-        return (
-          <div className="fee-summary">
-            <span>
-              Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
-              (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
-            </span>
-            <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
-              Effektivkosten: <strong>{formatPercent(riy)}</strong>
-            </span>
-            {totalAsset > 0.01 && (
-              <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 %.</p>
-            )}
-            {riy > 0.02 && (
-              <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — prüfen Sie ETF-Nettotarife.</p>
-            )}
+          <div className="subsection-heading" style={{ marginTop: 4 }}>
+            <h3>Basisrente-Kosten</h3>
           </div>
-        )
-      })()}
+
+          <div className="field-grid">
+            <NumberField
+              label="Mantelgebühr p.a."
+              value={assumptions.basisrente.fees.wrapperAssetFee * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="%"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, wrapperAssetFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Fondsgebühr p.a."
+              value={assumptions.basisrente.fees.fundAssetFee * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="%"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, fundAssetFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Beitragskostenquote"
+              value={assumptions.basisrente.fees.contributionFee * 100}
+              min={0}
+              max={20}
+              step={0.5}
+              suffix="%"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, contributionFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Monatliche Grundgebühr"
+              value={assumptions.basisrente.fees.fixedMonthlyFee}
+              min={0}
+              step={1}
+              suffix="EUR"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, fixedMonthlyFee: Math.max(0, Number(value)) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Abschlusskosten"
+              value={assumptions.basisrente.fees.acquisitionCostPct * 100}
+              min={0}
+              max={10}
+              step={0.1}
+              suffix="% Beitragssumme"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  basisrente: {
+                    ...current.basisrente,
+                    fees: { ...current.basisrente.fees, acquisitionCostPct: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+          </div>
+          {(() => {
+            const f = assumptions.basisrente.fees
+            const totalAsset = f.wrapperAssetFee + f.fundAssetFee
+            return (
+              <div className="fee-summary">
+                <span>
+                  Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
+                  (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
+                </span>
+                <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
+                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
+                </span>
+                {totalAsset > 0.01 && (
+                  <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 %.</p>
+                )}
+                {riy > 0.02 && (
+                  <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — prüfen Sie ETF-Nettotarife.</p>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+      </details>
     </>
   )
 }

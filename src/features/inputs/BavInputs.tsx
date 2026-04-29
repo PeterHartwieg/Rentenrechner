@@ -33,6 +33,15 @@ type Props = {
   rules: GermanRules
 }
 
+const DFW_SHORT: Record<BavDurchfuehrungsweg, string> = {
+  direktversicherung_3_63: 'Direktversicherung',
+  pensionskasse_3_63: 'Pensionskasse',
+  pensionsfonds_3_63: 'Pensionsfonds',
+  direktversicherung_40b_alt: 'Direktversicherung (Alt)',
+  direktzusage: 'Direktzusage',
+  unterstuetzungskasse: 'Unterstützungskasse',
+}
+
 export function BavInputs({
   assumptions,
   onAssumptionsChange,
@@ -47,6 +56,16 @@ export function BavInputs({
   bavEntitlementMax,
   rules,
 }: Props) {
+  const bavProduct = selectedResults.find((r) => r.productId === 'bav')
+  const riy = bavProduct?.accumulationRiy ?? 0
+  const dfwShort = DFW_SHORT[assumptions.bav.durchfuehrungsweg]
+  const kvdrShort = !profile.publicHealthInsurance
+    ? 'PKV in Rente'
+    : kvdrMember
+    ? 'KVdR'
+    : 'freiwillig GKV in Rente'
+  const erweitertSummary = `${dfwShort} · ${kvdrShort}${riy > 0 ? ` · Kosten: ${formatPercent(riy)}` : ''}`
+
   return (
     <>
       <div className="field-grid">
@@ -129,168 +148,7 @@ export function BavInputs({
         </p>
       )}
 
-      <label className="field field-inline">
-        <input
-          type="checkbox"
-          checked={tarifgebunden}
-          onChange={(event) => onTarifgebundenChange(event.target.checked)}
-        />
-        <span>Tarifgebunden</span>
-      </label>
-      {tarifgebunden && (
-        <p className="field-warning">
-          Bei tarifgebundenem Arbeitsverhältnis kann die Entgeltumwandlung im Tarifvertrag
-          eingeschränkt oder ausgeschlossen sein (§17 Abs. 3 BetrAVG / §20 BetrAVG).
-        </p>
-      )}
-
       <BavWaterfall f={bavFunding} />
-
-      <div className="subsection-heading">
-        <h3>bAV-Rentenphase</h3>
-        <p>Grenzsteuer- und GRV-Optionen für die Auszahlungsphase.</p>
-      </div>
-
-      <div className="field-grid">
-        <NumberField
-          label="Sonst. Renteneinkommen"
-          value={assumptions.bav.monthlyOtherRetirementIncome}
-          min={0}
-          step={50}
-          suffix="EUR mtl."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: { ...current.bav, monthlyOtherRetirementIncome: Number(value) },
-            }))
-          }
-        />
-      </div>
-      {assumptions.bav.monthlyOtherRetirementIncome > 0 && (
-        <p className="field-hint">
-          Grenzsteuer auf bAV = Steuer(bAV + {formatCurrency(assumptions.bav.monthlyOtherRetirementIncome, 0)}/Monat) −
-          Steuer({formatCurrency(assumptions.bav.monthlyOtherRetirementIncome, 0)}/Monat).
-        </p>
-      )}
-
-      <label className="field field-inline">
-        <input
-          type="checkbox"
-          checked={assumptions.bav.includeGrvReduction}
-          onChange={(event) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: { ...current.bav, includeGrvReduction: event.target.checked },
-            }))
-          }
-        />
-        <span>GRV-Minderung einrechnen</span>
-      </label>
-      {assumptions.bav.monthlyGrossConversion > 0 && (
-        <p className="field-hint">
-          Geschätzte Minderung:{' '}
-          ~{formatCurrency(bavFunding.estimatedMonthlyGrvReduction, 0)}/Monat
-          ({profile.retirementAge - profile.age} Jahre ×{' '}
-          {formatCurrency(assumptions.bav.monthlyGrossConversion, 0)}/Monat,
-          Rentenwert {formatCurrency(rules.socialSecurity.aktuellerRentenwert, 2)}/EP).
-        </p>
-      )}
-
-      {profile.publicHealthInsurance && (
-        <>
-          <label className="field field-inline">
-            <input
-              type="checkbox"
-              checked={kvdrMember}
-              onChange={(event) =>
-                onAssumptionsChange((current) => ({
-                  ...current,
-                  bav: { ...current.bav, kvdrMember: event.target.checked },
-                }))
-              }
-            />
-            <span>KVdR-Mitglied in Rente</span>
-          </label>
-          {(() => {
-            const bavResult = selectedResults.find((r) => r.productId === 'bav')
-            const grossPayout = bavResult?.grossMonthlyPayout ?? 0
-            if (grossPayout <= 0) return null
-            const healthRate = rules.socialSecurity.healthGeneralRate + profile.healthAdditionalContributionPct / 100
-            const threshold = rules.socialSecurity.kvFreibetragVersorgungMonthly
-            const kvBase = kvdrMember ? Math.max(0, grossPayout - threshold) : grossPayout
-            const kvMonthly = kvBase * healthRate
-            const retirementYearForPv = rules.year + (profile.retirementAge - profile.age)
-            const pvRate = careEmployeeRateForChildren(profile.childBirthYears, retirementYearForPv, rules) + rules.socialSecurity.careEmployerRate
-            const pvMonthly = grossPayout > threshold ? grossPayout * pvRate : 0
-            return (
-              <p className="field-hint">
-                Brutto-bAV-Rente: ~{formatCurrency(grossPayout, 0)}/Monat ·
-                KV-Basis: {formatCurrency(kvBase, 0)} · KV: {formatCurrency(kvMonthly, 0)} ·
-                PV: {formatCurrency(pvMonthly, 0)}{' '}
-                {kvdrMember
-                  ? '(KVdR: Freibetrag 197,75 EUR · §226 SGB V)'
-                  : '(freiwillig: volle Rente als Grundlage · §240 SGB V)'}
-              </p>
-            )
-          })()}
-        </>
-      )}
-
-      <label className="field">
-        <span>Durchführungsweg (bAV)</span>
-        <select
-          value={assumptions.bav.durchfuehrungsweg}
-          onChange={(event) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: {
-                ...current.bav,
-                durchfuehrungsweg: event.target.value as BavDurchfuehrungsweg,
-              },
-            }))
-          }
-        >
-          <option value="direktversicherung_3_63">Direktversicherung (§3 Nr. 63 EStG, ab 2005)</option>
-          <option value="pensionskasse_3_63">Pensionskasse (§3 Nr. 63 EStG)</option>
-          <option value="pensionsfonds_3_63">Pensionsfonds (§3 Nr. 63 EStG)</option>
-          <option value="direktversicherung_40b_alt">Direktversicherung (§40b EStG a.F., vor 2005)</option>
-          <option value="direktzusage">Direktzusage (§19 EStG)</option>
-          <option value="unterstuetzungskasse">Unterstützungskasse (§19 EStG)</option>
-        </select>
-        <small className="field-hint">
-          {bavLumpSumTaxMode === 'voll_versorgungsbezug' && (
-            <>Kapitalabfindung: voller Steuersatz nach §22 Nr. 5 EStG (keine Fünftelregelung).</>
-          )}
-          {bavLumpSumTaxMode === 'fuenftelregelung' && (
-            <>Kapitalabfindung: Fünftelregelung §34 Abs. 2 Nr. 4 EStG anwendbar.</>
-          )}
-          {bavLumpSumTaxMode === 'pre2005_steuerfrei' && (
-            <>Kapitalabfindung: steuerfrei nach §52 Abs. 28 EStG a.F. KV/PV gilt weiterhin (§229 SGB V).</>
-          )}
-        </small>
-      </label>
-      {assumptions.bav.durchfuehrungsweg === 'direktversicherung_40b_alt' && (
-        <>
-          <label className="field field-inline">
-            <input
-              type="checkbox"
-              checked={assumptions.bav.pre2005EligibleTaxFree}
-              onChange={(event) =>
-                onAssumptionsChange((current) => ({
-                  ...current,
-                  bav: { ...current.bav, pre2005EligibleTaxFree: event.target.checked },
-                }))
-              }
-            />
-            <span>Altvertrag steuerfrei nach §52 Abs. 28 EStG a.F. (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre, Kapitalleistung)</span>
-          </label>
-          {!assumptions.bav.pre2005EligibleTaxFree && (
-            <p className="field-hint">
-              Steuerfreiheit abgewählt — voller Steuersatz auf Kapitalabfindung.
-            </p>
-          )}
-        </>
-      )}
 
       <label className="field">
         <span>Auszahlungsform (bAV)</span>
@@ -303,9 +161,9 @@ export function BavInputs({
             }))
           }
         >
-          <option value="leibrente">Leibrente (Rentenfaktor · §1 BetrAVG)</option>
-          <option value="zeitrente">Zeitrente (fester Auszahlungszeitraum)</option>
-          <option value="kapitalverzehr">Kapitalverzehr (selbstgesteuerte Entnahme)</option>
+          <option value="leibrente">Lebenslange Rente (Leibrente)</option>
+          <option value="zeitrente">Zeitrente (befristete Auszahlung)</option>
+          <option value="kapitalverzehr">Selbstgesteuerte Entnahme (Kapitalverzehr)</option>
         </select>
         <small className="field-hint">
           {assumptions.bav.payoutMode === 'leibrente' && (
@@ -352,187 +210,361 @@ export function BavInputs({
         />
       )}
 
-      <div className="divider" />
+      {riy > 0 && (
+        <p className="field-hint">
+          Effektivkosten:{' '}
+          <strong className={riy > 0.015 ? 'riy-warn' : ''}>{formatPercent(riy)}</strong>
+          {riy > 0.015 && ' — Nettotarife erzielen typisch 0,6–1,0 %'}
+        </p>
+      )}
 
-      <div className="subsection-heading">
-        <h3>bAV-Kosten</h3>
-        <p>Benchmarkwerte: beitragsbezogene Kosten plus Kapital- und Abschlusskosten. Vorlagen setzen alle Felder.</p>
-      </div>
+      <details className="erweitert-section">
+        <summary>
+          <span className="erweitert-toggle">Erweitert</span>
+          <span className="erweitert-assumption">{erweitertSummary}</span>
+        </summary>
+        <div className="erweitert-content">
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={tarifgebunden}
+              onChange={(event) => onTarifgebundenChange(event.target.checked)}
+            />
+            <span>Tarifvertrag im Arbeitsverhältnis</span>
+          </label>
+          {tarifgebunden && (
+            <p className="field-warning">
+              Bei tarifgebundenem Arbeitsverhältnis kann die Entgeltumwandlung im Tarifvertrag
+              eingeschränkt oder ausgeschlossen sein (§17 Abs. 3 BetrAVG / §20 BetrAVG).
+            </p>
+          )}
 
-      <div className="fee-presets">
-        {BAV_FEE_PRESETS.map((preset) => (
-          <button
-            key={preset.label}
-            type="button"
-            className="preset-btn"
-            onClick={() =>
-              onAssumptionsChange((current) => ({
-                ...current,
-                bav: { ...current.bav, fees: preset.fees },
-              }))
-            }
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="field-grid">
-        <NumberField
-          label="Fixkosten je Monat"
-          value={assumptions.bav.fees.fixedMonthlyFee}
-          min={0}
-          max={50}
-          step={0.5}
-          suffix="EUR"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: {
-                ...current.bav,
-                fees: { ...current.bav.fees, fixedMonthlyFee: Number(value) },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Kosten je Beitrag"
-          value={assumptions.bav.fees.contributionFee * 100}
-          min={0}
-          max={20}
-          step={0.25}
-          suffix="%"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: {
-                ...current.bav,
-                fees: { ...current.bav.fees, contributionFee: Number(value) / 100 },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Versicherungsmantel"
-          value={assumptions.bav.fees.wrapperAssetFee * 100}
-          min={0}
-          max={3}
-          step={0.05}
-          suffix="% p.a."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: {
-                ...current.bav,
-                fees: { ...current.bav.fees, wrapperAssetFee: Number(value) / 100 },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Fonds-/ETF-Kosten"
-          value={assumptions.bav.fees.fundAssetFee * 100}
-          min={0}
-          max={3}
-          step={0.05}
-          suffix="% p.a."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: {
-                ...current.bav,
-                fees: { ...current.bav.fees, fundAssetFee: Number(value) / 100 },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Rentengebühr"
-          value={assumptions.bav.fees.pensionPayoutFeePct * 100}
-          min={0}
-          max={5}
-          step={0.05}
-          suffix="% je Rente"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: {
-                ...current.bav,
-                fees: { ...current.bav.fees, pensionPayoutFeePct: Number(value) / 100 },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Abschlusskosten"
-          value={assumptions.bav.fees.acquisitionCostPct * 100}
-          min={0}
-          max={8}
-          step={0.25}
-          suffix="% Summe"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: {
-                ...current.bav,
-                fees: { ...current.bav.fees, acquisitionCostPct: Number(value) / 100 },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Verteilung Abschlusskosten"
-          value={assumptions.bav.fees.acquisitionCostSpreadYears}
-          min={1}
-          max={15}
-          step={1}
-          suffix="Jahre"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: {
-                ...current.bav,
-                fees: {
-                  ...current.bav.fees,
-                  acquisitionCostSpreadYears: Number(value),
-                },
-              },
-            }))
-          }
-        />
-      </div>
-      {(() => {
-        const f = assumptions.bav.fees
-        const totalAsset = f.wrapperAssetFee + f.fundAssetFee
-        const bavProduct = selectedResults.find((r) => r.productId === 'bav')
-        const riy = bavProduct?.accumulationRiy ?? 0
-        return (
-          <div className="fee-summary">
-            <span>
-              Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
-              (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
-            </span>
-            <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
-              Effektivkosten: <strong>{formatPercent(riy)}</strong>
-            </span>
-            {f.contributionFee > 0.05 && (
-              <p className="field-warning">Beitragskostenquote {formatPercent(f.contributionFee)} liegt über 5 % — typische Nettotarife erheben keine Kosten je Beitrag.</p>
-            )}
-            {f.acquisitionCostPct > 0.025 && (
-              <p className="field-warning">Abschlusskosten {formatPercent(f.acquisitionCostPct)} übersteigen 2,5 % der Beitragssumme.</p>
-            )}
-            {totalAsset > 0.01 && (
-              <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 % — prüfen Sie ETF-basierte Nettotarife (typisch 0,5–0,8 % all-in).</p>
-            )}
-            {riy > 0.02 && (
-              <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — ETF-basierte Verträge über dieser Schwelle gelten i. d. R. als unwirtschaftlich.</p>
-            )}
-            {riy > 0.015 && riy <= 0.02 && (
-              <p className="field-warning">Effektivkosten {formatPercent(riy)} liegen im kritischen Bereich (1,5–2,0 %) — Nettotarife erzielen typisch 0,6–1,0 %.</p>
-            )}
+          <div className="subsection-heading">
+            <h3>bAV-Rentenphase</h3>
+            <p>Grenzsteuer- und GRV-Optionen für die Auszahlungsphase.</p>
           </div>
-        )
-      })()}
+
+          <div className="field-grid">
+            <NumberField
+              label="Sonst. Renteneinkommen"
+              value={assumptions.bav.monthlyOtherRetirementIncome}
+              min={0}
+              step={50}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: { ...current.bav, monthlyOtherRetirementIncome: Number(value) },
+                }))
+              }
+            />
+          </div>
+          {assumptions.bav.monthlyOtherRetirementIncome > 0 && (
+            <p className="field-hint">
+              Grenzsteuer auf bAV = Steuer(bAV + {formatCurrency(assumptions.bav.monthlyOtherRetirementIncome, 0)}/Monat) −
+              Steuer({formatCurrency(assumptions.bav.monthlyOtherRetirementIncome, 0)}/Monat).
+            </p>
+          )}
+
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={assumptions.bav.includeGrvReduction}
+              onChange={(event) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: { ...current.bav, includeGrvReduction: event.target.checked },
+                }))
+              }
+            />
+            <span>GRV-Minderung einrechnen</span>
+          </label>
+          {assumptions.bav.monthlyGrossConversion > 0 && (
+            <p className="field-hint">
+              Geschätzte Minderung:{' '}
+              ~{formatCurrency(bavFunding.estimatedMonthlyGrvReduction, 0)}/Monat
+              ({profile.retirementAge - profile.age} Jahre ×{' '}
+              {formatCurrency(assumptions.bav.monthlyGrossConversion, 0)}/Monat,
+              Rentenwert {formatCurrency(rules.socialSecurity.aktuellerRentenwert, 2)}/EP).
+            </p>
+          )}
+
+          {profile.publicHealthInsurance && (
+            <>
+              <label className="field field-inline">
+                <input
+                  type="checkbox"
+                  checked={kvdrMember}
+                  onChange={(event) =>
+                    onAssumptionsChange((current) => ({
+                      ...current,
+                      bav: { ...current.bav, kvdrMember: event.target.checked },
+                    }))
+                  }
+                />
+                <span>Pflichtversicherter Rentner (KVdR)</span>
+              </label>
+              {(() => {
+                const grossPayout = bavProduct?.grossMonthlyPayout ?? 0
+                if (grossPayout <= 0) return null
+                const healthRate = rules.socialSecurity.healthGeneralRate + profile.healthAdditionalContributionPct / 100
+                const threshold = rules.socialSecurity.kvFreibetragVersorgungMonthly
+                const kvBase = kvdrMember ? Math.max(0, grossPayout - threshold) : grossPayout
+                const kvMonthly = kvBase * healthRate
+                const retirementYearForPv = rules.year + (profile.retirementAge - profile.age)
+                const pvRate = careEmployeeRateForChildren(profile.childBirthYears, retirementYearForPv, rules) + rules.socialSecurity.careEmployerRate
+                const pvMonthly = grossPayout > threshold ? grossPayout * pvRate : 0
+                return (
+                  <p className="field-hint">
+                    Brutto-bAV-Rente: ~{formatCurrency(grossPayout, 0)}/Monat ·
+                    KV-Basis: {formatCurrency(kvBase, 0)} · KV: {formatCurrency(kvMonthly, 0)} ·
+                    PV: {formatCurrency(pvMonthly, 0)}{' '}
+                    {kvdrMember
+                      ? '(KVdR: Freibetrag 197,75 EUR · §226 SGB V)'
+                      : '(freiwillig: volle Rente als Grundlage · §240 SGB V)'}
+                  </p>
+                )
+              })()}
+            </>
+          )}
+
+          <label className="field">
+            <span>bAV-Vertragsart (Durchführungsweg)</span>
+            <select
+              value={assumptions.bav.durchfuehrungsweg}
+              onChange={(event) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    durchfuehrungsweg: event.target.value as BavDurchfuehrungsweg,
+                  },
+                }))
+              }
+            >
+              <option value="direktversicherung_3_63">Direktversicherung (§3 Nr. 63 EStG, ab 2005)</option>
+              <option value="pensionskasse_3_63">Pensionskasse (§3 Nr. 63 EStG)</option>
+              <option value="pensionsfonds_3_63">Pensionsfonds (§3 Nr. 63 EStG)</option>
+              <option value="direktversicherung_40b_alt">Direktversicherung (§40b EStG a.F., vor 2005)</option>
+              <option value="direktzusage">Direktzusage (§19 EStG)</option>
+              <option value="unterstuetzungskasse">Unterstützungskasse (§19 EStG)</option>
+            </select>
+            <small className="field-hint">
+              {bavLumpSumTaxMode === 'voll_versorgungsbezug' && (
+                <>Kapitalabfindung: voller Steuersatz nach §22 Nr. 5 EStG (keine Fünftelregelung).</>
+              )}
+              {bavLumpSumTaxMode === 'fuenftelregelung' && (
+                <>Kapitalabfindung: Fünftelregelung §34 Abs. 2 Nr. 4 EStG anwendbar.</>
+              )}
+              {bavLumpSumTaxMode === 'pre2005_steuerfrei' && (
+                <>Kapitalabfindung: steuerfrei nach §52 Abs. 28 EStG a.F. KV/PV gilt weiterhin (§229 SGB V).</>
+              )}
+            </small>
+          </label>
+          {assumptions.bav.durchfuehrungsweg === 'direktversicherung_40b_alt' && (
+            <>
+              <label className="field field-inline">
+                <input
+                  type="checkbox"
+                  checked={assumptions.bav.pre2005EligibleTaxFree}
+                  onChange={(event) =>
+                    onAssumptionsChange((current) => ({
+                      ...current,
+                      bav: { ...current.bav, pre2005EligibleTaxFree: event.target.checked },
+                    }))
+                  }
+                />
+                <span>Altvertrag steuerfrei nach §52 Abs. 28 EStG a.F. (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre, Kapitalleistung)</span>
+              </label>
+              {!assumptions.bav.pre2005EligibleTaxFree && (
+                <p className="field-hint">
+                  Steuerfreiheit abgewählt — voller Steuersatz auf Kapitalabfindung.
+                </p>
+              )}
+            </>
+          )}
+
+          <div className="divider" />
+
+          <div className="subsection-heading">
+            <h3>bAV-Kosten</h3>
+            <p>Benchmarkwerte: beitragsbezogene Kosten plus Kapital- und Abschlusskosten. Vorlagen setzen alle Felder.</p>
+          </div>
+
+          <div className="fee-presets">
+            {BAV_FEE_PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                className="preset-btn"
+                onClick={() =>
+                  onAssumptionsChange((current) => ({
+                    ...current,
+                    bav: { ...current.bav, fees: preset.fees },
+                  }))
+                }
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="field-grid">
+            <NumberField
+              label="Fixkosten je Monat"
+              value={assumptions.bav.fees.fixedMonthlyFee}
+              min={0}
+              max={50}
+              step={0.5}
+              suffix="EUR"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: { ...current.bav.fees, fixedMonthlyFee: Number(value) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Kosten je Beitrag"
+              value={assumptions.bav.fees.contributionFee * 100}
+              min={0}
+              max={20}
+              step={0.25}
+              suffix="%"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: { ...current.bav.fees, contributionFee: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Mantelgebühr (Versicherer)"
+              value={assumptions.bav.fees.wrapperAssetFee * 100}
+              min={0}
+              max={3}
+              step={0.05}
+              suffix="% p.a."
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: { ...current.bav.fees, wrapperAssetFee: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Fondskosten (TER)"
+              value={assumptions.bav.fees.fundAssetFee * 100}
+              min={0}
+              max={3}
+              step={0.05}
+              suffix="% p.a."
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: { ...current.bav.fees, fundAssetFee: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Auszahlungsgebühr"
+              value={assumptions.bav.fees.pensionPayoutFeePct * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="% je Rente"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: { ...current.bav.fees, pensionPayoutFeePct: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Vertriebs-/Abschlusskosten"
+              value={assumptions.bav.fees.acquisitionCostPct * 100}
+              min={0}
+              max={8}
+              step={0.25}
+              suffix="% Summe"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: { ...current.bav.fees, acquisitionCostPct: Number(value) / 100 },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Verteilung Abschlusskosten"
+              value={assumptions.bav.fees.acquisitionCostSpreadYears}
+              min={1}
+              max={15}
+              step={1}
+              suffix="Jahre"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    fees: {
+                      ...current.bav.fees,
+                      acquisitionCostSpreadYears: Number(value),
+                    },
+                  },
+                }))
+              }
+            />
+          </div>
+          {(() => {
+            const f = assumptions.bav.fees
+            const totalAsset = f.wrapperAssetFee + f.fundAssetFee
+            return (
+              <div className="fee-summary">
+                <span>
+                  Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
+                  (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
+                </span>
+                <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
+                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
+                </span>
+                {f.contributionFee > 0.05 && (
+                  <p className="field-warning">Beitragskostenquote {formatPercent(f.contributionFee)} liegt über 5 % — typische Nettotarife erheben keine Kosten je Beitrag.</p>
+                )}
+                {f.acquisitionCostPct > 0.025 && (
+                  <p className="field-warning">Abschlusskosten {formatPercent(f.acquisitionCostPct)} übersteigen 2,5 % der Beitragssumme.</p>
+                )}
+                {totalAsset > 0.01 && (
+                  <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 % — prüfen Sie ETF-basierte Nettotarife (typisch 0,5–0,8 % all-in).</p>
+                )}
+                {riy > 0.02 && (
+                  <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — ETF-basierte Verträge über dieser Schwelle gelten i. d. R. als unwirtschaftlich.</p>
+                )}
+                {riy > 0.015 && riy <= 0.02 && (
+                  <p className="field-warning">Effektivkosten {formatPercent(riy)} liegen im kritischen Bereich (1,5–2,0 %) — Nettotarife erzielen typisch 0,6–1,0 %.</p>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+      </details>
     </>
   )
 }

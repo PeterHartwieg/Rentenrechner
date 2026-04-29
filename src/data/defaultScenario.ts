@@ -92,6 +92,9 @@ export const defaultRiesterAssumptions: RiesterAssumptions = {
 export const defaultAssumptions: ScenarioAssumptions = {
   inflationRate: 0.02,
   retirementEndAge: 90,
+  // Default to all six products visible. Users narrow this via the visibility chips
+  // or the guided-setup path choice.
+  visibleProducts: ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'],
   returnScenarios: [
     { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
     { id: 'basis', label: 'Basis', annualReturn: 0.05 },

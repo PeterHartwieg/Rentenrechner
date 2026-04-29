@@ -100,6 +100,64 @@
   font-size: 0.82rem;
 }
 
+/* Erweitert (advanced) disclosure sections */
+.erweitert-section {
+  border: 1px solid #e5ebf2;
+  border-radius: 6px;
+  margin: 6px 0;
+}
+
+.erweitert-section > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: 0.82rem;
+}
+
+.erweitert-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.erweitert-section > summary::marker {
+  content: '';
+}
+
+.erweitert-section > summary::before {
+  content: '▶';
+  font-size: 0.6rem;
+  color: #2563eb;
+  flex-shrink: 0;
+  display: inline-block;
+  margin-right: 2px;
+  transition: transform 0.12s;
+}
+
+.erweitert-section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.erweitert-toggle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.erweitert-assumption {
+  font-size: 0.78rem;
+  color: #667085;
+}
+
+.erweitert-content {
+  padding: 6px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 @media (max-width: 760px) {
   .field-grid {
     grid-template-columns: 1fr;

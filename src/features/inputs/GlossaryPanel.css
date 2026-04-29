@@ -1,0 +1,135 @@
+.glossary-panel {
+  margin-bottom: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.glossary-panel > summary {
+  padding: 7px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glossary-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.glossary-panel > summary::before {
+  content: '▸';
+  font-size: 0.7rem;
+  transition: transform 0.15s;
+}
+
+.glossary-panel[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.glossary-count {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #64748b;
+  background: #e2e8f0;
+  padding: 1px 7px;
+  border-radius: 9px;
+}
+
+.glossary-intro {
+  margin: 0 10px 8px;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.glossary-search {
+  width: calc(100% - 20px);
+  margin: 0 10px 8px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #172033;
+}
+
+.glossary-search:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: -1px;
+}
+
+.glossary-result-count {
+  margin: 0 10px 6px;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.glossary-groups {
+  padding: 0 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.glossary-group-title {
+  margin: 4px 0 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+}
+
+.glossary-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.glossary-entry {
+  padding: 7px 9px;
+  border-radius: 5px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.glossary-entry dt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.glossary-plain {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #172033;
+}
+
+.glossary-expert {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #64748b;
+  font-style: italic;
+}
+
+.glossary-entry dd {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.glossary-ref {
+  font-size: 0.72rem;
+  color: #64748b;
+}

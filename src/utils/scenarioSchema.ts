@@ -1,5 +1,6 @@
 import type {
   PersonalProfile,
+  ProductId,
   ReturnScenario,
   ReturnScenarioId,
   ScenarioAssumptions,
@@ -18,6 +19,10 @@ import { validateRiester } from '../engine/products/riester.validation'
 // out-of-domain enums, broken invariants, and malformed nested arrays.
 
 const VALID_SCENARIO_IDS: readonly ReturnScenarioId[] = ['konservativ', 'basis', 'optimistisch']
+
+const VALID_PRODUCT_IDS: readonly ProductId[] = [
+  'etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester',
+]
 
 export function validateProfile(input: unknown): PersonalProfile | null {
   if (!input || typeof input !== 'object') return null
@@ -82,6 +87,11 @@ export function validateAssumptions(input: unknown): ScenarioAssumptions | null 
   if (!a.basisrente || typeof a.basisrente !== 'object' || !validateBasisrente(a.basisrente)) return null
   if (!a.altersvorsorgedepot || typeof a.altersvorsorgedepot !== 'object' || !validateAltersvorsorgedepot(a.altersvorsorgedepot)) return null
   if (!a.riester || typeof a.riester !== 'object' || !validateRiester(a.riester)) return null
+  if (!Array.isArray(a.visibleProducts)) return null
+  if (a.visibleProducts.length > VALID_PRODUCT_IDS.length) return null
+  for (const pid of a.visibleProducts) {
+    if (!VALID_PRODUCT_IDS.includes(pid)) return null
+  }
   return a
 }
 

@@ -26,8 +26,17 @@ export function useSimulationViewModel(
   const selectedScenario = assumptions.returnScenarios.find(
     (scenario) => scenario.id === selectedScenarioId,
   )
+  // Empty visibleProducts is treated as "all visible" — defensive against a corrupt
+  // persisted state. The chip UI prevents the user from emptying the list interactively.
+  const visibleSet = new Set<ProductId>(
+    assumptions.visibleProducts.length > 0
+      ? assumptions.visibleProducts
+      : ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'],
+  )
+  const visibleProducts = simulation.products.filter((p) => visibleSet.has(p.productId))
   const selectedResults = simulation.products
     .filter((product) => product.scenarioId === selectedScenarioId)
+    .filter((product) => visibleSet.has(product.productId))
     .sort((a, b) => (getProductMeta(a.productId)?.order ?? 99) - (getProductMeta(b.productId)?.order ?? 99))
 
   const capitalChartData = selectedResults[0]?.rows.map((row) => {
@@ -68,10 +77,12 @@ export function useSimulationViewModel(
     ? selectedResults.reduce((best, r) => r.netMonthlyPayout > best.netMonthlyPayout ? r : best)
     : undefined
 
-  const cashflowResult = selectedResults.find((r) => r.productId === cashflowProductId)
+  const cashflowResult =
+    selectedResults.find((r) => r.productId === cashflowProductId) ?? selectedResults[0]
+  const effectiveCashflowProductId = cashflowResult?.productId ?? cashflowProductId
   const insuranceResult = selectedResults.find((r): r is InsuranceProductResult => r.productId === 'versicherung')
   const cashflowAnnualTaxSvSavings =
-    cashflowProductId === 'bav' ? simulation.bavFunding.annualTaxAndSvSavings : 0
+    effectiveCashflowProductId === 'bav' ? simulation.bavFunding.annualTaxAndSvSavings : 0
 
   const insurancePayoutYear = de2026Rules.year + (profile.retirementAge - profile.age)
   const insuranceContractRuntime = insurancePayoutYear - assumptions.insurance.contractStartYear
@@ -92,7 +103,7 @@ export function useSimulationViewModel(
     cumulativeContributions: number,
     cumulativeVorabpauschale: number,
   ): number | null {
-    if (cashflowProductId === 'bav') {
+    if (effectiveCashflowProductId === 'bav') {
       return afterTaxBavLumpSum(
         balance,
         profile,
@@ -103,7 +114,7 @@ export function useSimulationViewModel(
         bavLumpSumTaxMode,
       )
     }
-    if (cashflowProductId === 'etf') {
+    if (effectiveCashflowProductId === 'etf') {
       return afterTaxInvestmentCapital(
         balance,
         cumulativeContributions,
@@ -113,9 +124,9 @@ export function useSimulationViewModel(
       )
     }
     if (
-      cashflowProductId === 'altersvorsorgedepot' ||
-      cashflowProductId === 'basisrente' ||
-      cashflowProductId === 'riester'
+      effectiveCashflowProductId === 'altersvorsorgedepot' ||
+      effectiveCashflowProductId === 'basisrente' ||
+      effectiveCashflowProductId === 'riester'
     ) {
       return null
     }
@@ -143,7 +154,7 @@ export function useSimulationViewModel(
 
   function handleExportCsv() {
     const csv = buildExportCsv({
-      products: simulation.products,
+      products: simulation.products.filter((p) => visibleSet.has(p.productId)),
       bavAnnualTaxSvSavings: simulation.bavFunding.annualTaxAndSvSavings,
       bavProfile: profile,
       bavKvdrMember: kvdrMember,
@@ -160,12 +171,14 @@ export function useSimulationViewModel(
     // UI state
     selectedScenarioId, setSelectedScenarioId,
     showRealValues, setShowRealValues,
-    cashflowProductId, setCashflowProductId,
+    cashflowProductId: effectiveCashflowProductId, setCashflowProductId,
     tarifgebunden, setTarifgebunden,
     showAssumptions, setShowAssumptions,
     linkCopied,
     // Simulation
     simulation,
+    /** simulation.products filtered to the user's visibleProducts selection. */
+    visibleProducts,
     // Derived display data
     selectedScenario,
     selectedResults,

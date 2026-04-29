@@ -51,6 +51,32 @@
   background: #f7fbfa;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-help-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #c9d7e5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.topbar-help-btn:hover {
+  background: #f4f7fb;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
 .dashboard {
   display: grid;
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
@@ -77,6 +103,8 @@
   padding: 20px;
   position: sticky;
   top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 }
 
 .main-panel {
@@ -236,6 +264,8 @@ th {
 
   .input-panel {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 

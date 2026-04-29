@@ -2,7 +2,7 @@
 
 This file tracks remaining work for accuracy, usability, and future publishing. Completed work is intentionally compact; implementation detail belongs in code, tests, and research notes.
 
-Legal/rules research lives in `LEGAL_REVIEW.md`. Product-specific research lives in `BAV_RESEARCH.md`, `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md`, and `ALTERSVORSORGEDEPOT_2027_RESEARCH.md`.
+Legal/rules research lives in `LEGAL_REVIEW.md` and `TAX_SOCIAL_SECURITY_2026_RESEARCH.md`. Product-specific research lives in `ETF_RESEARCH.md`, `BAV_RESEARCH.md`, `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md`, `BASISRENTE_RESEARCH.md`, `ALTERSVORSORGEDEPOT_2027_RESEARCH.md`, `RIESTER_RESEARCH.md`, and `GRV_RESEARCH.md`. See `LEGAL_IMPLEMENTATION_AUDIT_2026.md` for the 2026-04-28 legal-vs-implementation audit.
 
 ## Priority Legend
 
@@ -178,7 +178,7 @@ Suggested order:
 
 1. ~~Salary growth and Rentenwert indexation for GRV.~~ ✓
 2. ~~Versorgungswerk / Beamtenpension variants.~~ ✓
-3. ~~Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.~~ ✓
+3. Basisrente legal-compliance follow-up from `LEGAL_IMPLEMENTATION_AUDIT_2026.md`: remove/disable non-lifelong `zeitrente`, add KVdR/freiwillig/PKV retirement-health status, and enforce or warn on payout before age 62.
 
 Shared code areas: `src/engine/grv.ts`, `src/engine/basisrente.ts`, retirement tax/KV-PV helpers, profile assumptions UI.
 
@@ -208,7 +208,7 @@ Suggested order:
 - Monte Carlo simulation.
 - ~~Salary growth, contribution escalation, and GRV Rentenwert indexation.~~ ✓ (Wave 14)
 - ~~Versorgungswerk / Beamtenpension baseline variants.~~ ✓ (Wave 15)
-- ~~Basisrente edge cases: professional-pension-scheme cap reduction, optional Zeitrente UI, and combined freiwillig-GKV cap interaction.~~ ✓ (Wave 16)
+- Basisrente edge cases: professional-pension-scheme cap reduction and combined freiwillig-GKV cap interaction were implemented in Wave 16, but the 2026-04-28 audit re-opened Basisrente legal compliance for `zeitrente`, KVdR treatment, and age-62 validation.
 - Multi-ETF portfolio.
 - Sensitivity heatmap.
 - ~~Saved scenario library and scenario duplication.~~ ✓

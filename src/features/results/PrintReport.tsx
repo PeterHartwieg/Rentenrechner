@@ -28,7 +28,14 @@ export function PrintReport({ profile, assumptions, simulation }: Props) {
     year: 'numeric',
   })
 
-  const sorted = [...simulation.products].sort((a, b) => {
+  const visibleSet = new Set(
+    assumptions.visibleProducts.length > 0
+      ? assumptions.visibleProducts
+      : simulation.products.map((p) => p.productId),
+  )
+  const sorted = simulation.products
+    .filter((p) => visibleSet.has(p.productId))
+    .sort((a, b) => {
     const aOrd = getProductMeta(a.productId)?.order ?? 99
     const bOrd = getProductMeta(b.productId)?.order ?? 99
     if (aOrd !== bOrd) return aOrd - bOrd

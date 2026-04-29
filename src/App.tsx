@@ -1,4 +1,4 @@
-import { Calculator, RotateCcw, Settings } from 'lucide-react'
+import { Calculator, HelpCircle, RotateCcw, Settings } from 'lucide-react'
 import type { ProductId } from './domain'
 import { NumberField } from './ui/NumberField'
 import { clampNumber } from './ui/formatting'
@@ -6,11 +6,13 @@ import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { de2026Rules } from './rules/de2026'
 import { formatPercent } from './utils/format'
 import { useCalculatorState } from './app/useCalculatorState'
+import { useGuidedSetup } from './app/useGuidedSetup'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useSimulationViewModel } from './app/useSimulationViewModel'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
 import { ScenarioPresetPanel } from './features/inputs/ScenarioPresetPanel'
 import { ScenarioLibraryPanel } from './features/inputs/ScenarioLibraryPanel'
+import { GlossaryPanel } from './features/inputs/GlossaryPanel'
 import { ProfileInputs } from './features/inputs/ProfileInputs'
 import { GRVInputs } from './features/inputs/GRVInputs'
 import { BavInputs } from './features/inputs/BavInputs'
@@ -27,14 +29,17 @@ import { FeeDragChart } from './features/results/FeeDragChart'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { PrintReport } from './features/results/PrintReport'
+import { ProductVisibilityChips } from './features/results/ProductVisibilityChips'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
+import { GuidedSetup, GuidedSetupPostHint } from './features/guidance/GuidedSetup'
 import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 
 function App() {
   const { profile, setProfile, assumptions, setAssumptions, resetToDefaults } = useCalculatorState()
+  const guidedSetup = useGuidedSetup()
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const vm = useSimulationViewModel(profile, assumptions)
   const {
@@ -54,6 +59,7 @@ function App() {
     cashflowResult,
     insuranceResult,
     cashflowAnnualTaxSvSavings,
+    visibleProducts,
     insuranceTaxMode,
     kvdrMember,
     bavLumpSumTaxMode,
@@ -66,6 +72,19 @@ function App() {
   const bavEntitlementMax =
     (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap) / 12
 
+  // Empty visibleProducts is treated as "all visible" (matches the view-model fallback).
+  const visibleSet = new Set(
+    assumptions.visibleProducts.length > 0
+      ? assumptions.visibleProducts
+      : ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'],
+  )
+  const showEtf = visibleSet.has('etf')
+  const showBav = visibleSet.has('bav')
+  const showInsurance = visibleSet.has('versicherung')
+  const showBasisrente = visibleSet.has('basisrente')
+  const showAvd = visibleSet.has('altersvorsorgedepot')
+  const showRiester = visibleSet.has('riester')
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -73,9 +92,20 @@ function App() {
           <p>Rentenrechner Deutschland 2026</p>
           <h1>ETF, bAV und private Versicherung vergleichen</h1>
         </div>
-        <div className="topbar-badge">
-          <Calculator size={18} aria-hidden="true" />
-          <span>Persönliches v1-Modell</span>
+        <div className="topbar-actions">
+          <button
+            type="button"
+            className="topbar-help-btn"
+            onClick={guidedSetup.reopen}
+            title="Geführten Einstieg erneut öffnen"
+          >
+            <HelpCircle size={16} aria-hidden="true" />
+            Geführter Einstieg
+          </button>
+          <div className="topbar-badge">
+            <Calculator size={18} aria-hidden="true" />
+            <span>Persönliches v1-Modell</span>
+          </div>
         </div>
       </header>
 
@@ -96,6 +126,8 @@ function App() {
           </div>
 
           <ScenarioPresetPanel onSelectPreset={setAssumptions} />
+
+          <GlossaryPanel />
 
           <ScenarioLibraryPanel
             library={scenarioLib.library}
@@ -121,57 +153,64 @@ function App() {
             statutoryPensionResult={simulation.statutoryPension}
           />
 
-          <div className="divider" />
-
-          <BavInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            profile={profile}
-            bavFunding={simulation.bavFunding}
-            selectedResults={selectedResults}
-            kvdrMember={kvdrMember}
-            bavLumpSumTaxMode={bavLumpSumTaxMode}
-            tarifgebunden={tarifgebunden}
-            onTarifgebundenChange={setTarifgebunden}
-            bavMinAnnual={bavMinAnnual}
-            bavMinMonthly={bavMinMonthly}
-            bavEntitlementMax={bavEntitlementMax}
-            rules={de2026Rules}
-          />
+          {showBav && (
+            <>
+              <div className="divider" />
+              <BavInputs
+                assumptions={assumptions}
+                onAssumptionsChange={setAssumptions}
+                profile={profile}
+                bavFunding={simulation.bavFunding}
+                selectedResults={selectedResults}
+                kvdrMember={kvdrMember}
+                bavLumpSumTaxMode={bavLumpSumTaxMode}
+                tarifgebunden={tarifgebunden}
+                onTarifgebundenChange={setTarifgebunden}
+                bavMinAnnual={bavMinAnnual}
+                bavMinMonthly={bavMinMonthly}
+                bavEntitlementMax={bavEntitlementMax}
+                rules={de2026Rules}
+              />
+            </>
+          )}
 
           <div className="field-grid">
-            <NumberField
-              label="ETF TER"
-              value={assumptions.etf.annualAssetFee * 100}
-              min={0}
-              max={3}
-              step={0.05}
-              suffix="% p.a."
-              onChange={(value) =>
-                setAssumptions((current) => ({
-                  ...current,
-                  etf: { ...current.etf, annualAssetFee: Number(value) / 100 },
-                }))
-              }
-            />
-            <label className="field">
-              <span>ETF-Fondsart (InvStG §20)</span>
-              <select
-                value={assumptions.etf.equityPartialExemption}
-                onChange={(event) =>
-                  setAssumptions((current) => ({
-                    ...current,
-                    etf: { ...current.etf, equityPartialExemption: Number(event.target.value) },
-                  }))
-                }
-              >
-                <option value={0.3}>Aktienfonds (30% steuerfrei)</option>
-                <option value={0.15}>Mischfonds (15% steuerfrei)</option>
-                <option value={0.6}>Inl. Immobilienfonds (60% steuerfrei)</option>
-                <option value={0.8}>Ausl. Immobilienfonds (80% steuerfrei)</option>
-                <option value={0}>Anleihe-ETF / Sonstige (0% steuerfrei)</option>
-              </select>
-            </label>
+            {showEtf && (
+              <>
+                <NumberField
+                  label="ETF TER"
+                  value={assumptions.etf.annualAssetFee * 100}
+                  min={0}
+                  max={3}
+                  step={0.05}
+                  suffix="% p.a."
+                  onChange={(value) =>
+                    setAssumptions((current) => ({
+                      ...current,
+                      etf: { ...current.etf, annualAssetFee: Number(value) / 100 },
+                    }))
+                  }
+                />
+                <label className="field">
+                  <span>ETF-Fondsart (InvStG §20)</span>
+                  <select
+                    value={assumptions.etf.equityPartialExemption}
+                    onChange={(event) =>
+                      setAssumptions((current) => ({
+                        ...current,
+                        etf: { ...current.etf, equityPartialExemption: Number(event.target.value) },
+                      }))
+                    }
+                  >
+                    <option value={0.3}>Aktienfonds (30% steuerfrei)</option>
+                    <option value={0.15}>Mischfonds (15% steuerfrei)</option>
+                    <option value={0.6}>Inl. Immobilienfonds (60% steuerfrei)</option>
+                    <option value={0.8}>Ausl. Immobilienfonds (80% steuerfrei)</option>
+                    <option value={0}>Anleihe-ETF / Sonstige (0% steuerfrei)</option>
+                  </select>
+                </label>
+              </>
+            )}
             <NumberField
               label="Inflation"
               value={assumptions.inflationRate * 100}
@@ -214,45 +253,56 @@ function App() {
             }
           />
 
-          <InsuranceInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            profile={profile}
-            insuranceTaxMode={insuranceTaxMode}
-            insuranceProductResult={insuranceResult}
-            rules={de2026Rules}
-          />
+          {showInsurance && (
+            <InsuranceInputs
+              assumptions={assumptions}
+              onAssumptionsChange={setAssumptions}
+              profile={profile}
+              insuranceTaxMode={insuranceTaxMode}
+              insuranceProductResult={insuranceResult}
+              rules={de2026Rules}
+            />
+          )}
 
-          <div className="divider" />
+          {showBasisrente && (
+            <>
+              <div className="divider" />
+              <BasisrenteInputs
+                assumptions={assumptions}
+                onAssumptionsChange={setAssumptions}
+                basisrenteFunding={simulation.basisrenteFunding}
+                basisrenteProductResult={selectedResults.find((r) => r.productId === 'basisrente')}
+                rules={de2026Rules}
+              />
+            </>
+          )}
 
-          <BasisrenteInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            basisrenteFunding={simulation.basisrenteFunding}
-            basisrenteProductResult={selectedResults.find((r) => r.productId === 'basisrente')}
-            rules={de2026Rules}
-          />
+          {showAvd && (
+            <>
+              <div className="divider" />
+              <AltersvorsorgedepotInputs
+                assumptions={assumptions}
+                onAssumptionsChange={setAssumptions}
+                profile={profile}
+                avdFunding={simulation.altersvorsorgedepotFunding}
+                avdProductResult={selectedResults.find((r) => r.productId === 'altersvorsorgedepot')}
+                rules={de2026Rules}
+              />
+            </>
+          )}
 
-          <div className="divider" />
-
-          <AltersvorsorgedepotInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            profile={profile}
-            avdFunding={simulation.altersvorsorgedepotFunding}
-            avdProductResult={selectedResults.find((r) => r.productId === 'altersvorsorgedepot')}
-            rules={de2026Rules}
-          />
-
-          <div className="divider" />
-
-          <RiesterInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            profile={profile}
-            riesterFunding={simulation.riesterFunding}
-            riesterProductResult={selectedResults.find((r) => r.productId === 'riester')}
-          />
+          {showRiester && (
+            <>
+              <div className="divider" />
+              <RiesterInputs
+                assumptions={assumptions}
+                onAssumptionsChange={setAssumptions}
+                profile={profile}
+                riesterFunding={simulation.riesterFunding}
+                riesterProductResult={selectedResults.find((r) => r.productId === 'riester')}
+              />
+            </>
+          )}
         </aside>
 
         <section className="main-panel">
@@ -278,6 +328,17 @@ function App() {
               inflationsbereinigt
             </label>
           </div>
+
+          {guidedSetup.showPostSetupHint && (
+            <GuidedSetupPostHint onDismiss={guidedSetup.dismissPostSetupHint} />
+          )}
+
+          <ProductVisibilityChips
+            visible={assumptions.visibleProducts}
+            onChange={(next) =>
+              setAssumptions((current) => ({ ...current, visibleProducts: next }))
+            }
+          />
 
           <SummaryMetrics
             grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
@@ -320,7 +381,7 @@ function App() {
           <CalculationWarnings />
 
           <DetailComparisonTable
-            products={simulation.products}
+            products={visibleProducts}
             linkCopied={linkCopied}
             onCopyLink={handleCopyLink}
             onExportCsv={handleExportCsv}
@@ -347,6 +408,20 @@ function App() {
       </section>
 
       <PrintReport profile={profile} assumptions={assumptions} simulation={simulation} />
+
+      {guidedSetup.showOverlay && (
+        <GuidedSetup
+          profile={profile}
+          assumptions={assumptions}
+          onApply={(nextProfile, nextAssumptions) => {
+            setProfile(nextProfile)
+            setAssumptions(nextAssumptions)
+          }}
+          onComplete={guidedSetup.completeSetup}
+          onSkipPermanently={guidedSetup.skipPermanently}
+          onDismiss={guidedSetup.dismissOverlay}
+        />
+      )}
     </main>
   )
 }

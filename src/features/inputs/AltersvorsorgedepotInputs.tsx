@@ -31,6 +31,15 @@ export function AltersvorsorgedepotInputs({
   avdProductResult,
   rules,
 }: Props) {
+  const riy = avdProductResult?.accumulationRiy ?? 0
+  const avd = assumptions.altersvorsorgedepot
+  const erweitertParts: string[] = []
+  if (riy > 0) erweitertParts.push(`Kosten: ${formatPercent(riy)}`)
+  if (avd.partialCapitalPct > 0) erweitertParts.push(`${(avd.partialCapitalPct * 100).toFixed(0)} % Teilkapital`)
+  if (avd.monthlyOtherRetirementIncome > 0) erweitertParts.push(`+${formatCurrency(avd.monthlyOtherRetirementIncome, 0)}/Mon. sonst. Einkommen`)
+  if (erweitertParts.length === 0) erweitertParts.push('Standard-Kosten')
+  const erweitertSummary = erweitertParts.join(' · ')
+
   return (
     <>
       <div className="subsection-heading">
@@ -50,7 +59,7 @@ export function AltersvorsorgedepotInputs({
       <label className="field">
         <span>Produktvariante</span>
         <select
-          value={assumptions.altersvorsorgedepot.subtype}
+          value={avd.subtype}
           onChange={(event) =>
             onAssumptionsChange((current) => ({
               ...current,
@@ -71,7 +80,7 @@ export function AltersvorsorgedepotInputs({
       <div className="field-grid">
         <NumberField
           label="Eigenbeitrag (monatlich)"
-          value={assumptions.altersvorsorgedepot.monthlyOwnContribution}
+          value={avd.monthlyOwnContribution}
           min={0}
           step={10}
           suffix="EUR mtl."
@@ -87,7 +96,7 @@ export function AltersvorsorgedepotInputs({
         />
         <NumberField
           label="Förderberechtigte Kinder"
-          value={assumptions.altersvorsorgedepot.eligibility.eligibleChildren}
+          value={avd.eligibility.eligibleChildren}
           min={0}
           max={10}
           step={1}
@@ -106,8 +115,8 @@ export function AltersvorsorgedepotInputs({
           }
         />
         <NumberField
-          label="Risikoanteil (vor Gleitpfad)"
-          value={assumptions.altersvorsorgedepot.riskAllocationPct * 100}
+          label="Aktien-Anteil (vor Gleitpfad)"
+          value={avd.riskAllocationPct * 100}
           min={0}
           max={100}
           step={5}
@@ -123,8 +132,8 @@ export function AltersvorsorgedepotInputs({
           }
         />
         <NumberField
-          label="Rendite Sicherheitsanlage p.a."
-          value={assumptions.altersvorsorgedepot.lowRiskAnnualReturn * 100}
+          label="Rendite Sicherheits-Anlageteil p.a."
+          value={avd.lowRiskAnnualReturn * 100}
           min={-10}
           max={20}
           step={0.1}
@@ -145,7 +154,7 @@ export function AltersvorsorgedepotInputs({
         <label className="field field-inline">
           <input
             type="checkbox"
-            checked={assumptions.altersvorsorgedepot.eligibility.directlyEligible}
+            checked={avd.eligibility.directlyEligible}
             onChange={(event) =>
               onAssumptionsChange((current) => ({
                 ...current,
@@ -159,12 +168,12 @@ export function AltersvorsorgedepotInputs({
               }))
             }
           />
-          <span>Unmittelbar förderberechtigt</span>
+          <span>Direkt förderberechtigt (Pflichtversichert)</span>
         </label>
         <label className="field field-inline">
           <input
             type="checkbox"
-            checked={assumptions.altersvorsorgedepot.eligibility.indirectSpouseEligible}
+            checked={avd.eligibility.indirectSpouseEligible}
             onChange={(event) =>
               onAssumptionsChange((current) => ({
                 ...current,
@@ -178,7 +187,7 @@ export function AltersvorsorgedepotInputs({
               }))
             }
           />
-          <span>Mittelbar (Ehegatte)</span>
+          <span>Mittelbar berechtigt (über Ehegatte)</span>
         </label>
       </div>
 
@@ -204,7 +213,7 @@ export function AltersvorsorgedepotInputs({
       <label className="field">
         <span>Auszahlungsform</span>
         <select
-          value={assumptions.altersvorsorgedepot.payoutMode}
+          value={avd.payoutMode}
           onChange={(event) =>
             onAssumptionsChange((current) => ({
               ...current,
@@ -221,10 +230,10 @@ export function AltersvorsorgedepotInputs({
         </select>
       </label>
 
-      {assumptions.altersvorsorgedepot.payoutMode === 'lifelong_annuity' && (
+      {avd.payoutMode === 'lifelong_annuity' && (
         <NumberField
           label="Rentenfaktor"
-          value={assumptions.altersvorsorgedepot.rentenfaktor}
+          value={avd.rentenfaktor}
           min={0}
           max={100}
           step={0.5}
@@ -241,10 +250,10 @@ export function AltersvorsorgedepotInputs({
         />
       )}
 
-      {assumptions.altersvorsorgedepot.payoutMode !== 'lifelong_annuity' && (
+      {avd.payoutMode !== 'lifelong_annuity' && (
         <NumberField
           label="Entnahmeplan bis Alter"
-          value={assumptions.altersvorsorgedepot.payoutPlanEndAge}
+          value={avd.payoutPlanEndAge}
           min={85}
           max={110}
           step={1}
@@ -261,122 +270,129 @@ export function AltersvorsorgedepotInputs({
         />
       )}
 
-      <div className="field-grid">
-        <NumberField
-          label="Teilkapital bei Rentenbeginn"
-          value={assumptions.altersvorsorgedepot.partialCapitalPct * 100}
-          min={0}
-          max={30}
-          step={5}
-          suffix="% (max. 30 %)"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              altersvorsorgedepot: {
-                ...current.altersvorsorgedepot,
-                partialCapitalPct: Math.min(0.30, Math.max(0, Number(value) / 100)),
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Übertragungs­kosten"
-          value={assumptions.altersvorsorgedepot.transferCostEUR}
-          min={0}
-          max={300}
-          step={50}
-          suffix="EUR einmalig"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              altersvorsorgedepot: {
-                ...current.altersvorsorgedepot,
-                transferCostEUR: Math.max(0, Number(value)),
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Sonstige Renteneinnahmen"
-          value={assumptions.altersvorsorgedepot.monthlyOtherRetirementIncome}
-          min={0}
-          step={50}
-          suffix="EUR mtl."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              altersvorsorgedepot: {
-                ...current.altersvorsorgedepot,
-                monthlyOtherRetirementIncome: Math.max(0, Number(value)),
-              },
-            }))
-          }
-        />
-      </div>
-
-      <div className="subsection-heading" style={{ marginTop: 12 }}>
-        <h3>Altersvorsorgedepot-Kosten</h3>
-      </div>
-
-      <div className="field-grid">
-        <NumberField
-          label="Verwaltungsgebühr p.a."
-          value={assumptions.altersvorsorgedepot.fees.wrapperAssetFee * 100}
-          min={0}
-          max={5}
-          step={0.05}
-          suffix="%"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              altersvorsorgedepot: {
-                ...current.altersvorsorgedepot,
-                fees: { ...current.altersvorsorgedepot.fees, wrapperAssetFee: Math.max(0, Number(value) / 100) },
-              },
-            }))
-          }
-        />
-        <NumberField
-          label="Fondsgebühr p.a."
-          value={assumptions.altersvorsorgedepot.fees.fundAssetFee * 100}
-          min={0}
-          max={5}
-          step={0.05}
-          suffix="%"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              altersvorsorgedepot: {
-                ...current.altersvorsorgedepot,
-                fees: { ...current.altersvorsorgedepot.fees, fundAssetFee: Math.max(0, Number(value) / 100) },
-              },
-            }))
-          }
-        />
-      </div>
-      {(() => {
-        const f = assumptions.altersvorsorgedepot.fees
-        const totalAsset = f.wrapperAssetFee + f.fundAssetFee
-        const riy = avdProductResult?.accumulationRiy ?? 0
-        const isStandarddepot = assumptions.altersvorsorgedepot.subtype === 'standarddepot'
-        const overCap = isStandarddepot && riy > rules.altersvorsorgedepot.standarddepotEffektivkostenCap
-        return (
-          <div className="fee-summary">
-            <span>
-              Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
-            </span>
-            <span className={riy > 0.02 ? 'riy-high' : overCap ? 'riy-warn' : ''}>
-              Effektivkosten: <strong>{formatPercent(riy)}</strong>
-              {isStandarddepot && <> (Standarddepot-Cap: 1,0 %)</>}
-            </span>
-            {overCap && (
-              <p className="field-warning">
-                Effektivkosten {formatPercent(riy)} überschreiten die Standarddepot-Obergrenze von 1,0 % — das Produkt wäre nicht zertifizierungsfähig.
-              </p>
-            )}
+      <details className="erweitert-section">
+        <summary>
+          <span className="erweitert-toggle">Erweitert</span>
+          <span className="erweitert-assumption">{erweitertSummary}</span>
+        </summary>
+        <div className="erweitert-content">
+          <div className="field-grid">
+            <NumberField
+              label="Teilkapital bei Rentenbeginn"
+              value={avd.partialCapitalPct * 100}
+              min={0}
+              max={30}
+              step={5}
+              suffix="% (max. 30 %)"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    partialCapitalPct: Math.min(0.30, Math.max(0, Number(value) / 100)),
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Übertragungs­kosten"
+              value={avd.transferCostEUR}
+              min={0}
+              max={300}
+              step={50}
+              suffix="EUR einmalig"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    transferCostEUR: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Sonstige Renteneinnahmen"
+              value={avd.monthlyOtherRetirementIncome}
+              min={0}
+              step={50}
+              suffix="EUR mtl."
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    monthlyOtherRetirementIncome: Math.max(0, Number(value)),
+                  },
+                }))
+              }
+            />
           </div>
-        )
-      })()}
+
+          <div className="subsection-heading" style={{ marginTop: 4 }}>
+            <h3>Altersvorsorgedepot-Kosten</h3>
+          </div>
+
+          <div className="field-grid">
+            <NumberField
+              label="Verwaltungsgebühr p.a."
+              value={avd.fees.wrapperAssetFee * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="%"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    fees: { ...current.altersvorsorgedepot.fees, wrapperAssetFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+            <NumberField
+              label="Fondsgebühr p.a."
+              value={avd.fees.fundAssetFee * 100}
+              min={0}
+              max={5}
+              step={0.05}
+              suffix="%"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    fees: { ...current.altersvorsorgedepot.fees, fundAssetFee: Math.max(0, Number(value) / 100) },
+                  },
+                }))
+              }
+            />
+          </div>
+          {(() => {
+            const f = avd.fees
+            const totalAsset = f.wrapperAssetFee + f.fundAssetFee
+            const isStandarddepot = avd.subtype === 'standarddepot'
+            const overCap = isStandarddepot && riy > rules.altersvorsorgedepot.standarddepotEffektivkostenCap
+            return (
+              <div className="fee-summary">
+                <span>
+                  Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
+                </span>
+                <span className={riy > 0.02 ? 'riy-high' : overCap ? 'riy-warn' : ''}>
+                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
+                  {isStandarddepot && <> (Standarddepot-Cap: 1,0 %)</>}
+                </span>
+                {overCap && (
+                  <p className="field-warning">
+                    Effektivkosten {formatPercent(riy)} überschreiten die Standarddepot-Obergrenze von 1,0 % — das Produkt wäre nicht zertifizierungsfähig.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+      </details>
     </>
   )
 }

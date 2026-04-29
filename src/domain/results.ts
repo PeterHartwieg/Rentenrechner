@@ -119,6 +119,13 @@ export interface ScenarioAssumptions {
   basisrente: BasisrenteAssumptions
   altersvorsorgedepot: AltersvorsorgedepotAssumptions
   riester: RiesterAssumptions
+  /**
+   * Subset of products to include in charts, comparison tables, and CSV/print exports.
+   * Empty array = show all products (intentional fallback so a corrupt persisted state
+   * never produces an empty UI). Not present on legacy persisted states; mergeDeep
+   * preserves the default of "all products".
+   */
+  visibleProducts: ProductId[]
 }
 
 export interface SimulationResult {

@@ -24,6 +24,14 @@ export function RiesterInputs({
   riesterFunding,
   riesterProductResult,
 }: Props) {
+  const erweitertParts: string[] = []
+  if (assumptions.riester.eligibility.careerStarterBonusUsed) erweitertParts.push('Berufseinsteiger-Bonus erhalten')
+  if (assumptions.riester.partialCapitalPct > 0) erweitertParts.push(`${(assumptions.riester.partialCapitalPct * 100).toFixed(0)} % Einmalbetrag`)
+  if (assumptions.riester.monthlyOtherRetirementIncome > 0) erweitertParts.push(`+${formatCurrency(assumptions.riester.monthlyOtherRetirementIncome, 0)}/Mon. sonst. Einkommen`)
+  if (assumptions.altersvorsorgedepot.riesterTransferCapital > 0) erweitertParts.push(`AVD-Übertrag: ${formatCurrency(assumptions.altersvorsorgedepot.riesterTransferCapital, 0)}`)
+  if (erweitertParts.length === 0) erweitertParts.push('Standard-Annahmen')
+  const erweitertSummary = erweitertParts.join(' · ')
+
   return (
     <>
       <div className="subsection-heading">
@@ -70,46 +78,25 @@ export function RiesterInputs({
         />
       </div>
 
-      <div className="field-grid">
-        <label className="field field-inline">
-          <input
-            type="checkbox"
-            checked={assumptions.riester.eligibility.directlyEligible}
-            onChange={(event) =>
-              onAssumptionsChange((current) => ({
-                ...current,
-                riester: {
-                  ...current.riester,
-                  eligibility: {
-                    ...current.riester.eligibility,
-                    directlyEligible: event.target.checked,
-                  },
+      <label className="field field-inline">
+        <input
+          type="checkbox"
+          checked={assumptions.riester.eligibility.directlyEligible}
+          onChange={(event) =>
+            onAssumptionsChange((current) => ({
+              ...current,
+              riester: {
+                ...current.riester,
+                eligibility: {
+                  ...current.riester.eligibility,
+                  directlyEligible: event.target.checked,
                 },
-              }))
-            }
-          />
-          <span>Unmittelbar förderberechtigt</span>
-        </label>
-        <label className="field field-inline">
-          <input
-            type="checkbox"
-            checked={assumptions.riester.eligibility.careerStarterBonusUsed}
-            onChange={(event) =>
-              onAssumptionsChange((current) => ({
-                ...current,
-                riester: {
-                  ...current.riester,
-                  eligibility: {
-                    ...current.riester.eligibility,
-                    careerStarterBonusUsed: event.target.checked,
-                  },
-                },
-              }))
-            }
-          />
-          <span>Berufseinsteiger-Bonus bereits erhalten</span>
-        </label>
-      </div>
+              },
+            }))
+          }
+        />
+        <span>Direkt förderberechtigt (Pflichtversichert)</span>
+      </label>
 
       {riesterFunding.annualOwnContribution > 0 ? (
         <p className="field-hint">
@@ -193,66 +180,94 @@ export function RiesterInputs({
         />
       )}
 
-      <NumberField
-        label="Einmalbetrag bei Rentenbeginn"
-        value={assumptions.riester.partialCapitalPct * 100}
-        min={0}
-        max={30}
-        step={5}
-        suffix="% des Kapitals"
-        onChange={(value) =>
-          onAssumptionsChange((current) => ({
-            ...current,
-            riester: {
-              ...current.riester,
-              partialCapitalPct: Math.min(0.3, Math.max(0, Number(value) / 100)),
-            },
-          }))
-        }
-      />
+      <details className="erweitert-section">
+        <summary>
+          <span className="erweitert-toggle">Erweitert</span>
+          <span className="erweitert-assumption">{erweitertSummary}</span>
+        </summary>
+        <div className="erweitert-content">
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={assumptions.riester.eligibility.careerStarterBonusUsed}
+              onChange={(event) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  riester: {
+                    ...current.riester,
+                    eligibility: {
+                      ...current.riester.eligibility,
+                      careerStarterBonusUsed: event.target.checked,
+                    },
+                  },
+                }))
+              }
+            />
+            <span>Berufseinsteiger-Bonus bereits erhalten</span>
+          </label>
 
-      <NumberField
-        label="Sonstiges Renteneinkommen"
-        value={assumptions.riester.monthlyOtherRetirementIncome}
-        min={0}
-        step={100}
-        suffix="EUR mtl."
-        onChange={(value) =>
-          onAssumptionsChange((current) => ({
-            ...current,
-            riester: {
-              ...current.riester,
-              monthlyOtherRetirementIncome: Math.max(0, Number(value)),
-            },
-          }))
-        }
-      />
+          <NumberField
+            label="Einmalbetrag bei Rentenbeginn"
+            value={assumptions.riester.partialCapitalPct * 100}
+            min={0}
+            max={30}
+            step={5}
+            suffix="% des Kapitals"
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                riester: {
+                  ...current.riester,
+                  partialCapitalPct: Math.min(0.3, Math.max(0, Number(value) / 100)),
+                },
+              }))
+            }
+          />
 
-      <div className="subsection-heading" style={{ marginTop: '0.5rem' }}>
-        <h4>Riester → AVD Übertrag (#71)</h4>
-        <p>
-          Vorhandenes Riester-Kapital in ein neues Altersvorsorgedepot übertragen (kein steuerpflichtiger
-          Verkauf). Das AVD-Produkt startet mit diesem Kapital minus Übertragungskosten als Startguthaben.
-          Übertragungskosten beim AVD separat eintragen.
-        </p>
-      </div>
+          <NumberField
+            label="Sonstiges Renteneinkommen"
+            value={assumptions.riester.monthlyOtherRetirementIncome}
+            min={0}
+            step={100}
+            suffix="EUR mtl."
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                riester: {
+                  ...current.riester,
+                  monthlyOtherRetirementIncome: Math.max(0, Number(value)),
+                },
+              }))
+            }
+          />
 
-      <NumberField
-        label="Riester-Kapital für AVD-Übertrag"
-        value={assumptions.altersvorsorgedepot.riesterTransferCapital}
-        min={0}
-        step={1000}
-        suffix="EUR"
-        onChange={(value) =>
-          onAssumptionsChange((current) => ({
-            ...current,
-            altersvorsorgedepot: {
-              ...current.altersvorsorgedepot,
-              riesterTransferCapital: Math.max(0, Number(value)),
-            },
-          }))
-        }
-      />
+          <div className="subsection-heading" style={{ marginTop: 4 }}>
+            <h3>Riester → Altersvorsorgedepot Übertrag</h3>
+            <p>
+              Vorhandenes Riester-Kapital in ein neues Altersvorsorgedepot übertragen (kein steuerpflichtiger
+              Verkauf). Das AVD-Produkt startet mit diesem Kapital minus Übertragungskosten als Startguthaben.
+              Übertragungskosten beim AVD separat eintragen.
+            </p>
+          </div>
+
+          <NumberField
+            label="Riester-Kapital für AVD-Übertrag"
+            value={assumptions.altersvorsorgedepot.riesterTransferCapital}
+            min={0}
+            step={1000}
+            suffix="EUR"
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                altersvorsorgedepot: {
+                  ...current.altersvorsorgedepot,
+                  riesterTransferCapital: Math.max(0, Number(value)),
+                },
+              }))
+            }
+          />
+        </div>
+      </details>
     </>
   )
 }
