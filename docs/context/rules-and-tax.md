@@ -43,3 +43,9 @@ For each legal / rule area: the source file, the rule file, and the research doc
 | `BAV_RESEARCH.md` | bAV-specific legal and product details |
 | `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md` | Private insurance tax modes, Ertragsanteil, Schicht-3 scope |
 | `ALTERSVORSORGEDEPOT_2027_RESEARCH.md` | AVD Reform 2026 allowance formula, Günstigerprüfung, glidepath rules |
+| `TAX_SOCIAL_SECURITY_2026_RESEARCH.md` | Cross-product 2026 income tax, payroll, social-security, PKV subsidy, retirement KV/PV constants |
+| `ETF_RESEARCH.md` | ETF capital gains, InvStG partial exemptions, Vorabpauschale, FIFO simplification |
+| `BASISRENTE_RESEARCH.md` | Schicht-1 cap, Basisrente payout restrictions, cohort taxation, KV/PV status split |
+| `GRV_RESEARCH.md` | Entgeltpunkte, Rentenwert, GRV tax, KVdR/voluntary/PKV treatment, bAV GRV reduction |
+| `RIESTER_RESEARCH.md` | Legacy Riester allowances, Mindesteigenbeitrag, Sec. 10a, payout taxation, partial lump sum |
+| `LEGAL_IMPLEMENTATION_AUDIT_2026.md` | 2026-04-28 legal-vs-implementation audit findings, fixes, and remaining modeling gaps |

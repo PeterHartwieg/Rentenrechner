@@ -318,9 +318,11 @@ export function calculateRetirementKvPv(ctx: RetirementKvPvContext): RetirementK
   //    PV-relevant Versorgungsbezüge aggregate (no deduction — Freigrenze):
   //    below Freigrenze → 0 for all; above → full aggregate at careRate.
   // -------------------------------------------------------------------------
-  const pvRelevantVersorgung = totalVersorgungsbezuege > pvFreigrenzeVersorgungMonthly
+  const pvRelevantVersorgung = isFreiwilligVersichert
     ? totalVersorgungsbezuege
-    : 0
+    : totalVersorgungsbezuege > pvFreigrenzeVersorgungMonthly
+      ? totalVersorgungsbezuege
+      : 0
 
   const bavPvVersorgungBase = pvRelevantVersorgung * versorgungShareBav
   const otherPvVersorgungBase = pvRelevantVersorgung * versorgungShareOther

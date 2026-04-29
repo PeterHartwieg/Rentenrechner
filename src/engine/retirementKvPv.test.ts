@@ -243,6 +243,14 @@ describe('calculateRetirementKvPv — (e) KVdR vs freiwillig versichert', () => 
   it('freiwillig totalKv > KVdR totalKv (insurance adds to base)', () => {
     expect(freiwilligBd.totalKvMonthly).toBeGreaterThan(kvdrBd.totalKvMonthly)
   })
+
+  it('freiwillig: PV has no Versorgungsbezug Freigrenze below the KVdR threshold', () => {
+    const bd = calculateRetirementKvPv(makeCtx({
+      bavMonthlyVersorgungsbezuege: 100,
+      isFreiwilligVersichert: true,
+    }))
+    expect(bd.bavPvMonthly).toBeCloseTo(100 * CARE_RATE, 4)
+  })
 })
 
 // ---------------------------------------------------------------------------

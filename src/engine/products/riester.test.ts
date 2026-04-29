@@ -82,12 +82,12 @@ describe('Riester rules constants', () => {
 describe('calculateRiesterFunding — full allowances when min contribution met', () => {
   // Profile: 75k EUR salary. Relevant income = min(75000, 101400) = 75000.
   // Full allowances (directly eligible, no children, no career bonus): 175 EUR.
-  // minRequired = max(60, 4% × 75000 - 175) = max(60, 3000 - 175) = max(60, 2825) = 2825 EUR/year.
-  // annualOwnContribution = 3000 EUR (250 EUR/month × 12) ≥ 2825 → proration = 1.
+  // minRequired = max(60, min(4% * 75000, 2100) - 175) = 1925 EUR/year.
+  // annualOwnContribution = 3000 EUR (250 EUR/month * 12) >= 1925 -> proration = 1.
 
   const riester = {
     ...defaultRiesterAssumptions,
-    monthlyOwnContribution: 250, // 3000 EUR/year — above the 2825 minimum
+    monthlyOwnContribution: 250, // 3000 EUR/year, above the 1925 minimum
     eligibility: {
       directlyEligible: true,
       ageAtContractStart: 30,
@@ -122,6 +122,7 @@ describe('calculateRiesterFunding — full allowances when min contribution met'
 
   it('proration factor is 1 when contribution meets minimum', () => {
     expect(rf.meetsMinContribution).toBe(true)
+    expect(rf.minEigenbeitragAnnual).toBeCloseTo(1_925, 2)
     expect(rf.prorationFactor).toBe(1)
   })
 
@@ -137,13 +138,13 @@ describe('calculateRiesterFunding — full allowances when min contribution met'
 })
 
 describe('calculateRiesterFunding — proration when contribution below minimum', () => {
-  // Profile: 75k EUR salary. minRequired = 2825 EUR/year.
-  // annualOwnContribution = 600 EUR (50 EUR/month × 12) < 2825 → proration applies.
-  // prorationFactor = 600 / 2825 ≈ 0.2124.
+  // Profile: 75k EUR salary. minRequired = 1925 EUR/year.
+  // annualOwnContribution = 600 EUR (50 EUR/month * 12) < 1925 -> proration applies.
+  // prorationFactor = 600 / 1925 ~= 0.3117.
 
   const riester = {
     ...defaultRiesterAssumptions,
-    monthlyOwnContribution: 50, // 600 EUR/year — below the 2825 minimum
+    monthlyOwnContribution: 50, // 600 EUR/year, below the 1925 minimum
     eligibility: {
       directlyEligible: true,
       ageAtContractStart: 30,

@@ -198,7 +198,7 @@ Already aligned:
 
 Potential gaps / follow-up work:
 
-- Make statutory 15% subsidy route-aware. It should default automatically only for Direktversicherung / Pensionskasse / Pensionsfonds, not blindly for Direktzusage / Unterstuetzungskasse.
+- Fixed in 2026-04-28 audit: statutory 15% subsidy is route-aware and defaults automatically only for Direktversicherung / Pensionskasse / Pensionsfonds, not for Direktzusage / Unterstuetzungskasse.
 - Add a Sozialpartnermodell / reine Beitragszusage flag. It affects guarantees, employer liability, return assumptions, and likely disables lump-sum payout.
 - Add validation / warnings for Pensionsfonds lump sums above 30%.
 - Add warning for bAV payout before age 62 unless modeling an old pre-2012 commitment or a special contract.

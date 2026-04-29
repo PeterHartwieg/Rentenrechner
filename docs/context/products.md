@@ -40,10 +40,14 @@ For each product: simulator, validator, domain types, tests, UI input, engine he
 
 | Product | Research doc |
 |---------|-------------|
+| ETF | `ETF_RESEARCH.md` |
 | bAV | `BAV_RESEARCH.md` |
 | Private RV | `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md` |
+| Basisrente | `BASISRENTE_RESEARCH.md` |
 | AVD | `ALTERSVORSORGEDEPOT_2027_RESEARCH.md` |
-| Tax / legal | `LEGAL_REVIEW.md` |
+| Riester | `RIESTER_RESEARCH.md` |
+| GRV | `GRV_RESEARCH.md` |
+| Tax / legal | `LEGAL_REVIEW.md`, `TAX_SOCIAL_SECURITY_2026_RESEARCH.md`, `LEGAL_IMPLEMENTATION_AUDIT_2026.md` |
 
 ## Adding a product
 

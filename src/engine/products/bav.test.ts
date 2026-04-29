@@ -368,6 +368,20 @@ describe('#51 statutory vs. contractual employer contribution', () => {
     expect(f.monthlyStatutoryEmployerSubsidy * 12).toBeLessThanOrEqual(f.employerSocialSecuritySavingAnnual + 0.01)
   })
 
+  it('statutory subsidy does not apply automatically to internal employer promise routes', () => {
+    const f = calculateBavFunding(testProfile75k, de2026Rules, {
+      ...defaultAssumptions.bav,
+      durchfuehrungsweg: 'direktzusage',
+      monthlyGrossConversion: 300,
+      statutoryMinimumSubsidyEnabled: true,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 0,
+    })
+    expect(f.monthlyContractualEmployerContribution).toBe(0)
+    expect(f.monthlyStatutoryEmployerSubsidy).toBe(0)
+    expect(f.monthlyEffectiveEmployerContribution).toBe(0)
+  })
+
   it('statutory disabled + 15% contractual: contractual paid uncapped, no statutory part', () => {
     const f = calculateBavFunding(testProfile75k, de2026Rules, {
       ...defaultAssumptions.bav,

@@ -1,5 +1,6 @@
 import type {
   BavAssumptions,
+  BavDurchfuehrungsweg,
   BavFundingResult,
   GermanRules,
   PersonalProfile,
@@ -10,6 +11,16 @@ import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 function contributionBase(annualGross: number, cap: number): number {
   return Math.min(Math.max(0, annualGross), cap)
+}
+
+function bavHasStatutoryMinimumSubsidyRoute(
+  durchfuehrungsweg: BavDurchfuehrungsweg,
+): boolean {
+  return (
+    durchfuehrungsweg === 'direktversicherung_3_63' ||
+    durchfuehrungsweg === 'pensionskasse_3_63' ||
+    durchfuehrungsweg === 'pensionsfonds_3_63'
+  )
 }
 
 export function careEmployeeRateForChildren(
@@ -245,7 +256,9 @@ export function calculateBavFunding(
       rules,
     )
     employerSocialSecuritySavingAnnual = Math.max(0, employerSocialBefore.total - employerSocialAfter.total)
-    statutorySubsidyAnnual = bav.statutoryMinimumSubsidyEnabled
+    statutorySubsidyAnnual =
+      bav.statutoryMinimumSubsidyEnabled &&
+      bavHasStatutoryMinimumSubsidyRoute(bav.durchfuehrungsweg)
       ? Math.min(
           annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct,
           employerSocialSecuritySavingAnnual,

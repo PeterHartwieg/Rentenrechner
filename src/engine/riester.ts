@@ -154,15 +154,19 @@ export function calculateRiesterFunding(
   // -------------------------------------------------------------------------
   // 2. §86 EStG Mindesteigenbeitrag.
   //    Relevant income = prior-year RV-Pflichtentgelt ≈ min(grossSalary, GRV BBG).
-  //    minRequired = max(Sockelbetrag, 4% × relevantIncome − totalFullAllowances).
+  //    minRequired = max(Sockelbetrag, min(4% * relevantIncome, 2100) - allowances).
   // -------------------------------------------------------------------------
   const relevantIncome = Math.min(
     salaryResult.annualGross,
     rules.socialSecurity.pensionCapYear,
   )
+  const requiredInclAllowances = Math.min(
+    r.minEigenbeitragPct * relevantIncome,
+    r.annualCapInclAllowances,
+  )
   const minRequired = Math.max(
     r.sockelbetrag,
-    Math.max(0, r.minEigenbeitragPct * relevantIncome - full.total),
+    Math.max(0, requiredInclAllowances - full.total),
   )
 
   // -------------------------------------------------------------------------
