@@ -168,6 +168,23 @@
     margin-top: 4pt;
   }
 
+  /* Disclaimer / limitations section */
+  .pr-disclaimer-list {
+    margin: 4pt 0 0;
+    padding: 0 0 0 12pt;
+    font-size: 7.5pt;
+    color: #222;
+    line-height: 1.35;
+  }
+
+  .pr-disclaimer-list li {
+    margin: 0 0 2.5pt;
+  }
+
+  .pr-disclaimer-list strong {
+    color: #000;
+  }
+
   /* Footer */
   .pr-footer {
     margin-top: 14pt;

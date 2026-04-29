@@ -42,3 +42,58 @@
   color: #b91c1c;
   font-weight: 600;
 }
+
+.fee-mode-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+  width: fit-content;
+  font-size: 0.8rem;
+}
+
+.fee-mode-tab {
+  padding: 4px 14px;
+  border: none;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.fee-mode-tab:not(:last-child) {
+  border-right: 1px solid #cbd5e1;
+}
+
+.fee-mode-tab.fee-mode-tab--active {
+  background: #1e293b;
+  color: #f8fafc;
+  font-weight: 500;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.link-btn:hover {
+  color: #1d4ed8;
+}
+
+.offer-capital-compare {
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #0369a1;
+}

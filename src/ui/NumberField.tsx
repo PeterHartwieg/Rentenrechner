@@ -1,5 +1,6 @@
 import './forms.css'
 import { useState } from 'react'
+import { formatNumber } from '../utils/format'
 
 export function NumberField({
   label,
@@ -34,6 +35,28 @@ export function NumberField({
     onCommit?.(raw)
   }
 
+  // Show a recovery hint while the user is typing a value that lies outside
+  // the allowed range. Without this, callers' clampNumber would silently
+  // overwrite the value on commit and the user would not understand why.
+  const draftNum = draft !== null ? Number(draft) : null
+  const outOfRange =
+    draftNum !== null && Number.isFinite(draftNum)
+      ? (min !== undefined && draftNum < min) ||
+        (max !== undefined && draftNum > max)
+      : false
+
+  const formatBound = (v: number) =>
+    Number.isInteger(v) ? String(v) : formatNumber(v, 2)
+
+  let recovery: string | null = null
+  if (outOfRange && draftNum !== null) {
+    if (min !== undefined && draftNum < min) {
+      recovery = `Wert wird auf ${formatBound(min)}${suffix ? ' ' + suffix : ''} angehoben (Minimum).`
+    } else if (max !== undefined && draftNum > max) {
+      recovery = `Wert wird auf ${formatBound(max)}${suffix ? ' ' + suffix : ''} begrenzt (Maximum).`
+    }
+  }
+
   return (
     <label className="field">
       <span>{label}</span>
@@ -58,6 +81,7 @@ export function NumberField({
         />
         {suffix ? <em>{suffix}</em> : null}
       </div>
+      {recovery && <p className="field-warning">{recovery}</p>}
     </label>
   )
 }

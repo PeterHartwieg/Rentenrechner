@@ -1,4 +1,4 @@
-import { Calculator, HelpCircle, RotateCcw, Settings } from 'lucide-react'
+import { Calculator, HelpCircle, Info, RotateCcw, Settings } from 'lucide-react'
 import type { ProductId } from './domain'
 import { NumberField } from './ui/NumberField'
 import { clampNumber } from './ui/formatting'
@@ -111,6 +111,17 @@ function App() {
           </div>
         </div>
       </header>
+
+      <div className="trust-strip" role="note">
+        <Info size={16} aria-hidden="true" />
+        <p>
+          <strong>Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.</strong>{' '}
+          Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (BBG, Steuersätze,
+          GKV/PV, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband).
+          Die Ergebnisse sind Schätzungen unter Ihren Annahmen — Renditen, Inflation,
+          Lebenserwartung und künftige Gesetzesänderungen sind unbekannt.
+        </p>
+      </div>
 
       <section className="dashboard">
         <aside className="input-panel" aria-label="Eingaben">

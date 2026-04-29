@@ -195,6 +195,37 @@ export function PrintReport({ profile, assumptions, simulation }: Props) {
         </p>
       </section>
 
+      <section className="pr-section pr-disclaimer">
+        <div className="pr-section-title">Hinweise und Grenzen der Rechnung</div>
+        <ul className="pr-disclaimer-list">
+          <li>
+            <strong>Keine Beratung:</strong> Diese Rechnung ist eine Modellrechnung und ersetzt
+            keine individuelle Anlage-, Steuer- oder Rechtsberatung. Vor Vertragsabschluss sollten
+            Sie einen unabhängigen Berater hinzuziehen.
+          </li>
+          <li>
+            <strong>Rechtsstand 2026:</strong> Steuersätze, BBG, GKV/PV-Beiträge und Rentenwert
+            sind auf den Stand 2026 fixiert (Quellen: BMF, Deutsche Rentenversicherung,
+            GKV-Spitzenverband). Tatsächliche Werte zum Renteneintritt können erheblich abweichen.
+          </li>
+          <li>
+            <strong>Annahmen sind Schätzungen:</strong> Jahresrendite, Inflation, Gehaltsentwicklung,
+            Lebenserwartung sowie Rentenfaktor und Vertragskosten sind Annahmen. Bereits kleine
+            Abweichungen können das Ergebnis und die Reihenfolge der Produkte ändern.
+          </li>
+          <li>
+            <strong>Keine Garantieprodukte modelliert:</strong> Garantierente, Hinterbliebenen-
+            und Berufsunfähigkeitsschutz sowie Überschussbeteiligung werden im Modell nicht
+            separat ausgewiesen. Vergleichen Sie diese Bestandteile zusätzlich mit dem
+            Produktinformationsblatt.
+          </li>
+          <li>
+            <strong>Versorgungslücken:</strong> Pflege, Erwerbsminderung, Scheidungsausgleich
+            und Erbschaften sind nicht Teil des Modells.
+          </li>
+        </ul>
+      </section>
+
       <div className="pr-footer">
         Rentenrechner Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
       </div>

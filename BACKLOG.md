@@ -147,28 +147,13 @@ Concrete changes:
 - Link each badge to the assumption that drives it.
 - Acceptance criterion: the app warns users when a small assumption change flips the recommendation.
 
-#### #UX7 P2 Product Offer Entry Forms
+#### ~~#UX7 P2 Product Offer Entry Forms~~ ✓
 
-Add offer-shaped entry forms so users can copy values from real documents instead of translating them into internal model parameters.
+Implemented: fee entry mode toggle (Einzelposten / Effektivkosten all-in) in bAV and pAV Erweitert sections; renamed to "Garantierter Rentenfaktor" with default-value hint; optional "Kapital lt. Angebot bei Rentenbeginn" comparison field; "link-btn" to switch from all-in back to Einzelposten. All-in mode zeros other fee components and shows an approximation disclaimer.
 
-Concrete changes:
+#### ~~#UX8 P2 Empty, Error, And Trust States~~ ✓
 
-- For bAV and private insurance, provide an "Angebot eingeben" mode with fields matching common offer PDFs: Eigenbeitrag/brutto, Arbeitgeberzuschuss, garantierter Rentenfaktor, Effektivkosten/RIY, Abschlusskosten, laufende Fondskosten, Kapital bei Rentenbeginn if provided.
-- If a document gives only all-in Effektivkosten, support that path and hide detailed fee fields with an explanation of the approximation.
-- Add validation prompts for missing high-impact values, e.g. "Rentenfaktor fehlt, daher ist die monatliche Rente nur grob."
-- Acceptance criterion: a user does not need to understand the internal fee model to enter a real offer.
-
-#### #UX8 P2 Empty, Error, And Trust States
-
-Make the interface feel safe when values are missing, invalid, or legally uncertain.
-
-Concrete changes:
-
-- Replace silent clamps and terse warnings with inline recovery text: what happened, why, and how to fix it.
-- Add "not a recommendation" and "legal values as of 2026" trust copy in a calm, visible place, not buried in the assumptions panel.
-- Add print/PDF summary copy that explains limitations in reader-friendly language.
-- Add mobile-specific review for long German labels, tables, and chart legends.
-- Acceptance criterion: invalid or edge-case inputs do not make the UI feel broken or punitive.
+Implemented: `NumberField` shows an inline `field-warning` recovery hint while the user is typing a value outside the allowed range ("Wert wird auf X angehoben/begrenzt …"), so silent clamps no longer surprise the user. A persistent `.trust-strip` below the topbar carries the "Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung" copy plus the "Werte mit Stand 2026" sourcing line. The print/PDF report has a new "Hinweise und Grenzen der Rechnung" section with reader-friendly bullets on advice scope, legal vintage, assumption fragility, untracked product features, and uncovered risks. Mobile rules added at `≤760 px`: tightened topbar/trust-strip padding, shrunken chart heights (260 px / 220 px), tighter table cells, and smaller chart legend font. All 453 tests pass.
 
 ### Group E: Retirement-Income Refinements
 
