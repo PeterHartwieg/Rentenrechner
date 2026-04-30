@@ -1,3 +1,4 @@
+import '../../ui/forms.css'
 import './GlossaryPanel.css'
 import { useMemo, useState } from 'react'
 import { CATEGORY_LABELS, TERMS_LIST, type Term, type TermCategory } from '../../content/terms'
@@ -40,10 +41,10 @@ export function GlossaryPanel() {
   const totalMatches = grouped.reduce((sum, g) => sum + g.terms.length, 0)
 
   return (
-    <details className="glossary-panel">
+    <details className="disclosure-section glossary-panel">
       <summary>
-        Glossar
-        <span className="glossary-count">{TERMS_LIST.length} Begriffe</span>
+        <span className="disclosure-toggle">Glossar</span>
+        <span className="disclosure-recap">{TERMS_LIST.length} Begriffe</span>
       </summary>
       <p className="glossary-intro">
         Erklärungen aller Fach­begriffe in einfacher Sprache. Nutze die Suche, um einen Begriff schnell zu finden.

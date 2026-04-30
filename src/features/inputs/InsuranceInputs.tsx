@@ -12,8 +12,10 @@ import type {
   ScenarioAssumptions,
 } from '../../domain';
 import { NumberField } from '../../ui/NumberField';
+import { InfoTip } from '../../ui/InfoTip';
 import { formatCurrency, formatPercent } from '../../utils/format';
 import { PAV_FEE_PRESETS } from '../../app/productPresentation';
+import { getTerm } from '../../content/terms';
 
 type Props = {
   assumptions: ScenarioAssumptions;
@@ -53,6 +55,11 @@ export function InsuranceInputs({
         min={1970}
         max={2030}
         step={1}
+        labelSuffix={
+          insuranceTaxMode === 'halbeinkuenfte' ? (
+            <InfoTip text={getTerm('halbeinkuenfte')!.shortHelp} label="Halbeinkünfteverfahren erklären" />
+          ) : null
+        }
         onChange={(value) =>
           onAssumptionsChange((current) => ({
             ...current,

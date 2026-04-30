@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import '../../ui/forms.css'
 import './ScenarioLibraryPanel.css'
 import type { SavedScenario } from '../../data/scenarioLibrary'
 
@@ -38,10 +39,12 @@ export function ScenarioLibraryPanel({ library, onSave, onLoad, onDuplicate, onD
   }
 
   return (
-    <details className="scenario-library-panel">
+    <details className="disclosure-section scenario-library-panel">
       <summary>
-        Gespeicherte Szenarien
-        {library.length > 0 && <span className="library-count">{library.length}</span>}
+        <span className="disclosure-toggle">Gespeicherte Szenarien</span>
+        <span className="disclosure-recap">
+          {library.length === 0 ? 'leer' : `${library.length} gespeichert`}
+        </span>
       </summary>
 
       <div className="library-save-row">

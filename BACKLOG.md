@@ -13,12 +13,11 @@ Legal/rules research lives in `LEGAL_REVIEW.md` and `TAX_SOCIAL_SECURITY_2026_RE
 
 ## Current Focus
 
-**Group UX Tier 1, Tier 2, Tier 3 all shipped (Tier 1 in commit 670af83, Tier 2 in 23d1b88, Tier 3 in 2026-04-30).** See `Group UX → Tier 4` below for the optional polish backlog. Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
+**Group UX Tier 1, Tier 2, Tier 3, Tier 4 all shipped (Tier 1 in commit 670af83, Tier 2 in 23d1b88, Tier 3 in 9efaf96, Tier 4 in 2026-04-30).** Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
 
 Recommended next pickup, in priority order:
 
-1. **Group UX Tier 4** — polish, optional.
-2. **Group F (later analytical/publishing)** — Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
+1. **Group F (later analytical/publishing)** — Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
 
 Groups B (multi-sleeve allocation), D (saved scenarios + PDF), and E (retirement-income refinements) are complete or have only optional remainders.
 
@@ -67,11 +66,11 @@ Goal: a non-technical user reaches the decision summary in under one screen of s
 - ~~**Wunschnetto on the Rentenlücke path**~~ ✓ New optional `desiredNetMonthlyPension` field on `PersonalProfile` (default 0; 0 = "no target"). Captured by the rentengap path's "Was möchtest du im Monat haben? (optional)" input. When set, `DecisionSummary` renders a Lücke callout: `Wunsch − GRV-Netto = Lücke`, plus a per-visible-product gap-fill list ("ETF deckt 120 % der Lücke", "bAV füllt 90 %"). Storage gotcha: `mergeDeep` cannot round-trip an `undefined` default (typeof mismatch), so we use `0` as the sentinel.
 - ~~**Replace "Aktuelle Entgeltpunkte" guided question**~~ ✓ rentengap path now asks "Wie viele Jahre arbeitest du schon?" with a live-derived "≈ N,N Entgeltpunkte (geschätzt)" hint. `estimateEpFromYears(years, salary)` uses the same `min(salary, BBG) / durchschnittsentgelt` formula the engine uses for future EP, so the back-calculation matches the projection logic. Reopening the wizard reverse-engineers years from existing EP via `estimateYearsFromEp`.
 
-#### Tier 4 — polish (optional)
+#### Tier 4 — polish ✓ (shipped 2026-04-30)
 
-- **One progressive-disclosure pattern, applied consistently**. Today there are five different `<details>` styles (Glossar, Szenarien-Vorlagen, Gespeicherte Szenarien, per-product Erweitert, AssumptionsPanel). Pick the per-product Erweitert pattern (with its derived plain-German recap) and reuse.
-- **Inline glossary tooltips on more terms**. Wire `InfoTip` to *Vorabpauschale*, *Halbeinkünfte*, *KVdR*, *Versorgungsfreibetrag*, *Durchführungsweg*. Tooltip text already exists in `terms.ts`.
-- **Disclaimer wrap UX on mobile**. Small ✕ dismiss target; popover open/close handler is fine on desktop but fiddly on touch.
+- ~~**One progressive-disclosure pattern, applied consistently**~~ ✓ Unified base styles (`.disclosure-section`, `.disclosure-toggle`, `.disclosure-recap`, `.disclosure-content`) defined once in `src/ui/forms.css` (sharing selectors with the legacy `.erweitert-section` so per-product blocks keep working). `GlossaryPanel`, `ScenarioPresetPanel`, `ScenarioLibraryPanel` now use the unified class on their root `<details>` and added a derived recap (`{N} Begriffe`, `{N} Vorlagen`, `{N} gespeichert` / `leer`). `AssumptionsPanel` converted from button-toggle (`▲/▼`) to `<details>` with `Regelwerte & Quellen 2026 · BMF · DRV · GKV-SV` summary; the controlled `show`/`onToggle` props are preserved via `<details open={show} onToggle={…}>`.
+- ~~**Inline glossary tooltips on more terms**~~ ✓ New `vorabpauschale` term added to `src/content/terms.ts` (was missing). `InfoTip` wired on: Vorabpauschale (AssumptionsPanel `Basiszins 2026 (Vorabpauschale)`), Halbeinkünfte (InsuranceInputs Vertragsbeginn `labelSuffix`, conditional on `insuranceTaxMode === 'halbeinkuenfte'`), KVdR (BavInputs `Pflichtversicherter Rentner (KVdR)` + BasisrenteInputs `Krankenversicherung in Rente`), Durchführungsweg (BavInputs `bAV-Vertragsart` label), Versorgungsfreibetrag (new short field-hint at the top of bAV-Rentenphase erweitert subsection). Verified click on `<button>`-wrapped InfoTip inside `<label>` does NOT toggle the underlying checkbox.
+- ~~**Disclaimer wrap UX on mobile**~~ ✓ `.disclaimer-dismiss` ✕ now has `min-width: 32px; min-height: 32px` on mobile (≥ Apple HIG 32px touch-target floor); `.disclaimer-popup` switches from `left: 24px; max-width: 420px` to `left: 8px; right: 8px; max-width: none` on mobile so it fits a 375px viewport without horizontal overflow. Verified: popup renders at x=8, width=359 within the 375px viewport.
 
 #### Implemented Archive — UX
 
@@ -92,6 +91,7 @@ Per-item detail lives in commit messages. Listed here as a compact index.
 - ~~#UX13 In-Context Product Editing~~ ✓ (commit 670af83)
 - ~~#UX14 Assumption Provenance and Confidence~~ ✓ (commit 670af83)
 - ~~#UX15 Plain-Language Microcopy Audit~~ ✓ (commit aa81394)
+- ~~Tier 4 polish~~ ✓ (2026-04-30) — unified disclosure pattern (`.disclosure-section` + recap line), 5 inline glossary InfoTips (Vorabpauschale/Halbeinkünfte/KVdR/Versorgungsfreibetrag/Durchführungsweg), mobile disclaimer ✕ touch-target and full-width popup.
 
 ### Group E: Retirement-Income Refinements ✓
 
@@ -153,7 +153,7 @@ Completed items are kept here as a compact index only.
 
 - Group UX Tier 1 plain-language pass + UX13 + UX14 (commit 670af83): see `Group UX → Implemented Archive` for the per-item index.
 
-Latest documented baseline: 457 tests after Group UX Tier 1 (commit 670af83).
+Latest documented baseline: 457 tests after Group UX Tier 4 (2026-04-30).
 
 ---
 

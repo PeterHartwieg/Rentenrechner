@@ -3,7 +3,9 @@ import '../../ui/fees.css'
 import type React from 'react'
 import type { BasisrenteFundingResult, GermanRules, ProductResult, ScenarioAssumptions } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
+import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { getTerm } from '../../content/terms'
 
 type Props = {
   assumptions: ScenarioAssumptions
@@ -127,7 +129,10 @@ export function BasisrenteInputs({
           />
 
           <label className="field">
-            <span>Krankenversicherung in Rente</span>
+            <span>
+              Krankenversicherung in Rente
+              <InfoTip text={getTerm('kvdr')!.shortHelp} label="KVdR erklären" />
+            </span>
             <select
               value={healthStatus}
               onChange={(e) =>

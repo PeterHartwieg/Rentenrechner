@@ -1,31 +1,7 @@
+/* Outer .disclosure-section provides border, summary chrome, and chevron.
+   Tier 4 (2026-04-30). */
 .scenario-presets-panel {
   margin-bottom: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #f8fafc;
-}
-
-.scenario-presets-panel > summary {
-  padding: 7px 10px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-  user-select: none;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.scenario-presets-panel > summary::before {
-  content: '▸';
-  font-size: 0.7rem;
-  transition: transform 0.15s;
-}
-
-.scenario-presets-panel[open] > summary::before {
-  transform: rotate(90deg);
 }
 
 .preset-intro {

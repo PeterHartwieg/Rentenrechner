@@ -668,8 +668,29 @@ th {
     font-size: 0.85rem;
   }
 
+  /* Mobile disclaimer: bigger ✕ touch target and a popup that wraps inside
+     the viewport instead of overflowing horizontally. Tier 4 (2026-04-30). */
   .disclaimer-wrap {
-    padding: 6px 16px;
+    padding: 6px 12px;
+    gap: 4px;
+  }
+
+  .disclaimer-btn {
+    font-size: 0.8rem;
+  }
+
+  .disclaimer-dismiss {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px 10px;
+    font-size: 1rem;
+    color: #6b7280;
+  }
+
+  .disclaimer-popup {
+    left: 8px;
+    right: 8px;
+    max-width: none;
   }
 
   /* Single-row topbar on mobile: compact title + Help icon only. */

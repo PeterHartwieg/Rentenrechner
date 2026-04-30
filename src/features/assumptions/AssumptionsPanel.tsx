@@ -1,6 +1,9 @@
+import '../../ui/forms.css'
 import './AssumptionsPanel.css'
 import type { GermanRules } from '../../domain';
 import { formatCurrency, formatPercent } from '../../utils/format';
+import { InfoTip } from '../../ui/InfoTip';
+import { getTerm } from '../../content/terms';
 
 interface AssumptionsPanelProps {
   show: boolean;
@@ -18,17 +21,19 @@ export function AssumptionsPanel({
   bavMinMonthly,
 }: AssumptionsPanelProps) {
   return (
-    <section className="assumptions-section">
-      <button
-        type="button"
-        className="assumptions-toggle"
-        onClick={onToggle}
-        aria-expanded={show}
-      >
-        Regelwerte & Quellen 2026 {show ? '▲' : '▼'}
-      </button>
-      {show && (
-        <div className="assumptions-content">
+    <details
+      className="disclosure-section assumptions-section"
+      open={show}
+      onToggle={(event) => {
+        const isOpen = (event.currentTarget as HTMLDetailsElement).open
+        if (isOpen !== show) onToggle()
+      }}
+    >
+      <summary>
+        <span className="disclosure-toggle">Regelwerte &amp; Quellen 2026</span>
+        <span className="disclosure-recap">BMF · DRV · GKV-SV</span>
+      </summary>
+      <div className="disclosure-content assumptions-content">
           <div className="assumptions-group">
             <h3>Einkommensteuer 2026</h3>
             <dl>
@@ -76,7 +81,7 @@ export function AssumptionsPanel({
               <div><dt>Abgeltungsteuer</dt><dd>{formatPercent(rules.capitalGains.taxRate)} · <a href="https://www.gesetze-im-internet.de/estg/__32d.html" target="_blank" rel="noreferrer">EStG §32d</a></dd></div>
               <div><dt>Solidaritätszuschlag</dt><dd>{formatPercent(rules.capitalGains.solidarityRate)}</dd></div>
               <div><dt>Sparerpauschbetrag</dt><dd>{formatCurrency(rules.capitalGains.saverAllowance, 0)} EUR/Jahr · <a href="https://www.gesetze-im-internet.de/estg/__20.html" target="_blank" rel="noreferrer">EStG §20 Abs. 9</a></dd></div>
-              <div><dt>Basiszins 2026 (Vorabpauschale)</dt><dd>{formatPercent(rules.capitalGains.basiszins)} · <a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Investmentsteuer/2026-01-13-basiszins-berechnung-vorabpauschale.html" target="_blank" rel="noreferrer">BMF 2026-01-13</a> · <a href="https://www.gesetze-im-internet.de/invstg_2018/__18.html" target="_blank" rel="noreferrer">InvStG §18</a></dd></div>
+              <div><dt>Basiszins 2026 (Vorabpauschale) <InfoTip text={getTerm('vorabpauschale')!.shortHelp} label="Vorabpauschale erklären" /></dt><dd>{formatPercent(rules.capitalGains.basiszins)} · <a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Investmentsteuer/2026-01-13-basiszins-berechnung-vorabpauschale.html" target="_blank" rel="noreferrer">BMF 2026-01-13</a> · <a href="https://www.gesetze-im-internet.de/invstg_2018/__18.html" target="_blank" rel="noreferrer">InvStG §18</a></dd></div>
             </dl>
           </div>
 
@@ -92,8 +97,7 @@ export function AssumptionsPanel({
               Die tatsächliche Rente hängt von der vollständigen Erwerbsbiografie ab.
             </p>
           </div>
-        </div>
-      )}
-    </section>
+      </div>
+    </details>
   );
 }

@@ -1,45 +1,7 @@
+/* Outer .disclosure-section provides border, summary chrome, and chevron;
+   only inner glossary-specific styles live here. Tier 4 (2026-04-30). */
 .glossary-panel {
   margin-bottom: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #f8fafc;
-}
-
-.glossary-panel > summary {
-  padding: 7px 10px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-  user-select: none;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.glossary-panel > summary::-webkit-details-marker {
-  display: none;
-}
-
-.glossary-panel > summary::before {
-  content: '▸';
-  font-size: 0.7rem;
-  transition: transform 0.15s;
-}
-
-.glossary-panel[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-.glossary-count {
-  margin-left: auto;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: #64748b;
-  background: #e2e8f0;
-  padding: 1px 7px;
-  border-radius: 9px;
 }
 
 .glossary-intro {

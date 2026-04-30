@@ -14,9 +14,11 @@ import type {
 } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { BavWaterfall } from '../../ui/BavWaterfall'
+import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { BAV_FEE_PRESETS } from '../../app/productPresentation'
 import { careEmployeeRateForChildren } from '../../engine/salary'
+import { getTerm } from '../../content/terms'
 
 type Props = {
   assumptions: ScenarioAssumptions
@@ -277,6 +279,11 @@ export function BavInputs({
             <h3>bAV-Rentenphase</h3>
             <p>Grenzsteuer- und GRV-Optionen für die Auszahlungsphase.</p>
           </div>
+          <p className="field-hint">
+            bAV-Renten profitieren in der Einkommensteuer vom Versorgungsfreibetrag
+            <InfoTip text={getTerm('versorgungsfreibetrag')!.shortHelp} label="Versorgungsfreibetrag erklären" />
+            {' '}— der Wert ist im Modell automatisch berücksichtigt.
+          </p>
 
           <div className="field-grid">
             <NumberField
@@ -336,7 +343,10 @@ export function BavInputs({
                     }))
                   }
                 />
-                <span>Pflichtversicherter Rentner (KVdR)</span>
+                <span>
+                  Pflichtversicherter Rentner (KVdR)
+                  <InfoTip text={getTerm('kvdr')!.shortHelp} label="KVdR erklären" />
+                </span>
               </label>
               {(() => {
                 const grossPayout = bavProduct?.grossMonthlyPayout ?? 0
@@ -363,7 +373,10 @@ export function BavInputs({
           )}
 
           <label className="field">
-            <span>bAV-Vertragsart (Durchführungsweg)</span>
+            <span>
+              bAV-Vertragsart (Durchführungsweg)
+              <InfoTip text={getTerm('durchfuehrungsweg')!.shortHelp} label="Durchführungsweg erklären" />
+            </span>
             <select
               value={assumptions.bav.durchfuehrungsweg}
               onChange={(event) =>

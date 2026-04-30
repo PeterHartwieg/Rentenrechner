@@ -392,6 +392,15 @@ export const TERMS_LIST: Term[] = [
     category: 'steuer-sv',
   },
   {
+    id: 'vorabpauschale',
+    plainLabel: 'Vorabpauschale',
+    expertLabel: 'Vorabpauschale §18 InvStG',
+    shortHelp:
+      'Jährliche Mindest­besteuerung thesaurierender ETFs. Kleiner Betrag (Basiszins × 70 % × Fonds­wert) wird wie eine Auszahlung versteuert; der bezahlte Betrag wird beim Verkauf gegen­gerechnet, damit nichts doppelt versteuert wird.',
+    legalReference: '§18 InvStG',
+    category: 'steuer-sv',
+  },
+  {
     id: 'fuenftelregelung',
     plainLabel: 'Fünftel­regelung',
     expertLabel: 'Fünftel­regelung §34 EStG',

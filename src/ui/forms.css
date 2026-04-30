@@ -100,14 +100,21 @@
   font-size: 0.82rem;
 }
 
-/* Erweitert (advanced) disclosure sections */
-.erweitert-section {
+/* Unified progressive-disclosure pattern.
+   Used by per-product "Erweitert" blocks AND sidebar panels (Glossar,
+   Szenarien-Vorlagen, Gespeicherte Szenarien, Regelwerte). The ▶ rotates 90°
+   on open; .disclosure-toggle is the bold label, .disclosure-recap is the
+   muted derived recap shown to the right. Tier 4 (2026-04-30). */
+.erweitert-section,
+.disclosure-section {
   border: 1px solid #e5ebf2;
   border-radius: 6px;
   margin: 6px 0;
+  background: #ffffff;
 }
 
-.erweitert-section > summary {
+.erweitert-section > summary,
+.disclosure-section > summary {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -118,15 +125,18 @@
   font-size: 0.82rem;
 }
 
-.erweitert-section > summary::-webkit-details-marker {
+.erweitert-section > summary::-webkit-details-marker,
+.disclosure-section > summary::-webkit-details-marker {
   display: none;
 }
 
-.erweitert-section > summary::marker {
+.erweitert-section > summary::marker,
+.disclosure-section > summary::marker {
   content: '';
 }
 
-.erweitert-section > summary::before {
+.erweitert-section > summary::before,
+.disclosure-section > summary::before {
   content: '▶';
   font-size: 0.6rem;
   color: #2563eb;
@@ -136,22 +146,27 @@
   transition: transform 0.12s;
 }
 
-.erweitert-section[open] > summary::before {
+.erweitert-section[open] > summary::before,
+.disclosure-section[open] > summary::before {
   transform: rotate(90deg);
 }
 
-.erweitert-toggle {
+.erweitert-toggle,
+.disclosure-toggle {
   font-size: 0.82rem;
   font-weight: 700;
   color: #2563eb;
 }
 
-.erweitert-assumption {
+.erweitert-assumption,
+.disclosure-recap {
   font-size: 0.78rem;
   color: #667085;
+  margin-left: auto;
 }
 
-.erweitert-content {
+.erweitert-content,
+.disclosure-content {
   padding: 6px 12px 12px;
   display: flex;
   flex-direction: column;
