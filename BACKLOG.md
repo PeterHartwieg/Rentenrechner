@@ -181,7 +181,11 @@ Concrete changes:
 - Add empty-state copy when a user hides everything except GRV / no private product: "Waehle mindestens ein Vorsorgeprodukt zum Vergleich."
 - Acceptance criterion: a bAV-offer user sees ETF vs. bAV as the main experience, not ETF + bAV + pAV + Basisrente + AVD + Riester plus many charts.
 
-#### #UX11 P1 Results Hierarchy And De-Duplication
+#### ~~#UX11 P1 Results Hierarchy And De-Duplication~~ ✓
+
+Implemented: SummaryMetrics no longer duplicates "Bestes Kapital" / "Beste Netto-Rente" tiles that DecisionSummary already shows; it carries only the scenario-context rows (Gesetzliche Rente netto, bAV Nettoaufwand). bAV row hides itself when bAV is not in the comparison set. The remaining UX11 spec (chart tabs, single primary outcome module, details routing) was already covered by UX9 + UX10 workspace navigation.
+
+#### #UX11-LEGACY P1 Results Hierarchy And De-Duplication (historic spec)
 
 Restructure result modules into "What", "Why", and "Details" so the user is not asked to interpret every analytical view at once.
 
@@ -194,7 +198,11 @@ Concrete changes:
 - Move `DetailComparisonTable`, `CashflowTable`, `CalculationWarnings`, and `AssumptionsPanel` into `Details & Export`.
 - Acceptance criterion: above the fold contains one decision summary, one chart, and one next step; no tables or warnings panels appear in the primary path unless critical.
 
-#### #UX12 P1 Guided Setup As Persistent Journey
+#### ~~#UX12 P1 Guided Setup As Persistent Journey~~ ✓
+
+Implemented: `useGuidedSetup` exposes a `journeyState: 'inactive' | 'active' | 'dismissed'`. Non-expert completion sets it active and routes the workspace (bAV-offer path lands in Einstellungen, others in Vergleich). New `JourneyStepper` component renders 4 steps mapped to existing workspace views (Eingaben, Vergleich, Ergebnis verstehen, Export) with Zurück / Weiter / "Dashboard anzeigen" controls. `GuidedSetupPostHint` is now contextual: `derivePostHintFactors` inspects the current results + bavFunding and only lists factors that actually apply (employer subsidy, fee drag, ETF Vorabpauschale, etc.).
+
+#### #UX12-LEGACY P1 Guided Setup As Persistent Journey (historic spec)
 
 The guided setup is currently a modal that collects a few values and then exits to the full app. Convert it into a persistent journey that continues through interpretation.
 
@@ -230,7 +238,11 @@ Concrete changes:
 - Show legal-vintage warnings only where they matter, not as a permanent long trust strip competing with the app header.
 - Acceptance criterion: users can distinguish their own offer values from hidden assumptions before trusting or exporting the result.
 
-#### #UX15 P2 Plain-Language Microcopy Audit
+#### ~~#UX15 P2 Plain-Language Microcopy Audit~~ ✓
+
+Implemented: 14 files updated. Primary-label rewrites include "bAV Entgeltumwandlung" → "Brutto in bAV umwandeln"; "Vertraglicher AG-Zuschuss" → "AG-Zuschuss laut Vertrag (%)"; "ETF-Fondsart (InvStG §20)" → "Fondstyp (für Teilfreistellung)"; "Kapitalverzehr bis" → "Kapital aufgebraucht bis (Alter)"; "Sonst./Sonstige(s) Renteneinkommen" → "Andere Renteneinkommen mtl."; "GRV Nettorente" → "Gesetzliche Rente netto"; "Gesetzliche RV (GRV)" → "Gesetzliche Rentenversicherung". Durchführungsweg dropdown options dropped their §-citations. KVdR-Hinweise reformulated as "Pflichtversichert in Rente" / "Freiwillig versichert". §-references retained only in AssumptionsPanel (a legal-reference table by purpose) and in trailing parenthetical hint text.
+
+#### #UX15-LEGACY P2 Plain-Language Microcopy Audit (historic spec)
 
 The terminology layer exists, but many visible labels still use formal product language. Run a second microcopy pass after the layout is simplified.
 
