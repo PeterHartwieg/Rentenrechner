@@ -41,6 +41,9 @@ export function validateProfile(input: unknown): PersonalProfile | null {
   if (!inRange(p.healthAdditionalContributionPct, 0, 10)) return null
   if (!inRange(p.pkvMonthlyPremium, 0, 10_000)) return null
   if (!inRange(p.pPVMonthlyPremium, 0, 10_000)) return null
+  if (p.desiredNetMonthlyPension !== undefined) {
+    if (!inRange(p.desiredNetMonthlyPension, 0, 100_000)) return null
+  }
   return p
 }
 

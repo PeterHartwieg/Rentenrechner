@@ -3,12 +3,14 @@ import { Fragment, useMemo } from 'react'
 import type { ProductId, PersonalProfile, ScenarioAssumptions } from '../../domain'
 import { de2026Rules } from '../../rules/de2026'
 import { getProductMeta } from '../../app/productPresentation'
-import { runSensitivity, type RobustnessBadge } from './sensitivity'
+import { runSensitivity, type RobustnessBadge, type SensitivityRunResult } from './sensitivity'
 
 interface Props {
   profile: PersonalProfile
   assumptions: ScenarioAssumptions
   visibleProducts: ProductId[]
+  /** Optional precomputed result — when provided, the panel skips its own simulation. */
+  precomputed?: SensitivityRunResult
 }
 
 const BADGE_LABEL: Record<RobustnessBadge, string> = {
@@ -34,11 +36,15 @@ function ProductPill({
   )
 }
 
-export function SensitivityPanel({ profile, assumptions, visibleProducts }: Props) {
+export function SensitivityPanel({ profile, assumptions, visibleProducts, precomputed }: Props) {
   // Re-running 9 simulations is non-trivial — memoize on the inputs that matter.
+  // When App.tsx already computed it (so DecisionSummary can render the personalised
+  // caveat from the same data), reuse that result.
   const result = useMemo(
-    () => runSensitivity({ profile, assumptions, rules: de2026Rules, visibleProducts }),
-    [profile, assumptions, visibleProducts],
+    () =>
+      precomputed ??
+      runSensitivity({ profile, assumptions, rules: de2026Rules, visibleProducts }),
+    [precomputed, profile, assumptions, visibleProducts],
   )
 
   if (visibleProducts.length === 0) return null

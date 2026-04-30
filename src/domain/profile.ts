@@ -18,6 +18,14 @@ export interface PersonalProfile {
   // Employer pays §257 SGB V subsidy (half the premium, capped at GKV employer equivalent).
   pkvMonthlyPremium: number
   pPVMonthlyPremium: number
+  /**
+   * Optional Wunschnetto: target net monthly pension in EUR. When set, the
+   * Vergleichs-Übersicht renders a Lücke card (Wunsch − GRV-Netto) and shows
+   * how much of the gap each visible product fills.
+   * Captured by the Rentenlücke guided-setup path; users can leave it 0/undefined
+   * if they don't want a target.
+   */
+  desiredNetMonthlyPension?: number
 }
 
 export interface ReturnScenario {

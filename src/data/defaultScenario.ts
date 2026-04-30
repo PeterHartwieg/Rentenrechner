@@ -14,6 +14,9 @@ export const defaultProfile: PersonalProfile = {
   // 28-year-old; users should enter their actual premium from their PKV offer.
   pkvMonthlyPremium: 0,
   pPVMonthlyPremium: 0,
+  // 0 = "no target set". Storage's mergeDeep cannot round-trip an `undefined`
+  // default, so we use 0 as the sentinel and DecisionSummary checks `> 0`.
+  desiredNetMonthlyPension: 0,
 }
 
 // Exported separately so tests can import without pulling the whole defaultAssumptions object.

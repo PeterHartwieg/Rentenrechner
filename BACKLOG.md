@@ -13,13 +13,12 @@ Legal/rules research lives in `LEGAL_REVIEW.md` and `TAX_SOCIAL_SECURITY_2026_RE
 
 ## Current Focus
 
-**Group UX Tier 1 + Tier 2 shipped (Tier 1 in commit 670af83, Tier 2 in 2026-04-30).** See `Group UX → Tier 3/4` below for the deferred follow-ups. Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
+**Group UX Tier 1, Tier 2, Tier 3 all shipped (Tier 1 in commit 670af83, Tier 2 in 23d1b88, Tier 3 in 2026-04-30).** See `Group UX → Tier 4` below for the optional polish backlog. Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
 
 Recommended next pickup, in priority order:
 
-1. **Group UX Tier 3** — personalisation (sensitivity caveat, Wunschnetto, EP question replacement).
-2. **Group UX Tier 4** — polish, optional.
-3. **Group F (later analytical/publishing)** — Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
+1. **Group UX Tier 4** — polish, optional.
+2. **Group F (later analytical/publishing)** — Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
 
 Groups B (multi-sleeve allocation), D (saved scenarios + PDF), and E (retirement-income refinements) are complete or have only optional remainders.
 
@@ -62,13 +61,11 @@ Goal: a non-technical user reaches the decision summary in under one screen of s
 - ~~**Trim `DecisionSummary` product-reason cards**~~ ✓ Already filtered — `selectedResults` flows through `useSimulationViewModel` and is filtered to `assumptions.visibleProducts`. Verified during Tier 2 audit.
 - ~~**Topbar height on mobile**~~ ✓ 174 px → 53 px. Eyebrow paragraph hidden, title set to `nowrap` with ellipsis, Help button collapsed to icon-only on mobile.
 
-#### Tier 3 — personalisation (open)
+#### Tier 3 — personalisation ✓ (shipped 2026-04-30)
 
-Higher-effort improvements that depend on or amplify Tier 2.
-
-- **Personal sensitivity caveat** instead of generic copy. Replace the static "Hebel mit grösstem Einfluss…" string with output from `sensitivity.ts`: e.g. *"Wenn die Rendite 1 % niedriger ausfällt, gewinnt bAV. Wenn der AG-Zuschuss wegfällt, gewinnt ETF deutlich."* The data is already computed for the `Warum` tab; surface the top one or two flips above the chart instead of behind a tab. Touches: `DecisionSummary.tsx`, `decisionLogic.ts`.
-- **"Wunschnetto" on the Rentenlücke path**. Today the path doesn't actually compute or render a gap — it shows winner pills. Add an optional input "Was möchtest du im Monat haben?" → render `GRV-Netto + Wunschnetto = Lücke X €/Monat` and rank products by gap-fill. Touches: `GuidedSetup.tsx`, new metric in `DecisionSummary`.
-- **Replace "Aktuelle Entgeltpunkte" guided question**. A non-technical user does not know their EP. Either drop the field (back-calculate from gross × years) or replace with "Wie viele Jahre arbeitest du schon?". Touches: `GuidedSetup.tsx`, `GRV` defaults.
+- ~~**Personal sensitivity caveat**~~ ✓ `runSensitivity` is now lifted to `App.tsx` and memoized; both `DecisionSummary` and `SensitivityPanel` consume the same result. New `personalSensitivityCaveat` in `decisionLogic.ts` returns one of `robust` / `flips` / `volatile` / `insufficient`. The static "Hebel mit grösstem Einfluss…" line is gone — the callout now reads e.g. *"Stabil: Keiner der getesteten Hebel ändert den Sieger."* or *"Diese Hebel kippen den Sieger: → Wenn die Rendite 1 pp niedriger ausfällt → gewinnt „ETF-Depot"."*
+- ~~**Wunschnetto on the Rentenlücke path**~~ ✓ New optional `desiredNetMonthlyPension` field on `PersonalProfile` (default 0; 0 = "no target"). Captured by the rentengap path's "Was möchtest du im Monat haben? (optional)" input. When set, `DecisionSummary` renders a Lücke callout: `Wunsch − GRV-Netto = Lücke`, plus a per-visible-product gap-fill list ("ETF deckt 120 % der Lücke", "bAV füllt 90 %"). Storage gotcha: `mergeDeep` cannot round-trip an `undefined` default (typeof mismatch), so we use `0` as the sentinel.
+- ~~**Replace "Aktuelle Entgeltpunkte" guided question**~~ ✓ rentengap path now asks "Wie viele Jahre arbeitest du schon?" with a live-derived "≈ N,N Entgeltpunkte (geschätzt)" hint. `estimateEpFromYears(years, salary)` uses the same `min(salary, BBG) / durchschnittsentgelt` formula the engine uses for future EP, so the back-calculation matches the projection logic. Reopening the wizard reverse-engineers years from existing EP via `estimateYearsFromEp`.
 
 #### Tier 4 — polish (optional)
 

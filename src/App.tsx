@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { HelpCircle, Info, RotateCcw, Settings } from 'lucide-react'
 import type { ProductId } from './domain'
 import { NumberField } from './ui/NumberField'
@@ -28,6 +28,7 @@ import { DecisionSummary } from './features/results/DecisionSummary'
 import { ProductEditCards } from './features/results/ProductEditCards'
 import { ResultWaterfalls } from './features/results/ResultWaterfall'
 import { SensitivityPanel } from './features/results/SensitivityPanel'
+import { runSensitivity } from './features/results/sensitivity'
 import { CapitalChart } from './features/results/CapitalChart'
 import { PensionChart } from './features/results/PensionChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
@@ -120,6 +121,18 @@ function App() {
   const showAvd = visibleSet.has('altersvorsorgedepot')
   const showRiester = visibleSet.has('riester')
   const hasComparisonSet = assumptions.visibleProducts.length > 0
+
+  // Sensitivity simulation lifted from SensitivityPanel so DecisionSummary can render
+  // a personalised caveat from the same data. Memoized on inputs that affect the result.
+  const sensitivityResult = useMemo(() => {
+    if (!hasComparisonSet) return undefined
+    return runSensitivity({
+      profile,
+      assumptions,
+      rules: de2026Rules,
+      visibleProducts: assumptions.visibleProducts,
+    })
+  }, [profile, assumptions, hasComparisonSet])
 
   const scenarioToolbar = (
     <div className="toolbar">
@@ -401,6 +414,9 @@ function App() {
             results={selectedResults}
             bestCapital={bestCapital}
             bestPension={bestPension}
+            sensitivity={sensitivityResult}
+            grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+            desiredNetMonthlyPension={profile.desiredNetMonthlyPension}
           />
 
           <SummaryMetrics
@@ -446,6 +462,7 @@ function App() {
             profile={profile}
             assumptions={assumptions}
             visibleProducts={assumptions.visibleProducts}
+            precomputed={sensitivityResult}
           />
 
           <section className="split-panels">

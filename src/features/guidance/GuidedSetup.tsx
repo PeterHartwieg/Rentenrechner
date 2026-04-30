@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ArrowRight, Check, ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { PersonalProfile, ProductId, ScenarioAssumptions } from '../../domain'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
+import { de2026Rules } from '../../rules/de2026'
 
 export type GuidedPath = 'bav_offer' | 'etf_vs_insurance' | 'rentengap' | 'expert'
 
@@ -69,7 +70,14 @@ interface PathSpecific {
   bavGrossConversion: number
   bavContractualMatchPct: number
   etfTerPct: number
-  currentEntgeltpunkte: number
+  /**
+   * Years already worked under the GRV. We back-calculate Entgeltpunkte from
+   * `years × min(salary, BBG) / durchschnittsentgelt` — same formula the engine
+   * uses for the future-EP projection. Direct EP entry is unfriendly to non-experts.
+   */
+  yearsWorked: number
+  /** Wunschnetto: target net monthly pension. 0/undefined skips the Lücke card. */
+  desiredNetMonthlyPension: number
 }
 
 interface Props {
@@ -101,7 +109,13 @@ export function GuidedSetup({
     bavGrossConversion: assumptions.bav.monthlyGrossConversion,
     bavContractualMatchPct: assumptions.bav.contractualMatchPercent * 100,
     etfTerPct: assumptions.etf.annualAssetFee * 100,
-    currentEntgeltpunkte: assumptions.statutoryPension.currentEntgeltpunkte ?? 0,
+    // Reverse-engineer years worked from existing EP if state was already set,
+    // so reopening the wizard doesn't reset the user's number.
+    yearsWorked: estimateYearsFromEp(
+      assumptions.statutoryPension.currentEntgeltpunkte ?? 0,
+      profile.grossSalaryYear,
+    ),
+    desiredNetMonthlyPension: profile.desiredNetMonthlyPension ?? 0,
   })
 
   function pickPath(p: GuidedPath) {
@@ -122,7 +136,16 @@ export function GuidedSetup({
       retirementAge: basics.retirementAge,
       grossSalaryYear: basics.grossSalaryYear,
       publicHealthInsurance: basics.publicHealthInsurance,
+      desiredNetMonthlyPension:
+        path === 'rentengap' && extras.desiredNetMonthlyPension > 0
+          ? extras.desiredNetMonthlyPension
+          : profile.desiredNetMonthlyPension,
     }
+
+    const backCalculatedEp =
+      path === 'rentengap'
+        ? estimateEpFromYears(extras.yearsWorked, basics.grossSalaryYear)
+        : assumptions.statutoryPension.currentEntgeltpunkte
 
     const nextAssumptions: ScenarioAssumptions = {
       ...defaultAssumptions,
@@ -146,10 +169,7 @@ export function GuidedSetup({
       },
       statutoryPension: {
         ...assumptions.statutoryPension,
-        currentEntgeltpunkte:
-          path === 'rentengap'
-            ? extras.currentEntgeltpunkte
-            : assumptions.statutoryPension.currentEntgeltpunkte,
+        currentEntgeltpunkte: backCalculatedEp,
       },
     }
 
@@ -312,17 +332,32 @@ export function GuidedSetup({
               )}
 
               {path === 'rentengap' && (
-                <SimpleNumber
-                  label="Aktuelle Entgeltpunkte"
-                  value={extras.currentEntgeltpunkte}
-                  min={0}
-                  max={70}
-                  step={0.5}
-                  onChange={(value) =>
-                    setExtras((e) => ({ ...e, currentEntgeltpunkte: value }))
-                  }
-                  suffix="EP"
-                />
+                <>
+                  <SimpleNumber
+                    label="Wie viele Jahre arbeitest du schon?"
+                    value={extras.yearsWorked}
+                    min={0}
+                    max={50}
+                    step={1}
+                    onChange={(value) =>
+                      setExtras((e) => ({ ...e, yearsWorked: value }))
+                    }
+                    suffix="Jahre"
+                    hint={`≈ ${estimateEpFromYears(extras.yearsWorked, basics.grossSalaryYear).toFixed(1)} Entgeltpunkte (geschätzt)`}
+                  />
+                  <SimpleNumber
+                    label="Was möchtest du im Monat haben? (optional)"
+                    value={extras.desiredNetMonthlyPension}
+                    min={0}
+                    max={20_000}
+                    step={100}
+                    onChange={(value) =>
+                      setExtras((e) => ({ ...e, desiredNetMonthlyPension: value }))
+                    }
+                    suffix="EUR netto"
+                    hint="Wunschnetto in der Rente — wir zeigen dir die Lücke."
+                  />
+                </>
               )}
             </div>
 
@@ -359,6 +394,7 @@ function SimpleNumber({
   max,
   step = 1,
   suffix,
+  hint,
   onChange,
 }: {
   label: string
@@ -367,6 +403,7 @@ function SimpleNumber({
   max?: number
   step?: number
   suffix?: string
+  hint?: string
   onChange: (value: number) => void
 }) {
   return (
@@ -386,8 +423,44 @@ function SimpleNumber({
         />
         {suffix && <em>{suffix}</em>}
       </div>
+      {hint && <small className="guided-field-hint">{hint}</small>}
     </label>
   )
+}
+
+/**
+ * Back-calculate Entgeltpunkte from years worked × current gross salary.
+ * EP/year = min(salary, BBG) / durchschnittsentgelt — same formula the engine uses
+ * for future EP. Rough by construction (assumes constant salary), but consistent.
+ */
+function estimateEpFromYears(years: number, grossSalaryYear: number): number {
+  if (!Number.isFinite(years) || years <= 0) return 0
+  if (!Number.isFinite(grossSalaryYear) || grossSalaryYear <= 0) return 0
+  const cappedSalary = Math.min(
+    grossSalaryYear,
+    de2026Rules.socialSecurity.pensionCapYear,
+  )
+  const epPerYear =
+    de2026Rules.socialSecurity.durchschnittsentgelt > 0
+      ? cappedSalary / de2026Rules.socialSecurity.durchschnittsentgelt
+      : 0
+  return Math.max(0, years * epPerYear)
+}
+
+/** Inverse of estimateEpFromYears, used to seed the years-worked field from existing state. */
+function estimateYearsFromEp(ep: number, grossSalaryYear: number): number {
+  if (!Number.isFinite(ep) || ep <= 0) return 0
+  if (!Number.isFinite(grossSalaryYear) || grossSalaryYear <= 0) return 0
+  const cappedSalary = Math.min(
+    grossSalaryYear,
+    de2026Rules.socialSecurity.pensionCapYear,
+  )
+  const epPerYear =
+    de2026Rules.socialSecurity.durchschnittsentgelt > 0
+      ? cappedSalary / de2026Rules.socialSecurity.durchschnittsentgelt
+      : 0
+  if (epPerYear <= 0) return 0
+  return Math.round(ep / epPerYear)
 }
 
 interface PostHintProps {
