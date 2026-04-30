@@ -18,8 +18,8 @@ type Props = {
 };
 
 const BASELINE_LABELS: Record<PensionBaselineType, string> = {
-  grv: 'Gesetzliche RV (GRV)',
-  versorgungswerk: 'Berufsständ. Versorgungswerk',
+  grv: 'Gesetzliche Rentenversicherung',
+  versorgungswerk: 'Berufsständisches Versorgungswerk',
   beamtenpension: 'Beamtenversorgung',
   none: 'Keine',
 }
@@ -166,9 +166,9 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
           )}
 
           <p className="field-hint">
-            {baselineType === 'beamtenpension' ? 'Pension' : 'GRV/VW'} netto
+            {baselineType === 'beamtenpension' ? 'Pension' : 'Rente'} netto
             {baselineType === 'grv' || baselineType === 'versorgungswerk'
-              ? ' (KVdR/Versorgungsbezug)'
+              ? ' (nach Steuer und KV/PV)'
               : ''}
             :{' '}
             <strong>{formatCurrency(statutoryPensionResult.netMonthlyPension, 0)}/Monat</strong>
@@ -221,7 +221,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
               <p className="field-hint">
                 {baselineType === 'beamtenpension'
                   ? 'Jährliche Steigerung der Pension bis Rentenbeginn (Besoldungserhöhungen). Historisch ca. 2 % p.a.'
-                  : 'Jährliches Wachstum des Rentenwerts bis Rentenbeginn (§69 SGB VI). Historisch ca. 2–3 % p.a. (nominell).'}
+                  : 'Jährliches Wachstum des Rentenwerts bis Rentenbeginn. Historisch ca. 2–3 % p.a. (nominell).'}
                 {(isManual || baselineType === 'beamtenpension') && (
                   <> Wird auf den Auskunftswert angewendet.</>
                 )}
@@ -248,7 +248,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                     <h3>Beiträge (für Rürup-Schicht-1-Cap)</h3>
                   </div>
                   <p className="field-hint">
-                    Ihre VW-Beiträge zählen nach §10 Abs. 3 Nr. 2 EStG wie GRV-Beiträge zum Schicht-1-Höchstbetrag.
+                    Versorgungswerk-Beiträge zählen wie Rentenversicherungsbeiträge zum Schicht-1-Höchstbetrag für die Basisrente (§10 Abs. 3 Nr. 2 EStG).
                     Tragen Sie Ihre tatsächlichen Monatsbeiträge ein.
                   </p>
                   <NumberField

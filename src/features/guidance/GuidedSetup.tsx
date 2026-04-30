@@ -324,8 +324,8 @@ export function GuidedSetup({
             </div>
 
             <p className="guided-setup-note">
-              Standardannahme: bAV als Direktversicherung (§3 Nr. 63 EStG), lebenslange Rente,
-              KVdR-pflichtversichert in der Rente. Diese und weitere Punkte kannst du im
+              Standardannahme: bAV als Direktversicherung, lebenslange Rente,
+              gesetzlich pflichtversichert in der Rente. Diese und weitere Punkte kannst du im
               Dashboard pro Produkt anpassen.
             </p>
 

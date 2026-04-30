@@ -35,11 +35,11 @@ export function RiesterInputs({
   return (
     <>
       <div className="subsection-heading">
-        <h3>Riester (Schicht 2, Altvertrag)</h3>
+        <h3>Riester (Altvertrag)</h3>
         <p>
-          Bestehender Riester-Altersvorsorgevertrag nach altem Recht (§82–§93, §10a EStG).
-          Keine Neuverträge ab 2027. Auszahlung vollständig steuerpflichtig (§22 Nr. 5 EStG).
-          Bis zu 30% des Kapitals als Einmalbetrag zu Rentenbeginn möglich (§93 Abs. 2 EStG).
+          Bestehender Riester-Altersvorsorgevertrag nach altem Recht.
+          Keine Neuverträge ab 2027. Auszahlung vollständig steuerpflichtig.
+          Bis zu 30 % des Kapitals als Einmalbetrag zu Rentenbeginn möglich.
         </p>
       </div>
 
@@ -225,7 +225,7 @@ export function RiesterInputs({
           />
 
           <NumberField
-            label="Sonstiges Renteneinkommen"
+            label="Andere Renteneinkommen mtl."
             value={assumptions.riester.monthlyOtherRetirementIncome}
             min={0}
             step={100}

@@ -161,7 +161,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
       )}
       {!profile.publicHealthInsurance && (
         <p className="field-hint">
-          AG-Zuschuss §257 SGB V (steuerfrei):{' '}
+          AG-Zuschuss zur PKV (steuerfrei, §257 SGB V):{' '}
           {formatCurrency(pkv257SubsidyMonthly, 0)}/Monat.
           Netto-PKV-Kosten:{' '}
           {formatCurrency(pkvNetMonthlyCost, 0)}/Monat.

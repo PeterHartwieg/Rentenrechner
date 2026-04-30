@@ -86,7 +86,7 @@ export function PrintReport({ profile, assumptions, simulation }: Props) {
               </table>
             </td>
             <td className="pr-col-right">
-              <div className="pr-section-title">Gesetzliche Rente (GRV)</div>
+              <div className="pr-section-title">Gesetzliche Rente</div>
               <table className="pr-kv">
                 <tbody>
                   <KvRow label="Bruttorente">{formatCurrency(grv.grossMonthlyPension, 0)}/Monat</KvRow>
@@ -204,9 +204,10 @@ export function PrintReport({ profile, assumptions, simulation }: Props) {
             Sie einen unabhängigen Berater hinzuziehen.
           </li>
           <li>
-            <strong>Rechtsstand 2026:</strong> Steuersätze, BBG, GKV/PV-Beiträge und Rentenwert
-            sind auf den Stand 2026 fixiert (Quellen: BMF, Deutsche Rentenversicherung,
-            GKV-Spitzenverband). Tatsächliche Werte zum Renteneintritt können erheblich abweichen.
+            <strong>Rechtsstand 2026:</strong> Steuersätze, Sozialversicherungsbeiträge
+            und Rentenwert sind auf den Stand 2026 fixiert (Quellen: BMF, Deutsche
+            Rentenversicherung, GKV-Spitzenverband). Tatsächliche Werte zum Renteneintritt
+            können erheblich abweichen.
           </li>
           <li>
             <strong>Annahmen sind Schätzungen:</strong> Jahresrendite, Inflation, Gehaltsentwicklung,

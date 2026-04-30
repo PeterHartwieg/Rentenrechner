@@ -74,7 +74,7 @@ export function BavInputs({
     <>
       <div className="field-grid">
         <NumberField
-          label="bAV Entgeltumwandlung"
+          label="Brutto in bAV umwandeln"
           value={assumptions.bav.monthlyGrossConversion}
           min={0}
           step={25}
@@ -87,7 +87,7 @@ export function BavInputs({
           }
         />
         <NumberField
-          label="Vertraglicher AG-Zuschuss"
+          label="AG-Zuschuss laut Vertrag (%)"
           value={assumptions.bav.contractualMatchPercent * 100}
           min={0}
           max={100}
@@ -104,7 +104,7 @@ export function BavInputs({
           }
         />
         <NumberField
-          label="Vertraglicher AG-Festbetrag"
+          label="AG-Festbetrag laut Vertrag"
           value={assumptions.bav.contractualFixedMonthly}
           min={0}
           step={5}
@@ -128,7 +128,7 @@ export function BavInputs({
             }))
           }
         />
-        <span>Gesetzlicher AG-Pflichtzuschuss (§1a Abs. 1a BetrAVG)</span>
+        <span>Gesetzlicher AG-Pflichtzuschuss (15 % Ihres Beitrags)</span>
       </label>
       <p className="field-hint">
         Effektiver AG-Beitrag:{' '}
@@ -141,14 +141,14 @@ export function BavInputs({
         assumptions.bav.monthlyGrossConversion * 12 < bavMinAnnual && (
           <p className="field-warning">
             Unterschreitet das gesetzliche Minimum von {formatCurrency(bavMinAnnual, 2)}/Jahr
-            für den §1a-BetrAVG-Anspruch.
+            für den gesetzlichen Umwandlungsanspruch (§1a BetrAVG).
           </p>
         )}
       {assumptions.bav.monthlyGrossConversion > bavEntitlementMax && (
         <p className="field-warning">
           Überschreitet den gesetzlichen Entgeltumwandlungsanspruch (
-          {formatCurrency(bavEntitlementMax, 0)}/Monat = 4 % der BBG nach §1a BetrAVG). Höhere
-          Beträge erfordern Arbeitgebereinverständnis.
+          {formatCurrency(bavEntitlementMax, 0)}/Monat). Höhere Beträge erfordern
+          Arbeitgebereinverständnis (§1a BetrAVG: 4 % der Beitragsbemessungsgrenze).
         </p>
       )}
 
@@ -269,8 +269,7 @@ export function BavInputs({
           </label>
           {tarifgebunden && (
             <p className="field-warning">
-              Bei tarifgebundenem Arbeitsverhältnis kann die Entgeltumwandlung im Tarifvertrag
-              eingeschränkt oder ausgeschlossen sein (§17 Abs. 3 BetrAVG / §20 BetrAVG).
+              Bei Tarifvertrag kann die Entgeltumwandlung eingeschränkt oder ausgeschlossen sein — im Zweifel beim Arbeitgeber oder Betriebsrat nachfragen (BetrAVG §17 Abs. 3 / §20).
             </p>
           )}
 
@@ -281,7 +280,7 @@ export function BavInputs({
 
           <div className="field-grid">
             <NumberField
-              label="Sonst. Renteneinkommen"
+              label="Andere Renteneinkommen mtl."
               value={assumptions.bav.monthlyOtherRetirementIncome}
               min={0}
               step={50}
@@ -355,8 +354,8 @@ export function BavInputs({
                     KV-Basis: {formatCurrency(kvBase, 0)} · KV: {formatCurrency(kvMonthly, 0)} ·
                     PV: {formatCurrency(pvMonthly, 0)}{' '}
                     {kvdrMember
-                      ? '(KVdR: Freibetrag 197,75 EUR · §226 SGB V)'
-                      : '(freiwillig: volle Rente als Grundlage · §240 SGB V)'}
+                      ? '(Pflichtversichert in Rente: Freibetrag 197,75 EUR auf bAV-Rente)'
+                      : '(Freiwillig versichert: volle bAV-Rente als Beitragsgrundlage)'}
                   </p>
                 )
               })()}
@@ -377,22 +376,22 @@ export function BavInputs({
                 }))
               }
             >
-              <option value="direktversicherung_3_63">Direktversicherung (§3 Nr. 63 EStG, ab 2005)</option>
-              <option value="pensionskasse_3_63">Pensionskasse (§3 Nr. 63 EStG)</option>
-              <option value="pensionsfonds_3_63">Pensionsfonds (§3 Nr. 63 EStG)</option>
-              <option value="direktversicherung_40b_alt">Direktversicherung (§40b EStG a.F., vor 2005)</option>
-              <option value="direktzusage">Direktzusage (§19 EStG)</option>
-              <option value="unterstuetzungskasse">Unterstützungskasse (§19 EStG)</option>
+              <option value="direktversicherung_3_63">Direktversicherung (ab 2005)</option>
+              <option value="pensionskasse_3_63">Pensionskasse</option>
+              <option value="pensionsfonds_3_63">Pensionsfonds</option>
+              <option value="direktversicherung_40b_alt">Direktversicherung Altvertrag (vor 2005)</option>
+              <option value="direktzusage">Direktzusage</option>
+              <option value="unterstuetzungskasse">Unterstützungskasse</option>
             </select>
             <small className="field-hint">
               {bavLumpSumTaxMode === 'voll_versorgungsbezug' && (
-                <>Kapitalabfindung: voller Steuersatz nach §22 Nr. 5 EStG (keine Fünftelregelung).</>
+                <>Kapitalabfindung: voller persönlicher Steuersatz (keine Fünftelregelung). Rechtsgrundlage: §22 Nr. 5 EStG.</>
               )}
               {bavLumpSumTaxMode === 'fuenftelregelung' && (
-                <>Kapitalabfindung: Fünftelregelung §34 Abs. 2 Nr. 4 EStG anwendbar.</>
+                <>Kapitalabfindung: Fünftelregelung anwendbar — steuerliche Glättung der Einmalzahlung. Rechtsgrundlage: §34 Abs. 2 Nr. 4 EStG.</>
               )}
               {bavLumpSumTaxMode === 'pre2005_steuerfrei' && (
-                <>Kapitalabfindung: steuerfrei nach §52 Abs. 28 EStG a.F. KV/PV gilt weiterhin (§229 SGB V).</>
+                <>Kapitalabfindung: steuerfrei (Altvertrag vor 2005, Mindestlaufzeit erfüllt). KV/PV gilt weiterhin (§229 SGB V).</>
               )}
             </small>
           </label>
@@ -409,7 +408,7 @@ export function BavInputs({
                     }))
                   }
                 />
-                <span>Altvertrag steuerfrei nach §52 Abs. 28 EStG a.F. (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre, Kapitalleistung)</span>
+                <span>Altvertrag steuerfrei (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre, Kapitalleistung)</span>
               </label>
               {!assumptions.bav.pre2005EligibleTaxFree && (
                 <p className="field-hint">

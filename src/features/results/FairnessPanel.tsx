@@ -34,15 +34,15 @@ export function FairnessPanel({ profile, assumptions, bavFunding, rules }: Props
           <dd>
             {profile.publicHealthInsurance
               ? `GKV, Zusatzbeitrag ${profile.healthAdditionalContributionPct} %`
-              : `PKV, ${formatCurrency(profile.pkvMonthlyPremium, 0)} KV + ${formatCurrency(profile.pPVMonthlyPremium, 0)} pPV/Monat, AG-Zuschuss §257: ${formatCurrency(bavFunding.salaryWithoutBav.pkv257SubsidyMonthly, 0)}/Monat`}
+              : `PKV, ${formatCurrency(profile.pkvMonthlyPremium, 0)} KV + ${formatCurrency(profile.pPVMonthlyPremium, 0)} pPV/Monat, AG-Zuschuss zur PKV: ${formatCurrency(bavFunding.salaryWithoutBav.pkv257SubsidyMonthly, 0)}/Monat`}
           </dd>
         </div>
         <div>
           <dt>Steuervereinfachungen</dt>
           <dd>
             ETF-Einmalkapital ohne Sparerpauschbetrag; ETF-Entnahme mit jährlichem
-            Sparerpauschbetrag. bAV-Einmalkapital: §22 Nr. 5 EStG mit Fünftelregelung
-            §34 Abs. 2 Nr. 4 EStG; KV/PV nach §229 SGB V 1/120-Methode.
+            Sparerpauschbetrag. bAV-Einmalkapital: persönlicher Steuersatz (Fünftelregelung
+            für Direktzusage/UK); KV/PV nach 1/120-Methode (§229 SGB V).
           </dd>
         </div>
         <div>
@@ -85,10 +85,10 @@ export function FairnessPanel({ profile, assumptions, bavFunding, rules }: Props
                 <>
                   Gesamt {formatCurrency(totalMonthly, 0)} mtl.
                   {f.svLiableOverflowAnnual > 0 && (
-                    <> · SV-pflichtig: {formatCurrency(f.svLiableOverflowAnnual / 12, 0)} mtl. (über 4%-BBG {formatCurrency(svFreeMonthly, 0)})</>
+                    <> · SV-pflichtig: {formatCurrency(f.svLiableOverflowAnnual / 12, 0)} mtl. (Grenze: {formatCurrency(svFreeMonthly, 0)})</>
                   )}
                   {f.taxableOverflowAnnual > 0 && (
-                    <> · Steuerpflichtig: {formatCurrency(f.taxableOverflowAnnual / 12, 0)} mtl. (über 8%-BBG {formatCurrency(taxFreeMonthly, 0)})</>
+                    <> · Steuerpflichtig: {formatCurrency(f.taxableOverflowAnnual / 12, 0)} mtl. (Grenze: {formatCurrency(taxFreeMonthly, 0)})</>
                   )}
                 </>
               )

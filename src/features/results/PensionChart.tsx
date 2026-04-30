@@ -24,7 +24,7 @@ export function PensionChart({ pensionBars, retirementEndAge }: Props) {
         <Coins size={18} aria-hidden="true" />
         <div>
           <h2>Monatliche Netto-Rente</h2>
-          <p>Kapitalverzehr bis Alter {retirementEndAge}</p>
+          <p>Entnahme bis Alter {retirementEndAge}</p>
         </div>
       </div>
       <div className="chart-frame small">

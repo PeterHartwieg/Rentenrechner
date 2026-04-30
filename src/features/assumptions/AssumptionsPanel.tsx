@@ -45,12 +45,12 @@ export function AssumptionsPanel({
           <div className="assumptions-group">
             <h3>Sozialversicherung 2026</h3>
             <dl>
-              <div><dt>BBG Rente/AV</dt><dd>{formatCurrency(rules.socialSecurity.pensionCapYear, 0)} EUR/Jahr · <a href="https://www.bundesregierung.de/breg-de/aktuelles/beitragsgemessungsgrenzen-2386514" target="_blank" rel="noreferrer">Bundesregierung</a></dd></div>
-              <div><dt>BBG KV/PV</dt><dd>{formatCurrency(rules.socialSecurity.healthCareCapYear, 0)} EUR/Jahr</dd></div>
-              <div><dt>RV Arbeitnehmer/Arbeitgeber</dt><dd>{formatPercent(rules.socialSecurity.pensionEmployeeRate)} / {formatPercent(rules.socialSecurity.pensionEmployerRate)} · <a href="https://www.gesetze-im-internet.de/sgb_6/__158.html" target="_blank" rel="noreferrer">SGB VI §158</a></dd></div>
-              <div><dt>AV Arbeitnehmer/Arbeitgeber</dt><dd>{formatPercent(rules.socialSecurity.unemploymentEmployeeRate)} / {formatPercent(rules.socialSecurity.unemploymentEmployerRate)}</dd></div>
-              <div><dt>GKV allgemeiner Beitragssatz</dt><dd>{formatPercent(rules.socialSecurity.healthGeneralRate)} · <a href="https://www.gesetze-im-internet.de/sgb_5/__241.html" target="_blank" rel="noreferrer">SGB V §241</a></dd></div>
-              <div><dt>GKV ermäßigter Satz (VPS-Grundlage)</dt><dd>{formatPercent(rules.socialSecurity.healthReducedRate)} · <a href="https://www.gesetze-im-internet.de/sgb_5/__243.html" target="_blank" rel="noreferrer">SGB V §243</a></dd></div>
+              <div><dt>Beitragsbemessungsgrenze Rente/AV (BBG)</dt><dd>{formatCurrency(rules.socialSecurity.pensionCapYear, 0)} EUR/Jahr · <a href="https://www.bundesregierung.de/breg-de/aktuelles/beitragsgemessungsgrenzen-2386514" target="_blank" rel="noreferrer">Bundesregierung</a></dd></div>
+              <div><dt>Beitragsbemessungsgrenze KV/PV (BBG)</dt><dd>{formatCurrency(rules.socialSecurity.healthCareCapYear, 0)} EUR/Jahr</dd></div>
+              <div><dt>Rentenversicherung AN/AG</dt><dd>{formatPercent(rules.socialSecurity.pensionEmployeeRate)} / {formatPercent(rules.socialSecurity.pensionEmployerRate)} · <a href="https://www.gesetze-im-internet.de/sgb_6/__158.html" target="_blank" rel="noreferrer">SGB VI §158</a></dd></div>
+              <div><dt>Arbeitslosenversicherung AN/AG</dt><dd>{formatPercent(rules.socialSecurity.unemploymentEmployeeRate)} / {formatPercent(rules.socialSecurity.unemploymentEmployerRate)}</dd></div>
+              <div><dt>Krankenversicherung allgemeiner Beitragssatz</dt><dd>{formatPercent(rules.socialSecurity.healthGeneralRate)} · <a href="https://www.gesetze-im-internet.de/sgb_5/__241.html" target="_blank" rel="noreferrer">SGB V §241</a></dd></div>
+              <div><dt>Krankenversicherung ermäßigter Satz</dt><dd>{formatPercent(rules.socialSecurity.healthReducedRate)} · <a href="https://www.gesetze-im-internet.de/sgb_5/__243.html" target="_blank" rel="noreferrer">SGB V §243</a></dd></div>
               <div><dt>PV AN (kinderlos)</dt><dd>{formatPercent(rules.socialSecurity.careEmployeeChildlessRate)} · <a href="https://www.gesetze-im-internet.de/sgb_11/__55.html" target="_blank" rel="noreferrer">SGB XI §55</a></dd></div>
               <div><dt>PV AN (Grundsatz)</dt><dd>{formatPercent(rules.socialSecurity.careEmployeeBaseRate)}</dd></div>
               <div><dt>PV Arbeitgeber</dt><dd>{formatPercent(rules.socialSecurity.careEmployerRate)}</dd></div>
@@ -63,10 +63,10 @@ export function AssumptionsPanel({
           <div className="assumptions-group">
             <h3>bAV-Grenzen 2026</h3>
             <dl>
-              <div><dt>Steuerfreie Grenze (8 % BBG)</dt><dd>{formatCurrency(rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap, 0)} EUR/Jahr · <a href="https://www.gesetze-im-internet.de/estg/__3.html" target="_blank" rel="noreferrer">EStG §3 Nr. 63</a></dd></div>
-              <div><dt>SV-freie Grenze (4 % BBG)</dt><dd>{formatCurrency(rules.socialSecurity.pensionCapYear * rules.bav.socialSecurityFreePctOfPensionCap, 0)} EUR/Jahr · SvEV §1</dd></div>
-              <div><dt>Pflicht-AG-Zuschuss</dt><dd>{formatPercent(rules.bav.statutoryEmployerSubsidyPct)} (begrenzt auf AG-SV-Ersparnis) · <a href="https://www.gesetze-im-internet.de/betravg/__1a.html" target="_blank" rel="noreferrer">BetrAVG §1a</a></dd></div>
-              <div><dt>Mindest-Entgeltumwandlung (§1a-Anspruch)</dt><dd>{formatCurrency(bavMinAnnual, 2)} EUR/Jahr · {formatCurrency(bavMinMonthly, 2)} EUR/Monat</dd></div>
+              <div><dt>Steuerfreie Grenze bAV (8 % BBG)</dt><dd>{formatCurrency(rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap, 0)} EUR/Jahr · <a href="https://www.gesetze-im-internet.de/estg/__3.html" target="_blank" rel="noreferrer">EStG §3 Nr. 63</a></dd></div>
+              <div><dt>SV-freie Grenze bAV (4 % BBG)</dt><dd>{formatCurrency(rules.socialSecurity.pensionCapYear * rules.bav.socialSecurityFreePctOfPensionCap, 0)} EUR/Jahr · SvEV §1</dd></div>
+              <div><dt>Gesetzlicher Mindest-AG-Zuschuss bAV</dt><dd>{formatPercent(rules.bav.statutoryEmployerSubsidyPct)} (begrenzt auf AG-SV-Ersparnis) · <a href="https://www.gesetze-im-internet.de/betravg/__1a.html" target="_blank" rel="noreferrer">BetrAVG §1a</a></dd></div>
+              <div><dt>Mindest-Umwandlungsbetrag (§1a-Anspruch)</dt><dd>{formatCurrency(bavMinAnnual, 2)} EUR/Jahr · {formatCurrency(bavMinMonthly, 2)} EUR/Monat</dd></div>
             </dl>
           </div>
 
@@ -88,7 +88,7 @@ export function AssumptionsPanel({
               <div><dt>Zugangsfaktor / Rentenartfaktor</dt><dd>1,0 / 1,0 (vereinfacht: Regelaltersrente ohne Abschläge)</dd></div>
             </dl>
             <p className="assumptions-note">
-              Diese Schätzwerte dienen nur zur Abschätzung der GRV-Minderung durch Entgeltumwandlung.
+              Diese Schätzwerte dienen nur zur Abschätzung der gesetzlichen Rentenminderung durch bAV-Umwandlung.
               Die tatsächliche Rente hängt von der vollständigen Erwerbsbiografie ab.
             </p>
           </div>

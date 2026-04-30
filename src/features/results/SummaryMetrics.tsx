@@ -21,7 +21,7 @@ export function SummaryMetrics({
   return (
     <section className="summary-grid" aria-label="Rahmenwerte">
       <ResultMetric
-        label="Gesetzliche Rente (Netto)"
+        label="Gesetzliche Rente netto"
         value={formatCurrency(grvNetMonthlyPension, 0)}
         detail={`${formatNumber(grvProjectedEp, 1)} EP · brutto ${formatCurrency(grvGrossMonthlyPension, 0)}`}
       />

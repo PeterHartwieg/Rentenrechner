@@ -40,20 +40,19 @@ export function BasisrenteInputs({
   return (
     <>
       <div className="subsection-heading">
-        <h3>Basisrente / Rürup (Schicht 1)</h3>
+        <h3>Basisrente / Rürup</h3>
         <p>
-          Steuergeförderte Altersvorsorge nach §10 Abs. 1 Nr. 2 EStG. Beiträge bis zum
-          Schicht-1-Höchstbetrag steuerlich absetzbar. Kein Kapitalwahlrecht —
-          nur lebenslange Rente (Leibrente).
+          Steuergeförderte Altersvorsorge (Schicht 1). Beiträge bis zum Höchstbetrag
+          steuerlich absetzbar. Kein Kapitalwahlrecht — nur lebenslange Rente.
         </p>
         <p className="field-hint" style={{ marginTop: 4 }}>
-          ⚠ Nicht beleihbar, nicht veräußerlich, keine vorzeitige Auszahlung möglich.
-          Kapital steht frühestens ab Alter 62 zur Verrentung zur Verfügung.
+          ⚠ Kapital nicht abrufbar vor Rentenbeginn, nicht beleihbar, nicht vererbbar
+          (außer Hinterbliebene). Auszahlung frühestens ab Alter 62 möglich.
         </p>
         {retirementAge < 62 && (
           <p className="field-warning" style={{ marginTop: 4 }}>
             Rentenbeginn mit {retirementAge} Jahren liegt unter der gesetzlichen Mindestgrenze
-            von 62 Jahren für Basisrente-Auszahlungen (§10 Abs. 1 Nr. 2 EStG / AltZertG §2).
+            von 62 Jahren für Basisrente-Auszahlungen.
             Das Ergebnis ist für eine regelkonforme Basisrente nicht gültig.
           </p>
         )}
@@ -110,7 +109,7 @@ export function BasisrenteInputs({
         </summary>
         <div className="erweitert-content">
           <NumberField
-            label="Sonstige Renteneinnahmen"
+            label="Andere Renteneinkommen mtl."
             value={otherIncome}
             min={0}
             step={50}
@@ -140,14 +139,14 @@ export function BasisrenteInputs({
                 }))
               }
             >
-              <option value="kvdr">KVdR — kein KV/PV auf Basisrente</option>
-              <option value="freiwillig_gkv">Freiwillig GKV — voller §240 SGB V Beitrag</option>
-              <option value="pkv">PKV — kein gesetzlicher KV/PV-Abzug</option>
+              <option value="kvdr">Pflichtversichert in Rente (KVdR) — kein KV/PV auf Basisrente</option>
+              <option value="freiwillig_gkv">Freiwillig GKV — voller Beitrag auf alle Einkünfte</option>
+              <option value="pkv">Privat versichert (PKV) — kein gesetzlicher KV/PV-Abzug</option>
             </select>
           </label>
           <p className="field-hint" style={{ marginTop: 0 }}>
-            KVdR: Basisrente ist kein Versorgungsbezug (§229 SGB V) → kein KV/PV-Abzug für Pflichtmitglieder.
-            Freiwillig Versicherte zahlen auf alle Einkünfte bis zur BBG (§240 SGB V).
+            Pflichtversichert: Basisrente zählt nicht als Versorgungsbezug — kein KV/PV-Abzug für gesetzlich pflichtversicherte Rentner.
+            Freiwillig versichert: Beitrag auf alle Einkünfte bis zur Beitragsbemessungsgrenze.
           </p>
 
           <div className="subsection-heading" style={{ marginTop: 4 }}>

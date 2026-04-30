@@ -239,7 +239,7 @@ function App() {
               }
             />
             <label className="field">
-              <span>ETF-Fondsart (InvStG §20)</span>
+              <span>Fondstyp (für Teilfreistellung)</span>
               <select
                 value={assumptions.etf.equityPartialExemption}
                 onChange={(event) =>
@@ -278,7 +278,7 @@ function App() {
           }
         />
         <NumberField
-          label="Kapitalverzehr bis"
+          label="Kapital aufgebraucht bis (Alter)"
           value={assumptions.retirementEndAge}
           min={profile.retirementAge + 1}
           max={110}
@@ -293,8 +293,8 @@ function App() {
         />
       </div>
       <p className="field-hint">
-        „Kapitalverzehr bis" gilt nur für ETF und für bAV/pAV im Modus „Kapitalverzehr".
-        Im Modus „Leibrente" oder „Zeitrente" steuert der Vertrag (Rentenfaktor bzw.
+        „Kapital aufgebraucht bis" gilt nur für ETF und für bAV/pAV im Modus „Selbstgesteuerte Entnahme".
+        Im Modus „Lebenslange Rente" oder „Zeitrente" steuert der Vertrag (Rentenfaktor bzw.
         Vertragslaufzeit) die monatliche Auszahlung.
       </p>
 
@@ -563,8 +563,8 @@ function App() {
           {showDisclaimerPopup && (
             <div className="disclaimer-popup" role="note">
               <p>
-                Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (BBG, Steuersätze,
-                GKV/PV, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband).
+                Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (Steuersätze,
+                Sozialversicherungsbeiträge, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband).
                 Die Ergebnisse sind Schätzungen unter Ihren Annahmen — Renditen, Inflation,
                 Lebenserwartung und künftige Gesetzesänderungen sind unbekannt.
               </p>

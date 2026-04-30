@@ -62,13 +62,13 @@ export function InsuranceInputs({
       />
       <small className="field-hint">
         {insuranceTaxMode === 'pre2005' && (
-          <>Vor 2005: steuerfrei · §52 Abs. 28 EStG a.F.</>
+          <>Altvertrag (vor 2005): Kapitalwahl steuerfrei. Rechtsgrundlage: §52 Abs. 28 EStG a.F.</>
         )}
         {insuranceTaxMode === 'halbeinkuenfte' && (
-          <>Halbeinkünfteverfahren: ½ des Ertrags mit persönl. Steuersatz · §20 Abs. 1 Nr. 6 EStG · (≥ 12 Jahre Laufzeit, Auszahlung ab 62)</>
+          <>Nur die Hälfte des Ertrags wird mit Ihrem persönlichen Steuersatz versteuert (≥ 12 Jahre Laufzeit, Auszahlung ab 62). Rechtsgrundlage: §20 Abs. 1 Nr. 6 EStG.</>
         )}
         {insuranceTaxMode === 'abgeltungsteuer' && (
-          <>Abgeltungsteuer: voller Ertrag mit 25 % + Soli · §20 Abs. 2 EStG</>
+          <>Voller Ertrag mit 25 % Abgeltungsteuer + Soli (Bedingungen für Halbeinkünfteverfahren nicht erfüllt). Rechtsgrundlage: §20 Abs. 2 EStG.</>
         )}
       </small>
 
@@ -196,7 +196,7 @@ export function InsuranceInputs({
                     }))
                   }
                 />
-                <span>Altvertrag steuerfrei nach §52 Abs. 28 EStG a.F. (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre)</span>
+                <span>Altvertrag steuerfrei (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre)</span>
               </label>
               {ins.contractStartYear < 2005 && !ins.oldContractTaxFreeEligible && (
                 <p className="field-hint">
@@ -209,7 +209,7 @@ export function InsuranceInputs({
           {insuranceTaxMode === 'halbeinkuenfte' && (
             <>
               <NumberField
-                label="Sonst. Renteneinkommen (pAV)"
+                label="Andere Renteneinkommen mtl. (pAV)"
                 value={ins.monthlyOtherRetirementIncome}
                 min={0}
                 step={50}

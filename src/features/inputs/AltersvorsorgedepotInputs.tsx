@@ -43,11 +43,11 @@ export function AltersvorsorgedepotInputs({
   return (
     <>
       <div className="subsection-heading">
-        <h3>Altersvorsorgedepot (Schicht 2, 2027)</h3>
+        <h3>Altersvorsorgedepot (ab 2027)</h3>
         <p>
-          Neues zertifiziertes Altersvorsorgeprodukt nach dem Altersvorsorgereformgesetz
-          (Bundestag 2026-03-27). Staatliche Zulage + §10a Günstigerprüfung. Kapital
-          gesperrt bis Rentenbeginn (Alter 65–70).
+          Neues gefördertes Altersvorsorgeprodukt nach dem Altersvorsorgereformgesetz
+          (Bundestag 2026-03-27). Staatliche Zulage und Steuer-vs.-Zulage-Vergleich möglich.
+          Kapital gesperrt bis Rentenbeginn (Alter 65–70).
         </p>
         {validateAvdPayoutAge(profile.retirementAge, rules) && (
           <p className="field-warning">
@@ -312,7 +312,7 @@ export function AltersvorsorgedepotInputs({
               }
             />
             <NumberField
-              label="Sonstige Renteneinnahmen"
+              label="Andere Renteneinkommen mtl."
               value={avd.monthlyOtherRetirementIncome}
               min={0}
               step={50}
