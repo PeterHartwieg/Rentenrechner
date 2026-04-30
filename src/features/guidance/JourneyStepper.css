@@ -1,17 +1,16 @@
 .journey-stepper {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px 18px;
+  gap: 10px;
+  padding: 10px 14px;
   background: #f0f7ff;
   border: 1px solid #c7dcf5;
   border-radius: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .journey-steps {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
   margin: 0;
   padding: 0;
@@ -28,13 +27,13 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
   border: 1px solid #cfd8e3;
   background: #ffffff;
   color: #4b5563;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-align: left;
   transition: background 120ms, border-color 120ms, color 120ms;
 }
@@ -48,8 +47,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   border-radius: 50%;
   font-size: 0.78rem;
@@ -100,15 +99,48 @@
   flex-wrap: wrap;
 }
 
-.journey-hint {
-  color: #4b5563;
+.journey-status {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.88rem;
+  color: #1f2937;
+  flex-wrap: wrap;
+}
+
+.journey-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: #1f5fa3;
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.journey-status-label {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.journey-status-hint {
+  color: #4b5563;
+  font-size: 0.84rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .journey-nav {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
   margin-left: auto;
 }
 
@@ -116,13 +148,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   cursor: pointer;
   background: transparent;
   color: #1f5fa3;
+  white-space: nowrap;
 }
 
 .journey-nav-back {
@@ -146,18 +179,53 @@
 
 .journey-nav-dismiss {
   color: #6b7280;
+  padding: 6px 8px;
 }
 
 .journey-nav-dismiss:hover {
   color: #1f2937;
-  text-decoration: underline;
+  background: #e5e7eb;
+}
+
+.journey-nav-text-short {
+  display: none;
 }
 
 @media (max-width: 760px) {
   .journey-stepper {
-    padding: 12px;
+    padding: 8px 10px;
+    gap: 6px;
   }
-  .journey-step-label {
+
+  /* Hide the pill row on mobile — the status line below carries the same information. */
+  .journey-steps {
+    display: none;
+  }
+
+  .journey-controls {
+    gap: 8px;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .journey-status {
     font-size: 0.82rem;
+  }
+
+  .journey-status-hint {
+    display: none;
+  }
+
+  .journey-nav-text {
+    display: none;
+  }
+
+  .journey-nav-text-short {
+    display: inline;
+  }
+
+  .journey-nav-btn {
+    padding: 5px 8px;
+    font-size: 0.8rem;
   }
 }

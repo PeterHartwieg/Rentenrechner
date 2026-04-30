@@ -37,7 +37,7 @@ export function DecisionSummary({ results, bestCapital, bestPension }: Props) {
           className="decision-headline-card"
           style={{ borderLeftColor: bestCapitalColor }}
         >
-          <span className="decision-headline-label">Bestes Ergebnis für Kapital</span>
+          <span className="decision-headline-label">Bestes Kapital nach Steuern</span>
           <span className="decision-headline-value">
             {bestCapital ? formatCurrency(bestCapital.afterTaxLumpSum ?? 0, 0) : '—'}
           </span>

@@ -45,26 +45,20 @@ type Props = {
 }
 
 export function JourneyStepper({ activeView, onNavigate, onDismiss }: Props) {
-  // Start view is "step 0" — before the journey begins. Treat it as currentIndex = -1
-  // so the first step shows as "next" and Zurück hides.
   const currentIndex = STEPS.findIndex((s) => s.view === activeView)
-  const onStart = activeView === 'start'
   const previous = currentIndex > 0 ? STEPS[currentIndex - 1] : null
   const next =
-    currentIndex >= 0 && currentIndex < STEPS.length - 1
-      ? STEPS[currentIndex + 1]
-      : onStart
-        ? STEPS[0]
-        : null
+    currentIndex >= 0 && currentIndex < STEPS.length - 1 ? STEPS[currentIndex + 1] : null
   const currentStep = currentIndex >= 0 ? STEPS[currentIndex] : null
 
   return (
     <section className="journey-stepper" aria-label="Geführter Ablauf">
+      {/* Step pills — visible on desktop only, hidden on mobile via .journey-steps CSS. */}
       <ol className="journey-steps">
         {STEPS.map((step, index) => {
           const isActive = step.view === activeView
           const isComplete = currentIndex > index
-          const isFuture = currentIndex < index && !onStart
+          const isFuture = currentIndex < index
           return (
             <li
               key={step.view}
@@ -94,9 +88,14 @@ export function JourneyStepper({ activeView, onNavigate, onDismiss }: Props) {
       </ol>
 
       <div className="journey-controls">
-        {currentStep && <span className="journey-hint">{currentStep.hint}</span>}
-        {onStart && (
-          <span className="journey-hint">Bereit für den Vergleich? Schritt 1 öffnen.</span>
+        {currentStep && (
+          <span className="journey-status">
+            <span className="journey-status-pill">
+              Schritt {currentStep.number} von {STEPS.length}
+            </span>
+            <span className="journey-status-label">{currentStep.label}</span>
+            <span className="journey-status-hint">— {currentStep.hint}</span>
+          </span>
         )}
         <div className="journey-nav">
           {previous && (
@@ -106,7 +105,8 @@ export function JourneyStepper({ activeView, onNavigate, onDismiss }: Props) {
               onClick={() => onNavigate(previous.view)}
             >
               <ArrowLeft size={14} aria-hidden="true" />
-              <span>Zurück: {previous.label}</span>
+              <span className="journey-nav-text">Zurück: {previous.label}</span>
+              <span className="journey-nav-text-short" aria-hidden="true">Zurück</span>
             </button>
           )}
           {next && (
@@ -115,7 +115,8 @@ export function JourneyStepper({ activeView, onNavigate, onDismiss }: Props) {
               className="journey-nav-btn journey-nav-next"
               onClick={() => onNavigate(next.view)}
             >
-              <span>Weiter: {next.label}</span>
+              <span className="journey-nav-text">Weiter: {next.label}</span>
+              <span className="journey-nav-text-short" aria-hidden="true">Weiter</span>
               <ArrowRight size={14} aria-hidden="true" />
             </button>
           )}
@@ -124,9 +125,9 @@ export function JourneyStepper({ activeView, onNavigate, onDismiss }: Props) {
             className="journey-nav-btn journey-nav-dismiss"
             onClick={onDismiss}
             aria-label="Geführten Ablauf beenden und volles Dashboard zeigen"
+            title="Geführten Ablauf beenden"
           >
             <X size={14} aria-hidden="true" />
-            <span>Dashboard anzeigen</span>
           </button>
         </div>
       </div>

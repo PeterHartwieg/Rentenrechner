@@ -42,7 +42,7 @@ import { GuidedSetup, GuidedSetupPostHint } from './features/guidance/GuidedSetu
 import { JourneyStepper } from './features/guidance/JourneyStepper'
 import { derivePostHintFactors } from './features/guidance/postHintFactors'
 import { WorkspaceTabs } from './features/workspace/WorkspaceTabs'
-import { StartView } from './features/workspace/StartView'
+import { StartActionsToolbar } from './features/workspace/StartView'
 import { ComparisonPicker } from './features/workspace/ComparisonPicker'
 import { ProductFocusHeader } from './features/workspace/ProductFocusHeader'
 import { EmptyComparison } from './features/workspace/EmptyComparison'
@@ -53,7 +53,7 @@ const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.col
 function App() {
   const { profile, setProfile, assumptions, setAssumptions, resetToDefaults } = useCalculatorState()
   const guidedSetup = useGuidedSetup()
-  const workspace = useWorkspace({ firstRun: guidedSetup.showOverlay })
+  const workspace = useWorkspace()
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const vm = useSimulationViewModel(profile, assumptions)
   const {
@@ -370,6 +370,12 @@ function App() {
 
   const vergleichView = (
     <section className="workspace-view workspace-view--vergleich">
+      <StartActionsToolbar
+        activeView={workspace.activeView}
+        onNavigate={workspace.setActiveView}
+        onReopenGuidedSetup={guidedSetup.reopen}
+      />
+
       {scenarioToolbar}
 
       {guidedSetup.journeyState === 'active' && (
@@ -519,16 +525,6 @@ function App() {
 
   let viewBody
   switch (workspace.activeView) {
-    case 'start':
-      viewBody = (
-        <StartView
-          bestCapital={bestCapital}
-          bestPension={bestPension}
-          onNavigate={workspace.setActiveView}
-          onReopenGuidedSetup={guidedSetup.reopen}
-        />
-      )
-      break
     case 'angebot':
       viewBody = angebotView
       break

@@ -1,14 +1,13 @@
-import { BarChart3, FileSpreadsheet, HelpCircle, Home, Pencil } from 'lucide-react'
+import { BarChart3, FileSpreadsheet, HelpCircle, Pencil } from 'lucide-react'
 import type { WorkspaceView } from '../../app/useWorkspace'
 
 type TabDef = {
   id: WorkspaceView
   label: string
-  icon: typeof Home
+  icon: typeof BarChart3
 }
 
 const TABS: readonly TabDef[] = [
-  { id: 'start', label: 'Start', icon: Home },
   { id: 'vergleich', label: 'Vergleich', icon: BarChart3 },
   { id: 'angebot', label: 'Einstellungen', icon: Pencil },
   { id: 'warum', label: 'Warum?', icon: HelpCircle },

@@ -33,11 +33,26 @@ export function ResultWaterfall({ result }: Props) {
     result.grossMonthlyPayout - result.netMonthlyPayout,
   )
 
+  // Show two figures so the number matches both the chart (pre-tax balance over
+  // time) and the DecisionSummary card (after-tax lump). When `afterTaxLumpSum`
+  // is null (Basisrente — capital payout legally prohibited), only the gross
+  // figure is shown.
+  const afterTaxLump = result.afterTaxLumpSum
   return (
     <article className="result-waterfall" style={{ borderLeftColor: color }}>
       <div className="rwf-header">
         <strong>{result.label}</strong>
-        <small>Endkapital {formatCurrency(result.capitalAtRetirement, 0)}</small>
+        <small>
+          Kapital brutto {formatCurrency(result.capitalAtRetirement, 0)}
+          {afterTaxLump !== null && (
+            <>
+              {' · '}
+              <span className="rwf-net">
+                nach Steuer-Lump {formatCurrency(afterTaxLump, 0)}
+              </span>
+            </>
+          )}
+        </small>
       </div>
 
       <section>

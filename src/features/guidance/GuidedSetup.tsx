@@ -1,6 +1,6 @@
 import './GuidedSetup.css'
 import { useState } from 'react'
-import { ArrowRight, Check, X } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { PersonalProfile, ProductId, ScenarioAssumptions } from '../../domain'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 
@@ -403,27 +403,31 @@ export interface PostHintFactor {
 }
 
 export function GuidedSetupPostHint({ onDismiss, factors }: PostHintProps) {
+  const [expanded, setExpanded] = useState(false)
+  const factorCount = factors.length
+
   return (
     <aside className="guided-post-hint" role="note">
-      <div>
-        <h3>Warum mehr als ein Taschenrechner?</h3>
-        <p>
-          Diese Effekte beeinflussen dein Ergebnis konkret — der Rechner berücksichtigt sie für
-          2026 automatisch:
-        </p>
-        {factors.length > 0 && (
-          <ul className="guided-post-hint-factors">
-            {factors.map((factor) => (
-              <li key={factor.id}>
-                <Check size={14} aria-hidden="true" />
-                <span>
-                  <strong>{factor.label}</strong> — {factor.detail}
-                </span>
-              </li>
-            ))}
-          </ul>
+      <button
+        type="button"
+        className="guided-post-hint-trigger"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <span className="guided-post-hint-trigger-text">
+          Warum mehr als ein Taschenrechner?
+          {factorCount > 0 && (
+            <span className="guided-post-hint-count">
+              {factorCount} relevante Effekte für dein Szenario
+            </span>
+          )}
+        </span>
+        {expanded ? (
+          <ChevronUp size={16} aria-hidden="true" />
+        ) : (
+          <ChevronDown size={16} aria-hidden="true" />
         )}
-      </div>
+      </button>
       <button
         type="button"
         className="guided-post-hint-close"
@@ -432,6 +436,26 @@ export function GuidedSetupPostHint({ onDismiss, factors }: PostHintProps) {
       >
         <X size={16} aria-hidden="true" />
       </button>
+      {expanded && (
+        <div className="guided-post-hint-body">
+          <p>
+            Diese Effekte beeinflussen dein Ergebnis konkret — der Rechner berücksichtigt sie für
+            2026 automatisch:
+          </p>
+          {factorCount > 0 && (
+            <ul className="guided-post-hint-factors">
+              {factors.map((factor) => (
+                <li key={factor.id}>
+                  <Check size={14} aria-hidden="true" />
+                  <span>
+                    <strong>{factor.label}</strong> — {factor.detail}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </aside>
   )
 }

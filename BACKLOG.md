@@ -13,14 +13,13 @@ Legal/rules research lives in `LEGAL_REVIEW.md` and `TAX_SOCIAL_SECURITY_2026_RE
 
 ## Current Focus
 
-**Group UX Tier 1 shipped (commit 670af83, 2026-04-30).** See `Group UX → Tier 2/3/4` below for the deferred follow-ups identified in the same audit. Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
+**Group UX Tier 1 + Tier 2 shipped (Tier 1 in commit 670af83, Tier 2 in 2026-04-30).** See `Group UX → Tier 3/4` below for the deferred follow-ups. Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
 
 Recommended next pickup, in priority order:
 
-1. **Group UX Tier 2** — layout density and view dedup. Highest user-visible impact for non-technical users, low engine risk.
-2. **Group UX Tier 3** — personalisation (sensitivity caveat, Wunschnetto, EP question replacement).
-3. **Group UX Tier 4** — polish, optional.
-4. **Group F (later analytical/publishing)** — Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
+1. **Group UX Tier 3** — personalisation (sensitivity caveat, Wunschnetto, EP question replacement).
+2. **Group UX Tier 4** — polish, optional.
+3. **Group F (later analytical/publishing)** — Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
 
 Groups B (multi-sleeve allocation), D (saved scenarios + PDF), and E (retirement-income refinements) are complete or have only optional remainders.
 
@@ -52,16 +51,16 @@ Plain-language pass + InfoTip primitive. Highlights:
 - New `src/ui/InfoTip.tsx` primitive (click-to-open popover with click-outside / Esc dismissal, mobile-aware positioning); wired in `ProductEditCards` for *Netto-Rente*, *Effektivkosten*, *Rentenfaktor*, *Fondstyp (Teilfreistellung)*. `NumberField` gains optional `labelSuffix?: ReactNode`.
 - 457 tests, build clean, verified live.
 
-#### Tier 2 — layout density and view dedup (open)
+#### Tier 2 — layout density and view dedup ✓ (shipped 2026-04-30)
 
 Goal: a non-technical user reaches the decision summary in under one screen of scroll on desktop and under two on mobile.
 
-- **Merge `Start` → `Vergleich`**. Five tabs (`Start` / `Vergleich` / `Einstellungen` / `Warum?` / `Details & Export`) is too many. Embed `Start`'s action cards as a slim toolbar at the top of `Vergleich`; drop the `Start` tab. Touches: `useWorkspace.ts`, `WorkspaceTabs.tsx`, `App.tsx`, `StartView.tsx`.
-- **Trim `JourneyStepper` on mobile**. Currently 271 px on a 375 px-wide viewport because step pills wrap into multiple rows. Convert to a single "Schritt 2 von 4 · Vergleich → Weiter: Ergebnis verstehen" line, ~50 px tall, with prev/next buttons on the right. Touches: `JourneyStepper.tsx` + `.css`.
-- **Move "Warum mehr als ein Taschenrechner?" behind a one-line link**. Today it consumes 222 px desktop / 719 px mobile of education between the tabs and the actual results, after the user already chose to read it during guided setup. Replace with a banner that opens the long form on click. Touches: `GuidedSetup.tsx` (`GuidedSetupPostHint`).
-- **Reconcile numbers across views**. `Vergleich` shows ETF capital 201,503 €; `Warum`'s waterfall shows `Endkapital` 214,546 €. Same scenario, two different metrics, no annotation — non-technical users conclude the calculator contradicts itself. Either use the same number with consistent labelling, or annotate each headline. Touches: `ResultWaterfall.tsx`, `DecisionSummary.tsx`.
-- **Trim `DecisionSummary` product-reason cards** to only the products in the current comparison set, not all six.
-- **Topbar height on mobile**. 174 px is a banner ad's worth. Two-line title can collapse to a single line under 760 px. Touches: `App.tsx` topbar JSX + responsive CSS.
+- ~~**Merge `Start` → `Vergleich`**~~ ✓ Five tabs reduced to four (`Vergleich` / `Einstellungen` / `Warum?` / `Details & Export`); the Start tab's action cards live on as a slim `StartActionsToolbar` at the top of `Vergleich`. `useWorkspace` no longer takes a `firstRun` option (everyone lands on `vergleich`).
+- ~~**Trim `JourneyStepper` on mobile**~~ ✓ Was 271 px on 375 px-wide viewport; now 63 px. Step pills hidden on mobile; single status line ("Schritt N von 4 · Label") with compact `Zurück` / `Weiter` / `✕` buttons. Desktop keeps the full pill row.
+- ~~**Move "Warum mehr als ein Taschenrechner?" behind a one-line link**~~ ✓ `GuidedSetupPostHint` is now a click-to-expand banner. Collapsed: ~46 px desktop / ~82 px mobile (was 222 / 719). Trigger shows title + relevant-effect count; click reveals the bullet list.
+- ~~**Reconcile numbers across views**~~ ✓ `ResultWaterfall` header now shows both `Kapital brutto` (matches the chart) and `nach Steuer-Lump` (matches the DecisionSummary headline). DecisionSummary headline relabelled `Bestes Kapital nach Steuern` for clarity.
+- ~~**Trim `DecisionSummary` product-reason cards**~~ ✓ Already filtered — `selectedResults` flows through `useSimulationViewModel` and is filtered to `assumptions.visibleProducts`. Verified during Tier 2 audit.
+- ~~**Topbar height on mobile**~~ ✓ 174 px → 53 px. Eyebrow paragraph hidden, title set to `nowrap` with ellipsis, Help button collapsed to icon-only on mobile.
 
 #### Tier 3 — personalisation (open)
 

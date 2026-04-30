@@ -44,7 +44,12 @@
 .result-waterfall .rwf-header small {
   color: #667085;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  text-align: right;
+  line-height: 1.35;
+}
+
+.result-waterfall .rwf-header .rwf-net {
+  color: #0f766e;
 }
 
 .result-waterfall section {

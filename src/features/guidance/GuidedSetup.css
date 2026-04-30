@@ -263,30 +263,78 @@
   }
 }
 
-/* Post-setup explanation panel — sits at the top of the dashboard once. */
+/* Post-setup explanation panel — collapsed one-line banner above the results.
+   Click the trigger to expand the rationale; close button dismisses for the session. */
 .guided-post-hint {
   position: relative;
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 14px 18px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 14px;
   margin-bottom: 4px;
   border: 1px solid #bae6fd;
   border-radius: 8px;
   background: #f0f9ff;
   color: #0c4a6e;
+  flex-wrap: wrap;
 }
 
-.guided-post-hint h3 {
-  margin: 0 0 4px;
-  font-size: 1rem;
+.guided-post-hint-trigger {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
   color: #0c4a6e;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  text-align: left;
 }
 
-.guided-post-hint p {
-  margin: 0;
+.guided-post-hint-trigger:hover {
+  color: #075985;
+}
+
+.guided-post-hint-trigger-text {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guided-post-hint-count {
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: #0e7490;
+  margin-left: 8px;
+}
+
+.guided-post-hint-count::before {
+  content: '· ';
+}
+
+@media (max-width: 540px) {
+  .guided-post-hint-count {
+    display: none;
+  }
+}
+
+.guided-post-hint-body {
+  flex: 1 1 100%;
+  padding: 4px 4px 6px;
   font-size: 0.88rem;
   line-height: 1.5;
+}
+
+.guided-post-hint-body p {
+  margin: 0;
 }
 
 .guided-post-hint-close {

@@ -1,115 +1,56 @@
-import { BarChart3, FileSpreadsheet, HelpCircle, Pencil } from 'lucide-react'
-import type { ProductResult } from '../../domain'
+import { FileSpreadsheet, HelpCircle, Pencil } from 'lucide-react'
 import type { WorkspaceView } from '../../app/useWorkspace'
-import { formatCurrency } from '../../utils/format'
 
-type StartViewProps = {
-  bestCapital?: ProductResult
-  bestPension?: ProductResult
+type Action = {
+  id: WorkspaceView
+  label: string
+  icon: typeof Pencil
+}
+
+const ACTIONS: readonly Action[] = [
+  { id: 'angebot', label: 'Eingaben', icon: Pencil },
+  { id: 'warum', label: 'Warum?', icon: HelpCircle },
+  { id: 'details', label: 'Details & Export', icon: FileSpreadsheet },
+]
+
+interface Props {
+  activeView: WorkspaceView
   onNavigate: (view: WorkspaceView) => void
   onReopenGuidedSetup: () => void
 }
 
-type Tile = {
-  id: WorkspaceView
-  title: string
-  description: string
-  icon: typeof BarChart3
-}
-
-const TILES: readonly Tile[] = [
-  {
-    id: 'vergleich',
-    title: 'Vergleichen',
-    description: 'Welche Vorsorgeart liefert in deinem Szenario das beste Ergebnis?',
-    icon: BarChart3,
-  },
-  {
-    id: 'angebot',
-    title: 'Angebot eingeben',
-    description: 'Trage Werte aus deinem bAV- oder pAV-Angebot ein.',
-    icon: Pencil,
-  },
-  {
-    id: 'warum',
-    title: 'Warum?',
-    description: 'Wo geht das Geld hin? Welche Annahmen tragen das Ergebnis?',
-    icon: HelpCircle,
-  },
-  {
-    id: 'details',
-    title: 'Details & Export',
-    description: 'Tabellen, Cashflows, CSV/PDF-Export.',
-    icon: FileSpreadsheet,
-  },
-]
-
-export function StartView({
-  bestCapital,
-  bestPension,
-  onNavigate,
-  onReopenGuidedSetup,
-}: StartViewProps) {
+/**
+ * Slim toolbar embedded at the top of the Vergleich view. Replaces the standalone
+ * Start tab — gives one-click jumps to the secondary views and the guided setup
+ * without consuming a full-screen landing tab.
+ */
+export function StartActionsToolbar({ activeView, onNavigate, onReopenGuidedSetup }: Props) {
   return (
-    <section className="start-view" aria-label="Start">
-      <header className="start-hero">
-        <h2>Willkommen — was möchtest du tun?</h2>
-        <p>
-          Dieser Rechner vergleicht ETF, betriebliche Altersvorsorge, private
-          Rentenversicherung, Basisrente, Altersvorsorgedepot und Riester unter
-          den gleichen steuerlichen und sozialversicherungsrechtlichen Annahmen.
-        </p>
-      </header>
-
-      {(bestCapital || bestPension) && (
-        <div className="start-snapshot" aria-label="Aktuelles Ergebnis">
-          <span className="start-snapshot-label">Aktueller Stand</span>
-          <div className="start-snapshot-grid">
-            <div>
-              <span className="start-snapshot-key">Bestes Kapital</span>
-              <span className="start-snapshot-value">
-                {bestCapital
-                  ? `${bestCapital.label} · ${formatCurrency(bestCapital.afterTaxLumpSum ?? 0, 0)}`
-                  : '—'}
-              </span>
-            </div>
-            <div>
-              <span className="start-snapshot-key">Beste Monatsrente</span>
-              <span className="start-snapshot-value">
-                {bestPension
-                  ? `${bestPension.label} · ${formatCurrency(bestPension.netMonthlyPayout, 0)} / Mon.`
-                  : '—'}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="start-tiles">
-        {TILES.map((tile) => {
-          const Icon = tile.icon
+    <div className="start-actions-toolbar" aria-label="Schnellzugriff">
+      <div className="start-actions-group">
+        {ACTIONS.map((action) => {
+          const Icon = action.icon
+          const isActive = action.id === activeView
           return (
             <button
-              key={tile.id}
+              key={action.id}
               type="button"
-              className="start-tile"
-              onClick={() => onNavigate(tile.id)}
+              className={isActive ? 'start-action-btn active' : 'start-action-btn'}
+              onClick={() => onNavigate(action.id)}
             >
-              <span className="start-tile-icon" aria-hidden="true">
-                <Icon size={22} />
-              </span>
-              <span className="start-tile-title">{tile.title}</span>
-              <span className="start-tile-desc">{tile.description}</span>
+              <Icon size={14} aria-hidden="true" />
+              <span>{action.label}</span>
             </button>
           )
         })}
       </div>
-
-      <div className="start-secondary">
-        <button type="button" className="start-link-btn" onClick={onReopenGuidedSetup}>
-          Geführten Einstieg erneut starten
-        </button>
-      </div>
-    </section>
+      <button
+        type="button"
+        className="start-actions-link"
+        onClick={onReopenGuidedSetup}
+      >
+        Geführter Einstieg
+      </button>
+    </div>
   )
 }
