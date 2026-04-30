@@ -1,0 +1,196 @@
+.pec-section {
+  margin: 0 0 4px;
+}
+
+.pec-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pec-card {
+  flex: 1 1 200px;
+  min-width: 190px;
+  max-width: 320px;
+  background: #ffffff;
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  border-top: 4px solid #94a3b8;
+  overflow: hidden;
+}
+
+.pec-card-header {
+  padding: 10px 12px 8px;
+}
+
+.pec-product-name {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #172033;
+  margin-bottom: 6px;
+}
+
+.pec-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pec-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.pec-metric-label {
+  font-size: 0.72rem;
+  color: #667085;
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pec-metric-value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #172033;
+  font-variant-numeric: tabular-nums;
+}
+
+.pec-details {
+  border-top: 1px solid #e5ebf2;
+}
+
+.pec-summary {
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pec-summary::-webkit-details-marker {
+  display: none;
+}
+
+.pec-summary::marker {
+  content: '';
+}
+
+.pec-summary::before {
+  content: '▶';
+  font-size: 0.55rem;
+  flex-shrink: 0;
+  display: inline-block;
+  transition: transform 0.12s;
+}
+
+.pec-details[open] .pec-summary::before {
+  transform: rotate(90deg);
+}
+
+.pec-fields {
+  padding: 6px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Compact field sizing inside the cards */
+.pec-fields .field {
+  font-size: 0.78rem;
+  font-weight: 600;
+  gap: 4px;
+}
+
+.pec-fields .field > span {
+  font-size: 0.78rem;
+}
+
+.pec-fields .input-shell {
+  border-radius: 5px;
+}
+
+.pec-fields .input-shell input {
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+
+.pec-fields .input-shell em {
+  padding-right: 8px;
+  font-size: 0.78rem;
+}
+
+.pec-fields .field select {
+  padding: 6px 8px;
+  font-size: 0.78rem;
+}
+
+.pec-fields .field-warning {
+  font-size: 0.7rem;
+}
+
+/* Orange dot before the label span for fields that differ from the default */
+.pec-field-row--modified .field > span::before {
+  content: '●';
+  color: #f97316;
+  font-size: 0.45em;
+  vertical-align: super;
+  margin-right: 3px;
+}
+
+.pec-fee-hint {
+  margin: 1px 0 0;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #667085;
+  line-height: 1.3;
+}
+
+/* Provenance label shown below each editable field */
+.pec-prov {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 500;
+  line-height: 1;
+  margin-top: 2px;
+  text-align: right;
+}
+
+.pec-prov--default {
+  color: #b0bec5;
+}
+
+.pec-prov--user {
+  color: #2563eb;
+}
+
+.pec-prov--model {
+  color: #b45309;
+}
+
+/* Card-level warning when a key model value hasn't been confirmed */
+.pec-model-hint {
+  margin: 5px 0 0;
+  font-size: 0.7rem;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 4px;
+  padding: 4px 8px;
+  line-height: 1.4;
+}
+
+@media (max-width: 760px) {
+  .pec-card {
+    max-width: none;
+    flex: 1 1 100%;
+  }
+}

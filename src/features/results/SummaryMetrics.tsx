@@ -8,6 +8,7 @@ type Props = {
   grvGrossMonthlyPension: number
   bavMonthlyNetCost: number
   bavTotalMonthlyContribution: number
+  showBav?: boolean
 }
 
 export function SummaryMetrics({
@@ -16,8 +17,9 @@ export function SummaryMetrics({
   grvGrossMonthlyPension,
   bavMonthlyNetCost,
   bavTotalMonthlyContribution,
+  showBav = true,
 }: Props) {
-  const showBav = bavTotalMonthlyContribution > 0
+  const shouldShowBav = showBav && bavTotalMonthlyContribution > 0
   return (
     <section className="summary-grid" aria-label="Rahmenwerte">
       <ResultMetric
@@ -25,7 +27,7 @@ export function SummaryMetrics({
         value={formatCurrency(grvNetMonthlyPension, 0)}
         detail={`${formatNumber(grvProjectedEp, 1)} EP · brutto ${formatCurrency(grvGrossMonthlyPension, 0)}`}
       />
-      {showBav && (
+      {shouldShowBav && (
         <ResultMetric
           label="bAV Nettoaufwand mtl."
           value={formatCurrency(bavMonthlyNetCost, 0)}

@@ -13,8 +13,8 @@ import { monthlyPayoutFromCapital } from '../projections'
 
 export const metadata = {
   id: 'altersvorsorgedepot' as const,
-  label: 'Altersvorsorgedepot (Schicht 2, 2027)',
-  shortLabel: 'AVD',
+  label: 'Altersvorsorgedepot (ab 2027)',
+  shortLabel: 'AV-Depot',
   color: '#0e7490',
   order: 4,
   lockedCapital: true,
@@ -66,7 +66,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
   return buildProductResult({
     productId: 'altersvorsorgedepot',
     label: avd.riesterTransferCapital > 0
-      ? 'Altersvorsorgedepot (Schicht 2, Riester-Übertrag)'
+      ? 'Altersvorsorgedepot (Riester-Übertrag)'
       : metadata.label,
     scenario: { ...scenario, annualReturn: baseReturn },
     profile,

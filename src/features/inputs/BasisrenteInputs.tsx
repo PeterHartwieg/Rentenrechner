@@ -42,8 +42,9 @@ export function BasisrenteInputs({
       <div className="subsection-heading">
         <h3>Basisrente / Rürup</h3>
         <p>
-          Steuergeförderte Altersvorsorge (Schicht 1). Beiträge bis zum Höchstbetrag
-          steuerlich absetzbar. Kein Kapitalwahlrecht — nur lebenslange Rente.
+          Steuergeförderte Altersvorsorge — strukturiert wie die gesetzliche Rente.
+          Beiträge bis zum Höchstbetrag steuerlich absetzbar.
+          Kein Kapitalwahlrecht — nur lebenslange Rente.
         </p>
         <p className="field-hint" style={{ marginTop: 4 }}>
           ⚠ Kapital nicht abrufbar vor Rentenbeginn, nicht beleihbar, nicht vererbbar

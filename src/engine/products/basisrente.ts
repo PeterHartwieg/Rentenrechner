@@ -10,8 +10,8 @@ import { computeGrossMonthlyPayout } from '../projections'
 
 export const metadata = {
   id: 'basisrente' as const,
-  label: 'Basisrente (Rürup, Schicht 1)',
-  shortLabel: 'Basisrente',
+  label: 'Rürup-Rente (Basisrente)',
+  shortLabel: 'Rürup',
   color: '#7c3aed',
   order: 3,
   lockedCapital: true,

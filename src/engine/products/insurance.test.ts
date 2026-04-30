@@ -207,11 +207,11 @@ describe('#59 netInsurancePayout — Ertragsanteil for leibrente', () => {
   })
 })
 
-describe('#60 product label — Private Rentenversicherung (Schicht 3)', () => {
-  it('insurance product label is "Private Rentenversicherung (Schicht 3)"', () => {
+describe('#60 product label — Private Rentenversicherung', () => {
+  it('insurance product label is "Private Rentenversicherung"', () => {
     const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
     const ins = sim.products.find((p) => p.productId === 'versicherung')
-    expect(ins?.label).toBe('Private Rentenversicherung (Schicht 3)')
+    expect(ins?.label).toBe('Private Rentenversicherung')
   })
 })
 

@@ -14,8 +14,8 @@ import {
 
 export const metadata = {
   id: 'versicherung' as const,
-  label: 'Private Rentenversicherung (Schicht 3)',
-  shortLabel: 'pAV',
+  label: 'Private Rentenversicherung',
+  shortLabel: 'Private Rente',
   color: '#b45309',
   order: 2,
   lockedCapital: false,

@@ -1,0 +1,85 @@
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.info-tip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  color: #64748b;
+  cursor: help;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.info-tip-trigger:hover,
+.info-tip-trigger:focus-visible {
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+.info-tip-trigger:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.info-tip-trigger[aria-expanded='true'] {
+  color: #2563eb;
+  background: #dbeafe;
+}
+
+.info-tip-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  max-width: 280px;
+  padding: 8px 10px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.35;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  z-index: 50;
+  white-space: normal;
+  text-align: left;
+}
+
+.info-tip-popover::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: #0f172a;
+}
+
+@media (max-width: 760px) {
+  .info-tip-popover {
+    /* On narrow screens, anchor to the right edge of the viewport so the popover
+       does not overflow when it sits in the right column. */
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+  .info-tip-popover::before {
+    left: auto;
+    right: 6px;
+    transform: rotate(45deg);
+  }
+}

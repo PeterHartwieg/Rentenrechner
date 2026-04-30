@@ -18,7 +18,10 @@ const ALL_PRODUCTS: ProductId[] = [
 const VISIBLE_PRODUCTS_BY_PATH: Record<GuidedPath, ProductId[]> = {
   bav_offer: ['etf', 'bav'],
   etf_vs_insurance: ['etf', 'versicherung'],
-  rentengap: ALL_PRODUCTS,
+  // Pension-gap users typically don't want a 6-way comparison up front.
+  // Start with ETF + bAV (the two most-common decision pair) and let them
+  // add other products via the comparison picker.
+  rentengap: ['etf', 'bav'],
   expert: ALL_PRODUCTS,
 }
 

@@ -1,9 +1,10 @@
 import './forms.css'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { formatNumber } from '../utils/format'
 
 export function NumberField({
   label,
+  labelSuffix,
   value,
   min,
   max,
@@ -13,6 +14,8 @@ export function NumberField({
   onCommit,
 }: {
   label: string
+  /** Optional inline content rendered next to the label (e.g. <InfoTip />). */
+  labelSuffix?: ReactNode
   value: number
   min?: number
   max?: number
@@ -59,7 +62,7 @@ export function NumberField({
 
   return (
     <label className="field">
-      <span>{label}</span>
+      <span>{label}{labelSuffix}</span>
       <div className="input-shell">
         <input
           type="number"

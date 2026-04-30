@@ -7,6 +7,12 @@ import type { ProductId } from '../domain'
  * - `liquidity` — when the user can access the money
  * - `taxLine`  — how taxes are handled in plain words (no paragraph symbols)
  *
+ * Style guide:
+ * - lead with the user task or trade-off, not the legal classification
+ * - avoid §-references, "Schicht", "Mantel", "Halbeinkünfte" etc. — keep
+ *   formal terms in the glossary instead
+ * - one sentence per field; aim for under 100 chars where possible
+ *
  * Kept in src/content/ so that microcopy edits do not touch engine or feature code.
  */
 export type ProductFocus = {
@@ -17,33 +23,33 @@ export type ProductFocus = {
 
 export const PRODUCT_FOCUS: Record<ProductId, ProductFocus> = {
   etf: {
-    purpose: 'Selbst gemanagtes Wertpapierdepot — Standard-Vergleichsmaßstab.',
-    liquidity: 'Jederzeit verfügbar; Auszahlung als Entnahmeplan.',
-    taxLine: 'Abgeltungsteuer auf Gewinne; Teilfreistellung je nach Fondsart.',
+    purpose: 'Wertpapierdepot, das du selbst verwaltest — Standard-Vergleichsmaßstab.',
+    liquidity: 'Jederzeit verfügbar — du kannst Geld auch vor der Rente entnehmen.',
+    taxLine: 'Auf Kursgewinne fällt Abgeltungsteuer an, je nach Fondsart mit Rabatt.',
   },
   bav: {
-    purpose: 'Betriebliche Altersvorsorge per Entgeltumwandlung — meist mit AG-Zuschuss.',
-    liquidity: 'Gebunden bis Renteneintritt; Kapitalauszahlung möglich (steuerpflichtig).',
-    taxLine: 'Beiträge steuer- und sv-frei (Grenzen 8 % / 4 % BBG); Rente voll steuerpflichtig + KV/PV.',
+    purpose: 'Vom Brutto sparen — Arbeitgeber und Steuer geben fast immer etwas dazu.',
+    liquidity: 'Gebunden bis zum Renteneintritt; Auszahlung als Rente oder Einmalbetrag möglich.',
+    taxLine: 'Beiträge sind während der Ansparphase steuer- und sozialabgabenfrei. In der Rente fallen Steuer und Krankenkasse an.',
   },
   versicherung: {
-    purpose: 'Private Rentenversicherung (Schicht 3) — Versicherungsmantel mit Garantie/Rentenfaktor.',
-    liquidity: 'Kündbar mit Stornoabschlag; Auszahlung als Kapital oder Leibrente.',
-    taxLine: 'Halbeinkünfte oder Abgeltungsteuer auf Kapital; Ertragsanteil auf Leibrente.',
+    purpose: 'Vertrag mit garantierter monatlicher Rente, vom Versicherer verwaltet.',
+    liquidity: 'Während der Laufzeit nur mit Verlust kündbar (Stornoabzug).',
+    taxLine: 'In der Rente niedrigere Steuer als beim ETF — dafür meist deutlich höhere laufende Kosten.',
   },
   basisrente: {
-    purpose: 'Basisrente / Rürup — Schicht 1, ähnlich der gesetzlichen Rente strukturiert.',
-    liquidity: 'Nur Leib- oder Zeitrente, keine Kapitalauszahlung; Pfändungsschutz.',
-    taxLine: 'Beiträge bis zum Schicht-1-Höchstbetrag absetzbar; Rente nach Kohortensatz steuerpflichtig.',
+    purpose: 'Geförderte Privatrente, die wie die gesetzliche Rente strukturiert ist.',
+    liquidity: 'Nur als lebenslange Rente — keine Kapitalauszahlung, nicht vererbbar, nicht beleihbar.',
+    taxLine: 'Beiträge sind in der Ansparphase voll absetzbar; in der Rente wird voll versteuert.',
   },
   altersvorsorgedepot: {
-    purpose: 'Altersvorsorgedepot (ab 2027) — gefördertes Wertpapierdepot mit Zulagen.',
-    liquidity: 'Gebunden bis Renteneintritt (frühestens 65); Auszahlung als Entnahmeplan oder Rente.',
-    taxLine: 'Förderung über Zulagen + Sonderausgabenabzug (§10a); Auszahlung voll steuerpflichtig.',
+    purpose: 'Wertpapierdepot mit staatlicher Förderung — neu ab 2027.',
+    liquidity: 'Gebunden bis Rentenbeginn (frühestens 65); Auszahlung als Entnahmeplan oder Rente.',
+    taxLine: 'Förderung über Zulagen und Steuerersparnis; in der Rente wird voll versteuert.',
   },
   riester: {
-    purpose: 'Riester-Rente (Altvertrag) — geförderte private Vorsorge mit Zulagen.',
-    liquidity: 'Gebunden bis 62; bis zu 30 % Kapitalentnahme zu Rentenbeginn möglich.',
-    taxLine: 'Förderung über Zulagen + Sonderausgabenabzug; Auszahlung voll steuerpflichtig.',
+    purpose: 'Geförderte Privatrente mit Zulagen — vor allem für Familien mit Kindern attraktiv.',
+    liquidity: 'Gebunden bis Alter 62; bis 30 % als Einmalbetrag zu Rentenbeginn möglich.',
+    taxLine: 'Förderung über Zulagen und Steuerersparnis; in der Rente wird voll versteuert.',
   },
 }

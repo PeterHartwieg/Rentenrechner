@@ -155,7 +155,11 @@ Implemented: fee entry mode toggle (Einzelposten / Effektivkosten all-in) in bAV
 
 Implemented: `NumberField` shows an inline `field-warning` recovery hint while the user is typing a value outside the allowed range ("Wert wird auf X angehoben/begrenzt …"), so silent clamps no longer surprise the user. A persistent `.trust-strip` below the topbar carries the "Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung" copy plus the "Werte mit Stand 2026" sourcing line. The print/PDF report has a new "Hinweise und Grenzen der Rechnung" section with reader-friendly bullets on advice scope, legal vintage, assumption fragility, untracked product features, and uncovered risks. Mobile rules added at `≤760 px`: tightened topbar/trust-strip padding, shrunken chart heights (260 px / 220 px), tighter table cells, and smaller chart legend font. All 453 tests pass.
 
-#### #UX9 P1 Task-Based Workspace Navigation
+#### ~~#UX9 P1 Task-Based Workspace Navigation~~ âœ“
+
+Implemented: `useWorkspace` + `WorkspaceTabs` split the app into `Start`, `Vergleich`, `Einstellungen`, `Warum?`, and `Details & Export`. `StartView` is the first-run/default workspace and links into the task views. The primary comparison view now contains scenario controls, comparison picker, decision summary, compact context metrics, in-context product edit cards, and the capital chart; waterfalls/sensitivity live in `Warum?`; fee chart, calculation warnings, assumption review, detailed table, cashflows, sources, CSV, and PDF live in `Details & Export`.
+
+#### #UX9-LEGACY P1 Task-Based Workspace Navigation (historic spec)
 
 Replace the single long dashboard with a small set of task-based views. This is the highest-impact remaining UX improvement: current guidance and explanation components are useful, but they are stacked into one view and still create a "control room" feeling.
 
@@ -168,7 +172,11 @@ Concrete changes:
 - Keep a persistent top summary while switching views: selected products, scenario, real/nominal toggle, and current winner.
 - Acceptance criterion: the default post-guidance screen fits above the fold on desktop except for the main chart; expert tables are one click away but not visually competing.
 
-#### #UX10 P1 Product-Focused Comparison Mode
+#### ~~#UX10 P1 Product-Focused Comparison Mode~~ âœ“
+
+Implemented: `ComparisonPicker` replaces the old hide/show chip panel and frames product choice as "Vergleich zusammenstellen". Defaults now select ETF + bAV instead of all six products. Primary products (ETF, bAV, pAV) are shown first; Basisrente, Altersvorsorgedepot, and Riester sit behind "Weitere Produkte". `visibleProducts` is now an explicit comparison set; empty state shows `EmptyComparison` instead of silently rendering all products. `ProductFocusHeader` adds purpose/liquidity/tax copy above each selected product's input section.
+
+#### #UX10-LEGACY P1 Product-Focused Comparison Mode (historic spec)
 
 Make comparison explicitly about a small set of products, not all products with optional hiding.
 
@@ -214,7 +222,11 @@ Concrete changes:
 - If a user enters through "Ich habe ein bAV-Angebot", ask for the offer fields in the same journey instead of requiring the sidebar after the modal closes.
 - Acceptance criterion: a non-expert can complete one guided path without needing to understand the full dashboard layout.
 
-#### #UX13 P2 In-Context Product Editing
+#### ~~#UX13 P2 In-Context Product Editing~~ ✓
+
+Implemented: `src/features/results/ProductEditCards.tsx` + `.css`. One card per visible product in the Vergleich view (between SummaryMetrics and CapitalChart) shows capital, net pension, and RIY. A `<details>` "Annahmen anpassen" section exposes core editable fields per product (ETF: TER + Fondstyp; bAV: Brutto-Umwandlung, AG-Zuschuss, Rentenfaktor, Gesamtkosten; pAV: Vertragsbeginn, Rentenfaktor, Gesamtkosten; Basisrente: Monatsbeitrag, Rentenfaktor, Gesamtkosten; AVD/Riester: Eigenbeitrag + Rentenfaktor). Fields that differ from `defaultAssumptions` show an orange dot indicator (`.pec-field-row--modified`). Fee fields use Effektivkosten all-in mode; full decomposition remains in the sidebar Erweitert section.
+
+#### #UX13-LEGACY P2 In-Context Product Editing (historic spec)
 
 Move high-impact product inputs closer to the result they affect, instead of keeping all editing in a separate left sidebar.
 
@@ -226,17 +238,9 @@ Concrete changes:
 - Add inline "changed from guided/default" markers so users can see which assumptions are custom.
 - Acceptance criterion: a user can change the bAV employer match or insurance rentenfaktor while looking at that product's result card.
 
-#### #UX14 P2 Assumption Provenance And Confidence
+#### ~~#UX14 P2 Assumption Provenance And Confidence~~ ✓
 
-Explain whether a value came from the user, from a legal rule, from a default, or from a model approximation.
-
-Concrete changes:
-
-- Add small provenance badges: `von dir`, `aus Angebot`, `Standardwert`, `Gesetz 2026`, `Modellannahme`.
-- In result summaries, flag outputs based mostly on defaults, e.g. "Rente unsicher: Rentenfaktor ist noch Standardwert."
-- Add a "Was habe ich selbst eingegeben?" review panel before export/PDF.
-- Show legal-vintage warnings only where they matter, not as a permanent long trust strip competing with the app header.
-- Acceptance criterion: users can distinguish their own offer values from hidden assumptions before trusting or exporting the result.
+Implemented: per-field provenance labels (`von dir` / `Standardwert` / `Modellwert`) shown below each editable field in `ProductEditCards`; orange-dot modified indicator preserved. Card-level amber notice "Rentenfaktor ist noch Schätzwert – bitte aus Angebot übernehmen" shown for bAV, pAV, Basisrente, and Riester whenever the Rentenfaktor is still at the market-average default. New `AssumptionReviewPanel` in Details & Export: collapsible "Was habe ich eingegeben?" section groups Profil fields (always `von dir`) and per-product key assumptions with `von dir` / `Standardwert` / `Modellwert` badges; header chips show a live count of user-modified and model-estimate fields; amber notice at the bottom calls out unconfirmed Schätzwerte and prompts the user to enter their offer values. 457 tests pass.
 
 #### ~~#UX15 P2 Plain-Language Microcopy Audit~~ ✓
 

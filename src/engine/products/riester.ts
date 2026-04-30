@@ -12,7 +12,7 @@ import { computeGrossMonthlyPayout } from '../projections'
 
 export const metadata = {
   id: 'riester' as const,
-  label: 'Riester (Schicht 2, Altvertrag)',
+  label: 'Riester-Rente',
   shortLabel: 'Riester',
   color: '#be185d',
   order: 5,

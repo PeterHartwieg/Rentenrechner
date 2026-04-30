@@ -25,6 +25,7 @@ import { AltersvorsorgedepotInputs } from './features/inputs/Altersvorsorgedepot
 import { RiesterInputs } from './features/inputs/RiesterInputs'
 import { SummaryMetrics } from './features/results/SummaryMetrics'
 import { DecisionSummary } from './features/results/DecisionSummary'
+import { ProductEditCards } from './features/results/ProductEditCards'
 import { ResultWaterfalls } from './features/results/ResultWaterfall'
 import { SensitivityPanel } from './features/results/SensitivityPanel'
 import { CapitalChart } from './features/results/CapitalChart'
@@ -36,6 +37,7 @@ import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { PrintReport } from './features/results/PrintReport'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
+import { AssumptionReviewPanel } from './features/results/AssumptionReviewPanel'
 import { GuidedSetup, GuidedSetupPostHint } from './features/guidance/GuidedSetup'
 import { JourneyStepper } from './features/guidance/JourneyStepper'
 import { derivePostHintFactors } from './features/guidance/postHintFactors'
@@ -404,6 +406,13 @@ function App() {
               simulation.bavFunding.monthlyGrossConversion +
               simulation.bavFunding.monthlyEmployerContribution
             }
+            showBav={showBav}
+          />
+
+          <ProductEditCards
+            selectedResults={selectedResults}
+            assumptions={assumptions}
+            onAssumptionsChange={setAssumptions}
           />
 
           <CapitalChart
@@ -464,6 +473,12 @@ function App() {
           />
 
           <CalculationWarnings />
+
+          <AssumptionReviewPanel
+            profile={profile}
+            assumptions={assumptions}
+            visibleProducts={assumptions.visibleProducts}
+          />
 
           <DetailComparisonTable
             products={visibleProducts}

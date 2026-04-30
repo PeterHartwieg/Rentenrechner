@@ -13,7 +13,7 @@ import {
 
 export const metadata = {
   id: 'bav' as const,
-  label: 'bAV',
+  label: 'Betriebliche Altersvorsorge (bAV)',
   shortLabel: 'bAV',
   color: '#0f766e',
   order: 1,

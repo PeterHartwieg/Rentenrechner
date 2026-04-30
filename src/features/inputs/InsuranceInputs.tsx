@@ -344,7 +344,7 @@ export function InsuranceInputs({
           })()}
 
           <div className="subsection-heading">
-            <h3>pAV-Kosten (Schicht 3)</h3>
+            <h3>Kosten der Rentenversicherung</h3>
             <p>Kosteneingabe direkt aus dem Produktinformationsblatt (Effektivkosten all-in) oder als Einzelposten.</p>
           </div>
           <div className="fee-mode-tabs">
