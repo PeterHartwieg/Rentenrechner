@@ -13,262 +13,93 @@ Legal/rules research lives in `LEGAL_REVIEW.md` and `TAX_SOCIAL_SECURITY_2026_RE
 
 ## Current Focus
 
-**Agent-readability refactor complete.** Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
+**Group UX Tier 1 shipped (commit 670af83, 2026-04-30).** See `Group UX → Tier 2/3/4` below for the deferred follow-ups identified in the same audit. Future agents should use `AGENTS.md` and `docs/context/*.md` for routing, and run `npm run repo:stats` before large changes when they need a quick file-size/context inventory.
 
-Resume feature work in this order. Each group touches overlapping code paths or creates prerequisites for later groups.
+Recommended next pickup, in priority order:
 
-1. **Scenario UX and exports**: saved scenario library and scenario duplication, then `#15`.
-2. **Comprehension-first UX pass**: plain-language onboarding, progressive disclosure, explanation surfaces, and decision-focused result summaries.
-3. **Retirement-income refinements**: GRV salary growth / Rentenwert indexation, Versorgungswerk / Beamtenpension variants, and Basisrente edge cases.
-4. **Later analytical/publishing work**: Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
+1. **Group UX Tier 2** — layout density and view dedup. Highest user-visible impact for non-technical users, low engine risk.
+2. **Group UX Tier 3** — personalisation (sensitivity caveat, Wunschnetto, EP question replacement).
+3. **Group UX Tier 4** — polish, optional.
+4. **Group F (later analytical/publishing)** — Monte Carlo, sensitivity heatmap, real estate, cash/bond buffer, bilingual UI, public deployment.
+
+Groups B (multi-sleeve allocation), D (saved scenarios + PDF), and E (retirement-income refinements) are complete or have only optional remainders.
 
 ---
 
 ## Implementation Groups And Order
 
-### Group B: Investment Allocation Mechanics
+### Group B: Investment Allocation Mechanics ✓ (mostly)
 
-Items: `#69`, useful slice of P3 multi-ETF portfolio
+Standarddepot glidepath shipped as part of AVD; the only open remainder is the P3 multi-ETF portfolio (deferred). No active work.
 
-Why after the product shell:
+### Group D: Scenario UX, Saved Workflows, Reports ✓
 
-- Standarddepot needs allocation/glidepath logic rather than a single annual return.
-- A limited multi-sleeve portfolio engine can serve both Standarddepot and later ordinary multi-ETF portfolios.
-
-Suggested order:
-
-1. Implement generic two-sleeve accumulation support for risk/low-risk allocation.
-2. Add Standarddepot glidepath and SRI/cost-cap warnings.
-3. Generalize only as far as needed for ordinary multi-ETF portfolios later.
-
-Shared code areas: accumulation engine, return scenarios, fee/RIY helpers, product assumptions UI, charts.
-
-### Group D: Scenario UX, Saved Workflows, Reports
-
-Items: useful slice of P3 saved scenario library / duplication, `#15`
-
-Why later:
-
-- Presets and reports are most useful after the product set and retirement-gap model settle.
-- Scenario duplication pairs naturally with presets because both touch scenario state and storage.
-- PDF/report output should come after calculations and table outputs stop shifting heavily.
-
-Suggested order:
-
-1. Scenario duplication / saved scenario library.
-2. ~~`#15` PDF report.~~ ✓
-
-Shared code areas: default scenarios, storage/schema, URL sharing, CSV/report formatting, UI controls.
+Saved scenario library and PDF report (`#15`) shipped. No active work.
 
 ### Group UX: Comprehension-First Product Experience
 
-Items: `#UX1`-`#UX15`
+The original `#UX1`–`#UX15` items have all shipped. See "Implemented Archive — UX" below for the index. The 2026-04-30 UX audit (commit 670af83) walked the app as a non-technical user and surfaced a second wave of improvements, organised below by tier.
 
-Why now:
+Shared code areas: `src/App.tsx`, `src/features/inputs/*`, `src/features/results/*`, `src/features/workspace/*`, `src/features/guidance/*`, `src/features/assumptions/*`, `src/ui/*`.
 
-- The calculation engine is already more sophisticated than a typical user expects, but the UI currently asks the user to understand product law, tax abbreviations, and actuarial terms before they can trust the result.
-- The left panel exposes many expert controls at once. This is powerful for validation, but it makes a normal user feel the app is harder than the "simple calculator" they expected.
-- The result area surfaces correct numbers, but not enough decision framing: what changed the ranking, which assumptions are fragile, and what the user should inspect before acting.
+#### Tier 1 — shipped (commit 670af83, 2026-04-30)
 
-Suggested order:
+Plain-language pass + InfoTip primitive. Highlights:
 
-1. Finish the information architecture work in `#UX9`, `#UX10`, and `#UX11`: the recent UX work added helpful components, but the app still presents too much in one scrolling workspace.
-2. Tighten the guided flow with `#UX12` and product-context editing with `#UX13`.
-3. Improve result comprehension with `#UX14` and `#UX15`.
-4. Keep earlier open items `#UX1`-`#UX6` as design principles / supporting implementation tracks; `#UX7` and `#UX8` are complete.
+- `rentengap` guided path defaults to `['etf', 'bav']` instead of all six products.
+- Product display labels lost their `Schicht 1/2/3` parentheticals; bAV expanded to "Betriebliche Altersvorsorge (bAV)"; chips read `Private Rente`, `Rürup`, `AV-Depot`, `Riester`.
+- `src/content/productFocus.ts` rewritten to lead with the user task instead of the legal classification.
+- New `src/ui/InfoTip.tsx` primitive (click-to-open popover with click-outside / Esc dismissal, mobile-aware positioning); wired in `ProductEditCards` for *Netto-Rente*, *Effektivkosten*, *Rentenfaktor*, *Fondstyp (Teilfreistellung)*. `NumberField` gains optional `labelSuffix?: ReactNode`.
+- 457 tests, build clean, verified live.
 
-Shared code areas: `src/App.tsx`, `src/features/inputs/*`, `src/features/results/*`, `src/features/assumptions/*`, `src/app/productPresentation.ts`, `src/ui/*`, print report.
+#### Tier 2 — layout density and view dedup (open)
 
-#### #UX1 P1 Plain-Language Mode And Expert Mode
+Goal: a non-technical user reaches the decision summary in under one screen of scroll on desktop and under two on mobile.
 
-Default the app to a plain-language mode and move legal/product-mechanics controls behind an "Erweitert" disclosure per product.
+- **Merge `Start` → `Vergleich`**. Five tabs (`Start` / `Vergleich` / `Einstellungen` / `Warum?` / `Details & Export`) is too many. Embed `Start`'s action cards as a slim toolbar at the top of `Vergleich`; drop the `Start` tab. Touches: `useWorkspace.ts`, `WorkspaceTabs.tsx`, `App.tsx`, `StartView.tsx`.
+- **Trim `JourneyStepper` on mobile**. Currently 271 px on a 375 px-wide viewport because step pills wrap into multiple rows. Convert to a single "Schritt 2 von 4 · Vergleich → Weiter: Ergebnis verstehen" line, ~50 px tall, with prev/next buttons on the right. Touches: `JourneyStepper.tsx` + `.css`.
+- **Move "Warum mehr als ein Taschenrechner?" behind a one-line link**. Today it consumes 222 px desktop / 719 px mobile of education between the tabs and the actual results, after the user already chose to read it during guided setup. Replace with a banner that opens the long form on click. Touches: `GuidedSetup.tsx` (`GuidedSetupPostHint`).
+- **Reconcile numbers across views**. `Vergleich` shows ETF capital 201,503 €; `Warum`'s waterfall shows `Endkapital` 214,546 €. Same scenario, two different metrics, no annotation — non-technical users conclude the calculator contradicts itself. Either use the same number with consistent labelling, or annotate each headline. Touches: `ResultWaterfall.tsx`, `DecisionSummary.tsx`.
+- **Trim `DecisionSummary` product-reason cards** to only the products in the current comparison set, not all six.
+- **Topbar height on mobile**. 174 px is a banner ad's worth. Two-line title can collapse to a single line under 760 px. Touches: `App.tsx` topbar JSX + responsive CSS.
 
-Concrete changes:
+#### Tier 3 — personalisation (open)
 
-- Keep the initial visible input set to the user's actual situation and one or two product-offer values: age, retirement age, gross salary, health insurance, bAV gross conversion, employer contribution, ETF TER, return scenarios.
-- Hide controls such as `Durchfuehrungsweg`, `KVdR`, `Guenstigerpruefung`, `Schicht`, `Ertragsanteil`, detailed fee decomposition, and statutory eligibility toggles behind product-specific advanced sections.
-- For each hidden expert section, show a compact derived summary in plain German, e.g. "Der Rechner nimmt an: gesetzlich krankenversichert in der Rente, bAV als Direktversicherung, lebenslange Rente."
-- Acceptance criterion: a new user can complete a first comparison without seeing paragraph symbols or statutory abbreviations unless they open an advanced section.
+Higher-effort improvements that depend on or amplify Tier 2.
 
-#### #UX2 P1 Terminology Translation Layer
+- **Personal sensitivity caveat** instead of generic copy. Replace the static "Hebel mit grösstem Einfluss…" string with output from `sensitivity.ts`: e.g. *"Wenn die Rendite 1 % niedriger ausfällt, gewinnt bAV. Wenn der AG-Zuschuss wegfällt, gewinnt ETF deutlich."* The data is already computed for the `Warum` tab; surface the top one or two flips above the chart instead of behind a tab. Touches: `DecisionSummary.tsx`, `decisionLogic.ts`.
+- **"Wunschnetto" on the Rentenlücke path**. Today the path doesn't actually compute or render a gap — it shows winner pills. Add an optional input "Was möchtest du im Monat haben?" → render `GRV-Netto + Wunschnetto = Lücke X €/Monat` and rank products by gap-fill. Touches: `GuidedSetup.tsx`, new metric in `DecisionSummary`.
+- **Replace "Aktuelle Entgeltpunkte" guided question**. A non-technical user does not know their EP. Either drop the field (back-calculate from gross × years) or replace with "Wie viele Jahre arbeitest du schon?". Touches: `GuidedSetup.tsx`, `GRV` defaults.
 
-Create a central content layer for user-facing product terms and replace law-first labels with plain labels plus optional legal detail.
+#### Tier 4 — polish (optional)
 
-Concrete changes:
+- **One progressive-disclosure pattern, applied consistently**. Today there are five different `<details>` styles (Glossar, Szenarien-Vorlagen, Gespeicherte Szenarien, per-product Erweitert, AssumptionsPanel). Pick the per-product Erweitert pattern (with its derived plain-German recap) and reuse.
+- **Inline glossary tooltips on more terms**. Wire `InfoTip` to *Vorabpauschale*, *Halbeinkünfte*, *KVdR*, *Versorgungsfreibetrag*, *Durchführungsweg*. Tooltip text already exists in `terms.ts`.
+- **Disclaimer wrap UX on mobile**. Small ✕ dismiss target; popover open/close handler is fine on desktop but fiddly on touch.
 
-- Add a `src/content/terms.ts` or similar map with `plainLabel`, `shortHelp`, `legalReference`, and `expertLabel`.
-- Replace labels like "bAV Entgeltumwandlung", "Guenstigerpruefung", "Versicherungsmantel", "Kapitalverzehr", "Rentenfaktor", "KVdR", "Schicht 1/2/3" with plain-language labels and short helper text.
-- Use law references in expandable "Warum?" or "Rechtsgrundlage" details, not as the primary label.
-- Add a glossary drawer or inline term popover that answers "What does this mean for me?" in one sentence before giving the formal term.
-- Acceptance criterion: every visible input label can be understood without knowing German retirement/tax terminology.
+#### Implemented Archive — UX
 
-#### #UX3 P1 Guided First-Run Flow
+Per-item detail lives in commit messages. Listed here as a compact index.
 
-Add a lightweight guided setup before the full dashboard for users who arrive with the belief that the calculation should be simple.
+- ~~#UX1 Plain-Language Mode and Expert Mode~~ ✓
+- ~~#UX2 Terminology Translation Layer~~ ✓ (`src/content/terms.ts`, `GlossaryPanel`)
+- ~~#UX3 Guided First-Run Flow~~ ✓ (`useGuidedSetup`, `GuidedSetup`)
+- ~~#UX4 Decision Summary Above the Charts~~ ✓ (commit cffd6a4)
+- ~~#UX5 Waterfall Explanations for Surprising Results~~ ✓ (commit 9e7dec8)
+- ~~#UX6 Result Confidence and Assumption Sensitivity~~ ✓ (commit 9e7dec8, `sensitivity.ts`)
+- ~~#UX7 Product Offer Entry Forms~~ ✓
+- ~~#UX8 Empty, Error, and Trust States~~ ✓
+- ~~#UX9 Task-Based Workspace Navigation~~ ✓ (commit 51a6ef7)
+- ~~#UX10 Product-Focused Comparison Mode~~ ✓ (commit 5cdf6db)
+- ~~#UX11 Results Hierarchy and De-Duplication~~ ✓ (commit 6b31298)
+- ~~#UX12 Guided Setup as Persistent Journey~~ ✓ (commit 6b31298)
+- ~~#UX13 In-Context Product Editing~~ ✓ (commit 670af83)
+- ~~#UX14 Assumption Provenance and Confidence~~ ✓ (commit 670af83)
+- ~~#UX15 Plain-Language Microcopy Audit~~ ✓ (commit aa81394)
 
-Concrete changes:
+### Group E: Retirement-Income Refinements ✓
 
-- First screen asks: "Was moechtest du vergleichen?" with choices such as "Ich habe ein bAV-Angebot", "ETF gegen Versicherung vergleichen", "Rentenluecke grob schaetzen", and "Expertenmodus".
-- Collect the minimum viable inputs for the chosen path, then drop the user into the dashboard with relevant sections expanded.
-- Show a short "Warum mehr als ein Taschenrechner?" explanation after first result: taxes, employer subsidy, health insurance, fees, and payout rules can change the winner.
-- Persist a "skip guided setup" preference in localStorage.
-- Acceptance criterion: a first-time user reaches an interpretable result in under two minutes without scanning the full input sidebar.
-
-#### #UX4 P1 Decision Summary Above The Charts
-
-Replace the current metric-only opening with a decision-focused summary that explains the current winner and the biggest driver.
-
-Concrete changes:
-
-- Add a top result strip with: "Bestes Ergebnis fuer Kapital", "Beste monatliche Rente", "Groesster Kostentreiber", and "Achtung: Ergebnis kippt wahrscheinlich, wenn ...".
-- For each product, surface one plain reason: employer subsidy, high fees, tax deferral, locked capital, health-insurance burden, or guarantee drag.
-- Explain when capital and pension rankings disagree, instead of presenting both as equally obvious winners.
-- Acceptance criterion: a user can answer "which option looks best, and why?" without opening the detail table.
-
-#### #UX5 P1 Waterfall Explanations For "Surprising" Results
-
-Add visual "where the money goes" explanations for bAV, private insurance, Basisrente/Riester/AVD, and ETF.
-
-Concrete changes:
-
-- Extend the existing bAV waterfall pattern into a reusable component for contribution -> tax/SV relief or allowance -> invested amount -> fees -> taxes/KV/PV -> net payout.
-- Add result-side waterfall cards, not only input-side hints, because users look for explanations near the surprising number.
-- Highlight which parts are estimates and which are direct consequences of the selected offer.
-- Acceptance criterion: when bAV wins or loses, the user can see whether the cause is employer money, taxes, fees, lower GRV, or retirement KV/PV.
-
-#### #UX6 P2 Result Confidence And Assumption Sensitivity
-
-Show which assumptions the current ranking depends on before adding full Monte Carlo or heatmaps.
-
-Concrete changes:
-
-- Add a "Was muesste sich aendern?" panel with simple one-step sensitivity checks: return +/- 1 pp, fees +/- 0.5 pp, employer match 0/15/50%, retirement age +/- 2 years, KVdR on/off.
-- Show "robust", "knapp", or "annahmenabhaengig" badges for product rankings.
-- Link each badge to the assumption that drives it.
-- Acceptance criterion: the app warns users when a small assumption change flips the recommendation.
-
-#### ~~#UX7 P2 Product Offer Entry Forms~~ ✓
-
-Implemented: fee entry mode toggle (Einzelposten / Effektivkosten all-in) in bAV and pAV Erweitert sections; renamed to "Garantierter Rentenfaktor" with default-value hint; optional "Kapital lt. Angebot bei Rentenbeginn" comparison field; "link-btn" to switch from all-in back to Einzelposten. All-in mode zeros other fee components and shows an approximation disclaimer.
-
-#### ~~#UX8 P2 Empty, Error, And Trust States~~ ✓
-
-Implemented: `NumberField` shows an inline `field-warning` recovery hint while the user is typing a value outside the allowed range ("Wert wird auf X angehoben/begrenzt …"), so silent clamps no longer surprise the user. A persistent `.trust-strip` below the topbar carries the "Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung" copy plus the "Werte mit Stand 2026" sourcing line. The print/PDF report has a new "Hinweise und Grenzen der Rechnung" section with reader-friendly bullets on advice scope, legal vintage, assumption fragility, untracked product features, and uncovered risks. Mobile rules added at `≤760 px`: tightened topbar/trust-strip padding, shrunken chart heights (260 px / 220 px), tighter table cells, and smaller chart legend font. All 453 tests pass.
-
-#### ~~#UX9 P1 Task-Based Workspace Navigation~~ âœ“
-
-Implemented: `useWorkspace` + `WorkspaceTabs` split the app into `Start`, `Vergleich`, `Einstellungen`, `Warum?`, and `Details & Export`. `StartView` is the first-run/default workspace and links into the task views. The primary comparison view now contains scenario controls, comparison picker, decision summary, compact context metrics, in-context product edit cards, and the capital chart; waterfalls/sensitivity live in `Warum?`; fee chart, calculation warnings, assumption review, detailed table, cashflows, sources, CSV, and PDF live in `Details & Export`.
-
-#### #UX9-LEGACY P1 Task-Based Workspace Navigation (historic spec)
-
-Replace the single long dashboard with a small set of task-based views. This is the highest-impact remaining UX improvement: current guidance and explanation components are useful, but they are stacked into one view and still create a "control room" feeling.
-
-Concrete changes:
-
-- Add a primary workspace switcher: `Start`, `Vergleich`, `Angebot eingeben`, `Warum?`, `Details & Export`.
-- Default first-run and guided users to `Start`, then route them to the relevant task view instead of dropping them into the complete dashboard.
-- In `Vergleich`, show only product chips, scenario selector, decision summary, one primary chart, and a compact "next best action".
-- Move waterfalls, sensitivity, fee chart, assumptions, cashflows, calculation warnings, CSV/PDF actions, and legal source tables out of the default comparison view.
-- Keep a persistent top summary while switching views: selected products, scenario, real/nominal toggle, and current winner.
-- Acceptance criterion: the default post-guidance screen fits above the fold on desktop except for the main chart; expert tables are one click away but not visually competing.
-
-#### ~~#UX10 P1 Product-Focused Comparison Mode~~ âœ“
-
-Implemented: `ComparisonPicker` replaces the old hide/show chip panel and frames product choice as "Vergleich zusammenstellen". Defaults now select ETF + bAV instead of all six products. Primary products (ETF, bAV, pAV) are shown first; Basisrente, Altersvorsorgedepot, and Riester sit behind "Weitere Produkte". `visibleProducts` is now an explicit comparison set; empty state shows `EmptyComparison` instead of silently rendering all products. `ProductFocusHeader` adds purpose/liquidity/tax copy above each selected product's input section.
-
-#### #UX10-LEGACY P1 Product-Focused Comparison Mode (historic spec)
-
-Make comparison explicitly about a small set of products, not all products with optional hiding.
-
-Concrete changes:
-
-- Turn product visibility chips into a "Vergleich zusammenstellen" step with a recommended baseline: usually ETF plus one offer/product.
-- Limit default comparison to 2-3 products based on the guided path. "Alle Produkte anzeigen" should be an explicit expert action.
-- In the input panel, show only the fields for the selected comparison set and collapse unrelated products into an "Weitere Produkte" launcher.
-- Add a focused product header for each selected product: purpose, liquidity, tax treatment, and the one input most likely to matter.
-- Add empty-state copy when a user hides everything except GRV / no private product: "Waehle mindestens ein Vorsorgeprodukt zum Vergleich."
-- Acceptance criterion: a bAV-offer user sees ETF vs. bAV as the main experience, not ETF + bAV + pAV + Basisrente + AVD + Riester plus many charts.
-
-#### ~~#UX11 P1 Results Hierarchy And De-Duplication~~ ✓
-
-Implemented: SummaryMetrics no longer duplicates "Bestes Kapital" / "Beste Netto-Rente" tiles that DecisionSummary already shows; it carries only the scenario-context rows (Gesetzliche Rente netto, bAV Nettoaufwand). bAV row hides itself when bAV is not in the comparison set. The remaining UX11 spec (chart tabs, single primary outcome module, details routing) was already covered by UX9 + UX10 workspace navigation.
-
-#### #UX11-LEGACY P1 Results Hierarchy And De-Duplication (historic spec)
-
-Restructure result modules into "What", "Why", and "Details" so the user is not asked to interpret every analytical view at once.
-
-Concrete changes:
-
-- Merge or reorder `DecisionSummary` and `SummaryMetrics`; avoid showing "best capital" and "best pension" twice.
-- Use a single primary outcome module: "Was lohnt sich in diesem Szenario?" with a plain recommendation-style sentence and clear caveat.
-- Put charts under tabs or segmented controls: `Kapital`, `Monatsrente`, `Kosten`, `Sensitivitaet`.
-- Put `ResultWaterfalls` behind "Warum ist das so?" and show only the selected/winning product by default, with compare expansion.
-- Move `DetailComparisonTable`, `CashflowTable`, `CalculationWarnings`, and `AssumptionsPanel` into `Details & Export`.
-- Acceptance criterion: above the fold contains one decision summary, one chart, and one next step; no tables or warnings panels appear in the primary path unless critical.
-
-#### ~~#UX12 P1 Guided Setup As Persistent Journey~~ ✓
-
-Implemented: `useGuidedSetup` exposes a `journeyState: 'inactive' | 'active' | 'dismissed'`. Non-expert completion sets it active and routes the workspace (bAV-offer path lands in Einstellungen, others in Vergleich). New `JourneyStepper` component renders 4 steps mapped to existing workspace views (Eingaben, Vergleich, Ergebnis verstehen, Export) with Zurück / Weiter / "Dashboard anzeigen" controls. `GuidedSetupPostHint` is now contextual: `derivePostHintFactors` inspects the current results + bavFunding and only lists factors that actually apply (employer subsidy, fee drag, ETF Vorabpauschale, etc.).
-
-#### #UX12-LEGACY P1 Guided Setup As Persistent Journey (historic spec)
-
-The guided setup is currently a modal that collects a few values and then exits to the full app. Convert it into a persistent journey that continues through interpretation.
-
-Concrete changes:
-
-- After guided setup, show a checklist/stepper: `1 Profil`, `2 Angebot`, `3 Vergleich`, `4 Ergebnis verstehen`, `5 Export`.
-- Keep the "Warum mehr als ein Taschenrechner?" message near the result, but make it contextual: show only the factors that actually affected the current result.
-- Add "Weiter" / "Zurueck" actions for normal users and "Dashboard anzeigen" for experts.
-- If a user enters through "Ich habe ein bAV-Angebot", ask for the offer fields in the same journey instead of requiring the sidebar after the modal closes.
-- Acceptance criterion: a non-expert can complete one guided path without needing to understand the full dashboard layout.
-
-#### ~~#UX13 P2 In-Context Product Editing~~ ✓
-
-Implemented: `src/features/results/ProductEditCards.tsx` + `.css`. One card per visible product in the Vergleich view (between SummaryMetrics and CapitalChart) shows capital, net pension, and RIY. A `<details>` "Annahmen anpassen" section exposes core editable fields per product (ETF: TER + Fondstyp; bAV: Brutto-Umwandlung, AG-Zuschuss, Rentenfaktor, Gesamtkosten; pAV: Vertragsbeginn, Rentenfaktor, Gesamtkosten; Basisrente: Monatsbeitrag, Rentenfaktor, Gesamtkosten; AVD/Riester: Eigenbeitrag + Rentenfaktor). Fields that differ from `defaultAssumptions` show an orange dot indicator (`.pec-field-row--modified`). Fee fields use Effektivkosten all-in mode; full decomposition remains in the sidebar Erweitert section.
-
-#### #UX13-LEGACY P2 In-Context Product Editing (historic spec)
-
-Move high-impact product inputs closer to the result they affect, instead of keeping all editing in a separate left sidebar.
-
-Concrete changes:
-
-- On each product result card, add an "Annahmen bearbeiten" disclosure for only that product's core inputs.
-- For bAV: monthly gross conversion, employer subsidy, rentenfaktor, fee mode. For pAV: contract year, contribution proxy/fair comparison note, rentenfaktor, fee mode. For ETF: TER, fund type, return scenario.
-- Preserve the full sidebar for expert editing, but do not make it the only way to adjust a result.
-- Add inline "changed from guided/default" markers so users can see which assumptions are custom.
-- Acceptance criterion: a user can change the bAV employer match or insurance rentenfaktor while looking at that product's result card.
-
-#### ~~#UX14 P2 Assumption Provenance And Confidence~~ ✓
-
-Implemented: per-field provenance labels (`von dir` / `Standardwert` / `Modellwert`) shown below each editable field in `ProductEditCards`; orange-dot modified indicator preserved. Card-level amber notice "Rentenfaktor ist noch Schätzwert – bitte aus Angebot übernehmen" shown for bAV, pAV, Basisrente, and Riester whenever the Rentenfaktor is still at the market-average default. New `AssumptionReviewPanel` in Details & Export: collapsible "Was habe ich eingegeben?" section groups Profil fields (always `von dir`) and per-product key assumptions with `von dir` / `Standardwert` / `Modellwert` badges; header chips show a live count of user-modified and model-estimate fields; amber notice at the bottom calls out unconfirmed Schätzwerte and prompts the user to enter their offer values. 457 tests pass.
-
-#### ~~#UX15 P2 Plain-Language Microcopy Audit~~ ✓
-
-Implemented: 14 files updated. Primary-label rewrites include "bAV Entgeltumwandlung" → "Brutto in bAV umwandeln"; "Vertraglicher AG-Zuschuss" → "AG-Zuschuss laut Vertrag (%)"; "ETF-Fondsart (InvStG §20)" → "Fondstyp (für Teilfreistellung)"; "Kapitalverzehr bis" → "Kapital aufgebraucht bis (Alter)"; "Sonst./Sonstige(s) Renteneinkommen" → "Andere Renteneinkommen mtl."; "GRV Nettorente" → "Gesetzliche Rente netto"; "Gesetzliche RV (GRV)" → "Gesetzliche Rentenversicherung". Durchführungsweg dropdown options dropped their §-citations. KVdR-Hinweise reformulated as "Pflichtversichert in Rente" / "Freiwillig versichert". §-references retained only in AssumptionsPanel (a legal-reference table by purpose) and in trailing parenthetical hint text.
-
-#### #UX15-LEGACY P2 Plain-Language Microcopy Audit (historic spec)
-
-The terminology layer exists, but many visible labels still use formal product language. Run a second microcopy pass after the layout is simplified.
-
-Concrete changes:
-
-- Replace visible labels like "bAV Entgeltumwandlung", "Vertraglicher AG-Zuschuss", "Kapitalverzehr bis", "ETF-Fondsart (InvStG §20)", and "Sonst. Renteneinkommen" with user-task labels.
-- Use formal/legal terms as secondary text, tooltips, or glossary aliases.
-- Shorten warning panels and hints; prefer "what this means" before "why the law says so".
-- Make product names consistent across navigation, chips, result cards, charts, tables, CSV, and PDF.
-- Acceptance criterion: the main path contains no paragraph symbols or unexplained abbreviations; legal references remain available in expert/details views.
-
-### Group E: Retirement-Income Refinements
-
-Items: P3 GRV / Basisrente refinements
-
-Suggested order:
-
-1. ~~Salary growth and Rentenwert indexation for GRV.~~ ✓
-2. ~~Versorgungswerk / Beamtenpension variants.~~ ✓
-3. ~~Basisrente legal-compliance follow-up from `LEGAL_IMPLEMENTATION_AUDIT_2026.md`: remove/disable non-lifelong `zeitrente`, add KVdR/freiwillig/PKV retirement-health status, and enforce or warn on payout before age 62.~~ ✓
-
-Shared code areas: `src/engine/grv.ts`, `src/engine/basisrente.ts`, retirement tax/KV-PV helpers, profile assumptions UI.
+GRV salary growth + Rentenwert indexation, Versorgungswerk / Beamtenpension variants, and the Basisrente legal-compliance follow-up from `LEGAL_IMPLEMENTATION_AUDIT_2026.md` are all shipped. No active work.
 
 ### Group F: Later Expansion
 
@@ -281,13 +112,6 @@ Suggested order:
 3. Retirement cash / bond buffer after withdrawal planning is clearer.
 4. Real estate / owner-occupied housing as a separate household-balance-sheet module.
 5. Bilingual UI and public deployment last.
-
----
-
-## Open P2 Publishing / Product
-
-~~### #15 PDF Report~~
-~~Generate a readable comparison report for offline review.~~
 
 ---
 
@@ -331,7 +155,9 @@ Completed items are kept here as a compact index only.
 - PDF report (#15): `src/features/results/PrintReport.tsx` + CSS — always-rendered hidden component (`display: none` on screen, `display: block` in `@media print`). Sections: profile summary, GRV/bAV key metrics, return-scenario assumptions, full comparison table (all products × scenarios, basis rows bold). "PDF drucken" button added to `DetailComparisonTable` action bar alongside CSV/link. `window.print()` triggers browser print-to-PDF. App.css `@media print` hides `.topbar` and `.dashboard`. No new dependencies.
 - Saved scenario library (Group D step 1): `src/data/scenarioLibrary.ts` (CRUD helpers, `rentenrechner-library-v1` localStorage key), `src/app/useScenarioLibrary.ts` (hook), `src/features/inputs/ScenarioLibraryPanel.tsx` + CSS. Panel in input sidebar: name input → Speichern, list with Laden / Kopie / ✕, inline rename on name click. Count badge on collapsed summary.
 
-Latest documented baseline: 399 tests after the agent-readability refactor.
+- Group UX Tier 1 plain-language pass + UX13 + UX14 (commit 670af83): see `Group UX → Implemented Archive` for the per-item index.
+
+Latest documented baseline: 457 tests after Group UX Tier 1 (commit 670af83).
 
 ---
 
