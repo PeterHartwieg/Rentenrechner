@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { STORAGE_KEY } from '../storage'
 import { readUrlState } from '../utils/urlShare'
 
@@ -76,6 +76,11 @@ export type GuidedSetupState = {
 export function useGuidedSetup(): GuidedSetupState {
   const [showOverlay, setShowOverlay] = useState<boolean>(() => detectFirstRun())
   const [journeyState, setJourneyState] = useState<JourneyState>('inactive')
+
+  useEffect(() => {
+    document.body.style.overflow = showOverlay ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [showOverlay])
 
   function completeSetup(options?: CompleteSetupOptions) {
     writeFlag({ ...readFlag(), completed: true })

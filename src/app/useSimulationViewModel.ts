@@ -12,7 +12,7 @@ export function useSimulationViewModel(
   assumptions: ScenarioAssumptions,
 ) {
   const [selectedScenarioId, setSelectedScenarioId] = useState('basis')
-  const [showRealValues, setShowRealValues] = useState(true)
+  const [showRealValues, setShowRealValues] = useState(false)
   const [cashflowProductId, setCashflowProductId] = useState<ProductId>('bav')
   const [tarifgebunden, setTarifgebunden] = useState(false)
   const [showAssumptions, setShowAssumptions] = useState(false)

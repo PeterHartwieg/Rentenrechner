@@ -119,7 +119,6 @@ export function InputsPanel({
           onAssumptionsChange((current) => ({ ...current, visibleProducts: next }))
         }
         heading="Welche Produkte vergleichst du?"
-        hint="Diese Auswahl steuert sowohl die Eingabefelder hier als auch die Charts und Tabellen im Vergleich."
       />
 
       <ProfileInputs

@@ -131,7 +131,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
     zeitrenteYears: 20,
     fees: {
       wrapperAssetFee: 0.003,   // 0.30 % Versicherungsmantel
-      fundAssetFee: 0.002,      // 0.20 % ETF-Fondskosten — total 0.50 % p.a.
+      fundAssetFee: 0.005,      // 0.50 % aktiv verwalteter Fonds (bAV-typisch) — total 0.80 % p.a.
       contributionFee: 0.03,
       fixedMonthlyFee: 0,
       acquisitionCostPct: 0.025,

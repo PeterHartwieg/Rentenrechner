@@ -87,14 +87,17 @@ export function ScenarioToolbar({
           </button>
         )}
       </div>
-      <label className="toggle">
-        <input
-          type="checkbox"
-          checked={showRealValues}
-          onChange={(event) => onShowRealValuesChange(event.target.checked)}
-        />
-        inflationsbereinigt
-      </label>
+      <details className="toolbar-advanced">
+        <summary>Darstellung</summary>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={showRealValues}
+            onChange={(event) => onShowRealValuesChange(event.target.checked)}
+          />
+          inflationsbereinigt
+        </label>
+      </details>
     </div>
   )
 }

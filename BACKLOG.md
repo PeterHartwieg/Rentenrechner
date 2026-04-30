@@ -102,16 +102,16 @@ GRV salary growth + Rentenwert indexation, Versorgungswerk / Beamtenpension vari
 Open items from 2026-04-30 review session.
 
 - ~~`P1` **Einstieg-Menü bAV defaults**~~ ✓ (2026-04-30) `defaultAssumptions.bav.monthlyGrossConversion` raised from 300 → 338 (§3 Nr. 63 EStG 4 % BBG cap for 2026). `GuidedSetup` `bav_offer` path now displays a single "AG-Zuschuss (gesamt)" field defaulted to 15 % (incl. statutory §1a Abs. 1a BetrAVG); on apply, anything above 15 % becomes contractual extra and statutory stays on. Snapshot tests + bAV funding cap test updated to reflect the new combined-contribution behavior (statutory subsidy now mildly spills past the 4 % BBG SV cap, surfacing the existing FairnessPanel warning).
-- `P2` **Disable scroll when popup/overlay open**: Body scroll should be locked while the Einstieg-Menü or any modal overlay is open.
+- ~~`P2` **Disable scroll when popup/overlay open**~~ ✓ (2026-04-30) `useEffect` in `useGuidedSetup.ts` sets `document.body.style.overflow = 'hidden'` while `showOverlay` is true.
+- ~~`P2` **Tooltip sort order**~~ ✓ (2026-04-30) `itemSorter={(item) => -Number(item.value)}` on `CapitalChart` recharts `Tooltip`; sorts highest-to-lowest.
+- ~~`P2` **Remove tooltip text below "Vergleich zusammenstellen"**~~ ✓ (2026-04-30) Removed `hint` prop and `<p className="comparison-picker-hint">` from `ComparisonPicker`; also cleaned up call site in `InputsPanel` and dead CSS.
+- ~~`P2` **Inflationsbereinigt off by default + move to advanced options**~~ ✓ (2026-04-30) Default changed to `false` in `useSimulationViewModel`; toggle wrapped in `<details class="toolbar-advanced">` in `ScenarioToolbar`.
+- ~~`P2` **ETF-TER default for bAV**~~ ✓ (2026-04-30) `fundAssetFee` raised from 0.002 → 0.005 (0.50 % aktiv verwalteter Fonds, total 0.80 % p.a.); golden snapshots updated.
 - `P2` **GKV/PKV as radio button**: "Gesetzlich krankenversichert" checkbox should become a two-option radio (Gesetzlich / Privat) to reduce label text and clarify the choice.
 - `P2` **Flat AG top-up amount for bAV**: Add an optional flat EUR/month employer contribution on top of the percentage-based AG-Zuschuss.
-- `P2` **ETF-TER default for bAV**: Default fund cost for bAV products should reflect that many bAV contracts still use actively managed funds (higher TER than a plain ETF default).
 - `P2` **Relocate the 3 collapsible menus at top of Eingaben**: The top three collapsible sections take too much vertical space and should move to a less prominent position or be consolidated.
 - `P2` **"Welche Produkte vergleichst du?" as persistent navigation**: Product-selection panel should remain accessible from all tabs, not only the current location.
 - `P2` **Harmonize "Kind zufügen" with other menu/button design**: The add-child UI does not match the visual style of surrounding controls.
-- `P2` **Tooltip sort order**: Chart/hover tooltips should sort entries highest-to-lowest (e.g. Vermögen descending) instead of the current order.
-- `P2` **Remove tooltip text below "Vergleich zusammenstellen"**: Delete the explanatory line directly beneath that heading.
-- `P2` **Inflationsbereinigt off by default + move to advanced options**: Real-terms toggle should default to off and live inside an advanced/details section.
 - `P2` **Visual separation of global vs product-specific options**: Clearly distinguish inputs that affect all products from per-product inputs, ideally reusing the existing product colour coding.
 - `P2` **Modellwert "als korrekt übernehmen" option**: Allow the user to mark a Modellwert as confirmed so it stops being flagged as Schätzwert when it matches the actual offer.
 - `P3` **Beitragsdynamik for bAV and investments**: If we model Gehaltswachstum, allow an optional annual contribution-increase percentage (Dynamik) for bAV and investment products to match real contract terms.

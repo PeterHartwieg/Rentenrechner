@@ -188,19 +188,19 @@ describe('default-profile end-to-end snapshot', () => {
 
   it('bAV: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
     const k = find('bav', 'konservativ')
-    expect(Math.round(k.capitalAtRetirement)).toBe(271_504)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(108_247)
-    expect(Math.round(k.netMonthlyPayout)).toBe(672)
+    expect(Math.round(k.capitalAtRetirement)).toBe(254_145)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(102_347)
+    expect(Math.round(k.netMonthlyPayout)).toBe(632)
 
     const b = find('bav', 'basis')
-    expect(Math.round(b.capitalAtRetirement)).toBe(423_886)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(155_423)
-    expect(Math.round(b.netMonthlyPayout)).toBe(992)
+    expect(Math.round(b.capitalAtRetirement)).toBe(394_164)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(146_262)
+    expect(Math.round(b.netMonthlyPayout)).toBe(938)
 
     const o = find('bav', 'optimistisch')
-    expect(Math.round(o.capitalAtRetirement)).toBe(682_253)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(235_065)
-    expect(Math.round(o.netMonthlyPayout)).toBe(1_412)
+    expect(Math.round(o.capitalAtRetirement)).toBe(630_695)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(219_172)
+    expect(Math.round(o.netMonthlyPayout)).toBe(1_331)
   })
 
   it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {

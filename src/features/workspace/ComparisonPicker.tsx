@@ -20,15 +20,12 @@ interface Props {
   onChange: (next: ProductId[]) => void
   /** Heading override per host view (e.g. "Welche Produkte vergleichst du?" in Angebot view). */
   heading?: string
-  /** Hint copy override. */
-  hint?: string
 }
 
 export function ComparisonPicker({
   visible,
   onChange,
   heading = 'Vergleich zusammenstellen',
-  hint = 'Wähle ein bis drei Produkte für den Vergleich. ETF + bAV ist die häufigste Kombination.',
 }: Props) {
   const visibleSet = new Set(visible)
   const anySecondaryActive = SECONDARY_IDS.some((id) => visibleSet.has(id))
@@ -71,7 +68,6 @@ export function ComparisonPicker({
     <section className="comparison-picker" aria-label="Vergleich zusammenstellen">
       <div className="comparison-picker-header">
         <h3>{heading}</h3>
-        <p className="comparison-picker-hint">{hint}</p>
       </div>
 
       <div className="product-chips-row" role="group" aria-label="Hauptauswahl">

@@ -51,6 +51,7 @@ export function CapitalChart({
             <Tooltip
               formatter={(value) => formatCurrency(Number(value), 0)}
               labelFormatter={(age) => `Alter ${age}`}
+              itemSorter={(item) => -Number(item.value)}
             />
             <Legend />
             {selectedResults.map((result) => (

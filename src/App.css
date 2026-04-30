@@ -184,6 +184,19 @@
   flex-wrap: wrap;
 }
 
+.toolbar-advanced > summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #667085;
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+  padding: 4px 0;
+}
+.toolbar-advanced > summary::-webkit-details-marker { display: none; }
+.toolbar-advanced[open] > summary { color: #344054; margin-bottom: 6px; }
+.toolbar-advanced[open] { display: flex; flex-direction: column; align-items: flex-end; }
+
 .segmented {
   display: flex;
   gap: 6px;
@@ -458,13 +471,6 @@ th {
 .comparison-picker-header h3 {
   margin: 0 0 4px;
   font-size: 0.95rem;
-}
-
-.comparison-picker-hint {
-  margin: 0;
-  color: #667085;
-  font-size: 0.84rem;
-  line-height: 1.4;
 }
 
 .comparison-picker-expander {
