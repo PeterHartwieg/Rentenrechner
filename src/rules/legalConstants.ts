@@ -24,6 +24,10 @@ export const legalConstants = {
     /** §34 Abs. 1 EStG Fünftelregelung divisor: tax = 5 × (T(other + lumpSum/5) − T(other)). */
     fuenftelregelungDivisor: 5,
   },
+  basisrente: {
+    /** §10 Abs. 1 Nr. 2 b Doppelbuchst. aa EStG / AltZertG §2: earliest old-age payout age for a certified Basisrentenvertrag. */
+    minPayoutAge: 62,
+  },
 } as const
 
 /**

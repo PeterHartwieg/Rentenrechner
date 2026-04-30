@@ -109,7 +109,10 @@ export const defaultAssumptions: ScenarioAssumptions = {
     equityPartialExemption: 0.3,
   },
   bav: {
-    monthlyGrossConversion: 300,
+    // §3 Nr. 63 EStG cap: 4 % × BBG (101,400 EUR for 2026) / 12 = 338 EUR/month —
+    // the highest contribution that is fully tax- and SV-free under the modern
+    // Direktversicherung rules. A reasonable starting point for new contracts.
+    monthlyGrossConversion: 338,
     // #51: §1a Abs. 1a BetrAVG default — statutory subsidy on, no contractual extras.
     statutoryMinimumSubsidyEnabled: true,
     contractualMatchPercent: 0,

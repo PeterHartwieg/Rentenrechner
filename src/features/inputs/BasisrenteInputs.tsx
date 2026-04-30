@@ -6,6 +6,7 @@ import { NumberField } from '../../ui/NumberField'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { getTerm } from '../../content/terms'
+import { validateBasisrentePayoutAge } from '../../engine/basisrente'
 
 type Props = {
   assumptions: ScenarioAssumptions
@@ -52,13 +53,12 @@ export function BasisrenteInputs({
           ⚠ Kapital nicht abrufbar vor Rentenbeginn, nicht beleihbar, nicht vererbbar
           (außer Hinterbliebene). Auszahlung frühestens ab Alter 62 möglich.
         </p>
-        {retirementAge < 62 && (
-          <p className="field-warning" style={{ marginTop: 4 }}>
-            Rentenbeginn mit {retirementAge} Jahren liegt unter der gesetzlichen Mindestgrenze
-            von 62 Jahren für Basisrente-Auszahlungen.
-            Das Ergebnis ist für eine regelkonforme Basisrente nicht gültig.
-          </p>
-        )}
+        {(() => {
+          const warning = validateBasisrentePayoutAge(retirementAge)
+          return warning ? (
+            <p className="field-warning" style={{ marginTop: 4 }}>{warning}</p>
+          ) : null
+        })()}
       </div>
 
       <div className="field-grid">

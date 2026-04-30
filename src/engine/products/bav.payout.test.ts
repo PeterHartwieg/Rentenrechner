@@ -44,9 +44,9 @@ describe('bAV funding model', () => {
   it('uses the actual employer social-security saving as cap for the minimum subsidy', () => {
     const funding = calculateBavFunding(defaultProfile, de2026Rules, defaultAssumptions.bav)
 
-    expect(funding.monthlyGrossConversion).toBe(300)
+    expect(funding.monthlyGrossConversion).toBe(338)
     expect(funding.monthlyStatutoryEmployerSubsidy).toBeGreaterThan(25)
-    expect(funding.monthlyStatutoryEmployerSubsidy).toBeLessThan(45)
+    expect(funding.monthlyStatutoryEmployerSubsidy).toBeLessThan(55)
   })
 
   it('compares private products against the same net cost as bAV by default', () => {
@@ -336,7 +336,7 @@ describe('#50 PKV premium modeling', () => {
     // PKV: no KV/PV social savings from bAV conversion → higher net cost than GKV (~165/month).
     // With high PKV premiums the AV Teilbetrag in Vorsorgepauschale is already capped at 0,
     // so it no longer varies with bAV conversion → pkv500 has slightly higher net cost than pkvBase.
-    expect(bavFundingNoPkv.monthlyNetCost).toBeCloseTo(161, 0)
+    expect(bavFundingNoPkv.monthlyNetCost).toBeCloseTo(185, 0)
     expect(bavFundingPkv.monthlyNetCost).toBeGreaterThan(bavFundingNoPkv.monthlyNetCost)
     expect(Math.abs(bavFundingPkv.monthlyNetCost - bavFundingNoPkv.monthlyNetCost)).toBeLessThan(10)
   })

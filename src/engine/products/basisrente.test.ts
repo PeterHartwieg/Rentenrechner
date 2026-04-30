@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import type { PersonalProfile } from '../../domain'
-import { calculateBasisrenteFunding, netBasisrentePayout } from '../basisrente'
+import { calculateBasisrenteFunding, netBasisrentePayout, validateBasisrentePayoutAge } from '../basisrente'
 import { calculateSalaryResult } from '../salary'
 import { simulateRetirementComparison } from '../simulate'
 
@@ -211,5 +211,28 @@ describe('Basisrente legal compliance (Group E step 3)', () => {
     )
     const r = sim.products.find((p) => p.productId === 'basisrente')!
     expect(r.leibrenteBreakEvenAge).toBeDefined()
+  })
+})
+
+describe('validateBasisrentePayoutAge — §10 Abs. 1 Nr. 2 b aa EStG age-62 floor', () => {
+  it('returns null at the §10 EStG / AltZertG §2 minimum (62)', () => {
+    expect(validateBasisrentePayoutAge(62)).toBeNull()
+  })
+
+  it('returns null for typical retirement ages above the floor', () => {
+    expect(validateBasisrentePayoutAge(63)).toBeNull()
+    expect(validateBasisrentePayoutAge(67)).toBeNull()
+    expect(validateBasisrentePayoutAge(70)).toBeNull()
+  })
+
+  it('returns a warning string below the floor and includes the user-entered age', () => {
+    const warning = validateBasisrentePayoutAge(60)
+    expect(warning).not.toBeNull()
+    expect(warning).toContain('60')
+    expect(warning).toContain('62')
+  })
+
+  it('warns at age 61 (one year below the floor)', () => {
+    expect(validateBasisrentePayoutAge(61)).not.toBeNull()
   })
 })

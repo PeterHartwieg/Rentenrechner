@@ -34,6 +34,7 @@ import type {
   SalaryResult,
 } from '../domain'
 import { besteuerungsanteilGrv } from '../rules/de2026'
+import { legalConstants } from '../rules/legalConstants'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementTax } from './retirementTax'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
@@ -209,3 +210,17 @@ export function netBasisrentePayout(
  * Exported separately so callers can display it for audit/info purposes.
  */
 export { besteuerungsanteilGrv as besteuerungsanteilBasisrente }
+
+/**
+ * Validate Basisrente payout start age against §10 Abs. 1 Nr. 2 b Doppelbuchst. aa EStG /
+ * AltZertG §2: a certified Basisrentenvertrag may not begin paying the old-age annuity
+ * before age 62. Returns a warning string when the retirement age is below the limit,
+ * or null when it is compliant. Mirrors `validateAvdPayoutAge` in style.
+ */
+export function validateBasisrentePayoutAge(retirementAge: number): string | null {
+  const min = legalConstants.basisrente.minPayoutAge
+  if (retirementAge < min) {
+    return `Rentenbeginn mit ${retirementAge} Jahren liegt unter der gesetzlichen Mindestgrenze von ${min} Jahren für Basisrente-Auszahlungen. Das Ergebnis ist für eine regelkonforme Basisrente nicht gültig.`
+  }
+  return null
+}

@@ -2,44 +2,44 @@
 
 exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > afterTaxLumpSum 1`] = `null`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > capitalAtRetirement 1`] = `242106.099319629`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > capitalAtRetirement 1`] = `267025.4818636585`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > netMonthlyPayout 1`] = `1152.9990702382595`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > netMonthlyPayout 1`] = `1242.3676295069395`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > capitalAtRetirement 1`] = `236304.278505729`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > capitalAtRetirement 1`] = `271712.7087408204`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > netMonthlyPayout 1`] = `661.6519798160411`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > netMonthlyPayout 1`] = `760.7955844742971`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > afterTaxLumpSum 1`] = `201766.58776896182`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > afterTaxLumpSum 1`] = `230761.4719102953`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > capitalAtRetirement 1`] = `214546.48980056873`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > capitalAtRetirement 1`] = `245301.163151422`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > netMonthlyPayout 1`] = `1217.4376727961978`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > netMonthlyPayout 1`] = `1389.4559990132223`;
 
 exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > afterTaxLumpSum 1`] = `null`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > capitalAtRetirement 1`] = `184761.55803565987`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > capitalAtRetirement 1`] = `207426.37849931925`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > netMonthlyPayout 1`] = `405.07123983738074`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > netMonthlyPayout 1`] = `454.7615922219075`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > bAV > afterTaxLumpSum 1`] = `141808.64201769896`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > bAV > afterTaxLumpSum 1`] = `155422.95241696067`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > bAV > capitalAtRetirement 1`] = `379718.5083240089`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > bAV > capitalAtRetirement 1`] = `423886.4398684044`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > bAV > netMonthlyPayout 1`] = `911.7316927197637`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > bAV > netMonthlyPayout 1`] = `992.1488305842154`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > private insurance (Schicht 3) > afterTaxLumpSum 1`] = `141947.35498380335`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > private insurance (Schicht 3) > afterTaxLumpSum 1`] = `162957.0392218984`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > private insurance (Schicht 3) > capitalAtRetirement 1`] = `147636.35498380335`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > private insurance (Schicht 3) > capitalAtRetirement 1`] = `170378.0392218984`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > private insurance (Schicht 3) > netMonthlyPayout 1`] = `413.38179395464937`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > private insurance (Schicht 3) > netMonthlyPayout 1`] = `477.05850982131545`;
 
-exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > ETF > afterTaxLumpSum 1`] = `135078.5026890303`;
+exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > ETF > afterTaxLumpSum 1`] = `154484.5222776351`;
 
-exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > ETF > capitalAtRetirement 1`] = `136659.11670132712`;
+exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > ETF > capitalAtRetirement 1`] = `156215.4854342604`;
 
-exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > ETF > netMonthlyPayout 1`] = `669.6910875075881`;
+exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > ETF > netMonthlyPayout 1`] = `765.5260830833373`;
 
-exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > bAV > capitalAtRetirement 1`] = `243213.8489880266`;
+exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > bAV > capitalAtRetirement 1`] = `271503.89120947843`;
 
-exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > bAV > netMonthlyPayout 1`] = `605.9155812728746`;
+exports[`simulateRetirementComparison — golden snapshots (konservativ, 3 %) > bAV > netMonthlyPayout 1`] = `672.3688904510648`;

@@ -97,6 +97,26 @@ Per-item detail lives in commit messages. Listed here as a compact index.
 
 GRV salary growth + Rentenwert indexation, Versorgungswerk / Beamtenpension variants, and the Basisrente legal-compliance follow-up from `LEGAL_IMPLEMENTATION_AUDIT_2026.md` are all shipped. No active work.
 
+### Group UX Tier 5: Polish and Input Improvements
+
+Open items from 2026-04-30 review session.
+
+- ~~`P1` **Einstieg-Menü bAV defaults**~~ ✓ (2026-04-30) `defaultAssumptions.bav.monthlyGrossConversion` raised from 300 → 338 (§3 Nr. 63 EStG 4 % BBG cap for 2026). `GuidedSetup` `bav_offer` path now displays a single "AG-Zuschuss (gesamt)" field defaulted to 15 % (incl. statutory §1a Abs. 1a BetrAVG); on apply, anything above 15 % becomes contractual extra and statutory stays on. Snapshot tests + bAV funding cap test updated to reflect the new combined-contribution behavior (statutory subsidy now mildly spills past the 4 % BBG SV cap, surfacing the existing FairnessPanel warning).
+- `P2` **Disable scroll when popup/overlay open**: Body scroll should be locked while the Einstieg-Menü or any modal overlay is open.
+- `P2` **GKV/PKV as radio button**: "Gesetzlich krankenversichert" checkbox should become a two-option radio (Gesetzlich / Privat) to reduce label text and clarify the choice.
+- `P2` **Flat AG top-up amount for bAV**: Add an optional flat EUR/month employer contribution on top of the percentage-based AG-Zuschuss.
+- `P2` **ETF-TER default for bAV**: Default fund cost for bAV products should reflect that many bAV contracts still use actively managed funds (higher TER than a plain ETF default).
+- `P2` **Relocate the 3 collapsible menus at top of Eingaben**: The top three collapsible sections take too much vertical space and should move to a less prominent position or be consolidated.
+- `P2` **"Welche Produkte vergleichst du?" as persistent navigation**: Product-selection panel should remain accessible from all tabs, not only the current location.
+- `P2` **Harmonize "Kind zufügen" with other menu/button design**: The add-child UI does not match the visual style of surrounding controls.
+- `P2` **Tooltip sort order**: Chart/hover tooltips should sort entries highest-to-lowest (e.g. Vermögen descending) instead of the current order.
+- `P2` **Remove tooltip text below "Vergleich zusammenstellen"**: Delete the explanatory line directly beneath that heading.
+- `P2` **Inflationsbereinigt off by default + move to advanced options**: Real-terms toggle should default to off and live inside an advanced/details section.
+- `P2` **Visual separation of global vs product-specific options**: Clearly distinguish inputs that affect all products from per-product inputs, ideally reusing the existing product colour coding.
+- `P2` **Modellwert "als korrekt übernehmen" option**: Allow the user to mark a Modellwert as confirmed so it stops being flagged as Schätzwert when it matches the actual offer.
+- `P3` **Beitragsdynamik for bAV and investments**: If we model Gehaltswachstum, allow an optional annual contribution-increase percentage (Dynamik) for bAV and investment products to match real contract terms.
+- `P3` **Leibrente vs. Kapitalverzehr break-even graph**: Add a chart showing at which age cumulative Leibrente payouts overtake ETF/Kapitalverzehr, making the longevity trade-off visually explicit.
+
 ### Group F: Later Expansion
 
 Items: remaining P3 work
@@ -116,7 +136,7 @@ Suggested order:
 - Monte Carlo simulation.
 - ~~Salary growth, contribution escalation, and GRV Rentenwert indexation.~~ ✓ (Wave 14)
 - ~~Versorgungswerk / Beamtenpension baseline variants.~~ ✓ (Wave 15)
-- Basisrente edge cases: professional-pension-scheme cap reduction and combined freiwillig-GKV cap interaction were implemented in Wave 16, but the 2026-04-28 audit re-opened Basisrente legal compliance for `zeitrente`, KVdR treatment, and age-62 validation.
+- ~~Basisrente edge cases: professional-pension-scheme cap reduction and combined freiwillig-GKV cap interaction were implemented in Wave 16, but the 2026-04-28 audit re-opened Basisrente legal compliance for `zeitrente`, KVdR treatment, and age-62 validation.~~ ✓ All three audit items closed: `zeitrente` removed (`payoutMode: 'leibrente'` only), `retirementHealthStatus` (`kvdr` / `freiwillig_gkv` / `pkv`) added with KVdR no-deduction path, age-62 floor extracted to `legalConstants.basisrente.minPayoutAge` and surfaced via `validateBasisrentePayoutAge` (used by `BasisrenteInputs.tsx`).
 - Multi-ETF portfolio.
 - Sensitivity heatmap.
 - ~~Saved scenario library and scenario duplication.~~ ✓
@@ -153,7 +173,7 @@ Completed items are kept here as a compact index only.
 
 - Group UX Tier 1 plain-language pass + UX13 + UX14 (commit 670af83): see `Group UX → Implemented Archive` for the per-item index.
 
-Latest documented baseline: 457 tests after Group UX Tier 4 (2026-04-30).
+Latest documented baseline: 462 tests after Basisrente audit-cleanup close (age-62 validator extraction, 2026-04-30).
 
 ---
 

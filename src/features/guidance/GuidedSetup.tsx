@@ -66,9 +66,19 @@ interface BasicInputs {
   publicHealthInsurance: boolean
 }
 
+/**
+ * §1a Abs. 1a BetrAVG mandates a 15 % statutory employer subsidy on bAV
+ * Entgeltumwandlung. The guided form therefore shows a *total* AG-Zuschuss
+ * field (statutory + contractual) so non-experts see a realistic 15 % default
+ * instead of the bare contractual 0 %. The split into statutory + contractual
+ * happens in `applyAndComplete` before writing back to assumptions.
+ */
+const STATUTORY_BAV_SUBSIDY_PCT = 15
+
 interface PathSpecific {
   bavGrossConversion: number
-  bavContractualMatchPct: number
+  /** Total AG-Zuschuss in % of Bruttoumwandlung — statutory 15 % plus any extra contractual share. */
+  bavTotalMatchPct: number
   etfTerPct: number
   /**
    * Years already worked under the GRV. We back-calculate Entgeltpunkte from
@@ -107,7 +117,9 @@ export function GuidedSetup({
   })
   const [extras, setExtras] = useState<PathSpecific>({
     bavGrossConversion: assumptions.bav.monthlyGrossConversion,
-    bavContractualMatchPct: assumptions.bav.contractualMatchPercent * 100,
+    bavTotalMatchPct:
+      (assumptions.bav.statutoryMinimumSubsidyEnabled ? STATUTORY_BAV_SUBSIDY_PCT : 0) +
+      assumptions.bav.contractualMatchPercent * 100,
     etfTerPct: assumptions.etf.annualAssetFee * 100,
     // Reverse-engineer years worked from existing EP if state was already set,
     // so reopening the wizard doesn't reset the user's number.
@@ -155,10 +167,15 @@ export function GuidedSetup({
         ...assumptions.bav,
         monthlyGrossConversion:
           path === 'bav_offer' ? extras.bavGrossConversion : assumptions.bav.monthlyGrossConversion,
+        // Total AG-Zuschuss splits into the statutory 15 % (always on for new contracts
+        // per §1a Abs. 1a BetrAVG) and any contractual share above it. A user value below
+        // 15 % still keeps statutory on — the engine caps it at the actual SV saving anyway.
         contractualMatchPercent:
           path === 'bav_offer'
-            ? extras.bavContractualMatchPct / 100
+            ? Math.max(0, extras.bavTotalMatchPct - STATUTORY_BAV_SUBSIDY_PCT) / 100
             : assumptions.bav.contractualMatchPercent,
+        statutoryMinimumSubsidyEnabled:
+          path === 'bav_offer' ? true : assumptions.bav.statutoryMinimumSubsidyEnabled,
       },
       etf: {
         ...assumptions.etf,
@@ -297,15 +314,16 @@ export function GuidedSetup({
                     suffix="EUR/Monat"
                   />
                   <SimpleNumber
-                    label="AG-Zuschuss (vertraglich)"
-                    value={extras.bavContractualMatchPct}
+                    label="AG-Zuschuss (gesamt)"
+                    value={extras.bavTotalMatchPct}
                     min={0}
                     max={100}
                     step={5}
                     onChange={(value) =>
-                      setExtras((e) => ({ ...e, bavContractualMatchPct: value }))
+                      setExtras((e) => ({ ...e, bavTotalMatchPct: value }))
                     }
                     suffix="% vom Brutto"
+                    hint={`Inkl. ${STATUTORY_BAV_SUBSIDY_PCT} % gesetzlicher Mindest-Zuschuss (§1a Abs. 1a BetrAVG).`}
                   />
                   <SimpleNumber
                     label="ETF-TER (Vergleich)"
