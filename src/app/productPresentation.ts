@@ -72,7 +72,12 @@ export const CALCULATION_WARNINGS: { category: string; status: WarningStatus; no
   {
     category: 'ETF-Sparerpauschbetrag',
     status: 'implementiert',
-    note: '1.000 EUR/Jahr in der Ansparphase auf Vorabpauschale; 1.000 EUR/Jahr in der Entnahmephase auf laufende Gewinne. Teilfreistellung (InvStG §20) konfigurierbar. Kein Pauschbetrag auf das Einmalkapital. (#7, #20)',
+    note: '1.000 EUR/Jahr in der Ansparphase auf die Vorabpauschale; 1.000 EUR im Liquidationsjahr auf das Einmalkapital; 1.000 EUR/Jahr in der Entnahmephase auf laufende Gewinne. Teilfreistellung (InvStG §20) konfigurierbar. Verheiratete Mitveranlagte: 2.000 EUR-Doppel-Pauschbetrag (§20 Abs. 9 EStG) noch nicht modelliert. (#7, #20)',
+  },
+  {
+    category: 'ETF-Vereinfachungen',
+    status: 'vereinfacht',
+    note: 'Nur thesaurierende Fonds modelliert (keine Ausschüttungs-ETF; Ausschüttungen würden die Vorabpauschale mindern und im Ausschüttungsjahr besteuert). Veräußerungsgewinn-Besteuerung bei Entnahmen: proportionale Gain-Ratio statt FIFO-Losprinzip (§20 Abs. 4 EStG; FIFO kann in steigenden Märkten Steuern in frühe Rentenjahre vorziehen). Kirchensteuer auf Kapitalertragsteuer nicht berechnet (Tarif gilt als ohne KiSt). Vorabpauschale-Steuerzahlung wird aus dem Portfoliokapital abgezogen; in der Praxis wird häufig das Verrechnungskonto belastet.',
   },
   {
     category: 'Versicherungssteuer',

@@ -172,17 +172,17 @@ describe('default-profile end-to-end snapshot', () => {
   it('ETF: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
     const k = find('etf', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(136_659)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(134_815)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(135_079)
     expect(Math.round(k.netMonthlyPayout)).toBe(670)
 
     const b = find('etf', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(214_546)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(201_503)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(201_767)
     expect(Math.round(b.netMonthlyPayout)).toBe(1_217)
 
     const o = find('etf', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(347_498)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(314_676)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(314_940)
     expect(Math.round(o.netMonthlyPayout)).toBe(2_240)
   })
 

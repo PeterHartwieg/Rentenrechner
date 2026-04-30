@@ -18,7 +18,6 @@ import { GlossaryPanel } from './features/inputs/GlossaryPanel'
 import { ProfileInputs } from './features/inputs/ProfileInputs'
 import { GRVInputs } from './features/inputs/GRVInputs'
 import { BavInputs } from './features/inputs/BavInputs'
-import { ReturnScenarioEditor } from './features/inputs/ReturnScenarioEditor'
 import { InsuranceInputs } from './features/inputs/InsuranceInputs'
 import { BasisrenteInputs } from './features/inputs/BasisrenteInputs'
 import { AltersvorsorgedepotInputs } from './features/inputs/AltersvorsorgedepotInputs'
@@ -43,7 +42,6 @@ import { GuidedSetup, GuidedSetupPostHint } from './features/guidance/GuidedSetu
 import { JourneyStepper } from './features/guidance/JourneyStepper'
 import { derivePostHintFactors } from './features/guidance/postHintFactors'
 import { WorkspaceTabs } from './features/workspace/WorkspaceTabs'
-import { StartActionsToolbar } from './features/workspace/StartView'
 import { ComparisonPicker } from './features/workspace/ComparisonPicker'
 import { ProductFocusHeader } from './features/workspace/ProductFocusHeader'
 import { EmptyComparison } from './features/workspace/EmptyComparison'
@@ -134,19 +132,80 @@ function App() {
     })
   }, [profile, assumptions, hasComparisonSet])
 
+  const customScenario = assumptions.returnScenarios.find((s) => s.id === 'custom')
+  const updateCustomRate = (annualReturn: number) => {
+    setAssumptions((current) => ({
+      ...current,
+      returnScenarios: current.returnScenarios.map((s) =>
+        s.id === 'custom' ? { ...s, annualReturn } : s,
+      ),
+    }))
+  }
+  const addCustomScenario = () => {
+    setAssumptions((current) => ({
+      ...current,
+      returnScenarios: [
+        ...current.returnScenarios,
+        { id: 'custom', label: 'Eigenes', annualReturn: 0.06 },
+      ],
+    }))
+    setSelectedScenarioId('custom')
+  }
+  const removeCustomScenario = () => {
+    setAssumptions((current) => ({
+      ...current,
+      returnScenarios: current.returnScenarios.filter((s) => s.id !== 'custom'),
+    }))
+  }
+
   const scenarioToolbar = (
     <div className="toolbar">
-      <div className="segmented" aria-label="Rendite-Szenario auswählen">
-        {assumptions.returnScenarios.map((scenario) => (
+      <div className="scenario-controls">
+        <div className="segmented" aria-label="Rendite-Szenario auswählen">
+          {assumptions.returnScenarios.map((scenario) => (
+            <button
+              key={scenario.id}
+              type="button"
+              className={scenario.id === selectedScenarioId ? 'active' : ''}
+              onClick={() => setSelectedScenarioId(scenario.id)}
+            >
+              {scenario.label} {formatPercent(scenario.annualReturn)}
+            </button>
+          ))}
+        </div>
+        {customScenario ? (
+          <div className="scenario-custom-edit">
+            <label>
+              <span>Eigene Rendite</span>
+              <input
+                type="number"
+                min={-5}
+                max={12}
+                step={0.25}
+                value={Number((customScenario.annualReturn * 100).toFixed(2))}
+                onChange={(event) =>
+                  updateCustomRate(Number(event.target.value) / 100)
+                }
+              />
+              <em>%</em>
+            </label>
+            <button
+              type="button"
+              className="scenario-remove-btn"
+              onClick={removeCustomScenario}
+            >
+              Entfernen
+            </button>
+          </div>
+        ) : (
           <button
-            key={scenario.id}
             type="button"
-            className={scenario.id === selectedScenarioId ? 'active' : ''}
-            onClick={() => setSelectedScenarioId(scenario.id)}
+            className="scenario-add-btn"
+            onClick={addCustomScenario}
           >
-            {scenario.label} {formatPercent(scenario.annualReturn)}
+            + Eigenes Szenario
           </button>
-        ))}
+        )}
       </div>
       <label className="toggle">
         <input
@@ -313,13 +372,6 @@ function App() {
         Vertragslaufzeit) die monatliche Auszahlung.
       </p>
 
-      <ReturnScenarioEditor
-        returnScenarios={assumptions.returnScenarios}
-        onScenariosChange={(scenarios) =>
-          setAssumptions((current) => ({ ...current, returnScenarios: scenarios }))
-        }
-      />
-
       {showInsurance && (
         <>
           <div className="divider" />
@@ -383,12 +435,6 @@ function App() {
 
   const vergleichView = (
     <section className="workspace-view workspace-view--vergleich">
-      <StartActionsToolbar
-        activeView={workspace.activeView}
-        onNavigate={workspace.setActiveView}
-        onReopenGuidedSetup={guidedSetup.reopen}
-      />
-
       {scenarioToolbar}
 
       {guidedSetup.journeyState === 'active' && (

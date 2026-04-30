@@ -446,7 +446,9 @@ describe('parseStateFromJson + validation (#49)', () => {
     expect(parseStateFromJson(raw)).toBeNull()
   })
 
-  it('returns null for duplicate-id returnScenarios', () => {
+  it('normalizes saved returnScenarios back to the canonical three baseline rows', () => {
+    // The editor no longer exposes the baseline rates; storage forces them to the
+    // canonical rates/labels on load so legacy tweaks don't survive.
     const raw = buildStateJson(defaultProfile, {
       ...defaultAssumptions,
       returnScenarios: [
@@ -454,7 +456,24 @@ describe('parseStateFromJson + validation (#49)', () => {
         { id: 'basis', label: 'b', annualReturn: 0.05 },
       ],
     })
-    expect(parseStateFromJson(raw)).toBeNull()
+    const parsed = parseStateFromJson(raw)
+    expect(parsed).not.toBeNull()
+    expect(parsed?.assumptions.returnScenarios).toEqual(defaultAssumptions.returnScenarios)
+  })
+
+  it('preserves a saved custom return scenario alongside the canonical baselines', () => {
+    const raw = buildStateJson(defaultProfile, {
+      ...defaultAssumptions,
+      returnScenarios: [
+        ...defaultAssumptions.returnScenarios,
+        { id: 'custom', label: 'Eigene Annahme', annualReturn: 0.045 },
+      ],
+    })
+    const parsed = parseStateFromJson(raw)
+    expect(parsed?.assumptions.returnScenarios).toEqual([
+      ...defaultAssumptions.returnScenarios,
+      { id: 'custom', label: 'Eigene Annahme', annualReturn: 0.045 },
+    ])
   })
 
   it('returns null for unknown durchfuehrungsweg in saved state', () => {

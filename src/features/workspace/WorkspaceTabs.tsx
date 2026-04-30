@@ -9,7 +9,7 @@ type TabDef = {
 
 const TABS: readonly TabDef[] = [
   { id: 'vergleich', label: 'Vergleich', icon: BarChart3 },
-  { id: 'angebot', label: 'Einstellungen', icon: Pencil },
+  { id: 'angebot', label: 'Eingaben', icon: Pencil },
   { id: 'warum', label: 'Warum?', icon: HelpCircle },
   { id: 'details', label: 'Details & Export', icon: FileSpreadsheet },
 ] as const

@@ -63,6 +63,19 @@ export function parseStateFromJson(
     rawBasisrente.payoutMode = 'leibrente'
   }
 
+  // Lock the three baseline return scenarios to canonical rates/labels — the editor no
+  // longer exposes them. Preserve any user-added 'custom' row.
+  const rawScenarios = rawAssumptions.returnScenarios
+  if (Array.isArray(rawScenarios)) {
+    const customRow = rawScenarios.find(
+      (s): s is { id: 'custom'; label: string; annualReturn: number } =>
+        !!s && typeof s === 'object' && (s as { id?: unknown }).id === 'custom',
+    )
+    rawAssumptions.returnScenarios = customRow
+      ? [...defaultAssumptions.returnScenarios, customRow]
+      : [...defaultAssumptions.returnScenarios]
+  }
+
   const profile = mergeDeep(obj.profile, defaultProfile)
   const assumptions = mergeDeep(obj.assumptions, defaultAssumptions)
 

@@ -134,7 +134,7 @@ export function BavInputs({
       </label>
       <p className="field-hint">
         Effektiver AG-Beitrag:{' '}
-        {formatCurrency(bavFunding.monthlyEffectiveEmployerContribution, 0)}/Monat
+        {formatCurrency(bavFunding.monthlyEmployerContribution, 0)}/Monat
         {' '}(gesetzlich {formatCurrency(bavFunding.monthlyStatutoryEmployerSubsidy, 0)}
         {' '}+ vertraglich {formatCurrency(bavFunding.monthlyContractualEmployerContribution, 0)}).
       </p>

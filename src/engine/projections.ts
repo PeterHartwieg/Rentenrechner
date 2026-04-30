@@ -214,28 +214,6 @@ export function computeGrossMonthlyPayout(
   return monthlyPayoutFromCapital(capital, cfg.payoutReturn, years)
 }
 
-export function netEtfPayout(
-  grossMonthlyPayout: number,
-  capital: number,
-  totalContributions: number,
-  rules: GermanRules,
-  partialExemption: number,
-  cumulativeVorabpauschale = 0,
-): number {
-  // Vorabpauschale already taxed during accumulation reduces remaining taxable gain at payout
-  const untaxedGain = Math.max(0, capital - totalContributions - cumulativeVorabpauschale)
-  const gainRatio = capital > 0 ? untaxedGain / capital : 0
-  const annualTaxableGain = grossMonthlyPayout * 12 * gainRatio
-  const annualTax = calculateCapitalGainsTax(
-    annualTaxableGain,
-    rules,
-    partialExemption,
-    rules.capitalGains.saverAllowance,
-  )
-
-  return Math.max(0, grossMonthlyPayout - annualTax / 12)
-}
-
 export function afterTaxInvestmentCapital(
   capital: number,
   totalContributions: number,
@@ -243,9 +221,10 @@ export function afterTaxInvestmentCapital(
   partialExemption: number,
   cumulativeVorabpauschale = 0,
 ): number {
-  // Vorabpauschale already taxed during accumulation reduces the remaining taxable exit gain (§19 InvStG)
+  // Vorabpauschale already taxed during accumulation reduces the remaining taxable exit gain (§19 InvStG).
+  // Sparer-Pauschbetrag applies in the liquidation year (EStG §20 Abs. 9), consistent with etfPayoutSchedule.
   const gain = Math.max(0, capital - totalContributions - cumulativeVorabpauschale)
-  return capital - calculateCapitalGainsTax(gain, rules, partialExemption, 0)
+  return capital - calculateCapitalGainsTax(gain, rules, partialExemption, rules.capitalGains.saverAllowance)
 }
 
 // Year-by-year ETF payout schedule (#37). Tracks remaining capital, cost basis, and tax each year.

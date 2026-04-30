@@ -23,8 +23,15 @@ export function useSimulationViewModel(
     [profile, assumptions],
   )
 
+  // Fall back to 'basis' when the selected scenario is no longer present (e.g. user
+  // just removed their custom row).
+  const effectiveScenarioId = assumptions.returnScenarios.some(
+    (s) => s.id === selectedScenarioId,
+  )
+    ? selectedScenarioId
+    : 'basis'
   const selectedScenario = assumptions.returnScenarios.find(
-    (scenario) => scenario.id === selectedScenarioId,
+    (scenario) => scenario.id === effectiveScenarioId,
   )
   // visibleProducts is the explicit comparison set. Empty means "no private product
   // selected" — UX10 surfaces an empty-state in the Vergleich view rather than
@@ -32,7 +39,7 @@ export function useSimulationViewModel(
   const visibleSet = new Set<ProductId>(assumptions.visibleProducts)
   const visibleProducts = simulation.products.filter((p) => visibleSet.has(p.productId))
   const selectedResults = simulation.products
-    .filter((product) => product.scenarioId === selectedScenarioId)
+    .filter((product) => product.scenarioId === effectiveScenarioId)
     .filter((product) => visibleSet.has(product.productId))
     .sort((a, b) => (getProductMeta(a.productId)?.order ?? 99) - (getProductMeta(b.productId)?.order ?? 99))
 
@@ -166,7 +173,7 @@ export function useSimulationViewModel(
 
   return {
     // UI state
-    selectedScenarioId, setSelectedScenarioId,
+    selectedScenarioId: effectiveScenarioId, setSelectedScenarioId,
     showRealValues, setShowRealValues,
     cashflowProductId: effectiveCashflowProductId, setCashflowProductId,
     tarifgebunden, setTarifgebunden,

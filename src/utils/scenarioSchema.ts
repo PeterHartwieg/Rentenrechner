@@ -18,7 +18,7 @@ import { validateRiester } from '../engine/products/riester.validation'
 // Inputs are post-mergeDeep so all keys exist; this layer rejects NaN, ±Infinity,
 // out-of-domain enums, broken invariants, and malformed nested arrays.
 
-const VALID_SCENARIO_IDS: readonly ReturnScenarioId[] = ['konservativ', 'basis', 'optimistisch']
+const VALID_SCENARIO_IDS: readonly ReturnScenarioId[] = ['konservativ', 'basis', 'optimistisch', 'custom']
 
 const VALID_PRODUCT_IDS: readonly ProductId[] = [
   'etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester',

@@ -208,6 +208,81 @@
   background: #2563eb;
 }
 
+.scenario-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.scenario-add-btn {
+  padding: 8px 14px;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scenario-add-btn:hover {
+  border-color: #475569;
+  color: #172033;
+  background: #f1f5f9;
+}
+
+.scenario-custom-edit {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.scenario-custom-edit label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.scenario-custom-edit em {
+  font-style: normal;
+  color: #64748b;
+}
+
+.scenario-custom-edit input[type="number"] {
+  width: 70px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #172033;
+  background: #ffffff;
+}
+
+.scenario-custom-edit input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.scenario-remove-btn {
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: transparent;
+  color: #475569;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.scenario-remove-btn:hover {
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
 .toggle {
   display: flex;
   align-items: center;
@@ -367,64 +442,6 @@ th {
   display: flex;
   flex-direction: column;
   gap: 18px;
-}
-
-/* Start actions toolbar — slim row at the top of Vergleich (replaces the dropped Start tab). */
-.start-actions-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 8px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.start-actions-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.start-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid #cfd8e3;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #344054;
-  font-size: 0.84rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.start-action-btn:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-}
-
-.start-action-btn.active {
-  border-color: #2563eb;
-  background: #eef4ff;
-  color: #2563eb;
-}
-
-.start-actions-link {
-  background: transparent;
-  border: 0;
-  color: #2563eb;
-  font-weight: 700;
-  font-size: 0.84rem;
-  cursor: pointer;
-  padding: 4px 6px;
-}
-
-.start-actions-link:hover {
-  text-decoration: underline;
 }
 
 /* Comparison picker (UX10) */

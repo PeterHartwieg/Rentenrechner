@@ -362,7 +362,6 @@ describe('#51 statutory vs. contractual employer contribution', () => {
     })
     expect(f.monthlyContractualEmployerContribution).toBe(0)
     expect(f.monthlyStatutoryEmployerSubsidy).toBeGreaterThan(0)
-    expect(f.monthlyEffectiveEmployerContribution).toBeCloseTo(f.monthlyStatutoryEmployerSubsidy, 5)
     expect(f.monthlyEmployerContribution).toBeCloseTo(f.monthlyStatutoryEmployerSubsidy, 5)
     // Cap holds: subsidy ≤ employer SV saving
     expect(f.monthlyStatutoryEmployerSubsidy * 12).toBeLessThanOrEqual(f.employerSocialSecuritySavingAnnual + 0.01)
@@ -379,7 +378,7 @@ describe('#51 statutory vs. contractual employer contribution', () => {
     })
     expect(f.monthlyContractualEmployerContribution).toBe(0)
     expect(f.monthlyStatutoryEmployerSubsidy).toBe(0)
-    expect(f.monthlyEffectiveEmployerContribution).toBe(0)
+    expect(f.monthlyEmployerContribution).toBe(0)
   })
 
   it('statutory disabled + 15% contractual: contractual paid uncapped, no statutory part', () => {
@@ -393,7 +392,7 @@ describe('#51 statutory vs. contractual employer contribution', () => {
     expect(f.monthlyStatutoryEmployerSubsidy).toBe(0)
     // 15 % of 300 = 45 EUR/month — paid in full, not clipped to employer SV savings
     expect(f.monthlyContractualEmployerContribution).toBeCloseTo(45, 2)
-    expect(f.monthlyEffectiveEmployerContribution).toBeCloseTo(45, 2)
+    expect(f.monthlyEmployerContribution).toBeCloseTo(45, 2)
   })
 
   it('statutory enabled + 15% contractual: both stack', () => {
@@ -406,11 +405,10 @@ describe('#51 statutory vs. contractual employer contribution', () => {
     })
     expect(f.monthlyContractualEmployerContribution).toBeCloseTo(45, 2)
     expect(f.monthlyStatutoryEmployerSubsidy).toBeGreaterThan(0)
-    expect(f.monthlyEffectiveEmployerContribution).toBeCloseTo(
+    expect(f.monthlyEmployerContribution).toBeCloseTo(
       f.monthlyStatutoryEmployerSubsidy + f.monthlyContractualEmployerContribution,
       2,
     )
-    expect(f.monthlyEmployerContribution).toBeCloseTo(f.monthlyEffectiveEmployerContribution, 5)
   })
 
   it('contractual fixed monthly only: paid as a flat add-on independent of conversion', () => {
@@ -423,6 +421,6 @@ describe('#51 statutory vs. contractual employer contribution', () => {
     })
     expect(f.monthlyStatutoryEmployerSubsidy).toBe(0)
     expect(f.monthlyContractualEmployerContribution).toBeCloseTo(50, 2)
-    expect(f.monthlyEffectiveEmployerContribution).toBeCloseTo(50, 2)
+    expect(f.monthlyEmployerContribution).toBeCloseTo(50, 2)
   })
 })

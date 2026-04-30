@@ -84,9 +84,7 @@ export interface BavFundingResult {
   monthlyStatutoryEmployerSubsidy: number
   // #51: contractual employer match + fixed contribution (uncapped).
   monthlyContractualEmployerContribution: number
-  // #51: effective employer contribution actually paid into the bAV (= statutory + contractual).
-  monthlyEffectiveEmployerContribution: number
-  // Same as monthlyEffectiveEmployerContribution; retained as the canonical field consumed downstream.
+  // Total employer contribution paid into the bAV (statutory §1a Abs. 1a + contractual).
   monthlyEmployerContribution: number
   annualEmployerContribution: number
   employerSocialSecuritySavingAnnual: number

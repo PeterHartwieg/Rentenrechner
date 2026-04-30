@@ -316,7 +316,6 @@ export function calculateBavFunding(
     annualTaxAndSvSavings,
     monthlyStatutoryEmployerSubsidy: statutorySubsidyAnnual / 12,
     monthlyContractualEmployerContribution: contractualSubsidyAnnual / 12,
-    monthlyEffectiveEmployerContribution: annualEmployerContribution / 12,
     monthlyEmployerContribution: annualEmployerContribution / 12,
     annualEmployerContribution,
     employerSocialSecuritySavingAnnual,

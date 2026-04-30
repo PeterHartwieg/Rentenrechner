@@ -1,4 +1,4 @@
-export type ReturnScenarioId = 'konservativ' | 'basis' | 'optimistisch'
+export type ReturnScenarioId = 'konservativ' | 'basis' | 'optimistisch' | 'custom'
 
 export interface PersonalProfile {
   age: number
