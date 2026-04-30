@@ -34,21 +34,11 @@
   font-size: clamp(1.7rem, 2vw, 2.4rem);
 }
 
-.topbar-badge,
 .panel-heading,
 .section-heading {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.topbar-badge {
-  flex: 0 0 auto;
-  padding: 10px 12px;
-  border: 1px solid #c9d7e5;
-  border-radius: 8px;
-  color: #0f766e;
-  background: #f7fbfa;
 }
 
 .topbar-actions {
@@ -77,31 +67,75 @@
   color: #2563eb;
 }
 
-.trust-strip {
+.disclaimer-wrap {
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 32px;
   background: #f7fbfa;
   border-bottom: 1px solid #d9e1ea;
-  color: #344054;
-  font-size: 0.84rem;
-  line-height: 1.45;
 }
 
-.trust-strip svg {
+.disclaimer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 3px 4px;
+  border: 0;
+  background: transparent;
+  color: #344054;
+  font-size: 0.83rem;
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.disclaimer-btn svg {
   flex: 0 0 auto;
-  margin-top: 2px;
   color: #0f766e;
 }
 
-.trust-strip p {
-  margin: 0;
-  max-width: 110ch;
+.disclaimer-btn:hover {
+  color: #0f766e;
 }
 
-.trust-strip strong {
-  color: #172033;
+.disclaimer-popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 24px;
+  z-index: 200;
+  max-width: 420px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #344054;
+}
+
+.disclaimer-popup p {
+  margin: 0;
+}
+
+.disclaimer-dismiss {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 0;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.disclaimer-dismiss:hover {
+  color: #374151;
 }
 
 .dashboard {
@@ -461,6 +495,209 @@ th {
   text-decoration: underline;
 }
 
+/* Comparison picker (UX10) */
+.comparison-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #d9e1ea;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.comparison-picker-header h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.comparison-picker-hint {
+  margin: 0;
+  color: #667085;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.comparison-picker-expander {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.comparison-picker-expander:hover {
+  text-decoration: underline;
+}
+
+/* Chips reused by ComparisonPicker (formerly in ProductVisibilityChips.css) */
+.product-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.product-chips-row--secondary {
+  margin-top: 4px;
+}
+
+.product-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #c9d7e5;
+  border-radius: 999px;
+  background: #f4f7fb;
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.product-chip:hover:not(:disabled) {
+  background: #e8eef6;
+}
+
+.product-chip.on {
+  background: #ffffff;
+}
+
+.product-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.product-chip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Product focus header (UX10) — small block above each input section */
+.product-focus {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  background: #f9fbfd;
+}
+
+.product-focus-bar {
+  width: 4px;
+  flex: 0 0 4px;
+  border-radius: 2px;
+  align-self: stretch;
+}
+
+.product-focus-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.product-focus-title {
+  font-size: 0.95rem;
+  color: #172033;
+}
+
+.product-focus-line {
+  margin: 0;
+  color: #344054;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.product-focus-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  margin: 0;
+}
+
+.product-focus-grid > div {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.product-focus-grid dt {
+  margin: 0;
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.product-focus-grid dd {
+  margin: 0;
+  color: #344054;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+/* Input section title used for the "Globale Annahmen" block */
+.input-section-title {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #344054;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Empty-comparison state (UX10) */
+.empty-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  border: 1px dashed #c9d7e5;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.empty-comparison h3 {
+  margin: 0;
+  font-size: 1.02rem;
+  color: #172033;
+}
+
+.empty-comparison p {
+  margin: 0;
+  color: #475467;
+  line-height: 1.5;
+}
+
+.empty-comparison-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.empty-comparison-cta:hover {
+  background: #1d4ed8;
+}
+
 /* Angebot view: input panel becomes the main content, no sticky/scroll */
 .input-panel--full {
   position: static;
@@ -499,9 +736,8 @@ th {
     font-size: 0.85rem;
   }
 
-  .trust-strip {
-    padding: 10px 16px;
-    font-size: 0.8rem;
+  .disclaimer-wrap {
+    padding: 6px 16px;
   }
 
   .topbar,
@@ -565,7 +801,7 @@ th {
 
 @media print {
   .topbar,
-  .trust-strip,
+  .disclaimer-wrap,
   .workspace-tabs,
   .workspace,
   .dashboard {

@@ -26,13 +26,10 @@ export function useSimulationViewModel(
   const selectedScenario = assumptions.returnScenarios.find(
     (scenario) => scenario.id === selectedScenarioId,
   )
-  // Empty visibleProducts is treated as "all visible" — defensive against a corrupt
-  // persisted state. The chip UI prevents the user from emptying the list interactively.
-  const visibleSet = new Set<ProductId>(
-    assumptions.visibleProducts.length > 0
-      ? assumptions.visibleProducts
-      : ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'],
-  )
+  // visibleProducts is the explicit comparison set. Empty means "no private product
+  // selected" — UX10 surfaces an empty-state in the Vergleich view rather than
+  // silently showing all products.
+  const visibleSet = new Set<ProductId>(assumptions.visibleProducts)
   const visibleProducts = simulation.products.filter((p) => visibleSet.has(p.productId))
   const selectedResults = simulation.products
     .filter((product) => product.scenarioId === selectedScenarioId)

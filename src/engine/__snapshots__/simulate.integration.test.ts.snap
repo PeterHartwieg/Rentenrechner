@@ -2,13 +2,13 @@
 
 exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > afterTaxLumpSum 1`] = `null`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > capitalAtRetirement 1`] = `199103.20953395928`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > capitalAtRetirement 1`] = `242106.099319629`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > netMonthlyPayout 1`] = `994.0408171168101`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Altersvorsorgedepot > netMonthlyPayout 1`] = `1152.9990702382595`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > capitalAtRetirement 1`] = `179504.07586434096`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > capitalAtRetirement 1`] = `236304.278505729`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > netMonthlyPayout 1`] = `502.6114124201547`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Basisrente > netMonthlyPayout 1`] = `661.6519798160411`;
 
 exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > afterTaxLumpSum 1`] = `201502.83776896182`;
 
@@ -18,9 +18,9 @@ exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > ETF > 
 
 exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > afterTaxLumpSum 1`] = `null`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > capitalAtRetirement 1`] = `95652.68557217604`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > capitalAtRetirement 1`] = `184761.55803565987`;
 
-exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > netMonthlyPayout 1`] = `209.70894784843873`;
+exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > Riester > netMonthlyPayout 1`] = `405.07123983738074`;
 
 exports[`simulateRetirementComparison — golden snapshots (basis, 5 %) > bAV > afterTaxLumpSum 1`] = `141808.64201769896`;
 

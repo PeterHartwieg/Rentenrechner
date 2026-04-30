@@ -22,7 +22,13 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): RiesterProductResult {
-  const { profile, assumptions, rules, riesterFunding, payoutYear } = ctx
+  const { profile, assumptions, rules, riesterFunding, bavFunding, payoutYear } = ctx
+
+  const normalizedOwnContribution =
+    bavFunding.monthlyNetCost + riesterFunding.guenstigerpruefungBenefitAnnual / 12
+  const totalMonthlyContribution =
+    normalizedOwnContribution + riesterFunding.totalAllowanceAnnual / 12
+
   return buildProductResult({
     productId: 'riester',
     label: metadata.label,
@@ -30,9 +36,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     profile,
     rules,
     assumptions,
-    monthlyUserCost: riesterFunding.monthlyNetCost,
-    monthlyProductContribution:
-      riesterFunding.monthlyOwnContribution + riesterFunding.totalAllowanceAnnual / 12,
+    monthlyUserCost: bavFunding.monthlyNetCost,
+    monthlyProductContribution: totalMonthlyContribution,
     monthlyEmployerContribution: 0,
     fees: assumptions.riester.fees,
     initialCapital: assumptions.riester.existingCapital > 0

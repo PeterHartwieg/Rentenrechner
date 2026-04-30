@@ -1,4 +1,5 @@
-import { Calculator, HelpCircle, Info, RotateCcw, Settings } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { HelpCircle, Info, RotateCcw, Settings } from 'lucide-react'
 import type { ProductId } from './domain'
 import { NumberField } from './ui/NumberField'
 import { clampNumber } from './ui/formatting'
@@ -33,12 +34,14 @@ import { FeeDragChart } from './features/results/FeeDragChart'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { PrintReport } from './features/results/PrintReport'
-import { ProductVisibilityChips } from './features/results/ProductVisibilityChips'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { GuidedSetup, GuidedSetupPostHint } from './features/guidance/GuidedSetup'
 import { WorkspaceTabs } from './features/workspace/WorkspaceTabs'
 import { StartView } from './features/workspace/StartView'
+import { ComparisonPicker } from './features/workspace/ComparisonPicker'
+import { ProductFocusHeader } from './features/workspace/ProductFocusHeader'
+import { EmptyComparison } from './features/workspace/EmptyComparison'
 import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
@@ -75,22 +78,44 @@ function App() {
     handleExportCsv,
   } = vm
 
+  const [disclaimerVisible, setDisclaimerVisible] = useState(
+    () => localStorage.getItem('disclaimer-dismissed') !== '1',
+  )
+  const [showDisclaimerPopup, setShowDisclaimerPopup] = useState(false)
+  const disclaimerRef = useRef<HTMLDivElement>(null)
+
+  function dismissDisclaimer() {
+    localStorage.setItem('disclaimer-dismissed', '1')
+    setDisclaimerVisible(false)
+    setShowDisclaimerPopup(false)
+  }
+
+  useEffect(() => {
+    if (!showDisclaimerPopup) return
+    function handleClick(event: MouseEvent) {
+      if (disclaimerRef.current && !disclaimerRef.current.contains(event.target as Node)) {
+        setShowDisclaimerPopup(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showDisclaimerPopup])
+
   const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
   const bavEntitlementMax =
     (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap) / 12
 
-  // Empty visibleProducts is treated as "all visible" (matches the view-model fallback).
-  const visibleSet = new Set(
-    assumptions.visibleProducts.length > 0
-      ? assumptions.visibleProducts
-      : ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'],
-  )
+  // UX10: visibleProducts is the explicit comparison set. Empty means no private
+  // product is selected — Vergleich/Warum/Details views show an empty-state in
+  // that case instead of silently rendering all six products.
+  const visibleSet = new Set(assumptions.visibleProducts)
   const showEtf = visibleSet.has('etf')
   const showBav = visibleSet.has('bav')
   const showInsurance = visibleSet.has('versicherung')
   const showBasisrente = visibleSet.has('basisrente')
   const showAvd = visibleSet.has('altersvorsorgedepot')
   const showRiester = visibleSet.has('riester')
+  const hasComparisonSet = assumptions.visibleProducts.length > 0
 
   const scenarioToolbar = (
     <div className="toolbar">
@@ -146,6 +171,15 @@ function App() {
         onRename={scenarioLib.rename}
       />
 
+      <ComparisonPicker
+        visible={assumptions.visibleProducts}
+        onChange={(next) =>
+          setAssumptions((current) => ({ ...current, visibleProducts: next }))
+        }
+        heading="Welche Produkte vergleichst du?"
+        hint="Diese Auswahl steuert sowohl die Eingabefelder hier als auch die Charts und Tabellen im Vergleich."
+      />
+
       <ProfileInputs
         profile={profile}
         onProfileChange={setProfile}
@@ -164,6 +198,7 @@ function App() {
       {showBav && (
         <>
           <div className="divider" />
+          <ProductFocusHeader productId="bav" />
           <BavInputs
             assumptions={assumptions}
             onAssumptionsChange={setAssumptions}
@@ -182,9 +217,11 @@ function App() {
         </>
       )}
 
-      <div className="field-grid">
-        {showEtf && (
-          <>
+      {showEtf && (
+        <>
+          <div className="divider" />
+          <ProductFocusHeader productId="etf" />
+          <div className="field-grid">
             <NumberField
               label="ETF TER"
               value={assumptions.etf.annualAssetFee * 100}
@@ -217,8 +254,13 @@ function App() {
                 <option value={0}>Anleihe-ETF / Sonstige (0% steuerfrei)</option>
               </select>
             </label>
-          </>
-        )}
+          </div>
+        </>
+      )}
+
+      <div className="divider" />
+      <h3 className="input-section-title">Globale Annahmen</h3>
+      <div className="field-grid">
         <NumberField
           label="Inflation"
           value={assumptions.inflationRate * 100}
@@ -262,19 +304,24 @@ function App() {
       />
 
       {showInsurance && (
-        <InsuranceInputs
-          assumptions={assumptions}
-          onAssumptionsChange={setAssumptions}
-          profile={profile}
-          insuranceTaxMode={insuranceTaxMode}
-          insuranceProductResult={insuranceResult}
-          rules={de2026Rules}
-        />
+        <>
+          <div className="divider" />
+          <ProductFocusHeader productId="versicherung" />
+          <InsuranceInputs
+            assumptions={assumptions}
+            onAssumptionsChange={setAssumptions}
+            profile={profile}
+            insuranceTaxMode={insuranceTaxMode}
+            insuranceProductResult={insuranceResult}
+            rules={de2026Rules}
+          />
+        </>
       )}
 
       {showBasisrente && (
         <>
           <div className="divider" />
+          <ProductFocusHeader productId="basisrente" />
           <BasisrenteInputs
             assumptions={assumptions}
             onAssumptionsChange={setAssumptions}
@@ -289,6 +336,7 @@ function App() {
       {showAvd && (
         <>
           <div className="divider" />
+          <ProductFocusHeader productId="altersvorsorgedepot" />
           <AltersvorsorgedepotInputs
             assumptions={assumptions}
             onAssumptionsChange={setAssumptions}
@@ -303,6 +351,7 @@ function App() {
       {showRiester && (
         <>
           <div className="divider" />
+          <ProductFocusHeader productId="riester" />
           <RiesterInputs
             assumptions={assumptions}
             onAssumptionsChange={setAssumptions}
@@ -323,38 +372,44 @@ function App() {
         <GuidedSetupPostHint onDismiss={guidedSetup.dismissPostSetupHint} />
       )}
 
-      <ProductVisibilityChips
+      <ComparisonPicker
         visible={assumptions.visibleProducts}
         onChange={(next) =>
           setAssumptions((current) => ({ ...current, visibleProducts: next }))
         }
       />
 
-      <DecisionSummary
-        results={selectedResults}
-        bestCapital={bestCapital}
-        bestPension={bestPension}
-      />
+      {hasComparisonSet ? (
+        <>
+          <DecisionSummary
+            results={selectedResults}
+            bestCapital={bestCapital}
+            bestPension={bestPension}
+          />
 
-      <SummaryMetrics
-        grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-        grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
-        grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
-        bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
-        bavTotalMonthlyContribution={
-          simulation.bavFunding.monthlyGrossConversion +
-          simulation.bavFunding.monthlyEmployerContribution
-        }
-        bestCapital={bestCapital}
-        bestPension={bestPension}
-      />
+          <SummaryMetrics
+            grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+            grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
+            grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
+            bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
+            bavTotalMonthlyContribution={
+              simulation.bavFunding.monthlyGrossConversion +
+              simulation.bavFunding.monthlyEmployerContribution
+            }
+            bestCapital={bestCapital}
+            bestPension={bestPension}
+          />
 
-      <CapitalChart
-        capitalChartData={capitalChartData}
-        selectedScenario={selectedScenario}
-        selectedResults={selectedResults}
-        productColors={PRODUCT_COLORS}
-      />
+          <CapitalChart
+            capitalChartData={capitalChartData}
+            selectedScenario={selectedScenario}
+            selectedResults={selectedResults}
+            productColors={PRODUCT_COLORS}
+          />
+        </>
+      ) : (
+        <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
+      )}
     </section>
   )
 
@@ -362,26 +417,32 @@ function App() {
     <section className="workspace-view workspace-view--warum">
       {scenarioToolbar}
 
-      <ResultWaterfalls results={selectedResults} />
+      {hasComparisonSet ? (
+        <>
+          <ResultWaterfalls results={selectedResults} />
 
-      <SensitivityPanel
-        profile={profile}
-        assumptions={assumptions}
-        visibleProducts={assumptions.visibleProducts}
-      />
+          <SensitivityPanel
+            profile={profile}
+            assumptions={assumptions}
+            visibleProducts={assumptions.visibleProducts}
+          />
 
-      <section className="split-panels">
-        <PensionChart
-          pensionBars={pensionBars}
-          retirementEndAge={assumptions.retirementEndAge}
-        />
-        <FairnessPanel
-          profile={profile}
-          assumptions={assumptions}
-          bavFunding={simulation.bavFunding}
-          rules={de2026Rules}
-        />
-      </section>
+          <section className="split-panels">
+            <PensionChart
+              pensionBars={pensionBars}
+              retirementEndAge={assumptions.retirementEndAge}
+            />
+            <FairnessPanel
+              profile={profile}
+              assumptions={assumptions}
+              bavFunding={simulation.bavFunding}
+              rules={de2026Rules}
+            />
+          </section>
+        </>
+      ) : (
+        <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
+      )}
     </section>
   )
 
@@ -389,37 +450,43 @@ function App() {
     <section className="workspace-view workspace-view--details">
       {scenarioToolbar}
 
-      <FeeDragChart
-        selectedResults={selectedResults}
-        productColors={PRODUCT_COLORS}
-      />
+      {hasComparisonSet ? (
+        <>
+          <FeeDragChart
+            selectedResults={selectedResults}
+            productColors={PRODUCT_COLORS}
+          />
 
-      <CalculationWarnings />
+          <CalculationWarnings />
 
-      <DetailComparisonTable
-        products={visibleProducts}
-        linkCopied={linkCopied}
-        onCopyLink={handleCopyLink}
-        onExportCsv={handleExportCsv}
-        onPrint={() => window.print()}
-      />
+          <DetailComparisonTable
+            products={visibleProducts}
+            linkCopied={linkCopied}
+            onCopyLink={handleCopyLink}
+            onExportCsv={handleExportCsv}
+            onPrint={() => window.print()}
+          />
 
-      <CashflowTable
-        cashflowResult={cashflowResult}
-        selectedResults={selectedResults}
-        cashflowProductId={cashflowProductId}
-        cashflowAnnualTaxSvSavings={cashflowAnnualTaxSvSavings}
-        onChangeCashflowProduct={(id) => setCashflowProductId(id as ProductId)}
-        rowAfterTaxBalance={rowAfterTaxBalance}
-      />
+          <CashflowTable
+            cashflowResult={cashflowResult}
+            selectedResults={selectedResults}
+            cashflowProductId={cashflowProductId}
+            cashflowAnnualTaxSvSavings={cashflowAnnualTaxSvSavings}
+            onChangeCashflowProduct={(id) => setCashflowProductId(id as ProductId)}
+            rowAfterTaxBalance={rowAfterTaxBalance}
+          />
 
-      <AssumptionsPanel
-        show={showAssumptions}
-        onToggle={() => setShowAssumptions((v) => !v)}
-        rules={de2026Rules}
-        bavMinAnnual={bavMinAnnual}
-        bavMinMonthly={bavMinMonthly}
-      />
+          <AssumptionsPanel
+            show={showAssumptions}
+            onToggle={() => setShowAssumptions((v) => !v)}
+            rules={de2026Rules}
+            bavMinAnnual={bavMinAnnual}
+            bavMinMonthly={bavMinMonthly}
+          />
+        </>
+      ) : (
+        <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
+      )}
     </section>
   )
 
@@ -473,23 +540,40 @@ function App() {
             <HelpCircle size={16} aria-hidden="true" />
             Geführter Einstieg
           </button>
-          <div className="topbar-badge">
-            <Calculator size={18} aria-hidden="true" />
-            <span>Persönliches v1-Modell</span>
-          </div>
         </div>
       </header>
 
-      <div className="trust-strip" role="note">
-        <Info size={16} aria-hidden="true" />
-        <p>
-          <strong>Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.</strong>{' '}
-          Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (BBG, Steuersätze,
-          GKV/PV, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband).
-          Die Ergebnisse sind Schätzungen unter Ihren Annahmen — Renditen, Inflation,
-          Lebenserwartung und künftige Gesetzesänderungen sind unbekannt.
-        </p>
-      </div>
+      {disclaimerVisible && (
+        <div className="disclaimer-wrap" ref={disclaimerRef}>
+          <button
+            type="button"
+            className="disclaimer-btn"
+            aria-label="Weitere Details anzeigen"
+            onClick={() => setShowDisclaimerPopup((v) => !v)}
+          >
+            <Info size={14} aria-hidden="true" />
+            <strong>Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.</strong>
+          </button>
+          {showDisclaimerPopup && (
+            <div className="disclaimer-popup" role="note">
+              <p>
+                Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (BBG, Steuersätze,
+                GKV/PV, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband).
+                Die Ergebnisse sind Schätzungen unter Ihren Annahmen — Renditen, Inflation,
+                Lebenserwartung und künftige Gesetzesänderungen sind unbekannt.
+              </p>
+            </div>
+          )}
+          <button
+            type="button"
+            className="disclaimer-dismiss"
+            aria-label="Hinweis ausblenden"
+            onClick={dismissDisclaimer}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <WorkspaceTabs
         activeView={workspace.activeView}

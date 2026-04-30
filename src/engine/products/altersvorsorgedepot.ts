@@ -23,13 +23,15 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): AltersvorsorgedepotProductResult {
-  const { profile, assumptions, rules, altersvorsorgedepotFunding, payoutYear, yearsToRetirement } = ctx
+  const { profile, assumptions, rules, altersvorsorgedepotFunding, bavFunding, payoutYear, yearsToRetirement } = ctx
   const avd = assumptions.altersvorsorgedepot
 
-  // Total monthly contribution = own contribution + state allowances flowing in each month.
+  // Total monthly contribution = normalized own contribution (back-solved from bavFunding.monthlyNetCost)
+  // + state allowances flowing in each month.
+  const normalizedOwnContribution =
+    bavFunding.monthlyNetCost + altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual / 12
   const avdMonthlyContribution =
-    altersvorsorgedepotFunding.monthlyOwnContribution +
-    altersvorsorgedepotFunding.totalAllowanceAnnual / 12
+    normalizedOwnContribution + altersvorsorgedepotFunding.totalAllowanceAnnual / 12
 
   // Blended return for current scenario based on allocation.
   // For Standarddepot: glidepath overrides via yearlyReturnFn; otherwise use constant blend.
@@ -70,7 +72,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     profile,
     rules,
     assumptions,
-    monthlyUserCost: altersvorsorgedepotFunding.monthlyNetCost,
+    monthlyUserCost: bavFunding.monthlyNetCost,
     monthlyProductContribution: avdMonthlyContribution,
     monthlyEmployerContribution: 0,
     fees: avd.fees,

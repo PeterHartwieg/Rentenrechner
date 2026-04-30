@@ -92,9 +92,10 @@ export const defaultRiesterAssumptions: RiesterAssumptions = {
 export const defaultAssumptions: ScenarioAssumptions = {
   inflationRate: 0.02,
   retirementEndAge: 90,
-  // Default to all six products visible. Users narrow this via the visibility chips
-  // or the guided-setup path choice.
-  visibleProducts: ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'],
+  // UX10: default comparison is the most common pair (ETF + bAV). Users widen the
+  // comparison via the ComparisonPicker; the guided-setup path can also pre-select
+  // a different baseline (e.g. ETF + pAV for the "ETF vs Versicherung" path).
+  visibleProducts: ['etf', 'bav'],
   returnScenarios: [
     { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
     { id: 'basis', label: 'Basis', annualReturn: 0.05 },

@@ -13,9 +13,8 @@ export function FairnessPanel({ profile, assumptions, bavFunding, rules }: Props
     <div className="assumption-panel">
       <h2>Annahmen zur Fairness</h2>
       <p>
-        ETF und private Versicherung investieren standardmäßig denselben monatlichen
-        Nettoaufwand wie die bAV. Dadurch wird die bAV gegen die echte Belastung aus deinem
-        Nettogehalt verglichen.
+        Alle Produkte werden mit demselben monatlichen Nettoaufwand verglichen wie die bAV.
+        Dadurch wird die bAV gegen die echte Belastung aus deinem Nettogehalt verglichen.
       </p>
       <dl>
         <div>
