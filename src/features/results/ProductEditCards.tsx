@@ -328,7 +328,7 @@ function BavFields({ assumptions, onAssumptionsChange }: FieldProps) {
             }))
           }}
         />
-        <p className="pec-fee-hint">Detailaufschlüsselung: Sidebar → Erweitert</p>
+        <p className="pec-fee-hint">Detailaufschlüsselung: Eingaben → Erweitert</p>
       </FieldWithProv>
     </>
   )
@@ -397,7 +397,7 @@ function InsuranceFields({ assumptions, onAssumptionsChange }: FieldProps) {
             }))
           }}
         />
-        <p className="pec-fee-hint">Detailaufschlüsselung: Sidebar → Erweitert</p>
+        <p className="pec-fee-hint">Detailaufschlüsselung: Eingaben → Erweitert</p>
       </FieldWithProv>
     </>
   )
@@ -467,7 +467,7 @@ function BasisrenteFields({ assumptions, onAssumptionsChange }: FieldProps) {
             }))
           }}
         />
-        <p className="pec-fee-hint">Detailaufschlüsselung: Sidebar → Erweitert</p>
+        <p className="pec-fee-hint">Detailaufschlüsselung: Eingaben → Erweitert</p>
       </FieldWithProv>
     </>
   )

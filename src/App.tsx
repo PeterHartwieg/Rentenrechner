@@ -1,27 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { HelpCircle, Info, RotateCcw, Settings } from 'lucide-react'
+import { useMemo } from 'react'
+import { HelpCircle } from 'lucide-react'
 import type { ProductId } from './domain'
-import { NumberField } from './ui/NumberField'
-import { clampNumber } from './ui/formatting'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { de2026Rules } from './rules/de2026'
-import { formatPercent } from './utils/format'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useGuidedSetup } from './app/useGuidedSetup'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useSimulationViewModel } from './app/useSimulationViewModel'
 import { useWorkspace } from './app/useWorkspace'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
-import { ScenarioPresetPanel } from './features/inputs/ScenarioPresetPanel'
-import { ScenarioLibraryPanel } from './features/inputs/ScenarioLibraryPanel'
-import { GlossaryPanel } from './features/inputs/GlossaryPanel'
-import { ProfileInputs } from './features/inputs/ProfileInputs'
-import { GRVInputs } from './features/inputs/GRVInputs'
-import { BavInputs } from './features/inputs/BavInputs'
-import { InsuranceInputs } from './features/inputs/InsuranceInputs'
-import { BasisrenteInputs } from './features/inputs/BasisrenteInputs'
-import { AltersvorsorgedepotInputs } from './features/inputs/AltersvorsorgedepotInputs'
-import { RiesterInputs } from './features/inputs/RiesterInputs'
+import { InputsPanel } from './features/inputs/InputsPanel'
 import { SummaryMetrics } from './features/results/SummaryMetrics'
 import { DecisionSummary } from './features/results/DecisionSummary'
 import { ProductEditCards } from './features/results/ProductEditCards'
@@ -43,8 +31,9 @@ import { JourneyStepper } from './features/guidance/JourneyStepper'
 import { derivePostHintFactors } from './features/guidance/postHintFactors'
 import { WorkspaceTabs } from './features/workspace/WorkspaceTabs'
 import { ComparisonPicker } from './features/workspace/ComparisonPicker'
-import { ProductFocusHeader } from './features/workspace/ProductFocusHeader'
 import { EmptyComparison } from './features/workspace/EmptyComparison'
+import { DisclaimerBanner } from './features/workspace/DisclaimerBanner'
+import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
@@ -81,47 +70,10 @@ function App() {
     handleExportCsv,
   } = vm
 
-  const [disclaimerVisible, setDisclaimerVisible] = useState(
-    () => localStorage.getItem('disclaimer-dismissed') !== '1',
-  )
-  const [showDisclaimerPopup, setShowDisclaimerPopup] = useState(false)
-  const disclaimerRef = useRef<HTMLDivElement>(null)
-
-  function dismissDisclaimer() {
-    localStorage.setItem('disclaimer-dismissed', '1')
-    setDisclaimerVisible(false)
-    setShowDisclaimerPopup(false)
-  }
-
-  useEffect(() => {
-    if (!showDisclaimerPopup) return
-    function handleClick(event: MouseEvent) {
-      if (disclaimerRef.current && !disclaimerRef.current.contains(event.target as Node)) {
-        setShowDisclaimerPopup(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showDisclaimerPopup])
-
   const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
-  const bavEntitlementMax =
-    (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap) / 12
 
-  // UX10: visibleProducts is the explicit comparison set. Empty means no private
-  // product is selected — Vergleich/Warum/Details views show an empty-state in
-  // that case instead of silently rendering all six products.
-  const visibleSet = new Set(assumptions.visibleProducts)
-  const showEtf = visibleSet.has('etf')
-  const showBav = visibleSet.has('bav')
-  const showInsurance = visibleSet.has('versicherung')
-  const showBasisrente = visibleSet.has('basisrente')
-  const showAvd = visibleSet.has('altersvorsorgedepot')
-  const showRiester = visibleSet.has('riester')
   const hasComparisonSet = assumptions.visibleProducts.length > 0
 
-  // Sensitivity simulation lifted from SensitivityPanel so DecisionSummary can render
-  // a personalised caveat from the same data. Memoized on inputs that affect the result.
   const sensitivityResult = useMemo(() => {
     if (!hasComparisonSet) return undefined
     return runSensitivity({
@@ -132,310 +84,20 @@ function App() {
     })
   }, [profile, assumptions, hasComparisonSet])
 
-  const customScenario = assumptions.returnScenarios.find((s) => s.id === 'custom')
-  const updateCustomRate = (annualReturn: number) => {
-    setAssumptions((current) => ({
-      ...current,
-      returnScenarios: current.returnScenarios.map((s) =>
-        s.id === 'custom' ? { ...s, annualReturn } : s,
-      ),
-    }))
-  }
-  const addCustomScenario = () => {
-    setAssumptions((current) => ({
-      ...current,
-      returnScenarios: [
-        ...current.returnScenarios,
-        { id: 'custom', label: 'Eigenes', annualReturn: 0.06 },
-      ],
-    }))
-    setSelectedScenarioId('custom')
-  }
-  const removeCustomScenario = () => {
-    setAssumptions((current) => ({
-      ...current,
-      returnScenarios: current.returnScenarios.filter((s) => s.id !== 'custom'),
-    }))
-  }
-
-  const scenarioToolbar = (
-    <div className="toolbar">
-      <div className="scenario-controls">
-        <div className="segmented" aria-label="Rendite-Szenario auswählen">
-          {assumptions.returnScenarios.map((scenario) => (
-            <button
-              key={scenario.id}
-              type="button"
-              className={scenario.id === selectedScenarioId ? 'active' : ''}
-              onClick={() => setSelectedScenarioId(scenario.id)}
-            >
-              {scenario.label} {formatPercent(scenario.annualReturn)}
-            </button>
-          ))}
-        </div>
-        {customScenario ? (
-          <div className="scenario-custom-edit">
-            <label>
-              <span>Eigene Rendite</span>
-              <input
-                type="number"
-                min={-5}
-                max={12}
-                step={0.25}
-                value={Number((customScenario.annualReturn * 100).toFixed(2))}
-                onChange={(event) =>
-                  updateCustomRate(Number(event.target.value) / 100)
-                }
-              />
-              <em>%</em>
-            </label>
-            <button
-              type="button"
-              className="scenario-remove-btn"
-              onClick={removeCustomScenario}
-            >
-              Entfernen
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="scenario-add-btn"
-            onClick={addCustomScenario}
-          >
-            + Eigenes Szenario
-          </button>
-        )}
-      </div>
-      <label className="toggle">
-        <input
-          type="checkbox"
-          checked={showRealValues}
-          onChange={(event) => setShowRealValues(event.target.checked)}
-        />
-        inflationsbereinigt
-      </label>
-    </div>
-  )
-
-  const inputsPanel = (
-    <aside className="input-panel input-panel--full" aria-label="Eingaben">
-      <div className="panel-heading">
-        <Settings size={18} aria-hidden="true" />
-        <h2>Eingaben</h2>
-        <button
-          type="button"
-          className="reset-btn"
-          title="Auf Standardwerte zurücksetzen"
-          onClick={resetToDefaults}
-        >
-          <RotateCcw size={14} aria-hidden="true" />
-          Reset
-        </button>
-      </div>
-
-      <ScenarioPresetPanel onSelectPreset={setAssumptions} />
-
-      <GlossaryPanel />
-
-      <ScenarioLibraryPanel
-        library={scenarioLib.library}
-        onSave={scenarioLib.save}
-        onLoad={scenarioLib.load}
-        onDuplicate={scenarioLib.duplicate}
-        onDelete={scenarioLib.remove}
-        onRename={scenarioLib.rename}
-      />
-
-      <ComparisonPicker
-        visible={assumptions.visibleProducts}
-        onChange={(next) =>
-          setAssumptions((current) => ({ ...current, visibleProducts: next }))
-        }
-        heading="Welche Produkte vergleichst du?"
-        hint="Diese Auswahl steuert sowohl die Eingabefelder hier als auch die Charts und Tabellen im Vergleich."
-      />
-
-      <ProfileInputs
-        profile={profile}
-        onProfileChange={setProfile}
-        pkv257SubsidyMonthly={simulation.bavFunding.salaryWithoutBav.pkv257SubsidyMonthly}
-        pkvNetMonthlyCost={simulation.bavFunding.salaryWithoutBav.pkvNetMonthlyCost}
-      />
-
-      <div className="divider" />
-
-      <GRVInputs
-        assumptions={assumptions}
-        onAssumptionsChange={setAssumptions}
-        statutoryPensionResult={simulation.statutoryPension}
-      />
-
-      {showBav && (
-        <>
-          <div className="divider" />
-          <ProductFocusHeader productId="bav" />
-          <BavInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            profile={profile}
-            bavFunding={simulation.bavFunding}
-            selectedResults={selectedResults}
-            kvdrMember={kvdrMember}
-            bavLumpSumTaxMode={bavLumpSumTaxMode}
-            tarifgebunden={tarifgebunden}
-            onTarifgebundenChange={setTarifgebunden}
-            bavMinAnnual={bavMinAnnual}
-            bavMinMonthly={bavMinMonthly}
-            bavEntitlementMax={bavEntitlementMax}
-            rules={de2026Rules}
-          />
-        </>
-      )}
-
-      {showEtf && (
-        <>
-          <div className="divider" />
-          <ProductFocusHeader productId="etf" />
-          <div className="field-grid">
-            <NumberField
-              label="ETF TER"
-              value={assumptions.etf.annualAssetFee * 100}
-              min={0}
-              max={3}
-              step={0.05}
-              suffix="% p.a."
-              onChange={(value) =>
-                setAssumptions((current) => ({
-                  ...current,
-                  etf: { ...current.etf, annualAssetFee: Number(value) / 100 },
-                }))
-              }
-            />
-            <label className="field">
-              <span>Fondstyp (für Teilfreistellung)</span>
-              <select
-                value={assumptions.etf.equityPartialExemption}
-                onChange={(event) =>
-                  setAssumptions((current) => ({
-                    ...current,
-                    etf: { ...current.etf, equityPartialExemption: Number(event.target.value) },
-                  }))
-                }
-              >
-                <option value={0.3}>Aktienfonds (30% steuerfrei)</option>
-                <option value={0.15}>Mischfonds (15% steuerfrei)</option>
-                <option value={0.6}>Inl. Immobilienfonds (60% steuerfrei)</option>
-                <option value={0.8}>Ausl. Immobilienfonds (80% steuerfrei)</option>
-                <option value={0}>Anleihe-ETF / Sonstige (0% steuerfrei)</option>
-              </select>
-            </label>
-          </div>
-        </>
-      )}
-
-      <div className="divider" />
-      <h3 className="input-section-title">Globale Annahmen</h3>
-      <div className="field-grid">
-        <NumberField
-          label="Inflation"
-          value={assumptions.inflationRate * 100}
-          min={0}
-          max={8}
-          step={0.1}
-          suffix="% p.a."
-          onChange={(value) =>
-            setAssumptions((current) => ({
-              ...current,
-              inflationRate: Number(value) / 100,
-            }))
-          }
-        />
-        <NumberField
-          label="Kapital aufgebraucht bis (Alter)"
-          value={assumptions.retirementEndAge}
-          min={profile.retirementAge + 1}
-          max={110}
-          step={1}
-          suffix="Jahre"
-          onCommit={(value) =>
-            setAssumptions((current) => ({
-              ...current,
-              retirementEndAge: clampNumber(Number(value), profile.retirementAge + 1, 110),
-            }))
-          }
-        />
-      </div>
-      <p className="field-hint">
-        „Kapital aufgebraucht bis" gilt nur für ETF und für bAV/pAV im Modus „Selbstgesteuerte Entnahme".
-        Im Modus „Lebenslange Rente" oder „Zeitrente" steuert der Vertrag (Rentenfaktor bzw.
-        Vertragslaufzeit) die monatliche Auszahlung.
-      </p>
-
-      {showInsurance && (
-        <>
-          <div className="divider" />
-          <ProductFocusHeader productId="versicherung" />
-          <InsuranceInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            profile={profile}
-            insuranceTaxMode={insuranceTaxMode}
-            insuranceProductResult={insuranceResult}
-            rules={de2026Rules}
-          />
-        </>
-      )}
-
-      {showBasisrente && (
-        <>
-          <div className="divider" />
-          <ProductFocusHeader productId="basisrente" />
-          <BasisrenteInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            basisrenteFunding={simulation.basisrenteFunding}
-            basisrenteProductResult={selectedResults.find((r) => r.productId === 'basisrente')}
-            rules={de2026Rules}
-            retirementAge={profile.retirementAge}
-          />
-        </>
-      )}
-
-      {showAvd && (
-        <>
-          <div className="divider" />
-          <ProductFocusHeader productId="altersvorsorgedepot" />
-          <AltersvorsorgedepotInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            profile={profile}
-            avdFunding={simulation.altersvorsorgedepotFunding}
-            avdProductResult={selectedResults.find((r) => r.productId === 'altersvorsorgedepot')}
-            rules={de2026Rules}
-          />
-        </>
-      )}
-
-      {showRiester && (
-        <>
-          <div className="divider" />
-          <ProductFocusHeader productId="riester" />
-          <RiesterInputs
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            profile={profile}
-            riesterFunding={simulation.riesterFunding}
-            riesterProductResult={selectedResults.find((r) => r.productId === 'riester')}
-          />
-        </>
-      )}
-    </aside>
+  const toolbar = (
+    <ScenarioToolbar
+      assumptions={assumptions}
+      onAssumptionsChange={setAssumptions}
+      selectedScenarioId={selectedScenarioId}
+      onSelectScenario={setSelectedScenarioId}
+      showRealValues={showRealValues}
+      onShowRealValuesChange={setShowRealValues}
+    />
   )
 
   const vergleichView = (
     <section className="workspace-view workspace-view--vergleich">
-      {scenarioToolbar}
+      {toolbar}
 
       {guidedSetup.journeyState === 'active' && (
         <GuidedSetupPostHint
@@ -474,7 +136,7 @@ function App() {
               simulation.bavFunding.monthlyGrossConversion +
               simulation.bavFunding.monthlyEmployerContribution
             }
-            showBav={showBav}
+            showBav={assumptions.visibleProducts.includes('bav')}
           />
 
           <ProductEditCards
@@ -498,7 +160,7 @@ function App() {
 
   const warumView = (
     <section className="workspace-view workspace-view--warum">
-      {scenarioToolbar}
+      {toolbar}
 
       {hasComparisonSet ? (
         <>
@@ -532,7 +194,7 @@ function App() {
 
   const detailsView = (
     <section className="workspace-view workspace-view--details">
-      {scenarioToolbar}
+      {toolbar}
 
       {hasComparisonSet ? (
         <>
@@ -582,25 +244,30 @@ function App() {
 
   const angebotView = (
     <section className="workspace-view workspace-view--angebot">
-      {inputsPanel}
+      <InputsPanel
+        profile={profile}
+        onProfileChange={setProfile}
+        assumptions={assumptions}
+        onAssumptionsChange={setAssumptions}
+        resetToDefaults={resetToDefaults}
+        simulation={simulation}
+        selectedResults={selectedResults}
+        scenarioLib={scenarioLib}
+        kvdrMember={kvdrMember}
+        bavLumpSumTaxMode={bavLumpSumTaxMode}
+        insuranceTaxMode={insuranceTaxMode}
+        insuranceResult={insuranceResult}
+        tarifgebunden={tarifgebunden}
+        onTarifgebundenChange={setTarifgebunden}
+      />
     </section>
   )
 
-  let viewBody
-  switch (workspace.activeView) {
-    case 'angebot':
-      viewBody = angebotView
-      break
-    case 'warum':
-      viewBody = warumView
-      break
-    case 'details':
-      viewBody = detailsView
-      break
-    case 'vergleich':
-    default:
-      viewBody = vergleichView
-      break
+  const views = {
+    vergleich: vergleichView,
+    warum: warumView,
+    details: detailsView,
+    angebot: angebotView,
   }
 
   return (
@@ -623,37 +290,7 @@ function App() {
         </div>
       </header>
 
-      {disclaimerVisible && (
-        <div className="disclaimer-wrap" ref={disclaimerRef}>
-          <button
-            type="button"
-            className="disclaimer-btn"
-            aria-label="Weitere Details anzeigen"
-            onClick={() => setShowDisclaimerPopup((v) => !v)}
-          >
-            <Info size={14} aria-hidden="true" />
-            <strong>Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.</strong>
-          </button>
-          {showDisclaimerPopup && (
-            <div className="disclaimer-popup" role="note">
-              <p>
-                Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (Steuersätze,
-                Sozialversicherungsbeiträge, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband).
-                Die Ergebnisse sind Schätzungen unter Ihren Annahmen — Renditen, Inflation,
-                Lebenserwartung und künftige Gesetzesänderungen sind unbekannt.
-              </p>
-            </div>
-          )}
-          <button
-            type="button"
-            className="disclaimer-dismiss"
-            aria-label="Hinweis ausblenden"
-            onClick={dismissDisclaimer}
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      <DisclaimerBanner />
 
       <WorkspaceTabs
         activeView={workspace.activeView}
@@ -669,7 +306,7 @@ function App() {
       )}
 
       <section className="workspace">
-        {viewBody}
+        {views[workspace.activeView] ?? vergleichView}
       </section>
 
       <PrintReport profile={profile} assumptions={assumptions} simulation={simulation} />

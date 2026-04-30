@@ -13,7 +13,7 @@ interface Props {
  * Tiny inline `(?)` icon that opens a one-sentence explanation popover on click.
  * Use next to jargon labels that block comprehension for non-experts (Effektivkosten,
  * Rentenfaktor, Teilfreistellung, Netto-Rente). For longer explanations, link to the
- * sidebar Glossar instead.
+ * Glossar panel in the Angebot tab instead.
  */
 export function InfoTip({ text, label = 'Erklärung anzeigen' }: Props) {
   const [open, setOpen] = useState(false)

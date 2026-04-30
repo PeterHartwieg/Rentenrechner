@@ -101,7 +101,7 @@
 }
 
 /* Unified progressive-disclosure pattern.
-   Used by per-product "Erweitert" blocks AND sidebar panels (Glossar,
+   Used by per-product "Erweitert" blocks AND Angebot-tab panels (Glossar,
    Szenarien-Vorlagen, Gespeicherte Szenarien, Regelwerte). The ▶ rotates 90°
    on open; .disclosure-toggle is the bold label, .disclosure-recap is the
    muted derived recap shown to the right. Tier 4 (2026-04-30). */
