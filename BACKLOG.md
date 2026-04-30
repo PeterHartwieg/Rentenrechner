@@ -107,12 +107,12 @@ Open items from 2026-04-30 review session.
 - ~~`P2` **Remove tooltip text below "Vergleich zusammenstellen"**~~ ✓ (2026-04-30) Removed `hint` prop and `<p className="comparison-picker-hint">` from `ComparisonPicker`; also cleaned up call site in `InputsPanel` and dead CSS.
 - ~~`P2` **Inflationsbereinigt off by default + move to advanced options**~~ ✓ (2026-04-30) Default changed to `false` in `useSimulationViewModel`; toggle wrapped in `<details class="toolbar-advanced">` in `ScenarioToolbar`.
 - ~~`P2` **ETF-TER default for bAV**~~ ✓ (2026-04-30) `fundAssetFee` raised from 0.002 → 0.005 (0.50 % aktiv verwalteter Fonds, total 0.80 % p.a.); golden snapshots updated.
-- `P2` **GKV/PKV as radio button**: "Gesetzlich krankenversichert" checkbox should become a two-option radio (Gesetzlich / Privat) to reduce label text and clarify the choice.
-- `P2` **Flat AG top-up amount for bAV**: Add an optional flat EUR/month employer contribution on top of the percentage-based AG-Zuschuss.
-- `P2` **Relocate the 3 collapsible menus at top of Eingaben**: The top three collapsible sections take too much vertical space and should move to a less prominent position or be consolidated.
-- `P2` **"Welche Produkte vergleichst du?" as persistent navigation**: Product-selection panel should remain accessible from all tabs, not only the current location.
-- `P2` **Harmonize "Kind zufügen" with other menu/button design**: The add-child UI does not match the visual style of surrounding controls.
-- `P2` **Visual separation of global vs product-specific options**: Clearly distinguish inputs that affect all products from per-product inputs, ideally reusing the existing product colour coding.
+- ~~`P2` **GKV/PKV as radio button**~~ ✓ (2026-04-30) `<select>` replaced by two radio buttons; GKV-Zusatzbeitrag field hidden when PKV is selected.
+- ~~`P2` **Flat AG top-up amount for bAV**~~ ✓ `contractualFixedMonthly` field already present in `BavAssumptions` and `BavInputs`; no additional work needed.
+- ~~`P2` **Relocate the 3 collapsible menus at top of Eingaben**~~ ✓ (2026-04-30) ScenarioPresetPanel, ScenarioLibraryPanel, GlossaryPanel moved to a "Werkzeuge" section at the bottom of InputsPanel.
+- ~~`P2` **"Welche Produkte vergleichst du?" as persistent navigation**~~ ✓ (2026-04-30) ComparisonPicker now rendered at the top of Vergleich, Warum, and Details tabs (in addition to Einstellungen).
+- ~~`P2` **Harmonize "Kind zufügen" with other menu/button design**~~ ✓ (2026-04-30) Inline styles replaced with `.child-row`, `.child-label`, `.child-year-input`, `.child-remove-btn`, `.child-add-btn` CSS classes defined in `forms.css`.
+- ~~`P2` **Visual separation of global vs product-specific options**~~ ✓ (2026-04-30) "Globale Annahmen" section moved to appear directly after GRV (before any product inputs); a "Produkteinstellungen" section title separates global from per-product blocks; `.input-section-title` style added to `forms.css`.
 - `P2` **Modellwert "als korrekt übernehmen" option**: Allow the user to mark a Modellwert as confirmed so it stops being flagged as Schätzwert when it matches the actual offer.
 - `P3` **Beitragsdynamik for bAV and investments**: If we model Gehaltswachstum, allow an optional annual contribution-increase percentage (Dynamik) for bAV and investment products to match real contract terms.
 - `P3` **Leibrente vs. Kapitalverzehr break-even graph**: Add a chart showing at which age cumulative Leibrente payouts overtake ETF/Kapitalverzehr, making the longevity trade-off visually explicit.

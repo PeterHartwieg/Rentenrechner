@@ -162,6 +162,13 @@ function App() {
     <section className="workspace-view workspace-view--warum">
       {toolbar}
 
+      <ComparisonPicker
+        visible={assumptions.visibleProducts}
+        onChange={(next) =>
+          setAssumptions((current) => ({ ...current, visibleProducts: next }))
+        }
+      />
+
       {hasComparisonSet ? (
         <>
           <ResultWaterfalls results={selectedResults} />
@@ -195,6 +202,13 @@ function App() {
   const detailsView = (
     <section className="workspace-view workspace-view--details">
       {toolbar}
+
+      <ComparisonPicker
+        visible={assumptions.visibleProducts}
+        onChange={(next) =>
+          setAssumptions((current) => ({ ...current, visibleProducts: next }))
+        }
+      />
 
       {hasComparisonSet ? (
         <>

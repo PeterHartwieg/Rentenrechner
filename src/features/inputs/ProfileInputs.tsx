@@ -51,84 +51,100 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
           suffix="EUR"
           onChange={(value) => updateNumber(onProfileChange, 'grossSalaryYear', value)}
         />
-        <NumberField
-          label="GKV-Zusatzbeitrag"
-          value={profile.healthAdditionalContributionPct}
-          min={0}
-          max={5}
-          step={0.1}
-          suffix="%"
-          onChange={(value) =>
-            updateNumber(onProfileChange, 'healthAdditionalContributionPct', value)
-          }
-        />
-        <div className="field">
-          <span>Kinder (Geburtsjahr)</span>
-          {profile.childBirthYears.map((year, i) => (
-            <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.82rem', color: '#667085', minWidth: '52px' }}>Kind {i + 1}</span>
-              <div className="input-shell" style={{ flex: 1 }}>
-                <input
-                  type="number"
-                  min={1900}
-                  max={de2026Rules.year}
-                  step={1}
-                  value={year}
-                  onChange={(e) => {
-                    const val = Math.round(clampNumber(Number(e.target.value), 1900, de2026Rules.year))
-                    onProfileChange((cur) => ({
-                      ...cur,
-                      childBirthYears: cur.childBirthYears.map((y, j) => (j === i ? val : y)),
-                    }))
-                  }}
-                />
-              </div>
-              <button
-                type="button"
-                style={{ padding: '3px 7px', cursor: 'pointer' }}
-                onClick={() =>
-                  onProfileChange((cur) => ({
-                    ...cur,
-                    childBirthYears: cur.childBirthYears.filter((_, j) => j !== i),
-                  }))
-                }
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {profile.childBirthYears.length < 10 && (
-            <button
-              type="button"
-              style={{ alignSelf: 'flex-start', fontSize: '0.82rem', padding: '3px 10px', cursor: 'pointer', marginTop: '2px' }}
-              onClick={() =>
-                onProfileChange((cur) => ({
-                  ...cur,
-                  childBirthYears: [...cur.childBirthYears, de2026Rules.year - 5],
-                }))
+        {profile.publicHealthInsurance && (
+          <NumberField
+            label="GKV-Zusatzbeitrag"
+            value={profile.healthAdditionalContributionPct}
+            min={0}
+            max={5}
+            step={0.1}
+            suffix="%"
+            onChange={(value) =>
+              updateNumber(onProfileChange, 'healthAdditionalContributionPct', value)
+            }
+          />
+        )}
+      </div>
+
+      <div className="field">
+        <span>Krankenversicherung</span>
+        <div className="radio-group">
+          <label className="radio-option">
+            <input
+              type="radio"
+              name="krankenversicherung"
+              checked={profile.publicHealthInsurance}
+              onChange={() =>
+                onProfileChange((current) => ({ ...current, publicHealthInsurance: true }))
               }
-            >
-              + Kind hinzufügen
-            </button>
-          )}
+            />
+            <span>Gesetzlich (GKV)</span>
+          </label>
+          <label className="radio-option">
+            <input
+              type="radio"
+              name="krankenversicherung"
+              checked={!profile.publicHealthInsurance}
+              onChange={() =>
+                onProfileChange((current) => ({ ...current, publicHealthInsurance: false }))
+              }
+            />
+            <span>Privat (PKV)</span>
+          </label>
         </div>
       </div>
 
-      <label className="field">
-        <span>Krankenversicherung</span>
-        <select
-          value={profile.publicHealthInsurance ? 'gkv' : 'pkv'}
-          onChange={(event) =>
-            onProfileChange((current) => ({
-              ...current,
-              publicHealthInsurance: event.target.value === 'gkv',
-            }))
-          }
-        >
-          <option value="gkv">GKV (gesetzlich)</option>
-          <option value="pkv">PKV (privat)</option>
-        </select>
-      </label>
+      <div className="field">
+        <span>Kinder (Geburtsjahr)</span>
+        {profile.childBirthYears.map((year, i) => (
+          <div key={i} className="child-row">
+            <span className="child-label">Kind {i + 1}</span>
+            <div className="input-shell child-year-input">
+              <input
+                type="number"
+                min={1900}
+                max={de2026Rules.year}
+                step={1}
+                value={year}
+                onChange={(e) => {
+                  const val = Math.round(clampNumber(Number(e.target.value), 1900, de2026Rules.year))
+                  onProfileChange((cur) => ({
+                    ...cur,
+                    childBirthYears: cur.childBirthYears.map((y, j) => (j === i ? val : y)),
+                  }))
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              className="child-remove-btn"
+              aria-label={`Kind ${i + 1} entfernen`}
+              onClick={() =>
+                onProfileChange((cur) => ({
+                  ...cur,
+                  childBirthYears: cur.childBirthYears.filter((_, j) => j !== i),
+                }))
+              }
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {profile.childBirthYears.length < 10 && (
+          <button
+            type="button"
+            className="child-add-btn"
+            onClick={() =>
+              onProfileChange((cur) => ({
+                ...cur,
+                childBirthYears: [...cur.childBirthYears, de2026Rules.year - 5],
+              }))
+            }
+          >
+            + Kind hinzufügen
+          </button>
+        )}
+      </div>
       {!profile.publicHealthInsurance && (
         <div className="field-grid">
           <NumberField

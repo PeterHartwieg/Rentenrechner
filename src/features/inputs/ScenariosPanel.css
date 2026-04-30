@@ -1,0 +1,25 @@
+/* Subsection layout inside the combined Szenarien panel. Each subsection
+   reuses the existing preset/library class names; this file only adds the
+   thin subheading and inter-section divider. */
+
+.scenarios-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 12px 10px;
+}
+
+.scenarios-subheading {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #344054;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.scenarios-divider {
+  height: 1px;
+  margin: 0 12px;
+  background: #e5ebf2;
+}

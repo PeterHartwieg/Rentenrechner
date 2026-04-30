@@ -582,8 +582,17 @@ th {
 
 .product-focus-grid > div {
   display: grid;
-  grid-template-columns: 100px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  /* Narrow screens: stack label above value so VERFÜGBARKEIT etc. don't
+     fight for horizontal space with their description. */
+  .product-focus-grid > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 
 .product-focus-grid dt {
@@ -602,15 +611,6 @@ th {
   line-height: 1.4;
 }
 
-/* Input section title used for the "Globale Annahmen" block */
-.input-section-title {
-  margin: 0 0 4px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #344054;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
 
 /* Empty-comparison state (UX10) */
 .empty-comparison {

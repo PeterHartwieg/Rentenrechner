@@ -1,0 +1,51 @@
+/* Horizontal product-tab strip — single navigation primitive for the
+   Eingaben panel's per-product blocks. Colour comes from the product
+   manifest via the --product-color custom property. */
+.product-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.product-tab {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border: 1.5px solid var(--product-color, #c9d7e5);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--product-color, #344054);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, transform 0.06s;
+}
+
+.product-tab:hover:not(.product-tab--active) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.product-tab:active {
+  transform: translateY(1px);
+}
+
+.product-tab--active {
+  background: var(--product-color, #2563eb);
+  color: #ffffff;
+}
+
+.product-tab:focus-visible {
+  outline: 2px solid var(--product-color, #2563eb);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  /* On very narrow screens shrink the chip padding so multi-word labels
+     like "Private Rente" still fit comfortably as wrapped chips instead of
+     getting clipped at the viewport edge. */
+  .product-tab {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+}

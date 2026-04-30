@@ -173,6 +173,81 @@
   gap: 8px;
 }
 
+/* Radio button group (e.g. GKV/PKV selector) */
+.radio-group {
+  display: flex;
+  gap: 16px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.radio-option input[type='radio'] {
+  accent-color: #2563eb;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Child birth-year rows */
+.child-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.child-label {
+  font-size: 0.82rem;
+  color: #667085;
+  min-width: 52px;
+}
+
+.child-year-input {
+  flex: 1;
+}
+
+.child-remove-btn {
+  padding: 4px 8px;
+  border: 1px solid #c9d7e5;
+  border-radius: 4px;
+  background: #fff;
+  color: #667085;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.child-remove-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.child-add-btn {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border: 1px dashed #c9d7e5;
+  border-radius: 6px;
+  background: #f9fafb;
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.child-add-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+
 @media (max-width: 760px) {
   .field-grid {
     grid-template-columns: 1fr;
