@@ -43,31 +43,44 @@ function detectFirstRun(): boolean {
   }
 }
 
+/**
+ * Lifecycle of the post-modal journey stepper.
+ * - inactive: never started, or user is in expert mode.
+ * - active:  guided setup just completed (non-expert path); stepper visible.
+ * - dismissed: user clicked "Dashboard anzeigen" — stepper hidden, but reopen() can re-arm.
+ */
+export type JourneyState = 'inactive' | 'active' | 'dismissed'
+
+export type CompleteSetupOptions = {
+  /** True when the user picked Expertenmodus — suppresses the journey stepper. */
+  isExpert?: boolean
+}
+
 export type GuidedSetupState = {
   /** Whether the full-screen guided setup overlay is currently visible. */
   showOverlay: boolean
-  /** Whether the post-setup explanation panel ("Warum mehr als ein Taschenrechner?") should be rendered. */
-  showPostSetupHint: boolean
-  /** Mark setup as completed and dismiss the overlay. Triggers the post-setup hint. */
-  completeSetup: () => void
+  /** Whether the persistent post-setup journey stepper should be shown. */
+  journeyState: JourneyState
+  /** Mark setup as completed and dismiss the overlay. Activates the journey unless expert. */
+  completeSetup: (options?: CompleteSetupOptions) => void
   /** Skip the overlay this session (without permanent skip). */
   dismissOverlay: () => void
   /** Skip the overlay forever. */
   skipPermanently: () => void
-  /** Dismiss the post-setup explanation panel. */
-  dismissPostSetupHint: () => void
+  /** Hide the journey stepper without ending the session. */
+  dismissJourney: () => void
   /** Re-open the guided setup on demand. */
   reopen: () => void
 }
 
 export function useGuidedSetup(): GuidedSetupState {
   const [showOverlay, setShowOverlay] = useState<boolean>(() => detectFirstRun())
-  const [showPostSetupHint, setShowPostSetupHint] = useState<boolean>(false)
+  const [journeyState, setJourneyState] = useState<JourneyState>('inactive')
 
-  function completeSetup() {
+  function completeSetup(options?: CompleteSetupOptions) {
     writeFlag({ ...readFlag(), completed: true })
     setShowOverlay(false)
-    setShowPostSetupHint(true)
+    setJourneyState(options?.isExpert ? 'inactive' : 'active')
   }
 
   function dismissOverlay() {
@@ -80,8 +93,8 @@ export function useGuidedSetup(): GuidedSetupState {
     setShowOverlay(false)
   }
 
-  function dismissPostSetupHint() {
-    setShowPostSetupHint(false)
+  function dismissJourney() {
+    setJourneyState('dismissed')
   }
 
   function reopen() {
@@ -90,11 +103,11 @@ export function useGuidedSetup(): GuidedSetupState {
 
   return {
     showOverlay,
-    showPostSetupHint,
+    journeyState,
     completeSetup,
     dismissOverlay,
     skipPermanently,
-    dismissPostSetupHint,
+    dismissJourney,
     reopen,
   }
 }

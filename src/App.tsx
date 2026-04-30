@@ -37,6 +37,8 @@ import { PrintReport } from './features/results/PrintReport'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { GuidedSetup, GuidedSetupPostHint } from './features/guidance/GuidedSetup'
+import { JourneyStepper } from './features/guidance/JourneyStepper'
+import { derivePostHintFactors } from './features/guidance/postHintFactors'
 import { WorkspaceTabs } from './features/workspace/WorkspaceTabs'
 import { StartView } from './features/workspace/StartView'
 import { ComparisonPicker } from './features/workspace/ComparisonPicker'
@@ -368,8 +370,14 @@ function App() {
     <section className="workspace-view workspace-view--vergleich">
       {scenarioToolbar}
 
-      {guidedSetup.showPostSetupHint && (
-        <GuidedSetupPostHint onDismiss={guidedSetup.dismissPostSetupHint} />
+      {guidedSetup.journeyState === 'active' && (
+        <GuidedSetupPostHint
+          onDismiss={guidedSetup.dismissJourney}
+          factors={derivePostHintFactors({
+            results: selectedResults,
+            bavFunding: simulation.bavFunding,
+          })}
+        />
       )}
 
       <ComparisonPicker
@@ -396,8 +404,6 @@ function App() {
               simulation.bavFunding.monthlyGrossConversion +
               simulation.bavFunding.monthlyEmployerContribution
             }
-            bestCapital={bestCapital}
-            bestPension={bestPension}
           />
 
           <CapitalChart
@@ -580,6 +586,14 @@ function App() {
         onSelect={workspace.setActiveView}
       />
 
+      {guidedSetup.journeyState === 'active' && (
+        <JourneyStepper
+          activeView={workspace.activeView}
+          onNavigate={workspace.setActiveView}
+          onDismiss={guidedSetup.dismissJourney}
+        />
+      )}
+
       <section className="workspace">
         {viewBody}
       </section>
@@ -594,7 +608,12 @@ function App() {
             setProfile(nextProfile)
             setAssumptions(nextAssumptions)
           }}
-          onComplete={guidedSetup.completeSetup}
+          onComplete={(options) => {
+            guidedSetup.completeSetup(options)
+            if (options?.suggestedView) {
+              workspace.setActiveView(options.suggestedView)
+            }
+          }}
           onSkipPermanently={guidedSetup.skipPermanently}
           onDismiss={guidedSetup.dismissOverlay}
         />

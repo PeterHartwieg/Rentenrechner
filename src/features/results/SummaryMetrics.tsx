@@ -8,8 +8,6 @@ type Props = {
   grvGrossMonthlyPension: number
   bavMonthlyNetCost: number
   bavTotalMonthlyContribution: number
-  bestCapital?: { afterTaxLumpSum: number; label: string }
-  bestPension?: { netMonthlyPayout: number; label: string }
 }
 
 export function SummaryMetrics({
@@ -18,31 +16,22 @@ export function SummaryMetrics({
   grvGrossMonthlyPension,
   bavMonthlyNetCost,
   bavTotalMonthlyContribution,
-  bestCapital,
-  bestPension,
 }: Props) {
+  const showBav = bavTotalMonthlyContribution > 0
   return (
-    <section className="summary-grid" aria-label="Kennzahlen">
+    <section className="summary-grid" aria-label="Rahmenwerte">
       <ResultMetric
-        label="GRV Nettorente"
+        label="Gesetzliche Rente (Netto)"
         value={formatCurrency(grvNetMonthlyPension, 0)}
         detail={`${formatNumber(grvProjectedEp, 1)} EP · brutto ${formatCurrency(grvGrossMonthlyPension, 0)}`}
       />
-      <ResultMetric
-        label="bAV Nettoaufwand"
-        value={formatCurrency(bavMonthlyNetCost, 0)}
-        detail={`${formatCurrency(bavTotalMonthlyContribution, 0)} Beitrag mtl.`}
-      />
-      <ResultMetric
-        label="Bestes Kapital"
-        value={bestCapital ? formatCurrency(bestCapital.afterTaxLumpSum, 0) : '-'}
-        detail={bestCapital?.label}
-      />
-      <ResultMetric
-        label="Beste Netto-Rente"
-        value={bestPension ? formatCurrency(bestPension.netMonthlyPayout, 0) : '-'}
-        detail={bestPension?.label}
-      />
+      {showBav && (
+        <ResultMetric
+          label="bAV Nettoaufwand mtl."
+          value={formatCurrency(bavMonthlyNetCost, 0)}
+          detail={`${formatCurrency(bavTotalMonthlyContribution, 0)} Beitrag mtl.`}
+        />
+      )}
     </section>
   )
 }

@@ -74,7 +74,7 @@ interface Props {
   profile: PersonalProfile
   assumptions: ScenarioAssumptions
   onApply: (profile: PersonalProfile, assumptions: ScenarioAssumptions) => void
-  onComplete: () => void
+  onComplete: (options?: { isExpert?: boolean; suggestedView?: 'angebot' | 'vergleich' }) => void
   onSkipPermanently: () => void
   onDismiss: () => void
 }
@@ -103,7 +103,7 @@ export function GuidedSetup({
 
   function pickPath(p: GuidedPath) {
     if (p === 'expert') {
-      onComplete()
+      onComplete({ isExpert: true })
       return
     }
     setPath(p)
@@ -151,7 +151,9 @@ export function GuidedSetup({
     }
 
     onApply(nextProfile, nextAssumptions)
-    onComplete()
+    // bAV-offer users still need to fill product-specific offer fields → land them in
+    // the input panel. Other paths jump straight to the result.
+    onComplete({ suggestedView: path === 'bav_offer' ? 'angebot' : 'vergleich' })
   }
 
   return (
@@ -387,19 +389,37 @@ function SimpleNumber({
 
 interface PostHintProps {
   onDismiss: () => void
+  /** Factors actually relevant to the current scenario, derived in App.tsx. */
+  factors: PostHintFactor[]
 }
 
-export function GuidedSetupPostHint({ onDismiss }: PostHintProps) {
+export interface PostHintFactor {
+  id: string
+  label: string
+  detail: string
+}
+
+export function GuidedSetupPostHint({ onDismiss, factors }: PostHintProps) {
   return (
     <aside className="guided-post-hint" role="note">
       <div>
         <h3>Warum mehr als ein Taschenrechner?</h3>
         <p>
-          Steuern, Arbeitgeber-Zuschuss, Krankenversicherung in der Rente, Vertragskosten und
-          Auszahlungsregeln verändern das Ergebnis oft mehr als die reine Rendite. Der Rechner
-          rechnet diese Effekte für 2026 automatisch mit — und zeigt dir, wo das Ergebnis
-          fragil ist.
+          Diese Effekte beeinflussen dein Ergebnis konkret — der Rechner berücksichtigt sie für
+          2026 automatisch:
         </p>
+        {factors.length > 0 && (
+          <ul className="guided-post-hint-factors">
+            {factors.map((factor) => (
+              <li key={factor.id}>
+                <Check size={14} aria-hidden="true" />
+                <span>
+                  <strong>{factor.label}</strong> — {factor.detail}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <button
         type="button"

@@ -306,3 +306,27 @@
 .guided-post-hint-close:hover {
   background: #bae6fd;
 }
+
+.guided-post-hint-factors {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guided-post-hint-factors li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #0c4a6e;
+}
+
+.guided-post-hint-factors li svg {
+  margin-top: 3px;
+  flex-shrink: 0;
+  color: #0e7490;
+}
