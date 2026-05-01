@@ -2,7 +2,6 @@ import type { AltersvorsorgedepotProductResult, ReturnScenario } from '../../dom
 import type { SimulationContext } from '../simulationContext'
 import {
   buildProductResult,
-  calculateLeibrenteBreakEvenAge,
 } from '../buildResult'
 import {
   afterTaxAvdLumpSum,
@@ -10,6 +9,7 @@ import {
   netAvdPayout,
 } from '../altersvorsorgedepot'
 import { monthlyPayoutFromCapital } from '../payoutMath'
+import { calculateLeibrenteBreakEvenAge } from '../productPayout'
 
 export const metadata = {
   id: 'altersvorsorgedepot' as const,

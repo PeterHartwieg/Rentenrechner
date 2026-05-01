@@ -22,8 +22,8 @@ For each product: simulator, validator, domain types, tests, UI input, engine he
 | bAV | `src/engine/salary.ts`, `src/engine/bavPayout.ts` | `calculateBavFunding` (two-pass), `netBavPayout`, `afterTaxBavLumpSum` |
 | Private RV | `src/engine/insurancePayout.ts` | `netInsurancePayout`, `afterTaxInsuranceLumpSum`, `deriveInsuranceTaxMode` |
 | Basisrente | `src/engine/basisrente.ts` | `calculateBasisrenteFunding`, `netBasisrentePayout` |
-| AVD | `src/engine/altersvorsorgedepot.ts` | `calculateAvdFunding`, payout helpers |
-| Riester | `src/engine/riester.ts` | `calculateRiesterFunding`, payout helpers |
+| AVD | `src/engine/altersvorsorgedepot.ts`, `src/engine/certifiedPensionPayout.ts` | `calculateAvdFunding`, payout wrappers |
+| Riester | `src/engine/riester.ts`, `src/engine/certifiedPensionPayout.ts` | `calculateRiesterFunding`, payout wrappers |
 | GRV | `src/engine/grv.ts` | `projectStatutoryPension` |
 
 ## Behavioral scope (one line each)

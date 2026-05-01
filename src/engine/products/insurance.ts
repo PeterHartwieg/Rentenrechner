@@ -1,9 +1,7 @@
 import type { FeeModel, InsurancePaidUpScenario, InsuranceProductResult, ReturnScenario } from '../../domain'
 import type { SimulationContext } from '../simulationContext'
 import {
-  applyPensionPayoutFee,
   buildProductResult,
-  calculateLeibrenteBreakEvenAge,
 } from '../buildResult'
 import {
   afterTaxInsuranceLumpSum,
@@ -11,8 +9,9 @@ import {
   netInsurancePayout,
 } from '../insurancePayout'
 import {
-  computeGrossMonthlyPayout,
-} from '../payoutMath'
+  calculateLeibrenteBreakEvenAge,
+  computeFeeAdjustedGrossMonthlyPayout,
+} from '../productPayout'
 import {
   projectAccumulation,
 } from '../accumulation'
@@ -45,14 +44,15 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
     monthlyEmployerContribution: 0,
     fees: ins.fees,
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
-      const grossMonthlyPayout = applyPensionPayoutFee(
-        computeGrossMonthlyPayout(projection.capital, {
+      const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(
+        projection.capital,
+        {
           mode: ins.payoutMode,
           rentenfaktor: ins.rentenfaktor,
           zeitrenteYears: ins.zeitrenteYears,
           kapitalverzehrYears: payoutYears,
           payoutReturn,
-        }),
+        },
         ins.fees,
       )
       const kvdrMember = assumptions.bav.kvdrMember !== false
@@ -147,13 +147,17 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
     const payoutYears = assumptions.retirementEndAge - profile.retirementAge
     const payoutReturn = scenario.annualReturn - (ins.fees.wrapperAssetFee + ins.fees.fundAssetFee)
 
-    const grossMonthlyPayout = applyPensionPayoutFee(computeGrossMonthlyPayout(retirementCapital, {
-      mode: ins.payoutMode,
-      rentenfaktor: ins.rentenfaktor,
-      zeitrenteYears: ins.zeitrenteYears,
-      kapitalverzehrYears: payoutYears,
-      payoutReturn,
-    }), ins.fees)
+    const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(
+      retirementCapital,
+      {
+        mode: ins.payoutMode,
+        rentenfaktor: ins.rentenfaktor,
+        zeitrenteYears: ins.zeitrenteYears,
+        kapitalverzehrYears: payoutYears,
+        payoutReturn,
+      },
+      ins.fees,
+    )
 
     const kvdrMember = assumptions.bav.kvdrMember !== false
     const otherAnnual = ins.monthlyOtherRetirementIncome * 12

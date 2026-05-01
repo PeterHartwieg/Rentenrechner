@@ -2,13 +2,13 @@ import type { RiesterProductResult, ReturnScenario } from '../../domain'
 import type { SimulationContext } from '../simulationContext'
 import {
   buildProductResult,
-  calculateLeibrenteBreakEvenAge,
 } from '../buildResult'
 import {
   afterTaxRiesterLumpSum,
   netRiesterPayout,
 } from '../riester'
 import { computeGrossMonthlyPayout } from '../payoutMath'
+import { calculateLeibrenteBreakEvenAge } from '../productPayout'
 
 export const metadata = {
   id: 'riester' as const,

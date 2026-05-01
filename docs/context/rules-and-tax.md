@@ -29,6 +29,7 @@ For each legal / rule area: the source file, the rule file, and the research doc
 | §22 Nr. 1 Satz 3a Ertragsanteil (private RV Leibrente) | `src/engine/insurancePayout.ts`, `src/rules/de2026.ts` | `netInsurancePayout` + ertragsanteilByAge table |
 | Insurance tax mode (§20 Abs. 1 Nr. 6, §52 Abs. 28 EStG) | `src/engine/insurancePayout.ts` | `deriveInsuranceTaxMode` |
 | bAV lump-sum tax routing (§34 Abs. 2, §22 Nr. 5 EStG) | `src/engine/bavPayout.ts` | `afterTaxBavLumpSum`, `deriveBavLumpSumTaxMode` |
+| Certified §22 Nr. 5 payout tax (AVD / Riester) | `src/engine/certifiedPensionPayout.ts` | `netCertifiedPensionPayout`, `afterTaxCertifiedPensionLumpSum` |
 | ETF Vorabpauschale (InvStG §18, §19) | `src/engine/accumulation.ts`, `src/engine/etfPayout.ts` | `projectAccumulation` (`etfVorabpauschale` param), `etfPayoutSchedule` |
 | RIY / Effektivkosten | `src/engine/fees.ts` | `computeRIY` |
 | GRV EP estimate | `src/engine/grv.ts` | `projectStatutoryPension` |

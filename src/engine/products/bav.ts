@@ -1,17 +1,16 @@
 import type { BavProductResult, ReturnScenario } from '../../domain'
 import type { SimulationContext } from '../simulationContext'
 import {
-  applyPensionPayoutFee,
   buildProductResult,
-  calculateLeibrenteBreakEvenAge,
 } from '../buildResult'
 import {
   bavLumpSumBreakdown,
   netBavPayout,
 } from '../bavPayout'
 import {
-  computeGrossMonthlyPayout,
-} from '../payoutMath'
+  calculateLeibrenteBreakEvenAge,
+  computeFeeAdjustedGrossMonthlyPayout,
+} from '../productPayout'
 
 export const metadata = {
   id: 'bav' as const,
@@ -41,14 +40,15 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
     taxAndSvSavings: bavFunding.annualTaxAndSvSavings * ctx.yearsToRetirement,
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const bav = assumptions.bav
-      const grossMonthlyPayout = applyPensionPayoutFee(
-        computeGrossMonthlyPayout(projection.capital, {
+      const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(
+        projection.capital,
+        {
           mode: bav.payoutMode,
           rentenfaktor: bav.rentenfaktor,
           zeitrenteYears: bav.zeitrenteYears,
           kapitalverzehrYears: payoutYears,
           payoutReturn,
-        }),
+        },
         bav.fees,
       )
       const lumpSum = bavLumpSumBreakdown(

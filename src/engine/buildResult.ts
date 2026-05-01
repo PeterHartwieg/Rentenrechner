@@ -68,23 +68,6 @@ function capitalMultipleAnnualized(finalValue: number, totalUserCost: number, ye
   return Math.pow(finalValue / totalUserCost, 1 / years) - 1
 }
 
-export function applyPensionPayoutFee(grossMonthlyPayout: number, fees: FeeModel): number {
-  return fees.pensionPayoutFeePct > 0
-    ? grossMonthlyPayout * (1 - fees.pensionPayoutFeePct)
-    : grossMonthlyPayout
-}
-
-export function calculateLeibrenteBreakEvenAge(
-  retirementAge: number,
-  capital: number,
-  grossMonthlyPayout: number,
-  enabled: boolean,
-): number | undefined {
-  return enabled && grossMonthlyPayout > 0
-    ? retirementAge + capital / (grossMonthlyPayout * 12)
-    : undefined
-}
-
 export function buildProductResult<
   TPayoutFields extends ProductPayoutFields,
 >(

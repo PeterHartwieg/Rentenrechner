@@ -1,12 +1,13 @@
 import type { BasisrenteProductResult, ReturnScenario } from '../../domain'
 import type { SimulationContext } from '../simulationContext'
 import {
-  applyPensionPayoutFee,
   buildProductResult,
-  calculateLeibrenteBreakEvenAge,
 } from '../buildResult'
 import { netBasisrentePayout } from '../basisrente'
-import { computeGrossMonthlyPayout } from '../payoutMath'
+import {
+  calculateLeibrenteBreakEvenAge,
+  computeFeeAdjustedGrossMonthlyPayout,
+} from '../productPayout'
 
 export const metadata = {
   id: 'basisrente' as const,
@@ -36,14 +37,15 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
     taxAndSvSavings: basisrenteFunding.annualTaxSaving * ctx.yearsToRetirement,
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const basisrente = assumptions.basisrente
-      const grossMonthlyPayout = applyPensionPayoutFee(
-        computeGrossMonthlyPayout(projection.capital, {
+      const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(
+        projection.capital,
+        {
           mode: 'leibrente',
           rentenfaktor: basisrente.rentenfaktor,
           zeitrenteYears: 0,
           kapitalverzehrYears: payoutYears,
           payoutReturn,
-        }),
+        },
         basisrente.fees,
       )
 

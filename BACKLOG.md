@@ -167,13 +167,13 @@ Completed items are kept here as a compact index only.
 
 - Private insurance lifecycle: `#65` — surrender / paid-up scenario. `InsurancePaidUpScenario` on `ProductResult`; `paidUpAge?` + `surrenderHaircutPct` on `InsuranceAssumptions`; two-phase accumulation in `src/engine/products/insurance.ts`; results panel in assumptions drawer.
 - Input presets: `#16` — 5 scenario presets in `src/data/presets.ts` (ETF Nettotarif, bAV Standard, bAV AG-Match 50 %, pAV Hochkosten, pAV Altvertrag). Collapsible `<details>` panel at top of input drawer replaces full assumptions on click.
-- Agent-readability refactor: phases 0-11 complete. `App.tsx` is a composition shell; product simulators, validators, metadata, and tests live under `src/engine/products`; domain types are split under `src/domain`; agent routing docs live in `AGENTS.md` and `docs/context/`.
+- Agent-readability refactor: phases 0-13 complete. `App.tsx` is a composition shell; product simulators, validators, metadata, and tests live under `src/engine/products`; domain types are split under `src/domain`; engine payout/accumulation helpers are split by responsibility; agent routing docs live in `AGENTS.md` and `docs/context/`.
 - PDF report (#15): `src/features/results/PrintReport.tsx` + CSS — always-rendered hidden component (`display: none` on screen, `display: block` in `@media print`). Sections: profile summary, GRV/bAV key metrics, return-scenario assumptions, full comparison table (all products × scenarios, basis rows bold). "PDF drucken" button added to `DetailComparisonTable` action bar alongside CSV/link. `window.print()` triggers browser print-to-PDF. App.css `@media print` hides `.topbar` and `.dashboard`. No new dependencies.
 - Saved scenario library (Group D step 1): `src/data/scenarioLibrary.ts` (CRUD helpers, `rentenrechner-library-v1` localStorage key), `src/app/useScenarioLibrary.ts` (hook), `src/features/inputs/ScenarioLibraryPanel.tsx` + CSS. Panel in input sidebar: name input → Speichern, list with Laden / Kopie / ✕, inline rename on name click. Count badge on collapsed summary.
 
 - Group UX Tier 1 plain-language pass + UX13 + UX14 (commit 670af83): see `Group UX → Implemented Archive` for the per-item index.
 
-Latest documented baseline: 462 tests after Basisrente audit-cleanup close (age-62 validator extraction, 2026-04-30).
+Latest documented baseline: 470 tests after agent-readability refactor phase 13.
 
 ---
 

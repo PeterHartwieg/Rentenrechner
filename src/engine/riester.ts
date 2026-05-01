@@ -36,12 +36,10 @@ import type {
   SalaryResult,
 } from '../domain'
 import {
-  appliesFreiwilligGkv,
-  calculateMarginalRetirementTax,
-  calculateProfileRetirementKvPv,
-  retirementIncomeBase,
-  type RetirementHealthStatus,
-} from './retirementPayout'
+  afterTaxCertifiedPensionLumpSum,
+  netCertifiedPensionPayout,
+} from './certifiedPensionPayout'
+import type { RetirementHealthStatus } from './retirementPayout'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 // ---------------------------------------------------------------------------
@@ -312,42 +310,15 @@ export function netRiesterPayout(
    *  freiwillig versicherte pay the full §240 SGB V rate. */
   retirementHealthStatus: RetirementHealthStatus = 'freiwillig_gkv',
 ): number {
-  const riesterAnnual = grossMonthlyPayout * 12
-  const otherAnnual = otherMonthlyIncome * 12
-
-  const marginalTaxAnnual = calculateMarginalRetirementTax(
-    rules,
-    retirementIncomeBase(retirementYear, {
-      grvBaselineMonthly,
-      otherTaxableAnnual: otherAnnual,
-    }),
-    {
-      otherTaxableAnnual: riesterAnnual,
-    },
-  )
-
-  // KVdR Pflichtversicherte: Riester payout is sonstige Einkünfte (§22 Nr. 5 EStG),
-  //   not a Versorgungsbezug per BSG B 12 KR 26/05 R. § 240 SGB V doesn't apply to
-  //   Pflichtversicherte either. → 0 KV/PV. PKV: also no statutory KV/PV.
-  if (!appliesFreiwilligGkv(profile, retirementHealthStatus)) {
-    return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
-  }
-
-  const kvPv = calculateProfileRetirementKvPv(
+  return netCertifiedPensionPayout(
+    grossMonthlyPayout,
     profile,
     rules,
+    otherMonthlyIncome,
     retirementYear,
-    {
-      bavMonthlyVersorgungsbezuege: 0,
-      otherMonthlyVersorgungsbezuege: 0,
-      monthlyStatutoryPension: grvBaselineMonthly,
-      freiwilligOtherMonthlyIncome: grossMonthlyPayout,
-      isFreiwilligVersichert: true,
-    },
+    grvBaselineMonthly,
+    retirementHealthStatus,
   )
-
-  const kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
-  return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
 }
 
 /**
@@ -369,17 +340,11 @@ export function afterTaxRiesterLumpSum(
   /** Gross GRV monthly pension stacked into the marginal-tax base. */
   grvBaselineMonthly = 0,
 ): number {
-  if (partialCapital <= 0) return 0
-
-  const lumpSumTax = calculateMarginalRetirementTax(
+  return afterTaxCertifiedPensionLumpSum(
+    partialCapital,
     rules,
-    retirementIncomeBase(retirementYear, {
-      grvBaselineMonthly,
-      otherTaxableAnnual: otherAnnualIncome,
-    }),
-    {
-      otherTaxableAnnual: partialCapital,
-    },
+    otherAnnualIncome,
+    retirementYear,
+    grvBaselineMonthly,
   )
-  return Math.max(0, partialCapital - lumpSumTax)
 }

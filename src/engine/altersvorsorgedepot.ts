@@ -31,14 +31,12 @@ import type {
   PersonalProfile,
   SalaryResult,
 } from '../domain'
-import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 import {
-  appliesFreiwilligGkv,
-  calculateMarginalRetirementTax,
-  calculateProfileRetirementKvPv,
-  retirementIncomeBase,
-  type RetirementHealthStatus,
-} from './retirementPayout'
+  afterTaxCertifiedPensionLumpSum,
+  netCertifiedPensionPayout,
+} from './certifiedPensionPayout'
+import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
+import type { RetirementHealthStatus } from './retirementPayout'
 
 // ---------------------------------------------------------------------------
 // Allowance formulas
@@ -384,49 +382,15 @@ export function netAvdPayout(
    *  the full §240 SGB V rate. PKV: also no statutory KV/PV. */
   retirementHealthStatus: RetirementHealthStatus = 'freiwillig_gkv',
 ): number {
-  // -------------------------------------------------------------------------
-  // 1. Income tax — §22 Nr. 5 EStG: fully taxable, no Besteuerungsanteil.
-  //    Route through otherTaxableAnnual (no special Pauschbetrag for §22 Nr. 5).
-  //    Marginal approach: tax with AVD minus tax without AVD.
-  // -------------------------------------------------------------------------
-  const avdAnnual = grossMonthlyPayout * 12
-  const otherAnnual = otherMonthlyIncome * 12
-
-  const marginalTaxAnnual = calculateMarginalRetirementTax(
-    rules,
-    retirementIncomeBase(retirementYear, {
-      grvBaselineMonthly,
-      otherTaxableAnnual: otherAnnual,
-    }),
-    {
-      otherTaxableAnnual: avdAnnual,
-    },
-  )
-
-  if (!appliesFreiwilligGkv(profile, retirementHealthStatus)) {
-    return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
-  }
-
-  // -------------------------------------------------------------------------
-  // 2. KV/PV — freiwillig §240 SGB V path (not a Versorgungsbezug).
-  //    Full health rate (no §249a SGB V half-rate), no §226 Abs. 2 Freibetrag.
-  //    Same approach as Basisrente.
-  // -------------------------------------------------------------------------
-  const kvPv = calculateProfileRetirementKvPv(
+  return netCertifiedPensionPayout(
+    grossMonthlyPayout,
     profile,
     rules,
+    otherMonthlyIncome,
     retirementYear,
-    {
-      bavMonthlyVersorgungsbezuege: 0,
-      otherMonthlyVersorgungsbezuege: 0,
-      monthlyStatutoryPension: grvBaselineMonthly,
-      freiwilligOtherMonthlyIncome: grossMonthlyPayout,
-      isFreiwilligVersichert: true,
-    },
+    grvBaselineMonthly,
+    retirementHealthStatus,
   )
-
-  const kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
-  return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
 }
 
 /**
@@ -447,19 +411,13 @@ export function afterTaxAvdLumpSum(
   /** Gross GRV monthly pension stacked into the marginal-tax base. */
   grvBaselineMonthly = 0,
 ): number {
-  if (partialCapital <= 0) return 0
-
-  const lumpSumTax = calculateMarginalRetirementTax(
+  return afterTaxCertifiedPensionLumpSum(
+    partialCapital,
     rules,
-    retirementIncomeBase(retirementYear, {
-      grvBaselineMonthly,
-      otherTaxableAnnual: otherAnnualIncome,
-    }),
-    {
-      otherTaxableAnnual: partialCapital,
-    },
+    otherAnnualIncome,
+    retirementYear,
+    grvBaselineMonthly,
   )
-  return Math.max(0, partialCapital - lumpSumTax)
 }
 
 /**

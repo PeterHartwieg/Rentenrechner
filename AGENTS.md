@@ -55,16 +55,18 @@ For a task, read the matching context capsule first — it is faster than readin
 | `src/engine/retirementTax.ts` | `calculateRetirementTax` — retirement-phase taxable-income pipeline. All retirement payout helpers must go through this. |
 | `src/engine/accumulation.ts` | `projectAccumulation` accumulation loop, yearly rows, fee drag, ETF Vorabpauschale accrual. |
 | `src/engine/payoutMath.ts` | Shared payout math: `monthlyRate`, `monthlyPayoutFromCapital`, `computeGrossMonthlyPayout`. |
+| `src/engine/productPayout.ts` | Shared product payout plumbing: pension payout fee deduction and Leibrente break-even age. |
 | `src/engine/etfPayout.ts` | ETF exit tax and payout schedule: `afterTaxInvestmentCapital`, `etfPayoutSchedule`. |
 | `src/engine/insurancePayout.ts` | Private insurance payout tax/KV/PV: `deriveInsuranceTaxMode`, `netInsurancePayout`, lump-sum helpers. |
 | `src/engine/bavPayout.ts` | bAV payout tax/KV/PV: `deriveBavLumpSumTaxMode`, `netBavPayout`, bAV lump-sum helpers. |
+| `src/engine/certifiedPensionPayout.ts` | Shared §22 Nr. 5 certified-product payout helpers used by AVD and Riester wrappers. |
 | `src/engine/projections.ts` | Compatibility barrel re-exporting the split projection/payout modules. Prefer importing from the focused module above in new code. |
 | `src/engine/fees.ts` | `computeRIY` — RIY/Effektivkosten bisection solver (60-iteration, beginning-of-period annuity FV). |
 | `src/engine/bavWarnings.ts` | Fee threshold warnings and one-click fee presets (Nettotarif / Standard / Hochkosten / Hoher AG-Match). |
 | `src/engine/grv.ts` | `projectStatutoryPension` — EP-based GRV estimate or manual override; §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil tax; KV/PV via §249a SGB V half-rate for KVdR members. |
 | `src/engine/basisrente.ts` | `calculateBasisrenteFunding` (§10 Abs. 3 EStG Schicht-1 cap, marginal tax saving) and `netBasisrentePayout` (§22 Besteuerungsanteil + freiwillig §240 KV/PV). |
-| `src/engine/altersvorsorgedepot.ts` | AVD accumulation, allowance engine (Grundzulage, Kinderzulage, Günstigerprüfung), Standarddepot glidepath, §22 Nr. 5 EStG payout. |
-| `src/engine/riester.ts` | §84–§86 EStG allowances, Mindesteigenbeitrag, §10a Günstigerprüfung, §22 Nr. 5 EStG payout, §93 Abs. 2 partial lump sum. |
+| `src/engine/altersvorsorgedepot.ts` | AVD accumulation, allowance engine (Grundzulage, Kinderzulage, Günstigerprüfung), Standarddepot glidepath, wrappers around shared §22 Nr. 5 payout helpers. |
+| `src/engine/riester.ts` | §84–§86 EStG allowances, Mindesteigenbeitrag, §10a Günstigerprüfung, wrappers around shared §22 Nr. 5 payout helpers, §93 Abs. 2 partial lump sum. |
 
 ### Engine — simulation orchestration
 
@@ -123,7 +125,7 @@ For a task, read the matching context capsule first — it is faster than readin
 
 **Retirement tax pipeline** (`retirementTax.ts`): All retirement-phase income-tax flows go through `calculateRetirementTax(components, rules, filingStatus)`. It applies cohort-based allowances (`besteuerungsanteilGrv`, `versorgungsfreibetrag`), routes private insurance by tax mode (halbeinkuenfte / abgeltungsteuer / pre2005), and deducts Werbungskosten-Pauschbeträge + Sonderausgaben before calling `calculateIncomeTax2026`. The `bavIsLumpSum` flag on `RetirementIncomeComponents` suppresses the Versorgungsfreibetrag for one-time payouts (Fünftelregelung context). The `retirementYear` parameter is required by all callers so cohort tables lock to the correct year.
 
-**Payout modes** (`payoutMath.ts`): bAV and pAV support `payoutMode: 'leibrente' | 'zeitrente' | 'kapitalverzehr'`. `leibrente` → `grossMonthlyPayout = capital / 10_000 × rentenfaktor` (independent of `retirementEndAge`). `zeitrente` → depletion annuity over `zeitrenteYears`. `kapitalverzehr` → depletion annuity over `retirementEndAge − retirementAge` (ETF always uses this path). Defaults: bAV `leibrente` RF 30, pAV `leibrente` RF 28.
+**Payout modes** (`payoutMath.ts` / `productPayout.ts`): bAV and pAV support `payoutMode: 'leibrente' | 'zeitrente' | 'kapitalverzehr'`. `leibrente` → `grossMonthlyPayout = capital / 10_000 × rentenfaktor` (independent of `retirementEndAge`). `zeitrente` → depletion annuity over `zeitrenteYears`. `kapitalverzehr` → depletion annuity over `retirementEndAge − retirementAge` (ETF always uses this path). Defaults: bAV `leibrente` RF 30, pAV `leibrente` RF 28.
 
 **PKV employer subsidy** (`salary.ts`): when `publicHealthInsurance = false`, `calculatePkv257Subsidy` computes the §257 SGB V employer subsidy (capped at half the actual PKV premium, §3 Nr. 62 EStG tax-free for the employee). The Vorsorgepauschale KV/PV Teilbetrag uses the actual PKV premium (§39b EStG). Net PKV cost (`pkvNetMonthlyCost`) is deducted from `annualNet` and flows into the fair-comparison benchmark.
 
@@ -133,9 +135,9 @@ For a task, read the matching context capsule first — it is faster than readin
 
 **Ertragsanteil** (`insurancePayout.ts`): `netInsurancePayout` checks `payoutMode === 'leibrente'` for private insurance and applies the §22 Nr. 1 Satz 3 a EStG Ertragsanteil table (age-keyed) instead of the Halbeinkünfte or pre-2005 rules when the product is a lifelong annuity. Only the taxable portion (Ertragsanteil × grossMonthlyPayout) enters the income-tax pipeline; lump-sum tax modes are unchanged.
 
-**Leibrente break-even age** (`simulate.ts`): `leibrenteBreakEvenAge` on `ProductResult` = `retirementAge + capital / (grossMonthlyPayout × 12)` — the nominal age at which cumulative gross payouts recoup the retirement capital. Populated for bAV, insurance, and Basisrente when `payoutMode === 'leibrente'`; `undefined` otherwise.
+**Leibrente break-even age** (`productPayout.ts`): `leibrenteBreakEvenAge` on `ProductResult` = `retirementAge + capital / (grossMonthlyPayout × 12)` — the nominal age at which cumulative gross payouts recoup the retirement capital. Populated for bAV, insurance, Basisrente, AVD, and Riester when the product is in lifelong-annuity mode; `undefined` otherwise.
 
 ## Current State
 
-Agent-readability refactor phases 0–12 complete. All 470 tests pass.
+Agent-readability refactor phases 0–13 complete. All 470 tests pass.
 See `BACKLOG.md` for open feature work and recommended order.
