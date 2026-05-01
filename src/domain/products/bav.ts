@@ -69,6 +69,9 @@ export interface BavAssumptions {
   payoutMode: PayoutMode
   // #54: contractual Rentenfaktor in EUR/Monat per 10 000 EUR Kapital (used when payoutMode === 'leibrente').
   rentenfaktor: number
+  // True when the user has confirmed the Rentenfaktor matches their contract; suppresses the
+  // "Schätzwert"/"Modellwert" badge even when the value still equals the default.
+  rentenfaktorConfirmed: boolean
   // #54: fixed-term horizon in years (used when payoutMode === 'zeitrente').
   zeitrenteYears: number
 }

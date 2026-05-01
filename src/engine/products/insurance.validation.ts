@@ -9,6 +9,7 @@ export function validateInsurance(ins: InsuranceAssumptions): boolean {
   if (!isFiniteNumber(ins.monthlyOtherRetirementIncome) || ins.monthlyOtherRetirementIncome < 0) return false
   if (!VALID_PAYOUT_MODES.includes(ins.payoutMode)) return false
   if (!inRange(ins.rentenfaktor, 0, 100)) return false
+  if (typeof ins.rentenfaktorConfirmed !== 'boolean') return false
   if (!intInRange(ins.zeitrenteYears, 1, 50)) return false
   if (!ins.fees || typeof ins.fees !== 'object') return false
   if (!validateFees(ins.fees)) return false

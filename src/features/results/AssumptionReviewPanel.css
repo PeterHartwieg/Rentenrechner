@@ -132,6 +132,11 @@
   background: #fef3c7;
 }
 
+.arp-badge--confirmed {
+  color: #047857;
+  background: #ecfdf5;
+}
+
 /* Dim default rows slightly so user-modified and model rows stand out */
 .arp-row--default td {
   color: #64748b;
@@ -139,6 +144,10 @@
 
 .arp-row--model td {
   color: #78350f;
+}
+
+.arp-row--confirmed td {
+  color: #064e3b;
 }
 
 .arp-row-hint {

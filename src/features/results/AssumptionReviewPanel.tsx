@@ -13,7 +13,7 @@ const PRODUCT_NAMES: Partial<Record<ProductId, string>> = {
   riester: 'Riester',
 }
 
-type RowKind = 'user' | 'default' | 'model'
+type RowKind = 'user' | 'default' | 'model' | 'confirmed'
 
 interface ReviewRow {
   label: string
@@ -27,8 +27,20 @@ function diff(a: number, b: number): boolean {
 }
 
 function ProvBadge({ kind }: { kind: RowKind }) {
-  const label = kind === 'user' ? 'von dir' : kind === 'model' ? 'Modellwert' : 'Standardwert'
+  const label =
+    kind === 'user'
+      ? 'von dir'
+      : kind === 'confirmed'
+        ? 'geprüft'
+        : kind === 'model'
+          ? 'Modellwert'
+          : 'Standardwert'
   return <span className={`arp-badge arp-badge--${kind}`}>{label}</span>
+}
+
+function rentenfaktorKind(value: number, def: number, confirmed: boolean): RowKind {
+  if (diff(value, def)) return 'user'
+  return confirmed ? 'confirmed' : 'model'
 }
 
 function buildProductRows(productId: ProductId, assumptions: ScenarioAssumptions): ReviewRow[] {
@@ -85,13 +97,12 @@ function buildProductRows(productId: ProductId, assumptions: ScenarioAssumptions
         },
       ]
       if (b.payoutMode === 'leibrente') {
+        const kind = rentenfaktorKind(b.rentenfaktor, d.rentenfaktor, b.rentenfaktorConfirmed)
         rows.push({
           label: 'Rentenfaktor',
           value: `${b.rentenfaktor} €/10k`,
-          kind: diff(b.rentenfaktor, d.rentenfaktor) ? 'user' : 'model',
-          hint: diff(b.rentenfaktor, d.rentenfaktor)
-            ? undefined
-            : 'Marktdurchschnitt – aus Angebot übernehmen',
+          kind,
+          hint: kind === 'model' ? 'Marktdurchschnitt – aus Angebot übernehmen' : undefined,
         })
       }
       return rows
@@ -115,13 +126,12 @@ function buildProductRows(productId: ProductId, assumptions: ScenarioAssumptions
         },
       ]
       if (ins.payoutMode === 'leibrente') {
+        const kind = rentenfaktorKind(ins.rentenfaktor, d.rentenfaktor, ins.rentenfaktorConfirmed)
         rows.push({
           label: 'Rentenfaktor',
           value: `${ins.rentenfaktor} €/10k`,
-          kind: diff(ins.rentenfaktor, d.rentenfaktor) ? 'user' : 'model',
-          hint: diff(ins.rentenfaktor, d.rentenfaktor)
-            ? undefined
-            : 'Marktdurchschnitt – aus Angebot übernehmen',
+          kind,
+          hint: kind === 'model' ? 'Marktdurchschnitt – aus Angebot übernehmen' : undefined,
         })
       }
       return rows
@@ -132,6 +142,7 @@ function buildProductRows(productId: ProductId, assumptions: ScenarioAssumptions
       const d = def.basisrente
       const totalFee = br.fees.wrapperAssetFee + br.fees.fundAssetFee
       const defTotalFee = d.fees.wrapperAssetFee + d.fees.fundAssetFee
+      const brKind = rentenfaktorKind(br.rentenfaktor, d.rentenfaktor, br.rentenfaktorConfirmed)
       return [
         {
           label: 'Monatsbeitrag',
@@ -141,10 +152,8 @@ function buildProductRows(productId: ProductId, assumptions: ScenarioAssumptions
         {
           label: 'Rentenfaktor',
           value: `${br.rentenfaktor} €/10k`,
-          kind: diff(br.rentenfaktor, d.rentenfaktor) ? 'user' : 'model',
-          hint: diff(br.rentenfaktor, d.rentenfaktor)
-            ? undefined
-            : 'Marktdurchschnitt – aus Angebot übernehmen',
+          kind: brKind,
+          hint: brKind === 'model' ? 'Marktdurchschnitt – aus Angebot übernehmen' : undefined,
         },
         {
           label: 'Gesamtkosten p.a.',
@@ -177,13 +186,12 @@ function buildProductRows(productId: ProductId, assumptions: ScenarioAssumptions
         },
       ]
       if (r.payoutMode === 'leibrente') {
+        const kind = rentenfaktorKind(r.rentenfaktor, d.rentenfaktor, r.rentenfaktorConfirmed)
         rows.push({
           label: 'Rentenfaktor',
           value: `${r.rentenfaktor} €/10k`,
-          kind: diff(r.rentenfaktor, d.rentenfaktor) ? 'user' : 'model',
-          hint: diff(r.rentenfaktor, d.rentenfaktor)
-            ? undefined
-            : 'Marktdurchschnitt – aus Angebot übernehmen',
+          kind,
+          hint: kind === 'model' ? 'Marktdurchschnitt – aus Angebot übernehmen' : undefined,
         })
       }
       return rows

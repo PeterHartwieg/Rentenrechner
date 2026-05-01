@@ -15,6 +15,7 @@ export function validateRiester(r: RiesterAssumptions): boolean {
   // payout
   if (!VALID_RIESTER_PAYOUT_MODES.includes(r.payoutMode)) return false
   if (!inRange(r.rentenfaktor, 0, 100)) return false
+  if (typeof r.rentenfaktorConfirmed !== 'boolean') return false
   if (!intInRange(r.zeitrenteYears, 1, 50)) return false
   if (!inRange(r.partialCapitalPct, 0, 0.3)) return false
   if (!isFiniteNumber(r.monthlyOtherRetirementIncome) || r.monthlyOtherRetirementIncome < 0) return false

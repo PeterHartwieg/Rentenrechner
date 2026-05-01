@@ -23,6 +23,9 @@ export interface InsuranceAssumptions {
   // typically have their own Rentenfaktor distinct from the bAV contract's value.
   payoutMode: PayoutMode
   rentenfaktor: number
+  // True when the user has confirmed the Rentenfaktor matches their contract; suppresses the
+  // "Schätzwert"/"Modellwert" badge even when the value still equals the default.
+  rentenfaktorConfirmed: boolean
   zeitrenteYears: number
   // #65: Optional paid-up / surrender scenario.
   // paidUpAge: age at which contributions stop (undefined = contributions continue to retirement).

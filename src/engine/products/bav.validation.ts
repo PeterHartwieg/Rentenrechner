@@ -24,6 +24,7 @@ export function validateBav(bav: BavAssumptions): boolean {
   if (typeof bav.pre2005EligibleTaxFree !== 'boolean') return false
   if (!VALID_PAYOUT_MODES.includes(bav.payoutMode)) return false
   if (!inRange(bav.rentenfaktor, 0, 100)) return false
+  if (typeof bav.rentenfaktorConfirmed !== 'boolean') return false
   if (!intInRange(bav.zeitrenteYears, 1, 50)) return false
   if (!bav.fees || typeof bav.fees !== 'object') return false
   return validateFees(bav.fees)

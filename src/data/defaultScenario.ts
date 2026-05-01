@@ -91,6 +91,7 @@ export const defaultRiesterAssumptions: RiesterAssumptions = {
   // Lifelong annuity is the typical Riester payout form.
   payoutMode: 'leibrente' as const,
   rentenfaktor: 28,
+  rentenfaktorConfirmed: false,
   zeitrenteYears: 20,
   // No partial capital payout by default (most users keep full annuity).
   partialCapitalPct: 0,
@@ -135,6 +136,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
     // unisex Rentenfaktor for age-67 starts (range 25–35 across providers); see LEGAL_REVIEW.md.
     payoutMode: 'leibrente' as const,
     rentenfaktor: 30,
+    rentenfaktorConfirmed: false,
     zeitrenteYears: 20,
     fees: {
       wrapperAssetFee: 0.003,   // 0.30 % Versicherungsmantel
@@ -154,6 +156,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
     payoutMode: 'leibrente' as const,
     // 28 EUR/10k/Monat: 2026 market-typical Rentenfaktor for age-67 starts.
     rentenfaktor: 28,
+    rentenfaktorConfirmed: false,
     monthlyOtherRetirementIncome: 0,
     fees: {
       wrapperAssetFee: 0.012,   // 1.20 % — typical Basisrente insurance wrapper
@@ -195,6 +198,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
     // chosen as a 2026 market-typical default. See LEGAL_REVIEW.md.
     payoutMode: 'leibrente' as const,
     rentenfaktor: 28,
+    rentenfaktorConfirmed: false,
     zeitrenteYears: 20,
     fees: {
       // 2026 market reference: Alte Leipziger HFR10 (Testsieger, Honorartarif via Maiwerk).

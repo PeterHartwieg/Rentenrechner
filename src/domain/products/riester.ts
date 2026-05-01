@@ -38,6 +38,9 @@ export interface RiesterAssumptions {
    */
   payoutMode: Extract<PayoutMode, 'leibrente' | 'zeitrente'>
   rentenfaktor: number
+  /** True when the user has confirmed the Rentenfaktor matches their contract; suppresses
+   *  the "Schätzwert"/"Modellwert" badge even when the value still equals the default. */
+  rentenfaktorConfirmed: boolean
   zeitrenteYears: number
   /** Partial capital payout at payout start (0.0 – 0.30; §93 Abs. 2 EStG). */
   partialCapitalPct: number

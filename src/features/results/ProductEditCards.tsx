@@ -47,27 +47,72 @@ function diff(a: number, b: number): boolean {
   return Math.abs(a - b) > 1e-9
 }
 
-type ProvKind = 'user' | 'default' | 'model'
+type ProvKind = 'user' | 'default' | 'model' | 'confirmed'
 
-function ProvLabel({ isModified, isModel = false }: { isModified: boolean; isModel?: boolean }) {
-  const kind: ProvKind = isModified ? 'user' : isModel ? 'model' : 'default'
-  const label = kind === 'user' ? 'von dir' : kind === 'model' ? 'Modellwert' : 'Standardwert'
+function ProvLabel({
+  isModified,
+  isModel = false,
+  isConfirmed = false,
+}: {
+  isModified: boolean
+  isModel?: boolean
+  isConfirmed?: boolean
+}) {
+  const kind: ProvKind = isModified
+    ? 'user'
+    : isConfirmed
+      ? 'confirmed'
+      : isModel
+        ? 'model'
+        : 'default'
+  const label =
+    kind === 'user'
+      ? 'von dir'
+      : kind === 'confirmed'
+        ? 'geprüft'
+        : kind === 'model'
+          ? 'Modellwert'
+          : 'Standardwert'
   return <span className={`pec-prov pec-prov--${kind}`}>{label}</span>
 }
 
 function FieldWithProv({
   modified,
   isModel = false,
+  isConfirmed = false,
+  onConfirmToggle,
   children,
 }: {
   modified: boolean
   isModel?: boolean
+  isConfirmed?: boolean
+  onConfirmToggle?: () => void
   children: React.ReactNode
 }) {
+  // The "Wert stimmt" / "↺ als Schätzwert" action only applies to model fields,
+  // and only when the value still equals the default (when the user has typed
+  // their own value, the badge is already "von dir" — confirmation is moot).
+  const showConfirmAction = isModel && !modified && onConfirmToggle !== undefined
   return (
     <div className={`pec-field-row${modified ? ' pec-field-row--modified' : ''}`}>
       {children}
-      <ProvLabel isModified={modified} isModel={isModel} />
+      <div className="pec-field-meta">
+        <ProvLabel isModified={modified} isModel={isModel} isConfirmed={isConfirmed && !modified} />
+        {showConfirmAction && (
+          <button
+            type="button"
+            className="pec-confirm-btn"
+            onClick={onConfirmToggle}
+            title={
+              isConfirmed
+                ? 'Wieder als Schätzwert markieren'
+                : 'Wert stimmt mit deinem Angebot — als geprüft markieren'
+            }
+          >
+            {isConfirmed ? '↺ als Schätzwert' : '✓ Wert stimmt'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -77,19 +122,25 @@ function hasUnconfirmedRentenfaktor(productId: ProductId, assumptions: ScenarioA
     case 'bav':
       return (
         assumptions.bav.payoutMode === 'leibrente' &&
-        !diff(assumptions.bav.rentenfaktor, defaultAssumptions.bav.rentenfaktor)
+        !diff(assumptions.bav.rentenfaktor, defaultAssumptions.bav.rentenfaktor) &&
+        !assumptions.bav.rentenfaktorConfirmed
       )
     case 'versicherung':
       return (
         assumptions.insurance.payoutMode === 'leibrente' &&
-        !diff(assumptions.insurance.rentenfaktor, defaultAssumptions.insurance.rentenfaktor)
+        !diff(assumptions.insurance.rentenfaktor, defaultAssumptions.insurance.rentenfaktor) &&
+        !assumptions.insurance.rentenfaktorConfirmed
       )
     case 'basisrente':
-      return !diff(assumptions.basisrente.rentenfaktor, defaultAssumptions.basisrente.rentenfaktor)
+      return (
+        !diff(assumptions.basisrente.rentenfaktor, defaultAssumptions.basisrente.rentenfaktor) &&
+        !assumptions.basisrente.rentenfaktorConfirmed
+      )
     case 'riester':
       return (
         assumptions.riester.payoutMode === 'leibrente' &&
-        !diff(assumptions.riester.rentenfaktor, defaultAssumptions.riester.rentenfaktor)
+        !diff(assumptions.riester.rentenfaktor, defaultAssumptions.riester.rentenfaktor) &&
+        !assumptions.riester.rentenfaktorConfirmed
       )
     default:
       return false
@@ -324,7 +375,17 @@ function BavFields({ assumptions, onAssumptionsChange }: FieldProps) {
         />
       </FieldWithProv>
       {bav.payoutMode === 'leibrente' && (
-        <FieldWithProv modified={diff(bav.rentenfaktor, def.rentenfaktor)} isModel>
+        <FieldWithProv
+          modified={diff(bav.rentenfaktor, def.rentenfaktor)}
+          isModel
+          isConfirmed={bav.rentenfaktorConfirmed}
+          onConfirmToggle={() =>
+            onAssumptionsChange((cur) => ({
+              ...cur,
+              bav: { ...cur.bav, rentenfaktorConfirmed: !cur.bav.rentenfaktorConfirmed },
+            }))
+          }
+        >
           <NumberField
             label="Rentenfaktor"
             labelSuffix={<InfoTip text={TIP_RENTENFAKTOR} />}
@@ -393,7 +454,20 @@ function InsuranceFields({ assumptions, onAssumptionsChange }: FieldProps) {
         />
       </FieldWithProv>
       {insurance.payoutMode === 'leibrente' && (
-        <FieldWithProv modified={diff(insurance.rentenfaktor, def.rentenfaktor)} isModel>
+        <FieldWithProv
+          modified={diff(insurance.rentenfaktor, def.rentenfaktor)}
+          isModel
+          isConfirmed={insurance.rentenfaktorConfirmed}
+          onConfirmToggle={() =>
+            onAssumptionsChange((cur) => ({
+              ...cur,
+              insurance: {
+                ...cur.insurance,
+                rentenfaktorConfirmed: !cur.insurance.rentenfaktorConfirmed,
+              },
+            }))
+          }
+        >
           <NumberField
             label="Rentenfaktor"
             labelSuffix={<InfoTip text={TIP_RENTENFAKTOR} />}
@@ -464,7 +538,20 @@ function BasisrenteFields({ assumptions, onAssumptionsChange }: FieldProps) {
           }}
         />
       </FieldWithProv>
-      <FieldWithProv modified={diff(basisrente.rentenfaktor, def.rentenfaktor)} isModel>
+      <FieldWithProv
+        modified={diff(basisrente.rentenfaktor, def.rentenfaktor)}
+        isModel
+        isConfirmed={basisrente.rentenfaktorConfirmed}
+        onConfirmToggle={() =>
+          onAssumptionsChange((cur) => ({
+            ...cur,
+            basisrente: {
+              ...cur.basisrente,
+              rentenfaktorConfirmed: !cur.basisrente.rentenfaktorConfirmed,
+            },
+          }))
+        }
+      >
         <NumberField
           label="Rentenfaktor"
           labelSuffix={<InfoTip text={TIP_RENTENFAKTOR} />}
@@ -558,7 +645,20 @@ function RiesterFields({ assumptions, onAssumptionsChange }: FieldProps) {
         />
       </FieldWithProv>
       {riester.payoutMode === 'leibrente' && (
-        <FieldWithProv modified={diff(riester.rentenfaktor, def.rentenfaktor)} isModel>
+        <FieldWithProv
+          modified={diff(riester.rentenfaktor, def.rentenfaktor)}
+          isModel
+          isConfirmed={riester.rentenfaktorConfirmed}
+          onConfirmToggle={() =>
+            onAssumptionsChange((cur) => ({
+              ...cur,
+              riester: {
+                ...cur.riester,
+                rentenfaktorConfirmed: !cur.riester.rentenfaktorConfirmed,
+              },
+            }))
+          }
+        >
           <NumberField
             label="Rentenfaktor"
             labelSuffix={<InfoTip text={TIP_RENTENFAKTOR} />}

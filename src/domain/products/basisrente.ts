@@ -20,6 +20,9 @@ export interface BasisrenteAssumptions {
   /** Always 'leibrente' — Basisrente old-age payout must be a monthly lifelong annuity. */
   payoutMode: 'leibrente'
   rentenfaktor: number
+  /** True when the user has confirmed the Rentenfaktor matches their contract; suppresses
+   *  the "Schätzwert"/"Modellwert" badge even when the value still equals the default. */
+  rentenfaktorConfirmed: boolean
   /** Monthly GRV + other retirement income for marginal-tax calculation in payout phase. */
   monthlyOtherRetirementIncome: number
 }
