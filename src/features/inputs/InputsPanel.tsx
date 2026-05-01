@@ -151,18 +151,21 @@ export function InputsPanel({
         Vertragslaufzeit) die monatliche Auszahlung.
       </p>
 
-      <div className="divider" />
+      {/* ── Per-product details — card with heading, tabs, active product inputs ── */}
+      <section className="product-details-card" aria-label="Produktdetails">
+        <div className="product-details-card-header">
+          <h3>Produktdetails</h3>
+        </div>
 
-      {/* ── Per-product details, navigated via tabs ── */}
-      {visible.length === 0 ? (
-        <p className="field-hint">
-          Wähle oben mindestens ein Produkt aus, um seine Einstellungen zu konfigurieren.
-        </p>
-      ) : (
-        <>
-          <ProductTabs visible={visible} active={activeTab} onChange={setRequestedTab} />
+        {visible.length === 0 ? (
+          <p className="field-hint">
+            Wähle oben mindestens ein Produkt aus, um seine Einstellungen zu konfigurieren.
+          </p>
+        ) : (
+          <>
+            <ProductTabs visible={visible} active={activeTab} onChange={setRequestedTab} />
 
-          {activeTab === 'bav' && (
+            {activeTab === 'bav' && (
             <>
               <ProductFocusHeader productId="bav" />
               <BavInputs
@@ -280,8 +283,9 @@ export function InputsPanel({
               />
             </>
           )}
-        </>
-      )}
+          </>
+        )}
+      </section>
 
       <div className="divider" />
 

@@ -458,17 +458,24 @@ th {
 }
 
 /* Comparison picker (UX10) */
-.comparison-picker {
+.comparison-picker,
+.product-details-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   padding: 14px 16px;
   border: 1px solid #d9e1ea;
   border-radius: 10px;
   background: #ffffff;
 }
 
-.comparison-picker-header h3 {
+.comparison-picker {
+  /* Picker uses a slightly tighter gap than the product-details card */
+  gap: 10px;
+}
+
+.comparison-picker-header h3,
+.product-details-card-header h3 {
   margin: 0 0 4px;
   font-size: 0.95rem;
 }
