@@ -7,9 +7,7 @@ import type {
   ReturnScenario,
   ScenarioAssumptions,
 } from '../domain'
-import {
-  projectAccumulation,
-} from './projections'
+import { projectAccumulation } from './accumulation'
 import { computeRIY } from './fees'
 
 export const zeroFeeModel: FeeModel = {

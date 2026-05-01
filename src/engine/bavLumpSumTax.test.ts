@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import type { PersonalProfile } from '../domain'
-import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from './projections'
+import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from './bavPayout'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 // PKV profile: no KV/PV deductions — isolates income tax effect

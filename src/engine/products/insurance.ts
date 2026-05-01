@@ -7,11 +7,15 @@ import {
 } from '../buildResult'
 import {
   afterTaxInsuranceLumpSum,
-  computeGrossMonthlyPayout,
   insuranceLumpSumBreakdown,
   netInsurancePayout,
+} from '../insurancePayout'
+import {
+  computeGrossMonthlyPayout,
+} from '../payoutMath'
+import {
   projectAccumulation,
-} from '../projections'
+} from '../accumulation'
 
 export const metadata = {
   id: 'versicherung' as const,

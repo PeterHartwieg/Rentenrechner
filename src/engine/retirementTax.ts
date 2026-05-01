@@ -54,7 +54,7 @@
  * NOT MODELED
  *   - Kirchensteuer (no implementation; note in LEGAL_REVIEW.md)
  *   - Außerordentliche Einkünfte beyond Fünftelregelung
- *   - KV/PV contribution deductions from zvE (modeled separately in projections.ts)
+ *   - KV/PV contribution deductions from zvE (modeled separately in retirementPayout.ts)
  *   - Sparerpauschbetrag for private insurance (callers pass the gain net of allowances
  *     if applicable; typically not used for insurance lump-sum but documented here)
  */

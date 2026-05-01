@@ -9,7 +9,7 @@ import {
   calculateVorsorgepauschale2026,
 } from '../salary'
 import { simulateRetirementComparison } from '../simulate'
-import { netBavPayout } from '../projections'
+import { netBavPayout } from '../bavPayout'
 
 // Base profile for payroll tax tests: Steuerklasse I, no kids, no church, GKV 2.9%
 const testProfile75k: PersonalProfile = {

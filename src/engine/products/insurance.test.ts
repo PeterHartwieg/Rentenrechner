@@ -3,7 +3,8 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import type { InsuranceProductResult } from '../../domain'
 import { de2026Rules } from '../../rules/de2026'
 import { ertragsanteilByAge } from '../../rules/legalConstants'
-import { deriveInsuranceTaxMode, monthlyPayoutFromCapital, netInsurancePayout } from '../projections'
+import { deriveInsuranceTaxMode, netInsurancePayout } from '../insurancePayout'
+import { monthlyPayoutFromCapital } from '../payoutMath'
 import { simulateRetirementComparison } from '../simulate'
 
 describe('deriveInsuranceTaxMode — calendar-year classification', () => {

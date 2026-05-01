@@ -7,9 +7,11 @@ import {
 } from '../buildResult'
 import {
   bavLumpSumBreakdown,
-  computeGrossMonthlyPayout,
   netBavPayout,
-} from '../projections'
+} from '../bavPayout'
+import {
+  computeGrossMonthlyPayout,
+} from '../payoutMath'
 
 export const metadata = {
   id: 'bav' as const,

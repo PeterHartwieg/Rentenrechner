@@ -9,7 +9,7 @@ import {
   computeAvdGlidepathReturn,
   netAvdPayout,
 } from '../altersvorsorgedepot'
-import { monthlyPayoutFromCapital } from '../projections'
+import { monthlyPayoutFromCapital } from '../payoutMath'
 
 export const metadata = {
   id: 'altersvorsorgedepot' as const,

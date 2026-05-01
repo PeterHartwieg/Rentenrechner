@@ -1,5 +1,7 @@
 import type { EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain'
-import { afterTaxBavLumpSum, afterTaxInsuranceLumpSum, afterTaxInvestmentCapital } from '../engine/projections'
+import { afterTaxBavLumpSum } from '../engine/bavPayout'
+import { afterTaxInvestmentCapital } from '../engine/etfPayout'
+import { afterTaxInsuranceLumpSum } from '../engine/insurancePayout'
 
 type ExportOptions = {
   products: ProductResult[]

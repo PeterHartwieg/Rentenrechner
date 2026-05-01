@@ -8,7 +8,7 @@ import {
   afterTaxRiesterLumpSum,
   netRiesterPayout,
 } from '../riester'
-import { computeGrossMonthlyPayout } from '../projections'
+import { computeGrossMonthlyPayout } from '../payoutMath'
 
 export const metadata = {
   id: 'riester' as const,

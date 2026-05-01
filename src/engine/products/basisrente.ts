@@ -6,7 +6,7 @@ import {
   calculateLeibrenteBreakEvenAge,
 } from '../buildResult'
 import { netBasisrentePayout } from '../basisrente'
-import { computeGrossMonthlyPayout } from '../projections'
+import { computeGrossMonthlyPayout } from '../payoutMath'
 
 export const metadata = {
   id: 'basisrente' as const,

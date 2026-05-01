@@ -10,7 +10,8 @@ import {
 } from '../salary'
 import { simulateRetirementComparison } from '../simulate'
 import { calculateIncomeTax2026, calculateSolidarityTax } from '../tax'
-import { afterTaxBavLumpSum, monthlyPayoutFromCapital, netBavPayout } from '../projections'
+import { afterTaxBavLumpSum, netBavPayout } from '../bavPayout'
+import { monthlyPayoutFromCapital } from '../payoutMath'
 
 describe('#35 children-adjusted retirement PV rate in netBavPayout', () => {
   it('childless rate (0 children) equals careRetirementChildlessRate by construction', () => {

@@ -13,7 +13,8 @@ import { calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding } from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'
 import { calculateBavFunding, } from './salary'
-import { deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from './projections'
+import { deriveBavLumpSumTaxMode } from './bavPayout'
+import { deriveInsuranceTaxMode } from './insurancePayout'
 import { projectStatutoryPension } from './grv'
 
 export interface SimulationContext {

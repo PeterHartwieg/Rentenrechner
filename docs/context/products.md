@@ -18,9 +18,9 @@ For each product: simulator, validator, domain types, tests, UI input, engine he
 
 | Product | Key engine file | Key function(s) |
 |---------|----------------|-----------------|
-| ETF | `src/engine/projections.ts` | `projectAccumulation`, `afterTaxInvestmentCapital`, `etfPayoutSchedule` |
-| bAV | `src/engine/salary.ts` | `calculateBavFunding` (two-pass); `projections.ts`: `netBavPayout`, `afterTaxBavLumpSum` |
-| Private RV | `src/engine/projections.ts` | `netInsurancePayout`, `afterTaxInsuranceLumpSum`, `deriveInsuranceTaxMode` |
+| ETF | `src/engine/accumulation.ts`, `src/engine/etfPayout.ts` | `projectAccumulation`, `afterTaxInvestmentCapital`, `etfPayoutSchedule` |
+| bAV | `src/engine/salary.ts`, `src/engine/bavPayout.ts` | `calculateBavFunding` (two-pass), `netBavPayout`, `afterTaxBavLumpSum` |
+| Private RV | `src/engine/insurancePayout.ts` | `netInsurancePayout`, `afterTaxInsuranceLumpSum`, `deriveInsuranceTaxMode` |
 | Basisrente | `src/engine/basisrente.ts` | `calculateBasisrenteFunding`, `netBasisrentePayout` |
 | AVD | `src/engine/altersvorsorgedepot.ts` | `calculateAvdFunding`, payout helpers |
 | Riester | `src/engine/riester.ts` | `calculateRiesterFunding`, payout helpers |

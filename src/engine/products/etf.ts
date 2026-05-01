@@ -4,8 +4,10 @@ import { buildProductResult, zeroFeeModel } from '../buildResult'
 import {
   afterTaxInvestmentCapital,
   etfPayoutSchedule,
+} from '../etfPayout'
+import {
   monthlyPayoutFromCapital,
-} from '../projections'
+} from '../payoutMath'
 
 export const metadata = {
   id: 'etf' as const,

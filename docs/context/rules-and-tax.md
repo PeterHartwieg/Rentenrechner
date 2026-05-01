@@ -24,12 +24,12 @@ For each legal / rule area: the source file, the rule file, and the research doc
 | GRV Besteuerungsanteil (§22 Nr. 1 Satz 3 a aa EStG) | `src/engine/retirementTax.ts` + `src/rules/de2026.ts` | cohort table in rules |
 | Versorgungsfreibetrag (§19 Abs. 2 EStG) | `src/engine/retirementTax.ts` | applied inside `calculateRetirementTax` |
 | Basisrente Schicht-1 cap (§10 Abs. 3 EStG) | `src/engine/basisrente.ts` | `calculateBasisrenteFunding` |
-| KV/PV on Versorgungsbezüge (§229 SGB V, §226(2), §57 SGB XI) | `src/engine/projections.ts` | `netBavPayout`, `afterTaxBavLumpSum` |
-| KVdR (§249a SGB V half-rate) | `src/engine/grv.ts`, `src/engine/projections.ts` | `projectStatutoryPension`, `netBavPayout` |
-| §22 Nr. 1 Satz 3a Ertragsanteil (private RV Leibrente) | `src/engine/projections.ts`, `src/rules/de2026.ts` | `netInsurancePayout` + ertragsanteilByAge table |
-| Insurance tax mode (§20 Abs. 1 Nr. 6, §52 Abs. 28 EStG) | `src/engine/projections.ts` | `deriveInsuranceTaxMode` |
-| bAV lump-sum tax routing (§34 Abs. 2, §22 Nr. 5 EStG) | `src/engine/projections.ts` | `afterTaxBavLumpSum`, `deriveBavLumpSumTaxMode` |
-| ETF Vorabpauschale (InvStG §18, §19) | `src/engine/projections.ts` | `projectAccumulation` (etfVorabpauschale param) |
+| KV/PV on Versorgungsbezüge (§229 SGB V, §226(2), §57 SGB XI) | `src/engine/bavPayout.ts`, `src/engine/retirementPayout.ts` | `netBavPayout`, `afterTaxBavLumpSum`, shared KV/PV helpers |
+| KVdR (§249a SGB V half-rate) | `src/engine/grv.ts`, `src/engine/bavPayout.ts` | `projectStatutoryPension`, `netBavPayout` |
+| §22 Nr. 1 Satz 3a Ertragsanteil (private RV Leibrente) | `src/engine/insurancePayout.ts`, `src/rules/de2026.ts` | `netInsurancePayout` + ertragsanteilByAge table |
+| Insurance tax mode (§20 Abs. 1 Nr. 6, §52 Abs. 28 EStG) | `src/engine/insurancePayout.ts` | `deriveInsuranceTaxMode` |
+| bAV lump-sum tax routing (§34 Abs. 2, §22 Nr. 5 EStG) | `src/engine/bavPayout.ts` | `afterTaxBavLumpSum`, `deriveBavLumpSumTaxMode` |
+| ETF Vorabpauschale (InvStG §18, §19) | `src/engine/accumulation.ts`, `src/engine/etfPayout.ts` | `projectAccumulation` (`etfVorabpauschale` param), `etfPayoutSchedule` |
 | RIY / Effektivkosten | `src/engine/fees.ts` | `computeRIY` |
 | GRV EP estimate | `src/engine/grv.ts` | `projectStatutoryPension` |
 | AVD allowances (§10a + AVD Reform 2026) | `src/engine/altersvorsorgedepot.ts`, `src/rules/de2026.ts` | `calculateAvdFunding` |

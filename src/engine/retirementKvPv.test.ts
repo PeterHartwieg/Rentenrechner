@@ -15,7 +15,8 @@
 import { describe, expect, it } from 'vitest'
 import { de2026Rules } from '../rules/de2026'
 import { calculateRetirementKvPv } from './retirementTax'
-import { afterTaxBavLumpSum, netBavPayout, netInsurancePayout } from './projections'
+import { afterTaxBavLumpSum, netBavPayout } from './bavPayout'
+import { netInsurancePayout } from './insurancePayout'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { simulateRetirementComparison } from './simulate'
 
