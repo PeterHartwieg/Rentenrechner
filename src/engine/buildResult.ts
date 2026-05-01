@@ -37,6 +37,7 @@ export interface ProductPayoutFields {
   grossMonthlyPayout: number
   netMonthlyPayout: number
   leibrenteBreakEvenAge?: number
+  lumpSumDeductions?: { incomeTax: number; kvPv: number }
 }
 
 export interface BuildProductResultParams<

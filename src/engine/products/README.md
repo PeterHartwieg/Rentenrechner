@@ -16,10 +16,8 @@ Each product has a self-contained module here. To touch a product, read only its
 1. Create `<product>.ts` — export `metadata` and `simulate(ctx, scenario)`.
 2. Create `<product>.validation.ts` — export `validate<Product>(assumptions)`.
 3. Create `<product>.test.ts` — use factories from `src/test/factories.ts`.
-4. Add one import + one call in `simulate.ts` → `simulateRetirementComparison`.
-5. Add one delegation call in `scenarioSchema.ts` → `validateAssumptions`.
-6. Add one `metadata` import in `productManifest.ts` → `PRODUCT_MANIFEST`.
-7. Add a row to this table and to `docs/context/products.md`.
+4. Add one entry in `../productRegistry.ts` with `metadata`, `simulate`, `assumptionsKey`, and `validate`.
+5. Add a row to this table and to `docs/context/products.md`.
 
 ## Shared infrastructure
 
@@ -28,7 +26,8 @@ Each product has a self-contained module here. To touch a product, read only its
 | `../simulationContext.ts` | `SimulationContext` interface; `buildContext` computes pre-scenario funding results |
 | `../buildResult.ts` | `buildProductResult` — runs accumulation + payout/tax pipeline; assembles `ProductResult` |
 | `../../domain/validation/primitives.ts` | `isFiniteNumber`, `inRange`, `intInRange`, `validateFees` |
-| `../../engine/productManifest.ts` | Aggregates all product `metadata`; `getProductMeta(id)` for UI lookups |
+| `../productRegistry.ts` | Single product registry for metadata, simulator, assumptions key, and validator |
+| `../productManifest.ts` | Compatibility re-export of registry metadata; `getProductMeta(id)` for UI lookups |
 
 ## Behavioral scope (one line each)
 

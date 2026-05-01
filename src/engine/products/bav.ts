@@ -6,7 +6,7 @@ import {
   calculateLeibrenteBreakEvenAge,
 } from '../buildResult'
 import {
-  afterTaxBavLumpSum,
+  bavLumpSumBreakdown,
   computeGrossMonthlyPayout,
   netBavPayout,
 } from '../projections'
@@ -49,7 +49,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
         }),
         bav.fees,
       )
-      const afterTaxLumpSum = afterTaxBavLumpSum(
+      const lumpSum = bavLumpSumBreakdown(
         projection.capital,
         profile,
         rules,
@@ -73,7 +73,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
       }
 
       return {
-        afterTaxLumpSum,
+        afterTaxLumpSum: lumpSum.net,
+        lumpSumDeductions: { incomeTax: lumpSum.incomeTax, kvPv: lumpSum.kvPv },
         grossMonthlyPayout,
         netMonthlyPayout,
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(

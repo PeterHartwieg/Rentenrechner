@@ -32,8 +32,13 @@ import type {
   SalaryResult,
 } from '../domain'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
-import { careEmployeeRateForChildren } from './salary'
-import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
+import {
+  appliesFreiwilligGkv,
+  calculateMarginalRetirementTax,
+  calculateProfileRetirementKvPv,
+  retirementIncomeBase,
+  type RetirementHealthStatus,
+} from './retirementPayout'
 
 // ---------------------------------------------------------------------------
 // Allowance formulas
@@ -260,6 +265,50 @@ export function calculateAvdFunding(
   }
 }
 
+/**
+ * Inverse of calculateAvdFunding: given a target monthly net cost (out-of-pocket
+ * after the Günstigerprüfung refund), return the monthlyOwnContribution that
+ * produces that net. Used by the input-sync layer to keep AVD's true netto
+ * aligned with the harmonization anchor across products.
+ *
+ * Clamped at maxAvdMonthlyOwnContribution: above that, the AltZertG contract
+ * cap binds and any extra Eigenbeitrag would be refused by the provider.
+ */
+export function solveAvdOwnFromNet(
+  targetMonthlyNet: number,
+  rules: GermanRules,
+  salaryResult: SalaryResult,
+  avd: AltersvorsorgedepotAssumptions,
+): number {
+  if (targetMonthlyNet <= 0) return 0
+
+  const avdMax = maxAvdMonthlyOwnContribution(
+    avd.eligibility,
+    rules,
+    !avd.eligibility.careerStarterBonusUsed,
+  )
+
+  const forward = (monthlyOwn: number) =>
+    calculateAvdFunding(rules, salaryResult, { ...avd, monthlyOwnContribution: monthlyOwn }).monthlyNetCost
+
+  // Net never exceeds gross (Günstigerprüfung ≥ 0), so own ≥ net at minimum.
+  let lo = 0
+  let hi = Math.min(avdMax, Math.max(100, targetMonthlyNet * 4))
+  for (let i = 0; i < 10 && hi < avdMax && forward(hi) < targetMonthlyNet; i++) {
+    hi = Math.min(avdMax, hi * 2)
+  }
+  if (forward(hi) < targetMonthlyNet) return avdMax
+
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2
+    const net = forward(mid)
+    if (Math.abs(net - targetMonthlyNet) < 0.01) return mid
+    if (net < targetMonthlyNet) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
 // ---------------------------------------------------------------------------
 // Standarddepot glidepath
 // ---------------------------------------------------------------------------
@@ -333,7 +382,7 @@ export function netAvdPayout(
    *  (§22 Nr. 5 EStG) — not a Versorgungsbezug under §229 SGB V — so KVdR
    *  Pflichtversicherte owe 0 KV/PV; only freiwillig versicherte pay
    *  the full §240 SGB V rate. PKV: also no statutory KV/PV. */
-  retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv' = 'freiwillig_gkv',
+  retirementHealthStatus: RetirementHealthStatus = 'freiwillig_gkv',
 ): number {
   // -------------------------------------------------------------------------
   // 1. Income tax — §22 Nr. 5 EStG: fully taxable, no Besteuerungsanteil.
@@ -342,46 +391,19 @@ export function netAvdPayout(
   // -------------------------------------------------------------------------
   const avdAnnual = grossMonthlyPayout * 12
   const otherAnnual = otherMonthlyIncome * 12
-  const grvAnnual = grvBaselineMonthly * 12
 
-  const taxWith = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
-      otherTaxableAnnual: avdAnnual + otherAnnual,
-      retirementYear,
-    },
+  const marginalTaxAnnual = calculateMarginalRetirementTax(
     rules,
-    'single',
-  )
-  const taxWithout = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
+    retirementIncomeBase(retirementYear, {
+      grvBaselineMonthly,
       otherTaxableAnnual: otherAnnual,
-      retirementYear,
+    }),
+    {
+      otherTaxableAnnual: avdAnnual,
     },
-    rules,
-    'single',
   )
-  const marginalTaxAnnual = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
 
-  // KVdR Pflichtversicherte: AVD is sonstige Einkünfte (§22 Nr. 5 EStG) — not in the
-  //   §229 SGB V Versorgungsbezug catalogue and not subject to §240 (which doesn't
-  //   apply to Pflichtversicherte). → 0 KV/PV.
-  // PKV: no statutory KV/PV.
-  // PKV via profile.publicHealthInsurance = false: legacy fallback.
-  if (
-    !profile.publicHealthInsurance ||
-    retirementHealthStatus === 'kvdr' ||
-    retirementHealthStatus === 'pkv'
-  ) {
+  if (!appliesFreiwilligGkv(profile, retirementHealthStatus)) {
     return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
   }
 
@@ -390,24 +412,18 @@ export function netAvdPayout(
   //    Full health rate (no §249a SGB V half-rate), no §226 Abs. 2 Freibetrag.
   //    Same approach as Basisrente.
   // -------------------------------------------------------------------------
-  const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
-  const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
-  const careRate =
-    careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) +
-    rules.socialSecurity.careEmployerRate
-
-  const kvPv = calculateRetirementKvPv({
-    bavMonthlyVersorgungsbezuege: 0,
-    otherMonthlyVersorgungsbezuege: 0,
-    monthlyStatutoryPension: grvBaselineMonthly,
-    freiwilligOtherMonthlyIncome: grossMonthlyPayout,
-    isFreiwilligVersichert: true,
-    kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
-    pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
-    monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
-    healthRate,
-    careRate,
-  })
+  const kvPv = calculateProfileRetirementKvPv(
+    profile,
+    rules,
+    retirementYear,
+    {
+      bavMonthlyVersorgungsbezuege: 0,
+      otherMonthlyVersorgungsbezuege: 0,
+      monthlyStatutoryPension: grvBaselineMonthly,
+      freiwilligOtherMonthlyIncome: grossMonthlyPayout,
+      isFreiwilligVersichert: true,
+    },
+  )
 
   const kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
   return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
@@ -432,35 +448,17 @@ export function afterTaxAvdLumpSum(
   grvBaselineMonthly = 0,
 ): number {
   if (partialCapital <= 0) return 0
-  const grvAnnual = grvBaselineMonthly * 12
 
-  const taxWith = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
-      otherTaxableAnnual: partialCapital + otherAnnualIncome,
-      retirementYear,
-    },
+  const lumpSumTax = calculateMarginalRetirementTax(
     rules,
-    'single',
-  )
-  const taxWithout = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
+    retirementIncomeBase(retirementYear, {
+      grvBaselineMonthly,
       otherTaxableAnnual: otherAnnualIncome,
-      retirementYear,
+    }),
+    {
+      otherTaxableAnnual: partialCapital,
     },
-    rules,
-    'single',
   )
-  const lumpSumTax = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
   return Math.max(0, partialCapital - lumpSumTax)
 }
 

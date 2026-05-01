@@ -22,7 +22,7 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): RiesterProductResult {
-  const { profile, assumptions, rules, riesterFunding, bavFunding, payoutYear } = ctx
+  const { profile, assumptions, rules, riesterFunding, payoutYear } = ctx
 
   // Total monthly contribution = user-entered Eigenbeitrag (actual out-of-pocket cash)
   // + state allowances + Günstigerprüfung tax refund flowing back into the contract.
@@ -38,7 +38,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     profile,
     rules,
     assumptions,
-    monthlyUserCost: bavFunding.monthlyNetCost,
+    monthlyUserCost: riesterFunding.monthlyNetCost,
     monthlyProductContribution: totalMonthlyContribution,
     monthlyEmployerContribution: 0,
     fees: assumptions.riester.fees,

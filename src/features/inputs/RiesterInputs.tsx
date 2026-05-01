@@ -13,10 +13,7 @@ import { formatCurrency, formatPercent } from '../../utils/format'
 type Props = {
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
-  onSyncMonthlyContribution: (
-    source: 'bav' | 'basisrente' | 'avd' | 'riester',
-    value: number,
-  ) => void
+  onSyncMonthlyContribution: (targetNet: number) => void
   profile: PersonalProfile
   riesterFunding: RiesterFundingResult
   riesterProductResult: ProductResult | undefined
@@ -50,12 +47,12 @@ export function RiesterInputs({
 
       <div className="field-grid">
         <NumberField
-          label="Eigenbeitrag (monatlich)"
-          value={assumptions.riester.monthlyOwnContribution}
+          label="Netto-Aufwand mtl."
+          value={riesterFunding.monthlyNetCost}
           min={0}
           step={10}
           suffix="EUR mtl."
-          onChange={(value) => onSyncMonthlyContribution('riester', Number(value))}
+          onChange={(value) => onSyncMonthlyContribution(Number(value))}
         />
         <NumberField
           label="Vorhandenes Kapital"
@@ -97,7 +94,8 @@ export function RiesterInputs({
 
       {riesterFunding.annualOwnContribution > 0 ? (
         <p className="field-hint">
-          Grundzulage: <strong>{formatCurrency(riesterFunding.grundzulageAnnual, 0)}/Jahr</strong>
+          Eigenbeitrag: <strong>{formatCurrency(riesterFunding.monthlyOwnContribution, 0)}/Monat</strong>
+          {' '}· Grundzulage: <strong>{formatCurrency(riesterFunding.grundzulageAnnual, 0)}/Jahr</strong>
           {riesterFunding.childAllowanceAnnual > 0 && (
             <> · Kinderzulage: <strong>{formatCurrency(riesterFunding.childAllowanceAnnual, 0)}/Jahr</strong></>
           )}
@@ -112,7 +110,6 @@ export function RiesterInputs({
               Eigenbeitrag unter Mindesteigenbeitrag ({formatCurrency(riesterFunding.minEigenbeitragAnnual, 0)}/Jahr) — Zulagen werden anteilig ({formatPercent(riesterFunding.prorationFactor, 0)}) gewährt.
             </span></>
           )}
-          {' '}· Nettoaufwand: <strong>{formatCurrency(riesterFunding.monthlyNetCost, 0)}/Monat</strong>
           {riesterProductResult && (
             <> · Nettorente: <strong>{formatCurrency(riesterProductResult.netMonthlyPayout, 0)}/Monat</strong></>
           )}

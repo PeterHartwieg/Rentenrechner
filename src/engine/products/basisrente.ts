@@ -20,7 +20,7 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BasisrenteProductResult {
-  const { profile, assumptions, rules, basisrenteFunding, bavFunding, payoutYear } = ctx
+  const { profile, assumptions, rules, basisrenteFunding, payoutYear } = ctx
 
   return buildProductResult({
     productId: 'basisrente',
@@ -29,7 +29,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
     profile,
     rules,
     assumptions,
-    monthlyUserCost: bavFunding.monthlyNetCost,
+    monthlyUserCost: basisrenteFunding.monthlyNetCost,
     monthlyProductContribution: basisrenteFunding.monthlyGrossContribution,
     monthlyEmployerContribution: 0,
     fees: assumptions.basisrente.fees,

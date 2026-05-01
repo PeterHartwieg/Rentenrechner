@@ -8,6 +8,7 @@ import {
 import {
   afterTaxInsuranceLumpSum,
   computeGrossMonthlyPayout,
+  insuranceLumpSumBreakdown,
   netInsurancePayout,
   projectAccumulation,
 } from '../projections'
@@ -52,7 +53,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       )
       const kvdrMember = assumptions.bav.kvdrMember !== false
       const otherAnnual = ins.monthlyOtherRetirementIncome * 12
-      const afterTaxLumpSum = afterTaxInsuranceLumpSum(
+      const lumpSum = insuranceLumpSumBreakdown(
         projection.capital,
         projection.totalContributionsBeforeFees,
         insuranceTaxMode,
@@ -79,7 +80,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       )
 
       return {
-        afterTaxLumpSum,
+        afterTaxLumpSum: lumpSum.net,
+        lumpSumDeductions: { incomeTax: lumpSum.incomeTax, kvPv: lumpSum.kvPv },
         grossMonthlyPayout,
         netMonthlyPayout,
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(

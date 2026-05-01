@@ -11,6 +11,7 @@ import { resultFor, simulateDefault } from '../test/factories'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { simulateRetirementComparison } from './simulate'
+import { syncMonthlyContributions } from '../app/syncContributions'
 
 // Run the default simulation once and reuse across all tests in this suite.
 const defaultResult = simulateDefault()
@@ -48,6 +49,21 @@ describe('simulateRetirementComparison — fair-comparison invariant', () => {
       const ins = resultFor(products, 'versicherung', scenario.id)
       expect(etf.monthlyUserCost).toBe(bav.monthlyUserCost)
       expect(ins.monthlyUserCost).toBe(bav.monthlyUserCost)
+    }
+  })
+
+  it('after syncMonthlyContributions, all six products invest the same monthly netto', () => {
+    // Sync the assumptions through the single-anchor solver (the same path the
+    // UI takes whenever the user edits a contribution). Every product's
+    // monthlyUserCost should then equal the chosen netto anchor.
+    const synced = syncMonthlyContributions(150, defaultAssumptions, defaultProfile, de2026Rules)
+    const syncedResult = simulateRetirementComparison(defaultProfile, synced, de2026Rules)
+    for (const scenario of defaultAssumptions.returnScenarios) {
+      const bav = resultFor(syncedResult.products, 'bav', scenario.id)
+      for (const id of ['etf', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as const) {
+        const r = resultFor(syncedResult.products, id, scenario.id)
+        expect(r.monthlyUserCost).toBeCloseTo(bav.monthlyUserCost, 1)
+      }
     }
   })
 })
@@ -205,19 +221,19 @@ describe('default-profile end-to-end snapshot', () => {
 
   it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
     const k = find('versicherung', 'konservativ')
-    expect(Math.round(k.capitalAtRetirement)).toBe(63_078)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(61_328)
-    expect(Math.round(k.netMonthlyPayout)).toBe(168)
+    expect(Math.round(k.capitalAtRetirement)).toBe(80_842)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(76_191)
+    expect(Math.round(k.netMonthlyPayout)).toBe(212)
 
     const b = find('versicherung', 'basis')
-    expect(Math.round(b.capitalAtRetirement)).toBe(96_460)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(89_032)
-    expect(Math.round(b.netMonthlyPayout)).toBe(257)
+    expect(Math.round(b.capitalAtRetirement)).toBe(126_219)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(112_916)
+    expect(Math.round(b.netMonthlyPayout)).toBe(331)
 
     const o = find('versicherung', 'optimistisch')
-    expect(Math.round(o.capitalAtRetirement)).toBe(152_393)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(133_185)
-    expect(Math.round(o.netMonthlyPayout)).toBe(405)
+    expect(Math.round(o.capitalAtRetirement)).toBe(203_158)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(172_021)
+    expect(Math.round(o.netMonthlyPayout)).toBe(532)
   })
 })
 

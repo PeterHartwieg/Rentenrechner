@@ -9,10 +9,7 @@ import { validateBasisrentePayoutAge } from '../../engine/basisrente'
 type Props = {
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
-  onSyncMonthlyContribution: (
-    source: 'bav' | 'basisrente' | 'avd' | 'riester',
-    value: number,
-  ) => void
+  onSyncMonthlyContribution: (targetNet: number) => void
   basisrenteFunding: BasisrenteFundingResult
   basisrenteProductResult: ProductResult | undefined
   rules: GermanRules
@@ -58,12 +55,12 @@ export function BasisrenteInputs({
 
       <div className="field-grid">
         <NumberField
-          label="Monatlicher Beitrag (brutto)"
-          value={assumptions.basisrente.monthlyGrossContribution}
+          label="Netto-Aufwand mtl."
+          value={basisrenteFunding.monthlyNetCost}
           min={0}
-          step={25}
+          step={10}
           suffix="EUR mtl."
-          onChange={(value) => onSyncMonthlyContribution('basisrente', Number(value))}
+          onChange={(value) => onSyncMonthlyContribution(Number(value))}
         />
 
         <NumberField
@@ -84,8 +81,8 @@ export function BasisrenteInputs({
 
       {basisrenteFunding && basisrenteFunding.monthlyGrossContribution > 0 ? (
         <p className="field-hint">
-          Steuerersparnis: <strong>{formatCurrency(basisrenteFunding.monthlyTaxSaving, 0)}/Monat</strong>
-          {' '}· Nettoaufwand: <strong>{formatCurrency(basisrenteFunding.monthlyNetCost, 0)}/Monat</strong>
+          Brutto-Beitrag: <strong>{formatCurrency(basisrenteFunding.monthlyGrossContribution, 0)}/Monat</strong>
+          {' '}· Steuerersparnis: <strong>{formatCurrency(basisrenteFunding.monthlyTaxSaving, 0)}/Monat</strong>
           {' '}· Schicht-1-Rest: <strong>{formatCurrency(basisrenteFunding.remainingSchicht1Cap, 0)}</strong> EUR/Jahr
           {' '}(Pflichtvorsorge: {formatCurrency(basisrenteFunding.annualPensionContributionsTowardsCap, 0)} EUR/Jahr)
           {basisrenteFunding.annualDeductible < basisrenteFunding.annualGrossContribution && (

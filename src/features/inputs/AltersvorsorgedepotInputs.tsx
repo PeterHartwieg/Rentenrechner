@@ -17,10 +17,7 @@ import { validateAvdPayoutAge } from '../../engine/altersvorsorgedepot'
 type Props = {
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
-  onSyncMonthlyContribution: (
-    source: 'bav' | 'basisrente' | 'avd' | 'riester',
-    value: number,
-  ) => void
+  onSyncMonthlyContribution: (targetNet: number) => void
   profile: PersonalProfile
   avdFunding: AltersvorsorgedepotFundingResult
   avdProductResult: ProductResult | undefined
@@ -84,12 +81,12 @@ export function AltersvorsorgedepotInputs({
 
       <div className="field-grid">
         <NumberField
-          label="Eigenbeitrag (monatlich)"
-          value={avd.monthlyOwnContribution}
+          label="Netto-Aufwand mtl."
+          value={avdFunding.monthlyNetCost}
           min={0}
           step={10}
           suffix="EUR mtl."
-          onChange={(value) => onSyncMonthlyContribution('avd', Number(value))}
+          onChange={(value) => onSyncMonthlyContribution(Number(value))}
         />
         <NumberField
           label="Förderberechtigte Kinder"
@@ -199,7 +196,8 @@ export function AltersvorsorgedepotInputs({
 
       {avdFunding.annualOwnContribution > 0 ? (
         <p className="field-hint">
-          Grundzulage: <strong>{formatCurrency(avdFunding.basicAllowanceAnnual, 0)}/Jahr</strong>
+          Eigenbeitrag: <strong>{formatCurrency(avdFunding.monthlyOwnContribution, 0)}/Monat</strong>
+          {' '}· Grundzulage: <strong>{formatCurrency(avdFunding.basicAllowanceAnnual, 0)}/Jahr</strong>
           {avdFunding.childAllowanceAnnual > 0 && (
             <> · Kinderzulage: <strong>{formatCurrency(avdFunding.childAllowanceAnnual, 0)}/Jahr</strong></>
           )}
@@ -209,7 +207,6 @@ export function AltersvorsorgedepotInputs({
           {avdFunding.guenstigerpruefungBenefitAnnual > 0 && (
             <> · Günstigerprüfung: <strong>+{formatCurrency(avdFunding.guenstigerpruefungBenefitAnnual, 0)}/Jahr</strong></>
           )}
-          {' '}· Nettoaufwand: <strong>{formatCurrency(avdFunding.monthlyNetCost, 0)}/Monat</strong>
           {avdProductResult && (
             <> · Nettorente: <strong>{formatCurrency(avdProductResult.netMonthlyPayout, 0)}/Monat</strong></>
           )}

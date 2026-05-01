@@ -2,6 +2,7 @@ import './ResultWaterfall.css'
 import type { ProductResult } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
 import { formatCurrency } from '../../utils/format'
+import { InfoTip } from '../../ui/InfoTip'
 
 interface Props {
   result: ProductResult
@@ -41,6 +42,10 @@ export function ResultWaterfall({ result, grvNetMonthlyPension }: Props) {
   // is null (Basisrente — capital payout legally prohibited), only the gross
   // figure is shown.
   const afterTaxLump = result.afterTaxLumpSum
+  const lumpDeductions = result.lumpSumDeductions
+  const totalDeduction = afterTaxLump !== null
+    ? Math.max(0, result.capitalAtRetirement - afterTaxLump)
+    : 0
   return (
     <article className="result-waterfall" style={{ borderLeftColor: color }}>
       <div className="rwf-header">
@@ -53,6 +58,43 @@ export function ResultWaterfall({ result, grvNetMonthlyPension }: Props) {
               <span className="rwf-net">
                 nach Steuer-Lump {formatCurrency(afterTaxLump, 0)}
               </span>
+              {totalDeduction > 0.5 && (
+                <InfoTip label="Aufschlüsselung der Abzüge anzeigen">
+                  <span className="rwf-breakdown">
+                    <span className="rwf-breakdown-row">
+                      <span>Brutto-Kapital</span>
+                      <span>{formatCurrency(result.capitalAtRetirement, 0)}</span>
+                    </span>
+                    {lumpDeductions ? (
+                      <>
+                        <span className="rwf-breakdown-row minus">
+                          <span>− Einkommensteuer + Soli</span>
+                          <span>{formatCurrency(lumpDeductions.incomeTax, 0)}</span>
+                        </span>
+                        <span className="rwf-breakdown-row minus">
+                          <span>− KV/PV{result.productId === 'bav' ? ' (1/120 × 120 Mon.)' : ''}</span>
+                          <span>{formatCurrency(lumpDeductions.kvPv, 0)}</span>
+                        </span>
+                      </>
+                    ) : (
+                      <span className="rwf-breakdown-row minus">
+                        <span>− Kapitalertragsteuer</span>
+                        <span>{formatCurrency(totalDeduction, 0)}</span>
+                      </span>
+                    )}
+                    <span className="rwf-breakdown-row total">
+                      <span>= Netto-Kapital</span>
+                      <span>{formatCurrency(afterTaxLump, 0)}</span>
+                    </span>
+                    <span className="rwf-breakdown-foot">
+                      Abzugsquote {((totalDeduction / result.capitalAtRetirement) * 100).toFixed(1)} %
+                      {result.productId === 'bav' && lumpDeductions && (
+                        <> · §22 Nr. 5 EStG / §229 SGB V</>
+                      )}
+                    </span>
+                  </span>
+                </InfoTip>
+              )}
             </>
           )}
         </small>

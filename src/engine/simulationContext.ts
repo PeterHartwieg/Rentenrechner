@@ -7,6 +7,7 @@ import type {
   PersonalProfile,
   RiesterFundingResult,
   ScenarioAssumptions,
+  StatutoryPensionResult,
 } from '../domain'
 import { calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding } from './altersvorsorgedepot'
@@ -30,6 +31,7 @@ export interface SimulationContext {
   basisrenteFunding: BasisrenteFundingResult
   altersvorsorgedepotFunding: AltersvorsorgedepotFundingResult
   riesterFunding: RiesterFundingResult
+  statutoryPension: StatutoryPensionResult
   /**
    * Gross GRV pension at retirement (EUR/month). Threaded into every product's
    * standalone marginal-tax pipeline as `statutoryPensionAnnual` so the bracket
@@ -107,6 +109,7 @@ export function buildContext(
     basisrenteFunding,
     altersvorsorgedepotFunding,
     riesterFunding,
+    statutoryPension: grvProjection,
     grvGrossMonthlyPension: grvProjection.grossMonthlyPension,
     retirementHealthStatus: assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr',
   }

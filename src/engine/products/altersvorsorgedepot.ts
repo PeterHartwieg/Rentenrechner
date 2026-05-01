@@ -23,7 +23,7 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): AltersvorsorgedepotProductResult {
-  const { profile, assumptions, rules, altersvorsorgedepotFunding, bavFunding, payoutYear, yearsToRetirement } = ctx
+  const { profile, assumptions, rules, altersvorsorgedepotFunding, payoutYear, yearsToRetirement } = ctx
   const avd = assumptions.altersvorsorgedepot
 
   // Total monthly contribution into the depot:
@@ -76,7 +76,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     profile,
     rules,
     assumptions,
-    monthlyUserCost: bavFunding.monthlyNetCost,
+    monthlyUserCost: altersvorsorgedepotFunding.monthlyNetCost,
     monthlyProductContribution: avdMonthlyContribution,
     monthlyEmployerContribution: 0,
     fees: avd.fees,

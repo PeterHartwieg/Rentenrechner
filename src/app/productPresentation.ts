@@ -36,7 +36,7 @@ export const PAV_FEE_PRESETS: { label: string; fees: FeeModel }[] = [
   },
   {
     label: 'Standard',
-    fees: { wrapperAssetFee: 0.007, fundAssetFee: 0.002, contributionFee: 0.045, fixedMonthlyFee: 5, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
+    fees: { wrapperAssetFee: 0.003, fundAssetFee: 0.002, contributionFee: 0, fixedMonthlyFee: 3, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.015, ...BASE_FEE },
   },
   {
     label: 'Hochkosten',

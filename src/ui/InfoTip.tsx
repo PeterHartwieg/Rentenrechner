@@ -1,10 +1,12 @@
-import { useId, useState, useRef, useEffect } from 'react'
+import { useId, useState, useRef, useEffect, type ReactNode } from 'react'
 import { HelpCircle } from 'lucide-react'
 import './InfoTip.css'
 
 interface Props {
   /** One short sentence shown in the popover. */
-  text: string
+  text?: string
+  /** Optional rich content; takes precedence over `text` when provided. */
+  children?: ReactNode
   /** Optional aria-label override for the trigger. Defaults to "Erklärung anzeigen". */
   label?: string
 }
@@ -15,7 +17,7 @@ interface Props {
  * Rentenfaktor, Teilfreistellung, Netto-Rente). For longer explanations, link to the
  * Glossar panel in the Angebot tab instead.
  */
-export function InfoTip({ text, label = 'Erklärung anzeigen' }: Props) {
+export function InfoTip({ text, children, label = 'Erklärung anzeigen' }: Props) {
   const [open, setOpen] = useState(false)
   const id = useId()
   const wrapRef = useRef<HTMLSpanElement>(null)
@@ -52,7 +54,7 @@ export function InfoTip({ text, label = 'Erklärung anzeigen' }: Props) {
       </button>
       {open && (
         <span className="info-tip-popover" id={id} role="tooltip">
-          {text}
+          {children ?? text}
         </span>
       )}
     </span>

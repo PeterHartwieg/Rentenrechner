@@ -1,100 +1,66 @@
 /**
- * Bidirectional monthly-contribution sync across the four products that have a
- * "monthly investment" input: bAV, Basisrente, Altersvorsorgedepot, Riester.
+ * Single-anchor monthly-contribution sync. The user-facing input for every
+ * "monthly investment" product (bAV, Basisrente, AVD, Riester) is the target
+ * monthly net cost — the actual cash leaving the user's pocket each month after
+ * every refund/subsidy. From that one anchor we back-solve each product's
+ * internal gross/Eigenbeitrag so all six products invest the same true netto.
+ *
+ *   - bAV:        inverse = solveBavGrossFromNet (bisection over tax/SV/employer subsidy).
+ *   - Basisrente: inverse = solveBasisrenteGrossFromNet (bisection; uses the
+ *                 salary-after-bAV-conversion taxable income for the marginal tax saving).
+ *   - AVD:        inverse = solveAvdOwnFromNet (bisection; clamps at AltZertG cap).
+ *   - Riester:    inverse = solveRiesterOwnFromNet (bisection over §10a Günstigerprüfung).
+ *
  * (ETF and pAV have no editable monthly field — they always invest the synced net.)
- *
- * Common axis: monthly net cost out-of-pocket. Editing any of the four fields
- * derives that anchor and back-solves the other three:
- *   - bAV:        forward = calculateBavFunding (gross → net via tax/SV/employer subsidy);
- *                 inverse = solveBavGrossFromNet (bisection).
- *   - Basisrente: forward = calculateBasisrenteFunding (gross → net via §10 Abs. 3
- *                 marginal tax saving); inverse = solveBasisrenteGrossFromNet (bisection).
- *                 Note: depends on salary-after-bAV-conversion, so coupled with bAV.
- *   - AVD:        Eigenbeitrag = net (no transformation).
- *   - Riester:    Eigenbeitrag = net (no transformation).
- *
- * The bAV↔Basisrente coupling (Basisrente's net depends on the salary tax bracket
- * which depends on bAV's gross conversion) is settled with two passes — the
- * salary marginal rate barely moves over typical contribution adjustments, so
- * convergence is well under one cent in practice.
  */
 
 import type { GermanRules, PersonalProfile, ScenarioAssumptions } from '../domain'
 import { calculateBavFunding, solveBavGrossFromNet } from '../engine/salary'
+import { solveBasisrenteGrossFromNet } from '../engine/basisrente'
 import {
-  calculateBasisrenteFunding,
-  solveBasisrenteGrossFromNet,
-} from '../engine/basisrente'
-import { maxAvdMonthlyOwnContribution } from '../engine/altersvorsorgedepot'
-
-export type ContributionSource = 'bav' | 'basisrente' | 'avd' | 'riester'
+  maxAvdMonthlyOwnContribution,
+  solveAvdOwnFromNet,
+} from '../engine/altersvorsorgedepot'
+import { solveRiesterOwnFromNet } from '../engine/riester'
 
 export function syncMonthlyContributions(
-  source: ContributionSource,
-  value: number,
+  targetNet: number,
   current: ScenarioAssumptions,
   profile: PersonalProfile,
   rules: GermanRules,
 ): ScenarioAssumptions {
-  const rawSanitized = Math.max(0, Number.isFinite(value) ? value : 0)
+  const anchor = Math.max(0, Number.isFinite(targetNet) ? targetNet : 0)
 
-  // AltZertG contract cap (§1, Altersvorsorgereformgesetz): own + allowances ≤
-  // 6 840 EUR/year. When the user types directly in AVD above the cap, the
-  // anchor itself is clamped — all four fields rebalance to the cap, since AVD
-  // physically can't accept more. When the user types in another field, that
-  // field's value (= the anchor) stays as typed; only AVD's display is clamped
-  // (other products can invest beyond AVD's cap), and the comparison view
-  // surfaces a "Beitragsobergrenze erreicht" badge.
+  const bavGross = solveBavGrossFromNet(anchor, profile, rules, current.bav)
+  const bavFunding = calculateBavFunding(profile, rules, {
+    ...current.bav,
+    monthlyGrossConversion: bavGross,
+  })
+
+  const basisrenteGross = solveBasisrenteGrossFromNet(
+    anchor,
+    rules,
+    bavFunding.salaryWithBav,
+    current.basisrente,
+  )
+
   const avdMaxMonthly = maxAvdMonthlyOwnContribution(
     current.altersvorsorgedepot.eligibility,
     rules,
     !current.altersvorsorgedepot.eligibility.careerStarterBonusUsed,
   )
-  const sanitized = source === 'avd' ? Math.min(rawSanitized, avdMaxMonthly) : rawSanitized
+  const avdOwn = Math.min(
+    solveAvdOwnFromNet(anchor, rules, bavFunding.salaryWithBav, current.altersvorsorgedepot),
+    avdMaxMonthly,
+  )
 
-  // bAV gross and Basisrente gross are the two coupled fields. AVD/Riester are
-  // identity-mapped to the anchor.
-  let bavGross = source === 'bav' ? sanitized : current.bav.monthlyGrossConversion
-  let basisrenteGross =
-    source === 'basisrente' ? sanitized : current.basisrente.monthlyGrossContribution
-
-  // Two passes settle the bAV↔Basisrente coupling.
-  let anchor = sanitized
-  for (let pass = 0; pass < 2; pass++) {
-    const bavFunding = calculateBavFunding(profile, rules, {
-      ...current.bav,
-      monthlyGrossConversion: bavGross,
-    })
-
-    if (source === 'avd' || source === 'riester') {
-      anchor = sanitized
-    } else if (source === 'bav') {
-      anchor = bavFunding.monthlyNetCost
-    } else {
-      anchor = calculateBasisrenteFunding(rules, bavFunding.salaryWithBav, {
-        ...current.basisrente,
-        monthlyGrossContribution: basisrenteGross,
-      }).monthlyNetCost
-    }
-
-    if (source !== 'bav') {
-      bavGross = solveBavGrossFromNet(anchor, profile, rules, current.bav)
-    }
-    if (source !== 'basisrente') {
-      const updatedBavFunding = calculateBavFunding(profile, rules, {
-        ...current.bav,
-        monthlyGrossConversion: bavGross,
-      })
-      basisrenteGross = solveBasisrenteGrossFromNet(
-        anchor,
-        rules,
-        updatedBavFunding.salaryWithBav,
-        current.basisrente,
-      )
-    }
-  }
-
-  const avdOwn = Math.min(anchor, avdMaxMonthly)
+  const riesterOwn = solveRiesterOwnFromNet(
+    anchor,
+    rules,
+    bavFunding.salaryWithBav,
+    current.riester,
+    profile,
+  )
 
   return {
     ...current,
@@ -104,6 +70,6 @@ export function syncMonthlyContributions(
       ...current.altersvorsorgedepot,
       monthlyOwnContribution: avdOwn,
     },
-    riester: { ...current.riester, monthlyOwnContribution: anchor },
+    riester: { ...current.riester, monthlyOwnContribution: riesterOwn },
   }
 }

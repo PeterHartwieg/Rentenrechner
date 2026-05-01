@@ -51,4 +51,4 @@ For each product: simulator, validator, domain types, tests, UI input, engine he
 
 ## Adding a product
 
-See `src/engine/products/README.md` for the 5-step checklist.
+See `src/engine/products/README.md` for the registry-based checklist.

@@ -23,10 +23,7 @@ import { getTerm } from '../../content/terms'
 type Props = {
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
-  onSyncMonthlyContribution: (
-    source: 'bav' | 'basisrente' | 'avd' | 'riester',
-    value: number,
-  ) => void
+  onSyncMonthlyContribution: (targetNet: number) => void
   profile: PersonalProfile
   bavFunding: BavFundingResult
   selectedResults: ProductResult[]
@@ -81,12 +78,12 @@ export function BavInputs({
     <>
       <div className="field-grid">
         <NumberField
-          label="Brutto in bAV umwandeln"
-          value={assumptions.bav.monthlyGrossConversion}
+          label="Netto-Aufwand mtl."
+          value={bavFunding.monthlyNetCost}
           min={0}
-          step={25}
+          step={10}
           suffix="EUR mtl."
-          onChange={(value) => onSyncMonthlyContribution('bav', Number(value))}
+          onChange={(value) => onSyncMonthlyContribution(Number(value))}
         />
         <NumberField
           label="AG-Zuschuss laut Vertrag (%)"

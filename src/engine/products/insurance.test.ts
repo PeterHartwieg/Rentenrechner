@@ -378,7 +378,8 @@ describe('payoutMode (#54) — insurance (pAV zeitrente)', () => {
     )
     const pavBasis = sim.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
     const payoutReturn = pavBasis.annualReturn - (defaultAssumptions.insurance.fees.wrapperAssetFee + defaultAssumptions.insurance.fees.fundAssetFee)
-    const expected = monthlyPayoutFromCapital(pavBasis.capitalAtRetirement, payoutReturn, 12)
+    const grossBeforePayoutFee = monthlyPayoutFromCapital(pavBasis.capitalAtRetirement, payoutReturn, 12)
+    const expected = grossBeforePayoutFee * (1 - defaultAssumptions.insurance.fees.pensionPayoutFeePct)
     expect(pavBasis.grossMonthlyPayout).toBeCloseTo(expected, 6)
   })
 })

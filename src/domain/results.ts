@@ -56,6 +56,11 @@ export interface BaseProductResult {
   capitalAtRetirement: number
   realCapitalAtRetirement: number
   afterTaxLumpSum: number | null
+  /** Income-tax + KV/PV components that make up `capitalAtRetirement − afterTaxLumpSum`.
+   *  Set for products with a non-trivial marginal-rate computation (bAV, private insurance).
+   *  Optional because ETF/AVD/Riester use simple capital-gains tax which is fully captured by
+   *  the `afterTaxLumpSum` figure alone. */
+  lumpSumDeductions?: { incomeTax: number; kvPv: number }
   grossMonthlyPayout: number
   netMonthlyPayout: number
   taxAndSvSavings: number

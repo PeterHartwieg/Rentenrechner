@@ -197,13 +197,16 @@ export const defaultAssumptions: ScenarioAssumptions = {
     rentenfaktor: 28,
     zeitrenteYears: 20,
     fees: {
-      wrapperAssetFee: 0.012,   // 1.20 % Versicherungsmantel
-      fundAssetFee: 0.002,      // 0.20 % ETF-Fondskosten — total 1.40 % p.a.
-      contributionFee: 0.03,
-      fixedMonthlyFee: 5,
+      // 2026 market reference: Alte Leipziger HFR10 (Testsieger, Honorartarif via Maiwerk).
+      // 0,3 % vom Guthaben + 36 EUR Fixgebühr p.a., 0 % Zuzahlungskosten, 1,5 % im Rentenbezug;
+      // Abschlusskosten 0 (externes Honorar 299 EUR liegt außerhalb des Vertrags).
+      wrapperAssetFee: 0.003,   // 0,30 % Versicherungsmantel
+      fundAssetFee: 0.002,      // 0,20 % ETF-Fondskosten — total 0,50 % p.a.
+      contributionFee: 0,
+      fixedMonthlyFee: 3,       // 36 EUR/Jahr Fixgebühr
       acquisitionCostPct: 0.025,
       acquisitionCostSpreadYears: 5,
-      pensionPayoutFeePct: 0,
+      pensionPayoutFeePct: 0.015,
     },
     // #65: no paid-up scenario by default; zero surrender haircut
     surrenderHaircutPct: 0,

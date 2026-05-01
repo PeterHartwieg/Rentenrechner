@@ -35,8 +35,13 @@ import type {
   RiesterFundingResult,
   SalaryResult,
 } from '../domain'
-import { careEmployeeRateForChildren } from './salary'
-import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
+import {
+  appliesFreiwilligGkv,
+  calculateMarginalRetirementTax,
+  calculateProfileRetirementKvPv,
+  retirementIncomeBase,
+  type RetirementHealthStatus,
+} from './retirementPayout'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 // ---------------------------------------------------------------------------
@@ -235,6 +240,49 @@ export function calculateRiesterFunding(
   }
 }
 
+/**
+ * Inverse of calculateRiesterFunding: given a target monthly net cost
+ * (out-of-pocket after the Günstigerprüfung refund), return the
+ * monthlyOwnContribution that produces that net. Used by the input-sync layer
+ * to keep Riester's true netto aligned with the harmonization anchor.
+ *
+ * Bisection over the funding forward pass — Mindesteigenbeitrag proration
+ * makes an analytic inverse messy, but the function is monotonic for typical
+ * contribution levels above the Sockelbetrag.
+ */
+export function solveRiesterOwnFromNet(
+  targetMonthlyNet: number,
+  rules: GermanRules,
+  salaryResult: SalaryResult,
+  riester: RiesterAssumptions,
+  profile: PersonalProfile,
+): number {
+  if (targetMonthlyNet <= 0) return 0
+
+  const forward = (monthlyOwn: number) =>
+    calculateRiesterFunding(
+      rules,
+      salaryResult,
+      { ...riester, monthlyOwnContribution: monthlyOwn },
+      profile,
+    ).monthlyNetCost
+
+  let lo = 0
+  let hi = Math.max(100, targetMonthlyNet * 4)
+  for (let i = 0; i < 10 && forward(hi) < targetMonthlyNet; i++) {
+    hi *= 2
+  }
+
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2
+    const net = forward(mid)
+    if (Math.abs(net - targetMonthlyNet) < 0.01) return mid
+    if (net < targetMonthlyNet) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
 // ---------------------------------------------------------------------------
 // Payout helpers
 // ---------------------------------------------------------------------------
@@ -262,69 +310,41 @@ export function netRiesterPayout(
    *  (§22 Nr. 5 EStG) — not a Versorgungsbezug (BSG, Urteil 25.04.2007,
    *  B 12 KR 26/05 R) — so KVdR Pflichtversicherte owe 0 KV/PV; only
    *  freiwillig versicherte pay the full §240 SGB V rate. */
-  retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv' = 'freiwillig_gkv',
+  retirementHealthStatus: RetirementHealthStatus = 'freiwillig_gkv',
 ): number {
   const riesterAnnual = grossMonthlyPayout * 12
   const otherAnnual = otherMonthlyIncome * 12
-  const grvAnnual = grvBaselineMonthly * 12
 
-  const taxWith = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
-      otherTaxableAnnual: riesterAnnual + otherAnnual,
-      retirementYear,
-    },
+  const marginalTaxAnnual = calculateMarginalRetirementTax(
     rules,
-    'single',
-  )
-  const taxWithout = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
+    retirementIncomeBase(retirementYear, {
+      grvBaselineMonthly,
       otherTaxableAnnual: otherAnnual,
-      retirementYear,
+    }),
+    {
+      otherTaxableAnnual: riesterAnnual,
     },
-    rules,
-    'single',
   )
-  const marginalTaxAnnual = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
 
   // KVdR Pflichtversicherte: Riester payout is sonstige Einkünfte (§22 Nr. 5 EStG),
   //   not a Versorgungsbezug per BSG B 12 KR 26/05 R. § 240 SGB V doesn't apply to
   //   Pflichtversicherte either. → 0 KV/PV. PKV: also no statutory KV/PV.
-  if (
-    !profile.publicHealthInsurance ||
-    retirementHealthStatus === 'kvdr' ||
-    retirementHealthStatus === 'pkv'
-  ) {
+  if (!appliesFreiwilligGkv(profile, retirementHealthStatus)) {
     return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
   }
 
-  const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
-  const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
-  const careRate =
-    careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) +
-    rules.socialSecurity.careEmployerRate
-
-  const kvPv = calculateRetirementKvPv({
-    bavMonthlyVersorgungsbezuege: 0,
-    otherMonthlyVersorgungsbezuege: 0,
-    monthlyStatutoryPension: grvBaselineMonthly,
-    freiwilligOtherMonthlyIncome: grossMonthlyPayout,
-    isFreiwilligVersichert: true,
-    kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
-    pvFreigrenzeVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
-    monthlyKvPvBbg: rules.socialSecurity.healthAndCareCapMonth,
-    healthRate,
-    careRate,
-  })
+  const kvPv = calculateProfileRetirementKvPv(
+    profile,
+    rules,
+    retirementYear,
+    {
+      bavMonthlyVersorgungsbezuege: 0,
+      otherMonthlyVersorgungsbezuege: 0,
+      monthlyStatutoryPension: grvBaselineMonthly,
+      freiwilligOtherMonthlyIncome: grossMonthlyPayout,
+      isFreiwilligVersichert: true,
+    },
+  )
 
   const kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
   return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
@@ -350,34 +370,16 @@ export function afterTaxRiesterLumpSum(
   grvBaselineMonthly = 0,
 ): number {
   if (partialCapital <= 0) return 0
-  const grvAnnual = grvBaselineMonthly * 12
 
-  const taxWith = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
-      otherTaxableAnnual: partialCapital + otherAnnualIncome,
-      retirementYear,
-    },
+  const lumpSumTax = calculateMarginalRetirementTax(
     rules,
-    'single',
-  )
-  const taxWithout = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
+    retirementIncomeBase(retirementYear, {
+      grvBaselineMonthly,
       otherTaxableAnnual: otherAnnualIncome,
-      retirementYear,
+    }),
+    {
+      otherTaxableAnnual: partialCapital,
     },
-    rules,
-    'single',
   )
-  const lumpSumTax = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
   return Math.max(0, partialCapital - lumpSumTax)
 }

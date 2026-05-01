@@ -1,28 +1,18 @@
 import type {
   PersonalProfile,
-  ProductId,
   ReturnScenario,
   ReturnScenarioId,
   ScenarioAssumptions,
   StatutoryPensionAssumptions,
 } from '../domain'
 import { inRange, isFiniteNumber, isInt } from '../domain/validation/primitives'
-import { validateEtf } from '../engine/products/etf.validation'
-import { validateBav } from '../engine/products/bav.validation'
-import { validateInsurance } from '../engine/products/insurance.validation'
-import { validateBasisrente } from '../engine/products/basisrente.validation'
-import { validateAltersvorsorgedepot } from '../engine/products/altersvorsorgedepot.validation'
-import { validateRiester } from '../engine/products/riester.validation'
+import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../engine/productRegistry'
 
 // Range/shape validation for state loaded from URL share or localStorage (#49).
 // Inputs are post-mergeDeep so all keys exist; this layer rejects NaN, ±Infinity,
 // out-of-domain enums, broken invariants, and malformed nested arrays.
 
 const VALID_SCENARIO_IDS: readonly ReturnScenarioId[] = ['konservativ', 'basis', 'optimistisch', 'custom']
-
-const VALID_PRODUCT_IDS: readonly ProductId[] = [
-  'etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester',
-]
 
 export function validateProfile(input: unknown): PersonalProfile | null {
   if (!input || typeof input !== 'object') return null
@@ -85,17 +75,16 @@ export function validateAssumptions(input: unknown): ScenarioAssumptions | null 
   if (!inRange(a.inflationRate, -0.1, 0.2)) return null
   if (!isFiniteNumber(a.retirementEndAge) || a.retirementEndAge > 120) return null
   if (validateReturnScenarios(a.returnScenarios) === null) return null
-  if (!a.etf || typeof a.etf !== 'object' || !validateEtf(a.etf)) return null
-  if (!a.bav || typeof a.bav !== 'object' || !validateBav(a.bav)) return null
-  if (!a.insurance || typeof a.insurance !== 'object' || !validateInsurance(a.insurance)) return null
+  for (const product of PRODUCT_REGISTRY) {
+    const productAssumptions = a[product.assumptionsKey]
+    if (!productAssumptions || typeof productAssumptions !== 'object') return null
+    if (!product.validate(productAssumptions)) return null
+  }
   if (!a.statutoryPension || typeof a.statutoryPension !== 'object' || !validateStatutoryPension(a.statutoryPension)) return null
-  if (!a.basisrente || typeof a.basisrente !== 'object' || !validateBasisrente(a.basisrente)) return null
-  if (!a.altersvorsorgedepot || typeof a.altersvorsorgedepot !== 'object' || !validateAltersvorsorgedepot(a.altersvorsorgedepot)) return null
-  if (!a.riester || typeof a.riester !== 'object' || !validateRiester(a.riester)) return null
   if (!Array.isArray(a.visibleProducts)) return null
-  if (a.visibleProducts.length > VALID_PRODUCT_IDS.length) return null
+  if (a.visibleProducts.length > PRODUCT_IDS.length) return null
   for (const pid of a.visibleProducts) {
-    if (!VALID_PRODUCT_IDS.includes(pid)) return null
+    if (!PRODUCT_IDS.includes(pid)) return null
   }
   return a
 }

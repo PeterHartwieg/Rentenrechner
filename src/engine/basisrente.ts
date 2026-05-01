@@ -35,8 +35,13 @@ import type {
 } from '../domain'
 import { besteuerungsanteilGrv } from '../rules/de2026'
 import { legalConstants } from '../rules/legalConstants'
-import { careEmployeeRateForChildren } from './salary'
-import { calculateRetirementTax } from './retirementTax'
+import {
+  appliesFreiwilligGkv,
+  calculateFreiwilligMarginalKvPvByHeadroom,
+  calculateMarginalRetirementTax,
+  retirementIncomeBase,
+  type RetirementHealthStatus,
+} from './retirementPayout'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 /**
@@ -138,7 +143,7 @@ export function netBasisrentePayout(
   rules: GermanRules,
   otherMonthlyIncome = 0,
   retirementYear = rules.year,
-  retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv' = 'freiwillig_gkv',
+  retirementHealthStatus: RetirementHealthStatus = 'freiwillig_gkv',
   /** Gross GRV monthly pension. Stacked into the marginal-tax base via
    *  statutoryPensionAnnual (additive to the Basisrente itself, since both
    *  share the §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil channel) and into
@@ -153,39 +158,21 @@ export function netBasisrentePayout(
   // -------------------------------------------------------------------------
   const basisrenteAnnual = grossMonthlyPayout * 12
   const otherAnnual = otherMonthlyIncome * 12
-  const grvAnnual = grvBaselineMonthly * 12
 
-  const taxWith = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: basisrenteAnnual + grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer', // irrelevant (no insurance income)
-      otherTaxableAnnual: otherAnnual,
-      retirementYear,
-    },
+  const marginalTaxAnnual = calculateMarginalRetirementTax(
     rules,
-    'single',
-  )
-  const taxWithout = calculateRetirementTax(
-    {
-      statutoryPensionAnnual: grvAnnual,
-      bavPensionAnnual: 0,
-      bavIsLumpSum: false,
-      privateInsuranceTaxableAnnual: 0,
-      privateInsuranceTaxMode: 'abgeltungsteuer',
+    retirementIncomeBase(retirementYear, {
+      grvBaselineMonthly,
       otherTaxableAnnual: otherAnnual,
-      retirementYear,
+    }),
+    {
+      statutoryPensionAnnual: basisrenteAnnual,
     },
-    rules,
-    'single',
   )
-  const marginalTaxAnnual = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
 
   // KVdR, PKV (working-phase profile), or explicit pkv retirement status: no KV/PV.
   // Basisrente is not a Versorgungsbezug (§229 SGB V) so KVdR members owe no KV/PV on it.
-  if (!profile.publicHealthInsurance || retirementHealthStatus !== 'freiwillig_gkv') {
+  if (!appliesFreiwilligGkv(profile, retirementHealthStatus)) {
     return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
   }
 
@@ -198,18 +185,13 @@ export function netBasisrentePayout(
   //      rate × min(grossPayout, max(0, BBG − otherMonthlyIncome))
   //    When other income fills the BBG entirely, the Basisrente adds zero KV/PV.
   // -------------------------------------------------------------------------
-  const additionalHealthRate = (profile.healthAdditionalContributionPct ?? 0) / 100
-  const healthRate = rules.socialSecurity.healthGeneralRate + additionalHealthRate
-  const careRate =
-    careEmployeeRateForChildren(profile.childBirthYears, retirementYear, rules) +
-    rules.socialSecurity.careEmployerRate
-
-  const bbg = rules.socialSecurity.healthAndCareCapMonth
-  const kvPvBase = Math.min(
+  const kvPvMonthly = calculateFreiwilligMarginalKvPvByHeadroom(
+    profile,
+    rules,
+    retirementYear,
     grossMonthlyPayout,
-    Math.max(0, bbg - otherMonthlyIncome - grvBaselineMonthly),
+    otherMonthlyIncome + grvBaselineMonthly,
   )
-  const kvPvMonthly = kvPvBase * (healthRate + careRate)
 
   return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
 }

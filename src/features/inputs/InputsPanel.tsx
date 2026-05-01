@@ -44,10 +44,7 @@ interface InputsPanelProps {
   onProfileChange: React.Dispatch<React.SetStateAction<PersonalProfile>>
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
-  onSyncMonthlyContribution: (
-    source: 'bav' | 'basisrente' | 'avd' | 'riester',
-    value: number,
-  ) => void
+  onSyncMonthlyContribution: (targetNet: number) => void
   resetToDefaults: () => void
   simulation: SimulationResult
   selectedResults: ProductResult[]
