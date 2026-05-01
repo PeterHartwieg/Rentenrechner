@@ -22,19 +22,13 @@ const STEPS: readonly Step[] = [
     view: 'vergleich',
     number: 2,
     label: 'Vergleich',
-    hint: 'Welches Produkt liegt vorn?',
-  },
-  {
-    view: 'warum',
-    number: 3,
-    label: 'Ergebnis verstehen',
-    hint: 'Wohin geht das Geld? Wie robust ist das?',
+    hint: 'Wer liegt vorn? Wohin geht das Geld?',
   },
   {
     view: 'details',
-    number: 4,
-    label: 'Export',
-    hint: 'Details, Cashflows, PDF / CSV',
+    number: 3,
+    label: 'Details & Export',
+    hint: 'Sensitivität, Cashflows, PDF / CSV',
   },
 ] as const
 

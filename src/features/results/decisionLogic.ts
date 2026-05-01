@@ -1,3 +1,5 @@
+// Note: biggestCostDriver, sensitivityHint, rankingsDisagree, and personalSensitivityCaveat
+// are currently only exercised by tests — kept for potential reuse if the Vergleich callouts return.
 import type { ProductId, ProductResult } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
 import type { PerturbationResult, SensitivityRunResult } from './sensitivity'

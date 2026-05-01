@@ -129,9 +129,6 @@ function App() {
             results={selectedResults}
             bestCapital={bestCapital}
             bestPension={bestPension}
-            sensitivity={sensitivityResult}
-            grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-            desiredNetMonthlyPension={profile.desiredNetMonthlyPension}
           />
 
           <SummaryMetrics
@@ -154,56 +151,22 @@ function App() {
             avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
           />
 
+          <ResultWaterfalls
+            results={selectedResults}
+            grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+          />
+
           <CapitalChart
             capitalChartData={capitalChartData}
             selectedScenario={selectedScenario}
             selectedResults={selectedResults}
             productColors={PRODUCT_COLORS}
           />
-        </>
-      ) : (
-        <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
-      )}
-    </section>
-  )
 
-  const warumView = (
-    <section className="workspace-view workspace-view--warum">
-      {toolbar}
-
-      <ComparisonPicker
-        visible={assumptions.visibleProducts}
-        onChange={(next) =>
-          setAssumptions((current) => ({ ...current, visibleProducts: next }))
-        }
-      />
-
-      {hasComparisonSet ? (
-        <>
-          <ResultWaterfalls
-            results={selectedResults}
-            grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+          <PensionChart
+            pensionBars={pensionBars}
+            retirementEndAge={assumptions.retirementEndAge}
           />
-
-          <SensitivityPanel
-            profile={profile}
-            assumptions={assumptions}
-            visibleProducts={assumptions.visibleProducts}
-            precomputed={sensitivityResult}
-          />
-
-          <section className="split-panels">
-            <PensionChart
-              pensionBars={pensionBars}
-              retirementEndAge={assumptions.retirementEndAge}
-            />
-            <FairnessPanel
-              profile={profile}
-              assumptions={assumptions}
-              bavFunding={simulation.bavFunding}
-              rules={de2026Rules}
-            />
-          </section>
         </>
       ) : (
         <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
@@ -227,6 +190,20 @@ function App() {
           <FeeDragChart
             selectedResults={selectedResults}
             productColors={PRODUCT_COLORS}
+          />
+
+          <SensitivityPanel
+            profile={profile}
+            assumptions={assumptions}
+            visibleProducts={assumptions.visibleProducts}
+            precomputed={sensitivityResult}
+          />
+
+          <FairnessPanel
+            profile={profile}
+            assumptions={assumptions}
+            bavFunding={simulation.bavFunding}
+            rules={de2026Rules}
           />
 
           <CalculationWarnings />
@@ -292,7 +269,6 @@ function App() {
 
   const views = {
     vergleich: vergleichView,
-    warum: warumView,
     details: detailsView,
     angebot: angebotView,
   }

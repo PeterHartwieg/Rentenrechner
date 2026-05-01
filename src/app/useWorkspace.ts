@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 const WORKSPACE_KEY = 'rentenrechner-workspace-v1'
 
-export const WORKSPACE_VIEWS = ['vergleich', 'angebot', 'warum', 'details'] as const
+export const WORKSPACE_VIEWS = ['angebot', 'vergleich', 'details'] as const
 export type WorkspaceView = (typeof WORKSPACE_VIEWS)[number]
 
 function isWorkspaceView(value: unknown): value is WorkspaceView {
@@ -13,6 +13,7 @@ function readStoredView(): WorkspaceView | null {
   try {
     const raw = localStorage.getItem(WORKSPACE_KEY)
     if (!raw) return null
+    if (raw === 'warum') return 'vergleich'
     return isWorkspaceView(raw) ? raw : null
   } catch {
     return null
@@ -36,7 +37,7 @@ export function useWorkspace(): WorkspaceState {
   const [activeView, setActiveViewState] = useState<WorkspaceView>(() => {
     const stored = readStoredView()
     if (stored) return stored
-    return 'vergleich'
+    return 'angebot'
   })
 
   useEffect(() => {
