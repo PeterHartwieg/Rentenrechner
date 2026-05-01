@@ -98,7 +98,14 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
 
       return {
         afterTaxLumpSum: partialPct > 0
-          ? afterTaxAvdLumpSum(Math.max(0, partialCapital), profile, rules, otherAnnual, payoutYear)
+          ? afterTaxAvdLumpSum(
+              Math.max(0, partialCapital),
+              profile,
+              rules,
+              otherAnnual,
+              payoutYear,
+              ctx.grvGrossMonthlyPension,
+            )
           : null,
         grossMonthlyPayout,
         netMonthlyPayout: netAvdPayout(
@@ -107,6 +114,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
           rules,
           avd.monthlyOtherRetirementIncome,
           payoutYear,
+          ctx.grvGrossMonthlyPension,
+          ctx.retirementHealthStatus,
         ),
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,

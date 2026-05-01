@@ -57,6 +57,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
         bav.kvdrMember,
         payoutYear,
         bavLumpSumTaxMode,
+        ctx.grvGrossMonthlyPension,
       )
       let netMonthlyPayout = netBavPayout(
         grossMonthlyPayout,
@@ -65,6 +66,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
         bav.monthlyOtherRetirementIncome,
         bav.kvdrMember,
         payoutYear,
+        ctx.grvGrossMonthlyPension,
       )
       if (bav.includeGrvReduction) {
         netMonthlyPayout = Math.max(0, netMonthlyPayout - bavFunding.estimatedMonthlyGrvReduction)

@@ -139,12 +139,18 @@ describe('netBasisrentePayout — KV/PV health status (Group E step 3)', () => {
     expect(netDefault).toBeCloseTo(netFreiwillig, 5)
   })
 
-  it('simulation uses retirementHealthStatus from assumptions (kvdr default → no KV/PV)', () => {
-    // defaultAssumptions.basisrente.retirementHealthStatus = 'kvdr'
+  it('simulation uses retirementHealthStatus from assumptions.statutoryPension (kvdr default → no KV/PV)', () => {
+    // defaultAssumptions.statutoryPension.retirementHealthStatus = 'kvdr'
     const simKvdr = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
     const simFreiwillig = simulateRetirementComparison(
       defaultProfile,
-      { ...defaultAssumptions, basisrente: { ...defaultAssumptions.basisrente, retirementHealthStatus: 'freiwillig_gkv' } },
+      {
+        ...defaultAssumptions,
+        statutoryPension: {
+          ...defaultAssumptions.statutoryPension,
+          retirementHealthStatus: 'freiwillig_gkv',
+        },
+      },
       de2026Rules,
     )
     const kvdrResult = simKvdr.products.find((p) => p.productId === 'basisrente' && p.scenarioId === 'basis')!

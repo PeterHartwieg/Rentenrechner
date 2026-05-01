@@ -116,6 +116,7 @@ export function useSimulationViewModel(
         kvdrMember,
         insurancePayoutYear,
         bavLumpSumTaxMode,
+        simulation.statutoryPension.grossMonthlyPension,
       )
     }
     if (effectiveCashflowProductId === 'etf') {
@@ -144,6 +145,7 @@ export function useSimulationViewModel(
       insurancePayoutYear,
       profile,
       kvdrMember,
+      simulation.statutoryPension.grossMonthlyPension,
     )
   }
 

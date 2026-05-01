@@ -292,6 +292,14 @@ export function netAvdPayout(
   rules: GermanRules,
   otherMonthlyIncome = 0,
   retirementYear = rules.year,
+  /** Gross GRV monthly pension. Stacked into the marginal-tax base via
+   *  statutoryPensionAnnual and into the §240 KV/PV freiwillig assessment base. */
+  grvBaselineMonthly = 0,
+  /** Retirement health-insurance status. AVD payout is sonstige Einkünfte
+   *  (§22 Nr. 5 EStG) — not a Versorgungsbezug under §229 SGB V — so KVdR
+   *  Pflichtversicherte owe 0 KV/PV; only freiwillig versicherte pay
+   *  the full §240 SGB V rate. PKV: also no statutory KV/PV. */
+  retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv' = 'freiwillig_gkv',
 ): number {
   // -------------------------------------------------------------------------
   // 1. Income tax — §22 Nr. 5 EStG: fully taxable, no Besteuerungsanteil.
@@ -300,10 +308,11 @@ export function netAvdPayout(
   // -------------------------------------------------------------------------
   const avdAnnual = grossMonthlyPayout * 12
   const otherAnnual = otherMonthlyIncome * 12
+  const grvAnnual = grvBaselineMonthly * 12
 
   const taxWith = calculateRetirementTax(
     {
-      statutoryPensionAnnual: 0,
+      statutoryPensionAnnual: grvAnnual,
       bavPensionAnnual: 0,
       bavIsLumpSum: false,
       privateInsuranceTaxableAnnual: 0,
@@ -316,7 +325,7 @@ export function netAvdPayout(
   )
   const taxWithout = calculateRetirementTax(
     {
-      statutoryPensionAnnual: 0,
+      statutoryPensionAnnual: grvAnnual,
       bavPensionAnnual: 0,
       bavIsLumpSum: false,
       privateInsuranceTaxableAnnual: 0,
@@ -329,7 +338,16 @@ export function netAvdPayout(
   )
   const marginalTaxAnnual = taxWith.totalTaxAnnual - taxWithout.totalTaxAnnual
 
-  if (!profile.publicHealthInsurance) {
+  // KVdR Pflichtversicherte: AVD is sonstige Einkünfte (§22 Nr. 5 EStG) — not in the
+  //   §229 SGB V Versorgungsbezug catalogue and not subject to §240 (which doesn't
+  //   apply to Pflichtversicherte). → 0 KV/PV.
+  // PKV: no statutory KV/PV.
+  // PKV via profile.publicHealthInsurance = false: legacy fallback.
+  if (
+    !profile.publicHealthInsurance ||
+    retirementHealthStatus === 'kvdr' ||
+    retirementHealthStatus === 'pkv'
+  ) {
     return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
   }
 
@@ -347,7 +365,7 @@ export function netAvdPayout(
   const kvPv = calculateRetirementKvPv({
     bavMonthlyVersorgungsbezuege: 0,
     otherMonthlyVersorgungsbezuege: 0,
-    monthlyStatutoryPension: 0,
+    monthlyStatutoryPension: grvBaselineMonthly,
     freiwilligOtherMonthlyIncome: grossMonthlyPayout,
     isFreiwilligVersichert: true,
     kvFreibetragVersorgungMonthly: rules.socialSecurity.kvFreibetragVersorgungMonthly,
@@ -376,12 +394,15 @@ export function afterTaxAvdLumpSum(
   rules: GermanRules,
   otherAnnualIncome: number,
   retirementYear = rules.year,
+  /** Gross GRV monthly pension stacked into the marginal-tax base. */
+  grvBaselineMonthly = 0,
 ): number {
   if (partialCapital <= 0) return 0
+  const grvAnnual = grvBaselineMonthly * 12
 
   const taxWith = calculateRetirementTax(
     {
-      statutoryPensionAnnual: 0,
+      statutoryPensionAnnual: grvAnnual,
       bavPensionAnnual: 0,
       bavIsLumpSum: false,
       privateInsuranceTaxableAnnual: 0,
@@ -394,7 +415,7 @@ export function afterTaxAvdLumpSum(
   )
   const taxWithout = calculateRetirementTax(
     {
-      statutoryPensionAnnual: 0,
+      statutoryPensionAnnual: grvAnnual,
       bavPensionAnnual: 0,
       bavIsLumpSum: false,
       privateInsuranceTaxableAnnual: 0,

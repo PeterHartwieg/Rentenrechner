@@ -72,13 +72,18 @@ describe('bAV funding model', () => {
   })
 
   it('derives insurance tax modes: pre2005 tax-free, halbeinkuenfte half-income tax, abgeltungsteuer full Abgeltungsteuer', () => {
-    // pre2005: lump sum == capital; net payout == gross payout
+    // pre2005: lump sum == capital (no income tax on lump for §52 Abs. 28 EStG eligible).
+    // Monthly: per #59, leibrente always uses Ertragsanteil even on pre-2005 contracts.
+    // With GRV in the marginal-tax base, the small Ertragsanteil portion gets taxed
+    // at the marginal rate, so net is slightly below gross.
     const pre2005 = simulateRetirementComparison(defaultProfile, {
       ...defaultAssumptions,
       insurance: { ...defaultAssumptions.insurance, contractStartYear: 1990, oldContractTaxFreeEligible: true },
     }, de2026Rules).products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
     expect(pre2005?.afterTaxLumpSum).toBeCloseTo(pre2005?.capitalAtRetirement ?? 0)
-    expect(pre2005?.netMonthlyPayout).toBeCloseTo(pre2005?.grossMonthlyPayout ?? 0)
+    expect(pre2005?.netMonthlyPayout ?? 0).toBeLessThan(pre2005?.grossMonthlyPayout ?? 0)
+    // The deduction is small — only the Ertragsanteil fraction × marginal rate.
+    expect(pre2005?.netMonthlyPayout ?? 0).toBeGreaterThan(0.9 * (pre2005?.grossMonthlyPayout ?? 0))
 
     // halbeinkuenfte: with 3,000 EUR/month other income the half-gain sits in the 42% bracket
     // → marginalTax(other + halfGain) - marginalTax(other) > 0 → net < gross

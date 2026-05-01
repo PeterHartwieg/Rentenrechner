@@ -189,35 +189,35 @@ describe('default-profile end-to-end snapshot', () => {
   it('bAV: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
     const k = find('bav', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(254_145)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(102_347)
-    expect(Math.round(k.netMonthlyPayout)).toBe(632)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(92_553)
+    expect(Math.round(k.netMonthlyPayout)).toBe(400)
 
     const b = find('bav', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(394_164)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(146_262)
-    expect(Math.round(b.netMonthlyPayout)).toBe(938)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(136_382)
+    expect(Math.round(b.netMonthlyPayout)).toBe(590)
 
     const o = find('bav', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(630_695)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(219_172)
-    expect(Math.round(o.netMonthlyPayout)).toBe(1_331)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(242_834)
+    expect(Math.round(o.netMonthlyPayout)).toBe(894)
   })
 
   it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
     const k = find('versicherung', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(111_388)
-    expect(Math.round(k.afterTaxLumpSum!)).toBe(111_388)
-    expect(Math.round(k.netMonthlyPayout)).toBe(312)
+    expect(Math.round(k.afterTaxLumpSum!)).toBe(107_906)
+    expect(Math.round(k.netMonthlyPayout)).toBe(296)
 
     const b = find('versicherung', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(170_378)
-    expect(Math.round(b.afterTaxLumpSum!)).toBe(162_957)
-    expect(Math.round(b.netMonthlyPayout)).toBe(477)
+    expect(Math.round(b.afterTaxLumpSum!)).toBe(155_678)
+    expect(Math.round(b.netMonthlyPayout)).toBe(453)
 
     const o = find('versicherung', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(269_240)
-    expect(Math.round(o.afterTaxLumpSum!)).toBe(241_779)
-    expect(Math.round(o.netMonthlyPayout)).toBe(754)
+    expect(Math.round(o.afterTaxLumpSum!)).toBe(231_555)
+    expect(Math.round(o.netMonthlyPayout)).toBe(716)
   })
 })
 

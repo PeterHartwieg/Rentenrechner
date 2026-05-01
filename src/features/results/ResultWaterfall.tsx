@@ -5,6 +5,7 @@ import { formatCurrency } from '../../utils/format'
 
 interface Props {
   result: ProductResult
+  grvNetMonthlyPension?: number
 }
 
 /**
@@ -14,19 +15,21 @@ interface Props {
  *
  * Plus a header line showing capital at retirement (after fees, after accumulation).
  */
-export function ResultWaterfall({ result }: Props) {
+export function ResultWaterfall({ result, grvNetMonthlyPension }: Props) {
   const color = getProductMeta(result.productId)?.color ?? '#94a3b8'
 
-  // Pre-investment relief = "what fills the gap" between user out-of-pocket
-  // and the gross going into the product. Mostly bAV tax/SV relief; ~0 elsewhere.
-  // Riester allowances flow through `monthlyEmployerContribution` (Zulagen counted
-  // as a non-employer subsidy on that field) so this stays close to 0 there too.
+  // monthlyProductContribution is the total cash flowing into the account each
+  // month (it already includes the employer share for bAV and Zulagen for
+  // Riester/AVD). Relief = total − user out-of-pocket − employer share, i.e.
+  // the residual is the tax/SV refund (bAV) or Günstigerprüfung-/Zulagen-benefit
+  // (Riester, AVD). For ETF/insurance both subtraction terms collapse to 0.
   const monthlyRelief = Math.max(
     0,
-    result.monthlyProductContribution - result.monthlyUserCost,
+    result.monthlyProductContribution -
+      result.monthlyUserCost -
+      result.monthlyEmployerContribution,
   )
-  const monthlyTotal =
-    result.monthlyProductContribution + result.monthlyEmployerContribution
+  const monthlyTotal = result.monthlyProductContribution
 
   const payoutDeduction = Math.max(
     0,
@@ -99,9 +102,31 @@ export function ResultWaterfall({ result }: Props) {
               <dt>= Netto-Rente</dt>
               <dd>{formatCurrency(result.netMonthlyPayout, 0)}</dd>
             </div>
+            {grvNetMonthlyPension !== undefined && grvNetMonthlyPension > 0.5 && (
+              <>
+                <div className="rwf-row plus">
+                  <dt>+ GRV-Netto</dt>
+                  <dd>{formatCurrency(grvNetMonthlyPension, 0)}</dd>
+                </div>
+                <div className="rwf-row total">
+                  <dt>= Gesamt mtl.</dt>
+                  <dd>
+                    {formatCurrency(result.netMonthlyPayout + grvNetMonthlyPension, 0)}
+                  </dd>
+                </div>
+              </>
+            )}
           </dl>
         ) : (
-          <p className="rwf-empty">Keine Rentenauszahlung — nur Kapital.</p>
+          <dl>
+            <p className="rwf-empty">Keine Rentenauszahlung — nur Kapital.</p>
+            {grvNetMonthlyPension !== undefined && grvNetMonthlyPension > 0.5 && (
+              <div className="rwf-row total">
+                <dt>= GRV-Netto mtl.</dt>
+                <dd>{formatCurrency(grvNetMonthlyPension, 0)}</dd>
+              </div>
+            )}
+          </dl>
         )}
       </section>
     </article>
@@ -110,16 +135,21 @@ export function ResultWaterfall({ result }: Props) {
 
 interface GridProps {
   results: ProductResult[]
+  grvNetMonthlyPension?: number
 }
 
-export function ResultWaterfalls({ results }: GridProps) {
+export function ResultWaterfalls({ results, grvNetMonthlyPension }: GridProps) {
   if (results.length === 0) return null
   return (
     <section className="result-waterfalls" aria-label="Wohin geht das Geld?">
       <h3>Wohin geht das Geld?</h3>
       <div className="result-waterfalls-grid">
         {results.map((r) => (
-          <ResultWaterfall key={r.productId} result={r} />
+          <ResultWaterfall
+            key={r.productId}
+            result={r}
+            grvNetMonthlyPension={grvNetMonthlyPension}
+          />
         ))}
       </div>
     </section>

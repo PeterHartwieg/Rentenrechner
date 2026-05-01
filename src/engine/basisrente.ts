@@ -139,6 +139,11 @@ export function netBasisrentePayout(
   otherMonthlyIncome = 0,
   retirementYear = rules.year,
   retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv' = 'freiwillig_gkv',
+  /** Gross GRV monthly pension. Stacked into the marginal-tax base via
+   *  statutoryPensionAnnual (additive to the Basisrente itself, since both
+   *  share the §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil channel) and into
+   *  the §240 KV/PV BBG headroom for freiwillig versicherte. */
+  grvBaselineMonthly = 0,
 ): number {
   // -------------------------------------------------------------------------
   // 1. Income tax — §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil.
@@ -148,10 +153,11 @@ export function netBasisrentePayout(
   // -------------------------------------------------------------------------
   const basisrenteAnnual = grossMonthlyPayout * 12
   const otherAnnual = otherMonthlyIncome * 12
+  const grvAnnual = grvBaselineMonthly * 12
 
   const taxWith = calculateRetirementTax(
     {
-      statutoryPensionAnnual: basisrenteAnnual,
+      statutoryPensionAnnual: basisrenteAnnual + grvAnnual,
       bavPensionAnnual: 0,
       bavIsLumpSum: false,
       privateInsuranceTaxableAnnual: 0,
@@ -164,7 +170,7 @@ export function netBasisrentePayout(
   )
   const taxWithout = calculateRetirementTax(
     {
-      statutoryPensionAnnual: 0,
+      statutoryPensionAnnual: grvAnnual,
       bavPensionAnnual: 0,
       bavIsLumpSum: false,
       privateInsuranceTaxableAnnual: 0,
@@ -199,7 +205,10 @@ export function netBasisrentePayout(
     rules.socialSecurity.careEmployerRate
 
   const bbg = rules.socialSecurity.healthAndCareCapMonth
-  const kvPvBase = Math.min(grossMonthlyPayout, Math.max(0, bbg - otherMonthlyIncome))
+  const kvPvBase = Math.min(
+    grossMonthlyPayout,
+    Math.max(0, bbg - otherMonthlyIncome - grvBaselineMonthly),
+  )
   const kvPvMonthly = kvPvBase * (healthRate + careRate)
 
   return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)

@@ -148,9 +148,6 @@ export const defaultAssumptions: ScenarioAssumptions = {
     // 28 EUR/10k/Monat: 2026 market-typical Rentenfaktor for age-67 starts.
     rentenfaktor: 28,
     monthlyOtherRetirementIncome: 0,
-    // KVdR is the typical retirement health status for employees; Basisrente is not a
-    // Versorgungsbezug (§229 SGB V), so KVdR members pay no KV/PV on Basisrente payouts.
-    retirementHealthStatus: 'kvdr' as const,
     fees: {
       wrapperAssetFee: 0.012,   // 1.20 % — typical Basisrente insurance wrapper
       fundAssetFee: 0.002,      // 0.20 % ETF-Fondskosten — total 1.40 % p.a.
@@ -173,6 +170,9 @@ export const defaultAssumptions: ScenarioAssumptions = {
     rentenwertGrowthRate: 0,
     versorgungswerkMonthlyContribution: 0,
     versorgungswerkEmployerMonthly: 0,
+    // KVdR is the default for the typical employee profile. Drives KV/PV for AVD,
+    // Riester, Basisrente payouts (sonstige Einkünfte → 0 KV/PV for KVdR).
+    retirementHealthStatus: 'kvdr' as const,
   },
   altersvorsorgedepot: {
     ...defaultAvdAssumptions,

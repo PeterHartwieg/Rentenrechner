@@ -63,7 +63,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
           rules,
           basisrente.monthlyOtherRetirementIncome,
           payoutYear,
-          basisrente.retirementHealthStatus,
+          ctx.retirementHealthStatus,
+          ctx.grvGrossMonthlyPension,
         ),
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,

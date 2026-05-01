@@ -171,7 +171,10 @@ function App() {
 
       {hasComparisonSet ? (
         <>
-          <ResultWaterfalls results={selectedResults} />
+          <ResultWaterfalls
+            results={selectedResults}
+            grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+          />
 
           <SensitivityPanel
             profile={profile}

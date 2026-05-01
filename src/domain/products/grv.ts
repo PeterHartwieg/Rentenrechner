@@ -64,6 +64,21 @@ export interface StatutoryPensionAssumptions {
    * Typically equal to the employee share (50/50 split like GRV). Default 0 (self-employed).
    */
   versorgungswerkEmployerMonthly?: number
+  /**
+   * Health-insurance status in retirement — drives KV/PV for retirement-phase products.
+   *
+   * - 'kvdr': Pflichtversichert in der KVdR (§5 Abs. 1 Nr. 11 SGB V). Assessment base
+   *   limited to GRV (§237) + Versorgungsbezüge (§229) + Arbeitseinkommen. AVD, Riester,
+   *   Basisrente payouts are sonstige Einkünfte → 0 GKV/PV.
+   * - 'freiwillig_gkv': freiwillig versichert (§240 SGB V) — broad-base contributions on
+   *   all income up to BBG; AVD, Riester, Basisrente payouts subject to full rate.
+   * - 'pkv': private health insurance — no statutory KV/PV in any case.
+   *
+   * Default 'kvdr'. Shared toggle across all products that depend on retirement KV/PV
+   * status. (bAV uses its own `kvdrMember` flag because the relevant distinction there
+   * is half-rate vs full-rate Freibetrag, not whether the income is in the base at all.)
+   */
+  retirementHealthStatus?: 'kvdr' | 'freiwillig_gkv' | 'pkv'
 }
 
 export interface StatutoryPensionResult {

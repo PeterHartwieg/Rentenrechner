@@ -61,6 +61,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
         payoutYear,
         profile,
         kvdrMember,
+        ctx.grvGrossMonthlyPension,
       )
       const netMonthlyPayout = netInsurancePayout(
         grossMonthlyPayout,
@@ -74,6 +75,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
         kvdrMember,
         ins.payoutMode,
         profile.retirementAge,
+        ctx.grvGrossMonthlyPension,
       )
 
       return {
@@ -159,6 +161,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       payoutYear,
       profile,
       kvdrMember,
+      ctx.grvGrossMonthlyPension,
     )
 
     const netMonthlyPayout = netInsurancePayout(
@@ -173,6 +176,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       kvdrMember,
       ins.payoutMode,
       profile.retirementAge,
+      ctx.grvGrossMonthlyPension,
     )
 
     paidUpScenario = {

@@ -29,6 +29,9 @@ export function simulateRetirementComparison(
     simulateRiester(ctx, scenario),
   ])
 
+  // Re-derive the full GRV projection (gross + net + EP detail) for the
+  // SimulationResult. The context carries only the gross monthly figure used
+  // for the per-product marginal-tax base.
   const statutoryPension = projectStatutoryPension(
     profile,
     rules,

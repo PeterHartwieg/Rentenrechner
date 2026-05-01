@@ -61,7 +61,14 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
 
       return {
         afterTaxLumpSum: partialPct > 0
-          ? afterTaxRiesterLumpSum(partialCapital, profile, rules, otherAnnual, payoutYear)
+          ? afterTaxRiesterLumpSum(
+              partialCapital,
+              profile,
+              rules,
+              otherAnnual,
+              payoutYear,
+              ctx.grvGrossMonthlyPension,
+            )
           : null,
         grossMonthlyPayout,
         netMonthlyPayout: netRiesterPayout(
@@ -70,6 +77,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
           rules,
           riester.monthlyOtherRetirementIncome,
           payoutYear,
+          ctx.grvGrossMonthlyPension,
+          ctx.retirementHealthStatus,
         ),
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,

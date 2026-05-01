@@ -3,9 +3,7 @@ import '../../ui/fees.css'
 import type React from 'react'
 import type { BasisrenteFundingResult, GermanRules, ProductResult, ScenarioAssumptions } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
-import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatPercent } from '../../utils/format'
-import { getTerm } from '../../content/terms'
 import { validateBasisrentePayoutAge } from '../../engine/basisrente'
 
 type Props = {
@@ -17,12 +15,6 @@ type Props = {
   retirementAge: number
 }
 
-const HEALTH_STATUS_LABELS: Record<string, string> = {
-  kvdr: 'KVdR (kein KV/PV auf Rürup)',
-  freiwillig_gkv: 'Freiwillig GKV (voller Beitrag)',
-  pkv: 'PKV in Rente (kein KV/PV)',
-}
-
 export function BasisrenteInputs({
   assumptions,
   onAssumptionsChange,
@@ -31,13 +23,11 @@ export function BasisrenteInputs({
   retirementAge,
 }: Props) {
   const riy = basisrenteProductResult?.accumulationRiy ?? 0
-  const healthStatus = assumptions.basisrente.retirementHealthStatus
   const otherIncome = assumptions.basisrente.monthlyOtherRetirementIncome
 
   const erweitertParts: string[] = []
   if (riy > 0) erweitertParts.push(`Kosten: ${formatPercent(riy)}`)
   if (otherIncome > 0) erweitertParts.push(`+${formatCurrency(otherIncome, 0)}/Mon. sonst. Einkommen`)
-  erweitertParts.push(HEALTH_STATUS_LABELS[healthStatus] ?? healthStatus)
   const erweitertSummary = erweitertParts.join(' · ')
 
   return (
@@ -128,30 +118,9 @@ export function BasisrenteInputs({
             }
           />
 
-          <label className="field">
-            <span>
-              Krankenversicherung in Rente
-              <InfoTip text={getTerm('kvdr')!.shortHelp} label="KVdR erklären" />
-            </span>
-            <select
-              value={healthStatus}
-              onChange={(e) =>
-                onAssumptionsChange((current) => ({
-                  ...current,
-                  basisrente: {
-                    ...current.basisrente,
-                    retirementHealthStatus: e.target.value as 'kvdr' | 'freiwillig_gkv' | 'pkv',
-                  },
-                }))
-              }
-            >
-              <option value="kvdr">Pflichtversichert in Rente (KVdR) — kein KV/PV auf Basisrente</option>
-              <option value="freiwillig_gkv">Freiwillig GKV — voller Beitrag auf alle Einkünfte</option>
-              <option value="pkv">Privat versichert (PKV) — kein gesetzlicher KV/PV-Abzug</option>
-            </select>
-          </label>
           <p className="field-hint" style={{ marginTop: 0 }}>
-            Pflichtversichert: Basisrente zählt nicht als Versorgungsbezug — kein KV/PV-Abzug für gesetzlich pflichtversicherte Rentner.
+            KV/PV-Status in der Rente wird zentral unter „Gesetzliche Rente" eingestellt
+            (gilt auch für AVD und Riester). Pflichtversichert (KVdR): kein KV/PV auf Basisrente.
             Freiwillig versichert: Beitrag auf alle Einkünfte bis zur Beitragsbemessungsgrenze.
           </p>
 

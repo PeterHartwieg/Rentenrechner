@@ -22,14 +22,6 @@ export interface BasisrenteAssumptions {
   rentenfaktor: number
   /** Monthly GRV + other retirement income for marginal-tax calculation in payout phase. */
   monthlyOtherRetirementIncome: number
-  /**
-   * Retirement health-insurance status — determines KV/PV treatment on Basisrente payouts.
-   * - 'kvdr': compulsory statutory pensioner (KVdR). Basisrente is not a Versorgungsbezug
-   *   (§229 SGB V), so no KV/PV is deducted.
-   * - 'freiwillig_gkv': voluntary statutory member. Full §240 SGB V broad-income rate applies.
-   * - 'pkv': private health insurance in retirement. No statutory KV/PV deducted.
-   */
-  retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv'
 }
 
 export interface BasisrenteFundingResult {

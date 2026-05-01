@@ -46,12 +46,20 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
 
   const salaryGrowth = sp.annualSalaryGrowthRate ?? 0
   const rentenwertGrowth = sp.rentenwertGrowthRate ?? 0
+  const healthStatus = sp.retirementHealthStatus ?? 'kvdr'
   const erweitertParts: string[] = []
   if (salaryGrowth !== 0) erweitertParts.push(`Gehalt +${(salaryGrowth * 100).toFixed(1)} %/Jahr`)
   else erweitertParts.push('kein Gehaltswachstum')
   if (rentenwertGrowth !== 0) erweitertParts.push(`Rentenwert +${(rentenwertGrowth * 100).toFixed(1)} %/Jahr`)
   else erweitertParts.push('kein Rentenwert-Wachstum')
   if (baselineType === 'grv' && sp.includeGrvReduction) erweitertParts.push('bAV-Minderung')
+  erweitertParts.push(
+    healthStatus === 'kvdr'
+      ? 'KVdR'
+      : healthStatus === 'freiwillig_gkv'
+        ? 'freiwillig GKV'
+        : 'PKV',
+  )
   const erweitertSummary = erweitertParts.join(' · ')
 
   return (
@@ -281,6 +289,33 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                   />
                 </>
               )}
+
+              <label className="field">
+                <span>Krankenversicherung in Rente</span>
+                <select
+                  value={healthStatus}
+                  onChange={(event) =>
+                    onAssumptionsChange((current) =>
+                      patchSp(current, {
+                        retirementHealthStatus: event.target.value as
+                          | 'kvdr'
+                          | 'freiwillig_gkv'
+                          | 'pkv',
+                      }),
+                    )
+                  }
+                >
+                  <option value="kvdr">Pflichtversichert (KVdR) — kein KV/PV auf AVD/Riester/Rürup</option>
+                  <option value="freiwillig_gkv">Freiwillig GKV — voller Beitrag auf alle Renteneinkünfte</option>
+                  <option value="pkv">Privat versichert (PKV) — kein gesetzlicher KV/PV-Abzug</option>
+                </select>
+              </label>
+              <p className="field-hint" style={{ marginTop: 0 }}>
+                Gilt für AVD, Riester und Basisrente. Pflichtversicherte Rentner zahlen
+                auf diese sonstigen Einkünfte keinen GKV/PV-Beitrag (kein Versorgungsbezug
+                nach §229 SGB V); freiwillig Versicherte zahlen den vollen Beitrag bis zur
+                Beitragsbemessungsgrenze (§240 SGB V). bAV und GRV werden separat behandelt.
+              </p>
             </div>
           </details>
         </>

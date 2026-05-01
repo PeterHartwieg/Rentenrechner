@@ -13,6 +13,7 @@ import { calculateAvdFunding } from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'
 import { calculateBavFunding, } from './salary'
 import { deriveBavLumpSumTaxMode, deriveInsuranceTaxMode } from './projections'
+import { projectStatutoryPension } from './grv'
 
 export interface SimulationContext {
   profile: PersonalProfile
@@ -29,6 +30,22 @@ export interface SimulationContext {
   basisrenteFunding: BasisrenteFundingResult
   altersvorsorgedepotFunding: AltersvorsorgedepotFundingResult
   riesterFunding: RiesterFundingResult
+  /**
+   * Gross GRV pension at retirement (EUR/month). Threaded into every product's
+   * standalone marginal-tax pipeline as `statutoryPensionAnnual` so the bracket
+   * the product income lands in reflects the realistic combined retirement
+   * income — not just the product taxed alone below the Grundfreibetrag.
+   * Per-product user-input `monthlyOtherRetirementIncome` (= manual extra,
+   * fully taxable) stacks ON TOP of this.
+   */
+  grvGrossMonthlyPension: number
+  /**
+   * Shared retirement health-insurance status — drives KV/PV treatment for AVD,
+   * Riester, and Basisrente payouts. KVdR Pflichtversicherte owe no KV/PV on
+   * sonstige-Einkünfte payouts; freiwillig_gkv pay the full §240 SGB V rate; PKV
+   * never pays statutory KV/PV. Defaults to 'kvdr' when not set.
+   */
+  retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv'
 }
 
 export function buildContext(
@@ -70,6 +87,14 @@ export function buildContext(
   const altersvorsorgedepotFunding = calculateAvdFunding(rules, bavFunding.salaryWithBav, assumptions.altersvorsorgedepot)
   const riesterFunding = calculateRiesterFunding(rules, bavFunding.salaryWithBav, assumptions.riester, profile)
 
+  const grvProjection = projectStatutoryPension(
+    profile,
+    rules,
+    assumptions.statutoryPension,
+    bavFunding.estimatedMonthlyGrvReduction,
+    payoutYear,
+  )
+
   return {
     profile,
     assumptions,
@@ -82,5 +107,7 @@ export function buildContext(
     basisrenteFunding,
     altersvorsorgedepotFunding,
     riesterFunding,
+    grvGrossMonthlyPension: grvProjection.grossMonthlyPension,
+    retirementHealthStatus: assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr',
   }
 }

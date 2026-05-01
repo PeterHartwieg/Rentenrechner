@@ -64,6 +64,7 @@ export function validateReturnScenarios(input: unknown): ReturnScenario[] | null
 }
 
 const VALID_PENSION_BASELINE_TYPES = ['grv', 'versorgungswerk', 'beamtenpension', 'none'] as const
+const VALID_RETIREMENT_HEALTH_STATUSES = ['kvdr', 'freiwillig_gkv', 'pkv'] as const
 
 function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
   if (sp.pensionBaselineType !== undefined && !VALID_PENSION_BASELINE_TYPES.includes(sp.pensionBaselineType)) return false
@@ -74,6 +75,7 @@ function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
   if (!inRange(sp.rentenwertGrowthRate ?? 0, -0.05, 0.1)) return false
   if (!inRange(sp.versorgungswerkMonthlyContribution ?? 0, 0, 10_000)) return false
   if (!inRange(sp.versorgungswerkEmployerMonthly ?? 0, 0, 10_000)) return false
+  if (sp.retirementHealthStatus !== undefined && !VALID_RETIREMENT_HEALTH_STATUSES.includes(sp.retirementHealthStatus)) return false
   return true
 }
 
