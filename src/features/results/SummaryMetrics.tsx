@@ -29,7 +29,7 @@ export function SummaryMetrics({
       />
       {shouldShowBav && (
         <ResultMetric
-          label="bAV Nettoaufwand mtl."
+          label="Nettoaufwand mtl."
           value={formatCurrency(bavMonthlyNetCost, 0)}
           detail={`${formatCurrency(bavTotalMonthlyContribution, 0)} Beitrag mtl.`}
         />
