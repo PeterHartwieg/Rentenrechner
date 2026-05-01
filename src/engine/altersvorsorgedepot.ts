@@ -130,6 +130,36 @@ export function computeAvdAllowances(
   }
 }
 
+/**
+ * Maximum monthly own contribution before the AltZertG contract cap
+ * (`contractContributionCapAnnual`, 6 840 EUR/year for 2026) is breached.
+ *
+ * The cap limits own + allowances. Allowances saturate at own ≥ 1 800 EUR/year
+ * (the basic allowance is fully claimed there; child/spouse/career-bonus
+ * allowances also saturate or are constants). For any own ≥ 1 800 the allowance
+ * sum is fixed at the saturated value, so the maximum permitted own is
+ * `(cap − allowanceSaturated) / 12`.
+ *
+ * Used by the input-sync layer to clamp AVD's value when another product's
+ * monthly net cost would push AVD over the contract ceiling, and by UI warnings.
+ */
+export function maxAvdMonthlyOwnContribution(
+  eligibility: AltersvorsorgedepotAssumptions['eligibility'],
+  rules: GermanRules,
+  isFirstContributionYear = false,
+): number {
+  const avdRules = rules.altersvorsorgedepot
+  // Evaluate allowances at the saturation point — any own contribution above this
+  // produces the same allowance sum.
+  const saturated = computeAvdAllowances(
+    avdRules.basicAllowanceTier2MaxContribution,
+    eligibility,
+    rules,
+    isFirstContributionYear,
+  )
+  return Math.max(0, (avdRules.contractContributionCapAnnual - saturated.totalAllowanceAnnual) / 12)
+}
+
 // ---------------------------------------------------------------------------
 // Full AVD funding calculation (§10a Günstigerprüfung)
 // ---------------------------------------------------------------------------
@@ -171,12 +201,15 @@ export function calculateAvdFunding(
   } = computeAvdAllowances(annualOwnContribution, avd.eligibility, rules, !avd.eligibility.careerStarterBonusUsed)
 
   // -------------------------------------------------------------------------
-  // 2. Contract contribution = own + allowances, capped at annual contract limit.
+  // 2. Contract contribution = own + allowances, capped at annual contract limit
+  //    (AltZertG / Altersvorsorgereformgesetz: 6 840 EUR/year for 2026).
   // -------------------------------------------------------------------------
+  const uncappedContractContributionAnnual = annualOwnContribution + totalAllowanceAnnual
   const totalContractContributionAnnual = Math.min(
-    annualOwnContribution + totalAllowanceAnnual,
+    uncappedContractContributionAnnual,
     avdRules.contractContributionCapAnnual,
   )
+  const cappedAtContractMax = uncappedContractContributionAnnual > avdRules.contractContributionCapAnnual
 
   // -------------------------------------------------------------------------
   // 3. §10a EStG special-expense deductible base.
@@ -220,6 +253,7 @@ export function calculateAvdFunding(
     indirectSpouseAllowanceAnnual,
     totalAllowanceAnnual,
     totalContractContributionAnnual,
+    cappedAtContractMax,
     specialExpenseBaseAnnual,
     guenstigerpruefungBenefitAnnual,
     monthlyNetCost,

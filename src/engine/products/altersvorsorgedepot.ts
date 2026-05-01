@@ -26,12 +26,16 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
   const { profile, assumptions, rules, altersvorsorgedepotFunding, bavFunding, payoutYear, yearsToRetirement } = ctx
   const avd = assumptions.altersvorsorgedepot
 
-  // Total monthly contribution = normalized own contribution (back-solved from bavFunding.monthlyNetCost)
-  // + state allowances flowing in each month.
-  const normalizedOwnContribution =
-    bavFunding.monthlyNetCost + altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual / 12
+  // Total monthly contribution into the depot:
+  //   regulated contract inflow (own + allowances), capped at the annual AltZertG
+  //   contract ceiling (6 840 EUR/year for 2026), plus the Günstigerprüfung tax
+  //   refund that the user reinvests on top.
+  // Above the cap, the excess own contribution is simply not paid into the contract
+  // (Anbieter would refuse it) — the funding helper exposes `cappedAtContractMax`
+  // for the UI warning and comparison-card badge.
   const avdMonthlyContribution =
-    normalizedOwnContribution + altersvorsorgedepotFunding.totalAllowanceAnnual / 12
+    altersvorsorgedepotFunding.totalContractContributionAnnual / 12 +
+    altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual / 12
 
   // Blended return for current scenario based on allocation.
   // For Standarddepot: glidepath overrides via yearlyReturnFn; otherwise use constant blend.

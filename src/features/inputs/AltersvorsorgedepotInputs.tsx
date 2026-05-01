@@ -17,6 +17,10 @@ import { validateAvdPayoutAge } from '../../engine/altersvorsorgedepot'
 type Props = {
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
+  onSyncMonthlyContribution: (
+    source: 'bav' | 'basisrente' | 'avd' | 'riester',
+    value: number,
+  ) => void
   profile: PersonalProfile
   avdFunding: AltersvorsorgedepotFundingResult
   avdProductResult: ProductResult | undefined
@@ -26,6 +30,7 @@ type Props = {
 export function AltersvorsorgedepotInputs({
   assumptions,
   onAssumptionsChange,
+  onSyncMonthlyContribution,
   profile,
   avdFunding,
   avdProductResult,
@@ -84,15 +89,7 @@ export function AltersvorsorgedepotInputs({
           min={0}
           step={10}
           suffix="EUR mtl."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              altersvorsorgedepot: {
-                ...current.altersvorsorgedepot,
-                monthlyOwnContribution: Math.max(0, Number(value)),
-              },
-            }))
-          }
+          onChange={(value) => onSyncMonthlyContribution('avd', Number(value))}
         />
         <NumberField
           label="Förderberechtigte Kinder"
@@ -190,6 +187,15 @@ export function AltersvorsorgedepotInputs({
           <span>Mittelbar berechtigt (über Ehegatte)</span>
         </label>
       </div>
+
+      {avdFunding.cappedAtContractMax && (
+        <p className="field-warning">
+          AltZertG-Vertragsobergrenze erreicht: max.{' '}
+          {formatCurrency(rules.altersvorsorgedepot.contractContributionCapAnnual, 0)}/Jahr
+          (Eigenbeitrag + Zulagen). Höhere Eigenbeiträge fließen nicht mehr ins Depot
+          (§1 AltZertG / Altersvorsorgereformgesetz). Andere Produkte können den Mehrbetrag investieren.
+        </p>
+      )}
 
       {avdFunding.annualOwnContribution > 0 ? (
         <p className="field-hint">

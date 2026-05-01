@@ -9,6 +9,10 @@ import { validateBasisrentePayoutAge } from '../../engine/basisrente'
 type Props = {
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
+  onSyncMonthlyContribution: (
+    source: 'bav' | 'basisrente' | 'avd' | 'riester',
+    value: number,
+  ) => void
   basisrenteFunding: BasisrenteFundingResult
   basisrenteProductResult: ProductResult | undefined
   rules: GermanRules
@@ -18,6 +22,7 @@ type Props = {
 export function BasisrenteInputs({
   assumptions,
   onAssumptionsChange,
+  onSyncMonthlyContribution,
   basisrenteFunding,
   basisrenteProductResult,
   retirementAge,
@@ -58,12 +63,7 @@ export function BasisrenteInputs({
           min={0}
           step={25}
           suffix="EUR mtl."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              basisrente: { ...current.basisrente, monthlyGrossContribution: Math.max(0, Number(value)) },
-            }))
-          }
+          onChange={(value) => onSyncMonthlyContribution('basisrente', Number(value))}
         />
 
         <NumberField

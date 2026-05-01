@@ -93,6 +93,10 @@ export interface AltersvorsorgedepotFundingResult {
   totalAllowanceAnnual: number
   /** Total contract contribution = own + allowances (capped at 6 840 EUR/year limit). */
   totalContractContributionAnnual: number
+  /** True when own + allowances exceeded the contractContributionCapAnnual ceiling
+   *  and `totalContractContributionAnnual` was clamped. Drives UI warnings and the
+   *  comparison-card cap badge. */
+  cappedAtContractMax: boolean
   /** §10a EStG deductible base = min(ownContribution, 1 800) + allowanceEntitlement. */
   specialExpenseBaseAnnual: number
   /** Additional income-tax saving from §10a Günstigerprüfung above the allowance value. */

@@ -42,7 +42,13 @@ describe('#35 children-adjusted retirement PV rate in netBavPayout', () => {
 
 describe('bAV funding model', () => {
   it('uses the actual employer social-security saving as cap for the minimum subsidy', () => {
-    const funding = calculateBavFunding(defaultProfile, de2026Rules, defaultAssumptions.bav)
+    // 338 EUR/month = §3 Nr. 63 EStG cap — the historical baseline for this
+    // assertion. Pinned explicitly so the assertion stays valid regardless of
+    // what the global default is set to.
+    const funding = calculateBavFunding(defaultProfile, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 338,
+    })
 
     expect(funding.monthlyGrossConversion).toBe(338)
     expect(funding.monthlyStatutoryEmployerSubsidy).toBeGreaterThan(25)
@@ -336,8 +342,11 @@ describe('#50 PKV premium modeling', () => {
   })
 
   it('bAV funding net cost differs slightly with PKV premiums (AV Teilbetrag no longer varies with bAV)', () => {
-    const bavFundingNoPkv = calculateBavFunding(pkvBase, de2026Rules, defaultAssumptions.bav)
-    const bavFundingPkv = calculateBavFunding(pkv500, de2026Rules, defaultAssumptions.bav)
+    // Pin to 338 EUR/month brutto (the §3 Nr. 63 cap) — the calibrated baseline
+    // for the absolute-value assertions below. Independent of the global default.
+    const bav338 = { ...defaultAssumptions.bav, monthlyGrossConversion: 338 }
+    const bavFundingNoPkv = calculateBavFunding(pkvBase, de2026Rules, bav338)
+    const bavFundingPkv = calculateBavFunding(pkv500, de2026Rules, bav338)
     // PKV: no KV/PV social savings from bAV conversion → higher net cost than GKV (~165/month).
     // With high PKV premiums the AV Teilbetrag in Vorsorgepauschale is already capped at 0,
     // so it no longer varies with bAV conversion → pkv500 has slightly higher net cost than pkvBase.

@@ -31,6 +31,20 @@
   margin-bottom: 6px;
 }
 
+.pec-cap-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  vertical-align: middle;
+  cursor: help;
+}
+
 .pec-metrics {
   display: flex;
   flex-direction: column;

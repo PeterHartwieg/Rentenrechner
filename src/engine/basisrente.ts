@@ -215,6 +215,51 @@ export function netBasisrentePayout(
 }
 
 /**
+ * Inverse of calculateBasisrenteFunding: given a target monthly net cost
+ * (out-of-pocket after the §10 Abs. 3 EStG marginal tax saving), return the
+ * monthlyGrossContribution that produces that net.
+ *
+ * Used by the input-sync layer. Bisection over the funding forward pass —
+ * an analytic inverse would need to enumerate the income-tax brackets and the
+ * §10 Abs. 3 Schicht-1 cap regime, which is more brittle than a 30-iteration
+ * bisection.
+ */
+export function solveBasisrenteGrossFromNet(
+  targetMonthlyNet: number,
+  rules: GermanRules,
+  salaryResult: SalaryResult,
+  basisrente: BasisrenteAssumptions,
+  pensionSystemAnnualContributionOverride?: number,
+): number {
+  if (targetMonthlyNet <= 0) return 0
+
+  const forward = (monthlyGross: number) =>
+    calculateBasisrenteFunding(
+      rules,
+      salaryResult,
+      { ...basisrente, monthlyGrossContribution: monthlyGross },
+      pensionSystemAnnualContributionOverride,
+    ).monthlyNetCost
+
+  let lo = 0
+  // Net never exceeds gross (tax saving ≥ 0), so gross ≥ net at minimum.
+  // Beyond the Schicht-1 cap, additional gross is fully out-of-pocket → marginal slope 1.
+  let hi = Math.max(100, targetMonthlyNet * 4)
+  for (let i = 0; i < 10 && forward(hi) < targetMonthlyNet; i++) {
+    hi *= 2
+  }
+
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2
+    const net = forward(mid)
+    if (Math.abs(net - targetMonthlyNet) < 0.01) return mid
+    if (net < targetMonthlyNet) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
+/**
  * Besteuerungsanteil for Basisrente — identical to GRV per §22 Nr. 1 Satz 3 a aa EStG.
  * Exported separately so callers can display it for audit/info purposes.
  */

@@ -23,6 +23,10 @@ import { getTerm } from '../../content/terms'
 type Props = {
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
+  onSyncMonthlyContribution: (
+    source: 'bav' | 'basisrente' | 'avd' | 'riester',
+    value: number,
+  ) => void
   profile: PersonalProfile
   bavFunding: BavFundingResult
   selectedResults: ProductResult[]
@@ -48,6 +52,7 @@ const DFW_SHORT: Record<BavDurchfuehrungsweg, string> = {
 export function BavInputs({
   assumptions,
   onAssumptionsChange,
+  onSyncMonthlyContribution,
   profile,
   bavFunding,
   selectedResults,
@@ -81,12 +86,7 @@ export function BavInputs({
           min={0}
           step={25}
           suffix="EUR mtl."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: { ...current.bav, monthlyGrossConversion: Number(value) },
-            }))
-          }
+          onChange={(value) => onSyncMonthlyContribution('bav', Number(value))}
         />
         <NumberField
           label="AG-Zuschuss laut Vertrag (%)"

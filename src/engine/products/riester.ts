@@ -24,10 +24,12 @@ export const metadata = {
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): RiesterProductResult {
   const { profile, assumptions, rules, riesterFunding, bavFunding, payoutYear } = ctx
 
-  const normalizedOwnContribution =
-    bavFunding.monthlyNetCost + riesterFunding.guenstigerpruefungBenefitAnnual / 12
+  // Total monthly contribution = user-entered Eigenbeitrag (actual out-of-pocket cash)
+  // + state allowances + Günstigerprüfung tax refund flowing back into the contract.
   const totalMonthlyContribution =
-    normalizedOwnContribution + riesterFunding.totalAllowanceAnnual / 12
+    assumptions.riester.monthlyOwnContribution +
+    riesterFunding.guenstigerpruefungBenefitAnnual / 12 +
+    riesterFunding.totalAllowanceAnnual / 12
 
   return buildProductResult({
     productId: 'riester',

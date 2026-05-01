@@ -39,7 +39,14 @@ import './App.css'
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 
 function App() {
-  const { profile, setProfile, assumptions, setAssumptions, resetToDefaults } = useCalculatorState()
+  const {
+    profile,
+    setProfile,
+    assumptions,
+    setAssumptions,
+    resetToDefaults,
+    setSyncedMonthlyContribution,
+  } = useCalculatorState()
   const guidedSetup = useGuidedSetup()
   const workspace = useWorkspace()
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
@@ -143,6 +150,8 @@ function App() {
             selectedResults={selectedResults}
             assumptions={assumptions}
             onAssumptionsChange={setAssumptions}
+            avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
+            avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
           />
 
           <CapitalChart
@@ -266,6 +275,7 @@ function App() {
         onProfileChange={setProfile}
         assumptions={assumptions}
         onAssumptionsChange={setAssumptions}
+        onSyncMonthlyContribution={setSyncedMonthlyContribution}
         resetToDefaults={resetToDefaults}
         simulation={simulation}
         selectedResults={selectedResults}

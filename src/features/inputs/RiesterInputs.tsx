@@ -13,6 +13,10 @@ import { formatCurrency, formatPercent } from '../../utils/format'
 type Props = {
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
+  onSyncMonthlyContribution: (
+    source: 'bav' | 'basisrente' | 'avd' | 'riester',
+    value: number,
+  ) => void
   profile: PersonalProfile
   riesterFunding: RiesterFundingResult
   riesterProductResult: ProductResult | undefined
@@ -21,6 +25,7 @@ type Props = {
 export function RiesterInputs({
   assumptions,
   onAssumptionsChange,
+  onSyncMonthlyContribution,
   riesterFunding,
   riesterProductResult,
 }: Props) {
@@ -50,15 +55,7 @@ export function RiesterInputs({
           min={0}
           step={10}
           suffix="EUR mtl."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              riester: {
-                ...current.riester,
-                monthlyOwnContribution: Math.max(0, Number(value)),
-              },
-            }))
-          }
+          onChange={(value) => onSyncMonthlyContribution('riester', Number(value))}
         />
         <NumberField
           label="Vorhandenes Kapital"

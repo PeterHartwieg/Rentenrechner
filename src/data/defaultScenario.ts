@@ -23,8 +23,12 @@ export const defaultProfile: PersonalProfile = {
 export const defaultAvdAssumptions: AltersvorsorgedepotAssumptions = {
   // Standarddepot is the lowest-cost certified product variant with the RIY cap.
   subtype: 'standarddepot',
-  // 150 EUR/month = 1 800 EUR/year → maximum basic allowance (540 EUR) at minimum cost.
-  monthlyOwnContribution: 150,
+  // 200 EUR/month — same starting value as bAV brutto, Basisrente brutto, Riester
+  // Eigenbeitrag for visual consistency. Defaults are not actually synced (each
+  // field has different units/semantics); editing any of the four product
+  // contribution fields engages syncMonthlyContributions to align the others
+  // around a common monthly net cost.
+  monthlyOwnContribution: 200,
   eligibility: {
     directlyEligible: true,
     indirectSpouseEligible: false,
@@ -61,10 +65,11 @@ export const defaultAvdAssumptions: AltersvorsorgedepotAssumptions = {
 }
 
 export const defaultRiesterAssumptions: RiesterAssumptions = {
-  // 100 EUR/month own contribution = 1,200 EUR/year.
-  // Mindesteigenbeitrag for 75k EUR salary: 4% × 75,000 = 3,000, minus 175 Grundzulage = 2,825 EUR.
-  // 1,200 EUR < 2,825 EUR → proration applies. Set to meet minimum: user should adjust.
-  monthlyOwnContribution: 100,
+  // 200 EUR/month — same starting value as the other three contribution fields.
+  // Note: below Mindesteigenbeitrag for 75k brutto (~235 EUR/month), so allowances
+  // are prorated. User can raise the value (sync re-anchors the others) to reach
+  // full allowances if Riester is the comparison focus.
+  monthlyOwnContribution: 200,
   // Existing capital from a prior contract — 0 for a new/hypothetical contract.
   existingCapital: 0,
   eligibility: {
@@ -109,10 +114,12 @@ export const defaultAssumptions: ScenarioAssumptions = {
     equityPartialExemption: 0.3,
   },
   bav: {
-    // §3 Nr. 63 EStG cap: 4 % × BBG (101,400 EUR for 2026) / 12 = 338 EUR/month —
-    // the highest contribution that is fully tax- and SV-free under the modern
-    // Direktversicherung rules. A reasonable starting point for new contracts.
-    monthlyGrossConversion: 338,
+    // 200 EUR/month brutto — same starting value as the other three contribution
+    // fields (Basisrente brutto, AVD Eigenbeitrag, Riester Eigenbeitrag).
+    // Editing any field engages syncMonthlyContributions to align the others
+    // around a common monthly net cost. §3 Nr. 63 EStG cap: 338 EUR/month
+    // (4 % × BBG 101,400 EUR / 12) is the maximum fully tax- and SV-free contribution.
+    monthlyGrossConversion: 200,
     // #51: §1a Abs. 1a BetrAVG default — statutory subsidy on, no contractual extras.
     statutoryMinimumSubsidyEnabled: true,
     contractualMatchPercent: 0,
@@ -140,8 +147,8 @@ export const defaultAssumptions: ScenarioAssumptions = {
     },
   },
   basisrente: {
-    // Typical Rürup/Basisrente monthly premium for an employed single filer.
-    // Most Rürup contracts start around 100–300 EUR/month; 200 EUR is a reasonable default.
+    // 200 EUR/month brutto — same starting value as the other three contribution
+    // fields. Most Rürup contracts start in the 100–300 EUR/month range.
     monthlyGrossContribution: 200,
     // Basisrente old-age payout is always leibrente per AltZertG §2 / §10 Abs. 1 Nr. 2 EStG.
     payoutMode: 'leibrente' as const,

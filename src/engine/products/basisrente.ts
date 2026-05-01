@@ -22,13 +22,6 @@ export const metadata = {
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BasisrenteProductResult {
   const { profile, assumptions, rules, basisrenteFunding, bavFunding, payoutYear } = ctx
 
-  const effectiveSavingRate = basisrenteFunding.monthlyGrossContribution > 0
-    ? basisrenteFunding.monthlyTaxSaving / basisrenteFunding.monthlyGrossContribution
-    : 0
-  const normalizedGross = effectiveSavingRate < 1
-    ? bavFunding.monthlyNetCost / (1 - effectiveSavingRate)
-    : bavFunding.monthlyNetCost
-
   return buildProductResult({
     productId: 'basisrente',
     label: metadata.label,
@@ -37,7 +30,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
     rules,
     assumptions,
     monthlyUserCost: bavFunding.monthlyNetCost,
-    monthlyProductContribution: normalizedGross,
+    monthlyProductContribution: basisrenteFunding.monthlyGrossContribution,
     monthlyEmployerContribution: 0,
     fees: assumptions.basisrente.fees,
     taxAndSvSavings: basisrenteFunding.annualTaxSaving * ctx.yearsToRetirement,

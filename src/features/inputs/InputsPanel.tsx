@@ -44,6 +44,10 @@ interface InputsPanelProps {
   onProfileChange: React.Dispatch<React.SetStateAction<PersonalProfile>>
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
+  onSyncMonthlyContribution: (
+    source: 'bav' | 'basisrente' | 'avd' | 'riester',
+    value: number,
+  ) => void
   resetToDefaults: () => void
   simulation: SimulationResult
   selectedResults: ProductResult[]
@@ -61,6 +65,7 @@ export function InputsPanel({
   onProfileChange,
   assumptions,
   onAssumptionsChange,
+  onSyncMonthlyContribution,
   resetToDefaults,
   simulation,
   selectedResults,
@@ -171,6 +176,7 @@ export function InputsPanel({
               <BavInputs
                 assumptions={assumptions}
                 onAssumptionsChange={onAssumptionsChange}
+                onSyncMonthlyContribution={onSyncMonthlyContribution}
                 profile={profile}
                 bavFunding={simulation.bavFunding}
                 selectedResults={selectedResults}
@@ -249,6 +255,7 @@ export function InputsPanel({
               <BasisrenteInputs
                 assumptions={assumptions}
                 onAssumptionsChange={onAssumptionsChange}
+                onSyncMonthlyContribution={onSyncMonthlyContribution}
                 basisrenteFunding={simulation.basisrenteFunding}
                 basisrenteProductResult={selectedResults.find((r) => r.productId === 'basisrente')}
                 rules={de2026Rules}
@@ -263,6 +270,7 @@ export function InputsPanel({
               <AltersvorsorgedepotInputs
                 assumptions={assumptions}
                 onAssumptionsChange={onAssumptionsChange}
+                onSyncMonthlyContribution={onSyncMonthlyContribution}
                 profile={profile}
                 avdFunding={simulation.altersvorsorgedepotFunding}
                 avdProductResult={selectedResults.find((r) => r.productId === 'altersvorsorgedepot')}
@@ -277,6 +285,7 @@ export function InputsPanel({
               <RiesterInputs
                 assumptions={assumptions}
                 onAssumptionsChange={onAssumptionsChange}
+                onSyncMonthlyContribution={onSyncMonthlyContribution}
                 profile={profile}
                 riesterFunding={simulation.riesterFunding}
                 riesterProductResult={selectedResults.find((r) => r.productId === 'riester')}

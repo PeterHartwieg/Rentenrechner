@@ -104,12 +104,15 @@ describe('BMF PAP 2026 payroll tax (Steuerklasse I, GKV 2.9%, no church)', () =>
 })
 
 describe('bAV contribution limit handling (#4)', () => {
-  it('default profile (338 EUR/month + 15 % statutory) stays tax-free but spills over the 4 % BBG SV cap', () => {
+  it('338 EUR/month brutto + 15 % statutory stays tax-free but spills over the 4 % BBG SV cap', () => {
     // 338 EUR/month = §3 Nr. 63 EStG 4 % BBG cap for the employee conversion.
     // Adding the statutory 15 % subsidy (§1a Abs. 1a BetrAVG) pushes the combined
     // contribution above the SV-free 4 % BBG ceiling. This is realistic for many
     // bAV contracts at the legal max and surfaces in the FairnessPanel warning.
-    const f = calculateBavFunding(defaultProfile, de2026Rules, defaultAssumptions.bav)
+    const f = calculateBavFunding(defaultProfile, de2026Rules, {
+      ...defaultAssumptions.bav,
+      monthlyGrossConversion: 338,
+    })
     expect(f.totalBavContributionAnnual).toBeCloseTo(
       f.annualGrossConversion + f.annualEmployerContribution, 2,
     )

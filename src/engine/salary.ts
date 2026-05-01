@@ -329,3 +329,53 @@ export function calculateBavFunding(
     estimatedMonthlyGrvReduction,
   }
 }
+
+/**
+ * Inverse of calculateBavFunding: given a target monthly net cost (out-of-pocket),
+ * return the monthlyGrossConversion that produces that net.
+ *
+ * Used by the input-sync layer: when the user types in any other product's monthly
+ * contribution field, that field's net cost is derived and bAV's gross is
+ * back-solved to match.
+ *
+ * Method: bisection. The forward map gross→net is monotone non-decreasing
+ * (each additional gross euro reduces take-home by at most one euro and at least
+ * the post-cap rate after employer subsidies are exhausted), and piecewise smooth
+ * with breakpoints at the §3 Nr. 63 / §1 SvEV caps — bisection is robust where
+ * an analytic inverse would need separate cases per cap regime.
+ */
+export function solveBavGrossFromNet(
+  targetMonthlyNet: number,
+  profile: PersonalProfile,
+  rules: GermanRules,
+  bav: BavAssumptions,
+): number {
+  if (targetMonthlyNet <= 0) return 0
+
+  const forward = (monthlyGross: number) => {
+    const result = calculateBavFunding(profile, rules, {
+      ...bav,
+      monthlyGrossConversion: monthlyGross,
+    })
+    return result.monthlyNetCost
+  }
+
+  let lo = 0
+  // Upper bracket: net cost is bounded above by gross (savings are non-negative),
+  // so 4× target plus a 100 EUR floor always brackets the solution.
+  let hi = Math.max(100, targetMonthlyNet * 4)
+  // Expand hi until forward(hi) ≥ target, in case extreme cap/subsidy combinations
+  // make the marginal net rate very low.
+  for (let i = 0; i < 10 && forward(hi) < targetMonthlyNet; i++) {
+    hi *= 2
+  }
+
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2
+    const net = forward(mid)
+    if (Math.abs(net - targetMonthlyNet) < 0.01) return mid
+    if (net < targetMonthlyNet) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}

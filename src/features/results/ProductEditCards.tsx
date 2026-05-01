@@ -21,6 +21,8 @@ interface Props {
   selectedResults: ProductResult[]
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
+  avdCappedAtContractMax?: boolean
+  avdContractCapAnnual?: number
 }
 
 type FieldProps = {
@@ -89,7 +91,13 @@ function hasUnconfirmedRentenfaktor(productId: ProductId, assumptions: ScenarioA
   }
 }
 
-export function ProductEditCards({ selectedResults, assumptions, onAssumptionsChange }: Props) {
+export function ProductEditCards({
+  selectedResults,
+  assumptions,
+  onAssumptionsChange,
+  avdCappedAtContractMax = false,
+  avdContractCapAnnual,
+}: Props) {
   if (selectedResults.length === 0) return null
 
   return (
@@ -101,6 +109,8 @@ export function ProductEditCards({ selectedResults, assumptions, onAssumptionsCh
             result={result}
             assumptions={assumptions}
             onAssumptionsChange={onAssumptionsChange}
+            cappedAtContractMax={result.productId === 'altersvorsorgedepot' && avdCappedAtContractMax}
+            contractCapAnnual={avdContractCapAnnual}
           />
         ))}
       </div>
@@ -112,10 +122,14 @@ function ProductCard({
   result,
   assumptions,
   onAssumptionsChange,
+  cappedAtContractMax,
+  contractCapAnnual,
 }: {
   result: ProductResult
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
+  cappedAtContractMax: boolean
+  contractCapAnnual?: number
 }) {
   const meta = getProductMeta(result.productId)
   const color = meta?.color ?? '#94a3b8'
@@ -124,7 +138,21 @@ function ProductCard({
   return (
     <div className="pec-card" style={{ borderTopColor: color }}>
       <div className="pec-card-header">
-        <span className="pec-product-name">{result.label}</span>
+        <span className="pec-product-name">
+          {result.label}
+          {cappedAtContractMax && (
+            <span
+              className="pec-cap-badge"
+              title={
+                contractCapAnnual
+                  ? `AltZertG-Vertragsobergrenze ${formatCurrency(contractCapAnnual, 0)}/Jahr (Eigenbeitrag + Zulagen) erreicht. Andere Produkte können den Mehrbetrag investieren.`
+                  : 'Beitragsobergrenze erreicht'
+              }
+            >
+              Cap erreicht
+            </span>
+          )}
+        </span>
         <div className="pec-metrics">
           {result.afterTaxLumpSum !== null && (
             <span className="pec-metric">
