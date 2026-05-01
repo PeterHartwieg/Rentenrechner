@@ -1,4 +1,8 @@
-export type ProductId = 'etf' | 'bav' | 'versicherung' | 'basisrente' | 'altersvorsorgedepot' | 'riester'
+// `ProductId` is the single source of truth for product identifiers and is derived
+// from the registered products' `metadata.id` literals. See `engine/productRegistry.ts`.
+// The import is type-only, so the cycle through engine -> products -> domain is
+// erased at runtime.
+export type { ProductId } from '../../engine/productRegistry'
 
 /**
  * Retirement-phase payout mode for bAV and private-insurance contracts. (#54)

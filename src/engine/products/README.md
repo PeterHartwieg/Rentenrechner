@@ -13,11 +13,12 @@ Each product has a self-contained module here. To touch a product, read only its
 
 ## Adding a product
 
-1. Create `<product>.ts` — export `metadata` and `simulate(ctx, scenario)`.
+1. Create `<product>.ts` — export `metadata` (with `id: '<id>' as const`) and `simulate(ctx, scenario)`.
 2. Create `<product>.validation.ts` — export `validate<Product>(assumptions)`.
 3. Create `<product>.test.ts` — use factories from `src/test/factories.ts`.
-4. Add one entry in `../productRegistry.ts` with `metadata`, `simulate`, `assumptionsKey`, and `validate`.
-5. Add a row to this table and to `docs/context/products.md`.
+4. Add the per-product domain types in `src/domain/products/<product>.ts` (assumptions + result), and add the new result variant to the `ProductResult` union and the new key to `ScenarioAssumptions` in `src/domain/results.ts`.
+5. Add one entry in `../productRegistry.ts` with `metadata`, `simulate`, `assumptionsKey`, and `validate`. `ProductId`, `PRODUCT_IDS`, `PRODUCT_MANIFEST`, schema validation, and the simulation loop pick up the new product automatically.
+6. Add a row to this table and to `docs/context/products.md`.
 
 ## Shared infrastructure
 

@@ -1,5 +1,4 @@
 import type {
-  ProductId,
   ProductResult,
   ReturnScenario,
   ScenarioAssumptions,
@@ -28,7 +27,7 @@ type SharedAssumptionsKey =
 export type ProductAssumptionsKey = Exclude<keyof ScenarioAssumptions, SharedAssumptionsKey>
 
 export interface ProductMetadata {
-  readonly id: ProductId
+  readonly id: string
   readonly label: string
   readonly shortLabel: string
   readonly color: string
@@ -104,6 +103,11 @@ export const PRODUCT_REGISTRY = [
 export type RegisteredProduct = typeof PRODUCT_REGISTRY[number]
 
 export type ProductManifestEntry = RegisteredProduct['metadata']
+
+// `ProductId` is derived from the literal ids declared in each product's `metadata`
+// (each module uses `id: '<name>' as const`). Adding a product no longer requires
+// editing a hardcoded union — register it here and the type follows.
+export type ProductId = ProductManifestEntry['id']
 
 export const PRODUCT_MANIFEST = PRODUCT_REGISTRY.map(entry => entry.metadata) as readonly ProductManifestEntry[]
 

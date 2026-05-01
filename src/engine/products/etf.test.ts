@@ -106,7 +106,7 @@ describe('ETF rules — #31 Basiszins and #7/#36 Vorabpauschale', () => {
       inflationRate: 0.02,
       scenario: { id: 'basis', label: 'Basis', annualReturn: 0.07 },
       fees: { wrapperAssetFee: 0, fundAssetFee: 0, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, acquisitionCostSpreadYears: 1, pensionPayoutFeePct: 0 },
-      etfVorabpauschale: { rules: de2026Rules, partialExemption: 0.3 },
+      policy: { vorabpauschale: { rules: de2026Rules, partialExemption: 0.3 } },
     })
     // Year 1: prorated contributions → VP > 0 (unlike old opening-balance-only formula)
     expect(result.rows[0].cumulativeVorabpauschale).toBeGreaterThan(0)
@@ -130,7 +130,7 @@ describe('ETF rules — #31 Basiszins and #7/#36 Vorabpauschale', () => {
       inflationRate: 0,
       scenario: { id: 'basis', label: 'Basis', annualReturn: 0.1 },
       fees: { wrapperAssetFee: 0, fundAssetFee: 0, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, acquisitionCostSpreadYears: 1, pensionPayoutFeePct: 0 },
-      etfVorabpauschale: { rules: de2026Rules, partialExemption: 0 },
+      policy: { vorabpauschale: { rules: de2026Rules, partialExemption: 0 } },
     })
     // Expected prorated acquisition base: c × sum(12+11+...+1)/12 = c × 78/12 = c × 6.5
     const expectedBase = c * 78 / 12 // = 6500

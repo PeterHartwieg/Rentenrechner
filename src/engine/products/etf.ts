@@ -32,8 +32,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): EtfP
     monthlyProductContribution: ctx.bavFunding.monthlyNetCost,
     monthlyEmployerContribution: 0,
     fees: { ...zeroFeeModel, fundAssetFee: ctx.assumptions.etf.annualAssetFee },
-    etfVorabpauschale: {
-      partialExemption: ctx.assumptions.etf.equityPartialExemption,
+    policy: {
+      vorabpauschale: { partialExemption: ctx.assumptions.etf.equityPartialExemption },
     },
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const partialExemption = ctx.assumptions.etf.equityPartialExemption

@@ -7,7 +7,7 @@ import type {
   ReturnScenario,
   ScenarioAssumptions,
 } from '../domain'
-import { projectAccumulation } from './accumulation'
+import { projectAccumulation, type AccumulationPolicy } from './accumulation'
 import { computeRIY } from './fees'
 
 export const zeroFeeModel: FeeModel = {
@@ -38,6 +38,17 @@ export interface ProductPayoutFields {
   lumpSumDeductions?: { incomeTax: number; kvPv: number }
 }
 
+/**
+ * Accumulation policy at the buildResult layer. Mirrors `AccumulationPolicy` but
+ * `vorabpauschale` omits `rules` — buildResult injects them from `params.rules`
+ * so callers don't repeat the year-locked rule object.
+ */
+export interface BuildProductPolicy {
+  yearlyReturn?: (yearIndex: number) => number
+  vorabpauschale?: { partialExemption: number }
+  initialCapital?: number
+}
+
 export interface BuildProductResultParams<
   TProductId extends ProductId,
   TPayoutFields extends ProductPayoutFields,
@@ -53,11 +64,7 @@ export interface BuildProductResultParams<
   monthlyEmployerContribution: number
   fees: FeeModel
   taxAndSvSavings?: number
-  initialCapital?: number
-  etfVorabpauschale?: {
-    partialExemption: number
-  }
-  yearlyReturnFn?: (yearIndex: number) => number
+  policy?: BuildProductPolicy
   buildPayout: (context: ProductPayoutContext) => TPayoutFields
 }
 
@@ -107,6 +114,15 @@ export function buildProductResult<
   const yearsToRetirement = params.profile.retirementAge - params.profile.age
   const monthsToRetirement = yearsToRetirement * 12
   const payoutYears = params.assumptions.retirementEndAge - params.profile.retirementAge
+  const accumulationPolicy: AccumulationPolicy | undefined = params.policy
+    ? {
+        yearlyReturn: params.policy.yearlyReturn,
+        vorabpauschale: params.policy.vorabpauschale
+          ? { rules: params.rules, partialExemption: params.policy.vorabpauschale.partialExemption }
+          : undefined,
+        initialCapital: params.policy.initialCapital,
+      }
+    : undefined
   const projection = projectAccumulation({
     productId: params.productId,
     currentAge: params.profile.age,
@@ -118,11 +134,7 @@ export function buildProductResult<
     inflationRate: params.assumptions.inflationRate,
     scenario: params.scenario,
     fees: params.fees,
-    etfVorabpauschale: params.etfVorabpauschale
-      ? { rules: params.rules, partialExemption: params.etfVorabpauschale.partialExemption }
-      : undefined,
-    yearlyReturnFn: params.yearlyReturnFn,
-    initialCapital: params.initialCapital,
+    policy: accumulationPolicy,
   })
   const totalAssetFee = params.fees.wrapperAssetFee + params.fees.fundAssetFee
   const payoutReturn = params.scenario.annualReturn - totalAssetFee

@@ -140,7 +140,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       inflationRate: assumptions.inflationRate,
       scenario,
       fees: paidUpFees,
-      initialCapital: capitalAtPaidUp,
+      policy: { initialCapital: capitalAtPaidUp },
     })
 
     const retirementCapital = phase2.capital

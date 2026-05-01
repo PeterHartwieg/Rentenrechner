@@ -4,7 +4,12 @@ import type React from 'react'
 import type { ProductId, ProductResult, ScenarioAssumptions } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { InfoTip } from '../../ui/InfoTip'
-import { getProductMeta } from '../../app/productPresentation'
+import {
+  getProductMeta,
+  STATUTORY_BAV_SUBSIDY_PCT,
+  bavTotalMatchPct,
+  applyBavTotalMatch,
+} from '../../app/productPresentation'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { defaultAssumptions } from '../../data/defaultScenario'
 
@@ -300,19 +305,20 @@ function BavFields({ assumptions, onAssumptionsChange }: FieldProps) {
           }}
         />
       </FieldWithProv>
-      <FieldWithProv modified={diff(bav.contractualMatchPercent, def.contractualMatchPercent)}>
+      <FieldWithProv modified={diff(bavTotalMatchPct(bav), bavTotalMatchPct(def))}>
         <NumberField
-          label="AG-Zuschuss laut Vertrag"
-          value={bav.contractualMatchPercent * 100}
-          min={0}
+          label="AG-Zuschuss (gesamt)"
+          value={bavTotalMatchPct(bav)}
+          min={STATUTORY_BAV_SUBSIDY_PCT}
           max={100}
           step={5}
           suffix="%"
           onCommit={(v) => {
-            const val = Math.min(100, Math.max(0, Number(v))) / 100
+            const totalPct = Math.min(100, Math.max(STATUTORY_BAV_SUBSIDY_PCT, Number(v)))
+            const split = applyBavTotalMatch(totalPct)
             onAssumptionsChange((cur) => ({
               ...cur,
-              bav: { ...cur.bav, contractualMatchPercent: val },
+              bav: { ...cur.bav, ...split },
             }))
           }}
         />

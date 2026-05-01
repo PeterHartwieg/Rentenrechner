@@ -38,12 +38,12 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual / 12
 
   // Blended return for current scenario based on allocation.
-  // For Standarddepot: glidepath overrides via yearlyReturnFn; otherwise use constant blend.
+  // For Standarddepot: glidepath overrides via policy.yearlyReturn; otherwise use constant blend.
   const blendedReturn =
     avd.riskAllocationPct * scenario.annualReturn +
     (1 - avd.riskAllocationPct) * avd.lowRiskAnnualReturn
 
-  const yearlyReturnFn =
+  const yearlyReturn =
     avd.subtype === 'standarddepot'
       ? (yearIndex: number) =>
           computeAvdGlidepathReturn(
@@ -56,7 +56,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
           )
       : undefined
 
-  // Standarddepot: yearlyReturnFn drives returns; pass scenario.annualReturn as the base
+  // Standarddepot: policy.yearlyReturn drives returns; pass scenario.annualReturn as the base
   // so projectAccumulation picks it up via the function. Non-Standarddepot: constant blend.
   const baseReturn = avd.subtype === 'standarddepot' ? scenario.annualReturn : blendedReturn
 
@@ -80,8 +80,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     monthlyProductContribution: avdMonthlyContribution,
     monthlyEmployerContribution: 0,
     fees: avd.fees,
-    yearlyReturnFn,
-    initialCapital: transferInitialCapital,
+    policy: {
+      yearlyReturn,
+      initialCapital: transferInitialCapital,
+    },
     taxAndSvSavings:
       (altersvorsorgedepotFunding.totalAllowanceAnnual +
         altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual) * yearsToRetirement,

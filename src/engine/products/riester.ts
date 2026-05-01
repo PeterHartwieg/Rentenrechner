@@ -42,9 +42,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     monthlyProductContribution: totalMonthlyContribution,
     monthlyEmployerContribution: 0,
     fees: assumptions.riester.fees,
-    initialCapital: assumptions.riester.existingCapital > 0
-      ? assumptions.riester.existingCapital
-      : undefined,
+    policy:
+      assumptions.riester.existingCapital > 0
+        ? { initialCapital: assumptions.riester.existingCapital }
+        : undefined,
     taxAndSvSavings:
       (riesterFunding.totalAllowanceAnnual + riesterFunding.guenstigerpruefungBenefitAnnual) *
       ctx.yearsToRetirement,
