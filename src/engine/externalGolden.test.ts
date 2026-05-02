@@ -169,17 +169,19 @@ describe('external golden: ZfA Riester calculator captures', () => {
       childBirthYears: [...fixture.profile.childBirthYears],
     }
     const salary = calculateSalaryResult(profile, de2026Rules)
+    // Drive the engine off the oracle's unrounded yearly amount; otherwise
+    // 12 × (rounded-to-2-decimals monthly) drifts by up to ~0.04 EUR.
     const actual = calculateRiesterFunding(
       de2026Rules,
       salary,
       {
         ...defaultRiesterAssumptions,
-        monthlyOwnContribution: fixture.expected.copaymentMonthly,
+        monthlyOwnContribution: fixture.expected.copaymentYearly / 12,
         eligibility: {
-          ...defaultRiesterAssumptions.eligibility,
-          ageAtContractStart: de2026Rules.year - fixture.calculatorInput.geburtsjahr,
-          careerStarterBonusUsed: true,
-          directlyEligible: true,
+          directlyEligible: fixture.eligibility.directlyEligible,
+          indirectSpouseEligible: fixture.eligibility.indirectSpouseEligible,
+          ageAtContractStart: fixture.eligibility.ageAtContractStart,
+          careerStarterBonusUsed: fixture.eligibility.careerStarterBonusUsed,
         },
       },
       profile,

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   afterTaxRiesterLumpSum,
+  calculateRiesterFunding,
   computeRiesterChildAllowance,
   netRiesterPayout,
 } from '../riester'
+import { calculateSalaryResult } from '../salary'
 import { de2026Rules } from '../../rules/de2026'
 import { defaultAssumptions, defaultProfile, defaultRiesterAssumptions } from '../../data/defaultScenario'
 import { simulateRetirementComparison } from '../simulate'
@@ -235,6 +237,127 @@ describe('calculateRiesterFunding — Sockelbetrag minimum contribution', () => 
     expect(rf.prorationFactor).toBe(0)
     expect(rf.grundzulageAnnual).toBe(0)
     expect(rf.totalAllowanceAnnual).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Mittelbare Zulageberechtigung (§79 Satz 2 EStG)
+// ---------------------------------------------------------------------------
+
+describe('calculateRiesterFunding — mittelbare Zulageberechtigung (§79 Satz 2 EStG)', () => {
+  // Mittelbar saver: zero salary (housewife / spouse outside the GRV).
+  // Their own contract just needs to pay the Sockelbetrag (60 EUR/year) to
+  // unlock the full Grundzulage (175 EUR). No Kinderzulage, no BEB.
+  const lowIncomeProfile = { ...defaultProfile, grossSalaryYear: 0, childBirthYears: [] }
+  const mittelbar = {
+    ...defaultRiesterAssumptions,
+    eligibility: {
+      directlyEligible: false,
+      indirectSpouseEligible: true,
+      ageAtContractStart: 35,
+      careerStarterBonusUsed: true,
+    },
+  }
+
+  it('grants the full Grundzulage when own contribution ≥ Sockelbetrag (60 EUR)', () => {
+    const salary = calculateSalaryResult(lowIncomeProfile, rules)
+    const result = calculateRiesterFunding(
+      rules,
+      salary,
+      { ...mittelbar, monthlyOwnContribution: 5 }, // 60 EUR/year, exactly the Sockelbetrag
+      lowIncomeProfile,
+    )
+    expect(result.grundzulageAnnual).toBe(175)
+    expect(result.minEigenbeitragAnnual).toBe(60)
+    expect(result.meetsMinContribution).toBe(true)
+    expect(result.prorationFactor).toBe(1)
+  })
+
+  it('zero allowances when contribution below Sockelbetrag', () => {
+    const salary = calculateSalaryResult(lowIncomeProfile, rules)
+    const result = calculateRiesterFunding(
+      rules,
+      salary,
+      { ...mittelbar, monthlyOwnContribution: 4 }, // 48 EUR/year, below 60 EUR
+      lowIncomeProfile,
+    )
+    expect(result.grundzulageAnnual).toBe(0)
+    expect(result.totalAllowanceAnnual).toBe(0)
+    expect(result.prorationFactor).toBe(0)
+  })
+
+  it('Mindesteigenbeitrag is the Sockelbetrag (60 EUR) regardless of (zero) salary', () => {
+    const salary = calculateSalaryResult(lowIncomeProfile, rules)
+    const result = calculateRiesterFunding(rules, salary, mittelbar, lowIncomeProfile)
+    expect(result.minEigenbeitragAnnual).toBe(60)
+  })
+
+  it('Kinderzulage when the indirect spouse has children attributed (§85 Abs. 2 Satz 2)', () => {
+    // The default attribution (§85 Abs. 2 Satz 1) is to the mother, but Satz 2 allows
+    // a joint-application transfer to either spouse. The ZfA Riester-Rechner treats
+    // children entered on this contract as attributed to it; we mirror that behavior:
+    // mittelbar savers receive Kinderzulage for children present in their profile.
+    const profileWithChildren = {
+      ...lowIncomeProfile,
+      childBirthYears: [2018, 2020],
+    }
+    const salary = calculateSalaryResult(profileWithChildren, rules)
+    const result = calculateRiesterFunding(rules, salary, mittelbar, profileWithChildren)
+    // Two post-2007 children → 2 × 300 = 600 EUR.
+    expect(result.childAllowanceAnnual).toBe(600)
+    expect(result.grundzulageAnnual).toBe(175)
+  })
+
+  it('no Berufseinsteiger-Bonus for mittelbar savers (§84 Satz 2 EStG)', () => {
+    // Even with ageAtContractStart=22 and !careerStarterBonusUsed.
+    const youngMittelbar = {
+      ...mittelbar,
+      eligibility: {
+        ...mittelbar.eligibility,
+        ageAtContractStart: 22,
+        careerStarterBonusUsed: false,
+      },
+    }
+    const salary = calculateSalaryResult(lowIncomeProfile, rules)
+    const result = calculateRiesterFunding(rules, salary, youngMittelbar, lowIncomeProfile)
+    expect(result.careerStarterBonusAnnual).toBe(0)
+  })
+
+  it('directlyEligible takes precedence over indirectSpouseEligible', () => {
+    // If both flags are true (impossible in real life, possible from old state),
+    // the direct branch applies — full 4% Mindesteigenbeitrag, child + BEB allowed.
+    const both = {
+      ...defaultRiesterAssumptions,
+      monthlyOwnContribution: 250,
+      eligibility: {
+        directlyEligible: true,
+        indirectSpouseEligible: true,
+        ageAtContractStart: 30,
+        careerStarterBonusUsed: true,
+      },
+    }
+    const profile = { ...defaultProfile, grossSalaryYear: 75_000 }
+    const salary = calculateSalaryResult(profile, rules)
+    const result = calculateRiesterFunding(rules, salary, both, profile)
+    // 4% × 75,000 = 3,000 capped at 2,100; minus full allowance 175 = 1,925.
+    expect(result.minEigenbeitragAnnual).toBeCloseTo(1_925, 2)
+  })
+
+  it('undefined indirectSpouseEligible behaves like false (backwards compat)', () => {
+    // Existing stored state without the new field must not silently grant Grundzulage.
+    const noFlag = {
+      ...defaultRiesterAssumptions,
+      monthlyOwnContribution: 5,
+      eligibility: {
+        directlyEligible: false,
+        ageAtContractStart: 35,
+        careerStarterBonusUsed: true,
+      },
+    }
+    const salary = calculateSalaryResult(lowIncomeProfile, rules)
+    const result = calculateRiesterFunding(rules, salary, noFlag, lowIncomeProfile)
+    expect(result.grundzulageAnnual).toBe(0)
+    expect(result.totalAllowanceAnnual).toBe(0)
   })
 })
 

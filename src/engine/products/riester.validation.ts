@@ -10,6 +10,9 @@ export function validateRiester(r: RiesterAssumptions): boolean {
   const e = r.eligibility
   if (!e || typeof e !== 'object') return false
   if (typeof e.directlyEligible !== 'boolean') return false
+  // indirectSpouseEligible is optional for backwards compatibility; reject only
+  // when present and of the wrong type.
+  if (e.indirectSpouseEligible !== undefined && typeof e.indirectSpouseEligible !== 'boolean') return false
   if (!intInRange(e.ageAtContractStart, 0, 120)) return false
   if (typeof e.careerStarterBonusUsed !== 'boolean') return false
   // payout

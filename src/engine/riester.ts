@@ -80,6 +80,17 @@ export function computeRiesterChildAllowance(
  *
  * Returns the allowances the saver would receive if the Mindesteigenbeitrag is met.
  * The caller applies proration when the actual contribution falls short.
+ *
+ * Eligibility branches:
+ *  - directlyEligible (§79 Satz 1 EStG): Grundzulage + Kinderzulage + Berufseinsteiger-Bonus.
+ *  - indirectSpouseEligible only (§79 Satz 2 EStG): Grundzulage. Kinderzulage is granted
+ *    when `profile.childBirthYears` is populated, on the assumption that attribution
+ *    has been transferred to this contract via §85 Abs. 2 Satz 2 EStG (the default
+ *    attribution under Satz 1 is to the mother; Satz 2 allows transfer by joint
+ *    application). The ZfA Riester-Rechner makes the same assumption: kids entered on
+ *    the indirect spouse's input form are paid out to that contract. No Berufseinsteiger-
+ *    Bonus (§84 Satz 2 limits it to "unmittelbar Zulageberechtigte").
+ *  - Neither: zero.
  */
 function computeFullRiesterAllowances(
   riester: RiesterAssumptions,
@@ -93,10 +104,12 @@ function computeFullRiesterAllowances(
   total: number
 } {
   const r = rules.riester
+  const e = riester.eligibility
+  const indirectOnly = !e.directlyEligible && e.indirectSpouseEligible === true
 
-  const grundzulage = riester.eligibility.directlyEligible ? r.grundzulage : 0
+  const grundzulage = e.directlyEligible || indirectOnly ? r.grundzulage : 0
 
-  const childAllowance = riester.eligibility.directlyEligible
+  const childAllowance = e.directlyEligible || indirectOnly
     ? computeRiesterChildAllowance(
         profile.childBirthYears.length,
         profile.childBirthYears,
@@ -105,10 +118,10 @@ function computeFullRiesterAllowances(
     : 0
 
   const careerStarter =
-    riester.eligibility.directlyEligible &&
+    e.directlyEligible &&
     isFirstContributionYear &&
-    !riester.eligibility.careerStarterBonusUsed &&
-    riester.eligibility.ageAtContractStart <= r.careerStarterMaxAge
+    !e.careerStarterBonusUsed &&
+    e.ageAtContractStart <= r.careerStarterMaxAge
       ? r.careerStarterBonus
       : 0
 
@@ -156,21 +169,32 @@ export function calculateRiesterFunding(
 
   // -------------------------------------------------------------------------
   // 2. §86 EStG Mindesteigenbeitrag.
-  //    Relevant income = prior-year RV-Pflichtentgelt ≈ min(grossSalary, GRV BBG).
-  //    minRequired = max(Sockelbetrag, min(4% * relevantIncome, 2100) - allowances).
+  //    Direct (§79 Satz 1):
+  //      Relevant income = prior-year RV-Pflichtentgelt ≈ min(grossSalary, GRV BBG).
+  //      minRequired = max(Sockelbetrag, min(4% * relevantIncome, 2100) - allowances).
+  //    Mittelbar (§79 Satz 2): no income-based 4% requirement — the indirect spouse
+  //      only needs to pay the Sockelbetrag (60 EUR/year) on their own contract for
+  //      the Grundzulage to flow in full. (The directly eligible spouse's
+  //      Mindesteigenbeitrag is the caller's responsibility — see eligibility doc.)
   // -------------------------------------------------------------------------
-  const relevantIncome = Math.min(
-    salaryResult.annualGross,
-    rules.socialSecurity.pensionCapYear,
-  )
-  const requiredInclAllowances = Math.min(
-    r.minEigenbeitragPct * relevantIncome,
-    r.annualCapInclAllowances,
-  )
-  const minRequired = Math.max(
-    r.sockelbetrag,
-    Math.max(0, requiredInclAllowances - full.total),
-  )
+  const indirectOnly = !riester.eligibility.directlyEligible && riester.eligibility.indirectSpouseEligible === true
+  let minRequired: number
+  if (indirectOnly) {
+    minRequired = r.sockelbetrag
+  } else {
+    const relevantIncome = Math.min(
+      salaryResult.annualGross,
+      rules.socialSecurity.pensionCapYear,
+    )
+    const requiredInclAllowances = Math.min(
+      r.minEigenbeitragPct * relevantIncome,
+      r.annualCapInclAllowances,
+    )
+    minRequired = Math.max(
+      r.sockelbetrag,
+      Math.max(0, requiredInclAllowances - full.total),
+    )
+  }
 
   // -------------------------------------------------------------------------
   // 3. Proration factor: if own contribution < minRequired, allowances are
@@ -202,6 +226,13 @@ export function calculateRiesterFunding(
   // 5. Günstigerprüfung: compare income-tax saving from §10a deduction against
   //    the actual allowance value. Only the excess above the allowances is an
   //    additional cash refund to the saver (the allowances themselves fund the contract).
+  //
+  //    Mittelbar limitation: §10a Abs. 1 Satz 1 EStG grants the deduction to the
+  //    directly eligible spouse on the joint return. We use only the user's solo
+  //    zvE here, so for a mittelbar saver with zero/low salary the §10a saving
+  //    will read as 0 and `guenstigerpruefungBenefitAnnual` will under-report the
+  //    real household benefit. The allowance leg (the part the ZfA Riester-Rechner
+  //    validates) is correct; full joint Günstigerprüfung is a separate workstream.
   // -------------------------------------------------------------------------
   const zvEWithout = salaryResult.taxableIncome
   const zvEWith = Math.max(0, zvEWithout - specialExpenseDeductibleAnnual)

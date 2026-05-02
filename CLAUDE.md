@@ -59,7 +59,7 @@ For a task, read the matching context capsule first — it is faster than readin
 | `src/engine/grv.ts` | `projectStatutoryPension` — EP-based GRV estimate or manual override; §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil tax; KV/PV via §249a SGB V half-rate for KVdR members. |
 | `src/engine/basisrente.ts` | `calculateBasisrenteFunding` (§10 Abs. 3 EStG Schicht-1 cap, marginal tax saving) and `netBasisrentePayout` (§22 Besteuerungsanteil + freiwillig §240 KV/PV). |
 | `src/engine/altersvorsorgedepot.ts` | AVD accumulation, allowance engine (Grundzulage, Kinderzulage, Günstigerprüfung), Standarddepot glidepath, §22 Nr. 5 EStG payout. |
-| `src/engine/riester.ts` | §84–§86 EStG allowances, Mindesteigenbeitrag, §10a Günstigerprüfung, §22 Nr. 5 EStG payout, §93 Abs. 2 partial lump sum. |
+| `src/engine/riester.ts` | §79–§86 EStG allowances (direct and mittelbar), Mindesteigenbeitrag, §10a Günstigerprüfung, §22 Nr. 5 EStG payout, §93 Abs. 2 partial lump sum. |
 
 ### Engine — simulation orchestration
 

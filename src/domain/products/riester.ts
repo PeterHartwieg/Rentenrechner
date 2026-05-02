@@ -6,11 +6,27 @@ import type { PayoutMode } from './common'
 // ---------------------------------------------------------------------------
 
 /**
- * Eligibility inputs for Riester allowance calculation (§84–§86 EStG old law).
+ * Eligibility inputs for Riester allowance calculation (§79–§86 EStG old law).
  */
 export interface RiesterEligibility {
   /** True when directly eligible (GRV member, civil servant, self-employed in GRV, etc.). */
   directlyEligible: boolean
+  /**
+   * §79 Satz 2 EStG mittelbare Zulageberechtigung. True when the saver is the
+   * spouse of a directly eligible saver and not directly eligible themselves
+   * (typical case: spouse outside the GRV — housewife, self-employed without
+   * GRV membership, etc.). Requires:
+   *   1. Own Riester contract with at least the Sockelbetrag (60 EUR/year).
+   *   2. The directly eligible spouse meets THEIR §86 Mindesteigenbeitrag in full
+   *      (caller's responsibility — not validated here).
+   *   3. Spouses are jointly assessed (Zusammenveranlagung).
+   * Yields the Grundzulage (175 EUR) only — no Kinderzulage (children flow to the
+   * directly eligible spouse by default per §85 Abs. 2 EStG) and no Berufseinsteiger-
+   * Bonus (§84 Satz 2 limits the bonus to "unmittelbar Zulageberechtigte").
+   * Ignored when `directlyEligible = true`.
+   * Optional for backwards compatibility with existing stored state.
+   */
+  indirectSpouseEligible?: boolean
   /** Age at the start of the first contribution year (for career-starter bonus check). */
   ageAtContractStart: number
   /** True when the one-time 200 EUR Berufseinsteiger-Bonus (§84 EStG) has already been paid. */

@@ -72,25 +72,46 @@ export function RiesterInputs({
         />
       </div>
 
-      <label className="field field-inline">
-        <input
-          type="checkbox"
-          checked={assumptions.riester.eligibility.directlyEligible}
-          onChange={(event) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              riester: {
-                ...current.riester,
-                eligibility: {
-                  ...current.riester.eligibility,
-                  directlyEligible: event.target.checked,
+      <div className="field-grid">
+        <label className="field field-inline">
+          <input
+            type="checkbox"
+            checked={assumptions.riester.eligibility.directlyEligible}
+            onChange={(event) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                riester: {
+                  ...current.riester,
+                  eligibility: {
+                    ...current.riester.eligibility,
+                    directlyEligible: event.target.checked,
+                  },
                 },
-              },
-            }))
-          }
-        />
-        <span>Direkt förderberechtigt (Pflichtversichert)</span>
-      </label>
+              }))
+            }
+          />
+          <span>Direkt förderberechtigt (Pflichtversichert)</span>
+        </label>
+        <label className="field field-inline">
+          <input
+            type="checkbox"
+            checked={assumptions.riester.eligibility.indirectSpouseEligible ?? false}
+            onChange={(event) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                riester: {
+                  ...current.riester,
+                  eligibility: {
+                    ...current.riester.eligibility,
+                    indirectSpouseEligible: event.target.checked,
+                  },
+                },
+              }))
+            }
+          />
+          <span>Mittelbar berechtigt (über Ehegatte)</span>
+        </label>
+      </div>
 
       {riesterFunding.annualOwnContribution > 0 ? (
         <p className="field-hint">

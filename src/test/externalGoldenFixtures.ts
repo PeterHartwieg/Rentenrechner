@@ -341,6 +341,25 @@ export const riester2026GoldenCases = [
   },
 ] as const
 
+/**
+ * Fixtures for the public DRV/ZfA Riester-Rechner.
+ *
+ * Endpoint: GET https://riester.deutsche-rentenversicherung.de/SiteGlobals/Forms/Riesterrechner/Riesterrechner_Form
+ * Result fields are exposed via `data-qa="copaymentMonthly|copaymentYearly|
+ * fundamentalBonus|childrenBonus|investmentAmount"` in the response HTML.
+ *
+ * `eligibility` describes how the calculator's familienstand × sozialversicherungsStatus
+ * inputs map to the engine's `RiesterEligibility` flags:
+ *   - `directlyEligible`     → user is RENTENVERSICHERUNGSPFLICHTIG (or equivalent)
+ *   - `indirectSpouseEligible` → user is "WEITERE" but partner is directly eligible (mittelbar)
+ * `careerStarterBonusUsed = false` means the BEB is paid in the test year (the
+ * calculator silently includes the 200 EUR BEB into `investmentAmount` when the
+ * birth year qualifies, without exposing a separate data-qa).
+ *
+ * For mittelbare savers the calculator emits `childrenBonus` when children are
+ * entered on this contract — the engine matches that behavior, treating the
+ * attribution as transferred per §85 Abs. 2 Satz 2 EStG.
+ */
 export const zfaRiesterCalculatorGoldenCases = [
   {
     id: 'zfa-single-no-children-40k',
@@ -356,6 +375,12 @@ export const zfaRiesterCalculatorGoldenCases = [
     profile: {
       grossSalaryYear: 40_000,
       childBirthYears: [],
+    },
+    eligibility: {
+      directlyEligible: true,
+      indirectSpouseEligible: false,
+      careerStarterBonusUsed: true,
+      ageAtContractStart: 40,
     },
     expected: {
       copaymentMonthly: 118.75,
@@ -381,12 +406,186 @@ export const zfaRiesterCalculatorGoldenCases = [
       grossSalaryYear: 40_000,
       childBirthYears: [2012, 2015],
     },
+    eligibility: {
+      directlyEligible: true,
+      indirectSpouseEligible: false,
+      careerStarterBonusUsed: true,
+      ageAtContractStart: 40,
+    },
     expected: {
       copaymentMonthly: 68.75,
       copaymentYearly: 825,
       fundamentalBonus: 175,
       childrenBonus: 600,
       investmentAmount: 1_600,
+    },
+    toleranceEUR: 0.01,
+  },
+  {
+    // Captured 2026-05-02 from the live ZfA endpoint.
+    id: 'zfa-married-direct-no-children-50k',
+    sourceId: 'drv-zfa-riester-rechner',
+    calculatorInput: {
+      geburtsjahr: 1980,
+      kinderVor2008: 0,
+      kinderNach2008: 0,
+      familienstand: 'VERHEIRATET',
+      sozialversicherungsStatus: 'RENTENVERSICHERUNGSPFLICHTIG',
+      sozialversicherungsStatusPartner: 'RENTENVERSICHERUNGSPFLICHTIG',
+      bruttoeinkommen: 50_000,
+    },
+    profile: {
+      grossSalaryYear: 50_000,
+      childBirthYears: [],
+    },
+    eligibility: {
+      directlyEligible: true,
+      indirectSpouseEligible: false,
+      careerStarterBonusUsed: true,
+      ageAtContractStart: 46,
+    },
+    expected: {
+      copaymentMonthly: 152.08,
+      copaymentYearly: 1_825,
+      fundamentalBonus: 175,
+      childrenBonus: 0,
+      investmentAmount: 2_000,
+    },
+    toleranceEUR: 0.01,
+  },
+  {
+    // Mittelbar Zulageberechtigung (§79 Satz 2 EStG): user is "WEITERE" with no
+    // own GRV income; partner is RV-pflichtig. Sockelbetrag 60 EUR/Jahr unlocks
+    // full Grundzulage 175 EUR.
+    id: 'zfa-married-indirect-no-income',
+    sourceId: 'drv-zfa-riester-rechner',
+    calculatorInput: {
+      geburtsjahr: 1985,
+      kinderVor2008: 0,
+      kinderNach2008: 0,
+      familienstand: 'VERHEIRATET',
+      sozialversicherungsStatus: 'WEITERE',
+      sozialversicherungsStatusPartner: 'RENTENVERSICHERUNGSPFLICHTIG',
+      bruttoeinkommen: 0,
+    },
+    profile: {
+      grossSalaryYear: 0,
+      childBirthYears: [],
+    },
+    eligibility: {
+      directlyEligible: false,
+      indirectSpouseEligible: true,
+      careerStarterBonusUsed: true,
+      ageAtContractStart: 41,
+    },
+    expected: {
+      copaymentMonthly: 5,
+      copaymentYearly: 60,
+      fundamentalBonus: 175,
+      childrenBonus: 0,
+      investmentAmount: 235,
+    },
+    toleranceEUR: 0.01,
+  },
+  {
+    // Mittelbar with child attributed to this contract (§85 Abs. 2 Satz 2): the
+    // ZfA calc grants 300 EUR Kinderzulage when kids are entered here. Engine
+    // mirrors the attribution-transferred assumption.
+    id: 'zfa-married-indirect-one-child-2010',
+    sourceId: 'drv-zfa-riester-rechner',
+    calculatorInput: {
+      geburtsjahr: 1985,
+      kinderVor2008: 0,
+      kinderNach2008: 1,
+      familienstand: 'VERHEIRATET',
+      sozialversicherungsStatus: 'WEITERE',
+      sozialversicherungsStatusPartner: 'RENTENVERSICHERUNGSPFLICHTIG',
+      bruttoeinkommen: 0,
+    },
+    profile: {
+      grossSalaryYear: 0,
+      childBirthYears: [2010],
+    },
+    eligibility: {
+      directlyEligible: false,
+      indirectSpouseEligible: true,
+      careerStarterBonusUsed: true,
+      ageAtContractStart: 41,
+    },
+    expected: {
+      copaymentMonthly: 5,
+      copaymentYearly: 60,
+      fundamentalBonus: 175,
+      childrenBonus: 300,
+      investmentAmount: 535,
+    },
+    toleranceEUR: 0.01,
+  },
+  {
+    // Pre-2008 + post-2007 child mix: 185 + 300 = 485 EUR Kinderzulage total.
+    id: 'zfa-single-pre2008-and-post2007-child-40k',
+    sourceId: 'drv-zfa-riester-rechner',
+    calculatorInput: {
+      geburtsjahr: 1980,
+      kinderVor2008: 1,
+      kinderNach2008: 1,
+      familienstand: 'LEDIG',
+      sozialversicherungsStatus: 'RENTENVERSICHERUNGSPFLICHTIG',
+      bruttoeinkommen: 40_000,
+    },
+    profile: {
+      grossSalaryYear: 40_000,
+      // One pre-2008 child (185 EUR) + one post-2007 child (300 EUR) = 485 EUR.
+      childBirthYears: [2005, 2010],
+    },
+    eligibility: {
+      directlyEligible: true,
+      indirectSpouseEligible: false,
+      careerStarterBonusUsed: true,
+      ageAtContractStart: 46,
+    },
+    expected: {
+      copaymentMonthly: 78.33,
+      copaymentYearly: 940,
+      fundamentalBonus: 175,
+      childrenBonus: 485,
+      investmentAmount: 1_600,
+    },
+    toleranceEUR: 0.01,
+  },
+  {
+    // Career starter (§84 Satz 2 EStG): age ≤ 24 at first contribution year.
+    // Calculator silently bundles the 200 EUR BEB into investmentAmount without
+    // exposing a separate data-qa. Engine returns it via careerStarterBonusAnnual.
+    id: 'zfa-career-starter-age-22-30k',
+    sourceId: 'drv-zfa-riester-rechner',
+    calculatorInput: {
+      geburtsjahr: 2004,
+      kinderVor2008: 0,
+      kinderNach2008: 0,
+      familienstand: 'LEDIG',
+      sozialversicherungsStatus: 'RENTENVERSICHERUNGSPFLICHTIG',
+      bruttoeinkommen: 30_000,
+    },
+    profile: {
+      grossSalaryYear: 30_000,
+      childBirthYears: [],
+    },
+    eligibility: {
+      directlyEligible: true,
+      indirectSpouseEligible: false,
+      // Bonus paid in the test year → not yet used.
+      careerStarterBonusUsed: false,
+      ageAtContractStart: 22,
+    },
+    expected: {
+      copaymentMonthly: 68.75,
+      copaymentYearly: 825,
+      fundamentalBonus: 175,
+      // 200 EUR BEB (oracle bundles into investmentAmount; engine returns via the
+      // sum childAllowanceAnnual + careerStarterBonusAnnual = 0 + 200).
+      childrenBonus: 200,
+      investmentAmount: 1_200,
     },
     toleranceEUR: 0.01,
   },
