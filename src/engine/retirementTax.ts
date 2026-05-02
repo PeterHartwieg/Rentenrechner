@@ -39,9 +39,19 @@
  *   pipeline twice — for "other" alone and for "other + lumpSum/5").
  *
  * FILING STATUS
- *   Only 'single' (Einzelveranlagung) is implemented. 'married' throws an error to
- *   prevent silent wrong values. Ehegattensplitting (#future) can be added by doubling
- *   the allowances and applying the tariff to half the joint income.
+ *   - 'single' (Einzelveranlagung): standard §32a Abs. 1 EStG Grundtarif on the zvE.
+ *   - 'married' (Zusammenveranlagung, §32a Abs. 5 EStG Splittingtarif):
+ *       1. zvE is treated as the JOINT taxable income of both spouses (caller-aggregated).
+ *       2. Einkommensteuer = 2 × Grundtarif(zvE / 2).
+ *       3. §10c Sonderausgaben-Pauschbetrag uses the doubled married value (72 EUR).
+ *       4. Soli uses the doubled Freigrenze (rules.incomeTax.solidarityFreeTaxMarried).
+ *     Werbungskosten-Pauschbeträge (§9a Nr. 1b/Nr. 3) are statutorily granted per
+ *     spouse who actually receives that source. Because the components describe the
+ *     joint household as one stream, the pipeline applies each Pauschbetrag at most
+ *     once. This is exact for one-earner couples (where only one spouse receives
+ *     Versorgungsbezüge / GRV) and underestimates by up to 102 EUR per shared source
+ *     for both-earner couples. Callers that need full per-spouse breakdown should
+ *     pre-deduct the second Pauschbetrag from the relevant gross component.
  *
  * WERBUNGSKOSTEN CAPS
  *   Each Pauschbetrag is capped at the corresponding gross income component,
@@ -81,15 +91,6 @@ export function calculateRetirementTax(
   rules: GermanRules,
   filingStatus: 'single' | 'married' = 'single',
 ): RetirementTaxBreakdown {
-  if (filingStatus === 'married') {
-    // Ehegattensplitting requires joint-assessment logic (double allowances, half-income tariff).
-    // Not yet implemented. Use 'single' until #future Splittingtabelle is added.
-    throw new Error(
-      'calculateRetirementTax: filingStatus "married" is not yet implemented. ' +
-      'Use "single" until Ehegattensplitting support is added.',
-    )
-  }
-
   const {
     statutoryPensionAnnual,
     bavPensionAnnual,
@@ -187,9 +188,14 @@ export function calculateRetirementTax(
 
   // -------------------------------------------------------------------------
   // 6. Income tax and Soli on zvE
+  //    'married' applies the §32a Abs. 5 EStG Splittingtarif: 2 × Grundtarif(zvE / 2).
+  //    Soli uses the doubled Freigrenze for joint assessment.
   // -------------------------------------------------------------------------
-  const einkommensteuer = calculateIncomeTax2026(zuVersteuerndesEinkommen, rules)
-  const solidaritaetszuschlag = calculateSolidarityTax(einkommensteuer, rules)
+  const einkommensteuer =
+    filingStatus === 'married'
+      ? 2 * calculateIncomeTax2026(zuVersteuerndesEinkommen / 2, rules)
+      : calculateIncomeTax2026(zuVersteuerndesEinkommen, rules)
+  const solidaritaetszuschlag = calculateSolidarityTax(einkommensteuer, rules, filingStatus)
 
   // -------------------------------------------------------------------------
   // 7. Totals

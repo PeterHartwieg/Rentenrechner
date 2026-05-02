@@ -177,7 +177,12 @@ export const de2026Rules: GermanRules = {
     firstProgressionEnd: 17_799,
     secondProgressionEnd: 69_878,
     topTaxStart: 277_826,
+    // §3 Abs. 3 SolzG: Soli-Freigrenze 2026.
+    // Einzelveranlagung 20,350 EUR; Zusammenveranlagung 40,700 EUR (= 2 × Einzelveranlagung).
+    // Source: SolzG 1995 i.d.F. d. JStG 2024 (Anhebung 1.1.2026).
+    //   https://www.gesetze-im-internet.de/solzg_1995/__3.html
     solidarityFreeTax: 20_350,
+    solidarityFreeTaxMarried: 40_700,
   },
   socialSecurity: {
     pensionCapYear: 101_400,

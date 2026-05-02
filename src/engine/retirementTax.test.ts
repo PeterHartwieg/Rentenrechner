@@ -463,24 +463,154 @@ describe('calculateRetirementTax — realistic combined scenario (retirementYear
 })
 
 // ---------------------------------------------------------------------------
-// 'married' filing status throws (not yet implemented)
+// 'married' filing status — Ehegattensplitting (§32a Abs. 5 EStG)
 // ---------------------------------------------------------------------------
-describe('calculateRetirementTax — married filing status', () => {
-  it('throws when filingStatus=married', () => {
-    expect(() =>
-      calculateRetirementTax(
-        {
-          statutoryPensionAnnual: 20_000,
-          bavPensionAnnual: 0,
-          bavIsLumpSum: false,
-          privateInsuranceTaxableAnnual: 0,
-          privateInsuranceTaxMode: 'abgeltungsteuer',
-          otherTaxableAnnual: 0,
-          retirementYear: 2026,
-        },
-        de2026Rules,
-        'married',
-      ),
-    ).toThrow()
+describe('calculateRetirementTax — married Splittingtarif', () => {
+  /**
+   * Zero-tax floor: joint zvE below 2 × Grundfreibetrag → ESt = 0.
+   *
+   * Inputs (retirementYear 2026):
+   *   statutoryPensionAnnual = 24,000 → taxable 24,000 × 0.84 = 20,160
+   *   werbungskostenRenten   = min(102, 20,160) = 102
+   *   sonderausgaben (married) = 72
+   *   zvE = 20,160 − 102 − 72 = 19,986
+   *
+   * Splittingtarif: ESt = 2 × Grundtarif(9,993).
+   *   9,993 < 12,348 (Grundfreibetrag) → tariff = 0 → ESt = 0.
+   * Soli: 0.
+   */
+  it('low-income one-earner couple → ESt = 0 via Splittingtarif', () => {
+    const bd = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 24_000,
+        bavPensionAnnual: 0,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: 'abgeltungsteuer',
+        otherTaxableAnnual: 0,
+        retirementYear: 2026,
+      },
+      de2026Rules,
+      'married',
+    )
+    expect(bd.sonderausgaben).toBe(72)
+    expect(bd.zuVersteuerndesEinkommen).toBe(19_986)
+    expect(bd.einkommensteuer).toBe(0)
+    expect(bd.solidaritaetszuschlag).toBe(0)
+  })
+
+  /**
+   * Hand-computed mid-range case demonstrating the Splittingvorteil.
+   *
+   * Inputs (retirementYear 2026):
+   *   statutoryPensionAnnual = 30,000 → taxable 30,000 × 0.84 = 25,200
+   *   bavPensionAnnual       = 30,000
+   *     Versorgungsfreibetrag(2026) = 12.8 % / 960 / 288
+   *     rawFreibetrag = 30,000 × 0.128 = 3,840 → capped 960; +288 zuschlag = 1,248
+   *     bavPensionTaxable = 30,000 − 1,248 = 28,752
+   *   Pauschbeträge: 102 + 102 + 72 = 276
+   *   zvE = 25,200 + 28,752 − 276 = 53,676
+   *
+   * Splittingtarif: ESt = 2 × Grundtarif(26,838).
+   *   26,838 in 2nd progression: z = (26,838 − 17,799) / 10,000 = 0.9039
+   *   tariff = floor((173.1 × 0.9039 + 2,397) × 0.9039 + 1,034.87)
+   *          = floor((156.4651 + 2,397) × 0.9039 + 1,034.87)
+   *          = floor(2,553.4651 × 0.9039 + 1,034.87)
+   *          = floor(2,308.0771 + 1,034.87)
+   *          = floor(3,342.9471) = 3,342
+   *   ESt = 2 × 3,342 = 6,684.
+   *
+   * Soli: 6,684 < 40,700 (married Freigrenze) → 0.
+   */
+  it('mid-range one-earner couple: zvE 53,676 → ESt = 6,684', () => {
+    const bd = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 30_000,
+        bavPensionAnnual: 30_000,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: 'abgeltungsteuer',
+        otherTaxableAnnual: 0,
+        retirementYear: 2026,
+      },
+      de2026Rules,
+      'married',
+    )
+    expect(bd.zuVersteuerndesEinkommen).toBe(53_676)
+    expect(bd.einkommensteuer).toBe(6_684)
+    expect(bd.solidaritaetszuschlag).toBe(0)
+  })
+
+  it('Splittingvorteil: married ESt < single ESt for the same one-earner components', () => {
+    const components = {
+      statutoryPensionAnnual: 30_000,
+      bavPensionAnnual: 30_000,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer' as const,
+      otherTaxableAnnual: 0,
+      retirementYear: 2026,
+    }
+    const single = calculateRetirementTax(components, de2026Rules, 'single')
+    const married = calculateRetirementTax(components, de2026Rules, 'married')
+    expect(married.einkommensteuer).toBeLessThan(single.einkommensteuer)
+    // Sonderausgaben-Pauschbetrag reflects filing status
+    expect(single.sonderausgaben).toBe(36)
+    expect(married.sonderausgaben).toBe(72)
+  })
+
+  it('high-income married: Soli uses doubled Freigrenze (40,700)', () => {
+    // Construct a case where ESt sits just above the married Freigrenze.
+    // statutoryPensionAnnual=120,000 → taxable 120,000 × 0.84 = 100,800
+    // werbungskostenRenten=102; sonderausgaben=72
+    // zvE = 100,800 − 174 = 100,626
+    // ESt = 2 × Grundtarif(50,313)
+    //   50,313 in 2nd progression: z = (50,313 − 17,799)/10,000 = 3.2514
+    //   tariff = floor((173.1 × 3.2514 + 2,397) × 3.2514 + 1,034.87)
+    //          = floor((562.81 + 2,397) × 3.2514 + 1,034.87)
+    //          = floor(2,959.81 × 3.2514 + 1,034.87)
+    //          = floor(9,624.06 + 1,034.87) = 10,658
+    //   ESt = 2 × 10,658 = 21,316  → below 40,700 → Soli = 0
+    // To engage Soli, push higher: statutoryPensionAnnual = 200,000
+    //   taxable = 200,000 × 0.84 = 168,000; zvE ≈ 167,826
+    //   ESt = 2 × tariff(83,913) → 3rd progression (>69,878): floor(0.42 × 83,913 − 11,135.63)
+    //                            = floor(35,243.46 − 11,135.63) = floor(24,107.83) = 24,107
+    //   ESt = 48,214  → above 40,700 → Soli engages
+    //   regular = 48,214 × 0.055 = 2,651.77
+    //   transition = (48,214 − 40,700) × 0.119 = 7,514 × 0.119 = 894.166
+    //   Soli = min(2,651.77, 894.166) = 894.17 (rounded)
+    const bd = calculateRetirementTax(
+      {
+        statutoryPensionAnnual: 200_000,
+        bavPensionAnnual: 0,
+        bavIsLumpSum: false,
+        privateInsuranceTaxableAnnual: 0,
+        privateInsuranceTaxMode: 'abgeltungsteuer',
+        otherTaxableAnnual: 0,
+        retirementYear: 2026,
+      },
+      de2026Rules,
+      'married',
+    )
+    expect(bd.einkommensteuer).toBeGreaterThan(40_700)
+    // Soli engaged via the milderungszone (transition formula dominates near the cap)
+    expect(bd.solidaritaetszuschlag).toBeGreaterThan(0)
+    expect(bd.solidaritaetszuschlag).toBeLessThan(1_000)
+  })
+
+  it('Abgeltungsteuer leg unaffected by filing status (flat 25 % + 5.5 % Soli)', () => {
+    // Same insurance gain, only routing changes via filingStatus → abgeltungsteuer same in both.
+    const components = {
+      statutoryPensionAnnual: 0,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 10_000,
+      privateInsuranceTaxMode: 'abgeltungsteuer' as const,
+      otherTaxableAnnual: 0,
+      retirementYear: 2026,
+    }
+    const single = calculateRetirementTax(components, de2026Rules, 'single')
+    const married = calculateRetirementTax(components, de2026Rules, 'married')
+    expect(married.abgeltungsteuerOnPrivateInsurance).toBe(single.abgeltungsteuerOnPrivateInsurance)
   })
 })

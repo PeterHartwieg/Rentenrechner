@@ -58,7 +58,10 @@ export interface GermanRules {
     firstProgressionEnd: number
     secondProgressionEnd: number
     topTaxStart: number
+    /** §3 Abs. 3 SolzG: Soli-Freigrenze for Einzelveranlagung. */
     solidarityFreeTax: number
+    /** §3 Abs. 3 SolzG: Soli-Freigrenze for Zusammenveranlagung (= 2 × Einzelveranlagung). */
+    solidarityFreeTaxMarried: number
   }
   socialSecurity: {
     pensionCapYear: number

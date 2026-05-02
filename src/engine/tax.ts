@@ -31,8 +31,15 @@ export function calculateIncomeTax2026(
   return Math.floor(0.45 * x - 19_470.38)
 }
 
-export function calculateSolidarityTax(incomeTax: number, rules: GermanRules): number {
-  const freeTax = rules.incomeTax.solidarityFreeTax
+export function calculateSolidarityTax(
+  incomeTax: number,
+  rules: GermanRules,
+  filingStatus: 'single' | 'married' = 'single',
+): number {
+  const freeTax =
+    filingStatus === 'married'
+      ? rules.incomeTax.solidarityFreeTaxMarried
+      : rules.incomeTax.solidarityFreeTax
 
   if (incomeTax <= freeTax) {
     return 0
