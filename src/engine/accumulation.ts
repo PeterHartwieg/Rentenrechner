@@ -75,7 +75,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   let totalFees = 0
   let feesInCurrentYear = 0
   let contributionsInCurrentYear = 0
-  let balanceAtYearStart = 0
+  let balanceAtYearStart = capital
   let cumulativeVorabpauschale = 0
   // InvStG §18: contributions made during the year are prorated by remaining months.
   // Tracks sum(investedContribution × remainingMonthsInYear / 12) for current year.

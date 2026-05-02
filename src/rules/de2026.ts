@@ -210,9 +210,14 @@ export const de2026Rules: GermanRules = {
     //   2026-01-01 .. 2026-06-30: 40.79 EUR/EP
     //   2026-07-01 onwards:       42.52 EUR/EP
     // The calculator treats this as constant across the projection horizon, so we
-    // use the latest prevailing value (post-July 2026) — most representative of
-    // the "today" semantics the engine projects forward.
-    // Source: Deutsche Rentenversicherung — 2026 Rentenanpassung.
+    // use the announced post-July 2026 value for forward-looking projections.
+    //
+    // Validation note:
+    //   The DRV Rentenschätzer page still shows 40.79 EUR/EP before 2026-07-01.
+    //   Do not use that page as a direct equality oracle for this field until the
+    //   post-July value is live, or split the rules into period-specific values.
+    //
+    // Source: BMAS Rentenwertbestimmungsverordnung 2026 / Rentenanpassung 2026.
     aktuellerRentenwert: 42.52,
   },
   bav: {
