@@ -16,5 +16,6 @@ export function validateInsurance(ins: InsuranceAssumptions): boolean {
   // #65: paidUpAge is optional; when present must be a non-negative integer
   if (ins.paidUpAge !== undefined && !intInRange(ins.paidUpAge, 0, 120)) return false
   if (!inRange(ins.surrenderHaircutPct, 0, 1)) return false
+  if (!inRange(ins.annualContributionGrowthRate, 0, 0.1)) return false
   return true
 }

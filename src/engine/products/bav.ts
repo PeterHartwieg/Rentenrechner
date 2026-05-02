@@ -38,6 +38,9 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
     monthlyEmployerContribution: bavFunding.monthlyEmployerContribution,
     fees: assumptions.bav.fees,
     taxAndSvSavings: bavFunding.annualTaxAndSvSavings * ctx.yearsToRetirement,
+    policy: assumptions.bav.annualContributionGrowthRate
+      ? { contributionGrowth: { annualRate: assumptions.bav.annualContributionGrowthRate } }
+      : undefined,
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const bav = assumptions.bav
       const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(

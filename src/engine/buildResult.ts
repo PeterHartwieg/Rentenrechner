@@ -49,6 +49,7 @@ export interface BuildProductPolicy {
   yearlyReturn?: (yearIndex: number) => number
   vorabpauschale?: { partialExemption: number }
   initialCapital?: number
+  contributionGrowth?: { annualRate: number }
 }
 
 export interface BuildProductResultParams<
@@ -123,6 +124,7 @@ export function buildProductResult<
           ? { rules: params.rules, partialExemption: params.policy.vorabpauschale.partialExemption }
           : undefined,
         initialCapital: params.policy.initialCapital,
+        contributionGrowth: params.policy.contributionGrowth,
       }
     : undefined
   const projection = projectAccumulation({

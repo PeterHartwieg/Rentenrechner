@@ -32,6 +32,12 @@ export interface InsuranceAssumptions {
   // surrenderHaircutPct: fraction of capital deducted on immediate surrender (0 = no penalty).
   paidUpAge?: number
   surrenderHaircutPct: number
+  /**
+   * Optional Beitragsdynamik: annual contribution-growth rate (decimal). Each
+   * year's monthly contribution scales by `(1 + rate)^yearIndex`. 0 = static.
+   * Only applies during the active contribution phase (before paidUpAge).
+   */
+  annualContributionGrowthRate: number
 }
 
 /**

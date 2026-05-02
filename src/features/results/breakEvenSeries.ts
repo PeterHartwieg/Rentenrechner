@@ -1,4 +1,4 @@
-import type { ProductResult } from '../../domain'
+import type { ProductId, ProductResult } from '../../domain'
 
 /** Stable per-product dataKeys for the lifecycle line chart. */
 export function lifecycleLineKeys(productId: string) {
@@ -103,4 +103,74 @@ function annualGrossPayoutAt(
     if (ageAtYearStart >= result.payoutEndAge) return 0
   }
   return result.grossMonthlyPayout * 12
+}
+
+/**
+ * Pairwise crossover: the age at which a Leibrente product's cumulative net
+ * payouts overtake a non-Leibrente (Kapitalverzehr / Zeitrente / certified)
+ * product's cumulative net payouts. Surfaces the longevity trade-off — a
+ * lifelong annuity pays less per month but eventually catches up once the
+ * drawdown product depletes.
+ */
+export interface LeibrenteCrossover {
+  leibrenteId: ProductId
+  drawDownId: ProductId
+  age: number
+  amount: number
+}
+
+/** Search cap for crossover detection — covers German lifespans well beyond
+ *  the typical chart horizon so the text callout still reports a meaningful
+ *  crossover age when ETF is far ahead at depletion. */
+export const LEIBRENTE_CROSSOVER_SEARCH_CAP = 120
+
+/**
+ * Detect crossovers between Leibrente (lifelong) and non-Leibrente (finite-
+ * horizon) products. Returns the first age at which a Leibrente product's
+ * cumulative net payout reaches or exceeds a non-Leibrente product's
+ * cumulative net payout, given the Leibrente was strictly behind in the
+ * preceding year (so the trivial age-0 tie at retirement is not reported).
+ *
+ * The search runs internally up to `searchCapAge` (default 120), independent
+ * of the chart's visible horizon — so callers get a concrete crossover age
+ * even when the longevity catch-up happens past the lifecycle chart's
+ * horizon.
+ */
+export function findLeibrenteCrossovers(
+  results: ProductResult[],
+  startAge: number,
+  retirementAge: number,
+  searchCapAge: number = LEIBRENTE_CROSSOVER_SEARCH_CAP,
+): LeibrenteCrossover[] {
+  const leibrenteResults = results.filter(
+    (r) => r.leibrenteBreakEvenAge !== undefined && r.payoutEndAge === undefined,
+  )
+  const drawDownResults = results.filter((r) => r.payoutEndAge !== undefined)
+  if (leibrenteResults.length === 0 || drawDownResults.length === 0) return []
+
+  const data = buildLifecycleLineSeries(results, startAge, retirementAge, searchCapAge)
+  const out: LeibrenteCrossover[] = []
+  for (const lb of leibrenteResults) {
+    const lbKey = lifecycleLineKeys(lb.productId).payout
+    for (const dd of drawDownResults) {
+      const ddKey = lifecycleLineKeys(dd.productId).payout
+      let prevDelta: number | null = null
+      for (const point of data) {
+        const lbVal = Number(point[lbKey] ?? 0)
+        const ddVal = Number(point[ddKey] ?? 0)
+        const delta = lbVal - ddVal
+        if (prevDelta !== null && prevDelta < 0 && delta >= 0) {
+          out.push({
+            leibrenteId: lb.productId,
+            drawDownId: dd.productId,
+            age: Number(point.age),
+            amount: lbVal,
+          })
+          break
+        }
+        prevDelta = delta
+      }
+    }
+  }
+  return out
 }

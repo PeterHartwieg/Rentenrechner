@@ -74,6 +74,13 @@ export interface BavAssumptions {
   rentenfaktorConfirmed: boolean
   // #54: fixed-term horizon in years (used when payoutMode === 'zeitrente').
   zeitrenteYears: number
+  /**
+   * Optional Beitragsdynamik: annual contribution-growth rate (decimal). Each
+   * year's monthly gross conversion scales by `(1 + rate)^yearIndex`. The §3 Nr. 63
+   * cap and statutory subsidy are computed from year-1 inputs and held constant
+   * (approximation; in practice both grow with BBG ~2-3 %/year). 0 = static.
+   */
+  annualContributionGrowthRate: number
 }
 
 export interface BavFundingResult {

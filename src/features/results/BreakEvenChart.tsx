@@ -17,7 +17,11 @@ import { Hourglass } from 'lucide-react'
 import type { ProductId, ProductResult } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
 import { formatCurrency, formatNumber } from '../../utils/format'
-import { buildLifecycleLineSeries, lifecycleLineKeys } from './breakEvenSeries'
+import {
+  buildLifecycleLineSeries,
+  findLeibrenteCrossovers,
+  lifecycleLineKeys,
+} from './breakEvenSeries'
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon'
 
 interface Props {
@@ -79,6 +83,12 @@ export function BreakEvenChart({
   const breakEvenPoints = paidInKey
     ? breakEvenMarkers(data, renderedProducts, paidInKey, productColors)
     : []
+  const leibrenteCrossovers = findLeibrenteCrossovers(
+    renderedProducts,
+    startAge,
+    retirementAge,
+  )
+  const inFrameCrossovers = leibrenteCrossovers.filter((c) => c.age <= horizonAge)
   const strokeOpacity = renderedProducts.length === 1 ? 1 : 0.82
 
   function togglePicked(id: ProductId) {
@@ -245,6 +255,36 @@ export function BreakEvenChart({
                 }}
               />
             ))}
+            {inFrameCrossovers.map((cross) => {
+              const drawDownLabel =
+                getProductMeta(cross.drawDownId)?.shortLabel ?? cross.drawDownId
+              const color = productColors[cross.leibrenteId]
+              return (
+                <ReferenceDot
+                  key={`crossover-${cross.leibrenteId}-${cross.drawDownId}`}
+                  x={cross.age}
+                  y={cross.amount}
+                  r={5}
+                  fill="#ffffff"
+                  stroke={color}
+                  strokeWidth={2.5}
+                  label={{
+                    value: `holt ${drawDownLabel} ein · ${cross.age}`,
+                    position: 'bottom',
+                    fill: color,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    style: {
+                      paintOrder: 'stroke',
+                      stroke: '#ffffff',
+                      strokeWidth: 4,
+                      strokeLinejoin: 'round',
+                      textShadow: '0 1px 3px rgba(15, 23, 42, 0.28)',
+                    },
+                  }}
+                />
+              )
+            })}
           </LineChart>
         </ResponsiveContainer>
         <div className="lifecycle-legend lifecycle-legend--overlay" aria-hidden="true">
@@ -264,8 +304,32 @@ export function BreakEvenChart({
             <span className="lifecycle-legend__dot" />
             Break-even
           </span>
+          <span className="lifecycle-legend__item">
+            <span className="lifecycle-legend__dot lifecycle-legend__dot--ring" />
+            Leibrente überholt Kapitalverzehr
+          </span>
         </div>
       </div>
+      {leibrenteCrossovers.length > 0 && (
+        <ul className="lifecycle-crossovers" aria-label="Leibrente überholt Kapitalverzehr">
+          {leibrenteCrossovers.map((cross) => {
+            const lbLabel = getProductMeta(cross.leibrenteId)?.shortLabel ?? cross.leibrenteId
+            const ddLabel = getProductMeta(cross.drawDownId)?.shortLabel ?? cross.drawDownId
+            return (
+              <li
+                key={`xover-${cross.leibrenteId}-${cross.drawDownId}`}
+                style={{ borderLeftColor: productColors[cross.leibrenteId] }}
+              >
+                <strong>{lbLabel}</strong> holt <strong>{ddLabel}</strong> bei Alter{' '}
+                <strong>{cross.age}</strong> ein
+                {cross.age > horizonAge && (
+                  <span className="lifecycle-crossovers__note"> (außerhalb der Grafik)</span>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </section>
   )
 }

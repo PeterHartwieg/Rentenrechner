@@ -43,6 +43,9 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
     monthlyProductContribution: insuranceMonthly,
     monthlyEmployerContribution: 0,
     fees: ins.fees,
+    policy: ins.annualContributionGrowthRate
+      ? { contributionGrowth: { annualRate: ins.annualContributionGrowthRate } }
+      : undefined,
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(
         projection.capital,
@@ -120,6 +123,9 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       inflationRate: assumptions.inflationRate,
       scenario,
       fees: ins.fees,
+      policy: ins.annualContributionGrowthRate
+        ? { contributionGrowth: { annualRate: ins.annualContributionGrowthRate } }
+        : undefined,
     })
 
     const capitalAtPaidUp = phase1.capital

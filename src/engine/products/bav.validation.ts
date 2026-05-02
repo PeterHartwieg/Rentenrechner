@@ -26,6 +26,7 @@ export function validateBav(bav: BavAssumptions): boolean {
   if (!inRange(bav.rentenfaktor, 0, 100)) return false
   if (typeof bav.rentenfaktorConfirmed !== 'boolean') return false
   if (!intInRange(bav.zeitrenteYears, 1, 50)) return false
+  if (!inRange(bav.annualContributionGrowthRate, 0, 0.1)) return false
   if (!bav.fees || typeof bav.fees !== 'object') return false
   return validateFees(bav.fees)
 }

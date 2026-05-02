@@ -28,6 +28,12 @@ export interface AccumulationPolicy {
    *  (#71 Riester → AVD per AltZertG transfer; paid-up insurance phase 2).
    *  Default 0. */
   initialCapital?: number
+  /** Beitragsdynamik: each year's monthly user cost, product contribution and
+   *  employer contribution scale by `(1 + annualRate)^yearIndex`. Total
+   *  planned contributions used by `acquisitionCostPct` are expanded to the
+   *  geometric sum so Abschlusskosten reflect the full contract horizon
+   *  (Versicherungs-Beitragssumme convention). 0 / undefined = static. */
+  contributionGrowth?: { annualRate: number }
 }
 
 export interface AccumulationInput {
@@ -61,13 +67,23 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   const totalAssetFee = input.fees.wrapperAssetFee + input.fees.fundAssetFee
   const monthlyRetentionFactor = Math.pow(1 - totalAssetFee, 1 / 12)
   const acquisitionMonths = Math.max(1, input.fees.acquisitionCostSpreadYears * 12)
-  const plannedContributions = input.monthlyProductContribution * input.months
+  const policy = input.policy
+  const dynamicRate = policy?.contributionGrowth?.annualRate ?? 0
+  const yearsTotal = input.months / 12
+  // Geometric expansion of total planned contributions for Abschlusskosten
+  // (Versicherungs-Beitragssumme convention: total premium summed over the
+  // contract horizon with annual contribution growth applied). Falls back to
+  // simple month-count multiplication when no Dynamik is configured.
+  const plannedContributions =
+    dynamicRate === 0 || Math.abs(dynamicRate) < 1e-12
+      ? input.monthlyProductContribution * input.months
+      : input.monthlyProductContribution * 12 *
+        (Math.pow(1 + dynamicRate, yearsTotal) - 1) / dynamicRate
   const monthlyAcquisitionCost =
     input.fees.acquisitionCostPct > 0
       ? (plannedContributions * input.fees.acquisitionCostPct) / acquisitionMonths
       : 0
 
-  const policy = input.policy
   let capital = policy?.initialCapital ?? 0
   let totalUserCost = 0
   let totalProductContributions = 0
@@ -84,33 +100,48 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
 
   // When policy.yearlyReturn is set, the gross rate is recomputed at the start of each year.
   let currentMonthlyGrossRate = monthlyRate(input.annualReturn)
+  // Beitragsdynamik scaling (1 + r)^yearIndex applied to every contribution at the
+  // start of each year. yearIndex = 0 for the first year (no growth yet).
+  let dynamicMul = 1
+  let monthlyUserCost = input.monthlyUserCost
+  let monthlyProductContribution = input.monthlyProductContribution
+  let monthlyEmployerContribution = input.monthlyEmployerContribution
 
   for (let month = 1; month <= input.months; month += 1) {
+    if (month > 1 && (month - 1) % 12 === 0) {
+      if (dynamicRate !== 0) {
+        dynamicMul *= 1 + dynamicRate
+        monthlyUserCost = input.monthlyUserCost * dynamicMul
+        monthlyProductContribution = input.monthlyProductContribution * dynamicMul
+        monthlyEmployerContribution = input.monthlyEmployerContribution * dynamicMul
+      }
+    }
+
     if (policy?.yearlyReturn && (month === 1 || month % 12 === 1)) {
       const yearIndex = Math.floor((month - 1) / 12)
       currentMonthlyGrossRate = monthlyRate(policy.yearlyReturn(yearIndex))
     }
 
     const acquisitionCost = month <= acquisitionMonths ? monthlyAcquisitionCost : 0
-    const contributionFee = input.monthlyProductContribution * input.fees.contributionFee
+    const contributionFee = monthlyProductContribution * input.fees.contributionFee
     const fixedFee = input.fees.fixedMonthlyFee
     const explicitFees = Math.min(
-      input.monthlyProductContribution,
+      monthlyProductContribution,
       contributionFee + fixedFee + acquisitionCost,
     )
-    const investedContribution = Math.max(0, input.monthlyProductContribution - explicitFees)
+    const investedContribution = Math.max(0, monthlyProductContribution - explicitFees)
 
     const capitalAfterGrowth = (capital + investedContribution) * (1 + currentMonthlyGrossRate)
     const assetFee = capitalAfterGrowth * (1 - monthlyRetentionFactor)
     capital = capitalAfterGrowth - assetFee
 
     const monthlyFees = explicitFees + assetFee
-    totalUserCost += input.monthlyUserCost
-    totalProductContributions += input.monthlyProductContribution
-    totalEmployerContributions += input.monthlyEmployerContribution
+    totalUserCost += monthlyUserCost
+    totalProductContributions += monthlyProductContribution
+    totalEmployerContributions += monthlyEmployerContribution
     totalFees += monthlyFees
     feesInCurrentYear += monthlyFees
-    contributionsInCurrentYear += input.monthlyProductContribution
+    contributionsInCurrentYear += monthlyProductContribution
 
     if (policy?.vorabpauschale) {
       const monthWithinYear = ((month - 1) % 12) + 1
@@ -142,9 +173,9 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
         scenarioId: input.scenario.id,
         balance: capital,
         realBalance: capital / Math.pow(1 + input.inflationRate, year),
-        yearlyUserCost: input.monthlyUserCost * 12,
-        yearlyProductContribution: input.monthlyProductContribution * 12,
-        yearlyEmployerContribution: input.monthlyEmployerContribution * 12,
+        yearlyUserCost: monthlyUserCost * 12,
+        yearlyProductContribution: monthlyProductContribution * 12,
+        yearlyEmployerContribution: monthlyEmployerContribution * 12,
         yearlyFees: feesInCurrentYear,
         cumulativeFees: totalFees,
         cumulativeProductContributions: totalProductContributions,

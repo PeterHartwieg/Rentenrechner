@@ -76,7 +76,7 @@ export const SCENARIO_PRESETS: ScenarioPreset[] = [
       'Günstigstes ETF-Depot als Hauptsparweg. Minimale Kosten über alle Produkte — zeigt den Basisfall ohne Arbeitgeber-Extras.',
     assumptions: {
       ...defaultAssumptions,
-      etf: { annualAssetFee: 0.002, equityPartialExemption: 0.3 },
+      etf: { annualAssetFee: 0.002, equityPartialExemption: 0.3, annualContributionGrowthRate: 0 },
       bav: {
         ...defaultAssumptions.bav,
         monthlyGrossConversion: 300,

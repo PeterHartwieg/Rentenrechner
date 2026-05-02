@@ -82,6 +82,11 @@
   flex-shrink: 0;
 }
 
+.lifecycle-legend__dot--ring {
+  background: #ffffff;
+  box-shadow: 0 0 0 2px #334155;
+}
+
 .break-even-tooltip {
   background: #ffffff;
   border: 1px solid #e5e7eb;
@@ -129,6 +134,30 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: #0f172a;
+}
+
+.lifecycle-crossovers {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lifecycle-crossovers > li {
+  padding: 6px 10px;
+  border-left: 3px solid #94a3b8;
+  background: #f8fafc;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
+.lifecycle-crossovers__note {
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 @media (max-width: 720px) {

@@ -113,6 +113,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
   etf: {
     annualAssetFee: 0.002,
     equityPartialExemption: 0.3,
+    annualContributionGrowthRate: 0,
   },
   bav: {
     // 200 EUR/month brutto — same starting value as the other three contribution
@@ -138,6 +139,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
     rentenfaktor: 30,
     rentenfaktorConfirmed: false,
     zeitrenteYears: 20,
+    annualContributionGrowthRate: 0,
     fees: {
       wrapperAssetFee: 0.003,   // 0.30 % Versicherungsmantel
       fundAssetFee: 0.005,      // 0.50 % aktiv verwalteter Fonds (bAV-typisch) — total 0.80 % p.a.
@@ -214,5 +216,6 @@ export const defaultAssumptions: ScenarioAssumptions = {
     },
     // #65: no paid-up scenario by default; zero surrender haircut
     surrenderHaircutPct: 0,
+    annualContributionGrowthRate: 0,
   },
 }

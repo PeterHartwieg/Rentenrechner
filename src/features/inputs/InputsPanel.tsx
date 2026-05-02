@@ -228,6 +228,20 @@ export function InputsPanel({
                     <option value={0}>Anleihe-ETF / Sonstige (0% steuerfrei)</option>
                   </select>
                 </label>
+                <NumberField
+                  label="Beitragsdynamik p.a."
+                  value={assumptions.etf.annualContributionGrowthRate * 100}
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  suffix="%"
+                  onChange={(value) =>
+                    onAssumptionsChange((current) => ({
+                      ...current,
+                      etf: { ...current.etf, annualContributionGrowthRate: Number(value) / 100 },
+                    }))
+                  }
+                />
               </div>
             </>
           )}

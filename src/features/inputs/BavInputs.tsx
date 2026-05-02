@@ -272,6 +272,31 @@ export function BavInputs({
             </p>
           )}
 
+          <div className="field-grid">
+            <NumberField
+              label="Beitragsdynamik p.a."
+              value={assumptions.bav.annualContributionGrowthRate * 100}
+              min={0}
+              max={10}
+              step={0.1}
+              suffix="%"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  bav: {
+                    ...current.bav,
+                    annualContributionGrowthRate: Math.max(0, Number(value) / 100),
+                  },
+                }))
+              }
+            />
+          </div>
+          {assumptions.bav.annualContributionGrowthRate > 0 && (
+            <p className="field-hint">
+              Entgeltumwandlung steigt jedes Jahr um diesen Prozentsatz. §3 Nr. 63 EStG / §1 SvEV-Cap und gesetzlicher AG-Zuschuss werden im Modell auf Jahr 1 fixiert (Näherung).
+            </p>
+          )}
+
           <div className="subsection-heading">
             <h3>bAV-Rentenphase</h3>
             <p>Grenzsteuer- und GRV-Optionen für die Auszahlungsphase.</p>

@@ -213,6 +213,31 @@ export function InsuranceInputs({
             </>
           )}
 
+          <div className="field-grid">
+            <NumberField
+              label="Beitragsdynamik p.a."
+              value={ins.annualContributionGrowthRate * 100}
+              min={0}
+              max={10}
+              step={0.1}
+              suffix="%"
+              onChange={(value) =>
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  insurance: {
+                    ...current.insurance,
+                    annualContributionGrowthRate: Math.max(0, Number(value) / 100),
+                  },
+                }))
+              }
+            />
+          </div>
+          {ins.annualContributionGrowthRate > 0 && (
+            <p className="field-hint">
+              Beitrag steigt jedes Jahr um diesen Prozentsatz. Wirkt sich auch auf Abschlusskosten aus (Beitragssumme wächst).
+            </p>
+          )}
+
           {insuranceTaxMode === 'halbeinkuenfte' && (
             <>
               <NumberField
