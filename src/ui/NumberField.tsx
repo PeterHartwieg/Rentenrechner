@@ -2,6 +2,22 @@ import './forms.css'
 import { useState, type ReactNode } from 'react'
 import { formatNumber } from '../utils/format'
 
+/**
+ * Number of decimal places implied by a step value.
+ *   1, 10, 1000     → 0
+ *   0.5, 0.1        → 1
+ *   0.05, 0.01      → 2
+ * Float epsilon is ignored — we trust callers to supply round step values.
+ */
+function decimalsFromStep(step: number): number {
+  if (!Number.isFinite(step) || step <= 0) return 0
+  if (step >= 1) return 0
+  // Count decimals via string representation to avoid log-rounding pitfalls.
+  const s = step.toString()
+  const dotIdx = s.indexOf('.')
+  return dotIdx === -1 ? 0 : s.length - dotIdx - 1
+}
+
 export function NumberField({
   label,
   labelSuffix,
@@ -9,6 +25,7 @@ export function NumberField({
   min,
   max,
   step = 1,
+  decimals,
   suffix,
   onChange,
   onCommit,
@@ -20,6 +37,17 @@ export function NumberField({
   min?: number
   max?: number
   step?: number
+  /**
+   * Decimals shown when the field is not being edited. Default: derived from
+   * `step` (e.g. step=10 → 0, step=0.5 → 1, step=0.05 → 2). Override when the
+   * bound value's natural precision differs from the step (e.g. show currency
+   * to 2 decimals while stepping by 1 EUR).
+   *
+   * Engine-derived values (funding nets, RIY, projected pensions etc.) MUST
+   * pass through this field — never render raw floats in JSX. See "UI rounding"
+   * in CLAUDE.md.
+   */
+  decimals?: number
   suffix?: string
   /** Fires on every keystroke. Use for live preview of unconstrained inputs. */
   onChange?: (value: string) => void
@@ -27,7 +55,12 @@ export function NumberField({
   onCommit?: (value: string) => void
 }) {
   const [draft, setDraft] = useState<string | null>(null)
-  const canonical = Number.isFinite(value) ? Number(value.toFixed(6)).toString() : '0'
+  const effectiveDecimals = decimals ?? decimalsFromStep(step)
+  // toFixed gives us bounded precision; Number(...) drops trailing zeros so
+  // integer-step fields render as "110" rather than "110.00".
+  const canonical = Number.isFinite(value)
+    ? Number(value.toFixed(effectiveDecimals)).toString()
+    : '0'
   const displayValue = draft ?? canonical
 
   const commit = () => {

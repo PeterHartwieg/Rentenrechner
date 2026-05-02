@@ -83,6 +83,21 @@ For a task, read the matching context capsule first — it is faster than readin
 | `src/features/` | Feature components: `inputs/`, `results/`, `cashflows/`, `assumptions/` — each with co-located CSS. |
 | `src/ui/` | Shared UI primitives: `NumberField`, `ResultMetric`, `BavWaterfall`, `formatting.ts`, `helpers.ts`. |
 
+### UI rounding (display layer only — engine stays unrounded)
+
+The engine returns full-precision floats. Statutory rounding (e.g. `floorEuro(zvE)` in `calculateIncomeTax2026`) is applied surgically inside the engine where the law requires it, not as a global policy. Rounding for human consumption happens **only at the display boundary** so that intermediate composition (RIY, Günstigerprüfung, payout schedules, oracle-validation goldens) stays exact.
+
+| Display surface | Rule |
+|------|------|
+| `<NumberField>` in `src/ui/NumberField.tsx` | Always use this for any numeric input bound to engine output (e.g. `bavFunding.monthlyNetCost`). Decimals default to `decimalsFromStep(step)` (step=10 → 0, step=0.5 → 1, step=0.05 → 2); pass `decimals={n}` to override. Never bind a raw float to a hand-rolled `<input type="number">` — that path won't truncate `109.97753333` to `110`. |
+| Currency in JSX text | `formatCurrency(value, decimals = 0)` from `src/utils/format.ts`. Default 0 decimals (whole EUR). Use 2 only when cents matter (oracle goldens, fee deltas). |
+| Percent in JSX text | `formatPercent(value, decimals = 1)` from `src/utils/format.ts`. Pass the underlying ratio (e.g. `0.024`), not the multiplied value. |
+| Plain numbers | `formatNumber(value, decimals = 0)`. |
+| `<ResultMetric>` | Takes `value: string` — caller must pre-format with one of the helpers above. |
+| Chart axis ticks | Recharts' `tickFormatter` callback (typically `formatCurrency` with rounded-to-1k for axis labels). |
+
+When adding a new component that surfaces engine output: pick the smallest unit the user reads at, format it once at the boundary, and never re-render the unformatted value. If you find a UI leak (raw float reaching the user), fix it at the formatter rather than rounding in the engine — engine rounding compounds and breaks external-oracle validation.
+
 ### UI chart conventions
 
 | Chart | Convention |
