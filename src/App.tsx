@@ -18,6 +18,7 @@ import { SensitivityPanel } from './features/results/SensitivityPanel'
 import { runSensitivity } from './features/results/sensitivity'
 import { CapitalChart } from './features/results/CapitalChart'
 import { PensionChart } from './features/results/PensionChart'
+import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
@@ -167,6 +168,15 @@ function App() {
             pensionBars={pensionBars}
             retirementEndAge={assumptions.retirementEndAge}
           />
+
+          <BreakEvenChart
+            selectedResults={selectedResults}
+            productColors={PRODUCT_COLORS}
+            startAge={profile.age}
+            retirementAge={profile.retirementAge}
+            retirementEndAge={assumptions.retirementEndAge}
+            bestProductId={bestCapital?.productId}
+          />
         </>
       ) : (
         <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
@@ -190,6 +200,8 @@ function App() {
           <FeeDragChart
             selectedResults={selectedResults}
             productColors={PRODUCT_COLORS}
+            retirementAge={profile.retirementAge}
+            retirementEndAge={assumptions.retirementEndAge}
           />
 
           <SensitivityPanel

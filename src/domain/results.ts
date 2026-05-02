@@ -70,6 +70,12 @@ export interface BaseProductResult {
   accumulationRiy: number
   // #64: nominal break-even age for Leibrente mode
   leibrenteBreakEvenAge?: number
+  /**
+   * Age at which monthly payouts stop. `undefined` means lifelong (Leibrente / hybrid annuity).
+   * For Kapitalverzehr / ETF: `retirementEndAge`. For Zeitrente: `retirementAge + zeitrenteYears`.
+   * For AVD `certified_payout_plan`: the certified end age (≥ 85). Drives the break-even chart.
+   */
+  payoutEndAge?: number
   rows: YearlyProjection[]
 }
 

@@ -396,7 +396,7 @@ export const TERMS_LIST: Term[] = [
     plainLabel: 'Vorabpauschale',
     expertLabel: 'Vorabpauschale §18 InvStG',
     shortHelp:
-      'Jährliche Mindest­besteuerung thesaurierender ETFs. Kleiner Betrag (Basiszins × 70 % × Fonds­wert) wird wie eine Auszahlung versteuert; der bezahlte Betrag wird beim Verkauf gegen­gerechnet, damit nichts doppelt versteuert wird.',
+      'Jährliche Mindest­besteuerung von Investment­fonds. Kleiner Betrag (Basiszins × 70 % × Fonds­wert) wird wie eine Auszahlung versteuert; der bezahlte Betrag wird beim Verkauf gegen­gerechnet, damit nichts doppelt versteuert wird. Bei aus­schüttenden Fonds mindern Aus­schüttungen die Vorabpauschale; das Modell nimmt einen thesaurierenden ETF an.',
     legalReference: '§18 InvStG',
     category: 'steuer-sv',
   },

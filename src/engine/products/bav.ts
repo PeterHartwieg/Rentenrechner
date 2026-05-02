@@ -85,6 +85,12 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
           grossMonthlyPayout,
           bav.payoutMode === 'leibrente',
         ),
+        payoutEndAge:
+          bav.payoutMode === 'leibrente'
+            ? undefined
+            : bav.payoutMode === 'zeitrente'
+              ? profile.retirementAge + bav.zeitrenteYears
+              : assumptions.retirementEndAge,
       }
     },
   })

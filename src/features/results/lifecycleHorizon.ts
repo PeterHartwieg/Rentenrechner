@@ -1,0 +1,1 @@
+export const LIFECYCLE_HORIZON_AGE = 100

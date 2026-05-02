@@ -67,6 +67,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
           grossMonthlyPayout,
           true,
         ),
+        payoutEndAge: undefined,
       }
     },
   })

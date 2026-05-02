@@ -64,6 +64,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): EtfP
           ? etfPayoutRows[0].netMonthlyPayout
           : grossMonthlyPayout,
         etfPayoutRows,
+        payoutEndAge: ctx.assumptions.retirementEndAge,
       }
     },
   })

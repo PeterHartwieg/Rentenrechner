@@ -51,9 +51,16 @@ App.tsx  (composition shell)
 | Summary metrics | `SummaryMetrics.tsx` | `SummaryMetrics.css` | `ProductResult[]` best-result selection |
 | Capital chart | `CapitalChart.tsx` | — | `ProductResult[].yearlyRows` |
 | Pension chart | `PensionChart.tsx` | — | `pensionBars` from `useSimulationViewModel` |
+| Lifecycle chart | `BreakEvenChart.tsx` | `BreakEvenChart.css` | `ProductResult[].rows` + ETF payout rows |
 | Fee-drag chart | `FeeDragChart.tsx` | `FeeDragChart.css` | `ProductResult[].totalFees` / `.capitalAtRetirement` |
 | Fairness panel | `FairnessPanel.tsx` | — | bAV net-cost benchmark from `SimulationResult` |
 | Detail comparison table | `DetailComparisonTable.tsx` | `DetailComparisonTable.css` | All `ProductResult[]` × scenarios |
+
+### Chart conventions
+
+`BreakEvenChart.tsx` uses one neutral dotted line for cumulative net paid in because it is the shared comparison benchmark. Product colors are reserved for product-specific lines and markers: solid = remaining contract/depot capital, dashed = cumulative net payouts after tax and KV/PV, dot marker = first age where net payouts reach the paid-in benchmark. Keep its custom legend as a compact top-right overlay inside the chart frame, matching the `FeeDragChart` overlay style; do not re-enable Recharts' generated legend.
+
+`FeeDragChart.tsx` must use the same payout horizon as the lifecycle chart via `LIFECYCLE_HORIZON_AGE`. The blue + green stack should equal the lifecycle chart's maximum cumulative `Netto ausgezahlt`; green `Netto-Rendite` is only the surplus above recovered net user cost. Do not add `afterTaxLumpSum` to this chart, because lump sums are alternative payout views rather than additional monthly payout cashflow.
 
 ### Cashflow and assumptions
 

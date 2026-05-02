@@ -89,6 +89,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
           grossMonthlyPayout,
           riester.payoutMode === 'leibrente',
         ),
+        payoutEndAge:
+          riester.payoutMode === 'leibrente'
+            ? undefined
+            : profile.retirementAge + riester.zeitrenteYears,
       }
     },
   })

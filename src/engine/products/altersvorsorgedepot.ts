@@ -129,6 +129,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
           grossMonthlyPayout,
           avd.payoutMode === 'lifelong_annuity',
         ),
+        payoutEndAge:
+          avd.payoutMode === 'certified_payout_plan'
+            ? Math.max(avd.payoutPlanEndAge, rules.altersvorsorgedepot.payoutPlanMinEndAge)
+            : undefined,
       }
     },
   })

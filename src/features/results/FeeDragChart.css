@@ -1,3 +1,38 @@
 .fee-drag-panel {
   padding: 20px;
 }
+
+.fee-drag-chart-wrap {
+  position: relative;
+}
+
+.fee-drag-legend--overlay {
+  position: absolute;
+  top: 16px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  pointer-events: none;
+}
+
+.fee-drag-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.fee-drag-legend__swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}

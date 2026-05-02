@@ -1,0 +1,139 @@
+.break-even-frame {
+  height: 480px;
+  min-height: 480px;
+  position: relative;
+}
+
+.lifecycle-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+
+.lifecycle-chip {
+  padding: 6px 14px;
+  border: 1.5px solid;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, transform 80ms ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.lifecycle-chip:hover {
+  transform: translateY(-1px);
+}
+
+.lifecycle-chip:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.lifecycle-legend--overlay {
+  position: absolute;
+  top: 16px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  pointer-events: none;
+}
+
+.lifecycle-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.lifecycle-legend__line {
+  display: inline-block;
+  width: 24px;
+  border-top: 2px solid #334155;
+  flex-shrink: 0;
+}
+
+.lifecycle-legend__line--dotted {
+  border-top-style: dotted;
+  border-color: #64748b;
+}
+
+.lifecycle-legend__line--dashed {
+  border-top-style: dashed;
+}
+
+.lifecycle-legend__dot {
+  width: 9px;
+  height: 9px;
+  margin-left: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #334155;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px #94a3b8;
+  flex-shrink: 0;
+}
+
+.break-even-tooltip {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.break-even-tooltip__label {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.break-even-tooltip__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.break-even-tooltip__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.break-even-tooltip__product {
+  font-weight: 700;
+}
+
+.break-even-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.break-even-tooltip__name {
+  text-align: left;
+}
+
+.break-even-tooltip__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+
+@media (max-width: 720px) {
+  .lifecycle-legend--overlay {
+    top: 10px;
+    right: 8px;
+  }
+}

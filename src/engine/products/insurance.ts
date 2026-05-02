@@ -94,6 +94,12 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
           grossMonthlyPayout,
           ins.payoutMode === 'leibrente',
         ),
+        payoutEndAge:
+          ins.payoutMode === 'leibrente'
+            ? undefined
+            : ins.payoutMode === 'zeitrente'
+              ? profile.retirementAge + ins.zeitrenteYears
+              : assumptions.retirementEndAge,
       }
     },
   })

@@ -50,3 +50,4 @@ For each legal / rule area: the source file, the rule file, and the research doc
 | `GRV_RESEARCH.md` | Entgeltpunkte, Rentenwert, GRV tax, KVdR/voluntary/PKV treatment, bAV GRV reduction |
 | `RIESTER_RESEARCH.md` | Legacy Riester allowances, Mindesteigenbeitrag, Sec. 10a, payout taxation, partial lump sum |
 | `LEGAL_IMPLEMENTATION_AUDIT_2026.md` | 2026-04-28 legal-vs-implementation audit findings, fixes, and remaining modeling gaps |
+| `docs/validation.md` | External golden-test strategy, official calculator/source map, tolerances, and validation backlog |

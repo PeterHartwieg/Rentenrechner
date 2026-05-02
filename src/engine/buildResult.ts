@@ -35,6 +35,8 @@ export interface ProductPayoutFields {
   grossMonthlyPayout: number
   netMonthlyPayout: number
   leibrenteBreakEvenAge?: number
+  /** undefined = lifelong (Leibrente). See BaseProductResult.payoutEndAge. */
+  payoutEndAge?: number
   lumpSumDeductions?: { incomeTax: number; kvPv: number }
 }
 

@@ -83,6 +83,13 @@ For a task, read the matching context capsule first — it is faster than readin
 | `src/features/` | Feature components: `inputs/`, `results/`, `cashflows/`, `assumptions/` — each with co-located CSS. |
 | `src/ui/` | Shared UI primitives: `NumberField`, `ResultMetric`, `BavWaterfall`, `formatting.ts`, `helpers.ts`. |
 
+### UI chart conventions
+
+| Chart | Convention |
+|------|------------|
+| Lifecycle chart (`BreakEvenChart.tsx`) | Use a single neutral dotted line for cumulative net amount paid in by the user because it is the shared comparison benchmark. Use product color only for product-specific lines and markers: solid = remaining contract/depot capital, dashed = cumulative net payouts received after tax and KV/PV, marker dot = first age where net payouts reach the paid-in benchmark. Do not use Recharts' generated legend here; keep the compact custom legend inside the chart frame at the top right, matching the `FeeDragChart` overlay style. |
+| Fee-drag chart (`FeeDragChart.tsx`) | Its blue + green stack must equal the lifecycle chart's maximum cumulative `Netto ausgezahlt` over the same horizon (`LIFECYCLE_HORIZON_AGE`, or the configured end age if higher, capped by product payout end). Green `Netto-Rendite` is only the surplus above recovered net user cost; do not add `afterTaxLumpSum` here because lump sums are an alternative payout view, not additive to monthly payouts. |
+
 ### Storage, utils, and tests
 
 | File | Role |
