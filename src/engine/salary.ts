@@ -119,7 +119,8 @@ export function calculatePkv257Subsidy(
 // §39b EStG 2026 Vorsorgepauschale for Steuerklasse I-V.
 // Uses steuerlicher Arbeitslohn (gross minus tax-free bAV conversion) as the base.
 // GKV: KV Teilbetrag uses ermäßigter Beitragssatz (§243 SGB V) per §39b(2)Nr.3 EStG.
-// PKV: KV/PV Teilbeträge = employee's own annual PKV/pPV premiums (§39b(2)Nr.3 EStG).
+// PKV: KV/PV Teilbeträge = employee's annual PKV/pPV premiums minus the tax-free
+// employer subsidy (§39b(2) Nr. 3 EStG, mirrored by the BMF Lohnsteuerrechner).
 // AV Teilbetrag is included up to the 1,900 EUR cap (KV + PV + AV ≤ 1,900 EUR).
 export function calculateVorsorgepauschale2026(
   steuerlichArbeitslohn: number,
@@ -132,16 +133,28 @@ export function calculateVorsorgepauschale2026(
 
   const rvTeilbetrag = rvBase * rules.socialSecurity.pensionEmployeeRate
 
-  // PKV: employee's own annual KV/pPV premiums replace the GKV-based Teilbeträge.
-  // The employer's §257 subsidy is §3 Nr. 62 EStG tax-free; only the employee-paid amount
-  // enters the Vorsorgepauschale (the employee pays the gross premium, employer reimburses separately).
+  const pkv257SubsidyAnnual = !profile.publicHealthInsurance
+    ? calculatePkv257Subsidy(
+        profile.grossSalaryYear / 12,
+        profile.pkvMonthlyPremium,
+        profile.pPVMonthlyPremium,
+        rules,
+      ) * 12
+    : 0
+  const pkvPremiumAnnualAfterSubsidy = Math.max(
+    0,
+    (profile.pkvMonthlyPremium + profile.pPVMonthlyPremium) * 12 - pkv257SubsidyAnnual,
+  )
+
+  // PKV: the employee-paid annual KV/pPV amount after the tax-free employer
+  // subsidy replaces the GKV-based Teilbeträge.
   const kvTeilbetrag = profile.publicHealthInsurance
     ? kvBase * (rules.socialSecurity.healthReducedRate / 2 + additionalHealthRate / 2)
-    : profile.pkvMonthlyPremium * 12
+    : pkvPremiumAnnualAfterSubsidy
 
   const pvTeilbetrag = profile.publicHealthInsurance
     ? kvBase * careEmployeeRateForChildren(profile.childBirthYears, rules.year, rules)
-    : profile.pPVMonthlyPremium * 12
+    : 0
 
   // AV Teilbetrag: only included if KV + PV + AV does not exceed 1,900 EUR
   const kvpvSum = kvTeilbetrag + pvTeilbetrag

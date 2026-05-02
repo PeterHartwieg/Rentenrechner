@@ -88,6 +88,7 @@ describe('external golden: BMF 2026 Einkommensteuer-Rechner captures', () => {
 
 describe('external golden: BMF 2026 payroll cases', () => {
   it.each(payroll2026GoldenCases)('$id', (fixture) => {
+    const profileOverrides = 'profile' in fixture ? fixture.profile : {}
     const profile: PersonalProfile = {
       ...defaultProfile,
       grossSalaryYear: fixture.grossSalaryYear,
@@ -95,15 +96,18 @@ describe('external golden: BMF 2026 payroll cases', () => {
       churchTax: false,
       publicHealthInsurance: true,
       healthAdditionalContributionPct: 2.9,
+      ...profileOverrides,
     }
 
     const actual = calculateSalaryResult(profile, de2026Rules)
 
-    expectCloseToGolden(
-      actual.taxableIncome,
-      fixture.expectedTaxableIncome,
-      fixture.toleranceEUR,
-    )
+    if ('expectedTaxableIncome' in fixture) {
+      expectCloseToGolden(
+        actual.taxableIncome,
+        fixture.expectedTaxableIncome,
+        fixture.toleranceEUR,
+      )
+    }
     expectCloseToGolden(actual.incomeTax, fixture.expectedIncomeTax, fixture.toleranceEUR)
     expectCloseToGolden(
       actual.solidarityTax,
@@ -300,7 +304,11 @@ describe('external golden: bAV contribution limits', () => {
 
 describe('external golden: Bavarian Alterseinkünfte-Rechner 2026 captures', () => {
   it.each(bayernAlterseinkuenfte2026GoldenCases)('$id', (fixture) => {
-    const actual = calculateRetirementTax(fixture.components, de2026Rules)
+    const actual = calculateRetirementTax(
+      fixture.components,
+      de2026Rules,
+      fixture.filingStatus,
+    )
     expectCloseToGolden(
       actual.zuVersteuerndesEinkommen,
       fixture.expected.zuVersteuerndesEinkommen,
@@ -425,11 +433,21 @@ describe('external golden: ETF exit tax basis', () => {
 
 describe('external golden: bAV funding at statutory boundaries', () => {
   it.each(bavFundingBoundaryGoldenCases)('$id', (fixture) => {
-    const actual = calculateBavFunding(defaultProfile, de2026Rules, {
+    const profileOverrides = 'profile' in fixture ? fixture.profile : {}
+    const profile: PersonalProfile = {
+      ...defaultProfile,
+      ...profileOverrides,
+    }
+    const statutoryEnabled =
+      'statutoryMinimumSubsidyEnabled' in fixture
+        ? fixture.statutoryMinimumSubsidyEnabled
+        : defaultAssumptions.bav.statutoryMinimumSubsidyEnabled
+    const actual = calculateBavFunding(profile, de2026Rules, {
       ...defaultAssumptions.bav,
       monthlyGrossConversion: fixture.monthlyGrossConversion,
       contractualMatchPercent: fixture.contractualMatchPercent ?? 0,
       contractualFixedMonthly: fixture.contractualFixedMonthly ?? 0,
+      statutoryMinimumSubsidyEnabled: statutoryEnabled,
     })
 
     expectCloseToGolden(
@@ -467,5 +485,19 @@ describe('external golden: bAV funding at statutory boundaries', () => {
       fixture.expectedSvLiableOverflowAnnual,
       fixture.toleranceEUR,
     )
+    if ('expectedMonthlyStatutoryEmployerSubsidy' in fixture) {
+      expectCloseToGolden(
+        actual.monthlyStatutoryEmployerSubsidy,
+        fixture.expectedMonthlyStatutoryEmployerSubsidy,
+        fixture.toleranceEUR,
+      )
+    }
+    if ('expectedMonthlyContractualEmployerContribution' in fixture) {
+      expectCloseToGolden(
+        actual.monthlyContractualEmployerContribution,
+        fixture.expectedMonthlyContractualEmployerContribution,
+        fixture.toleranceEUR,
+      )
+    }
   })
 })

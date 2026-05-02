@@ -319,14 +319,14 @@ describe('#50 PKV premium modeling', () => {
     expect(noPrems.annualNet - withPrems.annualNet).toBeCloseTo(expectedNetCost - taxSaving, 0)
   })
 
-  it('Vorsorgepauschale for PKV includes annual PKV + pPV premiums as KV/PV Teilbetrag', () => {
+  it('Vorsorgepauschale for PKV includes employee-paid PKV + pPV premiums after §257 subsidy', () => {
     const vpNoPrems = calculateVorsorgepauschale2026(75_000, pkvBase, de2026Rules)
     const vpWithPrems = calculateVorsorgepauschale2026(75_000, pkv500, de2026Rules)
-    // With 500+50 = 550/month = 6600/year premium, VP increases by 6600 for KV/PV
-    // but AV Teilbetrag (975) drops to 0 since kvpvSum (6600) exceeds the 1,900 EUR cap.
-    // Net change = +6600 - 975 = +5625.
+    // With 500+50 = 550/month and §257 subsidy = 275/month, the employee-paid
+    // amount is 3,300/year. AV Teilbetrag (975) drops to 0 since KV/PV exceeds
+    // the 1,900 EUR cap. Net change = +3,300 - 975 = +2,325.
     expect(vpWithPrems).toBeGreaterThan(vpNoPrems)
-    expect(vpWithPrems - vpNoPrems).toBeCloseTo(5_625, 0)
+    expect(vpWithPrems - vpNoPrems).toBeCloseTo(2_325, 0)
   })
 
   it('PKV salary result exposes correct pkv257SubsidyMonthly and pkvNetMonthlyCost', () => {

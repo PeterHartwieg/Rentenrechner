@@ -31,7 +31,7 @@ export const validationSources = [
     kind: 'official-calculator',
     url: 'https://www.bmf-steuerrechner.de/bl/bl2026/eingabeformbl2026.xhtml',
     capturedAt: '2026-05-02',
-    notes: 'Steuerklasse I, no church tax, public health insurance with 2.9% Zusatzbeitrag.',
+    notes: 'Steuerklasse I, no church tax. Covers GKV with 2.9% Zusatzbeitrag, PV childless surcharge/child discounts, salary above BBG, and PKV with employer subsidy.',
   },
   {
     id: 'bmf-einkommensteuerrechner-2026',
@@ -87,7 +87,7 @@ export const validationSources = [
     kind: 'official-calculator',
     url: 'https://www.steuerberechnung.bayern.de/Alterseinkuenfte-Rechner/2026/aekr_formular.asp?VLG=1',
     capturedAt: '2026-05-02',
-    notes: 'Alleinstehende, no Kinder, no church tax. End-to-end retirement tax oracle covering Besteuerungsanteil §22, Versorgungsfreibetrag §19, Ertragsanteil, and §9a/§10c Pauschbeträge.',
+    notes: 'Alleinstehende (VLG=1) and Zusammenveranlagung (VLG=2), no Kinder, no church tax. End-to-end retirement tax oracle covering Besteuerungsanteil §22, Versorgungsfreibetrag §19, Ertragsanteil, Splittingtarif, and §9a/§10c Pauschbeträge.',
   },
   {
     id: 'estg-bav-contribution-limits',
@@ -264,6 +264,39 @@ export const payroll2026GoldenCases = [
     expectedTaxableIncome: 81_866,
     expectedIncomeTax: 23_248,
     expectedSolidarityTax: 345,
+    toleranceEUR: 1,
+  },
+  {
+    id: 'stk1-gkv-childless-150k-above-all-bbg',
+    sourceId: 'bmf-lohnsteuerrechner-2026',
+    grossSalaryYear: 150_000,
+    expectedIncomeTax: 44_193,
+    expectedSolidarityTax: 2_430.61,
+    toleranceEUR: 1,
+  },
+  {
+    id: 'stk1-gkv-three-children-pv-discount-75k',
+    sourceId: 'bmf-lohnsteuerrechner-2026',
+    grossSalaryYear: 75_000,
+    profile: {
+      childBirthYears: [2010, 2012, 2015],
+    },
+    expectedIncomeTax: 14_217,
+    expectedSolidarityTax: 0,
+    toleranceEUR: 1,
+  },
+  {
+    id: 'stk1-pkv-100k-800-premium-400-employer-subsidy',
+    sourceId: 'bmf-lohnsteuerrechner-2026',
+    grossSalaryYear: 100_000,
+    profile: {
+      publicHealthInsurance: false,
+      healthAdditionalContributionPct: 0,
+      pkvMonthlyPremium: 650,
+      pPVMonthlyPremium: 150,
+    },
+    expectedIncomeTax: 24_410,
+    expectedSolidarityTax: 483.14,
     toleranceEUR: 1,
   },
 ] as const
@@ -779,10 +812,12 @@ export const retirementTaxGoldenCases = [
 
 /**
  * Captured by hand from the Bayerisches LfSt Alterseinkünfte-Rechner 2026
- * (Alleinstehende, VLG=1, Berechnungsjahr 2026). Each case exercises the
+ * (Alleinstehende VLG=1 and Zusammenveranlagung VLG=2, Berechnungsjahr 2026).
+ * Each case exercises the
  * end-to-end retirement-tax pipeline: cohort allowances (§22 Besteuerungsanteil,
  * §19 Versorgungsfreibetrag/Zuschlag, Ertragsanteil), §9a Werbungskosten-
- * Pauschbeträge, and §10c Sonderausgaben-Pauschbetrag, before §32a EStG.
+ * Pauschbeträge, §10c Sonderausgaben-Pauschbetrag, and the §32a tariff
+ * (Grundtarif or Splittingtarif).
  *
  * Versorgungsbezug entries use Höhe für den ersten vollen Kalendermonat =
  * Jahresbetrag / 12, Sonderzahlungen = 0, so that the §19 Abs. 2 Satz 4 EStG
@@ -792,6 +827,7 @@ export const bayernAlterseinkuenfte2026GoldenCases = [
   {
     id: 'bayern-grv-only-2026',
     sourceId: 'bayern-alterseinkuenfte-rechner-2026',
+    filingStatus: 'single',
     components: {
       statutoryPensionAnnual: 24_000,
       bavPensionAnnual: 0,
@@ -810,6 +846,7 @@ export const bayernAlterseinkuenfte2026GoldenCases = [
   {
     id: 'bayern-bav-versorgungsbezug-only-2026',
     sourceId: 'bayern-alterseinkuenfte-rechner-2026',
+    filingStatus: 'single',
     components: {
       statutoryPensionAnnual: 0,
       bavPensionAnnual: 24_000,
@@ -828,6 +865,7 @@ export const bayernAlterseinkuenfte2026GoldenCases = [
   {
     id: 'bayern-grv-plus-bav-versorgungsbezug-2026',
     sourceId: 'bayern-alterseinkuenfte-rechner-2026',
+    filingStatus: 'single',
     components: {
       statutoryPensionAnnual: 18_000,
       bavPensionAnnual: 24_000,
@@ -846,6 +884,7 @@ export const bayernAlterseinkuenfte2026GoldenCases = [
   {
     id: 'bayern-grv-plus-private-leibrente-ertragsanteil-2026',
     sourceId: 'bayern-alterseinkuenfte-rechner-2026',
+    filingStatus: 'single',
     components: {
       // 12,000 EUR/year private Leibrente starting at completed age 67
       // → §22 Nr. 1 Satz 3 a aa EStG Ertragsanteil 17 % → 2,040 EUR taxable.
@@ -860,6 +899,44 @@ export const bayernAlterseinkuenfte2026GoldenCases = [
     expected: {
       zuVersteuerndesEinkommen: 17_022,
       einkommensteuer: 854,
+    },
+    toleranceEUR: 0.01,
+  },
+  {
+    id: 'bayern-married-grv-only-2026',
+    sourceId: 'bayern-alterseinkuenfte-rechner-2026',
+    filingStatus: 'married',
+    components: {
+      statutoryPensionAnnual: 24_000,
+      bavPensionAnnual: 0,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer',
+      otherTaxableAnnual: 0,
+      retirementYear: 2026,
+    },
+    expected: {
+      zuVersteuerndesEinkommen: 19_986,
+      einkommensteuer: 0,
+    },
+    toleranceEUR: 0.01,
+  },
+  {
+    id: 'bayern-married-grv-plus-bav-versorgungsbezug-2026',
+    sourceId: 'bayern-alterseinkuenfte-rechner-2026',
+    filingStatus: 'married',
+    components: {
+      statutoryPensionAnnual: 30_000,
+      bavPensionAnnual: 30_000,
+      bavIsLumpSum: false,
+      privateInsuranceTaxableAnnual: 0,
+      privateInsuranceTaxMode: 'abgeltungsteuer',
+      otherTaxableAnnual: 0,
+      retirementYear: 2026,
+    },
+    expected: {
+      zuVersteuerndesEinkommen: 53_676,
+      einkommensteuer: 6_684,
     },
     toleranceEUR: 0.01,
   },
@@ -990,6 +1067,106 @@ export const bavFundingBoundaryGoldenCases = [
     expectedSvFreePortionAnnual: 4_056,
     expectedTaxableOverflowAnnual: 1_876.7300091569323,
     expectedSvLiableOverflowAnnual: 5_932.730009156932,
+    toleranceEUR: 0.01,
+  },
+  {
+    // PKV employee at gross 75k EUR. §1a Abs. 1a BetrAVG statutory subsidy is
+    // capped by the employer's actual SV saving from the salary conversion.
+    // For a PKV employee the employer pays §257 SGB V subsidy independent of
+    // gross salary, so the only SV saved by the conversion is RV+AV
+    // (9.3 % + 1.3 % = 10.6 %). Conversion 2,400 EUR × 10.6 % = 254.40 EUR,
+    // which is below the 15 %-of-conversion ceiling (360 EUR), so the cap binds.
+    id: 'pkv-employee-statutory-subsidy-capped-by-rv-av-only',
+    sourceId: 'estg-bav-contribution-limits',
+    profile: {
+      publicHealthInsurance: false,
+      healthAdditionalContributionPct: 0,
+      pkvMonthlyPremium: 650,
+      pPVMonthlyPremium: 150,
+    },
+    monthlyGrossConversion: 200,
+    contractualMatchPercent: 0,
+    contractualFixedMonthly: 0,
+    expectedAnnualGrossConversion: 2_400,
+    expectedAnnualEmployerContribution: 254.4,
+    expectedTotalBavContributionAnnual: 2_654.4,
+    expectedTaxFreePortionAnnual: 2_654.4,
+    expectedSvFreePortionAnnual: 2_654.4,
+    expectedTaxableOverflowAnnual: 0,
+    expectedSvLiableOverflowAnnual: 0,
+    expectedMonthlyStatutoryEmployerSubsidy: 21.2,
+    expectedMonthlyContractualEmployerContribution: 0,
+    toleranceEUR: 0.01,
+  },
+  {
+    // Salary 150,000 EUR is above all 2026 SV BBGs (RV/AV 101,400; KV/PV
+    // 69,750). The §3 Nr. 63 EStG conversion of 4 % BBG (4,056 EUR/year, 338
+    // EUR/month) does not push gross below any BBG, so the employer's actual
+    // SV saving is 0 EUR. The §1a Abs. 1a BetrAVG cap therefore zeroes the
+    // statutory subsidy, even though the 15 %-of-conversion would allow up to
+    // 608.40 EUR. Conversion stays fully tax-free (≤ 8 % BBG) and SV-free
+    // (≤ 4 % BBG).
+    id: 'salary-above-all-bbgs-zero-employer-sv-saving',
+    sourceId: 'estg-bav-contribution-limits',
+    profile: {
+      grossSalaryYear: 150_000,
+    },
+    monthlyGrossConversion: 338,
+    contractualMatchPercent: 0,
+    contractualFixedMonthly: 0,
+    expectedAnnualGrossConversion: 4_056,
+    expectedAnnualEmployerContribution: 0,
+    expectedTotalBavContributionAnnual: 4_056,
+    expectedTaxFreePortionAnnual: 4_056,
+    expectedSvFreePortionAnnual: 4_056,
+    expectedTaxableOverflowAnnual: 0,
+    expectedSvLiableOverflowAnnual: 0,
+    expectedMonthlyStatutoryEmployerSubsidy: 0,
+    expectedMonthlyContractualEmployerContribution: 0,
+    toleranceEUR: 0.01,
+  },
+  {
+    // Contractual fixed employer contribution of 50 EUR/month with the §1a
+    // Abs. 1a BetrAVG statutory subsidy disabled (collective-agreement waiver).
+    // Total employer contribution = 600 EUR/year, fully attributable to the
+    // contractual line. Combined bAV (3,000 EUR) is below both §3 Nr. 63 EStG
+    // and §1 SvEV caps, so no overflow.
+    id: 'fixed-employer-50-monthly-statutory-disabled',
+    sourceId: 'estg-bav-contribution-limits',
+    monthlyGrossConversion: 200,
+    contractualMatchPercent: 0,
+    contractualFixedMonthly: 50,
+    statutoryMinimumSubsidyEnabled: false,
+    expectedAnnualGrossConversion: 2_400,
+    expectedAnnualEmployerContribution: 600,
+    expectedTotalBavContributionAnnual: 3_000,
+    expectedTaxFreePortionAnnual: 3_000,
+    expectedSvFreePortionAnnual: 3_000,
+    expectedTaxableOverflowAnnual: 0,
+    expectedSvLiableOverflowAnnual: 0,
+    expectedMonthlyStatutoryEmployerSubsidy: 0,
+    expectedMonthlyContractualEmployerContribution: 50,
+    toleranceEUR: 0.01,
+  },
+  {
+    // §1a Abs. 1a BetrAVG statutory subsidy disabled (collective-agreement
+    // waiver) and no contractual subsidy → employer contribution is 0 EUR.
+    // Employee-only conversion of 2,400 EUR/year stays well below both caps.
+    id: 'statutory-subsidy-disabled-no-contractual',
+    sourceId: 'estg-bav-contribution-limits',
+    monthlyGrossConversion: 200,
+    contractualMatchPercent: 0,
+    contractualFixedMonthly: 0,
+    statutoryMinimumSubsidyEnabled: false,
+    expectedAnnualGrossConversion: 2_400,
+    expectedAnnualEmployerContribution: 0,
+    expectedTotalBavContributionAnnual: 2_400,
+    expectedTaxFreePortionAnnual: 2_400,
+    expectedSvFreePortionAnnual: 2_400,
+    expectedTaxableOverflowAnnual: 0,
+    expectedSvLiableOverflowAnnual: 0,
+    expectedMonthlyStatutoryEmployerSubsidy: 0,
+    expectedMonthlyContractualEmployerContribution: 0,
     toleranceEUR: 0.01,
   },
 ] as const

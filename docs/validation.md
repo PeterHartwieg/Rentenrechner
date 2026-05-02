@@ -38,16 +38,16 @@ npm run verify
 | Area | Use this reference | Current usage |
 |------|--------------------|---------------|
 | Income tax tariff | [BMF LStH 2026 §32a](https://esth.bundesfinanzministerium.de/lsth/2026/A-Einkommensteuergesetz/IV-Tarif-31-34b/Paragraf-32a/inhalt.html), [BMF Einkommensteuerrechner 2026](https://www.bmf-steuerrechner.de/ekst/eingabeformekst.xhtml) | Golden tests for tariff zones plus calculator-backed ESt + Soli captures across all four §32a zones |
-| Payroll / Lohnsteuer | [BMF Lohnsteuerrechner 2026](https://www.bmf-steuerrechner.de/bl/bl2026/eingabeformbl2026.xhtml) | Golden tests for Steuerklasse I, GKV 2.9%, no church tax |
+| Payroll / Lohnsteuer | [BMF Lohnsteuerrechner 2026](https://www.bmf-steuerrechner.de/bl/bl2026/eingabeformbl2026.xhtml) | Golden tests for Steuerklasse I, no church tax, GKV 2.9%, PV childless surcharge/child discount, salary above BBG, and PKV with employer subsidy |
 | Social-security constants | [BMAS SV-Rechengroessen 2026](https://www.bmas.de/DE/Service/Gesetze-und-Gesetzesvorhaben/sozialversicherungs-rechengroessenverordnung-2026.html) | Golden tests for BBG, Bezugsgröße, Durchschnittsentgelt |
 | Current pension value | [BMAS Rentenwertbestimmungsverordnung 2026](https://www.bmas.de/DE/Service/Gesetze-und-Gesetzesvorhaben/rentenwertbestimmungsverordnung-2026.html) | Golden test for 42.52 EUR post-July 2026 Rentenwert |
 | GRV gross pension formula | [SGB VI §64](https://www.gesetze-im-internet.de/sgb_6/__64.html) | Golden tests for EP × Rentenwert gross pension projection |
 | Retirement tax pipeline | [EStG §22](https://www.gesetze-im-internet.de/estg/__22.html), [EStG §19](https://www.gesetze-im-internet.de/estg/__19.html), [EStG §9a](https://www.gesetze-im-internet.de/estg/__9a.html), [EStG §10c](https://www.gesetze-im-internet.de/estg/__10c.html) | Golden tests for Besteuerungsanteil, Versorgungsfreibetrag, Pauschbeträge, and combined taxable income |
-| bAV contribution limits | [EStG §3 Nr. 63](https://www.gesetze-im-internet.de/estg/__3.html), [SvEV §1](https://www.gesetze-im-internet.de/svev/__1.html) | Golden tests for 8% tax-free and 4% SV-free 2026 BBG limits, funding outputs at the boundaries, high-match overflow, and over-cap conversion |
+| bAV contribution limits | [EStG §3 Nr. 63](https://www.gesetze-im-internet.de/estg/__3.html), [SvEV §1](https://www.gesetze-im-internet.de/svev/__1.html), [BetrAVG §1a Abs. 1a](https://www.gesetze-im-internet.de/betravg/__1a.html) | Golden tests for 8% tax-free and 4% SV-free 2026 BBG limits, funding outputs at the boundaries, high-match overflow, over-cap conversion, PKV employer SV saving, salary above all BBGs, fixed contractual subsidy, and disabled statutory subsidy |
 | ETF Vorabpauschale / exit tax | [BMF Basiszins letter 2026](https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Investmentsteuer/2026-01-13-basiszins-berechnung-vorabpauschale.html), [InvStG §18](https://www.gesetze-im-internet.de/invstg_2018/__18.html), [InvStG §19](https://www.gesetze-im-internet.de/invstg_2018/__19.html) | Golden tests for 3.20% basis rate, monthly purchase proration, opening-balance accrual, gain cap, and exit cost-basis carryover |
-| Riester allowances | [EStG §86](https://www.gesetze-im-internet.de/estg/__86.html), [EStG §84](https://www.gesetze-im-internet.de/estg/__84.html), [EStG §85](https://www.gesetze-im-internet.de/estg/__85.html), [DRV/ZfA Riester-Rechner](https://riester.deutsche-rentenversicherung.de/DE/Riester-Rechner/riester-rechner_node) | Statutory golden tests plus captured official calculator endpoint cases for no-child and two-child scenarios |
+| Riester allowances | [EStG §86](https://www.gesetze-im-internet.de/estg/__86.html), [EStG §84](https://www.gesetze-im-internet.de/estg/__84.html), [EStG §85](https://www.gesetze-im-internet.de/estg/__85.html), [DRV/ZfA Riester-Rechner](https://riester.deutsche-rentenversicherung.de/DE/Riester-Rechner/riester-rechner_node) | Statutory golden tests plus captured official calculator endpoint cases for single direct eligibility, married direct/indirect eligibility, pre/post-2008 child mixes, and career-starter bonus |
 | Statutory pension estimate | [DRV Rentenschaetzer](https://www.deutsche-rentenversicherung.de/DRV/DE/Online-Services/Online-Rechner/Rentenschaetzer/rentenschaetzer_node.html) | Captured 2026-05-02: page still shows 40.79 EUR/EP; external golden suite includes a temporary DRV-compatible fixture while app defaults stay on announced 42.52 EUR/EP from 2026-07-01 |
-| Retirement taxation calculator | [Bayerisches LfSt Alterseinkuenfte-Rechner 2026](https://www.steuerberechnung.bayern.de/Alterseinkuenfte-Rechner/2026/aekr_formular.asp?VLG=1) | Calculator-backed end-to-end captures for GRV-only, bAV-Versorgungsbezug-only, GRV+bAV combined, and GRV+private-Leibrente Ertragsanteil routing |
+| Retirement taxation calculator | [Bayerisches LfSt Alterseinkuenfte-Rechner 2026](https://www.steuerberechnung.bayern.de/Alterseinkuenfte-Rechner/2026/aekr_formular.asp?VLG=1) | Calculator-backed end-to-end captures for GRV-only, bAV-Versorgungsbezug-only, GRV+bAV combined, GRV+private-Leibrente Ertragsanteil routing, and married/Splitting GRV+bAV cases |
 | Real entitlement data | [Digitale Rentenuebersicht](https://www.rentenuebersicht.de/DE/02_funktionsweise/wie_funktioniert_es_node.html) | Manual user-data cross-check only |
 
 ## Tolerances
@@ -98,21 +98,19 @@ npm run verify
    temporary 40.79 EUR/EP DRV-compatible fixture exists; replace or complement it
    once the DRV page switches to the 42.52 EUR/EP post-July value.
 
-2. Extend the Alterseinkuenfte-Rechner suite with married/Splitting cases once
-   `calculateRetirementTax` supports `filingStatus = 'married'`. Single-filer
-   GRV-only, bAV-only, combined, and Ertragsanteil cases are calculator-backed.
+2. Extend the BMF payroll suite with Steuerklasse III/V/VI, church tax, and
+   Freibetrag/Hinzurechnungsbetrag captures. Current coverage is Steuerklasse I,
+   no church tax, GKV/PKV, PV child rates, and salary above BBG.
 
-3. Add additional ZfA/Riester captures for married/indirect eligibility and
-   below-Mindesteigenbeitrag proration. Direct single/no-child and two-child
-   official calculator cases are covered.
-
-4. Add bAV funding-output fixtures for PKV and salary-above-BBG scenarios. The
-   4%/8% boundaries, high employer match, and over-cap conversion are covered.
-
-5. Add ETF payout-schedule annual tax fixtures. Gross opening-balance,
+3. Add ETF payout-schedule annual tax fixtures. Gross opening-balance,
    monthly-purchase accrual, gain-cap behavior, and exit-basis carryover are covered.
 
-6. Re-check Altersvorsorgedepot constants after final Bundesgesetzblatt
+4. Add Alterseinkuenfte-Rechner captures for two-spouse income allocation once
+   the retirement-tax engine models per-spouse Werbungskosten-Pauschbeträge.
+   Current coverage includes single-filer cases and one-earner married/Splitting
+   cases.
+
+5. Re-check Altersvorsorgedepot constants after final Bundesgesetzblatt
    publication before relying on them as official golden values.
 
 ## What Golden Tests Do Not Prove
