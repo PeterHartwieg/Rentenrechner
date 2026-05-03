@@ -36,10 +36,7 @@ import type {
 import { besteuerungsanteilGrv } from '../rules/de2026'
 import { legalConstants } from '../rules/legalConstants'
 import {
-  appliesFreiwilligGkv,
-  calculateFreiwilligMarginalKvPvByHeadroom,
-  calculateMarginalRetirementTax,
-  retirementIncomeBase,
+  calculateMonthlyRetirementPayout,
   type RetirementHealthStatus,
 } from './retirementPayout'
 import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
@@ -144,50 +141,20 @@ export function netBasisrentePayout(
    *  the §240 KV/PV BBG headroom for freiwillig versicherte. */
   grvBaselineMonthly = 0,
 ): number {
-  // -------------------------------------------------------------------------
-  // 1. Income tax — §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil.
-  //    Route Basisrente through statutoryPensionAnnual so the Besteuerungsanteil
-  //    cohort table is applied (same table as GRV). Werbungskosten-Pauschbetrag 102 EUR
-  //    (§9a Nr. 3 EStG) applies to Renten income, which is correct.
-  // -------------------------------------------------------------------------
-  const basisrenteAnnual = grossMonthlyPayout * 12
-  const otherAnnual = otherMonthlyIncome * 12
-
-  const marginalTaxAnnual = calculateMarginalRetirementTax(
-    rules,
-    retirementIncomeBase(retirementYear, {
-      grvBaselineMonthly,
-      otherTaxableAnnual: otherAnnual,
-    }),
-    {
-      statutoryPensionAnnual: basisrenteAnnual,
-    },
-  )
-
-  // KVdR, PKV (working-phase profile), or explicit pkv retirement status: no KV/PV.
-  // Basisrente is not a Versorgungsbezug (§229 SGB V) so KVdR members owe no KV/PV on it.
-  if (!appliesFreiwilligGkv(profile, retirementHealthStatus)) {
-    return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
-  }
-
-  // -------------------------------------------------------------------------
-  // 2. KV/PV — marginal freiwillig §240 SGB V (only for freiwillig_gkv).
-  //    Basisrente is not a Versorgungsbezug (§229 SGB V); no §226 Abs. 2 KV-Freibetrag.
-  //    For freiwillig Versicherte, contributions apply at the full rate on all income up
-  //    to the monthly BBG (§240 SGB V). otherMonthlyIncome (GRV + other) already occupies
-  //    part of that BBG headroom. The MARGINAL KV/PV from adding the Basisrente payout is:
-  //      rate × min(grossPayout, max(0, BBG − otherMonthlyIncome))
-  //    When other income fills the BBG entirely, the Basisrente adds zero KV/PV.
-  // -------------------------------------------------------------------------
-  const kvPvMonthly = calculateFreiwilligMarginalKvPvByHeadroom(
-    profile,
+  // Basisrente is taxed on the §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil
+  // channel (same cohort table as GRV) and is NOT a Versorgungsbezug under
+  // §229 SGB V — KV/PV applies only via §240 SGB V for freiwillig versicherte.
+  return calculateMonthlyRetirementPayout({
     rules,
     retirementYear,
+    grvBaselineMonthly,
+    otherMonthlyIncome,
     grossMonthlyPayout,
-    otherMonthlyIncome + grvBaselineMonthly,
-  )
-
-  return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
+    taxChannel: 'statutory_pension',
+    kvPvChannel: 'freiwillig_other',
+    profile,
+    healthStatus: retirementHealthStatus,
+  }).netMonthly
 }
 
 /**

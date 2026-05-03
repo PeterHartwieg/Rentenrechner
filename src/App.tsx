@@ -6,7 +6,9 @@ import { de2026Rules } from './rules/de2026'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useGuidedSetup } from './app/useGuidedSetup'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
-import { useSimulationViewModel } from './app/useSimulationViewModel'
+import { useDerivedViews } from './app/useDerivedViews'
+import { useSimulationResult } from './app/useSimulationResult'
+import { useWorkspaceUiState } from './app/useWorkspaceUiState'
 import { useWorkspace } from './app/useWorkspace'
 import { useRoute } from './app/useRoute'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
@@ -68,33 +70,29 @@ function Calculator({ navigate }: CalculatorProps) {
   const guidedSetup = useGuidedSetup()
   const workspace = useWorkspace()
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
-  const vm = useSimulationViewModel(profile, assumptions)
+  const ui = useWorkspaceUiState()
+  const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
+  const views = useDerivedViews(profile, assumptions, result, {
+    showRealValues: ui.showRealValues,
+    cashflowProductId: ui.cashflowProductId,
+  })
+  const { simulation, monteCarloResult, selectedScenario, taxModes } = result
   const {
-    selectedScenarioId, setSelectedScenarioId,
-    showRealValues, setShowRealValues,
-    cashflowProductId, setCashflowProductId,
-    tarifgebunden, setTarifgebunden,
-    showAssumptions, setShowAssumptions,
-    linkCopied,
-    simulation,
-    selectedScenario,
-    monteCarloResult,
+    visibleProducts,
     selectedResults,
     capitalChartData,
     pensionBars,
     bestCapital,
     bestPension,
     cashflowResult,
+    effectiveCashflowProductId,
     insuranceResult,
     cashflowAnnualTaxSvSavings,
-    visibleProducts,
-    insuranceTaxMode,
-    kvdrMember,
-    bavLumpSumTaxMode,
     rowAfterTaxBalance,
+    linkCopied,
     handleCopyLink,
     handleExportCsv,
-  } = vm
+  } = views
 
   const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
 
@@ -114,10 +112,10 @@ function Calculator({ navigate }: CalculatorProps) {
     <ScenarioToolbar
       assumptions={assumptions}
       onAssumptionsChange={setAssumptions}
-      selectedScenarioId={selectedScenarioId}
-      onSelectScenario={setSelectedScenarioId}
-      showRealValues={showRealValues}
-      onShowRealValuesChange={setShowRealValues}
+      selectedScenarioId={result.effectiveScenarioId}
+      onSelectScenario={ui.setSelectedScenarioId}
+      showRealValues={ui.showRealValues}
+      onShowRealValuesChange={ui.setShowRealValues}
     />
   )
 
@@ -259,15 +257,15 @@ function Calculator({ navigate }: CalculatorProps) {
           <CashflowTable
             cashflowResult={cashflowResult}
             selectedResults={selectedResults}
-            cashflowProductId={cashflowProductId}
+            cashflowProductId={effectiveCashflowProductId}
             cashflowAnnualTaxSvSavings={cashflowAnnualTaxSvSavings}
-            onChangeCashflowProduct={(id) => setCashflowProductId(id as ProductId)}
+            onChangeCashflowProduct={(id) => ui.setCashflowProductId(id as ProductId)}
             rowAfterTaxBalance={rowAfterTaxBalance}
           />
 
           <AssumptionsPanel
-            show={showAssumptions}
-            onToggle={() => setShowAssumptions((v) => !v)}
+            show={ui.showAssumptions}
+            onToggle={() => ui.setShowAssumptions((v) => !v)}
             rules={de2026Rules}
             bavMinAnnual={bavMinAnnual}
             bavMinMonthly={bavMinMonthly}
@@ -291,17 +289,17 @@ function Calculator({ navigate }: CalculatorProps) {
         simulation={simulation}
         selectedResults={selectedResults}
         scenarioLib={scenarioLib}
-        kvdrMember={kvdrMember}
-        bavLumpSumTaxMode={bavLumpSumTaxMode}
-        insuranceTaxMode={insuranceTaxMode}
+        kvdrMember={taxModes.kvdrMember}
+        bavLumpSumTaxMode={taxModes.bavLumpSumTaxMode}
+        insuranceTaxMode={taxModes.insuranceTaxMode}
         insuranceResult={insuranceResult}
-        tarifgebunden={tarifgebunden}
-        onTarifgebundenChange={setTarifgebunden}
+        tarifgebunden={ui.tarifgebunden}
+        onTarifgebundenChange={ui.setTarifgebunden}
       />
     </section>
   )
 
-  const views = {
+  const viewsByTab = {
     vergleich: vergleichView,
     details: detailsView,
     angebot: angebotView,
@@ -343,7 +341,7 @@ function Calculator({ navigate }: CalculatorProps) {
       )}
 
       <section className="workspace">
-        {views[workspace.activeView] ?? vergleichView}
+        {viewsByTab[workspace.activeView as keyof typeof viewsByTab] ?? vergleichView}
       </section>
 
       <PrintReport profile={profile} assumptions={assumptions} simulation={simulation} />

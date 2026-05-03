@@ -8,6 +8,7 @@ import { legalConstants } from '../rules/legalConstants'
 import type { LumpSumDeductionBreakdown } from './lumpSumBreakdown'
 import {
   calculateMarginalRetirementTax,
+  calculateMonthlyRetirementPayout,
   calculateProfileRetirementKvPv,
   retirementIncomeBase,
 } from './retirementPayout'
@@ -156,36 +157,15 @@ export function netBavPayout(
    *  statutoryPensionAnnual (Besteuerungsanteil applied) and into KV/PV. */
   grvBaselineMonthly = 0,
 ): number {
-  const bavAnnual = grossMonthlyPayout * 12
-  const otherAnnual = otherMonthlyIncome * 12
-
-  const marginalAnnualTax = calculateMarginalRetirementTax(
-    rules,
-    retirementIncomeBase(retirementYear, {
-      grvBaselineMonthly,
-      otherTaxableAnnual: otherAnnual,
-    }),
-    {
-      bavPensionAnnual: bavAnnual,
-    },
-  )
-
-  if (!profile.publicHealthInsurance) {
-    return Math.max(0, grossMonthlyPayout - marginalAnnualTax / 12)
-  }
-
-  const kvPv = calculateProfileRetirementKvPv(
-    profile,
+  return calculateMonthlyRetirementPayout({
     rules,
     retirementYear,
-    {
-      bavMonthlyVersorgungsbezuege: grossMonthlyPayout,
-      otherMonthlyVersorgungsbezuege: 0,
-      monthlyStatutoryPension: otherMonthlyIncome + grvBaselineMonthly,
-      freiwilligOtherMonthlyIncome: 0,
-      isFreiwilligVersichert: !kvdrMember,
-    },
-  )
-
-  return Math.max(0, grossMonthlyPayout - marginalAnnualTax / 12 - kvPv.bavKvMonthly - kvPv.bavPvMonthly)
+    grvBaselineMonthly,
+    otherMonthlyIncome,
+    grossMonthlyPayout,
+    taxChannel: 'bav_pension',
+    kvPvChannel: 'bav_versorgungsbezug',
+    profile,
+    healthStatus: kvdrMember ? 'kvdr' : 'freiwillig_gkv',
+  }).netMonthly
 }

@@ -289,6 +289,54 @@ describe('netAvdPayout', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Session 5 — freiwillig-GKV BBG headroom for certified pensions (§240 SGB V)
+//
+// Bug fix vs. pre-Wave-3 behavior: otherMonthlyIncome (already-in-payout
+// retirement income that isn't GRV) was previously dropped from the BBG
+// headroom calculation for certified §22 Nr. 5 EStG pensions, which understated
+// occupied headroom and overstated KV/PV charged on the new payout. The shared
+// monthly-payout primitive now stacks otherMonthlyIncome alongside GRV, matching
+// the Basisrente convention.
+// ---------------------------------------------------------------------------
+describe('netAvdPayout — freiwillig-GKV BBG headroom (Session 5 fix)', () => {
+  const profile = { ...defaultProfile, publicHealthInsurance: true }
+  const retirementYear = 2060
+  const bbg = rules.socialSecurity.healthAndCareCapMonth // 5,812.50 EUR/month
+
+  // Isolate the KV/PV component by comparing freiwillig vs kvdr (kvdr = 0 KV/PV
+  // on §22 Nr. 5 income — the marginal-tax delta is identical between the two).
+  const kvPvAmount = (gross: number, other: number) =>
+    netAvdPayout(gross, profile, rules, other, retirementYear, 0, 'kvdr') -
+    netAvdPayout(gross, profile, rules, other, retirementYear, 0, 'freiwillig_gkv')
+
+  it('otherMonthlyIncome occupies BBG headroom (no GRV): KV/PV decreases as other rises', () => {
+    // gross 500, other 0 → full KV/PV charged on 500.
+    // gross 500, other = BBG → 0 headroom remaining → 0 KV/PV on the new payout.
+    const noOther = kvPvAmount(500, 0)
+    const allHeadroomConsumed = kvPvAmount(500, bbg)
+    expect(noOther).toBeGreaterThan(0)
+    expect(allHeadroomConsumed).toBeCloseTo(0, 2)
+  })
+
+  it('otherMonthlyIncome above BBG: KV/PV clamps to 0 (negative headroom)', () => {
+    const kv = kvPvAmount(500, bbg + 1_000)
+    expect(kv).toBeCloseTo(0, 2)
+  })
+
+  it('matches Basisrente convention: GRV + other are summed against headroom', () => {
+    // Splitting the same total occupied headroom between GRV and "other" must
+    // produce the same KV/PV (within rounding) — the two channels are
+    // symmetric in the §240 SGB V freiwillig assessment base.
+    const kvAllOther = kvPvAmount(500, 2_000)
+    const kvSplit =
+      netAvdPayout(500, profile, rules, 1_000, retirementYear, 1_000, 'kvdr') -
+      netAvdPayout(500, profile, rules, 1_000, retirementYear, 1_000, 'freiwillig_gkv')
+    // Same 2k occupation → same headroom impact → same KV/PV magnitude.
+    expect(kvAllOther).toBeCloseTo(kvSplit, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Partial capital lump-sum taxation
 // ---------------------------------------------------------------------------
 

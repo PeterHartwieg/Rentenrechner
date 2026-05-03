@@ -8,6 +8,7 @@ import { ertragsanteilByAge, legalConstants } from '../rules/legalConstants'
 import type { LumpSumDeductionBreakdown } from './lumpSumBreakdown'
 import {
   calculateMarginalRetirementTax,
+  calculateMonthlyRetirementPayout,
   calculateProfileRetirementKvPv,
   retirementIncomeBase,
 } from './retirementPayout'
@@ -70,48 +71,50 @@ export function netInsurancePayout(
     annualGain = grossMonthlyPayout * 12 * gainRatio
   }
 
-  if (effectiveTaxMode === 'pre2005') {
-    if (!profile?.publicHealthInsurance || kvdrMember || !profile) {
-      return grossMonthlyPayout
-    }
-    // freiwillig versichert: apply KV/PV below (marginalTax = 0 since pre2005).
+  // pre2005 + KVdR (or PKV / no profile) → entirely pass-through.
+  // pre2005 + freiwillig versichert still owes KV/PV via §240 SGB V — fall through
+  // to the shared primitive, which short-circuits the income-tax calc on pre2005.
+  if (
+    effectiveTaxMode === 'pre2005' &&
+    (!profile?.publicHealthInsurance || kvdrMember || !profile)
+  ) {
+    return grossMonthlyPayout
   }
 
-  let marginalTax = 0
-  if (effectiveTaxMode !== 'pre2005') {
-    marginalTax = calculateMarginalRetirementTax(
+  // No profile → no KV/PV (legacy contract for direct callers without retiree
+  // context). Compute marginal tax only and skip the shared primitive (it requires
+  // a real profile for the children-adjusted PV rate).
+  if (!profile) {
+    const marginalTax = calculateMarginalRetirementTax(
       rules,
       retirementIncomeBase(retirementYear, {
         grvBaselineMonthly,
         otherTaxableAnnual: otherMonthlyIncome * 12,
         privateInsuranceTaxMode: effectiveTaxMode,
       }),
-      {
-        privateInsuranceTaxableAnnual: annualGain,
-      },
+      { privateInsuranceTaxableAnnual: annualGain },
     )
+    return Math.max(0, grossMonthlyPayout - marginalTax / 12)
   }
 
-  // KV/PV for freiwillig Versicherte only (#47).
-  // Private insurance is NOT a Versorgungsbezug — pass as freiwilligOtherMonthlyIncome.
-  let kvPvMonthly = 0
-  if (profile?.publicHealthInsurance && !kvdrMember) {
-    const kvPv = calculateProfileRetirementKvPv(
-      profile,
-      rules,
-      retirementYear,
-      {
-        bavMonthlyVersorgungsbezuege: 0,
-        otherMonthlyVersorgungsbezuege: 0,
-        monthlyStatutoryPension: otherMonthlyIncome + grvBaselineMonthly,
-        freiwilligOtherMonthlyIncome: grossMonthlyPayout,
-        isFreiwilligVersichert: true,
-      },
-    )
-    kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
-  }
+  const kvPvChannel = profile.publicHealthInsurance && !kvdrMember
+    ? 'freiwillig_other'
+    : 'none'
 
-  return Math.max(0, grossMonthlyPayout - marginalTax / 12 - kvPvMonthly)
+  return calculateMonthlyRetirementPayout({
+    rules,
+    retirementYear,
+    grvBaselineMonthly,
+    otherMonthlyIncome,
+    grossMonthlyPayout,
+    // Tax base uses the gain (pre-multiplied by Ertragsanteil for Leibrente, gain ratio otherwise).
+    taxableAnnualOverride: annualGain,
+    taxChannel: 'private_insurance',
+    privateInsuranceTaxMode: effectiveTaxMode,
+    kvPvChannel,
+    profile,
+    healthStatus: kvdrMember ? 'kvdr' : 'freiwillig_gkv',
+  }).netMonthly
 }
 
 // After-tax lump-sum insurance capital. (#46, #47)

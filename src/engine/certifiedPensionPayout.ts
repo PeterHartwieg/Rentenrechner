@@ -1,8 +1,7 @@
 import type { GermanRules, PersonalProfile } from '../domain'
 import {
-  appliesFreiwilligGkv,
   calculateMarginalRetirementTax,
-  calculateProfileRetirementKvPv,
+  calculateMonthlyRetirementPayout,
   retirementIncomeBase,
   type RetirementHealthStatus,
 } from './retirementPayout'
@@ -15,6 +14,10 @@ import {
  * Besteuerungsanteil and no bAV Versorgungsfreibetrag. They are also not
  * Versorgungsbezüge under §229 SGB V, so KV/PV applies only for freiwillig
  * gesetzlich Versicherte via the broad §240 SGB V assessment base.
+ *
+ * Bug-fix vs. pre-Wave-3 behaviour: `otherMonthlyIncome` now occupies BBG
+ * headroom in the §240 SGB V freiwillig path (previously it only entered the
+ * marginal-tax base). This unifies the certified-pension and Basisrente paths.
  */
 export function netCertifiedPensionPayout(
   grossMonthlyPayout: number,
@@ -27,39 +30,17 @@ export function netCertifiedPensionPayout(
   grvBaselineMonthly = 0,
   retirementHealthStatus: RetirementHealthStatus = 'freiwillig_gkv',
 ): number {
-  const payoutAnnual = grossMonthlyPayout * 12
-  const otherAnnual = otherMonthlyIncome * 12
-
-  const marginalTaxAnnual = calculateMarginalRetirementTax(
-    rules,
-    retirementIncomeBase(retirementYear, {
-      grvBaselineMonthly,
-      otherTaxableAnnual: otherAnnual,
-    }),
-    {
-      otherTaxableAnnual: payoutAnnual,
-    },
-  )
-
-  if (!appliesFreiwilligGkv(profile, retirementHealthStatus)) {
-    return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12)
-  }
-
-  const kvPv = calculateProfileRetirementKvPv(
-    profile,
+  return calculateMonthlyRetirementPayout({
     rules,
     retirementYear,
-    {
-      bavMonthlyVersorgungsbezuege: 0,
-      otherMonthlyVersorgungsbezuege: 0,
-      monthlyStatutoryPension: grvBaselineMonthly,
-      freiwilligOtherMonthlyIncome: grossMonthlyPayout,
-      isFreiwilligVersichert: true,
-    },
-  )
-
-  const kvPvMonthly = kvPv.freiwilligOtherKvMonthly + kvPv.freiwilligOtherPvMonthly
-  return Math.max(0, grossMonthlyPayout - marginalTaxAnnual / 12 - kvPvMonthly)
+    grvBaselineMonthly,
+    otherMonthlyIncome,
+    grossMonthlyPayout,
+    taxChannel: 'other',
+    kvPvChannel: 'freiwillig_other',
+    profile,
+    healthStatus: retirementHealthStatus,
+  }).netMonthly
 }
 
 /**
