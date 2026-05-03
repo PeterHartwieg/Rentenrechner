@@ -48,6 +48,8 @@ import { InventoryWizard } from './features/inventory/InventoryWizard'
 import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSidebar'
 import { CombineIncomePanel } from './features/inventory/CombineIncomePanel'
 import { useCombineSimulation } from './app/useCombineSimulation'
+import { RecommenderCard } from './features/dashboard/RecommenderCard'
+import { buildWhatIfFromCandidate } from './app/recommender'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
@@ -228,12 +230,24 @@ function Calculator({ navigate }: CalculatorProps) {
       {toolbar}
 
       {portfolioState.mode === 'combine' && combineBasisResult && (
-        <CombineIncomePanel
-          combinedResult={combineBasisResult}
-          perInstanceResults={combineSimulation.perInstance}
-          scenarioId={combineBasisScenarioId}
-          scenarioLabel={combineBasisLabel}
-        />
+        <>
+          <RecommenderCard
+            workspace={portfolioState.workspace}
+            baselineCombined={combineBasisResult}
+            baselinePerInstance={combineSimulation.perInstance}
+            grvGrossMonthlyPension={combineSimulation.statutoryPension.grossMonthlyPension}
+            onSaveAsPlan={(candidate) => {
+              const whatIf = buildWhatIfFromCandidate(portfolioState.baseline, candidate)
+              portfolioState.addWhatIf(whatIf)
+            }}
+          />
+          <CombineIncomePanel
+            combinedResult={combineBasisResult}
+            perInstanceResults={combineSimulation.perInstance}
+            scenarioId={combineBasisScenarioId}
+            scenarioLabel={combineBasisLabel}
+          />
+        </>
       )}
 
       {guidedSetup.journeyState === 'active' && (
