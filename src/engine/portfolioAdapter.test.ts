@@ -20,7 +20,7 @@
  *      key fields match a legacy length-1 simulation.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
@@ -864,10 +864,13 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
 
   it('certified bAV → bAV transfer between two same-Durchführungsweg instances respects routing', () => {
     const workspace = rich()
+    // bavA has monthlyGrossConversion=0 so the year-5 withdrawal is the only
+    // funding signal; the receiver delta is purely the compound growth of the injection.
     const bavA: BavInstance = {
       ...workspace.baseline.assumptions.bav[0],
       instanceId: 'bav-source',
       currentValueEUR: 25_000,
+      monthlyGrossConversion: 0,
       durchfuehrungsweg: 'direktversicherung_3_63',
       transferEvents: [
         {
@@ -898,23 +901,32 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     const { perInstance } = simulatePortfolio(ws, de2026Rules)
     expect(perInstance['bav-source']).toBeDefined()
     expect(perInstance['bav-receiver']).toBeDefined()
-    // Receiver gets the transfer + grows with own contributions.
-    const baselineReceiver = simulatePortfolio(
-      {
-        ...ws,
-        baseline: {
-          ...ws.baseline,
-          assumptions: {
-            ...ws.baseline.assumptions,
-            bav: [{ ...bavA, transferEvents: [] }, bavB],
-          },
+    const baselineWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: [{ ...bavA, transferEvents: [] }, bavB],
         },
       },
-      de2026Rules,
-    ).perInstance['bav-receiver']
-    expect(perInstance['bav-receiver'][0].capitalAtRetirement).toBeGreaterThan(
-      baselineReceiver[0].capitalAtRetirement,
-    )
+    }
+    const baselineReceiver = simulatePortfolio(baselineWs, de2026Rules).perInstance['bav-receiver']
+    // Stronger oracle: certified transfer is tax-neutral; the receiver's capital gain
+    // equals exactly 10_000 compounded over the remaining horizon (39 - 5 = 34 years
+    // from injection at contractYear 6, 408 months remaining).
+    // Net monthly factor = (1+r)^(1/12) × (1-totalFee)^(1/12) where r = basis 5% and
+    // totalFee = wrapperAssetFee(0.003) + fundAssetFee(0.005) = 0.008.
+    const basisAnnualReturn = 0.05  // index 1 = basis scenario
+    const bavTotalFee = 0.003 + 0.005  // from defaultScenario bav.fees
+    const monthlyFactor =
+      Math.pow(1 + basisAnnualReturn, 1 / 12) * Math.pow(1 - bavTotalFee, 1 / 12)
+    const remainingMonths = (67 - 28 - 5) * 12  // (retirementAge - age - eventYearOffset) * 12 = 34 * 12 = 408
+    const expectedDelta = 10_000 * Math.pow(monthlyFactor, remainingMonths)
+    const actualDelta =
+      perInstance['bav-receiver'][1].capitalAtRetirement -
+      baselineReceiver[1].capitalAtRetirement
+    expect(actualDelta).toBeCloseTo(expectedDelta, 4)
   })
 
   it('surrender_reinvest pAV → ETF (pre-2005, tax-free) — target gets post-haircut proceeds', () => {
@@ -965,10 +977,234 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
         },
       },
     }
-    const noTransfer = simulatePortfolio(noTransferWs, de2026Rules).perInstance['etf-target']
+    const noTransferResult = simulatePortfolio(noTransferWs, de2026Rules)
+    const noTransferEtf = noTransferResult.perInstance['etf-target']
     // ETF target with the surrender_reinvest carries higher capital.
     expect(perInstance['etf-target'][0].capitalAtRetirement).toBeGreaterThan(
-      noTransfer[0].capitalAtRetirement,
+      noTransferEtf[0].capitalAtRetirement,
     )
+    // Source pAV residual: pre-2005 tax-free, so afterTaxLumpSum = capital at retirement.
+    // The source loses the post-haircut proceeds (28_500) at contractYear 6 (month 61).
+    // From that point, both runs are identical — the delta at retirement is exactly
+    // proceeds × netGrowthFactor^408 (remainingMonths after the withdrawal).
+    // Net monthly factor = (1+r)^(1/12) × (1-insFee)^(1/12), insFee = 0.005.
+    // We pin per scenario (each scenario has a different annualReturn).
+    const karinEvent = pavSrc.transferEvents![0]
+    const proceeds = karinEvent.amountEUR * (1 - (karinEvent.type === 'surrender_reinvest' ? karinEvent.surrenderHaircutPct : 0))
+    const insTotalFee = 0.003 + 0.002  // wrapperAssetFee + fundAssetFee from defaultScenario
+    const remainingMonthsKarin = (67 - 28 - 5) * 12  // 34 * 12 = 408
+    const returnRates = [0.03, 0.05, 0.07]  // konservativ, basis, optimistisch
+    const noTransferSource = noTransferResult.perInstance['versicherung-karin']
+    const withTransferSource = perInstance['versicherung-karin']
+    for (let i = 0; i < returnRates.length; i++) {
+      const mf = Math.pow(1 + returnRates[i], 1 / 12) * Math.pow(1 - insTotalFee, 1 / 12)
+      const expectedDrop = proceeds * Math.pow(mf, remainingMonthsKarin)
+      const actualDrop =
+        noTransferSource[i].afterTaxLumpSum! - withTransferSource[i].afterTaxLumpSum!
+      expect(actualDrop).toBeCloseTo(expectedDrop, 0)
+    }
+  })
+
+  it('surrender_reinvest — halbeinkuenfte pAV source applies surrender tax (zero cost-basis approximation)', () => {
+    // Pins V1 conservative cost-basis approximation; relax when issue 15 P2 addresses
+    // mid-horizon contribution preflight.
+    const workspace = rich()
+    // contractStartYear 2008 + runtime 39y + retirementAge 67 → halbeinkuenfte.
+    // amountEUR = 50_000 so half-gain (25_000) exceeds basicAllowance (12_348) →
+    // nonzero income tax, confirming the zero-cost-basis path is exercised.
+    const pavSrc: InsuranceInstance = {
+      ...workspace.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-halbe',
+      contractStartYear: 2008,
+      oldContractTaxFreeEligible: false,
+      currentValueEUR: 80_000,
+      surrenderHaircutPct: 0.0,
+      transferEvents: [
+        {
+          type: 'surrender_reinvest',
+          year: de2026Rules.year + 5,
+          sourceInstanceId: 'versicherung-halbe',
+          targetInstanceId: 'etf-halbe-target',
+          amountEUR: 50_000,
+          surrenderHaircutPct: 0.0,
+        },
+      ],
+    }
+    // Also build a pre-2005 (tax-free) variant of the same source for comparison.
+    const pavSrcTaxFree: InsuranceInstance = {
+      ...pavSrc,
+      instanceId: 'versicherung-halbe',
+      contractStartYear: 2002,
+      oldContractTaxFreeEligible: true,
+    }
+    const etfTarget: EtfInstance = {
+      ...workspace.baseline.assumptions.etf[0],
+      instanceId: 'etf-halbe-target',
+    }
+    const makeWs = (ins: InsuranceInstance): Workspace => ({
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          insurance: [ins],
+          etf: [etfTarget],
+        },
+      },
+    })
+    const withHalbe = simulatePortfolio(makeWs(pavSrc), de2026Rules)
+    const withTaxFree = simulatePortfolio(makeWs(pavSrcTaxFree), de2026Rules)
+    const noTransfer = simulatePortfolio(makeWs({ ...pavSrc, transferEvents: [] }), de2026Rules)
+    // With zero cost basis (V1 approximation), halbeinkuenfte taxes half the gain at the
+    // marginal rate. Surrender tax > 0 → target injection < tax-free equivalent.
+    const targetHalbe = withHalbe.perInstance['etf-halbe-target'][1]
+    const targetTaxFree = withTaxFree.perInstance['etf-halbe-target'][1]
+    const targetNoTransfer = noTransfer.perInstance['etf-halbe-target'][1]
+    const deltaHalbe = targetHalbe.capitalAtRetirement - targetNoTransfer.capitalAtRetirement
+    const deltaTaxFree = targetTaxFree.capitalAtRetirement - targetNoTransfer.capitalAtRetirement
+    // Target gains something despite the tax.
+    expect(deltaHalbe).toBeGreaterThan(0)
+    // Halbeinkuenfte surrender tax reduces the injection vs. tax-free (conservative pin).
+    expect(deltaHalbe).toBeLessThan(deltaTaxFree)
+    // Source always loses the full post-haircut proceeds regardless of tax mode.
+    const insRetentionFee = 0.003 + 0.002  // wrapperAssetFee + fundAssetFee (defaultScenario insurance)
+    const mfIns = Math.pow(1 + 0.05, 1 / 12) * Math.pow(1 - insRetentionFee, 1 / 12)
+    const remainingMonths = (67 - 28 - 5) * 12  // 408
+    const proceeds = 50_000  // no haircut
+    const expectedSourceDrop = proceeds * Math.pow(mfIns, remainingMonths)
+    const sourceHalbe = withHalbe.perInstance['versicherung-halbe'][1]
+    const sourceNone = noTransfer.perInstance['versicherung-halbe'][1]
+    const sourceDrop = sourceNone.capitalAtRetirement - sourceHalbe.capitalAtRetirement
+    expect(sourceDrop).toBeCloseTo(expectedSourceDrop, 0)
+  })
+
+  it('surrender_reinvest — abgeltungsteuer pAV source applies surrender tax (zero cost-basis approximation)', () => {
+    // Pins V1 conservative cost-basis approximation; relax when issue 15 P2 addresses
+    // mid-horizon contribution preflight.
+    const workspace = rich()
+    // retirementAge=60 < halbeinkuenfteMinAge(62) → abgeltungsteuer regardless of runtime
+    const profileAbgelt = { ...workspace.baseline.profile, retirementAge: 60 }
+    const pavSrc: InsuranceInstance = {
+      ...workspace.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-abgelt',
+      contractStartYear: 2015,
+      oldContractTaxFreeEligible: false,
+      currentValueEUR: 30_000,
+      surrenderHaircutPct: 0.0,
+      transferEvents: [
+        {
+          type: 'surrender_reinvest',
+          year: de2026Rules.year + 3,
+          sourceInstanceId: 'versicherung-abgelt',
+          targetInstanceId: 'etf-abgelt-target',
+          amountEUR: 15_000,
+          surrenderHaircutPct: 0.0,
+        },
+      ],
+    }
+    const etfTarget: EtfInstance = {
+      ...workspace.baseline.assumptions.etf[0],
+      instanceId: 'etf-abgelt-target',
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        profile: profileAbgelt,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          insurance: [pavSrc],
+          etf: [etfTarget],
+        },
+      },
+    }
+    const noTransferWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          insurance: [{ ...pavSrc, transferEvents: [] }],
+        },
+      },
+    }
+    const withTransfer = simulatePortfolio(ws, de2026Rules)
+    const noTransfer = simulatePortfolio(noTransferWs, de2026Rules)
+    const proceedsAbgelt = 15_000  // no haircut
+    // With zero cost basis, abgeltungsteuer taxes the full gain at ~26.375%.
+    // Surrender tax > 0 → target gets less than the full proceeds.
+    const targetWithTransfer = withTransfer.perInstance['etf-abgelt-target'][1]
+    const targetNoTransfer = noTransfer.perInstance['etf-abgelt-target'][1]
+    const targetDelta = targetWithTransfer.capitalAtRetirement - targetNoTransfer.capitalAtRetirement
+    // Target gains something (injection > 0 after tax).
+    expect(targetDelta).toBeGreaterThan(0)
+    // V1 zero-cost-basis: target gains LESS than the full proceeds compounded.
+    const etfTotalFee = 0  // ETF default fee is minimal; use 0 as lower bound
+    const mfBasis = Math.pow(1 + 0.05, 1 / 12) * Math.pow(1 - etfTotalFee, 1 / 12)
+    const remainingMonths = (60 - 28 - 3) * 12  // 29 * 12 = 348
+    const fullProceedsCompounded = proceedsAbgelt * Math.pow(mfBasis, remainingMonths)
+    expect(targetDelta).toBeLessThan(fullProceedsCompounded)
+    // Source loses full proceeds at event year.
+    const sourceWithTransfer = withTransfer.perInstance['versicherung-abgelt'][1]
+    const sourceNoTransfer = noTransfer.perInstance['versicherung-abgelt'][1]
+    expect(sourceNoTransfer.capitalAtRetirement).toBeGreaterThan(
+      sourceWithTransfer.capitalAtRetirement,
+    )
+  })
+
+  it('surrender_reinvest — amountEUR > currentValueEUR clamps to actual capital (no negative balance)', () => {
+    const workspace = rich()
+    const pavSrc: InsuranceInstance = {
+      ...workspace.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-small',
+      contractStartYear: 2002,
+      oldContractTaxFreeEligible: true,
+      currentValueEUR: 1_000,   // small balance
+      surrenderHaircutPct: 0.0,
+      transferEvents: [
+        {
+          type: 'surrender_reinvest',
+          year: de2026Rules.year + 2,
+          sourceInstanceId: 'versicherung-small',
+          targetInstanceId: 'etf-clamp-target',
+          amountEUR: 50_000,   // vastly exceeds currentValueEUR
+          surrenderHaircutPct: 0.0,
+        },
+      ],
+    }
+    const etfTarget: EtfInstance = {
+      ...workspace.baseline.assumptions.etf[0],
+      instanceId: 'etf-clamp-target',
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          insurance: [pavSrc],
+          etf: [etfTarget],
+        },
+      },
+    }
+    // import.meta.env?.DEV is true in vitest — expect the dev warning.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy.mock.calls[0][0]).toContain('versicherung-small')
+    warnSpy.mockRestore()
+    // Source residual capital is non-negative throughout all scenarios.
+    for (const result of perInstance['versicherung-small']) {
+      expect(result.capitalAtRetirement).toBeGreaterThanOrEqual(0)
+      for (const row of result.rows) {
+        expect(row.balance).toBeGreaterThanOrEqual(0)
+      }
+    }
+    // Target receives the clamped (after-tax + post-haircut) amount, not the full 50_000.
+    // Pre-2005 tax-free: after-tax injection = actual capital at event year (clamped).
+    // Target capital at retirement > 0 (got something).
+    for (const result of perInstance['etf-clamp-target']) {
+      expect(result.capitalAtRetirement).toBeGreaterThan(0)
+    }
   })
 })

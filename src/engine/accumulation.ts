@@ -124,6 +124,9 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   let injectedPrincipal = 0
   // Index injection / withdrawal / cost-basis maps by year for O(1) lookup at
   // the start of each year. Multi-entry-same-year sums (per spec one-line note).
+  // Multi-source same-target-same-year: events are summed (additive injections).
+  // Equivalent to sequential year-start application because computeSurrenderTax
+  // is computed from a passive projection, not running state.
   const injectionsByYear = new Map<number, number>()
   for (const inj of policy?.capitalInjections ?? []) {
     injectionsByYear.set(inj.year, (injectionsByYear.get(inj.year) ?? 0) + inj.amount)
@@ -167,10 +170,11 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
 
     // Issue 15 — apply transfer-event injections / withdrawals / cost-basis
     // bumps at the start of each year (month 1 of contract year). Ordering:
-    // prior-year fees already settled (balanceAtYearStart locked); inject
-    // first, then withdraw, then this year's contributions / fees / growth
-    // proceed normally. Year-1 transfers (year === 1) sit on top of any
-    // policy.initialCapital with the same semantics.
+    // after prior-year fees (balanceAtYearStart locked), before this year's
+    // contributions / fees / growth. Current-year fees have NOT yet been
+    // deducted at injection time. Inject first, then withdraw, so a same-year
+    // inject+withdraw pair is handled correctly. Year-1 transfers (year === 1)
+    // sit on top of any policy.initialCapital with the same semantics.
     if (month === 1 || month % 12 === 1) {
       const contractYear = Math.floor((month - 1) / 12) + 1
       const inj = injectionsByYear.get(contractYear) ?? 0

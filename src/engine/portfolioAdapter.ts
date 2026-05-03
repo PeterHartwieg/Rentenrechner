@@ -790,8 +790,6 @@ function computeSurrenderTax(
 ): number {
   if (surrenderProceeds <= 0) return 0
   const profile = workspace.baseline.profile
-  const wsa = workspace.baseline.assumptions
-  void wsa
   const slot = detectProductSlot(sourceInstance)
   // ETF is rejected by the validator for surrender_reinvest; treat as 0 anyway.
   if (slot === 'etf') return 0
@@ -801,8 +799,6 @@ function computeSurrenderTax(
   // proceeds directly (gain-ratio uses surrenderProceeds vs. cost basis when
   // we pass the proceeds as both `capital` and the post-haircut amount;
   // approximation: cost basis equals contributions paid up to event year).
-  const yearsElapsed = Math.max(0, eventCalendarYear - rules.year)
-  const monthsElapsed = yearsElapsed * 12
 
   if (slot === 'insurance') {
     const ins = sourceInstance as InsuranceInstance
@@ -812,7 +808,6 @@ function computeSurrenderTax(
     // for Riester surrender — already in engine; just ensure existing helper
     // runs at user-set transfer year." Other surrender modes follow the same
     // direct-helper invocation pattern.
-    void monthsElapsed
     const totalContributedToDate = 0
     const taxMode = deriveInsuranceTaxMode(
       ins.contractStartYear,
@@ -820,6 +815,8 @@ function computeSurrenderTax(
       profile.retirementAge,
       ins.oldContractTaxFreeEligible,
     )
+    const kvdrMember =
+      workspace.baseline.assumptions.statutoryPension.retirementHealthStatus !== 'freiwillig_gkv'
     const grossNet = afterTaxInsuranceLumpSum(
       surrenderProceeds,
       Math.min(totalContributedToDate, surrenderProceeds),
@@ -828,7 +825,7 @@ function computeSurrenderTax(
       0,
       eventCalendarYear,
       profile,
-      wsa.statutoryPension.retirementHealthStatus !== 'freiwillig_gkv',
+      kvdrMember,
       0,
     )
     return Math.max(0, surrenderProceeds - grossNet)
@@ -890,10 +887,10 @@ export function buildInstanceCapitalPolicy(
 
   const policy: InstanceCapitalPolicy = {}
 
-  // Starting capital from currentValueEUR. AVD reads this via riesterTransferCapital
-  // and Riester via existingCapital from the projection helper, so don't double-set
-  // for those slots — they handle starting capital via their own initialCapital
-  // wiring already (see projectInstanceToScenarioAssumptions).
+  // Starting capital from currentValueEUR. Legacy `existingCapital` (Riester) and
+  // `riesterTransferCapital` (AVD) paths in the per-product simulators handle their
+  // starting capital before the M2 fix. Setting initialCapital here would double-apply.
+  // Issue 15 P2 may unify these once the legacy compare-mode fields are deleted.
   const slot = detectProductSlot(instance)
   if (hasCurrentValue && slot !== 'altersvorsorgedepot' && slot !== 'riester') {
     policy.initialCapital = instance.currentValueEUR
@@ -912,6 +909,14 @@ export function buildInstanceCapitalPolicy(
     } else {
       // surrender_reinvest: source loses post-haircut proceeds. Per spec the
       // capital removed from the contract = amountEUR × (1 - haircut).
+      const currentValue = instance.currentValueEUR ?? 0
+      if (import.meta.env?.DEV && ev.amountEUR > currentValue) {
+        console.warn(
+          `[portfolioAdapter] surrender_reinvest amountEUR (${ev.amountEUR}) exceeds ` +
+          `currentValueEUR (${currentValue}) on instance "${instance.instanceId}". ` +
+          `Accumulation will clamp the withdrawal to actual capital at event year.`,
+        )
+      }
       const proceeds = ev.amountEUR * (1 - ev.surrenderHaircutPct)
       capitalWithdrawals.push({ year: contractYear, amount: proceeds })
     }

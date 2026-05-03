@@ -10,6 +10,7 @@ import type { Workspace, WorkspaceAssumptionsV2, Scenario } from '../domain/work
 import type { InstanceCommon } from '../domain/instances'
 import { inRange, isFiniteNumber, isInt } from '../domain/validation/primitives'
 import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../engine/productRegistry'
+import type { ProductId } from '../engine/productRegistry'
 import { validateBav } from '../engine/products/bav.validation'
 import { validateEtf } from '../engine/products/etf.validation'
 import { validateInsurance } from '../engine/products/insurance.validation'
@@ -152,12 +153,9 @@ const ILLEGAL_SURRENDER_REINVEST_SOURCES = new Set(['etf'])
 /** Certified product targets are forbidden as surrender_reinvest destinations. */
 const CERTIFIED_TARGET_PRODUCTS = new Set(['bav', 'altersvorsorgedepot', 'riester', 'basisrente'])
 
-function productIdFromInstanceId(instanceId: string): string | null {
-  // instanceId format: "${productId}-${suffix}"
-  // Known product ids: etf, bav, versicherung, basisrente, altersvorsorgedepot, riester
-  const productIds = ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester']
-  for (const pid of productIds) {
-    if (instanceId.startsWith(`${pid}-`)) return pid
+function productIdFromInstanceId(instanceId: string): ProductId | null {
+  for (const productId of PRODUCT_IDS) {
+    if (instanceId === productId || instanceId.startsWith(`${productId}-`)) return productId
   }
   return null
 }
