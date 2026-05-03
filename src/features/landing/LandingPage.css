@@ -1,0 +1,275 @@
+/* ==========================================================================
+   LandingPage — Two-CTA entry screen (Group G issue 04)
+   ========================================================================== */
+
+.landing-shell {
+  min-height: 100vh;
+  background: #f4f7fb;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px 64px;
+  gap: 40px;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Hero text */
+.landing-hero {
+  text-align: center;
+  max-width: 620px;
+}
+
+.landing-headline {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-weight: 700;
+  color: #172033;
+  margin: 0 0 12px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.landing-subline {
+  font-size: 1.05rem;
+  color: #667085;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Cards layout */
+.landing-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  width: 100%;
+  align-items: start;
+}
+
+.landing-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  box-shadow: 0 1px 4px rgba(23, 32, 51, 0.06);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.landing-card:hover {
+  box-shadow: 0 4px 16px rgba(23, 32, 51, 0.10);
+}
+
+/* Primary card: Mein Plan — slightly larger visual weight */
+.landing-card--primary {
+  border-top: 4px solid #2563eb;
+}
+
+/* Secondary card: Produkte vergleichen */
+.landing-card--secondary {
+  border-top: 4px solid #64748b;
+}
+
+.landing-card-body {
+  padding: 28px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.landing-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.landing-card-icon--primary {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.landing-card-icon--secondary {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.landing-card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #172033;
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.landing-card-desc {
+  font-size: 0.92rem;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+  flex: 1;
+}
+
+/* Buttons */
+.landing-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  align-self: flex-start;
+}
+
+.landing-btn--primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.landing-btn--primary:hover {
+  background: #1d4ed8;
+}
+
+.landing-btn--secondary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.landing-btn--secondary:hover {
+  background: #1d4ed8;
+}
+
+.landing-btn--ghost {
+  background: #f1f5f9;
+  color: #344054;
+}
+
+.landing-btn--ghost:hover {
+  background: #e2e8f0;
+}
+
+.landing-btn--outline {
+  background: #ffffff;
+  color: #344054;
+  border: 1.5px solid #c9d7e5;
+}
+
+.landing-btn--outline:hover {
+  border-color: #64748b;
+  background: #f8fafc;
+}
+
+/* "Hast du schon Vertraege?" prompt */
+.landing-vertraege-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.landing-vertraege-question {
+  font-weight: 700;
+  color: #172033;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.landing-vertraege-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.landing-vertraege-actions .landing-btn {
+  justify-content: center;
+  width: 100%;
+}
+
+.landing-vertraege-back {
+  background: none;
+  border: none;
+  color: #667085;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  align-self: flex-start;
+}
+
+.landing-vertraege-back:hover {
+  color: #344054;
+}
+
+/* Returning-user row */
+.landing-returning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.landing-returning-hint {
+  font-size: 0.88rem;
+  color: #667085;
+}
+
+.landing-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.landing-link-btn:hover {
+  color: #1d4ed8;
+}
+
+/* Responsive: single-column on small screens */
+@media (max-width: 640px) {
+  .landing-main {
+    padding: 32px 16px 48px;
+    gap: 28px;
+  }
+
+  .landing-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-card--primary {
+    order: 1;
+  }
+
+  .landing-card--secondary {
+    order: 2;
+  }
+
+  .landing-headline {
+    font-size: 1.5rem;
+  }
+}

@@ -67,6 +67,26 @@
   color: #2563eb;
 }
 
+/* Mode badge — shown in the topbar when a specific workspace mode is active */
+.topbar-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
+
+.topbar-mode-badge--compare {
+  background: #f0f4ff;
+  color: #3b5bdb;
+  border: 1px solid #c5d0fa;
+}
+
 .disclaimer-wrap {
   position: relative;
   display: flex;
