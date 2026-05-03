@@ -34,6 +34,31 @@ export interface AccumulationPolicy {
    *  geometric sum so Abschlusskosten reflect the full contract horizon
    *  (Versicherungs-Beitragssumme convention). 0 / undefined = static. */
   contributionGrowth?: { annualRate: number }
+  /** Inbound capital injections (issue 15 — TransferEvents).
+   *  Each entry adds `amount` EUR to the running capital at the START of the
+   *  named contract year (year 1 = first projection year). Multiple entries
+   *  in the same year sum. Applied AFTER prior-year fees and BEFORE current-
+   *  year contributions so the injected capital earns growth from year-start.
+   *  Year 1 injections functionally equivalent to a top-up on `initialCapital`
+   *  but tracked separately so callers can distinguish between starting
+   *  capital and inbound transfers. */
+  capitalInjections?: { year: number; amount: number }[]
+  /** Outbound capital withdrawals (issue 15 — TransferEvents source side).
+   *  Each entry removes `amount` EUR from running capital at the START of the
+   *  named year, after any same-year injections. Used for the source side of
+   *  certified transfers and surrender_reinvest events. Negative running
+   *  capital is clamped to zero. */
+  capitalWithdrawals?: { year: number; amount: number }[]
+  /** Cost-basis bumps (issue 15 — surrender_reinvest into ETF target).
+   *  Each entry increases the cost-basis tracker by `amount` EUR at the
+   *  start of the named year. Only consumed by ETF-style accumulation that
+   *  reads `totalContributionsBeforeFees`; for non-ETF products this is
+   *  silently tracked but unused by their tax helpers. Distinct from
+   *  `capitalInjections` because the user contributed nothing — the cost
+   *  basis must rise by the after-tax injection amount so the target's
+   *  Abgeltungsteuer / Vorabpauschale path doesn't double-tax already-taxed
+   *  surrender proceeds. */
+  costBasisInjections?: { year: number; amount: number }[]
 }
 
 export interface AccumulationInput {
@@ -93,6 +118,24 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   let contributionsInCurrentYear = 0
   let balanceAtYearStart = capital
   let cumulativeVorabpauschale = 0
+  // Issue 15 (TransferEvents): cumulative principal added by inbound transfers.
+  // Bumps cost basis on `totalContributionsBeforeFees` so ETF / Vorabpauschale
+  // logic does not retax already-taxed surrender proceeds reinvested into ETF.
+  let injectedPrincipal = 0
+  // Index injection / withdrawal / cost-basis maps by year for O(1) lookup at
+  // the start of each year. Multi-entry-same-year sums (per spec one-line note).
+  const injectionsByYear = new Map<number, number>()
+  for (const inj of policy?.capitalInjections ?? []) {
+    injectionsByYear.set(inj.year, (injectionsByYear.get(inj.year) ?? 0) + inj.amount)
+  }
+  const withdrawalsByYear = new Map<number, number>()
+  for (const w of policy?.capitalWithdrawals ?? []) {
+    withdrawalsByYear.set(w.year, (withdrawalsByYear.get(w.year) ?? 0) + w.amount)
+  }
+  const costBasisInjectionsByYear = new Map<number, number>()
+  for (const cb of policy?.costBasisInjections ?? []) {
+    costBasisInjectionsByYear.set(cb.year, (costBasisInjectionsByYear.get(cb.year) ?? 0) + cb.amount)
+  }
   // InvStG §18: contributions made during the year are prorated by remaining months.
   // Tracks sum(investedContribution × remainingMonthsInYear / 12) for current year.
   let vpAcquisitionBaseInYear = 0
@@ -120,6 +163,32 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     if (policy?.yearlyReturn && (month === 1 || month % 12 === 1)) {
       const yearIndex = Math.floor((month - 1) / 12)
       currentMonthlyGrossRate = monthlyRate(policy.yearlyReturn(yearIndex))
+    }
+
+    // Issue 15 — apply transfer-event injections / withdrawals / cost-basis
+    // bumps at the start of each year (month 1 of contract year). Ordering:
+    // prior-year fees already settled (balanceAtYearStart locked); inject
+    // first, then withdraw, then this year's contributions / fees / growth
+    // proceed normally. Year-1 transfers (year === 1) sit on top of any
+    // policy.initialCapital with the same semantics.
+    if (month === 1 || month % 12 === 1) {
+      const contractYear = Math.floor((month - 1) / 12) + 1
+      const inj = injectionsByYear.get(contractYear) ?? 0
+      const wd = withdrawalsByYear.get(contractYear) ?? 0
+      const cb = costBasisInjectionsByYear.get(contractYear) ?? 0
+      if (inj > 0) {
+        capital += inj
+        injectedPrincipal += inj
+        balanceAtYearStart += inj
+      }
+      if (wd > 0) {
+        const actualWithdrawal = Math.min(wd, capital)
+        capital -= actualWithdrawal
+        balanceAtYearStart -= actualWithdrawal
+      }
+      if (cb > 0) {
+        injectedPrincipal += cb
+      }
     }
 
     const acquisitionCost = month <= acquisitionMonths ? monthlyAcquisitionCost : 0
@@ -151,6 +220,9 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     if (month % 12 === 0 || month === input.months) {
       if (policy?.vorabpauschale) {
         const { rules, partialExemption } = policy.vorabpauschale
+        // Annual growth excludes contributions; transfer-event withdrawals
+        // already reduced balanceAtYearStart at year-start (so the formula
+        // stays correct with no extra adjustment for withdrawals).
         const annualGrowth = capital - balanceAtYearStart - contributionsInCurrentYear
         const basisertrag =
           (balanceAtYearStart + vpAcquisitionBaseInYear) * rules.capitalGains.basiszins * 0.7
@@ -195,7 +267,11 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     totalProductContributions,
     totalEmployerContributions,
     totalFees,
-    totalContributionsBeforeFees: totalProductContributions,
+    // Cost-basis tracker: user-paid contributions plus injectedPrincipal from
+    // inbound transfer events. ETF / pAV exit-tax helpers consume this as the
+    // already-taxed basis to subtract from the gain. For a vanilla product
+    // with no transfers it equals totalProductContributions (oracle-stable).
+    totalContributionsBeforeFees: totalProductContributions + injectedPrincipal,
     cumulativeVorabpauschale,
     rows,
   }

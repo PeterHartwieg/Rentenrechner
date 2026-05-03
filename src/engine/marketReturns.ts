@@ -27,9 +27,41 @@ export function withMarketReturnPolicy(
   yearOffset = 0,
 ): BuildProductPolicy | undefined {
   const yearlyReturn = marketReturnPolicy(ctx, scenario, yearOffset)
-  if (!yearlyReturn) return policy
+  const merged = mergeInstanceCapitalPolicy(ctx, policy)
+  if (!yearlyReturn) return merged
   return {
-    ...policy,
-    yearlyReturn: policy?.yearlyReturn ?? yearlyReturn,
+    ...merged,
+    yearlyReturn: merged?.yearlyReturn ?? yearlyReturn,
   }
+}
+
+/**
+ * Issue 15 — fold the per-instance capital policy (initialCapital, transfer-
+ * event injections / withdrawals / cost-basis bumps) into a `BuildProductPolicy`.
+ *
+ * Caller-supplied `initialCapital` wins over the instance value (Riester paid-up,
+ * insurance phase-2 paid-up etc. set their own initialCapital from a prior phase).
+ * Caller-supplied transfer arrays concatenate with instance ones — there should
+ * be at most one source today, but concatenation is safer than precedence.
+ */
+export function mergeInstanceCapitalPolicy(
+  ctx: SimulationContext,
+  policy?: BuildProductPolicy,
+): BuildProductPolicy | undefined {
+  const inst = ctx.instanceCapitalPolicy
+  if (!inst) return policy
+  const result: BuildProductPolicy = { ...(policy ?? {}) }
+  if (inst.initialCapital !== undefined && result.initialCapital === undefined) {
+    result.initialCapital = inst.initialCapital
+  }
+  if (inst.capitalInjections && inst.capitalInjections.length > 0) {
+    result.capitalInjections = [...(result.capitalInjections ?? []), ...inst.capitalInjections]
+  }
+  if (inst.capitalWithdrawals && inst.capitalWithdrawals.length > 0) {
+    result.capitalWithdrawals = [...(result.capitalWithdrawals ?? []), ...inst.capitalWithdrawals]
+  }
+  if (inst.costBasisInjections && inst.costBasisInjections.length > 0) {
+    result.costBasisInjections = [...(result.costBasisInjections ?? []), ...inst.costBasisInjections]
+  }
+  return result
 }

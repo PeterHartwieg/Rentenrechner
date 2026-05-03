@@ -752,3 +752,223 @@ describe('PortfolioAdapter — insurance instance projection', () => {
     expect(projected.insurance.contractStartYear).toBe(1999)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Issue 15 — TransferEvents engine support
+// ---------------------------------------------------------------------------
+
+describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
+  function rich(): Workspace {
+    return migrateRich()
+  }
+
+  it('M2 zero-capital fix — currentValueEUR on ETF instance flows through as initialCapital', () => {
+    const workspace = rich()
+    const etfInst: EtfInstance = {
+      ...workspace.baseline.assumptions.etf[0],
+      instanceId: 'etf-with-capital',
+      currentValueEUR: 50_000,
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          etf: [etfInst],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    const results = perInstance['etf-with-capital']
+    expect(results).toBeDefined()
+    // With non-zero starting capital and ~30 years horizon: capital must be > 50k.
+    for (const r of results) {
+      expect(r.capitalAtRetirement).toBeGreaterThan(50_000)
+    }
+  })
+
+  it('M2 zero-capital fix — currentValueEUR on insurance instance grows over horizon', () => {
+    const workspace = rich()
+    const insInst: InsuranceInstance = {
+      ...workspace.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-with-capital',
+      currentValueEUR: 30_000,
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          insurance: [insInst],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    const results = perInstance['versicherung-with-capital']
+    expect(results).toBeDefined()
+    for (const r of results) {
+      // Even ignoring contributions, 30k compounded over decades > 30k.
+      expect(r.capitalAtRetirement).toBeGreaterThan(30_000)
+    }
+  })
+
+  it('certified Riester→AVD (year 0) — target receives gross transfer, source residual continues', () => {
+    const workspace = rich()
+    const riesterSrc: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: 'riester-src',
+      label: 'Riester (source)',
+      currentValueEUR: 40_000,
+      transferEvents: [
+        {
+          type: 'certified',
+          year: de2026Rules.year, // year-0 transfer
+          sourceInstanceId: 'riester-src',
+          targetInstanceId: 'avd-target',
+          amountEUR: 40_000,
+        },
+      ],
+    }
+    const avdTarget: AltersvorsorgedepotInstance = {
+      ...workspace.baseline.assumptions.altersvorsorgedepot[0],
+      instanceId: 'avd-target',
+      label: 'AV-Depot (target)',
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          riester: [riesterSrc],
+          altersvorsorgedepot: [avdTarget],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    expect(perInstance['avd-target']).toBeDefined()
+    expect(perInstance['riester-src']).toBeDefined()
+    // Target AVD started with the transferred capital → grew from 40k.
+    for (const r of perInstance['avd-target']) {
+      expect(r.capitalAtRetirement).toBeGreaterThan(40_000)
+    }
+    // Source Riester started from 40k currentValueEUR but lost it via certified transfer.
+    // It still contributes monthly (200 EUR/month from rich()) so capital > 0
+    // but materially smaller than if no transfer occurred.
+    for (const r of perInstance['riester-src']) {
+      expect(r.capitalAtRetirement).toBeGreaterThan(0)
+    }
+  })
+
+  it('certified bAV → bAV transfer between two same-Durchführungsweg instances respects routing', () => {
+    const workspace = rich()
+    const bavA: BavInstance = {
+      ...workspace.baseline.assumptions.bav[0],
+      instanceId: 'bav-source',
+      currentValueEUR: 25_000,
+      durchfuehrungsweg: 'direktversicherung_3_63',
+      transferEvents: [
+        {
+          type: 'certified',
+          year: de2026Rules.year + 5,
+          sourceInstanceId: 'bav-source',
+          targetInstanceId: 'bav-receiver',
+          amountEUR: 10_000,
+        },
+      ],
+    }
+    const bavB: BavInstance = {
+      ...workspace.baseline.assumptions.bav[0],
+      instanceId: 'bav-receiver',
+      durchfuehrungsweg: 'direktversicherung_3_63',
+      monthlyGrossConversion: 100,
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          bav: [bavA, bavB],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    expect(perInstance['bav-source']).toBeDefined()
+    expect(perInstance['bav-receiver']).toBeDefined()
+    // Receiver gets the transfer + grows with own contributions.
+    const baselineReceiver = simulatePortfolio(
+      {
+        ...ws,
+        baseline: {
+          ...ws.baseline,
+          assumptions: {
+            ...ws.baseline.assumptions,
+            bav: [{ ...bavA, transferEvents: [] }, bavB],
+          },
+        },
+      },
+      de2026Rules,
+    ).perInstance['bav-receiver']
+    expect(perInstance['bav-receiver'][0].capitalAtRetirement).toBeGreaterThan(
+      baselineReceiver[0].capitalAtRetirement,
+    )
+  })
+
+  it('surrender_reinvest pAV → ETF (pre-2005, tax-free) — target gets post-haircut proceeds', () => {
+    const workspace = rich()
+    const pavSrc: InsuranceInstance = {
+      ...workspace.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-karin',
+      contractStartYear: 2002,
+      oldContractTaxFreeEligible: true,
+      currentValueEUR: 60_000,
+      surrenderHaircutPct: 0.05,
+      transferEvents: [
+        {
+          type: 'surrender_reinvest',
+          year: de2026Rules.year + 5,
+          sourceInstanceId: 'versicherung-karin',
+          targetInstanceId: 'etf-target',
+          amountEUR: 30_000,
+          surrenderHaircutPct: 0.05,
+        },
+      ],
+    }
+    const etfTarget: EtfInstance = {
+      ...workspace.baseline.assumptions.etf[0],
+      instanceId: 'etf-target',
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          insurance: [pavSrc],
+          etf: [etfTarget],
+        },
+      },
+    }
+    // Run with the transfer and again with no transfer; the ETF target should
+    // gain the post-haircut proceeds (pre-2005 → tax-free).
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    const noTransferWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          insurance: [{ ...pavSrc, transferEvents: [] }],
+        },
+      },
+    }
+    const noTransfer = simulatePortfolio(noTransferWs, de2026Rules).perInstance['etf-target']
+    // ETF target with the surrender_reinvest carries higher capital.
+    expect(perInstance['etf-target'][0].capitalAtRetirement).toBeGreaterThan(
+      noTransfer[0].capitalAtRetirement,
+    )
+  })
+})

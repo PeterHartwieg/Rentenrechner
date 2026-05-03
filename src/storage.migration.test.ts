@@ -762,6 +762,102 @@ describe('Test 12 — transferEvent target instance must exist', () => {
     }
     expect(validateWorkspaceAssumptions(assumptions)).not.toBeNull()
   })
+
+  it('validator rejects surrender_reinvest from ETF source (issue 15)', () => {
+    const etfInstance = {
+      instanceId: 'etf-singleton',
+      label: 'ETF',
+      status: 'active',
+      contractStartYear: 2020,
+      evidenceMap: {},
+      ...defaultAssumptions.etf,
+      transferEvents: [
+        {
+          type: 'surrender_reinvest',
+          year: 2030,
+          sourceInstanceId: 'etf-singleton',
+          targetInstanceId: 'versicherung-singleton',
+          amountEUR: 10_000,
+          surrenderHaircutPct: 0,
+        },
+      ],
+    }
+    const insuranceInstance = {
+      instanceId: 'versicherung-singleton',
+      label: 'pAV',
+      status: 'active',
+      evidenceMap: {},
+      ...defaultAssumptions.insurance,
+      contractStartYear: 2020,
+    }
+    const assumptions: Record<string, unknown> = {
+      ...defaultWorkspace.baseline.assumptions,
+      etf: [etfInstance],
+      insurance: [insuranceInstance],
+    }
+    expect(validateWorkspaceAssumptions(assumptions)).toBeNull()
+  })
+
+  it('validator rejects surrender_reinvest into a certified product target (issue 15)', () => {
+    const insInstance = {
+      instanceId: 'versicherung-singleton',
+      label: 'pAV',
+      status: 'active',
+      evidenceMap: {},
+      ...defaultAssumptions.insurance,
+      contractStartYear: 2002,
+      transferEvents: [
+        {
+          type: 'surrender_reinvest',
+          year: 2030,
+          sourceInstanceId: 'versicherung-singleton',
+          targetInstanceId: 'bav-singleton',
+          amountEUR: 10_000,
+          surrenderHaircutPct: 0.02,
+        },
+      ],
+    }
+    const bavInstance = {
+      instanceId: 'bav-singleton',
+      label: 'bAV',
+      status: 'active',
+      contractStartYear: 2015,
+      evidenceMap: {},
+      ...defaultAssumptions.bav,
+    }
+    const assumptions: Record<string, unknown> = {
+      ...defaultWorkspace.baseline.assumptions,
+      insurance: [insInstance],
+      bav: [bavInstance],
+    }
+    expect(validateWorkspaceAssumptions(assumptions)).toBeNull()
+  })
+
+  it('validator rejects self-target surrender_reinvest (issue 15)', () => {
+    const insInstance = {
+      instanceId: 'versicherung-singleton',
+      label: 'pAV',
+      status: 'active',
+      evidenceMap: {},
+      ...defaultAssumptions.insurance,
+      contractStartYear: 2010,
+      transferEvents: [
+        {
+          type: 'surrender_reinvest',
+          year: 2030,
+          sourceInstanceId: 'versicherung-singleton',
+          targetInstanceId: 'versicherung-singleton',
+          amountEUR: 1_000,
+          surrenderHaircutPct: 0,
+        },
+      ],
+    }
+    const assumptions: Record<string, unknown> = {
+      ...defaultWorkspace.baseline.assumptions,
+      insurance: [insInstance],
+    }
+    expect(validateWorkspaceAssumptions(assumptions)).toBeNull()
+  })
 })
 
 // ---------------------------------------------------------------------------

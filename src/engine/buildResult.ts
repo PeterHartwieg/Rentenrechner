@@ -50,6 +50,12 @@ export interface BuildProductPolicy {
   vorabpauschale?: { partialExemption: number }
   initialCapital?: number
   contributionGrowth?: { annualRate: number }
+  /** Issue 15 — TransferEvent inbound capital injections. See `AccumulationPolicy`. */
+  capitalInjections?: { year: number; amount: number }[]
+  /** Issue 15 — TransferEvent outbound capital withdrawals. See `AccumulationPolicy`. */
+  capitalWithdrawals?: { year: number; amount: number }[]
+  /** Issue 15 — Cost-basis bumps for surrender_reinvest into ETF target. */
+  costBasisInjections?: { year: number; amount: number }[]
 }
 
 export interface BuildProductGuarantee {
@@ -156,6 +162,9 @@ export function buildProductResult<
           : undefined,
         initialCapital: params.policy.initialCapital,
         contributionGrowth: params.policy.contributionGrowth,
+        capitalInjections: params.policy.capitalInjections,
+        capitalWithdrawals: params.policy.capitalWithdrawals,
+        costBasisInjections: params.policy.costBasisInjections,
       }
     : undefined
   const projection = projectAccumulation({

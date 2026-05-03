@@ -143,6 +143,15 @@ const ILLEGAL_CERTIFIED_PAIRINGS = new Set([
   'bav→riester',                 // bAV → Riester: no certified-transfer route
 ])
 
+/**
+ * Illegal surrender_reinvest source product classes — you cannot "reinvest"
+ * an ETF into a certified product without going through that product's
+ * contribution path. Issue 15.
+ */
+const ILLEGAL_SURRENDER_REINVEST_SOURCES = new Set(['etf'])
+/** Certified product targets are forbidden as surrender_reinvest destinations. */
+const CERTIFIED_TARGET_PRODUCTS = new Set(['bav', 'altersvorsorgedepot', 'riester', 'basisrente'])
+
 function productIdFromInstanceId(instanceId: string): string | null {
   // instanceId format: "${productId}-${suffix}"
   // Known product ids: etf, bav, versicherung, basisrente, altersvorsorgedepot, riester
@@ -177,6 +186,16 @@ function validateTransferEvent(event: unknown, allInstanceIds: Set<string>): boo
 
   if (e.type === 'surrender_reinvest') {
     if (!inRange(e.surrenderHaircutPct as unknown, 0, 1)) return false
+    // Self-target is never legal (would be a contractual no-op with tax cost).
+    if (e.sourceInstanceId === e.targetInstanceId) return false
+    const sourcePid = productIdFromInstanceId(e.sourceInstanceId as string)
+    const targetPid = productIdFromInstanceId(e.targetInstanceId as string)
+    if (sourcePid && ILLEGAL_SURRENDER_REINVEST_SOURCES.has(sourcePid)) return false
+    if (targetPid && CERTIFIED_TARGET_PRODUCTS.has(targetPid)) {
+      // Reinvestment into a certified product (bAV / Riester / AVD / Basisrente)
+      // must go through the product's own contribution path, not via a transfer.
+      return false
+    }
   }
 
   return true

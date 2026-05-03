@@ -256,25 +256,6 @@ function ConfirmRemoveDialog({
 }
 
 // ---------------------------------------------------------------------------
-// M1 limitation banner
-// ---------------------------------------------------------------------------
-
-/**
- * ETF and pAV in combine-mode produce zero capital due to the fair-comparison
- * invariant (monthlyCost anchors on bAV net cost). Issue 15 will fix this.
- * Surface the limitation honestly on affected product cards.
- */
-function M1LimitationBanner({ productId }: { productId: string }) {
-  if (productId !== 'etf' && productId !== 'versicherung') return null
-  return (
-    <div className="inv-m1-banner" role="note">
-      <strong>Vorschau:</strong> ETF/Versicherung Beträge im Kombinations-Modus folgen mit
-      Issue 15 (faire Vergleichsinvariante wird angepasst).
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // InventoryWizard component
 // ---------------------------------------------------------------------------
 
@@ -783,7 +764,6 @@ export function InventoryWizard({
 
                     {!isGrv && (
                       <>
-                        <M1LimitationBanner productId={row.id} />
                         {renderProductInstances(row.id)}
 
                         {canMulti && (

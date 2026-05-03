@@ -240,9 +240,6 @@ function EtfInstanceCard({
         )}
       </div>
       <div className="combine-instance-body">
-        <div className="inv-m1-banner" role="note">
-          <strong>Vorschau:</strong> ETF Beträge im Kombinations-Modus folgen mit Issue 15.
-        </div>
         <details className="inv-layer3-details">
           <summary className="inv-layer3-summary">Details</summary>
           <div className="inv-layer3-body">
@@ -307,9 +304,6 @@ function InsuranceInstanceCard({
         )}
       </div>
       <div className="combine-instance-body">
-        <div className="inv-m1-banner" role="note">
-          <strong>Vorschau:</strong> Versicherung Beträge im Kombinations-Modus folgen mit Issue 15.
-        </div>
         <VintageChipsBar contractStartYear={instance.contractStartYear} />
         <div className="combine-instance-fields">
           <CombineField label="Vertragsbeginn">

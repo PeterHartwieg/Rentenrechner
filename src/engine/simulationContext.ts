@@ -55,6 +55,32 @@ export interface SimulationContext {
    * treatment, and AVD glidepath allocation still apply on top.
    */
   marketReturnPath?: readonly number[]
+  /**
+   * Issue 15 — per-instance capital policy assembled by `simulatePortfolio` from
+   * the active instance's `currentValueEUR` and inbound/outbound `transferEvents`.
+   *
+   * Product simulators forward these fields into their `BuildProductPolicy` so
+   * `projectAccumulation` honors them. Singleton compare-mode and the legacy
+   * `simulateRetirementComparison` path leave this `undefined` and behaviour
+   * matches existing oracle goldens byte-identically.
+   */
+  instanceCapitalPolicy?: InstanceCapitalPolicy
+}
+
+/**
+ * Per-instance capital policy derived from `InstanceCommon.currentValueEUR` and
+ * cross-instance `transferEvents` (issue 15).
+ *
+ * Year numbering matches `AccumulationPolicy` — year 1 = first projection year
+ * (which corresponds to calendar year `rules.year + 0`). The adapter converts
+ * absolute calendar years on `TransferEvent.year` into 1-based contract years
+ * when populating these arrays.
+ */
+export interface InstanceCapitalPolicy {
+  initialCapital?: number
+  capitalInjections?: { year: number; amount: number }[]
+  capitalWithdrawals?: { year: number; amount: number }[]
+  costBasisInjections?: { year: number; amount: number }[]
 }
 
 /**
@@ -86,6 +112,12 @@ export interface BuildContextOverrides {
   altersvorsorgedepotFundingOverride?: AltersvorsorgedepotFundingResult
   /** Pre-computed Riester funding for the active instance. */
   riesterFundingOverride?: RiesterFundingResult
+  /**
+   * Issue 15 — per-instance starting capital + transfer-event injections /
+   * withdrawals. Forwarded onto `SimulationContext.instanceCapitalPolicy` for
+   * each product simulator to apply via `BuildProductPolicy`.
+   */
+  instanceCapitalPolicy?: InstanceCapitalPolicy
 }
 
 export function buildContext(
@@ -155,5 +187,6 @@ export function buildContext(
     statutoryPension: grvProjection,
     grvGrossMonthlyPension: grvProjection.grossMonthlyPension,
     retirementHealthStatus: assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr',
+    instanceCapitalPolicy: overrides?.instanceCapitalPolicy,
   }
 }

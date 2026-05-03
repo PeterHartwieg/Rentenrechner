@@ -10,7 +10,7 @@ import {
 } from '../altersvorsorgedepot'
 import { monthlyPayoutFromCapital } from '../payoutMath'
 import { calculateLeibrenteBreakEvenAge } from '../productPayout'
-import { marketReturnAt } from '../marketReturns'
+import { marketReturnAt, mergeInstanceCapitalPolicy } from '../marketReturns'
 
 export const metadata = {
   id: 'altersvorsorgedepot' as const,
@@ -99,10 +99,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
               (projection.totalProductContributions + (transferInitialCapital ?? 0)) * guaranteePct,
           }
         : undefined,
-    policy: {
+    policy: mergeInstanceCapitalPolicy(ctx, {
       yearlyReturn,
       initialCapital: transferInitialCapital,
-    },
+    }),
     taxAndSvSavings:
       (altersvorsorgedepotFunding.totalAllowanceAnnual +
         altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual) * yearsToRetirement,

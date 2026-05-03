@@ -76,27 +76,13 @@ describe('CombineDashboardSidebar — render integration', () => {
     cleanup()
   })
 
-  it('M1 limitation banner renders for the ETF card', () => {
-    const ws = dilanWorkspace()
-    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
-    const banners = container.querySelectorAll('.inv-m1-banner')
-    // Dilan has 1 ETF, 0 pAV → 1 banner.
-    expect(banners.length).toBe(1)
-    expect(banners[0].textContent).toContain('ETF')
-    expect(banners[0].textContent).toContain('Issue 15')
-    cleanup()
-  })
-
-  it('M1 limitation banner renders for both ETF and pAV cards when both exist', () => {
+  it('M1 limitation banner is removed (issue 15) — no .inv-m1-banner nodes render', () => {
     const ws = addInstanceToWorkspace(dilanWorkspace(), 'versicherung')
     expect(ws.baseline.assumptions.insurance.length).toBe(1)
 
     const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
     const banners = container.querySelectorAll('.inv-m1-banner')
-    expect(banners.length).toBe(2)
-    const texts = Array.from(banners).map((b) => b.textContent ?? '')
-    expect(texts.some((t) => t.includes('ETF'))).toBe(true)
-    expect(texts.some((t) => t.includes('Versicherung'))).toBe(true)
+    expect(banners.length).toBe(0)
     cleanup()
   })
 })

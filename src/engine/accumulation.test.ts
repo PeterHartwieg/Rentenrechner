@@ -97,3 +97,126 @@ describe('projectAccumulation contributionGrowth (Beitragsdynamik)', () => {
     expect(dyn.totalFees).toBeGreaterThan(stat.totalFees)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Issue 15 — capitalInjections / capitalWithdrawals / costBasisInjections
+// ---------------------------------------------------------------------------
+
+describe('projectAccumulation — capitalInjections (issue 15)', () => {
+  it('year-1 injection equals adding the same amount to initialCapital', () => {
+    const horizon = 10
+    const withInitial = projectAccumulation({
+      ...baseInput(0, horizon),
+      policy: { initialCapital: 50_000 },
+    })
+    const withInjection = projectAccumulation({
+      ...baseInput(0, horizon),
+      policy: { capitalInjections: [{ year: 1, amount: 50_000 }] },
+    })
+    expect(withInjection.capital).toBeCloseTo(withInitial.capital, 6)
+  })
+
+  it('mid-horizon injection grows from year-of-injection onwards', () => {
+    const horizon = 10
+    const noInj = projectAccumulation(baseInput(200, horizon))
+    const withInj = projectAccumulation({
+      ...baseInput(200, horizon),
+      policy: { capitalInjections: [{ year: 5, amount: 10_000 }] },
+    })
+    expect(withInj.capital).toBeGreaterThan(noInj.capital + 10_000)
+    // Six years of compounding (start of year 5 through end of year 10) at 5 %.
+    const expectedGrowth = 10_000 * Math.pow(1.05, 6)
+    expect(withInj.capital - noInj.capital).toBeCloseTo(expectedGrowth, 0)
+  })
+
+  it('multiple same-year injections sum into the running capital', () => {
+    const horizon = 5
+    const single = projectAccumulation({
+      ...baseInput(0, horizon),
+      policy: { capitalInjections: [{ year: 2, amount: 30_000 }] },
+    })
+    const triple = projectAccumulation({
+      ...baseInput(0, horizon),
+      policy: {
+        capitalInjections: [
+          { year: 2, amount: 10_000 },
+          { year: 2, amount: 10_000 },
+          { year: 2, amount: 10_000 },
+        ],
+      },
+    })
+    expect(triple.capital).toBeCloseTo(single.capital, 6)
+  })
+
+  it('costBasisInjections increase totalContributionsBeforeFees by the injected principal', () => {
+    const horizon = 10
+    const withCB = projectAccumulation({
+      ...baseInput(100, horizon),
+      policy: {
+        capitalInjections: [{ year: 3, amount: 20_000 }],
+        costBasisInjections: [{ year: 3, amount: 20_000 }],
+      },
+    })
+    const withoutCB = projectAccumulation({
+      ...baseInput(100, horizon),
+      policy: { capitalInjections: [{ year: 3, amount: 20_000 }] },
+    })
+    // Capital trajectory identical — capitalInjection alone moves the balance.
+    expect(withCB.capital).toBeCloseTo(withoutCB.capital, 6)
+    // Cost-basis tracker is bumped by the injected principal.
+    expect(
+      withCB.totalContributionsBeforeFees - withoutCB.totalContributionsBeforeFees,
+    ).toBeCloseTo(20_000, 6)
+  })
+
+  it('no transfer arrays = no change to legacy oracle output (byte-identical)', () => {
+    const horizon = 10
+    const baseline = projectAccumulation({
+      ...baseInput(200, horizon),
+      policy: { initialCapital: 5_000 },
+    })
+    const withEmptyArrays = projectAccumulation({
+      ...baseInput(200, horizon),
+      policy: {
+        initialCapital: 5_000,
+        capitalInjections: [],
+        capitalWithdrawals: [],
+        costBasisInjections: [],
+      },
+    })
+    expect(withEmptyArrays.capital).toBe(baseline.capital)
+    expect(withEmptyArrays.totalContributionsBeforeFees).toBe(baseline.totalContributionsBeforeFees)
+  })
+})
+
+describe('projectAccumulation — capitalWithdrawals (issue 15)', () => {
+  it('mid-horizon withdrawal removes capital and reduces final balance accordingly', () => {
+    const horizon = 10
+    const baseline = projectAccumulation({
+      ...baseInput(0, horizon),
+      policy: { initialCapital: 100_000 },
+    })
+    const withW = projectAccumulation({
+      ...baseInput(0, horizon),
+      policy: {
+        initialCapital: 100_000,
+        capitalWithdrawals: [{ year: 5, amount: 20_000 }],
+      },
+    })
+    // Withdrawal at start of year 5 → 6 years of compounding lost (years 5-10).
+    const expectedLoss = 20_000 * Math.pow(1.05, 6)
+    expect(baseline.capital - withW.capital).toBeCloseTo(expectedLoss, 0)
+  })
+
+  it('withdrawal larger than current capital clamps to zero (no negative balance)', () => {
+    const horizon = 10
+    const result = projectAccumulation({
+      ...baseInput(0, horizon),
+      policy: {
+        initialCapital: 5_000,
+        capitalWithdrawals: [{ year: 3, amount: 50_000 }],
+      },
+    })
+    expect(result.capital).toBeGreaterThanOrEqual(0)
+  })
+})
