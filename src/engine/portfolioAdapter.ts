@@ -64,6 +64,7 @@ import { calculateBavFunding, calculateSalaryResult } from './salary'
 import { calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding } from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'
+import { confidenceForResult } from '../app/evidence'
 
 // ---------------------------------------------------------------------------
 // Neutralised defaults
@@ -740,11 +741,20 @@ export function simulatePortfolio(
       const overrides = fundingOverrideFor(inst)
       const ctx = buildContext(profile, projected, rules, overrides)
       const results: ProductResult[] = []
+      // Map the slot name to the ProductId used in evidenceMap keying.
+      const slotName = detectProductSlot(inst)
+      const productIdForConfidence =
+        slotName === 'insurance' ? 'versicherung' : slotName
+      const inputConfidence = confidenceForResult(
+        { productId: productIdForConfidence as ProductResult['productId'] },
+        inst.evidenceMap ?? {},
+      )
       for (const scenario of projected.returnScenarios) {
         const r = productSimulate(ctx, scenario)
         // Decision B — tag with instanceId after the simulator returns so the
-        // simulator code stays untouched.
-        results.push({ ...r, instanceId: inst.instanceId })
+        // simulator code stays untouched. Also attach inputConfidence derived
+        // from the instance's evidenceMap (issue 09).
+        results.push({ ...r, instanceId: inst.instanceId, inputConfidence })
       }
       perInstance[inst.instanceId] = results
     }

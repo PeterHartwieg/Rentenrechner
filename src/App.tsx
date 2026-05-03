@@ -46,6 +46,8 @@ import { LandingPage } from './features/landing/LandingPage'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { InventoryWizard } from './features/inventory/InventoryWizard'
 import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSidebar'
+import { CombineIncomePanel } from './features/inventory/CombineIncomePanel'
+import { useCombineSimulation } from './app/useCombineSimulation'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
@@ -81,6 +83,7 @@ function Calculator({ navigate }: CalculatorProps) {
   const guidedSetup = useGuidedSetup()
   const portfolioState = usePortfolioState()
   const workspace = useWorkspace()
+  const combineSimulation = useCombineSimulation(portfolioState.workspace)
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const ui = useWorkspaceUiState()
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
@@ -206,9 +209,32 @@ function Calculator({ navigate }: CalculatorProps) {
     />
   )
 
+  // In combine mode, pick the 'basis' scenario (or the first available) from
+  // the combined simulation bundle to drive the income summary panel.
+  const combineBasisScenarioId =
+    portfolioState.workspace.baseline.assumptions.returnScenarios.find(
+      (s) => s.id === 'basis',
+    )?.id ??
+    portfolioState.workspace.baseline.assumptions.returnScenarios[0]?.id ??
+    'basis'
+  const combineBasisResult = combineSimulation.combinedByScenarioId[combineBasisScenarioId]
+  const combineBasisLabel =
+    portfolioState.workspace.baseline.assumptions.returnScenarios.find(
+      (s) => s.id === combineBasisScenarioId,
+    )?.label ?? 'Basis'
+
   const vergleichView = (
     <section className="workspace-view workspace-view--vergleich">
       {toolbar}
+
+      {portfolioState.mode === 'combine' && combineBasisResult && (
+        <CombineIncomePanel
+          combinedResult={combineBasisResult}
+          perInstanceResults={combineSimulation.perInstance}
+          scenarioId={combineBasisScenarioId}
+          scenarioLabel={combineBasisLabel}
+        />
+      )}
 
       {guidedSetup.journeyState === 'active' && (
         <GuidedSetupPostHint

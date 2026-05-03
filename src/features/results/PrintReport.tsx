@@ -185,6 +185,16 @@ export function PrintReport({ profile, assumptions, simulation }: Props) {
                 </td>
                 <td className="pr-num">
                   {formatCurrency(r.netMonthlyPayout, 0)}
+                  {r.inputConfidence === 'model_estimate' && (
+                    <span className="pr-confidence-estimate" aria-label="Schätzung">
+                      {' '}{'🤔'} Schätzung
+                    </span>
+                  )}
+                  {r.inputConfidence === 'user_confirmed' && (
+                    <span className="pr-confidence-confirmed" aria-label="bestätigt">
+                      {' '}✓
+                    </span>
+                  )}
                   {r.leibrenteBreakEvenAge !== undefined && (
                     <span className="pr-note">
                       {' '}(BE {Math.round(r.leibrenteBreakEvenAge)})

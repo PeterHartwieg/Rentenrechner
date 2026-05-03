@@ -2,6 +2,100 @@
  * Mirrors GuidedSetup chrome patterns (guided-setup-overlay / guided-setup-card).
  */
 
+/* ─── Evidence badges (issue 09) ──────────────────────────────────── */
+
+.evidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border-radius: 4px;
+  padding: 1px 6px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.evidence-badge--estimate {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.evidence-badge--confirmed {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.evidence-badge--statement {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.evidence-badge-confirm-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #b45309;
+  cursor: pointer;
+  text-decoration: underline;
+  line-height: 1;
+}
+
+.evidence-badge-confirm-btn:hover {
+  color: #92400e;
+}
+
+/* Dashboard summary estimate badge */
+.combine-estimate-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-left: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.combine-estimate-summary-badge:hover {
+  background: #fef08a;
+}
+
+.combine-estimate-popover {
+  position: absolute;
+  z-index: 100;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.12);
+  min-width: 240px;
+  font-size: 0.82rem;
+}
+
+.combine-estimate-popover ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+
+.combine-estimate-popover li {
+  margin-bottom: 4px;
+  color: #475569;
+}
+
 .inventory-overlay {
   position: fixed;
   inset: 0;

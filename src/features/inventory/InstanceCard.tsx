@@ -16,6 +16,7 @@
 import { useState } from 'react'
 import type { BavDurchfuehrungsweg } from '../../domain/products/bav'
 import type { AltersvorsorgedepotSubtype } from '../../domain/products/altersvorsorgedepot'
+import type { EvidenceState } from '../../domain/instances'
 import type {
   InstanceStatus,
   ProductDraftState,
@@ -32,6 +33,7 @@ import { detectVintageChips } from './vintageDetection'
 import { InfoTip } from '../../ui/InfoTip'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
+import { EvidenceBadge } from './EvidenceBadge'
 
 // ---------------------------------------------------------------------------
 // Internal shared primitives
@@ -40,6 +42,14 @@ import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 interface BaseProps<T extends ProductDraftState> {
   draft: T
   onChange: (next: T) => void
+  setEvidence?: (fieldPath: string, state: EvidenceState) => void
+}
+
+function evidenceState(
+  draft: ProductDraftState,
+  fieldPath: string,
+): EvidenceState {
+  return draft.evidenceMap?.[fieldPath] ?? 'model_estimate'
 }
 
 function InvField({
@@ -136,17 +146,6 @@ function InvText({
   )
 }
 
-/**
- * "🤔 Schätzung" placeholder shown next to defaulted fields.
- * The emoji is spec-mandated UX copy (issue 05 acceptance criterion / PRD G1).
- */
-function EstimateNote({ label = 'Schätzung' }: { label?: string }) {
-  return (
-    <span className="inventory-estimate-note">
-      {'🤔'} {label}
-    </span>
-  )
-}
 
 const STATUS_OPTIONS: readonly { value: InstanceStatus; label: string }[] = [
   { value: 'active', label: 'Aktiv (laufende Beiträge)' },
@@ -184,7 +183,7 @@ function VintageChips({
 // Universal fields (shared across all products)
 // ---------------------------------------------------------------------------
 
-function UniversalFields<T extends ProductDraftState>({ draft, onChange }: BaseProps<T>) {
+function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvidence }: BaseProps<T>) {
   const update = (patch: Partial<ProductDraftState>) =>
     onChange({ ...draft, ...patch } as T)
 
@@ -202,10 +201,16 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange }: BaseP
           max={currentYear}
           step={1}
           suffix="Jahr"
-          onChange={(n) => update({ contractStartYear: n })}
+          onChange={(n) => {
+            update({ contractStartYear: n })
+            setEvidence?.('contractStartYear', 'user_confirmed')
+          }}
         />
         {draft.contractStartYear === currentYear && (
-          <EstimateNote label="Bitte prüfen" />
+          <EvidenceBadge
+            state={evidenceState(draft, 'contractStartYear')}
+            onConfirm={() => setEvidence?.('contractStartYear', 'user_confirmed')}
+          />
         )}
       </InvField>
 
@@ -219,10 +224,16 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange }: BaseP
           max={10_000_000}
           step={100}
           suffix="EUR"
-          onChange={(n) => update({ currentValueEUR: n })}
+          onChange={(n) => {
+            update({ currentValueEUR: n })
+            setEvidence?.('currentValueEUR', 'user_confirmed')
+          }}
         />
         {(draft.currentValueEUR === undefined || draft.currentValueEUR === 0) && (
-          <EstimateNote />
+          <EvidenceBadge
+            state={evidenceState(draft, 'currentValueEUR')}
+            onConfirm={() => setEvidence?.('currentValueEUR', 'user_confirmed')}
+          />
         )}
       </InvField>
 
@@ -233,7 +244,10 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange }: BaseP
           max={50_000}
           step={10}
           suffix="EUR/Monat"
-          onChange={(n) => update({ monthlyContribution: n })}
+          onChange={(n) => {
+            update({ monthlyContribution: n })
+            setEvidence?.('monthlyContribution', 'user_confirmed')
+          }}
         />
       </InvField>
 
@@ -438,7 +452,9 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
               onChange({ ...draft, yearsWorked: n, useYearsEstimate: true })
             }
           />
-          {draft.useYearsEstimate && <EstimateNote />}
+          {draft.useYearsEstimate && (
+            <EvidenceBadge state="model_estimate" />
+          )}
         </InvField>
 
         <InvField
@@ -456,7 +472,9 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
             }
           />
           {draft.useYearsEstimate && (
-            <EstimateNote label={`${derivedEp.toFixed(1)} EP geschätzt`} />
+            <EvidenceBadge
+              state="model_estimate"
+            />
           )}
         </InvField>
       </div>
@@ -488,12 +506,12 @@ const PAYOUT_OPTIONS_NO_KAPITAL: readonly { value: string; label: string }[] = [
   { value: 'zeitrente', label: 'Zeitrente (befristet)' },
 ] as const
 
-export function BavCard({ draft, onChange }: BaseProps<BavDraft>) {
+export function BavCard({ draft, onChange, setEvidence }: BaseProps<BavDraft>) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-bav">
-      <UniversalFields draft={draft} onChange={onChange} />
+      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">bAV-spezifisch</p>
       <div className="inventory-field-grid">
@@ -501,9 +519,10 @@ export function BavCard({ draft, onChange }: BaseProps<BavDraft>) {
           <InvSelect
             value={draft.durchfuehrungsweg}
             options={DFW_OPTIONS}
-            onChange={(v) =>
+            onChange={(v) => {
               onChange({ ...draft, durchfuehrungsweg: v as BavDurchfuehrungsweg })
-            }
+              setEvidence?.('durchfuehrungsweg', 'user_confirmed')
+            }}
           />
         </InvField>
 
@@ -517,18 +536,27 @@ export function BavCard({ draft, onChange }: BaseProps<BavDraft>) {
             max={5}
             step={0.05}
             suffix="% p.a."
-            onChange={(n) => onChange({ ...draft, effektivkostenPct: n })}
+            onChange={(n) => {
+              onChange({ ...draft, effektivkostenPct: n })
+              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
+            }}
           />
-          {draft.effektivkostenPct === 0 && <EstimateNote />}
+          {draft.effektivkostenPct === 0 && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'fees.wrapperAssetFee')}
+              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+            />
+          )}
         </InvField>
 
         <InvField label="Auszahlungsform">
           <InvSelect
             value={draft.payoutMode}
             options={PAYOUT_OPTIONS_FULL}
-            onChange={(v) =>
+            onChange={(v) => {
               onChange({ ...draft, payoutMode: v as BavDraft['payoutMode'] })
-            }
+              setEvidence?.('payoutMode', 'user_confirmed')
+            }}
           />
         </InvField>
 
@@ -543,9 +571,17 @@ export function BavCard({ draft, onChange }: BaseProps<BavDraft>) {
               max={80}
               step={0.5}
               suffix="EUR/10k mtl."
-              onChange={(n) => onChange({ ...draft, rentenfaktor: n })}
+              onChange={(n) => {
+                onChange({ ...draft, rentenfaktor: n })
+                setEvidence?.('rentenfaktor', 'user_confirmed')
+              }}
             />
-            {draft.rentenfaktor === 30 && <EstimateNote />}
+            {draft.rentenfaktor === 30 && (
+              <EvidenceBadge
+                state={evidenceState(draft, 'rentenfaktor')}
+                onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
+              />
+            )}
           </InvField>
         )}
       </div>
@@ -567,12 +603,12 @@ export function BavCard({ draft, onChange }: BaseProps<BavDraft>) {
 // pAV (private Rentenversicherung) card
 // ---------------------------------------------------------------------------
 
-export function PavCard({ draft, onChange }: BaseProps<PavDraft>) {
+export function PavCard({ draft, onChange, setEvidence }: BaseProps<PavDraft>) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-versicherung">
-      <UniversalFields draft={draft} onChange={onChange} />
+      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">pAV-spezifisch</p>
       <div className="inventory-field-grid">
@@ -586,18 +622,27 @@ export function PavCard({ draft, onChange }: BaseProps<PavDraft>) {
             max={5}
             step={0.05}
             suffix="% p.a."
-            onChange={(n) => onChange({ ...draft, effektivkostenPct: n })}
+            onChange={(n) => {
+              onChange({ ...draft, effektivkostenPct: n })
+              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
+            }}
           />
-          {draft.effektivkostenPct === 0 && <EstimateNote />}
+          {draft.effektivkostenPct === 0 && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'fees.wrapperAssetFee')}
+              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+            />
+          )}
         </InvField>
 
         <InvField label="Auszahlungsform">
           <InvSelect
             value={draft.payoutMode}
             options={PAYOUT_OPTIONS_FULL}
-            onChange={(v) =>
+            onChange={(v) => {
               onChange({ ...draft, payoutMode: v as PavDraft['payoutMode'] })
-            }
+              setEvidence?.('payoutMode', 'user_confirmed')
+            }}
           />
         </InvField>
 
@@ -612,9 +657,17 @@ export function PavCard({ draft, onChange }: BaseProps<PavDraft>) {
               max={80}
               step={0.5}
               suffix="EUR/10k mtl."
-              onChange={(n) => onChange({ ...draft, rentenfaktor: n })}
+              onChange={(n) => {
+                onChange({ ...draft, rentenfaktor: n })
+                setEvidence?.('rentenfaktor', 'user_confirmed')
+              }}
             />
-            {draft.rentenfaktor === 28 && <EstimateNote />}
+            {draft.rentenfaktor === 28 && (
+              <EvidenceBadge
+                state={evidenceState(draft, 'rentenfaktor')}
+                onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
+              />
+            )}
           </InvField>
         )}
       </div>
@@ -637,6 +690,7 @@ export function PavCard({ draft, onChange }: BaseProps<PavDraft>) {
 export function RiesterCard({
   draft,
   onChange,
+  setEvidence,
   childBirthYears,
 }: BaseProps<RiesterDraft> & { childBirthYears: readonly number[] }) {
   const currentYear = new Date().getFullYear()
@@ -646,7 +700,7 @@ export function RiesterCard({
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-riester">
-      <UniversalFields draft={draft} onChange={onChange} />
+      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">Riester-spezifisch</p>
       <div className="inventory-field-grid">
@@ -675,7 +729,7 @@ export function RiesterCard({
               }
             />
           </div>
-          <EstimateNote label="aus Profil abgeleitet" />
+          <EvidenceBadge state="model_estimate" />
         </InvField>
       </div>
 
@@ -694,12 +748,12 @@ export function RiesterCard({
 // Basisrente card
 // ---------------------------------------------------------------------------
 
-export function BasisrenteCard({ draft, onChange }: BaseProps<BasisrenteDraft>) {
+export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<BasisrenteDraft>) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-basisrente">
-      <UniversalFields draft={draft} onChange={onChange} />
+      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">Basisrente-spezifisch</p>
       <div className="inventory-field-grid">
@@ -713,9 +767,17 @@ export function BasisrenteCard({ draft, onChange }: BaseProps<BasisrenteDraft>) 
             max={5}
             step={0.05}
             suffix="% p.a."
-            onChange={(n) => onChange({ ...draft, effektivkostenPct: n })}
+            onChange={(n) => {
+              onChange({ ...draft, effektivkostenPct: n })
+              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
+            }}
           />
-          {draft.effektivkostenPct === 0 && <EstimateNote />}
+          {draft.effektivkostenPct === 0 && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'fees.wrapperAssetFee')}
+              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+            />
+          )}
         </InvField>
 
         <InvField
@@ -728,9 +790,17 @@ export function BasisrenteCard({ draft, onChange }: BaseProps<BasisrenteDraft>) 
             max={80}
             step={0.5}
             suffix="EUR/10k mtl."
-            onChange={(n) => onChange({ ...draft, rentenfaktor: n })}
+            onChange={(n) => {
+              onChange({ ...draft, rentenfaktor: n })
+              setEvidence?.('rentenfaktor', 'user_confirmed')
+            }}
           />
-          {draft.rentenfaktor === 28 && <EstimateNote />}
+          {draft.rentenfaktor === 28 && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'rentenfaktor')}
+              onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
+            />
+          )}
         </InvField>
       </div>
 
@@ -756,12 +826,12 @@ const AVD_SUBTYPE_OPTIONS: readonly { value: AltersvorsorgedepotSubtype; label: 
   { value: 'guarantee_100', label: 'Mit 100 % Kapitalgarantie' },
 ] as const
 
-export function AvdCard({ draft, onChange }: BaseProps<AvdDraft>) {
+export function AvdCard({ draft, onChange, setEvidence }: BaseProps<AvdDraft>) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-altersvorsorgedepot">
-      <UniversalFields draft={draft} onChange={onChange} />
+      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">AVD-spezifisch</p>
       <div className="inventory-field-grid">
@@ -804,12 +874,12 @@ export function AvdCard({ draft, onChange }: BaseProps<AvdDraft>) {
 // ETF card
 // ---------------------------------------------------------------------------
 
-export function EtfCard({ draft, onChange }: BaseProps<EtfDraft>) {
+export function EtfCard({ draft, onChange, setEvidence }: BaseProps<EtfDraft>) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-etf">
-      <UniversalFields draft={draft} onChange={onChange} />
+      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">ETF-spezifisch</p>
       <div className="inventory-field-grid inventory-field-grid--narrow">
@@ -823,9 +893,17 @@ export function EtfCard({ draft, onChange }: BaseProps<EtfDraft>) {
             max={3}
             step={0.01}
             suffix="% p.a."
-            onChange={(n) => onChange({ ...draft, terPct: n })}
+            onChange={(n) => {
+              onChange({ ...draft, terPct: n })
+              setEvidence?.('annualAssetFee', 'user_confirmed')
+            }}
           />
-          {draft.terPct === 0.2 && <EstimateNote />}
+          {draft.terPct === 0.2 && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'annualAssetFee')}
+              onConfirm={() => setEvidence?.('annualAssetFee', 'user_confirmed')}
+            />
+          )}
         </InvField>
       </div>
 

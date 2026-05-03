@@ -85,4 +85,52 @@ describe('useCombineSimulation', () => {
     // bavPensionTaxable channel.
     expect(combined.aggregateTax.bavPensionTaxable).toBeGreaterThan(0)
   })
+
+  // ---------------------------------------------------------------------------
+  // Issue 09: inputConfidence propagation
+  // ---------------------------------------------------------------------------
+
+  it('ProductResult.inputConfidence is model_estimate when evidenceMap is empty', () => {
+    const ws = makeWs()
+    // makeWs uses migrateV1ToV2 which produces instances with empty evidenceMaps.
+    ws.baseline.assumptions.visibleProducts = ['bav']
+    const result = runCombineSimulation(ws, de2026Rules)
+    const firstBavId = ws.baseline.assumptions.bav[0]?.instanceId
+    if (!firstBavId) return // guard: no bAV instance in this workspace
+    const bavResults = result.perInstance[firstBavId]
+    expect(bavResults).toBeDefined()
+    // With empty evidenceMap all consumed fields default to model_estimate.
+    for (const r of bavResults!) {
+      expect(r.inputConfidence).toBe('model_estimate')
+    }
+  })
+
+  it('ProductResult.inputConfidence is user_confirmed when all ETF evidenceMap fields are confirmed', () => {
+    const ws = makeWs()
+    ws.baseline.assumptions.etf = [
+      {
+        instanceId: 'etf-testinst',
+        label: 'ETF Test',
+        status: 'active',
+        contractStartYear: 2022,
+        currentValueEUR: 0,
+        annualAssetFee: 0.002,
+        annualContributionGrowthRate: 0,
+        equityPartialExemption: 0.3,
+        evidenceMap: {
+          // PRODUCT_EVIDENCE_FIELDS.etf = ['monthlyContribution', 'annualAssetFee']
+          // 'monthlyContribution' is the wizard field name for the user's ETF
+          // monthly input (stored in evidenceMap; not on EtfInstance itself).
+          monthlyContribution: 'user_confirmed',
+          annualAssetFee: 'user_confirmed',
+        },
+      },
+    ]
+    const result = runCombineSimulation(ws, de2026Rules)
+    const etfResults = result.perInstance['etf-testinst']
+    expect(etfResults).toBeDefined()
+    for (const r of etfResults!) {
+      expect(r.inputConfidence).toBe('user_confirmed')
+    }
+  })
 })

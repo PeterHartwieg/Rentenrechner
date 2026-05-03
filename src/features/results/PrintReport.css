@@ -3,6 +3,18 @@
   display: none;
 }
 
+.pr-confidence-estimate {
+  font-size: 0.7em;
+  color: #854d0e;
+  font-weight: 500;
+}
+
+.pr-confidence-confirmed {
+  font-size: 0.7em;
+  color: #166534;
+  font-weight: 500;
+}
+
 /* ─── Print styles ─────────────────────────────────────────────────── */
 @page {
   size: A4 landscape;

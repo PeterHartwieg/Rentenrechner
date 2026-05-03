@@ -56,7 +56,7 @@ export function buildExportCsv(opts: ExportOptions): string {
 
   // Section 1: Summary
   lines.push('Detailvergleich')
-  lines.push(csvRow('Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Kapital nach Steuer (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Wert-Faktor'))
+  lines.push(csvRow('Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Kapital nach Steuer (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Wert-Faktor', 'Confidence'))
   for (const r of products) {
     lines.push(csvRow(
       r.label,
@@ -68,6 +68,7 @@ export function buildExportCsv(opts: ExportOptions): string {
       n(r.netMonthlyPayout),
       n(r.totalFees),
       r.valueMultipleOnUserCost === null ? '' : r.valueMultipleOnUserCost.toFixed(2),
+      r.inputConfidence ?? '',
     ))
   }
 

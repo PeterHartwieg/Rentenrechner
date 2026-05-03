@@ -15,6 +15,7 @@ import type {
 import type {
   AltersvorsorgedepotSubtype,
 } from '../../domain/products/altersvorsorgedepot'
+import type { EvidenceState } from '../../domain/instances'
 
 export type InstanceStatus = 'active' | 'paid_up' | 'surrendered'
 
@@ -28,6 +29,8 @@ export interface ProductDraftState {
   currentValueEUR?: number
   monthlyContribution: number
   anbieter?: string
+  /** Per-field evidence map. Missing keys default to 'model_estimate'. */
+  evidenceMap?: Record<string, EvidenceState>
 }
 
 export interface GrvDraft {

@@ -22,9 +22,10 @@
  */
 
 import './InventoryWizard.css'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
 import { X, Check, Plus, Trash2 } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
+import type { EvidenceState } from '../../domain/instances'
 import { saveWorkspace } from '../../storage'
 import { buildWorkspaceFromDraft } from './inventoryHelpers'
 import {
@@ -464,6 +465,27 @@ export function InventoryWizard({
   // Per-product instance card rendering
   // ---------------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------------
+  // setEvidence helper — promotes a single draft field to user_confirmed
+  // ---------------------------------------------------------------------------
+
+  function makeSetEvidence<T extends { evidenceMap?: Record<string, EvidenceState> }>(
+    setter: Dispatch<SetStateAction<T[]>>,
+    index: number,
+  ) {
+    return (fieldPath: string, state: EvidenceState) => {
+      setter((prev) => {
+        const next = [...prev]
+        const current = next[index]
+        next[index] = {
+          ...current,
+          evidenceMap: { ...(current.evidenceMap ?? {}), [fieldPath]: state },
+        }
+        return next
+      })
+    }
+  }
+
   function renderProductInstances(productId: string) {
     const count = getInstanceCount(productId)
     const canRemove = count > 1
@@ -495,6 +517,7 @@ export function InventoryWizard({
                   const a = [...prev]; a[i] = next; return a
                 })
               }
+              setEvidence={makeSetEvidence(setBavDrafts, i)}
             />
           </div>
         ))
@@ -525,6 +548,7 @@ export function InventoryWizard({
                   const a = [...prev]; a[i] = next; return a
                 })
               }
+              setEvidence={makeSetEvidence(setPavDrafts, i)}
             />
           </div>
         ))
@@ -555,6 +579,7 @@ export function InventoryWizard({
                   const a = [...prev]; a[i] = next; return a
                 })
               }
+              setEvidence={makeSetEvidence(setRiesterDrafts, i)}
               childBirthYears={childBirthYears}
             />
           </div>
@@ -586,6 +611,7 @@ export function InventoryWizard({
                   const a = [...prev]; a[i] = next; return a
                 })
               }
+              setEvidence={makeSetEvidence(setBasisrenteDrafts, i)}
             />
           </div>
         ))
@@ -616,6 +642,7 @@ export function InventoryWizard({
                   const a = [...prev]; a[i] = next; return a
                 })
               }
+              setEvidence={makeSetEvidence(setAvdDrafts, i)}
             />
           </div>
         ))
@@ -646,6 +673,7 @@ export function InventoryWizard({
                   const a = [...prev]; a[i] = next; return a
                 })
               }
+              setEvidence={makeSetEvidence(setEtfDrafts, i)}
             />
           </div>
         ))

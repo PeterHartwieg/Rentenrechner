@@ -8,6 +8,7 @@ import type { RiesterFundingResult, RiesterAssumptions } from './products/rieste
 import type { StatutoryPensionResult, StatutoryPensionAssumptions } from './products/grv'
 import type { EtfAssumptions } from './products/etf'
 import type { MonteCarloAssumptions } from './monteCarlo'
+import type { EvidenceState } from './instances'
 
 export interface YearlyProjection {
   year: number
@@ -97,6 +98,12 @@ export interface BaseProductResult {
    * For AVD `certified_payout_plan`: the certified end age (≥ 85). Drives the break-even chart.
    */
   payoutEndAge?: number
+  /**
+   * Lowest confidence tier across all input fields consumed by the simulator for this
+   * product instance. Set by `simulatePortfolio` after the simulator returns; `undefined`
+   * on the legacy compare-mode path (no instance metadata available there).
+   */
+  inputConfidence?: EvidenceState
   rows: YearlyProjection[]
 }
 
