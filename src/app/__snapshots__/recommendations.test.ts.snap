@@ -169,6 +169,18 @@ exports[`renderAtom snapshots > renderAtom output matches snapshot for all known
   },
   {
     "context": {
+      "hasEmployerContribution": true,
+      "label": "Riester",
+      "productId": "riester",
+    },
+    "id": "reason_subsidies",
+    "rendered": {
+      "body": "Zulagen und ggf. zusätzlicher Steuervorteil.",
+      "headline": "Zulagen",
+    },
+  },
+  {
+    "context": {
       "label": "pAV",
       "productId": "versicherung",
     },

@@ -17,7 +17,7 @@
  *   into its existing public return shapes — compare-mode UI is byte-identical.
  */
 
-import type { ProductResult, SimulationResult } from '../domain'
+import type { ProductResult } from '../domain'
 import type { Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
 
@@ -61,10 +61,16 @@ export interface Atom {
  */
 type EvidenceSnapshot = Record<string, Record<string, unknown>>
 
+/** Structural subset of SimulationResult — only the fields current rules read. */
+export interface RuleEngineSimulationView {
+  products: ProductResult[]
+}
+
 export interface RuleEngineInput {
-  workspace: Workspace
-  /** Compare-mode simulation result (existing shape from `simulateRetirementComparison`). */
-  simulationResult: SimulationResult
+  /** Today's rules don't read workspace; optional so callers without a full Workspace can omit it. */
+  workspace?: Workspace
+  /** Structural subset of SimulationResult capturing only what current rules read. */
+  simulationResult: RuleEngineSimulationView
   /** Combine-mode aggregate (issue 08); omit for compare-mode callers. */
   combinedResult?: CombinedResult
   /** Per-value evidence snapshot (issue 09); omit if not yet available. */
@@ -190,7 +196,7 @@ const productReasonRule: Rule = ({ simulationResult }: RuleEngineInput): Atom[] 
           return {
             id: 'reason_low_fees',
             priority: 'medium',
-            context: { productId: result.productId, label: result.label, riyDecimal: riy },
+            context: { productId: result.productId, label: result.label },
           }
         }
         return {
@@ -270,151 +276,6 @@ const productReasonRule: Rule = ({ simulationResult }: RuleEngineInput): Atom[] 
 }
 
 // ---------------------------------------------------------------------------
-// Minimal input builder (used by the decisionLogic.ts facade)
-// ---------------------------------------------------------------------------
-
-/**
- * Build a minimal `RuleEngineInput` from just a products array.
- *
- * The current rules only read `input.simulationResult.products`, so the other
- * `SimulationResult` fields are zeroed. The `workspace` field is a stub.
- * This helper exists so `decisionLogic.ts` can call `runRules` without
- * constructing a full `SimulationResult` from scratch.
- *
- * When future rules need more fields from `SimulationResult`, callers that
- * have the full result should pass it directly rather than using this helper.
- */
-export function buildRuleInputFromProducts(products: ProductResult[]): RuleEngineInput {
-  const zeroSalary = {
-    annualGross: 0,
-    annualNet: 0,
-    taxableIncome: 0,
-    incomeTax: 0,
-    solidarityTax: 0,
-    social: { pension: 0, unemployment: 0, health: 0, care: 0, total: 0 },
-    vorsorgepauschale: 0,
-    pkv257SubsidyMonthly: 0,
-    pkvNetMonthlyCost: 0,
-  }
-
-  return {
-    workspace: {
-      schemaVersion: 2,
-      mode: 'compare',
-      baseline: {
-        id: '',
-        label: '',
-        profile: {
-          age: 0,
-          retirementAge: 0,
-          grossSalaryYear: 0,
-          taxClass: 1,
-          childBirthYears: [],
-          churchTax: false,
-          publicHealthInsurance: true,
-          healthAdditionalContributionPct: 0,
-          pkvMonthlyPremium: 0,
-          pPVMonthlyPremium: 0,
-        },
-        assumptions: {
-          bav: [],
-          etf: [],
-          insurance: [],
-          basisrente: [],
-          altersvorsorgedepot: [],
-          riester: [],
-          statutoryPension: {
-            pensionBaselineType: 'grv',
-            manualMonthlyGross: null,
-            currentEntgeltpunkte: 0,
-            includeGrvReduction: false,
-          },
-          inflationRate: 0,
-          retirementEndAge: 0,
-          returnScenarios: [],
-          monteCarlo: { enabled: false, runs: 0, annualVolatility: 0, seed: 0 },
-          visibleProducts: [],
-        },
-        createdAt: '',
-        origin: 'baseline',
-      },
-      whatIfs: [],
-      pinnedComparisonIds: [],
-    },
-    simulationResult: {
-      products,
-      bavFunding: {
-        monthlyGrossConversion: 0,
-        annualGrossConversion: 0,
-        monthlyNetCost: 0,
-        annualNetCost: 0,
-        monthlyTaxAndSvSavings: 0,
-        annualTaxAndSvSavings: 0,
-        monthlyStatutoryEmployerSubsidy: 0,
-        monthlyContractualEmployerContribution: 0,
-        monthlyEmployerContribution: 0,
-        annualEmployerContribution: 0,
-        employerSocialSecuritySavingAnnual: 0,
-        salaryWithoutBav: zeroSalary,
-        salaryWithBav: zeroSalary,
-        totalBavContributionAnnual: 0,
-        taxFreePortionAnnual: 0,
-        svFreePortionAnnual: 0,
-        taxableOverflowAnnual: 0,
-        svLiableOverflowAnnual: 0,
-        estimatedMonthlyGrvReduction: 0,
-      },
-      basisrenteFunding: {
-        monthlyGrossContribution: 0,
-        annualGrossContribution: 0,
-        annualPensionContributionsTowardsCap: 0,
-        remainingSchicht1Cap: 0,
-        annualDeductible: 0,
-        annualTaxSaving: 0,
-        monthlyTaxSaving: 0,
-        monthlyNetCost: 0,
-      },
-      altersvorsorgedepotFunding: {
-        monthlyOwnContribution: 0,
-        annualOwnContribution: 0,
-        basicAllowanceAnnual: 0,
-        childAllowanceAnnual: 0,
-        careerStarterBonusAnnual: 0,
-        indirectSpouseAllowanceAnnual: 0,
-        totalAllowanceAnnual: 0,
-        totalContractContributionAnnual: 0,
-        cappedAtContractMax: false,
-        specialExpenseBaseAnnual: 0,
-        guenstigerpruefungBenefitAnnual: 0,
-        monthlyNetCost: 0,
-      },
-      riesterFunding: {
-        monthlyOwnContribution: 0,
-        annualOwnContribution: 0,
-        grundzulageAnnual: 0,
-        childAllowanceAnnual: 0,
-        careerStarterBonusAnnual: 0,
-        totalAllowanceAnnual: 0,
-        minEigenbeitragAnnual: 0,
-        meetsMinContribution: true,
-        prorationFactor: 1,
-        specialExpenseDeductibleAnnual: 0,
-        guenstigerpruefungBenefitAnnual: 0,
-        monthlyNetCost: 0,
-      },
-      statutoryPension: {
-        grossMonthlyPension: 0,
-        netMonthlyPension: 0,
-        taxMonthly: 0,
-        kvPvMonthly: 0,
-        projectedEntgeltpunkte: 0,
-        grvReductionApplied: 0,
-      },
-    },
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Rule registry
 // ---------------------------------------------------------------------------
 
@@ -423,14 +284,14 @@ export function buildRuleInputFromProducts(products: ProductResult[]): RuleEngin
  * here. Order matters only for presentation when atoms are later sorted by
  * priority — within equal priority the registry order is preserved.
  */
-export const RULES: Rule[] = [sensitivityHintRule, productReasonRule]
+const RULES: Rule[] = [sensitivityHintRule, productReasonRule]
 
 // ---------------------------------------------------------------------------
 // Engine
 // ---------------------------------------------------------------------------
 
-export function runRules(input: RuleEngineInput): Atom[] {
-  return RULES.flatMap((rule) => {
+export function runRules(input: RuleEngineInput, rules: Rule[] = RULES): Atom[] {
+  return rules.flatMap((rule) => {
     const out = rule(input)
     if (out == null) return []
     return Array.isArray(out) ? out : [out]
@@ -447,10 +308,36 @@ interface AtomTemplate {
   cta?: string
 }
 
+export function ctxString(ctx: Record<string, unknown>, key: string): string {
+  const value = ctx[key]
+  if (typeof value !== 'string') {
+    if (import.meta.env?.DEV) {
+      console.warn(`[recommendations] missing/invalid string context key '${key}'`, ctx)
+    }
+    return ''
+  }
+  return value
+}
+
+export function ctxNumber(ctx: Record<string, unknown>, key: string): number {
+  const value = ctx[key]
+  if (typeof value !== 'number') {
+    if (import.meta.env?.DEV) {
+      console.warn(`[recommendations] missing/invalid number context key '${key}'`, ctx)
+    }
+    return 0
+  }
+  return value
+}
+
+function ctxBool(ctx: Record<string, unknown>, key: string): boolean {
+  return ctx[key] === true
+}
+
 const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
   sensitivity_rankings_disagree: (atom) => {
-    const capLabel = atom.context['bestCapitalLabel'] as string
-    const penLabel = atom.context['bestPensionLabel'] as string
+    const capLabel = ctxString(atom.context, 'bestCapitalLabel')
+    const penLabel = ctxString(atom.context, 'bestPensionLabel')
     return {
       headline: 'Kapital- und Renten-Sieger sind verschieden',
       body: `„${capLabel}" vorn beim Kapital, „${penLabel}" bei der monatlichen Rente. Frage dich, was dir wichtiger ist.`,
@@ -458,7 +345,7 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
   },
 
   sensitivity_narrow_capital_gap: (atom) => {
-    const runnerLabel = atom.context['runnerLabel'] as string
+    const runnerLabel = ctxString(atom.context, 'runnerLabel')
     return {
       headline: 'Knapper Vorsprung beim Kapital',
       body: `Unter 5 % zu „${runnerLabel}". Ranking kippt schon bei kleinen Änderungen an Rendite oder Gebühren.`,
@@ -466,7 +353,7 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
   },
 
   sensitivity_high_fee_winner: (atom) => {
-    const riy = atom.context['riyDecimal'] as number
+    const riy = ctxNumber(atom.context, 'riyDecimal')
     return {
       headline: 'Sieger hat hohe Effektivkosten',
       body: `${(riy * 100).toFixed(2)} % p. a. Eine Renditeannahme 1 pp niedriger oder ein günstigerer Tarif kann das Bild drehen.`,
@@ -474,10 +361,10 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
   },
 
   sensitivity_default: (atom) => {
-    const text = atom.context['text'] as string | undefined
+    const text = ctxString(atom.context, 'text') || 'Hebel mit grösstem Einfluss: Rendite, Effektivkosten und (bei bAV) Arbeitgeberanteil. Verändere sie testweise im Bereich „Erweitert".'
     return {
       headline: 'Vergleichshinweis',
-      body: text ?? 'Hebel mit grösstem Einfluss: Rendite, Effektivkosten und (bei bAV) Arbeitgeberanteil. Verändere sie testweise im Bereich „Erweitert".',
+      body: text,
     }
   },
 
@@ -492,7 +379,7 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
   }),
 
   reason_high_fees: (atom) => {
-    const productId = atom.context['productId'] as string
+    const productId = ctxString(atom.context, 'productId')
     if (productId === 'basisrente') {
       return {
         headline: 'Hohe Kosten und kein Kapitalwahlrecht',
@@ -512,7 +399,7 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
   },
 
   reason_tax_deferral: (atom) => {
-    const productId = atom.context['productId'] as string
+    const productId = ctxString(atom.context, 'productId')
     if (productId === 'basisrente') {
       return {
         headline: 'Steuervorteil heute',
@@ -531,14 +418,14 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
   }),
 
   reason_subsidies: (atom) => {
-    const productId = atom.context['productId'] as string
+    const productId = ctxString(atom.context, 'productId')
     if (productId === 'altersvorsorgedepot') {
       return {
         headline: 'Zulagen und Steuervorteil',
         body: 'Zulagen und Steuervorteil, gebunden bis Rentenbeginn.',
       }
     }
-    if (productId === 'riester' && atom.context['hasEmployerContribution']) {
+    if (productId === 'riester' && ctxBool(atom.context, 'hasEmployerContribution')) {
       return {
         headline: 'Zulagen',
         body: 'Zulagen und ggf. zusätzlicher Steuervorteil.',
@@ -563,10 +450,10 @@ const FALLBACK_TEMPLATE: AtomTemplate = { headline: '', body: '', cta: undefined
  *
  * Unknown atom ids return a placeholder and warn in dev — never throws.
  *
- * `locale` is reserved for P2 bilingual support; only `'de'` is implemented.
+ * `locale` is reserved for P2 bilingual support; only `'de'` is implemented today.
  */
-export function renderAtom(atom: Atom, locale?: 'de'): AtomTemplate
-export function renderAtom(atom: Atom): AtomTemplate {
+export function renderAtom(atom: Atom, locale: 'de' = 'de'): AtomTemplate {
+  void locale
   const templateFn = ATOM_TEMPLATES[atom.id]
   if (!templateFn) {
     if (import.meta.env?.DEV) {

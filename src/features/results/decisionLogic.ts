@@ -6,7 +6,8 @@ import type { PerturbationResult, SensitivityRunResult } from './sensitivity'
 import {
   runRules,
   renderAtom,
-  buildRuleInputFromProducts,
+  ctxString,
+  ctxNumber,
   type Atom,
 } from '../../app/recommendations'
 
@@ -75,8 +76,7 @@ const ATOM_TO_SENSITIVITY_KIND: Partial<Record<Atom['id'], SensitivityKind>> = {
  * `DecisionSummary.tsx` is unchanged.
  */
 export function productReason(result: ProductResult): ProductReason {
-  const input = buildRuleInputFromProducts([result])
-  const atoms = runRules(input)
+  const atoms = runRules({ simulationResult: { products: [result] } })
   const reasonAtom = atoms.find((a) => a.id in ATOM_TO_REASON_KIND)
   if (reasonAtom) {
     const kind = ATOM_TO_REASON_KIND[reasonAtom.id] as ProductReasonKind
@@ -114,8 +114,7 @@ export function biggestCostDriver(results: ProductResult[]): CostDriver | undefi
  * on the full results array, picks the sensitivity atom, and reshapes to `SensitivityHint`.
  */
 export function sensitivityHint(results: ProductResult[]): SensitivityHint {
-  const input = buildRuleInputFromProducts(results)
-  const atoms = runRules(input)
+  const atoms = runRules({ simulationResult: { products: results } })
   const sensitivityAtom = atoms.find((a) => a.id in ATOM_TO_SENSITIVITY_KIND)
   if (sensitivityAtom) {
     const kind = ATOM_TO_SENSITIVITY_KIND[sensitivityAtom.id] as SensitivityKind
@@ -124,14 +123,14 @@ export function sensitivityHint(results: ProductResult[]): SensitivityHint {
     // the localised prefix that the original function used.
     let text = rendered.body
     if (kind === 'rankings_disagree') {
-      const capLabel = sensitivityAtom.context['bestCapitalLabel'] as string
-      const penLabel = sensitivityAtom.context['bestPensionLabel'] as string
+      const capLabel = ctxString(sensitivityAtom.context, 'bestCapitalLabel')
+      const penLabel = ctxString(sensitivityAtom.context, 'bestPensionLabel')
       text = `Kapital- und Renten-Sieger sind verschieden: „${capLabel}" vorn beim Kapital, „${penLabel}" bei der monatlichen Rente. Frage dich, was dir wichtiger ist.`
     } else if (kind === 'narrow_capital_gap') {
-      const runnerLabel = sensitivityAtom.context['runnerLabel'] as string
+      const runnerLabel = ctxString(sensitivityAtom.context, 'runnerLabel')
       text = `Knapper Vorsprung beim Kapital (unter 5 % zu „${runnerLabel}"). Ranking kippt schon bei kleinen Änderungen an Rendite oder Gebühren.`
     } else if (kind === 'high_fee_winner') {
-      const riy = sensitivityAtom.context['riyDecimal'] as number
+      const riy = ctxNumber(sensitivityAtom.context, 'riyDecimal')
       text = `Sieger hat hohe Effektivkosten (${(riy * 100).toFixed(2)} % p. a.). Eine Renditeannahme 1 pp niedriger oder ein günstigerer Tarif kann das Bild drehen.`
     }
     return { kind, text }

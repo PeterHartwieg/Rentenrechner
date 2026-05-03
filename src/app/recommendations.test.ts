@@ -3,16 +3,19 @@ import type { ProductResult } from '../domain'
 import {
   runRules,
   renderAtom,
-  buildRuleInputFromProducts,
-  RULES,
   type Atom,
   type AtomId,
+  type RuleEngineInput,
 } from './recommendations'
 import { productReason, sensitivityHint } from '../features/results/decisionLogic'
 
 // ---------------------------------------------------------------------------
-// Minimal ProductResult factory
+// Minimal factories
 // ---------------------------------------------------------------------------
+
+function makeInput(products: ProductResult[]): RuleEngineInput {
+  return { simulationResult: { products } }
+}
 
 function makeResult(overrides: Partial<ProductResult>): ProductResult {
   return {
@@ -48,24 +51,18 @@ function makeResult(overrides: Partial<ProductResult>): ProductResult {
 // ---------------------------------------------------------------------------
 
 describe('runRules', () => {
-  it('returns [] when RULES is empty', () => {
-    const input = buildRuleInputFromProducts([])
-    const savedRules = [...RULES]
-    RULES.length = 0
-    try {
-      expect(runRules(input)).toEqual([])
-    } finally {
-      RULES.push(...savedRules)
-    }
+  it('returns [] when rules array is empty', () => {
+    const input = makeInput([])
+    expect(runRules(input, [])).toEqual([])
   })
 
   it('does not throw on empty products array', () => {
-    const input = buildRuleInputFromProducts([])
+    const input = makeInput([])
     expect(() => runRules(input)).not.toThrow()
   })
 
   it('returns an array with at least one atom when products are present', () => {
-    const input = buildRuleInputFromProducts([makeResult({})])
+    const input = makeInput([makeResult({})])
     expect(runRules(input).length).toBeGreaterThan(0)
   })
 })
@@ -191,6 +188,11 @@ describe('renderAtom snapshots', () => {
       context: { productId: 'riester', label: 'Riester' },
     },
     {
+      id: 'reason_subsidies',
+      priority: 'medium',
+      context: { productId: 'riester', label: 'Riester', hasEmployerContribution: true },
+    },
+    {
       id: 'reason_guarantee',
       priority: 'medium',
       context: { productId: 'versicherung', label: 'pAV' },
@@ -214,14 +216,14 @@ describe('re-expressed rules vs decisionLogic', () => {
   ]
 
   it('emits one sensitivity atom + one reason atom per product', () => {
-    const atoms = runRules(buildRuleInputFromProducts(products))
+    const atoms = runRules(makeInput(products))
     // 1 sensitivity + 2 reason atoms
     expect(atoms).toHaveLength(3)
   })
 
   it('reason atom ids match productReason kinds from decisionLogic', () => {
     for (const result of products) {
-      const atoms = runRules(buildRuleInputFromProducts([result]))
+      const atoms = runRules(makeInput([result]))
       const reasonAtom = atoms.find((a) => a.id.startsWith('reason_'))
       expect(reasonAtom).toBeDefined()
       const legacyReason = productReason(result)
@@ -232,7 +234,7 @@ describe('re-expressed rules vs decisionLogic', () => {
 
   it('sensitivity atom kind matches sensitivityHint kind from decisionLogic', () => {
     const hint = sensitivityHint(products)
-    const atoms = runRules(buildRuleInputFromProducts(products))
+    const atoms = runRules(makeInput(products))
     const sensitivityAtom = atoms.find((a) => a.id.startsWith('sensitivity_'))
     expect(sensitivityAtom).toBeDefined()
     expect(sensitivityAtom?.id).toBe(`sensitivity_${hint.kind}`)
@@ -241,28 +243,28 @@ describe('re-expressed rules vs decisionLogic', () => {
   it('rankings_disagree fires when capital and pension winners differ', () => {
     const etf = makeResult({ productId: 'etf', label: 'ETF', afterTaxLumpSum: 100_000, netMonthlyPayout: 600 })
     const bav = makeResult({ productId: 'bav', label: 'bAV', afterTaxLumpSum: 80_000, netMonthlyPayout: 900 })
-    const atoms = runRules(buildRuleInputFromProducts([etf, bav]))
+    const atoms = runRules(makeInput([etf, bav]))
     expect(atoms.some((a) => a.id === 'sensitivity_rankings_disagree')).toBe(true)
   })
 
   it('narrow_capital_gap fires when winner is within 5 % of runner-up', () => {
     const etf = makeResult({ productId: 'etf', label: 'ETF', afterTaxLumpSum: 100_000, netMonthlyPayout: 900 })
     const bav = makeResult({ productId: 'bav', label: 'bAV', afterTaxLumpSum: 98_000, netMonthlyPayout: 800 })
-    const atoms = runRules(buildRuleInputFromProducts([etf, bav]))
+    const atoms = runRules(makeInput([etf, bav]))
     expect(atoms.some((a) => a.id === 'sensitivity_narrow_capital_gap')).toBe(true)
   })
 
   it('high_fee_winner fires when winner has high RIY and clear lead', () => {
     const ins = makeResult({ productId: 'versicherung', label: 'pAV', afterTaxLumpSum: 100_000, netMonthlyPayout: 900, accumulationRiy: 0.016 })
     const etf = makeResult({ productId: 'etf', label: 'ETF', afterTaxLumpSum: 80_000, netMonthlyPayout: 700, accumulationRiy: 0.003 })
-    const atoms = runRules(buildRuleInputFromProducts([ins, etf]))
+    const atoms = runRules(makeInput([ins, etf]))
     expect(atoms.some((a) => a.id === 'sensitivity_high_fee_winner')).toBe(true)
   })
 
   it('default sensitivity fires when no special condition applies', () => {
     const a = makeResult({ productId: 'etf', label: 'ETF', afterTaxLumpSum: 100_000, netMonthlyPayout: 900, accumulationRiy: 0.003 })
     const b = makeResult({ productId: 'bav', label: 'bAV', afterTaxLumpSum: 80_000, netMonthlyPayout: 700, accumulationRiy: 0.005 })
-    const atoms = runRules(buildRuleInputFromProducts([a, b]))
+    const atoms = runRules(makeInput([a, b]))
     expect(atoms.some((a) => a.id === 'sensitivity_default')).toBe(true)
   })
 })
