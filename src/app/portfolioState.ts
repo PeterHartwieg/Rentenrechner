@@ -24,6 +24,10 @@ import {
   loadSavedWorkspace,
   saveWorkspace,
 } from '../storage'
+import {
+  addInstanceToWorkspace,
+  removeInstanceFromWorkspace,
+} from '../features/inventory/inventoryHelpers'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -108,6 +112,15 @@ export function rebaseWhatIfStub(
 // Hook
 // ---------------------------------------------------------------------------
 
+/** Product types that support multiple instances (GRV stays singleton). */
+export type MultiInstanceProductId =
+  | 'bav'
+  | 'versicherung'
+  | 'riester'
+  | 'basisrente'
+  | 'altersvorsorgedepot'
+  | 'etf'
+
 export interface UsePortfolioStateApi {
   workspace: Workspace
   baseline: Scenario
@@ -138,6 +151,16 @@ export interface UsePortfolioStateApi {
    * baseline clone.
    */
   rebaseWhatIf: (id: string) => void
+  /**
+   * Add a new default instance of the given product type to the baseline.
+   * GRV stays singleton and is not in scope.
+   */
+  addInstance: (productId: MultiInstanceProductId) => void
+  /**
+   * Remove an instance from the baseline by productId + instanceId. Pinned
+   * comparison ids referencing the removed instance are cleaned up.
+   */
+  removeInstance: (productId: MultiInstanceProductId, instanceId: string) => void
 }
 
 export function usePortfolioState(): UsePortfolioStateApi {
@@ -206,6 +229,14 @@ export function usePortfolioState(): UsePortfolioStateApi {
     }))
   }, [])
 
+  const addInstance = useCallback((productId: MultiInstanceProductId) => {
+    setWorkspace((w) => addInstanceToWorkspace(w, productId))
+  }, [])
+
+  const removeInstance = useCallback((productId: MultiInstanceProductId, instanceId: string) => {
+    setWorkspace((w) => removeInstanceFromWorkspace(w, productId, instanceId))
+  }, [])
+
   return {
     workspace,
     baseline: workspace.baseline,
@@ -219,5 +250,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
     removeWhatIf,
     forkBaseline,
     rebaseWhatIf,
+    addInstance,
+    removeInstance,
   }
 }

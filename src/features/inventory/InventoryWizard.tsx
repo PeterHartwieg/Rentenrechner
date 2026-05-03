@@ -1,10 +1,17 @@
 /**
  * InventoryWizard — combine-mode existing-portfolio entry (Group G issue 05).
+ * Extended in issue 06 for multi-instance affordance.
  *
  * Full-screen modal overlay showing a 7-product checklist. Ticking a product
  * expands its inline InstanceCard (Layer 1 fields only). On exit the wizard
  * builds a v2 Workspace baseline, sets mode: 'combine', persists via
  * saveWorkspace(), and routes to the combine-mode dashboard.
+ *
+ * Multi-instance (issue 06): each product row (except GRV) can hold multiple
+ * draft instances. "+ weitere {ProductLabel} hinzufügen" button appends a new
+ * default draft. Each instance card shows a per-instance label field and an
+ * "Entfernen" button (requires at least 2 instances to show; confirms on
+ * click).
  *
  * Product order: GRV always first (universal), then PRIMARY_PRODUCT_IDS
  * (ETF, bAV, versicherung) then SECONDARY_PRODUCT_IDS (basisrente,
@@ -12,14 +19,11 @@
  * baseline income for everyone; the primary products (ETF, bAV, pAV) are the
  * most commonly held; secondary products (Basisrente, AVD, Riester) are more
  * niche and appear below the fold to reduce visual noise.
- *
- * Out of scope: multi-instance (issue 06), evidence badges (issue 09),
- * auto-pinned baseline mechanics (issue 07).
  */
 
 import './InventoryWizard.css'
 import { useCallback, useState } from 'react'
-import { X, Check } from 'lucide-react'
+import { X, Check, Plus, Trash2 } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
 import { saveWorkspace } from '../../storage'
 import { buildWorkspaceFromDraft } from './inventoryHelpers'
@@ -71,9 +75,10 @@ function defaultGrv(): GrvDraft {
   }
 }
 
-function defaultBav(): BavDraft {
+function defaultBav(n: number): BavDraft {
   return {
     productId: 'bav',
+    instanceLabel: n > 1 ? `bAV #${n}` : undefined,
     status: 'active',
     contractStartYear: CURRENT_YEAR,
     currentValueEUR: 0,
@@ -86,9 +91,10 @@ function defaultBav(): BavDraft {
   }
 }
 
-function defaultPav(): PavDraft {
+function defaultPav(n: number): PavDraft {
   return {
     productId: 'versicherung',
+    instanceLabel: n > 1 ? `pAV #${n}` : undefined,
     status: 'active',
     contractStartYear: CURRENT_YEAR,
     currentValueEUR: 0,
@@ -100,9 +106,10 @@ function defaultPav(): PavDraft {
   }
 }
 
-function defaultRiester(): RiesterDraft {
+function defaultRiester(n: number): RiesterDraft {
   return {
     productId: 'riester',
+    instanceLabel: n > 1 ? `Riester #${n}` : undefined,
     status: 'active',
     contractStartYear: CURRENT_YEAR,
     currentValueEUR: 0,
@@ -113,9 +120,10 @@ function defaultRiester(): RiesterDraft {
   }
 }
 
-function defaultBasisrente(): BasisrenteDraft {
+function defaultBasisrente(n: number): BasisrenteDraft {
   return {
     productId: 'basisrente',
+    instanceLabel: n > 1 ? `Basisrente #${n}` : undefined,
     status: 'active',
     contractStartYear: CURRENT_YEAR,
     currentValueEUR: 0,
@@ -126,9 +134,10 @@ function defaultBasisrente(): BasisrenteDraft {
   }
 }
 
-function defaultAvd(): AvdDraft {
+function defaultAvd(n: number): AvdDraft {
   return {
     productId: 'altersvorsorgedepot',
+    instanceLabel: n > 1 ? `AVD #${n}` : undefined,
     status: 'active',
     contractStartYear: CURRENT_YEAR,
     currentValueEUR: 0,
@@ -139,9 +148,10 @@ function defaultAvd(): AvdDraft {
   }
 }
 
-function defaultEtf(): EtfDraft {
+function defaultEtf(n: number): EtfDraft {
   return {
     productId: 'etf',
+    instanceLabel: n > 1 ? `ETF #${n}` : undefined,
     status: 'active',
     contractStartYear: CURRENT_YEAR,
     currentValueEUR: 0,
@@ -153,14 +163,13 @@ function defaultEtf(): EtfDraft {
 
 // ---------------------------------------------------------------------------
 // Product row metadata
-// Product order: GRV first (always-on), then PRIMARY (ETF, bAV, versicherung),
-// then SECONDARY (basisrente, altersvorsorgedepot, riester).
 // ---------------------------------------------------------------------------
 
 interface ProductRowMeta {
   id: string
   name: string
   hint: string
+  addLabel: string
 }
 
 const PRODUCT_ROWS: readonly ProductRowMeta[] = [
@@ -168,38 +177,101 @@ const PRODUCT_ROWS: readonly ProductRowMeta[] = [
     id: 'grv',
     name: 'Gesetzliche Rente (GRV)',
     hint: 'Deine Deutsche Rentenversicherung — immer dabei.',
+    addLabel: '',
   },
   {
     id: 'etf',
     name: 'ETF-Sparplan',
     hint: 'Freies Depot oder Sparplan (ohne Versicherungsmantel).',
+    addLabel: 'weiteres ETF-Depot hinzufügen',
   },
   {
     id: 'bav',
     name: 'Betriebliche Altersvorsorge (bAV)',
     hint: 'Über den Arbeitgeber abgeschlossene Entgeltumwandlung.',
+    addLabel: 'weitere bAV hinzufügen',
   },
   {
     id: 'versicherung',
     name: 'Private Rentenversicherung (pAV)',
     hint: 'Klassische oder fondsgebundene Lebens-/Rentenversicherung.',
+    addLabel: 'weitere pAV hinzufügen',
   },
   {
     id: 'basisrente',
     name: 'Basisrente (Rürup-Rente)',
     hint: 'Schicht-1-Rentenversicherung mit Sonderausgabenabzug.',
+    addLabel: 'weitere Basisrente hinzufügen',
   },
   {
     id: 'altersvorsorgedepot',
     name: 'Altersvorsorgedepot (AVD)',
     hint: 'Gefördertes Depot (Altersvorsorgereformgesetz 2026).',
+    addLabel: 'weiteres AVD hinzufügen',
   },
   {
     id: 'riester',
     name: 'Riester-Rente',
     hint: 'Zulagengeförderte Altersvorsorge (§10a EStG).',
+    addLabel: 'weitere Riester hinzufügen',
   },
 ] as const
+
+// Products where multi-instance is allowed (not GRV)
+const MULTI_INSTANCE_PRODUCTS = new Set(['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'])
+
+// ---------------------------------------------------------------------------
+// ConfirmRemove dialog
+// ---------------------------------------------------------------------------
+
+function ConfirmRemoveDialog({
+  productName,
+  label,
+  onConfirm,
+  onCancel,
+}: {
+  productName: string
+  label: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="inv-remove-dialog" role="alertdialog" aria-modal="true">
+      <div className="inv-remove-dialog-card">
+        <p className="inv-remove-dialog-msg">
+          <strong>{label || productName}</strong> entfernen? Die eingegebenen Daten gehen verloren.
+        </p>
+        <div className="inv-remove-dialog-actions">
+          <button type="button" className="inventory-btn-ghost" onClick={onCancel}>
+            Abbrechen
+          </button>
+          <button type="button" className="inv-btn-danger" onClick={onConfirm}>
+            Entfernen
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// M1 limitation banner
+// ---------------------------------------------------------------------------
+
+/**
+ * ETF and pAV in combine-mode produce zero capital due to the fair-comparison
+ * invariant (monthlyCost anchors on bAV net cost). Issue 15 will fix this.
+ * Surface the limitation honestly on affected product cards.
+ */
+function M1LimitationBanner({ productId }: { productId: string }) {
+  if (productId !== 'etf' && productId !== 'versicherung') return null
+  return (
+    <div className="inv-m1-banner" role="note">
+      <strong>Vorschau:</strong> ETF/Versicherung Beträge im Kombinations-Modus folgen mit
+      Issue 15 (faire Vergleichsinvariante wird angepasst).
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // InventoryWizard component
@@ -216,22 +288,26 @@ export function InventoryWizard({
     () => new Set(['grv']),
   )
 
+  // Draft state: arrays for multi-instance, singleton for GRV.
   const [grvDraft, setGrvDraft] = useState<GrvDraft>(() => defaultGrv())
-  const [bavDraft, setBavDraft] = useState<BavDraft>(() => defaultBav())
-  const [pavDraft, setPavDraft] = useState<PavDraft>(() => defaultPav())
-  const [riesterDraft, setRiesterDraft] = useState<RiesterDraft>(() => defaultRiester())
-  const [basisrenteDraft, setBasisrenteDraft] = useState<BasisrenteDraft>(
-    () => defaultBasisrente(),
-  )
-  const [avdDraft, setAvdDraft] = useState<AvdDraft>(() => defaultAvd())
-  const [etfDraft, setEtfDraft] = useState<EtfDraft>(() => defaultEtf())
+  const [bavDrafts, setBavDrafts] = useState<BavDraft[]>(() => [defaultBav(1)])
+  const [pavDrafts, setPavDrafts] = useState<PavDraft[]>(() => [defaultPav(1)])
+  const [riesterDrafts, setRiesterDrafts] = useState<RiesterDraft[]>(() => [defaultRiester(1)])
+  const [basisrenteDrafts, setBasisrenteDrafts] = useState<BasisrenteDraft[]>(() => [defaultBasisrente(1)])
+  const [avdDrafts, setAvdDrafts] = useState<AvdDraft[]>(() => [defaultAvd(1)])
+  const [etfDrafts, setEtfDrafts] = useState<EtfDraft[]>(() => [defaultEtf(1)])
 
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [removeConfirm, setRemoveConfirm] = useState<{
+    productId: string
+    index: number
+    label: string
+  } | null>(null)
 
   const isChecked = (id: string) => checkedProducts.has(id)
 
   function toggleProduct(id: string) {
-    if (id === 'grv') return // GRV is always on
+    if (id === 'grv') return
     setCheckedProducts((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
@@ -247,14 +323,96 @@ export function InventoryWizard({
   // Keyboard: Escape dismisses without saving
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') onDismiss()
+      if (e.key === 'Escape') {
+        if (removeConfirm) {
+          setRemoveConfirm(null)
+        } else {
+          onDismiss()
+        }
+      }
     },
-    [onDismiss],
+    [onDismiss, removeConfirm],
   )
 
+  // ---------------------------------------------------------------------------
+  // Generic add/remove helpers
+  // ---------------------------------------------------------------------------
+
+  function addInstance(productId: string) {
+    switch (productId) {
+      case 'bav':
+        setBavDrafts((prev) => [...prev, defaultBav(prev.length + 1)])
+        break
+      case 'versicherung':
+        setPavDrafts((prev) => [...prev, defaultPav(prev.length + 1)])
+        break
+      case 'riester':
+        setRiesterDrafts((prev) => [...prev, defaultRiester(prev.length + 1)])
+        break
+      case 'basisrente':
+        setBasisrenteDrafts((prev) => [...prev, defaultBasisrente(prev.length + 1)])
+        break
+      case 'altersvorsorgedepot':
+        setAvdDrafts((prev) => [...prev, defaultAvd(prev.length + 1)])
+        break
+      case 'etf':
+        setEtfDrafts((prev) => [...prev, defaultEtf(prev.length + 1)])
+        break
+    }
+  }
+
+  function removeInstance(productId: string, index: number) {
+    switch (productId) {
+      case 'bav':
+        setBavDrafts((prev) => prev.filter((_, i) => i !== index))
+        break
+      case 'versicherung':
+        setPavDrafts((prev) => prev.filter((_, i) => i !== index))
+        break
+      case 'riester':
+        setRiesterDrafts((prev) => prev.filter((_, i) => i !== index))
+        break
+      case 'basisrente':
+        setBasisrenteDrafts((prev) => prev.filter((_, i) => i !== index))
+        break
+      case 'altersvorsorgedepot':
+        setAvdDrafts((prev) => prev.filter((_, i) => i !== index))
+        break
+      case 'etf':
+        setEtfDrafts((prev) => prev.filter((_, i) => i !== index))
+        break
+    }
+  }
+
+  function getLabelForInstance(productId: string, index: number): string {
+    switch (productId) {
+      case 'bav': return bavDrafts[index]?.instanceLabel ?? bavDrafts[index]?.anbieter ?? `bAV #${index + 1}`
+      case 'versicherung': return pavDrafts[index]?.instanceLabel ?? pavDrafts[index]?.anbieter ?? `pAV #${index + 1}`
+      case 'riester': return riesterDrafts[index]?.instanceLabel ?? riesterDrafts[index]?.anbieter ?? `Riester #${index + 1}`
+      case 'basisrente': return basisrenteDrafts[index]?.instanceLabel ?? basisrenteDrafts[index]?.anbieter ?? `Basisrente #${index + 1}`
+      case 'altersvorsorgedepot': return avdDrafts[index]?.instanceLabel ?? avdDrafts[index]?.anbieter ?? `AVD #${index + 1}`
+      case 'etf': return etfDrafts[index]?.instanceLabel ?? etfDrafts[index]?.anbieter ?? `ETF #${index + 1}`
+      default: return `#${index + 1}`
+    }
+  }
+
+  function getInstanceCount(productId: string): number {
+    switch (productId) {
+      case 'bav': return bavDrafts.length
+      case 'versicherung': return pavDrafts.length
+      case 'riester': return riesterDrafts.length
+      case 'basisrente': return basisrenteDrafts.length
+      case 'altersvorsorgedepot': return avdDrafts.length
+      case 'etf': return etfDrafts.length
+      default: return 0
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Exit
+  // ---------------------------------------------------------------------------
+
   function handleComplete() {
-    // Validation hook: spec says wizard defaults are always valid; this
-    // is an extension point for future anchor-field checks.
     const errors: string[] = []
     if (errors.length > 0) {
       setValidationErrors(errors)
@@ -263,12 +421,12 @@ export function InventoryWizard({
 
     const workspace = buildWorkspaceFromDraft({
       grvDraft,
-      bavDraft: isChecked('bav') ? bavDraft : null,
-      pavDraft: isChecked('versicherung') ? pavDraft : null,
-      riesterDraft: isChecked('riester') ? riesterDraft : null,
-      basisrenteDraft: isChecked('basisrente') ? basisrenteDraft : null,
-      avdDraft: isChecked('altersvorsorgedepot') ? avdDraft : null,
-      etfDraft: isChecked('etf') ? etfDraft : null,
+      bavDraft: isChecked('bav') ? bavDrafts : null,
+      pavDraft: isChecked('versicherung') ? pavDrafts : null,
+      riesterDraft: isChecked('riester') ? riesterDrafts : null,
+      basisrenteDraft: isChecked('basisrente') ? basisrenteDrafts : null,
+      avdDraft: isChecked('altersvorsorgedepot') ? avdDrafts : null,
+      etfDraft: isChecked('etf') ? etfDrafts : null,
       grossSalaryYear,
     })
 
@@ -276,9 +434,207 @@ export function InventoryWizard({
     onComplete(workspace)
   }
 
-  // Label changes when user has no contracts beyond GRV (Anna path)
   const anyContractChecked = checkedProducts.size > 1
   const buttonLabel = anyContractChecked ? 'Fertig & Vergleich starten' : 'Weiter ohne Verträge'
+
+  // ---------------------------------------------------------------------------
+  // Per-product instance card rendering
+  // ---------------------------------------------------------------------------
+
+  function renderProductInstances(productId: string) {
+    const count = getInstanceCount(productId)
+    const canRemove = count > 1
+
+    switch (productId) {
+      case 'bav':
+        return bavDrafts.map((draft, i) => (
+          <div key={i} className="inv-instance-wrapper">
+            <InstanceHeader
+              label={getLabelForInstance(productId, i)}
+              instanceIndex={i}
+              instanceCount={count}
+              productId={productId}
+              draft={draft}
+              canRemove={canRemove}
+              onLabelChange={(v) => {
+                setBavDrafts((prev) => {
+                  const next = [...prev]
+                  next[i] = { ...next[i], instanceLabel: v || undefined }
+                  return next
+                })
+              }}
+              onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
+            />
+            <BavCard
+              draft={draft}
+              onChange={(next) =>
+                setBavDrafts((prev) => {
+                  const a = [...prev]; a[i] = next; return a
+                })
+              }
+            />
+          </div>
+        ))
+
+      case 'versicherung':
+        return pavDrafts.map((draft, i) => (
+          <div key={i} className="inv-instance-wrapper">
+            <InstanceHeader
+              label={getLabelForInstance(productId, i)}
+              instanceIndex={i}
+              instanceCount={count}
+              productId={productId}
+              draft={draft}
+              canRemove={canRemove}
+              onLabelChange={(v) => {
+                setPavDrafts((prev) => {
+                  const next = [...prev]
+                  next[i] = { ...next[i], instanceLabel: v || undefined }
+                  return next
+                })
+              }}
+              onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
+            />
+            <PavCard
+              draft={draft}
+              onChange={(next) =>
+                setPavDrafts((prev) => {
+                  const a = [...prev]; a[i] = next; return a
+                })
+              }
+            />
+          </div>
+        ))
+
+      case 'riester':
+        return riesterDrafts.map((draft, i) => (
+          <div key={i} className="inv-instance-wrapper">
+            <InstanceHeader
+              label={getLabelForInstance(productId, i)}
+              instanceIndex={i}
+              instanceCount={count}
+              productId={productId}
+              draft={draft}
+              canRemove={canRemove}
+              onLabelChange={(v) => {
+                setRiesterDrafts((prev) => {
+                  const next = [...prev]
+                  next[i] = { ...next[i], instanceLabel: v || undefined }
+                  return next
+                })
+              }}
+              onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
+            />
+            <RiesterCard
+              draft={draft}
+              onChange={(next) =>
+                setRiesterDrafts((prev) => {
+                  const a = [...prev]; a[i] = next; return a
+                })
+              }
+              childBirthYears={childBirthYears}
+            />
+          </div>
+        ))
+
+      case 'basisrente':
+        return basisrenteDrafts.map((draft, i) => (
+          <div key={i} className="inv-instance-wrapper">
+            <InstanceHeader
+              label={getLabelForInstance(productId, i)}
+              instanceIndex={i}
+              instanceCount={count}
+              productId={productId}
+              draft={draft}
+              canRemove={canRemove}
+              onLabelChange={(v) => {
+                setBasisrenteDrafts((prev) => {
+                  const next = [...prev]
+                  next[i] = { ...next[i], instanceLabel: v || undefined }
+                  return next
+                })
+              }}
+              onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
+            />
+            <BasisrenteCard
+              draft={draft}
+              onChange={(next) =>
+                setBasisrenteDrafts((prev) => {
+                  const a = [...prev]; a[i] = next; return a
+                })
+              }
+            />
+          </div>
+        ))
+
+      case 'altersvorsorgedepot':
+        return avdDrafts.map((draft, i) => (
+          <div key={i} className="inv-instance-wrapper">
+            <InstanceHeader
+              label={getLabelForInstance(productId, i)}
+              instanceIndex={i}
+              instanceCount={count}
+              productId={productId}
+              draft={draft}
+              canRemove={canRemove}
+              onLabelChange={(v) => {
+                setAvdDrafts((prev) => {
+                  const next = [...prev]
+                  next[i] = { ...next[i], instanceLabel: v || undefined }
+                  return next
+                })
+              }}
+              onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
+            />
+            <AvdCard
+              draft={draft}
+              onChange={(next) =>
+                setAvdDrafts((prev) => {
+                  const a = [...prev]; a[i] = next; return a
+                })
+              }
+            />
+          </div>
+        ))
+
+      case 'etf':
+        return etfDrafts.map((draft, i) => (
+          <div key={i} className="inv-instance-wrapper">
+            <InstanceHeader
+              label={getLabelForInstance(productId, i)}
+              instanceIndex={i}
+              instanceCount={count}
+              productId={productId}
+              draft={draft}
+              canRemove={canRemove}
+              onLabelChange={(v) => {
+                setEtfDrafts((prev) => {
+                  const next = [...prev]
+                  next[i] = { ...next[i], instanceLabel: v || undefined }
+                  return next
+                })
+              }}
+              onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
+            />
+            <EtfCard
+              draft={draft}
+              onChange={(next) =>
+                setEtfDrafts((prev) => {
+                  const a = [...prev]; a[i] = next; return a
+                })
+              }
+            />
+          </div>
+        ))
+
+      default:
+        return null
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <div
@@ -326,6 +682,7 @@ export function InventoryWizard({
           {PRODUCT_ROWS.map((row) => {
             const checked = isChecked(row.id)
             const isGrv = row.id === 'grv'
+            const canMulti = MULTI_INSTANCE_PRODUCTS.has(row.id)
             return (
               <div
                 key={row.id}
@@ -360,40 +717,35 @@ export function InventoryWizard({
                   </label>
                 </div>
 
-                {/* Expanded instance card (Layer 1 only) */}
+                {/* Expanded instance cards */}
                 {checked && (
                   <>
-                    {row.id === 'grv' && (
-                      <GrvCard
-                        draft={grvDraft}
-                        onChange={setGrvDraft}
-                        grossSalaryYear={grossSalaryYear}
-                      />
+                    {isGrv && (
+                      <div className="inventory-instance-card" data-testid="instance-card-grv">
+                        <GrvCard
+                          draft={grvDraft}
+                          onChange={setGrvDraft}
+                          grossSalaryYear={grossSalaryYear}
+                        />
+                      </div>
                     )}
-                    {row.id === 'bav' && (
-                      <BavCard draft={bavDraft} onChange={setBavDraft} />
-                    )}
-                    {row.id === 'versicherung' && (
-                      <PavCard draft={pavDraft} onChange={setPavDraft} />
-                    )}
-                    {row.id === 'riester' && (
-                      <RiesterCard
-                        draft={riesterDraft}
-                        onChange={setRiesterDraft}
-                        childBirthYears={childBirthYears}
-                      />
-                    )}
-                    {row.id === 'basisrente' && (
-                      <BasisrenteCard
-                        draft={basisrenteDraft}
-                        onChange={setBasisrenteDraft}
-                      />
-                    )}
-                    {row.id === 'altersvorsorgedepot' && (
-                      <AvdCard draft={avdDraft} onChange={setAvdDraft} />
-                    )}
-                    {row.id === 'etf' && (
-                      <EtfCard draft={etfDraft} onChange={setEtfDraft} />
+
+                    {!isGrv && (
+                      <>
+                        <M1LimitationBanner productId={row.id} />
+                        {renderProductInstances(row.id)}
+
+                        {canMulti && (
+                          <button
+                            type="button"
+                            className="inv-add-instance-btn"
+                            onClick={() => addInstance(row.id)}
+                          >
+                            <Plus size={14} aria-hidden="true" />
+                            + {row.addLabel}
+                          </button>
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -427,6 +779,76 @@ export function InventoryWizard({
           </div>
         </footer>
       </div>
+
+      {/* ── Remove confirmation dialog ─────────────────────────────── */}
+      {removeConfirm && (
+        <ConfirmRemoveDialog
+          productName={removeConfirm.productId}
+          label={removeConfirm.label}
+          onConfirm={() => {
+            removeInstance(removeConfirm.productId, removeConfirm.index)
+            setRemoveConfirm(null)
+          }}
+          onCancel={() => setRemoveConfirm(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// InstanceHeader — per-instance label + remove button
+// ---------------------------------------------------------------------------
+
+interface InstanceHeaderProps {
+  label: string
+  instanceIndex: number
+  instanceCount: number
+  productId: string
+  draft: { instanceLabel?: string; anbieter?: string }
+  canRemove: boolean
+  onLabelChange: (v: string) => void
+  onRemove: () => void
+}
+
+function InstanceHeader({
+  label,
+  instanceCount,
+  draft,
+  canRemove,
+  onLabelChange,
+  onRemove,
+}: InstanceHeaderProps) {
+  if (instanceCount <= 1 && !canRemove) {
+    // Single instance: no header needed (label edit optional but not cluttering)
+    return null
+  }
+
+  return (
+    <div className="inv-instance-header">
+      <div className="inv-instance-label-wrap">
+        <span className="inv-instance-label-prefix">Vertrag:</span>
+        <input
+          type="text"
+          className="inv-instance-label-input"
+          value={draft.instanceLabel ?? draft.anbieter ?? label}
+          placeholder={label}
+          aria-label="Vertragsbezeichnung"
+          onChange={(e) => onLabelChange(e.target.value)}
+        />
+      </div>
+      {canRemove && (
+        <button
+          type="button"
+          className="inv-remove-btn"
+          onClick={onRemove}
+          aria-label="Diesen Vertrag entfernen"
+          title="Vertrag entfernen"
+        >
+          <Trash2 size={14} aria-hidden="true" />
+          Entfernen
+        </button>
+      )}
     </div>
   )
 }

@@ -1,19 +1,19 @@
 /**
- * InstanceCard — per-product Layer 1 field card for the InventoryWizard.
+ * InstanceCard — per-product Layer 1 + Layer 3 field card for the InventoryWizard.
  *
- * Renders the anchor + high-impact fields for a single product instance.
- * Only Layer 1 fields ship in this issue (05). Layer 2 evidence badges and
- * Layer 3 detail disclosure are deferred to issues 09/06 respectively.
+ * Layer 1: anchor + high-impact fields (visible immediately).
+ * Layer 3: expandable <details> block with fee decomposition, Beitragsdynamik,
+ *   KVdR/freiwillig hint (derived from profile), statutory subsidy split (bAV),
+ *   and vintage auto-detection chips.
  *
- * Product order in the wizard follows PRIMARY_PRODUCT_IDS then
- * SECONDARY_PRODUCT_IDS with GRV at top (universal):
- *   GRV, ETF, bAV, versicherung (pAV), basisrente, altersvorsorgedepot, riester
+ * Layer 2 evidence badges are deferred to issue 09.
  *
  * Defaulted / estimated fields are annotated with a "🤔 Schätzung" note per
  * PRD G1 / spec acceptance criterion. The emoji is spec-mandated UX copy —
  * it appears ONLY in user-visible placeholder text, not elsewhere (CLAUDE.md).
  */
 
+import { useState } from 'react'
 import type { BavDurchfuehrungsweg } from '../../domain/products/bav'
 import type { AltersvorsorgedepotSubtype } from '../../domain/products/altersvorsorgedepot'
 import type {
@@ -28,6 +28,8 @@ import type {
   GrvDraft,
 } from './types'
 import { estimateEpFromYears } from './inventoryHelpers'
+import { detectVintageChips } from './vintageDetection'
+import { InfoTip } from '../../ui/InfoTip'
 
 // ---------------------------------------------------------------------------
 // Internal shared primitives
@@ -151,6 +153,32 @@ const STATUS_OPTIONS: readonly { value: InstanceStatus; label: string }[] = [
 ] as const
 
 // ---------------------------------------------------------------------------
+// Vintage chips
+// ---------------------------------------------------------------------------
+
+function VintageChips({
+  contractStartYear,
+  durchfuehrungsweg,
+}: {
+  contractStartYear: number
+  durchfuehrungsweg?: string
+}) {
+  const chips = detectVintageChips({ contractStartYear, durchfuehrungsweg })
+  if (chips.length === 0) return null
+
+  return (
+    <div className="inv-vintage-chips">
+      {chips.map((chip) => (
+        <span key={chip.id} className="inv-vintage-chip">
+          {chip.label}
+          <InfoTip text={chip.tooltip} icon="info" />
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Universal fields (shared across all products)
 // ---------------------------------------------------------------------------
 
@@ -227,6 +255,117 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange }: BaseP
 }
 
 // ---------------------------------------------------------------------------
+// Layer 3 details disclosure
+// ---------------------------------------------------------------------------
+
+/**
+ * Shared Layer 3 <details> block. Carries:
+ *  - Fee decomposition (wrapperAssetFee + fundAssetFee as % p.a.)
+ *  - Beitragsdynamik
+ *  - KVdR/freiwillig hint (profile-level, informational)
+ *  - Statutory subsidy split (bAV only — passed via `bavSubsidy`)
+ *  - Vintage auto-detection chips
+ */
+interface Layer3Props {
+  contractStartYear: number
+  durchfuehrungsweg?: string
+  effektivkostenPct: number
+  onEffektivkostenChange: (v: number) => void
+  beitragsdynamikPct: number
+  onBeitragsdynamikChange: (v: number) => void
+  bavSubsidy?: {
+    /** User-entered gross conversion (EUR/month). */
+    monthlyConversion: number
+  }
+}
+
+function Layer3Details({
+  contractStartYear,
+  durchfuehrungsweg,
+  effektivkostenPct,
+  onEffektivkostenChange,
+  beitragsdynamikPct,
+  onBeitragsdynamikChange,
+  bavSubsidy,
+}: Layer3Props) {
+  return (
+    <details className="inv-layer3-details">
+      <summary className="inv-layer3-summary">Details</summary>
+      <div className="inv-layer3-body">
+        {/* Vintage chips */}
+        <VintageChips
+          contractStartYear={contractStartYear}
+          durchfuehrungsweg={durchfuehrungsweg}
+        />
+
+        {/* Fee decomposition */}
+        <div className="inv-layer3-section">
+          <p className="inventory-instance-section-heading">Kosten</p>
+          <div className="inventory-field-grid">
+            <InvField
+              label="Effektivkosten p.a. (aus PIB/KID)"
+              hint="Gesamte Renditeminderung. Typisch 0,6–1,5 % für ETF-Nettotarife."
+            >
+              <InvNumber
+                value={effektivkostenPct}
+                min={0}
+                max={5}
+                step={0.05}
+                suffix="% p.a."
+                onChange={onEffektivkostenChange}
+              />
+              {effektivkostenPct === 0 && <EstimateNote />}
+            </InvField>
+          </div>
+        </div>
+
+        {/* Beitragsdynamik */}
+        <div className="inv-layer3-section">
+          <p className="inventory-instance-section-heading">Beitragsdynamik</p>
+          <div className="inventory-field-grid">
+            <InvField
+              label="Jährliche Beitragssteigerung"
+              hint="0 % = konstanter Beitrag. Typisch 1–3 % p.a. in Versicherungsverträgen."
+            >
+              <InvNumber
+                value={beitragsdynamikPct}
+                min={0}
+                max={10}
+                step={0.1}
+                suffix="% p.a."
+                onChange={onBeitragsdynamikChange}
+              />
+            </InvField>
+          </div>
+        </div>
+
+        {/* bAV-only: statutory subsidy split */}
+        {bavSubsidy !== undefined && (
+          <div className="inv-layer3-section">
+            <p className="inventory-instance-section-heading">Förderung (geschätzt)</p>
+            <p className="inventory-field-hint">
+              Mindestens 15 % Arbeitgeber-Zuschuss bei Entgeltumwandlung (§1a Abs. 1a BetrAVG).
+              Eigenbeitrag: {bavSubsidy.monthlyConversion} EUR/Monat brutto.
+              Zuschuss ca. {Math.round(bavSubsidy.monthlyConversion * 0.15)} EUR/Monat (Schätzung).
+            </p>
+          </div>
+        )}
+
+        {/* KVdR informational hint */}
+        <div className="inv-layer3-section">
+          <p className="inventory-instance-section-heading">Krankenversicherung im Alter</p>
+          <p className="inventory-field-hint">
+            Der KVdR-Status (pflichtversichert in der gesetzlichen Krankenversicherung der
+            Rentner) wird aus deinem Profil abgeleitet. Bei bAV gilt der §226 Abs. 2 SGB V
+            Freibetrag (ca. 176 EUR/Monat 2026) — der Rechner berücksichtigt dies automatisch.
+          </p>
+        </div>
+      </div>
+    </details>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // GRV card
 // ---------------------------------------------------------------------------
 
@@ -240,7 +379,7 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
   const derivedEp = estimateEpFromYears(draft.yearsWorked, grossSalaryYear)
 
   return (
-    <div className="inventory-instance-card" data-testid="instance-card-grv">
+    <>
       <p className="inventory-field-hint">
         Die gesetzliche Rentenversicherung wird automatisch berechnet. Gib an, wie
         lange du schon arbeitest — oder trage deine Entgeltpunkte aus der letzten
@@ -288,7 +427,7 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
           )}
         </InvField>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -317,6 +456,8 @@ const PAYOUT_OPTIONS_NO_KAPITAL: readonly { value: string; label: string }[] = [
 ] as const
 
 export function BavCard({ draft, onChange }: BaseProps<BavDraft>) {
+  const [beitragsdynamik, setBeitragsdynamik] = useState(0)
+
   return (
     <div className="inventory-instance-card" data-testid="instance-card-bav">
       <UniversalFields draft={draft} onChange={onChange} />
@@ -375,6 +516,16 @@ export function BavCard({ draft, onChange }: BaseProps<BavDraft>) {
           </InvField>
         )}
       </div>
+
+      <Layer3Details
+        contractStartYear={draft.contractStartYear}
+        durchfuehrungsweg={draft.durchfuehrungsweg}
+        effektivkostenPct={draft.effektivkostenPct}
+        onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
+        beitragsdynamikPct={beitragsdynamik}
+        onBeitragsdynamikChange={setBeitragsdynamik}
+        bavSubsidy={{ monthlyConversion: draft.monthlyContribution }}
+      />
     </div>
   )
 }
@@ -384,6 +535,8 @@ export function BavCard({ draft, onChange }: BaseProps<BavDraft>) {
 // ---------------------------------------------------------------------------
 
 export function PavCard({ draft, onChange }: BaseProps<PavDraft>) {
+  const [beitragsdynamik, setBeitragsdynamik] = useState(0)
+
   return (
     <div className="inventory-instance-card" data-testid="instance-card-versicherung">
       <UniversalFields draft={draft} onChange={onChange} />
@@ -432,12 +585,14 @@ export function PavCard({ draft, onChange }: BaseProps<PavDraft>) {
           </InvField>
         )}
       </div>
-      {draft.contractStartYear <= 2004 && (
-        <p className="inventory-field-hint">
-          Vertrag vor 2005: möglicherweise steuerprivilegiert (§52 Abs. 28 EStG a.F. /
-          Halbeinkünfteverfahren). Der Rechner berücksichtigt dies automatisch.
-        </p>
-      )}
+
+      <Layer3Details
+        contractStartYear={draft.contractStartYear}
+        effektivkostenPct={draft.effektivkostenPct}
+        onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
+        beitragsdynamikPct={beitragsdynamik}
+        onBeitragsdynamikChange={setBeitragsdynamik}
+      />
     </div>
   )
 }
@@ -454,6 +609,7 @@ export function RiesterCard({
   const currentYear = new Date().getFullYear()
   const youngChildren = childBirthYears.filter((y) => currentYear - y < 25).length
   const hasChildren = youngChildren > 0
+  const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-riester">
@@ -489,6 +645,14 @@ export function RiesterCard({
           <EstimateNote label="aus Profil abgeleitet" />
         </InvField>
       </div>
+
+      <Layer3Details
+        contractStartYear={draft.contractStartYear}
+        effektivkostenPct={0}
+        onEffektivkostenChange={() => {}}
+        beitragsdynamikPct={beitragsdynamik}
+        onBeitragsdynamikChange={setBeitragsdynamik}
+      />
     </div>
   )
 }
@@ -498,6 +662,8 @@ export function RiesterCard({
 // ---------------------------------------------------------------------------
 
 export function BasisrenteCard({ draft, onChange }: BaseProps<BasisrenteDraft>) {
+  const [beitragsdynamik, setBeitragsdynamik] = useState(0)
+
   return (
     <div className="inventory-instance-card" data-testid="instance-card-basisrente">
       <UniversalFields draft={draft} onChange={onChange} />
@@ -534,6 +700,14 @@ export function BasisrenteCard({ draft, onChange }: BaseProps<BasisrenteDraft>) 
           {draft.rentenfaktor === 28 && <EstimateNote />}
         </InvField>
       </div>
+
+      <Layer3Details
+        contractStartYear={draft.contractStartYear}
+        effektivkostenPct={draft.effektivkostenPct}
+        onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
+        beitragsdynamikPct={beitragsdynamik}
+        onBeitragsdynamikChange={setBeitragsdynamik}
+      />
     </div>
   )
 }
@@ -550,6 +724,8 @@ const AVD_SUBTYPE_OPTIONS: readonly { value: AltersvorsorgedepotSubtype; label: 
 ] as const
 
 export function AvdCard({ draft, onChange }: BaseProps<AvdDraft>) {
+  const [beitragsdynamik, setBeitragsdynamik] = useState(0)
+
   return (
     <div className="inventory-instance-card" data-testid="instance-card-altersvorsorgedepot">
       <UniversalFields draft={draft} onChange={onChange} />
@@ -579,6 +755,14 @@ export function AvdCard({ draft, onChange }: BaseProps<AvdDraft>) {
           </label>
         </InvField>
       </div>
+
+      <Layer3Details
+        contractStartYear={draft.contractStartYear}
+        effektivkostenPct={0}
+        onEffektivkostenChange={() => {}}
+        beitragsdynamikPct={beitragsdynamik}
+        onBeitragsdynamikChange={setBeitragsdynamik}
+      />
     </div>
   )
 }
@@ -588,6 +772,8 @@ export function AvdCard({ draft, onChange }: BaseProps<AvdDraft>) {
 // ---------------------------------------------------------------------------
 
 export function EtfCard({ draft, onChange }: BaseProps<EtfDraft>) {
+  const [beitragsdynamik, setBeitragsdynamik] = useState(0)
+
   return (
     <div className="inventory-instance-card" data-testid="instance-card-etf">
       <UniversalFields draft={draft} onChange={onChange} />
@@ -609,6 +795,14 @@ export function EtfCard({ draft, onChange }: BaseProps<EtfDraft>) {
           {draft.terPct === 0.2 && <EstimateNote />}
         </InvField>
       </div>
+
+      <Layer3Details
+        contractStartYear={draft.contractStartYear}
+        effektivkostenPct={draft.terPct}
+        onEffektivkostenChange={(v) => onChange({ ...draft, terPct: v })}
+        beitragsdynamikPct={beitragsdynamik}
+        onBeitragsdynamikChange={setBeitragsdynamik}
+      />
     </div>
   )
 }

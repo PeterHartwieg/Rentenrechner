@@ -21,6 +21,8 @@ export type InstanceStatus = 'active' | 'paid_up' | 'surrendered'
 /** Base fields shared by all product drafts (universal Layer 1). */
 export interface ProductDraftState {
   productId: string
+  /** User-editable instance label. Overrides the default "{ProductLabel} #N" disambiguator. */
+  instanceLabel?: string
   status: InstanceStatus
   contractStartYear: number
   currentValueEUR?: number

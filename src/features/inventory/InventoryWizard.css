@@ -368,6 +368,385 @@
   gap: 2px;
 }
 
+/* ─── Multi-instance wrapper ──────────────────── */
+
+.inv-instance-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.inv-instance-wrapper + .inv-instance-wrapper {
+  border-top: 1px dashed #d1d5db;
+  margin-top: 4px;
+}
+
+/* ─── Instance header (label + remove button) ─── */
+
+.inv-instance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 16px 6px;
+  background: #f0f4fb;
+  border-top: 1px solid #e2e8f0;
+}
+
+.inv-instance-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.inv-instance-label-prefix {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.inv-instance-label-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #c9d7e5;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 0.88rem;
+  color: #172033;
+  background: #fff;
+  outline: none;
+}
+
+.inv-instance-label-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+}
+
+.inv-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid #fca5a5;
+  border-radius: 5px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.inv-remove-btn:hover {
+  background: #fee2e2;
+}
+
+/* ─── Add-instance button ─────────────────────── */
+
+.inv-add-instance-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 16px 12px;
+  padding: 7px 14px;
+  border: 1px dashed #2563eb;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: calc(100% - 32px);
+  justify-content: center;
+}
+
+.inv-add-instance-btn:hover {
+  background: #dbeafe;
+}
+
+/* ─── Remove confirmation dialog ─────────────── */
+
+.inv-remove-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 16px;
+}
+
+.inv-remove-dialog-card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #d9e1ea;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
+  padding: 20px 22px 18px;
+  max-width: 340px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inv-remove-dialog-msg {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #172033;
+  line-height: 1.5;
+}
+
+.inv-remove-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.inv-btn-danger {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inv-btn-danger:hover {
+  background: #b91c1c;
+}
+
+/* ─── M1 limitation banner ─────────────────────── */
+
+.inv-m1-banner {
+  margin: 4px 16px 0;
+  padding: 7px 12px;
+  border-radius: 5px;
+  background: #fefce8;
+  border: 1px solid #fde047;
+  font-size: 0.78rem;
+  color: #713f12;
+  line-height: 1.45;
+}
+
+/* ─── Layer 3 details / disclosure ───────────── */
+
+.inv-layer3-details {
+  border-top: 1px solid #e2e8f0;
+  margin: 0;
+}
+
+.inv-layer3-summary {
+  padding: 8px 16px;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  user-select: none;
+}
+
+.inv-layer3-summary::-webkit-details-marker {
+  display: none;
+}
+
+.inv-layer3-summary::before {
+  content: '▶';
+  font-size: 0.65rem;
+  color: #94a3b8;
+  transition: transform 0.15s;
+}
+
+details[open] .inv-layer3-summary::before {
+  transform: rotate(90deg);
+}
+
+.inv-layer3-body {
+  padding: 12px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inv-layer3-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ─── Vintage chips ───────────────────────────── */
+
+.inv-vintage-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.inv-vintage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+/* ─── Dashboard combine-mode sidebar ─────────── */
+
+.combine-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.combine-sidebar-heading {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.combine-sidebar-product-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.combine-sidebar-product-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  padding: 4px 0 2px;
+  border-bottom: 1px solid #e9eef5;
+}
+
+.combine-instance-card {
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.combine-instance-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e9eef5;
+  gap: 8px;
+}
+
+.combine-instance-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #172033;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combine-instance-body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.combine-instance-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.combine-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.combine-field span:first-child {
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: #475569;
+}
+
+.combine-field input[type="number"],
+.combine-field select {
+  border: 1px solid #c9d7e5;
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-size: 0.85rem;
+  color: #172033;
+  background: #fff;
+  outline: none;
+  width: 100%;
+}
+
+.combine-field input[type="number"]:focus,
+.combine-field select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.combine-sidebar-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px dashed #2563eb;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+}
+
+.combine-sidebar-add-btn:hover {
+  background: #dbeafe;
+}
+
+.combine-sidebar-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.combine-sidebar-remove-btn:hover {
+  background: #fee2e2;
+}
+
 @media (max-width: 560px) {
   .inventory-field-grid {
     grid-template-columns: 1fr;
@@ -380,5 +759,9 @@
 
   .inventory-footer-actions {
     justify-content: flex-end;
+  }
+
+  .combine-instance-fields {
+    grid-template-columns: 1fr;
   }
 }

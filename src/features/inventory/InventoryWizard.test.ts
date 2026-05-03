@@ -1,7 +1,7 @@
 /**
- * Tests for the InventoryWizard (Group G issue 05).
+ * Tests for the InventoryWizard (Group G issues 05 + 06).
  *
- * Coverage per spec:
+ * Issue 05 coverage:
  *  Unit
  *    - estimateEpFromYears helper computes EP from years + salary.
  *    - GrvDraft produces correct Entgeltpunkte on buildWorkspaceFromDraft.
@@ -13,12 +13,29 @@
  *    - Zero-tick ("Anna") path produces an empty baseline (no product instances).
  *    - Four-product ("Bernd") path produces 4 instance slots populated.
  *
+ * Issue 06 coverage:
+ *  Unit
+ *    - Vintage detection (halbeinkuenfte_pre2005, par40b_aF chips).
+ *    - addInstanceToWorkspace / removeInstanceFromWorkspace mutations.
+ *    - buildWorkspaceFromDraft array overload (multi-instance).
+ *
+ *  Integration
+ *    - Dilan-shape (2 bAV) workspace builds correctly and has 2 instances.
+ *
  * Anna path: no contracts → empty baseline (GRV only, no per-product instances).
  * Bernd path: GRV + bAV + Riester + ETF → baseline with those instances.
+ * Dilan path: 2 bAV instances (old paid-up + new active).
  */
 
 import { describe, expect, it } from 'vitest'
-import { estimateEpFromYears, buildWorkspaceFromDraft } from './inventoryHelpers'
+import {
+  estimateEpFromYears,
+  buildWorkspaceFromDraft,
+  addInstanceToWorkspace,
+  removeInstanceFromWorkspace,
+} from './inventoryHelpers'
+import { detectVintageChips } from './vintageDetection'
+import { defaultWorkspace } from '../../storage'
 import type { GrvDraft, BavDraft, RiesterDraft, EtfDraft } from './types'
 
 // ---------------------------------------------------------------------------
@@ -389,5 +406,254 @@ describe('per-product draft → instance Layer-1 fields', () => {
       grossSalaryYear: 75_000,
     })
     expect(ws.baseline.assumptions.etf[0].annualAssetFee).toBeCloseTo(0.0007, 5)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 06: vintage detection
+// ---------------------------------------------------------------------------
+
+describe('detectVintageChips (issue 06)', () => {
+  it('returns halbeinkuenfte_pre2005 chip for pAV with contractStartYear 2002', () => {
+    const chips = detectVintageChips({ contractStartYear: 2002 })
+    expect(chips.map((c) => c.id)).toContain('halbeinkuenfte_pre2005')
+  })
+
+  it('returns halbeinkuenfte_pre2005 for contractStartYear exactly 2004', () => {
+    const chips = detectVintageChips({ contractStartYear: 2004 })
+    expect(chips.map((c) => c.id)).toContain('halbeinkuenfte_pre2005')
+  })
+
+  it('does NOT return halbeinkuenfte_pre2005 for contractStartYear 2005', () => {
+    const chips = detectVintageChips({ contractStartYear: 2005 })
+    expect(chips.map((c) => c.id)).not.toContain('halbeinkuenfte_pre2005')
+  })
+
+  it('returns par40b_aF for Direktversicherung Altvertrag contractStartYear 2004', () => {
+    const chips = detectVintageChips({
+      contractStartYear: 2004,
+      durchfuehrungsweg: 'direktversicherung_40b_alt',
+    })
+    expect(chips.map((c) => c.id)).toContain('par40b_aF')
+  })
+
+  it('does NOT return par40b_aF for §3 Nr. 63 even if contractStartYear 2003', () => {
+    const chips = detectVintageChips({
+      contractStartYear: 2003,
+      durchfuehrungsweg: 'direktversicherung_3_63',
+    })
+    expect(chips.map((c) => c.id)).not.toContain('par40b_aF')
+  })
+
+  it('does NOT return par40b_aF for direktversicherung_40b_alt with contractStartYear 2005', () => {
+    const chips = detectVintageChips({
+      contractStartYear: 2005,
+      durchfuehrungsweg: 'direktversicherung_40b_alt',
+    })
+    expect(chips.map((c) => c.id)).not.toContain('par40b_aF')
+  })
+
+  it('returns both chips for §40b a.F. Altvertrag before 2005', () => {
+    const chips = detectVintageChips({
+      contractStartYear: 2003,
+      durchfuehrungsweg: 'direktversicherung_40b_alt',
+    })
+    const ids = chips.map((c) => c.id)
+    expect(ids).toContain('halbeinkuenfte_pre2005')
+    expect(ids).toContain('par40b_aF')
+    expect(chips).toHaveLength(2)
+  })
+
+  it('returns empty array for modern contract', () => {
+    expect(detectVintageChips({ contractStartYear: 2020 })).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 06: addInstanceToWorkspace / removeInstanceFromWorkspace
+// ---------------------------------------------------------------------------
+
+describe('addInstanceToWorkspace (issue 06)', () => {
+  it('adds a bAV instance to an empty workspace', () => {
+    const ws = { ...defaultWorkspace }
+    expect(ws.baseline.assumptions.bav).toHaveLength(0)
+    const updated = addInstanceToWorkspace(ws, 'bav')
+    expect(updated.baseline.assumptions.bav).toHaveLength(1)
+  })
+
+  it('appends a second bAV instance', () => {
+    const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
+    const ws2 = addInstanceToWorkspace(ws1, 'bav')
+    expect(ws2.baseline.assumptions.bav).toHaveLength(2)
+  })
+
+  it('labels the second bAV instance with a disambiguator suffix #2', () => {
+    const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
+    const ws2 = addInstanceToWorkspace(ws1, 'bav')
+    expect(ws2.baseline.assumptions.bav[1].label).toMatch(/#2/)
+  })
+
+  it('does not mutate the original workspace', () => {
+    const origCount = defaultWorkspace.baseline.assumptions.bav.length
+    addInstanceToWorkspace(defaultWorkspace, 'bav')
+    expect(defaultWorkspace.baseline.assumptions.bav).toHaveLength(origCount)
+  })
+
+  it('instanceId follows ${productId}-${random8} format', () => {
+    const ws = addInstanceToWorkspace(defaultWorkspace, 'bav')
+    expect(ws.baseline.assumptions.bav[0].instanceId).toMatch(/^bav-[a-z0-9]{8}$/)
+  })
+
+  it('adds versicherung, riester, basisrente, altersvorsorgedepot, etf', () => {
+    const ws1 = addInstanceToWorkspace(defaultWorkspace, 'versicherung')
+    expect(ws1.baseline.assumptions.insurance).toHaveLength(1)
+    const ws2 = addInstanceToWorkspace(defaultWorkspace, 'riester')
+    expect(ws2.baseline.assumptions.riester).toHaveLength(1)
+    const ws3 = addInstanceToWorkspace(defaultWorkspace, 'basisrente')
+    expect(ws3.baseline.assumptions.basisrente).toHaveLength(1)
+    const ws4 = addInstanceToWorkspace(defaultWorkspace, 'altersvorsorgedepot')
+    expect(ws4.baseline.assumptions.altersvorsorgedepot).toHaveLength(1)
+    const ws5 = addInstanceToWorkspace(defaultWorkspace, 'etf')
+    expect(ws5.baseline.assumptions.etf).toHaveLength(1)
+  })
+})
+
+describe('removeInstanceFromWorkspace (issue 06)', () => {
+  it('removes the only bAV instance', () => {
+    const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
+    const id = ws1.baseline.assumptions.bav[0].instanceId
+    const ws2 = removeInstanceFromWorkspace(ws1, 'bav', id)
+    expect(ws2.baseline.assumptions.bav).toHaveLength(0)
+  })
+
+  it('removes only the matching instance when two exist', () => {
+    const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
+    const ws2 = addInstanceToWorkspace(ws1, 'bav')
+    const id0 = ws2.baseline.assumptions.bav[0].instanceId
+    const id1 = ws2.baseline.assumptions.bav[1].instanceId
+    const ws3 = removeInstanceFromWorkspace(ws2, 'bav', id0)
+    expect(ws3.baseline.assumptions.bav).toHaveLength(1)
+    expect(ws3.baseline.assumptions.bav[0].instanceId).toBe(id1)
+  })
+
+  it('is a no-op for unknown instanceId', () => {
+    const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
+    const ws2 = removeInstanceFromWorkspace(ws1, 'bav', 'bav-unknown00')
+    expect(ws2.baseline.assumptions.bav).toHaveLength(1)
+  })
+
+  it('cleans up pinnedComparisonIds referencing the removed instance', () => {
+    const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
+    const id = ws1.baseline.assumptions.bav[0].instanceId
+    const ws1pinned = { ...ws1, pinnedComparisonIds: [id, 'other-id'] }
+    const ws2 = removeInstanceFromWorkspace(ws1pinned, 'bav', id)
+    expect(ws2.pinnedComparisonIds).toEqual(['other-id'])
+  })
+
+  it('does not mutate the original workspace', () => {
+    const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
+    const id = ws1.baseline.assumptions.bav[0].instanceId
+    removeInstanceFromWorkspace(ws1, 'bav', id)
+    expect(ws1.baseline.assumptions.bav).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 06: buildWorkspaceFromDraft array overload + Dilan integration
+// ---------------------------------------------------------------------------
+
+describe('buildWorkspaceFromDraft — array overload (issue 06)', () => {
+  it('accepts an array of bAV drafts and creates correct number of instances', () => {
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft(),
+      bavDraft: [makeBavDraft({ anbieter: 'alt' }), makeBavDraft({ anbieter: 'neu' })],
+      pavDraft: null, riesterDraft: null, basisrenteDraft: null,
+      avdDraft: null, etfDraft: null,
+      grossSalaryYear: 60_000,
+    })
+    expect(ws.baseline.assumptions.bav).toHaveLength(2)
+  })
+
+  it('backward-compat: single bAV draft produces exactly 1 instance', () => {
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft(),
+      bavDraft: makeBavDraft(),
+      pavDraft: null, riesterDraft: null, basisrenteDraft: null,
+      avdDraft: null, etfDraft: null,
+      grossSalaryYear: 60_000,
+    })
+    expect(ws.baseline.assumptions.bav).toHaveLength(1)
+  })
+})
+
+describe('Dilan shape — 2 bAV instances (issue 06 integration)', () => {
+  it('builds workspace with 2 bAV instances, distinct ids, and correct Layer-1 fields', () => {
+    const CURRENT_YEAR = new Date().getFullYear()
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft({ yearsWorked: 10 }),
+      bavDraft: [
+        {
+          productId: 'bav',
+          instanceLabel: 'alter Vertrag',
+          status: 'paid_up',
+          contractStartYear: 2010,
+          currentValueEUR: 8000,
+          monthlyContribution: 0,
+          anbieter: 'Allianz',
+          durchfuehrungsweg: 'direktversicherung_3_63',
+          effektivkostenPct: 1.2,
+          rentenfaktor: 28,
+          payoutMode: 'leibrente',
+        },
+        {
+          productId: 'bav',
+          instanceLabel: 'neuer Vertrag',
+          status: 'active',
+          contractStartYear: CURRENT_YEAR,
+          currentValueEUR: 0,
+          monthlyContribution: 250,
+          anbieter: 'Allianz',
+          durchfuehrungsweg: 'direktversicherung_3_63',
+          effektivkostenPct: 0.8,
+          rentenfaktor: 30,
+          payoutMode: 'leibrente',
+        },
+      ],
+      pavDraft: null, riesterDraft: null, basisrenteDraft: null,
+      avdDraft: null, etfDraft: null,
+      grossSalaryYear: 60_000,
+    })
+
+    const bavInstances = ws.baseline.assumptions.bav
+    expect(bavInstances).toHaveLength(2)
+    expect(bavInstances[0].status).toBe('paid_up')
+    expect(bavInstances[0].contractStartYear).toBe(2010)
+    expect(bavInstances[0].currentValueEUR).toBe(8000)
+    expect(bavInstances[1].status).toBe('active')
+    expect(bavInstances[1].monthlyGrossConversion).toBe(250)
+    // Unique ids
+    expect(bavInstances[0].instanceId).not.toBe(bavInstances[1].instanceId)
+    // Id format
+    expect(bavInstances[0].instanceId).toMatch(/^bav-[a-z0-9]{8}$/)
+    expect(bavInstances[1].instanceId).toMatch(/^bav-[a-z0-9]{8}$/)
+  })
+
+  it('add + remove round-trip: start 2 bAV, remove 1, end up with 1', () => {
+    const CURRENT_YEAR = new Date().getFullYear()
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft(),
+      bavDraft: [
+        makeBavDraft({ contractStartYear: 2010 }),
+        makeBavDraft({ contractStartYear: CURRENT_YEAR }),
+      ],
+      pavDraft: null, riesterDraft: null, basisrenteDraft: null,
+      avdDraft: null, etfDraft: null,
+      grossSalaryYear: 60_000,
+    })
+    expect(ws.baseline.assumptions.bav).toHaveLength(2)
+    const idToRemove = ws.baseline.assumptions.bav[0].instanceId
+    const ws2 = removeInstanceFromWorkspace(ws, 'bav', idToRemove)
+    expect(ws2.baseline.assumptions.bav).toHaveLength(1)
+    expect(ws2.baseline.assumptions.bav[0].contractStartYear).toBe(CURRENT_YEAR)
   })
 })
