@@ -44,6 +44,7 @@ import { DisclaimerBanner } from './features/workspace/DisclaimerBanner'
 import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import { LandingPage } from './features/landing/LandingPage'
 import type { LandingChoice } from './features/landing/LandingPage'
+import { InventoryWizard } from './features/inventory/InventoryWizard'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
@@ -74,6 +75,7 @@ function Calculator({ navigate }: CalculatorProps) {
   // AppView controls the landing vs dashboard decision for route `/`.
   // Initialised from saved state; transitions via user actions.
   const [appView, setAppView] = useState<AppView>(() => resolveInitialAppView())
+  const [showInventoryWizard, setShowInventoryWizard] = useState(false)
 
   const {
     profile,
@@ -152,9 +154,8 @@ function Calculator({ navigate }: CalculatorProps) {
     }
     if (choice.kind === 'combine-existing') {
       portfolioState.setMode('combine')
-      // TODO(issue-05): replace with InventoryWizard once it ships.
-      // For now, route to combine dashboard directly so the UX is non-broken.
-      setAppView('combine')
+      // Open the InventoryWizard overlay (Group G issue 05).
+      setShowInventoryWizard(true)
       return
     }
     if (choice.kind === 'guided-setup') {
@@ -173,9 +174,27 @@ function Calculator({ navigate }: CalculatorProps) {
     setAppView('landing')
   }
 
-  // Show landing page when no saved state exists.
+  // Show landing page when no saved state exists (or when returning to it).
   if (appView === 'landing') {
-    return <LandingPage onChoice={handleLandingChoice} />
+    return (
+      <>
+        <LandingPage onChoice={handleLandingChoice} />
+        {showInventoryWizard && (
+          <InventoryWizard
+            grossSalaryYear={profile.grossSalaryYear}
+            childBirthYears={profile.childBirthYears}
+            onComplete={() => {
+              setShowInventoryWizard(false)
+              portfolioState.setMode('combine')
+              setAppView('combine')
+            }}
+            onDismiss={() => {
+              setShowInventoryWizard(false)
+            }}
+          />
+        )}
+      </>
+    )
   }
 
   const toolbar = (
@@ -450,6 +469,7 @@ function Calculator({ navigate }: CalculatorProps) {
           onDismiss={guidedSetup.dismissOverlay}
         />
       )}
+
     </main>
   )
 }

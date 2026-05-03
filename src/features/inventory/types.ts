@@ -1,0 +1,83 @@
+/**
+ * Draft state types for the InventoryWizard.
+ *
+ * These are UI-layer draft shapes — not the same as the domain instance types
+ * in `src/domain/instances.ts`. The wizard commits them to the workspace via
+ * `buildWorkspaceFromDraft` on exit; there is no persistent draft state.
+ *
+ * Deliberately minimal: each draft only holds the Layer 1 fields the wizard
+ * collects. On commit, missing fields are filled from `defaultAssumptions`.
+ */
+
+import type {
+  BavDurchfuehrungsweg,
+} from '../../domain/products/bav'
+import type {
+  AltersvorsorgedepotSubtype,
+} from '../../domain/products/altersvorsorgedepot'
+
+export type InstanceStatus = 'active' | 'paid_up' | 'surrendered'
+
+/** Base fields shared by all product drafts (universal Layer 1). */
+export interface ProductDraftState {
+  productId: string
+  status: InstanceStatus
+  contractStartYear: number
+  currentValueEUR?: number
+  monthlyContribution: number
+  anbieter?: string
+}
+
+export interface GrvDraft {
+  productId: 'grv'
+  yearsWorked: number
+  currentEntgeltpunkte: number
+  useYearsEstimate: boolean
+}
+
+export interface BavDraft extends ProductDraftState {
+  productId: 'bav'
+  durchfuehrungsweg: BavDurchfuehrungsweg
+  effektivkostenPct: number
+  rentenfaktor: number
+  payoutMode: 'leibrente' | 'zeitrente' | 'kapitalverzehr'
+}
+
+export interface PavDraft extends ProductDraftState {
+  productId: 'versicherung'
+  effektivkostenPct: number
+  rentenfaktor: number
+  payoutMode: 'leibrente' | 'zeitrente' | 'kapitalverzehr'
+}
+
+export interface RiesterDraft extends ProductDraftState {
+  productId: 'riester'
+  payoutMode: 'leibrente' | 'zeitrente'
+  zulageStatus: string
+}
+
+export interface BasisrenteDraft extends ProductDraftState {
+  productId: 'basisrente'
+  effektivkostenPct: number
+  rentenfaktor: number
+}
+
+export interface AvdDraft extends ProductDraftState {
+  productId: 'altersvorsorgedepot'
+  subtype: AltersvorsorgedepotSubtype
+  useGlidepath: boolean
+}
+
+export interface EtfDraft extends ProductDraftState {
+  productId: 'etf'
+  terPct: number
+}
+
+/** Union of all product draft types (excluding GRV which has its own shape). */
+export type AnyProductDraft =
+  | BavDraft
+  | PavDraft
+  | RiesterDraft
+  | BasisrenteDraft
+  | AvdDraft
+  | EtfDraft

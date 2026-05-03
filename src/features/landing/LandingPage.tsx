@@ -34,7 +34,7 @@ export function LandingPage({ onChoice }: Props) {
   }
 
   function handleVertraegeJa() {
-    // TODO(issue-05): replace with InventoryWizard once it ships.
+    // Routes to the InventoryWizard (Group G issue 05).
     onChoice({ kind: 'combine-existing' })
   }
 
