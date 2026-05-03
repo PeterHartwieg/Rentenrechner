@@ -23,6 +23,23 @@ import type { CombinedResult } from '../engine/portfolioCombine'
 import { activeRules } from '../rules'
 
 // ---------------------------------------------------------------------------
+// Allowance helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Sum of Kinderzulagen across all children in the profile.
+ * §85 EStG: born ≥ 2008 → `kinderzulagePost2007` (€300), born < 2008 → `childAllowancePre2008` (€185).
+ */
+function computeKinderzulagen(
+  childBirthYears: number[],
+  riesterRules: GermanRules['riester'],
+): number {
+  return childBirthYears.reduce((sum, birthYear) => {
+    return sum + (birthYear >= 2008 ? riesterRules.childAllowancePost2007 : riesterRules.childAllowancePre2008)
+  }, 0)
+}
+
+// ---------------------------------------------------------------------------
 // Atom shape
 // ---------------------------------------------------------------------------
 
@@ -83,11 +100,6 @@ export interface RuleEngineInput {
   evidence?: EvidenceSnapshot
   /** Reserved for issue 12 cap/headroom rules. */
   marginalBudgetEUR?: number
-  /**
-   * Year-specific German statutory rules. Defaults to `activeRules` when omitted.
-   * Provide explicitly in tests that need a specific rule year.
-   */
-  rules?: GermanRules
 }
 
 // ---------------------------------------------------------------------------
@@ -297,10 +309,14 @@ const BAV_NEARLY_FULL_THRESHOLD = 0.95
  *
  * When `usedPct >= 0.95` the employer has nearly exhausted the tax-free window and the
  * next-euro lever shifts to Basisrente.
+ *
+ * V1 single-employer assumption: §3 Nr. 63 cap is shared across all bAV
+ * instances of one person. Multi-employer (each employer has its own
+ * independent §3 Nr. 63 limit) is a P2 schema extension.
  */
 const bavCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
   if (!input.combinedResult || !input.workspace) return null
-  const rules = input.rules ?? activeRules
+  const rules = activeRules
   const wsa = input.workspace.baseline.assumptions
 
   const capAnnual = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
@@ -330,7 +346,7 @@ const bavCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
  */
 const basisrenteCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
   if (!input.combinedResult || !input.workspace) return null
-  const rules = input.rules ?? activeRules
+  const rules = activeRules
   const profile = input.workspace.baseline.profile
   const wsa = input.workspace.baseline.assumptions
 
@@ -345,7 +361,9 @@ const basisrenteCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null =
       ((wsa.statutoryPension.versorgungswerkMonthlyContribution ?? 0) +
        (wsa.statutoryPension.versorgungswerkEmployerMonthly ?? 0)) * 12
   } else {
-    // GRV: employee + employer pension contributions
+    // GRV: employee + employer pension contributions.
+    // V1 estimate; matches portfolioAdapter math when no PKV/Versorgungswerk.
+    // Revisit when CombinedResult exposes annualPensionContributions.
     const pensionBase = Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear)
     annualPensionContributions =
       pensionBase * (rules.socialSecurity.pensionEmployeeRate + rules.socialSecurity.pensionEmployerRate)
@@ -368,19 +386,24 @@ const basisrenteCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null =
 /**
  * §10a EStG Riester cap (€2,100 incl. own contributions + Zulagen).
  *
- * "Used" = own annual contributions + Grundzulage entitlement per instance.
+ * "Used" = own annual contributions + allowance entitlement (Grundzulage + Kinderzulagen).
  * `allowanceCovered` shows how much of the cap is already covered by allowances.
  * `topUpToCap` shows how much additional own contribution would reach the cap.
+ *
+ * V1 single-person assumption: all Riester instances belong to the main profile.
+ * Partner-linked Riester is a P2 schema extension — when added, group instances by
+ * person-link and compute Grundzulage per group.
  */
 const riesterCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
   if (!input.combinedResult || !input.workspace) return null
-  const rules = input.rules ?? activeRules
+  const rules = activeRules
 
+  const profile = input.workspace.baseline.profile
   const wsa = input.workspace.baseline.assumptions
   const capAnnual = rules.riester.annualCapInclAllowances
 
-  const activeRiester = wsa.riester.filter((r) => r.status !== 'surrendered')
-  if (activeRiester.length === 0) {
+  const riesterInstances = wsa.riester.filter((r) => r.status !== 'surrendered')
+  if (riesterInstances.length === 0) {
     return {
       id: 'riester_cap_remaining',
       priority: 'medium',
@@ -388,26 +411,30 @@ const riesterCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
     }
   }
 
-  // Grundzulage entitlement per directly eligible instance
-  const allowanceEntitlementAnnual = activeRiester.reduce((s, r) => {
-    const eligible = r.eligibility.directlyEligible || (r.eligibility.indirectSpouseEligible ?? false)
-    return s + (eligible ? rules.riester.grundzulage : 0)
-  }, 0)
+  // One Grundzulage per person (§84 EStG): eligible if any active instance is directly or
+  // indirectly eligible. All instances belong to the same person in V1.
+  const directlyEligibleAny = riesterInstances.some((inst) => inst.eligibility.directlyEligible === true)
+  const indirectlyEligibleAny = riesterInstances.some(
+    (inst) => (inst.eligibility.indirectSpouseEligible ?? false) === true,
+  )
+  const grundzulage = (directlyEligibleAny || indirectlyEligibleAny) ? rules.riester.grundzulage : 0
+  const kinderzulageTotal = computeKinderzulagen(profile.childBirthYears, rules.riester)
+  const allowanceCovered = grundzulage + kinderzulageTotal
 
-  const ownContributionAnnual = activeRiester.reduce(
+  const ownContributionAnnual = riesterInstances.reduce(
     (s, r) => s + (r.monthlyOwnContribution ?? 0) * 12,
     0,
   )
-  const usedAnnual = Math.min(capAnnual, ownContributionAnnual + allowanceEntitlementAnnual)
+  const usedAnnual = Math.min(capAnnual, ownContributionAnnual + allowanceCovered)
   const usedPct = Math.min(1, capAnnual > 0 ? usedAnnual / capAnnual : 0)
-  const topUpToCap = Math.max(0, capAnnual - ownContributionAnnual - allowanceEntitlementAnnual)
+  const topUpToCap = Math.max(0, capAnnual - ownContributionAnnual - allowanceCovered)
 
   return {
     id: 'riester_cap_remaining',
     priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
     context: {
       usedPct,
-      allowanceCovered: allowanceEntitlementAnnual,
+      allowanceCovered,
       topUpToCap,
     },
   }
@@ -417,28 +444,35 @@ const riesterCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
  * Altersvorsorgedepot annual contract contribution cap (own contributions + allowances, per AltZertG).
  *
  * The per-contract cap is `rules.altersvorsorgedepot.contractContributionCapAnnual`.
- * For multiple AVD instances each cap is independent (not a portfolio-shared cap),
- * so we report usage against the single-contract cap using the aggregate own
- * contribution across instances (treating them as a single cap for the rule).
+ * Each AVD contract has its own independent cap (not portfolio-shared), so one atom
+ * is emitted per active instance carrying `instanceId` so issue 12 can address
+ * each contract individually.
+ *
+ * Empty workspace (zero AVD instances) → zero atoms (not one usedPct=0 atom).
  */
-const avdCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
+const avdCapRemainingRule: Rule = (input: RuleEngineInput): Atom[] | null => {
   if (!input.combinedResult || !input.workspace) return null
-  const rules = input.rules ?? activeRules
+  const rules = activeRules
 
   const wsa = input.workspace.baseline.assumptions
   const capAnnual = rules.altersvorsorgedepot.contractContributionCapAnnual
   const capMonthly = capAnnual / 12
 
   const activeAvd = wsa.altersvorsorgedepot.filter((a) => a.status !== 'surrendered')
-  const usedMonthly = activeAvd.reduce((s, a) => s + (a.monthlyOwnContribution ?? 0), 0)
-  const usedPct = Math.min(1, capAnnual > 0 ? (usedMonthly * 12) / capAnnual : 0)
-  const remainingMonthly = Math.max(0, capMonthly - usedMonthly)
 
-  return {
-    id: 'avd_cap_remaining',
-    priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
-    context: { usedPct, remainingMonthly },
-  }
+  // Zero instances → zero atoms (per-instance semantics: no contract = nothing to report).
+  if (activeAvd.length === 0) return []
+
+  return activeAvd.map((avd): Atom => {
+    const usedMonthly = avd.monthlyOwnContribution ?? 0
+    const usedPct = Math.min(1, capAnnual > 0 ? (usedMonthly * 12) / capAnnual : 0)
+    const remainingMonthly = Math.max(0, capMonthly - usedMonthly)
+    return {
+      id: 'avd_cap_remaining',
+      priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
+      context: { instanceId: avd.instanceId, usedPct, remainingMonthly },
+    }
+  })
 }
 
 /**
@@ -452,7 +486,7 @@ const avdCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
  */
 const sparerpauschbetragRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
   if (!input.combinedResult || !input.workspace) return null
-  const rules = input.rules ?? activeRules
+  const rules = activeRules
 
   const married = input.workspace.baseline.partner !== undefined
   const capAnnual = married
@@ -462,18 +496,21 @@ const sparerpauschbetragRemainingRule: Rule = (input: RuleEngineInput): Atom | n
   let usedAnnual = 0
   for (const result of input.simulationResult.products) {
     if (result.productId === 'etf') {
-      // Payout rows take priority (first year shows actual Sparerpauschbetrag used).
+      // Either accumulation-phase first-year Vorabpauschale, OR payout-phase
+      // saverAllowanceUsed (mutually exclusive — payout-phase takes precedence).
       const payoutRow = result.etfPayoutRows?.[0]
       if (payoutRow) {
         usedAnnual += payoutRow.saverAllowanceUsed
       } else if (result.rows.length > 0) {
-        // Accumulation: first-year Vorabpauschale = rows[0].cumulativeVorabpauschale
-        // (cumulative starts at 0 before the first year).
+        // rows[0].cumulativeVorabpauschale equals year-1 Vorabpauschale because the
+        // running total starts at 0 (see accumulation.ts:95-165).
         usedAnnual += result.rows[0].cumulativeVorabpauschale
       }
     } else if (result.productId === 'altersvorsorgedepot') {
       // AVD Vorabpauschale during accumulation.
       if (result.rows.length > 0) {
+        // rows[0].cumulativeVorabpauschale equals year-1 Vorabpauschale because the
+        // running total starts at 0 (see accumulation.ts:95-165).
         usedAnnual += result.rows[0].cumulativeVorabpauschale
       }
     }

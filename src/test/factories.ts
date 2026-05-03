@@ -8,6 +8,7 @@ import type {
   ScenarioAssumptions,
   SimulationResult,
 } from '../domain'
+import type { CombinedResult } from '../engine/portfolioCombine'
 import { simulateRetirementComparison } from '../engine/simulate'
 
 export function makeProfile(overrides?: Partial<PersonalProfile>): PersonalProfile {
@@ -37,4 +38,13 @@ export function resultFor(
   const r = products.find(p => p.productId === productId && p.scenarioId === scenarioId)
   if (!r) throw new Error(`No result for product=${productId} scenario=${scenarioId}`)
   return r
+}
+
+/**
+ * Minimal `CombinedResult` stub for rule-engine tests.
+ * Cap rules only check for the *presence* of `combinedResult` to guard compare-mode.
+ * Pass overrides when a test needs specific fields.
+ */
+export function makeCombinedResult(overrides: Partial<CombinedResult> = {}): CombinedResult {
+  return { monthlyNetIncome: 1_000, ...overrides } as CombinedResult
 }
