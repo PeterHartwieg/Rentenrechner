@@ -9,9 +9,17 @@ import { calculateSalaryResult } from '../salary'
 import { de2026Rules } from '../../rules/de2026'
 import { defaultAssumptions, defaultProfile, defaultRiesterAssumptions } from '../../data/defaultScenario'
 import { simulateRetirementComparison } from '../simulate'
+import type { ProductId } from '../../domain'
 
 const rules = de2026Rules
 const r = rules.riester
+
+// All-products override: Riester tests need to find 'riester' and 'altersvorsorgedepot' in results.
+// defaultAssumptions only shows ['etf','bav']; override for integration-level tests.
+const allVisibleAssumptions = {
+  ...defaultAssumptions,
+  visibleProducts: ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as ProductId[],
+}
 
 // ---------------------------------------------------------------------------
 // Child allowance (§85 EStG)
@@ -418,11 +426,11 @@ describe('afterTaxRiesterLumpSum', () => {
 // ---------------------------------------------------------------------------
 
 describe('simulateRetirementComparison — Riester product', () => {
-  const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, rules)
+  const sim = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, rules)
 
   it('produces a Riester product result for each scenario', () => {
     const riesterResults = sim.products.filter((p) => p.productId === 'riester')
-    expect(riesterResults.length).toBe(defaultAssumptions.returnScenarios.length)
+    expect(riesterResults.length).toBe(allVisibleAssumptions.returnScenarios.length)
   })
 
   it('Riester label identifies it as Altvertrag', () => {
@@ -456,12 +464,12 @@ describe('simulateRetirementComparison — Riester product', () => {
 })
 
 describe('simulateRetirementComparison — existingCapital raises retirement capital', () => {
-  const base = simulateRetirementComparison(defaultProfile, defaultAssumptions, rules)
+  const base = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, rules)
   const withCapital = simulateRetirementComparison(
     defaultProfile,
     {
-      ...defaultAssumptions,
-      riester: { ...defaultAssumptions.riester, existingCapital: 20_000 },
+      ...allVisibleAssumptions,
+      riester: { ...allVisibleAssumptions.riester, existingCapital: 20_000 },
     },
     rules,
   )
@@ -482,12 +490,12 @@ describe('simulateRetirementComparison — existingCapital raises retirement cap
 // ---------------------------------------------------------------------------
 
 describe('#71: AVD with riesterTransferCapital', () => {
-  const baseSimulation = simulateRetirementComparison(defaultProfile, defaultAssumptions, rules)
+  const baseSimulation = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, rules)
 
   const transferAssumptions = {
-    ...defaultAssumptions,
+    ...allVisibleAssumptions,
     altersvorsorgedepot: {
-      ...defaultAssumptions.altersvorsorgedepot,
+      ...allVisibleAssumptions.altersvorsorgedepot,
       riesterTransferCapital: 15_000,
       transferCostEUR: 150,
     },

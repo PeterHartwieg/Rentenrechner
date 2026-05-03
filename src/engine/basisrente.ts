@@ -42,7 +42,7 @@ import {
   retirementIncomeBase,
   type RetirementHealthStatus,
 } from './retirementPayout'
-import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
+import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 
 /**
  * Computes the §10 Abs. 3 EStG Schicht-1 deduction and resulting tax saving.
@@ -97,17 +97,11 @@ export function calculateBasisrenteFunding(
   //    The Basisrente deductible reduces the salary-phase zvE directly.
   //    Base zvE: from salary result (already reflects bAV conversion if applicable).
   // -------------------------------------------------------------------------
-  const zvEWithout = salaryResult.taxableIncome
-  const zvEWith = Math.max(0, zvEWithout - annualDeductible)
-
-  const taxWithout =
-    calculateIncomeTax2026(zvEWithout, rules) +
-    calculateSolidarityTax(calculateIncomeTax2026(zvEWithout, rules), rules)
-  const taxWith =
-    calculateIncomeTax2026(zvEWith, rules) +
-    calculateSolidarityTax(calculateIncomeTax2026(zvEWith, rules), rules)
-
-  const annualTaxSaving = Math.max(0, taxWithout - taxWith)
+  const { taxSavingAnnual: annualTaxSaving } = calculateSalaryPhaseTaxDelta(
+    rules,
+    salaryResult.taxableIncome,
+    annualDeductible,
+  )
   const monthlyTaxSaving = annualTaxSaving / 12
   const monthlyNetCost = Math.max(0, basisrente.monthlyGrossContribution - monthlyTaxSaving)
 

@@ -35,7 +35,7 @@ import {
   afterTaxCertifiedPensionLumpSum,
   netCertifiedPensionPayout,
 } from './certifiedPensionPayout'
-import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
+import { calculateAllowanceExcessBenefit, calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 import type { RetirementHealthStatus } from './retirementPayout'
 
 // ---------------------------------------------------------------------------
@@ -227,19 +227,16 @@ export function calculateAvdFunding(
   //    against the allowance value. Only the excess above the allowance is
   //    an additional tax refund (the allowance itself already funds the contract).
   // -------------------------------------------------------------------------
-  const zvEWithout = salaryResult.taxableIncome
-  const zvEWith = Math.max(0, zvEWithout - specialExpenseBaseAnnual)
-
-  const taxWithout =
-    calculateIncomeTax2026(zvEWithout, rules) +
-    calculateSolidarityTax(calculateIncomeTax2026(zvEWithout, rules), rules)
-  const taxWith =
-    calculateIncomeTax2026(zvEWith, rules) +
-    calculateSolidarityTax(calculateIncomeTax2026(zvEWith, rules), rules)
-
-  const totalTaxSavingAnnual = Math.max(0, taxWithout - taxWith)
+  const { taxSavingAnnual: totalTaxSavingAnnual } = calculateSalaryPhaseTaxDelta(
+    rules,
+    salaryResult.taxableIncome,
+    specialExpenseBaseAnnual,
+  )
   // Extra refund above the allowance = Günstigerprüfung benefit.
-  const guenstigerpruefungBenefitAnnual = Math.max(0, totalTaxSavingAnnual - totalAllowanceAnnual)
+  const guenstigerpruefungBenefitAnnual = calculateAllowanceExcessBenefit(
+    totalTaxSavingAnnual,
+    totalAllowanceAnnual,
+  )
 
   // -------------------------------------------------------------------------
   // 5. Net monthly cost: the actual net cash the user pays after the

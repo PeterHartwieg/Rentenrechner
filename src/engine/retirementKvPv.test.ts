@@ -19,6 +19,14 @@ import { afterTaxBavLumpSum, netBavPayout } from './bavPayout'
 import { netInsurancePayout } from './insurancePayout'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { simulateRetirementComparison } from './simulate'
+import type { ProductId } from '../domain'
+
+// All-products override: some end-to-end tests look for 'versicherung' in results.
+// defaultAssumptions only shows ['etf','bav']; override for those tests.
+const allVisibleAssumptions = {
+  ...defaultAssumptions,
+  visibleProducts: ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as ProductId[],
+}
 
 const HEALTH_RATE = de2026Rules.socialSecurity.healthGeneralRate + defaultProfile.healthAdditionalContributionPct / 100 // 0.175
 const CARE_RATE = de2026Rules.socialSecurity.careRetirementChildlessRate // 0.042 (0 children)
@@ -365,13 +373,13 @@ describe('simulateRetirementComparison — (g) BBG-capped scenario: high other i
 
   it('freiwillig versichert: private insurance payout subject to KV/PV (unlike KVdR)', () => {
     const baseAssumptions = {
-      ...defaultAssumptions,
+      ...allVisibleAssumptions,
       insurance: {
-        ...defaultAssumptions.insurance,
+        ...allVisibleAssumptions.insurance,
         contractStartYear: 2024, // post-2004, halbeinkuenfte
       },
       bav: {
-        ...defaultAssumptions.bav,
+        ...allVisibleAssumptions.bav,
         kvdrMember: false, // freiwillig versichert
       },
     }

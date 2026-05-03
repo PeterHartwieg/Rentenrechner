@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
-import type { InsuranceProductResult } from '../../domain'
+import type { InsuranceProductResult, ProductId } from '../../domain'
 import { de2026Rules } from '../../rules/de2026'
 import { ertragsanteilByAge } from '../../rules/legalConstants'
 import { deriveInsuranceTaxMode, netInsurancePayout } from '../insurancePayout'
 import { monthlyPayoutFromCapital } from '../payoutMath'
 import { simulateRetirementComparison } from '../simulate'
+
+// All-products override: insurance tests need to find 'versicherung' in results.
+// defaultAssumptions only shows ['etf','bav']; override for these tests.
+const allVisibleAssumptions = {
+  ...defaultAssumptions,
+  visibleProducts: ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as ProductId[],
+}
 
 describe('deriveInsuranceTaxMode — calendar-year classification', () => {
   // pre-2005 contract, eligible flag true, long runtime → pre2005
@@ -69,7 +76,7 @@ describe('deriveInsuranceTaxMode — calendar-year classification', () => {
     const profile45 = { ...defaultProfile, age: 45, retirementAge: 67 }
     const result = simulateRetirementComparison(
       profile45,
-      { ...defaultAssumptions, insurance: { ...defaultAssumptions.insurance, contractStartYear: 2010, oldContractTaxFreeEligible: false } },
+      { ...allVisibleAssumptions, insurance: { ...allVisibleAssumptions.insurance, contractStartYear: 2010, oldContractTaxFreeEligible: false } },
       de2026Rules,
     )
     const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis') as InsuranceProductResult | undefined
@@ -210,7 +217,7 @@ describe('#59 netInsurancePayout — Ertragsanteil for leibrente', () => {
 
 describe('#60 product label — Private Rentenversicherung', () => {
   it('insurance product label is "Private Rentenversicherung"', () => {
-    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const sim = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, de2026Rules)
     const ins = sim.products.find((p) => p.productId === 'versicherung')
     expect(ins?.label).toBe('Private Rentenversicherung')
   })
@@ -218,7 +225,7 @@ describe('#60 product label — Private Rentenversicherung', () => {
 
 describe('#64 leibrenteBreakEvenAge', () => {
   it('is set for insurance in leibrente mode', () => {
-    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const sim = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, de2026Rules)
     const ins = sim.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
     // defaultAssumptions.insurance.payoutMode === 'leibrente'
     expect(ins?.leibrenteBreakEvenAge).toBeDefined()
@@ -226,22 +233,22 @@ describe('#64 leibrenteBreakEvenAge', () => {
   })
 
   it('break-even age = retirementAge + capital / (grossMonthlyPayout * 12)', () => {
-    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const sim = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, de2026Rules)
     const ins = sim.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
     const expected = ins.capitalAtRetirement / (ins.grossMonthlyPayout * 12) + defaultProfile.retirementAge
     expect(ins.leibrenteBreakEvenAge).toBeCloseTo(expected, 4)
   })
 
   it('is undefined for ETF (drawdown mode)', () => {
-    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const sim = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, de2026Rules)
     const etf = sim.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')
     expect(etf?.leibrenteBreakEvenAge).toBeUndefined()
   })
 
   it('is undefined for bAV in kapitalverzehr mode', () => {
     const kapAssumptions = {
-      ...defaultAssumptions,
-      bav: { ...defaultAssumptions.bav, payoutMode: 'kapitalverzehr' as const },
+      ...allVisibleAssumptions,
+      bav: { ...allVisibleAssumptions.bav, payoutMode: 'kapitalverzehr' as const },
     }
     const sim = simulateRetirementComparison(defaultProfile, kapAssumptions, de2026Rules)
     const bav = sim.products.find((p) => p.productId === 'bav' && p.scenarioId === 'basis')
@@ -251,9 +258,9 @@ describe('#64 leibrenteBreakEvenAge', () => {
 
 describe('#65 InsurancePaidUpScenario', () => {
   const baseAssumptions = {
-    ...defaultAssumptions,
+    ...allVisibleAssumptions,
     insurance: {
-      ...defaultAssumptions.insurance,
+      ...allVisibleAssumptions.insurance,
       surrenderHaircutPct: 0.05,
     },
   }
@@ -372,15 +379,15 @@ describe('payoutMode (#54) — insurance (pAV zeitrente)', () => {
     const sim = simulateRetirementComparison(
       defaultProfile,
       {
-        ...defaultAssumptions,
-        insurance: { ...defaultAssumptions.insurance, payoutMode: 'zeitrente', zeitrenteYears: 12 },
+        ...allVisibleAssumptions,
+        insurance: { ...allVisibleAssumptions.insurance, payoutMode: 'zeitrente', zeitrenteYears: 12 },
       },
       de2026Rules,
     )
     const pavBasis = sim.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
-    const payoutReturn = pavBasis.annualReturn - (defaultAssumptions.insurance.fees.wrapperAssetFee + defaultAssumptions.insurance.fees.fundAssetFee)
+    const payoutReturn = pavBasis.annualReturn - (allVisibleAssumptions.insurance.fees.wrapperAssetFee + allVisibleAssumptions.insurance.fees.fundAssetFee)
     const grossBeforePayoutFee = monthlyPayoutFromCapital(pavBasis.capitalAtRetirement, payoutReturn, 12)
-    const expected = grossBeforePayoutFee * (1 - defaultAssumptions.insurance.fees.pensionPayoutFeePct)
+    const expected = grossBeforePayoutFee * (1 - allVisibleAssumptions.insurance.fees.pensionPayoutFeePct)
     expect(pavBasis.grossMonthlyPayout).toBeCloseTo(expected, 6)
   })
 })

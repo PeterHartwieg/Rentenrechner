@@ -63,7 +63,7 @@ src/
   domain/products/ bav.ts, etf.ts, insurance.ts, basisrente.ts, altersvorsorgedepot.ts, riester.ts, grv.ts
   data/           defaultScenario.ts, presets.ts, scenarioLibrary.ts
   content/        terms.ts, productFocus.ts, triggers.ts
-  engine/         tax.ts, salary.ts, retirementTax.ts, projections.ts, fees.ts, grv.ts,
+  engine/         tax.ts, salary.ts, retirementTax.ts, fees.ts, grv.ts,
                   basisrente.ts, altersvorsorgedepot.ts, riester.ts, bavWarnings.ts,
                   simulationContext.ts, buildResult.ts, simulate.ts, productManifest.ts
   engine/products/ etf.ts/.validation.ts/.test.ts, bav, insurance, basisrente, altersvorsorgedepot, riester

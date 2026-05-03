@@ -13,8 +13,12 @@ import { de2026Rules } from '../rules/de2026'
 import { simulateRetirementComparison } from './simulate'
 import { syncMonthlyContributions } from '../app/syncContributions'
 
-// Run the default simulation once and reuse across all tests in this suite.
-const defaultResult = simulateDefault()
+// Run a full-product simulation (all 6 products visible) once and reuse across
+// structural / product-invariant / golden tests in this suite. Using all-products
+// here lets us assert cross-product correctness even though the default UI comparison
+// only shows etf + bAV.
+const ALL_PRODUCTS = ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as const
+const defaultResult = simulateDefault({ assumptions: { visibleProducts: [...ALL_PRODUCTS] } })
 const { products } = defaultResult
 
 // ---------------------------------------------------------------------------
@@ -56,7 +60,9 @@ describe('simulateRetirementComparison — fair-comparison invariant', () => {
     // Sync the assumptions through the single-anchor solver (the same path the
     // UI takes whenever the user edits a contribution). Every product's
     // monthlyUserCost should then equal the chosen netto anchor.
-    const synced = syncMonthlyContributions(150, defaultAssumptions, defaultProfile, de2026Rules)
+    // Use all-products assumptions so resultFor can find all six.
+    const allProductsAssumptions = { ...defaultAssumptions, visibleProducts: [...ALL_PRODUCTS] }
+    const synced = syncMonthlyContributions(150, allProductsAssumptions, defaultProfile, de2026Rules)
     const syncedResult = simulateRetirementComparison(defaultProfile, synced, de2026Rules)
     for (const scenario of defaultAssumptions.returnScenarios) {
       const bav = resultFor(syncedResult.products, 'bav', scenario.id)
@@ -181,7 +187,11 @@ describe('simulateRetirementComparison — golden snapshots (konservativ, 3 %)',
 // ---------------------------------------------------------------------------
 
 describe('default-profile end-to-end snapshot', () => {
-  const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+  const sim = simulateRetirementComparison(
+    defaultProfile,
+    { ...defaultAssumptions, visibleProducts: [...ALL_PRODUCTS] },
+    de2026Rules,
+  )
   const find = (productId: string, scenarioId: string) =>
     sim.products.find((p) => p.productId === productId && p.scenarioId === scenarioId)!
 

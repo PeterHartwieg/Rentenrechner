@@ -78,7 +78,6 @@ npm run repo:stats      # file/symbol inventory
 | `src/engine/payoutMath.ts` | Shared payout math: `monthlyRate`, `monthlyPayoutFromCapital`, `computeGrossMonthlyPayout`. |
 | `src/engine/productPayout.ts` | Shared product payout plumbing: pension payout fee deduction, Leibrente break-even age. |
 | `src/engine/{etfPayout,insurancePayout,bavPayout,certifiedPensionPayout}.ts` | Per-channel after-tax payout helpers (ETF exit tax; private-insurance tax mode + lump sum; bAV tax mode + lump sum; shared §22 Nr. 5 helpers for AVD/Riester). |
-| `src/engine/projections.ts` | Compatibility barrel — re-exports the split modules above. Prefer importing from the focused module in new code. |
 | `src/engine/fees.ts` | RIY / Effektivkosten bisection solver. |
 | `src/engine/marketReturns.ts` | Shared stochastic return-path helpers; product simulators compose Monte Carlo paths via this. |
 | `src/engine/{grv,basisrente,altersvorsorgedepot,riester,monteCarlo}.ts` | Pension-system, Schicht-1, Schicht-2, and stochastic engines. |

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
-import type { PersonalProfile } from '../../domain'
+import type { PersonalProfile, ProductId } from '../../domain'
 import {
   calculateBavFunding,
   calculatePkv257Subsidy,
@@ -12,6 +12,13 @@ import { simulateRetirementComparison } from '../simulate'
 import { calculateIncomeTax2026, calculateSolidarityTax } from '../tax'
 import { afterTaxBavLumpSum, netBavPayout } from '../bavPayout'
 import { monthlyPayoutFromCapital } from '../payoutMath'
+
+// All-products override: some tests look for 'versicherung' in results.
+// defaultAssumptions only shows ['etf','bav']; override for those tests.
+const allVisibleAssumptions = {
+  ...defaultAssumptions,
+  visibleProducts: ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as ProductId[],
+}
 
 describe('#35 children-adjusted retirement PV rate in netBavPayout', () => {
   it('childless rate (0 children) equals careRetirementChildlessRate by construction', () => {
@@ -84,8 +91,8 @@ describe('bAV funding model', () => {
     // With GRV in the marginal-tax base, the small Ertragsanteil portion gets taxed
     // at the marginal rate, so net is slightly below gross.
     const pre2005 = simulateRetirementComparison(defaultProfile, {
-      ...defaultAssumptions,
-      insurance: { ...defaultAssumptions.insurance, contractStartYear: 1990, oldContractTaxFreeEligible: true },
+      ...allVisibleAssumptions,
+      insurance: { ...allVisibleAssumptions.insurance, contractStartYear: 1990, oldContractTaxFreeEligible: true },
     }, de2026Rules).products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')
     expect(pre2005?.afterTaxLumpSum).toBeCloseTo(pre2005?.capitalAtRetirement ?? 0)
     expect(pre2005?.netMonthlyPayout ?? 0).toBeLessThan(pre2005?.grossMonthlyPayout ?? 0)
@@ -95,9 +102,9 @@ describe('bAV funding model', () => {
     // halbeinkuenfte: with 3,000 EUR/month other income the half-gain sits in the 42% bracket
     // → marginalTax(other + halfGain) - marginalTax(other) > 0 → net < gross
     const halbein = simulateRetirementComparison(defaultProfile, {
-      ...defaultAssumptions,
+      ...allVisibleAssumptions,
       insurance: {
-        ...defaultAssumptions.insurance,
+        ...allVisibleAssumptions.insurance,
         contractStartYear: 2024,
         monthlyOtherRetirementIncome: 3_000,
       },
@@ -111,9 +118,9 @@ describe('bAV funding model', () => {
     const abgelt = simulateRetirementComparison(
       { ...defaultProfile, retirementAge: 60 },
       {
-        ...defaultAssumptions,
+        ...allVisibleAssumptions,
         insurance: {
-          ...defaultAssumptions.insurance,
+          ...allVisibleAssumptions.insurance,
           contractStartYear: 2024,
           payoutMode: 'kapitalverzehr', // test gain-ratio path explicitly
           monthlyOtherRetirementIncome: 2_000, // push gain into taxable bracket

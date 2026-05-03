@@ -40,7 +40,7 @@ import {
   netCertifiedPensionPayout,
 } from './certifiedPensionPayout'
 import type { RetirementHealthStatus } from './retirementPayout'
-import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
+import { calculateAllowanceExcessBenefit, calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 
 // ---------------------------------------------------------------------------
 // Allowance helpers
@@ -234,18 +234,15 @@ export function calculateRiesterFunding(
   //    real household benefit. The allowance leg (the part the ZfA Riester-Rechner
   //    validates) is correct; full joint Günstigerprüfung is a separate workstream.
   // -------------------------------------------------------------------------
-  const zvEWithout = salaryResult.taxableIncome
-  const zvEWith = Math.max(0, zvEWithout - specialExpenseDeductibleAnnual)
-
-  const taxWithout =
-    calculateIncomeTax2026(zvEWithout, rules) +
-    calculateSolidarityTax(calculateIncomeTax2026(zvEWithout, rules), rules)
-  const taxWith =
-    calculateIncomeTax2026(zvEWith, rules) +
-    calculateSolidarityTax(calculateIncomeTax2026(zvEWith, rules), rules)
-
-  const totalTaxSavingAnnual = Math.max(0, taxWithout - taxWith)
-  const guenstigerpruefungBenefitAnnual = Math.max(0, totalTaxSavingAnnual - totalAllowanceAnnual)
+  const { taxSavingAnnual: totalTaxSavingAnnual } = calculateSalaryPhaseTaxDelta(
+    rules,
+    salaryResult.taxableIncome,
+    specialExpenseDeductibleAnnual,
+  )
+  const guenstigerpruefungBenefitAnnual = calculateAllowanceExcessBenefit(
+    totalTaxSavingAnnual,
+    totalAllowanceAnnual,
+  )
 
   // -------------------------------------------------------------------------
   // 6. Net monthly cost: the actual cash the saver pays after Günstigerprüfung.

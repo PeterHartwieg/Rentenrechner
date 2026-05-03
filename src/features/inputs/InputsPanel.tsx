@@ -21,15 +21,13 @@ import { ScenariosPanel } from './ScenariosPanel'
 import { GlossaryPanel } from './GlossaryPanel'
 import { ProfileInputs } from './ProfileInputs'
 import { GRVInputs } from './GRVInputs'
-import { BavInputs } from './BavInputs'
-import { InsuranceInputs } from './InsuranceInputs'
-import { BasisrenteInputs } from './BasisrenteInputs'
-import { AltersvorsorgedepotInputs } from './AltersvorsorgedepotInputs'
-import { RiesterInputs } from './RiesterInputs'
 import { ComparisonPicker } from '../workspace/ComparisonPicker'
 import { ProductFocusHeader } from '../workspace/ProductFocusHeader'
 import { ProductTabs } from './ProductTabs'
-import { BeitragsdynamikField } from './sections/BeitragsdynamikField'
+import {
+  PRODUCT_UI_REGISTRY,
+  type ProductInputsContext,
+} from './productUiRegistry'
 
 interface ScenarioLib {
   library: SavedScenario[]
@@ -168,137 +166,34 @@ export function InputsPanel({
           <>
             <ProductTabs visible={visible} active={activeTab} onChange={setRequestedTab} />
 
-            {activeTab === 'bav' && (
-            <>
-              <ProductFocusHeader productId="bav" />
-              <BavInputs
-                assumptions={assumptions}
-                onAssumptionsChange={onAssumptionsChange}
-                onSyncMonthlyContribution={onSyncMonthlyContribution}
-                profile={profile}
-                bavFunding={simulation.bavFunding}
-                selectedResults={selectedResults}
-                kvdrMember={kvdrMember}
-                bavLumpSumTaxMode={bavLumpSumTaxMode}
-                tarifgebunden={tarifgebunden}
-                onTarifgebundenChange={onTarifgebundenChange}
-                bavMinAnnual={bavMinAnnual}
-                bavMinMonthly={bavMinMonthly}
-                bavEntitlementMax={bavEntitlementMax}
-                rules={de2026Rules}
-              />
-            </>
-          )}
-
-          {activeTab === 'etf' && (
-            <>
-              <ProductFocusHeader productId="etf" />
-              <div className="field-grid">
-                <NumberField
-                  label="ETF TER"
-                  value={assumptions.etf.annualAssetFee * 100}
-                  min={0}
-                  max={3}
-                  step={0.05}
-                  suffix="% p.a."
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      etf: { ...current.etf, annualAssetFee: Number(value) / 100 },
-                    }))
-                  }
-                />
-                <label className="field">
-                  <span>Fondstyp (für Teilfreistellung)</span>
-                  <select
-                    value={assumptions.etf.equityPartialExemption}
-                    onChange={(event) =>
-                      onAssumptionsChange((current) => ({
-                        ...current,
-                        etf: {
-                          ...current.etf,
-                          equityPartialExemption: Number(event.target.value),
-                        },
-                      }))
-                    }
-                  >
-                    <option value={0.3}>Aktienfonds (30% steuerfrei)</option>
-                    <option value={0.15}>Mischfonds (15% steuerfrei)</option>
-                    <option value={0.6}>Inl. Immobilienfonds (60% steuerfrei)</option>
-                    <option value={0.8}>Ausl. Immobilienfonds (80% steuerfrei)</option>
-                    <option value={0}>Anleihe-ETF / Sonstige (0% steuerfrei)</option>
-                  </select>
-                </label>
-                <BeitragsdynamikField
-                  rate={assumptions.etf.annualContributionGrowthRate}
-                  onChangeRate={(rate) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      etf: { ...current.etf, annualContributionGrowthRate: rate },
-                    }))
-                  }
-                />
-              </div>
-            </>
-          )}
-
-          {activeTab === 'versicherung' && (
-            <>
-              <ProductFocusHeader productId="versicherung" />
-              <InsuranceInputs
-                assumptions={assumptions}
-                onAssumptionsChange={onAssumptionsChange}
-                profile={profile}
-                insuranceTaxMode={insuranceTaxMode}
-                insuranceProductResult={insuranceResult}
-                rules={de2026Rules}
-              />
-            </>
-          )}
-
-          {activeTab === 'basisrente' && (
-            <>
-              <ProductFocusHeader productId="basisrente" />
-              <BasisrenteInputs
-                assumptions={assumptions}
-                onAssumptionsChange={onAssumptionsChange}
-                onSyncMonthlyContribution={onSyncMonthlyContribution}
-                basisrenteFunding={simulation.basisrenteFunding}
-                basisrenteProductResult={selectedResults.find((r) => r.productId === 'basisrente')}
-                rules={de2026Rules}
-                retirementAge={profile.retirementAge}
-              />
-            </>
-          )}
-
-          {activeTab === 'altersvorsorgedepot' && (
-            <>
-              <ProductFocusHeader productId="altersvorsorgedepot" />
-              <AltersvorsorgedepotInputs
-                assumptions={assumptions}
-                onAssumptionsChange={onAssumptionsChange}
-                onSyncMonthlyContribution={onSyncMonthlyContribution}
-                profile={profile}
-                avdFunding={simulation.altersvorsorgedepotFunding}
-                avdProductResult={selectedResults.find((r) => r.productId === 'altersvorsorgedepot')}
-                rules={de2026Rules}
-              />
-            </>
-          )}
-
-          {activeTab === 'riester' && (
-            <>
-              <ProductFocusHeader productId="riester" />
-              <RiesterInputs
-                assumptions={assumptions}
-                onAssumptionsChange={onAssumptionsChange}
-                onSyncMonthlyContribution={onSyncMonthlyContribution}
-                profile={profile}
-                riesterFunding={simulation.riesterFunding}
-                riesterProductResult={selectedResults.find((r) => r.productId === 'riester')}
-              />
-            </>
-          )}
+            {activeTab && (() => {
+              const entry = PRODUCT_UI_REGISTRY[activeTab]
+              if (!entry) return null
+              const ctx: ProductInputsContext = {
+                assumptions,
+                onAssumptionsChange,
+                onSyncMonthlyContribution,
+                profile,
+                simulation,
+                selectedResults,
+                rules: de2026Rules,
+                kvdrMember,
+                bavLumpSumTaxMode,
+                insuranceTaxMode,
+                insuranceResult,
+                tarifgebunden,
+                onTarifgebundenChange,
+                bavMinAnnual,
+                bavMinMonthly,
+                bavEntitlementMax,
+              }
+              return (
+                <>
+                  <ProductFocusHeader productId={activeTab} />
+                  {entry.renderInputs(ctx)}
+                </>
+              )
+            })()}
           </>
         )}
       </section>

@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
-import type { PersonalProfile } from '../../domain'
+import type { PersonalProfile, ProductId } from '../../domain'
 import { calculateBasisrenteFunding, netBasisrentePayout, validateBasisrentePayoutAge } from '../basisrente'
 import { calculateSalaryResult } from '../salary'
 import { simulateRetirementComparison } from '../simulate'
+
+// All-products override: basisrente tests need to find 'basisrente' in results.
+// defaultAssumptions only shows ['etf','bav']; override for these tests.
+const allVisibleAssumptions = {
+  ...defaultAssumptions,
+  visibleProducts: ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as ProductId[],
+}
 
 describe('#61 calculateBasisrenteFunding', () => {
   const baseSalary = calculateSalaryResult(defaultProfile, de2026Rules)
@@ -52,13 +59,13 @@ describe('#61 calculateBasisrenteFunding', () => {
   })
 
   it('full simulation includes basisrente product and basisrenteFunding', () => {
-    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const sim = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, de2026Rules)
     expect(sim.basisrenteFunding).toBeDefined()
     expect(sim.basisrenteFunding.monthlyGrossContribution).toBe(
-      defaultAssumptions.basisrente.monthlyGrossContribution,
+      allVisibleAssumptions.basisrente.monthlyGrossContribution,
     )
     const brResults = sim.products.filter((p) => p.productId === 'basisrente')
-    expect(brResults.length).toBe(defaultAssumptions.returnScenarios.length)
+    expect(brResults.length).toBe(allVisibleAssumptions.returnScenarios.length)
     for (const r of brResults) {
       expect(r.afterTaxLumpSum).toBeNull()
       expect(r.grossMonthlyPayout).toBeGreaterThan(0)
@@ -141,13 +148,13 @@ describe('netBasisrentePayout — KV/PV health status (Group E step 3)', () => {
 
   it('simulation uses retirementHealthStatus from assumptions.statutoryPension (kvdr default → no KV/PV)', () => {
     // defaultAssumptions.statutoryPension.retirementHealthStatus = 'kvdr'
-    const simKvdr = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const simKvdr = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, de2026Rules)
     const simFreiwillig = simulateRetirementComparison(
       defaultProfile,
       {
-        ...defaultAssumptions,
+        ...allVisibleAssumptions,
         statutoryPension: {
-          ...defaultAssumptions.statutoryPension,
+          ...allVisibleAssumptions.statutoryPension,
           retirementHealthStatus: 'freiwillig_gkv',
         },
       },
@@ -203,7 +210,7 @@ describe('Basisrente legal compliance (Group E step 3)', () => {
   })
 
   it('afterTaxLumpSum is null (capital payout prohibited)', () => {
-    const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const sim = simulateRetirementComparison(defaultProfile, allVisibleAssumptions, de2026Rules)
     for (const r of sim.products.filter((p) => p.productId === 'basisrente')) {
       expect(r.afterTaxLumpSum).toBeNull()
     }
@@ -212,7 +219,7 @@ describe('Basisrente legal compliance (Group E step 3)', () => {
   it('leibrenteBreakEvenAge is defined (always leibrente)', () => {
     const sim = simulateRetirementComparison(
       defaultProfile,
-      { ...defaultAssumptions, returnScenarios: [defaultAssumptions.returnScenarios[0]] },
+      { ...allVisibleAssumptions, returnScenarios: [allVisibleAssumptions.returnScenarios[0]] },
       de2026Rules,
     )
     const r = sim.products.find((p) => p.productId === 'basisrente')!
