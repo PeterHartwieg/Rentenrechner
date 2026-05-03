@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ProductResult } from '../domain'
-import type { Workspace } from '../domain/workspace'
+import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { BavInstance, BasisrenteInstance, RiesterInstance, AltersvorsorgedepotInstance, EtfInstance, InsuranceInstance } from '../domain/instances'
 import {
   runRules,
@@ -13,6 +13,7 @@ import {
 import { productReason, sensitivityHint } from '../features/results/decisionLogic'
 import { de2026Rules } from '../rules/de2026'
 import { makeCombinedResult } from '../test/factories'
+import { defaultWorkspace } from '../storage'
 
 // ---------------------------------------------------------------------------
 // Minimal factories
@@ -871,6 +872,292 @@ describe('renderAtom snapshots — cap atoms', () => {
 
   it('renderAtom output matches snapshot for cap atom ids', () => {
     const snapshot = capAtoms.map((a) => ({ id: a.id, context: a.context, rendered: renderAtom(a) }))
+    expect(snapshot).toMatchSnapshot()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Vintage-detection rule helpers
+// ---------------------------------------------------------------------------
+
+const CURRENT_YEAR = new Date().getFullYear()
+
+/**
+ * Build a minimal Workspace-backed RuleEngineInput for vintage rule tests.
+ * Overrides baseline.profile and baseline.assumptions with the provided data.
+ */
+function makeWorkspaceInput(
+  assumptionsOverride: Partial<WorkspaceAssumptionsV2>,
+  profileOverride: Partial<Scenario['profile']> = {},
+): RuleEngineInput {
+  const base = defaultWorkspace
+  const workspace: Workspace = {
+    ...base,
+    baseline: {
+      ...base.baseline,
+      profile: { ...base.baseline.profile, ...profileOverride },
+      assumptions: {
+        ...base.baseline.assumptions,
+        ...assumptionsOverride,
+      },
+    },
+  }
+  return { workspace, simulationResult: { products: [] } }
+}
+
+function makeInsuranceInstance(overrides: Partial<InsuranceInstance>): InsuranceInstance {
+  const base = defaultWorkspace.baseline.assumptions.insurance[0]
+  return { ...base, instanceId: 'test-pav-1', ...overrides }
+}
+
+function makeVintageBavInstance(overrides: Partial<BavInstance>): BavInstance {
+  const base = defaultWorkspace.baseline.assumptions.bav[0]
+  return { ...base, instanceId: 'test-bav-1', ...overrides }
+}
+
+function makeVintageRiesterInstance(overrides: Partial<RiesterInstance>): RiesterInstance {
+  const base = defaultWorkspace.baseline.assumptions.riester[0] ?? {
+    instanceId: 'test-riester-1',
+    label: 'Riester #1',
+    status: 'active' as const,
+    contractStartYear: CURRENT_YEAR,
+    currentValueEUR: 0,
+    evidenceMap: {},
+    monthlyOwnContribution: 100,
+    existingCapital: 0,
+    eligibility: {
+      directlyEligible: true,
+      ageAtContractStart: 25,
+      careerStarterBonusUsed: false,
+    },
+    capitalGuarantee: { enabled: false, guaranteePct: 0 },
+    fees: {
+      wrapperAssetFee: 0.008,
+      fundAssetFee: 0,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+    payoutMode: 'leibrente' as const,
+    rentenfaktor: 25,
+    rentenfaktorConfirmed: false,
+    zeitrenteYears: 20,
+    partialCapitalPct: 0,
+    monthlyOtherRetirementIncome: 0,
+  }
+  return { ...base, instanceId: 'test-riester-1', ...overrides }
+}
+
+// ---------------------------------------------------------------------------
+// pAV vintage rules
+// ---------------------------------------------------------------------------
+
+describe('pAV vintage rules', () => {
+  // Karin shape: contractStartYear 2002, retirement at 65, current age 40
+  // payoutYear = CURRENT_YEAR + (65 - 40) = CURRENT_YEAR + 25
+  // runtime = CURRENT_YEAR + 25 - 2002 ≥ 12 → pre2005 fires
+  it('Karin shape (2002 contract, age 40, retirement 65) → pre_2005_pav_taxfree_capital fires', () => {
+    const inst = makeInsuranceInstance({ contractStartYear: 2002 })
+    const input = makeWorkspaceInput(
+      { insurance: [inst] },
+      { age: 40, retirementAge: 65 },
+    )
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital' && a.context.instanceId === 'test-pav-1')).toBe(true)
+  })
+
+  it('Karin shape → pre_2005_pav_high_garantiezins fires (contractStartYear 2002 ≤ 2003)', () => {
+    const inst = makeInsuranceInstance({ contractStartYear: 2002 })
+    const input = makeWorkspaceInput({ insurance: [inst] }, { age: 40, retirementAge: 65 })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_high_garantiezins' && a.context.instanceId === 'test-pav-1')).toBe(true)
+  })
+
+  it('2004 contract with sufficient runtime → pre_2005_pav_taxfree_capital (not high_garantiezins)', () => {
+    // contractStartYear 2004 < 2005 → pre2005 if runtime ≥ 12
+    // 2004 > 2003 → high_garantiezins must NOT fire
+    const inst = makeInsuranceInstance({ contractStartYear: 2004 })
+    const input = makeWorkspaceInput({ insurance: [inst] }, { age: 40, retirementAge: 65 })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(true)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_high_garantiezins')).toBe(false)
+  })
+
+  it('2003 contract → high_garantiezins fires', () => {
+    const inst = makeInsuranceInstance({ contractStartYear: 2003 })
+    const input = makeWorkspaceInput({ insurance: [inst] }, { age: 40, retirementAge: 65 })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_high_garantiezins')).toBe(true)
+  })
+
+  it('2005 contract (post-2004 boundary) with runtime ≥ 12, age ≥ 62 → halbeinkuenfte (not pre2005)', () => {
+    const inst = makeInsuranceInstance({ contractStartYear: 2005 })
+    // age 50, retirement 67 → payoutYear = CURRENT_YEAR + 17; runtime = CURRENT_YEAR + 17 - 2005 ≥ 12 ✓; retirementAge 67 ≥ 62 ✓
+    const input = makeWorkspaceInput({ insurance: [inst] }, { age: 50, retirementAge: 67 })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'halbeinkuenfte_pav_eligible')).toBe(true)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(false)
+  })
+
+  it('2010 contract with runtime < 12 → no privilege chip (abgeltungsteuer)', () => {
+    // age 57, retirement 62 → payoutYear = CURRENT_YEAR + 5; runtime = CURRENT_YEAR + 5 - 2010 = 5 + (CURRENT_YEAR-2010)
+    // CURRENT_YEAR=2026 → runtime = 5+16 = 21 ≥ 12. Need a contract where runtime < 12 at retirement.
+    // age 59, retirement 62 → payoutYear = CURRENT_YEAR + 3; runtime = 2026+3-2022 = 7 < 12 for contractStartYear=2022
+    const inst = makeInsuranceInstance({ contractStartYear: 2022 })
+    const input = makeWorkspaceInput({ insurance: [inst] }, { age: 59, retirementAge: 62 })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'halbeinkuenfte_pav_eligible')).toBe(false)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(false)
+  })
+
+  it('no pAV instances → no vintage pAV atoms', () => {
+    const input = makeWorkspaceInput({ insurance: [] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(false)
+    expect(atoms.some((a) => a.id === 'halbeinkuenfte_pav_eligible')).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// bAV vintage rules
+// ---------------------------------------------------------------------------
+
+describe('bAV vintage rules', () => {
+  it('direktversicherung_40b_alt + pre2005EligibleTaxFree=true → bav_40b_alt_eligible', () => {
+    const inst = makeVintageBavInstance({
+      durchfuehrungsweg: 'direktversicherung_40b_alt',
+      pre2005EligibleTaxFree: true,
+    })
+    const input = makeWorkspaceInput({ bav: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'bav_40b_alt_eligible' && a.context.instanceId === 'test-bav-1')).toBe(true)
+    expect(atoms.some((a) => a.id === 'bav_40b_alt_conditions_unmet')).toBe(false)
+  })
+
+  it('direktversicherung_40b_alt + pre2005EligibleTaxFree=false → bav_40b_alt_conditions_unmet', () => {
+    const inst = makeVintageBavInstance({
+      durchfuehrungsweg: 'direktversicherung_40b_alt',
+      pre2005EligibleTaxFree: false,
+    })
+    const input = makeWorkspaceInput({ bav: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'bav_40b_alt_conditions_unmet' && a.context.instanceId === 'test-bav-1')).toBe(true)
+    expect(atoms.some((a) => a.id === 'bav_40b_alt_eligible')).toBe(false)
+  })
+
+  it('direktversicherung_3_63 → neither §40b atom fires', () => {
+    const inst = makeVintageBavInstance({ durchfuehrungsweg: 'direktversicherung_3_63' })
+    const input = makeWorkspaceInput({ bav: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'bav_40b_alt_eligible')).toBe(false)
+    expect(atoms.some((a) => a.id === 'bav_40b_alt_conditions_unmet')).toBe(false)
+  })
+
+  it('direktzusage → bav_durchfuehrungsweg_direktzusage fires', () => {
+    const inst = makeVintageBavInstance({ durchfuehrungsweg: 'direktzusage' })
+    const input = makeWorkspaceInput({ bav: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'bav_durchfuehrungsweg_direktzusage')).toBe(true)
+  })
+
+  it('unterstuetzungskasse → bav_durchfuehrungsweg_direktzusage fires', () => {
+    const inst = makeVintageBavInstance({ durchfuehrungsweg: 'unterstuetzungskasse' })
+    const input = makeWorkspaceInput({ bav: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'bav_durchfuehrungsweg_direktzusage')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Riester vintage rules
+// ---------------------------------------------------------------------------
+
+describe('Riester vintage rules', () => {
+  it('pre-2008 Riester + child born 2009 → riester_pre_2008_zulage fires', () => {
+    const inst = makeVintageRiesterInstance({ contractStartYear: 2006 })
+    const input = makeWorkspaceInput(
+      { riester: [inst] },
+      { childBirthYears: [2009] },
+    )
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'riester_pre_2008_zulage' && a.context.instanceId === 'test-riester-1')).toBe(true)
+  })
+
+  it('2007 boundary contract + post-2008 child → fires', () => {
+    const inst = makeVintageRiesterInstance({ contractStartYear: 2007 })
+    const input = makeWorkspaceInput({ riester: [inst] }, { childBirthYears: [2010] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'riester_pre_2008_zulage')).toBe(true)
+  })
+
+  it('2008 contract → does NOT fire', () => {
+    const inst = makeVintageRiesterInstance({ contractStartYear: 2008 })
+    const input = makeWorkspaceInput({ riester: [inst] }, { childBirthYears: [2010] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'riester_pre_2008_zulage')).toBe(false)
+  })
+
+  it('pre-2008 contract + only pre-2008 children → does NOT fire', () => {
+    const inst = makeVintageRiesterInstance({ contractStartYear: 2005 })
+    const input = makeWorkspaceInput({ riester: [inst] }, { childBirthYears: [2004, 2007] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'riester_pre_2008_zulage')).toBe(false)
+  })
+
+  it('no Riester instances → no riester_pre_2008_zulage atom', () => {
+    const input = makeWorkspaceInput({ riester: [] }, { childBirthYears: [2010] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'riester_pre_2008_zulage')).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// renderAtom snapshot — extended for vintage atom ids
+// ---------------------------------------------------------------------------
+
+describe('renderAtom snapshots — vintage atoms', () => {
+  const vintageAtoms: Atom[] = [
+    {
+      id: 'pre_2005_pav_taxfree_capital',
+      priority: 'high',
+      context: { instanceId: 'pav-1', contractStartYear: 2002, runtimeYearsAtRetirement: 37, productId: 'versicherung' },
+    },
+    {
+      id: 'halbeinkuenfte_pav_eligible',
+      priority: 'medium',
+      context: { instanceId: 'pav-2', productId: 'versicherung' },
+    },
+    {
+      id: 'pre_2005_pav_high_garantiezins',
+      priority: 'medium',
+      context: { instanceId: 'pav-1', productId: 'versicherung' },
+    },
+    {
+      id: 'bav_40b_alt_eligible',
+      priority: 'high',
+      context: { instanceId: 'bav-1', productId: 'bav' },
+    },
+    {
+      id: 'bav_40b_alt_conditions_unmet',
+      priority: 'medium',
+      context: { instanceId: 'bav-2', productId: 'bav' },
+    },
+    {
+      id: 'bav_durchfuehrungsweg_direktzusage',
+      priority: 'low',
+      context: { instanceId: 'bav-3', durchfuehrungsweg: 'direktzusage', productId: 'bav' },
+    },
+    {
+      id: 'riester_pre_2008_zulage',
+      priority: 'medium',
+      context: { instanceId: 'riester-1', productId: 'riester' },
+    },
+  ]
+
+  it('renderAtom output matches snapshot for all vintage atom ids', () => {
+    const snapshot = vintageAtoms.map((a) => ({ id: a.id, rendered: renderAtom(a) }))
     expect(snapshot).toMatchSnapshot()
   })
 })

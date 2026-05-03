@@ -21,6 +21,8 @@ import type { GermanRules, ProductResult } from '../domain'
 import type { Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { activeRules } from '../rules'
+import { deriveInsuranceTaxMode } from '../engine/insurancePayout'
+import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 
 // ---------------------------------------------------------------------------
 // Allowance helpers
@@ -63,6 +65,14 @@ export type AtomId =
   | 'riester_cap_remaining'
   | 'avd_cap_remaining'
   | 'sparerpauschbetrag_remaining'
+  // Vintage-detection atoms (issue 13)
+  | 'pre_2005_pav_taxfree_capital'
+  | 'halbeinkuenfte_pav_eligible'
+  | 'pre_2005_pav_high_garantiezins'
+  | 'bav_40b_alt_eligible'
+  | 'bav_40b_alt_conditions_unmet'
+  | 'bav_durchfuehrungsweg_direktzusage'
+  | 'riester_pre_2008_zulage'
 
 export interface Atom {
   id: AtomId
@@ -528,11 +538,166 @@ const sparerpauschbetragRemainingRule: Rule = (input: RuleEngineInput): Atom | n
 }
 
 // ---------------------------------------------------------------------------
+// Vintage-detection rules (issue 13)
+// ---------------------------------------------------------------------------
+
+// currentYear constant used by runtime computation — mirrors simulationContext.ts's
+// `payoutYear = rules.year + (retirementAge - age)` where rules.year ≈ current year.
+const CURRENT_YEAR = new Date().getFullYear()
+
+/**
+ * Compute pAV contract runtime at retirement (calendar years from contractStartYear to payout year).
+ * Mirrors simulationContext.ts: payoutYear = currentYear + (retirementAge - currentAge).
+ */
+function pavRuntimeYearsAtRetirement(
+  contractStartYear: number,
+  retirementAge: number,
+  currentAge: number,
+): number {
+  const payoutYear = CURRENT_YEAR + (retirementAge - currentAge)
+  return payoutYear - contractStartYear
+}
+
+/**
+ * Emits vintage atoms for pAV (InsuranceInstance) instances.
+ * Calls deriveInsuranceTaxMode — the authoritative engine routing function.
+ */
+const pavVintageRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
+  if (!workspace) return []
+  const { baseline } = workspace
+  const profile = baseline.profile
+  const instances = baseline.assumptions.insurance
+  if (instances.length === 0) return []
+
+  const atoms: Atom[] = []
+  for (const inst of instances) {
+    const runtimeYears = pavRuntimeYearsAtRetirement(
+      inst.contractStartYear,
+      profile.retirementAge,
+      profile.age,
+    )
+    // Authoritative engine routing decision — do NOT reimplement conditions inline.
+    const taxMode = deriveInsuranceTaxMode(
+      inst.contractStartYear,
+      runtimeYears,
+      profile.retirementAge,
+    )
+
+    if (taxMode === 'pre2005') {
+      atoms.push({
+        id: 'pre_2005_pav_taxfree_capital',
+        priority: 'high',
+        context: {
+          instanceId: inst.instanceId,
+          contractStartYear: inst.contractStartYear,
+          runtimeYearsAtRetirement: runtimeYears,
+          productId: 'versicherung',
+        },
+      })
+    } else if (taxMode === 'halbeinkuenfte') {
+      atoms.push({
+        id: 'halbeinkuenfte_pav_eligible',
+        priority: 'medium',
+        context: { instanceId: inst.instanceId, productId: 'versicherung' },
+      })
+    }
+
+    if (inst.contractStartYear <= 2003) {
+      atoms.push({
+        id: 'pre_2005_pav_high_garantiezins',
+        priority: 'medium',
+        context: { instanceId: inst.instanceId, productId: 'versicherung' },
+      })
+    }
+  }
+  return atoms
+}
+
+/**
+ * Emits vintage atoms for bAV (BavInstance) instances.
+ * Calls deriveBavLumpSumTaxMode — the authoritative engine routing function.
+ */
+const bavVintageRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
+  if (!workspace) return []
+  const instances = workspace.baseline.assumptions.bav
+  if (instances.length === 0) return []
+
+  const atoms: Atom[] = []
+  for (const inst of instances) {
+    // Authoritative engine routing decision — do NOT reimplement conditions inline.
+    const lumpSumTaxMode = deriveBavLumpSumTaxMode(
+      inst.durchfuehrungsweg,
+      inst.pre2005EligibleTaxFree,
+    )
+
+    if (inst.durchfuehrungsweg === 'direktversicherung_40b_alt') {
+      if (lumpSumTaxMode === 'pre2005_steuerfrei') {
+        atoms.push({
+          id: 'bav_40b_alt_eligible',
+          priority: 'high',
+          context: { instanceId: inst.instanceId, productId: 'bav' },
+        })
+      } else {
+        atoms.push({
+          id: 'bav_40b_alt_conditions_unmet',
+          priority: 'medium',
+          context: { instanceId: inst.instanceId, productId: 'bav' },
+        })
+      }
+    }
+
+    if (
+      inst.durchfuehrungsweg === 'direktzusage' ||
+      inst.durchfuehrungsweg === 'unterstuetzungskasse'
+    ) {
+      atoms.push({
+        id: 'bav_durchfuehrungsweg_direktzusage',
+        priority: 'low',
+        context: {
+          instanceId: inst.instanceId,
+          durchfuehrungsweg: inst.durchfuehrungsweg,
+          productId: 'bav',
+        },
+      })
+    }
+  }
+  return atoms
+}
+
+/**
+ * Emits vintage atoms for Riester (RiesterInstance) instances.
+ * Fires when the contract predates 2008 and the profile has children born 2008+.
+ * Child birth years come from PersonalProfile (profile-level, not per-instance).
+ */
+const riesterVintageRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
+  if (!workspace) return []
+  const { baseline } = workspace
+  const childBirthYears = baseline.profile.childBirthYears
+  const instances = baseline.assumptions.riester
+  if (instances.length === 0) return []
+
+  const atoms: Atom[] = []
+  for (const inst of instances) {
+    if (
+      inst.contractStartYear <= 2007 &&
+      childBirthYears.some((y) => y >= 2008)
+    ) {
+      atoms.push({
+        id: 'riester_pre_2008_zulage',
+        priority: 'medium',
+        context: { instanceId: inst.instanceId, productId: 'riester' },
+      })
+    }
+  }
+  return atoms
+}
+
+// ---------------------------------------------------------------------------
 // Rule registry
 // ---------------------------------------------------------------------------
 
 /**
- * Ordered list of all active rules. Issues 11 / 13 / 14 push additional rules
+ * Ordered list of all active rules. Issues 11 / 14 push additional rules
  * here. Order matters only for presentation when atoms are later sorted by
  * priority — within equal priority the registry order is preserved.
  */
@@ -544,6 +709,9 @@ const RULES: Rule[] = [
   riesterCapRemainingRule,
   avdCapRemainingRule,
   sparerpauschbetragRemainingRule,
+  pavVintageRule,
+  bavVintageRule,
+  riesterVintageRule,
 ]
 
 // ---------------------------------------------------------------------------
@@ -702,6 +870,10 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
     body: 'Lebenslange Rentengarantie über den Rentenfaktor.',
   }),
 
+  // ---------------------------------------------------------------------------
+  // Cap and headroom atoms (issue 11)
+  // ---------------------------------------------------------------------------
+
   bav_cap_remaining: (atom) => {
     const usedPct = ctxNumber(atom.context, 'usedPct')
     const remainingMonthly = ctxNumber(atom.context, 'remainingMonthly')
@@ -788,6 +960,69 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
       body,
     }
   },
+
+  // ---------------------------------------------------------------------------
+  // Vintage-detection atoms (issue 13)
+  // ---------------------------------------------------------------------------
+
+  pre_2005_pav_taxfree_capital: () => ({
+    headline: 'Pre-2005-Kapitalauszahlung steuerfrei (§52 Abs. 28 EStG a.F.)',
+    body:
+      'Dein Vertrag erfüllt die Bedingungen für die steuerfreie Kapitalauszahlung nach §52 Abs. 28 EStG a.F. ' +
+      '(Vertragsbeginn vor 2005, Laufzeit ≥ 12 Jahre). Der Rechner wendet diese Befreiung automatisch an. ' +
+      'Achtung — bei Leibrente-Auszahlung gilt §22 Nr. 1 Satz 3 a EStG Ertragsanteil auch für pre-2005-Verträge.',
+  }),
+
+  halbeinkuenfte_pav_eligible: () => ({
+    headline: 'Halbeinkünfte (halbe Steuer auf Gewinn) — §20 Abs. 1 Nr. 6 EStG',
+    body:
+      'Dein Vertrag erfüllt die Bedingungen für das Halbeinkünfteverfahren bei Kapitalauszahlung ' +
+      '(Vertragsbeginn ab 2005, Laufzeit ≥ 12 Jahre, Auszahlung ab Alter 62). ' +
+      'Nur die Hälfte des Gewinns wird mit dem persönlichen Steuersatz besteuert — §20 Abs. 1 Nr. 6 EStG.',
+  }),
+
+  pre_2005_pav_high_garantiezins: () => ({
+    headline: 'Hoher Garantiezins (4 % bis 2024 auf Beiträge)',
+    body:
+      'Verträge aus 2003 oder früher haben einen Höchstrechnungszins von 4 % p. a. auf die Sparanteile. ' +
+      'Dieser Zins ist heute kaum noch am Markt erhältlich. In Kombination mit der steuerfreien ' +
+      'Kapitalauszahlung (pre-2005) ist das ein starkes Argument, diesen Vertrag zu behalten.',
+  }),
+
+  bav_40b_alt_eligible: () => ({
+    headline: 'Pre-2005 §40b-Direktversicherung — Kapitalauszahlung steuerfrei (KV/PV bleibt)',
+    body:
+      'Dieser bAV-Vertrag wurde vom Arbeitgeber pauschal nach §40b EStG a.F. besteuert. ' +
+      'Da alle Voraussetzungen (Vertragsabschluss vor 2005, Laufzeit ≥ 12 Jahre, mind. 5 Jahresprämien) ' +
+      'erfüllt sind, ist die Kapitalauszahlung einkommensteuerfrei (§52 Abs. 28 EStG a.F.). ' +
+      'KV/PV nach §229 Abs. 1 SGB V fällt weiterhin an — der Rechner berücksichtigt dies.',
+  }),
+
+  bav_40b_alt_conditions_unmet: () => ({
+    headline: '§40b-Vertrag, aber Bedingungen nicht erfüllt — Lump-sum als Versorgungsbezug',
+    body:
+      'Obwohl der Durchführungsweg §40b EStG a.F. ist, sind die Voraussetzungen für die ' +
+      'Steuerfreiheit nicht vollständig erfüllt. Die Kapitalauszahlung wird daher als ' +
+      'Versorgungsbezug voll besteuert (§22 Nr. 5 EStG). Prüfe, ob alle Bedingungen tatsächlich ' +
+      'nicht greifen, oder korrigiere den "Steuerfreiheit bestätigt"-Schalter im Vertrag.',
+  }),
+
+  bav_durchfuehrungsweg_direktzusage: () => ({
+    headline: 'Lump-sum-Steuerung: Fünftelregelung (§34 EStG)',
+    body:
+      'Bei Direktzusage und Unterstützungskasse gilt die Kapitalauszahlung als Vergütung für ' +
+      'mehrjährige Tätigkeit. Die Fünftelregelung (§34 Abs. 2 Nr. 4 EStG) glättet die ' +
+      'Steuerprogression — der Rechner wendet dies automatisch an.',
+  }),
+
+  riester_pre_2008_zulage: () => ({
+    headline: 'Kinderzulage für nach 2008 geborene Kinder ggf. nicht voll auf altem Riester — Vertragsanpassung prüfen',
+    body:
+      'Für Kinder, die ab 2008 geboren wurden, beträgt die Kinderzulage 300 EUR/Jahr (statt 185 EUR). ' +
+      'Bei einem Riester-Vertrag aus 2007 oder früher muss der Vertrag beim Anbieter auf den ' +
+      'neuen Kindzulagesatz angepasst werden. Prüfe mit deinem Anbieter, ob der höhere Satz bereits ' +
+      'eingetragen ist.',
+  }),
 }
 
 const FALLBACK_TEMPLATE: AtomTemplate = { headline: '', body: '', cta: undefined }

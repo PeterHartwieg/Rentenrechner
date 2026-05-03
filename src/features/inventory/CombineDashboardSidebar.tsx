@@ -33,8 +33,10 @@ import type {
   RiesterInstance,
 } from '../../domain/instances'
 import type { MultiInstanceProductId } from '../../app/portfolioState'
-import { detectVintageChips } from './vintageDetection'
-import { InfoTip } from '../../ui/InfoTip'
+import { VintageChips } from './VintageChips'
+import { isVintageAtomId } from './vintageChipsUtils'
+import type { Atom } from '../../app/recommendations'
+import { runRules } from '../../app/recommendations'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { SIMPLIFIED_PRESETS } from '../inputs/sections/feePresets'
@@ -56,27 +58,12 @@ interface Props {
 }
 
 // ---------------------------------------------------------------------------
-// VintageChips (re-exported from vintageDetection, shared with InstanceCard)
+// Atom filtering helpers for vintage chips
 // ---------------------------------------------------------------------------
 
-function VintageChipsBar({
-  contractStartYear,
-  durchfuehrungsweg,
-}: {
-  contractStartYear: number
-  durchfuehrungsweg?: string
-}) {
-  const chips = detectVintageChips({ contractStartYear, durchfuehrungsweg })
-  if (chips.length === 0) return null
-  return (
-    <div className="inv-vintage-chips" style={{ margin: '4px 0' }}>
-      {chips.map((chip) => (
-        <span key={chip.id} className="inv-vintage-chip">
-          {chip.label}
-          <InfoTip text={chip.tooltip} icon="info" />
-        </span>
-      ))}
-    </div>
+function atomsForInstance(atoms: Atom[], instanceId: string): Atom[] {
+  return atoms.filter(
+    (a) => isVintageAtomId(a.id) && a.context.instanceId === instanceId,
   )
 }
 
@@ -108,11 +95,13 @@ function BavInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  vintageAtoms,
 }: {
   instance: BavInstance
   onChange: (next: BavInstance) => void
   canRemove: boolean
   onRemove: () => void
+  vintageAtoms: Atom[]
 }) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
   const [beitragsdynamik, setBeitragsdynamik] = useState(instance.annualContributionGrowthRate ?? 0)
@@ -135,10 +124,7 @@ function BavInstanceCard({
         )}
       </div>
       <div className="combine-instance-body">
-        <VintageChipsBar
-          contractStartYear={instance.contractStartYear}
-          durchfuehrungsweg={instance.durchfuehrungsweg}
-        />
+        <VintageChips atoms={vintageAtoms} />
 
         <div className="combine-instance-fields">
           <CombineField label="Brutto-Umwandlung (EUR/Monat)">
@@ -277,11 +263,13 @@ function InsuranceInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  vintageAtoms,
 }: {
   instance: InsuranceInstance
   onChange: (next: InsuranceInstance) => void
   canRemove: boolean
   onRemove: () => void
+  vintageAtoms: Atom[]
 }) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
   const [beitragsdynamik, setBeitragsdynamik] = useState(instance.annualContributionGrowthRate ?? 0)
@@ -304,7 +292,7 @@ function InsuranceInstanceCard({
         )}
       </div>
       <div className="combine-instance-body">
-        <VintageChipsBar contractStartYear={instance.contractStartYear} />
+        <VintageChips atoms={vintageAtoms} />
         <div className="combine-instance-fields">
           <CombineField label="Vertragsbeginn">
             <input
@@ -660,6 +648,19 @@ export function CombineDashboardSidebar({
   // Guard against rapid double-clicks on the archive button.
   const [archiving, setArchiving] = useState(false)
 
+  // Run vintage rules once per render — rules are pure and cheap.
+  // Build a minimal Workspace with live assumptions so rules see current instance data.
+  const vintageAtoms = runRules({
+    workspace: {
+      schemaVersion: 2,
+      mode: 'combine',
+      baseline: { ...baseline, assumptions },
+      whatIfs,
+      pinnedComparisonIds: [],
+    },
+    simulationResult: { products: [] },
+  })
+
   const hasBav = assumptions.bav.length > 0
   const hasPav = assumptions.insurance.length > 0
   const hasEtf = assumptions.etf.length > 0
@@ -708,6 +709,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('bav', inst.instanceId)}
+              vintageAtoms={atomsForInstance(vintageAtoms, inst.instanceId)}
             />
           ))}
         </ProductGroup>
@@ -732,6 +734,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('versicherung', inst.instanceId)}
+              vintageAtoms={atomsForInstance(vintageAtoms, inst.instanceId)}
             />
           ))}
         </ProductGroup>

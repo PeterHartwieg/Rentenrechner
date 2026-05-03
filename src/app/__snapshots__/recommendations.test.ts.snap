@@ -291,3 +291,57 @@ exports[`renderAtom snapshots — cap atoms > renderAtom output matches snapshot
   },
 ]
 `;
+
+exports[`renderAtom snapshots — vintage atoms > renderAtom output matches snapshot for all vintage atom ids 1`] = `
+[
+  {
+    "id": "pre_2005_pav_taxfree_capital",
+    "rendered": {
+      "body": "Dein Vertrag erfüllt die Bedingungen für die steuerfreie Kapitalauszahlung nach §52 Abs. 28 EStG a.F. (Vertragsbeginn vor 2005, Laufzeit ≥ 12 Jahre). Der Rechner wendet diese Befreiung automatisch an. Achtung — bei Leibrente-Auszahlung gilt §22 Nr. 1 Satz 3 a EStG Ertragsanteil auch für pre-2005-Verträge.",
+      "headline": "Pre-2005-Kapitalauszahlung steuerfrei (§52 Abs. 28 EStG a.F.)",
+    },
+  },
+  {
+    "id": "halbeinkuenfte_pav_eligible",
+    "rendered": {
+      "body": "Dein Vertrag erfüllt die Bedingungen für das Halbeinkünfteverfahren bei Kapitalauszahlung (Vertragsbeginn ab 2005, Laufzeit ≥ 12 Jahre, Auszahlung ab Alter 62). Nur die Hälfte des Gewinns wird mit dem persönlichen Steuersatz besteuert — §20 Abs. 1 Nr. 6 EStG.",
+      "headline": "Halbeinkünfte (halbe Steuer auf Gewinn) — §20 Abs. 1 Nr. 6 EStG",
+    },
+  },
+  {
+    "id": "pre_2005_pav_high_garantiezins",
+    "rendered": {
+      "body": "Verträge aus 2003 oder früher haben einen Höchstrechnungszins von 4 % p. a. auf die Sparanteile. Dieser Zins ist heute kaum noch am Markt erhältlich. In Kombination mit der steuerfreien Kapitalauszahlung (pre-2005) ist das ein starkes Argument, diesen Vertrag zu behalten.",
+      "headline": "Hoher Garantiezins (4 % bis 2024 auf Beiträge)",
+    },
+  },
+  {
+    "id": "bav_40b_alt_eligible",
+    "rendered": {
+      "body": "Dieser bAV-Vertrag wurde vom Arbeitgeber pauschal nach §40b EStG a.F. besteuert. Da alle Voraussetzungen (Vertragsabschluss vor 2005, Laufzeit ≥ 12 Jahre, mind. 5 Jahresprämien) erfüllt sind, ist die Kapitalauszahlung einkommensteuerfrei (§52 Abs. 28 EStG a.F.). KV/PV nach §229 Abs. 1 SGB V fällt weiterhin an — der Rechner berücksichtigt dies.",
+      "headline": "Pre-2005 §40b-Direktversicherung — Kapitalauszahlung steuerfrei (KV/PV bleibt)",
+    },
+  },
+  {
+    "id": "bav_40b_alt_conditions_unmet",
+    "rendered": {
+      "body": "Obwohl der Durchführungsweg §40b EStG a.F. ist, sind die Voraussetzungen für die Steuerfreiheit nicht vollständig erfüllt. Die Kapitalauszahlung wird daher als Versorgungsbezug voll besteuert (§22 Nr. 5 EStG). Prüfe, ob alle Bedingungen tatsächlich nicht greifen, oder korrigiere den "Steuerfreiheit bestätigt"-Schalter im Vertrag.",
+      "headline": "§40b-Vertrag, aber Bedingungen nicht erfüllt — Lump-sum als Versorgungsbezug",
+    },
+  },
+  {
+    "id": "bav_durchfuehrungsweg_direktzusage",
+    "rendered": {
+      "body": "Bei Direktzusage und Unterstützungskasse gilt die Kapitalauszahlung als Vergütung für mehrjährige Tätigkeit. Die Fünftelregelung (§34 Abs. 2 Nr. 4 EStG) glättet die Steuerprogression — der Rechner wendet dies automatisch an.",
+      "headline": "Lump-sum-Steuerung: Fünftelregelung (§34 EStG)",
+    },
+  },
+  {
+    "id": "riester_pre_2008_zulage",
+    "rendered": {
+      "body": "Für Kinder, die ab 2008 geboren wurden, beträgt die Kinderzulage 300 EUR/Jahr (statt 185 EUR). Bei einem Riester-Vertrag aus 2007 oder früher muss der Vertrag beim Anbieter auf den neuen Kindzulagesatz angepasst werden. Prüfe mit deinem Anbieter, ob der höhere Satz bereits eingetragen ist.",
+      "headline": "Kinderzulage für nach 2008 geborene Kinder ggf. nicht voll auf altem Riester — Vertragsanpassung prüfen",
+    },
+  },
+]
+`;

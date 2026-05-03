@@ -30,6 +30,8 @@ import type {
 } from './types'
 import { estimateEpFromYears } from './inventoryHelpers'
 import { detectVintageChips } from './vintageDetection'
+import { VintageChips } from './VintageChips'
+import type { Atom } from '../../app/recommendations'
 import { InfoTip } from '../../ui/InfoTip'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
@@ -154,10 +156,11 @@ const STATUS_OPTIONS: readonly { value: InstanceStatus; label: string }[] = [
 ] as const
 
 // ---------------------------------------------------------------------------
-// Vintage chips
+// Legacy vintage chips (draft-level, uses detectVintageChips heuristic)
+// Used inside Layer3Details where no workspace atoms are available.
 // ---------------------------------------------------------------------------
 
-function VintageChips({
+function LegacyVintageChips({
   contractStartYear,
   durchfuehrungsweg,
 }: {
@@ -351,8 +354,8 @@ function Layer3Details({
     <details className="inv-layer3-details">
       <summary className="inv-layer3-summary">Details</summary>
       <div className="inv-layer3-body">
-        {/* Vintage chips */}
-        <VintageChips
+        {/* Legacy vintage chips — draft-level detection inside wizard Layer 3 */}
+        <LegacyVintageChips
           contractStartYear={contractStartYear}
           durchfuehrungsweg={durchfuehrungsweg}
         />
@@ -502,11 +505,19 @@ const PAYOUT_OPTIONS_NO_KAPITAL: readonly { value: string; label: string }[] = [
   { value: 'zeitrente', label: 'Zeitrente (befristet)' },
 ] as const
 
-export function BavCard({ draft, onChange, setEvidence }: BaseProps<BavDraft>) {
+export function BavCard({
+  draft,
+  onChange,
+  setEvidence,
+  vintageAtoms,
+}: BaseProps<BavDraft> & { vintageAtoms?: Atom[] }) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-bav">
+      {vintageAtoms && vintageAtoms.length > 0 && (
+        <VintageChips atoms={vintageAtoms} />
+      )}
       <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">bAV-spezifisch</p>
@@ -595,11 +606,19 @@ export function BavCard({ draft, onChange, setEvidence }: BaseProps<BavDraft>) {
 // pAV (private Rentenversicherung) card
 // ---------------------------------------------------------------------------
 
-export function PavCard({ draft, onChange, setEvidence }: BaseProps<PavDraft>) {
+export function PavCard({
+  draft,
+  onChange,
+  setEvidence,
+  vintageAtoms,
+}: BaseProps<PavDraft> & { vintageAtoms?: Atom[] }) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-versicherung">
+      {vintageAtoms && vintageAtoms.length > 0 && (
+        <VintageChips atoms={vintageAtoms} />
+      )}
       <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">pAV-spezifisch</p>
@@ -680,7 +699,8 @@ export function RiesterCard({
   onChange,
   setEvidence,
   childBirthYears,
-}: BaseProps<RiesterDraft> & { childBirthYears: readonly number[] }) {
+  vintageAtoms,
+}: BaseProps<RiesterDraft> & { childBirthYears: readonly number[]; vintageAtoms?: Atom[] }) {
   const currentYear = new Date().getFullYear()
   const youngChildren = childBirthYears.filter((y) => currentYear - y < 25).length
   const hasChildren = youngChildren > 0
@@ -688,6 +708,9 @@ export function RiesterCard({
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-riester">
+      {vintageAtoms && vintageAtoms.length > 0 && (
+        <VintageChips atoms={vintageAtoms} />
+      )}
       <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
 
       <p className="inventory-instance-section-heading">Riester-spezifisch</p>
