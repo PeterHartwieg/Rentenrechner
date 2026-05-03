@@ -166,10 +166,131 @@ describe('combinePortfolio — single-instance byte-identity', () => {
 
     const ctx = makeBaseCombineContext(defaultProfile, grvGross)
     const combined = combinePortfolio(workspace, [basisBasis], ctx)
+    // Tightened from precision-4 to precision-6: drift investigation (Goal 3)
+    // confirmed byte-identity — the diff is 0. Conservative precision-4 was
+    // a placeholder during development; no engine change needed.
     expect(combined.byInstance[basisInstanceId].monthlyNet).toBeCloseTo(
       legacyBasis.netMonthlyPayout,
-      4,
+      6,
     )
+  })
+
+  it('single pAV instance (leibrente): combine net matches simulateRetirementComparison', () => {
+    // pAV with leibrente → InsuranceTaxMode 'ertragsanteil'. The combine path
+    // routes via privateInsuranceContributions with mode 'ertragsanteil';
+    // the compare-mode path routes via privateInsuranceTaxableAnnual + mode.
+    // Both call calculateRetirementTax with the same ertragsanteil fraction.
+    const workspace = makeWorkspaceFromV1(0, false, true, 0, 0, 0)
+    workspace.baseline.assumptions.visibleProducts = ['versicherung']
+    const { perInstance } = simulatePortfolio(workspace, de2026Rules)
+    const insInstanceId = workspace.baseline.assumptions.insurance[0].instanceId
+    const insResults = perInstance[insInstanceId]
+    const insBasis = insResults!.find((r) => r.scenarioId === 'basis')!
+
+    // Legacy singleton run: neutralised bAV (0 conversion) so the pAV gets the
+    // full fair-comparison bAV net-cost as its investment budget (which is 0).
+    const projectedSingleton: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 0 },
+      visibleProducts: ['versicherung'],
+    }
+    const legacy = simulateRetirementComparison(defaultProfile, projectedSingleton, de2026Rules)
+    const grvGross = legacy.statutoryPension.grossMonthlyPension
+    const legacyPav = findResult(
+      legacy.products.filter((p) => p.scenarioId === 'basis'),
+      'versicherung',
+    )!
+
+    // Sanity: per-instance simulator output matches the legacy singleton.
+    expect(insBasis.netMonthlyPayout).toBe(legacyPav.netMonthlyPayout)
+
+    const ctx = makeBaseCombineContext(defaultProfile, grvGross)
+    const combined = combinePortfolio(workspace, [insBasis], ctx)
+    // Single-instance pAV byte-identity: precision-6 (~1e-6 EUR tolerance).
+    expect(combined.byInstance[insInstanceId].monthlyNet).toBeCloseTo(
+      legacyPav.netMonthlyPayout,
+      6,
+    )
+    // pAV is not a Versorgungsbezug → no KV/PV for KVdR members.
+    expect(combined.byInstance[insInstanceId].kvPvShare).toBe(0)
+  })
+
+  it('single AVD instance: combine net matches simulateRetirementComparison', () => {
+    // AVD routes via taxChannel 'other_22_5' (§22 Nr. 5 EStG — full marginal),
+    // no KV/PV for KVdR members. The marginal delta in instanceMarginalTax
+    // subtracts from otherTaxableAnnual, matching the compare-mode marginal.
+    const workspace = makeWorkspaceFromV1(0, false, false, 0, 200, 0)
+    workspace.baseline.assumptions.visibleProducts = ['altersvorsorgedepot']
+    const { perInstance } = simulatePortfolio(workspace, de2026Rules)
+    const avdInstanceId = workspace.baseline.assumptions.altersvorsorgedepot[0].instanceId
+    const avdResults = perInstance[avdInstanceId]
+    const avdBasis = avdResults!.find((r) => r.scenarioId === 'basis')!
+
+    const projectedSingleton: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 0 },
+      altersvorsorgedepot: {
+        ...defaultAssumptions.altersvorsorgedepot,
+        monthlyOwnContribution: 200,
+      },
+      visibleProducts: ['altersvorsorgedepot'],
+    }
+    const legacy = simulateRetirementComparison(defaultProfile, projectedSingleton, de2026Rules)
+    const grvGross = legacy.statutoryPension.grossMonthlyPension
+    const legacyAvd = findResult(
+      legacy.products.filter((p) => p.scenarioId === 'basis'),
+      'altersvorsorgedepot',
+    )!
+
+    // Sanity: per-instance output matches the legacy singleton.
+    expect(avdBasis.netMonthlyPayout).toBe(legacyAvd.netMonthlyPayout)
+
+    const ctx = makeBaseCombineContext(defaultProfile, grvGross)
+    const combined = combinePortfolio(workspace, [avdBasis], ctx)
+    // Single-instance AVD byte-identity.
+    expect(combined.byInstance[avdInstanceId].monthlyNet).toBeCloseTo(
+      legacyAvd.netMonthlyPayout,
+      6,
+    )
+    // AVD is not a Versorgungsbezug → no KV/PV for KVdR members.
+    expect(combined.byInstance[avdInstanceId].kvPvShare).toBe(0)
+  })
+
+  it('single Riester instance: combine net matches simulateRetirementComparison', () => {
+    // Riester routes via taxChannel 'other_22_5' (§22 Nr. 5 EStG), same as AVD.
+    // KVdR members owe no KV/PV on Riester payouts.
+    const workspace = makeWorkspaceFromV1(0, false, false, 0, 0, 100)
+    workspace.baseline.assumptions.visibleProducts = ['riester']
+    const { perInstance } = simulatePortfolio(workspace, de2026Rules)
+    const riesterInstanceId = workspace.baseline.assumptions.riester[0].instanceId
+    const riesterResults = perInstance[riesterInstanceId]
+    const riesterBasis = riesterResults!.find((r) => r.scenarioId === 'basis')!
+
+    const projectedSingleton: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 0 },
+      riester: { ...defaultAssumptions.riester, monthlyOwnContribution: 100 },
+      visibleProducts: ['riester'],
+    }
+    const legacy = simulateRetirementComparison(defaultProfile, projectedSingleton, de2026Rules)
+    const grvGross = legacy.statutoryPension.grossMonthlyPension
+    const legacyRiester = findResult(
+      legacy.products.filter((p) => p.scenarioId === 'basis'),
+      'riester',
+    )!
+
+    // Sanity: per-instance output matches the legacy singleton.
+    expect(riesterBasis.netMonthlyPayout).toBe(legacyRiester.netMonthlyPayout)
+
+    const ctx = makeBaseCombineContext(defaultProfile, grvGross)
+    const combined = combinePortfolio(workspace, [riesterBasis], ctx)
+    // Single-instance Riester byte-identity.
+    expect(combined.byInstance[riesterInstanceId].monthlyNet).toBeCloseTo(
+      legacyRiester.netMonthlyPayout,
+      6,
+    )
+    // Riester is not a Versorgungsbezug → no KV/PV for KVdR members.
+    expect(combined.byInstance[riesterInstanceId].kvPvShare).toBe(0)
   })
 
   it('single ETF instance: combine passes through netMonthlyPayout (Abgeltungsteuer flat tax)', () => {
