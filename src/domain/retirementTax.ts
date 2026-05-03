@@ -34,9 +34,27 @@ export interface RetirementIncomeComponents {
    * - halbeinkuenfte: half the gain → personal tax base
    * - abgeltungsteuer: full gain → flat 25 % Abgeltungsteuer separately, NOT in personal base
    * - pre2005: entirely tax-free (do not add to this component)
+   *
+   * Ignored when `privateInsuranceContributions` is set (combine-mode multi-instance path).
    */
   privateInsuranceTaxableAnnual: number
   privateInsuranceTaxMode: InsuranceTaxMode
+  /**
+   * Multi-instance private-insurance contributions (Group G issue 08).
+   *
+   * When set, the retirement-tax pipeline iterates this list and applies each
+   * entry's tax mode independently, summing per-mode results into the personal
+   * base (halbeinkuenfte / ertragsanteil / pre2005) or into the separate
+   * Abgeltungsteuer line (abgeltungsteuer). The singleton fields
+   * `privateInsuranceTaxableAnnual` + `privateInsuranceTaxMode` are ignored.
+   *
+   * Single-instance callers should leave this `undefined` so the legacy
+   * singleton path is taken (preserves byte-identity with oracle goldens).
+   */
+  privateInsuranceContributions?: ReadonlyArray<{
+    amount: number
+    mode: InsuranceTaxMode
+  }>
   /** Other ordinary taxable income (rental, part-time job, etc.) — enters personal base directly. */
   otherTaxableAnnual: number
   /**

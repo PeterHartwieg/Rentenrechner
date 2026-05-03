@@ -97,6 +97,7 @@ export function calculateRetirementTax(
     bavIsLumpSum,
     privateInsuranceTaxableAnnual,
     privateInsuranceTaxMode,
+    privateInsuranceContributions,
     otherTaxableAnnual,
     retirementYear,
   } = components
@@ -125,30 +126,49 @@ export function calculateRetirementTax(
 
   // -------------------------------------------------------------------------
   // 3. Private insurance → routing by tax mode
+  //
+  //    Single-instance path: route the singleton (privateInsuranceTaxableAnnual,
+  //    privateInsuranceTaxMode) through the per-mode rules.
+  //
+  //    Multi-instance path (combine-mode, Group G issue 08): when
+  //    `privateInsuranceContributions` is set, iterate the list and apply each
+  //    entry's mode independently. Each mode's contribution to the personal
+  //    base / Abgeltungsteuer line accumulates separately. The singleton
+  //    fields are ignored in this path.
   // -------------------------------------------------------------------------
-  let privateInsuranceTaxable: number
-  let abgeltungsteuerOnPrivateInsurance: number
+  let privateInsuranceTaxable = 0
+  let abgeltungsteuerOnPrivateInsurance = 0
 
-  if (privateInsuranceTaxMode === 'pre2005') {
-    // Entirely tax-free for capital payouts; nothing enters either base.
-    // Note: even pre-2005 contracts pay Ertragsanteil on Leibrente — that path uses 'ertragsanteil' instead.
-    privateInsuranceTaxable = 0
-    abgeltungsteuerOnPrivateInsurance = 0
-  } else if (privateInsuranceTaxMode === 'abgeltungsteuer') {
-    // Full gain taxed at flat 25 % + Soli; removed from personal-income-tax base.
-    privateInsuranceTaxable = 0
-    const flatTax = Math.max(0, privateInsuranceTaxableAnnual) * rules.capitalGains.taxRate
-    abgeltungsteuerOnPrivateInsurance = flatTax + flatTax * rules.capitalGains.solidarityRate
-  } else if (privateInsuranceTaxMode === 'ertragsanteil') {
-    // §22 Nr. 1 Satz 3 a aa EStG: Ertragsanteil enters the personal-income-tax base directly.
-    // privateInsuranceTaxableAnnual already holds (grossMonthlyPayout × 12 × ertragsanteil);
-    // no further reduction — the age-based fraction is the statutory taxable share.
-    privateInsuranceTaxable = Math.max(0, privateInsuranceTaxableAnnual)
-    abgeltungsteuerOnPrivateInsurance = 0
-  } else {
+  const applyInsuranceContribution = (amount: number, mode: typeof privateInsuranceTaxMode): void => {
+    const safeAmount = Math.max(0, amount)
+    if (mode === 'pre2005') {
+      // Entirely tax-free for capital payouts; nothing enters either base.
+      // Note: even pre-2005 contracts pay Ertragsanteil on Leibrente — that path uses 'ertragsanteil' instead.
+      return
+    }
+    if (mode === 'abgeltungsteuer') {
+      // Full gain taxed at flat 25 % + Soli; removed from personal-income-tax base.
+      const flatTax = safeAmount * rules.capitalGains.taxRate
+      abgeltungsteuerOnPrivateInsurance += flatTax + flatTax * rules.capitalGains.solidarityRate
+      return
+    }
+    if (mode === 'ertragsanteil') {
+      // §22 Nr. 1 Satz 3 a aa EStG: Ertragsanteil enters the personal-income-tax base directly.
+      // The amount must already be (grossMonthlyPayout × 12 × ertragsanteil);
+      // no further reduction — the age-based fraction is the statutory taxable share.
+      privateInsuranceTaxable += safeAmount
+      return
+    }
     // halbeinkuenfte: only half the gain enters the personal-income-tax base (§20 Abs. 1 Nr. 6).
-    privateInsuranceTaxable = Math.max(0, privateInsuranceTaxableAnnual) * legalConstants.insurance.halbeinkuenfteFactor
-    abgeltungsteuerOnPrivateInsurance = 0
+    privateInsuranceTaxable += safeAmount * legalConstants.insurance.halbeinkuenfteFactor
+  }
+
+  if (privateInsuranceContributions && privateInsuranceContributions.length > 0) {
+    for (const entry of privateInsuranceContributions) {
+      applyInsuranceContribution(entry.amount, entry.mode)
+    }
+  } else {
+    applyInsuranceContribution(privateInsuranceTaxableAnnual, privateInsuranceTaxMode)
   }
 
   // -------------------------------------------------------------------------
@@ -202,11 +222,15 @@ export function calculateRetirementTax(
   // -------------------------------------------------------------------------
   const totalTaxAnnual = einkommensteuer + solidaritaetszuschlag + abgeltungsteuerOnPrivateInsurance
 
+  const totalPrivateInsuranceGross = privateInsuranceContributions && privateInsuranceContributions.length > 0
+    ? privateInsuranceContributions.reduce((sum, entry) => sum + Math.max(0, entry.amount), 0)
+    : Math.max(0, privateInsuranceTaxableAnnual)
+
   const netRetirementIncomeAnnual =
     statutoryPensionAnnual +
     bavPensionAnnual +
     otherTaxableAnnual +
-    privateInsuranceTaxableAnnual -
+    totalPrivateInsuranceGross -
     totalTaxAnnual
 
   return {
