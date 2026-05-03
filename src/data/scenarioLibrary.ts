@@ -31,9 +31,8 @@ const LIBRARY_KEY = 'rentenrechner-library-v1'
  * Version 1: entries carry v1 singleton ScenarioAssumptions (current shape in M1).
  * Entries with schemaVersion > SAVED_SCENARIO_VERSION are rejected (forward-compat guard).
  *
- * TODO(issue 03): bump to 2 when the library entry shape switches to
- * WorkspaceAssumptionsV2 instance arrays. At that point, add a migration branch
- * for version-1 singleton entries.
+ * TODO: bump SAVED_SCENARIO_VERSION to 2 when v2 library migration lands
+ * (multi-instance fidelity in archived entries).
  */
 export const SAVED_SCENARIO_VERSION = 1
 

@@ -1,5 +1,7 @@
-import type { BavAssumptions, FeeModel } from '../domain'
+import type { BavAssumptions } from '../domain'
 export { getProductMeta, PRODUCT_MANIFEST } from '../engine/productManifest'
+// Fee presets live in the sections package; re-export for backward-compat callers.
+export { BAV_FEE_PRESETS, PAV_FEE_PRESETS } from '../features/inputs/sections/feePresets'
 
 /** GRV has no product module — keep its colour here as a standalone constant. */
 export const GRV_COLOR = '#16a34a'
@@ -43,47 +45,6 @@ export function applyBavTotalMatch(totalPct: number): {
 
 export type WarningStatus = 'implementiert' | 'vereinfacht' | 'nicht-modelliert'
 
-const BASE_FEE: Pick<FeeModel, 'acquisitionCostSpreadYears'> = { acquisitionCostSpreadYears: 5 }
-
-// #55 / #58: Fee presets for bAV and pAV (all-in configurations for one-click loading).
-// Sources: BAV_RESEARCH.md — Allianz/AXA examples, typical ETF-Nettotarif benchmarks.
-export const BAV_FEE_PRESETS: { label: string; fees: FeeModel }[] = [
-  {
-    label: 'Nettotarif',
-    fees: { wrapperAssetFee: 0.003, fundAssetFee: 0.002, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, pensionPayoutFeePct: 0, ...BASE_FEE },
-  },
-  {
-    label: 'Standard',
-    fees: { wrapperAssetFee: 0.006, fundAssetFee: 0.002, contributionFee: 0.045, fixedMonthlyFee: 0, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
-  },
-  {
-    label: 'Hochkosten',
-    fees: { wrapperAssetFee: 0.007, fundAssetFee: 0.002, contributionFee: 0.0975, fixedMonthlyFee: 0, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
-  },
-  {
-    label: 'Hoher AG-Match',
-    fees: { wrapperAssetFee: 0.007, fundAssetFee: 0.002, contributionFee: 0.045, fixedMonthlyFee: 0, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
-  },
-]
-
-export const PAV_FEE_PRESETS: { label: string; fees: FeeModel }[] = [
-  {
-    label: 'Nettotarif',
-    fees: { wrapperAssetFee: 0.004, fundAssetFee: 0.002, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, pensionPayoutFeePct: 0, ...BASE_FEE },
-  },
-  {
-    label: 'Standard',
-    fees: { wrapperAssetFee: 0.003, fundAssetFee: 0.002, contributionFee: 0, fixedMonthlyFee: 3, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0.015, ...BASE_FEE },
-  },
-  {
-    label: 'Hochkosten',
-    fees: { wrapperAssetFee: 0.008, fundAssetFee: 0.0025, contributionFee: 0.09, fixedMonthlyFee: 5, acquisitionCostPct: 0.04, pensionPayoutFeePct: 0.0175, ...BASE_FEE },
-  },
-  {
-    label: 'Altvertrag',
-    fees: { wrapperAssetFee: 0.012, fundAssetFee: 0.002, contributionFee: 0.03, fixedMonthlyFee: 5, acquisitionCostPct: 0.025, pensionPayoutFeePct: 0, ...BASE_FEE },
-  },
-]
 
 export const CALCULATION_WARNINGS: { category: string; status: WarningStatus; note: string }[] = [
   {

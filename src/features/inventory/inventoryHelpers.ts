@@ -272,7 +272,7 @@ export function addInstanceToWorkspace(
         monthlyContribution: 200,
         anbieter: undefined,
         durchfuehrungsweg: 'direktversicherung_3_63',
-        effektivkostenPct: 0,
+        effektivkostenPct: 0.8, // default to typical all-in cost
         rentenfaktor: 30,
         payoutMode: 'leibrente',
       })
@@ -288,7 +288,7 @@ export function addInstanceToWorkspace(
         currentValueEUR: 0,
         monthlyContribution: 100,
         anbieter: undefined,
-        effektivkostenPct: 0,
+        effektivkostenPct: 0.8, // default to typical all-in cost
         rentenfaktor: 28,
         payoutMode: 'leibrente',
       })
@@ -319,7 +319,7 @@ export function addInstanceToWorkspace(
         currentValueEUR: 0,
         monthlyContribution: 200,
         anbieter: undefined,
-        effektivkostenPct: 0,
+        effektivkostenPct: 0.8, // default to typical all-in cost
         rentenfaktor: 28,
       })
       updated = { ...wsa, basisrente: [...wsa.basisrente, { ...newInst, label: `Basisrente #${n}`, instanceId: newInstanceId('basisrente') }] }

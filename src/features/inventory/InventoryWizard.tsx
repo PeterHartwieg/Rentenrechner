@@ -384,15 +384,38 @@ export function InventoryWizard({
     }
   }
 
+  // Per-instance label fallback ordering (issue 06 review):
+  // 1. instanceLabel (user-typed)
+  // 2. "${ProductLabel} ${anbieter}" when anbieter is set
+  // 3. "${ProductLabel} #N" as final fallback
   function getLabelForInstance(productId: string, index: number): string {
+    const n = index + 1
     switch (productId) {
-      case 'bav': return bavDrafts[index]?.instanceLabel ?? bavDrafts[index]?.anbieter ?? `bAV #${index + 1}`
-      case 'versicherung': return pavDrafts[index]?.instanceLabel ?? pavDrafts[index]?.anbieter ?? `pAV #${index + 1}`
-      case 'riester': return riesterDrafts[index]?.instanceLabel ?? riesterDrafts[index]?.anbieter ?? `Riester #${index + 1}`
-      case 'basisrente': return basisrenteDrafts[index]?.instanceLabel ?? basisrenteDrafts[index]?.anbieter ?? `Basisrente #${index + 1}`
-      case 'altersvorsorgedepot': return avdDrafts[index]?.instanceLabel ?? avdDrafts[index]?.anbieter ?? `AVD #${index + 1}`
-      case 'etf': return etfDrafts[index]?.instanceLabel ?? etfDrafts[index]?.anbieter ?? `ETF #${index + 1}`
-      default: return `#${index + 1}`
+      case 'bav': {
+        const d = bavDrafts[index]
+        return d?.instanceLabel ?? (d?.anbieter ? `bAV ${d.anbieter}` : `bAV #${n}`)
+      }
+      case 'versicherung': {
+        const d = pavDrafts[index]
+        return d?.instanceLabel ?? (d?.anbieter ? `pAV ${d.anbieter}` : `pAV #${n}`)
+      }
+      case 'riester': {
+        const d = riesterDrafts[index]
+        return d?.instanceLabel ?? (d?.anbieter ? `Riester ${d.anbieter}` : `Riester #${n}`)
+      }
+      case 'basisrente': {
+        const d = basisrenteDrafts[index]
+        return d?.instanceLabel ?? (d?.anbieter ? `Basisrente ${d.anbieter}` : `Basisrente #${n}`)
+      }
+      case 'altersvorsorgedepot': {
+        const d = avdDrafts[index]
+        return d?.instanceLabel ?? (d?.anbieter ? `AVD ${d.anbieter}` : `AVD #${n}`)
+      }
+      case 'etf': {
+        const d = etfDrafts[index]
+        return d?.instanceLabel ?? (d?.anbieter ? `ETF ${d.anbieter}` : `ETF #${n}`)
+      }
+      default: return `#${n}`
     }
   }
 

@@ -161,7 +161,12 @@ function setAtPath(obj: Record<string, unknown>, path: string, value: unknown): 
   let current: unknown = obj
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i]
-    if (current === null || current === undefined || typeof current !== 'object') return
+    if (current === null || current === undefined || typeof current !== 'object') {
+      if (import.meta.env?.DEV) {
+        console.warn(`[scenarioDiff] setAtPath: missing parent at key "${String(key)}" in path "${path}"`)
+      }
+      return
+    }
     current = (current as Record<string | number, unknown>)[key]
   }
   if (current === null || current === undefined || typeof current !== 'object') return

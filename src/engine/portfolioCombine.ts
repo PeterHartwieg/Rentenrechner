@@ -237,18 +237,17 @@ function buildPerSourceLines(
     if (result.productId === 'bav') {
       const inst = bavById.get(id)
       if (!inst) continue
-      const kvdr = inst.kvdrMember !== false
       lines.push({
         instanceId: id,
         productId: 'bav',
         monthlyGross: grossMonthly,
         taxableAnnual: grossMonthly * 12,
         taxChannel: 'bav_pension',
-        kvPvChannel: kvdr ? 'bav_versorgungsbezug' : 'bav_versorgungsbezug',
+        kvPvChannel: 'bav_versorgungsbezug',
         // Note: bAV always routes via `bav_versorgungsbezug` (§229 Abs. 1 Nr. 5
-        // SGB V). The `kvdrMember` flag affects whether the §226(2) Freibetrag
-        // applies inside the aggregate KV/PV calc — done at the workspace level
-        // below, not per-line.
+        // SGB V) regardless of kvdrMember. The `kvdrMember` flag affects whether
+        // the §226(2) Freibetrag applies inside the aggregate KV/PV calc — done
+        // at the workspace level below, not per-line.
       })
     } else if (result.productId === 'versicherung') {
       const inst = insById.get(id)
@@ -355,7 +354,7 @@ function derivePavInsuranceTaxModeForCombine(
  */
 function computePavTaxableAnnual(
   result: ProductResult,
-  instance: InsuranceInstance,
+  _instance: InsuranceInstance,
   retirementAge: number,
   taxMode: InsuranceTaxMode,
 ): number {
@@ -373,7 +372,6 @@ function computePavTaxableAnnual(
   return grossAnnual * gainRatio
   // Note: for `instance.payoutMode === 'leibrente'` we already returned above;
   // for the other modes the gain-ratio applies.
-  void instance
 }
 
 // ---------------------------------------------------------------------------

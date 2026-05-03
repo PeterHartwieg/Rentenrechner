@@ -37,38 +37,7 @@ import { detectVintageChips } from './vintageDetection'
 import { InfoTip } from '../../ui/InfoTip'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
-
-// ---------------------------------------------------------------------------
-// BAV_FEE_PRESETS / PAV_FEE_PRESETS (simplified for sidebar context)
-// Same as BavInputs / InsuranceInputs reference values.
-// ---------------------------------------------------------------------------
-
-const SIMPLIFIED_PRESETS = [
-  {
-    label: 'Nettotarif ETF (0,8 %)',
-    fees: {
-      wrapperAssetFee: 0.005,
-      fundAssetFee: 0.003,
-      contributionFee: 0,
-      fixedMonthlyFee: 0,
-      acquisitionCostPct: 0,
-      acquisitionCostSpreadYears: 5,
-      pensionPayoutFeePct: 0,
-    },
-  },
-  {
-    label: 'Bruttotarif (1,5 %)',
-    fees: {
-      wrapperAssetFee: 0.01,
-      fundAssetFee: 0.005,
-      contributionFee: 0.03,
-      fixedMonthlyFee: 0,
-      acquisitionCostPct: 0.025,
-      acquisitionCostSpreadYears: 5,
-      pensionPayoutFeePct: 0,
-    },
-  },
-]
+import { SIMPLIFIED_PRESETS } from '../inputs/sections/feePresets'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -597,10 +566,13 @@ function BaselineStaleBadge({
   onFreeze: () => void
 }) {
   const snapshotCreatedAt = new Date(whatIf.derivedFromBaselineSnapshot.createdAt).getTime()
-  const editedAt = baselineLastEditedAt ?? 0
+  // Only treat the baseline as "edited" when lastEditedAt is a real timestamp
+  // (> 0). A zero/missing value means the baseline was never explicitly edited.
+  const editedAt = (baselineLastEditedAt ?? 0) > 0 ? baselineLastEditedAt! : 0
 
-  // Badge suppressed if the what-if was frozen after the last baseline edit.
-  if (whatIf.frozenAt !== undefined && whatIf.frozenAt >= editedAt) {
+  // Show the frozen badge only when the user explicitly invoked freeze
+  // (frozenAt > 0) and the freeze post-dates the last baseline edit.
+  if (whatIf.frozenAt !== undefined && whatIf.frozenAt > 0 && whatIf.frozenAt >= editedAt) {
     const frozenDate = new Date(whatIf.frozenAt).toLocaleDateString('de-DE', {
       day: '2-digit',
       month: '2-digit',
@@ -614,8 +586,9 @@ function BaselineStaleBadge({
     )
   }
 
-  // No stale signal if baseline hasn't been edited after the snapshot was taken.
-  if (editedAt <= snapshotCreatedAt) return null
+  // No stale signal if baseline hasn't been explicitly edited, or the edit
+  // did not happen after the snapshot was taken.
+  if (editedAt === 0 || editedAt <= snapshotCreatedAt) return null
 
   return (
     <div className="cds-stale-badge" role="alert">
@@ -690,6 +663,9 @@ export function CombineDashboardSidebar({
   onFreezeWhatIf,
   onArchiveAndRestart,
 }: Props) {
+  // Guard against rapid double-clicks on the archive button.
+  const [archiving, setArchiving] = useState(false)
+
   const hasBav = assumptions.bav.length > 0
   const hasPav = assumptions.insurance.length > 0
   const hasEtf = assumptions.etf.length > 0
@@ -698,6 +674,10 @@ export function CombineDashboardSidebar({
   const hasRiester = assumptions.riester.length > 0
 
   const hasContracts = hasBav || hasPav || hasEtf || hasBasisrente || hasAvd || hasRiester
+
+  // The archive button is only useful when there is something to archive: at
+  // least one contract in the baseline OR at least one what-if scenario.
+  const showArchiveButton = hasContracts || whatIfs.length > 0
 
   return (
     <div className="combine-sidebar">
@@ -876,17 +856,30 @@ export function CombineDashboardSidebar({
       )}
 
       {/* ── Archive + restart button ──────────────────────────────── */}
-      <div className="cds-archive-section">
-        <button
-          type="button"
-          className="cds-archive-btn"
-          onClick={onArchiveAndRestart}
-          title="Aktuellen Stand speichern und What-Ifs zurücksetzen"
-        >
-          <Archive size={14} aria-hidden="true" />
-          Aktuellen Stand als Baseline speichern und neu starten
-        </button>
-      </div>
+      {/* Only render when there is something to archive (contracts or what-ifs). */}
+      {showArchiveButton && (
+        <div className="cds-archive-section">
+          <button
+            type="button"
+            className="cds-archive-btn"
+            disabled={archiving}
+            onClick={() => {
+              // Prevent double-clicks from writing two library entries.
+              if (archiving) return
+              setArchiving(true)
+              try {
+                onArchiveAndRestart()
+              } finally {
+                setArchiving(false)
+              }
+            }}
+            title="Aktuellen Stand speichern und What-Ifs zurücksetzen"
+          >
+            <Archive size={14} aria-hidden="true" />
+            Aktuellen Stand als Baseline speichern und neu starten
+          </button>
+        </div>
+      )}
     </div>
   )
 }

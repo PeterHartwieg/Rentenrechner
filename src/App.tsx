@@ -60,22 +60,14 @@ function App() {
   return <Calculator navigate={navigate} />
 }
 
-/**
- * Resolve the initial AppView for the calculator on first render.
- * Reads saved state once; thereafter the in-memory state drives transitions.
- */
-function resolveInitialAppView(): AppView {
-  return appViewFromMode(detectSavedMode())
-}
-
 interface CalculatorProps {
   navigate: (target: '/' | '/impressum' | '/datenschutz') => void
 }
 
 function Calculator({ navigate }: CalculatorProps) {
   // AppView controls the landing vs dashboard decision for route `/`.
-  // Initialised from saved state; transitions via user actions.
-  const [appView, setAppView] = useState<AppView>(() => resolveInitialAppView())
+  // Reads saved mode once on mount; thereafter in-memory state drives transitions.
+  const [appView, setAppView] = useState<AppView>(() => appViewFromMode(detectSavedMode()))
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
 
   const {
@@ -165,6 +157,11 @@ function Calculator({ navigate }: CalculatorProps) {
       guidedSetup.reopen()
       return
     }
+    // Exhaustiveness guard — TypeScript will flag this assignment when a new
+    // LandingChoice variant is added without a corresponding handler above.
+    const _exhaustive: never = choice
+    void _exhaustive
+    throw new Error(`Unhandled landing choice: ${String((_exhaustive as { kind: string }).kind)}`)
   }
 
   /**
@@ -427,6 +424,11 @@ function Calculator({ navigate }: CalculatorProps) {
           {appView === 'compare' && (
             <span className="topbar-mode-badge topbar-mode-badge--compare" aria-label="Vergleichsmodus aktiv">
               Vergleichsmodus
+            </span>
+          )}
+          {appView === 'combine' && (
+            <span className="topbar-mode-badge topbar-mode-badge--combine" aria-label="Mein Plan aktiv">
+              Mein Plan
             </span>
           )}
           <button

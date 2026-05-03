@@ -1,6 +1,6 @@
 import './LandingPage.css'
 import { useState } from 'react'
-import { ArrowRight, HelpCircle } from 'lucide-react'
+import { ArrowRight, HelpCircle, LayoutGrid, BarChart3 } from 'lucide-react'
 import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
 
 export type LandingChoice =
@@ -70,12 +70,7 @@ export function LandingPage({ onChoice }: Props) {
           <div className="landing-card landing-card--primary">
             <div className="landing-card-body">
               <div className="landing-card-icon landing-card-icon--primary" aria-hidden="true">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7" rx="1" />
-                  <rect x="14" y="3" width="7" height="7" rx="1" />
-                  <rect x="14" y="14" width="7" height="7" rx="1" />
-                  <rect x="3" y="14" width="7" height="7" rx="1" />
-                </svg>
+                <LayoutGrid size={32} />
               </div>
               <h2 className="landing-card-title">Mein Plan</h2>
               <p className="landing-card-desc">
@@ -130,11 +125,7 @@ export function LandingPage({ onChoice }: Props) {
           <div className="landing-card landing-card--secondary">
             <div className="landing-card-body">
               <div className="landing-card-icon landing-card-icon--secondary" aria-hidden="true">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="20" x2="18" y2="10" />
-                  <line x1="12" y1="20" x2="12" y2="4" />
-                  <line x1="6" y1="20" x2="6" y2="14" />
-                </svg>
+                <BarChart3 size={32} />
               </div>
               <h2 className="landing-card-title">Produkte vergleichen</h2>
               <p className="landing-card-desc">

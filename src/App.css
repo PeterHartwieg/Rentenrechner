@@ -87,6 +87,13 @@
   border: 1px solid #c5d0fa;
 }
 
+/* Combine mode: muted slate-blue — subtle, since combine is the default mode */
+.topbar-mode-badge--combine {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
 .disclaimer-wrap {
   position: relative;
   display: flex;
