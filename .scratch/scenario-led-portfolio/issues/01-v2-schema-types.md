@@ -1,0 +1,44 @@
+# 01 — v2 schema types + reserved partner/ownedBy slots
+
+Status: needs-triage
+Milestone: M1 (Schema + adapter foundation)
+Plan section: §2 Schema design, §4 M1.1, M1.5, M1.6
+PRD capabilities: F2, F3, F27, A2
+
+## What
+
+Add the v2 workspace schema types in `src/domain/`. No migration logic, no UI changes. This is the type-only foundation issue 02 (migration) and 03 (adapter) build on.
+
+## Scope
+
+- `Workspace` type with `schemaVersion: 2`, `mode: 'compare' | 'combine'`, `baseline: Scenario`, `whatIfs: WhatIfScenario[]`, `pinnedComparisonIds`.
+- `Scenario`, `WhatIfScenario` types. `WhatIfScenario` includes `derivedFromBaselineId: string` AND `derivedFromBaselineSnapshot: Scenario` (frozen baseline copy at fork time — required for re-base; see Plan §2.1). `partner?: PersonalProfile` slot reserved on `Scenario`, defaulted `undefined`.
+- `WorkspaceAssumptionsV2` type with instance arrays per product (`bav: BavInstance[]`, `etf: EtfInstance[]`, ...), scenario-level fields, and the new `compareSubMode?` / `visibleInstanceIds?` fields. **Distinct from existing `ScenarioAssumptions`** — see Plan §2.2.
+- `InstanceCommon` type with `instanceId`, `label`, `anbieter?` (free text, optional), `status`, `contractStartYear` (required for vintage routing), `currentValueEUR?` (snapshot of current contract value, wires to `AccumulationInput.initialCapital`), `evidenceMap: Record<string, EvidenceState>`, `ownedBy?: 'self' | 'partner'` (defaulted `'self'`), `transferEvents?: TransferEvent[]`.
+- `TransferEvent` discriminated union: `{ type: 'certified', ... }` | `{ type: 'surrender_reinvest', ... }` per Plan §2.5.
+- `EvidenceState` type alias `'user_confirmed' | 'model_estimate' | 'statement'`.
+- Per-product instance types (`EtfInstance`, `BavInstance`, `InsuranceInstance`, `BasisrenteInstance`, `AltersvorsorgedepotInstance`, `RiesterInstance`) — each `extends InstanceCommon, <Product>Assumptions`.
+- Re-exports through `src/domain/index.ts`.
+
+**Critical V2 type-boundary invariant:** the existing `ScenarioAssumptions` type and the per-product assumption types (`BavAssumptions`, `EtfAssumptions`, ...) are NOT modified. They stay singleton-shaped so the engine, registry, and oracle goldens stay untouched. The adapter (issue 03) projects each instance to a singleton-shaped `ScenarioAssumptions` at the per-call site.
+
+## Out of scope
+
+- Migration logic (issue 02).
+- Adapter / projection function (issue 03).
+- UI surface for partner / ownedBy / evidenceMap badges (P2 / issue 09).
+- Validator updates (issue 02).
+
+## Acceptance
+
+- New types compile under `npx tsc --noEmit`.
+- Existing imports of singleton product types (`BavAssumptions`, `EtfAssumptions`, ..., `ScenarioAssumptions`) continue to work unchanged. Instance types extend the singleton assumption types.
+- A literal `Workspace` value with `mode: 'combine'`, one bAV instance carrying `currentValueEUR`, `anbieter`, and an `evidenceMap`, with `whatIfs: []` typechecks.
+- A literal `Workspace` value with `mode: 'compare'`, length-1 instance arrays, typechecks.
+- A literal `WhatIfScenario` with both `derivedFromBaselineId` and `derivedFromBaselineSnapshot` typechecks.
+- A `TransferEvent` of either kind (`'certified'` or `'surrender_reinvest'`) typechecks; mixing fields across the discriminated branches is a type error.
+
+## Test plan
+
+- Type-level: import the new types in a throwaway test file, assert assignability of legacy singleton shapes wrapped as length-1 arrays.
+- No runtime tests required (types only).

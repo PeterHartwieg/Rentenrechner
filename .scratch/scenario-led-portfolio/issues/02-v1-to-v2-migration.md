@@ -1,0 +1,45 @@
+# 02 — v1 → v2 migration in storage.ts
+
+Status: needs-triage
+Milestone: M1
+Plan section: §2.4 Migration ordering, §4 M1.2
+PRD capabilities: F2, S3, S4, A2
+Depends on: 01
+
+## What
+
+Implement the singleton-to-instance migration in `src/storage.ts`. Pre-Group-G `parseStateFromJson` runs `mergeDeep` then `validateState`. Post-Group-G it must first detect `schemaVersion`, run the migration if v1, then `mergeDeep` against the v2 default workspace, then `validateState` against v2.
+
+Storage keys: writers stop emitting `rentenrechner-state-v1`, write target is `rentenrechner-state-v2`. `loadSavedState` reads v2 first then falls back to v1 with the migration applied. After successful migrate, the next save overwrites v2 and removes v1.
+
+## Scope
+
+- `parseStateFromJson` v1-detection branch.
+- `migrateV1ToV2(legacyState): Workspace` — converts each singleton product to a length-1 instance array with deterministic id `${productId}-singleton`. Empty / default product configurations migrate to length-0 arrays. Each migrated instance gets `evidenceMap: {}` — i.e. zero entries. Per Plan §2.4, missing entries read as `model_estimate` at engine-time, so every legacy field surfaces a yellow estimate badge until the user confirms. We deliberately do NOT default to `user_confirmed` because we cannot tell post-hoc which legacy values the user typed vs accepted.
+- v2 `defaultWorkspace` for `mergeDeep`.
+- v2 path in `validateState` (instance-aware) — extend `src/utils/scenarioSchema.ts` with `validateInstance` per product, `validateWorkspace`, reject unknown ids, reject `transferEvents` referencing non-existent target instances.
+- `scenarioLibrary.ts` extension: every saved entry runs through `migrateAndValidateState` (already extracted per Phase 0); v1 entries auto-migrate, malformed entries dropped silently. `SAVED_SCENARIO_VERSION` bumps to 2.
+- Storage key bump in writers; v1 fallback in readers.
+
+## Out of scope
+
+- UI changes (the v2 default workspace renders identically to today via the adapter — issue 03).
+- Adapter logic itself (issue 03).
+- Per-instance UI (issue 06).
+
+## Acceptance
+
+- Loading any pre-Group-G localStorage state, share-URL, or scenario-library entry produces a valid v2 `Workspace` with byte-identical engine output via the adapter (the adapter is a no-op in pre-Group-G shape).
+- Loading a hand-written v2 state round-trips losslessly.
+- Loading a malformed entry (unknown product, broken instanceId, transferEvent to non-existent target, illegal transfer pairing per §2.5 compatibility validator) drops the entry silently in scenario library; falls back to defaults in the main state.
+- Migrated instances have `evidenceMap: {}`, which the dashboard renders as yellow "🤔 Schätzung" badges on every value until the user explicitly confirms.
+- v1 share URL → v2 instance ids are deterministic (`${productId}-singleton`), so the same share URL always loads the same workspace.
+- `npm run verify` green; existing 585 tests pass.
+
+## Test plan
+
+- Migration round-trip: every saved-scenario library v1 entry shape, share-URL v1 payload, localStorage v1 payload → v2 → re-serialize → v2 produces stable output.
+- v2-only round-trip: v2 → re-serialize → v2 stable.
+- Forward-compat: a hand-written v3 entry (schemaVersion: 3) is rejected by validator and dropped silently.
+- Migration idempotence: applying the migration to an already-v2 state is a no-op.
+- All existing oracle goldens pass via the adapter wrapping length-1 arrays.

@@ -1,0 +1,41 @@
+# 14 — Three-card per-contract decision template
+
+Status: needs-triage
+Milestone: M3
+Plan section: §4 M3.5
+PRD capabilities: F14, F21 (Dilan), F23 (Karin)
+Depends on: 06, 12, 15
+
+## What
+
+Per-instance "Optionen für diesen Vertrag" panel that generates up to four pre-built what-ifs against the current baseline: Weiterführen / Beitragsfrei / Kündigen / Übertragen.
+
+## Scope
+
+- `src/features/dashboard/ContractDecisionMenu.tsx` — modal/panel component opened from each active or paid-up instance card.
+- Generators (in `recommendations.ts`):
+  - `weiterfuehrenWhatIf(workspace, instanceId)` → status quo for this instance, identity what-if (used as the comparison baseline within the menu, not saved separately).
+  - `beitragsfreiWhatIf(workspace, instanceId, paidUpAtAge?)` → status flips to `paid_up`. Reuses existing pAV two-phase math for any product type with phase-2 fee model. Defaults `paidUpAtAge` to the current age.
+  - `kuendigenWhatIf(workspace, instanceId, surrenderHaircutPct?)` → status flips to `surrendered` with one-off cash event. User-supplied `surrenderHaircutPct` (defaulted to a pessimistic preset per product type with a "🤔 Schätzung" badge) and optional re-allocation target (`reallocateToInstanceId?`).
+  - `uebertragenWhatIf(workspace, sourceInstanceId, targetInstanceId, amountEUR | 'all')` → adds a `transferEvent` to the source instance (issue 15 provides the engine support). Source remains in the portfolio with residual capital.
+- UI: panel renders the four candidates side-by-side with their headline metric (Δ Netto-Rente vs baseline) and a checkbox per candidate. User selects which to materialise as named what-ifs (e.g. "Plan: Vertrag A weiter / Plan: Vertrag A beitragsfrei + €100 ETF").
+- Compatible Übertragen targets surfaced via a small `compatibleTransferTargets(workspace, sourceInstance)` helper (Riester→AVD allowed; bAV→bAV between providers; pAV→pAV with caveat about lost privileges).
+
+## Out of scope
+
+- Variable surrender-haircut model per provider — defer; today's `surrenderHaircutPct` field carries it.
+- Tax modeling on surrender (capital gains on pAV old-vintage etc.) — already handled by existing engine paths; verify the path through the new what-if generator.
+
+## Acceptance
+
+- Dilan can open the menu on his old bAV instance and produce three candidates: Weiterführen / Beitragsfrei / Übertragen-auf-neuer-bAV. Selecting all three creates 3 named what-ifs in the workspace.
+- Karin can open the menu on her 2002 pAV and produce: Weiterführen / Beitragsfrei / Kündigen. Each surfaces the relevant trade-off label (e.g. Kündigen carries a "Verlust der Halbeinkünfte" caveat from the rules engine).
+- Compatible-target detection: Riester instance shows "Übertragen auf AVD" only if AVD instance exists or "Neuen AVD anlegen" creates one in the what-if.
+- Each generated what-if has `origin: 'recommender'` and a generated label.
+
+## Test plan
+
+- Unit: each generator on a fixture workspace produces the expected delta against baseline.
+- Unit: compatible-target detection follows AltZertG rules (Riester→AVD ✓, AVD→Riester ✗).
+- Snapshot: Dilan and Karin's full menu output.
+- E2E preview: open menu, tick two options, save → two new what-ifs in library.

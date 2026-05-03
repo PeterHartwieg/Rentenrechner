@@ -1,0 +1,41 @@
+# 06 — Multi-instance UI in inventory + sidebar + Layer 3 details
+
+Status: needs-triage
+Milestone: M2
+Plan section: §4 M2.5 + M2.8
+PRD capabilities: F3, F5
+Depends on: 05
+
+## What
+
+UI affordance for adding multiple instances of the same product type in the inventory wizard, plus the Layer 3 expandable "Details" disclosure on each per-product card. Also surfaces per-instance dashboard sidebar cards for editing post-baseline.
+
+## Scope
+
+- "+ weitere bAV hinzufügen" button on each product's wizard card row. Creates a new instance via `addInstance(productId)`.
+- Per-instance label input (defaults to "{ProductLabel} #N" or "{ProductLabel} {Anbieter}" when filled in).
+- Instance removal via "Entfernen" button on each instance's card header (with confirm).
+- Layer 3 expandable `<details>` on each instance card carries fee decomposition, KVdR/freiwillig toggle, Beitragsdynamik, statutory subsidy split (bAV), vintage auto-detection chips (read-only with tooltip explaining §40b a.F. / Halbeinkünfte / pre-2005).
+- Dashboard input sidebar mirrors the per-instance cards. Editing any field there updates the workspace and recomputes immediately.
+- Multi-instance affordance applies to bAV, pAV, Riester, ETF, Basisrente, AVD. GRV stays singleton.
+
+## Out of scope
+
+- Evidence badge UI (issue 10).
+- Three-card per-contract template (issue 14).
+- Transfer events between instances (issue 15).
+
+## Acceptance
+
+- Dilan can add 2 bAV instances (one paid-up old, one active new) with distinct labels and Durchführungsweg in the wizard.
+- Bernd can add 2 bAV instances + Riester + ETF; dashboard shows them all.
+- Removing an instance updates the workspace and the dashboard, with no orphaned state.
+- Layer 3 disclosure starts collapsed; opening reveals the detailed fields without breaking layout.
+- Vintage auto-detection chips appear on instances with `contractStartYear` ≤ 2004 (Halbeinkünfte) and the bAV §40b a.F. case (Direktversicherung, contractStartYear ≤ 2004).
+
+## Test plan
+
+- Unit: `addInstance` / `removeInstance` workspace mutations.
+- Integration: Dilan-shape (2 bAV) workspace renders 2 instance cards in wizard and 2 in sidebar.
+- E2E preview: vintage chip appears on a 2002 pAV; tooltip text references Halbeinkünfte.
+- Vintage detection: `contractStartYear: 2004` Direktversicherung shows §40b a.F. chip; `contractStartYear: 2005` does not.

@@ -163,3 +163,17 @@ All UX backlog tiers and Phase 0 (Group 0) preflight shipped (commit `56fdec9`, 
 - **Trigger config** in `src/content/triggers.ts`: `PATH_OPTIONS`, `VISIBLE_PRODUCTS_BY_PATH`, `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS`. Add new Group G entry flows here, not inline in components.
 
 Remaining publication work: branding decision (working name "Rentenrechner" must be replaced before launch), public deployment (hosting + CI). After that, OCR + backend introduction (Group B) and scenario-led portfolio redesign (Group G P1, including the singleton-to-instance migration). See `BACKLOG.md`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default mattpocock/skills label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.

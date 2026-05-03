@@ -1,0 +1,41 @@
+# 04 — Two-CTA landing page + routing split
+
+Status: needs-triage
+Milestone: M2 (Combine-mode foundations)
+Plan section: §4 M2.1 + M2.2
+PRD capabilities: F1, F5, S2
+Depends on: 03
+
+## What
+
+Replace the current landing experience (immediate dashboard or `GuidedSetup`) with a landing page that has two equal-weight CTAs: **Mein Plan** (combine) and **Produkte vergleichen** (compare). Combine-mode lands on a "Hast du schon Verträge?" split: ja → inventory wizard (issue 05), nein → existing `GuidedSetup` minimum-input flow (preserved unchanged).
+
+## Scope
+
+- `src/features/landing/LandingPage.tsx` + CSS — two large primary cards with copy, plus a smaller "Geführter Einstieg" link for returning users.
+- Combine card click → "Hast du schon Verträge? Ja / Nein" prompt.
+  - Ja → routes to inventory wizard (placeholder hook in this issue; wizard implementation is issue 05).
+  - Nein → routes to today's `GuidedSetup` minimum-input flow.
+- Compare card click → routes directly to today's compare-mode dashboard (no wizard).
+- Mode tag stored in workspace on first action; round-trips through share-URLs and library entries.
+- Visual weight: combine-card is the larger / primary; compare-card is secondary but always visible. Consumer-first design with broker entry preserved.
+
+## Out of scope
+
+- Inventory wizard component itself (issue 05).
+- Equal-input compare-mode sub-mode (issue 16).
+- Trigger-card landing variants (issue 17).
+
+## Acceptance
+
+- A user with no saved state lands on the landing page.
+- Returning users with saved state skip the landing and go directly to their workspace's mode (combine → dashboard, compare → comparison view).
+- A topbar "Startseite" link returns to the landing page on demand.
+- Mode tag persists in the workspace and round-trips through share-URLs.
+- Compare-mode visually distinct from combine-mode in topbar (subtle "Vergleichsmodus" badge or similar).
+
+## Test plan
+
+- New `useRoute` test: `/` with no state renders landing; `/` with saved combine-mode state renders combine dashboard; `/` with saved compare-mode state renders comparison.
+- E2E preview walk-through: click "Mein Plan" → "Hast du schon Verträge? Nein" → existing `GuidedSetup` opens (preserved).
+- E2E preview walk-through: click "Produkte vergleichen" → today's dashboard opens with `mode: 'compare'` tag set.

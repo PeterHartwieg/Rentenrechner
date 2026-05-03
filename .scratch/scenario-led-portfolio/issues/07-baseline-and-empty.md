@@ -1,0 +1,45 @@
+# 07 — Auto-pinned baseline + empty-baseline support + re-baselining
+
+Status: needs-triage
+Milestone: M2
+Plan section: §4 M2.4
+PRD capabilities: F6, F7, F8
+Depends on: 03, 05
+
+## What
+
+Wire up the baseline lifecycle in combine-mode: implicit pin on inventory exit, valid empty baseline (GRV-only), and re-baselining UX (edit-in-place + opt-in archive).
+
+## Scope
+
+- On `InventoryWizard` exit, the entered portfolio is committed as `Workspace.baseline` automatically. No "save as baseline" button — the action is implicit, the word "Baseline" surfaces in copy ("Baseline: dein aktueller Plan").
+- Empty baseline (no products ticked) renders GRV-only retirement income on the dashboard. Validates and serializes.
+- Edit-baseline-in-place: any change to a baseline field updates `Workspace.baseline.assumptions` directly. Each what-if carries a **frozen `derivedFromBaselineSnapshot: Scenario`** captured at fork time (per Plan §2.1) — the original baseline state survives even after the live baseline mutates. Derived `whatIfs` show a "Baseline hat sich geändert" badge whenever `Workspace.baseline.lastEditedAt > whatIf.derivedFromBaselineSnapshot.createdAt` with two actions:
+  - *Auf aktuellen Stand re-basen* — discards the snapshot, re-forks from the current baseline, re-applies the diff between the what-if's current state and its (now-stale) snapshot. Updates `derivedFromBaselineId`, `derivedFromBaselineSnapshot`, refreshes the snapshot.
+  - *Snapshot beibehalten* — keeps the existing snapshot frozen; the badge becomes a static "frozen at {date}" marker so the user knows the comparison is to an older baseline.
+- "Aktuellen Stand als Baseline speichern und neu starten" button in the dashboard sidebar: archives the current baseline as a saved scenario named "Baseline {currentYear}", clears `whatIfs`, and the new baseline is the current state.
+- `archived` scenario kind in the library distinguishes auto-archived baselines from user-saved scenarios (UI-level only; same storage shape).
+- **`scenarioDiff(a, b)` helper** in `src/app/scenarioDiff.ts` returns a typed list of (fieldPath, oldValue, newValue) tuples used by both the badge action ("re-apply the diff") and the result-panel "what changed" view.
+
+## Out of scope
+
+- Diff visualisation in result panel (this issue ships the `scenarioDiff` helper; result-panel rendering ships with issue 12 RecommenderCard or as a follow-up).
+- Recommender integration (issue 12).
+- Schema field for `derivedFromBaselineSnapshot` itself — defined in issue 01.
+
+## Acceptance
+
+- Anna's no-tick wizard exit produces an empty baseline (zero instances, GRV-only retirement income); dashboard renders without errors.
+- Bernd's 4-product wizard exit produces a populated baseline; the dashboard summary line says "Baseline: dein aktueller Plan".
+- Bernd edits his bAV current value in the sidebar; the dashboard recomputes; any prior what-if shows the "Baseline hat sich geändert" badge.
+- Clicking *re-base on current baseline* on a what-if updates its derivedFromBaselineId and re-applies the user's deltas to the new baseline.
+- Clicking *keep as-is* freezes the what-if to its current materialised state (no further re-base prompts until the next baseline edit).
+- The archive button creates a saved scenario named "Baseline 2026" (current year), clears `whatIfs`, and the dashboard resumes editing the new baseline.
+
+## Test plan
+
+- Unit: baseline-pin on wizard commit produces a `Workspace` with `origin: 'baseline'`.
+- Unit: empty baseline simulates without errors (GRV-only result).
+- Unit: editing baseline marks all `whatIfs` with a `baselineMutatedAt` timestamp greater than each what-if's `derivedFromBaselineSnapshot.createdAt`.
+- Integration: re-base action reproduces the original delta against the new baseline state; freeze action carries the prior baseline snapshot inside the what-if.
+- E2E preview: archive button produces a "Baseline 2026" entry in the scenario library and resets `whatIfs: []`.

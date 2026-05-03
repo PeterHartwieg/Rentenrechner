@@ -1,0 +1,49 @@
+# 09 — evidenceMap propagation + confidence indicator UI
+
+Status: needs-triage
+Milestone: M2
+Plan section: §2.3 Per-value evidence, §4 M2.7
+PRD capabilities: F16, F17, G1
+Depends on: 05, 08
+
+## What
+
+Implement the per-value evidence flag system end-to-end: `evidenceMap` on every instance, propagation into engine output, and confidence-indicator rendering on the dashboard, recommendation copy, and exports.
+
+## Scope
+
+- `InstanceCommon.evidenceMap: Record<string, EvidenceState>` populated by the inventory wizard:
+  - User-typed value → `'user_confirmed'` (green badge in UI).
+  - User-accepted-as-is default → `'model_estimate'` (yellow "🤔 Schätzung" badge).
+  - One-click "Wert ist okay" promotes a single field's `model_estimate` → `user_confirmed`.
+- `src/app/evidence.ts` helpers:
+  - `lowestConfidence(evidenceMap, fieldPaths[])` returns `'model_estimate'` if any path is `model_estimate`, else `'user_confirmed'`.
+  - `confidenceForResult(productResult, instance)` returns the confidence level for a derived figure based on which input fields it consumed.
+- Engine integration: `BaseProductResult` gains an optional `inputConfidence: EvidenceState` field set by `buildProductResult` based on which instance fields the simulator read.
+- UI:
+  - Per-instance card (wizard + sidebar): badge next to each field.
+  - Dashboard summary: "🤔 Teilweise geschätzt" badge next to the combined retirement income figure when any underlying instance has `inputConfidence: 'model_estimate'`. Click opens a per-source breakdown.
+  - `RecommenderCard` (shipped in issue 12) reads confidence and uses conditional language ("auf deinen Schätzungen ergibt sich…" vs "ergibt sich…").
+- Exports:
+  - `csvExport.ts` adds a "Confidence" column per scenario row.
+  - `PrintReport.tsx` adds a confidence indicator next to each affected figure.
+
+## Out of scope
+
+- OCR-derived `'statement'` evidence — Group B, deferred until OCR ships.
+- Recommender card itself (issue 12).
+
+## Acceptance
+
+- Defaulted Effektivkosten field in Karin's pAV inventory shows yellow "🤔 Schätzung" badge until she clicks "Wert ist okay".
+- Karin's combined retirement income on the dashboard shows the confidence indicator while any input is `model_estimate`.
+- Recommendation card text reads "auf deinen Schätzungen ergibt sich…" when applicable.
+- PDF export carries the confidence indicator next to each affected figure (G1).
+- CSV export includes the "Confidence" column.
+
+## Test plan
+
+- Unit: `lowestConfidence` propagation across mixed inputs.
+- Unit: `inputConfidence` correctly set on `ProductResult` based on instance fields read.
+- Integration: Karin-shape workspace produces a yellow-badged dashboard summary; promote-to-confirmed clears the badge.
+- E2E preview: badge renders on the inventory wizard; dashboard summary; PDF.

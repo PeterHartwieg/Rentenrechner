@@ -1,0 +1,47 @@
+# 05 — Inventory wizard (existing-portfolio path)
+
+Status: needs-triage
+Milestone: M2
+Plan section: §4 M2.3
+PRD capabilities: F5, F6, F16, G1
+Depends on: 03, 04
+
+## What
+
+The combine-mode existing-portfolio entry point. A full-screen modal wizard with a 7-product checklist plus per-product expandable cards. Each card has Layer 1 (always-visible anchor + high-impact fields) only in this issue; Layer 2 (evidence badges) and Layer 3 (Details disclosure) ship in adjacent issues.
+
+## Scope
+
+- `src/features/inventory/InventoryWizard.tsx` + CSS. Full-screen modal overlay (reuse `GuidedSetup` chrome patterns).
+- 7-product checklist: GRV, bAV, Riester, pAV, Basisrente, AVD, ETF. Ticking expands the inline card.
+- New `src/features/inventory/InstanceCard.tsx` Layer 1 (anchor + high-impact fields per Plan §3 / PRD F5):
+  - Universal: Vertragsbeginn, Aktueller Wert, Monatlicher Beitrag, Status, Anbieter (free text).
+  - bAV: Durchführungsweg, Effektivkosten p.a. (with hint), Rentenfaktor (when Leibrente).
+  - pAV: Payout mode, Effektivkosten p.a. (with hint), Rentenfaktor (Leibrente).
+  - Riester: Payout mode, Zulagen-Status (auto from `childBirthYears`).
+  - Basisrente: Payout mode, Rentenfaktor (Leibrente), Effektivkosten p.a.
+  - ETF: TER p.a.
+  - AVD: Glidepath toggle.
+  - GRV: Entgeltpunkte (or estimated from years, today's `rentengap` path).
+- Reuses `src/features/inputs/sections/*` (PayoutModeSection, FeeSection, etc.) wherever possible.
+- "Fertig & Vergleich starten" button at the bottom commits the portfolio and routes to the combine-mode dashboard.
+
+## Out of scope
+
+- Multi-instance ("+ weitere bAV hinzufügen") — issue 06.
+- Evidence badges + Layer 2 UI — issue 09.
+- Layer 3 detail disclosure — issue 06.
+- Auto-pinned baseline mechanics — issue 07.
+
+## Acceptance
+
+- Anna (clean-slate) ticks no boxes and reaches the dashboard with an empty baseline.
+- Bernd ticks GRV, bAV (1 instance), Riester, ETF and fills Layer-1 fields in under 8 minutes (S2 timing target). Dashboard renders his portfolio.
+- Required fields (anchor + high-impact) marked clearly; defaulted fields surface a "🤔 Schätzung" placeholder text (the actual badge UI lands in issue 10 — placeholder copy here).
+- Wizard is dismissible without committing; existing state preserved.
+
+## Test plan
+
+- Unit: each per-product card renders its Layer-1 fields when ticked, none otherwise.
+- Integration: wizard exit produces a v2 `Workspace` with `mode: 'combine'`, baseline scenario containing the entered instances.
+- E2E preview: Anna's no-tick path → empty baseline; Bernd's 4-product path → 4-instance baseline.

@@ -1,0 +1,38 @@
+# 18 — New persona seeds (low-income parent + civil servant)
+
+Status: needs-triage
+Milestone: M4
+Plan section: §4 M4.3
+PRD capabilities: F25, F26
+Depends on: 17
+
+## What
+
+Add two new personas to `docs/user-scenarios.md` and seed two new triggers in `triggers.ts` to address the persona spread gap noted in PRD F25/F26: the existing 10 personas skew middle-to-high income and entirely miss civil servants / Versorgungswerk professionals.
+
+## Scope
+
+- New persona section in `docs/user-scenarios.md`: **Lena (33), Erzieherin, Teilzeit (60%), 2 Kinder** — low-income parent. Driven by Riester allowance proration, child-zulage UX, tight-budget what-if templates. Capability matrix updated.
+- New persona section: **Markus (38), Lehrer in Bayern, Beamter** — civil servant, no GRV, Beamtenpension as baseline retirement income. Drives Beschäftigungsstatus toggle UI surfacing of the existing engine variants (Beamtenpension code path exists in `grv.ts`).
+- New triggers in `triggers.ts`:
+  - `low_income_parent` — wizard captures part-time-percentage + child birth years + tight budget, generates a Riester-vs-AVD-vs-bAV recommender output biased toward Zulagen-leverage.
+  - `beamter` — wizard captures Versorgung type (Beamtenpension / Versorgungswerk / mixed), removes GRV/bAV from visible products, surfaces Basisrente as the primary Schicht-1 lever.
+- Both wizards are small (< 200 LOC each) and follow the dispatched-by-data pattern from issue 17.
+
+## Out of scope
+
+- Other new triggers (job_change, inheritance, pkv_switch, etc.) — independent P2 issues each.
+- Beamter retirement-tax pipeline corrections — already in engine (see Wave 15); this issue only adds the UI entry.
+
+## Acceptance
+
+- `docs/user-scenarios.md` has 12 personas (existing 10 + Lena + Markus) with capability matrix entries.
+- Landing-card grid (or trigger-card list) shows both new triggers as options for the "Mein Plan" combine-mode entry.
+- Lena's wizard produces a workspace with `pensionBaselineType: 'grv'` (she's an employee), `riester` instance with kid Zulagen flagged, and a recommender output that emphasises Riester Zulagen.
+- Markus's wizard produces a workspace with `pensionBaselineType: 'beamtenpension'`, no GRV/bAV instance affordances, and a baseline retirement income that uses the Beamtenpension code path.
+
+## Test plan
+
+- Unit: each new wizard component produces the expected workspace shape on completion.
+- Integration: Markus-shape workspace runs through `combinePortfolio` correctly, with no GRV employee/employer contributions, no §3 Nr. 63 path, and KV/PV via PKV (defaulted) or freiwillig.
+- E2E preview: both new triggers visible from landing; clicking either opens the right wizard.

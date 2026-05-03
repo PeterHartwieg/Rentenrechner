@@ -1,0 +1,39 @@
+# 10 — Rules engine skeleton (atoms + templates)
+
+Status: needs-triage
+Milestone: M3 (Recommender + decision templates)
+Plan section: §3 Module map, §4 M3.1
+PRD capabilities: F10, F18, A5
+Depends on: 08
+
+## What
+
+Stand up the rules engine infrastructure in `src/app/recommendations.ts`: atom shape, template-mapping table, query API. Zero rules yet (rules ship in issues 11 / 13 / 14). This issue is the API + harness.
+
+## Scope
+
+- `Atom` type: `{ id: AtomId, priority: 'high' | 'medium' | 'low', context: Record<string, unknown> }`.
+- `AtomId` is a string-literal union, extended per rule (starts empty / minimal — issues that add rules extend it).
+- `RuleEngineInput` type bundles: `Workspace`, `SimulationResult` (combine-mode), `CombinedResult` (from issue 08), `evidence` snapshot, optional `marginalBudgetEUR`.
+- `runRules(input: RuleEngineInput): Atom[]` — closed (no LLM); each rule is a pure function `(input) => Atom | null` and the engine concatenates their outputs.
+- `renderAtom(atom: Atom, locale = 'de'): { headline: string, body: string, cta?: string }` — table-driven mapping, one entry per `AtomId`. P2 bilingual support swaps the table.
+- `decisionLogic.ts` (existing, used in compare-mode) folded in as a sibling consumer: it queries `runRules` with the compare-mode input and renders via `renderAtom`. No behaviour change in compare-mode.
+
+## Out of scope
+
+- Actual rules (issues 11 / 13 / 14).
+- RecommenderCard UI (issue 12).
+- Per-trigger rule biasing (P2).
+
+## Acceptance
+
+- `runRules` with a no-rules registry returns `[]` and does not throw.
+- `renderAtom` for an unknown `AtomId` returns a graceful fallback (logs in dev, returns a placeholder string in prod). Never crashes.
+- Existing `decisionLogic` heuristics (rankings_disagree / narrow_capital_gap / high_fee_winner / default) are re-expressed as rules and produce identical UI output.
+- Engine module is pure (no React imports, no DOM access).
+
+## Test plan
+
+- Unit: empty-rules registry returns `[]`.
+- Unit: re-expressed `decisionLogic` rules produce the same atom counts and ids as today's heuristics on a fixed fixture.
+- Snapshot: `renderAtom` output for each existing atom in compare-mode.
