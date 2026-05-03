@@ -1,0 +1,167 @@
+/* CombineDashboardSidebar — baseline header, stale badges, archive button */
+
+/* ── Baseline header ─────────────────────────────────────────────────── */
+
+.cds-baseline-header {
+  padding: 10px 14px 8px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.cds-baseline-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #0369a1;
+  margin: 0 0 2px;
+}
+
+.cds-baseline-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #1e3a5f;
+  margin: 0;
+}
+
+/* ── What-if section ─────────────────────────────────────────────────── */
+
+.cds-whatifs-section {
+  margin-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.cds-whatifs-heading {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin: 0 0 8px;
+}
+
+/* ── What-if card ────────────────────────────────────────────────────── */
+
+.cds-whatif-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+
+.cds-whatif-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.cds-whatif-label {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.cds-whatif-origin {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* ── Stale badge ─────────────────────────────────────────────────────── */
+
+.cds-stale-badge {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.78rem;
+}
+
+.cds-stale-badge--frozen {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cds-stale-badge-label {
+  display: block;
+  font-weight: 600;
+  color: #c2410c;
+  margin-bottom: 5px;
+}
+
+.cds-stale-badge-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cds-stale-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s;
+}
+
+.cds-stale-action--rebase {
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.cds-stale-action--rebase:hover {
+  background: #e0f2fe;
+}
+
+.cds-stale-action--freeze {
+  color: #64748b;
+}
+
+.cds-stale-action--freeze:hover {
+  background: #f1f5f9;
+}
+
+/* ── Archive button ──────────────────────────────────────────────────── */
+
+.cds-archive-section {
+  margin-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.cds-archive-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px dashed #94a3b8;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #475569;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.cds-archive-btn:hover {
+  background: #f8fafc;
+  border-color: #64748b;
+  color: #1e293b;
+}

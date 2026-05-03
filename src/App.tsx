@@ -375,12 +375,17 @@ function Calculator({ navigate }: CalculatorProps) {
     portfolioState.mode === 'combine' ? (
       <section className="workspace-view workspace-view--angebot">
         <CombineDashboardSidebar
+          baseline={portfolioState.baseline}
           assumptions={portfolioState.baseline.assumptions}
+          whatIfs={portfolioState.whatIfs}
           onPatchAssumptions={(patch) =>
             portfolioState.patchBaseline({ assumptions: { ...portfolioState.baseline.assumptions, ...patch } })
           }
           addInstance={portfolioState.addInstance}
           removeInstance={portfolioState.removeInstance}
+          onRebaseWhatIf={portfolioState.rebaseWhatIf}
+          onFreezeWhatIf={portfolioState.freezeWhatIf}
+          onArchiveAndRestart={() => portfolioState.archiveAndRestart()}
         />
       </section>
     ) : (

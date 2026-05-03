@@ -22,8 +22,9 @@ import {
   forkBaselineScenario,
   newScenarioId,
   rebaseWhatIfStub,
+  rebaseWhatIf,
 } from './portfolioState'
-import type { Scenario } from '../domain/workspace'
+import type { Scenario, WhatIfScenario } from '../domain/workspace'
 
 // ---------------------------------------------------------------------------
 // newScenarioId / deepCloneScenario
@@ -114,8 +115,37 @@ describe('portfolioState helpers — rebaseWhatIfStub', () => {
     expect(rebased.id).toBe(whatIf.id)
   })
 
-  it.skip('TODO(issue P2): full re-base preserves the user\'s deltas against the new baseline', () => {
-    // The stub does not transplant deltas. Issue P2 introduces structural diff +
-    // re-apply so a what-if's user-changed fields survive a re-base unchanged.
+  // Issue 07 ships full rebaseWhatIf with diff + re-apply:
+  it('rebaseWhatIf preserves user deltas and incorporates new baseline changes', () => {
+    const baseline: Scenario = {
+      ...defaultWorkspace.baseline,
+      id: 'baseline-1',
+      label: 'Original',
+      assumptions: { ...defaultWorkspace.baseline.assumptions, inflationRate: 0.02 },
+    }
+    const whatIf = forkBaselineScenario(baseline, 'delta test')
+
+    // User mutates the what-if
+    const mutatedWhatIf: WhatIfScenario = {
+      ...whatIf,
+      assumptions: { ...whatIf.assumptions, inflationRate: 0.05 },
+    }
+
+    // Baseline is updated independently
+    const newBaseline: Scenario = {
+      ...baseline,
+      id: 'baseline-2',
+      assumptions: { ...baseline.assumptions, retirementEndAge: 95 },
+    }
+
+    const rebased = rebaseWhatIf(mutatedWhatIf, newBaseline)
+    // User's delta preserved
+    expect(rebased.assumptions.inflationRate).toBeCloseTo(0.05)
+    // New baseline value incorporated
+    expect(rebased.assumptions.retirementEndAge).toBe(95)
+    // Snapshot updated to new baseline
+    expect(rebased.derivedFromBaselineSnapshot.id).toBe('baseline-2')
+    // frozenAt cleared
+    expect(rebased.frozenAt).toBeUndefined()
   })
 })

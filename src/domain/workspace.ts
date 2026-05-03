@@ -40,12 +40,24 @@ export interface Scenario {
   assumptions: WorkspaceAssumptionsV2
   createdAt: string
   origin: 'baseline' | 'manual' | 'recommender'
+  /**
+   * Unix timestamp (ms) of the most-recent in-place edit. Updated by
+   * `patchBaseline` on every mutation. Used to detect when derived
+   * what-ifs are stale relative to the live baseline.
+   */
+  lastEditedAt?: number
 }
 
 export interface WhatIfScenario extends Scenario {
   derivedFromBaselineId: string
   /** Frozen copy of the baseline at fork time; required to recover the user's deltas for re-base. */
   derivedFromBaselineSnapshot: Scenario
+  /**
+   * Unix timestamp (ms) set when the user clicks "Snapshot beibehalten".
+   * While `frozenAt > baseline.lastEditedAt` the "Baseline hat sich geändert"
+   * badge suppresses itself. Cleared (set to `undefined`) on re-base.
+   */
+  frozenAt?: number
 }
 
 export interface Workspace {

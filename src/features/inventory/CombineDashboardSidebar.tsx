@@ -20,9 +20,10 @@
  */
 
 import './InventoryWizard.css'
+import './CombineDashboardSidebar.css'
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
-import type { WorkspaceAssumptionsV2 } from '../../domain/workspace'
+import { Plus, Trash2, Archive, RefreshCw, Lock } from 'lucide-react'
+import type { WorkspaceAssumptionsV2, WhatIfScenario, Scenario } from '../../domain/workspace'
 import type {
   BavInstance,
   EtfInstance,
@@ -74,10 +75,15 @@ const SIMPLIFIED_PRESETS = [
 // ---------------------------------------------------------------------------
 
 interface Props {
+  baseline: Scenario
   assumptions: WorkspaceAssumptionsV2
+  whatIfs: WhatIfScenario[]
   onPatchAssumptions: (patch: Partial<WorkspaceAssumptionsV2>) => void
   addInstance: (productId: MultiInstanceProductId) => void
   removeInstance: (productId: MultiInstanceProductId, instanceId: string) => void
+  onRebaseWhatIf: (id: string) => void
+  onFreezeWhatIf: (id: string) => void
+  onArchiveAndRestart: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -575,11 +581,114 @@ function ProductGroup({
 // Main sidebar component
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// BaselineStaleBadge — shown on each what-if when baseline has been mutated
+// ---------------------------------------------------------------------------
+
+function BaselineStaleBadge({
+  whatIf,
+  baselineLastEditedAt,
+  onRebase,
+  onFreeze,
+}: {
+  whatIf: WhatIfScenario
+  baselineLastEditedAt: number | undefined
+  onRebase: () => void
+  onFreeze: () => void
+}) {
+  const snapshotCreatedAt = new Date(whatIf.derivedFromBaselineSnapshot.createdAt).getTime()
+  const editedAt = baselineLastEditedAt ?? 0
+
+  // Badge suppressed if the what-if was frozen after the last baseline edit.
+  if (whatIf.frozenAt !== undefined && whatIf.frozenAt >= editedAt) {
+    const frozenDate = new Date(whatIf.frozenAt).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+    })
+    return (
+      <div className="cds-stale-badge cds-stale-badge--frozen">
+        <Lock size={12} aria-hidden="true" />
+        <span>Eingefroren am {frozenDate}</span>
+      </div>
+    )
+  }
+
+  // No stale signal if baseline hasn't been edited after the snapshot was taken.
+  if (editedAt <= snapshotCreatedAt) return null
+
+  return (
+    <div className="cds-stale-badge" role="alert">
+      <span className="cds-stale-badge-label">Baseline hat sich geändert</span>
+      <div className="cds-stale-badge-actions">
+        <button
+          type="button"
+          className="cds-stale-action cds-stale-action--rebase"
+          onClick={onRebase}
+          title="Auf aktuellen Stand re-basen"
+        >
+          <RefreshCw size={12} aria-hidden="true" />
+          Auf aktuellen Stand re-basen
+        </button>
+        <button
+          type="button"
+          className="cds-stale-action cds-stale-action--freeze"
+          onClick={onFreeze}
+          title="Snapshot beibehalten"
+        >
+          <Lock size={12} aria-hidden="true" />
+          Snapshot beibehalten
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// WhatIfCard — summary card for a what-if scenario in the sidebar
+// ---------------------------------------------------------------------------
+
+function WhatIfCard({
+  whatIf,
+  baselineLastEditedAt,
+  onRebase,
+  onFreeze,
+}: {
+  whatIf: WhatIfScenario
+  baselineLastEditedAt: number | undefined
+  onRebase: () => void
+  onFreeze: () => void
+}) {
+  return (
+    <div className="cds-whatif-card">
+      <div className="cds-whatif-card-header">
+        <span className="cds-whatif-label">{whatIf.label}</span>
+        <span className="cds-whatif-origin">{whatIf.origin === 'recommender' ? 'Empfehlung' : 'Manuell'}</span>
+      </div>
+      <BaselineStaleBadge
+        whatIf={whatIf}
+        baselineLastEditedAt={baselineLastEditedAt}
+        onRebase={onRebase}
+        onFreeze={onFreeze}
+      />
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main sidebar component
+// ---------------------------------------------------------------------------
+
 export function CombineDashboardSidebar({
+  baseline,
   assumptions,
+  whatIfs,
   onPatchAssumptions,
   addInstance,
   removeInstance,
+  onRebaseWhatIf,
+  onFreezeWhatIf,
+  onArchiveAndRestart,
 }: Props) {
   const hasBav = assumptions.bav.length > 0
   const hasPav = assumptions.insurance.length > 0
@@ -588,19 +697,25 @@ export function CombineDashboardSidebar({
   const hasAvd = assumptions.altersvorsorgedepot.length > 0
   const hasRiester = assumptions.riester.length > 0
 
-  if (!hasBav && !hasPav && !hasEtf && !hasBasisrente && !hasAvd && !hasRiester) {
-    return (
-      <div className="combine-sidebar">
-        <p style={{ fontSize: '0.88rem', color: '#64748b' }}>
-          Noch keine Verträge erfasst. Nutze die Bestandsaufnahme, um Verträge hinzuzufügen.
-        </p>
-      </div>
-    )
-  }
+  const hasContracts = hasBav || hasPav || hasEtf || hasBasisrente || hasAvd || hasRiester
 
   return (
     <div className="combine-sidebar">
-      <p className="combine-sidebar-heading">Meine Verträge</p>
+      {/* ── Baseline header ───────────────────────────────────────── */}
+      <div className="cds-baseline-header">
+        <p className="cds-baseline-label">Baseline: dein aktueller Plan</p>
+        <p className="cds-baseline-name">{baseline.label}</p>
+      </div>
+
+      {!hasContracts && (
+        <p style={{ fontSize: '0.88rem', color: '#64748b' }}>
+          Noch keine Verträge erfasst. Nutze die Bestandsaufnahme, um Verträge hinzuzufügen.
+        </p>
+      )}
+
+      {hasContracts && (
+        <>
+          <p className="combine-sidebar-heading">Meine Verträge</p>
 
       {hasBav && (
         <ProductGroup
@@ -741,6 +856,37 @@ export function CombineDashboardSidebar({
           ))}
         </ProductGroup>
       )}
+        </>
+      )}
+
+      {/* ── What-if scenarios ─────────────────────────────────────── */}
+      {whatIfs.length > 0 && (
+        <div className="cds-whatifs-section">
+          <p className="cds-whatifs-heading">Szenarien</p>
+          {whatIfs.map((wi) => (
+            <WhatIfCard
+              key={wi.id}
+              whatIf={wi}
+              baselineLastEditedAt={baseline.lastEditedAt}
+              onRebase={() => onRebaseWhatIf(wi.id)}
+              onFreeze={() => onFreezeWhatIf(wi.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── Archive + restart button ──────────────────────────────── */}
+      <div className="cds-archive-section">
+        <button
+          type="button"
+          className="cds-archive-btn"
+          onClick={onArchiveAndRestart}
+          title="Aktuellen Stand speichern und What-Ifs zurücksetzen"
+        >
+          <Archive size={14} aria-hidden="true" />
+          Aktuellen Stand als Baseline speichern und neu starten
+        </button>
+      </div>
     </div>
   )
 }

@@ -1,5 +1,7 @@
 /**
  * Portfolio state hook (Group G issue 03 — milestone M1.4).
+ * Extended in issue 07: auto-pinned baseline, lastEditedAt, rebaseWhatIf,
+ * freezeWhatIf, archiveAndRestart.
  *
  * Workspace-level state container for combine-mode. Reads/writes the
  * `Workspace` shape (v2 schema) and exposes baseline + what-if mutators.
@@ -10,11 +12,6 @@
  * Plan §3 module map:
  *   - `src/app/portfolioState.ts`: this hook.
  *   - `useCalculatorState`: compare-mode keeps the singleton API.
- *
- * Out-of-scope for this issue:
- *   - `rebaseWhatIf` full diff/re-apply (issue P2). A stub is exported so the
- *     surface is committed; a `it.skip` test pins the deferred work.
- *   - `simulationViewModel` integration with `simulatePortfolio` (issue 06).
  */
 
 import { useCallback, useEffect, useState } from 'react'
@@ -28,6 +25,11 @@ import {
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
 } from '../features/inventory/inventoryHelpers'
+import { scenarioDiff, applyDiff } from './scenarioDiff'
+import type { SavedScenario } from '../data/scenarioLibrary'
+import { addArchivedEntry } from '../data/scenarioLibrary'
+import { singletonViewOfWorkspace } from '../engine/portfolioAdapter'
+import { defaultAssumptions } from '../data/defaultScenario'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -91,12 +93,44 @@ export function forkBaselineScenario(
 }
 
 /**
- * Re-base a what-if against a new baseline. STUB — see
- * UsePortfolioStateApi.rebaseWhatIf JSDoc and the it.skip test in
- * portfolioState.test.ts.
+ * Re-base a what-if against a new baseline.
  *
- * Today this only refreshes `derivedFromBaselineSnapshot` to the supplied new
- * baseline. Issue P2 will replace this with a structural diff + re-apply.
+ * Algorithm (Plan §2.1 / Decision A3):
+ *  1. Compute the diff between the what-if's current state and its stale
+ *     `derivedFromBaselineSnapshot` (those are the user's deltas).
+ *  2. Clone the new baseline.
+ *  3. Apply the deltas onto the clone.
+ *  4. Stamp a new `derivedFromBaselineSnapshot` pointing at the new baseline.
+ *
+ * The result carries the user's intentional changes on top of the fresh
+ * baseline. Fields not touched by the user revert to the new baseline's values.
+ */
+export function rebaseWhatIf(
+  whatIf: WhatIfScenario,
+  newBaseline: Scenario,
+): WhatIfScenario {
+  // Step 1: compute the user's deltas
+  const deltas = scenarioDiff(whatIf.derivedFromBaselineSnapshot, whatIf)
+
+  // Step 2-3: fork from new baseline, apply deltas
+  const rebased = applyDiff(deepCloneScenario(newBaseline), deltas)
+
+  return {
+    ...rebased,
+    id: whatIf.id,
+    label: whatIf.label,
+    createdAt: whatIf.createdAt,
+    origin: whatIf.origin,
+    derivedFromBaselineId: newBaseline.id,
+    derivedFromBaselineSnapshot: deepCloneScenario(newBaseline),
+    // Clear any frozen marker — the what-if is now in sync with the new baseline.
+    frozenAt: undefined,
+  } as WhatIfScenario
+}
+
+/**
+ * @deprecated Use `rebaseWhatIf` instead. This stub only refreshes the
+ * snapshot and is kept for backward compatibility with issue 03 tests.
  */
 export function rebaseWhatIfStub(
   whatIf: WhatIfScenario,
@@ -128,7 +162,7 @@ export interface UsePortfolioStateApi {
   mode: Workspace['mode']
   setMode: (mode: Workspace['mode']) => void
   setBaseline: (scenario: Scenario) => void
-  /** Update the baseline in-place (preserves id/createdAt). */
+  /** Update the baseline in-place (preserves id/createdAt). Stamps lastEditedAt. */
   patchBaseline: (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void
   addWhatIf: (whatIf: WhatIfScenario) => void
   updateWhatIf: (id: string, patch: Partial<Omit<WhatIfScenario, 'id'>>) => void
@@ -141,16 +175,26 @@ export interface UsePortfolioStateApi {
    */
   forkBaseline: (label: string, origin?: Scenario['origin']) => WhatIfScenario
   /**
-   * Re-base a what-if against the current baseline. STUB — full diff/re-apply
-   * logic is issue P2. Today this discards the snapshot and replaces it with
-   * the current baseline; user deltas are preserved as-is on the what-if's
-   * own assumptions copy.
-   *
-   * TODO(issue P2): compute a structural diff between the what-if's current
-   * assumptions and its snapshot, then re-apply that diff on top of a fresh
-   * baseline clone.
+   * Re-base a what-if against the current baseline. Computes a structural
+   * diff between the what-if's current state and its stale snapshot, then
+   * re-applies those deltas onto the current baseline. Updates
+   * `derivedFromBaselineId` + `derivedFromBaselineSnapshot`.
    */
   rebaseWhatIf: (id: string) => void
+  /**
+   * Freeze a what-if to its current materialised state. Stamps `frozenAt` so
+   * the "Baseline hat sich geändert" badge suppresses itself until the next
+   * baseline mutation that post-dates the freeze.
+   */
+  freezeWhatIf: (id: string) => void
+  /**
+   * Archive the current baseline as a saved library entry named
+   * "Baseline {currentYear}", clear all what-ifs, and stamp the workspace
+   * so it continues editing the same (now archived) baseline.
+   *
+   * Returns the created `SavedScenario` so callers can display its name.
+   */
+  archiveAndRestart: () => SavedScenario
   /**
    * Add a new default instance of the given product type to the baseline.
    * GRV stays singleton and is not in scope.
@@ -182,7 +226,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
     (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => {
       setWorkspace((w) => ({
         ...w,
-        baseline: { ...w.baseline, ...patch },
+        baseline: { ...w.baseline, ...patch, lastEditedAt: Date.now() },
       }))
     },
     [],
@@ -219,15 +263,50 @@ export function usePortfolioState(): UsePortfolioStateApi {
     [workspace.baseline],
   )
 
-  const rebaseWhatIf = useCallback((id: string) => {
-    // STUB — see UsePortfolioStateApi.rebaseWhatIf JSDoc.
+  const rebaseWhatIfCallback = useCallback((id: string) => {
     setWorkspace((w) => ({
       ...w,
       whatIfs: w.whatIfs.map((wi) =>
-        wi.id === id ? rebaseWhatIfStub(wi, w.baseline) : wi,
+        wi.id === id ? rebaseWhatIf(wi, w.baseline) : wi,
       ),
     }))
   }, [])
+
+  const freezeWhatIf = useCallback((id: string) => {
+    setWorkspace((w) => ({
+      ...w,
+      whatIfs: w.whatIfs.map((wi) =>
+        wi.id === id ? { ...wi, frozenAt: Date.now() } : wi,
+      ),
+    }))
+  }, [])
+
+  const archiveAndRestart = useCallback((): SavedScenario => {
+    const currentYear = new Date().getFullYear()
+    const archiveName = `Baseline ${currentYear}`
+    // We read the current workspace synchronously from the React state ref
+    // pattern is not available here, so we capture via a closure over the
+    // workspace variable (which is the current render's snapshot).
+    const currentWorkspace = workspace
+    const projectedAssumptions = singletonViewOfWorkspace(currentWorkspace, {
+      bav: defaultAssumptions.bav,
+      etf: defaultAssumptions.etf,
+      insurance: defaultAssumptions.insurance,
+      basisrente: defaultAssumptions.basisrente,
+      altersvorsorgedepot: defaultAssumptions.altersvorsorgedepot,
+      riester: defaultAssumptions.riester,
+    })
+    const archived = addArchivedEntry(
+      archiveName,
+      currentWorkspace.baseline.profile,
+      projectedAssumptions,
+    )
+    setWorkspace((w) => ({
+      ...w,
+      whatIfs: [],
+    }))
+    return archived
+  }, [workspace])
 
   const addInstance = useCallback((productId: MultiInstanceProductId) => {
     setWorkspace((w) => addInstanceToWorkspace(w, productId))
@@ -249,7 +328,9 @@ export function usePortfolioState(): UsePortfolioStateApi {
     updateWhatIf,
     removeWhatIf,
     forkBaseline,
-    rebaseWhatIf,
+    rebaseWhatIf: rebaseWhatIfCallback,
+    freezeWhatIf,
+    archiveAndRestart,
     addInstance,
     removeInstance,
   }

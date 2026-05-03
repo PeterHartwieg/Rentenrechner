@@ -14,6 +14,15 @@ export interface SavedScenario {
   schemaVersion: number
   profile: PersonalProfile
   assumptions: ScenarioAssumptions
+  /**
+   * UI-level distinguisher for auto-archived baselines.
+   * - `'user'` (default / missing): a scenario the user saved manually.
+   * - `'archived'`: created by the "Aktuellen Stand als Baseline speichern
+   *   und neu starten" action. Displayed with an "Archiviert" chip in the
+   *   library panel. Loading is not blocked — it behaves identically to a
+   *   user-saved scenario.
+   */
+  kind?: 'user' | 'archived'
 }
 
 const LIBRARY_KEY = 'rentenrechner-library-v1'
@@ -52,6 +61,10 @@ function migrateSavedScenario(raw: unknown): SavedScenario | null {
   const validated = migrateAndValidateState(obj.profile, obj.assumptions)
   if (!validated) return null
 
+  // Preserve the optional `kind` field (additive field, no migration needed).
+  const kind =
+    obj.kind === 'archived' ? 'archived' : obj.kind === 'user' ? 'user' : undefined
+
   return {
     id: obj.id,
     name: obj.name,
@@ -59,6 +72,7 @@ function migrateSavedScenario(raw: unknown): SavedScenario | null {
     schemaVersion: SAVED_SCENARIO_VERSION,
     profile: validated.profile,
     assumptions: validated.assumptions,
+    ...(kind !== undefined ? { kind } : {}),
   }
 }
 
@@ -99,6 +113,33 @@ export function addToLibrary(
     schemaVersion: SAVED_SCENARIO_VERSION,
     profile,
     assumptions,
+  }
+  persistLibrary([...loadLibrary(), scenario])
+  return scenario
+}
+
+/**
+ * Create an auto-archived entry (from the "Aktuellen Stand als Baseline
+ * speichern und neu starten" action). Identical to `addToLibrary` but
+ * stamps `kind: 'archived'` so the UI can render an "Archiviert" chip.
+ *
+ * The caller is responsible for projecting v2 assumptions to singleton shape
+ * before passing them here (e.g. via `singletonViewOfWorkspace`). This keeps
+ * the library layer free of engine imports.
+ */
+export function addArchivedEntry(
+  name: string,
+  profile: PersonalProfile,
+  assumptions: ScenarioAssumptions,
+): SavedScenario {
+  const scenario: SavedScenario = {
+    id: makeId(),
+    name: name.trim() || `Baseline ${new Date().getFullYear()}`,
+    savedAt: new Date().toISOString(),
+    schemaVersion: SAVED_SCENARIO_VERSION,
+    profile,
+    assumptions,
+    kind: 'archived',
   }
   persistLibrary([...loadLibrary(), scenario])
   return scenario

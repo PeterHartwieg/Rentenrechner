@@ -150,7 +150,14 @@ export function ScenariosPanel({
                     title="Klicken zum Umbenennen"
                     onClick={() => startRename(s)}
                   >
-                    <span className="library-item-label">{s.name}</span>
+                    <span className="library-item-label">
+                      {s.name}
+                      {s.kind === 'archived' && (
+                        <span className="library-item-chip library-item-chip--archived">
+                          Archiviert
+                        </span>
+                      )}
+                    </span>
                     <span className="library-item-date">{formatDate(s.savedAt)}</span>
                   </button>
                 )}
