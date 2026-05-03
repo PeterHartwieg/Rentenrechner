@@ -63,12 +63,14 @@ src/
   domain/products/ bav.ts, etf.ts, insurance.ts, basisrente.ts, altersvorsorgedepot.ts, riester.ts, grv.ts
   data/           defaultScenario.ts, presets.ts, scenarioLibrary.ts
   content/        terms.ts, productFocus.ts, triggers.ts
-  engine/         tax.ts, salary.ts, retirementTax.ts, fees.ts, grv.ts,
-                  basisrente.ts, altersvorsorgedepot.ts, riester.ts, bavWarnings.ts,
+  engine/         tax.ts, salary.ts, salaryPhaseFunding.ts, retirementTax.ts, retirementPayout.ts,
+                  fees.ts, grv.ts, basisrente.ts, altersvorsorgedepot.ts, riester.ts, bavWarnings.ts,
                   simulationContext.ts, buildResult.ts, simulate.ts, productManifest.ts
   engine/products/ etf.ts/.validation.ts/.test.ts, bav, insurance, basisrente, altersvorsorgedepot, riester
-  app/            useCalculatorState.ts, useSimulationViewModel.ts, productPresentation.ts, useRoute.ts
-  features/       inputs/ (+ sections/), results/ (+ provenance.tsx), cashflows/, assumptions/, legal/, workspace/, guidance/
+  app/            useCalculatorState.ts, useSimulationResult.ts, useWorkspaceUiState.ts,
+                  useDerivedViews.ts, simulationSelectors.ts, useSimulationViewModel.ts (facade),
+                  productPresentation.ts, useRoute.ts
+  features/       inputs/ (+ productUiRegistry.tsx, + sections/), results/ (+ provenance.tsx), cashflows/, assumptions/, legal/, workspace/, guidance/
   ui/             NumberField.tsx, ResultMetric.tsx, BavWaterfall.tsx, InfoTip.tsx, formatting.ts, helpers.ts
   utils/          scenarioSchema.ts, urlShare.ts, csvExport.ts, format.ts
   test/           factories.ts, externalGoldenFixtures.ts

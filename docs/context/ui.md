@@ -51,7 +51,7 @@ Calculator
 │   │   ├── CashflowTable
 │   │   └── AssumptionsPanel
 │   └── angebotView
-│       └── InputsPanel         (ProfileInputs, GRVInputs, BavInputs, InsuranceInputs, BasisrenteInputs, AltersvorsorgedepotInputs, RiesterInputs, plus glossary + scenario library)
+│       └── InputsPanel         (ProfileInputs, GRVInputs, plus per-product inputs dispatched through `productUiRegistry`, plus glossary + scenario library)
 ├── PrintReport                 (display:none on screen; first child = disclaimer block)
 ├── LegalFooter                 (Impressum / Datenschutzerklärung / Lizenz)
 └── GuidedSetup overlay         (when first-run / re-opened)
@@ -78,12 +78,12 @@ Calculator
 | Component | File | CSS | Data source |
 |-----------|------|-----|-------------|
 | Summary metrics | `SummaryMetrics.tsx` | `SummaryMetrics.css` | `ProductResult[]` best-result selection |
-| Monte Carlo highlights | `MonteCarloHighlights.tsx` | `MonteCarloPanel.css` | `MonteCarloResult` from `useSimulationViewModel` |
-| Capital chart | `CapitalChart.tsx` | — | `ProductResult[].yearlyRows` |
-| Pension chart | `PensionChart.tsx` | — | `pensionBars` from `useSimulationViewModel` |
+| Monte Carlo highlights | `MonteCarloHighlights.tsx` | `MonteCarloPanel.css` | `MonteCarloResult` from `useSimulationResult` |
+| Capital chart | `CapitalChart.tsx` | — | `capitalChartData` from `useDerivedViews` |
+| Pension chart | `PensionChart.tsx` | — | `pensionBars` from `useDerivedViews` |
 | Lifecycle chart | `BreakEvenChart.tsx` | `BreakEvenChart.css` | `ProductResult[].rows` + ETF payout rows |
 | Fee-drag chart | `FeeDragChart.tsx` | `FeeDragChart.css` | `ProductResult[].totalFees` / `.capitalAtRetirement` |
-| Monte Carlo | `MonteCarloPanel.tsx` | `MonteCarloPanel.css` | `MonteCarloResult` from `useSimulationViewModel` |
+| Monte Carlo | `MonteCarloPanel.tsx` | `MonteCarloPanel.css` | `MonteCarloResult` from `useSimulationResult` |
 | Fairness panel | `FairnessPanel.tsx` | — | bAV net-cost benchmark from `SimulationResult` |
 | Detail comparison table | `DetailComparisonTable.tsx` | `DetailComparisonTable.css` | All `ProductResult[]` × scenarios |
 
@@ -99,7 +99,7 @@ Calculator
 
 | Component | File | CSS | Notes |
 |-----------|------|-----|-------|
-| Cashflow table | `src/features/cashflows/CashflowTable.tsx` | `CashflowTable.css` | Yearly rows for one selected product/scenario; after-tax balance toggled by `rowAfterTaxBalance` closure in `App.tsx` |
+| Cashflow table | `src/features/cashflows/CashflowTable.tsx` | `CashflowTable.css` | Yearly rows for one selected product/scenario; after-tax balance built by `makeRowAfterTaxBalance` in `simulationSelectors.ts` and exposed as the `rowAfterTaxBalance` field of `useDerivedViews`. |
 | ETF payout table | inline in results | — | `EtfProductResult.etfPayoutRows` |
 | Assumptions panel | `src/features/assumptions/AssumptionsPanel.tsx` | `AssumptionsPanel.css` | Static `CALCULATION_WARNINGS` from `productPresentation.ts` |
 | Calculation warnings | `src/features/results/CalculationWarnings.tsx` | `CalculationWarnings.css` | Same `CALCULATION_WARNINGS` |
@@ -156,14 +156,31 @@ publication-blocking compliance issue — see CLAUDE.md / BACKLOG.md watchlist.
 
 ## App-layer hooks (`src/app/`)
 
+The view-model is split into three focused hooks plus a shared selector
+module. `useSimulationViewModel.ts` is kept as a thin facade for back-compat
+but `App.tsx` consumes the three hooks directly.
+
 | File | Role |
 |------|------|
 | `useCalculatorState.ts` | Single source of state: scenarios, profile, active scenario index. Handles localStorage load/save and URL `?s=` decode/encode. |
-| `useSimulationViewModel.ts` | Runs `simulateRetirementComparison`, derives sorted results, chart data, pension bars, best-result. |
+| `useSimulationResult.ts` | Runs `simulateRetirementComparison`, runs Monte Carlo for the active scenario, derives `taxModes` (insurance era, KVdR, bAV lump-sum routing, payout year/runtime). Re-runs only when `profile`, `assumptions`, or `selectedScenarioId` change. |
+| `useWorkspaceUiState.ts` | Workspace toggles (`showRealValues`, `cashflowProductId`, `tarifgebunden`, `showAssumptions`, `selectedScenarioId`) as plain `useState`s. **No simulation deps** — toggling one of these never re-runs the simulation. |
+| `useDerivedViews.ts` | Composes the simulation result + UI state into chart/table data (`capitalChartData`, `pensionBars`, `selectedResults`, `visibleProducts`, `cashflowResult`, `rowAfterTaxBalance`, etc.) and the share-link / CSV side-effects (`handleCopyLink`, `handleExportCsv`). |
+| `simulationSelectors.ts` | Pure framework-agnostic selectors (`deriveSelectedResults`, `buildCapitalChartData`, `buildPensionBars`, `deriveTaxModes`, `makeRowAfterTaxBalance`, …) consumed by the three hooks above. Unit-testable without React. |
+| `useSimulationViewModel.ts` | Back-compat facade that calls the three hooks above and returns a single object. New code should consume the focused hooks; this file exists so the migration was non-breaking. |
 | `productPresentation.ts` | `BAV_FEE_PRESETS`, `PAV_FEE_PRESETS`, `CALCULATION_WARNINGS`, `GRV_COLOR`. Re-exports `getProductMeta`, `PRODUCT_MANIFEST` from `productManifest.ts`. |
 
 ## Adding a UI input for a new product
 
-1. Create `src/features/inputs/<Product>Inputs.tsx` with props `(assumptions, onChange)`.
-2. Import and place it in `App.tsx` inside the input drawer.
-3. Wire `onChange` to the scenario state updater in `useCalculatorState`.
+1. Add the engine product first — see `src/engine/products/README.md`. Once
+   it's registered in `PRODUCT_REGISTRY`, `ProductId` widens automatically.
+2. Create `src/features/inputs/<Product>Inputs.tsx` with whatever prop shape
+   fits the assumptions slice; the signature is local to that component.
+3. Add a `ProductUiEntry` for the new id in
+   `src/features/inputs/productUiRegistry.tsx`. The entry's `renderInputs`
+   closure adapts the shared `ProductInputsContext` to the component's prop
+   shape. Do **not** add a branch in `InputsPanel`.
+4. Wire any new state field through `useCalculatorState` (which handles
+   localStorage + share-URL round-trips). The validator in
+   `src/utils/scenarioSchema.ts` already gates by `PRODUCT_IDS`, so once the
+   product is in the engine registry no schema edit is needed.
