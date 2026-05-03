@@ -20,37 +20,14 @@ Research references:
 
 Publication push. Recommended order:
 
-1. **Group 0** - Pre-flight foundation cleanup before publication / Group G.
-2. **Group P** — Publication readiness (license, disclaimer, donation, deployment, branding).
-3. **Group B** — Backend introduction (only when OCR/upload feature is picked up).
-4. **Group G** — Scenario-led portfolio redesign (existing P1 work).
-5. **Group F** — Later analytical / publishing work.
+1. **Group P** (remaining items) — branding decision + public deployment.
+2. **Group B** — Backend introduction (only when OCR/upload feature is picked up).
+3. **Group G** — Scenario-led portfolio redesign (P1 foundation, then P2).
+4. **Group F** — Later analytical / publishing work.
+
+Group 0 (pre-flight foundation cleanup) shipped 2026-05-03 (commit `56fdec9`). The Group P P0 legal/export guardrails landed alongside it: OSS license, commercial license terms, disclaimer infrastructure (session-only banner, first block in CSV + PDF), Impressum + Datenschutzerklärung as `/impressum` and `/datenschutz` routes, plus SPA-fallback config for Cloudflare Pages / Netlify / Vercel. See `docs/golden-coverage-audit.md` and `docs/portfolio-schema-design.md` for the Group G safety-net audit and schema-migration plan; per-instance code lands in Group G.
 
 Before large implementation work, run `npm run repo:stats`. After code or docs changes, run `npm run verify`.
-
----
-
-## Group 0: Pre-flight foundation cleanup
-
-Highest-priority prep before the publication push and the scenario-led portfolio redesign. This captures the current internal codebase review plus external feedback. Goal: tighten the legal/export guardrails, preserve the test safety net, and make the next large schema change deliberate instead of opportunistic.
-
-### P0 do first
-
-- `P0` **Ship Group P P0 legal/export guardrails first.** Implement the OSS license, commercial-license terms, Impressum, Datenschutzerklaerung, and disclaimer infrastructure before touching Group G engine architecture. The disclaimer must be collapsible per session only, never permanently hidden; PDF and CSV exports must embed the disclaimer as the first block. This is additive, unblocks launch, and avoids re-touching export paths after the portfolio refactor.
-- `P0` **Golden coverage audit, no golden refactor.** Read `simulate.integration.test.ts`, `externalGolden.test.ts`, and the external golden fixtures to confirm what each oracle pins. Add small missing black-box cases only if a real coverage gap is found. Do not restructure or "tidy" the golden tests before the singleton-to-instance migration; they are the safety net for Group G.
-- `P0` **Portfolio/schema design note before implementation.** Write a short design note for baseline vs. what-if semantics, stable contract instance ids, singleton-to-instance migration, share-URL/localStorage compatibility, paid-up/existing-contract representation, and how the first portfolio adapter will feed today's product simulators.
-
-### P1 do if Group G is next
-
-- `P1` **Split the three fat input/edit components into reusable sections.** `BavInputs.tsx`, `InsuranceInputs.tsx`, and `ProductEditCards.tsx` still assume one product instance. If Group G P1 is imminent, extract reusable sections for contribution, payout mode, fees, Beitragsdynamik, guarantee/Rentenfaktor, contract vintage, and evidence/provenance while keeping the current singleton state shape. If Group G is not imminent, defer this to avoid premature churn.
-- `P1` **Harden scenario-library persistence before schema churn.** Main state is versioned and validated, but saved scenario library entries are loaded from raw JSON. Add validation/migration around saved scenarios before baseline roles and product instances are introduced.
-- `P1` **Move trigger/card configuration out of components.** Before adding many Group G entry flows, introduce a small content/config module for trigger cards and product groupings so `GuidedSetup` and comparison selection do not become another hardcoded growth point.
-
-### Explicit non-goals for this phase
-
-- Do not refactor tax, payout, product registry, or Monte Carlo just for cleanliness; they are already modular and covered by tests.
-- Do not rewrite integration/oracle tests for aesthetics before the portfolio migration.
-- Do not introduce backend, auth, cookies, analytics, or telemetry as part of cleanup.
 
 ---
 
@@ -60,18 +37,14 @@ Everything required to publish the tool publicly under the donation + commercial
 
 ### P0 launch blockers
 
-- `P0` **OSS license file.** Add `LICENSE.md` at root with PolyForm Noncommercial 1.0.0 verbatim. Add a header note pointing brokers/advisors/employers to `peter@hartwieg.com` for commercial use.
-- `P0` **Commercial license terms.** Add `COMMERCIAL_LICENSE.md` covering: scope (single-seat advisor / firm-wide / employer self-service), price tiers (TBD), permitted use (client-facing illustrations, internal training), prohibited use (resale, white-label without rider), indemnification clause, term + renewal, jurisdiction (Germany).
-- `P0` **Disclaimer infrastructure.** Persistent banner on every screen ("Diese Berechnung ist keine Steuer-, Rechts-, oder Anlageberatung."). Collapsible per session, never permanently dismissible. Embedded as the first block of every PDF and CSV export. Same disclaimer added to README and any landing page.
-- `P0` **Impressum + Datenschutzerklärung.** German legal requirement. Static pages or routes. Datenschutzerklärung must reflect "no PII collection" today — update when backend / analytics land.
-- `P0` **Branding decision.** App name, logo (or wordmark), domain, OG images. "Rentenrechner" is taken; pick a name before launch. Affects: page title, share-URL, exports, donation page, license docs.
-- `P0` **Public deployment.** Hosting (likely Cloudflare Pages or Vercel for the static frontend), build pipeline (GitHub Actions on `main`), custom domain, HTTPS, basic error tracking. No backend yet → no DB or auth.
+- `P0` **Branding decision.** App name, logo (or wordmark), domain, OG images. "Rentenrechner" is taken; pick a name before launch. Affects: page title, share-URL slug, exports header, donation page, license docs (`LICENSE.md`, `COMMERCIAL_LICENSE.md`), Impressum strings (`PrintReport.tsx` "Rentenrechner Deutschland 2026", README, `index.html`, `LegalFooter`/`LegalLayout`).
+- `P0` **Public deployment.** Hosting (Cloudflare Pages or Vercel for the static frontend — SPA-fallback already wired in `public/_redirects` and `vercel.json`), build pipeline (GitHub Actions on `main`), custom domain, HTTPS, basic error tracking. No backend yet → no DB or auth.
 
 ### P1 launch-essential
 
 - `P1` **Donation UI.** GitHub Sponsors badge on README. Stripe Payment Link "Spenden" / "Support this project" button in the topbar. No account flow — single-click external checkout.
 - `P1` **Commercial license inquiry.** "Für Berater & Vermittler" link in footer → static page describing the commercial license + `mailto:peter@hartwieg.com` (later: HTML form once backend lands).
-- `P1` **PDF report** *(was #15 P2 — bumped)*. Brokers will print client-ready outputs; report must embed the disclaimer header, profile, key results, and the comparison table. Source: `src/features/results/PrintReport.tsx` already exists; expand sections + add print-only header/footer with disclaimer.
+- `P1` **PDF report polish.** Disclaimer block is already the first block of `PrintReport.tsx` and the report covers profile, GRV/bAV figures, scenarios, and the per-product comparison table. Remaining: print-only branded header/footer (depends on the branding decision), per-page disclaimer footer for multi-page output, and any client-ready advisor formatting requested after the first hosted release.
 - `P1` **License-tier feature matrix.** Decide and document: at launch, paid commercial license is **permission-only** (no feature gating). Revisit before adding features that primarily benefit professional users (white-label, batch scenarios, branded PDF). Capture the decision in `COMMERCIAL_LICENSE.md`.
 
 ### P2 publication polish
@@ -113,7 +86,7 @@ Suggested order:
 - `P1` **Start from user situation, not product list.** Add an entry split for "I am starting fresh" vs. "I already have contracts", then route into a short wizard before showing the full calculator.
 - `P1` **Portfolio inventory wizard.** Let users add current contracts as existing assets with anchor fields: product type, start year, current value, current contribution, contribution status, paid-up flag, fee assumptions if known, owner/spouse where relevant, and notes/source confidence.
 - `P1` **Baseline vs. what-if model.** Persist one pinned baseline scenario and compare every generated or user-created scenario against it. Add a "what changed from baseline" diff in the result panel, export, and share URL.
-- `P1` **Multiple instances per product type.** Support two or more bAV/pAV/Riester/ETF contracts in one scenario, including paid-up contracts. Likely a schema shift from singleton assumptions to per-product instance arrays with stable ids.
+- `P1` **Multiple instances per product type.** Support two or more bAV/pAV/Riester/ETF contracts in one scenario, including paid-up contracts. Schema migration plan in `docs/portfolio-schema-design.md`: schemaVersion bump 1 → 2, instance-id format `${productId}-${random8}` with deterministic singleton-id `${productId}-singleton`, storage key bump `rentenrechner-state-v1` → `-v2`, and a `PortfolioAdapter` that wraps singletons as length-1 arrays so existing simulators stay byte-identical during migration. Reusable input sections already extracted in `src/features/inputs/sections/`; provenance primitives in `src/features/results/provenance.tsx`.
 - `P1` **Portfolio-combination simulation.** Add a scenario-level portfolio simulator that combines GRV, several contract instances, ETF withdrawals, and cash/buffer assets while preserving cross-product tax and social-insurance interactions.
 - `P1` **Recommendation as an action plan.** Move the decision summary from "winner product" toward "do X next" with explicit monthly amounts, concrete forms/actions, and caveats.
 - `P1` **"Where does my next EUR X go?" recommender.** Generate obvious what-if scenarios from the baseline: add to ETF, fill remaining bAV cap, add Basisrente, keep or pause Riester, transfer Riester to AVD, allocate windfall. Rank by net pension, flexibility, risk, and structural lock-in.
@@ -145,7 +118,7 @@ Suggested order:
 
 - `P3` **Ad-hoc savings mode.** Irregular ETF/cash contributions and one-off deposits without a fixed monthly savings rate.
 - `P3` **Recommendation rule engine.** Dedicated module (e.g. `src/app/recommendations.ts`) that turns results, portfolio metadata, cap headroom, and risk metrics into explainable recommendation reasons.
-- `P3` **Data-driven trigger mapping.** Consider `src/content/triggers.ts` for trigger cards and target wizards instead of hard-coding each entry path in components.
+- `P3` **Data-driven trigger mapping.** `src/content/triggers.ts` exists today (carries `PATH_OPTIONS`, `VISIBLE_PRODUCTS_BY_PATH`, `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS`). Extend it for new Group G entry flows / trigger cards before adding more hard-coded paths in `GuidedSetup`.
 - `P3` **Partial German career or international returnee scenario.** Decide whether in scope; if yes, add a user with foreign pension rights and incomplete German GRV history. If no, document as out of scope.
 - `P3` **Risk-averse guarantee seeker scenario.** A user who values guaranteed income more than expected capital so the recommendation can trade off certainty, flexibility, and return instead of always ranking by expected net value.
 
@@ -165,3 +138,6 @@ Suggested order:
 - No active `P0` legal or calculation blockers are recorded. Re-check `LEGAL_IMPLEMENTATION_AUDIT_2026.md` and product research notes before touching rules, tax, or payout logic.
 - Keep `docs/user-scenarios.md` and this backlog in sync when adding or removing scenario-led work.
 - Monte Carlo (engine in `src/engine/monteCarlo.ts`, UI in `MonteCarloPanel.tsx`) is shipped — no follow-up work tracked here. Stress-framing surfacing is a UX item under Group G P2.
+- Group G safety net: `docs/golden-coverage-audit.md` documents what every external oracle pins and the integration-snapshot coverage. Re-read before changing test files; the BACKLOG explicitly forbids "tidying" goldens before the singleton-to-instance migration.
+- Group G schema reference: `docs/portfolio-schema-design.md` is the binding design for instance ids, baseline-vs-what-if semantics, and the v1 → v2 migration. Update it (not in PRs) if any Group G implementation has to deviate.
+- Disclaimer guardrail: keep `DisclaimerBanner` session-only (`sessionStorage`, never `localStorage`); keep the disclaimer block as the literal first child of `PrintReport`'s `#print-report` and the first section of `buildExportCsv`. Tests and the project memory call this out — regressions are a publication-blocking compliance issue.

@@ -51,6 +51,11 @@ npm run repo:stats      # file/symbol inventory
 | Add a new product | `src/engine/products/README.md` |
 | Update annual statutory values | `src/rules/de2026.ts` |
 | Add a publication / commercial-license feature | `BACKLOG.md` Group P |
+| Edit Impressum / Datenschutz / footer | `src/features/legal/{ImpressumPage,DatenschutzPage,LegalFooter}.tsx` |
+| Add a new app route | `src/app/useRoute.ts` (`Route` union + `KNOWN_ROUTES`), then render in `src/App.tsx` |
+| Add or extend a guided-setup entry flow | `src/content/triggers.ts` (`PATH_OPTIONS` + `VISIBLE_PRODUCTS_BY_PATH`) |
+| Reuse a payout-mode / fee / Beitragsdynamik / offer-capital section | `src/features/inputs/sections/` |
+| Plan or land the Group G singleton-to-instance migration | `docs/portfolio-schema-design.md` (binding design) |
 
 ## Key files
 
@@ -90,11 +95,17 @@ npm run repo:stats      # file/symbol inventory
 
 ### App, UI, storage
 
-- `src/app/` — `useCalculatorState.ts` (localStorage + URL init), `useSimulationViewModel.ts` (chart/table derivation), `productPresentation.ts` (presets + warnings + colors).
-- `src/features/` — `inputs/`, `results/`, `cashflows/`, `assumptions/`, `workspace/` (each with co-located CSS).
-- `src/ui/` — shared primitives (`NumberField`, `ResultMetric`, formatters).
+- `src/app/` — `useCalculatorState.ts` (localStorage + URL init), `useSimulationViewModel.ts` (chart/table derivation), `productPresentation.ts` (presets + warnings + colors), `useRoute.ts` (minimal pathname-based router for `/`, `/impressum`, `/datenschutz`).
+- `src/features/` — `inputs/`, `results/`, `cashflows/`, `assumptions/`, `workspace/`, `legal/` (each with co-located CSS).
+  - `inputs/sections/` — reusable section components consumed by `BavInputs` / `InsuranceInputs` / `InputsPanel` (`PayoutModeSection`, `FeeSection`, `BeitragsdynamikField`, `OfferCapitalCompareField`). Take generic value + onChange pairs so they slot into per-instance state in Group G without changes.
+  - `legal/` — `ImpressumPage`, `DatenschutzPage`, `LegalLayout` (back-link + page footer), `LegalFooter` (rendered on the calculator's home page below `PrintReport`).
+  - `results/provenance.tsx` — `ProvLabel` + `FieldWithProv` primitives reused by `ProductEditCards` and (in Group G) inventory-card evidence states.
+- `src/content/` — content/config without React deps: `terms.ts` (glossary), `productFocus.ts` (per-product "lead with user task" copy), `triggers.ts` (guided-setup paths + comparison-picker product groupings).
+- `src/ui/` — shared primitives (`NumberField`, `ResultMetric`, formatters, `InfoTip`).
 - `src/domain/` — type barrel; import from `src/domain/index.ts` unless you need one product's types.
-- `src/storage.ts`, `src/utils/{scenarioSchema,urlShare,csvExport,format}.ts`.
+- `src/storage.ts` exports `migrateAndValidateState` — the single migrate+validate pipeline used by both `parseStateFromJson` (main state) and `scenarioLibrary.ts` (saved scenarios). Library entries that fail validation are dropped silently on load.
+- `src/utils/{scenarioSchema,urlShare,csvExport,format}.ts`.
+- `public/_redirects` (Cloudflare Pages / Netlify) and `vercel.json` at repo root supply the SPA fallback so `/impressum` and `/datenschutz` deep-link correctly on static hosts.
 
 ## UI rounding boundary (display layer only)
 
@@ -141,4 +152,14 @@ Product-specific gotchas (will surprise you when first opening these simulators)
 
 ## Current state
 
-All UX backlog tiers shipped. Engine + UI stable. Remaining work pivots toward publication: license/disclaimer/donation infrastructure, OCR + backend introduction, scenario-led portfolio redesign (Group G), bilingual UI, public deployment. See `BACKLOG.md`.
+All UX backlog tiers and Phase 0 (Group 0) preflight shipped (commit `56fdec9`, 585 tests). The Group P P0 legal/export guardrails landed alongside Phase 0:
+
+- **License files** at root: `LICENSE.md` (PolyForm Noncommercial 1.0.0 verbatim) and `COMMERCIAL_LICENSE.md` (scope, indemnification, German jurisdiction).
+- **Disclaimer infrastructure**: `DisclaimerBanner` is session-only via `sessionStorage` (never `localStorage` — regressing this is a publication-blocking compliance issue). Disclaimer is the literal first child of `#print-report` in `PrintReport.tsx` and the first section of `buildExportCsv` output. README carries the same notice.
+- **Legal pages** at `/impressum` and `/datenschutz` via the small custom router in `src/app/useRoute.ts` (no react-router dependency). Wired through `LegalLayout`/`LegalFooter` in `src/features/legal/`. SPA fallback for static hosts is configured in `public/_redirects` (Cloudflare Pages / Netlify) and `vercel.json` (root).
+- **Phase 0 design docs** in `docs/`: `golden-coverage-audit.md` (read-only audit of every external oracle and integration snapshot — Group G's safety net) and `portfolio-schema-design.md` (binding design for the singleton-to-instance migration: schemaVersion 1 → 2, instance-id format, storage-key bump, `PortfolioAdapter` shape).
+- **Reusable input sections** in `src/features/inputs/sections/`: `PayoutModeSection`, `FeeSection`, `BeitragsdynamikField`, `OfferCapitalCompareField`. Provenance primitives in `src/features/results/provenance.tsx`. `BavInputs` and `InsuranceInputs` share one fee-input implementation (presets, threshold warnings, Effektivkosten all-in toggle).
+- **Hardened scenario-library load**: `migrateAndValidateState` in `storage.ts` is the shared migrate+validate pipeline; `scenarioLibrary.ts` runs every entry through it on load and drops malformed entries silently. Forward-compat guard via `SAVED_SCENARIO_VERSION`.
+- **Trigger config** in `src/content/triggers.ts`: `PATH_OPTIONS`, `VISIBLE_PRODUCTS_BY_PATH`, `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS`. Add new Group G entry flows here, not inline in components.
+
+Remaining publication work: branding decision (working name "Rentenrechner" must be replaced before launch), public deployment (hosting + CI). After that, OCR + backend introduction (Group B) and scenario-led portfolio redesign (Group G P1, including the singleton-to-instance migration). See `BACKLOG.md`.

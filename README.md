@@ -42,9 +42,13 @@ npm test            # unit tests only
 | `CLAUDE.md` / `AGENTS.md` | Developer guide for AI coding agents (Claude Code / Codex). Start here. |
 | `docs/context/products.md` | Product routing table: simulator, validator, types, tests, UI input per product |
 | `docs/context/rules-and-tax.md` | Legal area → engine file mapping |
-| `docs/context/ui.md` | UI section → component and CSS mapping |
+| `docs/context/ui.md` | UI section → component and CSS mapping (incl. legal pages, reusable input sections, provenance primitives) |
+| `docs/golden-coverage-audit.md` | What every external oracle pins; the safety net for the Group G migration |
+| `docs/portfolio-schema-design.md` | Binding design for the Group G singleton-to-instance migration |
 | `DESIGN.md` | Design vision, architecture, product assumptions |
 | `BACKLOG.md` | Prioritized accuracy and product backlog |
+| `LICENSE.md` | PolyForm Noncommercial 1.0.0 (free use scope) |
+| `COMMERCIAL_LICENSE.md` | Paid commercial license terms (brokers / advisors / employers) |
 | `LEGAL_REVIEW.md` | Source links and legal interpretation notes |
 | `BAV_RESEARCH.md` | bAV-specific research |
 | `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md` | Private insurance research |
@@ -57,15 +61,20 @@ src/
   rules/          de2026.ts, legalConstants.ts, index.ts
   domain/         index.ts, profile.ts, results.ts, fees.ts, rules.ts, salary.ts, retirementTax.ts
   domain/products/ bav.ts, etf.ts, insurance.ts, basisrente.ts, altersvorsorgedepot.ts, riester.ts, grv.ts
-  data/           defaultScenario.ts, presets.ts
+  data/           defaultScenario.ts, presets.ts, scenarioLibrary.ts
+  content/        terms.ts, productFocus.ts, triggers.ts
   engine/         tax.ts, salary.ts, retirementTax.ts, projections.ts, fees.ts, grv.ts,
                   basisrente.ts, altersvorsorgedepot.ts, riester.ts, bavWarnings.ts,
                   simulationContext.ts, buildResult.ts, simulate.ts, productManifest.ts
   engine/products/ etf.ts/.validation.ts/.test.ts, bav, insurance, basisrente, altersvorsorgedepot, riester
-  app/            useCalculatorState.ts, useSimulationViewModel.ts, productPresentation.ts
-  features/       inputs/, results/, cashflows/, assumptions/
-  ui/             NumberField.tsx, ResultMetric.tsx, BavWaterfall.tsx, formatting.ts, helpers.ts
+  app/            useCalculatorState.ts, useSimulationViewModel.ts, productPresentation.ts, useRoute.ts
+  features/       inputs/ (+ sections/), results/ (+ provenance.tsx), cashflows/, assumptions/, legal/, workspace/, guidance/
+  ui/             NumberField.tsx, ResultMetric.tsx, BavWaterfall.tsx, InfoTip.tsx, formatting.ts, helpers.ts
   utils/          scenarioSchema.ts, urlShare.ts, csvExport.ts, format.ts
-  test/           factories.ts
+  test/           factories.ts, externalGoldenFixtures.ts
   storage.ts, App.tsx, App.css, index.css
+public/
+  _redirects                # Cloudflare Pages / Netlify SPA fallback
+vercel.json                 # Vercel SPA fallback
+LICENSE.md, COMMERCIAL_LICENSE.md
 ```
