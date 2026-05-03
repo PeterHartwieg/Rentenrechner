@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import type { ProductId } from '../../domain'
 import { PRODUCT_MANIFEST } from '../../app/productPresentation'
+import { PRIMARY_PRODUCT_IDS, SECONDARY_PRODUCT_IDS } from '../../content/triggers'
 
 /**
  * UX10: replaces the old ProductVisibilityChips. Frames the chips as an explicit
@@ -9,11 +10,8 @@ import { PRODUCT_MANIFEST } from '../../app/productPresentation'
  * recommended baseline (ETF + bAV + pAV) on the primary row and the rest of the
  * products behind a "Weitere Produkte" disclosure.
  *
- * Min-one-product enforcement and the chip styling match the old chips.
+ * Primary/secondary groupings live in `src/content/triggers.ts`.
  */
-
-const PRIMARY_IDS: readonly ProductId[] = ['etf', 'bav', 'versicherung'] as const
-const SECONDARY_IDS: readonly ProductId[] = ['basisrente', 'altersvorsorgedepot', 'riester'] as const
 
 interface Props {
   visible: ProductId[]
@@ -28,7 +26,7 @@ export function ComparisonPicker({
   heading = 'Vergleich zusammenstellen',
 }: Props) {
   const visibleSet = new Set(visible)
-  const anySecondaryActive = SECONDARY_IDS.some((id) => visibleSet.has(id))
+  const anySecondaryActive = SECONDARY_PRODUCT_IDS.some((id) => visibleSet.has(id))
   const [showSecondary, setShowSecondary] = useState<boolean>(anySecondaryActive)
 
   function toggle(id: ProductId) {
@@ -62,7 +60,7 @@ export function ComparisonPicker({
     )
   }
 
-  const secondaryActiveCount = SECONDARY_IDS.filter((id) => visibleSet.has(id)).length
+  const secondaryActiveCount = SECONDARY_PRODUCT_IDS.filter((id) => visibleSet.has(id)).length
 
   return (
     <section className="comparison-picker" aria-label="Vergleich zusammenstellen">
@@ -71,7 +69,7 @@ export function ComparisonPicker({
       </div>
 
       <div className="product-chips-row" role="group" aria-label="Hauptauswahl">
-        {PRIMARY_IDS.map((id) => renderChip(id))}
+        {PRIMARY_PRODUCT_IDS.map((id) => renderChip(id))}
       </div>
 
       <button
@@ -90,7 +88,7 @@ export function ComparisonPicker({
 
       {showSecondary && (
         <div className="product-chips-row product-chips-row--secondary" role="group" aria-label="Weitere Produkte">
-          {SECONDARY_IDS.map((id) => renderChip(id))}
+          {SECONDARY_PRODUCT_IDS.map((id) => renderChip(id))}
         </div>
       )}
     </section>

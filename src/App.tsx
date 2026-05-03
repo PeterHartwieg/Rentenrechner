@@ -8,6 +8,7 @@ import { useGuidedSetup } from './app/useGuidedSetup'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useSimulationViewModel } from './app/useSimulationViewModel'
 import { useWorkspace } from './app/useWorkspace'
+import { useRoute } from './app/useRoute'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
 import { InputsPanel } from './features/inputs/InputsPanel'
 import { SummaryMetrics } from './features/results/SummaryMetrics'
@@ -37,11 +38,25 @@ import { ComparisonPicker } from './features/workspace/ComparisonPicker'
 import { EmptyComparison } from './features/workspace/EmptyComparison'
 import { DisclaimerBanner } from './features/workspace/DisclaimerBanner'
 import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
+import { ImpressumPage } from './features/legal/ImpressumPage'
+import { DatenschutzPage } from './features/legal/DatenschutzPage'
+import { LegalFooter } from './features/legal/LegalFooter'
 import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 
 function App() {
+  const { route, navigate } = useRoute()
+  if (route === '/impressum') return <ImpressumPage navigate={navigate} />
+  if (route === '/datenschutz') return <DatenschutzPage navigate={navigate} />
+  return <Calculator navigate={navigate} />
+}
+
+interface CalculatorProps {
+  navigate: (target: '/' | '/impressum' | '/datenschutz') => void
+}
+
+function Calculator({ navigate }: CalculatorProps) {
   const {
     profile,
     setProfile,
@@ -332,6 +347,8 @@ function App() {
       </section>
 
       <PrintReport profile={profile} assumptions={assumptions} simulation={simulation} />
+
+      <LegalFooter navigate={navigate} />
 
       {guidedSetup.showOverlay && (
         <GuidedSetup

@@ -4,10 +4,10 @@ import './InsuranceInputs.css'
 import { useState } from 'react'
 import type React from 'react'
 import type {
+  FeeModel,
   GermanRules,
   InsuranceProductResult,
   InsuranceTaxMode,
-  PayoutMode,
   PersonalProfile,
   ScenarioAssumptions,
 } from '../../domain';
@@ -16,6 +16,10 @@ import { InfoTip } from '../../ui/InfoTip';
 import { formatCurrency, formatPercent } from '../../utils/format';
 import { PAV_FEE_PRESETS } from '../../app/productPresentation';
 import { getTerm } from '../../content/terms';
+import { PayoutModeSection } from './sections/PayoutModeSection';
+import { OfferCapitalCompareField } from './sections/OfferCapitalCompareField';
+import { BeitragsdynamikField } from './sections/BeitragsdynamikField';
+import { FeeSection, type FeeInputMode } from './sections/FeeSection';
 
 type Props = {
   assumptions: ScenarioAssumptions;
@@ -42,7 +46,7 @@ export function InsuranceInputs({
 }: Props) {
   const ins = assumptions.insurance;
   const riy = insuranceProductResult?.accumulationRiy ?? 0
-  const [feeInputMode, setFeeInputMode] = useState<'effektivkosten' | 'aufgeschluesselt'>('aufgeschluesselt')
+  const [feeInputMode, setFeeInputMode] = useState<FeeInputMode>('aufgeschluesselt')
   const [offerCapital, setOfferCapital] = useState<number | null>(null)
   const modelCapital = insuranceProductResult?.capitalAtRetirement ?? 0
   const erweitertSummary = `${TAX_MODE_SHORT[insuranceTaxMode]}${riy > 0 ? ` · Kosten: ${formatPercent(riy)}` : ''}${ins.capitalGuarantee.enabled ? ` · Garantie: ${(ins.capitalGuarantee.floorPctOfContributions * 100).toFixed(0)} %` : ''}`
@@ -79,99 +83,37 @@ export function InsuranceInputs({
         )}
       </small>
 
-      <label className="field">
-        <span>Auszahlungsform (pAV)</span>
-        <select
-          value={ins.payoutMode}
-          onChange={(event) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              insurance: { ...current.insurance, payoutMode: event.target.value as PayoutMode },
-            }))
-          }
-        >
-          <option value="leibrente">Lebenslange Rente (Leibrente)</option>
-          <option value="zeitrente">Zeitrente (befristete Auszahlung)</option>
-          <option value="kapitalverzehr">Selbstgesteuerte Entnahme (Kapitalverzehr)</option>
-        </select>
-        <small className="field-hint">
-          {ins.payoutMode === 'leibrente' && (
-            <>Lebenslange Rente nach Vertrags-Rentenfaktor; Kapitalverzehr-Endalter wird ignoriert.</>
-          )}
-          {ins.payoutMode === 'zeitrente' && (
-            <>Vertraglich befristete Rente über die unten gewählte Anzahl Jahre.</>
-          )}
-          {ins.payoutMode === 'kapitalverzehr' && (
-            <>Eigenverwaltete Entnahme bis zum globalen Endalter (Annuitätenformel).</>
-          )}
-        </small>
-      </label>
+      <PayoutModeSection
+        productLabel="pAV"
+        payoutMode={ins.payoutMode}
+        onChangePayoutMode={(mode) =>
+          onAssumptionsChange((current) => ({
+            ...current,
+            insurance: { ...current.insurance, payoutMode: mode },
+          }))
+        }
+        rentenfaktor={ins.rentenfaktor}
+        onChangeRentenfaktor={(value) =>
+          onAssumptionsChange((current) => ({
+            ...current,
+            insurance: { ...current.insurance, rentenfaktor: value },
+          }))
+        }
+        rentenfaktorDefault={28}
+        zeitrenteYears={ins.zeitrenteYears}
+        onChangeZeitrenteYears={(value) =>
+          onAssumptionsChange((current) => ({
+            ...current,
+            insurance: { ...current.insurance, zeitrenteYears: value },
+          }))
+        }
+      />
 
-      {ins.payoutMode === 'leibrente' && (
-        <>
-          <NumberField
-            label="Garantierter Rentenfaktor (pAV)"
-            value={ins.rentenfaktor}
-            min={1}
-            max={80}
-            step={0.5}
-            suffix="EUR/10k mtl."
-            onChange={(value) =>
-              onAssumptionsChange((current) => ({
-                ...current,
-                insurance: { ...current.insurance, rentenfaktor: Number(value) },
-              }))
-            }
-          />
-          {ins.rentenfaktor === 28 && (
-            <p className="field-hint">
-              Standardwert — für eine genaue Rentenberechnung den garantierten Rentenfaktor aus dem Angebot übernehmen (steht im PIB oder in der Beispielsrechnung).
-            </p>
-          )}
-        </>
-      )}
-
-      {ins.payoutMode === 'zeitrente' && (
-        <NumberField
-          label="Zeitrente-Dauer (pAV)"
-          value={ins.zeitrenteYears}
-          min={1}
-          max={50}
-          step={1}
-          suffix="Jahre"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              insurance: { ...current.insurance, zeitrenteYears: Number(value) },
-            }))
-          }
-        />
-      )}
-
-      {modelCapital > 0 && (
-        <>
-          <NumberField
-            label="Kapital lt. Angebot bei Rentenbeginn (optional)"
-            value={offerCapital ?? 0}
-            min={0}
-            step={1000}
-            suffix="EUR"
-            onChange={(value) => {
-              const v = Number(value)
-              setOfferCapital(v > 0 ? v : null)
-            }}
-          />
-          {offerCapital !== null && offerCapital > 0 && (
-            <p className="offer-capital-compare">
-              Rechnerkapital (Basis-Szenario): {formatCurrency(modelCapital, 0)} ·{' '}
-              Angebotskapital: {formatCurrency(offerCapital, 0)} ·{' '}
-              Abweichung: {offerCapital >= modelCapital ? '+' : ''}
-              {formatCurrency(offerCapital - modelCapital, 0)}{' '}
-              ({(((offerCapital - modelCapital) / modelCapital) * 100).toFixed(1)} %)
-            </p>
-          )}
-        </>
-      )}
+      <OfferCapitalCompareField
+        modelCapital={modelCapital}
+        offerCapital={offerCapital}
+        onChangeOfferCapital={setOfferCapital}
+      />
 
       {riy > 0 && (
         <p className="field-hint">
@@ -214,29 +156,25 @@ export function InsuranceInputs({
           )}
 
           <div className="field-grid">
-            <NumberField
-              label="Beitragsdynamik p.a."
-              value={ins.annualContributionGrowthRate * 100}
-              min={0}
-              max={10}
-              step={0.1}
-              suffix="%"
-              onChange={(value) =>
+            <BeitragsdynamikField
+              rate={ins.annualContributionGrowthRate}
+              onChangeRate={(rate) =>
                 onAssumptionsChange((current) => ({
                   ...current,
                   insurance: {
                     ...current.insurance,
-                    annualContributionGrowthRate: Math.max(0, Number(value) / 100),
+                    annualContributionGrowthRate: rate,
                   },
                 }))
               }
+              activeHint={
+                <>
+                  Beitrag steigt jedes Jahr um diesen Prozentsatz. Wirkt sich auch
+                  auf Abschlusskosten aus (Beitragssumme wächst).
+                </>
+              }
             />
           </div>
-          {ins.annualContributionGrowthRate > 0 && (
-            <p className="field-hint">
-              Beitrag steigt jedes Jahr um diesen Prozentsatz. Wirkt sich auch auf Abschlusskosten aus (Beitragssumme wächst).
-            </p>
-          )}
 
           <div className="subsection-heading">
             <h3>Kapitalgarantie</h3>
@@ -428,237 +366,19 @@ export function InsuranceInputs({
             <h3>Kosten der Rentenversicherung</h3>
             <p>Kosteneingabe direkt aus dem Produktinformationsblatt (Effektivkosten all-in) oder als Einzelposten.</p>
           </div>
-          <div className="fee-mode-tabs">
-            <button
-              type="button"
-              className={`fee-mode-tab${feeInputMode === 'aufgeschluesselt' ? ' fee-mode-tab--active' : ''}`}
-              onClick={() => setFeeInputMode('aufgeschluesselt')}
-            >
-              Einzelposten
-            </button>
-            <button
-              type="button"
-              className={`fee-mode-tab${feeInputMode === 'effektivkosten' ? ' fee-mode-tab--active' : ''}`}
-              onClick={() => setFeeInputMode('effektivkosten')}
-            >
-              Effektivkosten (all-in)
-            </button>
-          </div>
-
-          {feeInputMode === 'aufgeschluesselt' && (
-            <>
-              <div className="fee-presets">
-                {PAV_FEE_PRESETS.map((preset) => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    className="preset-btn"
-                    onClick={() =>
-                      onAssumptionsChange((current) => ({
-                        ...current,
-                        insurance: { ...current.insurance, fees: preset.fees },
-                      }))
-                    }
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-              <div className="field-grid">
-                <NumberField
-                  label="Fixkosten je Monat"
-                  value={ins.fees.fixedMonthlyFee}
-                  min={0}
-                  max={50}
-                  step={0.5}
-                  suffix="EUR"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      insurance: {
-                        ...current.insurance,
-                        fees: { ...current.insurance.fees, fixedMonthlyFee: Number(value) },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Kosten je Beitrag"
-                  value={ins.fees.contributionFee * 100}
-                  min={0}
-                  max={20}
-                  step={0.25}
-                  suffix="%"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      insurance: {
-                        ...current.insurance,
-                        fees: { ...current.insurance.fees, contributionFee: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Mantelgebühr (Versicherer)"
-                  value={ins.fees.wrapperAssetFee * 100}
-                  min={0}
-                  max={3}
-                  step={0.05}
-                  suffix="% p.a."
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      insurance: {
-                        ...current.insurance,
-                        fees: { ...current.insurance.fees, wrapperAssetFee: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Fondskosten (TER)"
-                  value={ins.fees.fundAssetFee * 100}
-                  min={0}
-                  max={3}
-                  step={0.05}
-                  suffix="% p.a."
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      insurance: {
-                        ...current.insurance,
-                        fees: { ...current.insurance.fees, fundAssetFee: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Auszahlungsgebühr"
-                  value={ins.fees.pensionPayoutFeePct * 100}
-                  min={0}
-                  max={5}
-                  step={0.05}
-                  suffix="% je Rente"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      insurance: {
-                        ...current.insurance,
-                        fees: { ...current.insurance.fees, pensionPayoutFeePct: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Vertriebs-/Abschlusskosten"
-                  value={ins.fees.acquisitionCostPct * 100}
-                  min={0}
-                  max={8}
-                  step={0.25}
-                  suffix="% Summe"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      insurance: {
-                        ...current.insurance,
-                        fees: { ...current.insurance.fees, acquisitionCostPct: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Verteilung Abschlusskosten"
-                  value={ins.fees.acquisitionCostSpreadYears}
-                  min={1}
-                  max={15}
-                  step={1}
-                  suffix="Jahre"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      insurance: {
-                        ...current.insurance,
-                        fees: {
-                          ...current.insurance.fees,
-                          acquisitionCostSpreadYears: Number(value),
-                        },
-                      },
-                    }))
-                  }
-                />
-              </div>
-            </>
-          )}
-
-          {feeInputMode === 'effektivkosten' && (
-            <>
-              <NumberField
-                label="Effektivkosten aus PIB/KID (Renditeminderung p.a.)"
-                value={(ins.fees.wrapperAssetFee + ins.fees.fundAssetFee) * 100}
-                min={0}
-                max={5}
-                step={0.05}
-                suffix="% p.a."
-                onChange={(value) =>
-                  onAssumptionsChange((current) => ({
-                    ...current,
-                    insurance: {
-                      ...current.insurance,
-                      fees: {
-                        wrapperAssetFee: Number(value) / 100,
-                        fundAssetFee: 0,
-                        contributionFee: 0,
-                        fixedMonthlyFee: 0,
-                        acquisitionCostPct: 0,
-                        acquisitionCostSpreadYears: 5,
-                        pensionPayoutFeePct: 0,
-                      },
-                    },
-                  }))
-                }
-              />
-              <p className="field-hint">
-                Näherung: Die Effektivkosten aus dem PIB/KID werden als gleichmäßige jährliche Renditeminderung eingestellt. Abschluss- und beitragsbezogene Kosten sind darin bereits enthalten.{' '}
-                <button type="button" className="link-btn" onClick={() => setFeeInputMode('aufgeschluesselt')}>
-                  Auf Einzelposten wechseln
-                </button>
-              </p>
-            </>
-          )}
-
-          {(() => {
-            const f = ins.fees;
-            const totalAsset = f.wrapperAssetFee + f.fundAssetFee;
-            return (
-              <div className="fee-summary">
-                {feeInputMode === 'aufgeschluesselt' && (
-                  <span>
-                    Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
-                    (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
-                  </span>
-                )}
-                <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
-                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
-                </span>
-                {f.contributionFee > 0.05 && (
-                  <p className="field-warning">Beitragskostenquote {formatPercent(f.contributionFee)} liegt über 5 % — typische Nettotarife erheben keine Kosten je Beitrag.</p>
-                )}
-                {f.acquisitionCostPct > 0.025 && (
-                  <p className="field-warning">Abschlusskosten {formatPercent(f.acquisitionCostPct)} übersteigen 2,5 % der Beitragssumme.</p>
-                )}
-                {totalAsset > 0.01 && (
-                  <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 % — prüfen Sie ETF-basierte Nettotarife (typisch 0,5–0,8 % all-in).</p>
-                )}
-                {riy > 0.02 && (
-                  <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — ETF-basierte Verträge über dieser Schwelle gelten i. d. R. als unwirtschaftlich.</p>
-                )}
-                {riy > 0.015 && riy <= 0.02 && (
-                  <p className="field-warning">Effektivkosten {formatPercent(riy)} liegen im kritischen Bereich (1,5–2,0 %) — Nettotarife erzielen typisch 0,6–1,0 %.</p>
-                )}
-              </div>
-            );
-          })()}
+          <FeeSection
+            fees={ins.fees}
+            onChangeFees={(fees: FeeModel) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                insurance: { ...current.insurance, fees },
+              }))
+            }
+            presets={PAV_FEE_PRESETS}
+            riy={riy}
+            feeInputMode={feeInputMode}
+            setFeeInputMode={setFeeInputMode}
+          />
         </div>
       </details>
     </>

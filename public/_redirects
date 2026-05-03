@@ -1,0 +1,4 @@
+# SPA fallback for Cloudflare Pages / Netlify.
+# All non-asset paths (e.g. /impressum, /datenschutz) must serve index.html
+# so the client-side router in src/app/useRoute.ts can match the path.
+/*    /index.html   200

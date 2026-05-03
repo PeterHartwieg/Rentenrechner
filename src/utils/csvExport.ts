@@ -33,9 +33,26 @@ function nn(v: number | null): string {
   return v === null ? '' : v.toFixed(2)
 }
 
+// Embedded as the first block of every CSV export per the publication
+// guardrails — keeps the disclaimer attached to the data even when the file
+// is forwarded without the surrounding UI. Mirrors the PDF report header.
+const DISCLAIMER_LINES: readonly string[] = [
+  'Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.',
+  'Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine individuelle Beratung.',
+  'Steuersätze, Sozialversicherungsbeiträge und Rentenwert sind auf den Stand 2026 fixiert; tatsächliche Werte zum Renteneintritt können erheblich abweichen.',
+  'Annahmen (Rendite, Inflation, Gehaltsentwicklung, Lebenserwartung, Rentenfaktor, Vertragskosten) sind Schätzungen — kleine Abweichungen können das Ergebnis und die Reihenfolge der Produkte ändern.',
+] as const
+
 export function buildExportCsv(opts: ExportOptions): string {
   const { products, bavAnnualTaxSvSavings, bavProfile, bavKvdrMember, bavOtherAnnualIncome, insuranceTaxMode, equityPartialExemption, insuranceOtherAnnualIncome, rules } = opts
   const lines: string[] = []
+
+  // Section 0: Disclaimer (first block of every export)
+  lines.push('Hinweis')
+  for (const text of DISCLAIMER_LINES) {
+    lines.push(csvCell(text))
+  }
+  lines.push('')
 
   // Section 1: Summary
   lines.push('Detailvergleich')

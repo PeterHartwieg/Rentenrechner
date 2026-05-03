@@ -6,8 +6,8 @@ import type {
   BavDurchfuehrungsweg,
   BavFundingResult,
   BavLumpSumTaxMode,
+  FeeModel,
   GermanRules,
-  PayoutMode,
   PersonalProfile,
   ProductResult,
   ScenarioAssumptions,
@@ -19,6 +19,10 @@ import { formatCurrency, formatPercent } from '../../utils/format'
 import { BAV_FEE_PRESETS } from '../../app/productPresentation'
 import { careEmployeeRateForChildren } from '../../engine/salary'
 import { getTerm } from '../../content/terms'
+import { PayoutModeSection } from './sections/PayoutModeSection'
+import { OfferCapitalCompareField } from './sections/OfferCapitalCompareField'
+import { BeitragsdynamikField } from './sections/BeitragsdynamikField'
+import { FeeSection, type FeeInputMode } from './sections/FeeSection'
 
 type Props = {
   assumptions: ScenarioAssumptions
@@ -63,7 +67,7 @@ export function BavInputs({
 }: Props) {
   const bavProduct = selectedResults.find((r) => r.productId === 'bav')
   const riy = bavProduct?.accumulationRiy ?? 0
-  const [feeInputMode, setFeeInputMode] = useState<'effektivkosten' | 'aufgeschluesselt'>('aufgeschluesselt')
+  const [feeInputMode, setFeeInputMode] = useState<FeeInputMode>('aufgeschluesselt')
   const [offerCapital, setOfferCapital] = useState<number | null>(null)
   const modelCapital = bavProduct?.capitalAtRetirement ?? 0
   const dfwShort = DFW_SHORT[assumptions.bav.durchfuehrungsweg]
@@ -153,96 +157,36 @@ export function BavInputs({
 
       <BavWaterfall f={bavFunding} />
 
-      <label className="field">
-        <span>Auszahlungsform (bAV)</span>
-        <select
-          value={assumptions.bav.payoutMode}
-          onChange={(event) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: { ...current.bav, payoutMode: event.target.value as PayoutMode },
-            }))
-          }
-        >
-          <option value="leibrente">Lebenslange Rente (Leibrente)</option>
-          <option value="zeitrente">Zeitrente (befristete Auszahlung)</option>
-          <option value="kapitalverzehr">Selbstgesteuerte Entnahme (Kapitalverzehr)</option>
-        </select>
-        <small className="field-hint">
-          {assumptions.bav.payoutMode === 'leibrente' && (
-            <>Lebenslange Rente nach Vertrags-Rentenfaktor; Kapitalverzehr-Endalter wird ignoriert.</>
-          )}
-          {assumptions.bav.payoutMode === 'zeitrente' && (
-            <>Vertraglich befristete Rente über die unten gewählte Anzahl Jahre.</>
-          )}
-          {assumptions.bav.payoutMode === 'kapitalverzehr' && (
-            <>Eigenverwaltete Entnahme bis zum globalen Endalter (Annuitätenformel).</>
-          )}
-        </small>
-      </label>
-      {assumptions.bav.payoutMode === 'leibrente' && (
-        <>
-          <NumberField
-            label="Garantierter Rentenfaktor (bAV)"
-            value={assumptions.bav.rentenfaktor}
-            min={1}
-            max={80}
-            step={0.5}
-            suffix="EUR/10k mtl."
-            onChange={(value) =>
-              onAssumptionsChange((current) => ({
-                ...current,
-                bav: { ...current.bav, rentenfaktor: Number(value) },
-              }))
-            }
-          />
-          {assumptions.bav.rentenfaktor === 30 && (
-            <p className="field-hint">
-              Standardwert — für eine genaue Rentenberechnung den garantierten Rentenfaktor aus dem Angebot übernehmen (steht im PIB oder in der Beispielsrechnung).
-            </p>
-          )}
-        </>
-      )}
-      {assumptions.bav.payoutMode === 'zeitrente' && (
-        <NumberField
-          label="Zeitrente-Dauer (bAV)"
-          value={assumptions.bav.zeitrenteYears}
-          min={1}
-          max={50}
-          step={1}
-          suffix="Jahre"
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              bav: { ...current.bav, zeitrenteYears: Number(value) },
-            }))
-          }
-        />
-      )}
-      {modelCapital > 0 && (
-        <>
-          <NumberField
-            label="Kapital lt. Angebot bei Rentenbeginn (optional)"
-            value={offerCapital ?? 0}
-            min={0}
-            step={1000}
-            suffix="EUR"
-            onChange={(value) => {
-              const v = Number(value)
-              setOfferCapital(v > 0 ? v : null)
-            }}
-          />
-          {offerCapital !== null && offerCapital > 0 && (
-            <p className="offer-capital-compare">
-              Rechnerkapital (Basis-Szenario): {formatCurrency(modelCapital, 0)} ·{' '}
-              Angebotskapital: {formatCurrency(offerCapital, 0)} ·{' '}
-              Abweichung: {offerCapital >= modelCapital ? '+' : ''}
-              {formatCurrency(offerCapital - modelCapital, 0)}{' '}
-              ({(((offerCapital - modelCapital) / modelCapital) * 100).toFixed(1)} %)
-            </p>
-          )}
-        </>
-      )}
+      <PayoutModeSection
+        productLabel="bAV"
+        payoutMode={assumptions.bav.payoutMode}
+        onChangePayoutMode={(mode) =>
+          onAssumptionsChange((current) => ({
+            ...current,
+            bav: { ...current.bav, payoutMode: mode },
+          }))
+        }
+        rentenfaktor={assumptions.bav.rentenfaktor}
+        onChangeRentenfaktor={(value) =>
+          onAssumptionsChange((current) => ({
+            ...current,
+            bav: { ...current.bav, rentenfaktor: value },
+          }))
+        }
+        rentenfaktorDefault={30}
+        zeitrenteYears={assumptions.bav.zeitrenteYears}
+        onChangeZeitrenteYears={(value) =>
+          onAssumptionsChange((current) => ({
+            ...current,
+            bav: { ...current.bav, zeitrenteYears: value },
+          }))
+        }
+      />
+      <OfferCapitalCompareField
+        modelCapital={modelCapital}
+        offerCapital={offerCapital}
+        onChangeOfferCapital={setOfferCapital}
+      />
 
       {riy > 0 && (
         <p className="field-hint">
@@ -273,29 +217,23 @@ export function BavInputs({
           )}
 
           <div className="field-grid">
-            <NumberField
-              label="Beitragsdynamik p.a."
-              value={assumptions.bav.annualContributionGrowthRate * 100}
-              min={0}
-              max={10}
-              step={0.1}
-              suffix="%"
-              onChange={(value) =>
+            <BeitragsdynamikField
+              rate={assumptions.bav.annualContributionGrowthRate}
+              onChangeRate={(rate) =>
                 onAssumptionsChange((current) => ({
                   ...current,
-                  bav: {
-                    ...current.bav,
-                    annualContributionGrowthRate: Math.max(0, Number(value) / 100),
-                  },
+                  bav: { ...current.bav, annualContributionGrowthRate: rate },
                 }))
+              }
+              activeHint={
+                <>
+                  Entgeltumwandlung steigt jedes Jahr um diesen Prozentsatz. §3 Nr. 63
+                  EStG / §1 SvEV-Cap und gesetzlicher AG-Zuschuss werden im Modell auf
+                  Jahr 1 fixiert (Näherung).
+                </>
               }
             />
           </div>
-          {assumptions.bav.annualContributionGrowthRate > 0 && (
-            <p className="field-hint">
-              Entgeltumwandlung steigt jedes Jahr um diesen Prozentsatz. §3 Nr. 63 EStG / §1 SvEV-Cap und gesetzlicher AG-Zuschuss werden im Modell auf Jahr 1 fixiert (Näherung).
-            </p>
-          )}
 
           <div className="subsection-heading">
             <h3>bAV-Rentenphase</h3>
@@ -459,237 +397,19 @@ export function BavInputs({
             <h3>bAV-Kosten</h3>
             <p>Kosteneingabe direkt aus dem Produktinformationsblatt (Effektivkosten all-in) oder als Einzelposten.</p>
           </div>
-          <div className="fee-mode-tabs">
-            <button
-              type="button"
-              className={`fee-mode-tab${feeInputMode === 'aufgeschluesselt' ? ' fee-mode-tab--active' : ''}`}
-              onClick={() => setFeeInputMode('aufgeschluesselt')}
-            >
-              Einzelposten
-            </button>
-            <button
-              type="button"
-              className={`fee-mode-tab${feeInputMode === 'effektivkosten' ? ' fee-mode-tab--active' : ''}`}
-              onClick={() => setFeeInputMode('effektivkosten')}
-            >
-              Effektivkosten (all-in)
-            </button>
-          </div>
-
-          {feeInputMode === 'aufgeschluesselt' && (
-            <>
-              <div className="fee-presets">
-                {BAV_FEE_PRESETS.map((preset) => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    className="preset-btn"
-                    onClick={() =>
-                      onAssumptionsChange((current) => ({
-                        ...current,
-                        bav: { ...current.bav, fees: preset.fees },
-                      }))
-                    }
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-              <div className="field-grid">
-                <NumberField
-                  label="Fixkosten je Monat"
-                  value={assumptions.bav.fees.fixedMonthlyFee}
-                  min={0}
-                  max={50}
-                  step={0.5}
-                  suffix="EUR"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      bav: {
-                        ...current.bav,
-                        fees: { ...current.bav.fees, fixedMonthlyFee: Number(value) },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Kosten je Beitrag"
-                  value={assumptions.bav.fees.contributionFee * 100}
-                  min={0}
-                  max={20}
-                  step={0.25}
-                  suffix="%"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      bav: {
-                        ...current.bav,
-                        fees: { ...current.bav.fees, contributionFee: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Mantelgebühr (Versicherer)"
-                  value={assumptions.bav.fees.wrapperAssetFee * 100}
-                  min={0}
-                  max={3}
-                  step={0.05}
-                  suffix="% p.a."
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      bav: {
-                        ...current.bav,
-                        fees: { ...current.bav.fees, wrapperAssetFee: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Fondskosten (TER)"
-                  value={assumptions.bav.fees.fundAssetFee * 100}
-                  min={0}
-                  max={3}
-                  step={0.05}
-                  suffix="% p.a."
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      bav: {
-                        ...current.bav,
-                        fees: { ...current.bav.fees, fundAssetFee: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Auszahlungsgebühr"
-                  value={assumptions.bav.fees.pensionPayoutFeePct * 100}
-                  min={0}
-                  max={5}
-                  step={0.05}
-                  suffix="% je Rente"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      bav: {
-                        ...current.bav,
-                        fees: { ...current.bav.fees, pensionPayoutFeePct: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Vertriebs-/Abschlusskosten"
-                  value={assumptions.bav.fees.acquisitionCostPct * 100}
-                  min={0}
-                  max={8}
-                  step={0.25}
-                  suffix="% Summe"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      bav: {
-                        ...current.bav,
-                        fees: { ...current.bav.fees, acquisitionCostPct: Number(value) / 100 },
-                      },
-                    }))
-                  }
-                />
-                <NumberField
-                  label="Verteilung Abschlusskosten"
-                  value={assumptions.bav.fees.acquisitionCostSpreadYears}
-                  min={1}
-                  max={15}
-                  step={1}
-                  suffix="Jahre"
-                  onChange={(value) =>
-                    onAssumptionsChange((current) => ({
-                      ...current,
-                      bav: {
-                        ...current.bav,
-                        fees: {
-                          ...current.bav.fees,
-                          acquisitionCostSpreadYears: Number(value),
-                        },
-                      },
-                    }))
-                  }
-                />
-              </div>
-            </>
-          )}
-
-          {feeInputMode === 'effektivkosten' && (
-            <>
-              <NumberField
-                label="Effektivkosten aus PIB/KID (Renditeminderung p.a.)"
-                value={(assumptions.bav.fees.wrapperAssetFee + assumptions.bav.fees.fundAssetFee) * 100}
-                min={0}
-                max={5}
-                step={0.05}
-                suffix="% p.a."
-                onChange={(value) =>
-                  onAssumptionsChange((current) => ({
-                    ...current,
-                    bav: {
-                      ...current.bav,
-                      fees: {
-                        wrapperAssetFee: Number(value) / 100,
-                        fundAssetFee: 0,
-                        contributionFee: 0,
-                        fixedMonthlyFee: 0,
-                        acquisitionCostPct: 0,
-                        acquisitionCostSpreadYears: 5,
-                        pensionPayoutFeePct: 0,
-                      },
-                    },
-                  }))
-                }
-              />
-              <p className="field-hint">
-                Näherung: Die Effektivkosten aus dem PIB/KID werden als gleichmäßige jährliche Renditeminderung eingestellt. Abschluss- und beitragsbezogene Kosten sind darin bereits enthalten.{' '}
-                <button type="button" className="link-btn" onClick={() => setFeeInputMode('aufgeschluesselt')}>
-                  Auf Einzelposten wechseln
-                </button>
-              </p>
-            </>
-          )}
-
-          {(() => {
-            const f = assumptions.bav.fees
-            const totalAsset = f.wrapperAssetFee + f.fundAssetFee
-            return (
-              <div className="fee-summary">
-                {feeInputMode === 'aufgeschluesselt' && (
-                  <span>
-                    Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
-                    (Mantel {formatPercent(f.wrapperAssetFee)} + Fonds {formatPercent(f.fundAssetFee)})
-                  </span>
-                )}
-                <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
-                  Effektivkosten: <strong>{formatPercent(riy)}</strong>
-                </span>
-                {f.contributionFee > 0.05 && (
-                  <p className="field-warning">Beitragskostenquote {formatPercent(f.contributionFee)} liegt über 5 % — typische Nettotarife erheben keine Kosten je Beitrag.</p>
-                )}
-                {f.acquisitionCostPct > 0.025 && (
-                  <p className="field-warning">Abschlusskosten {formatPercent(f.acquisitionCostPct)} übersteigen 2,5 % der Beitragssumme.</p>
-                )}
-                {totalAsset > 0.01 && (
-                  <p className="field-warning">Laufende Kapitalgebühr {formatPercent(totalAsset)} p.a. liegt über 1,0 % — prüfen Sie ETF-basierte Nettotarife (typisch 0,5–0,8 % all-in).</p>
-                )}
-                {riy > 0.02 && (
-                  <p className="field-warning">Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — ETF-basierte Verträge über dieser Schwelle gelten i. d. R. als unwirtschaftlich.</p>
-                )}
-                {riy > 0.015 && riy <= 0.02 && (
-                  <p className="field-warning">Effektivkosten {formatPercent(riy)} liegen im kritischen Bereich (1,5–2,0 %) — Nettotarife erzielen typisch 0,6–1,0 %.</p>
-                )}
-              </div>
-            )
-          })()}
+          <FeeSection
+            fees={assumptions.bav.fees}
+            onChangeFees={(fees: FeeModel) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                bav: { ...current.bav, fees },
+              }))
+            }
+            presets={BAV_FEE_PRESETS}
+            riy={riy}
+            feeInputMode={feeInputMode}
+            setFeeInputMode={setFeeInputMode}
+          />
         </div>
       </details>
     </>

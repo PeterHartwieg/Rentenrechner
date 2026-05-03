@@ -1,7 +1,7 @@
 import './GuidedSetup.css'
 import { useState } from 'react'
 import { ArrowRight, Check, ChevronDown, ChevronUp, X } from 'lucide-react'
-import type { PersonalProfile, ProductId, ScenarioAssumptions } from '../../domain'
+import type { PersonalProfile, ScenarioAssumptions } from '../../domain'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import {
@@ -9,60 +9,13 @@ import {
   bavTotalMatchPct,
   applyBavTotalMatch,
 } from '../../app/productPresentation'
+import {
+  PATH_OPTIONS,
+  VISIBLE_PRODUCTS_BY_PATH,
+  type GuidedPath,
+} from '../../content/triggers'
 
-export type GuidedPath = 'bav_offer' | 'etf_vs_insurance' | 'rentengap' | 'expert'
-
-const ALL_PRODUCTS: ProductId[] = [
-  'etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester',
-]
-
-/**
- * Visible-product preset per guided path. The path choice is the user's strongest
- * signal about which products are relevant — narrowing the comparison up front
- * reduces noise. The user can re-add products via the visibility chips at any time.
- */
-const VISIBLE_PRODUCTS_BY_PATH: Record<GuidedPath, ProductId[]> = {
-  bav_offer: ['etf', 'bav'],
-  etf_vs_insurance: ['etf', 'versicherung'],
-  // Pension-gap users typically don't want a 6-way comparison up front.
-  // Start with ETF + bAV (the two most-common decision pair) and let them
-  // add other products via the comparison picker.
-  rentengap: ['etf', 'bav'],
-  expert: ALL_PRODUCTS,
-}
-
-interface PathOption {
-  id: GuidedPath
-  title: string
-  description: string
-}
-
-const PATH_OPTIONS: PathOption[] = [
-  {
-    id: 'bav_offer',
-    title: 'Ich habe ein bAV-Angebot',
-    description:
-      'Ein Arbeitgeber- oder Versicherungs-Angebot zur Entgeltumwandlung prüfen — inkl. AG-Zuschuss, Steuern und KV/PV in der Rente.',
-  },
-  {
-    id: 'etf_vs_insurance',
-    title: 'ETF gegen Versicherung vergleichen',
-    description:
-      'Was bringt ein günstiges ETF-Depot im Vergleich zu einer privaten Rentenversicherung — mit Kosten, Steuer und Auszahlungsform.',
-  },
-  {
-    id: 'rentengap',
-    title: 'Rentenlücke grob schätzen',
-    description:
-      'Wie viel netto bleibt aus der gesetzlichen Rente — und welche zusätzliche Vorsorge schließt die Lücke realistisch?',
-  },
-  {
-    id: 'expert',
-    title: 'Expertenmodus',
-    description:
-      'Direkt ins volle Dashboard mit allen Eingaben. Geführter Einstieg wird übersprungen.',
-  },
-]
+export type { GuidedPath }
 
 interface BasicInputs {
   age: number

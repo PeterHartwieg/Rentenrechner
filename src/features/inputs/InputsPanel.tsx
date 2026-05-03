@@ -29,6 +29,7 @@ import { RiesterInputs } from './RiesterInputs'
 import { ComparisonPicker } from '../workspace/ComparisonPicker'
 import { ProductFocusHeader } from '../workspace/ProductFocusHeader'
 import { ProductTabs } from './ProductTabs'
+import { BeitragsdynamikField } from './sections/BeitragsdynamikField'
 
 interface ScenarioLib {
   library: SavedScenario[]
@@ -228,17 +229,12 @@ export function InputsPanel({
                     <option value={0}>Anleihe-ETF / Sonstige (0% steuerfrei)</option>
                   </select>
                 </label>
-                <NumberField
-                  label="Beitragsdynamik p.a."
-                  value={assumptions.etf.annualContributionGrowthRate * 100}
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  suffix="%"
-                  onChange={(value) =>
+                <BeitragsdynamikField
+                  rate={assumptions.etf.annualContributionGrowthRate}
+                  onChangeRate={(rate) =>
                     onAssumptionsChange((current) => ({
                       ...current,
-                      etf: { ...current.etf, annualContributionGrowthRate: Number(value) / 100 },
+                      etf: { ...current.etf, annualContributionGrowthRate: rate },
                     }))
                   }
                 />

@@ -1,21 +1,70 @@
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
+import { migrateAndValidateState } from '../storage'
 
 export interface SavedScenario {
   id: string
   name: string
   savedAt: string
+  /**
+   * Schema version of the persisted profile/assumptions shape. Bumped when
+   * the profile / assumptions schema changes in a way that requires an
+   * explicit migration. New saves always carry the current version; old
+   * entries are migrated transparently on read.
+   */
+  schemaVersion: number
   profile: PersonalProfile
   assumptions: ScenarioAssumptions
 }
 
 const LIBRARY_KEY = 'rentenrechner-library-v1'
+export const SAVED_SCENARIO_VERSION = 1
+
+/**
+ * Validate a single raw library entry. Runs the same migration + validation
+ * pipeline as the main state loader, so library entries cannot bypass schema
+ * checks. Returns `null` for malformed or invalid entries; the caller drops
+ * those silently rather than throwing the whole library away.
+ */
+function migrateSavedScenario(raw: unknown): SavedScenario | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const obj = raw as Record<string, unknown>
+
+  if (typeof obj.id !== 'string' || obj.id.length === 0) return null
+  if (typeof obj.name !== 'string' || obj.name.length === 0) return null
+  if (typeof obj.savedAt !== 'string') return null
+
+  // Reject entries from a future major schema version we don't understand —
+  // pre-Group-G code shouldn't try to interpret a v2 instance-array entry.
+  // Missing schemaVersion is treated as v1 for backward compatibility with
+  // entries written before the field existed.
+  const version = typeof obj.schemaVersion === 'number' ? obj.schemaVersion : 1
+  if (version > SAVED_SCENARIO_VERSION) return null
+
+  const validated = migrateAndValidateState(obj.profile, obj.assumptions)
+  if (!validated) return null
+
+  return {
+    id: obj.id,
+    name: obj.name,
+    savedAt: obj.savedAt,
+    schemaVersion: SAVED_SCENARIO_VERSION,
+    profile: validated.profile,
+    assumptions: validated.assumptions,
+  }
+}
 
 export function loadLibrary(): SavedScenario[] {
   try {
     const raw = localStorage.getItem(LIBRARY_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as SavedScenario[]) : []
+    if (!Array.isArray(parsed)) return []
+    const out: SavedScenario[] = []
+    for (const item of parsed) {
+      const migrated = migrateSavedScenario(item)
+      if (migrated) out.push(migrated)
+    }
+    return out
   } catch {
     return []
   }
@@ -38,6 +87,7 @@ export function addToLibrary(
     id: makeId(),
     name: name.trim() || 'Gespeichertes Szenario',
     savedAt: new Date().toISOString(),
+    schemaVersion: SAVED_SCENARIO_VERSION,
     profile,
     assumptions,
   }
@@ -58,6 +108,7 @@ export function duplicateInLibrary(id: string): void {
     id: makeId(),
     name: `${original.name} (Kopie)`,
     savedAt: new Date().toISOString(),
+    schemaVersion: SAVED_SCENARIO_VERSION,
   }
   persistLibrary([...existing, copy])
 }

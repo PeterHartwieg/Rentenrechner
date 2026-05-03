@@ -1,0 +1,155 @@
+.legal-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 24px 64px;
+  color: #172033;
+}
+
+.legal-header {
+  padding: 8px 0 24px;
+}
+
+.legal-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #2563eb;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.legal-back-link:hover {
+  text-decoration: underline;
+}
+
+.legal-article h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.6rem, 2.2vw, 2.1rem);
+}
+
+.legal-article h2 {
+  margin: 28px 0 8px;
+  font-size: 1.15rem;
+  color: #1f2937;
+}
+
+.legal-article h3 {
+  margin: 18px 0 6px;
+  font-size: 1.0rem;
+  color: #374151;
+}
+
+.legal-article p,
+.legal-article address,
+.legal-article ul {
+  line-height: 1.6;
+  color: #344054;
+  font-size: 0.95rem;
+}
+
+.legal-article ul {
+  padding-left: 20px;
+}
+
+.legal-article ul li {
+  margin-bottom: 4px;
+}
+
+.legal-article address {
+  font-style: normal;
+}
+
+.legal-article a {
+  color: #2563eb;
+}
+
+.legal-article code {
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+}
+
+.legal-intro {
+  color: #475467 !important;
+  font-style: italic;
+  border-left: 3px solid #d9e1ea;
+  padding-left: 12px;
+  margin: 0 0 16px;
+}
+
+.legal-page-footer {
+  margin-top: 48px;
+  padding-top: 14px;
+  border-top: 1px solid #d9e1ea;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #667085;
+}
+
+.legal-page-footer a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.legal-page-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Footer rendered on the calculator (home) page */
+.app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  margin-top: 16px;
+  border-top: 1px solid #d9e1ea;
+  background: #ffffff;
+  color: #667085;
+  font-size: 0.85rem;
+}
+
+.app-footer-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.app-footer-nav a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.app-footer-nav a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 760px) {
+  .legal-page {
+    padding: 16px 16px 48px;
+  }
+
+  .app-footer {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media print {
+  .app-footer {
+    display: none !important;
+  }
+}

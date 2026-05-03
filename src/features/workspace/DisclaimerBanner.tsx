@@ -1,10 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { Info } from 'lucide-react'
 
+const DISMISS_KEY = 'disclaimer-dismissed'
+
 export function DisclaimerBanner() {
-  const [visible, setVisible] = useState(
-    () => localStorage.getItem('disclaimer-dismissed') !== '1',
-  )
+  const [visible, setVisible] = useState(() => {
+    // One-time migration: prior versions persisted dismissal in localStorage
+    // (across sessions). Per the launch guardrails the banner must not be
+    // permanently dismissible — clear any leftover value so the user sees it
+    // again at least once per session.
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem(DISMISS_KEY)
+      } catch {
+        /* ignore */
+      }
+    }
+    if (typeof sessionStorage === 'undefined') return true
+    return sessionStorage.getItem(DISMISS_KEY) !== '1'
+  })
   const [showPopup, setShowPopup] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -20,7 +34,11 @@ export function DisclaimerBanner() {
   }, [showPopup])
 
   function dismiss() {
-    localStorage.setItem('disclaimer-dismissed', '1')
+    try {
+      sessionStorage.setItem(DISMISS_KEY, '1')
+    } catch {
+      /* ignore — banner stays visible for the rest of the page lifecycle */
+    }
     setVisible(false)
     setShowPopup(false)
   }
@@ -51,7 +69,8 @@ export function DisclaimerBanner() {
       <button
         type="button"
         className="disclaimer-dismiss"
-        aria-label="Hinweis ausblenden"
+        aria-label="Hinweis für diese Sitzung ausblenden"
+        title="Nur für diese Sitzung ausblenden"
         onClick={dismiss}
       >
         ✕

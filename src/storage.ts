@@ -28,6 +28,94 @@ function mergeDeep<T>(saved: unknown, defaults: T): T {
   return result as T
 }
 
+/**
+ * Apply pre-merge field migrations on a mutable assumptions object. Migrations
+ * here run *before* mergeDeep so the user's saved value survives instead of
+ * being clobbered by the default. Idempotent for already-current shapes.
+ */
+function applyPreMergeMigrations(rawAssumptions: Record<string, unknown>): void {
+  // #55: migrate annualAssetFee → wrapperAssetFee + fundAssetFee
+  const migrateFeesFields = (productData: Record<string, unknown> | undefined) => {
+    const fees = productData?.fees as Record<string, unknown> | undefined
+    if (fees && typeof fees.annualAssetFee === 'number' && fees.wrapperAssetFee === undefined) {
+      fees.wrapperAssetFee = fees.annualAssetFee
+      fees.fundAssetFee = 0
+    }
+  }
+  migrateFeesFields(rawAssumptions.bav as Record<string, unknown> | undefined)
+  migrateFeesFields(rawAssumptions.insurance as Record<string, unknown> | undefined)
+
+  // Group E step 3: Basisrente zeitrente → leibrente (legal compliance).
+  const rawBasisrente = rawAssumptions.basisrente as Record<string, unknown> | undefined
+  if (rawBasisrente?.payoutMode === 'zeitrente') {
+    rawBasisrente.payoutMode = 'leibrente'
+  }
+
+  // Lock canonical baseline return scenarios; preserve custom row.
+  const rawScenarios = rawAssumptions.returnScenarios
+  if (Array.isArray(rawScenarios)) {
+    const customRow = rawScenarios.find(
+      (s): s is { id: 'custom'; label: string; annualReturn: number } =>
+        !!s && typeof s === 'object' && (s as { id?: unknown }).id === 'custom',
+    )
+    rawAssumptions.returnScenarios = customRow
+      ? [...defaultAssumptions.returnScenarios, customRow]
+      : [...defaultAssumptions.returnScenarios]
+  }
+}
+
+/**
+ * Apply post-merge migrations that read raw legacy keys (only present in
+ * pre-#51 saves) and copy them onto the current schema fields if they were
+ * left at their defaults.
+ */
+function applyPostMergeMigrations(
+  rawAssumptions: Record<string, unknown>,
+  merged: ScenarioAssumptions,
+): void {
+  const savedBav = rawAssumptions.bav as Record<string, unknown> | undefined
+  if (!savedBav) return
+  if (
+    typeof savedBav.extraEmployerContributionPct === 'number' &&
+    merged.bav.contractualMatchPercent === defaultAssumptions.bav.contractualMatchPercent
+  ) {
+    merged.bav.contractualMatchPercent = savedBav.extraEmployerContributionPct
+  }
+  if (
+    typeof savedBav.extraEmployerContributionMonthly === 'number' &&
+    merged.bav.contractualFixedMonthly === defaultAssumptions.bav.contractualFixedMonthly
+  ) {
+    merged.bav.contractualFixedMonthly = savedBav.extraEmployerContributionMonthly
+  }
+}
+
+/**
+ * Migrate raw profile + assumptions through the same pipeline used by
+ * `parseStateFromJson`, then validate. Shared between the main state loader
+ * and the saved-scenario library so a malformed library entry can't bypass
+ * the validator.
+ *
+ * Returns null if the inputs are not plain objects or if validation fails.
+ */
+export function migrateAndValidateState(
+  rawProfile: unknown,
+  rawAssumptions: unknown,
+): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
+  if (!rawProfile || typeof rawProfile !== 'object' || Array.isArray(rawProfile)) return null
+  if (!rawAssumptions || typeof rawAssumptions !== 'object' || Array.isArray(rawAssumptions)) return null
+
+  // Mutate a shallow copy so the caller's object is not affected.
+  const assumptionsCopy = { ...(rawAssumptions as Record<string, unknown>) }
+  applyPreMergeMigrations(assumptionsCopy)
+
+  const profile = mergeDeep(rawProfile, defaultProfile)
+  const assumptions = mergeDeep(assumptionsCopy, defaultAssumptions)
+
+  applyPostMergeMigrations(rawAssumptions as Record<string, unknown>, assumptions)
+
+  return validateState(profile, assumptions)
+}
+
 export function parseStateFromJson(
   raw: string,
 ): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
@@ -41,62 +129,7 @@ export function parseStateFromJson(
   const obj = parsed as Record<string, unknown>
 
   if (obj.version !== CURRENT_VERSION) return null
-  if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
-  if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
-
-  // #55: migrate annualAssetFee → wrapperAssetFee + fundAssetFee before mergeDeep
-  // so the user's old setting is preserved instead of being replaced by defaults.
-  const migrateFeesFields = (productData: Record<string, unknown> | undefined) => {
-    const fees = productData?.fees as Record<string, unknown> | undefined
-    if (fees && typeof fees.annualAssetFee === 'number' && fees.wrapperAssetFee === undefined) {
-      fees.wrapperAssetFee = fees.annualAssetFee
-      fees.fundAssetFee = 0
-    }
-  }
-  const rawAssumptions = obj.assumptions as Record<string, unknown>
-  migrateFeesFields(rawAssumptions.bav as Record<string, unknown> | undefined)
-  migrateFeesFields(rawAssumptions.insurance as Record<string, unknown> | undefined)
-
-  // Group E step 3: Basisrente zeitrente → leibrente (legal compliance; zeitrente no longer modeled).
-  const rawBasisrente = rawAssumptions.basisrente as Record<string, unknown> | undefined
-  if (rawBasisrente?.payoutMode === 'zeitrente') {
-    rawBasisrente.payoutMode = 'leibrente'
-  }
-
-  // Lock the three baseline return scenarios to canonical rates/labels — the editor no
-  // longer exposes them. Preserve any user-added 'custom' row.
-  const rawScenarios = rawAssumptions.returnScenarios
-  if (Array.isArray(rawScenarios)) {
-    const customRow = rawScenarios.find(
-      (s): s is { id: 'custom'; label: string; annualReturn: number } =>
-        !!s && typeof s === 'object' && (s as { id?: unknown }).id === 'custom',
-    )
-    rawAssumptions.returnScenarios = customRow
-      ? [...defaultAssumptions.returnScenarios, customRow]
-      : [...defaultAssumptions.returnScenarios]
-  }
-
-  const profile = mergeDeep(obj.profile, defaultProfile)
-  const assumptions = mergeDeep(obj.assumptions, defaultAssumptions)
-
-  // #51: migrate legacy extraEmployerContribution* fields onto contractualMatchPercent / contractualFixedMonthly.
-  const savedBav = (obj.assumptions as Record<string, unknown>).bav as Record<string, unknown> | undefined
-  if (savedBav) {
-    if (
-      typeof savedBav.extraEmployerContributionPct === 'number' &&
-      assumptions.bav.contractualMatchPercent === defaultAssumptions.bav.contractualMatchPercent
-    ) {
-      assumptions.bav.contractualMatchPercent = savedBav.extraEmployerContributionPct
-    }
-    if (
-      typeof savedBav.extraEmployerContributionMonthly === 'number' &&
-      assumptions.bav.contractualFixedMonthly === defaultAssumptions.bav.contractualFixedMonthly
-    ) {
-      assumptions.bav.contractualFixedMonthly = savedBav.extraEmployerContributionMonthly
-    }
-  }
-
-  return validateState(profile, assumptions)
+  return migrateAndValidateState(obj.profile, obj.assumptions)
 }
 
 export function buildStateJson(

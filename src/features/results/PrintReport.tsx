@@ -48,6 +48,20 @@ export function PrintReport({ profile, assumptions, simulation }: Props) {
   return (
     <div id="print-report">
 
+      {/* Disclaimer — first block of every export per the publication guardrails.
+          Must precede the title header so the legal notice is the literal first
+          thing on the printed page. */}
+      <section className="pr-section pr-disclaimer pr-disclaimer-top">
+        <div className="pr-section-title">Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung</div>
+        <p className="pr-disclaimer-lead">
+          Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine
+          individuelle Anlage-, Steuer- oder Rechtsberatung. Vor Vertragsabschluss
+          sollten Sie einen unabhängigen Berater hinzuziehen. Tatsächliche Werte zum
+          Renteneintritt können erheblich abweichen; Annahmen wie Rendite, Inflation,
+          Gehaltsentwicklung, Lebenserwartung und Vertragskosten sind Schätzungen.
+        </p>
+      </section>
+
       {/* Header — fixed table so widths are exact, no flex/grid issues */}
       <table className="pr-layout-fixed pr-header-table">
         <tbody>

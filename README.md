@@ -14,9 +14,17 @@ The current version is a local-first React/Vite prototype for personal analysis.
 
 ## Important Limitation
 
-This app is not financial, tax, or legal advice.
+**Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.**
+
+This app produces illustrations, not advice. All calculations use German statutory values for the year 2026 (tax tariffs, social-security contributions, Rentenwert; sources: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband). Results are estimates under your assumptions — returns, inflation, life expectancy, and future legislative changes are unknown. Do not rely on the output for investment, tax, or legal decisions; consult an independent advisor before signing a contract.
 
 The model is intentionally transparent but not complete. Some German tax, social-security, and retirement-phase rules are simplified. See `BACKLOG.md` for details.
+
+## License
+
+Source-available under [PolyForm Noncommercial 1.0.0](LICENSE.md). Personal, research, and internal-evaluation use is free.
+
+**Commercial use requires a separate paid license.** Insurance brokers, investment advisors, employers, and any other commercial use must contact `peter@hartwieg.com` — see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
 
 ## Development
 

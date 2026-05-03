@@ -12,6 +12,7 @@ import {
 } from '../../app/productPresentation'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { defaultAssumptions } from '../../data/defaultScenario'
+import { FieldWithProv } from './provenance'
 
 const TIP_NETTO_RENTE =
   'Was monatlich auf deinem Konto landet — nach Steuer und (bei bAV/Rürup) Krankenkasse.'
@@ -45,76 +46,6 @@ const EXEMPTION_OPTIONS: { value: number; label: string }[] = [
 
 function diff(a: number, b: number): boolean {
   return Math.abs(a - b) > 1e-9
-}
-
-type ProvKind = 'user' | 'default' | 'model' | 'confirmed'
-
-function ProvLabel({
-  isModified,
-  isModel = false,
-  isConfirmed = false,
-}: {
-  isModified: boolean
-  isModel?: boolean
-  isConfirmed?: boolean
-}) {
-  const kind: ProvKind = isModified
-    ? 'user'
-    : isConfirmed
-      ? 'confirmed'
-      : isModel
-        ? 'model'
-        : 'default'
-  const label =
-    kind === 'user'
-      ? 'von dir'
-      : kind === 'confirmed'
-        ? 'geprüft'
-        : kind === 'model'
-          ? 'Modellwert'
-          : 'Standardwert'
-  return <span className={`pec-prov pec-prov--${kind}`}>{label}</span>
-}
-
-function FieldWithProv({
-  modified,
-  isModel = false,
-  isConfirmed = false,
-  onConfirmToggle,
-  children,
-}: {
-  modified: boolean
-  isModel?: boolean
-  isConfirmed?: boolean
-  onConfirmToggle?: () => void
-  children: React.ReactNode
-}) {
-  // The "Wert stimmt" / "↺ als Schätzwert" action only applies to model fields,
-  // and only when the value still equals the default (when the user has typed
-  // their own value, the badge is already "von dir" — confirmation is moot).
-  const showConfirmAction = isModel && !modified && onConfirmToggle !== undefined
-  return (
-    <div className={`pec-field-row${modified ? ' pec-field-row--modified' : ''}`}>
-      {children}
-      <div className="pec-field-meta">
-        <ProvLabel isModified={modified} isModel={isModel} isConfirmed={isConfirmed && !modified} />
-        {showConfirmAction && (
-          <button
-            type="button"
-            className="pec-confirm-btn"
-            onClick={onConfirmToggle}
-            title={
-              isConfirmed
-                ? 'Wieder als Schätzwert markieren'
-                : 'Wert stimmt mit deinem Angebot — als geprüft markieren'
-            }
-          >
-            {isConfirmed ? '↺ als Schätzwert' : '✓ Wert stimmt'}
-          </button>
-        )}
-      </div>
-    </div>
-  )
 }
 
 function hasUnconfirmedRentenfaktor(productId: ProductId, assumptions: ScenarioAssumptions): boolean {
