@@ -65,6 +65,7 @@ import { calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding } from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'
 import { confidenceForResult } from '../app/evidence'
+import type { ProductId } from './productRegistry'
 
 // ---------------------------------------------------------------------------
 // Neutralised defaults
@@ -256,6 +257,17 @@ function stripInstanceCommonKeys<T extends Record<string, unknown>>(
 // ---------------------------------------------------------------------------
 
 type ProductSlot = 'bav' | 'etf' | 'insurance' | 'basisrente' | 'altersvorsorgedepot' | 'riester'
+
+function slotToProductId(slot: ProductSlot): ProductId {
+  switch (slot) {
+    case 'etf': return 'etf'
+    case 'bav': return 'bav'
+    case 'insurance': return 'versicherung'
+    case 'basisrente': return 'basisrente'
+    case 'altersvorsorgedepot': return 'altersvorsorgedepot'
+    case 'riester': return 'riester'
+  }
+}
 
 /** All instance-shaped types accepted by the projection helper. */
 export type AnyInstance =
@@ -743,10 +755,8 @@ export function simulatePortfolio(
       const results: ProductResult[] = []
       // Map the slot name to the ProductId used in evidenceMap keying.
       const slotName = detectProductSlot(inst)
-      const productIdForConfidence =
-        slotName === 'insurance' ? 'versicherung' : slotName
       const inputConfidence = confidenceForResult(
-        { productId: productIdForConfidence as ProductResult['productId'] },
+        { productId: slotToProductId(slotName) },
         inst.evidenceMap ?? {},
       )
       for (const scenario of projected.returnScenarios) {

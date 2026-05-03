@@ -202,16 +202,14 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
           step={1}
           suffix="Jahr"
           onChange={(n) => {
+            if (n !== draft.contractStartYear) setEvidence?.('contractStartYear', 'user_confirmed')
             update({ contractStartYear: n })
-            setEvidence?.('contractStartYear', 'user_confirmed')
           }}
         />
-        {draft.contractStartYear === currentYear && (
-          <EvidenceBadge
-            state={evidenceState(draft, 'contractStartYear')}
-            onConfirm={() => setEvidence?.('contractStartYear', 'user_confirmed')}
-          />
-        )}
+        <EvidenceBadge
+          state={evidenceState(draft, 'contractStartYear')}
+          onConfirm={() => setEvidence?.('contractStartYear', 'user_confirmed')}
+        />
       </InvField>
 
       <InvField
@@ -225,16 +223,14 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
           step={100}
           suffix="EUR"
           onChange={(n) => {
+            if (n !== (draft.currentValueEUR ?? 0)) setEvidence?.('currentValueEUR', 'user_confirmed')
             update({ currentValueEUR: n })
-            setEvidence?.('currentValueEUR', 'user_confirmed')
           }}
         />
-        {(draft.currentValueEUR === undefined || draft.currentValueEUR === 0) && (
-          <EvidenceBadge
-            state={evidenceState(draft, 'currentValueEUR')}
-            onConfirm={() => setEvidence?.('currentValueEUR', 'user_confirmed')}
-          />
-        )}
+        <EvidenceBadge
+          state={evidenceState(draft, 'currentValueEUR')}
+          onConfirm={() => setEvidence?.('currentValueEUR', 'user_confirmed')}
+        />
       </InvField>
 
       <InvField label="Monatlicher Beitrag (EUR)">
@@ -452,8 +448,9 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
               onChange({ ...draft, yearsWorked: n, useYearsEstimate: true })
             }
           />
+          {/* derived from yearsWorked estimate — intentionally non-promotable */}
           {draft.useYearsEstimate && (
-            <EvidenceBadge state="model_estimate" />
+            <span className="derived-note">Geschätzter Wert aus Arbeitsjahren</span>
           )}
         </InvField>
 
@@ -471,10 +468,9 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
               onChange({ ...draft, currentEntgeltpunkte: n, useYearsEstimate: false })
             }
           />
+          {/* derived from yearsWorked estimate — intentionally non-promotable */}
           {draft.useYearsEstimate && (
-            <EvidenceBadge
-              state="model_estimate"
-            />
+            <span className="derived-note">Basiert auf Jahres-Schätzung</span>
           )}
         </InvField>
       </div>
@@ -537,16 +533,14 @@ export function BavCard({ draft, onChange, setEvidence }: BaseProps<BavDraft>) {
             step={0.05}
             suffix="% p.a."
             onChange={(n) => {
+              if (n !== draft.effektivkostenPct) setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
               onChange({ ...draft, effektivkostenPct: n })
-              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
             }}
           />
-          {draft.effektivkostenPct === 0 && (
-            <EvidenceBadge
-              state={evidenceState(draft, 'fees.wrapperAssetFee')}
-              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
-            />
-          )}
+          <EvidenceBadge
+            state={evidenceState(draft, 'fees.wrapperAssetFee')}
+            onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+          />
         </InvField>
 
         <InvField label="Auszahlungsform">
@@ -572,16 +566,14 @@ export function BavCard({ draft, onChange, setEvidence }: BaseProps<BavDraft>) {
               step={0.5}
               suffix="EUR/10k mtl."
               onChange={(n) => {
+                if (n !== draft.rentenfaktor) setEvidence?.('rentenfaktor', 'user_confirmed')
                 onChange({ ...draft, rentenfaktor: n })
-                setEvidence?.('rentenfaktor', 'user_confirmed')
               }}
             />
-            {draft.rentenfaktor === 30 && (
-              <EvidenceBadge
-                state={evidenceState(draft, 'rentenfaktor')}
-                onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
-              />
-            )}
+            <EvidenceBadge
+              state={evidenceState(draft, 'rentenfaktor')}
+              onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
+            />
           </InvField>
         )}
       </div>
@@ -623,16 +615,14 @@ export function PavCard({ draft, onChange, setEvidence }: BaseProps<PavDraft>) {
             step={0.05}
             suffix="% p.a."
             onChange={(n) => {
+              if (n !== draft.effektivkostenPct) setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
               onChange({ ...draft, effektivkostenPct: n })
-              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
             }}
           />
-          {draft.effektivkostenPct === 0 && (
-            <EvidenceBadge
-              state={evidenceState(draft, 'fees.wrapperAssetFee')}
-              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
-            />
-          )}
+          <EvidenceBadge
+            state={evidenceState(draft, 'fees.wrapperAssetFee')}
+            onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+          />
         </InvField>
 
         <InvField label="Auszahlungsform">
@@ -658,16 +648,14 @@ export function PavCard({ draft, onChange, setEvidence }: BaseProps<PavDraft>) {
               step={0.5}
               suffix="EUR/10k mtl."
               onChange={(n) => {
+                if (n !== draft.rentenfaktor) setEvidence?.('rentenfaktor', 'user_confirmed')
                 onChange({ ...draft, rentenfaktor: n })
-                setEvidence?.('rentenfaktor', 'user_confirmed')
               }}
             />
-            {draft.rentenfaktor === 28 && (
-              <EvidenceBadge
-                state={evidenceState(draft, 'rentenfaktor')}
-                onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
-              />
-            )}
+            <EvidenceBadge
+              state={evidenceState(draft, 'rentenfaktor')}
+              onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
+            />
           </InvField>
         )}
       </div>
@@ -729,7 +717,8 @@ export function RiesterCard({
               }
             />
           </div>
-          <EvidenceBadge state="model_estimate" />
+          {/* derived from profile, not user-entered — intentionally non-promotable */}
+          <span className="derived-note">Automatisch aus Profil</span>
         </InvField>
       </div>
 
@@ -768,16 +757,14 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
             step={0.05}
             suffix="% p.a."
             onChange={(n) => {
+              if (n !== draft.effektivkostenPct) setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
               onChange({ ...draft, effektivkostenPct: n })
-              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
             }}
           />
-          {draft.effektivkostenPct === 0 && (
-            <EvidenceBadge
-              state={evidenceState(draft, 'fees.wrapperAssetFee')}
-              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
-            />
-          )}
+          <EvidenceBadge
+            state={evidenceState(draft, 'fees.wrapperAssetFee')}
+            onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+          />
         </InvField>
 
         <InvField
@@ -791,16 +778,14 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
             step={0.5}
             suffix="EUR/10k mtl."
             onChange={(n) => {
+              if (n !== draft.rentenfaktor) setEvidence?.('rentenfaktor', 'user_confirmed')
               onChange({ ...draft, rentenfaktor: n })
-              setEvidence?.('rentenfaktor', 'user_confirmed')
             }}
           />
-          {draft.rentenfaktor === 28 && (
-            <EvidenceBadge
-              state={evidenceState(draft, 'rentenfaktor')}
-              onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
-            />
-          )}
+          <EvidenceBadge
+            state={evidenceState(draft, 'rentenfaktor')}
+            onConfirm={() => setEvidence?.('rentenfaktor', 'user_confirmed')}
+          />
         </InvField>
       </div>
 
@@ -894,16 +879,14 @@ export function EtfCard({ draft, onChange, setEvidence }: BaseProps<EtfDraft>) {
             step={0.01}
             suffix="% p.a."
             onChange={(n) => {
+              if (n !== draft.terPct) setEvidence?.('annualAssetFee', 'user_confirmed')
               onChange({ ...draft, terPct: n })
-              setEvidence?.('annualAssetFee', 'user_confirmed')
             }}
           />
-          {draft.terPct === 0.2 && (
-            <EvidenceBadge
-              state={evidenceState(draft, 'annualAssetFee')}
-              onConfirm={() => setEvidence?.('annualAssetFee', 'user_confirmed')}
-            />
-          )}
+          <EvidenceBadge
+            state={evidenceState(draft, 'annualAssetFee')}
+            onConfirm={() => setEvidence?.('annualAssetFee', 'user_confirmed')}
+          />
         </InvField>
       </div>
 

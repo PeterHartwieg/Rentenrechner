@@ -69,4 +69,27 @@ describe('EvidenceBadge', () => {
     const { container } = render(<EvidenceBadge state="statement" />)
     expect(container.querySelector('.evidence-badge--statement')).toBeTruthy()
   })
+
+  // -------------------------------------------------------------------------
+  // N9 explicit coverage: green-state appearance and derived-display cases
+  // -------------------------------------------------------------------------
+
+  it('user_confirmed: .evidence-badge--confirmed class is present and "Wert ist okay" button is absent', () => {
+    const { container } = render(<EvidenceBadge state="user_confirmed" onConfirm={() => {}} />)
+    expect(container.querySelector('.evidence-badge--confirmed')).toBeTruthy()
+    expect(container.querySelector('.evidence-badge-confirm-btn')).toBeNull()
+  })
+
+  it('model_estimate + onConfirm: clicking "Wert ist okay" fires callback with no args', () => {
+    const onConfirm = vi.fn()
+    render(<EvidenceBadge state="model_estimate" onConfirm={onConfirm} />)
+    const btn = screen.getByText(/Wert ist okay/)
+    fireEvent.click(btn)
+    expect(onConfirm).toHaveBeenCalledOnce()
+  })
+
+  it('model_estimate WITHOUT onConfirm: "Wert ist okay" button is absent (derived-display / Zulagen-Status case)', () => {
+    const { container } = render(<EvidenceBadge state="model_estimate" />)
+    expect(container.querySelector('.evidence-badge-confirm-btn')).toBeNull()
+  })
 })

@@ -12,7 +12,7 @@
  */
 
 import './InventoryWizard.css'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
 import { formatCurrency } from '../../utils/format'
@@ -31,6 +31,25 @@ export function CombineIncomePanel({
   scenarioLabel,
 }: CombineIncomePanelProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const wrapRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (!popoverOpen) return
+    function handlePointer(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setPopoverOpen(false)
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPopoverOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointer)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handlePointer)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [popoverOpen])
 
   // Collect all instance results for the selected scenario.
   const allResults: ProductResult[] = Object.values(perInstanceResults)
@@ -50,7 +69,7 @@ export function CombineIncomePanel({
         </span>
         <span className="combine-income-scenario">{scenarioLabel}</span>
         {hasEstimates && (
-          <span style={{ position: 'relative' }}>
+          <span style={{ position: 'relative' }} ref={wrapRef}>
             <button
               type="button"
               className="combine-estimate-summary-badge"

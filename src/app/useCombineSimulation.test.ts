@@ -15,6 +15,7 @@ import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
 import { runCombineSimulation } from './useCombineSimulation'
+import { PRODUCT_EVIDENCE_FIELDS } from './evidence'
 
 function makeWs() {
   const v1 = {
@@ -107,6 +108,11 @@ describe('useCombineSimulation', () => {
 
   it('ProductResult.inputConfidence is user_confirmed when all ETF evidenceMap fields are confirmed', () => {
     const ws = makeWs()
+    // Build evidenceMap by iterating PRODUCT_EVIDENCE_FIELDS.etf so registry
+    // expansion automatically keeps this test in sync.
+    const etfEvidenceMap = Object.fromEntries(
+      PRODUCT_EVIDENCE_FIELDS.etf.map((field) => [field, 'user_confirmed' as const]),
+    )
     ws.baseline.assumptions.etf = [
       {
         instanceId: 'etf-testinst',
@@ -117,13 +123,7 @@ describe('useCombineSimulation', () => {
         annualAssetFee: 0.002,
         annualContributionGrowthRate: 0,
         equityPartialExemption: 0.3,
-        evidenceMap: {
-          // PRODUCT_EVIDENCE_FIELDS.etf = ['monthlyContribution', 'annualAssetFee']
-          // 'monthlyContribution' is the wizard field name for the user's ETF
-          // monthly input (stored in evidenceMap; not on EtfInstance itself).
-          monthlyContribution: 'user_confirmed',
-          annualAssetFee: 'user_confirmed',
-        },
+        evidenceMap: etfEvidenceMap,
       },
     ]
     const result = runCombineSimulation(ws, de2026Rules)

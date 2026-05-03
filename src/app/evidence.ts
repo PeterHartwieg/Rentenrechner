@@ -7,6 +7,7 @@
 
 import type { EvidenceState } from '../domain/instances'
 import type { ProductResult } from '../domain/results'
+import type { ProductId } from '../engine/productRegistry'
 
 // ---------------------------------------------------------------------------
 // lowestConfidence
@@ -21,7 +22,7 @@ import type { ProductResult } from '../domain/results'
  */
 export function lowestConfidence(
   evidenceMap: Record<string, EvidenceState>,
-  fieldPaths: string[],
+  fieldPaths: readonly string[],
 ): EvidenceState {
   for (const path of fieldPaths) {
     const state = evidenceMap[path]
@@ -43,7 +44,7 @@ export function lowestConfidence(
  * These are the `InstanceCommon` + product-specific field names stored in
  * `evidenceMap` by the wizard.
  */
-const PRODUCT_EVIDENCE_FIELDS: Record<string, string[]> = {
+export const PRODUCT_EVIDENCE_FIELDS: Record<ProductId, readonly string[]> = {
   etf: ['monthlyContribution', 'annualAssetFee'],
   bav: [
     'monthlyGrossConversion',
@@ -51,7 +52,9 @@ const PRODUCT_EVIDENCE_FIELDS: Record<string, string[]> = {
     'fees.fundAssetFee',
     'fees.acquisitionCostPct',
     'fees.pensionPayoutFeePct',
-    'monthlyEmployerMatch',
+    'contractualMatchPercent',
+    'contractualFixedMonthly',
+    'acquisitionCostPct',
     'durchfuehrungsweg',
     'pre2005EligibleTaxFree',
     'rentenfaktor',
@@ -79,6 +82,8 @@ const PRODUCT_EVIDENCE_FIELDS: Record<string, string[]> = {
     'fees.wrapperAssetFee',
     'fees.fundAssetFee',
     'subtype',
+    'payoutMode',
+    'payoutPlanEndAge',
   ],
   riester: [
     'monthlyOwnContribution',
@@ -113,6 +118,7 @@ export function confidenceForResult(
 // confidenceLanguage — forward-compat for issue 12 recommender card
 // ---------------------------------------------------------------------------
 
+// Consumed by issue 12 RecommenderCard.
 /**
  * Returns conditional language prefix for the recommender card (issue 12).
  *
