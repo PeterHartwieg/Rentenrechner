@@ -192,3 +192,102 @@ exports[`renderAtom snapshots > renderAtom output matches snapshot for all known
   },
 ]
 `;
+
+exports[`renderAtom snapshots — cap atoms > renderAtom output matches snapshot for cap atom ids 1`] = `
+[
+  {
+    "context": {
+      "nextLeverProductId": undefined,
+      "remainingMonthly": 236,
+      "usedPct": 0.65,
+    },
+    "id": "bav_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 65 % des steuerfreien bAV-Rahmens (§ 3 Nr. 63 EStG). Noch 236 €/Monat verfügbar.",
+      "headline": "Betriebliche Altersvorsorge: Beitragslimit",
+    },
+  },
+  {
+    "context": {
+      "nextLeverProductId": "basisrente",
+      "remainingMonthly": 0,
+      "usedPct": 1,
+    },
+    "id": "bav_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 100 % des steuerfreien bAV-Rahmens (§ 3 Nr. 63 EStG). Der steuerfreie Rahmen ist ausgeschöpft. Nächster Hebel: Rürup-Rente — ebenfalls Sonderausgabenabzug, ohne bAV-Bindung.",
+      "headline": "Betriebliche Altersvorsorge: Beitragslimit",
+    },
+  },
+  {
+    "context": {
+      "remainingAnnual": 15000,
+      "usedPct": 0.3,
+    },
+    "id": "basisrente_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 30 % des Schicht-1-Höchstbetrags (§ 10 Abs. 3 EStG). Noch 15000 €/Jahr für Rürup-Beiträge abzugsfähig.",
+      "headline": "Rürup-Rente: Sonderausgabenrahmen",
+    },
+  },
+  {
+    "context": {
+      "allowanceCovered": 175,
+      "topUpToCap": 750,
+      "usedPct": 0.5,
+    },
+    "id": "riester_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 50 % des Riester-Höchstbetrags (§ 10a EStG, 2.100 €/Jahr inkl. Zulagen). Zulagen decken 175 €/Jahr. Mit 750 € mehr Eigenbeitrag erreichst du den Höchstbetrag.",
+      "headline": "Riester: Sonderausgabenrahmen",
+    },
+  },
+  {
+    "context": {
+      "allowanceCovered": 0,
+      "topUpToCap": 2100,
+      "usedPct": 0,
+    },
+    "id": "riester_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 0 % des Riester-Höchstbetrags (§ 10a EStG, 2.100 €/Jahr inkl. Zulagen). Mit 2100 € mehr Eigenbeitrag erreichst du den Höchstbetrag.",
+      "headline": "Riester: Sonderausgabenrahmen",
+    },
+  },
+  {
+    "context": {
+      "remainingMonthly": 370,
+      "usedPct": 0.35,
+    },
+    "id": "avd_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 35 % des AVD-Vertragsrahmens (6.840 €/Jahr). Noch 370 €/Monat Spielraum bis zur Vertragsobergrenze.",
+      "headline": "Altersvorsorgedepot: Beitragslimit",
+    },
+  },
+  {
+    "context": {
+      "married": false,
+      "remainingAnnual": 1000,
+      "usedAnnual": 0,
+    },
+    "id": "sparerpauschbetrag_remaining",
+    "rendered": {
+      "body": "Sparerpauschbetrag (ledig, 1.000 €): 1000 € noch nicht genutzt — ETF- und AVD-Vorabpauschale werden hier angerechnet.",
+      "headline": "Sparerpauschbetrag",
+    },
+  },
+  {
+    "context": {
+      "married": true,
+      "remainingAnnual": 1600,
+      "usedAnnual": 400,
+    },
+    "id": "sparerpauschbetrag_remaining",
+    "rendered": {
+      "body": "Sparerpauschbetrag (verheiratet, 2.000 €): 400 € genutzt, noch 1600 € frei.",
+      "headline": "Sparerpauschbetrag",
+    },
+  },
+]
+`;

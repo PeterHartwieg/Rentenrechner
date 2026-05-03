@@ -17,9 +17,10 @@
  *   into its existing public return shapes — compare-mode UI is byte-identical.
  */
 
-import type { ProductResult } from '../domain'
+import type { GermanRules, ProductResult } from '../domain'
 import type { Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
+import { activeRules } from '../rules'
 
 // ---------------------------------------------------------------------------
 // Atom shape
@@ -39,7 +40,12 @@ export type AtomId =
   | 'reason_flexible_capital'
   | 'reason_subsidies'
   | 'reason_guarantee'
-  // Reserved for issues 11 / 13 / 14
+  // Cap and headroom atoms (issue 11)
+  | 'bav_cap_remaining'
+  | 'basisrente_cap_remaining'
+  | 'riester_cap_remaining'
+  | 'avd_cap_remaining'
+  | 'sparerpauschbetrag_remaining'
 
 export interface Atom {
   id: AtomId
@@ -77,6 +83,11 @@ export interface RuleEngineInput {
   evidence?: EvidenceSnapshot
   /** Reserved for issue 12 cap/headroom rules. */
   marginalBudgetEUR?: number
+  /**
+   * Year-specific German statutory rules. Defaults to `activeRules` when omitted.
+   * Provide explicitly in tests that need a specific rule year.
+   */
+  rules?: GermanRules
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +287,210 @@ const productReasonRule: Rule = ({ simulationResult }: RuleEngineInput): Atom[] 
 }
 
 // ---------------------------------------------------------------------------
+// Cap and headroom rules (issue 11)
+// ---------------------------------------------------------------------------
+
+const BAV_NEARLY_FULL_THRESHOLD = 0.95
+
+/**
+ * bAV §3 Nr. 63 EStG cap (8 % BBG-West, tax-free) usage across all active bAV instances.
+ *
+ * When `usedPct >= 0.95` the employer has nearly exhausted the tax-free window and the
+ * next-euro lever shifts to Basisrente.
+ */
+const bavCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
+  if (!input.combinedResult || !input.workspace) return null
+  const rules = input.rules ?? activeRules
+  const wsa = input.workspace.baseline.assumptions
+
+  const capAnnual = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
+  const capMonthly = capAnnual / 12
+
+  const activeBav = wsa.bav.filter((b) => b.status !== 'surrendered')
+  const usedMonthly = activeBav.reduce((s, b) => s + (b.monthlyGrossConversion ?? 0), 0)
+  const usedPct = Math.min(1, capAnnual > 0 ? (usedMonthly * 12) / capAnnual : 0)
+  const remainingMonthly = Math.max(0, capMonthly - usedMonthly)
+
+  return {
+    id: 'bav_cap_remaining',
+    priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
+    context: {
+      usedPct,
+      remainingMonthly,
+      ...(usedPct >= BAV_NEARLY_FULL_THRESHOLD ? { nextLeverProductId: 'basisrente' as const } : {}),
+    },
+  }
+}
+
+/**
+ * §10 Abs. 3 EStG Schicht-1 cap remaining after pension-system contributions.
+ *
+ * Pension-system contributions = GRV employee + employer contributions estimated
+ * from the profile salary so the rule stays pure without re-running salary.
+ */
+const basisrenteCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
+  if (!input.combinedResult || !input.workspace) return null
+  const rules = input.rules ?? activeRules
+  const profile = input.workspace.baseline.profile
+  const wsa = input.workspace.baseline.assumptions
+
+  const schicht1Cap = rules.basisrente.schicht1CapSingle
+  const pensionType = wsa.statutoryPension.pensionBaselineType ?? 'grv'
+
+  let annualPensionContributions: number
+  if (pensionType === 'beamtenpension' || pensionType === 'none') {
+    annualPensionContributions = 0
+  } else if (pensionType === 'versorgungswerk') {
+    annualPensionContributions =
+      ((wsa.statutoryPension.versorgungswerkMonthlyContribution ?? 0) +
+       (wsa.statutoryPension.versorgungswerkEmployerMonthly ?? 0)) * 12
+  } else {
+    // GRV: employee + employer pension contributions
+    const pensionBase = Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear)
+    annualPensionContributions =
+      pensionBase * (rules.socialSecurity.pensionEmployeeRate + rules.socialSecurity.pensionEmployerRate)
+  }
+
+  const activeBasisrente = wsa.basisrente.filter((b) => b.status !== 'surrendered')
+  const usedAnnual = activeBasisrente.reduce((s, b) => s + (b.monthlyGrossContribution ?? 0) * 12, 0)
+  const remainingCapAnnual = Math.max(0, schicht1Cap - annualPensionContributions)
+  const totalUsedAnnual = annualPensionContributions + usedAnnual
+  const usedPct = Math.min(1, schicht1Cap > 0 ? totalUsedAnnual / schicht1Cap : 0)
+  const remainingAnnual = Math.max(0, remainingCapAnnual - usedAnnual)
+
+  return {
+    id: 'basisrente_cap_remaining',
+    priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
+    context: { usedPct, remainingAnnual },
+  }
+}
+
+/**
+ * §10a EStG Riester cap (€2,100 incl. own contributions + Zulagen).
+ *
+ * "Used" = own annual contributions + Grundzulage entitlement per instance.
+ * `allowanceCovered` shows how much of the cap is already covered by allowances.
+ * `topUpToCap` shows how much additional own contribution would reach the cap.
+ */
+const riesterCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
+  if (!input.combinedResult || !input.workspace) return null
+  const rules = input.rules ?? activeRules
+
+  const wsa = input.workspace.baseline.assumptions
+  const capAnnual = rules.riester.annualCapInclAllowances
+
+  const activeRiester = wsa.riester.filter((r) => r.status !== 'surrendered')
+  if (activeRiester.length === 0) {
+    return {
+      id: 'riester_cap_remaining',
+      priority: 'medium',
+      context: { usedPct: 0, allowanceCovered: 0, topUpToCap: capAnnual },
+    }
+  }
+
+  // Grundzulage entitlement per directly eligible instance
+  const allowanceEntitlementAnnual = activeRiester.reduce((s, r) => {
+    const eligible = r.eligibility.directlyEligible || (r.eligibility.indirectSpouseEligible ?? false)
+    return s + (eligible ? rules.riester.grundzulage : 0)
+  }, 0)
+
+  const ownContributionAnnual = activeRiester.reduce(
+    (s, r) => s + (r.monthlyOwnContribution ?? 0) * 12,
+    0,
+  )
+  const usedAnnual = Math.min(capAnnual, ownContributionAnnual + allowanceEntitlementAnnual)
+  const usedPct = Math.min(1, capAnnual > 0 ? usedAnnual / capAnnual : 0)
+  const topUpToCap = Math.max(0, capAnnual - ownContributionAnnual - allowanceEntitlementAnnual)
+
+  return {
+    id: 'riester_cap_remaining',
+    priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
+    context: {
+      usedPct,
+      allowanceCovered: allowanceEntitlementAnnual,
+      topUpToCap,
+    },
+  }
+}
+
+/**
+ * Altersvorsorgedepot annual contract contribution cap (own contributions + allowances, per AltZertG).
+ *
+ * The per-contract cap is `rules.altersvorsorgedepot.contractContributionCapAnnual`.
+ * For multiple AVD instances each cap is independent (not a portfolio-shared cap),
+ * so we report usage against the single-contract cap using the aggregate own
+ * contribution across instances (treating them as a single cap for the rule).
+ */
+const avdCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
+  if (!input.combinedResult || !input.workspace) return null
+  const rules = input.rules ?? activeRules
+
+  const wsa = input.workspace.baseline.assumptions
+  const capAnnual = rules.altersvorsorgedepot.contractContributionCapAnnual
+  const capMonthly = capAnnual / 12
+
+  const activeAvd = wsa.altersvorsorgedepot.filter((a) => a.status !== 'surrendered')
+  const usedMonthly = activeAvd.reduce((s, a) => s + (a.monthlyOwnContribution ?? 0), 0)
+  const usedPct = Math.min(1, capAnnual > 0 ? (usedMonthly * 12) / capAnnual : 0)
+  const remainingMonthly = Math.max(0, capMonthly - usedMonthly)
+
+  return {
+    id: 'avd_cap_remaining',
+    priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
+    context: { usedPct, remainingMonthly },
+  }
+}
+
+/**
+ * Sparerpauschbetrag remaining (§20 Abs. 9 EStG).
+ *
+ * €1,000 single / €2,000 married. Used = sum of annual Vorabpauschale across ETF
+ * and AVD instances from the first accumulation year, or payout-year `saverAllowanceUsed`
+ * for ETF instances that have payout rows.
+ *
+ * Married status is detected from `workspace.baseline.partner`.
+ */
+const sparerpauschbetragRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
+  if (!input.combinedResult || !input.workspace) return null
+  const rules = input.rules ?? activeRules
+
+  const married = input.workspace.baseline.partner !== undefined
+  const capAnnual = married
+    ? rules.capitalGains.saverAllowance * 2
+    : rules.capitalGains.saverAllowance
+
+  let usedAnnual = 0
+  for (const result of input.simulationResult.products) {
+    if (result.productId === 'etf') {
+      // Payout rows take priority (first year shows actual Sparerpauschbetrag used).
+      const payoutRow = result.etfPayoutRows?.[0]
+      if (payoutRow) {
+        usedAnnual += payoutRow.saverAllowanceUsed
+      } else if (result.rows.length > 0) {
+        // Accumulation: first-year Vorabpauschale = rows[0].cumulativeVorabpauschale
+        // (cumulative starts at 0 before the first year).
+        usedAnnual += result.rows[0].cumulativeVorabpauschale
+      }
+    } else if (result.productId === 'altersvorsorgedepot') {
+      // AVD Vorabpauschale during accumulation.
+      if (result.rows.length > 0) {
+        usedAnnual += result.rows[0].cumulativeVorabpauschale
+      }
+    }
+  }
+
+  usedAnnual = Math.min(usedAnnual, capAnnual)
+  const remainingAnnual = Math.max(0, capAnnual - usedAnnual)
+  const usedPct = Math.min(1, capAnnual > 0 ? usedAnnual / capAnnual : 0)
+
+  return {
+    id: 'sparerpauschbetrag_remaining',
+    priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
+    context: { usedAnnual, remainingAnnual, married },
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Rule registry
 // ---------------------------------------------------------------------------
 
@@ -284,7 +499,15 @@ const productReasonRule: Rule = ({ simulationResult }: RuleEngineInput): Atom[] 
  * here. Order matters only for presentation when atoms are later sorted by
  * priority — within equal priority the registry order is preserved.
  */
-const RULES: Rule[] = [sensitivityHintRule, productReasonRule]
+const RULES: Rule[] = [
+  sensitivityHintRule,
+  productReasonRule,
+  bavCapRemainingRule,
+  basisrenteCapRemainingRule,
+  riesterCapRemainingRule,
+  avdCapRemainingRule,
+  sparerpauschbetragRemainingRule,
+]
 
 // ---------------------------------------------------------------------------
 // Engine
@@ -441,6 +664,93 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
     headline: 'Rentengarantie',
     body: 'Lebenslange Rentengarantie über den Rentenfaktor.',
   }),
+
+  bav_cap_remaining: (atom) => {
+    const usedPct = ctxNumber(atom.context, 'usedPct')
+    const remainingMonthly = ctxNumber(atom.context, 'remainingMonthly')
+    const nextLever = ctxString(atom.context, 'nextLeverProductId')
+    const usedPctDisplay = Math.round(usedPct * 100)
+    let body = `Du nutzt ${usedPctDisplay} % des steuerfreien bAV-Rahmens (§ 3 Nr. 63 EStG). `
+    if (remainingMonthly > 0) {
+      body += `Noch ${Math.round(remainingMonthly)} €/Monat verfügbar.`
+    } else {
+      body += 'Der steuerfreie Rahmen ist ausgeschöpft.'
+    }
+    if (nextLever === 'basisrente') {
+      body += ' Nächster Hebel: Rürup-Rente — ebenfalls Sonderausgabenabzug, ohne bAV-Bindung.'
+    }
+    return {
+      headline: 'Betriebliche Altersvorsorge: Beitragslimit',
+      body,
+    }
+  },
+
+  basisrente_cap_remaining: (atom) => {
+    const usedPct = ctxNumber(atom.context, 'usedPct')
+    const remainingAnnual = ctxNumber(atom.context, 'remainingAnnual')
+    const usedPctDisplay = Math.round(usedPct * 100)
+    let body = `Du nutzt ${usedPctDisplay} % des Schicht-1-Höchstbetrags (§ 10 Abs. 3 EStG). `
+    if (remainingAnnual > 0) {
+      body += `Noch ${Math.round(remainingAnnual)} €/Jahr für Rürup-Beiträge abzugsfähig.`
+    } else {
+      body += 'Der Höchstbetrag ist durch GRV- und Rürup-Beiträge ausgeschöpft.'
+    }
+    return {
+      headline: 'Rürup-Rente: Sonderausgabenrahmen',
+      body,
+    }
+  },
+
+  riester_cap_remaining: (atom) => {
+    const usedPct = ctxNumber(atom.context, 'usedPct')
+    const topUpToCap = ctxNumber(atom.context, 'topUpToCap')
+    const allowanceCovered = ctxNumber(atom.context, 'allowanceCovered')
+    const usedPctDisplay = Math.round(usedPct * 100)
+    let body = `Du nutzt ${usedPctDisplay} % des Riester-Höchstbetrags (§ 10a EStG, 2.100 €/Jahr inkl. Zulagen). `
+    if (allowanceCovered > 0) {
+      body += `Zulagen decken ${Math.round(allowanceCovered)} €/Jahr. `
+    }
+    if (topUpToCap > 0) {
+      body += `Mit ${Math.round(topUpToCap)} € mehr Eigenbeitrag erreichst du den Höchstbetrag.`
+    }
+    return {
+      headline: 'Riester: Sonderausgabenrahmen',
+      body,
+    }
+  },
+
+  avd_cap_remaining: (atom) => {
+    const usedPct = ctxNumber(atom.context, 'usedPct')
+    const remainingMonthly = ctxNumber(atom.context, 'remainingMonthly')
+    const usedPctDisplay = Math.round(usedPct * 100)
+    let body = `Du nutzt ${usedPctDisplay} % des AVD-Vertragsrahmens (6.840 €/Jahr). `
+    if (remainingMonthly > 0) {
+      body += `Noch ${Math.round(remainingMonthly)} €/Monat Spielraum bis zur Vertragsobergrenze.`
+    } else {
+      body += 'Die jährliche Vertragsobergrenze ist ausgeschöpft.'
+    }
+    return {
+      headline: 'Altersvorsorgedepot: Beitragslimit',
+      body,
+    }
+  },
+
+  sparerpauschbetrag_remaining: (atom) => {
+    const usedAnnual = ctxNumber(atom.context, 'usedAnnual')
+    const remainingAnnual = ctxNumber(atom.context, 'remainingAnnual')
+    const married = atom.context['married'] === true
+    const cap = married ? 2_000 : 1_000
+    let body = `Sparerpauschbetrag ${married ? '(verheiratet, 2.000 €)' : '(ledig, 1.000 €)'}: `
+    if (usedAnnual > 0) {
+      body += `${Math.round(usedAnnual)} € genutzt, noch ${Math.round(remainingAnnual)} € frei.`
+    } else {
+      body += `${cap} € noch nicht genutzt — ETF- und AVD-Vorabpauschale werden hier angerechnet.`
+    }
+    return {
+      headline: 'Sparerpauschbetrag',
+      body,
+    }
+  },
 }
 
 const FALLBACK_TEMPLATE: AtomTemplate = { headline: '', body: '', cta: undefined }
