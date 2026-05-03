@@ -1,0 +1,49 @@
+import type { BavAssumptions } from './products/bav'
+import type { EtfAssumptions } from './products/etf'
+import type { InsuranceAssumptions } from './products/insurance'
+import type { BasisrenteAssumptions } from './products/basisrente'
+import type { AltersvorsorgedepotAssumptions } from './products/altersvorsorgedepot'
+import type { RiesterAssumptions } from './products/riester'
+
+export type EvidenceState = 'user_confirmed' | 'model_estimate' | 'statement'
+
+export type TransferEvent =
+  | {
+      type: 'certified'
+      year: number
+      sourceInstanceId: string
+      targetInstanceId: string
+      amountEUR: number
+    }
+  | {
+      type: 'surrender_reinvest'
+      year: number
+      sourceInstanceId: string
+      targetInstanceId: string
+      amountEUR: number
+      surrenderHaircutPct: number
+    }
+
+export interface InstanceCommon {
+  instanceId: string
+  label: string
+  anbieter?: string
+  status: 'active' | 'paid_up' | 'surrendered'
+  contractStartYear: number
+  currentValueEUR?: number
+  evidenceMap: Record<string, EvidenceState>
+  ownedBy?: 'self' | 'partner'
+  transferEvents?: TransferEvent[]
+}
+
+export interface BavInstance extends InstanceCommon, BavAssumptions {}
+
+export interface EtfInstance extends InstanceCommon, EtfAssumptions {}
+
+export interface InsuranceInstance extends InstanceCommon, InsuranceAssumptions {}
+
+export interface BasisrenteInstance extends InstanceCommon, BasisrenteAssumptions {}
+
+export interface AltersvorsorgedepotInstance extends InstanceCommon, AltersvorsorgedepotAssumptions {}
+
+export interface RiesterInstance extends InstanceCommon, RiesterAssumptions {}
