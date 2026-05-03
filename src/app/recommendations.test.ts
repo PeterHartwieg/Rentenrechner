@@ -1012,6 +1012,29 @@ describe('pAV vintage rules', () => {
     expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(false)
   })
 
+  it('B1 regression: 2002 contract + oldContractTaxFreeEligible=false → no pre_2005_pav_taxfree_capital (routes to abgeltungsteuer/halbeinkuenfte)', () => {
+    const inst = makeInsuranceInstance({ contractStartYear: 2002, oldContractTaxFreeEligible: false })
+    const input = makeWorkspaceInput(
+      { insurance: [inst] },
+      { age: 40, retirementAge: 65 },
+    )
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(false)
+    // Without pre2005 eligibility, a 2002 contract still qualifies for halbeinkuenfte
+    // (runtime ≥ 12 and retirementAge ≥ 62)
+    expect(atoms.some((a) => a.id === 'halbeinkuenfte_pav_eligible')).toBe(true)
+  })
+
+  it('B1 regression: 2002 contract + oldContractTaxFreeEligible=true (Karin) → pre_2005_pav_taxfree_capital fires', () => {
+    const inst = makeInsuranceInstance({ contractStartYear: 2002, oldContractTaxFreeEligible: true })
+    const input = makeWorkspaceInput(
+      { insurance: [inst] },
+      { age: 40, retirementAge: 65 },
+    )
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(true)
+  })
+
   it('no pAV instances → no vintage pAV atoms', () => {
     const input = makeWorkspaceInput({ insurance: [] })
     const atoms = runRules(input)

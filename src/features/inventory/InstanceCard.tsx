@@ -29,10 +29,8 @@ import type {
   GrvDraft,
 } from './types'
 import { estimateEpFromYears } from './inventoryHelpers'
-import { detectVintageChips } from './vintageDetection'
 import { VintageChips } from './VintageChips'
 import type { Atom } from '../../app/recommendations'
-import { InfoTip } from '../../ui/InfoTip'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { EvidenceBadge } from './EvidenceBadge'
@@ -154,33 +152,6 @@ const STATUS_OPTIONS: readonly { value: InstanceStatus; label: string }[] = [
   { value: 'paid_up', label: 'Beitragsfrei gestellt' },
   { value: 'surrendered', label: 'Gekündigt / übertragen' },
 ] as const
-
-// ---------------------------------------------------------------------------
-// Legacy vintage chips (draft-level, uses detectVintageChips heuristic)
-// Used inside Layer3Details where no workspace atoms are available.
-// ---------------------------------------------------------------------------
-
-function LegacyVintageChips({
-  contractStartYear,
-  durchfuehrungsweg,
-}: {
-  contractStartYear: number
-  durchfuehrungsweg?: string
-}) {
-  const chips = detectVintageChips({ contractStartYear, durchfuehrungsweg })
-  if (chips.length === 0) return null
-
-  return (
-    <div className="inv-vintage-chips">
-      {chips.map((chip) => (
-        <span key={chip.id} className="inv-vintage-chip">
-          {chip.label}
-          <InfoTip text={chip.tooltip} icon="info" />
-        </span>
-      ))}
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Universal fields (shared across all products)
@@ -315,8 +286,6 @@ const LAYER3_FEE_PRESETS = [
 ]
 
 interface Layer3Props {
-  contractStartYear: number
-  durchfuehrungsweg?: string
   effektivkostenPct: number
   onEffektivkostenChange: (v: number) => void
   beitragsdynamikPct: number
@@ -328,8 +297,6 @@ interface Layer3Props {
 }
 
 function Layer3Details({
-  contractStartYear,
-  durchfuehrungsweg,
   effektivkostenPct,
   onEffektivkostenChange,
   beitragsdynamikPct,
@@ -354,11 +321,9 @@ function Layer3Details({
     <details className="inv-layer3-details">
       <summary className="inv-layer3-summary">Details</summary>
       <div className="inv-layer3-body">
-        {/* Legacy vintage chips — draft-level detection inside wizard Layer 3 */}
-        <LegacyVintageChips
-          contractStartYear={contractStartYear}
-          durchfuehrungsweg={durchfuehrungsweg}
-        />
+        {/* Vintage chips are shown at the card level (via VintageChips + runRules) once committed
+            to the dashboard. The wizard has no instanceIds during draft entry, so chips appear
+            after the user taps "Fertig & Vergleich starten". */}
 
         {/* Fee decomposition via FeeSection (spec requirement) */}
         <div className="inv-layer3-section">
@@ -590,8 +555,6 @@ export function BavCard({
       </div>
 
       <Layer3Details
-        contractStartYear={draft.contractStartYear}
-        durchfuehrungsweg={draft.durchfuehrungsweg}
         effektivkostenPct={draft.effektivkostenPct}
         onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
         beitragsdynamikPct={beitragsdynamik}
@@ -680,7 +643,6 @@ export function PavCard({
       </div>
 
       <Layer3Details
-        contractStartYear={draft.contractStartYear}
         effektivkostenPct={draft.effektivkostenPct}
         onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
         beitragsdynamikPct={beitragsdynamik}
@@ -746,7 +708,6 @@ export function RiesterCard({
       </div>
 
       <Layer3Details
-        contractStartYear={draft.contractStartYear}
         effektivkostenPct={0}
         onEffektivkostenChange={() => {}}
         beitragsdynamikPct={beitragsdynamik}
@@ -813,7 +774,6 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
       </div>
 
       <Layer3Details
-        contractStartYear={draft.contractStartYear}
         effektivkostenPct={draft.effektivkostenPct}
         onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
         beitragsdynamikPct={beitragsdynamik}
@@ -868,7 +828,6 @@ export function AvdCard({ draft, onChange, setEvidence }: BaseProps<AvdDraft>) {
       </div>
 
       <Layer3Details
-        contractStartYear={draft.contractStartYear}
         effektivkostenPct={0}
         onEffektivkostenChange={() => {}}
         beitragsdynamikPct={beitragsdynamik}
@@ -914,7 +873,6 @@ export function EtfCard({ draft, onChange, setEvidence }: BaseProps<EtfDraft>) {
       </div>
 
       <Layer3Details
-        contractStartYear={draft.contractStartYear}
         effektivkostenPct={draft.terPct}
         onEffektivkostenChange={(v) => onChange({ ...draft, terPct: v })}
         beitragsdynamikPct={beitragsdynamik}

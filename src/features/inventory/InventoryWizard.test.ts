@@ -34,7 +34,6 @@ import {
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
 } from './inventoryHelpers'
-import { detectVintageChips } from './vintageDetection'
 import { defaultWorkspace } from '../../storage'
 import type { GrvDraft, BavDraft, RiesterDraft, EtfDraft } from './types'
 
@@ -406,66 +405,6 @@ describe('per-product draft → instance Layer-1 fields', () => {
       grossSalaryYear: 75_000,
     })
     expect(ws.baseline.assumptions.etf[0].annualAssetFee).toBeCloseTo(0.0007, 5)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Issue 06: vintage detection
-// ---------------------------------------------------------------------------
-
-describe('detectVintageChips (issue 06)', () => {
-  it('returns halbeinkuenfte_pre2005 chip for pAV with contractStartYear 2002', () => {
-    const chips = detectVintageChips({ contractStartYear: 2002 })
-    expect(chips.map((c) => c.id)).toContain('halbeinkuenfte_pre2005')
-  })
-
-  it('returns halbeinkuenfte_pre2005 for contractStartYear exactly 2004', () => {
-    const chips = detectVintageChips({ contractStartYear: 2004 })
-    expect(chips.map((c) => c.id)).toContain('halbeinkuenfte_pre2005')
-  })
-
-  it('does NOT return halbeinkuenfte_pre2005 for contractStartYear 2005', () => {
-    const chips = detectVintageChips({ contractStartYear: 2005 })
-    expect(chips.map((c) => c.id)).not.toContain('halbeinkuenfte_pre2005')
-  })
-
-  it('returns par40b_aF for Direktversicherung Altvertrag contractStartYear 2004', () => {
-    const chips = detectVintageChips({
-      contractStartYear: 2004,
-      durchfuehrungsweg: 'direktversicherung_40b_alt',
-    })
-    expect(chips.map((c) => c.id)).toContain('par40b_aF')
-  })
-
-  it('does NOT return par40b_aF for §3 Nr. 63 even if contractStartYear 2003', () => {
-    const chips = detectVintageChips({
-      contractStartYear: 2003,
-      durchfuehrungsweg: 'direktversicherung_3_63',
-    })
-    expect(chips.map((c) => c.id)).not.toContain('par40b_aF')
-  })
-
-  it('does NOT return par40b_aF for direktversicherung_40b_alt with contractStartYear 2005', () => {
-    const chips = detectVintageChips({
-      contractStartYear: 2005,
-      durchfuehrungsweg: 'direktversicherung_40b_alt',
-    })
-    expect(chips.map((c) => c.id)).not.toContain('par40b_aF')
-  })
-
-  it('returns both chips for §40b a.F. Altvertrag before 2005', () => {
-    const chips = detectVintageChips({
-      contractStartYear: 2003,
-      durchfuehrungsweg: 'direktversicherung_40b_alt',
-    })
-    const ids = chips.map((c) => c.id)
-    expect(ids).toContain('halbeinkuenfte_pre2005')
-    expect(ids).toContain('par40b_aF')
-    expect(chips).toHaveLength(2)
-  })
-
-  it('returns empty array for modern contract', () => {
-    expect(detectVintageChips({ contractStartYear: 2020 })).toHaveLength(0)
   })
 })
 

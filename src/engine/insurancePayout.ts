@@ -13,6 +13,22 @@ import {
   retirementIncomeBase,
 } from './retirementPayout'
 
+/**
+ * Calendar years from `contractStartYear` to the payout year.
+ * Mirrors simulationContext.ts: payoutYear = currentYear + (retirementAge - currentAge).
+ * Used by both the simulation context and the rules engine — single source so they
+ * can never drift.
+ */
+export function computeRuntimeYearsAtRetirement(
+  contractStartYear: number,
+  currentYear: number,
+  currentAge: number,
+  retirementAge: number,
+): number {
+  const payoutYear = currentYear + (retirementAge - currentAge)
+  return payoutYear - contractStartYear
+}
+
 // Derives the private-insurance tax treatment from the contract year, accumulation period, and retirement age.
 // pre2005: §52 Abs. 28 EStG a.F. — payout is tax-free. Requires contractStartYear < 2005,
 //   oldContractTaxFreeEligible = true (user-confirmed: ≥5 annual premiums, capital payout),

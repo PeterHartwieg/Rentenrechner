@@ -21,7 +21,7 @@ import type { GermanRules, ProductResult } from '../domain'
 import type { Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { activeRules } from '../rules'
-import { deriveInsuranceTaxMode } from '../engine/insurancePayout'
+import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from '../engine/insurancePayout'
 import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 
 // ---------------------------------------------------------------------------
@@ -541,22 +541,9 @@ const sparerpauschbetragRemainingRule: Rule = (input: RuleEngineInput): Atom | n
 // Vintage-detection rules (issue 13)
 // ---------------------------------------------------------------------------
 
-// currentYear constant used by runtime computation — mirrors simulationContext.ts's
-// `payoutYear = rules.year + (retirementAge - age)` where rules.year ≈ current year.
-const CURRENT_YEAR = new Date().getFullYear()
-
-/**
- * Compute pAV contract runtime at retirement (calendar years from contractStartYear to payout year).
- * Mirrors simulationContext.ts: payoutYear = currentYear + (retirementAge - currentAge).
- */
-function pavRuntimeYearsAtRetirement(
-  contractStartYear: number,
-  retirementAge: number,
-  currentAge: number,
-): number {
-  const payoutYear = CURRENT_YEAR + (retirementAge - currentAge)
-  return payoutYear - contractStartYear
-}
+// Use activeRules.year instead of new Date().getFullYear() so the engine and rules
+// engine stay consistent across year boundaries and in tests.
+const RULES_YEAR = activeRules.year
 
 /**
  * Emits vintage atoms for pAV (InsuranceInstance) instances.
@@ -571,16 +558,18 @@ const pavVintageRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
 
   const atoms: Atom[] = []
   for (const inst of instances) {
-    const runtimeYears = pavRuntimeYearsAtRetirement(
+    const runtimeYears = computeRuntimeYearsAtRetirement(
       inst.contractStartYear,
-      profile.retirementAge,
+      RULES_YEAR,
       profile.age,
+      profile.retirementAge,
     )
     // Authoritative engine routing decision — do NOT reimplement conditions inline.
     const taxMode = deriveInsuranceTaxMode(
       inst.contractStartYear,
       runtimeYears,
       profile.retirementAge,
+      inst.oldContractTaxFreeEligible,
     )
 
     if (taxMode === 'pre2005') {
@@ -629,6 +618,15 @@ const bavVintageRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
       inst.durchfuehrungsweg,
       inst.pre2005EligibleTaxFree,
     )
+
+    if (lumpSumTaxMode === 'pre2005_steuerfrei' && inst.durchfuehrungsweg !== 'direktversicherung_40b_alt') {
+      if (import.meta.env?.DEV) {
+        console.warn(
+          '[recommendations] bavVintageRule: lumpSumTaxMode=pre2005_steuerfrei but durchfuehrungsweg is not direktversicherung_40b_alt — engine drift?',
+          inst,
+        )
+      }
+    }
 
     if (inst.durchfuehrungsweg === 'direktversicherung_40b_alt') {
       if (lumpSumTaxMode === 'pre2005_steuerfrei') {

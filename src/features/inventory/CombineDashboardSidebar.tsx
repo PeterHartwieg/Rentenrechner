@@ -21,7 +21,7 @@
 
 import './InventoryWizard.css'
 import './CombineDashboardSidebar.css'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, Trash2, Archive, RefreshCw, Lock } from 'lucide-react'
 import type { WorkspaceAssumptionsV2, WhatIfScenario, Scenario } from '../../domain/workspace'
 import type {
@@ -648,9 +648,8 @@ export function CombineDashboardSidebar({
   // Guard against rapid double-clicks on the archive button.
   const [archiving, setArchiving] = useState(false)
 
-  // Run vintage rules once per render — rules are pure and cheap.
-  // Build a minimal Workspace with live assumptions so rules see current instance data.
-  const vintageAtoms = runRules({
+  // Run vintage rules once per assumptions + profile change — rules are pure.
+  const vintageAtoms = useMemo(() => runRules({
     workspace: {
       schemaVersion: 2,
       mode: 'combine',
@@ -659,7 +658,7 @@ export function CombineDashboardSidebar({
       pinnedComparisonIds: [],
     },
     simulationResult: { products: [] },
-  })
+  }), [assumptions, baseline.profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasBav = assumptions.bav.length > 0
   const hasPav = assumptions.insurance.length > 0

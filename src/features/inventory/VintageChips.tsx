@@ -32,6 +32,7 @@ export interface VintageChipsProps {
 // ---------------------------------------------------------------------------
 
 export function VintageChips({ atoms }: VintageChipsProps) {
+  // Defensive re-filter; host already filters. Belt-and-suspenders so a future refactor at the call-site can't smuggle non-vintage atoms in.
   const vintageAtoms = atoms.filter((a) => VINTAGE_ATOM_IDS.has(a.id))
   if (vintageAtoms.length === 0) return null
 
