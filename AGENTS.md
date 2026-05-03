@@ -1,12 +1,39 @@
 # Rentenrechner — Developer Guide (Codex / OpenAI agents)
 
 German retirement calculator comparing ETF, bAV, private insurance, Basisrente, Altersvorsorgedepot, and Riester.
-Stack: React + TypeScript + Vite. No backend.
+Stack: React + TypeScript + Vite. Frontend-only today; small backend planned for upload/OCR features (see "Backend boundary").
+
+## About this project
+
+**Public, free tool.** Anyone can use the hosted version at no cost. Donations (Stripe / GitHub Sponsors) cover hosting.
+
+**Source-available, non-commercial license.** Code is published under **PolyForm Noncommercial 1.0.0**. Personal, research, and internal-evaluation use is free. **Insurance brokers, investment advisors, employers, and any other commercial use require a separate paid license** — contact `peter@hartwieg.com`.
+
+**Working name only.** "Rentenrechner" is a placeholder; the public name and domain are TBD before launch. Don't bake the string "Rentenrechner" into anything that would be hard to rename (page titles, marketing copy, OG tags, share-URL slugs). Internal identifiers (npm package, code symbols) are fine to leave alone.
+
+## Critical guardrails
+
+These shape every change. Read before touching UI, exports, or anything user-facing.
+
+1. **Not advice.** This tool produces illustrations, never advice. The disclaimer banner ("keine Steuer-, Rechts-, oder Anlageberatung") must remain visible — users may collapse it per session, never permanently dismiss it. Every PDF/CSV export embeds the disclaimer at the top. The commercial license obligates brokers/advisors to indemnify us for client-facing use.
+2. **License posture is product-shaping.** When adding features, ask whether they advantage commercial users in a way that erodes the donation model (bulk-export, white-label, batch scenarios). Such features either gate behind a future commercial-license check, or are explicitly free. Default to free until we have a reason to gate.
+3. **No PII collection without a backend story.** Frontend is purely localStorage today. Anything that would phone home (analytics, error tracking, OCR upload) must be GDPR-compliant by design (region, retention, consent) and is a separate backlog item, not a casual addition.
+
+## Backend boundary
+
+Today: **no backend.** All state in localStorage + share-URLs. No accounts, no telemetry, no cookies.
+
+Planned: a small backend will be introduced **only** when a feature requires it. First trigger is OCR / document upload (Riester, bAV, GRV-Renteninformation parsing). When that lands:
+- Stack chosen at the time (Cloudflare Workers + R2, Vercel + S3, or Hetzner VPS — GDPR region required).
+- Files processed ephemerally; not stored.
+- Calculator continues to work fully offline for users who don't use upload features.
+
+Until then, do not add fetch/auth/cookies to the frontend.
 
 ## Commands
 
 ```bash
-npm run verify          # lint + tests + build (run this after every change)
+npm run verify          # lint + tests + build (run after every change)
 npx vitest run          # unit tests only
 npx tsc --noEmit        # type-check only
 npm run dev             # dev server
@@ -14,142 +41,104 @@ npm run build           # production build
 npm run repo:stats      # file/symbol inventory
 ```
 
-## Quick Navigation
-
-For a task, read the matching context capsule first — it is faster than reading source files cold.
+## Quick navigation
 
 | Task | Start here |
 |------|-----------|
-| Change a product's calculation | `docs/context/products.md`, then the product's `src/engine/products/<product>.ts` |
-| Change tax or social-security rules | `docs/context/rules-and-tax.md` |
+| Change a product's calculation | `docs/context/products.md`, then `src/engine/products/<product>.ts` |
+| Change tax / social-security rules | `docs/context/rules-and-tax.md` |
 | Change UI layout or inputs | `docs/context/ui.md` |
 | Add a new product | `src/engine/products/README.md` |
-| Update 2026 rule values | `src/rules/de2026.ts` |
+| Update annual statutory values | `src/rules/de2026.ts` |
+| Add a publication / commercial-license feature | `BACKLOG.md` Group P |
 
-## Key Files
+## Key files
 
 ### Rules and constants
 
 | File | Role |
 |------|------|
-| `src/rules/de2026.ts` | All 2026 year-specific statutory values (BBG, GKV/PV rates, Rentenwert, Basiszins, cohort tables, Pauschbeträge). Update once a year when the BBG-Bekanntmachung and rate adjustments are published. Never hardcode statutory numbers in the engine. |
-| `src/rules/legalConstants.ts` | Cross-year statutory constants: 1/120 SGB V spreading, §34 EStG Fünftelregelung divisor, §20 Abs. 1 Nr. 6 EStG age/runtime thresholds, halbeinkünfte factor. Change only when the underlying law changes (not on the annual rate-update cycle). |
-| `src/rules/index.ts` | Re-exports `activeRules` (year-specific) and `legalConstants`. To swap rule years: add `de2027.ts`, change one line in `index.ts` to point `activeRules` at the new year, run tests. |
+| `src/rules/de2026.ts` | All year-specific 2026 statutory values. Update once a year. Never hardcode statutory numbers in the engine. |
+| `src/rules/legalConstants.ts` | Cross-year statutory constants (1/120 SGB V, Fünftelregelung divisor, §20 Abs. 1 Nr. 6 EStG thresholds, halbeinkünfte factor). Change only on law amendment. |
+| `src/rules/index.ts` | Single swap-point: add `de2027.ts`, change one line, run tests. |
 
-### Domain types
-
-| File | Role |
-|------|------|
-| `src/domain/index.ts` | Main import surface for all shared types. Import from here unless you need only one product's types. |
-| `src/domain/products/<product>.ts` | Per-product assumption and result types (BavAssumptions, InsuranceAssumptions, etc.). Six files: `bav`, `etf`, `insurance`, `basisrente`, `altersvorsorgedepot`, `riester`. |
-| `src/domain/profile.ts` | `PersonalProfile`, `FilingStatus`. |
-| `src/domain/results.ts` | `BaseProductResult`, discriminated `ProductResult` union, `SimulationResult`. |
-
-### Engine — tax, salary, and retirement
+### Engine — core math
 
 | File | Role |
 |------|------|
-| `src/data/defaultScenario.ts` | Default profile and assumptions used by tests and initial UI state. |
-| `src/engine/tax.ts` | `calculateIncomeTax2026`, `calculateSolidarityTax`, `calculateCapitalGainsTax`. |
-| `src/engine/salary.ts` | `calculateSalaryResult` (BMF PAP Vorsorgepauschale), `calculateBavFunding` (two-pass bAV limit logic). |
-| `src/engine/retirementTax.ts` | `calculateRetirementTax` — retirement-phase taxable-income pipeline. All retirement payout helpers must go through this. |
+| `src/engine/tax.ts` | `calculateIncomeTax2026`, soli, capital-gains tax. |
+| `src/engine/salary.ts` | `calculateSalaryResult` (BMF PAP Vorsorgepauschale), `calculateBavFunding` (two-pass). |
+| `src/engine/retirementTax.ts` | `calculateRetirementTax` — single pipeline for all retirement-phase taxable income. |
 | `src/engine/accumulation.ts` | `projectAccumulation` accumulation loop, yearly rows, fee drag, ETF Vorabpauschale accrual. |
 | `src/engine/payoutMath.ts` | Shared payout math: `monthlyRate`, `monthlyPayoutFromCapital`, `computeGrossMonthlyPayout`. |
-| `src/engine/productPayout.ts` | Shared product payout plumbing: pension payout fee deduction and Leibrente break-even age. |
-| `src/engine/etfPayout.ts` | ETF exit tax and payout schedule: `afterTaxInvestmentCapital`, `etfPayoutSchedule`. |
-| `src/engine/insurancePayout.ts` | Private insurance payout tax/KV/PV: `deriveInsuranceTaxMode`, `netInsurancePayout`, lump-sum helpers. |
-| `src/engine/bavPayout.ts` | bAV payout tax/KV/PV: `deriveBavLumpSumTaxMode`, `netBavPayout`, bAV lump-sum helpers. |
-| `src/engine/certifiedPensionPayout.ts` | Shared §22 Nr. 5 certified-product payout helpers used by AVD and Riester wrappers. |
-| `src/engine/projections.ts` | Compatibility barrel re-exporting the split projection/payout modules. Prefer importing from the focused module above in new code. |
-| `src/engine/fees.ts` | `computeRIY` — RIY/Effektivkosten bisection solver (60-iteration, beginning-of-period annuity FV). |
-| `src/engine/bavWarnings.ts` | Fee threshold warnings and one-click fee presets (Nettotarif / Standard / Hochkosten / Hoher AG-Match). |
-| `src/engine/grv.ts` | `projectStatutoryPension` — EP-based GRV estimate or manual override; §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil tax; KV/PV via §249a SGB V half-rate for KVdR members. |
-| `src/engine/basisrente.ts` | `calculateBasisrenteFunding` (§10 Abs. 3 EStG Schicht-1 cap, marginal tax saving) and `netBasisrentePayout` (§22 Besteuerungsanteil + freiwillig §240 KV/PV). |
-| `src/engine/altersvorsorgedepot.ts` | AVD accumulation, allowance engine (Grundzulage, Kinderzulage, Günstigerprüfung), Standarddepot glidepath, wrappers around shared §22 Nr. 5 payout helpers. |
-| `src/engine/riester.ts` | §84–§86 EStG allowances, Mindesteigenbeitrag, §10a Günstigerprüfung, wrappers around shared §22 Nr. 5 payout helpers, §93 Abs. 2 partial lump sum. |
+| `src/engine/productPayout.ts` | Shared product payout plumbing: pension payout fee deduction, Leibrente break-even age. |
+| `src/engine/{etfPayout,insurancePayout,bavPayout,certifiedPensionPayout}.ts` | Per-channel after-tax payout helpers (ETF exit tax; private-insurance tax mode + lump sum; bAV tax mode + lump sum; shared §22 Nr. 5 helpers for AVD/Riester). |
+| `src/engine/projections.ts` | Compatibility barrel — re-exports the split modules above. Prefer importing from the focused module in new code. |
+| `src/engine/fees.ts` | RIY / Effektivkosten bisection solver. |
+| `src/engine/marketReturns.ts` | Shared stochastic return-path helpers; product simulators compose Monte Carlo paths via this. |
+| `src/engine/{grv,basisrente,altersvorsorgedepot,riester,monteCarlo}.ts` | Pension-system, Schicht-1, Schicht-2, and stochastic engines. |
 
-### Engine — simulation orchestration
+### Engine — orchestration
 
 | File | Role |
 |------|------|
-| `src/engine/simulationContext.ts` | `SimulationContext` interface and `buildContext` — computes pre-scenario funding results (bAV, Basisrente, AVD, Riester) shared across all product simulators. |
-| `src/engine/buildResult.ts` | `buildProductResult` — runs accumulation + payout/tax pipeline; assembles the discriminated `ProductResult`. All product simulators call this. |
-| `src/engine/simulate.ts` | Top-level `simulateRetirementComparison` — short orchestration: builds context, calls each product's `simulate()`, returns `ProductResult[]`. Under 200 lines. |
-| `src/engine/marketReturns.ts` | Shared stochastic return-path helpers. Product simulators use this to compose Monte Carlo yearly returns with product-specific policies. |
-| `src/engine/monteCarlo.ts` | Seeded Monte Carlo engine: shared market paths, product percentile bands, win probabilities, downside/target probabilities. |
-| `src/engine/productRegistry.ts` | `PRODUCT_REGISTRY` (metadata, assumption key, simulator, validator), `PRODUCT_MANIFEST`, `PRODUCT_IDS`, `getProductMeta(id)`, and the `ProductId` type itself (derived from each product's `metadata.id` literal). Single source of truth for product ids, labels, colors, validators, and sort order. |
-| `src/engine/productManifest.ts` | Compatibility re-export of manifest helpers from `productRegistry.ts`. |
-| `src/engine/products/` | One subdirectory containing `<product>.ts` (simulator), `<product>.validation.ts` (validator), `<product>.test.ts` (unit tests) per product. See `src/engine/products/README.md` for the routing table. |
+| `src/engine/simulationContext.ts` | `buildContext` — pre-scenario funding (bAV, Basisrente, AVD, Riester) computed once. Product simulators must consume this, not call funding helpers directly. |
+| `src/engine/buildResult.ts` | Shared accumulation + payout/tax pipeline; assembles `ProductResult`. |
+| `src/engine/simulate.ts` | Top-level `simulateRetirementComparison` (under 200 lines). |
+| `src/engine/productRegistry.ts` | Single source of truth for product ids, labels, colors, simulators, validators, sort order. `ProductId` is derived from registry entries — never hardcode the union. |
+| `src/engine/products/<product>.ts` | One folder per product (simulator + validator + tests). See `products/README.md` for the routing table. |
 
-### App layer
+### App, UI, storage
 
-| File | Role |
+- `src/app/` — `useCalculatorState.ts` (localStorage + URL init), `useSimulationViewModel.ts` (chart/table derivation), `productPresentation.ts` (presets + warnings + colors).
+- `src/features/` — `inputs/`, `results/`, `cashflows/`, `assumptions/`, `workspace/` (each with co-located CSS).
+- `src/ui/` — shared primitives (`NumberField`, `ResultMetric`, formatters).
+- `src/domain/` — type barrel; import from `src/domain/index.ts` unless you need one product's types.
+- `src/storage.ts`, `src/utils/{scenarioSchema,urlShare,csvExport,format}.ts`.
+
+## UI rounding boundary (display layer only)
+
+The engine returns full-precision floats. Statutory rounding (e.g. `floorEuro(zvE)`) is applied surgically inside the engine **only where the law requires it** — not as a global policy. Rounding for human consumption happens at the display boundary so that intermediate composition (RIY, Günstigerprüfung, payout schedules, oracle-validation goldens) stays exact.
+
+| Surface | Rule |
 |------|------|
-| `src/app/useCalculatorState.ts` | localStorage and URL initialization, persistence, scenario CRUD. |
-| `src/app/useSimulationViewModel.ts` | Runs simulation, derives chart data, pension bars, sort order, best-result selection. |
-| `src/app/productPresentation.ts` | Fee presets (bAV / pAV), calculation-warning metadata, `GRV_COLOR`. Re-exports manifest helpers. |
-| `src/App.tsx` | Composition shell (~500 lines). Composes feature sections; no calculation logic. |
-| `src/features/` | Feature components: `inputs/`, `results/`, `cashflows/`, `assumptions/` — each with co-located CSS. |
-| `src/ui/` | Shared UI primitives: `NumberField`, `ResultMetric`, `BavWaterfall`, `formatting.ts`, `helpers.ts`. |
+| `<NumberField>` (`src/ui/NumberField.tsx`) | Always use this for numeric inputs bound to engine output. Decimals default from `step`; pass `decimals={n}` to override. Never bind a raw float to a hand-rolled `<input>`. |
+| Currency in JSX | `formatCurrency(value, decimals=0)` from `src/utils/format.ts`. Use 2 decimals only when cents matter (oracles, fee deltas). |
+| Percent in JSX | `formatPercent(value, decimals=1)`. Pass the ratio (`0.024`), not the multiplied value. |
+| `<ResultMetric>` | Caller must pre-format. |
+| Chart axis ticks | Recharts `tickFormatter` (typically `formatCurrency` rounded to 1k). |
 
-### UI chart conventions
+If you find a UI leak (raw float reaching the user), fix it at the formatter — never round inside the engine.
 
-| Chart | Convention |
-|------|------------|
-| Lifecycle chart (`BreakEvenChart.tsx`) | Use a single neutral dotted line for cumulative net amount paid in by the user because it is the shared comparison benchmark. Use product color only for product-specific lines and markers: solid = remaining contract/depot capital, dashed = cumulative net payouts received after tax and KV/PV, marker dot = first age where net payouts reach the paid-in benchmark. Do not use Recharts' generated legend here; keep the compact custom legend inside the chart frame at the top right, matching the `FeeDragChart` overlay style. |
-| Fee-drag chart (`FeeDragChart.tsx`) | Its blue + green stack must equal the lifecycle chart's maximum cumulative `Netto ausgezahlt` over the same horizon (`LIFECYCLE_HORIZON_AGE`, or the configured end age if higher, capped by product payout end). Green `Netto-Rendite` is only the surplus above recovered net user cost; do not add `afterTaxLumpSum` here because lump sums are an alternative payout view, not additive to monthly payouts. |
-| Monte Carlo panel (`MonteCarloPanel.tsx`) | Uses the selected return scenario as expected risky-market return and `ScenarioAssumptions.monteCarlo.annualVolatility` as annual volatility. All visible products share the same market path per run; product fees, taxes, payout modes, and AVD glidepath then diverge normally. |
+## UI chart conventions
 
-### Storage, utils, and tests
+- **Lifecycle chart** (`BreakEvenChart.tsx`): single neutral dotted line for cumulative net paid-in (shared benchmark). Product color only for product-specific lines: solid = remaining capital, dashed = cumulative net payouts, filled marker = first age payouts cover paid-in. Open-ring marker = Leibrente product overtaking a Kapitalverzehr product (`findLeibrenteCrossovers`); off-frame crossovers surface as a text callout below the chart.
+- **Fee-drag chart** (`FeeDragChart.tsx`): blue + green stack must equal the lifecycle chart's max cumulative `Netto ausgezahlt` over the same horizon. Green = surplus above recovered net cost; do not add `afterTaxLumpSum`.
+- **Monte Carlo panel** (`MonteCarloPanel.tsx`): uses the selected return scenario as expected risky-market return and `ScenarioAssumptions.monteCarlo.annualVolatility` as annual volatility. All visible products share the same market path per run; product fees, taxes, payout modes, and AVD glidepath then diverge normally.
 
-| File | Role |
-|------|------|
-| `src/storage.ts` | `loadState` / `saveState` — localStorage persistence with `mergeDeep` schema migration; version field guards forward-compat. |
-| `src/utils/scenarioSchema.ts` | `validateAndMigrateState` — range/shape validation for URL and localStorage state (finite numbers, age invariants, fee bounds, scenario array shape). |
-| `src/utils/urlShare.ts` | `buildShareUrl` / `readUrlState` — base64url `?s=` share-URL encoding and decoding. |
-| `src/utils/csvExport.ts` | `exportCsv` — UTF-8 BOM CSV with three sections: summary comparison, yearly cashflows (all products/scenarios), ETF payout schedule. |
-| `src/test/factories.ts` | `makeProfile`, `makeAssumptions`, `simulateDefault`, `resultFor` — test fixture helpers used by all product test files. |
-| `src/engine/simulate.integration.test.ts` | Cross-product golden snapshots and fairness invariant. Run after touching accumulation or payout logic. |
+## Non-obvious architecture
 
-## Non-Obvious Architecture
+Cross-cutting decisions you'll keep hitting:
 
-**Vorsorgepauschale** (`salary.ts`): taxable income deducts only RV + GKV + PV (no AV/unemployment). `SalaryResult.vorsorgepauschale` exposes this for audit. `calculateSalaryResult` accepts optional `effectiveTaxFreeConversion` / `effectiveSvFreeConversion` overrides used by `calculateBavFunding` when the employer share has already consumed part of the §3 Nr. 63 / §1 SvEV limits.
+- **Retirement tax goes through `calculateRetirementTax`.** Cohort-based Versorgungsfreibetrag and Besteuerungsanteil, Werbungskosten/Sonderausgaben Pauschbeträge, halbeinkünfte/Abgeltungsteuer/pre-2005/Ertragsanteil branching, Ehegattensplitting (§32a Abs. 5 EStG). New retirement-phase tax behavior extends this pipeline; it does not bypass it. `retirementYear` is required so cohort tables lock to the correct year.
+- **KV/PV proportional apportionment over BBG.** When aggregate retirement income exceeds the monthly KV/PV BBG, contributions are scaled proportionally across sources (`calculateRetirementKvPv`). No statute mandates priority for single-member cases — this is a documented modeling choice.
+- **Vorsorgepauschale deducts only RV + GKV + PV, not AV.** `SalaryResult.vorsorgepauschale` exposes the breakdown. PKV branch uses actual `pkvMonthlyPremium` + `pPVMonthlyPremium` as Teilbeträge; net PKV cost (premium − §257 subsidy) deducts from `annualNet`.
+- **bAV two-pass funding.** `calculateBavFunding` estimates employer subsidy, computes total bAV against §3 Nr. 63 / §1 SvEV limits, then reruns salary with corrected effective limits. Iterative fixed-point (≤20 iterations).
+- **`SimulationContext` / `buildContext`.** Pre-scenario funding (bAV, Basisrente, AVD, Riester) runs once before the scenario loop. Product simulators receive `ctx` and must not call funding helpers directly. Monte Carlo adds `ctx.marketReturnPath` per run; product simulators compose it via `marketReturns.ts` instead of sampling independently.
+- **`PRODUCT_REGISTRY` is the source of truth for product identity.** `ProductId` is derived from each product's `metadata.id` literal. Adding a product is local to `engine/products/` + per-product domain types + one registry entry. Use `getProductMeta(id)` in UI instead of local color/order maps.
+- **Fair-comparison invariant.** ETF and insurance always invest `bavFunding.monthlyNetCost` — the same net cash the user pays for bAV. There is no "custom amount" toggle.
+- **Fee model is split.** `FeeModel` has `wrapperAssetFee` (Versicherungsmantel) + `fundAssetFee` (TER); `projectAccumulation` uses the sum. `pensionPayoutFeePct` is deducted from gross monthly Leibrente/Zeitrente before tax/KV/PV (bAV + pAV only). `accumulationRiy` on `ProductResult` is a **decimal** (0.012 = 1.2 % p.a.), not pp.
+- **Accumulation policy is the extension point.** `AccumulationPolicy` carries opt-in behaviors: `yearlyReturn` (per-year override; Standarddepot glidepath, Monte Carlo plugs here), `vorabpauschale` (InvStG §18), `initialCapital` (Riester→AVD, paid-up phase 2), `contributionGrowth` (Beitragsdynamik). New extensions go here, not as new top-level options.
+- **Beitragsdynamik uses geometric-sum Beitragssumme.** When `contributionGrowth.annualRate > 0`, `acquisitionCostPct` is computed off `c × 12 × ((1+r)^Y − 1) / r` (Versicherungs convention). For bAV, the §3 Nr. 63 / §1 SvEV cap and statutory subsidy are computed from year-1 inputs and held constant — documented approximation.
+- **Payout modes** (`leibrente` / `zeitrente` / `kapitalverzehr`). bAV and pAV support all three. ETF is hardcoded to `kapitalverzehr`. Basisrente: capital payout legally prohibited (`afterTaxLumpSum = null`); only `leibrente`/`zeitrente`. Net pipeline (tax + KV/PV) is unchanged across modes — only the gross figure differs.
+- **External oracle goldens.** `simulate.integration.test.ts` and dedicated oracle tests pin payroll, retirement-tax, and bAV-funding outputs to externally-verified values. Engine rounding compounds — keep rounding at the display boundary so these stay exact.
 
-**bAV two-pass** (`salary.ts`): `calculateBavFunding` does a first pass to estimate employer subsidy, computes total bAV against the 8%/4%-BBG limits, then reruns salary with the corrected employee effective limits. `BavFundingResult` carries `taxableOverflowAnnual` / `svLiableOverflowAnnual`.
+Product-specific gotchas (will surprise you when first opening these simulators):
 
-**Fee model** (`accumulation.ts`): `FeeModel` now has `wrapperAssetFee` (Versicherungsmantel p.a.) and `fundAssetFee` (Fonds/ETF TER p.a.) instead of a single `annualAssetFee`; `projectAccumulation` uses their sum. ETF uses only `annualAssetFee` (no wrapper/fund split). `pensionPayoutFeePct` is deducted from gross monthly Leibrente/Zeitrente before income-tax and KV/PV for bAV and pAV only. `yearlyFees` / `totalFees` reflect all asset-based drag; `accumulationRiy` (on `ProductResult`) exposes RIY in pp computed by `computeRIY` in `fees.ts`.
+- **bAV lump-sum tax routing depends on Durchführungsweg.** `deriveBavLumpSumTaxMode` is the single source of truth. §3 Nr. 63 → full marginal rate (no Fünftelregelung); §40b a.F. eligible → tax-free; Direktzusage / Unterstützungskasse → Fünftelregelung. KV/PV via §229 SGB V 1/120 spreading applies to all modes.
+- **Private insurance tax mode is auto-derived** by `deriveInsuranceTaxMode(contractStartYear, runtimeYears, retirementAge)` → `pre2005 | halbeinkuenfte | abgeltungsteuer`. For `payoutMode === 'leibrente'`, `netInsurancePayout` overrides this with §22 Nr. 1 Satz 3 a EStG Ertragsanteil for **all** contract eras (even pre-2005).
+- **KVdR vs. freiwillig changes the KV side of payouts.** `netBavPayout(..., kvdrMember)`: KVdR applies §226(2) Freibetrag; freiwillig (§240 SGB V) applies KV on full amount. PV is the same in both.
 
-**Accumulation policy** (`accumulation.ts`): `AccumulationInput` carries the always-required fields (contributions, return, fees, etc.); the opt-in behaviors live on `policy?: AccumulationPolicy` — `yearlyReturn` (per-year return override; used by Standarddepot glidepath and Monte Carlo), `vorabpauschale` (InvStG §18 annual accrual + cost-basis carryover), and `initialCapital` (transferred starting balance for Riester→AVD and paid-up insurance phase 2). `buildResult` mirrors the shape minus `rules`, which it injects from `params.rules`. New extension policies should be added to `AccumulationPolicy` rather than as new top-level options.
+## Current state
 
-**ETF Vorabpauschale** (`accumulation.ts` / `etfPayout.ts`): `projectAccumulation` accrues §18 InvStG via `policy.vorabpauschale` and tracks `cumulativeVorabpauschale` on each row. `afterTaxInvestmentCapital` and `etfPayoutSchedule` consume this to reduce the taxable gain at exit / cost-basis schedule. Only wired for ETF products.
-
-**bAV lump sum** (`bavPayout.ts`): `afterTaxBavLumpSum` now routes the income-tax leg via `deriveBavLumpSumTaxMode(durchfuehrungsweg, pre2005EligibleTaxFree)` → `BavLumpSumTaxMode`. §3 Nr. 63 Durchführungswege → `voll_versorgungsbezug` (full marginal rate, §22 Nr. 5 EStG); §40b a.F. eligible → `pre2005_steuerfrei`; Direktzusage/Unterstützungskasse → `fuenftelregelung` (§34 Abs. 2 Nr. 4 EStG). KV/PV via §229 Abs. 1 Satz 3 SGB V 1/120 rule applies to all modes. Default is `direktversicherung_3_63`.
-
-**Fair comparison**: ETF and insurance always invest `bavFunding.monthlyNetCost` — the same net cash the user actually pays for bAV. This is fixed; there is no "custom amount" toggle.
-
-**SimulationContext / buildContext** (`simulationContext.ts`): `buildContext` runs all pre-scenario funding calculations (bAV, Basisrente, AVD, Riester) once before the scenario loop, producing a `SimulationContext` passed into every product's `simulate(ctx, scenario)` call. Product simulators must not call salary/funding helpers directly; use `ctx`. Monte Carlo adds `ctx.marketReturnPath` per run; product simulators compose it via `marketReturns.ts` instead of sampling independently.
-
-**Product registry** (`productRegistry.ts`): `PRODUCT_REGISTRY` is the single source of truth for product display metadata, assumption key, simulator, and validator. Each product module in `src/engine/products/` exports a `metadata` constant (with `id: '<id>' as const`); the registry aggregates them. The `ProductId` type is derived from `PRODUCT_MANIFEST[*].id`, so adding a product never requires editing a hardcoded union — `domain/products/common.ts` re-exports `ProductId` from the registry. `simulate.ts`, `productManifest.ts`, and `scenarioSchema.ts` all consume the registry, so adding a product is local to `engine/products/`, the per-product domain types, and one new entry in `PRODUCT_REGISTRY`. Use `getProductMeta(productId)` in UI code instead of local color/order maps.
-
-**Private insurance tax** (`insurancePayout.ts` / `simulationContext.ts`): `deriveInsuranceTaxMode(contractStartYear, runtimeYears, retirementAge)` returns `'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'`. `netInsurancePayout` and `afterTaxInsuranceLumpSum` implement each branch — routing through `calculateRetirementTax`. Contract runtime is auto-derived as `retirementAge - age`.
-
-**KVdR toggle** (`bavPayout.ts`): `netBavPayout(..., kvdrMember = true)`. When `true`: KV Freibetrag §226(2) SGB V; when `false` (freiwillig versichert): KV on full amount §240 SGB V. PV (Freigrenze + Versorgungsträger employer share) is the same in both cases.
-
-**Retirement tax pipeline** (`retirementTax.ts`): All retirement-phase income-tax flows go through `calculateRetirementTax(components, rules, filingStatus)`. It applies cohort-based allowances (`besteuerungsanteilGrv`, `versorgungsfreibetrag`), routes private insurance by tax mode (halbeinkuenfte / abgeltungsteuer / pre2005), and deducts Werbungskosten-Pauschbeträge + Sonderausgaben before calling `calculateIncomeTax2026`. The `bavIsLumpSum` flag on `RetirementIncomeComponents` suppresses the Versorgungsfreibetrag for one-time payouts (Fünftelregelung context). The `retirementYear` parameter is required by all callers so cohort tables lock to the correct year.
-
-**Payout modes** (`payoutMath.ts` / `productPayout.ts`): bAV and pAV support `payoutMode: 'leibrente' | 'zeitrente' | 'kapitalverzehr'`. `leibrente` → `grossMonthlyPayout = capital / 10_000 × rentenfaktor` (independent of `retirementEndAge`). `zeitrente` → depletion annuity over `zeitrenteYears`. `kapitalverzehr` → depletion annuity over `retirementEndAge − retirementAge` (ETF always uses this path). Defaults: bAV `leibrente` RF 30, pAV `leibrente` RF 28.
-
-**PKV employer subsidy** (`salary.ts`): when `publicHealthInsurance = false`, `calculatePkv257Subsidy` computes the §257 SGB V employer subsidy (capped at half the actual PKV premium, §3 Nr. 62 EStG tax-free for the employee). The Vorsorgepauschale KV/PV Teilbetrag uses the actual PKV premium (§39b EStG). Net PKV cost (`pkvNetMonthlyCost`) is deducted from `annualNet` and flows into the fair-comparison benchmark.
-
-**GRV statutory pension** (`grv.ts`): `projectStatutoryPension` estimates the GRV baseline from Entgeltpunkte (EP) × Rentenwert × Zugangsfaktor, or accepts a manual monthly override. Payout taxed via §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil cohort table (locked to `retirementYear`). KV/PV uses §249a SGB V half-rate for KVdR members; freiwillig path for non-members. bAV GRV reduction flows in from `bavFunding.estimatedMonthlyGrvReduction`.
-
-**Basisrente / Rürup** (`basisrente.ts`): Schicht-1 (§10 Abs. 1 Nr. 2 EStG). `calculateBasisrenteFunding` computes the remaining §10 Abs. 3 Schicht-1 cap after GRV (employee + employer) and the marginal tax saving on the salary-phase zvE. `netBasisrentePayout` taxes via the GRV Besteuerungsanteil channel (statutory pension annual) and applies freiwillig §240 SGB V KV/PV (full rate, no Freibetrag — Basisrente is not a Versorgungsbezug). Capital payout is legally prohibited: `afterTaxLumpSum = null`. Only `leibrente` and `zeitrente` payout modes are valid.
-
-**Ertragsanteil** (`insurancePayout.ts`): `netInsurancePayout` checks `payoutMode === 'leibrente'` for private insurance and applies the §22 Nr. 1 Satz 3 a EStG Ertragsanteil table (age-keyed) instead of the Halbeinkünfte or pre-2005 rules when the product is a lifelong annuity. Only the taxable portion (Ertragsanteil × grossMonthlyPayout) enters the income-tax pipeline; lump-sum tax modes are unchanged.
-
-**Leibrente break-even age** (`productPayout.ts`): `leibrenteBreakEvenAge` on `ProductResult` = `retirementAge + capital / (grossMonthlyPayout × 12)` — the nominal age at which cumulative gross payouts recoup the retirement capital. Populated for bAV, insurance, Basisrente, AVD, and Riester when the product is in lifelong-annuity mode; `undefined` otherwise.
-
-## Current State
-
-Agent-readability refactor phases 0–13 complete. All 567 tests pass.
-See `BACKLOG.md` for open feature work and recommended order.
+All UX backlog tiers shipped. Engine + UI stable. Remaining work pivots toward publication: license/disclaimer/donation infrastructure, OCR + backend introduction, scenario-led portfolio redesign (Group G), bilingual UI, public deployment. See `BACKLOG.md`.
