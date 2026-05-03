@@ -96,40 +96,47 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
 
       <div className="field">
         <span>Kinder (Geburtsjahr)</span>
-        {profile.childBirthYears.map((year, i) => (
-          <div key={i} className="child-row">
-            <span className="child-label">Kind {i + 1}</span>
-            <div className="input-shell child-year-input">
-              <input
-                type="number"
-                min={1900}
-                max={de2026Rules.year}
-                step={1}
-                value={year}
-                onChange={(e) => {
-                  const val = Math.round(clampNumber(Number(e.target.value), 1900, de2026Rules.year))
+        {profile.childBirthYears.map((year, i) => {
+          const maxYear = de2026Rules.year + 30
+          const isFuture = year > de2026Rules.year
+          return (
+            <div key={i} className="child-row">
+              <span className="child-label">
+                Kind {i + 1}
+                {isFuture && ' (geplant)'}
+              </span>
+              <div className="input-shell child-year-input">
+                <input
+                  type="number"
+                  min={1900}
+                  max={maxYear}
+                  step={1}
+                  value={year}
+                  onChange={(e) => {
+                    const val = Math.round(clampNumber(Number(e.target.value), 1900, maxYear))
+                    onProfileChange((cur) => ({
+                      ...cur,
+                      childBirthYears: cur.childBirthYears.map((y, j) => (j === i ? val : y)),
+                    }))
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                className="child-remove-btn"
+                aria-label={`Kind ${i + 1} entfernen`}
+                onClick={() =>
                   onProfileChange((cur) => ({
                     ...cur,
-                    childBirthYears: cur.childBirthYears.map((y, j) => (j === i ? val : y)),
+                    childBirthYears: cur.childBirthYears.filter((_, j) => j !== i),
                   }))
-                }}
-              />
+                }
+              >
+                ×
+              </button>
             </div>
-            <button
-              type="button"
-              className="child-remove-btn"
-              aria-label={`Kind ${i + 1} entfernen`}
-              onClick={() =>
-                onProfileChange((cur) => ({
-                  ...cur,
-                  childBirthYears: cur.childBirthYears.filter((_, j) => j !== i),
-                }))
-              }
-            >
-              ×
-            </button>
-          </div>
-        ))}
+          )
+        })}
         {profile.childBirthYears.length < 10 && (
           <button
             type="button"
@@ -144,6 +151,12 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
             + Kind hinzufügen
           </button>
         )}
+        <p className="field-hint">
+          Geplante Kinder können mit zukünftigem Geburtsjahr eingetragen werden. Pflegebeiträge
+          (Kinderlosenzuschlag, Beitragsabschlag) gelten erst ab dem Geburtsjahr; Riester-/AVD-Zulagen
+          fließen vereinfachend über die gesamte Ansparphase, da das Modell die Zulagen jährlich
+          stationär ansetzt.
+        </p>
       </div>
       {!profile.publicHealthInsurance && (
         <div className="field-grid">

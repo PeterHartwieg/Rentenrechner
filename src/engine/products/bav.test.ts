@@ -198,6 +198,12 @@ describe('social-security helpers', () => {
     expect(careEmployeeRateForChildren([1990, 1993], 2026, de2026Rules)).toBeCloseTo(0.018)
     // Mixed: 2 over-25 + 1 qualifying → 1 qualifying child → base rate (no discount for single qualifying)
     expect(careEmployeeRateForChildren([1990, 1993, 2010], 2026, de2026Rules)).toBeCloseTo(0.018)
+    // Future-born only (planned kid in 2030) → still childless rate in 2026
+    expect(careEmployeeRateForChildren([2030], 2026, de2026Rules)).toBeCloseTo(0.024)
+    // 1 born + 1 planned future → 1 qualifying → base rate, no discount yet
+    expect(careEmployeeRateForChildren([2024, 2030], 2026, de2026Rules)).toBeCloseTo(0.018)
+    // Once the planned child is born (2030 ≤ retirementYear=2030 example) → 2 qualifying → 1 discount
+    expect(careEmployeeRateForChildren([2024, 2030], 2030, de2026Rules)).toBeCloseTo(0.0155)
   })
 
   it('applies KV-Freibetrag and PV-Freigrenze separately for bAV retirement deductions', () => {

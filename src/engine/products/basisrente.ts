@@ -8,6 +8,7 @@ import {
   calculateLeibrenteBreakEvenAge,
   computeFeeAdjustedGrossMonthlyPayout,
 } from '../productPayout'
+import { withMarketReturnPolicy } from '../marketReturns'
 
 export const metadata = {
   id: 'basisrente' as const,
@@ -35,6 +36,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
     monthlyEmployerContribution: 0,
     fees: assumptions.basisrente.fees,
     taxAndSvSavings: basisrenteFunding.annualTaxSaving * ctx.yearsToRetirement,
+    policy: withMarketReturnPolicy(ctx, scenario),
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const basisrente = assumptions.basisrente
       const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(

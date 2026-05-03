@@ -1,4 +1,5 @@
 import type {
+  MonteCarloAssumptions,
   PersonalProfile,
   ReturnScenario,
   ReturnScenarioId,
@@ -56,6 +57,19 @@ export function validateReturnScenarios(input: unknown): ReturnScenario[] | null
 const VALID_PENSION_BASELINE_TYPES = ['grv', 'versorgungswerk', 'beamtenpension', 'none'] as const
 const VALID_RETIREMENT_HEALTH_STATUSES = ['kvdr', 'freiwillig_gkv', 'pkv'] as const
 
+function validateMonteCarlo(input: MonteCarloAssumptions): boolean {
+  return (
+    typeof input.enabled === 'boolean' &&
+    isInt(input.runs) &&
+    input.runs >= 100 &&
+    input.runs <= 5_000 &&
+    inRange(input.annualVolatility, 0, 0.6) &&
+    isInt(input.seed) &&
+    input.seed >= 1 &&
+    input.seed <= 2_147_483_647
+  )
+}
+
 function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
   if (sp.pensionBaselineType !== undefined && !VALID_PENSION_BASELINE_TYPES.includes(sp.pensionBaselineType)) return false
   if (sp.manualMonthlyGross !== null && !inRange(sp.manualMonthlyGross, 0, 100_000)) return false
@@ -75,6 +89,7 @@ export function validateAssumptions(input: unknown): ScenarioAssumptions | null 
   if (!inRange(a.inflationRate, -0.1, 0.2)) return null
   if (!isFiniteNumber(a.retirementEndAge) || a.retirementEndAge > 120) return null
   if (validateReturnScenarios(a.returnScenarios) === null) return null
+  if (!a.monteCarlo || typeof a.monteCarlo !== 'object' || !validateMonteCarlo(a.monteCarlo)) return null
   for (const product of PRODUCT_REGISTRY) {
     const productAssumptions = a[product.assumptionsKey]
     if (!productAssumptions || typeof productAssumptions !== 'object') return null

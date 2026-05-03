@@ -7,6 +7,7 @@ import type { AltersvorsorgedepotFundingResult, AltersvorsorgedepotAssumptions }
 import type { RiesterFundingResult, RiesterAssumptions } from './products/riester'
 import type { StatutoryPensionResult, StatutoryPensionAssumptions } from './products/grv'
 import type { EtfAssumptions } from './products/etf'
+import type { MonteCarloAssumptions } from './monteCarlo'
 
 export interface YearlyProjection {
   year: number
@@ -54,6 +55,17 @@ export interface BaseProductResult {
   totalEmployerContributions: number
   totalFees: number
   capitalAtRetirement: number
+  /**
+   * Unfloored market capital before a contractual guarantee is applied. Present
+   * only when a product has a modeled capital guarantee.
+   */
+  rawCapitalAtRetirement?: number
+  /** Contractual minimum capital at retirement, before payout taxes. */
+  guaranteeFloorAtRetirement?: number
+  /** Human-readable guarantee label shown in risk views. */
+  guaranteeLabel?: string
+  /** True when the guarantee raised the simulated retirement capital. */
+  guaranteeApplied?: boolean
   realCapitalAtRetirement: number
   afterTaxLumpSum: number | null
   /** Income-tax + KV/PV components that make up `capitalAtRetirement − afterTaxLumpSum`.
@@ -123,6 +135,7 @@ export interface ScenarioAssumptions {
   inflationRate: number
   retirementEndAge: number
   returnScenarios: ReturnScenario[]
+  monteCarlo: MonteCarloAssumptions
   etf: EtfAssumptions
   bav: BavAssumptions
   insurance: InsuranceAssumptions

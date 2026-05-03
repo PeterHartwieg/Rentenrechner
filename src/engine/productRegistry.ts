@@ -21,6 +21,7 @@ type SharedAssumptionsKey =
   | 'inflationRate'
   | 'retirementEndAge'
   | 'returnScenarios'
+  | 'monteCarlo'
   | 'statutoryPension'
   | 'visibleProducts'
 

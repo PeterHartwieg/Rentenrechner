@@ -1,5 +1,5 @@
 import type { FeeModel } from '../fees'
-import type { PayoutMode } from './common'
+import type { CapitalGuaranteeAssumptions, PayoutMode } from './common'
 
 // pre2005: old-law contract (§52 Abs. 28 EStG) — tax-free capital payout; Leibrente still uses Ertragsanteil.
 // halbeinkuenfte: post-2004, ≥12 years, payout ≥ age 62 — half the gain at personal income tax rate (§20 Abs. 1 Nr. 6 EStG). Capital payouts only.
@@ -18,6 +18,8 @@ export interface InsuranceAssumptions {
   oldContractTaxFreeEligible: boolean
   // Monthly other retirement income for marginal-tax calculation (Halbeinkünfteverfahren only)
   monthlyOtherRetirementIncome: number
+  // Contractual capital floor at retirement; costs are still modeled via `fees`.
+  capitalGuarantee: CapitalGuaranteeAssumptions
   fees: FeeModel
   // #54: retirement-phase payout mode — see PayoutMode docstring. Private annuity contracts
   // typically have their own Rentenfaktor distinct from the bAV contract's value.

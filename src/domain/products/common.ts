@@ -20,3 +20,14 @@ export type { ProductId } from '../../engine/productRegistry'
  *   Models a self-managed withdrawal (the ETF default), not a contractual annuity.
  */
 export type PayoutMode = 'leibrente' | 'zeitrente' | 'kapitalverzehr'
+
+/**
+ * Contractual capital floor at retirement. This is intentionally separate from
+ * costs: product fees stay in the fee model, while this describes the guarantee
+ * the provider promises after those costs have already been charged.
+ */
+export interface CapitalGuaranteeAssumptions {
+  enabled: boolean
+  /** 1 = 100% of product contributions, 0.8 = 80%, 0 = no capital floor. */
+  floorPctOfContributions: number
+}

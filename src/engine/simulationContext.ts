@@ -49,6 +49,12 @@ export interface SimulationContext {
    * never pays statutory KV/PV. Defaults to 'kvdr' when not set.
    */
   retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv'
+  /**
+   * Optional stochastic high-risk market path for Monte Carlo runs. Each entry is
+   * one accumulation-year gross return. Product-specific fees, wrappers, tax
+   * treatment, and AVD glidepath allocation still apply on top.
+   */
+  marketReturnPath?: readonly number[]
 }
 
 export function buildContext(

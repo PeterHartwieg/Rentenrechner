@@ -77,6 +77,13 @@ export function AltersvorsorgedepotInputs({
           <option value="guarantee_80">80%-Garantieprodukt</option>
           <option value="guarantee_100">100%-Garantieprodukt</option>
         </select>
+        {(avd.subtype === 'guarantee_80' || avd.subtype === 'guarantee_100') && (
+          <small className="field-hint">
+            Der Risiko-Check setzt ein Mindestkapital von{' '}
+            {avd.subtype === 'guarantee_80' ? '80 %' : '100 %'} der Vertragszufluesse an.
+            Die eingetragenen Depot- und Fondskosten bleiben unveraendert.
+          </small>
+        )}
       </label>
 
       <div className="field-grid">

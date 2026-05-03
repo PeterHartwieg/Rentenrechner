@@ -10,6 +10,7 @@ import {
 } from '../altersvorsorgedepot'
 import { monthlyPayoutFromCapital } from '../payoutMath'
 import { calculateLeibrenteBreakEvenAge } from '../productPayout'
+import { marketReturnAt } from '../marketReturns'
 
 export const metadata = {
   id: 'altersvorsorgedepot' as const,
@@ -25,6 +26,12 @@ export const metadata = {
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): AltersvorsorgedepotProductResult {
   const { profile, assumptions, rules, altersvorsorgedepotFunding, payoutYear, yearsToRetirement } = ctx
   const avd = assumptions.altersvorsorgedepot
+  const guaranteePct =
+    avd.subtype === 'guarantee_80'
+      ? 0.8
+      : avd.subtype === 'guarantee_100'
+        ? 1
+        : 0
 
   // Total monthly contribution into the depot:
   //   regulated contract inflow (own + allowances), capped at the annual AltZertG
@@ -49,12 +56,16 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
           computeAvdGlidepathReturn(
             yearIndex,
             yearsToRetirement,
-            scenario.annualReturn,
+            marketReturnAt(ctx, scenario, yearIndex),
             avd.lowRiskAnnualReturn,
             avd.riskAllocationPct,
             rules,
           )
-      : undefined
+      : ctx.marketReturnPath
+        ? (yearIndex: number) =>
+            avd.riskAllocationPct * marketReturnAt(ctx, scenario, yearIndex) +
+            (1 - avd.riskAllocationPct) * avd.lowRiskAnnualReturn
+        : undefined
 
   // Standarddepot: policy.yearlyReturn drives returns; pass scenario.annualReturn as the base
   // so projectAccumulation picks it up via the function. Non-Standarddepot: constant blend.
@@ -80,6 +91,14 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     monthlyProductContribution: avdMonthlyContribution,
     monthlyEmployerContribution: 0,
     fees: avd.fees,
+    guarantee:
+      guaranteePct > 0
+        ? {
+            label: `${Math.round(guaranteePct * 100)}% Garantie`,
+            floorCapital: (projection) =>
+              (projection.totalProductContributions + (transferInitialCapital ?? 0)) * guaranteePct,
+          }
+        : undefined,
     policy: {
       yearlyReturn,
       initialCapital: transferInitialCapital,

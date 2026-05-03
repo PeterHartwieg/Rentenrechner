@@ -9,6 +9,7 @@ import {
 } from '../riester'
 import { computeGrossMonthlyPayout } from '../payoutMath'
 import { calculateLeibrenteBreakEvenAge } from '../productPayout'
+import { withMarketReturnPolicy } from '../marketReturns'
 
 export const metadata = {
   id: 'riester' as const,
@@ -23,6 +24,10 @@ export const metadata = {
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): RiesterProductResult {
   const { profile, assumptions, rules, riesterFunding, payoutYear } = ctx
+  const riester = assumptions.riester
+  const guaranteePct = riester.capitalGuarantee.enabled
+    ? riester.capitalGuarantee.floorPctOfContributions
+    : 0
 
   // Total monthly contribution = user-entered Eigenbeitrag (actual out-of-pocket cash)
   // + state allowances + Günstigerprüfung tax refund flowing back into the contract.
@@ -41,16 +46,26 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     monthlyUserCost: riesterFunding.monthlyNetCost,
     monthlyProductContribution: totalMonthlyContribution,
     monthlyEmployerContribution: 0,
-    fees: assumptions.riester.fees,
-    policy:
-      assumptions.riester.existingCapital > 0
-        ? { initialCapital: assumptions.riester.existingCapital }
+    fees: riester.fees,
+    guarantee:
+      guaranteePct > 0
+        ? {
+            label: `${Math.round(guaranteePct * 100)}% Beitragsgarantie`,
+            floorCapital: (projection) =>
+              (projection.totalProductContributions + riester.existingCapital) * guaranteePct,
+          }
         : undefined,
+    policy: withMarketReturnPolicy(
+      ctx,
+      scenario,
+      riester.existingCapital > 0
+        ? { initialCapital: riester.existingCapital }
+        : undefined,
+    ),
     taxAndSvSavings:
       (riesterFunding.totalAllowanceAnnual + riesterFunding.guenstigerpruefungBenefitAnnual) *
       ctx.yearsToRetirement,
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
-      const riester = assumptions.riester
       const grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
         mode: riester.payoutMode,
         rentenfaktor: riester.rentenfaktor,

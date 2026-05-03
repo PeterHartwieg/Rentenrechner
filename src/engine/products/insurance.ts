@@ -15,6 +15,7 @@ import {
 import {
   projectAccumulation,
 } from '../accumulation'
+import { marketReturnPolicy, withMarketReturnPolicy } from '../marketReturns'
 
 export const metadata = {
   id: 'versicherung' as const,
@@ -31,6 +32,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
   const { profile, assumptions, rules, bavFunding, insuranceTaxMode, payoutYear } = ctx
   const ins = assumptions.insurance
   const insuranceMonthly = bavFunding.monthlyNetCost
+  const guaranteePct = ins.capitalGuarantee.enabled ? ins.capitalGuarantee.floorPctOfContributions : 0
 
   const insResult = buildProductResult({
     productId: 'versicherung',
@@ -43,9 +45,20 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
     monthlyProductContribution: insuranceMonthly,
     monthlyEmployerContribution: 0,
     fees: ins.fees,
-    policy: ins.annualContributionGrowthRate
-      ? { contributionGrowth: { annualRate: ins.annualContributionGrowthRate } }
-      : undefined,
+    guarantee:
+      guaranteePct > 0
+        ? {
+            label: `${Math.round(guaranteePct * 100)}% Beitragsgarantie`,
+            floorCapital: (projection) => projection.totalProductContributions * guaranteePct,
+          }
+        : undefined,
+    policy: withMarketReturnPolicy(
+      ctx,
+      scenario,
+      ins.annualContributionGrowthRate
+        ? { contributionGrowth: { annualRate: ins.annualContributionGrowthRate } }
+        : undefined,
+    ),
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(
         projection.capital,
@@ -111,6 +124,16 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
   const paidUpAge = ins.paidUpAge
   let paidUpScenario: InsurancePaidUpScenario | undefined
   if (paidUpAge !== undefined && paidUpAge > profile.age && paidUpAge < profile.retirementAge) {
+    const paidUpPhase1Policy =
+      ins.annualContributionGrowthRate || ctx.marketReturnPath
+        ? {
+            contributionGrowth: ins.annualContributionGrowthRate
+              ? { annualRate: ins.annualContributionGrowthRate }
+              : undefined,
+            yearlyReturn: marketReturnPolicy(ctx, scenario),
+          }
+        : undefined
+
     // Phase 1: accumulate with contributions from current age to paidUpAge.
     const phase1 = projectAccumulation({
       productId: 'versicherung',
@@ -123,9 +146,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       inflationRate: assumptions.inflationRate,
       scenario,
       fees: ins.fees,
-      policy: ins.annualContributionGrowthRate
-        ? { contributionGrowth: { annualRate: ins.annualContributionGrowthRate } }
-        : undefined,
+      policy: paidUpPhase1Policy,
     })
 
     const capitalAtPaidUp = phase1.capital
@@ -152,7 +173,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       inflationRate: assumptions.inflationRate,
       scenario,
       fees: paidUpFees,
-      policy: { initialCapital: capitalAtPaidUp },
+      policy: {
+        initialCapital: capitalAtPaidUp,
+        yearlyReturn: marketReturnPolicy(ctx, scenario, paidUpAge - profile.age),
+      },
     })
 
     const retirementCapital = phase2.capital

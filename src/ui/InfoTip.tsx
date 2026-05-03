@@ -1,5 +1,5 @@
 import { useId, useState, useRef, useEffect, type ReactNode } from 'react'
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, Info } from 'lucide-react'
 import './InfoTip.css'
 
 interface Props {
@@ -7,20 +7,25 @@ interface Props {
   text?: string
   /** Optional rich content; takes precedence over `text` when provided. */
   children?: ReactNode
-  /** Optional aria-label override for the trigger. Defaults to "Erklärung anzeigen". */
+  /** Optional aria-label override for the trigger. */
   label?: string
+  icon?: 'help' | 'info'
 }
 
 /**
- * Tiny inline `(?)` icon that opens a one-sentence explanation popover on click.
- * Use next to jargon labels that block comprehension for non-experts (Effektivkosten,
- * Rentenfaktor, Teilfreistellung, Netto-Rente). For longer explanations, link to the
- * Glossar panel in the Angebot tab instead.
+ * Tiny inline icon that opens an explanation popover on click. Use next to
+ * jargon labels that block comprehension for non-experts.
  */
-export function InfoTip({ text, children, label = 'Erklärung anzeigen' }: Props) {
+export function InfoTip({
+  text,
+  children,
+  label = 'Erklaerung anzeigen',
+  icon = 'help',
+}: Props) {
   const [open, setOpen] = useState(false)
   const id = useId()
   const wrapRef = useRef<HTMLSpanElement>(null)
+  const Icon = icon === 'info' ? Info : HelpCircle
 
   useEffect(() => {
     if (!open) return
@@ -50,7 +55,7 @@ export function InfoTip({ text, children, label = 'Erklärung anzeigen' }: Props
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
       >
-        <HelpCircle size={13} aria-hidden="true" />
+        <Icon size={13} aria-hidden="true" />
       </button>
       {open && (
         <span className="info-tip-popover" id={id} role="tooltip">

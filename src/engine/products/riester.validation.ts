@@ -1,5 +1,11 @@
 import type { RiesterAssumptions } from '../../domain'
-import { inRange, intInRange, isFiniteNumber, validateFees } from '../../domain/validation/primitives'
+import {
+  inRange,
+  intInRange,
+  isFiniteNumber,
+  validateCapitalGuarantee,
+  validateFees,
+} from '../../domain/validation/primitives'
 
 const VALID_RIESTER_PAYOUT_MODES: readonly string[] = ['leibrente', 'zeitrente']
 
@@ -15,6 +21,7 @@ export function validateRiester(r: RiesterAssumptions): boolean {
   if (e.indirectSpouseEligible !== undefined && typeof e.indirectSpouseEligible !== 'boolean') return false
   if (!intInRange(e.ageAtContractStart, 0, 120)) return false
   if (typeof e.careerStarterBonusUsed !== 'boolean') return false
+  if (!validateCapitalGuarantee(r.capitalGuarantee)) return false
   // payout
   if (!VALID_RIESTER_PAYOUT_MODES.includes(r.payoutMode)) return false
   if (!inRange(r.rentenfaktor, 0, 100)) return false

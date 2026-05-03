@@ -144,6 +144,66 @@ describe('validateAssumptions', () => {
     expect(validateAssumptions({ ...defaultAssumptions, retirementEndAge: 121 })).toBeNull()
   })
 
+  it('rejects invalid Monte Carlo settings', () => {
+    expect(
+      validateAssumptions({
+        ...defaultAssumptions,
+        monteCarlo: { ...defaultAssumptions.monteCarlo, runs: 99 },
+      }),
+    ).toBeNull()
+    expect(
+      validateAssumptions({
+        ...defaultAssumptions,
+        monteCarlo: { ...defaultAssumptions.monteCarlo, runs: 5001 },
+      }),
+    ).toBeNull()
+    expect(
+      validateAssumptions({
+        ...defaultAssumptions,
+        monteCarlo: { ...defaultAssumptions.monteCarlo, annualVolatility: 0.61 },
+      }),
+    ).toBeNull()
+    expect(
+      validateAssumptions({
+        ...defaultAssumptions,
+        monteCarlo: { ...defaultAssumptions.monteCarlo, seed: 0 },
+      }),
+    ).toBeNull()
+    expect(
+      validateAssumptions({
+        ...defaultAssumptions,
+        monteCarlo: { ...defaultAssumptions.monteCarlo, enabled: 'yes' as never },
+      }),
+    ).toBeNull()
+  })
+
+  it('rejects invalid capital guarantee settings', () => {
+    expect(
+      validateAssumptions({
+        ...defaultAssumptions,
+        insurance: {
+          ...defaultAssumptions.insurance,
+          capitalGuarantee: {
+            ...defaultAssumptions.insurance.capitalGuarantee,
+            floorPctOfContributions: 1.01,
+          },
+        },
+      }),
+    ).toBeNull()
+    expect(
+      validateAssumptions({
+        ...defaultAssumptions,
+        riester: {
+          ...defaultAssumptions.riester,
+          capitalGuarantee: {
+            ...defaultAssumptions.riester.capitalGuarantee,
+            enabled: 'yes' as never,
+          },
+        },
+      }),
+    ).toBeNull()
+  })
+
   it('rejects unknown equityPartialExemption', () => {
     expect(
       validateAssumptions({

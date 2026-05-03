@@ -8,6 +8,7 @@ import {
 import {
   monthlyPayoutFromCapital,
 } from '../payoutMath'
+import { withMarketReturnPolicy } from '../marketReturns'
 
 export const metadata = {
   id: 'etf' as const,
@@ -32,12 +33,12 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): EtfP
     monthlyProductContribution: ctx.bavFunding.monthlyNetCost,
     monthlyEmployerContribution: 0,
     fees: { ...zeroFeeModel, fundAssetFee: ctx.assumptions.etf.annualAssetFee },
-    policy: {
+    policy: withMarketReturnPolicy(ctx, scenario, {
       vorabpauschale: { partialExemption: ctx.assumptions.etf.equityPartialExemption },
       contributionGrowth: ctx.assumptions.etf.annualContributionGrowthRate
         ? { annualRate: ctx.assumptions.etf.annualContributionGrowthRate }
         : undefined,
-    },
+    }),
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const partialExemption = ctx.assumptions.etf.equityPartialExemption
       const grossMonthlyPayout = monthlyPayoutFromCapital(projection.capital, payoutReturn, payoutYears)

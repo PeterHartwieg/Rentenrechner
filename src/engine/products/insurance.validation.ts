@@ -1,5 +1,11 @@
 import type { InsuranceAssumptions, PayoutMode } from '../../domain'
-import { inRange, intInRange, isFiniteNumber, validateFees } from '../../domain/validation/primitives'
+import {
+  inRange,
+  intInRange,
+  isFiniteNumber,
+  validateCapitalGuarantee,
+  validateFees,
+} from '../../domain/validation/primitives'
 
 const VALID_PAYOUT_MODES: readonly PayoutMode[] = ['leibrente', 'zeitrente', 'kapitalverzehr']
 
@@ -8,6 +14,7 @@ export function validateInsurance(ins: InsuranceAssumptions): boolean {
   if (typeof ins.oldContractTaxFreeEligible !== 'boolean') return false
   if (!isFiniteNumber(ins.monthlyOtherRetirementIncome) || ins.monthlyOtherRetirementIncome < 0) return false
   if (!VALID_PAYOUT_MODES.includes(ins.payoutMode)) return false
+  if (!validateCapitalGuarantee(ins.capitalGuarantee)) return false
   if (!inRange(ins.rentenfaktor, 0, 100)) return false
   if (typeof ins.rentenfaktorConfirmed !== 'boolean') return false
   if (!intInRange(ins.zeitrenteYears, 1, 50)) return false

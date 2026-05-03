@@ -1,5 +1,6 @@
 import type React from 'react'
-import type { ScenarioAssumptions } from '../../domain'
+import { RefreshCw } from 'lucide-react'
+import type { MonteCarloAssumptions, ScenarioAssumptions } from '../../domain'
 import { formatPercent } from '../../utils/format'
 
 interface ScenarioToolbarProps {
@@ -9,6 +10,15 @@ interface ScenarioToolbarProps {
   onSelectScenario: (id: string) => void
   showRealValues: boolean
   onShowRealValuesChange: (v: boolean) => void
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min
+  return Math.min(max, Math.max(min, value))
+}
+
+function nextSeed(seed: number): number {
+  return Math.max(1, (seed * 48_271) % 2_147_483_647)
 }
 
 export function ScenarioToolbar({
@@ -48,10 +58,17 @@ export function ScenarioToolbar({
     }))
   }
 
+  function updateMonteCarlo(patch: Partial<MonteCarloAssumptions>) {
+    onAssumptionsChange((current) => ({
+      ...current,
+      monteCarlo: { ...current.monteCarlo, ...patch },
+    }))
+  }
+
   return (
     <div className="toolbar">
       <div className="scenario-controls">
-        <div className="segmented" aria-label="Rendite-Szenario auswählen">
+        <div className="segmented" aria-label="Rendite-Szenario auswaehlen">
           {assumptions.returnScenarios.map((scenario) => (
             <button
               key={scenario.id}
@@ -87,8 +104,16 @@ export function ScenarioToolbar({
           </button>
         )}
       </div>
+
       <details className="toolbar-advanced">
-        <summary>Darstellung</summary>
+        <summary>
+          <span>Darstellung & Risiko</span>
+          {assumptions.monteCarlo.enabled && (
+            <span className="toolbar-risk-summary">
+              MC {assumptions.monteCarlo.runs}x | Vol {formatPercent(assumptions.monteCarlo.annualVolatility)}
+            </span>
+          )}
+        </summary>
         <label className="toggle">
           <input
             type="checkbox"
@@ -97,6 +122,69 @@ export function ScenarioToolbar({
           />
           inflationsbereinigt
         </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={assumptions.monteCarlo.enabled}
+            onChange={(event) => updateMonteCarlo({ enabled: event.target.checked })}
+          />
+          Monte Carlo
+        </label>
+        {assumptions.monteCarlo.enabled && (
+          <div className="monte-carlo-toolbar-fields">
+            <label>
+              <span>Laeufe</span>
+              <input
+                type="number"
+                min={100}
+                max={5000}
+                step={100}
+                value={assumptions.monteCarlo.runs}
+                onChange={(event) =>
+                  updateMonteCarlo({ runs: Math.round(clamp(Number(event.target.value), 100, 5000)) })
+                }
+              />
+            </label>
+            <label>
+              <span>Schwankung</span>
+              <input
+                type="number"
+                min={0}
+                max={60}
+                step={1}
+                value={Number((assumptions.monteCarlo.annualVolatility * 100).toFixed(1))}
+                onChange={(event) =>
+                  updateMonteCarlo({
+                    annualVolatility: clamp(Number(event.target.value), 0, 60) / 100,
+                  })
+                }
+              />
+              <em>%</em>
+            </label>
+            <label>
+              <span>Seed</span>
+              <input
+                type="number"
+                min={1}
+                max={2147483647}
+                step={1}
+                value={assumptions.monteCarlo.seed}
+                onChange={(event) =>
+                  updateMonteCarlo({ seed: Math.round(clamp(Number(event.target.value), 1, 2147483647)) })
+                }
+              />
+            </label>
+            <button
+              type="button"
+              className="monte-carlo-seed-btn"
+              title="Seed neu"
+              aria-label="Seed neu"
+              onClick={() => updateMonteCarlo({ seed: nextSeed(assumptions.monteCarlo.seed) })}
+            >
+              <RefreshCw size={15} aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </details>
     </div>
   )

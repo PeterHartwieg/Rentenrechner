@@ -3,6 +3,7 @@ import type { InsuranceProductResult, InsuranceTaxMode, PersonalProfile, Product
 import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import { afterTaxInsuranceLumpSum, deriveInsuranceTaxMode } from '../engine/insurancePayout'
+import { runMonteCarlo } from '../engine/monteCarlo'
 import { simulateRetirementComparison } from '../engine/simulate'
 import { de2026Rules } from '../rules/de2026'
 import { buildExportCsv, downloadCsv } from '../utils/csvExport'
@@ -34,6 +35,19 @@ export function useSimulationViewModel(
     : 'basis'
   const selectedScenario = assumptions.returnScenarios.find(
     (scenario) => scenario.id === effectiveScenarioId,
+  )
+  const monteCarloResult = useMemo(
+    () =>
+      assumptions.monteCarlo.enabled && assumptions.visibleProducts.length > 0
+        ? runMonteCarlo({
+            profile,
+            assumptions,
+            rules: de2026Rules,
+            scenarioId: effectiveScenarioId,
+            visibleProducts: assumptions.visibleProducts,
+          })
+        : null,
+    [profile, assumptions, effectiveScenarioId],
   )
   // visibleProducts is the explicit comparison set. Empty means "no private product
   // selected" — UX10 surfaces an empty-state in the Vergleich view rather than
@@ -189,6 +203,7 @@ export function useSimulationViewModel(
     visibleProducts,
     // Derived display data
     selectedScenario,
+    monteCarloResult,
     selectedResults,
     capitalChartData,
     pensionBars,

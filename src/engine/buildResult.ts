@@ -52,6 +52,11 @@ export interface BuildProductPolicy {
   contributionGrowth?: { annualRate: number }
 }
 
+export interface BuildProductGuarantee {
+  label: string
+  floorCapital: (projection: ProjectionResult) => number
+}
+
 export interface BuildProductResultParams<
   TProductId extends ProductId,
   TPayoutFields extends ProductPayoutFields,
@@ -68,6 +73,7 @@ export interface BuildProductResultParams<
   fees: FeeModel
   taxAndSvSavings?: number
   policy?: BuildProductPolicy
+  guarantee?: BuildProductGuarantee
   buildPayout: (context: ProductPayoutContext) => TPayoutFields
 }
 
@@ -76,6 +82,31 @@ function capitalMultipleAnnualized(finalValue: number, totalUserCost: number, ye
     return 0
   }
   return Math.pow(finalValue / totalUserCost, 1 / years) - 1
+}
+
+function applyCapitalGuarantee(
+  projection: ProjectionResult,
+  guaranteeFloor: number,
+  inflationRate: number,
+): ProjectionResult {
+  if (guaranteeFloor <= projection.capital) return projection
+
+  const rows = projection.rows.slice()
+  const lastRow = rows[rows.length - 1]
+  if (lastRow) {
+    rows[rows.length - 1] = {
+      ...lastRow,
+      balance: guaranteeFloor,
+      realBalance: guaranteeFloor / Math.pow(1 + inflationRate, lastRow.year),
+    }
+  }
+
+  return {
+    ...projection,
+    capital: guaranteeFloor,
+    realCapital: guaranteeFloor / Math.pow(1 + inflationRate, projection.rows.length),
+    rows,
+  }
 }
 
 export function buildProductResult<
@@ -140,10 +171,21 @@ export function buildProductResult<
     fees: params.fees,
     policy: accumulationPolicy,
   })
+  const rawCapitalAtRetirement = projection.capital
+  const guaranteeFloor =
+    params.guarantee
+      ? Math.max(0, params.guarantee.floorCapital(projection))
+      : undefined
+  const effectiveProjection =
+    guaranteeFloor !== undefined
+      ? applyCapitalGuarantee(projection, guaranteeFloor, params.assumptions.inflationRate)
+      : projection
+  const guaranteeApplied =
+    guaranteeFloor !== undefined && effectiveProjection.capital > rawCapitalAtRetirement
   const totalAssetFee = params.fees.wrapperAssetFee + params.fees.fundAssetFee
   const payoutReturn = params.scenario.annualReturn - totalAssetFee
   const payout = params.buildPayout({
-    projection,
+    projection: effectiveProjection,
     yearsToRetirement,
     monthsToRetirement,
     payoutYears,
@@ -159,28 +201,32 @@ export function buildProductResult<
     monthlyUserCost: params.monthlyUserCost,
     monthlyProductContribution: params.monthlyProductContribution,
     monthlyEmployerContribution: params.monthlyEmployerContribution,
-    totalUserCost: projection.totalUserCost,
-    totalProductContributions: projection.totalProductContributions,
-    totalEmployerContributions: projection.totalEmployerContributions,
-    totalFees: projection.totalFees,
-    capitalAtRetirement: projection.capital,
-    realCapitalAtRetirement: projection.realCapital,
+    totalUserCost: effectiveProjection.totalUserCost,
+    totalProductContributions: effectiveProjection.totalProductContributions,
+    totalEmployerContributions: effectiveProjection.totalEmployerContributions,
+    totalFees: effectiveProjection.totalFees,
+    capitalAtRetirement: effectiveProjection.capital,
+    rawCapitalAtRetirement: params.guarantee ? rawCapitalAtRetirement : undefined,
+    guaranteeFloorAtRetirement: guaranteeFloor,
+    guaranteeLabel: params.guarantee?.label,
+    guaranteeApplied,
+    realCapitalAtRetirement: effectiveProjection.realCapital,
     taxAndSvSavings: params.taxAndSvSavings ?? 0,
     valueMultipleOnUserCost:
-      projection.totalUserCost > 0 && payout.afterTaxLumpSum !== null
-        ? payout.afterTaxLumpSum / projection.totalUserCost
+      effectiveProjection.totalUserCost > 0 && payout.afterTaxLumpSum !== null
+        ? payout.afterTaxLumpSum / effectiveProjection.totalUserCost
         : null,
     capitalMultipleAnnualized:
       payout.afterTaxLumpSum !== null
-        ? capitalMultipleAnnualized(payout.afterTaxLumpSum, projection.totalUserCost, yearsToRetirement)
+        ? capitalMultipleAnnualized(payout.afterTaxLumpSum, effectiveProjection.totalUserCost, yearsToRetirement)
         : 0,
     accumulationRiy: computeRIY(
       params.monthlyProductContribution,
       monthsToRetirement,
       params.scenario.annualReturn,
-      projection.capital,
+      effectiveProjection.capital,
     ),
-    rows: projection.rows,
+    rows: effectiveProjection.rows,
     ...payout,
   }
 }

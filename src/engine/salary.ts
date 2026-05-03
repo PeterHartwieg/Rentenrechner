@@ -28,13 +28,17 @@ export function careEmployeeRateForChildren(
   currentYear: number,
   rules: GermanRules,
 ): number {
-  if (childBirthYears.length === 0) {
+  // Children with a birth year > currentYear are planned/not-yet-born and do not
+  // affect the contribution year's Pflege rate (no Kinderlosenzuschlag exemption,
+  // no Beitragsabschlag) until they're actually born.
+  const bornByNow = childBirthYears.filter((y) => y <= currentYear)
+  if (bornByNow.length === 0) {
     return rules.socialSecurity.careEmployeeChildlessRate
   }
   // §55 Abs. 3a SGB XI: only children under 25 in the contribution year qualify for
   // the Beitragsabschlag. Having any child at all (regardless of age) exempts the
   // member from the Kinderlosenzuschlag.
-  const qualifying = childBirthYears.filter((y) => currentYear - y < 25).length
+  const qualifying = bornByNow.filter((y) => currentYear - y < 25).length
   const discount = Math.min(Math.max(0, qualifying - 1), 4) * 0.0025
   return Math.max(0, rules.socialSecurity.careEmployeeBaseRate - discount)
 }

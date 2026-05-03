@@ -75,6 +75,8 @@ For a task, read the matching context capsule first — it is faster than readin
 | `src/engine/simulationContext.ts` | `SimulationContext` interface and `buildContext` — computes pre-scenario funding results (bAV, Basisrente, AVD, Riester) shared across all product simulators. |
 | `src/engine/buildResult.ts` | `buildProductResult` — runs accumulation + payout/tax pipeline; assembles the discriminated `ProductResult`. All product simulators call this. |
 | `src/engine/simulate.ts` | Top-level `simulateRetirementComparison` — short orchestration: builds context, calls each product's `simulate()`, returns `ProductResult[]`. Under 200 lines. |
+| `src/engine/marketReturns.ts` | Shared stochastic return-path helpers. Product simulators use this to compose Monte Carlo yearly returns with product-specific policies. |
+| `src/engine/monteCarlo.ts` | Seeded Monte Carlo engine: shared market paths, product percentile bands, win probabilities, downside/target probabilities. |
 | `src/engine/productRegistry.ts` | `PRODUCT_REGISTRY` (metadata, assumption key, simulator, validator), `PRODUCT_MANIFEST`, `PRODUCT_IDS`, `getProductMeta(id)`, and the `ProductId` type itself (derived from each product's `metadata.id` literal). Single source of truth for product ids, labels, colors, validators, and sort order. |
 | `src/engine/productManifest.ts` | Compatibility re-export of manifest helpers from `productRegistry.ts`. |
 | `src/engine/products/` | One subdirectory containing `<product>.ts` (simulator), `<product>.validation.ts` (validator), `<product>.test.ts` (unit tests) per product. See `src/engine/products/README.md` for the routing table. |
@@ -96,6 +98,7 @@ For a task, read the matching context capsule first — it is faster than readin
 |------|------------|
 | Lifecycle chart (`BreakEvenChart.tsx`) | Use a single neutral dotted line for cumulative net amount paid in by the user because it is the shared comparison benchmark. Use product color only for product-specific lines and markers: solid = remaining contract/depot capital, dashed = cumulative net payouts received after tax and KV/PV, marker dot = first age where net payouts reach the paid-in benchmark. Do not use Recharts' generated legend here; keep the compact custom legend inside the chart frame at the top right, matching the `FeeDragChart` overlay style. |
 | Fee-drag chart (`FeeDragChart.tsx`) | Its blue + green stack must equal the lifecycle chart's maximum cumulative `Netto ausgezahlt` over the same horizon (`LIFECYCLE_HORIZON_AGE`, or the configured end age if higher, capped by product payout end). Green `Netto-Rendite` is only the surplus above recovered net user cost; do not add `afterTaxLumpSum` here because lump sums are an alternative payout view, not additive to monthly payouts. |
+| Monte Carlo panel (`MonteCarloPanel.tsx`) | Uses the selected return scenario as expected risky-market return and `ScenarioAssumptions.monteCarlo.annualVolatility` as annual volatility. All visible products share the same market path per run; product fees, taxes, payout modes, and AVD glidepath then diverge normally. |
 
 ### Storage, utils, and tests
 
@@ -116,7 +119,7 @@ For a task, read the matching context capsule first — it is faster than readin
 
 **Fee model** (`accumulation.ts`): `FeeModel` now has `wrapperAssetFee` (Versicherungsmantel p.a.) and `fundAssetFee` (Fonds/ETF TER p.a.) instead of a single `annualAssetFee`; `projectAccumulation` uses their sum. ETF uses only `annualAssetFee` (no wrapper/fund split). `pensionPayoutFeePct` is deducted from gross monthly Leibrente/Zeitrente before income-tax and KV/PV for bAV and pAV only. `yearlyFees` / `totalFees` reflect all asset-based drag; `accumulationRiy` (on `ProductResult`) exposes RIY in pp computed by `computeRIY` in `fees.ts`.
 
-**Accumulation policy** (`accumulation.ts`): `AccumulationInput` carries the always-required fields (contributions, return, fees, etc.); the opt-in behaviors live on `policy?: AccumulationPolicy` — `yearlyReturn` (per-year return override; used by Standarddepot glidepath, future Monte Carlo plugs in here), `vorabpauschale` (InvStG §18 annual accrual + cost-basis carryover), and `initialCapital` (transferred starting balance for Riester→AVD and paid-up insurance phase 2). `buildResult` mirrors the shape minus `rules`, which it injects from `params.rules`. New extension policies should be added to `AccumulationPolicy` rather than as new top-level options.
+**Accumulation policy** (`accumulation.ts`): `AccumulationInput` carries the always-required fields (contributions, return, fees, etc.); the opt-in behaviors live on `policy?: AccumulationPolicy` — `yearlyReturn` (per-year return override; used by Standarddepot glidepath and Monte Carlo), `vorabpauschale` (InvStG §18 annual accrual + cost-basis carryover), and `initialCapital` (transferred starting balance for Riester→AVD and paid-up insurance phase 2). `buildResult` mirrors the shape minus `rules`, which it injects from `params.rules`. New extension policies should be added to `AccumulationPolicy` rather than as new top-level options.
 
 **ETF Vorabpauschale** (`accumulation.ts` / `etfPayout.ts`): `projectAccumulation` accrues §18 InvStG via `policy.vorabpauschale` and tracks `cumulativeVorabpauschale` on each row. `afterTaxInvestmentCapital` and `etfPayoutSchedule` consume this to reduce the taxable gain at exit / cost-basis schedule. Only wired for ETF products.
 
@@ -124,7 +127,7 @@ For a task, read the matching context capsule first — it is faster than readin
 
 **Fair comparison**: ETF and insurance always invest `bavFunding.monthlyNetCost` — the same net cash the user actually pays for bAV. This is fixed; there is no "custom amount" toggle.
 
-**SimulationContext / buildContext** (`simulationContext.ts`): `buildContext` runs all pre-scenario funding calculations (bAV, Basisrente, AVD, Riester) once before the scenario loop, producing a `SimulationContext` passed into every product's `simulate(ctx, scenario)` call. Product simulators must not call salary/funding helpers directly; use `ctx`.
+**SimulationContext / buildContext** (`simulationContext.ts`): `buildContext` runs all pre-scenario funding calculations (bAV, Basisrente, AVD, Riester) once before the scenario loop, producing a `SimulationContext` passed into every product's `simulate(ctx, scenario)` call. Product simulators must not call salary/funding helpers directly; use `ctx`. Monte Carlo adds `ctx.marketReturnPath` per run; product simulators compose it via `marketReturns.ts` instead of sampling independently.
 
 **Product registry** (`productRegistry.ts`): `PRODUCT_REGISTRY` is the single source of truth for product display metadata, assumption key, simulator, and validator. Each product module in `src/engine/products/` exports a `metadata` constant (with `id: '<id>' as const`); the registry aggregates them. The `ProductId` type is derived from `PRODUCT_MANIFEST[*].id`, so adding a product never requires editing a hardcoded union — `domain/products/common.ts` re-exports `ProductId` from the registry. `simulate.ts`, `productManifest.ts`, and `scenarioSchema.ts` all consume the registry, so adding a product is local to `engine/products/`, the per-product domain types, and one new entry in `PRODUCT_REGISTRY`. Use `getProductMeta(productId)` in UI code instead of local color/order maps.
 
@@ -148,5 +151,5 @@ For a task, read the matching context capsule first — it is faster than readin
 
 ## Current State
 
-Agent-readability refactor phases 0–13 complete. All 470 tests pass.
+Agent-readability refactor phases 0–13 complete. All 567 tests pass.
 See `BACKLOG.md` for open feature work and recommended order.

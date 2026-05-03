@@ -1,5 +1,5 @@
 import type { FeeModel } from '../fees'
-import type { PayoutMode } from './common'
+import type { CapitalGuaranteeAssumptions, PayoutMode } from './common'
 
 // ---------------------------------------------------------------------------
 // Legacy Riester / Certified Altersvorsorgevertrag (#62)
@@ -46,6 +46,8 @@ export interface RiesterAssumptions {
   /** Capital already accumulated in the existing contract (0 for new contracts). */
   existingCapital: number
   eligibility: RiesterEligibility
+  /** Contractual Beitragsgarantie at retirement; costs remain in `fees`. */
+  capitalGuarantee: CapitalGuaranteeAssumptions
   fees: FeeModel
   /**
    * Payout mode. Capital lump-sum is partially available (up to 30% at payout start

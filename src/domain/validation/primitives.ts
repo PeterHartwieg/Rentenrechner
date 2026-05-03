@@ -1,6 +1,6 @@
 // Primitive validation guards shared by all product validators and the top-level scenarioSchema.
 
-import type { FeeModel } from '../index'
+import type { CapitalGuaranteeAssumptions, FeeModel } from '../index'
 
 export function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v)
@@ -27,5 +27,14 @@ export function validateFees(fees: FeeModel): boolean {
     inRange(fees.fixedMonthlyFee, 0, 1_000_000) &&
     inRange(fees.acquisitionCostPct, 0, 0.5) &&
     intInRange(fees.acquisitionCostSpreadYears, 1, 50)
+  )
+}
+
+export function validateCapitalGuarantee(guarantee: CapitalGuaranteeAssumptions): boolean {
+  return (
+    !!guarantee &&
+    typeof guarantee === 'object' &&
+    typeof guarantee.enabled === 'boolean' &&
+    inRange(guarantee.floorPctOfContributions, 0, 1)
   )
 }

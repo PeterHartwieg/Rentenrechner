@@ -45,7 +45,7 @@ export function InsuranceInputs({
   const [feeInputMode, setFeeInputMode] = useState<'effektivkosten' | 'aufgeschluesselt'>('aufgeschluesselt')
   const [offerCapital, setOfferCapital] = useState<number | null>(null)
   const modelCapital = insuranceProductResult?.capitalAtRetirement ?? 0
-  const erweitertSummary = `${TAX_MODE_SHORT[insuranceTaxMode]}${riy > 0 ? ` · Kosten: ${formatPercent(riy)}` : ''}`
+  const erweitertSummary = `${TAX_MODE_SHORT[insuranceTaxMode]}${riy > 0 ? ` · Kosten: ${formatPercent(riy)}` : ''}${ins.capitalGuarantee.enabled ? ` · Garantie: ${(ins.capitalGuarantee.floorPctOfContributions * 100).toFixed(0)} %` : ''}`
 
   return (
     <>
@@ -237,6 +237,55 @@ export function InsuranceInputs({
               Beitrag steigt jedes Jahr um diesen Prozentsatz. Wirkt sich auch auf Abschlusskosten aus (Beitragssumme wächst).
             </p>
           )}
+
+          <div className="subsection-heading">
+            <h3>Kapitalgarantie</h3>
+            <p>Modelliert eine vertragliche Mindestleistung bei Rentenbeginn. Kosten bleiben unveraendert im Kostenblock.</p>
+          </div>
+
+          <div className="field-grid">
+            <label className="field field-inline">
+              <input
+                type="checkbox"
+                checked={ins.capitalGuarantee.enabled}
+                onChange={(event) =>
+                  onAssumptionsChange((current) => ({
+                    ...current,
+                    insurance: {
+                      ...current.insurance,
+                      capitalGuarantee: {
+                        ...current.insurance.capitalGuarantee,
+                        enabled: event.target.checked,
+                      },
+                    },
+                  }))
+                }
+              />
+              <span>Beitragsgarantie beruecksichtigen</span>
+            </label>
+            {ins.capitalGuarantee.enabled && (
+              <NumberField
+                label="Garantiertes Mindestkapital"
+                value={ins.capitalGuarantee.floorPctOfContributions * 100}
+                min={0}
+                max={100}
+                step={5}
+                suffix="% der Beitraege"
+                onChange={(value) =>
+                  onAssumptionsChange((current) => ({
+                    ...current,
+                    insurance: {
+                      ...current.insurance,
+                      capitalGuarantee: {
+                        ...current.insurance.capitalGuarantee,
+                        floorPctOfContributions: Math.min(1, Math.max(0, Number(value) / 100)),
+                      },
+                    },
+                  }))
+                }
+              />
+            )}
+          </div>
 
           {insuranceTaxMode === 'halbeinkuenfte' && (
             <>

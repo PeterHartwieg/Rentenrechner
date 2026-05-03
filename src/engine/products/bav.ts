@@ -11,6 +11,7 @@ import {
   calculateLeibrenteBreakEvenAge,
   computeFeeAdjustedGrossMonthlyPayout,
 } from '../productPayout'
+import { withMarketReturnPolicy } from '../marketReturns'
 
 export const metadata = {
   id: 'bav' as const,
@@ -38,9 +39,13 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
     monthlyEmployerContribution: bavFunding.monthlyEmployerContribution,
     fees: assumptions.bav.fees,
     taxAndSvSavings: bavFunding.annualTaxAndSvSavings * ctx.yearsToRetirement,
-    policy: assumptions.bav.annualContributionGrowthRate
-      ? { contributionGrowth: { annualRate: assumptions.bav.annualContributionGrowthRate } }
-      : undefined,
+    policy: withMarketReturnPolicy(
+      ctx,
+      scenario,
+      assumptions.bav.annualContributionGrowthRate
+        ? { contributionGrowth: { annualRate: assumptions.bav.annualContributionGrowthRate } }
+        : undefined,
+    ),
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const bav = assumptions.bav
       const grossMonthlyPayout = computeFeeAdjustedGrossMonthlyPayout(

@@ -21,6 +21,8 @@ import { PensionChart } from './features/results/PensionChart'
 import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
+import { MonteCarloHighlights } from './features/results/MonteCarloHighlights'
+import { MonteCarloPanel } from './features/results/MonteCarloPanel'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { PrintReport } from './features/results/PrintReport'
@@ -61,6 +63,7 @@ function App() {
     linkCopied,
     simulation,
     selectedScenario,
+    monteCarloResult,
     selectedResults,
     capitalChartData,
     pensionBars,
@@ -131,6 +134,8 @@ function App() {
             bestCapital={bestCapital}
             bestPension={bestPension}
           />
+
+          <MonteCarloHighlights result={monteCarloResult} />
 
           <SummaryMetrics
             grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
@@ -203,6 +208,8 @@ function App() {
             retirementAge={profile.retirementAge}
             retirementEndAge={assumptions.retirementEndAge}
           />
+
+          <MonteCarloPanel result={monteCarloResult} />
 
           <SensitivityPanel
             profile={profile}

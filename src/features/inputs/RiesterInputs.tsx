@@ -29,6 +29,7 @@ export function RiesterInputs({
   const erweitertParts: string[] = []
   if (assumptions.riester.eligibility.careerStarterBonusUsed) erweitertParts.push('Berufseinsteiger-Bonus erhalten')
   if (assumptions.riester.partialCapitalPct > 0) erweitertParts.push(`${(assumptions.riester.partialCapitalPct * 100).toFixed(0)} % Einmalbetrag`)
+  if (assumptions.riester.capitalGuarantee.enabled) erweitertParts.push(`${(assumptions.riester.capitalGuarantee.floorPctOfContributions * 100).toFixed(0)} % Garantie`)
   if (assumptions.riester.monthlyOtherRetirementIncome > 0) erweitertParts.push(`+${formatCurrency(assumptions.riester.monthlyOtherRetirementIncome, 0)}/Mon. sonst. Einkommen`)
   if (assumptions.altersvorsorgedepot.riesterTransferCapital > 0) erweitertParts.push(`AVD-Übertrag: ${formatCurrency(assumptions.altersvorsorgedepot.riesterTransferCapital, 0)}`)
   if (erweitertParts.length === 0) erweitertParts.push('Standard-Annahmen')
@@ -220,6 +221,55 @@ export function RiesterInputs({
             />
             <span>Berufseinsteiger-Bonus bereits erhalten</span>
           </label>
+
+          <div className="subsection-heading" style={{ marginTop: 4 }}>
+            <h3>Beitragsgarantie</h3>
+            <p>Modelliert die Mindestleistung des bestehenden Vertrags. Kosten bleiben unveraendert in den Riester-Kosten.</p>
+          </div>
+
+          <div className="field-grid">
+            <label className="field field-inline">
+              <input
+                type="checkbox"
+                checked={assumptions.riester.capitalGuarantee.enabled}
+                onChange={(event) =>
+                  onAssumptionsChange((current) => ({
+                    ...current,
+                    riester: {
+                      ...current.riester,
+                      capitalGuarantee: {
+                        ...current.riester.capitalGuarantee,
+                        enabled: event.target.checked,
+                      },
+                    },
+                  }))
+                }
+              />
+              <span>Garantie im Risiko-Check beruecksichtigen</span>
+            </label>
+            {assumptions.riester.capitalGuarantee.enabled && (
+              <NumberField
+                label="Garantiertes Mindestkapital"
+                value={assumptions.riester.capitalGuarantee.floorPctOfContributions * 100}
+                min={0}
+                max={100}
+                step={5}
+                suffix="% der Beitraege"
+                onChange={(value) =>
+                  onAssumptionsChange((current) => ({
+                    ...current,
+                    riester: {
+                      ...current.riester,
+                      capitalGuarantee: {
+                        ...current.riester.capitalGuarantee,
+                        floorPctOfContributions: Math.min(1, Math.max(0, Number(value) / 100)),
+                      },
+                    },
+                  }))
+                }
+              />
+            )}
+          </div>
 
           <NumberField
             label="Einmalbetrag bei Rentenbeginn"

@@ -78,6 +78,11 @@ export const defaultRiesterAssumptions: RiesterAssumptions = {
     ageAtContractStart: 28,
     careerStarterBonusUsed: false,
   },
+  // Classic Riester contracts generally guarantee paid-in contributions plus allowances.
+  capitalGuarantee: {
+    enabled: true,
+    floorPctOfContributions: 1,
+  },
   // Typical Riester insurance cost structure (similar to private insurance).
   fees: {
     wrapperAssetFee: 0.012,
@@ -110,6 +115,12 @@ export const defaultAssumptions: ScenarioAssumptions = {
     { id: 'basis', label: 'Basis', annualReturn: 0.05 },
     { id: 'optimistisch', label: 'Optimistisch', annualReturn: 0.07 },
   ],
+  monteCarlo: {
+    enabled: true,
+    runs: 1_000,
+    annualVolatility: 0.15,
+    seed: 2026,
+  },
   etf: {
     annualAssetFee: 0.002,
     equityPartialExemption: 0.3,
@@ -195,6 +206,13 @@ export const defaultAssumptions: ScenarioAssumptions = {
     contractStartYear: 2024,
     oldContractTaxFreeEligible: false,
     monthlyOtherRetirementIncome: 0,
+    // Many private annuity contracts include a contribution guarantee. The high
+    // contract costs are still modeled in `fees`; this floor only affects bad
+    // market paths where the insurer guarantee would kick in.
+    capitalGuarantee: {
+      enabled: true,
+      floorPctOfContributions: 1,
+    },
     // #54: pAV defaults — Leibrente is the typical contractual form. Private contracts often
     // quote slightly lower Rentenfaktoren than bAV (higher costs and unisex pricing); 28 EUR/10k
     // chosen as a 2026 market-typical default. See LEGAL_REVIEW.md.
