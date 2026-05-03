@@ -3,6 +3,12 @@
 import type { ProductId, ProductResult } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
 import type { PerturbationResult, SensitivityRunResult } from './sensitivity'
+import {
+  runRules,
+  renderAtom,
+  buildRuleInputFromProducts,
+  type Atom,
+} from '../../app/recommendations'
 
 export type ProductReasonKind =
   | 'employer_subsidy'
@@ -39,119 +45,52 @@ export interface SensitivityHint {
   text: string
 }
 
-// Effektivkosten thresholds. accumulationRiy is stored as a decimal fraction
-// (0.012 = 1.2 % p. a.), so thresholds use the same scale.
-const HIGH_FEE_THRESHOLD = 0.012
-const LOW_FEE_THRESHOLD = 0.006
-const NARROW_CAPITAL_GAP = 0.05
-const EMPLOYER_SHARE_FLOOR = 0.2
+// ---------------------------------------------------------------------------
+// Helpers: atom-id → ProductReasonKind / SensitivityKind mapping
+// ---------------------------------------------------------------------------
 
-function totalContributionShareEmployer(result: ProductResult): number {
-  const total = result.totalProductContributions
-  if (total <= 0) return 0
-  return result.totalEmployerContributions / total
+const ATOM_TO_REASON_KIND: Partial<Record<Atom['id'], ProductReasonKind>> = {
+  reason_employer_subsidy: 'employer_subsidy',
+  reason_low_fees: 'low_fees',
+  reason_high_fees: 'high_fees',
+  reason_tax_deferral: 'tax_deferral',
+  reason_flexible_capital: 'flexible_capital',
+  reason_subsidies: 'subsidies',
+  reason_guarantee: 'guarantee',
+}
+
+const ATOM_TO_SENSITIVITY_KIND: Partial<Record<Atom['id'], SensitivityKind>> = {
+  sensitivity_rankings_disagree: 'rankings_disagree',
+  sensitivity_narrow_capital_gap: 'narrow_capital_gap',
+  sensitivity_high_fee_winner: 'high_fee_winner',
+  sensitivity_default: 'default',
 }
 
 /**
- * Pick a single dominant reason per product. The order of checks within each
- * product encodes a soft priority — the most decision-relevant attribute wins.
+ * Pick a single dominant reason per product.
+ *
+ * Facade over the `productReasonRule` in `recommendations.ts`. Runs the full
+ * rule engine on a single-element products array, finds the reason atom for
+ * this product, and reshapes to the existing `ProductReason` return type so
+ * `DecisionSummary.tsx` is unchanged.
  */
 export function productReason(result: ProductResult): ProductReason {
-  const riy = result.accumulationRiy
-  const employerShare = totalContributionShareEmployer(result)
-
-  switch (result.productId) {
-    case 'etf':
-      if (riy <= LOW_FEE_THRESHOLD) {
-        return {
-          productId: 'etf',
-          label: result.label,
-          kind: 'low_fees',
-          text: 'Niedrige Gebühren, jederzeit frei verfügbar.',
-        }
-      }
-      return {
-        productId: 'etf',
-        label: result.label,
-        kind: 'flexible_capital',
-        text: 'Frei verfügbar, kein Auszahlplan vorgegeben.',
-      }
-    case 'bav':
-      if (employerShare >= EMPLOYER_SHARE_FLOOR) {
-        return {
-          productId: 'bav',
-          label: result.label,
-          kind: 'employer_subsidy',
-          text: 'Hoher Arbeitgeberanteil senkt deinen Nettoaufwand.',
-        }
-      }
-      if (riy >= HIGH_FEE_THRESHOLD) {
-        return {
-          productId: 'bav',
-          label: result.label,
-          kind: 'high_fees',
-          text: 'Vertragskosten zehren am Ergebnis (Effektivkosten hoch).',
-        }
-      }
-      return {
-        productId: 'bav',
-        label: result.label,
-        kind: 'tax_deferral',
-        text: 'Steuer- und SV-Ersparnis in der Ansparphase.',
-      }
-    case 'versicherung':
-      if (riy >= HIGH_FEE_THRESHOLD) {
-        return {
-          productId: 'versicherung',
-          label: result.label,
-          kind: 'high_fees',
-          text: 'Hohe Vertragskosten — Effektivkosten über 1,2 % p. a.',
-        }
-      }
-      return {
-        productId: 'versicherung',
-        label: result.label,
-        kind: 'guarantee',
-        text: 'Lebenslange Rentengarantie über den Rentenfaktor.',
-      }
-    case 'basisrente':
-      if (riy >= HIGH_FEE_THRESHOLD) {
-        return {
-          productId: 'basisrente',
-          label: result.label,
-          kind: 'high_fees',
-          text: 'Hohe Vertragskosten und kein Kapitalwahlrecht.',
-        }
-      }
-      return {
-        productId: 'basisrente',
-        label: result.label,
-        kind: 'tax_deferral',
-        text: 'Sonderausgabenabzug heute, Besteuerung in der Rente.',
-      }
-    case 'altersvorsorgedepot':
-      return {
-        productId: 'altersvorsorgedepot',
-        label: result.label,
-        kind: 'subsidies',
-        text: 'Zulagen und Steuervorteil, gebunden bis Rentenbeginn.',
-      }
-    case 'riester':
-      if (employerShare > 0) {
-        return {
-          productId: 'riester',
-          label: result.label,
-          kind: 'subsidies',
-          text: 'Zulagen und ggf. zusätzlicher Steuervorteil.',
-        }
-      }
-      return {
-        productId: 'riester',
-        label: result.label,
-        kind: 'subsidies',
-        text: 'Grund- und Kinderzulagen, volle Versteuerung in der Rente.',
-      }
+  const input = buildRuleInputFromProducts([result])
+  const atoms = runRules(input)
+  const reasonAtom = atoms.find((a) => a.id in ATOM_TO_REASON_KIND)
+  if (reasonAtom) {
+    const kind = ATOM_TO_REASON_KIND[reasonAtom.id] as ProductReasonKind
+    const rendered = renderAtom(reasonAtom)
+    return {
+      productId: result.productId,
+      label: result.label,
+      kind,
+      text: rendered.body,
+    }
   }
+  // Unreachable in practice (productReasonRule always emits one atom per product),
+  // but satisfies exhaustiveness.
+  return { productId: result.productId, label: result.label, kind: 'flexible_capital', text: '' }
 }
 
 export function biggestCostDriver(results: ProductResult[]): CostDriver | undefined {
@@ -170,52 +109,34 @@ export function biggestCostDriver(results: ProductResult[]): CostDriver | undefi
 /**
  * Heuristic single-line "what would flip the ranking" hint. Intentionally compact —
  * proper sensitivity analysis is its own backlog item (#UX6).
+ *
+ * Facade over `sensitivityHintRule` in `recommendations.ts`. Runs the rule engine
+ * on the full results array, picks the sensitivity atom, and reshapes to `SensitivityHint`.
  */
 export function sensitivityHint(results: ProductResult[]): SensitivityHint {
-  if (results.length < 2) {
-    return {
-      kind: 'default',
-      text: 'Wähle weitere Produkte aus, um Vergleichshinweise zu sehen.',
+  const input = buildRuleInputFromProducts(results)
+  const atoms = runRules(input)
+  const sensitivityAtom = atoms.find((a) => a.id in ATOM_TO_SENSITIVITY_KIND)
+  if (sensitivityAtom) {
+    const kind = ATOM_TO_SENSITIVITY_KIND[sensitivityAtom.id] as SensitivityKind
+    const rendered = renderAtom(sensitivityAtom)
+    // For rankings_disagree the rendered body is the compact text; prepend
+    // the localised prefix that the original function used.
+    let text = rendered.body
+    if (kind === 'rankings_disagree') {
+      const capLabel = sensitivityAtom.context['bestCapitalLabel'] as string
+      const penLabel = sensitivityAtom.context['bestPensionLabel'] as string
+      text = `Kapital- und Renten-Sieger sind verschieden: „${capLabel}" vorn beim Kapital, „${penLabel}" bei der monatlichen Rente. Frage dich, was dir wichtiger ist.`
+    } else if (kind === 'narrow_capital_gap') {
+      const runnerLabel = sensitivityAtom.context['runnerLabel'] as string
+      text = `Knapper Vorsprung beim Kapital (unter 5 % zu „${runnerLabel}"). Ranking kippt schon bei kleinen Änderungen an Rendite oder Gebühren.`
+    } else if (kind === 'high_fee_winner') {
+      const riy = sensitivityAtom.context['riyDecimal'] as number
+      text = `Sieger hat hohe Effektivkosten (${(riy * 100).toFixed(2)} % p. a.). Eine Renditeannahme 1 pp niedriger oder ein günstigerer Tarif kann das Bild drehen.`
     }
+    return { kind, text }
   }
-
-  const capitalSorted = [...results]
-    .filter((r): r is ProductResult & { afterTaxLumpSum: number } => r.afterTaxLumpSum !== null)
-    .sort((a, b) => b.afterTaxLumpSum - a.afterTaxLumpSum)
-  const pensionSorted = [...results].sort((a, b) => b.netMonthlyPayout - a.netMonthlyPayout)
-
-  const bestCap = capitalSorted[0]
-  const bestPen = pensionSorted[0]
-
-  if (bestCap && bestPen && bestCap.productId !== bestPen.productId) {
-    return {
-      kind: 'rankings_disagree',
-      text: `Kapital- und Renten-Sieger sind verschieden: „${bestCap.label}" vorn beim Kapital, „${bestPen.label}" bei der monatlichen Rente. Frage dich, was dir wichtiger ist.`,
-    }
-  }
-
-  if (bestCap && capitalSorted.length >= 2) {
-    const second = capitalSorted[1]
-    const gap = (bestCap.afterTaxLumpSum - second.afterTaxLumpSum) / bestCap.afterTaxLumpSum
-    if (gap < NARROW_CAPITAL_GAP) {
-      return {
-        kind: 'narrow_capital_gap',
-        text: `Knapper Vorsprung beim Kapital (unter 5 % zu „${second.label}"). Ranking kippt schon bei kleinen Änderungen an Rendite oder Gebühren.`,
-      }
-    }
-  }
-
-  if (bestCap && bestCap.accumulationRiy >= HIGH_FEE_THRESHOLD) {
-    return {
-      kind: 'high_fee_winner',
-      text: `Sieger hat hohe Effektivkosten (${(bestCap.accumulationRiy * 100).toFixed(2)} % p. a.). Eine Renditeannahme 1 pp niedriger oder ein günstigerer Tarif kann das Bild drehen.`,
-    }
-  }
-
-  return {
-    kind: 'default',
-    text: 'Hebel mit grösstem Einfluss: Rendite, Effektivkosten und (bei bAV) Arbeitgeberanteil. Verändere sie testweise im Bereich „Erweitert".',
-  }
+  return { kind: 'default', text: '' }
 }
 
 export function rankingsDisagree(

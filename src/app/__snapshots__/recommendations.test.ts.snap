@@ -1,0 +1,182 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderAtom snapshots > renderAtom output matches snapshot for all known ids 1`] = `
+[
+  {
+    "context": {
+      "bestCapitalId": "etf",
+      "bestCapitalLabel": "ETF",
+      "bestPensionId": "bav",
+      "bestPensionLabel": "bAV",
+    },
+    "id": "sensitivity_rankings_disagree",
+    "rendered": {
+      "body": "„ETF" vorn beim Kapital, „bAV" bei der monatlichen Rente. Frage dich, was dir wichtiger ist.",
+      "headline": "Kapital- und Renten-Sieger sind verschieden",
+    },
+  },
+  {
+    "context": {
+      "gapPct": 0.03,
+      "runnerId": "bav",
+      "runnerLabel": "bAV",
+      "winnerId": "etf",
+      "winnerLabel": "ETF",
+    },
+    "id": "sensitivity_narrow_capital_gap",
+    "rendered": {
+      "body": "Unter 5 % zu „bAV". Ranking kippt schon bei kleinen Änderungen an Rendite oder Gebühren.",
+      "headline": "Knapper Vorsprung beim Kapital",
+    },
+  },
+  {
+    "context": {
+      "riyDecimal": 0.016,
+      "winnerId": "versicherung",
+      "winnerLabel": "pAV",
+    },
+    "id": "sensitivity_high_fee_winner",
+    "rendered": {
+      "body": "1.60 % p. a. Eine Renditeannahme 1 pp niedriger oder ein günstigerer Tarif kann das Bild drehen.",
+      "headline": "Sieger hat hohe Effektivkosten",
+    },
+  },
+  {
+    "context": {
+      "text": "Wähle weitere Produkte aus, um Vergleichshinweise zu sehen.",
+    },
+    "id": "sensitivity_default",
+    "rendered": {
+      "body": "Wähle weitere Produkte aus, um Vergleichshinweise zu sehen.",
+      "headline": "Vergleichshinweis",
+    },
+  },
+  {
+    "context": {
+      "employerSharePct": 0.3,
+      "label": "bAV",
+      "productId": "bav",
+    },
+    "id": "reason_employer_subsidy",
+    "rendered": {
+      "body": "Hoher Arbeitgeberanteil senkt deinen Nettoaufwand.",
+      "headline": "Hoher Arbeitgeberanteil",
+    },
+  },
+  {
+    "context": {
+      "label": "ETF",
+      "productId": "etf",
+      "riyDecimal": 0.003,
+    },
+    "id": "reason_low_fees",
+    "rendered": {
+      "body": "Niedrige Gebühren, jederzeit frei verfügbar.",
+      "headline": "Niedrige Gebühren",
+    },
+  },
+  {
+    "context": {
+      "label": "bAV",
+      "productId": "bav",
+      "riyDecimal": 0.016,
+    },
+    "id": "reason_high_fees",
+    "rendered": {
+      "body": "Vertragskosten zehren am Ergebnis (Effektivkosten hoch).",
+      "headline": "Hohe Vertragskosten",
+    },
+  },
+  {
+    "context": {
+      "label": "pAV",
+      "productId": "versicherung",
+      "riyDecimal": 0.016,
+    },
+    "id": "reason_high_fees",
+    "rendered": {
+      "body": "Hohe Vertragskosten — Effektivkosten über 1,2 % p. a.",
+      "headline": "Hohe Vertragskosten",
+    },
+  },
+  {
+    "context": {
+      "label": "Basisrente",
+      "productId": "basisrente",
+      "riyDecimal": 0.016,
+    },
+    "id": "reason_high_fees",
+    "rendered": {
+      "body": "Hohe Vertragskosten und kein Kapitalwahlrecht.",
+      "headline": "Hohe Kosten und kein Kapitalwahlrecht",
+    },
+  },
+  {
+    "context": {
+      "label": "bAV",
+      "productId": "bav",
+    },
+    "id": "reason_tax_deferral",
+    "rendered": {
+      "body": "Steuer- und SV-Ersparnis in der Ansparphase.",
+      "headline": "Steuer- und SV-Ersparnis",
+    },
+  },
+  {
+    "context": {
+      "label": "Basisrente",
+      "productId": "basisrente",
+    },
+    "id": "reason_tax_deferral",
+    "rendered": {
+      "body": "Sonderausgabenabzug heute, Besteuerung in der Rente.",
+      "headline": "Steuervorteil heute",
+    },
+  },
+  {
+    "context": {
+      "label": "ETF",
+      "productId": "etf",
+      "riyDecimal": 0.015,
+    },
+    "id": "reason_flexible_capital",
+    "rendered": {
+      "body": "Frei verfügbar, kein Auszahlplan vorgegeben.",
+      "headline": "Flexibel verfügbar",
+    },
+  },
+  {
+    "context": {
+      "label": "AVD",
+      "productId": "altersvorsorgedepot",
+    },
+    "id": "reason_subsidies",
+    "rendered": {
+      "body": "Zulagen und Steuervorteil, gebunden bis Rentenbeginn.",
+      "headline": "Zulagen und Steuervorteil",
+    },
+  },
+  {
+    "context": {
+      "label": "Riester",
+      "productId": "riester",
+    },
+    "id": "reason_subsidies",
+    "rendered": {
+      "body": "Grund- und Kinderzulagen, volle Versteuerung in der Rente.",
+      "headline": "Zulagen",
+    },
+  },
+  {
+    "context": {
+      "label": "pAV",
+      "productId": "versicherung",
+    },
+    "id": "reason_guarantee",
+    "rendered": {
+      "body": "Lebenslange Rentengarantie über den Rentenfaktor.",
+      "headline": "Rentengarantie",
+    },
+  },
+]
+`;
