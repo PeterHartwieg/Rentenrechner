@@ -859,6 +859,11 @@ export function CombineDashboardSidebar({
       {/* Only render when there is something to archive (contracts or what-ifs). */}
       {showArchiveButton && (
         <div className="cds-archive-section">
+          {/* Inline trade-off hint — visible without clicking, so the user
+              understands the data-loss before they decide to act. */}
+          <p className="cds-archive-hint">
+            Mehrere Verträge pro Produkttyp werden im Archiv zu einem zusammengefasst.
+          </p>
           <button
             type="button"
             className="cds-archive-btn"
@@ -866,6 +871,16 @@ export function CombineDashboardSidebar({
             onClick={() => {
               // Prevent double-clicks from writing two library entries.
               if (archiving) return
+              // Confirm both lossiness effects before proceeding:
+              //   1. Multi-instance contracts are collapsed to one per product type.
+              //   2. All current what-if scenarios are deleted.
+              const ok = window.confirm(
+                'Aktuellen Stand als Baseline speichern und neu starten?\n\n' +
+                '• Verträge mit mehreren Instanzen werden in der Archiv-Vorschau auf je einen pro Produkttyp zusammengefasst.\n' +
+                '• Alle aktuellen Was-wäre-wenn-Szenarien werden gelöscht.\n\n' +
+                'Fortfahren?'
+              )
+              if (!ok) return
               setArchiving(true)
               try {
                 onArchiveAndRestart()
