@@ -21,7 +21,6 @@ import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import {
   buildWorkspaceJson,
   defaultWorkspace,
-  extractSingletonAssumptions,
   loadSavedState,
   loadSavedWorkspace,
   migrateV1ToV2,
@@ -32,6 +31,26 @@ import {
   STORAGE_KEY_V2,
 } from './storage'
 import { validateWorkspace, validateWorkspaceAssumptions } from './utils/scenarioSchema'
+import {
+  projectInstanceToScenarioAssumptions,
+  singletonViewOfWorkspace,
+} from './engine/portfolioAdapter'
+
+/**
+ * Helper used in the tests below — builds the same singleton view that
+ * `parseStateFromJson` uses internally. Replaces the legacy
+ * `extractSingletonAssumptions` (deleted in issue 03).
+ */
+function singletonViewWithDefaults(workspace: Parameters<typeof singletonViewOfWorkspace>[0]) {
+  return singletonViewOfWorkspace(workspace, {
+    bav: defaultAssumptions.bav,
+    etf: defaultAssumptions.etf,
+    insurance: defaultAssumptions.insurance,
+    basisrente: defaultAssumptions.basisrente,
+    altersvorsorgedepot: defaultAssumptions.altersvorsorgedepot,
+    riester: defaultAssumptions.riester,
+  })
+}
 
 // ---------------------------------------------------------------------------
 // localStorage mock
@@ -531,13 +550,13 @@ describe('Test 8 — empty-array preservation through mergeDeep + validation', (
 // Test 9: Inverse projection byte-identity
 // ---------------------------------------------------------------------------
 
-describe('Test 9 — extractSingletonAssumptions byte-identity', () => {
-  it('migrated v2 → extractSingletonAssumptions produces bAV matching the original singleton', () => {
+describe('Test 9 — singletonViewOfWorkspace + projectInstanceToScenarioAssumptions byte-identity', () => {
+  it('migrated v2 → singletonViewOfWorkspace produces bAV matching the original singleton', () => {
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       assumptionsWithBav as unknown as Record<string, unknown>,
     )
-    const singleton = extractSingletonAssumptions(ws)
+    const singleton = singletonViewWithDefaults(ws)
     // Core bAV fields must match.
     expect(singleton.bav.monthlyGrossConversion).toBe(assumptionsWithBav.bav.monthlyGrossConversion)
     expect(singleton.bav.contractualMatchPercent).toBe(assumptionsWithBav.bav.contractualMatchPercent)
@@ -547,51 +566,53 @@ describe('Test 9 — extractSingletonAssumptions byte-identity', () => {
     expect(singleton.bav.rentenfaktor).toBe(assumptionsWithBav.bav.rentenfaktor)
   })
 
-  it('migrated v2 → extractSingletonAssumptions preserves scenario-level fields', () => {
+  it('migrated v2 → singletonViewOfWorkspace preserves scenario-level fields', () => {
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       defaultAssumptions as unknown as Record<string, unknown>,
     )
-    const singleton = extractSingletonAssumptions(ws)
+    const singleton = singletonViewWithDefaults(ws)
     expect(singleton.inflationRate).toBe(defaultAssumptions.inflationRate)
     expect(singleton.retirementEndAge).toBe(defaultAssumptions.retirementEndAge)
     expect(singleton.returnScenarios).toHaveLength(defaultAssumptions.returnScenarios.length)
     expect(singleton.visibleProducts).toEqual(defaultAssumptions.visibleProducts)
   })
 
-  it('when product array is length-0, extractSingletonAssumptions falls back to defaultAssumptions', () => {
+  it('when product array is length-0, singletonViewOfWorkspace falls back to defaults', () => {
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       assumptionsZeroBav as unknown as Record<string, unknown>,
     )
     // bAV array is empty → should fall back to defaultAssumptions.bav
-    const singleton = extractSingletonAssumptions(ws)
+    const singleton = singletonViewWithDefaults(ws)
     // Fallback is defaultAssumptions.bav (not the zero-bAV shape) — the engine
     // needs a valid singleton; the zero contribution is the user-visible state.
     expect(singleton.bav.monthlyGrossConversion).toBe(defaultAssumptions.bav.monthlyGrossConversion)
     expect(typeof singleton.bav.durchfuehrungsweg).toBe('string')
   })
 
-  it('v1 round-trip via migrateAndValidateState and extractSingletonAssumptions is structurally identical', () => {
+  it('v1 round-trip via migrateAndValidateState and projectInstanceToScenarioAssumptions is structurally identical', () => {
     // Parse via legacy path to get singleton.
     const legacySingleton = {
       profile: defaultProfile,
       assumptions: assumptionsWithBav,
     }
-    // Migrate to v2 then back to singleton.
+    // Migrate to v2 then project the bAV instance directly.
     const ws = migrateV1ToV2(
       legacySingleton.profile as unknown as Record<string, unknown>,
       legacySingleton.assumptions as unknown as Record<string, unknown>,
     )
-    const extracted = extractSingletonAssumptions(ws)
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    const projected = projectInstanceToScenarioAssumptions(bavInstance, ws.baseline.assumptions)
 
-    // Key engine inputs must be byte-identical.
-    expect(extracted.bav.monthlyGrossConversion).toBe(legacySingleton.assumptions.bav.monthlyGrossConversion)
-    expect(extracted.bav.rentenfaktor).toBe(legacySingleton.assumptions.bav.rentenfaktor)
-    expect(extracted.etf.annualAssetFee).toBe(legacySingleton.assumptions.etf.annualAssetFee)
-    expect(extracted.insurance.contractStartYear).toBe(legacySingleton.assumptions.insurance.contractStartYear)
-    expect(extracted.inflationRate).toBe(legacySingleton.assumptions.inflationRate)
-    expect(extracted.retirementEndAge).toBe(legacySingleton.assumptions.retirementEndAge)
+    // Key engine inputs from the projection must match the original singleton.
+    expect(projected.bav.monthlyGrossConversion).toBe(legacySingleton.assumptions.bav.monthlyGrossConversion)
+    expect(projected.bav.rentenfaktor).toBe(legacySingleton.assumptions.bav.rentenfaktor)
+    // ETF/insurance are NEUTRALISED in a per-instance projection (not byte-identical
+    // to the original singleton there); the workspace-level singleton view is what
+    // restores those slots — covered by the prior "compare byte-identity" tests.
+    expect(projected.inflationRate).toBe(legacySingleton.assumptions.inflationRate)
+    expect(projected.retirementEndAge).toBe(legacySingleton.assumptions.retirementEndAge)
   })
 })
 

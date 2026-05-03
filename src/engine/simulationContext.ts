@@ -57,12 +57,45 @@ export interface SimulationContext {
   marketReturnPath?: readonly number[]
 }
 
+/**
+ * Optional overrides for buildContext (Group G issue 03 — additive only).
+ *
+ * Used by `simulatePortfolio` to inject pre-computed funding shares for the
+ * active per-product instance, so cross-instance caps (bAV §3 Nr. 63 + §1 SvEV,
+ * Basisrente §10 Abs. 3, Riester §10a / §86) can be applied at the workspace
+ * level before per-instance simulation.
+ *
+ * Existing callers (simulateRetirementComparison, every test, every direct
+ * call) pass nothing and behave identically. The legacy path is preserved.
+ */
+export interface BuildContextOverrides {
+  /**
+   * Pre-computed bAV funding for the active bAV instance. When provided,
+   * replaces the bAV funding that buildContext would otherwise calculate from
+   * `assumptions.bav`. Used so the fair-comparison invariant (ETF + pAV invest
+   * `bavFunding.monthlyNetCost`) reflects the cross-instance cap apportionment.
+   */
+  bavFundingOverride?: BavFundingResult
+  /**
+   * Pre-computed Basisrente funding for the active instance. Similar shape.
+   * Optional — when missing, buildContext falls back to deriving from
+   * `assumptions.basisrente`.
+   */
+  basisrenteFundingOverride?: BasisrenteFundingResult
+  /** Pre-computed Altersvorsorgedepot funding for the active instance. */
+  altersvorsorgedepotFundingOverride?: AltersvorsorgedepotFundingResult
+  /** Pre-computed Riester funding for the active instance. */
+  riesterFundingOverride?: RiesterFundingResult
+}
+
 export function buildContext(
   profile: PersonalProfile,
   assumptions: ScenarioAssumptions,
   rules: GermanRules,
+  overrides?: BuildContextOverrides,
 ): SimulationContext {
-  const bavFunding = calculateBavFunding(profile, rules, assumptions.bav)
+  const bavFunding = overrides?.bavFundingOverride
+    ?? calculateBavFunding(profile, rules, assumptions.bav)
   const payoutYear = rules.year + (profile.retirementAge - profile.age)
   const contractRuntimeYears = payoutYear - assumptions.insurance.contractStartYear
   const insuranceTaxMode = deriveInsuranceTaxMode(
@@ -87,14 +120,17 @@ export function buildContext(
     pensionSystemAnnualContributionOverride = 0
   }
   // All three Schicht-2/-1 funding calculations share the same salary zvE base from bavFunding.
-  const basisrenteFunding = calculateBasisrenteFunding(
-    rules,
-    bavFunding.salaryWithBav,
-    assumptions.basisrente,
-    pensionSystemAnnualContributionOverride,
-  )
-  const altersvorsorgedepotFunding = calculateAvdFunding(rules, bavFunding.salaryWithBav, assumptions.altersvorsorgedepot)
-  const riesterFunding = calculateRiesterFunding(rules, bavFunding.salaryWithBav, assumptions.riester, profile)
+  const basisrenteFunding = overrides?.basisrenteFundingOverride
+    ?? calculateBasisrenteFunding(
+      rules,
+      bavFunding.salaryWithBav,
+      assumptions.basisrente,
+      pensionSystemAnnualContributionOverride,
+    )
+  const altersvorsorgedepotFunding = overrides?.altersvorsorgedepotFundingOverride
+    ?? calculateAvdFunding(rules, bavFunding.salaryWithBav, assumptions.altersvorsorgedepot)
+  const riesterFunding = overrides?.riesterFundingOverride
+    ?? calculateRiesterFunding(rules, bavFunding.salaryWithBav, assumptions.riester, profile)
 
   const grvProjection = projectStatutoryPension(
     profile,

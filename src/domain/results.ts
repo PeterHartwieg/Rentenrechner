@@ -46,6 +46,15 @@ export interface BaseProductResult {
   label: string
   scenarioId: ReturnScenarioId
   scenarioLabel: string
+  /**
+   * Optional instance id for combine-mode portfolio runs (Group G issue 03).
+   *
+   * Set by `simulatePortfolio` after the per-product simulator returns; the
+   * legacy `simulateRetirementComparison` path leaves it `undefined`. UI code
+   * that needs to disambiguate two ProductResult entries of the same productId
+   * (multi-instance portfolios) keys off this field.
+   */
+  instanceId?: string
   annualReturn: number
   monthlyUserCost: number
   monthlyProductContribution: number

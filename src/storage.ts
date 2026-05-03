@@ -10,6 +10,7 @@ import type {
 } from './domain/instances'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { validateState } from './utils/scenarioSchema'
+import { singletonViewOfWorkspace } from './engine/portfolioAdapter'
 
 // ---------------------------------------------------------------------------
 // Storage keys
@@ -368,64 +369,28 @@ export function migrateV1ToV2(
 }
 
 // ---------------------------------------------------------------------------
-// Inverse projection helper (stop-gap for M1 transition)
+// Singleton view of a workspace (compare-mode bridge to the legacy engine path)
 // ---------------------------------------------------------------------------
 
 /**
- * Extract a singleton-shaped ScenarioAssumptions from a v2 Workspace.
- * Reads the first instance per product (or falls back to defaults when length-0).
+ * Project a v2 Workspace down to a singleton-shaped ScenarioAssumptions for
+ * compare-mode rendering. Wraps `singletonViewOfWorkspace` from the
+ * PortfolioAdapter (issue 03), passing the canonical default assumptions for
+ * any length-0 product slots.
  *
- * This is a temporary M1 adapter — the engine still consumes ScenarioAssumptions
- * (singleton-shaped). Issue 03 will replace this with the proper PortfolioAdapter
- * that projects each instance independently.
- *
- * TODO(issue 03): replace with PortfolioAdapter.projectInstanceToScenarioAssumptions
+ * Replaces the M1 stop-gap `extractSingletonAssumptions`. The legacy compare-
+ * mode singleton API now flows through the PortfolioAdapter projection so a
+ * single code path drives both compare and combine modes.
  */
-export function extractSingletonAssumptions(workspace: Workspace): ScenarioAssumptions {
-  const v2 = workspace.baseline.assumptions
-
-  // For each product: use the first instance's assumption fields, or fall back to
-  // the default singleton. Instance-common fields (instanceId, label, evidenceMap,
-  // status, contractStartYear, etc.) are spread onto the singleton shape — the engine
-  // ignores unknown fields, so this is safe.
-  const bav = v2.bav.length > 0
-    ? { ...v2.bav[0] }
-    : defaultAssumptions.bav
-
-  const etf = v2.etf.length > 0
-    ? { ...v2.etf[0] }
-    : defaultAssumptions.etf
-
-  const insurance = v2.insurance.length > 0
-    ? { ...v2.insurance[0] }
-    : defaultAssumptions.insurance
-
-  const basisrente = v2.basisrente.length > 0
-    ? { ...v2.basisrente[0] }
-    : defaultAssumptions.basisrente
-
-  const altersvorsorgedepot = v2.altersvorsorgedepot.length > 0
-    ? { ...v2.altersvorsorgedepot[0] }
-    : defaultAssumptions.altersvorsorgedepot
-
-  const riester = v2.riester.length > 0
-    ? { ...v2.riester[0] }
-    : defaultAssumptions.riester
-
-  return {
-    inflationRate: v2.inflationRate,
-    retirementEndAge: v2.retirementEndAge,
-    returnScenarios: v2.returnScenarios,
-    monteCarlo: v2.monteCarlo,
-    visibleProducts: v2.visibleProducts,
-    statutoryPension: v2.statutoryPension,
-    etf: etf as ScenarioAssumptions['etf'],
-    bav: bav as ScenarioAssumptions['bav'],
-    insurance: insurance as ScenarioAssumptions['insurance'],
-    basisrente: basisrente as ScenarioAssumptions['basisrente'],
-    altersvorsorgedepot: altersvorsorgedepot as ScenarioAssumptions['altersvorsorgedepot'],
-    riester: riester as ScenarioAssumptions['riester'],
-  }
+function workspaceToSingletonAssumptions(workspace: Workspace): ScenarioAssumptions {
+  return singletonViewOfWorkspace(workspace, {
+    bav: defaultAssumptions.bav,
+    etf: defaultAssumptions.etf,
+    insurance: defaultAssumptions.insurance,
+    basisrente: defaultAssumptions.basisrente,
+    altersvorsorgedepot: defaultAssumptions.altersvorsorgedepot,
+    riester: defaultAssumptions.riester,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -544,7 +509,7 @@ export function parseStateFromJson(
   if (isV2Shape(obj)) {
     const merged = mergeDeep(obj, defaultWorkspace)
     if (merged.schemaVersion !== 2) return null
-    const singleton = extractSingletonAssumptions(merged)
+    const singleton = workspaceToSingletonAssumptions(merged)
     const profileMerged = mergeDeep(
       merged.baseline.profile,
       defaultProfile,
@@ -583,7 +548,7 @@ export function loadSavedState(): { profile: PersonalProfile; assumptions: Scena
     if (rawV2) {
       const workspace = parseWorkspaceJson(rawV2)
       if (workspace) {
-        const singleton = extractSingletonAssumptions(workspace)
+        const singleton = workspaceToSingletonAssumptions(workspace)
         const profile = mergeDeep(workspace.baseline.profile, defaultProfile)
         return validateState(profile, singleton)
       }
