@@ -7,9 +7,13 @@ const CURRENT_VERSION = 1
 
 // Recursively merge `saved` into `defaults`: primitives and arrays use the saved
 // value when the type matches; object fields recurse; missing keys keep the default.
+// Empty saved arrays are preserved (the user can explicitly clear, e.g.,
+// visibleProducts or childBirthYears). Arrays that genuinely require a non-empty
+// fallback — currently only returnScenarios — are normalized in
+// applyPreMergeMigrations before mergeDeep runs.
 function mergeDeep<T>(saved: unknown, defaults: T): T {
   if (Array.isArray(defaults)) {
-    return (Array.isArray(saved) && (saved as unknown[]).length > 0 ? saved : defaults) as T
+    return (Array.isArray(saved) ? saved : defaults) as T
   }
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return defaults
   const result = { ...(defaults as object) } as Record<string, unknown>

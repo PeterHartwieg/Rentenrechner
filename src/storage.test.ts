@@ -68,6 +68,35 @@ describe('parseStateFromJson (#40)', () => {
     expect(result!.profile.grossSalaryYear).toBe(90_000)
   })
 
+  it('preserves an explicit empty visibleProducts across the JSON round-trip', () => {
+    // The user clears the comparison; reload must not silently restore the default set.
+    const cleared = { ...defaultAssumptions, visibleProducts: [] }
+    const raw = buildStateJson(defaultProfile, cleared)
+    const result = parseStateFromJson(raw)
+    expect(result).not.toBeNull()
+    expect(result!.assumptions.visibleProducts).toEqual([])
+  })
+
+  it('preserves an explicit empty childBirthYears across the JSON round-trip', () => {
+    const noKids = { ...defaultProfile, childBirthYears: [] }
+    const raw = buildStateJson(noKids, defaultAssumptions)
+    const result = parseStateFromJson(raw)
+    expect(result!.profile.childBirthYears).toEqual([])
+  })
+
+  it('falls back to the canonical returnScenarios when the saved array is empty', () => {
+    // returnScenarios needs at least one row to drive the simulation. The pre-merge
+    // migration in storage.ts replaces empty/short saved arrays with the baseline set.
+    const broken = { ...defaultAssumptions, returnScenarios: [] }
+    const raw = buildStateJson(defaultProfile, broken)
+    const result = parseStateFromJson(raw)
+    expect(result).not.toBeNull()
+    expect(result!.assumptions.returnScenarios.length).toBeGreaterThan(0)
+    expect(result!.assumptions.returnScenarios.map((s) => s.id)).toEqual(
+      defaultAssumptions.returnScenarios.map((s) => s.id),
+    )
+  })
+
   it('falls back to default when a field has the wrong type', () => {
     // grossSalaryYear saved as string instead of number
     const badProfile = { ...defaultProfile, grossSalaryYear: 'oops' }

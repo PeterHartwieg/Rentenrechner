@@ -144,10 +144,11 @@ export interface ScenarioAssumptions {
   altersvorsorgedepot: AltersvorsorgedepotAssumptions
   riester: RiesterAssumptions
   /**
-   * Subset of products to include in charts, comparison tables, and CSV/print exports.
-   * Empty array = show all products (intentional fallback so a corrupt persisted state
-   * never produces an empty UI). Not present on legacy persisted states; mergeDeep
-   * preserves the default of "all products".
+   * Subset of products to render in charts, comparison tables, and CSV/print exports.
+   * Empty array = no comparison; `simulateRetirementComparison` filters by this list
+   * and the UI surfaces an empty-state. Legacy persisted states without the field
+   * fall back to the default (all six products) via mergeDeep; an explicit empty
+   * array set by the user is preserved on round-trip.
    */
   visibleProducts: ProductId[]
 }
