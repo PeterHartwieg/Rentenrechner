@@ -1,9 +1,32 @@
 import type { PersonalProfile, ScenarioAssumptions } from './domain'
+import type { Workspace, WorkspaceAssumptionsV2, Scenario } from './domain/workspace'
+import type {
+  BavInstance,
+  EtfInstance,
+  InsuranceInstance,
+  BasisrenteInstance,
+  AltersvorsorgedepotInstance,
+  RiesterInstance,
+} from './domain/instances'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { validateState } from './utils/scenarioSchema'
 
-export const STORAGE_KEY = 'rentenrechner-state-v1'
-const CURRENT_VERSION = 1
+// ---------------------------------------------------------------------------
+// Storage keys
+// ---------------------------------------------------------------------------
+export const STORAGE_KEY_V1 = 'rentenrechner-state-v1'
+export const STORAGE_KEY_V2 = 'rentenrechner-state-v2'
+
+/** @deprecated Use STORAGE_KEY_V2 for writes. STORAGE_KEY_V1 is read-only for migration. */
+export const STORAGE_KEY = STORAGE_KEY_V2
+
+const CURRENT_VERSION_V1 = 1
+const CURRENT_VERSION_V2 = 2
+
+// ---------------------------------------------------------------------------
+// mergeDeep — recursive merge of saved data into defaults.
+// Preserves explicit empty arrays (user clearing visibleProducts, instance arrays, etc.)
+// ---------------------------------------------------------------------------
 
 // Recursively merge `saved` into `defaults`: primitives and arrays use the saved
 // value when the type matches; object fields recurse; missing keys keep the default.
@@ -31,6 +54,10 @@ function mergeDeep<T>(saved: unknown, defaults: T): T {
   }
   return result as T
 }
+
+// ---------------------------------------------------------------------------
+// Pre/post-merge migrations for v1 singleton assumptions
+// ---------------------------------------------------------------------------
 
 /**
  * Apply pre-merge field migrations on a mutable assumptions object. Migrations
@@ -93,6 +120,313 @@ function applyPostMergeMigrations(
   }
 }
 
+// ---------------------------------------------------------------------------
+// V2 defaults — empty instance arrays so mergeDeep preserves them correctly
+// ---------------------------------------------------------------------------
+
+/**
+ * Default v2 workspace used as the merge target in parseStateFromJson.
+ * Instance arrays are empty by default — mergeDeep preserves explicit empty
+ * arrays (invariant: user clearing a product slot must survive reload).
+ * returnScenarios is populated from defaultAssumptions so there is always
+ * at least one scenario available.
+ */
+export const defaultWorkspace: Workspace = {
+  schemaVersion: 2,
+  mode: 'compare',
+  baseline: {
+    id: 'baseline-default',
+    label: 'Mein Plan',
+    profile: defaultProfile,
+    assumptions: {
+      bav: [],
+      etf: [],
+      insurance: [],
+      basisrente: [],
+      altersvorsorgedepot: [],
+      riester: [],
+      statutoryPension: defaultAssumptions.statutoryPension,
+      inflationRate: defaultAssumptions.inflationRate,
+      retirementEndAge: defaultAssumptions.retirementEndAge,
+      returnScenarios: defaultAssumptions.returnScenarios,
+      monteCarlo: defaultAssumptions.monteCarlo,
+      visibleProducts: defaultAssumptions.visibleProducts,
+    },
+    createdAt: new Date(0).toISOString(),
+    origin: 'baseline',
+  },
+  whatIfs: [],
+  pinnedComparisonIds: [],
+}
+
+// ---------------------------------------------------------------------------
+// V1 → V2 migration
+// ---------------------------------------------------------------------------
+
+/**
+ * Detection rule for length-0 vs length-1 instance migration:
+ * A singleton migrates to length-1 only if it has a non-zero monthly contribution,
+ * non-zero current value, or non-zero employer match — i.e. the product is "in use".
+ * If everything is at default-zero, migrate to length-0 (product not set up).
+ * When in doubt (e.g. non-trivial fee customization only), prefer length-1 (reversible).
+ */
+function isBavMeaningful(bav: Record<string, unknown>): boolean {
+  const monthlyGross = bav.monthlyGrossConversion as number | undefined
+  const fixedEmployer = bav.contractualFixedMonthly as number | undefined
+  const matchPct = bav.contractualMatchPercent as number | undefined
+  return (
+    (typeof monthlyGross === 'number' && monthlyGross > 0) ||
+    (typeof fixedEmployer === 'number' && fixedEmployer > 0) ||
+    (typeof matchPct === 'number' && matchPct > 0)
+  )
+}
+
+function isEtfMeaningful(): boolean {
+  // ETF has no monthly contribution field in the singleton shape — the contribution
+  // is driven by bAV net cost (fair-comparison invariant). ETF is always meaningful
+  // when explicitly present in a v1 save, so always migrate to length-1.
+  // This is consistent with prefer-length-1 (reversible).
+  return true
+}
+
+function isInsuranceMeaningful(): boolean {
+  // Same reasoning as ETF — the pAV contribution is driven by bAV net cost.
+  // Always migrate to length-1.
+  return true
+}
+
+function isBasisrenteMeaningful(basisrente: Record<string, unknown>): boolean {
+  const monthly = basisrente.monthlyGrossContribution as number | undefined
+  return typeof monthly === 'number' && monthly > 0
+}
+
+function isAltersvorsorgedepotMeaningful(avd: Record<string, unknown>): boolean {
+  const monthly = avd.monthlyOwnContribution as number | undefined
+  return typeof monthly === 'number' && monthly > 0
+}
+
+function isRiesterMeaningful(riester: Record<string, unknown>): boolean {
+  const monthly = riester.monthlyOwnContribution as number | undefined
+  const existing = riester.existingCapital as number | undefined
+  return (
+    (typeof monthly === 'number' && monthly > 0) ||
+    (typeof existing === 'number' && existing > 0)
+  )
+}
+
+/**
+ * Migrate a v1 (singleton-shaped) parsed state object to a v2 Workspace.
+ * Runs the standard v1 field migrations first, then wraps each product singleton
+ * in a length-0 or length-1 instance array depending on whether the product
+ * was meaningfully configured.
+ *
+ * Each migrated instance gets:
+ * - instanceId: "${productId}-singleton" (deterministic for share-URL stability)
+ * - evidenceMap: {} (empty — legacy values treated as model_estimate per Plan §2.4)
+ * - status: 'active'
+ * - contractStartYear: current year (approximation; user can correct via UI)
+ */
+export function migrateV1ToV2(
+  rawProfile: Record<string, unknown>,
+  rawAssumptions: Record<string, unknown>,
+): Workspace {
+  // Apply v1 field migrations first (annualAssetFee, Basisrente zeitrente, returnScenarios).
+  const assumptionsCopy = { ...rawAssumptions }
+  applyPreMergeMigrations(assumptionsCopy)
+
+  // Merge against v1 defaults to fill in any missing fields.
+  const profile = mergeDeep(rawProfile, defaultProfile)
+  const merged = mergeDeep(assumptionsCopy, defaultAssumptions)
+  applyPostMergeMigrations(rawAssumptions, merged)
+
+  const currentYear = new Date().getFullYear()
+
+  const rawBav = assumptionsCopy.bav as Record<string, unknown> | undefined
+  const rawEtf = assumptionsCopy.etf as Record<string, unknown> | undefined
+  const rawInsurance = assumptionsCopy.insurance as Record<string, unknown> | undefined
+  const rawBasisrente = assumptionsCopy.basisrente as Record<string, unknown> | undefined
+  const rawAvd = assumptionsCopy.altersvorsorgedepot as Record<string, unknown> | undefined
+  const rawRiester = assumptionsCopy.riester as Record<string, unknown> | undefined
+
+  const bavInstances: BavInstance[] = rawBav && isBavMeaningful(rawBav)
+    ? [
+        {
+          instanceId: 'bav-singleton',
+          label: 'bAV',
+          status: 'active',
+          contractStartYear: currentYear,
+          evidenceMap: {},
+          ...merged.bav,
+        } as BavInstance,
+      ]
+    : []
+
+  const etfInstances: EtfInstance[] = rawEtf && isEtfMeaningful()
+    ? [
+        {
+          instanceId: 'etf-singleton',
+          label: 'ETF-Depot',
+          status: 'active',
+          contractStartYear: currentYear,
+          evidenceMap: {},
+          ...merged.etf,
+        } as EtfInstance,
+      ]
+    : []
+
+  const insuranceInstances: InsuranceInstance[] = rawInsurance && isInsuranceMeaningful()
+    ? [
+        {
+          // Spread merged.insurance first so InstanceCommon fields after it win.
+          // Insurance contractStartYear comes from the assumptions (vintage-aware tax routing).
+          ...merged.insurance,
+          instanceId: 'versicherung-singleton',
+          label: 'Private Rentenversicherung',
+          status: 'active' as const,
+          // contractStartYear from merged.insurance is authoritative (vintage matters for tax mode).
+          contractStartYear: merged.insurance.contractStartYear ?? currentYear,
+          evidenceMap: {},
+        } as InsuranceInstance,
+      ]
+    : []
+
+  const basisrenteInstances: BasisrenteInstance[] = rawBasisrente && isBasisrenteMeaningful(rawBasisrente)
+    ? [
+        {
+          instanceId: 'basisrente-singleton',
+          label: 'Basisrente',
+          status: 'active',
+          contractStartYear: currentYear,
+          evidenceMap: {},
+          ...merged.basisrente,
+        } as BasisrenteInstance,
+      ]
+    : []
+
+  const avdInstances: AltersvorsorgedepotInstance[] = rawAvd && isAltersvorsorgedepotMeaningful(rawAvd)
+    ? [
+        {
+          instanceId: 'altersvorsorgedepot-singleton',
+          label: 'Altersvorsorgedepot',
+          status: 'active',
+          contractStartYear: currentYear,
+          evidenceMap: {},
+          ...merged.altersvorsorgedepot,
+        } as AltersvorsorgedepotInstance,
+      ]
+    : []
+
+  const riesterInstances: RiesterInstance[] = rawRiester && isRiesterMeaningful(rawRiester)
+    ? [
+        {
+          instanceId: 'riester-singleton',
+          label: 'Riester-Rente',
+          status: 'active',
+          contractStartYear: currentYear,
+          evidenceMap: {},
+          ...merged.riester,
+        } as RiesterInstance,
+      ]
+    : []
+
+  const assumptionsV2: WorkspaceAssumptionsV2 = {
+    bav: bavInstances,
+    etf: etfInstances,
+    insurance: insuranceInstances,
+    basisrente: basisrenteInstances,
+    altersvorsorgedepot: avdInstances,
+    riester: riesterInstances,
+    statutoryPension: merged.statutoryPension,
+    inflationRate: merged.inflationRate,
+    retirementEndAge: merged.retirementEndAge,
+    returnScenarios: merged.returnScenarios,
+    monteCarlo: merged.monteCarlo,
+    visibleProducts: merged.visibleProducts,
+  }
+
+  const baseline: Scenario = {
+    id: 'baseline-migrated',
+    label: 'Mein Plan',
+    profile,
+    assumptions: assumptionsV2,
+    createdAt: new Date().toISOString(),
+    origin: 'baseline',
+  }
+
+  return {
+    schemaVersion: 2,
+    mode: 'compare',
+    baseline,
+    whatIfs: [],
+    pinnedComparisonIds: [],
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Inverse projection helper (stop-gap for M1 transition)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract a singleton-shaped ScenarioAssumptions from a v2 Workspace.
+ * Reads the first instance per product (or falls back to defaults when length-0).
+ *
+ * This is a temporary M1 adapter — the engine still consumes ScenarioAssumptions
+ * (singleton-shaped). Issue 03 will replace this with the proper PortfolioAdapter
+ * that projects each instance independently.
+ *
+ * TODO(issue 03): replace with PortfolioAdapter.projectInstanceToScenarioAssumptions
+ */
+export function extractSingletonAssumptions(workspace: Workspace): ScenarioAssumptions {
+  const v2 = workspace.baseline.assumptions
+
+  // For each product: use the first instance's assumption fields, or fall back to
+  // the default singleton. Instance-common fields (instanceId, label, evidenceMap,
+  // status, contractStartYear, etc.) are spread onto the singleton shape — the engine
+  // ignores unknown fields, so this is safe.
+  const bav = v2.bav.length > 0
+    ? { ...v2.bav[0] }
+    : defaultAssumptions.bav
+
+  const etf = v2.etf.length > 0
+    ? { ...v2.etf[0] }
+    : defaultAssumptions.etf
+
+  const insurance = v2.insurance.length > 0
+    ? { ...v2.insurance[0] }
+    : defaultAssumptions.insurance
+
+  const basisrente = v2.basisrente.length > 0
+    ? { ...v2.basisrente[0] }
+    : defaultAssumptions.basisrente
+
+  const altersvorsorgedepot = v2.altersvorsorgedepot.length > 0
+    ? { ...v2.altersvorsorgedepot[0] }
+    : defaultAssumptions.altersvorsorgedepot
+
+  const riester = v2.riester.length > 0
+    ? { ...v2.riester[0] }
+    : defaultAssumptions.riester
+
+  return {
+    inflationRate: v2.inflationRate,
+    retirementEndAge: v2.retirementEndAge,
+    returnScenarios: v2.returnScenarios,
+    monteCarlo: v2.monteCarlo,
+    visibleProducts: v2.visibleProducts,
+    statutoryPension: v2.statutoryPension,
+    etf: etf as ScenarioAssumptions['etf'],
+    bav: bav as ScenarioAssumptions['bav'],
+    insurance: insurance as ScenarioAssumptions['insurance'],
+    basisrente: basisrente as ScenarioAssumptions['basisrente'],
+    altersvorsorgedepot: altersvorsorgedepot as ScenarioAssumptions['altersvorsorgedepot'],
+    riester: riester as ScenarioAssumptions['riester'],
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared migrate+validate pipeline (used by both main state and scenario library)
+// ---------------------------------------------------------------------------
+
 /**
  * Migrate raw profile + assumptions through the same pipeline used by
  * `parseStateFromJson`, then validate. Shared between the main state loader
@@ -120,6 +454,75 @@ export function migrateAndValidateState(
   return validateState(profile, assumptions)
 }
 
+// ---------------------------------------------------------------------------
+// Workspace serialization / deserialization
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a v2 workspace JSON string. Returns null for unparseable or invalid input.
+ * Does NOT run through migrateAndValidateState — workspace validation is separate.
+ *
+ * This is a minimal structural check. Full validation is handled by validateWorkspace
+ * in scenarioSchema.ts (called from parseWorkspaceJson).
+ */
+function isV2Shape(obj: Record<string, unknown>): boolean {
+  return obj.schemaVersion === CURRENT_VERSION_V2
+}
+
+/**
+ * Serialize a Workspace to JSON for storage/share-URL.
+ */
+export function buildWorkspaceJson(workspace: Workspace): string {
+  return JSON.stringify(workspace)
+}
+
+/**
+ * Parse a workspace JSON string produced by buildWorkspaceJson.
+ * Handles both v1 (singleton) and v2 (instance-array) payloads.
+ * Returns null on parse error or failed validation.
+ */
+export function parseWorkspaceJson(raw: string): Workspace | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  const obj = parsed as Record<string, unknown>
+
+  if (isV2Shape(obj)) {
+    // Already v2: merge against defaultWorkspace to fill gaps, then validate.
+    const merged = mergeDeep(obj, defaultWorkspace)
+    // Minimal structural guard: schemaVersion must still be 2 after merge.
+    if (merged.schemaVersion !== 2) return null
+    return merged
+  }
+
+  // Unknown future version — reject.
+  if (typeof obj.schemaVersion === 'number' && obj.schemaVersion > CURRENT_VERSION_V2) return null
+
+  // No schemaVersion (ancient) or schemaVersion === 1 — treat as v1.
+  // v1 payload has { version: 1, profile: {...}, assumptions: {...} }
+  if (
+    typeof obj.version === 'number' &&
+    obj.version !== CURRENT_VERSION_V1
+  ) return null
+
+  // Run v1 migration.
+  if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
+  if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
+
+  return migrateV1ToV2(
+    obj.profile as Record<string, unknown>,
+    obj.assumptions as Record<string, unknown>,
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Legacy v1 state serialization (kept for the singleton engine path)
+// ---------------------------------------------------------------------------
+
 export function parseStateFromJson(
   raw: string,
 ): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
@@ -132,7 +535,23 @@ export function parseStateFromJson(
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
   const obj = parsed as Record<string, unknown>
 
-  if (obj.version !== CURRENT_VERSION) return null
+  // v2 workspace payload: extract singleton via the inverse projection.
+  if (isV2Shape(obj)) {
+    const merged = mergeDeep(obj, defaultWorkspace)
+    if (merged.schemaVersion !== 2) return null
+    const singleton = extractSingletonAssumptions(merged)
+    const profileMerged = mergeDeep(
+      merged.baseline.profile,
+      defaultProfile,
+    )
+    return validateState(profileMerged, singleton)
+  }
+
+  // Future unknown version: reject.
+  if (typeof obj.schemaVersion === 'number' && obj.schemaVersion > CURRENT_VERSION_V2) return null
+
+  // v1 or legacy (no version field).
+  if (obj.version !== CURRENT_VERSION_V1) return null
   return migrateAndValidateState(obj.profile, obj.assumptions)
 }
 
@@ -140,15 +559,87 @@ export function buildStateJson(
   profile: PersonalProfile,
   assumptions: ScenarioAssumptions,
 ): string {
-  return JSON.stringify({ version: CURRENT_VERSION, profile, assumptions })
+  return JSON.stringify({ version: CURRENT_VERSION_V1, profile, assumptions })
 }
 
+// ---------------------------------------------------------------------------
+// localStorage load/save
+// ---------------------------------------------------------------------------
+
+/**
+ * Load the saved state from localStorage.
+ * Read order: v2 key first, then v1 key (with migration applied).
+ * After a successful v1→v2 migrate, the next save will write v2 and remove v1.
+ */
 export function loadSavedState(): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return parseStateFromJson(raw)
+    // Prefer v2 key.
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    if (rawV2) {
+      const workspace = parseWorkspaceJson(rawV2)
+      if (workspace) {
+        const singleton = extractSingletonAssumptions(workspace)
+        const profile = mergeDeep(workspace.baseline.profile, defaultProfile)
+        return validateState(profile, singleton)
+      }
+    }
+
+    // Fall back to v1 key with migration.
+    const rawV1 = localStorage.getItem(STORAGE_KEY_V1)
+    if (!rawV1) return null
+    return parseStateFromJson(rawV1)
   } catch {
     return null
+  }
+}
+
+/**
+ * Load the saved Workspace from localStorage.
+ * Read order: v2 key first, then v1 key (with migration applied).
+ */
+export function loadSavedWorkspace(): Workspace | null {
+  try {
+    // Prefer v2 key.
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    if (rawV2) {
+      return parseWorkspaceJson(rawV2)
+    }
+
+    // Fall back to v1 key with migration.
+    const rawV1 = localStorage.getItem(STORAGE_KEY_V1)
+    if (!rawV1) return null
+
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(rawV1)
+    } catch {
+      return null
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    const obj = parsed as Record<string, unknown>
+    if (obj.version !== CURRENT_VERSION_V1) return null
+    if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
+    if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
+
+    return migrateV1ToV2(
+      obj.profile as Record<string, unknown>,
+      obj.assumptions as Record<string, unknown>,
+    )
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Save a Workspace to localStorage using the v2 key.
+ * Removes the v1 key on first write (completing the migration).
+ */
+export function saveWorkspace(workspace: Workspace): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_V2, buildWorkspaceJson(workspace))
+    // Remove v1 key to avoid stale cache fighting the migration.
+    localStorage.removeItem(STORAGE_KEY_V1)
+  } catch {
+    // ignore storage failures
   }
 }

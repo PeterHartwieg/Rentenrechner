@@ -3,7 +3,7 @@ import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { calculateBavFunding } from '../engine/salary'
-import { STORAGE_KEY, buildStateJson, loadSavedState } from '../storage'
+import { STORAGE_KEY_V2, buildStateJson, loadSavedState } from '../storage'
 import { readUrlState } from '../utils/urlShare'
 import { syncMonthlyContributions } from './syncContributions'
 
@@ -36,7 +36,9 @@ export function useCalculatorState() {
   })
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, buildStateJson(profile, assumptions))
+    // Write v1-shaped payload to v2 key during M1 transition.
+    // TODO(issue 03): replace with saveWorkspace(workspace) once PortfolioAdapter lands.
+    localStorage.setItem(STORAGE_KEY_V2, buildStateJson(profile, assumptions))
   }, [profile, assumptions])
 
   function resetToDefaults() {

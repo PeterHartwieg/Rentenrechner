@@ -6,8 +6,16 @@ import type {
   ScenarioAssumptions,
   StatutoryPensionAssumptions,
 } from '../domain'
+import type { Workspace, WorkspaceAssumptionsV2, Scenario } from '../domain/workspace'
+import type { InstanceCommon } from '../domain/instances'
 import { inRange, isFiniteNumber, isInt } from '../domain/validation/primitives'
 import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../engine/productRegistry'
+import { validateBav } from '../engine/products/bav.validation'
+import { validateEtf } from '../engine/products/etf.validation'
+import { validateInsurance } from '../engine/products/insurance.validation'
+import { validateBasisrente } from '../engine/products/basisrente.validation'
+import { validateAltersvorsorgedepot } from '../engine/products/altersvorsorgedepot.validation'
+import { validateRiester } from '../engine/products/riester.validation'
 
 // Range/shape validation for state loaded from URL share or localStorage (#49).
 // Inputs are post-mergeDeep so all keys exist; this layer rejects NaN, ±Infinity,
@@ -115,4 +123,245 @@ export function validateState(
   // Cross-object invariant: retirementEndAge > retirementAge.
   if (assumptions.retirementEndAge <= profile.retirementAge) return null
   return { profile, assumptions }
+}
+
+// ---------------------------------------------------------------------------
+// V2 workspace validators
+// ---------------------------------------------------------------------------
+
+const VALID_INSTANCE_STATUSES = ['active', 'paid_up', 'surrendered'] as const
+const VALID_EVIDENCE_STATES = ['user_confirmed', 'model_estimate', 'statement'] as const
+const VALID_TRANSFER_TYPES = ['certified', 'surrender_reinvest'] as const
+
+/** Illegal certified-transfer pairings under AltZertG / EStG. */
+const ILLEGAL_CERTIFIED_PAIRINGS = new Set([
+  'altersvorsorgedepot→riester', // AVD → Riester forbidden under AltZertG
+  'etf→bav',                     // ETF → bAV requires §3 Nr. 63 contribution, not a transfer
+  'etf→altersvorsorgedepot',     // ETF → AVD: no certified-transfer route
+  'etf→riester',                 // ETF → Riester: no certified-transfer route
+  'bav→altersvorsorgedepot',     // bAV → AVD: no certified-transfer route under AltZertG
+  'bav→riester',                 // bAV → Riester: no certified-transfer route
+])
+
+function productIdFromInstanceId(instanceId: string): string | null {
+  // instanceId format: "${productId}-${suffix}"
+  // Known product ids: etf, bav, versicherung, basisrente, altersvorsorgedepot, riester
+  const productIds = ['etf', 'bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester']
+  for (const pid of productIds) {
+    if (instanceId.startsWith(`${pid}-`)) return pid
+  }
+  return null
+}
+
+function validateTransferEvent(event: unknown, allInstanceIds: Set<string>): boolean {
+  if (!event || typeof event !== 'object') return false
+  const e = event as Record<string, unknown>
+  if (!VALID_TRANSFER_TYPES.includes(e.type as typeof VALID_TRANSFER_TYPES[number])) return false
+  if (!isInt(e.year as unknown) || (e.year as number) < 1900 || (e.year as number) > 2200) return false
+  if (typeof e.sourceInstanceId !== 'string' || !e.sourceInstanceId) return false
+  if (typeof e.targetInstanceId !== 'string' || !e.targetInstanceId) return false
+  if (!isFiniteNumber(e.amountEUR as unknown) || (e.amountEUR as number) < 0) return false
+
+  // Target instance must exist in the workspace.
+  if (!allInstanceIds.has(e.targetInstanceId as string)) return false
+
+  // For certified transfers, check illegal pairings.
+  if (e.type === 'certified') {
+    const sourcePid = productIdFromInstanceId(e.sourceInstanceId as string)
+    const targetPid = productIdFromInstanceId(e.targetInstanceId as string)
+    if (sourcePid && targetPid) {
+      const pairingKey = `${sourcePid}→${targetPid}`
+      if (ILLEGAL_CERTIFIED_PAIRINGS.has(pairingKey)) return false
+    }
+  }
+
+  if (e.type === 'surrender_reinvest') {
+    if (!inRange(e.surrenderHaircutPct as unknown, 0, 1)) return false
+  }
+
+  return true
+}
+
+/**
+ * Validate the InstanceCommon fields shared by all instance types.
+ */
+function validateInstanceCommon(inst: unknown, allInstanceIds: Set<string>): inst is InstanceCommon {
+  if (!inst || typeof inst !== 'object') return false
+  const i = inst as Record<string, unknown>
+  if (typeof i.instanceId !== 'string' || !i.instanceId) return false
+  if (typeof i.label !== 'string') return false
+  if (!VALID_INSTANCE_STATUSES.includes(i.status as typeof VALID_INSTANCE_STATUSES[number])) return false
+  if (!isInt(i.contractStartYear as unknown) || (i.contractStartYear as number) < 1900 || (i.contractStartYear as number) > 2200) return false
+  if (!i.evidenceMap || typeof i.evidenceMap !== 'object' || Array.isArray(i.evidenceMap)) return false
+  // Validate each evidenceMap entry.
+  for (const v of Object.values(i.evidenceMap as Record<string, unknown>)) {
+    if (!VALID_EVIDENCE_STATES.includes(v as typeof VALID_EVIDENCE_STATES[number])) return false
+  }
+  // Optional currentValueEUR
+  if (i.currentValueEUR !== undefined && (!isFiniteNumber(i.currentValueEUR as unknown) || (i.currentValueEUR as number) < 0)) return false
+  // Optional ownedBy
+  if (i.ownedBy !== undefined && i.ownedBy !== 'self' && i.ownedBy !== 'partner') return false
+  // Optional anbieter
+  if (i.anbieter !== undefined && typeof i.anbieter !== 'string') return false
+  // Optional transferEvents
+  if (i.transferEvents !== undefined) {
+    if (!Array.isArray(i.transferEvents)) return false
+    for (const ev of i.transferEvents as unknown[]) {
+      if (!validateTransferEvent(ev, allInstanceIds)) return false
+    }
+  }
+  return true
+}
+
+/**
+ * Validate a bAV instance (InstanceCommon + BavAssumptions).
+ */
+export function validateBavInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
+  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+  // Double-cast via unknown: validateInstanceCommon confirms the shape is InstanceCommon;
+  // the validator then checks the additional product-specific fields.
+  return validateBav(inst as unknown as Parameters<typeof validateBav>[0])
+}
+
+/**
+ * Validate an ETF instance (InstanceCommon + EtfAssumptions).
+ */
+export function validateEtfInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
+  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+  return validateEtf(inst as unknown as Parameters<typeof validateEtf>[0])
+}
+
+/**
+ * Validate a private insurance instance (InstanceCommon + InsuranceAssumptions).
+ */
+export function validateInsuranceInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
+  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+  return validateInsurance(inst as unknown as Parameters<typeof validateInsurance>[0])
+}
+
+/**
+ * Validate a Basisrente instance (InstanceCommon + BasisrenteAssumptions).
+ */
+export function validateBasisrenteInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
+  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+  return validateBasisrente(inst as unknown as Parameters<typeof validateBasisrente>[0])
+}
+
+/**
+ * Validate an Altersvorsorgedepot instance (InstanceCommon + AltersvorsorgedepotAssumptions).
+ */
+export function validateAltersvorsorgedepotInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
+  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+  return validateAltersvorsorgedepot(inst as unknown as Parameters<typeof validateAltersvorsorgedepot>[0])
+}
+
+/**
+ * Validate a Riester instance (InstanceCommon + RiesterAssumptions).
+ */
+export function validateRiesterInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
+  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+  return validateRiester(inst as unknown as Parameters<typeof validateRiester>[0])
+}
+
+/**
+ * Validate a WorkspaceAssumptionsV2 object.
+ * Returns the typed object or null on failure.
+ */
+export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptionsV2 | null {
+  if (!input || typeof input !== 'object') return null
+  const a = input as WorkspaceAssumptionsV2
+
+  if (!inRange(a.inflationRate, -0.1, 0.2)) return null
+  if (!isFiniteNumber(a.retirementEndAge) || a.retirementEndAge > 120) return null
+  if (validateReturnScenarios(a.returnScenarios) === null) return null
+  if (!a.monteCarlo || typeof a.monteCarlo !== 'object') return null
+  if (!a.statutoryPension || typeof a.statutoryPension !== 'object') return null
+
+  if (!Array.isArray(a.visibleProducts)) return null
+  if (a.visibleProducts.length > PRODUCT_IDS.length) return null
+  for (const pid of a.visibleProducts) {
+    if (!PRODUCT_IDS.includes(pid)) return null
+  }
+
+  // Collect all instance ids across every product array for transfer-event target validation.
+  const allInstanceIds = new Set<string>()
+  const productArrays: unknown[] = [
+    ...(Array.isArray(a.bav) ? a.bav : []),
+    ...(Array.isArray(a.etf) ? a.etf : []),
+    ...(Array.isArray(a.insurance) ? a.insurance : []),
+    ...(Array.isArray(a.basisrente) ? a.basisrente : []),
+    ...(Array.isArray(a.altersvorsorgedepot) ? a.altersvorsorgedepot : []),
+    ...(Array.isArray(a.riester) ? a.riester : []),
+  ]
+  for (const inst of productArrays) {
+    if (inst && typeof inst === 'object') {
+      const id = (inst as Record<string, unknown>).instanceId
+      if (typeof id === 'string') allInstanceIds.add(id)
+    }
+  }
+
+  // Validate each product's instance array.
+  if (!Array.isArray(a.bav)) return null
+  for (const inst of a.bav) {
+    if (!validateBavInstance(inst, allInstanceIds)) return null
+  }
+
+  if (!Array.isArray(a.etf)) return null
+  for (const inst of a.etf) {
+    if (!validateEtfInstance(inst, allInstanceIds)) return null
+  }
+
+  if (!Array.isArray(a.insurance)) return null
+  for (const inst of a.insurance) {
+    if (!validateInsuranceInstance(inst, allInstanceIds)) return null
+  }
+
+  if (!Array.isArray(a.basisrente)) return null
+  for (const inst of a.basisrente) {
+    if (!validateBasisrenteInstance(inst, allInstanceIds)) return null
+  }
+
+  if (!Array.isArray(a.altersvorsorgedepot)) return null
+  for (const inst of a.altersvorsorgedepot) {
+    if (!validateAltersvorsorgedepotInstance(inst, allInstanceIds)) return null
+  }
+
+  if (!Array.isArray(a.riester)) return null
+  for (const inst of a.riester) {
+    if (!validateRiesterInstance(inst, allInstanceIds)) return null
+  }
+
+  return a
+}
+
+/**
+ * Validate a Scenario object.
+ */
+export function validateScenario(input: unknown): Scenario | null {
+  if (!input || typeof input !== 'object') return null
+  const s = input as Scenario
+  if (typeof s.id !== 'string' || !s.id) return null
+  if (typeof s.label !== 'string') return null
+  if (typeof s.createdAt !== 'string') return null
+  if (!['baseline', 'manual', 'recommender'].includes(s.origin)) return null
+  if (!validateProfile(s.profile)) return null
+  if (validateWorkspaceAssumptions(s.assumptions) === null) return null
+  // Validate retirementEndAge > retirementAge cross-invariant
+  if (s.assumptions.retirementEndAge <= s.profile.retirementAge) return null
+  return s
+}
+
+/**
+ * Validate a v2 Workspace object.
+ * Returns the typed object or null on failure.
+ */
+export function validateWorkspace(input: unknown): Workspace | null {
+  if (!input || typeof input !== 'object') return null
+  const w = input as Workspace
+  if (w.schemaVersion !== 2) return null
+  if (w.mode !== 'compare' && w.mode !== 'combine') return null
+  if (!Array.isArray(w.whatIfs)) return null
+  if (!Array.isArray(w.pinnedComparisonIds)) return null
+  if (validateScenario(w.baseline) === null) return null
+  return w
 }
