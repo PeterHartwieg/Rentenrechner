@@ -60,7 +60,7 @@ export function LandingPage({ onChoice }: Props) {
             Deine Altersvorsorge im Blick
           </h1>
           <p className="landing-subline">
-            Berechne, was du in Rente bekommen wirst — und wo dein naechster Euro
+            Berechne, was du in Rente bekommen wirst — und wo dein nächster Euro
             am meisten bewirkt. Keine Steuer-, Rechts- oder Anlageberatung.
           </p>
         </div>
@@ -79,8 +79,8 @@ export function LandingPage({ onChoice }: Props) {
               </div>
               <h2 className="landing-card-title">Mein Plan</h2>
               <p className="landing-card-desc">
-                Gib deine bestehenden Vertraege ein und sieh, was dein Portfolio
-                in Rente abwirft. Erhalte eine Empfehlung, wo dein naechster Euro
+                Gib deine bestehenden Verträge ein und sieh, was dein Portfolio
+                in Rente abwirft. Erhalte eine Empfehlung, wo dein nächster Euro
                 am besten aufgehoben ist.
               </p>
 
@@ -96,7 +96,7 @@ export function LandingPage({ onChoice }: Props) {
               ) : (
                 <div className="landing-vertraege-prompt">
                   <p className="landing-vertraege-question">
-                    Hast du schon Vertraege?
+                    Hast du schon Verträge?
                   </p>
                   <div className="landing-vertraege-actions">
                     <button
@@ -104,7 +104,7 @@ export function LandingPage({ onChoice }: Props) {
                       className="landing-btn landing-btn--secondary"
                       onClick={handleVertraegeJa}
                     >
-                      Ja, ich habe Vertraege
+                      Ja, ich habe Verträge
                     </button>
                     <button
                       type="button"
@@ -119,7 +119,7 @@ export function LandingPage({ onChoice }: Props) {
                     className="landing-vertraege-back"
                     onClick={() => setShowVertraegePrompt(false)}
                   >
-                    Zurueck
+                    Zurück
                   </button>
                 </div>
               )}
@@ -162,10 +162,10 @@ export function LandingPage({ onChoice }: Props) {
             onClick={handleGuidedSetupLink}
           >
             <HelpCircle size={15} aria-hidden="true" />
-            Gefuehrter Einstieg
+            Geführter Einstieg
           </button>
           <span className="landing-returning-hint">
-            Du weisst noch nicht, womit du anfangen sollst?
+            Du weißt noch nicht, womit du anfangen sollst?
           </span>
         </div>
       </main>

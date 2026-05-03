@@ -10,6 +10,7 @@ import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
 import { useWorkspaceUiState } from './app/useWorkspaceUiState'
 import { useWorkspace } from './app/useWorkspace'
+import { usePortfolioState } from './app/portfolioState'
 import { useRoute, detectSavedMode, appViewFromMode } from './app/useRoute'
 import type { AppView } from './app/useRoute'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
@@ -83,6 +84,7 @@ function Calculator({ navigate }: CalculatorProps) {
     setSyncedMonthlyContribution,
   } = useCalculatorState()
   const guidedSetup = useGuidedSetup()
+  const portfolioState = usePortfolioState()
   const workspace = useWorkspace()
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const ui = useWorkspaceUiState()
@@ -136,17 +138,20 @@ function Calculator({ navigate }: CalculatorProps) {
    */
   function handleLandingChoice(choice: LandingChoice) {
     if (choice.kind === 'compare') {
+      portfolioState.setMode('compare')
       setAppView('compare')
       workspace.setActiveView('vergleich')
       return
     }
     if (choice.kind === 'combine-new') {
+      portfolioState.setMode('combine')
       setAppView('combine')
       // Open the existing GuidedSetup minimum-input flow for clean-slate users.
       guidedSetup.reopen()
       return
     }
     if (choice.kind === 'combine-existing') {
+      portfolioState.setMode('combine')
       // TODO(issue-05): replace with InventoryWizard once it ships.
       // For now, route to combine dashboard directly so the UX is non-broken.
       setAppView('combine')
@@ -154,6 +159,7 @@ function Calculator({ navigate }: CalculatorProps) {
     }
     if (choice.kind === 'guided-setup') {
       // "Geführter Einstieg" link — open guided setup without committing to a mode yet.
+      // Deliberately does NOT set mode: this is a re-entry path, not a first-action choice.
       guidedSetup.reopen()
       return
     }
