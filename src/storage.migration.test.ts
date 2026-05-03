@@ -215,10 +215,10 @@ describe('Test 3 — forward-compat guard (schemaVersion > 2)', () => {
     expect(parseWorkspaceJson(v3Payload)).toBeNull()
   })
 
-  it('a v3 entry in the library key causes loadSavedWorkspace to return null from that key', () => {
+  it('a v3 entry in the V2 key causes loadSavedWorkspace to fall back to V1 (absent here → null)', () => {
     const v3Payload = JSON.stringify({ schemaVersion: 3, mode: 'compare', baseline: {}, whatIfs: [], pinnedComparisonIds: [] })
     mem.store[STORAGE_KEY_V2] = v3Payload
-    // Should fail and fall back to v1 (which is absent).
+    // V2 parse fails → falls back to V1 (absent) → null.
     const result = loadSavedWorkspace()
     expect(result).toBeNull()
   })
@@ -748,18 +748,19 @@ describe('Test 12 — transferEvent target instance must exist', () => {
 // ---------------------------------------------------------------------------
 
 describe('loadSavedState + saveWorkspace integration', () => {
-  it('saveWorkspace removes v1 key and sets v2 key', () => {
+  it('saveWorkspace writes v2 key but does NOT remove v1 key (issue 03 owns that step)', () => {
     mem.store[STORAGE_KEY_V1] = makeV1Json()
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       defaultAssumptions as unknown as Record<string, unknown>,
     )
     saveWorkspace(ws)
-    expect(mem.store[STORAGE_KEY_V1]).toBeUndefined()
+    // V1 key preserved — issue 03 will remove it when the write path switches.
+    expect(mem.store[STORAGE_KEY_V1]).toBeDefined()
     expect(mem.store[STORAGE_KEY_V2]).toBeDefined()
   })
 
-  it('loadSavedState reads v2 key and returns valid profile + assumptions', () => {
+  it('loadSavedState reads v2 key (written by saveWorkspace) and returns valid profile + assumptions', () => {
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       assumptionsWithBav as unknown as Record<string, unknown>,
@@ -775,5 +776,48 @@ describe('loadSavedState + saveWorkspace integration', () => {
     const result = loadSavedState()
     expect(result).not.toBeNull()
     expect(result!.profile.age).toBe(42)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Test 13: loadSavedWorkspace falls back to V1 when V2 is unparseable
+// ---------------------------------------------------------------------------
+
+describe('Test 13 — loadSavedWorkspace falls back to V1 on corrupt/future V2', () => {
+  it('corrupt V2 JSON + valid V1 → returns migrated V1 workspace', () => {
+    mem.store[STORAGE_KEY_V2] = '{not valid json at all'
+    mem.store[STORAGE_KEY_V1] = makeV1Json({ ...defaultProfile, age: 44 })
+    const result = loadSavedWorkspace()
+    expect(result).not.toBeNull()
+    expect(result!.schemaVersion).toBe(2)
+    expect(result!.baseline.profile.age).toBe(44)
+  })
+
+  it('v3 payload in V2 key + valid V1 → falls back to V1', () => {
+    const v3 = JSON.stringify({ schemaVersion: 3, mode: 'compare', baseline: {}, whatIfs: [], pinnedComparisonIds: [] })
+    mem.store[STORAGE_KEY_V2] = v3
+    mem.store[STORAGE_KEY_V1] = makeV1Json({ ...defaultProfile, age: 38 })
+    const result = loadSavedWorkspace()
+    expect(result).not.toBeNull()
+    expect(result!.schemaVersion).toBe(2)
+    expect(result!.baseline.profile.age).toBe(38)
+  })
+
+  it('corrupt V2 + absent V1 → returns null', () => {
+    mem.store[STORAGE_KEY_V2] = 'completely broken'
+    const result = loadSavedWorkspace()
+    expect(result).toBeNull()
+  })
+
+  it('valid V2 is preferred over valid V1 even when both are present', () => {
+    const ws = migrateV1ToV2(
+      { ...defaultProfile, age: 50 } as unknown as Record<string, unknown>,
+      defaultAssumptions as unknown as Record<string, unknown>,
+    )
+    mem.store[STORAGE_KEY_V2] = buildWorkspaceJson(ws)
+    mem.store[STORAGE_KEY_V1] = makeV1Json({ ...defaultProfile, age: 30 })
+    const result = loadSavedWorkspace()
+    expect(result).not.toBeNull()
+    expect(result!.baseline.profile.age).toBe(50)
   })
 })

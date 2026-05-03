@@ -19,11 +19,14 @@ export interface SavedScenario {
 const LIBRARY_KEY = 'rentenrechner-library-v1'
 /**
  * Schema version for the saved-scenario library entries.
- * Version 2: entries carry v2 WorkspaceAssumptionsV2 instance arrays.
- * Version 1: entries carry v1 singleton ScenarioAssumptions; auto-migrated on read.
+ * Version 1: entries carry v1 singleton ScenarioAssumptions (current shape in M1).
  * Entries with schemaVersion > SAVED_SCENARIO_VERSION are rejected (forward-compat guard).
+ *
+ * TODO(issue 03): bump to 2 when the library entry shape switches to
+ * WorkspaceAssumptionsV2 instance arrays. At that point, add a migration branch
+ * for version-1 singleton entries.
  */
-export const SAVED_SCENARIO_VERSION = 2
+export const SAVED_SCENARIO_VERSION = 1
 
 /**
  * Validate a single raw library entry. Runs the same migration + validation

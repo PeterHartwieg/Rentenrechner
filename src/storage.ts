@@ -17,8 +17,13 @@ import { validateState } from './utils/scenarioSchema'
 export const STORAGE_KEY_V1 = 'rentenrechner-state-v1'
 export const STORAGE_KEY_V2 = 'rentenrechner-state-v2'
 
-/** @deprecated Use STORAGE_KEY_V2 for writes. STORAGE_KEY_V1 is read-only for migration. */
-export const STORAGE_KEY = STORAGE_KEY_V2
+/**
+ * Canonical write key for M1. Writers (useCalculatorState) still emit v1-shaped
+ * payloads to this key — the switch to v2 writes happens in issue 03.
+ * Read-side (loadSavedState, loadSavedWorkspace) prefers STORAGE_KEY_V2, then
+ * falls back to STORAGE_KEY_V1 with migration applied.
+ */
+export const STORAGE_KEY = STORAGE_KEY_V1
 
 const CURRENT_VERSION_V1 = 1
 const CURRENT_VERSION_V2 = 2
@@ -596,13 +601,17 @@ export function loadSavedState(): { profile: PersonalProfile; assumptions: Scena
 /**
  * Load the saved Workspace from localStorage.
  * Read order: v2 key first, then v1 key (with migration applied).
+ * If the v2 key is present but unparseable (corrupt JSON, v3+ payload, validation
+ * failure), falls back to v1 key — consistent with loadSavedState behaviour.
  */
 export function loadSavedWorkspace(): Workspace | null {
   try {
     // Prefer v2 key.
     const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
     if (rawV2) {
-      return parseWorkspaceJson(rawV2)
+      const workspace = parseWorkspaceJson(rawV2)
+      if (workspace) return workspace
+      // V2 key present but unparseable — fall through to v1 fallback.
     }
 
     // Fall back to v1 key with migration.
@@ -632,13 +641,13 @@ export function loadSavedWorkspace(): Workspace | null {
 
 /**
  * Save a Workspace to localStorage using the v2 key.
- * Removes the v1 key on first write (completing the migration).
+ * TODO(issue 03): switch the main write path (useCalculatorState) to call this
+ * instead of writing v1-shaped JSON to STORAGE_KEY_V1. At that point, also
+ * remove STORAGE_KEY_V1 here to complete the migration.
  */
 export function saveWorkspace(workspace: Workspace): void {
   try {
     localStorage.setItem(STORAGE_KEY_V2, buildWorkspaceJson(workspace))
-    // Remove v1 key to avoid stale cache fighting the migration.
-    localStorage.removeItem(STORAGE_KEY_V1)
   } catch {
     // ignore storage failures
   }
