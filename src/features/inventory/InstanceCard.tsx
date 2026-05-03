@@ -30,6 +30,8 @@ import type {
 import { estimateEpFromYears } from './inventoryHelpers'
 import { detectVintageChips } from './vintageDetection'
 import { InfoTip } from '../../ui/InfoTip'
+import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
+import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 
 // ---------------------------------------------------------------------------
 // Internal shared primitives
@@ -260,12 +262,45 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange }: BaseP
 
 /**
  * Shared Layer 3 <details> block. Carries:
- *  - Fee decomposition (wrapperAssetFee + fundAssetFee as % p.a.)
- *  - Beitragsdynamik
+ *  - Fee decomposition via `FeeSection` (spec: "using FeeSection")
+ *  - Beitragsdynamik via `BeitragsdynamikField` (spec: "using BeitragsdynamikField")
  *  - KVdR/freiwillig hint (profile-level, informational)
  *  - Statutory subsidy split (bAV only — passed via `bavSubsidy`)
  *  - Vintage auto-detection chips
+ *
+ * Adapter note: the wizard draft stores `effektivkostenPct` (scalar %).
+ * We build a synthetic FeeModel (wrapperAssetFee = effektivkostenPct / 100,
+ * all other fields zero) so `FeeSection` can be reused without schema changes.
+ * On change we extract `wrapperAssetFee + fundAssetFee` back as effektivkostenPct.
  */
+
+const LAYER3_FEE_PRESETS = [
+  {
+    label: 'Nettotarif ETF (0,8 %)',
+    fees: {
+      wrapperAssetFee: 0.008,
+      fundAssetFee: 0,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+  },
+  {
+    label: 'Bruttotarif (1,5 %)',
+    fees: {
+      wrapperAssetFee: 0.015,
+      fundAssetFee: 0,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+  },
+]
+
 interface Layer3Props {
   contractStartYear: number
   durchfuehrungsweg?: string
@@ -288,6 +323,20 @@ function Layer3Details({
   onBeitragsdynamikChange,
   bavSubsidy,
 }: Layer3Props) {
+  const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
+
+  // Adapter: scalar effektivkostenPct (%) → FeeModel (decimal)
+  const syntheticFees = {
+    wrapperAssetFee: effektivkostenPct / 100,
+    fundAssetFee: 0,
+    contributionFee: 0,
+    fixedMonthlyFee: 0,
+    acquisitionCostPct: 0,
+    acquisitionCostSpreadYears: 5,
+    pensionPayoutFeePct: 0,
+  }
+  const riy = effektivkostenPct / 100
+
   return (
     <details className="inv-layer3-details">
       <summary className="inv-layer3-summary">Details</summary>
@@ -298,45 +347,29 @@ function Layer3Details({
           durchfuehrungsweg={durchfuehrungsweg}
         />
 
-        {/* Fee decomposition */}
+        {/* Fee decomposition via FeeSection (spec requirement) */}
         <div className="inv-layer3-section">
           <p className="inventory-instance-section-heading">Kosten</p>
-          <div className="inventory-field-grid">
-            <InvField
-              label="Effektivkosten p.a. (aus PIB/KID)"
-              hint="Gesamte Renditeminderung. Typisch 0,6–1,5 % für ETF-Nettotarife."
-            >
-              <InvNumber
-                value={effektivkostenPct}
-                min={0}
-                max={5}
-                step={0.05}
-                suffix="% p.a."
-                onChange={onEffektivkostenChange}
-              />
-              {effektivkostenPct === 0 && <EstimateNote />}
-            </InvField>
-          </div>
+          <FeeSection
+            fees={syntheticFees}
+            onChangeFees={(fees) =>
+              onEffektivkostenChange((fees.wrapperAssetFee + fees.fundAssetFee) * 100)
+            }
+            presets={LAYER3_FEE_PRESETS}
+            riy={riy}
+            feeInputMode={feeMode}
+            setFeeInputMode={setFeeMode}
+          />
         </div>
 
-        {/* Beitragsdynamik */}
+        {/* Beitragsdynamik via BeitragsdynamikField (spec requirement) */}
         <div className="inv-layer3-section">
           <p className="inventory-instance-section-heading">Beitragsdynamik</p>
-          <div className="inventory-field-grid">
-            <InvField
-              label="Jährliche Beitragssteigerung"
-              hint="0 % = konstanter Beitrag. Typisch 1–3 % p.a. in Versicherungsverträgen."
-            >
-              <InvNumber
-                value={beitragsdynamikPct}
-                min={0}
-                max={10}
-                step={0.1}
-                suffix="% p.a."
-                onChange={onBeitragsdynamikChange}
-              />
-            </InvField>
-          </div>
+          <BeitragsdynamikField
+            rate={beitragsdynamikPct / 100}
+            onChangeRate={(decimal) => onBeitragsdynamikChange(decimal * 100)}
+            activeHint="Beitrag wächst jährlich um diesen Prozentsatz (geometrisch)."
+          />
         </div>
 
         {/* bAV-only: statutory subsidy split */}

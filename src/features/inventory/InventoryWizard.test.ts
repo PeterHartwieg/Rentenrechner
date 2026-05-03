@@ -657,3 +657,85 @@ describe('Dilan shape — 2 bAV instances (issue 06 integration)', () => {
     expect(ws2.baseline.assumptions.bav[0].contractStartYear).toBe(CURRENT_YEAR)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Issue 06: CombineDashboardSidebar wiring — data contract tests
+//
+// The sidebar renders when `portfolioState.mode === 'combine'` (App.tsx Approach B).
+// These tests verify that the workspace data shape produced by the combine flow
+// satisfies the `CombineDashboardSidebar` props contract:
+//   - assumptions.bav, .insurance, .etf, .basisrente, .altersvorsorgedepot, .riester
+//     are arrays (can be empty)
+//   - addInstance / removeInstance mutate the workspace as the sidebar expects
+// ---------------------------------------------------------------------------
+
+describe('CombineDashboardSidebar data contract (issue 06 wiring)', () => {
+  it('combine-mode workspace has all required array fields for sidebar props', () => {
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft(),
+      bavDraft: makeBavDraft(),
+      pavDraft: null, riesterDraft: null, basisrenteDraft: null,
+      avdDraft: null, etfDraft: null,
+      grossSalaryYear: 70_000,
+    })
+    expect(ws.mode).toBe('combine')
+    const a = ws.baseline.assumptions
+    // All fields the sidebar destructures must be arrays
+    expect(Array.isArray(a.bav)).toBe(true)
+    expect(Array.isArray(a.insurance)).toBe(true)
+    expect(Array.isArray(a.etf)).toBe(true)
+    expect(Array.isArray(a.basisrente)).toBe(true)
+    expect(Array.isArray(a.altersvorsorgedepot)).toBe(true)
+    expect(Array.isArray(a.riester)).toBe(true)
+  })
+
+  it('sidebar addInstance flow: addInstanceToWorkspace produces an instance the sidebar can render', () => {
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft(),
+      bavDraft: makeBavDraft(),
+      pavDraft: null, riesterDraft: null, basisrenteDraft: null,
+      avdDraft: null, etfDraft: null,
+      grossSalaryYear: 70_000,
+    })
+    // simulate sidebar "add another bAV" button — addInstance('bav')
+    const ws2 = addInstanceToWorkspace(ws, 'bav')
+    expect(ws2.baseline.assumptions.bav).toHaveLength(2)
+    // Each instance has the fields the sidebar's BavInstanceCard reads
+    const inst = ws2.baseline.assumptions.bav[1]
+    expect(typeof inst.instanceId).toBe('string')
+    expect(typeof inst.label).toBe('string')
+    expect(typeof inst.monthlyGrossConversion).toBe('number')
+    expect(typeof inst.contractStartYear).toBe('number')
+    expect(inst.fees).toBeDefined()
+  })
+
+  it('sidebar removeInstance flow: removeInstanceFromWorkspace removes by id', () => {
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft(),
+      bavDraft: [makeBavDraft({ anbieter: 'A' }), makeBavDraft({ anbieter: 'B' })],
+      pavDraft: null, riesterDraft: null, basisrenteDraft: null,
+      avdDraft: null, etfDraft: null,
+      grossSalaryYear: 70_000,
+    })
+    expect(ws.baseline.assumptions.bav).toHaveLength(2)
+    const idToRemove = ws.baseline.assumptions.bav[0].instanceId
+    // simulate sidebar remove button — removeInstance('bav', instanceId)
+    const ws2 = removeInstanceFromWorkspace(ws, 'bav', idToRemove)
+    expect(ws2.baseline.assumptions.bav).toHaveLength(1)
+    expect(ws2.baseline.assumptions.bav[0].instanceId).not.toBe(idToRemove)
+  })
+
+  it('sidebar empty-state: workspace with no instances satisfies the "no contracts" guard', () => {
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft(),
+      bavDraft: null, pavDraft: null, riesterDraft: null,
+      basisrenteDraft: null, avdDraft: null, etfDraft: null,
+      grossSalaryYear: 50_000,
+    })
+    const a = ws.baseline.assumptions
+    // CombineDashboardSidebar shows empty-state when all arrays are length 0
+    const isEmpty = [a.bav, a.insurance, a.etf, a.basisrente, a.altersvorsorgedepot, a.riester]
+      .every((arr) => arr.length === 0)
+    expect(isEmpty).toBe(true)
+  })
+})

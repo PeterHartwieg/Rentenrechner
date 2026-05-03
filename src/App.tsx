@@ -45,6 +45,7 @@ import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import { LandingPage } from './features/landing/LandingPage'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { InventoryWizard } from './features/inventory/InventoryWizard'
+import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSidebar'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
@@ -366,27 +367,43 @@ function Calculator({ navigate }: CalculatorProps) {
     </section>
   )
 
-  const angebotView = (
-    <section className="workspace-view workspace-view--angebot">
-      <InputsPanel
-        profile={profile}
-        onProfileChange={setProfile}
-        assumptions={assumptions}
-        onAssumptionsChange={setAssumptions}
-        onSyncMonthlyContribution={setSyncedMonthlyContribution}
-        resetToDefaults={resetToDefaults}
-        simulation={simulation}
-        selectedResults={selectedResults}
-        scenarioLib={scenarioLib}
-        kvdrMember={taxModes.kvdrMember}
-        bavLumpSumTaxMode={taxModes.bavLumpSumTaxMode}
-        insuranceTaxMode={taxModes.insuranceTaxMode}
-        insuranceResult={insuranceResult}
-        tarifgebunden={ui.tarifgebunden}
-        onTarifgebundenChange={ui.setTarifgebunden}
-      />
-    </section>
-  )
+  // Approach B (per orchestrator brief): branch in App.tsx so combine-mode renders
+  // CombineDashboardSidebar (reads workspace state via usePortfolioState) while
+  // compare-mode keeps the existing InputsPanel (reads singleton useCalculatorState).
+  // useCalculatorState itself is NOT modified — it keeps driving compare-mode.
+  const angebotView =
+    portfolioState.mode === 'combine' ? (
+      <section className="workspace-view workspace-view--angebot">
+        <CombineDashboardSidebar
+          assumptions={portfolioState.baseline.assumptions}
+          onPatchAssumptions={(patch) =>
+            portfolioState.patchBaseline({ assumptions: { ...portfolioState.baseline.assumptions, ...patch } })
+          }
+          addInstance={portfolioState.addInstance}
+          removeInstance={portfolioState.removeInstance}
+        />
+      </section>
+    ) : (
+      <section className="workspace-view workspace-view--angebot">
+        <InputsPanel
+          profile={profile}
+          onProfileChange={setProfile}
+          assumptions={assumptions}
+          onAssumptionsChange={setAssumptions}
+          onSyncMonthlyContribution={setSyncedMonthlyContribution}
+          resetToDefaults={resetToDefaults}
+          simulation={simulation}
+          selectedResults={selectedResults}
+          scenarioLib={scenarioLib}
+          kvdrMember={taxModes.kvdrMember}
+          bavLumpSumTaxMode={taxModes.bavLumpSumTaxMode}
+          insuranceTaxMode={taxModes.insuranceTaxMode}
+          insuranceResult={insuranceResult}
+          tarifgebunden={ui.tarifgebunden}
+          onTarifgebundenChange={ui.setTarifgebunden}
+        />
+      </section>
+    )
 
   const viewsByTab = {
     vergleich: vergleichView,
