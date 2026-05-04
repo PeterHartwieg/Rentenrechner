@@ -204,9 +204,15 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
 
             {/* Steuerklasse (display-only note — engine only supports class 1 today) */}
             <div className="inventory-field" data-testid="field-steuerklasse">
-              <span>Steuerklasse</span>
+              <label htmlFor="step0-steuerklasse">Steuerklasse</label>
               <div className="inventory-input-shell">
-                <input type="text" readOnly value="I" aria-label="Steuerklasse" />
+                <input
+                  id="step0-steuerklasse"
+                  type="text"
+                  readOnly
+                  value="I"
+                  aria-label="Steuerklasse"
+                />
               </div>
               <p className="inventory-field-hint">
                 Wird derzeit für alle Berechnungen verwendet.
@@ -216,7 +222,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
 
           {/* Ehegattensplitting toggle — full width below the grid */}
           <div className="inventory-field" data-testid="field-ehegattensplitting">
-            <span>Steuerliche Veranlagung</span>
+            <label>Steuerliche Veranlagung</label>
             <label className="field-inline">
               <input
                 type="checkbox"

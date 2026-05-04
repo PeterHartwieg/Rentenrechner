@@ -337,15 +337,11 @@ function Calculator({ navigate }: CalculatorProps) {
             scenarioId={combineBasisScenarioId}
             scenarioLabel={combineBasisLabel}
           />
-          <div className="combine-dashboard-add-vertrag">
-            <AddVertragSection addInstance={portfolioState.addInstance} />
-          </div>
+          <AddVertragSection addInstance={portfolioState.addInstance} />
         </>
       )}
       {portfolioState.mode === 'combine' && !combineBasisResult && (
-        <div className="combine-dashboard-add-vertrag">
-          <AddVertragSection addInstance={portfolioState.addInstance} />
-        </div>
+        <AddVertragSection addInstance={portfolioState.addInstance} />
       )}
 
       {guidedSetup.journeyState === 'active' && (

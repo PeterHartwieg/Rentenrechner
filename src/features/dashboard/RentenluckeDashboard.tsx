@@ -181,6 +181,7 @@ export function RentenluckeDashboard({
           min={0}
           max={20_000}
           step={50}
+          decimals={0}
           suffix="€"
           onCommit={(raw) => {
             const parsed = Number(raw)
