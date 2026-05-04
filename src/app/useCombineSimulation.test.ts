@@ -473,6 +473,69 @@ describe('combineEffectiveScenarioId — resolves against workspace scenarios (Q
   })
 })
 
+// ---------------------------------------------------------------------------
+// QA #22 — custom scenario at 0% return must produce lower combined net than
+// a positive-return scenario, proving no-growth propagates through
+// simulatePortfolio → combinedByScenarioId (regression guard).
+// ---------------------------------------------------------------------------
+
+describe('runCombineSimulation — custom 0% scenario propagates through simulatePortfolio (QA #22)', () => {
+  it('custom scenario at annualReturn=0 produces a combined net that is no greater than a 7% custom scenario', () => {
+    // Add an ETF instance so there is a market-return-sensitive instrument in
+    // the portfolio. Without any growth-sensitive instance the test would be
+    // vacuous (GRV + bAV are not return-sensitive in this way).
+    const ws = makeWs()
+    const withEtf = (annualReturn: number): Workspace => {
+      const customScenario: ReturnScenario = { id: 'custom', label: 'Eigenes', annualReturn }
+      return {
+        ...ws,
+        baseline: {
+          ...ws.baseline,
+          assumptions: {
+            ...ws.baseline.assumptions,
+            etf: [
+              {
+                instanceId: 'etf-qa22',
+                label: 'ETF QA22',
+                status: 'active',
+                contractStartYear: de2026Rules.year - 5,
+                currentValueEUR: 10_000,
+                annualAssetFee: 0.002,
+                annualContributionGrowthRate: 0,
+                equityPartialExemption: 0.3,
+                evidenceMap: {},
+              },
+            ],
+            returnScenarios: [
+              ...ws.baseline.assumptions.returnScenarios,
+              customScenario,
+            ],
+          },
+        },
+      }
+    }
+
+    const wsZero = withEtf(0)
+    const wsHigh = withEtf(0.07)
+
+    const bundleZero = runCombineSimulation(wsZero, de2026Rules)
+    const bundleHigh = runCombineSimulation(wsHigh, de2026Rules)
+
+    // Both workspaces have the custom scenario in workspace assumptions —
+    // it must appear in combinedByScenarioId.
+    expect(bundleZero.combinedByScenarioId['custom']).toBeDefined()
+    expect(bundleHigh.combinedByScenarioId['custom']).toBeDefined()
+
+    const netZero = bundleZero.combinedByScenarioId['custom'].monthlyNetIncome
+    const netHigh = bundleHigh.combinedByScenarioId['custom'].monthlyNetIncome
+
+    // 0% growth → less capital at retirement → lower ETF payout → lower combined net.
+    // The comparison proves the annualReturn actually flows through simulatePortfolio.
+    expect(netZero).toBeGreaterThanOrEqual(0)
+    expect(netHigh).toBeGreaterThan(netZero)
+  })
+})
+
 describe('runCombineSimulation — single-bAV back-compat (QA #14)', () => {
   it('single-bAV workspace produces a non-zero baseline matching the per-instance funding it consumed', () => {
     // Smoke test: pre-fix used `firstBavFunding.estimatedMonthlyGrvReduction`;
