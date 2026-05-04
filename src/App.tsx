@@ -30,6 +30,7 @@ import { MonteCarloHighlights } from './features/results/MonteCarloHighlights'
 import { MonteCarloPanel } from './features/results/MonteCarloPanel'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
+import { CombineDetailView } from './features/results/CombineDetailView'
 import { PrintReport } from './features/results/PrintReport'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
@@ -452,9 +453,11 @@ function Calculator({ navigate }: CalculatorProps) {
         <>
           <CalculationWarnings />
 
-          <DetailComparisonTable
-            products={[]}
-            linkCopied={linkCopied}
+          <CombineDetailView
+            workspace={portfolioState.workspace}
+            perInstance={combineSimulation.perInstance}
+            selectedScenarioId={combineBasisScenarioId}
+            selectedScenarioLabel={combineBasisLabel}
             onExportCsv={handleExportCsv}
             onPrint={() => window.print()}
           />
