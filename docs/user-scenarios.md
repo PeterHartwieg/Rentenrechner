@@ -48,6 +48,8 @@ The ten scenarios are deliberately spread across these axes:
 | 8 | Inge      | 60  | single       | employee          | GKV | mid (48k)  | thick           | retirement runway    |
 | 9 | Jens      | 44  | married      | partner law firm  | PKV | very high (180k)| thin (only bAV maxed) | spotted tax leak |
 | 10 | Karin    | 52  | single       | employee          | GKV | mid (65k)  | one old gem     | broker pitch         |
+| 11 | Lena     | 33  | 2 kids       | employee, 60% part-time | GKV | low (22k) | none | Zulagen-leverage on tight budget |
+| 12 | Markus   | 38  | single       | Beamter (Lehrer Bayern) | PKV | mid (65k) | none | Beamtenpension + Schicht-1 supplement |
 
 ---
 
@@ -467,35 +469,111 @@ The ten scenarios are deliberately spread across these axes:
 
 ---
 
+## Scenario 11 — Lena, 33, Erzieherin (60 % Teilzeit): "Riester is worth it for me — but how much?"
+
+**Persona.** Kindergarten educator, 60 % part-time, two children (born 2020 and 2023), GKV, single. Low gross income (~€22,000/year at 60 %) but high state-subsidy leverage through Riester Kinderzulage. Has heard "Riester ist tot" but also knows she gets €300/child/year — she is not sure how much she needs to contribute herself to get the full allowances.
+
+**Starting situation.**
+- ~€22,000 brutto/Jahr (60 %-Stelle as Erzieherin, TVöD equivalent).
+- No retirement products.
+- Two children: geboren 2020 and 2023 (both under the new €300/Kind/Jahr Kinderzulage threshold).
+- Monthly budget for retirement: ~€100/Monat.
+
+**Trigger.** A colleague mentions that with two kids she can get over €770/Jahr from the state for Riester. Lena googles *"Riester Kinderzulage 2026 Teilzeit"* and lands on the calculator.
+
+**First impression she needs.** A trigger card "Ich spare mit Kindern und kleinem Budget" that opens a wizard asking only part-time percentage, child birth years, and monthly budget. The result should immediately show how much the state contributes versus her own euro.
+
+**Path through the tool.**
+
+1. Picks **"Ich spare mit Kindern und kleinem Budget"** on landing.
+2. Wizard: age (33), gross salary (22,000), Teilzeitquote (60 %), Sparbudget (€100/Monat), Geburtsjahr Kind 1 (2020), Kind 2 (2023).
+3. Tool computes Mindesteigenbeitrag: max(60 EUR, 4 % × 22,000 − (175 + 300 + 300)) = max(60, 105) = €105/Monat to get full allowances. Budget of €100 is slightly under — she gets prorated allowances or she rounds up.
+4. Tool shows Riester vs AVD vs ETF over the 34-year horizon. Recommendation: "Bei €100/Monat eigenem Beitrag leistet der Staat ~€650/Jahr — das entspricht einem Förderquotienten von 54 %. Das übertrifft jeden anderen Sparweg bei deinem Einkommen."
+5. She can add another €25/Monat to clear the Mindesteigenbeitrag and get full allowances.
+
+**Desired end-state.** Knows she should open a Riester-Fondssparplan, contribute €125/Monat, and will receive ~€775/Jahr state subsidy (175 Grundzulage + 2 × 300 Kinderzulage). Understands AVD as the modern alternative but recognises the child Zulagen tip the balance for her.
+
+**Tool capabilities required.**
+- `low_income_parent` trigger card + 5-question wizard (age, salary, Teilzeitquote, budget, child birth years).
+- Riester Zulagen-leverage callout: state euro / own euro ratio surfaced prominently.
+- Mindesteigenbeitrag gap indicator: "Du brauchst €X mehr für volle Zulagen."
+- visibleProducts preset: Riester + AVD + ETF.
+
+---
+
+## Scenario 12 — Markus, 38, Lehrer Bayern (Beamter): "I have no GRV. Where does my extra euro go?"
+
+**Persona.** Gymnasium teacher in Bavaria, civil servant (Beamter), single, PKV. No GRV, no bAV — his primary retirement income will be the Beamtenpension from the Bavarian Versorgungsgesetz (~72 % of final salary after full career). Has some savings capacity (~€300/Monat) and wants to know whether Basisrente or ETF makes more sense at his tax rate.
+
+**Starting situation.**
+- €65,000 brutto (A13 equivalent), PKV (~€500/Monat KV + PV).
+- **No GRV** (never contributed, opted out on entry).
+- **No bAV** (Beamte cannot do §3 Nr. 63 EStG Direktversicherung via Dienstherr).
+- **No existing retirement products.**
+- Estimated Beamtenpension at 67: ~€3,200/Monat brutto (Vollversorgung ~72 % of last salary).
+- Monthly savings capacity: ~€300/Monat.
+
+**Trigger.** His tax advisor mentions: "Basisrente würde bei deinem Steuersatz ~€1,500 Steuern pro Jahr sparen. Lohnt sich das?" He googles *"Basisrente Beamter Bayern sinnvoll"*.
+
+**First impression he needs.** A **"Ich bin Beamter oder im Versorgungswerk"** trigger card that removes GRV and bAV affordances, sets the pension baseline to Beamtenpension, and puts Basisrente front and centre.
+
+**Path through the tool.**
+
+1. Picks **"Ich bin Beamter oder im Versorgungswerk"** on landing.
+2. Wizard: age (38), retirementAge (67), gross (65,000), Versorgungsart (Beamtenpension), estimated Versorgung (€3,200/Monat), KV (PKV → toggle GKV off).
+3. Tool opens workspace with: `pensionBaselineType: 'beamtenpension'`, Basisrente + ETF + pAV in `visibleProducts`. GRV/bAV removed from the product picker.
+4. Baseline shows: "Deine Beamtenpension: ~€3,200 Brutto/Monat (ca. €2,400 netto nach §19 EStG Versorgungsfreibetrag + PKV). Zusätzliches Sparprodukt nicht eingestellt — Lücke zum Wunschnetto (nicht gesetzt)."
+5. Tool generates three what-if scenarios:
+   - **A. €300/Monat in ETF.**
+   - **B. €300/Monat in Basisrente** (§10 Abs. 1 Nr. 2 EStG, Schicht-1).
+   - **C. €150/Monat Basisrente + €150/Monat ETF.**
+6. Recommendation: "Basisrente spart dir ~€1,440/Jahr Einkommensteuer (Grenzsteuersatz ~33 % bei 65k brutto). Über 29 Jahre summiert sich das auf ~€42,000 Steuerersparnis. ABER: Basisrente ist nicht kapitalauszahlbar. Wenn du Flexibilität willst, ist C das bessere Verhältnis."
+7. He saves "Plan B: Basisrente €300" for the advisor meeting.
+
+**Desired end-state.** Has a concrete plan for the advisor conversation: Basisrente €300/Monat, with a side note that C (split) is the more flexible alternative.
+
+**Tool capabilities required.**
+- `beamter` trigger card + wizard (age, salary, Versorgungsart, estimated pension, GKV/PKV toggle).
+- `pensionBaselineType: 'beamtenpension'` wired to the existing engine code path in `grv.ts`.
+- GRV and bAV removed from `visibleProducts` and from the comparison picker affordances.
+- Basisrente as primary Schicht-1 product (front of visible list).
+- Beamtenpension displayed as baseline income in the retirement summary (not a product to compare, but the floor).
+
+---
+
 ## Capability matrix
 
 Each row is a capability surfaced by the scenarios; columns are the scenarios that need it. ✓ = central, • = nice-to-have.
 
-| Capability | 1 Anna | 2 Bernd | 3 Clara | 4 Dilan | 5 Eva+Frank | 6 Gabi | 7 Hans | 8 Inge | 9 Jens | 10 Karin |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Onboarding split: clean-slate vs existing | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | • | ✓ | ✓ | ✓ |
-| Trigger-typed entry cards (bAV-Angebot, Job-Wechsel, Erbschaft, …) | ✓ | • | • | ✓ | • | ✓ | • | • | • | ✓ |
-| Portfolio inventory wizard (per-product anchor fields) |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |   | ✓ |
-| Multiple instances of same product type (e.g. two bAV) |   | ✓ |   | ✓ | • |   |   |   |   |   |
-| Paid-up flag on contracts |   | ✓ |   | ✓ |   | ✓ |   | ✓ |   | ✓ |
-| Auto-detect contract-vintage privileges (§40b a.F., Halbeinkünfte) |   |   | ✓ | • |   |   |   | ✓ |   | ✓ |
-| Beschäftigungsstatus toggle (Selbstständig removes GRV/bAV) |   |   | ✓ |   |   |   |   |   |   |   |
-| Variable-income / income-stress button |   |   | ✓ |   |   |   |   |   |   |   |
-| Lump-sum / windfall input + allocation wizard |   |   |   |   |   | ✓ |   | • | • |   |
-| Household / dual-profile mode + Ehegattensplitting |   |   |   |   | ✓ |   | • |   | • |   |
-| Inter-spouse optimisation hints |   |   |   |   | ✓ |   |   |   |   |   |
-| GKV/PKV toggle that flows through salary + retirement phases | • |   |   |   |   |   | ✓ |   |   |   |
-| Cap-detection across products (bAV cap, Basisrente cap, …) |   | ✓ | • |   |   |   |   |   | ✓ |   |
-| "Where does my next €X go?" recommender | • | ✓ |   |   |   | ✓ |   |   | ✓ |   |
-| Cross-product interaction explanations in plain text |   | ✓ | ✓ |   | ✓ | • |   | • | • | • |
-| Three-card per-contract template (Weiterführen / Beitragsfrei / Kündigen) |   |   |   | ✓ |   |   |   |   |   | ✓ |
-| Glidepath suggestion for late starters |   |   |   |   |   | ✓ |   | ✓ |   |   |
-| Monte-Carlo P10/Median/P90 prominent in recommendation |   | • | • |   | • | ✓ |   | ✓ |   | • |
-| "Retire later" slider | • |   |   |   | • | • |   | ✓ |   |   |
-| Lifetime-sum view (49 → 90, sum of all net cash) |   |   |   |   |   |   | ✓ |   |   |   |
-| Cashflow table of yearly tax saving |   |   | • |   |   |   |   |   | ✓ |   |
-| Wunschnetto + per-product gap-fill (already shipped, surface more) | • | ✓ | • |   | ✓ | ✓ | • | ✓ | • | • |
-| Print-PDF + share-URL (already shipped, must keep working) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Capability | 1 Anna | 2 Bernd | 3 Clara | 4 Dilan | 5 Eva+Frank | 6 Gabi | 7 Hans | 8 Inge | 9 Jens | 10 Karin | 11 Lena | 12 Markus |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Onboarding split: clean-slate vs existing | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | • | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Trigger-typed entry cards (bAV-Angebot, Job-Wechsel, Erbschaft, …) | ✓ | • | • | ✓ | • | ✓ | • | • | • | ✓ | ✓ | ✓ |
+| Portfolio inventory wizard (per-product anchor fields) |   | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |   | ✓ |   |   |
+| Multiple instances of same product type (e.g. two bAV) |   | ✓ |   | ✓ | • |   |   |   |   |   |   |   |
+| Paid-up flag on contracts |   | ✓ |   | ✓ |   | ✓ |   | ✓ |   | ✓ |   |   |
+| Auto-detect contract-vintage privileges (§40b a.F., Halbeinkünfte) |   |   | ✓ | • |   |   |   | ✓ |   | ✓ |   |   |
+| Beschäftigungsstatus toggle (Selbstständig removes GRV/bAV) |   |   | ✓ |   |   |   |   |   |   |   |   | ✓ |
+| Beamter/Versorgungswerk baseline (removes GRV/bAV, sets pension type) |   |   |   |   |   |   |   |   |   |   |   | ✓ |
+| Riester Zulagen-leverage callout (state € / own € ratio) |   | • |   |   | ✓ |   |   |   |   |   | ✓ |   |
+| Child birth years → Kinderzulage (Riester + AVD) |   | ✓ |   |   | ✓ |   |   |   |   |   | ✓ |   |
+| Mindesteigenbeitrag gap indicator |   |   |   |   |   |   |   |   |   |   | ✓ |   |
+| Variable-income / income-stress button |   |   | ✓ |   |   |   |   |   |   |   |   |   |
+| Lump-sum / windfall input + allocation wizard |   |   |   |   |   | ✓ |   | • | • |   |   |   |
+| Household / dual-profile mode + Ehegattensplitting |   |   |   |   | ✓ |   | • |   | • |   |   |   |
+| Inter-spouse optimisation hints |   |   |   |   | ✓ |   |   |   |   |   |   |   |
+| GKV/PKV toggle that flows through salary + retirement phases | • |   |   |   |   |   | ✓ |   |   |   |   | • |
+| Cap-detection across products (bAV cap, Basisrente cap, …) |   | ✓ | • |   |   |   |   |   | ✓ |   |   | ✓ |
+| "Where does my next €X go?" recommender | • | ✓ |   |   |   | ✓ |   |   | ✓ |   | ✓ | ✓ |
+| Cross-product interaction explanations in plain text |   | ✓ | ✓ |   | ✓ | • |   | • | • | • | • | ✓ |
+| Three-card per-contract template (Weiterführen / Beitragsfrei / Kündigen) |   |   |   | ✓ |   |   |   |   |   | ✓ |   |   |
+| Glidepath suggestion for late starters |   |   |   |   |   | ✓ |   | ✓ |   |   |   |   |
+| Monte-Carlo P10/Median/P90 prominent in recommendation |   | • | • |   | • | ✓ |   | ✓ |   | • | ✓ |   |
+| "Retire later" slider | • |   |   |   | • | • |   | ✓ |   |   |   |   |
+| Lifetime-sum view (49 → 90, sum of all net cash) |   |   |   |   |   |   | ✓ |   |   |   |   |   |
+| Cashflow table of yearly tax saving |   |   | • |   |   |   |   |   | ✓ |   |   | ✓ |
+| Wunschnetto + per-product gap-fill (already shipped, surface more) | • | ✓ | • |   | ✓ | ✓ | • | ✓ | • | • | • | • |
+| Print-PDF + share-URL (already shipped, must keep working) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ---
 
@@ -516,7 +594,7 @@ Drawn from the capability matrix above. Each item below maps to a vertical slice
 11. **"Retire later" slider + Monte-Carlo highlights in the recommendation.** Surface existing engine capability. Lights up 8 cleanly, helps 1, 5, 6.
 12. **Three-card per-contract template (Weiterführen / Beitragsfrei / Kündigen).** Per-product UI affordance for inventoried contracts. Lights up 4 (bAV) and 10 (pAV); reusable for Riester (paused/active), Basisrente (rare), AVD (rare).
 
-Items 1–6 cover seven of the ten scenarios; 7–12 cover the rest. A reasonable first milestone is "ship 1 + 2 + 5" — that alone changes the tool from "compare six products from scratch" to "tell me what to do given what I already have."
+Items 1–6 cover seven of the original ten scenarios; 7–12 cover the rest. Scenarios 11 (Lena) and 12 (Markus) are partially addressed by the issue-18 trigger seeds — the wizard entry flow and visibleProducts preset are in place; the Mindesteigenbeitrag gap callout and Beamtenpension income card are follow-on Group G items. A reasonable first milestone is "ship 1 + 2 + 5" — that alone changes the tool from "compare six products from scratch" to "tell me what to do given what I already have."
 
 ---
 

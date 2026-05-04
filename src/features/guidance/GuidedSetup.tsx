@@ -65,6 +65,15 @@ export function GuidedSetup({
       profile.grossSalaryYear,
     ),
     desiredNetMonthlyPension: profile.desiredNetMonthlyPension ?? 0,
+    // low_income_parent defaults
+    partTimePct: 60,
+    tightBudgetMonthly: 100,
+    childBirthYear1: 0,
+    childBirthYear2: 0,
+    childBirthYear3: 0,
+    // beamter defaults
+    versorgungType: 'beamtenpension',
+    estimatedBeamtenpensionMonthly: 0,
   })
 
   function pickPath(p: GuidedPath) {
@@ -78,6 +87,14 @@ export function GuidedSetup({
   function applyAndComplete() {
     if (!path) return
 
+    // Collect child birth years from low_income_parent wizard fields.
+    const childBirthYears: number[] =
+      path === 'low_income_parent'
+        ? [extras.childBirthYear1, extras.childBirthYear2, extras.childBirthYear3].filter(
+            (y) => y > 0,
+          )
+        : profile.childBirthYears
+
     const nextProfile: PersonalProfile = {
       ...defaultProfile,
       ...profile,
@@ -85,6 +102,7 @@ export function GuidedSetup({
       retirementAge: basics.retirementAge,
       grossSalaryYear: basics.grossSalaryYear,
       publicHealthInsurance: basics.publicHealthInsurance,
+      childBirthYears,
       desiredNetMonthlyPension:
         path === 'rentengap' && extras.desiredNetMonthlyPension > 0
           ? extras.desiredNetMonthlyPension
@@ -95,6 +113,10 @@ export function GuidedSetup({
       path === 'rentengap'
         ? estimateEpFromYears(extras.yearsWorked, basics.grossSalaryYear)
         : assumptions.statutoryPension.currentEntgeltpunkte
+
+    // Resolve pensionBaselineType for the beamter path.
+    const beamterBaselineType =
+      extras.versorgungType === 'mixed' ? 'beamtenpension' : extras.versorgungType
 
     const nextAssumptions: ScenarioAssumptions = {
       ...defaultAssumptions,
@@ -122,9 +144,38 @@ export function GuidedSetup({
             ? extras.etfTerPct / 100
             : assumptions.etf.annualAssetFee,
       },
+      riester: {
+        ...assumptions.riester,
+        // For low-income parent: seed Riester own contribution from tight budget.
+        monthlyOwnContribution:
+          path === 'low_income_parent'
+            ? Math.max(10, Math.min(extras.tightBudgetMonthly, 200))
+            : assumptions.riester.monthlyOwnContribution,
+        eligibility:
+          path === 'low_income_parent'
+            ? {
+                ...assumptions.riester.eligibility,
+                directlyEligible: true, // GRV-employee, directly eligible
+              }
+            : assumptions.riester.eligibility,
+      },
       statutoryPension: {
         ...assumptions.statutoryPension,
         currentEntgeltpunkte: backCalculatedEp,
+        // Beamter path: set baseline type and manual monthly gross pension.
+        ...(path === 'beamter'
+          ? {
+              pensionBaselineType: beamterBaselineType,
+              manualMonthlyGross:
+                extras.estimatedBeamtenpensionMonthly > 0
+                  ? extras.estimatedBeamtenpensionMonthly
+                  : null,
+              // Beamte are typically PKV — default to 'pkv' retirement health status.
+              retirementHealthStatus: basics.publicHealthInsurance ? 'kvdr' : 'pkv',
+            }
+          : {
+              pensionBaselineType: assumptions.statutoryPension.pensionBaselineType ?? 'grv',
+            }),
       },
     }
 

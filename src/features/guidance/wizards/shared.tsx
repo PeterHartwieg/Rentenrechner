@@ -26,6 +26,27 @@ export interface PathSpecific {
   yearsWorked: number
   /** Wunschnetto: target net monthly pension. 0/undefined skips the Lücke card. */
   desiredNetMonthlyPension: number
+
+  // ---- low_income_parent path ----
+  /** Teilzeitquote in % (e.g. 60 for 60%-Stelle). Affects Riester Mindesteigenbeitrag. */
+  partTimePct: number
+  /** Monthly savings budget (EUR/month). Seeded into Riester/AVD contribution defaults. */
+  tightBudgetMonthly: number
+  /** Birth year of first child. 0 = not set. */
+  childBirthYear1: number
+  /** Birth year of second child. 0 = not set. */
+  childBirthYear2: number
+  /** Birth year of third child. 0 = not set. */
+  childBirthYear3: number
+
+  // ---- beamter path ----
+  /** Which mandatory pension system applies to this civil-servant / Versorgungswerk user. */
+  versorgungType: 'beamtenpension' | 'versorgungswerk' | 'mixed'
+  /**
+   * Estimated gross monthly Beamtenpension / Versorgungswerk pension (EUR/month).
+   * Written to `statutoryPension.manualMonthlyGross` by GuidedSetup.applyAndComplete.
+   */
+  estimatedBeamtenpensionMonthly: number
 }
 
 export interface WizardProps {

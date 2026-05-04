@@ -18,6 +18,8 @@ export type GuidedPath =
   | 'bav_offer'
   | 'etf_vs_insurance'
   | 'rentengap'
+  | 'low_income_parent'
+  | 'beamter'
   | 'expert'
 
 /**
@@ -75,6 +77,20 @@ export const PATH_OPTIONS: readonly GuidedPathOption[] = [
       'Wie viel netto bleibt aus der gesetzlichen Rente — und welche zusätzliche Vorsorge schließt die Lücke realistisch?',
   },
   {
+    id: 'low_income_parent',
+    title: 'Ich spare mit Kindern und kleinem Budget',
+    description:
+      'Teilzeit, Kinder, enges Budget — Riester-Zulagen und AVD optimal nutzen. Wir zeigen, wie viel der Staat beisteuert.',
+    recommenderBias: { emphasiseP10: true },
+  },
+  {
+    id: 'beamter',
+    title: 'Ich bin Beamter oder im Versorgungswerk',
+    description:
+      'Beamtenpension oder berufsständisches Versorgungswerk als Basis — GRV und bAV entfallen. Basisrente als Schicht-1-Ergänzung.',
+    recommenderBias: { emphasiseTaxLeverage: true },
+  },
+  {
     id: 'expert',
     title: 'Expertenmodus',
     description:
@@ -95,6 +111,12 @@ export const VISIBLE_PRODUCTS_BY_PATH: Record<GuidedPath, ProductId[]> = {
   // with ETF + bAV (the most common decision pair) and let them add other
   // products via the comparison picker.
   rentengap: ['etf', 'bav'],
+  // Low-income parent: Riester Zulagen-leverage is the primary differentiator;
+  // AVD as the modern alternative, ETF as the baseline reference.
+  low_income_parent: ['riester', 'altersvorsorgedepot', 'etf'],
+  // Beamter: no GRV/bAV; Basisrente is the primary Schicht-1 product;
+  // ETF as flexible Schicht-3 reference, pAV as the classic Schicht-3 alternative.
+  beamter: ['basisrente', 'etf', 'versicherung'],
   expert: [...ALL_PRODUCTS],
 }
 

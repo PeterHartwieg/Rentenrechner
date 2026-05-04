@@ -13,10 +13,14 @@ import type { WizardProps } from './shared'
 import { BavOfferWizard } from './BavOfferWizard'
 import { EtfVsInsuranceWizard } from './EtfVsInsuranceWizard'
 import { RentengapWizard } from './RentengapWizard'
+import { LowIncomeParentWizard } from './LowIncomeParentWizard'
+import { BeamterWizard } from './BeamterWizard'
 
 export const WIZARD_REGISTRY: Record<GuidedPath, ComponentType<WizardProps> | null> = {
   bav_offer: BavOfferWizard,
   etf_vs_insurance: EtfVsInsuranceWizard,
   rentengap: RentengapWizard,
+  low_income_parent: LowIncomeParentWizard,
+  beamter: BeamterWizard,
   expert: null,
 }
