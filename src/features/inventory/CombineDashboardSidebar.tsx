@@ -703,6 +703,74 @@ function WhatIfCard({
 }
 
 // ---------------------------------------------------------------------------
+// AddVertragSection — always-visible affordance to add a new contract type
+// ---------------------------------------------------------------------------
+
+/** Human-readable labels matching the product type keys */
+const ADD_VERTRAG_ITEMS: {
+  productId: MultiInstanceProductId
+  label: string
+}[] = [
+  { productId: 'bav', label: 'Betriebliche AV (bAV)' },
+  { productId: 'versicherung', label: 'Private Rentenversicherung (pAV)' },
+  { productId: 'etf', label: 'ETF-Sparplan' },
+  { productId: 'basisrente', label: 'Basisrente (Rürup)' },
+  { productId: 'altersvorsorgedepot', label: 'Altersvorsorgedepot (AVD)' },
+  { productId: 'riester', label: 'Riester-Rente' },
+]
+
+export function AddVertragSection({
+  addInstance,
+}: {
+  addInstance: (productId: MultiInstanceProductId) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="cds-add-vertrag-section">
+      {!open ? (
+        <button
+          type="button"
+          className="cds-add-vertrag-btn"
+          onClick={() => setOpen(true)}
+          data-testid="add-vertrag-btn"
+        >
+          <Plus size={14} aria-hidden="true" />
+          Vertrag hinzufügen
+        </button>
+      ) : (
+        <div className="cds-add-vertrag-menu" role="menu" aria-label="Vertragstyp auswählen">
+          <p className="cds-add-vertrag-menu-label">Welchen Vertragstyp möchtest du hinzufügen?</p>
+          <div className="cds-add-vertrag-options">
+            {ADD_VERTRAG_ITEMS.map((item) => (
+              <button
+                key={item.productId}
+                type="button"
+                className="cds-add-vertrag-option-btn"
+                role="menuitem"
+                onClick={() => {
+                  addInstance(item.productId)
+                  setOpen(false)
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="cds-add-vertrag-cancel-btn"
+            onClick={() => setOpen(false)}
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main sidebar component
 // ---------------------------------------------------------------------------
 
@@ -756,7 +824,7 @@ export function CombineDashboardSidebar({
 
       {!hasContracts && (
         <p style={{ fontSize: '0.88rem', color: '#64748b' }}>
-          Noch keine Verträge erfasst. Nutze die Bestandsaufnahme, um Verträge hinzuzufügen.
+          Noch keine Verträge erfasst. Füge deinen ersten Vertrag hinzu.
         </p>
       )}
 
@@ -912,6 +980,9 @@ export function CombineDashboardSidebar({
       )}
         </>
       )}
+
+      {/* ── Add new contract affordance ──────────────────────────── */}
+      <AddVertragSection addInstance={addInstance} />
 
       {/* ── What-if scenarios ─────────────────────────────────────── */}
       {whatIfs.length > 0 && (

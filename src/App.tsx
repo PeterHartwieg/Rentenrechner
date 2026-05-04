@@ -46,7 +46,7 @@ import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import { LandingPage } from './features/landing/LandingPage'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { InventoryWizard } from './features/inventory/InventoryWizard'
-import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSidebar'
+import { CombineDashboardSidebar, AddVertragSection } from './features/inventory/CombineDashboardSidebar'
 import { CombineIncomePanel } from './features/inventory/CombineIncomePanel'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { RecommenderCard } from './features/dashboard/RecommenderCard'
@@ -333,7 +333,15 @@ function Calculator({ navigate }: CalculatorProps) {
             scenarioId={combineBasisScenarioId}
             scenarioLabel={combineBasisLabel}
           />
+          <div className="combine-dashboard-add-vertrag">
+            <AddVertragSection addInstance={portfolioState.addInstance} />
+          </div>
         </>
+      )}
+      {portfolioState.mode === 'combine' && !combineBasisResult && (
+        <div className="combine-dashboard-add-vertrag">
+          <AddVertragSection addInstance={portfolioState.addInstance} />
+        </div>
       )}
 
       {guidedSetup.journeyState === 'active' && (
