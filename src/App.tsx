@@ -458,6 +458,7 @@ function Calculator({ navigate }: CalculatorProps) {
             perInstance={combineSimulation.perInstance}
             selectedScenarioId={combineBasisScenarioId}
             selectedScenarioLabel={combineBasisLabel}
+            combinedForScenario={combineSimulation.combinedByScenarioId[combineBasisScenarioId]}
             onExportCsv={handleExportCsv}
             onPrint={() => window.print()}
           />

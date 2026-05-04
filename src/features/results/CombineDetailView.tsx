@@ -4,6 +4,7 @@ import { Download, Printer } from 'lucide-react'
 import type { ProductResult } from '../../domain/results'
 import type { Workspace } from '../../domain/workspace'
 import type { ProductId } from '../../domain'
+import type { CombinedResult } from '../../engine/portfolioCombine'
 import { getProductMeta } from '../../app/productPresentation'
 import { ProvLabel } from './provenance'
 import { formatCurrency, formatPercent } from '../../utils/format'
@@ -25,6 +26,11 @@ import { formatCurrency, formatPercent } from '../../utils/format'
  *     entry for the selected scenario (e.g. surrendered instances are filtered
  *     out before the simulator runs). The row still renders so the user sees
  *     the inventory inventory-side, just with placeholders for derived values.
+ *   - `combinedShare` is the back-allocated payout share from the aggregate
+ *     `calculateRetirementTax` + KV/PV pipeline. `monthlyNet` here is the
+ *     correct contract-level net when multiple taxable sources interact
+ *     progressively. Falls back to `result.netMonthlyPayout` only when the
+ *     combined pipeline has not produced an entry for this instance.
  */
 interface CombineDetailRow {
   instanceId: string
@@ -32,6 +38,8 @@ interface CombineDetailRow {
   instanceLabel: string
   status: 'active' | 'paid_up' | 'surrendered'
   result: ProductResult | undefined
+  /** Back-allocated share from the aggregate retirement-tax + KV/PV pipeline. */
+  combinedShare: CombinedResult['byInstance'][string] | undefined
 }
 
 interface CombineDetailViewProps {
@@ -39,6 +47,15 @@ interface CombineDetailViewProps {
   perInstance: Record<string, ProductResult[]>
   selectedScenarioId: string
   selectedScenarioLabel: string
+  /**
+   * The `CombinedResult` for the active scenario from `useCombineSimulation`.
+   * When provided, the "Netto-Rente mtl." column shows the back-allocated
+   * `byInstance[id].monthlyNet` from the aggregate progressive tax + KV/PV
+   * pipeline instead of the per-instance simulator's `netMonthlyPayout`.
+   * Omit or pass `undefined` when the combined pipeline has not yet produced
+   * a result for the selected scenario (renders the per-instance fallback).
+   */
+  combinedForScenario?: CombinedResult | undefined
   onExportCsv: () => void
   onPrint: () => void
 }
@@ -63,10 +80,11 @@ export function CombineDetailView({
   perInstance,
   selectedScenarioId,
   selectedScenarioLabel,
+  combinedForScenario,
   onExportCsv,
   onPrint,
 }: CombineDetailViewProps) {
-  const rows = collectRows(workspace, perInstance, selectedScenarioId)
+  const rows = collectRows(workspace, perInstance, selectedScenarioId, combinedForScenario)
 
   return (
     <section className="table-panel">
@@ -132,9 +150,22 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
 
   const capital = result?.capitalAtRetirement
   const riy = result?.accumulationRiy
-  const monthlyNet = result?.netMonthlyPayout
+  // Use the back-allocated `monthlyNet` from the aggregate progressive
+  // tax + KV/PV pipeline when available. This is the correct contract-level
+  // net whenever multiple taxable sources interact (combine mode). Fall back
+  // to the per-instance simulator value only when `byInstance` has no entry
+  // for this instance (defensive; should not happen in normal operation).
+  const monthlyNet = row.combinedShare?.monthlyNet ?? result?.netMonthlyPayout
   const breakEvenAge = result?.leibrenteBreakEvenAge
   const lumpSum = result?.afterTaxLumpSum
+
+  // Tooltip data for the Netto cell — surfaces the tax/KV-PV cascade so the
+  // user can see how the aggregate progressive pipeline apportioned costs to
+  // this contract. Only rendered when the combined share is available.
+  const combinedShare = row.combinedShare
+  const netCellTitle = combinedShare != null
+    ? `Steuer ${formatCurrency(combinedShare.taxShareAnnual / 12, 0)} €/mo (${formatCurrency(combinedShare.taxShareAnnual, 0)} €/Jahr) · KV/PV ${formatCurrency(combinedShare.kvPvShare, 0)} €/mo`
+    : undefined
 
   // Provenance pill: lowest-confidence input across all consumed fields for this
   // instance. Missing on the legacy compare-mode path; here it always exists
@@ -160,7 +191,7 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
       </td>
       <td>{capital !== undefined ? formatCurrency(capital, 0) : '–'}</td>
       <td>{riy !== undefined ? formatPercent(riy, 2) : '–'}</td>
-      <td>
+      <td title={netCellTitle} aria-label={netCellTitle}>
         {monthlyNet !== undefined ? formatCurrency(monthlyNet, 0) : '–'}
         {breakEvenAge !== undefined && (
           <span className="break-even-note">
@@ -216,11 +247,17 @@ const STATUS_LABELS: Record<CombineDetailRow['status'], string> = {
  * Active and paid_up instances both render; paid_up instances use the
  * existing `initialCapital` policy in the engine to project from frozen
  * capital, so their result is comparable to active ones.
+ *
+ * `combinedForScenario` provides the back-allocated payout shares from the
+ * aggregate progressive tax + KV/PV pipeline. When present, each row gets its
+ * `combinedShare` populated from `byInstance[instanceId]` so the netto column
+ * can show the correctly apportioned net rather than the per-instance estimate.
  */
 function collectRows(
   workspace: Workspace,
   perInstance: Record<string, ProductResult[]>,
   scenarioId: string,
+  combinedForScenario: CombinedResult | undefined,
 ): CombineDetailRow[] {
   const wsa = workspace.baseline.assumptions
   const rows: CombineDetailRow[] = []
@@ -240,12 +277,14 @@ function collectRows(
       const meta = getProductMeta(slot.id) ?? FALLBACK_META
       const label = inst.label?.trim().length ? inst.label : meta.label
       const result = perInstance[inst.instanceId]?.find((r) => r.scenarioId === scenarioId)
+      const combinedShare = combinedForScenario?.byInstance[inst.instanceId]
       rows.push({
         instanceId: inst.instanceId,
         productId: slot.id,
         instanceLabel: label,
         status: inst.status,
         result,
+        combinedShare,
       })
     }
   }
