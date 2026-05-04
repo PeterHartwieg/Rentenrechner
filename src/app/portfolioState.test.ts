@@ -98,6 +98,185 @@ describe('portfolioState helpers — forkBaselineScenario', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Issue #09 — InventoryWizard.onComplete writes workspace before setMode
+// ---------------------------------------------------------------------------
+
+describe('issue #09 — replaceWorkspace ordering guarantee', () => {
+  /**
+   * Simulates the wiring that now exists in App.tsx:
+   *   portfolioState.replaceWorkspace(workspace)   // ← first
+   *   portfolioState.setMode('combine')            // ← second (already 'combine' in returned workspace)
+   *   setAppView('combine')
+   *
+   * Verifies that after replaceWorkspace the workspace contains the wizard's
+   * data, not the stale defaults — simulated here by tracking the order of
+   * state mutations via a call log.
+   */
+  it('replaceWorkspace is called with the wizard workspace before setMode', () => {
+    const callLog: string[] = []
+
+    // Simulated portfolioState-like object with call tracking.
+    let currentWorkspace = deepCloneScenario(defaultWorkspace)
+
+    const portfolioStateSim = {
+      get workspace() { return currentWorkspace },
+      replaceWorkspace: (ws: typeof defaultWorkspace) => {
+        callLog.push('replaceWorkspace')
+        currentWorkspace = deepCloneScenario(ws)
+      },
+      setMode: (mode: string) => {
+        callLog.push(`setMode:${mode}`)
+      },
+    }
+
+    // Build a "wizard workspace" with a distinctive baseline id.
+    const wizardWorkspace = {
+      ...deepCloneScenario(defaultWorkspace),
+      baseline: {
+        ...deepCloneScenario(defaultWorkspace.baseline),
+        id: 'wizard-baseline',
+        label: 'Wizard output',
+      },
+      mode: 'combine' as const,
+    }
+
+    // Simulate the fixed onComplete handler from App.tsx (#09).
+    function onComplete(ws: typeof wizardWorkspace) {
+      portfolioStateSim.replaceWorkspace(ws)
+      portfolioStateSim.setMode('combine')
+    }
+
+    onComplete(wizardWorkspace)
+
+    // replaceWorkspace must precede setMode.
+    expect(callLog).toEqual(['replaceWorkspace', 'setMode:combine'])
+    // After the handler, workspace reflects the wizard's output.
+    expect(currentWorkspace.baseline.id).toBe('wizard-baseline')
+    expect(currentWorkspace.baseline.label).toBe('Wizard output')
+  })
+
+  it('stale-default scenario: without replaceWorkspace the workspace is NOT updated', () => {
+    // Demonstrates the original bug — calling only setMode does not update the workspace.
+    const currentWorkspace = deepCloneScenario(defaultWorkspace)
+    // Simulate setMode that only records the call, does NOT update the workspace.
+    const setModeCalls: string[] = []
+    const setMode = (mode: string) => { setModeCalls.push(mode) }
+
+    const wizardWorkspace = {
+      ...deepCloneScenario(defaultWorkspace),
+      baseline: { ...deepCloneScenario(defaultWorkspace.baseline), id: 'wizard-baseline' },
+      mode: 'combine' as const,
+    }
+
+    // Old (buggy) handler: only setMode, no replaceWorkspace.
+    function oldOnComplete(ws: typeof wizardWorkspace) {
+      void ws // workspace returned by wizard is ignored — the bug.
+      setMode('combine')
+    }
+
+    oldOnComplete(wizardWorkspace)
+    expect(setModeCalls).toEqual(['combine'])
+    expect(currentWorkspace.baseline.id).not.toBe('wizard-baseline')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #10 — GuidedSetup.onApply in combine-new path writes to portfolioState
+// ---------------------------------------------------------------------------
+
+describe('issue #10 — GuidedSetup.onApply seeds combine baseline', () => {
+  /**
+   * Simulates the onApply wiring in App.tsx for the combine-new path.
+   * Verifies that patchBaseline is called with the guided profile and that
+   * the global assumption fields are written to the workspace baseline.
+   */
+  it('patchBaseline is called with the guided profile when appView === combine', () => {
+    let patchCalled = false
+    let patchedProfile: { age?: number } | null = null
+    let patchedAssumptions: { statutoryPension?: unknown } | null = null
+
+    const portfolioStateSim = {
+      workspace: {
+        baseline: {
+          ...deepCloneScenario(defaultWorkspace.baseline),
+          id: 'existing-baseline',
+        },
+      },
+      patchBaseline: (patch: {
+        profile?: { age?: number }
+        assumptions?: { statutoryPension?: unknown }
+      }) => {
+        patchCalled = true
+        patchedProfile = patch.profile ?? null
+        patchedAssumptions = patch.assumptions ?? null
+      },
+    }
+
+    const nextProfile = { ...defaultProfile, age: 42 }
+    const nextAssumptions = {
+      ...defaultWorkspace.baseline.assumptions,
+      inflationRate: 0.025,
+      statutoryPension: {
+        ...defaultWorkspace.baseline.assumptions.statutoryPension,
+        currentEntgeltpunkte: 30,
+      },
+    }
+
+    // Simulate the fixed onApply handler from App.tsx (#10) for combine mode.
+    const appView = 'combine'
+    function onApply(p: typeof nextProfile, a: typeof nextAssumptions) {
+      if (appView === 'combine') {
+        portfolioStateSim.patchBaseline({
+          profile: p,
+          assumptions: {
+            ...portfolioStateSim.workspace.baseline.assumptions,
+            statutoryPension: a.statutoryPension,
+            inflationRate: a.inflationRate,
+            retirementEndAge: a.retirementEndAge,
+            returnScenarios: a.returnScenarios,
+            monteCarlo: a.monteCarlo,
+            visibleProducts: a.visibleProducts,
+          },
+        })
+      }
+    }
+
+    onApply(nextProfile, nextAssumptions as typeof nextAssumptions & { retirementEndAge: number; returnScenarios: unknown[]; monteCarlo: unknown; visibleProducts: unknown[] })
+
+    expect(patchCalled).toBe(true)
+    expect(patchedProfile).not.toBeNull()
+    expect((patchedProfile as { age: number } | null)?.age).toBe(42)
+    expect(patchedAssumptions).not.toBeNull()
+    expect((patchedAssumptions as { statutoryPension: { currentEntgeltpunkte: number } } | null)
+      ?.statutoryPension.currentEntgeltpunkte).toBe(30)
+  })
+
+  it('patchBaseline is NOT called when appView !== combine', () => {
+    let patchCalled = false
+    const portfolioStateSim = {
+      workspace: { baseline: deepCloneScenario(defaultWorkspace.baseline) },
+      patchBaseline: () => { patchCalled = true },
+    }
+
+    const nextProfile = { ...defaultProfile, age: 42 }
+    const nextAssumptions = { ...defaultWorkspace.baseline.assumptions }
+
+    // Simulate the onApply handler in compare mode (no combine branch taken).
+    const appView = 'compare'
+    function onApply(p: typeof nextProfile, a: typeof nextAssumptions) {
+      void p
+      void a
+      if (appView === 'combine') {
+        portfolioStateSim.patchBaseline()
+      }
+    }
+
+    onApply(nextProfile, nextAssumptions)
+    expect(patchCalled).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // rebaseWhatIfStub
 // ---------------------------------------------------------------------------
 

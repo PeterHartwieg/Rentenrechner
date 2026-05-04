@@ -161,6 +161,13 @@ export interface UsePortfolioStateApi {
   whatIfs: WhatIfScenario[]
   mode: Workspace['mode']
   setMode: (mode: Workspace['mode']) => void
+  /**
+   * Atomically replace the entire workspace (e.g. after InventoryWizard
+   * completes and hands back a freshly-built Workspace). Call this BEFORE
+   * any subsequent `setMode` so the first re-render that reads `portfolioState`
+   * sees the new data, not stale defaults.
+   */
+  replaceWorkspace: (workspace: Workspace) => void
   setBaseline: (scenario: Scenario) => void
   /** Update the baseline in-place (preserves id/createdAt). Stamps lastEditedAt. */
   patchBaseline: (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void
@@ -213,6 +220,10 @@ export function usePortfolioState(): UsePortfolioStateApi {
   useEffect(() => {
     saveWorkspace(workspace)
   }, [workspace])
+
+  const replaceWorkspace = useCallback((next: Workspace) => {
+    setWorkspace(next)
+  }, [])
 
   const setMode = useCallback((mode: Workspace['mode']) => {
     setWorkspace((w) => ({ ...w, mode }))
@@ -321,6 +332,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
     baseline: workspace.baseline,
     whatIfs: workspace.whatIfs,
     mode: workspace.mode,
+    replaceWorkspace,
     setMode,
     setBaseline,
     patchBaseline,

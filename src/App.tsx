@@ -201,7 +201,12 @@ function Calculator({ navigate }: CalculatorProps) {
             childBirthYears={profile.childBirthYears}
             age={profile.age}
             retirementAge={profile.retirementAge}
-            onComplete={() => {
+            onComplete={(workspace) => {
+              // #09: write the wizard's workspace into portfolioState BEFORE
+              // setMode so the first combine-mode render sees the new data, not
+              // stale defaults (replaceWorkspace is atomic; setMode would
+              // otherwise overwrite with the old in-memory workspace).
+              portfolioState.replaceWorkspace(workspace)
               setShowInventoryWizard(false)
               portfolioState.setMode('combine')
               setAppView('combine')
@@ -559,6 +564,25 @@ function Calculator({ navigate }: CalculatorProps) {
           onApply={(nextProfile, nextAssumptions) => {
             setProfile(nextProfile)
             setAssumptions(nextAssumptions)
+            // #10: in combine-new path the guided setup must also seed the
+            // workspace baseline so simulatePortfolio picks up the user's
+            // inputs. Only the global (non-per-product-singleton) fields are
+            // patched — per-product data lives in the workspace instance arrays
+            // and must not be overwritten with singleton assumptions.
+            if (appView === 'combine') {
+              portfolioState.patchBaseline({
+                profile: nextProfile,
+                assumptions: {
+                  ...portfolioState.workspace.baseline.assumptions,
+                  statutoryPension: nextAssumptions.statutoryPension,
+                  inflationRate: nextAssumptions.inflationRate,
+                  retirementEndAge: nextAssumptions.retirementEndAge,
+                  returnScenarios: nextAssumptions.returnScenarios,
+                  monteCarlo: nextAssumptions.monteCarlo,
+                  visibleProducts: nextAssumptions.visibleProducts,
+                },
+              })
+            }
           }}
           onComplete={(options) => {
             guidedSetup.completeSetup(options)
