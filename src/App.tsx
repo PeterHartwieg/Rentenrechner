@@ -93,6 +93,15 @@ function Calculator({ navigate }: CalculatorProps) {
   const ui = useWorkspaceUiState()
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
   const isCombineMode = portfolioState.mode === 'combine'
+  // In combine mode, resolve the effective scenario id against workspace
+  // assumptions (not singleton) so custom scenarios added via the toolbar pill
+  // are found and the pill highlights correctly. (#25 round 2)
+  const combineEffectiveScenarioId = (() => {
+    const scenarios = portfolioState.workspace.baseline.assumptions.returnScenarios
+    return scenarios.some((s) => s.id === ui.selectedScenarioId)
+      ? ui.selectedScenarioId
+      : (scenarios.find((s) => s.id === 'basis')?.id ?? scenarios[0]?.id ?? 'basis')
+  })()
   // In combine mode the CSV / print exports must consume portfolio output
   // rather than singleton-compare data (Group G issue 11). The bundle is
   // assembled lazily so compare-mode never pays the cost.
@@ -264,7 +273,7 @@ function Calculator({ navigate }: CalculatorProps) {
           assumptions: { ...current, ...updater(current) },
         })
       }}
-      selectedScenarioId={result.effectiveScenarioId}
+      selectedScenarioId={combineEffectiveScenarioId}
       onSelectScenario={ui.setSelectedScenarioId}
       showRealValues={ui.showRealValues}
       onShowRealValuesChange={ui.setShowRealValues}
@@ -286,18 +295,13 @@ function Calculator({ navigate }: CalculatorProps) {
   // the combined simulation bundle to drive the income summary panel and the
   // nächsten-Euro recommender. Using the selected scenario ensures the
   // RecommenderCard reacts when the user switches the scenario picker (#08).
-  const combineSelectedScenarioId = (() => {
-    const scenarios = portfolioState.workspace.baseline.assumptions.returnScenarios
-    // Prefer the UI-selected scenario when it exists in the workspace scenario list.
-    if (result.effectiveScenarioId && combineSimulation.combinedByScenarioId[result.effectiveScenarioId]) {
-      return result.effectiveScenarioId
-    }
-    return (
-      scenarios.find((s) => s.id === 'basis')?.id ??
-      scenarios[0]?.id ??
-      'basis'
-    )
-  })()
+  // `combineEffectiveScenarioId` is already resolved against workspace
+  // assumptions so custom scenarios are visible here too (#25 round 2).
+  const combineSelectedScenarioId = combineSimulation.combinedByScenarioId[combineEffectiveScenarioId]
+    ? combineEffectiveScenarioId
+    : (portfolioState.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')?.id ??
+       portfolioState.workspace.baseline.assumptions.returnScenarios[0]?.id ??
+       'basis')
   const combineBasisScenarioId = combineSelectedScenarioId
   const combineBasisResult = combineSimulation.combinedByScenarioId[combineBasisScenarioId]
   const combineBasisLabel =

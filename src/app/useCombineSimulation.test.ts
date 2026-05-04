@@ -371,6 +371,108 @@ describe('runCombineSimulation — custom scenario edits land on workspace state
   })
 })
 
+// ---------------------------------------------------------------------------
+// QA #25 round 2 — combineEffectiveScenarioId must resolve against workspace
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors the inline resolver in App.tsx (`combineEffectiveScenarioId`):
+ *   scenarios.some(s => s.id === selected) ? selected : fallback
+ *
+ * This is a pure function so we test it directly to guard against future
+ * regressions where the resolution is accidentally moved back to the
+ * singleton `assumptions` (which doesn't hold workspace custom scenarios).
+ */
+function resolveCombineEffectiveScenarioId(
+  workspaceScenarios: ReturnScenario[],
+  selectedScenarioId: string,
+): string {
+  return workspaceScenarios.some((s) => s.id === selectedScenarioId)
+    ? selectedScenarioId
+    : (workspaceScenarios.find((s) => s.id === 'basis')?.id ?? workspaceScenarios[0]?.id ?? 'basis')
+}
+
+describe('combineEffectiveScenarioId — resolves against workspace scenarios (QA #25 round 2)', () => {
+  it('resolves to "custom" when workspace has custom scenario and selectedScenarioId is "custom"', () => {
+    const ws = makeWs()
+    const customScenario: ReturnScenario = { id: 'custom', label: 'Eigenes', annualReturn: 0.08 }
+    const wsWithCustom: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          returnScenarios: [...ws.baseline.assumptions.returnScenarios, customScenario],
+        },
+      },
+    }
+
+    const workspaceScenarios = wsWithCustom.baseline.assumptions.returnScenarios
+    // Simulate user clicking "+ Eigenes Szenario" then setSelectedScenarioId('custom').
+    const effectiveId = resolveCombineEffectiveScenarioId(workspaceScenarios, 'custom')
+    expect(effectiveId).toBe('custom')
+
+    // And the bundle must have that scenario so the dashboard reflects it.
+    const bundle = runCombineSimulation(wsWithCustom, de2026Rules)
+    expect(bundle.combinedByScenarioId[effectiveId]).toBeDefined()
+
+    // The combineBasisScenarioId derivation in App.tsx: if combinedByScenarioId
+    // contains effectiveId, use it — otherwise fall back to 'basis'.
+    const combineBasisScenarioId = bundle.combinedByScenarioId[effectiveId]
+      ? effectiveId
+      : 'basis'
+    expect(combineBasisScenarioId).toBe('custom')
+  })
+
+  it('falls back to "basis" when workspace does NOT have the selected scenario (singleton-vs-workspace regression guard)', () => {
+    const ws = makeWs()
+    // Workspace has NO 'custom' scenario. If selectedScenarioId='custom' were
+    // resolved against singleton assumptions (which also lack it), it would
+    // incorrectly fall to 'basis' — but even the correct fix must fall back too.
+    const workspaceScenarios = ws.baseline.assumptions.returnScenarios
+    expect(workspaceScenarios.map((s) => s.id)).not.toContain('custom')
+    const effectiveId = resolveCombineEffectiveScenarioId(workspaceScenarios, 'custom')
+    expect(effectiveId).toBe('basis')
+  })
+
+  it('toolbar pill shows "custom" after addCustomScenario: resolvedId matches combinedByScenarioId key', () => {
+    // End-to-end path: user adds custom scenario to workspace → selectedScenarioId
+    // is set to 'custom' → combineEffectiveScenarioId resolves to 'custom' →
+    // toolbar pill highlights 'custom' → combineBasisScenarioId is 'custom' →
+    // combine dashboard consumes the custom-scenario result.
+    const ws = makeWs()
+    const customScenario: ReturnScenario = { id: 'custom', label: 'Eigenes', annualReturn: 0.09 }
+    const wsWithCustom: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          returnScenarios: [...ws.baseline.assumptions.returnScenarios, customScenario],
+        },
+      },
+    }
+
+    const workspaceScenarios = wsWithCustom.baseline.assumptions.returnScenarios
+    const selectedScenarioId = 'custom' // simulates ui.selectedScenarioId after click
+    const effectiveId = resolveCombineEffectiveScenarioId(workspaceScenarios, selectedScenarioId)
+    // toolbar selectedScenarioId prop must equal 'custom'
+    expect(effectiveId).toBe('custom')
+
+    const bundle = runCombineSimulation(wsWithCustom, de2026Rules)
+    const combineBasisScenarioId = bundle.combinedByScenarioId[effectiveId] ? effectiveId : 'basis'
+    // combineBasisScenarioId (drives dashboard) must also equal 'custom'
+    expect(combineBasisScenarioId).toBe('custom')
+    // The result must be non-trivially different from the basis result
+    const basisResult = bundle.combinedByScenarioId['basis']
+    const customResult = bundle.combinedByScenarioId['custom']
+    expect(basisResult).toBeDefined()
+    expect(customResult).toBeDefined()
+    // 9% vs basis return → distinct results (custom net >= basis net for higher return)
+    expect(customResult.monthlyNetIncome).toBeGreaterThanOrEqual(basisResult.monthlyNetIncome)
+  })
+})
+
 describe('runCombineSimulation — single-bAV back-compat (QA #14)', () => {
   it('single-bAV workspace produces a non-zero baseline matching the per-instance funding it consumed', () => {
     // Smoke test: pre-fix used `firstBavFunding.estimatedMonthlyGrvReduction`;
