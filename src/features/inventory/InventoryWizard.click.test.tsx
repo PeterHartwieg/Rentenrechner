@@ -24,9 +24,21 @@ function makeProps(overrides?: Partial<Parameters<typeof InventoryWizard>[0]>) {
   }
 }
 
+/**
+ * Advance past step 0 (personal details) to reach the product checklist.
+ * The wizard starts on step 0; clicking "Weiter zu deinen Verträgen" moves to step 1.
+ */
+function advanceToProductStep(container: HTMLElement) {
+  const nextBtn = Array.from(container.querySelectorAll<HTMLButtonElement>('button[type="button"]'))
+    .find((b) => b.textContent?.includes('Weiter zu deinen Verträgen'))
+  if (!nextBtn) throw new Error('Could not find "Weiter zu deinen Verträgen" button')
+  fireEvent.click(nextBtn)
+}
+
 describe('InventoryWizard — checkbox click target (QA #01)', () => {
   it('clicking the label area for a non-GRV product checks the checkbox', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
+    advanceToProductStep(container)
 
     // Find the label for the ETF product row
     const etfLabel = container.querySelector('label[for="inventory-check-etf"]')
@@ -46,6 +58,7 @@ describe('InventoryWizard — checkbox click target (QA #01)', () => {
 
   it('clicking the label a second time unchecks the checkbox', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
+    advanceToProductStep(container)
 
     const etfLabel = container.querySelector('label[for="inventory-check-etf"]')!
     const etfCheckbox = container.querySelector<HTMLInputElement>('#inventory-check-etf')!
@@ -59,6 +72,7 @@ describe('InventoryWizard — checkbox click target (QA #01)', () => {
 
   it('clicking the label text span also toggles the checkbox', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
+    advanceToProductStep(container)
 
     // The label contains nested spans — click the product-name span
     const bavLabel = container.querySelector('label[for="inventory-check-bav"]')!
@@ -74,6 +88,7 @@ describe('InventoryWizard — checkbox click target (QA #01)', () => {
 
   it('GRV checkbox remains checked and cannot be toggled via label click', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
+    advanceToProductStep(container)
 
     const grvCheckbox = container.querySelector<HTMLInputElement>('#inventory-check-grv')!
     expect(grvCheckbox.checked).toBe(true)
@@ -87,6 +102,7 @@ describe('InventoryWizard — checkbox click target (QA #01)', () => {
 
   it('label element directly wraps the input (no intermediate container blocking hits)', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
+    advanceToProductStep(container)
 
     // The input must be a direct descendant of the label element
     const bavLabel = container.querySelector('label[for="inventory-check-bav"]')!

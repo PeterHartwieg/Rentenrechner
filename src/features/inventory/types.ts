@@ -86,3 +86,28 @@ export type AnyProductDraft =
   | BasisrenteDraft
   | AvdDraft
   | EtfDraft
+
+// ---------------------------------------------------------------------------
+// Step 0: personal details draft (issue #06)
+// ---------------------------------------------------------------------------
+
+/**
+ * Personal details collected in wizard step 0 before the product checklist.
+ *
+ * - birthYear is the primary input; age is derived as (currentYear − birthYear).
+ *   The wizard stores birthYear so it can show derived age as a hint.
+ * - steuerklasse: only class 1 is currently supported by the engine (see
+ *   scenarioSchema.ts validateProfile). The field is collected for forward-
+ *   compatibility and surfaced in the UI, but written as `taxClass: 1`
+ *   regardless of input until multi-class engine support lands.
+ * - ehegattensplitting: maps to `partner` on the Scenario (populated as a
+ *   minimal partner profile with default values when true).
+ */
+export interface PersonalDetailsDraft {
+  birthYear: number
+  grossSalaryYear: number
+  /** Always 1 until engine multi-class support lands. Stored for future use. */
+  steuerklasse: 1
+  ehegattensplitting: boolean
+  retirementAge: number
+}

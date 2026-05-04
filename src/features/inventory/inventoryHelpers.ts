@@ -29,6 +29,7 @@ import type {
   BasisrenteDraft,
   AvdDraft,
   EtfDraft,
+  PersonalDetailsDraft,
 } from './types'
 
 // ---------------------------------------------------------------------------
@@ -418,7 +419,15 @@ export interface BuildWorkspaceDraftParams {
   basisrenteDraft: BasisrenteDraft | BasisrenteDraft[] | null
   avdDraft: AvdDraft | AvdDraft[] | null
   etfDraft: EtfDraft | EtfDraft[] | null
+  /** @deprecated Use `personalDetails` instead. Kept for backward-compat. */
   grossSalaryYear: number
+  /**
+   * Personal details from wizard step 0 (issue #06).
+   * When provided, populates profile.age, retirementAge, grossSalaryYear, and
+   * (when ehegattensplitting=true) a minimal partner profile on the scenario.
+   * When absent, grossSalaryYear is used as before (backward-compat).
+   */
+  personalDetails?: PersonalDetailsDraft
 }
 
 /** Normalise a possibly-null singleton or array draft to a non-null array. */
@@ -437,10 +446,19 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
     avdDraft,
     etfDraft,
     grossSalaryYear,
+    personalDetails,
   } = params
 
+  // Resolve effective profile values: prefer personalDetails when present.
+  const CURRENT_YEAR = new Date().getFullYear()
+  const effectiveSalary = personalDetails?.grossSalaryYear ?? grossSalaryYear
+  const effectiveAge = personalDetails
+    ? Math.max(0, CURRENT_YEAR - personalDetails.birthYear)
+    : defaultProfile.age
+  const effectiveRetirementAge = personalDetails?.retirementAge ?? defaultProfile.retirementAge
+
   const ep = grvDraft.useYearsEstimate
-    ? estimateEpFromYears(grvDraft.yearsWorked, grossSalaryYear)
+    ? estimateEpFromYears(grvDraft.yearsWorked, effectiveSalary)
     : grvDraft.currentEntgeltpunkte
 
   const assumptionsV2: WorkspaceAssumptionsV2 = {
@@ -461,10 +479,26 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
     visibleProducts: [],
   }
 
+  const profile = {
+    ...defaultProfile,
+    grossSalaryYear: effectiveSalary,
+    age: effectiveAge,
+    retirementAge: effectiveRetirementAge,
+    taxClass: 1 as const,
+  }
+
+  // Ehegattensplitting: add a minimal partner profile (age = profile age,
+  // zero income — the engine uses this to enable Zusammenveranlagung).
+  const partner: import('../domain/profile').PersonalProfile | undefined =
+    personalDetails?.ehegattensplitting
+      ? { ...defaultProfile, age: effectiveAge, grossSalaryYear: 0 }
+      : undefined
+
   const baseline: Scenario = {
     id: newScenarioId('baseline'),
     label: 'Mein Plan',
-    profile: { ...defaultProfile, grossSalaryYear },
+    profile,
+    ...(partner ? { partner } : {}),
     assumptions: assumptionsV2,
     createdAt: new Date().toISOString(),
     origin: 'baseline',

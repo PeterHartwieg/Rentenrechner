@@ -23,7 +23,7 @@
 
 import './InventoryWizard.css'
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
-import { X, Check, Plus, Trash2 } from 'lucide-react'
+import { X, Check, Plus, Trash2, ArrowRight } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
 import type { EvidenceState } from '../../domain/instances'
 import { saveWorkspace } from '../../storage'
@@ -45,7 +45,9 @@ import type {
   BasisrenteDraft,
   AvdDraft,
   EtfDraft,
+  PersonalDetailsDraft,
 } from './types'
+import { NumberField } from '../../ui/NumberField'
 import { VintageChips } from './VintageChips'
 import {
   bavDraftVintageAtoms,
@@ -56,6 +58,9 @@ import {
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+/** Wizard step: 0 = personal details, 1 = product checklist. */
+type WizardStep = 0 | 1
 
 interface Props {
   /** Profile data for seeding GRV estimation and Riester Zulagen. */
@@ -75,6 +80,151 @@ interface Props {
 // ---------------------------------------------------------------------------
 
 const CURRENT_YEAR = new Date().getFullYear()
+
+// ---------------------------------------------------------------------------
+// Default personal details factory (step 0)
+// ---------------------------------------------------------------------------
+
+function defaultPersonalDetails(
+  seedAge: number,
+  seedRetirementAge: number,
+  seedGrossSalaryYear: number,
+): PersonalDetailsDraft {
+  return {
+    birthYear: CURRENT_YEAR - seedAge,
+    grossSalaryYear: seedGrossSalaryYear,
+    steuerklasse: 1,
+    ehegattensplitting: false,
+    retirementAge: seedRetirementAge,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PersonalDetailsStep — step 0 of the wizard
+// ---------------------------------------------------------------------------
+
+interface PersonalDetailsStepProps {
+  draft: PersonalDetailsDraft
+  onChange: (next: PersonalDetailsDraft) => void
+  onNext: () => void
+  onDismiss: () => void
+}
+
+function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDetailsStepProps) {
+  const derivedAge = CURRENT_YEAR - draft.birthYear
+
+  function validate(): string[] {
+    const errors: string[] = []
+    if (!Number.isInteger(draft.birthYear) || draft.birthYear < 1900 || draft.birthYear > CURRENT_YEAR - 10) {
+      errors.push('Bitte gib ein gültiges Geburtsjahr an (mind. 10 Jahre zurück).')
+    }
+    if (!Number.isFinite(draft.grossSalaryYear) || draft.grossSalaryYear < 0) {
+      errors.push('Bitte gib ein gültiges Bruttogehalt an.')
+    }
+    if (!Number.isInteger(draft.retirementAge) || draft.retirementAge < derivedAge + 1 || draft.retirementAge > 85) {
+      errors.push('Wunschrente-Alter muss nach dem aktuellen Alter und vor 85 liegen.')
+    }
+    return errors
+  }
+
+  function handleNext() {
+    const errors = validate()
+    if (errors.length > 0) return // errors are shown via native browser validation on inputs
+    onNext()
+  }
+
+  return (
+    <div className="inventory-personal-step" data-testid="personal-details-step">
+      <div className="inventory-personal-fields">
+        {/* Birth year */}
+        <div className="inventory-personal-field">
+          <NumberField
+            label="Geburtsjahr"
+            value={draft.birthYear}
+            min={1940}
+            max={CURRENT_YEAR - 10}
+            step={1}
+            decimals={0}
+            onChange={(v) => onChange({ ...draft, birthYear: v })}
+            data-testid="field-birth-year"
+          />
+          {Number.isFinite(derivedAge) && derivedAge >= 0 && derivedAge <= 110 && (
+            <p className="inventory-personal-hint">Aktuelles Alter: {derivedAge} Jahre</p>
+          )}
+        </div>
+
+        {/* Gross annual salary */}
+        <NumberField
+          label="Bruttogehalt pro Jahr"
+          value={draft.grossSalaryYear}
+          min={0}
+          max={2_000_000}
+          step={1000}
+          decimals={0}
+          suffix="€"
+          onChange={(v) => onChange({ ...draft, grossSalaryYear: v })}
+          data-testid="field-gross-salary"
+        />
+
+        {/* Steuerklasse (display-only note — engine only supports class 1 today) */}
+        <div className="inventory-personal-field" data-testid="field-steuerklasse">
+          <label className="inventory-personal-label">Steuerklasse</label>
+          <p className="inventory-personal-value">I (wird derzeit für alle Berechnungen verwendet)</p>
+        </div>
+
+        {/* Ehegattensplitting toggle */}
+        <div className="inventory-personal-field" data-testid="field-ehegattensplitting">
+          <label className="inventory-personal-check-label">
+            <input
+              type="checkbox"
+              checked={draft.ehegattensplitting}
+              onChange={(e) => onChange({ ...draft, ehegattensplitting: e.target.checked })}
+              aria-label="Ehegattensplitting / gemeinsame Veranlagung"
+            />
+            <span>Ehegattensplitting (gemeinsame Veranlagung)</span>
+          </label>
+        </div>
+
+        {/* Target retirement age */}
+        <NumberField
+          label="Gewünschtes Renteneintrittsalter"
+          value={draft.retirementAge}
+          min={50}
+          max={85}
+          step={1}
+          decimals={0}
+          suffix="Jahre"
+          onChange={(v) => onChange({ ...draft, retirementAge: v })}
+          data-testid="field-retirement-age"
+        />
+      </div>
+
+      <footer className="inventory-footer">
+        <p className="inventory-footer-note">
+          Keine Steuer-, Rechts- oder Anlageberatung. Diese Angaben dienen der
+          Illustration.
+        </p>
+        <div className="inventory-footer-actions">
+          <button
+            type="button"
+            className="inventory-btn-ghost"
+            onClick={onDismiss}
+          >
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="inventory-btn-primary"
+            onClick={handleNext}
+          >
+            Weiter zu deinen Verträgen
+            <ArrowRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </footer>
+    </div>
+  )
+}
 
 function defaultGrv(): GrvDraft {
   return {
@@ -276,6 +426,19 @@ export function InventoryWizard({
   onComplete,
   onDismiss,
 }: Props) {
+  // Step 0 = personal details; step 1 = product checklist.
+  const [step, setStep] = useState<WizardStep>(0)
+
+  // Step 0 draft — seeded from parent props so the wizard is pre-filled when
+  // the user has already set profile values in compare-mode.
+  const [personalDetails, setPersonalDetails] = useState<PersonalDetailsDraft>(
+    () => defaultPersonalDetails(age, retirementAge, grossSalaryYear),
+  )
+
+  // Derived values from personalDetails (used in product step for vintage chips etc.)
+  const effectiveAge = CURRENT_YEAR - personalDetails.birthYear
+  const effectiveRetirementAge = personalDetails.retirementAge
+
   // GRV is always "checked" (read-only) — everyone has the statutory pension.
   const [checkedProducts, setCheckedProducts] = useState<Set<string>>(
     () => new Set(['grv']),
@@ -443,7 +606,8 @@ export function InventoryWizard({
       basisrenteDraft: isChecked('basisrente') ? basisrenteDrafts : null,
       avdDraft: isChecked('altersvorsorgedepot') ? avdDrafts : null,
       etfDraft: isChecked('etf') ? etfDrafts : null,
-      grossSalaryYear,
+      grossSalaryYear: personalDetails.grossSalaryYear,
+      personalDetails,
     })
 
     saveWorkspace(workspace)
@@ -502,7 +666,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
-            <VintageChips atoms={bavDraftVintageAtoms(draft, age, retirementAge)} />
+            <VintageChips atoms={bavDraftVintageAtoms(draft, effectiveAge, effectiveRetirementAge)} />
             <BavCard
               draft={draft}
               onChange={(next) =>
@@ -534,7 +698,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
-            <VintageChips atoms={pavDraftVintageAtoms(draft, age, retirementAge)} />
+            <VintageChips atoms={pavDraftVintageAtoms(draft, effectiveAge, effectiveRetirementAge)} />
             <PavCard
               draft={draft}
               onChange={(next) =>
@@ -566,7 +730,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
-            <VintageChips atoms={riesterDraftVintageAtoms(draft, childBirthYears, age, retirementAge)} />
+            <VintageChips atoms={riesterDraftVintageAtoms(draft, childBirthYears, effectiveAge, effectiveRetirementAge)} />
             <RiesterCard
               draft={draft}
               onChange={(next) =>
@@ -682,6 +846,10 @@ export function InventoryWizard({
   // Render
   // ---------------------------------------------------------------------------
 
+  // Step-specific header text
+  const headingText = step === 0 ? 'Deine Angaben' : 'Was hast du schon?'
+  const eyebrowText = step === 0 ? 'Schritt 1 von 2' : 'Schritt 2 von 2'
+
   return (
     <div
       className="inventory-overlay"
@@ -694,9 +862,9 @@ export function InventoryWizard({
         {/* ── Header ───────────────────────────────────────────────── */}
         <header className="inventory-header">
           <div className="inventory-header-text">
-            <p className="inventory-eyebrow">Bestandsaufnahme</p>
+            <p className="inventory-eyebrow">{eyebrowText}</p>
             <h2 id="inventory-wizard-heading" className="inventory-title">
-              Was hast du schon?
+              {headingText}
             </h2>
           </div>
           <button
@@ -709,6 +877,19 @@ export function InventoryWizard({
           </button>
         </header>
 
+        {/* ── Step 0: personal details ──────────────────────────────── */}
+        {step === 0 && (
+          <PersonalDetailsStep
+            draft={personalDetails}
+            onChange={setPersonalDetails}
+            onNext={() => setStep(1)}
+            onDismiss={onDismiss}
+          />
+        )}
+
+        {/* ── Step 1: product checklist ─────────────────────────────── */}
+        {step === 1 && (
+          <>
         {/* ── Body ─────────────────────────────────────────────────── */}
         <div className="inventory-body">
           <p className="inventory-lede">
@@ -766,7 +947,7 @@ export function InventoryWizard({
                         <GrvCard
                           draft={grvDraft}
                           onChange={setGrvDraft}
-                          grossSalaryYear={grossSalaryYear}
+                          grossSalaryYear={personalDetails.grossSalaryYear}
                         />
                       </div>
                     )}
@@ -818,6 +999,8 @@ export function InventoryWizard({
             </button>
           </div>
         </footer>
+          </>
+        )}
       </div>
 
       {/* ── Remove confirmation dialog ─────────────────────────────── */}
