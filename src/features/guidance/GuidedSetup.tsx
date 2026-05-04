@@ -13,6 +13,7 @@ import {
   VISIBLE_PRODUCTS_BY_PATH,
   type GuidedPath,
 } from '../../content/triggers'
+import { estimateEpFromYears } from '../inventory/inventoryHelpers'
 import { WIZARD_REGISTRY } from './wizards/wizardRegistry'
 import type { BasicInputs, PathSpecific } from './wizards/shared'
 
@@ -214,25 +215,6 @@ export function GuidedSetup({
       </div>
     </div>
   )
-}
-
-/**
- * Back-calculate Entgeltpunkte from years worked × current gross salary.
- * EP/year = min(salary, BBG) / durchschnittsentgelt — same formula the engine uses
- * for future EP. Rough by construction (assumes constant salary), but consistent.
- */
-function estimateEpFromYears(years: number, grossSalaryYear: number): number {
-  if (!Number.isFinite(years) || years <= 0) return 0
-  if (!Number.isFinite(grossSalaryYear) || grossSalaryYear <= 0) return 0
-  const cappedSalary = Math.min(
-    grossSalaryYear,
-    de2026Rules.socialSecurity.pensionCapYear,
-  )
-  const epPerYear =
-    de2026Rules.socialSecurity.durchschnittsentgelt > 0
-      ? cappedSalary / de2026Rules.socialSecurity.durchschnittsentgelt
-      : 0
-  return Math.max(0, years * epPerYear)
 }
 
 /** Inverse of estimateEpFromYears, used to seed the years-worked field from existing state. */

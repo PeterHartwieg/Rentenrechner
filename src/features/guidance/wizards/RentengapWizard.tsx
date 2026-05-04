@@ -1,17 +1,6 @@
 import { Check } from 'lucide-react'
-import { de2026Rules } from '../../../rules/de2026'
+import { estimateEpFromYears } from '../../inventory/inventoryHelpers'
 import { SimpleNumber, type WizardProps } from './shared'
-
-function estimateEpFromYears(years: number, grossSalaryYear: number): number {
-  if (!Number.isFinite(years) || years <= 0) return 0
-  if (!Number.isFinite(grossSalaryYear) || grossSalaryYear <= 0) return 0
-  const cappedSalary = Math.min(grossSalaryYear, de2026Rules.socialSecurity.pensionCapYear)
-  const epPerYear =
-    de2026Rules.socialSecurity.durchschnittsentgelt > 0
-      ? cappedSalary / de2026Rules.socialSecurity.durchschnittsentgelt
-      : 0
-  return Math.max(0, years * epPerYear)
-}
 
 export function RentengapWizard({ basics, setBasics, extras, setExtras, onApplyAndComplete, onBack }: WizardProps) {
   return (
