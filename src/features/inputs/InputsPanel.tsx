@@ -29,6 +29,7 @@ import {
   type ProductInputsContext,
 } from './productUiRegistry'
 import { DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from '../../data/defaultScenario'
+import { InfoTip } from '../../ui/InfoTip'
 
 interface ScenarioLib {
   library: SavedScenario[]
@@ -304,7 +305,12 @@ function CompareSubModeToggle({
             checked={subMode === 'equal_input'}
             onChange={() => onSubModeChange('equal_input')}
           />{' '}
-          Gleicher Beitrag (€/Monat)
+          Gleicher Beitrag – ETF &amp; priv. RV (€/Monat){' '}
+          <InfoTip
+            icon="info"
+            label="Erklärung: Gleicher Beitrag"
+            text="Nur ETF und private Rentenversicherung werden auf diesen Betrag gesetzt. bAV läuft weiterhin über die eigene Entgeltumwandlung (§ 3 Nr. 63 EStG); Basisrente, AVD und Riester nutzen ihre eigenen Beitragsfelder."
+          />
         </label>
       </fieldset>
       {subMode === 'equal_input' && (
