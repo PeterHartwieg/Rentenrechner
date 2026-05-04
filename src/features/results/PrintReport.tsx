@@ -1,6 +1,12 @@
 import './PrintReport.css'
 import type { ReactNode } from 'react'
-import type { PersonalProfile, ProductResult, ScenarioAssumptions, SimulationResult } from '../../domain'
+import type {
+  PersonalProfile,
+  ProductResult,
+  ScenarioAssumptions,
+  SimulationResult,
+  StatutoryPensionResult,
+} from '../../domain'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { getProductMeta } from '../../app/productPresentation'
@@ -22,6 +28,20 @@ interface Props {
   }
   /** When true, render the combine-mode view (requires `portfolio`). */
   combineMode?: boolean
+  /**
+   * Combine-mode overrides (issue 27).
+   *
+   * In combine mode the workspace baseline can diverge from the singleton
+   * compare state. These props ensure the PDF reflects workspace data, not
+   * the singleton defaults. Omitting them falls back to the singleton props
+   * so compare-mode callers need no change.
+   */
+  /** Workspace baseline profile (combine mode). Overrides singleton `profile`. */
+  combineProfile?: PersonalProfile
+  /** GRV projection from `useCombineSimulation` (combine mode). Overrides `simulation.statutoryPension`. */
+  combineGrv?: StatutoryPensionResult
+  /** Workspace `returnScenarios` (combine mode). Overrides `assumptions.returnScenarios` for scenario ordering. */
+  combineReturnScenarios?: ScenarioAssumptions['returnScenarios']
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -35,7 +55,16 @@ function KvRow({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-export function PrintReport({ profile, assumptions, simulation, portfolio, combineMode }: Props) {
+export function PrintReport({
+  profile,
+  assumptions,
+  simulation,
+  portfolio,
+  combineMode,
+  combineProfile,
+  combineGrv,
+  combineReturnScenarios,
+}: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
     month: '2-digit',
@@ -49,9 +78,9 @@ export function PrintReport({ profile, assumptions, simulation, portfolio, combi
   if (combineMode && portfolio) {
     return (
       <CombinePrintReport
-        profile={profile}
-        assumptions={assumptions}
-        simulation={simulation}
+        profile={combineProfile ?? profile}
+        grv={combineGrv ?? simulation.statutoryPension}
+        returnScenarios={combineReturnScenarios ?? assumptions.returnScenarios}
         portfolio={portfolio}
         date={date}
       />
@@ -300,25 +329,26 @@ export function PrintReport({ profile, assumptions, simulation, portfolio, combi
 
 interface CombinePrintReportProps {
   profile: PersonalProfile
-  assumptions: ScenarioAssumptions
-  simulation: SimulationResult
+  /** GRV projection — must come from workspace (useCombineSimulation), not singleton. */
+  grv: StatutoryPensionResult
+  /** Scenario list — must come from workspace baseline, not singleton assumptions. */
+  returnScenarios: ScenarioAssumptions['returnScenarios']
   portfolio: NonNullable<Props['portfolio']>
   date: string
 }
 
-function CombinePrintReport({ profile, assumptions, simulation, portfolio, date }: CombinePrintReportProps) {
-  const grv = simulation.statutoryPension
+function CombinePrintReport({ profile, grv, returnScenarios, portfolio, date }: CombinePrintReportProps) {
   const { perInstance, combinedByScenarioId, scenarioLabels } = portfolio
 
-  // Stable scenario order: prefer assumptions.returnScenarios order, fall back
-  // to insertion order in combinedByScenarioId.
+  // Stable scenario order: prefer workspace returnScenarios order (issue 27),
+  // fall back to insertion order in combinedByScenarioId.
   const orderedScenarioIds: string[] = (() => {
-    const fromAssumptions: string[] = assumptions.returnScenarios
+    const fromScenarios: string[] = returnScenarios
       .map((s) => s.id as string)
       .filter((id) => id in combinedByScenarioId)
-    const seen = new Set<string>(fromAssumptions)
+    const seen = new Set<string>(fromScenarios)
     const remainder = Object.keys(combinedByScenarioId).filter((id) => !seen.has(id))
-    return [...fromAssumptions, ...remainder]
+    return [...fromScenarios, ...remainder]
   })()
 
   // Flatten per-instance × scenario rows; sort by instanceId then scenarioId

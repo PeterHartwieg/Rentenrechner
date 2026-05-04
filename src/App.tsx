@@ -667,6 +667,13 @@ function Calculator({ navigate }: CalculatorProps) {
         simulation={simulation}
         combineMode={isCombineMode}
         portfolio={combineExportBundle}
+        combineProfile={isCombineMode ? portfolioState.workspace.baseline.profile : undefined}
+        combineGrv={isCombineMode ? combineSimulation.statutoryPension : undefined}
+        combineReturnScenarios={
+          isCombineMode
+            ? portfolioState.workspace.baseline.assumptions.returnScenarios
+            : undefined
+        }
       />
 
       <LegalFooter navigate={navigate} />

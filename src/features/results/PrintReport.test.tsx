@@ -11,8 +11,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { PrintReport } from './PrintReport'
 import { defaultProfile, defaultAssumptions } from '../../data/defaultScenario'
-import type { SimulationResult } from '../../domain'
-import type { ProductResult } from '../../domain'
+import type { SimulationResult, ProductResult, ScenarioAssumptions } from '../../domain'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 
 afterEach(() => cleanup())
@@ -194,5 +193,131 @@ describe('PrintReport', () => {
       />
     )
     expect(container.textContent).toContain('Produktvergleich — alle Szenarien')
+  })
+
+  // -------------------------------------------------------------------------
+  // Issue 27: combine-mode must source profile/GRV/scenarios from workspace,
+  // never from singleton state. Pin the divergence with a workspace that
+  // differs from the singleton defaults.
+  // -------------------------------------------------------------------------
+
+  it('combine-mode uses workspace profile, not singleton profile', () => {
+    // Workspace profile deliberately differs from singleton (different salary).
+    const workspaceProfile = { ...defaultProfile, grossSalaryYear: 99_000 }
+    // Singleton keeps the default 75_000.
+
+    const bavResult: ProductResult = {
+      ...(makeSimulation('user_confirmed').products[0] as ProductResult),
+      productId: 'bav',
+      label: 'bAV',
+      instanceId: 'bav-1',
+    } as unknown as ProductResult
+
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+        combineMode={true}
+        portfolio={{
+          perInstance: { 'bav-1': [bavResult] },
+          combinedByScenarioId: { basis: makeCombined(2200) },
+          scenarioLabels: { basis: 'Basis' },
+        }}
+        combineProfile={workspaceProfile}
+      />
+    )
+    // Workspace salary (99_000) must appear; singleton default (75_000) must NOT.
+    expect(container.textContent).toContain('99.000')
+    expect(container.textContent).not.toContain('75.000')
+  })
+
+  it('combine-mode uses workspace GRV (combineGrv), not singleton simulation.statutoryPension', () => {
+    // Singleton GRV: 1000 gross / 900 net (from makeSimulation).
+    // Workspace GRV: deliberately different values.
+    const workspaceGrv = {
+      grossMonthlyPension: 1_234,
+      netMonthlyPension: 1_111,
+      projectedEntgeltpunkte: 42,
+      taxMonthly: 100,
+      kvPvMonthly: 23,
+      grvReductionApplied: 0,
+    }
+
+    const bavResult: ProductResult = {
+      ...(makeSimulation('user_confirmed').products[0] as ProductResult),
+      productId: 'bav',
+      label: 'bAV',
+      instanceId: 'bav-1',
+    } as unknown as ProductResult
+
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+        combineMode={true}
+        portfolio={{
+          perInstance: { 'bav-1': [bavResult] },
+          combinedByScenarioId: { basis: makeCombined(2200) },
+          scenarioLabels: { basis: 'Basis' },
+        }}
+        combineGrv={workspaceGrv}
+      />
+    )
+    // Workspace GRV gross 1_234 / EP 42 must appear in the GRV block.
+    // formatCurrency(1234, 0) → "1.234 €"; formatNumber(42, 1) → "42"
+    expect(container.textContent).toContain('1.234')
+    expect(container.textContent).toContain('42 EP')
+    // Singleton had grossMonthlyPension 1_000 and EP 35 — must be absent.
+    // (1_000 formats as "1.000 €" — avoid false-positive match against "1.000" which
+    //  could appear elsewhere, so we check the EP count which is unambiguous.)
+    expect(container.textContent).not.toContain('35 EP')
+  })
+
+  it('combine-mode uses workspace returnScenarios for scenario ordering', () => {
+    // Workspace has a custom scenario order: optimistisch before basis.
+    const workspaceScenarios: ScenarioAssumptions['returnScenarios'] = [
+      { id: 'optimistisch', label: 'Optimistisch', annualReturn: 0.09 },
+      { id: 'basis', label: 'Basis', annualReturn: 0.06 },
+    ]
+    // Singleton assumptions has the default scenario set.
+
+    const bavResult: ProductResult = {
+      ...(makeSimulation('user_confirmed').products[0] as ProductResult),
+      productId: 'bav',
+      label: 'bAV',
+      instanceId: 'bav-1',
+    } as unknown as ProductResult
+
+    const combined: Record<string, CombinedResult> = {
+      optimistisch: makeCombined(3000),
+      basis: makeCombined(2200),
+    }
+
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+        combineMode={true}
+        portfolio={{
+          perInstance: { 'bav-1': [bavResult] },
+          combinedByScenarioId: combined,
+          scenarioLabels: { basis: 'Basis', optimistisch: 'Optimistisch' },
+        }}
+        combineReturnScenarios={workspaceScenarios}
+      />
+    )
+    // Both scenarios should be rendered in the combined income table.
+    expect(container.textContent).toContain('Optimistisch')
+    expect(container.textContent).toContain('Basis')
+    // The workspace scenario list drives scenario rendering.
+    // (Ordering is asserted by checking both appear; DOM order matches prop order.)
+    const tableText = container.querySelector('.pr-table')?.textContent ?? ''
+    const idxOpt = tableText.indexOf('Optimistisch')
+    const idxBasis = tableText.indexOf('Basis')
+    // workspace order: optimistisch first, then basis
+    expect(idxOpt).toBeLessThan(idxBasis)
   })
 })
