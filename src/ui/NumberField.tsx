@@ -67,7 +67,9 @@ export function NumberField({
     if (draft === null) return
     const raw = draft
     setDraft(null)
-    if (!Number.isFinite(Number(raw))) return
+    // Empty string is not a valid number — discard without calling onCommit so
+    // the engine value is preserved (the field will revert to `canonical`).
+    if (raw.trim() === '' || !Number.isFinite(Number(raw))) return
     onCommit?.(raw)
   }
 
