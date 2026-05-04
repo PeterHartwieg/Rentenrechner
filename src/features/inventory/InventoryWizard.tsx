@@ -147,80 +147,101 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
   }
 
   return (
-    <div className="inventory-personal-step" data-testid="personal-details-step">
-      <div className="inventory-personal-fields">
-        {/* Birth year */}
-        <div className="inventory-personal-field">
-          <NumberField
-            label="Geburtsjahr"
-            value={draft.birthYear}
-            min={1940}
-            max={CURRENT_YEAR - 10}
-            step={1}
-            decimals={0}
-            onCommit={(v) => handleChange({ ...draft, birthYear: Number(v) })}
-          />
-          {Number.isFinite(derivedAge) && derivedAge >= 0 && derivedAge <= 110 && (
-            <p className="inventory-personal-hint">Aktuelles Alter: {derivedAge} Jahre</p>
-          )}
+    <div data-testid="personal-details-step">
+      <div className="inventory-body">
+        <p className="inventory-lede">
+          Diese Angaben fließen in alle Produktberechnungen ein. Du kannst sie
+          jederzeit im Profil anpassen.
+        </p>
+
+        <div className="inventory-instance-card">
+          <p className="inventory-instance-section-heading">Persönliche Angaben</p>
+
+          <div className="inventory-field-grid">
+            {/* Birth year */}
+            <div className="inventory-field">
+              <NumberField
+                label="Geburtsjahr"
+                value={draft.birthYear}
+                min={1940}
+                max={CURRENT_YEAR - 10}
+                step={1}
+                decimals={0}
+                onCommit={(v) => handleChange({ ...draft, birthYear: Number(v) })}
+              />
+              {Number.isFinite(derivedAge) && derivedAge >= 0 && derivedAge <= 110 && (
+                <p className="inventory-field-hint">Aktuelles Alter: {derivedAge} Jahre</p>
+              )}
+            </div>
+
+            {/* Gross annual salary */}
+            <div className="inventory-field">
+              <NumberField
+                label="Bruttogehalt pro Jahr"
+                value={draft.grossSalaryYear}
+                min={0}
+                max={2_000_000}
+                step={1000}
+                decimals={0}
+                suffix="€"
+                onCommit={(v) => handleChange({ ...draft, grossSalaryYear: Number(v) })}
+              />
+            </div>
+
+            {/* Target retirement age */}
+            <div className="inventory-field">
+              <NumberField
+                label="Gewünschtes Renteneintrittsalter"
+                value={draft.retirementAge}
+                min={50}
+                max={85}
+                step={1}
+                decimals={0}
+                suffix="Jahre"
+                onCommit={(v) => handleChange({ ...draft, retirementAge: Number(v) })}
+              />
+            </div>
+
+            {/* Steuerklasse (display-only note — engine only supports class 1 today) */}
+            <div className="inventory-field" data-testid="field-steuerklasse">
+              <span>Steuerklasse</span>
+              <div className="inventory-input-shell">
+                <input type="text" readOnly value="I" aria-label="Steuerklasse" />
+              </div>
+              <p className="inventory-field-hint">
+                Wird derzeit für alle Berechnungen verwendet.
+              </p>
+            </div>
+          </div>
+
+          {/* Ehegattensplitting toggle — full width below the grid */}
+          <div className="inventory-field" data-testid="field-ehegattensplitting">
+            <span>Steuerliche Veranlagung</span>
+            <label className="field-inline">
+              <input
+                type="checkbox"
+                checked={draft.ehegattensplitting}
+                onChange={(e) => handleChange({ ...draft, ehegattensplitting: e.target.checked })}
+                aria-label="Ehegattensplitting / gemeinsame Veranlagung"
+              />
+              <span>Ehegattensplitting (gemeinsame Veranlagung)</span>
+            </label>
+          </div>
         </div>
 
-        {/* Gross annual salary */}
-        <NumberField
-          label="Bruttogehalt pro Jahr"
-          value={draft.grossSalaryYear}
-          min={0}
-          max={2_000_000}
-          step={1000}
-          decimals={0}
-          suffix="€"
-          onCommit={(v) => handleChange({ ...draft, grossSalaryYear: Number(v) })}
-        />
-
-        {/* Steuerklasse (display-only note — engine only supports class 1 today) */}
-        <div className="inventory-personal-field" data-testid="field-steuerklasse">
-          <label className="inventory-personal-label">Steuerklasse</label>
-          <p className="inventory-personal-value">I (wird derzeit für alle Berechnungen verwendet)</p>
-        </div>
-
-        {/* Ehegattensplitting toggle */}
-        <div className="inventory-personal-field" data-testid="field-ehegattensplitting">
-          <label className="inventory-personal-check-label">
-            <input
-              type="checkbox"
-              checked={draft.ehegattensplitting}
-              onChange={(e) => handleChange({ ...draft, ehegattensplitting: e.target.checked })}
-              aria-label="Ehegattensplitting / gemeinsame Veranlagung"
-            />
-            <span>Ehegattensplitting (gemeinsame Veranlagung)</span>
-          </label>
-        </div>
-
-        {/* Target retirement age */}
-        <NumberField
-          label="Gewünschtes Renteneintrittsalter"
-          value={draft.retirementAge}
-          min={50}
-          max={85}
-          step={1}
-          decimals={0}
-          suffix="Jahre"
-          onCommit={(v) => handleChange({ ...draft, retirementAge: Number(v) })}
-        />
+        {validationErrors.length > 0 && (
+          <ul
+            className="inventory-validation-errors"
+            role="alert"
+            aria-live="polite"
+            data-testid="personal-details-errors"
+          >
+            {validationErrors.map((err) => (
+              <li key={err}>{err}</li>
+            ))}
+          </ul>
+        )}
       </div>
-
-      {validationErrors.length > 0 && (
-        <ul
-          className="inventory-validation-errors inventory-personal-errors"
-          role="alert"
-          aria-live="polite"
-          data-testid="personal-details-errors"
-        >
-          {validationErrors.map((err) => (
-            <li key={err}>{err}</li>
-          ))}
-        </ul>
-      )}
 
       <footer className="inventory-footer">
         <p className="inventory-footer-note">
