@@ -854,6 +854,7 @@ interface InstanceHeaderProps {
 function InstanceHeader({
   label,
   instanceCount,
+  productId,
   draft,
   canRemove,
   onLabelChange,
@@ -864,16 +865,22 @@ function InstanceHeader({
     return null
   }
 
+  const isEtf = productId === 'etf'
+  const labelPrefix = isEtf ? 'Depot:' : 'Vertrag:'
+  const ariaLabel = isEtf ? 'Depotbezeichnung' : 'Vertragsbezeichnung'
+  const removeAriaLabel = isEtf ? 'Dieses Depot entfernen' : 'Diesen Vertrag entfernen'
+  const removeTitle = isEtf ? 'Depot entfernen' : 'Vertrag entfernen'
+
   return (
     <div className="inv-instance-header">
       <div className="inv-instance-label-wrap">
-        <span className="inv-instance-label-prefix">Vertrag:</span>
+        <span className="inv-instance-label-prefix">{labelPrefix}</span>
         <input
           type="text"
           className="inv-instance-label-input"
           value={draft.instanceLabel ?? draft.anbieter ?? label}
           placeholder={label}
-          aria-label="Vertragsbezeichnung"
+          aria-label={ariaLabel}
           onChange={(e) => onLabelChange(e.target.value)}
         />
       </div>
@@ -882,8 +889,8 @@ function InstanceHeader({
           type="button"
           className="inv-remove-btn"
           onClick={onRemove}
-          aria-label="Diesen Vertrag entfernen"
-          title="Vertrag entfernen"
+          aria-label={removeAriaLabel}
+          title={removeTitle}
         >
           <Trash2 size={14} aria-hidden="true" />
           Entfernen

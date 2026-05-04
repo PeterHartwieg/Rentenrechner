@@ -157,7 +157,12 @@ const STATUS_OPTIONS: readonly { value: InstanceStatus; label: string }[] = [
 // Universal fields (shared across all products)
 // ---------------------------------------------------------------------------
 
-function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvidence }: BaseProps<T>) {
+interface UniversalFieldsProps<T extends ProductDraftState> extends BaseProps<T> {
+  /** When true, hides Vertragsbeginn and uses Depot/Sparplan-flavored copy. */
+  isEtf?: boolean
+}
+
+function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvidence, isEtf }: UniversalFieldsProps<T>) {
   const update = (patch: Partial<ProductDraftState>) =>
     onChange({ ...draft, ...patch } as T)
 
@@ -165,29 +170,32 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
 
   return (
     <div className="inventory-field-grid">
-      <InvField
-        label="Vertragsbeginn (Jahr)"
-        hint="Beeinflusst die steuerliche Einordnung (z. B. Altvertrag vor 2005)."
-      >
-        <InvNumber
-          value={draft.contractStartYear}
-          min={1970}
-          max={currentYear}
-          step={1}
-          suffix="Jahr"
-          onChange={(n) => {
-            if (n !== draft.contractStartYear) setEvidence?.('contractStartYear', 'user_confirmed')
-            update({ contractStartYear: n })
-          }}
-        />
-        <EvidenceBadge
-          state={evidenceState(draft, 'contractStartYear')}
-          onConfirm={() => setEvidence?.('contractStartYear', 'user_confirmed')}
-        />
-      </InvField>
+      {/* Vertragsbeginn is not a meaningful concept for an ETF Sparplan/Depot */}
+      {!isEtf && (
+        <InvField
+          label="Vertragsbeginn (Jahr)"
+          hint="Beeinflusst die steuerliche Einordnung (z. B. Altvertrag vor 2005)."
+        >
+          <InvNumber
+            value={draft.contractStartYear}
+            min={1970}
+            max={currentYear}
+            step={1}
+            suffix="Jahr"
+            onChange={(n) => {
+              if (n !== draft.contractStartYear) setEvidence?.('contractStartYear', 'user_confirmed')
+              update({ contractStartYear: n })
+            }}
+          />
+          <EvidenceBadge
+            state={evidenceState(draft, 'contractStartYear')}
+            onConfirm={() => setEvidence?.('contractStartYear', 'user_confirmed')}
+          />
+        </InvField>
+      )}
 
       <InvField
-        label="Aktueller Vertragswert (EUR)"
+        label={isEtf ? 'Aktueller Depotwert (EUR)' : 'Aktueller Vertragswert (EUR)'}
         hint="Aus dem letzten Jahreskontoauszug oder der Standmitteilung."
       >
         <InvNumber
@@ -207,7 +215,7 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
         />
       </InvField>
 
-      <InvField label="Monatlicher Beitrag (EUR)">
+      <InvField label={isEtf ? 'Monatliche Sparrate (EUR)' : 'Monatlicher Beitrag (EUR)'}>
         <InvNumber
           value={draft.monthlyContribution}
           min={0}
@@ -229,10 +237,10 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
         />
       </InvField>
 
-      <InvField label="Anbieter / Tarif (optional)">
+      <InvField label={isEtf ? 'Depot / Broker (optional)' : 'Anbieter / Tarif (optional)'}>
         <InvText
           value={draft.anbieter ?? ''}
-          placeholder="z. B. Allianz Direktversicherung"
+          placeholder={isEtf ? 'z. B. Scalable Capital, Trade Republic' : 'z. B. Allianz Direktversicherung'}
           onChange={(v) => update({ anbieter: v || undefined })}
         />
       </InvField>
@@ -846,7 +854,7 @@ export function EtfCard({ draft, onChange, setEvidence }: BaseProps<EtfDraft>) {
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-etf">
-      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
+      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} isEtf={true} />
 
       <p className="inventory-instance-section-heading">ETF-spezifisch</p>
       <div className="inventory-field-grid inventory-field-grid--narrow">
