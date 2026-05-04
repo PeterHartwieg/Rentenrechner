@@ -44,9 +44,11 @@
  *     unchanged from the per-instance result; ETF does not interact with the
  *     progressive personal-income-tax base.
  *
- *   - Cross-instance Sparerpauschbetrag is NOT shared here. Each ETF instance
- *     consumes the full saver allowance independently (deferred to issue 15;
- *     surfaced as a `notes` entry by `buildPortfolioFunding`).
+ *   - Cross-instance Sparerpauschbetrag is applied at the adapter layer before
+ *     combine. `simulatePortfolio` calls `applyCrossInstanceSparerpauschbetrag`
+ *     (Phase G M4 F3) to re-run active ETF instances with a shared per-year
+ *     §20 Abs. 9 EStG allowance schedule, so the `netMonthlyPayout` values
+ *     arriving here already reflect the correctly apportioned allowance.
  */
 
 import type {

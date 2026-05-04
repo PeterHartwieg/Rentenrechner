@@ -8,7 +8,9 @@
  *      below by comparing projection output to defaultAssumptions for a
  *      length-1 workspace).
  *   2. Two bAV instances      — cap shared across instances; statutory subsidy proportional.
- *   3. Two ETF instances Sparerpauschbetrag — `it.skip` (Decision C deferred to issue 15).
+ *   3. Two ETF instances Sparerpauschbetrag — cross-instance allowance sharing
+ *      applied in `simulatePortfolio` via `applyCrossInstanceSparerpauschbetrag`
+ *      (Phase G M4 F3); covered by the describe block at line ~306.
  *   4. derivedFromBaselineSnapshot freezes at fork — covered in portfolioState.test.ts.
  *   5. Re-base stub           — `it.skip` (issue P2).
  *   6. Projection round-trip stability.
