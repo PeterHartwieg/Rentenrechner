@@ -178,3 +178,27 @@
   color: #94a3b8;
   line-height: 1.4;
 }
+
+/* ── Instance card action buttons (Optionen / Entfernen) ─────────────── */
+
+.combine-instance-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.combine-sidebar-options-btn {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  color: #1d4ed8;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.combine-sidebar-options-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}

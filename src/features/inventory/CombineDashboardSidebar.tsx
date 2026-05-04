@@ -55,6 +55,8 @@ interface Props {
   onRebaseWhatIf: (id: string) => void
   onFreezeWhatIf: (id: string) => void
   onArchiveAndRestart: () => void
+  /** Called when the user clicks "Optionen" on an active or paid-up instance card. */
+  onOpenDecisionMenu?: (instanceId: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -96,12 +98,14 @@ function BavInstanceCard({
   canRemove,
   onRemove,
   vintageAtoms,
+  onOpenDecisionMenu,
 }: {
   instance: BavInstance
   onChange: (next: BavInstance) => void
   canRemove: boolean
   onRemove: () => void
   vintageAtoms: Atom[]
+  onOpenDecisionMenu?: () => void
 }) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
   const [beitragsdynamik, setBeitragsdynamik] = useState(instance.annualContributionGrowthRate ?? 0)
@@ -111,17 +115,29 @@ function BavInstanceCard({
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
-        {canRemove && (
-          <button
-            type="button"
-            className="combine-sidebar-remove-btn"
-            onClick={onRemove}
-            title="Instanz entfernen"
-          >
-            <Trash2 size={13} aria-hidden="true" />
-            Entfernen
-          </button>
-        )}
+        <div className="combine-instance-card-actions">
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+            <button
+              type="button"
+              className="combine-sidebar-options-btn"
+              onClick={onOpenDecisionMenu}
+              title="Optionen für diesen Vertrag"
+            >
+              Optionen
+            </button>
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              className="combine-sidebar-remove-btn"
+              onClick={onRemove}
+              title="Instanz entfernen"
+            >
+              <Trash2 size={13} aria-hidden="true" />
+              Entfernen
+            </button>
+          )}
+        </div>
       </div>
       <div className="combine-instance-body">
         <VintageChips atoms={vintageAtoms} />
@@ -264,12 +280,14 @@ function InsuranceInstanceCard({
   canRemove,
   onRemove,
   vintageAtoms,
+  onOpenDecisionMenu,
 }: {
   instance: InsuranceInstance
   onChange: (next: InsuranceInstance) => void
   canRemove: boolean
   onRemove: () => void
   vintageAtoms: Atom[]
+  onOpenDecisionMenu?: () => void
 }) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
   const [beitragsdynamik, setBeitragsdynamik] = useState(instance.annualContributionGrowthRate ?? 0)
@@ -279,17 +297,29 @@ function InsuranceInstanceCard({
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
-        {canRemove && (
-          <button
-            type="button"
-            className="combine-sidebar-remove-btn"
-            onClick={onRemove}
-            title="Instanz entfernen"
-          >
-            <Trash2 size={13} aria-hidden="true" />
-            Entfernen
-          </button>
-        )}
+        <div className="combine-instance-card-actions">
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+            <button
+              type="button"
+              className="combine-sidebar-options-btn"
+              onClick={onOpenDecisionMenu}
+              title="Optionen für diesen Vertrag"
+            >
+              Optionen
+            </button>
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              className="combine-sidebar-remove-btn"
+              onClick={onRemove}
+              title="Instanz entfernen"
+            >
+              <Trash2 size={13} aria-hidden="true" />
+              Entfernen
+            </button>
+          )}
+        </div>
       </div>
       <div className="combine-instance-body">
         <VintageChips atoms={vintageAtoms} />
@@ -644,6 +674,7 @@ export function CombineDashboardSidebar({
   onRebaseWhatIf,
   onFreezeWhatIf,
   onArchiveAndRestart,
+  onOpenDecisionMenu,
 }: Props) {
   // Guard against rapid double-clicks on the archive button.
   const [archiving, setArchiving] = useState(false)
@@ -709,6 +740,7 @@ export function CombineDashboardSidebar({
               }
               onRemove={() => removeInstance('bav', inst.instanceId)}
               vintageAtoms={atomsForInstance(vintageAtoms, inst.instanceId)}
+              onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
           ))}
         </ProductGroup>
@@ -734,6 +766,7 @@ export function CombineDashboardSidebar({
               }
               onRemove={() => removeInstance('versicherung', inst.instanceId)}
               vintageAtoms={atomsForInstance(vintageAtoms, inst.instanceId)}
+              onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
           ))}
         </ProductGroup>

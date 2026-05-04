@@ -73,6 +73,10 @@ export type AtomId =
   | 'bav_40b_alt_conditions_unmet'
   | 'bav_durchfuehrungsweg_direktzusage'
   | 'riester_pre_2008_zulage'
+  // Contract-decision candidate-effect atoms (issue 14)
+  | 'lose_pre_2005_privilege'
+  | 'paid_up_high_fee_warning'
+  | 'riester_to_avd_certified'
 
 export interface Atom {
   id: AtomId
@@ -1020,6 +1024,37 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
       'Bei einem Riester-Vertrag aus 2007 oder früher muss der Vertrag beim Anbieter auf den ' +
       'neuen Kindzulagesatz angepasst werden. Prüfe mit deinem Anbieter, ob der höhere Satz bereits ' +
       'eingetragen ist.',
+  }),
+
+  // ---------------------------------------------------------------------------
+  // Contract-decision candidate-effect atoms (issue 14)
+  // ---------------------------------------------------------------------------
+
+  lose_pre_2005_privilege: () => ({
+    headline: 'Verlust von Altvertrag-Privilegien',
+    body:
+      'Diese Option beendet deinen Vertrag. Du verlierst dabei dauerhaft die steuerlichen Vorteile ' +
+      'des Altvertrags (steuerfreie Kapitalauszahlung / Halbeinkünfteverfahren). ' +
+      'Diese Privilegien können bei einem Neuabschluss nicht wiederhergestellt werden.',
+  }),
+
+  paid_up_high_fee_warning: (atom) => {
+    const riy = ctxNumber(atom.context, 'riyDecimal')
+    return {
+      headline: 'Hohe Kosten im Beitragsfreistand',
+      body:
+        `Effektivkosten von ${(riy * 100).toFixed(2)} % p. a. bei beitragsfreiem Vertrag: ` +
+        'Laufende Verwaltungskosten belasten das angesparte Kapital besonders stark, ' +
+        'wenn keine neuen Beiträge mehr eingezahlt werden.',
+    }
+  },
+
+  riester_to_avd_certified: () => ({
+    headline: 'Steuerneutrale Übertragung möglich (AltZertG)',
+    body:
+      'Die Übertragung von Riester auf ein Altersvorsorgedepot ist nach AltZertG steuerneutral möglich. ' +
+      'Zulagen und Sonderausgabenabzüge bleiben erhalten; der Anbieter organisiert die Übertragung. ' +
+      'Prüfe, ob dein aktueller Anbieter die Übertragung gebührenfrei abwickelt.',
   }),
 }
 
