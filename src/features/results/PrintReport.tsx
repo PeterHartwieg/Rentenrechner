@@ -7,6 +7,7 @@ import type {
   SimulationResult,
   StatutoryPensionResult,
 } from '../../domain'
+import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { getProductMeta } from '../../app/productPresentation'
@@ -42,6 +43,14 @@ interface Props {
   combineGrv?: StatutoryPensionResult
   /** Workspace `returnScenarios` (combine mode). Overrides `assumptions.returnScenarios` for scenario ordering. */
   combineReturnScenarios?: ScenarioAssumptions['returnScenarios']
+  /**
+   * Workspace reference (combine mode). Used to resolve per-instance user labels
+   * for the "Vertrag" column in the print table. Without this, the column falls
+   * back to the engine product label (e.g. "ETF-Depot") for every instance of the
+   * same product type. When provided the workspace `instance.label` takes precedence
+   * and falls back to the product meta label only when the instance label is blank.
+   */
+  combineWorkspace?: Workspace
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -64,6 +73,7 @@ export function PrintReport({
   combineProfile,
   combineGrv,
   combineReturnScenarios,
+  combineWorkspace,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -82,6 +92,7 @@ export function PrintReport({
         grv={combineGrv ?? simulation.statutoryPension}
         returnScenarios={combineReturnScenarios ?? assumptions.returnScenarios}
         portfolio={portfolio}
+        workspace={combineWorkspace}
         date={date}
       />
     )
@@ -334,11 +345,24 @@ interface CombinePrintReportProps {
   /** Scenario list — must come from workspace baseline, not singleton assumptions. */
   returnScenarios: ScenarioAssumptions['returnScenarios']
   portfolio: NonNullable<Props['portfolio']>
+  /**
+   * Workspace reference (optional). When provided, `instanceId → label` is resolved
+   * from the workspace instance arrays so the "Vertrag" column shows user-given
+   * contract labels (e.g. "ETF iShares MSCI World") rather than the generic engine
+   * product label (e.g. "ETF-Depot"). Falls back to `r.label` when absent.
+   */
+  workspace?: Workspace
   date: string
 }
 
-function CombinePrintReport({ profile, grv, returnScenarios, portfolio, date }: CombinePrintReportProps) {
+function CombinePrintReport({ profile, grv, returnScenarios, portfolio, workspace, date }: CombinePrintReportProps) {
   const { perInstance, combinedByScenarioId, scenarioLabels } = portfolio
+
+  // Build instanceId → user label lookup from the workspace instance arrays so
+  // the "Vertrag" column shows user-given contract labels rather than the generic
+  // engine product label. Falls back to the engine label (r.label) when either
+  // the workspace is absent or the instance label is blank.
+  const instanceLabelMap = buildInstanceLabelMap(workspace)
 
   // Stable scenario order: prefer workspace returnScenarios order (issue 27),
   // fall back to insertion order in combinedByScenarioId.
@@ -492,7 +516,7 @@ function CombinePrintReport({ profile, grv, returnScenarios, portfolio, date }: 
                 key={`${instanceId}-${r.scenarioId}`}
                 className={r.scenarioId === 'basis' ? 'pr-basis' : ''}
               >
-                <td>{r.label}</td>
+                <td>{instanceLabelMap[instanceId] ?? r.label}</td>
                 <td>{getProductMeta(r.productId)?.label ?? r.productId}</td>
                 <td>{r.scenarioLabel}</td>
                 <td className="pr-num">{formatCurrency(r.monthlyProductContribution, 0)}</td>
@@ -551,4 +575,43 @@ function CombinePrintReport({ profile, grv, returnScenarios, portfolio, date }: 
       </div>
     </div>
   )
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a flat `instanceId → displayLabel` map from all workspace instance
+ * arrays. Mirrors the label-resolution logic in `CombineDetailView.collectRows`:
+ * use `inst.label` when non-blank, otherwise fall back to the engine product
+ * meta label so the "Vertrag" column is never empty.
+ *
+ * Returns an empty object when `workspace` is undefined (no-workspace fallback).
+ */
+function buildInstanceLabelMap(workspace: Workspace | undefined): Record<string, string> {
+  if (!workspace) return {}
+
+  const wsa = workspace.baseline.assumptions
+  const map: Record<string, string> = {}
+
+  const slots: Array<{ id: string; instances: Array<{ instanceId: string; label: string }> }> = [
+    { id: 'bav', instances: wsa.bav },
+    { id: 'etf', instances: wsa.etf },
+    { id: 'versicherung', instances: wsa.insurance },
+    { id: 'basisrente', instances: wsa.basisrente },
+    { id: 'altersvorsorgedepot', instances: wsa.altersvorsorgedepot },
+    { id: 'riester', instances: wsa.riester },
+  ]
+
+  for (const slot of slots) {
+    const meta = getProductMeta(slot.id)
+    for (const inst of slot.instances) {
+      map[inst.instanceId] = inst.label?.trim().length
+        ? inst.label
+        : (meta?.label ?? slot.id)
+    }
+  }
+
+  return map
 }

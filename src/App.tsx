@@ -678,6 +678,7 @@ function Calculator({ navigate }: CalculatorProps) {
             ? portfolioState.workspace.baseline.assumptions.returnScenarios
             : undefined
         }
+        combineWorkspace={isCombineMode ? portfolioState.workspace : undefined}
       />
 
       <LegalFooter navigate={navigate} />

@@ -5,6 +5,7 @@
  * Coverage:
  *   - combine-mode fixture with model_estimate → .pr-confidence-estimate is present
  *   - .pr-disclaimer-top is the FIRST child of #print-report (publication-blocking compliance)
+ *   - combine-mode "Vertrag" column uses workspace instance labels (#27 P2)
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
@@ -12,6 +13,7 @@ import { render, cleanup } from '@testing-library/react'
 import { PrintReport } from './PrintReport'
 import { defaultProfile, defaultAssumptions } from '../../data/defaultScenario'
 import type { SimulationResult, ProductResult, ScenarioAssumptions } from '../../domain'
+import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 
 afterEach(() => cleanup())
@@ -319,5 +321,122 @@ describe('PrintReport', () => {
     const idxBasis = tableText.indexOf('Basis')
     // workspace order: optimistisch first, then basis
     expect(idxOpt).toBeLessThan(idxBasis)
+  })
+
+  // -------------------------------------------------------------------------
+  // Issue 27 P2: combine print "Vertrag" column uses workspace instance labels.
+  // Two ETF instances with distinct user labels must each appear; the generic
+  // engine label "ETF-Depot" must NOT appear twice in the "Vertrag" column.
+  // -------------------------------------------------------------------------
+
+  it('combine-mode Vertrag column uses workspace instance labels, not generic engine label', () => {
+    // Two ETF instances with distinct user-provided labels.
+    const etfBase = makeSimulation('user_confirmed').products[0] as ProductResult
+
+    const etfResult1: ProductResult = {
+      ...etfBase,
+      productId: 'etf',
+      label: 'ETF-Depot',
+      instanceId: 'etf-1',
+      scenarioId: 'basis',
+      scenarioLabel: 'Basis',
+    } as unknown as ProductResult
+
+    const etfResult2: ProductResult = {
+      ...etfBase,
+      productId: 'etf',
+      label: 'ETF-Depot',
+      instanceId: 'etf-2',
+      scenarioId: 'basis',
+      scenarioLabel: 'Basis',
+    } as unknown as ProductResult
+
+    // Minimal workspace with two ETF instances carrying distinct user labels.
+    const workspace: Workspace = {
+      schemaVersion: 2,
+      mode: 'combine',
+      baseline: {
+        id: 'baseline',
+        label: 'Baseline',
+        profile: defaultProfile,
+        assumptions: {
+          bav: [],
+          etf: [
+            {
+              instanceId: 'etf-1',
+              label: 'Depot A',
+              status: 'active',
+              contractStartYear: 2020,
+              evidenceMap: {},
+              annualAssetFee: 0.002,
+              equityPartialExemption: 0.3,
+              annualContributionGrowthRate: 0,
+            },
+            {
+              instanceId: 'etf-2',
+              label: 'Depot B',
+              status: 'active',
+              contractStartYear: 2021,
+              evidenceMap: {},
+              annualAssetFee: 0.002,
+              equityPartialExemption: 0.3,
+              annualContributionGrowthRate: 0,
+            },
+          ],
+          insurance: [],
+          basisrente: [],
+          altersvorsorgedepot: [],
+          riester: [],
+          statutoryPension: defaultAssumptions.statutoryPension,
+          inflationRate: defaultAssumptions.inflationRate,
+          retirementEndAge: defaultAssumptions.retirementEndAge,
+          returnScenarios: defaultAssumptions.returnScenarios,
+          monteCarlo: defaultAssumptions.monteCarlo,
+          visibleProducts: ['etf'],
+        },
+        createdAt: new Date().toISOString(),
+        origin: 'baseline',
+      },
+      whatIfs: [],
+      pinnedComparisonIds: [],
+    }
+
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+        combineMode={true}
+        portfolio={{
+          perInstance: {
+            'etf-1': [etfResult1],
+            'etf-2': [etfResult2],
+          },
+          combinedByScenarioId: { basis: makeCombined(2200) },
+          scenarioLabels: { basis: 'Basis' },
+        }}
+        combineWorkspace={workspace}
+      />
+    )
+
+    // Both workspace instance labels must appear in the rendered output.
+    expect(container.textContent).toContain('Depot A')
+    expect(container.textContent).toContain('Depot B')
+
+    // Count occurrences of the generic engine label "ETF-Depot" in the Vertrag
+    // column. We check the full-table section for the per-instance detail table.
+    // Since both rows now show workspace labels, "ETF-Depot" should appear 0
+    // times in the Vertrag column (it still appears in the Produkt column but as
+    // "ETF-Depot" from getProductMeta — we only care the Vertrag column is fixed).
+    // The two <td> cells in the Vertrag column should contain "Depot A" / "Depot B",
+    // not "ETF-Depot". Verify by checking the first column of each row via DOM.
+    const detailTable = container.querySelector('.pr-main-table')
+    expect(detailTable).not.toBeNull()
+    const rows = Array.from(detailTable!.querySelectorAll('tbody tr'))
+    const vertragTexts = rows.map((row) => row.querySelector('td')?.textContent ?? '')
+    expect(vertragTexts).toContain('Depot A')
+    expect(vertragTexts).toContain('Depot B')
+    // The generic engine label must NOT appear in the Vertrag column.
+    expect(vertragTexts.every((t) => t !== 'ETF-Depot')).toBe(true)
   })
 })
