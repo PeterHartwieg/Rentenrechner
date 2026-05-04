@@ -58,6 +58,12 @@ interface Props {
   baselineCombined: CombinedResult
   baselinePerInstance: Record<string, ProductResult[]>
   grvGrossMonthlyPension: number
+  /**
+   * The user's currently selected return scenario id. When provided, the
+   * recommender uses this scenario's return assumptions so the panel stays in
+   * sync with the scenario picker. Falls back to 'basis' when absent.
+   */
+  selectedScenarioId?: string
   /** Called when the user clicks "Als Plan speichern" on a candidate. */
   onSaveAsPlan: (candidate: RecommendedCandidate) => void
 }
@@ -67,6 +73,7 @@ export function RecommenderCard({
   baselineCombined,
   baselinePerInstance,
   grvGrossMonthlyPension,
+  selectedScenarioId,
   onSaveAsPlan,
 }: Props) {
   const [marginalEUR, setMarginalEUR] = useState<number>(0)
@@ -81,8 +88,9 @@ export function RecommenderCard({
       baselinePerInstance,
       baselineCombined,
       grvGrossMonthlyPension,
+      selectedScenarioId,
     })
-  }, [workspace, marginalEUR, baselinePerInstance, baselineCombined, grvGrossMonthlyPension])
+  }, [workspace, marginalEUR, baselinePerInstance, baselineCombined, grvGrossMonthlyPension, selectedScenarioId])
 
   const sorted = useMemo(() => {
     const out = [...candidates]

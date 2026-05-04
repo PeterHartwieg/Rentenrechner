@@ -650,3 +650,106 @@ describe('buildWhatIfFromCandidate', () => {
     expect(added.monthlyGrossContribution).toBeCloseTo(basisrenteCand.grossMonthlyEUR, 1)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Issue #08 — scenario change updates the nächsten-Euro panel
+// ---------------------------------------------------------------------------
+//
+// `recommendNextEuro` must react when the user switches the return scenario.
+// The panel previously hardcoded 'basis' via `pickBasisScenario`, so switching
+// to a pessimistic / optimistic scenario had no effect on the displayed figures.
+// The fix: callers pass `selectedScenarioId`; `pickBasisScenario` uses it when
+// a matching scenario exists in the workspace, falling back to 'basis'.
+
+describe('recommendNextEuro — reacts to selectedScenarioId (#08)', () => {
+  function buildWorkspaceWithScenarios() {
+    const ws = buildBerndWorkspace()
+    // Inject a 'konservativ' scenario with a noticeably lower return so the
+    // medianNettoRente produced from it differs measurably from 'basis'.
+    const basisReturn =
+      ws.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')?.annualReturn ?? 0.05
+    // Only add 'konservativ' if not already present.
+    if (!ws.baseline.assumptions.returnScenarios.some((s) => s.id === 'konservativ')) {
+      ws.baseline.assumptions.returnScenarios = [
+        ...ws.baseline.assumptions.returnScenarios,
+        {
+          id: 'konservativ' as const,
+          label: 'Konservativ',
+          annualReturn: Math.max(0.001, basisReturn - 0.02),
+        },
+      ]
+    }
+    return ws
+  }
+
+  it('basis and konservativ scenarios produce different medianNettoRente', () => {
+    const ws = buildWorkspaceWithScenarios()
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const basisId = ws.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!.id
+
+    const basisInput: RecommendNextEuroInput = {
+      workspace: ws,
+      rules: de2026Rules,
+      marginalMonthlyEUR: 200,
+      baselinePerInstance: bundle.perInstance,
+      baselineCombined: bundle.combinedByScenarioId[basisId],
+      grvGrossMonthlyPension: bundle.statutoryPension.grossMonthlyPension,
+      selectedScenarioId: 'basis',
+    }
+    const konservativId = 'konservativ'
+    const konservativInput: RecommendNextEuroInput = {
+      ...basisInput,
+      baselineCombined: bundle.combinedByScenarioId[konservativId] ?? bundle.combinedByScenarioId[basisId],
+      selectedScenarioId: konservativId,
+    }
+
+    const basisCandidates = recommendNextEuro(basisInput)
+    const konservativCandidates = recommendNextEuro(konservativInput)
+
+    expect(basisCandidates.length).toBeGreaterThan(0)
+    expect(konservativCandidates.length).toBeGreaterThan(0)
+
+    // Under a lower return scenario, the median Netto-Rente must be lower for
+    // every candidate (lower compounding → less capital → lower payout).
+    const commonIds = basisCandidates
+      .map((c) => c.id)
+      .filter((id) => konservativCandidates.some((p) => p.id === id))
+    expect(commonIds.length).toBeGreaterThan(0)
+
+    for (const id of commonIds) {
+      const basisC = basisCandidates.find((c) => c.id === id)!
+      const konservativC = konservativCandidates.find((c) => c.id === id)!
+      expect(konservativC.medianNettoRente).toBeLessThan(basisC.medianNettoRente)
+    }
+  })
+
+  it('falls back to basis scenario when selectedScenarioId is not found', () => {
+    const ws = buildBerndWorkspace()
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const basisId = ws.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!.id
+
+    const withFallback = recommendNextEuro({
+      workspace: ws,
+      rules: de2026Rules,
+      marginalMonthlyEUR: 200,
+      baselinePerInstance: bundle.perInstance,
+      baselineCombined: bundle.combinedByScenarioId[basisId],
+      grvGrossMonthlyPension: bundle.statutoryPension.grossMonthlyPension,
+      selectedScenarioId: 'nonexistent-scenario',
+    })
+    const withoutId = recommendNextEuro({
+      workspace: ws,
+      rules: de2026Rules,
+      marginalMonthlyEUR: 200,
+      baselinePerInstance: bundle.perInstance,
+      baselineCombined: bundle.combinedByScenarioId[basisId],
+      grvGrossMonthlyPension: bundle.statutoryPension.grossMonthlyPension,
+    })
+
+    // Both should use 'basis' and produce identical results.
+    expect(withFallback.length).toBe(withoutId.length)
+    withFallback.forEach((c, i) => {
+      expect(c.medianNettoRente).toBeCloseTo(withoutId[i].medianNettoRente, 2)
+    })
+  })
+})

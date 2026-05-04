@@ -226,14 +226,23 @@ function Calculator({ navigate }: CalculatorProps) {
     />
   )
 
-  // In combine mode, pick the 'basis' scenario (or the first available) from
-  // the combined simulation bundle to drive the income summary panel.
-  const combineBasisScenarioId =
-    portfolioState.workspace.baseline.assumptions.returnScenarios.find(
-      (s) => s.id === 'basis',
-    )?.id ??
-    portfolioState.workspace.baseline.assumptions.returnScenarios[0]?.id ??
-    'basis'
+  // In combine mode, pick the selected scenario (or 'basis' as fallback) from
+  // the combined simulation bundle to drive the income summary panel and the
+  // nächsten-Euro recommender. Using the selected scenario ensures the
+  // RecommenderCard reacts when the user switches the scenario picker (#08).
+  const combineSelectedScenarioId = (() => {
+    const scenarios = portfolioState.workspace.baseline.assumptions.returnScenarios
+    // Prefer the UI-selected scenario when it exists in the workspace scenario list.
+    if (result.effectiveScenarioId && combineSimulation.combinedByScenarioId[result.effectiveScenarioId]) {
+      return result.effectiveScenarioId
+    }
+    return (
+      scenarios.find((s) => s.id === 'basis')?.id ??
+      scenarios[0]?.id ??
+      'basis'
+    )
+  })()
+  const combineBasisScenarioId = combineSelectedScenarioId
   const combineBasisResult = combineSimulation.combinedByScenarioId[combineBasisScenarioId]
   const combineBasisLabel =
     portfolioState.workspace.baseline.assumptions.returnScenarios.find(
@@ -251,6 +260,7 @@ function Calculator({ navigate }: CalculatorProps) {
             baselineCombined={combineBasisResult}
             baselinePerInstance={combineSimulation.perInstance}
             grvGrossMonthlyPension={combineSimulation.statutoryPension.grossMonthlyPension}
+            selectedScenarioId={combineSelectedScenarioId}
             onSaveAsPlan={(candidate) => {
               const whatIf = buildWhatIfFromCandidate(portfolioState.baseline, candidate)
               portfolioState.addWhatIf(whatIf)

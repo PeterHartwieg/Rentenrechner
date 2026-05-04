@@ -286,10 +286,18 @@ interface BasisScenarioInfo {
   annualReturn: number
 }
 
-function pickBasisScenario(workspace: Workspace): BasisScenarioInfo {
+function pickBasisScenario(workspace: Workspace, selectedScenarioId?: string): BasisScenarioInfo {
   const wsa = workspace.baseline.assumptions
+  // When the caller provides a selected scenario id (e.g. 'pessimistisch'), use
+  // that scenario's return so the panel reacts to the user's scenario picker.
+  // Fall back to 'basis' when the id is absent or no longer exists in the list.
+  const selected = selectedScenarioId
+    ? wsa.returnScenarios.find((s) => s.id === selectedScenarioId)
+    : undefined
   const basis =
-    wsa.returnScenarios.find((s) => s.id === 'basis') ?? wsa.returnScenarios[0]
+    selected ??
+    wsa.returnScenarios.find((s) => s.id === 'basis') ??
+    wsa.returnScenarios[0]
   if (!basis) {
     return { scenarioId: 'basis', annualReturn: 0.05 }
   }
@@ -950,10 +958,19 @@ export interface RecommendNextEuroInput {
    * passes the bundle from `useCombineSimulation`.
    */
   baselinePerInstance: Record<string, ProductResult[]>
-  /** Combined baseline (basis scenario). */
+  /** Combined baseline (for the selected scenario). */
   baselineCombined: CombinedResult
-  /** Statutory pension monthly gross (basis scenario). */
+  /** Statutory pension monthly gross (selected scenario). */
   grvGrossMonthlyPension: number
+  /**
+   * The user's currently selected return scenario id (e.g. 'basis',
+   * 'pessimistisch', 'optimistisch'). When provided, the recommender uses
+   * this scenario's `annualReturn` for candidate projections so the panel
+   * stays in sync with the scenario picker.
+   *
+   * Falls back to the 'basis' scenario when absent or not found.
+   */
+  selectedScenarioId?: string
 }
 
 export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCandidate[] {
@@ -962,7 +979,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
 
   const profile = workspace.baseline.profile
   const yearsToRetirement = Math.max(1, profile.retirementAge - profile.age)
-  const basis = pickBasisScenario(workspace)
+  const basis = pickBasisScenario(workspace, input.selectedScenarioId)
   const combineCtx = buildCombineContext(workspace, rules, input.grvGrossMonthlyPension)
   const wsa = workspace.baseline.assumptions
   const mcSeedBase = wsa.monteCarlo?.seed ?? 2026
