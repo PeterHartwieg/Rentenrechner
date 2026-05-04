@@ -145,8 +145,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
             max={CURRENT_YEAR - 10}
             step={1}
             decimals={0}
-            onChange={(v) => onChange({ ...draft, birthYear: v })}
-            data-testid="field-birth-year"
+            onCommit={(v) => onChange({ ...draft, birthYear: Number(v) })}
           />
           {Number.isFinite(derivedAge) && derivedAge >= 0 && derivedAge <= 110 && (
             <p className="inventory-personal-hint">Aktuelles Alter: {derivedAge} Jahre</p>
@@ -162,8 +161,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
           step={1000}
           decimals={0}
           suffix="€"
-          onChange={(v) => onChange({ ...draft, grossSalaryYear: v })}
-          data-testid="field-gross-salary"
+          onCommit={(v) => onChange({ ...draft, grossSalaryYear: Number(v) })}
         />
 
         {/* Steuerklasse (display-only note — engine only supports class 1 today) */}
@@ -194,8 +192,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
           step={1}
           decimals={0}
           suffix="Jahre"
-          onChange={(v) => onChange({ ...draft, retirementAge: v })}
-          data-testid="field-retirement-age"
+          onCommit={(v) => onChange({ ...draft, retirementAge: Number(v) })}
         />
       </div>
 

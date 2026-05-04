@@ -22,7 +22,7 @@ function makeProps(overrides?: Partial<Parameters<typeof InventoryWizard>[0]>) {
     childBirthYears: [] as readonly number[],
     age: 35,
     retirementAge: 67,
-    onComplete: vi.fn<[Workspace], void>(),
+    onComplete: vi.fn<(workspace: Workspace) => void>(),
     onDismiss: vi.fn(),
     ...overrides,
   }
@@ -136,7 +136,7 @@ describe('InventoryWizard step 0 — Weiter button advances to product step', ()
 
 describe('InventoryWizard step 0 — end-to-end profile persistence', () => {
   it('completing the wizard writes grossSalaryYear from step 0 into baseline.profile', () => {
-    const onComplete = vi.fn<[Workspace], void>()
+    const onComplete = vi.fn<(workspace: Workspace) => void>()
     const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
 
     // The birth year input is seeded from age prop (35 → birthYear = CURRENT_YEAR - 35)
@@ -152,7 +152,7 @@ describe('InventoryWizard step 0 — end-to-end profile persistence', () => {
   })
 
   it('completing the wizard writes age (derived from birthYear) into baseline.profile', () => {
-    const onComplete = vi.fn<[Workspace], void>()
+    const onComplete = vi.fn<(workspace: Workspace) => void>()
     const { container } = render(<InventoryWizard {...makeProps({ age: 40, onComplete })} />)
 
     fireEvent.click(getNextButton(container)!)
@@ -164,7 +164,7 @@ describe('InventoryWizard step 0 — end-to-end profile persistence', () => {
   })
 
   it('completing the wizard writes retirementAge into baseline.profile', () => {
-    const onComplete = vi.fn<[Workspace], void>()
+    const onComplete = vi.fn<(workspace: Workspace) => void>()
     const { container } = render(<InventoryWizard {...makeProps({ retirementAge: 65, onComplete })} />)
 
     fireEvent.click(getNextButton(container)!)
@@ -175,18 +175,18 @@ describe('InventoryWizard step 0 — end-to-end profile persistence', () => {
   })
 
   it('Ehegattensplitting unchecked (default): no partner on baseline', () => {
-    const onComplete = vi.fn<[Workspace], void>()
+    const onComplete = vi.fn<(workspace: Workspace) => void>()
     const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
 
     fireEvent.click(getNextButton(container)!)
     fireEvent.click(getFinishButton(container)!)
 
     const workspace: Workspace = onComplete.mock.calls[0][0]
-    expect((workspace.baseline as Record<string, unknown>).partner).toBeUndefined()
+    expect((workspace.baseline as unknown as Record<string, unknown>).partner).toBeUndefined()
   })
 
   it('Ehegattensplitting checked: baseline.partner is set', () => {
-    const onComplete = vi.fn<[Workspace], void>()
+    const onComplete = vi.fn<(workspace: Workspace) => void>()
     const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
 
     // Tick the Ehegattensplitting checkbox
@@ -200,11 +200,11 @@ describe('InventoryWizard step 0 — end-to-end profile persistence', () => {
     fireEvent.click(getFinishButton(container)!)
 
     const workspace: Workspace = onComplete.mock.calls[0][0]
-    expect((workspace.baseline as Record<string, unknown>).partner).toBeDefined()
+    expect((workspace.baseline as unknown as Record<string, unknown>).partner).toBeDefined()
   })
 
   it('workspace is mode: combine after wizard completes', () => {
-    const onComplete = vi.fn<[Workspace], void>()
+    const onComplete = vi.fn<(workspace: Workspace) => void>()
     const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
 
     fireEvent.click(getNextButton(container)!)

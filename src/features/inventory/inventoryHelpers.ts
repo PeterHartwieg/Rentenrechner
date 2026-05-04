@@ -489,7 +489,7 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
 
   // Ehegattensplitting: add a minimal partner profile (age = profile age,
   // zero income — the engine uses this to enable Zusammenveranlagung).
-  const partner: import('../domain/profile').PersonalProfile | undefined =
+  const partner: import('../../domain/profile').PersonalProfile | undefined =
     personalDetails?.ehegattensplitting
       ? { ...defaultProfile, age: effectiveAge, grossSalaryYear: 0 }
       : undefined
