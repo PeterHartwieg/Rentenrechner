@@ -22,7 +22,7 @@
  */
 
 import './InventoryWizard.css'
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
 import { X, Check, Plus, Trash2, ArrowRight } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
 import type { EvidenceState } from '../../domain/instances'
@@ -114,10 +114,14 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
   const derivedAge = CURRENT_YEAR - draft.birthYear
   const [validationErrors, setValidationErrors] = useState<string[]>([])
 
-  // Clear errors whenever the user edits any field so stale messages don't linger.
-  useEffect(() => {
-    setValidationErrors([])
-  }, [draft])
+  // Wrap onChange so any user edit clears stale validation messages immediately.
+  const handleChange = useCallback(
+    (next: PersonalDetailsDraft) => {
+      setValidationErrors([])
+      onChange(next)
+    },
+    [onChange],
+  )
 
   function validate(): string[] {
     const errors: string[] = []
@@ -154,7 +158,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
             max={CURRENT_YEAR - 10}
             step={1}
             decimals={0}
-            onCommit={(v) => onChange({ ...draft, birthYear: Number(v) })}
+            onCommit={(v) => handleChange({ ...draft, birthYear: Number(v) })}
           />
           {Number.isFinite(derivedAge) && derivedAge >= 0 && derivedAge <= 110 && (
             <p className="inventory-personal-hint">Aktuelles Alter: {derivedAge} Jahre</p>
@@ -170,7 +174,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
           step={1000}
           decimals={0}
           suffix="€"
-          onCommit={(v) => onChange({ ...draft, grossSalaryYear: Number(v) })}
+          onCommit={(v) => handleChange({ ...draft, grossSalaryYear: Number(v) })}
         />
 
         {/* Steuerklasse (display-only note — engine only supports class 1 today) */}
@@ -185,7 +189,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
             <input
               type="checkbox"
               checked={draft.ehegattensplitting}
-              onChange={(e) => onChange({ ...draft, ehegattensplitting: e.target.checked })}
+              onChange={(e) => handleChange({ ...draft, ehegattensplitting: e.target.checked })}
               aria-label="Ehegattensplitting / gemeinsame Veranlagung"
             />
             <span>Ehegattensplitting (gemeinsame Veranlagung)</span>
@@ -201,7 +205,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
           step={1}
           decimals={0}
           suffix="Jahre"
-          onCommit={(v) => onChange({ ...draft, retirementAge: Number(v) })}
+          onCommit={(v) => handleChange({ ...draft, retirementAge: Number(v) })}
         />
       </div>
 
