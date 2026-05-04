@@ -532,9 +532,12 @@ describe('recommendNextEuro — bAV bisection isolated vs marginal (F6)', () => 
     const isolated = bisectIsolated(profile, de2026Rules, target, targetNet)
     const marginal = bisectMarginal(profile, de2026Rules, target, usedMonthly, targetNet)
 
-    // The difference must be measurable (> 0.50 EUR/mo) to confirm the two
-    // approaches diverge on a non-zero existing contribution.
-    expect(Math.abs(isolated - marginal)).toBeGreaterThan(0.5)
+    // The difference must be measurable to confirm the two approaches diverge
+    // on a non-zero existing contribution. Measured ~17 EUR; window guards
+    // against both regression to zero and implausible blowup.
+    const divergence = Math.abs(isolated - marginal)
+    expect(divergence).toBeGreaterThan(10)
+    expect(divergence).toBeLessThan(25)
   })
 
   it('marginal gross answer satisfies forward(used + delta) - forward(used) ≈ target net', () => {

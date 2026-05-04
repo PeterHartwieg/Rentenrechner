@@ -545,6 +545,7 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
       ...target,
       monthlyGrossConversion: usedMonthly + delta,
     }).monthlyNetCost - baselineNetCost
+  // grossDelta = forward(used + delta) − forward(used); marginal, not isolated.
   const grossDelta = (() => {
     if (g.marginalMonthlyEUR <= 0) return 0
     let lo = 0
