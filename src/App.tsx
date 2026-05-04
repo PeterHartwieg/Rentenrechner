@@ -455,7 +455,6 @@ function Calculator({ navigate }: CalculatorProps) {
           <DetailComparisonTable
             products={[]}
             linkCopied={linkCopied}
-            onCopyLink={handleCopyLink}
             onExportCsv={handleExportCsv}
             onPrint={() => window.print()}
           />

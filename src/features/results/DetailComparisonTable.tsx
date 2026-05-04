@@ -18,7 +18,8 @@ interface DetailComparisonTableProps {
     scenarioId: string;
   }[];
   linkCopied: boolean;
-  onCopyLink: () => void;
+  /** When undefined the share button is hidden (e.g. combine mode where v1 share links drop portfolio state). */
+  onCopyLink?: () => void;
   onExportCsv: () => void;
   onPrint: () => void;
 }
@@ -35,12 +36,14 @@ export function DetailComparisonTable({
       <div className="section-header">
         <h2>Detailvergleich</h2>
         <div className="section-actions">
-          <button type="button" className="export-btn" onClick={onCopyLink}>
-            {linkCopied
-              ? <Check size={14} aria-hidden="true" />
-              : <Link size={14} aria-hidden="true" />}
-            {linkCopied ? 'Kopiert!' : 'Link kopieren'}
-          </button>
+          {onCopyLink !== undefined && (
+            <button type="button" className="export-btn" onClick={onCopyLink}>
+              {linkCopied
+                ? <Check size={14} aria-hidden="true" />
+                : <Link size={14} aria-hidden="true" />}
+              {linkCopied ? 'Kopiert!' : 'Link kopieren'}
+            </button>
+          )}
           <button type="button" className="export-btn" onClick={onExportCsv}>
             <Download size={14} aria-hidden="true" />
             CSV exportieren
