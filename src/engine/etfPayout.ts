@@ -8,17 +8,25 @@ export function afterTaxInvestmentCapital(
   rules: GermanRules,
   partialExemption: number,
   cumulativeVorabpauschale = 0,
+  saverAllowance: number = rules.capitalGains.saverAllowance,
 ): number {
   // Vorabpauschale already taxed during accumulation reduces the remaining taxable exit gain (§19 InvStG).
   // Sparer-Pauschbetrag applies in the liquidation year (EStG §20 Abs. 9), consistent with etfPayoutSchedule.
+  // `saverAllowance` defaults to the full statutory amount; combine-mode passes a
+  // shared share so 2+ ETF instances do not each claim the full allowance.
   const gain = Math.max(0, capital - totalContributions - cumulativeVorabpauschale)
-  return capital - calculateCapitalGainsTax(gain, rules, partialExemption, rules.capitalGains.saverAllowance)
+  return capital - calculateCapitalGainsTax(gain, rules, partialExemption, saverAllowance)
 }
 
 // Year-by-year ETF payout schedule (#37). Tracks remaining capital, cost basis, and tax each year.
 // grossMonthlyPayout must equal monthlyPayoutFromCapital(capitalAtRetirement, payoutReturn, payoutYears)
 // so that capital depletes to ~0 at the end of the schedule.
 // cumulativeVorabpauschale shifts the cost basis per §19 InvStG (already-taxed VP is not taxed again).
+//
+// `saverAllowanceOverride(yearIndex)` (0-based) lets combine-mode share the §20
+// Abs. 9 EStG Sparerpauschbetrag across multiple ETF instances per year (Phase G
+// M4 F3). When omitted, each call consumes the full per-taxpayer allowance —
+// correct for compare-mode and length-1 portfolios.
 export function etfPayoutSchedule(
   capitalAtRetirement: number,
   totalContributions: number,
@@ -29,6 +37,7 @@ export function etfPayoutSchedule(
   retirementAge: number,
   rules: GermanRules,
   partialExemption: number,
+  saverAllowanceOverride?: (yearIndex: number) => number,
 ): EtfPayoutRow[] {
   if (capitalAtRetirement <= 0 || payoutYears <= 0) return []
 
@@ -52,12 +61,15 @@ export function etfPayoutSchedule(
       : 0
     const rawTaxableGain = annualWithdrawal * gainRatio
     const taxableAfterExemption = rawTaxableGain * (1 - partialExemption)
-    const saverAllowanceUsed = Math.min(taxableAfterExemption, rules.capitalGains.saverAllowance)
+    const allowanceThisYear = saverAllowanceOverride
+      ? saverAllowanceOverride(year - 1)
+      : rules.capitalGains.saverAllowance
+    const saverAllowanceUsed = Math.min(taxableAfterExemption, allowanceThisYear)
     const taxDue = calculateCapitalGainsTax(
       rawTaxableGain,
       rules,
       partialExemption,
-      rules.capitalGains.saverAllowance,
+      allowanceThisYear,
     )
     const netAnnualPayout = Math.max(0, annualWithdrawal - taxDue)
 

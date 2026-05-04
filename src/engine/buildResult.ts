@@ -47,7 +47,17 @@ export interface ProductPayoutFields {
  */
 export interface BuildProductPolicy {
   yearlyReturn?: (yearIndex: number) => number
-  vorabpauschale?: { partialExemption: number }
+  /**
+   * `saverAllowanceOverride(yearIndex)` (0-based contract year) lets combine-mode
+   * share the §20 Abs. 9 EStG Sparerpauschbetrag across multiple ETF instances
+   * per year (Phase G M4 F3). Default behaviour (undefined) consumes the full
+   * `rules.capitalGains.saverAllowance` per year — preserves byte-identical
+   * compare-mode oracle goldens.
+   */
+  vorabpauschale?: {
+    partialExemption: number
+    saverAllowanceOverride?: (yearIndex: number) => number
+  }
   initialCapital?: number
   contributionGrowth?: { annualRate: number }
   /** Issue 15 — TransferEvent inbound capital injections. See `AccumulationPolicy`. */
@@ -158,7 +168,11 @@ export function buildProductResult<
     ? {
         yearlyReturn: params.policy.yearlyReturn,
         vorabpauschale: params.policy.vorabpauschale
-          ? { rules: params.rules, partialExemption: params.policy.vorabpauschale.partialExemption }
+          ? {
+              rules: params.rules,
+              partialExemption: params.policy.vorabpauschale.partialExemption,
+              saverAllowanceOverride: params.policy.vorabpauschale.saverAllowanceOverride,
+            }
           : undefined,
         initialCapital: params.policy.initialCapital,
         contributionGrowth: params.policy.contributionGrowth,

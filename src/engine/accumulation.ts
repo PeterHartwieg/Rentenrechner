@@ -22,8 +22,16 @@ export interface AccumulationPolicy {
   yearlyReturn?: (yearIndex: number) => number
   /** Apply InvStG §18 Vorabpauschale each year-end: deduct §20 KapESt on the
    *  basisertrag (capped at the annual growth), and accrue the gross cumulative
-   *  amount on each row so cost-basis carryover at exit can subtract it. */
-  vorabpauschale?: { rules: GermanRules; partialExemption: number }
+   *  amount on each row so cost-basis carryover at exit can subtract it.
+   *
+   *  `saverAllowanceOverride(yearIndex)` (0-based) lets combine-mode share the
+   *  §20 Abs. 9 EStG Sparerpauschbetrag across multiple ETF instances per year
+   *  (Phase G M4 F3). Default: full `rules.capitalGains.saverAllowance`. */
+  vorabpauschale?: {
+    rules: GermanRules
+    partialExemption: number
+    saverAllowanceOverride?: (yearIndex: number) => number
+  }
   /** Starting balance — used when capital transfers between products
    *  (#71 Riester → AVD per AltZertG transfer; paid-up insurance phase 2).
    *  Default 0. */
@@ -223,7 +231,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
 
     if (month % 12 === 0 || month === input.months) {
       if (policy?.vorabpauschale) {
-        const { rules, partialExemption } = policy.vorabpauschale
+        const { rules, partialExemption, saverAllowanceOverride } = policy.vorabpauschale
         // Annual growth excludes contributions; transfer-event withdrawals
         // already reduced balanceAtYearStart at year-start (so the formula
         // stays correct with no extra adjustment for withdrawals).
@@ -231,11 +239,15 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
         const basisertrag =
           (balanceAtYearStart + vpAcquisitionBaseInYear) * rules.capitalGains.basiszins * 0.7
         const vp = Math.max(0, Math.min(basisertrag, annualGrowth))
+        const yearIndex = Math.floor((month - 1) / 12)
+        const allowance = saverAllowanceOverride
+          ? saverAllowanceOverride(yearIndex)
+          : rules.capitalGains.saverAllowance
         const vpTax = calculateCapitalGainsTax(
           vp,
           rules,
           partialExemption,
-          rules.capitalGains.saverAllowance,
+          allowance,
         )
         capital -= vpTax
         cumulativeVorabpauschale += vp

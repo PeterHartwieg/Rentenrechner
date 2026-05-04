@@ -85,6 +85,22 @@ export interface SimulationContext {
    * (insurance follows `bavFunding.monthlyNetCost`).
    */
   insuranceMonthlyUserCostOverride?: number
+  /**
+   * Phase G M4 F3 — combine-mode shared §20 Abs. 9 EStG Sparerpauschbetrag.
+   *
+   * When set, the ETF simulator forwards `(yearIndex)` lookups to both
+   * (a) the accumulation Vorabpauschale tax pass and (b) the payout-phase
+   * Abgeltungsteuer cascade. `yearIndex` is 0-based — for accumulation it
+   * counts contract years from the first projection year; for payout it
+   * counts retirement years from age `retirementAge`. The two phases share the
+   * same yearly seed but exercise different ranges, so callers pre-compute a
+   * dense per-instance schedule covering both spans.
+   *
+   * Compare-mode and length-1 portfolios leave this `undefined`; the engine
+   * falls back to `rules.capitalGains.saverAllowance` per call (legacy
+   * single-allowance-per-account behaviour).
+   */
+  etfSaverAllowanceOverride?: (yearIndex: number) => number
 }
 
 /**
@@ -163,6 +179,12 @@ export interface BuildContextOverrides {
    * compare-mode oracle goldens (insurance follows `bavFunding.monthlyNetCost`).
    */
   insuranceMonthlyUserCostOverride?: number
+  /**
+   * Phase G M4 F3 — combine-mode shared Sparerpauschbetrag schedule for the
+   * active ETF instance. See `SimulationContext.etfSaverAllowanceOverride`.
+   * Compare-mode never sets this and falls back to the per-call full allowance.
+   */
+  etfSaverAllowanceOverride?: (yearIndex: number) => number
 }
 
 export function buildContext(
@@ -235,5 +257,6 @@ export function buildContext(
     instanceCapitalPolicy: overrides?.instanceCapitalPolicy,
     etfMonthlyUserCostOverride: overrides?.etfMonthlyUserCostOverride,
     insuranceMonthlyUserCostOverride: overrides?.insuranceMonthlyUserCostOverride,
+    etfSaverAllowanceOverride: overrides?.etfSaverAllowanceOverride,
   }
 }
