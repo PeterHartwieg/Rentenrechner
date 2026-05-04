@@ -61,15 +61,15 @@ export function runCombineSimulation(
   const retirementYear = rules.year + (profile.retirementAge - profile.age)
 
   // The bAV grvReduction is a property of EACH bAV instance (different per
-  // instance based on conversion amount). For the statutory baseline we use
-  // the FIRST active bAV instance's funding to mirror the singleton path.
-  // Multi-bAV callers needing a per-instance reduction should re-derive at
-  // the dashboard layer.
-  const firstBavInstanceId = wsa.bav.find((b) => b.status !== 'surrendered')?.instanceId
-  const firstBavFunding = firstBavInstanceId
-    ? portfolioFunding.bavByInstanceId[firstBavInstanceId]
-    : undefined
-  const grvReductionMonthly = firstBavFunding?.estimatedMonthlyGrvReduction ?? 0
+  // instance based on conversion amount). For the statutory baseline we sum
+  // the reduction across ALL active bAV instances — every Entgeltumwandlung
+  // reduces GRV-pflichtig income, not just the first contract's. Surrendered
+  // instances contribute zero (they don't appear in `bavByInstanceId`).
+  const grvReductionMonthly = wsa.bav.reduce((sum, b) => {
+    if (b.status === 'surrendered') return sum
+    const f = portfolioFunding.bavByInstanceId[b.instanceId]
+    return sum + (f?.estimatedMonthlyGrvReduction ?? 0)
+  }, 0)
 
   const statutoryPension = projectStatutoryPension(
     profile,
@@ -105,9 +105,11 @@ export function runCombineSimulation(
   }
 
   // KVdR / freiwillig flag — drives the combine KV/PV cascade.
-  const kvdrMember = wsa.bav[0]?.kvdrMember ?? true
+  // Source: workspace-level `assumptions.statutoryPension.retirementHealthStatus`,
+  // matching `simulationContext.ts:256`. Don't read from `bav[0]` — that wrongly
+  // couples KV/PV status to a specific instance and breaks no-bAV workspaces.
   const retirementHealthStatus: CombineContext['retirementHealthStatus'] =
-    !profile.publicHealthInsurance ? 'pkv' : kvdrMember ? 'kvdr' : 'freiwillig_gkv'
+    wsa.statutoryPension.retirementHealthStatus ?? 'kvdr'
 
   const ctx: CombineContext = {
     profile,

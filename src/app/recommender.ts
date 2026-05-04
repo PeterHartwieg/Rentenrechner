@@ -402,9 +402,12 @@ function buildCombineContext(
     statutoryPensionKvChannel = profile.publicHealthInsurance ? 'kvdr_half_rate' : 'none'
   }
 
-  const kvdrMember = wsa.bav[0]?.kvdrMember ?? true
+  // Read KV/PV status from workspace-level statutoryPension.retirementHealthStatus
+  // (matches `simulationContext.ts:256` and `useCombineSimulation.ts`). Reading
+  // from `bav[0]?.kvdrMember` wrongly couples KV/PV to a single bAV instance
+  // and breaks no-bAV workspaces.
   const retirementHealthStatus: CombineContext['retirementHealthStatus'] =
-    !profile.publicHealthInsurance ? 'pkv' : kvdrMember ? 'kvdr' : 'freiwillig_gkv'
+    wsa.statutoryPension.retirementHealthStatus ?? 'kvdr'
 
   return {
     profile,

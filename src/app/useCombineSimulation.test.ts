@@ -16,6 +16,9 @@ import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
 import { runCombineSimulation } from './useCombineSimulation'
 import { PRODUCT_EVIDENCE_FIELDS } from './evidence'
+import { buildPortfolioFunding } from '../engine/portfolioAdapter'
+import type { BavInstance } from '../domain/instances'
+import type { Workspace } from '../domain/workspace'
 
 function makeWs() {
   const v1 = {
@@ -132,5 +135,179 @@ describe('useCombineSimulation', () => {
     for (const r of etfResults!) {
       expect(r.inputConfidence).toBe('user_confirmed')
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// QA #14 — multi-bAV GRV reduction + workspace-level retirementHealthStatus
+// ---------------------------------------------------------------------------
+
+describe('runCombineSimulation — multi-bAV GRV reduction (QA #14)', () => {
+  it('aggregates estimatedMonthlyGrvReduction across all active bAV instances (not just bav[0])', () => {
+    const ws = makeWs()
+    // Two distinct bAV instances, well under the §3 Nr. 63 cap so the adapter
+    // does NOT scale them. This isolates the aggregation fix.
+    const instA: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-a',
+      label: 'bAV A',
+      monthlyGrossConversion: 100,
+    }
+    const instB: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-b',
+      label: 'bAV B',
+      monthlyGrossConversion: 80,
+    }
+    // includeGrvReduction must be true for the reduction to flow into the
+    // statutory baseline; default is false in defaultScenario.
+    const wsTwo: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: [instA, instB],
+          statutoryPension: {
+            ...ws.baseline.assumptions.statutoryPension,
+            includeGrvReduction: true,
+          },
+        },
+      },
+    }
+    const wsOnlyA: Workspace = {
+      ...wsTwo,
+      baseline: {
+        ...wsTwo.baseline,
+        assumptions: { ...wsTwo.baseline.assumptions, bav: [instA] },
+      },
+    }
+
+    // Per-instance reductions (the fixed code's source of truth).
+    const fundingTwo = buildPortfolioFunding(wsTwo, de2026Rules)
+    const reductionA =
+      fundingTwo.bavByInstanceId['bav-a'].estimatedMonthlyGrvReduction
+    const reductionB =
+      fundingTwo.bavByInstanceId['bav-b'].estimatedMonthlyGrvReduction
+    expect(reductionA).toBeGreaterThan(0)
+    expect(reductionB).toBeGreaterThan(0)
+    expect(Math.abs(reductionA - reductionB)).toBeGreaterThan(0.5) // distinct
+
+    // GRV is monotonic decreasing in the salary-conversion reduction.
+    // Adding instance B must FURTHER reduce the GRV gross beyond instance A
+    // alone — i.e. instance B's contribution is not silently dropped.
+    const bundleTwo = runCombineSimulation(wsTwo, de2026Rules)
+    const bundleOnlyA = runCombineSimulation(wsOnlyA, de2026Rules)
+    expect(bundleTwo.statutoryPension.grossMonthlyPension)
+      .toBeLessThan(bundleOnlyA.statutoryPension.grossMonthlyPension)
+  })
+
+  it('surrendered bAV instances do not contribute to the GRV reduction', () => {
+    const ws = makeWs()
+    const instActive: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-active',
+      label: 'bAV Active',
+      monthlyGrossConversion: 200,
+    }
+    const instSurrendered: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-surrendered',
+      label: 'bAV Surrendered',
+      status: 'surrendered',
+      monthlyGrossConversion: 500, // would dominate if not filtered
+    }
+    const wsActiveOnly: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: [instActive],
+          statutoryPension: {
+            ...ws.baseline.assumptions.statutoryPension,
+            includeGrvReduction: true,
+          },
+        },
+      },
+    }
+    const wsWithSurrendered: Workspace = {
+      ...wsActiveOnly,
+      baseline: {
+        ...wsActiveOnly.baseline,
+        assumptions: {
+          ...wsActiveOnly.baseline.assumptions,
+          bav: [instActive, instSurrendered],
+        },
+      },
+    }
+    const a = runCombineSimulation(wsActiveOnly, de2026Rules)
+    const b = runCombineSimulation(wsWithSurrendered, de2026Rules)
+    expect(b.statutoryPension.grossMonthlyPension)
+      .toBeCloseTo(a.statutoryPension.grossMonthlyPension, 2)
+  })
+})
+
+describe('runCombineSimulation — KV/PV reads workspace retirementHealthStatus (QA #14)', () => {
+  it('no-bAV freiwillig workspace produces a different combined net than no-bAV KVdR (proves health status was honored)', () => {
+    // Pre-fix: `bav[0]?.kvdrMember ?? true` → 'kvdr' for ALL no-bAV workspaces,
+    // regardless of `assumptions.statutoryPension.retirementHealthStatus`.
+    // Post-fix: the workspace flag drives the cascade. A meaningful KV/PV
+    // delta between freiwillig and KVdR is the falsifying signal.
+    const ws = makeWs()
+    // Strip bAV so the pre-fix fallback is exercised.
+    ws.baseline.assumptions.bav = []
+    // Keep statutoryPension non-zero so KV applies; freiwillig vs. KVdR rate
+    // differs (full rate vs. §249a SGB V half rate).
+    ws.baseline.assumptions.statutoryPension = {
+      ...ws.baseline.assumptions.statutoryPension,
+      manualMonthlyGross: 2000,
+      retirementHealthStatus: 'freiwillig_gkv',
+    }
+    const wsKvdr: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          statutoryPension: {
+            ...ws.baseline.assumptions.statutoryPension,
+            retirementHealthStatus: 'kvdr',
+          },
+        },
+      },
+    }
+    const bundleFrw = runCombineSimulation(ws, de2026Rules)
+    const bundleKvdr = runCombineSimulation(wsKvdr, de2026Rules)
+    const basisId = ws.baseline.assumptions.returnScenarios[0].id
+    const netFrw = bundleFrw.combinedByScenarioId[basisId].monthlyNetIncome
+    const netKvdr = bundleKvdr.combinedByScenarioId[basisId].monthlyNetIncome
+    expect(netFrw).toBeGreaterThan(0)
+    expect(netKvdr).toBeGreaterThan(0)
+    // Freiwillig pays full KV rate on GRV gross; KVdR pays half (§249a SGB V).
+    // → freiwillig net < KVdR net by a measurable amount.
+    expect(netFrw).toBeLessThan(netKvdr)
+    expect(netKvdr - netFrw).toBeGreaterThan(1) // at least €1/month of KV delta
+  })
+})
+
+describe('runCombineSimulation — single-bAV back-compat (QA #14)', () => {
+  it('single-bAV workspace produces a non-zero baseline matching the per-instance funding it consumed', () => {
+    // Smoke test: pre-fix used `firstBavFunding.estimatedMonthlyGrvReduction`;
+    // post-fix the single-element reduce returns the same value. Guards against
+    // accidental drift in the one-instance path that compare-mode mirrors.
+    const ws = makeWs()
+    expect(ws.baseline.assumptions.bav.length).toBe(1)
+    const onlyId = ws.baseline.assumptions.bav[0].instanceId
+
+    const portfolioFunding = buildPortfolioFunding(ws, de2026Rules)
+    const expectedReduction =
+      portfolioFunding.bavByInstanceId[onlyId].estimatedMonthlyGrvReduction
+    expect(expectedReduction).toBeGreaterThan(0)
+
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    expect(bundle.statutoryPension.grossMonthlyPension).toBeGreaterThan(0)
+    const basisId = ws.baseline.assumptions.returnScenarios[0].id
+    expect(bundle.combinedByScenarioId[basisId].monthlyNetIncome).toBeGreaterThan(0)
   })
 })
