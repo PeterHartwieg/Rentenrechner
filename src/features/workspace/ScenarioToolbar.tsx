@@ -1,11 +1,29 @@
-import type React from 'react'
 import { RefreshCw } from 'lucide-react'
-import type { MonteCarloAssumptions, ScenarioAssumptions } from '../../domain'
+import type { MonteCarloAssumptions, ReturnScenario } from '../../domain'
 import { formatPercent } from '../../utils/format'
 
+/**
+ * Minimal shape of assumptions consumed by the toolbar.
+ * Using a structural subtype (Pick-style) instead of the full
+ * `ScenarioAssumptions` / `WorkspaceAssumptionsV2` lets the toolbar accept
+ * both compare-mode singleton state and combine-mode workspace state without
+ * a lossy cast. The toolbar only reads/writes `returnScenarios` + `monteCarlo`.
+ */
+interface ToolbarAssumptions {
+  returnScenarios: ReturnScenario[]
+  monteCarlo: MonteCarloAssumptions
+}
+
 interface ScenarioToolbarProps {
-  assumptions: ScenarioAssumptions
-  onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
+  assumptions: ToolbarAssumptions
+  /**
+   * Functional updater — receives the current assumptions (returnScenarios +
+   * monteCarlo) and returns the next value. Kept as a functional-only signature
+   * so the toolbar can be wired to both singleton state (`setAssumptions`) and
+   * workspace state (`portfolioState.patchBaseline`) without requiring a
+   * setState overload or a lossy type cast.
+   */
+  onAssumptionsChange: (updater: (current: ToolbarAssumptions) => ToolbarAssumptions) => void
   selectedScenarioId: string
   onSelectScenario: (id: string) => void
   showRealValues: boolean

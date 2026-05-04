@@ -244,10 +244,37 @@ function Calculator({ navigate }: CalculatorProps) {
     )
   }
 
-  const toolbar = (
+  // In combine mode the toolbar must read from and write to the workspace
+  // baseline assumptions so that scenario/MC changes propagate to
+  // `useCombineSimulation` (which reads `workspace.baseline.assumptions`).
+  // The singleton `assumptions` / `setAssumptions` must NOT be used here —
+  // those drive the compare-mode simulation only.  (#25)
+  //
+  // `ScenarioToolbar` uses a narrow `ToolbarAssumptions` interface
+  // (returnScenarios + monteCarlo only) so it is structurally compatible with
+  // both `ScenarioAssumptions` (compare) and `WorkspaceAssumptionsV2` (combine).
+  // Each branch wraps the state setter with a merge so only the two touched
+  // fields are updated while all other assumption fields are preserved.
+  const toolbar = isCombineMode ? (
+    <ScenarioToolbar
+      assumptions={portfolioState.workspace.baseline.assumptions}
+      onAssumptionsChange={(updater) => {
+        const current = portfolioState.workspace.baseline.assumptions
+        portfolioState.patchBaseline({
+          assumptions: { ...current, ...updater(current) },
+        })
+      }}
+      selectedScenarioId={result.effectiveScenarioId}
+      onSelectScenario={ui.setSelectedScenarioId}
+      showRealValues={ui.showRealValues}
+      onShowRealValuesChange={ui.setShowRealValues}
+    />
+  ) : (
     <ScenarioToolbar
       assumptions={assumptions}
-      onAssumptionsChange={setAssumptions}
+      onAssumptionsChange={(updater) => {
+        setAssumptions((current) => ({ ...current, ...updater(current) }))
+      }}
       selectedScenarioId={result.effectiveScenarioId}
       onSelectScenario={ui.setSelectedScenarioId}
       showRealValues={ui.showRealValues}

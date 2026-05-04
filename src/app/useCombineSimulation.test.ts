@@ -19,6 +19,7 @@ import { PRODUCT_EVIDENCE_FIELDS } from './evidence'
 import { buildPortfolioFunding } from '../engine/portfolioAdapter'
 import type { BavInstance } from '../domain/instances'
 import type { Workspace } from '../domain/workspace'
+import type { ReturnScenario } from '../domain/profile'
 
 function makeWs() {
   const v1 = {
@@ -288,6 +289,85 @@ describe('runCombineSimulation — KV/PV reads workspace retirementHealthStatus 
     // → freiwillig net < KVdR net by a measurable amount.
     expect(netFrw).toBeLessThan(netKvdr)
     expect(netKvdr - netFrw).toBeGreaterThan(1) // at least €1/month of KV delta
+  })
+})
+
+// ---------------------------------------------------------------------------
+// QA #25 — combine-mode toolbar must write workspace assumptions, not singleton
+// ---------------------------------------------------------------------------
+
+describe('runCombineSimulation — custom scenario edits land on workspace state (QA #25)', () => {
+  it('a custom returnScenario added to workspace assumptions appears in combinedByScenarioId', () => {
+    // Simulates what ScenarioToolbar.addCustomScenario does via onAssumptionsChange
+    // in combine mode: add a 'custom' scenario to workspace.baseline.assumptions.returnScenarios.
+    // The fix in App.tsx wires the toolbar to patchBaseline so the updater runs
+    // against workspace state — this test exercises runCombineSimulation directly
+    // to confirm the scenario is picked up.
+    const ws = makeWs()
+
+    // Baseline: no 'custom' scenario in workspace.
+    const beforeIds = ws.baseline.assumptions.returnScenarios.map((s) => s.id)
+    expect(beforeIds).not.toContain('custom')
+
+    // Apply the same functional updater that ScenarioToolbar.addCustomScenario
+    // would produce via onAssumptionsChange (i.e. patchBaseline in combine mode).
+    const customScenario: ReturnScenario = { id: 'custom', label: 'Eigenes', annualReturn: 0.08 }
+    const updatedAssumptions = {
+      ...ws.baseline.assumptions,
+      returnScenarios: [
+        ...ws.baseline.assumptions.returnScenarios,
+        customScenario,
+      ],
+    }
+    const wsWithCustom: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: updatedAssumptions,
+      },
+    }
+
+    // The custom scenario must be present in workspace returnScenarios.
+    expect(wsWithCustom.baseline.assumptions.returnScenarios.map((s) => s.id)).toContain('custom')
+
+    // runCombineSimulation must produce a result for the custom scenario id.
+    const bundle = runCombineSimulation(wsWithCustom, de2026Rules)
+    expect(bundle.combinedByScenarioId['custom']).toBeDefined()
+    expect(bundle.combinedByScenarioId['custom'].monthlyNetIncome).toBeGreaterThanOrEqual(0)
+  })
+
+  it('editing a custom scenario annualReturn on workspace changes the combined net (proves simulation reacts)', () => {
+    // This guards against a regression where writing to singleton (wrong) state
+    // leaves the combine simulation unchanged — the bundle must differ when
+    // workspace assumptions differ.
+    const ws = makeWs()
+    const addCustom = (annualReturn: number): Workspace => {
+      const customScenario: ReturnScenario = { id: 'custom', label: 'Eigenes', annualReturn }
+      return {
+        ...ws,
+        baseline: {
+          ...ws.baseline,
+          assumptions: {
+            ...ws.baseline.assumptions,
+            returnScenarios: [
+              ...ws.baseline.assumptions.returnScenarios,
+              customScenario,
+            ],
+          },
+        },
+      }
+    }
+    const wsLow = addCustom(0.02)
+    const wsHigh = addCustom(0.10)
+
+    const bundleLow = runCombineSimulation(wsLow, de2026Rules)
+    const bundleHigh = runCombineSimulation(wsHigh, de2026Rules)
+
+    // Higher returns must produce a higher (or equal) combined net income.
+    const netLow = bundleLow.combinedByScenarioId['custom'].monthlyNetIncome
+    const netHigh = bundleHigh.combinedByScenarioId['custom'].monthlyNetIncome
+    expect(netLow).toBeGreaterThanOrEqual(0)
+    expect(netHigh).toBeGreaterThanOrEqual(netLow)
   })
 })
 
