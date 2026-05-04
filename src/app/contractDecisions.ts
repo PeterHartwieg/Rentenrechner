@@ -301,15 +301,15 @@ export function weiterfuehrenWhatIf(
 // 2. beitragsfreiWhatIf
 // ---------------------------------------------------------------------------
 
-// Disabled in V1 — engine simulators don't read status === 'paid_up'. Re-enable once paid_up
-// support lands across simulators (P2 follow-up). See BACKLOG.md "Beitragsfrei engine support".
-
 /**
  * Flip the instance to `paid_up`. No more contributions; the contract
  * continues to accumulate on the existing balance under the paid-up fee model.
  *
  * Applicable to: bAV, pAV, Basisrente (though Basisrente paid-up is unusual),
- * Riester, AVD.
+ * Riester, AVD. Phase G M4 F1 wires the engine simulators to honor
+ * `status === 'paid_up'` (zero contributions, phase-2 fees, currentValueEUR
+ * carried as initial capital) — see `src/engine/portfolioAdapter.ts`
+ * "Beitragsfrei (paid_up) helpers".
  *
  * `paidUpAtAge` defaults to the user's current age from the profile.
  */
@@ -915,12 +915,14 @@ function findInstanceInWsa(
  *
  * Basisrente: kuendigen is excluded (legally prohibited).
  * Surrendered instances: returns empty array.
- * Active or paid-up: returns weiterfuehren +
+ * Active or paid-up: returns weiterfuehren + beitragsfrei (where applicable) +
  *   kuendigen (if not basisrente) + uebertragen (for each compatible target, max 2).
  *
- * Beitragsfrei is intentionally omitted in V1 — engine simulators do not read
- * `status === 'paid_up'`. Re-enable once paid_up support lands across all
- * per-product simulators (see BACKLOG.md "Beitragsfrei engine support").
+ * Beitragsfrei (Phase G M4 F1): now wired across all 5 contributing simulators
+ * (bAV, pAV, Basisrente, AVD, Riester). ETF instances do not get a beitragsfrei
+ * card — there are no contributions to stop and no acquisition costs to drop;
+ * the user simply lowers `monthlyContribution` to 0. Already-paid-up instances
+ * also do not show the card (would be a no-op).
  */
 export function generateContractDecisions(
   workspace: Workspace,
@@ -934,13 +936,20 @@ export function generateContractDecisions(
   // 1. Weiterfuehren (always first)
   decisions.push(weiterfuehrenWhatIf(workspace, instanceId))
 
-  // 2. Kuendigen (not for Basisrente — capital payout legally prohibited)
+  // 2. Beitragsfrei (skip ETF — no acquisition fees / contribution-stop semantics
+  // distinct from "set monthlyContribution to 0"; skip already-paid-up instances).
+  const slot = detectSlot(instanceId)
+  if (slot !== 'etf' && instance.status !== 'paid_up') {
+    decisions.push(beitragsfreiWhatIf(workspace, instanceId))
+  }
+
+  // 3. Kuendigen (not for Basisrente — capital payout legally prohibited)
   const kuendigen = kuendigenWhatIf(workspace, instanceId)
   if (kuendigen) {
     decisions.push(kuendigen)
   }
 
-  // 3. Uebertragen (for each compatible target, max 2 to keep card count manageable)
+  // 4. Uebertragen (for each compatible target, max 2 to keep card count manageable)
   const targets = compatibleTransferTargets(workspace, instance)
   for (const t of targets.slice(0, 2)) {
     if (t.kind === 'existing') {

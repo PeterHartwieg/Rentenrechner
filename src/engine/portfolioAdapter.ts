@@ -35,12 +35,15 @@ import type {
   BavAssumptions,
   BavFundingResult,
   EtfAssumptions,
+  FeeModel,
   GermanRules,
   InsuranceAssumptions,
+  PersonalProfile,
   ProductResult,
   ReturnScenario,
   RiesterAssumptions,
   RiesterFundingResult,
+  SalaryResult,
   ScenarioAssumptions,
 } from '../domain'
 import type { PortfolioFunding, Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
@@ -222,6 +225,128 @@ export const NEUTRALISED_RIESTER: RiesterAssumptions = {
 }
 
 // ---------------------------------------------------------------------------
+// Beitragsfrei (paid_up) helpers — Phase G M4 F1
+// ---------------------------------------------------------------------------
+//
+// When an instance has `status === 'paid_up'`, contributions stop and the
+// contract switches to a "phase-2" fee model: only ongoing wrapper / fund /
+// pension-payout fees continue; acquisition costs, contribution fees, and
+// fixed monthly admin fees are zeroed. This mirrors the existing
+// `paidUpScenario` precedent inside `src/engine/products/insurance.ts` —
+// applied here uniformly across the other 4 simulators (bAV, Basisrente,
+// AVD, Riester) at the adapter layer so per-product simulators stay
+// untouched.
+//
+// Schema decision: there is no `paidUpSince` field on `InstanceCommon` today.
+// We treat `status === 'paid_up'` as start-from-year-0 (the entire
+// accumulation phase is paid-up). The instance's `currentValueEUR` is then
+// injected as `initialCapital` via `instanceCapitalPolicy`, so the contract
+// continues to grow the existing balance under phase-2 fees with zero
+// contributions.
+//
+// Out of scope (per spec): per-month paid-up date precision; Riester subsidy
+// clawback. State allowances simply stop accruing (no new Zulage); existing
+// capital continues to grow.
+
+/** Strip acquisition / contribution / fixed-admin fees for paid-up phase 2. */
+function paidUpFeeModel(fees: FeeModel): FeeModel {
+  return {
+    wrapperAssetFee: fees.wrapperAssetFee,
+    fundAssetFee: fees.fundAssetFee,
+    contributionFee: 0,
+    fixedMonthlyFee: 0,
+    acquisitionCostPct: 0,
+    acquisitionCostSpreadYears: 1,
+    pensionPayoutFeePct: fees.pensionPayoutFeePct,
+  }
+}
+
+/**
+ * Build a `BavFundingResult` for a paid-up bAV instance: zero contribution,
+ * zero employer subsidy, zero tax/SV savings. We still call
+ * `calculateBavFunding` with a zeroed singleton so the salary baseline
+ * (`salaryWithBav`) reflects "no bAV deduction" — which is exactly what a
+ * paid-up bAV looks like to payroll.
+ */
+function paidUpBavFunding(
+  profile: PersonalProfile,
+  rules: GermanRules,
+  singleton: BavAssumptions,
+  calc: typeof calculateBavFunding,
+): BavFundingResult {
+  const zeroed: BavAssumptions = {
+    ...singleton,
+    monthlyGrossConversion: 0,
+    statutoryMinimumSubsidyEnabled: false,
+    contractualMatchPercent: 0,
+    contractualFixedMonthly: 0,
+  }
+  return calc(profile, rules, zeroed)
+}
+
+/** Build a paid-up Basisrente funding result. */
+function paidUpBasisrenteFunding(
+  rules: GermanRules,
+  salary: SalaryResult,
+  singleton: BasisrenteAssumptions,
+  pensionSystemAnnualOverride: number | undefined,
+  calc: typeof calculateBasisrenteFunding,
+): BasisrenteFundingResult {
+  const zeroed: BasisrenteAssumptions = { ...singleton, monthlyGrossContribution: 0 }
+  return calc(rules, salary, zeroed, pensionSystemAnnualOverride)
+}
+
+/**
+ * Build a paid-up AVD funding result. Zero own contribution AND eligibility,
+ * so allowances stop accruing during the paid-up phase.
+ */
+function paidUpAvdFunding(
+  rules: GermanRules,
+  salary: SalaryResult,
+  singleton: AltersvorsorgedepotAssumptions,
+  calc: typeof calculateAvdFunding,
+): AltersvorsorgedepotFundingResult {
+  const zeroed: AltersvorsorgedepotAssumptions = {
+    ...singleton,
+    monthlyOwnContribution: 0,
+    eligibility: {
+      directlyEligible: false,
+      indirectSpouseEligible: false,
+      eligibleChildren: 0,
+      ageAtContractStart: singleton.eligibility.ageAtContractStart,
+      careerStarterBonusUsed: true,
+    },
+  }
+  return calc(rules, salary, zeroed)
+}
+
+/**
+ * Build a paid-up Riester funding result. Zero contribution AND eligibility
+ * — no new state allowances during paid-up phase. Per spec: "Riester subsidies
+ * STOP during paid-up". Existing accumulated capital continues to grow via
+ * `instanceCapitalPolicy.initialCapital`. We do NOT trigger any clawback.
+ */
+function paidUpRiesterFunding(
+  rules: GermanRules,
+  salary: SalaryResult,
+  singleton: RiesterAssumptions,
+  profile: PersonalProfile,
+  calc: typeof calculateRiesterFunding,
+): RiesterFundingResult {
+  const zeroed: RiesterAssumptions = {
+    ...singleton,
+    monthlyOwnContribution: 0,
+    eligibility: {
+      directlyEligible: false,
+      indirectSpouseEligible: false,
+      ageAtContractStart: singleton.eligibility.ageAtContractStart,
+      careerStarterBonusUsed: true,
+    },
+  }
+  return calc(rules, salary, zeroed, profile)
+}
+
+// ---------------------------------------------------------------------------
 // InstanceCommon strip helper
 // ---------------------------------------------------------------------------
 
@@ -262,6 +387,47 @@ function stripInstanceCommonKeys<T extends Record<string, unknown>>(
 // ---------------------------------------------------------------------------
 
 type ProductSlot = 'bav' | 'etf' | 'insurance' | 'basisrente' | 'altersvorsorgedepot' | 'riester'
+
+/**
+ * For paid-up instances: rewrite the active product slot in a projected
+ * `ScenarioAssumptions` so it uses the phase-2 fee model. ETF is intentionally
+ * not handled — its assumption shape carries `annualAssetFee` only, which
+ * already represents an asset-fee (no acquisition/contribution fee concept).
+ */
+function applyPaidUpFeesToProjection(
+  projected: ScenarioAssumptions,
+  slot: ProductSlot,
+): ScenarioAssumptions {
+  switch (slot) {
+    case 'bav':
+      return { ...projected, bav: { ...projected.bav, fees: paidUpFeeModel(projected.bav.fees) } }
+    case 'insurance':
+      return {
+        ...projected,
+        insurance: { ...projected.insurance, fees: paidUpFeeModel(projected.insurance.fees) },
+      }
+    case 'basisrente':
+      return {
+        ...projected,
+        basisrente: { ...projected.basisrente, fees: paidUpFeeModel(projected.basisrente.fees) },
+      }
+    case 'altersvorsorgedepot':
+      return {
+        ...projected,
+        altersvorsorgedepot: {
+          ...projected.altersvorsorgedepot,
+          fees: paidUpFeeModel(projected.altersvorsorgedepot.fees),
+        },
+      }
+    case 'riester':
+      return {
+        ...projected,
+        riester: { ...projected.riester, fees: paidUpFeeModel(projected.riester.fees) },
+      }
+    default:
+      return projected
+  }
+}
 
 function slotToProductId(slot: ProductSlot): ProductId {
   switch (slot) {
@@ -455,7 +621,12 @@ export function buildPortfolioFunding(
   // -------------------------------------------------------------------------
   // bAV cap aggregation
   // -------------------------------------------------------------------------
-  const activeBav = wsa.bav.filter(b => b.status !== 'surrendered')
+  // Paid-up instances do NOT consume cap headroom (no contributions flowing).
+  // We still emit a funding entry for them via `paidUpBavFunding` so the
+  // simulator runs against a zero-contribution baseline.
+  const allBav = wsa.bav.filter(b => b.status !== 'surrendered')
+  const activeBav = allBav.filter(b => b.status !== 'paid_up')
+  const paidUpBav = allBav.filter(b => b.status === 'paid_up')
   const totalBavGrossMonthly = activeBav.reduce(
     (s, b) => s + (b.monthlyGrossConversion ?? 0),
     0,
@@ -485,6 +656,12 @@ export function buildPortfolioFunding(
       : { ...singleton, monthlyGrossConversion: singleton.monthlyGrossConversion * bavScale }
     bavByInstanceId[inst.instanceId] = calculateBavFunding(profile, rules, scaledSingleton)
   }
+  for (const inst of paidUpBav) {
+    const singleton = stripInstanceCommonKeys(
+      inst as unknown as Record<string, unknown>,
+    ) as unknown as BavAssumptions
+    bavByInstanceId[inst.instanceId] = paidUpBavFunding(profile, rules, singleton, calculateBavFunding)
+  }
 
   // -------------------------------------------------------------------------
   // Basisrente cap aggregation
@@ -509,7 +686,9 @@ export function buildPortfolioFunding(
     pensionSystemAnnualContributionOverride = 0
   }
 
-  const activeBasisrente = wsa.basisrente.filter(b => b.status !== 'surrendered')
+  const allBasisrente = wsa.basisrente.filter(b => b.status !== 'surrendered')
+  const activeBasisrente = allBasisrente.filter(b => b.status !== 'paid_up')
+  const paidUpBasisrente = allBasisrente.filter(b => b.status === 'paid_up')
   const totalBasisrenteGrossMonthly = activeBasisrente.reduce(
     (s, b) => s + (b.monthlyGrossContribution ?? 0),
     0,
@@ -561,11 +740,25 @@ export function buildPortfolioFunding(
       pensionSystemAnnualContributionOverride,
     )
   }
+  for (const inst of paidUpBasisrente) {
+    const singleton = stripInstanceCommonKeys(
+      inst as unknown as Record<string, unknown>,
+    ) as unknown as BasisrenteAssumptions
+    basisrenteByInstanceId[inst.instanceId] = paidUpBasisrenteFunding(
+      rules,
+      salaryForOtherFunding,
+      singleton,
+      pensionSystemAnnualContributionOverride,
+      calculateBasisrenteFunding,
+    )
+  }
 
   // -------------------------------------------------------------------------
   // AVD aggregation (AltZertG contract cap + §10a)
   // -------------------------------------------------------------------------
-  const activeAvd = wsa.altersvorsorgedepot.filter(a => a.status !== 'surrendered')
+  const allAvd = wsa.altersvorsorgedepot.filter(a => a.status !== 'surrendered')
+  const activeAvd = allAvd.filter(a => a.status !== 'paid_up')
+  const paidUpAvd = allAvd.filter(a => a.status === 'paid_up')
   // AVD has a per-contract contributionCap (6840 EUR/year for 2026). The cap is
   // per-contract, not per-portfolio, so we don't scale across instances.
   // §10a deduction is handled inside the funding helper. The Sparerpauschbetrag
@@ -581,11 +774,24 @@ export function buildPortfolioFunding(
       singleton,
     )
   }
+  for (const inst of paidUpAvd) {
+    const singleton = stripInstanceCommonKeys(
+      inst as unknown as Record<string, unknown>,
+    ) as unknown as AltersvorsorgedepotAssumptions
+    altersvorsorgedepotByInstanceId[inst.instanceId] = paidUpAvdFunding(
+      rules,
+      salaryForOtherFunding,
+      singleton,
+      calculateAvdFunding,
+    )
+  }
 
   // -------------------------------------------------------------------------
   // Riester aggregation (§10a / §86 + allowances)
   // -------------------------------------------------------------------------
-  const activeRiester = wsa.riester.filter(r => r.status !== 'surrendered')
+  const allRiester = wsa.riester.filter(r => r.status !== 'surrendered')
+  const activeRiester = allRiester.filter(r => r.status !== 'paid_up')
+  const paidUpRiester = allRiester.filter(r => r.status === 'paid_up')
   const totalRiesterGrossMonthly = activeRiester.reduce(
     (s, r) => s + (r.monthlyOwnContribution ?? 0),
     0,
@@ -614,6 +820,18 @@ export function buildPortfolioFunding(
       salaryForOtherFunding,
       scaledSingleton,
       profile,
+    )
+  }
+  for (const inst of paidUpRiester) {
+    const singleton = stripInstanceCommonKeys(
+      inst as unknown as Record<string, unknown>,
+    ) as unknown as RiesterAssumptions
+    riesterByInstanceId[inst.instanceId] = paidUpRiesterFunding(
+      rules,
+      salaryForOtherFunding,
+      singleton,
+      profile,
+      calculateRiesterFunding,
     )
   }
 
@@ -1017,7 +1235,15 @@ export function simulatePortfolio(
   ) => {
     for (const inst of instances) {
       if (inst.status === 'surrendered') continue
-      const projected = projectInstanceToScenarioAssumptions(inst, wsa)
+      const projectedRaw = projectInstanceToScenarioAssumptions(inst, wsa)
+      // Phase G M4 F1 — paid-up: switch the active product slot to phase-2 fees
+      // (no acquisition / contribution / fixed-admin fees; wrapper / fund /
+      // pension-payout fees continue). ETF has no `fees` field; the simulator
+      // ignores paid-up status (no contributions are honored anyway and ETF
+      // paid_up is conceptually a no-op — the user just stops contributing).
+      const projected = inst.status === 'paid_up'
+        ? applyPaidUpFeesToProjection(projectedRaw, detectProductSlot(inst))
+        : projectedRaw
       const baseOverrides = fundingOverrideFor(inst)
       const outbound = outboundBy.get(inst.instanceId) ?? []
       const inbound = inboundBy.get(inst.instanceId) ?? []

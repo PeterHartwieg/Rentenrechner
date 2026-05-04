@@ -1,5 +1,5 @@
 /**
- * Unit tests for contractDecisions.ts (Group G issue 14).
+ * Unit tests for contractDecisions.ts (Group G issue 14, Phase G M4 F1).
  *
  * Coverage:
  *   - weiterfuehrenWhatIf: identity delta, zero atoms.
@@ -13,8 +13,8 @@
  *   - compatibleTransferTargets: Riester→AVD virtual target when no AVD exists.
  *   - compatibleTransferTargets: no validator-rejected pairings emitted (B2 regression).
  *   - Karin's 2002 pAV: kuendigen surfaces `lose_pre_2005_privilege` atom.
- *   - Dilan's old bAV: weiterfuehren / kuendigen produces 2 distinct decisions (Beitragsfrei V1-excluded).
- *   - Karin's pAV menu: weiterfuehren / kuendigen (2 cards, Beitragsfrei V1-excluded).
+ *   - generateContractDecisions: Beitragsfrei is included for active non-ETF instances (M4 F1).
+ *   - generateContractDecisions: ETF and already-paid-up instances skip Beitragsfrei.
  *   - applyContractDecision: identity, paid_up, surrender, transfer, transfer_to_new mutations.
  *   - generateContractDecisions: Basisrente kuendigen excluded.
  *   - Round-trip validation: applyContractDecision output survives migrateAndValidateState.
@@ -402,18 +402,18 @@ describe('uebertragenWhatIf', () => {
 // ---------------------------------------------------------------------------
 
 describe("Dilan's old bAV decisions", () => {
-  it('generates weiterfuehren and kuendigen (Beitragsfrei excluded in V1)', () => {
+  it('generates weiterfuehren, beitragsfrei, and kuendigen', () => {
     const ws = makeDilanWorkspace()
     const instanceId = ws.baseline.assumptions.bav[0].instanceId
     const decisions = generateContractDecisions(ws, instanceId)
     const kinds = decisions.map((d) => d.kind)
     expect(kinds).toContain('weiterfuehren')
+    expect(kinds).toContain('beitragsfrei')
     expect(kinds).toContain('kuendigen')
-    expect(kinds).not.toContain('beitragsfrei')
     const ids = new Set(decisions.map((d) => d.id))
     expect(ids.size).toBe(decisions.length)
-    // ≥2 distinct candidates satisfies the spec acceptance criterion.
-    expect(decisions.length).toBeGreaterThanOrEqual(2)
+    // ≥3 distinct candidates after M4 F1.
+    expect(decisions.length).toBeGreaterThanOrEqual(3)
   })
 })
 
@@ -430,15 +430,16 @@ describe('Basisrente decisions', () => {
     expect(kinds).not.toContain('kuendigen')
   })
 
-  it('weiterfuehren is present for Basisrente (beitragsfrei V1-excluded)', () => {
+  it('weiterfuehren and beitragsfrei are present for Basisrente (M4 F1)', () => {
     const ws = makeBasisrenteWorkspace()
     const instanceId = ws.baseline.assumptions.basisrente[0].instanceId
     const decisions = generateContractDecisions(ws, instanceId)
     const kinds = decisions.map((d) => d.kind)
     expect(kinds).toContain('weiterfuehren')
-    expect(kinds).not.toContain('beitragsfrei')
-    // ≥1 decision (weiterfuehren) satisfies the minimum.
-    expect(decisions.length).toBeGreaterThanOrEqual(1)
+    // Basisrente: capital payout legally prohibited → no kuendigen, but
+    // beitragsfrei is allowed (paid-up Schicht-1 contracts continue running).
+    expect(kinds).toContain('beitragsfrei')
+    expect(kinds).not.toContain('kuendigen')
   })
 })
 
@@ -540,16 +541,69 @@ describe('applyContractDecision', () => {
 // Karin's pAV menu (B3): 2-card menu after Beitragsfrei removal
 // ---------------------------------------------------------------------------
 
-describe("Karin's pAV menu (Beitragsfrei V1-excluded)", () => {
-  it('generates weiterfuehren and kuendigen — 2 distinct cards', () => {
+// ---------------------------------------------------------------------------
+// M4 F1: Beitragsfrei skip for ETF and already-paid-up instances
+// ---------------------------------------------------------------------------
+
+describe('M4 F1: beitragsfrei card filtering', () => {
+  it('ETF instance: no beitragsfrei card (no acquisition-fee semantics to drop)', () => {
+    const ws = makeKarinWorkspace()
+    // Add an ETF instance.
+    const etfInst: EtfInstance = {
+      instanceId: 'etf-paidup-test',
+      label: 'ETF',
+      status: 'active',
+      contractStartYear: 2020,
+      evidenceMap: {},
+      annualAssetFee: 0.002,
+      equityPartialExemption: 0.3,
+      annualContributionGrowthRate: 0,
+      monthlyContribution: 100,
+    }
+    const wsWithEtf: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: { ...ws.baseline.assumptions, etf: [etfInst] },
+      },
+    }
+    const decisions = generateContractDecisions(wsWithEtf, etfInst.instanceId)
+    const kinds = decisions.map((d) => d.kind)
+    expect(kinds).not.toContain('beitragsfrei')
+  })
+
+  it('already-paid-up instance: no beitragsfrei card (no-op)', () => {
+    const ws = makeDilanWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    // Mark the bAV as paid_up.
+    const wsPaidUp: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: ws.baseline.assumptions.bav.map((b) =>
+            b.instanceId === instanceId ? { ...b, status: 'paid_up' } : b,
+          ),
+        },
+      },
+    }
+    const decisions = generateContractDecisions(wsPaidUp, instanceId)
+    const kinds = decisions.map((d) => d.kind)
+    expect(kinds).not.toContain('beitragsfrei')
+  })
+})
+
+describe("Karin's pAV menu (M4 F1: Beitragsfrei re-enabled)", () => {
+  it('generates weiterfuehren, beitragsfrei, and kuendigen', () => {
     const ws = makeKarinWorkspace()
     const instanceId = ws.baseline.assumptions.insurance[0].instanceId
     const decisions = generateContractDecisions(ws, instanceId)
     const kinds = decisions.map((d) => d.kind)
     expect(kinds).toContain('weiterfuehren')
+    expect(kinds).toContain('beitragsfrei')
     expect(kinds).toContain('kuendigen')
-    expect(kinds).not.toContain('beitragsfrei')
-    expect(decisions.length).toBeGreaterThanOrEqual(2)
+    expect(decisions.length).toBeGreaterThanOrEqual(3)
   })
 })
 

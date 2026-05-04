@@ -515,6 +515,240 @@ describe('PortfolioAdapter — surrendered instances are skipped', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Phase G M4 F1 — paid_up (Beitragsfrei) engine support across 5 simulators
+// ---------------------------------------------------------------------------
+
+describe('PortfolioAdapter — Beitragsfrei (paid_up) engine support (M4 F1)', () => {
+  /**
+   * Helper: build a length-1 workspace where the SOLE instance of `slotKey`
+   * has `status: 'paid_up'` and a non-trivial `currentValueEUR`. Returns the
+   * paid-up workspace and an "active" twin (same fields, status: 'active') so
+   * tests can compare the two.
+   */
+  function makePaidUpAndActiveWorkspace<K extends 'bav' | 'basisrente' | 'altersvorsorgedepot' | 'riester' | 'insurance'>(
+    slotKey: K,
+    currentValueEUR: number,
+  ): { paidUp: Workspace; active: Workspace } {
+    const baseV1 = makeRichV1()
+    const ws = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const orig = (ws.baseline.assumptions[slotKey] as unknown as Array<{ instanceId: string }>)[0]
+    const activeInst = { ...orig, status: 'active' as const, currentValueEUR }
+    const paidUpInst = { ...orig, status: 'paid_up' as const, currentValueEUR }
+    const buildWith = (inst: typeof activeInst): Workspace => ({
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          [slotKey]: [inst],
+        },
+      },
+    })
+    return {
+      paidUp: buildWith(paidUpInst as unknown as typeof activeInst),
+      active: buildWith(activeInst),
+    }
+  }
+
+  it('paid_up bAV: zero contributions, capital seeded by currentValueEUR; differs from active baseline', () => {
+    const { paidUp, active } = makePaidUpAndActiveWorkspace('bav', 50_000)
+    const paidUpResult = simulatePortfolio(paidUp, de2026Rules)
+    const activeResult = simulatePortfolio(active, de2026Rules)
+    const id = paidUp.baseline.assumptions.bav[0].instanceId
+    const paidUpResults = paidUpResult.perInstance[id]
+    const activeResults = activeResult.perInstance[id]
+    expect(paidUpResults).toBeDefined()
+    expect(activeResults).toBeDefined()
+
+    for (const r of paidUpResults) {
+      // No contributions during paid-up phase.
+      expect(r.monthlyUserCost).toBe(0)
+      expect(r.monthlyProductContribution).toBe(0)
+      expect(r.monthlyEmployerContribution).toBe(0)
+      expect(r.totalProductContributions).toBe(0)
+      // No salary-phase tax/SV savings during paid-up.
+      expect(r.taxAndSvSavings).toBe(0)
+      // Capital exists and grows from currentValueEUR.
+      expect(r.capitalAtRetirement).toBeGreaterThanOrEqual(50_000)
+    }
+
+    // Active vs paid_up MUST diverge: active has contributions, paid_up doesn't.
+    expect(paidUpResults[0].capitalAtRetirement).not.toBe(activeResults[0].capitalAtRetirement)
+    expect(paidUpResults[0].totalProductContributions).toBeLessThan(
+      activeResults[0].totalProductContributions,
+    )
+    // The paid_up funding entry was emitted with zero conversion.
+    expect(paidUpResult.portfolioFunding.bavByInstanceId[id].monthlyGrossConversion).toBe(0)
+  })
+
+  it('paid_up Basisrente: zero contributions, capital from currentValueEUR; differs from active', () => {
+    const { paidUp, active } = makePaidUpAndActiveWorkspace('basisrente', 30_000)
+    const paidUpResult = simulatePortfolio(paidUp, de2026Rules)
+    const activeResult = simulatePortfolio(active, de2026Rules)
+    const id = paidUp.baseline.assumptions.basisrente[0].instanceId
+    const paidUpResults = paidUpResult.perInstance[id]
+    const activeResults = activeResult.perInstance[id]
+    expect(paidUpResults).toBeDefined()
+
+    for (const r of paidUpResults) {
+      expect(r.monthlyUserCost).toBe(0)
+      expect(r.monthlyProductContribution).toBe(0)
+      expect(r.totalProductContributions).toBe(0)
+      expect(r.capitalAtRetirement).toBeGreaterThanOrEqual(30_000)
+    }
+    expect(paidUpResults[0].capitalAtRetirement).not.toBe(activeResults[0].capitalAtRetirement)
+    expect(paidUpResult.portfolioFunding.basisrenteByInstanceId[id].monthlyGrossContribution).toBe(0)
+  })
+
+  it('paid_up Riester: zero contributions, zero allowances, capital from currentValueEUR', () => {
+    const { paidUp, active } = makePaidUpAndActiveWorkspace('riester', 20_000)
+    // Make sure Riester eligibility is enabled in the active twin so we can
+    // verify allowances flow when active vs zero when paid_up.
+    const enableRiesterEligibility = (ws: Workspace): Workspace => ({
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          riester: ws.baseline.assumptions.riester.map((r) => ({
+            ...r,
+            eligibility: { ...r.eligibility, directlyEligible: true },
+          })),
+        },
+      },
+    })
+    const paidUpEnabled = enableRiesterEligibility(paidUp)
+    const activeEnabled = enableRiesterEligibility(active)
+    const paidUpResult = simulatePortfolio(paidUpEnabled, de2026Rules)
+    const activeResult = simulatePortfolio(activeEnabled, de2026Rules)
+    const id = paidUpEnabled.baseline.assumptions.riester[0].instanceId
+    const paidUpFunding = paidUpResult.portfolioFunding.riesterByInstanceId[id]
+    const activeFunding = activeResult.portfolioFunding.riesterByInstanceId[id]
+
+    // Zero own contribution AND zero allowances during paid-up.
+    expect(paidUpFunding.monthlyOwnContribution).toBe(0)
+    expect(paidUpFunding.totalAllowanceAnnual).toBe(0)
+    // Active twin still has an own contribution (and possibly allowances).
+    expect(activeFunding.monthlyOwnContribution).toBeGreaterThan(0)
+
+    const paidUpResults = paidUpResult.perInstance[id]
+    for (const r of paidUpResults) {
+      expect(r.monthlyUserCost).toBe(0)
+      expect(r.capitalAtRetirement).toBeGreaterThanOrEqual(20_000)
+    }
+  })
+
+  it('paid_up AVD: zero contributions, zero allowances, capital from currentValueEUR (mapped to riesterTransferCapital)', () => {
+    const { paidUp, active } = makePaidUpAndActiveWorkspace('altersvorsorgedepot', 25_000)
+    const paidUpResult = simulatePortfolio(paidUp, de2026Rules)
+    const activeResult = simulatePortfolio(active, de2026Rules)
+    const id = paidUp.baseline.assumptions.altersvorsorgedepot[0].instanceId
+    const paidUpFunding = paidUpResult.portfolioFunding.altersvorsorgedepotByInstanceId[id]
+
+    expect(paidUpFunding.monthlyOwnContribution).toBe(0)
+    expect(paidUpFunding.totalAllowanceAnnual).toBe(0)
+
+    const paidUpResults = paidUpResult.perInstance[id]
+    const activeResults = activeResult.perInstance[id]
+    for (const r of paidUpResults) {
+      expect(r.monthlyUserCost).toBe(0)
+      // Capital seeded from currentValueEUR (via existingCapital→riesterTransferCapital
+      // mapping in projectInstanceToScenarioAssumptions).
+      expect(r.capitalAtRetirement).toBeGreaterThanOrEqual(25_000)
+    }
+    expect(paidUpResults[0].capitalAtRetirement).not.toBe(activeResults[0].capitalAtRetirement)
+  })
+
+  it('paid_up insurance (pAV): zero contributions; capital seeded from currentValueEUR', () => {
+    // The fair-comparison invariant ties "active" pAV monthly contribution to
+    // `bavFunding.monthlyNetCost` (compare-mode rule, see CLAUDE.md). In a
+    // length-1 workspace with a NEUTRALISED bAV slot both active and paid-up
+    // pAV would get zero contribution and look identical. Per the existing M1
+    // limitation tests (line ~560: "produces a structurally-correct (but
+    // zero-contribution) result for product=versicherung in a length-1
+    // workspace"), the value-divergence check needs a bAV instance to drive
+    // the cash anchor. The structural assertion below — pAV paid_up has zero
+    // contributions and capital >= currentValueEUR — is the meaningful one;
+    // value divergence is covered by bAV / Basisrente / AVD / Riester tests
+    // above where the per-instance funding directly differs.
+    const baseV1 = makeRichV1()
+    const ws = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const orig = ws.baseline.assumptions.insurance[0]
+    const withFees: InsuranceInstance = {
+      ...orig,
+      status: 'paid_up',
+      currentValueEUR: 15_000,
+      fees: {
+        wrapperAssetFee: 0.005,
+        fundAssetFee: 0,
+        contributionFee: 0.05,
+        fixedMonthlyFee: 5,
+        acquisitionCostPct: 0.04,
+        acquisitionCostSpreadYears: 5,
+        pensionPayoutFeePct: 0,
+      },
+    }
+    const paidUpWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: { ...ws.baseline.assumptions, insurance: [withFees] },
+      },
+    }
+    const paidUpResults = simulatePortfolio(paidUpWs, de2026Rules).perInstance[withFees.instanceId]
+    expect(paidUpResults).toBeDefined()
+
+    for (const r of paidUpResults) {
+      expect(r.monthlyUserCost).toBe(0)
+      expect(r.monthlyProductContribution).toBe(0)
+      // Capital at retirement is >= currentValueEUR (existing capital grows
+      // under wrapper fees only — no acquisition cost in phase-2 fees).
+      expect(r.capitalAtRetirement).toBeGreaterThanOrEqual(15_000)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase G M4 F1 — round-trip: contractDecision beitragsfreiWhatIf + simulate
+// ---------------------------------------------------------------------------
+
+describe('PortfolioAdapter — beitragsfrei round-trip with simulatePortfolio (M4 F1)', () => {
+  it('applying beitragsfreiWhatIf produces a workspace whose simulation differs from baseline', async () => {
+    const { beitragsfreiWhatIf, applyContractDecision } = await import('../app/contractDecisions')
+    const baseV1 = makeRichV1()
+    const ws = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    // Add currentValueEUR so paid-up has capital to grow.
+    const id = ws.baseline.assumptions.bav[0].instanceId
+    const wsWithCapital: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: ws.baseline.assumptions.bav.map((b) => ({ ...b, currentValueEUR: 40_000 })),
+        },
+      },
+    }
+    const baseline = simulatePortfolio(wsWithCapital, de2026Rules).perInstance[id][0]
+    const decision = beitragsfreiWhatIf(wsWithCapital, id)
+    const paidUpWs = applyContractDecision(wsWithCapital, decision)
+    const paidUp = simulatePortfolio(paidUpWs, de2026Rules).perInstance[id][0]
+    expect(baseline.capitalAtRetirement).not.toBe(paidUp.capitalAtRetirement)
+    expect(paidUp.totalProductContributions).toBe(0)
+    expect(baseline.totalProductContributions).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // 10. Per-product round-trip
 // ---------------------------------------------------------------------------
 
