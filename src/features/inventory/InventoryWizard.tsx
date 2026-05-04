@@ -46,6 +46,12 @@ import type {
   AvdDraft,
   EtfDraft,
 } from './types'
+import { VintageChips } from './VintageChips'
+import {
+  bavDraftVintageAtoms,
+  pavDraftVintageAtoms,
+  riesterDraftVintageAtoms,
+} from './vintageChipsUtils'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -491,6 +497,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
+            <VintageChips atoms={bavDraftVintageAtoms(draft)} />
             <BavCard
               draft={draft}
               onChange={(next) =>
@@ -522,6 +529,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
+            <VintageChips atoms={pavDraftVintageAtoms(draft)} />
             <PavCard
               draft={draft}
               onChange={(next) =>
@@ -553,6 +561,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
+            <VintageChips atoms={riesterDraftVintageAtoms(draft, childBirthYears)} />
             <RiesterCard
               draft={draft}
               onChange={(next) =>
