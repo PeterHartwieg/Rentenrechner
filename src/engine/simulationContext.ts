@@ -73,9 +73,16 @@ export interface SimulationContext {
    */
   etfMonthlyUserCostOverride?: number
   /**
-   * Issue F2 — combine-mode insurance per-instance monthly user cost. When set,
-   * the insurance simulator uses this instead of `bavFunding.monthlyNetCost`.
-   * Leaving `undefined` preserves the compare-mode fair-comparison invariant.
+   * Insurance per-instance / equal-input monthly user cost override.
+   *
+   * Two callers set this; only one is active per call site:
+   * (a) `simulatePortfolio` (combine-mode) — per-instance from
+   *     `InsuranceInstance.monthlyContribution`, mirroring the ETF override.
+   * (b) `simulateEqualInputComparison` (compare-mode equal-input sub-mode) —
+   *     the user-supplied broker `equalInputAmountEUR`.
+   *
+   * Leaving `undefined` preserves the compare-mode fair-comparison invariant
+   * (insurance follows `bavFunding.monthlyNetCost`).
    */
   insuranceMonthlyUserCostOverride?: number
 }
@@ -144,14 +151,16 @@ export interface BuildContextOverrides {
    */
   etfMonthlyUserCostOverride?: number
   /**
-   * Issue F2 — per-instance insurance monthly user cost (combine-mode only).
+   * Insurance per-instance / equal-input monthly user cost override.
    *
-   * Mirrors the ETF pattern exactly. In compare-mode the fair-comparison
-   * invariant ties insurance gross to `bavFunding.monthlyNetCost`. In
-   * combine-mode each insurance instance can carry its own `monthlyContribution`
-   * via `InsuranceInstance.monthlyContribution`; the adapter sets this override
-   * and the insurance simulator prefers it over `bavFunding.monthlyNetCost`.
-   * Leaving `undefined` preserves byte-identical compare-mode oracle goldens.
+   * Set by either:
+   * (a) `simulatePortfolio` (combine-mode) — per-instance from
+   *     `InsuranceInstance.monthlyContribution`, mirroring the ETF pattern.
+   * (b) `simulateEqualInputComparison` (compare-mode equal-input sub-mode) —
+   *     the user-supplied broker `equalInputAmountEUR`.
+   *
+   * Leaving this `undefined` (every legacy caller does) preserves byte-identical
+   * compare-mode oracle goldens (insurance follows `bavFunding.monthlyNetCost`).
    */
   insuranceMonthlyUserCostOverride?: number
 }

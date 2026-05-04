@@ -157,6 +157,12 @@ export const defaultWorkspace: Workspace = {
       returnScenarios: defaultAssumptions.returnScenarios,
       monteCarlo: defaultAssumptions.monteCarlo,
       visibleProducts: defaultAssumptions.visibleProducts,
+      // Issue 16 — workspace-level twins for the compare-mode sub-mode toggle.
+      // Defaults to 'equal_cash' so existing oracle goldens and stored workspaces
+      // stay byte-identical. The landing "Produkte vergleichen" CTA bumps this
+      // to 'equal_input' for broker-style comparisons.
+      compareSubMode: defaultAssumptions.compareSubMode ?? 'equal_cash',
+      equalInputAmountEUR: defaultAssumptions.equalInputAmountEUR ?? 200,
     },
     createdAt: new Date(0).toISOString(),
     origin: 'baseline',
@@ -348,6 +354,10 @@ export function migrateV1ToV2(
     returnScenarios: merged.returnScenarios,
     monteCarlo: merged.monteCarlo,
     visibleProducts: merged.visibleProducts,
+    // Issue 16 — round-trip the compare-mode sub-mode. Migrating v1 → v2 keeps
+    // today's behaviour by carrying the default (equal_cash) forward.
+    compareSubMode: merged.compareSubMode ?? 'equal_cash',
+    equalInputAmountEUR: merged.equalInputAmountEUR ?? 200,
   }
 
   const baseline: Scenario = {

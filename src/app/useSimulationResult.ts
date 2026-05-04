@@ -6,6 +6,7 @@ import { useMemo } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import { runMonteCarlo } from '../engine/monteCarlo'
 import { simulateRetirementComparison } from '../engine/simulate'
+import { simulateEqualInputComparison } from '../engine/equalInputComparator'
 import { de2026Rules } from '../rules/de2026'
 import {
   deriveTaxModes,
@@ -41,7 +42,22 @@ export function useSimulationResult(
   selectedScenarioId: string,
 ): SimulationResultBundle {
   const simulation = useMemo(
-    () => simulateRetirementComparison(profile, assumptions, de2026Rules),
+    () => {
+      // Issue 16 — compare-mode sub-mode dispatch. Equal-cash (default) keeps
+      // today's fair-comparison invariant (ETF + pAV invest bAV's net cost).
+      // Equal-input swaps to the broker view: ETF + pAV both invest the
+      // user-supplied nominal monthly contribution while bAV still flows
+      // through the salary calc so tax-deferral stays computed.
+      if (assumptions.compareSubMode === 'equal_input') {
+        return simulateEqualInputComparison(
+          profile,
+          assumptions,
+          de2026Rules,
+          assumptions.equalInputAmountEUR ?? 200,
+        )
+      }
+      return simulateRetirementComparison(profile, assumptions, de2026Rules)
+    },
     [profile, assumptions],
   )
 

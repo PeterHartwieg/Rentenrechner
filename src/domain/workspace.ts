@@ -28,7 +28,14 @@ export interface WorkspaceAssumptionsV2 {
   returnScenarios: ReturnScenario[]
   monteCarlo: MonteCarloAssumptions
   visibleProducts: ProductId[]
+  /**
+   * Issue 16 — compare-mode sub-mode toggle. See `ScenarioAssumptions.compareSubMode`
+   * for semantics. Workspace-level twin so the singleton view round-trips through
+   * share-URL and storage.
+   */
   compareSubMode?: 'equal_cash' | 'equal_input'
+  /** Issue 16 — equal-input nominal monthly contribution (EUR/month). */
+  equalInputAmountEUR?: number
   visibleInstanceIds?: string[]
 }
 

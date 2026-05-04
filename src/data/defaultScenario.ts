@@ -110,6 +110,13 @@ export const defaultAssumptions: ScenarioAssumptions = {
   // comparison via the ComparisonPicker; the guided-setup path can also pre-select
   // a different baseline (e.g. ETF + pAV for the "ETF vs Versicherung" path).
   visibleProducts: ['etf', 'bav'],
+  // Issue 16 — compare-mode sub-mode default. `equal_cash` reproduces today's
+  // fair-comparison invariant byte-identically. The "Produkte vergleichen" CTA
+  // on the landing page bumps this to `equal_input` for broker-style comparisons.
+  compareSubMode: 'equal_cash',
+  // Issue 16 — default broker-comparison amount. Only consulted when
+  // `compareSubMode === 'equal_input'`.
+  equalInputAmountEUR: 200,
   returnScenarios: [
     { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
     { id: 'basis', label: 'Basis', annualReturn: 0.05 },

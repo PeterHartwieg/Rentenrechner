@@ -167,6 +167,28 @@ export interface ScenarioAssumptions {
    * array set by the user is preserved on round-trip.
    */
   visibleProducts: ProductId[]
+  /**
+   * Issue 16 — compare-mode sub-mode toggle.
+   *
+   * `equal_cash` (default): today's behaviour. ETF and private insurance both
+   * invest `bavFunding.monthlyNetCost` (the fair-comparison invariant — same
+   * net cash out of pocket, account for tax-deferral on bAV).
+   *
+   * `equal_input`: broker-comparison sub-mode. ETF and private insurance both
+   * invest `equalInputAmountEUR` (nominal). bAV continues to flow through the
+   * salary calc so its tax-deferral is still computed correctly — its
+   * `monthlyUserCost` is its own net cost.
+   *
+   * Persisted in the workspace and round-trips through share-URL. Undefined
+   * (legacy / current default) is treated as `equal_cash` everywhere.
+   */
+  compareSubMode?: 'equal_cash' | 'equal_input'
+  /**
+   * Issue 16 — equal-input nominal monthly contribution (EUR/month).
+   *
+   * Only consulted when `compareSubMode === 'equal_input'`. Default 200.
+   */
+  equalInputAmountEUR?: number
 }
 
 export interface SimulationResult {

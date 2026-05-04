@@ -1,7 +1,7 @@
 # 16 — Equal-input compare-mode sub-mode
 
 Status: needs-triage
-Milestone: M3
+Milestone: M4
 Plan section: §4 M3.9
 PRD capabilities: F4, F24, S6
 Depends on: 03

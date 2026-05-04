@@ -113,6 +113,21 @@ export function InputsPanel({
         heading="Welche Produkte vergleichst du?"
       />
 
+      {/* ── Issue 16: compare-mode sub-mode toggle (equal-cash vs equal-input) ── */}
+      <CompareSubModeToggle
+        subMode={assumptions.compareSubMode ?? 'equal_cash'}
+        amountEUR={assumptions.equalInputAmountEUR ?? 200}
+        onSubModeChange={(next) =>
+          onAssumptionsChange((current) => ({ ...current, compareSubMode: next }))
+        }
+        onAmountChange={(value) =>
+          onAssumptionsChange((current) => ({
+            ...current,
+            equalInputAmountEUR: clampNumber(Number(value), 0, 10_000),
+          }))
+        }
+      />
+
       <div className="divider" />
 
       {/* ── Global model assumptions (apply to all products) ── */}
@@ -248,5 +263,60 @@ export function InputsPanel({
       />
       <GlossaryPanel />
     </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Issue 16 — compare-mode sub-mode toggle.
+// ---------------------------------------------------------------------------
+
+interface CompareSubModeToggleProps {
+  subMode: 'equal_cash' | 'equal_input'
+  amountEUR: number
+  onSubModeChange: (next: 'equal_cash' | 'equal_input') => void
+  onAmountChange: (value: number) => void
+}
+
+function CompareSubModeToggle({
+  subMode,
+  amountEUR,
+  onSubModeChange,
+  onAmountChange,
+}: CompareSubModeToggleProps) {
+  return (
+    <div className="field-grid" aria-label="Vergleichsmodus">
+      <fieldset className="field-stack">
+        <legend>Vergleichsmodus</legend>
+        <label>
+          <input
+            type="radio"
+            name="compare-sub-mode"
+            checked={subMode === 'equal_cash'}
+            onChange={() => onSubModeChange('equal_cash')}
+          />{' '}
+          Gleiche Netto-Belastung (bAV-Anker)
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="compare-sub-mode"
+            checked={subMode === 'equal_input'}
+            onChange={() => onSubModeChange('equal_input')}
+          />{' '}
+          Gleicher Beitrag (€/Monat)
+        </label>
+      </fieldset>
+      {subMode === 'equal_input' && (
+        <NumberField
+          label="Vergleichsbetrag"
+          value={amountEUR}
+          min={0}
+          max={10_000}
+          step={10}
+          suffix="€/Monat"
+          onCommit={(value) => onAmountChange(Number(value))}
+        />
+      )}
+    </div>
   )
 }

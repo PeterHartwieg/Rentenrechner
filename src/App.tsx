@@ -143,6 +143,16 @@ function Calculator({ navigate }: CalculatorProps) {
       portfolioState.setMode('compare')
       setAppView('compare')
       workspace.setActiveView('vergleich')
+      // Issue 16 — broker-style "Produkte vergleichen" CTA defaults the
+      // compare-mode sub-mode to equal-input (€X/Monat across N candidates).
+      // Existing entries that already saved a sub-mode keep theirs (only the
+      // landing CTA forces this; users can flip back to equal-cash via the
+      // input drawer toggle).
+      setAssumptions((current) => ({
+        ...current,
+        compareSubMode: 'equal_input',
+        equalInputAmountEUR: current.equalInputAmountEUR ?? 200,
+      }))
       return
     }
     if (choice.kind === 'combine-new') {

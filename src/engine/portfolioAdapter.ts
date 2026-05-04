@@ -910,6 +910,10 @@ export function singletonViewOfWorkspace(
     returnScenarios: wsa.returnScenarios,
     monteCarlo: wsa.monteCarlo,
     visibleProducts: wsa.visibleProducts,
+    // Issue 16 — round-trip the compare-mode sub-mode through the singleton
+    // projection. Undefined → callers get today's `equal_cash` behaviour.
+    compareSubMode: wsa.compareSubMode,
+    equalInputAmountEUR: wsa.equalInputAmountEUR,
     statutoryPension: wsa.statutoryPension,
     bav: defaultsForEmptySlots.bav,
     etf: defaultsForEmptySlots.etf,
