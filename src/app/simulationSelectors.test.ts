@@ -6,10 +6,12 @@ import {
   deriveBestPension,
   deriveCashflowBinding,
   deriveComparableCapitalResults,
+  deriveRentenluckeOverview,
   deriveSelectedResults,
   deriveTaxModes,
   deriveVisibleProducts,
   makeRowAfterTaxBalance,
+  RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO,
   resolveEffectiveScenarioId,
 } from './simulationSelectors'
 import type { ProductId } from '../domain'
@@ -160,5 +162,45 @@ describe('simulationSelectors', () => {
     expect(typeof make('etf')(100_000, 50_000, 0)).toBe('number')
     expect(typeof make('bav')(100_000, 50_000, 0)).toBe('number')
     expect(typeof make('versicherung')(100_000, 50_000, 0)).toBe('number')
+  })
+
+  describe('deriveRentenluckeOverview', () => {
+    it('user-set target wins over salary fallback', () => {
+      const profile = makeProfile({ grossSalaryYear: 60_000, desiredNetMonthlyPension: 2500 })
+      const simulation = simulateDefault({ profile: { grossSalaryYear: 60_000 } })
+      const selected = deriveSelectedResults(simulation, DEFAULT_VISIBLE, 'basis')
+      const overview = deriveRentenluckeOverview(simulation, selected, profile)
+
+      expect(overview.target).toBe(2500)
+      expect(overview.targetIsUserSet).toBe(true)
+    })
+
+    it('falls back to (grossSalaryYear / 12) * ratio when desiredNetMonthlyPension is absent or 0', () => {
+      // defaultProfile has desiredNetMonthlyPension: 0, which counts as "not set"
+      const grossSalaryYear = 72_000
+      const profile = makeProfile({ grossSalaryYear, desiredNetMonthlyPension: 0 })
+      const simulation = simulateDefault({ profile: { grossSalaryYear } })
+      const selected = deriveSelectedResults(simulation, DEFAULT_VISIBLE, 'basis')
+      const overview = deriveRentenluckeOverview(simulation, selected, profile)
+
+      const expectedTarget = (grossSalaryYear / 12) * RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO
+      expect(overview.target).toBeCloseTo(expectedTarget, 6)
+      expect(overview.targetIsUserSet).toBe(false)
+    })
+
+    it('gap is 0 and goalReached is true when projection meets or exceeds the target', () => {
+      const simulation = simulateDefault()
+      const selected = deriveSelectedResults(simulation, DEFAULT_VISIBLE, 'basis')
+      const projectedTotal =
+        simulation.statutoryPension.netMonthlyPension +
+        selected.reduce((sum, r) => sum + r.netMonthlyPayout, 0)
+
+      // Set a target that is at most the projected total so the goal is always reached.
+      const profile = makeProfile({ desiredNetMonthlyPension: Math.floor(projectedTotal) })
+      const overview = deriveRentenluckeOverview(simulation, selected, profile)
+
+      expect(overview.gap).toBe(0)
+      expect(overview.goalReached).toBe(true)
+    })
   })
 })
