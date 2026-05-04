@@ -1,4 +1,4 @@
-import type { EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain'
+import type { EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult, YearlyProjection } from '../domain'
 import { afterTaxBavLumpSum } from '../engine/bavPayout'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import { afterTaxInsuranceLumpSum } from '../engine/insurancePayout'
@@ -160,19 +160,17 @@ export function buildExportCsv(opts: ExportOptions): string {
 //
 // Drives "Mein Plan" exports off `simulatePortfolio` + `combinePortfolio`
 // output rather than singleton compare-mode data. Disclaimer remains the
-// first block per the publication guardrails (CLAUDE.md). Produces three
-// sections:
+// first block per the publication guardrails (CLAUDE.md). Produces five
+// sections — at parity with compare-mode `buildExportCsv`:
 //   - Section 0: Disclaimer (verbatim shared with the compare-mode export)
 //   - Section 1: Combined retirement income (per scenario) — the headline
 //     monthly net the dashboard shows
 //   - Section 2: Per-instance detail (per instance × scenario × line) —
 //     mirror of compare-mode "Detailvergleich" but keyed by `instanceId`
-//
-// Lump-sum / yearly cashflow sections are intentionally omitted in the first
-// pass because in combine-mode the user is modelling actual contracts. Adding
-// per-instance yearly cashflow rows is straightforward (each ProductResult
-// already carries `rows[]`) but expanding scope here risks regressing
-// compare-mode tests; defer to a follow-up if exports need that depth.
+//   - Section 3: Jahres-Cashflows je Instanz — per-instance yearly rows
+//     from `r.rows[]`, same column set as compare-mode "Jahres-Cashflows"
+//   - Section 4: Rentenphase (ETF-Entnahme) je ETF-Instanz — per ETF
+//     instance yearly payout schedule, same columns as compare-mode section
 // ---------------------------------------------------------------------------
 
 export interface CombinePortfolioCsvOptions {
@@ -229,6 +227,76 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
         n(r.totalFees),
         r.inputConfidence ?? '',
       ))
+    }
+  }
+
+  // Section 3: Per-instance yearly cashflows — same columns as compare-mode
+  // "Jahres-Cashflows". After-tax capital columns are omitted (n/a here:
+  // the lump-sum tax helpers need per-product profile context not available
+  // in the combine-mode bundle; the terminal `afterTaxLumpSum` on the result
+  // captures that figure at retirement date).
+  lines.push('')
+  lines.push('Jahres-Cashflows je Instanz')
+  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Alter', 'Nettoaufwand p.a. (EUR)', 'Beitrag p.a. (EUR)', 'AG-Anteil p.a. (EUR)', 'Gebühren p.a. (EUR)', 'Kum. Gebühren (EUR)', 'Kapital (EUR)', 'Reales Kapital (EUR)'))
+  for (const instanceId of ids) {
+    const results = perInstance[instanceId]
+    if (!results) continue
+    for (const r of results) {
+      for (const row of r.rows as YearlyProjection[]) {
+        lines.push(csvRow(
+          instanceId,
+          r.label,
+          r.scenarioLabel,
+          row.age,
+          n(row.yearlyUserCost),
+          n(row.yearlyProductContribution),
+          n(row.yearlyEmployerContribution),
+          n(row.yearlyFees),
+          n(row.cumulativeFees),
+          n(row.balance),
+          n(row.realBalance),
+        ))
+      }
+    }
+  }
+
+  // Section 4: ETF payout schedule per ETF instance — same columns as
+  // compare-mode "Rentenphase (ETF-Entnahme)".
+  const etfInstanceIds = ids.filter((id) => {
+    const results = perInstance[id]
+    return results?.some(
+      (r): r is EtfProductResult =>
+        r.productId === 'etf' &&
+        (r as EtfProductResult).etfPayoutRows.length > 0,
+    )
+  })
+  if (etfInstanceIds.length > 0) {
+    lines.push('')
+    lines.push('Rentenphase (ETF-Entnahme) je ETF-Instanz')
+    lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Alter', 'Kapital Anfang (EUR)', 'Brutto p.a. (EUR)', 'Steuerpfl. Gewinn (EUR)', 'Sparerpauschb. (EUR)', 'Steuer (EUR)', 'Netto mtl. (EUR)', 'Kapital Ende (EUR)'))
+    for (const instanceId of etfInstanceIds) {
+      const results = perInstance[instanceId]
+      if (!results) continue
+      for (const r of results) {
+        if (r.productId !== 'etf') continue
+        const etfResult = r as EtfProductResult
+        if (etfResult.etfPayoutRows.length === 0) continue
+        for (const row of etfResult.etfPayoutRows) {
+          lines.push(csvRow(
+            instanceId,
+            r.label,
+            r.scenarioLabel,
+            row.age,
+            n(row.capitalAtStart),
+            n(row.grossAnnualPayout),
+            n(row.taxableGain),
+            n(row.saverAllowanceUsed),
+            n(row.taxDue),
+            n(row.netMonthlyPayout),
+            n(row.capitalAtEnd),
+          ))
+        }
+      }
     }
   }
 

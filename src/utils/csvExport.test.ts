@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest'
 import { buildCombinePortfolioCsv, buildExportCsv } from './csvExport'
 import { de2026Rules } from '../rules/de2026'
 import { defaultProfile } from '../data/defaultScenario'
-import type { ProductResult } from '../domain'
+import type { EtfProductResult, ProductResult, YearlyProjection } from '../domain'
 import type { CombinedResult } from '../engine/portfolioCombine'
 
 // Minimal ProductResult fixture — only the fields csvExport reads.
@@ -121,6 +121,67 @@ const FIXTURE_COMBINED: CombinedResult = {
   notes: [],
 }
 
+// Minimal YearlyProjection row fixture.
+const FIXTURE_ROW: YearlyProjection = {
+  year: 1,
+  age: 40,
+  productId: 'bav',
+  scenarioId: 'basis',
+  balance: 5000,
+  realBalance: 4800,
+  yearlyUserCost: 1800,
+  yearlyProductContribution: 1800,
+  yearlyEmployerContribution: 600,
+  yearlyFees: 30,
+  cumulativeFees: 30,
+  cumulativeProductContributions: 1800,
+  cumulativeVorabpauschale: 0,
+}
+
+const FIXTURE_ETF_ROW: YearlyProjection = {
+  ...FIXTURE_ROW,
+  productId: 'etf',
+  yearlyEmployerContribution: 0,
+}
+
+const FIXTURE_ETF_INSTANCE_RESULT: EtfProductResult = {
+  ...FIXTURE_PRODUCT,
+  productId: 'etf',
+  label: 'ETF Depot B',
+  instanceId: 'etf-1',
+  rows: [FIXTURE_ETF_ROW],
+  etfPayoutRows: [
+    {
+      year: 1,
+      age: 67,
+      capitalAtStart: 120000,
+      grossAnnualPayout: 6000,
+      taxableGain: 3000,
+      saverAllowanceUsed: 1000,
+      taxDue: 500,
+      netAnnualPayout: 5500,
+      netMonthlyPayout: 458.33,
+      capitalAtEnd: 114000,
+      remainingCostBasis: 60000,
+    },
+  ],
+} as unknown as EtfProductResult
+
+const FIXTURE_BAV_WITH_ROWS: ProductResult = {
+  ...FIXTURE_BAV_INSTANCE_RESULT,
+  rows: [FIXTURE_ROW],
+} as unknown as ProductResult
+
+// Two-instance workspace: bAV + ETF.
+const TWO_INSTANCE_OPTS = {
+  perInstance: {
+    'bav-1': [FIXTURE_BAV_WITH_ROWS],
+    'etf-1': [FIXTURE_ETF_INSTANCE_RESULT],
+  },
+  combinedByScenarioId: { basis: FIXTURE_COMBINED },
+  scenarioLabels: { basis: 'Basis' },
+}
+
 describe('buildCombinePortfolioCsv', () => {
   it('Section 0 (Hinweis) is the literal first block — disclaimer-as-first-block invariant', () => {
     const csv = buildCombinePortfolioCsv({
@@ -128,6 +189,13 @@ describe('buildCombinePortfolioCsv', () => {
       combinedByScenarioId: { basis: FIXTURE_COMBINED },
       scenarioLabels: { basis: 'Basis' },
     })
+    const lines = csv.split('\n')
+    expect(lines[0]).toBe('Hinweis')
+    expect(lines[1]).toContain('Modellrechnung')
+  })
+
+  it('disclaimer-first invariant holds even in two-instance workspace', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
     const lines = csv.split('\n')
     expect(lines[0]).toBe('Hinweis')
     expect(lines[1]).toContain('Modellrechnung')
@@ -153,5 +221,80 @@ describe('buildCombinePortfolioCsv', () => {
     expect(csv).toContain('Mein Plan — Detail je Instanz')
     expect(csv).toContain('bav-1')
     expect(csv).toContain('bAV Vertrag A')
+  })
+
+  it('Section 3 — Jahres-Cashflows je Instanz: header present and per-instance per-year rows emitted', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    expect(csv).toContain('Jahres-Cashflows je Instanz')
+    // Both instance ids appear in the cashflow rows.
+    const lines = csv.split('\n')
+    const cashflowSectionStart = lines.findIndex((l) => l === 'Jahres-Cashflows je Instanz')
+    expect(cashflowSectionStart).toBeGreaterThanOrEqual(0)
+    const cashflowBlock = lines.slice(cashflowSectionStart).join('\n')
+    expect(cashflowBlock).toContain('bav-1')
+    expect(cashflowBlock).toContain('etf-1')
+    // Age column from FIXTURE_ROW (age=40) is present.
+    expect(cashflowBlock).toContain('40')
+    // Balance value from FIXTURE_ROW (5000.00) is present.
+    expect(cashflowBlock).toContain('5000.00')
+  })
+
+  it('Section 3 — header column set matches compare-mode Jahres-Cashflows (minus after-tax capital)', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Jahres-Cashflows je Instanz')
+    const headerRow = lines[sectionIdx + 1]
+    expect(headerRow).toContain('Instanz')
+    expect(headerRow).toContain('Alter')
+    expect(headerRow).toContain('Nettoaufwand p.a. (EUR)')
+    expect(headerRow).toContain('Beitrag p.a. (EUR)')
+    expect(headerRow).toContain('AG-Anteil p.a. (EUR)')
+    expect(headerRow).toContain('Gebühren p.a. (EUR)')
+    expect(headerRow).toContain('Kapital (EUR)')
+    expect(headerRow).toContain('Reales Kapital (EUR)')
+  })
+
+  it('Section 4 — Rentenphase (ETF-Entnahme) je ETF-Instanz: present only when ETF instance has payout rows', () => {
+    // Without ETF instance: section absent.
+    const csvNoEtf = buildCombinePortfolioCsv({
+      perInstance: { 'bav-1': [FIXTURE_BAV_WITH_ROWS] },
+      combinedByScenarioId: { basis: FIXTURE_COMBINED },
+      scenarioLabels: { basis: 'Basis' },
+    })
+    expect(csvNoEtf).not.toContain('Rentenphase (ETF-Entnahme) je ETF-Instanz')
+
+    // With ETF instance: section present.
+    const csvWithEtf = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    expect(csvWithEtf).toContain('Rentenphase (ETF-Entnahme) je ETF-Instanz')
+  })
+
+  it('Section 4 — ETF payout rows contain instanceId, age, and payout figures', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Rentenphase (ETF-Entnahme) je ETF-Instanz')
+    expect(sectionIdx).toBeGreaterThanOrEqual(0)
+    const sectionBlock = lines.slice(sectionIdx).join('\n')
+    // instanceId
+    expect(sectionBlock).toContain('etf-1')
+    // Age from payout row (67)
+    expect(sectionBlock).toContain('67')
+    // Capital at start (120000.00)
+    expect(sectionBlock).toContain('120000.00')
+    // Net monthly (458.33)
+    expect(sectionBlock).toContain('458.33')
+  })
+
+  it('Section 4 — ETF payout header column set matches compare-mode section', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Rentenphase (ETF-Entnahme) je ETF-Instanz')
+    const headerRow = lines[sectionIdx + 1]
+    expect(headerRow).toContain('Instanz')
+    expect(headerRow).toContain('Alter')
+    expect(headerRow).toContain('Kapital Anfang (EUR)')
+    expect(headerRow).toContain('Brutto p.a. (EUR)')
+    expect(headerRow).toContain('Steuer (EUR)')
+    expect(headerRow).toContain('Netto mtl. (EUR)')
+    expect(headerRow).toContain('Kapital Ende (EUR)')
   })
 })
