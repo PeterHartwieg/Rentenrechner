@@ -209,6 +209,7 @@ export function etfDraftToInstance(d: EtfDraft): EtfInstance {
     currentValueEUR: d.currentValueEUR ?? 0,
     evidenceMap: d.evidenceMap ?? {},
     ownedBy: 'self',
+    monthlyContribution: d.monthlyContribution,
     annualAssetFee: d.terPct / 100,
     equityPartialExemption: defaultAssumptions.etf.equityPartialExemption,
     annualContributionGrowthRate: 0,

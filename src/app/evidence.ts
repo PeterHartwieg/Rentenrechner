@@ -127,7 +127,7 @@ export function confidenceForResult(
  */
 export function confidenceLanguage(state: EvidenceState): { prefix: string } {
   if (state === 'model_estimate') {
-    return { prefix: 'auf deinen Schätzungen ergibt sich' }
+    return { prefix: 'Auf deinen Schätzungen ergibt sich' }
   }
-  return { prefix: 'ergibt sich' }
+  return { prefix: 'Ergibt sich' }
 }

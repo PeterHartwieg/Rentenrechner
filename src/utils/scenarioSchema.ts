@@ -153,7 +153,11 @@ const ILLEGAL_SURRENDER_REINVEST_SOURCES = new Set(['etf'])
 /** Certified product targets are forbidden as surrender_reinvest destinations. */
 const CERTIFIED_TARGET_PRODUCTS = new Set(['bav', 'altersvorsorgedepot', 'riester', 'basisrente'])
 
-function productIdFromInstanceId(instanceId: string): ProductId | null {
+/**
+ * Extract the product id encoded in an instance id (format: `${productId}-${random8}`).
+ * Returns `null` when the id has no known product prefix.
+ */
+export function productIdFromInstanceId(instanceId: string): ProductId | null {
   for (const productId of PRODUCT_IDS) {
     if (instanceId === productId || instanceId.startsWith(`${productId}-`)) return productId
   }

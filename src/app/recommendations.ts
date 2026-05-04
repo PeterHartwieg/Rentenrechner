@@ -32,7 +32,7 @@ import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
  * Sum of Kinderzulagen across all children in the profile.
  * §85 EStG: born ≥ 2008 → `kinderzulagePost2007` (€300), born < 2008 → `childAllowancePre2008` (€185).
  */
-function computeKinderzulagen(
+export function computeKinderzulagen(
   childBirthYears: number[],
   riesterRules: GermanRules['riester'],
 ): number {

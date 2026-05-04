@@ -21,6 +21,8 @@ import { de2026Rules } from '../../rules/de2026'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency } from '../../utils/format'
 import { renderAtom } from '../../app/recommendations'
+import { productIdFromInstanceId } from '../../utils/scenarioSchema'
+import type { ProductId } from '../../engine/productRegistry'
 
 type SortKey = 'median' | 'flexibility' | 'risk' | 'lifetime'
 
@@ -33,8 +35,15 @@ const FLEX_RANK: Record<RecommendedCandidate['flexibilityScore'], number> = {
 const SORT_LABELS: Record<SortKey, string> = {
   median: 'mittlerer Netto-Rente',
   flexibility: 'Flexibilität',
-  risk: 'Risiko (P10)',
+  risk: 'Endkapital',
   lifetime: 'Lifetime Cash',
+}
+
+const SORT_TOOLTIPS: Record<SortKey, string> = {
+  median: 'Erwartete monatliche Netto-Rente im Basisszenario',
+  flexibility: 'Flexibilität (Kapitalverfügbarkeit vor Rentenbeginn)',
+  risk: 'Erwartetes Endkapital im Basisszenario',
+  lifetime: 'Geschätzte Lebenszeit-Auszahlungen',
 }
 
 const FLEX_LABEL: Record<RecommendedCandidate['flexibilityScore'], string> = {
@@ -159,6 +168,7 @@ export function RecommenderCard({
                   className={`recommender-sort-button ${sortKey === key ? 'is-active' : ''}`}
                   onClick={() => setSortKey(key)}
                   aria-pressed={sortKey === key}
+                  title={SORT_TOOLTIPS[key]}
                 >
                   {SORT_LABELS[key]}
                 </button>
@@ -225,14 +235,8 @@ export function RecommenderCard({
   )
 }
 
-function detectProductId(inst: { instanceId: string }): import('../../engine/productRegistry').ProductId {
-  if (inst.instanceId.startsWith('bav-')) return 'bav'
-  if (inst.instanceId.startsWith('etf-')) return 'etf'
-  if (inst.instanceId.startsWith('versicherung-')) return 'versicherung'
-  if (inst.instanceId.startsWith('basisrente-')) return 'basisrente'
-  if (inst.instanceId.startsWith('altersvorsorgedepot-')) return 'altersvorsorgedepot'
-  if (inst.instanceId.startsWith('riester-')) return 'riester'
-  return 'etf'
+function detectProductId(inst: { instanceId: string }): ProductId {
+  return productIdFromInstanceId(inst.instanceId) ?? 'etf'
 }
 
 // `buildWhatIfFromCandidate` is re-exported by the orchestration consumer

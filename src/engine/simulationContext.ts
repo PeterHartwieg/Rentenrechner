@@ -65,6 +65,13 @@ export interface SimulationContext {
    * matches existing oracle goldens byte-identically.
    */
   instanceCapitalPolicy?: InstanceCapitalPolicy
+  /**
+   * Issue 12 — combine-mode ETF per-instance monthly user cost. When set, the
+   * ETF simulator uses this instead of `bavFunding.monthlyNetCost` for both
+   * `monthlyUserCost` and `monthlyProductContribution`. Leaving `undefined`
+   * preserves the compare-mode fair-comparison invariant.
+   */
+  etfMonthlyUserCostOverride?: number
 }
 
 /**
@@ -118,6 +125,18 @@ export interface BuildContextOverrides {
    * each product simulator to apply via `BuildProductPolicy`.
    */
   instanceCapitalPolicy?: InstanceCapitalPolicy
+  /**
+   * Issue 12 — per-instance ETF monthly user cost (combine-mode only).
+   *
+   * In compare-mode the fair-comparison invariant ties ETF gross to
+   * `bavFunding.monthlyNetCost` (see CLAUDE.md "Non-obvious architecture").
+   * In combine-mode each ETF instance can carry its own `monthlyContribution`
+   * because the user is modeling actual independent contracts; the adapter sets
+   * this override and the ETF simulator prefers it over `bavFunding.monthlyNetCost`.
+   * Leaving this `undefined` (every legacy caller does) preserves byte-identical
+   * compare-mode oracle goldens.
+   */
+  etfMonthlyUserCostOverride?: number
 }
 
 export function buildContext(
@@ -188,5 +207,6 @@ export function buildContext(
     grvGrossMonthlyPension: grvProjection.grossMonthlyPension,
     retirementHealthStatus: assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr',
     instanceCapitalPolicy: overrides?.instanceCapitalPolicy,
+    etfMonthlyUserCostOverride: overrides?.etfMonthlyUserCostOverride,
   }
 }

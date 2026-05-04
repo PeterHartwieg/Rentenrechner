@@ -12,8 +12,10 @@
  *   cash outflow equals `marginalMonthlyEUR`:
  *
  *   - ETF / AVD: gross = marginalMonthlyEUR (no accumulation tax leverage).
- *   - bAV: gross conversion solved via the engine's existing two-pass funding
- *     bisection (`solveBavGrossFromNet`).
+ *   - bAV: marginal gross conversion solved via local bisection on
+ *     `forward(used + delta).monthlyNetCost - forward(used).monthlyNetCost`,
+ *     so users with existing bAV get a delta sized to their actual marginal
+ *     net cost (not the cost of an isolated standalone bAV).
  *   - Basisrente: gross sized so (gross - §10 Abs. 3 EStG marginal saving) ≈
  *     marginalMonthlyEUR. Bisection inside `solveBasisrenteGrossFromNet`.
  *   - Riester: ownContribution sized so (own - allowance/12 - Günstigerprüfung
@@ -33,7 +35,8 @@
  *   bundle and re-running `combinePortfolio` on the candidate workspace.
  *   Monte Carlo widening is NOT run here (cost > benefit for a 3-4 candidate
  *   refresh) — riskScore is reported as the candidate's deterministic capital
- *   at the basis scenario; UI labels it "Risiko (Streuung)".
+ *   at the basis scenario; UI labels it "Endkapital" (most honest plain-German
+ *   for a deterministic proxy). P10-from-MC is a P2 follow-up.
  *
  * Out of scope:
  *   - Vintage-detection rules (issue 13, already on main).
@@ -55,11 +58,9 @@ import type {
   RiesterInstance,
 } from '../domain/instances'
 import { combinePortfolio, type CombineContext, type CombinedResult } from '../engine/portfolioCombine'
-import { calculateBavFunding, calculateSalaryResult, solveBavGrossFromNet } from '../engine/salary'
-import { calculateBasisrenteFunding, solveBasisrenteGrossFromNet, netBasisrentePayout } from '../engine/basisrente'
-import { calculateRiesterFunding, solveRiesterOwnFromNet, netRiesterPayout } from '../engine/riester'
-import { netAvdPayout } from '../engine/altersvorsorgedepot'
-import { netBavPayout } from '../engine/bavPayout'
+import { calculateBavFunding, calculateSalaryResult } from '../engine/salary'
+import { calculateBasisrenteFunding, solveBasisrenteGrossFromNet } from '../engine/basisrente'
+import { calculateRiesterFunding, solveRiesterOwnFromNet } from '../engine/riester'
 import { computeGrossMonthlyPayout, monthlyPayoutFromCapital } from '../engine/payoutMath'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import {
@@ -71,7 +72,7 @@ import {
   newInstanceId,
 } from '../features/inventory/inventoryHelpers'
 import { defaultAssumptions } from '../data/defaultScenario'
-import { runRules, type Atom } from './recommendations'
+import { runRules, type Atom, computeKinderzulagen } from './recommendations'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -106,7 +107,8 @@ export interface RecommendedCandidate {
   lifetimeCash: number
   /** Ordinal flexibility class (capital availability before retirement). */
   flexibilityScore: FlexibilityScore
-  /** Deterministic capital P10 proxy (EUR) for the basis scenario. */
+  /** Expected capital at retirement (EUR) under the basis scenario.
+   *  v1 deterministic proxy. P10 from MC subset is P2 follow-up. */
   riskScore: number
   /** Trade-off labels emitted by the rules engine. */
   atoms: Atom[]
@@ -150,6 +152,11 @@ const FLEX_BY_PRODUCT: Record<ProductId, FlexibilityScore> = {
  * Compound monthly contribution with simple geometric accumulation.
  * Future-value of an ordinary annuity at monthly rate r over n months:
  *   FV = c × ((1 + r)^n − 1) / r
+ *
+ * Deliberately ignores Vorabpauschale (ETF/AVD) and Beitragsdynamik — the
+ * recommender uses this only for candidate-ranking estimates; the engine's
+ * `projectAccumulation` is the source of truth when the candidate is
+ * materialised into a what-if and re-simulated.
  */
 function projectMonthlyContributionFV(
   monthlyContribution: number,
@@ -345,11 +352,15 @@ function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
   const grossPayout = monthlyPayoutFromCapital(capital, netReturn, payoutYears)
   const partialExemption = wsa.etf[0]?.equityPartialExemption ?? defaultAssumptions.etf.equityPartialExemption
   const afterTaxLumpSum = afterTaxInvestmentCapital(capital, totalContributions, g.rules, partialExemption, 0)
-  // ETF payout is taxed via Abgeltungsteuer in the per-instance helper. For the
-  // recommender's marginal-on-top model we approximate `netMonthlyPayout` as
-  // gross × (afterTaxLumpSum / capital) — this preserves combine-mode bit
-  // identity for the ETF channel (combine reads result.netMonthlyPayout for ETF
-  // unchanged).
+  // ETF payout is taxed via Abgeltungsteuer in the per-instance helper using a
+  // FIFO cost-basis schedule (`etfPayoutSchedule`). The recommender's "what
+  // does another €X buy" view does NOT need a year-by-year FIFO schedule for
+  // ranking — we approximate `netMonthlyPayout` as
+  //   grossPayout × (afterTaxLumpSum / capital)
+  // (the post-exit-tax fraction of capital). This holds within ~3 % of the
+  // engine's first-year netMonthlyPayout for typical horizons; combine-mode
+  // production simulation is the source of truth once a candidate is saved as
+  // a what-if (B4 parity test pins the gap on common shapes).
   const netRatio = capital > 0 ? Math.min(1, afterTaxLumpSum / capital) : 1
   const netPayout = grossPayout * netRatio
   const candidateResult = synthesizeProductResult({
@@ -395,35 +406,61 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   const remainingCapMonthly = Math.max(0, capMonthly - usedMonthly)
   if (remainingCapMonthly <= 0) return null
 
-  // Bisection: solve for the gross conversion (on TOP of existing) that yields
-  // a marginal net cost equal to marginalMonthlyEUR. We compute incremental
-  // net cost as funding(used + delta).monthlyNetCost - funding(used).monthlyNetCost.
-  // Because calculateBavFunding is monotone in gross, we use the existing
-  // `solveBavGrossFromNet` against an isolated bAV (gross=delta only) — this
-  // approximates well when usedMonthly is small relative to the cap, and the
-  // SV-saving step is small. For bigger usedMonthly the combine engine still
-  // applies the apportioned cap, so we then clamp the result to remainingCapMonthly.
-  const isolatedGross = solveBavGrossFromNet(
-    g.marginalMonthlyEUR,
-    profile,
-    g.rules,
-    target,
-  )
+  // Bisection: solve for the marginal gross conversion (delta on top of
+  // existing) such that
+  //   forward(usedMonthly + delta).monthlyNetCost
+  //     - forward(usedMonthly).monthlyNetCost  ≈  marginalMonthlyEUR.
+  // The previous approach solved against an isolated bAV (gross=delta only);
+  // that under-counts the SV-saving step when usedMonthly already pushes part
+  // of the income below the BBG, so the returned delta was off for users with
+  // existing bAV. Now we bisect on the actual marginal net cost.
+  const baselineNetCost = calculateBavFunding(profile, g.rules, {
+    ...target,
+    monthlyGrossConversion: usedMonthly,
+  }).monthlyNetCost
+  const forwardMarginalNet = (delta: number) =>
+    calculateBavFunding(profile, g.rules, {
+      ...target,
+      monthlyGrossConversion: usedMonthly + delta,
+    }).monthlyNetCost - baselineNetCost
+  const isolatedGross = (() => {
+    if (g.marginalMonthlyEUR <= 0) return 0
+    let lo = 0
+    let hi = Math.max(100, g.marginalMonthlyEUR * 4)
+    for (let i = 0; i < 10 && forwardMarginalNet(hi) < g.marginalMonthlyEUR; i++) hi *= 2
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2
+      const net = forwardMarginalNet(mid)
+      if (Math.abs(net - g.marginalMonthlyEUR) < 0.01) return mid
+      if (net < g.marginalMonthlyEUR) lo = mid
+      else hi = mid
+    }
+    return (lo + hi) / 2
+  })()
   const cappedToRemaining = isolatedGross > remainingCapMonthly
   const gross = Math.min(isolatedGross, remainingCapMonthly)
 
-  const fundingForGross = calculateBavFunding(profile, g.rules, {
+  // Marginal funding: the delta the candidate adds vs. the existing baseline.
+  // `netCash` is the user's marginal net cash out-of-pocket; `totalMonthly`
+  // is the marginal product contribution (delta gross + delta employer share)
+  // used for the candidate's capital projection.
+  const fundingTotal = calculateBavFunding(profile, g.rules, {
     ...target,
-    monthlyGrossConversion: gross,
+    monthlyGrossConversion: usedMonthly + gross,
   })
-  const netCash = Math.max(0, fundingForGross.monthlyNetCost)
+  const fundingBaseline = calculateBavFunding(profile, g.rules, {
+    ...target,
+    monthlyGrossConversion: usedMonthly,
+  })
+  const netCash = Math.max(0, fundingTotal.monthlyNetCost - fundingBaseline.monthlyNetCost)
 
-  // Project capital: contribution = gross + employer share. Use simple FV at
-  // basis scenario return minus average accumulation fee. This is an estimate;
-  // the production simulator does year-by-year fees + Beitragsdynamik etc., but
-  // the recommender's "what does another €X buy" only needs an order-of-magnitude
-  // candidate ranking.
-  const totalMonthly = fundingForGross.monthlyGrossConversion + fundingForGross.monthlyEmployerContribution
+  // Project capital: marginal contribution = (Δgross + Δemployer share). Use
+  // simple FV at basis scenario return minus average accumulation fee. The
+  // production simulator does year-by-year fees + Beitragsdynamik; the
+  // recommender's "what does another €X buy" only needs candidate ranking.
+  const totalMonthly =
+    (fundingTotal.monthlyGrossConversion - fundingBaseline.monthlyGrossConversion) +
+    (fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution)
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
   const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
   const capital = projectMonthlyContributionFV(totalMonthly, netReturn, g.yearsToRetirement)
@@ -625,11 +662,20 @@ function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft | null {
   )
   if (isolatedOwn <= 0) return null
 
-  // Clamp to §10a annual cap (incl. allowances).
+  // Clamp to §10a annual cap (€2,100 incl. allowances). `usedAnnual` therefore
+  // must include Grundzulage + Kinderzulagen so the comparison is apples-to-
+  // apples with the cap (matches `riesterCapRemainingRule` in recommendations.ts).
   const capAnnual = g.rules.riester.annualCapInclAllowances
-  const usedAnnual = wsa.riester
+  const ownAnnual = wsa.riester
     .filter((r) => r.status !== 'surrendered')
     .reduce((s, r) => s + (r.monthlyOwnContribution ?? 0) * 12, 0)
+  const activeRiesterInstances = wsa.riester.filter((r) => r.status !== 'surrendered')
+  const grundzulageEligible = activeRiesterInstances.some(
+    (inst) => inst.eligibility.directlyEligible === true || inst.eligibility.indirectSpouseEligible === true,
+  )
+  const grundzulage = grundzulageEligible ? g.rules.riester.grundzulage : 0
+  const kinderzulageTotal = computeKinderzulagen(profile.childBirthYears, g.rules.riester)
+  const usedAnnual = ownAnnual + grundzulage + kinderzulageTotal
   const remainingAnnual = Math.max(0, capAnnual - usedAnnual)
   const remainingMonthly = remainingAnnual / 12
   const cappedToRemaining = isolatedOwn > remainingMonthly
@@ -846,11 +892,19 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       marginalBudgetEUR: marginalMonthlyEUR,
     }).filter((a) => isCandidateRelevantAtom(a, d))
     if (d.cappedToRemaining) {
-      atoms.push({
-        id: 'bav_cap_remaining',
-        priority: 'high',
-        context: { usedPct: 1, remainingMonthly: 0, capFullForCandidate: true },
-      })
+      // Atoms emitted by the rules engine describe the BASELINE context (e.g.
+      // "you currently use 80 % of the bAV cap"). This atom describes a
+      // CANDIDATE-EFFECT — the chosen candidate hit its product's statutory
+      // cap and was clamped. `capFullForCandidate: true` discriminates this
+      // shape from baseline-context atoms with the same id (N6).
+      const capAtomId = capRemainingAtomIdFor(d.productId)
+      if (capAtomId) {
+        atoms.push({
+          id: capAtomId,
+          priority: 'high',
+          context: { usedPct: 1, remainingMonthly: 0, capFullForCandidate: true },
+        })
+      }
     }
     return {
       id: d.id,
@@ -890,6 +944,28 @@ function isCandidateRelevantAtom(atom: Atom, draft: CandidateDraft): boolean {
   }
   const allowed = productMatches[draft.productId]
   return allowed.includes(atom.id)
+}
+
+/**
+ * Map a candidate's productId to the cap-clamp atom id the rules engine
+ * emits for that product. Returns null when the product has no cap (ETF) —
+ * cap-clamp candidates with `cappedToRemaining: true` should never reach this
+ * for ETF (no cap on the recommender's ETF candidate).
+ */
+function capRemainingAtomIdFor(productId: ProductId): Atom['id'] | null {
+  switch (productId) {
+    case 'bav':
+      return 'bav_cap_remaining'
+    case 'basisrente':
+      return 'basisrente_cap_remaining'
+    case 'riester':
+      return 'riester_cap_remaining'
+    case 'altersvorsorgedepot':
+      return 'avd_cap_remaining'
+    case 'etf':
+    case 'versicherung':
+      return null
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -944,11 +1020,16 @@ function applyCandidateToAssumptions(
           monthlyOwnContribution: (current.monthlyOwnContribution ?? 0) + candidate.grossMonthlyEUR,
         }
       }
+    } else if (candidate.productId === 'etf') {
+      const idx = wsa.etf.findIndex((e) => e.instanceId === candidate.targetInstanceId)
+      if (idx >= 0) {
+        const current = wsa.etf[idx]
+        wsa.etf[idx] = {
+          ...current,
+          monthlyContribution: (current.monthlyContribution ?? 0) + candidate.grossMonthlyEUR,
+        }
+      }
     }
-    // ETF: no per-instance contribution field; the fair-comparison invariant
-    // pulls ETF gross from bavFunding.monthlyNetCost. Leaving the assumptions
-    // untouched here is acceptable for the v1 recommender — issue 15 will
-    // revisit per-instance ETF contribution storage.
     return
   }
   // New-instance candidates: append a fresh instance with the sized contribution.
@@ -979,12 +1060,3 @@ function applyCandidateToAssumptions(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Smoke-test helper: tax + payout primitives are wired so unused-import linter
-// stays quiet.
-// ---------------------------------------------------------------------------
-
-void netBavPayout
-void netBasisrentePayout
-void netRiesterPayout
-void netAvdPayout

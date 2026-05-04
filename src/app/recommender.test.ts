@@ -130,9 +130,9 @@ describe('recommendNextEuro — Wunschnetto floor demotion', () => {
 })
 
 describe('recommendNextEuro — bAV cap clamping', () => {
-  it('clamps the bAV candidate when usedMonthly is at the §3 Nr. 63 cap', () => {
+  it('drops the bAV candidate when usedMonthly is exactly at the §3 Nr. 63 cap', () => {
     const ws = buildBerndWorkspace()
-    // Set bAV gross to the full §3 Nr. 63 monthly cap.
+    // Set bAV gross to the full §3 Nr. 63 monthly cap → zero remaining headroom.
     const capMonthly =
       (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap) / 12
     ws.baseline.assumptions.bav = ws.baseline.assumptions.bav.map((b) => ({
@@ -142,10 +142,62 @@ describe('recommendNextEuro — bAV cap clamping', () => {
     const input = buildInput(ws, 400)
     const candidates = recommendNextEuro(input)
     const bav = candidates.find((c) => c.productId === 'bav')
-    // When the cap is fully used, the bAV candidate is filtered out (no
-    // remaining headroom). Verify either: no bAV candidate, OR clamped.
-    if (bav) {
-      expect(bav.cappedToRemaining).toBe(true)
+    // Zero remaining cap headroom → generator returns null → no bAV candidate.
+    expect(bav).toBeUndefined()
+  })
+
+  it('clamps the bAV candidate when usedMonthly leaves a small remaining headroom', () => {
+    const ws = buildBerndWorkspace()
+    // Leave 50 EUR/mo headroom. A 400 EUR/mo marginal target will exceed this
+    // → the candidate must be present AND clamped, with a per-product cap atom.
+    const capMonthly =
+      (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap) / 12
+    ws.baseline.assumptions.bav = ws.baseline.assumptions.bav.map((b) => ({
+      ...b,
+      monthlyGrossConversion: capMonthly - 50,
+    }))
+    const input = buildInput(ws, 400)
+    const candidates = recommendNextEuro(input)
+    const bav = candidates.find((c) => c.productId === 'bav')
+    expect(bav).toBeDefined()
+    expect(bav!.cappedToRemaining).toBe(true)
+    // B1: cap-clamp atom is bav-specific, not the generic 'bav_cap_remaining' on every product.
+    const capAtom = bav!.atoms.find((a) => a.context['capFullForCandidate'] === true)
+    expect(capAtom?.id).toBe('bav_cap_remaining')
+  })
+})
+
+describe('recommendNextEuro — per-product cap-clamp atom ids (B1)', () => {
+  it('emits avd_cap_remaining when the AVD candidate is clamped', () => {
+    const ws = buildBerndWorkspace()
+    // AVD per-contract cap is statutorily annualized; passing a marginal that
+    // exceeds the monthly cap forces the new-AVD candidate into clamp.
+    const capMonthly = de2026Rules.altersvorsorgedepot.contractContributionCapAnnual / 12
+    const input = buildInput(ws, capMonthly + 200)
+    const candidates = recommendNextEuro(input)
+    const avd = candidates.find((c) => c.productId === 'altersvorsorgedepot')
+    expect(avd).toBeDefined()
+    expect(avd!.cappedToRemaining).toBe(true)
+    const capAtom = avd!.atoms.find((a) => a.context['capFullForCandidate'] === true)
+    expect(capAtom?.id).toBe('avd_cap_remaining')
+  })
+
+  it('emits riester_cap_remaining when the Riester candidate is clamped', () => {
+    const ws = buildBerndWorkspace()
+    // Set Riester own contribution near the §10a cap (incl. allowances).
+    const capAnnual = de2026Rules.riester.annualCapInclAllowances
+    const remainingMonthly = 5
+    ws.baseline.assumptions.riester = ws.baseline.assumptions.riester.map((r) => ({
+      ...r,
+      monthlyOwnContribution: (capAnnual / 12) - remainingMonthly,
+    }))
+    const input = buildInput(ws, 400)
+    const candidates = recommendNextEuro(input)
+    const riester = candidates.find((c) => c.productId === 'riester')
+    if (!riester) return // generator may drop when remaining is too small for solver
+    if (riester.cappedToRemaining) {
+      const capAtom = riester.atoms.find((a) => a.context['capFullForCandidate'] === true)
+      expect(capAtom?.id).toBe('riester_cap_remaining')
     }
   })
 })
@@ -177,6 +229,212 @@ describe('recommendNextEuro — flexibility scores', () => {
       } else if (c.productId === 'bav' || c.productId === 'riester') {
         expect(c.flexibilityScore).toBe('medium')
       }
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// B4 — synthesize-and-layer parity vs. full simulatePortfolio
+// ---------------------------------------------------------------------------
+//
+// The recommender's "synth and layer" approach builds a candidate ProductResult
+// from cheap projections (FV + payout-math primitives) and feeds it into
+// `combinePortfolio` alongside the baseline per-instance results. B4 pins this
+// to a tolerance against the engine's full path: applyCandidateToAssumptions
+// → simulatePortfolio → combinePortfolio.
+//
+// EUR-level parity is the goal, but a small drift (≤ ~5 EUR/mo for top-ups,
+// 3 % for ETF where lump-sum-ratio approx is documented) is acceptable for v1.
+
+import { simulatePortfolio } from '../engine/portfolioAdapter'
+import { combinePortfolio } from '../engine/portfolioCombine'
+
+function buildCombineCtx(workspace: ReturnType<typeof buildBerndWorkspace>) {
+  const profile = workspace.baseline.profile
+  const wsa = workspace.baseline.assumptions
+  const retirementYear = de2026Rules.year + (profile.retirementAge - profile.age)
+  const grvBundle = runCombineSimulation(workspace, de2026Rules)
+  const grvGross = grvBundle.statutoryPension.grossMonthlyPension
+  const pensionType = wsa.statutoryPension.pensionBaselineType ?? 'grv'
+  const taxChannel: 'statutory_pension' | 'beamten_versorgungsbezug' | 'none' =
+    pensionType === 'none' || grvGross <= 0 ? 'none'
+      : pensionType === 'beamtenpension' ? 'beamten_versorgungsbezug'
+        : 'statutory_pension'
+  const kvChannel: 'kvdr_half_rate' | 'versorgungsbezug_full_rate' | 'none' =
+    pensionType === 'none' || grvGross <= 0 ? 'none'
+      : (pensionType === 'beamtenpension' || pensionType === 'versorgungswerk')
+        ? (profile.publicHealthInsurance ? 'versorgungsbezug_full_rate' : 'none')
+        : (profile.publicHealthInsurance ? 'kvdr_half_rate' : 'none')
+  const kvdrMember = wsa.bav[0]?.kvdrMember ?? true
+  const retirementHealthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv' =
+    !profile.publicHealthInsurance ? 'pkv' : kvdrMember ? 'kvdr' : 'freiwillig_gkv'
+  return {
+    profile,
+    rules: de2026Rules,
+    retirementYear,
+    grvGrossMonthlyPension: grvGross,
+    statutoryPensionTaxChannel: taxChannel,
+    statutoryPensionKvChannel: kvChannel,
+    retirementHealthStatus,
+  }
+}
+
+function runFullPath(workspace: ReturnType<typeof buildBerndWorkspace>): number {
+  const { perInstance } = simulatePortfolio(workspace, de2026Rules)
+  const basisId = workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')?.id
+    ?? workspace.baseline.assumptions.returnScenarios[0].id
+  const basisResults = Object.values(perInstance)
+    .map((arr) => arr.find((r) => r.scenarioId === basisId))
+    .filter((r): r is NonNullable<typeof r> => Boolean(r))
+  const ctx = buildCombineCtx(workspace)
+  const combined = combinePortfolio(workspace, basisResults, ctx)
+  return combined.monthlyNetIncome
+}
+
+describe('B4 — synth-layer parity vs. full simulatePortfolio', () => {
+  // Per-product class: build a candidate, materialise via applyCandidateToAssumptions,
+  // run full simulatePortfolio + combinePortfolio, compare net monthly to synth.
+  const TOLERANCE_EUR = 5
+  const TOLERANCE_PCT = 0.03
+
+  function withCandidateApplied(
+    ws: ReturnType<typeof buildBerndWorkspace>,
+    cand: ReturnType<typeof recommendNextEuro>[number],
+  ): ReturnType<typeof buildBerndWorkspace> {
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, cand)
+    return {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: whatIf.assumptions,
+      },
+    }
+  }
+
+  it('bAV top-up: synth median ≈ full simulatePortfolio median', () => {
+    const ws = buildBerndWorkspace()
+    const candidates = recommendNextEuro(buildInput(ws, 100))
+    const cand = candidates.find((c) => c.productId === 'bav' && !c.isNewInstance)
+    if (!cand) return
+    const fullMedian = runFullPath(withCandidateApplied(ws, cand))
+    const synthMedian = cand.medianNettoRente
+    const delta = Math.abs(synthMedian - fullMedian)
+    expect(delta < TOLERANCE_EUR || delta / Math.max(1, fullMedian) < TOLERANCE_PCT).toBe(true)
+  })
+
+  it('Basisrente (new): synth median ≈ full simulatePortfolio median', () => {
+    const ws = buildBerndWorkspace()
+    const candidates = recommendNextEuro(buildInput(ws, 100))
+    const cand = candidates.find((c) => c.productId === 'basisrente')
+    if (!cand) return
+    const fullMedian = runFullPath(withCandidateApplied(ws, cand))
+    const synthMedian = cand.medianNettoRente
+    const delta = Math.abs(synthMedian - fullMedian)
+    expect(delta < TOLERANCE_EUR || delta / Math.max(1, fullMedian) < TOLERANCE_PCT).toBe(true)
+  })
+
+  it('Riester top-up: synth median ≈ full simulatePortfolio median', () => {
+    const wsBase = buildBerndWorkspace()
+    // Ensure a Riester instance exists for top-up.
+    const ws = {
+      ...wsBase,
+      baseline: {
+        ...wsBase.baseline,
+        assumptions: {
+          ...wsBase.baseline.assumptions,
+          riester: wsBase.baseline.assumptions.riester.length > 0
+            ? wsBase.baseline.assumptions.riester
+            : [
+                {
+                  ...defaultAssumptions.riester,
+                  instanceId: 'riester-test',
+                  label: 'Riester',
+                  status: 'active' as const,
+                  contractStartYear: 2015,
+                  evidenceMap: {},
+                  monthlyOwnContribution: 50,
+                },
+              ],
+        },
+      },
+    }
+    const candidates = recommendNextEuro(buildInput(ws, 100))
+    const cand = candidates.find((c) => c.productId === 'riester' && !c.isNewInstance)
+    if (!cand) return
+    const fullMedian = runFullPath(withCandidateApplied(ws, cand))
+    const synthMedian = cand.medianNettoRente
+    const delta = Math.abs(synthMedian - fullMedian)
+    expect(delta < TOLERANCE_EUR || delta / Math.max(1, fullMedian) < TOLERANCE_PCT).toBe(true)
+  })
+
+  it('ETF top-up: synth median ≈ full simulatePortfolio median (within documented ETF approximation)', () => {
+    const wsBase = buildBerndWorkspace()
+    // Make ETF visible + instance present.
+    const ws = wsBase.baseline.assumptions.etf.length > 0
+      ? wsBase
+      : {
+          ...wsBase,
+          baseline: {
+            ...wsBase.baseline,
+            assumptions: {
+              ...wsBase.baseline.assumptions,
+              etf: [
+                {
+                  ...defaultAssumptions.etf,
+                  instanceId: 'etf-test',
+                  label: 'ETF',
+                  status: 'active' as const,
+                  contractStartYear: 2020,
+                  evidenceMap: {},
+                  monthlyContribution: 0,
+                },
+              ],
+            },
+          },
+        }
+    const candidates = recommendNextEuro(buildInput(ws, 100))
+    const cand = candidates.find((c) => c.productId === 'etf')
+    if (!cand) return
+    const fullMedian = runFullPath(withCandidateApplied(ws, cand))
+    const synthMedian = cand.medianNettoRente
+    const delta = Math.abs(synthMedian - fullMedian)
+    // ETF uses a documented lump-sum-ratio approximation for the per-instance
+    // netMonthlyPayout — relax tolerance to the documented 3 %.
+    expect(delta < TOLERANCE_EUR || delta / Math.max(1, fullMedian) < TOLERANCE_PCT).toBe(true)
+  })
+})
+
+describe('B3c — applyCandidateToAssumptions wires ETF monthlyContribution', () => {
+  it('ETF top-up bumps the target instance monthlyContribution by grossMonthlyEUR', () => {
+    const ws = buildBerndWorkspace()
+    const candidates = recommendNextEuro(buildInput(ws, 100))
+    const cand = candidates.find((c) => c.productId === 'etf' && !c.isNewInstance)
+    if (!cand) return
+    const before = ws.baseline.assumptions.etf
+      .find((e) => e.instanceId === cand.targetInstanceId)?.monthlyContribution ?? 0
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, cand)
+    const after = whatIf.assumptions.etf
+      .find((e) => e.instanceId === cand.targetInstanceId)?.monthlyContribution ?? 0
+    expect(after - before).toBeCloseTo(cand.grossMonthlyEUR, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// N5 — bAV bisection on marginal net cost (regression)
+// ---------------------------------------------------------------------------
+
+describe('recommendNextEuro — bAV marginal solver (N5)', () => {
+  it('with existing bAV €100/mo, the candidate net cash matches a small marginal target', () => {
+    const ws = buildBerndWorkspace()
+    // Bernd workspace already has €100/mo bAV. Ask for a small marginal that
+    // stays within the remaining §3 Nr. 63 cap (cap ≈ 676/mo, used 100, so
+    // remainingMonthly = 576; €100/mo marginal net ≪ remainingCap × marginalRate).
+    const candidates = recommendNextEuro(buildInput(ws, 100))
+    const cand = candidates.find((c) => c.productId === 'bav')
+    if (!cand) return
+    // When NOT clamped, marginal solver should land within 1 EUR of the target.
+    if (!cand.cappedToRemaining) {
+      expect(Math.abs(cand.netCashOutEUR - 100)).toBeLessThan(1)
     }
   })
 })

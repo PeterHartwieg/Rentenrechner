@@ -1208,3 +1208,81 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// Issue 12 (B3) — combine-mode honors per-instance ETF monthlyContribution
+// ---------------------------------------------------------------------------
+
+describe('issue 12 — combine-mode ETF monthlyContribution override', () => {
+  it('combine-mode ETF instance with monthlyContribution=200 produces capital from 200/mo (NOT bavFunding.monthlyNetCost)', () => {
+    const baseWs = migrateRich()
+    // Build two workspaces: same in every way EXCEPT one ETF instance has
+    // monthlyContribution=50, the other has monthlyContribution=200.
+    // Capital at retirement must scale roughly with contribution (4×).
+    const lowEtf: EtfInstance = {
+      ...baseWs.baseline.assumptions.etf[0],
+      instanceId: 'etf-low',
+      monthlyContribution: 50,
+    }
+    const highEtf: EtfInstance = {
+      ...baseWs.baseline.assumptions.etf[0],
+      instanceId: 'etf-high',
+      monthlyContribution: 200,
+    }
+    const wsLow: Workspace = {
+      ...baseWs,
+      baseline: {
+        ...baseWs.baseline,
+        assumptions: { ...baseWs.baseline.assumptions, etf: [lowEtf] },
+      },
+    }
+    const wsHigh: Workspace = {
+      ...baseWs,
+      baseline: {
+        ...baseWs.baseline,
+        assumptions: { ...baseWs.baseline.assumptions, etf: [highEtf] },
+      },
+    }
+    const lowOut = simulatePortfolio(wsLow, de2026Rules).perInstance['etf-low']
+    const highOut = simulatePortfolio(wsHigh, de2026Rules).perInstance['etf-high']
+    const lowCap = lowOut[0].capitalAtRetirement
+    const highCap = highOut[0].capitalAtRetirement
+    // Same fees, same horizon, same returns → capital ratio ≈ 4 (200/50).
+    expect(highCap / lowCap).toBeGreaterThan(3.5)
+    expect(highCap / lowCap).toBeLessThan(4.5)
+  })
+
+  it('combine-mode ETF without explicit monthlyContribution falls back to ctx bavFunding (which is zero under projected per-instance assumptions)', () => {
+    const baseWs = migrateRich()
+    const etfNoOverride: EtfInstance = {
+      ...baseWs.baseline.assumptions.etf[0],
+      instanceId: 'etf-no-override',
+      // monthlyContribution intentionally undefined.
+    }
+    const ws: Workspace = {
+      ...baseWs,
+      baseline: {
+        ...baseWs.baseline,
+        assumptions: { ...baseWs.baseline.assumptions, etf: [etfNoOverride] },
+      },
+    }
+    const out = simulatePortfolio(ws, de2026Rules).perInstance['etf-no-override']
+    // Per-instance projection neutralises the bAV slot when running ETF →
+    // bavFunding.monthlyNetCost = 0 → ETF capital is 0. This is the documented
+    // fallback contract: combine-mode ETF instances must set monthlyContribution
+    // to receive a non-zero projection.
+    expect(out[0].capitalAtRetirement).toBe(0)
+  })
+
+  it('compare-mode ETF (singleton view) preserves the fair-comparison invariant — override field is not on ScenarioAssumptions', () => {
+    // `etfMonthlyUserCostOverride` lives on `BuildContextOverrides` only, NOT
+    // on `ScenarioAssumptions`. The legacy `simulateRetirementComparison` path
+    // doesn't pass overrides, so ETF invests `bavFunding.monthlyNetCost`
+    // unchanged. simulate.integration.test.ts oracle goldens are the byte-
+    // identity guarantee; here we just spot-check the structural separation.
+    const ws = migrateRich()
+    const singleton = singletonViewOfWorkspace(ws, SINGLETON_DEFAULTS)
+    expect(singleton.etf).toBeDefined()
+    expect('etfMonthlyUserCostOverride' in singleton).toBe(false)
+  })
+})

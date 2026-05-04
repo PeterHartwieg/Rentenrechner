@@ -363,7 +363,6 @@ export function projectInstanceToScenarioAssumptions(
       break
     case 'etf': {
       const stripped = stripInstanceCommonKeys(instance as unknown as Record<string, unknown>) as unknown as EtfAssumptions
-      // currentValueEUR for ETF is deferred to issue 15.
       etf = stripped
       break
     }
@@ -1048,7 +1047,12 @@ export function simulatePortfolio(
   runFor(wsa.bav, simulateBav, (inst) => ({
     bavFundingOverride: portfolioFunding.bavByInstanceId[inst.instanceId],
   }))
-  runFor(wsa.etf, simulateEtf, () => ({}))
+  // Combine-mode honors per-instance ETF `monthlyContribution` via the override
+  // (issue 12). Compare-mode (`simulateRetirementComparison`) never sets this
+  // and falls back to `bavFunding.monthlyNetCost` — see ETF simulator + CLAUDE.md.
+  runFor(wsa.etf, simulateEtf, (inst) => ({
+    etfMonthlyUserCostOverride: inst.monthlyContribution,
+  }))
   runFor(wsa.insurance, simulateInsurance, () => ({}))
   runFor(wsa.basisrente, simulateBasisrente, (inst) => ({
     basisrenteFundingOverride: portfolioFunding.basisrenteByInstanceId[inst.instanceId],

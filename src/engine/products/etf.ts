@@ -22,6 +22,11 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): EtfProductResult {
+  // Combine-mode (`simulatePortfolio`) sets `etfMonthlyUserCostOverride` per
+  // instance so each ETF contract honors its own `monthlyContribution`.
+  // Compare-mode leaves this undefined → fair-comparison invariant: ETF
+  // invests `bavFunding.monthlyNetCost` (see CLAUDE.md "Non-obvious architecture").
+  const etfMonthly = ctx.etfMonthlyUserCostOverride ?? ctx.bavFunding.monthlyNetCost
   return buildProductResult({
     productId: 'etf',
     label: metadata.label,
@@ -29,8 +34,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): EtfP
     profile: ctx.profile,
     rules: ctx.rules,
     assumptions: ctx.assumptions,
-    monthlyUserCost: ctx.bavFunding.monthlyNetCost,
-    monthlyProductContribution: ctx.bavFunding.monthlyNetCost,
+    monthlyUserCost: etfMonthly,
+    monthlyProductContribution: etfMonthly,
     monthlyEmployerContribution: 0,
     fees: { ...zeroFeeModel, fundAssetFee: ctx.assumptions.etf.annualAssetFee },
     policy: withMarketReturnPolicy(ctx, scenario, {

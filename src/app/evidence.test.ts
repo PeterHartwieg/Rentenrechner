@@ -79,15 +79,15 @@ describe('confidenceForResult', () => {
 })
 
 describe('confidenceLanguage', () => {
-  it('returns hedged prefix for model_estimate', () => {
-    expect(confidenceLanguage('model_estimate').prefix).toBe('auf deinen Schätzungen ergibt sich')
+  it('returns hedged prefix (capitalized) for model_estimate', () => {
+    expect(confidenceLanguage('model_estimate').prefix).toBe('Auf deinen Schätzungen ergibt sich')
   })
 
-  it('returns direct prefix for user_confirmed', () => {
-    expect(confidenceLanguage('user_confirmed').prefix).toBe('ergibt sich')
+  it('returns direct prefix (capitalized) for user_confirmed', () => {
+    expect(confidenceLanguage('user_confirmed').prefix).toBe('Ergibt sich')
   })
 
-  it('returns direct prefix for statement', () => {
-    expect(confidenceLanguage('statement').prefix).toBe('ergibt sich')
+  it('returns direct prefix (capitalized) for statement', () => {
+    expect(confidenceLanguage('statement').prefix).toBe('Ergibt sich')
   })
 })
