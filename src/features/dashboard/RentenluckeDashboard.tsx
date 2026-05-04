@@ -1,31 +1,31 @@
 /**
  * Rentenlücke dashboard (Group G QA issue #20).
  *
- * Top-of-page overview for compare-mode (Vergleich). Summarises the gap
- * between projected total monthly net retirement income (GRV + each visible
- * product) and a user-set or salary-derived target. Surfaces a primary CTA
- * pointing at the Angebot tab where the user can adjust contributions.
+ * Top-of-page overview for combine-mode (Mein Plan): summarises the gap
+ * between projected total monthly net retirement income (GRV + each portfolio
+ * instance) and a user-set or salary-derived target. Surfaces a primary CTA
+ * pointing at the Angebot tab where the user can adjust contributions or add
+ * a Vertrag. Compare-mode (Vergleich) is product-vs-product head-to-head and
+ * deliberately does not surface this dashboard — the user there is choosing
+ * between candidates, not tracking against a personal target.
  *
- * The component is a pure presentation layer over the
- * `deriveRentenluckeOverview` selector — it does not run any simulation, and
- * relies on `simulation` + `selectedResults` already filtered for the active
- * scenario. Engine code stays React-free.
+ * The component is a pure presentation layer over a pre-derived
+ * `RentenluckeOverview` — it runs no simulation. Engine code stays React-free.
  */
 
 import './RentenluckeDashboard.css'
-import type { PersonalProfile, ProductResult, SimulationResult } from '../../domain'
+import type { PersonalProfile } from '../../domain'
 import { GRV_COLOR } from '../../app/productPresentation'
 import {
-  deriveRentenluckeOverview,
   RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO,
+  type RentenluckeOverview,
 } from '../../app/simulationSelectors'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {
   profile: PersonalProfile
-  simulation: SimulationResult
-  selectedResults: ProductResult[]
+  overview: RentenluckeOverview
   /** Updates `profile.desiredNetMonthlyPension`. Pass undefined / 0 to clear. */
   onTargetChange: (next: number | undefined) => void
   /**
@@ -37,14 +37,13 @@ interface Props {
 
 export function RentenluckeDashboard({
   profile,
-  simulation,
-  selectedResults,
+  overview,
   onTargetChange,
   onAdjustContributions,
 }: Props) {
-  const overview = deriveRentenluckeOverview(simulation, selectedResults, profile)
   const { grvNet, productBreakdown, projectedTotal, target, targetIsUserSet, gap, goalReached } =
     overview
+  const hasProductBreakdown = productBreakdown.length > 0
 
   // Stacked-bar segments (GRV + visible products). Width is share of the
   // larger of (projected, target) so both extremes fit on one axis.
@@ -65,7 +64,7 @@ export function RentenluckeDashboard({
         <h2>Rentenlücke</h2>
         <p>
           Vergleich der voraussichtlichen monatlichen Netto-Rente
-          {selectedResults.length > 0 ? ' aus gesetzlicher und privater Vorsorge' : ' aus der gesetzlichen Rente'}
+          {hasProductBreakdown ? ' aus gesetzlicher und privater Vorsorge' : ' aus der gesetzlichen Rente'}
           {' '}gegenüber Ihrem Wunschnetto.
         </p>
       </header>

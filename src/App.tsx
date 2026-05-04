@@ -5,6 +5,7 @@ import type { InstanceTaxModes } from './utils/csvExport'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveBavLumpSumTaxMode } from './engine/bavPayout'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from './engine/insurancePayout'
+import { deriveRentenluckeOverviewFromCombine } from './app/simulationSelectors'
 import { de2026Rules } from './rules/de2026'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useGuidedSetup } from './app/useGuidedSetup'
@@ -356,6 +357,25 @@ function Calculator({ navigate }: CalculatorProps) {
 
       {portfolioState.mode === 'combine' && combineBasisResult && (
         <>
+          {/* Issue #20 — top-of-page Rentenlücke dashboard. Combine-mode is
+              where users have multiple Verträge aimed at a target net pension
+              and need the gap as their headline figure. Compare-mode is
+              product-vs-product head-to-head and deliberately omits this. */}
+          <RentenluckeDashboard
+            profile={profile}
+            overview={deriveRentenluckeOverviewFromCombine(
+              portfolioState.workspace,
+              combineBasisResult,
+              profile,
+            )}
+            onTargetChange={(next) =>
+              setProfile((current) => ({
+                ...current,
+                desiredNetMonthlyPension: next,
+              }))
+            }
+            onAdjustContributions={() => workspace.setActiveView('angebot')}
+          />
           <RecommenderCard
             workspace={portfolioState.workspace}
             baselineCombined={combineBasisResult}
@@ -414,22 +434,6 @@ function Calculator({ navigate }: CalculatorProps) {
           comparing product candidates. */}
       {!isCombineMode && (
         <>
-          {/* Issue #20 — top-of-page Rentenlücke dashboard. Renders even when
-              the comparison set is empty (GRV-only baseline) so the user
-              always sees their gap before the per-product detail. */}
-          <RentenluckeDashboard
-            profile={profile}
-            simulation={simulation}
-            selectedResults={selectedResults}
-            onTargetChange={(next) =>
-              setProfile((current) => ({
-                ...current,
-                desiredNetMonthlyPension: next,
-              }))
-            }
-            onAdjustContributions={() => workspace.setActiveView('angebot')}
-          />
-
           <ComparisonPicker
             visible={assumptions.visibleProducts}
             onChange={(next) =>

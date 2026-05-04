@@ -15,6 +15,8 @@ import type {
   ScenarioAssumptions,
   SimulationResult,
 } from '../domain'
+import type { Workspace } from '../domain/workspace'
+import type { CombinedResult } from '../engine/portfolioCombine'
 import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import { afterTaxInsuranceLumpSum, deriveInsuranceTaxMode } from '../engine/insurancePayout'
@@ -318,8 +320,13 @@ export function resolveTargetMonthlyRetirementIncome(
 export interface RentenluckeOverview {
   /** Net monthly GRV pension. */
   grvNet: number
-  /** Per-visible-product breakdown. Order matches `selectedResults`. */
-  productBreakdown: Array<{ id: ProductId; label: string; value: number; color: string }>
+  /**
+   * Per-source breakdown. In compare-mode (`deriveRentenluckeOverview`) ids are
+   * `ProductId` literals; in combine-mode (`deriveRentenluckeOverviewFromCombine`)
+   * ids are workspace `instanceId`s so multiple instances of the same product
+   * appear as separate rows.
+   */
+  productBreakdown: Array<{ id: string; label: string; value: number; color: string }>
   /** Sum of GRV + all product net monthly payouts. */
   projectedTotal: number
   /** Target monthly net retirement income (user-set or salary-derived). */
@@ -339,11 +346,65 @@ export function deriveRentenluckeOverview(
 ): RentenluckeOverview {
   const grvNet = simulation.statutoryPension.netMonthlyPension
   const productBreakdown = selectedResults.map((result) => ({
-    id: result.productId,
+    id: result.productId as string,
     label: result.label,
     value: result.netMonthlyPayout,
     color: getProductMeta(result.productId)?.color ?? '#888888',
   }))
+  return assembleOverview(grvNet, productBreakdown, profile)
+}
+
+/**
+ * Combine-mode variant: build a Rentenlücke overview from the user's actual
+ * portfolio rather than a head-to-head product comparison.
+ *
+ * Iterates every workspace instance (skipping `surrendered`), pulls the
+ * back-allocated `monthlyNet` from `combinedResult.byInstance[instanceId]`, and
+ * keys each row by `instanceId` so two instances of the same product (e.g. two
+ * ETF Sparpläne) render as separate segments instead of collapsing.
+ *
+ * `combinedResult.statutoryPensionMonthlyNet` already includes the GRV
+ * contribution to the back-allocated pipeline; passing it directly avoids
+ * double-counting against `byInstance` totals.
+ */
+export function deriveRentenluckeOverviewFromCombine(
+  workspace: Workspace,
+  combinedResult: CombinedResult,
+  profile: PersonalProfile,
+): RentenluckeOverview {
+  const wsa = workspace.baseline.assumptions
+  const productSlots: Array<{ id: ProductId; instances: { instanceId: string; label: string; status: 'active' | 'paid_up' | 'surrendered' }[] }> = [
+    { id: 'bav', instances: wsa.bav },
+    { id: 'etf', instances: wsa.etf },
+    { id: 'versicherung', instances: wsa.insurance },
+    { id: 'basisrente', instances: wsa.basisrente },
+    { id: 'altersvorsorgedepot', instances: wsa.altersvorsorgedepot },
+    { id: 'riester', instances: wsa.riester },
+  ]
+  const productBreakdown: RentenluckeOverview['productBreakdown'] = []
+  for (const slot of productSlots) {
+    const meta = getProductMeta(slot.id)
+    for (const inst of slot.instances) {
+      if (inst.status === 'surrendered') continue
+      const share = combinedResult.byInstance[inst.instanceId]
+      if (!share) continue
+      const label = inst.label?.trim().length ? inst.label : (meta?.label ?? slot.id)
+      productBreakdown.push({
+        id: inst.instanceId,
+        label,
+        value: share.monthlyNet,
+        color: meta?.color ?? '#888888',
+      })
+    }
+  }
+  return assembleOverview(combinedResult.statutoryPensionMonthlyNet, productBreakdown, profile)
+}
+
+function assembleOverview(
+  grvNet: number,
+  productBreakdown: RentenluckeOverview['productBreakdown'],
+  profile: PersonalProfile,
+): RentenluckeOverview {
   const projectedTotal =
     grvNet + productBreakdown.reduce((sum, entry) => sum + entry.value, 0)
   const { value: target, isUserSet: targetIsUserSet } =
