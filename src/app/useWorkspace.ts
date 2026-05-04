@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-const WORKSPACE_KEY = 'rentenrechner-workspace-v1'
+export const WORKSPACE_KEY = 'rentenrechner-workspace-v1'
 
 export const WORKSPACE_VIEWS = ['angebot', 'vergleich', 'details'] as const
 export type WorkspaceView = (typeof WORKSPACE_VIEWS)[number]

@@ -25,7 +25,7 @@ export interface SavedScenario {
   kind?: 'user' | 'archived'
 }
 
-const LIBRARY_KEY = 'rentenrechner-library-v1'
+export const LIBRARY_KEY = 'rentenrechner-library-v1'
 /**
  * Schema version for the saved-scenario library entries.
  * Version 1: entries carry v1 singleton ScenarioAssumptions (current shape in M1).

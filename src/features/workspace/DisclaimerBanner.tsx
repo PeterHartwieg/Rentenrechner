@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Info } from 'lucide-react'
 
-const DISMISS_KEY = 'disclaimer-dismissed'
+export const DISMISS_KEY = 'disclaimer-dismissed'
 
 export function DisclaimerBanner() {
   const [visible, setVisible] = useState(() => {

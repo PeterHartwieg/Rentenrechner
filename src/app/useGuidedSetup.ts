@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { STORAGE_KEY } from '../storage'
 import { readUrlState } from '../utils/urlShare'
 
-const SETUP_FLAG_KEY = 'rentenrechner-guided-setup-v1'
+export const SETUP_FLAG_KEY = 'rentenrechner-guided-setup-v1'
 
 type SetupFlag = {
   /** true once the user has either completed the guided setup or chosen "Expertenmodus". */

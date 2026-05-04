@@ -1,4 +1,9 @@
 import type { Route } from '../../app/useRoute'
+import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
+import { LIBRARY_KEY } from '../../data/scenarioLibrary'
+import { SETUP_FLAG_KEY } from '../../app/useGuidedSetup'
+import { WORKSPACE_KEY } from '../../app/useWorkspace'
+import { DISMISS_KEY } from '../workspace/DisclaimerBanner'
 import { LegalLayout } from './LegalLayout'
 
 interface Props {
@@ -88,19 +93,27 @@ export function DatenschutzPage({ navigate }: Props) {
         </p>
         <ul>
           <li>
-            <code>rentenrechner-state-v1</code> — aktuelles Profil und
-            Annahmen (localStorage);
+            <code>{STORAGE_KEY_V1}</code> — aktuelles Profil und Annahmen,
+            Schema v1 (localStorage);
           </li>
           <li>
-            <code>rentenrechner-library-v1</code> — vom Nutzer gespeicherte
+            <code>{STORAGE_KEY_V2}</code> — Workspace-Zustand mit
+            Produkt-Instanzen, Schema v2 (localStorage);
+          </li>
+          <li>
+            <code>{LIBRARY_KEY}</code> — vom Nutzer gespeicherte
             Szenarien (localStorage);
           </li>
           <li>
-            <code>rentenrechner-guided-setup-v1</code> — Status des geführten
+            <code>{SETUP_FLAG_KEY}</code> — Status des geführten
             Einstiegs (localStorage);
           </li>
           <li>
-            <code>disclaimer-dismissed</code> — Sitzungsweises Ausblenden des
+            <code>{WORKSPACE_KEY}</code> — zuletzt aktive Workspace-Ansicht
+            (localStorage);
+          </li>
+          <li>
+            <code>{DISMISS_KEY}</code> — sitzungsweises Ausblenden des
             Hinweisbanners (sessionStorage; wird beim Schließen des Browsers
             gelöscht);
           </li>
