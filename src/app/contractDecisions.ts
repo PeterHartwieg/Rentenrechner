@@ -783,7 +783,8 @@ function applySurrender(
     updateStatus(wsa.etf, instanceId, 'surrendered')
   }
 
-  // If reallocating, append a surrender_reinvest transfer event on the target instance.
+  // If reallocating, append a surrender_reinvest transfer event to both instances:
+  // source carries "capital left"; target carries "capital received".
   if (reallocateToInstanceId) {
     const sourceInstance = findInstanceInWsa(wsa, instanceId)
     const amount = sourceInstance?.currentValueEUR ?? 0
@@ -795,6 +796,7 @@ function applySurrender(
       amountEUR: amount,
       surrenderHaircutPct: haircutPct,
     }
+    appendTransferEvent(wsa, instanceId, event)
     appendTransferEvent(wsa, reallocateToInstanceId, event)
   }
 }
@@ -828,8 +830,9 @@ function applyTransfer(
           surrenderHaircutPct: defaultHaircutFor(delta.sourceInstanceId),
         }
 
-  // Append to the SOURCE instance's transferEvents array.
+  // Append to both instances: source carries "capital left"; target carries "capital received".
   appendTransferEvent(wsa, delta.sourceInstanceId, event)
+  appendTransferEvent(wsa, delta.targetInstanceId, event)
 }
 
 function applyTransferToNew(

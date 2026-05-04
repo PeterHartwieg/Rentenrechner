@@ -16,6 +16,8 @@
  *   - generateContractDecisions: Beitragsfrei is included for active non-ETF instances (M4 F1).
  *   - generateContractDecisions: ETF and already-paid-up instances skip Beitragsfrei.
  *   - applyContractDecision: identity, paid_up, surrender, transfer, transfer_to_new mutations.
+ *   - applyContractDecision transfer: source gets "capital left" + target gets "capital received" (manual path).
+ *   - applyContractDecision surrender-reinvest: source gets "capital left" + target gets "capital received" (#16).
  *   - generateContractDecisions: Basisrente kuendigen excluded.
  *   - Round-trip validation: applyContractDecision output survives migrateAndValidateState.
  */
@@ -500,17 +502,24 @@ describe('applyContractDecision', () => {
     expect(applied.baseline.assumptions.insurance[0].status).toBe('surrendered')
   })
 
-  it('transfer: appends transferEvent to source instance', () => {
+  it('transfer: appends transferEvent to source ("capital left") AND target ("capital received")', () => {
     const ws = makeRiesterAvdWorkspace()
     const sourceId = ws.baseline.assumptions.riester[0].instanceId
     const targetId = ws.baseline.assumptions.altersvorsorgedepot[0].instanceId
     const decision = uebertragenWhatIf(ws, sourceId, targetId, 'all')
     const applied = applyContractDecision(ws, decision)
+    // Source carries "capital left" event.
     const sourceInst = applied.baseline.assumptions.riester[0]
     expect(sourceInst.transferEvents).toBeDefined()
     expect(sourceInst.transferEvents!.length).toBeGreaterThan(0)
     expect(sourceInst.transferEvents![0].type).toBe('certified')
     expect(sourceInst.transferEvents![0].targetInstanceId).toBe(targetId)
+    // Target carries "capital received" event.
+    const targetInst = applied.baseline.assumptions.altersvorsorgedepot[0]
+    expect(targetInst.transferEvents).toBeDefined()
+    expect(targetInst.transferEvents!.length).toBeGreaterThan(0)
+    expect(targetInst.transferEvents![0].type).toBe('certified')
+    expect(targetInst.transferEvents![0].sourceInstanceId).toBe(sourceId)
   })
 
   it('does not mutate the original workspace', () => {
@@ -521,7 +530,7 @@ describe('applyContractDecision', () => {
     expect(ws.baseline.assumptions.bav[0].status).toBe('active')
   })
 
-  it('transfer_to_new: creates new AVD instance and appends certified transferEvent', () => {
+  it('transfer_to_new: creates new AVD instance and appends certified transferEvent to both source and target', () => {
     const ws = makeRiesterAvdWorkspace()
     // Remove all AVD instances so the virtual target path is triggered.
     const wsNoAvd: Workspace = {
@@ -540,13 +549,20 @@ describe('applyContractDecision', () => {
     const newAvd = applied.baseline.assumptions.altersvorsorgedepot[0]
     expect(newAvd.instanceId).toMatch(/^altersvorsorgedepot-/)
 
-    // The Riester source should have a certified transferEvent pointing at the new AVD.
+    // Source carries "capital left" event.
     const sourceInst = applied.baseline.assumptions.riester[0]
     expect(sourceInst.transferEvents).toBeDefined()
     expect(sourceInst.transferEvents!.length).toBeGreaterThan(0)
-    const event = sourceInst.transferEvents![0]
-    expect(event.type).toBe('certified')
-    expect(event.targetInstanceId).toBe(newAvd.instanceId)
+    const sourceEvent = sourceInst.transferEvents![0]
+    expect(sourceEvent.type).toBe('certified')
+    expect(sourceEvent.targetInstanceId).toBe(newAvd.instanceId)
+
+    // Target (new AVD) carries "capital received" event.
+    expect(newAvd.transferEvents).toBeDefined()
+    expect(newAvd.transferEvents!.length).toBeGreaterThan(0)
+    const targetEvent = newAvd.transferEvents![0]
+    expect(targetEvent.type).toBe('certified')
+    expect(targetEvent.sourceInstanceId).toBe(sourceId)
   })
 
   it('year is deterministic (defaults to de2026Rules.year, no new Date())', () => {
@@ -558,6 +574,52 @@ describe('applyContractDecision', () => {
     const event = applied.baseline.assumptions.riester[0].transferEvents![0]
     // Year should be 2026 (de2026Rules.year) — not the runtime year.
     expect(event.year).toBe(2026)
+  })
+
+  it('surrender-reinvest: source carries "capital left" AND target carries "capital received"', () => {
+    // pAV surrendered and reinvested into an ETF instance.
+    const karinWs = makeKarinWorkspace()
+    const etfInst: EtfInstance = {
+      instanceId: 'etf-reinvest-target',
+      label: 'ETF-Depot',
+      status: 'active',
+      contractStartYear: 2020,
+      evidenceMap: {},
+      annualAssetFee: 0.002,
+      equityPartialExemption: 0.3,
+      annualContributionGrowthRate: 0,
+      monthlyContribution: 100,
+    }
+    const ws: Workspace = {
+      ...karinWs,
+      baseline: {
+        ...karinWs.baseline,
+        assumptions: { ...karinWs.baseline.assumptions, etf: [etfInst] },
+      },
+    }
+    const sourceId = ws.baseline.assumptions.insurance[0].instanceId
+    const targetId = 'etf-reinvest-target'
+    // kuendigen with reallocateToInstanceId triggers the surrender-reinvest path.
+    const decision = kuendigenWhatIf(ws, sourceId, undefined, targetId)!
+    const applied = applyContractDecision(ws, decision, 2026)
+
+    // Source (pAV) carries "capital left" event.
+    const sourceInst = applied.baseline.assumptions.insurance[0]
+    expect(sourceInst.transferEvents).toBeDefined()
+    expect(sourceInst.transferEvents!.length).toBeGreaterThan(0)
+    const sourceEvent = sourceInst.transferEvents![0]
+    expect(sourceEvent.type).toBe('surrender_reinvest')
+    expect(sourceEvent.sourceInstanceId).toBe(sourceId)
+    expect(sourceEvent.targetInstanceId).toBe(targetId)
+
+    // Target (ETF) carries "capital received" event.
+    const targetInst = applied.baseline.assumptions.etf[0]
+    expect(targetInst.transferEvents).toBeDefined()
+    expect(targetInst.transferEvents!.length).toBeGreaterThan(0)
+    const targetEvent = targetInst.transferEvents![0]
+    expect(targetEvent.type).toBe('surrender_reinvest')
+    expect(targetEvent.sourceInstanceId).toBe(sourceId)
+    expect(targetEvent.targetInstanceId).toBe(targetId)
   })
 })
 
