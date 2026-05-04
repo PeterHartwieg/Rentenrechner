@@ -1973,11 +1973,14 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
       if (compareR.productId !== 'etf') continue
       const combineR = perInstance['etf-equiv'].find(r => r.scenarioId === compareR.scenarioId)
       expect(combineR).toBeDefined()
-      // Financial equivalence: capital and monthly payout are byte-identical (≤ 2 decimal places).
-      expect(combineR!.capitalAtRetirement).toBeCloseTo(compareR.capitalAtRetirement, 2)
-      expect(combineR!.netMonthlyPayout).toBeCloseTo(compareR.netMonthlyPayout, 2)
+      // Financial equivalence: capital and monthly payout must be byte-identical
+      // (same floating-point value, not just cents-close). Both code paths derive
+      // the ETF inflow from the same bavFunding.monthlyNetCost float, so no
+      // rounding divergence is expected.
+      expect(combineR!.capitalAtRetirement).toBe(compareR.capitalAtRetirement)
+      expect(combineR!.netMonthlyPayout).toBe(compareR.netMonthlyPayout)
       if (compareR.afterTaxLumpSum !== null) {
-        expect(combineR!.afterTaxLumpSum).toBeCloseTo(compareR.afterTaxLumpSum!, 2)
+        expect(combineR!.afterTaxLumpSum).toBe(compareR.afterTaxLumpSum!)
       } else {
         expect(combineR!.afterTaxLumpSum).toBe(null)
       }
@@ -2028,11 +2031,13 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
       if (compareR.productId !== 'versicherung') continue
       const combineR = perInstance['versicherung-equiv'].find(r => r.scenarioId === compareR.scenarioId)
       expect(combineR).toBeDefined()
-      // Financial equivalence: capital and monthly payout are byte-identical (≤ 2 decimal places).
-      expect(combineR!.capitalAtRetirement).toBeCloseTo(compareR.capitalAtRetirement, 2)
-      expect(combineR!.netMonthlyPayout).toBeCloseTo(compareR.netMonthlyPayout, 2)
+      // Financial equivalence: capital and monthly payout must be byte-identical
+      // (same floating-point value). Both paths derive the insurance inflow from
+      // the same bavFunding.monthlyNetCost float via insuranceMonthlyUserCostOverride.
+      expect(combineR!.capitalAtRetirement).toBe(compareR.capitalAtRetirement)
+      expect(combineR!.netMonthlyPayout).toBe(compareR.netMonthlyPayout)
       if (compareR.afterTaxLumpSum !== null) {
-        expect(combineR!.afterTaxLumpSum).toBeCloseTo(compareR.afterTaxLumpSum!, 2)
+        expect(combineR!.afterTaxLumpSum).toBe(compareR.afterTaxLumpSum!)
       } else {
         expect(combineR!.afterTaxLumpSum).toBe(null)
       }
@@ -2086,11 +2091,131 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
       if (compareR.productId !== 'altersvorsorgedepot') continue
       const combineR = perInstance['avd-equiv'].find(r => r.scenarioId === compareR.scenarioId)
       expect(combineR).toBeDefined()
-      // Financial equivalence: capital and monthly payout are byte-identical (≤ 2 decimal places).
-      expect(combineR!.capitalAtRetirement).toBeCloseTo(compareR.capitalAtRetirement, 2)
-      expect(combineR!.netMonthlyPayout).toBeCloseTo(compareR.netMonthlyPayout, 2)
+      // Financial equivalence: capital and monthly payout must be byte-identical
+      // (same floating-point value). Both paths call calculateAvdFunding on the
+      // same singleton-shaped assumptions; the funding result is identical, so
+      // no rounding divergence is expected.
+      expect(combineR!.capitalAtRetirement).toBe(compareR.capitalAtRetirement)
+      expect(combineR!.netMonthlyPayout).toBe(compareR.netMonthlyPayout)
       if (compareR.afterTaxLumpSum !== null) {
-        expect(combineR!.afterTaxLumpSum).toBeCloseTo(compareR.afterTaxLumpSum!, 2)
+        expect(combineR!.afterTaxLumpSum).toBe(compareR.afterTaxLumpSum!)
+      } else {
+        expect(combineR!.afterTaxLumpSum).toBe(null)
+      }
+    }
+  })
+
+  // ---------------------------------------------------------------------------
+  // Basisrente length-1
+  // ---------------------------------------------------------------------------
+  // Basisrente combine-mode passes `basisrenteFundingOverride` (pre-computed by
+  // `buildPortfolioFunding` → `calculateBasisrenteFunding`) into `buildContext`.
+  // Compare-mode derives the same funding from the same singleton-shaped assumptions
+  // inside `buildContext` without an override. For a length-1 workspace the two
+  // code paths must produce the same floating-point result. Capital payout is
+  // legally prohibited for Basisrente, so `afterTaxLumpSum` is always null.
+  it('Basisrente length-1: capitalAtRetirement and netMonthlyPayout match compare-mode', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const projected = singletonViewOfWorkspace(workspace, SINGLETON_DEFAULTS)
+    const compareResult = simulateRetirementComparison(
+      defaultProfile,
+      { ...projected, visibleProducts: ['basisrente'] as ProductId[] },
+      de2026Rules,
+    )
+    const compareBasisrente = compareResult.products.find(p => p.productId === 'basisrente')
+    expect(compareBasisrente).toBeDefined()
+
+    // Combine-mode: single Basisrente instance — funding is passed via
+    // basisrenteFundingOverride which derives from the same calculateBasisrenteFunding
+    // call as in compare-mode (same singleton inputs → same funding result).
+    const basisrenteInst: BasisrenteInstance = {
+      ...workspace.baseline.assumptions.basisrente[0],
+      instanceId: 'basisrente-equiv',
+      label: 'Basisrente equiv',
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          basisrente: [basisrenteInst],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    for (const compareR of compareResult.products) {
+      if (compareR.productId !== 'basisrente') continue
+      const combineR = perInstance['basisrente-equiv'].find(r => r.scenarioId === compareR.scenarioId)
+      expect(combineR).toBeDefined()
+      // Financial equivalence: capital and monthly payout must be byte-identical.
+      // Both code paths call calculateBasisrenteFunding on the same inputs — no
+      // rounding divergence is expected.
+      expect(combineR!.capitalAtRetirement).toBe(compareR.capitalAtRetirement)
+      expect(combineR!.netMonthlyPayout).toBe(compareR.netMonthlyPayout)
+      // Basisrente legally prohibits capital payout — afterTaxLumpSum must be null.
+      expect(combineR!.afterTaxLumpSum).toBe(null)
+      expect(compareR.afterTaxLumpSum).toBe(null)
+    }
+  })
+
+  // ---------------------------------------------------------------------------
+  // Riester length-1
+  // ---------------------------------------------------------------------------
+  // Riester combine-mode passes `riesterFundingOverride` (pre-computed by
+  // `buildPortfolioFunding` → `calculateRiesterFunding`) into `buildContext`.
+  // Compare-mode derives the same funding from the same singleton-shaped assumptions
+  // inside `buildContext` without an override. For a length-1 workspace the two
+  // code paths must produce the same floating-point result.
+  it('Riester length-1: capitalAtRetirement and netMonthlyPayout match compare-mode', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const projected = singletonViewOfWorkspace(workspace, SINGLETON_DEFAULTS)
+    const compareResult = simulateRetirementComparison(
+      defaultProfile,
+      { ...projected, visibleProducts: ['riester'] as ProductId[] },
+      de2026Rules,
+    )
+    const compareRiester = compareResult.products.find(p => p.productId === 'riester')
+    expect(compareRiester).toBeDefined()
+
+    // Combine-mode: single Riester instance — funding is passed via
+    // riesterFundingOverride which derives from the same calculateRiesterFunding
+    // call as in compare-mode (same singleton inputs → same funding result).
+    const riesterInst: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: 'riester-equiv',
+      label: 'Riester equiv',
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          riester: [riesterInst],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    for (const compareR of compareResult.products) {
+      if (compareR.productId !== 'riester') continue
+      const combineR = perInstance['riester-equiv'].find(r => r.scenarioId === compareR.scenarioId)
+      expect(combineR).toBeDefined()
+      // Financial equivalence: capital and monthly payout must be byte-identical.
+      // Both code paths call calculateRiesterFunding on the same inputs — no
+      // rounding divergence is expected.
+      expect(combineR!.capitalAtRetirement).toBe(compareR.capitalAtRetirement)
+      expect(combineR!.netMonthlyPayout).toBe(compareR.netMonthlyPayout)
+      if (compareR.afterTaxLumpSum !== null) {
+        expect(combineR!.afterTaxLumpSum).toBe(compareR.afterTaxLumpSum!)
       } else {
         expect(combineR!.afterTaxLumpSum).toBe(null)
       }
