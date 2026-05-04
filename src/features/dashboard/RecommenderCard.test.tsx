@@ -18,6 +18,8 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { migrateV1ToV2 } from '../../storage'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
 import { de2026Rules } from '../../rules/de2026'
+import { confidenceForResult, confidenceLanguage } from '../../app/evidence'
+import type { InsuranceInstance } from '../../domain/instances'
 import { afterEach } from 'vitest'
 
 afterEach(() => cleanup())
@@ -109,5 +111,80 @@ describe('RecommenderCard', () => {
     )
     const cands = container.querySelectorAll('.recommender-candidate')
     expect(cands.length).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Regression: insurance evidence quality must participate in the confidence
+// calculation (issue #32).
+//
+// Before the fix, wsa.insurance was excluded from `allInstances` in
+// RecommenderCard's confidence useMemo. An insurance-only workspace with
+// model_estimate inputs would still produce the direct (confident) language,
+// silently ignoring the quality of the only live contract.
+// ---------------------------------------------------------------------------
+
+/** Minimal InsuranceInstance fixture shared by the two regression tests. */
+function makeInsuranceInstance(overrides: Partial<InsuranceInstance> = {}): InsuranceInstance {
+  return {
+    instanceId: 'versicherung-singleton',
+    label: 'Private Rentenversicherung',
+    status: 'active',
+    contractStartYear: 2010,
+    evidenceMap: {},
+    oldContractTaxFreeEligible: false,
+    monthlyOtherRetirementIncome: 1500,
+    capitalGuarantee: { enabled: false, floorPctOfContributions: 0 },
+    fees: {
+      wrapperAssetFee: 0.01,
+      fundAssetFee: 0.0015,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0.05,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+    payoutMode: 'leibrente',
+    rentenfaktor: 28,
+    rentenfaktorConfirmed: false,
+    zeitrenteYears: 20,
+    surrenderHaircutPct: 0,
+    annualContributionGrowthRate: 0,
+    monthlyContribution: 200,
+    ...overrides,
+  }
+}
+
+describe('RecommenderCard — insurance confidence regression (#32)', () => {
+  it('insurance instance with empty evidenceMap yields model_estimate confidence', () => {
+    // An insurance instance whose evidenceMap is empty (i.e. all required fields
+    // are unconfirmed). confidenceForResult must return 'model_estimate' so that
+    // the hedged language ("Auf deinen Schätzungen ergibt sich") is shown.
+    const inst = makeInsuranceInstance({ evidenceMap: {} })
+    const confidence = confidenceForResult({ productId: 'versicherung' }, inst.evidenceMap)
+    expect(confidence).toBe('model_estimate')
+    // Verify that this translates to hedged language.
+    expect(confidenceLanguage(confidence).prefix).toContain('Schätzungen')
+  })
+
+  it('insurance instance with all evidence user_confirmed yields user_confirmed confidence', () => {
+    // Symmetric check: a fully-confirmed insurance instance must NOT lower
+    // the confidence to model_estimate, i.e. the fix doesn't cause false positives.
+    const inst = makeInsuranceInstance({
+      evidenceMap: {
+        monthlyContribution: 'user_confirmed',
+        'fees.wrapperAssetFee': 'user_confirmed',
+        'fees.fundAssetFee': 'user_confirmed',
+        'fees.acquisitionCostPct': 'user_confirmed',
+        'fees.pensionPayoutFeePct': 'user_confirmed',
+        rentenfaktor: 'user_confirmed',
+        payoutMode: 'user_confirmed',
+        contractStartYear: 'user_confirmed',
+      },
+    })
+    const confidence = confidenceForResult({ productId: 'versicherung' }, inst.evidenceMap)
+    expect(confidence).toBe('user_confirmed')
+    // Verify that this translates to the direct (non-hedged) language.
+    expect(confidenceLanguage(confidence).prefix).not.toContain('Schätzungen')
   })
 })

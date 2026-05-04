@@ -109,6 +109,7 @@ export function RecommenderCard({
     const allInstances = [
       ...wsa.bav,
       ...wsa.etf,
+      ...wsa.insurance,
       ...wsa.basisrente,
       ...wsa.altersvorsorgedepot,
       ...wsa.riester,
