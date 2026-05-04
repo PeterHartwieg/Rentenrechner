@@ -734,10 +734,10 @@ export function InventoryWizard({
                 key={row.id}
                 className={`inventory-product-row${checked ? ' inventory-product-row--checked' : ''}`}
               >
-                {/* Checkbox row */}
-                <div
+                {/* Checkbox row — label wraps input so the entire row is clickable */}
+                <label
+                  htmlFor={`inventory-check-${row.id}`}
                   className="inventory-product-check"
-                  onClick={!isGrv ? () => toggleProduct(row.id) : undefined}
                   style={isGrv ? { cursor: 'default' } : undefined}
                 >
                   <input
@@ -748,20 +748,15 @@ export function InventoryWizard({
                     onChange={!isGrv ? () => toggleProduct(row.id) : undefined}
                     aria-label={`${row.name} einbeziehen`}
                   />
-                  <label
-                    htmlFor={`inventory-check-${row.id}`}
-                    className="inventory-product-check-label"
-                    onClick={!isGrv ? (e) => e.preventDefault() : undefined}
-                    style={{ cursor: isGrv ? 'default' : 'pointer' }}
-                  >
+                  <span className="inventory-product-check-label">
                     <span className="inventory-product-name">{row.name}</span>
                     <span className="inventory-product-hint">
                       {isGrv
                         ? 'Immer dabei — wir schätzen deine GRV-Rente.'
                         : row.hint}
                     </span>
-                  </label>
-                </div>
+                  </span>
+                </label>
 
                 {/* Expanded instance cards */}
                 {checked && (
