@@ -31,7 +31,11 @@ export const metadata = {
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): InsuranceProductResult {
   const { profile, assumptions, rules, bavFunding, insuranceTaxMode, payoutYear } = ctx
   const ins = assumptions.insurance
-  const insuranceMonthly = bavFunding.monthlyNetCost
+  // Combine-mode (`simulatePortfolio`) sets `insuranceMonthlyUserCostOverride` per
+  // instance so each insurance contract honors its own `monthlyContribution`.
+  // Compare-mode leaves this undefined → fair-comparison invariant: insurance
+  // invests `bavFunding.monthlyNetCost` (see CLAUDE.md "Non-obvious architecture").
+  const insuranceMonthly = ctx.insuranceMonthlyUserCostOverride ?? bavFunding.monthlyNetCost
   const guaranteePct = ins.capitalGuarantee.enabled ? ins.capitalGuarantee.floorPctOfContributions : 0
 
   const insResult = buildProductResult({

@@ -72,6 +72,12 @@ export interface SimulationContext {
    * preserves the compare-mode fair-comparison invariant.
    */
   etfMonthlyUserCostOverride?: number
+  /**
+   * Issue F2 — combine-mode insurance per-instance monthly user cost. When set,
+   * the insurance simulator uses this instead of `bavFunding.monthlyNetCost`.
+   * Leaving `undefined` preserves the compare-mode fair-comparison invariant.
+   */
+  insuranceMonthlyUserCostOverride?: number
 }
 
 /**
@@ -137,6 +143,17 @@ export interface BuildContextOverrides {
    * compare-mode oracle goldens.
    */
   etfMonthlyUserCostOverride?: number
+  /**
+   * Issue F2 — per-instance insurance monthly user cost (combine-mode only).
+   *
+   * Mirrors the ETF pattern exactly. In compare-mode the fair-comparison
+   * invariant ties insurance gross to `bavFunding.monthlyNetCost`. In
+   * combine-mode each insurance instance can carry its own `monthlyContribution`
+   * via `InsuranceInstance.monthlyContribution`; the adapter sets this override
+   * and the insurance simulator prefers it over `bavFunding.monthlyNetCost`.
+   * Leaving `undefined` preserves byte-identical compare-mode oracle goldens.
+   */
+  insuranceMonthlyUserCostOverride?: number
 }
 
 export function buildContext(
@@ -208,5 +225,6 @@ export function buildContext(
     retirementHealthStatus: assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr',
     instanceCapitalPolicy: overrides?.instanceCapitalPolicy,
     etfMonthlyUserCostOverride: overrides?.etfMonthlyUserCostOverride,
+    insuranceMonthlyUserCostOverride: overrides?.insuranceMonthlyUserCostOverride,
   }
 }

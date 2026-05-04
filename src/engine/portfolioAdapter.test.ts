@@ -548,16 +548,16 @@ describe('PortfolioAdapter — per-product round-trip via simulatePortfolio', ()
   })
 
   // ETF and Insurance derive their contribution from `bavFunding.monthlyNetCost`
-  // (the fair-comparison invariant — see CLAUDE.md "Non-obvious architecture").
-  // In combine-mode, when projecting an ETF or insurance instance in isolation,
-  // the bAV slot is NEUTRALISED → the cash anchor is zero → contribution = 0.
-  // This is expected M1 behaviour. Issue 15 introduces per-instance contribution
-  // amounts for ETF / insurance so they no longer depend on the bAV cash anchor
-  // in combine-mode. The structural assertions below pin the M1 contract.
+  // (the fair-comparison invariant) unless the instance carries an explicit
+  // `monthlyContribution` field (issue 12 for ETF, issue F2 for insurance).
+  // In combine-mode, when projecting an instance WITHOUT `monthlyContribution`
+  // set, the bAV slot is NEUTRALISED → the cash anchor is zero → contribution = 0.
+  // The structural assertions below pin this fallback contract: instances
+  // migrated from V1 (which have no `monthlyContribution`) still produce capital=0.
   it.each([
     ['etf', 'etf'],
     ['versicherung', 'insurance'],
-  ] as const)('produces a structurally-correct (but zero-contribution) result for product=%s in a length-1 workspace (M1 limitation; issue 15)', (productId, slotKey) => {
+  ] as const)('produces a structurally-correct (but zero-contribution) result for product=%s in a length-1 workspace when monthlyContribution is not set', (productId, slotKey) => {
     const baseV1 = makeRichV1()
     const workspace = migrateV1ToV2(
       baseV1.profile as unknown as Record<string, unknown>,
@@ -574,7 +574,7 @@ describe('PortfolioAdapter — per-product round-trip via simulatePortfolio', ()
     for (const r of results) {
       expect(r.productId).toBe(productId)
       expect(r.instanceId).toBe(inst.instanceId)
-      // M1 limitation — capital is 0 because the bAV cash anchor is neutralised.
+      // Capital is 0: no monthlyContribution set → bAV anchor is neutralised → fallback is 0.
       expect(r.capitalAtRetirement).toBeGreaterThanOrEqual(0)
     }
   })
@@ -1284,5 +1284,102 @@ describe('issue 12 — combine-mode ETF monthlyContribution override', () => {
     const singleton = singletonViewOfWorkspace(ws, SINGLETON_DEFAULTS)
     expect(singleton.etf).toBeDefined()
     expect('etfMonthlyUserCostOverride' in singleton).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue F2 — combine-mode honors per-instance insurance monthlyContribution
+// ---------------------------------------------------------------------------
+
+describe('issue F2 — combine-mode insurance monthlyContribution override', () => {
+  it('two insurance instances with different monthlyContribution produce different per-instance results', () => {
+    // Same test shape as the ETF issue-12 test: low vs. high contribution.
+    // Capital at retirement must scale roughly with contribution.
+    const baseWs = migrateRich()
+    const insBase = baseWs.baseline.assumptions.insurance[0]
+
+    const lowIns: InsuranceInstance = {
+      ...insBase,
+      instanceId: 'versicherung-low',
+      label: 'Versicherung Low',
+      monthlyContribution: 50,
+    }
+    const highIns: InsuranceInstance = {
+      ...insBase,
+      instanceId: 'versicherung-high',
+      label: 'Versicherung High',
+      monthlyContribution: 200,
+    }
+    const wsLow: Workspace = {
+      ...baseWs,
+      baseline: {
+        ...baseWs.baseline,
+        assumptions: { ...baseWs.baseline.assumptions, insurance: [lowIns] },
+      },
+    }
+    const wsHigh: Workspace = {
+      ...baseWs,
+      baseline: {
+        ...baseWs.baseline,
+        assumptions: { ...baseWs.baseline.assumptions, insurance: [highIns] },
+      },
+    }
+
+    const lowOut = simulatePortfolio(wsLow, de2026Rules).perInstance['versicherung-low']
+    const highOut = simulatePortfolio(wsHigh, de2026Rules).perInstance['versicherung-high']
+    expect(lowOut).toBeDefined()
+    expect(highOut).toBeDefined()
+    const lowCap = lowOut[0].capitalAtRetirement
+    const highCap = highOut[0].capitalAtRetirement
+    // Same fees, same horizon, same return → capital ratio ≈ 4 (200/50).
+    expect(highCap / lowCap).toBeGreaterThan(3.5)
+    expect(highCap / lowCap).toBeLessThan(4.5)
+  })
+
+  it('adapter test: one insurance instance with monthlyContribution=100 produces different result than singleton path with bavFunding.monthlyNetCost=200', () => {
+    // Adapter path: combine-mode workspace with insurance.monthlyContribution=100.
+    const baseWs = migrateRich()
+    const insBase = baseWs.baseline.assumptions.insurance[0]
+    const insInst: InsuranceInstance = {
+      ...insBase,
+      instanceId: 'versicherung-contrib-100',
+      label: 'Versicherung 100',
+      monthlyContribution: 100,
+    }
+    const wsAdapter: Workspace = {
+      ...baseWs,
+      baseline: {
+        ...baseWs.baseline,
+        assumptions: { ...baseWs.baseline.assumptions, insurance: [insInst] },
+      },
+    }
+    const adapterOut = simulatePortfolio(wsAdapter, de2026Rules).perInstance['versicherung-contrib-100']
+    const adapterCap = adapterOut[0].capitalAtRetirement
+
+    // Singleton/compare-mode path: bavFunding.monthlyNetCost drives insurance.
+    // Use a bAV gross conversion that yields ~200 EUR/month net cost so the
+    // two paths differ meaningfully.
+    const { profile, assumptions } = makeRichV1()
+    const assumptionsWithBav200 = {
+      ...assumptions,
+      bav: { ...assumptions.bav, monthlyGrossConversion: 200 },
+      visibleProducts: ['versicherung'] as ProductId[],
+    }
+    const legacyResult = simulateRetirementComparison(profile, assumptionsWithBav200, de2026Rules)
+    const legacyCap = legacyResult.products.find(
+      p => p.productId === 'versicherung' && p.scenarioId === 'basis',
+    )!.capitalAtRetirement
+
+    // Adapter uses 100 EUR/month; legacy path uses bavFunding.monthlyNetCost (≈ net
+    // of 200 EUR gross conversion). The two capitals must differ.
+    expect(adapterCap).not.toBeCloseTo(legacyCap, 0)
+  })
+
+  it('compare-mode insurance (singleton view) preserves the fair-comparison invariant — override field is not on ScenarioAssumptions', () => {
+    // `insuranceMonthlyUserCostOverride` lives on `BuildContextOverrides` only.
+    const ws = migrateRich()
+    const singleton = singletonViewOfWorkspace(ws, SINGLETON_DEFAULTS)
+    expect(singleton.insurance).toBeDefined()
+    expect('insuranceMonthlyUserCostOverride' in singleton).toBe(false)
   })
 })

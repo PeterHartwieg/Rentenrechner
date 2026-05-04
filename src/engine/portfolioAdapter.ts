@@ -1053,7 +1053,12 @@ export function simulatePortfolio(
   runFor(wsa.etf, simulateEtf, (inst) => ({
     etfMonthlyUserCostOverride: inst.monthlyContribution,
   }))
-  runFor(wsa.insurance, simulateInsurance, () => ({}))
+  // Combine-mode honors per-instance insurance `monthlyContribution` via the override
+  // (issue F2). Compare-mode (`simulateRetirementComparison`) never sets this
+  // and falls back to `bavFunding.monthlyNetCost` — see insurance simulator + CLAUDE.md.
+  runFor(wsa.insurance, simulateInsurance, (inst) => ({
+    insuranceMonthlyUserCostOverride: inst.monthlyContribution,
+  }))
   runFor(wsa.basisrente, simulateBasisrente, (inst) => ({
     basisrenteFundingOverride: portfolioFunding.basisrenteByInstanceId[inst.instanceId],
   }))

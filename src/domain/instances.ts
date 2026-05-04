@@ -49,7 +49,16 @@ export interface EtfInstance extends InstanceCommon, EtfAssumptions {
   monthlyContribution?: number
 }
 
-export interface InsuranceInstance extends InstanceCommon, InsuranceAssumptions {}
+export interface InsuranceInstance extends InstanceCommon, InsuranceAssumptions {
+  /**
+   * Per-instance monthly contribution (EUR/month) honored only in **combine-mode**
+   * (workspace, `simulatePortfolio` → `BuildContextOverrides.insuranceMonthlyUserCostOverride`).
+   * In compare-mode the fair-comparison invariant pulls insurance gross from
+   * `bavFunding.monthlyNetCost`; this field is unused there. Optional for
+   * backward-compat with workspaces predating this wiring.
+   */
+  monthlyContribution?: number
+}
 
 export interface BasisrenteInstance extends InstanceCommon, BasisrenteAssumptions {}
 
