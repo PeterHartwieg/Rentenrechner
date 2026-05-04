@@ -45,15 +45,8 @@ export function isVintageAtomId(id: AtomId): boolean {
 // bavVintageRule, riesterVintageRule in recommendations.ts) so the chip text
 // shown in the wizard is byte-identical to the chip text shown in the
 // dashboard after commit.
-//
-// Profile values (age, retirementAge) are not available in the wizard; we use
-// conservative defaults (age=35, retirementAge=67). These only affect the
-// runtimeYears calculation for the pAV halbeinkuenfte/pre2005 check — any
-// pre-2005 contract will easily exceed the 12-year minimum.
 // ---------------------------------------------------------------------------
 
-const PREVIEW_AGE = 35
-const PREVIEW_RETIREMENT_AGE = 67
 const RULES_YEAR = activeRules.year
 
 // Stable draft-scope sentinel — the wizard uses this as the atom context key
@@ -66,18 +59,18 @@ const DRAFT_INSTANCE_SENTINEL = 'draft-preview'
  * Mirrors pavVintageRule in recommendations.ts.
  * Returns an empty array for non-vintage drafts.
  */
-export function pavDraftVintageAtoms(draft: PavDraft): Atom[] {
+export function pavDraftVintageAtoms(draft: PavDraft, age: number, retirementAge: number): Atom[] {
   const runtimeYears = computeRuntimeYearsAtRetirement(
     draft.contractStartYear,
     RULES_YEAR,
-    PREVIEW_AGE,
-    PREVIEW_RETIREMENT_AGE,
+    age,
+    retirementAge,
   )
   const oldContractTaxFreeEligible = draft.contractStartYear <= 2004
   const taxMode = deriveInsuranceTaxMode(
     draft.contractStartYear,
     runtimeYears,
-    PREVIEW_RETIREMENT_AGE,
+    retirementAge,
     oldContractTaxFreeEligible,
   )
 
@@ -118,7 +111,8 @@ export function pavDraftVintageAtoms(draft: PavDraft): Atom[] {
  * Mirrors bavVintageRule in recommendations.ts.
  * Returns an empty array for non-vintage drafts.
  */
-export function bavDraftVintageAtoms(draft: BavDraft): Atom[] {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function bavDraftVintageAtoms(draft: BavDraft, _age: number, _retirementAge: number): Atom[] {
   // pre2005EligibleTaxFree is only set on committed instances. For drafts,
   // derive it from contractStartYear (same heuristic as pavDraftToInstance for
   // oldContractTaxFreeEligible — the user can refine via evidence after commit).
@@ -169,6 +163,8 @@ export function bavDraftVintageAtoms(draft: BavDraft): Atom[] {
 export function riesterDraftVintageAtoms(
   draft: RiesterDraft,
   childBirthYears: readonly number[],
+  _age: number, // eslint-disable-line @typescript-eslint/no-unused-vars
+  _retirementAge: number, // eslint-disable-line @typescript-eslint/no-unused-vars
 ): Atom[] {
   if (
     draft.contractStartYear <= 2007 &&

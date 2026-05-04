@@ -115,7 +115,7 @@ describe('VintageChips — wizard draft preview (F5)', () => {
       rentenfaktor: 28,
       payoutMode: 'leibrente',
     }
-    const atoms = pavDraftVintageAtoms(draft)
+    const atoms = pavDraftVintageAtoms(draft, 40, 67)
     // Must produce at least one chip (pre_2005_pav_taxfree_capital and/or pre_2005_pav_high_garantiezins)
     expect(atoms.length).toBeGreaterThan(0)
     const { container } = render(<VintageChips atoms={atoms} />)
@@ -143,7 +143,7 @@ describe('VintageChips — wizard draft preview (F5)', () => {
       rentenfaktor: 28,
       payoutMode: 'leibrente',
     }
-    const atoms = pavDraftVintageAtoms(draft)
+    const atoms = pavDraftVintageAtoms(draft, 40, 67)
     // No vintage conditions met → no atoms → VintageChips renders null
     expect(atoms).toHaveLength(0)
     const { container } = render(<VintageChips atoms={atoms} />)
@@ -161,7 +161,7 @@ describe('VintageChips — wizard draft preview (F5)', () => {
       rentenfaktor: 28,
       payoutMode: 'leibrente',
     }
-    const atoms = bavDraftVintageAtoms(draft)
+    const atoms = bavDraftVintageAtoms(draft, 40, 67)
     expect(atoms).toHaveLength(1)
     expect(atoms[0].id).toBe('bav_40b_alt_eligible')
     const { container } = render(<VintageChips atoms={atoms} />)
@@ -182,7 +182,7 @@ describe('VintageChips — wizard draft preview (F5)', () => {
       rentenfaktor: 30,
       payoutMode: 'leibrente',
     }
-    const atoms = bavDraftVintageAtoms(draft)
+    const atoms = bavDraftVintageAtoms(draft, 40, 67)
     expect(atoms).toHaveLength(0)
     const { container } = render(<VintageChips atoms={atoms} />)
     expect(container.firstChild).toBeNull()
@@ -197,7 +197,7 @@ describe('VintageChips — wizard draft preview (F5)', () => {
       payoutMode: 'leibrente',
       zulageStatus: '',
     }
-    const atoms = riesterDraftVintageAtoms(draft, [2010])
+    const atoms = riesterDraftVintageAtoms(draft, [2010], 40, 67)
     expect(atoms).toHaveLength(1)
     expect(atoms[0].id).toBe('riester_pre_2008_zulage')
     const { container } = render(<VintageChips atoms={atoms} />)
@@ -215,8 +215,75 @@ describe('VintageChips — wizard draft preview (F5)', () => {
       payoutMode: 'leibrente',
       zulageStatus: '',
     }
-    const atoms = riesterDraftVintageAtoms(draft, [2005]) // child born 2005, before 2008
+    const atoms = riesterDraftVintageAtoms(draft, [2005], 40, 67) // child born 2005, before 2008
     const { container } = render(<VintageChips atoms={atoms} />)
     expect(container.firstChild).toBeNull()
+  })
+
+  it('renders a privilege chip (halbeinkuenfte) for a post-2004 pAV draft with sufficient runtime and retirementAge >= 62', () => {
+    // contractStartYear=2010, age=40, retirementAge=67, RULES_YEAR=2026
+    // retirementYear = 2026 + (67 - 40) = 2053
+    // runtimeYears = 2053 - 2010 = 43 → >= 12 (halbeinkuenfte min)
+    // retirementAge 67 >= 62 (halbeinkuenfte min age)
+    // contractStartYear 2010 > 2004 → NOT pre2005 → routes to 'halbeinkuenfte'
+    const draft: PavDraft = {
+      productId: 'versicherung',
+      status: 'active',
+      contractStartYear: 2010,
+      monthlyContribution: 150,
+      effektivkostenPct: 0.8,
+      rentenfaktor: 28,
+      payoutMode: 'kapitalverzehr',
+    }
+    const atoms = pavDraftVintageAtoms(draft, 40, 67)
+    expect(atoms).toHaveLength(1)
+    expect(atoms[0].id).toBe('halbeinkuenfte_pav_eligible')
+    const { container } = render(<VintageChips atoms={atoms} />)
+    expect(container.querySelector('.vintage-chip--privilege')).not.toBeNull()
+    const { headline } = renderAtom(atoms[0])
+    expect(container.querySelector('.vintage-chip-label')?.textContent).toBe(headline)
+  })
+
+  it('renders an info chip for a bAV draft with direktzusage', () => {
+    const draft: BavDraft = {
+      productId: 'bav',
+      status: 'active',
+      contractStartYear: 2015,
+      monthlyContribution: 300,
+      durchfuehrungsweg: 'direktzusage',
+      effektivkostenPct: 0,
+      rentenfaktor: 30,
+      payoutMode: 'leibrente',
+    }
+    const atoms = bavDraftVintageAtoms(draft, 40, 67)
+    expect(atoms).toHaveLength(1)
+    expect(atoms[0].id).toBe('bav_durchfuehrungsweg_direktzusage')
+    const { container } = render(<VintageChips atoms={atoms} />)
+    expect(container.querySelector('.vintage-chip--info')).not.toBeNull()
+    const { headline } = renderAtom(atoms[0])
+    expect(container.querySelector('.vintage-chip-label')?.textContent).toBe(headline)
+  })
+
+  it('renders a caveat chip for a bAV draft with direktversicherung_40b_alt when conditions are unmet (post-2004)', () => {
+    // contractStartYear=2006 > 2004 → pre2005EligibleTaxFree=false
+    // deriveBavLumpSumTaxMode('direktversicherung_40b_alt', false) → 'voll_versorgungsbezug'
+    // lumpSumTaxMode !== 'pre2005_steuerfrei' → bav_40b_alt_conditions_unmet
+    const draft: BavDraft = {
+      productId: 'bav',
+      status: 'active',
+      contractStartYear: 2006,
+      monthlyContribution: 150,
+      durchfuehrungsweg: 'direktversicherung_40b_alt',
+      effektivkostenPct: 1.0,
+      rentenfaktor: 28,
+      payoutMode: 'leibrente',
+    }
+    const atoms = bavDraftVintageAtoms(draft, 40, 67)
+    expect(atoms).toHaveLength(1)
+    expect(atoms[0].id).toBe('bav_40b_alt_conditions_unmet')
+    const { container } = render(<VintageChips atoms={atoms} />)
+    expect(container.querySelector('.vintage-chip--caveat')).not.toBeNull()
+    const { headline } = renderAtom(atoms[0])
+    expect(container.querySelector('.vintage-chip-label')?.textContent).toBe(headline)
   })
 })

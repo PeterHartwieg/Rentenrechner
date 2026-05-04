@@ -199,6 +199,8 @@ function Calculator({ navigate }: CalculatorProps) {
           <InventoryWizard
             grossSalaryYear={profile.grossSalaryYear}
             childBirthYears={profile.childBirthYears}
+            age={profile.age}
+            retirementAge={profile.retirementAge}
             onComplete={() => {
               setShowInventoryWizard(false)
               portfolioState.setMode('combine')

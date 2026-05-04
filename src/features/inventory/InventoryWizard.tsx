@@ -61,6 +61,9 @@ interface Props {
   /** Profile data for seeding GRV estimation and Riester Zulagen. */
   grossSalaryYear: number
   childBirthYears: readonly number[]
+  /** Current age and retirement age — used to compute pAV runtime years for vintage chips. */
+  age: number
+  retirementAge: number
   /** Called on successful exit with the new workspace. */
   onComplete: (workspace: Workspace) => void
   /** Called on dismiss without saving (close X, Escape, Abbrechen). */
@@ -268,6 +271,8 @@ function ConfirmRemoveDialog({
 export function InventoryWizard({
   grossSalaryYear,
   childBirthYears,
+  age,
+  retirementAge,
   onComplete,
   onDismiss,
 }: Props) {
@@ -497,7 +502,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
-            <VintageChips atoms={bavDraftVintageAtoms(draft)} />
+            <VintageChips atoms={bavDraftVintageAtoms(draft, age, retirementAge)} />
             <BavCard
               draft={draft}
               onChange={(next) =>
@@ -529,7 +534,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
-            <VintageChips atoms={pavDraftVintageAtoms(draft)} />
+            <VintageChips atoms={pavDraftVintageAtoms(draft, age, retirementAge)} />
             <PavCard
               draft={draft}
               onChange={(next) =>
@@ -561,7 +566,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
-            <VintageChips atoms={riesterDraftVintageAtoms(draft, childBirthYears)} />
+            <VintageChips atoms={riesterDraftVintageAtoms(draft, childBirthYears, age, retirementAge)} />
             <RiesterCard
               draft={draft}
               onChange={(next) =>
