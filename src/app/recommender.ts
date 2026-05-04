@@ -545,7 +545,7 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
       ...target,
       monthlyGrossConversion: usedMonthly + delta,
     }).monthlyNetCost - baselineNetCost
-  const isolatedGross = (() => {
+  const grossDelta = (() => {
     if (g.marginalMonthlyEUR <= 0) return 0
     let lo = 0
     let hi = Math.max(100, g.marginalMonthlyEUR * 4)
@@ -559,8 +559,8 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
     }
     return (lo + hi) / 2
   })()
-  const cappedToRemaining = isolatedGross > remainingCapMonthly
-  const gross = Math.min(isolatedGross, remainingCapMonthly)
+  const cappedToRemaining = grossDelta > remainingCapMonthly
+  const gross = Math.min(grossDelta, remainingCapMonthly)
 
   // Marginal funding: the delta the candidate adds vs. the existing baseline.
   // `netCash` is the user's marginal net cash out-of-pocket; `totalMonthly`

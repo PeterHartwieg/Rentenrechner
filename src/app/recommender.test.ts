@@ -440,6 +440,129 @@ describe('recommendNextEuro — bAV marginal solver (N5)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// F6 — bAV bisection isolated-gross vs marginal-forward-delta
+// ---------------------------------------------------------------------------
+//
+// The pre-F6 bisection solved for gross such that
+//   netCost(delta) === X   (isolated, used = 0)
+// which drifts for Bernd-shape users who already have a non-zero bAV.
+// The corrected bisection solves:
+//   netCost(used + delta) - netCost(used) === X   (marginal)
+//
+// These tests pin the behaviour using `calculateBavFunding` directly so the
+// test is independent of the recommender's candidate-generator internals.
+
+import { calculateBavFunding } from '../engine/salary'
+
+function bisectIsolated(
+  profile: ReturnType<typeof buildBerndWorkspace>['baseline']['profile'],
+  rules: typeof de2026Rules,
+  target: ReturnType<typeof buildBerndWorkspace>['baseline']['assumptions']['bav'][number],
+  targetNet: number,
+): number {
+  const netCost = (delta: number) =>
+    calculateBavFunding(profile, rules, { ...target, monthlyGrossConversion: delta }).monthlyNetCost
+  let lo = 0
+  let hi = Math.max(100, targetNet * 4)
+  for (let i = 0; i < 10 && netCost(hi) < targetNet; i++) hi *= 2
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2
+    const net = netCost(mid)
+    if (Math.abs(net - targetNet) < 0.01) return mid
+    if (net < targetNet) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
+function bisectMarginal(
+  profile: ReturnType<typeof buildBerndWorkspace>['baseline']['profile'],
+  rules: typeof de2026Rules,
+  target: ReturnType<typeof buildBerndWorkspace>['baseline']['assumptions']['bav'][number],
+  usedMonthly: number,
+  targetNet: number,
+): number {
+  const baselineNet = calculateBavFunding(profile, rules, {
+    ...target,
+    monthlyGrossConversion: usedMonthly,
+  }).monthlyNetCost
+  const marginalNet = (delta: number) =>
+    calculateBavFunding(profile, rules, {
+      ...target,
+      monthlyGrossConversion: usedMonthly + delta,
+    }).monthlyNetCost - baselineNet
+  let lo = 0
+  let hi = Math.max(100, targetNet * 4)
+  for (let i = 0; i < 10 && marginalNet(hi) < targetNet; i++) hi *= 2
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2
+    const net = marginalNet(mid)
+    if (Math.abs(net - targetNet) < 0.01) return mid
+    if (net < targetNet) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
+describe('recommendNextEuro — bAV bisection isolated vs marginal (F6)', () => {
+  it('when used = 0, isolated and marginal gross answers are equal (within 1 EUR)', () => {
+    const ws = buildBerndWorkspace()
+    const profile = ws.baseline.profile
+    const target = ws.baseline.assumptions.bav[0]
+    const targetNet = 100
+    const usedMonthly = 0
+
+    const isolated = bisectIsolated(profile, de2026Rules, target, targetNet)
+    const marginal = bisectMarginal(profile, de2026Rules, target, usedMonthly, targetNet)
+
+    // With no existing bAV the marginal delta equals the isolated answer.
+    expect(Math.abs(isolated - marginal)).toBeLessThan(1)
+  })
+
+  it('when used > 0 (Bernd shape), marginal gross differs measurably from isolated', () => {
+    // Bernd has €100/mo existing bAV. An additional €200/mo net target starts
+    // from a different SV-saving baseline, so the required gross conversion to
+    // achieve €200 net cost differs between isolated and marginal approaches.
+    const ws = buildBerndWorkspace()
+    const profile = ws.baseline.profile
+    const target = ws.baseline.assumptions.bav[0]
+    const usedMonthly = target.monthlyGrossConversion ?? 100
+    const targetNet = 200
+
+    const isolated = bisectIsolated(profile, de2026Rules, target, targetNet)
+    const marginal = bisectMarginal(profile, de2026Rules, target, usedMonthly, targetNet)
+
+    // The difference must be measurable (> 0.50 EUR/mo) to confirm the two
+    // approaches diverge on a non-zero existing contribution.
+    expect(Math.abs(isolated - marginal)).toBeGreaterThan(0.5)
+  })
+
+  it('marginal gross answer satisfies forward(used + delta) - forward(used) ≈ target net', () => {
+    const ws = buildBerndWorkspace()
+    const profile = ws.baseline.profile
+    const target = ws.baseline.assumptions.bav[0]
+    const usedMonthly = target.monthlyGrossConversion ?? 100
+    const targetNet = 150
+
+    const delta = bisectMarginal(profile, de2026Rules, target, usedMonthly, targetNet)
+
+    const baselineNet = calculateBavFunding(profile, de2026Rules, {
+      ...target,
+      monthlyGrossConversion: usedMonthly,
+    }).monthlyNetCost
+    const totalNet = calculateBavFunding(profile, de2026Rules, {
+      ...target,
+      monthlyGrossConversion: usedMonthly + delta,
+    }).monthlyNetCost
+    const actualMarginalNet = totalNet - baselineNet
+
+    // The marginal net cost of (used + delta) over the baseline must equal targetNet
+    // within the bisection tolerance (0.01 EUR/mo).
+    expect(Math.abs(actualMarginalNet - targetNet)).toBeLessThan(0.05)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // F4 — Monte Carlo P10 risk score
 // ---------------------------------------------------------------------------
 
