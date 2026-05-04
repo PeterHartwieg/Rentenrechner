@@ -22,7 +22,7 @@
  */
 
 import './InventoryWizard.css'
-import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { X, Check, Plus, Trash2, ArrowRight } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
 import type { EvidenceState } from '../../domain/instances'
@@ -112,6 +112,12 @@ interface PersonalDetailsStepProps {
 
 function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDetailsStepProps) {
   const derivedAge = CURRENT_YEAR - draft.birthYear
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
+
+  // Clear errors whenever the user edits any field so stale messages don't linger.
+  useEffect(() => {
+    setValidationErrors([])
+  }, [draft])
 
   function validate(): string[] {
     const errors: string[] = []
@@ -129,7 +135,10 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
 
   function handleNext() {
     const errors = validate()
-    if (errors.length > 0) return // errors are shown via native browser validation on inputs
+    if (errors.length > 0) {
+      setValidationErrors(errors)
+      return
+    }
     onNext()
   }
 
@@ -195,6 +204,19 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
           onCommit={(v) => onChange({ ...draft, retirementAge: Number(v) })}
         />
       </div>
+
+      {validationErrors.length > 0 && (
+        <ul
+          className="inventory-validation-errors inventory-personal-errors"
+          role="alert"
+          aria-live="polite"
+          data-testid="personal-details-errors"
+        >
+          {validationErrors.map((err) => (
+            <li key={err}>{err}</li>
+          ))}
+        </ul>
+      )}
 
       <footer className="inventory-footer">
         <p className="inventory-footer-note">
