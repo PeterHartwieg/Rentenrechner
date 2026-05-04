@@ -12,8 +12,9 @@ import type {
   ProductResult,
   ScenarioAssumptions,
 } from '../domain'
+import type { CombinedResult } from '../engine/portfolioCombine'
 import { de2026Rules } from '../rules/de2026'
-import { buildExportCsv, downloadCsv } from '../utils/csvExport'
+import { buildCombinePortfolioCsv, buildExportCsv, downloadCsv } from '../utils/csvExport'
 import { buildShareUrl } from '../utils/urlShare'
 import {
   buildCapitalChartData,
@@ -50,6 +51,18 @@ export interface DerivedViews {
   handleExportCsv: () => void
 }
 
+/**
+ * Optional combine-mode bundle. When provided AND `combineMode === true`,
+ * `handleExportCsv` emits the per-instance + combined-income CSV instead of
+ * the singleton compare-mode export. Compare-mode behaviour is byte-identical
+ * when this is omitted (Group G issue 11).
+ */
+export interface CombineExportBundle {
+  perInstance: Record<string, ProductResult[]>
+  combinedByScenarioId: Record<string, CombinedResult>
+  scenarioLabels: Record<string, string>
+}
+
 export function useDerivedViews(
   profile: PersonalProfile,
   assumptions: ScenarioAssumptions,
@@ -57,6 +70,10 @@ export function useDerivedViews(
   ui: {
     showRealValues: boolean
     cashflowProductId: ProductId
+  },
+  options?: {
+    combineMode?: boolean
+    combine?: CombineExportBundle
   },
 ): DerivedViews {
   const { simulation, effectiveScenarioId, taxModes } = result
@@ -116,6 +133,14 @@ export function useDerivedViews(
   }
 
   function handleExportCsv() {
+    // Combine-mode (Group G issue 11): emit portfolio rows when the caller
+    // supplies the per-instance + combined bundle. Compare-mode (no
+    // `combine`) keeps the singleton export byte-identical.
+    if (options?.combineMode && options.combine) {
+      const csv = buildCombinePortfolioCsv(options.combine)
+      downloadCsv('TODO_BRAND_NAME-export.csv', csv)
+      return
+    }
     const csv = buildExportCsv({
       products: visibleProducts,
       bavAnnualTaxSvSavings: simulation.bavFunding.annualTaxAndSvSavings,

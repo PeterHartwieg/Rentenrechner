@@ -8,10 +8,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildExportCsv } from './csvExport'
+import { buildCombinePortfolioCsv, buildExportCsv } from './csvExport'
 import { de2026Rules } from '../rules/de2026'
 import { defaultProfile } from '../data/defaultScenario'
 import type { ProductResult } from '../domain'
+import type { CombinedResult } from '../engine/portfolioCombine'
 
 // Minimal ProductResult fixture — only the fields csvExport reads.
 const FIXTURE_PRODUCT: ProductResult = {
@@ -88,5 +89,69 @@ describe('buildExportCsv', () => {
     const dataCols = dataRow.split(',')
     // inputConfidence = 'model_estimate'
     expect(dataCols[9]).toBe('model_estimate')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Combine-mode CSV builder (Group G issue 11).
+// ---------------------------------------------------------------------------
+
+const FIXTURE_BAV_INSTANCE_RESULT: ProductResult = {
+  ...FIXTURE_PRODUCT,
+  productId: 'bav' as ProductResult['productId'],
+  label: 'bAV Vertrag A',
+  instanceId: 'bav-1',
+} as unknown as ProductResult
+
+const FIXTURE_COMBINED: CombinedResult = {
+  monthlyNetIncome: 2345.67,
+  monthlyGrossPayouts: {
+    statutoryPension: 1200,
+    bav: 500,
+    privateInsurance: 0,
+    basisrente: 0,
+    altersvorsorgedepot: 0,
+    riester: 0,
+    etf: 0,
+  },
+  aggregateTax: { totalTaxAnnual: 0 } as unknown as CombinedResult['aggregateTax'],
+  aggregateKvPv: {} as unknown as CombinedResult['aggregateKvPv'],
+  byInstance: {},
+  statutoryPensionMonthlyNet: 1100,
+  notes: [],
+}
+
+describe('buildCombinePortfolioCsv', () => {
+  it('Section 0 (Hinweis) is the literal first block — disclaimer-as-first-block invariant', () => {
+    const csv = buildCombinePortfolioCsv({
+      perInstance: { 'bav-1': [FIXTURE_BAV_INSTANCE_RESULT] },
+      combinedByScenarioId: { basis: FIXTURE_COMBINED },
+      scenarioLabels: { basis: 'Basis' },
+    })
+    const lines = csv.split('\n')
+    expect(lines[0]).toBe('Hinweis')
+    expect(lines[1]).toContain('Modellrechnung')
+  })
+
+  it('contains the combined-income section with the aggregated monthly net', () => {
+    const csv = buildCombinePortfolioCsv({
+      perInstance: { 'bav-1': [FIXTURE_BAV_INSTANCE_RESULT] },
+      combinedByScenarioId: { basis: FIXTURE_COMBINED },
+      scenarioLabels: { basis: 'Basis' },
+    })
+    expect(csv).toContain('Kombiniertes Renteneinkommen')
+    // 2345.67 → "2345.67" via toFixed(2)
+    expect(csv).toContain('2345.67')
+  })
+
+  it('contains the per-instance detail section keyed by instanceId', () => {
+    const csv = buildCombinePortfolioCsv({
+      perInstance: { 'bav-1': [FIXTURE_BAV_INSTANCE_RESULT] },
+      combinedByScenarioId: { basis: FIXTURE_COMBINED },
+      scenarioLabels: { basis: 'Basis' },
+    })
+    expect(csv).toContain('Mein Plan — Detail je Instanz')
+    expect(csv).toContain('bav-1')
+    expect(csv).toContain('bAV Vertrag A')
   })
 })

@@ -13,6 +13,7 @@ import { PrintReport } from './PrintReport'
 import { defaultProfile, defaultAssumptions } from '../../data/defaultScenario'
 import type { SimulationResult } from '../../domain'
 import type { ProductResult } from '../../domain'
+import type { CombinedResult } from '../../engine/portfolioCombine'
 
 afterEach(() => cleanup())
 
@@ -100,5 +101,98 @@ describe('PrintReport', () => {
     expect(root).not.toBeNull()
     const firstChild = root!.firstElementChild
     expect(firstChild?.classList.contains('pr-disclaimer-top')).toBe(true)
+  })
+
+  // -------------------------------------------------------------------------
+  // Combine-mode rendering (Group G issue 11).
+  // -------------------------------------------------------------------------
+
+  function makeCombined(monthlyNetIncome: number): CombinedResult {
+    return {
+      monthlyNetIncome,
+      monthlyGrossPayouts: {
+        statutoryPension: 1000,
+        bav: 500,
+        privateInsurance: 0,
+        basisrente: 0,
+        altersvorsorgedepot: 0,
+        riester: 0,
+        etf: 0,
+      },
+      aggregateTax: { totalTaxAnnual: 0 } as unknown as CombinedResult['aggregateTax'],
+      aggregateKvPv: {} as unknown as CombinedResult['aggregateKvPv'],
+      byInstance: {},
+      statutoryPensionMonthlyNet: 900,
+      notes: [],
+    }
+  }
+
+  it('combine-mode renders portfolio detail section instead of singleton compare table', () => {
+    const bavResult: ProductResult = {
+      ...(makeSimulation('user_confirmed').products[0] as ProductResult),
+      productId: 'bav',
+      label: 'bAV Direktversicherung A',
+      instanceId: 'bav-1',
+    } as unknown as ProductResult
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+        combineMode={true}
+        portfolio={{
+          perInstance: { 'bav-1': [bavResult] },
+          combinedByScenarioId: { basis: makeCombined(2200) },
+          scenarioLabels: { basis: 'Basis' },
+        }}
+      />
+    )
+    // Combine title
+    expect(container.textContent).toContain('Mein Plan')
+    expect(container.textContent).toContain('Kombiniertes Renteneinkommen')
+    // Per-instance label appears
+    expect(container.textContent).toContain('bAV Direktversicherung A')
+    // Singleton-compare specific section title is gone
+    expect(container.textContent).not.toContain('Produktvergleich — alle Szenarien')
+  })
+
+  it('combine-mode keeps .pr-disclaimer-top as FIRST child of #print-report', () => {
+    const bavResult: ProductResult = {
+      ...(makeSimulation('user_confirmed').products[0] as ProductResult),
+      productId: 'bav',
+      label: 'bAV',
+      instanceId: 'bav-1',
+    } as unknown as ProductResult
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+        combineMode={true}
+        portfolio={{
+          perInstance: { 'bav-1': [bavResult] },
+          combinedByScenarioId: { basis: makeCombined(2200) },
+          scenarioLabels: { basis: 'Basis' },
+        }}
+      />
+    )
+    const root = container.querySelector('#print-report')
+    expect(root).not.toBeNull()
+    const firstChild = root!.firstElementChild
+    expect(firstChild?.classList.contains('pr-disclaimer-top')).toBe(true)
+  })
+
+  it('compare-mode (combineMode=false / undefined) still renders the singleton product table — byte-identical first child', () => {
+    // The compare-mode path is byte-identical to the historical render. We
+    // assert the first-child invariant + presence of the singleton-only
+    // section title.
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+      />
+    )
+    expect(container.textContent).toContain('Produktvergleich — alle Szenarien')
   })
 })

@@ -2,6 +2,7 @@ import type { EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, 
 import { afterTaxBavLumpSum } from '../engine/bavPayout'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import { afterTaxInsuranceLumpSum } from '../engine/insurancePayout'
+import type { CombinedResult } from '../engine/portfolioCombine'
 
 type ExportOptions = {
   products: ProductResult[]
@@ -148,6 +149,86 @@ export function buildExportCsv(opts: ExportOptions): string {
           n(row.capitalAtEnd),
         ))
       }
+    }
+  }
+
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Combine-mode CSV builder (Group G issue 11).
+//
+// Drives "Mein Plan" exports off `simulatePortfolio` + `combinePortfolio`
+// output rather than singleton compare-mode data. Disclaimer remains the
+// first block per the publication guardrails (CLAUDE.md). Produces three
+// sections:
+//   - Section 0: Disclaimer (verbatim shared with the compare-mode export)
+//   - Section 1: Combined retirement income (per scenario) — the headline
+//     monthly net the dashboard shows
+//   - Section 2: Per-instance detail (per instance × scenario × line) —
+//     mirror of compare-mode "Detailvergleich" but keyed by `instanceId`
+//
+// Lump-sum / yearly cashflow sections are intentionally omitted in the first
+// pass because in combine-mode the user is modelling actual contracts. Adding
+// per-instance yearly cashflow rows is straightforward (each ProductResult
+// already carries `rows[]`) but expanding scope here risks regressing
+// compare-mode tests; defer to a follow-up if exports need that depth.
+// ---------------------------------------------------------------------------
+
+export interface CombinePortfolioCsvOptions {
+  /** Per-instance ProductResults keyed by instanceId, all scenarios. */
+  perInstance: Record<string, ProductResult[]>
+  /** CombinedResult per scenario id. */
+  combinedByScenarioId: Record<string, CombinedResult>
+  /** Scenario labels keyed by id (for human-readable rows). */
+  scenarioLabels: Record<string, string>
+}
+
+export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): string {
+  const { perInstance, combinedByScenarioId, scenarioLabels } = opts
+  const lines: string[] = []
+
+  // Section 0: Disclaimer (mirror compare-mode export so legal notice is the
+  // first block, identically worded).
+  lines.push('Hinweis')
+  for (const text of DISCLAIMER_LINES) {
+    lines.push(csvCell(text))
+  }
+  lines.push('')
+
+  // Section 1: Combined retirement income per scenario.
+  lines.push('Kombiniertes Renteneinkommen')
+  lines.push(csvRow('Szenario', 'Netto-Einkommen mtl. (EUR)', 'Gesetzl. Rente netto mtl. (EUR)'))
+  for (const [scenarioId, combined] of Object.entries(combinedByScenarioId)) {
+    lines.push(csvRow(
+      scenarioLabels[scenarioId] ?? scenarioId,
+      n(combined.monthlyNetIncome),
+      n(combined.statutoryPensionMonthlyNet),
+    ))
+  }
+
+  // Section 2: Per-instance detail (one row per instance × scenario).
+  lines.push('')
+  lines.push('Mein Plan — Detail je Instanz')
+  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Brutto-Rente mtl. (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Confidence'))
+  // Sort by instanceId for stable output.
+  const ids = Object.keys(perInstance).sort()
+  for (const instanceId of ids) {
+    const results = perInstance[instanceId]
+    if (!results) continue
+    for (const r of results) {
+      lines.push(csvRow(
+        instanceId,
+        r.label,
+        r.scenarioLabel,
+        n(r.monthlyUserCost),
+        n(r.monthlyProductContribution),
+        n(r.capitalAtRetirement),
+        n(r.grossMonthlyPayout),
+        n(r.netMonthlyPayout),
+        n(r.totalFees),
+        r.inputConfidence ?? '',
+      ))
     }
   }
 

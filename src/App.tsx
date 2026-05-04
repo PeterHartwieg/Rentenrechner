@@ -92,9 +92,33 @@ function Calculator({ navigate }: CalculatorProps) {
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const ui = useWorkspaceUiState()
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
+  const isCombineMode = portfolioState.mode === 'combine'
+  // In combine mode the CSV / print exports must consume portfolio output
+  // rather than singleton-compare data (Group G issue 11). The bundle is
+  // assembled lazily so compare-mode never pays the cost.
+  const combineExportBundle = useMemo(() => {
+    if (!isCombineMode) return undefined
+    const scenarioLabels: Record<string, string> = {}
+    for (const s of portfolioState.workspace.baseline.assumptions.returnScenarios) {
+      scenarioLabels[s.id] = s.label
+    }
+    return {
+      perInstance: combineSimulation.perInstance,
+      combinedByScenarioId: combineSimulation.combinedByScenarioId,
+      scenarioLabels,
+    }
+  }, [
+    isCombineMode,
+    combineSimulation.perInstance,
+    combineSimulation.combinedByScenarioId,
+    portfolioState.workspace.baseline.assumptions.returnScenarios,
+  ])
   const views = useDerivedViews(profile, assumptions, result, {
     showRealValues: ui.showRealValues,
     cashflowProductId: ui.cashflowProductId,
+  }, {
+    combineMode: isCombineMode,
+    combine: combineExportBundle,
   })
   const { simulation, monteCarloResult, selectedScenario, taxModes } = result
   const {
@@ -290,71 +314,79 @@ function Calculator({ navigate }: CalculatorProps) {
         />
       )}
 
-      <ComparisonPicker
-        visible={assumptions.visibleProducts}
-        onChange={(next) =>
-          setAssumptions((current) => ({ ...current, visibleProducts: next }))
-        }
-      />
-
-      {hasComparisonSet ? (
+      {/* Singleton-compare sections gated to compare-mode (Group G issue 11).
+          In combine mode the RecommenderCard + CombineIncomePanel above are
+          the source of truth — the user is modelling actual contracts, not
+          comparing product candidates. */}
+      {!isCombineMode && (
         <>
-          <DecisionSummary
-            results={selectedResults}
-            bestCapital={bestCapital}
-            bestPension={bestPension}
-          />
-
-          <MonteCarloHighlights result={monteCarloResult} />
-
-          <SummaryMetrics
-            grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-            grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
-            grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
-            bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
-            bavTotalMonthlyContribution={
-              simulation.bavFunding.monthlyGrossConversion +
-              simulation.bavFunding.monthlyEmployerContribution
+          <ComparisonPicker
+            visible={assumptions.visibleProducts}
+            onChange={(next) =>
+              setAssumptions((current) => ({ ...current, visibleProducts: next }))
             }
-            showBav={assumptions.visibleProducts.includes('bav')}
           />
 
-          <ProductEditCards
-            selectedResults={selectedResults}
-            assumptions={assumptions}
-            onAssumptionsChange={setAssumptions}
-            avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
-            avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
-          />
+          {hasComparisonSet ? (
+            <>
+              <DecisionSummary
+                results={selectedResults}
+                bestCapital={bestCapital}
+                bestPension={bestPension}
+              />
 
-          <ResultWaterfalls
-            results={selectedResults}
-            grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-          />
+              <MonteCarloHighlights result={monteCarloResult} />
 
-          <CapitalChart
-            capitalChartData={capitalChartData}
-            selectedScenario={selectedScenario}
-            selectedResults={selectedResults}
-            productColors={PRODUCT_COLORS}
-          />
+              <SummaryMetrics
+                grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+                grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
+                grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
+                bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
+                bavTotalMonthlyContribution={
+                  simulation.bavFunding.monthlyGrossConversion +
+                  simulation.bavFunding.monthlyEmployerContribution
+                }
+                showBav={assumptions.visibleProducts.includes('bav')}
+              />
 
-          <PensionChart
-            pensionBars={pensionBars}
-            retirementEndAge={assumptions.retirementEndAge}
-          />
+              <ProductEditCards
+                selectedResults={selectedResults}
+                assumptions={assumptions}
+                onAssumptionsChange={setAssumptions}
+                avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
+                avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
+              />
 
-          <BreakEvenChart
-            selectedResults={selectedResults}
-            productColors={PRODUCT_COLORS}
-            startAge={profile.age}
-            retirementAge={profile.retirementAge}
-            retirementEndAge={assumptions.retirementEndAge}
-            bestProductId={bestCapital?.productId}
-          />
+              <ResultWaterfalls
+                results={selectedResults}
+                grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+              />
+
+              <CapitalChart
+                capitalChartData={capitalChartData}
+                selectedScenario={selectedScenario}
+                selectedResults={selectedResults}
+                productColors={PRODUCT_COLORS}
+              />
+
+              <PensionChart
+                pensionBars={pensionBars}
+                retirementEndAge={assumptions.retirementEndAge}
+              />
+
+              <BreakEvenChart
+                selectedResults={selectedResults}
+                productColors={PRODUCT_COLORS}
+                startAge={profile.age}
+                retirementAge={profile.retirementAge}
+                retirementEndAge={assumptions.retirementEndAge}
+                bestProductId={bestCapital?.productId}
+              />
+            </>
+          ) : (
+            <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
+          )}
         </>
-      ) : (
-        <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
       )}
     </section>
   )
@@ -363,61 +395,20 @@ function Calculator({ navigate }: CalculatorProps) {
     <section className="workspace-view workspace-view--details">
       {toolbar}
 
-      <ComparisonPicker
-        visible={assumptions.visibleProducts}
-        onChange={(next) =>
-          setAssumptions((current) => ({ ...current, visibleProducts: next }))
-        }
-      />
-
-      {hasComparisonSet ? (
+      {/* Combine-mode (Group G issue 11): the singleton compare detail panels
+          (sensitivity, fairness, comparison table tied to visibleProducts) do
+          not apply to a portfolio of actual contracts. Render the same
+          export/print/assumption affordances driven from portfolio data. */}
+      {isCombineMode ? (
         <>
-          <FeeDragChart
-            selectedResults={selectedResults}
-            productColors={PRODUCT_COLORS}
-            retirementAge={profile.retirementAge}
-            retirementEndAge={assumptions.retirementEndAge}
-          />
-
-          <MonteCarloPanel result={monteCarloResult} />
-
-          <SensitivityPanel
-            profile={profile}
-            assumptions={assumptions}
-            visibleProducts={assumptions.visibleProducts}
-            precomputed={sensitivityResult}
-          />
-
-          <FairnessPanel
-            profile={profile}
-            assumptions={assumptions}
-            bavFunding={simulation.bavFunding}
-            rules={de2026Rules}
-          />
-
           <CalculationWarnings />
 
-          <AssumptionReviewPanel
-            profile={profile}
-            assumptions={assumptions}
-            visibleProducts={assumptions.visibleProducts}
-          />
-
           <DetailComparisonTable
-            products={visibleProducts}
+            products={[]}
             linkCopied={linkCopied}
             onCopyLink={handleCopyLink}
             onExportCsv={handleExportCsv}
             onPrint={() => window.print()}
-          />
-
-          <CashflowTable
-            cashflowResult={cashflowResult}
-            selectedResults={selectedResults}
-            cashflowProductId={effectiveCashflowProductId}
-            cashflowAnnualTaxSvSavings={cashflowAnnualTaxSvSavings}
-            onChangeCashflowProduct={(id) => ui.setCashflowProductId(id as ProductId)}
-            rowAfterTaxBalance={rowAfterTaxBalance}
           />
 
           <AssumptionsPanel
@@ -429,7 +420,76 @@ function Calculator({ navigate }: CalculatorProps) {
           />
         </>
       ) : (
-        <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
+        <>
+          <ComparisonPicker
+            visible={assumptions.visibleProducts}
+            onChange={(next) =>
+              setAssumptions((current) => ({ ...current, visibleProducts: next }))
+            }
+          />
+
+          {hasComparisonSet ? (
+            <>
+              <FeeDragChart
+                selectedResults={selectedResults}
+                productColors={PRODUCT_COLORS}
+                retirementAge={profile.retirementAge}
+                retirementEndAge={assumptions.retirementEndAge}
+              />
+
+              <MonteCarloPanel result={monteCarloResult} />
+
+              <SensitivityPanel
+                profile={profile}
+                assumptions={assumptions}
+                visibleProducts={assumptions.visibleProducts}
+                precomputed={sensitivityResult}
+              />
+
+              <FairnessPanel
+                profile={profile}
+                assumptions={assumptions}
+                bavFunding={simulation.bavFunding}
+                rules={de2026Rules}
+              />
+
+              <CalculationWarnings />
+
+              <AssumptionReviewPanel
+                profile={profile}
+                assumptions={assumptions}
+                visibleProducts={assumptions.visibleProducts}
+              />
+
+              <DetailComparisonTable
+                products={visibleProducts}
+                linkCopied={linkCopied}
+                onCopyLink={handleCopyLink}
+                onExportCsv={handleExportCsv}
+                onPrint={() => window.print()}
+              />
+
+              <CashflowTable
+                cashflowResult={cashflowResult}
+                selectedResults={selectedResults}
+                cashflowProductId={effectiveCashflowProductId}
+                cashflowAnnualTaxSvSavings={cashflowAnnualTaxSvSavings}
+                onChangeCashflowProduct={(id) => ui.setCashflowProductId(id as ProductId)}
+                rowAfterTaxBalance={rowAfterTaxBalance}
+              />
+
+              <AssumptionsPanel
+                show={ui.showAssumptions}
+                onToggle={() => ui.setShowAssumptions((v) => !v)}
+                rules={de2026Rules}
+                bavMinAnnual={bavMinAnnual}
+                bavMinMonthly={bavMinMonthly}
+              />
+            </>
+          ) : (
+            <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
+          )}
+        </>
       )}
     </section>
   )
@@ -553,7 +613,13 @@ function Calculator({ navigate }: CalculatorProps) {
         {viewsByTab[workspace.activeView as keyof typeof viewsByTab] ?? vergleichView}
       </section>
 
-      <PrintReport profile={profile} assumptions={assumptions} simulation={simulation} />
+      <PrintReport
+        profile={profile}
+        assumptions={assumptions}
+        simulation={simulation}
+        combineMode={isCombineMode}
+        portfolio={combineExportBundle}
+      />
 
       <LegalFooter navigate={navigate} />
 
