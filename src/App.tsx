@@ -49,6 +49,7 @@ import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSi
 import { CombineIncomePanel } from './features/inventory/CombineIncomePanel'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { RecommenderCard } from './features/dashboard/RecommenderCard'
+import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
@@ -73,6 +74,7 @@ function Calculator({ navigate }: CalculatorProps) {
   // Reads saved mode once on mount; thereafter in-memory state drives transitions.
   const [appView, setAppView] = useState<AppView>(() => appViewFromMode(detectSavedMode()))
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
+  const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
 
   const {
     profile,
@@ -423,7 +425,19 @@ function Calculator({ navigate }: CalculatorProps) {
           onRebaseWhatIf={portfolioState.rebaseWhatIf}
           onFreezeWhatIf={portfolioState.freezeWhatIf}
           onArchiveAndRestart={() => portfolioState.archiveAndRestart()}
+          onOpenDecisionMenu={setActiveMenuInstanceId}
         />
+        {portfolioState.mode === 'combine' && activeMenuInstanceId !== null && (
+          <ContractDecisionMenu
+            workspace={portfolioState.workspace}
+            instanceId={activeMenuInstanceId}
+            onClose={() => setActiveMenuInstanceId(null)}
+            onCreatePlans={(whatIfs) => {
+              whatIfs.forEach((wi) => portfolioState.addWhatIf(wi))
+              setActiveMenuInstanceId(null)
+            }}
+          />
+        )}
       </section>
     ) : (
       <section className="workspace-view workspace-view--angebot">

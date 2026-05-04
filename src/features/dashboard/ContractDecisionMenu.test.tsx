@@ -99,7 +99,7 @@ describe('ContractDecisionMenu', () => {
     expect(checkbox).toBeNull()
   })
 
-  it('"Plan(s) erstellen" is disabled when nothing is checked', () => {
+  it('"Plan erstellen" is disabled when nothing is checked', () => {
     const { ws, instanceId } = setupPavWorkspace()
     const { container } = render(
       <ContractDecisionMenu
@@ -112,9 +112,11 @@ describe('ContractDecisionMenu', () => {
     const saveBtn = container.querySelector('.contract-decision-save-btn') as HTMLButtonElement
     expect(saveBtn).toBeTruthy()
     expect(saveBtn.disabled).toBe(true)
+    // Disabled label (0 selected)
+    expect(saveBtn.textContent).toBe('Plan erstellen')
   })
 
-  it('tick 2 decisions → click save → onCreatePlans called with 2 what-ifs', () => {
+  it('tick 1 decision → click save → onCreatePlans called with 1 what-if', () => {
     const { ws, instanceId } = setupPavWorkspace()
     const onCreatePlans = vi.fn()
     const { container } = render(
@@ -125,22 +127,23 @@ describe('ContractDecisionMenu', () => {
         onClose={() => {}}
       />,
     )
-    // Get all checkboxes (non-weiterfuehren cards).
+    // Karin's pAV: weiterfuehren (no checkbox) + kuendigen (1 checkbox).
+    // Beitragsfrei excluded in V1; no ETF target exists so no uebertragen card.
     const checkboxes = container.querySelectorAll('.contract-decision-checkbox input[type="checkbox"]')
-    expect(checkboxes.length).toBeGreaterThanOrEqual(2)
+    expect(checkboxes.length).toBeGreaterThanOrEqual(1)
 
-    // Check the first two.
+    // Check the first checkbox.
     fireEvent.click(checkboxes[0])
-    fireEvent.click(checkboxes[1])
 
     const saveBtn = container.querySelector('.contract-decision-save-btn') as HTMLButtonElement
     expect(saveBtn.disabled).toBe(false)
+    expect(saveBtn.textContent).toBe('1 Plan erstellen')
 
     fireEvent.click(saveBtn)
 
     expect(onCreatePlans).toHaveBeenCalledOnce()
     const calledWithWhatIfs = onCreatePlans.mock.calls[0][0] as WhatIfScenario[]
-    expect(calledWithWhatIfs).toHaveLength(2)
+    expect(calledWithWhatIfs).toHaveLength(1)
     // Each what-if should have origin: 'recommender'
     for (const wi of calledWithWhatIfs) {
       expect(wi.origin).toBe('recommender')

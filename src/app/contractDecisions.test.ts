@@ -10,10 +10,14 @@
  *   - compatibleTransferTargets: Riester→AVD ✓ (certified).
  *   - compatibleTransferTargets: AVD→Riester ✗ (rejected per AltZertG).
  *   - compatibleTransferTargets: pAV→ETF ✓ (surrender_reinvest).
+ *   - compatibleTransferTargets: Riester→AVD virtual target when no AVD exists.
+ *   - compatibleTransferTargets: no validator-rejected pairings emitted (B2 regression).
  *   - Karin's 2002 pAV: kuendigen surfaces `lose_pre_2005_privilege` atom.
- *   - Dilan's old bAV: weiterfuehren / beitragsfrei / uebertragen produces 3 distinct decisions.
- *   - applyContractDecision: identity, paid_up, surrender, transfer mutations.
+ *   - Dilan's old bAV: weiterfuehren / kuendigen produces 2 distinct decisions (Beitragsfrei V1-excluded).
+ *   - Karin's pAV menu: weiterfuehren / kuendigen (2 cards, Beitragsfrei V1-excluded).
+ *   - applyContractDecision: identity, paid_up, surrender, transfer, transfer_to_new mutations.
  *   - generateContractDecisions: Basisrente kuendigen excluded.
+ *   - Round-trip validation: applyContractDecision output survives migrateAndValidateState.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -26,10 +30,12 @@ import {
   beitragsfreiWhatIf,
   kuendigenWhatIf,
   uebertragenWhatIf,
+  uebertragenVirtualWhatIf,
   compatibleTransferTargets,
   applyContractDecision,
   generateContractDecisions,
 } from './contractDecisions'
+import { validateWorkspace } from '../utils/scenarioSchema'
 
 // ---------------------------------------------------------------------------
 // Workspace fixtures
@@ -274,26 +280,43 @@ describe('kuendigenWhatIf', () => {
 // ---------------------------------------------------------------------------
 
 describe('compatibleTransferTargets', () => {
-  it('Riester → AVD: returns certified event type', () => {
+  it('Riester → AVD: returns certified event type (existing target)', () => {
     const ws = makeRiesterAvdWorkspace()
     const riesterInst = ws.baseline.assumptions.riester[0]
     const targets = compatibleTransferTargets(ws, riesterInst)
     const avdTarget = targets.find(
-      (t) => t.targetInstance.instanceId.startsWith('altersvorsorgedepot-'),
+      (t) => t.kind === 'existing' && t.targetInstance.instanceId.startsWith('altersvorsorgedepot-'),
     )
     expect(avdTarget).toBeDefined()
     expect(avdTarget!.eventType).toBe('certified')
+  })
+
+  it('Riester → AVD: virtual target when no AVD exists', () => {
+    const ws = makeRiesterAvdWorkspace()
+    // Remove all AVD instances.
+    const wsNoAvd: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: { ...ws.baseline.assumptions, altersvorsorgedepot: [] },
+      },
+    }
+    const riesterInst = wsNoAvd.baseline.assumptions.riester[0]
+    const targets = compatibleTransferTargets(wsNoAvd, riesterInst)
+    const virtualTarget = targets.find((t) => t.kind === 'create_new')
+    expect(virtualTarget).toBeDefined()
+    expect(virtualTarget!.eventType).toBe('certified')
+    if (virtualTarget && virtualTarget.kind === 'create_new') {
+      expect(virtualTarget.productId).toBe('altersvorsorgedepot')
+    }
   })
 
   it('AVD → Riester: NOT included in compatible targets (AltZertG restriction)', () => {
     const ws = makeRiesterAvdWorkspace()
     const avdInst = ws.baseline.assumptions.altersvorsorgedepot[0]
     const targets = compatibleTransferTargets(ws, avdInst)
-    const riesterTarget = targets.find(
-      (t) => t.targetInstance.instanceId.startsWith('riester-'),
-    )
     // AVD → Riester should NOT be in the list.
-    expect(riesterTarget).toBeUndefined()
+    expect(targets).toHaveLength(0)
   })
 
   it('pAV → ETF: returns surrender_reinvest event type', () => {
@@ -322,9 +345,36 @@ describe('compatibleTransferTargets', () => {
     }
     const pavInst = ws.baseline.assumptions.insurance[0]
     const targets = compatibleTransferTargets(ws, pavInst)
-    const etfTarget = targets.find((t) => t.targetInstance.instanceId === 'etf-test-1')
+    const etfTarget = targets.find(
+      (t) => t.kind === 'existing' && t.targetInstance.instanceId === 'etf-test-1',
+    )
     expect(etfTarget).toBeDefined()
     expect(etfTarget!.eventType).toBe('surrender_reinvest')
+  })
+
+  it('B2 regression: no emitted pairing is validator-rejected (surrender_reinvest into certified products)', () => {
+    // Every pairing emitted must NOT target a certified product via surrender_reinvest.
+    const CERTIFIED_TARGETS = new Set(['bav', 'altersvorsorgedepot', 'riester', 'basisrente'])
+    const ws = makeRiesterAvdWorkspace()
+    const allInstances: import('../domain/instances').InstanceCommon[] = [
+      ...ws.baseline.assumptions.bav,
+      ...ws.baseline.assumptions.insurance,
+      ...ws.baseline.assumptions.etf,
+      ...ws.baseline.assumptions.basisrente,
+      ...ws.baseline.assumptions.altersvorsorgedepot,
+      ...ws.baseline.assumptions.riester,
+    ]
+    for (const source of allInstances) {
+      const targets = compatibleTransferTargets(ws, source)
+      for (const t of targets) {
+        if (t.kind !== 'existing') continue
+        if (t.eventType === 'surrender_reinvest') {
+          const targetId = t.targetInstance.instanceId
+          const prefix = targetId.split('-')[0]
+          expect(CERTIFIED_TARGETS.has(prefix)).toBe(false)
+        }
+      }
+    }
   })
 })
 
@@ -348,20 +398,22 @@ describe('uebertragenWhatIf', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Dilan's old bAV: 3 distinct decisions (weiterfuehren / beitragsfrei / uebertragen)
+// Dilan's old bAV: 2 distinct decisions (weiterfuehren / kuendigen — Beitragsfrei V1-excluded)
 // ---------------------------------------------------------------------------
 
 describe("Dilan's old bAV decisions", () => {
-  it('generates weiterfuehren, beitragsfrei, and kuendigen as distinct decisions', () => {
+  it('generates weiterfuehren and kuendigen (Beitragsfrei excluded in V1)', () => {
     const ws = makeDilanWorkspace()
     const instanceId = ws.baseline.assumptions.bav[0].instanceId
     const decisions = generateContractDecisions(ws, instanceId)
     const kinds = decisions.map((d) => d.kind)
     expect(kinds).toContain('weiterfuehren')
-    expect(kinds).toContain('beitragsfrei')
     expect(kinds).toContain('kuendigen')
+    expect(kinds).not.toContain('beitragsfrei')
     const ids = new Set(decisions.map((d) => d.id))
     expect(ids.size).toBe(decisions.length)
+    // ≥2 distinct candidates satisfies the spec acceptance criterion.
+    expect(decisions.length).toBeGreaterThanOrEqual(2)
   })
 })
 
@@ -378,13 +430,15 @@ describe('Basisrente decisions', () => {
     expect(kinds).not.toContain('kuendigen')
   })
 
-  it('weiterfuehren and beitragsfrei are still present for Basisrente', () => {
+  it('weiterfuehren is present for Basisrente (beitragsfrei V1-excluded)', () => {
     const ws = makeBasisrenteWorkspace()
     const instanceId = ws.baseline.assumptions.basisrente[0].instanceId
     const decisions = generateContractDecisions(ws, instanceId)
     const kinds = decisions.map((d) => d.kind)
     expect(kinds).toContain('weiterfuehren')
-    expect(kinds).toContain('beitragsfrei')
+    expect(kinds).not.toContain('beitragsfrei')
+    // ≥1 decision (weiterfuehren) satisfies the minimum.
+    expect(decisions.length).toBeGreaterThanOrEqual(1)
   })
 })
 
@@ -440,5 +494,107 @@ describe('applyContractDecision', () => {
     const decision = beitragsfreiWhatIf(ws, instanceId)
     applyContractDecision(ws, decision)
     expect(ws.baseline.assumptions.bav[0].status).toBe('active')
+  })
+
+  it('transfer_to_new: creates new AVD instance and appends certified transferEvent', () => {
+    const ws = makeRiesterAvdWorkspace()
+    // Remove all AVD instances so the virtual target path is triggered.
+    const wsNoAvd: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: { ...ws.baseline.assumptions, altersvorsorgedepot: [] },
+      },
+    }
+    const sourceId = wsNoAvd.baseline.assumptions.riester[0].instanceId
+    const decision = uebertragenVirtualWhatIf(wsNoAvd, sourceId, 'altersvorsorgedepot', 'all')
+    const applied = applyContractDecision(wsNoAvd, decision, 2026)
+
+    // A new AVD instance should have been created.
+    expect(applied.baseline.assumptions.altersvorsorgedepot).toHaveLength(1)
+    const newAvd = applied.baseline.assumptions.altersvorsorgedepot[0]
+    expect(newAvd.instanceId).toMatch(/^altersvorsorgedepot-/)
+
+    // The Riester source should have a certified transferEvent pointing at the new AVD.
+    const sourceInst = applied.baseline.assumptions.riester[0]
+    expect(sourceInst.transferEvents).toBeDefined()
+    expect(sourceInst.transferEvents!.length).toBeGreaterThan(0)
+    const event = sourceInst.transferEvents![0]
+    expect(event.type).toBe('certified')
+    expect(event.targetInstanceId).toBe(newAvd.instanceId)
+  })
+
+  it('year is deterministic (defaults to de2026Rules.year, no new Date())', () => {
+    const ws = makeRiesterAvdWorkspace()
+    const sourceId = ws.baseline.assumptions.riester[0].instanceId
+    const targetId = ws.baseline.assumptions.altersvorsorgedepot[0].instanceId
+    const decision = uebertragenWhatIf(ws, sourceId, targetId, 'all')
+    const applied = applyContractDecision(ws, decision)
+    const event = applied.baseline.assumptions.riester[0].transferEvents![0]
+    // Year should be 2026 (de2026Rules.year) — not the runtime year.
+    expect(event.year).toBe(2026)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Karin's pAV menu (B3): 2-card menu after Beitragsfrei removal
+// ---------------------------------------------------------------------------
+
+describe("Karin's pAV menu (Beitragsfrei V1-excluded)", () => {
+  it('generates weiterfuehren and kuendigen — 2 distinct cards', () => {
+    const ws = makeKarinWorkspace()
+    const instanceId = ws.baseline.assumptions.insurance[0].instanceId
+    const decisions = generateContractDecisions(ws, instanceId)
+    const kinds = decisions.map((d) => d.kind)
+    expect(kinds).toContain('weiterfuehren')
+    expect(kinds).toContain('kuendigen')
+    expect(kinds).not.toContain('beitragsfrei')
+    expect(decisions.length).toBeGreaterThanOrEqual(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// N7: round-trip validation — applyContractDecision output survives validateWorkspace
+// ---------------------------------------------------------------------------
+
+describe('round-trip validation (N7)', () => {
+  it('surrender decision survives validateWorkspace round-trip', () => {
+    const ws = makeKarinWorkspace()
+    const instanceId = ws.baseline.assumptions.insurance[0].instanceId
+    const decision = kuendigenWhatIf(ws, instanceId)!
+    const applied = applyContractDecision(ws, decision, 2026)
+    // Serialize + validate round-trip
+    const serialised = JSON.stringify(applied)
+    const revalidated = validateWorkspace(JSON.parse(serialised))
+    expect(revalidated).not.toBeNull()
+  })
+
+  it('certified transfer decision survives validateWorkspace round-trip', () => {
+    const ws = makeRiesterAvdWorkspace()
+    const sourceId = ws.baseline.assumptions.riester[0].instanceId
+    const targetId = ws.baseline.assumptions.altersvorsorgedepot[0].instanceId
+    const decision = uebertragenWhatIf(ws, sourceId, targetId, 'all')
+    const applied = applyContractDecision(ws, decision, 2026)
+    const serialised = JSON.stringify(applied)
+    const revalidated = validateWorkspace(JSON.parse(serialised))
+    expect(revalidated).not.toBeNull()
+  })
+
+  it('transfer_to_new (virtual target) survives validateWorkspace round-trip', () => {
+    const ws = makeRiesterAvdWorkspace()
+    // Remove AVD so virtual target path fires.
+    const wsNoAvd: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: { ...ws.baseline.assumptions, altersvorsorgedepot: [] },
+      },
+    }
+    const sourceId = wsNoAvd.baseline.assumptions.riester[0].instanceId
+    const decision = uebertragenVirtualWhatIf(wsNoAvd, sourceId, 'altersvorsorgedepot', 'all')
+    const applied = applyContractDecision(wsNoAvd, decision, 2026)
+    const serialised = JSON.stringify(applied)
+    const revalidated = validateWorkspace(JSON.parse(serialised))
+    expect(revalidated).not.toBeNull()
   })
 })

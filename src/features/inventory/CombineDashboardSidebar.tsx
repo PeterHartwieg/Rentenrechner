@@ -371,11 +371,13 @@ function BasisrenteInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onOpenDecisionMenu,
 }: {
   instance: BasisrenteInstance
   onChange: (next: BasisrenteInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onOpenDecisionMenu?: () => void
 }) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
   const riy = instance.fees.wrapperAssetFee + instance.fees.fundAssetFee
@@ -384,17 +386,29 @@ function BasisrenteInstanceCard({
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
-        {canRemove && (
-          <button
-            type="button"
-            className="combine-sidebar-remove-btn"
-            onClick={onRemove}
-            title="Instanz entfernen"
-          >
-            <Trash2 size={13} aria-hidden="true" />
-            Entfernen
-          </button>
-        )}
+        <div className="combine-instance-card-actions">
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+            <button
+              type="button"
+              className="combine-sidebar-options-btn"
+              onClick={onOpenDecisionMenu}
+              title="Optionen für diesen Vertrag"
+            >
+              Optionen
+            </button>
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              className="combine-sidebar-remove-btn"
+              onClick={onRemove}
+              title="Instanz entfernen"
+            >
+              <Trash2 size={13} aria-hidden="true" />
+              Entfernen
+            </button>
+          )}
+        </div>
       </div>
       <div className="combine-instance-body">
         <div className="combine-instance-fields">
@@ -438,27 +452,41 @@ function AvdInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onOpenDecisionMenu,
 }: {
   instance: AltersvorsorgedepotInstance
   onChange: (next: AltersvorsorgedepotInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onOpenDecisionMenu?: () => void
 }) {
   return (
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
-        {canRemove && (
-          <button
-            type="button"
-            className="combine-sidebar-remove-btn"
-            onClick={onRemove}
-            title="Instanz entfernen"
-          >
-            <Trash2 size={13} aria-hidden="true" />
-            Entfernen
-          </button>
-        )}
+        <div className="combine-instance-card-actions">
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+            <button
+              type="button"
+              className="combine-sidebar-options-btn"
+              onClick={onOpenDecisionMenu}
+              title="Optionen für diesen Vertrag"
+            >
+              Optionen
+            </button>
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              className="combine-sidebar-remove-btn"
+              onClick={onRemove}
+              title="Instanz entfernen"
+            >
+              <Trash2 size={13} aria-hidden="true" />
+              Entfernen
+            </button>
+          )}
+        </div>
       </div>
       <div className="combine-instance-body">
         <div className="combine-instance-fields">
@@ -489,27 +517,41 @@ function RiesterInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onOpenDecisionMenu,
 }: {
   instance: RiesterInstance
   onChange: (next: RiesterInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onOpenDecisionMenu?: () => void
 }) {
   return (
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
-        {canRemove && (
-          <button
-            type="button"
-            className="combine-sidebar-remove-btn"
-            onClick={onRemove}
-            title="Instanz entfernen"
-          >
-            <Trash2 size={13} aria-hidden="true" />
-            Entfernen
-          </button>
-        )}
+        <div className="combine-instance-card-actions">
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+            <button
+              type="button"
+              className="combine-sidebar-options-btn"
+              onClick={onOpenDecisionMenu}
+              title="Optionen für diesen Vertrag"
+            >
+              Optionen
+            </button>
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              className="combine-sidebar-remove-btn"
+              onClick={onRemove}
+              title="Instanz entfernen"
+            >
+              <Trash2 size={13} aria-hidden="true" />
+              Entfernen
+            </button>
+          )}
+        </div>
       </div>
       <div className="combine-instance-body">
         <div className="combine-instance-fields">
@@ -813,6 +855,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('basisrente', inst.instanceId)}
+              onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
           ))}
         </ProductGroup>
@@ -837,6 +880,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('altersvorsorgedepot', inst.instanceId)}
+              onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
           ))}
         </ProductGroup>
@@ -861,6 +905,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('riester', inst.instanceId)}
+              onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
           ))}
         </ProductGroup>

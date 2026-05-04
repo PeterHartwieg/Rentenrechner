@@ -114,6 +114,10 @@ Suggested order:
 - `P2` **Already-at-payout decision scenario.** 63–67-year-old choosing lump sum vs. annuity vs. staged withdrawals, with KVdR/PKV consequences and sequence-of-returns risk.
 - `P2` **Career break / Elternzeit / divorce history scenario.** Interrupted contribution years, child pension credits, Versorgungsausgleich, restart after divorce — tests GRV and subsidy assumptions.
 
+### Group G follow-ups
+
+**Beitragsfrei engine support.** issue 14 V1 omits the Beitragsfrei card from the contract-decision menu because engine simulators don't read `status === 'paid_up'`. Adding support requires each per-product simulator (bAV, pAV, Basisrente, Riester, AVD) to (a) zero contributions during paid-up phase, (b) switch to the phase-2 fee model. Re-enable `beitragsfreiWhatIf` in `ContractDecisionMenu.tsx` once that lands.
+
 ### P3 support work
 
 - `P3` **Ad-hoc savings mode.** Irregular ETF/cash contributions and one-off deposits without a fixed monthly savings rate.

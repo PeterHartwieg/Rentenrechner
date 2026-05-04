@@ -3,8 +3,8 @@
  *
  * Pure module — no React imports, no DOM access.
  *
- * Generates up to four pre-built what-ifs for a specific instance in the
- * workspace: Weiterführen / Beitragsfrei / Kündigen / Übertragen.
+ * Generates up to three pre-built what-ifs for a specific instance in the
+ * workspace: Weiterführen / Kündigen / Übertragen.
  *
  * Architecture:
  *   - `ContractDecision` is the output shape (mirrors `RecommendedCandidate`
@@ -17,9 +17,8 @@
  *
  * Surrender haircut defaults (why these numbers):
  *   - pAV 10 %: typical Stornoabzug under §169 VVG for contracts < 20 years old.
- *   - bAV 5 %:  directversicherung §3 Nr. 63 transfers have lower penalty because
- *               the employer may offer portability; DZ/UK usually zero haircut on
- *               certified transfer but we default 5 % for surrender path.
+ *   - bAV 5 %:  §169 VVG Stornoabzug (Direktversicherung); for §3 Nr. 63 there is no
+ *               statutory minimum-payout rule, so the 5 % is a conservative working assumption.
  *   - Riester/AVD 15 %: subsidy clawback (§21 EStG) can be 10-15 % of policy
  *               value on top of provider Stornoabzug; pessimistic default per spec.
  *   - Basisrente: surrender legally prohibited (§10 Abs. 2 EStG) — no option generated.
@@ -28,12 +27,19 @@
 import type { Workspace } from '../domain/workspace'
 import type {
   BavInstance,
+  AltersvorsorgedepotInstance,
   InstanceCommon,
   TransferEvent,
 } from '../domain/instances'
+import type { ProductId } from '../domain/products/common'
 import { deepCloneScenario } from './portfolioState'
 import { runRules, type Atom } from './recommendations'
 import type { AtomId } from './recommendations'
+import {
+  avdDraftToInstance,
+  newInstanceId,
+} from '../features/inventory/inventoryHelpers'
+import { de2026Rules } from '../rules/de2026'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -63,6 +69,31 @@ export interface ContractDecision {
   atoms: Atom[]
 }
 
+/**
+ * A virtual target creates a new instance of the given product class and
+ * applies a certified transfer into it. Used when no existing instance of
+ * the target type is present (e.g. "Neuen AVD anlegen" when Riester→AVD
+ * is the only certified transfer path and no AVD instance exists yet).
+ *
+ * Only AltZertG-eligible certified pairings emit virtual targets:
+ *   - Riester → AVD (no existing AVD)
+ * ETF surrender_reinvest does NOT get a virtual target — the spec does not
+ * require it and the flow would be confusing.
+ */
+export type TransferTarget =
+  | {
+      kind: 'existing'
+      targetInstance: InstanceCommon
+      eventType: 'certified' | 'surrender_reinvest'
+      caveat?: string
+    }
+  | {
+      kind: 'create_new'
+      productId: ProductId
+      eventType: 'certified'
+      caveat?: string
+    }
+
 export type WorkspaceDelta =
   | { kind: 'identity' }
   | { kind: 'paid_up'; instanceId: string; paidUpAtAge: number }
@@ -74,13 +105,14 @@ export type WorkspaceDelta =
       amountEUR: number | 'all'
       type: 'certified' | 'surrender_reinvest'
     }
+  | {
+      /** Create a new instance of targetProductId, then apply a certified transfer from source. */
+      kind: 'transfer_to_new'
+      sourceInstanceId: string
+      targetProductId: ProductId
+      amountEUR: number | 'all'
+    }
 
-export interface TransferTarget {
-  targetInstance: InstanceCommon
-  eventType: 'certified' | 'surrender_reinvest'
-  /** Optional warning shown on the card (e.g. "AVD → Riester not supported"). */
-  caveat?: string
-}
 
 // ---------------------------------------------------------------------------
 // Default surrender haircut per product type
@@ -90,8 +122,8 @@ export interface TransferTarget {
  * Pessimistic surrender-haircut defaults keyed by instance-id prefix (product type).
  *
  * pAV 10 %:      §169 VVG Stornoabzug, typical for policies < 20 years (pessimistic default).
- * bAV 5 %:       §3 Nr. 63 Direktversicherung portability; lower than pAV due to mandatory
- *                minimum payout of contributions on termination (§2 Abs. 2 BetrAVG).
+ * bAV 5 %:       §169 VVG Stornoabzug (Direktversicherung); for §3 Nr. 63 there is no
+ *                statutory minimum-payout rule, so the 5 % is a conservative working assumption.
  * Riester 15 %:  provider Stornoabzug (~5-10 %) plus subsidy clawback risk (~5-10 %,
  *                §21 EStG Zulagen-Rückforderung) — combined worst-case.
  * AVD 10 %:      AltZertG §2 caps Stornoabzug at "reasonable"; 10 % is a conservative estimate.
@@ -269,6 +301,9 @@ export function weiterfuehrenWhatIf(
 // 2. beitragsfreiWhatIf
 // ---------------------------------------------------------------------------
 
+// Disabled in V1 — engine simulators don't read status === 'paid_up'. Re-enable once paid_up
+// support lands across simulators (P2 follow-up). See BACKLOG.md "Beitragsfrei engine support".
+
 /**
  * Flip the instance to `paid_up`. No more contributions; the contract
  * continues to accumulate on the existing balance under the paid-up fee model.
@@ -344,7 +379,7 @@ export function kuendigenWhatIf(
   reallocateToInstanceId?: string,
 ): ContractDecision | null {
   // Basisrente: capital payout legally prohibited (§10 Abs. 2 EStG).
-  if (instanceId.startsWith('basisrente-') || detectSlot(instanceId) === 'basisrente') {
+  if (detectSlot(instanceId) === 'basisrente') {
     return null
   }
 
@@ -398,17 +433,28 @@ export function kuendigenWhatIf(
 // ---------------------------------------------------------------------------
 
 /**
- * Determine which instances in the workspace can receive a certified or
- * surrender_reinvest transfer from `sourceInstance`.
+ * Determine which instances (or virtual new instances) in the workspace can
+ * receive a certified or surrender_reinvest transfer from `sourceInstance`.
  *
- * AltZertG / §3 Nr. 63 / Basisrente rules:
- *   - Riester → AVD:           certified (AltZertG §1 Abs. 1 Nr. 4 explicit transfer path).
- *   - AVD → Riester:           NOT allowed (AltZertG only allows Riester→AVD, not reverse).
- *   - bAV → bAV (same DFW):    certified if same Durchführungsweg (§4 BetrAVG Übertragung).
- *   - bAV → bAV (diff DFW):    surrender_reinvest (taxable event).
- *   - Basisrente → Basisrente: certified (§10 Abs. 2 Satz 3 EStG provider change).
- *   - pAV → pAV:               surrender_reinvest with caveat about lost privileges.
- *   - All else:                 surrender_reinvest.
+ * AltZertG / §3 Nr. 63 / Basisrente rules applied here:
+ *   - Riester → AVD:              certified (AltZertG §1 Abs. 1 Nr. 4 explicit transfer path).
+ *                                  If no AVD exists: emits a virtual "Neuen AVD anlegen" target.
+ *   - AVD → Riester:              NOT allowed (AltZertG only allows Riester→AVD, not reverse).
+ *   - AVD → AVD:                  REMOVED — no certified-transfer path between same-type AltZertG
+ *                                  contracts; surrender_reinvest into certified products is
+ *                                  validator-rejected (CERTIFIED_TARGET_PRODUCTS in scenarioSchema).
+ *   - bAV → bAV (same DFW):       certified (§4 BetrAVG Übertragung).
+ *   - bAV → bAV (diff DFW):       REMOVED — cross-DFW is a surrender + new contribution, not a
+ *                                  transfer; validator rejects surrender_reinvest into bAV.
+ *   - Basisrente → Basisrente:    certified (§10 Abs. 2 Satz 3 EStG provider change).
+ *   - Riester → Riester:          REMOVED — no statutory transfer mechanism; user must surrender
+ *                                  + start fresh. Validator would reject surrender_reinvest into
+ *                                  a certified product.
+ *   - pAV → pAV:                  REMOVED — surrender_reinvest into pAV would bypass that
+ *                                  product's own contribution path; validator rejects it.
+ *   - pAV → ETF:                  surrender_reinvest (valid; ETF is not a certified product).
+ *   - bAV → ETF:                  surrender_reinvest (valid).
+ *   - Riester → ETF:              surrender_reinvest (valid).
  */
 export function compatibleTransferTargets(
   workspace: Workspace,
@@ -419,86 +465,76 @@ export function compatibleTransferTargets(
   const wsa = workspace.baseline.assumptions
   const targets: TransferTarget[] = []
 
-  // Basisrente source: only other Basisrente instances (certified).
+  // Basisrente source: only other Basisrente instances (certified per §10 Abs. 2 Satz 3 EStG).
   if (sourceSlot === 'basisrente') {
     for (const inst of wsa.basisrente) {
       if (inst.instanceId === sourceId || inst.status === 'surrendered') continue
-      targets.push({ targetInstance: inst, eventType: 'certified' })
+      targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
     }
     return targets
   }
 
-  // Riester source: AVD instances are certified; anything else is surrender_reinvest.
+  // Riester source: AVD instances are certified (AltZertG); surrender_reinvest only into ETF.
+  // Riester→Riester and Riester→other certified products are excluded (validator-rejected).
   if (sourceSlot === 'riester') {
-    for (const inst of wsa.altersvorsorgedepot) {
-      if (inst.status === 'surrendered') continue
-      targets.push({
-        targetInstance: inst,
-        eventType: 'certified',
-      })
+    const activeAvd = wsa.altersvorsorgedepot.filter((i) => i.status !== 'surrendered')
+    if (activeAvd.length > 0) {
+      for (const inst of activeAvd) {
+        targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
+      }
+    } else {
+      // No AVD exists yet — offer a virtual "Neuen AVD anlegen" target.
+      targets.push({ kind: 'create_new', productId: 'altersvorsorgedepot', eventType: 'certified' })
     }
-    // Also riester → riester (same product type, surrender_reinvest — different provider).
-    for (const inst of wsa.riester) {
-      if (inst.instanceId === sourceId || inst.status === 'surrendered') continue
-      targets.push({
-        targetInstance: inst,
-        eventType: 'surrender_reinvest',
-        caveat: 'Anbieter-Wechsel bei Riester: Zulagen-Rückforderung prüfen.',
-      })
+    // Riester → ETF: surrender_reinvest is valid (ETF is not a certified product).
+    for (const inst of wsa.etf) {
+      if (inst.status === 'surrendered') continue
+      targets.push({ kind: 'existing', targetInstance: inst, eventType: 'surrender_reinvest' })
     }
     return targets
   }
 
   // AVD source: AVD → Riester NOT allowed per AltZertG.
+  // AVD → other AVD and AVD → certified products excluded (validator-rejected surrender_reinvest).
+  // No valid certified or surrender_reinvest transfer targets for AVD.
   if (sourceSlot === 'altersvorsorgedepot') {
-    // AVD → other AVD: surrender_reinvest (no certified path defined in AltZertG for same-type).
-    for (const inst of wsa.altersvorsorgedepot) {
-      if (inst.instanceId === sourceId || inst.status === 'surrendered') continue
-      targets.push({ targetInstance: inst, eventType: 'surrender_reinvest' })
-    }
-    // Note: AVD → Riester deliberately excluded (AltZertG does not support reverse transfer).
     return targets
   }
 
-  // bAV source.
+  // bAV source: only same-DFW bAV instances via certified path.
+  // Cross-DFW excluded (validator-rejected surrender_reinvest into bAV).
+  // bAV → ETF is valid as surrender_reinvest.
   if (sourceSlot === 'bav') {
     const sourceBav = wsa.bav.find((b) => b.instanceId === sourceId) as BavInstance | undefined
     for (const inst of wsa.bav) {
       if (inst.instanceId === sourceId || inst.status === 'surrendered') continue
-      // §4 BetrAVG: certified transfer when same Durchführungsweg.
-      const sameType =
-        sourceBav?.durchfuehrungsweg === inst.durchfuehrungsweg
-      targets.push({
-        targetInstance: inst,
-        eventType: sameType ? 'certified' : 'surrender_reinvest',
-        caveat: sameType ? undefined : 'Unterschiedliche Durchführungswege — als Kündigung + Neuanlage behandelt.',
-      })
+      if (sourceBav?.durchfuehrungsweg === inst.durchfuehrungsweg) {
+        targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
+      }
+      // Cross-DFW omitted: surrender_reinvest into bAV is validator-rejected.
+    }
+    for (const inst of wsa.etf) {
+      if (inst.status === 'surrendered') continue
+      targets.push({ kind: 'existing', targetInstance: inst, eventType: 'surrender_reinvest' })
     }
     return targets
   }
 
-  // Insurance (pAV) source: surrender_reinvest to any other instance type.
+  // Insurance (pAV) source: surrender_reinvest only into ETF.
+  // pAV → pAV excluded (surrender_reinvest into certified products is validator-rejected for pAV
+  // reuse; and transferring between pAV contracts is not a recognised statutory mechanism).
+  // pAV → AVD excluded (surrender_reinvest into certified product is validator-rejected).
   if (sourceSlot === 'insurance') {
-    for (const inst of [...wsa.insurance, ...wsa.etf, ...wsa.altersvorsorgedepot]) {
-      if ((inst as InstanceCommon).instanceId === sourceId) continue
-      if ((inst as InstanceCommon).status === 'surrendered') continue
-      targets.push({
-        targetInstance: inst as InstanceCommon,
-        eventType: 'surrender_reinvest',
-        caveat: detectSlot((inst as InstanceCommon).instanceId) === 'insurance'
-          ? 'Verlust von Altvertrag-Privilegien prüfen.'
-          : undefined,
-      })
+    for (const inst of wsa.etf) {
+      if (inst.status === 'surrendered') continue
+      targets.push({ kind: 'existing', targetInstance: inst, eventType: 'surrender_reinvest' })
     }
     return targets
   }
 
-  // ETF source: surrender_reinvest to any other ETF or AVD.
-  for (const inst of [...wsa.etf, ...wsa.altersvorsorgedepot]) {
-    if ((inst as InstanceCommon).instanceId === sourceId) continue
-    if ((inst as InstanceCommon).status === 'surrendered') continue
-    targets.push({ targetInstance: inst as InstanceCommon, eventType: 'surrender_reinvest' })
-  }
+  // ETF source: no valid transfer targets.
+  // surrender_reinvest from ETF into certified products is validator-rejected
+  // (ILLEGAL_SURRENDER_REINVEST_SOURCES in scenarioSchema). No other meaningful transfer.
   return targets
 }
 
@@ -507,7 +543,7 @@ export function compatibleTransferTargets(
 // ---------------------------------------------------------------------------
 
 /**
- * Emit a transfer event from source to target.
+ * Emit a transfer event from source to an existing target instance.
  *
  * The transfer type is determined by `compatibleTransferTargets`:
  *   - Riester → AVD → `type: 'certified'`
@@ -527,7 +563,10 @@ export function uebertragenWhatIf(
 
   // Determine event type from compatible targets.
   const targets = source ? compatibleTransferTargets(workspace, source) : []
-  const matchedTarget = targets.find((t) => t.targetInstance.instanceId === targetInstanceId)
+  const matchedTarget = targets.find(
+    (t): t is Extract<TransferTarget, { kind: 'existing' }> =>
+      t.kind === 'existing' && t.targetInstance.instanceId === targetInstanceId,
+  )
   const eventType = matchedTarget?.eventType ?? 'surrender_reinvest'
   const caveat = matchedTarget?.caveat
 
@@ -572,6 +611,61 @@ export function uebertragenWhatIf(
   }
 }
 
+/**
+ * Emit a "Übertragen auf neuen X" decision for a virtual target.
+ * Called when `compatibleTransferTargets` emits a `kind: 'create_new'` entry —
+ * e.g. Riester→AVD when no AVD instance exists yet.
+ *
+ * The workspaceDelta carries `kind: 'transfer_to_new'`; `applyContractDecision`
+ * creates the new instance and then appends the certified transfer event.
+ */
+export function uebertragenVirtualWhatIf(
+  workspace: Workspace,
+  sourceInstanceId: string,
+  targetProductId: ProductId,
+  amountEUR: number | 'all',
+): ContractDecision {
+  const source = findInstanceById(workspace, sourceInstanceId)
+  const sourceLabel = source?.label ?? sourceInstanceId
+  const productLabel = targetProductId === 'altersvorsorgedepot' ? 'Altersvorsorgedepot' : targetProductId
+
+  // Atoms: certified-transfer privilege atom for Riester → AVD.
+  const atoms: Atom[] = []
+  const sourceSlot = detectSlot(sourceInstanceId)
+  if (sourceSlot === 'riester' && targetProductId === 'altersvorsorgedepot') {
+    atoms.push(makeRiesterToAvdCertifiedAtom())
+  }
+
+  const allAtoms = runRules(buildRulesInput(workspace))
+  const relevantAtoms = filterAtomsForDecision(
+    allAtoms,
+    sourceInstanceId,
+    UEBERTRAGEN_RELEVANT_ATOM_IDS,
+  )
+  atoms.push(...relevantAtoms)
+
+  const amountLabel = amountEUR === 'all' ? 'vollständig' : `${amountEUR} EUR`
+  const description =
+    `${sourceLabel} wird ${amountLabel} steuerneutral auf ein neues ${productLabel} übertragen. ` +
+    `Ein neues ${productLabel} wird dabei angelegt.`
+
+  return {
+    id: `uebertragen-${sourceInstanceId}-to-new-${targetProductId}`,
+    kind: 'uebertragen',
+    label: `Übertragen auf neues ${productLabel}`,
+    sourceInstanceId,
+    description,
+    workspaceDelta: {
+      kind: 'transfer_to_new',
+      sourceInstanceId,
+      targetProductId,
+      amountEUR,
+    },
+    deltaNettoRente: 0,
+    atoms,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 6. applyContractDecision
 // ---------------------------------------------------------------------------
@@ -579,10 +673,14 @@ export function uebertragenWhatIf(
 /**
  * Pure function: returns a deep-cloned workspace with the decision's delta applied.
  * Does NOT trigger any simulation — caller is responsible for re-simulating.
+ *
+ * `currentYear` defaults to `de2026Rules.year` so the function is deterministic
+ * in tests and avoids `new Date().getFullYear()` non-determinism.
  */
 export function applyContractDecision(
   workspace: Workspace,
   decision: ContractDecision,
+  currentYear: number = de2026Rules.year,
 ): Workspace {
   const cloned = deepCloneScenario(workspace)
   const delta = decision.workspaceDelta
@@ -598,16 +696,52 @@ export function applyContractDecision(
   }
 
   if (delta.kind === 'surrender') {
-    applySurrender(wsa, delta.instanceId, delta.haircutPct, delta.reallocateToInstanceId)
+    applySurrender(wsa, delta.instanceId, delta.haircutPct, delta.reallocateToInstanceId, currentYear)
     return cloned
   }
 
   if (delta.kind === 'transfer') {
-    applyTransfer(wsa, delta)
+    applyTransfer(wsa, delta, currentYear)
+    return cloned
+  }
+
+  if (delta.kind === 'transfer_to_new') {
+    applyTransferToNew(wsa, delta, currentYear)
     return cloned
   }
 
   return cloned
+}
+
+// ---------------------------------------------------------------------------
+// Minimal-instance factory for virtual transfer targets (Q2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a sensible default instance for a product class when the user
+ * picks a virtual "Neuen X anlegen" transfer target. Only AVD is supported
+ * today — that is the only AltZertG-eligible certified target that may not
+ * exist yet in the workspace.
+ */
+function createMinimalInstance(
+  productId: ProductId,
+  contractStartYear: number,
+): InstanceCommon {
+  if (productId === 'altersvorsorgedepot') {
+    const inst = avdDraftToInstance({
+      productId: 'altersvorsorgedepot',
+      status: 'active',
+      contractStartYear,
+      currentValueEUR: 0,
+      monthlyContribution: 0,
+      anbieter: undefined,
+      subtype: 'standarddepot',
+      useGlidepath: true,
+    })
+    return { ...inst, instanceId: newInstanceId('altersvorsorgedepot'), label: 'Altersvorsorgedepot (neu)' }
+  }
+  // Extend this switch when additional certified transfer targets are added.
+  throw new Error(`createMinimalInstance: unsupported productId ${String(productId)}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -633,7 +767,8 @@ function applySurrender(
   wsa: Workspace['baseline']['assumptions'],
   instanceId: string,
   haircutPct: number,
-  reallocateToInstanceId?: string,
+  reallocateToInstanceId: string | undefined,
+  currentYear: number,
 ): void {
   const slot = detectSlot(instanceId)
   if (slot === 'bav') {
@@ -654,7 +789,7 @@ function applySurrender(
     const amount = sourceInstance?.currentValueEUR ?? 0
     const event: TransferEvent = {
       type: 'surrender_reinvest',
-      year: new Date().getFullYear(),
+      year: currentYear,
       sourceInstanceId: instanceId,
       targetInstanceId: reallocateToInstanceId,
       amountEUR: amount,
@@ -667,6 +802,7 @@ function applySurrender(
 function applyTransfer(
   wsa: Workspace['baseline']['assumptions'],
   delta: Extract<WorkspaceDelta, { kind: 'transfer' }>,
+  currentYear: number,
 ): void {
   const sourceInstance = findInstanceInWsa(wsa, delta.sourceInstanceId)
   const amount: number =
@@ -678,14 +814,14 @@ function applyTransfer(
     delta.type === 'certified'
       ? {
           type: 'certified',
-          year: new Date().getFullYear(),
+          year: currentYear,
           sourceInstanceId: delta.sourceInstanceId,
           targetInstanceId: delta.targetInstanceId,
           amountEUR: amount,
         }
       : {
           type: 'surrender_reinvest',
-          year: new Date().getFullYear(),
+          year: currentYear,
           sourceInstanceId: delta.sourceInstanceId,
           targetInstanceId: delta.targetInstanceId,
           amountEUR: amount,
@@ -694,6 +830,30 @@ function applyTransfer(
 
   // Append to the SOURCE instance's transferEvents array.
   appendTransferEvent(wsa, delta.sourceInstanceId, event)
+}
+
+function applyTransferToNew(
+  wsa: Workspace['baseline']['assumptions'],
+  delta: Extract<WorkspaceDelta, { kind: 'transfer_to_new' }>,
+  currentYear: number,
+): void {
+  // Create a new minimal AVD instance and add it to the workspace assumptions.
+  const newInst = createMinimalInstance(delta.targetProductId, currentYear)
+  if (delta.targetProductId === 'altersvorsorgedepot') {
+    wsa.altersvorsorgedepot = [...wsa.altersvorsorgedepot, newInst as AltersvorsorgedepotInstance]
+  }
+  // Apply the certified transfer event from source to the newly created instance.
+  applyTransfer(
+    wsa,
+    {
+      kind: 'transfer',
+      sourceInstanceId: delta.sourceInstanceId,
+      targetInstanceId: newInst.instanceId,
+      amountEUR: delta.amountEUR,
+      type: 'certified',
+    },
+    currentYear,
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -755,8 +915,12 @@ function findInstanceInWsa(
  *
  * Basisrente: kuendigen is excluded (legally prohibited).
  * Surrendered instances: returns empty array.
- * Active or paid-up: returns weiterfuehren + beitragsfrei (if not already paid_up) +
- *   kuendigen (if not basisrente) + uebertragen (for each compatible target).
+ * Active or paid-up: returns weiterfuehren +
+ *   kuendigen (if not basisrente) + uebertragen (for each compatible target, max 2).
+ *
+ * Beitragsfrei is intentionally omitted in V1 — engine simulators do not read
+ * `status === 'paid_up'`. Re-enable once paid_up support lands across all
+ * per-product simulators (see BACKLOG.md "Beitragsfrei engine support").
  */
 export function generateContractDecisions(
   workspace: Workspace,
@@ -770,23 +934,25 @@ export function generateContractDecisions(
   // 1. Weiterfuehren (always first)
   decisions.push(weiterfuehrenWhatIf(workspace, instanceId))
 
-  // 2. Beitragsfrei (if not already paid_up)
-  if (instance.status !== 'paid_up') {
-    decisions.push(beitragsfreiWhatIf(workspace, instanceId))
-  }
-
-  // 3. Kuendigen (not for Basisrente)
+  // 2. Kuendigen (not for Basisrente — capital payout legally prohibited)
   const kuendigen = kuendigenWhatIf(workspace, instanceId)
   if (kuendigen) {
     decisions.push(kuendigen)
   }
 
-  // 4. Uebertragen (for each compatible target, max 2 to keep card count manageable)
+  // 3. Uebertragen (for each compatible target, max 2 to keep card count manageable)
   const targets = compatibleTransferTargets(workspace, instance)
   for (const t of targets.slice(0, 2)) {
-    decisions.push(
-      uebertragenWhatIf(workspace, instanceId, t.targetInstance.instanceId, 'all'),
-    )
+    if (t.kind === 'existing') {
+      decisions.push(
+        uebertragenWhatIf(workspace, instanceId, t.targetInstance.instanceId, 'all'),
+      )
+    } else {
+      // Virtual target: "Neuen X anlegen" — creates instance + certified transfer.
+      decisions.push(
+        uebertragenVirtualWhatIf(workspace, instanceId, t.productId, 'all'),
+      )
+    }
   }
 
   return decisions

@@ -17,7 +17,7 @@
  * named what-if with `origin: 'recommender'`.
  */
 
-import { useState } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import './ContractDecisionMenu.css'
 import type { Workspace, WhatIfScenario } from '../../domain/workspace'
 import type { ContractDecision } from '../../app/contractDecisions'
@@ -89,6 +89,36 @@ export function ContractDecisionMenu({
   // Track which non-identity decisions are checked.
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
 
+  // Ref for the inner dialog card — click-outside detection compares against it.
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Keyboard: Escape closes the menu (mirrors InventoryWizard pattern).
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    },
+    [onClose],
+  )
+
+  // Click-outside: clicking the backdrop overlay closes the menu.
+  // The overlay is the outermost element; the inner dialog card is `dialogRef`.
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    },
+    [onClose],
+  )
+
+  // Ensure focus stays within the dialog while it is open (basic focus trap via tabIndex on wrapper).
+  useEffect(() => {
+    dialogRef.current?.focus()
+  }, [])
+
   function toggleChecked(id: string) {
     setCheckedIds((prev) => {
       const next = new Set(prev)
@@ -128,10 +158,17 @@ export function ContractDecisionMenu({
 
   return (
     <div
+      className="contract-decision-menu-overlay"
+      onClick={handleOverlayClick}
+      onKeyDown={handleKeyDown}
+    >
+    <div
       className="contract-decision-menu"
       role="dialog"
       aria-modal="true"
       aria-label="Optionen für diesen Vertrag"
+      ref={dialogRef}
+      tabIndex={-1}
     >
       <div className="contract-decision-menu-header">
         <h3>Optionen für diesen Vertrag</h3>
@@ -200,14 +237,17 @@ export function ContractDecisionMenu({
           disabled={saveable.length === 0}
           onClick={handleCreatePlans}
         >
-          {saveable.length > 0
-            ? `${saveable.length} Plan${saveable.length > 1 ? 's' : ''} erstellen`
-            : 'Plan(s) erstellen'}
+          {saveable.length === 0
+            ? 'Plan erstellen'
+            : saveable.length === 1
+            ? '1 Plan erstellen'
+            : `${saveable.length} Pläne erstellen`}
         </button>
         <button type="button" className="contract-decision-cancel-btn" onClick={onClose}>
           Abbrechen
         </button>
       </div>
+    </div>
     </div>
   )
 }

@@ -1,5 +1,16 @@
 /* ContractDecisionMenu — per-instance decision panel (issue 14) */
 
+/* Backdrop overlay — click-outside closes the menu. */
+.contract-decision-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
 .contract-decision-menu {
   display: flex;
   flex-direction: column;
