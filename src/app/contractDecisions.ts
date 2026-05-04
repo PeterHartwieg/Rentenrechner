@@ -334,13 +334,13 @@ export function beitragsfreiWhatIf(
   let riy = 0
   if (slot === 'insurance') {
     const inst = workspace.baseline.assumptions.insurance.find((i) => i.instanceId === instanceId)
-    if (inst) riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee
+    if (inst) riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee + inst.fees.pensionPayoutFeePct
   } else if (slot === 'bav') {
     const inst = workspace.baseline.assumptions.bav.find((i) => i.instanceId === instanceId)
-    if (inst) riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee
+    if (inst) riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee + inst.fees.pensionPayoutFeePct
   } else if (slot === 'basisrente') {
     const inst = workspace.baseline.assumptions.basisrente.find((i) => i.instanceId === instanceId)
-    if (inst) riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee
+    if (inst) riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee + inst.fees.pensionPayoutFeePct
   }
   const atoms = [...baseAtoms]
   if (riy > HIGH_FEE_THRESHOLD) {

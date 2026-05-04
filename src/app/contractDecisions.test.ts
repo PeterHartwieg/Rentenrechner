@@ -223,6 +223,30 @@ describe('beitragsfreiWhatIf', () => {
     expect(atomIds).toContain('paid_up_high_fee_warning')
   })
 
+  it('surfaces paid_up_high_fee_warning when pensionPayoutFeePct alone pushes total over threshold', () => {
+    // wrapperAssetFee + fundAssetFee = 0.010 (below 1.2 %), but pensionPayoutFeePct = 0.005
+    // → combined 0.015 > 0.012 → warning fires
+    const ws = makeKarinWorkspace()
+    const inst = ws.baseline.assumptions.insurance[0]
+    inst.fees.wrapperAssetFee = 0.008
+    inst.fees.fundAssetFee = 0.002
+    inst.fees.pensionPayoutFeePct = 0.005
+    const decision = beitragsfreiWhatIf(ws, inst.instanceId)
+    const atomIds = decision.atoms.map((a) => a.id)
+    expect(atomIds).toContain('paid_up_high_fee_warning')
+  })
+
+  it('does NOT surface paid_up_high_fee_warning when all three fees sum to ≤1.2 %', () => {
+    const ws = makeKarinWorkspace()
+    const inst = ws.baseline.assumptions.insurance[0]
+    inst.fees.wrapperAssetFee = 0.006
+    inst.fees.fundAssetFee = 0.003
+    inst.fees.pensionPayoutFeePct = 0.003
+    const decision = beitragsfreiWhatIf(ws, inst.instanceId)
+    const atomIds = decision.atoms.map((a) => a.id)
+    expect(atomIds).not.toContain('paid_up_high_fee_warning')
+  })
+
   it('uses supplied paidUpAtAge', () => {
     const ws = makeDilanWorkspace()
     const instanceId = ws.baseline.assumptions.bav[0].instanceId

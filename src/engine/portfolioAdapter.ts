@@ -330,8 +330,7 @@ function paidUpRiesterFunding(
   rules: GermanRules,
   salary: SalaryResult,
   singleton: RiesterAssumptions,
-  profile: PersonalProfile,
-  calc: typeof calculateRiesterFunding,
+  calc: (rules: GermanRules, salary: SalaryResult, singleton: RiesterAssumptions) => RiesterFundingResult,
 ): RiesterFundingResult {
   const zeroed: RiesterAssumptions = {
     ...singleton,
@@ -343,7 +342,7 @@ function paidUpRiesterFunding(
       careerStarterBonusUsed: true,
     },
   }
-  return calc(rules, salary, zeroed, profile)
+  return calc(rules, salary, zeroed)
 }
 
 // ---------------------------------------------------------------------------
@@ -830,8 +829,7 @@ export function buildPortfolioFunding(
       rules,
       salaryForOtherFunding,
       singleton,
-      profile,
-      calculateRiesterFunding,
+      (r, s, si) => calculateRiesterFunding(r, s, si, profile),
     )
   }
 
