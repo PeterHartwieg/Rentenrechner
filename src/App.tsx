@@ -50,6 +50,7 @@ import { CombineDashboardSidebar, AddVertragSection } from './features/inventory
 import { CombineIncomePanel } from './features/inventory/CombineIncomePanel'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { RecommenderCard } from './features/dashboard/RecommenderCard'
+import { RentenluckeDashboard } from './features/dashboard/RentenluckeDashboard'
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
 import { DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
@@ -378,6 +379,22 @@ function Calculator({ navigate }: CalculatorProps) {
           comparing product candidates. */}
       {!isCombineMode && (
         <>
+          {/* Issue #20 — top-of-page Rentenlücke dashboard. Renders even when
+              the comparison set is empty (GRV-only baseline) so the user
+              always sees their gap before the per-product detail. */}
+          <RentenluckeDashboard
+            profile={profile}
+            simulation={simulation}
+            selectedResults={selectedResults}
+            onTargetChange={(next) =>
+              setProfile((current) => ({
+                ...current,
+                desiredNetMonthlyPension: next,
+              }))
+            }
+            onAdjustContributions={() => workspace.setActiveView('angebot')}
+          />
+
           <ComparisonPicker
             visible={assumptions.visibleProducts}
             onChange={(next) =>

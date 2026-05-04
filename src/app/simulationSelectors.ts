@@ -276,3 +276,87 @@ export function makeRowAfterTaxBalance(
     )
   }
 }
+
+// ---------------------------------------------------------------------------
+// Rentenlücke dashboard selectors (issue #20)
+// ---------------------------------------------------------------------------
+
+/**
+ * Default replacement ratio used when the user has not set
+ * `profile.desiredNetMonthlyPension`. The Vergleich dashboard derives the
+ * target on-the-fly as `(grossSalaryYear / 12) * RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO`
+ * so existing scenarios still show a meaningful gap without requiring migration.
+ */
+export const RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO = 0.5
+
+/**
+ * Resolve the target monthly net retirement income.
+ *
+ * Returns `{ value, isUserSet }` so callers can render a hint when the value
+ * is derived from salary rather than user-overridden. When neither is
+ * available (no salary, no override), returns 0 / `isUserSet=false`.
+ */
+export function resolveTargetMonthlyRetirementIncome(
+  profile: PersonalProfile,
+): { value: number; isUserSet: boolean } {
+  const userSet = profile.desiredNetMonthlyPension
+  if (userSet !== undefined && userSet > 0) {
+    return { value: userSet, isUserSet: true }
+  }
+  const grossMonthly = profile.grossSalaryYear / 12
+  const fallback = grossMonthly * RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO
+  return { value: Math.max(0, fallback), isUserSet: false }
+}
+
+/**
+ * Aggregate net monthly retirement income across the comparison set.
+ *
+ * GRV's `netMonthlyPension` plus each visible product's `netMonthlyPayout`.
+ * This is the same data the per-product `PensionChart` consumes — no parallel
+ * calculation path is introduced.
+ */
+export interface RentenluckeOverview {
+  /** Net monthly GRV pension. */
+  grvNet: number
+  /** Per-visible-product breakdown. Order matches `selectedResults`. */
+  productBreakdown: Array<{ id: ProductId; label: string; value: number; color: string }>
+  /** Sum of GRV + all product net monthly payouts. */
+  projectedTotal: number
+  /** Target monthly net retirement income (user-set or salary-derived). */
+  target: number
+  /** True when target comes from `profile.desiredNetMonthlyPension`. */
+  targetIsUserSet: boolean
+  /** Positive gap when projection falls short of the target; 0 when the goal is reached. */
+  gap: number
+  /** True when projectedTotal >= target. */
+  goalReached: boolean
+}
+
+export function deriveRentenluckeOverview(
+  simulation: SimulationResult,
+  selectedResults: ProductResult[],
+  profile: PersonalProfile,
+): RentenluckeOverview {
+  const grvNet = simulation.statutoryPension.netMonthlyPension
+  const productBreakdown = selectedResults.map((result) => ({
+    id: result.productId,
+    label: result.label,
+    value: result.netMonthlyPayout,
+    color: getProductMeta(result.productId)?.color ?? '#888888',
+  }))
+  const projectedTotal =
+    grvNet + productBreakdown.reduce((sum, entry) => sum + entry.value, 0)
+  const { value: target, isUserSet: targetIsUserSet } =
+    resolveTargetMonthlyRetirementIncome(profile)
+  const gap = Math.max(0, target - projectedTotal)
+  const goalReached = target > 0 && projectedTotal >= target
+  return {
+    grvNet,
+    productBreakdown,
+    projectedTotal,
+    target,
+    targetIsUserSet,
+    gap,
+    goalReached,
+  }
+}

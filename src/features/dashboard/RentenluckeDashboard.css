@@ -1,0 +1,209 @@
+.rentenlucke-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1px solid #d6dce5;
+  border-radius: 10px;
+  background: #f6f8fb;
+}
+
+.rentenlucke-dashboard__header h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.1rem;
+  color: #172033;
+}
+
+.rentenlucke-dashboard__header p {
+  margin: 0;
+  color: #475467;
+  font-size: 0.92rem;
+}
+
+.rentenlucke-dashboard__headline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rentenlucke-dashboard__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e4e7ec;
+}
+
+.rentenlucke-dashboard__metric span {
+  color: #667085;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rentenlucke-dashboard__metric strong {
+  color: #172033;
+  font-size: clamp(1.25rem, 2vw, 1.85rem);
+  line-height: 1.1;
+}
+
+.rentenlucke-dashboard__metric small {
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.rentenlucke-dashboard__metric--gap {
+  border-color: #f4b8b8;
+  background: #fff5f5;
+}
+
+.rentenlucke-dashboard__metric--gap strong {
+  color: #b42318;
+}
+
+.rentenlucke-dashboard__metric--reached {
+  border-color: #b6e6c9;
+  background: #f0fbf4;
+}
+
+.rentenlucke-dashboard__metric--reached strong {
+  color: #1f7a3c;
+}
+
+.rentenlucke-dashboard__bar {
+  position: relative;
+  padding: 10px 0 30px 0;
+}
+
+.rentenlucke-dashboard__bar-track {
+  display: flex;
+  height: 32px;
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #eaecf0;
+  border: 1px solid #d6dce5;
+}
+
+.rentenlucke-dashboard__bar-segment {
+  height: 100%;
+  min-width: 2px;
+}
+
+.rentenlucke-dashboard__bar-segment--gap {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #fbeaea,
+    #fbeaea 6px,
+    #f4b8b8 6px,
+    #f4b8b8 12px
+  );
+}
+
+.rentenlucke-dashboard__bar-marker {
+  position: absolute;
+  top: 6px;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed #344054;
+  pointer-events: none;
+  transform: translateX(-1px);
+}
+
+.rentenlucke-dashboard__bar-marker span {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: #344054;
+  background: #f6f8fb;
+  padding: 0 4px;
+}
+
+.rentenlucke-dashboard__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  font-size: 0.85rem;
+  color: #344054;
+}
+
+.rentenlucke-dashboard__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rentenlucke-dashboard__legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.rentenlucke-dashboard__legend-swatch--gap {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #fbeaea,
+    #fbeaea 3px,
+    #f4b8b8 3px,
+    #f4b8b8 6px
+  );
+}
+
+.rentenlucke-dashboard__legend-item--gap {
+  color: #b42318;
+}
+
+.rentenlucke-dashboard__controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.rentenlucke-dashboard__hint {
+  margin: 0;
+  color: #667085;
+  font-size: 0.85rem;
+  align-self: center;
+}
+
+.rentenlucke-dashboard__cta {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #1f5fbf;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rentenlucke-dashboard__cta:hover {
+  background: #1a4fa1;
+}
+
+.rentenlucke-dashboard__cta--secondary {
+  background: #344054;
+}
+
+.rentenlucke-dashboard__cta--secondary:hover {
+  background: #1d2939;
+}
+
+@media (max-width: 760px) {
+  .rentenlucke-dashboard__headline {
+    grid-template-columns: 1fr;
+  }
+  .rentenlucke-dashboard__controls {
+    grid-template-columns: 1fr;
+  }
+  .rentenlucke-dashboard__cta {
+    width: 100%;
+  }
+}
