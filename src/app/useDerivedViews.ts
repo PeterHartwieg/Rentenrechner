@@ -15,6 +15,7 @@ import type {
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { de2026Rules } from '../rules/de2026'
 import { buildCombinePortfolioCsv, buildExportCsv, downloadCsv } from '../utils/csvExport'
+import type { InstanceTaxModes } from '../utils/csvExport'
 import { buildShareUrl } from '../utils/urlShare'
 import {
   buildCapitalChartData,
@@ -61,6 +62,8 @@ export interface CombineExportBundle {
   perInstance: Record<string, ProductResult[]>
   combinedByScenarioId: Record<string, CombinedResult>
   scenarioLabels: Record<string, string>
+  /** Per-instance tax modes for Section 3 after-tax capital columns. */
+  perInstanceTaxModes?: Record<string, InstanceTaxModes>
 }
 
 export function useDerivedViews(
@@ -137,7 +140,11 @@ export function useDerivedViews(
     // supplies the per-instance + combined bundle. Compare-mode (no
     // `combine`) keeps the singleton export byte-identical.
     if (options?.combineMode && options.combine) {
-      const csv = buildCombinePortfolioCsv(options.combine)
+      const csv = buildCombinePortfolioCsv({
+        ...options.combine,
+        rules: de2026Rules,
+        profile,
+      })
       downloadCsv('TODO_BRAND_NAME-export.csv', csv)
       return
     }

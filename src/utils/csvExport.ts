@@ -1,4 +1,4 @@
-import type { EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult, YearlyProjection } from '../domain'
+import type { BavLumpSumTaxMode, EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult, YearlyProjection } from '../domain'
 import { afterTaxBavLumpSum } from '../engine/bavPayout'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import { afterTaxInsuranceLumpSum } from '../engine/insurancePayout'
@@ -173,6 +173,16 @@ export function buildExportCsv(opts: ExportOptions): string {
 //     instance yearly payout schedule, same columns as compare-mode section
 // ---------------------------------------------------------------------------
 
+/** Per-instance tax-mode bundle for combine-mode after-tax column derivation. */
+export interface InstanceTaxModes {
+  /** bAV lump-sum income-tax routing (derived by `deriveBavLumpSumTaxMode`). */
+  bavTaxMode?: BavLumpSumTaxMode
+  /** Private-insurance capital-payout tax era (derived by `deriveInsuranceTaxMode`). */
+  insuranceTaxMode?: InsuranceTaxMode
+  /** ETF equity partial exemption ratio (e.g. 0.3 for equity funds). */
+  equityPartialExemption?: number
+}
+
 export interface CombinePortfolioCsvOptions {
   /** Per-instance ProductResults keyed by instanceId, all scenarios. */
   perInstance: Record<string, ProductResult[]>
@@ -180,10 +190,20 @@ export interface CombinePortfolioCsvOptions {
   combinedByScenarioId: Record<string, CombinedResult>
   /** Scenario labels keyed by id (for human-readable rows). */
   scenarioLabels: Record<string, string>
+  /**
+   * Per-instance tax modes for Section 3 after-tax capital columns.
+   * When absent (or missing for a given instance), after-tax columns are
+   * emitted as blank rather than throwing.
+   */
+  perInstanceTaxModes?: Record<string, InstanceTaxModes>
+  /** Shared rules (default: caller must supply de2026Rules). */
+  rules?: GermanRules
+  /** Shared personal profile (used by bAV lump-sum KV/PV helper). */
+  profile?: PersonalProfile
 }
 
 export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): string {
-  const { perInstance, combinedByScenarioId, scenarioLabels } = opts
+  const { perInstance, combinedByScenarioId, scenarioLabels, perInstanceTaxModes, rules, profile } = opts
   const lines: string[] = []
 
   // Section 0: Disclaimer (mirror compare-mode export so legal notice is the
@@ -231,18 +251,53 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   }
 
   // Section 3: Per-instance yearly cashflows — same columns as compare-mode
-  // "Jahres-Cashflows". After-tax capital columns are omitted (n/a here:
-  // the lump-sum tax helpers need per-product profile context not available
-  // in the combine-mode bundle; the terminal `afterTaxLumpSum` on the result
-  // captures that figure at retirement date).
+  // "Jahres-Cashflows", including per-instance after-tax capital columns when
+  // `perInstanceTaxModes` is supplied (otherwise blank, never throws).
   lines.push('')
   lines.push('Jahres-Cashflows je Instanz')
-  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Alter', 'Nettoaufwand p.a. (EUR)', 'Beitrag p.a. (EUR)', 'AG-Anteil p.a. (EUR)', 'Gebühren p.a. (EUR)', 'Kum. Gebühren (EUR)', 'Kapital (EUR)', 'Reales Kapital (EUR)'))
+  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Alter', 'Nettoaufwand p.a. (EUR)', 'Beitrag p.a. (EUR)', 'AG-Anteil p.a. (EUR)', 'Gebühren p.a. (EUR)', 'Kum. Gebühren (EUR)', 'Kapital (EUR)', 'Kapital n. St. (EUR)', 'Reales Kapital (EUR)', 'Real n. St. (EUR)'))
   for (const instanceId of ids) {
     const results = perInstance[instanceId]
     if (!results) continue
+    const taxModes = perInstanceTaxModes?.[instanceId]
     for (const r of results) {
+      const isBav = r.productId === 'bav'
+      const isEtf = r.productId === 'etf'
+      const isInsurance = r.productId === 'versicherung'
       for (const row of r.rows as YearlyProjection[]) {
+        let afterTax: number | null = null
+        if (rules && taxModes) {
+          if (isBav && profile) {
+            afterTax = afterTaxBavLumpSum(
+              row.balance,
+              profile,
+              rules,
+              0,
+              true,
+              rules.year,
+              taxModes.bavTaxMode ?? 'voll_versorgungsbezug',
+            )
+          } else if (isEtf) {
+            afterTax = afterTaxInvestmentCapital(
+              row.balance,
+              row.cumulativeProductContributions,
+              rules,
+              taxModes.equityPartialExemption ?? 0,
+              row.cumulativeVorabpauschale,
+            )
+          } else if (isInsurance && taxModes.insuranceTaxMode) {
+            afterTax = afterTaxInsuranceLumpSum(
+              row.balance,
+              row.cumulativeProductContributions,
+              taxModes.insuranceTaxMode,
+              rules,
+              0,
+            )
+          }
+        }
+        const realAfterTax = afterTax !== null && row.balance > 0
+          ? afterTax * (row.realBalance / row.balance)
+          : null
         lines.push(csvRow(
           instanceId,
           r.label,
@@ -254,7 +309,9 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
           n(row.yearlyFees),
           n(row.cumulativeFees),
           n(row.balance),
+          nn(afterTax),
           n(row.realBalance),
+          nn(realAfterTax),
         ))
       }
     }

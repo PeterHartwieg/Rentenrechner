@@ -239,7 +239,7 @@ describe('buildCombinePortfolioCsv', () => {
     expect(cashflowBlock).toContain('5000.00')
   })
 
-  it('Section 3 — header column set matches compare-mode Jahres-Cashflows (minus after-tax capital)', () => {
+  it('Section 3 — header column set matches compare-mode Jahres-Cashflows (including after-tax capital columns)', () => {
     const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
     const lines = csv.split('\n')
     const sectionIdx = lines.findIndex((l) => l === 'Jahres-Cashflows je Instanz')
@@ -251,7 +251,9 @@ describe('buildCombinePortfolioCsv', () => {
     expect(headerRow).toContain('AG-Anteil p.a. (EUR)')
     expect(headerRow).toContain('Gebühren p.a. (EUR)')
     expect(headerRow).toContain('Kapital (EUR)')
+    expect(headerRow).toContain('Kapital n. St. (EUR)')
     expect(headerRow).toContain('Reales Kapital (EUR)')
+    expect(headerRow).toContain('Real n. St. (EUR)')
   })
 
   it('Section 4 — Rentenphase (ETF-Entnahme) je ETF-Instanz: present only when ETF instance has payout rows', () => {
@@ -296,5 +298,75 @@ describe('buildCombinePortfolioCsv', () => {
     expect(headerRow).toContain('Steuer (EUR)')
     expect(headerRow).toContain('Netto mtl. (EUR)')
     expect(headerRow).toContain('Kapital Ende (EUR)')
+  })
+
+  // -------------------------------------------------------------------------
+  // Section 3 after-tax columns (#24 follow-up)
+  // -------------------------------------------------------------------------
+
+  it('Section 3 — after-tax columns always present in header; blank in data when perInstanceTaxModes omitted', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Jahres-Cashflows je Instanz')
+    const headerRow = lines[sectionIdx + 1]
+    // Header always includes after-tax columns (parity with compare-mode).
+    expect(headerRow).toContain('Kapital n. St. (EUR)')
+    expect(headerRow).toContain('Real n. St. (EUR)')
+    // Data rows have blank after-tax cells (empty string) when tax modes not supplied.
+    const dataRow = lines[sectionIdx + 2]
+    const cols = dataRow.split(',')
+    // Header: Instanz, Produkt, Szenario, Alter, Nettoaufwand, Beitrag, AG, Gebühren, Kum.Gebühren, Kapital, n.St., Reales Kapital, Real n.St.
+    // Index 10 = Kapital n. St., index 12 = Real n. St. — should be blank.
+    expect(cols[10]).toBe('')
+    expect(cols[12]).toBe('')
+  })
+
+  it('Section 3 — after-tax columns present for ETF instance when perInstanceTaxModes supplied', () => {
+    const optsWithTax = {
+      ...TWO_INSTANCE_OPTS,
+      perInstanceTaxModes: {
+        'etf-1': { equityPartialExemption: 0.3 },
+        'bav-1': { bavTaxMode: 'voll_versorgungsbezug' as const },
+      },
+      rules: de2026Rules,
+      profile: defaultProfile,
+    }
+    const csv = buildCombinePortfolioCsv(optsWithTax)
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Jahres-Cashflows je Instanz')
+    const headerRow = lines[sectionIdx + 1]
+    // After-tax columns now present in header.
+    expect(headerRow).toContain('Kapital n. St. (EUR)')
+    expect(headerRow).toContain('Real n. St. (EUR)')
+    // Locate the ETF data row (etf-1 instance) and confirm after-tax value is non-blank.
+    const sectionBlock = lines.slice(sectionIdx + 2)
+    const etfRow = sectionBlock.find((l) => l.startsWith('etf-1,'))
+    expect(etfRow).toBeDefined()
+    const etfCols = etfRow!.split(',')
+    // Column 10 = Kapital n. St. — should be a non-empty number string.
+    expect(etfCols[10]).not.toBe('')
+    expect(Number(etfCols[10])).toBeGreaterThan(0)
+  })
+
+  it('Section 3 — after-tax columns present for bAV instance when perInstanceTaxModes supplied', () => {
+    const optsWithTax = {
+      ...TWO_INSTANCE_OPTS,
+      perInstanceTaxModes: {
+        'bav-1': { bavTaxMode: 'fuenftelregelung' as const },
+        'etf-1': { equityPartialExemption: 0.3 },
+      },
+      rules: de2026Rules,
+      profile: defaultProfile,
+    }
+    const csv = buildCombinePortfolioCsv(optsWithTax)
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Jahres-Cashflows je Instanz')
+    const sectionBlock = lines.slice(sectionIdx + 2)
+    const bavRow = sectionBlock.find((l) => l.startsWith('bav-1,'))
+    expect(bavRow).toBeDefined()
+    const bavCols = bavRow!.split(',')
+    // Column 10 = Kapital n. St. — should be a non-empty number for bAV.
+    expect(bavCols[10]).not.toBe('')
+    expect(Number(bavCols[10])).toBeGreaterThan(0)
   })
 })

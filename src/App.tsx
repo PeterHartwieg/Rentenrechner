@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { HelpCircle, Home } from 'lucide-react'
 import type { ProductId } from './domain'
+import type { InstanceTaxModes } from './utils/csvExport'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
+import { deriveBavLumpSumTaxMode } from './engine/bavPayout'
+import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from './engine/insurancePayout'
 import { de2026Rules } from './rules/de2026'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useGuidedSetup } from './app/useGuidedSetup'
@@ -112,20 +115,53 @@ function Calculator({ navigate }: CalculatorProps) {
   // assembled lazily so compare-mode never pays the cost.
   const combineExportBundle = useMemo(() => {
     if (!isCombineMode) return undefined
+    const wa = portfolioState.workspace.baseline.assumptions
     const scenarioLabels: Record<string, string> = {}
-    for (const s of portfolioState.workspace.baseline.assumptions.returnScenarios) {
+    for (const s of wa.returnScenarios) {
       scenarioLabels[s.id] = s.label
+    }
+    // Per-instance tax modes for Section 3 after-tax columns (issue #24 follow-up).
+    // Mirrors the derivation in simulationContext.ts / simulationSelectors.ts but
+    // applied per-instance so each contract's era/Durchführungsweg is respected.
+    const perInstanceTaxModes: Record<string, InstanceTaxModes> = {}
+    for (const inst of wa.bav) {
+      perInstanceTaxModes[inst.instanceId] = {
+        bavTaxMode: deriveBavLumpSumTaxMode(inst.durchfuehrungsweg, inst.pre2005EligibleTaxFree),
+      }
+    }
+    for (const inst of wa.insurance) {
+      const runtimeYears = computeRuntimeYearsAtRetirement(
+        inst.contractStartYear,
+        de2026Rules.year,
+        profile.age,
+        profile.retirementAge,
+      )
+      perInstanceTaxModes[inst.instanceId] = {
+        insuranceTaxMode: deriveInsuranceTaxMode(
+          inst.contractStartYear,
+          runtimeYears,
+          profile.retirementAge,
+          inst.oldContractTaxFreeEligible,
+        ),
+      }
+    }
+    for (const inst of wa.etf) {
+      perInstanceTaxModes[inst.instanceId] = {
+        equityPartialExemption: inst.equityPartialExemption,
+      }
     }
     return {
       perInstance: combineSimulation.perInstance,
       combinedByScenarioId: combineSimulation.combinedByScenarioId,
       scenarioLabels,
+      perInstanceTaxModes,
     }
   }, [
     isCombineMode,
     combineSimulation.perInstance,
     combineSimulation.combinedByScenarioId,
-    portfolioState.workspace.baseline.assumptions.returnScenarios,
+    portfolioState.workspace.baseline.assumptions,
+    profile,
   ])
   const views = useDerivedViews(profile, assumptions, result, {
     showRealValues: ui.showRealValues,
