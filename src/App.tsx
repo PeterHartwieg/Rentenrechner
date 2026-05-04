@@ -51,6 +51,7 @@ import { useCombineSimulation } from './app/useCombineSimulation'
 import { RecommenderCard } from './features/dashboard/RecommenderCard'
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
+import { DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
@@ -150,8 +151,8 @@ function Calculator({ navigate }: CalculatorProps) {
       // input drawer toggle).
       setAssumptions((current) => ({
         ...current,
-        compareSubMode: 'equal_input',
-        equalInputAmountEUR: current.equalInputAmountEUR ?? 200,
+        compareSubMode: current.compareSubMode === undefined ? 'equal_input' : current.compareSubMode,
+        equalInputAmountEUR: current.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
       }))
       return
     }

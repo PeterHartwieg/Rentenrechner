@@ -13,6 +13,7 @@ import {
   resolveEffectiveScenarioId,
   type TaxModeContext,
 } from './simulationSelectors'
+import { DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from '../data/defaultScenario'
 
 export interface SimulationResultBundle {
   /** Full simulation result (all scenarios, all products). */
@@ -53,7 +54,7 @@ export function useSimulationResult(
           profile,
           assumptions,
           de2026Rules,
-          assumptions.equalInputAmountEUR ?? 200,
+          assumptions.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
         )
       }
       return simulateRetirementComparison(profile, assumptions, de2026Rules)

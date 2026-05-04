@@ -28,6 +28,7 @@ import {
   PRODUCT_UI_REGISTRY,
   type ProductInputsContext,
 } from './productUiRegistry'
+import { DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from '../../data/defaultScenario'
 
 interface ScenarioLib {
   library: SavedScenario[]
@@ -116,7 +117,7 @@ export function InputsPanel({
       {/* ── Issue 16: compare-mode sub-mode toggle (equal-cash vs equal-input) ── */}
       <CompareSubModeToggle
         subMode={assumptions.compareSubMode ?? 'equal_cash'}
-        amountEUR={assumptions.equalInputAmountEUR ?? 200}
+        amountEUR={assumptions.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR}
         onSubModeChange={(next) =>
           onAssumptionsChange((current) => ({ ...current, compareSubMode: next }))
         }

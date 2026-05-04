@@ -8,7 +8,7 @@ import type {
   AltersvorsorgedepotInstance,
   RiesterInstance,
 } from './domain/instances'
-import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
+import { defaultAssumptions, defaultProfile, DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
 import { validateState } from './utils/scenarioSchema'
 import { singletonViewOfWorkspace } from './engine/portfolioAdapter'
 
@@ -162,7 +162,7 @@ export const defaultWorkspace: Workspace = {
       // stay byte-identical. The landing "Produkte vergleichen" CTA bumps this
       // to 'equal_input' for broker-style comparisons.
       compareSubMode: defaultAssumptions.compareSubMode ?? 'equal_cash',
-      equalInputAmountEUR: defaultAssumptions.equalInputAmountEUR ?? 200,
+      equalInputAmountEUR: defaultAssumptions.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
     },
     createdAt: new Date(0).toISOString(),
     origin: 'baseline',
@@ -357,7 +357,7 @@ export function migrateV1ToV2(
     // Issue 16 — round-trip the compare-mode sub-mode. Migrating v1 → v2 keeps
     // today's behaviour by carrying the default (equal_cash) forward.
     compareSubMode: merged.compareSubMode ?? 'equal_cash',
-    equalInputAmountEUR: merged.equalInputAmountEUR ?? 200,
+    equalInputAmountEUR: merged.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
   }
 
   const baseline: Scenario = {

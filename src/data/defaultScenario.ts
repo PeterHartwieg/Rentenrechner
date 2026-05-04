@@ -1,5 +1,8 @@
 import type { AltersvorsorgedepotAssumptions, PersonalProfile, RiesterAssumptions, ScenarioAssumptions } from '../domain'
 
+/** Default monthly gross input amount for equal-input compare mode (€/month). */
+export const DEFAULT_EQUAL_INPUT_AMOUNT_EUR = 200
+
 export const defaultProfile: PersonalProfile = {
   age: 28,
   retirementAge: 67,
@@ -116,7 +119,7 @@ export const defaultAssumptions: ScenarioAssumptions = {
   compareSubMode: 'equal_cash',
   // Issue 16 — default broker-comparison amount. Only consulted when
   // `compareSubMode === 'equal_input'`.
-  equalInputAmountEUR: 200,
+  equalInputAmountEUR: DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
   returnScenarios: [
     { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
     { id: 'basis', label: 'Basis', annualReturn: 0.05 },
