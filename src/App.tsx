@@ -338,10 +338,28 @@ function Calculator({ navigate }: CalculatorProps) {
       {guidedSetup.journeyState === 'active' && (
         <GuidedSetupPostHint
           onDismiss={guidedSetup.dismissJourney}
-          factors={derivePostHintFactors({
-            results: selectedResults,
-            bavFunding: simulation.bavFunding,
-          })}
+          factors={derivePostHintFactors(
+            isCombineMode
+              ? {
+                  // In combine mode, source factors from the portfolio simulation so the
+                  // hint reflects the instances the user actually built, not the singleton
+                  // compare state (Group G issue #35).
+                  results: Object.values(combineSimulation.perInstance)
+                    .map((arr) => arr.find((r) => r.scenarioId === combineBasisScenarioId))
+                    .filter((r): r is NonNullable<typeof r> => r !== undefined),
+                  bavFunding: {
+                    ...simulation.bavFunding,
+                    // Aggregate employer contributions across all bAV instances.
+                    monthlyEmployerContribution: Object.values(
+                      combineSimulation.portfolioFunding.bavByInstanceId,
+                    ).reduce((sum, f) => sum + f.monthlyEmployerContribution, 0),
+                  },
+                }
+              : {
+                  results: selectedResults,
+                  bavFunding: simulation.bavFunding,
+                },
+          )}
         />
       )}
 
