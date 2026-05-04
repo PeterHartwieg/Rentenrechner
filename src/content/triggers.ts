@@ -6,9 +6,10 @@
  *
  * Adding a new entry path:
  *  1. Add an id to `GuidedPath`.
- *  2. Add a row to `PATH_OPTIONS` (id, title, description).
+ *  2. Add a row to `PATH_OPTIONS` (id, title, description, optional fields).
  *  3. Add a row to `VISIBLE_PRODUCTS_BY_PATH` (which products start visible).
- *  4. Update the routing in `GuidedSetup.tsx` if path-specific inputs apply.
+ *  4. Add a matching entry to `WIZARD_REGISTRY` in
+ *     `src/features/guidance/wizards/wizardRegistry.tsx` — no other edits required.
  */
 
 import type { ProductId } from '../domain'
@@ -19,10 +20,30 @@ export type GuidedPath =
   | 'rentengap'
   | 'expert'
 
+/**
+ * Names of pre-built scenario templates from `recommendations.ts` that are
+ * relevant to this trigger. Used by issue-18+ to pre-populate the what-if
+ * panel when the user lands from this path. P2 — not consumed yet.
+ */
+export type WhatIfTemplateName = string
+
+/**
+ * Hints for the recommender engine about which result dimensions to
+ * emphasise for this trigger's user. P2 — not consumed yet.
+ */
+export interface RecommenderBias {
+  emphasiseP10?: boolean
+  emphasiseTaxLeverage?: boolean
+}
+
 export interface GuidedPathOption {
   id: GuidedPath
   title: string
   description: string
+  /** Names of pre-built what-if scenario templates relevant to this trigger. */
+  whatIfTemplates?: WhatIfTemplateName[]
+  /** Hints for the recommender about which dimensions to surface. */
+  recommenderBias?: RecommenderBias
 }
 
 const ALL_PRODUCTS: readonly ProductId[] = [

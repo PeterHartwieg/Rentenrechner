@@ -5,7 +5,6 @@ import type { PersonalProfile, ScenarioAssumptions } from '../../domain'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import {
-  STATUTORY_BAV_SUBSIDY_PCT,
   bavTotalMatchPct,
   applyBavTotalMatch,
 } from '../../app/productPresentation'
@@ -14,15 +13,10 @@ import {
   VISIBLE_PRODUCTS_BY_PATH,
   type GuidedPath,
 } from '../../content/triggers'
+import { WIZARD_REGISTRY } from './wizards/wizardRegistry'
+import type { BasicInputs, PathSpecific } from './wizards/shared'
 
 export type { GuidedPath }
-
-interface BasicInputs {
-  age: number
-  retirementAge: number
-  grossSalaryYear: number
-  publicHealthInsurance: boolean
-}
 
 /**
  * §1a Abs. 1a BetrAVG mandates a 15 % statutory employer subsidy on bAV
@@ -33,21 +27,6 @@ interface BasicInputs {
  * `applyBavTotalMatch` helper that the "Annahmen anpassen" panel also calls —
  * so both UIs round-trip the same value.
  */
-
-interface PathSpecific {
-  bavGrossConversion: number
-  /** Total AG-Zuschuss in % of Bruttoumwandlung — statutory 15 % plus any extra contractual share. */
-  bavTotalMatchPct: number
-  etfTerPct: number
-  /**
-   * Years already worked under the GRV. We back-calculate Entgeltpunkte from
-   * `years × min(salary, BBG) / durchschnittsentgelt` — same formula the engine
-   * uses for the future-EP projection. Direct EP entry is unfriendly to non-experts.
-   */
-  yearsWorked: number
-  /** Wunschnetto: target net monthly pension. 0/undefined skips the Lücke card. */
-  desiredNetMonthlyPension: number
-}
 
 interface Props {
   /** Currently active profile / assumptions — used to seed the form. */
@@ -154,6 +133,8 @@ export function GuidedSetup({
     onComplete({ suggestedView: path === 'bav_offer' ? 'angebot' : 'vergleich' })
   }
 
+  const ActiveWizard = path !== null ? WIZARD_REGISTRY[path] : null
+
   return (
     <div className="guided-setup-overlay" role="dialog" aria-modal="true" aria-labelledby="guided-setup-heading">
       <div className="guided-setup-card">
@@ -166,7 +147,7 @@ export function GuidedSetup({
           <X size={18} aria-hidden="true" />
         </button>
 
-        {path === null ? (
+        {ActiveWizard === null ? (
           <>
             <header className="guided-setup-header">
               <p className="guided-setup-eyebrow">Willkommen</p>
@@ -218,189 +199,20 @@ export function GuidedSetup({
               </p>
             </header>
 
-            <div className="guided-form-grid">
-              <SimpleNumber
-                label="Alter heute"
-                value={basics.age}
-                min={18}
-                max={70}
-                onChange={(value) => setBasics((b) => ({ ...b, age: value }))}
-                suffix="Jahre"
-              />
-              <SimpleNumber
-                label="Renteneintritt"
-                value={basics.retirementAge}
-                min={Math.max(60, basics.age + 1)}
-                max={75}
-                onChange={(value) => setBasics((b) => ({ ...b, retirementAge: value }))}
-                suffix="Jahre"
-              />
-              <SimpleNumber
-                label="Brutto pro Jahr"
-                value={basics.grossSalaryYear}
-                min={0}
-                max={500_000}
-                step={1000}
-                onChange={(value) => setBasics((b) => ({ ...b, grossSalaryYear: value }))}
-                suffix="EUR"
-              />
-              <label className="guided-toggle">
-                <input
-                  type="checkbox"
-                  checked={basics.publicHealthInsurance}
-                  onChange={(e) =>
-                    setBasics((b) => ({ ...b, publicHealthInsurance: e.target.checked }))
-                  }
-                />
-                <span>
-                  <strong>Gesetzlich krankenversichert</strong>
-                  <small>Ausschalten, falls privat krankenversichert (PKV).</small>
-                </span>
-              </label>
-
-              {path === 'bav_offer' && (
-                <>
-                  <SimpleNumber
-                    label="bAV-Bruttoumwandlung"
-                    value={extras.bavGrossConversion}
-                    min={0}
-                    max={2000}
-                    step={10}
-                    onChange={(value) =>
-                      setExtras((e) => ({ ...e, bavGrossConversion: value }))
-                    }
-                    suffix="EUR/Monat"
-                  />
-                  <SimpleNumber
-                    label="AG-Zuschuss (gesamt)"
-                    value={extras.bavTotalMatchPct}
-                    min={STATUTORY_BAV_SUBSIDY_PCT}
-                    max={100}
-                    step={5}
-                    onChange={(value) =>
-                      setExtras((e) => ({ ...e, bavTotalMatchPct: value }))
-                    }
-                    suffix="% vom Brutto"
-                    hint={`Mindestens ${STATUTORY_BAV_SUBSIDY_PCT} % gesetzlicher AG-Zuschuss (§1a Abs. 1a BetrAVG).`}
-                  />
-                  <SimpleNumber
-                    label="ETF-TER (Vergleich)"
-                    value={extras.etfTerPct}
-                    min={0}
-                    max={3}
-                    step={0.05}
-                    onChange={(value) => setExtras((e) => ({ ...e, etfTerPct: value }))}
-                    suffix="% p.a."
-                  />
-                </>
-              )}
-
-              {path === 'etf_vs_insurance' && (
-                <SimpleNumber
-                  label="ETF-TER"
-                  value={extras.etfTerPct}
-                  min={0}
-                  max={3}
-                  step={0.05}
-                  onChange={(value) => setExtras((e) => ({ ...e, etfTerPct: value }))}
-                  suffix="% p.a."
-                />
-              )}
-
-              {path === 'rentengap' && (
-                <>
-                  <SimpleNumber
-                    label="Wie viele Jahre arbeitest du schon?"
-                    value={extras.yearsWorked}
-                    min={0}
-                    max={50}
-                    step={1}
-                    onChange={(value) =>
-                      setExtras((e) => ({ ...e, yearsWorked: value }))
-                    }
-                    suffix="Jahre"
-                    hint={`≈ ${estimateEpFromYears(extras.yearsWorked, basics.grossSalaryYear).toFixed(1)} Entgeltpunkte (geschätzt)`}
-                  />
-                  <SimpleNumber
-                    label="Was möchtest du im Monat haben? (optional)"
-                    value={extras.desiredNetMonthlyPension}
-                    min={0}
-                    max={20_000}
-                    step={100}
-                    onChange={(value) =>
-                      setExtras((e) => ({ ...e, desiredNetMonthlyPension: value }))
-                    }
-                    suffix="EUR netto"
-                    hint="Wunschnetto in der Rente — wir zeigen dir die Lücke."
-                  />
-                </>
-              )}
-            </div>
-
-            <p className="guided-setup-note">
-              Standardannahme: bAV als Direktversicherung, lebenslange Rente,
-              gesetzlich pflichtversichert in der Rente. Diese und weitere Punkte kannst du im
-              Dashboard pro Produkt anpassen.
-            </p>
-
-            <footer className="guided-setup-footer guided-setup-actions">
-              <button type="button" className="guided-setup-link" onClick={() => setPath(null)}>
-                Zurück
-              </button>
-              <button
-                type="button"
-                className="guided-setup-primary"
-                onClick={applyAndComplete}
-              >
-                <Check size={16} aria-hidden="true" />
-                Vergleich starten
-              </button>
-            </footer>
+            <ActiveWizard
+              profile={profile}
+              assumptions={assumptions}
+              basics={basics}
+              setBasics={setBasics}
+              extras={extras}
+              setExtras={setExtras}
+              onApplyAndComplete={applyAndComplete}
+              onBack={() => setPath(null)}
+            />
           </>
         )}
       </div>
     </div>
-  )
-}
-
-function SimpleNumber({
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  suffix,
-  hint,
-  onChange,
-}: {
-  label: string
-  value: number
-  min?: number
-  max?: number
-  step?: number
-  suffix?: string
-  hint?: string
-  onChange: (value: number) => void
-}) {
-  return (
-    <label className="guided-field">
-      <span>{label}</span>
-      <div className="guided-input-shell">
-        <input
-          type="number"
-          value={Number.isFinite(value) ? value : 0}
-          min={min}
-          max={max}
-          step={step}
-          onChange={(e) => {
-            const next = Number(e.target.value)
-            if (Number.isFinite(next)) onChange(next)
-          }}
-        />
-        {suffix && <em>{suffix}</em>}
-      </div>
-      {hint && <small className="guided-field-hint">{hint}</small>}
-    </label>
   )
 }
 
