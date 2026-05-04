@@ -303,11 +303,17 @@ describe('PortfolioAdapter — two bAV instances share the §3 Nr. 63 cap', () =
 })
 
 // ---------------------------------------------------------------------------
-// 3. Two ETF instances Sparerpauschbetrag (deferred — Decision C)
+// 3. Two ETF instances Sparerpauschbetrag (Decision C — sharing applied in simulatePortfolio)
 // ---------------------------------------------------------------------------
 
 describe('PortfolioAdapter — Sparerpauschbetrag cross-instance handling', () => {
-  it('surfaces a portfolioFunding.notes entry when ≥2 ETF instances are present', () => {
+  it('does NOT surface a stale deferral note when ≥2 ETF instances are present (sharing is applied)', () => {
+    // Issue #17: the old assertion pinned a misleading "Sparerpauschbetrag sharing is
+    // deferred" note emitted by buildPortfolioFunding. That note was inaccurate because
+    // simulatePortfolio already applies cross-instance sharing via
+    // applyCrossInstanceSparerpauschbetrag. The stale note has been removed; this test
+    // asserts its absence and that the notes array contains no "deferred" wording for
+    // the Sparerpauschbetrag. Correct sharing behavior is pinned by the subsequent tests.
     const baseV1 = makeRichV1()
     const workspace = migrateV1ToV2(
       baseV1.profile as unknown as Record<string, unknown>,
@@ -328,7 +334,10 @@ describe('PortfolioAdapter — Sparerpauschbetrag cross-instance handling', () =
     }
 
     const { portfolioFunding } = simulatePortfolio(ws, de2026Rules)
-    expect(portfolioFunding.notes.some(n => n.toLowerCase().includes('sparerpauschbetrag'))).toBe(true)
+    // No stale "deferred" note — sharing is actually applied in simulatePortfolio.
+    expect(portfolioFunding.notes.some(n =>
+      n.toLowerCase().includes('sparerpauschbetrag') && n.toLowerCase().includes('deferred'),
+    )).toBe(false)
   })
 
   it('two ETF instances share the €1 000 single allowance per year (no double-credit)', () => {
@@ -1881,5 +1890,198 @@ describe('issue F2 — combine-mode insurance monthlyContribution override', () 
     const singleton = singletonViewOfWorkspace(ws, SINGLETON_DEFAULTS)
     expect(singleton.insurance).toBeDefined()
     expect('insuranceMonthlyUserCostOverride' in singleton).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #18 — length-1 equivalence goldens: ETF, pAV, AVD
+// ---------------------------------------------------------------------------
+//
+// Claim: a workspace containing exactly ONE instance of each product, run
+// through the portfolio adapter, must produce the same financial outcome as the
+// singleton compare-mode pipeline for the same inputs.
+//
+// Why these three products:
+//   - ETF: the existing test (section 3, length-1 byte-identity) pins
+//     `capitalAtRetirement`, `afterTaxLumpSum`, and per-row taxes but does NOT
+//     pin `netMonthlyPayout`. Adding it here closes that gap and provides a
+//     standalone golden that is independent of the Sparerpauschbetrag tests.
+//   - pAV (Privatrentenversicherung): insurance uses
+//     `insuranceMonthlyUserCostOverride` in combine-mode; with the override set
+//     to the compare-mode's `bavFunding.monthlyNetCost`, the two paths should
+//     be byte-identical for `capitalAtRetirement` and `netMonthlyPayout`.
+//   - AVD (Altersvorsorgedepot): certified-pension funding flows through
+//     `altersvorsorgedepotFundingOverride` in combine-mode and through
+//     `buildContext` in compare-mode; a length-1 workspace must produce the
+//     same result because both paths call `calculateAvdFunding` on the same
+//     singleton-shaped assumptions.
+
+describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
+  // ---------------------------------------------------------------------------
+  // ETF length-1
+  // ---------------------------------------------------------------------------
+  it('ETF length-1: capitalAtRetirement and netMonthlyPayout match compare-mode', () => {
+    // ETF combine-mode uses `etfMonthlyUserCostOverride = inst.monthlyContribution`.
+    // Compare-mode uses `bavFunding.monthlyNetCost`. Set `monthlyContribution` to
+    // the compare-mode value so both paths see the same net monthly inflow.
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const projected = singletonViewOfWorkspace(workspace, SINGLETON_DEFAULTS)
+    const compareResult = simulateRetirementComparison(
+      defaultProfile,
+      { ...projected, visibleProducts: ['etf'] as ProductId[] },
+      de2026Rules,
+    )
+    const bavNetCost = compareResult.bavFunding.monthlyNetCost
+    const compareEtf = compareResult.products.find(p => p.productId === 'etf')
+    expect(compareEtf).toBeDefined()
+
+    // Combine-mode: single ETF instance with monthlyContribution = bavFunding.monthlyNetCost.
+    const etfInst: EtfInstance = {
+      ...workspace.baseline.assumptions.etf[0],
+      instanceId: 'etf-equiv',
+      label: 'ETF equiv',
+      monthlyContribution: bavNetCost,
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          etf: [etfInst],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    for (const compareR of compareResult.products) {
+      if (compareR.productId !== 'etf') continue
+      const combineR = perInstance['etf-equiv'].find(r => r.scenarioId === compareR.scenarioId)
+      expect(combineR).toBeDefined()
+      // Financial equivalence: capital and monthly payout are byte-identical (≤ 2 decimal places).
+      expect(combineR!.capitalAtRetirement).toBeCloseTo(compareR.capitalAtRetirement, 2)
+      expect(combineR!.netMonthlyPayout).toBeCloseTo(compareR.netMonthlyPayout, 2)
+      if (compareR.afterTaxLumpSum !== null) {
+        expect(combineR!.afterTaxLumpSum).toBeCloseTo(compareR.afterTaxLumpSum!, 2)
+      } else {
+        expect(combineR!.afterTaxLumpSum).toBe(null)
+      }
+    }
+  })
+
+  // ---------------------------------------------------------------------------
+  // pAV (private insurance) length-1
+  // ---------------------------------------------------------------------------
+  it('pAV length-1: capitalAtRetirement and netMonthlyPayout match compare-mode', () => {
+    // Insurance combine-mode uses `insuranceMonthlyUserCostOverride = inst.monthlyContribution`.
+    // Compare-mode uses `bavFunding.monthlyNetCost`. Setting monthlyContribution to
+    // the compare-mode bavNetCost makes both paths use the same net monthly inflow.
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const projected = singletonViewOfWorkspace(workspace, SINGLETON_DEFAULTS)
+    const compareResult = simulateRetirementComparison(
+      defaultProfile,
+      { ...projected, visibleProducts: ['versicherung'] as ProductId[] },
+      de2026Rules,
+    )
+    const bavNetCost = compareResult.bavFunding.monthlyNetCost
+    const compareIns = compareResult.products.find(p => p.productId === 'versicherung')
+    expect(compareIns).toBeDefined()
+
+    // Combine-mode: single insurance instance with monthlyContribution = bavNetCost.
+    const insInst: InsuranceInstance = {
+      ...workspace.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-equiv',
+      label: 'pAV equiv',
+      monthlyContribution: bavNetCost,
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          insurance: [insInst],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    for (const compareR of compareResult.products) {
+      if (compareR.productId !== 'versicherung') continue
+      const combineR = perInstance['versicherung-equiv'].find(r => r.scenarioId === compareR.scenarioId)
+      expect(combineR).toBeDefined()
+      // Financial equivalence: capital and monthly payout are byte-identical (≤ 2 decimal places).
+      expect(combineR!.capitalAtRetirement).toBeCloseTo(compareR.capitalAtRetirement, 2)
+      expect(combineR!.netMonthlyPayout).toBeCloseTo(compareR.netMonthlyPayout, 2)
+      if (compareR.afterTaxLumpSum !== null) {
+        expect(combineR!.afterTaxLumpSum).toBeCloseTo(compareR.afterTaxLumpSum!, 2)
+      } else {
+        expect(combineR!.afterTaxLumpSum).toBe(null)
+      }
+    }
+  })
+
+  // ---------------------------------------------------------------------------
+  // AVD (Altersvorsorgedepot) length-1
+  // ---------------------------------------------------------------------------
+  // AVD is chosen over Riester because AVD has no Kinderzulage complexity and its
+  // funding (§10 Sonderausgaben) is computed identically in both compare-mode
+  // (via `buildContext` → `calculateAvdFunding`) and combine-mode (via
+  // `altersvorsorgedepotFundingOverride`). A length-1 workspace must produce
+  // byte-identical financial outcomes because both code paths derive funding from
+  // the same singleton-shaped assumptions.
+  it('AVD length-1: capitalAtRetirement and netMonthlyPayout match compare-mode', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const projected = singletonViewOfWorkspace(workspace, SINGLETON_DEFAULTS)
+    const compareResult = simulateRetirementComparison(
+      defaultProfile,
+      { ...projected, visibleProducts: ['altersvorsorgedepot'] as ProductId[] },
+      de2026Rules,
+    )
+    const compareAvd = compareResult.products.find(p => p.productId === 'altersvorsorgedepot')
+    expect(compareAvd).toBeDefined()
+
+    // Combine-mode: single AVD instance — no monthlyContribution override needed;
+    // AVD funding is passed via altersvorsorgedepotFundingOverride which derives from
+    // the same calculateAvdFunding call as in compare-mode.
+    const avdInst: AltersvorsorgedepotInstance = {
+      ...workspace.baseline.assumptions.altersvorsorgedepot[0],
+      instanceId: 'avd-equiv',
+      label: 'AVD equiv',
+    }
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          altersvorsorgedepot: [avdInst],
+        },
+      },
+    }
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    for (const compareR of compareResult.products) {
+      if (compareR.productId !== 'altersvorsorgedepot') continue
+      const combineR = perInstance['avd-equiv'].find(r => r.scenarioId === compareR.scenarioId)
+      expect(combineR).toBeDefined()
+      // Financial equivalence: capital and monthly payout are byte-identical (≤ 2 decimal places).
+      expect(combineR!.capitalAtRetirement).toBeCloseTo(compareR.capitalAtRetirement, 2)
+      expect(combineR!.netMonthlyPayout).toBeCloseTo(compareR.netMonthlyPayout, 2)
+      if (compareR.afterTaxLumpSum !== null) {
+        expect(combineR!.afterTaxLumpSum).toBeCloseTo(compareR.afterTaxLumpSum!, 2)
+      } else {
+        expect(combineR!.afterTaxLumpSum).toBe(null)
+      }
+    }
   })
 })

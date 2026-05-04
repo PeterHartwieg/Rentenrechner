@@ -833,16 +833,6 @@ export function buildPortfolioFunding(
     )
   }
 
-  // -------------------------------------------------------------------------
-  // Sparerpauschbetrag note (deferred per Decision C)
-  // -------------------------------------------------------------------------
-  if (wsa.etf.length >= 2) {
-    notes.push(
-      'Cross-instance Sparerpauschbetrag sharing is deferred to issue 15. '
-      + `Each of the ${wsa.etf.length} ETF instances currently consumes the full €${rules.capitalGains.saverAllowance} allowance independently.`,
-    )
-  }
-
   return {
     bavByInstanceId,
     basisrenteByInstanceId,
