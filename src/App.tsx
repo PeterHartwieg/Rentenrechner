@@ -78,6 +78,9 @@ function Calculator({ navigate }: CalculatorProps) {
   const [appView, setAppView] = useState<AppView>(() => appViewFromMode(detectSavedMode()))
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
   const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
+  // Issue 23: product tab to pre-select when navigating from a ProductEditCard
+  // default-state notice to the InputsPanel ("Einstellungen anpassen").
+  const [requestedInputsTab, setRequestedInputsTab] = useState<ProductId | null>(null)
 
   const {
     profile,
@@ -430,6 +433,10 @@ function Calculator({ navigate }: CalculatorProps) {
                 onAssumptionsChange={setAssumptions}
                 avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
                 avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
+                onOpenInputsForProduct={(productId) => {
+                  setRequestedInputsTab(productId)
+                  workspace.setActiveView('angebot')
+                }}
               />
 
               <ResultWaterfalls
@@ -622,6 +629,8 @@ function Calculator({ navigate }: CalculatorProps) {
           insuranceResult={insuranceResult}
           tarifgebunden={ui.tarifgebunden}
           onTarifgebundenChange={ui.setTarifgebunden}
+          requestActiveTab={requestedInputsTab}
+          onActiveTabConsumed={() => setRequestedInputsTab(null)}
         />
       </section>
     )

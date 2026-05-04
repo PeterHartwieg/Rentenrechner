@@ -56,6 +56,13 @@ interface InputsPanelProps {
   insuranceResult: InsuranceProductResult | undefined
   tarifgebunden: boolean
   onTarifgebundenChange: (v: boolean) => void
+  /**
+   * Issue 23: when set, the panel will pre-select this product tab once.
+   * Call `onActiveTabConsumed` after applying it so the parent can clear
+   * the request and avoid re-triggering on subsequent renders.
+   */
+  requestActiveTab?: ProductId | null
+  onActiveTabConsumed?: () => void
 }
 
 export function InputsPanel({
@@ -74,6 +81,8 @@ export function InputsPanel({
   insuranceResult,
   tarifgebunden,
   onTarifgebundenChange,
+  requestActiveTab,
+  onActiveTabConsumed,
 }: InputsPanelProps) {
   const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } =
     computeBavMinimumEntitlement(de2026Rules)
@@ -87,8 +96,20 @@ export function InputsPanel({
   // Active product tab — falls back to first visible if the requested tab
   // is no longer in `visible` (e.g. user toggled it off in the picker).
   const [requestedTab, setRequestedTab] = useState<ProductId | null>(visible[0] ?? null)
+
+  // Issue 23: when a product card's "Einstellungen anpassen" button is clicked,
+  // App.tsx sets `requestActiveTab` to the target product and navigates here.
+  // We honour the external override by feeding it into `activeTab` computation
+  // directly. `onActiveTabConsumed` is called when the user clicks a tab manually,
+  // clearing `requestActiveTab` in the parent so subsequent user tab-clicks are
+  // not overridden.
+  const effectiveTab: ProductId | null =
+    requestActiveTab && visible.includes(requestActiveTab)
+      ? requestActiveTab
+      : requestedTab
+
   const activeTab: ProductId | null =
-    requestedTab && visible.includes(requestedTab) ? requestedTab : (visible[0] ?? null)
+    effectiveTab && visible.includes(effectiveTab) ? effectiveTab : (visible[0] ?? null)
 
   return (
     <section className="input-panel input-panel--full" aria-label="Eingaben">
@@ -181,7 +202,16 @@ export function InputsPanel({
           </p>
         ) : (
           <>
-            <ProductTabs visible={visible} active={activeTab} onChange={setRequestedTab} />
+            <ProductTabs
+              visible={visible}
+              active={activeTab}
+              onChange={(id) => {
+                setRequestedTab(id)
+                // Clear the external request so user-driven tab clicks are not
+                // overridden on the next render (issue 23).
+                onActiveTabConsumed?.()
+              }}
+            />
 
             {activeTab && (() => {
               const entry = PRODUCT_UI_REGISTRY[activeTab]

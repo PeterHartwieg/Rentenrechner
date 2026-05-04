@@ -12,7 +12,11 @@ import {
 } from '../../app/productPresentation'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { defaultAssumptions } from '../../data/defaultScenario'
-import { FieldWithProv } from './provenance'
+import { FieldWithProv, ProvLabel } from './provenance'
+import {
+  isProductAllDefaults,
+  buildProductDefaultsSummary,
+} from './productDefaultsHelpers'
 
 const TIP_NETTO_RENTE =
   'Was monatlich auf deinem Konto landet — nach Steuer und (bei bAV/Rürup) Krankenkasse.'
@@ -29,6 +33,8 @@ interface Props {
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
   avdCappedAtContractMax?: boolean
   avdContractCapAnnual?: number
+  /** Called when user clicks "Einstellungen anpassen" on an all-default card. */
+  onOpenInputsForProduct?: (productId: ProductId) => void
 }
 
 type FieldProps = {
@@ -84,6 +90,7 @@ export function ProductEditCards({
   onAssumptionsChange,
   avdCappedAtContractMax = false,
   avdContractCapAnnual,
+  onOpenInputsForProduct,
 }: Props) {
   if (selectedResults.length === 0) return null
 
@@ -98,6 +105,7 @@ export function ProductEditCards({
             onAssumptionsChange={onAssumptionsChange}
             cappedAtContractMax={result.productId === 'altersvorsorgedepot' && avdCappedAtContractMax}
             contractCapAnnual={avdContractCapAnnual}
+            onOpenInputsForProduct={onOpenInputsForProduct}
           />
         ))}
       </div>
@@ -111,16 +119,22 @@ function ProductCard({
   onAssumptionsChange,
   cappedAtContractMax,
   contractCapAnnual,
+  onOpenInputsForProduct,
 }: {
   result: ProductResult
   assumptions: ScenarioAssumptions
   onAssumptionsChange: React.Dispatch<React.SetStateAction<ScenarioAssumptions>>
   cappedAtContractMax: boolean
   contractCapAnnual?: number
+  onOpenInputsForProduct?: (productId: ProductId) => void
 }) {
   const meta = getProductMeta(result.productId)
   const color = meta?.color ?? '#94a3b8'
   const showRentenfaktorHint = hasUnconfirmedRentenfaktor(result.productId, assumptions)
+  const allDefaults = isProductAllDefaults(result.productId, assumptions)
+  const defaultsSummary = allDefaults
+    ? buildProductDefaultsSummary(result.productId, assumptions)
+    : ''
 
   return (
     <div className="pec-card" style={{ borderTopColor: color }}>
@@ -170,6 +184,23 @@ function ProductCard({
           <p className="pec-model-hint">
             Rentenfaktor ist noch Schätzwert – bitte aus Angebot übernehmen.
           </p>
+        )}
+        {allDefaults && (
+          <div className="pec-defaults-notice">
+            <ProvLabel isModified={false} />
+            {defaultsSummary && (
+              <p className="pec-defaults-summary">{defaultsSummary}</p>
+            )}
+            {onOpenInputsForProduct && (
+              <button
+                type="button"
+                className="pec-defaults-btn"
+                onClick={() => onOpenInputsForProduct(result.productId)}
+              >
+                Einstellungen anpassen
+              </button>
+            )}
+          </div>
         )}
       </div>
 
