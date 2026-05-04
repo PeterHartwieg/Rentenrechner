@@ -471,6 +471,78 @@ describe('PortfolioAdapter — Sparerpauschbetrag cross-instance handling', () =
     expect(totalTax).toBeGreaterThan(0)
   })
 
+  it('joint-filing workspace: 2 ETF instances, total demand ≈€2400 → tax on ≈€400 (not €1400)', () => {
+    // §20 Abs. 9 EStG joint-filing cap = €2 000. With two ETF instances each
+    // generating ≈€1 200 post-exemption taxable demand per payout year (≈€2 400
+    // combined), only ≈€400 should be taxed — not the €1 400 that would result
+    // from using the single-filer cap of €1 000.
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const etfBase = workspace.baseline.assumptions.etf[0]
+    const etfA: EtfInstance = {
+      ...etfBase,
+      instanceId: 'etf-joint-a',
+      label: 'ETF Joint A',
+      monthlyContribution: 800,
+    }
+    const etfB: EtfInstance = {
+      ...etfBase,
+      instanceId: 'etf-joint-b',
+      label: 'ETF Joint B',
+      monthlyContribution: 800,
+    }
+    // Simulate a married couple by setting baseline.partner.
+    const ws: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        partner: defaultProfile,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          etf: [etfA, etfB],
+        },
+      },
+    }
+
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    const scenarioId = ws.baseline.assumptions.returnScenarios[0].id
+    const aResult = perInstance['etf-joint-a'].find(r => r.scenarioId === scenarioId)
+    const bResult = perInstance['etf-joint-b'].find(r => r.scenarioId === scenarioId)
+    if (aResult?.productId !== 'etf' || bResult?.productId !== 'etf') {
+      throw new Error('expected ETF result type')
+    }
+
+    const partialExemption = baseV1.assumptions.etf.equityPartialExemption
+    const jointAllowance = de2026Rules.capitalGains.saverAllowance * 2 // €2 000
+
+    for (let i = 0; i < aResult.etfPayoutRows.length && i < bResult.etfPayoutRows.length; i++) {
+      const a = aResult.etfPayoutRows[i]
+      const b = bResult.etfPayoutRows[i]
+      const combinedDemand = (a.taxableGain + b.taxableGain) * (1 - partialExemption)
+      if (combinedDemand < jointAllowance + 50) continue // not yet a binding year
+
+      const combinedAllowanceUsed = a.saverAllowanceUsed + b.saverAllowanceUsed
+      const combinedTax = a.taxDue + b.taxDue
+
+      // The joint allowance (€2 000) must be fully consumed in binding years.
+      expect(combinedAllowanceUsed).toBeCloseTo(jointAllowance, 1)
+
+      // Tax should be on (combinedDemand − €2 000), not on (combinedDemand − €1 000).
+      // At 25 % Abgeltungsteuer + 5.5 % Soli: effective rate ≈ 26.375 %.
+      const expectedTaxBase = combinedDemand - jointAllowance
+      const expectedTax = expectedTaxBase * 0.26375
+      expect(combinedTax).toBeCloseTo(expectedTax, 0)
+
+      // Sanity: the single-filer tax (on demand − €1 000) would be materially higher.
+      const singleFilerTax = (combinedDemand - de2026Rules.capitalGains.saverAllowance) * 0.26375
+      expect(combinedTax).toBeLessThan(singleFilerTax - 50)
+      break
+    }
+  })
+
   it('length-1 ETF workspace is byte-identical to compare-mode (no shared-allowance penalty)', () => {
     // Single-instance combine-mode must match compare-mode oracle goldens
     // because the cross-instance re-run path is gated on ≥2 active ETF

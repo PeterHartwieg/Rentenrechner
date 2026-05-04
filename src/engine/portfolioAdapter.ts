@@ -1333,6 +1333,9 @@ export function simulatePortfolio(
  * proportionally to each instance's `taxableAfterExemption` demand from the
  * initial pass. The accumulation phase (Vorabpauschale) and payout phase share
  * one combined yearly schedule indexed by 0-based contract year.
+ *
+ * Joint filing (workspace.baseline.partner !== undefined): the §20 Abs. 9 EStG
+ * cap doubles to €2 000 (Zusammenveranlagung), mirroring the recommender logic.
  */
 function applyCrossInstanceSparerpauschbetrag(
   wsa: WorkspaceAssumptionsV2,
@@ -1346,7 +1349,8 @@ function applyCrossInstanceSparerpauschbetrag(
   const activeEtf = wsa.etf.filter((e) => e.status !== 'surrendered')
   if (activeEtf.length < 2) return
 
-  const fullAllowance = rules.capitalGains.saverAllowance
+  const married = workspace.baseline.partner !== undefined
+  const fullAllowance = rules.capitalGains.saverAllowance * (married ? 2 : 1)
   const yearsToRetirement = profile.retirementAge - profile.age
   const retirementYears = wsa.retirementEndAge - profile.retirementAge
   const totalYears = Math.max(0, yearsToRetirement + retirementYears)
