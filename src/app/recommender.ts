@@ -33,10 +33,19 @@
  *   simulating its accumulation at the basis scenario's expected return,
  *   projecting a ProductResult, then folding it into a cloned per-instance
  *   bundle and re-running `combinePortfolio` on the candidate workspace.
- *   Monte Carlo widening is NOT run here (cost > benefit for a 3-4 candidate
- *   refresh) — riskScore is reported as the candidate's deterministic capital
- *   at the basis scenario; UI labels it "Endkapital" (most honest plain-German
- *   for a deterministic proxy). P10-from-MC is a P2 follow-up.
+ *
+ * Risk score (P10):
+ *   `riskScoreP10` is the 10th-percentile of total nominal capital at
+ *   retirement across N stochastic paths sampled from the basis scenario's
+ *   expected return + `assumptions.monteCarlo.annualVolatility`. The MC sim
+ *   used here is a lightweight FV simulator over the candidate's marginal
+ *   monthly contribution and fees — consistent with the deterministic FV
+ *   used for `medianNettoRente`. We do not run the full per-instance engine
+ *   per path: budget is under 500ms total for 4 candidates × 200 paths.
+ *
+ *   The deterministic basis-scenario capital remains as `riskScore` for
+ *   back-compat (still used by the UI's "Endkapital" sort key); P10 is
+ *   exposed via `riskScoreP10` and is the primary worst-case figure shown.
  *
  * Out of scope:
  *   - Vintage-detection rules (issue 13, already on main).
@@ -73,6 +82,7 @@ import {
 } from '../features/inventory/inventoryHelpers'
 import { defaultAssumptions } from '../data/defaultScenario'
 import { runRules, type Atom, computeKinderzulagen } from './recommendations'
+import { SeededNormal, generateMarketReturnPath } from '../engine/monteCarlo'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -107,9 +117,18 @@ export interface RecommendedCandidate {
   lifetimeCash: number
   /** Ordinal flexibility class (capital availability before retirement). */
   flexibilityScore: FlexibilityScore
-  /** Expected capital at retirement (EUR) under the basis scenario.
-   *  v1 deterministic proxy. P10 from MC subset is P2 follow-up. */
+  /** Expected capital at retirement (EUR) under the basis scenario (deterministic).
+   *  Retained for back-compat with the existing "Endkapital" sort. */
   riskScore: number
+  /**
+   * Monte Carlo P10 of total nominal capital at retirement (EUR) — the
+   * "bad-outcome floor": 10 of 100 simulated paths fall below this. Higher
+   * is better. Computed from `MC_PATHS` paths sampled at the basis scenario's
+   * expected return and `assumptions.monteCarlo.annualVolatility`.
+   */
+  riskScoreP10: number
+  /** Number of MC paths used to compute riskScoreP10 (for transparency / tests). */
+  riskScoreMcPaths: number
   /** Trade-off labels emitted by the rules engine. */
   atoms: Atom[]
   /** False when `profile.desiredNetMonthlyPension > 0` and the candidate's median falls below it. */
@@ -135,6 +154,15 @@ const MAX_LIFETIME_YEARS = 35
  */
 const MAX_CANDIDATES = 4
 
+/**
+ * Number of Monte Carlo paths run per candidate to compute `riskScoreP10`.
+ * 200 keeps the total recommender cost (4 candidates × 200 paths × ~30 yr
+ * each = 24k cheap FV iterations) under the 500 ms budget on the dashboard
+ * render; the loop is plain arithmetic, no engine reentrancy. If profiling
+ * regresses, drop to 100 here and revisit.
+ */
+const MC_PATHS = 200
+
 const FLEX_BY_PRODUCT: Record<ProductId, FlexibilityScore> = {
   etf: 'high',
   altersvorsorgedepot: 'high',
@@ -158,6 +186,89 @@ const FLEX_BY_PRODUCT: Record<ProductId, FlexibilityScore> = {
  * `projectAccumulation` is the source of truth when the candidate is
  * materialised into a what-if and re-simulated.
  */
+/**
+ * 10th-percentile from a sample. Uses linear interpolation on the sorted
+ * array — same convention as `monteCarlo.ts`'s `percentileFromSorted`. Inlined
+ * here (not imported) so the recommender stays a pure module without pulling
+ * the full MC engine surface.
+ */
+function p10FromSorted(sorted: readonly number[]): number {
+  if (sorted.length === 0) return 0
+  if (sorted.length === 1) return sorted[0]
+  const index = (sorted.length - 1) * 0.1
+  const lo = Math.floor(index)
+  const hi = Math.ceil(index)
+  if (lo === hi) return sorted[lo]
+  const weight = index - lo
+  return sorted[lo] * (1 - weight) + sorted[hi] * weight
+}
+
+/**
+ * Hash a string to a 32-bit unsigned integer. Used to derive a deterministic
+ * per-candidate MC seed from the workspace seed + candidate id, so two
+ * candidates in the same recommender run draw uncorrelated paths but a repeat
+ * call with identical inputs reproduces the ranking exactly.
+ */
+function hashStringToU32(s: string): number {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return h >>> 0
+}
+
+/**
+ * Compute P10 of total nominal capital at retirement for a candidate.
+ *
+ * Per path:
+ *   1. Sample `years` annual gross returns via `generateMarketReturnPath`
+ *      (lognormal around `expectedReturn` + `volatility`, identical to the
+ *      dashboard MC panel's market path).
+ *   2. Subtract the candidate's combined accumulation fee from each year's
+ *      return (mirrors the deterministic FV's `netReturn = annualReturn - fees`).
+ *   3. Compound month-by-month using the geometric monthly rate of that year.
+ *
+ * Cost: ~years×12 multiplications per path; for 30 yr × 200 paths × 4
+ * candidates ≈ 290k ops — negligible vs. the 500 ms budget.
+ */
+function monteCarloP10Capital(
+  monthlyContribution: number,
+  totalFeeDecimal: number,
+  expectedReturn: number,
+  volatility: number,
+  years: number,
+  paths: number,
+  seed: number,
+): number {
+  if (monthlyContribution <= 0 || years <= 0 || paths <= 0) return 0
+  const rng = new SeededNormal(seed)
+  const finals: number[] = new Array(paths)
+  for (let p = 0; p < paths; p++) {
+    const path = generateMarketReturnPath({
+      years,
+      expectedAnnualReturn: expectedReturn,
+      annualVolatility: volatility,
+      rng,
+    })
+    let balance = 0
+    for (let y = 0; y < path.length; y++) {
+      const netAnnual = Math.max(-0.99, path[y] - totalFeeDecimal)
+      const monthlyRate = Math.pow(1 + netAnnual, 1 / 12) - 1
+      // Apply ordinary-annuity FV for the year, compounding existing balance.
+      // balance_{end} = balance_{start} × (1+r)^12 + c × ((1+r)^12 − 1) / r
+      const growth = Math.pow(1 + monthlyRate, 12)
+      balance = balance * growth +
+        (Math.abs(monthlyRate) < 1e-9
+          ? monthlyContribution * 12
+          : monthlyContribution * (growth - 1) / monthlyRate)
+    }
+    finals[p] = balance
+  }
+  finals.sort((a, b) => a - b)
+  return p10FromSorted(finals)
+}
+
 function projectMonthlyContributionFV(
   monthlyContribution: number,
   annualReturn: number,
@@ -332,6 +443,16 @@ interface CandidateDraft {
    * resolves the new instance id.
    */
   newInstance?: BavInstance | BasisrenteInstance | AltersvorsorgedepotInstance | RiesterInstance
+  /**
+   * Inputs needed to re-run a stochastic accumulation for this candidate
+   * (used for the P10 risk score). Mirrors the deterministic FV inputs:
+   * the monthly TOTAL contribution that compounds (own + employer / allowance
+   * share) and the combined accumulation fee in decimal form.
+   */
+  mcInputs: {
+    monthlyContribution: number
+    totalFeeDecimal: number
+  }
 }
 
 // --- ETF candidate ---------------------------------------------------------
@@ -386,6 +507,7 @@ function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
     netCashOutEUR: gross,
     cappedToRemaining: false,
     candidateResult,
+    mcInputs: { monthlyContribution: gross, totalFeeDecimal: annualFee },
   }
 }
 
@@ -497,6 +619,7 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
     netCashOutEUR: netCash,
     cappedToRemaining,
     candidateResult,
+    mcInputs: { monthlyContribution: totalMonthly, totalFeeDecimal: fees },
   }
 }
 
@@ -585,6 +708,7 @@ function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | null {
     cappedToRemaining,
     candidateResult,
     newInstance,
+    mcInputs: { monthlyContribution: gross, totalFeeDecimal: fees },
   }
 }
 
@@ -641,6 +765,7 @@ function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
     cappedToRemaining,
     candidateResult,
     newInstance,
+    mcInputs: { monthlyContribution: sized, totalFeeDecimal: fees },
   }
 }
 
@@ -718,6 +843,7 @@ function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft | null {
     netCashOutEUR: netCash,
     cappedToRemaining,
     candidateResult,
+    mcInputs: { monthlyContribution: totalMonthly, totalFeeDecimal: fees },
   }
 }
 
@@ -837,6 +963,9 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
   const yearsToRetirement = Math.max(1, profile.retirementAge - profile.age)
   const basis = pickBasisScenario(workspace)
   const combineCtx = buildCombineContext(workspace, rules, input.grvGrossMonthlyPension)
+  const wsa = workspace.baseline.assumptions
+  const mcSeedBase = wsa.monteCarlo?.seed ?? 2026
+  const mcVolatility = wsa.monteCarlo?.annualVolatility ?? 0.15
 
   const g: GeneratorContext = {
     workspace,
@@ -906,6 +1035,21 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
         })
       }
     }
+    // P10 risk score: re-run the candidate's marginal accumulation under
+    // `MC_PATHS` stochastic paths to estimate the bad-outcome floor.
+    // Seed is derived from (workspace MC seed) ⊕ hash(candidate id) so the
+    // same workspace+budget produces an identical ranking every call, while
+    // distinct candidates draw uncorrelated paths.
+    const candidateSeed = (mcSeedBase ^ hashStringToU32(d.id)) >>> 0
+    const riskScoreP10 = monteCarloP10Capital(
+      d.mcInputs.monthlyContribution,
+      d.mcInputs.totalFeeDecimal,
+      basis.annualReturn,
+      mcVolatility,
+      yearsToRetirement,
+      MC_PATHS,
+      candidateSeed,
+    )
     return {
       id: d.id,
       label: d.label,
@@ -918,13 +1062,17 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       lifetimeCash,
       flexibilityScore: FLEX_BY_PRODUCT[d.productId],
       riskScore: d.candidateResult.capitalAtRetirement,
+      riskScoreP10,
+      riskScoreMcPaths: MC_PATHS,
       atoms,
       wunschnettoFloorMet,
       cappedToRemaining: d.cappedToRemaining,
     }
   })
 
-  // Default ranking: median Netto-Rente desc.
+  // Default ranking: median Netto-Rente desc. The dashboard exposes a "Risiko
+  // (P10)" sort that reorders by `riskScoreP10` desc; we keep the list
+  // ordering here stable on median so the existing UI tests pass.
   candidates.sort((a, b) => b.medianNettoRente - a.medianNettoRente)
   return candidates.slice(0, MAX_CANDIDATES)
 }

@@ -439,6 +439,64 @@ describe('recommendNextEuro — bAV marginal solver (N5)', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// F4 — Monte Carlo P10 risk score
+// ---------------------------------------------------------------------------
+
+describe('recommendNextEuro — Monte Carlo P10 risk score (F4)', () => {
+  it('produces a strictly positive P10 capital for every candidate', () => {
+    const ws = buildBerndWorkspace()
+    const input = buildInput(ws, 400)
+    const candidates = recommendNextEuro(input)
+    expect(candidates.length).toBeGreaterThan(0)
+    for (const c of candidates) {
+      expect(c.riskScoreP10).toBeGreaterThan(0)
+      expect(c.riskScoreMcPaths).toBe(200)
+    }
+  })
+
+  it('P10 ranking is deterministic across repeated calls (same workspace + budget)', () => {
+    const ws = buildBerndWorkspace()
+    const a = recommendNextEuro(buildInput(ws, 400))
+    const b = recommendNextEuro(buildInput(ws, 400))
+    expect(a.length).toBe(b.length)
+    a.forEach((cand, i) => {
+      expect(cand.id).toBe(b[i].id)
+      // Strict equality: same seed + same inputs → bit-identical sample → identical P10.
+      expect(cand.riskScoreP10).toBe(b[i].riskScoreP10)
+    })
+  })
+
+  it('higher MC volatility yields a lower P10 for the same candidate (sanity)', () => {
+    const ws = buildBerndWorkspace()
+    // Low-vol baseline.
+    ws.baseline.assumptions.monteCarlo = {
+      ...ws.baseline.assumptions.monteCarlo,
+      annualVolatility: 0.05,
+    }
+    const lowVol = recommendNextEuro(buildInput(ws, 400))
+    // High-vol re-run on the SAME workspace shape (clone first to keep the
+    // basis-scenario expected return identical).
+    const ws2 = buildBerndWorkspace()
+    ws2.baseline.assumptions.monteCarlo = {
+      ...ws2.baseline.assumptions.monteCarlo,
+      annualVolatility: 0.30,
+    }
+    const highVol = recommendNextEuro(buildInput(ws2, 400))
+    // Pick a candidate present in both lists (match by id).
+    const pair = lowVol
+      .map((l) => ({ l, h: highVol.find((c) => c.id === l.id) }))
+      .find((p) => Boolean(p.h))
+    expect(pair).toBeDefined()
+    // Higher vol must lower the 10th percentile (worse downside) for any
+    // contributing candidate. Use ≤ to tolerate the edge case where MC noise
+    // collapses both tails to the same fixed-point capital.
+    expect(pair!.h!.riskScoreP10).toBeLessThanOrEqual(pair!.l.riskScoreP10)
+    // And typically strictly lower for the Bernd shape (years > 0, gross > 0).
+    expect(pair!.h!.riskScoreP10).toBeLessThan(pair!.l.riskScoreP10)
+  })
+})
+
 describe('buildWhatIfFromCandidate', () => {
   it('returns a what-if with origin=recommender', () => {
     const ws = buildBerndWorkspace()

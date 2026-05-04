@@ -19,6 +19,7 @@ import { confidenceLanguage } from '../../app/evidence'
 import { confidenceForResult } from '../../app/evidence'
 import { de2026Rules } from '../../rules/de2026'
 import { NumberField } from '../../ui/NumberField'
+import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency } from '../../utils/format'
 import { renderAtom } from '../../app/recommendations'
 import { productIdFromInstanceId } from '../../utils/scenarioSchema'
@@ -35,14 +36,14 @@ const FLEX_RANK: Record<RecommendedCandidate['flexibilityScore'], number> = {
 const SORT_LABELS: Record<SortKey, string> = {
   median: 'mittlerer Netto-Rente',
   flexibility: 'Flexibilität',
-  risk: 'Endkapital',
+  risk: 'Risiko (P10)',
   lifetime: 'Lifetime Cash',
 }
 
 const SORT_TOOLTIPS: Record<SortKey, string> = {
   median: 'Erwartete monatliche Netto-Rente im Basisszenario',
   flexibility: 'Flexibilität (Kapitalverfügbarkeit vor Rentenbeginn)',
-  risk: 'Erwartetes Endkapital im Basisszenario',
+  risk: '10 von 100 simulierten Verläufen liegen darunter (P10 des Endkapitals)',
   lifetime: 'Geschätzte Lebenszeit-Auszahlungen',
 }
 
@@ -88,7 +89,7 @@ export function RecommenderCard({
     if (sortKey === 'median') out.sort((a, b) => b.medianNettoRente - a.medianNettoRente)
     else if (sortKey === 'flexibility')
       out.sort((a, b) => FLEX_RANK[b.flexibilityScore] - FLEX_RANK[a.flexibilityScore])
-    else if (sortKey === 'risk') out.sort((a, b) => b.riskScore - a.riskScore)
+    else if (sortKey === 'risk') out.sort((a, b) => b.riskScoreP10 - a.riskScoreP10)
     else if (sortKey === 'lifetime') out.sort((a, b) => b.lifetimeCash - a.lifetimeCash)
     return out
   }, [candidates, sortKey])
@@ -193,6 +194,10 @@ export function RecommenderCard({
                     Netto-Rente <strong>{formatCurrency(cand.medianNettoRente, 0)} / Mon.</strong>
                   </span>
                   <span>Flexibilität <strong>{FLEX_LABEL[cand.flexibilityScore]}</strong></span>
+                  <span>
+                    Risiko (P10) <strong>{formatCurrency(cand.riskScoreP10, 0)}</strong>
+                    <InfoTip text={`10 von 100 simulierten Verläufen liegen darunter (Endkapital, ${cand.riskScoreMcPaths} Pfade).`} />
+                  </span>
                   <span>Lifetime Cash <strong>{formatCurrency(cand.lifetimeCash, 0)}</strong></span>
                 </div>
                 {cand.atoms.length > 0 && (
