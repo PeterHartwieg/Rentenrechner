@@ -2,6 +2,7 @@ import './PrintReport.css'
 import type { ReactNode } from 'react'
 import type {
   PersonalProfile,
+  ProductId,
   ProductResult,
   ScenarioAssumptions,
   SimulationResult,
@@ -595,7 +596,10 @@ function buildInstanceLabelMap(workspace: Workspace | undefined): Record<string,
   const wsa = workspace.baseline.assumptions
   const map: Record<string, string> = {}
 
-  const slots: Array<{ id: string; instances: Array<{ instanceId: string; label: string }> }> = [
+  // Slot ids are typed as `ProductId` so a registry rename (e.g. `versicherung`
+  // → `pav`) surfaces here as a compile error rather than silently dropping
+  // labels for that product family.
+  const slots: Array<{ id: ProductId; instances: Array<{ instanceId: string; label: string }> }> = [
     { id: 'bav', instances: wsa.bav },
     { id: 'etf', instances: wsa.etf },
     { id: 'versicherung', instances: wsa.insurance },

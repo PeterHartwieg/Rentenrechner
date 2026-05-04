@@ -156,6 +156,16 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
   // to the per-instance simulator value only when `byInstance` has no entry
   // for this instance (defensive; should not happen in normal operation).
   const monthlyNet = row.combinedShare?.monthlyNet ?? result?.netMonthlyPayout
+  if (
+    import.meta.env.DEV
+    && row.combinedShare === undefined
+    && result?.netMonthlyPayout !== undefined
+    && (row.status === 'active' || row.status === 'paid_up')
+  ) {
+    console.warn(
+      `[CombineDetailView] back-allocated combinedShare missing for active instance ${row.instanceId}; falling back to per-instance net.`,
+    )
+  }
   const breakEvenAge = result?.leibrenteBreakEvenAge
   const lumpSum = result?.afterTaxLumpSum
 
