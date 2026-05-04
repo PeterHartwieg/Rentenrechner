@@ -183,7 +183,7 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
             step={1}
             suffix="Jahr"
             onChange={(n) => {
-              if (n !== draft.contractStartYear) setEvidence?.('contractStartYear', 'user_confirmed')
+              setEvidence?.('contractStartYear', 'user_confirmed')
               update({ contractStartYear: n })
             }}
           />
@@ -205,7 +205,7 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
           step={100}
           suffix="EUR"
           onChange={(n) => {
-            if (n !== (draft.currentValueEUR ?? 0)) setEvidence?.('currentValueEUR', 'user_confirmed')
+            setEvidence?.('currentValueEUR', 'user_confirmed')
             update({ currentValueEUR: n })
           }}
         />
@@ -517,7 +517,7 @@ export function BavCard({
             step={0.05}
             suffix="% p.a."
             onChange={(n) => {
-              if (n !== draft.effektivkostenPct) setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
+              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
               onChange({ ...draft, effektivkostenPct: n })
             }}
           />
@@ -550,7 +550,7 @@ export function BavCard({
               step={0.5}
               suffix="EUR/10k mtl."
               onChange={(n) => {
-                if (n !== draft.rentenfaktor) setEvidence?.('rentenfaktor', 'user_confirmed')
+                setEvidence?.('rentenfaktor', 'user_confirmed')
                 onChange({ ...draft, rentenfaktor: n })
               }}
             />
@@ -605,7 +605,7 @@ export function PavCard({
             step={0.05}
             suffix="% p.a."
             onChange={(n) => {
-              if (n !== draft.effektivkostenPct) setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
+              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
               onChange({ ...draft, effektivkostenPct: n })
             }}
           />
@@ -638,7 +638,7 @@ export function PavCard({
               step={0.5}
               suffix="EUR/10k mtl."
               onChange={(n) => {
-                if (n !== draft.rentenfaktor) setEvidence?.('rentenfaktor', 'user_confirmed')
+                setEvidence?.('rentenfaktor', 'user_confirmed')
                 onChange({ ...draft, rentenfaktor: n })
               }}
             />
@@ -749,7 +749,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
             step={0.05}
             suffix="% p.a."
             onChange={(n) => {
-              if (n !== draft.effektivkostenPct) setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
+              setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
               onChange({ ...draft, effektivkostenPct: n })
             }}
           />
@@ -770,7 +770,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
             step={0.5}
             suffix="EUR/10k mtl."
             onChange={(n) => {
-              if (n !== draft.rentenfaktor) setEvidence?.('rentenfaktor', 'user_confirmed')
+              setEvidence?.('rentenfaktor', 'user_confirmed')
               onChange({ ...draft, rentenfaktor: n })
             }}
           />
@@ -869,7 +869,7 @@ export function EtfCard({ draft, onChange, setEvidence }: BaseProps<EtfDraft>) {
             step={0.01}
             suffix="% p.a."
             onChange={(n) => {
-              if (n !== draft.terPct) setEvidence?.('annualAssetFee', 'user_confirmed')
+              setEvidence?.('annualAssetFee', 'user_confirmed')
               onChange({ ...draft, terPct: n })
             }}
           />
