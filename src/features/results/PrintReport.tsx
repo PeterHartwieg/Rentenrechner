@@ -67,7 +67,7 @@ export function PrintReport({ profile, assumptions, simulation }: Props) {
         <tbody>
           <tr>
             <td className="pr-header-left">
-              <div className="pr-title">Rentenrechner Deutschland 2026</div>
+              <div className="pr-title">TODO_BRAND_NAME Deutschland 2026</div>
               <div className="pr-subtitle">Persönliches Vorsorgemodell · erstellt am {date}</div>
             </td>
             <td className="pr-header-right">
@@ -252,7 +252,7 @@ export function PrintReport({ profile, assumptions, simulation }: Props) {
       </section>
 
       <div className="pr-footer">
-        Rentenrechner Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
+        TODO_BRAND_NAME Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
       </div>
     </div>
   )

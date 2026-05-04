@@ -127,7 +127,7 @@ export function useDerivedViews(
       insuranceOtherAnnualIncome: assumptions.insurance.monthlyOtherRetirementIncome * 12,
       rules: de2026Rules,
     })
-    downloadCsv('rentenrechner-export.csv', csv)
+    downloadCsv('TODO_BRAND_NAME-export.csv', csv)
   }
 
   return {

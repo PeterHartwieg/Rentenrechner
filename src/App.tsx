@@ -484,7 +484,7 @@ function Calculator({ navigate }: CalculatorProps) {
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p>Rentenrechner Deutschland 2026</p>
+          <p>TODO_BRAND_NAME Deutschland 2026</p>
           <h1>ETF, bAV und private Versicherung vergleichen</h1>
         </div>
         <div className="topbar-actions">
