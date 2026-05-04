@@ -204,7 +204,7 @@ describe('issue #10 — GuidedSetup.onApply seeds combine baseline', () => {
       },
       patchBaseline: (patch: {
         profile?: { age?: number }
-        assumptions?: { statutoryPension?: unknown }
+        assumptions?: { statutoryPension?: unknown; inflationRate?: unknown; retirementEndAge?: unknown; returnScenarios?: unknown; monteCarlo?: unknown; visibleProducts?: unknown; [key: string]: unknown }
       }) => {
         patchCalled = true
         patchedProfile = patch.profile ?? null
@@ -241,7 +241,7 @@ describe('issue #10 — GuidedSetup.onApply seeds combine baseline', () => {
       }
     }
 
-    onApply(nextProfile, nextAssumptions as typeof nextAssumptions & { retirementEndAge: number; returnScenarios: unknown[]; monteCarlo: unknown; visibleProducts: unknown[] })
+    onApply(nextProfile, nextAssumptions)
 
     expect(patchCalled).toBe(true)
     expect(patchedProfile).not.toBeNull()
@@ -262,7 +262,7 @@ describe('issue #10 — GuidedSetup.onApply seeds combine baseline', () => {
     const nextAssumptions = { ...defaultWorkspace.baseline.assumptions }
 
     // Simulate the onApply handler in compare mode (no combine branch taken).
-    const appView = 'compare'
+    const appView: 'compare' | 'combine' = 'compare'
     function onApply(p: typeof nextProfile, a: typeof nextAssumptions) {
       void p
       void a
