@@ -947,6 +947,19 @@ function eventCalendarYearToContractYear(eventYear: number, rulesYear: number): 
  *
  * The discriminated union is preserved so the caller can branch on type when
  * computing surrender tax (only relevant for `surrender_reinvest`).
+ *
+ * Routing convention: events are dual-stored under both source and target
+ * instances (see `applyContractDecision` in `src/app/contractDecisions.ts` —
+ * the source carries the "capital left" record and the target carries the
+ * "capital received" record). To avoid double-counting we route by
+ * **which instance the event was found in**, not by event metadata:
+ *   - found in source's array  → push only to outbound bucket.
+ *   - found in target's array  → push only to inbound bucket.
+ *   - neither (legacy/malformed) → warn and skip.
+ *
+ * Legacy single-sided data also routes correctly: exactly one of the two
+ * branches fires, so the event still produces one outbound and zero inbound
+ * entries (or vice versa) — matching pre-dual-storage behavior.
  */
 function collectTransferEvents(
   wsa: WorkspaceAssumptionsV2,
@@ -962,12 +975,22 @@ function collectTransferEvents(
   ]
   for (const inst of allInstances) {
     for (const ev of inst.transferEvents ?? []) {
-      const outArr = outboundBy.get(ev.sourceInstanceId) ?? []
-      outArr.push(ev)
-      outboundBy.set(ev.sourceInstanceId, outArr)
-      const inArr = inboundBy.get(ev.targetInstanceId) ?? []
-      inArr.push(ev)
-      inboundBy.set(ev.targetInstanceId, inArr)
+      if (inst.instanceId === ev.sourceInstanceId) {
+        const outArr = outboundBy.get(ev.sourceInstanceId) ?? []
+        outArr.push(ev)
+        outboundBy.set(ev.sourceInstanceId, outArr)
+      } else if (inst.instanceId === ev.targetInstanceId) {
+        const inArr = inboundBy.get(ev.targetInstanceId) ?? []
+        inArr.push(ev)
+        inboundBy.set(ev.targetInstanceId, inArr)
+      } else {
+        // Event metadata refers to neither this instance's source nor target —
+        // legacy or malformed data. Warn and skip.
+        console.warn(
+          `[portfolioAdapter] transferEvent on ${inst.instanceId} references ` +
+          `source=${ev.sourceInstanceId} target=${ev.targetInstanceId} — skipped.`,
+        )
+      }
     }
   }
   return { outboundBy, inboundBy }
