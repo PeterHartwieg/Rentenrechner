@@ -604,7 +604,9 @@ export function projectInstanceToScenarioAssumptions(
  *     (which takes the proper scaled value as input).
  *   - AVD §10a + AltZertG contract cap: sum monthlyOwnContribution; scale.
  *
- * Sparerpauschbetrag: deferred (issue 15). Surfaced in `notes`.
+ * Sparerpauschbetrag (ETF cross-instance allowance): apportioned downstream
+ * by `applyCrossInstanceSparerpauschbetrag` in `simulatePortfolio`, after the
+ * per-instance results return; this function does not surface a deferral note.
  *
  * Surrendered instances are skipped — they contribute zero to the cap and do
  * not appear in the per-instance funding map.

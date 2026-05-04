@@ -100,8 +100,10 @@ export interface PortfolioFunding {
   /** Map of riester instance id → funding result. */
   riesterByInstanceId: Record<string, RiesterFundingResult>
   /**
-   * Free-form portfolio-level notes surfaced to the UI. Used today to flag
-   * the deferred Sparerpauschbetrag cross-instance handling (issue 15).
+   * Free-form portfolio-level notes surfaced to the UI for portfolio-wide
+   * caveats that don't belong on a single instance (e.g. cap-driven funding
+   * adjustments). Sparerpauschbetrag cross-instance sharing is no longer a
+   * note — it is applied downstream in `applyCrossInstanceSparerpauschbetrag`.
    */
   notes: string[]
 }
