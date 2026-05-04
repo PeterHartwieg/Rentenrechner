@@ -7,6 +7,7 @@ import type {
   BasisrenteInstance,
   AltersvorsorgedepotInstance,
   RiesterInstance,
+  TransferEvent,
 } from './domain/instances'
 import { defaultAssumptions, defaultProfile, DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
 import { validateState } from './utils/scenarioSchema'
@@ -438,6 +439,102 @@ export function migrateAndValidateState(
 // Workspace serialization / deserialization
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Transfer-event backfill — data-migration fix for single-sided legacy events
+// ---------------------------------------------------------------------------
+
+/**
+ * Stable composite key for a TransferEvent used to detect duplicates when
+ * backfilling the missing side. Enough fields to uniquely identify an event
+ * across instances without relying on object identity.
+ */
+function transferEventKey(ev: TransferEvent): string {
+  const base = `${ev.type}|${ev.sourceInstanceId}|${ev.targetInstanceId}|${ev.year}`
+  if (ev.type === 'surrender_reinvest') {
+    return `${base}|${ev.amountEUR}|${ev.surrenderHaircutPct}`
+  }
+  return `${base}|${ev.amountEUR}`
+}
+
+/**
+ * Backfill single-sided transfer events in a WorkspaceAssumptionsV2 so that
+ * every event is stored on both the source instance (outbound record) and the
+ * target instance (inbound record).
+ *
+ * Context: `collectTransferEvents` in portfolioAdapter.ts routes by which
+ * instance array the event was found in — source array → outbound only, target
+ * array → inbound only. Pre-dual-storage workspaces may have stored the event
+ * on only one side, causing a capital withdrawal without a matching injection
+ * (or vice versa). This backfill runs at load time and is idempotent.
+ *
+ * Only backfills when both source and target instances exist in the workspace
+ * — if either is missing the event is left alone (the existing console.warn in
+ * `collectTransferEvents` will surface it at simulation time).
+ *
+ * Mutates `assumptions` in place. Called once per scenario on load.
+ */
+function backfillSingleSidedTransferEvents(assumptions: WorkspaceAssumptionsV2): void {
+  type AnyMutableInstance = {
+    instanceId: string
+    transferEvents?: TransferEvent[]
+  }
+  const allInstances: AnyMutableInstance[] = [
+    ...(assumptions.bav as AnyMutableInstance[]),
+    ...(assumptions.etf as AnyMutableInstance[]),
+    ...(assumptions.insurance as AnyMutableInstance[]),
+    ...(assumptions.basisrente as AnyMutableInstance[]),
+    ...(assumptions.altersvorsorgedepot as AnyMutableInstance[]),
+    ...(assumptions.riester as AnyMutableInstance[]),
+  ]
+  const instanceById = new Map<string, AnyMutableInstance>(
+    allInstances.map(inst => [inst.instanceId, inst]),
+  )
+
+  for (const inst of allInstances) {
+    for (const ev of inst.transferEvents ?? []) {
+      const sourceInst = instanceById.get(ev.sourceInstanceId)
+      const targetInst = instanceById.get(ev.targetInstanceId)
+
+      // Only backfill when both sides exist; otherwise leave alone.
+      if (!sourceInst || !targetInst) continue
+
+      const key = transferEventKey(ev)
+
+      // Ensure the event is on the source instance.
+      if (inst.instanceId !== ev.sourceInstanceId) {
+        // Found on target — source is missing it. Push to source if not already there.
+        const srcKeys = new Set((sourceInst.transferEvents ?? []).map(transferEventKey))
+        if (!srcKeys.has(key)) {
+          sourceInst.transferEvents = [...(sourceInst.transferEvents ?? []), ev]
+        }
+      }
+
+      // Ensure the event is on the target instance.
+      if (inst.instanceId !== ev.targetInstanceId) {
+        // Found on source — target is missing it. Push to target if not already there.
+        const tgtKeys = new Set((targetInst.transferEvents ?? []).map(transferEventKey))
+        if (!tgtKeys.has(key)) {
+          targetInst.transferEvents = [...(targetInst.transferEvents ?? []), ev]
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Run `backfillSingleSidedTransferEvents` across all scenarios in a Workspace:
+ * the baseline and every whatIf's assumptions.
+ */
+function backfillWorkspaceTransferEvents(workspace: Workspace): void {
+  backfillSingleSidedTransferEvents(workspace.baseline.assumptions)
+  for (const wi of workspace.whatIfs) {
+    backfillSingleSidedTransferEvents(wi.assumptions)
+    backfillSingleSidedTransferEvents(wi.derivedFromBaselineSnapshot.assumptions)
+  }
+}
+
+// ---------------------------------------------------------------------------
+
 /**
  * Parse a v2 workspace JSON string. Returns null for unparseable or invalid input.
  * Does NOT run through migrateAndValidateState — workspace validation is separate.
@@ -476,6 +573,8 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
     const merged = mergeDeep(obj, defaultWorkspace)
     // Minimal structural guard: schemaVersion must still be 2 after merge.
     if (merged.schemaVersion !== 2) return null
+    // Backfill any single-sided transfer events from legacy saves.
+    backfillWorkspaceTransferEvents(merged)
     return merged
   }
 
@@ -493,10 +592,13 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
   if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
   if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
 
-  return migrateV1ToV2(
+  const v1migrated = migrateV1ToV2(
     obj.profile as Record<string, unknown>,
     obj.assumptions as Record<string, unknown>,
   )
+  // Backfill any single-sided transfer events from legacy saves.
+  if (v1migrated) backfillWorkspaceTransferEvents(v1migrated)
+  return v1migrated
 }
 
 // ---------------------------------------------------------------------------

@@ -25,7 +25,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
-import { migrateV1ToV2 } from '../storage'
+import { migrateV1ToV2, buildWorkspaceJson, parseWorkspaceJson } from '../storage'
 import { simulateRetirementComparison } from './simulate'
 import {
   NEUTRALISED_ALTERSVORSORGEDEPOT,
@@ -46,6 +46,7 @@ import type {
   EtfInstance,
   InsuranceInstance,
   RiesterInstance,
+  TransferEvent,
 } from '../domain/instances'
 import type { Workspace } from '../domain/workspace'
 import type { ProductId } from '../domain'
@@ -2225,6 +2226,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
 
 // ---------------------------------------------------------------------------
 // Issue 16 round-2 — collectTransferEvents must route by inst.id
+// Issue 31 — backfill single-sided transfer events at load time
 // ---------------------------------------------------------------------------
 //
 // Round-1 (commit 9dec789) standardised event ownership: both surrender
@@ -2242,9 +2244,14 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
 //   - inst.id === ev.targetInstanceId → inbound only
 //   - neither (legacy/malformed)      → console.warn + skip
 //
-// Capital invariance: a workspace with dual-stored events must produce the
-// same per-instance simulation result as a workspace where the same event is
-// stored only on the source. (Single-side legacy data also still works.)
+// Issue 31 fix: `backfillWorkspaceTransferEvents` in storage.ts ensures
+// every event is present on both sides at load time so that the routing-by-
+// inst-id logic always sees a dual-stored event. Single-sided legacy saves
+// are repaired on the first load.
+//
+// Capital invariance: a workspace with dual-stored events (post-round-1
+// convention) must produce the same per-instance result as a workspace
+// loaded through `parseWorkspaceJson` from a single-sided legacy save.
 // ---------------------------------------------------------------------------
 
 describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16 round-2)', () => {
@@ -2259,37 +2266,29 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     // The routing-by-inst-id fix sends the event into outbound only when found
     // on the source's array, and into inbound only when found on the target's
     // array. Net effect: dual-stored event = exactly one outbound + one
-    // inbound, equivalent to a correctly-routed single-side fixture.
-    //
-    // Oracle: a dual-stored fixture must produce the same per-instance result
-    // as a "correctly split" fixture where the event lives on only one side
-    // but `collectTransferEvents` routes it to both buckets. We assert this
-    // here by comparing the dual fixture against a fixture where each side
-    // carries only its own perspective of the event.
+    // inbound.
     const workspace = migrateRich()
     const baseRiester = workspace.baseline.assumptions.riester[0]
     const baseAvd = workspace.baseline.assumptions.altersvorsorgedepot[0]
 
-    const event = {
-      type: 'certified' as const,
+    const event: TransferEvent = {
+      type: 'certified',
       year: de2026Rules.year + 5,
       sourceInstanceId: 'riester-src',
       targetInstanceId: 'avd-target',
       amountEUR: 20_000,
     }
 
-    // Properly-routed split fixture: source carries the event for the
-    // outbound bucket, target carries the SAME event reference for the
-    // inbound bucket. (Equivalent to dual-stored in this implementation —
-    // both sides hold the same event.)
-    const riesterSplit: RiesterInstance = {
+    // Dual-stored fixture: both source and target carry the same event
+    // (the post-round-1 convention).
+    const riesterDual: RiesterInstance = {
       ...baseRiester,
       instanceId: 'riester-src',
       label: 'Riester (source)',
       currentValueEUR: 30_000,
       transferEvents: [event],
     }
-    const avdSplit: AltersvorsorgedepotInstance = {
+    const avdDual: AltersvorsorgedepotInstance = {
       ...baseAvd,
       instanceId: 'avd-target',
       label: 'AVD (target)',
@@ -2303,8 +2302,8 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
         ...workspace.baseline,
         assumptions: {
           ...workspace.baseline.assumptions,
-          riester: [riesterSplit],
-          altersvorsorgedepot: [avdSplit],
+          riester: [riesterDual],
+          altersvorsorgedepot: [avdDual],
         },
       },
     }
@@ -2316,8 +2315,8 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
         ...workspace.baseline,
         assumptions: {
           ...workspace.baseline.assumptions,
-          riester: [{ ...riesterSplit, transferEvents: [] }],
-          altersvorsorgedepot: [{ ...avdSplit, transferEvents: [] }],
+          riester: [{ ...riesterDual, transferEvents: [] }],
+          altersvorsorgedepot: [{ ...avdDual, transferEvents: [] }],
         },
       },
     }
@@ -2349,6 +2348,247 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     expect(avdGainBasis).toBeGreaterThan(0)
     // Capital-invariance pin: gain is well below the would-be double-count.
     expect(avdGainBasis).toBeLessThan(doubleInjectionLow)
+  })
+
+  it('source-only legacy event: parseWorkspaceJson backfills event onto target', () => {
+    // Issue 31: a workspace saved before dual-storage may have the event only
+    // on the source instance. `parseWorkspaceJson` must repair it so that
+    // `collectTransferEvents` sees a dual-stored event and produces both an
+    // outbound (from source) and an inbound (to target).
+    const workspace = migrateRich()
+    const baseRiester = workspace.baseline.assumptions.riester[0]
+    const baseAvd = workspace.baseline.assumptions.altersvorsorgedepot[0]
+
+    const event: TransferEvent = {
+      type: 'certified',
+      year: de2026Rules.year + 3,
+      sourceInstanceId: 'riester-legacy-src',
+      targetInstanceId: 'avd-legacy-tgt',
+      amountEUR: 15_000,
+    }
+
+    // Source-only: event exists only on the source instance (legacy save).
+    const riesterSrcOnly: RiesterInstance = {
+      ...baseRiester,
+      instanceId: 'riester-legacy-src',
+      label: 'Riester (source-only legacy)',
+      currentValueEUR: 25_000,
+      transferEvents: [event],
+    }
+    const avdNoEvent: AltersvorsorgedepotInstance = {
+      ...baseAvd,
+      instanceId: 'avd-legacy-tgt',
+      label: 'AVD (target, no event yet)',
+      transferEvents: [],
+    }
+
+    const wsSrcOnly: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          riester: [riesterSrcOnly],
+          altersvorsorgedepot: [avdNoEvent],
+        },
+      },
+    }
+
+    // Round-trip through JSON serialization + parseWorkspaceJson to trigger
+    // the backfill migration.
+    const reloaded = parseWorkspaceJson(buildWorkspaceJson(wsSrcOnly))
+    expect(reloaded).not.toBeNull()
+
+    const reloadedRiester = reloaded!.baseline.assumptions.riester.find(
+      i => i.instanceId === 'riester-legacy-src',
+    )
+    const reloadedAvd = reloaded!.baseline.assumptions.altersvorsorgedepot.find(
+      i => i.instanceId === 'avd-legacy-tgt',
+    )
+    expect(reloadedRiester?.transferEvents).toHaveLength(1)
+    // The target must now also carry the event after backfill.
+    expect(reloadedAvd?.transferEvents).toHaveLength(1)
+    expect(reloadedAvd?.transferEvents?.[0]).toMatchObject({
+      type: 'certified',
+      sourceInstanceId: 'riester-legacy-src',
+      targetInstanceId: 'avd-legacy-tgt',
+      amountEUR: 15_000,
+    })
+
+    // Simulate and verify the injection was applied (capital gain vs no-event).
+    const reloadedResult = simulatePortfolio(reloaded!, de2026Rules).perInstance
+    const noEventWs: Workspace = {
+      ...reloaded!,
+      baseline: {
+        ...reloaded!.baseline,
+        assumptions: {
+          ...reloaded!.baseline.assumptions,
+          riester: reloaded!.baseline.assumptions.riester.map(i =>
+            i.instanceId === 'riester-legacy-src' ? { ...i, transferEvents: [] } : i,
+          ),
+          altersvorsorgedepot: reloaded!.baseline.assumptions.altersvorsorgedepot.map(i =>
+            i.instanceId === 'avd-legacy-tgt' ? { ...i, transferEvents: [] } : i,
+          ),
+        },
+      },
+    }
+    const noEventResult = simulatePortfolio(noEventWs, de2026Rules).perInstance
+    const basisIdx = 1
+    const avdGain =
+      reloadedResult['avd-legacy-tgt'][basisIdx].capitalAtRetirement -
+      noEventResult['avd-legacy-tgt'][basisIdx].capitalAtRetirement
+    // The target gained capital from the injection.
+    expect(avdGain).toBeGreaterThan(0)
+    // The source lost capital from the withdrawal.
+    const riesterLoss =
+      noEventResult['riester-legacy-src'][basisIdx].capitalAtRetirement -
+      reloadedResult['riester-legacy-src'][basisIdx].capitalAtRetirement
+    expect(riesterLoss).toBeGreaterThan(0)
+  })
+
+  it('target-only legacy event: parseWorkspaceJson backfills event onto source', () => {
+    // Issue 31: a workspace saved before dual-storage may have the event only
+    // on the target instance. `parseWorkspaceJson` must repair it so that
+    // `collectTransferEvents` produces both an outbound and an inbound.
+    const workspace = migrateRich()
+    const baseRiester = workspace.baseline.assumptions.riester[0]
+    const baseAvd = workspace.baseline.assumptions.altersvorsorgedepot[0]
+
+    const event: TransferEvent = {
+      type: 'certified',
+      year: de2026Rules.year + 4,
+      sourceInstanceId: 'riester-tgt-only-src',
+      targetInstanceId: 'avd-tgt-only-tgt',
+      amountEUR: 12_000,
+    }
+
+    // Target-only: event exists only on the target instance (legacy save).
+    const riesterNoEvent: RiesterInstance = {
+      ...baseRiester,
+      instanceId: 'riester-tgt-only-src',
+      label: 'Riester (source, no event yet)',
+      currentValueEUR: 20_000,
+      transferEvents: [],
+    }
+    const avdTgtOnly: AltersvorsorgedepotInstance = {
+      ...baseAvd,
+      instanceId: 'avd-tgt-only-tgt',
+      label: 'AVD (target-only legacy)',
+      transferEvents: [event],
+    }
+
+    const wsTgtOnly: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          riester: [riesterNoEvent],
+          altersvorsorgedepot: [avdTgtOnly],
+        },
+      },
+    }
+
+    // Round-trip through JSON serialization + parseWorkspaceJson to trigger
+    // the backfill migration.
+    const reloaded = parseWorkspaceJson(buildWorkspaceJson(wsTgtOnly))
+    expect(reloaded).not.toBeNull()
+
+    const reloadedRiester = reloaded!.baseline.assumptions.riester.find(
+      i => i.instanceId === 'riester-tgt-only-src',
+    )
+    const reloadedAvd = reloaded!.baseline.assumptions.altersvorsorgedepot.find(
+      i => i.instanceId === 'avd-tgt-only-tgt',
+    )
+    // The source must now also carry the event after backfill.
+    expect(reloadedRiester?.transferEvents).toHaveLength(1)
+    expect(reloadedRiester?.transferEvents?.[0]).toMatchObject({
+      type: 'certified',
+      sourceInstanceId: 'riester-tgt-only-src',
+      targetInstanceId: 'avd-tgt-only-tgt',
+      amountEUR: 12_000,
+    })
+    expect(reloadedAvd?.transferEvents).toHaveLength(1)
+
+    // Verify simulation applies both sides correctly.
+    const reloadedResult = simulatePortfolio(reloaded!, de2026Rules).perInstance
+    const noEventWs: Workspace = {
+      ...reloaded!,
+      baseline: {
+        ...reloaded!.baseline,
+        assumptions: {
+          ...reloaded!.baseline.assumptions,
+          riester: reloaded!.baseline.assumptions.riester.map(i =>
+            i.instanceId === 'riester-tgt-only-src' ? { ...i, transferEvents: [] } : i,
+          ),
+          altersvorsorgedepot: reloaded!.baseline.assumptions.altersvorsorgedepot.map(i =>
+            i.instanceId === 'avd-tgt-only-tgt' ? { ...i, transferEvents: [] } : i,
+          ),
+        },
+      },
+    }
+    const noEventResult = simulatePortfolio(noEventWs, de2026Rules).perInstance
+    const basisIdx = 1
+    const avdGain =
+      reloadedResult['avd-tgt-only-tgt'][basisIdx].capitalAtRetirement -
+      noEventResult['avd-tgt-only-tgt'][basisIdx].capitalAtRetirement
+    expect(avdGain).toBeGreaterThan(0)
+    const riesterLoss =
+      noEventResult['riester-tgt-only-src'][basisIdx].capitalAtRetirement -
+      reloadedResult['riester-tgt-only-src'][basisIdx].capitalAtRetirement
+    expect(riesterLoss).toBeGreaterThan(0)
+  })
+
+  it('backfill is idempotent: already dual-stored event is not duplicated on second load', () => {
+    // Parsing a workspace that already has dual-stored events through
+    // parseWorkspaceJson twice must not accumulate duplicate entries.
+    const workspace = migrateRich()
+    const baseRiester = workspace.baseline.assumptions.riester[0]
+    const baseAvd = workspace.baseline.assumptions.altersvorsorgedepot[0]
+
+    const event: TransferEvent = {
+      type: 'certified',
+      year: de2026Rules.year + 2,
+      sourceInstanceId: 'riester-idem',
+      targetInstanceId: 'avd-idem',
+      amountEUR: 10_000,
+    }
+
+    const wsDual: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          riester: [{
+            ...baseRiester,
+            instanceId: 'riester-idem',
+            label: 'Riester (idem)',
+            currentValueEUR: 20_000,
+            transferEvents: [event],
+          }],
+          altersvorsorgedepot: [{
+            ...baseAvd,
+            instanceId: 'avd-idem',
+            label: 'AVD (idem)',
+            transferEvents: [event],
+          }],
+        },
+      },
+    }
+
+    // First load
+    const loaded1 = parseWorkspaceJson(buildWorkspaceJson(wsDual))
+    expect(loaded1).not.toBeNull()
+    // Second load (simulating re-parse of an already-migrated payload)
+    const loaded2 = parseWorkspaceJson(buildWorkspaceJson(loaded1!))
+    expect(loaded2).not.toBeNull()
+
+    const riester2 = loaded2!.baseline.assumptions.riester.find(i => i.instanceId === 'riester-idem')
+    const avd2 = loaded2!.baseline.assumptions.altersvorsorgedepot.find(i => i.instanceId === 'avd-idem')
+    // No duplicates after two parse round-trips.
+    expect(riester2?.transferEvents).toHaveLength(1)
+    expect(avd2?.transferEvents).toHaveLength(1)
   })
 
   it('dual-stored surrender_reinvest from applyContractDecision is not double-counted on the target', async () => {

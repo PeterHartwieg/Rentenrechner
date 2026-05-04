@@ -959,9 +959,10 @@ function eventCalendarYearToContractYear(eventYear: number, rulesYear: number): 
  *   - found in target's array  → push only to inbound bucket.
  *   - neither (legacy/malformed) → warn and skip.
  *
- * Legacy single-sided data also routes correctly: exactly one of the two
- * branches fires, so the event still produces one outbound and zero inbound
- * entries (or vice versa) — matching pre-dual-storage behavior.
+ * Dual-storage invariant: `backfillWorkspaceTransferEvents` in `storage.ts`
+ * ensures every event is present on both sides at load time, so single-sided
+ * legacy data is repaired before reaching this function. A malformed event
+ * (instanceId matches neither source nor target) is warned and skipped.
  */
 function collectTransferEvents(
   wsa: WorkspaceAssumptionsV2,
