@@ -88,26 +88,34 @@ export type AnyProductDraft =
   | EtfDraft
 
 // ---------------------------------------------------------------------------
-// Step 0: personal details draft (issue #06)
+// Step 0: personal details draft
 // ---------------------------------------------------------------------------
+
+/**
+ * Mandatory pension baseline that this user belongs to. Mirrors the engine's
+ * `PensionBaselineType` minus 'none' (always one of three for the wizard).
+ */
+export type PensionBaseline = 'grv' | 'beamtenpension' | 'versorgungswerk'
 
 /**
  * Personal details collected in wizard step 0 before the product checklist.
  *
  * - birthYear is the primary input; age is derived as (currentYear − birthYear).
- *   The wizard stores birthYear so it can show derived age as a hint.
- * - steuerklasse: only class 1 is currently supported by the engine (see
- *   scenarioSchema.ts validateProfile). The field is collected for forward-
- *   compatibility and surfaced in the UI, but written as `taxClass: 1`
- *   regardless of input until multi-class engine support lands.
- * - ehegattensplitting: maps to `partner` on the Scenario (populated as a
- *   minimal partner profile with default values when true).
+ * - ehegattensplitting maps to `partner` on the Scenario.
+ * - publicHealthInsurance: GKV vs PKV — affects every product's KV/PV math.
+ * - childBirthYears: variable-length list for Riester-Zulagen + Pflege discounts.
+ * - pensionBaseline: GRV / Beamtenpension / Versorgungswerk. When not GRV,
+ *   `manualMonthlyGrossPension` collects the official Versorgungsauskunft figure
+ *   directly (no EP estimation possible for civil-servant plans).
  */
 export interface PersonalDetailsDraft {
   birthYear: number
   grossSalaryYear: number
-  /** Always 1 until engine multi-class support lands. Stored for future use. */
-  steuerklasse: 1
   ehegattensplitting: boolean
   retirementAge: number
+  publicHealthInsurance: boolean
+  childBirthYears: number[]
+  pensionBaseline: PensionBaseline
+  /** Estimated gross monthly pension/Versorgung — only used when pensionBaseline ≠ 'grv'. */
+  manualMonthlyGrossPension: number
 }

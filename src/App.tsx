@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { HelpCircle, Home } from 'lucide-react'
+import { Home } from 'lucide-react'
 import type { ProductId } from './domain'
 import type { InstanceTaxModes } from './utils/csvExport'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
@@ -8,7 +8,6 @@ import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from './engin
 import { deriveRentenluckeOverviewFromCombine } from './app/simulationSelectors'
 import { de2026Rules } from './rules/de2026'
 import { useCalculatorState } from './app/useCalculatorState'
-import { useGuidedSetup } from './app/useGuidedSetup'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
@@ -39,9 +38,6 @@ import { PrintReport } from './features/results/PrintReport'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { AssumptionReviewPanel } from './features/results/AssumptionReviewPanel'
-import { GuidedSetup, GuidedSetupPostHint } from './features/guidance/GuidedSetup'
-import { JourneyStepper } from './features/guidance/JourneyStepper'
-import { derivePostHintFactors } from './features/guidance/postHintFactors'
 import { WorkspaceTabs } from './features/workspace/WorkspaceTabs'
 import { ComparisonPicker } from './features/workspace/ComparisonPicker'
 import { EmptyComparison } from './features/workspace/EmptyComparison'
@@ -94,7 +90,6 @@ function Calculator({ navigate }: CalculatorProps) {
     resetToDefaults,
     setSyncedMonthlyContribution,
   } = useCalculatorState()
-  const guidedSetup = useGuidedSetup()
   const portfolioState = usePortfolioState()
   const workspace = useWorkspace()
   const combineSimulation = useCombineSimulation(portfolioState.workspace)
@@ -209,10 +204,9 @@ function Calculator({ navigate }: CalculatorProps) {
 
   /**
    * Handle the user's choice from the landing page.
-   * - combine-new:      no existing contracts → open GuidedSetup, then combine dashboard.
-   * - combine-existing: has existing contracts → stub for InventoryWizard (issue 05).
-   * - compare:          go straight to today's compare dashboard.
-   * - guided-setup:     reopen GuidedSetup from the "Geführter Einstieg" link.
+   * - combine: opens the InventoryWizard which handles both "I have contracts"
+   *   and "I'm starting fresh" via its "Weiter ohne Verträge" finish button.
+   * - compare: direct entry to the compare dashboard.
    */
   function handleLandingChoice(choice: LandingChoice) {
     if (choice.kind === 'compare') {
@@ -231,27 +225,11 @@ function Calculator({ navigate }: CalculatorProps) {
       }))
       return
     }
-    if (choice.kind === 'combine-new') {
+    if (choice.kind === 'combine') {
       portfolioState.setMode('combine')
-      setAppView('combine')
-      // Open the existing GuidedSetup minimum-input flow for clean-slate users.
-      guidedSetup.reopen()
-      return
-    }
-    if (choice.kind === 'combine-existing') {
-      portfolioState.setMode('combine')
-      // Open the InventoryWizard overlay (Group G issue 05).
       setShowInventoryWizard(true)
       return
     }
-    if (choice.kind === 'guided-setup') {
-      // "Geführter Einstieg" link — open guided setup without committing to a mode yet.
-      // Deliberately does NOT set mode: this is a re-entry path, not a first-action choice.
-      guidedSetup.reopen()
-      return
-    }
-    // Exhaustiveness guard — TypeScript will flag this assignment when a new
-    // LandingChoice variant is added without a corresponding handler above.
     const _exhaustive: never = choice
     void _exhaustive
     throw new Error(`Unhandled landing choice: ${String((_exhaustive as { kind: string }).kind)}`)
@@ -276,12 +254,34 @@ function Calculator({ navigate }: CalculatorProps) {
             childBirthYears={profile.childBirthYears}
             age={profile.age}
             retirementAge={profile.retirementAge}
+            publicHealthInsurance={profile.publicHealthInsurance}
             onComplete={(workspace) => {
               // #09: write the wizard's workspace into portfolioState BEFORE
               // setMode so the first combine-mode render sees the new data, not
               // stale defaults (replaceWorkspace is atomic; setMode would
               // otherwise overwrite with the old in-memory workspace).
               portfolioState.replaceWorkspace(workspace)
+              // Mirror the personal details into the singleton profile +
+              // statutoryPension so a later switch to compare-mode (or a
+              // returning user clicking "Vergleich starten") sees the same
+              // baseline rather than the engine defaults.
+              setProfile((current) => ({
+                ...current,
+                age: workspace.baseline.profile.age,
+                retirementAge: workspace.baseline.profile.retirementAge,
+                grossSalaryYear: workspace.baseline.profile.grossSalaryYear,
+                publicHealthInsurance: workspace.baseline.profile.publicHealthInsurance,
+                childBirthYears: [...workspace.baseline.profile.childBirthYears],
+              }))
+              setAssumptions((current) => ({
+                ...current,
+                statutoryPension: {
+                  ...current.statutoryPension,
+                  pensionBaselineType: workspace.baseline.assumptions.statutoryPension.pensionBaselineType,
+                  currentEntgeltpunkte: workspace.baseline.assumptions.statutoryPension.currentEntgeltpunkte,
+                  manualMonthlyGross: workspace.baseline.assumptions.statutoryPension.manualMonthlyGross,
+                },
+              }))
               setShowInventoryWizard(false)
               portfolioState.setMode('combine')
               setAppView('combine')
@@ -398,34 +398,6 @@ function Calculator({ navigate }: CalculatorProps) {
       )}
       {portfolioState.mode === 'combine' && !combineBasisResult && (
         <AddVertragSection addInstance={portfolioState.addInstance} />
-      )}
-
-      {guidedSetup.journeyState === 'active' && (
-        <GuidedSetupPostHint
-          onDismiss={guidedSetup.dismissJourney}
-          factors={derivePostHintFactors(
-            isCombineMode
-              ? {
-                  // In combine mode, source factors from the portfolio simulation so the
-                  // hint reflects the instances the user actually built, not the singleton
-                  // compare state (Group G issue #35).
-                  results: Object.values(combineSimulation.perInstance)
-                    .map((arr) => arr.find((r) => r.scenarioId === combineBasisScenarioId))
-                    .filter((r): r is NonNullable<typeof r> => r !== undefined),
-                  bavFunding: {
-                    ...simulation.bavFunding,
-                    // Aggregate employer contributions across all bAV instances.
-                    monthlyEmployerContribution: Object.values(
-                      combineSimulation.portfolioFunding.bavByInstanceId,
-                    ).reduce((sum, f) => sum + f.monthlyEmployerContribution, 0),
-                  },
-                }
-              : {
-                  results: selectedResults,
-                  bavFunding: simulation.bavFunding,
-                },
-          )}
-        />
       )}
 
       {/* Singleton-compare sections gated to compare-mode (Group G issue 11).
@@ -704,15 +676,6 @@ function Calculator({ navigate }: CalculatorProps) {
             <Home size={16} aria-hidden="true" />
             Startseite
           </button>
-          <button
-            type="button"
-            className="topbar-help-btn"
-            onClick={guidedSetup.reopen}
-            title="Geführten Einstieg erneut öffnen"
-          >
-            <HelpCircle size={16} aria-hidden="true" />
-            Geführter Einstieg
-          </button>
         </div>
       </header>
 
@@ -722,14 +685,6 @@ function Calculator({ navigate }: CalculatorProps) {
         activeView={workspace.activeView}
         onSelect={workspace.setActiveView}
       />
-
-      {guidedSetup.journeyState === 'active' && (
-        <JourneyStepper
-          activeView={workspace.activeView}
-          onNavigate={workspace.setActiveView}
-          onDismiss={guidedSetup.dismissJourney}
-        />
-      )}
 
       <section className="workspace">
         {viewsByTab[workspace.activeView as keyof typeof viewsByTab] ?? vergleichView}
@@ -752,44 +707,6 @@ function Calculator({ navigate }: CalculatorProps) {
       />
 
       <LegalFooter navigate={navigate} />
-
-      {guidedSetup.showOverlay && (
-        <GuidedSetup
-          profile={profile}
-          assumptions={assumptions}
-          onApply={(nextProfile, nextAssumptions) => {
-            setProfile(nextProfile)
-            setAssumptions(nextAssumptions)
-            // #10: in combine-new path the guided setup must also seed the
-            // workspace baseline so simulatePortfolio picks up the user's
-            // inputs. Only the global (non-per-product-singleton) fields are
-            // patched — per-product data lives in the workspace instance arrays
-            // and must not be overwritten with singleton assumptions.
-            if (appView === 'combine') {
-              portfolioState.patchBaseline({
-                profile: nextProfile,
-                assumptions: {
-                  ...portfolioState.workspace.baseline.assumptions,
-                  statutoryPension: nextAssumptions.statutoryPension,
-                  inflationRate: nextAssumptions.inflationRate,
-                  retirementEndAge: nextAssumptions.retirementEndAge,
-                  returnScenarios: nextAssumptions.returnScenarios,
-                  monteCarlo: nextAssumptions.monteCarlo,
-                  visibleProducts: nextAssumptions.visibleProducts,
-                },
-              })
-            }
-          }}
-          onComplete={(options) => {
-            guidedSetup.completeSetup(options)
-            if (options?.suggestedView) {
-              workspace.setActiveView(options.suggestedView)
-            }
-          }}
-          onSkipPermanently={guidedSetup.skipPermanently}
-          onDismiss={guidedSetup.dismissOverlay}
-        />
-      )}
 
     </main>
   )

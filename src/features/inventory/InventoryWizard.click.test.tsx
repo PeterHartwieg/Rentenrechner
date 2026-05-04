@@ -18,6 +18,7 @@ function makeProps(overrides?: Partial<Parameters<typeof InventoryWizard>[0]>) {
     childBirthYears: [] as readonly number[],
     age: 35,
     retirementAge: 67,
+    publicHealthInsurance: true,
     onComplete: vi.fn(),
     onDismiss: vi.fn(),
     ...overrides,

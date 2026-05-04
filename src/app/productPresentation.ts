@@ -11,9 +11,9 @@ export const GRV_COLOR = '#16a34a'
  * Mirrors `rules.bav.statutoryEmployerSubsidyPct` (= 0.15). Kept in pp here so UI
  * components can present a single "AG-Zuschuss (gesamt)" field without rounding noise.
  *
- * Two UIs let the user enter a *total* AG-Zuschuss (statutory + contractual) — the
- * GuidedSetup wizard and the ProductEditCards "Annahmen anpassen" panel. Both must
- * use the same split so a value entered in one matches the value shown in the other.
+ * The ProductEditCards "Annahmen anpassen" panel lets the user enter a *total*
+ * AG-Zuschuss (statutory + contractual); these helpers split that total back
+ * into the statutory toggle + contractual percentage stored on BavAssumptions.
  */
 export const STATUTORY_BAV_SUBSIDY_PCT = 15
 

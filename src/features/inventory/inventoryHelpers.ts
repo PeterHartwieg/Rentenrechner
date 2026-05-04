@@ -33,14 +33,14 @@ import type {
 } from './types'
 
 // ---------------------------------------------------------------------------
-// EP estimation (same formula as GuidedSetup + engine)
+// EP estimation
 // ---------------------------------------------------------------------------
 
 /**
  * Estimate Entgeltpunkte from years worked × current gross salary.
  * EP/year = min(salary, BBG) / Durchschnittsentgelt
  * Uses 2026 statutory values (de2026.ts: pensionCapYear = 101_400,
- * durchschnittsentgelt = 47_079). Consistent with GuidedSetup.tsx.
+ * durchschnittsentgelt = 47_079).
  */
 export function estimateEpFromYears(years: number, grossSalaryYear: number): number {
   if (!Number.isFinite(years) || years <= 0) return 0
@@ -456,10 +456,25 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
     ? Math.max(0, CURRENT_YEAR - personalDetails.birthYear)
     : defaultProfile.age
   const effectiveRetirementAge = personalDetails?.retirementAge ?? defaultProfile.retirementAge
+  const effectiveKv = personalDetails?.publicHealthInsurance ?? defaultProfile.publicHealthInsurance
+  const effectiveChildren = personalDetails?.childBirthYears ?? defaultProfile.childBirthYears
+  const pensionBaseline = personalDetails?.pensionBaseline ?? 'grv'
 
-  const ep = grvDraft.useYearsEstimate
-    ? estimateEpFromYears(grvDraft.yearsWorked, effectiveSalary)
-    : grvDraft.currentEntgeltpunkte
+  // For non-GRV baselines we skip EP estimation entirely and use the user's
+  // manual Versorgungsauskunft figure (Beamtenpension has no EP equivalent;
+  // Versorgungswerk EP is plan-specific and not modelled). GRV uses years/EP.
+  const ep =
+    pensionBaseline === 'grv'
+      ? grvDraft.useYearsEstimate
+        ? estimateEpFromYears(grvDraft.yearsWorked, effectiveSalary)
+        : grvDraft.currentEntgeltpunkte
+      : 0
+  const manualMonthlyGross =
+    pensionBaseline === 'grv'
+      ? null
+      : personalDetails && personalDetails.manualMonthlyGrossPension > 0
+        ? personalDetails.manualMonthlyGrossPension
+        : null
 
   const assumptionsV2: WorkspaceAssumptionsV2 = {
     bav: toArray(bavDraft).map(bavDraftToInstance),
@@ -470,7 +485,9 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
     riester: toArray(riesterDraft).map(riesterDraftToInstance),
     statutoryPension: {
       ...defaultAssumptions.statutoryPension,
+      pensionBaselineType: pensionBaseline,
       currentEntgeltpunkte: ep,
+      manualMonthlyGross,
     },
     inflationRate: defaultAssumptions.inflationRate,
     retirementEndAge: defaultAssumptions.retirementEndAge,
@@ -485,6 +502,8 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
     age: effectiveAge,
     retirementAge: effectiveRetirementAge,
     taxClass: 1 as const,
+    publicHealthInsurance: effectiveKv,
+    childBirthYears: [...effectiveChildren],
   }
 
   // Ehegattensplitting: add a minimal partner profile (age = profile age,

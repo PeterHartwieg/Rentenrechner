@@ -377,6 +377,19 @@
   margin: 0;
 }
 
+/* Child birth-year row in step 0 — NumberField + Entfernen button on one line. */
+.inventory-child-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.inventory-child-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ─── Sticky footer / actions ─────────────────── */
 
 .inventory-footer {

@@ -23,6 +23,7 @@ function makeProps(overrides?: Partial<Parameters<typeof InventoryWizard>[0]>) {
     childBirthYears: [] as readonly number[],
     age: 35,
     retirementAge: 67,
+    publicHealthInsurance: true,
     onComplete: vi.fn<(workspace: Workspace) => void>(),
     onDismiss: vi.fn(),
     ...overrides,
@@ -64,11 +65,25 @@ describe('InventoryWizard step 0 — personal details fields', () => {
     expect(container.textContent).toContain('Bruttogehalt')
   })
 
-  it('renders the Steuerklasse field', () => {
+  it('renders the Krankenversicherung field', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
-    const steuerkField = container.querySelector('[data-testid="field-steuerklasse"]')
-    expect(steuerkField).not.toBeNull()
-    expect(steuerkField!.textContent).toContain('Steuerklasse')
+    const kvField = container.querySelector('[data-testid="field-public-health-insurance"]')
+    expect(kvField).not.toBeNull()
+    expect(kvField!.textContent).toContain('Krankenversicherung')
+  })
+
+  it('renders the Rentenbasis dropdown', () => {
+    const { container } = render(<InventoryWizard {...makeProps()} />)
+    const baseField = container.querySelector('[data-testid="field-pension-baseline"]')
+    expect(baseField).not.toBeNull()
+    expect(baseField!.textContent).toContain('Gesetzliche Rente')
+  })
+
+  it('renders the Kinder section', () => {
+    const { container } = render(<InventoryWizard {...makeProps()} />)
+    const childrenField = container.querySelector('[data-testid="field-children"]')
+    expect(childrenField).not.toBeNull()
+    expect(childrenField!.textContent).toContain('Kinder')
   })
 
   it('renders the Ehegattensplitting toggle', () => {

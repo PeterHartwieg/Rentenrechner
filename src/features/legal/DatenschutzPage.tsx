@@ -1,8 +1,14 @@
 import type { Route } from '../../app/useRoute'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { LIBRARY_KEY } from '../../data/scenarioLibrary'
-import { SETUP_FLAG_KEY } from '../../app/useGuidedSetup'
 import { WORKSPACE_KEY } from '../../app/useWorkspace'
+
+/**
+ * Legacy localStorage key from the removed Geführter-Einstieg feature.
+ * No longer written, but listed here for transparency since users from the
+ * pre-merge build may still have a stale entry until they clear browser data.
+ */
+const LEGACY_SETUP_FLAG_KEY = 'rentenrechner-guided-setup-v1'
 import { DISMISS_KEY } from '../workspace/DisclaimerBanner'
 import { LegalLayout } from './LegalLayout'
 
@@ -105,8 +111,10 @@ export function DatenschutzPage({ navigate }: Props) {
             Szenarien (localStorage);
           </li>
           <li>
-            <code>{SETUP_FLAG_KEY}</code> — Status des geführten
-            Einstiegs (localStorage);
+            <code>{LEGACY_SETUP_FLAG_KEY}</code> — Altdatenfeld aus einer
+            früheren Version (Status des geführten Einstiegs); wird nicht
+            mehr geschrieben, kann aber bei wiederkehrenden Nutzer&shy;innen
+            noch im Browser stehen.
           </li>
           <li>
             <code>{WORKSPACE_KEY}</code> — zuletzt aktive Workspace-Ansicht

@@ -46,6 +46,7 @@ import type {
   AvdDraft,
   EtfDraft,
   PersonalDetailsDraft,
+  PensionBaseline,
 } from './types'
 import { NumberField } from '../../ui/NumberField'
 import { VintageChips } from './VintageChips'
@@ -69,6 +70,8 @@ interface Props {
   /** Current age and retirement age — used to compute pAV runtime years for vintage chips. */
   age: number
   retirementAge: number
+  /** GKV vs PKV — seeds the step-0 KV select. */
+  publicHealthInsurance: boolean
   /** Called on successful exit with the new workspace. */
   onComplete: (workspace: Workspace) => void
   /** Called on dismiss without saving (close X, Escape, Abbrechen). */
@@ -89,13 +92,18 @@ function defaultPersonalDetails(
   seedAge: number,
   seedRetirementAge: number,
   seedGrossSalaryYear: number,
+  seedPublicHealthInsurance: boolean,
+  seedChildBirthYears: readonly number[],
 ): PersonalDetailsDraft {
   return {
     birthYear: CURRENT_YEAR - seedAge,
     grossSalaryYear: seedGrossSalaryYear,
-    steuerklasse: 1,
     ehegattensplitting: false,
     retirementAge: seedRetirementAge,
+    publicHealthInsurance: seedPublicHealthInsurance,
+    childBirthYears: [...seedChildBirthYears],
+    pensionBaseline: 'grv',
+    manualMonthlyGrossPension: 0,
   }
 }
 
@@ -134,6 +142,12 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
     if (!Number.isInteger(draft.retirementAge) || draft.retirementAge < derivedAge + 1 || draft.retirementAge > 85) {
       errors.push('Wunschrente-Alter muss nach dem aktuellen Alter und vor 85 liegen.')
     }
+    for (const y of draft.childBirthYears) {
+      if (!Number.isInteger(y) || y < 1950 || y > CURRENT_YEAR) {
+        errors.push('Geburtsjahre der Kinder müssen gültige Jahreszahlen sein.')
+        break
+      }
+    }
     return errors
   }
 
@@ -146,6 +160,28 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
     onNext()
   }
 
+  function addChild() {
+    handleChange({
+      ...draft,
+      childBirthYears: [...draft.childBirthYears, CURRENT_YEAR - 5],
+    })
+  }
+
+  function updateChild(index: number, year: number) {
+    const next = [...draft.childBirthYears]
+    next[index] = year
+    handleChange({ ...draft, childBirthYears: next })
+  }
+
+  function removeChild(index: number) {
+    handleChange({
+      ...draft,
+      childBirthYears: draft.childBirthYears.filter((_, i) => i !== index),
+    })
+  }
+
+  const showManualPension = draft.pensionBaseline !== 'grv'
+
   return (
     <div data-testid="personal-details-step">
       <div className="inventory-body">
@@ -154,11 +190,11 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
           jederzeit im Profil anpassen.
         </p>
 
+        {/* Section: Persönliches */}
         <div className="inventory-instance-card">
           <p className="inventory-instance-section-heading">Persönliche Angaben</p>
 
           <div className="inventory-field-grid">
-            {/* Birth year */}
             <div className="inventory-field">
               <NumberField
                 label="Geburtsjahr"
@@ -174,7 +210,6 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
               )}
             </div>
 
-            {/* Gross annual salary */}
             <div className="inventory-field">
               <NumberField
                 label="Bruttogehalt pro Jahr"
@@ -188,7 +223,6 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
               />
             </div>
 
-            {/* Target retirement age */}
             <div className="inventory-field">
               <NumberField
                 label="Gewünschtes Renteneintrittsalter"
@@ -202,27 +236,29 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
               />
             </div>
 
-            {/* Steuerklasse (display-only note — engine only supports class 1 today) */}
-            <div className="inventory-field" data-testid="field-steuerklasse">
-              <label htmlFor="step0-steuerklasse">Steuerklasse</label>
-              <div className="inventory-input-shell">
-                <input
-                  id="step0-steuerklasse"
-                  type="text"
-                  readOnly
-                  value="I"
-                  aria-label="Steuerklasse"
-                />
+            <div className="inventory-field" data-testid="field-public-health-insurance">
+              <label htmlFor="step0-kv">Krankenversicherung</label>
+              <div className="inventory-select-shell">
+                <select
+                  id="step0-kv"
+                  value={draft.publicHealthInsurance ? 'gkv' : 'pkv'}
+                  onChange={(e) =>
+                    handleChange({ ...draft, publicHealthInsurance: e.target.value === 'gkv' })
+                  }
+                >
+                  <option value="gkv">Gesetzlich (GKV)</option>
+                  <option value="pkv">Privat (PKV)</option>
+                </select>
               </div>
-              <p className="inventory-field-hint">
-                Wird derzeit für alle Berechnungen verwendet.
-              </p>
             </div>
           </div>
+        </div>
 
-          {/* Ehegattensplitting toggle — full width below the grid */}
+        {/* Section: Familie */}
+        <div className="inventory-instance-card">
+          <p className="inventory-instance-section-heading">Familie</p>
+
           <div className="inventory-field" data-testid="field-ehegattensplitting">
-            <label>Steuerliche Veranlagung</label>
             <label className="field-inline">
               <input
                 type="checkbox"
@@ -233,6 +269,99 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
               <span>Ehegattensplitting (gemeinsame Veranlagung)</span>
             </label>
           </div>
+
+          <div className="inventory-field" data-testid="field-children">
+            <label>Kinder</label>
+            {draft.childBirthYears.length === 0 && (
+              <p className="inventory-field-hint">
+                Keine Kinder angegeben. Kinder beeinflussen Riester-Zulagen und
+                den Pflegeversicherungs-Beitrag.
+              </p>
+            )}
+            {draft.childBirthYears.map((year, i) => (
+              <div key={i} className="inventory-child-row">
+                <NumberField
+                  label={`Geburtsjahr Kind ${i + 1}`}
+                  value={year}
+                  min={1950}
+                  max={CURRENT_YEAR}
+                  step={1}
+                  decimals={0}
+                  onCommit={(v) => updateChild(i, Number(v))}
+                />
+                <button
+                  type="button"
+                  className="inv-remove-btn"
+                  onClick={() => removeChild(i)}
+                  aria-label={`Kind ${i + 1} entfernen`}
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Entfernen
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="inv-add-instance-btn"
+              onClick={addChild}
+            >
+              <Plus size={14} aria-hidden="true" />
+              Kind hinzufügen
+            </button>
+          </div>
+        </div>
+
+        {/* Section: Rentenbasis */}
+        <div className="inventory-instance-card">
+          <p className="inventory-instance-section-heading">Mandatorische Altersversorgung</p>
+
+          <div className="inventory-field" data-testid="field-pension-baseline">
+            <label htmlFor="step0-pension-baseline">Welches System gilt für dich?</label>
+            <div className="inventory-select-shell">
+              <select
+                id="step0-pension-baseline"
+                value={draft.pensionBaseline}
+                onChange={(e) =>
+                  handleChange({
+                    ...draft,
+                    pensionBaseline: e.target.value as PensionBaseline,
+                  })
+                }
+              >
+                <option value="grv">Gesetzliche Rente (DRV)</option>
+                <option value="beamtenpension">Beamtenpension</option>
+                <option value="versorgungswerk">Berufsständisches Versorgungswerk</option>
+              </select>
+            </div>
+            <p className="inventory-field-hint">
+              {draft.pensionBaseline === 'grv'
+                ? 'Du bist sozialversicherungspflichtig beschäftigt. Wir schätzen deine GRV-Rente im nächsten Schritt.'
+                : draft.pensionBaseline === 'beamtenpension'
+                  ? 'Beamtenversorgung nach BeamtVG. Schicht-1-bAV/Riester entfallen, Basisrente bleibt möglich.'
+                  : 'Versorgungswerk (Ärzte, Anwälte, Architekten, …). GRV-Pflicht entfällt; Sonderausgabenabzug Schicht 1 wie GRV.'}
+            </p>
+          </div>
+
+          {showManualPension && (
+            <div className="inventory-field">
+              <NumberField
+                label="Geschätzte Brutto-Versorgung pro Monat"
+                value={draft.manualMonthlyGrossPension}
+                min={0}
+                max={20_000}
+                step={50}
+                decimals={0}
+                suffix="€/Monat"
+                onCommit={(v) =>
+                  handleChange({ ...draft, manualMonthlyGrossPension: Number(v) })
+                }
+              />
+              <p className="inventory-field-hint">
+                Aus deiner letzten Versorgungsauskunft. Lass das Feld auf 0, wenn
+                du keine Schätzung hast — du kannst sie später im Dashboard nachtragen.
+              </p>
+            </div>
+          )}
         </div>
 
         {validationErrors.length > 0 && (
@@ -473,6 +602,7 @@ export function InventoryWizard({
   childBirthYears,
   age,
   retirementAge,
+  publicHealthInsurance,
   onComplete,
   onDismiss,
 }: Props) {
@@ -482,7 +612,14 @@ export function InventoryWizard({
   // Step 0 draft — seeded from parent props so the wizard is pre-filled when
   // the user has already set profile values in compare-mode.
   const [personalDetails, setPersonalDetails] = useState<PersonalDetailsDraft>(
-    () => defaultPersonalDetails(age, retirementAge, grossSalaryYear),
+    () =>
+      defaultPersonalDetails(
+        age,
+        retirementAge,
+        grossSalaryYear,
+        publicHealthInsurance,
+        childBirthYears,
+      ),
   )
 
   // Derived values from personalDetails (used in product step for vintage chips etc.)
@@ -780,7 +917,7 @@ export function InventoryWizard({
               }}
               onRemove={() => setRemoveConfirm({ productId, index: i, label: getLabelForInstance(productId, i) })}
             />
-            <VintageChips atoms={riesterDraftVintageAtoms(draft, childBirthYears, effectiveAge, effectiveRetirementAge)} />
+            <VintageChips atoms={riesterDraftVintageAtoms(draft, personalDetails.childBirthYears, effectiveAge, effectiveRetirementAge)} />
             <RiesterCard
               draft={draft}
               onChange={(next) =>
@@ -789,7 +926,7 @@ export function InventoryWizard({
                 })
               }
               setEvidence={makeSetEvidence(setRiesterDrafts, i)}
-              childBirthYears={childBirthYears}
+              childBirthYears={personalDetails.childBirthYears}
             />
           </div>
         ))
@@ -957,8 +1094,15 @@ export function InventoryWizard({
           )}
 
           {PRODUCT_ROWS.map((row) => {
-            const checked = isChecked(row.id)
             const isGrv = row.id === 'grv'
+            // GRV row only relevant when the user picked "Gesetzliche Rente" as
+            // baseline. Beamtenpension and Versorgungswerk replace GRV — the
+            // estimate from step 0's manualMonthlyGrossPension feeds the engine
+            // instead.
+            if (isGrv && personalDetails.pensionBaseline !== 'grv') {
+              return null
+            }
+            const checked = isChecked(row.id)
             const canMulti = MULTI_INSTANCE_PRODUCTS.has(row.id)
             return (
               <div

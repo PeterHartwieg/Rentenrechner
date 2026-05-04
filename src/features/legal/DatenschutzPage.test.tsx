@@ -11,9 +11,11 @@ import { render, cleanup } from '@testing-library/react'
 import { DatenschutzPage } from './DatenschutzPage'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { LIBRARY_KEY } from '../../data/scenarioLibrary'
-import { SETUP_FLAG_KEY } from '../../app/useGuidedSetup'
 import { WORKSPACE_KEY } from '../../app/useWorkspace'
 import { DISMISS_KEY } from '../workspace/DisclaimerBanner'
+
+/** Legacy key from the removed Geführter-Einstieg feature. */
+const LEGACY_SETUP_FLAG_KEY = 'rentenrechner-guided-setup-v1'
 
 afterEach(() => cleanup())
 
@@ -37,8 +39,8 @@ describe('DatenschutzPage storage key enumeration', () => {
     expect(renderPage()).toContain(LIBRARY_KEY)
   })
 
-  it('lists the guided-setup flag key (SETUP_FLAG_KEY)', () => {
-    expect(renderPage()).toContain(SETUP_FLAG_KEY)
+  it('lists the legacy guided-setup flag key for transparency on stale entries', () => {
+    expect(renderPage()).toContain(LEGACY_SETUP_FLAG_KEY)
   })
 
   it('lists the workspace view key (WORKSPACE_KEY)', () => {
@@ -62,7 +64,7 @@ describe('DatenschutzPage storage key enumeration', () => {
     expect(sectionText).toContain(STORAGE_KEY_V1)
     expect(sectionText).toContain(STORAGE_KEY_V2)
     expect(sectionText).toContain(LIBRARY_KEY)
-    expect(sectionText).toContain(SETUP_FLAG_KEY)
+    expect(sectionText).toContain(LEGACY_SETUP_FLAG_KEY)
     expect(sectionText).toContain(WORKSPACE_KEY)
     expect(sectionText).toContain(DISMISS_KEY)
   })
