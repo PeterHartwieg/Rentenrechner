@@ -456,7 +456,7 @@ export function migrateAndValidateState(
  * backfilling the missing side. Enough fields to uniquely identify an event
  * across instances without relying on object identity.
  */
-function transferEventKey(ev: TransferEvent): string {
+export function transferEventKey(ev: TransferEvent): string {
   const base = `${ev.type}|${ev.sourceInstanceId}|${ev.targetInstanceId}|${ev.year}`
   if (ev.type === 'surrender_reinvest') {
     return `${base}|${ev.amountEUR}|${ev.surrenderHaircutPct}`
