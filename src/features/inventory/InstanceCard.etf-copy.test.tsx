@@ -8,10 +8,10 @@
  *   - Non-ETF card (e.g. bAV) shows Vertragsbeginn and Vertrag-flavored labels.
  */
 
-import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-import { EtfCard, BavCard } from './InstanceCard'
-import type { EtfDraft, BavDraft } from './types'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { EtfCard, BavCard, RiesterCard } from './InstanceCard'
+import type { EtfDraft, BavDraft, RiesterDraft } from './types'
 
 afterEach(cleanup)
 
@@ -36,6 +36,17 @@ const BASE_BAV_DRAFT: BavDraft = {
   effektivkostenPct: 0.8,
   rentenfaktor: 30,
   payoutMode: 'leibrente',
+}
+
+const BASE_RIESTER_DRAFT: RiesterDraft = {
+  productId: 'riester',
+  status: 'active',
+  contractStartYear: 2024,
+  currentValueEUR: 0,
+  monthlyContribution: 100,
+  anbieter: undefined,
+  payoutMode: 'leibrente',
+  zulageStatus: '',
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +76,40 @@ describe('EtfCard — Depot/Sparplan-flavored copy', () => {
     expect(screen.getByText(/Depot \/ Broker/i)).toBeDefined()
     expect(screen.queryByText(/Anbieter \/ Tarif/i)).toBeNull()
   })
+
+  it('details stay ETF-specific and exclude insurance-wrapper fee labels', () => {
+    render(<EtfCard draft={BASE_ETF_DRAFT} onChange={() => {}} />)
+
+    expect(screen.getAllByText(/TER|Fondskosten/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Sparraten-Dynamik/i)).toBeDefined()
+    expect(screen.queryByText(/Mantelgeb(?:ü|ue)hr/i)).toBeNull()
+    expect(screen.queryByText(/Abschlusskosten/i)).toBeNull()
+    expect(screen.queryByText(/Vertriebs-\/Abschlusskosten/i)).toBeNull()
+    expect(screen.queryByText(/Nettotarif ETF/i)).toBeNull()
+    expect(screen.queryByText(/Bruttotarif/i)).toBeNull()
+  })
+
+  it('allows clearing a lone 0 without writing NaN or immediately restoring 0 while focused', () => {
+    const onChange = vi.fn()
+    render(
+      <EtfCard
+        draft={{ ...BASE_ETF_DRAFT, currentValueEUR: 0 }}
+        onChange={onChange}
+      />,
+    )
+    const labelNode = screen.getByText(/Aktueller Depotwert/i)
+    const field = labelNode.closest('.inventory-field')
+    const input = field?.querySelector<HTMLInputElement>('input[type="number"]')
+    expect(input).toBeTruthy()
+
+    fireEvent.change(input!, { target: { value: '' } })
+    expect(input!.value).toBe('')
+    expect(onChange).not.toHaveBeenCalled()
+
+    fireEvent.blur(input!)
+    expect(input!.value).toBe('0')
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -93,5 +138,36 @@ describe('BavCard — Vertrag-flavored copy preserved', () => {
     render(<BavCard draft={BASE_BAV_DRAFT} onChange={() => {}} />)
     expect(screen.getByText(/Anbieter \/ Tarif/i)).toBeDefined()
     expect(screen.queryByText(/Depot \/ Broker/i)).toBeNull()
+  })
+
+  it('keeps insurance-wrapper fee details available for bAV', () => {
+    render(<BavCard draft={BASE_BAV_DRAFT} onChange={() => {}} />)
+
+    const einzelpostenTab = screen
+      .getAllByText(/Einzelposten/i)
+      .find((node) => node.textContent === 'Einzelposten')
+    expect(einzelpostenTab).toBeDefined()
+    fireEvent.click(einzelpostenTab!)
+
+    expect(screen.getByText(/Mantelgeb(?:ü|ue)hr/i)).toBeDefined()
+    expect(screen.getByText(/Vertriebs-\/Abschlusskosten/i)).toBeDefined()
+    expect(screen.getByText(/Nettotarif ETF/i)).toBeDefined()
+    expect(screen.getByText(/Bruttotarif/i)).toBeDefined()
+  })
+})
+
+describe('RiesterCard — planned-child allowance copy', () => {
+  it('does not count a planned future child as a current Kinderzulage', () => {
+    const nextYear = new Date().getFullYear() + 1
+    render(
+      <RiesterCard
+        draft={BASE_RIESTER_DRAFT}
+        onChange={() => {}}
+        childBirthYears={[nextYear]}
+      />,
+    )
+
+    expect(screen.getByDisplayValue('Nur Grundzulage (175 EUR/Jahr)')).toBeDefined()
+    expect(screen.queryByDisplayValue(/Kinderzulage/)).toBeNull()
   })
 })

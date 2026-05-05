@@ -121,7 +121,75 @@ describe('runMonteCarlo', () => {
     expect(mc).not.toBeNull()
     expect(mc!.summaries[0].guaranteeFloor).not.toBeNull()
     expect(mc!.summaries[0].guaranteeLabel).toBe('100% Beitragsgarantie')
+    expect(mc!.summaries[0].guaranteeDisplay?.kind).toBe('monthlyPension')
+    expect(mc!.summaries[0].guaranteeDisplay?.values.p50).toBeGreaterThan(0)
     expect(mc!.summaries[0].guaranteeAppliedProbability).toBe(1)
+  })
+
+  it('reports capital guarantee display for capital payout mode', () => {
+    const assumptions: ScenarioAssumptions = {
+      ...assumptionsForMonteCarlo({ annualVolatility: 0, runs: 101 }, ['versicherung']),
+      returnScenarios: defaultAssumptions.returnScenarios.map((scenario) =>
+        scenario.id === 'basis'
+          ? { ...scenario, annualReturn: -0.05 }
+          : scenario,
+      ),
+      insurance: {
+        ...defaultAssumptions.insurance,
+        payoutMode: 'kapitalverzehr',
+        capitalGuarantee: {
+          enabled: true,
+          floorPctOfContributions: 1,
+        },
+      },
+    }
+
+    const mc = runMonteCarlo({
+      profile: defaultProfile,
+      assumptions,
+      rules: de2026Rules,
+      scenarioId: 'basis',
+      visibleProducts: assumptions.visibleProducts,
+    })
+
+    expect(mc).not.toBeNull()
+    expect(mc!.summaries[0].guaranteeDisplay?.kind).toBe('capital')
+    expect(mc!.summaries[0].guaranteeDisplay?.values.p50).toBeCloseTo(
+      mc!.summaries[0].guaranteeFloor!.p50,
+      2,
+    )
+  })
+
+  it('reports monthly guarantee display for fixed-term pension mode', () => {
+    const assumptions: ScenarioAssumptions = {
+      ...assumptionsForMonteCarlo({ annualVolatility: 0, runs: 101 }, ['versicherung']),
+      returnScenarios: defaultAssumptions.returnScenarios.map((scenario) =>
+        scenario.id === 'basis'
+          ? { ...scenario, annualReturn: -0.05 }
+          : scenario,
+      ),
+      insurance: {
+        ...defaultAssumptions.insurance,
+        payoutMode: 'zeitrente',
+        zeitrenteYears: 12,
+        capitalGuarantee: {
+          enabled: true,
+          floorPctOfContributions: 1,
+        },
+      },
+    }
+
+    const mc = runMonteCarlo({
+      profile: defaultProfile,
+      assumptions,
+      rules: de2026Rules,
+      scenarioId: 'basis',
+      visibleProducts: assumptions.visibleProducts,
+    })
+
+    expect(mc).not.toBeNull()
+    expect(mc!.summaries[0].guaranteeDisplay?.kind).toBe('monthlyPension')
+    expect(mc!.summaries[0].guaranteeDisplay?.values.p50).toBeGreaterThan(0)
   })
 
   it('returns null when no products are visible', () => {

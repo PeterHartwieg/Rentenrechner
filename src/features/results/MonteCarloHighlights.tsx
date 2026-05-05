@@ -18,26 +18,36 @@ function pickBest(
   )
 }
 
-function pickLowest(
-  summaries: ProductMonteCarloSummary[],
-  score: (summary: ProductMonteCarloSummary) => number,
-): ProductMonteCarloSummary | undefined {
-  return summaries.reduce<ProductMonteCarloSummary | undefined>(
-    (best, current) => (!best || score(current) < score(best) ? current : best),
-    undefined,
-  )
+function clampPct(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.max(0, Math.min(100, value))
+}
+
+function guaranteeLine(summary: ProductMonteCarloSummary): string | null {
+  if (!summary.guaranteeDisplay) return null
+
+  const value = formatCurrency(summary.guaranteeDisplay.values.p50, 0)
+  if (summary.guaranteeDisplay.kind === 'monthlyPension') {
+    return `Garantierte Rente: mind. ${value} / Monat`
+  }
+
+  return `Garantie: mind. ${value} Kapital zum Rentenbeginn`
 }
 
 export function MonteCarloHighlights({ result }: Props) {
   if (!result || result.summaries.length === 0) return null
 
-  const bestCapital = pickBest(result.summaries, (summary) => summary.bestCapitalProbability)
+  const bestMedianPension = pickBest(result.summaries, (summary) => summary.netMonthlyPayout.p50)
   const bestPension = pickBest(result.summaries, (summary) => summary.bestPensionProbability)
-  const strongestFloor = pickBest(result.summaries, (summary) => summary.capital.p10)
-  const lowestDownside = pickLowest(result.summaries, (summary) => summary.belowUserCostProbability)
+  const strongestSafetyLine = pickBest(result.summaries, (summary) => summary.netMonthlyPayout.p10)
   const maxP90 = Math.max(
     ...result.summaries.map((summary) =>
-      Math.max(summary.capital.p90, summary.guaranteeFloor?.p50 ?? 0),
+      Math.max(
+        summary.netMonthlyPayout.p90,
+        summary.guaranteeDisplay?.kind === 'monthlyPension'
+          ? summary.guaranteeDisplay.values.p50
+          : 0,
+      ),
     ),
     1,
   )
@@ -52,63 +62,60 @@ export function MonteCarloHighlights({ result }: Props) {
             <InfoTip icon="info" label="Risiko-Check erklaeren">
               Der Rechner testet viele moegliche Boersenverlaeufe. Die Karten
               zeigen nicht eine sichere Vorhersage, sondern wie oft ein Produkt
-              in diesen Tests vorne liegt. Die Balken darunter zeigen die Spanne
-              zwischen schwachen, mittleren und starken Ergebnissen.
+              in diesen Tests vorne liegt. Die Balken darunter zeigen schwache,
+              mittlere und starke Ergebnisse fuer die monatliche Netto-Rente.
             </InfoTip>
           </h3>
           <p>
-            {formatNumber(result.runs)} Pfade | {result.scenarioLabel}{' '}
+            {formatNumber(result.runs)} Simulationen | {result.scenarioLabel}{' '}
             {formatPercent(result.annualReturn)} | Schwankung {formatPercent(result.annualVolatility)}
           </p>
         </div>
       </header>
 
       <div className="mc-highlight-grid">
-        <div className="mc-highlight-card" style={{ borderLeftColor: bestCapital?.color }}>
-          <span>Wahrscheinlich bestes Kapital</span>
+        <div className="mc-highlight-card" style={{ borderLeftColor: bestMedianPension?.color }}>
+          <span>Hoechste mittlere Netto-Rente</span>
           <strong>
-            {bestCapital?.shortLabel ?? '-'}{' '}
-            {bestCapital ? formatPercent(bestCapital.bestCapitalProbability) : ''}
+            {bestMedianPension?.shortLabel ?? '-'}{' '}
+            {bestMedianPension ? `${formatCurrency(bestMedianPension.netMonthlyPayout.p50, 0)} / Mon.` : ''}
           </strong>
-          <small>
-            Median {bestCapital ? formatCurrency(bestCapital.capital.p50, 0) : '-'}
-          </small>
+          <small>Mitte aller Simulationen</small>
         </div>
         <div className="mc-highlight-card" style={{ borderLeftColor: bestPension?.color }}>
-          <span>Wahrscheinlich beste Rente</span>
+          <span>Am haeufigsten vorne</span>
           <strong>
             {bestPension?.shortLabel ?? '-'}{' '}
             {bestPension ? formatPercent(bestPension.bestPensionProbability) : ''}
           </strong>
-          <small>
-            Median {bestPension ? `${formatCurrency(bestPension.netMonthlyPayout.p50, 0)} / Mon.` : '-'}
-          </small>
+          <small>Hoechste Netto-Rente im direkten Vergleich</small>
         </div>
-        <div className="mc-highlight-card" style={{ borderLeftColor: strongestFloor?.color }}>
-          <span>Staerkstes P10-Kapital</span>
-          <strong>{strongestFloor?.shortLabel ?? '-'}</strong>
+        <div className="mc-highlight-card" style={{ borderLeftColor: strongestSafetyLine?.color }}>
+          <span>Staerkste Sicherheitslinie</span>
+          <strong>{strongestSafetyLine?.shortLabel ?? '-'}</strong>
           <small>
-            P10 {strongestFloor ? formatCurrency(strongestFloor.capital.p10, 0) : '-'}
+            {strongestSafetyLine
+              ? `90 % der Simulationen lagen ueber ${formatCurrency(strongestSafetyLine.netMonthlyPayout.p10, 0)} / Mon.`
+              : '-'}
           </small>
-        </div>
-        <div className="mc-highlight-card" style={{ borderLeftColor: lowestDownside?.color }}>
-          <span>Niedrigstes Verlust-Risiko</span>
-          <strong>
-            {lowestDownside?.shortLabel ?? '-'}{' '}
-            {lowestDownside ? formatPercent(lowestDownside.belowUserCostProbability) : ''}
-          </strong>
-          <small>Kapital unter Nettoaufwand</small>
         </div>
       </div>
 
-      <div className="mc-mini-ranges" aria-label="Kapital-Spannen">
+      <div className="mc-mini-ranges" aria-label="Netto-Renten-Spannen">
         {result.summaries.map((summary) => {
-          const left = Math.max(0, Math.min(100, (summary.capital.p10 / maxP90) * 100))
-          const width = Math.max(2, Math.min(100 - left, ((summary.capital.p90 - summary.capital.p10) / maxP90) * 100))
-          const median = Math.max(0, Math.min(100, (summary.capital.p50 / maxP90) * 100))
-          const guarantee = summary.guaranteeFloor
-            ? Math.max(0, Math.min(100, (summary.guaranteeFloor.p50 / maxP90) * 100))
+          const left = clampPct((summary.netMonthlyPayout.p10 / maxP90) * 100)
+          const width = Math.max(
+            2,
+            Math.min(
+              100 - left,
+              ((summary.netMonthlyPayout.p90 - summary.netMonthlyPayout.p10) / maxP90) * 100,
+            ),
+          )
+          const median = clampPct((summary.netMonthlyPayout.p50 / maxP90) * 100)
+          const guarantee = summary.guaranteeDisplay?.kind === 'monthlyPension'
+            ? clampPct((summary.guaranteeDisplay.values.p50 / maxP90) * 100)
             : null
+          const guaranteeText = guaranteeLine(summary)
           return (
             <div key={summary.productId} className="mc-mini-range-row">
               <span className="mc-mini-range-label">
@@ -131,14 +138,20 @@ export function MonteCarloHighlights({ result }: Props) {
                     className="mc-mini-range-guarantee"
                     style={{ left: `${guarantee}%` }}
                     aria-hidden
-                    title={summary.guaranteeLabel}
+                    title={guaranteeText ?? summary.guaranteeLabel}
                   />
                 )}
               </div>
               <span className="mc-mini-range-value">
-                {formatCurrency(summary.capital.p50, 0)}
+                <strong>{formatCurrency(summary.netMonthlyPayout.p50, 0)} / Mon.</strong>
+                <small>
+                  90 % der Simulationen lagen ueber {formatCurrency(summary.netMonthlyPayout.p10, 0)} / Mon.
+                </small>
+                {guaranteeText && <small>{guaranteeText}</small>}
                 {summary.guaranteeAppliedProbability !== null && (
-                  <small>Garantie {formatPercent(summary.guaranteeAppliedProbability)} greift</small>
+                  <small>
+                    Garantie greift in {formatPercent(summary.guaranteeAppliedProbability)} der Simulationen
+                  </small>
                 )}
               </span>
             </div>

@@ -389,39 +389,75 @@ type ProductSlot = 'bav' | 'etf' | 'insurance' | 'basisrente' | 'altersvorsorged
 
 /**
  * For paid-up instances: rewrite the active product slot in a projected
- * `ScenarioAssumptions` so it uses the phase-2 fee model. ETF is intentionally
- * not handled — its assumption shape carries `annualAssetFee` only, which
- * already represents an asset-fee (no acquisition/contribution fee concept).
+ * `ScenarioAssumptions` so it uses the phase-2 fee model and cannot resume
+ * contributions through a simulator-level yearly contribution policy.
  */
-function applyPaidUpFeesToProjection(
+function applyPaidUpOverridesToProjection(
   projected: ScenarioAssumptions,
   slot: ProductSlot,
 ): ScenarioAssumptions {
   switch (slot) {
     case 'bav':
-      return { ...projected, bav: { ...projected.bav, fees: paidUpFeeModel(projected.bav.fees) } }
+      return {
+        ...projected,
+        bav: {
+          ...projected.bav,
+          monthlyGrossConversion: 0,
+          statutoryMinimumSubsidyEnabled: false,
+          contractualMatchPercent: 0,
+          contractualFixedMonthly: 0,
+          annualContributionGrowthRate: 0,
+          fees: paidUpFeeModel(projected.bav.fees),
+        },
+      }
     case 'insurance':
       return {
         ...projected,
-        insurance: { ...projected.insurance, fees: paidUpFeeModel(projected.insurance.fees) },
+        insurance: {
+          ...projected.insurance,
+          annualContributionGrowthRate: 0,
+          fees: paidUpFeeModel(projected.insurance.fees),
+        },
       }
     case 'basisrente':
       return {
         ...projected,
-        basisrente: { ...projected.basisrente, fees: paidUpFeeModel(projected.basisrente.fees) },
+        basisrente: {
+          ...projected.basisrente,
+          monthlyGrossContribution: 0,
+          fees: paidUpFeeModel(projected.basisrente.fees),
+        },
       }
     case 'altersvorsorgedepot':
       return {
         ...projected,
         altersvorsorgedepot: {
           ...projected.altersvorsorgedepot,
+          monthlyOwnContribution: 0,
+          eligibility: {
+            ...projected.altersvorsorgedepot.eligibility,
+            directlyEligible: false,
+            indirectSpouseEligible: false,
+            eligibleChildren: 0,
+            careerStarterBonusUsed: true,
+          },
           fees: paidUpFeeModel(projected.altersvorsorgedepot.fees),
         },
       }
     case 'riester':
       return {
         ...projected,
-        riester: { ...projected.riester, fees: paidUpFeeModel(projected.riester.fees) },
+        riester: {
+          ...projected.riester,
+          monthlyOwnContribution: 0,
+          eligibility: {
+            ...projected.riester.eligibility,
+            directlyEligible: false,
+            indirectSpouseEligible: false,
+            careerStarterBonusUsed: true,
+          },
+          fees: paidUpFeeModel(projected.riester.fees),
+        },
       }
     default:
       return projected
@@ -773,6 +809,7 @@ export function buildPortfolioFunding(
       rules,
       salaryForOtherFunding,
       singleton,
+      { profile },
     )
   }
   for (const inst of paidUpAvd) {
@@ -1242,6 +1279,14 @@ export function simulatePortfolio(
   const wsa = workspace.baseline.assumptions
   const portfolioFunding = buildPortfolioFunding(workspace, rules)
   const perInstance: Record<string, ProductResult[]> = {}
+  const firstActiveBav = wsa.bav.find(b => b.status !== 'surrendered' && b.status !== 'paid_up')
+  const bavFundingAnchor = firstActiveBav
+    ? portfolioFunding.bavByInstanceId[firstActiveBav.instanceId]
+    : undefined
+  const withBavFundingAnchor = (overrides: BuildContextOverrides): BuildContextOverrides =>
+    bavFundingAnchor
+      ? { bavFundingOverride: bavFundingAnchor, ...overrides }
+      : overrides
 
   // Issue 15 — collect all transfer events once so per-instance lookup is O(1).
   const { outboundBy, inboundBy } = collectTransferEvents(wsa)
@@ -1260,7 +1305,7 @@ export function simulatePortfolio(
       // ignores paid-up status (no contributions are honored anyway and ETF
       // paid_up is conceptually a no-op — the user just stops contributing).
       const projected = inst.status === 'paid_up'
-        ? applyPaidUpFeesToProjection(projectedRaw, detectProductSlot(inst))
+        ? applyPaidUpOverridesToProjection(projectedRaw, detectProductSlot(inst))
         : projectedRaw
       const baseOverrides = fundingOverrideFor(inst)
       const outbound = outboundBy.get(inst.instanceId) ?? []
@@ -1299,21 +1344,21 @@ export function simulatePortfolio(
   // re-runs the active ETF instances cooperatively below when ≥2 are present so
   // they share the §20 Abs. 9 EStG allowance per year.
   runFor(wsa.etf, simulateEtf, (inst) => ({
-    etfMonthlyUserCostOverride: inst.monthlyContribution,
+    etfMonthlyUserCostOverride: inst.status === 'paid_up' ? 0 : inst.monthlyContribution,
   }))
   // Combine-mode honors per-instance insurance `monthlyContribution` via the override
   // (issue F2). Compare-mode (`simulateRetirementComparison`) never sets this
   // and falls back to `bavFunding.monthlyNetCost` — see insurance simulator + CLAUDE.md.
   runFor(wsa.insurance, simulateInsurance, (inst) => ({
-    insuranceMonthlyUserCostOverride: inst.monthlyContribution,
+    insuranceMonthlyUserCostOverride: inst.status === 'paid_up' ? 0 : inst.monthlyContribution,
   }))
-  runFor(wsa.basisrente, simulateBasisrente, (inst) => ({
+  runFor(wsa.basisrente, simulateBasisrente, (inst) => withBavFundingAnchor({
     basisrenteFundingOverride: portfolioFunding.basisrenteByInstanceId[inst.instanceId],
   }))
-  runFor(wsa.altersvorsorgedepot, simulateAvd, (inst) => ({
+  runFor(wsa.altersvorsorgedepot, simulateAvd, (inst) => withBavFundingAnchor({
     altersvorsorgedepotFundingOverride: portfolioFunding.altersvorsorgedepotByInstanceId[inst.instanceId],
   }))
-  runFor(wsa.riester, simulateRiester, (inst) => ({
+  runFor(wsa.riester, simulateRiester, (inst) => withBavFundingAnchor({
     riesterFundingOverride: portfolioFunding.riesterByInstanceId[inst.instanceId],
   }))
 
@@ -1445,13 +1490,13 @@ function applyCrossInstanceSparerpauschbetrag(
       if (!schedule) continue
       const projectedRaw = projectInstanceToScenarioAssumptions(inst, wsa)
       const projected = inst.status === 'paid_up'
-        ? applyPaidUpFeesToProjection(projectedRaw, detectProductSlot(inst))
+        ? applyPaidUpOverridesToProjection(projectedRaw, detectProductSlot(inst))
         : projectedRaw
       const outbound = outboundBy.get(inst.instanceId) ?? []
       const inbound = inboundBy.get(inst.instanceId) ?? []
       const instanceCapitalPolicy = buildInstanceCapitalPolicy(inst, workspace, rules, outbound, inbound)
       const overrides: BuildContextOverrides = {
-        etfMonthlyUserCostOverride: inst.monthlyContribution,
+        etfMonthlyUserCostOverride: inst.status === 'paid_up' ? 0 : inst.monthlyContribution,
         etfSaverAllowanceOverride: (yearIdx: number) =>
           schedule[yearIdx] ?? rules.capitalGains.saverAllowance,
         ...(instanceCapitalPolicy ? { instanceCapitalPolicy } : {}),

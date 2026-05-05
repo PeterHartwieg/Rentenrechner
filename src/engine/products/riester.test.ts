@@ -147,6 +147,42 @@ describe('calculateRiesterFunding — full allowances when min contribution met'
   })
 })
 
+describe('calculateRiesterFunding — dated child allowance timing', () => {
+  const riester = {
+    ...defaultRiesterAssumptions,
+    monthlyOwnContribution: 250,
+    eligibility: {
+      directlyEligible: true,
+      ageAtContractStart: 30,
+      careerStarterBonusUsed: true,
+    },
+  }
+
+  function fundingFor(childBirthYears: number[], contributionYear = rules.year) {
+    const profile = { ...defaultProfile, childBirthYears }
+    const salary = calculateSalaryResult(profile, rules)
+    return calculateRiesterFunding(rules, salary, riester, profile, {
+      contributionYear,
+    })
+  }
+
+  it('grants child allowance for a past eligible child', () => {
+    expect(fundingFor([2018]).childAllowanceAnnual).toBe(300)
+  })
+
+  it('grants child allowance for a current-year child', () => {
+    expect(fundingFor([rules.year]).childAllowanceAnnual).toBe(300)
+  })
+
+  it('does not grant child allowance before a planned future child is born', () => {
+    expect(fundingFor([rules.year + 1], rules.year).childAllowanceAnnual).toBe(0)
+  })
+
+  it('starts child allowance in the planned birth year', () => {
+    expect(fundingFor([rules.year + 1], rules.year + 1).childAllowanceAnnual).toBe(300)
+  })
+})
+
 describe('calculateRiesterFunding — proration when contribution below minimum', () => {
   // Profile: 75k EUR salary. minRequired = 1925 EUR/year.
   // annualOwnContribution = 600 EUR (50 EUR/month * 12) < 1925 -> proration applies.

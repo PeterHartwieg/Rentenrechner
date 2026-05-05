@@ -5,6 +5,7 @@ import {
 } from '../buildResult'
 import {
   afterTaxAvdLumpSum,
+  calculateAvdFunding,
   computeAvdGlidepathReturn,
   netAvdPayout,
 } from '../altersvorsorgedepot'
@@ -43,6 +44,25 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
   const avdMonthlyContribution =
     altersvorsorgedepotFunding.totalContractContributionAnnual / 12 +
     altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual / 12
+  const fundingForYear = (yearIndex: number) =>
+    calculateAvdFunding(
+      rules,
+      ctx.bavFunding.salaryWithBav,
+      avd,
+      {
+        profile,
+        contributionYear: rules.year + yearIndex,
+        isFirstContributionYear:
+          yearIndex === 0 && !avd.eligibility.careerStarterBonusUsed,
+      },
+    )
+  const yearlySavings = Array.from({ length: yearsToRetirement }).reduce<number>(
+    (sum, _, yearIndex) => {
+      const funding = fundingForYear(yearIndex)
+      return sum + funding.totalAllowanceAnnual + funding.guenstigerpruefungBenefitAnnual
+    },
+    0,
+  )
 
   // Blended return for current scenario based on allocation.
   // For Standarddepot: glidepath overrides via policy.yearlyReturn; otherwise use constant blend.
@@ -102,10 +122,17 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     policy: mergeInstanceCapitalPolicy(ctx, {
       yearlyReturn,
       initialCapital: transferInitialCapital,
+      yearlyContributions: (yearIndex) => {
+        const funding = fundingForYear(yearIndex)
+        return {
+          monthlyUserCost: funding.monthlyNetCost,
+          monthlyProductContribution:
+            funding.totalContractContributionAnnual / 12 +
+            funding.guenstigerpruefungBenefitAnnual / 12,
+        }
+      },
     }),
-    taxAndSvSavings:
-      (altersvorsorgedepotFunding.totalAllowanceAnnual +
-        altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual) * yearsToRetirement,
+    taxAndSvSavings: yearlySavings,
     buildPayout: ({ projection, payoutReturn }) => {
       const partialPct = Math.min(avd.partialCapitalPct, rules.altersvorsorgedepot.partialCapitalMaxPct)
       const monthlyCapital = projection.capital * (1 - partialPct)

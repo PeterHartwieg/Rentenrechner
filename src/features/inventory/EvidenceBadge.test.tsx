@@ -6,7 +6,7 @@
  *   - model_estimate renders "Schätzung" badge with confirm button.
  *   - user_confirmed renders "bestätigt" badge without confirm button.
  *   - statement renders "lt. Beleg" badge.
- *   - Clicking "Wert ist okay" invokes onConfirm callback.
+ *   - Clicking "Uebernehmen" invokes onConfirm callback.
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -33,24 +33,24 @@ describe('EvidenceBadge', () => {
 
   it('renders confirm button for model_estimate when onConfirm is provided', () => {
     render(<EvidenceBadge state="model_estimate" onConfirm={() => {}} />)
-    expect(screen.getByText(/Wert ist okay/)).toBeTruthy()
+    expect(screen.getByText(/Uebernehmen/)).toBeTruthy()
   })
 
   it('does not render confirm button for model_estimate without onConfirm', () => {
     render(<EvidenceBadge state="model_estimate" />)
-    expect(screen.queryByText(/Wert ist okay/)).toBeNull()
+    expect(screen.queryByText(/Uebernehmen/)).toBeNull()
   })
 
   it('does not render confirm button for user_confirmed', () => {
     render(<EvidenceBadge state="user_confirmed" onConfirm={() => {}} />)
     // The confirm button is only rendered for model_estimate.
-    expect(screen.queryByText(/Wert ist okay/)).toBeNull()
+    expect(screen.queryByText(/Uebernehmen/)).toBeNull()
   })
 
   it('calls onConfirm when the confirm button is clicked', () => {
     const onConfirm = vi.fn()
     render(<EvidenceBadge state="model_estimate" onConfirm={onConfirm} />)
-    const btn = screen.getByText(/Wert ist okay/)
+    const btn = screen.getByText(/Uebernehmen/)
     fireEvent.click(btn)
     expect(onConfirm).toHaveBeenCalledOnce()
   })
@@ -74,21 +74,21 @@ describe('EvidenceBadge', () => {
   // N9 explicit coverage: green-state appearance and derived-display cases
   // -------------------------------------------------------------------------
 
-  it('user_confirmed: .evidence-badge--confirmed class is present and "Wert ist okay" button is absent', () => {
+  it('user_confirmed: .evidence-badge--confirmed class is present and "Uebernehmen" button is absent', () => {
     const { container } = render(<EvidenceBadge state="user_confirmed" onConfirm={() => {}} />)
     expect(container.querySelector('.evidence-badge--confirmed')).toBeTruthy()
     expect(container.querySelector('.evidence-badge-confirm-btn')).toBeNull()
   })
 
-  it('model_estimate + onConfirm: clicking "Wert ist okay" fires callback with no args', () => {
+  it('model_estimate + onConfirm: clicking "Uebernehmen" fires callback with no args', () => {
     const onConfirm = vi.fn()
     render(<EvidenceBadge state="model_estimate" onConfirm={onConfirm} />)
-    const btn = screen.getByText(/Wert ist okay/)
+    const btn = screen.getByText(/Uebernehmen/)
     fireEvent.click(btn)
     expect(onConfirm).toHaveBeenCalledOnce()
   })
 
-  it('model_estimate WITHOUT onConfirm: "Wert ist okay" button is absent (derived-display / Zulagen-Status case)', () => {
+  it('model_estimate WITHOUT onConfirm: "Uebernehmen" button is absent (derived-display / Zulagen-Status case)', () => {
     const { container } = render(<EvidenceBadge state="model_estimate" />)
     expect(container.querySelector('.evidence-badge-confirm-btn')).toBeNull()
   })

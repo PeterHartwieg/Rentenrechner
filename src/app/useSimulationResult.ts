@@ -6,14 +6,14 @@ import { useMemo } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import { runMonteCarlo } from '../engine/monteCarlo'
 import { simulateRetirementComparison } from '../engine/simulate'
-import { simulateEqualInputComparison } from '../engine/equalInputComparator'
 import { de2026Rules } from '../rules/de2026'
 import {
   deriveTaxModes,
   resolveEffectiveScenarioId,
   type TaxModeContext,
 } from './simulationSelectors'
-import { DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from '../data/defaultScenario'
+import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../data/defaultScenario'
+import { normalizeMonthlyNettoBelastung, syncMonthlyContributions } from './syncContributions'
 
 export interface SimulationResultBundle {
   /** Full simulation result (all scenarios, all products). */
@@ -42,48 +42,46 @@ export function useSimulationResult(
   assumptions: ScenarioAssumptions,
   selectedScenarioId: string,
 ): SimulationResultBundle {
-  const simulation = useMemo(
-    () => {
-      // Issue 16 — compare-mode sub-mode dispatch. Equal-cash (default) keeps
-      // today's fair-comparison invariant (ETF + pAV invest bAV's net cost).
-      // Equal-input swaps to the broker view: ETF + pAV both invest the
-      // user-supplied nominal monthly contribution while bAV still flows
-      // through the salary calc so tax-deferral stays computed.
-      if (assumptions.compareSubMode === 'equal_input') {
-        return simulateEqualInputComparison(
-          profile,
-          assumptions,
-          de2026Rules,
-          assumptions.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
-        )
-      }
-      return simulateRetirementComparison(profile, assumptions, de2026Rules)
-    },
+  const activeAssumptions = useMemo(
+    () =>
+      syncMonthlyContributions(
+        normalizeMonthlyNettoBelastung(
+          assumptions.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
+        ),
+        assumptions,
+        profile,
+        de2026Rules,
+      ),
     [profile, assumptions],
   )
 
-  const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, selectedScenarioId)
-  const selectedScenario = assumptions.returnScenarios.find(
+  const simulation = useMemo(
+    () => simulateRetirementComparison(profile, activeAssumptions, de2026Rules),
+    [profile, activeAssumptions],
+  )
+
+  const effectiveScenarioId = resolveEffectiveScenarioId(activeAssumptions, selectedScenarioId)
+  const selectedScenario = activeAssumptions.returnScenarios.find(
     (scenario) => scenario.id === effectiveScenarioId,
   )
 
   const monteCarloResult = useMemo(
     () =>
-      assumptions.monteCarlo.enabled && assumptions.visibleProducts.length > 0
+      activeAssumptions.monteCarlo.enabled && activeAssumptions.visibleProducts.length > 0
         ? runMonteCarlo({
             profile,
-            assumptions,
+            assumptions: activeAssumptions,
             rules: de2026Rules,
             scenarioId: effectiveScenarioId,
-            visibleProducts: assumptions.visibleProducts,
+            visibleProducts: activeAssumptions.visibleProducts,
           })
         : null,
-    [profile, assumptions, effectiveScenarioId],
+    [profile, activeAssumptions, effectiveScenarioId],
   )
 
   const taxModes = useMemo(
-    () => deriveTaxModes(profile, assumptions, de2026Rules),
-    [profile, assumptions],
+    () => deriveTaxModes(profile, activeAssumptions, de2026Rules),
+    [profile, activeAssumptions],
   )
 
   return {

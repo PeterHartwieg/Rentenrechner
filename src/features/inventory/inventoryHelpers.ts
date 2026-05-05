@@ -213,7 +213,7 @@ export function etfDraftToInstance(d: EtfDraft): EtfInstance {
     monthlyContribution: d.monthlyContribution,
     annualAssetFee: d.terPct / 100,
     equityPartialExemption: defaultAssumptions.etf.equityPartialExemption,
-    annualContributionGrowthRate: 0,
+    annualContributionGrowthRate: Math.max(0, d.annualContributionGrowthRate ?? 0),
   }
 }
 

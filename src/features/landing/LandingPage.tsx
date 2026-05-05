@@ -70,10 +70,8 @@ export function LandingPage({ onChoice }: Props) {
               <h2 className="landing-card-title">Produkte vergleichen</h2>
               <p className="landing-card-desc">
                 Vergleiche ETF-Depot, bAV, private Rentenversicherung, Basisrente,
-                Altersvorsorgedepot und Riester direkt nebeneinander. Im Modus
-                „Gleicher Beitrag" werden nur ETF und private Rentenversicherung
-                auf denselben Netto-Betrag gesetzt; bAV, Basisrente, AVD und Riester
-                nutzen ihre eigenen Beitragsfelder.
+                Altersvorsorgedepot und Riester direkt nebeneinander mit derselben
+                monatlichen Netto-Belastung.
               </p>
               <button
                 type="button"

@@ -1,12 +1,10 @@
 /**
  * RecommenderCard — Group G issue 12 / milestone M3.7.
  *
- * Top-of-dashboard card surfacing 3-4 ranked candidate "next-€X" allocations.
- * Renders only in combine-mode; compare-mode does not show this card.
+ * Result-only recommender surface for the Lücke-schließen modal.
  *
- * The marginal-budget input is in **net cash out-of-pocket per month** — the
- * additional after-tax cash the user can commit. Each candidate is sized by
- * `recommendNextEuro` so the user's monthly cash outflow equals the input.
+ * The modal owns budget and bAV-offer input state; this component only renders
+ * ranked candidates and the active ranking filter.
  */
 
 import { useMemo, useState } from 'react'
@@ -14,38 +12,22 @@ import './RecommenderCard.css'
 import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
-import { recommendNextEuro, type RecommendedCandidate } from '../../app/recommender'
+import {
+  RECOMMENDER_RANKING_LABELS,
+  rankRecommendedCandidates,
+  recommendNextEuro,
+  type BavEmployerOfferInput,
+  type RecommendedCandidate,
+  type RecommenderRankingCriterion,
+} from '../../app/recommender'
 import { confidenceLanguage } from '../../app/evidence'
 import { confidenceForResult } from '../../app/evidence'
 import { de2026Rules } from '../../rules/de2026'
-import { NumberField } from '../../ui/NumberField'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency } from '../../utils/format'
 import { renderAtom } from '../../app/recommendations'
 import { productIdFromInstanceId } from '../../utils/scenarioSchema'
 import type { ProductId } from '../../engine/productRegistry'
-
-type SortKey = 'median' | 'flexibility' | 'risk' | 'lifetime'
-
-const FLEX_RANK: Record<RecommendedCandidate['flexibilityScore'], number> = {
-  high: 3,
-  medium: 2,
-  low: 1,
-}
-
-const SORT_LABELS: Record<SortKey, string> = {
-  median: 'mittlerer Netto-Rente',
-  flexibility: 'Flexibilität',
-  risk: 'Risiko (P10)',
-  lifetime: 'Lifetime Cash',
-}
-
-const SORT_TOOLTIPS: Record<SortKey, string> = {
-  median: 'Erwartete monatliche Netto-Rente im Basisszenario',
-  flexibility: 'Flexibilität (Kapitalverfügbarkeit vor Rentenbeginn)',
-  risk: '10 von 100 simulierten Verläufen liegen darunter (P10 des Endkapitals)',
-  lifetime: 'Geschätzte Lebenszeit-Auszahlungen',
-}
 
 const FLEX_LABEL: Record<RecommendedCandidate['flexibilityScore'], string> = {
   high: 'Hoch',
@@ -53,11 +35,33 @@ const FLEX_LABEL: Record<RecommendedCandidate['flexibilityScore'], string> = {
   low: 'Niedrig',
 }
 
+const FLEX_DETAIL_LABEL: Record<string, string> = {
+  easy: 'einfach',
+  restricted: 'eingeschränkt',
+  hard: 'schwer / nicht vorgesehen',
+}
+
+const EFFORT_LABEL: Record<RecommendedCandidate['effort']['level'], string> = {
+  low: 'Niedrig',
+  medium: 'Mittel',
+  high: 'Hoch',
+}
+
+const RANKING_KEYS: RecommenderRankingCriterion[] = [
+  'median_net_pension',
+  'capital_at_retirement',
+  'safety',
+  'flexibility',
+  'low_effort',
+]
+
 interface Props {
   workspace: Workspace
   baselineCombined: CombinedResult
   baselinePerInstance: Record<string, ProductResult[]>
   grvGrossMonthlyPension: number
+  marginalMonthlyEUR: number
+  bavOffer?: BavEmployerOfferInput
   /**
    * The user's currently selected return scenario id. When provided, the
    * recommender uses this scenario's return assumptions so the panel stays in
@@ -73,34 +77,38 @@ export function RecommenderCard({
   baselineCombined,
   baselinePerInstance,
   grvGrossMonthlyPension,
+  marginalMonthlyEUR,
+  bavOffer,
   selectedScenarioId,
   onSaveAsPlan,
 }: Props) {
-  const [marginalEUR, setMarginalEUR] = useState<number>(0)
-  const [sortKey, setSortKey] = useState<SortKey>('median')
+  const [ranking, setRanking] = useState<RecommenderRankingCriterion>('median_net_pension')
 
   const candidates = useMemo(() => {
-    if (marginalEUR <= 0) return []
+    if (marginalMonthlyEUR <= 0) return []
     return recommendNextEuro({
       workspace,
       rules: de2026Rules,
-      marginalMonthlyEUR: marginalEUR,
+      marginalMonthlyEUR,
       baselinePerInstance,
       baselineCombined,
       grvGrossMonthlyPension,
       selectedScenarioId,
+      bavOffer,
     })
-  }, [workspace, marginalEUR, baselinePerInstance, baselineCombined, grvGrossMonthlyPension, selectedScenarioId])
+  }, [
+    workspace,
+    marginalMonthlyEUR,
+    baselinePerInstance,
+    baselineCombined,
+    grvGrossMonthlyPension,
+    selectedScenarioId,
+    bavOffer,
+  ])
 
   const sorted = useMemo(() => {
-    const out = [...candidates]
-    if (sortKey === 'median') out.sort((a, b) => b.medianNettoRente - a.medianNettoRente)
-    else if (sortKey === 'flexibility')
-      out.sort((a, b) => FLEX_RANK[b.flexibilityScore] - FLEX_RANK[a.flexibilityScore])
-    else if (sortKey === 'risk') out.sort((a, b) => b.riskScoreP10 - a.riskScoreP10)
-    else if (sortKey === 'lifetime') out.sort((a, b) => b.lifetimeCash - a.lifetimeCash)
-    return out
-  }, [candidates, sortKey])
+    return rankRecommendedCandidates(candidates, ranking)
+  }, [candidates, ranking])
 
   // Confidence-language prefix: when ANY baseline instance has a model_estimate
   // evidence on relevant inputs, hedge the card's intro text.
@@ -128,67 +136,47 @@ export function RecommenderCard({
 
   return (
     <section className="recommender-card" aria-label="Empfehlungen für deinen nächsten Beitrag">
-      <h3>Was passiert mit deinem nächsten Euro?</h3>
+      <h3>Beste Optionen für {formatCurrency(marginalMonthlyEUR, 0)} zusätzlich im Monat</h3>
 
-      <div className="recommender-budget">
-        <NumberField
-          label="Monatliches Budget netto"
-          value={marginalEUR}
-          onCommit={(raw) => setMarginalEUR(Math.max(0, Number(raw) || 0))}
-          step={10}
-          suffix="€/Mon."
-          decimals={0}
-          min={0}
-        />
-        <div className="recommender-presets" role="group" aria-label="Voreingestellte Budgets">
-          {[100, 200, 400].map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              className="recommender-preset"
-              onClick={() => setMarginalEUR(preset)}
-            >
-              {preset} €
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {marginalEUR > 0 && sorted.length === 0 && (
+      {marginalMonthlyEUR > 0 && sorted.length === 0 && (
         <p className="recommender-empty">
           Für dieses Budget gibt es derzeit keine passenden Vorschläge.
         </p>
       )}
 
-      {marginalEUR > 0 && sorted.length > 0 && (
+      {marginalMonthlyEUR > 0 && sorted.length > 0 && (
         <>
           <p className="recommender-intro">
-            {confidence.prefix} folgende Allokation deines nächsten Euros:
+            {confidence.prefix} diese Rangliste für deine zusätzliche Sparrate:
           </p>
 
           <div className="recommender-sort-row">
             <span className="recommender-sort-indicator">
-              Rangliste: nach {SORT_LABELS[sortKey]}
+              Beste Option für {RECOMMENDER_RANKING_LABELS[ranking]}
             </span>
             <div className="recommender-sort-buttons">
-              {(['median', 'flexibility', 'risk', 'lifetime'] as SortKey[]).map((key) => (
+              {RANKING_KEYS.map((key) => (
                 <button
                   key={key}
                   type="button"
-                  className={`recommender-sort-button ${sortKey === key ? 'is-active' : ''}`}
-                  onClick={() => setSortKey(key)}
-                  aria-pressed={sortKey === key}
-                  title={SORT_TOOLTIPS[key]}
+                  className={`recommender-sort-button ${ranking === key ? 'is-active' : ''}`}
+                  onClick={() => setRanking(key)}
+                  aria-pressed={ranking === key}
                 >
-                  {SORT_LABELS[key]}
+                  {RECOMMENDER_RANKING_LABELS[key]}
                 </button>
               ))}
             </div>
           </div>
 
           <ol className="recommender-list">
-            {sorted.map((cand) => (
+            {sorted.map((cand, index) => (
               <li key={cand.id} className="recommender-candidate">
+                {index === 0 && (
+                  <span className="recommender-candidate-winner">
+                    Beste Option für {RECOMMENDER_RANKING_LABELS[ranking]}: {winningMetric(cand, ranking)}
+                  </span>
+                )}
                 <div className="recommender-candidate-header">
                   <strong>{cand.label}</strong>
                   <span className="recommender-candidate-budget">
@@ -204,11 +192,37 @@ export function RecommenderCard({
                   </span>
                   <span>Flexibilität <strong>{FLEX_LABEL[cand.flexibilityScore]}</strong></span>
                   <span>
-                    Risiko (P10) <strong>{formatCurrency(cand.riskScoreP10, 0)}</strong>
-                    <InfoTip text={`10 von 100 simulierten Verläufen liegen darunter (Endkapital, ${cand.riskScoreMcPaths} Pfade).`} />
+                    Sicherheit <strong>{formatCurrency(cand.safetyNettoRenteP10, 0)} / Mon.</strong>
+                    <InfoTip text={`90 % der simulierten Verläufe lagen über diesem monatlichen Netto-Wert (${cand.riskScoreMcPaths} Pfade).`} />
                   </span>
-                  <span>Lifetime Cash <strong>{formatCurrency(cand.lifetimeCash, 0)}</strong></span>
+                  <span>Kapital <strong>{formatCurrency(cand.capitalAtRetirement, 0)}</strong></span>
+                  <span>Aufwand <strong>{EFFORT_LABEL[cand.effort.level]}</strong></span>
                 </div>
+                <details className="recommender-candidate-details">
+                  <summary>Flexibilität und Aufwand</summary>
+                  <dl>
+                    <div>
+                      <dt>Kündigen</dt>
+                      <dd>{FLEX_DETAIL_LABEL[cand.flexibilityDetails.criteria.cancel]}</dd>
+                    </div>
+                    <div>
+                      <dt>Anlage wechseln</dt>
+                      <dd>{FLEX_DETAIL_LABEL[cand.flexibilityDetails.criteria.switchAsset]}</dd>
+                    </div>
+                    <div>
+                      <dt>Produkt wechseln</dt>
+                      <dd>{FLEX_DETAIL_LABEL[cand.flexibilityDetails.criteria.switchProduct]}</dd>
+                    </div>
+                    <div>
+                      <dt>Beitrag ändern</dt>
+                      <dd>{FLEX_DETAIL_LABEL[cand.flexibilityDetails.criteria.adjustContribution]}</dd>
+                    </div>
+                    <div>
+                      <dt>Nächster Schritt</dt>
+                      <dd>{cand.effort.details.join(', ')}</dd>
+                    </div>
+                  </dl>
+                </details>
                 {cand.atoms.length > 0 && (
                   <ul className="recommender-candidate-atoms">
                     {cand.atoms.map((atom, idx) => {
@@ -233,6 +247,11 @@ export function RecommenderCard({
                     Beitrag wurde auf den verbleibenden Rahmen gekürzt
                   </span>
                 )}
+                {cand.usesStandardAssumptions && (
+                  <span className="recommender-candidate-tag recommender-candidate-tag--info">
+                    bAV mit Standardannahmen, geringere Eingabesicherheit
+                  </span>
+                )}
                 <button
                   type="button"
                   className="recommender-candidate-save"
@@ -247,6 +266,25 @@ export function RecommenderCard({
       )}
     </section>
   )
+}
+
+function winningMetric(
+  candidate: RecommendedCandidate,
+  criterion: RecommenderRankingCriterion,
+): string {
+  if (criterion === 'median_net_pension') {
+    return `${formatCurrency(candidate.medianNettoRente, 0)} / Mon.`
+  }
+  if (criterion === 'capital_at_retirement') {
+    return formatCurrency(candidate.capitalAtRetirement, 0)
+  }
+  if (criterion === 'safety') {
+    return `${formatCurrency(candidate.safetyNettoRenteP10, 0)} / Mon.`
+  }
+  if (criterion === 'flexibility') {
+    return FLEX_LABEL[candidate.flexibilityScore]
+  }
+  return `Aufwand ${EFFORT_LABEL[candidate.effort.level]}`
 }
 
 function detectProductId(inst: { instanceId: string }): ProductId {

@@ -14,6 +14,8 @@ type Props = {
 }
 
 export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, pkvNetMonthlyCost }: Props) {
+  const maxPlannedChildYear = de2026Rules.year + 20
+
   return (
     <>
       <div className="field-grid">
@@ -97,7 +99,6 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
       <div className="field">
         <span>Kinder (Geburtsjahr)</span>
         {profile.childBirthYears.map((year, i) => {
-          const maxYear = de2026Rules.year + 30
           const isFuture = year > de2026Rules.year
           return (
             <div key={i} className="child-row">
@@ -105,15 +106,16 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
                 Kind {i + 1}
                 {isFuture && ' (geplant)'}
               </span>
-              <div className="input-shell child-year-input">
-                <input
-                  type="number"
-                  min={1900}
-                  max={maxYear}
-                  step={1}
+              <div className="child-year-input">
+                <NumberField
+                  label={`Geburtsjahr Kind ${i + 1}`}
                   value={year}
-                  onChange={(e) => {
-                    const val = Math.round(clampNumber(Number(e.target.value), 1900, maxYear))
+                  min={1900}
+                  max={maxPlannedChildYear}
+                  step={1}
+                  decimals={0}
+                  onCommit={(value) => {
+                    const val = Math.round(clampNumber(Number(value), 1900, maxPlannedChildYear))
                     onProfileChange((cur) => ({
                       ...cur,
                       childBirthYears: cur.childBirthYears.map((y, j) => (j === i ? val : y)),
@@ -154,8 +156,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
         <p className="field-hint">
           Geplante Kinder können mit zukünftigem Geburtsjahr eingetragen werden. Pflegebeiträge
           (Kinderlosenzuschlag, Beitragsabschlag) gelten erst ab dem Geburtsjahr; Riester-/AVD-Zulagen
-          fließen vereinfachend über die gesamte Ansparphase, da das Modell die Zulagen jährlich
-          stationär ansetzt.
+          berücksichtigen das jeweilige Beitragsjahr.
         </p>
       </div>
       {!profile.publicHealthInsurance && (

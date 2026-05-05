@@ -41,6 +41,7 @@ import {
 } from './certifiedPensionPayout'
 import type { RetirementHealthStatus } from './retirementPayout'
 import { calculateAllowanceExcessBenefit, calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
+import { childBirthYearsUnder25InYear } from './childEligibility'
 
 // ---------------------------------------------------------------------------
 // Allowance helpers
@@ -97,6 +98,7 @@ function computeFullRiesterAllowances(
   profile: PersonalProfile,
   rules: GermanRules,
   isFirstContributionYear: boolean,
+  contributionYear = rules.year,
 ): {
   grundzulage: number
   childAllowance: number
@@ -110,11 +112,17 @@ function computeFullRiesterAllowances(
   const grundzulage = e.directlyEligible || indirectOnly ? r.grundzulage : 0
 
   const childAllowance = e.directlyEligible || indirectOnly
-    ? computeRiesterChildAllowance(
-        profile.childBirthYears.length,
-        profile.childBirthYears,
-        rules,
-      )
+    ? (() => {
+        const eligibleChildBirthYears = childBirthYearsUnder25InYear(
+          profile.childBirthYears,
+          contributionYear,
+        )
+        return computeRiesterChildAllowance(
+          eligibleChildBirthYears.length,
+          eligibleChildBirthYears,
+          rules,
+        )
+      })()
     : 0
 
   const careerStarter =
@@ -131,6 +139,11 @@ function computeFullRiesterAllowances(
     careerStarter,
     total: grundzulage + childAllowance + careerStarter,
   }
+}
+
+export interface RiesterFundingOptions {
+  contributionYear?: number
+  isFirstContributionYear?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -151,9 +164,13 @@ export function calculateRiesterFunding(
   salaryResult: SalaryResult,
   riester: RiesterAssumptions,
   profile: PersonalProfile,
+  options: RiesterFundingOptions = {},
 ): RiesterFundingResult {
   const r = rules.riester
   const annualOwnContribution = riester.monthlyOwnContribution * 12
+  const contributionYear = options.contributionYear ?? rules.year
+  const isFirstContributionYear =
+    options.isFirstContributionYear ?? !riester.eligibility.careerStarterBonusUsed
 
   // -------------------------------------------------------------------------
   // 1. Full allowances (assuming Mindesteigenbeitrag is met).
@@ -164,7 +181,8 @@ export function calculateRiesterFunding(
     riester,
     profile,
     rules,
-    !riester.eligibility.careerStarterBonusUsed,
+    isFirstContributionYear,
+    contributionYear,
   )
 
   // -------------------------------------------------------------------------

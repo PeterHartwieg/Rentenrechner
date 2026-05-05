@@ -202,6 +202,68 @@ describe('calculateAvdFunding', () => {
     expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
     expect(result.monthlyNetCost).toBeCloseTo(avdBase.monthlyOwnContribution, 4)
   })
+
+  it('uses profile child years for a past eligible child', () => {
+    const result = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      avdBase,
+      { profile: { ...defaultProfile, childBirthYears: [2018] } },
+    )
+    expect(result.childAllowanceAnnual).toBeCloseTo(300, 4)
+  })
+
+  it('uses profile child years for a current-year child', () => {
+    const result = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      avdBase,
+      { profile: { ...defaultProfile, childBirthYears: [rules.year] } },
+    )
+    expect(result.childAllowanceAnnual).toBeCloseTo(300, 4)
+  })
+
+  it('does not grant child allowance before a planned future child is born', () => {
+    const result = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      avdBase,
+      {
+        profile: { ...defaultProfile, childBirthYears: [rules.year + 1] },
+        contributionYear: rules.year,
+      },
+    )
+    expect(result.childAllowanceAnnual).toBe(0)
+  })
+
+  it('profile birth-year timing overrides a stale flat child count before birth year', () => {
+    const result = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      {
+        ...avdBase,
+        eligibility: { ...avdBase.eligibility, eligibleChildren: 1 },
+      },
+      {
+        profile: { ...defaultProfile, childBirthYears: [rules.year + 1] },
+        contributionYear: rules.year,
+      },
+    )
+    expect(result.childAllowanceAnnual).toBe(0)
+  })
+
+  it('starts child allowance in the planned birth year', () => {
+    const result = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      avdBase,
+      {
+        profile: { ...defaultProfile, childBirthYears: [rules.year + 1] },
+        contributionYear: rules.year + 1,
+      },
+    )
+    expect(result.childAllowanceAnnual).toBeCloseTo(300, 4)
+  })
 })
 
 // ---------------------------------------------------------------------------

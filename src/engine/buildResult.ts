@@ -60,6 +60,7 @@ export interface BuildProductPolicy {
   }
   initialCapital?: number
   contributionGrowth?: { annualRate: number }
+  yearlyContributions?: AccumulationPolicy['yearlyContributions']
   /** Issue 15 — TransferEvent inbound capital injections. See `AccumulationPolicy`. */
   capitalInjections?: { year: number; amount: number }[]
   /** Issue 15 — TransferEvent outbound capital withdrawals. See `AccumulationPolicy`. */
@@ -176,6 +177,7 @@ export function buildProductResult<
           : undefined,
         initialCapital: params.policy.initialCapital,
         contributionGrowth: params.policy.contributionGrowth,
+        yearlyContributions: params.policy.yearlyContributions,
         capitalInjections: params.policy.capitalInjections,
         capitalWithdrawals: params.policy.capitalWithdrawals,
         costBasisInjections: params.policy.costBasisInjections,

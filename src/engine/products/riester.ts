@@ -5,6 +5,7 @@ import {
 } from '../buildResult'
 import {
   afterTaxRiesterLumpSum,
+  calculateRiesterFunding,
   netRiesterPayout,
 } from '../riester'
 import { computeGrossMonthlyPayout } from '../payoutMath'
@@ -23,7 +24,7 @@ export const metadata = {
 }
 
 export function simulate(ctx: SimulationContext, scenario: ReturnScenario): RiesterProductResult {
-  const { profile, assumptions, rules, riesterFunding, payoutYear } = ctx
+  const { profile, assumptions, rules, riesterFunding, payoutYear, yearsToRetirement } = ctx
   const riester = assumptions.riester
   const guaranteePct = riester.capitalGuarantee.enabled
     ? riester.capitalGuarantee.floorPctOfContributions
@@ -35,6 +36,25 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     assumptions.riester.monthlyOwnContribution +
     riesterFunding.guenstigerpruefungBenefitAnnual / 12 +
     riesterFunding.totalAllowanceAnnual / 12
+  const fundingForYear = (yearIndex: number) =>
+    calculateRiesterFunding(
+      rules,
+      ctx.bavFunding.salaryWithBav,
+      riester,
+      profile,
+      {
+        contributionYear: rules.year + yearIndex,
+        isFirstContributionYear:
+          yearIndex === 0 && !riester.eligibility.careerStarterBonusUsed,
+      },
+    )
+  const yearlySavings = Array.from({ length: yearsToRetirement }).reduce<number>(
+    (sum, _, yearIndex) => {
+      const funding = fundingForYear(yearIndex)
+      return sum + funding.totalAllowanceAnnual + funding.guenstigerpruefungBenefitAnnual
+    },
+    0,
+  )
 
   return buildProductResult({
     productId: 'riester',
@@ -58,13 +78,23 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     policy: withMarketReturnPolicy(
       ctx,
       scenario,
-      riester.existingCapital > 0
-        ? { initialCapital: riester.existingCapital }
-        : undefined,
+      {
+        ...(riester.existingCapital > 0
+          ? { initialCapital: riester.existingCapital }
+          : {}),
+        yearlyContributions: (yearIndex) => {
+          const funding = fundingForYear(yearIndex)
+          return {
+            monthlyUserCost: funding.monthlyNetCost,
+            monthlyProductContribution:
+              riester.monthlyOwnContribution +
+              funding.guenstigerpruefungBenefitAnnual / 12 +
+              funding.totalAllowanceAnnual / 12,
+          }
+        },
+      },
     ),
-    taxAndSvSavings:
-      (riesterFunding.totalAllowanceAnnual + riesterFunding.guenstigerpruefungBenefitAnnual) *
-      ctx.yearsToRetirement,
+    taxAndSvSavings: yearlySavings,
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
       const grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
         mode: riester.payoutMode,

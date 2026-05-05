@@ -52,6 +52,7 @@ const BASE_OPTS = {
   equityPartialExemption: 0.3,
   insuranceOtherAnnualIncome: 0,
   rules: de2026Rules,
+  inflationRate: 0.02,
 }
 
 describe('buildExportCsv', () => {
@@ -74,6 +75,13 @@ describe('buildExportCsv', () => {
     expect(headerLineIdx).toBeGreaterThanOrEqual(0)
     const headerRow = lines[headerLineIdx + 1]
     expect(headerRow).toContain('Confidence')
+  })
+
+  it('discloses the active inflation assumption', () => {
+    const csv = buildExportCsv(BASE_OPTS)
+    expect(csv).toContain('Aktive Annahmen')
+    expect(csv).toContain('Inflation p.a. (%)')
+    expect(csv).toContain('2.00')
   })
 
   it('"Confidence" is the 10th column (index 9) in Section 1 header and data rows', () => {

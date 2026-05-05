@@ -27,6 +27,14 @@ const TIP_RENTENFAKTOR =
 const TIP_TEILFREISTELLUNG =
   'Je nach Fondstyp ist ein Teil der Gewinne von der Abgeltungsteuer befreit (z. B. 30 % bei Aktienfonds).'
 
+function NetAnchorNotice() {
+  return (
+    <p className="pec-fee-hint">
+      Der Beitrag wird über die Netto-Belastung in den Eingaben gesetzt.
+    </p>
+  )
+}
+
 interface Props {
   selectedResults: ProductResult[]
   assumptions: ScenarioAssumptions
@@ -301,23 +309,7 @@ function BavFields({ assumptions, onAssumptionsChange }: FieldProps) {
 
   return (
     <>
-      <FieldWithProv modified={diff(bav.monthlyGrossConversion, def.monthlyGrossConversion)}>
-        <NumberField
-          label="Brutto-Umwandlung"
-          value={bav.monthlyGrossConversion}
-          min={0}
-          max={2000}
-          step={25}
-          suffix="€"
-          onCommit={(v) => {
-            const val = Math.min(2000, Math.max(0, Number(v)))
-            onAssumptionsChange((cur) => ({
-              ...cur,
-              bav: { ...cur.bav, monthlyGrossConversion: val },
-            }))
-          }}
-        />
-      </FieldWithProv>
+      <NetAnchorNotice />
       <FieldWithProv modified={diff(bavTotalMatchPct(bav), bavTotalMatchPct(def))}>
         <NumberField
           label="AG-Zuschuss (gesamt)"
@@ -481,25 +473,7 @@ function BasisrenteFields({ assumptions, onAssumptionsChange }: FieldProps) {
 
   return (
     <>
-      <FieldWithProv
-        modified={diff(basisrente.monthlyGrossContribution, def.monthlyGrossContribution)}
-      >
-        <NumberField
-          label="Monatsbeitrag"
-          value={basisrente.monthlyGrossContribution}
-          min={0}
-          max={3000}
-          step={25}
-          suffix="€"
-          onCommit={(v) => {
-            const val = Math.min(3000, Math.max(0, Number(v)))
-            onAssumptionsChange((cur) => ({
-              ...cur,
-              basisrente: { ...cur.basisrente, monthlyGrossContribution: val },
-            }))
-          }}
-        />
-      </FieldWithProv>
+      <NetAnchorNotice />
       <FieldWithProv
         modified={diff(basisrente.rentenfaktor, def.rentenfaktor)}
         isModel
@@ -557,30 +531,10 @@ function BasisrenteFields({ assumptions, onAssumptionsChange }: FieldProps) {
 }
 
 function AvdFields({ assumptions, onAssumptionsChange }: FieldProps) {
-  const { altersvorsorgedepot } = assumptions
-  const def = defaultAssumptions.altersvorsorgedepot
+  void assumptions
+  void onAssumptionsChange
 
-  return (
-    <FieldWithProv
-      modified={diff(altersvorsorgedepot.monthlyOwnContribution, def.monthlyOwnContribution)}
-    >
-      <NumberField
-        label="Eigenbeitrag"
-        value={altersvorsorgedepot.monthlyOwnContribution}
-        min={0}
-        max={3000}
-        step={25}
-        suffix="€"
-        onCommit={(v) => {
-          const val = Math.min(3000, Math.max(0, Number(v)))
-          onAssumptionsChange((cur) => ({
-            ...cur,
-            altersvorsorgedepot: { ...cur.altersvorsorgedepot, monthlyOwnContribution: val },
-          }))
-        }}
-      />
-    </FieldWithProv>
-  )
+  return <NetAnchorNotice />
 }
 
 function RiesterFields({ assumptions, onAssumptionsChange }: FieldProps) {
@@ -589,23 +543,7 @@ function RiesterFields({ assumptions, onAssumptionsChange }: FieldProps) {
 
   return (
     <>
-      <FieldWithProv modified={diff(riester.monthlyOwnContribution, def.monthlyOwnContribution)}>
-        <NumberField
-          label="Eigenbeitrag"
-          value={riester.monthlyOwnContribution}
-          min={0}
-          max={3000}
-          step={25}
-          suffix="€"
-          onCommit={(v) => {
-            const val = Math.min(3000, Math.max(0, Number(v)))
-            onAssumptionsChange((cur) => ({
-              ...cur,
-              riester: { ...cur.riester, monthlyOwnContribution: val },
-            }))
-          }}
-        />
-      </FieldWithProv>
+      <NetAnchorNotice />
       {riester.payoutMode === 'leibrente' && (
         <FieldWithProv
           modified={diff(riester.rentenfaktor, def.rentenfaktor)}

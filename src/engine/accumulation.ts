@@ -42,6 +42,13 @@ export interface AccumulationPolicy {
    *  geometric sum so Abschlusskosten reflect the full contract horizon
    *  (Versicherungs-Beitragssumme convention). 0 / undefined = static. */
   contributionGrowth?: { annualRate: number }
+  /** Year-specific monthly contribution overrides. Used for dated subsidies
+   *  such as child allowances that begin only once the child is born. */
+  yearlyContributions?: (yearIndex: number) => {
+    monthlyUserCost?: number
+    monthlyProductContribution?: number
+    monthlyEmployerContribution?: number
+  }
   /** Inbound capital injections (issue 15 — TransferEvents).
    *  Each entry adds `amount` EUR to the running capital at the START of the
    *  named contract year (year 1 = first projection year). Multiple entries
@@ -107,8 +114,13 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   // (Versicherungs-Beitragssumme convention: total premium summed over the
   // contract horizon with annual contribution growth applied). Falls back to
   // simple month-count multiplication when no Dynamik is configured.
-  const plannedContributions =
-    dynamicRate === 0 || Math.abs(dynamicRate) < 1e-12
+  const plannedContributions = policy?.yearlyContributions
+    ? Array.from({ length: Math.ceil(yearsTotal) }).reduce<number>((sum, _, yearIndex) => {
+        const monthsInYear = Math.min(12, input.months - yearIndex * 12)
+        const yearly = policy.yearlyContributions?.(yearIndex)
+        return sum + (yearly?.monthlyProductContribution ?? input.monthlyProductContribution) * monthsInYear
+      }, 0)
+    : dynamicRate === 0 || Math.abs(dynamicRate) < 1e-12
       ? input.monthlyProductContribution * input.months
       : input.monthlyProductContribution * 12 *
         (Math.pow(1 + dynamicRate, yearsTotal) - 1) / dynamicRate
@@ -156,18 +168,24 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   let currentMonthlyGrossRate = monthlyRate(input.annualReturn)
   // Beitragsdynamik scaling (1 + r)^yearIndex applied to every contribution at the
   // start of each year. yearIndex = 0 for the first year (no growth yet).
-  let dynamicMul = 1
   let monthlyUserCost = input.monthlyUserCost
   let monthlyProductContribution = input.monthlyProductContribution
   let monthlyEmployerContribution = input.monthlyEmployerContribution
 
   for (let month = 1; month <= input.months; month += 1) {
-    if (month > 1 && (month - 1) % 12 === 0) {
-      if (dynamicRate !== 0) {
-        dynamicMul *= 1 + dynamicRate
-        monthlyUserCost = input.monthlyUserCost * dynamicMul
-        monthlyProductContribution = input.monthlyProductContribution * dynamicMul
-        monthlyEmployerContribution = input.monthlyEmployerContribution * dynamicMul
+    if (month === 1 || (month - 1) % 12 === 0) {
+      const yearIndex = Math.floor((month - 1) / 12)
+      const dynamicMul = dynamicRate !== 0 ? Math.pow(1 + dynamicRate, yearIndex) : 1
+      monthlyUserCost = input.monthlyUserCost * dynamicMul
+      monthlyProductContribution = input.monthlyProductContribution * dynamicMul
+      monthlyEmployerContribution = input.monthlyEmployerContribution * dynamicMul
+      const yearly = policy?.yearlyContributions?.(yearIndex)
+      if (yearly) {
+        monthlyUserCost = yearly.monthlyUserCost ?? monthlyUserCost
+        monthlyProductContribution =
+          yearly.monthlyProductContribution ?? monthlyProductContribution
+        monthlyEmployerContribution =
+          yearly.monthlyEmployerContribution ?? monthlyEmployerContribution
       }
     }
 

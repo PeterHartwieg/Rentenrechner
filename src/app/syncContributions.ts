@@ -23,13 +23,17 @@ import {
 } from '../engine/altersvorsorgedepot'
 import { solveRiesterOwnFromNet } from '../engine/riester'
 
+export function normalizeMonthlyNettoBelastung(value: number): number {
+  return Math.max(0, Number.isFinite(value) ? value : 0)
+}
+
 export function syncMonthlyContributions(
   targetNet: number,
   current: ScenarioAssumptions,
   profile: PersonalProfile,
   rules: GermanRules,
 ): ScenarioAssumptions {
-  const anchor = Math.max(0, Number.isFinite(targetNet) ? targetNet : 0)
+  const anchor = normalizeMonthlyNettoBelastung(targetNet)
 
   const bavGross = solveBavGrossFromNet(anchor, profile, rules, current.bav)
   const bavFunding = calculateBavFunding(profile, rules, {
@@ -64,6 +68,8 @@ export function syncMonthlyContributions(
 
   return {
     ...current,
+    compareSubMode: undefined,
+    equalInputAmountEUR: anchor,
     bav: { ...current.bav, monthlyGrossConversion: bavGross },
     basisrente: { ...current.basisrente, monthlyGrossContribution: basisrenteGross },
     altersvorsorgedepot: {

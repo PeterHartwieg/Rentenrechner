@@ -14,23 +14,27 @@ import {
 } from 'recharts'
 import type { TooltipContentProps } from 'recharts/types/component/Tooltip'
 import { Hourglass } from 'lucide-react'
-import type { ProductId, ProductResult } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
 import { formatCurrency, formatNumber } from '../../utils/format'
 import {
   buildLifecycleLineSeries,
   findLeibrenteCrossovers,
+  type LifecycleSeriesResult,
   lifecycleLineKeys,
 } from './breakEvenSeries'
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon'
+import { lifecyclePickerLabel } from './lifecycleLabels'
 
 interface Props {
-  selectedResults: ProductResult[]
+  selectedResults: LifecycleSeriesResult[]
   productColors: Record<string, string>
   startAge: number
   retirementAge: number
   retirementEndAge: number
-  bestProductId?: ProductId
+  bestProductId?: string
+  singleSelection?: boolean
+  title?: string
+  description?: string
 }
 
 const PAID_IN_COLOR = '#64748b'
@@ -42,16 +46,19 @@ export function BreakEvenChart({
   retirementAge,
   retirementEndAge,
   bestProductId,
+  singleSelection = false,
+  title = 'Kapital und Auszahlungen im Alter',
+  description = 'Vergleicht Netto-Einzahlungen, Restkapital und kumulierte Netto-Auszahlungen über Anspar- und Rentenphase.',
 }: Props) {
   // Default chart picker to the best product (or the first available).
-  const defaultProductId = useMemo<ProductId | undefined>(() => {
+  const defaultProductId = useMemo<string | undefined>(() => {
     if (bestProductId && selectedResults.some((r) => r.productId === bestProductId)) {
       return bestProductId
     }
     return selectedResults[0]?.productId
   }, [bestProductId, selectedResults])
 
-  const [pickedIds, setPickedIds] = useState<Set<ProductId>>(
+  const [pickedIds, setPickedIds] = useState<Set<string>>(
     () => new Set(defaultProductId ? [defaultProductId] : []),
   )
 
@@ -62,7 +69,7 @@ export function BreakEvenChart({
     [selectedResults],
   )
   const effectivePicked = useMemo(() => {
-    const next = new Set<ProductId>()
+    const next = new Set<string>()
     pickedIds.forEach((id) => {
       if (availableIds.has(id)) next.add(id)
     })
@@ -91,8 +98,9 @@ export function BreakEvenChart({
   const inFrameCrossovers = leibrenteCrossovers.filter((c) => c.age <= horizonAge)
   const strokeOpacity = renderedProducts.length === 1 ? 1 : 0.82
 
-  function togglePicked(id: ProductId) {
+  function togglePicked(id: string) {
     setPickedIds((prev) => {
+      if (singleSelection) return new Set([id])
       const next = new Set(prev)
       // Drop stale ids first.
       Array.from(next).forEach((existing) => {
@@ -112,17 +120,13 @@ export function BreakEvenChart({
       <div className="section-heading">
         <Hourglass size={18} aria-hidden="true" />
         <div>
-          <h2>Kapital und Auszahlungen im Alter</h2>
-          <p>
-            Vergleicht Netto-Einzahlungen, Restkapital und kumulierte Netto-Auszahlungen
-            über Anspar- und Rentenphase.
-          </p>
+          <h2>{title}</h2>
+          <p>{description}</p>
         </div>
       </div>
 
       <div className="lifecycle-picker">
         {selectedResults.map((r) => {
-          const meta = getProductMeta(r.productId)
           const isActive = effectivePicked.has(r.productId)
           const color = productColors[r.productId]
           return (
@@ -138,7 +142,7 @@ export function BreakEvenChart({
               }}
               aria-pressed={isActive}
             >
-              {meta?.shortLabel ?? r.label}
+              {lifecyclePickerLabel(r)}
             </button>
           )
         })}
@@ -177,6 +181,7 @@ export function BreakEvenChart({
                   renderedProducts={renderedProducts}
                   productColors={productColors}
                   paidInKey={paidInKey}
+                  retirementAge={retirementAge}
                 />
               )}
             />
@@ -335,9 +340,10 @@ export function BreakEvenChart({
 }
 
 interface BreakEvenTooltipProps extends TooltipContentProps {
-  renderedProducts: ProductResult[]
+  renderedProducts: LifecycleSeriesResult[]
   productColors: Record<string, string>
   paidInKey?: string
+  retirementAge: number
 }
 
 function BreakEvenTooltip({
@@ -347,6 +353,7 @@ function BreakEvenTooltip({
   renderedProducts,
   productColors,
   paidInKey,
+  retirementAge,
 }: BreakEvenTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const valuesByKey = new Map(payload.map((item) => [String(item.dataKey), Number(item.value ?? 0)]))
@@ -364,6 +371,7 @@ function BreakEvenTooltip({
           const keys = lifecycleLineKeys(result.productId)
           const balance = valuesByKey.get(keys.balance) ?? 0
           const payout = valuesByKey.get(keys.payout) ?? 0
+          const isModeledContractValue = Number(label) > retirementAge && result.productId !== 'etf'
           return (
             <div key={result.productId} className="break-even-tooltip__group">
               <div
@@ -373,7 +381,9 @@ function BreakEvenTooltip({
                 {meta?.shortLabel ?? result.label}
               </div>
               <div className="break-even-tooltip__row">
-                <span className="break-even-tooltip__name">Restkapital</span>
+                <span className="break-even-tooltip__name">
+                  {isModeledContractValue ? 'Restkapital (Modellwert)' : 'Restkapital'}
+                </span>
                 <span className="break-even-tooltip__value">{formatCurrency(balance, 0)}</span>
               </div>
               <div className="break-even-tooltip__row">
@@ -389,7 +399,7 @@ function BreakEvenTooltip({
 }
 
 interface BreakEvenMarker {
-  productId: ProductId
+  productId: string
   age: number
   value: number
   color: string
@@ -398,7 +408,7 @@ interface BreakEvenMarker {
 
 function breakEvenMarkers(
   data: Record<string, number>[],
-  products: ProductResult[],
+  products: LifecycleSeriesResult[],
   paidInKey: string,
   productColors: Record<string, string>,
 ): BreakEvenMarker[] {

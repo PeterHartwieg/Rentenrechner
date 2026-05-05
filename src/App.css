@@ -267,6 +267,49 @@
   flex-wrap: wrap;
 }
 
+.netto-belastung-control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.netto-belastung-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.netto-belastung-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-bottom: 1px;
+}
+
+.netto-belastung-preset {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #344054;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.netto-belastung-preset:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.netto-belastung-preset.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .scenario-add-btn {
   padding: 8px 14px;
   border: 1px dashed #94a3b8;
@@ -781,6 +824,10 @@ th {
 }
 
 @media (max-width: 760px) {
+  .netto-belastung-row {
+    grid-template-columns: 1fr;
+  }
+
   .topbar,
   .dashboard,
   .workspace {

@@ -215,4 +215,28 @@ describe('ProductEditCards – defaults notice', () => {
     )
     expect(getAllByText('Einstellungen anpassen').length).toBe(2)
   })
+
+  it('does not expose product-specific contribution fields that bypass Netto-Belastung', () => {
+    const { queryByText, getAllByText } = render(
+      <ProductEditCards
+        selectedResults={[
+          makeResult('bav'),
+          makeResult('basisrente'),
+          makeResult('altersvorsorgedepot'),
+          makeResult('riester'),
+        ]}
+        assumptions={defaultAssumptions}
+        onAssumptionsChange={vi.fn()}
+      />,
+    )
+
+    for (const summary of document.querySelectorAll('.pec-summary')) {
+      fireEvent.click(summary)
+    }
+
+    expect(queryByText('Brutto-Umwandlung')).toBeNull()
+    expect(queryByText('Monatsbeitrag')).toBeNull()
+    expect(queryByText('Eigenbeitrag')).toBeNull()
+    expect(getAllByText(/Netto-Belastung/).length).toBeGreaterThan(0)
+  })
 })

@@ -227,7 +227,12 @@ export function buildContext(
       pensionSystemAnnualContributionOverride,
     )
   const altersvorsorgedepotFunding = overrides?.altersvorsorgedepotFundingOverride
-    ?? calculateAvdFunding(rules, bavFunding.salaryWithBav, assumptions.altersvorsorgedepot)
+    ?? calculateAvdFunding(
+      rules,
+      bavFunding.salaryWithBav,
+      assumptions.altersvorsorgedepot,
+      { profile },
+    )
   const riesterFunding = overrides?.riesterFundingOverride
     ?? calculateRiesterFunding(rules, bavFunding.salaryWithBav, assumptions.riester, profile)
 

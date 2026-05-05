@@ -76,6 +76,7 @@ export interface AvdDraft extends ProductDraftState {
 export interface EtfDraft extends ProductDraftState {
   productId: 'etf'
   terPct: number
+  annualContributionGrowthRate?: number
 }
 
 /** Union of all product draft types (excluding GRV which has its own shape). */

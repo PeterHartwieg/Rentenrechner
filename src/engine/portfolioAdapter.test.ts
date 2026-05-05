@@ -915,6 +915,9 @@ describe('PortfolioAdapter — Beitragsfrei (paid_up) engine support (M4 F1)', (
     const paidUpResults = paidUpResult.perInstance[id]
     for (const r of paidUpResults) {
       expect(r.monthlyUserCost).toBe(0)
+      expect(r.monthlyProductContribution).toBe(0)
+      expect(r.totalProductContributions).toBe(0)
+      expect(r.taxAndSvSavings).toBe(0)
       expect(r.capitalAtRetirement).toBeGreaterThanOrEqual(20_000)
     }
   })
@@ -933,6 +936,9 @@ describe('PortfolioAdapter — Beitragsfrei (paid_up) engine support (M4 F1)', (
     const activeResults = activeResult.perInstance[id]
     for (const r of paidUpResults) {
       expect(r.monthlyUserCost).toBe(0)
+      expect(r.monthlyProductContribution).toBe(0)
+      expect(r.totalProductContributions).toBe(0)
+      expect(r.taxAndSvSavings).toBe(0)
       // Capital seeded from currentValueEUR (via existingCapital→riesterTransferCapital
       // mapping in projectInstanceToScenarioAssumptions).
       expect(r.capitalAtRetirement).toBeGreaterThanOrEqual(25_000)

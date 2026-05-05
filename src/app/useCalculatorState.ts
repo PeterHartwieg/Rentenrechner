@@ -5,23 +5,43 @@ import { de2026Rules } from '../rules/de2026'
 import { calculateBavFunding } from '../engine/salary'
 import { STORAGE_KEY_V1, buildStateJson, loadSavedState } from '../storage'
 import { readUrlState } from '../utils/urlShare'
-import { syncMonthlyContributions } from './syncContributions'
+import {
+  normalizeMonthlyNettoBelastung,
+  syncMonthlyContributions,
+} from './syncContributions'
 
 function loadInitialState() {
   return readUrlState() ?? loadSavedState()
 }
 
+function resolveNettoBelastungTarget(
+  profile: PersonalProfile,
+  assumptions: ScenarioAssumptions,
+): number {
+  if (assumptions.compareSubMode === 'equal_cash') {
+    return calculateBavFunding(profile, de2026Rules, assumptions.bav).monthlyNetCost
+  }
+  if (assumptions.equalInputAmountEUR !== undefined) {
+    return normalizeMonthlyNettoBelastung(assumptions.equalInputAmountEUR)
+  }
+  return calculateBavFunding(profile, de2026Rules, assumptions.bav).monthlyNetCost
+}
+
 /**
- * Re-harmonize the four monthly contribution fields on load. Anchor on the
- * current bAV's true monthly netto so already-meaningful saved state stays
- * close to where the user left it; the other three back-solve to match.
+ * Re-harmonize monthly contribution fields on load. New/default state anchors
+ * on the stored public Netto-Belastung value; very old states without that
+ * field fall back to the current bAV's true monthly netto.
  */
 function harmonizeOnLoad(
   profile: PersonalProfile,
   assumptions: ScenarioAssumptions,
 ): ScenarioAssumptions {
-  const bavNet = calculateBavFunding(profile, de2026Rules, assumptions.bav).monthlyNetCost
-  return syncMonthlyContributions(bavNet, assumptions, profile, de2026Rules)
+  return syncMonthlyContributions(
+    resolveNettoBelastungTarget(profile, assumptions),
+    assumptions,
+    profile,
+    de2026Rules,
+  )
 }
 
 export function useCalculatorState() {
@@ -52,8 +72,9 @@ export function useCalculatorState() {
   // they share that same out-of-pocket cash.
   const setSyncedMonthlyContribution = useCallback(
     (targetNet: number) => {
+      const target = normalizeMonthlyNettoBelastung(targetNet)
       setAssumptions((current) =>
-        syncMonthlyContributions(targetNet, current, profile, de2026Rules),
+        syncMonthlyContributions(target, current, profile, de2026Rules),
       )
     },
     [profile],

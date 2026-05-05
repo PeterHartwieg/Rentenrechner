@@ -83,6 +83,7 @@ interface Props {
 // ---------------------------------------------------------------------------
 
 const CURRENT_YEAR = new Date().getFullYear()
+const MAX_PLANNED_CHILD_YEAR = CURRENT_YEAR + 20
 
 // ---------------------------------------------------------------------------
 // Default personal details factory (step 0)
@@ -143,8 +144,8 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
       errors.push('Wunschrente-Alter muss nach dem aktuellen Alter und vor 85 liegen.')
     }
     for (const y of draft.childBirthYears) {
-      if (!Number.isInteger(y) || y < 1950 || y > CURRENT_YEAR) {
-        errors.push('Geburtsjahre der Kinder müssen gültige Jahreszahlen sein.')
+      if (!Number.isInteger(y) || y < 1950 || y > MAX_PLANNED_CHILD_YEAR) {
+        errors.push(`Geburtsjahre der Kinder müssen zwischen 1950 und ${MAX_PLANNED_CHILD_YEAR} liegen.`)
         break
       }
     }
@@ -281,10 +282,10 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
             {draft.childBirthYears.map((year, i) => (
               <div key={i} className="inventory-child-row">
                 <NumberField
-                  label={`Geburtsjahr Kind ${i + 1}`}
+                  label={`Geburtsjahr Kind ${i + 1}${year > CURRENT_YEAR ? ' (geplant)' : ''}`}
                   value={year}
                   min={1950}
-                  max={CURRENT_YEAR}
+                  max={MAX_PLANNED_CHILD_YEAR}
                   step={1}
                   decimals={0}
                   onCommit={(v) => updateChild(i, Number(v))}
@@ -313,7 +314,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
 
         {/* Section: Rentenbasis */}
         <div className="inventory-instance-card">
-          <p className="inventory-instance-section-heading">Mandatorische Altersversorgung</p>
+          <p className="inventory-instance-section-heading">Gesetzliche Altersvorsorge</p>
 
           <div className="inventory-field" data-testid="field-pension-baseline">
             <label htmlFor="step0-pension-baseline">Welches System gilt für dich?</label>
@@ -497,6 +498,7 @@ function defaultEtf(n: number): EtfDraft {
     monthlyContribution: 200,
     anbieter: undefined,
     terPct: 0.2,
+    annualContributionGrowthRate: 0,
   }
 }
 

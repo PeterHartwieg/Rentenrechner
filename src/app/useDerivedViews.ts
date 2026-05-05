@@ -64,6 +64,7 @@ export interface CombineExportBundle {
   scenarioLabels: Record<string, string>
   /** Per-instance tax modes for Section 3 after-tax capital columns. */
   perInstanceTaxModes?: Record<string, InstanceTaxModes>
+  inflationRate?: number
 }
 
 export function useDerivedViews(
@@ -144,6 +145,7 @@ export function useDerivedViews(
         ...options.combine,
         rules: de2026Rules,
         profile,
+        inflationRate: options.combine.inflationRate ?? assumptions.inflationRate,
       })
       downloadCsv('TODO_BRAND_NAME-export.csv', csv)
       return
@@ -158,6 +160,7 @@ export function useDerivedViews(
       equityPartialExemption: assumptions.etf.equityPartialExemption,
       insuranceOtherAnnualIncome: assumptions.insurance.monthlyOtherRetirementIncome * 12,
       rules: de2026Rules,
+      inflationRate: assumptions.inflationRate,
     })
     downloadCsv('TODO_BRAND_NAME-export.csv', csv)
   }

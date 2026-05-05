@@ -1,7 +1,11 @@
 import type { AltersvorsorgedepotAssumptions, PersonalProfile, RiesterAssumptions, ScenarioAssumptions } from '../domain'
 
-/** Default monthly gross input amount for equal-input compare mode (€/month). */
-export const DEFAULT_EQUAL_INPUT_AMOUNT_EUR = 200
+/** Default public monthly net out-of-pocket comparison budget (EUR/month). */
+export const DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR = 200
+/** Compatibility alias for old saved/share state field names. */
+export const DEFAULT_EQUAL_INPUT_AMOUNT_EUR = DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR
+/** Expert inflation default used when the user opts into inflation modeling. */
+export const DEFAULT_EXPERT_INFLATION_RATE = 0.02
 
 export const defaultProfile: PersonalProfile = {
   age: 28,
@@ -107,19 +111,15 @@ export const defaultRiesterAssumptions: RiesterAssumptions = {
 }
 
 export const defaultAssumptions: ScenarioAssumptions = {
-  inflationRate: 0.02,
+  inflationRate: 0,
   retirementEndAge: 90,
   // UX10: default comparison is the most common pair (ETF + bAV). Users widen the
   // comparison via the ComparisonPicker; the guided-setup path can also pre-select
   // a different baseline (e.g. ETF + pAV for the "ETF vs Versicherung" path).
   visibleProducts: ['etf', 'bav'],
-  // Issue 16 — compare-mode sub-mode default. `equal_cash` reproduces today's
-  // fair-comparison invariant byte-identically. The "Produkte vergleichen" CTA
-  // on the landing page bumps this to `equal_input` for broker-style comparisons.
-  compareSubMode: 'equal_cash',
-  // Issue 16 — default broker-comparison amount. Only consulted when
-  // `compareSubMode === 'equal_input'`.
-  equalInputAmountEUR: DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
+  // Compatibility field from the old compare sub-mode. It now stores the
+  // single public monthly Netto-Belastung anchor.
+  equalInputAmountEUR: DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
   returnScenarios: [
     { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
     { id: 'basis', label: 'Basis', annualReturn: 0.05 },

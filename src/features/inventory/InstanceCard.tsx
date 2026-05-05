@@ -85,17 +85,40 @@ function InvNumber({
   suffix?: string
   onChange: (n: number) => void
 }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const displayValue = draft ?? (Number.isFinite(value) ? String(value) : '0')
+
+  function commit() {
+    if (draft === null) return
+    const raw = draft
+    setDraft(null)
+    if (raw.trim() === '') return
+    const next = Number(raw)
+    if (!Number.isFinite(next)) return
+    onChange(next)
+  }
+
   return (
     <div className="inventory-input-shell">
       <input
         type="number"
-        value={Number.isFinite(value) ? value : 0}
+        value={displayValue}
         min={min}
         max={max}
         step={step}
         onChange={(e) => {
-          const n = Number(e.target.value)
+          const raw = e.target.value
+          setDraft(raw)
+          if (raw.trim() === '') return
+          const n = Number(raw)
           if (Number.isFinite(n)) onChange(n)
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            commit()
+            e.currentTarget.blur()
+          }
         }}
       />
       {suffix && <em>{suffix}</em>}
@@ -384,6 +407,65 @@ function Layer3Details({
   )
 }
 
+interface EtfLayer3Props {
+  terPct: number
+  onTerChange: (v: number) => void
+  sparratenDynamikPct: number
+  onSparratenDynamikChange: (v: number) => void
+}
+
+function EtfLayer3Details({
+  terPct,
+  onTerChange,
+  sparratenDynamikPct,
+  onSparratenDynamikChange,
+}: EtfLayer3Props) {
+  return (
+    <details className="inv-layer3-details">
+      <summary className="inv-layer3-summary">Details</summary>
+      <div className="inv-layer3-body">
+        <div className="inv-layer3-section">
+          <p className="inventory-instance-section-heading">Fondskosten</p>
+          <div className="inventory-field-grid inventory-field-grid--narrow">
+            <InvField
+              label="TER / Fondskosten p.a."
+              hint="Laufende Fondskosten des ETF aus Factsheet oder KIID."
+            >
+              <InvNumber
+                value={terPct}
+                min={0}
+                max={3}
+                step={0.01}
+                suffix="% p.a."
+                onChange={onTerChange}
+              />
+            </InvField>
+          </div>
+        </div>
+
+        <div className="inv-layer3-section">
+          <p className="inventory-instance-section-heading">Sparplan</p>
+          <div className="inventory-field-grid inventory-field-grid--narrow">
+            <InvField
+              label="Sparraten-Dynamik p.a."
+              hint={sparratenDynamikPct > 0 ? 'Sparrate wächst jährlich um diesen Prozentsatz.' : undefined}
+            >
+              <InvNumber
+                value={sparratenDynamikPct}
+                min={0}
+                max={10}
+                step={0.1}
+                suffix="%"
+                onChange={onSparratenDynamikChange}
+              />
+            </InvField>
+          </div>
+        </div>
+      </div>
+    </details>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // GRV card
 // ---------------------------------------------------------------------------
@@ -405,50 +487,65 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
         Renteninformation ein.
       </p>
 
-      <div className="inventory-field-grid">
-        <InvField
-          label="Wie viele Jahre arbeitest du schon?"
-          hint={
-            draft.useYearsEstimate
-              ? `≈ ${derivedEp.toFixed(1)} Entgeltpunkte (geschätzt)`
-              : undefined
-          }
-        >
-          <InvNumber
-            value={draft.yearsWorked}
-            min={0}
-            max={50}
-            step={1}
-            suffix="Jahre"
-            onChange={(n) =>
-              onChange({ ...draft, yearsWorked: n, useYearsEstimate: true })
-            }
-          />
-          {/* derived from yearsWorked estimate — intentionally non-promotable */}
-          {draft.useYearsEstimate && (
-            <span className="derived-note">Geschätzter Wert aus Arbeitsjahren</span>
-          )}
-        </InvField>
+      <div className="inventory-field">
+        <span>Wie moechtest du deine gesetzliche Rente erfassen?</span>
+        <div className="radio-group">
+          <label className="radio-option">
+            <input
+              type="radio"
+              name="grv-input-mode"
+              checked={draft.useYearsEstimate}
+              onChange={() => onChange({ ...draft, useYearsEstimate: true })}
+            />
+            <span>Schaetzen aus Arbeitsjahren und Gehalt</span>
+          </label>
+          <label className="radio-option">
+            <input
+              type="radio"
+              name="grv-input-mode"
+              checked={!draft.useYearsEstimate}
+              onChange={() => onChange({ ...draft, useYearsEstimate: false })}
+            />
+            <span>Entgeltpunkte aus Renteninformation eingeben</span>
+          </label>
+        </div>
+      </div>
 
-        <InvField
-          label="Entgeltpunkte (aus Renteninformation)"
-          hint="Aus dem Abschnitt 'Ihre Rentenauskunft' des letzten Renteninformationsbriefs."
-        >
-          <InvNumber
-            value={draft.currentEntgeltpunkte}
-            min={0}
-            max={200}
-            step={0.1}
-            suffix="EP"
-            onChange={(n) =>
-              onChange({ ...draft, currentEntgeltpunkte: n, useYearsEstimate: false })
-            }
-          />
-          {/* derived from yearsWorked estimate — intentionally non-promotable */}
-          {draft.useYearsEstimate && (
-            <span className="derived-note">Basiert auf Jahres-Schätzung</span>
-          )}
-        </InvField>
+      <div className="inventory-field-grid">
+        {draft.useYearsEstimate ? (
+          <InvField
+            label="Wie viele Jahre arbeitest du schon?"
+            hint={`≈ ${derivedEp.toFixed(1)} Entgeltpunkte (geschätzt)`}
+          >
+            <InvNumber
+              value={draft.yearsWorked}
+              min={0}
+              max={50}
+              step={1}
+              suffix="Jahre"
+              onChange={(n) =>
+                onChange({ ...draft, yearsWorked: n, useYearsEstimate: true })
+              }
+            />
+            <span className="derived-note">Geschätzter Wert aus Arbeitsjahren</span>
+          </InvField>
+        ) : (
+          <InvField
+            label="Entgeltpunkte (aus Renteninformation)"
+            hint="Aus dem Abschnitt 'Ihre Rentenauskunft' des letzten Renteninformationsbriefs."
+          >
+            <InvNumber
+              value={draft.currentEntgeltpunkte}
+              min={0}
+              max={200}
+              step={0.1}
+              suffix="EP"
+              onChange={(n) =>
+                onChange({ ...draft, currentEntgeltpunkte: n, useYearsEstimate: false })
+              }
+            />
+          </InvField>
+        )}
       </div>
     </>
   )
@@ -672,7 +769,7 @@ export function RiesterCard({
   vintageAtoms,
 }: BaseProps<RiesterDraft> & { childBirthYears: readonly number[]; vintageAtoms?: Atom[] }) {
   const currentYear = new Date().getFullYear()
-  const youngChildren = childBirthYears.filter((y) => currentYear - y < 25).length
+  const youngChildren = childBirthYears.filter((y) => y <= currentYear && currentYear - y < 25).length
   const hasChildren = youngChildren > 0
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
@@ -850,8 +947,6 @@ export function AvdCard({ draft, onChange, setEvidence }: BaseProps<AvdDraft>) {
 // ---------------------------------------------------------------------------
 
 export function EtfCard({ draft, onChange, setEvidence }: BaseProps<EtfDraft>) {
-  const [beitragsdynamik, setBeitragsdynamik] = useState(0)
-
   return (
     <div className="inventory-instance-card" data-testid="instance-card-etf">
       <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} isEtf={true} />
@@ -880,11 +975,16 @@ export function EtfCard({ draft, onChange, setEvidence }: BaseProps<EtfDraft>) {
         </InvField>
       </div>
 
-      <Layer3Details
-        effektivkostenPct={draft.terPct}
-        onEffektivkostenChange={(v) => onChange({ ...draft, terPct: v })}
-        beitragsdynamikPct={beitragsdynamik}
-        onBeitragsdynamikChange={setBeitragsdynamik}
+      <EtfLayer3Details
+        terPct={draft.terPct}
+        onTerChange={(v) => {
+          setEvidence?.('annualAssetFee', 'user_confirmed')
+          onChange({ ...draft, terPct: v })
+        }}
+        sparratenDynamikPct={(draft.annualContributionGrowthRate ?? 0) * 100}
+        onSparratenDynamikChange={(v) =>
+          onChange({ ...draft, annualContributionGrowthRate: Math.max(0, v / 100) })
+        }
       />
     </div>
   )

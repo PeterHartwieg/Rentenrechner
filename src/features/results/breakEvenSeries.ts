@@ -1,4 +1,26 @@
-import type { ProductId, ProductResult } from '../../domain'
+import type { EtfPayoutRow } from '../../domain'
+
+export interface LifecyclePayoutRow {
+  age: number
+  grossAnnualPayout: number
+  netAnnualPayout: number
+  capitalAtEnd: number
+}
+
+export interface LifecycleSeriesResult {
+  productId: string
+  label: string
+  rows: Array<{ age: number; balance: number }>
+  etfPayoutRows?: EtfPayoutRow[]
+  lifecyclePayoutRows?: LifecyclePayoutRow[]
+  monthlyUserCost: number
+  totalUserCost: number
+  capitalAtRetirement: number
+  grossMonthlyPayout: number
+  netMonthlyPayout: number
+  payoutEndAge?: number
+  leibrenteBreakEvenAge?: number
+}
 
 /** Stable per-product dataKeys for the lifecycle line chart. */
 export function lifecycleLineKeys(productId: string) {
@@ -19,7 +41,7 @@ export function lifecycleLineKeys(productId: string) {
  * - Netto ausgezahlt: cumulative net payouts received after tax and KV/PV.
  */
 export function buildLifecycleLineSeries(
-  results: ProductResult[],
+  results: LifecycleSeriesResult[],
   startAge: number,
   retirementAge: number,
   horizonAge: number,
@@ -58,8 +80,11 @@ export function buildLifecycleLineSeries(
         cumGrossPayouts.set(r.productId, cumGross)
         cumNet = (cumNetPayouts.get(r.productId) ?? 0) + annualNet
         cumNetPayouts.set(r.productId, cumNet)
-        if (r.productId === 'etf') {
-          const row = r.etfPayoutRows[yearIndex]
+        const lifecycleRow = r.lifecyclePayoutRows?.[yearIndex]
+        if (lifecycleRow) {
+          balance = Math.max(0, lifecycleRow.capitalAtEnd)
+        } else if (r.productId === 'etf') {
+          const row = r.etfPayoutRows?.[yearIndex]
           balance = row ? Math.max(0, row.capitalAtEnd) : 0
         } else {
           balance = Math.max(0, r.capitalAtRetirement - cumGross)
@@ -77,16 +102,18 @@ export function buildLifecycleLineSeries(
 }
 
 function annualNetPayoutAt(
-  result: ProductResult,
+  result: LifecycleSeriesResult,
   retirementAge: number,
   yearIndex: number,
 ): number {
+  const lifecycleRow = result.lifecyclePayoutRows?.[yearIndex]
+  if (lifecycleRow) return lifecycleRow.netAnnualPayout
   if (result.payoutEndAge !== undefined) {
     const ageAtYearStart = retirementAge + yearIndex
     if (ageAtYearStart >= result.payoutEndAge) return 0
   }
   if (result.productId === 'etf') {
-    const row = result.etfPayoutRows[yearIndex]
+    const row = result.etfPayoutRows?.[yearIndex]
     if (row) return row.netAnnualPayout
     return 0
   }
@@ -94,10 +121,12 @@ function annualNetPayoutAt(
 }
 
 function annualGrossPayoutAt(
-  result: ProductResult,
+  result: LifecycleSeriesResult,
   retirementAge: number,
   yearIndex: number,
 ): number {
+  const lifecycleRow = result.lifecyclePayoutRows?.[yearIndex]
+  if (lifecycleRow) return lifecycleRow.grossAnnualPayout
   if (result.payoutEndAge !== undefined) {
     const ageAtYearStart = retirementAge + yearIndex
     if (ageAtYearStart >= result.payoutEndAge) return 0
@@ -113,8 +142,8 @@ function annualGrossPayoutAt(
  * drawdown product depletes.
  */
 export interface LeibrenteCrossover {
-  leibrenteId: ProductId
-  drawDownId: ProductId
+  leibrenteId: string
+  drawDownId: string
   age: number
   amount: number
 }
@@ -137,7 +166,7 @@ export const LEIBRENTE_CROSSOVER_SEARCH_CAP = 120
  * horizon.
  */
 export function findLeibrenteCrossovers(
-  results: ProductResult[],
+  results: LifecycleSeriesResult[],
   startAge: number,
   retirementAge: number,
   searchCapAge: number = LEIBRENTE_CROSSOVER_SEARCH_CAP,

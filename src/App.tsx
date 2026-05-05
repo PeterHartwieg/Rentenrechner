@@ -49,17 +49,22 @@ import { InventoryWizard } from './features/inventory/InventoryWizard'
 import { CombineDashboardSidebar, AddVertragSection } from './features/inventory/CombineDashboardSidebar'
 import { CombineIncomePanel } from './features/inventory/CombineIncomePanel'
 import { useCombineSimulation } from './app/useCombineSimulation'
-import { RecommenderCard } from './features/dashboard/RecommenderCard'
+import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
 import { RentenluckeDashboard } from './features/dashboard/RentenluckeDashboard'
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
-import { DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
+import {
+  buildPortfolioLifecycleViews,
+  PORTFOLIO_LIFECYCLE_ID,
+} from './features/results/portfolioLifecycle'
+import { LIFECYCLE_HORIZON_AGE } from './features/results/lifecycleHorizon'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
 import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
+const PORTFOLIO_COLOR = '#1f2937'
 
 function App() {
   const { route, navigate } = useRoute()
@@ -77,6 +82,7 @@ function Calculator({ navigate }: CalculatorProps) {
   // Reads saved mode once on mount; thereafter in-memory state drives transitions.
   const [appView, setAppView] = useState<AppView>(() => appViewFromMode(detectSavedMode()))
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
+  const [showLueckeModal, setShowLueckeModal] = useState(false)
   const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
   // Issue 23: product tab to pre-select when navigating from a ProductEditCard
   // default-state notice to the InputsPanel ("Einstellungen anpassen").
@@ -151,6 +157,7 @@ function Calculator({ navigate }: CalculatorProps) {
       combinedByScenarioId: combineSimulation.combinedByScenarioId,
       scenarioLabels,
       perInstanceTaxModes,
+      inflationRate: wa.inflationRate,
     }
   }, [
     isCombineMode,
@@ -213,16 +220,6 @@ function Calculator({ navigate }: CalculatorProps) {
       portfolioState.setMode('compare')
       setAppView('compare')
       workspace.setActiveView('vergleich')
-      // Issue 16 — broker-style "Produkte vergleichen" CTA defaults the
-      // compare-mode sub-mode to equal-input (€X/Monat across N candidates).
-      // Existing entries that already saved a sub-mode keep theirs (only the
-      // landing CTA forces this; users can flip back to equal-cash via the
-      // input drawer toggle).
-      setAssumptions((current) => ({
-        ...current,
-        compareSubMode: current.compareSubMode === undefined ? 'equal_input' : current.compareSubMode,
-        equalInputAmountEUR: current.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
-      }))
       return
     }
     if (choice.kind === 'combine') {
@@ -242,6 +239,79 @@ function Calculator({ navigate }: CalculatorProps) {
   function handleGoHome() {
     setAppView('landing')
   }
+
+  // In combine mode the toolbar must read from and write to the workspace
+  // baseline assumptions so that scenario/MC changes propagate to
+  // `useCombineSimulation` (which reads `workspace.baseline.assumptions`).
+  // The singleton `assumptions` / `setAssumptions` must NOT be used here —
+  // those drive the compare-mode simulation only.  (#25)
+  //
+  // `ScenarioToolbar` uses a narrow `ToolbarAssumptions` interface
+  // (returnScenarios + monteCarlo only) so it is structurally compatible with
+  // both `ScenarioAssumptions` (compare) and `WorkspaceAssumptionsV2` (combine).
+  // Each branch wraps the state setter with a merge so only the two touched
+  // fields are updated while all other assumption fields are preserved.
+  const toolbar = isCombineMode ? (
+    <ScenarioToolbar
+      assumptions={portfolioState.workspace.baseline.assumptions}
+      onAssumptionsChange={(updater) => {
+        const current = portfolioState.workspace.baseline.assumptions
+        portfolioState.patchBaseline({
+          assumptions: { ...current, ...updater(current) },
+        })
+      }}
+      selectedScenarioId={combineEffectiveScenarioId}
+      onSelectScenario={ui.setSelectedScenarioId}
+    />
+  ) : (
+    <ScenarioToolbar
+      assumptions={assumptions}
+      onAssumptionsChange={(updater) => {
+        setAssumptions((current) => ({ ...current, ...updater(current) }))
+      }}
+      selectedScenarioId={result.effectiveScenarioId}
+      onSelectScenario={ui.setSelectedScenarioId}
+    />
+  )
+
+  // In combine mode, pick the selected scenario (or 'basis' as fallback) from
+  // the combined simulation bundle to drive the income summary panel and the
+  // Lücke-schließen recommender. Using the selected scenario ensures the
+  // modal result step reacts when the user switches the scenario picker (#08).
+  // `combineEffectiveScenarioId` is already resolved against workspace
+  // assumptions so custom scenarios are visible here too (#25 round 2).
+  const combineSelectedScenarioId = combineSimulation.combinedByScenarioId[combineEffectiveScenarioId]
+    ? combineEffectiveScenarioId
+    : (portfolioState.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')?.id ??
+       portfolioState.workspace.baseline.assumptions.returnScenarios[0]?.id ??
+       'basis')
+  const combineBasisScenarioId = combineSelectedScenarioId
+  const combineBasisResult = combineSimulation.combinedByScenarioId[combineBasisScenarioId]
+  const combineBasisLabel =
+    portfolioState.workspace.baseline.assumptions.returnScenarios.find(
+      (s) => s.id === combineBasisScenarioId,
+    )?.label ?? 'Basis'
+  const portfolioLifecycleViews = useMemo(() => {
+    if (!isCombineMode) return []
+    return buildPortfolioLifecycleViews({
+      workspace: portfolioState.workspace,
+      perInstance: combineSimulation.perInstance,
+      scenarioId: combineBasisScenarioId,
+      startAge: profile.age,
+      retirementAge: profile.retirementAge,
+      horizonAge: Math.max(
+        LIFECYCLE_HORIZON_AGE,
+        portfolioState.workspace.baseline.assumptions.retirementEndAge,
+      ),
+    })
+  }, [
+    isCombineMode,
+    portfolioState.workspace,
+    combineSimulation.perInstance,
+    combineBasisScenarioId,
+    profile.age,
+    profile.retirementAge,
+  ])
 
   // Show landing page when no saved state exists (or when returning to it).
   if (appView === 'landing') {
@@ -295,62 +365,6 @@ function Calculator({ navigate }: CalculatorProps) {
     )
   }
 
-  // In combine mode the toolbar must read from and write to the workspace
-  // baseline assumptions so that scenario/MC changes propagate to
-  // `useCombineSimulation` (which reads `workspace.baseline.assumptions`).
-  // The singleton `assumptions` / `setAssumptions` must NOT be used here —
-  // those drive the compare-mode simulation only.  (#25)
-  //
-  // `ScenarioToolbar` uses a narrow `ToolbarAssumptions` interface
-  // (returnScenarios + monteCarlo only) so it is structurally compatible with
-  // both `ScenarioAssumptions` (compare) and `WorkspaceAssumptionsV2` (combine).
-  // Each branch wraps the state setter with a merge so only the two touched
-  // fields are updated while all other assumption fields are preserved.
-  const toolbar = isCombineMode ? (
-    <ScenarioToolbar
-      assumptions={portfolioState.workspace.baseline.assumptions}
-      onAssumptionsChange={(updater) => {
-        const current = portfolioState.workspace.baseline.assumptions
-        portfolioState.patchBaseline({
-          assumptions: { ...current, ...updater(current) },
-        })
-      }}
-      selectedScenarioId={combineEffectiveScenarioId}
-      onSelectScenario={ui.setSelectedScenarioId}
-      showRealValues={ui.showRealValues}
-      onShowRealValuesChange={ui.setShowRealValues}
-    />
-  ) : (
-    <ScenarioToolbar
-      assumptions={assumptions}
-      onAssumptionsChange={(updater) => {
-        setAssumptions((current) => ({ ...current, ...updater(current) }))
-      }}
-      selectedScenarioId={result.effectiveScenarioId}
-      onSelectScenario={ui.setSelectedScenarioId}
-      showRealValues={ui.showRealValues}
-      onShowRealValuesChange={ui.setShowRealValues}
-    />
-  )
-
-  // In combine mode, pick the selected scenario (or 'basis' as fallback) from
-  // the combined simulation bundle to drive the income summary panel and the
-  // nächsten-Euro recommender. Using the selected scenario ensures the
-  // RecommenderCard reacts when the user switches the scenario picker (#08).
-  // `combineEffectiveScenarioId` is already resolved against workspace
-  // assumptions so custom scenarios are visible here too (#25 round 2).
-  const combineSelectedScenarioId = combineSimulation.combinedByScenarioId[combineEffectiveScenarioId]
-    ? combineEffectiveScenarioId
-    : (portfolioState.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')?.id ??
-       portfolioState.workspace.baseline.assumptions.returnScenarios[0]?.id ??
-       'basis')
-  const combineBasisScenarioId = combineSelectedScenarioId
-  const combineBasisResult = combineSimulation.combinedByScenarioId[combineBasisScenarioId]
-  const combineBasisLabel =
-    portfolioState.workspace.baseline.assumptions.returnScenarios.find(
-      (s) => s.id === combineBasisScenarioId,
-    )?.label ?? 'Basis'
-
   const vergleichView = (
     <section className="workspace-view workspace-view--vergleich">
       {toolbar}
@@ -374,19 +388,38 @@ function Calculator({ navigate }: CalculatorProps) {
                 desiredNetMonthlyPension: next,
               }))
             }
-            onAdjustContributions={() => workspace.setActiveView('angebot')}
+            onAdjustContributions={() => setShowLueckeModal(true)}
           />
-          <RecommenderCard
-            workspace={portfolioState.workspace}
-            baselineCombined={combineBasisResult}
-            baselinePerInstance={combineSimulation.perInstance}
-            grvGrossMonthlyPension={combineSimulation.statutoryPension.grossMonthlyPension}
-            selectedScenarioId={combineSelectedScenarioId}
-            onSaveAsPlan={(candidate) => {
-              const whatIf = buildWhatIfFromCandidate(portfolioState.baseline, candidate)
-              portfolioState.addWhatIf(whatIf)
-            }}
-          />
+          {portfolioLifecycleViews.length > 0 && (
+            <BreakEvenChart
+              selectedResults={portfolioLifecycleViews.map((view) => view.result)}
+              productColors={{
+                ...PRODUCT_COLORS,
+                [PORTFOLIO_LIFECYCLE_ID]: PORTFOLIO_COLOR,
+              }}
+              startAge={profile.age}
+              retirementAge={profile.retirementAge}
+              retirementEndAge={portfolioState.workspace.baseline.assumptions.retirementEndAge}
+              bestProductId={PORTFOLIO_LIFECYCLE_ID}
+              singleSelection
+              title="Mein Plan: Kapital und Auszahlungen"
+              description="Zeigt dein zusätzliches Vorsorgeportfolio ohne gesetzliche Rente."
+            />
+          )}
+          {showLueckeModal && (
+            <LueckeSchliessenModal
+              workspace={portfolioState.workspace}
+              baselineCombined={combineBasisResult}
+              baselinePerInstance={combineSimulation.perInstance}
+              grvGrossMonthlyPension={combineSimulation.statutoryPension.grossMonthlyPension}
+              selectedScenarioId={combineSelectedScenarioId}
+              onClose={() => setShowLueckeModal(false)}
+              onSaveAsPlan={(candidate) => {
+                const whatIf = buildWhatIfFromCandidate(portfolioState.baseline, candidate)
+                portfolioState.addWhatIf(whatIf)
+              }}
+            />
+          )}
           <CombineIncomePanel
             combinedResult={combineBasisResult}
             perInstanceResults={combineSimulation.perInstance}
@@ -401,7 +434,7 @@ function Calculator({ navigate }: CalculatorProps) {
       )}
 
       {/* Singleton-compare sections gated to compare-mode (Group G issue 11).
-          In combine mode the RecommenderCard + CombineIncomePanel above are
+          In combine mode the Lücke-schließen modal + CombineIncomePanel above are
           the source of truth — the user is modelling actual contracts, not
           comparing product candidates. */}
       {!isCombineMode && (
@@ -657,11 +690,6 @@ function Calculator({ navigate }: CalculatorProps) {
           <h1>ETF, bAV und private Versicherung vergleichen</h1>
         </div>
         <div className="topbar-actions">
-          {appView === 'compare' && (
-            <span className="topbar-mode-badge topbar-mode-badge--compare" aria-label="Vergleichsmodus aktiv">
-              Vergleichsmodus
-            </span>
-          )}
           {appView === 'combine' && (
             <span className="topbar-mode-badge topbar-mode-badge--combine" aria-label="Mein Plan aktiv">
               Mein Plan

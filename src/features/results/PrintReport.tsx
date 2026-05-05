@@ -92,6 +92,8 @@ export function PrintReport({
         profile={combineProfile ?? profile}
         grv={combineGrv ?? simulation.statutoryPension}
         returnScenarios={combineReturnScenarios ?? assumptions.returnScenarios}
+        inflationRate={combineWorkspace?.baseline.assumptions.inflationRate ?? assumptions.inflationRate}
+        retirementEndAge={combineWorkspace?.baseline.assumptions.retirementEndAge ?? assumptions.retirementEndAge}
         portfolio={portfolio}
         workspace={combineWorkspace}
         date={date}
@@ -345,6 +347,10 @@ interface CombinePrintReportProps {
   grv: StatutoryPensionResult
   /** Scenario list — must come from workspace baseline, not singleton assumptions. */
   returnScenarios: ScenarioAssumptions['returnScenarios']
+  /** Active modeled inflation assumption. */
+  inflationRate: number
+  /** Modeled end age for drawdown products. */
+  retirementEndAge: number
   portfolio: NonNullable<Props['portfolio']>
   /**
    * Workspace reference (optional). When provided, `instanceId → label` is resolved
@@ -356,7 +362,16 @@ interface CombinePrintReportProps {
   date: string
 }
 
-function CombinePrintReport({ profile, grv, returnScenarios, portfolio, workspace, date }: CombinePrintReportProps) {
+function CombinePrintReport({
+  profile,
+  grv,
+  returnScenarios,
+  inflationRate,
+  retirementEndAge,
+  portfolio,
+  workspace,
+  date,
+}: CombinePrintReportProps) {
   const { perInstance, combinedByScenarioId, scenarioLabels } = portfolio
 
   // Build instanceId → user label lookup from the workspace instance arrays so
@@ -455,6 +470,30 @@ function CombinePrintReport({ profile, grv, returnScenarios, portfolio, workspac
           </tr>
         </tbody>
       </table>
+
+      <section className="pr-section">
+        <div className="pr-section-title">Rentenszenarien &amp; Annahmen</div>
+        <table className="pr-table">
+          <thead>
+            <tr>
+              <th>Szenario</th>
+              <th>Jahresrendite</th>
+              <th>Inflation</th>
+              <th>Rentenbezug bis</th>
+            </tr>
+          </thead>
+          <tbody>
+            {returnScenarios.map((s) => (
+              <tr key={s.id}>
+                <td>{s.label}</td>
+                <td>{formatPercent(s.annualReturn, 1)}</td>
+                <td>{formatPercent(inflationRate, 1)}</td>
+                <td>{retirementEndAge} Jahre</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
       <section className="pr-section">
         <div className="pr-section-title">Kombiniertes Renteneinkommen je Szenario</div>

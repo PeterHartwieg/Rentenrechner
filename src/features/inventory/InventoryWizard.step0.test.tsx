@@ -11,7 +11,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, cleanup, fireEvent } from '@testing-library/react'
+import { render, cleanup, fireEvent, screen } from '@testing-library/react'
 import { InventoryWizard } from './InventoryWizard'
 import type { Workspace } from '../../domain/workspace'
 
@@ -43,6 +43,9 @@ function getFinishButton(container: HTMLElement) {
   return Array.from(container.querySelectorAll<HTMLButtonElement>('button[type="button"]'))
     .find((b) => b.textContent?.includes('Fertig') || b.textContent?.includes('Weiter ohne'))
 }
+
+const CURRENT_YEAR = new Date().getFullYear()
+const MAX_PLANNED_CHILD_YEAR = CURRENT_YEAR + 20
 
 // ---------------------------------------------------------------------------
 // Step 0 renders the five required fields
@@ -79,6 +82,12 @@ describe('InventoryWizard step 0 — personal details fields', () => {
     expect(baseField!.textContent).toContain('Gesetzliche Rente')
   })
 
+  it('renames the statutory section to Gesetzliche Altersvorsorge', () => {
+    const { container } = render(<InventoryWizard {...makeProps()} />)
+    expect(container.textContent).toContain('Gesetzliche Altersvorsorge')
+    expect(container.textContent).not.toContain('Mandatorische Altersversorgung')
+  })
+
   it('renders the Kinder section', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
     const childrenField = container.querySelector('[data-testid="field-children"]')
@@ -106,6 +115,80 @@ describe('InventoryWizard step 0 — personal details fields', () => {
   it('shows "Weiter zu deinen Verträgen" button', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
     expect(getNextButton(container)).not.toBeUndefined()
+  })
+})
+
+describe('InventoryWizard step 0 — planned children and empty numeric drafts', () => {
+  it('labels future child birth years as geplant and accepts them up to current year + 20', () => {
+    const { container } = render(
+      <InventoryWizard
+        {...makeProps({ childBirthYears: [CURRENT_YEAR + 1] })}
+      />,
+    )
+
+    expect(container.textContent).toContain('(geplant)')
+    fireEvent.click(getNextButton(container)!)
+
+    expect(container.querySelector('[data-testid="personal-details-errors"]')).toBeNull()
+    expect(container.querySelector('#inventory-check-grv')).not.toBeNull()
+  })
+
+  it('rejects child birth years beyond current year + 20', () => {
+    const { container } = render(
+      <InventoryWizard
+        {...makeProps({ childBirthYears: [MAX_PLANNED_CHILD_YEAR + 1] })}
+      />,
+    )
+
+    fireEvent.click(getNextButton(container)!)
+
+    const errorList = container.querySelector('[data-testid="personal-details-errors"]')
+    expect(errorList).not.toBeNull()
+    expect(errorList!.textContent).toContain(String(MAX_PLANNED_CHILD_YEAR))
+    expect(container.querySelector('#inventory-check-grv')).toBeNull()
+  })
+
+  it('allows clearing a personal-details 0 while focused without writing NaN', () => {
+    const onComplete = vi.fn<(workspace: Workspace) => void>()
+    const { container } = render(
+      <InventoryWizard {...makeProps({ grossSalaryYear: 0, onComplete })} />,
+    )
+    const inputs = Array.from(container.querySelectorAll<HTMLInputElement>(
+      '[data-testid="personal-details-step"] input[type="number"]',
+    ))
+    const salaryInput = inputs[1]
+    expect(salaryInput.value).toBe('0')
+
+    fireEvent.change(salaryInput, { target: { value: '' } })
+    expect(salaryInput.value).toBe('')
+
+    fireEvent.blur(salaryInput)
+    expect(salaryInput.value).toBe('0')
+
+    fireEvent.click(getNextButton(container)!)
+    fireEvent.click(getFinishButton(container)!)
+
+    const workspace: Workspace = onComplete.mock.calls[0][0]
+    expect(Number.isNaN(workspace.baseline.profile.grossSalaryYear)).toBe(false)
+    expect(workspace.baseline.profile.grossSalaryYear).toBe(0)
+  })
+})
+
+describe('InventoryWizard step 1 — GRV input mode', () => {
+  it('shows an explicit either/or mode and only the selected GRV fields', () => {
+    const { container } = render(<InventoryWizard {...makeProps()} />)
+    fireEvent.click(getNextButton(container)!)
+
+    expect(screen.getByText('Wie moechtest du deine gesetzliche Rente erfassen?')).toBeDefined()
+    expect(screen.getByLabelText('Schaetzen aus Arbeitsjahren und Gehalt')).toBeDefined()
+    expect(screen.getByLabelText('Entgeltpunkte aus Renteninformation eingeben')).toBeDefined()
+    expect(screen.getByText(/Wie viele Jahre arbeitest du schon/i)).toBeDefined()
+    expect(screen.queryByText(/^Entgeltpunkte \(aus Renteninformation\)$/i)).toBeNull()
+
+    fireEvent.click(screen.getByLabelText('Entgeltpunkte aus Renteninformation eingeben'))
+
+    expect(screen.queryByText(/Wie viele Jahre arbeitest du schon/i)).toBeNull()
+    expect(screen.getByText(/^Entgeltpunkte \(aus Renteninformation\)$/i)).toBeDefined()
   })
 })
 

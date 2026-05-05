@@ -3,11 +3,11 @@
  * Render-integration tests for RecommenderCard.
  *
  * Uses jsdom + @testing-library/react. The component owns marginal-budget
- * input + sort-key state and consumes the recommender engine; tests assert
+ * ranking-filter state and consumes the recommender engine; tests assert
  * that:
  *   - The card renders without crashing on a baseline workspace.
- *   - Setting the marginal budget via a preset causes candidate cards to render.
- *   - Sort buttons toggle the sort indicator label.
+ *   - A marginal budget causes candidate cards to render.
+ *   - Ranking buttons toggle the highlighted winner label.
  *   - Clicking "Als Plan speichern" invokes the onSaveAsPlan callback.
  */
 
@@ -50,51 +50,45 @@ describe('RecommenderCard', () => {
   it('renders the marginal-budget input and preset buttons', () => {
     const ctx = setup()
     const { container } = render(
-      <RecommenderCard {...ctx} onSaveAsPlan={() => {}} />,
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
     )
     expect(container.querySelector('.recommender-card')).toBeTruthy()
-    const presets = container.querySelectorAll('.recommender-preset')
-    expect(presets.length).toBe(3)
+    expect(container.querySelectorAll('.recommender-sort-button').length).toBe(5)
+    expect(container.textContent).toContain('Beste Option für höchste mittlere Netto-Rente')
   })
 
-  it('shows candidate cards after a preset is selected', () => {
+  it('shows candidate cards for the supplied marginal budget', () => {
     const ctx = setup()
     const { container } = render(
-      <RecommenderCard {...ctx} onSaveAsPlan={() => {}} />,
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
     )
-    // Click the €400 preset.
-    const presets = container.querySelectorAll('.recommender-preset')
-    const fourHundred = Array.from(presets).find((b) => b.textContent?.includes('400'))
-    expect(fourHundred).toBeTruthy()
-    fireEvent.click(fourHundred!)
     const cands = container.querySelectorAll('.recommender-candidate')
     expect(cands.length).toBeGreaterThan(0)
   })
 
-  it('sort buttons toggle the rank-by indicator', () => {
+  it('ranking buttons toggle the winner criterion', () => {
     const ctx = setup()
     const { container } = render(
-      <RecommenderCard {...ctx} onSaveAsPlan={() => {}} />,
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
     )
-    const presets = container.querySelectorAll('.recommender-preset')
-    fireEvent.click(presets[2])  // €400
     const sortButtons = container.querySelectorAll('.recommender-sort-button')
     // Click the "Flexibilität" button.
     const flexBtn = Array.from(sortButtons).find((b) => b.textContent === 'Flexibilität')
     expect(flexBtn).toBeTruthy()
     fireEvent.click(flexBtn!)
     const indicator = container.querySelector('.recommender-sort-indicator')
-    expect(indicator?.textContent).toContain('Flexibilität')
+    expect(indicator?.textContent).toContain('Beste Option für Flexibilität')
+    expect(container.querySelector('.recommender-candidate-winner')?.textContent).toContain(
+      'Beste Option für Flexibilität',
+    )
   })
 
   it('invokes onSaveAsPlan when "Als Plan speichern" is clicked', () => {
     const ctx = setup()
     const onSave = vi.fn()
     const { container } = render(
-      <RecommenderCard {...ctx} onSaveAsPlan={onSave} />,
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={onSave} />,
     )
-    const presets = container.querySelectorAll('.recommender-preset')
-    fireEvent.click(presets[2])  // €400
     const saveButtons = container.querySelectorAll('.recommender-candidate-save')
     expect(saveButtons.length).toBeGreaterThan(0)
     fireEvent.click(saveButtons[0])
@@ -107,7 +101,7 @@ describe('RecommenderCard', () => {
   it('does not render candidate cards when budget is 0', () => {
     const ctx = setup()
     const { container } = render(
-      <RecommenderCard {...ctx} onSaveAsPlan={() => {}} />,
+      <RecommenderCard {...ctx} marginalMonthlyEUR={0} onSaveAsPlan={() => {}} />,
     )
     const cands = container.querySelectorAll('.recommender-candidate')
     expect(cands.length).toBe(0)

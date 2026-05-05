@@ -14,6 +14,7 @@ type ExportOptions = {
   equityPartialExemption: number
   insuranceOtherAnnualIncome: number
   rules: GermanRules
+  inflationRate?: number
 }
 
 function csvCell(value: string | number | null | undefined): string {
@@ -44,6 +45,12 @@ const DISCLAIMER_LINES: readonly string[] = [
   'Annahmen (Rendite, Inflation, Gehaltsentwicklung, Lebenserwartung, Rentenfaktor, Vertragskosten) sind Schätzungen — kleine Abweichungen können das Ergebnis und die Reihenfolge der Produkte ändern.',
 ] as const
 
+function addActiveAssumptions(lines: string[], inflationRate: number | undefined): void {
+  lines.push('Aktive Annahmen')
+  lines.push(csvRow('Inflation p.a. (%)', n((inflationRate ?? 0) * 100)))
+  lines.push('')
+}
+
 export function buildExportCsv(opts: ExportOptions): string {
   const { products, bavAnnualTaxSvSavings, bavProfile, bavKvdrMember, bavOtherAnnualIncome, insuranceTaxMode, equityPartialExemption, insuranceOtherAnnualIncome, rules } = opts
   const lines: string[] = []
@@ -54,6 +61,7 @@ export function buildExportCsv(opts: ExportOptions): string {
     lines.push(csvCell(text))
   }
   lines.push('')
+  addActiveAssumptions(lines, opts.inflationRate)
 
   // Section 1: Summary
   lines.push('Detailvergleich')
@@ -200,6 +208,8 @@ export interface CombinePortfolioCsvOptions {
   rules?: GermanRules
   /** Shared personal profile (used by bAV lump-sum KV/PV helper). */
   profile?: PersonalProfile
+  /** Active modeled inflation assumption for export disclosure. */
+  inflationRate?: number
 }
 
 export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): string {
@@ -213,6 +223,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
     lines.push(csvCell(text))
   }
   lines.push('')
+  addActiveAssumptions(lines, opts.inflationRate)
 
   // Section 1: Combined retirement income per scenario.
   lines.push('Kombiniertes Renteneinkommen')

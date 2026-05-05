@@ -54,8 +54,11 @@
  */
 
 import type {
+  BavDurchfuehrungsweg,
+  BavFundingResult,
   GermanRules,
   PayoutMode,
+  PersonalProfile,
   ProductId,
   ProductResult,
 } from '../domain'
@@ -89,6 +92,68 @@ import { SeededNormal, generateMarketReturnPath } from '../engine/monteCarlo'
 // ---------------------------------------------------------------------------
 
 export type FlexibilityScore = 'high' | 'medium' | 'low'
+export type FlexibilityCriterionScore = 'easy' | 'restricted' | 'hard'
+export type EffortLevel = 'low' | 'medium' | 'high'
+
+export type RecommenderRankingCriterion =
+  | 'median_net_pension'
+  | 'capital_at_retirement'
+  | 'safety'
+  | 'flexibility'
+  | 'low_effort'
+
+export const RECOMMENDER_RANKING_LABELS: Record<RecommenderRankingCriterion, string> = {
+  median_net_pension: 'höchste mittlere Netto-Rente',
+  capital_at_retirement: 'höchstes Kapital bei Renteneinstieg',
+  safety: 'Sicherheit',
+  flexibility: 'Flexibilität',
+  low_effort: 'wenig Aufwand',
+}
+
+export interface BavEmployerOfferInput {
+  /** True when the user entered actual employer-offer data in the modal. */
+  hasOffer: boolean
+  /** Decimal, e.g. 0.15 = 15 %. Percent and fixed contribution are additive. */
+  employerMatchPercent: number
+  /** Fixed employer contribution in EUR/month, additive with percent. */
+  fixedMonthlyEUR: number
+  /** Optional cap on total employer contribution in EUR/month. Undefined/0 = no offer cap. */
+  monthlyCapEUR?: number
+  /** Total effective accumulation costs, decimal p.a.; 0.012 = 1.2 %. */
+  effectiveCostAnnual: number
+  durchfuehrungsweg?: BavDurchfuehrungsweg
+  payoutMode?: PayoutMode
+  rentenfaktor?: number
+}
+
+export interface ResolvedBavOffer {
+  hasOffer: boolean
+  standardAssumption: boolean
+  employerMatchPercent: number
+  fixedMonthlyEUR: number
+  monthlyCapEUR?: number
+  effectiveCostAnnual: number
+  durchfuehrungsweg: BavDurchfuehrungsweg
+  payoutMode: PayoutMode
+  rentenfaktor: number
+}
+
+export interface FlexibilityDetails {
+  overall: FlexibilityScore
+  criteria: {
+    cancel: FlexibilityCriterionScore
+    switchAsset: FlexibilityCriterionScore
+    switchProduct: FlexibilityCriterionScore
+    adjustContribution: FlexibilityCriterionScore
+  }
+}
+
+export interface EffortDetails {
+  /** Higher means less next-action friction. */
+  score: number
+  level: EffortLevel
+  details: string[]
+}
 
 export interface RecommendedCandidate {
   /** Stable id used by the UI as a React key and by tests for ordering assertions. */
@@ -117,9 +182,13 @@ export interface RecommendedCandidate {
   lifetimeCash: number
   /** Ordinal flexibility class (capital availability before retirement). */
   flexibilityScore: FlexibilityScore
+  flexibilityDetails: FlexibilityDetails
+  effort: EffortDetails
   /** Expected capital at retirement (EUR) under the basis scenario (deterministic).
    *  Retained for back-compat with the existing "Endkapital" sort. */
   riskScore: number
+  /** Alias for the deterministic retirement capital used by ranking filters. */
+  capitalAtRetirement: number
   /**
    * Monte Carlo P10 of total nominal capital at retirement (EUR) — the
    * "bad-outcome floor": 10 of 100 simulated paths fall below this. Higher
@@ -127,6 +196,11 @@ export interface RecommendedCandidate {
    * expected return and `assumptions.monteCarlo.annualVolatility`.
    */
   riskScoreP10: number
+  /**
+   * Approximate 90%-floor monthly net pension with the candidate included.
+   * This is the safety filter's primary metric; `riskScoreP10` remains capital.
+   */
+  safetyNettoRenteP10: number
   /** Number of MC paths used to compute riskScoreP10 (for transparency / tests). */
   riskScoreMcPaths: number
   /** Trade-off labels emitted by the rules engine. */
@@ -135,6 +209,11 @@ export interface RecommendedCandidate {
   wunschnettoFloorMet: boolean
   /** Set when the candidate hit a statutory cap and was clamped. */
   cappedToRemaining: boolean
+  /** True when the bAV candidate uses standard assumptions instead of an employer offer. */
+  usesStandardAssumptions?: boolean
+  bavOffer?: ResolvedBavOffer
+  /** Marginal employer contribution added by this bAV candidate, EUR/month. */
+  monthlyEmployerContributionEUR?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -163,13 +242,79 @@ const MAX_CANDIDATES = 4
  */
 const MC_PATHS = 200
 
-const FLEX_BY_PRODUCT: Record<ProductId, FlexibilityScore> = {
-  etf: 'high',
-  altersvorsorgedepot: 'high',
-  versicherung: 'medium',
-  bav: 'medium',
-  riester: 'medium',
-  basisrente: 'low',
+const FLEXIBILITY_BY_PRODUCT: Record<ProductId, FlexibilityDetails> = {
+  etf: {
+    overall: 'high',
+    criteria: {
+      cancel: 'easy',
+      switchAsset: 'easy',
+      switchProduct: 'easy',
+      adjustContribution: 'easy',
+    },
+  },
+  versicherung: {
+    overall: 'medium',
+    criteria: {
+      cancel: 'restricted',
+      switchAsset: 'restricted',
+      switchProduct: 'restricted',
+      adjustContribution: 'easy',
+    },
+  },
+  altersvorsorgedepot: {
+    overall: 'medium',
+    criteria: {
+      cancel: 'restricted',
+      switchAsset: 'easy',
+      switchProduct: 'restricted',
+      adjustContribution: 'easy',
+    },
+  },
+  riester: {
+    overall: 'medium',
+    criteria: {
+      cancel: 'restricted',
+      switchAsset: 'restricted',
+      switchProduct: 'restricted',
+      adjustContribution: 'easy',
+    },
+  },
+  bav: {
+    overall: 'low',
+    criteria: {
+      cancel: 'hard',
+      switchAsset: 'restricted',
+      switchProduct: 'hard',
+      adjustContribution: 'restricted',
+    },
+  },
+  basisrente: {
+    overall: 'low',
+    criteria: {
+      cancel: 'hard',
+      switchAsset: 'restricted',
+      switchProduct: 'hard',
+      adjustContribution: 'restricted',
+    },
+  },
+}
+
+const FLEX_RANK: Record<FlexibilityScore, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
+}
+
+const DEFAULT_BAV_RECOMMENDER_OFFER: ResolvedBavOffer = {
+  hasOffer: false,
+  standardAssumption: true,
+  employerMatchPercent: 0.15,
+  fixedMonthlyEUR: 0,
+  monthlyCapEUR: undefined,
+  effectiveCostAnnual: 0.012,
+  durchfuehrungsweg: 'direktversicherung_3_63',
+  payoutMode: 'leibrente',
+  rentenfaktor: 30,
 }
 
 // ---------------------------------------------------------------------------
@@ -304,6 +449,121 @@ function pickBasisScenario(workspace: Workspace, selectedScenarioId?: string): B
   return { scenarioId: basis.id, annualReturn: basis.annualReturn }
 }
 
+function resolveBavOffer(input?: BavEmployerOfferInput): ResolvedBavOffer {
+  if (!input || !input.hasOffer) return { ...DEFAULT_BAV_RECOMMENDER_OFFER }
+  const cap =
+    input.monthlyCapEUR !== undefined && input.monthlyCapEUR > 0
+      ? input.monthlyCapEUR
+      : undefined
+  return {
+    hasOffer: true,
+    standardAssumption: false,
+    employerMatchPercent: clampFinite(input.employerMatchPercent, 0, 5),
+    fixedMonthlyEUR: clampFinite(input.fixedMonthlyEUR, 0, 100_000),
+    monthlyCapEUR: cap,
+    effectiveCostAnnual: clampFinite(input.effectiveCostAnnual, 0, 0.1),
+    durchfuehrungsweg: input.durchfuehrungsweg ?? 'direktversicherung_3_63',
+    payoutMode: input.payoutMode ?? 'leibrente',
+    rentenfaktor: input.rentenfaktor ?? 30,
+  }
+}
+
+function clampFinite(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min
+  return Math.min(max, Math.max(min, value))
+}
+
+function monthlyEmployerContributionForOffer(
+  monthlyGrossConversion: number,
+  offer: ResolvedBavOffer,
+): number {
+  if (monthlyGrossConversion <= 0) return 0
+  const raw =
+    monthlyGrossConversion * offer.employerMatchPercent +
+    offer.fixedMonthlyEUR
+  return offer.monthlyCapEUR !== undefined ? Math.min(raw, offer.monthlyCapEUR) : raw
+}
+
+function bavOfferFunding(
+  profile: PersonalProfile,
+  rules: GermanRules,
+  bav: BavInstance,
+  offer: ResolvedBavOffer,
+): BavFundingResult {
+  const annualGrossConversion = bav.monthlyGrossConversion * 12
+  const monthlyEmployerContribution = monthlyEmployerContributionForOffer(
+    bav.monthlyGrossConversion,
+    offer,
+  )
+  const annualEmployerContribution = monthlyEmployerContribution * 12
+  const taxFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
+  const svFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.socialSecurityFreePctOfPensionCap
+  const totalBavContributionAnnual = annualGrossConversion + annualEmployerContribution
+  const effectiveTaxFreeConversion = Math.max(
+    0,
+    Math.min(annualGrossConversion, taxFreeLimit - annualEmployerContribution),
+  )
+  const effectiveSvFreeConversion = Math.max(
+    0,
+    Math.min(annualGrossConversion, svFreeLimit - annualEmployerContribution),
+  )
+  const salaryWithoutBav = calculateSalaryResult(profile, rules, 0)
+  const salaryWithBav = calculateSalaryResult(
+    profile,
+    rules,
+    annualGrossConversion,
+    effectiveTaxFreeConversion,
+    effectiveSvFreeConversion,
+  )
+  const annualNetCost = salaryWithoutBav.annualNet - salaryWithBav.annualNet
+  const annualTaxAndSvSavings = annualGrossConversion - annualNetCost
+  const taxFreePortionAnnual = Math.min(totalBavContributionAnnual, taxFreeLimit)
+  const svFreePortionAnnual = Math.min(totalBavContributionAnnual, svFreeLimit)
+  const yearsToRetirement = Math.max(0, profile.retirementAge - profile.age)
+  const rvBbg = rules.socialSecurity.pensionCapYear
+  const lostPensionableBase =
+    Math.min(profile.grossSalaryYear, rvBbg) -
+    Math.min(profile.grossSalaryYear - effectiveSvFreeConversion, rvBbg)
+  const estimatedMonthlyGrvReduction =
+    yearsToRetirement *
+    (lostPensionableBase / rules.socialSecurity.durchschnittsentgelt) *
+    rules.socialSecurity.aktuellerRentenwert
+
+  return {
+    monthlyGrossConversion: bav.monthlyGrossConversion,
+    annualGrossConversion,
+    monthlyNetCost: annualNetCost / 12,
+    annualNetCost,
+    monthlyTaxAndSvSavings: annualTaxAndSvSavings / 12,
+    annualTaxAndSvSavings,
+    monthlyStatutoryEmployerSubsidy: 0,
+    monthlyContractualEmployerContribution: monthlyEmployerContribution,
+    monthlyEmployerContribution,
+    annualEmployerContribution,
+    employerSocialSecuritySavingAnnual: 0,
+    salaryWithoutBav,
+    salaryWithBav,
+    totalBavContributionAnnual,
+    taxFreePortionAnnual,
+    svFreePortionAnnual,
+    taxableOverflowAnnual: Math.max(0, totalBavContributionAnnual - taxFreeLimit),
+    svLiableOverflowAnnual: Math.max(0, totalBavContributionAnnual - svFreeLimit),
+    estimatedMonthlyGrvReduction,
+  }
+}
+
+function fundingForBavCandidate(
+  profile: PersonalProfile,
+  rules: GermanRules,
+  bav: BavInstance,
+  offer: ResolvedBavOffer,
+): BavFundingResult {
+  if (offer.hasOffer || offer.standardAssumption) {
+    return bavOfferFunding(profile, rules, bav, offer)
+  }
+  return calculateBavFunding(profile, rules, bav)
+}
+
 /**
  * Build a per-instance result list by extracting the basis-scenario rows from
  * an existing per-instance bundle. Mirrors `useCombineSimulation`'s scenario
@@ -433,6 +693,7 @@ interface GeneratorContext {
   baselinePerInstance: Record<string, ProductResult[]>
   baselineCombined: CombinedResult
   combineCtx: CombineContext
+  bavOffer: ResolvedBavOffer
 }
 
 interface CandidateDraft {
@@ -464,6 +725,9 @@ interface CandidateDraft {
     monthlyContribution: number
     totalFeeDecimal: number
   }
+  usesStandardAssumptions?: boolean
+  bavOffer?: ResolvedBavOffer
+  monthlyEmployerContributionEUR?: number
 }
 
 // --- ETF candidate ---------------------------------------------------------
@@ -526,8 +790,36 @@ function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
 
 function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   const wsa = g.workspace.baseline.assumptions
-  const target = wsa.bav.find((b) => b.status !== 'surrendered')
-  if (!target) return null
+  const existingTarget = wsa.bav.find((b) => b.status !== 'surrendered')
+  const isNewInstance = !existingTarget
+  const newBavInstanceId = isNewInstance ? newInstanceId('bav') : undefined
+  const baseTarget: BavInstance = existingTarget ?? {
+    ...defaultAssumptions.bav,
+    instanceId: newBavInstanceId!,
+    label: 'Neue bAV',
+    status: 'active',
+    contractStartYear: g.rules.year,
+    evidenceMap: {},
+    monthlyGrossConversion: 0,
+  }
+  const target: BavInstance = {
+    ...baseTarget,
+    statutoryMinimumSubsidyEnabled: false,
+    contractualMatchPercent: g.bavOffer.employerMatchPercent,
+    contractualFixedMonthly: g.bavOffer.fixedMonthlyEUR,
+    durchfuehrungsweg: g.bavOffer.durchfuehrungsweg,
+    payoutMode: g.bavOffer.payoutMode,
+    rentenfaktor: g.bavOffer.rentenfaktor,
+    fees: {
+      ...baseTarget.fees,
+      wrapperAssetFee: g.bavOffer.effectiveCostAnnual,
+      fundAssetFee: 0,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+      pensionPayoutFeePct: baseTarget.fees?.pensionPayoutFeePct ?? 0,
+    },
+  }
 
   const profile = g.workspace.baseline.profile
   // Existing aggregate gross conversion across active bAV instances (single-employer
@@ -547,15 +839,16 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   // that under-counts the SV-saving step when usedMonthly already pushes part
   // of the income below the BBG, so the returned delta was off for users with
   // existing bAV. Now we bisect on the actual marginal net cost.
-  const baselineNetCost = calculateBavFunding(profile, g.rules, {
+  const fundingBaselineAtUsed = fundingForBavCandidate(profile, g.rules, {
     ...target,
     monthlyGrossConversion: usedMonthly,
-  }).monthlyNetCost
+  }, g.bavOffer)
+  const baselineNetCost = fundingBaselineAtUsed.monthlyNetCost
   const forwardMarginalNet = (delta: number) =>
-    calculateBavFunding(profile, g.rules, {
+    fundingForBavCandidate(profile, g.rules, {
       ...target,
       monthlyGrossConversion: usedMonthly + delta,
-    }).monthlyNetCost - baselineNetCost
+    }, g.bavOffer).monthlyNetCost - baselineNetCost
   // grossDelta = forward(used + delta) − forward(used); marginal, not isolated.
   const grossDelta = (() => {
     if (g.marginalMonthlyEUR <= 0) return 0
@@ -578,14 +871,14 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   // `netCash` is the user's marginal net cash out-of-pocket; `totalMonthly`
   // is the marginal product contribution (delta gross + delta employer share)
   // used for the candidate's capital projection.
-  const fundingTotal = calculateBavFunding(profile, g.rules, {
+  const fundingTotal = fundingForBavCandidate(profile, g.rules, {
     ...target,
     monthlyGrossConversion: usedMonthly + gross,
-  })
-  const fundingBaseline = calculateBavFunding(profile, g.rules, {
+  }, g.bavOffer)
+  const fundingBaseline = fundingForBavCandidate(profile, g.rules, {
     ...target,
     monthlyGrossConversion: usedMonthly,
-  })
+  }, g.bavOffer)
   const netCash = Math.max(0, fundingTotal.monthlyNetCost - fundingBaseline.monthlyNetCost)
 
   // Project capital: marginal contribution = (Δgross + Δemployer share). Use
@@ -595,6 +888,8 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   const totalMonthly =
     (fundingTotal.monthlyGrossConversion - fundingBaseline.monthlyGrossConversion) +
     (fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution)
+  const monthlyEmployerContributionEUR =
+    fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
   const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
   const capital = projectMonthlyContributionFV(totalMonthly, netReturn, g.yearsToRetirement)
@@ -622,16 +917,27 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   })
 
   return {
-    id: 'add_to_existing_bav',
-    label: `Zusatz auf bestehende bAV (${target.label ?? 'bAV'})`,
+    id: isNewInstance ? 'new_bav_standard_offer' : 'add_to_existing_bav',
+    label: isNewInstance
+      ? 'Neue bAV'
+      : `Zusatz auf bestehende bAV (${target.label ?? 'bAV'})`,
     productId: 'bav',
-    isNewInstance: false,
-    targetInstanceId: target.instanceId,
+    isNewInstance,
+    targetInstanceId: isNewInstance ? undefined : target.instanceId,
     grossMonthlyEUR: gross,
     netCashOutEUR: netCash,
     cappedToRemaining,
     candidateResult,
+    newInstance: isNewInstance
+      ? {
+          ...target,
+          monthlyGrossConversion: gross,
+        }
+      : undefined,
     mcInputs: { monthlyContribution: totalMonthly, totalFeeDecimal: fees },
+    usesStandardAssumptions: g.bavOffer.standardAssumption,
+    bavOffer: g.bavOffer,
+    monthlyEmployerContributionEUR,
   }
 }
 
@@ -948,6 +1254,113 @@ function combinedForCandidate(
   return combinePortfolio(candidateWorkspace, merged, combineCtx)
 }
 
+function effortForCandidate(
+  workspace: Workspace,
+  draft: CandidateDraft,
+  bavOffer: ResolvedBavOffer,
+): EffortDetails {
+  const wsa = workspace.baseline.assumptions
+  const hasExisting = !draft.isNewInstance
+  let score = hasExisting ? 70 : 45
+  const details: string[] = []
+
+  if (hasExisting) {
+    details.push('Bestehenden Vertrag erhöhen')
+    score += 10
+  } else {
+    details.push('Neuen Vertrag eröffnen')
+  }
+
+  if (draft.productId === 'etf') {
+    const hasDepot = wsa.etf.some((e) => e.status !== 'surrendered')
+    if (hasDepot) {
+      score = 92
+      details.push('Depot ist bereits vorhanden')
+    }
+  } else if (draft.productId === 'bav') {
+    if (bavOffer.hasOffer) {
+      score += 10
+      details.push('Arbeitgeberangebot liegt vor')
+    } else {
+      score -= 20
+      details.push('Standardannahmen statt konkretem Arbeitgeberangebot')
+    }
+  } else if (draft.productId === 'riester') {
+    const target = draft.targetInstanceId
+      ? wsa.riester.find((r) => r.instanceId === draft.targetInstanceId)
+      : undefined
+    if (!target?.eligibility?.directlyEligible && !target?.eligibility?.indirectSpouseEligible) {
+      score -= 15
+      details.push('Förderberechtigung muss geprüft werden')
+    }
+  } else if (draft.productId === 'altersvorsorgedepot') {
+    score -= 8
+    details.push('Förder- und Depotangebot prüfen')
+  } else if (draft.productId === 'basisrente') {
+    score -= 12
+    details.push('Neues steuerlich gebundenes Vertragsangebot nötig')
+  } else if (draft.productId === 'versicherung') {
+    score -= 12
+    details.push('Versicherungsangebot nötig')
+  }
+
+  score = clampFinite(score, 0, 100)
+  const level: EffortLevel = score >= 75 ? 'low' : score >= 50 ? 'medium' : 'high'
+  return { score, level, details }
+}
+
+function safetyMonthlyP10(
+  baselineMonthlyNet: number,
+  medianMonthlyNet: number,
+  deterministicCapital: number,
+  p10Capital: number,
+): number {
+  const marginalMedian = Math.max(0, medianMonthlyNet - baselineMonthlyNet)
+  if (marginalMedian <= 0 || deterministicCapital <= 0) return medianMonthlyNet
+  const p10Ratio = Math.min(1, Math.max(0, p10Capital / deterministicCapital))
+  return baselineMonthlyNet + marginalMedian * p10Ratio
+}
+
+export function rankRecommendedCandidates(
+  candidates: readonly RecommendedCandidate[],
+  criterion: RecommenderRankingCriterion = 'median_net_pension',
+): RecommendedCandidate[] {
+  return [...candidates].sort((a, b) => compareCandidates(a, b, criterion))
+}
+
+function compareCandidates(
+  a: RecommendedCandidate,
+  b: RecommendedCandidate,
+  criterion: RecommenderRankingCriterion,
+): number {
+  if (criterion === 'median_net_pension') {
+    return desc(a.medianNettoRente, b.medianNettoRente)
+  }
+  if (criterion === 'capital_at_retirement') {
+    return desc(a.capitalAtRetirement, b.capitalAtRetirement)
+  }
+  if (criterion === 'safety') {
+    return (
+      desc(a.safetyNettoRenteP10, b.safetyNettoRenteP10) ||
+      desc(a.medianNettoRente, b.medianNettoRente)
+    )
+  }
+  if (criterion === 'flexibility') {
+    return (
+      desc(FLEX_RANK[a.flexibilityDetails.overall], FLEX_RANK[b.flexibilityDetails.overall]) ||
+      desc(a.medianNettoRente, b.medianNettoRente)
+    )
+  }
+  return (
+    desc(a.effort.score, b.effort.score) ||
+    desc(a.medianNettoRente, b.medianNettoRente)
+  )
+}
+
+function desc(a: number, b: number): number {
+  return b - a
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -974,6 +1387,8 @@ export interface RecommendNextEuroInput {
    * Falls back to the 'basis' scenario when absent or not found.
    */
   selectedScenarioId?: string
+  /** Answers from the Lücke-schließen modal's bAV employer-offer step. */
+  bavOffer?: BavEmployerOfferInput
 }
 
 export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCandidate[] {
@@ -987,6 +1402,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
   const wsa = workspace.baseline.assumptions
   const mcSeedBase = wsa.monteCarlo?.seed ?? 2026
   const mcVolatility = wsa.monteCarlo?.annualVolatility ?? 0.15
+  const bavOffer = resolveBavOffer(input.bavOffer)
 
   const g: GeneratorContext = {
     workspace,
@@ -997,6 +1413,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
     baselinePerInstance: input.baselinePerInstance,
     baselineCombined: input.baselineCombined,
     combineCtx,
+    bavOffer,
   }
 
   // Generate raw candidates in priority order (one per product class for diversity).
@@ -1071,6 +1488,13 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       MC_PATHS,
       candidateSeed,
     )
+    const safetyNettoRenteP10 = safetyMonthlyP10(
+      input.baselineCombined.monthlyNetIncome,
+      median,
+      d.candidateResult.capitalAtRetirement,
+      riskScoreP10,
+    )
+    const flexibilityDetails = FLEXIBILITY_BY_PRODUCT[d.productId]
     return {
       id: d.id,
       label: d.label,
@@ -1081,20 +1505,27 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       netCashOutEUR: d.netCashOutEUR,
       medianNettoRente: median,
       lifetimeCash,
-      flexibilityScore: FLEX_BY_PRODUCT[d.productId],
+      flexibilityScore: flexibilityDetails.overall,
+      flexibilityDetails,
+      effort: effortForCandidate(workspace, d, bavOffer),
       riskScore: d.candidateResult.capitalAtRetirement,
+      capitalAtRetirement: d.candidateResult.capitalAtRetirement,
       riskScoreP10,
+      safetyNettoRenteP10,
       riskScoreMcPaths: MC_PATHS,
       atoms,
       wunschnettoFloorMet,
       cappedToRemaining: d.cappedToRemaining,
+      usesStandardAssumptions: d.usesStandardAssumptions,
+      bavOffer: d.bavOffer,
+      monthlyEmployerContributionEUR: d.monthlyEmployerContributionEUR,
     }
   })
 
   // Default ranking: median Netto-Rente desc. The dashboard exposes a "Risiko
   // (P10)" sort that reorders by `riskScoreP10` desc; we keep the list
   // ordering here stable on median so the existing UI tests pass.
-  candidates.sort((a, b) => b.medianNettoRente - a.medianNettoRente)
+  candidates.sort((a, b) => compareCandidates(a, b, 'median_net_pension'))
   return candidates.slice(0, MAX_CANDIDATES)
 }
 
@@ -1175,9 +1606,11 @@ function applyCandidateToAssumptions(
       const idx = wsa.bav.findIndex((b) => b.instanceId === candidate.targetInstanceId)
       if (idx >= 0) {
         const current = wsa.bav[idx]
+        const offerPatch = bavOfferPatchForSavedPlan(candidate, current.monthlyGrossConversion + candidate.grossMonthlyEUR)
         wsa.bav[idx] = {
           ...current,
           monthlyGrossConversion: (current.monthlyGrossConversion ?? 0) + candidate.grossMonthlyEUR,
+          ...offerPatch,
         }
       }
     } else if (candidate.productId === 'riester') {
@@ -1226,6 +1659,49 @@ function applyCandidateToAssumptions(
       ...defaultAssumptions.altersvorsorgedepot,
       monthlyOwnContribution: candidate.grossMonthlyEUR,
     } as AltersvorsorgedepotInstance)
+  } else if (candidate.productId === 'bav') {
+    const offerPatch = bavOfferPatchForSavedPlan(candidate, candidate.grossMonthlyEUR)
+    wsa.bav.push({
+      instanceId: newInstanceId('bav'),
+      label: candidate.label,
+      status: 'active',
+      contractStartYear: new Date().getFullYear(),
+      evidenceMap: {},
+      ...defaultAssumptions.bav,
+      ...offerPatch,
+      monthlyGrossConversion: candidate.grossMonthlyEUR,
+    } as BavInstance)
   }
 }
 
+function bavOfferPatchForSavedPlan(
+  candidate: RecommendedCandidate,
+  totalMonthlyGrossConversion: number,
+): Partial<BavInstance> {
+  const offer = candidate.bavOffer
+  if (!offer) return {}
+  const cappedEmployerMonthly = monthlyEmployerContributionForOffer(
+    totalMonthlyGrossConversion,
+    offer,
+  )
+  const capWouldBind =
+    offer.monthlyCapEUR !== undefined &&
+    totalMonthlyGrossConversion * offer.employerMatchPercent + offer.fixedMonthlyEUR > offer.monthlyCapEUR
+  return {
+    statutoryMinimumSubsidyEnabled: false,
+    contractualMatchPercent: capWouldBind ? 0 : offer.employerMatchPercent,
+    contractualFixedMonthly: capWouldBind ? cappedEmployerMonthly : offer.fixedMonthlyEUR,
+    durchfuehrungsweg: offer.durchfuehrungsweg,
+    payoutMode: offer.payoutMode,
+    rentenfaktor: offer.rentenfaktor,
+    rentenfaktorConfirmed: offer.hasOffer,
+    fees: {
+      ...defaultAssumptions.bav.fees,
+      wrapperAssetFee: offer.effectiveCostAnnual,
+      fundAssetFee: 0,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+    },
+  }
+}

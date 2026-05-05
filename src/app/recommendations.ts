@@ -23,6 +23,7 @@ import type { CombinedResult } from '../engine/portfolioCombine'
 import { activeRules } from '../rules'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from '../engine/insurancePayout'
 import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
+import { childBirthYearsUnder25InYear } from '../engine/childEligibility'
 
 // ---------------------------------------------------------------------------
 // Allowance helpers
@@ -35,8 +36,9 @@ import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 export function computeKinderzulagen(
   childBirthYears: number[],
   riesterRules: GermanRules['riester'],
+  contributionYear = activeRules.year,
 ): number {
-  return childBirthYears.reduce((sum, birthYear) => {
+  return childBirthYearsUnder25InYear(childBirthYears, contributionYear).reduce((sum, birthYear) => {
     return sum + (birthYear >= 2008 ? riesterRules.childAllowancePost2007 : riesterRules.childAllowancePre2008)
   }, 0)
 }

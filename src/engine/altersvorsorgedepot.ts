@@ -37,6 +37,7 @@ import {
 } from './certifiedPensionPayout'
 import { calculateAllowanceExcessBenefit, calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 import type { RetirementHealthStatus } from './retirementPayout'
+import { childBirthYearsUnder25InYear } from './childEligibility'
 
 // ---------------------------------------------------------------------------
 // Allowance formulas
@@ -163,6 +164,12 @@ export function maxAvdMonthlyOwnContribution(
   return Math.max(0, (avdRules.contractContributionCapAnnual - saturated.totalAllowanceAnnual) / 12)
 }
 
+export interface AvdFundingOptions {
+  contributionYear?: number
+  isFirstContributionYear?: boolean
+  profile?: PersonalProfile
+}
+
 // ---------------------------------------------------------------------------
 // Full AVD funding calculation (§10a Günstigerprüfung)
 // ---------------------------------------------------------------------------
@@ -185,9 +192,20 @@ export function calculateAvdFunding(
   rules: GermanRules,
   salaryResult: SalaryResult,
   avd: AltersvorsorgedepotAssumptions,
+  options: AvdFundingOptions = {},
 ): AltersvorsorgedepotFundingResult {
   const avdRules = rules.altersvorsorgedepot
   const annualOwnContribution = avd.monthlyOwnContribution * 12
+  const contributionYear = options.contributionYear ?? rules.year
+  const profileEligibleChildren = options.profile
+    ? childBirthYearsUnder25InYear(options.profile.childBirthYears, contributionYear).length
+    : avd.eligibility.eligibleChildren
+  const effectiveEligibility = {
+    ...avd.eligibility,
+    eligibleChildren: profileEligibleChildren,
+  }
+  const isFirstContributionYear =
+    options.isFirstContributionYear ?? !avd.eligibility.careerStarterBonusUsed
 
   // -------------------------------------------------------------------------
   // 1. Allowances (using first-year logic: career bonus only in year 1).
@@ -201,7 +219,7 @@ export function calculateAvdFunding(
     careerStarterBonusAnnual,
     indirectSpouseAllowanceAnnual,
     totalAllowanceAnnual,
-  } = computeAvdAllowances(annualOwnContribution, avd.eligibility, rules, !avd.eligibility.careerStarterBonusUsed)
+  } = computeAvdAllowances(annualOwnContribution, effectiveEligibility, rules, isFirstContributionYear)
 
   // -------------------------------------------------------------------------
   // 2. Contract contribution = own + allowances, capped at annual contract limit

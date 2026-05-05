@@ -18,7 +18,9 @@ import { runCombineSimulation } from './useCombineSimulation'
 import {
   recommendNextEuro,
   buildWhatIfFromCandidate,
+  rankRecommendedCandidates,
   type RecommendNextEuroInput,
+  type RecommendedCandidate,
 } from './recommender'
 
 function buildBerndWorkspace() {
@@ -56,6 +58,42 @@ function buildInput(workspace: ReturnType<typeof buildBerndWorkspace>, marginalE
     baselinePerInstance: bundle.perInstance,
     baselineCombined: bundle.combinedByScenarioId[basisId],
     grvGrossMonthlyPension: bundle.statutoryPension.grossMonthlyPension,
+  }
+}
+
+function fixtureCandidate(
+  id: string,
+  overrides: Partial<RecommendedCandidate>,
+): RecommendedCandidate {
+  return {
+    id,
+    label: id,
+    productId: 'etf',
+    isNewInstance: false,
+    grossMonthlyEUR: 100,
+    netCashOutEUR: 100,
+    medianNettoRente: 1000,
+    lifetimeCash: 300_000,
+    flexibilityScore: 'medium',
+    flexibilityDetails: {
+      overall: 'medium',
+      criteria: {
+        cancel: 'restricted',
+        switchAsset: 'restricted',
+        switchProduct: 'restricted',
+        adjustContribution: 'restricted',
+      },
+    },
+    effort: { score: 50, level: 'medium', details: [] },
+    riskScore: 100_000,
+    capitalAtRetirement: 100_000,
+    riskScoreP10: 80_000,
+    safetyNettoRenteP10: 900,
+    riskScoreMcPaths: 200,
+    atoms: [],
+    wunschnettoFloorMet: true,
+    cappedToRemaining: false,
+    ...overrides,
   }
 }
 
@@ -102,6 +140,98 @@ describe('recommendNextEuro — Bernd shape (€400/mo)', () => {
   })
 })
 
+describe('rankRecommendedCandidates — result filters', () => {
+  const candidates = [
+    fixtureCandidate('median', {
+      medianNettoRente: 1600,
+      capitalAtRetirement: 90_000,
+      safetyNettoRenteP10: 1000,
+      riskScoreP10: 50_000,
+      flexibilityScore: 'low',
+      flexibilityDetails: {
+        overall: 'low',
+        criteria: {
+          cancel: 'hard',
+          switchAsset: 'restricted',
+          switchProduct: 'hard',
+          adjustContribution: 'restricted',
+        },
+      },
+      effort: { score: 35, level: 'high', details: [] },
+    }),
+    fixtureCandidate('capital', {
+      medianNettoRente: 1200,
+      capitalAtRetirement: 200_000,
+      safetyNettoRenteP10: 900,
+      riskScoreP10: 150_000,
+      flexibilityScore: 'medium',
+      flexibilityDetails: {
+        overall: 'medium',
+        criteria: {
+          cancel: 'restricted',
+          switchAsset: 'restricted',
+          switchProduct: 'restricted',
+          adjustContribution: 'easy',
+        },
+      },
+      effort: { score: 45, level: 'high', details: [] },
+    }),
+    fixtureCandidate('safety-monthly', {
+      medianNettoRente: 1300,
+      capitalAtRetirement: 110_000,
+      safetyNettoRenteP10: 1250,
+      riskScoreP10: 20_000,
+      flexibilityScore: 'medium',
+      effort: { score: 55, level: 'medium', details: [] },
+    }),
+    fixtureCandidate('flexibility', {
+      medianNettoRente: 900,
+      capitalAtRetirement: 80_000,
+      safetyNettoRenteP10: 850,
+      riskScoreP10: 60_000,
+      flexibilityScore: 'high',
+      flexibilityDetails: {
+        overall: 'high',
+        criteria: {
+          cancel: 'easy',
+          switchAsset: 'easy',
+          switchProduct: 'easy',
+          adjustContribution: 'easy',
+        },
+      },
+      effort: { score: 60, level: 'medium', details: [] },
+    }),
+    fixtureCandidate('effort', {
+      medianNettoRente: 950,
+      capitalAtRetirement: 70_000,
+      safetyNettoRenteP10: 880,
+      riskScoreP10: 55_000,
+      flexibilityScore: 'medium',
+      effort: { score: 95, level: 'low', details: [] },
+    }),
+  ]
+
+  it('defaults to highest median monthly net pension', () => {
+    expect(rankRecommendedCandidates(candidates)[0].id).toBe('median')
+  })
+
+  it('selects highest capital at retirement', () => {
+    expect(rankRecommendedCandidates(candidates, 'capital_at_retirement')[0].id).toBe('capital')
+  })
+
+  it('uses P10 monthly net pension for Sicherheit, not P10 capital', () => {
+    expect(rankRecommendedCandidates(candidates, 'safety')[0].id).toBe('safety-monthly')
+  })
+
+  it('selects the highest flexibility badge', () => {
+    expect(rankRecommendedCandidates(candidates, 'flexibility')[0].id).toBe('flexibility')
+  })
+
+  it('selects the lowest-effort next action', () => {
+    expect(rankRecommendedCandidates(candidates, 'low_effort')[0].id).toBe('effort')
+  })
+})
+
 describe('recommendNextEuro — Anna clean slate (€200/mo)', () => {
   it('returns ETF + bAV candidates first when ETF visibility is set', () => {
     const ws = buildAnnaWorkspace()
@@ -112,6 +242,54 @@ describe('recommendNextEuro — Anna clean slate (€200/mo)', () => {
     // Anna keeps an ETF instance (workspace migration adds one when ETF is visible),
     // so the ETF candidate should be present.
     expect(productIds.has('etf') || productIds.has('basisrente') || productIds.has('altersvorsorgedepot')).toBe(true)
+  })
+})
+
+describe('recommendNextEuro — bAV employer offer branch', () => {
+  function bavWithOffer(overrides: {
+    employerMatchPercent: number
+    fixedMonthlyEUR: number
+    monthlyCapEUR?: number
+  }) {
+    const ws = buildAnnaWorkspace()
+    const candidates = recommendNextEuro({
+      ...buildInput(ws, 200),
+      bavOffer: {
+        hasOffer: true,
+        effectiveCostAnnual: 0.012,
+        ...overrides,
+      },
+    })
+    const bav = candidates.find((candidate) => candidate.productId === 'bav')
+    expect(bav).toBeDefined()
+    return bav!
+  }
+
+  it('includes a flat employer contribution in a new bAV candidate', () => {
+    const bav = bavWithOffer({ employerMatchPercent: 0, fixedMonthlyEUR: 100 })
+
+    expect(bav.monthlyEmployerContributionEUR).toBeCloseTo(100, 2)
+    expect(bav.capitalAtRetirement).toBeGreaterThan(0)
+  })
+
+  it('adds percent and flat employer contributions', () => {
+    const bav = bavWithOffer({ employerMatchPercent: 0.5, fixedMonthlyEUR: 80 })
+
+    expect(bav.monthlyEmployerContributionEUR).toBeCloseTo(
+      bav.grossMonthlyEUR * 0.5 + 80,
+      2,
+    )
+  })
+
+  it('caps the combined employer contribution when an offer cap is supplied', () => {
+    const bav = bavWithOffer({
+      employerMatchPercent: 1,
+      fixedMonthlyEUR: 80,
+      monthlyCapEUR: 120,
+    })
+
+    expect(bav.monthlyEmployerContributionEUR).toBeLessThanOrEqual(120)
+    expect(bav.monthlyEmployerContributionEUR).toBeCloseTo(120, 2)
   })
 })
 
@@ -217,19 +395,32 @@ describe('recommendNextEuro — empty marginal budget', () => {
 })
 
 describe('recommendNextEuro — flexibility scores', () => {
-  it('assigns ETF=high, bAV=medium, Basisrente=low', () => {
+  it('assigns transparent default product scores', () => {
     const ws = buildBerndWorkspace()
     const input = buildInput(ws, 400)
     const candidates = recommendNextEuro(input)
     for (const c of candidates) {
-      if (c.productId === 'etf' || c.productId === 'altersvorsorgedepot') {
+      if (c.productId === 'etf') {
         expect(c.flexibilityScore).toBe('high')
+        expect(c.flexibilityDetails.criteria.cancel).toBe('easy')
+      } else if (c.productId === 'altersvorsorgedepot' || c.productId === 'riester') {
+        expect(c.flexibilityScore).toBe('medium')
       } else if (c.productId === 'basisrente') {
         expect(c.flexibilityScore).toBe('low')
-      } else if (c.productId === 'bav' || c.productId === 'riester') {
-        expect(c.flexibilityScore).toBe('medium')
+        expect(c.flexibilityDetails.criteria.switchProduct).toBe('hard')
+      } else if (c.productId === 'bav') {
+        expect(c.flexibilityScore).toBe('low')
+        expect(c.flexibilityDetails.criteria.cancel).toBe('hard')
       }
     }
+  })
+
+  it('prefers increasing an existing ETF for low-effort ranking', () => {
+    const ws = buildBerndWorkspace()
+    const candidates = recommendNextEuro(buildInput(ws, 200))
+    const etf = candidates.find((c) => c.productId === 'etf')
+    expect(etf).toBeDefined()
+    expect(etf!.effort.score).toBeGreaterThanOrEqual(90)
   })
 })
 

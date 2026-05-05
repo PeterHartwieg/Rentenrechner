@@ -14,7 +14,7 @@ import type {
 import type { SavedScenario } from '../../data/scenarioLibrary'
 import { NumberField } from '../../ui/NumberField'
 import { clampNumber } from '../../ui/formatting'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { computeBavMinimumEntitlement } from '../../engine/bavWarnings'
 import { de2026Rules } from '../../rules/de2026'
 import { ScenariosPanel } from './ScenariosPanel'
@@ -28,8 +28,13 @@ import {
   PRODUCT_UI_REGISTRY,
   type ProductInputsContext,
 } from './productUiRegistry'
-import { DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from '../../data/defaultScenario'
-import { InfoTip } from '../../ui/InfoTip'
+import {
+  DEFAULT_EXPERT_INFLATION_RATE,
+  DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
+} from '../../data/defaultScenario'
+import { nextInflationRateForExpertToggle } from './inflationExpert'
+
+const NETTO_BELASTUNG_PRESETS = [100, 200, 400] as const
 
 interface ScenarioLib {
   library: SavedScenario[]
@@ -96,6 +101,9 @@ export function InputsPanel({
   // Active product tab — falls back to first visible if the requested tab
   // is no longer in `visible` (e.g. user toggled it off in the picker).
   const [requestedTab, setRequestedTab] = useState<ProductId | null>(visible[0] ?? null)
+  const [lastExpertInflationRate, setLastExpertInflationRate] = useState(
+    () => assumptions.inflationRate > 0 ? assumptions.inflationRate : DEFAULT_EXPERT_INFLATION_RATE,
+  )
 
   // Issue 23: when a product card's "Einstellungen anpassen" button is clicked,
   // App.tsx sets `requestActiveTab` to the target product and navigates here.
@@ -136,39 +144,16 @@ export function InputsPanel({
         heading="Welche Produkte vergleichst du?"
       />
 
-      {/* ── Issue 16: compare-mode sub-mode toggle (equal-cash vs equal-input) ── */}
-      <CompareSubModeToggle
-        subMode={assumptions.compareSubMode ?? 'equal_cash'}
-        amountEUR={assumptions.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR}
-        onSubModeChange={(next) =>
-          onAssumptionsChange((current) => ({ ...current, compareSubMode: next }))
-        }
+      <NettoBelastungControl
+        amountEUR={assumptions.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR}
         onAmountChange={(value) =>
-          onAssumptionsChange((current) => ({
-            ...current,
-            equalInputAmountEUR: clampNumber(Number(value), 0, 10_000),
-          }))
+          onSyncMonthlyContribution(clampNumber(Number(value), 0, 10_000))
         }
       />
 
       <div className="divider" />
 
-      {/* ── Global model assumptions (apply to all products) ── */}
       <div className="field-grid">
-        <NumberField
-          label="Inflation"
-          value={assumptions.inflationRate * 100}
-          min={0}
-          max={8}
-          step={0.1}
-          suffix="% p.a."
-          onChange={(value) =>
-            onAssumptionsChange((current) => ({
-              ...current,
-              inflationRate: Number(value) / 100,
-            }))
-          }
-        />
         <NumberField
           label="Kapital aufgebraucht bis (Alter)"
           value={assumptions.retirementEndAge}
@@ -284,6 +269,59 @@ export function InputsPanel({
         </div>
       </details>
 
+      <details className="disclosure-section">
+        <summary>
+          <span className="disclosure-toggle">Expertenannahmen</span>
+          <span className="disclosure-recap">
+            Inflation {assumptions.inflationRate > 0 ? formatPercent(assumptions.inflationRate, 1) : 'aus'}
+          </span>
+        </summary>
+        <div className="disclosure-content">
+          <label className="field-inline">
+            <input
+              type="checkbox"
+              checked={assumptions.inflationRate > 0}
+              onChange={(event) =>
+                onAssumptionsChange((current) => {
+                  if (!event.target.checked && current.inflationRate > 0) {
+                    setLastExpertInflationRate(current.inflationRate)
+                  }
+                  return {
+                    ...current,
+                    inflationRate: nextInflationRateForExpertToggle(
+                      event.target.checked,
+                      current.inflationRate,
+                      lastExpertInflationRate,
+                    ),
+                  }
+                })
+              }
+            />
+            Inflation berücksichtigen
+          </label>
+          {assumptions.inflationRate > 0 && (
+            <NumberField
+              label="Inflationsrate"
+              value={assumptions.inflationRate * 100}
+              min={0}
+              max={8}
+              step={0.1}
+              suffix="% p.a."
+              onCommit={(value) =>
+                onAssumptionsChange((current) => {
+                  const nextRate = clampNumber(Number(value), 0, 8) / 100
+                  if (nextRate > 0) setLastExpertInflationRate(nextRate)
+                  return {
+                    ...current,
+                    inflationRate: nextRate,
+                  }
+                })
+              }
+            />
+          )}
+        </div>
+      </details>
+
       <ScenariosPanel
         onSelectPreset={onAssumptionsChange}
         library={scenarioLib.library}
@@ -298,62 +336,44 @@ export function InputsPanel({
   )
 }
 
-// ---------------------------------------------------------------------------
-// Issue 16 — compare-mode sub-mode toggle.
-// ---------------------------------------------------------------------------
-
-interface CompareSubModeToggleProps {
-  subMode: 'equal_cash' | 'equal_input'
+interface NettoBelastungControlProps {
   amountEUR: number
-  onSubModeChange: (next: 'equal_cash' | 'equal_input') => void
   onAmountChange: (value: number) => void
 }
 
-function CompareSubModeToggle({
-  subMode,
+function NettoBelastungControl({
   amountEUR,
-  onSubModeChange,
   onAmountChange,
-}: CompareSubModeToggleProps) {
+}: NettoBelastungControlProps) {
   return (
-    <div className="field-grid" aria-label="Vergleichsmodus">
-      <fieldset className="field-stack">
-        <legend>Vergleichsmodus</legend>
-        <label>
-          <input
-            type="radio"
-            name="compare-sub-mode"
-            checked={subMode === 'equal_cash'}
-            onChange={() => onSubModeChange('equal_cash')}
-          />{' '}
-          Gleiche Netto-Belastung (bAV-Anker)
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="compare-sub-mode"
-            checked={subMode === 'equal_input'}
-            onChange={() => onSubModeChange('equal_input')}
-          />{' '}
-          Gleicher Beitrag – ETF &amp; priv. RV (€/Monat){' '}
-          <InfoTip
-            icon="info"
-            label="Erklärung: Gleicher Beitrag"
-            text="Nur ETF und private Rentenversicherung werden auf diesen Betrag gesetzt. bAV läuft weiterhin über die eigene Entgeltumwandlung (§ 3 Nr. 63 EStG); Basisrente, AVD und Riester nutzen ihre eigenen Beitragsfelder."
-          />
-        </label>
-      </fieldset>
-      {subMode === 'equal_input' && (
+    <section className="netto-belastung-control" aria-label="Monatlicher Vergleichsbetrag">
+      <div className="netto-belastung-row">
         <NumberField
-          label="Vergleichsbetrag"
+          label="Netto-Belastung"
           value={amountEUR}
           min={0}
           max={10_000}
           step={10}
-          suffix="€/Monat"
+          suffix="EUR mtl."
           onCommit={(value) => onAmountChange(Number(value))}
         />
-      )}
-    </div>
+        <div className="netto-belastung-presets" aria-label="Presets">
+          {NETTO_BELASTUNG_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              className={
+                Math.abs(amountEUR - preset) < 0.01
+                  ? 'netto-belastung-preset active'
+                  : 'netto-belastung-preset'
+              }
+              onClick={() => onAmountChange(preset)}
+            >
+              {preset} EUR
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }

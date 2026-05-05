@@ -9,6 +9,8 @@ import { calculateAvdFunding } from '../engine/altersvorsorgedepot'
 import { calculateRiesterFunding } from '../engine/riester'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
+import { simulateRetirementComparison } from '../engine/simulate'
+import type { ProductId } from '../domain'
 
 describe('solveBavGrossFromNet', () => {
   it('round-trips: forward(inverse(target)) ≈ target across the typical range', () => {
@@ -90,6 +92,8 @@ describe('syncMonthlyContributions — single-anchor sync invariant', () => {
   it('a target net of 200 EUR/Monat harmonizes all four products', () => {
     const next = syncMonthlyContributions(200, defaultAssumptions, defaultProfile, de2026Rules)
     const nets = effectiveNetCosts(next)
+    expect(next.equalInputAmountEUR).toBe(200)
+    expect(next.compareSubMode).toBeUndefined()
     expect(nets.bav).toBeCloseTo(200, 0)
     expect(nets.basisrente).toBeCloseTo(200, 0)
     expect(nets.avd).toBeCloseTo(200, 0)
@@ -125,5 +129,45 @@ describe('syncMonthlyContributions — single-anchor sync invariant', () => {
     expect(nets.riester).toBeCloseTo(600, 0)
     // AVD's true netto lags below the target because it ran out of headroom.
     expect(nets.avd).toBeLessThan(600)
+  })
+
+  it('sizes every visible product from the same stored net target, not the old bAV gross', () => {
+    const visibleProducts: ProductId[] = [
+      'etf',
+      'bav',
+      'versicherung',
+      'basisrente',
+      'altersvorsorgedepot',
+      'riester',
+    ]
+    const legacy = {
+      ...defaultAssumptions,
+      visibleProducts,
+      compareSubMode: 'equal_cash' as const,
+      equalInputAmountEUR: 200,
+      bav: {
+        ...defaultAssumptions.bav,
+        monthlyGrossConversion: 500,
+      },
+    }
+
+    const synced = syncMonthlyContributions(
+      legacy.equalInputAmountEUR,
+      legacy,
+      defaultProfile,
+      de2026Rules,
+    )
+    const result = simulateRetirementComparison(defaultProfile, synced, de2026Rules)
+    const basisRows = result.products.filter((product) => product.scenarioId === 'basis')
+
+    expect(basisRows).toHaveLength(visibleProducts.length)
+    for (const product of basisRows) {
+      expect(product.monthlyUserCost).toBeCloseTo(200, 0)
+    }
+    expect(basisRows.find((product) => product.productId === 'etf')?.monthlyProductContribution)
+      .toBeCloseTo(200, 0)
+    expect(basisRows.find((product) => product.productId === 'versicherung')?.monthlyProductContribution)
+      .toBeCloseTo(200, 0)
+    expect(synced.bav.monthlyGrossConversion).not.toBe(500)
   })
 })

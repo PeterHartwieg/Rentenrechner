@@ -89,7 +89,7 @@ export function MonteCarloPanel({ result }: Props) {
             </InfoTip>
           </h2>
           <p>
-            {formatNumber(result.runs)} Pfade | {result.scenarioLabel}{' '}
+            {formatNumber(result.runs)} Simulationen | {result.scenarioLabel}{' '}
             {formatPercent(result.annualReturn)} Rendite | {formatPercent(result.annualVolatility)} Schwankung p.a.
           </p>
         </div>
@@ -232,6 +232,11 @@ export function MonteCarloPanel({ result }: Props) {
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      <p className="mc-table-note">
+        P10/P50/P90: Bei P10 lagen 90 % der Simulationen ueber diesem Wert, P50 ist
+        der mittlere Wert, P90 ein starkes Ergebnis.
+      </p>
 
       <div className="table-scroll mc-table-wrap">
         <table className="mc-table">

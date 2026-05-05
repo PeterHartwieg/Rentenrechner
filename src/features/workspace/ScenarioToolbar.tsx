@@ -26,8 +26,6 @@ interface ScenarioToolbarProps {
   onAssumptionsChange: (updater: (current: ToolbarAssumptions) => ToolbarAssumptions) => void
   selectedScenarioId: string
   onSelectScenario: (id: string) => void
-  showRealValues: boolean
-  onShowRealValuesChange: (v: boolean) => void
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -44,8 +42,6 @@ export function ScenarioToolbar({
   onAssumptionsChange,
   selectedScenarioId,
   onSelectScenario,
-  showRealValues,
-  onShowRealValuesChange,
 }: ScenarioToolbarProps) {
   const customScenario = assumptions.returnScenarios.find((s) => s.id === 'custom')
 
@@ -125,21 +121,13 @@ export function ScenarioToolbar({
 
       <details className="toolbar-advanced">
         <summary>
-          <span>Darstellung & Risiko</span>
+          <span>Risiko</span>
           {assumptions.monteCarlo.enabled && (
             <span className="toolbar-risk-summary">
               MC {assumptions.monteCarlo.runs}x | Vol {formatPercent(assumptions.monteCarlo.annualVolatility)}
             </span>
           )}
         </summary>
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={showRealValues}
-            onChange={(event) => onShowRealValuesChange(event.target.checked)}
-          />
-          inflationsbereinigt
-        </label>
         <label className="toggle">
           <input
             type="checkbox"

@@ -521,6 +521,26 @@ describe('parseStateFromJson + validation (#49)', () => {
     expect(parsed?.assumptions.returnScenarios).toEqual(defaultAssumptions.returnScenarios)
   })
 
+  it('preserves legacy equal-cash saves as bAV-net anchored instead of injecting the default 200 EUR anchor', () => {
+    const legacyAssumptions = {
+      ...defaultAssumptions,
+      compareSubMode: 'equal_cash',
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 500 },
+    } as Record<string, unknown>
+    delete legacyAssumptions.equalInputAmountEUR
+    const raw = JSON.stringify({
+      version: 1,
+      profile: defaultProfile,
+      assumptions: legacyAssumptions,
+    })
+
+    const parsed = parseStateFromJson(raw)
+
+    expect(parsed).not.toBeNull()
+    expect(parsed?.assumptions.compareSubMode).toBe('equal_cash')
+    expect(parsed?.assumptions.equalInputAmountEUR).toBeUndefined()
+  })
+
   it('preserves a saved custom return scenario alongside the canonical baselines', () => {
     const raw = buildStateJson(defaultProfile, {
       ...defaultAssumptions,

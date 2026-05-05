@@ -35,6 +35,10 @@ export interface ProductMonteCarloSummary {
   targetNetPensionProbability: number | null
   guaranteeLabel?: string
   guaranteeFloor: MonteCarloPercentiles | null
+  guaranteeDisplay: {
+    kind: 'capital' | 'monthlyPension'
+    values: MonteCarloPercentiles
+  } | null
   guaranteeAppliedProbability: number | null
 }
 
@@ -80,6 +84,8 @@ interface ProductAccumulator {
   bestPensionCount: number
   guaranteeLabel?: string
   guaranteeFloorValues: number[]
+  guaranteeDisplayKind?: 'capital' | 'monthlyPension'
+  guaranteeDisplayValues: number[]
   guaranteeAppliedCount: number
   yearlyBalances: number[][]
 }
@@ -186,9 +192,52 @@ function productAccumulator(product: ProductResult): ProductAccumulator {
     bestPensionCount: 0,
     guaranteeLabel: product.guaranteeLabel,
     guaranteeFloorValues: [],
+    guaranteeDisplayValues: [],
     guaranteeAppliedCount: 0,
     yearlyBalances: product.rows.map(() => []),
   }
+}
+
+function guaranteeDisplayForProduct(
+  product: ProductResult,
+  assumptions: ScenarioAssumptions,
+): { kind: 'capital' | 'monthlyPension'; value: number } | null {
+  const guaranteeFloor = product.guaranteeFloorAtRetirement
+  if (guaranteeFloor === undefined) return null
+
+  if (
+    guaranteeDisplayKind(product, assumptions) === 'capital' ||
+    product.capitalAtRetirement <= 0 ||
+    product.grossMonthlyPayout <= 0
+  ) {
+    return { kind: 'capital', value: guaranteeFloor }
+  }
+
+  return {
+    kind: 'monthlyPension',
+    value: product.grossMonthlyPayout * (guaranteeFloor / product.capitalAtRetirement),
+  }
+}
+
+function guaranteeDisplayKind(
+  product: ProductResult,
+  assumptions: ScenarioAssumptions,
+): 'capital' | 'monthlyPension' {
+  if (product.productId === 'bav') {
+    return assumptions.bav.payoutMode === 'kapitalverzehr' ? 'capital' : 'monthlyPension'
+  }
+  if (product.productId === 'versicherung') {
+    return assumptions.insurance.payoutMode === 'kapitalverzehr' ? 'capital' : 'monthlyPension'
+  }
+  if (product.productId === 'riester') {
+    return 'monthlyPension'
+  }
+  if (product.productId === 'altersvorsorgedepot') {
+    return assumptions.altersvorsorgedepot.payoutMode === 'certified_payout_plan'
+      ? 'capital'
+      : 'monthlyPension'
+  }
+  return 'capital'
 }
 
 function selectedScenario(
@@ -249,6 +298,11 @@ export function runMonteCarlo(input: MonteCarloRunInput): MonteCarloResult | nul
       if (product.guaranteeFloorAtRetirement !== undefined) {
         acc.guaranteeLabel = product.guaranteeLabel ?? acc.guaranteeLabel
         acc.guaranteeFloorValues.push(product.guaranteeFloorAtRetirement)
+        const guaranteeDisplay = guaranteeDisplayForProduct(product, assumptions)
+        if (guaranteeDisplay) {
+          acc.guaranteeDisplayKind = guaranteeDisplay.kind
+          acc.guaranteeDisplayValues.push(guaranteeDisplay.value)
+        }
         if (product.guaranteeApplied) acc.guaranteeAppliedCount += 1
       }
       if (targetNetPension > 0) {
@@ -298,6 +352,13 @@ export function runMonteCarlo(input: MonteCarloRunInput): MonteCarloResult | nul
       guaranteeLabel: acc.guaranteeLabel,
       guaranteeFloor:
         acc.guaranteeFloorValues.length > 0 ? percentiles(acc.guaranteeFloorValues) : null,
+      guaranteeDisplay:
+        acc.guaranteeDisplayKind && acc.guaranteeDisplayValues.length > 0
+          ? {
+              kind: acc.guaranteeDisplayKind,
+              values: percentiles(acc.guaranteeDisplayValues),
+            }
+          : null,
       guaranteeAppliedProbability:
         acc.guaranteeFloorValues.length > 0 ? acc.guaranteeAppliedCount / runs : null,
     }))

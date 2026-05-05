@@ -388,7 +388,7 @@ describe('PrintReport', () => {
           altersvorsorgedepot: [],
           riester: [],
           statutoryPension: defaultAssumptions.statutoryPension,
-          inflationRate: defaultAssumptions.inflationRate,
+          inflationRate: 0.03,
           retirementEndAge: defaultAssumptions.retirementEndAge,
           returnScenarios: defaultAssumptions.returnScenarios,
           monteCarlo: defaultAssumptions.monteCarlo,
@@ -422,6 +422,8 @@ describe('PrintReport', () => {
     // Both workspace instance labels must appear in the rendered output.
     expect(container.textContent).toContain('Depot A')
     expect(container.textContent).toContain('Depot B')
+    // Combine-mode reports disclose the workspace inflation assumption.
+    expect(container.textContent).toMatch(/3\s*%/)
 
     // Count occurrences of the generic engine label "ETF-Depot" in the Vertrag
     // column. We check the full-table section for the per-instance detail table.

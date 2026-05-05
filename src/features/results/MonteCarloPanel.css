@@ -48,7 +48,7 @@
 
 .mc-highlight-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -87,7 +87,7 @@
 
 .mc-mini-range-row {
   display: grid;
-  grid-template-columns: 96px minmax(120px, 1fr) minmax(92px, auto);
+  grid-template-columns: 96px minmax(140px, 1fr) minmax(240px, auto);
   align-items: center;
   gap: 10px;
   min-height: 28px;
@@ -165,6 +165,11 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.mc-mini-range-value strong {
+  color: #172033;
+  font-size: 0.95rem;
 }
 
 .mc-mini-range-value small,
@@ -274,6 +279,13 @@
 
 .mc-table-wrap {
   margin-top: 4px;
+}
+
+.mc-table-note {
+  margin: 2px 0 0;
+  color: #667085;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .mc-table {

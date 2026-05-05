@@ -111,6 +111,11 @@ function applyPostMergeMigrations(
   rawAssumptions: Record<string, unknown>,
   merged: ScenarioAssumptions,
 ): void {
+  if (rawAssumptions.compareSubMode === 'equal_cash') {
+    merged.compareSubMode = 'equal_cash'
+    merged.equalInputAmountEUR = undefined
+  }
+
   const savedBav = rawAssumptions.bav as Record<string, unknown> | undefined
   if (!savedBav) return
   if (
