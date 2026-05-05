@@ -46,7 +46,7 @@ import { de2026Rules } from '../rules/de2026'
 export interface ContractDecision {
   /** Stable id — `${kind}-${instanceId}` or `${kind}-${sourceId}-to-${targetId}`. */
   id: string
-  kind: 'weiterfuehren' | 'beitragsfrei' | 'kuendigen' | 'uebertragen'
+  kind: 'weiterfuehren' | 'beitragsfrei' | 'kuendigen' | 'uebertragen' | 'beitrag-erhoehen'
   /** German display label shown on the card. */
   label: string
   sourceInstanceId: string
@@ -110,6 +110,7 @@ export type WorkspaceDelta =
       targetProductId: ProductId
       amountEUR: number | 'all'
     }
+  | { kind: 'increase_contribution'; instanceId: string; newMonthlyEUR: number }
 
 
 // ---------------------------------------------------------------------------
@@ -136,7 +137,7 @@ const DEFAULT_HAIRCUT_BY_PREFIX: Record<string, number> = {
   'etf-': 0.00,           // ETF (no penalty)
 }
 
-function defaultHaircutFor(instanceId: string): number {
+export function defaultHaircutFor(instanceId: string): number {
   for (const [prefix, pct] of Object.entries(DEFAULT_HAIRCUT_BY_PREFIX)) {
     if (instanceId.startsWith(prefix)) return pct
   }
@@ -359,7 +360,99 @@ export function beitragsfreiWhatIf(
 }
 
 // ---------------------------------------------------------------------------
-// 3. kuendigenWhatIf
+// 3. beitragErhoehenWhatIf
+// ---------------------------------------------------------------------------
+
+/**
+ * Default first-render `newMonthlyEUR` = currentMonthly × 1.5, rounded to the
+ * nearest €10.  Exposed so the modal's input field can initialise from here
+ * without duplicating the formula.
+ */
+export function defaultBeitragErhoehenEUR(currentMonthlyEUR: number): number {
+  return Math.round((currentMonthlyEUR * 1.5) / 10) * 10
+}
+
+/**
+ * Annual statutory funding cap for each product slot.
+ * Insurance and ETF have no relevant statutory cap → Infinity.
+ */
+function fundingCapAnnualFor(slot: ProductSlot): number {
+  switch (slot) {
+    case 'bav':
+      return de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
+    case 'basisrente':
+      return de2026Rules.basisrente.schicht1CapSingle
+    case 'riester':
+      return 2_100
+    case 'altersvorsorgedepot':
+      return de2026Rules.altersvorsorgedepot.contractContributionCapAnnual
+    default:
+      return Infinity
+  }
+}
+
+/**
+ * Increase a single instance's monthly contribution to `newMonthlyEUR`.
+ *
+ * Returns `null` when the instance has `status === 'surrendered'` or
+ * `status === 'offered'` — those contracts cannot receive new contributions.
+ *
+ * Emits `funding_cap_hit` (priority `high`) when `newMonthlyEUR × 12`
+ * exceeds the relevant statutory cap.  The applier writes `newMonthlyEUR`
+ * verbatim — no auto-clamp — so the simulation naturally reflects cap
+ * consequences (lost Zulagen, no §3 Nr. 63 deferral on excess, etc.).
+ */
+export function beitragErhoehenWhatIf(
+  workspace: Workspace,
+  instanceId: string,
+  newMonthlyEUR: number,
+): ContractDecision | null {
+  const instance = findInstanceById(workspace, instanceId)
+  if (!instance) return null
+  if (instance.status === 'surrendered' || instance.status === 'offered') return null
+
+  const label = instance.label ?? instanceId
+  const slot = detectSlot(instanceId)
+
+  // Determine old contribution for the description (each slot uses its own field name).
+  let oldEUR: number
+  if (slot === 'bav') {
+    oldEUR = (instance as { monthlyGrossConversion?: number }).monthlyGrossConversion ?? 0
+  } else if (slot === 'basisrente') {
+    oldEUR = (instance as { monthlyGrossContribution?: number }).monthlyGrossContribution ?? 0
+  } else if (slot === 'altersvorsorgedepot' || slot === 'riester') {
+    oldEUR = (instance as { monthlyOwnContribution?: number }).monthlyOwnContribution ?? 0
+  } else {
+    // etf / insurance carry optional monthlyContribution
+    oldEUR = (instance as { monthlyContribution?: number }).monthlyContribution ?? 0
+  }
+
+  // Funding-cap check.
+  const atoms: Atom[] = []
+  const capAnnualEUR = fundingCapAnnualFor(slot)
+  const proposedAnnualEUR = newMonthlyEUR * 12
+  if (isFinite(capAnnualEUR) && proposedAnnualEUR > capAnnualEUR) {
+    atoms.push({
+      id: 'funding_cap_hit',
+      priority: 'high',
+      context: { instanceId, capAnnualEUR, proposedAnnualEUR },
+    })
+  }
+
+  return {
+    id: `beitrag-erhoehen-${instanceId}`,
+    kind: 'beitrag-erhoehen',
+    label: 'Beitrag erhöhen',
+    sourceInstanceId: instanceId,
+    description: `${label}: Beitrag von ${Math.round(oldEUR)} € auf ${Math.round(newMonthlyEUR)} € pro Monat erhöhen.`,
+    workspaceDelta: { kind: 'increase_contribution', instanceId, newMonthlyEUR },
+    deltaNettoRente: 0,
+    atoms,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. kuendigenWhatIf
 // ---------------------------------------------------------------------------
 
 /**
@@ -707,6 +800,11 @@ export function applyContractDecision(
     return cloned
   }
 
+  if (delta.kind === 'increase_contribution') {
+    applyIncreaseContribution(wsa, delta.instanceId, delta.newMonthlyEUR)
+    return cloned
+  }
+
   return cloned
 }
 
@@ -744,6 +842,59 @@ function createMinimalInstance(
 // ---------------------------------------------------------------------------
 // Delta appliers
 // ---------------------------------------------------------------------------
+
+/**
+ * Write `newMonthlyEUR` verbatim onto the contribution field(s) of the
+ * matching instance.  Deep-clone semantics are handled by the caller
+ * (`applyContractDecision` clones the workspace before invoking this).
+ *
+ * Field mapping per slot:
+ *   bav              → `monthlyGrossConversion`
+ *   etf              → `monthlyContribution`
+ *   insurance        → `monthlyContribution`
+ *   basisrente       → `monthlyGrossContribution`
+ *   altersvorsorgedepot → `monthlyOwnContribution`
+ *   riester          → `monthlyOwnContribution`
+ */
+function applyIncreaseContribution(
+  wsa: Workspace['baseline']['assumptions'],
+  instanceId: string,
+  newMonthlyEUR: number,
+): void {
+  const slot = detectSlot(instanceId)
+
+  if (slot === 'bav') {
+    const idx = wsa.bav.findIndex((i) => i.instanceId === instanceId)
+    if (idx >= 0) {
+      wsa.bav[idx] = { ...wsa.bav[idx], monthlyGrossConversion: newMonthlyEUR }
+    }
+  } else if (slot === 'etf') {
+    const idx = wsa.etf.findIndex((i) => i.instanceId === instanceId)
+    if (idx >= 0) {
+      wsa.etf[idx] = { ...wsa.etf[idx], monthlyContribution: newMonthlyEUR }
+    }
+  } else if (slot === 'insurance') {
+    const idx = wsa.insurance.findIndex((i) => i.instanceId === instanceId)
+    if (idx >= 0) {
+      wsa.insurance[idx] = { ...wsa.insurance[idx], monthlyContribution: newMonthlyEUR }
+    }
+  } else if (slot === 'basisrente') {
+    const idx = wsa.basisrente.findIndex((i) => i.instanceId === instanceId)
+    if (idx >= 0) {
+      wsa.basisrente[idx] = { ...wsa.basisrente[idx], monthlyGrossContribution: newMonthlyEUR }
+    }
+  } else if (slot === 'altersvorsorgedepot') {
+    const idx = wsa.altersvorsorgedepot.findIndex((i) => i.instanceId === instanceId)
+    if (idx >= 0) {
+      wsa.altersvorsorgedepot[idx] = { ...wsa.altersvorsorgedepot[idx], monthlyOwnContribution: newMonthlyEUR }
+    }
+  } else if (slot === 'riester') {
+    const idx = wsa.riester.findIndex((i) => i.instanceId === instanceId)
+    if (idx >= 0) {
+      wsa.riester[idx] = { ...wsa.riester[idx], monthlyOwnContribution: newMonthlyEUR }
+    }
+  }
+}
 
 function applyPaidUp(wsa: Workspace['baseline']['assumptions'], instanceId: string): void {
   const slot = detectSlot(instanceId)

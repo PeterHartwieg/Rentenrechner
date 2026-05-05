@@ -59,6 +59,7 @@ const KIND_LABELS: Record<ContractDecision['kind'], string> = {
   beitragsfrei: 'Beitragsfrei stellen',
   kuendigen: 'Kündigen',
   uebertragen: 'Übertragen',
+  'beitrag-erhoehen': 'Beitrag erhöhen',
 }
 
 // ---------------------------------------------------------------------------

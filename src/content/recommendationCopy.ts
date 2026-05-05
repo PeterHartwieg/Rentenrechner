@@ -351,6 +351,20 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
       'Zulagen und Sonderausgabenabzüge bleiben erhalten; der Anbieter organisiert die Übertragung. ' +
       'Prüfe, ob dein aktueller Anbieter die Übertragung gebührenfrei abwickelt.',
   }),
+
+  funding_cap_hit: (atom) => {
+    const capAnnualEUR = ctxNumber(atom.context, 'capAnnualEUR')
+    const proposedAnnualEUR = ctxNumber(atom.context, 'proposedAnnualEUR')
+    return {
+      headline: 'Über dem gesetzlichen Förderdeckel',
+      body:
+        `Der vorgeschlagene Beitrag (${Math.round(proposedAnnualEUR).toLocaleString('de-DE')} €/Jahr) ` +
+        `übersteigt den gesetzlichen Förderrahmen (${Math.round(capAnnualEUR).toLocaleString('de-DE')} €/Jahr). ` +
+        'Beiträge oberhalb des Deckels sind zwar möglich, verlieren aber die steuerlichen Vorteile ' +
+        '(z. B. §-3-Nr.-63-Befreiung bei bAV, Sonderausgabenabzug bei Rürup/Riester/AVD). ' +
+        'Die Modellrechnung zeigt die Auswirkung — du entscheidest, ob der höhere Beitrag trotzdem sinnvoll ist.',
+    }
+  },
 }
 
 const FALLBACK_TEMPLATE: AtomTemplate = { headline: '', body: '', cta: undefined }

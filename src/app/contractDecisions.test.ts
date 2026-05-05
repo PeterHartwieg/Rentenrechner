@@ -36,7 +36,11 @@ import {
   compatibleTransferTargets,
   applyContractDecision,
   generateContractDecisions,
+  beitragErhoehenWhatIf,
+  defaultBeitragErhoehenEUR,
+  defaultHaircutFor,
 } from './contractDecisions'
+import { de2026Rules } from '../rules/de2026'
 import { validateWorkspace } from '../utils/scenarioSchema'
 
 // ---------------------------------------------------------------------------
@@ -736,5 +740,240 @@ describe('round-trip validation (N7)', () => {
     const serialised = JSON.stringify(applied)
     const revalidated = validateWorkspace(JSON.parse(serialised))
     expect(revalidated).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// B1: beitragErhoehenWhatIf + applyContractDecision increase_contribution
+// ---------------------------------------------------------------------------
+
+describe('beitragErhoehenWhatIf (B1)', () => {
+  /** bAV workspace with salary above BBG (salary 120 000, bAV 200 €/mo). */
+  function makeBavHighSalaryWorkspace(): Workspace {
+    const v1 = {
+      ...defaultAssumptions,
+      visibleProducts: ['bav'],
+      bav: {
+        ...defaultAssumptions.bav,
+        monthlyGrossConversion: 200,
+        durchfuehrungsweg: 'direktversicherung_3_63',
+        pre2005EligibleTaxFree: false,
+      },
+    }
+    return migrateV1ToV2(
+      { ...defaultProfile, grossSalaryYear: 120_000 } as unknown as Record<string, unknown>,
+      v1 as unknown as Record<string, unknown>,
+    )
+  }
+
+  it('bAV: emits funding_cap_hit when proposed annual exceeds §3 Nr. 63 limit', () => {
+    const ws = makeBavHighSalaryWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    // 800 €/mo × 12 = 9 600 €/yr; cap = 101 400 × 8 % = 8 112 €/yr → over cap
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 800)
+    expect(decision).not.toBeNull()
+    expect(decision!.kind).toBe('beitrag-erhoehen')
+    const capAtom = decision!.atoms.find((a) => a.id === 'funding_cap_hit')
+    expect(capAtom).toBeDefined()
+    expect(capAtom!.priority).toBe('high')
+    const capAnnual = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
+    expect(capAtom!.context.capAnnualEUR).toBeCloseTo(capAnnual, 1)
+    expect(capAtom!.context.proposedAnnualEUR).toBeCloseTo(800 * 12, 1)
+    expect(capAtom!.context.instanceId).toBe(instanceId)
+  })
+
+  it('bAV: no funding_cap_hit when proposed annual is within cap', () => {
+    const ws = makeBavHighSalaryWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    // cap is 8 112 €/yr; 500 €/mo × 12 = 6 000 < cap
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 500)
+    expect(decision).not.toBeNull()
+    const capAtom = decision!.atoms.find((a) => a.id === 'funding_cap_hit')
+    expect(capAtom).toBeUndefined()
+  })
+
+  it('Riester: emits funding_cap_hit when proposed exceeds 2 100 €/yr (> 175 €/mo)', () => {
+    const ws = makeRiesterAvdWorkspace()
+    const instanceId = ws.baseline.assumptions.riester[0].instanceId
+    // 176 €/mo × 12 = 2 112 > 2 100
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 176)
+    expect(decision).not.toBeNull()
+    const capAtom = decision!.atoms.find((a) => a.id === 'funding_cap_hit')
+    expect(capAtom).toBeDefined()
+    expect(capAtom!.context.capAnnualEUR).toBe(2_100)
+    expect(capAtom!.context.proposedAnnualEUR).toBeCloseTo(176 * 12, 1)
+  })
+
+  it('AVD: emits funding_cap_hit when proposed exceeds contractContributionCapAnnual / 12', () => {
+    const ws = makeRiesterAvdWorkspace()
+    const instanceId = ws.baseline.assumptions.altersvorsorgedepot[0].instanceId
+    const capAnnual = de2026Rules.altersvorsorgedepot.contractContributionCapAnnual // 6 840
+    const overCapMonthly = capAnnual / 12 + 1 // just over 570 €/mo
+    const decision = beitragErhoehenWhatIf(ws, instanceId, overCapMonthly)
+    expect(decision).not.toBeNull()
+    const capAtom = decision!.atoms.find((a) => a.id === 'funding_cap_hit')
+    expect(capAtom).toBeDefined()
+    expect(capAtom!.context.capAnnualEUR).toBe(capAnnual)
+  })
+
+  it('ETF: no funding_cap_hit even with very high proposed contribution', () => {
+    const karinWs = makeKarinWorkspace()
+    const etfInst: EtfInstance = {
+      instanceId: 'etf-nocap-test',
+      label: 'ETF-Depot',
+      status: 'active',
+      contractStartYear: 2020,
+      evidenceMap: {},
+      annualAssetFee: 0.002,
+      equityPartialExemption: 0.3,
+      annualContributionGrowthRate: 0,
+      monthlyContribution: 100,
+    }
+    const ws: Workspace = {
+      ...karinWs,
+      baseline: {
+        ...karinWs.baseline,
+        assumptions: { ...karinWs.baseline.assumptions, etf: [etfInst] },
+      },
+    }
+    const decision = beitragErhoehenWhatIf(ws, etfInst.instanceId, 500)
+    expect(decision).not.toBeNull()
+    const capAtom = decision!.atoms.find((a) => a.id === 'funding_cap_hit')
+    expect(capAtom).toBeUndefined()
+  })
+
+  it('surrendered instance: generator returns null', () => {
+    const ws = makeDilanWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    const wsSurrendered: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: ws.baseline.assumptions.bav.map((b) =>
+            b.instanceId === instanceId ? { ...b, status: 'surrendered' } : b,
+          ),
+        },
+      },
+    }
+    expect(beitragErhoehenWhatIf(wsSurrendered, instanceId, 300)).toBeNull()
+  })
+
+  it('offered instance: generator returns null', () => {
+    const ws = makeDilanWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    const wsOffered: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: ws.baseline.assumptions.bav.map((b) =>
+            b.instanceId === instanceId ? { ...b, status: 'offered' } : b,
+          ),
+        },
+      },
+    }
+    expect(beitragErhoehenWhatIf(wsOffered, instanceId, 300)).toBeNull()
+  })
+
+  it('defaultBeitragErhoehenEUR: rounds currentMonthly × 1.5 to nearest €10', () => {
+    expect(defaultBeitragErhoehenEUR(200)).toBe(300)   // 300 exactly
+    expect(defaultBeitragErhoehenEUR(100)).toBe(150)   // 150 → rounds to 150
+    expect(defaultBeitragErhoehenEUR(130)).toBe(200)   // 195 → rounds to 200
+    expect(defaultBeitragErhoehenEUR(70)).toBe(110)    // 105 → rounds to 110
+    expect(defaultBeitragErhoehenEUR(0)).toBe(0)       // 0 → 0
+  })
+
+  it('defaultHaircutFor is exported (B3 dependency)', () => {
+    expect(defaultHaircutFor('bav-test-1')).toBeCloseTo(0.05)
+    expect(defaultHaircutFor('versicherung-test-1')).toBeCloseTo(0.10)
+    expect(defaultHaircutFor('riester-test-1')).toBeCloseTo(0.15)
+    expect(defaultHaircutFor('etf-test-1')).toBeCloseTo(0.00)
+  })
+})
+
+describe('applyContractDecision — increase_contribution (B1)', () => {
+  it('bAV: writes newMonthlyEUR verbatim onto monthlyGrossConversion', () => {
+    const ws = makeDilanWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 800)!
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(800)
+    // Original is unchanged
+    expect(ws.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(150)
+  })
+
+  it('Riester: writes newMonthlyEUR verbatim onto monthlyOwnContribution', () => {
+    const ws = makeRiesterAvdWorkspace()
+    const instanceId = ws.baseline.assumptions.riester[0].instanceId
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 200)!
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.riester[0].monthlyOwnContribution).toBe(200)
+    expect(ws.baseline.assumptions.riester[0].monthlyOwnContribution).toBe(100)
+  })
+
+  it('AVD: writes newMonthlyEUR verbatim onto monthlyOwnContribution', () => {
+    const ws = makeRiesterAvdWorkspace()
+    const instanceId = ws.baseline.assumptions.altersvorsorgedepot[0].instanceId
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 300)!
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.altersvorsorgedepot[0].monthlyOwnContribution).toBe(300)
+    expect(ws.baseline.assumptions.altersvorsorgedepot[0].monthlyOwnContribution).toBe(50)
+  })
+
+  it('Basisrente: writes newMonthlyEUR verbatim onto monthlyGrossContribution', () => {
+    const ws = makeBasisrenteWorkspace()
+    const instanceId = ws.baseline.assumptions.basisrente[0].instanceId
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 400)!
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.basisrente[0].monthlyGrossContribution).toBe(400)
+    expect(ws.baseline.assumptions.basisrente[0].monthlyGrossContribution).toBe(200)
+  })
+
+  it('ETF: writes newMonthlyEUR verbatim onto monthlyContribution', () => {
+    const karinWs = makeKarinWorkspace()
+    const etfInst: EtfInstance = {
+      instanceId: 'etf-write-test',
+      label: 'ETF-Depot',
+      status: 'active',
+      contractStartYear: 2020,
+      evidenceMap: {},
+      annualAssetFee: 0.002,
+      equityPartialExemption: 0.3,
+      annualContributionGrowthRate: 0,
+      monthlyContribution: 100,
+    }
+    const ws: Workspace = {
+      ...karinWs,
+      baseline: {
+        ...karinWs.baseline,
+        assumptions: { ...karinWs.baseline.assumptions, etf: [etfInst] },
+      },
+    }
+    const decision = beitragErhoehenWhatIf(ws, etfInst.instanceId, 500)!
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.etf[0].monthlyContribution).toBe(500)
+    expect(ws.baseline.assumptions.etf[0].monthlyContribution).toBe(100)
+  })
+
+  it('Insurance: writes newMonthlyEUR verbatim onto monthlyContribution', () => {
+    const ws = makeKarinWorkspace()
+    const instanceId = ws.baseline.assumptions.insurance[0].instanceId
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 350)!
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.insurance[0].monthlyContribution).toBe(350)
+  })
+
+  it('workspaceDelta carries kind increase_contribution and verbatim newMonthlyEUR', () => {
+    const ws = makeRiesterAvdWorkspace()
+    const instanceId = ws.baseline.assumptions.riester[0].instanceId
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 200)!
+    expect(decision.workspaceDelta.kind).toBe('increase_contribution')
+    if (decision.workspaceDelta.kind === 'increase_contribution') {
+      expect(decision.workspaceDelta.newMonthlyEUR).toBe(200)
+      expect(decision.workspaceDelta.instanceId).toBe(instanceId)
+    }
   })
 })

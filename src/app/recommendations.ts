@@ -81,6 +81,8 @@ export type AtomId =
   | 'lose_pre_2005_privilege'
   | 'paid_up_high_fee_warning'
   | 'riester_to_avd_certified'
+  // Beitrag erhöhen — statutory cap exceeded (B1)
+  | 'funding_cap_hit'
 
 export interface Atom {
   id: AtomId
