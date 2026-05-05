@@ -15,8 +15,8 @@
  *  - `singletonViewOfWorkspace` — compare-mode bridge used by storage.ts.
  *
  * Funding aggregation (cross-instance bAV / Basisrente / Riester / AVD caps)
- * lives in portfolioAdapter.ts and will be extracted in issue 05.
- * Transfer / capital policy lives in portfolioAdapter.ts (issue 04).
+ * lives in `portfolioFunding.ts`.
+ * Transfer / capital policy lives in `portfolioTransfer.ts`.
  */
 
 import type {
@@ -418,12 +418,11 @@ export function applyPaidUpOverridesToProjection(
  *   `retirementEndAge`, `visibleProducts`, `statutoryPension`) copy from the
  *   workspace assumptions verbatim.
  *
- * `currentValueEUR` mapping (per design Decision A in issue 03 spec):
- *   - Riester: maps to `existingCapital`.
- *   - AVD: maps to `riesterTransferCapital`.
- *   - ETF, bAV, pAV, Basisrente: TODO(issue 15) — `AccumulationInput.initialCapital`
- *     extension lands there; for now we drop the value and the projection silently
- *     ignores it. (The instance schema preserves `currentValueEUR` for issue 15.)
+ * `currentValueEUR` mapping:
+ *   - Riester: maps to `existingCapital` on the projected singleton.
+ *   - AVD: maps to `riesterTransferCapital` on the projected singleton.
+ *   - ETF, bAV, pAV, Basisrente: not mapped here; injected as `initialCapital`
+ *     via `buildInstanceCapitalPolicy` in `portfolioTransfer.ts` instead.
  *
  * Pure: no DOM, no I/O. Round-trip stable when called twice with identical inputs.
  */

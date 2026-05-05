@@ -17,8 +17,8 @@
  *   - AVD (AltZertG): per-contract cap; no cross-instance scaling needed.
  *
  * Projection helpers live in `portfolioProjection.ts`.
- * Transfer/capital policy lives in `portfolioAdapter.ts` (issue 04).
- * Sparerpauschbetrag allocation lives in `portfolioAllowance.ts` (issue 06).
+ * Transfer/capital policy lives in `portfolioTransfer.ts`.
+ * Sparerpauschbetrag allocation lives in `portfolioAllowance.ts`.
  */
 
 import type {
