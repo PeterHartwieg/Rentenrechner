@@ -11,7 +11,7 @@ import type {
 } from './domain/instances'
 import { defaultAssumptions, defaultProfile, DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
 import { validateState } from './utils/scenarioSchema'
-import { singletonViewOfWorkspace } from './engine/portfolioAdapter'
+import { singletonViewOfWorkspace } from './engine/portfolioProjection'
 
 // ---------------------------------------------------------------------------
 // Storage keys
