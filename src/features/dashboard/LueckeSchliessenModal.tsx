@@ -281,9 +281,7 @@ export function LueckeSchliessenModal({
           >
             <h3>Plan gespeichert</h3>
             <p className="luecke-modal__saved-summary">
-              <strong>{savedCandidate.label}</strong> wurde als Was-wäre-wenn-Szenario in deinem
-              Plan abgelegt. Du kannst es im Mein-Plan-Tab unter den Was-wäre-wenn-Szenarien
-              auswählen, vergleichen oder wieder entfernen.
+              <strong>{savedCandidate.label}</strong> wurde als Was-wäre-wenn-Szenario gespeichert.
             </p>
             <dl className="luecke-modal__saved-summary-list">
               <div>

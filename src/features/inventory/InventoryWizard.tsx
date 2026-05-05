@@ -187,8 +187,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
     <div data-testid="personal-details-step">
       <div className="inventory-body">
         <p className="inventory-lede">
-          Diese Angaben fließen in alle Produktberechnungen ein. Du kannst sie
-          jederzeit im Profil anpassen.
+          Diese Angaben fließen in alle Berechnungen ein.
         </p>
 
         {/* Section: Persönliches */}
@@ -358,8 +357,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
                 }
               />
               <p className="inventory-field-hint">
-                Aus deiner letzten Versorgungsauskunft. Lass das Feld auf 0, wenn
-                du keine Schätzung hast — du kannst sie später im Dashboard nachtragen.
+                Aus deiner letzten Versorgungsauskunft — 0 lassen, wenn unbekannt.
               </p>
             </div>
           )}
@@ -1123,9 +1121,7 @@ export function InventoryWizard({
         {/* ── Body ─────────────────────────────────────────────────── */}
         <div className="inventory-body">
           <p className="inventory-lede">
-            Hak an, welche Altersvorsorge-Verträge du bereits hast. Für jeden Vertrag
-            fragst du nur die wichtigsten Werte ab — alles andere schätzen wir für dich.
-            Du kannst die Angaben jederzeit im Dashboard anpassen.
+            Welche Verträge hast du bereits? Nur die wichtigsten Werte — den Rest schätzen wir.
           </p>
 
           {validationErrors.length > 0 && (

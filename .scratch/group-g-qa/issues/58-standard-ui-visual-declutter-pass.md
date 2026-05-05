@@ -1,6 +1,6 @@
 ---
 title: "Apply visual-first declutter rule to standard user surfaces"
-Status: ready-for-agent
+Status: done
 Severity: P2
 Type: AFK
 Area: UX polish / standard surfaces

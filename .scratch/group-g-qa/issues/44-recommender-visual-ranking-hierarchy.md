@@ -1,6 +1,6 @@
 ---
 title: "Give Mein Plan recommendation cards visual ranking hierarchy"
-Status: ready-for-agent
+Status: done
 Severity: P2
 Type: AFK
 Area: Group G / combine mode / recommender UX
@@ -46,6 +46,10 @@ Useful sources:
 - Existing `InfoTip` is already used in the card and can carry explanatory text.
 
 Keep the card compact. This is an operational dashboard, not a marketing page.
+
+## Resolution
+
+All ACs already satisfied by Phase 3 wave. Visual ranking meter at `src/features/dashboard/RecommenderCard.tsx:214-234` (role="meter", proportional to best candidate, uses product color). Atom text collapsed behind toggle button by default at `RecommenderCard.tsx:292-318`. Both red tests pass (verified Phase 4).
 
 ## Blocked by
 

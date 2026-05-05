@@ -43,7 +43,6 @@ export function RentenluckeDashboard({
 }: Props) {
   const { grvNet, productBreakdown, projectedTotal, target, targetIsUserSet, gap, goalReached } =
     overview
-  const hasProductBreakdown = productBreakdown.length > 0
 
   // Stacked-bar segments (GRV + visible products). Width is share of the
   // larger of (projected, target) so both extremes fit on one axis.
@@ -62,11 +61,7 @@ export function RentenluckeDashboard({
     <section className="rentenlucke-dashboard" aria-label="Rentenlücke-Übersicht">
       <header className="rentenlucke-dashboard__header">
         <h2>Rentenlücke</h2>
-        <p>
-          Vergleich der voraussichtlichen monatlichen Netto-Rente
-          {hasProductBreakdown ? ' aus gesetzlicher und privater Vorsorge' : ' aus der gesetzlichen Rente'}
-          {' '}gegenüber Ihrem Wunschnetto.
-        </p>
+        <p>Voraussichtliche Netto-Rente vs. Wunschnetto.</p>
       </header>
 
       <div className="rentenlucke-dashboard__headline">

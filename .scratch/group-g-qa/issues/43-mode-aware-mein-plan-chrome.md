@@ -1,6 +1,6 @@
 ---
 title: "Make topbar and tabs mode-aware in Mein Plan"
-Status: ready-for-agent
+Status: done
 Severity: P2
 Type: AFK
 Area: Group G / combine mode / navigation
@@ -43,6 +43,10 @@ Likely direction:
 - Keep route/storage ids (`angebot`, `vergleich`, `details`) stable unless a broader navigation migration is intentionally planned.
 
 Related: `.scratch/group-g-qa/issues/29-blocker-todo-brand-name-placeholder-in-launch-surfaces.md` tracks the launch branding placeholder separately.
+
+## Resolution
+
+All ACs already satisfied by Phase 3 wave. Mode-aware H1/kicker in `src/App.tsx:752-760`; plan-oriented tab labels in `SHELL_TABS` array at `src/App.tsx:77-81`; `ShellWorkspaceTabs` passes accessible role/selected states. Both red tests pass (verified Phase 4).
 
 ## Blocked by
 

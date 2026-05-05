@@ -45,10 +45,8 @@ export function LandingPage({ onChoice }: Props) {
               </div>
               <h2 className="landing-card-title">Mein Plan</h2>
               <p className="landing-card-desc">
-                Wir nehmen dich an die Hand: ein paar persönliche Angaben, dann
-                deine bestehenden Verträge — oder leg ohne Verträge los, wenn du
-                neu anfängst. Du erhältst eine Empfehlung, wo dein nächster Euro
-                am besten aufgehoben ist.
+                Persönliche Angaben, bestehende Verträge — und eine Empfehlung,
+                wo dein nächster Euro am meisten bringt.
               </p>
               <button
                 type="button"
@@ -69,9 +67,8 @@ export function LandingPage({ onChoice }: Props) {
               </div>
               <h2 className="landing-card-title">Produkte vergleichen</h2>
               <p className="landing-card-desc">
-                Vergleiche ETF-Depot, bAV, private Rentenversicherung, Basisrente,
-                Altersvorsorgedepot und Riester direkt nebeneinander mit derselben
-                monatlichen Netto-Belastung.
+                ETF, bAV, Versicherung, Basisrente, AVD und Riester direkt nebeneinander
+                — gleiche Netto-Belastung, faire Zahlen.
               </p>
               <button
                 type="button"
