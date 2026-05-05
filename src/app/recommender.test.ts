@@ -22,6 +22,7 @@ import {
   type RecommendNextEuroInput,
   type RecommendedCandidate,
 } from './recommender'
+import type { BavInstance } from '../domain/instances'
 
 function buildBerndWorkspace() {
   const v1 = {
@@ -631,6 +632,49 @@ describe('recommendNextEuro — bAV marginal solver (N5)', () => {
 })
 
 // ---------------------------------------------------------------------------
+describe('recommendNextEuro - bAV offers in Mein Plan', () => {
+  function buildWorkspaceWithBavOffer(matchPct: number): ReturnType<typeof buildAnnaWorkspace> {
+    const ws = buildAnnaWorkspace()
+    const offer: BavInstance = {
+      ...defaultAssumptions.bav,
+      instanceId: 'bav-offer-test',
+      label: 'bAV-Angebot',
+      status: 'offered',
+      contractStartYear: de2026Rules.year,
+      currentValueEUR: 0,
+      evidenceMap: {},
+      monthlyGrossConversion: 0,
+      contractualMatchPercent: matchPct,
+      contractualFixedMonthly: 0,
+    }
+    ws.baseline.assumptions.bav = [offer]
+    return ws
+  }
+
+  it('creates a bAV candidate from an offered employer plan', () => {
+    const ws = buildWorkspaceWithBavOffer(0.5)
+    const candidates = recommendNextEuro(buildInput(ws, 200))
+    const bav = candidates.find((c) => c.productId === 'bav')
+
+    expect(bav).toBeDefined()
+    expect(bav!.id).toBe('activate_bav-offer-test')
+    expect(bav!.label).toContain('bAV-Angebot')
+    expect(bav!.targetInstanceId).toBe('bav-offer-test')
+  })
+
+  it('saving an offer candidate activates the offered bAV in the what-if', () => {
+    const ws = buildWorkspaceWithBavOffer(0.5)
+    const bav = recommendNextEuro(buildInput(ws, 200)).find((c) => c.productId === 'bav')
+    expect(bav).toBeDefined()
+
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, bav!)
+    const activated = whatIf.assumptions.bav.find((b) => b.instanceId === 'bav-offer-test')
+    expect(activated?.status).toBe('active')
+    expect(activated?.monthlyGrossConversion).toBeCloseTo(bav!.grossMonthlyEUR, 1)
+    expect(activated?.contractualMatchPercent).toBe(0.5)
+  })
+})
+
 // F6 — bAV bisection isolated-gross vs marginal-forward-delta
 // ---------------------------------------------------------------------------
 //

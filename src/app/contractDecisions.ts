@@ -468,7 +468,7 @@ export function compatibleTransferTargets(
   // Basisrente source: only other Basisrente instances (certified per §10 Abs. 2 Satz 3 EStG).
   if (sourceSlot === 'basisrente') {
     for (const inst of wsa.basisrente) {
-      if (inst.instanceId === sourceId || inst.status === 'surrendered') continue
+      if (inst.instanceId === sourceId || inst.status === 'surrendered' || inst.status === 'offered') continue
       targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
     }
     return targets
@@ -477,7 +477,7 @@ export function compatibleTransferTargets(
   // Riester source: AVD instances are certified (AltZertG); surrender_reinvest only into ETF.
   // Riester→Riester and Riester→other certified products are excluded (validator-rejected).
   if (sourceSlot === 'riester') {
-    const activeAvd = wsa.altersvorsorgedepot.filter((i) => i.status !== 'surrendered')
+    const activeAvd = wsa.altersvorsorgedepot.filter((i) => i.status !== 'surrendered' && i.status !== 'offered')
     if (activeAvd.length > 0) {
       for (const inst of activeAvd) {
         targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
@@ -488,7 +488,7 @@ export function compatibleTransferTargets(
     }
     // Riester → ETF: surrender_reinvest is valid (ETF is not a certified product).
     for (const inst of wsa.etf) {
-      if (inst.status === 'surrendered') continue
+      if (inst.status === 'surrendered' || inst.status === 'offered') continue
       targets.push({ kind: 'existing', targetInstance: inst, eventType: 'surrender_reinvest' })
     }
     return targets
@@ -507,14 +507,14 @@ export function compatibleTransferTargets(
   if (sourceSlot === 'bav') {
     const sourceBav = wsa.bav.find((b) => b.instanceId === sourceId) as BavInstance | undefined
     for (const inst of wsa.bav) {
-      if (inst.instanceId === sourceId || inst.status === 'surrendered') continue
+      if (inst.instanceId === sourceId || inst.status === 'surrendered' || inst.status === 'offered') continue
       if (sourceBav?.durchfuehrungsweg === inst.durchfuehrungsweg) {
         targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
       }
       // Cross-DFW omitted: surrender_reinvest into bAV is validator-rejected.
     }
     for (const inst of wsa.etf) {
-      if (inst.status === 'surrendered') continue
+      if (inst.status === 'surrendered' || inst.status === 'offered') continue
       targets.push({ kind: 'existing', targetInstance: inst, eventType: 'surrender_reinvest' })
     }
     return targets
@@ -526,7 +526,7 @@ export function compatibleTransferTargets(
   // pAV → AVD excluded (surrender_reinvest into certified product is validator-rejected).
   if (sourceSlot === 'insurance') {
     for (const inst of wsa.etf) {
-      if (inst.status === 'surrendered') continue
+      if (inst.status === 'surrendered' || inst.status === 'offered') continue
       targets.push({ kind: 'existing', targetInstance: inst, eventType: 'surrender_reinvest' })
     }
     return targets
@@ -932,7 +932,7 @@ export function generateContractDecisions(
   instanceId: string,
 ): ContractDecision[] {
   const instance = findInstanceById(workspace, instanceId)
-  if (!instance || instance.status === 'surrendered') return []
+  if (!instance || instance.status === 'surrendered' || instance.status === 'offered') return []
 
   const decisions: ContractDecision[] = []
 

@@ -7,9 +7,9 @@
  * is required.
  */
 
-import { describe, expect, it } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
-import { CombineDashboardSidebar } from './CombineDashboardSidebar'
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, cleanup } from '@testing-library/react'
+import { AddVertragSection, CombineDashboardSidebar } from './CombineDashboardSidebar'
 import { addInstanceToWorkspace } from './inventoryHelpers'
 import { defaultWorkspace } from '../../storage'
 import type { WorkspaceAssumptionsV2, WhatIfScenario, Scenario } from '../../domain/workspace'
@@ -83,6 +83,88 @@ describe('CombineDashboardSidebar — render integration', () => {
     const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
     const banners = container.querySelectorAll('.inv-m1-banner')
     expect(banners.length).toBe(0)
+    cleanup()
+  })
+})
+
+describe('CombineDashboardSidebar — editable Mein Plan fields (#39)', () => {
+  it('ETF instances expose Sparrate and current depot value fields', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'etf')
+    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+
+    expect(container.textContent).toContain('Monatliche Sparrate')
+    expect(container.textContent).toContain('Aktueller Depotwert')
+    cleanup()
+  })
+
+  it('bAV instances expose every onboarding-collected contract field after onboarding', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+
+    const text = container.textContent ?? ''
+    expect(text).toContain('Aktueller Vertragswert')
+    expect(text).toContain('Status')
+    expect(text).toContain('Anbieter')
+    expect(/Durchf.hrungsweg|Durchfuehrungsweg/.test(text)).toBe(true)
+    expect(text).toContain('Auszahlungsform')
+    expect(text).toContain('Garantierter Rentenfaktor')
+    cleanup()
+  })
+})
+
+describe('AddVertragSection — draft-before-save flow (#45)', () => {
+  it('does not mutate the baseline immediately when a product type is chosen', () => {
+    const addInstance = vi.fn()
+    const { container } = render(<AddVertragSection addInstance={addInstance} />)
+
+    const openButton = container.querySelector<HTMLButtonElement>('[data-testid="add-vertrag-btn"]')
+    expect(openButton).not.toBeNull()
+    fireEvent.click(openButton!)
+
+    const etfOption = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('ETF-Sparplan'))
+    expect(etfOption).not.toBeNull()
+    fireEvent.click(etfOption!)
+
+    expect(addInstance).not.toHaveBeenCalled()
+    expect(container.textContent).toContain('Monatliche Sparrate')
+    cleanup()
+  })
+
+  it('captures a bAV offer before saving it to Mein Plan', () => {
+    const addInstance = vi.fn()
+    const addBavOffer = vi.fn()
+    const { container } = render(
+      <AddVertragSection addInstance={addInstance} addBavOffer={addBavOffer} />,
+    )
+
+    const openButton = container.querySelector<HTMLButtonElement>('[data-testid="add-vertrag-btn"]')
+    expect(openButton).not.toBeNull()
+    fireEvent.click(openButton!)
+
+    const offerOption = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('bAV-Angebot'))
+    expect(offerOption).not.toBeNull()
+    fireEvent.click(offerOption!)
+
+    const inputs = container.querySelectorAll<HTMLInputElement>('input')
+    fireEvent.change(inputs[0], { target: { value: 'Muster AG' } })
+    fireEvent.change(inputs[2], { target: { value: '30' } })
+    fireEvent.change(inputs[3], { target: { value: '50' } })
+
+    const saveButton = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Angebot speichern'))
+    expect(saveButton).not.toBeNull()
+    fireEvent.click(saveButton!)
+
+    expect(addInstance).not.toHaveBeenCalled()
+    expect(addBavOffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anbieter: 'Muster AG',
+        contractualMatchPercent: 0.3,
+        contractualFixedMonthly: 50,
+      }),
+    )
     cleanup()
   })
 })

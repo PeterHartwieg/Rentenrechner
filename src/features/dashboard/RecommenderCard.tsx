@@ -7,7 +7,7 @@
  * ranked candidates and the active ranking filter.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import './RecommenderCard.css'
 import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
@@ -27,12 +27,18 @@ import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency } from '../../utils/format'
 import { renderAtom } from '../../app/recommendations'
 import { productIdFromInstanceId } from '../../utils/scenarioSchema'
-import type { ProductId } from '../../engine/productRegistry'
+import { getProductMeta, type ProductId } from '../../engine/productRegistry'
 
 const FLEX_LABEL: Record<RecommendedCandidate['flexibilityScore'], string> = {
   high: 'Hoch',
   medium: 'Mittel',
   low: 'Niedrig',
+}
+
+const FLEX_RANK: Record<RecommendedCandidate['flexibilityScore'], number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
 }
 
 const FLEX_DETAIL_LABEL: Record<string, string> = {
@@ -83,6 +89,7 @@ export function RecommenderCard({
   onSaveAsPlan,
 }: Props) {
   const [ranking, setRanking] = useState<RecommenderRankingCriterion>('median_net_pension')
+  const [expandedAtomIds, setExpandedAtomIds] = useState<Set<string>>(() => new Set<string>())
 
   const candidates = useMemo(() => {
     if (marginalMonthlyEUR <= 0) return []
@@ -109,6 +116,19 @@ export function RecommenderCard({
   const sorted = useMemo(() => {
     return rankRecommendedCandidates(candidates, ranking)
   }, [candidates, ranking])
+
+  const rankingMax = useMemo(() => {
+    return Math.max(0, ...sorted.map((cand) => rankingValue(cand, ranking)))
+  }, [sorted, ranking])
+
+  function toggleAtomDetails(candidateId: string) {
+    setExpandedAtomIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(candidateId)) next.delete(candidateId)
+      else next.add(candidateId)
+      return next
+    })
+  }
 
   // Confidence-language prefix: when ANY baseline instance has a model_estimate
   // evidence on relevant inputs, hedge the card's intro text.
@@ -170,7 +190,12 @@ export function RecommenderCard({
           </div>
 
           <ol className="recommender-list">
-            {sorted.map((cand, index) => (
+            {sorted.map((cand, index) => {
+              const scorePct = relativeRankingPct(cand, ranking, rankingMax)
+              const productColor = getProductMeta(cand.productId)?.color ?? '#2563eb'
+              const atomDetailsId = `recommender-${cand.id}-atom-details`
+              const atomsExpanded = expandedAtomIds.has(cand.id)
+              return (
               <li key={cand.id} className="recommender-candidate">
                 {index === 0 && (
                   <span className="recommender-candidate-winner">
@@ -185,6 +210,27 @@ export function RecommenderCard({
                       <> · {formatCurrency(cand.netCashOutEUR, 0)} netto</>
                     )}
                   </span>
+                </div>
+                <div className="recommender-ranking">
+                  <div className="recommender-ranking-copy">
+                    <span>Relative Bewertung</span>
+                    <strong>{scorePct} %</strong>
+                  </div>
+                  <div
+                    className="recommender-ranking-meter"
+                    role="meter"
+                    aria-label={`Relative Bewertung nach ${RECOMMENDER_RANKING_LABELS[ranking]} fuer ${cand.label}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={scorePct}
+                    aria-valuetext={`${scorePct} Prozent der besten ${RECOMMENDER_RANKING_LABELS[ranking]}-Bewertung`}
+                    style={{
+                      '--recommender-meter-value': `${scorePct}%`,
+                      '--recommender-meter-color': productColor,
+                    } as CSSProperties}
+                  >
+                    <span className="recommender-ranking-meter-fill" />
+                  </div>
                 </div>
                 <div className="recommender-candidate-metrics">
                   <span>
@@ -224,18 +270,31 @@ export function RecommenderCard({
                   </dl>
                 </details>
                 {cand.atoms.length > 0 && (
-                  <ul className="recommender-candidate-atoms">
-                    {cand.atoms.map((atom, idx) => {
-                      const tpl = renderAtom(atom)
-                      if (!tpl.headline) return null
-                      return (
-                        <li key={`${atom.id}-${idx}`} className="recommender-candidate-atom">
-                          <strong>{tpl.headline}</strong>
-                          <span>{tpl.body}</span>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                  <div className="recommender-candidate-atom-disclosure">
+                    <button
+                      type="button"
+                      className="recommender-candidate-atom-toggle"
+                      aria-expanded={atomsExpanded}
+                      aria-controls={atomDetailsId}
+                      onClick={() => toggleAtomDetails(cand.id)}
+                    >
+                      {atomsExpanded ? 'Hinweise ausblenden' : 'Hinweise anzeigen'}
+                    </button>
+                    {atomsExpanded && (
+                      <ul className="recommender-candidate-atoms" id={atomDetailsId}>
+                        {cand.atoms.map((atom, idx) => {
+                          const tpl = renderAtom(atom)
+                          if (!tpl.headline) return null
+                          return (
+                            <li key={`${atom.id}-${idx}`} className="recommender-candidate-atom">
+                              <strong>{tpl.headline}</strong>
+                              <span>{tpl.body}</span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
                 )}
                 {!cand.wunschnettoFloorMet && (
                   <span className="recommender-candidate-tag recommender-candidate-tag--warn">
@@ -260,7 +319,8 @@ export function RecommenderCard({
                   Als Plan speichern
                 </button>
               </li>
-            ))}
+              )
+            })}
           </ol>
         </>
       )}
@@ -289,6 +349,28 @@ function winningMetric(
 
 function detectProductId(inst: { instanceId: string }): ProductId {
   return productIdFromInstanceId(inst.instanceId) ?? 'etf'
+}
+
+function rankingValue(
+  cand: RecommendedCandidate,
+  criterion: RecommenderRankingCriterion,
+): number {
+  if (criterion === 'median_net_pension') return cand.medianNettoRente
+  if (criterion === 'capital_at_retirement') return cand.capitalAtRetirement
+  if (criterion === 'safety') return cand.safetyNettoRenteP10
+  if (criterion === 'flexibility') return FLEX_RANK[cand.flexibilityScore]
+  return cand.effort.score
+}
+
+function relativeRankingPct(
+  cand: RecommendedCandidate,
+  criterion: RecommenderRankingCriterion,
+  rankingMax: number,
+): number {
+  if (rankingMax <= 0) return 0
+  const raw = rankingValue(cand, criterion)
+  const pct = Math.max(0, Math.min(100, (raw / rankingMax) * 100))
+  return Math.round(pct)
 }
 
 // `buildWhatIfFromCandidate` is re-exported by the orchestration consumer

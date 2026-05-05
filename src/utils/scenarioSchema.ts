@@ -130,7 +130,7 @@ export function validateState(
 // V2 workspace validators
 // ---------------------------------------------------------------------------
 
-const VALID_INSTANCE_STATUSES = ['active', 'paid_up', 'surrendered'] as const
+const VALID_INSTANCE_STATUSES = ['active', 'paid_up', 'surrendered', 'offered'] as const
 const VALID_EVIDENCE_STATES = ['user_confirmed', 'model_estimate', 'statement'] as const
 const VALID_TRANSFER_TYPES = ['certified', 'surrender_reinvest'] as const
 

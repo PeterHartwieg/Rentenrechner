@@ -176,7 +176,7 @@ export function RentenluckeDashboard({
       <div className="rentenlucke-dashboard__controls">
         <NumberField
           label="Wunschnetto (mtl.)"
-          value={profile.desiredNetMonthlyPension ?? 0}
+          value={target}
           min={0}
           max={20_000}
           step={50}
@@ -193,7 +193,7 @@ export function RentenluckeDashboard({
         />
         {!targetIsUserSet && profile.grossSalaryYear > 0 && (
           <p className="rentenlucke-dashboard__hint">
-            Voreinstellung: 50 % Ihres aktuellen Bruttogehalts
+            Voreinstellung: {formatPercent(RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO, 0)} Ihres aktuellen Bruttogehalts
             {' '}({formatCurrency((profile.grossSalaryYear / 12) * RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO, 0)} mtl.).
             Eigenen Wert eintragen, um die Lücke individuell zu prüfen.
           </p>

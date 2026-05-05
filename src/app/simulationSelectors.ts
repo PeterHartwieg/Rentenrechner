@@ -16,6 +16,7 @@ import type {
   SimulationResult,
 } from '../domain'
 import type { Workspace } from '../domain/workspace'
+import type { InstanceCommon } from '../domain/instances'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
@@ -289,7 +290,7 @@ export function makeRowAfterTaxBalance(
  * target on-the-fly as `(grossSalaryYear / 12) * RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO`
  * so existing scenarios still show a meaningful gap without requiring migration.
  */
-export const RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO = 0.5
+export const RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO = 0.7
 
 /**
  * Resolve the target monthly net retirement income.
@@ -358,7 +359,7 @@ export function deriveRentenluckeOverview(
  * Combine-mode variant: build a Rentenlücke overview from the user's actual
  * portfolio rather than a head-to-head product comparison.
  *
- * Iterates every workspace instance (skipping `surrendered`), pulls the
+ * Iterates every workspace instance (skipping `surrendered` and `offered`), pulls the
  * back-allocated `monthlyNet` from `combinedResult.byInstance[instanceId]`, and
  * keys each row by `instanceId` so two instances of the same product (e.g. two
  * ETF Sparpläne) render as separate segments instead of collapsing.
@@ -373,7 +374,7 @@ export function deriveRentenluckeOverviewFromCombine(
   profile: PersonalProfile,
 ): RentenluckeOverview {
   const wsa = workspace.baseline.assumptions
-  const productSlots: Array<{ id: ProductId; instances: { instanceId: string; label: string; status: 'active' | 'paid_up' | 'surrendered' }[] }> = [
+  const productSlots: Array<{ id: ProductId; instances: { instanceId: string; label: string; status: InstanceCommon['status'] }[] }> = [
     { id: 'bav', instances: wsa.bav },
     { id: 'etf', instances: wsa.etf },
     { id: 'versicherung', instances: wsa.insurance },
@@ -385,7 +386,7 @@ export function deriveRentenluckeOverviewFromCombine(
   for (const slot of productSlots) {
     const meta = getProductMeta(slot.id)
     for (const inst of slot.instances) {
-      if (inst.status === 'surrendered') continue
+      if (inst.status === 'surrendered' || inst.status === 'offered') continue
       const share = combinedResult.byInstance[inst.instanceId]
       if (!share) continue
       const label = inst.label?.trim().length ? inst.label : (meta?.label ?? slot.id)

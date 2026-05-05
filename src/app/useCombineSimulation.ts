@@ -64,9 +64,9 @@ export function runCombineSimulation(
   // instance based on conversion amount). For the statutory baseline we sum
   // the reduction across ALL active bAV instances — every Entgeltumwandlung
   // reduces GRV-pflichtig income, not just the first contract's. Surrendered
-  // instances contribute zero (they don't appear in `bavByInstanceId`).
+  // and offered instances contribute zero (they don't appear in `bavByInstanceId`).
   const grvReductionMonthly = wsa.bav.reduce((sum, b) => {
-    if (b.status === 'surrendered') return sum
+    if (b.status === 'surrendered' || b.status === 'offered') return sum
     const f = portfolioFunding.bavByInstanceId[b.instanceId]
     return sum + (f?.estimatedMonthlyGrvReduction ?? 0)
   }, 0)

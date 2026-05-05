@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Home } from 'lucide-react'
+import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
 import type { ProductId } from './domain'
 import type { InstanceTaxModes } from './utils/csvExport'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
@@ -13,6 +13,7 @@ import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
 import { useWorkspaceUiState } from './app/useWorkspaceUiState'
 import { useWorkspace } from './app/useWorkspace'
+import type { WorkspaceView } from './app/useWorkspace'
 import { usePortfolioState } from './app/portfolioState'
 import { useRoute, detectSavedMode, appViewFromMode } from './app/useRoute'
 import type { AppView } from './app/useRoute'
@@ -38,7 +39,6 @@ import { PrintReport } from './features/results/PrintReport'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { AssumptionReviewPanel } from './features/results/AssumptionReviewPanel'
-import { WorkspaceTabs } from './features/workspace/WorkspaceTabs'
 import { ComparisonPicker } from './features/workspace/ComparisonPicker'
 import { EmptyComparison } from './features/workspace/EmptyComparison'
 import { DisclaimerBanner } from './features/workspace/DisclaimerBanner'
@@ -65,6 +65,52 @@ import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 const PORTFOLIO_COLOR = '#1f2937'
+
+type ShellTabDef = {
+  id: WorkspaceView
+  compareLabel: string
+  combineLabel: string
+  icon: typeof BarChart3
+}
+
+const SHELL_TABS: readonly ShellTabDef[] = [
+  { id: 'angebot', compareLabel: 'Eingaben', combineLabel: 'Meine Verträge', icon: Pencil },
+  { id: 'vergleich', compareLabel: 'Vergleich', combineLabel: 'Übersicht', icon: BarChart3 },
+  { id: 'details', compareLabel: 'Details & Export', combineLabel: 'Details & Export', icon: FileSpreadsheet },
+] as const
+
+type ShellWorkspaceTabsProps = {
+  activeView: WorkspaceView
+  combineMode: boolean
+  onSelect: (view: WorkspaceView) => void
+}
+
+function ShellWorkspaceTabs({ activeView, combineMode, onSelect }: ShellWorkspaceTabsProps) {
+  return (
+    <nav className="workspace-tabs" aria-label="Ansicht wählen">
+      <div className="workspace-tabs-inner" role="tablist">
+        {SHELL_TABS.map((tab) => {
+          const Icon = tab.icon
+          const active = tab.id === activeView
+          const label = combineMode ? tab.combineLabel : tab.compareLabel
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={active ? 'workspace-tab active' : 'workspace-tab'}
+              onClick={() => onSelect(tab.id)}
+            >
+              <Icon size={16} aria-hidden="true" />
+              <span>{label}</span>
+            </button>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}
 
 function App() {
   const { route, navigate } = useRoute()
@@ -103,6 +149,7 @@ function Calculator({ navigate }: CalculatorProps) {
   const ui = useWorkspaceUiState()
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
   const isCombineMode = portfolioState.mode === 'combine'
+  const combineProfile = portfolioState.workspace.baseline.profile
   // In combine mode, resolve the effective scenario id against workspace
   // assumptions (not singleton) so custom scenarios added via the toolbar pill
   // are found and the pill highlights correctly. (#25 round 2)
@@ -135,14 +182,14 @@ function Calculator({ navigate }: CalculatorProps) {
       const runtimeYears = computeRuntimeYearsAtRetirement(
         inst.contractStartYear,
         de2026Rules.year,
-        profile.age,
-        profile.retirementAge,
+        combineProfile.age,
+        combineProfile.retirementAge,
       )
       perInstanceTaxModes[inst.instanceId] = {
         insuranceTaxMode: deriveInsuranceTaxMode(
           inst.contractStartYear,
           runtimeYears,
-          profile.retirementAge,
+          combineProfile.retirementAge,
           inst.oldContractTaxFreeEligible,
         ),
       }
@@ -164,7 +211,7 @@ function Calculator({ navigate }: CalculatorProps) {
     combineSimulation.perInstance,
     combineSimulation.combinedByScenarioId,
     portfolioState.workspace.baseline.assumptions,
-    profile,
+    combineProfile,
   ])
   const views = useDerivedViews(profile, assumptions, result, {
     showRealValues: ui.showRealValues,
@@ -376,17 +423,19 @@ function Calculator({ navigate }: CalculatorProps) {
               and need the gap as their headline figure. Compare-mode is
               product-vs-product head-to-head and deliberately omits this. */}
           <RentenluckeDashboard
-            profile={profile}
+            profile={combineProfile}
             overview={deriveRentenluckeOverviewFromCombine(
               portfolioState.workspace,
               combineBasisResult,
-              profile,
+              combineProfile,
             )}
             onTargetChange={(next) =>
-              setProfile((current) => ({
-                ...current,
-                desiredNetMonthlyPension: next,
-              }))
+              portfolioState.patchBaseline({
+                profile: {
+                  ...combineProfile,
+                  desiredNetMonthlyPension: next,
+                },
+              })
             }
             onAdjustContributions={() => setShowLueckeModal(true)}
           />
@@ -633,6 +682,7 @@ function Calculator({ navigate }: CalculatorProps) {
           onPatchAssumptions={(patch) =>
             portfolioState.patchBaseline({ assumptions: { ...portfolioState.baseline.assumptions, ...patch } })
           }
+          onPatchBaseline={portfolioState.patchBaseline}
           addInstance={portfolioState.addInstance}
           removeInstance={portfolioState.removeInstance}
           onRebaseWhatIf={portfolioState.rebaseWhatIf}
@@ -682,12 +732,22 @@ function Calculator({ navigate }: CalculatorProps) {
     angebot: angebotView,
   }
 
+  const topbarCopy = isCombineMode
+    ? {
+        kicker: 'Deine Verträge und Rentenlücke in Deutschland 2026',
+        title: 'Mein Plan',
+      }
+    : {
+        kicker: 'TODO_BRAND_NAME Deutschland 2026',
+        title: 'ETF, bAV und private Versicherung vergleichen',
+      }
+
   return (
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p>TODO_BRAND_NAME Deutschland 2026</p>
-          <h1>ETF, bAV und private Versicherung vergleichen</h1>
+          <p>{topbarCopy.kicker}</p>
+          <h1>{topbarCopy.title}</h1>
         </div>
         <div className="topbar-actions">
           {appView === 'combine' && (
@@ -709,8 +769,9 @@ function Calculator({ navigate }: CalculatorProps) {
 
       <DisclaimerBanner />
 
-      <WorkspaceTabs
+      <ShellWorkspaceTabs
         activeView={workspace.activeView}
+        combineMode={isCombineMode}
         onSelect={workspace.setActiveView}
       />
 

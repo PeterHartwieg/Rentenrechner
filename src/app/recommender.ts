@@ -556,9 +556,9 @@ function fundingForBavCandidate(
   profile: PersonalProfile,
   rules: GermanRules,
   bav: BavInstance,
-  offer: ResolvedBavOffer,
+  offer?: ResolvedBavOffer,
 ): BavFundingResult {
-  if (offer.hasOffer || offer.standardAssumption) {
+  if (offer?.hasOffer || offer?.standardAssumption) {
     return bavOfferFunding(profile, rules, bav, offer)
   }
   return calculateBavFunding(profile, rules, bav)
@@ -734,7 +734,7 @@ interface CandidateDraft {
 
 function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
   const wsa = g.workspace.baseline.assumptions
-  const target = wsa.etf.find((e) => e.status !== 'surrendered')
+  const target = wsa.etf.find((e) => e.status !== 'surrendered' && e.status !== 'offered')
   if (!target) return null
   const gross = g.marginalMonthlyEUR
   const annualFee = target.annualAssetFee ?? defaultAssumptions.etf.annualAssetFee
@@ -788,31 +788,48 @@ function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
 
 // --- bAV candidate ---------------------------------------------------------
 
-function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
-  const wsa = g.workspace.baseline.assumptions
-  const existingTarget = wsa.bav.find((b) => b.status !== 'surrendered')
-  const isNewInstance = !existingTarget
-  const newBavInstanceId = isNewInstance ? newInstanceId('bav') : undefined
-  const baseTarget: BavInstance = existingTarget ?? {
-    ...defaultAssumptions.bav,
-    instanceId: newBavInstanceId!,
-    label: 'Neue bAV',
-    status: 'active',
-    contractStartYear: g.rules.year,
-    evidenceMap: {},
-    monthlyGrossConversion: 0,
+function resolveBavOfferFromInstance(target: BavInstance): ResolvedBavOffer {
+  const fees = target.fees ?? defaultAssumptions.bav.fees
+  return {
+    hasOffer: true,
+    standardAssumption: false,
+    employerMatchPercent: clampFinite(target.contractualMatchPercent ?? 0, 0, 5),
+    fixedMonthlyEUR: clampFinite(target.contractualFixedMonthly ?? 0, 0, 100_000),
+    effectiveCostAnnual: clampFinite(
+      (fees.wrapperAssetFee ?? 0) + (fees.fundAssetFee ?? 0),
+      0,
+      0.1,
+    ),
+    durchfuehrungsweg: target.durchfuehrungsweg ?? 'direktversicherung_3_63',
+    payoutMode: target.payoutMode ?? 'leibrente',
+    rentenfaktor: target.rentenfaktor ?? 30,
   }
-  const target: BavInstance = {
+}
+
+function offerForBavTarget(
+  baseTarget: BavInstance,
+  isNewInstance: boolean,
+  modalOffer: ResolvedBavOffer,
+): ResolvedBavOffer | undefined {
+  if (modalOffer.hasOffer) return modalOffer
+  if (isNewInstance) return modalOffer
+  if (baseTarget.status === 'offered') return resolveBavOfferFromInstance(baseTarget)
+  return undefined
+}
+
+function applyBavOfferToTarget(baseTarget: BavInstance, offer?: ResolvedBavOffer): BavInstance {
+  if (!offer) return baseTarget
+  return {
     ...baseTarget,
     statutoryMinimumSubsidyEnabled: false,
-    contractualMatchPercent: g.bavOffer.employerMatchPercent,
-    contractualFixedMonthly: g.bavOffer.fixedMonthlyEUR,
-    durchfuehrungsweg: g.bavOffer.durchfuehrungsweg,
-    payoutMode: g.bavOffer.payoutMode,
-    rentenfaktor: g.bavOffer.rentenfaktor,
+    contractualMatchPercent: offer.employerMatchPercent,
+    contractualFixedMonthly: offer.fixedMonthlyEUR,
+    durchfuehrungsweg: offer.durchfuehrungsweg,
+    payoutMode: offer.payoutMode,
+    rentenfaktor: offer.rentenfaktor,
     fees: {
       ...baseTarget.fees,
-      wrapperAssetFee: g.bavOffer.effectiveCostAnnual,
+      wrapperAssetFee: offer.effectiveCostAnnual,
       fundAssetFee: 0,
       contributionFee: 0,
       fixedMonthlyFee: 0,
@@ -820,16 +837,42 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
       pensionPayoutFeePct: baseTarget.fees?.pensionPayoutFeePct ?? 0,
     },
   }
+}
 
+function makeBavCandidateForTarget(
+  g: GeneratorContext,
+  baseTarget: BavInstance,
+  isNewInstance: boolean,
+): CandidateDraft | null {
+  const wsa = g.workspace.baseline.assumptions
   const profile = g.workspace.baseline.profile
+  const targetOffer = offerForBavTarget(baseTarget, isNewInstance, g.bavOffer)
+  const target = applyBavOfferToTarget(baseTarget, targetOffer)
+  const activatesOffer = baseTarget.status === 'offered'
   // Existing aggregate gross conversion across active bAV instances (single-employer
   // V1 assumption: §3 Nr. 63 + SvEV cap shared across one person's bAV portfolio).
   const usedMonthly = wsa.bav
-    .filter((b) => b.status !== 'surrendered')
+    .filter((b) => b.status === 'active')
     .reduce((s, b) => s + (b.monthlyGrossConversion ?? 0), 0)
   const capMonthly = (g.rules.socialSecurity.pensionCapYear * g.rules.bav.taxFreePctOfPensionCap) / 12
   const remainingCapMonthly = Math.max(0, capMonthly - usedMonthly)
   if (remainingCapMonthly <= 0) return null
+
+  const neutralEmployerTerms = {
+    contractualMatchPercent: 0,
+    contractualFixedMonthly: 0,
+  }
+  const fundingForNetCost = (monthlyGrossConversion: number) =>
+    activatesOffer
+      ? calculateBavFunding(profile, g.rules, {
+          ...target,
+          ...neutralEmployerTerms,
+          monthlyGrossConversion,
+        })
+      : fundingForBavCandidate(profile, g.rules, {
+          ...target,
+          monthlyGrossConversion,
+        }, targetOffer)
 
   // Bisection: solve for the marginal gross conversion (delta on top of
   // existing) such that
@@ -839,16 +882,10 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   // that under-counts the SV-saving step when usedMonthly already pushes part
   // of the income below the BBG, so the returned delta was off for users with
   // existing bAV. Now we bisect on the actual marginal net cost.
-  const fundingBaselineAtUsed = fundingForBavCandidate(profile, g.rules, {
-    ...target,
-    monthlyGrossConversion: usedMonthly,
-  }, g.bavOffer)
-  const baselineNetCost = fundingBaselineAtUsed.monthlyNetCost
+  const baselineNetCost = fundingForNetCost(usedMonthly).monthlyNetCost
   const forwardMarginalNet = (delta: number) =>
-    fundingForBavCandidate(profile, g.rules, {
-      ...target,
-      monthlyGrossConversion: usedMonthly + delta,
-    }, g.bavOffer).monthlyNetCost - baselineNetCost
+    fundingForNetCost(usedMonthly + delta).monthlyNetCost -
+      baselineNetCost
   // grossDelta = forward(used + delta) − forward(used); marginal, not isolated.
   const grossDelta = (() => {
     if (g.marginalMonthlyEUR <= 0) return 0
@@ -871,25 +908,30 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   // `netCash` is the user's marginal net cash out-of-pocket; `totalMonthly`
   // is the marginal product contribution (delta gross + delta employer share)
   // used for the candidate's capital projection.
-  const fundingTotal = fundingForBavCandidate(profile, g.rules, {
-    ...target,
-    monthlyGrossConversion: usedMonthly + gross,
-  }, g.bavOffer)
-  const fundingBaseline = fundingForBavCandidate(profile, g.rules, {
-    ...target,
-    monthlyGrossConversion: usedMonthly,
-  }, g.bavOffer)
-  const netCash = Math.max(0, fundingTotal.monthlyNetCost - fundingBaseline.monthlyNetCost)
+  const fundingBaseline = fundingForNetCost(usedMonthly)
+  const fundingTotalForNet = fundingForNetCost(usedMonthly + gross)
+  const fundingTotal = activatesOffer
+    ? fundingForBavCandidate(profile, g.rules, {
+        ...target,
+        monthlyGrossConversion: gross,
+      }, targetOffer)
+    : fundingForBavCandidate(profile, g.rules, {
+        ...target,
+        monthlyGrossConversion: usedMonthly + gross,
+      }, targetOffer)
+  const netCash = Math.max(0, fundingTotalForNet.monthlyNetCost - fundingBaseline.monthlyNetCost)
 
   // Project capital: marginal contribution = (Δgross + Δemployer share). Use
   // simple FV at basis scenario return minus average accumulation fee. The
   // production simulator does year-by-year fees + Beitragsdynamik; the
   // recommender's "what does another €X buy" only needs candidate ranking.
-  const totalMonthly =
-    (fundingTotal.monthlyGrossConversion - fundingBaseline.monthlyGrossConversion) +
-    (fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution)
-  const monthlyEmployerContributionEUR =
-    fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution
+  const totalMonthly = activatesOffer
+    ? gross + fundingTotal.monthlyEmployerContribution
+    : (fundingTotal.monthlyGrossConversion - fundingBaseline.monthlyGrossConversion) +
+      (fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution)
+  const monthlyEmployerContributionEUR = activatesOffer
+    ? fundingTotal.monthlyEmployerContribution
+    : fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
   const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
   const capital = projectMonthlyContributionFV(totalMonthly, netReturn, g.yearsToRetirement)
@@ -917,9 +959,15 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
   })
 
   return {
-    id: isNewInstance ? 'new_bav_standard_offer' : 'add_to_existing_bav',
+    id: isNewInstance
+      ? 'new_bav_standard_offer'
+      : activatesOffer
+        ? `activate_${target.instanceId}`
+        : `add_to_${target.instanceId}`,
     label: isNewInstance
       ? 'Neue bAV'
+      : activatesOffer
+        ? `bAV-Angebot nutzen (${target.label ?? 'bAV'})`
       : `Zusatz auf bestehende bAV (${target.label ?? 'bAV'})`,
     productId: 'bav',
     isNewInstance,
@@ -935,10 +983,35 @@ function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
         }
       : undefined,
     mcInputs: { monthlyContribution: totalMonthly, totalFeeDecimal: fees },
-    usesStandardAssumptions: g.bavOffer.standardAssumption,
-    bavOffer: g.bavOffer,
+    usesStandardAssumptions: targetOffer?.standardAssumption,
+    bavOffer: targetOffer,
     monthlyEmployerContributionEUR,
   }
+}
+
+function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
+  const wsa = g.workspace.baseline.assumptions
+  const existingTargets = wsa.bav.filter((target) => target.status === 'active' || target.status === 'offered')
+  const targetInputs = existingTargets.length > 0
+    ? existingTargets.map((target) => ({ target, isNewInstance: false }))
+    : [{
+        target: {
+          ...defaultAssumptions.bav,
+          instanceId: newInstanceId('bav'),
+          label: 'Neue bAV',
+          status: 'active',
+          contractStartYear: g.rules.year,
+          evidenceMap: {},
+          monthlyGrossConversion: 0,
+        } as BavInstance,
+        isNewInstance: true,
+      }]
+  const candidates = targetInputs
+    .map(({ target, isNewInstance }) => makeBavCandidateForTarget(g, target, isNewInstance))
+    .filter((candidate): candidate is CandidateDraft => Boolean(candidate))
+  if (candidates.length === 0) return null
+  candidates.sort((a, b) => b.candidateResult.capitalAtRetirement - a.candidateResult.capitalAtRetirement)
+  return candidates[0]
 }
 
 // --- Basisrente (new) ------------------------------------------------------
@@ -1091,7 +1164,7 @@ function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
 
 function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft | null {
   const wsa = g.workspace.baseline.assumptions
-  const target = wsa.riester.find((r) => r.status !== 'surrendered')
+  const target = wsa.riester.find((r) => r.status !== 'surrendered' && r.status !== 'offered')
   if (!target) return null
   const profile = g.workspace.baseline.profile
   const salary = calculateSalaryResult(profile, g.rules, 0)
@@ -1110,9 +1183,9 @@ function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft | null {
   // apples with the cap (matches `riesterCapRemainingRule` in recommendations.ts).
   const capAnnual = g.rules.riester.annualCapInclAllowances
   const ownAnnual = wsa.riester
-    .filter((r) => r.status !== 'surrendered')
+    .filter((r) => r.status !== 'surrendered' && r.status !== 'offered')
     .reduce((s, r) => s + (r.monthlyOwnContribution ?? 0) * 12, 0)
-  const activeRiesterInstances = wsa.riester.filter((r) => r.status !== 'surrendered')
+  const activeRiesterInstances = wsa.riester.filter((r) => r.status !== 'surrendered' && r.status !== 'offered')
   const grundzulageEligible = activeRiesterInstances.some(
     (inst) => inst.eligibility.directlyEligible === true || inst.eligibility.indirectSpouseEligible === true,
   )
@@ -1239,8 +1312,10 @@ function combinedForCandidate(
   if (draft.isNewInstance) {
     merged = [...baselineResults, draft.candidateResult]
   } else {
+    let matchedExistingResult = false
     merged = baselineResults.map((r) => {
       if (r.instanceId !== draft.targetInstanceId) return r
+      matchedExistingResult = true
       return {
         ...r,
         grossMonthlyPayout: r.grossMonthlyPayout + draft.candidateResult.grossMonthlyPayout,
@@ -1249,6 +1324,9 @@ function combinedForCandidate(
         totalProductContributions: r.totalProductContributions + draft.candidateResult.totalProductContributions,
       }
     })
+    if (!matchedExistingResult) {
+      merged = [...merged, draft.candidateResult]
+    }
   }
   const candidateWorkspace = workspaceWithCandidateInstance(workspace, draft)
   return combinePortfolio(candidateWorkspace, merged, combineCtx)
@@ -1257,7 +1335,7 @@ function combinedForCandidate(
 function effortForCandidate(
   workspace: Workspace,
   draft: CandidateDraft,
-  bavOffer: ResolvedBavOffer,
+  bavOffer?: ResolvedBavOffer,
 ): EffortDetails {
   const wsa = workspace.baseline.assumptions
   const hasExisting = !draft.isNewInstance
@@ -1278,10 +1356,10 @@ function effortForCandidate(
       details.push('Depot ist bereits vorhanden')
     }
   } else if (draft.productId === 'bav') {
-    if (bavOffer.hasOffer) {
+    if (bavOffer?.hasOffer) {
       score += 10
       details.push('Arbeitgeberangebot liegt vor')
-    } else {
+    } else if (bavOffer?.standardAssumption) {
       score -= 20
       details.push('Standardannahmen statt konkretem Arbeitgeberangebot')
     }
@@ -1507,7 +1585,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       lifetimeCash,
       flexibilityScore: flexibilityDetails.overall,
       flexibilityDetails,
-      effort: effortForCandidate(workspace, d, bavOffer),
+      effort: effortForCandidate(workspace, d, d.productId === 'bav' ? d.bavOffer : bavOffer),
       riskScore: d.candidateResult.capitalAtRetirement,
       capitalAtRetirement: d.candidateResult.capitalAtRetirement,
       riskScoreP10,
@@ -1609,6 +1687,7 @@ function applyCandidateToAssumptions(
         const offerPatch = bavOfferPatchForSavedPlan(candidate, current.monthlyGrossConversion + candidate.grossMonthlyEUR)
         wsa.bav[idx] = {
           ...current,
+          status: current.status === 'offered' ? 'active' : current.status,
           monthlyGrossConversion: (current.monthlyGrossConversion ?? 0) + candidate.grossMonthlyEUR,
           ...offerPatch,
         }

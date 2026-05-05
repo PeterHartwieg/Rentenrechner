@@ -661,8 +661,8 @@ export function buildPortfolioFunding(
   // Paid-up instances do NOT consume cap headroom (no contributions flowing).
   // We still emit a funding entry for them via `paidUpBavFunding` so the
   // simulator runs against a zero-contribution baseline.
-  const allBav = wsa.bav.filter(b => b.status !== 'surrendered')
-  const activeBav = allBav.filter(b => b.status !== 'paid_up')
+  const allBav = wsa.bav.filter(b => b.status !== 'surrendered' && b.status !== 'offered')
+  const activeBav = allBav.filter(b => b.status === 'active')
   const paidUpBav = allBav.filter(b => b.status === 'paid_up')
   const totalBavGrossMonthly = activeBav.reduce(
     (s, b) => s + (b.monthlyGrossConversion ?? 0),
@@ -723,8 +723,8 @@ export function buildPortfolioFunding(
     pensionSystemAnnualContributionOverride = 0
   }
 
-  const allBasisrente = wsa.basisrente.filter(b => b.status !== 'surrendered')
-  const activeBasisrente = allBasisrente.filter(b => b.status !== 'paid_up')
+  const allBasisrente = wsa.basisrente.filter(b => b.status !== 'surrendered' && b.status !== 'offered')
+  const activeBasisrente = allBasisrente.filter(b => b.status === 'active')
   const paidUpBasisrente = allBasisrente.filter(b => b.status === 'paid_up')
   const totalBasisrenteGrossMonthly = activeBasisrente.reduce(
     (s, b) => s + (b.monthlyGrossContribution ?? 0),
@@ -793,8 +793,8 @@ export function buildPortfolioFunding(
   // -------------------------------------------------------------------------
   // AVD aggregation (AltZertG contract cap + §10a)
   // -------------------------------------------------------------------------
-  const allAvd = wsa.altersvorsorgedepot.filter(a => a.status !== 'surrendered')
-  const activeAvd = allAvd.filter(a => a.status !== 'paid_up')
+  const allAvd = wsa.altersvorsorgedepot.filter(a => a.status !== 'surrendered' && a.status !== 'offered')
+  const activeAvd = allAvd.filter(a => a.status === 'active')
   const paidUpAvd = allAvd.filter(a => a.status === 'paid_up')
   // AVD has a per-contract contributionCap (6840 EUR/year for 2026). The cap is
   // per-contract, not per-portfolio, so we don't scale across instances.
@@ -827,8 +827,8 @@ export function buildPortfolioFunding(
   // -------------------------------------------------------------------------
   // Riester aggregation (§10a / §86 + allowances)
   // -------------------------------------------------------------------------
-  const allRiester = wsa.riester.filter(r => r.status !== 'surrendered')
-  const activeRiester = allRiester.filter(r => r.status !== 'paid_up')
+  const allRiester = wsa.riester.filter(r => r.status !== 'surrendered' && r.status !== 'offered')
+  const activeRiester = allRiester.filter(r => r.status === 'active')
   const paidUpRiester = allRiester.filter(r => r.status === 'paid_up')
   const totalRiesterGrossMonthly = activeRiester.reduce(
     (s, r) => s + (r.monthlyOwnContribution ?? 0),
@@ -912,7 +912,7 @@ export function singletonViewOfWorkspace(
   // Read the first active instance per product; fall back to the defaults
   // when the array is empty.
   const firstActive = <T extends AnyInstance>(arr: readonly T[]): T | undefined =>
-    arr.find(i => i.status !== 'surrendered') ?? arr[0]
+    arr.find(i => i.status === 'active' || i.status === 'paid_up')
 
   const bavInst = firstActive(wsa.bav)
   const etfInst = firstActive(wsa.etf)
@@ -1297,7 +1297,7 @@ export function simulatePortfolio(
     fundingOverrideFor: (instance: T) => BuildContextOverrides,
   ) => {
     for (const inst of instances) {
-      if (inst.status === 'surrendered') continue
+      if (inst.status === 'surrendered' || inst.status === 'offered') continue
       const projectedRaw = projectInstanceToScenarioAssumptions(inst, wsa)
       // Phase G M4 F1 — paid-up: switch the active product slot to phase-2 fees
       // (no acquisition / contribution / fixed-admin fees; wrapper / fund /
@@ -1407,7 +1407,7 @@ function applyCrossInstanceSparerpauschbetrag(
   inboundBy: Map<string, TransferEvent[]>,
   workspace: Workspace,
 ): void {
-  const activeEtf = wsa.etf.filter((e) => e.status !== 'surrendered')
+  const activeEtf = wsa.etf.filter((e) => e.status !== 'surrendered' && e.status !== 'offered')
   if (activeEtf.length < 2) return
 
   const married = workspace.baseline.partner !== undefined

@@ -12,12 +12,13 @@
 import type {
   BavDurchfuehrungsweg,
 } from '../../domain/products/bav'
+import type { FeeModel } from '../../domain/fees'
 import type {
   AltersvorsorgedepotSubtype,
 } from '../../domain/products/altersvorsorgedepot'
 import type { EvidenceState } from '../../domain/instances'
 
-export type InstanceStatus = 'active' | 'paid_up' | 'surrendered'
+export type InstanceStatus = 'active' | 'paid_up' | 'surrendered' | 'offered'
 
 /** Base fields shared by all product drafts (universal Layer 1). */
 export interface ProductDraftState {
@@ -44,6 +45,7 @@ export interface BavDraft extends ProductDraftState {
   productId: 'bav'
   durchfuehrungsweg: BavDurchfuehrungsweg
   effektivkostenPct: number
+  feeDetails?: FeeModel
   rentenfaktor: number
   payoutMode: 'leibrente' | 'zeitrente' | 'kapitalverzehr'
 }
@@ -51,6 +53,7 @@ export interface BavDraft extends ProductDraftState {
 export interface PavDraft extends ProductDraftState {
   productId: 'versicherung'
   effektivkostenPct: number
+  feeDetails?: FeeModel
   rentenfaktor: number
   payoutMode: 'leibrente' | 'zeitrente' | 'kapitalverzehr'
 }
@@ -64,6 +67,7 @@ export interface RiesterDraft extends ProductDraftState {
 export interface BasisrenteDraft extends ProductDraftState {
   productId: 'basisrente'
   effektivkostenPct: number
+  feeDetails?: FeeModel
   rentenfaktor: number
 }
 

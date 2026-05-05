@@ -338,7 +338,7 @@ const bavCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
   const capAnnual = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
   const capMonthly = capAnnual / 12
 
-  const activeBav = wsa.bav.filter((b) => b.status !== 'surrendered')
+  const activeBav = wsa.bav.filter((b) => b.status === 'active')
   const usedMonthly = activeBav.reduce((s, b) => s + (b.monthlyGrossConversion ?? 0), 0)
   const usedPct = Math.min(1, capAnnual > 0 ? (usedMonthly * 12) / capAnnual : 0)
   const remainingMonthly = Math.max(0, capMonthly - usedMonthly)
@@ -385,7 +385,7 @@ const basisrenteCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null =
       pensionBase * (rules.socialSecurity.pensionEmployeeRate + rules.socialSecurity.pensionEmployerRate)
   }
 
-  const activeBasisrente = wsa.basisrente.filter((b) => b.status !== 'surrendered')
+  const activeBasisrente = wsa.basisrente.filter((b) => b.status === 'active')
   const usedAnnual = activeBasisrente.reduce((s, b) => s + (b.monthlyGrossContribution ?? 0) * 12, 0)
   const remainingCapAnnual = Math.max(0, schicht1Cap - annualPensionContributions)
   const totalUsedAnnual = annualPensionContributions + usedAnnual
@@ -418,7 +418,7 @@ const riesterCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
   const wsa = input.workspace.baseline.assumptions
   const capAnnual = rules.riester.annualCapInclAllowances
 
-  const riesterInstances = wsa.riester.filter((r) => r.status !== 'surrendered')
+  const riesterInstances = wsa.riester.filter((r) => r.status === 'active')
   if (riesterInstances.length === 0) {
     return {
       id: 'riester_cap_remaining',
@@ -474,7 +474,7 @@ const avdCapRemainingRule: Rule = (input: RuleEngineInput): Atom[] | null => {
   const capAnnual = rules.altersvorsorgedepot.contractContributionCapAnnual
   const capMonthly = capAnnual / 12
 
-  const activeAvd = wsa.altersvorsorgedepot.filter((a) => a.status !== 'surrendered')
+  const activeAvd = wsa.altersvorsorgedepot.filter((a) => a.status === 'active')
 
   // Zero instances → zero atoms (per-instance semantics: no contract = nothing to report).
   if (activeAvd.length === 0) return []

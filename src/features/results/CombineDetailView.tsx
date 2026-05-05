@@ -5,6 +5,7 @@ import type { ProductResult } from '../../domain/results'
 import type { Workspace } from '../../domain/workspace'
 import type { ProductId } from '../../domain'
 import type { CombinedResult } from '../../engine/portfolioCombine'
+import type { InstanceCommon } from '../../domain/instances'
 import { getProductMeta } from '../../app/productPresentation'
 import { ProvLabel } from './provenance'
 import { formatCurrency, formatPercent } from '../../utils/format'
@@ -36,7 +37,7 @@ interface CombineDetailRow {
   instanceId: string
   productId: ProductId
   instanceLabel: string
-  status: 'active' | 'paid_up' | 'surrendered'
+  status: InstanceCommon['status']
   result: ProductResult | undefined
   /** Back-allocated share from the aggregate retirement-tax + KV/PV pipeline. */
   combinedShare: CombinedResult['byInstance'][string] | undefined
@@ -145,7 +146,7 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
   const meta = getProductMeta(row.productId) ?? FALLBACK_META
   const result = row.result
 
-  const statusLabel = STATUS_LABELS[row.status]
+  const statusLabel = row.status === 'offered' ? 'Angebot' : STATUS_LABELS[row.status]
   const statusClass = `combine-detail-status combine-detail-status--${row.status}`
 
   const capital = result?.capitalAtRetirement
@@ -242,7 +243,7 @@ const FALLBACK_META = {
   hasEmployerContribution: false,
 } as const
 
-const STATUS_LABELS: Record<CombineDetailRow['status'], string> = {
+const STATUS_LABELS: Record<Exclude<CombineDetailRow['status'], 'offered'>, string> = {
   active: 'aktiv',
   paid_up: 'beitragsfrei',
   surrendered: 'gekündigt',
@@ -272,7 +273,7 @@ function collectRows(
   const wsa = workspace.baseline.assumptions
   const rows: CombineDetailRow[] = []
 
-  const productSlots: Array<{ id: ProductId; instances: { instanceId: string; label: string; status: 'active' | 'paid_up' | 'surrendered' }[] }> = [
+  const productSlots: Array<{ id: ProductId; instances: { instanceId: string; label: string; status: InstanceCommon['status'] }[] }> = [
     { id: 'bav', instances: wsa.bav },
     { id: 'etf', instances: wsa.etf },
     { id: 'versicherung', instances: wsa.insurance },
@@ -283,7 +284,7 @@ function collectRows(
 
   for (const slot of productSlots) {
     for (const inst of slot.instances) {
-      if (inst.status === 'surrendered') continue
+      if (inst.status === 'surrendered' || inst.status === 'offered') continue
       const meta = getProductMeta(slot.id) ?? FALLBACK_META
       const label = inst.label?.trim().length ? inst.label : meta.label
       const result = perInstance[inst.instanceId]?.find((r) => r.scenarioId === scenarioId)

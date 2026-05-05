@@ -77,6 +77,50 @@ export function bavDraftToInstance(d: BavDraft): BavInstance {
       // wrapperAssetFee; fundAssetFee stays 0. The engine sums both for drag.
       wrapperAssetFee: d.effektivkostenPct / 100,
       fundAssetFee: 0,
+      ...(d.feeDetails ?? {}),
+    },
+    monthlyOtherRetirementIncome: defaultAssumptions.bav.monthlyOtherRetirementIncome,
+    includeGrvReduction: defaultAssumptions.bav.includeGrvReduction,
+    kvdrMember: defaultAssumptions.bav.kvdrMember,
+    durchfuehrungsweg: d.durchfuehrungsweg,
+    pre2005EligibleTaxFree: defaultAssumptions.bav.pre2005EligibleTaxFree,
+    payoutMode: d.payoutMode,
+    rentenfaktor: d.rentenfaktor,
+    rentenfaktorConfirmed: false,
+    zeitrenteYears: defaultAssumptions.bav.zeitrenteYears,
+    annualContributionGrowthRate: 0,
+  }
+}
+
+export interface BavOfferDraft {
+  anbieter?: string
+  contractStartYear: number
+  contractualMatchPercent: number
+  contractualFixedMonthly: number
+  effektivkostenPct: number
+  rentenfaktor: number
+  durchfuehrungsweg: BavInstance['durchfuehrungsweg']
+  payoutMode: BavInstance['payoutMode']
+}
+
+export function bavOfferDraftToInstance(d: BavOfferDraft): BavInstance {
+  return {
+    instanceId: newInstanceId('bav'),
+    label: d.anbieter ? `bAV-Angebot ${d.anbieter}` : 'bAV-Angebot',
+    anbieter: d.anbieter,
+    status: 'offered',
+    contractStartYear: d.contractStartYear,
+    currentValueEUR: 0,
+    evidenceMap: {},
+    ownedBy: 'self',
+    monthlyGrossConversion: 0,
+    statutoryMinimumSubsidyEnabled: defaultAssumptions.bav.statutoryMinimumSubsidyEnabled,
+    contractualMatchPercent: d.contractualMatchPercent,
+    contractualFixedMonthly: d.contractualFixedMonthly,
+    fees: {
+      ...defaultAssumptions.bav.fees,
+      wrapperAssetFee: d.effektivkostenPct / 100,
+      fundAssetFee: 0,
     },
     monthlyOtherRetirementIncome: defaultAssumptions.bav.monthlyOtherRetirementIncome,
     includeGrvReduction: defaultAssumptions.bav.includeGrvReduction,
@@ -101,6 +145,7 @@ export function pavDraftToInstance(d: PavDraft): InsuranceInstance {
     currentValueEUR: d.currentValueEUR ?? 0,
     evidenceMap: d.evidenceMap ?? {},
     ownedBy: 'self',
+    monthlyContribution: d.monthlyContribution,
     // InsuranceAssumptions (contractStartYear is also on InstanceCommon)
     oldContractTaxFreeEligible: d.contractStartYear <= 2004,
     monthlyOtherRetirementIncome: 0,
@@ -109,6 +154,7 @@ export function pavDraftToInstance(d: PavDraft): InsuranceInstance {
       ...defaultAssumptions.insurance.fees,
       wrapperAssetFee: d.effektivkostenPct / 100,
       fundAssetFee: 0,
+      ...(d.feeDetails ?? {}),
     },
     payoutMode: d.payoutMode,
     rentenfaktor: d.rentenfaktor,
@@ -162,6 +208,7 @@ export function basisrenteDraftToInstance(d: BasisrenteDraft): BasisrenteInstanc
       ...defaultAssumptions.basisrente.fees,
       wrapperAssetFee: d.effektivkostenPct / 100,
       fundAssetFee: 0,
+      ...(d.feeDetails ?? {}),
     },
     payoutMode: 'leibrente',
     rentenfaktor: d.rentenfaktor,

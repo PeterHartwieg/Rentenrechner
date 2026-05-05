@@ -262,6 +262,58 @@
   color: #64748b;
 }
 
+.cds-add-vertrag-draft {
+  background: #fff;
+  border: 1px solid #d1fae5;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.cds-add-vertrag-draft-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cds-add-vertrag-save-btn {
+  background: #15803d;
+  border: 1px solid #15803d;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+.cds-add-vertrag-save-btn:hover {
+  background: #166534;
+  border-color: #166534;
+}
+
+.cds-profile-section {
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.combine-checkbox-field {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.combine-field select,
+.combine-field input[type="text"] {
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font: inherit;
+  padding: 5px 7px;
+  width: 100%;
+}
+
 /* ── Instance card action buttons (Optionen / Entfernen) ─────────────── */
 
 .combine-instance-card-actions {

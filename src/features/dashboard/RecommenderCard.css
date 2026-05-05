@@ -138,12 +138,76 @@
   font-size: 0.86rem;
 }
 
+.recommender-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.recommender-ranking-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.recommender-ranking-copy strong {
+  color: #172033;
+  font-weight: 700;
+}
+
+.recommender-ranking-meter {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #e8edf4;
+}
+
+.recommender-ranking-meter-fill {
+  display: block;
+  width: var(--recommender-meter-value, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--recommender-meter-color, #2563eb);
+  transition: width 0.16s ease;
+}
+
 .recommender-candidate-metrics {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
   font-size: 0.88rem;
   color: #344054;
+}
+
+.recommender-candidate-atom-disclosure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.recommender-candidate-atom-toggle {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.recommender-candidate-atom-toggle:hover,
+.recommender-candidate-atom-toggle:focus-visible {
+  text-decoration: underline;
+}
+
+.recommender-candidate-atom-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .recommender-candidate-atoms {

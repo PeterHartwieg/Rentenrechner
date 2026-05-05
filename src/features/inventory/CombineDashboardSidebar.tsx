@@ -31,7 +31,9 @@ import type {
   BasisrenteInstance,
   AltersvorsorgedepotInstance,
   RiesterInstance,
+  InstanceCommon,
 } from '../../domain/instances'
+import type { PensionBaselineType, StatutoryPensionAssumptions } from '../../domain/products/grv'
 import type { MultiInstanceProductId } from '../../app/portfolioState'
 import { VintageChips } from './VintageChips'
 import { isVintageAtomId } from './vintageChipsUtils'
@@ -40,6 +42,7 @@ import { runRules } from '../../app/recommendations'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { SIMPLIFIED_PRESETS } from '../inputs/sections/feePresets'
+import { bavOfferDraftToInstance, type BavOfferDraft } from './inventoryHelpers'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -55,6 +58,7 @@ interface Props {
   onRebaseWhatIf: (id: string) => void
   onFreezeWhatIf: (id: string) => void
   onArchiveAndRestart: () => void
+  onPatchBaseline?: (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void
   /** Called when the user clicks "Optionen" on an active or paid-up instance card. */
   onOpenDecisionMenu?: (instanceId: string) => void
 }
@@ -88,6 +92,266 @@ function CombineField({
   )
 }
 
+function toNumber(value: string, fallback = 0): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function CommonContractFields<T extends InstanceCommon>({
+  instance,
+  onChange,
+  currentValueLabel = 'Aktueller Vertragswert',
+}: {
+  instance: T
+  onChange: (next: T) => void
+  currentValueLabel?: string
+}) {
+  return (
+    <>
+      <CombineField label="Bezeichnung">
+        <input
+          type="text"
+          value={instance.label}
+          onChange={(e) => onChange({ ...instance, label: e.target.value })}
+        />
+      </CombineField>
+      <CombineField label="Anbieter">
+        <input
+          type="text"
+          value={instance.anbieter ?? ''}
+          onChange={(e) =>
+            onChange({ ...instance, anbieter: e.target.value.trim() === '' ? undefined : e.target.value })
+          }
+        />
+      </CombineField>
+      <CombineField label="Status">
+        <select
+          value={instance.status}
+          onChange={(e) =>
+            onChange({ ...instance, status: e.target.value as InstanceCommon['status'] })
+          }
+        >
+          <option value="active">aktiv</option>
+          <option value="paid_up">beitragsfrei</option>
+          <option value="surrendered">gekündigt</option>
+          <option value="offered">Angebot</option>
+        </select>
+      </CombineField>
+      <CombineField label="Vertragsbeginn">
+        <input
+          type="number"
+          value={instance.contractStartYear}
+          min={1970}
+          max={new Date().getFullYear()}
+          step={1}
+          onChange={(e) =>
+            onChange({ ...instance, contractStartYear: toNumber(e.target.value, instance.contractStartYear) })
+          }
+        />
+      </CombineField>
+      <CombineField label={currentValueLabel}>
+        <input
+          type="number"
+          value={instance.currentValueEUR ?? 0}
+          min={0}
+          step={100}
+          onChange={(e) =>
+            onChange({ ...instance, currentValueEUR: toNumber(e.target.value, instance.currentValueEUR ?? 0) })
+          }
+        />
+      </CombineField>
+    </>
+  )
+}
+
+function PayoutModeSelect({
+  value,
+  onChange,
+  allowCapitalDrawdown = true,
+}: {
+  value: 'leibrente' | 'zeitrente' | 'kapitalverzehr'
+  onChange: (value: 'leibrente' | 'zeitrente' | 'kapitalverzehr') => void
+  allowCapitalDrawdown?: boolean
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as 'leibrente' | 'zeitrente' | 'kapitalverzehr')}
+    >
+      <option value="leibrente">Leibrente</option>
+      <option value="zeitrente">Zeitrente</option>
+      {allowCapitalDrawdown && <option value="kapitalverzehr">Kapitalverzehr</option>}
+    </select>
+  )
+}
+
+function BavDurchfuehrungswegSelect({
+  value,
+  onChange,
+}: {
+  value: BavInstance['durchfuehrungsweg']
+  onChange: (value: BavInstance['durchfuehrungsweg']) => void
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as BavInstance['durchfuehrungsweg'])}
+    >
+      <option value="direktversicherung_3_63">Direktversicherung §3 Nr. 63</option>
+      <option value="pensionskasse_3_63">Pensionskasse §3 Nr. 63</option>
+      <option value="pensionsfonds_3_63">Pensionsfonds §3 Nr. 63</option>
+      <option value="direktversicherung_40b_alt">Direktversicherung §40b a.F.</option>
+      <option value="direktzusage">Direktzusage</option>
+      <option value="unterstuetzungskasse">Unterstützungskasse</option>
+    </select>
+  )
+}
+
+function PersonalProfileSection({
+  baseline,
+  assumptions,
+  onPatchAssumptions,
+  onPatchBaseline,
+}: {
+  baseline: Scenario
+  assumptions: WorkspaceAssumptionsV2
+  onPatchAssumptions: (patch: Partial<WorkspaceAssumptionsV2>) => void
+  onPatchBaseline?: (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void
+}) {
+  const profile = baseline.profile
+  const statutoryPension = assumptions.statutoryPension
+  const partnerEnabled = Boolean(baseline.partner)
+
+  const patchProfile = (patch: Partial<typeof profile>) => {
+    onPatchBaseline?.({ profile: { ...profile, ...patch } })
+  }
+  const patchStatutoryPension = (patch: Partial<StatutoryPensionAssumptions>) => {
+    onPatchAssumptions({
+      statutoryPension: { ...statutoryPension, ...patch },
+    })
+  }
+  const patchPartner = (enabled: boolean) => {
+    onPatchBaseline?.({
+      partner: enabled ? { ...profile, grossSalaryYear: 0 } : undefined,
+    })
+  }
+
+  return (
+    <section className="cds-profile-section" aria-label="Persönliche Angaben">
+      <p className="combine-sidebar-heading">Persönliche Angaben</p>
+      <div className="combine-instance-fields">
+        <CombineField label="Alter">
+          <input
+            type="number"
+            value={profile.age}
+            min={0}
+            max={100}
+            step={1}
+            onChange={(e) => patchProfile({ age: toNumber(e.target.value, profile.age) })}
+          />
+        </CombineField>
+        <CombineField label="Bruttogehalt">
+          <input
+            type="number"
+            value={profile.grossSalaryYear}
+            min={0}
+            step={1000}
+            onChange={(e) =>
+              patchProfile({ grossSalaryYear: toNumber(e.target.value, profile.grossSalaryYear) })
+            }
+          />
+        </CombineField>
+        <CombineField label="Renteneintrittsalter">
+          <input
+            type="number"
+            value={profile.retirementAge}
+            min={profile.age}
+            max={85}
+            step={1}
+            onChange={(e) =>
+              patchProfile({ retirementAge: toNumber(e.target.value, profile.retirementAge) })
+            }
+          />
+        </CombineField>
+        <CombineField label="Krankenversicherung">
+          <select
+            value={profile.publicHealthInsurance ? 'gkv' : 'pkv'}
+            onChange={(e) => {
+              const publicHealthInsurance = e.target.value === 'gkv'
+              patchProfile({ publicHealthInsurance })
+              patchStatutoryPension({
+                retirementHealthStatus: publicHealthInsurance ? 'kvdr' : 'pkv',
+              })
+            }}
+          >
+            <option value="gkv">Gesetzlich</option>
+            <option value="pkv">Privat</option>
+          </select>
+        </CombineField>
+        <CombineField label="Ehegattensplitting">
+          <label className="combine-checkbox-field">
+            <input
+              type="checkbox"
+              checked={partnerEnabled}
+              onChange={(e) => patchPartner(e.target.checked)}
+            />
+            gemeinsam veranlagen
+          </label>
+        </CombineField>
+        <CombineField label="Geburtsjahre Kinder">
+          <input
+            type="text"
+            value={profile.childBirthYears.join(', ')}
+            onChange={(e) => {
+              const childBirthYears = e.target.value
+                .split(/[,\s;]+/)
+                .map((part) => Number(part))
+                .filter((year) => Number.isInteger(year) && year > 1900)
+              patchProfile({ childBirthYears })
+            }}
+          />
+        </CombineField>
+        <CombineField label="Pensionssystem">
+          <select
+            value={statutoryPension.pensionBaselineType ?? 'grv'}
+            onChange={(e) => {
+              const pensionBaselineType = e.target.value as PensionBaselineType
+              patchStatutoryPension({
+                pensionBaselineType,
+                manualMonthlyGross:
+                  pensionBaselineType === 'grv'
+                    ? null
+                    : statutoryPension.manualMonthlyGross ?? 0,
+              })
+            }}
+          >
+            <option value="grv">Gesetzliche Rente</option>
+            <option value="beamtenpension">Beamtenpension</option>
+            <option value="versorgungswerk">Versorgungswerk</option>
+            <option value="none">keine Pflichtversorgung</option>
+          </select>
+        </CombineField>
+        {(statutoryPension.pensionBaselineType === 'beamtenpension' ||
+          statutoryPension.pensionBaselineType === 'versorgungswerk') && (
+          <CombineField label="Monatliche Brutto-Pension">
+            <input
+              type="number"
+              value={statutoryPension.manualMonthlyGross ?? 0}
+              min={0}
+              step={50}
+              onChange={(e) =>
+                patchStatutoryPension({
+                  manualMonthlyGross: toNumber(e.target.value, statutoryPension.manualMonthlyGross ?? 0),
+                })
+              }
+            />
+          </CombineField>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // bAV instance sidebar card
 // ---------------------------------------------------------------------------
@@ -116,7 +380,7 @@ function BavInstanceCard({
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
         <div className="combine-instance-card-actions">
-          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && instance.status !== 'offered' && (
             <button
               type="button"
               className="combine-sidebar-options-btn"
@@ -143,28 +407,64 @@ function BavInstanceCard({
         <VintageChips atoms={vintageAtoms} />
 
         <div className="combine-instance-fields">
-          <CombineField label="Brutto-Umwandlung (EUR/Monat)">
+          <CommonContractFields instance={instance} onChange={onChange} />
+          {instance.status !== 'offered' && (
+            <CombineField label="Brutto-Umwandlung (EUR/Monat)">
+              <input
+                type="number"
+                value={instance.monthlyGrossConversion}
+                min={0}
+                max={5000}
+                step={10}
+                onChange={(e) =>
+                  onChange({ ...instance, monthlyGrossConversion: Number(e.target.value) })
+                }
+              />
+            </CombineField>
+          )}
+          <CombineField label="Zusätzlicher AG-Zuschuss (%)">
             <input
               type="number"
-              value={instance.monthlyGrossConversion}
+              value={Math.round(instance.contractualMatchPercent * 1000) / 10}
+              min={0}
+              max={500}
+              step={1}
+              onChange={(e) =>
+                onChange({ ...instance, contractualMatchPercent: toNumber(e.target.value, 0) / 100 })
+              }
+            />
+          </CombineField>
+          <CombineField label="Fixer Extra-AG-Beitrag (EUR/Monat)">
+            <input
+              type="number"
+              value={instance.contractualFixedMonthly}
               min={0}
               max={5000}
               step={10}
               onChange={(e) =>
-                onChange({ ...instance, monthlyGrossConversion: Number(e.target.value) })
+                onChange({ ...instance, contractualFixedMonthly: toNumber(e.target.value, 0) })
               }
             />
           </CombineField>
-          <CombineField label="Vertragsbeginn">
+          <CombineField label="Durchführungsweg">
+            <BavDurchfuehrungswegSelect
+              value={instance.durchfuehrungsweg}
+              onChange={(durchfuehrungsweg) => onChange({ ...instance, durchfuehrungsweg })}
+            />
+          </CombineField>
+          <CombineField label="Auszahlungsform">
+            <PayoutModeSelect
+              value={instance.payoutMode}
+              onChange={(payoutMode) => onChange({ ...instance, payoutMode })}
+            />
+          </CombineField>
+          <CombineField label="Garantierter Rentenfaktor">
             <input
               type="number"
-              value={instance.contractStartYear}
-              min={1970}
-              max={new Date().getFullYear()}
-              step={1}
-              onChange={(e) =>
-                onChange({ ...instance, contractStartYear: Number(e.target.value) })
-              }
+              value={instance.rentenfaktor}
+              min={0}
+              step={0.5}
+              onChange={(e) => onChange({ ...instance, rentenfaktor: toNumber(e.target.value, instance.rentenfaktor) })}
             />
           </CombineField>
         </div>
@@ -242,6 +542,28 @@ function EtfInstanceCard({
         )}
       </div>
       <div className="combine-instance-body">
+        <div className="combine-instance-fields">
+          <CommonContractFields
+            instance={instance}
+            onChange={onChange}
+            currentValueLabel="Aktueller Depotwert"
+          />
+          <CombineField label="Monatliche Sparrate">
+            <input
+              type="number"
+              value={instance.monthlyContribution ?? 0}
+              min={0}
+              max={5000}
+              step={10}
+              onChange={(e) =>
+                onChange({
+                  ...instance,
+                  monthlyContribution: toNumber(e.target.value, instance.monthlyContribution ?? 0),
+                })
+              }
+            />
+          </CombineField>
+        </div>
         <details className="inv-layer3-details">
           <summary className="inv-layer3-summary">Details</summary>
           <div className="inv-layer3-body">
@@ -298,7 +620,7 @@ function InsuranceInstanceCard({
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
         <div className="combine-instance-card-actions">
-          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && instance.status !== 'offered' && (
             <button
               type="button"
               className="combine-sidebar-options-btn"
@@ -324,16 +646,35 @@ function InsuranceInstanceCard({
       <div className="combine-instance-body">
         <VintageChips atoms={vintageAtoms} />
         <div className="combine-instance-fields">
-          <CombineField label="Vertragsbeginn">
+          <CommonContractFields instance={instance} onChange={onChange} />
+          <CombineField label="Monatsbeitrag (EUR)">
             <input
               type="number"
-              value={instance.contractStartYear}
-              min={1970}
-              max={new Date().getFullYear()}
-              step={1}
+              value={instance.monthlyContribution ?? 0}
+              min={0}
+              max={5000}
+              step={10}
               onChange={(e) =>
-                onChange({ ...instance, contractStartYear: Number(e.target.value) })
+                onChange({
+                  ...instance,
+                  monthlyContribution: toNumber(e.target.value, instance.monthlyContribution ?? 0),
+                })
               }
+            />
+          </CombineField>
+          <CombineField label="Auszahlungsform">
+            <PayoutModeSelect
+              value={instance.payoutMode}
+              onChange={(payoutMode) => onChange({ ...instance, payoutMode })}
+            />
+          </CombineField>
+          <CombineField label="Garantierter Rentenfaktor">
+            <input
+              type="number"
+              value={instance.rentenfaktor}
+              min={0}
+              step={0.5}
+              onChange={(e) => onChange({ ...instance, rentenfaktor: toNumber(e.target.value, instance.rentenfaktor) })}
             />
           </CombineField>
         </div>
@@ -387,7 +728,7 @@ function BasisrenteInstanceCard({
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
         <div className="combine-instance-card-actions">
-          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && instance.status !== 'offered' && (
             <button
               type="button"
               className="combine-sidebar-options-btn"
@@ -412,6 +753,7 @@ function BasisrenteInstanceCard({
       </div>
       <div className="combine-instance-body">
         <div className="combine-instance-fields">
+          <CommonContractFields instance={instance} onChange={onChange} />
           <CombineField label="Monatsbeitrag (EUR)">
             <input
               type="number"
@@ -422,6 +764,15 @@ function BasisrenteInstanceCard({
               onChange={(e) =>
                 onChange({ ...instance, monthlyGrossContribution: Number(e.target.value) })
               }
+            />
+          </CombineField>
+          <CombineField label="Garantierter Rentenfaktor">
+            <input
+              type="number"
+              value={instance.rentenfaktor}
+              min={0}
+              step={0.5}
+              onChange={(e) => onChange({ ...instance, rentenfaktor: toNumber(e.target.value, instance.rentenfaktor) })}
             />
           </CombineField>
         </div>
@@ -465,7 +816,7 @@ function AvdInstanceCard({
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
         <div className="combine-instance-card-actions">
-          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && instance.status !== 'offered' && (
             <button
               type="button"
               className="combine-sidebar-options-btn"
@@ -490,6 +841,7 @@ function AvdInstanceCard({
       </div>
       <div className="combine-instance-body">
         <div className="combine-instance-fields">
+          <CommonContractFields instance={instance} onChange={onChange} />
           <CombineField label="Eigenbeitrag (EUR/Monat)">
             <input
               type="number"
@@ -501,6 +853,37 @@ function AvdInstanceCard({
                 onChange({ ...instance, monthlyOwnContribution: Number(e.target.value) })
               }
             />
+          </CombineField>
+          <CombineField label="Depottyp">
+            <select
+              value={instance.subtype}
+              onChange={(e) =>
+                onChange({
+                  ...instance,
+                  subtype: e.target.value as AltersvorsorgedepotInstance['subtype'],
+                })
+              }
+            >
+              <option value="depot_no_guarantee">Depot ohne Garantie</option>
+              <option value="standarddepot">Standarddepot</option>
+              <option value="guarantee_80">80% Garantie</option>
+              <option value="guarantee_100">100% Garantie</option>
+            </select>
+          </CombineField>
+          <CombineField label="Glidepath">
+            <label className="combine-checkbox-field">
+              <input
+                type="checkbox"
+                checked={instance.riskAllocationPct < 1}
+                onChange={(e) =>
+                  onChange({
+                    ...instance,
+                    riskAllocationPct: e.target.checked ? 0.8 : 1,
+                  })
+                }
+              />
+              automatische Risikoabsenkung
+            </label>
           </CombineField>
         </div>
       </div>
@@ -530,7 +913,7 @@ function RiesterInstanceCard({
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
         <div className="combine-instance-card-actions">
-          {onOpenDecisionMenu && instance.status !== 'surrendered' && (
+          {onOpenDecisionMenu && instance.status !== 'surrendered' && instance.status !== 'offered' && (
             <button
               type="button"
               className="combine-sidebar-options-btn"
@@ -555,6 +938,12 @@ function RiesterInstanceCard({
       </div>
       <div className="combine-instance-body">
         <div className="combine-instance-fields">
+          <CommonContractFields
+            instance={instance}
+            onChange={(next) =>
+              onChange({ ...next, existingCapital: next.currentValueEUR ?? instance.existingCapital })
+            }
+          />
           <CombineField label="Eigenbeitrag (EUR/Monat)">
             <input
               type="number"
@@ -564,6 +953,15 @@ function RiesterInstanceCard({
               step={10}
               onChange={(e) =>
                 onChange({ ...instance, monthlyOwnContribution: Number(e.target.value) })
+              }
+            />
+          </CombineField>
+          <CombineField label="Auszahlungsform">
+            <PayoutModeSelect
+              value={instance.payoutMode}
+              allowCapitalDrawdown={false}
+              onChange={(payoutMode) =>
+                onChange({ ...instance, payoutMode: payoutMode as RiesterInstance['payoutMode'] })
               }
             />
           </CombineField>
@@ -707,28 +1105,221 @@ function WhatIfCard({
 // ---------------------------------------------------------------------------
 
 /** Human-readable labels matching the product type keys */
-const ADD_VERTRAG_ITEMS: {
-  productId: MultiInstanceProductId
-  label: string
-}[] = [
-  { productId: 'bav', label: 'Betriebliche AV (bAV)' },
-  { productId: 'versicherung', label: 'Private Rentenversicherung (pAV)' },
-  { productId: 'etf', label: 'ETF-Sparplan' },
+type AddVertragItem =
+  | { kind?: 'contract'; productId: MultiInstanceProductId; label: string }
+  | { kind: 'bav_offer'; label: string }
+
+const ADD_VERTRAG_ITEMS: AddVertragItem[] = [
+  { kind: 'bav_offer', label: 'bAV-Angebot' },
+  { kind: 'contract', productId: 'bav', label: 'Betriebliche AV (bAV)' },
+  { kind: 'contract', productId: 'versicherung', label: 'Private Rentenversicherung (pAV)' },
+  { kind: 'contract', productId: 'etf', label: 'ETF-Sparplan' },
   { productId: 'basisrente', label: 'Basisrente (Rürup)' },
-  { productId: 'altersvorsorgedepot', label: 'Altersvorsorgedepot (AVD)' },
-  { productId: 'riester', label: 'Riester-Rente' },
+  { kind: 'contract', productId: 'altersvorsorgedepot', label: 'Altersvorsorgedepot (AVD)' },
+  { kind: 'contract', productId: 'riester', label: 'Riester-Rente' },
 ]
+
+function DraftContractForm({
+  item,
+  onCancel,
+  onSaveContract,
+  onSaveBavOffer,
+}: {
+  item: AddVertragItem
+  onCancel: () => void
+  onSaveContract: (productId: MultiInstanceProductId) => void
+  onSaveBavOffer?: (draft: BavOfferDraft) => void
+}) {
+  const productId = item.kind === 'bav_offer' ? 'bav' : item.productId
+  const [anbieter, setAnbieter] = useState('')
+  const [contractStartYear, setContractStartYear] = useState(new Date().getFullYear())
+  const [agMatchPct, setAgMatchPct] = useState(0)
+  const [fixedAgMonthly, setFixedAgMonthly] = useState(0)
+  const [effektivkostenPct, setEffektivkostenPct] = useState(0.8)
+  const [rentenfaktor, setRentenfaktor] = useState(30)
+  const [durchfuehrungsweg, setDurchfuehrungsweg] =
+    useState<BavInstance['durchfuehrungsweg']>('direktversicherung_3_63')
+  const [payoutMode, setPayoutMode] = useState<BavInstance['payoutMode']>('leibrente')
+  const saveLabel = item.kind === 'bav_offer' ? 'Angebot speichern' : 'Vertrag speichern'
+
+  return (
+    <div className="cds-add-vertrag-draft" aria-label={`${item.label} erfassen`}>
+      <p className="cds-add-vertrag-menu-label">{item.label} erfassen</p>
+      <div className="combine-instance-fields">
+        <CombineField label="Anbieter">
+          <input type="text" value={anbieter} onChange={(e) => setAnbieter(e.target.value)} />
+        </CombineField>
+        <CombineField label="Vertragsbeginn">
+          <input
+            type="number"
+            value={contractStartYear}
+            min={1970}
+            step={1}
+            onChange={(e) => setContractStartYear(toNumber(e.target.value, contractStartYear))}
+          />
+        </CombineField>
+        {item.kind === 'bav_offer' ? (
+          <>
+            <CombineField label="Zusätzlicher AG-Zuschuss (%)">
+              <input
+                type="number"
+                value={agMatchPct}
+                min={0}
+                max={500}
+                step={1}
+                onChange={(e) => setAgMatchPct(toNumber(e.target.value, agMatchPct))}
+              />
+            </CombineField>
+            <CombineField label="Fixer Extra-AG-Beitrag (EUR/Monat)">
+              <input
+                type="number"
+                value={fixedAgMonthly}
+                min={0}
+                step={10}
+                onChange={(e) => setFixedAgMonthly(toNumber(e.target.value, fixedAgMonthly))}
+              />
+            </CombineField>
+            <CombineField label="Effektivkosten (% p.a.)">
+              <input
+                type="number"
+                value={effektivkostenPct}
+                min={0}
+                step={0.1}
+                onChange={(e) => setEffektivkostenPct(toNumber(e.target.value, effektivkostenPct))}
+              />
+            </CombineField>
+            <CombineField label="Garantierter Rentenfaktor">
+              <input
+                type="number"
+                value={rentenfaktor}
+                min={0}
+                step={0.5}
+                onChange={(e) => setRentenfaktor(toNumber(e.target.value, rentenfaktor))}
+              />
+            </CombineField>
+            <CombineField label="DurchfÃ¼hrungsweg">
+              <BavDurchfuehrungswegSelect value={durchfuehrungsweg} onChange={setDurchfuehrungsweg} />
+            </CombineField>
+            <CombineField label="Auszahlungsform">
+              <PayoutModeSelect value={payoutMode} onChange={setPayoutMode} />
+            </CombineField>
+          </>
+        ) : productId === 'etf' ? (
+          <>
+            <CombineField label="Monatliche Sparrate">
+              <input type="number" defaultValue={200} min={0} step={10} />
+            </CombineField>
+            <CombineField label="Aktueller Depotwert">
+              <input type="number" defaultValue={0} min={0} step={100} />
+            </CombineField>
+          </>
+        ) : productId === 'bav' ? (
+          <>
+            <CombineField label="Brutto-Umwandlung (EUR/Monat)">
+              <input type="number" defaultValue={200} min={0} step={10} />
+            </CombineField>
+            <CombineField label="Aktueller Vertragswert">
+              <input type="number" defaultValue={0} min={0} step={100} />
+            </CombineField>
+            <CombineField label="Durchführungsweg">
+              <select defaultValue="direktversicherung_3_63">
+                <option value="direktversicherung_3_63">Direktversicherung §3 Nr. 63</option>
+                <option value="pensionskasse_3_63">Pensionskasse §3 Nr. 63</option>
+                <option value="pensionsfonds_3_63">Pensionsfonds §3 Nr. 63</option>
+                <option value="direktversicherung_40b_alt">Direktversicherung §40b a.F.</option>
+                <option value="direktzusage">Direktzusage</option>
+                <option value="unterstuetzungskasse">Unterstützungskasse</option>
+              </select>
+            </CombineField>
+          </>
+        ) : productId === 'versicherung' || productId === 'basisrente' ? (
+          <>
+            <CombineField label="Monatsbeitrag (EUR)">
+              <input type="number" defaultValue={200} min={0} step={10} />
+            </CombineField>
+            <CombineField label="Aktueller Vertragswert">
+              <input type="number" defaultValue={0} min={0} step={100} />
+            </CombineField>
+            <CombineField label="Garantierter Rentenfaktor">
+              <input type="number" defaultValue={28} min={0} step={0.5} />
+            </CombineField>
+          </>
+        ) : (
+          <>
+            <CombineField label="Eigenbeitrag (EUR/Monat)">
+              <input type="number" defaultValue={200} min={0} step={10} />
+            </CombineField>
+            <CombineField label="Aktueller Vertragswert">
+              <input type="number" defaultValue={0} min={0} step={100} />
+            </CombineField>
+          </>
+        )}
+      </div>
+      <div className="cds-add-vertrag-draft-actions">
+        <button
+          type="button"
+          className="cds-add-vertrag-save-btn"
+          onClick={() => {
+            if (item.kind === 'bav_offer') {
+              onSaveBavOffer?.({
+                anbieter: anbieter.trim() === '' ? undefined : anbieter.trim(),
+                contractStartYear,
+                contractualMatchPercent: Math.max(0, agMatchPct) / 100,
+                contractualFixedMonthly: Math.max(0, fixedAgMonthly),
+                effektivkostenPct: Math.max(0, effektivkostenPct),
+                rentenfaktor: Math.max(0, rentenfaktor),
+                durchfuehrungsweg,
+                payoutMode,
+              })
+            } else {
+              onSaveContract(item.productId)
+            }
+          }}
+        >
+          {saveLabel}
+        </button>
+        <button type="button" className="cds-add-vertrag-cancel-btn" onClick={onCancel}>
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export function AddVertragSection({
   addInstance,
+  addBavOffer,
 }: {
   addInstance: (productId: MultiInstanceProductId) => void
+  addBavOffer?: (draft: BavOfferDraft) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [draftItem, setDraftItem] = useState<AddVertragItem | null>(null)
+  const visibleItems = addBavOffer
+    ? ADD_VERTRAG_ITEMS
+    : ADD_VERTRAG_ITEMS.filter((item) => item.kind !== 'bav_offer')
 
   return (
     <div className="cds-add-vertrag-section">
-      {!open ? (
+      {draftItem ? (
+        <DraftContractForm
+          item={draftItem}
+          onCancel={() => {
+            setDraftItem(null)
+            setOpen(false)
+          }}
+          onSaveContract={(productId) => {
+            addInstance(productId)
+            setDraftItem(null)
+            setOpen(false)
+          }}
+          onSaveBavOffer={(draft) => {
+            addBavOffer?.(draft)
+            setDraftItem(null)
+            setOpen(false)
+          }}
+        />
+      ) : !open ? (
         <button
           type="button"
           className="cds-add-vertrag-btn"
@@ -742,15 +1333,14 @@ export function AddVertragSection({
         <div className="cds-add-vertrag-menu" role="menu" aria-label="Vertragstyp auswählen">
           <p className="cds-add-vertrag-menu-label">Welchen Vertragstyp möchtest du hinzufügen?</p>
           <div className="cds-add-vertrag-options">
-            {ADD_VERTRAG_ITEMS.map((item) => (
+            {visibleItems.map((item) => (
               <button
-                key={item.productId}
+                key={item.kind === 'bav_offer' ? item.kind : item.productId}
                 type="button"
                 className="cds-add-vertrag-option-btn"
                 role="menuitem"
                 onClick={() => {
-                  addInstance(item.productId)
-                  setOpen(false)
+                  setDraftItem(item)
                 }}
               >
                 {item.label}
@@ -784,6 +1374,7 @@ export function CombineDashboardSidebar({
   onRebaseWhatIf,
   onFreezeWhatIf,
   onArchiveAndRestart,
+  onPatchBaseline,
   onOpenDecisionMenu,
 }: Props) {
   // Guard against rapid double-clicks on the archive button.
@@ -821,6 +1412,13 @@ export function CombineDashboardSidebar({
         <p className="cds-baseline-label">Baseline: dein aktueller Plan</p>
         <p className="cds-baseline-name">{baseline.label}</p>
       </div>
+
+      <PersonalProfileSection
+        baseline={baseline}
+        assumptions={assumptions}
+        onPatchAssumptions={onPatchAssumptions}
+        onPatchBaseline={onPatchBaseline}
+      />
 
       {!hasContracts && (
         <p style={{ fontSize: '0.88rem', color: '#64748b' }}>
@@ -982,7 +1580,12 @@ export function CombineDashboardSidebar({
       )}
 
       {/* ── Add new contract affordance ──────────────────────────── */}
-      <AddVertragSection addInstance={addInstance} />
+      <AddVertragSection
+        addInstance={addInstance}
+        addBavOffer={(draft) =>
+          onPatchAssumptions({ bav: [...assumptions.bav, bavOfferDraftToInstance(draft)] })
+        }
+      />
 
       {/* ── What-if scenarios ─────────────────────────────────────── */}
       {whatIfs.length > 0 && (

@@ -425,7 +425,7 @@ function defaultBav(n: number): BavDraft {
     monthlyContribution: 200,
     anbieter: undefined,
     durchfuehrungsweg: 'direktversicherung_3_63',
-    effektivkostenPct: 0,
+    effektivkostenPct: 0.8,
     rentenfaktor: 30,
     payoutMode: 'leibrente',
   }
@@ -440,7 +440,7 @@ function defaultPav(n: number): PavDraft {
     currentValueEUR: 0,
     monthlyContribution: 100,
     anbieter: undefined,
-    effektivkostenPct: 0,
+    effektivkostenPct: 0.8,
     rentenfaktor: 28,
     payoutMode: 'leibrente',
   }
@@ -469,7 +469,7 @@ function defaultBasisrente(n: number): BasisrenteDraft {
     currentValueEUR: 0,
     monthlyContribution: 200,
     anbieter: undefined,
-    effektivkostenPct: 0,
+    effektivkostenPct: 0.8,
     rentenfaktor: 28,
   }
 }
@@ -814,7 +814,51 @@ export function InventoryWizard({
   // setEvidence helper — promotes a single draft field to user_confirmed
   // ---------------------------------------------------------------------------
 
-  function makeSetEvidence<T extends { evidenceMap?: Record<string, EvidenceState> }>(
+  type EvidenceBackedDraft = {
+    evidenceMap?: Record<string, EvidenceState>
+    contractStartYear?: number
+    currentValueEUR?: number
+    effektivkostenPct?: number
+    feeDetails?: unknown
+    rentenfaktor?: number
+    terPct?: number
+  }
+
+  function valueChanged(a: unknown, b: unknown): boolean {
+    if (Object.is(a, b)) return false
+    if (typeof a === 'object' || typeof b === 'object') {
+      return JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)
+    }
+    return true
+  }
+
+  function confirmedEvidenceForChangedValues<T extends EvidenceBackedDraft>(
+    current: T,
+    nextDraft: T,
+  ): Record<string, EvidenceState> {
+    const confirmed: Record<string, EvidenceState> = {}
+    if (valueChanged(current.contractStartYear, nextDraft.contractStartYear)) {
+      confirmed.contractStartYear = 'user_confirmed'
+    }
+    if (valueChanged(current.currentValueEUR, nextDraft.currentValueEUR)) {
+      confirmed.currentValueEUR = 'user_confirmed'
+    }
+    if (
+      valueChanged(current.effektivkostenPct, nextDraft.effektivkostenPct) ||
+      valueChanged(current.feeDetails, nextDraft.feeDetails)
+    ) {
+      confirmed['fees.wrapperAssetFee'] = 'user_confirmed'
+    }
+    if (valueChanged(current.rentenfaktor, nextDraft.rentenfaktor)) {
+      confirmed.rentenfaktor = 'user_confirmed'
+    }
+    if (valueChanged(current.terPct, nextDraft.terPct)) {
+      confirmed.annualAssetFee = 'user_confirmed'
+    }
+    return confirmed
+  }
+
+  function makeSetEvidence<T extends EvidenceBackedDraft>(
     setter: Dispatch<SetStateAction<T[]>>,
     index: number,
   ) {
@@ -825,6 +869,27 @@ export function InventoryWizard({
         next[index] = {
           ...current,
           evidenceMap: { ...(current.evidenceMap ?? {}), [fieldPath]: state },
+        }
+        return next
+      })
+    }
+  }
+
+  function makeDraftChange<T extends EvidenceBackedDraft>(
+    setter: Dispatch<SetStateAction<T[]>>,
+    index: number,
+  ) {
+    return (nextDraft: T) => {
+      setter((prev) => {
+        const next = [...prev]
+        const current = next[index]
+        next[index] = {
+          ...nextDraft,
+          evidenceMap: {
+            ...(nextDraft.evidenceMap ?? {}),
+            ...(current.evidenceMap ?? {}),
+            ...confirmedEvidenceForChangedValues(current, nextDraft),
+          },
         }
         return next
       })
@@ -858,11 +923,7 @@ export function InventoryWizard({
             <VintageChips atoms={bavDraftVintageAtoms(draft, effectiveAge, effectiveRetirementAge)} />
             <BavCard
               draft={draft}
-              onChange={(next) =>
-                setBavDrafts((prev) => {
-                  const a = [...prev]; a[i] = next; return a
-                })
-              }
+              onChange={makeDraftChange(setBavDrafts, i)}
               setEvidence={makeSetEvidence(setBavDrafts, i)}
             />
           </div>
@@ -890,11 +951,7 @@ export function InventoryWizard({
             <VintageChips atoms={pavDraftVintageAtoms(draft, effectiveAge, effectiveRetirementAge)} />
             <PavCard
               draft={draft}
-              onChange={(next) =>
-                setPavDrafts((prev) => {
-                  const a = [...prev]; a[i] = next; return a
-                })
-              }
+              onChange={makeDraftChange(setPavDrafts, i)}
               setEvidence={makeSetEvidence(setPavDrafts, i)}
             />
           </div>
@@ -922,11 +979,7 @@ export function InventoryWizard({
             <VintageChips atoms={riesterDraftVintageAtoms(draft, personalDetails.childBirthYears, effectiveAge, effectiveRetirementAge)} />
             <RiesterCard
               draft={draft}
-              onChange={(next) =>
-                setRiesterDrafts((prev) => {
-                  const a = [...prev]; a[i] = next; return a
-                })
-              }
+              onChange={makeDraftChange(setRiesterDrafts, i)}
               setEvidence={makeSetEvidence(setRiesterDrafts, i)}
               childBirthYears={personalDetails.childBirthYears}
             />
@@ -954,11 +1007,7 @@ export function InventoryWizard({
             />
             <BasisrenteCard
               draft={draft}
-              onChange={(next) =>
-                setBasisrenteDrafts((prev) => {
-                  const a = [...prev]; a[i] = next; return a
-                })
-              }
+              onChange={makeDraftChange(setBasisrenteDrafts, i)}
               setEvidence={makeSetEvidence(setBasisrenteDrafts, i)}
             />
           </div>
@@ -985,11 +1034,7 @@ export function InventoryWizard({
             />
             <AvdCard
               draft={draft}
-              onChange={(next) =>
-                setAvdDrafts((prev) => {
-                  const a = [...prev]; a[i] = next; return a
-                })
-              }
+              onChange={makeDraftChange(setAvdDrafts, i)}
               setEvidence={makeSetEvidence(setAvdDrafts, i)}
             />
           </div>
@@ -1016,11 +1061,7 @@ export function InventoryWizard({
             />
             <EtfCard
               draft={draft}
-              onChange={(next) =>
-                setEtfDrafts((prev) => {
-                  const a = [...prev]; a[i] = next; return a
-                })
-              }
+              onChange={makeDraftChange(setEtfDrafts, i)}
               setEvidence={makeSetEvidence(setEtfDrafts, i)}
             />
           </div>
@@ -1159,7 +1200,7 @@ export function InventoryWizard({
                             onClick={() => addInstance(row.id)}
                           >
                             <Plus size={14} aria-hidden="true" />
-                            + {row.addLabel}
+                            {row.addLabel}
                           </button>
                         )}
                       </>

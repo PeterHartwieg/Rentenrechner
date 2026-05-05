@@ -28,7 +28,7 @@ export interface InstanceCommon {
   instanceId: string
   label: string
   anbieter?: string
-  status: 'active' | 'paid_up' | 'surrendered'
+  status: 'active' | 'paid_up' | 'surrendered' | 'offered'
   contractStartYear: number
   currentValueEUR?: number
   evidenceMap: Record<string, EvidenceState>

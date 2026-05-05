@@ -170,6 +170,18 @@ function findNumberInputByLabel(label: RegExp): HTMLInputElement {
   return input
 }
 
+function findGenericNumberInputByLabel(label: RegExp): HTMLInputElement {
+  const labelNode = screen.getAllByText(label)[0]
+  let parent: HTMLElement | null = labelNode.parentElement
+  while (parent && !parent.classList.contains('field')) {
+    parent = parent.parentElement
+  }
+  if (!parent) throw new Error(`No .field ancestor for label ${label}`)
+  const input = parent.querySelector('input[type="number"]') as HTMLInputElement | null
+  if (!input) throw new Error(`No number input under generic field ${label}`)
+  return input
+}
+
 // ---------------------------------------------------------------------------
 // Parametrized handler matrix.
 // ---------------------------------------------------------------------------
@@ -443,4 +455,68 @@ describe('InstanceCard — evidence flag clears on user edit (#03)', () => {
       })
     })
   }
+})
+
+describe('InstanceCard — placeholder defaults are not confirmable estimates (#41)', () => {
+  it('does not render estimate badges for empty bAV placeholder values', () => {
+    render(
+      <BavCard
+        draft={makeBavDraft({
+          contractStartYear: new Date().getFullYear(),
+          currentValueEUR: 0,
+          effektivkostenPct: 0,
+          evidenceMap: {},
+        })}
+        onChange={() => {}}
+        setEvidence={() => {}}
+      />,
+    )
+
+    expect(findFieldByLabel(/Vertragsbeginn/).querySelector('.evidence-badge')).toBeNull()
+    expect(findFieldByLabel(/Aktueller Vertragswert/).querySelector('.evidence-badge')).toBeNull()
+    expect(findFieldByLabel(/Effektivkosten p\.a\./).querySelector('.evidence-badge')).toBeNull()
+  })
+
+  it('still renders an estimate badge for a meaningful seeded Rentenfaktor', () => {
+    render(
+      <BavCard
+        draft={makeBavDraft({
+          rentenfaktor: 30,
+          evidenceMap: {},
+        })}
+        onChange={() => {}}
+        setEvidence={() => {}}
+      />,
+    )
+
+    expect(findFieldByLabel(/Garantierter Rentenfaktor/).querySelector('.evidence-badge--estimate'))
+      .not.toBeNull()
+  })
+})
+
+describe('InstanceCard — onboarding Einzelposten fee split (#05)', () => {
+  it('keeps edited pAV Fondskosten instead of snapping TER back to zero', () => {
+    render(
+      <Harness
+        initial={makePavDraft({ effektivkostenPct: 1.0 })}
+        evidenceProbe={() => {}}
+        renderCard={(draft, onChange, setEvidence) => (
+          <PavCard draft={draft} onChange={onChange} setEvidence={setEvidence} />
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Details'))
+    const einzelpostenTab = screen.getAllByRole('button')
+      .find((button) => button.textContent?.trim() === 'Einzelposten')
+    expect(einzelpostenTab).toBeDefined()
+    fireEvent.click(einzelpostenTab!)
+
+    const fundInput = findGenericNumberInputByLabel(/Fondskosten/)
+    fireEvent.change(fundInput, { target: { value: '0.3' } })
+    fireEvent.blur(fundInput)
+
+    expect(findGenericNumberInputByLabel(/Fondskosten/).value).toBe('0.3')
+    expect(findGenericNumberInputByLabel(/Mantelgeb/).value).toBe('0.7')
+  })
 })

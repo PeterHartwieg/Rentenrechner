@@ -47,7 +47,7 @@ function setup() {
 }
 
 describe('RecommenderCard', () => {
-  it('renders the marginal-budget input and preset buttons', () => {
+  it('renders the result-only ranking controls', () => {
     const ctx = setup()
     const { container } = render(
       <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
@@ -96,6 +96,28 @@ describe('RecommenderCard', () => {
     const call = onSave.mock.calls[0][0]
     expect(call.productId).toBeDefined()
     expect(call.grossMonthlyEUR).toBeGreaterThan(0)
+  })
+
+  it('renders a visual relative-ranking meter for each candidate', () => {
+    const ctx = setup()
+    const { container } = render(
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
+    )
+
+    const candidates = container.querySelectorAll('.recommender-candidate')
+    expect(candidates.length).toBeGreaterThan(0)
+    const meters = container.querySelectorAll('[role="meter"][aria-label*="Relative"]')
+    expect(meters.length).toBe(candidates.length)
+  })
+
+  it('keeps dense rule/legal atom text collapsed by default', () => {
+    const ctx = setup()
+    const { container } = render(
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
+    )
+
+    expect(container.textContent ?? '').not.toMatch(/§\s*\d/)
+    expect(container.querySelectorAll('.recommender-candidate-atom').length).toBe(0)
   })
 
   it('does not render candidate cards when budget is 0', () => {

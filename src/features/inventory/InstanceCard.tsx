@@ -14,6 +14,7 @@
  */
 
 import { useState } from 'react'
+import type { FeeModel } from '../../domain/fees'
 import type { BavDurchfuehrungsweg } from '../../domain/products/bav'
 import type { AltersvorsorgedepotSubtype } from '../../domain/products/altersvorsorgedepot'
 import type { EvidenceState } from '../../domain/instances'
@@ -50,6 +51,18 @@ function evidenceState(
   fieldPath: string,
 ): EvidenceState {
   return draft.evidenceMap?.[fieldPath] ?? 'model_estimate'
+}
+
+function hasEvidenceState(draft: ProductDraftState, fieldPath: string): boolean {
+  return Object.prototype.hasOwnProperty.call(draft.evidenceMap ?? {}, fieldPath)
+}
+
+function shouldRenderEvidenceBadge(
+  draft: ProductDraftState,
+  fieldPath: string,
+  isEmptyPlaceholder = false,
+): boolean {
+  return hasEvidenceState(draft, fieldPath) || !isEmptyPlaceholder
 }
 
 function InvField({
@@ -190,6 +203,10 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
     onChange({ ...draft, ...patch } as T)
 
   const currentYear = new Date().getFullYear()
+  const isEmptyBavContractStart =
+    draft.productId === 'bav' && draft.contractStartYear === currentYear
+  const isEmptyBavCurrentValue =
+    draft.productId === 'bav' && (draft.currentValueEUR ?? 0) <= 0
 
   return (
     <div className="inventory-field-grid">
@@ -210,10 +227,12 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
               update({ contractStartYear: n })
             }}
           />
-          <EvidenceBadge
-            state={evidenceState(draft, 'contractStartYear')}
-            onConfirm={() => setEvidence?.('contractStartYear', 'user_confirmed')}
-          />
+          {shouldRenderEvidenceBadge(draft, 'contractStartYear', isEmptyBavContractStart) && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'contractStartYear')}
+              onConfirm={() => setEvidence?.('contractStartYear', 'user_confirmed')}
+            />
+          )}
         </InvField>
       )}
 
@@ -232,10 +251,12 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
             update({ currentValueEUR: n })
           }}
         />
-        <EvidenceBadge
-          state={evidenceState(draft, 'currentValueEUR')}
-          onConfirm={() => setEvidence?.('currentValueEUR', 'user_confirmed')}
-        />
+        {shouldRenderEvidenceBadge(draft, 'currentValueEUR', isEmptyBavCurrentValue) && (
+          <EvidenceBadge
+            state={evidenceState(draft, 'currentValueEUR')}
+            onConfirm={() => setEvidence?.('currentValueEUR', 'user_confirmed')}
+          />
+        )}
       </InvField>
 
       <InvField label={isEtf ? 'Monatliche Sparrate (EUR)' : 'Monatlicher Beitrag (EUR)'}>
@@ -318,7 +339,9 @@ const LAYER3_FEE_PRESETS = [
 
 interface Layer3Props {
   effektivkostenPct: number
+  feeDetails?: FeeModel
   onEffektivkostenChange: (v: number) => void
+  onFeeDetailsChange?: (fees: FeeModel, effektivkostenPct: number) => void
   beitragsdynamikPct: number
   onBeitragsdynamikChange: (v: number) => void
   bavSubsidy?: {
@@ -329,24 +352,26 @@ interface Layer3Props {
 
 function Layer3Details({
   effektivkostenPct,
+  feeDetails,
   onEffektivkostenChange,
+  onFeeDetailsChange,
   beitragsdynamikPct,
   onBeitragsdynamikChange,
   bavSubsidy,
 }: Layer3Props) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
 
-  // Adapter: scalar effektivkostenPct (%) → FeeModel (decimal)
-  const syntheticFees = {
-    wrapperAssetFee: effektivkostenPct / 100,
-    fundAssetFee: 0,
-    contributionFee: 0,
-    fixedMonthlyFee: 0,
-    acquisitionCostPct: 0,
-    acquisitionCostSpreadYears: 5,
-    pensionPayoutFeePct: 0,
+  // Adapter: preserve an edited Einzelposten split; otherwise derive the all-in fee from the scalar.
+  const feesForInput = feeDetails ?? allInFeeDetails(effektivkostenPct)
+  const riy = feesForInput.wrapperAssetFee + feesForInput.fundAssetFee
+  const handleFeesChange = (fees: FeeModel) => {
+    const nextEffektivkostenPct = (fees.wrapperAssetFee + fees.fundAssetFee) * 100
+    if (onFeeDetailsChange) {
+      onFeeDetailsChange(fees, nextEffektivkostenPct)
+      return
+    }
+    onEffektivkostenChange(nextEffektivkostenPct)
   }
-  const riy = effektivkostenPct / 100
 
   return (
     <details className="inv-layer3-details">
@@ -360,10 +385,8 @@ function Layer3Details({
         <div className="inv-layer3-section">
           <p className="inventory-instance-section-heading">Kosten</p>
           <FeeSection
-            fees={syntheticFees}
-            onChangeFees={(fees) =>
-              onEffektivkostenChange((fees.wrapperAssetFee + fees.fundAssetFee) * 100)
-            }
+            fees={feesForInput}
+            onChangeFees={handleFeesChange}
             presets={LAYER3_FEE_PRESETS}
             riy={riy}
             feeInputMode={feeMode}
@@ -464,6 +487,18 @@ function EtfLayer3Details({
       </div>
     </details>
   )
+}
+
+function allInFeeDetails(effektivkostenPct: number): FeeModel {
+  return {
+    wrapperAssetFee: effektivkostenPct / 100,
+    fundAssetFee: 0,
+    contributionFee: 0,
+    fixedMonthlyFee: 0,
+    acquisitionCostPct: 0,
+    acquisitionCostSpreadYears: 5,
+    pensionPayoutFeePct: 0,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -615,13 +650,15 @@ export function BavCard({
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
             }}
           />
-          <EvidenceBadge
-            state={evidenceState(draft, 'fees.wrapperAssetFee')}
-            onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
-          />
+          {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'fees.wrapperAssetFee')}
+              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+            />
+          )}
         </InvField>
 
         <InvField label="Auszahlungsform">
@@ -661,7 +698,11 @@ export function BavCard({
 
       <Layer3Details
         effektivkostenPct={draft.effektivkostenPct}
+        feeDetails={draft.feeDetails}
         onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
+        onFeeDetailsChange={(fees, effektivkostenPct) =>
+          onChange({ ...draft, effektivkostenPct, feeDetails: fees })
+        }
         beitragsdynamikPct={beitragsdynamik}
         onBeitragsdynamikChange={setBeitragsdynamik}
         bavSubsidy={{ monthlyConversion: draft.monthlyContribution }}
@@ -703,7 +744,7 @@ export function PavCard({
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
             }}
           />
           <EvidenceBadge
@@ -749,7 +790,11 @@ export function PavCard({
 
       <Layer3Details
         effektivkostenPct={draft.effektivkostenPct}
+        feeDetails={draft.feeDetails}
         onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
+        onFeeDetailsChange={(fees, effektivkostenPct) =>
+          onChange({ ...draft, effektivkostenPct, feeDetails: fees })
+        }
         beitragsdynamikPct={beitragsdynamik}
         onBeitragsdynamikChange={setBeitragsdynamik}
       />
@@ -847,7 +892,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
             }}
           />
           <EvidenceBadge
@@ -880,7 +925,11 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
 
       <Layer3Details
         effektivkostenPct={draft.effektivkostenPct}
+        feeDetails={draft.feeDetails}
         onEffektivkostenChange={(v) => onChange({ ...draft, effektivkostenPct: v })}
+        onFeeDetailsChange={(fees, effektivkostenPct) =>
+          onChange({ ...draft, effektivkostenPct, feeDetails: fees })
+        }
         beitragsdynamikPct={beitragsdynamik}
         onBeitragsdynamikChange={setBeitragsdynamik}
       />
