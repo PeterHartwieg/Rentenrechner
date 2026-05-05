@@ -524,7 +524,7 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
       </p>
 
       <div className="inventory-field">
-        <span>Wie moechtest du deine gesetzliche Rente erfassen?</span>
+        <span>Wie möchtest du deine gesetzliche Rente erfassen?</span>
         <div className="radio-group">
           <label className="radio-option">
             <input
@@ -533,7 +533,7 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
               checked={draft.useYearsEstimate}
               onChange={() => onChange({ ...draft, useYearsEstimate: true })}
             />
-            <span>Schaetzen aus Arbeitsjahren und Gehalt</span>
+            <span>Schätzen aus Arbeitsjahren und Gehalt</span>
           </label>
           <label className="radio-option">
             <input

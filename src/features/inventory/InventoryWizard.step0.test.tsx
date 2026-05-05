@@ -179,8 +179,8 @@ describe('InventoryWizard step 1 — GRV input mode', () => {
     const { container } = render(<InventoryWizard {...makeProps()} />)
     fireEvent.click(getNextButton(container)!)
 
-    expect(screen.getByText('Wie moechtest du deine gesetzliche Rente erfassen?')).toBeDefined()
-    expect(screen.getByLabelText('Schaetzen aus Arbeitsjahren und Gehalt')).toBeDefined()
+    expect(screen.getByText('Wie möchtest du deine gesetzliche Rente erfassen?')).toBeDefined()
+    expect(screen.getByLabelText('Schätzen aus Arbeitsjahren und Gehalt')).toBeDefined()
     expect(screen.getByLabelText('Entgeltpunkte aus Renteninformation eingeben')).toBeDefined()
     expect(screen.getByText(/Wie viele Jahre arbeitest du schon/i)).toBeDefined()
     expect(screen.queryByText(/^Entgeltpunkte \(aus Renteninformation\)$/i)).toBeNull()
