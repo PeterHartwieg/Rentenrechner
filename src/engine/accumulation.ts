@@ -26,7 +26,8 @@ export interface AccumulationPolicy {
    *
    *  `saverAllowanceOverride(yearIndex)` (0-based) lets combine-mode share the
    *  §20 Abs. 9 EStG Sparerpauschbetrag across multiple ETF instances per year
-   *  (Phase G M4 F3). Default: full `rules.capitalGains.saverAllowance`. */
+   *  (allocation owned by `portfolioAllowance.ts`). Default: full
+   *  `rules.capitalGains.saverAllowance`. */
   vorabpauschale?: {
     rules: GermanRules
     partialExemption: number

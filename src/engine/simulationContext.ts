@@ -56,8 +56,9 @@ export interface SimulationContext {
    */
   marketReturnPath?: readonly number[]
   /**
-   * Issue 15 — per-instance capital policy assembled by `simulatePortfolio` from
-   * the active instance's `currentValueEUR` and inbound/outbound `transferEvents`.
+   * Per-instance capital policy assembled by `simulatePortfolio` from the active
+   * instance's `currentValueEUR` and inbound/outbound `transferEvents`. Built by
+   * `buildInstanceCapitalPolicy` in `portfolioTransfer.ts`.
    *
    * Product simulators forward these fields into their `BuildProductPolicy` so
    * `projectAccumulation` honors them. Singleton compare-mode and the legacy
@@ -66,10 +67,10 @@ export interface SimulationContext {
    */
   instanceCapitalPolicy?: InstanceCapitalPolicy
   /**
-   * Issue 12 — combine-mode ETF per-instance monthly user cost. When set, the
-   * ETF simulator uses this instead of `bavFunding.monthlyNetCost` for both
-   * `monthlyUserCost` and `monthlyProductContribution`. Leaving `undefined`
-   * preserves the compare-mode fair-comparison invariant.
+   * Combine-mode ETF per-instance monthly user cost. When set, the ETF simulator
+   * uses this instead of `bavFunding.monthlyNetCost` for both `monthlyUserCost`
+   * and `monthlyProductContribution`. Leaving `undefined` preserves the
+   * compare-mode fair-comparison invariant.
    */
   etfMonthlyUserCostOverride?: number
   /**
@@ -81,7 +82,8 @@ export interface SimulationContext {
    */
   insuranceMonthlyUserCostOverride?: number
   /**
-   * Phase G M4 F3 — combine-mode shared §20 Abs. 9 EStG Sparerpauschbetrag.
+   * Combine-mode shared §20 Abs. 9 EStG Sparerpauschbetrag (allocation owned by
+   * `portfolioAllowance.ts`).
    *
    * When set, the ETF simulator forwards `(yearIndex)` lookups to both
    * (a) the accumulation Vorabpauschale tax pass and (b) the payout-phase
@@ -100,7 +102,7 @@ export interface SimulationContext {
 
 /**
  * Per-instance capital policy derived from `InstanceCommon.currentValueEUR` and
- * cross-instance `transferEvents` (issue 15).
+ * cross-instance `transferEvents` — see `portfolioTransfer.ts`.
  *
  * Year numbering matches `AccumulationPolicy` — year 1 = first projection year
  * (which corresponds to calendar year `rules.year + 0`). The adapter converts
@@ -144,13 +146,14 @@ export interface BuildContextOverrides {
   /** Pre-computed Riester funding for the active instance. */
   riesterFundingOverride?: RiesterFundingResult
   /**
-   * Issue 15 — per-instance starting capital + transfer-event injections /
-   * withdrawals. Forwarded onto `SimulationContext.instanceCapitalPolicy` for
-   * each product simulator to apply via `BuildProductPolicy`.
+   * Per-instance starting capital + transfer-event injections / withdrawals.
+   * Built by `buildInstanceCapitalPolicy` in `portfolioTransfer.ts` and forwarded
+   * onto `SimulationContext.instanceCapitalPolicy` for each product simulator to
+   * apply via `BuildProductPolicy`.
    */
   instanceCapitalPolicy?: InstanceCapitalPolicy
   /**
-   * Issue 12 — per-instance ETF monthly user cost (combine-mode only).
+   * Per-instance ETF monthly user cost (combine-mode only).
    *
    * In compare-mode the fair-comparison invariant ties ETF gross to
    * `bavFunding.monthlyNetCost` (see CLAUDE.md "Non-obvious architecture").
@@ -170,9 +173,10 @@ export interface BuildContextOverrides {
    */
   insuranceMonthlyUserCostOverride?: number
   /**
-   * Phase G M4 F3 — combine-mode shared Sparerpauschbetrag schedule for the
-   * active ETF instance. See `SimulationContext.etfSaverAllowanceOverride`.
-   * Compare-mode never sets this and falls back to the per-call full allowance.
+   * Combine-mode shared Sparerpauschbetrag schedule for the active ETF instance
+   * (allocation owned by `portfolioAllowance.ts`). See
+   * `SimulationContext.etfSaverAllowanceOverride`. Compare-mode never sets this
+   * and falls back to the per-call full allowance.
    */
   etfSaverAllowanceOverride?: (yearIndex: number) => number
 }

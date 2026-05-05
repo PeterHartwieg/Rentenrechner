@@ -1,5 +1,5 @@
 /**
- * Unit tests for contractDecisions.ts (Group G issue 14, Phase G M4 F1).
+ * Unit tests for contractDecisions.ts.
  *
  * Coverage:
  *   - weiterfuehrenWhatIf: identity delta, zero atoms.
