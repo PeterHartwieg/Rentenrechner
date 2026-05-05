@@ -43,6 +43,8 @@ import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { SIMPLIFIED_PRESETS } from '../inputs/sections/feePresets'
 import { bavOfferDraftToInstance, type BavOfferDraft } from './inventoryHelpers'
+import { InvSelect } from './fields'
+import { toNumber, DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -77,6 +79,9 @@ function atomsForInstance(atoms: Atom[], instanceId: string): Atom[] {
 // Per-instance field helpers
 // ---------------------------------------------------------------------------
 
+// CombineField is a sidebar-specific layout variant (combine-field CSS class
+// vs. inventory-field used in the wizard). It delegates label + children
+// rendering to the same pattern but keeps its own class name for styling.
 function CombineField({
   label,
   children,
@@ -92,10 +97,8 @@ function CombineField({
   )
 }
 
-function toNumber(value: string, fallback = 0): number {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : fallback
-}
+// toNumber, InvSelect, and shared option tables (DFW_OPTIONS, PAYOUT_OPTIONS_*)
+// are imported from ./fields. CombineField keeps its own CSS class for sidebar layout.
 
 function CommonContractFields<T extends InstanceCommon>({
   instance,
@@ -164,48 +167,9 @@ function CommonContractFields<T extends InstanceCommon>({
   )
 }
 
-function PayoutModeSelect({
-  value,
-  onChange,
-  allowCapitalDrawdown = true,
-}: {
-  value: 'leibrente' | 'zeitrente' | 'kapitalverzehr'
-  onChange: (value: 'leibrente' | 'zeitrente' | 'kapitalverzehr') => void
-  allowCapitalDrawdown?: boolean
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as 'leibrente' | 'zeitrente' | 'kapitalverzehr')}
-    >
-      <option value="leibrente">Leibrente</option>
-      <option value="zeitrente">Zeitrente</option>
-      {allowCapitalDrawdown && <option value="kapitalverzehr">Kapitalverzehr</option>}
-    </select>
-  )
-}
-
-function BavDurchfuehrungswegSelect({
-  value,
-  onChange,
-}: {
-  value: BavInstance['durchfuehrungsweg']
-  onChange: (value: BavInstance['durchfuehrungsweg']) => void
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as BavInstance['durchfuehrungsweg'])}
-    >
-      <option value="direktversicherung_3_63">Direktversicherung §3 Nr. 63</option>
-      <option value="pensionskasse_3_63">Pensionskasse §3 Nr. 63</option>
-      <option value="pensionsfonds_3_63">Pensionsfonds §3 Nr. 63</option>
-      <option value="direktversicherung_40b_alt">Direktversicherung §40b a.F.</option>
-      <option value="direktzusage">Direktzusage</option>
-      <option value="unterstuetzungskasse">Unterstützungskasse</option>
-    </select>
-  )
-}
+// PayoutModeSelect and BavDurchfuehrungswegSelect replaced by InvSelect +
+// shared option tables (PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL,
+// DFW_OPTIONS) imported from ./fields.
 
 function PersonalProfileSection({
   baseline,
@@ -447,15 +411,17 @@ function BavInstanceCard({
             />
           </CombineField>
           <CombineField label="Durchführungsweg">
-            <BavDurchfuehrungswegSelect
+            <InvSelect
               value={instance.durchfuehrungsweg}
-              onChange={(durchfuehrungsweg) => onChange({ ...instance, durchfuehrungsweg })}
+              options={DFW_OPTIONS}
+              onChange={(v) => onChange({ ...instance, durchfuehrungsweg: v as BavInstance['durchfuehrungsweg'] })}
             />
           </CombineField>
           <CombineField label="Auszahlungsform">
-            <PayoutModeSelect
+            <InvSelect
               value={instance.payoutMode}
-              onChange={(payoutMode) => onChange({ ...instance, payoutMode })}
+              options={PAYOUT_OPTIONS_FULL}
+              onChange={(v) => onChange({ ...instance, payoutMode: v as BavInstance['payoutMode'] })}
             />
           </CombineField>
           <CombineField label="Garantierter Rentenfaktor">
@@ -663,9 +629,10 @@ function InsuranceInstanceCard({
             />
           </CombineField>
           <CombineField label="Auszahlungsform">
-            <PayoutModeSelect
+            <InvSelect
               value={instance.payoutMode}
-              onChange={(payoutMode) => onChange({ ...instance, payoutMode })}
+              options={PAYOUT_OPTIONS_FULL}
+              onChange={(v) => onChange({ ...instance, payoutMode: v as InsuranceInstance['payoutMode'] })}
             />
           </CombineField>
           <CombineField label="Garantierter Rentenfaktor">
@@ -957,11 +924,11 @@ function RiesterInstanceCard({
             />
           </CombineField>
           <CombineField label="Auszahlungsform">
-            <PayoutModeSelect
+            <InvSelect
               value={instance.payoutMode}
-              allowCapitalDrawdown={false}
-              onChange={(payoutMode) =>
-                onChange({ ...instance, payoutMode: payoutMode as RiesterInstance['payoutMode'] })
+              options={PAYOUT_OPTIONS_NO_KAPITAL}
+              onChange={(v) =>
+                onChange({ ...instance, payoutMode: v as RiesterInstance['payoutMode'] })
               }
             />
           </CombineField>
@@ -1197,11 +1164,19 @@ function DraftContractForm({
                 onChange={(e) => setRentenfaktor(toNumber(e.target.value, rentenfaktor))}
               />
             </CombineField>
-            <CombineField label="DurchfÃ¼hrungsweg">
-              <BavDurchfuehrungswegSelect value={durchfuehrungsweg} onChange={setDurchfuehrungsweg} />
+            <CombineField label="Durchführungsweg">
+              <InvSelect
+                value={durchfuehrungsweg}
+                options={DFW_OPTIONS}
+                onChange={(v) => setDurchfuehrungsweg(v as BavInstance['durchfuehrungsweg'])}
+              />
             </CombineField>
             <CombineField label="Auszahlungsform">
-              <PayoutModeSelect value={payoutMode} onChange={setPayoutMode} />
+              <InvSelect
+                value={payoutMode}
+                options={PAYOUT_OPTIONS_FULL}
+                onChange={(v) => setPayoutMode(v as BavInstance['payoutMode'])}
+              />
             </CombineField>
           </>
         ) : productId === 'etf' ? (
