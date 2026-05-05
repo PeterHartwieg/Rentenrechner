@@ -10,6 +10,7 @@ import {
 } from './report'
 import type { ComposerDraft } from './QaComposer'
 import type { CapturedScreenshot } from './capture/screenshot'
+import { buildFeedbackBundle } from './export/bundleExport'
 
 interface PreviewProps {
   target: ResolvedTarget
@@ -40,13 +41,13 @@ interface PreviewProps {
  *
  *   1. **Markdown kopieren** — `navigator.clipboard.writeText`. Synchronous
  *      DOM operation, no network.
- *   2. **Bundle herunterladen** — saves the markdown + screenshot as two
- *      separate downloads using `URL.createObjectURL`. Issue 07 (Lane E)
- *      replaces this with a real `.zip` bundle.
+ *   2. **Bundle herunterladen** — single-file JSON envelope (issue 07 / Lane E)
+ *      assembled by `buildFeedbackBundle`. Includes the Markdown ticket, the
+ *      full `FeedbackReport`, and the screenshot as base64 when included.
  *
- * The "no network" guarantee (acceptance criterion 10) holds because both
- * paths are synchronous DOM-only — see `buildMarkdown.test.ts` for the
- * `fetch` spy.
+ * The "no network" guarantee holds for both paths — see
+ * `buildMarkdown.test.ts` and `export/bundleExport.test.ts` for the
+ * `fetch` + `XMLHttpRequest` spies.
  */
 export function QaPreview({
   target,
@@ -85,16 +86,13 @@ export function QaPreview({
     }
   }
 
-  function handleDownload() {
-    // TODO(issue 07): replace the two-file dance with a single .zip bundle.
-    // Issue 07 (Lane E) owns the bundle format; for Phase 1 we simplify.
-    triggerBlobDownload(
-      new Blob([markdown], { type: 'text/markdown;charset=utf-8' }),
-      sanitizeFileName(report.target.id) + '.md',
-    )
-    if (screenshot && draft.includeScreenshot) {
-      triggerBlobDownload(screenshot.blob, sanitizeFileName(report.target.id) + '.png')
-    }
+  async function handleDownload() {
+    // Issue 07 (Lane E): single-file JSON envelope bundle replacing the
+    // previous two-file dance (markdown + png). The bundle includes the
+    // Markdown ticket, the full FeedbackReport as JSON, and the screenshot
+    // blob (base64-encoded) when the tester opted to include it.
+    const { blob, filename } = await buildFeedbackBundle({ report, screenshot })
+    triggerBlobDownload(blob, filename)
     setDownloaded(true)
     setCopied(false)
   }

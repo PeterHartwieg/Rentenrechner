@@ -1,6 +1,6 @@
 # Downloadable feedback bundle export
 
-Status: needs-triage
+Status: done
 Type: AFK
 
 ## Parent
@@ -13,14 +13,14 @@ Add a reviewed local feedback bundle export for testers who cannot use clipboard
 
 ## Acceptance criteria
 
-- [ ] A tester can download a local feedback bundle after review.
-- [ ] The bundle includes the Markdown ticket.
-- [ ] The bundle includes a structured JSON payload for future tooling.
-- [ ] The bundle includes the screenshot artifact produced by the QA flow.
-- [ ] The bundle includes privacy flags and context opt-in choices.
-- [ ] The bundle filename is deterministic enough to sort by date and feedback type.
-- [ ] Tests cover bundle payload contents without depending on browser-specific download UI.
-- [ ] Tests or implementation checks confirm bundle export performs no network request.
+- [x] A tester can download a local feedback bundle after review.
+- [x] The bundle includes the Markdown ticket.
+- [x] The bundle includes a structured JSON payload for future tooling.
+- [x] The bundle includes the screenshot artifact produced by the QA flow.
+- [x] The bundle includes privacy flags and context opt-in choices.
+- [x] The bundle filename is deterministic enough to sort by date and feedback type.
+- [x] Tests cover bundle payload contents without depending on browser-specific download UI.
+- [x] Tests or implementation checks confirm bundle export performs no network request.
 
 ## Blocked by
 

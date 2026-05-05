@@ -65,3 +65,16 @@ export { buildMarkdownTicket, defaultPrivacyFlags, generateTitle } from './repor
  *   useEffect(() => { setQaWorkspaceContext({ activeView }); }, [activeView]);
  */
 export { setQaWorkspaceContext } from './context/workspaceContextRef'
+
+/**
+ * Lane E: single-file feedback bundle export (issue 07).
+ *
+ * `buildFeedbackBundle` assembles a JSON-envelope bundle containing the
+ * Markdown ticket, the full FeedbackReport, and the screenshot blob (when
+ * included). Pass the returned `{ blob, filename }` to `triggerBlobDownload`
+ * or any download helper.
+ *
+ * React-free — safe to call from any context.
+ */
+export { buildFeedbackBundle } from './export/bundleExport'
+export type { BundleInput, FeedbackBundle } from './export/bundleExport'
