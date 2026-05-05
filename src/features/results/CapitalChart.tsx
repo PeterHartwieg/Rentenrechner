@@ -33,7 +33,7 @@ export function CapitalChart({
   })
 
   return (
-    <section className="chart-panel" {...containerTargetProps} data-qa-section="true">
+    <section className="chart-panel" {...containerTargetProps}>
       <div className="section-heading">
         <TrendingUp size={18} aria-hidden="true" />
         <div>

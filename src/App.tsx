@@ -61,7 +61,14 @@ import { LIFECYCLE_HORIZON_AGE } from './features/results/lifecycleHorizon'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
-import { QaFeedbackProvider, QaModeIndicator, setQaWorkspaceContext } from './features/qa-feedback'
+import {
+  QaFeedbackProvider,
+  QaModeIndicator,
+  qaTargetAttrs,
+  setQaWorkspaceContext,
+  useFeedbackTarget,
+  useQaMode,
+} from './features/qa-feedback'
 import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
@@ -87,6 +94,7 @@ type ShellWorkspaceTabsProps = {
 }
 
 function ShellWorkspaceTabs({ activeView, combineMode, onSelect }: ShellWorkspaceTabsProps) {
+  const { enabled: qaEnabled } = useQaMode()
   return (
     <nav className="workspace-tabs" aria-label="Ansicht wählen">
       <div className="workspace-tabs-inner" role="tablist">
@@ -102,7 +110,7 @@ function ShellWorkspaceTabs({ activeView, combineMode, onSelect }: ShellWorkspac
               aria-selected={active}
               className={active ? 'workspace-tab active' : 'workspace-tab'}
               onClick={() => onSelect(tab.id)}
-              data-qa-target={`workspace.tabs.${tab.id}`}
+              {...qaTargetAttrs(qaEnabled, { id: `workspace.tabs.${tab.id}` })}
             >
               <Icon size={16} aria-hidden="true" />
               <span>{label}</span>
@@ -156,6 +164,20 @@ function Calculator({ navigate }: CalculatorProps) {
   } = useCalculatorState()
   const portfolioState = usePortfolioState()
   const workspace = useWorkspace()
+
+  // Section-fallback targets for the two main workspace views. The hook gates
+  // the data-qa-* attributes behind QA mode so non-QA sessions render no extra
+  // attributes (PRD US-33 / "inert when disabled").
+  const { targetProps: vergleichSectionProps } = useFeedbackTarget({
+    id: 'results.section',
+    label: 'Vergleich',
+    precision: 'section',
+  })
+  const { targetProps: detailsSectionProps } = useFeedbackTarget({
+    id: 'results.details.section',
+    label: 'Details',
+    precision: 'section',
+  })
 
   // Push the live workspace view + mode into the QA-feedback context ref so
   // `?qa=1` reports include "Aktive Ansicht" / "Mode" instead of dashes.
@@ -435,8 +457,7 @@ function Calculator({ navigate }: CalculatorProps) {
   const vergleichView = (
     <section
       className="workspace-view workspace-view--vergleich"
-      data-qa-target="results.section"
-      data-qa-section="true"
+      {...vergleichSectionProps}
     >
       {toolbar}
 
@@ -596,8 +617,7 @@ function Calculator({ navigate }: CalculatorProps) {
   const detailsView = (
     <section
       className="workspace-view workspace-view--details"
-      data-qa-target="results.details.section"
-      data-qa-section="true"
+      {...detailsSectionProps}
     >
       {toolbar}
 

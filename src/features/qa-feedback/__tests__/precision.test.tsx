@@ -94,6 +94,19 @@ describe('resolveTarget — precision logic', () => {
     expect(result.precision).toBe('section')
   })
 
+  it('returns section when only data-qa-precision="section" is set (no marker)', () => {
+    // Defensive branch: hand-rolled markup using `useFeedbackTarget({precision: 'section'})`
+    // emits `data-qa-precision="section"`. The hook now also emits the section
+    // marker, but resolveTarget should still classify the precision attribute
+    // as section even if the marker is absent. Regression: review note 2.
+    const el = document.createElement('section')
+    el.setAttribute('data-qa-target', 'legal.footer.container')
+    el.setAttribute('data-qa-precision', 'section')
+    const result = resolveTarget(el, el)
+    expect(result.precision).toBe('section')
+    expect(result.id).toBe('legal.footer.container')
+  })
+
   it('returns section even when clicked from a child (section takes precedence over nested)', () => {
     const el = document.createElement('main')
     el.setAttribute('data-qa-target', 'workspace.main.section')

@@ -26,7 +26,7 @@ export function PensionChart({ pensionBars, retirementEndAge }: Props) {
   })
 
   return (
-    <div className="chart-panel compact" {...containerTargetProps} data-qa-section="true">
+    <div className="chart-panel compact" {...containerTargetProps}>
       <div className="section-heading">
         <Coins size={18} aria-hidden="true" />
         <div>

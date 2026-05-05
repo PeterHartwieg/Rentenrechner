@@ -31,9 +31,12 @@ export function resolveTarget(el: HTMLElement, originalTarget?: EventTarget | nu
   let precision: TargetPrecision
   if (precisionAttr === 'unknown') {
     precision = 'unknown'
-  } else if (isSection) {
-    // Section fallback takes precedence over nested auto-detection because
-    // the element was deliberately marked as a section container.
+  } else if (isSection || precisionAttr === 'section') {
+    // Section fallback: either the element is deliberately marked as a
+    // section container (data-qa-section="true") or the hook emitted
+    // data-qa-precision="section" without the marker (defensive — hand-rolled
+    // markup that uses precision="section" on `useFeedbackTarget` should still
+    // resolve as section regardless of whether the marker was applied).
     precision = 'section'
   } else if (precisionAttr === 'nested') {
     precision = 'nested'

@@ -13,6 +13,7 @@ import type {
 } from '../../domain'
 import type { SavedScenario } from '../../data/scenarioLibrary'
 import { NumberField } from '../../ui/NumberField'
+import { useFeedbackTarget } from '../qa-feedback'
 import { clampNumber } from '../../ui/formatting'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { computeBavMinimumEntitlement } from '../../engine/bavWarnings'
@@ -119,12 +120,17 @@ export function InputsPanel({
   const activeTab: ProductId | null =
     effectiveTab && visible.includes(effectiveTab) ? effectiveTab : (visible[0] ?? null)
 
+  const { targetProps: inputsSectionProps } = useFeedbackTarget({
+    id: 'inputs.section',
+    label: 'Eingaben',
+    precision: 'section',
+  })
+
   return (
     <section
       className="input-panel input-panel--full"
       aria-label="Eingaben"
-      data-qa-target="inputs.section"
-      data-qa-section="true"
+      {...inputsSectionProps}
     >
       <div className="panel-heading">
         <Settings size={18} aria-hidden="true" />
@@ -352,12 +358,16 @@ function NettoBelastungControl({
   amountEUR,
   onAmountChange,
 }: NettoBelastungControlProps) {
+  const { targetProps: nettoSectionProps } = useFeedbackTarget({
+    id: 'inputs.nettoBelastung.section',
+    label: 'Netto-Belastung',
+    precision: 'section',
+  })
   return (
     <section
       className="netto-belastung-control"
       aria-label="Monatlicher Vergleichsbetrag"
-      data-qa-target="inputs.nettoBelastung.section"
-      data-qa-section="true"
+      {...nettoSectionProps}
     >
       <div className="netto-belastung-row">
         <NumberField

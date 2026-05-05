@@ -131,7 +131,6 @@ export function BreakEvenChart({
     <section
       className="chart-panel"
       {...containerTargetProps}
-      data-qa-section="true"
     >
       <div className="section-heading">
         <Hourglass size={18} aria-hidden="true" />

@@ -86,7 +86,6 @@ export function MonteCarloPanel({ result }: Props) {
       className="chart-panel monte-carlo-panel"
       aria-label="Monte-Carlo-Simulation"
       {...containerTargetProps}
-      data-qa-section="true"
     >
       <div className="section-heading">
         <Activity size={18} aria-hidden="true" />

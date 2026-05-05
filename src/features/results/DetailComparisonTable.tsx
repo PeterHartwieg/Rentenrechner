@@ -1,7 +1,8 @@
 import './DetailComparisonTable.css'
 import { Check, Link, Download, Printer } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/format';
-import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
+import { qaTargetAttrs, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
+import { useQaMode } from '../qa-feedback/useQaMode';
 
 interface DetailComparisonTableProps {
   products: {
@@ -46,9 +47,10 @@ export function DetailComparisonTable({
   const { targetProps: headerNetMonthlyPayoutProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.netMonthlyPayout' })
   const { targetProps: headerTotalFeesProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.totalFees' })
   const { targetProps: headerValueMultipleProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.valueMultiple' })
+  const { enabled: qaEnabled } = useQaMode()
 
   return (
-    <section className="table-panel" {...sectionTargetProps} data-qa-section="true">
+    <section className="table-panel" {...sectionTargetProps}>
       <div className="section-header">
         <h2>Detailvergleich</h2>
         <div className="section-actions">
@@ -89,7 +91,9 @@ export function DetailComparisonTable({
             {products.map((result) => (
               <tr
                 key={`${result.productId}-${result.scenarioId}`}
-                data-qa-target={`results.detailComparisonTable.rowGroup.${result.productId}`}
+                {...qaTargetAttrs(qaEnabled, {
+                  id: `results.detailComparisonTable.rowGroup.${result.productId}`,
+                })}
               >
                 <td>{result.label}</td>
                 <td>{result.scenarioLabel}</td>

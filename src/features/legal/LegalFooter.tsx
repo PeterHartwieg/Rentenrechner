@@ -33,7 +33,7 @@ export function LegalFooter({ navigate }: Props) {
   }
 
   return (
-    <footer className="app-footer" {...containerTargetProps} data-qa-section="true">
+    <footer className="app-footer" {...containerTargetProps}>
       <span className="app-footer-copy">
         Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.
       </span>

@@ -28,8 +28,12 @@ export { useQaMode } from './useQaMode'
 /**
  * Register a component as a feedback target. Returns `targetProps` to
  * spread onto the host element. Empty when QA mode is disabled.
+ *
+ * `qaTargetAttrs` is the synchronous sibling — call it inside `.map()` /
+ * loops where `useFeedbackTarget` would violate `react-hooks/rules-of-hooks`.
+ * Read `enabled` from `useQaMode()` once at component scope, then pass it in.
  */
-export { useFeedbackTarget } from './useFeedbackTarget'
+export { useFeedbackTarget, qaTargetAttrs } from './useFeedbackTarget'
 export type { FeedbackTargetProps, FeedbackTargetSpec } from './useFeedbackTarget'
 
 /**

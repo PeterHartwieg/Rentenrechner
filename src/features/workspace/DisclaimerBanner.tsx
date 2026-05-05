@@ -56,7 +56,7 @@ export function DisclaimerBanner() {
   if (!visible) return null
 
   return (
-    <div className="disclaimer-wrap" ref={ref} {...bodyTargetProps} data-qa-section="true">
+    <div className="disclaimer-wrap" ref={ref} {...bodyTargetProps}>
       <button
         type="button"
         className="disclaimer-btn"

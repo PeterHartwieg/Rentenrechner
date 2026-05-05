@@ -76,7 +76,7 @@ export function FeeDragChart({
   });
 
   return (
-    <section className="chart-panel fee-drag-panel" {...containerTargetProps} data-qa-section="true">
+    <section className="chart-panel fee-drag-panel" {...containerTargetProps}>
       <div className="section-heading">
         <Coins size={18} aria-hidden="true" />
         <div>
