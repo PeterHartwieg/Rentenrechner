@@ -8,10 +8,15 @@ import type {
   SimulationResult,
   StatutoryPensionResult,
 } from '../../domain'
+import type { EvidenceState } from '../../domain/instances'
 import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { getProductMeta } from '../../app/productPresentation'
+import {
+  evidenceStateToProvKind,
+  formatEvidenceStateForExport,
+} from './provenanceHelpers'
 
 interface Props {
   profile: PersonalProfile
@@ -62,6 +67,48 @@ function KvRow({ label, children }: { label: string; children: ReactNode }) {
       <td className="pr-kv-label">{label}</td>
       <td>{children}</td>
     </tr>
+  )
+}
+
+/**
+ * Render a confidence indicator next to a netto-payout cell.
+ *
+ * Routes the domain `EvidenceState` (or absence of it) through the issue 13
+ * shared mapping layer:
+ *   - `evidenceStateToProvKind` selects the visual-distinction class.
+ *   - `formatEvidenceStateForExport` supplies the German label text.
+ *
+ * Visual mapping (className → marker):
+ *   - `model` (model_estimate)        → `.pr-confidence-estimate`, prefixed 🤔 — visibly equivalent to the prior "🤔 Schätzung" treatment.
+ *   - `confirmed` (user_confirmed)    → `.pr-confidence-confirmed`, prefixed ✓ — visibly equivalent to the prior "✓" treatment.
+ *   - `confirmed` (statement)         → `.pr-confidence-confirmed`, prefixed 📄 — previously rendered nothing.
+ *   - `default` (undefined)           → `.pr-confidence-default`, no prefix    — previously rendered nothing.
+ */
+function ConfidenceIndicator({ state }: { state: EvidenceState | undefined }) {
+  const kind = evidenceStateToProvKind(state)
+  const label = formatEvidenceStateForExport(state)
+  // statement is mapped to 'confirmed' by evidenceStateToProvKind, but we want
+  // a distinct prefix so the document-source case is recognisable in print.
+  const prefix =
+    state === 'statement'
+      ? '📄'
+      : kind === 'model'
+        ? '🤔'
+        : kind === 'confirmed'
+          ? '✓'
+          : ''
+  const className =
+    kind === 'model'
+      ? 'pr-confidence-estimate'
+      : kind === 'confirmed'
+        ? 'pr-confidence-confirmed'
+        : 'pr-confidence-default'
+  return (
+    <span className={className} aria-label={label}>
+      {' '}
+      {prefix ? `${prefix} ` : ''}
+      {label}
+    </span>
   )
 }
 
@@ -258,16 +305,7 @@ export function PrintReport({
                 </td>
                 <td className="pr-num">
                   {formatCurrency(r.netMonthlyPayout, 0)}
-                  {r.inputConfidence === 'model_estimate' && (
-                    <span className="pr-confidence-estimate" aria-label="Schätzung">
-                      {' '}{'🤔'} Schätzung
-                    </span>
-                  )}
-                  {r.inputConfidence === 'user_confirmed' && (
-                    <span className="pr-confidence-confirmed" aria-label="bestätigt">
-                      {' '}✓
-                    </span>
-                  )}
+                  <ConfidenceIndicator state={r.inputConfidence} />
                   {r.leibrenteBreakEvenAge !== undefined && (
                     <span className="pr-note">
                       {' '}(BE {Math.round(r.leibrenteBreakEvenAge)})
@@ -564,16 +602,7 @@ function CombinePrintReport({
                 <td className="pr-num">{formatCurrency(r.grossMonthlyPayout, 0)}</td>
                 <td className="pr-num">
                   {formatCurrency(r.netMonthlyPayout, 0)}
-                  {r.inputConfidence === 'model_estimate' && (
-                    <span className="pr-confidence-estimate" aria-label="Schätzung">
-                      {' '}{'🤔'} Schätzung
-                    </span>
-                  )}
-                  {r.inputConfidence === 'user_confirmed' && (
-                    <span className="pr-confidence-confirmed" aria-label="bestätigt">
-                      {' '}✓
-                    </span>
-                  )}
+                  <ConfidenceIndicator state={r.inputConfidence} />
                 </td>
                 <td className="pr-num">{formatPercent(r.accumulationRiy, 2)}</td>
               </tr>

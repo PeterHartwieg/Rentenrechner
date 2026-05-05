@@ -88,6 +88,49 @@ describe('PrintReport', () => {
     )
     const indicator = container.querySelector('.pr-confidence-estimate')
     expect(indicator).not.toBeNull()
+    // Routed through formatEvidenceStateForExport — German label, not raw key.
+    expect(indicator?.textContent).toContain('Schätzwert')
+  })
+
+  it('renders .pr-confidence-confirmed with German label for user_confirmed', () => {
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+      />
+    )
+    const indicator = container.querySelector('.pr-confidence-confirmed')
+    expect(indicator).not.toBeNull()
+    expect(indicator?.textContent).toContain('Bestätigt')
+  })
+
+  it('renders .pr-confidence-confirmed with "lt. Beleg" for statement (issue 13 helper routing)', () => {
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('statement')}
+      />
+    )
+    // statement maps to confirmed via evidenceStateToProvKind, but uses a
+    // dedicated German export label sourced from formatEvidenceStateForExport.
+    const indicator = container.querySelector('.pr-confidence-confirmed')
+    expect(indicator).not.toBeNull()
+    expect(indicator?.textContent).toContain('lt. Beleg')
+  })
+
+  it('renders .pr-confidence-default with "Unbekannt" when inputConfidence is undefined', () => {
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation(undefined)}
+      />
+    )
+    const indicator = container.querySelector('.pr-confidence-default')
+    expect(indicator).not.toBeNull()
+    expect(indicator?.textContent).toContain('Unbekannt')
   })
 
   it('.pr-disclaimer-top is the FIRST child of #print-report', () => {

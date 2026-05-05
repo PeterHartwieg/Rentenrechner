@@ -15,6 +15,12 @@
   font-weight: 500;
 }
 
+.pr-confidence-default {
+  font-size: 0.7em;
+  color: #6b7280;
+  font-weight: 500;
+}
+
 /* ─── Print styles ─────────────────────────────────────────────────── */
 @page {
   size: A4 landscape;
