@@ -12,6 +12,8 @@ import type { ComposerDraft } from './QaComposer'
 import type { CapturedScreenshot } from './capture/screenshot'
 import { buildFeedbackBundle } from './export/bundleExport'
 import { buildMailtoUrl, buildGithubIssueUrl } from './export/outboundDestinations'
+import { saveReportLocally } from './export/localSave'
+import { isLocalSaveSupported } from './export/localDirectoryHandle'
 
 interface PreviewProps {
   target: ResolvedTarget
@@ -62,6 +64,8 @@ export function QaPreview({
   const [copied, setCopied] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
   const [externalOpened, setExternalOpened] = useState<'mailto' | 'github' | null>(null)
+  const [localSaveState, setLocalSaveState] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [localSaveError, setLocalSaveError] = useState<string | null>(null)
   /**
    * Scenario-state opt-in (DECISIONS / issue 03). Default OFF — the share URL
    * and scenario JSON are only attached after the tester ticks this box. We
@@ -115,6 +119,27 @@ export function QaPreview({
     setExternalOpened('github')
     setCopied(false)
     setDownloaded(false)
+  }
+
+  async function handleLocalSave() {
+    setLocalSaveState('idle')
+    setLocalSaveError(null)
+    try {
+      await saveReportLocally({ report, screenshot })
+      setLocalSaveState('saved')
+      setCopied(false)
+      setDownloaded(false)
+      setExternalOpened(null)
+    } catch (err) {
+      // AbortError means the tester cancelled the picker — not a real error.
+      if (err instanceof Error && err.name === 'AbortError') {
+        setLocalSaveState('idle')
+        return
+      }
+      const message = err instanceof Error ? err.message : String(err)
+      setLocalSaveState('error')
+      setLocalSaveError(message)
+    }
   }
 
   return (
@@ -242,15 +267,25 @@ export function QaPreview({
           <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11.5, marginTop: 8 }}>{markdown}</pre>
         </details>
 
-        {(copied || downloaded || externalOpened) && (
-          <p className="qa-preview__copy-state" role="status">
+        {(copied || downloaded || externalOpened || localSaveState !== 'idle') && (
+          <p
+            className="qa-preview__copy-state"
+            role="status"
+            data-testid="qa-preview-status"
+          >
             {copied
               ? 'Markdown in Zwischenablage kopiert.'
               : downloaded
                 ? 'Bundle heruntergeladen.'
                 : externalOpened === 'mailto'
                   ? 'E-Mail-Entwurf geöffnet.'
-                  : 'GitHub-Issue-Formular geöffnet.'}
+                  : externalOpened === 'github'
+                    ? 'GitHub-Issue-Formular geöffnet.'
+                    : localSaveState === 'saved'
+                      ? 'Issue-Datei lokal gespeichert.'
+                      : localSaveState === 'error'
+                        ? `Fehler beim Speichern: ${localSaveError ?? 'Unbekannter Fehler'}`
+                        : null}
           </p>
         )}
       </div>
@@ -283,6 +318,16 @@ export function QaPreview({
               >
                 Markdown kopieren
               </button>
+              {isLocalSaveSupported() && (
+                <button
+                  type="button"
+                  className="qa-panel__btn"
+                  onClick={handleLocalSave}
+                  data-testid="qa-preview-local-save"
+                >
+                  Lokal speichern
+                </button>
+              )}
             </div>
           </div>
           <div className="qa-preview__export-group">

@@ -2,6 +2,8 @@
 
 /**
  * QaPreview privacy/opt-in coverage (issue 03 — Phase 1 Lane B).
+ * Also covers the "Lokal speichern" button (issue 14).
+ *
  *
  * Pins:
  *   - Default render shows ALL privacy flags (scan-friendly section);
@@ -23,6 +25,7 @@ import { QaPreview } from '../QaPreview'
 import type { ResolvedTarget } from '../report'
 import type { ComposerDraft } from '../QaComposer'
 import type { CapturedScreenshot } from '../capture/screenshot'
+import { clearCachedHandle } from '../export/localDirectoryHandle'
 
 const TARGET: ResolvedTarget = {
   id: 'inputs.bav.employerSubsidy.label',
@@ -279,5 +282,97 @@ describe('QaPreview — mailto and GitHub-issue buttons (issue 08)', () => {
     fireEvent.click(screen.getByTestId('qa-preview-github'))
     const status = document.querySelector('[role="status"]')
     expect(status?.textContent).toContain('GitHub')
+  })
+})
+
+// ─── Issue 14: "Lokal speichern" button ───────────────────────────────────────
+
+describe('QaPreview — "Lokal speichern" button (issue 14)', () => {
+  afterEach(() => {
+    cleanup()
+    clearCachedHandle()
+    vi.restoreAllMocks()
+    delete (window as { showDirectoryPicker?: unknown }).showDirectoryPicker
+  })
+
+  it('button is absent when showDirectoryPicker is not available', () => {
+    delete (window as { showDirectoryPicker?: unknown }).showDirectoryPicker
+    renderPreview()
+    expect(screen.queryByTestId('qa-preview-local-save')).toBeNull()
+  })
+
+  it('button is present when showDirectoryPicker is available', () => {
+    // Install a picker stub so isLocalSaveSupported() returns true.
+    ;(window as { showDirectoryPicker?: unknown }).showDirectoryPicker = vi.fn()
+    renderPreview()
+    expect(screen.getByTestId('qa-preview-local-save')).toBeTruthy()
+  })
+
+  it('clicking the button calls showDirectoryPicker', async () => {
+    const writeSpy = vi.fn().mockResolvedValue(undefined)
+    const closeSpy = vi.fn().mockResolvedValue(undefined)
+    const writable = { write: writeSpy, close: closeSpy }
+    const fakeHandle = {
+      getFileHandle: vi.fn().mockResolvedValue({ createWritable: () => Promise.resolve(writable) }),
+    }
+    const pickerSpy = vi.fn().mockResolvedValue(fakeHandle)
+    ;(window as { showDirectoryPicker?: unknown }).showDirectoryPicker = pickerSpy
+
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-local-save'))
+
+    // Picker is called async — wait for the status message to appear.
+    const { findByTestId } = screen
+    await findByTestId('qa-preview-status')
+
+    expect(pickerSpy).toHaveBeenCalledOnce()
+  })
+
+  it('shows success status message after saving', async () => {
+    const writeSpy = vi.fn().mockResolvedValue(undefined)
+    const closeSpy = vi.fn().mockResolvedValue(undefined)
+    const writable = { write: writeSpy, close: closeSpy }
+    const fakeHandle = {
+      getFileHandle: vi.fn().mockResolvedValue({ createWritable: () => Promise.resolve(writable) }),
+    }
+    ;(window as { showDirectoryPicker?: unknown }).showDirectoryPicker = vi
+      .fn()
+      .mockResolvedValue(fakeHandle)
+
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-local-save'))
+
+    const status = await screen.findByTestId('qa-preview-status')
+    expect(status.textContent).toContain('lokal gespeichert')
+  })
+
+  it('shows error status when write fails', async () => {
+    const fakeHandle = {
+      getFileHandle: vi.fn().mockRejectedValue(new Error('Disk full')),
+    }
+    ;(window as { showDirectoryPicker?: unknown }).showDirectoryPicker = vi
+      .fn()
+      .mockResolvedValue(fakeHandle)
+
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-local-save'))
+
+    const status = await screen.findByTestId('qa-preview-status')
+    expect(status.textContent).toContain('Fehler')
+    expect(status.textContent).toContain('Disk full')
+  })
+
+  it('shows no status message when picker is cancelled (AbortError)', async () => {
+    const abort = Object.assign(new Error('Cancelled'), { name: 'AbortError' })
+    ;(window as { showDirectoryPicker?: unknown }).showDirectoryPicker = vi
+      .fn()
+      .mockRejectedValue(abort)
+
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-local-save'))
+
+    // Wait a tick for the async handler to resolve, then confirm no status message.
+    await new Promise((r) => setTimeout(r, 0))
+    expect(document.querySelector('[role="status"]')).toBeNull()
   })
 })
