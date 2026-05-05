@@ -1186,3 +1186,359 @@ describe('renderAtom snapshots — vintage atoms', () => {
     expect(snapshot).toMatchSnapshot()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Audit-flag rules (issue B3)
+// ---------------------------------------------------------------------------
+
+const HIGH_FEES = {
+  wrapperAssetFee: 0.01,
+  fundAssetFee: 0.006, // total = 0.016 > 0.012
+  contributionFee: 0,
+  fixedMonthlyFee: 0,
+  acquisitionCostPct: 0,
+  acquisitionCostSpreadYears: 5,
+  pensionPayoutFeePct: 0,
+}
+
+const LOW_FEES = {
+  wrapperAssetFee: 0.003,
+  fundAssetFee: 0.002, // total = 0.005 < 0.012
+  contributionFee: 0,
+  fixedMonthlyFee: 0,
+  acquisitionCostPct: 0,
+  acquisitionCostSpreadYears: 5,
+  pensionPayoutFeePct: 0,
+}
+
+// ---------------------------------------------------------------------------
+// high_cost_active
+// ---------------------------------------------------------------------------
+
+describe('high_cost_active rule', () => {
+  it('positive: active bAV with high fees → emits high_cost_active', () => {
+    const inst = makeBavInstance({ instanceId: 'bav-highcost', fees: HIGH_FEES })
+    const input = makeCapInput({ bav: [inst] })
+    const atoms = runRules(input)
+    const atom = atoms.find((a) => a.id === 'high_cost_active' && a.context.instanceId === 'bav-highcost')
+    expect(atom).toBeDefined()
+    expect(atom!.priority).toBe('medium')
+    expect(typeof atom!.context['riyDecimal']).toBe('number')
+    expect((atom!.context['riyDecimal'] as number)).toBeGreaterThan(0.012)
+  })
+
+  it('negative: active bAV with low fees → no high_cost_active', () => {
+    const inst = makeBavInstance({ instanceId: 'bav-cheap', fees: LOW_FEES })
+    const input = makeCapInput({ bav: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'high_cost_active')).toBe(false)
+  })
+
+  it('positive: active insurance instance with high fees → emits high_cost_active', () => {
+    const inst = makeInsuranceInstance({
+      instanceId: 'versicherung-highcost',
+      fees: HIGH_FEES,
+      status: 'active',
+      capitalGuarantee: { enabled: false, floorPctOfContributions: 0 },
+    })
+    const ws = makeWorkspace({ bav: [] })
+    ws.baseline.assumptions.insurance = [inst]
+    const input: RuleEngineInput = {
+      workspace: ws,
+      simulationResult: { products: [] },
+      combinedResult: makeCombinedResult(),
+    }
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'high_cost_active' && a.context.instanceId === 'versicherung-highcost')).toBe(true)
+  })
+
+  it('negative: paid_up bAV with high fees → no high_cost_active (only fires for active)', () => {
+    const inst = makeBavInstance({ instanceId: 'bav-paidup', fees: HIGH_FEES, status: 'paid_up' })
+    const input = makeCapInput({ bav: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'high_cost_active')).toBe(false)
+  })
+
+  it('positive: active basisrente with high fees → emits high_cost_active', () => {
+    const inst = makeBasisrenteInstance({ instanceId: 'basisrente-highcost', fees: HIGH_FEES })
+    const input = makeCapInput({ basisrente: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'high_cost_active' && a.context.instanceId === 'basisrente-highcost')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// weak_guarantee
+// ---------------------------------------------------------------------------
+
+describe('weak_guarantee rule', () => {
+  it('positive: insurance with enabled guarantee < 80% → emits weak_guarantee', () => {
+    const inst = makeInsuranceInstance({
+      instanceId: 'versicherung-weakguarantee',
+      status: 'active',
+      monthlyContribution: 200,
+      capitalGuarantee: { enabled: true, floorPctOfContributions: 0.5 },
+      fees: LOW_FEES,
+    })
+    const ws = makeWorkspace({})
+    ws.baseline.assumptions.insurance = [inst]
+    ws.baseline.profile.age = 35
+    ws.baseline.profile.retirementAge = 67
+    const input: RuleEngineInput = {
+      workspace: ws,
+      simulationResult: { products: [] },
+      combinedResult: makeCombinedResult(),
+    }
+    const atoms = runRules(input)
+    const atom = atoms.find((a) => a.id === 'weak_guarantee' && a.context.instanceId === 'versicherung-weakguarantee')
+    expect(atom).toBeDefined()
+    expect(atom!.priority).toBe('medium')
+    const runtimeYears = 67 - 35
+    const paidEUR = 200 * 12 * runtimeYears
+    const garantieEUR = 0.5 * paidEUR
+    expect(atom!.context['paidEUR']).toBeCloseTo(paidEUR, 2)
+    expect(atom!.context['garantieEUR']).toBeCloseTo(garantieEUR, 2)
+  })
+
+  it('negative: insurance with guarantee at 80% → no weak_guarantee', () => {
+    const inst = makeInsuranceInstance({
+      instanceId: 'versicherung-okguarantee',
+      status: 'active',
+      monthlyContribution: 200,
+      capitalGuarantee: { enabled: true, floorPctOfContributions: 0.80 },
+      fees: LOW_FEES,
+    })
+    const ws = makeWorkspace({})
+    ws.baseline.assumptions.insurance = [inst]
+    const input: RuleEngineInput = {
+      workspace: ws,
+      simulationResult: { products: [] },
+      combinedResult: makeCombinedResult(),
+    }
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'weak_guarantee')).toBe(false)
+  })
+
+  it('negative: insurance with guarantee disabled → no weak_guarantee', () => {
+    const inst = makeInsuranceInstance({
+      instanceId: 'versicherung-noguarantee',
+      status: 'active',
+      capitalGuarantee: { enabled: false, floorPctOfContributions: 0.5 },
+      fees: LOW_FEES,
+    })
+    const ws = makeWorkspace({})
+    ws.baseline.assumptions.insurance = [inst]
+    const input: RuleEngineInput = {
+      workspace: ws,
+      simulationResult: { products: [] },
+      combinedResult: makeCombinedResult(),
+    }
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'weak_guarantee')).toBe(false)
+  })
+
+  it('healthy workspace with no low-guarantee products → no weak_guarantee false positives', () => {
+    // Empty insurance + riester lists
+    const input = makeCapInput({})
+    const atoms = runRules(input).filter((a) => a.id === 'weak_guarantee')
+    expect(atoms).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// low_flexibility
+// ---------------------------------------------------------------------------
+
+describe('low_flexibility rule', () => {
+  it('positive: bAV leibrente → low_flexibility (bav- prefix has haircut 0.05 < 0.10, does NOT fire)', () => {
+    // bAV haircut = 5% < 10% → does NOT fire; low_flexibility requires ≥ 10%
+    const inst = makeBavInstance({ instanceId: 'bav-lf', payoutMode: 'leibrente' })
+    const input = makeCapInput({ bav: [inst] })
+    const atoms = runRules(input)
+    // bAV haircut is 5% → below threshold → should NOT emit
+    expect(atoms.some((a) => a.id === 'low_flexibility' && a.context.instanceId === 'bav-lf')).toBe(false)
+  })
+
+  it('positive: insurance leibrente → low_flexibility (versicherung- prefix has haircut 0.10 ≥ 0.10)', () => {
+    const inst = makeInsuranceInstance({
+      instanceId: 'versicherung-lf',
+      status: 'active',
+      payoutMode: 'leibrente',
+      fees: LOW_FEES,
+    })
+    const ws = makeWorkspace({})
+    ws.baseline.assumptions.insurance = [inst]
+    const input: RuleEngineInput = {
+      workspace: ws,
+      simulationResult: { products: [] },
+      combinedResult: makeCombinedResult(),
+    }
+    const atoms = runRules(input)
+    const atom = atoms.find((a) => a.id === 'low_flexibility' && a.context.instanceId === 'versicherung-lf')
+    expect(atom).toBeDefined()
+    expect(atom!.priority).toBe('low')
+  })
+
+  it('negative: insurance kapitalverzehr → no low_flexibility (not leibrente)', () => {
+    const inst = makeInsuranceInstance({
+      instanceId: 'versicherung-kv',
+      status: 'active',
+      payoutMode: 'kapitalverzehr',
+      fees: LOW_FEES,
+    })
+    const ws = makeWorkspace({})
+    ws.baseline.assumptions.insurance = [inst]
+    const input: RuleEngineInput = {
+      workspace: ws,
+      simulationResult: { products: [] },
+      combinedResult: makeCombinedResult(),
+    }
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'low_flexibility')).toBe(false)
+  })
+
+  it('positive: riester leibrente → low_flexibility (riester- prefix has haircut 0.15 ≥ 0.10)', () => {
+    const inst = makeVintageRiesterInstance({
+      instanceId: 'riester-lf',
+      payoutMode: 'leibrente',
+    })
+    const input = makeWorkspaceInput({ riester: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'low_flexibility' && a.context.instanceId === 'riester-lf')).toBe(true)
+  })
+
+  it('negative: riester zeitrente → no low_flexibility', () => {
+    const inst = makeVintageRiesterInstance({
+      instanceId: 'riester-zt',
+      payoutMode: 'zeitrente',
+    })
+    const input = makeWorkspaceInput({ riester: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'low_flexibility')).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// missing_offer_data
+// ---------------------------------------------------------------------------
+
+describe('missing_offer_data rule', () => {
+  it('positive: bAV instance with model_estimate on a key field → emits missing_offer_data', () => {
+    const inst = makeBavInstance({
+      instanceId: 'bav-missingdata',
+      evidenceMap: { 'fees.wrapperAssetFee': 'model_estimate' },
+    })
+    const input = makeCapInput({ bav: [inst] })
+    const atoms = runRules(input)
+    const atom = atoms.find((a) => a.id === 'missing_offer_data' && a.context.instanceId === 'bav-missingdata')
+    expect(atom).toBeDefined()
+    expect(atom!.priority).toBe('medium')
+    expect(Array.isArray(atom!.context['missingFields'])).toBe(true)
+    expect((atom!.context['missingFields'] as string[]).length).toBeGreaterThan(0)
+  })
+
+  it('negative: bAV instance with all fields user_confirmed → no missing_offer_data', () => {
+    // Confirm all PRODUCT_EVIDENCE_FIELDS['bav'] fields
+    const allBavFields = [
+      'monthlyGrossConversion', 'fees.wrapperAssetFee', 'fees.fundAssetFee',
+      'fees.acquisitionCostPct', 'fees.pensionPayoutFeePct', 'contractualMatchPercent',
+      'contractualFixedMonthly', 'acquisitionCostPct', 'durchfuehrungsweg',
+      'pre2005EligibleTaxFree', 'rentenfaktor', 'payoutMode',
+    ]
+    const evidenceMap: Record<string, 'user_confirmed'> = {}
+    for (const f of allBavFields) evidenceMap[f] = 'user_confirmed'
+    const inst = makeBavInstance({ instanceId: 'bav-confirmed', evidenceMap })
+    const input = makeCapInput({ bav: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'missing_offer_data' && a.context.instanceId === 'bav-confirmed')).toBe(false)
+  })
+
+  it('positive: Riester instance with model_estimate evidence → emits missing_offer_data', () => {
+    const inst = makeVintageRiesterInstance({
+      instanceId: 'riester-missingdata',
+      evidenceMap: { 'monthlyOwnContribution': 'model_estimate' },
+    })
+    const input = makeWorkspaceInput({ riester: [inst] })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'missing_offer_data' && a.context.instanceId === 'riester-missingdata')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Joint test: high_cost_active + missing_offer_data on same workspace
+// ---------------------------------------------------------------------------
+
+describe('audit-flag joint test', () => {
+  it('bAV with high fees + Riester with model_estimate evidence → both atoms with correct instanceIds', () => {
+    const bavInst = makeBavInstance({
+      instanceId: 'bav-highcost-joint',
+      fees: HIGH_FEES,
+      evidenceMap: { 'monthlyGrossConversion': 'user_confirmed' }, // no model_estimate
+    })
+
+    // Confirm all bAV evidence fields to suppress missing_offer_data for bAV
+    const allBavFields = [
+      'monthlyGrossConversion', 'fees.wrapperAssetFee', 'fees.fundAssetFee',
+      'fees.acquisitionCostPct', 'fees.pensionPayoutFeePct', 'contractualMatchPercent',
+      'contractualFixedMonthly', 'acquisitionCostPct', 'durchfuehrungsweg',
+      'pre2005EligibleTaxFree', 'rentenfaktor', 'payoutMode',
+    ]
+    const bavEvidenceMap: Record<string, 'user_confirmed'> = {}
+    for (const f of allBavFields) bavEvidenceMap[f] = 'user_confirmed'
+    bavInst.evidenceMap = bavEvidenceMap
+
+    const riesterInst = makeVintageRiesterInstance({
+      instanceId: 'riester-model-estimate-joint',
+      evidenceMap: { 'monthlyOwnContribution': 'model_estimate' },
+    })
+
+    const ws = makeWorkspace({ bav: [bavInst] })
+    ws.baseline.assumptions.riester = [riesterInst]
+    const input: RuleEngineInput = {
+      workspace: ws,
+      simulationResult: { products: [] },
+      combinedResult: makeCombinedResult(),
+    }
+    const atoms = runRules(input)
+
+    const highCostAtom = atoms.find((a) => a.id === 'high_cost_active' && a.context.instanceId === 'bav-highcost-joint')
+    expect(highCostAtom).toBeDefined()
+
+    const missingDataAtom = atoms.find((a) => a.id === 'missing_offer_data' && a.context.instanceId === 'riester-model-estimate-joint')
+    expect(missingDataAtom).toBeDefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// renderAtom snapshot — audit-flag atom ids (B3)
+// ---------------------------------------------------------------------------
+
+describe('renderAtom snapshots — audit-flag atoms (B3)', () => {
+  const auditAtoms: Atom[] = [
+    {
+      id: 'high_cost_active',
+      priority: 'medium',
+      context: { instanceId: 'bav-1', riyDecimal: 0.016 },
+    },
+    {
+      id: 'weak_guarantee',
+      priority: 'medium',
+      context: { instanceId: 'versicherung-1', garantieEUR: 8000, paidEUR: 20000 },
+    },
+    {
+      id: 'low_flexibility',
+      priority: 'low',
+      context: { instanceId: 'versicherung-2' },
+    },
+    {
+      id: 'missing_offer_data',
+      priority: 'medium',
+      context: { instanceId: 'riester-1', missingFields: ['monthlyOwnContribution', 'fees.wrapperAssetFee'] },
+    },
+  ]
+
+  it('renderAtom output matches snapshot for audit-flag atom ids', () => {
+    const snapshot = auditAtoms.map((a) => ({ id: a.id, context: a.context, rendered: renderAtom(a) }))
+    expect(snapshot).toMatchSnapshot()
+  })
+})

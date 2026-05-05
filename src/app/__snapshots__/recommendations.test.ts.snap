@@ -193,6 +193,58 @@ exports[`renderAtom snapshots > renderAtom output matches snapshot for all known
 ]
 `;
 
+exports[`renderAtom snapshots — audit-flag atoms (B3) > renderAtom output matches snapshot for audit-flag atom ids 1`] = `
+[
+  {
+    "context": {
+      "instanceId": "bav-1",
+      "riyDecimal": 0.016,
+    },
+    "id": "high_cost_active",
+    "rendered": {
+      "body": "Effektivkosten p.a.: 1.60 % — über dem Richtwert von 1,20 %. Laufende Verwaltungs- und Fondskosten zehren am Kapital. Prüfe, ob ein günstigerer Tarif oder Fondsauswahl möglich ist.",
+      "headline": "Hohe Kosten",
+    },
+  },
+  {
+    "context": {
+      "garantieEUR": 8000,
+      "instanceId": "versicherung-1",
+      "paidEUR": 20000,
+    },
+    "id": "weak_guarantee",
+    "rendered": {
+      "body": "Die vertragliche Garantieleistung liegt bei 40 % der eingezahlten Beiträge (8.000 € von 20.000 €). Unterhalb von 80 % deckt die Garantie nicht einmal den Nominalwert der Einzahlungen.",
+      "headline": "Schwache Garantie",
+    },
+  },
+  {
+    "context": {
+      "instanceId": "versicherung-2",
+    },
+    "id": "low_flexibility",
+    "rendered": {
+      "body": "Dieser Vertrag ist auf lebenslanges Leibrente-Format festgelegt und hat einen nennenswerten Stornoabzug (≥ 10 %, geschätzt). Kapital und Auszahlungsform lassen sich später nicht mehr frei anpassen. Stornoabzug ist eine pessimistische Schätzung; den genauen Wert findest du im Vertrag oder beim Versicherer.",
+      "headline": "Eingeschränkt flexibel",
+    },
+  },
+  {
+    "context": {
+      "instanceId": "riester-1",
+      "missingFields": [
+        "monthlyOwnContribution",
+        "fees.wrapperAssetFee",
+      ],
+    },
+    "id": "missing_offer_data",
+    "rendered": {
+      "body": "Einige Felder basieren noch auf Schätzwerten: monthlyOwnContribution, fees.wrapperAssetFee. Trage die tatsächlichen Werte aus deinem Vertrag ein, um genauere Ergebnisse zu erhalten.",
+      "headline": "Angebotsdaten fehlen",
+    },
+  },
+]
+`;
+
 exports[`renderAtom snapshots — cap atoms > renderAtom output matches snapshot for cap atom ids 1`] = `
 [
   {

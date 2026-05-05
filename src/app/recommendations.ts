@@ -26,6 +26,8 @@ import { activeRules } from '../rules'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from '../engine/insurancePayout'
 import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 import { childBirthYearsUnder25InYear } from '../engine/childEligibility'
+import { defaultHaircutFor } from './contractDecisions'
+import { PRODUCT_EVIDENCE_FIELDS } from './evidence'
 
 // ---------------------------------------------------------------------------
 // Allowance helpers
@@ -83,6 +85,11 @@ export type AtomId =
   | 'riester_to_avd_certified'
   // Beitrag erhöhen — statutory cap exceeded (B1)
   | 'funding_cap_hit'
+  // Audit-flag atoms (issue B3)
+  | 'high_cost_active'
+  | 'weak_guarantee'
+  | 'low_flexibility'
+  | 'missing_offer_data'
 
 export interface Atom {
   id: AtomId
@@ -701,6 +708,242 @@ const riesterVintageRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
 }
 
 // ---------------------------------------------------------------------------
+// Audit-flag rules (issue B3)
+// ---------------------------------------------------------------------------
+
+/**
+ * `high_cost_active` — active-state twin of `paid_up_high_fee_warning`.
+ *
+ * Fires per active instance in {bav, insurance, basisrente} when the combined
+ * fee rate exceeds HIGH_FEE_THRESHOLD (0.012 = 1.2 % p.a.).
+ *
+ * wrapperAssetFee + fundAssetFee + pensionPayoutFeePct is the same sum used by
+ * the existing paid_up_high_fee_warning in contractDecisions.ts (line ~330).
+ * Reusing HIGH_FEE_THRESHOLD keeps the two surfaces consistent.
+ */
+const highCostActiveRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
+  if (!workspace) return []
+  const wsa = workspace.baseline.assumptions
+  const atoms: Atom[] = []
+
+  for (const inst of wsa.bav) {
+    if (inst.status !== 'active') continue
+    if (!inst.fees) continue
+    const riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee + inst.fees.pensionPayoutFeePct
+    if (riy > HIGH_FEE_THRESHOLD) {
+      atoms.push({
+        id: 'high_cost_active',
+        priority: 'medium',
+        context: { instanceId: inst.instanceId, riyDecimal: riy },
+      })
+    }
+  }
+
+  for (const inst of wsa.insurance) {
+    if (inst.status !== 'active') continue
+    if (!inst.fees) continue
+    const riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee + inst.fees.pensionPayoutFeePct
+    if (riy > HIGH_FEE_THRESHOLD) {
+      atoms.push({
+        id: 'high_cost_active',
+        priority: 'medium',
+        context: { instanceId: inst.instanceId, riyDecimal: riy },
+      })
+    }
+  }
+
+  for (const inst of wsa.basisrente) {
+    if (inst.status !== 'active') continue
+    if (!inst.fees) continue
+    const riy = inst.fees.wrapperAssetFee + inst.fees.fundAssetFee + inst.fees.pensionPayoutFeePct
+    if (riy > HIGH_FEE_THRESHOLD) {
+      atoms.push({
+        id: 'high_cost_active',
+        priority: 'medium',
+        context: { instanceId: inst.instanceId, riyDecimal: riy },
+      })
+    }
+  }
+
+  return atoms
+}
+
+/**
+ * `weak_guarantee` — flags instances where the contractual Garantieleistung at
+ * retirement is below 80 % of cumulative paid contributions.
+ *
+ * Applicable slots: insurance (InsuranceInstance.capitalGuarantee) and
+ * riester (RiesterInstance.capitalGuarantee). Both carry `capitalGuarantee`
+ * with `enabled` + `floorPctOfContributions`.
+ *
+ * bAV and basisrente have no `capitalGuarantee` field in their domain types
+ * (no statutory minimum-payout rule or explicit guarantee field is stored).
+ * Per the spec "if neither is set, do not emit" — these slots produce no atom.
+ *
+ * Derivation: floorPctOfContributions IS the fraction of cumulative paid-in
+ * that the provider guarantees. The condition `floorPctOfContributions < 0.8`
+ * is equivalent to "Garantieleistung < 0.8 × cumulativePaid".
+ *
+ * Context carries garantieEUR and paidEUR (rounded to nearest EUR) for display.
+ */
+const weakGuaranteeRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
+  if (!workspace) return []
+  const { baseline } = workspace
+  const profile = baseline.profile
+  const runtimeYears = Math.max(0, profile.retirementAge - profile.age)
+  const wsa = baseline.assumptions
+  const atoms: Atom[] = []
+
+  // Insurance (pAV): capitalGuarantee.floorPctOfContributions vs 0.8 threshold.
+  for (const inst of wsa.insurance) {
+    if (inst.status === 'surrendered' || inst.status === 'offered') continue
+    if (!inst.capitalGuarantee?.enabled) continue
+    const floor = inst.capitalGuarantee.floorPctOfContributions
+    if (floor >= 0.8) continue
+    // Compute cumulative paid using per-instance monthlyContribution (combine-mode field).
+    const monthly = inst.monthlyContribution ?? 0
+    const paidEUR = monthly * 12 * runtimeYears
+    const garantieEUR = floor * paidEUR
+    atoms.push({
+      id: 'weak_guarantee',
+      priority: 'medium',
+      context: { instanceId: inst.instanceId, garantieEUR, paidEUR },
+    })
+  }
+
+  // Riester: same capitalGuarantee shape.
+  for (const inst of wsa.riester) {
+    if (inst.status === 'surrendered' || inst.status === 'offered') continue
+    if (!inst.capitalGuarantee?.enabled) continue
+    const floor = inst.capitalGuarantee.floorPctOfContributions
+    if (floor >= 0.8) continue
+    const monthly = inst.monthlyOwnContribution ?? 0
+    const paidEUR = monthly * 12 * runtimeYears
+    const garantieEUR = floor * paidEUR
+    atoms.push({
+      id: 'weak_guarantee',
+      priority: 'medium',
+      context: { instanceId: inst.instanceId, garantieEUR, paidEUR },
+    })
+  }
+
+  return atoms
+}
+
+/**
+ * `low_flexibility` — flags instances locked into lifelong Leibrente with a
+ * meaningful surrender haircut.
+ *
+ * Condition: defaultHaircutFor(instanceId) ≥ 0.10 AND payoutMode === 'leibrente'
+ * AND slot ∈ {bav, insurance, riester}.
+ *
+ * Basisrente is intentionally excluded: its legal lockup framing (§10 Abs. 2
+ * EStG — capital payout prohibited) is a distinct concern surfaced through the
+ * no-kündigen rule, not this flag.
+ *
+ * Reuses defaultHaircutFor from contractDecisions.ts to keep "high haircut"
+ * consistent with the surrender-card generator.
+ */
+const lowFlexibilityRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
+  if (!workspace) return []
+  const wsa = workspace.baseline.assumptions
+  const atoms: Atom[] = []
+  const LOW_FLEXIBILITY_HAIRCUT_THRESHOLD = 0.10
+
+  for (const inst of wsa.bav) {
+    if (inst.status === 'surrendered' || inst.status === 'offered') continue
+    if (inst.payoutMode !== 'leibrente') continue
+    if (defaultHaircutFor(inst.instanceId) >= LOW_FLEXIBILITY_HAIRCUT_THRESHOLD) {
+      atoms.push({
+        id: 'low_flexibility',
+        priority: 'low',
+        context: { instanceId: inst.instanceId },
+      })
+    }
+  }
+
+  for (const inst of wsa.insurance) {
+    if (inst.status === 'surrendered' || inst.status === 'offered') continue
+    if (inst.payoutMode !== 'leibrente') continue
+    if (defaultHaircutFor(inst.instanceId) >= LOW_FLEXIBILITY_HAIRCUT_THRESHOLD) {
+      atoms.push({
+        id: 'low_flexibility',
+        priority: 'low',
+        context: { instanceId: inst.instanceId },
+      })
+    }
+  }
+
+  for (const inst of wsa.riester) {
+    if (inst.status === 'surrendered' || inst.status === 'offered') continue
+    if (inst.payoutMode !== 'leibrente') continue
+    if (defaultHaircutFor(inst.instanceId) >= LOW_FLEXIBILITY_HAIRCUT_THRESHOLD) {
+      atoms.push({
+        id: 'low_flexibility',
+        priority: 'low',
+        context: { instanceId: inst.instanceId },
+      })
+    }
+  }
+
+  return atoms
+}
+
+/**
+ * `missing_offer_data` — flags instances where any field listed in
+ * PRODUCT_EVIDENCE_FIELDS[productId] carries `evidence === 'model_estimate'`.
+ *
+ * Iterates all instance arrays and checks each instance's evidenceMap.
+ * Emits one atom per instance with at least one model_estimate field.
+ * Context carries missingFields: string[] listing which fields are estimates.
+ *
+ * Uses PRODUCT_EVIDENCE_FIELDS from evidence.ts as the authoritative field list
+ * (same list that evidenceMap is populated from by the inventory wizard).
+ */
+const missingOfferDataRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
+  if (!workspace) return []
+  const wsa = workspace.baseline.assumptions
+  const atoms: Atom[] = []
+
+  type AnyInstance = {
+    instanceId: string
+    status: string
+    evidenceMap: Record<string, string>
+  }
+
+  const instanceGroups: Array<{ productId: keyof typeof PRODUCT_EVIDENCE_FIELDS; instances: AnyInstance[] }> = [
+    { productId: 'bav', instances: wsa.bav as AnyInstance[] },
+    { productId: 'etf', instances: wsa.etf as AnyInstance[] },
+    { productId: 'versicherung', instances: wsa.insurance as AnyInstance[] },
+    { productId: 'basisrente', instances: wsa.basisrente as AnyInstance[] },
+    { productId: 'altersvorsorgedepot', instances: wsa.altersvorsorgedepot as AnyInstance[] },
+    { productId: 'riester', instances: wsa.riester as AnyInstance[] },
+  ]
+
+  for (const { productId, instances } of instanceGroups) {
+    const fields = PRODUCT_EVIDENCE_FIELDS[productId]
+    if (!fields || fields.length === 0) continue
+
+    for (const inst of instances) {
+      if (inst.status === 'surrendered' || inst.status === 'offered') continue
+      const evidenceMap = inst.evidenceMap ?? {}
+      const missingFields = fields.filter(
+        (f) => evidenceMap[f] === 'model_estimate' || evidenceMap[f] === undefined,
+      )
+      if (missingFields.length > 0) {
+        atoms.push({
+          id: 'missing_offer_data',
+          priority: 'medium',
+          context: { instanceId: inst.instanceId, missingFields },
+        })
+      }
+    }
+  }
+
+  return atoms
+}
+
+// ---------------------------------------------------------------------------
 // Rule registry
 // ---------------------------------------------------------------------------
 
@@ -720,6 +963,11 @@ const RULES: Rule[] = [
   pavVintageRule,
   bavVintageRule,
   riesterVintageRule,
+  // Audit-flag rules (issue B3) — insert near paid_up_high_fee_warning flavour
+  highCostActiveRule,
+  weakGuaranteeRule,
+  lowFlexibilityRule,
+  missingOfferDataRule,
 ]
 
 // ---------------------------------------------------------------------------

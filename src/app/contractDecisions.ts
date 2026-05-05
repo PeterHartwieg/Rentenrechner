@@ -129,7 +129,7 @@ export type WorkspaceDelta =
  * ETF 0 %:       ETF index funds have no surrender penalty (liquid market).
  * Basisrente:    capital payout legally prohibited — never generate a kuendigen option.
  */
-const DEFAULT_HAIRCUT_BY_PREFIX: Record<string, number> = {
+export const DEFAULT_HAIRCUT_BY_PREFIX: Record<string, number> = {
   'versicherung-': 0.10, // pAV
   'bav-': 0.05,           // bAV
   'riester-': 0.15,       // Riester

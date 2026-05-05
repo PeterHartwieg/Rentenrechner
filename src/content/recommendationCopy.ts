@@ -365,6 +365,54 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
         'Die Modellrechnung zeigt die Auswirkung — du entscheidest, ob der höhere Beitrag trotzdem sinnvoll ist.',
     }
   },
+
+  // ---------------------------------------------------------------------------
+  // Audit-flag atoms (issue B3)
+  // ---------------------------------------------------------------------------
+
+  high_cost_active: (atom) => {
+    const riy = ctxNumber(atom.context, 'riyDecimal')
+    return {
+      headline: 'Hohe Kosten',
+      body:
+        `Effektivkosten p.a.: ${(riy * 100).toFixed(2)} % — über dem Richtwert von 1,20 %. ` +
+        'Laufende Verwaltungs- und Fondskosten zehren am Kapital. ' +
+        'Prüfe, ob ein günstigerer Tarif oder Fondsauswahl möglich ist.',
+    }
+  },
+
+  weak_guarantee: (atom) => {
+    const garantieEUR = ctxNumber(atom.context, 'garantieEUR')
+    const paidEUR = ctxNumber(atom.context, 'paidEUR')
+    const fraction = paidEUR > 0 ? (garantieEUR / paidEUR) * 100 : 0
+    return {
+      headline: 'Schwache Garantie',
+      body:
+        `Die vertragliche Garantieleistung liegt bei ${fraction.toFixed(0)} % der eingezahlten Beiträge ` +
+        `(${Math.round(garantieEUR).toLocaleString('de-DE')} € von ${Math.round(paidEUR).toLocaleString('de-DE')} €). ` +
+        'Unterhalb von 80 % deckt die Garantie nicht einmal den Nominalwert der Einzahlungen.',
+    }
+  },
+
+  low_flexibility: () => ({
+    headline: 'Eingeschränkt flexibel',
+    body:
+      'Dieser Vertrag ist auf lebenslanges Leibrente-Format festgelegt und hat einen nennenswerten ' +
+      'Stornoabzug (≥ 10 %, geschätzt). ' +
+      'Kapital und Auszahlungsform lassen sich später nicht mehr frei anpassen. ' +
+      'Stornoabzug ist eine pessimistische Schätzung; den genauen Wert findest du im Vertrag oder beim Versicherer.',
+  }),
+
+  missing_offer_data: (atom) => {
+    const missingFields = atom.context['missingFields']
+    const fieldList = Array.isArray(missingFields) ? missingFields.join(', ') : ''
+    return {
+      headline: 'Angebotsdaten fehlen',
+      body:
+        `Einige Felder basieren noch auf Schätzwerten: ${fieldList}. ` +
+        'Trage die tatsächlichen Werte aus deinem Vertrag ein, um genauere Ergebnisse zu erhalten.',
+    }
+  },
 }
 
 const FALLBACK_TEMPLATE: AtomTemplate = { headline: '', body: '', cta: undefined }
