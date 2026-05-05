@@ -538,7 +538,6 @@ function Calculator({ navigate }: CalculatorProps) {
               onClose={() => setShowOptimiereModal(false)}
               onCreatePlans={(whatIfs) => {
                 whatIfs.forEach((wi) => portfolioState.addWhatIf(wi))
-                setShowOptimiereModal(false)
               }}
             />
           )}
