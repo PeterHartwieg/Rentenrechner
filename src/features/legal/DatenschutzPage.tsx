@@ -11,15 +11,37 @@ import { WORKSPACE_KEY } from '../../app/useWorkspace'
 const LEGACY_SETUP_FLAG_KEY = 'rentenrechner-guided-setup-v1'
 import { DISMISS_KEY } from '../workspace/DisclaimerBanner'
 import { LegalLayout } from './LegalLayout'
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 
 interface Props {
   navigate: (target: Route) => void
 }
 
 export function DatenschutzPage({ navigate }: Props) {
+  const { targetProps: headerProps } = useFeedbackTarget({
+    id: 'legal.datenschutz.header',
+    label: 'Datenschutzerklärung Kopfzeile',
+    precision: 'section',
+  })
+  const { targetProps: contactProps } = useFeedbackTarget({
+    id: 'legal.datenschutz.contact',
+    label: 'Datenschutzerklärung Verantwortlicher',
+    precision: 'section',
+  })
+  const { targetProps: bodyProps } = useFeedbackTarget({
+    id: 'legal.datenschutz.body',
+    label: 'Datenschutzerklärung Grundsatz',
+    precision: 'section',
+  })
+  const { targetProps: storagePolicyProps } = useFeedbackTarget({
+    id: 'legal.datenschutz.storagePolicy',
+    label: 'Datenschutzerklärung lokale Speicherung',
+    precision: 'section',
+  })
+
   return (
     <LegalLayout title="Datenschutzerklärung" navigate={navigate}>
-      <p className="legal-intro">
+      <p className="legal-intro" {...headerProps}>
         Stand: Mai 2026. Diese Erklärung beschreibt den aktuellen technischen
         Zustand der Anwendung und wird aktualisiert, sobald sich die
         Verarbeitung personenbezogener Daten ändert (z.&nbsp;B. durch die
@@ -27,7 +49,7 @@ export function DatenschutzPage({ navigate }: Props) {
         Reichweitenmessung).
       </p>
 
-      <section>
+      <section {...contactProps}>
         <h2>1. Verantwortlicher</h2>
         <address>
           Peter Hartwieg<br />
@@ -39,7 +61,7 @@ export function DatenschutzPage({ navigate }: Props) {
         </address>
       </section>
 
-      <section>
+      <section {...bodyProps}>
         <h2>2. Grundsatz: keine Erhebung personenbezogener Daten</h2>
         <p>
           Diese Anwendung ist ein <strong>rein clientseitig laufender
@@ -82,7 +104,7 @@ export function DatenschutzPage({ navigate }: Props) {
         </p>
       </section>
 
-      <section>
+      <section {...storagePolicyProps}>
         <h2>4. Lokale Speicherung im Browser</h2>
         <p>
           Die Anwendung speichert Eingaben (Profil, Annahmen, gespeicherte

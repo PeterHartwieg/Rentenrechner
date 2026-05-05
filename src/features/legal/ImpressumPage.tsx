@@ -1,18 +1,40 @@
 import type { Route } from '../../app/useRoute'
 import { LegalLayout } from './LegalLayout'
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 
 interface Props {
   navigate: (target: Route) => void
 }
 
 export function ImpressumPage({ navigate }: Props) {
+  const { targetProps: headerProps } = useFeedbackTarget({
+    id: 'legal.impressum.header',
+    label: 'Impressum Kopfzeile',
+    precision: 'section',
+  })
+  const { targetProps: contactProps } = useFeedbackTarget({
+    id: 'legal.impressum.contact',
+    label: 'Impressum Kontakt',
+    precision: 'section',
+  })
+  const { targetProps: bodyProps } = useFeedbackTarget({
+    id: 'legal.impressum.body',
+    label: 'Impressum Inhalt',
+    precision: 'section',
+  })
+  const { targetProps: signatureProps } = useFeedbackTarget({
+    id: 'legal.impressum.signature',
+    label: 'Impressum Verantwortlicher',
+    precision: 'section',
+  })
+
   return (
     <LegalLayout title="Impressum" navigate={navigate}>
-      <p className="legal-intro">
+      <p className="legal-intro" {...headerProps}>
         Angaben gemäß § 5 TMG (Telemediengesetz).
       </p>
 
-      <section>
+      <section {...bodyProps}>
         <h2>Anbieter</h2>
         <address>
           Peter Hartwieg<br />
@@ -22,7 +44,7 @@ export function ImpressumPage({ navigate }: Props) {
         </address>
       </section>
 
-      <section>
+      <section {...contactProps}>
         <h2>Kontakt</h2>
         <p>
           E-Mail:{' '}
@@ -30,7 +52,7 @@ export function ImpressumPage({ navigate }: Props) {
         </p>
       </section>
 
-      <section>
+      <section {...signatureProps}>
         <h2>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
         <p>
           Peter Hartwieg, Anschrift wie oben.

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Info } from 'lucide-react'
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 
 export const DISMISS_KEY = 'disclaimer-dismissed'
 
@@ -21,6 +22,15 @@ export function DisclaimerBanner() {
   })
   const [showPopup, setShowPopup] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { targetProps: bodyTargetProps } = useFeedbackTarget({
+    id: 'workspace.disclaimer.body',
+    label: 'Disclaimer Banner',
+    precision: 'section',
+  })
+  const { targetProps: dismissTargetProps } = useFeedbackTarget({
+    id: 'workspace.disclaimer.dismiss',
+    label: 'Disclaimer ausblenden',
+  })
 
   useEffect(() => {
     if (!showPopup) return
@@ -46,7 +56,7 @@ export function DisclaimerBanner() {
   if (!visible) return null
 
   return (
-    <div className="disclaimer-wrap" ref={ref}>
+    <div className="disclaimer-wrap" ref={ref} {...bodyTargetProps} data-qa-section="true">
       <button
         type="button"
         className="disclaimer-btn"
@@ -72,6 +82,7 @@ export function DisclaimerBanner() {
         aria-label="Hinweis für diese Sitzung ausblenden"
         title="Nur für diese Sitzung ausblenden"
         onClick={dismiss}
+        {...dismissTargetProps}
       >
         ✕
       </button>

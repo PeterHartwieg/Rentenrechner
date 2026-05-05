@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { Coins } from 'lucide-react'
 import { formatCurrency, formatNumber } from '../../utils/format'
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 
 type Props = {
   pensionBars: { name: string; value: number; fill: string }[]
@@ -18,8 +19,14 @@ type Props = {
 }
 
 export function PensionChart({ pensionBars, retirementEndAge }: Props) {
+  const { targetProps: containerTargetProps } = useFeedbackTarget({
+    id: 'results.pensionChart.container',
+    label: 'Monatliche Netto-Rente',
+    precision: 'section',
+  })
+
   return (
-    <div className="chart-panel compact">
+    <div className="chart-panel compact" {...containerTargetProps} data-qa-section="true">
       <div className="section-heading">
         <Coins size={18} aria-hidden="true" />
         <div>

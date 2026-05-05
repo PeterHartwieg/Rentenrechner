@@ -24,6 +24,7 @@ import {
 } from './breakEvenSeries'
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon'
 import { lifecyclePickerLabel } from './lifecycleLabels'
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 
 interface Props {
   selectedResults: LifecycleSeriesResult[]
@@ -83,6 +84,17 @@ export function BreakEvenChart({
     [selectedResults, startAge, retirementAge, horizonAge],
   )
 
+  const { targetProps: containerTargetProps } = useFeedbackTarget({
+    id: 'results.breakEvenChart.container',
+    label: 'Break-Even-Chart',
+    precision: 'section',
+  })
+  const { targetProps: legendTargetProps } = useFeedbackTarget({
+    id: 'results.breakEvenChart.legend',
+    label: 'Break-Even-Chart Legende',
+    precision: 'section',
+  })
+
   if (selectedResults.length === 0) return null
 
   const renderedProducts = selectedResults.filter((r) => effectivePicked.has(r.productId))
@@ -116,7 +128,11 @@ export function BreakEvenChart({
   }
 
   return (
-    <section className="chart-panel">
+    <section
+      className="chart-panel"
+      {...containerTargetProps}
+      data-qa-section="true"
+    >
       <div className="section-heading">
         <Hourglass size={18} aria-hidden="true" />
         <div>
@@ -292,7 +308,7 @@ export function BreakEvenChart({
             })}
           </LineChart>
         </ResponsiveContainer>
-        <div className="lifecycle-legend lifecycle-legend--overlay" aria-hidden="true">
+        <div className="lifecycle-legend lifecycle-legend--overlay" aria-hidden="true" {...legendTargetProps}>
           <span className="lifecycle-legend__item">
             <span className="lifecycle-legend__line lifecycle-legend__line--dotted" />
             Netto eingezahlt

@@ -13,6 +13,7 @@ import { Coins } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/format';
 import { getProductMeta } from '../../engine/productRegistry';
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon';
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
 
 interface FeeDragChartProps {
   selectedResults: {
@@ -63,8 +64,19 @@ export function FeeDragChart({
     selectedResults.map((r) => [getProductMeta(r.productId as Parameters<typeof getProductMeta>[0])?.shortLabel ?? r.label, productColors[r.productId]])
   );
 
+  const { targetProps: containerTargetProps } = useFeedbackTarget({
+    id: 'results.feeDragChart.container',
+    label: 'Gebühren-Vergleich-Chart',
+    precision: 'section',
+  });
+  const { targetProps: legendTargetProps } = useFeedbackTarget({
+    id: 'results.feeDragChart.legend',
+    label: 'Gebühren-Vergleich-Chart Legende',
+    precision: 'section',
+  });
+
   return (
-    <section className="chart-panel fee-drag-panel">
+    <section className="chart-panel fee-drag-panel" {...containerTargetProps} data-qa-section="true">
       <div className="section-heading">
         <Coins size={18} aria-hidden="true" />
         <div>
@@ -113,7 +125,7 @@ export function FeeDragChart({
             <Bar dataKey="Gebühren gesamt" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
-        <div className="fee-drag-legend fee-drag-legend--overlay">
+        <div className="fee-drag-legend fee-drag-legend--overlay" {...legendTargetProps}>
           {LEGEND_ITEMS.map(({ color, label }) => (
             <span key={label} className="fee-drag-legend__item">
               <span className="fee-drag-legend__swatch" style={{ background: color }} />

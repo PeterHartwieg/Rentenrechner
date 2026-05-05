@@ -15,6 +15,7 @@ import type { ProductId } from '../../domain'
 import type { MonteCarloResult, ProductMonteCarloSummary } from '../../engine/monteCarlo'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 
 interface Props {
   result: MonteCarloResult | null
@@ -61,6 +62,12 @@ export function MonteCarloPanel({ result }: Props) {
       }))
   }, [result, selectedSummary])
 
+  const { targetProps: containerTargetProps } = useFeedbackTarget({
+    id: 'results.monteCarloPanel.container',
+    label: 'Monte-Carlo-Simulation',
+    precision: 'section',
+  })
+
   if (!result || result.summaries.length === 0) return null
 
   const bestCapital = bestByProbability(result.summaries, 'bestCapitalProbability')
@@ -75,7 +82,12 @@ export function MonteCarloPanel({ result }: Props) {
   )
 
   return (
-    <section className="chart-panel monte-carlo-panel" aria-label="Monte-Carlo-Simulation">
+    <section
+      className="chart-panel monte-carlo-panel"
+      aria-label="Monte-Carlo-Simulation"
+      {...containerTargetProps}
+      data-qa-section="true"
+    >
       <div className="section-heading">
         <Activity size={18} aria-hidden="true" />
         <div>

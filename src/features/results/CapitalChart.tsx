@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 
 type Props = {
   capitalChartData: Record<string, string | number>[] | undefined
@@ -25,8 +26,14 @@ export function CapitalChart({
   selectedResults,
   productColors,
 }: Props) {
+  const { targetProps: containerTargetProps } = useFeedbackTarget({
+    id: 'results.capitalChart.container',
+    label: 'Vermögen bis Rentenbeginn',
+    precision: 'section',
+  })
+
   return (
-    <section className="chart-panel">
+    <section className="chart-panel" {...containerTargetProps} data-qa-section="true">
       <div className="section-heading">
         <TrendingUp size={18} aria-hidden="true" />
         <div>

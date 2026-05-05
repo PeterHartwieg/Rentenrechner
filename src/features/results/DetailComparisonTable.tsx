@@ -1,6 +1,7 @@
 import './DetailComparisonTable.css'
 import { Check, Link, Download, Printer } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/format';
+import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
 
 interface DetailComparisonTableProps {
   products: {
@@ -31,8 +32,23 @@ export function DetailComparisonTable({
   onExportCsv,
   onPrint,
 }: DetailComparisonTableProps) {
+  const { targetProps: sectionTargetProps } = useFeedbackTarget({
+    id: 'results.detailComparisonTable.section',
+    label: 'Detailvergleich Tabelle',
+    precision: 'section',
+  })
+  const { targetProps: headerProductProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.product' })
+  const { targetProps: headerScenarioProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.scenario' })
+  const { targetProps: headerMonthlyUserCostProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.monthlyUserCost' })
+  const { targetProps: headerMonthlyContributionProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.monthlyContribution' })
+  const { targetProps: headerCapitalAtRetirementProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.capitalAtRetirement' })
+  const { targetProps: headerAfterTaxLumpSumProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.afterTaxLumpSum' })
+  const { targetProps: headerNetMonthlyPayoutProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.netMonthlyPayout' })
+  const { targetProps: headerTotalFeesProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.totalFees' })
+  const { targetProps: headerValueMultipleProps } = useFeedbackTarget({ id: 'results.detailComparisonTable.header.valueMultiple' })
+
   return (
-    <section className="table-panel">
+    <section className="table-panel" {...sectionTargetProps} data-qa-section="true">
       <div className="section-header">
         <h2>Detailvergleich</h2>
         <div className="section-actions">
@@ -58,20 +74,23 @@ export function DetailComparisonTable({
         <table>
           <thead>
             <tr>
-              <th>Produkt</th>
-              <th>Szenario</th>
-              <th>Nettoaufwand mtl.</th>
-              <th>Beitrag mtl.</th>
-              <th>Kapital</th>
-              <th>Kapital nach Steuer</th>
-              <th>Netto-Rente</th>
-              <th>Kosten</th>
-              <th>Faktor</th>
+              <th {...headerProductProps}>Produkt</th>
+              <th {...headerScenarioProps}>Szenario</th>
+              <th {...headerMonthlyUserCostProps}>Nettoaufwand mtl.</th>
+              <th {...headerMonthlyContributionProps}>Beitrag mtl.</th>
+              <th {...headerCapitalAtRetirementProps}>Kapital</th>
+              <th {...headerAfterTaxLumpSumProps}>Kapital nach Steuer</th>
+              <th {...headerNetMonthlyPayoutProps}>Netto-Rente</th>
+              <th {...headerTotalFeesProps}>Kosten</th>
+              <th {...headerValueMultipleProps}>Faktor</th>
             </tr>
           </thead>
           <tbody>
             {products.map((result) => (
-              <tr key={`${result.productId}-${result.scenarioId}`}>
+              <tr
+                key={`${result.productId}-${result.scenarioId}`}
+                data-qa-target={`results.detailComparisonTable.rowGroup.${result.productId}`}
+              >
                 <td>{result.label}</td>
                 <td>{result.scenarioLabel}</td>
                 <td>{formatCurrency(result.monthlyUserCost, 0)}</td>
