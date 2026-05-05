@@ -178,7 +178,7 @@ export function InsuranceInputs({
 
           <div className="subsection-heading">
             <h3>Kapitalgarantie</h3>
-            <p>Modelliert eine vertragliche Mindestleistung bei Rentenbeginn. Kosten bleiben unveraendert im Kostenblock.</p>
+            <p>Modelliert eine vertragliche Mindestleistung bei Rentenbeginn. Kosten bleiben unverändert im Kostenblock.</p>
           </div>
 
           <div className="field-grid">
@@ -199,7 +199,7 @@ export function InsuranceInputs({
                   }))
                 }
               />
-              <span>Beitragsgarantie beruecksichtigen</span>
+              <span>Beitragsgarantie berücksichtigen</span>
             </label>
             {ins.capitalGuarantee.enabled && (
               <NumberField

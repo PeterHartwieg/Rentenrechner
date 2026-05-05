@@ -20,7 +20,7 @@ Research references:
 
 Publication push. Recommended order:
 
-1. **Group P** (remaining items) — branding decision + public deployment.
+1. **Group P** (remaining items) — public deployment.
 2. **Group B** — Backend introduction (only when OCR/upload feature is picked up).
 3. **Group G** — Scenario-led portfolio redesign (P1 foundation, then P2).
 4. **Group F** — Later analytical / publishing work.
@@ -37,14 +37,14 @@ Everything required to publish the tool publicly under the donation + commercial
 
 ### P0 launch blockers
 
-- `P0` **Branding decision.** App name, logo (or wordmark), domain, OG images. "Rentenrechner" is taken; pick a name before launch. Affects: page title, share-URL slug, exports header, donation page, license docs (`LICENSE.md`, `COMMERCIAL_LICENSE.md`), Impressum strings (`PrintReport.tsx` "Rentenrechner Deutschland 2026", README, `index.html`, `LegalFooter`/`LegalLayout`).
+- ~~`P0` **Branding decision.**~~ Shipped in Phase 3 release-readiness wave (`1378705`): public brand is `RentenWiki.de` (long) / `RentenWiki` (short, tight UI). Logo/wordmark and OG images still pending — track under launch polish if blocking. CSV exports use ASCII slug `rentenwiki-export.csv`.
 - `P0` **Public deployment.** Hosting (Cloudflare Pages or Vercel for the static frontend — SPA-fallback already wired in `public/_redirects` and `vercel.json`), build pipeline (GitHub Actions on `main`), custom domain, HTTPS, basic error tracking. No backend yet → no DB or auth.
 
 ### P1 launch-essential
 
 - `P1` **Donation UI.** GitHub Sponsors badge on README. Stripe Payment Link "Spenden" / "Support this project" button in the topbar. No account flow — single-click external checkout.
 - `P1` **Commercial license inquiry.** "Für Berater & Vermittler" link in footer → static page describing the commercial license + `mailto:peter@hartwieg.com` (later: HTML form once backend lands).
-- `P1` **PDF report polish.** Disclaimer block is already the first block of `PrintReport.tsx` and the report covers profile, GRV/bAV figures, scenarios, and the per-product comparison table. Remaining: print-only branded header/footer (depends on the branding decision), per-page disclaimer footer for multi-page output, and any client-ready advisor formatting requested after the first hosted release.
+- `P1` **PDF report polish.** Disclaimer block is already the first block of `PrintReport.tsx`; the report covers profile, GRV/bAV figures, scenarios, and the per-product comparison table; the `RentenWiki.de Deutschland 2026` brand header/footer is wired (Phase 3). Remaining: print-only branded logo/OG-style banner (once a logo lands), per-page disclaimer footer for multi-page output, and any client-ready advisor formatting requested after the first hosted release.
 - `P1` **License-tier feature matrix.** Decide and document: at launch, paid commercial license is **permission-only** (no feature gating). Revisit before adding features that primarily benefit professional users (white-label, batch scenarios, branded PDF). Capture the decision in `COMMERCIAL_LICENSE.md`.
 
 ### P2 publication polish

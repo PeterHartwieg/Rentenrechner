@@ -224,7 +224,7 @@ export function RiesterInputs({
 
           <div className="subsection-heading" style={{ marginTop: 4 }}>
             <h3>Beitragsgarantie</h3>
-            <p>Modelliert die Mindestleistung des bestehenden Vertrags. Kosten bleiben unveraendert in den Riester-Kosten.</p>
+            <p>Modelliert die Mindestleistung des bestehenden Vertrags. Kosten bleiben unverändert in den Riester-Kosten.</p>
           </div>
 
           <div className="field-grid">
@@ -245,7 +245,7 @@ export function RiesterInputs({
                   }))
                 }
               />
-              <span>Garantie im Risiko-Check beruecksichtigen</span>
+              <span>Garantie im Risiko-Check berücksichtigen</span>
             </label>
             {assumptions.riester.capitalGuarantee.enabled && (
               <NumberField

@@ -80,8 +80,8 @@ export function AltersvorsorgedepotInputs({
         {(avd.subtype === 'guarantee_80' || avd.subtype === 'guarantee_100') && (
           <small className="field-hint">
             Der Risiko-Check setzt ein Mindestkapital von{' '}
-            {avd.subtype === 'guarantee_80' ? '80 %' : '100 %'} der Vertragszufluesse an.
-            Die eingetragenen Depot- und Fondskosten bleiben unveraendert.
+            {avd.subtype === 'guarantee_80' ? '80 %' : '100 %'} der Vertragszuflüsse an.
+            Die eingetragenen Depot- und Fondskosten bleiben unverändert.
           </small>
         )}
       </label>

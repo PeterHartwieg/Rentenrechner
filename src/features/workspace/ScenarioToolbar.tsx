@@ -139,7 +139,7 @@ export function ScenarioToolbar({
         {assumptions.monteCarlo.enabled && (
           <div className="monte-carlo-toolbar-fields">
             <label>
-              <span>Laeufe</span>
+              <span>Läufe</span>
               <input
                 type="number"
                 min={100}

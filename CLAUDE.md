@@ -9,7 +9,9 @@ Stack: React + TypeScript + Vite. Frontend-only today; small backend planned for
 
 **Source-available, non-commercial license.** Code is published under **PolyForm Noncommercial 1.0.0**. Personal, research, and internal-evaluation use is free. **Insurance brokers, investment advisors, employers, and any other commercial use require a separate paid license** — contact `peter@hartwieg.com`.
 
-**Working name only.** "Rentenrechner" is a placeholder; the public name and domain are TBD before launch. Don't bake the string "Rentenrechner" into anything that would be hard to rename (page titles, marketing copy, OG tags, share-URL slugs). Internal identifiers (npm package, code symbols) are fine to leave alone.
+**Public brand: `RentenWiki.de`** (long form) / `RentenWiki` (short form, only in tight UI copy). Use this in every user-visible surface: page titles, marketing copy, OG tags, share-URL slugs, PDF/CSV export headers. Filenames stay ASCII (e.g. `rentenwiki-export.csv`).
+
+The internal working name "Rentenrechner" still appears in design docs, ADRs, backlog notes, and code symbols (npm package, identifiers, file paths) — leave those as-is. Don't introduce new "Rentenrechner" references in public-facing copy.
 
 ## Critical guardrails
 
@@ -166,7 +168,7 @@ All UX backlog tiers and Phase 0 (Group 0) preflight shipped (commit `56fdec9`, 
 - **Hardened scenario-library load**: `migrateAndValidateState` in `storage.ts` is the shared migrate+validate pipeline; `scenarioLibrary.ts` runs every entry through it on load and drops malformed entries silently. Forward-compat guard via `SAVED_SCENARIO_VERSION`.
 - **Trigger config** in `src/content/triggers.ts`: `PATH_OPTIONS`, `VISIBLE_PRODUCTS_BY_PATH`, `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS`. Add new Group G entry flows here, not inline in components.
 
-Remaining publication work: branding decision (working name "Rentenrechner" must be replaced before launch), public deployment (hosting + CI). After that, OCR + backend introduction (Group B) and scenario-led portfolio redesign (Group G P1, including the singleton-to-instance migration). See `BACKLOG.md`.
+Remaining publication work: public deployment (hosting + CI). The branding decision (`RentenWiki.de`) shipped in the Phase 3 release-readiness wave. After that, OCR + backend introduction (Group B) and scenario-led portfolio redesign (Group G P1, including the singleton-to-instance migration). See `BACKLOG.md`.
 
 ## Agent skills
 
