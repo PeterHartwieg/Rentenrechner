@@ -4,12 +4,14 @@ import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../domain/work
 import type { BavInstance, BasisrenteInstance, RiesterInstance, AltersvorsorgedepotInstance, EtfInstance, InsuranceInstance } from '../domain/instances'
 import {
   runRules,
-  renderAtom,
-  ctxNumber,
   type Atom,
   type AtomId,
   type RuleEngineInput,
 } from './recommendations'
+import {
+  renderAtom,
+  ctxNumber,
+} from '../content/recommendationCopy'
 import { productReason, sensitivityHint } from '../features/results/decisionLogic'
 import { de2026Rules } from '../rules/de2026'
 import { makeCombinedResult } from '../test/factories'

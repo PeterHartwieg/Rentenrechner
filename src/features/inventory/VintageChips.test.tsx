@@ -9,7 +9,7 @@ import { describe, expect, it, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { VintageChips } from './VintageChips'
 import type { Atom } from '../../app/recommendations'
-import { renderAtom } from '../../app/recommendations'
+import { renderAtom } from '../../content/recommendationCopy'
 import {
   pavDraftVintageAtoms,
   bavDraftVintageAtoms,

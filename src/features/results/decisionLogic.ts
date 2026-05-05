@@ -5,11 +5,13 @@ import { getProductMeta } from '../../app/productPresentation'
 import type { PerturbationResult, SensitivityRunResult } from './sensitivity'
 import {
   runRules,
+  type Atom,
+} from '../../app/recommendations'
+import {
   renderAtom,
   ctxString,
   ctxNumber,
-  type Atom,
-} from '../../app/recommendations'
+} from '../../content/recommendationCopy'
 
 export type ProductReasonKind =
   | 'employer_subsidy'
