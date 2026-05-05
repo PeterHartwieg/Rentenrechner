@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import App from './App'
 import { addInstanceToWorkspace } from './features/inventory/inventoryHelpers'
 import { defaultWorkspace, STORAGE_KEY_V2 } from './storage'
@@ -57,5 +57,51 @@ describe('App — Mein Plan combine-mode chrome and profile editing', () => {
     expect(text).toContain('Bruttogehalt')
     expect(text).toContain('Renteneintrittsalter')
     expect(text).toContain('Krankenversicherung')
+  })
+
+  it('editing salary writes through to workspace baseline and persists to storage (#40)', () => {
+    saveCombineWorkspace()
+    render(<App />)
+
+    // Find the Bruttogehalt input in the personal profile section.
+    // The sidebar is rendered in the default "angebot" view (Meine Verträge tab).
+    const allInputs = document.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    const bruttogehaltInput = Array.from(allInputs).find(
+      (input) => {
+        const field = input.closest('.combine-field')
+        return field?.textContent?.includes('Bruttogehalt')
+      },
+    )
+    expect(bruttogehaltInput).not.toBeNull()
+
+    fireEvent.change(bruttogehaltInput!, { target: { value: '75000' } })
+
+    // Storage is written reactively via useEffect — give React a tick then
+    // read the persisted workspace directly from localStorage.
+    const stored = localStorage.getItem(STORAGE_KEY_V2)
+    expect(stored).not.toBeNull()
+    const persisted = JSON.parse(stored!) as Workspace
+    expect(persisted.baseline.profile.grossSalaryYear).toBe(75000)
+  })
+
+  it('editing retirement age writes through to workspace baseline (#40)', () => {
+    saveCombineWorkspace()
+    render(<App />)
+
+    const allInputs = document.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    const retirementAgeInput = Array.from(allInputs).find(
+      (input) => {
+        const field = input.closest('.combine-field')
+        return field?.textContent?.includes('Renteneintrittsalter')
+      },
+    )
+    expect(retirementAgeInput).not.toBeNull()
+
+    fireEvent.change(retirementAgeInput!, { target: { value: '63' } })
+
+    const stored = localStorage.getItem(STORAGE_KEY_V2)
+    expect(stored).not.toBeNull()
+    const persisted = JSON.parse(stored!) as Workspace
+    expect(persisted.baseline.profile.retirementAge).toBe(63)
   })
 })

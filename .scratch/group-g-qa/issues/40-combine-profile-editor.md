@@ -1,6 +1,6 @@
 ---
 title: "Mein Plan has no editor for personal details after onboarding"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: Group G / combine mode / profile

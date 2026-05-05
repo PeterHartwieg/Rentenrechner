@@ -475,11 +475,17 @@ function Calculator({ navigate }: CalculatorProps) {
             scenarioId={combineBasisScenarioId}
             scenarioLabel={combineBasisLabel}
           />
-          <AddVertragSection addInstance={portfolioState.addInstance} />
+          <AddVertragSection
+            addInstance={portfolioState.addInstance}
+            addPopulatedInstance={portfolioState.addPopulatedInstance}
+          />
         </>
       )}
       {portfolioState.mode === 'combine' && !combineBasisResult && (
-        <AddVertragSection addInstance={portfolioState.addInstance} />
+        <AddVertragSection
+          addInstance={portfolioState.addInstance}
+          addPopulatedInstance={portfolioState.addPopulatedInstance}
+        />
       )}
 
       {/* Singleton-compare sections gated to compare-mode (Group G issue 11).

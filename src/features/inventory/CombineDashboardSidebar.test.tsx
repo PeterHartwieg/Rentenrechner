@@ -131,6 +131,44 @@ describe('AddVertragSection — draft-before-save flow (#45)', () => {
     cleanup()
   })
 
+  it('saves a populated ETF instance (not defaults) on Vertrag speichern', () => {
+    const addInstance = vi.fn()
+    const addPopulatedInstance = vi.fn()
+    const { container } = render(
+      <AddVertragSection addInstance={addInstance} addPopulatedInstance={addPopulatedInstance} />,
+    )
+
+    const openButton = container.querySelector<HTMLButtonElement>('[data-testid="add-vertrag-btn"]')
+    expect(openButton).not.toBeNull()
+    fireEvent.click(openButton!)
+
+    const etfOption = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('ETF-Sparplan'))
+    expect(etfOption).not.toBeNull()
+    fireEvent.click(etfOption!)
+
+    // Fill in draft fields: Monatliche Sparrate = 350, Aktueller Depotwert = 5000
+    // The ETF form renders: inputs[0] = Vertragsbeginn, inputs[1] = Sparrate, inputs[2] = Depotwert
+    const inputs = container.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    fireEvent.change(inputs[1], { target: { value: '350' } })
+    fireEvent.change(inputs[2], { target: { value: '5000' } })
+
+    const saveButton = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Vertrag speichern'))
+    expect(saveButton).not.toBeNull()
+    fireEvent.click(saveButton!)
+
+    expect(addInstance).not.toHaveBeenCalled()
+    expect(addPopulatedInstance).toHaveBeenCalledWith(
+      'etf',
+      expect.objectContaining({
+        monthlyContribution: 350,
+        currentValueEUR: 5000,
+      }),
+    )
+    cleanup()
+  })
+
   it('captures a bAV offer before saving it to Mein Plan', () => {
     const addInstance = vi.fn()
     const addBavOffer = vi.fn()

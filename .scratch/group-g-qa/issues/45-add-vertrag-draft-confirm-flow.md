@@ -1,6 +1,6 @@
 ---
 title: "Add Vertrag flow should collect real inputs before mutating baseline"
-Status: ready-for-agent
+Status: done
 Severity: P3
 Type: AFK
 Area: Group G / combine mode / add contract

@@ -1,6 +1,6 @@
 ---
 title: "Add Gesamtportfolio lifecycle chart to Mein Plan"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: Mein Plan / charts / portfolio lifecycle

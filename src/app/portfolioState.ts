@@ -16,6 +16,14 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { Scenario, WhatIfScenario, Workspace } from '../domain/workspace'
+import type {
+  BavInstance,
+  EtfInstance,
+  InsuranceInstance,
+  BasisrenteInstance,
+  AltersvorsorgedepotInstance,
+  RiesterInstance,
+} from '../domain/instances'
 import {
   defaultWorkspace,
   loadSavedWorkspace,
@@ -30,6 +38,15 @@ import type { SavedScenario } from '../data/scenarioLibrary'
 import { addArchivedEntry } from '../data/scenarioLibrary'
 import { singletonViewOfWorkspace } from '../engine/portfolioAdapter'
 import { defaultAssumptions } from '../data/defaultScenario'
+
+/** Union of all per-product instance types for `addPopulatedInstance`. */
+export type AnyInstance =
+  | BavInstance
+  | EtfInstance
+  | InsuranceInstance
+  | BasisrenteInstance
+  | AltersvorsorgedepotInstance
+  | RiesterInstance
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -208,6 +225,12 @@ export interface UsePortfolioStateApi {
    */
   addInstance: (productId: MultiInstanceProductId) => void
   /**
+   * Add a fully-populated instance (built from draft inputs) to the baseline.
+   * Unlike `addInstance`, this preserves user-entered draft values instead of
+   * inserting engine defaults.
+   */
+  addPopulatedInstance: (productId: MultiInstanceProductId, instance: AnyInstance) => void
+  /**
    * Remove an instance from the baseline by productId + instanceId. Pinned
    * comparison ids referencing the removed instance are cleaned up.
    */
@@ -323,6 +346,45 @@ export function usePortfolioState(): UsePortfolioStateApi {
     setWorkspace((w) => addInstanceToWorkspace(w, productId))
   }, [])
 
+  const addPopulatedInstance = useCallback(
+    (productId: MultiInstanceProductId, instance: AnyInstance) => {
+      setWorkspace((w) => {
+        const wa = w.baseline.assumptions
+        let updated: typeof wa
+        switch (productId) {
+          case 'bav':
+            updated = { ...wa, bav: [...wa.bav, instance as BavInstance] }
+            break
+          case 'versicherung':
+            updated = { ...wa, insurance: [...wa.insurance, instance as InsuranceInstance] }
+            break
+          case 'etf':
+            updated = { ...wa, etf: [...wa.etf, instance as EtfInstance] }
+            break
+          case 'basisrente':
+            updated = { ...wa, basisrente: [...wa.basisrente, instance as BasisrenteInstance] }
+            break
+          case 'altersvorsorgedepot':
+            updated = {
+              ...wa,
+              altersvorsorgedepot: [...wa.altersvorsorgedepot, instance as AltersvorsorgedepotInstance],
+            }
+            break
+          case 'riester':
+            updated = { ...wa, riester: [...wa.riester, instance as RiesterInstance] }
+            break
+          default:
+            return w
+        }
+        return {
+          ...w,
+          baseline: { ...w.baseline, assumptions: updated, lastEditedAt: Date.now() },
+        }
+      })
+    },
+    [],
+  )
+
   const removeInstance = useCallback((productId: MultiInstanceProductId, instanceId: string) => {
     setWorkspace((w) => removeInstanceFromWorkspace(w, productId, instanceId))
   }, [])
@@ -344,6 +406,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
     freezeWhatIf,
     archiveAndRestart,
     addInstance,
+    addPopulatedInstance,
     removeInstance,
   }
 }

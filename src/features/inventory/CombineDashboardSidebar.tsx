@@ -42,7 +42,17 @@ import { runRules } from '../../app/recommendations'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { SIMPLIFIED_PRESETS } from '../inputs/sections/feePresets'
-import { bavOfferDraftToInstance, type BavOfferDraft } from './inventoryHelpers'
+import {
+  bavOfferDraftToInstance,
+  bavDraftToInstance,
+  pavDraftToInstance,
+  basisrenteDraftToInstance,
+  avdDraftToInstance,
+  riesterDraftToInstance,
+  etfDraftToInstance,
+  newInstanceId,
+  type BavOfferDraft,
+} from './inventoryHelpers'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -1119,6 +1129,11 @@ const ADD_VERTRAG_ITEMS: AddVertragItem[] = [
   { kind: 'contract', productId: 'riester', label: 'Riester-Rente' },
 ]
 
+/**
+ * Draft state for non-bAV-offer contract forms. Each product-specific
+ * branch uses controlled inputs bound to these state values so that
+ * "Vertrag speichern" captures the actual user input instead of defaults.
+ */
 function DraftContractForm({
   item,
   onCancel,
@@ -1127,20 +1142,161 @@ function DraftContractForm({
 }: {
   item: AddVertragItem
   onCancel: () => void
-  onSaveContract: (productId: MultiInstanceProductId) => void
+  /**
+   * Called when the user saves a non-bAV-offer contract. Receives the
+   * product id plus the populated domain instance so the caller can
+   * insert it directly into workspace assumptions (no second round-trip
+   * through addInstanceToWorkspace with defaults).
+   */
+  onSaveContract: (
+    productId: MultiInstanceProductId,
+    instance:
+      | BavInstance
+      | EtfInstance
+      | InsuranceInstance
+      | BasisrenteInstance
+      | AltersvorsorgedepotInstance
+      | RiesterInstance,
+  ) => void
   onSaveBavOffer?: (draft: BavOfferDraft) => void
 }) {
   const productId = item.kind === 'bav_offer' ? 'bav' : item.productId
+  const CURRENT_YEAR = new Date().getFullYear()
+
+  // ── Shared fields ──────────────────────────────────────────────────────
   const [anbieter, setAnbieter] = useState('')
-  const [contractStartYear, setContractStartYear] = useState(new Date().getFullYear())
+  const [contractStartYear, setContractStartYear] = useState(CURRENT_YEAR)
+
+  // ── bAV-offer-only fields ──────────────────────────────────────────────
   const [agMatchPct, setAgMatchPct] = useState(0)
   const [fixedAgMonthly, setFixedAgMonthly] = useState(0)
-  const [effektivkostenPct, setEffektivkostenPct] = useState(0.8)
-  const [rentenfaktor, setRentenfaktor] = useState(30)
-  const [durchfuehrungsweg, setDurchfuehrungsweg] =
+  const [offerEffektivkostenPct, setOfferEffektivkostenPct] = useState(0.8)
+  const [offerRentenfaktor, setOfferRentenfaktor] = useState(30)
+  const [offerDurchfuehrungsweg, setOfferDurchfuehrungsweg] =
     useState<BavInstance['durchfuehrungsweg']>('direktversicherung_3_63')
-  const [payoutMode, setPayoutMode] = useState<BavInstance['payoutMode']>('leibrente')
+  const [offerPayoutMode, setOfferPayoutMode] = useState<BavInstance['payoutMode']>('leibrente')
+
+  // ── ETF ────────────────────────────────────────────────────────────────
+  const [etfMonthly, setEtfMonthly] = useState(200)
+  const [etfCurrentValue, setEtfCurrentValue] = useState(0)
+
+  // ── bAV (non-offer) ────────────────────────────────────────────────────
+  const [bavMonthlyGross, setBavMonthlyGross] = useState(200)
+  const [bavCurrentValue, setBavCurrentValue] = useState(0)
+  const [bavDurchfuehrungsweg, setBavDurchfuehrungsweg] =
+    useState<BavInstance['durchfuehrungsweg']>('direktversicherung_3_63')
+
+  // ── pAV / Basisrente ───────────────────────────────────────────────────
+  const [insMonthly, setInsMonthly] = useState(200)
+  const [insCurrentValue, setInsCurrentValue] = useState(0)
+  const [insRentenfaktor, setInsRentenfaktor] = useState(28)
+
+  // ── AVD / Riester ──────────────────────────────────────────────────────
+  const [otherMonthly, setOtherMonthly] = useState(200)
+  const [otherCurrentValue, setOtherCurrentValue] = useState(0)
+
   const saveLabel = item.kind === 'bav_offer' ? 'Angebot speichern' : 'Vertrag speichern'
+
+  const handleSave = () => {
+    if (item.kind === 'bav_offer') {
+      onSaveBavOffer?.({
+        anbieter: anbieter.trim() === '' ? undefined : anbieter.trim(),
+        contractStartYear,
+        contractualMatchPercent: Math.max(0, agMatchPct) / 100,
+        contractualFixedMonthly: Math.max(0, fixedAgMonthly),
+        effektivkostenPct: Math.max(0, offerEffektivkostenPct),
+        rentenfaktor: Math.max(0, offerRentenfaktor),
+        durchfuehrungsweg: offerDurchfuehrungsweg,
+        payoutMode: offerPayoutMode,
+      })
+      return
+    }
+
+    const trimmedAnbieter = anbieter.trim() === '' ? undefined : anbieter.trim()
+
+    if (productId === 'etf') {
+      const instance = etfDraftToInstance({
+        productId: 'etf',
+        status: 'active',
+        contractStartYear,
+        currentValueEUR: etfCurrentValue,
+        monthlyContribution: etfMonthly,
+        anbieter: trimmedAnbieter,
+        terPct: 0.2,
+      })
+      onSaveContract('etf', { ...instance, instanceId: newInstanceId('etf') })
+    } else if (productId === 'bav') {
+      const instance = bavDraftToInstance({
+        productId: 'bav',
+        status: 'active',
+        contractStartYear,
+        currentValueEUR: bavCurrentValue,
+        monthlyContribution: bavMonthlyGross,
+        anbieter: trimmedAnbieter,
+        durchfuehrungsweg: bavDurchfuehrungsweg,
+        effektivkostenPct: 0.8,
+        rentenfaktor: 30,
+        payoutMode: 'leibrente',
+      })
+      onSaveContract('bav', {
+        ...instance,
+        monthlyGrossConversion: bavMonthlyGross,
+        instanceId: newInstanceId('bav'),
+      })
+    } else if (productId === 'versicherung') {
+      const instance = pavDraftToInstance({
+        productId: 'versicherung',
+        status: 'active',
+        contractStartYear,
+        currentValueEUR: insCurrentValue,
+        monthlyContribution: insMonthly,
+        anbieter: trimmedAnbieter,
+        effektivkostenPct: 0.8,
+        rentenfaktor: insRentenfaktor,
+        payoutMode: 'leibrente',
+      })
+      onSaveContract('versicherung', { ...instance, instanceId: newInstanceId('versicherung') })
+    } else if (productId === 'basisrente') {
+      const instance = basisrenteDraftToInstance({
+        productId: 'basisrente',
+        status: 'active',
+        contractStartYear,
+        currentValueEUR: insCurrentValue,
+        monthlyContribution: insMonthly,
+        anbieter: trimmedAnbieter,
+        effektivkostenPct: 0.8,
+        rentenfaktor: insRentenfaktor,
+      })
+      onSaveContract('basisrente', { ...instance, instanceId: newInstanceId('basisrente') })
+    } else if (productId === 'altersvorsorgedepot') {
+      const instance = avdDraftToInstance({
+        productId: 'altersvorsorgedepot',
+        status: 'active',
+        contractStartYear,
+        currentValueEUR: otherCurrentValue,
+        monthlyContribution: otherMonthly,
+        anbieter: trimmedAnbieter,
+        subtype: 'standarddepot',
+        useGlidepath: true,
+      })
+      onSaveContract('altersvorsorgedepot', {
+        ...instance,
+        instanceId: newInstanceId('altersvorsorgedepot'),
+      })
+    } else if (productId === 'riester') {
+      const instance = riesterDraftToInstance({
+        productId: 'riester',
+        status: 'active',
+        contractStartYear,
+        currentValueEUR: otherCurrentValue,
+        monthlyContribution: otherMonthly,
+        anbieter: trimmedAnbieter,
+        payoutMode: 'leibrente',
+        zulageStatus: '',
+      })
+      onSaveContract('riester', { ...instance, instanceId: newInstanceId('riester') })
+    }
+  }
 
   return (
     <div className="cds-add-vertrag-draft" aria-label={`${item.label} erfassen`}>
@@ -1182,75 +1338,125 @@ function DraftContractForm({
             <CombineField label="Effektivkosten (% p.a.)">
               <input
                 type="number"
-                value={effektivkostenPct}
+                value={offerEffektivkostenPct}
                 min={0}
                 step={0.1}
-                onChange={(e) => setEffektivkostenPct(toNumber(e.target.value, effektivkostenPct))}
+                onChange={(e) => setOfferEffektivkostenPct(toNumber(e.target.value, offerEffektivkostenPct))}
               />
             </CombineField>
             <CombineField label="Garantierter Rentenfaktor">
               <input
                 type="number"
-                value={rentenfaktor}
+                value={offerRentenfaktor}
                 min={0}
                 step={0.5}
-                onChange={(e) => setRentenfaktor(toNumber(e.target.value, rentenfaktor))}
+                onChange={(e) => setOfferRentenfaktor(toNumber(e.target.value, offerRentenfaktor))}
               />
             </CombineField>
-            <CombineField label="DurchfÃ¼hrungsweg">
-              <BavDurchfuehrungswegSelect value={durchfuehrungsweg} onChange={setDurchfuehrungsweg} />
+            <CombineField label="Durchführungsweg">
+              <BavDurchfuehrungswegSelect value={offerDurchfuehrungsweg} onChange={setOfferDurchfuehrungsweg} />
             </CombineField>
             <CombineField label="Auszahlungsform">
-              <PayoutModeSelect value={payoutMode} onChange={setPayoutMode} />
+              <PayoutModeSelect value={offerPayoutMode} onChange={setOfferPayoutMode} />
             </CombineField>
           </>
         ) : productId === 'etf' ? (
           <>
             <CombineField label="Monatliche Sparrate">
-              <input type="number" defaultValue={200} min={0} step={10} />
+              <input
+                type="number"
+                value={etfMonthly}
+                min={0}
+                step={10}
+                onChange={(e) => setEtfMonthly(toNumber(e.target.value, etfMonthly))}
+              />
             </CombineField>
             <CombineField label="Aktueller Depotwert">
-              <input type="number" defaultValue={0} min={0} step={100} />
+              <input
+                type="number"
+                value={etfCurrentValue}
+                min={0}
+                step={100}
+                onChange={(e) => setEtfCurrentValue(toNumber(e.target.value, etfCurrentValue))}
+              />
             </CombineField>
           </>
         ) : productId === 'bav' ? (
           <>
             <CombineField label="Brutto-Umwandlung (EUR/Monat)">
-              <input type="number" defaultValue={200} min={0} step={10} />
+              <input
+                type="number"
+                value={bavMonthlyGross}
+                min={0}
+                step={10}
+                onChange={(e) => setBavMonthlyGross(toNumber(e.target.value, bavMonthlyGross))}
+              />
             </CombineField>
             <CombineField label="Aktueller Vertragswert">
-              <input type="number" defaultValue={0} min={0} step={100} />
+              <input
+                type="number"
+                value={bavCurrentValue}
+                min={0}
+                step={100}
+                onChange={(e) => setBavCurrentValue(toNumber(e.target.value, bavCurrentValue))}
+              />
             </CombineField>
             <CombineField label="Durchführungsweg">
-              <select defaultValue="direktversicherung_3_63">
-                <option value="direktversicherung_3_63">Direktversicherung §3 Nr. 63</option>
-                <option value="pensionskasse_3_63">Pensionskasse §3 Nr. 63</option>
-                <option value="pensionsfonds_3_63">Pensionsfonds §3 Nr. 63</option>
-                <option value="direktversicherung_40b_alt">Direktversicherung §40b a.F.</option>
-                <option value="direktzusage">Direktzusage</option>
-                <option value="unterstuetzungskasse">Unterstützungskasse</option>
-              </select>
+              <BavDurchfuehrungswegSelect
+                value={bavDurchfuehrungsweg}
+                onChange={setBavDurchfuehrungsweg}
+              />
             </CombineField>
           </>
         ) : productId === 'versicherung' || productId === 'basisrente' ? (
           <>
             <CombineField label="Monatsbeitrag (EUR)">
-              <input type="number" defaultValue={200} min={0} step={10} />
+              <input
+                type="number"
+                value={insMonthly}
+                min={0}
+                step={10}
+                onChange={(e) => setInsMonthly(toNumber(e.target.value, insMonthly))}
+              />
             </CombineField>
             <CombineField label="Aktueller Vertragswert">
-              <input type="number" defaultValue={0} min={0} step={100} />
+              <input
+                type="number"
+                value={insCurrentValue}
+                min={0}
+                step={100}
+                onChange={(e) => setInsCurrentValue(toNumber(e.target.value, insCurrentValue))}
+              />
             </CombineField>
             <CombineField label="Garantierter Rentenfaktor">
-              <input type="number" defaultValue={28} min={0} step={0.5} />
+              <input
+                type="number"
+                value={insRentenfaktor}
+                min={0}
+                step={0.5}
+                onChange={(e) => setInsRentenfaktor(toNumber(e.target.value, insRentenfaktor))}
+              />
             </CombineField>
           </>
         ) : (
           <>
             <CombineField label="Eigenbeitrag (EUR/Monat)">
-              <input type="number" defaultValue={200} min={0} step={10} />
+              <input
+                type="number"
+                value={otherMonthly}
+                min={0}
+                step={10}
+                onChange={(e) => setOtherMonthly(toNumber(e.target.value, otherMonthly))}
+              />
             </CombineField>
             <CombineField label="Aktueller Vertragswert">
-              <input type="number" defaultValue={0} min={0} step={100} />
+              <input
+                type="number"
+                value={otherCurrentValue}
+                min={0}
+                step={100}
+                onChange={(e) => setOtherCurrentValue(toNumber(e.target.value, otherCurrentValue))}
+              />
             </CombineField>
           </>
         )}
@@ -1259,22 +1465,7 @@ function DraftContractForm({
         <button
           type="button"
           className="cds-add-vertrag-save-btn"
-          onClick={() => {
-            if (item.kind === 'bav_offer') {
-              onSaveBavOffer?.({
-                anbieter: anbieter.trim() === '' ? undefined : anbieter.trim(),
-                contractStartYear,
-                contractualMatchPercent: Math.max(0, agMatchPct) / 100,
-                contractualFixedMonthly: Math.max(0, fixedAgMonthly),
-                effektivkostenPct: Math.max(0, effektivkostenPct),
-                rentenfaktor: Math.max(0, rentenfaktor),
-                durchfuehrungsweg,
-                payoutMode,
-              })
-            } else {
-              onSaveContract(item.productId)
-            }
-          }}
+          onClick={handleSave}
         >
           {saveLabel}
         </button>
@@ -1289,9 +1480,25 @@ function DraftContractForm({
 export function AddVertragSection({
   addInstance,
   addBavOffer,
+  addPopulatedInstance,
 }: {
   addInstance: (productId: MultiInstanceProductId) => void
   addBavOffer?: (draft: BavOfferDraft) => void
+  /**
+   * When provided, populated instances are inserted via this callback rather
+   * than via `addInstance` (which inserts defaults, discarding draft values).
+   * Falls back to `addInstance` when absent for backward compatibility.
+   */
+  addPopulatedInstance?: (
+    productId: MultiInstanceProductId,
+    instance:
+      | BavInstance
+      | EtfInstance
+      | InsuranceInstance
+      | BasisrenteInstance
+      | AltersvorsorgedepotInstance
+      | RiesterInstance,
+  ) => void
 }) {
   const [open, setOpen] = useState(false)
   const [draftItem, setDraftItem] = useState<AddVertragItem | null>(null)
@@ -1308,8 +1515,12 @@ export function AddVertragSection({
             setDraftItem(null)
             setOpen(false)
           }}
-          onSaveContract={(productId) => {
-            addInstance(productId)
+          onSaveContract={(productId, instance) => {
+            if (addPopulatedInstance) {
+              addPopulatedInstance(productId, instance)
+            } else {
+              addInstance(productId)
+            }
             setDraftItem(null)
             setOpen(false)
           }}
@@ -1585,6 +1796,30 @@ export function CombineDashboardSidebar({
         addBavOffer={(draft) =>
           onPatchAssumptions({ bav: [...assumptions.bav, bavOfferDraftToInstance(draft)] })
         }
+        addPopulatedInstance={(productId, instance) => {
+          // Append the populated instance to the relevant array in assumptions.
+          // This preserves user-entered draft values instead of using defaults.
+          switch (productId) {
+            case 'bav':
+              onPatchAssumptions({ bav: [...assumptions.bav, instance as BavInstance] })
+              break
+            case 'versicherung':
+              onPatchAssumptions({ insurance: [...assumptions.insurance, instance as InsuranceInstance] })
+              break
+            case 'etf':
+              onPatchAssumptions({ etf: [...assumptions.etf, instance as EtfInstance] })
+              break
+            case 'basisrente':
+              onPatchAssumptions({ basisrente: [...assumptions.basisrente, instance as BasisrenteInstance] })
+              break
+            case 'altersvorsorgedepot':
+              onPatchAssumptions({ altersvorsorgedepot: [...assumptions.altersvorsorgedepot, instance as AltersvorsorgedepotInstance] })
+              break
+            case 'riester':
+              onPatchAssumptions({ riester: [...assumptions.riester, instance as RiesterInstance] })
+              break
+          }
+        }}
       />
 
       {/* ── What-if scenarios ─────────────────────────────────────── */}

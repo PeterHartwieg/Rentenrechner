@@ -1,6 +1,6 @@
 ---
 title: "Mein Plan sidebar cannot edit fields collected during onboarding"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: Group G / combine mode / inventory editing

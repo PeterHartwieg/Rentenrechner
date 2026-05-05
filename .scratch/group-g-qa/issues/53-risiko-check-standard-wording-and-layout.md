@@ -1,6 +1,6 @@
 ---
 title: "Make Risiko-Check consumer-facing and median-rente-first"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: Monte Carlo / Risiko-Check / results
