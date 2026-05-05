@@ -580,8 +580,10 @@ export function buildWorkspaceJson(workspace: Workspace): string {
  * Load pipeline for a v2 payload:
  *   1. JSON.parse
  *   2. mergeDeep against defaultWorkspace (fills additive schema additions)
- *   3. backfillWorkspaceTransferEvents (repairs single-sided legacy events)
- *   4. validateWorkspace (full structural + invariant check)
+ *   3. validateWorkspace (full structural + invariant check, including every
+ *      what-if and its derivedFromBaselineSnapshot — the backfill step below
+ *      dereferences both, so they must be validated first)
+ *   4. backfillWorkspaceTransferEvents (repairs single-sided legacy events)
  *   → returns null if any step fails
  *
  * Policy:
@@ -604,14 +606,18 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
 
   if (isV2Shape(obj)) {
     // Merge against defaultWorkspace to fill any additive schema gaps, then
-    // repair single-sided transfer events, then run full validation.
+    // run full validation, then repair single-sided transfer events.
+    //
+    // Validation runs **before** the backfill because the backfill walks
+    // every what-if and its `derivedFromBaselineSnapshot` (issue 08 contract
+    // gap). Without a deep validation pass first, malformed v2 payloads would
+    // either throw or silently survive into the load result.
     const merged = mergeDeep(obj, defaultWorkspace)
     if (merged.schemaVersion !== 2) return null
-    backfillWorkspaceTransferEvents(merged)
-    // Full structural + invariant validation. Any unknown malformed v2 data
-    // that survives the merge returns null here so the caller can fall back
-    // (local) or surface an invalid-link state (share-URL).
-    return validateWorkspace(merged)
+    const validated = validateWorkspace(merged)
+    if (validated === null) return null
+    backfillWorkspaceTransferEvents(validated)
+    return validated
   }
 
   // Unknown future version — reject so callers can surface an error state.
