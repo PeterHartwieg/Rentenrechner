@@ -1,5 +1,5 @@
 /**
- * Pure helpers for the "Optimiere deine Vorsorge" modal (Group B issue B2).
+ * Pure helpers for the "Optimiere deine Vorsorge" modal (Group B issue B2 + B4).
  *
  * `simulateContractDecision` fills in `deltaMonthlyNetEUR` for a
  * `ContractDecision` by running a hypothetical simulation with the decision
@@ -8,14 +8,26 @@
  * `createDecisionSimulationCache` wraps that function with a simple
  * `Map<string, DecisionDelta>` keyed by `(workspaceFingerprint, decision.id)`.
  *
+ * `auditPortfolio` (B4) aggregates per-instance audit rows for the modal's
+ * overview step. Returns one `InstanceAudit` per active/paid-up instance,
+ * sorted worst-first by flag severity.
+ *
  * React-free: this module must not import React or anything from `src/features/`.
  */
 
 import type { Workspace } from '../domain/workspace'
 import type { GermanRules } from '../domain/rules'
 import type { CombinedResult } from '../engine/portfolioCombine'
-import { applyContractDecision, type ContractDecision } from './contractDecisions'
+import type { InstanceCommon } from '../domain/instances'
+import {
+  applyContractDecision,
+  generateContractDecisions,
+  beitragErhoehenWhatIf,
+  defaultBeitragErhoehenEUR,
+  type ContractDecision,
+} from './contractDecisions'
 import { runCombineSimulation } from './useCombineSimulation'
+import { runRules, type Atom } from './recommendations'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -143,4 +155,142 @@ export function createDecisionSimulationCache(): {
       cache.clear()
     },
   }
+}
+
+// ---------------------------------------------------------------------------
+// B4: auditPortfolio
+// ---------------------------------------------------------------------------
+
+/**
+ * One audit row per active or paid-up instance in the workspace.
+ *
+ * Consumed by the "Optimiere deine Vorsorge" modal overview step (B6) to
+ * render an ordered list of contract cards with their flags and decisions.
+ */
+export interface InstanceAudit {
+  instance: InstanceCommon
+  /** Audit-flag atoms emitted for this specific instance (filtered by instanceId). */
+  flags: Atom[]
+  /**
+   * Generated decisions for this instance.
+   * `weiterfuehren | beitragsfrei (if applicable) | kuendigen | uebertragen... | beitrag-erhoehen`
+   * `deltaNettoRente === 0` for all — populated by B6 modal via `simulateContractDecision`.
+   */
+  decisions: ContractDecision[]
+}
+
+/**
+ * Minimal rules-engine input shape (same three lines used in contractDecisions.ts
+ * for its internal `buildRulesInput`). Inlined here per spec to avoid coupling.
+ */
+function buildRulesInputForAudit(workspace: Workspace) {
+  return {
+    workspace,
+    simulationResult: { products: [] },
+    combinedResult: { monthlyNetIncome: 0 } as CombinedResult,
+  }
+}
+
+/**
+ * Severity score for sorting: 3 × high + 2 × medium + 1 × low.
+ */
+function severityScore(flags: Atom[]): number {
+  let score = 0
+  for (const flag of flags) {
+    if (flag.priority === 'high') score += 3
+    else if (flag.priority === 'medium') score += 2
+    else score += 1
+  }
+  return score
+}
+
+/**
+ * Collect all active and paid-up instances across the six product slots.
+ * Excludes `surrendered` and `offered` instances per spec.
+ */
+function collectActiveInstances(workspace: Workspace): InstanceCommon[] {
+  const wsa = workspace.baseline.assumptions
+  const slots: readonly InstanceCommon[][] = [
+    wsa.bav,
+    wsa.etf,
+    wsa.insurance,
+    wsa.basisrente,
+    wsa.altersvorsorgedepot,
+    wsa.riester,
+  ]
+  const result: InstanceCommon[] = []
+  for (const arr of slots) {
+    for (const inst of arr) {
+      if (inst.status === 'surrendered' || inst.status === 'offered') continue
+      result.push(inst)
+    }
+  }
+  return result
+}
+
+/**
+ * Walk every active/paid-up contract in the workspace, attach audit-flag atoms
+ * (B3) and decision generators (B1 + B-existing), and return one row per
+ * instance sorted worst-first.
+ *
+ * Sort order:
+ *   1. Severity score descending (3×high + 2×medium + 1×low).
+ *   2. Tie: flags.length descending.
+ *   3. Tie: instanceId ascending (stable alphabetic).
+ *
+ * `decisions[].deltaNettoRente === 0` for all rows — population is B6's job.
+ */
+export function auditPortfolio(workspace: Workspace, rules?: GermanRules): InstanceAudit[] {
+  void rules  // reserved for future use (B6 simulation pass); rules not needed for flag/decision aggregation
+  // Run all audit-flag rules once; filter per instance below.
+  const allAtoms = runRules(buildRulesInputForAudit(workspace))
+
+  const instances = collectActiveInstances(workspace)
+
+  const rows: InstanceAudit[] = instances.map((instance) => {
+    const instanceId = instance.instanceId
+
+    // 1. Flags: atoms whose context.instanceId matches this instance.
+    const flags = allAtoms.filter(
+      (a) => (a.context as Record<string, unknown>).instanceId === instanceId,
+    )
+
+    // 2. Decisions: existing generators + beitrag-erhoehen appended last.
+    const decisions = generateContractDecisions(workspace, instanceId)
+
+    // Determine current monthly contribution for defaultBeitragErhoehenEUR.
+    // Each slot stores the contribution under a different field name.
+    let currentMonthly = 0
+    const inst = instance as unknown as Record<string, unknown>
+    // bAV uses monthlyGrossConversion; basisrente uses monthlyGrossContribution;
+    // AVD and Riester use monthlyOwnContribution; ETF and insurance use monthlyContribution.
+    if (typeof inst.monthlyGrossConversion === 'number') {
+      currentMonthly = inst.monthlyGrossConversion
+    } else if (typeof inst.monthlyGrossContribution === 'number') {
+      currentMonthly = inst.monthlyGrossContribution
+    } else if (typeof inst.monthlyOwnContribution === 'number') {
+      currentMonthly = inst.monthlyOwnContribution
+    } else if (typeof inst.monthlyContribution === 'number') {
+      currentMonthly = inst.monthlyContribution
+    }
+
+    const newMonthly = defaultBeitragErhoehenEUR(currentMonthly)
+    const beitragErhoehen = beitragErhoehenWhatIf(workspace, instanceId, newMonthly)
+    if (beitragErhoehen !== null) {
+      decisions.push(beitragErhoehen)
+    }
+
+    return { instance, flags, decisions }
+  })
+
+  // Sort worst-first.
+  rows.sort((a, b) => {
+    const scoreDiff = severityScore(b.flags) - severityScore(a.flags)
+    if (scoreDiff !== 0) return scoreDiff
+    const lenDiff = b.flags.length - a.flags.length
+    if (lenDiff !== 0) return lenDiff
+    return a.instance.instanceId.localeCompare(b.instance.instanceId)
+  })
+
+  return rows
 }

@@ -1,13 +1,21 @@
 /**
- * Tests for optimiereVorsorge.ts (Group B issue B2).
+ * Tests for optimiereVorsorge.ts (Group B issue B2 + B4).
  *
- * Coverage:
+ * Coverage B2:
  *   - beitragsfrei decision on a bAV with non-trivial RIY → negative delta.
  *   - weiterfuehren decision → delta within ±1e-6 of zero.
  *   - Riester→AVD certified transfer → non-zero delta matching manual diff.
  *   - increase_contribution (from beitragErhoehenWhatIf B1 shape) on ETF → positive delta.
  *   - Cache hit: second call returns same object reference, does not re-run simulation.
  *   - Cache miss after invalidate(): re-runs simulation.
+ *
+ * Coverage B4:
+ *   - 3-instance fixture (high-fee bAV + statement-evidenced ETF + Riester with model estimates)
+ *     produces three rows in sort order: bAV, Riester, ETF.
+ *   - Surrendered / offered instances are excluded from the result.
+ *   - Decision kinds per instance match spec (bAV: weiterfuehren+beitragsfrei+kuendigen+beitrag-erhoehen,
+ *     ETF: weiterfuehren+kuendigen+beitrag-erhoehen, no beitragsfrei for ETF).
+ *   - decisions[].deltaNettoRente === 0 for all rows.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -16,6 +24,7 @@ import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
 import type { Workspace } from '../domain/workspace'
 import type {
+  BavInstance,
   EtfInstance,
   AltersvorsorgedepotInstance,
   RiesterInstance,
@@ -29,11 +38,12 @@ import {
 import {
   simulateContractDecision,
   createDecisionSimulationCache,
+  auditPortfolio,
 } from './optimiereVorsorge'
 import { runCombineSimulation } from './useCombineSimulation'
 
 // ---------------------------------------------------------------------------
-// Workspace fixtures
+// Workspace fixtures (B2)
 // ---------------------------------------------------------------------------
 
 /**
@@ -257,7 +267,7 @@ function baselineCombinedFor(ws: Workspace) {
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// B2 tests
 // ---------------------------------------------------------------------------
 
 describe('simulateContractDecision — bAV beitragsfrei (1.5% RIY)', () => {
@@ -373,7 +383,7 @@ describe('simulateContractDecision — ETF contribution increase', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Cache tests
+// B2 cache tests
 // ---------------------------------------------------------------------------
 
 describe('createDecisionSimulationCache', () => {
@@ -450,5 +460,283 @@ describe('createDecisionSimulationCache', () => {
     expect(b2).toBe(b1)
     // Sanity: the two decisions produce different deltas.
     expect(a1.deltaMonthlyNetEUR).not.toBeCloseTo(b1.deltaMonthlyNetEUR, 3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// B4: auditPortfolio tests
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the 3-instance fixture described in the B4 spec:
+ *   1. High-fee bAV (active) — triggers high_cost_active (medium flag).
+ *   2. Statement-evidenced ETF (active) — no flags.
+ *   3. Riester with model-estimate evidence (active) — triggers missing_offer_data (medium flag).
+ *
+ * Plus two extra instances that must be excluded: one surrendered bAV, one offered insurance.
+ *
+ * Sort expectation: bAV (score=2) and Riester (score=2) are tied on severity,
+ * tied on flags.length (both 1), so broken by instanceId asc:
+ * 'bav-audit-1' < 'riester-audit-1' < 'etf-audit-1' is NOT correct —
+ * 'b' < 'e' < 'r', so bAV < ETF < Riester alphabetically.
+ * But ETF has score=0, so bAV (score=2) and Riester (score=2) appear first,
+ * then ETF (score=0). Within the bAV/Riester tie: 'bav-audit-1' < 'riester-audit-1'.
+ * Final order: bAV, Riester, ETF. ✓
+ */
+function makeAuditFixtureWorkspace(): Workspace {
+  const highFeeBav: BavInstance = {
+    instanceId: 'bav-audit-1',
+    label: 'bAV Hochkostenvertrag',
+    status: 'active',
+    contractStartYear: 2018,
+    currentValueEUR: 12_000,
+    // Evidence for all bAV fields → suppresses missing_offer_data.
+    evidenceMap: {
+      monthlyGrossConversion: 'statement',
+      'fees.wrapperAssetFee': 'statement',
+      'fees.fundAssetFee': 'statement',
+      'fees.acquisitionCostPct': 'statement',
+      'fees.pensionPayoutFeePct': 'statement',
+      contractualMatchPercent: 'statement',
+      contractualFixedMonthly: 'statement',
+      acquisitionCostPct: 'statement',
+      durchfuehrungsweg: 'statement',
+      pre2005EligibleTaxFree: 'statement',
+      rentenfaktor: 'statement',
+      payoutMode: 'statement',
+    },
+    monthlyGrossConversion: 200,
+    statutoryMinimumSubsidyEnabled: true,
+    contractualMatchPercent: 0,
+    contractualFixedMonthly: 0,
+    fees: {
+      wrapperAssetFee: 0.015,  // 1.5% — well above HIGH_FEE_THRESHOLD (1.2%)
+      fundAssetFee: 0,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+    monthlyOtherRetirementIncome: 0,
+    includeGrvReduction: false,
+    kvdrMember: true,
+    durchfuehrungsweg: 'direktversicherung_3_63',
+    pre2005EligibleTaxFree: false,
+    payoutMode: 'leibrente',
+    rentenfaktor: 30,
+    rentenfaktorConfirmed: false,
+    zeitrenteYears: 20,
+    annualContributionGrowthRate: 0,
+  }
+
+  // Surrendered bAV — must NOT appear in the result.
+  const surrenderedBav: BavInstance = {
+    ...highFeeBav,
+    instanceId: 'bav-audit-surrendered',
+    label: 'bAV (surrendered)',
+    status: 'surrendered',
+  }
+
+  const statementEtf: EtfInstance = {
+    instanceId: 'etf-audit-1',
+    label: 'ETF Sparplan',
+    status: 'active',
+    contractStartYear: 2020,
+    currentValueEUR: 5_000,
+    monthlyContribution: 200,
+    annualAssetFee: 0.002,
+    annualContributionGrowthRate: 0,
+    equityPartialExemption: 0.3,
+    // Fully evidenced → suppresses missing_offer_data.
+    evidenceMap: {
+      monthlyContribution: 'statement',
+      annualAssetFee: 'statement',
+    },
+  }
+
+  // Offered insurance — must NOT appear in the result.
+  const offeredInsurance = {
+    instanceId: 'versicherung-audit-offered',
+    label: 'pAV (offered)',
+    status: 'offered' as const,
+    contractStartYear: 2015,
+    currentValueEUR: 0,
+    evidenceMap: {},
+    oldContractTaxFreeEligible: false,
+    monthlyOtherRetirementIncome: 0,
+    capitalGuarantee: { enabled: false, floorPctOfContributions: 0 },
+    fees: {
+      wrapperAssetFee: 0,
+      fundAssetFee: 0,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+    payoutMode: 'leibrente' as const,
+    rentenfaktor: 28,
+    rentenfaktorConfirmed: false,
+    zeitrenteYears: 20,
+    surrenderHaircutPct: 0,
+    annualContributionGrowthRate: 0,
+  }
+
+  // Riester with empty evidenceMap → missing_offer_data fires (medium flag).
+  // payoutMode: 'zeitrente' to avoid low_flexibility (which fires on leibrente + haircut ≥ 0.10).
+  const modelEstimateRiester: RiesterInstance = {
+    instanceId: 'riester-audit-1',
+    label: 'Riester-Rente',
+    status: 'active',
+    contractStartYear: 2012,
+    currentValueEUR: 8_000,
+    evidenceMap: {},  // all fields are model_estimate → missing_offer_data fires
+    monthlyOwnContribution: 100,
+    existingCapital: 0,
+    eligibility: {
+      directlyEligible: true,
+      indirectSpouseEligible: false,
+      ageAtContractStart: 25,
+      careerStarterBonusUsed: false,
+    },
+    capitalGuarantee: { enabled: true, floorPctOfContributions: 1 },
+    fees: {
+      wrapperAssetFee: 0.005,  // low fee — no high_cost_active
+      fundAssetFee: 0.002,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+    payoutMode: 'zeitrente',  // not leibrente — avoids low_flexibility (payoutMode + haircut rule)
+    rentenfaktor: 28,
+    rentenfaktorConfirmed: false,
+    zeitrenteYears: 20,
+    partialCapitalPct: 0,
+    monthlyOtherRetirementIncome: 0,
+  }
+
+  const v1 = { ...defaultAssumptions, visibleProducts: ['bav', 'etf', 'riester'] }
+  const ws = migrateV1ToV2(
+    defaultProfile as unknown as Record<string, unknown>,
+    v1 as unknown as Record<string, unknown>,
+  )
+
+  return {
+    ...ws,
+    baseline: {
+      ...ws.baseline,
+      assumptions: {
+        ...ws.baseline.assumptions,
+        bav: [highFeeBav, surrenderedBav],
+        etf: [statementEtf],
+        insurance: [offeredInsurance],
+        basisrente: [],
+        altersvorsorgedepot: [],
+        riester: [modelEstimateRiester],
+      },
+    },
+  }
+}
+
+describe('auditPortfolio — sort order (B4)', () => {
+  it('returns three rows in order: high-fee bAV, Riester, ETF', () => {
+    const ws = makeAuditFixtureWorkspace()
+    const rows = auditPortfolio(ws)
+
+    expect(rows).toHaveLength(3)
+    expect(rows[0].instance.instanceId).toBe('bav-audit-1')
+    expect(rows[1].instance.instanceId).toBe('riester-audit-1')
+    expect(rows[2].instance.instanceId).toBe('etf-audit-1')
+  })
+
+  it('bAV row has exactly 1 flag: high_cost_active (medium)', () => {
+    const ws = makeAuditFixtureWorkspace()
+    const rows = auditPortfolio(ws)
+
+    const bavRow = rows[0]
+    expect(bavRow.flags).toHaveLength(1)
+    expect(bavRow.flags[0].id).toBe('high_cost_active')
+    expect(bavRow.flags[0].priority).toBe('medium')
+  })
+
+  it('Riester row has exactly 1 flag: missing_offer_data (medium)', () => {
+    const ws = makeAuditFixtureWorkspace()
+    const rows = auditPortfolio(ws)
+
+    const riesterRow = rows[1]
+    expect(riesterRow.flags).toHaveLength(1)
+    expect(riesterRow.flags[0].id).toBe('missing_offer_data')
+    expect(riesterRow.flags[0].priority).toBe('medium')
+  })
+
+  it('ETF row has no flags', () => {
+    const ws = makeAuditFixtureWorkspace()
+    const rows = auditPortfolio(ws)
+
+    const etfRow = rows[2]
+    expect(etfRow.flags).toHaveLength(0)
+  })
+})
+
+describe('auditPortfolio — exclusion of surrendered/offered instances (B4)', () => {
+  it('does not include surrendered or offered instances in the result', () => {
+    const ws = makeAuditFixtureWorkspace()
+    const rows = auditPortfolio(ws)
+
+    const ids = rows.map((r) => r.instance.instanceId)
+    expect(ids).not.toContain('bav-audit-surrendered')
+    expect(ids).not.toContain('versicherung-audit-offered')
+  })
+})
+
+describe('auditPortfolio — decision kinds per instance (B4)', () => {
+  it('bAV instance decisions: weiterfuehren | beitragsfrei | kuendigen | beitrag-erhoehen', () => {
+    const ws = makeAuditFixtureWorkspace()
+    const rows = auditPortfolio(ws)
+
+    const bavRow = rows.find((r) => r.instance.instanceId === 'bav-audit-1')!
+    const kinds = bavRow.decisions.map((d) => d.kind)
+
+    // Must have all four decision kinds (no transfer targets in this workspace for bAV).
+    expect(kinds).toContain('weiterfuehren')
+    expect(kinds).toContain('beitragsfrei')
+    expect(kinds).toContain('kuendigen')
+    expect(kinds).toContain('beitrag-erhoehen')
+
+    // beitrag-erhoehen must be the last decision (appended after generateContractDecisions).
+    expect(kinds[kinds.length - 1]).toBe('beitrag-erhoehen')
+  })
+
+  it('ETF instance decisions: weiterfuehren | kuendigen | beitrag-erhoehen (no beitragsfrei)', () => {
+    const ws = makeAuditFixtureWorkspace()
+    const rows = auditPortfolio(ws)
+
+    const etfRow = rows.find((r) => r.instance.instanceId === 'etf-audit-1')!
+    const kinds = etfRow.decisions.map((d) => d.kind)
+
+    expect(kinds).toContain('weiterfuehren')
+    expect(kinds).toContain('kuendigen')
+    expect(kinds).toContain('beitrag-erhoehen')
+    // ETF must NOT have beitragsfrei.
+    expect(kinds).not.toContain('beitragsfrei')
+
+    // beitrag-erhoehen must be last.
+    expect(kinds[kinds.length - 1]).toBe('beitrag-erhoehen')
+  })
+})
+
+describe('auditPortfolio — deltaNettoRente is zero for all decisions (B4)', () => {
+  it('all decisions in all rows have deltaNettoRente === 0', () => {
+    const ws = makeAuditFixtureWorkspace()
+    const rows = auditPortfolio(ws)
+
+    for (const row of rows) {
+      for (const decision of row.decisions) {
+        expect(decision.deltaNettoRente).toBe(0)
+      }
+    }
   })
 })
