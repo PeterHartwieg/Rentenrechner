@@ -35,6 +35,8 @@ import type { Atom } from '../../app/recommendations'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { EvidenceBadge } from './EvidenceBadge'
+import { InvField, InvNumber, InvSelect, InvText } from './fields'
+import { DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
 
 // ---------------------------------------------------------------------------
 // Internal shared primitives
@@ -64,124 +66,6 @@ function shouldRenderEvidenceBadge(
 ): boolean {
   return hasEvidenceState(draft, fieldPath) || !isEmptyPlaceholder
 }
-
-function InvField({
-  label,
-  hint,
-  children,
-}: {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="inventory-field">
-      <span>{label}</span>
-      {children}
-      {hint && <p className="inventory-field-hint">{hint}</p>}
-    </div>
-  )
-}
-
-function InvNumber({
-  value,
-  min,
-  max,
-  step = 1,
-  suffix,
-  onChange,
-}: {
-  value: number
-  min?: number
-  max?: number
-  step?: number
-  suffix?: string
-  onChange: (n: number) => void
-}) {
-  const [draft, setDraft] = useState<string | null>(null)
-  const displayValue = draft ?? (Number.isFinite(value) ? String(value) : '0')
-
-  function commit() {
-    if (draft === null) return
-    const raw = draft
-    setDraft(null)
-    if (raw.trim() === '') return
-    const next = Number(raw)
-    if (!Number.isFinite(next)) return
-    onChange(next)
-  }
-
-  return (
-    <div className="inventory-input-shell">
-      <input
-        type="number"
-        value={displayValue}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => {
-          const raw = e.target.value
-          setDraft(raw)
-          if (raw.trim() === '') return
-          const n = Number(raw)
-          if (Number.isFinite(n)) onChange(n)
-        }}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            commit()
-            e.currentTarget.blur()
-          }
-        }}
-      />
-      {suffix && <em>{suffix}</em>}
-    </div>
-  )
-}
-
-function InvSelect({
-  value,
-  options,
-  onChange,
-}: {
-  value: string
-  options: readonly { value: string; label: string }[]
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="inventory-select-shell">
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
-function InvText({
-  value,
-  placeholder,
-  onChange,
-}: {
-  value: string
-  placeholder?: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="inventory-input-shell">
-      <input
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  )
-}
-
 
 const STATUS_OPTIONS: readonly { value: InstanceStatus; label: string }[] = [
   { value: 'active', label: 'Aktiv (laufende Beiträge)' },
@@ -591,25 +475,7 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
 // bAV card
 // ---------------------------------------------------------------------------
 
-const DFW_OPTIONS: readonly { value: BavDurchfuehrungsweg; label: string }[] = [
-  { value: 'direktversicherung_3_63', label: 'Direktversicherung (§3 Nr. 63 EStG, ab 2005)' },
-  { value: 'pensionskasse_3_63', label: 'Pensionskasse' },
-  { value: 'pensionsfonds_3_63', label: 'Pensionsfonds' },
-  { value: 'direktversicherung_40b_alt', label: 'Direktversicherung Altvertrag (vor 2005)' },
-  { value: 'direktzusage', label: 'Direktzusage' },
-  { value: 'unterstuetzungskasse', label: 'Unterstützungskasse' },
-] as const
-
-const PAYOUT_OPTIONS_FULL: readonly { value: string; label: string }[] = [
-  { value: 'leibrente', label: 'Lebenslange Rente (Leibrente)' },
-  { value: 'zeitrente', label: 'Zeitrente (befristet)' },
-  { value: 'kapitalverzehr', label: 'Kapitalentnahme' },
-] as const
-
-const PAYOUT_OPTIONS_NO_KAPITAL: readonly { value: string; label: string }[] = [
-  { value: 'leibrente', label: 'Lebenslange Rente (Leibrente)' },
-  { value: 'zeitrente', label: 'Zeitrente (befristet)' },
-] as const
+// DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL are imported from ./fieldHelpers
 
 export function BavCard({
   draft,
