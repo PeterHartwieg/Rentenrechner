@@ -15,6 +15,9 @@
  *
  * Bottom: "Plan(s) erstellen" button — saves each checked decision as a
  * named what-if with `origin: 'recommender'`.
+ *
+ * Thin wrapper: owns modal shell + checkedIds state + save dispatch.
+ * Card rendering delegated to <ContractDecisionCards> (B5).
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
@@ -23,44 +26,7 @@ import type { Workspace, WhatIfScenario } from '../../domain/workspace'
 import type { ContractDecision } from '../../app/contractDecisions'
 import { generateContractDecisions, applyContractDecision } from '../../app/contractDecisions'
 import { forkBaselineScenario, newScenarioId } from '../../app/portfolioState'
-import { renderAtom } from '../../content/recommendationCopy'
-
-// ---------------------------------------------------------------------------
-// Chip variant mapping
-// ---------------------------------------------------------------------------
-
-const PRIVILEGE_IDS = new Set([
-  'pre_2005_pav_taxfree_capital',
-  'halbeinkuenfte_pav_eligible',
-  'bav_40b_alt_eligible',
-  'riester_to_avd_certified',
-])
-
-const CAVEAT_IDS = new Set([
-  'lose_pre_2005_privilege',
-  'paid_up_high_fee_warning',
-  'bav_40b_alt_conditions_unmet',
-  'pre_2005_pav_high_garantiezins',
-  'bav_durchfuehrungsweg_direktzusage',
-])
-
-function chipVariant(atomId: string): 'privilege' | 'caveat' | 'info' {
-  if (PRIVILEGE_IDS.has(atomId)) return 'privilege'
-  if (CAVEAT_IDS.has(atomId)) return 'caveat'
-  return 'info'
-}
-
-// ---------------------------------------------------------------------------
-// Kind labels
-// ---------------------------------------------------------------------------
-
-const KIND_LABELS: Record<ContractDecision['kind'], string> = {
-  weiterfuehren: 'Weiterführen',
-  beitragsfrei: 'Beitragsfrei stellen',
-  kuendigen: 'Kündigen',
-  uebertragen: 'Übertragen',
-  'beitrag-erhoehen': 'Beitrag erhöhen',
-}
+import { ContractDecisionCards } from './ContractDecisionCards'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -131,11 +97,11 @@ export function ContractDecisionMenu({
 
   function handleCreatePlans() {
     const selected = decisions.filter(
-      (d) => d.kind !== 'weiterfuehren' && checkedIds.has(d.id),
+      (d: ContractDecision) => d.kind !== 'weiterfuehren' && checkedIds.has(d.id),
     )
     if (selected.length === 0) return
 
-    const whatIfs: WhatIfScenario[] = selected.map((decision) => {
+    const whatIfs: WhatIfScenario[] = selected.map((decision: ContractDecision) => {
       const fork = forkBaselineScenario(
         workspace.baseline,
         decision.label,
@@ -154,7 +120,7 @@ export function ContractDecisionMenu({
   }
 
   const saveable = decisions.filter(
-    (d) => d.kind !== 'weiterfuehren' && checkedIds.has(d.id),
+    (d: ContractDecision) => d.kind !== 'weiterfuehren' && checkedIds.has(d.id),
   )
 
   return (
@@ -183,53 +149,11 @@ export function ContractDecisionMenu({
         </button>
       </div>
 
-      <div className="contract-decision-cards">
-        {decisions.map((decision) => (
-          <div
-            key={decision.id}
-            className={`contract-decision-card contract-decision-card--${decision.kind}`}
-            data-kind={decision.kind}
-          >
-            <div className="contract-decision-card-header">
-              <span className="contract-decision-kind">{KIND_LABELS[decision.kind]}</span>
-
-              {/* Weiterfuehren has no checkbox — it is just the baseline reference. */}
-              {decision.kind !== 'weiterfuehren' && (
-                <label className="contract-decision-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={checkedIds.has(decision.id)}
-                    onChange={() => toggleChecked(decision.id)}
-                    aria-label={`${KIND_LABELS[decision.kind]} auswählen`}
-                  />
-                  <span>Als Plan</span>
-                </label>
-              )}
-            </div>
-
-            <p className="contract-decision-description">{decision.description}</p>
-
-            {decision.atoms.length > 0 && (
-              <ul className="contract-decision-atoms">
-                {decision.atoms.map((atom, idx) => {
-                  const tpl = renderAtom(atom)
-                  if (!tpl.headline) return null
-                  const variant = chipVariant(atom.id)
-                  return (
-                    <li
-                      key={`${atom.id}-${idx}`}
-                      className={`contract-decision-atom contract-decision-atom--${variant}`}
-                      title={tpl.body}
-                    >
-                      {tpl.headline}
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-        ))}
-      </div>
+      <ContractDecisionCards
+        decisions={decisions}
+        checkedIds={checkedIds}
+        onToggle={toggleChecked}
+      />
 
       <div className="contract-decision-footer">
         <button
