@@ -10,20 +10,32 @@ import type {
   TransferEvent,
 } from './domain/instances'
 import { defaultAssumptions, defaultProfile, DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
-import { validateState } from './utils/scenarioSchema'
+import { validateState, validateWorkspace } from './utils/scenarioSchema'
 import { singletonViewOfWorkspace } from './engine/portfolioProjection'
 
 // ---------------------------------------------------------------------------
 // Storage keys
+//
+// Two localStorage keys coexist during the v1→v2 transition:
+//   STORAGE_KEY_V1  — legacy compare-mode write path (useCalculatorState).
+//                     Single { version: 1, profile, assumptions } envelope.
+//   STORAGE_KEY_V2  — workspace write path (portfolioState / saveWorkspace).
+//                     Full Workspace object with schemaVersion: 2.
+//
+// Read order: both loadSavedState and loadSavedWorkspace prefer STORAGE_KEY_V2,
+// then fall back to STORAGE_KEY_V1 with v1→v2 migration applied.
+//
+// The compare-mode writer (useCalculatorState) still writes to STORAGE_KEY_V1.
+// useCalculatorState must be updated to call saveWorkspace() and removed from
+// the v1 write path once the full workspace edit-flow is complete.
 // ---------------------------------------------------------------------------
 export const STORAGE_KEY_V1 = 'rentenrechner-state-v1'
 export const STORAGE_KEY_V2 = 'rentenrechner-state-v2'
 
 /**
- * Canonical write key for M1. Writers (useCalculatorState) still emit v1-shaped
- * payloads to this key — the switch to v2 writes happens in issue 03.
- * Read-side (loadSavedState, loadSavedWorkspace) prefers STORAGE_KEY_V2, then
- * falls back to STORAGE_KEY_V1 with migration applied.
+ * Alias for the legacy write key. Kept for callers that reference STORAGE_KEY
+ * directly (e.g. DatenschutzPage). New code should use STORAGE_KEY_V1 or
+ * STORAGE_KEY_V2 explicitly.
  */
 export const STORAGE_KEY = STORAGE_KEY_V1
 
@@ -444,19 +456,19 @@ export function migrateAndValidateState(
 }
 
 // ---------------------------------------------------------------------------
-// Workspace serialization / deserialization
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Transfer-event backfill — data-migration fix for single-sided legacy events
+// Transfer-event backfill — repair single-sided legacy events at load time
 // ---------------------------------------------------------------------------
 
 /**
- * Stable composite key for a TransferEvent used to detect duplicates when
- * backfilling the missing side. Enough fields to uniquely identify an event
- * across instances without relying on object identity.
+ * Stable composite key for a TransferEvent, used to detect duplicates during
+ * transfer-event backfill and — once issue 04 lands — by portfolio transfer
+ * collection so both paths share the same identity definition.
+ *
+ * The key encodes enough fields to uniquely identify an event without relying
+ * on object identity. Issue 04 should import this helper from storage rather
+ * than reimplementing the key construction in portfolioAdapter.
  */
-function transferEventKey(ev: TransferEvent): string {
+export function transferEventKey(ev: TransferEvent): string {
   const base = `${ev.type}|${ev.sourceInstanceId}|${ev.targetInstanceId}|${ev.year}`
   if (ev.type === 'surrender_reinvest') {
     return `${base}|${ev.amountEUR}|${ev.surrenderHaircutPct}`
@@ -542,14 +554,13 @@ function backfillWorkspaceTransferEvents(workspace: Workspace): void {
 }
 
 // ---------------------------------------------------------------------------
+// Workspace serialization / deserialization
+//
+// buildWorkspaceJson — serialize a Workspace to a JSON string.
+// parseWorkspaceJson — deserialize, migrate (v1→v2), backfill, validate.
+// ---------------------------------------------------------------------------
 
-/**
- * Parse a v2 workspace JSON string. Returns null for unparseable or invalid input.
- * Does NOT run through migrateAndValidateState — workspace validation is separate.
- *
- * This is a minimal structural check. Full validation is handled by validateWorkspace
- * in scenarioSchema.ts (called from parseWorkspaceJson).
- */
+/** True when the raw parsed object carries a v2 schemaVersion marker. */
 function isV2Shape(obj: Record<string, unknown>): boolean {
   return obj.schemaVersion === CURRENT_VERSION_V2
 }
@@ -564,7 +575,22 @@ export function buildWorkspaceJson(workspace: Workspace): string {
 /**
  * Parse a workspace JSON string produced by buildWorkspaceJson.
  * Handles both v1 (singleton) and v2 (instance-array) payloads.
- * Returns null on parse error or failed validation.
+ * Returns null on parse error, unsupported version, or failed validation.
+ *
+ * Load pipeline for a v2 payload:
+ *   1. JSON.parse
+ *   2. mergeDeep against defaultWorkspace (fills additive schema additions)
+ *   3. backfillWorkspaceTransferEvents (repairs single-sided legacy events)
+ *   4. validateWorkspace (full structural + invariant check)
+ *   → returns null if any step fails
+ *
+ * Policy:
+ *   - Unknown (v3+) schema → always null (caller surfaces error state).
+ *   - Malformed v2 that survives merge but fails validation → null.
+ *     Local callers (loadSavedWorkspace) fall back to v1 or return null.
+ *     Share-URL callers receive null and surface an invalid-link state.
+ *   - v1 payload → migrated via migrateV1ToV2; result is always structurally
+ *     valid (migration produces a fresh Workspace from validated defaults).
  */
 export function parseWorkspaceJson(raw: string): Workspace | null {
   let parsed: unknown
@@ -577,26 +603,27 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
   const obj = parsed as Record<string, unknown>
 
   if (isV2Shape(obj)) {
-    // Already v2: merge against defaultWorkspace to fill gaps, then validate.
+    // Merge against defaultWorkspace to fill any additive schema gaps, then
+    // repair single-sided transfer events, then run full validation.
     const merged = mergeDeep(obj, defaultWorkspace)
-    // Minimal structural guard: schemaVersion must still be 2 after merge.
     if (merged.schemaVersion !== 2) return null
-    // Backfill any single-sided transfer events from legacy saves.
     backfillWorkspaceTransferEvents(merged)
-    return merged
+    // Full structural + invariant validation. Any unknown malformed v2 data
+    // that survives the merge returns null here so the caller can fall back
+    // (local) or surface an invalid-link state (share-URL).
+    return validateWorkspace(merged)
   }
 
-  // Unknown future version — reject.
+  // Unknown future version — reject so callers can surface an error state.
   if (typeof obj.schemaVersion === 'number' && obj.schemaVersion > CURRENT_VERSION_V2) return null
 
   // No schemaVersion (ancient) or schemaVersion === 1 — treat as v1.
-  // v1 payload has { version: 1, profile: {...}, assumptions: {...} }
-  if (
-    typeof obj.version === 'number' &&
-    obj.version !== CURRENT_VERSION_V1
-  ) return null
+  // v1 payload: { version: 1, profile: {...}, assumptions: {...} }
+  if (typeof obj.version === 'number' && obj.version !== CURRENT_VERSION_V1) return null
 
-  // Run v1 migration.
+  // Run v1→v2 migration. The migrated workspace is built entirely from
+  // validated defaults + migrated fields, so validateWorkspace is not called
+  // here — the migration itself is the correctness guarantee.
   if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
   if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
 
@@ -604,15 +631,29 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
     obj.profile as Record<string, unknown>,
     obj.assumptions as Record<string, unknown>,
   )
-  // Backfill any single-sided transfer events from legacy saves.
   if (v1migrated) backfillWorkspaceTransferEvents(v1migrated)
   return v1migrated
 }
 
 // ---------------------------------------------------------------------------
-// Legacy v1 state serialization (kept for the singleton engine path)
+// Singleton state serialization — compare-mode engine path
+//
+// parseStateFromJson and buildStateJson serve the legacy v1 singleton path
+// used by useCalculatorState (compare mode), urlShare.ts (share-URL), and
+// scenarioLibrary.ts. They produce { profile, assumptions } pairs for
+// simulateRetirementComparison. New code that needs a full Workspace should
+// use parseWorkspaceJson / buildWorkspaceJson instead.
 // ---------------------------------------------------------------------------
 
+/**
+ * Parse any stored state string to a singleton { profile, assumptions } pair.
+ * Handles v2 workspace payloads (projects to singleton) and v1 payloads.
+ * Returns null on parse error or validation failure.
+ *
+ * Note: for v2 payloads, this path skips transfer-event backfill (backfill only
+ * matters for simulation, not for singleton projection). Use parseWorkspaceJson
+ * when a full Workspace is needed.
+ */
 export function parseStateFromJson(
   raw: string,
 ): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
@@ -657,9 +698,18 @@ export function buildStateJson(
 // ---------------------------------------------------------------------------
 
 /**
- * Load the saved state from localStorage.
- * Read order: v2 key first, then v1 key (with migration applied).
- * After a successful v1→v2 migrate, the next save will write v2 and remove v1.
+ * Load the saved state from localStorage as a singleton { profile, assumptions }
+ * pair for use by the compare-mode engine path (simulateRetirementComparison).
+ *
+ * Read order:
+ *   1. STORAGE_KEY_V2 — parse + validate via parseWorkspaceJson, then project
+ *      to singleton via workspaceToSingletonAssumptions + validateState.
+ *   2. STORAGE_KEY_V1 — parse + migrate via parseStateFromJson (includes
+ *      migrateAndValidateState).
+ *
+ * If the v2 key is present but invalid (malformed JSON, failed validation,
+ * future schemaVersion), falls through to the v1 key rather than returning
+ * null immediately — so a corrupt v2 write does not wipe the user's v1 data.
  */
 export function loadSavedState(): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
   try {
@@ -685,9 +735,17 @@ export function loadSavedState(): { profile: PersonalProfile; assumptions: Scena
 
 /**
  * Load the saved Workspace from localStorage.
- * Read order: v2 key first, then v1 key (with migration applied).
- * If the v2 key is present but unparseable (corrupt JSON, v3+ payload, validation
- * failure), falls back to v1 key — consistent with loadSavedState behaviour.
+ *
+ * Read order:
+ *   1. STORAGE_KEY_V2 — merge, backfill, and fully validate via parseWorkspaceJson.
+ *   2. STORAGE_KEY_V1 — migrate via migrateV1ToV2.
+ *
+ * If the v2 key is present but invalid (malformed JSON, future schemaVersion,
+ * or failed validateWorkspace), falls back to the v1 key. This means a corrupt
+ * v2 write does not discard the user's v1 data.
+ *
+ * If both keys are absent or invalid, returns null. Callers should fall back
+ * to defaultWorkspace in that case.
  */
 export function loadSavedWorkspace(): Workspace | null {
   try {
@@ -726,9 +784,10 @@ export function loadSavedWorkspace(): Workspace | null {
 
 /**
  * Save a Workspace to localStorage using the v2 key.
- * TODO(issue 03): switch the main write path (useCalculatorState) to call this
- * instead of writing v1-shaped JSON to STORAGE_KEY_V1. At that point, also
- * remove STORAGE_KEY_V1 here to complete the migration.
+ * Called by portfolioState (combine-mode). The compare-mode write path
+ * (useCalculatorState) still writes v1-shaped JSON to STORAGE_KEY_V1 and
+ * must be updated to call this function once the full workspace edit-flow
+ * is complete.
  */
 export function saveWorkspace(workspace: Workspace): void {
   try {
