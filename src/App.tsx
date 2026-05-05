@@ -50,6 +50,7 @@ import { CombineDashboardSidebar, AddVertragSection } from './features/inventory
 import { CombineIncomePanel } from './features/inventory/CombineIncomePanel'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
+import { OptimiereVorsorgeModal } from './features/dashboard/OptimiereVorsorgeModal'
 import { RentenluckeDashboard } from './features/dashboard/RentenluckeDashboard'
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
@@ -149,6 +150,7 @@ function Calculator({ navigate }: CalculatorProps) {
   const [appView, setAppView] = useState<AppView>(() => appViewFromMode(detectSavedMode()))
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
   const [showLueckeModal, setShowLueckeModal] = useState(false)
+  const [showOptimiereModal, setShowOptimiereModal] = useState(false)
   const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
   // Issue 23: product tab to pre-select when navigating from a ProductEditCard
   // default-state notice to the InputsPanel ("Einstellungen anpassen").
@@ -402,6 +404,18 @@ function Calculator({ navigate }: CalculatorProps) {
     profile.retirementAge,
   ])
 
+  // B6: check whether the workspace has at least one active or paid-up instance.
+  // Drives the disabled state of the "Optimiere deine Vorsorge" button.
+  const hasActiveOrPaidUpInstances = useMemo(() => {
+    if (!isCombineMode) return false
+    const wsa = portfolioState.workspace.baseline.assumptions
+    const all = [
+      ...wsa.bav, ...wsa.etf, ...wsa.insurance,
+      ...wsa.basisrente, ...wsa.altersvorsorgedepot, ...wsa.riester,
+    ]
+    return all.some((inst) => inst.status === 'active' || inst.status === 'paid_up')
+  }, [isCombineMode, portfolioState.workspace.baseline.assumptions])
+
   // Show landing page when no saved state exists (or when returning to it).
   if (appView === 'landing') {
     return (
@@ -483,6 +497,8 @@ function Calculator({ navigate }: CalculatorProps) {
               })
             }
             onAdjustContributions={() => setShowLueckeModal(true)}
+            onOpenOptimiere={() => setShowOptimiereModal(true)}
+            hasActiveInstances={hasActiveOrPaidUpInstances}
           />
           {portfolioLifecycleViews.length > 0 && (
             <BreakEvenChart
@@ -511,6 +527,18 @@ function Calculator({ navigate }: CalculatorProps) {
               onSaveAsPlan={(candidate) => {
                 const whatIf = buildWhatIfFromCandidate(portfolioState.baseline, candidate)
                 portfolioState.addWhatIf(whatIf)
+              }}
+            />
+          )}
+          {showOptimiereModal && (
+            <OptimiereVorsorgeModal
+              workspace={portfolioState.workspace}
+              baselineCombined={combineBasisResult}
+              rules={de2026Rules}
+              onClose={() => setShowOptimiereModal(false)}
+              onCreatePlans={(whatIfs) => {
+                whatIfs.forEach((wi) => portfolioState.addWhatIf(wi))
+                setShowOptimiereModal(false)
               }}
             />
           )}

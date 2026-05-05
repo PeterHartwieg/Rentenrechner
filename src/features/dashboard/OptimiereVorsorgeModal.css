@@ -1,0 +1,322 @@
+/* OptimiereVorsorgeModal — step-machine modal shell */
+
+.optimiere-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.optimiere-modal {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ── Header ── */
+
+.optimiere-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.optimiere-modal__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.optimiere-modal__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.optimiere-modal__close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+/* ── Body ── */
+
+.optimiere-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.optimiere-modal__body h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* ── Disclaimer paragraphs ── */
+
+.optimiere-modal__disclaimer-para {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #334155;
+}
+
+/* ── Persistent banner ── */
+
+.optimiere-modal__banner {
+  background: #fef9c3;
+  border: 1px solid #fde047;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #713f12;
+}
+
+/* ── Actions row ── */
+
+.optimiere-modal__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.optimiere-modal__primary {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.optimiere-modal__primary:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.optimiere-modal__primary:not(:disabled):hover {
+  background: #2563eb;
+}
+
+.optimiere-modal__secondary {
+  background: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+.optimiere-modal__secondary:hover {
+  background: #f1f5f9;
+}
+
+/* ── Overview list ── */
+
+.optimiere-modal__overview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.optimiere-modal__overview-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fafbfd;
+  flex-wrap: wrap;
+}
+
+.optimiere-modal__overview-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.optimiere-modal__contract-label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+
+.optimiere-modal__product-chip {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.optimiere-modal__contribution {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.optimiere-modal__prov-chip {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.optimiere-modal__prov-chip--confirmed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.optimiere-modal__prov-chip--model {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* ── Flag chips ── */
+
+.optimiere-modal__overview-flags {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.optimiere-modal__flag-chip {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.optimiere-modal__flag-chip--high {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.optimiere-modal__flag-chip--medium {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.optimiere-modal__flag-chip--low {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+/* ── Anpassen button ── */
+
+.optimiere-modal__anpassen-btn {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #1d4ed8;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.optimiere-modal__anpassen-btn:hover {
+  background: #dbeafe;
+}
+
+/* ── Instance step ── */
+
+.optimiere-modal__instance-heading {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.optimiere-modal__beitrag-input {
+  max-width: 240px;
+}
+
+/* ── Confirm step ── */
+
+.optimiere-modal__confirm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.optimiere-modal__confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.optimiere-modal__name-input {
+  flex: 1;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #1e293b;
+}
+
+.optimiere-modal__name-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* ── Saved step ─�� */
+
+.optimiere-modal__saved-list {
+  margin: 0;
+  padding: 0 0 0 1.25rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.optimiere-modal__saved-list li {
+  padding: 0.15rem 0;
+}
+
+.optimiere-modal__note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.optimiere-modal__empty {
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem 0;
+}

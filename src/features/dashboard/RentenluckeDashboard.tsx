@@ -22,6 +22,10 @@ import {
 } from '../../app/simulationSelectors'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import {
+  OPTIMIERE_BUTTON_LABEL,
+  OPTIMIERE_DISABLED_TOOLTIP,
+} from '../../content/optimiereCopy'
 
 interface Props {
   profile: PersonalProfile
@@ -33,6 +37,16 @@ interface Props {
    * can raise their contributions or add another Vertrag.
    */
   onAdjustContributions: () => void
+  /**
+   * Opens the "Optimiere deine Vorsorge" modal (B6). Only wired in combine
+   * mode — compare mode never renders this dashboard.
+   */
+  onOpenOptimiere?: () => void
+  /**
+   * Whether the workspace has at least one active or paid-up instance.
+   * When false the Optimiere button renders disabled with a tooltip.
+   */
+  hasActiveInstances?: boolean
 }
 
 export function RentenluckeDashboard({
@@ -40,6 +54,8 @@ export function RentenluckeDashboard({
   overview,
   onTargetChange,
   onAdjustContributions,
+  onOpenOptimiere,
+  hasActiveInstances = false,
 }: Props) {
   const { grvNet, productBreakdown, projectedTotal, target, targetIsUserSet, gap, goalReached } =
     overview
@@ -204,6 +220,17 @@ export function RentenluckeDashboard({
           >
             {goalReached ? 'Mehr sparen' : 'Lücke schließen'}
           </button>
+          {onOpenOptimiere && (
+            <button
+              type="button"
+              className="rentenlucke-dashboard__cta rentenlucke-dashboard__cta--secondary"
+              onClick={onOpenOptimiere}
+              disabled={!hasActiveInstances}
+              title={hasActiveInstances ? undefined : OPTIMIERE_DISABLED_TOOLTIP}
+            >
+              {OPTIMIERE_BUTTON_LABEL}
+            </button>
+          )}
         </div>
       </div>
     </section>
