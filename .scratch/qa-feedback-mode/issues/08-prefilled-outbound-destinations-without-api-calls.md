@@ -1,6 +1,6 @@
 # Prefilled outbound destinations without API calls
 
-Status: needs-triage
+Status: done
 Type: AFK
 
 ## Parent

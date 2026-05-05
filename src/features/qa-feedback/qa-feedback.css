@@ -254,6 +254,61 @@
 }
 
 /* -----------------------------------------------------------------------
+ * Preview footer — export-group layout (issue 08, Lane F).
+ *
+ * Two visual groups separate local actions (clipboard / download) from
+ * external-destination actions (mailto / GitHub). Each group has a small
+ * label so testers understand the distinction at a glance.
+ * ----------------------------------------------------------------------- */
+
+.qa-preview__footer-nav {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.qa-preview__export-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.qa-preview__export-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qa-preview__export-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  padding: 0 2px;
+}
+
+.qa-preview__export-group + .qa-preview__export-group {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 6px;
+}
+
+.qa-preview__export-group-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Override the shared footer flex so the nav and export groups stack
+ * cleanly when the new multi-group layout is present. */
+.qa-panel__footer:has(.qa-preview__export-groups) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+/* -----------------------------------------------------------------------
  * Focus-visible styles — high-contrast ring that survives both light and
  * dark backgrounds (Lane C, issue 06).
  * ----------------------------------------------------------------------- */

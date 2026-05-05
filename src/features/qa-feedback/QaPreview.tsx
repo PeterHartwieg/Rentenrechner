@@ -11,6 +11,7 @@ import {
 import type { ComposerDraft } from './QaComposer'
 import type { CapturedScreenshot } from './capture/screenshot'
 import { buildFeedbackBundle } from './export/bundleExport'
+import { buildMailtoUrl, buildGithubIssueUrl } from './export/outboundDestinations'
 
 interface PreviewProps {
   target: ResolvedTarget
@@ -60,6 +61,7 @@ export function QaPreview({
 }: PreviewProps) {
   const [copied, setCopied] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
+  const [externalOpened, setExternalOpened] = useState<'mailto' | 'github' | null>(null)
   /**
    * Scenario-state opt-in (DECISIONS / issue 03). Default OFF — the share URL
    * and scenario JSON are only attached after the tester ticks this box. We
@@ -79,6 +81,7 @@ export function QaPreview({
       await navigator.clipboard.writeText(markdown)
       setCopied(true)
       setDownloaded(false)
+      setExternalOpened(null)
     } catch {
       // Clipboard API may be unavailable (insecure context, denied permission).
       // Fallback: prompt the user to use the download button.
@@ -95,6 +98,23 @@ export function QaPreview({
     triggerBlobDownload(blob, filename)
     setDownloaded(true)
     setCopied(false)
+    setExternalOpened(null)
+  }
+
+  function handleMailto() {
+    const url = buildMailtoUrl(report)
+    window.open(url, '_blank', 'noopener,noreferrer')
+    setExternalOpened('mailto')
+    setCopied(false)
+    setDownloaded(false)
+  }
+
+  function handleGithubIssue() {
+    const url = buildGithubIssueUrl(report, { labels: ['qa-feedback'] })
+    window.open(url, '_blank', 'noopener,noreferrer')
+    setExternalOpened('github')
+    setCopied(false)
+    setDownloaded(false)
   }
 
   return (
@@ -222,35 +242,71 @@ export function QaPreview({
           <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11.5, marginTop: 8 }}>{markdown}</pre>
         </details>
 
-        {(copied || downloaded) && (
+        {(copied || downloaded || externalOpened) && (
           <p className="qa-preview__copy-state" role="status">
-            {copied ? 'Markdown in Zwischenablage kopiert.' : 'Bundle heruntergeladen.'}
+            {copied
+              ? 'Markdown in Zwischenablage kopiert.'
+              : downloaded
+                ? 'Bundle heruntergeladen.'
+                : externalOpened === 'mailto'
+                  ? 'E-Mail-Entwurf geöffnet.'
+                  : 'GitHub-Issue-Formular geöffnet.'}
           </p>
         )}
       </div>
       <footer className="qa-panel__footer">
-        <button type="button" className="qa-panel__btn" onClick={onBack}>
-          Zurück
-        </button>
-        <button type="button" className="qa-panel__btn" onClick={onCancel}>
-          Abbrechen
-        </button>
-        <button
-          type="button"
-          className="qa-panel__btn"
-          onClick={handleDownload}
-          data-testid="qa-preview-download"
-        >
-          Bundle herunterladen
-        </button>
-        <button
-          type="button"
-          className="qa-panel__btn qa-panel__btn--primary"
-          onClick={handleCopy}
-          data-testid="qa-preview-copy"
-        >
-          Markdown kopieren
-        </button>
+        <div className="qa-preview__footer-nav">
+          <button type="button" className="qa-panel__btn" onClick={onBack}>
+            Zurück
+          </button>
+          <button type="button" className="qa-panel__btn" onClick={onCancel}>
+            Abbrechen
+          </button>
+        </div>
+        <div className="qa-preview__export-groups">
+          <div className="qa-preview__export-group">
+            <span className="qa-preview__export-group-label">Lokal exportieren</span>
+            <div className="qa-preview__export-group-btns">
+              <button
+                type="button"
+                className="qa-panel__btn"
+                onClick={handleDownload}
+                data-testid="qa-preview-download"
+              >
+                Bundle herunterladen
+              </button>
+              <button
+                type="button"
+                className="qa-panel__btn qa-panel__btn--primary"
+                onClick={handleCopy}
+                data-testid="qa-preview-copy"
+              >
+                Markdown kopieren
+              </button>
+            </div>
+          </div>
+          <div className="qa-preview__export-group">
+            <span className="qa-preview__export-group-label">Externes Ziel öffnen</span>
+            <div className="qa-preview__export-group-btns">
+              <button
+                type="button"
+                className="qa-panel__btn"
+                onClick={handleMailto}
+                data-testid="qa-preview-mailto"
+              >
+                Per E-Mail senden
+              </button>
+              <button
+                type="button"
+                className="qa-panel__btn"
+                onClick={handleGithubIssue}
+                data-testid="qa-preview-github"
+              >
+                GitHub-Issue öffnen
+              </button>
+            </div>
+          </div>
+        </div>
       </footer>
     </section>
   )

@@ -17,7 +17,7 @@
  *     report payload and the rendered Markdown.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { QaPreview } from '../QaPreview'
 import type { ResolvedTarget } from '../report'
@@ -200,5 +200,84 @@ describe('QaPreview — scenario opt-in toggle', () => {
     // After opt-in, the share URL section appears and includes the marker.
     fireEvent.click(screen.getByTestId('qa-preview-include-scenario'))
     expect(getMarkdown()).toContain('scenario-href-leak-marker')
+  })
+})
+
+// ─── Issue 08 Lane F: outbound destination buttons ────────────────────────────
+
+describe('QaPreview — mailto and GitHub-issue buttons (issue 08)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('renders the "Per E-Mail senden" button', () => {
+    renderPreview()
+    expect(screen.getByTestId('qa-preview-mailto')).toBeTruthy()
+  })
+
+  it('renders the "GitHub-Issue öffnen" button', () => {
+    renderPreview()
+    expect(screen.getByTestId('qa-preview-github')).toBeTruthy()
+  })
+
+  it('clicking mailto button calls window.open with _blank and noopener,noreferrer', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-mailto'))
+    expect(openSpy).toHaveBeenCalledOnce()
+    const [url, target, features] = openSpy.mock.calls[0] as [string, string, string]
+    expect(url.startsWith('mailto:')).toBe(true)
+    expect(target).toBe('_blank')
+    expect(features).toBe('noopener,noreferrer')
+  })
+
+  it('clicking GitHub button calls window.open with _blank and noopener,noreferrer', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-github'))
+    expect(openSpy).toHaveBeenCalledOnce()
+    const [url, target, features] = openSpy.mock.calls[0] as [string, string, string]
+    expect(url).toContain('github.com')
+    expect(url).toContain('/issues/new')
+    expect(target).toBe('_blank')
+    expect(features).toBe('noopener,noreferrer')
+  })
+
+  it('mailto URL opened by the button contains the correct subject', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-mailto'))
+    const [url] = openSpy.mock.calls[0] as [string]
+    const match = /subject=([^&]+)/.exec(url)
+    expect(match).not.toBeNull()
+    const subject = decodeURIComponent(match![1])
+    // Should contain the target id from DRAFT/TARGET.
+    expect(subject).toContain('inputs.bav.employerSubsidy.label')
+  })
+
+  it('GitHub URL opened by the button contains title and body params', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-github'))
+    const [url] = openSpy.mock.calls[0] as [string]
+    const parsed = new URL(url)
+    expect(parsed.searchParams.has('title')).toBe(true)
+    expect(parsed.searchParams.has('body')).toBe(true)
+  })
+
+  it('shows a status message after opening the mailto destination', () => {
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-mailto'))
+    const status = document.querySelector('[role="status"]')
+    expect(status?.textContent).toContain('E-Mail')
+  })
+
+  it('shows a status message after opening the GitHub destination', () => {
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-github'))
+    const status = document.querySelector('[role="status"]')
+    expect(status?.textContent).toContain('GitHub')
   })
 })
