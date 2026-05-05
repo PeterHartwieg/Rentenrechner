@@ -15,6 +15,12 @@ import { useQaMode } from './useQaMode'
  *   - The embedded "Beenden" text is kept as visible copy; the button's
  *     aria-label overrides it for screen readers so they get the full sentence.
  *
+ * Round-2 review fix: `role="status"` was overriding the implicit button role,
+ * which made the chip announce as a live region instead of an actionable
+ * button. The button now keeps its native semantics; live-region announcement
+ * is unnecessary because the chip is permanent for the duration of QA mode
+ * (no transient text changes to announce).
+ *
  * The German user-facing copy matches the calculator's overall language
  * (DECISIONS / PRD note: "UI copy for QA mode should be German").
  */
@@ -26,8 +32,6 @@ export function QaModeIndicator() {
     <button
       type="button"
       className="qa-indicator"
-      role="status"
-      aria-live="polite"
       aria-label="QA-Modus aktiv. Klicken zum Deaktivieren oder Beenden."
       data-testid="qa-indicator"
       onClick={deactivate}

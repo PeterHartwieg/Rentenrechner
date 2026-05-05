@@ -120,6 +120,16 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
     onSubmit(draft, draft.includeScreenshot ? screenshot : null)
   }
 
+  // The keydown handler runs as a stable listener bound once for the
+  // composer's lifetime. To avoid a stale closure on `handleSubmit` (which
+  // would drop a freshly-captured screenshot if the listener was registered
+  // before the async capture resolved), we read through a ref that is kept
+  // up-to-date in a passive effect after every render.
+  const handleSubmitRef = useRef(handleSubmit)
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit
+  })
+
   // Global keydown handler attached while the composer is mounted.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -130,16 +140,13 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
       }
       // Ctrl+Enter or Cmd+Enter submits when a comment is present.
       if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-        if (draft.comment.trim().length > 0 && !submitting) {
-          event.preventDefault()
-          handleSubmit()
-        }
+        event.preventDefault()
+        handleSubmitRef.current()
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.comment, submitting, onCancel])
+  }, [onCancel])
 
   const canSubmit = draft.comment.trim().length > 0 && !submitting
 

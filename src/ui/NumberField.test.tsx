@@ -96,22 +96,14 @@ describe('NumberField — Backspace / lone-zero clearing (#04)', () => {
 describe('NumberField — feedbackSensitive prop (issue 03 / Lane B)', () => {
   afterEach(() => cleanup())
 
-  it('omits data-qa-sensitive when the prop is not set', () => {
+  it('emits data-qa-sensitive="true" by default (privacy-on default)', () => {
     const { container } = render(<NumberField label="Salary" value={5000} />)
     const label = container.querySelector('label.field')
     expect(label).not.toBeNull()
-    expect(label?.getAttribute('data-qa-sensitive')).toBeNull()
+    expect(label?.getAttribute('data-qa-sensitive')).toBe('true')
   })
 
-  it('omits data-qa-sensitive when the prop is explicitly false', () => {
-    const { container } = render(
-      <NumberField label="Salary" value={5000} feedbackSensitive={false} />,
-    )
-    const label = container.querySelector('label.field')
-    expect(label?.getAttribute('data-qa-sensitive')).toBeNull()
-  })
-
-  it('emits data-qa-sensitive="true" on the wrapping label when the prop is true', () => {
+  it('emits data-qa-sensitive="true" when the prop is explicitly true', () => {
     const { container } = render(
       <NumberField label="Salary" value={5000} feedbackSensitive={true} />,
     )
@@ -119,8 +111,18 @@ describe('NumberField — feedbackSensitive prop (issue 03 / Lane B)', () => {
     expect(label?.getAttribute('data-qa-sensitive')).toBe('true')
   })
 
+  it('omits data-qa-sensitive only when the prop is explicitly false', () => {
+    const { container } = render(
+      <NumberField label="Salary" value={5000} feedbackSensitive={false} />,
+    )
+    const label = container.querySelector('label.field')
+    expect(label?.getAttribute('data-qa-sensitive')).toBeNull()
+  })
+
   it('toggling the prop adds and removes the attribute exactly', () => {
-    const { container, rerender } = render(<NumberField label="Salary" value={5000} />)
+    const { container, rerender } = render(
+      <NumberField label="Salary" value={5000} feedbackSensitive={false} />,
+    )
     const label = container.querySelector('label.field') as HTMLElement
     expect(label.getAttribute('data-qa-sensitive')).toBeNull()
 

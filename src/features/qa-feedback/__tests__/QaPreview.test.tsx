@@ -145,6 +145,32 @@ describe('QaPreview — scenario opt-in toggle', () => {
     expect(md).toContain('{"foo":1}')
   })
 
+  it('flips localStorageIncluded and userInputsRedacted when scenario JSON is attached', () => {
+    // P1#2 review fix: the scenario JSON is read from STORAGE_KEY_V2 and
+    // contains user-entered profile/assumption inputs. The privacy summary
+    // must reflect that — without this fix, the preview would tell the
+    // tester "userInputsRedacted: true" while the bundle ships their salary.
+    renderPreview({ collectScenarioJson: () => '{"profile":{"salary":75000}}' })
+    fireEvent.click(screen.getByTestId('qa-preview-include-scenario'))
+    const privacy = screen.getByTestId('qa-preview-privacy')
+    const localStorageRow = within(privacy).getByText(/localStorage enthalten/i).closest('li')
+    const inputsRow = within(privacy).getByText(/Eingaben aus dem Bericht ausgeschlossen/i).closest('li')
+    expect(localStorageRow?.textContent ?? '').toMatch(/ja/i)
+    expect(inputsRow?.textContent ?? '').toMatch(/nein/i)
+  })
+
+  it('keeps localStorageIncluded false when opt-in is checked but only a share URL is attached', () => {
+    // Share URL alone doesn't read localStorage and doesn't ship user inputs.
+    // Only a non-empty scenario JSON warrants flipping those flags.
+    renderPreview()
+    fireEvent.click(screen.getByTestId('qa-preview-include-scenario'))
+    const privacy = screen.getByTestId('qa-preview-privacy')
+    const localStorageRow = within(privacy).getByText(/localStorage enthalten/i).closest('li')
+    const inputsRow = within(privacy).getByText(/Eingaben aus dem Bericht ausgeschlossen/i).closest('li')
+    expect(localStorageRow?.textContent ?? '').toMatch(/nein/i)
+    expect(inputsRow?.textContent ?? '').toMatch(/ja/i)
+  })
+
   it('round-trips: ticking then unticking the checkbox restores the default privacy posture', () => {
     renderPreview()
     const checkbox = screen.getByTestId('qa-preview-include-scenario') as HTMLInputElement

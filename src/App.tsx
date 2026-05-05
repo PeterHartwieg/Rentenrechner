@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
 import type { ProductId } from './domain'
 import type { InstanceTaxModes } from './utils/csvExport'
@@ -61,7 +61,7 @@ import { LIFECYCLE_HORIZON_AGE } from './features/results/lifecycleHorizon'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
-import { QaFeedbackProvider, QaModeIndicator } from './features/qa-feedback'
+import { QaFeedbackProvider, QaModeIndicator, setQaWorkspaceContext } from './features/qa-feedback'
 import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
@@ -155,6 +155,14 @@ function Calculator({ navigate }: CalculatorProps) {
   } = useCalculatorState()
   const portfolioState = usePortfolioState()
   const workspace = useWorkspace()
+
+  // Push the live workspace view + mode into the QA-feedback context ref so
+  // `?qa=1` reports include "Aktive Ansicht" / "Mode" instead of dashes.
+  // No simulation deps; the ref read is cheap and runs only when these change.
+  useEffect(() => {
+    setQaWorkspaceContext({ activeView: workspace.activeView })
+  }, [workspace.activeView])
+
   const combineSimulation = useCombineSimulation(portfolioState.workspace)
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const ui = useWorkspaceUiState()

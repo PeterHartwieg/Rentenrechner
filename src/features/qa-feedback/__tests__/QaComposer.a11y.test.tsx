@@ -201,6 +201,40 @@ describe('QaComposer — keyboard handlers', () => {
     fireEvent.keyDown(document, { key: 'Enter', metaKey: true })
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
+
+  it('keyboard submission uses the latest comment value (no stale closure)', () => {
+    // P2#2 review fix: the keydown listener was previously bound to a closure
+    // over an older `handleSubmit`, which (with `screenshot` and `submitting`
+    // omitted from the deps array) could drop the just-captured screenshot
+    // or the latest comment text when the user fires Ctrl+Enter while the
+    // composer was actively re-rendering.
+    const onSubmit = vi.fn()
+    const initial = makeDraft({ comment: '' })
+    const updated = makeDraft({ comment: 'fresh comment after re-render' })
+    const { rerender } = render(
+      <QaComposer
+        target={TARGET}
+        draft={initial}
+        onChangeDraft={() => undefined}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    )
+    // Re-render with the updated draft, simulating the parent passing a new
+    // comment (which is the path that used to leave the keydown closure stale).
+    rerender(
+      <QaComposer
+        target={TARGET}
+        draft={updated}
+        onChangeDraft={() => undefined}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    )
+    fireEvent.keyDown(document, { key: 'Enter', ctrlKey: true })
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual(updated)
+  })
 })
 
 describe('QaComposer — mobile sheet class', () => {

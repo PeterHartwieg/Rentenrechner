@@ -64,13 +64,16 @@ export function NumberField({
    */
   feedbackTargetId?: string
   /**
-   * When `true`, the wrapping `<label>` is tagged with `data-qa-sensitive="true"`
-   * so the QA-feedback redaction pass blurs the field's pixels before the
-   * screenshot rasteriser runs (DECISIONS §5 / issue 03). Defaults to omitted —
-   * existing call-sites render identically without the attribute.
+   * Tags the wrapping `<label>` with `data-qa-sensitive="true"` so the
+   * QA-feedback redaction pass blurs the field's pixels before the screenshot
+   * rasteriser runs (DECISIONS §5 / issue 03).
    *
-   * Use for any `NumberField` bound to user-entered profile, salary,
-   * contribution, retirement, or scenario values.
+   * Defaults to **`true`** because every NumberField in this app binds to
+   * user-entered or engine-derived numbers — salary, contributions, retirement
+   * assumptions, fees, ages — that the privacy guardrail treats as sensitive.
+   * Pass `false` only for genuinely non-sensitive numbers (none today).
+   *
+   * Inert when QA mode is disabled — the attribute is harmless on the label.
    */
   feedbackSensitive?: boolean
 }) {
@@ -80,7 +83,7 @@ export function NumberField({
     precision: 'exact',
   })
   const qaProps: Record<string, unknown> = feedbackTargetId ? { ...targetProps } : {}
-  if (feedbackSensitive) {
+  if (feedbackSensitive !== false) {
     qaProps['data-qa-sensitive'] = 'true'
   }
   const [draft, setDraft] = useState<string | null>(null)

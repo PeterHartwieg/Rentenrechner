@@ -100,4 +100,21 @@ describe('QaFeedbackProvider — activation', () => {
     unmount()
     expect(document.documentElement.getAttribute('data-qa-mode')).toBeNull()
   })
+
+  it('renders QaModeIndicator with native button semantics, no role override', () => {
+    // P3 review fix: previously the chip had role="status" which overrode
+    // its implicit button role for assistive tech. The chip is now a plain
+    // <button> with its German aria-label.
+    window.history.replaceState(null, '', '/?qa=1')
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    const indicator = screen.getByTestId('qa-indicator')
+    expect(indicator.tagName).toBe('BUTTON')
+    expect(indicator.getAttribute('role')).toBeNull()
+    expect(indicator.getAttribute('aria-live')).toBeNull()
+    expect(indicator.getAttribute('aria-label')).toMatch(/QA-Modus aktiv/)
+  })
 })

@@ -306,6 +306,15 @@ function buildReport({
         ...(scenarioJson ? { scenarioJson } : {}),
       }
       flags.scenarioStateIncluded = true
+      // The scenario JSON comes from STORAGE_KEY_V2 and contains user-entered
+      // profile and assumption inputs. The privacy summary must reflect that:
+      // localStorage was read and user inputs are no longer redacted in the
+      // exported report. Without this, the preview would tell the tester
+      // "userInputsRedacted: true" while the bundle ships their salary.
+      if (scenarioJson && scenarioJson.length > 0) {
+        flags.localStorageIncluded = true
+        flags.userInputsRedacted = false
+      }
     }
   }
   // Workspace context: collected synchronously at report-assembly time.
