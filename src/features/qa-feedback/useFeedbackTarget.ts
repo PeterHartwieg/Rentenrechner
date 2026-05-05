@@ -70,6 +70,24 @@ export function qaTargetAttrs(
 }
 
 /**
+ * Convenience helper: spread the return value directly onto a JSX element.
+ *
+ * Usage (inside a component that already called `useQaMode()`):
+ *   <button {...qaTarget(enabled, 'inputs.bav.contribution')}>…</button>
+ *
+ * This is the one-liner form of `qaTargetAttrs` for call sites that don't
+ * need the full `FeedbackTargetSpec` flexibility. Under the hood it delegates
+ * to `qaTargetAttrs` so all inert / section / sensitive rules apply uniformly.
+ */
+export function qaTarget(
+  enabled: boolean,
+  id: string,
+  opts?: Omit<FeedbackTargetSpec, 'id'>,
+): FeedbackTargetProps['targetProps'] {
+  return qaTargetAttrs(enabled, { id, ...opts })
+}
+
+/**
  * Register a component as a QA-feedback target.
  *
  * Returns a `ref` to attach to the host element and a `targetProps` bag

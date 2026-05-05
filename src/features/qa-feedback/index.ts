@@ -33,7 +33,7 @@ export { useQaMode } from './useQaMode'
  * loops where `useFeedbackTarget` would violate `react-hooks/rules-of-hooks`.
  * Read `enabled` from `useQaMode()` once at component scope, then pass it in.
  */
-export { useFeedbackTarget, qaTargetAttrs } from './useFeedbackTarget'
+export { useFeedbackTarget, qaTargetAttrs, qaTarget } from './useFeedbackTarget'
 export type { FeedbackTargetProps, FeedbackTargetSpec } from './useFeedbackTarget'
 
 /**

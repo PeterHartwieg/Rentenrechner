@@ -3,6 +3,7 @@ import type React from 'react'
 import type { ScenarioAssumptions } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { BeitragsdynamikField } from './sections/BeitragsdynamikField'
+import { useFeedbackTarget } from '../qa-feedback'
 
 type Props = {
   assumptions: ScenarioAssumptions
@@ -14,6 +15,11 @@ type Props = {
  * the per-product UI registry can dispatch every product the same way.
  */
 export function EtfInputs({ assumptions, onAssumptionsChange }: Props) {
+  const { targetProps: fondsTypProps } = useFeedbackTarget({
+    id: 'inputs.etf.fondstyp',
+    label: 'Fondstyp (für Teilfreistellung)',
+    precision: 'exact',
+  })
   return (
     <div className="field-grid">
       <NumberField
@@ -31,7 +37,7 @@ export function EtfInputs({ assumptions, onAssumptionsChange }: Props) {
           }))
         }
       />
-      <label className="field">
+      <label className="field" {...fondsTypProps}>
         <span>Fondstyp (für Teilfreistellung)</span>
         <select
           value={assumptions.etf.equityPartialExemption}

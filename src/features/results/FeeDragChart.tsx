@@ -13,7 +13,8 @@ import { Coins } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/format';
 import { getProductMeta } from '../../engine/productRegistry';
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon';
-import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
+import { qaTargetAttrs, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
+import { useQaMode } from '../qa-feedback/useQaMode';
 
 interface FeeDragChartProps {
   selectedResults: {
@@ -74,6 +75,7 @@ export function FeeDragChart({
     label: 'Gebühren-Vergleich-Chart Legende',
     precision: 'section',
   });
+  const { enabled: qaEnabled } = useQaMode();
 
   return (
     <section className="chart-panel fee-drag-panel" {...containerTargetProps}>
@@ -126,12 +128,27 @@ export function FeeDragChart({
           </BarChart>
         </ResponsiveContainer>
         <div className="fee-drag-legend fee-drag-legend--overlay" {...legendTargetProps}>
-          {LEGEND_ITEMS.map(({ color, label }) => (
-            <span key={label} className="fee-drag-legend__item">
-              <span className="fee-drag-legend__swatch" style={{ background: color }} />
-              {label}
-            </span>
-          ))}
+          {LEGEND_ITEMS.map(({ color, label }) => {
+            // Derive a stable camelCase id segment from the label.
+            const labelId = label
+              .replace('ü', 'ue')
+              .replace(/[^a-zA-Z0-9]+(.)/g, (_, c: string) => c.toUpperCase())
+              .replace(/^[A-Z]/, (c) => c.toLowerCase())
+            return (
+              <span
+                key={label}
+                className="fee-drag-legend__item"
+                {...qaTargetAttrs(qaEnabled, {
+                  id: `results.feeDragChart.legend.${labelId}`,
+                  label,
+                  precision: 'exact',
+                })}
+              >
+                <span className="fee-drag-legend__swatch" style={{ background: color }} />
+                {label}
+              </span>
+            )
+          })}
         </div>
       </div>
     </section>

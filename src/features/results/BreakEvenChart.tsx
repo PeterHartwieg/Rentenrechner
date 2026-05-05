@@ -24,7 +24,8 @@ import {
 } from './breakEvenSeries'
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon'
 import { lifecyclePickerLabel } from './lifecycleLabels'
-import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
+import { qaTargetAttrs, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
+import { useQaMode } from '../qa-feedback/useQaMode'
 
 interface Props {
   selectedResults: LifecycleSeriesResult[]
@@ -94,6 +95,7 @@ export function BreakEvenChart({
     label: 'Break-Even-Chart Legende',
     precision: 'section',
   })
+  const { enabled: qaEnabled } = useQaMode()
 
   if (selectedResults.length === 0) return null
 
@@ -156,6 +158,11 @@ export function BreakEvenChart({
                 color: isActive ? '#ffffff' : color,
               }}
               aria-pressed={isActive}
+              {...qaTargetAttrs(qaEnabled, {
+                id: `results.breakEvenChart.picker.${r.productId}`,
+                label: lifecyclePickerLabel(r),
+                precision: 'exact',
+              })}
             >
               {lifecyclePickerLabel(r)}
             </button>
@@ -308,23 +315,38 @@ export function BreakEvenChart({
           </LineChart>
         </ResponsiveContainer>
         <div className="lifecycle-legend lifecycle-legend--overlay" aria-hidden="true" {...legendTargetProps}>
-          <span className="lifecycle-legend__item">
+          <span
+            className="lifecycle-legend__item"
+            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.nettoEingezahlt', label: 'Netto eingezahlt', precision: 'exact' })}
+          >
             <span className="lifecycle-legend__line lifecycle-legend__line--dotted" />
             Netto eingezahlt
           </span>
-          <span className="lifecycle-legend__item">
+          <span
+            className="lifecycle-legend__item"
+            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.restkapital', label: 'Restkapital', precision: 'exact' })}
+          >
             <span className="lifecycle-legend__line lifecycle-legend__line--solid" />
             Restkapital
           </span>
-          <span className="lifecycle-legend__item">
+          <span
+            className="lifecycle-legend__item"
+            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.nettoAusgezahlt', label: 'Netto ausgezahlt', precision: 'exact' })}
+          >
             <span className="lifecycle-legend__line lifecycle-legend__line--dashed" />
             Netto ausgezahlt
           </span>
-          <span className="lifecycle-legend__item">
+          <span
+            className="lifecycle-legend__item"
+            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
+          >
             <span className="lifecycle-legend__dot" />
             Break-even
           </span>
-          <span className="lifecycle-legend__item">
+          <span
+            className="lifecycle-legend__item"
+            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.leibrenteCrossover', label: 'Leibrente überholt Kapitalverzehr', precision: 'exact' })}
+          >
             <span className="lifecycle-legend__dot lifecycle-legend__dot--ring" />
             Leibrente überholt Kapitalverzehr
           </span>

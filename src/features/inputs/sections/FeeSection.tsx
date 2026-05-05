@@ -2,6 +2,8 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { FeeModel } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
 import { formatPercent } from '../../../utils/format'
+import { qaTargetAttrs } from '../../qa-feedback'
+import { useQaMode } from '../../qa-feedback/useQaMode'
 
 /**
  * Reusable fee-input section for bAV and pAV. Owns the fee-mode tabs (Einzelposten
@@ -61,9 +63,15 @@ export function FeeSection({
   setFeeInputMode,
   feedbackBaseId,
 }: Props) {
+  const { enabled: qaEnabled } = useQaMode()
   const totalAsset = fees.wrapperAssetFee + fees.fundAssetFee
   const update = (patch: Partial<FeeModel>) => onChangeFees({ ...fees, ...patch })
   const fid = (suffix: string) => feedbackBaseId ? `${feedbackBaseId}.${suffix}` : undefined
+  // Derive leaf QA ids for the mode-tab buttons. When no feedbackBaseId is
+  // provided the buttons still carry their own stable ids so the overlay can
+  // identify them during dog-fooding even in contexts that haven't plumbed
+  // feedbackBaseId yet.
+  const tabBaseId = feedbackBaseId ?? 'inputs.fees'
 
   return (
     <>
@@ -72,6 +80,7 @@ export function FeeSection({
           type="button"
           className={`fee-mode-tab${feeInputMode === 'aufgeschluesselt' ? ' fee-mode-tab--active' : ''}`}
           onClick={() => setFeeInputMode('aufgeschluesselt')}
+          {...qaTargetAttrs(qaEnabled, { id: `${tabBaseId}.tab.aufgeschluesselt`, label: 'Einzelposten', precision: 'exact' })}
         >
           Einzelposten
         </button>
@@ -79,6 +88,7 @@ export function FeeSection({
           type="button"
           className={`fee-mode-tab${feeInputMode === 'effektivkosten' ? ' fee-mode-tab--active' : ''}`}
           onClick={() => setFeeInputMode('effektivkosten')}
+          {...qaTargetAttrs(qaEnabled, { id: `${tabBaseId}.tab.effektivkosten`, label: 'Effektivkosten (all-in)', precision: 'exact' })}
         >
           Effektivkosten (all-in)
         </button>

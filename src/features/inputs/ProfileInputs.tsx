@@ -5,6 +5,8 @@ import { NumberField } from '../../ui/NumberField'
 import { clampNumber, updateNumber } from '../../ui/formatting'
 import { de2026Rules } from '../../rules/de2026'
 import { formatCurrency } from '../../utils/format'
+import { qaTargetAttrs } from '../qa-feedback'
+import { useQaMode } from '../qa-feedback/useQaMode'
 
 type Props = {
   profile: PersonalProfile
@@ -14,6 +16,7 @@ type Props = {
 }
 
 export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, pkvNetMonthlyCost }: Props) {
+  const { enabled: qaEnabled } = useQaMode()
   const maxPlannedChildYear = de2026Rules.year + 20
 
   return (
@@ -75,7 +78,10 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
       <div className="field">
         <span>Krankenversicherung</span>
         <div className="radio-group">
-          <label className="radio-option">
+          <label
+            className="radio-option"
+            {...qaTargetAttrs(qaEnabled, { id: 'inputs.profile.krankenversicherung.gkv', label: 'Gesetzlich (GKV)', precision: 'exact' })}
+          >
             <input
               type="radio"
               name="krankenversicherung"
@@ -86,7 +92,10 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
             />
             <span>Gesetzlich (GKV)</span>
           </label>
-          <label className="radio-option">
+          <label
+            className="radio-option"
+            {...qaTargetAttrs(qaEnabled, { id: 'inputs.profile.krankenversicherung.pkv', label: 'Privat (PKV)', precision: 'exact' })}
+          >
             <input
               type="radio"
               name="krankenversicherung"

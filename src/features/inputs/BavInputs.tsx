@@ -23,6 +23,7 @@ import { PayoutModeSection } from './sections/PayoutModeSection'
 import { OfferCapitalCompareField } from './sections/OfferCapitalCompareField'
 import { BeitragsdynamikField } from './sections/BeitragsdynamikField'
 import { FeeSection, type FeeInputMode } from './sections/FeeSection'
+import { useFeedbackTarget } from '../qa-feedback'
 
 type Props = {
   assumptions: ScenarioAssumptions
@@ -77,6 +78,11 @@ export function BavInputs({
     ? 'KVdR'
     : 'freiwillig GKV in Rente'
   const erweitertSummary = `${dfwShort} · ${kvdrShort}${riy > 0 ? ` · Kosten: ${formatPercent(riy)}` : ''}`
+  const { targetProps: durchfuehrungswegProps } = useFeedbackTarget({
+    id: 'inputs.bav.durchfuehrungsweg',
+    label: 'bAV-Vertragsart (Durchführungsweg)',
+    precision: 'exact',
+  })
 
   return (
     <>
@@ -339,7 +345,7 @@ export function BavInputs({
             </>
           )}
 
-          <label className="field">
+          <label className="field" {...durchfuehrungswegProps}>
             <span>
               bAV-Vertragsart (Durchführungsweg)
               <InfoTip text={getTerm('durchfuehrungsweg')!.shortHelp} label="Durchführungsweg erklären" />

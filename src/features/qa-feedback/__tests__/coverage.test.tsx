@@ -4,6 +4,13 @@
  * Phase 3 Lane H — Issue 09: Feedback target coverage for charts, tables,
  * legal pages, and disclaimer banner.
  *
+ * Extended in Issue 13 to cover leaf-level targets:
+ *  - BreakEvenChart individual legend items (leaf)
+ *  - FeeDragChart individual legend items (leaf)
+ *  - ProductTabs per-product tab buttons (leaf)
+ *  - FeeSection mode-tab buttons (leaf)
+ *  - qaTarget convenience helper
+ *
  * Asserts:
  *  - Chart containers carry the expected data-qa-target and data-qa-section
  *    attributes when QA mode is on.
@@ -77,6 +84,56 @@ import { LegalFooter } from '../../legal/LegalFooter'
 // ---------------------------------------------------------------------------
 
 import { DisclaimerBanner } from '../../workspace/DisclaimerBanner'
+
+// ---------------------------------------------------------------------------
+// FeeDragChart stub
+// ---------------------------------------------------------------------------
+
+import { FeeDragChart } from '../../results/FeeDragChart'
+
+const FEE_DRAG_PROPS = {
+  selectedResults: [
+    {
+      productId: 'etf' as const,
+      label: 'ETF',
+      netMonthlyPayout: 1200,
+      totalFees: 5000,
+      totalUserCost: 50000,
+      etfPayoutRows: [],
+    },
+  ],
+  productColors: { etf: '#0ea5e9' },
+  retirementAge: 67,
+  retirementEndAge: 87,
+}
+
+// ---------------------------------------------------------------------------
+// ProductTabs stub
+// ---------------------------------------------------------------------------
+
+import { ProductTabs } from '../../inputs/ProductTabs'
+
+// ---------------------------------------------------------------------------
+// FeeSection stub
+// ---------------------------------------------------------------------------
+
+import { FeeSection } from '../../inputs/sections/FeeSection'
+
+const DEFAULT_FEES = {
+  wrapperAssetFee: 0.007,
+  fundAssetFee: 0.003,
+  contributionFee: 0,
+  fixedMonthlyFee: 0,
+  acquisitionCostPct: 0,
+  acquisitionCostSpreadYears: 5,
+  pensionPayoutFeePct: 0,
+}
+
+// ---------------------------------------------------------------------------
+// qaTarget helper
+// ---------------------------------------------------------------------------
+
+import { qaTarget } from '../useFeedbackTarget'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -283,5 +340,253 @@ describe('DisclaimerBanner — body and dismiss targets', () => {
     expect(container.querySelector('.disclaimer-wrap')).not.toBeNull()
     // session storage flag is written on dismiss (behavior test, not regression)
     expect(sessionStorage.getItem('disclaimer-dismissed')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 13: BreakEvenChart — individual legend items at leaf level
+// ---------------------------------------------------------------------------
+
+describe('BreakEvenChart — leaf-level legend items (issue 13)', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('individual legend items carry their own data-qa-target (leaf precision)', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <BreakEvenChart {...BREAK_EVEN_PROPS} />
+      </QaFeedbackProvider>,
+    )
+    const nettoEl = container.querySelector('[data-qa-target="results.breakEvenChart.legend.nettoEingezahlt"]')
+    expect(nettoEl).not.toBeNull()
+    expect(nettoEl?.getAttribute('data-qa-precision')).toBe('exact')
+  })
+
+  it('Restkapital legend item carries data-qa-target="results.breakEvenChart.legend.restkapital"', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <BreakEvenChart {...BREAK_EVEN_PROPS} />
+      </QaFeedbackProvider>,
+    )
+    const el = container.querySelector('[data-qa-target="results.breakEvenChart.legend.restkapital"]')
+    expect(el).not.toBeNull()
+  })
+
+  it('all five legend items are individually selectable', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <BreakEvenChart {...BREAK_EVEN_PROPS} />
+      </QaFeedbackProvider>,
+    )
+    const ids = [
+      'results.breakEvenChart.legend.nettoEingezahlt',
+      'results.breakEvenChart.legend.restkapital',
+      'results.breakEvenChart.legend.nettoAusgezahlt',
+      'results.breakEvenChart.legend.breakEven',
+      'results.breakEvenChart.legend.leibrenteCrossover',
+    ]
+    for (const id of ids) {
+      expect(container.querySelector(`[data-qa-target="${id}"]`)).not.toBeNull()
+    }
+  })
+
+  it('product picker chip carries data-qa-target="results.breakEvenChart.picker.etf"', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <BreakEvenChart {...BREAK_EVEN_PROPS} />
+      </QaFeedbackProvider>,
+    )
+    const chip = container.querySelector('[data-qa-target="results.breakEvenChart.picker.etf"]')
+    expect(chip?.tagName.toLowerCase()).toBe('button')
+  })
+
+  it('legend items are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <BreakEvenChart {...BREAK_EVEN_PROPS} />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="results.breakEvenChart.legend.nettoEingezahlt"]')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 13: FeeDragChart — individual legend items at leaf level
+// ---------------------------------------------------------------------------
+
+describe('FeeDragChart — leaf-level legend items (issue 13)', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('Nettoaufwand legend item carries data-qa-target with exact precision', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <FeeDragChart {...FEE_DRAG_PROPS} />
+      </QaFeedbackProvider>,
+    )
+    const el = container.querySelector('[data-qa-target="results.feeDragChart.legend.nettoaufwandGesamt"]')
+    expect(el).not.toBeNull()
+    expect(el?.getAttribute('data-qa-precision')).toBe('exact')
+  })
+
+  it('all three fee-drag legend items are individually selectable', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <FeeDragChart {...FEE_DRAG_PROPS} />
+      </QaFeedbackProvider>,
+    )
+    const ids = [
+      'results.feeDragChart.legend.nettoaufwandGesamt',
+      'results.feeDragChart.legend.nettoRendite',
+      'results.feeDragChart.legend.gebuehrenGesamt',
+    ]
+    for (const id of ids) {
+      expect(container.querySelector(`[data-qa-target="${id}"]`)).not.toBeNull()
+    }
+  })
+
+  it('legend items are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <FeeDragChart {...FEE_DRAG_PROPS} />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="results.feeDragChart.legend.nettoaufwandGesamt"]')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 13: ProductTabs — per-product tab buttons at leaf level
+// ---------------------------------------------------------------------------
+
+describe('ProductTabs — leaf-level tab buttons (issue 13)', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('each visible product tab carries data-qa-target="inputs.productTabs.<productId>"', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <ProductTabs visible={['etf', 'bav']} active={'etf'} onChange={() => {}} />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.productTabs.etf"]')).not.toBeNull()
+    expect(container.querySelector('[data-qa-target="inputs.productTabs.bav"]')).not.toBeNull()
+  })
+
+  it('tab targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <ProductTabs visible={['etf']} active={'etf'} onChange={() => {}} />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.productTabs.etf"]')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 13: FeeSection — mode-tab buttons at leaf level
+// ---------------------------------------------------------------------------
+
+describe('FeeSection — fee-mode tab buttons (issue 13)', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('Einzelposten tab carries data-qa-target with feedbackBaseId prefix', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <FeeSection
+          fees={DEFAULT_FEES}
+          onChangeFees={vi.fn()}
+          presets={[]}
+          riy={0.01}
+          feeInputMode="aufgeschluesselt"
+          setFeeInputMode={vi.fn()}
+          feedbackBaseId="inputs.bav.fees"
+        />
+      </QaFeedbackProvider>,
+    )
+    const btn = container.querySelector('[data-qa-target="inputs.bav.fees.tab.aufgeschluesselt"]')
+    expect(btn?.tagName.toLowerCase()).toBe('button')
+  })
+
+  it('Effektivkosten tab carries data-qa-target with feedbackBaseId prefix', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <FeeSection
+          fees={DEFAULT_FEES}
+          onChangeFees={vi.fn()}
+          presets={[]}
+          riy={0.01}
+          feeInputMode="aufgeschluesselt"
+          setFeeInputMode={vi.fn()}
+          feedbackBaseId="inputs.bav.fees"
+        />
+      </QaFeedbackProvider>,
+    )
+    const btn = container.querySelector('[data-qa-target="inputs.bav.fees.tab.effektivkosten"]')
+    expect(btn).not.toBeNull()
+  })
+
+  it('mode-tab buttons fall back to inputs.fees prefix when feedbackBaseId is absent', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <FeeSection
+          fees={DEFAULT_FEES}
+          onChangeFees={vi.fn()}
+          presets={[]}
+          riy={0.01}
+          feeInputMode="aufgeschluesselt"
+          setFeeInputMode={vi.fn()}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.fees.tab.aufgeschluesselt"]')).not.toBeNull()
+  })
+
+  it('mode-tab targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <FeeSection
+          fees={DEFAULT_FEES}
+          onChangeFees={vi.fn()}
+          presets={[]}
+          riy={0.01}
+          feeInputMode="aufgeschluesselt"
+          setFeeInputMode={vi.fn()}
+          feedbackBaseId="inputs.bav.fees"
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.bav.fees.tab.aufgeschluesselt"]')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 13: qaTarget convenience helper
+// ---------------------------------------------------------------------------
+
+describe('qaTarget — convenience helper', () => {
+  it('returns empty object when enabled is false', () => {
+    const result = qaTarget(false, 'inputs.bav.contribution')
+    expect(result).toEqual({})
+  })
+
+  it('returns data-qa-target and precision when enabled is true', () => {
+    const result = qaTarget(true, 'inputs.bav.contribution')
+    expect(result['data-qa-target']).toBe('inputs.bav.contribution')
+    expect(result['data-qa-precision']).toBe('exact')
+  })
+
+  it('passes opts through to qaTargetAttrs (label, precision, sensitive)', () => {
+    const result = qaTarget(true, 'inputs.bav.contribution', {
+      label: 'Beitrag',
+      precision: 'section',
+      sensitive: true,
+    })
+    expect(result['data-qa-target']).toBe('inputs.bav.contribution')
+    expect(result['data-qa-label']).toBe('Beitrag')
+    expect(result['data-qa-precision']).toBe('section')
+    expect(result['data-qa-section']).toBe('true')
+    expect(result['data-qa-sensitive']).toBe('true')
   })
 })

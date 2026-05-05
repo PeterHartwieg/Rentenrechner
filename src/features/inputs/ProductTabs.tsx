@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
 import type { ProductId } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
+import { qaTargetAttrs } from '../qa-feedback'
+import { useQaMode } from '../qa-feedback/useQaMode'
 import './ProductTabs.css'
 
 type ProductTabsProps = {
@@ -17,6 +19,7 @@ type ProductTabsProps = {
  * visible — the parent shows a hint instead.
  */
 export function ProductTabs({ visible, active, onChange }: ProductTabsProps) {
+  const { enabled: qaEnabled } = useQaMode()
   if (visible.length === 0) return null
 
   return (
@@ -34,6 +37,11 @@ export function ProductTabs({ visible, active, onChange }: ProductTabsProps) {
             className={`product-tab${isActive ? ' product-tab--active' : ''}`}
             style={{ ['--product-color' as string]: meta.color } as CSSProperties}
             onClick={() => onChange(id)}
+            {...qaTargetAttrs(qaEnabled, {
+              id: `inputs.productTabs.${id}`,
+              label: meta.shortLabel,
+              precision: 'exact',
+            })}
           >
             {meta.shortLabel}
           </button>
