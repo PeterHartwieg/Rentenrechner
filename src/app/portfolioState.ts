@@ -32,7 +32,9 @@ import {
 import {
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
-} from '../features/inventory/inventoryHelpers'
+  newScenarioId,
+  deepCloneScenario,
+} from './workspaceIdentity'
 import { scenarioDiff, applyDiff } from './scenarioDiff'
 import type { SavedScenario } from '../data/scenarioLibrary'
 import { addArchivedEntry } from '../data/scenarioLibrary'
@@ -59,34 +61,9 @@ export function applyDisambiguatingLabel<T extends AnyInstance>(instance: T, cou
   return { ...instance, label: `${instance.label} #${count}` }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Generate a uuid-style id for new scenarios. Uses crypto.randomUUID when
- * available (browsers + Node 19+), with a fallback for older environments.
- *
- * Exported so tests + spawn flows can produce deterministic-shape ids without
- * pulling in the React hook.
- */
-export function newScenarioId(prefix: 'whatif' | 'baseline' = 'whatif'): string {
-  // crypto.randomUUID is widely available in modern browsers and Node 19+;
-  // fall back to a Math.random-based string for very old environments.
-  const cryptoObj = typeof crypto !== 'undefined' ? crypto : undefined
-  const uuid = cryptoObj?.randomUUID
-    ? cryptoObj.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
-  return `${prefix}-${uuid}`
-}
-
-export function deepCloneScenario<T>(v: T): T {
-  // structuredClone is available in modern runtimes; fall back to JSON when not.
-  if (typeof structuredClone === 'function') {
-    return structuredClone(v)
-  }
-  return JSON.parse(JSON.stringify(v)) as T
-}
+// Re-export so existing callers (tests, recommender, ContractDecisionMenu, etc.)
+// continue to work without changes.
+export { newScenarioId, deepCloneScenario }
 
 function loadInitialWorkspace(): Workspace {
   return loadSavedWorkspace() ?? deepCloneScenario(defaultWorkspace)
