@@ -147,7 +147,7 @@ export function useDerivedViews(
         profile,
         inflationRate: options.combine.inflationRate ?? assumptions.inflationRate,
       })
-      downloadCsv('TODO_BRAND_NAME-export.csv', csv)
+      downloadCsv('rentenwiki-export.csv', csv)
       return
     }
     const csv = buildExportCsv({
@@ -162,7 +162,7 @@ export function useDerivedViews(
       rules: de2026Rules,
       inflationRate: assumptions.inflationRate,
     })
-    downloadCsv('TODO_BRAND_NAME-export.csv', csv)
+    downloadCsv('rentenwiki-export.csv', csv)
   }
 
   return {

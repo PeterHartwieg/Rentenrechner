@@ -140,7 +140,7 @@ export function PrintReport({
         <tbody>
           <tr>
             <td className="pr-header-left">
-              <div className="pr-title">TODO_BRAND_NAME Deutschland 2026</div>
+              <div className="pr-title">RentenWiki.de Deutschland 2026</div>
               <div className="pr-subtitle">Persönliches Vorsorgemodell · erstellt am {date}</div>
             </td>
             <td className="pr-header-right">
@@ -325,7 +325,7 @@ export function PrintReport({
       </section>
 
       <div className="pr-footer">
-        TODO_BRAND_NAME Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
+        RentenWiki.de Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
       </div>
     </div>
   )
@@ -424,7 +424,7 @@ function CombinePrintReport({
         <tbody>
           <tr>
             <td className="pr-header-left">
-              <div className="pr-title">TODO_BRAND_NAME Deutschland 2026 — Mein Plan</div>
+              <div className="pr-title">RentenWiki.de Deutschland 2026 — Mein Plan</div>
               <div className="pr-subtitle">Persönliches Vorsorgemodell · erstellt am {date}</div>
             </td>
             <td className="pr-header-right">
@@ -611,7 +611,7 @@ function CombinePrintReport({
       </section>
 
       <div className="pr-footer">
-        TODO_BRAND_NAME Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
+        RentenWiki.de Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
       </div>
     </div>
   )

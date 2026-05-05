@@ -1,6 +1,6 @@
 ---
 title: "BLOCKER: TODO_BRAND_NAME placeholder ships in HTML title, header, print, and CSV filenames"
-Status: ready-for-agent
+Status: done
 Severity: blocker
 Area: Group P / branding / publication
 ---

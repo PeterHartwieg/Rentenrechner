@@ -1,4 +1,4 @@
-# Rentenrechner
+# RentenWiki.de
 
 Interactive German retirement comparison tool evaluating:
 

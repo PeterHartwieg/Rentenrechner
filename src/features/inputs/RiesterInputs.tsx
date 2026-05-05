@@ -254,7 +254,7 @@ export function RiesterInputs({
                 min={0}
                 max={100}
                 step={5}
-                suffix="% der Beitraege"
+                suffix="% der Beiträge"
                 onChange={(value) =>
                   onAssumptionsChange((current) => ({
                     ...current,

@@ -29,7 +29,7 @@ export function LegalLayout({ title, navigate, children }: Props) {
       </article>
       <footer className="legal-page-footer">
         <a href="/" onClick={goHome}>
-          TODO_BRAND_NAME
+          RentenWiki.de
         </a>
         <span>·</span>
         <a

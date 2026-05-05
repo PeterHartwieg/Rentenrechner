@@ -59,11 +59,11 @@ export function MonteCarloHighlights({ result }: Props) {
         <div>
           <h3 className="mc-heading-title">
             Risiko-Check
-            <InfoTip icon="info" label="Risiko-Check erklaeren">
-              Der Rechner testet viele moegliche Boersenverlaeufe. Die Karten
+            <InfoTip icon="info" label="Risiko-Check erklären">
+              Der Rechner testet viele mögliche Börsenverläufe. Die Karten
               zeigen nicht eine sichere Vorhersage, sondern wie oft ein Produkt
               in diesen Tests vorne liegt. Die Balken darunter zeigen schwache,
-              mittlere und starke Ergebnisse fuer die monatliche Netto-Rente.
+              mittlere und starke Ergebnisse für die monatliche Netto-Rente.
             </InfoTip>
           </h3>
           <p>
@@ -75,7 +75,7 @@ export function MonteCarloHighlights({ result }: Props) {
 
       <div className="mc-highlight-grid">
         <div className="mc-highlight-card" style={{ borderLeftColor: bestMedianPension?.color }}>
-          <span>Hoechste mittlere Netto-Rente</span>
+          <span>Höchste mittlere Netto-Rente</span>
           <strong>
             {bestMedianPension?.shortLabel ?? '-'}{' '}
             {bestMedianPension ? `${formatCurrency(bestMedianPension.netMonthlyPayout.p50, 0)} / Mon.` : ''}
@@ -83,19 +83,19 @@ export function MonteCarloHighlights({ result }: Props) {
           <small>Mitte aller Simulationen</small>
         </div>
         <div className="mc-highlight-card" style={{ borderLeftColor: bestPension?.color }}>
-          <span>Am haeufigsten vorne</span>
+          <span>Am häufigsten vorne</span>
           <strong>
             {bestPension?.shortLabel ?? '-'}{' '}
             {bestPension ? formatPercent(bestPension.bestPensionProbability) : ''}
           </strong>
-          <small>Hoechste Netto-Rente im direkten Vergleich</small>
+          <small>Höchste Netto-Rente im direkten Vergleich</small>
         </div>
         <div className="mc-highlight-card" style={{ borderLeftColor: strongestSafetyLine?.color }}>
-          <span>Staerkste Sicherheitslinie</span>
+          <span>Stärkste Sicherheitslinie</span>
           <strong>{strongestSafetyLine?.shortLabel ?? '-'}</strong>
           <small>
             {strongestSafetyLine
-              ? `90 % der Simulationen lagen ueber ${formatCurrency(strongestSafetyLine.netMonthlyPayout.p10, 0)} / Mon.`
+              ? `90 % der Simulationen lagen über ${formatCurrency(strongestSafetyLine.netMonthlyPayout.p10, 0)} / Mon.`
               : '-'}
           </small>
         </div>
@@ -145,7 +145,7 @@ export function MonteCarloHighlights({ result }: Props) {
               <span className="mc-mini-range-value">
                 <strong>{formatCurrency(summary.netMonthlyPayout.p50, 0)} / Mon.</strong>
                 <small>
-                  90 % der Simulationen lagen ueber {formatCurrency(summary.netMonthlyPayout.p10, 0)} / Mon.
+                  90 % der Simulationen lagen über {formatCurrency(summary.netMonthlyPayout.p10, 0)} / Mon.
                 </small>
                 {guaranteeText && <small>{guaranteeText}</small>}
                 {summary.guaranteeAppliedProbability !== null && (

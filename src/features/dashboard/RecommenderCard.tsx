@@ -219,7 +219,7 @@ export function RecommenderCard({
                   <div
                     className="recommender-ranking-meter"
                     role="meter"
-                    aria-label={`Relative Bewertung nach ${RECOMMENDER_RANKING_LABELS[ranking]} fuer ${cand.label}`}
+                    aria-label={`Relative Bewertung nach ${RECOMMENDER_RANKING_LABELS[ranking]} für ${cand.label}`}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={scorePct}

@@ -744,7 +744,7 @@ function Calculator({ navigate }: CalculatorProps) {
         title: 'Mein Plan',
       }
     : {
-        kicker: 'TODO_BRAND_NAME Deutschland 2026',
+        kicker: 'RentenWiki.de Deutschland 2026',
         title: 'ETF, bAV und private Versicherung vergleichen',
       }
 

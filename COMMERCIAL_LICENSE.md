@@ -1,6 +1,6 @@
 # Commercial License
 
-The Rentenrechner source code is published under
+The RentenWiki.de source code is published under
 [PolyForm Noncommercial 1.0.0](LICENSE.md). That license **does not grant any
 commercial rights**. This document outlines the terms on which a separate
 paid commercial license is offered.

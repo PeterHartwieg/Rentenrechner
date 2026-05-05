@@ -75,10 +75,10 @@ describe('MonteCarloHighlights', () => {
     )
     expect(text).toContain('1.000 Simulationen')
     expect(text).not.toContain('1.000 Pfade')
-    expect(text).toContain('Hoechste mittlere Netto-Rente')
-    expect(text).toContain('90 % der Simulationen lagen ueber')
+    expect(text).toContain('Höchste mittlere Netto-Rente')
+    expect(text).toContain('90 % der Simulationen lagen über')
     expect(text).not.toMatch(/\bP10\b|\bP50\b|\bP90\b/)
-    expect(text).not.toContain('Staerkstes P10-Kapital')
+    expect(text).not.toContain('Stärkstes P10-Kapital')
   })
 
   it('shows one guarantee line matching the payout mode display', () => {

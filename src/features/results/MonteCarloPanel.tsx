@@ -81,9 +81,9 @@ export function MonteCarloPanel({ result }: Props) {
         <div>
           <h2 className="mc-heading-title">
             Monte-Carlo-Simulation
-            <InfoTip icon="info" label="Monte-Carlo-Grafik erklaeren">
-              Diese Grafik ist keine Vorhersage fuer ein einzelnes Jahr. Der Rechner
-              testet viele moegliche Boersenverlaeufe. P50 ist der mittlere Verlauf,
+            <InfoTip icon="info" label="Monte-Carlo-Grafik erklären">
+              Diese Grafik ist keine Vorhersage für ein einzelnes Jahr. Der Rechner
+              testet viele mögliche Börsenverläufe. P50 ist der mittlere Verlauf,
               P10 ein schwaches Ergebnis und P90 ein starkes Ergebnis. Der Bereich
               dazwischen zeigt, wie stark das Ergebnis schwanken kann.
             </InfoTip>
@@ -172,7 +172,7 @@ export function MonteCarloPanel({ result }: Props) {
         })}
       </div>
 
-      <div className="mc-product-tabs" aria-label="Produkt fuer Monte-Carlo-Verlauf">
+      <div className="mc-product-tabs" aria-label="Produkt für Monte-Carlo-Verlauf">
         {result.summaries.map((summary) => {
           const active = summary.productId === selectedSummary?.productId
           return (
@@ -234,7 +234,7 @@ export function MonteCarloPanel({ result }: Props) {
       </div>
 
       <p className="mc-table-note">
-        P10/P50/P90: Bei P10 lagen 90 % der Simulationen ueber diesem Wert, P50 ist
+        P10/P50/P90: Bei P10 lagen 90 % der Simulationen über diesem Wert, P50 ist
         der mittlere Wert, P90 ein starkes Ergebnis.
       </p>
 

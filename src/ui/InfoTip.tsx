@@ -19,7 +19,7 @@ interface Props {
 export function InfoTip({
   text,
   children,
-  label = 'Erklaerung anzeigen',
+  label = 'Erklärung anzeigen',
   icon = 'help',
 }: Props) {
   const [open, setOpen] = useState(false)

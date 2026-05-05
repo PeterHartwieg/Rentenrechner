@@ -82,7 +82,7 @@ export function ScenarioToolbar({
   return (
     <div className="toolbar">
       <div className="scenario-controls">
-        <div className="segmented" aria-label="Rendite-Szenario auswaehlen">
+        <div className="segmented" aria-label="Rendite-Szenario auswählen">
           {assumptions.returnScenarios.map((scenario) => (
             <button
               key={scenario.id}
