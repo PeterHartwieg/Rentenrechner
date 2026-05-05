@@ -1,6 +1,6 @@
 ---
 title: "Remove duplicate plus from wizard add-instance button"
-Status: ready-for-agent
+Status: done
 Severity: P3
 Type: AFK
 Area: Group G / onboarding / polish

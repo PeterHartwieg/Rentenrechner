@@ -1,6 +1,6 @@
 ---
 title: "Seed realistic onboarding fee defaults for insurance-wrapper products"
-Status: ready-for-agent
+Status: done
 Severity: P2
 Type: AFK
 Area: Group G / onboarding / assumptions

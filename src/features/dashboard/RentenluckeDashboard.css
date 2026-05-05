@@ -160,7 +160,7 @@
 
 .rentenlucke-dashboard__controls {
   display: grid;
-  grid-template-columns: minmax(180px, 240px) 1fr auto;
+  grid-template-columns: minmax(180px, 240px) 1fr minmax(180px, 220px);
   align-items: end;
   gap: 12px;
 }
@@ -172,7 +172,24 @@
   align-self: center;
 }
 
+/*
+ * Issue #65: Stable button widths after Wunschnetto recalculation.
+ *
+ * Before: the CTA grew wider when text changed (`Lücke schließen` ↔ `Mehr sparen`)
+ * and `auto` column sizing let the button drift around. The CTA now lives in a
+ * fixed-width column and a flex-group wrapper that keeps its overall width
+ * constant regardless of the active label or whether the bar above is rendered.
+ */
+.rentenlucke-dashboard__cta-group {
+  display: flex;
+  align-items: end;
+  justify-content: stretch;
+  width: 100%;
+}
+
 .rentenlucke-dashboard__cta {
+  width: 100%;
+  min-width: 180px;
   padding: 10px 18px;
   border: none;
   border-radius: 8px;
@@ -182,6 +199,7 @@
   font-size: 0.95rem;
   cursor: pointer;
   white-space: nowrap;
+  text-align: center;
 }
 
 .rentenlucke-dashboard__cta:hover {
@@ -202,6 +220,9 @@
   }
   .rentenlucke-dashboard__controls {
     grid-template-columns: 1fr;
+  }
+  .rentenlucke-dashboard__cta-group {
+    width: 100%;
   }
   .rentenlucke-dashboard__cta {
     width: 100%;

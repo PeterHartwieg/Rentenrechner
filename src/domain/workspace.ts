@@ -29,12 +29,13 @@ export interface WorkspaceAssumptionsV2 {
   monteCarlo: MonteCarloAssumptions
   visibleProducts: ProductId[]
   /**
-   * Issue 16 — compare-mode sub-mode toggle. See `ScenarioAssumptions.compareSubMode`
-   * for semantics. Workspace-level twin so the singleton view round-trips through
-   * share-URL and storage.
+   * Legacy compare-mode sub-mode field. Kept for backward-compat round-trip of
+   * old saved/share-URL state. No UI surface exposes this; the public model is
+   * Netto-Belastung equality via `equalInputAmountEUR`.
+   * @deprecated
    */
   compareSubMode?: 'equal_cash' | 'equal_input'
-  /** Issue 16 — equal-input nominal monthly contribution (EUR/month). */
+  /** Monthly net out-of-pocket comparison anchor (EUR/month). Default 200. */
   equalInputAmountEUR?: number
   visibleInstanceIds?: string[]
 }

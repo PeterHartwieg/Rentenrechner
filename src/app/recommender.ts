@@ -86,6 +86,12 @@ import {
 import { defaultAssumptions } from '../data/defaultScenario'
 import { runRules, type Atom, computeKinderzulagen } from './recommendations'
 import { SeededNormal, generateMarketReturnPath } from '../engine/monteCarlo'
+import {
+  afterTaxInsuranceLumpSum,
+  computeRuntimeYearsAtRetirement,
+  deriveInsuranceTaxMode,
+} from '../engine/insurancePayout'
+import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -190,6 +196,25 @@ export interface RecommendedCandidate {
   /** Alias for the deterministic retirement capital used by ranking filters. */
   capitalAtRetirement: number
   /**
+   * Issue 67: net (after-tax) capital available to the user at retirement. Uses
+   * `afterTaxLumpSum` when the product allows a capital payout (ETF, AVD, bAV
+   * Direktversicherung, private insurance Halbeinkünfte/Abgeltungsteuer, Riester
+   * 30 % teilauszahlung). For products where capital payout is legally
+   * prohibited (Basisrente — only Leibrente/Zeitrente per §10 Abs. 1 Nr. 2 b
+   * EStG) this falls back to `capitalAtRetirement` so the UI can still show a
+   * comparable contractual value at retirement; the recommender card flags
+   * those candidates with a `payoutOnly` indicator so the user understands the
+   * value is annuitised, not a usable lump sum.
+   */
+  netCapitalAtRetirement: number
+  /**
+   * True when the product's "capital at retirement" is contractually
+   * annuitised (Leibrente only) and not available as a lump sum. Used by the
+   * UI to label the displayed net-capital figure as "Wert bei Renteneinstieg
+   * (annuitisiert)" instead of "Kapital bei Renteneinstieg".
+   */
+  payoutOnly: boolean
+  /**
    * Monte Carlo P10 of total nominal capital at retirement (EUR) — the
    * "bad-outcome floor": 10 of 100 simulated paths fall below this. Higher
    * is better. Computed from `MC_PATHS` paths sampled at the basis scenario's
@@ -227,11 +252,16 @@ export interface RecommendedCandidate {
 const MAX_LIFETIME_YEARS = 35
 
 /**
- * Maximum number of candidates returned to the UI. Spec §4 M3.2 caps the
- * card at 3-4 candidates; we generate up to MAX_CANDIDATES then return the
- * top-N ranked by median Netto-Rente.
+ * Maximum number of candidates returned to the UI. Group-G QA decision
+ * (issue 66) extends the recommender beyond the original 3-4 cards: bAV +
+ * insurance + ETF + Basisrente + AVD + Riester are now all candidate-class
+ * primitives and the modal must show every product class with a present
+ * offer / instance side-by-side. We cap the slice at the number of product
+ * generators so dropping a candidate is always due to it returning null
+ * (e.g. no eligible instance, no remaining cap), never silent ranking
+ * elimination.
  */
-const MAX_CANDIDATES = 4
+const MAX_CANDIDATES = 6
 
 /**
  * Number of Monte Carlo paths run per candidate to compute `riskScoreP10`.
@@ -303,6 +333,56 @@ const FLEX_RANK: Record<FlexibilityScore, number> = {
   high: 3,
   medium: 2,
   low: 1,
+}
+
+/**
+ * Issue 51: context-aware flexibility adjustment. Starting from the per-
+ * product baseline (`FLEXIBILITY_BY_PRODUCT`) we lower individual sub-criteria
+ * when the candidate's product data indicates a more restrictive shape:
+ *
+ * - Forced Leibrente lowers `cancel` and `switchProduct` (capital is annuitised
+ *   and cannot be lifted out without a transfer process; switching products
+ *   means surrender at a haircut).
+ * - High surrender haircut lowers `cancel`.
+ * - Capital option (kapitalverzehr / zeitrente / pre-2005 capital) RAISES
+ *   private-insurance flexibility to "medium-high" via the per-product
+ *   `mediumHighEligible` lookup — implemented by promoting `cancel` and
+ *   `switchProduct` to `restricted` rather than `hard`.
+ */
+function adjustFlexibilityForContext(
+  base: FlexibilityDetails,
+  context: { forcedLeibrente?: boolean; capitalOption?: boolean; surrenderHaircutPct?: number },
+): FlexibilityDetails {
+  const cancel: FlexibilityCriterionScore = (() => {
+    let value = base.criteria.cancel
+    if (context.forcedLeibrente) value = lowerCriterion(value)
+    if ((context.surrenderHaircutPct ?? 0) > 0.05) value = lowerCriterion(value)
+    return value
+  })()
+  const switchProduct: FlexibilityCriterionScore = (() => {
+    let value = base.criteria.switchProduct
+    if (context.forcedLeibrente) value = lowerCriterion(value)
+    return value
+  })()
+  // Capital option promotes the overall badge to "medium-high" (encoded as
+  // `medium` overall + `restricted` instead of `hard`) for products whose
+  // baseline marks cancel/switchProduct as `hard`.
+  if (context.capitalOption && base.overall === 'medium') {
+    return {
+      overall: 'medium',
+      criteria: { ...base.criteria, cancel, switchProduct },
+    }
+  }
+  return {
+    overall: base.overall,
+    criteria: { ...base.criteria, cancel, switchProduct },
+  }
+}
+
+function lowerCriterion(c: FlexibilityCriterionScore): FlexibilityCriterionScore {
+  if (c === 'easy') return 'restricted'
+  if (c === 'restricted') return 'hard'
+  return 'hard'
 }
 
 const DEFAULT_BAV_RECOMMENDER_OFFER: ResolvedBavOffer = {
@@ -945,6 +1025,33 @@ function makeBavCandidateForTarget(
     payoutReturn: netReturn,
   })
 
+  // Net capital at retirement — issue 67. Leibrente bAV is paid as monthly
+  // pension (taxed via §19/§22 Nr. 5 in the payout pipeline), so capital is
+  // contractual, not user-usable as a lump sum: set null → payoutOnly=true.
+  // Other payout modes (kapitalverzehr / zeitrente) tax the lump sum via
+  // `deriveBavLumpSumTaxMode` (Direktversicherung §3 Nr. 63 → voll
+  // versorgungsbezug; §40b a.F. eligible → pre2005_steuerfrei; Direktzusage /
+  // Unterstützungskasse → Fünftelregelung) plus §229 SGB V 1/120 KV/PV.
+  const bavIsLeibrente = (target.payoutMode ?? 'leibrente') === 'leibrente'
+  let bavAfterTaxLumpSum: number | null = null
+  if (!bavIsLeibrente) {
+    const retirementYear = g.rules.year + (profile.retirementAge - profile.age)
+    const bavTaxMode = deriveBavLumpSumTaxMode(
+      target.durchfuehrungsweg ?? 'direktversicherung_3_63',
+      target.pre2005EligibleTaxFree ?? false,
+    )
+    bavAfterTaxLumpSum = afterTaxBavLumpSum(
+      capital,
+      profile,
+      g.rules,
+      0,
+      true,
+      retirementYear,
+      bavTaxMode,
+      0,
+    )
+  }
+
   const candidateResult = synthesizeProductResult({
     productId: 'bav',
     instanceId: target.instanceId,
@@ -954,7 +1061,7 @@ function makeBavCandidateForTarget(
     grossMonthlyPayout: grossPayout,
     capitalAtRetirement: capital,
     totalProductContributions: totalContributions,
-    afterTaxLumpSum: capital,
+    afterTaxLumpSum: bavAfterTaxLumpSum,
     label: target.label ?? 'bAV',
   })
 
@@ -1123,6 +1230,11 @@ function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const grossPayout = monthlyPayoutFromCapital(capital, netReturn, payoutYears)
 
   const newInstanceIdStr = newInstanceId('altersvorsorgedepot')
+  // Net capital — issue 67. AVD is a §22 Nr. 5 EStG certified pension: at
+  // most ~30 % of capital is permissible as a partial lump sum (the rest must
+  // be annuitised). Representing the full contractual value as a net lump
+  // sum would mislead the ranking, so the candidate is payoutOnly: the UI
+  // surfaces the contractual value with the "annuitisiert" label.
   const candidateResult = synthesizeProductResult({
     productId: 'altersvorsorgedepot',
     instanceId: newInstanceIdStr,
@@ -1132,7 +1244,7 @@ function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
     grossMonthlyPayout: grossPayout,
     capitalAtRetirement: capital,
     totalProductContributions: totalContributions,
-    afterTaxLumpSum: capital,
+    afterTaxLumpSum: null,
     label: 'Neues Altersvorsorgedepot',
   })
 
@@ -1157,6 +1269,109 @@ function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
     candidateResult,
     newInstance,
     mcInputs: { monthlyContribution: sized, totalFeeDecimal: fees },
+  }
+}
+
+// --- Private insurance (existing or offered instance, issue 66) -----------
+//
+// Insurance contributions are after-tax money — the user's net cash burden is
+// equal to gross contribution (no Sonderausgaben deduction in accumulation,
+// unlike Basisrente / Riester / bAV). Capital at retirement is taxed via
+// `deriveInsuranceTaxMode` (halbeinkuenfte / abgeltungsteuer / pre2005), and
+// Leibrente payouts use Ertragsanteil (§22 Nr. 1 Satz 3 a EStG). The
+// recommender does not synthesize a brand-new no-instance candidate — the
+// modal-driven flow surfaces insurance only when the user has indicated an
+// available offer (active or offered instance).
+
+function makeInsuranceCandidate(g: GeneratorContext): CandidateDraft | null {
+  const wsa = g.workspace.baseline.assumptions
+  const profile = g.workspace.baseline.profile
+  // Prefer offered (concrete offer the user is evaluating); fall back to active.
+  const target =
+    wsa.insurance.find((i) => i.status === 'offered') ??
+    wsa.insurance.find((i) => i.status === 'active')
+  if (!target) return null
+
+  const gross = g.marginalMonthlyEUR
+  if (gross <= 0) return null
+  const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
+  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
+  const capital = projectMonthlyContributionFV(gross, netReturn, g.yearsToRetirement)
+  const totalContributions = gross * 12 * g.yearsToRetirement
+  const payoutYears = Math.max(1, wsa.retirementEndAge - profile.retirementAge)
+  const grossPayout = computeGrossMonthlyPayout(capital, {
+    mode: target.payoutMode as PayoutMode,
+    rentenfaktor: target.rentenfaktor ?? 28,
+    zeitrenteYears: target.zeitrenteYears ?? 20,
+    kapitalverzehrYears: payoutYears,
+    payoutReturn: netReturn,
+  })
+
+  // Net (after-tax) lump sum — issue 67. Leibrente payouts are taxed via
+  // Ertragsanteil at payout-time, so when the contract is annuitised we set
+  // afterTaxLumpSum=null and let the candidate fall back to gross capital with
+  // payoutOnly=true downstream.
+  const isLeibrente = target.payoutMode === 'leibrente'
+  let afterTaxLumpSum: number | null = null
+  if (!isLeibrente) {
+    const retirementYear = g.rules.year + (profile.retirementAge - profile.age)
+    const runtimeYearsAtRetirement = computeRuntimeYearsAtRetirement(
+      target.contractStartYear,
+      g.rules.year,
+      profile.age,
+      profile.retirementAge,
+    )
+    const taxMode = deriveInsuranceTaxMode(
+      target.contractStartYear,
+      runtimeYearsAtRetirement,
+      profile.retirementAge,
+      target.oldContractTaxFreeEligible,
+    )
+    afterTaxLumpSum = afterTaxInsuranceLumpSum(
+      capital,
+      totalContributions,
+      taxMode,
+      g.rules,
+      0,
+      retirementYear,
+      profile,
+      true,
+      0,
+    )
+  }
+
+  const candidateResult = synthesizeProductResult({
+    productId: 'versicherung',
+    instanceId: target.instanceId,
+    scenarioId: g.basis.scenarioId,
+    scenarioLabel: 'Basis',
+    annualReturn: g.basis.annualReturn,
+    grossMonthlyPayout: grossPayout,
+    capitalAtRetirement: capital,
+    totalProductContributions: totalContributions,
+    afterTaxLumpSum,
+    label: target.label ?? 'Private Rentenversicherung',
+  })
+
+  const isOffered = target.status === 'offered'
+  const id = isOffered
+    ? `activate_${target.instanceId}`
+    : `add_to_${target.instanceId}`
+  const label = isOffered
+    ? `Versicherungsangebot nutzen (${target.label ?? 'Private Rentenversicherung'})`
+    : `Aufstockung Versicherung (${target.label ?? 'Private Rentenversicherung'})`
+
+  return {
+    id,
+    label,
+    productId: 'versicherung',
+    isNewInstance: false,
+    targetInstanceId: target.instanceId,
+    grossMonthlyEUR: gross,
+    netCashOutEUR: gross,
+    cappedToRemaining: false,
+    candidateResult,
+    mcInputs: { monthlyContribution: gross, totalFeeDecimal: fees },
   }
 }
 
@@ -1211,6 +1426,11 @@ function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft | null {
   const totalContributions = totalMonthly * 12 * g.yearsToRetirement
   const grossPayout = (capital / 10_000) * (target.rentenfaktor ?? 28)
 
+  // Net capital — issue 67. Riester is a §22 Nr. 5 EStG certified pension:
+  // §93 Abs. 2 EStG limits the partial lump sum to ≤30 % of capital at
+  // payout start (rest must annuitise). Treating the full capital as a net
+  // lump sum overstates user-accessible capital. Mark payoutOnly so the UI
+  // surfaces the contractual value with the "annuitisiert" label.
   const candidateResult = synthesizeProductResult({
     productId: 'riester',
     instanceId: target.instanceId,
@@ -1220,7 +1440,7 @@ function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft | null {
     grossMonthlyPayout: grossPayout,
     capitalAtRetirement: capital,
     totalProductContributions: totalContributions,
-    afterTaxLumpSum: capital,
+    afterTaxLumpSum: null,
     label: target.label ?? 'Riester',
   })
 
@@ -1387,6 +1607,44 @@ function effortForCandidate(
   return { score, level, details }
 }
 
+/**
+ * Issue 51: derive flexibility context for a candidate. Leibrente payouts
+ * force annuitisation; capital options (Kapitalverzehr / Zeitrente /
+ * pre-2005 capital eligible) keep capital available; surrender haircuts
+ * make cancellation costly.
+ */
+function flexibilityContextForDraft(
+  workspace: Workspace,
+  draft: CandidateDraft,
+  bavOffer: ResolvedBavOffer,
+): { forcedLeibrente?: boolean; capitalOption?: boolean; surrenderHaircutPct?: number } {
+  const wsa = workspace.baseline.assumptions
+  if (draft.productId === 'bav') {
+    const target = draft.targetInstanceId
+      ? wsa.bav.find((b) => b.instanceId === draft.targetInstanceId)
+      : undefined
+    const payoutMode = target?.payoutMode ?? bavOffer.payoutMode
+    return {
+      forcedLeibrente: payoutMode === 'leibrente',
+      capitalOption: payoutMode === 'kapitalverzehr' || payoutMode === 'zeitrente',
+    }
+  }
+  if (draft.productId === 'versicherung') {
+    const target = draft.targetInstanceId
+      ? wsa.insurance.find((i) => i.instanceId === draft.targetInstanceId)
+      : undefined
+    return {
+      forcedLeibrente: target?.payoutMode === 'leibrente',
+      capitalOption: target?.payoutMode === 'kapitalverzehr' || target?.payoutMode === 'zeitrente',
+      surrenderHaircutPct: target?.surrenderHaircutPct,
+    }
+  }
+  if (draft.productId === 'basisrente') {
+    return { forcedLeibrente: true } // Basisrente can never pay out as capital
+  }
+  return {}
+}
+
 function safetyMonthlyP10(
   baselineMonthlyNet: number,
   medianMonthlyNet: number,
@@ -1415,7 +1673,11 @@ function compareCandidates(
     return desc(a.medianNettoRente, b.medianNettoRente)
   }
   if (criterion === 'capital_at_retirement') {
-    return desc(a.capitalAtRetirement, b.capitalAtRetirement)
+    // Issue #67: rank by NET capital at retirement, not gross. For
+    // products that legally cannot pay out as capital (Basisrente)
+    // `netCapitalAtRetirement` falls back to the contractual value at
+    // retirement so the ordering still reflects accumulated value.
+    return desc(a.netCapitalAtRetirement, b.netCapitalAtRetirement)
   }
   if (criterion === 'safety') {
     return (
@@ -1501,6 +1763,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
     () => makeBasisrenteCandidate(g),
     () => makeAvdCandidate(g),
     () => makeRiesterTopUpCandidate(g),
+    () => makeInsuranceCandidate(g),
   ]
   const drafts: CandidateDraft[] = []
   for (const gen of generators) {
@@ -1572,7 +1835,21 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       d.candidateResult.capitalAtRetirement,
       riskScoreP10,
     )
-    const flexibilityDetails = FLEXIBILITY_BY_PRODUCT[d.productId]
+    // Issue 51: context-aware flexibility. `flexCtx` is sourced from the
+    // candidate's underlying instance/offer payload (Leibrente forced, capital
+    // option available, surrender haircut). The per-product baseline is taken
+    // from `FLEXIBILITY_BY_PRODUCT` and then lowered/raised in place.
+    const flexCtx = flexibilityContextForDraft(workspace, d, bavOffer)
+    const flexibilityDetails = adjustFlexibilityForContext(
+      FLEXIBILITY_BY_PRODUCT[d.productId],
+      flexCtx,
+    )
+    // Issue 67: net capital at retirement. afterTaxLumpSum is null for products
+    // with a forced annuity payout (Basisrente). Fall back to gross capital so
+    // the UI still has a value to render — accompanied by `payoutOnly: true`.
+    const netCapitalAtRetirement = d.candidateResult.afterTaxLumpSum
+      ?? d.candidateResult.capitalAtRetirement
+    const payoutOnly = d.candidateResult.afterTaxLumpSum === null
     return {
       id: d.id,
       label: d.label,
@@ -1588,6 +1865,8 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       effort: effortForCandidate(workspace, d, d.productId === 'bav' ? d.bavOffer : bavOffer),
       riskScore: d.candidateResult.capitalAtRetirement,
       capitalAtRetirement: d.candidateResult.capitalAtRetirement,
+      netCapitalAtRetirement,
+      payoutOnly,
       riskScoreP10,
       safetyNettoRenteP10,
       riskScoreMcPaths: MC_PATHS,
@@ -1708,6 +1987,20 @@ function applyCandidateToAssumptions(
         wsa.etf[idx] = {
           ...current,
           monthlyContribution: (current.monthlyContribution ?? 0) + candidate.grossMonthlyEUR,
+        }
+      }
+    } else if (candidate.productId === 'versicherung') {
+      // Issue 66: insurance candidate top-up. Activates an offered contract
+      // and bumps the per-instance monthlyContribution that combine-mode
+      // honors via `BuildContextOverrides.insuranceMonthlyUserCostOverride`.
+      const idx = wsa.insurance.findIndex((i) => i.instanceId === candidate.targetInstanceId)
+      if (idx >= 0) {
+        const current = wsa.insurance[idx]
+        wsa.insurance[idx] = {
+          ...current,
+          status: current.status === 'offered' ? 'active' : current.status,
+          monthlyContribution:
+            (current.monthlyContribution ?? 0) + candidate.grossMonthlyEUR,
         }
       }
     }

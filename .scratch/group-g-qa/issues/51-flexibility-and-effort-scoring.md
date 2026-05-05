@@ -1,6 +1,6 @@
 ---
 title: "Make Flexibilitaet and wenig Aufwand transparent ranking dimensions"
-Status: ready-for-agent
+Status: done
 Severity: P2
 Type: AFK
 Area: recommender / scoring / explanation

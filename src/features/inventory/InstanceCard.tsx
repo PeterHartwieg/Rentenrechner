@@ -203,10 +203,11 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
     onChange({ ...draft, ...patch } as T)
 
   const currentYear = new Date().getFullYear()
-  const isEmptyBavContractStart =
-    draft.productId === 'bav' && draft.contractStartYear === currentYear
-  const isEmptyBavCurrentValue =
-    draft.productId === 'bav' && (draft.currentValueEUR ?? 0) <= 0
+  // Suppress estimate badges for placeholder values that are not meaningful estimates.
+  // contractStartYear = currentYear is the default "not yet set" placeholder for all products.
+  // currentValueEUR = 0 means the user hasn't entered a value yet.
+  const isPlaceholderContractStart = draft.contractStartYear === currentYear
+  const isPlaceholderCurrentValue = (draft.currentValueEUR ?? 0) <= 0
 
   return (
     <div className="inventory-field-grid">
@@ -227,7 +228,7 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
               update({ contractStartYear: n })
             }}
           />
-          {shouldRenderEvidenceBadge(draft, 'contractStartYear', isEmptyBavContractStart) && (
+          {shouldRenderEvidenceBadge(draft, 'contractStartYear', isPlaceholderContractStart) && (
             <EvidenceBadge
               state={evidenceState(draft, 'contractStartYear')}
               onConfirm={() => setEvidence?.('contractStartYear', 'user_confirmed')}
@@ -251,7 +252,7 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
             update({ currentValueEUR: n })
           }}
         />
-        {shouldRenderEvidenceBadge(draft, 'currentValueEUR', isEmptyBavCurrentValue) && (
+        {shouldRenderEvidenceBadge(draft, 'currentValueEUR', isPlaceholderCurrentValue) && (
           <EvidenceBadge
             state={evidenceState(draft, 'currentValueEUR')}
             onConfirm={() => setEvidence?.('currentValueEUR', 'user_confirmed')}
@@ -747,10 +748,12 @@ export function PavCard({
               onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
             }}
           />
-          <EvidenceBadge
-            state={evidenceState(draft, 'fees.wrapperAssetFee')}
-            onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
-          />
+          {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'fees.wrapperAssetFee')}
+              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+            />
+          )}
         </InvField>
 
         <InvField label="Auszahlungsform">
@@ -895,10 +898,12 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
               onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
             }}
           />
-          <EvidenceBadge
-            state={evidenceState(draft, 'fees.wrapperAssetFee')}
-            onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
-          />
+          {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
+            <EvidenceBadge
+              state={evidenceState(draft, 'fees.wrapperAssetFee')}
+              onConfirm={() => setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')}
+            />
+          )}
         </InvField>
 
         <InvField

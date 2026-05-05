@@ -1,6 +1,6 @@
 ---
 title: "Keep ETF onboarding details depot-specific"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: onboarding / ETF / details

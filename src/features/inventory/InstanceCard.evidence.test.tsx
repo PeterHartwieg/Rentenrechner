@@ -516,7 +516,8 @@ describe('InstanceCard — onboarding Einzelposten fee split (#05)', () => {
     fireEvent.change(fundInput, { target: { value: '0.3' } })
     fireEvent.blur(fundInput)
 
+    // Fondskosten is independent — wrapperAssetFee (Mantelgebühr) must NOT change.
     expect(findGenericNumberInputByLabel(/Fondskosten/).value).toBe('0.3')
-    expect(findGenericNumberInputByLabel(/Mantelgeb/).value).toBe('0.7')
+    expect(findGenericNumberInputByLabel(/Mantelgeb/).value).toBe('1')
   })
 })

@@ -1,6 +1,6 @@
 ---
 title: "Clarify GRV input mode and support planned children as dated events"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: onboarding / profile / statutory pension / child rules

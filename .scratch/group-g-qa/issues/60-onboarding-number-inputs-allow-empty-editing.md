@@ -1,6 +1,6 @@
 ---
 title: "Make onboarding number inputs allow deleting 0 while editing"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: onboarding / forms / NumberField

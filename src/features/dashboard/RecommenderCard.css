@@ -183,6 +183,13 @@
   color: #344054;
 }
 
+.recommender-candidate-metric-note {
+  margin-left: 4px;
+  color: #667085;
+  font-size: 0.78rem;
+  font-style: normal;
+}
+
 .recommender-candidate-atom-disclosure {
   display: flex;
   flex-direction: column;
@@ -376,6 +383,50 @@
   border: 0;
   border-radius: 0;
   background: #ffffff;
+}
+
+.luecke-modal__body--saved {
+  background: #f0fbf4;
+}
+
+.luecke-modal__body--saved h3 {
+  color: #1f7a3c;
+}
+
+.luecke-modal__saved-summary {
+  margin: 0;
+  color: #344054;
+  font-size: 0.95rem;
+}
+
+.luecke-modal__saved-summary-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #b6e6c9;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.luecke-modal__saved-summary-list div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.luecke-modal__saved-summary-list dt {
+  color: #667085;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.luecke-modal__saved-summary-list dd {
+  margin: 0;
+  color: #172033;
+  font-weight: 600;
 }
 
 .luecke-modal__presets,

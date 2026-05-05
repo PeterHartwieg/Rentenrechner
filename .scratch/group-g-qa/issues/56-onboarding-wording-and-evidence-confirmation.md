@@ -1,6 +1,6 @@
 ---
 title: "Fix German wording and estimate confirmation labels"
-Status: ready-for-agent
+Status: done
 Severity: P2
 Type: AFK
 Area: onboarding / evidence UX / copy

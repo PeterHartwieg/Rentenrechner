@@ -1,6 +1,6 @@
 ---
 title: "Turn Luecke schliessen into a focused modal recommender flow"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: Mein Plan / recommender / Rentenluecke

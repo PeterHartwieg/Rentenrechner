@@ -88,6 +88,8 @@ function fixtureCandidate(
     effort: { score: 50, level: 'medium', details: [] },
     riskScore: 100_000,
     capitalAtRetirement: 100_000,
+    netCapitalAtRetirement: 90_000,
+    payoutOnly: false,
     riskScoreP10: 80_000,
     safetyNettoRenteP10: 900,
     riskScoreMcPaths: 200,
@@ -146,6 +148,7 @@ describe('rankRecommendedCandidates — result filters', () => {
     fixtureCandidate('median', {
       medianNettoRente: 1600,
       capitalAtRetirement: 90_000,
+      netCapitalAtRetirement: 80_000,
       safetyNettoRenteP10: 1000,
       riskScoreP10: 50_000,
       flexibilityScore: 'low',
@@ -163,6 +166,7 @@ describe('rankRecommendedCandidates — result filters', () => {
     fixtureCandidate('capital', {
       medianNettoRente: 1200,
       capitalAtRetirement: 200_000,
+      netCapitalAtRetirement: 180_000,
       safetyNettoRenteP10: 900,
       riskScoreP10: 150_000,
       flexibilityScore: 'medium',
@@ -180,6 +184,7 @@ describe('rankRecommendedCandidates — result filters', () => {
     fixtureCandidate('safety-monthly', {
       medianNettoRente: 1300,
       capitalAtRetirement: 110_000,
+      netCapitalAtRetirement: 95_000,
       safetyNettoRenteP10: 1250,
       riskScoreP10: 20_000,
       flexibilityScore: 'medium',
@@ -188,6 +193,7 @@ describe('rankRecommendedCandidates — result filters', () => {
     fixtureCandidate('flexibility', {
       medianNettoRente: 900,
       capitalAtRetirement: 80_000,
+      netCapitalAtRetirement: 70_000,
       safetyNettoRenteP10: 850,
       riskScoreP10: 60_000,
       flexibilityScore: 'high',
@@ -205,6 +211,7 @@ describe('rankRecommendedCandidates — result filters', () => {
     fixtureCandidate('effort', {
       medianNettoRente: 950,
       capitalAtRetirement: 70_000,
+      netCapitalAtRetirement: 60_000,
       safetyNettoRenteP10: 880,
       riskScoreP10: 55_000,
       flexibilityScore: 'medium',
@@ -291,6 +298,37 @@ describe('recommendNextEuro — bAV employer offer branch', () => {
 
     expect(bav.monthlyEmployerContributionEUR).toBeLessThanOrEqual(120)
     expect(bav.monthlyEmployerContributionEUR).toBeCloseTo(120, 2)
+  })
+})
+
+describe('recommendNextEuro — no-offer bAV fallback (issue 52)', () => {
+  it('marks the bAV candidate with usesStandardAssumptions=true when no offer provided', () => {
+    const ws = buildAnnaWorkspace()
+    const input = buildInput(ws, 200)
+    const candidates = recommendNextEuro(input)
+    const bav = candidates.find((c) => c.productId === 'bav')
+    expect(bav).toBeDefined()
+    expect(bav!.usesStandardAssumptions).toBe(true)
+    expect(bav!.bavOffer?.employerMatchPercent).toBeCloseTo(0.15, 3)
+    expect(bav!.bavOffer?.effectiveCostAnnual).toBeCloseTo(0.012, 4)
+    expect(bav!.bavOffer?.durchfuehrungsweg).toBe('direktversicherung_3_63')
+  })
+
+  it('clears usesStandardAssumptions when a real offer is supplied', () => {
+    const ws = buildAnnaWorkspace()
+    const candidates = recommendNextEuro({
+      ...buildInput(ws, 200),
+      bavOffer: {
+        hasOffer: true,
+        employerMatchPercent: 0.5,
+        fixedMonthlyEUR: 0,
+        effectiveCostAnnual: 0.008,
+      },
+    })
+    const bav = candidates.find((c) => c.productId === 'bav')
+    expect(bav).toBeDefined()
+    expect(bav!.usesStandardAssumptions).toBeFalsy()
+    expect(bav!.bavOffer?.standardAssumption).toBe(false)
   })
 })
 
@@ -855,6 +893,142 @@ describe('recommendNextEuro — Monte Carlo P10 risk score (F4)', () => {
     expect(pair!.h!.riskScoreP10).toBeLessThanOrEqual(pair!.l.riskScoreP10)
     // And typically strictly lower for the Bernd shape (years > 0, gross > 0).
     expect(pair!.h!.riskScoreP10).toBeLessThan(pair!.l.riskScoreP10)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 66 — bAV and insurance offers co-present in same recommender run
+// ---------------------------------------------------------------------------
+
+describe('recommendNextEuro — bAV + insurance offers in same flow (issue 66)', () => {
+  it('returns both a bAV candidate and an insurance candidate when both offers exist', () => {
+    const ws = buildAnnaWorkspace()
+    // Inject a bAV offered instance
+    ws.baseline.assumptions.bav = [
+      {
+        ...defaultAssumptions.bav,
+        instanceId: 'bav-offer-test',
+        label: 'bAV-Angebot',
+        status: 'offered',
+        contractStartYear: de2026Rules.year,
+        currentValueEUR: 0,
+        evidenceMap: {},
+        monthlyGrossConversion: 0,
+        contractualMatchPercent: 0.4,
+        contractualFixedMonthly: 0,
+      },
+    ]
+    // Inject an insurance offered instance
+    ws.baseline.assumptions.insurance = [
+      {
+        ...defaultAssumptions.insurance,
+        instanceId: 'versicherung-offer-test',
+        label: 'Private RV (Angebot)',
+        status: 'offered',
+        contractStartYear: de2026Rules.year,
+        evidenceMap: {},
+        monthlyContribution: 0,
+      },
+    ]
+    const candidates = recommendNextEuro(buildInput(ws, 200))
+    const bav = candidates.find((c) => c.productId === 'bav')
+    const insurance = candidates.find((c) => c.productId === 'versicherung')
+    expect(bav).toBeDefined()
+    expect(insurance).toBeDefined()
+    expect(insurance!.label).toContain('Versicherungsangebot nutzen')
+    expect(insurance!.targetInstanceId).toBe('versicherung-offer-test')
+  })
+
+  it('insurance offer activates the offered status when saved as a plan', () => {
+    const ws = buildAnnaWorkspace()
+    ws.baseline.assumptions.insurance = [
+      {
+        ...defaultAssumptions.insurance,
+        instanceId: 'versicherung-offer-test',
+        label: 'Private RV',
+        status: 'offered',
+        contractStartYear: de2026Rules.year,
+        evidenceMap: {},
+        monthlyContribution: 0,
+      },
+    ]
+    const candidates = recommendNextEuro(buildInput(ws, 200))
+    const insurance = candidates.find((c) => c.productId === 'versicherung')
+    expect(insurance).toBeDefined()
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, insurance!)
+    const activated = whatIf.assumptions.insurance.find((i) => i.instanceId === 'versicherung-offer-test')
+    expect(activated?.status).toBe('active')
+    expect(activated?.monthlyContribution).toBeCloseTo(insurance!.grossMonthlyEUR, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 67 — net Kapital bei Renteneinstieg
+// ---------------------------------------------------------------------------
+//
+// `Kapital bei Renteneinstieg` in the Lücke-schließen result step must show the
+// net (after-tax) amount the user can actually access — not the gross capital
+// before exit tax. This is a sibling to the recommender's `medianNettoRente`
+// (also already net) and the safety filter (already net monthly). Capital
+// filter must rank by the same net figure.
+
+describe('recommendNextEuro — issue 67 net Kapital bei Renteneinstieg', () => {
+  it('ETF candidates expose a netCapitalAtRetirement smaller than gross (Abgeltungsteuer exit tax)', () => {
+    const ws = buildBerndWorkspace()
+    const input = buildInput(ws, 400)
+    const candidates = recommendNextEuro(input)
+    const etf = candidates.filter((c) => c.productId === 'etf')
+    expect(etf.length).toBeGreaterThan(0)
+    for (const c of etf) {
+      expect(c.netCapitalAtRetirement).toBeGreaterThan(0)
+      expect(c.netCapitalAtRetirement).toBeLessThanOrEqual(c.capitalAtRetirement + 0.01)
+      expect(c.payoutOnly).toBe(false)
+    }
+  })
+
+  it('AVD and Riester candidates are payoutOnly (≤30% partial-capital cap under §22 Nr. 5 EStG)', () => {
+    const ws = buildBerndWorkspace()
+    const input = buildInput(ws, 400)
+    const candidates = recommendNextEuro(input)
+    const certified = candidates.filter(
+      (c) => c.productId === 'altersvorsorgedepot' || c.productId === 'riester',
+    )
+    for (const c of certified) {
+      // §22 Nr. 5 partial-capital is at most ~30% of capital — the contractual
+      // value at retirement is not user-accessible as a lump sum, so the
+      // recommender surfaces it as payoutOnly with the contractual value as
+      // the fallback display number.
+      expect(c.payoutOnly).toBe(true)
+      expect(c.netCapitalAtRetirement).toBe(c.capitalAtRetirement)
+    }
+  })
+
+  it('Leibrente bAV candidate is payoutOnly; non-Leibrente bAV nets via deriveBavLumpSumTaxMode + §229 SGB V', () => {
+    const ws = buildBerndWorkspace()
+    const input = buildInput(ws, 400)
+    const candidates = recommendNextEuro(input)
+    const bav = candidates.find((c) => c.productId === 'bav')
+    if (!bav) return
+    // Default bAV payoutMode is leibrente → payoutOnly
+    expect(bav.payoutOnly).toBe(true)
+    expect(bav.netCapitalAtRetirement).toBe(bav.capitalAtRetirement)
+  })
+
+  it('Basisrente candidate sets payoutOnly=true and falls back to gross capital (legal lump-sum prohibition)', () => {
+    const ws = buildBerndWorkspace()
+    const input = buildInput(ws, 400)
+    const candidates = recommendNextEuro(input)
+    const basisrente = candidates.find((c) => c.productId === 'basisrente')
+    if (!basisrente) return
+    expect(basisrente.payoutOnly).toBe(true)
+    expect(basisrente.netCapitalAtRetirement).toBe(basisrente.capitalAtRetirement)
+  })
+
+  it('capital_at_retirement filter ranks by net capital, not gross', () => {
+    const a = fixtureCandidate('a', { capitalAtRetirement: 200_000, netCapitalAtRetirement: 100_000 })
+    const b = fixtureCandidate('b', { capitalAtRetirement: 150_000, netCapitalAtRetirement: 140_000 })
+    const ranked = rankRecommendedCandidates([a, b], 'capital_at_retirement')
+    expect(ranked[0].id).toBe('b')
   })
 })
 

@@ -14,11 +14,19 @@ function loadInitialState() {
   return readUrlState() ?? loadSavedState()
 }
 
+/**
+ * Resolve the Netto-Belastung anchor from stored state on load.
+ *
+ * - Normal path: read `equalInputAmountEUR` (the public anchor).
+ * - Legacy path: old saves with `compareSubMode: 'equal_cash'` and no
+ *   `equalInputAmountEUR` fall back to the current bAV's net cost so the
+ *   user's existing bAV contribution is preserved as the anchor.
+ */
 function resolveNettoBelastungTarget(
   profile: PersonalProfile,
   assumptions: ScenarioAssumptions,
 ): number {
-  if (assumptions.compareSubMode === 'equal_cash') {
+  if (assumptions.compareSubMode === 'equal_cash' && assumptions.equalInputAmountEUR === undefined) {
     return calculateBavFunding(profile, de2026Rules, assumptions.bav).monthlyNetCost
   }
   if (assumptions.equalInputAmountEUR !== undefined) {

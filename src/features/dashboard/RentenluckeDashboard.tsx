@@ -198,16 +198,18 @@ export function RentenluckeDashboard({
             Eigenen Wert eintragen, um die Lücke individuell zu prüfen.
           </p>
         )}
-        <button
-          type="button"
-          className={
-            'rentenlucke-dashboard__cta' +
-            (goalReached ? ' rentenlucke-dashboard__cta--secondary' : '')
-          }
-          onClick={onAdjustContributions}
-        >
-          {goalReached ? 'Beiträge anpassen' : 'Lücke schließen'}
-        </button>
+        <div className="rentenlucke-dashboard__cta-group">
+          <button
+            type="button"
+            className={
+              'rentenlucke-dashboard__cta' +
+              (goalReached ? ' rentenlucke-dashboard__cta--secondary' : '')
+            }
+            onClick={onAdjustContributions}
+          >
+            {goalReached ? 'Mehr sparen' : 'Lücke schließen'}
+          </button>
+        </div>
       </div>
     </section>
   )

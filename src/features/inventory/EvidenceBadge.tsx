@@ -2,7 +2,7 @@
  * EvidenceBadge — per-field confidence indicator for inventory cards.
  *
  * Renders a coloured badge showing the evidence state of a single field:
- *   - yellow "🤔 Schätzung" for model_estimate (with "Uebernehmen" confirm button)
+ *   - yellow "🤔 Schätzung" for model_estimate (with "Übernehmen" confirm button)
  *   - green "✓ bestätigt" for user_confirmed
  *   - blue "📄 lt. Beleg" for statement
  *
@@ -32,9 +32,9 @@ export function EvidenceBadge({ state, onConfirm }: EvidenceBadgeProps) {
             type="button"
             className="evidence-badge-confirm-btn"
             onClick={onConfirm}
-            title="Schaetzwert uebernehmen"
+            title="Schätzwert übernehmen"
           >
-            Uebernehmen
+            Übernehmen
           </button>
         )}
       </span>

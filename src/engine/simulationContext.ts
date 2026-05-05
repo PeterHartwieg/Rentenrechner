@@ -73,16 +73,11 @@ export interface SimulationContext {
    */
   etfMonthlyUserCostOverride?: number
   /**
-   * Insurance per-instance / equal-input monthly user cost override.
+   * Insurance per-instance monthly user cost override (combine-mode only).
    *
-   * Two callers set this; only one is active per call site:
-   * (a) `simulatePortfolio` (combine-mode) — per-instance from
-   *     `InsuranceInstance.monthlyContribution`, mirroring the ETF override.
-   * (b) `simulateEqualInputComparison` (compare-mode equal-input sub-mode) —
-   *     the user-supplied broker `equalInputAmountEUR`.
-   *
-   * Leaving `undefined` preserves the compare-mode fair-comparison invariant
-   * (insurance follows `bavFunding.monthlyNetCost`).
+   * Set by `simulatePortfolio` from `InsuranceInstance.monthlyContribution`,
+   * mirroring the ETF pattern. Leaving `undefined` preserves the compare-mode
+   * fair-comparison invariant (insurance follows `bavFunding.monthlyNetCost`).
    */
   insuranceMonthlyUserCostOverride?: number
   /**
@@ -167,14 +162,9 @@ export interface BuildContextOverrides {
    */
   etfMonthlyUserCostOverride?: number
   /**
-   * Insurance per-instance / equal-input monthly user cost override.
+   * Insurance per-instance monthly user cost override (combine-mode only).
    *
-   * Set by either:
-   * (a) `simulatePortfolio` (combine-mode) — per-instance from
-   *     `InsuranceInstance.monthlyContribution`, mirroring the ETF pattern.
-   * (b) `simulateEqualInputComparison` (compare-mode equal-input sub-mode) —
-   *     the user-supplied broker `equalInputAmountEUR`.
-   *
+   * Set by `simulatePortfolio` from `InsuranceInstance.monthlyContribution`.
    * Leaving this `undefined` (every legacy caller does) preserves byte-identical
    * compare-mode oracle goldens (insurance follows `bavFunding.monthlyNetCost`).
    */

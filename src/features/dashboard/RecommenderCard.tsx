@@ -241,7 +241,27 @@ export function RecommenderCard({
                     Sicherheit <strong>{formatCurrency(cand.safetyNettoRenteP10, 0)} / Mon.</strong>
                     <InfoTip text={`90 % der simulierten Verläufe lagen über diesem monatlichen Netto-Wert (${cand.riskScoreMcPaths} Pfade).`} />
                   </span>
-                  <span>Kapital <strong>{formatCurrency(cand.capitalAtRetirement, 0)}</strong></span>
+                  {/*
+                    Issue #67: show NET capital at retirement, not gross. For
+                    products with a forced annuity (Basisrente) we fall back to
+                    the contractual value at retirement and label it as
+                    annuitised so the user does not misread it as a usable
+                    lump sum.
+                   */}
+                  <span>
+                    Kapital bei Renteneinstieg{' '}
+                    <strong>{formatCurrency(cand.netCapitalAtRetirement, 0)}</strong>
+                    {cand.payoutOnly ? (
+                      <>
+                        {' '}
+                        <em className="recommender-candidate-metric-note">
+                          (annuitisiert, keine Kapitalauszahlung)
+                        </em>
+                      </>
+                    ) : (
+                      <InfoTip text="Netto verfügbar nach Steuern und ggf. KV/PV — Schätzwert auf Basis der aktuellen Annahmen." />
+                    )}
+                  </span>
                   <span>Aufwand <strong>{EFFORT_LABEL[cand.effort.level]}</strong></span>
                 </div>
                 <details className="recommender-candidate-details">
@@ -336,7 +356,8 @@ function winningMetric(
     return `${formatCurrency(candidate.medianNettoRente, 0)} / Mon.`
   }
   if (criterion === 'capital_at_retirement') {
-    return formatCurrency(candidate.capitalAtRetirement, 0)
+    // Issue #67: capital filter uses net capital at retirement, not gross.
+    return formatCurrency(candidate.netCapitalAtRetirement, 0)
   }
   if (criterion === 'safety') {
     return `${formatCurrency(candidate.safetyNettoRenteP10, 0)} / Mon.`
@@ -356,7 +377,9 @@ function rankingValue(
   criterion: RecommenderRankingCriterion,
 ): number {
   if (criterion === 'median_net_pension') return cand.medianNettoRente
-  if (criterion === 'capital_at_retirement') return cand.capitalAtRetirement
+  // Issue #67: meter normalisation tracks the net-capital metric to keep the
+  // visual ranking consistent with the displayed figure.
+  if (criterion === 'capital_at_retirement') return cand.netCapitalAtRetirement
   if (criterion === 'safety') return cand.safetyNettoRenteP10
   if (criterion === 'flexibility') return FLEX_RANK[cand.flexibilityScore]
   return cand.effort.score

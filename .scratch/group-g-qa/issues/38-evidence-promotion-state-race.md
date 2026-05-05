@@ -1,6 +1,6 @@
 ---
 title: "Evidence promotion is overwritten when onboarding fields are edited"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: Group G / onboarding / evidence

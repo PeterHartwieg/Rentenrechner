@@ -1,6 +1,6 @@
 ---
 title: "Move inflation to expert details and keep standard mode inflation-free"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: assumptions / expert mode / charts

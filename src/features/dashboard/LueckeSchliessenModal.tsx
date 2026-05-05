@@ -5,11 +5,11 @@ import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
 import type { BavEmployerOfferInput, RecommendedCandidate } from '../../app/recommender'
 import { NumberField } from '../../ui/NumberField'
-import { formatPercent } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { RecommenderCard } from './RecommenderCard'
 import './RecommenderCard.css'
 
-type Step = 'budget' | 'bav-offer' | 'result'
+type Step = 'budget' | 'bav-offer' | 'result' | 'saved'
 type OfferChoice = 'yes' | 'no' | null
 
 interface Props {
@@ -40,6 +40,9 @@ export function LueckeSchliessenModal({
   const [effectiveCostPct, setEffectiveCostPct] = useState(1.2)
   const [payoutMode, setPayoutMode] = useState<'leibrente' | 'zeitrente' | 'kapitalverzehr'>('leibrente')
   const [rentenfaktor, setRentenfaktor] = useState(30)
+  // Issue 68: track the candidate the user adopted so the confirmation step
+  // can echo what was saved.
+  const [savedCandidate, setSavedCandidate] = useState<RecommendedCandidate | null>(null)
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -270,6 +273,57 @@ export function LueckeSchliessenModal({
           </div>
         )}
 
+        {step === 'saved' && savedCandidate && (
+          <div
+            className="luecke-modal__body luecke-modal__body--saved"
+            role="status"
+            aria-live="polite"
+          >
+            <h3>Plan gespeichert</h3>
+            <p className="luecke-modal__saved-summary">
+              <strong>{savedCandidate.label}</strong> wurde als Was-wäre-wenn-Szenario in deinem
+              Plan abgelegt. Du kannst es im Mein-Plan-Tab unter den Was-wäre-wenn-Szenarien
+              auswählen, vergleichen oder wieder entfernen.
+            </p>
+            <dl className="luecke-modal__saved-summary-list">
+              <div>
+                <dt>Zusätzlich monatlich</dt>
+                <dd>{formatCurrency(savedCandidate.netCashOutEUR, 0)} netto</dd>
+              </div>
+              <div>
+                <dt>Erwartete Netto-Rente</dt>
+                <dd>{formatCurrency(savedCandidate.medianNettoRente, 0)} / Mon.</dd>
+              </div>
+              <div>
+                <dt>Kapital bei Renteneinstieg (netto)</dt>
+                <dd>
+                  {formatCurrency(savedCandidate.netCapitalAtRetirement, 0)}
+                  {savedCandidate.payoutOnly ? ' (annuitisiert)' : ''}
+                </dd>
+              </div>
+            </dl>
+            <p className="luecke-modal__note">
+              Die Basisplanung bleibt unverändert. Erst wenn du das Szenario aktiv übernimmst,
+              wird es Teil des Hauptplans.
+            </p>
+            <div className="luecke-modal__actions">
+              <button
+                type="button"
+                className="luecke-modal__secondary"
+                onClick={() => {
+                  setSavedCandidate(null)
+                  setStep('result')
+                }}
+              >
+                Weiteres Szenario speichern
+              </button>
+              <button type="button" className="luecke-modal__primary" onClick={onClose}>
+                Fertig
+              </button>
+            </div>
+          </div>
+        )}
+
         {step === 'result' && (
           <div className="luecke-modal__body luecke-modal__body--result">
             <RecommenderCard
@@ -281,8 +335,15 @@ export function LueckeSchliessenModal({
               bavOffer={bavOffer}
               selectedScenarioId={selectedScenarioId}
               onSaveAsPlan={(candidate) => {
+                // Issue 68: do NOT close the modal silently. Persist the
+                // candidate via the parent's onSaveAsPlan handler (which adds
+                // a what-if scenario in App.tsx) and then show a confirmation
+                // step. The user gets explicit feedback that the plan was
+                // saved and where to find it; closing the modal moves them
+                // back to the dashboard.
                 onSaveAsPlan(candidate)
-                onClose()
+                setSavedCandidate(candidate)
+                setStep('saved')
               }}
             />
             <div className="luecke-modal__actions">
@@ -303,5 +364,6 @@ export function LueckeSchliessenModal({
 function stepLabel(step: Step): string {
   if (step === 'budget') return 'Schritt 1 von 3'
   if (step === 'bav-offer') return 'Schritt 2 von 3'
+  if (step === 'saved') return 'Plan gespeichert'
   return 'Ergebnis'
 }

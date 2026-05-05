@@ -124,11 +124,7 @@ export function FeeSection({
               max={3}
               step={0.05}
               suffix="% p.a."
-              onChange={(value) => {
-                const newFund = Number(value) / 100
-                const newWrapper = Math.max(0, totalAsset - newFund)
-                update({ fundAssetFee: newFund, wrapperAssetFee: newWrapper })
-              }}
+              onChange={(value) => update({ fundAssetFee: Number(value) / 100 })}
             />
             <NumberField
               label="Auszahlungsgebühr"

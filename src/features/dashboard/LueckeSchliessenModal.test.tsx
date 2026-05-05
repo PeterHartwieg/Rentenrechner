@@ -98,4 +98,30 @@ describe('LueckeSchliessenModal', () => {
     fireEvent.click(save!)
     expect(onSave).toHaveBeenCalledTimes(1)
   })
+
+  // Issue 68: clicking "Als Plan speichern" must produce a visible state
+  // change with feedback to the user; the save handler must fire and the
+  // modal must reach a confirmation step rather than silently closing.
+  it('shows a confirmation step after Als Plan speichern is clicked', () => {
+    const ctx = setup()
+    const onSave = vi.fn()
+    const onClose = vi.fn()
+    const { container, getByText } = render(
+      <LueckeSchliessenModal {...ctx} onClose={onClose} onSaveAsPlan={onSave} />,
+    )
+    fireEvent.click(getByText('Weiter'))
+    fireEvent.click(getByText('Nein, Standardannahmen nutzen'))
+    fireEvent.click(getByText('Optionen anzeigen'))
+    fireEvent.click(container.querySelector('.recommender-candidate-save')!)
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    // Saved-step content visible: confirmation status region + summary list.
+    expect(container.textContent).toContain('Plan gespeichert')
+    expect(container.querySelector('.luecke-modal__body--saved')).toBeTruthy()
+    expect(container.querySelector('[role="status"]')).toBeTruthy()
+    // Modal must NOT auto-close: user must click Fertig.
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(getByText('Fertig'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

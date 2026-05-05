@@ -1,6 +1,6 @@
 ---
 title: "Add Beste Option fuer ranking filters to the recommender result step"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: recommender / ranking UX

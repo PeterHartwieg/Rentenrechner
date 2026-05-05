@@ -1,6 +1,6 @@
 ---
 title: "Collect bAV employer offer fields in Luecke-schliessen flow"
-Status: ready-for-agent
+Status: done
 Severity: P1
 Type: AFK
 Area: recommender / bAV offer / funding

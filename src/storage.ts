@@ -111,6 +111,10 @@ function applyPostMergeMigrations(
   rawAssumptions: Record<string, unknown>,
   merged: ScenarioAssumptions,
 ): void {
+  // Old saves may contain compareSubMode: 'equal_cash'. Preserve the field
+  // so share-URL round-trips don't lose it, but clear the paired equalInputAmountEUR
+  // so the load path treats this state as a plain Netto-Belastung scenario
+  // (resolveNettoBelastungTarget falls back to bAV net cost for these saves).
   if (rawAssumptions.compareSubMode === 'equal_cash') {
     merged.compareSubMode = 'equal_cash'
     merged.equalInputAmountEUR = undefined
@@ -163,10 +167,9 @@ export const defaultWorkspace: Workspace = {
       returnScenarios: defaultAssumptions.returnScenarios,
       monteCarlo: defaultAssumptions.monteCarlo,
       visibleProducts: defaultAssumptions.visibleProducts,
-      // Issue 16 — workspace-level twins for the compare-mode sub-mode toggle.
-      // Defaults to 'equal_cash' so existing oracle goldens and stored workspaces
-      // stay byte-identical. The landing "Produkte vergleichen" CTA bumps this
-      // to 'equal_input' for broker-style comparisons.
+      // Carry forward the legacy compareSubMode field so old saved states round-trip
+      // safely. The public UI no longer exposes this field; only equalInputAmountEUR
+      // is the authoritative public Netto-Belastung anchor.
       compareSubMode: defaultAssumptions.compareSubMode ?? 'equal_cash',
       equalInputAmountEUR: defaultAssumptions.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
     },
@@ -360,8 +363,8 @@ export function migrateV1ToV2(
     returnScenarios: merged.returnScenarios,
     monteCarlo: merged.monteCarlo,
     visibleProducts: merged.visibleProducts,
-    // Issue 16 — round-trip the compare-mode sub-mode. Migrating v1 → v2 keeps
-    // today's behaviour by carrying the default (equal_cash) forward.
+    // Carry forward legacy compareSubMode for safe round-trip of old v1 saves.
+    // New state uses equalInputAmountEUR as the single public Netto-Belastung anchor.
     compareSubMode: merged.compareSubMode ?? 'equal_cash',
     equalInputAmountEUR: merged.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
   }

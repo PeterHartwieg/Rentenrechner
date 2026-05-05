@@ -1,6 +1,6 @@
 ---
 title: "Do not show confirmable estimate badges on empty placeholder defaults"
-Status: ready-for-agent
+Status: done
 Severity: P2
 Type: AFK
 Area: Group G / onboarding / evidence UX
