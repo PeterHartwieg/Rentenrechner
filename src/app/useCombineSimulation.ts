@@ -23,9 +23,9 @@ import type { Workspace } from '../domain/workspace'
 import { simulatePortfolio } from '../engine/portfolioAdapter'
 import {
   combinePortfolio,
-  type CombineContext,
   type CombinedResult,
 } from '../engine/portfolioCombine'
+import { buildCombineContext } from '../engine/combineContext'
 import { projectStatutoryPension } from '../engine/grv'
 import { de2026Rules } from '../rules/de2026'
 
@@ -79,47 +79,13 @@ export function runCombineSimulation(
     retirementYear,
   )
 
-  // 3. Determine statutory routing for combine.
-  const pensionType = wsa.statutoryPension.pensionBaselineType ?? 'grv'
-  const statutoryGrossMonthly = statutoryPension.grossMonthlyPension
-  let statutoryPensionTaxChannel: CombineContext['statutoryPensionTaxChannel']
-  let statutoryPensionKvChannel: CombineContext['statutoryPensionKvChannel']
-  if (pensionType === 'none' || statutoryGrossMonthly <= 0) {
-    statutoryPensionTaxChannel = 'none'
-    statutoryPensionKvChannel = 'none'
-  } else if (pensionType === 'beamtenpension') {
-    statutoryPensionTaxChannel = 'beamten_versorgungsbezug'
-    statutoryPensionKvChannel = profile.publicHealthInsurance
-      ? 'versorgungsbezug_full_rate'
-      : 'none'
-  } else if (pensionType === 'versorgungswerk') {
-    statutoryPensionTaxChannel = 'statutory_pension'
-    // VW: §229 Abs. 1 Nr. 3 SGB V Versorgungsbezug for KV — full rate.
-    statutoryPensionKvChannel = profile.publicHealthInsurance
-      ? 'versorgungsbezug_full_rate'
-      : 'none'
-  } else {
-    // 'grv': default. Half-rate via §249a SGB V for KVdR.
-    statutoryPensionTaxChannel = 'statutory_pension'
-    statutoryPensionKvChannel = profile.publicHealthInsurance ? 'kvdr_half_rate' : 'none'
-  }
-
-  // KVdR / freiwillig flag — drives the combine KV/PV cascade.
-  // Source: workspace-level `assumptions.statutoryPension.retirementHealthStatus`,
-  // matching `simulationContext.ts:256`. Don't read from `bav[0]` — that wrongly
-  // couples KV/PV status to a specific instance and breaks no-bAV workspaces.
-  const retirementHealthStatus: CombineContext['retirementHealthStatus'] =
-    wsa.statutoryPension.retirementHealthStatus ?? 'kvdr'
-
-  const ctx: CombineContext = {
+  // 3. Determine statutory routing for combine via the shared context builder.
+  const ctx = buildCombineContext({
     profile,
     rules,
-    retirementYear,
-    grvGrossMonthlyPension: statutoryGrossMonthly,
-    statutoryPensionTaxChannel,
-    statutoryPensionKvChannel,
-    retirementHealthStatus,
-  }
+    statutoryPension: wsa.statutoryPension,
+    grvGrossMonthlyPension: statutoryPension.grossMonthlyPension,
+  })
 
   // 4. Combine per scenario.
   const combinedByScenarioId: Record<string, CombinedResult> = {}

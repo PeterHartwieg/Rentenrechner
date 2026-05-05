@@ -69,7 +69,8 @@ import type {
   AltersvorsorgedepotInstance,
   RiesterInstance,
 } from '../domain/instances'
-import { combinePortfolio, type CombineContext, type CombinedResult } from '../engine/portfolioCombine'
+import { combinePortfolio, type CombinedResult } from '../engine/portfolioCombine'
+import { buildCombineContext, type CombineContext } from '../engine/combineContext'
 import { calculateBavFunding, calculateSalaryResult } from '../engine/salary'
 import { calculateBasisrenteFunding, solveBasisrenteGrossFromNet } from '../engine/basisrente'
 import { calculateRiesterFunding, solveRiesterOwnFromNet } from '../engine/riester'
@@ -705,59 +706,6 @@ function synthesizeProductResult(args: {
     etfPayoutRows: [],
     instanceId: args.instanceId,
   } as ProductResult
-}
-
-// ---------------------------------------------------------------------------
-// Build a CombineContext
-// ---------------------------------------------------------------------------
-
-/**
- * Re-derive the `CombineContext` for the workspace. Mirrors the routing logic
- * in `useCombineSimulation.runCombineSimulation` so the recommender's
- * `combinePortfolio` calls produce results consistent with the dashboard.
- */
-function buildCombineContext(
-  workspace: Workspace,
-  rules: GermanRules,
-  grvGrossMonthlyPension: number,
-): CombineContext {
-  const profile = workspace.baseline.profile
-  const wsa = workspace.baseline.assumptions
-  const retirementYear = rules.year + (profile.retirementAge - profile.age)
-
-  const pensionType = wsa.statutoryPension.pensionBaselineType ?? 'grv'
-  let statutoryPensionTaxChannel: CombineContext['statutoryPensionTaxChannel']
-  let statutoryPensionKvChannel: CombineContext['statutoryPensionKvChannel']
-  if (pensionType === 'none' || grvGrossMonthlyPension <= 0) {
-    statutoryPensionTaxChannel = 'none'
-    statutoryPensionKvChannel = 'none'
-  } else if (pensionType === 'beamtenpension') {
-    statutoryPensionTaxChannel = 'beamten_versorgungsbezug'
-    statutoryPensionKvChannel = profile.publicHealthInsurance ? 'versorgungsbezug_full_rate' : 'none'
-  } else if (pensionType === 'versorgungswerk') {
-    statutoryPensionTaxChannel = 'statutory_pension'
-    statutoryPensionKvChannel = profile.publicHealthInsurance ? 'versorgungsbezug_full_rate' : 'none'
-  } else {
-    statutoryPensionTaxChannel = 'statutory_pension'
-    statutoryPensionKvChannel = profile.publicHealthInsurance ? 'kvdr_half_rate' : 'none'
-  }
-
-  // Read KV/PV status from workspace-level statutoryPension.retirementHealthStatus
-  // (matches `simulationContext.ts:256` and `useCombineSimulation.ts`). Reading
-  // from `bav[0]?.kvdrMember` wrongly couples KV/PV to a single bAV instance
-  // and breaks no-bAV workspaces.
-  const retirementHealthStatus: CombineContext['retirementHealthStatus'] =
-    wsa.statutoryPension.retirementHealthStatus ?? 'kvdr'
-
-  return {
-    profile,
-    rules,
-    retirementYear,
-    grvGrossMonthlyPension,
-    statutoryPensionTaxChannel,
-    statutoryPensionKvChannel,
-    retirementHealthStatus,
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1738,7 +1686,12 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
   const profile = workspace.baseline.profile
   const yearsToRetirement = Math.max(1, profile.retirementAge - profile.age)
   const basis = pickBasisScenario(workspace, input.selectedScenarioId)
-  const combineCtx = buildCombineContext(workspace, rules, input.grvGrossMonthlyPension)
+  const combineCtx = buildCombineContext({
+    profile,
+    rules,
+    statutoryPension: workspace.baseline.assumptions.statutoryPension,
+    grvGrossMonthlyPension: input.grvGrossMonthlyPension,
+  })
   const wsa = workspace.baseline.assumptions
   const mcSeedBase = wsa.monteCarlo?.seed ?? 2026
   const mcVolatility = wsa.monteCarlo?.annualVolatility ?? 0.15
