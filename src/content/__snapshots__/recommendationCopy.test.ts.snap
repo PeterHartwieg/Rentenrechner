@@ -1,0 +1,323 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderAtom copy snapshot > copy output matches snapshot for all representative atoms 1`] = `
+[
+  {
+    "context": {
+      "bestCapitalLabel": "ETF",
+      "bestPensionLabel": "bAV",
+    },
+    "id": "sensitivity_rankings_disagree",
+    "rendered": {
+      "body": "„ETF" vorn beim Kapital, „bAV" bei der monatlichen Rente. Frage dich, was dir wichtiger ist.",
+      "headline": "Kapital- und Renten-Sieger sind verschieden",
+    },
+  },
+  {
+    "context": {
+      "runnerLabel": "bAV",
+    },
+    "id": "sensitivity_narrow_capital_gap",
+    "rendered": {
+      "body": "Unter 5 % zu „bAV". Ranking kippt schon bei kleinen Änderungen an Rendite oder Gebühren.",
+      "headline": "Knapper Vorsprung beim Kapital",
+    },
+  },
+  {
+    "context": {
+      "riyDecimal": 0.016,
+    },
+    "id": "sensitivity_high_fee_winner",
+    "rendered": {
+      "body": "1.60 % p. a. Eine Renditeannahme 1 pp niedriger oder ein günstigerer Tarif kann das Bild drehen.",
+      "headline": "Sieger hat hohe Effektivkosten",
+    },
+  },
+  {
+    "context": {
+      "text": "Hebel...",
+    },
+    "id": "sensitivity_default",
+    "rendered": {
+      "body": "Hebel...",
+      "headline": "Vergleichshinweis",
+    },
+  },
+  {
+    "context": {},
+    "id": "reason_employer_subsidy",
+    "rendered": {
+      "body": "Hoher Arbeitgeberanteil senkt deinen Nettoaufwand.",
+      "headline": "Hoher Arbeitgeberanteil",
+    },
+  },
+  {
+    "context": {},
+    "id": "reason_low_fees",
+    "rendered": {
+      "body": "Niedrige Gebühren, jederzeit frei verfügbar.",
+      "headline": "Niedrige Gebühren",
+    },
+  },
+  {
+    "context": {
+      "productId": "bav",
+    },
+    "id": "reason_high_fees",
+    "rendered": {
+      "body": "Vertragskosten zehren am Ergebnis (Effektivkosten hoch).",
+      "headline": "Hohe Vertragskosten",
+    },
+  },
+  {
+    "context": {
+      "productId": "versicherung",
+    },
+    "id": "reason_high_fees",
+    "rendered": {
+      "body": "Hohe Vertragskosten — Effektivkosten über 1,2 % p. a.",
+      "headline": "Hohe Vertragskosten",
+    },
+  },
+  {
+    "context": {
+      "productId": "basisrente",
+    },
+    "id": "reason_high_fees",
+    "rendered": {
+      "body": "Hohe Vertragskosten und kein Kapitalwahlrecht.",
+      "headline": "Hohe Kosten und kein Kapitalwahlrecht",
+    },
+  },
+  {
+    "context": {
+      "productId": "bav",
+    },
+    "id": "reason_tax_deferral",
+    "rendered": {
+      "body": "Steuer- und SV-Ersparnis in der Ansparphase.",
+      "headline": "Steuer- und SV-Ersparnis",
+    },
+  },
+  {
+    "context": {
+      "productId": "basisrente",
+    },
+    "id": "reason_tax_deferral",
+    "rendered": {
+      "body": "Sonderausgabenabzug heute, Besteuerung in der Rente.",
+      "headline": "Steuervorteil heute",
+    },
+  },
+  {
+    "context": {},
+    "id": "reason_flexible_capital",
+    "rendered": {
+      "body": "Frei verfügbar, kein Auszahlplan vorgegeben.",
+      "headline": "Flexibel verfügbar",
+    },
+  },
+  {
+    "context": {
+      "productId": "altersvorsorgedepot",
+    },
+    "id": "reason_subsidies",
+    "rendered": {
+      "body": "Zulagen und Steuervorteil, gebunden bis Rentenbeginn.",
+      "headline": "Zulagen und Steuervorteil",
+    },
+  },
+  {
+    "context": {
+      "productId": "riester",
+    },
+    "id": "reason_subsidies",
+    "rendered": {
+      "body": "Grund- und Kinderzulagen, volle Versteuerung in der Rente.",
+      "headline": "Zulagen",
+    },
+  },
+  {
+    "context": {
+      "hasEmployerContribution": true,
+      "productId": "riester",
+    },
+    "id": "reason_subsidies",
+    "rendered": {
+      "body": "Zulagen und ggf. zusätzlicher Steuervorteil.",
+      "headline": "Zulagen",
+    },
+  },
+  {
+    "context": {},
+    "id": "reason_guarantee",
+    "rendered": {
+      "body": "Lebenslange Rentengarantie über den Rentenfaktor.",
+      "headline": "Rentengarantie",
+    },
+  },
+  {
+    "context": {
+      "remainingMonthly": 236,
+      "usedPct": 0.65,
+    },
+    "id": "bav_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 65 % des steuerfreien bAV-Rahmens (§ 3 Nr. 63 EStG). Noch 236 €/Monat verfügbar.",
+      "headline": "Betriebliche Altersvorsorge: Beitragslimit",
+    },
+  },
+  {
+    "context": {
+      "nextLeverProductId": "basisrente",
+      "remainingMonthly": 0,
+      "usedPct": 1,
+    },
+    "id": "bav_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 100 % des steuerfreien bAV-Rahmens (§ 3 Nr. 63 EStG). Der steuerfreie Rahmen ist ausgeschöpft. Nächster Hebel: Rürup-Rente — ebenfalls Sonderausgabenabzug, ohne bAV-Bindung.",
+      "headline": "Betriebliche Altersvorsorge: Beitragslimit",
+    },
+  },
+  {
+    "context": {
+      "remainingAnnual": 15000,
+      "usedPct": 0.3,
+    },
+    "id": "basisrente_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 30 % des Schicht-1-Höchstbetrags (§ 10 Abs. 3 EStG). Noch 15000 €/Jahr für Rürup-Beiträge abzugsfähig.",
+      "headline": "Rürup-Rente: Sonderausgabenrahmen",
+    },
+  },
+  {
+    "context": {
+      "allowanceCovered": 175,
+      "topUpToCap": 750,
+      "usedPct": 0.5,
+    },
+    "id": "riester_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 50 % des Riester-Höchstbetrags (§ 10a EStG, 2.100 €/Jahr inkl. Zulagen). Zulagen decken 175 €/Jahr. Mit 750 € mehr Eigenbeitrag erreichst du den Höchstbetrag.",
+      "headline": "Riester: Sonderausgabenrahmen",
+    },
+  },
+  {
+    "context": {
+      "remainingMonthly": 370,
+      "usedPct": 0.35,
+    },
+    "id": "avd_cap_remaining",
+    "rendered": {
+      "body": "Du nutzt 35 % des AVD-Vertragsrahmens (6.840 €/Jahr). Noch 370 €/Monat Spielraum bis zur Vertragsobergrenze.",
+      "headline": "Altersvorsorgedepot: Beitragslimit",
+    },
+  },
+  {
+    "context": {
+      "married": false,
+      "remainingAnnual": 1000,
+      "usedAnnual": 0,
+    },
+    "id": "sparerpauschbetrag_remaining",
+    "rendered": {
+      "body": "Sparerpauschbetrag (ledig, 1.000 €): 1000 € noch nicht genutzt — ETF- und AVD-Vorabpauschale werden hier angerechnet.",
+      "headline": "Sparerpauschbetrag",
+    },
+  },
+  {
+    "context": {
+      "married": true,
+      "remainingAnnual": 1600,
+      "usedAnnual": 400,
+    },
+    "id": "sparerpauschbetrag_remaining",
+    "rendered": {
+      "body": "Sparerpauschbetrag (verheiratet, 2.000 €): 400 € genutzt, noch 1600 € frei.",
+      "headline": "Sparerpauschbetrag",
+    },
+  },
+  {
+    "context": {},
+    "id": "pre_2005_pav_taxfree_capital",
+    "rendered": {
+      "body": "Dein Vertrag erfüllt die Bedingungen für die steuerfreie Kapitalauszahlung nach §52 Abs. 28 EStG a.F. (Vertragsbeginn vor 2005, Laufzeit ≥ 12 Jahre). Der Rechner wendet diese Befreiung automatisch an. Achtung — bei Leibrente-Auszahlung gilt §22 Nr. 1 Satz 3 a EStG Ertragsanteil auch für pre-2005-Verträge.",
+      "headline": "Pre-2005-Kapitalauszahlung steuerfrei (§52 Abs. 28 EStG a.F.)",
+    },
+  },
+  {
+    "context": {},
+    "id": "halbeinkuenfte_pav_eligible",
+    "rendered": {
+      "body": "Dein Vertrag erfüllt die Bedingungen für das Halbeinkünfteverfahren bei Kapitalauszahlung (Vertragsbeginn ab 2005, Laufzeit ≥ 12 Jahre, Auszahlung ab Alter 62). Nur die Hälfte des Gewinns wird mit dem persönlichen Steuersatz besteuert — §20 Abs. 1 Nr. 6 EStG.",
+      "headline": "Halbeinkünfte (halbe Steuer auf Gewinn) — §20 Abs. 1 Nr. 6 EStG",
+    },
+  },
+  {
+    "context": {},
+    "id": "pre_2005_pav_high_garantiezins",
+    "rendered": {
+      "body": "Verträge aus 2003 oder früher haben einen Höchstrechnungszins von 4 % p. a. auf die Sparanteile. Dieser Zins ist heute kaum noch am Markt erhältlich. In Kombination mit der steuerfreien Kapitalauszahlung (pre-2005) ist das ein starkes Argument, diesen Vertrag zu behalten.",
+      "headline": "Hoher Garantiezins (4 % bis 2024 auf Beiträge)",
+    },
+  },
+  {
+    "context": {},
+    "id": "bav_40b_alt_eligible",
+    "rendered": {
+      "body": "Dieser bAV-Vertrag wurde vom Arbeitgeber pauschal nach §40b EStG a.F. besteuert. Da alle Voraussetzungen (Vertragsabschluss vor 2005, Laufzeit ≥ 12 Jahre, mind. 5 Jahresprämien) erfüllt sind, ist die Kapitalauszahlung einkommensteuerfrei (§52 Abs. 28 EStG a.F.). KV/PV nach §229 Abs. 1 SGB V fällt weiterhin an — der Rechner berücksichtigt dies.",
+      "headline": "Pre-2005 §40b-Direktversicherung — Kapitalauszahlung steuerfrei (KV/PV bleibt)",
+    },
+  },
+  {
+    "context": {},
+    "id": "bav_40b_alt_conditions_unmet",
+    "rendered": {
+      "body": "Obwohl der Durchführungsweg §40b EStG a.F. ist, sind die Voraussetzungen für die Steuerfreiheit nicht vollständig erfüllt. Die Kapitalauszahlung wird daher als Versorgungsbezug voll besteuert (§22 Nr. 5 EStG). Prüfe, ob alle Bedingungen tatsächlich nicht greifen, oder korrigiere den "Steuerfreiheit bestätigt"-Schalter im Vertrag.",
+      "headline": "§40b-Vertrag, aber Bedingungen nicht erfüllt — Lump-sum als Versorgungsbezug",
+    },
+  },
+  {
+    "context": {},
+    "id": "bav_durchfuehrungsweg_direktzusage",
+    "rendered": {
+      "body": "Bei Direktzusage und Unterstützungskasse gilt die Kapitalauszahlung als Vergütung für mehrjährige Tätigkeit. Die Fünftelregelung (§34 Abs. 2 Nr. 4 EStG) glättet die Steuerprogression — der Rechner wendet dies automatisch an.",
+      "headline": "Lump-sum-Steuerung: Fünftelregelung (§34 EStG)",
+    },
+  },
+  {
+    "context": {},
+    "id": "riester_pre_2008_zulage",
+    "rendered": {
+      "body": "Für Kinder, die ab 2008 geboren wurden, beträgt die Kinderzulage 300 EUR/Jahr (statt 185 EUR). Bei einem Riester-Vertrag aus 2007 oder früher muss der Vertrag beim Anbieter auf den neuen Kindzulagesatz angepasst werden. Prüfe mit deinem Anbieter, ob der höhere Satz bereits eingetragen ist.",
+      "headline": "Kinderzulage für nach 2008 geborene Kinder ggf. nicht voll auf altem Riester — Vertragsanpassung prüfen",
+    },
+  },
+  {
+    "context": {},
+    "id": "lose_pre_2005_privilege",
+    "rendered": {
+      "body": "Diese Option beendet deinen Vertrag. Du verlierst dabei dauerhaft die steuerlichen Vorteile des Altvertrags (steuerfreie Kapitalauszahlung / Halbeinkünfteverfahren). Diese Privilegien können bei einem Neuabschluss nicht wiederhergestellt werden.",
+      "headline": "Verlust von Altvertrag-Privilegien",
+    },
+  },
+  {
+    "context": {
+      "riyDecimal": 0.02,
+    },
+    "id": "paid_up_high_fee_warning",
+    "rendered": {
+      "body": "Effektivkosten von 2.00 % p. a. bei beitragsfreiem Vertrag: Laufende Verwaltungskosten belasten das angesparte Kapital besonders stark, wenn keine neuen Beiträge mehr eingezahlt werden.",
+      "headline": "Hohe Kosten im Beitragsfreistand",
+    },
+  },
+  {
+    "context": {},
+    "id": "riester_to_avd_certified",
+    "rendered": {
+      "body": "Die Übertragung von Riester auf ein Altersvorsorgedepot ist nach AltZertG steuerneutral möglich. Zulagen und Sonderausgabenabzüge bleiben erhalten; der Anbieter organisiert die Übertragung. Prüfe, ob dein aktueller Anbieter die Übertragung gebührenfrei abwickelt.",
+      "headline": "Steuerneutrale Übertragung möglich (AltZertG)",
+    },
+  },
+]
+`;

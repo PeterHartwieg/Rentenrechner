@@ -23,7 +23,7 @@ import type { Workspace, WhatIfScenario } from '../../domain/workspace'
 import type { ContractDecision } from '../../app/contractDecisions'
 import { generateContractDecisions, applyContractDecision } from '../../app/contractDecisions'
 import { forkBaselineScenario, newScenarioId } from '../../app/portfolioState'
-import { renderAtom } from '../../app/recommendations'
+import { renderAtom } from '../../content/recommendationCopy'
 
 // ---------------------------------------------------------------------------
 // Chip variant mapping

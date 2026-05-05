@@ -14,7 +14,7 @@
 
 import './VintageChips.css'
 import type { Atom } from '../../app/recommendations'
-import { renderAtom } from '../../app/recommendations'
+import { renderAtom } from '../../content/recommendationCopy'
 import { InfoTip } from '../../ui/InfoTip'
 import { VINTAGE_ATOM_IDS, chipVariant } from './vintageChipsUtils'
 

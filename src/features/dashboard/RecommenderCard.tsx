@@ -25,7 +25,7 @@ import { confidenceForResult } from '../../app/evidence'
 import { de2026Rules } from '../../rules/de2026'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency } from '../../utils/format'
-import { renderAtom } from '../../app/recommendations'
+import { renderAtom } from '../../content/recommendationCopy'
 import { productIdFromInstanceId } from '../../utils/scenarioSchema'
 import { getProductMeta, type ProductId } from '../../engine/productRegistry'
 
