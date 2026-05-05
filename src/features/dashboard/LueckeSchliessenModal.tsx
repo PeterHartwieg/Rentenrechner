@@ -282,6 +282,7 @@ export function LueckeSchliessenModal({
             <h3>Plan gespeichert</h3>
             <p className="luecke-modal__saved-summary">
               <strong>{savedCandidate.label}</strong> wurde als Was-wäre-wenn-Szenario gespeichert.
+              Zu finden unter Meine Verträge → Szenarien.
             </p>
             <dl className="luecke-modal__saved-summary-list">
               <div>

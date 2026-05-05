@@ -45,8 +45,8 @@ export function LandingPage({ onChoice }: Props) {
               </div>
               <h2 className="landing-card-title">Mein Plan</h2>
               <p className="landing-card-desc">
-                Persönliche Angaben, bestehende Verträge — und eine Empfehlung,
-                wo dein nächster Euro am meisten bringt.
+                Persönliche Angaben und bestehende Verträge — oder leg ohne los,
+                wenn du neu anfängst. Empfehlung, wo dein nächster Euro am meisten bringt.
               </p>
               <button
                 type="button"
