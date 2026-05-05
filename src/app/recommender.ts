@@ -81,7 +81,7 @@ import {
   deepCloneScenario,
   newScenarioId,
 } from './portfolioState'
-import { newInstanceId } from '../features/inventory/inventoryHelpers'
+import { newInstanceId } from './workspaceIdentity'
 import { defaultAssumptions } from '../data/defaultScenario'
 import {
   CANDIDATE_GENERATORS,

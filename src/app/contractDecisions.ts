@@ -35,10 +35,8 @@ import type { ProductId } from '../domain/products/common'
 import { deepCloneScenario } from './portfolioState'
 import { runRules, type Atom } from './recommendations'
 import type { AtomId } from './recommendations'
-import {
-  avdDraftToInstance,
-  newInstanceId,
-} from '../features/inventory/inventoryHelpers'
+import { avdDraftToInstance } from '../features/inventory/inventoryHelpers'
+import { newInstanceId } from './workspaceIdentity'
 import { de2026Rules } from '../rules/de2026'
 
 // ---------------------------------------------------------------------------

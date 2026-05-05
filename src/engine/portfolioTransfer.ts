@@ -36,6 +36,11 @@ import { afterTaxInsuranceLumpSum, deriveInsuranceTaxMode } from './insurancePay
 import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from './bavPayout'
 import { afterTaxRiesterLumpSum } from './riester'
 import { afterTaxAvdLumpSum } from './altersvorsorgedepot'
+import { detectProductSlot } from './portfolioProjection'
+
+// Re-exported for back-compat with callers (and tests) that imported it from
+// this module. Canonical home is `portfolioProjection.ts` (issue 03).
+export { detectProductSlot }
 
 // ---------------------------------------------------------------------------
 // AnyInstance
@@ -49,39 +54,6 @@ export type AnyInstance =
   | BasisrenteInstance
   | AltersvorsorgedepotInstance
   | RiesterInstance
-
-// ---------------------------------------------------------------------------
-// detectProductSlot (used internally for surrender-tax routing)
-// ---------------------------------------------------------------------------
-
-type ProductSlot = 'bav' | 'etf' | 'insurance' | 'basisrente' | 'altersvorsorgedepot' | 'riester'
-
-/**
- * Determine which `ScenarioAssumptions` slot an instance belongs to.
- * Uses the deterministic `instanceId` prefix when present; otherwise falls
- * back to structural detection from the instance fields.
- *
- * Insurance instances carry productId 'versicherung'; the singleton slot key
- * is 'insurance' (legacy ScenarioAssumptions name), so we map accordingly.
- */
-export function detectProductSlot(instance: AnyInstance): ProductSlot {
-  const id = instance.instanceId
-  if (id.startsWith('versicherung-')) return 'insurance'
-  if (id.startsWith('bav-')) return 'bav'
-  if (id.startsWith('etf-')) return 'etf'
-  if (id.startsWith('basisrente-')) return 'basisrente'
-  if (id.startsWith('altersvorsorgedepot-')) return 'altersvorsorgedepot'
-  if (id.startsWith('riester-')) return 'riester'
-  // Structural fallback — match on a discriminating field.
-  const r = instance as unknown as Record<string, unknown>
-  if (typeof r.monthlyGrossConversion === 'number') return 'bav'
-  if (typeof r.annualAssetFee === 'number' && typeof r.equityPartialExemption === 'number') return 'etf'
-  if (typeof r.monthlyGrossContribution === 'number') return 'basisrente'
-  if (typeof r.subtype === 'string') return 'altersvorsorgedepot'
-  if (typeof r.monthlyOwnContribution === 'number' && 'existingCapital' in r) return 'riester'
-  if (typeof r.contractStartYear === 'number') return 'insurance'
-  throw new Error(`portfolioTransfer: cannot detect product slot for instance ${id}`)
-}
 
 // ---------------------------------------------------------------------------
 // Instance lookup

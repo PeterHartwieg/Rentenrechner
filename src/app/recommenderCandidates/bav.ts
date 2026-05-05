@@ -29,7 +29,7 @@ import { defaultAssumptions } from '../../data/defaultScenario'
 import { calculateBavFunding, calculateSalaryResult } from '../../engine/salary'
 import { computeGrossMonthlyPayout } from '../../engine/payoutMath'
 import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from '../../engine/bavPayout'
-import { newInstanceId } from '../../features/inventory/inventoryHelpers'
+import { newInstanceId } from '../workspaceIdentity'
 import {
   type CandidateDraft,
   type GeneratorContext,

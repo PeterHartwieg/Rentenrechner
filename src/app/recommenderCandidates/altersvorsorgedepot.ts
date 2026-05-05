@@ -15,7 +15,7 @@
 import type { AltersvorsorgedepotInstance } from '../../domain/instances'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { monthlyPayoutFromCapital } from '../../engine/payoutMath'
-import { newInstanceId } from '../../features/inventory/inventoryHelpers'
+import { newInstanceId } from '../workspaceIdentity'
 import {
   type CandidateDraft,
   type GeneratorContext,
