@@ -23,6 +23,8 @@ import {
   newScenarioId,
   rebaseWhatIfStub,
   rebaseWhatIf,
+  applyDisambiguatingLabel,
+  type AnyInstance,
 } from './portfolioState'
 import type { Scenario, WhatIfScenario } from '../domain/workspace'
 
@@ -230,5 +232,44 @@ describe('portfolioState helpers — rebaseWhatIfStub', () => {
     expect(rebased.derivedFromBaselineSnapshot.id).toBe('baseline-2')
     // frozenAt cleared
     expect(rebased.frozenAt).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// applyDisambiguatingLabel — addPopulatedInstance #N suffix (Phase 2 P3 fix)
+// ---------------------------------------------------------------------------
+
+describe('portfolioState helpers — applyDisambiguatingLabel', () => {
+  function makeEtf(overrides: Partial<AnyInstance> = {}): AnyInstance {
+    return {
+      instanceId: 'etf-1',
+      label: 'ETF-Depot',
+      anbieter: undefined,
+      status: 'active',
+      contractStartYear: 2026,
+      currentValueEUR: 0,
+      evidenceMap: {},
+      ownedBy: 'self',
+      monthlyContribution: 200,
+      annualAssetFee: 0.002,
+      equityPartialExemption: 0.3,
+      annualContributionGrowthRate: 0,
+      ...overrides,
+    } as AnyInstance
+  }
+
+  it('appends #N when no provider name was supplied', () => {
+    const result = applyDisambiguatingLabel(makeEtf(), 2)
+    expect(result.label).toBe('ETF-Depot #2')
+  })
+
+  it('keeps the provider-named label intact when an Anbieter was supplied', () => {
+    const result = applyDisambiguatingLabel(makeEtf({ label: 'ETF – Trade Republic', anbieter: 'Trade Republic' }), 2)
+    expect(result.label).toBe('ETF – Trade Republic')
+  })
+
+  it('treats a whitespace-only Anbieter as missing', () => {
+    const result = applyDisambiguatingLabel(makeEtf({ anbieter: '   ' }), 3)
+    expect(result.label).toBe('ETF-Depot #3')
   })
 })

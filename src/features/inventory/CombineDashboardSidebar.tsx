@@ -1185,15 +1185,27 @@ function DraftContractForm({
   const [bavCurrentValue, setBavCurrentValue] = useState(0)
   const [bavDurchfuehrungsweg, setBavDurchfuehrungsweg] =
     useState<BavInstance['durchfuehrungsweg']>('direktversicherung_3_63')
+  const [bavEffektivkostenPct, setBavEffektivkostenPct] = useState(0.8)
+  const [bavRentenfaktor, setBavRentenfaktor] = useState(30)
+  const [bavPayoutMode, setBavPayoutMode] =
+    useState<BavInstance['payoutMode']>('leibrente')
 
   // ── pAV / Basisrente ───────────────────────────────────────────────────
   const [insMonthly, setInsMonthly] = useState(200)
   const [insCurrentValue, setInsCurrentValue] = useState(0)
   const [insRentenfaktor, setInsRentenfaktor] = useState(28)
+  const [insEffektivkostenPct, setInsEffektivkostenPct] = useState(0.8)
+  const [insPayoutMode, setInsPayoutMode] =
+    useState<InsuranceInstance['payoutMode']>('leibrente')
 
   // ── AVD / Riester ──────────────────────────────────────────────────────
   const [otherMonthly, setOtherMonthly] = useState(200)
   const [otherCurrentValue, setOtherCurrentValue] = useState(0)
+  const [avdSubtype, setAvdSubtype] =
+    useState<AltersvorsorgedepotInstance['subtype']>('standarddepot')
+  const [avdUseGlidepath, setAvdUseGlidepath] = useState(true)
+  const [riesterPayoutMode, setRiesterPayoutMode] =
+    useState<RiesterInstance['payoutMode']>('leibrente')
 
   const saveLabel = item.kind === 'bav_offer' ? 'Angebot speichern' : 'Vertrag speichern'
 
@@ -1234,9 +1246,9 @@ function DraftContractForm({
         monthlyContribution: bavMonthlyGross,
         anbieter: trimmedAnbieter,
         durchfuehrungsweg: bavDurchfuehrungsweg,
-        effektivkostenPct: 0.8,
-        rentenfaktor: 30,
-        payoutMode: 'leibrente',
+        effektivkostenPct: bavEffektivkostenPct,
+        rentenfaktor: bavRentenfaktor,
+        payoutMode: bavPayoutMode,
       })
       onSaveContract('bav', {
         ...instance,
@@ -1251,9 +1263,9 @@ function DraftContractForm({
         currentValueEUR: insCurrentValue,
         monthlyContribution: insMonthly,
         anbieter: trimmedAnbieter,
-        effektivkostenPct: 0.8,
+        effektivkostenPct: insEffektivkostenPct,
         rentenfaktor: insRentenfaktor,
-        payoutMode: 'leibrente',
+        payoutMode: insPayoutMode,
       })
       onSaveContract('versicherung', { ...instance, instanceId: newInstanceId('versicherung') })
     } else if (productId === 'basisrente') {
@@ -1264,7 +1276,7 @@ function DraftContractForm({
         currentValueEUR: insCurrentValue,
         monthlyContribution: insMonthly,
         anbieter: trimmedAnbieter,
-        effektivkostenPct: 0.8,
+        effektivkostenPct: insEffektivkostenPct,
         rentenfaktor: insRentenfaktor,
       })
       onSaveContract('basisrente', { ...instance, instanceId: newInstanceId('basisrente') })
@@ -1276,8 +1288,8 @@ function DraftContractForm({
         currentValueEUR: otherCurrentValue,
         monthlyContribution: otherMonthly,
         anbieter: trimmedAnbieter,
-        subtype: 'standarddepot',
-        useGlidepath: true,
+        subtype: avdSubtype,
+        useGlidepath: avdUseGlidepath,
       })
       onSaveContract('altersvorsorgedepot', {
         ...instance,
@@ -1291,7 +1303,7 @@ function DraftContractForm({
         currentValueEUR: otherCurrentValue,
         monthlyContribution: otherMonthly,
         anbieter: trimmedAnbieter,
-        payoutMode: 'leibrente',
+        payoutMode: riesterPayoutMode,
         zulageStatus: '',
       })
       onSaveContract('riester', { ...instance, instanceId: newInstanceId('riester') })
@@ -1407,6 +1419,29 @@ function DraftContractForm({
                 onChange={setBavDurchfuehrungsweg}
               />
             </CombineField>
+            <CombineField label="Effektivkosten (% p.a.)">
+              <input
+                type="number"
+                value={bavEffektivkostenPct}
+                min={0}
+                step={0.1}
+                onChange={(e) =>
+                  setBavEffektivkostenPct(toNumber(e.target.value, bavEffektivkostenPct))
+                }
+              />
+            </CombineField>
+            <CombineField label="Garantierter Rentenfaktor">
+              <input
+                type="number"
+                value={bavRentenfaktor}
+                min={0}
+                step={0.5}
+                onChange={(e) => setBavRentenfaktor(toNumber(e.target.value, bavRentenfaktor))}
+              />
+            </CombineField>
+            <CombineField label="Auszahlungsform">
+              <PayoutModeSelect value={bavPayoutMode} onChange={setBavPayoutMode} />
+            </CombineField>
           </>
         ) : productId === 'versicherung' || productId === 'basisrente' ? (
           <>
@@ -1428,6 +1463,17 @@ function DraftContractForm({
                 onChange={(e) => setInsCurrentValue(toNumber(e.target.value, insCurrentValue))}
               />
             </CombineField>
+            <CombineField label="Effektivkosten (% p.a.)">
+              <input
+                type="number"
+                value={insEffektivkostenPct}
+                min={0}
+                step={0.1}
+                onChange={(e) =>
+                  setInsEffektivkostenPct(toNumber(e.target.value, insEffektivkostenPct))
+                }
+              />
+            </CombineField>
             <CombineField label="Garantierter Rentenfaktor">
               <input
                 type="number"
@@ -1436,6 +1482,57 @@ function DraftContractForm({
                 step={0.5}
                 onChange={(e) => setInsRentenfaktor(toNumber(e.target.value, insRentenfaktor))}
               />
+            </CombineField>
+            {productId === 'versicherung' && (
+              <CombineField label="Auszahlungsform">
+                <PayoutModeSelect value={insPayoutMode} onChange={setInsPayoutMode} />
+              </CombineField>
+            )}
+          </>
+        ) : productId === 'altersvorsorgedepot' ? (
+          <>
+            <CombineField label="Eigenbeitrag (EUR/Monat)">
+              <input
+                type="number"
+                value={otherMonthly}
+                min={0}
+                step={10}
+                onChange={(e) => setOtherMonthly(toNumber(e.target.value, otherMonthly))}
+              />
+            </CombineField>
+            <CombineField label="Aktueller Vertragswert">
+              <input
+                type="number"
+                value={otherCurrentValue}
+                min={0}
+                step={100}
+                onChange={(e) =>
+                  setOtherCurrentValue(toNumber(e.target.value, otherCurrentValue))
+                }
+              />
+            </CombineField>
+            <CombineField label="Depottyp">
+              <select
+                value={avdSubtype}
+                onChange={(e) =>
+                  setAvdSubtype(e.target.value as AltersvorsorgedepotInstance['subtype'])
+                }
+              >
+                <option value="depot_no_guarantee">Depot ohne Garantie</option>
+                <option value="standarddepot">Standarddepot</option>
+                <option value="guarantee_80">80% Garantie</option>
+                <option value="guarantee_100">100% Garantie</option>
+              </select>
+            </CombineField>
+            <CombineField label="Glidepath">
+              <label className="combine-checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={avdUseGlidepath}
+                  onChange={(e) => setAvdUseGlidepath(e.target.checked)}
+                />
+                automatische Risikoabsenkung
+              </label>
             </CombineField>
           </>
         ) : (
@@ -1455,7 +1552,18 @@ function DraftContractForm({
                 value={otherCurrentValue}
                 min={0}
                 step={100}
-                onChange={(e) => setOtherCurrentValue(toNumber(e.target.value, otherCurrentValue))}
+                onChange={(e) =>
+                  setOtherCurrentValue(toNumber(e.target.value, otherCurrentValue))
+                }
+              />
+            </CombineField>
+            <CombineField label="Auszahlungsform">
+              <PayoutModeSelect
+                value={riesterPayoutMode}
+                allowCapitalDrawdown={false}
+                onChange={(payoutMode) =>
+                  setRiesterPayoutMode(payoutMode as RiesterInstance['payoutMode'])
+                }
               />
             </CombineField>
           </>

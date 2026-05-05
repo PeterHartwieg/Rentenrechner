@@ -169,6 +169,46 @@ describe('AddVertragSection — draft-before-save flow (#45)', () => {
     cleanup()
   })
 
+  it('saves user-confirmed bAV fee/Rentenfaktor/payout mode (not hardcoded defaults)', () => {
+    const addInstance = vi.fn()
+    const addPopulatedInstance = vi.fn()
+    const { container } = render(
+      <AddVertragSection addInstance={addInstance} addPopulatedInstance={addPopulatedInstance} />,
+    )
+
+    fireEvent.click(container.querySelector<HTMLButtonElement>('[data-testid="add-vertrag-btn"]')!)
+
+    const bavOption = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => b.textContent === 'Betriebliche AV (bAV)')
+    expect(bavOption).not.toBeNull()
+    fireEvent.click(bavOption!)
+
+    // bAV draft: number inputs in order = Vertragsbeginn, Brutto-Umwandlung,
+    // Aktueller Vertragswert, Effektivkosten, Garantierter Rentenfaktor.
+    const numberInputs = container.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    fireEvent.change(numberInputs[3], { target: { value: '1.5' } })
+    fireEvent.change(numberInputs[4], { target: { value: '32' } })
+
+    // Auszahlungsform select — switch to Zeitrente.
+    const payoutSelect = Array.from(container.querySelectorAll<HTMLSelectElement>('select'))
+      .find((s) => Array.from(s.options).some((o) => o.value === 'kapitalverzehr'))
+    expect(payoutSelect).not.toBeNull()
+    fireEvent.change(payoutSelect!, { target: { value: 'zeitrente' } })
+
+    fireEvent.click(
+      Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+        .find((b) => b.textContent?.includes('Vertrag speichern'))!,
+    )
+
+    expect(addPopulatedInstance).toHaveBeenCalledTimes(1)
+    const [, instance] = addPopulatedInstance.mock.calls[0]
+    expect(instance.payoutMode).toBe('zeitrente')
+    expect(instance.rentenfaktor).toBe(32)
+    // Effektivkosten 1.5 % is stored as 0.015 (decimal) on wrapperAssetFee.
+    expect(instance.fees.wrapperAssetFee).toBeCloseTo(0.015, 6)
+    cleanup()
+  })
+
   it('captures a bAV offer before saving it to Mein Plan', () => {
     const addInstance = vi.fn()
     const addBavOffer = vi.fn()

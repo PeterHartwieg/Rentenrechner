@@ -48,6 +48,17 @@ export type AnyInstance =
   | AltersvorsorgedepotInstance
   | RiesterInstance
 
+/**
+ * When the user did not enter a provider name, the draft converter produces a
+ * generic label (e.g. "ETF-Depot", "bAV", "Riester-Rente") that would repeat
+ * for every blank-provider add. Append a "#N" suffix where N is the count
+ * after the new instance lands, matching addInstanceToWorkspace's behaviour.
+ */
+export function applyDisambiguatingLabel<T extends AnyInstance>(instance: T, count: number): T {
+  if (instance.anbieter && instance.anbieter.trim() !== '') return instance
+  return { ...instance, label: `${instance.label} #${count}` }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -353,25 +364,55 @@ export function usePortfolioState(): UsePortfolioStateApi {
         let updated: typeof wa
         switch (productId) {
           case 'bav':
-            updated = { ...wa, bav: [...wa.bav, instance as BavInstance] }
+            updated = {
+              ...wa,
+              bav: [...wa.bav, applyDisambiguatingLabel(instance as BavInstance, wa.bav.length + 1)],
+            }
             break
           case 'versicherung':
-            updated = { ...wa, insurance: [...wa.insurance, instance as InsuranceInstance] }
+            updated = {
+              ...wa,
+              insurance: [
+                ...wa.insurance,
+                applyDisambiguatingLabel(instance as InsuranceInstance, wa.insurance.length + 1),
+              ],
+            }
             break
           case 'etf':
-            updated = { ...wa, etf: [...wa.etf, instance as EtfInstance] }
+            updated = {
+              ...wa,
+              etf: [...wa.etf, applyDisambiguatingLabel(instance as EtfInstance, wa.etf.length + 1)],
+            }
             break
           case 'basisrente':
-            updated = { ...wa, basisrente: [...wa.basisrente, instance as BasisrenteInstance] }
+            updated = {
+              ...wa,
+              basisrente: [
+                ...wa.basisrente,
+                applyDisambiguatingLabel(instance as BasisrenteInstance, wa.basisrente.length + 1),
+              ],
+            }
             break
           case 'altersvorsorgedepot':
             updated = {
               ...wa,
-              altersvorsorgedepot: [...wa.altersvorsorgedepot, instance as AltersvorsorgedepotInstance],
+              altersvorsorgedepot: [
+                ...wa.altersvorsorgedepot,
+                applyDisambiguatingLabel(
+                  instance as AltersvorsorgedepotInstance,
+                  wa.altersvorsorgedepot.length + 1,
+                ),
+              ],
             }
             break
           case 'riester':
-            updated = { ...wa, riester: [...wa.riester, instance as RiesterInstance] }
+            updated = {
+              ...wa,
+              riester: [
+                ...wa.riester,
+                applyDisambiguatingLabel(instance as RiesterInstance, wa.riester.length + 1),
+              ],
+            }
             break
           default:
             return w
