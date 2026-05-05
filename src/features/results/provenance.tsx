@@ -7,6 +7,23 @@ import type { ReactNode } from 'react'
  *
  * Kept in a small focused file so the same vocabulary is shared between the
  * result-side mini-edit cards (today) and the inventory-side cards (Group G).
+ *
+ * ## Shared confidence vocabulary (issue 13)
+ *
+ * The domain-to-display mapping lives in `provenanceHelpers.ts` (pure, no React)
+ * so it can be imported from non-component files without violating the
+ * react-refresh/only-export-components ESLint rule:
+ *
+ *   - `evidenceStateToProvKind` — maps EvidenceState → ProvKind for all
+ *     UI surfaces that render a provenance pill.
+ *   - `formatEvidenceStateForExport` — maps EvidenceState → German label
+ *     for CSV/PDF exports.
+ *
+ * `ProvKind` is the display-layer representation used by `ProvLabel`:
+ *   - `'user'`      — user explicitly modified the field away from default.
+ *   - `'confirmed'` — user confirmed (or statement) without modifying.
+ *   - `'model'`     — model estimate, not yet reviewed.
+ *   - `'default'`   — system default, no evidence at all.
  */
 
 export type ProvKind = 'user' | 'default' | 'model' | 'confirmed'

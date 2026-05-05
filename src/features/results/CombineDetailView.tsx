@@ -8,6 +8,7 @@ import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { InstanceCommon } from '../../domain/instances'
 import { getProductMeta } from '../../app/productPresentation'
 import { ProvLabel } from './provenance'
+import { evidenceStateToProvKind } from './provenanceHelpers'
 import { formatCurrency, formatPercent } from '../../utils/format'
 
 /**
@@ -180,12 +181,13 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
 
   // Provenance pill: lowest-confidence input across all consumed fields for this
   // instance. Missing on the legacy compare-mode path; here it always exists
-  // because simulatePortfolio sets it. We map the three EvidenceState values
-  // onto ProvLabel's two-axis (modified/model) signal — `user_confirmed` and
-  // `statement` both render as confirmed, `model_estimate` renders as model.
+  // because simulatePortfolio sets it.
+  // `evidenceStateToProvKind` is the shared mapping from EvidenceState to the
+  // ProvLabel display axes — avoids ad-hoc boolean logic here (issue 13).
   const confidence = result?.inputConfidence
-  const isModel = confidence === 'model_estimate'
-  const isConfirmed = confidence === 'user_confirmed' || confidence === 'statement'
+  const provKind = evidenceStateToProvKind(confidence)
+  const isModel = provKind === 'model'
+  const isConfirmed = provKind === 'confirmed'
 
   return (
     <tr>

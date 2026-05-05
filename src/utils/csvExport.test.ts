@@ -68,13 +68,13 @@ describe('buildExportCsv', () => {
     expect(lines[4]).toContain('Annahmen')
   })
 
-  it('Section 1 header contains a "Confidence" column', () => {
+  it('Section 1 header contains a "Datenqualität" column (German, not raw English)', () => {
     const csv = buildExportCsv(BASE_OPTS)
     const lines = csv.split('\n')
     const headerLineIdx = lines.findIndex((l) => l.startsWith('Detailvergleich'))
     expect(headerLineIdx).toBeGreaterThanOrEqual(0)
     const headerRow = lines[headerLineIdx + 1]
-    expect(headerRow).toContain('Confidence')
+    expect(headerRow).toContain('Datenqualität')
   })
 
   it('discloses the active inflation assumption', () => {
@@ -84,19 +84,20 @@ describe('buildExportCsv', () => {
     expect(csv).toContain('2.00')
   })
 
-  it('"Confidence" is the 10th column (index 9) in Section 1 header and data rows', () => {
+  it('"Datenqualität" is the 10th column (index 9); data rows show German label not raw domain value', () => {
     const csv = buildExportCsv(BASE_OPTS)
     const lines = csv.split('\n')
     const headerLineIdx = lines.findIndex((l) => l.startsWith('Detailvergleich'))
     const headerRow = lines[headerLineIdx + 1]
     const headerCols = headerRow.split(',')
-    expect(headerCols[9]).toBe('Confidence')
+    expect(headerCols[9]).toBe('Datenqualität')
 
     // Data row immediately after header
     const dataRow = lines[headerLineIdx + 2]
     const dataCols = dataRow.split(',')
-    // inputConfidence = 'model_estimate'
-    expect(dataCols[9]).toBe('model_estimate')
+    // inputConfidence = 'model_estimate' → formatted as 'Schätzwert' (not raw English)
+    expect(dataCols[9]).toBe('Schätzwert')
+    expect(dataCols[9]).not.toBe('model_estimate')
   })
 })
 

@@ -3,6 +3,7 @@ import { afterTaxBavLumpSum } from '../engine/bavPayout'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import { afterTaxInsuranceLumpSum } from '../engine/insurancePayout'
 import type { CombinedResult } from '../engine/portfolioCombine'
+import { formatEvidenceStateForExport } from '../features/results/provenanceHelpers'
 
 type ExportOptions = {
   products: ProductResult[]
@@ -65,7 +66,7 @@ export function buildExportCsv(opts: ExportOptions): string {
 
   // Section 1: Summary
   lines.push('Detailvergleich')
-  lines.push(csvRow('Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Kapital nach Steuer (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Wert-Faktor', 'Confidence'))
+  lines.push(csvRow('Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Kapital nach Steuer (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Wert-Faktor', 'Datenqualität'))
   for (const r of products) {
     lines.push(csvRow(
       r.label,
@@ -77,7 +78,7 @@ export function buildExportCsv(opts: ExportOptions): string {
       n(r.netMonthlyPayout),
       n(r.totalFees),
       r.valueMultipleOnUserCost === null ? '' : r.valueMultipleOnUserCost.toFixed(2),
-      r.inputConfidence ?? '',
+      formatEvidenceStateForExport(r.inputConfidence),
     ))
   }
 
@@ -239,7 +240,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   // Section 2: Per-instance detail (one row per instance × scenario).
   lines.push('')
   lines.push('Mein Plan — Detail je Instanz')
-  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Brutto-Rente mtl. (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Confidence'))
+  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Brutto-Rente mtl. (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Datenqualität'))
   // Sort by instanceId for stable output.
   const ids = Object.keys(perInstance).sort()
   for (const instanceId of ids) {
@@ -256,7 +257,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
         n(r.grossMonthlyPayout),
         n(r.netMonthlyPayout),
         n(r.totalFees),
-        r.inputConfidence ?? '',
+        formatEvidenceStateForExport(r.inputConfidence),
       ))
     }
   }
