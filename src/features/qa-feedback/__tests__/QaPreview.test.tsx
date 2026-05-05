@@ -4,7 +4,6 @@
  * QaPreview privacy/opt-in coverage (issue 03 — Phase 1 Lane B).
  * Also covers the "Lokal speichern" button (issue 14).
  *
- *
  * Pins:
  *   - Default render shows ALL privacy flags (scan-friendly section);
  *     localStorageIncluded must read **no** before the tester exports.

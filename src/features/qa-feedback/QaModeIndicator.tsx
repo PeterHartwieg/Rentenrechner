@@ -24,12 +24,20 @@ import { useQaMode } from './useQaMode'
  * The German user-facing copy matches the calculator's overall language
  * (DECISIONS / PRD note: "UI copy for QA mode should be German").
  */
+/** Returns true when the current platform is macOS (or iOS). */
+function isMacOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  // navigator.userAgentData is the modern API; fall back to deprecated navigator.platform.
+  const platform =
+    (navigator as unknown as { userAgentData?: { platform?: string } }).userAgentData?.platform ??
+    navigator.platform ??
+    ''
+  return /Mac|iPhone|iPad/i.test(platform)
+}
+
 /** Platform-aware shortcut label: ⌘+Shift+. on macOS, Ctrl+Shift+. elsewhere. */
 function shortcutLabel(): string {
-  if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)) {
-    return '⌘+Shift+.'
-  }
-  return 'Ctrl+Shift+.'
+  return isMacOS() ? '⌘+Shift+.' : 'Ctrl+Shift+.'
 }
 
 export function QaModeIndicator() {

@@ -130,8 +130,8 @@ export function FeeDragChart({
         <div className="fee-drag-legend fee-drag-legend--overlay" {...legendTargetProps}>
           {LEGEND_ITEMS.map(({ color, label }) => {
             // Derive a stable camelCase id segment from the label.
-            const labelId = label
-              .replace('ü', 'ue')
+            const labelId = Object.entries({ ü: 'ue', ö: 'oe', ä: 'ae', ß: 'ss', Ü: 'Ue', Ö: 'Oe', Ä: 'Ae' })
+              .reduce((s, [k, v]) => s.replaceAll(k, v), label)
               .replace(/[^a-zA-Z0-9]+(.)/g, (_, c: string) => c.toUpperCase())
               .replace(/^[A-Z]/, (c) => c.toLowerCase())
             return (

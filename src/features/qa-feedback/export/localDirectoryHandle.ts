@@ -96,8 +96,11 @@ export async function saveToDirectory(
 ): Promise<void> {
   const fileHandle = await handle.getFileHandle(filename, { create: true })
   const writable = await fileHandle.createWritable()
-  await writable.write(content)
-  await writable.close()
+  try {
+    await writable.write(content)
+  } finally {
+    await writable.close()
+  }
 }
 
 /**
@@ -111,11 +114,14 @@ export async function saveBinaryToDirectory(
 ): Promise<void> {
   const fileHandle = await handle.getFileHandle(filename, { create: true })
   const writable = await fileHandle.createWritable()
-  // Cast to ArrayBuffer-backed Uint8Array to satisfy FileSystemWriteChunkType.
-  // The PNG bytes originate from `dataUrlToUint8Array` which always produces
-  // a plain ArrayBuffer (not a SharedArrayBuffer), so the cast is safe.
-  await writable.write(data as unknown as Uint8Array<ArrayBuffer>)
-  await writable.close()
+  try {
+    // Cast to ArrayBuffer-backed Uint8Array to satisfy FileSystemWriteChunkType.
+    // The PNG bytes originate from `dataUrlToUint8Array` which always produces
+    // a plain ArrayBuffer (not a SharedArrayBuffer), so the cast is safe.
+    await writable.write(data as unknown as Uint8Array<ArrayBuffer>)
+  } finally {
+    await writable.close()
+  }
 }
 
 /**
