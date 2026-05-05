@@ -36,9 +36,9 @@ const TYPE_OPTIONS: Array<{ value: FeedbackType; label: string }> = [
 
 const SEVERITY_OPTIONS: Array<{ value: Severity; label: string }> = [
   { value: 'blocker', label: 'Blocker' },
-  { value: 'major', label: 'Major' },
-  { value: 'minor', label: 'Minor' },
-  { value: 'nit', label: 'Nit' },
+  { value: 'major', label: 'Schwerwiegend' },
+  { value: 'minor', label: 'Gering' },
+  { value: 'nit', label: 'Kleinigkeit' },
 ]
 
 /** Fallback selector: the QA indicator chip. */
