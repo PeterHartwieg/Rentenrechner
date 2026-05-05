@@ -1,6 +1,6 @@
 # Extract workspace identity and mutation Module
 
-Status: needs-triage
+Status: done
 
 ## Parent
 
@@ -14,12 +14,12 @@ This slice should not change user-visible behavior. It should make the dependenc
 
 ## Acceptance criteria
 
-- [ ] App state and inventory helpers no longer import each other.
-- [ ] Scenario and instance ID generation live in one neutral Module and are used by existing workspace mutation paths.
-- [ ] Duplicate inline instance ID generation is removed or routed through the shared helper.
-- [ ] Existing add/remove/fork behavior is preserved for baseline and what-if workspaces.
-- [ ] Focused tests cover ID generation shape and pure workspace add/remove/fork operations without rendering React.
-- [ ] Existing storage, portfolio, and recommender tests continue to pass.
+- [x] App state and inventory helpers no longer import each other.
+- [x] Scenario and instance ID generation live in one neutral Module and are used by existing workspace mutation paths.
+- [x] Duplicate inline instance ID generation is removed or routed through the shared helper.
+- [x] Existing add/remove/fork behavior is preserved for baseline and what-if workspaces.
+- [x] Focused tests cover ID generation shape and pure workspace add/remove/fork operations without rendering React.
+- [x] Existing storage, portfolio, and recommender tests continue to pass.
 
 ## Blocked by
 

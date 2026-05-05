@@ -1,6 +1,6 @@
 # Split recommendation rules from rendering copy
 
-Status: needs-triage
+Status: done
 
 ## Parent
 
@@ -14,13 +14,13 @@ This slice should make recommendation behavior easier to review and make copy ch
 
 ## Acceptance criteria
 
-- [ ] Recommendation rules are separated from rendering templates and German copy.
-- [ ] Rule evaluation remains pure and independent of React rendering.
-- [ ] Copy templates are centralized in a clear Module.
-- [ ] Stale comments describing older empty-rule phases are removed or updated.
-- [ ] Rule behavior is unchanged.
-- [ ] Tests distinguish rule behavior from copy rendering behavior.
-- [ ] Existing recommendation tests continue to pass.
+- [x] Recommendation rules are separated from rendering templates and German copy.
+- [x] Rule evaluation remains pure and independent of React rendering.
+- [x] Copy templates are centralized in a clear Module.
+- [x] Stale comments describing older empty-rule phases are removed or updated.
+- [x] Rule behavior is unchanged.
+- [x] Tests distinguish rule behavior from copy rendering behavior.
+- [x] Existing recommendation tests continue to pass.
 
 ## Blocked by
 
