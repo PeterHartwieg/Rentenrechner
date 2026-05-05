@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { render, cleanup, screen } from '@testing-library/react'
+import { render, cleanup, screen, fireEvent } from '@testing-library/react'
 import { QaFeedbackProvider, QA_SESSION_KEY } from '../QaFeedbackProvider'
 import { QaModeIndicator } from '../QaModeIndicator'
 
@@ -116,5 +116,89 @@ describe('QaFeedbackProvider — activation', () => {
     expect(indicator.getAttribute('role')).toBeNull()
     expect(indicator.getAttribute('aria-live')).toBeNull()
     expect(indicator.getAttribute('aria-label')).toMatch(/QA-Modus aktiv/)
+  })
+})
+
+describe('QaFeedbackProvider — Ctrl+Shift+. keyboard shortcut', () => {
+  function fireShortcut() {
+    fireEvent.keyDown(window, { key: '.', ctrlKey: true, shiftKey: true })
+  }
+
+  it('activates QA mode when pressing Ctrl+Shift+. with QA off', () => {
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    expect(screen.queryByTestId('qa-indicator')).toBeNull()
+
+    fireShortcut()
+
+    expect(screen.getByTestId('qa-indicator')).toBeTruthy()
+    expect(document.documentElement.getAttribute('data-qa-mode')).toBe('true')
+    expect(sessionStorage.getItem(QA_SESSION_KEY)).toBe('1')
+  })
+
+  it('deactivates QA mode when pressing Ctrl+Shift+. with QA on', () => {
+    window.history.replaceState(null, '', '/?qa=1')
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    expect(screen.getByTestId('qa-indicator')).toBeTruthy()
+
+    fireShortcut()
+
+    expect(screen.queryByTestId('qa-indicator')).toBeNull()
+    expect(document.documentElement.getAttribute('data-qa-mode')).toBeNull()
+    expect(sessionStorage.getItem(QA_SESSION_KEY)).toBeNull()
+  })
+
+  it('toggles QA mode on and off in two successive keystrokes', () => {
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    expect(screen.queryByTestId('qa-indicator')).toBeNull()
+
+    fireShortcut()
+    expect(screen.getByTestId('qa-indicator')).toBeTruthy()
+
+    fireShortcut()
+    expect(screen.queryByTestId('qa-indicator')).toBeNull()
+  })
+
+  it('does NOT activate for Ctrl+. (missing Shift)', () => {
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    fireEvent.keyDown(window, { key: '.', ctrlKey: true, shiftKey: false })
+    expect(screen.queryByTestId('qa-indicator')).toBeNull()
+  })
+
+  it('does NOT activate for Ctrl+Shift+Q (wrong key)', () => {
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    fireEvent.keyDown(window, { key: 'q', ctrlKey: true, shiftKey: true })
+    expect(screen.queryByTestId('qa-indicator')).toBeNull()
+  })
+
+  it('indicator chip title attribute shows the shortcut hint', () => {
+    window.history.replaceState(null, '', '/?qa=1')
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    const indicator = screen.getByTestId('qa-indicator')
+    // title contains the shortcut (Ctrl+Shift+. or ⌘+Shift+.)
+    expect(indicator.getAttribute('title')).toMatch(/Shift\+\./)
   })
 })

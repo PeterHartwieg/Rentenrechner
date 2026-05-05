@@ -24,15 +24,26 @@ import { useQaMode } from './useQaMode'
  * The German user-facing copy matches the calculator's overall language
  * (DECISIONS / PRD note: "UI copy for QA mode should be German").
  */
+/** Platform-aware shortcut label: ⌘+Shift+. on macOS, Ctrl+Shift+. elsewhere. */
+function shortcutLabel(): string {
+  if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)) {
+    return '⌘+Shift+.'
+  }
+  return 'Ctrl+Shift+.'
+}
+
 export function QaModeIndicator() {
   const { enabled, deactivate } = useQaMode()
   if (!enabled) return null
+
+  const hint = shortcutLabel()
 
   return (
     <button
       type="button"
       className="qa-indicator"
-      aria-label="QA-Modus aktiv. Klicken zum Deaktivieren oder Beenden."
+      aria-label={`QA-Modus aktiv. Klicken zum Deaktivieren oder Beenden. Tastenkürzel: ${hint}`}
+      title={`QA-Modus aktiv – ${hint} zum Umschalten`}
       data-testid="qa-indicator"
       onClick={deactivate}
     >

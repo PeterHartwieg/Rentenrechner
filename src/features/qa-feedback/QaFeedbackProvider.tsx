@@ -100,6 +100,42 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
     setPhase('idle')
   }, [])
 
+  // Ctrl+Shift+. (or Cmd+Shift+. on macOS) toggles QA mode from any state.
+  // Attached unconditionally so the shortcut can also *activate* QA mode.
+  // Ctrl+Shift+. has very low conflict risk on all major platforms/browsers.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey
+      if (mod && e.shiftKey && e.key === '.') {
+        e.preventDefault()
+        setEnabled((prev) => {
+          const next = !prev
+          // Sync sessionStorage in the same microtask so callers reading it
+          // immediately after the event see the up-to-date value.
+          try {
+            if (next) {
+              sessionStorage.setItem(QA_SESSION_KEY, ACTIVATE_VALUE)
+            } else {
+              sessionStorage.removeItem(QA_SESSION_KEY)
+            }
+          } catch {
+            /* ignore */
+          }
+          return next
+        })
+        // When toggling off, close the composer cleanly regardless of phase.
+        if (enabled) {
+          setPinned(null)
+          setDraft(null)
+          setScreenshot(null)
+          setPhase('idle')
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [enabled])
+
   const onPickTarget = useCallback((target: ResolvedTarget, rect: DOMRect) => {
     setPinned({ target, rect: serializeRect(rect) })
     setDraft({
