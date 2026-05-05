@@ -6,27 +6,21 @@
  * helpers) can each import from here rather than from each other.  Removing
  * that circular dependency was the primary goal.
  *
- * Nothing in this module imports React, DOM APIs, or any other src/app or
- * src/features file.  It only imports from src/domain and src/data.
+ * Nothing in this module imports React, DOM APIs, or any other `src/app` or
+ * React-dependent file.  It imports only from `src/domain`, `src/data`, and
+ * (for issue 09) `src/features/inventory/inventoryProductRegistry.ts` which is
+ * also React-free.
  *
  * Public surface:
  *  - newScenarioId   — scenario ID (UUID-prefixed)
  *  - newInstanceId   — instance ID (${productId}-${random8})
  *  - deepCloneScenario — structural clone helper
- *  - addInstanceToWorkspace    — pure workspace mutation
+ *  - addInstanceToWorkspace    — pure workspace mutation (routes via INVENTORY_PRODUCT_REGISTRY)
  *  - removeInstanceFromWorkspace — pure workspace mutation
  */
 
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
-import type {
-  BavInstance,
-  EtfInstance,
-  InsuranceInstance,
-  BasisrenteInstance,
-  AltersvorsorgedepotInstance,
-  RiesterInstance,
-} from '../domain/instances'
-import { defaultAssumptions } from '../data/defaultScenario'
+import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
 
 // ---------------------------------------------------------------------------
 // ID generation
@@ -84,8 +78,9 @@ export function deepCloneScenario<T>(v: T): T {
  * `productId` must be one of the per-product instance array keys on
  * `WorkspaceAssumptionsV2`.  GRV stays singleton and is not in scope.
  *
- * The new instance is built from canonical defaults with a disambiguating
- * label suffix "#N" where N is the count after adding.
+ * Default instance construction is delegated to
+ * `INVENTORY_PRODUCT_REGISTRY[productId].createDefault` (issue 09), so new
+ * fields or defaults only need to change in one place per product.
  */
 export function addInstanceToWorkspace(
   workspace: Workspace,
@@ -93,171 +88,15 @@ export function addInstanceToWorkspace(
 ): Workspace {
   const wsa = workspace.baseline.assumptions
   const CURRENT_YEAR = new Date().getFullYear()
+  const entry = INVENTORY_PRODUCT_REGISTRY[productId]
+  const wsKey = entry.wsKey as keyof WorkspaceAssumptionsV2
+  const currentArray = wsa[wsKey] as unknown[]
+  const n = currentArray.length + 1
+  const newInst = entry.createDefault(CURRENT_YEAR, n, newInstanceId)
 
-  let updated: WorkspaceAssumptionsV2
-
-  switch (productId) {
-    case 'bav': {
-      const n = wsa.bav.length + 1
-      const newInst: BavInstance = {
-        instanceId: newInstanceId('bav'),
-        label: `bAV #${n}`,
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        evidenceMap: {},
-        ownedBy: 'self',
-        monthlyGrossConversion: 200,
-        statutoryMinimumSubsidyEnabled: defaultAssumptions.bav.statutoryMinimumSubsidyEnabled,
-        contractualMatchPercent: defaultAssumptions.bav.contractualMatchPercent,
-        contractualFixedMonthly: defaultAssumptions.bav.contractualFixedMonthly,
-        fees: {
-          ...defaultAssumptions.bav.fees,
-          wrapperAssetFee: 0.008,
-          fundAssetFee: 0,
-        },
-        monthlyOtherRetirementIncome: defaultAssumptions.bav.monthlyOtherRetirementIncome,
-        includeGrvReduction: defaultAssumptions.bav.includeGrvReduction,
-        kvdrMember: defaultAssumptions.bav.kvdrMember,
-        durchfuehrungsweg: 'direktversicherung_3_63',
-        pre2005EligibleTaxFree: defaultAssumptions.bav.pre2005EligibleTaxFree,
-        payoutMode: 'leibrente',
-        rentenfaktor: 30,
-        rentenfaktorConfirmed: false,
-        zeitrenteYears: defaultAssumptions.bav.zeitrenteYears,
-        annualContributionGrowthRate: 0,
-      }
-      updated = { ...wsa, bav: [...wsa.bav, newInst] }
-      break
-    }
-    case 'versicherung': {
-      const n = wsa.insurance.length + 1
-      const newInst: InsuranceInstance = {
-        instanceId: newInstanceId('versicherung'),
-        label: `pAV #${n}`,
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        evidenceMap: {},
-        ownedBy: 'self',
-        monthlyContribution: 100,
-        oldContractTaxFreeEligible: false,
-        monthlyOtherRetirementIncome: 0,
-        capitalGuarantee: defaultAssumptions.insurance.capitalGuarantee,
-        fees: {
-          ...defaultAssumptions.insurance.fees,
-          wrapperAssetFee: 0.008,
-          fundAssetFee: 0,
-        },
-        payoutMode: 'leibrente',
-        rentenfaktor: 28,
-        rentenfaktorConfirmed: false,
-        zeitrenteYears: defaultAssumptions.insurance.zeitrenteYears,
-        surrenderHaircutPct: 0,
-        annualContributionGrowthRate: 0,
-      }
-      updated = { ...wsa, insurance: [...wsa.insurance, newInst] }
-      break
-    }
-    case 'riester': {
-      const n = wsa.riester.length + 1
-      const newInst: RiesterInstance = {
-        instanceId: newInstanceId('riester'),
-        label: `Riester #${n}`,
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        evidenceMap: {},
-        ownedBy: 'self',
-        monthlyOwnContribution: 100,
-        existingCapital: 0,
-        eligibility: {
-          directlyEligible: true,
-          ageAtContractStart: 28,
-          careerStarterBonusUsed: false,
-        },
-        capitalGuarantee: defaultAssumptions.riester.capitalGuarantee,
-        fees: defaultAssumptions.riester.fees,
-        payoutMode: 'leibrente',
-        rentenfaktor: defaultAssumptions.riester.rentenfaktor,
-        rentenfaktorConfirmed: false,
-        zeitrenteYears: defaultAssumptions.riester.zeitrenteYears,
-        partialCapitalPct: 0,
-        monthlyOtherRetirementIncome: 0,
-      }
-      updated = { ...wsa, riester: [...wsa.riester, newInst] }
-      break
-    }
-    case 'basisrente': {
-      const n = wsa.basisrente.length + 1
-      const newInst: BasisrenteInstance = {
-        instanceId: newInstanceId('basisrente'),
-        label: `Basisrente #${n}`,
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        evidenceMap: {},
-        ownedBy: 'self',
-        monthlyGrossContribution: 200,
-        fees: {
-          ...defaultAssumptions.basisrente.fees,
-          wrapperAssetFee: 0.008,
-          fundAssetFee: 0,
-        },
-        payoutMode: 'leibrente',
-        rentenfaktor: 28,
-        rentenfaktorConfirmed: false,
-        monthlyOtherRetirementIncome: 0,
-      }
-      updated = { ...wsa, basisrente: [...wsa.basisrente, newInst] }
-      break
-    }
-    case 'altersvorsorgedepot': {
-      const n = wsa.altersvorsorgedepot.length + 1
-      const newInst: AltersvorsorgedepotInstance = {
-        instanceId: newInstanceId('altersvorsorgedepot'),
-        label: `AVD #${n}`,
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        evidenceMap: {},
-        ownedBy: 'self',
-        subtype: 'standarddepot',
-        monthlyOwnContribution: 200,
-        eligibility: defaultAssumptions.altersvorsorgedepot.eligibility,
-        riskAllocationPct: defaultAssumptions.altersvorsorgedepot.riskAllocationPct,
-        riskAnnualReturn: defaultAssumptions.altersvorsorgedepot.riskAnnualReturn,
-        lowRiskAnnualReturn: defaultAssumptions.altersvorsorgedepot.lowRiskAnnualReturn,
-        fees: defaultAssumptions.altersvorsorgedepot.fees,
-        payoutMode: defaultAssumptions.altersvorsorgedepot.payoutMode,
-        payoutPlanEndAge: defaultAssumptions.altersvorsorgedepot.payoutPlanEndAge,
-        partialCapitalPct: 0,
-        transferCostEUR: 0,
-        riesterTransferCapital: 0,
-        monthlyOtherRetirementIncome: 0,
-        rentenfaktor: defaultAssumptions.altersvorsorgedepot.rentenfaktor,
-      }
-      updated = { ...wsa, altersvorsorgedepot: [...wsa.altersvorsorgedepot, newInst] }
-      break
-    }
-    case 'etf': {
-      const n = wsa.etf.length + 1
-      const newInst: EtfInstance = {
-        instanceId: newInstanceId('etf'),
-        label: `ETF #${n}`,
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        evidenceMap: {},
-        ownedBy: 'self',
-        monthlyContribution: 200,
-        annualAssetFee: 0.002,
-        equityPartialExemption: defaultAssumptions.etf.equityPartialExemption,
-        annualContributionGrowthRate: 0,
-      }
-      updated = { ...wsa, etf: [...wsa.etf, newInst] }
-      break
-    }
+  const updated: WorkspaceAssumptionsV2 = {
+    ...wsa,
+    [wsKey]: [...currentArray, newInst],
   }
 
   return {
@@ -272,6 +111,9 @@ export function addInstanceToWorkspace(
  * found.
  *
  * Pinned comparison ids that referenced the removed instance are cleaned up.
+ *
+ * The workspace array key is resolved via `INVENTORY_PRODUCT_REGISTRY` (issue 09)
+ * so the product switch is eliminated here too.
  */
 export function removeInstanceFromWorkspace(
   workspace: Workspace,
@@ -279,27 +121,14 @@ export function removeInstanceFromWorkspace(
   instanceId: string,
 ): Workspace {
   const wsa = workspace.baseline.assumptions
-  let updated: WorkspaceAssumptionsV2
+  const entry = INVENTORY_PRODUCT_REGISTRY[productId]
+  const wsKey = entry.wsKey as keyof WorkspaceAssumptionsV2
+  const currentArray = wsa[wsKey] as Array<{ instanceId: string }>
+  const filtered = currentArray.filter((i) => i.instanceId !== instanceId)
 
-  switch (productId) {
-    case 'bav':
-      updated = { ...wsa, bav: wsa.bav.filter((i: BavInstance) => i.instanceId !== instanceId) }
-      break
-    case 'versicherung':
-      updated = { ...wsa, insurance: wsa.insurance.filter((i: InsuranceInstance) => i.instanceId !== instanceId) }
-      break
-    case 'riester':
-      updated = { ...wsa, riester: wsa.riester.filter((i: RiesterInstance) => i.instanceId !== instanceId) }
-      break
-    case 'basisrente':
-      updated = { ...wsa, basisrente: wsa.basisrente.filter((i: BasisrenteInstance) => i.instanceId !== instanceId) }
-      break
-    case 'altersvorsorgedepot':
-      updated = { ...wsa, altersvorsorgedepot: wsa.altersvorsorgedepot.filter((i: AltersvorsorgedepotInstance) => i.instanceId !== instanceId) }
-      break
-    case 'etf':
-      updated = { ...wsa, etf: wsa.etf.filter((i: EtfInstance) => i.instanceId !== instanceId) }
-      break
+  const updated: WorkspaceAssumptionsV2 = {
+    ...wsa,
+    [wsKey]: filtered,
   }
 
   return {

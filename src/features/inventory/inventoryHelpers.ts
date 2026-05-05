@@ -7,22 +7,21 @@
  * `workspaceIdentity.ts` and are re-exported from here for backward compat.
  * This breaks the former circular dependency with `portfolioState.ts`.
  *
+ * Draft-to-instance converters (`bavDraftToInstance` etc.) are now thin wrappers
+ * over the corresponding `INVENTORY_PRODUCT_REGISTRY[id].draftToInstance` entries
+ * (architecture-readability issue 09).  Each named export is kept for backward
+ * compat with callers that import the specific function by name.
+ *
  * Consumers:
  *  - InventoryWizard.tsx (buildWorkspaceFromDraft)
  *  - InstanceCard.tsx (estimateEpFromYears)
  *  - InventoryWizard.test.ts
  *  - portfolioState.ts (addInstanceToWorkspace, removeInstanceFromWorkspace — via workspaceIdentity)
+ *  - contractDecisions.ts (avdDraftToInstance, newInstanceId)
+ *  - CombineDashboardSidebar.tsx (bavOfferDraftToInstance)
  */
 
 import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../../domain/workspace'
-import type {
-  BavInstance,
-  EtfInstance,
-  InsuranceInstance,
-  BasisrenteInstance,
-  AltersvorsorgedepotInstance,
-  RiesterInstance,
-} from '../../domain/instances'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { defaultWorkspace } from '../../storage'
 import {
@@ -33,6 +32,7 @@ import {
 } from '../../app/workspaceIdentity'
 // Re-export so existing callers (contractDecisions, tests, portfolioState) keep working.
 export { newInstanceId, addInstanceToWorkspace, removeInstanceFromWorkspace }
+import { INVENTORY_PRODUCT_REGISTRY } from './inventoryProductRegistry'
 import type {
   GrvDraft,
   BavDraft,
@@ -43,6 +43,14 @@ import type {
   EtfDraft,
   PersonalDetailsDraft,
 } from './types'
+import type {
+  BavInstance,
+  InsuranceInstance,
+  RiesterInstance,
+  BasisrenteInstance,
+  AltersvorsorgedepotInstance,
+  EtfInstance,
+} from '../../domain/instances'
 
 // ---------------------------------------------------------------------------
 // EP estimation
@@ -67,41 +75,14 @@ export function estimateEpFromYears(years: number, grossSalaryYear: number): num
 
 // ---------------------------------------------------------------------------
 // Draft → domain instance converters
+//
+// Each function is a thin named wrapper over the corresponding registry entry's
+// `draftToInstance` (issue 09). Kept as named exports for backward compat with
+// callers that import them by name.
 // ---------------------------------------------------------------------------
 
 export function bavDraftToInstance(d: BavDraft): BavInstance {
-  return {
-    instanceId: newInstanceId('bav'),
-    label: d.anbieter ? `bAV – ${d.anbieter}` : 'bAV',
-    anbieter: d.anbieter,
-    status: d.status,
-    contractStartYear: d.contractStartYear,
-    currentValueEUR: d.currentValueEUR ?? 0,
-    evidenceMap: d.evidenceMap ?? {},
-    ownedBy: 'self',
-    monthlyGrossConversion: d.monthlyContribution,
-    statutoryMinimumSubsidyEnabled: defaultAssumptions.bav.statutoryMinimumSubsidyEnabled,
-    contractualMatchPercent: defaultAssumptions.bav.contractualMatchPercent,
-    contractualFixedMonthly: defaultAssumptions.bav.contractualFixedMonthly,
-    fees: {
-      ...defaultAssumptions.bav.fees,
-      // Layer 1 captures Effektivkosten as a single "all-in" rate stored as
-      // wrapperAssetFee; fundAssetFee stays 0. The engine sums both for drag.
-      wrapperAssetFee: d.effektivkostenPct / 100,
-      fundAssetFee: 0,
-      ...(d.feeDetails ?? {}),
-    },
-    monthlyOtherRetirementIncome: defaultAssumptions.bav.monthlyOtherRetirementIncome,
-    includeGrvReduction: defaultAssumptions.bav.includeGrvReduction,
-    kvdrMember: defaultAssumptions.bav.kvdrMember,
-    durchfuehrungsweg: d.durchfuehrungsweg,
-    pre2005EligibleTaxFree: defaultAssumptions.bav.pre2005EligibleTaxFree,
-    payoutMode: d.payoutMode,
-    rentenfaktor: d.rentenfaktor,
-    rentenfaktorConfirmed: false,
-    zeitrenteYears: defaultAssumptions.bav.zeitrenteYears,
-    annualContributionGrowthRate: 0,
-  }
+  return INVENTORY_PRODUCT_REGISTRY.bav.draftToInstance(d, newInstanceId)
 }
 
 export interface BavOfferDraft {
@@ -148,132 +129,23 @@ export function bavOfferDraftToInstance(d: BavOfferDraft): BavInstance {
 }
 
 export function pavDraftToInstance(d: PavDraft): InsuranceInstance {
-  return {
-    instanceId: newInstanceId('versicherung'),
-    label: d.anbieter ? `pAV – ${d.anbieter}` : 'Private Rentenversicherung',
-    anbieter: d.anbieter,
-    status: d.status,
-    contractStartYear: d.contractStartYear,
-    currentValueEUR: d.currentValueEUR ?? 0,
-    evidenceMap: d.evidenceMap ?? {},
-    ownedBy: 'self',
-    monthlyContribution: d.monthlyContribution,
-    // InsuranceAssumptions (contractStartYear is also on InstanceCommon)
-    oldContractTaxFreeEligible: d.contractStartYear <= 2004,
-    monthlyOtherRetirementIncome: 0,
-    capitalGuarantee: defaultAssumptions.insurance.capitalGuarantee,
-    fees: {
-      ...defaultAssumptions.insurance.fees,
-      wrapperAssetFee: d.effektivkostenPct / 100,
-      fundAssetFee: 0,
-      ...(d.feeDetails ?? {}),
-    },
-    payoutMode: d.payoutMode,
-    rentenfaktor: d.rentenfaktor,
-    rentenfaktorConfirmed: false,
-    zeitrenteYears: defaultAssumptions.insurance.zeitrenteYears,
-    surrenderHaircutPct: 0,
-    annualContributionGrowthRate: 0,
-  }
+  return INVENTORY_PRODUCT_REGISTRY.versicherung.draftToInstance(d, newInstanceId)
 }
 
 export function riesterDraftToInstance(d: RiesterDraft): RiesterInstance {
-  return {
-    instanceId: newInstanceId('riester'),
-    label: d.anbieter ? `Riester – ${d.anbieter}` : 'Riester-Rente',
-    anbieter: d.anbieter,
-    status: d.status,
-    contractStartYear: d.contractStartYear,
-    currentValueEUR: d.currentValueEUR ?? 0,
-    evidenceMap: d.evidenceMap ?? {},
-    ownedBy: 'self',
-    monthlyOwnContribution: d.monthlyContribution,
-    existingCapital: d.currentValueEUR ?? 0,
-    eligibility: {
-      directlyEligible: true,
-      ageAtContractStart: 28,
-      careerStarterBonusUsed: false,
-    },
-    capitalGuarantee: defaultAssumptions.riester.capitalGuarantee,
-    fees: defaultAssumptions.riester.fees,
-    payoutMode: d.payoutMode,
-    rentenfaktor: defaultAssumptions.riester.rentenfaktor,
-    rentenfaktorConfirmed: false,
-    zeitrenteYears: defaultAssumptions.riester.zeitrenteYears,
-    partialCapitalPct: 0,
-    monthlyOtherRetirementIncome: 0,
-  }
+  return INVENTORY_PRODUCT_REGISTRY.riester.draftToInstance(d, newInstanceId)
 }
 
 export function basisrenteDraftToInstance(d: BasisrenteDraft): BasisrenteInstance {
-  return {
-    instanceId: newInstanceId('basisrente'),
-    label: d.anbieter ? `Basisrente – ${d.anbieter}` : 'Basisrente',
-    anbieter: d.anbieter,
-    status: d.status,
-    contractStartYear: d.contractStartYear,
-    currentValueEUR: d.currentValueEUR ?? 0,
-    evidenceMap: d.evidenceMap ?? {},
-    ownedBy: 'self',
-    monthlyGrossContribution: d.monthlyContribution,
-    fees: {
-      ...defaultAssumptions.basisrente.fees,
-      wrapperAssetFee: d.effektivkostenPct / 100,
-      fundAssetFee: 0,
-      ...(d.feeDetails ?? {}),
-    },
-    payoutMode: 'leibrente',
-    rentenfaktor: d.rentenfaktor,
-    rentenfaktorConfirmed: false,
-    monthlyOtherRetirementIncome: 0,
-  }
+  return INVENTORY_PRODUCT_REGISTRY.basisrente.draftToInstance(d, newInstanceId)
 }
 
 export function avdDraftToInstance(d: AvdDraft): AltersvorsorgedepotInstance {
-  return {
-    instanceId: newInstanceId('altersvorsorgedepot'),
-    label: d.anbieter ? `AVD – ${d.anbieter}` : 'Altersvorsorgedepot',
-    anbieter: d.anbieter,
-    status: d.status,
-    contractStartYear: d.contractStartYear,
-    currentValueEUR: d.currentValueEUR ?? 0,
-    evidenceMap: d.evidenceMap ?? {},
-    ownedBy: 'self',
-    subtype: d.subtype,
-    monthlyOwnContribution: d.monthlyContribution,
-    eligibility: defaultAssumptions.altersvorsorgedepot.eligibility,
-    // When glidepath is disabled, use 100% risk allocation (user override).
-    riskAllocationPct: d.useGlidepath
-      ? defaultAssumptions.altersvorsorgedepot.riskAllocationPct
-      : 1.0,
-    riskAnnualReturn: defaultAssumptions.altersvorsorgedepot.riskAnnualReturn,
-    lowRiskAnnualReturn: defaultAssumptions.altersvorsorgedepot.lowRiskAnnualReturn,
-    fees: defaultAssumptions.altersvorsorgedepot.fees,
-    payoutMode: defaultAssumptions.altersvorsorgedepot.payoutMode,
-    payoutPlanEndAge: defaultAssumptions.altersvorsorgedepot.payoutPlanEndAge,
-    partialCapitalPct: 0,
-    transferCostEUR: 0,
-    riesterTransferCapital: 0,
-    monthlyOtherRetirementIncome: 0,
-    rentenfaktor: defaultAssumptions.altersvorsorgedepot.rentenfaktor,
-  }
+  return INVENTORY_PRODUCT_REGISTRY.altersvorsorgedepot.draftToInstance(d, newInstanceId)
 }
 
 export function etfDraftToInstance(d: EtfDraft): EtfInstance {
-  return {
-    instanceId: newInstanceId('etf'),
-    label: d.anbieter ? `ETF – ${d.anbieter}` : 'ETF-Depot',
-    anbieter: d.anbieter,
-    status: d.status,
-    contractStartYear: d.contractStartYear,
-    currentValueEUR: d.currentValueEUR ?? 0,
-    evidenceMap: d.evidenceMap ?? {},
-    ownedBy: 'self',
-    monthlyContribution: d.monthlyContribution,
-    annualAssetFee: d.terPct / 100,
-    equityPartialExemption: defaultAssumptions.etf.equityPartialExemption,
-    annualContributionGrowthRate: Math.max(0, d.annualContributionGrowthRate ?? 0),
-  }
+  return INVENTORY_PRODUCT_REGISTRY.etf.draftToInstance(d, newInstanceId)
 }
 
 // ---------------------------------------------------------------------------
