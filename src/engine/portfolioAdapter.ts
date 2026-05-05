@@ -41,7 +41,6 @@
 
 import type {
   GermanRules,
-  PersonalProfile,
   ProductResult,
   ReturnScenario,
 } from '../domain'
@@ -78,6 +77,7 @@ import {
   type AnyInstance,
 } from './portfolioProjection'
 import { buildPortfolioFunding } from './portfolioFunding'
+import { applyCrossInstanceSparerpauschbetrag } from './portfolioAllowance'
 
 // Re-export the public API that callers currently import from this module.
 export {
@@ -508,146 +508,10 @@ export function simulatePortfolio(
   // Compare-mode (`simulateRetirementComparison`) never reaches here; length-1
   // workspaces skip the re-run because the cooperative schedule equals the
   // full allowance every year (byte-identical oracle goldens).
-  applyCrossInstanceSparerpauschbetrag(wsa, perInstance, profile, rules, outboundBy, inboundBy, workspace)
+  applyCrossInstanceSparerpauschbetrag(wsa, perInstance, profile, rules, outboundBy, inboundBy, workspace, buildInstanceCapitalPolicy)
 
   return { perInstance, portfolioFunding }
 }
 
-// ---------------------------------------------------------------------------
-// Phase G M4 F3 — cross-instance Sparerpauschbetrag re-run
-// ---------------------------------------------------------------------------
-
-/**
- * Re-run active ETF instances with a shared per-year §20 Abs. 9 EStG allowance.
- *
- * Mutates `perInstance` in place so the returned `simulatePortfolio` map carries
- * the corrected ETF results. Idempotent for length-1 ETF workspaces (the
- * shared schedule reduces to the full allowance every year).
- *
- * Allocation: per scenario, per year, the allowance is split across instances
- * proportionally to each instance's `taxableAfterExemption` demand from the
- * initial pass. The accumulation phase (Vorabpauschale) and payout phase share
- * one combined yearly schedule indexed by 0-based contract year.
- *
- * Joint filing (workspace.baseline.partner !== undefined): the §20 Abs. 9 EStG
- * cap doubles to €2 000 (Zusammenveranlagung), mirroring the recommender logic.
- */
-function applyCrossInstanceSparerpauschbetrag(
-  wsa: WorkspaceAssumptionsV2,
-  perInstance: Record<string, ProductResult[]>,
-  profile: PersonalProfile,
-  rules: GermanRules,
-  outboundBy: Map<string, TransferEvent[]>,
-  inboundBy: Map<string, TransferEvent[]>,
-  workspace: Workspace,
-): void {
-  const activeEtf = wsa.etf.filter((e) => e.status !== 'surrendered' && e.status !== 'offered')
-  if (activeEtf.length < 2) return
-
-  const married = workspace.baseline.partner !== undefined
-  const fullAllowance = rules.capitalGains.saverAllowance * (married ? 2 : 1)
-  const yearsToRetirement = profile.retirementAge - profile.age
-  const retirementYears = wsa.retirementEndAge - profile.retirementAge
-  const totalYears = Math.max(0, yearsToRetirement + retirementYears)
-
-  for (const scenario of wsa.returnScenarios) {
-    // Step 1: collect per-instance per-year demand from the initial pass.
-    // demand[i][y] is the EUR amount the instance would consume of the
-    // allowance at year y (0-based contract year covering both phases).
-    const demandByInstance = new Map<string, number[]>()
-
-    for (const inst of activeEtf) {
-      const results = perInstance[inst.instanceId]
-      if (!results) continue
-      const result = results.find((r) => r.scenarioId === scenario.id)
-      if (!result || result.productId !== 'etf') continue
-      const partialExemption = wsa.etf.find((e) => e.instanceId === inst.instanceId)?.equityPartialExemption
-        ?? 0.3
-      const yearly: number[] = new Array(totalYears).fill(0)
-
-      // Accumulation phase demand: per-year VP = Δ cumulativeVorabpauschale.
-      let prevCumVp = 0
-      for (const row of result.rows) {
-        const yearIdx = row.year - 1
-        if (yearIdx < 0 || yearIdx >= totalYears) continue
-        const vpThisYear = Math.max(0, row.cumulativeVorabpauschale - prevCumVp)
-        prevCumVp = row.cumulativeVorabpauschale
-        yearly[yearIdx] += vpThisYear * (1 - partialExemption)
-      }
-      // Payout phase demand: payout row index n maps to contract year
-      // yearsToRetirement + (n).
-      for (const r of result.etfPayoutRows) {
-        const yearIdx = yearsToRetirement + (r.year - 1)
-        if (yearIdx < 0 || yearIdx >= totalYears) continue
-        const taxableAfterExemption = r.taxableGain * (1 - partialExemption)
-        yearly[yearIdx] += Math.max(0, taxableAfterExemption)
-      }
-      demandByInstance.set(inst.instanceId, yearly)
-    }
-
-    if (demandByInstance.size === 0) continue
-
-    // Step 2: allocate the per-year allowance proportionally by demand. When
-    // total demand for a year is 0, every instance gets 0 (no taxable income →
-    // allowance unused). When total demand exceeds the allowance, scale down.
-    // When total demand is below the allowance, each instance gets exactly
-    // its demand (everyone is fully covered, equivalent to today's behaviour
-    // for low-gain years).
-    const allowanceByInstance = new Map<string, number[]>()
-    for (const [id] of demandByInstance) {
-      allowanceByInstance.set(id, new Array(totalYears).fill(0))
-    }
-    for (let y = 0; y < totalYears; y++) {
-      let totalDemand = 0
-      for (const [, dem] of demandByInstance) totalDemand += dem[y]
-      if (totalDemand <= 0) continue
-      if (totalDemand <= fullAllowance) {
-        // Every instance gets its full demand (allowance not the binding
-        // constraint). Equivalent to the legacy per-instance allowance
-        // behaviour for low-gain years.
-        for (const [id, dem] of demandByInstance) {
-          allowanceByInstance.get(id)![y] = dem[y]
-        }
-      } else {
-        // Allowance is the binding constraint — scale each instance's share
-        // proportionally to its demand.
-        for (const [id, dem] of demandByInstance) {
-          allowanceByInstance.get(id)![y] = fullAllowance * (dem[y] / totalDemand)
-        }
-      }
-    }
-
-    // Step 3: re-run each ETF instance with its per-year allowance schedule
-    // and replace the corresponding ProductResult in `perInstance`.
-    for (const inst of activeEtf) {
-      const schedule = allowanceByInstance.get(inst.instanceId)
-      if (!schedule) continue
-      const projectedRaw = projectInstanceToScenarioAssumptions(inst, wsa)
-      const projected = inst.status === 'paid_up'
-        ? applyPaidUpOverridesToProjection(projectedRaw, detectProductSlot(inst))
-        : projectedRaw
-      const outbound = outboundBy.get(inst.instanceId) ?? []
-      const inbound = inboundBy.get(inst.instanceId) ?? []
-      const instanceCapitalPolicy = buildInstanceCapitalPolicy(inst, workspace, rules, outbound, inbound)
-      const overrides: BuildContextOverrides = {
-        etfMonthlyUserCostOverride: inst.status === 'paid_up' ? 0 : inst.monthlyContribution,
-        etfSaverAllowanceOverride: (yearIdx: number) =>
-          schedule[yearIdx] ?? rules.capitalGains.saverAllowance,
-        ...(instanceCapitalPolicy ? { instanceCapitalPolicy } : {}),
-      }
-      const ctx = buildContext(profile, projected, rules, overrides)
-      const slotName = detectProductSlot(inst)
-      const inputConfidence = confidenceForResult(
-        { productId: slotToProductId(slotName) },
-        inst.evidenceMap ?? {},
-      )
-      const targetScenarioResult = simulateEtf(ctx, scenario)
-      const tagged = { ...targetScenarioResult, instanceId: inst.instanceId, inputConfidence }
-
-      const arr = perInstance[inst.instanceId]
-      if (!arr) continue
-      const idx = arr.findIndex((r) => r.scenarioId === scenario.id)
-      if (idx >= 0) arr[idx] = tagged
-    }
-  }
-}
+// Cross-instance Sparerpauschbetrag re-run lives in portfolioAllowance.ts
+// (architecture-readability issue 06).
