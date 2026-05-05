@@ -1,6 +1,6 @@
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { QaFeedbackContext } from './QaFeedbackContext'
-import type { ResolvedTarget, TargetPrecision } from './report'
+import { resolveTarget } from './resolveTarget'
 
 interface OutlineRect {
   top: number
@@ -20,6 +20,14 @@ interface OutlineRect {
  *      opens the composer.
  *   4. Cancels selection on `Escape`.
  *
+ * Lane C (issue 06) additions:
+ *   - When armed (QA mode on, no pin yet), Tab walks DOM-order through
+ *     `data-qa-target` elements and highlights the focused one with the same
+ *     outline as hover.
+ *   - Enter on a keyboard-focused target pins it (same as click).
+ *   - Escape cancels the current draft via `cancelDraft` from the context
+ *     when a pin is active; otherwise clears the hover outline.
+ *
  * Nested feedback targets are handled by `closest()`: clicks deepest first,
  * so a child target outranks its container.
  */
@@ -27,6 +35,10 @@ export function QaOverlay() {
   const ctx = useContext(QaFeedbackContext)
   const [hover, setHover] = useState<{ rect: OutlineRect; el: HTMLElement } | null>(null)
   const pinnedRect = ctx.pinned?.rect ?? null
+  // Track which qa-target currently has keyboard focus so we can show its
+  // outline when the user Tabs through the page in armed mode.
+  const keyboardFocusRef = useRef<HTMLElement | null>(null)
+  const [kbFocusRect, setKbFocusRect] = useState<OutlineRect | null>(null)
 
   useEffect(() => {
     if (!ctx.enabled) return
@@ -56,45 +68,89 @@ export function QaOverlay() {
     }
 
     function onClick(event: MouseEvent) {
-      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-qa-target]')
+      const originalTarget = event.target as HTMLElement | null
+      const target = originalTarget?.closest<HTMLElement>('[data-qa-target]')
       if (!target) return
       if (target.closest('[data-qa-overlay]')) return
       // Suppress the underlying click so the calculator doesn't react to the
       // tester's selection (e.g. a button submit).
       event.preventDefault()
       event.stopPropagation()
-      const resolved = resolveTarget(target)
+      const resolved = resolveTarget(target, originalTarget)
       ctx.pickTarget(resolved, target.getBoundingClientRect())
+    }
+
+    function onFocusIn(event: FocusEvent) {
+      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-qa-target]')
+      // Only track focus on qa-targets outside the overlay panel itself.
+      if (!target || target.closest('[data-qa-overlay]')) {
+        keyboardFocusRef.current = null
+        setKbFocusRect(null)
+        return
+      }
+      keyboardFocusRef.current = target
+      const rect = target.getBoundingClientRect()
+      setKbFocusRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
+    }
+
+    function onFocusOut() {
+      // Clear keyboard-focus rect when focus leaves a qa-target. A small
+      // delay lets the next focusin fire first so there's no flash.
+      requestAnimationFrame(() => {
+        if (
+          !document.activeElement ||
+          !document.activeElement.closest('[data-qa-target]')
+        ) {
+          keyboardFocusRef.current = null
+          setKbFocusRect(null)
+        }
+      })
     }
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        // Always clear the hover outline. The composer/preview own their own
-        // Escape handling for cancelling a pinned draft (Lane C will harden
-        // focus management). Escape on the bare overlay is a no-op for the
-        // pinned state — the tester closes the panel via Cancel/Back.
         setHover(null)
+        setKbFocusRect(null)
+        keyboardFocusRef.current = null
+      }
+      // Enter on a keyboard-focused qa-target: pin it (same as click).
+      if (event.key === 'Enter' && keyboardFocusRef.current) {
+        const target = keyboardFocusRef.current
+        // Only pin if the composer isn't already open.
+        if (!ctx.pinned) {
+          event.preventDefault()
+          event.stopPropagation()
+          // For keyboard navigation the focused element IS the target element,
+          // so originalTarget === target → precision will be 'exact' (or
+          // section/nested as declared by the element's own data-qa-precision).
+          const resolved = resolveTarget(target, target)
+          ctx.pickTarget(resolved, target.getBoundingClientRect())
+        }
       }
     }
 
     document.addEventListener('pointermove', onPointerMove)
     document.addEventListener('click', onClick, true)
     document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('focusin', onFocusIn)
+    document.addEventListener('focusout', onFocusOut)
     return () => {
       document.removeEventListener('pointermove', onPointerMove)
       document.removeEventListener('click', onClick, true)
       document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('focusin', onFocusIn)
+      document.removeEventListener('focusout', onFocusOut)
     }
   }, [ctx])
 
-  // Render order: pinned outline (orange) takes precedence; if nothing is
-  // pinned we draw the hover outline (blue). Both use `position: fixed` so
-  // scrolling does not shift them — the rect is recomputed each pointer move.
+  // Render order: pinned outline (orange) > hover outline (blue) > keyboard
+  // focus outline (blue, same style as hover). All use `position: fixed`.
   const visibleRect = useMemo<{ rect: OutlineRect; pinned: boolean } | null>(() => {
     if (pinnedRect) return { rect: pinnedRect, pinned: true }
     if (hover) return { rect: hover.rect, pinned: false }
+    if (kbFocusRect) return { rect: kbFocusRect, pinned: false }
     return null
-  }, [pinnedRect, hover])
+  }, [pinnedRect, hover, kbFocusRect])
 
   if (!ctx.enabled) return null
 
@@ -118,16 +174,3 @@ export function QaOverlay() {
   )
 }
 
-/**
- * Read the target's data-* attributes into a `ResolvedTarget`. Visible text
- * is the trimmed text content of the target element (PRD US-12).
- */
-function resolveTarget(el: HTMLElement): ResolvedTarget {
-  const id = el.getAttribute('data-qa-target') ?? ''
-  const label = el.getAttribute('data-qa-label') ?? undefined
-  const precisionAttr = el.getAttribute('data-qa-precision')
-  const precision: TargetPrecision =
-    precisionAttr === 'section' || precisionAttr === 'unknown' ? precisionAttr : 'exact'
-  const visibleText = (el.textContent ?? '').trim() || undefined
-  return { id, label, precision, visibleText }
-}

@@ -52,3 +52,16 @@ export type {
 } from './report'
 
 export { buildMarkdownTicket, defaultPrivacyFlags, generateTitle } from './report'
+
+/**
+ * Lane D: workspace context bridge.
+ *
+ * The app shell calls `setQaWorkspaceContext` in a tiny useEffect whenever the
+ * active view changes. The QA module reads it at report-assembly time only —
+ * no simulation rerenders, no React coupling.
+ *
+ * Example (app shell):
+ *   import { setQaWorkspaceContext } from 'src/features/qa-feedback'
+ *   useEffect(() => { setQaWorkspaceContext({ activeView }); }, [activeView]);
+ */
+export { setQaWorkspaceContext } from './context/workspaceContextRef'

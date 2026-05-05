@@ -24,6 +24,14 @@
   letter-spacing: 0.02em;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   pointer-events: auto;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.qa-indicator:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 3px;
 }
 
 .qa-indicator__dot {
@@ -42,10 +50,9 @@
   font-size: 11px;
   padding: 1px 6px;
   margin-left: 4px;
-  cursor: pointer;
 }
 
-.qa-indicator__deactivate:hover {
+.qa-indicator:hover .qa-indicator__deactivate {
   background: rgba(255, 255, 255, 0.12);
 }
 
@@ -244,4 +251,66 @@
   font-size: 11.5px;
   color: #047857;
   font-weight: 600;
+}
+
+/* -----------------------------------------------------------------------
+ * Focus-visible styles — high-contrast ring that survives both light and
+ * dark backgrounds (Lane C, issue 06).
+ * ----------------------------------------------------------------------- */
+
+.qa-panel__close:focus-visible,
+.qa-panel__btn:focus-visible,
+.qa-panel__chip:focus-visible,
+.qa-panel__field select:focus-visible,
+.qa-panel__field textarea:focus-visible,
+.qa-panel__field input[type='checkbox']:focus-visible,
+.qa-panel__field input[type='text']:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+/* -----------------------------------------------------------------------
+ * Mobile sheet layout — composer pinned to bottom of viewport (Lane C).
+ * Applied when window.innerWidth <= 640 via the `qa-composer--sheet` class
+ * (JS-driven because jsdom cannot evaluate media queries in tests).
+ * ----------------------------------------------------------------------- */
+
+.qa-composer--sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  max-width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  border-radius: 16px 16px 0 0;
+}
+
+/* -----------------------------------------------------------------------
+ * Responsive rules for viewports <= 640px.
+ * ----------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .qa-panel:not(.qa-composer--sheet) {
+    /* Fallback: full-width sheet even without the JS class. */
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    max-width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .qa-preview__screenshot img {
+    max-width: 100%;
+    max-height: 60vh;
+    object-fit: contain;
+    height: auto;
+  }
 }

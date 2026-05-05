@@ -1,7 +1,8 @@
 # Accessible mobile-safe QA composer
 
-Status: needs-triage
+Status: done
 Type: AFK
+Resolved by: Phase 1 Lane C (2026-05-05)
 
 ## Parent
 

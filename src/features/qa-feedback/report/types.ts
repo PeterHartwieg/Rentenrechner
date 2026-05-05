@@ -15,11 +15,15 @@
 export type FeedbackTargetId = string
 
 /**
- * Coverage classification of the resolved target. `exact` = the tester
- * clicked an instrumented element directly. `section` = the overlay
- * fell back to a nearby section-level container (PRD US-7).
+ * Coverage classification of the resolved target.
+ *   `exact`   — the tester clicked an instrumented element directly.
+ *   `nested`  — the click resolved via `closest()` to an ancestor target
+ *               (PRD US-6/US-7: clicked a child of a target).
+ *   `section` — no exact target found; fell back to a section-level container
+ *               (element carrying both `data-qa-target` and `data-qa-section="true"`).
+ *   `unknown` — no target found at all.
  */
-export type TargetPrecision = 'exact' | 'section' | 'unknown'
+export type TargetPrecision = 'exact' | 'nested' | 'section' | 'unknown'
 
 /**
  * High-level taxonomy aligned with PRD US-9 so maintainers can triage
@@ -43,11 +47,16 @@ export type Severity = 'blocker' | 'major' | 'minor' | 'nit'
 /**
  * Privacy review state. Defaults are conservative: sensitive fields
  * are auto-redacted, scenario state is excluded, screenshot is included
- * only because the tester chose to attach one.
+ * only because the tester chose to attach one, and user-entered values
+ * are off by default.
  *
- * Lane B will extend this with finer-grained flags (e.g. `localStorageIncluded`,
- * per-region masking metadata). Add new optional fields, never rename existing
- * ones — Lane B and downstream consumers depend on the names.
+ * Lane B (Phase 1) added `localStorageIncluded` and `userInputsRedacted`
+ * to make the no-PII guardrail visible in the report. Both default to a
+ * conservative value (`localStorageIncluded: false`, `userInputsRedacted: true`)
+ * so the flags accurately reflect the report payload shape.
+ *
+ * Add new optional fields, never rename existing ones — Lane B and
+ * downstream consumers depend on the names.
  */
 export interface PrivacyFlags {
   /** True when `data-qa-sensitive` elements were redacted before screenshot capture. */
@@ -56,6 +65,18 @@ export interface PrivacyFlags {
   scenarioStateIncluded: boolean
   /** True when the report bundle includes a screenshot. */
   screenshotIncluded: boolean
+  /**
+   * True when the report payload includes a localStorage snapshot. Phase 1 hard-pins
+   * this to `false` — see `__tests__/privacy-localStorage.test.ts` for the regression
+   * coverage. Surfaced in the privacy section so a future opt-in is auditable when it lands.
+   */
+  localStorageIncluded: boolean
+  /**
+   * True when user-entered profile/salary/contribution/retirement values are excluded
+   * from the report by default. Phase 1 always sets this to `true` — values reach the
+   * screenshot only via the redacted DOM mask, never via the JSON payload.
+   */
+  userInputsRedacted: boolean
 }
 
 /**

@@ -1,7 +1,8 @@
 # Privacy redaction and context opt-ins
 
-Status: needs-triage
+Status: done
 Type: AFK
+Resolved by: Phase 1 Lane B (2026-05-05)
 
 ## Parent
 

@@ -115,8 +115,10 @@ export function buildMarkdownTicket(report: FeedbackReport): string {
   lines.push('## Privacy flags')
   lines.push('')
   lines.push(formatPrivacyFlag('Sensitive fields redacted', report.privacyFlags.sensitiveFieldsRedacted))
+  lines.push(formatPrivacyFlag('User inputs redacted', report.privacyFlags.userInputsRedacted))
   lines.push(formatPrivacyFlag('Scenario state included', report.privacyFlags.scenarioStateIncluded))
   lines.push(formatPrivacyFlag('Screenshot included', report.privacyFlags.screenshotIncluded))
+  lines.push(formatPrivacyFlag('localStorage included', report.privacyFlags.localStorageIncluded))
   lines.push('')
 
   // Scenario state opt-in (Lane D may populate). Phase 1 leaves this off.
@@ -172,12 +174,15 @@ function escapeAlt(value: string): string {
 
 /**
  * Default privacy flags for a fresh draft: redaction on, scenario data off,
- * screenshot inclusion driven by whether the tester captured one.
+ * user inputs redacted, localStorage never included, screenshot inclusion
+ * driven by whether the tester captured one.
  */
 export function defaultPrivacyFlags(screenshotIncluded: boolean): PrivacyFlags {
   return {
     sensitiveFieldsRedacted: true,
     scenarioStateIncluded: false,
     screenshotIncluded,
+    localStorageIncluded: false,
+    userInputsRedacted: true,
   }
 }

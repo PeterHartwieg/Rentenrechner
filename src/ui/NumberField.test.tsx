@@ -92,3 +92,53 @@ describe('NumberField — Backspace / lone-zero clearing (#04)', () => {
     expect(onCommit).not.toHaveBeenCalled()
   })
 })
+
+describe('NumberField — feedbackSensitive prop (issue 03 / Lane B)', () => {
+  afterEach(() => cleanup())
+
+  it('omits data-qa-sensitive when the prop is not set', () => {
+    const { container } = render(<NumberField label="Salary" value={5000} />)
+    const label = container.querySelector('label.field')
+    expect(label).not.toBeNull()
+    expect(label?.getAttribute('data-qa-sensitive')).toBeNull()
+  })
+
+  it('omits data-qa-sensitive when the prop is explicitly false', () => {
+    const { container } = render(
+      <NumberField label="Salary" value={5000} feedbackSensitive={false} />,
+    )
+    const label = container.querySelector('label.field')
+    expect(label?.getAttribute('data-qa-sensitive')).toBeNull()
+  })
+
+  it('emits data-qa-sensitive="true" on the wrapping label when the prop is true', () => {
+    const { container } = render(
+      <NumberField label="Salary" value={5000} feedbackSensitive={true} />,
+    )
+    const label = container.querySelector('label.field')
+    expect(label?.getAttribute('data-qa-sensitive')).toBe('true')
+  })
+
+  it('toggling the prop adds and removes the attribute exactly', () => {
+    const { container, rerender } = render(<NumberField label="Salary" value={5000} />)
+    const label = container.querySelector('label.field') as HTMLElement
+    expect(label.getAttribute('data-qa-sensitive')).toBeNull()
+
+    rerender(<NumberField label="Salary" value={5000} feedbackSensitive={true} />)
+    expect(label.getAttribute('data-qa-sensitive')).toBe('true')
+
+    rerender(<NumberField label="Salary" value={5000} feedbackSensitive={false} />)
+    expect(label.getAttribute('data-qa-sensitive')).toBeNull()
+  })
+
+  it('does not interfere with other rendered output (input still works)', () => {
+    const onCommit = vi.fn()
+    render(
+      <NumberField label="Salary" value={5000} feedbackSensitive={true} onCommit={onCommit} />,
+    )
+    const input = screen.getByRole('spinbutton')
+    fireEvent.change(input, { target: { value: '6000' } })
+    fireEvent.blur(input)
+    expect(onCommit).toHaveBeenCalledWith('6000')
+  })
+})

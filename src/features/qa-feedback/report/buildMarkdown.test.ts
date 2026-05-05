@@ -24,6 +24,8 @@ function makeReport(overrides: Partial<FeedbackReport> = {}): FeedbackReport {
       sensitiveFieldsRedacted: true,
       scenarioStateIncluded: false,
       screenshotIncluded: false,
+      localStorageIncluded: false,
+      userInputsRedacted: true,
     },
     ...overrides,
   }
@@ -93,8 +95,10 @@ describe('buildMarkdownTicket', () => {
     const md = buildMarkdownTicket(makeReport())
     expect(md).toContain('## Privacy flags')
     expect(md).toContain('Sensitive fields redacted: **yes**')
+    expect(md).toContain('User inputs redacted: **yes**')
     expect(md).toContain('Scenario state included: **no**')
     expect(md).toContain('Screenshot included: **no**')
+    expect(md).toContain('localStorage included: **no**')
   })
 
   it('reflects opt-in privacy-flag changes', () => {
@@ -104,12 +108,16 @@ describe('buildMarkdownTicket', () => {
           sensitiveFieldsRedacted: false,
           scenarioStateIncluded: true,
           screenshotIncluded: true,
+          localStorageIncluded: false,
+          userInputsRedacted: false,
         },
       }),
     )
     expect(md).toContain('Sensitive fields redacted: **no**')
+    expect(md).toContain('User inputs redacted: **no**')
     expect(md).toContain('Scenario state included: **yes**')
     expect(md).toContain('Screenshot included: **yes**')
+    expect(md).toContain('localStorage included: **no**')
   })
 
   it('renders a screenshot reference when present', () => {
@@ -196,16 +204,29 @@ describe('buildMarkdownTicket — no-network guarantee', () => {
 })
 
 describe('defaultPrivacyFlags', () => {
-  it('defaults to redaction-on, no scenario state, screenshot reflects argument', () => {
+  it('defaults to redaction-on, no scenario state, no localStorage, screenshot reflects argument', () => {
     expect(defaultPrivacyFlags(false)).toEqual({
       sensitiveFieldsRedacted: true,
       scenarioStateIncluded: false,
       screenshotIncluded: false,
+      localStorageIncluded: false,
+      userInputsRedacted: true,
     })
     expect(defaultPrivacyFlags(true)).toEqual({
       sensitiveFieldsRedacted: true,
       scenarioStateIncluded: false,
       screenshotIncluded: true,
+      localStorageIncluded: false,
+      userInputsRedacted: true,
     })
+  })
+
+  it('always sets localStorageIncluded=false (no opt-in path exists yet)', () => {
+    // The Phase 1 contract: there is no public path that flips this flag to
+    // true. A future opt-in would land alongside a security review and an
+    // explicit toggle in QaPreview. See `__tests__/privacy-localStorage.test.ts`
+    // for the regression coverage.
+    expect(defaultPrivacyFlags(false).localStorageIncluded).toBe(false)
+    expect(defaultPrivacyFlags(true).localStorageIncluded).toBe(false)
   })
 })

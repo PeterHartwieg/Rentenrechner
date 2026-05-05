@@ -8,6 +8,9 @@ import { QaComposer } from './QaComposer'
 import { QaPreview } from './QaPreview'
 import type { ComposerDraft } from './QaComposer'
 import type { CapturedScreenshot } from './capture/screenshot'
+import { STORAGE_KEY_V2 } from '../../storage'
+import { collectWorkspaceContext } from './context/collectWorkspaceContext'
+import { getQaWorkspaceContext } from './context/workspaceContextRef'
 
 /**
  * Session-storage key that mirrors the `?qa=1` URL flag (DECISIONS §2).
@@ -21,6 +24,21 @@ const DEACTIVATE_VALUE = '0'
 
 /** Phase of the feedback flow currently visible to the tester. */
 type Phase = 'idle' | 'composer' | 'preview'
+
+/**
+ * Read the current workspace JSON from localStorage when the tester opts in.
+ * Only called when the scenario opt-in checkbox is checked (never preemptively).
+ * Reads STORAGE_KEY_V2 (the authoritative write key). Returns undefined when
+ * no state is found. Does NOT mutate localStorage.
+ */
+function collectScenarioJson(): string | undefined {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_V2) : null
+    return raw ?? undefined
+  } catch {
+    return undefined
+  }
+}
 
 interface ProviderProps {
   children: ReactNode
@@ -145,12 +163,25 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
               screenshot={screenshot}
               onBack={() => setPhase('composer')}
               onCancel={cancelDraft}
+              collectScenarioJson={collectScenarioJson}
+              collectWorkspaceContext={collectWorkspaceContextForReport}
             />
           )}
         </>
       ) : null}
     </QaFeedbackContext.Provider>
   )
+}
+
+/**
+ * Collect the workspace context snapshot at report-assembly time.
+ * Reads from the global ref set by the app shell and combines it with
+ * DOM-detected flow context (open dialogs / disclosures).
+ * Does NOT call any simulation or engine code.
+ */
+function collectWorkspaceContextForReport(pinnedElement?: Element | null) {
+  const stored = getQaWorkspaceContext()
+  return collectWorkspaceContext({ ...stored, pinnedElement })
 }
 
 function readInitialFlag(): boolean {

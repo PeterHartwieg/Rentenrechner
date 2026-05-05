@@ -9,7 +9,7 @@
  * during the feedback flow and shown in the review preview."
  */
 
-import { applySensitiveRedaction } from './redact'
+import { withSensitiveRedaction } from './redact'
 
 export interface CapturedScreenshot {
   /** PNG blob suitable for download or object-URL preview. */
@@ -37,34 +37,35 @@ export async function captureViewportScreenshot(): Promise<CapturedScreenshot | 
   if (typeof document === 'undefined' || typeof window === 'undefined') return null
 
   const target = document.documentElement
-  const redaction = applySensitiveRedaction(document)
 
   try {
-    // Dynamic import keeps the rasteriser out of the cold-start bundle.
-    const htmlToImage = await import('html-to-image')
-    const dataUrl = await htmlToImage.toPng(target, {
-      cacheBust: true,
-      pixelRatio: window.devicePixelRatio || 1,
-      width: window.innerWidth,
-      height: window.innerHeight,
-      style: {
-        // Snap to the viewport so a long page doesn't render its full height.
-        transform: `translate(-${window.scrollX}px, -${window.scrollY}px)`,
-      },
+    const { result } = await withSensitiveRedaction(document, async () => {
+      // Dynamic import keeps the rasteriser out of the cold-start bundle.
+      const htmlToImage = await import('html-to-image')
+      const dataUrl = await htmlToImage.toPng(target, {
+        cacheBust: true,
+        pixelRatio: window.devicePixelRatio || 1,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        style: {
+          // Snap to the viewport so a long page doesn't render its full height.
+          transform: `translate(-${window.scrollX}px, -${window.scrollY}px)`,
+        },
+      })
+      return dataUrl
     })
-    const blob = dataUrlToBlob(dataUrl)
+    const blob = dataUrlToBlob(result)
     return {
       blob,
-      dataUrl,
+      dataUrl: result,
       width: window.innerWidth,
       height: window.innerHeight,
     }
   } catch {
     // Capture failures are non-fatal — the tester can still export the
-    // markdown ticket without a screenshot. Privacy flags reflect the absence.
+    // markdown ticket without a screenshot. The redaction handle is restored
+    // by `withSensitiveRedaction`'s finally even when capture rejects.
     return null
-  } finally {
-    redaction.restore()
   }
 }
 

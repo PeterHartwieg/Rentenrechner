@@ -35,6 +35,8 @@ describe('FeedbackReport type contract', () => {
       sensitiveFieldsRedacted: true,
       scenarioStateIncluded: true,
       screenshotIncluded: true,
+      localStorageIncluded: false,
+      userInputsRedacted: true,
     }
     const screenshot: ScreenshotRef = { fileName: 'screenshot.png', width: 1280, height: 800 }
     const report: FeedbackReport = {
@@ -70,6 +72,8 @@ describe('FeedbackReport type contract', () => {
         sensitiveFieldsRedacted: true,
         scenarioStateIncluded: false,
         screenshotIncluded: false,
+        localStorageIncluded: false,
+        userInputsRedacted: true,
       },
     }
     expect(minimal.target.precision).toBe('unknown')

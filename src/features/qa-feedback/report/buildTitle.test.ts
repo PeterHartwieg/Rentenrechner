@@ -22,6 +22,8 @@ function makeReport(overrides: Partial<FeedbackReport> = {}): FeedbackReport {
       sensitiveFieldsRedacted: true,
       scenarioStateIncluded: false,
       screenshotIncluded: false,
+      localStorageIncluded: false,
+      userInputsRedacted: true,
     },
     ...overrides,
   }

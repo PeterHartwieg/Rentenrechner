@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { FeedbackType, ResolvedTarget, Severity } from './report'
 import { captureViewportScreenshot, type CapturedScreenshot } from './capture/screenshot'
+import { useFocusReturn } from './useFocusReturn'
 
 /**
  * Mutable composer state. Lives in the provider's memory only — discarded
@@ -40,17 +41,53 @@ const SEVERITY_OPTIONS: Array<{ value: Severity; label: string }> = [
   { value: 'nit', label: 'Nit' },
 ]
 
+/** Fallback selector: the QA indicator chip. */
+const INDICATOR_SELECTOR = '.qa-indicator'
+
 /**
  * Compact composer panel. Renders directly to the right corner of the
  * viewport while QA mode is active and a target is pinned.
  *
- * Lane C (a11y / mobile) will harden focus management, mobile-friendly
- * layout, and screen-reader announcements. The structure is intentionally
- * baseline — semantic form controls with labels, no exotic widgets — so
- * Lane C can layer on without rewriting.
+ * Lane C a11y additions:
+ *   - `role="dialog"` with `aria-labelledby` and `aria-describedby`.
+ *   - Focus moves into the type radiogroup on mount (requestAnimationFrame).
+ *   - Focus returns to the previously-focused element (or the indicator chip)
+ *     on cancel / submit via `useFocusReturn`.
+ *   - ESC cancels; Ctrl/Cmd+Enter submits when comment is non-empty.
+ *   - `qa-composer--sheet` class added when window.innerWidth <= 640 for
+ *     mobile-sheet layout and test detection.
  */
 export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }: ComposerProps) {
   const [submitting, setSubmitting] = useState(false)
+  const titleId = useId()
+  const descId = useId()
+
+  // Restore focus on unmount (cancel or forward to preview).
+  useFocusReturn(INDICATOR_SELECTOR)
+
+  // Move focus into the type-radiogroup on mount.
+  const typeGroupRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const first = typeGroupRef.current?.querySelector<HTMLElement>('[role="radio"]')
+      first?.focus()
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  // Mobile sheet detection — jsdom doesn't compute CSS media queries so we
+  // use a class driven by JS for both layout and test assertions.
+  const [isSheet, setIsSheet] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth <= 640,
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    function update() {
+      setIsSheet(window.innerWidth <= 640)
+    }
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   // Phase 1 baseline: capture happens once on first render so the screenshot
   // includes the pinned target. Lane B will refine the capture sequencing
@@ -83,18 +120,46 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
     onSubmit(draft, draft.includeScreenshot ? screenshot : null)
   }
 
+  // Global keydown handler attached while the composer is mounted.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCancel()
+        return
+      }
+      // Ctrl+Enter or Cmd+Enter submits when a comment is present.
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        if (draft.comment.trim().length > 0 && !submitting) {
+          event.preventDefault()
+          handleSubmit()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.comment, submitting, onCancel])
+
   const canSubmit = draft.comment.trim().length > 0 && !submitting
 
   return (
     <section
-      className="qa-panel"
+      className={['qa-panel', isSheet ? 'qa-composer--sheet' : ''].filter(Boolean).join(' ')}
       role="dialog"
-      aria-label="QA-Feedback verfassen"
+      aria-modal="false"
+      aria-labelledby={titleId}
+      aria-describedby={descId}
       data-qa-overlay
       data-testid="qa-composer"
     >
       <header className="qa-panel__header">
-        <span className="qa-panel__title">Feedback zu {target.label || target.id}</span>
+        <span id={titleId} className="qa-panel__title">
+          Feedback geben
+        </span>
+        <span id={descId} className="qa-panel__desc">
+          Zu: {target.label || target.id}
+        </span>
         <button type="button" className="qa-panel__close" onClick={onCancel} aria-label="Abbrechen">
           ✕
         </button>
@@ -102,7 +167,12 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
       <div className="qa-panel__body">
         <div className="qa-panel__field">
           <span>Art</span>
-          <div className="qa-panel__chips" role="radiogroup" aria-label="Feedback-Art">
+          <div
+            className="qa-panel__chips"
+            role="radiogroup"
+            aria-label="Feedback-Art"
+            ref={typeGroupRef}
+          >
             {TYPE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

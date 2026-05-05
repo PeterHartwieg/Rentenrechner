@@ -3,7 +3,10 @@ import {
   buildMarkdownTicket,
   defaultPrivacyFlags,
   type FeedbackReport,
+  type PrivacyFlags,
   type ResolvedTarget,
+  type ScenarioContextSnapshot,
+  type WorkspaceContext,
 } from './report'
 import type { ComposerDraft } from './QaComposer'
 import type { CapturedScreenshot } from './capture/screenshot'
@@ -14,6 +17,19 @@ interface PreviewProps {
   screenshot: CapturedScreenshot | null
   onBack(): void
   onCancel(): void
+  /**
+   * Optional scenario-state collector wired by the provider. Returns the
+   * current scenario JSON when the tester has opted in, or `undefined` when
+   * unavailable. Phase 1 wires `() => undefined` (TODO: issue 05 / Lane D).
+   * The preview never calls this collector unless the tester ticks the
+   * "Aktuelles Szenario in den Bericht einschließen" checkbox.
+   */
+  collectScenarioJson?: () => string | undefined
+  /**
+   * Lane D: workspace context collector. Called at report-assembly time to
+   * read the current mode/view/flow. Never called preemptively.
+   */
+  collectWorkspaceContext?: (pinnedElement?: Element | null) => WorkspaceContext
 }
 
 /**
@@ -32,13 +48,27 @@ interface PreviewProps {
  * paths are synchronous DOM-only — see `buildMarkdown.test.ts` for the
  * `fetch` spy.
  */
-export function QaPreview({ target, draft, screenshot, onBack, onCancel }: PreviewProps) {
+export function QaPreview({
+  target,
+  draft,
+  screenshot,
+  onBack,
+  onCancel,
+  collectScenarioJson,
+  collectWorkspaceContext,
+}: PreviewProps) {
   const [copied, setCopied] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
+  /**
+   * Scenario-state opt-in (DECISIONS / issue 03). Default OFF — the share URL
+   * and scenario JSON are only attached after the tester ticks this box. We
+   * never read `window.location.href` preemptively.
+   */
+  const [includeScenario, setIncludeScenario] = useState(false)
 
   const report = useMemo<FeedbackReport>(
-    () => buildReport({ target, draft, screenshot }),
-    [target, draft, screenshot],
+    () => buildReport({ target, draft, screenshot, includeScenario, collectScenarioJson, collectWorkspaceContext }),
+    [target, draft, screenshot, includeScenario, collectScenarioJson, collectWorkspaceContext],
   )
 
   const markdown = useMemo(() => buildMarkdownTicket(report), [report])
@@ -113,24 +143,74 @@ export function QaPreview({ target, draft, screenshot, onBack, onCancel }: Previ
           <dd>{report.environment.appBuild}</dd>
           <dt>Zeit</dt>
           <dd>{report.environment.timestamp}</dd>
+          <dt>Präzision</dt>
+          <dd>{report.target.precision}</dd>
+          <dt>Modus</dt>
+          <dd>{report.workspaceContext?.mode ?? '—'}</dd>
+          <dt>Aktive Ansicht</dt>
+          <dd>{report.workspaceContext?.activeView ?? '—'}</dd>
+          <dt>Produkt</dt>
+          <dd>{report.workspaceContext?.activeProductId ?? '—'}</dd>
+          <dt>Flow</dt>
+          <dd>{report.workspaceContext?.flow ?? '—'}</dd>
         </dl>
 
-        <div className="qa-panel__field">
+        <div className="qa-panel__field" data-testid="qa-preview-privacy">
           <span>Datenschutz</span>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            <li>
-              Sensible Felder maskiert:{' '}
-              <strong>{report.privacyFlags.sensitiveFieldsRedacted ? 'ja' : 'nein'}</strong>
-            </li>
-            <li>
-              Szenario-Daten enthalten:{' '}
-              <strong>{report.privacyFlags.scenarioStateIncluded ? 'ja' : 'nein'}</strong>
-            </li>
-            <li>
-              Screenshot enthalten:{' '}
-              <strong>{report.privacyFlags.screenshotIncluded ? 'ja' : 'nein'}</strong>
-            </li>
+          <ul
+            className="qa-preview__privacy-list"
+            style={{ margin: '4px 0 0', paddingLeft: 18, listStyle: 'none' }}
+          >
+            <PrivacyRow
+              label="Sensible Felder maskiert"
+              flag={report.privacyFlags.sensitiveFieldsRedacted}
+            />
+            <PrivacyRow
+              label="Eingaben aus dem Bericht ausgeschlossen"
+              flag={report.privacyFlags.userInputsRedacted}
+            />
+            <PrivacyRow
+              label="Szenario-Daten enthalten"
+              flag={report.privacyFlags.scenarioStateIncluded}
+            />
+            <PrivacyRow
+              label="Screenshot enthalten"
+              flag={report.privacyFlags.screenshotIncluded}
+            />
+            <PrivacyRow
+              label="localStorage enthalten"
+              flag={report.privacyFlags.localStorageIncluded}
+            />
           </ul>
+        </div>
+
+        <div className="qa-panel__field">
+          <label className="qa-preview__opt-in" style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <input
+              type="checkbox"
+              checked={includeScenario}
+              onChange={(event) => setIncludeScenario(event.target.checked)}
+              data-testid="qa-preview-include-scenario"
+            />
+            <span>
+              <strong>Aktuelles Szenario in den Bericht einschließen</strong>{' '}
+              <span style={{ opacity: 0.7 }}>(Standard: aus)</span>
+              <br />
+              <span style={{ fontSize: 11.5, opacity: 0.85 }}>
+                Eingeschlossen werden die aktuelle Share-URL und – sofern verfügbar – das
+                Szenario als JSON. Beides verlässt den Browser nur, wenn du die Markdown-
+                bzw. Bundle-Ausgabe selbst weitergibst.
+              </span>
+            </span>
+          </label>
+          {includeScenario && !report.scenarioContext?.scenarioJson && (
+            <p
+              data-testid="qa-preview-scenario-excluded"
+              style={{ margin: '4px 0 0 26px', fontSize: 11.5, opacity: 0.85 }}
+            >
+              (scenario excluded — kein Szenario-JSON verfügbar)
+            </p>
+          )}
         </div>
 
         {report.screenshot && screenshot && (
@@ -182,19 +262,57 @@ interface BuildReportArgs {
   target: ResolvedTarget
   draft: ComposerDraft
   screenshot: CapturedScreenshot | null
+  /**
+   * Tester opted into attaching scenario/share-link state. When false (the
+   * default), `scenarioContext` stays undefined and we never touch
+   * `window.location.href`.
+   */
+  includeScenario: boolean
+  /** See `PreviewProps.collectScenarioJson` — only invoked on opt-in. */
+  collectScenarioJson?: () => string | undefined
+  /** Lane D: workspace context collector. */
+  collectWorkspaceContext?: (pinnedElement?: Element | null) => WorkspaceContext
 }
 
 /**
  * Compose the full `FeedbackReport` from the composer draft, the pinned
  * target, and (optionally) the captured screenshot.
  *
- * Lane B will inject privacy decisions here (e.g. allow the tester to flip
- * `sensitiveFieldsRedacted` if they explicitly opt out). Phase 1 keeps the
- * defaults from `defaultPrivacyFlags`.
+ * Phase 1 Lane B wires the scenario-state opt-in here. When the tester
+ * ticks the preview checkbox we read `window.location.href` and call the
+ * (Lane D-supplied) scenario-JSON collector; otherwise both stay omitted
+ * and the privacy flags reflect that.
  */
-function buildReport({ target, draft, screenshot }: BuildReportArgs): FeedbackReport {
+function buildReport({
+  target,
+  draft,
+  screenshot,
+  includeScenario,
+  collectScenarioJson,
+  collectWorkspaceContext,
+}: BuildReportArgs): FeedbackReport {
   const includeScreenshot = draft.includeScreenshot && screenshot !== null
   const filename = sanitizeFileName(target.id) + '.png'
+  const flags: PrivacyFlags = defaultPrivacyFlags(includeScreenshot)
+  let scenarioContext: ScenarioContextSnapshot | undefined
+  if (includeScenario) {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : undefined
+    const scenarioJson = collectScenarioJson?.()
+    // Only flip the flag and attach the snapshot when we actually have something
+    // to surface — an empty opt-in shouldn't lie about including data.
+    if (shareUrl || (scenarioJson && scenarioJson.length > 0)) {
+      scenarioContext = {
+        ...(shareUrl ? { shareUrl } : {}),
+        ...(scenarioJson ? { scenarioJson } : {}),
+      }
+      flags.scenarioStateIncluded = true
+    }
+  }
+  // Workspace context: collected synchronously at report-assembly time.
+  // The collector is optional; when absent (e.g. tests that don't wire it)
+  // workspaceContext stays undefined and the markdown section is omitted.
+  const workspaceContext = collectWorkspaceContext?.()
+
   return {
     type: draft.type,
     severity: draft.severity,
@@ -213,11 +331,28 @@ function buildReport({ target, draft, screenshot }: BuildReportArgs): FeedbackRe
       ),
       appBuild: readAppBuild(),
     },
-    privacyFlags: defaultPrivacyFlags(includeScreenshot),
+    privacyFlags: flags,
     screenshot: includeScreenshot && screenshot
       ? { fileName: filename, width: screenshot.width, height: screenshot.height }
       : undefined,
+    scenarioContext,
+    workspaceContext,
   }
+}
+
+/**
+ * Single-row privacy display: bold label + status icon. Defined here (not as
+ * a separate file) because it is exclusively a `QaPreview` rendering helper.
+ */
+function PrivacyRow({ label, flag }: { label: string; flag: boolean }) {
+  return (
+    <li className="qa-preview__privacy-row" style={{ marginBottom: 2 }}>
+      <span aria-hidden="true" style={{ marginRight: 6 }}>
+        {flag ? '✓' : '✗'}
+      </span>
+      <strong>{label}:</strong> {flag ? 'ja' : 'nein'}
+    </li>
+  )
 }
 
 function readAppBuild(): string {

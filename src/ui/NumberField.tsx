@@ -31,6 +31,7 @@ export function NumberField({
   onChange,
   onCommit,
   feedbackTargetId,
+  feedbackSensitive,
 }: {
   label: string
   /** Optional inline content rendered next to the label (e.g. <InfoTip />). */
@@ -62,13 +63,26 @@ export function NumberField({
    * renders identically to today.
    */
   feedbackTargetId?: string
+  /**
+   * When `true`, the wrapping `<label>` is tagged with `data-qa-sensitive="true"`
+   * so the QA-feedback redaction pass blurs the field's pixels before the
+   * screenshot rasteriser runs (DECISIONS §5 / issue 03). Defaults to omitted —
+   * existing call-sites render identically without the attribute.
+   *
+   * Use for any `NumberField` bound to user-entered profile, salary,
+   * contribution, retirement, or scenario values.
+   */
+  feedbackSensitive?: boolean
 }) {
   const { targetProps } = useFeedbackTarget({
     id: feedbackTargetId ?? '',
     label,
     precision: 'exact',
   })
-  const qaProps = feedbackTargetId ? targetProps : {}
+  const qaProps: Record<string, unknown> = feedbackTargetId ? { ...targetProps } : {}
+  if (feedbackSensitive) {
+    qaProps['data-qa-sensitive'] = 'true'
+  }
   const [draft, setDraft] = useState<string | null>(null)
   const effectiveDecimals = decimals ?? decimalsFromStep(step)
   // toFixed gives us bounded precision; Number(...) drops trailing zeros so
