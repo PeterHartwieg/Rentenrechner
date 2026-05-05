@@ -73,7 +73,9 @@ describe('QaComposer — role and ARIA', () => {
     const labelId = dialog.getAttribute('aria-labelledby')
     expect(labelId).toBeTruthy()
     const titleEl = document.getElementById(labelId!)
-    expect(titleEl?.textContent).toContain('Feedback geben')
+    // With severity=minor, type=copy, target.label=AG-Zuschuss the computed
+    // headline is shown instead of the static fallback "Feedback geben".
+    expect(titleEl?.textContent).toContain('[Minor] qa(copy): AG-Zuschuss')
   })
 
   it('dialog has aria-describedby pointing to the target description', () => {

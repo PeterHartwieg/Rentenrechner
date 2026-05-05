@@ -254,8 +254,10 @@ describe('QaPreview — mailto and GitHub-issue buttons (issue 08)', () => {
     const match = /subject=([^&]+)/.exec(url)
     expect(match).not.toBeNull()
     const subject = decodeURIComponent(match![1])
-    // Should contain the target id from DRAFT/TARGET.
-    expect(subject).toContain('inputs.bav.employerSubsidy.label')
+    // Title now uses target label (issue 12): severity + type + label, not id.
+    expect(subject).toContain('AG-Zuschuss')
+    expect(subject).toContain('[Minor]')
+    expect(subject).toContain('qa(copy)')
   })
 
   it('GitHub URL opened by the button contains title and body params', () => {

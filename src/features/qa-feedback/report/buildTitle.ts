@@ -1,4 +1,4 @@
-import type { FeedbackReport, Severity } from './types'
+import type { FeedbackReport, FeedbackType, Severity } from './types'
 
 const SEVERITY_PREFIX: Record<Severity, string> = {
   blocker: '[BLOCKER]',
@@ -7,7 +7,7 @@ const SEVERITY_PREFIX: Record<Severity, string> = {
   nit: '[Nit]',
 }
 
-const TYPE_LABEL: Record<FeedbackReport['type'], string> = {
+const TYPE_LABEL: Record<FeedbackType, string> = {
   copy: 'copy',
   layout: 'layout',
   flow: 'flow',
@@ -20,27 +20,39 @@ const TYPE_LABEL: Record<FeedbackReport['type'], string> = {
 /**
  * Build a one-line title for the QA-feedback ticket.
  *
- * Format: `[Severity] qa(type): <target id> — <comment summary>`
+ * Format: `[Severity] qa(type): <target label or id>`
  *
- * Title generation is defensive — comment may be empty, target id may be
- * missing — so testers never end up with a "TypeError" instead of a ticket.
- * Truncates the comment summary so titles stay scannable in issue lists.
+ * The tester's comment belongs in the ticket body only — it must not
+ * appear in the title. Using severity + type + target gives a structured,
+ * scannable headline without requiring testers to write good titles manually.
+ *
+ * Title generation is defensive — target id may be missing — so testers
+ * never end up with a "TypeError" instead of a ticket.
  */
 export function generateTitle(report: FeedbackReport): string {
   const sev = SEVERITY_PREFIX[report.severity] ?? '[Minor]'
   const type = TYPE_LABEL[report.type] ?? 'other'
-  const targetId = report.target?.id?.trim() || 'unknown.target'
-  const summary = summarizeComment(report.comment)
-  const tail = summary ? ` — ${summary}` : ''
-  return `${sev} qa(${type}): ${targetId}${tail}`
+  const target = report.target?.label?.trim() || report.target?.id?.trim() || 'unknown.target'
+  return `${sev} qa(${type}): ${target}`
 }
 
-function summarizeComment(comment: string | undefined): string {
-  if (!comment) return ''
-  // Collapse whitespace + line breaks so the title stays a single line.
-  const flat = comment.replace(/\s+/g, ' ').trim()
-  if (flat.length === 0) return ''
-  const MAX = 80
-  if (flat.length <= MAX) return flat
-  return flat.slice(0, MAX - 1).trimEnd() + '…'
+/**
+ * Compute the panel headline preview string from the current draft fields and
+ * the pinned target. Mirrors `generateTitle` but accepts raw draft values so
+ * the composer can show the preview before a full `FeedbackReport` is assembled.
+ *
+ * Returns `null` when the type or severity are not yet set (shouldn't happen
+ * in practice since both have defaults, but left as a safety guard).
+ */
+export function computeHeadlinePreview(
+  severity: Severity | null | undefined,
+  type: FeedbackType | null | undefined,
+  targetLabel: string | undefined,
+  targetId: string | undefined,
+): string | null {
+  if (!severity || !type) return null
+  const sev = SEVERITY_PREFIX[severity] ?? '[Minor]'
+  const typeStr = TYPE_LABEL[type] ?? 'other'
+  const target = targetLabel?.trim() || targetId?.trim() || 'unknown.target'
+  return `${sev} qa(${typeStr}): ${target}`
 }

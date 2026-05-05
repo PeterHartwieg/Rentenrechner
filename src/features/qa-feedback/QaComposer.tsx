@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { FeedbackType, ResolvedTarget, Severity } from './report'
+import { computeHeadlinePreview } from './report'
 import { captureViewportScreenshot, type CapturedScreenshot } from './capture/screenshot'
 import { useFocusReturn } from './useFocusReturn'
 
@@ -162,7 +163,8 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
     >
       <header className="qa-panel__header">
         <span id={titleId} className="qa-panel__title">
-          Feedback geben
+          {computeHeadlinePreview(draft.severity, draft.type, target.label, target.id) ??
+            'Feedback geben'}
         </span>
         <span id={descId} className="qa-panel__desc">
           Zu: {target.label || target.id}

@@ -21,4 +21,4 @@ export type {
 } from './types'
 
 export { buildMarkdownTicket, defaultPrivacyFlags } from './buildMarkdown'
-export { generateTitle } from './buildTitle'
+export { computeHeadlinePreview, generateTitle } from './buildTitle'
