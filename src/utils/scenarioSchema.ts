@@ -6,7 +6,7 @@ import type {
   ScenarioAssumptions,
   StatutoryPensionAssumptions,
 } from '../domain'
-import type { Workspace, WorkspaceAssumptionsV2, Scenario } from '../domain/workspace'
+import type { Workspace, WhatIfScenario, WorkspaceAssumptionsV2, Scenario } from '../domain/workspace'
 import type { InstanceCommon } from '../domain/instances'
 import { inRange, isFiniteNumber, isInt } from '../domain/validation/primitives'
 import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../engine/productRegistry'
@@ -173,7 +173,11 @@ function validateTransferEvent(event: unknown, allInstanceIds: Set<string>): boo
   if (typeof e.targetInstanceId !== 'string' || !e.targetInstanceId) return false
   if (!isFiniteNumber(e.amountEUR as unknown) || (e.amountEUR as number) < 0) return false
 
-  // Target instance must exist in the workspace.
+  // Both source and target instances must exist in the workspace.
+  // Without the source check, `portfolioTransfer.findInstanceById` would
+  // silently skip the inbound side at simulation time and the user would
+  // see a missing capital injection with no error surface.
+  if (!allInstanceIds.has(e.sourceInstanceId as string)) return false
   if (!allInstanceIds.has(e.targetInstanceId as string)) return false
 
   // For certified transfers, check illegal pairings.
@@ -373,7 +377,33 @@ export function validateScenario(input: unknown): Scenario | null {
 }
 
 /**
+ * Validate a WhatIfScenario object — Scenario plus the what-if-specific
+ * `derivedFromBaselineId` / `derivedFromBaselineSnapshot` / `frozenAt` fields.
+ *
+ * The snapshot is a frozen baseline copy; it must itself be a valid Scenario
+ * so downstream code (transfer-event backfill, re-base flows) can safely
+ * dereference it.
+ */
+export function validateWhatIfScenario(input: unknown): WhatIfScenario | null {
+  if (!input || typeof input !== 'object') return null
+  const w = input as WhatIfScenario
+  if (validateScenario(w) === null) return null
+  if (typeof w.derivedFromBaselineId !== 'string' || !w.derivedFromBaselineId) return null
+  if (validateScenario(w.derivedFromBaselineSnapshot) === null) return null
+  if (w.frozenAt !== undefined && (typeof w.frozenAt !== 'number' || !Number.isFinite(w.frozenAt))) return null
+  return w
+}
+
+/**
  * Validate a v2 Workspace object.
+ *
+ * Validates the baseline scenario, every entry in `whatIfs`, and each
+ * what-if's `derivedFromBaselineSnapshot`. The deep validation is required
+ * because downstream code (transfer-event backfill, re-base flows) walks
+ * those nested scenarios and would crash on a malformed shape otherwise —
+ * see the `parseWorkspaceJson` pipeline order in `storage.ts`, where
+ * `validateWorkspace` runs **before** `backfillWorkspaceTransferEvents`.
+ *
  * Returns the typed object or null on failure.
  */
 export function validateWorkspace(input: unknown): Workspace | null {
@@ -384,5 +414,10 @@ export function validateWorkspace(input: unknown): Workspace | null {
   if (!Array.isArray(w.whatIfs)) return null
   if (!Array.isArray(w.pinnedComparisonIds)) return null
   if (validateScenario(w.baseline) === null) return null
+  // Deep-validate every what-if and its baseline snapshot so the backfill
+  // and re-base paths can dereference them without defensive null checks.
+  for (const wi of w.whatIfs) {
+    if (validateWhatIfScenario(wi) === null) return null
+  }
   return w
 }

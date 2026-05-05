@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
-import { buildStateJson, parseStateFromJson } from '../storage'
+import { buildStateJson, buildWorkspaceJson, migrateV1ToV2, parseStateFromJson } from '../storage'
 import {
   validateAssumptions,
   validateProfile,
   validateReturnScenarios,
   validateState,
+  validateWhatIfScenario,
+  validateWorkspace,
+  validateWorkspaceAssumptions,
 } from './scenarioSchema'
+import type { Workspace, WhatIfScenario } from '../domain/workspace'
 
 describe('validateProfile', () => {
   it('accepts the default profile', () => {
@@ -593,5 +597,188 @@ describe('URL share round-trip parity (#49)', () => {
     const encoded = toBase64Url(poisoned)
     const result = parseStateFromJson(fromBase64Url(encoded))
     expect(result).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// V2 workspace validators — what-if + transfer event source/target invariants
+// ---------------------------------------------------------------------------
+
+describe('validateWhatIfScenario', () => {
+  function makeBaseline() {
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      defaultAssumptions as unknown as Record<string, unknown>,
+    )
+    return ws.baseline
+  }
+
+  function makeValidWhatIf(): WhatIfScenario {
+    const baseline = makeBaseline()
+    return {
+      id: 'wi-1',
+      label: 'Was-wäre-wenn',
+      profile: baseline.profile,
+      assumptions: JSON.parse(JSON.stringify(baseline.assumptions)),
+      createdAt: new Date(0).toISOString(),
+      origin: 'manual',
+      derivedFromBaselineId: baseline.id,
+      derivedFromBaselineSnapshot: JSON.parse(JSON.stringify(baseline)),
+    }
+  }
+
+  it('accepts a valid what-if scenario with snapshot', () => {
+    expect(validateWhatIfScenario(makeValidWhatIf())).not.toBeNull()
+  })
+
+  it('rejects a what-if missing derivedFromBaselineId', () => {
+    const wi = makeValidWhatIf()
+    delete (wi as unknown as Record<string, unknown>).derivedFromBaselineId
+    expect(validateWhatIfScenario(wi)).toBeNull()
+  })
+
+  it('rejects a what-if missing derivedFromBaselineSnapshot', () => {
+    const wi = makeValidWhatIf()
+    delete (wi as unknown as Record<string, unknown>).derivedFromBaselineSnapshot
+    expect(validateWhatIfScenario(wi)).toBeNull()
+  })
+
+  it('rejects a what-if with malformed snapshot (invalid origin)', () => {
+    const wi = makeValidWhatIf()
+    ;(wi.derivedFromBaselineSnapshot as unknown as Record<string, unknown>).origin = 'bogus'
+    expect(validateWhatIfScenario(wi)).toBeNull()
+  })
+
+  it('rejects a what-if with malformed assumptions in the snapshot', () => {
+    const wi = makeValidWhatIf()
+    wi.derivedFromBaselineSnapshot.assumptions.inflationRate = 99
+    expect(validateWhatIfScenario(wi)).toBeNull()
+  })
+
+  it('rejects non-finite frozenAt', () => {
+    const wi = makeValidWhatIf()
+    wi.frozenAt = Number.NaN
+    expect(validateWhatIfScenario(wi)).toBeNull()
+  })
+})
+
+describe('validateWorkspace — deep what-if validation', () => {
+  function makeWorkspace(): Workspace {
+    return migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      defaultAssumptions as unknown as Record<string, unknown>,
+    )
+  }
+
+  it('rejects when a what-if has malformed assumptions', () => {
+    const ws = makeWorkspace()
+    const baseline = ws.baseline
+    ws.whatIfs = [{
+      id: 'wi-1',
+      label: 'wi',
+      profile: baseline.profile,
+      assumptions: { ...JSON.parse(JSON.stringify(baseline.assumptions)), inflationRate: 99 },
+      createdAt: new Date(0).toISOString(),
+      origin: 'manual',
+      derivedFromBaselineId: baseline.id,
+      derivedFromBaselineSnapshot: JSON.parse(JSON.stringify(baseline)),
+    }]
+    expect(validateWorkspace(ws)).toBeNull()
+  })
+
+  it('rejects when a what-if snapshot is malformed', () => {
+    const ws = makeWorkspace()
+    const baseline = ws.baseline
+    const snapshot = JSON.parse(JSON.stringify(baseline)) as Record<string, unknown>
+    snapshot.origin = 'bogus'
+    ws.whatIfs = [{
+      id: 'wi-1',
+      label: 'wi',
+      profile: baseline.profile,
+      assumptions: JSON.parse(JSON.stringify(baseline.assumptions)),
+      createdAt: new Date(0).toISOString(),
+      origin: 'manual',
+      derivedFromBaselineId: baseline.id,
+      derivedFromBaselineSnapshot: snapshot as unknown as WhatIfScenario['derivedFromBaselineSnapshot'],
+    }]
+    expect(validateWorkspace(ws)).toBeNull()
+  })
+
+  it('accepts a workspace with a valid what-if + snapshot', () => {
+    const ws = makeWorkspace()
+    const baseline = ws.baseline
+    ws.whatIfs = [{
+      id: 'wi-1',
+      label: 'wi',
+      profile: baseline.profile,
+      assumptions: JSON.parse(JSON.stringify(baseline.assumptions)),
+      createdAt: new Date(0).toISOString(),
+      origin: 'manual',
+      derivedFromBaselineId: baseline.id,
+      derivedFromBaselineSnapshot: JSON.parse(JSON.stringify(baseline)),
+    }]
+    // Round-trip through buildWorkspaceJson (the realistic share-URL/local payload path).
+    const json = buildWorkspaceJson(ws)
+    const reparsed = JSON.parse(json) as Workspace
+    expect(validateWorkspace(reparsed)).not.toBeNull()
+  })
+})
+
+describe('validateTransferEvent — both source and target must exist', () => {
+  function makeWorkspaceWithTwoInstances() {
+    return migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      {
+        ...defaultAssumptions,
+        bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 200 },
+      } as unknown as Record<string, unknown>,
+    )
+  }
+
+  it('rejects a transfer event with a missing sourceInstanceId', () => {
+    const ws = makeWorkspaceWithTwoInstances()
+    const etfInst = ws.baseline.assumptions.etf[0] as unknown as Record<string, unknown>
+    etfInst.transferEvents = [
+      {
+        type: 'certified',
+        year: 2030,
+        sourceInstanceId: 'no-such-source',
+        targetInstanceId: ws.baseline.assumptions.etf[0].instanceId,
+        amountEUR: 1000,
+      },
+    ]
+    expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).toBeNull()
+  })
+
+  it('rejects a transfer event with a missing targetInstanceId (existing behaviour, kept)', () => {
+    const ws = makeWorkspaceWithTwoInstances()
+    const etfInst = ws.baseline.assumptions.etf[0] as unknown as Record<string, unknown>
+    etfInst.transferEvents = [
+      {
+        type: 'certified',
+        year: 2030,
+        sourceInstanceId: ws.baseline.assumptions.etf[0].instanceId,
+        targetInstanceId: 'no-such-target',
+        amountEUR: 1000,
+      },
+    ]
+    expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).toBeNull()
+  })
+
+  it('accepts a transfer event whose source and target both exist', () => {
+    const ws = makeWorkspaceWithTwoInstances()
+    const bavInst = ws.baseline.assumptions.bav[0]
+    const etfInst = ws.baseline.assumptions.etf[0] as unknown as Record<string, unknown>
+    etfInst.transferEvents = [
+      {
+        type: 'surrender_reinvest',
+        year: 2035,
+        sourceInstanceId: bavInst.instanceId,
+        targetInstanceId: ws.baseline.assumptions.etf[0].instanceId,
+        amountEUR: 5000,
+        surrenderHaircutPct: 0.02,
+      },
+    ]
+    expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).not.toBeNull()
   })
 })

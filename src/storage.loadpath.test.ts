@@ -338,6 +338,137 @@ describe('D — malformed share-URL v2 workspace returns null (not defaults)', (
 })
 
 // ---------------------------------------------------------------------------
+// D2. What-if snapshot deep validation (issue 08 contract gap follow-up)
+// ---------------------------------------------------------------------------
+//
+// `parseWorkspaceJson` runs `validateWorkspace` BEFORE `backfillWorkspaceTransferEvents`
+// because the backfill walks every what-if and its `derivedFromBaselineSnapshot`.
+// These tests pin the contract: a malformed what-if or snapshot must cause
+// parseWorkspaceJson to return null, never throw or silently survive.
+// ---------------------------------------------------------------------------
+
+describe('D2 — what-if validation runs before transfer-event backfill', () => {
+  /** Build a structurally valid what-if scenario derived from the baseline. */
+  function makeValidWhatIf(baseline: Workspace['baseline']): Workspace['whatIfs'][number] {
+    return {
+      id: 'what-if-test',
+      label: 'Was-wäre-wenn',
+      profile: baseline.profile,
+      assumptions: JSON.parse(JSON.stringify(baseline.assumptions)),
+      createdAt: new Date(0).toISOString(),
+      origin: 'manual',
+      derivedFromBaselineId: baseline.id,
+      derivedFromBaselineSnapshot: JSON.parse(JSON.stringify(baseline)),
+    }
+  }
+
+  it('returns null when a what-if has a malformed product instance (invalid status enum)', () => {
+    const ws = makeValidV2Workspace()
+    const wi = makeValidWhatIf(ws.baseline)
+    // Add a bav instance with an invalid status enum.
+    wi.assumptions.bav = [
+      ...wi.assumptions.bav,
+      {
+        instanceId: 'bav-bad',
+        label: 'bAV',
+        status: 'not-a-real-status' as never, // invalid enum
+        contractStartYear: 2020,
+        evidenceMap: {},
+        ...defaultAssumptions.bav,
+      },
+    ]
+    ws.whatIfs = [wi]
+    const json = buildWorkspaceJson(ws)
+    expect(parseWorkspaceJson(json)).toBeNull()
+  })
+
+  it('returns null when a what-if has a malformed assumptions field (out-of-range inflationRate)', () => {
+    const ws = makeValidV2Workspace()
+    const wi = makeValidWhatIf(ws.baseline)
+    wi.assumptions.inflationRate = 0.99 // far out of [-0.10, 0.20]
+    ws.whatIfs = [wi]
+    const json = buildWorkspaceJson(ws)
+    expect(parseWorkspaceJson(json)).toBeNull()
+  })
+
+  it('returns null when a derivedFromBaselineSnapshot is malformed (invalid origin)', () => {
+    const ws = makeValidV2Workspace()
+    const wi = makeValidWhatIf(ws.baseline)
+    // Poison the snapshot with an invalid origin enum.
+    ;(wi.derivedFromBaselineSnapshot as unknown as Record<string, unknown>).origin = 'not-a-valid-origin'
+    ws.whatIfs = [wi]
+    const json = buildWorkspaceJson(ws)
+    expect(parseWorkspaceJson(json)).toBeNull()
+  })
+
+  it('returns null when a derivedFromBaselineSnapshot has malformed nested assumptions', () => {
+    const ws = makeValidV2Workspace()
+    const wi = makeValidWhatIf(ws.baseline)
+    // Poison the snapshot's assumptions so a deep walk during backfill would crash.
+    wi.derivedFromBaselineSnapshot.assumptions.retirementEndAge = 999 as number
+    ws.whatIfs = [wi]
+    const json = buildWorkspaceJson(ws)
+    expect(parseWorkspaceJson(json)).toBeNull()
+  })
+
+  it('returns null when derivedFromBaselineSnapshot is missing entirely', () => {
+    const ws = makeValidV2Workspace()
+    const wi = makeValidWhatIf(ws.baseline)
+    delete (wi as unknown as Record<string, unknown>).derivedFromBaselineSnapshot
+    ws.whatIfs = [wi]
+    const json = buildWorkspaceJson(ws)
+    expect(parseWorkspaceJson(json)).toBeNull()
+  })
+
+  it('returns null when derivedFromBaselineId is missing', () => {
+    const ws = makeValidV2Workspace()
+    const wi = makeValidWhatIf(ws.baseline)
+    delete (wi as unknown as Record<string, unknown>).derivedFromBaselineId
+    ws.whatIfs = [wi]
+    const json = buildWorkspaceJson(ws)
+    expect(parseWorkspaceJson(json)).toBeNull()
+  })
+
+  it('accepts a workspace with a valid what-if + snapshot', () => {
+    const ws = makeValidV2Workspace()
+    const wi = makeValidWhatIf(ws.baseline)
+    ws.whatIfs = [wi]
+    const json = buildWorkspaceJson(ws)
+    const result = parseWorkspaceJson(json)
+    expect(result).not.toBeNull()
+    expect(result!.whatIfs.length).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// D3. Transfer source/target instance validation (both sides required)
+// ---------------------------------------------------------------------------
+
+describe('D3 — transfer events require both source and target instances to exist', () => {
+  it('parseWorkspaceJson returns null for a transfer with a missing sourceInstanceId', () => {
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      {
+        ...defaultAssumptions,
+        bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 200 },
+      } as unknown as Record<string, unknown>,
+    )
+    const etfInst = ws.baseline.assumptions.etf[0] as unknown as Record<string, unknown>
+    // Inject a transfer event with an existing target but a fabricated source.
+    etfInst.transferEvents = [
+      {
+        type: 'certified',
+        year: 2030,
+        sourceInstanceId: 'no-such-source-instance',
+        targetInstanceId: ws.baseline.assumptions.etf[0].instanceId,
+        amountEUR: 5000,
+      },
+    ]
+    const json = buildWorkspaceJson(ws)
+    expect(parseWorkspaceJson(json)).toBeNull()
+  })
+})
+// ---------------------------------------------------------------------------
 // E. Legacy v1 migration path
 // ---------------------------------------------------------------------------
 

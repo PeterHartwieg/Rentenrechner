@@ -25,9 +25,6 @@
  *   - `'confirmed'` — user confirmed (or statement) without modifying.
  *   - `'model'`     — model estimate, not yet reviewed.
  *   - `'default'`   — system default, no evidence at all.
- *
- * NEEDS HUMAN REVIEW — the German export labels in `formatEvidenceStateForExport`
- * are proposed copy; see issue 13 final report for before/after wording.
  */
 
 import type { EvidenceState } from '../../domain/instances'
@@ -76,9 +73,6 @@ export function evidenceStateToProvKind(
  * | `statement`       | `lt. Beleg`   |
  * | `model_estimate`  | `Schätzwert`  |
  * | undefined / null  | `Unbekannt`   |
- *
- * NEEDS HUMAN REVIEW — proposed copy, not yet signed off by a human reviewer.
- * See issue 13 final report for the before/after table.
  */
 export function formatEvidenceStateForExport(
   state: EvidenceState | undefined | null,
