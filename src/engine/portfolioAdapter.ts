@@ -1,42 +1,26 @@
 /**
- * PortfolioAdapter (Group G issue 03 — milestone M1.3 + M1.4).
+ * PortfolioAdapter — thin orchestration layer for combine-mode simulation.
  *
- * Orchestration layer that lets combine-mode iterate over per-product instance
- * arrays without modifying per-product simulators or the registry.
+ * Iterates over per-product instance arrays and drives per-instance simulation
+ * without modifying per-product simulators or the registry. The legacy engine
+ * `ScenarioAssumptions` stays singleton-shaped; per-instance projection adapts
+ * each instance into that shape before simulation, then tags the result with
+ * `instanceId`.
  *
- * Design (Plan §1 A1, A2, A2a):
- *  - The legacy engine `ScenarioAssumptions` (`src/domain/results.ts`) stays
- *    singleton-shaped. Per-product simulators (`src/engine/products/*.ts`)
- *    stay untouched.
- *  - For each per-product instance, this adapter projects the instance into a
- *    singleton-shaped `ScenarioAssumptions`, runs a workspace-level funding
- *    pre-step (cross-instance bAV / Basisrente / Riester cap aggregation),
- *    builds a per-call `SimulationContext` with the instance's funding share
- *    via `BuildContextOverrides`, and calls the relevant per-product simulator
- *    DIRECTLY (NOT `simulateRetirementComparison`, which would loop the entire
- *    `PRODUCT_REGISTRY` × `returnScenarios` for every instance).
- *  - `ProductResult` entries get tagged with `instanceId` after the simulator
- *    returns (Decision B). Existing oracle-golden snapshots stay byte-identical
- *    because the projection of a length-1 array reproduces the legacy singleton
- *    1:1.
+ * Focused sub-modules handle the heavy lifting:
+ *  - `portfolioProjection.ts` — neutralised defaults, slot detection, key
+ *    stripping, paid-up overrides, `projectInstanceToScenarioAssumptions`,
+ *    and `singletonViewOfWorkspace`.
+ *  - `portfolioFunding.ts` — paid-up funding helpers, cross-instance bAV /
+ *    Basisrente / AVD / Riester cap aggregation, `buildPortfolioFunding`.
+ *  - `portfolioTransfer.ts` — transfer event collection, calendar-year to
+ *    contract-year conversion, surrender-tax computation,
+ *    `buildInstanceCapitalPolicy`.
+ *  - `portfolioAllowance.ts` — §20 Abs. 9 EStG demand calculation, per-year
+ *    apportionment, ETF re-run orchestration.
  *
- * What this module is NOT:
- *  - It does not aggregate per-instance retirement-tax + KV/PV (issue 08
- *    `portfolioCombine`).
- *  - It does not handle `transferEvents` engine support (issue 15).
- *  - It does not implement compare-mode equal-input sub-mode (issue 16).
- *
- * Projection helpers (neutralised defaults, slot detection, key stripping,
- * paid-up overrides, projectInstanceToScenarioAssumptions, singletonViewOfWorkspace)
- * live in `portfolioProjection.ts` (architecture-readability issue 03).
- *
- * Funding apportionment (paid-up funding helpers, cross-instance bAV /
- * Basisrente / AVD / Riester cap aggregation, buildPortfolioFunding) lives in
- * `portfolioFunding.ts` (architecture-readability issue 05).
- *
- * Sparerpauschbetrag allocation (demand calculation, per-year apportionment,
- * ETF re-run orchestration) lives in `portfolioAllowance.ts` (architecture-
- * readability issue 06).
+ * Per-instance retirement-tax + KV/PV aggregation lives in
+ * `portfolioCombine.ts`, which consumes the `perInstance` map produced here.
  */
 
 import type {
@@ -44,12 +28,7 @@ import type {
   ProductResult,
   ReturnScenario,
 } from '../domain'
-import type { PortfolioFunding, Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
-import type {
-  BavInstance,
-  InsuranceInstance,
-  TransferEvent,
-} from '../domain/instances'
+import type { PortfolioFunding, Workspace } from '../domain/workspace'
 import { buildContext, type BuildContextOverrides } from './simulationContext'
 import {
   buildInstanceCapitalPolicy,
@@ -93,16 +72,9 @@ export {
   type AnyInstance,
 }
 
-// ---------------------------------------------------------------------------
-// Issue 15 — TransferEvents → instanceCapitalPolicy
-// ---------------------------------------------------------------------------
-//
 // Transfer event collection, surrender-tax computation, and instance
-// capital-policy construction live in `portfolioTransfer.ts` (issue 04).
-// They are imported at the top of this file and used in `simulatePortfolio`
-// below. The public `buildInstanceCapitalPolicy` entry point is re-exported
-// from this module for back-compat with callers that imported it here before
-// the split.
+// capital-policy construction live in `portfolioTransfer.ts`.
+// Re-exported here for back-compat with callers that imported from this module.
 export { buildInstanceCapitalPolicy } from './portfolioTransfer'
 
 // ---------------------------------------------------------------------------
@@ -149,7 +121,7 @@ export function simulatePortfolio(
       ? { bavFundingOverride: bavFundingAnchor, ...overrides }
       : overrides
 
-  // Issue 15 — collect all transfer events once so per-instance lookup is O(1).
+  // Collect all transfer events once so per-instance lookup is O(1).
   const { outboundBy, inboundBy } = collectTransferEvents(wsa)
 
   const runFor = <T extends AnyInstance>(
@@ -160,11 +132,10 @@ export function simulatePortfolio(
     for (const inst of instances) {
       if (inst.status === 'surrendered' || inst.status === 'offered') continue
       const projectedRaw = projectInstanceToScenarioAssumptions(inst, wsa)
-      // Phase G M4 F1 — paid-up: switch the active product slot to phase-2 fees
-      // (no acquisition / contribution / fixed-admin fees; wrapper / fund /
-      // pension-payout fees continue). ETF has no `fees` field; the simulator
-      // ignores paid-up status (no contributions are honored anyway and ETF
-      // paid_up is conceptually a no-op — the user just stops contributing).
+      // Paid-up: switch the active product slot to phase-2 fees (no acquisition /
+      // contribution / fixed-admin fees; wrapper / fund / pension-payout fees
+      // continue). ETF has no `fees` field; the simulator ignores paid-up status
+      // (no contributions are honored anyway; the user just stops contributing).
       const projected = inst.status === 'paid_up'
         ? applyPaidUpOverridesToProjection(projectedRaw, detectProductSlot(inst))
         : projectedRaw
@@ -185,9 +156,8 @@ export function simulatePortfolio(
       )
       for (const scenario of projected.returnScenarios) {
         const r = productSimulate(ctx, scenario)
-        // Decision B — tag with instanceId after the simulator returns so the
-        // simulator code stays untouched. Also attach inputConfidence derived
-        // from the instance's evidenceMap (issue 09).
+        // Tag with instanceId after the simulator returns so the simulator code
+        // stays untouched. Attach inputConfidence from the instance's evidenceMap.
         results.push({ ...r, instanceId: inst.instanceId, inputConfidence })
       }
       perInstance[inst.instanceId] = results
@@ -197,19 +167,19 @@ export function simulatePortfolio(
   runFor(wsa.bav, simulateBav, (inst) => ({
     bavFundingOverride: portfolioFunding.bavByInstanceId[inst.instanceId],
   }))
-  // Combine-mode honors per-instance ETF `monthlyContribution` via the override
-  // (issue 12). Compare-mode (`simulateRetirementComparison`) never sets this
-  // and falls back to `bavFunding.monthlyNetCost` — see ETF simulator + CLAUDE.md.
+  // Combine-mode honors per-instance ETF `monthlyContribution` via the override.
+  // Compare-mode (`simulateRetirementComparison`) never sets this and falls back
+  // to `bavFunding.monthlyNetCost` — see ETF simulator and CLAUDE.md.
   //
-  // Initial pass uses the full per-instance Sparerpauschbetrag. Phase G M4 F3
-  // re-runs the active ETF instances cooperatively below when ≥2 are present so
-  // they share the §20 Abs. 9 EStG allowance per year.
+  // Initial pass uses the full per-instance Sparerpauschbetrag.
+  // `applyCrossInstanceSparerpauschbetrag` below re-runs when ≥2 ETF instances
+  // are present so they share the §20 Abs. 9 EStG allowance per year.
   runFor(wsa.etf, simulateEtf, (inst) => ({
     etfMonthlyUserCostOverride: inst.status === 'paid_up' ? 0 : inst.monthlyContribution,
   }))
-  // Combine-mode honors per-instance insurance `monthlyContribution` via the override
-  // (issue F2). Compare-mode (`simulateRetirementComparison`) never sets this
-  // and falls back to `bavFunding.monthlyNetCost` — see insurance simulator + CLAUDE.md.
+  // Combine-mode honors per-instance insurance `monthlyContribution` via the
+  // override. Compare-mode falls back to `bavFunding.monthlyNetCost` — see
+  // insurance simulator and CLAUDE.md.
   runFor(wsa.insurance, simulateInsurance, (inst) => ({
     insuranceMonthlyUserCostOverride: inst.status === 'paid_up' ? 0 : inst.monthlyContribution,
   }))
@@ -223,22 +193,13 @@ export function simulatePortfolio(
     riesterFundingOverride: portfolioFunding.riesterByInstanceId[inst.instanceId],
   }))
 
-  // Phase G M4 F3 — cross-instance Sparerpauschbetrag.
-  //
   // §20 Abs. 9 EStG grants ONE saver allowance per taxpayer per year (€1 000
-  // single / €2 000 joint), not one per account. The initial ETF pass above
-  // ran each instance with the full allowance; with ≥2 active ETF instances
-  // that over-credits the allowance. We re-run the ETF instances with a
-  // shared per-year schedule that allocates the allowance proportionally to
-  // each instance's per-year demand from the initial pass.
-  //
-  // Compare-mode (`simulateRetirementComparison`) never reaches here; length-1
-  // workspaces skip the re-run because the cooperative schedule equals the
-  // full allowance every year (byte-identical oracle goldens).
+  // single / €2 000 joint), not one per account. Re-run ETF instances with a
+  // shared per-year schedule when ≥2 are active. Length-1 workspaces skip the
+  // re-run (schedule reduces to the full allowance — byte-identical results).
   applyCrossInstanceSparerpauschbetrag(wsa, perInstance, profile, rules, outboundBy, inboundBy, workspace, buildInstanceCapitalPolicy)
 
   return { perInstance, portfolioFunding }
 }
 
-// Cross-instance Sparerpauschbetrag re-run lives in portfolioAllowance.ts
-// (architecture-readability issue 06).
+// Cross-instance Sparerpauschbetrag re-run lives in portfolioAllowance.ts.

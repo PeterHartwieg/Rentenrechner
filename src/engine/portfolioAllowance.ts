@@ -26,7 +26,7 @@
  *
  * Projection helpers live in `portfolioProjection.ts`.
  * Funding apportionment lives in `portfolioFunding.ts`.
- * Transfer/capital policy lives in `portfolioAdapter.ts` (issue 04).
+ * Transfer/capital policy lives in `portfolioTransfer.ts`.
  */
 
 import type {

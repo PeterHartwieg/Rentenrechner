@@ -51,7 +51,7 @@ export type AnyInstance =
   | RiesterInstance
 
 // ---------------------------------------------------------------------------
-// detectProductSlot (re-exported for callers in portfolioAdapter)
+// detectProductSlot (used internally for surrender-tax routing)
 // ---------------------------------------------------------------------------
 
 type ProductSlot = 'bav' | 'etf' | 'insurance' | 'basisrente' | 'altersvorsorgedepot' | 'riester'
