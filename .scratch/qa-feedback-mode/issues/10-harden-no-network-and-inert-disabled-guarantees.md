@@ -1,6 +1,6 @@
 # Harden no-network and inert-disabled guarantees
 
-Status: needs-triage
+Status: done
 Type: AFK
 
 ## Parent
