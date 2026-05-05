@@ -2,11 +2,16 @@
  * Pure helper functions for the InventoryWizard — separated from the React
  * component files to satisfy the react-refresh/only-export-components rule.
  *
+ * ID generation (`newInstanceId`) and pure workspace mutations
+ * (`addInstanceToWorkspace`, `removeInstanceFromWorkspace`) live in
+ * `workspaceIdentity.ts` and are re-exported from here for backward compat.
+ * This breaks the former circular dependency with `portfolioState.ts`.
+ *
  * Consumers:
- *  - InventoryWizard.tsx (buildWorkspaceFromDraft, addInstanceDraft, removeInstanceDraft)
+ *  - InventoryWizard.tsx (buildWorkspaceFromDraft)
  *  - InstanceCard.tsx (estimateEpFromYears)
- *  - InventoryWizard.test.ts (both)
- *  - portfolioState addInstance/removeInstance (uses domain types)
+ *  - InventoryWizard.test.ts
+ *  - portfolioState.ts (addInstanceToWorkspace, removeInstanceFromWorkspace — via workspaceIdentity)
  */
 
 import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../../domain/workspace'
@@ -20,7 +25,14 @@ import type {
 } from '../../domain/instances'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { defaultWorkspace } from '../../storage'
-import { newScenarioId } from '../../app/portfolioState'
+import {
+  newScenarioId,
+  newInstanceId,
+  addInstanceToWorkspace,
+  removeInstanceFromWorkspace,
+} from '../../app/workspaceIdentity'
+// Re-export so existing callers (contractDecisions, tests, portfolioState) keep working.
+export { newInstanceId, addInstanceToWorkspace, removeInstanceFromWorkspace }
 import type {
   GrvDraft,
   BavDraft,
@@ -59,7 +71,7 @@ export function estimateEpFromYears(years: number, grossSalaryYear: number): num
 
 export function bavDraftToInstance(d: BavDraft): BavInstance {
   return {
-    instanceId: `bav-${Math.random().toString(36).slice(2, 10)}`,
+    instanceId: newInstanceId('bav'),
     label: d.anbieter ? `bAV – ${d.anbieter}` : 'bAV',
     anbieter: d.anbieter,
     status: d.status,
@@ -137,7 +149,7 @@ export function bavOfferDraftToInstance(d: BavOfferDraft): BavInstance {
 
 export function pavDraftToInstance(d: PavDraft): InsuranceInstance {
   return {
-    instanceId: `versicherung-${Math.random().toString(36).slice(2, 10)}`,
+    instanceId: newInstanceId('versicherung'),
     label: d.anbieter ? `pAV – ${d.anbieter}` : 'Private Rentenversicherung',
     anbieter: d.anbieter,
     status: d.status,
@@ -167,7 +179,7 @@ export function pavDraftToInstance(d: PavDraft): InsuranceInstance {
 
 export function riesterDraftToInstance(d: RiesterDraft): RiesterInstance {
   return {
-    instanceId: `riester-${Math.random().toString(36).slice(2, 10)}`,
+    instanceId: newInstanceId('riester'),
     label: d.anbieter ? `Riester – ${d.anbieter}` : 'Riester-Rente',
     anbieter: d.anbieter,
     status: d.status,
@@ -195,7 +207,7 @@ export function riesterDraftToInstance(d: RiesterDraft): RiesterInstance {
 
 export function basisrenteDraftToInstance(d: BasisrenteDraft): BasisrenteInstance {
   return {
-    instanceId: `basisrente-${Math.random().toString(36).slice(2, 10)}`,
+    instanceId: newInstanceId('basisrente'),
     label: d.anbieter ? `Basisrente – ${d.anbieter}` : 'Basisrente',
     anbieter: d.anbieter,
     status: d.status,
@@ -219,7 +231,7 @@ export function basisrenteDraftToInstance(d: BasisrenteDraft): BasisrenteInstanc
 
 export function avdDraftToInstance(d: AvdDraft): AltersvorsorgedepotInstance {
   return {
-    instanceId: `altersvorsorgedepot-${Math.random().toString(36).slice(2, 10)}`,
+    instanceId: newInstanceId('altersvorsorgedepot'),
     label: d.anbieter ? `AVD – ${d.anbieter}` : 'Altersvorsorgedepot',
     anbieter: d.anbieter,
     status: d.status,
@@ -249,7 +261,7 @@ export function avdDraftToInstance(d: AvdDraft): AltersvorsorgedepotInstance {
 
 export function etfDraftToInstance(d: EtfDraft): EtfInstance {
   return {
-    instanceId: `etf-${Math.random().toString(36).slice(2, 10)}`,
+    instanceId: newInstanceId('etf'),
     label: d.anbieter ? `ETF – ${d.anbieter}` : 'ETF-Depot',
     anbieter: d.anbieter,
     status: d.status,
@@ -261,195 +273,6 @@ export function etfDraftToInstance(d: EtfDraft): EtfInstance {
     annualAssetFee: d.terPct / 100,
     equityPartialExemption: defaultAssumptions.etf.equityPartialExemption,
     annualContributionGrowthRate: Math.max(0, d.annualContributionGrowthRate ?? 0),
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Build a v2 Workspace from wizard draft state
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Instance-id generation (format: ${productId}-${random8})
-// ---------------------------------------------------------------------------
-
-/**
- * Generate a new stable instance id matching the documented format
- * `${productId}-${random8}` (e.g. `bav-7f2a91c4`).
- *
- * Issue 05 used the same Math.random().toString(36) approach inline in each
- * converter. This helper centralises the pattern so the format is easy to
- * audit and update.
- */
-export function newInstanceId(productId: string): string {
-  return `${productId}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-// ---------------------------------------------------------------------------
-// Pure workspace mutations for addInstance / removeInstance
-// (consumed by portfolioState + wizard draft state)
-// ---------------------------------------------------------------------------
-
-/**
- * Add a new default instance of the given product type to the baseline
- * assumptions of the supplied workspace. Returns a new workspace without
- * mutating the original.
- *
- * productId must be one of the per-product instance array keys on
- * WorkspaceAssumptionsV2. GRV stays singleton and is not in scope.
- *
- * The new instance is built from the same defaults as the wizard's first
- * instance, with a disambiguating label suffix "#N" where N is the count
- * after adding.
- */
-export function addInstanceToWorkspace(
-  workspace: Workspace,
-  productId: 'bav' | 'versicherung' | 'riester' | 'basisrente' | 'altersvorsorgedepot' | 'etf',
-): Workspace {
-  const wsa = workspace.baseline.assumptions
-  const CURRENT_YEAR = new Date().getFullYear()
-
-  let updated: WorkspaceAssumptionsV2
-
-  switch (productId) {
-    case 'bav': {
-      const n = wsa.bav.length + 1
-      const newInst = bavDraftToInstance({
-        productId: 'bav',
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        monthlyContribution: 200,
-        anbieter: undefined,
-        durchfuehrungsweg: 'direktversicherung_3_63',
-        effektivkostenPct: 0.8, // default to typical all-in cost
-        rentenfaktor: 30,
-        payoutMode: 'leibrente',
-      })
-      updated = { ...wsa, bav: [...wsa.bav, { ...newInst, label: `bAV #${n}`, instanceId: newInstanceId('bav') }] }
-      break
-    }
-    case 'versicherung': {
-      const n = wsa.insurance.length + 1
-      const newInst = pavDraftToInstance({
-        productId: 'versicherung',
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        monthlyContribution: 100,
-        anbieter: undefined,
-        effektivkostenPct: 0.8, // default to typical all-in cost
-        rentenfaktor: 28,
-        payoutMode: 'leibrente',
-      })
-      updated = { ...wsa, insurance: [...wsa.insurance, { ...newInst, label: `pAV #${n}`, instanceId: newInstanceId('versicherung') }] }
-      break
-    }
-    case 'riester': {
-      const n = wsa.riester.length + 1
-      const newInst = riesterDraftToInstance({
-        productId: 'riester',
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        monthlyContribution: 100,
-        anbieter: undefined,
-        payoutMode: 'leibrente',
-        zulageStatus: '',
-      })
-      updated = { ...wsa, riester: [...wsa.riester, { ...newInst, label: `Riester #${n}`, instanceId: newInstanceId('riester') }] }
-      break
-    }
-    case 'basisrente': {
-      const n = wsa.basisrente.length + 1
-      const newInst = basisrenteDraftToInstance({
-        productId: 'basisrente',
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        monthlyContribution: 200,
-        anbieter: undefined,
-        effektivkostenPct: 0.8, // default to typical all-in cost
-        rentenfaktor: 28,
-      })
-      updated = { ...wsa, basisrente: [...wsa.basisrente, { ...newInst, label: `Basisrente #${n}`, instanceId: newInstanceId('basisrente') }] }
-      break
-    }
-    case 'altersvorsorgedepot': {
-      const n = wsa.altersvorsorgedepot.length + 1
-      const newInst = avdDraftToInstance({
-        productId: 'altersvorsorgedepot',
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        monthlyContribution: 200,
-        anbieter: undefined,
-        subtype: 'standarddepot',
-        useGlidepath: true,
-      })
-      updated = { ...wsa, altersvorsorgedepot: [...wsa.altersvorsorgedepot, { ...newInst, label: `AVD #${n}`, instanceId: newInstanceId('altersvorsorgedepot') }] }
-      break
-    }
-    case 'etf': {
-      const n = wsa.etf.length + 1
-      const newInst = etfDraftToInstance({
-        productId: 'etf',
-        status: 'active',
-        contractStartYear: CURRENT_YEAR,
-        currentValueEUR: 0,
-        monthlyContribution: 200,
-        anbieter: undefined,
-        terPct: 0.2,
-      })
-      updated = { ...wsa, etf: [...wsa.etf, { ...newInst, label: `ETF #${n}`, instanceId: newInstanceId('etf') }] }
-      break
-    }
-  }
-
-  return {
-    ...workspace,
-    baseline: { ...workspace.baseline, assumptions: updated },
-  }
-}
-
-/**
- * Remove an instance from the baseline by productId + instanceId. Returns a
- * new workspace without mutating the original. A no-op if the id is not found.
- *
- * Pinned comparison ids that referenced the removed instance are cleaned up.
- */
-export function removeInstanceFromWorkspace(
-  workspace: Workspace,
-  productId: 'bav' | 'versicherung' | 'riester' | 'basisrente' | 'altersvorsorgedepot' | 'etf',
-  instanceId: string,
-): Workspace {
-  const wsa = workspace.baseline.assumptions
-  let updated: WorkspaceAssumptionsV2
-
-  switch (productId) {
-    case 'bav':
-      updated = { ...wsa, bav: wsa.bav.filter((i: BavInstance) => i.instanceId !== instanceId) }
-      break
-    case 'versicherung':
-      updated = { ...wsa, insurance: wsa.insurance.filter((i: InsuranceInstance) => i.instanceId !== instanceId) }
-      break
-    case 'riester':
-      updated = { ...wsa, riester: wsa.riester.filter((i: RiesterInstance) => i.instanceId !== instanceId) }
-      break
-    case 'basisrente':
-      updated = { ...wsa, basisrente: wsa.basisrente.filter((i: BasisrenteInstance) => i.instanceId !== instanceId) }
-      break
-    case 'altersvorsorgedepot':
-      updated = { ...wsa, altersvorsorgedepot: wsa.altersvorsorgedepot.filter((i: AltersvorsorgedepotInstance) => i.instanceId !== instanceId) }
-      break
-    case 'etf':
-      updated = { ...wsa, etf: wsa.etf.filter((i: EtfInstance) => i.instanceId !== instanceId) }
-      break
-  }
-
-  return {
-    ...workspace,
-    baseline: { ...workspace.baseline, assumptions: updated },
-    pinnedComparisonIds: workspace.pinnedComparisonIds.filter((id) => id !== instanceId),
   }
 }
 
