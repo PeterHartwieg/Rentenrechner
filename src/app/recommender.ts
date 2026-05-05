@@ -1,12 +1,12 @@
 /**
- * Next-€X recommender (Group G issue 12, milestone M3.2).
+ * Next-€X recommender orchestrator (architecture-readability issue 11).
  *
  * Pure module — no React imports, no DOM access.
  *
  * Given a baseline workspace + a marginal monthly NET out-of-pocket budget,
- * generates 3-4 ranked candidate allocations with trade-off labels.
+ * generates ranked candidate allocations with trade-off labels.
  *
- * Math contract (from the issue spec):
+ * Math contract:
  *   The user's `marginalMonthlyEUR` is the additional after-tax cash they are
  *   willing to commit each month. Each candidate is sized so the user's net
  *   cash outflow equals `marginalMonthlyEUR`:
@@ -47,18 +47,21 @@
  *   back-compat (still used by the UI's "Endkapital" sort key); P10 is
  *   exposed via `riskScoreP10` and is the primary worst-case figure shown.
  *
- * Out of scope:
- *   - Vintage-detection rules (issue 13, already on main).
- *   - Three-card per-contract template (issue 14).
- *   - Trigger-specific candidate biasing (P2).
+ * Module structure:
+ *   Per-product candidate generation lives in `recommenderCandidates/`:
+ *     - `etf.ts`               makeEtfCandidate
+ *     - `bav.ts`               makeBavCandidate
+ *     - `basisrente.ts`        makeBasisrenteCandidate
+ *     - `altersvorsorgedepot.ts` makeAvdCandidate
+ *     - `insurance.ts`         makeInsuranceCandidate
+ *     - `riester.ts`           makeRiesterTopUpCandidate
+ *     - `index.ts`             CANDIDATE_GENERATORS registry
+ *   This file is the thin orchestrator: build context → call registry →
+ *   score / rank candidates → materialise what-ifs.
  */
 
 import type {
-  BavDurchfuehrungsweg,
-  BavFundingResult,
   GermanRules,
-  PayoutMode,
-  PersonalProfile,
   ProductId,
   ProductResult,
 } from '../domain'
@@ -71,28 +74,32 @@ import type {
 } from '../domain/instances'
 import { combinePortfolio, type CombinedResult } from '../engine/portfolioCombine'
 import { buildCombineContext, type CombineContext } from '../engine/combineContext'
-import { calculateBavFunding, calculateSalaryResult } from '../engine/salary'
-import { calculateBasisrenteFunding, solveBasisrenteGrossFromNet } from '../engine/basisrente'
-import { calculateRiesterFunding, solveRiesterOwnFromNet } from '../engine/riester'
-import { computeGrossMonthlyPayout, monthlyPayoutFromCapital } from '../engine/payoutMath'
-import { afterTaxInvestmentCapital } from '../engine/etfPayout'
+import { runRules, type Atom } from './recommendations'
+import { SeededNormal, generateMarketReturnPath } from '../engine/monteCarlo'
 import {
   forkBaselineScenario,
   deepCloneScenario,
   newScenarioId,
 } from './portfolioState'
-import {
-  newInstanceId,
-} from '../features/inventory/inventoryHelpers'
+import { newInstanceId } from '../features/inventory/inventoryHelpers'
 import { defaultAssumptions } from '../data/defaultScenario'
-import { runRules, type Atom, computeKinderzulagen } from './recommendations'
-import { SeededNormal, generateMarketReturnPath } from '../engine/monteCarlo'
 import {
-  afterTaxInsuranceLumpSum,
-  computeRuntimeYearsAtRetirement,
-  deriveInsuranceTaxMode,
-} from '../engine/insurancePayout'
-import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from '../engine/bavPayout'
+  CANDIDATE_GENERATORS,
+  basisInstanceResults,
+  type CandidateDraft,
+  type GeneratorContext,
+  type BasisScenarioInfo,
+  type BavEmployerOfferInput,
+  type ResolvedBavOffer,
+  MAX_LIFETIME_YEARS,
+  MC_PATHS,
+  MAX_CANDIDATES,
+  monthlyEmployerContributionForOffer,
+} from './recommenderCandidates'
+
+// Re-export for consumers that import BavEmployerOfferInput / ResolvedBavOffer
+// from this module directly (back-compat with the pre-refactor surface).
+export type { BavEmployerOfferInput, ResolvedBavOffer }
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -115,34 +122,6 @@ export const RECOMMENDER_RANKING_LABELS: Record<RecommenderRankingCriterion, str
   safety: 'Sicherheit',
   flexibility: 'Flexibilität',
   low_effort: 'wenig Aufwand',
-}
-
-export interface BavEmployerOfferInput {
-  /** True when the user entered actual employer-offer data in the modal. */
-  hasOffer: boolean
-  /** Decimal, e.g. 0.15 = 15 %. Percent and fixed contribution are additive. */
-  employerMatchPercent: number
-  /** Fixed employer contribution in EUR/month, additive with percent. */
-  fixedMonthlyEUR: number
-  /** Optional cap on total employer contribution in EUR/month. Undefined/0 = no offer cap. */
-  monthlyCapEUR?: number
-  /** Total effective accumulation costs, decimal p.a.; 0.012 = 1.2 %. */
-  effectiveCostAnnual: number
-  durchfuehrungsweg?: BavDurchfuehrungsweg
-  payoutMode?: PayoutMode
-  rentenfaktor?: number
-}
-
-export interface ResolvedBavOffer {
-  hasOffer: boolean
-  standardAssumption: boolean
-  employerMatchPercent: number
-  fixedMonthlyEUR: number
-  monthlyCapEUR?: number
-  effectiveCostAnnual: number
-  durchfuehrungsweg: BavDurchfuehrungsweg
-  payoutMode: PayoutMode
-  rentenfaktor: number
 }
 
 export interface FlexibilityDetails {
@@ -246,33 +225,6 @@ export interface RecommendedCandidate {
 // Constants
 // ---------------------------------------------------------------------------
 
-/**
- * Lifetime longevity assumption for `lifetimeCash` — uses the workspace's
- * `retirementEndAge` minus retirementAge. Capped at 35 years for sanity.
- */
-const MAX_LIFETIME_YEARS = 35
-
-/**
- * Maximum number of candidates returned to the UI. Group-G QA decision
- * (issue 66) extends the recommender beyond the original 3-4 cards: bAV +
- * insurance + ETF + Basisrente + AVD + Riester are now all candidate-class
- * primitives and the modal must show every product class with a present
- * offer / instance side-by-side. We cap the slice at the number of product
- * generators so dropping a candidate is always due to it returning null
- * (e.g. no eligible instance, no remaining cap), never silent ranking
- * elimination.
- */
-const MAX_CANDIDATES = 6
-
-/**
- * Number of Monte Carlo paths run per candidate to compute `riskScoreP10`.
- * 200 keeps the total recommender cost (4 candidates × 200 paths × ~30 yr
- * each = 24k cheap FV iterations) under the 500 ms budget on the dashboard
- * render; the loop is plain arithmetic, no engine reentrancy. If profiling
- * regresses, drop to 100 here and revisit.
- */
-const MC_PATHS = 200
-
 const FLEXIBILITY_BY_PRODUCT: Record<ProductId, FlexibilityDetails> = {
   etf: {
     overall: 'high',
@@ -336,6 +288,22 @@ const FLEX_RANK: Record<FlexibilityScore, number> = {
   low: 1,
 }
 
+const DEFAULT_BAV_RECOMMENDER_OFFER: ResolvedBavOffer = {
+  hasOffer: false,
+  standardAssumption: true,
+  employerMatchPercent: 0.15,
+  fixedMonthlyEUR: 0,
+  monthlyCapEUR: undefined,
+  effectiveCostAnnual: 0.012,
+  durchfuehrungsweg: 'direktversicherung_3_63',
+  payoutMode: 'leibrente',
+  rentenfaktor: 30,
+}
+
+// ---------------------------------------------------------------------------
+// Orchestration helpers
+// ---------------------------------------------------------------------------
+
 /**
  * Issue 51: context-aware flexibility adjustment. Starting from the per-
  * product baseline (`FLEXIBILITY_BY_PRODUCT`) we lower individual sub-criteria
@@ -386,130 +354,9 @@ function lowerCriterion(c: FlexibilityCriterionScore): FlexibilityCriterionScore
   return 'hard'
 }
 
-const DEFAULT_BAV_RECOMMENDER_OFFER: ResolvedBavOffer = {
-  hasOffer: false,
-  standardAssumption: true,
-  employerMatchPercent: 0.15,
-  fixedMonthlyEUR: 0,
-  monthlyCapEUR: undefined,
-  effectiveCostAnnual: 0.012,
-  durchfuehrungsweg: 'direktversicherung_3_63',
-  payoutMode: 'leibrente',
-  rentenfaktor: 30,
-}
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Compound monthly contribution with simple geometric accumulation.
- * Future-value of an ordinary annuity at monthly rate r over n months:
- *   FV = c × ((1 + r)^n − 1) / r
- *
- * Deliberately ignores Vorabpauschale (ETF/AVD) and Beitragsdynamik — the
- * recommender uses this only for candidate-ranking estimates; the engine's
- * `projectAccumulation` is the source of truth when the candidate is
- * materialised into a what-if and re-simulated.
- */
-/**
- * 10th-percentile from a sample. Uses linear interpolation on the sorted
- * array — same convention as `monteCarlo.ts`'s `percentileFromSorted`. Inlined
- * here (not imported) so the recommender stays a pure module without pulling
- * the full MC engine surface.
- */
-function p10FromSorted(sorted: readonly number[]): number {
-  if (sorted.length === 0) return 0
-  if (sorted.length === 1) return sorted[0]
-  const index = (sorted.length - 1) * 0.1
-  const lo = Math.floor(index)
-  const hi = Math.ceil(index)
-  if (lo === hi) return sorted[lo]
-  const weight = index - lo
-  return sorted[lo] * (1 - weight) + sorted[hi] * weight
-}
-
-/**
- * Hash a string to a 32-bit unsigned integer. Used to derive a deterministic
- * per-candidate MC seed from the workspace seed + candidate id, so two
- * candidates in the same recommender run draw uncorrelated paths but a repeat
- * call with identical inputs reproduces the ranking exactly.
- */
-function hashStringToU32(s: string): number {
-  let h = 2166136261 >>> 0
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619) >>> 0
-  }
-  return h >>> 0
-}
-
-/**
- * Compute P10 of total nominal capital at retirement for a candidate.
- *
- * Per path:
- *   1. Sample `years` annual gross returns via `generateMarketReturnPath`
- *      (lognormal around `expectedReturn` + `volatility`, identical to the
- *      dashboard MC panel's market path).
- *   2. Subtract the candidate's combined accumulation fee from each year's
- *      return (mirrors the deterministic FV's `netReturn = annualReturn - fees`).
- *   3. Compound month-by-month using the geometric monthly rate of that year.
- *
- * Cost: ~years×12 multiplications per path; for 30 yr × 200 paths × 4
- * candidates ≈ 290k ops — negligible vs. the 500 ms budget.
- */
-function monteCarloP10Capital(
-  monthlyContribution: number,
-  totalFeeDecimal: number,
-  expectedReturn: number,
-  volatility: number,
-  years: number,
-  paths: number,
-  seed: number,
-): number {
-  if (monthlyContribution <= 0 || years <= 0 || paths <= 0) return 0
-  const rng = new SeededNormal(seed)
-  const finals: number[] = new Array(paths)
-  for (let p = 0; p < paths; p++) {
-    const path = generateMarketReturnPath({
-      years,
-      expectedAnnualReturn: expectedReturn,
-      annualVolatility: volatility,
-      rng,
-    })
-    let balance = 0
-    for (let y = 0; y < path.length; y++) {
-      const netAnnual = Math.max(-0.99, path[y] - totalFeeDecimal)
-      const monthlyRate = Math.pow(1 + netAnnual, 1 / 12) - 1
-      // Apply ordinary-annuity FV for the year, compounding existing balance.
-      // balance_{end} = balance_{start} × (1+r)^12 + c × ((1+r)^12 − 1) / r
-      const growth = Math.pow(1 + monthlyRate, 12)
-      balance = balance * growth +
-        (Math.abs(monthlyRate) < 1e-9
-          ? monthlyContribution * 12
-          : monthlyContribution * (growth - 1) / monthlyRate)
-    }
-    finals[p] = balance
-  }
-  finals.sort((a, b) => a - b)
-  return p10FromSorted(finals)
-}
-
-function projectMonthlyContributionFV(
-  monthlyContribution: number,
-  annualReturn: number,
-  years: number,
-): number {
-  if (monthlyContribution <= 0 || years <= 0) return 0
-  const months = Math.round(years * 12)
-  const r = Math.pow(1 + annualReturn, 1 / 12) - 1
-  if (Math.abs(r) < 1e-9) return monthlyContribution * months
-  return monthlyContribution * (Math.pow(1 + r, months) - 1) / r
-}
-
-interface BasisScenarioInfo {
-  scenarioId: string
-  annualReturn: number
+function clampFinite(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min
+  return Math.min(max, Math.max(min, value))
 }
 
 function pickBasisScenario(workspace: Workspace, selectedScenarioId?: string): BasisScenarioInfo {
@@ -549,865 +396,8 @@ function resolveBavOffer(input?: BavEmployerOfferInput): ResolvedBavOffer {
   }
 }
 
-function clampFinite(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min
-  return Math.min(max, Math.max(min, value))
-}
-
-function monthlyEmployerContributionForOffer(
-  monthlyGrossConversion: number,
-  offer: ResolvedBavOffer,
-): number {
-  if (monthlyGrossConversion <= 0) return 0
-  const raw =
-    monthlyGrossConversion * offer.employerMatchPercent +
-    offer.fixedMonthlyEUR
-  return offer.monthlyCapEUR !== undefined ? Math.min(raw, offer.monthlyCapEUR) : raw
-}
-
-function bavOfferFunding(
-  profile: PersonalProfile,
-  rules: GermanRules,
-  bav: BavInstance,
-  offer: ResolvedBavOffer,
-): BavFundingResult {
-  const annualGrossConversion = bav.monthlyGrossConversion * 12
-  const monthlyEmployerContribution = monthlyEmployerContributionForOffer(
-    bav.monthlyGrossConversion,
-    offer,
-  )
-  const annualEmployerContribution = monthlyEmployerContribution * 12
-  const taxFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
-  const svFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.socialSecurityFreePctOfPensionCap
-  const totalBavContributionAnnual = annualGrossConversion + annualEmployerContribution
-  const effectiveTaxFreeConversion = Math.max(
-    0,
-    Math.min(annualGrossConversion, taxFreeLimit - annualEmployerContribution),
-  )
-  const effectiveSvFreeConversion = Math.max(
-    0,
-    Math.min(annualGrossConversion, svFreeLimit - annualEmployerContribution),
-  )
-  const salaryWithoutBav = calculateSalaryResult(profile, rules, 0)
-  const salaryWithBav = calculateSalaryResult(
-    profile,
-    rules,
-    annualGrossConversion,
-    effectiveTaxFreeConversion,
-    effectiveSvFreeConversion,
-  )
-  const annualNetCost = salaryWithoutBav.annualNet - salaryWithBav.annualNet
-  const annualTaxAndSvSavings = annualGrossConversion - annualNetCost
-  const taxFreePortionAnnual = Math.min(totalBavContributionAnnual, taxFreeLimit)
-  const svFreePortionAnnual = Math.min(totalBavContributionAnnual, svFreeLimit)
-  const yearsToRetirement = Math.max(0, profile.retirementAge - profile.age)
-  const rvBbg = rules.socialSecurity.pensionCapYear
-  const lostPensionableBase =
-    Math.min(profile.grossSalaryYear, rvBbg) -
-    Math.min(profile.grossSalaryYear - effectiveSvFreeConversion, rvBbg)
-  const estimatedMonthlyGrvReduction =
-    yearsToRetirement *
-    (lostPensionableBase / rules.socialSecurity.durchschnittsentgelt) *
-    rules.socialSecurity.aktuellerRentenwert
-
-  return {
-    monthlyGrossConversion: bav.monthlyGrossConversion,
-    annualGrossConversion,
-    monthlyNetCost: annualNetCost / 12,
-    annualNetCost,
-    monthlyTaxAndSvSavings: annualTaxAndSvSavings / 12,
-    annualTaxAndSvSavings,
-    monthlyStatutoryEmployerSubsidy: 0,
-    monthlyContractualEmployerContribution: monthlyEmployerContribution,
-    monthlyEmployerContribution,
-    annualEmployerContribution,
-    employerSocialSecuritySavingAnnual: 0,
-    salaryWithoutBav,
-    salaryWithBav,
-    totalBavContributionAnnual,
-    taxFreePortionAnnual,
-    svFreePortionAnnual,
-    taxableOverflowAnnual: Math.max(0, totalBavContributionAnnual - taxFreeLimit),
-    svLiableOverflowAnnual: Math.max(0, totalBavContributionAnnual - svFreeLimit),
-    estimatedMonthlyGrvReduction,
-  }
-}
-
-function fundingForBavCandidate(
-  profile: PersonalProfile,
-  rules: GermanRules,
-  bav: BavInstance,
-  offer?: ResolvedBavOffer,
-): BavFundingResult {
-  if (offer?.hasOffer || offer?.standardAssumption) {
-    return bavOfferFunding(profile, rules, bav, offer)
-  }
-  return calculateBavFunding(profile, rules, bav)
-}
-
-/**
- * Build a per-instance result list by extracting the basis-scenario rows from
- * an existing per-instance bundle. Mirrors `useCombineSimulation`'s scenario
- * selection so the recommender consumes the same shape as the dashboard.
- */
-function basisInstanceResults(
-  perInstance: Record<string, ProductResult[]>,
-  scenarioId: string,
-): ProductResult[] {
-  return Object.values(perInstance)
-    .map((arr) => arr.find((r) => r.scenarioId === scenarioId))
-    .filter((r): r is ProductResult => Boolean(r))
-}
-
-/**
- * Synthesize a minimal ProductResult for a candidate. `combinePortfolio` only
- * reads `productId`, `instanceId`, `grossMonthlyPayout`, `netMonthlyPayout`
- * (ETF), `capitalAtRetirement`, `totalProductContributions`. Other fields are
- * filled with zeros / safe placeholders.
- */
-function synthesizeProductResult(args: {
-  productId: ProductId
-  instanceId: string
-  scenarioId: string
-  scenarioLabel: string
-  annualReturn: number
-  grossMonthlyPayout: number
-  netMonthlyPayoutForEtf?: number
-  capitalAtRetirement: number
-  totalProductContributions: number
-  afterTaxLumpSum: number | null
-  label: string
-}): ProductResult {
-  return {
-    productId: args.productId,
-    label: args.label,
-    scenarioId: args.scenarioId as ProductResult['scenarioId'],
-    scenarioLabel: args.scenarioLabel,
-    annualReturn: args.annualReturn,
-    monthlyUserCost: 0,
-    monthlyProductContribution: 0,
-    monthlyEmployerContribution: 0,
-    totalUserCost: args.totalProductContributions,
-    totalProductContributions: args.totalProductContributions,
-    totalEmployerContributions: 0,
-    totalFees: 0,
-    capitalAtRetirement: args.capitalAtRetirement,
-    realCapitalAtRetirement: args.capitalAtRetirement,
-    afterTaxLumpSum: args.afterTaxLumpSum,
-    grossMonthlyPayout: args.grossMonthlyPayout,
-    netMonthlyPayout: args.netMonthlyPayoutForEtf ?? args.grossMonthlyPayout,
-    taxAndSvSavings: 0,
-    valueMultipleOnUserCost: args.totalProductContributions > 0
-      ? (args.afterTaxLumpSum ?? args.capitalAtRetirement) / args.totalProductContributions
-      : 0,
-    capitalMultipleAnnualized: 1 + args.annualReturn,
-    accumulationRiy: 0,
-    rows: [],
-    etfPayoutRows: [],
-    instanceId: args.instanceId,
-  } as ProductResult
-}
-
 // ---------------------------------------------------------------------------
-// Candidate generators (return un-ranked candidates; ranking happens later)
-// ---------------------------------------------------------------------------
-
-interface GeneratorContext {
-  workspace: Workspace
-  rules: GermanRules
-  marginalMonthlyEUR: number
-  basis: BasisScenarioInfo
-  yearsToRetirement: number
-  baselinePerInstance: Record<string, ProductResult[]>
-  baselineCombined: CombinedResult
-  combineCtx: CombineContext
-  bavOffer: ResolvedBavOffer
-}
-
-interface CandidateDraft {
-  id: string
-  label: string
-  productId: ProductId
-  isNewInstance: boolean
-  targetInstanceId?: string
-  grossMonthlyEUR: number
-  netCashOutEUR: number
-  cappedToRemaining: boolean
-  /** ProductResult representing the candidate's contribution in the basis scenario. */
-  candidateResult: ProductResult
-  /**
-   * Optional helper instance to slot into the cloned workspace for
-   * `combinePortfolio` lookups. When the candidate adds to an EXISTING instance
-   * we reuse that id and append no new instance; when it's a NEW instance we
-   * include the synthesized instance metadata so the combine lookup map
-   * resolves the new instance id.
-   */
-  newInstance?: BavInstance | BasisrenteInstance | AltersvorsorgedepotInstance | RiesterInstance
-  /**
-   * Inputs needed to re-run a stochastic accumulation for this candidate
-   * (used for the P10 risk score). Mirrors the deterministic FV inputs:
-   * the monthly TOTAL contribution that compounds (own + employer / allowance
-   * share) and the combined accumulation fee in decimal form.
-   */
-  mcInputs: {
-    monthlyContribution: number
-    totalFeeDecimal: number
-  }
-  usesStandardAssumptions?: boolean
-  bavOffer?: ResolvedBavOffer
-  monthlyEmployerContributionEUR?: number
-}
-
-// --- ETF candidate ---------------------------------------------------------
-
-function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
-  const wsa = g.workspace.baseline.assumptions
-  const target = wsa.etf.find((e) => e.status !== 'surrendered' && e.status !== 'offered')
-  if (!target) return null
-  const gross = g.marginalMonthlyEUR
-  const annualFee = target.annualAssetFee ?? defaultAssumptions.etf.annualAssetFee
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - annualFee)
-  const capital = projectMonthlyContributionFV(gross, netReturn, g.yearsToRetirement)
-  const totalContributions = gross * 12 * g.yearsToRetirement
-  const payoutYears = Math.max(
-    1,
-    Math.min(MAX_LIFETIME_YEARS, wsa.retirementEndAge - g.workspace.baseline.profile.retirementAge),
-  )
-  const grossPayout = monthlyPayoutFromCapital(capital, netReturn, payoutYears)
-  const partialExemption = wsa.etf[0]?.equityPartialExemption ?? defaultAssumptions.etf.equityPartialExemption
-  const afterTaxLumpSum = afterTaxInvestmentCapital(capital, totalContributions, g.rules, partialExemption, 0)
-  // ETF payout is taxed via Abgeltungsteuer in the per-instance helper using a
-  // FIFO cost-basis schedule (`etfPayoutSchedule`). The recommender's "what
-  // does another €X buy" view does NOT need a year-by-year FIFO schedule for
-  // ranking — we approximate `netMonthlyPayout` as
-  //   grossPayout × (afterTaxLumpSum / capital)
-  // (the post-exit-tax fraction of capital). This holds within ~3 % of the
-  // engine's first-year netMonthlyPayout for typical horizons; combine-mode
-  // production simulation is the source of truth once a candidate is saved as
-  // a what-if (B4 parity test pins the gap on common shapes).
-  const netRatio = capital > 0 ? Math.min(1, afterTaxLumpSum / capital) : 1
-  const netPayout = grossPayout * netRatio
-  const candidateResult = synthesizeProductResult({
-    productId: 'etf',
-    instanceId: target.instanceId,
-    scenarioId: g.basis.scenarioId,
-    scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
-    grossMonthlyPayout: grossPayout,
-    netMonthlyPayoutForEtf: netPayout,
-    capitalAtRetirement: capital,
-    totalProductContributions: totalContributions,
-    afterTaxLumpSum,
-    label: target.label ?? 'ETF-Depot',
-  })
-  return {
-    id: 'add_to_existing_etf',
-    label: `Zusatz auf bestehendes ETF-Depot (${target.label ?? 'ETF'})`,
-    productId: 'etf',
-    isNewInstance: false,
-    targetInstanceId: target.instanceId,
-    grossMonthlyEUR: gross,
-    netCashOutEUR: gross,
-    cappedToRemaining: false,
-    candidateResult,
-    mcInputs: { monthlyContribution: gross, totalFeeDecimal: annualFee },
-  }
-}
-
-// --- bAV candidate ---------------------------------------------------------
-
-function resolveBavOfferFromInstance(target: BavInstance): ResolvedBavOffer {
-  const fees = target.fees ?? defaultAssumptions.bav.fees
-  return {
-    hasOffer: true,
-    standardAssumption: false,
-    employerMatchPercent: clampFinite(target.contractualMatchPercent ?? 0, 0, 5),
-    fixedMonthlyEUR: clampFinite(target.contractualFixedMonthly ?? 0, 0, 100_000),
-    effectiveCostAnnual: clampFinite(
-      (fees.wrapperAssetFee ?? 0) + (fees.fundAssetFee ?? 0),
-      0,
-      0.1,
-    ),
-    durchfuehrungsweg: target.durchfuehrungsweg ?? 'direktversicherung_3_63',
-    payoutMode: target.payoutMode ?? 'leibrente',
-    rentenfaktor: target.rentenfaktor ?? 30,
-  }
-}
-
-function offerForBavTarget(
-  baseTarget: BavInstance,
-  isNewInstance: boolean,
-  modalOffer: ResolvedBavOffer,
-): ResolvedBavOffer | undefined {
-  if (modalOffer.hasOffer) return modalOffer
-  if (isNewInstance) return modalOffer
-  if (baseTarget.status === 'offered') return resolveBavOfferFromInstance(baseTarget)
-  return undefined
-}
-
-function applyBavOfferToTarget(baseTarget: BavInstance, offer?: ResolvedBavOffer): BavInstance {
-  if (!offer) return baseTarget
-  return {
-    ...baseTarget,
-    statutoryMinimumSubsidyEnabled: false,
-    contractualMatchPercent: offer.employerMatchPercent,
-    contractualFixedMonthly: offer.fixedMonthlyEUR,
-    durchfuehrungsweg: offer.durchfuehrungsweg,
-    payoutMode: offer.payoutMode,
-    rentenfaktor: offer.rentenfaktor,
-    fees: {
-      ...baseTarget.fees,
-      wrapperAssetFee: offer.effectiveCostAnnual,
-      fundAssetFee: 0,
-      contributionFee: 0,
-      fixedMonthlyFee: 0,
-      acquisitionCostPct: 0,
-      pensionPayoutFeePct: baseTarget.fees?.pensionPayoutFeePct ?? 0,
-    },
-  }
-}
-
-function makeBavCandidateForTarget(
-  g: GeneratorContext,
-  baseTarget: BavInstance,
-  isNewInstance: boolean,
-): CandidateDraft | null {
-  const wsa = g.workspace.baseline.assumptions
-  const profile = g.workspace.baseline.profile
-  const targetOffer = offerForBavTarget(baseTarget, isNewInstance, g.bavOffer)
-  const target = applyBavOfferToTarget(baseTarget, targetOffer)
-  const activatesOffer = baseTarget.status === 'offered'
-  // Existing aggregate gross conversion across active bAV instances (single-employer
-  // V1 assumption: §3 Nr. 63 + SvEV cap shared across one person's bAV portfolio).
-  const usedMonthly = wsa.bav
-    .filter((b) => b.status === 'active')
-    .reduce((s, b) => s + (b.monthlyGrossConversion ?? 0), 0)
-  const capMonthly = (g.rules.socialSecurity.pensionCapYear * g.rules.bav.taxFreePctOfPensionCap) / 12
-  const remainingCapMonthly = Math.max(0, capMonthly - usedMonthly)
-  if (remainingCapMonthly <= 0) return null
-
-  const neutralEmployerTerms = {
-    contractualMatchPercent: 0,
-    contractualFixedMonthly: 0,
-  }
-  const fundingForNetCost = (monthlyGrossConversion: number) =>
-    activatesOffer
-      ? calculateBavFunding(profile, g.rules, {
-          ...target,
-          ...neutralEmployerTerms,
-          monthlyGrossConversion,
-        })
-      : fundingForBavCandidate(profile, g.rules, {
-          ...target,
-          monthlyGrossConversion,
-        }, targetOffer)
-
-  // Bisection: solve for the marginal gross conversion (delta on top of
-  // existing) such that
-  //   forward(usedMonthly + delta).monthlyNetCost
-  //     - forward(usedMonthly).monthlyNetCost  ≈  marginalMonthlyEUR.
-  // The previous approach solved against an isolated bAV (gross=delta only);
-  // that under-counts the SV-saving step when usedMonthly already pushes part
-  // of the income below the BBG, so the returned delta was off for users with
-  // existing bAV. Now we bisect on the actual marginal net cost.
-  const baselineNetCost = fundingForNetCost(usedMonthly).monthlyNetCost
-  const forwardMarginalNet = (delta: number) =>
-    fundingForNetCost(usedMonthly + delta).monthlyNetCost -
-      baselineNetCost
-  // grossDelta = forward(used + delta) − forward(used); marginal, not isolated.
-  const grossDelta = (() => {
-    if (g.marginalMonthlyEUR <= 0) return 0
-    let lo = 0
-    let hi = Math.max(100, g.marginalMonthlyEUR * 4)
-    for (let i = 0; i < 10 && forwardMarginalNet(hi) < g.marginalMonthlyEUR; i++) hi *= 2
-    for (let i = 0; i < 50; i++) {
-      const mid = (lo + hi) / 2
-      const net = forwardMarginalNet(mid)
-      if (Math.abs(net - g.marginalMonthlyEUR) < 0.01) return mid
-      if (net < g.marginalMonthlyEUR) lo = mid
-      else hi = mid
-    }
-    return (lo + hi) / 2
-  })()
-  const cappedToRemaining = grossDelta > remainingCapMonthly
-  const gross = Math.min(grossDelta, remainingCapMonthly)
-
-  // Marginal funding: the delta the candidate adds vs. the existing baseline.
-  // `netCash` is the user's marginal net cash out-of-pocket; `totalMonthly`
-  // is the marginal product contribution (delta gross + delta employer share)
-  // used for the candidate's capital projection.
-  const fundingBaseline = fundingForNetCost(usedMonthly)
-  const fundingTotalForNet = fundingForNetCost(usedMonthly + gross)
-  const fundingTotal = activatesOffer
-    ? fundingForBavCandidate(profile, g.rules, {
-        ...target,
-        monthlyGrossConversion: gross,
-      }, targetOffer)
-    : fundingForBavCandidate(profile, g.rules, {
-        ...target,
-        monthlyGrossConversion: usedMonthly + gross,
-      }, targetOffer)
-  const netCash = Math.max(0, fundingTotalForNet.monthlyNetCost - fundingBaseline.monthlyNetCost)
-
-  // Project capital: marginal contribution = (Δgross + Δemployer share). Use
-  // simple FV at basis scenario return minus average accumulation fee. The
-  // production simulator does year-by-year fees + Beitragsdynamik; the
-  // recommender's "what does another €X buy" only needs candidate ranking.
-  const totalMonthly = activatesOffer
-    ? gross + fundingTotal.monthlyEmployerContribution
-    : (fundingTotal.monthlyGrossConversion - fundingBaseline.monthlyGrossConversion) +
-      (fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution)
-  const monthlyEmployerContributionEUR = activatesOffer
-    ? fundingTotal.monthlyEmployerContribution
-    : fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution
-  const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
-  const capital = projectMonthlyContributionFV(totalMonthly, netReturn, g.yearsToRetirement)
-  const totalContributions = totalMonthly * 12 * g.yearsToRetirement
-  const payoutYears = Math.max(1, wsa.retirementEndAge - profile.retirementAge)
-  const grossPayout = computeGrossMonthlyPayout(capital, {
-    mode: target.payoutMode as PayoutMode,
-    rentenfaktor: target.rentenfaktor,
-    zeitrenteYears: target.zeitrenteYears ?? 20,
-    kapitalverzehrYears: payoutYears,
-    payoutReturn: netReturn,
-  })
-
-  // Net capital at retirement — issue 67. Leibrente bAV is paid as monthly
-  // pension (taxed via §19/§22 Nr. 5 in the payout pipeline), so capital is
-  // contractual, not user-usable as a lump sum: set null → payoutOnly=true.
-  // Other payout modes (kapitalverzehr / zeitrente) tax the lump sum via
-  // `deriveBavLumpSumTaxMode` (Direktversicherung §3 Nr. 63 → voll
-  // versorgungsbezug; §40b a.F. eligible → pre2005_steuerfrei; Direktzusage /
-  // Unterstützungskasse → Fünftelregelung) plus §229 SGB V 1/120 KV/PV.
-  const bavIsLeibrente = (target.payoutMode ?? 'leibrente') === 'leibrente'
-  let bavAfterTaxLumpSum: number | null = null
-  if (!bavIsLeibrente) {
-    const retirementYear = g.rules.year + (profile.retirementAge - profile.age)
-    const bavTaxMode = deriveBavLumpSumTaxMode(
-      target.durchfuehrungsweg ?? 'direktversicherung_3_63',
-      target.pre2005EligibleTaxFree ?? false,
-    )
-    bavAfterTaxLumpSum = afterTaxBavLumpSum(
-      capital,
-      profile,
-      g.rules,
-      0,
-      true,
-      retirementYear,
-      bavTaxMode,
-      0,
-    )
-  }
-
-  const candidateResult = synthesizeProductResult({
-    productId: 'bav',
-    instanceId: target.instanceId,
-    scenarioId: g.basis.scenarioId,
-    scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
-    grossMonthlyPayout: grossPayout,
-    capitalAtRetirement: capital,
-    totalProductContributions: totalContributions,
-    afterTaxLumpSum: bavAfterTaxLumpSum,
-    label: target.label ?? 'bAV',
-  })
-
-  return {
-    id: isNewInstance
-      ? 'new_bav_standard_offer'
-      : activatesOffer
-        ? `activate_${target.instanceId}`
-        : `add_to_${target.instanceId}`,
-    label: isNewInstance
-      ? 'Neue bAV'
-      : activatesOffer
-        ? `bAV-Angebot nutzen (${target.label ?? 'bAV'})`
-      : `Zusatz auf bestehende bAV (${target.label ?? 'bAV'})`,
-    productId: 'bav',
-    isNewInstance,
-    targetInstanceId: isNewInstance ? undefined : target.instanceId,
-    grossMonthlyEUR: gross,
-    netCashOutEUR: netCash,
-    cappedToRemaining,
-    candidateResult,
-    newInstance: isNewInstance
-      ? {
-          ...target,
-          monthlyGrossConversion: gross,
-        }
-      : undefined,
-    mcInputs: { monthlyContribution: totalMonthly, totalFeeDecimal: fees },
-    usesStandardAssumptions: targetOffer?.standardAssumption,
-    bavOffer: targetOffer,
-    monthlyEmployerContributionEUR,
-  }
-}
-
-function makeBavCandidate(g: GeneratorContext): CandidateDraft | null {
-  const wsa = g.workspace.baseline.assumptions
-  const existingTargets = wsa.bav.filter((target) => target.status === 'active' || target.status === 'offered')
-  const targetInputs = existingTargets.length > 0
-    ? existingTargets.map((target) => ({ target, isNewInstance: false }))
-    : [{
-        target: {
-          ...defaultAssumptions.bav,
-          instanceId: newInstanceId('bav'),
-          label: 'Neue bAV',
-          status: 'active',
-          contractStartYear: g.rules.year,
-          evidenceMap: {},
-          monthlyGrossConversion: 0,
-        } as BavInstance,
-        isNewInstance: true,
-      }]
-  const candidates = targetInputs
-    .map(({ target, isNewInstance }) => makeBavCandidateForTarget(g, target, isNewInstance))
-    .filter((candidate): candidate is CandidateDraft => Boolean(candidate))
-  if (candidates.length === 0) return null
-  candidates.sort((a, b) => b.candidateResult.capitalAtRetirement - a.candidateResult.capitalAtRetirement)
-  return candidates[0]
-}
-
-// --- Basisrente (new) ------------------------------------------------------
-
-function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | null {
-  const profile = g.workspace.baseline.profile
-  // Build a synthetic Basisrente assumption block from the default plus a
-  // typical fee profile. The funding helper needs a SalaryResult — recompute
-  // from the profile (no bAV conversion baked in; the recommender's bAV
-  // candidate is independent).
-  const salary = calculateSalaryResult(profile, g.rules, 0)
-  const synthetic = {
-    monthlyGrossContribution: 0,
-    payoutMode: 'leibrente' as const,
-    rentenfaktor: defaultAssumptions.basisrente.rentenfaktor,
-    rentenfaktorConfirmed: false,
-    monthlyOtherRetirementIncome: 0,
-    fees: defaultAssumptions.basisrente.fees,
-  }
-  const isolatedGross = solveBasisrenteGrossFromNet(
-    g.marginalMonthlyEUR,
-    g.rules,
-    salary,
-    synthetic,
-  )
-  if (isolatedGross <= 0) return null
-
-  // Clamp to remaining Schicht-1 cap.
-  const fundingAtFull = calculateBasisrenteFunding(g.rules, salary, {
-    ...synthetic,
-    monthlyGrossContribution: isolatedGross,
-  })
-  const remainingMonthly = fundingAtFull.remainingSchicht1Cap / 12
-  const cappedToRemaining = isolatedGross > remainingMonthly
-  const gross = Math.min(isolatedGross, Math.max(0, remainingMonthly))
-  if (gross <= 0) return null
-
-  const fundingForGross = calculateBasisrenteFunding(g.rules, salary, {
-    ...synthetic,
-    monthlyGrossContribution: gross,
-  })
-  const netCash = Math.max(0, fundingForGross.monthlyNetCost)
-
-  const fees = (synthetic.fees.wrapperAssetFee ?? 0) + (synthetic.fees.fundAssetFee ?? 0)
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
-  const capital = projectMonthlyContributionFV(gross, netReturn, g.yearsToRetirement)
-  const totalContributions = gross * 12 * g.yearsToRetirement
-  const grossPayout = (capital / 10_000) * synthetic.rentenfaktor
-
-  const newInstanceIdStr = newInstanceId('basisrente')
-  const candidateResult = synthesizeProductResult({
-    productId: 'basisrente',
-    instanceId: newInstanceIdStr,
-    scenarioId: g.basis.scenarioId,
-    scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
-    grossMonthlyPayout: grossPayout,
-    capitalAtRetirement: capital,
-    totalProductContributions: totalContributions,
-    afterTaxLumpSum: null,
-    label: 'Neue Rürup-Rente',
-  })
-
-  const newInstance: BasisrenteInstance = {
-    instanceId: newInstanceIdStr,
-    label: 'Neue Rürup-Rente',
-    status: 'active',
-    contractStartYear: g.rules.year,
-    evidenceMap: {},
-    monthlyGrossContribution: gross,
-    payoutMode: 'leibrente',
-    rentenfaktor: synthetic.rentenfaktor,
-    rentenfaktorConfirmed: false,
-    monthlyOtherRetirementIncome: 0,
-    fees: { ...synthetic.fees },
-  }
-
-  return {
-    id: 'new_basisrente',
-    label: 'Neue Rürup-Rente',
-    productId: 'basisrente',
-    isNewInstance: true,
-    grossMonthlyEUR: gross,
-    netCashOutEUR: netCash,
-    cappedToRemaining,
-    candidateResult,
-    newInstance,
-    mcInputs: { monthlyContribution: gross, totalFeeDecimal: fees },
-  }
-}
-
-// --- AVD (new) -------------------------------------------------------------
-
-function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
-  const profile = g.workspace.baseline.profile
-  const wsa = g.workspace.baseline.assumptions
-  const gross = g.marginalMonthlyEUR
-  const capMonthly = g.rules.altersvorsorgedepot.contractContributionCapAnnual / 12
-  const cappedToRemaining = gross > capMonthly
-  const sized = Math.min(gross, capMonthly)
-  if (sized <= 0) return null
-
-  const baseAvd = defaultAssumptions.altersvorsorgedepot
-  const fees = (baseAvd.fees.wrapperAssetFee ?? 0) + (baseAvd.fees.fundAssetFee ?? 0)
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
-  const capital = projectMonthlyContributionFV(sized, netReturn, g.yearsToRetirement)
-  const totalContributions = sized * 12 * g.yearsToRetirement
-  const payoutYears = Math.max(1, wsa.retirementEndAge - profile.retirementAge)
-  const grossPayout = monthlyPayoutFromCapital(capital, netReturn, payoutYears)
-
-  const newInstanceIdStr = newInstanceId('altersvorsorgedepot')
-  // Net capital — issue 67. AVD is a §22 Nr. 5 EStG certified pension: at
-  // most ~30 % of capital is permissible as a partial lump sum (the rest must
-  // be annuitised). Representing the full contractual value as a net lump
-  // sum would mislead the ranking, so the candidate is payoutOnly: the UI
-  // surfaces the contractual value with the "annuitisiert" label.
-  const candidateResult = synthesizeProductResult({
-    productId: 'altersvorsorgedepot',
-    instanceId: newInstanceIdStr,
-    scenarioId: g.basis.scenarioId,
-    scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
-    grossMonthlyPayout: grossPayout,
-    capitalAtRetirement: capital,
-    totalProductContributions: totalContributions,
-    afterTaxLumpSum: null,
-    label: 'Neues Altersvorsorgedepot',
-  })
-
-  const newInstance: AltersvorsorgedepotInstance = {
-    instanceId: newInstanceIdStr,
-    label: 'Neues Altersvorsorgedepot',
-    status: 'active',
-    contractStartYear: g.rules.year,
-    evidenceMap: {},
-    ...baseAvd,
-    monthlyOwnContribution: sized,
-  }
-
-  return {
-    id: 'new_avd',
-    label: 'Neues Altersvorsorgedepot',
-    productId: 'altersvorsorgedepot',
-    isNewInstance: true,
-    grossMonthlyEUR: sized,
-    netCashOutEUR: sized,
-    cappedToRemaining,
-    candidateResult,
-    newInstance,
-    mcInputs: { monthlyContribution: sized, totalFeeDecimal: fees },
-  }
-}
-
-// --- Private insurance (existing or offered instance, issue 66) -----------
-//
-// Insurance contributions are after-tax money — the user's net cash burden is
-// equal to gross contribution (no Sonderausgaben deduction in accumulation,
-// unlike Basisrente / Riester / bAV). Capital at retirement is taxed via
-// `deriveInsuranceTaxMode` (halbeinkuenfte / abgeltungsteuer / pre2005), and
-// Leibrente payouts use Ertragsanteil (§22 Nr. 1 Satz 3 a EStG). The
-// recommender does not synthesize a brand-new no-instance candidate — the
-// modal-driven flow surfaces insurance only when the user has indicated an
-// available offer (active or offered instance).
-
-function makeInsuranceCandidate(g: GeneratorContext): CandidateDraft | null {
-  const wsa = g.workspace.baseline.assumptions
-  const profile = g.workspace.baseline.profile
-  // Prefer offered (concrete offer the user is evaluating); fall back to active.
-  const target =
-    wsa.insurance.find((i) => i.status === 'offered') ??
-    wsa.insurance.find((i) => i.status === 'active')
-  if (!target) return null
-
-  const gross = g.marginalMonthlyEUR
-  if (gross <= 0) return null
-  const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
-  const capital = projectMonthlyContributionFV(gross, netReturn, g.yearsToRetirement)
-  const totalContributions = gross * 12 * g.yearsToRetirement
-  const payoutYears = Math.max(1, wsa.retirementEndAge - profile.retirementAge)
-  const grossPayout = computeGrossMonthlyPayout(capital, {
-    mode: target.payoutMode as PayoutMode,
-    rentenfaktor: target.rentenfaktor ?? 28,
-    zeitrenteYears: target.zeitrenteYears ?? 20,
-    kapitalverzehrYears: payoutYears,
-    payoutReturn: netReturn,
-  })
-
-  // Net (after-tax) lump sum — issue 67. Leibrente payouts are taxed via
-  // Ertragsanteil at payout-time, so when the contract is annuitised we set
-  // afterTaxLumpSum=null and let the candidate fall back to gross capital with
-  // payoutOnly=true downstream.
-  const isLeibrente = target.payoutMode === 'leibrente'
-  let afterTaxLumpSum: number | null = null
-  if (!isLeibrente) {
-    const retirementYear = g.rules.year + (profile.retirementAge - profile.age)
-    const runtimeYearsAtRetirement = computeRuntimeYearsAtRetirement(
-      target.contractStartYear,
-      g.rules.year,
-      profile.age,
-      profile.retirementAge,
-    )
-    const taxMode = deriveInsuranceTaxMode(
-      target.contractStartYear,
-      runtimeYearsAtRetirement,
-      profile.retirementAge,
-      target.oldContractTaxFreeEligible,
-    )
-    afterTaxLumpSum = afterTaxInsuranceLumpSum(
-      capital,
-      totalContributions,
-      taxMode,
-      g.rules,
-      0,
-      retirementYear,
-      profile,
-      true,
-      0,
-    )
-  }
-
-  const candidateResult = synthesizeProductResult({
-    productId: 'versicherung',
-    instanceId: target.instanceId,
-    scenarioId: g.basis.scenarioId,
-    scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
-    grossMonthlyPayout: grossPayout,
-    capitalAtRetirement: capital,
-    totalProductContributions: totalContributions,
-    afterTaxLumpSum,
-    label: target.label ?? 'Private Rentenversicherung',
-  })
-
-  const isOffered = target.status === 'offered'
-  const id = isOffered
-    ? `activate_${target.instanceId}`
-    : `add_to_${target.instanceId}`
-  const label = isOffered
-    ? `Versicherungsangebot nutzen (${target.label ?? 'Private Rentenversicherung'})`
-    : `Aufstockung Versicherung (${target.label ?? 'Private Rentenversicherung'})`
-
-  return {
-    id,
-    label,
-    productId: 'versicherung',
-    isNewInstance: false,
-    targetInstanceId: target.instanceId,
-    grossMonthlyEUR: gross,
-    netCashOutEUR: gross,
-    cappedToRemaining: false,
-    candidateResult,
-    mcInputs: { monthlyContribution: gross, totalFeeDecimal: fees },
-  }
-}
-
-// --- Riester top-up (existing instance) -----------------------------------
-
-function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft | null {
-  const wsa = g.workspace.baseline.assumptions
-  const target = wsa.riester.find((r) => r.status !== 'surrendered' && r.status !== 'offered')
-  if (!target) return null
-  const profile = g.workspace.baseline.profile
-  const salary = calculateSalaryResult(profile, g.rules, 0)
-
-  const isolatedOwn = solveRiesterOwnFromNet(
-    g.marginalMonthlyEUR,
-    g.rules,
-    salary,
-    target,
-    profile,
-  )
-  if (isolatedOwn <= 0) return null
-
-  // Clamp to §10a annual cap (€2,100 incl. allowances). `usedAnnual` therefore
-  // must include Grundzulage + Kinderzulagen so the comparison is apples-to-
-  // apples with the cap (matches `riesterCapRemainingRule` in recommendations.ts).
-  const capAnnual = g.rules.riester.annualCapInclAllowances
-  const ownAnnual = wsa.riester
-    .filter((r) => r.status !== 'surrendered' && r.status !== 'offered')
-    .reduce((s, r) => s + (r.monthlyOwnContribution ?? 0) * 12, 0)
-  const activeRiesterInstances = wsa.riester.filter((r) => r.status !== 'surrendered' && r.status !== 'offered')
-  const grundzulageEligible = activeRiesterInstances.some(
-    (inst) => inst.eligibility.directlyEligible === true || inst.eligibility.indirectSpouseEligible === true,
-  )
-  const grundzulage = grundzulageEligible ? g.rules.riester.grundzulage : 0
-  const kinderzulageTotal = computeKinderzulagen(profile.childBirthYears, g.rules.riester)
-  const usedAnnual = ownAnnual + grundzulage + kinderzulageTotal
-  const remainingAnnual = Math.max(0, capAnnual - usedAnnual)
-  const remainingMonthly = remainingAnnual / 12
-  const cappedToRemaining = isolatedOwn > remainingMonthly
-  const own = Math.min(isolatedOwn, remainingMonthly)
-  if (own <= 0) return null
-
-  const fundingForOwn = calculateRiesterFunding(g.rules, salary, {
-    ...target,
-    monthlyOwnContribution: own,
-  }, profile)
-  const netCash = Math.max(0, fundingForOwn.monthlyNetCost)
-
-  const totalMonthly = own + fundingForOwn.totalAllowanceAnnual / 12
-  const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
-  const capital = projectMonthlyContributionFV(totalMonthly, netReturn, g.yearsToRetirement)
-  const totalContributions = totalMonthly * 12 * g.yearsToRetirement
-  const grossPayout = (capital / 10_000) * (target.rentenfaktor ?? 28)
-
-  // Net capital — issue 67. Riester is a §22 Nr. 5 EStG certified pension:
-  // §93 Abs. 2 EStG limits the partial lump sum to ≤30 % of capital at
-  // payout start (rest must annuitise). Treating the full capital as a net
-  // lump sum overstates user-accessible capital. Mark payoutOnly so the UI
-  // surfaces the contractual value with the "annuitisiert" label.
-  const candidateResult = synthesizeProductResult({
-    productId: 'riester',
-    instanceId: target.instanceId,
-    scenarioId: g.basis.scenarioId,
-    scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
-    grossMonthlyPayout: grossPayout,
-    capitalAtRetirement: capital,
-    totalProductContributions: totalContributions,
-    afterTaxLumpSum: null,
-    label: target.label ?? 'Riester',
-  })
-
-  return {
-    id: 'add_to_existing_riester',
-    label: `Aufstockung Riester (${target.label ?? 'Riester'})`,
-    productId: 'riester',
-    isNewInstance: false,
-    targetInstanceId: target.instanceId,
-    grossMonthlyEUR: own,
-    netCashOutEUR: netCash,
-    cappedToRemaining,
-    candidateResult,
-    mcInputs: { monthlyContribution: totalMonthly, totalFeeDecimal: fees },
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Combine the candidate's ProductResult into a candidate workspace
+// Combine a candidate's ProductResult into a candidate workspace
 // ---------------------------------------------------------------------------
 
 /**
@@ -1605,6 +595,97 @@ function safetyMonthlyP10(
   return baselineMonthlyNet + marginalMedian * p10Ratio
 }
 
+// ---------------------------------------------------------------------------
+// Monte Carlo helpers (kept here — not product-specific)
+// ---------------------------------------------------------------------------
+
+/**
+ * 10th-percentile from a sample. Uses linear interpolation on the sorted
+ * array — same convention as `monteCarlo.ts`'s `percentileFromSorted`. Inlined
+ * here (not imported) so the recommender stays a pure module without pulling
+ * the full MC engine surface.
+ */
+function p10FromSorted(sorted: readonly number[]): number {
+  if (sorted.length === 0) return 0
+  if (sorted.length === 1) return sorted[0]
+  const index = (sorted.length - 1) * 0.1
+  const lo = Math.floor(index)
+  const hi = Math.ceil(index)
+  if (lo === hi) return sorted[lo]
+  const weight = index - lo
+  return sorted[lo] * (1 - weight) + sorted[hi] * weight
+}
+
+/**
+ * Hash a string to a 32-bit unsigned integer. Used to derive a deterministic
+ * per-candidate MC seed from the workspace seed + candidate id, so two
+ * candidates in the same recommender run draw uncorrelated paths but a repeat
+ * call with identical inputs reproduces the ranking exactly.
+ */
+function hashStringToU32(s: string): number {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return h >>> 0
+}
+
+/**
+ * Compute P10 of total nominal capital at retirement for a candidate.
+ *
+ * Per path:
+ *   1. Sample `years` annual gross returns via `generateMarketReturnPath`
+ *      (lognormal around `expectedReturn` + `volatility`, identical to the
+ *      dashboard MC panel's market path).
+ *   2. Subtract the candidate's combined accumulation fee from each year's
+ *      return (mirrors the deterministic FV's `netReturn = annualReturn - fees`).
+ *   3. Compound month-by-month using the geometric monthly rate of that year.
+ *
+ * Cost: ~years×12 multiplications per path; for 30 yr × 200 paths × 4
+ * candidates ≈ 290k ops — negligible vs. the 500 ms budget.
+ */
+function monteCarloP10Capital(
+  monthlyContribution: number,
+  totalFeeDecimal: number,
+  expectedReturn: number,
+  volatility: number,
+  years: number,
+  paths: number,
+  seed: number,
+): number {
+  if (monthlyContribution <= 0 || years <= 0 || paths <= 0) return 0
+  const rng = new SeededNormal(seed)
+  const finals: number[] = new Array(paths)
+  for (let p = 0; p < paths; p++) {
+    const path = generateMarketReturnPath({
+      years,
+      expectedAnnualReturn: expectedReturn,
+      annualVolatility: volatility,
+      rng,
+    })
+    let balance = 0
+    for (let y = 0; y < path.length; y++) {
+      const netAnnual = Math.max(-0.99, path[y] - totalFeeDecimal)
+      const monthlyRate = Math.pow(1 + netAnnual, 1 / 12) - 1
+      // Apply ordinary-annuity FV for the year, compounding existing balance.
+      // balance_{end} = balance_{start} × (1+r)^12 + c × ((1+r)^12 − 1) / r
+      const growth = Math.pow(1 + monthlyRate, 12)
+      balance = balance * growth +
+        (Math.abs(monthlyRate) < 1e-9
+          ? monthlyContribution * 12
+          : monthlyContribution * (growth - 1) / monthlyRate)
+    }
+    finals[p] = balance
+  }
+  finals.sort((a, b) => a - b)
+  return p10FromSorted(finals)
+}
+
+// ---------------------------------------------------------------------------
+// Public ranking API
+// ---------------------------------------------------------------------------
+
 export function rankRecommendedCandidates(
   candidates: readonly RecommendedCandidate[],
   criterion: RecommenderRankingCriterion = 'median_net_pension',
@@ -1650,7 +731,7 @@ function desc(a: number, b: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Public API
+// Public API — recommendNextEuro
 // ---------------------------------------------------------------------------
 
 export interface RecommendNextEuroInput {
@@ -1709,18 +790,10 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
     bavOffer,
   }
 
-  // Generate raw candidates in priority order (one per product class for diversity).
-  const generators: Array<() => CandidateDraft | null> = [
-    () => makeEtfCandidate(g),
-    () => makeBavCandidate(g),
-    () => makeBasisrenteCandidate(g),
-    () => makeAvdCandidate(g),
-    () => makeRiesterTopUpCandidate(g),
-    () => makeInsuranceCandidate(g),
-  ]
+  // Generate raw candidates via the product registry (one per product class).
   const drafts: CandidateDraft[] = []
-  for (const gen of generators) {
-    const d = gen()
+  for (const gen of CANDIDATE_GENERATORS) {
+    const d = gen(g)
     if (d) drafts.push(d)
   }
 
