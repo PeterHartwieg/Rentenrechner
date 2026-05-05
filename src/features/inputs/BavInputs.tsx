@@ -91,6 +91,7 @@ export function BavInputs({
         />
         <NumberField
           label="AG-Zuschuss laut Vertrag (%)"
+          feedbackTargetId="inputs.bav.employerSubsidy.label"
           value={assumptions.bav.contractualMatchPercent * 100}
           min={0}
           max={100}

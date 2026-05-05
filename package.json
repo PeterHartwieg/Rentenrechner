@@ -13,6 +13,7 @@
     "repo:stats": "node scripts/repo-stats.mjs"
   },
   "dependencies": {
+    "html-to-image": "^1.11.13",
     "lucide-react": "^1.11.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

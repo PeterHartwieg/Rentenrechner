@@ -1,0 +1,54 @@
+/**
+ * QA feedback mode — Phase 1 Lane A public API.
+ *
+ * Lanes B (privacy redaction), C (a11y/mobile composer), and D (workspace
+ * context capture) consume the names below. Treat any rename as a breaking
+ * change and update Lane B/C/D in the same commit.
+ */
+
+/**
+ * Top-level provider that wraps the calculator. Mounts the overlay,
+ * composer, and preview only when QA mode is active. Inert when disabled
+ * (PRD US-33).
+ */
+export { QaFeedbackProvider, QA_SESSION_KEY } from './QaFeedbackProvider'
+
+/**
+ * Persistent "QA-Modus aktiv" chip. Render anywhere in the app shell;
+ * hides itself when QA mode is disabled.
+ */
+export { QaModeIndicator } from './QaModeIndicator'
+
+/**
+ * Read the QA-mode flag and access activate/deactivate primitives. Safe to
+ * call outside the provider (returns `enabled: false`).
+ */
+export { useQaMode } from './useQaMode'
+
+/**
+ * Register a component as a feedback target. Returns `targetProps` to
+ * spread onto the host element. Empty when QA mode is disabled.
+ */
+export { useFeedbackTarget } from './useFeedbackTarget'
+export type { FeedbackTargetProps, FeedbackTargetSpec } from './useFeedbackTarget'
+
+/**
+ * React-free report payload contracts. Re-exported so consumers don't have
+ * to deep-import the `report/` submodule. The names here MUST stay stable —
+ * they are the contract Lanes B/C/D extend.
+ */
+export type {
+  EnvironmentContext,
+  FeedbackReport,
+  FeedbackTargetId,
+  FeedbackType,
+  PrivacyFlags,
+  ResolvedTarget,
+  ScenarioContextSnapshot,
+  ScreenshotRef,
+  Severity,
+  TargetPrecision,
+  WorkspaceContext,
+} from './report'
+
+export { buildMarkdownTicket, defaultPrivacyFlags, generateTitle } from './report'

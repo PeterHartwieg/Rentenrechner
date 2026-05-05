@@ -1,0 +1,247 @@
+/* QA feedback mode — Phase 1 Lane A styles.
+ *
+ * All rules are scoped under `[data-qa-mode="true"]` (set on the root element
+ * by `QaFeedbackProvider`) or under `.qa-*` class names so the styles never
+ * affect the calculator when QA mode is disabled.
+ */
+
+/* The persistent indicator chip (PRD US-3). Lives in a fixed corner so the
+ * tester can never confuse QA mode with the normal calculator. */
+.qa-indicator {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #fefefe;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+.qa-indicator__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.35);
+}
+
+.qa-indicator__deactivate {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+.qa-indicator__deactivate:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Outline drawn around the hovered or pinned target. We render it as a fixed
+ * positioned overlay rather than mutating the target so non-instrumented
+ * children never receive a layout shift. */
+.qa-overlay-outline {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid #2563eb;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+  background: rgba(37, 99, 235, 0.08);
+  z-index: 998;
+  transition: top 60ms linear, left 60ms linear, width 60ms linear, height 60ms linear;
+}
+
+.qa-overlay-outline--pinned {
+  border-color: #d97706;
+  background: rgba(217, 119, 6, 0.1);
+  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.35);
+}
+
+/* Composer / preview shell — modal-ish floating panel. Uses inline z-index
+ * higher than the outline so the form is always on top. */
+.qa-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 64px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 96px);
+  z-index: 1001;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.qa-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #1f2937;
+  color: #f9fafb;
+}
+
+.qa-panel__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.qa-panel__close {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.qa-panel__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.qa-panel__body {
+  padding: 12px 14px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.qa-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qa-panel__field label,
+.qa-panel__field > span {
+  font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+}
+
+.qa-panel__field textarea,
+.qa-panel__field input[type='text'],
+.qa-panel__field select {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  background: #fff;
+  color: inherit;
+}
+
+.qa-panel__field textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.qa-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.qa-panel__chip {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.qa-panel__chip--active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.qa-panel__footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 10px 14px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.qa-panel__btn {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.qa-panel__btn:hover {
+  background: #f3f4f6;
+}
+
+.qa-panel__btn--primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.qa-panel__btn--primary:hover {
+  background: #1d4ed8;
+}
+
+.qa-panel__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.qa-preview__meta {
+  font-size: 11.5px;
+  color: #4b5563;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 10px;
+}
+
+.qa-preview__meta dt {
+  font-weight: 600;
+}
+
+.qa-preview__screenshot {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 220px;
+}
+
+.qa-preview__screenshot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.qa-preview__copy-state {
+  font-size: 11.5px;
+  color: #047857;
+  font-weight: 600;
+}

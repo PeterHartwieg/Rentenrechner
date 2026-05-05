@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
 import type { ProductId } from './domain'
 import type { InstanceTaxModes } from './utils/csvExport'
@@ -61,6 +61,7 @@ import { LIFECYCLE_HORIZON_AGE } from './features/results/lifecycleHorizon'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
+import { QaFeedbackProvider, QaModeIndicator } from './features/qa-feedback'
 import './App.css'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
@@ -114,9 +115,19 @@ function ShellWorkspaceTabs({ activeView, combineMode, onSelect }: ShellWorkspac
 
 function App() {
   const { route, navigate } = useRoute()
-  if (route === '/impressum') return <ImpressumPage navigate={navigate} />
-  if (route === '/datenschutz') return <DatenschutzPage navigate={navigate} />
-  return <Calculator navigate={navigate} />
+  let body: ReactNode
+  if (route === '/impressum') body = <ImpressumPage navigate={navigate} />
+  else if (route === '/datenschutz') body = <DatenschutzPage navigate={navigate} />
+  else body = <Calculator navigate={navigate} />
+  // QA feedback mode (issue 02 — Phase 1 Lane A). Wraps the entire route
+  // surface so the overlay can target legal pages too. Inert when disabled
+  // (?qa=1 / ?qa=0 controls activation; sessionStorage persists per session).
+  return (
+    <QaFeedbackProvider>
+      {body}
+      <QaModeIndicator />
+    </QaFeedbackProvider>
+  )
 }
 
 interface CalculatorProps {

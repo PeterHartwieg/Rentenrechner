@@ -1,6 +1,7 @@
 import './forms.css'
 import { useState, type ReactNode } from 'react'
 import { formatNumber } from '../utils/format'
+import { useFeedbackTarget } from '../features/qa-feedback'
 
 /**
  * Number of decimal places implied by a step value.
@@ -29,6 +30,7 @@ export function NumberField({
   suffix,
   onChange,
   onCommit,
+  feedbackTargetId,
 }: {
   label: string
   /** Optional inline content rendered next to the label (e.g. <InfoTip />). */
@@ -53,7 +55,20 @@ export function NumberField({
   onChange?: (value: string) => void
   /** Fires on blur or Enter. Use for clamped/validated inputs so partial keystrokes don't trigger range corrections. */
   onCommit?: (value: string) => void
+  /**
+   * QA-feedback target id (issue 02 — Phase 1 Lane A). When set, the wrapping
+   * `<label>` carries a `data-qa-target` attribute so QA mode can pin the
+   * field as a feedback subject. Inert when QA mode is disabled — the label
+   * renders identically to today.
+   */
+  feedbackTargetId?: string
 }) {
+  const { targetProps } = useFeedbackTarget({
+    id: feedbackTargetId ?? '',
+    label,
+    precision: 'exact',
+  })
+  const qaProps = feedbackTargetId ? targetProps : {}
   const [draft, setDraft] = useState<string | null>(null)
   const effectiveDecimals = decimals ?? decimalsFromStep(step)
   // toFixed gives us bounded precision; Number(...) drops trailing zeros so
@@ -96,7 +111,7 @@ export function NumberField({
   }
 
   return (
-    <label className="field">
+    <label className="field" {...qaProps}>
       <span>{label}{labelSuffix}</span>
       <div className="input-shell">
         <input

@@ -1,0 +1,103 @@
+// @vitest-environment jsdom
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { render, cleanup, screen } from '@testing-library/react'
+import { QaFeedbackProvider, QA_SESSION_KEY } from '../QaFeedbackProvider'
+import { QaModeIndicator } from '../QaModeIndicator'
+
+afterEach(() => {
+  cleanup()
+  sessionStorage.clear()
+  localStorage.clear()
+  // Reset the URL so each test starts from a clean search string.
+  window.history.replaceState(null, '', '/')
+  document.documentElement.removeAttribute('data-qa-mode')
+})
+
+beforeEach(() => {
+  sessionStorage.clear()
+  localStorage.clear()
+  window.history.replaceState(null, '', '/')
+})
+
+describe('QaFeedbackProvider — activation', () => {
+  it('does NOT activate without ?qa=1', () => {
+    render(
+      <QaFeedbackProvider>
+        <div data-testid="child">child</div>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    expect(screen.queryByTestId('qa-indicator')).toBeNull()
+    expect(document.documentElement.getAttribute('data-qa-mode')).toBeNull()
+  })
+
+  it('activates when ?qa=1 is present in the URL', () => {
+    window.history.replaceState(null, '', '/?qa=1')
+    render(
+      <QaFeedbackProvider>
+        <div data-testid="child">child</div>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    expect(screen.getByTestId('qa-indicator')).toBeTruthy()
+    expect(document.documentElement.getAttribute('data-qa-mode')).toBe('true')
+  })
+
+  it('writes the active flag to sessionStorage', () => {
+    window.history.replaceState(null, '', '/?qa=1')
+    render(
+      <QaFeedbackProvider>
+        <div>child</div>
+      </QaFeedbackProvider>,
+    )
+    expect(sessionStorage.getItem(QA_SESSION_KEY)).toBe('1')
+  })
+
+  it('honours an existing sessionStorage flag without ?qa=1 (round-trip)', () => {
+    sessionStorage.setItem(QA_SESSION_KEY, '1')
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    expect(screen.getByTestId('qa-indicator')).toBeTruthy()
+  })
+
+  it('clears the session flag when ?qa=0 is present', () => {
+    sessionStorage.setItem(QA_SESSION_KEY, '1')
+    window.history.replaceState(null, '', '/?qa=0')
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    expect(sessionStorage.getItem(QA_SESSION_KEY)).toBeNull()
+    expect(screen.queryByTestId('qa-indicator')).toBeNull()
+  })
+
+  it('NEVER writes the QA flag to localStorage (sessionStorage-only contract)', () => {
+    window.history.replaceState(null, '', '/?qa=1')
+    render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    // The provider may not be the only writer to localStorage globally, but
+    // for the QA-mode flag specifically: localStorage must remain empty in
+    // these isolated tests (we cleared it in beforeEach).
+    expect(localStorage.length).toBe(0)
+  })
+
+  it('removes the data-qa-mode attribute when the provider unmounts', () => {
+    window.history.replaceState(null, '', '/?qa=1')
+    const { unmount } = render(
+      <QaFeedbackProvider>
+        <QaModeIndicator />
+      </QaFeedbackProvider>,
+    )
+    expect(document.documentElement.getAttribute('data-qa-mode')).toBe('true')
+    unmount()
+    expect(document.documentElement.getAttribute('data-qa-mode')).toBeNull()
+  })
+})
