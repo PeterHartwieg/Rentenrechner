@@ -32,6 +32,13 @@ interface Props {
   riy: number
   feeInputMode: FeeInputMode
   setFeeInputMode: Dispatch<SetStateAction<FeeInputMode>>
+  /**
+   * QA-feedback base id for this section instance. Inner NumberFields derive
+   * their ids from this base, e.g. `inputs.bav.fees` →
+   * `inputs.bav.fees.fixedMonthlyFee`, `inputs.bav.fees.contributionFee`, etc.
+   * When omitted, no feedback attributes are applied.
+   */
+  feedbackBaseId?: string
 }
 
 /** Shared spread defaults for the Effektivkosten all-in path. */
@@ -52,9 +59,11 @@ export function FeeSection({
   riy,
   feeInputMode,
   setFeeInputMode,
+  feedbackBaseId,
 }: Props) {
   const totalAsset = fees.wrapperAssetFee + fees.fundAssetFee
   const update = (patch: Partial<FeeModel>) => onChangeFees({ ...fees, ...patch })
+  const fid = (suffix: string) => feedbackBaseId ? `${feedbackBaseId}.${suffix}` : undefined
 
   return (
     <>
@@ -92,6 +101,7 @@ export function FeeSection({
           <div className="field-grid">
             <NumberField
               label="Fixkosten je Monat"
+              feedbackTargetId={fid('fixedMonthlyFee')}
               value={fees.fixedMonthlyFee}
               min={0}
               max={50}
@@ -101,6 +111,7 @@ export function FeeSection({
             />
             <NumberField
               label="Kosten je Beitrag"
+              feedbackTargetId={fid('contributionFee')}
               value={fees.contributionFee * 100}
               min={0}
               max={20}
@@ -110,6 +121,7 @@ export function FeeSection({
             />
             <NumberField
               label="Mantelgebühr (Versicherer)"
+              feedbackTargetId={fid('wrapperAssetFee')}
               value={fees.wrapperAssetFee * 100}
               min={0}
               max={3}
@@ -119,6 +131,7 @@ export function FeeSection({
             />
             <NumberField
               label="Fondskosten (TER)"
+              feedbackTargetId={fid('fundAssetFee')}
               value={fees.fundAssetFee * 100}
               min={0}
               max={3}
@@ -128,6 +141,7 @@ export function FeeSection({
             />
             <NumberField
               label="Auszahlungsgebühr"
+              feedbackTargetId={fid('pensionPayoutFee')}
               value={fees.pensionPayoutFeePct * 100}
               min={0}
               max={5}
@@ -137,6 +151,7 @@ export function FeeSection({
             />
             <NumberField
               label="Vertriebs-/Abschlusskosten"
+              feedbackTargetId={fid('acquisitionCostPct')}
               value={fees.acquisitionCostPct * 100}
               min={0}
               max={8}
@@ -146,6 +161,7 @@ export function FeeSection({
             />
             <NumberField
               label="Verteilung Abschlusskosten"
+              feedbackTargetId={fid('acquisitionCostSpreadYears')}
               value={fees.acquisitionCostSpreadYears}
               min={1}
               max={15}
@@ -161,6 +177,7 @@ export function FeeSection({
         <>
           <NumberField
             label="Effektivkosten aus PIB/KID (Renditeminderung p.a.)"
+            feedbackTargetId={fid('effektivkosten')}
             value={(fees.wrapperAssetFee + fees.fundAssetFee) * 100}
             min={0}
             max={5}

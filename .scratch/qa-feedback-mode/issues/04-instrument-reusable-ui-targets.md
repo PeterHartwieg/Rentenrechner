@@ -1,6 +1,6 @@
 # Instrument reusable UI targets
 
-Status: needs-triage
+Status: done
 Type: AFK
 
 ## Parent

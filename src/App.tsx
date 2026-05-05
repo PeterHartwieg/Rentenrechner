@@ -102,6 +102,7 @@ function ShellWorkspaceTabs({ activeView, combineMode, onSelect }: ShellWorkspac
               aria-selected={active}
               className={active ? 'workspace-tab active' : 'workspace-tab'}
               onClick={() => onSelect(tab.id)}
+              data-qa-target={`workspace.tabs.${tab.id}`}
             >
               <Icon size={16} aria-hidden="true" />
               <span>{label}</span>
@@ -432,7 +433,11 @@ function Calculator({ navigate }: CalculatorProps) {
   }
 
   const vergleichView = (
-    <section className="workspace-view workspace-view--vergleich">
+    <section
+      className="workspace-view workspace-view--vergleich"
+      data-qa-target="results.section"
+      data-qa-section="true"
+    >
       {toolbar}
 
       {portfolioState.mode === 'combine' && combineBasisResult && (
@@ -589,7 +594,11 @@ function Calculator({ navigate }: CalculatorProps) {
   )
 
   const detailsView = (
-    <section className="workspace-view workspace-view--details">
+    <section
+      className="workspace-view workspace-view--details"
+      data-qa-target="results.details.section"
+      data-qa-section="true"
+    >
       {toolbar}
 
       {/* Combine-mode (Group G issue 11): the singleton compare detail panels

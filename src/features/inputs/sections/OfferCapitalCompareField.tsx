@@ -14,18 +14,27 @@ interface Props {
   /** Local state in the host component. `null` = not entered yet. */
   offerCapital: number | null
   onChangeOfferCapital: (n: number | null) => void
+  /**
+   * QA-feedback base id for this section instance. Passed through to the inner
+   * NumberField, e.g. `inputs.bav.offerCapital` →
+   * `inputs.bav.offerCapital.value`. When omitted, no feedback attributes
+   * are applied.
+   */
+  feedbackBaseId?: string
 }
 
 export function OfferCapitalCompareField({
   modelCapital,
   offerCapital,
   onChangeOfferCapital,
+  feedbackBaseId,
 }: Props) {
   if (modelCapital <= 0) return null
   return (
     <>
       <NumberField
         label="Kapital lt. Angebot bei Rentenbeginn (optional)"
+        feedbackTargetId={feedbackBaseId ? `${feedbackBaseId}.value` : undefined}
         value={offerCapital ?? 0}
         min={0}
         step={1000}

@@ -55,6 +55,7 @@ export function InsuranceInputs({
     <>
       <NumberField
         label="Vertragsbeginn (Jahr)"
+        feedbackTargetId="inputs.privateInsurance.contractStartYear"
         value={ins.contractStartYear}
         min={1970}
         max={2030}
@@ -85,6 +86,7 @@ export function InsuranceInputs({
 
       <PayoutModeSection
         productLabel="pAV"
+        feedbackBaseId="inputs.privateInsurance.payoutMode"
         payoutMode={ins.payoutMode}
         onChangePayoutMode={(mode) =>
           onAssumptionsChange((current) => ({
@@ -113,6 +115,7 @@ export function InsuranceInputs({
         modelCapital={modelCapital}
         offerCapital={offerCapital}
         onChangeOfferCapital={setOfferCapital}
+        feedbackBaseId="inputs.privateInsurance.offerCapital"
       />
 
       {riy > 0 && (
@@ -158,6 +161,7 @@ export function InsuranceInputs({
           <div className="field-grid">
             <BeitragsdynamikField
               rate={ins.annualContributionGrowthRate}
+              feedbackBaseId="inputs.privateInsurance.beitragsdynamik"
               onChangeRate={(rate) =>
                 onAssumptionsChange((current) => ({
                   ...current,
@@ -204,6 +208,7 @@ export function InsuranceInputs({
             {ins.capitalGuarantee.enabled && (
               <NumberField
                 label="Garantiertes Mindestkapital"
+                feedbackTargetId="inputs.privateInsurance.capitalGuarantee"
                 value={ins.capitalGuarantee.floorPctOfContributions * 100}
                 min={0}
                 max={100}
@@ -229,6 +234,7 @@ export function InsuranceInputs({
             <>
               <NumberField
                 label="Andere Renteneinkommen mtl. (pAV)"
+                feedbackTargetId="inputs.privateInsurance.otherRetirementIncome"
                 value={ins.monthlyOtherRetirementIncome}
                 min={0}
                 step={50}
@@ -378,6 +384,7 @@ export function InsuranceInputs({
             riy={riy}
             feeInputMode={feeInputMode}
             setFeeInputMode={setFeeInputMode}
+            feedbackBaseId="inputs.privateInsurance.fees"
           />
         </div>
       </details>

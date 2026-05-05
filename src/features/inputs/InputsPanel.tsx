@@ -120,7 +120,12 @@ export function InputsPanel({
     effectiveTab && visible.includes(effectiveTab) ? effectiveTab : (visible[0] ?? null)
 
   return (
-    <section className="input-panel input-panel--full" aria-label="Eingaben">
+    <section
+      className="input-panel input-panel--full"
+      aria-label="Eingaben"
+      data-qa-target="inputs.section"
+      data-qa-section="true"
+    >
       <div className="panel-heading">
         <Settings size={18} aria-hidden="true" />
         <h2>Eingaben</h2>
@@ -156,6 +161,7 @@ export function InputsPanel({
       <div className="field-grid">
         <NumberField
           label="Kapital aufgebraucht bis (Alter)"
+          feedbackTargetId="inputs.assumptions.retirementEndAge"
           value={assumptions.retirementEndAge}
           min={profile.retirementAge + 1}
           max={110}
@@ -302,6 +308,7 @@ export function InputsPanel({
           {assumptions.inflationRate > 0 && (
             <NumberField
               label="Inflationsrate"
+              feedbackTargetId="inputs.assumptions.inflationRate"
               value={assumptions.inflationRate * 100}
               min={0}
               max={8}
@@ -346,10 +353,16 @@ function NettoBelastungControl({
   onAmountChange,
 }: NettoBelastungControlProps) {
   return (
-    <section className="netto-belastung-control" aria-label="Monatlicher Vergleichsbetrag">
+    <section
+      className="netto-belastung-control"
+      aria-label="Monatlicher Vergleichsbetrag"
+      data-qa-target="inputs.nettoBelastung.section"
+      data-qa-section="true"
+    >
       <div className="netto-belastung-row">
         <NumberField
           label="Netto-Belastung"
+          feedbackTargetId="inputs.nettoBelastung.amount"
           value={amountEUR}
           min={0}
           max={10_000}

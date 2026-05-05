@@ -1,5 +1,6 @@
 import type { PayoutMode } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
+import { useFeedbackTarget } from '../../../features/qa-feedback'
 
 /**
  * Reusable retirement-payout-form section for bAV and pAV. Identical structure
@@ -37,6 +38,13 @@ interface Props {
   rentenfaktorDefault: number
   zeitrenteYears: number
   onChangeZeitrenteYears: (n: number) => void
+  /**
+   * QA-feedback base id for this section instance. Inner elements derive their
+   * ids from this base, e.g. `inputs.bav.payoutMode` →
+   * `inputs.bav.payoutMode.select`, `inputs.bav.payoutMode.rentenfaktor`.
+   * When omitted, no feedback attributes are applied.
+   */
+  feedbackBaseId?: string
 }
 
 export function PayoutModeSection({
@@ -48,10 +56,18 @@ export function PayoutModeSection({
   rentenfaktorDefault,
   zeitrenteYears,
   onChangeZeitrenteYears,
+  feedbackBaseId,
 }: Props) {
+  const { targetProps: selectTargetProps } = useFeedbackTarget({
+    id: feedbackBaseId ? `${feedbackBaseId}.select` : '',
+    label: `Auszahlungsform (${productLabel})`,
+    precision: 'exact',
+  })
+  const selectQaProps = feedbackBaseId ? selectTargetProps : {}
+
   return (
     <>
-      <label className="field">
+      <label className="field" {...selectQaProps}>
         <span>Auszahlungsform ({productLabel})</span>
         <select
           value={payoutMode}
@@ -68,6 +84,7 @@ export function PayoutModeSection({
         <>
           <NumberField
             label={`Garantierter Rentenfaktor (${productLabel})`}
+            feedbackTargetId={feedbackBaseId ? `${feedbackBaseId}.rentenfaktor` : undefined}
             value={rentenfaktor}
             min={1}
             max={80}
@@ -88,6 +105,7 @@ export function PayoutModeSection({
       {payoutMode === 'zeitrente' && (
         <NumberField
           label={`Zeitrente-Dauer (${productLabel})`}
+          feedbackTargetId={feedbackBaseId ? `${feedbackBaseId}.zeitrenteDuration` : undefined}
           value={zeitrenteYears}
           min={1}
           max={50}

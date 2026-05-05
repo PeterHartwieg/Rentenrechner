@@ -21,6 +21,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
       <div className="field-grid">
         <NumberField
           label="Alter"
+          feedbackTargetId="inputs.profile.age"
           value={profile.age}
           min={18}
           max={profile.retirementAge - 1}
@@ -34,6 +35,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
         />
         <NumberField
           label="Rentenbeginn"
+          feedbackTargetId="inputs.profile.retirementAge"
           value={profile.retirementAge}
           min={Math.max(55, profile.age + 1)}
           max={75}
@@ -47,6 +49,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
         />
         <NumberField
           label="Jahresbrutto"
+          feedbackTargetId="inputs.profile.grossSalary"
           value={profile.grossSalaryYear}
           min={0}
           step={500}
@@ -56,6 +59,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
         {profile.publicHealthInsurance && (
           <NumberField
             label="GKV-Zusatzbeitrag"
+            feedbackTargetId="inputs.profile.gkvAdditionalRate"
             value={profile.healthAdditionalContributionPct}
             min={0}
             max={5}
@@ -163,6 +167,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
         <div className="field-grid">
           <NumberField
             label="PKV-Prämie (KV)"
+            feedbackTargetId="inputs.profile.pkvPremium"
             value={profile.pkvMonthlyPremium}
             min={0}
             step={10}
@@ -176,6 +181,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
           />
           <NumberField
             label="pPV-Prämie"
+            feedbackTargetId="inputs.profile.ppvPremium"
             value={profile.pPVMonthlyPremium}
             min={0}
             step={5}

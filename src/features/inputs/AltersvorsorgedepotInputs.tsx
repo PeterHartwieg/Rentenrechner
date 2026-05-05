@@ -89,6 +89,7 @@ export function AltersvorsorgedepotInputs({
       <div className="field-grid">
         <NumberField
           label="Netto-Aufwand mtl."
+          feedbackTargetId="inputs.avd.monthlyNetCost"
           value={avdFunding.monthlyNetCost}
           min={0}
           step={10}
@@ -97,6 +98,7 @@ export function AltersvorsorgedepotInputs({
         />
         <NumberField
           label="Förderberechtigte Kinder"
+          feedbackTargetId="inputs.avd.eligibleChildren"
           value={avd.eligibility.eligibleChildren}
           min={0}
           max={10}
@@ -117,6 +119,7 @@ export function AltersvorsorgedepotInputs({
         />
         <NumberField
           label="Aktien-Anteil (vor Gleitpfad)"
+          feedbackTargetId="inputs.avd.riskAllocationPct"
           value={avd.riskAllocationPct * 100}
           min={0}
           max={100}
@@ -134,6 +137,7 @@ export function AltersvorsorgedepotInputs({
         />
         <NumberField
           label="Rendite Sicherheits-Anlageteil p.a."
+          feedbackTargetId="inputs.avd.lowRiskAnnualReturn"
           value={avd.lowRiskAnnualReturn * 100}
           min={-10}
           max={20}

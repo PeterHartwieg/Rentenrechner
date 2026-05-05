@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { NumberField } from '../../../ui/NumberField'
+// feedbackBaseId is passed through to NumberField — no direct QA hook needed here.
 
 /**
  * Beitragsdynamik input field. Shared by bAV, pAV and ETF input panels — the
@@ -14,9 +15,16 @@ interface Props {
   onChangeRate: (decimal: number) => void
   /** Hint shown only when rate > 0. Product-specific copy. */
   activeHint?: ReactNode
+  /**
+   * QA-feedback base id for this section instance. Passed through to the inner
+   * NumberField, e.g. `inputs.bav.beitragsdynamik` →
+   * `inputs.bav.beitragsdynamik.rate`. When omitted, no feedback attributes
+   * are applied.
+   */
+  feedbackBaseId?: string
 }
 
-export function BeitragsdynamikField({ rate, onChangeRate, activeHint }: Props) {
+export function BeitragsdynamikField({ rate, onChangeRate, activeHint, feedbackBaseId }: Props) {
   // Caller is responsible for wrapping in `<div className="field-grid">` if a
   // grid layout is desired — the field shape is the same in inline and grid
   // contexts (ETF inputs sit inside an existing grid; bAV/pAV give it its own
@@ -25,6 +33,7 @@ export function BeitragsdynamikField({ rate, onChangeRate, activeHint }: Props) 
     <>
       <NumberField
         label="Beitragsdynamik p.a."
+        feedbackTargetId={feedbackBaseId ? `${feedbackBaseId}.rate` : undefined}
         value={rate * 100}
         min={0}
         max={10}

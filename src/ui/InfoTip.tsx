@@ -1,6 +1,7 @@
 import { useId, useState, useRef, useEffect, type ReactNode } from 'react'
 import { HelpCircle, Info } from 'lucide-react'
 import './InfoTip.css'
+import { useFeedbackTarget } from '../features/qa-feedback'
 
 interface Props {
   /** One short sentence shown in the popover. */
@@ -10,6 +11,13 @@ interface Props {
   /** Optional aria-label override for the trigger. */
   label?: string
   icon?: 'help' | 'info'
+  /**
+   * QA-feedback target id. When set, the trigger button carries a
+   * `data-qa-target` attribute so QA mode can pin this tooltip as a feedback
+   * subject. Inert when QA mode is disabled.
+   * Convention: `<surface>.<region>.<element>.tooltip`
+   */
+  feedbackTargetId?: string
 }
 
 /**
@@ -21,11 +29,18 @@ export function InfoTip({
   children,
   label = 'Erklärung anzeigen',
   icon = 'help',
+  feedbackTargetId,
 }: Props) {
   const [open, setOpen] = useState(false)
   const id = useId()
   const wrapRef = useRef<HTMLSpanElement>(null)
   const Icon = icon === 'info' ? Info : HelpCircle
+  const { targetProps } = useFeedbackTarget({
+    id: feedbackTargetId ?? '',
+    label,
+    precision: 'exact',
+  })
+  const qaProps = feedbackTargetId ? targetProps : {}
 
   useEffect(() => {
     if (!open) return
@@ -54,6 +69,7 @@ export function InfoTip({
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
+        {...qaProps}
       >
         <Icon size={13} aria-hidden="true" />
       </button>

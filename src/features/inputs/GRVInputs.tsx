@@ -135,6 +135,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                   ? 'Progn. Bruttorente (Versorgungsauskunft)'
                   : 'Progn. Bruttorente (Renteninformation)'
               }
+              feedbackTargetId="inputs.grv.manualMonthlyGross"
               value={sp.manualMonthlyGross ?? 0}
               min={0}
               step={10}
@@ -155,6 +156,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                     ? 'Entgeltpunkte-Äquivalent bisher'
                     : 'Entgeltpunkte bisher (EP)'
                 }
+                feedbackTargetId="inputs.grv.currentEntgeltpunkte"
                 value={sp.currentEntgeltpunkte}
                 min={0}
                 max={200}

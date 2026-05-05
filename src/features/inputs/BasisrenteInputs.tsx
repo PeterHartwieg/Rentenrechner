@@ -56,6 +56,7 @@ export function BasisrenteInputs({
       <div className="field-grid">
         <NumberField
           label="Netto-Aufwand mtl."
+          feedbackTargetId="inputs.basisrente.monthlyNetCost"
           value={basisrenteFunding.monthlyNetCost}
           min={0}
           step={10}
@@ -65,6 +66,7 @@ export function BasisrenteInputs({
 
         <NumberField
           label="Garantierter Rentenfaktor"
+          feedbackTargetId="inputs.basisrente.rentenfaktor"
           value={assumptions.basisrente.rentenfaktor}
           min={0}
           max={100}
@@ -100,6 +102,7 @@ export function BasisrenteInputs({
         <div className="erweitert-content">
           <NumberField
             label="Andere Renteneinkommen mtl."
+            feedbackTargetId="inputs.basisrente.otherRetirementIncome"
             value={otherIncome}
             min={0}
             step={50}

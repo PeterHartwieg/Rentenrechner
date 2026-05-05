@@ -49,6 +49,7 @@ export function RiesterInputs({
       <div className="field-grid">
         <NumberField
           label="Netto-Aufwand mtl."
+          feedbackTargetId="inputs.riester.monthlyNetCost"
           value={riesterFunding.monthlyNetCost}
           min={0}
           step={10}
@@ -57,6 +58,7 @@ export function RiesterInputs({
         />
         <NumberField
           label="Vorhandenes Kapital"
+          feedbackTargetId="inputs.riester.existingCapital"
           value={assumptions.riester.existingCapital}
           min={0}
           step={1000}

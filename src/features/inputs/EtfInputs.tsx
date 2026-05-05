@@ -18,6 +18,7 @@ export function EtfInputs({ assumptions, onAssumptionsChange }: Props) {
     <div className="field-grid">
       <NumberField
         label="ETF TER"
+        feedbackTargetId="inputs.etf.annualAssetFee"
         value={assumptions.etf.annualAssetFee * 100}
         min={0}
         max={3}
@@ -53,6 +54,7 @@ export function EtfInputs({ assumptions, onAssumptionsChange }: Props) {
       </label>
       <BeitragsdynamikField
         rate={assumptions.etf.annualContributionGrowthRate}
+        feedbackBaseId="inputs.etf.beitragsdynamik"
         onChangeRate={(rate) =>
           onAssumptionsChange((current) => ({
             ...current,

@@ -83,6 +83,7 @@ export function BavInputs({
       <div className="field-grid">
         <NumberField
           label="Netto-Aufwand mtl."
+          feedbackTargetId="inputs.bav.monthlyNetCost"
           value={bavFunding.monthlyNetCost}
           min={0}
           step={10}
@@ -109,6 +110,7 @@ export function BavInputs({
         />
         <NumberField
           label="AG-Festbetrag laut Vertrag"
+          feedbackTargetId="inputs.bav.employerFixedMonthly"
           value={assumptions.bav.contractualFixedMonthly}
           min={0}
           step={5}
@@ -160,6 +162,7 @@ export function BavInputs({
 
       <PayoutModeSection
         productLabel="bAV"
+        feedbackBaseId="inputs.bav.payoutMode"
         payoutMode={assumptions.bav.payoutMode}
         onChangePayoutMode={(mode) =>
           onAssumptionsChange((current) => ({
@@ -187,6 +190,7 @@ export function BavInputs({
         modelCapital={modelCapital}
         offerCapital={offerCapital}
         onChangeOfferCapital={setOfferCapital}
+        feedbackBaseId="inputs.bav.offerCapital"
       />
 
       {riy > 0 && (
@@ -220,6 +224,7 @@ export function BavInputs({
           <div className="field-grid">
             <BeitragsdynamikField
               rate={assumptions.bav.annualContributionGrowthRate}
+              feedbackBaseId="inputs.bav.beitragsdynamik"
               onChangeRate={(rate) =>
                 onAssumptionsChange((current) => ({
                   ...current,
@@ -249,6 +254,7 @@ export function BavInputs({
           <div className="field-grid">
             <NumberField
               label="Andere Renteneinkommen mtl."
+              feedbackTargetId="inputs.bav.otherRetirementIncome"
               value={assumptions.bav.monthlyOtherRetirementIncome}
               min={0}
               step={50}
@@ -410,6 +416,7 @@ export function BavInputs({
             riy={riy}
             feeInputMode={feeInputMode}
             setFeeInputMode={setFeeInputMode}
+            feedbackBaseId="inputs.bav.fees"
           />
         </div>
       </details>
