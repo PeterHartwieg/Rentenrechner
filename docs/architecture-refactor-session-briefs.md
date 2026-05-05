@@ -1,5 +1,31 @@
 # Architecture Refactor Session Briefs
 
+> **SUPERSEDED — see [`/CONTEXT.md`](../CONTEXT.md).**
+>
+> This document was a planning artifact for the architecture readability /
+> simplification effort. Every session described below has shipped:
+>
+> - Sessions 1–2 (projections barrel removal, UI product registry) shipped before the
+>   architecture-readability PRD.
+> - Session 3 (`visibleProducts` filter) shipped — see `simulateRetirementComparison`.
+> - Session 4 (salary-phase tax-delta primitives) shipped — see
+>   `src/engine/salaryPhaseFunding.ts`.
+> - Session 5 (monthly retirement net-payout primitive) shipped — see
+>   `calculateMonthlyRetirementPayout` in `src/engine/retirementPayout.ts`.
+> - Session 6 (`useSimulationViewModel` split) shipped — see
+>   `src/app/useSimulationResult.ts`, `useWorkspaceUiState.ts`, `useDerivedViews.ts`.
+>
+> The follow-on architecture-readability work (combine-context, portfolio split,
+> inventory registry, recommender candidates, recommendation rules/copy split,
+> evidence/provenance alignment, storage section split) shipped under
+> `.scratch/architecture-readability/` issues 01–13 and is mapped in
+> [`/CONTEXT.md`](../CONTEXT.md).
+>
+> This file is preserved as historical context only. Do **not** treat its
+> proposals as open work. New architecture changes start from `CONTEXT.md`.
+
+---
+
 This document breaks the architecture optimization review into independent work
 packets that separate coding sessions can pick up. Each packet is scoped to keep
 behavior stable unless explicitly called out. Prefer small PRs with focused tests

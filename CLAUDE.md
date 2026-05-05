@@ -3,6 +3,8 @@
 German retirement calculator comparing ETF, bAV, private insurance, Basisrente, Altersvorsorgedepot, and Riester.
 Stack: React + TypeScript + Vite. Frontend-only today; small backend planned for upload/OCR features (see "Backend boundary").
 
+> **First-read map: [`CONTEXT.md`](CONTEXT.md)** — domain glossary (compare/combine mode, baseline/what-if, instance, transfer event, evidence state, combine context) and module ownership map for engine, app, content, and features. Read it before this file when you need to find code.
+
 ## About this project
 
 **Public, free tool.** Anyone can use the hosted version at no cost. Donations (Stripe / GitHub Sponsors) cover hosting.
@@ -45,19 +47,33 @@ npm run repo:stats      # file/symbol inventory
 
 ## Quick navigation
 
+For the full module map (combine mode, projection, transfer, funding, allowance, recommender, inventory) see [`CONTEXT.md`](CONTEXT.md). High-frequency landings only here:
+
 | Task | Start here |
 |------|-----------|
 | Change a product's calculation | `docs/context/products.md`, then `src/engine/products/<product>.ts` |
 | Change tax / social-security rules | `docs/context/rules-and-tax.md` |
-| Change UI layout or inputs | `docs/context/ui.md` |
-| Add a new product | `src/engine/products/README.md` |
+| Change UI layout or inputs (compare mode) | `docs/context/ui.md`, `src/features/inputs/productUiRegistry.tsx` |
+| Add a new product | `src/engine/products/README.md`, plus `src/features/inventory/inventoryProductRegistry.ts` (inventory side) |
 | Update annual statutory values | `src/rules/de2026.ts` |
 | Add a publication / commercial-license feature | `BACKLOG.md` Group P |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/{ImpressumPage,DatenschutzPage,LegalFooter}.tsx` |
 | Add a new app route | `src/app/useRoute.ts` (`Route` union + `KNOWN_ROUTES`), then render in `src/App.tsx` |
 | Add or extend a guided-setup entry flow | `src/content/triggers.ts` (`PATH_OPTIONS` + `VISIBLE_PRODUCTS_BY_PATH`) |
 | Reuse a payout-mode / fee / Beitragsdynamik / offer-capital section | `src/features/inputs/sections/` |
-| Plan or land the Group G singleton-to-instance migration | `docs/portfolio-schema-design.md` (binding design) |
+| Reuse an inventory field component (`InvField`, option tables) | `src/features/inventory/{fields.tsx,fieldHelpers.ts}` |
+| Change combine-mode instance projection (singleton view, neutralised defaults) | `src/engine/portfolioProjection.ts` |
+| Change cross-instance funding caps (bAV / Basisrente / Riester / AVD) | `src/engine/portfolioFunding.ts` |
+| Change §20 Abs. 9 EStG Sparerpauschbetrag allocation across ETF instances | `src/engine/portfolioAllowance.ts` |
+| Change transfer-event collection or `buildInstanceCapitalPolicy` | `src/engine/portfolioTransfer.ts` (use `transferEventKey` from `src/storage.ts` for dedupe) |
+| Change statutory-pension / KV/PV routing for combine + recommender | `src/engine/combineContext.ts` (`buildCombineContext`) |
+| Change recommendation rules | `src/app/recommendations.ts` |
+| Change recommendation copy | `src/content/recommendationCopy.ts` |
+| Add or change a recommender product candidate | `src/app/recommenderCandidates/<product>.ts` (registered via `recommenderCandidates/index.ts`) |
+| Change evidence ↔ provenance display or export labels | `src/features/results/provenanceHelpers.ts` |
+| Change workspace ID generation or pure workspace mutations | `src/app/workspaceIdentity.ts` |
+| Change storage migration / load path / scenario library | `src/storage.ts` (sections clearly marked) |
+| Plan future schema changes | `docs/portfolio-schema-design.md` |
 
 ## Key files
 
@@ -92,22 +108,41 @@ npm run repo:stats      # file/symbol inventory
 |------|------|
 | `src/engine/simulationContext.ts` | `buildContext` — pre-scenario funding (bAV, Basisrente, AVD, Riester) computed once. Product simulators must consume this, not call funding helpers directly. |
 | `src/engine/buildResult.ts` | Shared accumulation + payout/tax pipeline; assembles `ProductResult`. |
-| `src/engine/simulate.ts` | Top-level `simulateRetirementComparison` (under 200 lines). |
+| `src/engine/simulate.ts` | Top-level compare-mode `simulateRetirementComparison`. |
 | `src/engine/productRegistry.ts` | Single source of truth for product ids, labels, colors, simulators, validators, sort order. `ProductId` is derived from registry entries — never hardcode the union. |
 | `src/engine/products/<product>.ts` | One folder per product (simulator + validator + tests). See `products/README.md` for the routing table. |
 
+### Engine — combine-mode submodules (architecture-readability split)
+
+The portfolio adapter is now thin orchestration. Each concern below has its
+own home with co-located tests; the adapter just iterates instances and
+delegates.
+
+| File | Role |
+|------|------|
+| `src/engine/portfolioAdapter.ts` | Thin combine-mode orchestrator: iterates per-product instance arrays, drives per-instance simulation, tags results with `instanceId`. |
+| `src/engine/portfolioCombine.ts` | Top-level `combinePortfolio`: per-instance retirement-tax + KV/PV aggregation across the `perInstance` map. |
+| `src/engine/combineContext.ts` | `buildCombineContext` — single home for statutory-pension tax channel, statutory-pension KV channel, and retirement health status. Recommender + combine simulation share this. |
+| `src/engine/portfolioProjection.ts` | Instance → singleton-shaped `ScenarioAssumptions` projection: neutralised defaults, slot detection, paid-up overrides, `projectInstanceToScenarioAssumptions`, and `singletonViewOfWorkspace` (used by storage / share-URL ingest). |
+| `src/engine/portfolioTransfer.ts` | Transfer event collection (outbound/inbound), calendar-year ↔ contract-year conversion, surrender-tax computation, `buildInstanceCapitalPolicy`. Pairs with `transferEventKey` exported from `src/storage.ts` for backfill dedupe. |
+| `src/engine/portfolioFunding.ts` | Cross-instance funding apportionment under statutory caps: bAV §3 Nr. 63 / §1 SvEV, Basisrente §10 Abs. 3, Riester €2 100, AVD per-contract. Owns paid-up funding helpers. |
+| `src/engine/portfolioAllowance.ts` | §20 Abs. 9 EStG Sparerpauschbetrag allocation across multiple ETF instances (demand calculation, per-year apportionment, ETF re-run orchestration). |
+
 ### App, UI, storage
 
-- `src/app/` — `useCalculatorState.ts` (localStorage + URL init); `useSimulationResult.ts` (runs `simulateRetirementComparison` + Monte Carlo + tax-mode derivation), `useWorkspaceUiState.ts` (workspace UI toggles, **no** simulation deps so toggles never trigger reruns), `useDerivedViews.ts` (chart/table data + CSV/share-link composition), and `simulationSelectors.ts` (pure framework-agnostic selectors consumed by those hooks). `useSimulationViewModel.ts` is a back-compat facade over the three hooks. `productPresentation.ts` (presets + warnings + colors). `useRoute.ts` (minimal pathname-based router for `/`, `/impressum`, `/datenschutz`).
-- `src/features/` — `inputs/`, `results/`, `cashflows/`, `assumptions/`, `workspace/`, `legal/` (each with co-located CSS).
+- `src/app/` — `useCalculatorState.ts` (compare-mode localStorage + URL init); `portfolioState.ts` + `useWorkspace.ts` (combine-mode workspace state); `workspaceIdentity.ts` (pure workspace IDs + add/remove mutations, React-free, breaks the app↔inventory cycle); `useSimulationResult.ts` (runs `simulateRetirementComparison` + Monte Carlo + tax-mode derivation), `useWorkspaceUiState.ts` (workspace UI toggles, **no** simulation deps so toggles never trigger reruns), `useDerivedViews.ts` (chart/table data + CSV/share-link composition), and `simulationSelectors.ts` (pure framework-agnostic selectors). `useSimulationViewModel.ts` is a back-compat facade over the three hooks. `useCombineSimulation.ts` drives combine-mode simulation. `productPresentation.ts` (presets + warnings + colors). `useRoute.ts` (minimal pathname-based router for `/`, `/impressum`, `/datenschutz`). `recommender.ts` orchestrator + `recommenderCandidates/` per-product candidate registry. `recommendations.ts` is the pure rules engine (atom shape).
+- `src/features/` — `inputs/`, `results/`, `cashflows/`, `assumptions/`, `workspace/`, `legal/`, `inventory/`, `dashboard/`, `qa-feedback/` (each with co-located CSS).
   - `inputs/productUiRegistry.tsx` — UI-side `Record<ProductId, ProductUiEntry>` that collapses the per-product input dispatch in `InputsPanel`. Adding or removing a product input is a registry edit, not a branch-chain change. Engine `productRegistry.ts` stays React-free; this is its UI sibling.
-  - `inputs/sections/` — reusable section components consumed by `BavInputs` / `InsuranceInputs` / `InputsPanel` (`PayoutModeSection`, `FeeSection`, `BeitragsdynamikField`, `OfferCapitalCompareField`). Take generic value + onChange pairs so they slot into per-instance state in Group G without changes.
+  - `inputs/sections/` — reusable section components consumed by `BavInputs` / `InsuranceInputs` / `InputsPanel` (`PayoutModeSection`, `FeeSection`, `BeitragsdynamikField`, `OfferCapitalCompareField`).
+  - `inventory/inventoryProductRegistry.ts` — UI-side `Record<MultiInstanceProductId, InventoryProductEntry>`: per-product default-draft construction, draft→instance conversion, label fallback. Mirrors engine `productRegistry.ts` but lives here because it depends on `defaultAssumptions`. React-free; ID generation injected via `makeId`.
+  - `inventory/{fields.tsx,fieldHelpers.ts}` — shared inventory field components (`InvField`) and non-component helpers (`toNumber`, payout option tables) consumed by both wizard cards and the combine sidebar.
   - `legal/` — `ImpressumPage`, `DatenschutzPage`, `LegalLayout` (back-link + page footer), `LegalFooter` (rendered on the calculator's home page below `PrintReport`).
-  - `results/provenance.tsx` — `ProvLabel` + `FieldWithProv` primitives reused by `ProductEditCards` and (in Group G) inventory-card evidence states.
-- `src/content/` — content/config without React deps: `terms.ts` (glossary), `productFocus.ts` (per-product "lead with user task" copy), `triggers.ts` (guided-setup paths + comparison-picker product groupings).
+  - `results/provenance.tsx` — `ProvLabel` + `FieldWithProv` primitives.
+  - `results/provenanceHelpers.ts` — single mapping layer between domain `EvidenceState` and display `ProvKind`, plus German export labels (`Bestätigt` / `lt. Beleg` / `Schätzwert` / `Unbekannt`). All evidence-bearing surfaces route through `evidenceStateToProvKind`.
+- `src/content/` — content/config without React deps: `terms.ts` (glossary), `productFocus.ts` (per-product "lead with user task" copy), `triggers.ts` (guided-setup paths + comparison-picker product groupings), `recommendationCopy.ts` (German atom templates for `recommendations.ts`).
 - `src/ui/` — shared primitives (`NumberField`, `ResultMetric`, formatters, `InfoTip`).
 - `src/domain/` — type barrel; import from `src/domain/index.ts` unless you need one product's types.
-- `src/storage.ts` exports `migrateAndValidateState` — the single migrate+validate pipeline used by both `parseStateFromJson` (main state) and `scenarioLibrary.ts` (saved scenarios). Library entries that fail validation are dropped silently on load.
+- `src/storage.ts` — only load/save module. Sections are clearly marked: storage keys, `mergeDeep` + pre-merge migrations, `migrateAndValidateState` (shared with `scenarioLibrary.ts`), v2 workspace load path (production runs `validateWorkspace`), `transferEventKey` (consumed by `portfolioTransfer.ts` for backfill dedupe), compare-mode and workspace save/load. Scenario-library entries that fail validation are dropped silently on load. Malformed v2 workspaces fall back to defaults locally; malformed share-URL ingest produces a null result so the caller can surface "invalid link".
 - `src/utils/{scenarioSchema,urlShare,csvExport,format}.ts`.
 - `public/_redirects` (Cloudflare Pages / Netlify) and `vercel.json` at repo root supply the SPA fallback so `/impressum` and `/datenschutz` deep-link correctly on static hosts.
 
@@ -140,7 +175,7 @@ Cross-cutting decisions you'll keep hitting:
 - **KV/PV proportional apportionment over BBG.** When aggregate retirement income exceeds the monthly KV/PV BBG, contributions are scaled proportionally across sources (`calculateRetirementKvPv`). No statute mandates priority for single-member cases — this is a documented modeling choice.
 - **Vorsorgepauschale deducts only RV + GKV + PV, not AV.** `SalaryResult.vorsorgepauschale` exposes the breakdown. PKV branch uses actual `pkvMonthlyPremium` + `pPVMonthlyPremium` as Teilbeträge; net PKV cost (premium − §257 subsidy) deducts from `annualNet`.
 - **bAV two-pass funding.** `calculateBavFunding` estimates employer subsidy, computes total bAV against §3 Nr. 63 / §1 SvEV limits, then reruns salary with corrected effective limits. Iterative fixed-point (≤20 iterations).
-- **`SimulationContext` / `buildContext`.** Pre-scenario funding (bAV, Basisrente, AVD, Riester) runs once before the scenario loop. Product simulators receive `ctx` and must not call funding helpers directly.
+- **`SimulationContext` / `buildContext`.** Pre-scenario funding (bAV, Basisrente, AVD, Riester) runs once before the scenario loop. Product simulators receive `ctx` and must not call funding helpers directly. In combine mode, `portfolioFunding.ts` apportions cross-instance funding under statutory caps before delegating into `buildContext`; statutory-pension and KV/PV routing are factored out into `combineContext.ts` so the recommender and combine simulation cannot drift.
 - **`PRODUCT_REGISTRY` is the source of truth for product identity.** `ProductId` is derived from each product's `metadata.id` literal. Adding a product is local to `engine/products/` + per-product domain types + one registry entry. Use `getProductMeta(id)` in UI instead of local color/order maps. The UI sibling `productUiRegistry.tsx` (`Record<ProductId, ProductUiEntry>`) drives `InputsPanel` dispatch; engine code never imports React.
 - **`visibleProducts` empty means "no comparison".** `simulateRetirementComparison` filters by `assumptions.visibleProducts` and returns `products: []` when the array is empty; the UI surfaces an empty-state. `mergeDeep` in `storage.ts` **preserves** explicit empty arrays so a user clearing the comparison survives reload and share-link round-trip; `applyPreMergeMigrations` separately normalizes `returnScenarios` to the canonical baseline before mergeDeep so the simulation always has at least one scenario.
 - **Fair-comparison invariant (compare-mode only).** In compare-mode (singleton state, `simulateRetirementComparison` path), ETF and insurance always invest `bavFunding.monthlyNetCost` — the same net cash the user pays for bAV. There is no "custom amount" toggle in compare-mode. In **combine-mode** (workspace with per-instance arrays via `simulatePortfolio`), each ETF instance's `monthlyContribution` is honored via `BuildContextOverrides.etfMonthlyUserCostOverride` and each insurance instance's `monthlyContribution` is honored via `BuildContextOverrides.insuranceMonthlyUserCostOverride`; the invariant doesn't apply because users are modeling actual independent contracts.

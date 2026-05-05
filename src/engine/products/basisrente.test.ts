@@ -166,7 +166,7 @@ describe('netBasisrentePayout — KV/PV health status (Group E step 3)', () => {
   })
 })
 
-describe('Wave 16 — freiwillig-GKV BBG cap interaction (marginal approach)', () => {
+describe('freiwillig-GKV BBG cap interaction (marginal approach)', () => {
   const bbg = de2026Rules.socialSecurity.healthAndCareCapMonth // 5812.50 EUR/month
   // Helper: isolate the KV/PV component by comparing freiwillig vs kvdr (same tax, no KV/PV for kvdr).
   const kvPvAmount = (gross: number, other: number) =>

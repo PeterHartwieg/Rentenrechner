@@ -445,10 +445,10 @@ describe('#72 projectStatutoryPension (via simulateRetirementComparison)', () =>
 })
 
 // ---------------------------------------------------------------------------
-// Wave 15: pensionBaselineType variants
+// pensionBaselineType variants (versorgungswerk, beamten_versorgungsbezug)
 // ---------------------------------------------------------------------------
 
-describe('Wave 15 pensionBaselineType: versorgungswerk', () => {
+describe('pensionBaselineType: versorgungswerk', () => {
   const vwSp = {
     ...defaultAssumptions.statutoryPension,
     pensionBaselineType: 'versorgungswerk' as const,
@@ -517,7 +517,7 @@ describe('Wave 15 pensionBaselineType: versorgungswerk', () => {
   })
 })
 
-describe('Wave 15 pensionBaselineType: beamtenpension', () => {
+describe('pensionBaselineType: beamtenpension', () => {
   const beamteSp = {
     ...defaultAssumptions.statutoryPension,
     pensionBaselineType: 'beamtenpension' as const,
@@ -603,7 +603,7 @@ describe('Wave 15 pensionBaselineType: beamtenpension', () => {
   })
 })
 
-describe('Wave 15 pensionBaselineType: none', () => {
+describe('pensionBaselineType: none', () => {
   const noneSp = {
     ...defaultAssumptions.statutoryPension,
     pensionBaselineType: 'none' as const,

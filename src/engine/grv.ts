@@ -1,5 +1,5 @@
 /**
- * Statutory/occupational pension projection (Wave 15: Versorgungswerk + Beamtenpension).
+ * Statutory/occupational pension projection (handles Versorgungswerk + Beamtenpension).
  *
  * Handles four pension baseline types (PensionBaselineType):
  *

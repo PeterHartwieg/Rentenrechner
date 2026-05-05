@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Statutory pension (#72, Wave 15 Versorgungswerk/Beamtenpension)
+// Statutory pension (Versorgungswerk + Beamtenpension)
 // ---------------------------------------------------------------------------
 
 /**

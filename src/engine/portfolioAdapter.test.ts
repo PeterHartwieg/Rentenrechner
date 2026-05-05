@@ -1,7 +1,7 @@
 /**
- * Tests for the PortfolioAdapter (Group G issue 03 — milestone M1.3).
+ * Tests for the PortfolioAdapter.
  *
- * Coverage map (per the issue 03 test plan):
+ * Coverage map:
  *   1. Oracle byte-identity   — every existing oracle stays green via length-1
  *      array invocation (covered by `simulate.integration.test.ts` running
  *      against the legacy path; the projection helper is independently exercised
@@ -10,9 +10,10 @@
  *   2. Two bAV instances      — cap shared across instances; statutory subsidy proportional.
  *   3. Two ETF instances Sparerpauschbetrag — cross-instance allowance sharing
  *      applied in `simulatePortfolio` via `applyCrossInstanceSparerpauschbetrag`
- *      (Phase G M4 F3); covered by the describe block at line ~306.
+ *      (allocation owned by `portfolioAllowance.ts`); covered by the describe
+ *      block at line ~306.
  *   4. derivedFromBaselineSnapshot freezes at fork — covered in portfolioState.test.ts.
- *   5. Re-base stub           — `it.skip` (issue P2).
+ *   5. Re-base stub           — `it.skip` (deferred follow-up).
  *   6. Projection round-trip stability.
  *   7. Neutralised defaults are truly neutral.
  *   8. extractSingletonAssumptions removal — covered structurally (no longer
@@ -344,11 +345,11 @@ describe('PortfolioAdapter — Sparerpauschbetrag cross-instance handling', () =
   })
 
   it('two ETF instances share the €1 000 single allowance per year (no double-credit)', () => {
-    // Phase G M4 F3 — cross-instance Sparerpauschbetrag.
-    // Construct two ETF instances large enough that each generates ≥€1 000 of
-    // taxable gain per payout year on its own. Assert that the SUM of
-    // `saverAllowanceUsed` across the two instances equals exactly the single
-    // taxpayer allowance (€1 000), not 2 × €1 000.
+    // Cross-instance Sparerpauschbetrag (§20 Abs. 9 EStG): allocation owned by
+    // `portfolioAllowance.ts`. Construct two ETF instances large enough that each
+    // generates ≥€1 000 of taxable gain per payout year on its own. Assert that
+    // the SUM of `saverAllowanceUsed` across the two instances equals exactly the
+    // single taxpayer allowance (€1 000), not 2 × €1 000.
     const baseV1 = makeRichV1()
     const workspace = migrateV1ToV2(
       baseV1.profile as unknown as Record<string, unknown>,
@@ -793,10 +794,10 @@ describe('PortfolioAdapter — surrendered instances are skipped', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Phase G M4 F1 — paid_up (Beitragsfrei) engine support across 5 simulators
+// Beitragsfrei (paid_up) engine support across 5 simulators
 // ---------------------------------------------------------------------------
 
-describe('PortfolioAdapter — Beitragsfrei (paid_up) engine support (M4 F1)', () => {
+describe('PortfolioAdapter — Beitragsfrei (paid_up) engine support', () => {
   /**
    * Helper: build a length-1 workspace where the SOLE instance of `slotKey`
    * has `status: 'paid_up'` and a non-trivial `currentValueEUR`. Returns the
@@ -999,10 +1000,10 @@ describe('PortfolioAdapter — Beitragsfrei (paid_up) engine support (M4 F1)', (
 })
 
 // ---------------------------------------------------------------------------
-// Phase G M4 F1 — round-trip: contractDecision beitragsfreiWhatIf + simulate
+// Round-trip: contractDecision beitragsfreiWhatIf + simulate
 // ---------------------------------------------------------------------------
 
-describe('PortfolioAdapter — beitragsfrei round-trip with simulatePortfolio (M4 F1)', () => {
+describe('PortfolioAdapter — beitragsfrei round-trip with simulatePortfolio', () => {
   it('applying beitragsfreiWhatIf produces a workspace whose simulation differs from baseline', async () => {
     const { beitragsfreiWhatIf, applyContractDecision } = await import('../app/contractDecisions')
     const baseV1 = makeRichV1()

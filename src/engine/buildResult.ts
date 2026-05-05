@@ -50,9 +50,9 @@ export interface BuildProductPolicy {
   /**
    * `saverAllowanceOverride(yearIndex)` (0-based contract year) lets combine-mode
    * share the §20 Abs. 9 EStG Sparerpauschbetrag across multiple ETF instances
-   * per year (Phase G M4 F3). Default behaviour (undefined) consumes the full
-   * `rules.capitalGains.saverAllowance` per year — preserves byte-identical
-   * compare-mode oracle goldens.
+   * per year (allocation owned by `portfolioAllowance.ts`). Default behaviour
+   * (undefined) consumes the full `rules.capitalGains.saverAllowance` per year —
+   * preserves byte-identical compare-mode oracle goldens.
    */
   vorabpauschale?: {
     partialExemption: number

@@ -306,10 +306,9 @@ export function weiterfuehrenWhatIf(
  * continues to accumulate on the existing balance under the paid-up fee model.
  *
  * Applicable to: bAV, pAV, Basisrente (though Basisrente paid-up is unusual),
- * Riester, AVD. Phase G M4 F1 wires the engine simulators to honor
- * `status === 'paid_up'` (zero contributions, phase-2 fees, currentValueEUR
- * carried as initial capital) — see `src/engine/portfolioAdapter.ts`
- * "Beitragsfrei (paid_up) helpers".
+ * Riester, AVD. Engine simulators honor `status === 'paid_up'` (zero
+ * contributions, phase-2 fees, currentValueEUR carried as initial capital) —
+ * see `src/engine/portfolioFunding.ts` "Beitragsfrei (paid_up) helpers".
  *
  * `paidUpAtAge` defaults to the user's current age from the profile.
  */
@@ -921,10 +920,10 @@ function findInstanceInWsa(
  * Active or paid-up: returns weiterfuehren + beitragsfrei (where applicable) +
  *   kuendigen (if not basisrente) + uebertragen (for each compatible target, max 2).
  *
- * Beitragsfrei (Phase G M4 F1): now wired across all 5 contributing simulators
- * (bAV, pAV, Basisrente, AVD, Riester). ETF instances do not get a beitragsfrei
- * card — there are no contributions to stop and no acquisition costs to drop;
- * the user simply lowers `monthlyContribution` to 0. Already-paid-up instances
+ * Beitragsfrei: wired across all 5 contributing simulators (bAV, pAV,
+ * Basisrente, AVD, Riester). ETF instances do not get a beitragsfrei card —
+ * there are no contributions to stop and no acquisition costs to drop; the
+ * user simply lowers `monthlyContribution` to 0. Already-paid-up instances
  * also do not show the card (would be a no-op).
  */
 export function generateContractDecisions(
