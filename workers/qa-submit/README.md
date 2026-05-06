@@ -1,0 +1,80 @@
+# qa-submit Worker
+
+Cloudflare Worker that receives QA submissions from the rentenwiki.de composer
+and creates GitHub issues with screenshots stored in R2. Sanctioned by
+[ADR-0001](../../docs/adr/0001-qa-submission-backend-amendment.md).
+
+## Architecture
+
+```
+[composer at rentenwiki.de]
+   |  POST /submit { title, body, screenshotBase64, turnstileToken }
+   v
+[qa.rentenwiki.de — this Worker]
+   |  1. Origin check (ALLOWED_ORIGINS)
+   |  2. Turnstile verify
+   |  3. R2 upload screenshot → signed URL
+   |  4. GitHub API create issue with body + image markdown
+   v
+[github.com/PeterHartwieg/Rentenrechner/issues]
+```
+
+Cleanup: `issues.closed` webhook → Worker `/cleanup` deletes the R2 object.
+R2 lifecycle rule (90-day TTL) is the safety net.
+
+## First-time deploy
+
+Prereqs: Wrangler logged in, R2 enabled on the Cloudflare account, Turnstile
+site keys, GitHub fine-grained PAT.
+
+```sh
+cd workers/qa-submit
+npm install
+
+# 1. Create R2 bucket (one-time, idempotent)
+wrangler r2 bucket create rentenwiki-qa-screenshots
+
+# 2. Deploy the Worker (creates qa.rentenwiki.de DNS automatically)
+wrangler deploy
+
+# 3. Set secrets (only works after the Worker exists from step 2)
+wrangler secret put TURNSTILE_SECRET   # paste Turnstile secret key
+wrangler secret put GH_PAT             # paste GitHub fine-grained PAT
+
+# 4. Verify
+curl https://qa.rentenwiki.de/health
+# expected: ok
+```
+
+## Local dev
+
+```sh
+npm run dev
+# wrangler dev serves on http://localhost:8787
+# .dev.vars file (gitignored) holds local-only secrets:
+#   TURNSTILE_SECRET=...
+#   GH_PAT=...
+```
+
+## Endpoints
+
+- `GET /health` — liveness check, returns `ok`.
+- `POST /submit` — composer submission. Validates Origin + Turnstile, optionally
+  uploads screenshot to R2, creates a GitHub issue with `needs-triage` label.
+  Request: `{ title, body, screenshotBase64?, screenshotContentType?, turnstileToken }`.
+  Response: `{ ok: true, issueUrl, issueNumber }` or `{ ok: false, error, message }`.
+- `GET /screenshot/<uuid>.{png,jpg}` — serves a screenshot from the private R2
+  bucket. GitHub uses this URL to render images in issue bodies.
+- `POST /cleanup` — Phase 4, GitHub `issues.closed` webhook. Not yet wired.
+
+## Local dev secrets
+
+Create `.dev.vars` (gitignored) for `wrangler dev`:
+
+```
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+GH_PAT=github_pat_local_dev_token_here
+```
+
+The Turnstile value above is Cloudflare's official "always passes" test secret —
+useful for local dev so you don't burn real Turnstile attempts.
