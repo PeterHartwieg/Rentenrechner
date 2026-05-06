@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
 import remarkGfm from 'remark-gfm'
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 // Static-host SPA fallback — Cloudflare Pages serves dist/404.html for any
 // unmatched path. The legacy `copyFileSync('dist/index.html', 'dist/404.html')`
 // plugin is replaced by `scripts/prerender.mjs`, which writes a real 404 page
@@ -16,14 +18,11 @@ import remarkGfm from 'remark-gfm'
 // strikethrough — required by topic pages that use comparison tables (issue #04).
 
 export default defineConfig({
-  plugins: [
-    // MDX must run before the React plugin so JSX inside `.mdx` is processed
-    // through `@vitejs/plugin-react`'s fast-refresh transform.
-    // remarkPlugins: remark-gfm enables pipe tables used in topic-page
-    // comparison tables (issue #04 and onwards).
-    { enforce: 'pre', ...mdx({ remarkPlugins: [remarkGfm] }) },
-    react({ include: /\.(jsx|tsx|mdx)$/ }),
-  ],
+  plugins: [// MDX must run before the React plugin so JSX inside `.mdx` is processed
+  // through `@vitejs/plugin-react`'s fast-refresh transform.
+  // remarkPlugins: remark-gfm enables pipe tables used in topic-page
+  // comparison tables (issue #04 and onwards).
+  { enforce: 'pre', ...mdx({ remarkPlugins: [remarkGfm] }) }, react({ include: /\.(jsx|tsx|mdx)$/ }), cloudflare()],
   test: {
     exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**'],
   },
