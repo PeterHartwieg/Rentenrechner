@@ -1,20 +1,20 @@
 // @vitest-environment jsdom
 
 /**
- * Phase 3 — QaPreview "Direkt an GitHub einreichen" worker-submit tests.
+ * QaPreview "Senden" button — Worker submission tests.
  *
- * Sibling `no-network-e2e.test.tsx` pins the no-network guarantee for the
- * other four export paths (clipboard, bundle, mailto, GitHub-prefilled-URL).
- * This file covers the only export path that DOES network: the
- * `submitToWorker` POST to `qa.rentenwiki.de/submit`.
+ * The simplified preview no longer has a consent checkbox: QA mode itself
+ * is opt-in (`?qa=1`), so reaching the preview already means the tester
+ * intends to send. Turnstile renders immediately and the Senden button
+ * unlocks once the token arrives.
  *
  * Coverage:
- *   1. Happy path — consent ticked → fake Turnstile token → submit POST
- *      reaches the Worker URL → success status renders the issue URL.
- *   2. Error path — Worker responds 4xx with German error message; status
- *      surfaces the German message.
- *   3. No-network when consent unticked — even mounting QaPreview does not
- *      call fetch until the consent box is ticked.
+ *   1. Happy path — Turnstile callback fires → Senden enables → POST
+ *      reaches the Worker URL → success closes the panel.
+ *   2. Error path — Worker responds 4xx with a German message; the panel
+ *      stays open and surfaces it via role="alert".
+ *   3. No-network until the user clicks Senden — mounting the preview does
+ *      not call fetch.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,10 +33,7 @@ beforeEach(() => {
   // QA mode on; the provider reads ?qa=1 on mount.
   window.history.replaceState(null, '', '/?qa=1')
 
-  // Stub window.open so any incidental mailto/github clicks don't pop tabs.
-  vi.spyOn(window, 'open').mockReturnValue(null)
-
-  // Stub a synchronous Turnstile API. The composer renders the widget into
+  // Stub a synchronous Turnstile API. The preview renders the widget into
   // a div; our fake `render` invokes the supplied callback on the next
   // microtask so the React state setter fires inside `act()`.
   ;(window as unknown as { turnstile: TurnstileApiStub }).turnstile = {
@@ -45,13 +42,6 @@ beforeEach(() => {
       return 'widget-1'
     },
   }
-
-  // navigator.clipboard isn't in jsdom; stub it so the existing copy
-  // button doesn't blow up if it's incidentally clicked.
-  Object.defineProperty(navigator, 'clipboard', {
-    configurable: true,
-    value: { writeText: vi.fn().mockResolvedValue(undefined) },
-  })
 })
 
 afterEach(() => {
@@ -59,7 +49,6 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   delete (window as unknown as { turnstile?: TurnstileApiStub }).turnstile
-  // Remove any Turnstile script tag the component appended.
   document.getElementById('qa-turnstile-script')?.remove()
   sessionStorage.clear()
   document.documentElement.removeAttribute('data-qa-mode')
@@ -114,8 +103,8 @@ async function navigateToPreview() {
   await screen.findByTestId('qa-preview')
 }
 
-describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
-  it('happy path: consent → Turnstile token → POST reaches Worker, success status shows issue URL', async () => {
+describe('QaPreview — Senden (worker submit)', () => {
+  it('happy path: Turnstile token arrives → POST reaches Worker → panel closes on success', async () => {
     fetchSpy = vi.fn(
       async () =>
         new Response(
@@ -134,18 +123,12 @@ describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
 
     await navigateToPreview()
 
-    // Tick the consent checkbox — that triggers Turnstile widget render
-    // (our stub immediately produces a token).
-    const consent = screen.getByTestId('qa-preview-worker-consent')
-    fireEvent.click(consent)
-
-    // Wait for the fake Turnstile callback to fire and the submit button to enable.
+    // Wait for the fake Turnstile callback to fire and the Senden button to enable.
     await waitFor(() => {
       const submitBtn = screen.getByTestId('qa-preview-worker-submit') as HTMLButtonElement
       expect(submitBtn.disabled).toBe(false)
     })
 
-    // Submit.
     fireEvent.click(screen.getByTestId('qa-preview-worker-submit'))
 
     // The POST hits the Worker URL.
@@ -161,7 +144,7 @@ describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
     expect(body.title).toBeTruthy()
     expect(body.body).toContain('Worker submit test feedback.')
 
-    // Panel closes on success — the QaPreview testid disappears.
+    // Panel closes on success.
     await waitFor(() => {
       expect(screen.queryByTestId('qa-preview')).toBeNull()
     })
@@ -185,7 +168,6 @@ describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
     vi.stubGlobal('fetch', fetchSpy)
 
     await navigateToPreview()
-    fireEvent.click(screen.getByTestId('qa-preview-worker-consent'))
 
     await waitFor(() => {
       expect(
@@ -203,27 +185,18 @@ describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
     await waitFor(() => {
       const status = screen.getByTestId('qa-preview-status')
       expect(status.textContent).toContain('Spam-Schutz-Prüfung fehlgeschlagen')
-      // Error state must use role=alert so screen readers announce it.
       expect(status.getAttribute('role')).toBe('alert')
     })
 
-    // Panel stays open on error so the tester can adjust + retry.
+    // Panel stays open on error so the tester can retry.
     expect(screen.queryByTestId('qa-preview')).not.toBeNull()
   })
 
-  it('no-network when consent stays unticked: mounting QaPreview does not call fetch', async () => {
+  it('no fetch on mount: just opening the preview does not POST anything', async () => {
     fetchSpy = vi.fn(() => Promise.reject(new Error('fetch should not be called')))
     vi.stubGlobal('fetch', fetchSpy)
 
     await navigateToPreview()
-    // Consent NOT ticked. Submit button stays disabled.
-    expect(
-      (screen.getByTestId('qa-preview-worker-submit') as HTMLButtonElement)
-        .disabled,
-    ).toBe(true)
-    // No Turnstile widget rendered yet.
-    expect(screen.queryByTestId('qa-preview-worker-turnstile')).toBeNull()
-    // No fetch called.
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

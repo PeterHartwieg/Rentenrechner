@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { FeedbackType, ResolvedTarget, Severity } from './report'
-import { computeHeadlinePreview } from './report'
 import { captureViewportScreenshot, type CapturedScreenshot } from './capture/screenshot'
 import { useFocusReturn } from './useFocusReturn'
 
@@ -25,21 +24,11 @@ interface ComposerProps {
   onSubmit(next: ComposerDraft, screenshot: CapturedScreenshot | null): void
 }
 
-const TYPE_OPTIONS: Array<{ value: FeedbackType; label: string }> = [
-  { value: 'copy', label: 'Text' },
-  { value: 'layout', label: 'Layout' },
-  { value: 'flow', label: 'Flow' },
-  { value: 'interaction', label: 'Interaktion' },
-  { value: 'value', label: 'Wert' },
-  { value: 'a11y', label: 'A11y' },
-  { value: 'other', label: 'Sonstiges' },
-]
-
 const SEVERITY_OPTIONS: Array<{ value: Severity; label: string }> = [
-  { value: 'blocker', label: 'Blocker' },
-  { value: 'major', label: 'Schwerwiegend' },
-  { value: 'minor', label: 'Gering' },
-  { value: 'nit', label: 'Kleinigkeit' },
+  { value: 'blocker', label: 'Funktioniert gar nicht' },
+  { value: 'major', label: 'Großes Problem' },
+  { value: 'minor', label: 'Kleines Problem' },
+  { value: 'nit', label: 'Nur eine Kleinigkeit' },
 ]
 
 /** Fallback selector: the QA indicator chip. */
@@ -49,14 +38,10 @@ const INDICATOR_SELECTOR = '.qa-indicator'
  * Compact composer panel. Renders directly to the right corner of the
  * viewport while QA mode is active and a target is pinned.
  *
- * Lane C a11y additions:
- *   - `role="dialog"` with `aria-labelledby` and `aria-describedby`.
- *   - Focus moves into the type radiogroup on mount (requestAnimationFrame).
- *   - Focus returns to the previously-focused element (or the indicator chip)
- *     on cancel / submit via `useFocusReturn`.
- *   - ESC cancels; Ctrl/Cmd+Enter submits when comment is non-empty.
- *   - `qa-composer--sheet` class added when window.innerWidth <= 640 for
- *     mobile-sheet layout and test detection.
+ * The form is intentionally short for non-technical testers: severity,
+ * comment, screenshot toggle. The report `type` is fixed to `'other'`
+ * because asking testers to classify their feedback (copy / layout /
+ * a11y / …) added friction without improving triage.
  */
 export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }: ComposerProps) {
   const [submitting, setSubmitting] = useState(false)
@@ -66,12 +51,11 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
   // Restore focus on unmount (cancel or forward to preview).
   useFocusReturn(INDICATOR_SELECTOR)
 
-  // Move focus into the type-radiogroup on mount.
-  const typeGroupRef = useRef<HTMLDivElement | null>(null)
+  // Move focus into the comment textarea on mount so testers can type immediately.
+  const commentRef = useRef<HTMLTextAreaElement | null>(null)
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      const first = typeGroupRef.current?.querySelector<HTMLElement>('[role="radio"]')
-      first?.focus()
+      commentRef.current?.focus()
     })
     return () => cancelAnimationFrame(frame)
   }, [])
@@ -91,13 +75,8 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
   }, [])
 
   // Phase 1 baseline: capture happens once on first render so the screenshot
-  // includes the pinned target. Lane B will refine the capture sequencing
-  // (e.g. allow a manual mask pass before the rasteriser runs).
-  //
-  // The effect only writes state from the async resolver; the synchronous
-  // "off" branch is handled by clearing the captured screenshot inside the
-  // include-screenshot toggle handler so we never call setState in the body
-  // of the effect (lint rule react-hooks/set-state-in-effect).
+  // includes the pinned target. The async resolver writes to state; the
+  // synchronous "off" branch is handled inline in the toggle handler.
   const [screenshot, setScreenshot] = useState<CapturedScreenshot | null>(null)
   useEffect(() => {
     if (!draft.includeScreenshot) return
@@ -163,8 +142,7 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
     >
       <header className="qa-panel__header">
         <span id={titleId} className="qa-panel__title">
-          {computeHeadlinePreview(draft.severity, draft.type, target.label, target.id) ??
-            'Feedback geben'}
+          Hilf uns, RentenWiki zu verbessern
         </span>
         <span id={descId} className="qa-panel__desc">
           Zu: {target.label || target.id}
@@ -174,33 +152,20 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
         </button>
       </header>
       <div className="qa-panel__body">
-        <div className="qa-panel__field">
-          <span>Art</span>
-          <div
-            className="qa-panel__chips"
-            role="radiogroup"
-            aria-label="Feedback-Art"
-            ref={typeGroupRef}
-          >
-            {TYPE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                role="radio"
-                aria-checked={draft.type === opt.value}
-                className={
-                  draft.type === opt.value ? 'qa-panel__chip qa-panel__chip--active' : 'qa-panel__chip'
-                }
-                onClick={() => update('type', opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <label className="qa-panel__field">
+          <span>Was möchtest du uns mitteilen?</span>
+          <textarea
+            ref={commentRef}
+            value={draft.comment}
+            onChange={(event) => update('comment', event.target.value)}
+            placeholder="Beschreibe in deinen eigenen Worten, was nicht stimmt oder verwirrend ist."
+            rows={5}
+            required
+          />
+        </label>
 
         <label className="qa-panel__field">
-          <span>Schweregrad</span>
+          <span>Wie schlimm ist es?</span>
           <select
             value={draft.severity}
             onChange={(event) => update('severity', event.target.value as Severity)}
@@ -213,26 +178,7 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
           </select>
         </label>
 
-        <label className="qa-panel__field">
-          <span>Kommentar</span>
-          <textarea
-            value={draft.comment}
-            onChange={(event) => update('comment', event.target.value)}
-            placeholder="Was ist falsch oder verwirrend?"
-            required
-          />
-        </label>
-
-        <label className="qa-panel__field">
-          <span>Textvorschlag (optional)</span>
-          <textarea
-            value={draft.suggestedText}
-            onChange={(event) => update('suggestedText', event.target.value)}
-            placeholder="Bessere Formulierung, falls vorhanden."
-          />
-        </label>
-
-        <label className="qa-panel__field" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <label className="qa-panel__field qa-panel__field--checkbox">
           <input
             type="checkbox"
             checked={draft.includeScreenshot}
@@ -242,7 +188,7 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
               update('includeScreenshot', next)
             }}
           />
-          <span style={{ fontWeight: 500 }}>Screenshot einbinden</span>
+          <span>Screenshot der aktuellen Seite mitschicken</span>
         </label>
       </div>
       <footer className="qa-panel__footer">
@@ -255,7 +201,7 @@ export function QaComposer({ target, draft, onChangeDraft, onCancel, onSubmit }:
           onClick={handleSubmit}
           disabled={!canSubmit}
         >
-          Vorschau
+          Weiter
         </button>
       </footer>
     </section>

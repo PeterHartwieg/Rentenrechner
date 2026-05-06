@@ -24,7 +24,7 @@ const TARGET: ResolvedTarget = {
 }
 
 const DRAFT: ComposerDraft = {
-  type: 'copy',
+  type: 'other',
   severity: 'minor',
   comment: '',
   suggestedText: '',
@@ -73,9 +73,7 @@ describe('QaComposer — role and ARIA', () => {
     const labelId = dialog.getAttribute('aria-labelledby')
     expect(labelId).toBeTruthy()
     const titleEl = document.getElementById(labelId!)
-    // With severity=minor, type=copy, target.label=AG-Zuschuss the computed
-    // headline is shown instead of the static fallback "Feedback geben".
-    expect(titleEl?.textContent).toContain('[Minor] qa(copy): AG-Zuschuss')
+    expect(titleEl?.textContent).toContain('Hilf uns, RentenWiki zu verbessern')
   })
 
   it('dialog has aria-describedby pointing to the target description', () => {
@@ -97,7 +95,7 @@ describe('QaComposer — role and ARIA', () => {
 })
 
 describe('QaComposer — focus management', () => {
-  it('moves focus into the type-radiogroup on mount (requestAnimationFrame)', () => {
+  it('moves focus into the comment textarea on mount (requestAnimationFrame)', () => {
     vi.useFakeTimers()
     render(
       <QaComposer
@@ -110,8 +108,8 @@ describe('QaComposer — focus management', () => {
     )
     // Flush all pending rAF callbacks.
     vi.runAllTimers()
-    const firstRadio = document.querySelector<HTMLElement>('[role="radio"]')
-    expect(document.activeElement).toBe(firstRadio)
+    const textarea = document.querySelector<HTMLElement>('textarea')
+    expect(document.activeElement).toBe(textarea)
     vi.useRealTimers()
   })
 

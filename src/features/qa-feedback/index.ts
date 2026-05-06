@@ -70,29 +70,3 @@ export { buildMarkdownTicket, defaultPrivacyFlags, generateTitle } from './repor
  */
 export { setQaWorkspaceContext } from './context/workspaceContextRef'
 
-/**
- * Lane E: single-file feedback bundle export (issue 07).
- *
- * `buildFeedbackBundle` assembles a JSON-envelope bundle containing the
- * Markdown ticket, the full FeedbackReport, and the screenshot blob (when
- * included). Pass the returned `{ blob, filename }` to `triggerBlobDownload`
- * or any download helper.
- *
- * React-free — safe to call from any context.
- */
-export { buildFeedbackBundle } from './export/bundleExport'
-export type { BundleInput, FeedbackBundle } from './export/bundleExport'
-
-/**
- * Lane F: prefilled outbound destination helpers (issue 08).
- *
- * `buildMailtoUrl` produces a `mailto:` URL with the ticket as the body.
- * `buildGithubIssueUrl` produces a GitHub new-issue prefill URL.
- *
- * Both helpers build URLs only — no fetch, no XHR, no auth.
- * Pass the returned URL to `window.open(url, '_blank', 'noopener,noreferrer')`.
- *
- * React-free — safe to call from any context.
- */
-export { buildMailtoUrl, buildGithubIssueUrl } from './export/outboundDestinations'
-export type { MailtoOptions, GithubIssueOptions } from './export/outboundDestinations'

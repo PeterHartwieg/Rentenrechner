@@ -160,29 +160,20 @@
 }
 
 .qa-panel__field textarea {
-  min-height: 70px;
+  min-height: 88px;
   resize: vertical;
 }
 
-.qa-panel__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.qa-panel__field--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 
-.qa-panel__chip {
-  border: 1px solid #d1d5db;
-  background: #f9fafb;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.qa-panel__chip--active {
-  background: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
+.qa-panel__field--checkbox > span {
+  font-weight: 500;
+  font-size: 13px;
+  color: #111827;
 }
 
 .qa-panel__footer {
@@ -223,90 +214,64 @@
   cursor: not-allowed;
 }
 
-.qa-preview__meta {
-  font-size: 11.5px;
-  color: #4b5563;
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 10px;
+.qa-preview__intro {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #374151;
 }
 
-.qa-preview__meta dt {
+.qa-preview__summary,
+.qa-preview__turnstile-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qa-preview__summary-label {
   font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+}
+
+.qa-preview__summary-comment {
+  margin: 0;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  color: #111827;
 }
 
 .qa-preview__screenshot {
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  overflow: hidden;
-  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .qa-preview__screenshot img {
   display: block;
   width: 100%;
   height: auto;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 220px;
+  object-fit: contain;
+  background: #f9fafb;
+}
+
+.qa-preview__worker-turnstile {
+  min-height: 65px;
 }
 
 .qa-preview__copy-state {
-  font-size: 11.5px;
+  margin: 0;
+  font-size: 12.5px;
   color: #047857;
   font-weight: 600;
-}
-
-/* -----------------------------------------------------------------------
- * Preview footer — export-group layout (issue 08, Lane F).
- *
- * Two visual groups separate local actions (clipboard / download) from
- * external-destination actions (mailto / GitHub). Each group has a small
- * label so testers understand the distinction at a glance.
- * ----------------------------------------------------------------------- */
-
-.qa-preview__footer-nav {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.qa-preview__export-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
-
-.qa-preview__export-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.qa-preview__export-group-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #6b7280;
-  padding: 0 2px;
-}
-
-.qa-preview__export-group + .qa-preview__export-group {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 6px;
-}
-
-.qa-preview__export-group-btns {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-/* Override the shared footer flex so the nav and export groups stack
- * cleanly when the new multi-group layout is present. */
-.qa-panel__footer:has(.qa-preview__export-groups) {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
 }
 
 /* -----------------------------------------------------------------------
@@ -316,7 +281,6 @@
 
 .qa-panel__close:focus-visible,
 .qa-panel__btn:focus-visible,
-.qa-panel__chip:focus-visible,
 .qa-panel__field select:focus-visible,
 .qa-panel__field textarea:focus-visible,
 .qa-panel__field input[type='checkbox']:focus-visible,

@@ -8,7 +8,6 @@ import { QaComposer } from './QaComposer'
 import { QaPreview } from './QaPreview'
 import type { ComposerDraft } from './QaComposer'
 import type { CapturedScreenshot } from './capture/screenshot'
-import { STORAGE_KEY_V2 } from '../../storage'
 import { collectWorkspaceContext } from './context/collectWorkspaceContext'
 import { getQaWorkspaceContext } from './context/workspaceContextRef'
 
@@ -24,21 +23,6 @@ const DEACTIVATE_VALUE = '0'
 
 /** Phase of the feedback flow currently visible to the tester. */
 type Phase = 'idle' | 'composer' | 'preview'
-
-/**
- * Read the current workspace JSON from localStorage when the tester opts in.
- * Only called when the scenario opt-in checkbox is checked (never preemptively).
- * Reads STORAGE_KEY_V2 (the authoritative write key). Returns undefined when
- * no state is found. Does NOT mutate localStorage.
- */
-function collectScenarioJson(): string | undefined {
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_V2) : null
-    return raw ?? undefined
-  } catch {
-    return undefined
-  }
-}
 
 interface ProviderProps {
   children: ReactNode
@@ -139,7 +123,7 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
   const onPickTarget = useCallback((target: ResolvedTarget, rect: DOMRect) => {
     setPinned({ target, rect: serializeRect(rect) })
     setDraft({
-      type: 'copy',
+      type: 'other',
       severity: 'minor',
       comment: '',
       suggestedText: '',
@@ -199,7 +183,6 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
               screenshot={screenshot}
               onBack={() => setPhase('composer')}
               onCancel={cancelDraft}
-              collectScenarioJson={collectScenarioJson}
               collectWorkspaceContext={collectWorkspaceContextForReport}
             />
           )}
