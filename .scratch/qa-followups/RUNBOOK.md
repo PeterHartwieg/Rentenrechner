@@ -194,12 +194,14 @@ Cron expression: `0 4,9,12,16,20 * * *`, TZ `Europe/Berlin`.
 
 ## Phase ii pointer
 
-When `ready-for-agent` issues start flowing, a sibling implementer cron will
-pick them up by label, run implementations in worktrees, open PRs.
+The implementer cron is `RUNBOOK-implementer.md` (next to this file). It
+picks up `ready-for-agent` issues, runs implementations in worktree-isolated
+Sonnet subagents, has an Opus reviewer audit each diff (max 3 review
+rounds), and auto-merges on a clean review.
 
 The curated comment's `What to change` + `Acceptance criteria` +
-`Implementation context` sections must be sufficient for that agent to act
-without re-reading the issue body. **Optimize curated comments for that
+`Implementation context` sections must be sufficient for the implementer to
+act without re-reading the issue body. **Optimize curated comments for that
 downstream consumer** — be specific about file paths, name the test commands,
 call out gotchas from CLAUDE.md / CONTEXT.md.
 
