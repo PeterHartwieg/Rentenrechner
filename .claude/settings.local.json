@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npx vite *)",
+      "Bash(npx eslint *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue comment *)",
+      "Bash(gh issue edit *)",
+      "Bash(gh issue view *)",
+      "Bash(gh label create *)",
+      "Bash(gh label list *)",
+      "Bash(mv *)",
+      "Bash(git mv *)",
+      "Bash(git log *)",
+      "Bash(mkdir *)",
+      "Bash(date *)"
+    ]
+  }
+}

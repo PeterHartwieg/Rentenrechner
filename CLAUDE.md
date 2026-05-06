@@ -25,14 +25,19 @@ These shape every change. Read before touching UI, exports, or anything user-fac
 
 ## Backend boundary
 
-Today: **no backend.** All state in localStorage + share-URLs. No accounts, no telemetry, no cookies.
+Today: **no backend.** All calculator state in localStorage + share-URLs. No accounts, no telemetry, no cookies.
 
-Planned: a small backend will be introduced **only** when a feature requires it. First trigger is OCR / document upload (Riester, bAV, GRV-Renteninformation parsing). When that lands:
-- Stack chosen at the time (Cloudflare Workers + R2, Vercel + S3, or Hetzner VPS — GDPR region required).
-- Files processed ephemerally; not stored.
-- Calculator continues to work fully offline for users who don't use upload features.
+Planned: a small backend will be introduced **only** when a feature requires it. Sanctioned triggers:
 
-Until then, do not add fetch/auth/cookies to the frontend.
+1. **OCR / document upload** (Riester, bAV, GRV-Renteninformation parsing). Files processed ephemerally; not stored beyond the request.
+2. **QA submission for testers without GitHub accounts** — Cloudflare Worker (or equivalent) that creates a GitHub issue with screenshot included. Requires object storage (R2 / S3) for screenshots because GitHub user-attachment URLs cannot be minted server-side via the public API. Storage scoped to the lifetime of the linked GitHub issue; purge on closure. **Sanctioned by [ADR-0001](docs/adr/0001-qa-submission-backend-amendment.md).**
+
+Constraints (apply to every sanctioned backend):
+- Stack chosen at implementation time (Cloudflare Workers + R2, Vercel + S3, or Hetzner VPS — GDPR region required).
+- Calculator continues to work fully offline for users who don't use these features.
+- GDPR-compliant by design (region, retention, consent) per guardrail 3.
+
+Outside these triggers, do not add fetch/auth/cookies to the frontend.
 
 ## Commands
 
