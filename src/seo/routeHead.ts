@@ -163,6 +163,7 @@ function buildJsonLd(
       ...base,
       '@type': 'Article',
       headline: entry.h1,
+      image: SITE_ORIGIN + routeOgImagePath(entry),
       datePublished: entry.datePublished ?? entry.dateModified,
       author: {
         '@type': 'Organization',

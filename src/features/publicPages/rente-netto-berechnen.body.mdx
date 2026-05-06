@@ -69,7 +69,7 @@ Für die Pflegeversicherung gilt auf Versorgungsbezüge eine **Freigrenze** in d
 ### Pauschbeträge im Steuerbescheid
 
 - Werbungskosten-Pauschbetrag für Rentenbezüge: 102 € pro Jahr (§ 9a Satz 1 Nr. 3 EStG).
-- Sonderausgaben-Pauschbetrag: 36 € pro Jahr (Single), 72 € pro Jahr (Zusammenveranlagung; § 10c EStG). In der Praxis übersteigen die tatsächlichen KV/PV-Beiträge diesen Pauschbetrag deutlich, deshalb setzt der Rechner die tatsächlichen KV- und PV-Eigenbeiträge als Sonderausgaben an (§ 10 Abs. 1 Nr. 3 EStG).
+- Sonderausgaben-Pauschbetrag: 36 € pro Jahr (Single), 72 € pro Jahr (Zusammenveranlagung; § 10c EStG). In der Praxis übersteigen die tatsächlichen KV/PV-Eigenbeiträge diesen Pauschbetrag, doch der Rechner setzt aktuell nur den Pauschbetrag an — der tatsächliche Abzug nach § 10 Abs. 1 Nr. 3 EStG ist nicht modelliert.
 - Grundfreibetrag 2026: 12.348 € pro Jahr (§ 32a Abs. 1 EStG).
 
 ## Was die Tabelle nicht abbildet
@@ -91,7 +91,7 @@ Annahmen: Single-Haushalt, Rentenbeginn 2032, Brutto-Rente 1.600 € pro Monat (
 | Werbungskosten-Pauschbetrag | −102 € |
 | KV-Eigenbeitrag (Hälfte aus 14,6 % + 2,9 %, also 8,75 %) | rund 1.680 € |
 | PV-Eigenbeitrag (3,6 %) | rund 691 € |
-| Sonderausgaben (KV/PV als Vorsorgeaufwendungen) | rund −2.371 € |
+| Vorsorgeaufwendungen (§ 10 Abs. 1 Nr. 3 EStG) | rund −2.371 € |
 | Zu versteuerndes Renteneinkommen | rund 14.231 € |
 | Einkommensteuer (1. Progressionszone) | rund 296 € pro Jahr |
 | Solidaritätszuschlag (unterhalb Freigrenze) | 0 € |
@@ -103,7 +103,7 @@ Pro Monat ergibt das überschlägig:
 - PV-Beitrag rund 58 €
 - **Nettorente rund 1.377 €**
 
-Der Rechner bildet die Steuerprogression, den genauen Pauschbetrag, die KV-/PV-BBG und die jährliche Anpassung exakt ab; die Tabelle ist eine gerundete Annäherung. Für eine verbindliche Auskunft sind das Finanzamt, ein Steuerberater oder die Deutsche Rentenversicherung zuständig.
+Die Tabelle zeigt den gesetzlichen Rechenweg mit tatsächlichen KV-/PV-Vorsorgeaufwendungen. Der Rechner setzt derzeit nur den § 10c-Pauschbetrag (36/72 €) an und weist deshalb eine etwas höhere Steuerbelastung aus. Steuerprogression, Freibeträge, KV-/PV-BBG und jährliche Rentenanpassung bildet der Rechner exakt ab. Für eine verbindliche Auskunft sind das Finanzamt, ein Steuerberater oder die Deutsche Rentenversicherung zuständig.
 
 ## Häufige Fragen
 

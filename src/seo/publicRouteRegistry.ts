@@ -205,7 +205,7 @@ export const publicRouteRegistry = {
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
-    relatedRoutes: ['/'],
+    relatedRoutes: ['/', '/bav-rechner', '/etf-vs-bav', '/riester-rechner', '/basisrente-rechner', '/altersvorsorgedepot-rechner', '/private-rentenversicherung-rechner', '/rente-netto-berechnen'],
     calculatorCta: {
       label: 'Rentenlücke jetzt berechnen',
       href: '/?topic=rentenluecke-rechner',
@@ -342,8 +342,8 @@ export const publicRouteRegistry = {
     canonical: '/riester-vs-altersvorsorgedepot',
     title: 'Riester oder AVD? Vergleich 2026 | RentenWiki.de',
     metaDescription:
-      'Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, Übertragung, ' +
-      'Auszahlung. Was lohnt sich wann? Kostenlos, Werte 2026.',
+      'Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, Übertragung und ' +
+      'Auszahlung im Modell vergleichen. Kostenlos, Werte 2026.',
     h1: 'Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege 2026',
     summary:
       'Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform ' +
@@ -399,6 +399,7 @@ export const publicRouteRegistry = {
       '/',
       '/rentenluecke-rechner',
       '/private-rentenversicherung-rechner',
+      '/bav-rechner',
     ],
     calculatorCta: {
       label: 'Basisrente jetzt berechnen',
@@ -429,6 +430,7 @@ export const publicRouteRegistry = {
       '/',
       '/rentenluecke-rechner',
       '/basisrente-rechner',
+      '/bav-rechner',
     ],
     calculatorCta: {
       label: 'Private Rentenversicherung jetzt berechnen',
