@@ -1,6 +1,6 @@
 # Thin portfolio orchestration and clean stale adapter comments
 
-Status: needs-triage
+Status: done
 
 ## Parent
 
@@ -14,13 +14,13 @@ This slice is the final portfolio adapter cleanup pass.
 
 ## Acceptance criteria
 
-- [ ] Portfolio orchestration delegates projection, transfer/capital policy, funding, and allowance work to focused Modules.
-- [ ] The remaining orchestration path is short enough to read as a flow from workspace input to portfolio result.
-- [ ] Stale comments about unimplemented transfer behavior are removed or updated.
-- [ ] Comments describe current architecture rather than historical issue phases.
-- [ ] No user-visible behavior changes.
-- [ ] Oracle and integration snapshots are not updated unless the issue/PR explains a justified behavior change.
-- [ ] `npm run verify` passes.
+- [x] Portfolio orchestration delegates projection, transfer/capital policy, funding, and allowance work to focused Modules.
+- [x] The remaining orchestration path is short enough to read as a flow from workspace input to portfolio result.
+- [x] Stale comments about unimplemented transfer behavior are removed or updated.
+- [x] Comments describe current architecture rather than historical issue phases.
+- [x] No user-visible behavior changes.
+- [x] Oracle and integration snapshots are not updated unless the issue/PR explains a justified behavior change.
+- [x] `npm run verify` passes.
 
 ## Blocked by
 

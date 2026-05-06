@@ -1,6 +1,6 @@
 # PRD - Architecture simplification for agent readability
 
-Status: needs-triage
+Status: done
 
 ## Problem Statement
 

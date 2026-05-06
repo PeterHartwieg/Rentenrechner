@@ -1,6 +1,6 @@
 # Plan — Scenario-led portfolio redesign (Group G)
 
-Status: draft, open for feedback. Source decisions in `decisions.md`. Capability references (Fxx, Gxx, Sxx, Lxx) point to `PRD.md`.
+Status: done. Source decisions in `decisions.md`. Capability references (Fxx, Gxx, Sxx, Lxx) point to `PRD.md`.
 
 ## 1. Architecture principles
 

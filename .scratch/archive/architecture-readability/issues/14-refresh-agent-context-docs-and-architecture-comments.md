@@ -1,6 +1,6 @@
 # Refresh agent context docs and architecture comments
 
-Status: needs-triage
+Status: done
 
 ## Parent
 
@@ -14,13 +14,13 @@ Decision: create a new root CONTEXT.md rather than only updating existing agent 
 
 ## Acceptance criteria
 
-- [ ] A compact root CONTEXT.md exists and describes current concepts: baseline, what-if, product instance, transfer event, evidence state, combine mode, compare mode, and storage migration posture.
-- [ ] Agent-facing domain docs point to CONTEXT.md and the deeper docs/context files.
-- [ ] Stale comments discovered during this architecture track are updated or removed.
-- [ ] Stale or superseded planning docs are retired or annotated, especially `docs/architecture-refactor-session-briefs.md`, so they do not compete with CONTEXT.md as the current architecture map.
-- [ ] Comments describe current Module ownership rather than historical issue plans.
-- [ ] No public-facing RentenWiki.de copy is changed unless required to correct an existing typo.
-- [ ] Documentation changes are easy for future agents to use as a first-read map.
+- [x] A compact root CONTEXT.md exists and describes current concepts: baseline, what-if, product instance, transfer event, evidence state, combine mode, compare mode, and storage migration posture.
+- [x] Agent-facing domain docs point to CONTEXT.md and the deeper docs/context files.
+- [x] Stale comments discovered during this architecture track are updated or removed.
+- [x] Stale or superseded planning docs are retired or annotated, especially `docs/architecture-refactor-session-briefs.md`, so they do not compete with CONTEXT.md as the current architecture map.
+- [x] Comments describe current Module ownership rather than historical issue plans.
+- [x] No public-facing RentenWiki.de copy is changed unless required to correct an existing typo.
+- [x] Documentation changes are easy for future agents to use as a first-read map.
 
 ## Blocked by
 

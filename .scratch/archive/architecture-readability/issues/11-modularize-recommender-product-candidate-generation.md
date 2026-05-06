@@ -1,6 +1,6 @@
 # Modularize recommender product candidate generation
 
-Status: needs-triage
+Status: done
 
 ## Parent
 
@@ -16,12 +16,12 @@ This issue should start after both the shared combine-context Module and the rec
 
 ## Acceptance criteria
 
-- [ ] Product-specific candidate generation is moved behind a registry-style structure or equivalent focused Modules.
-- [ ] Recommender orchestration remains responsible for high-level ranking flow, not per-product implementation details.
-- [ ] Ranking behavior is preserved.
-- [ ] What-if materialization behavior is preserved.
-- [ ] Product-level tests cover visible candidate behavior, reasons, ranking inputs, and materialized what-if effects.
-- [ ] Existing recommender tests continue to pass.
+- [x] Product-specific candidate generation is moved behind a registry-style structure or equivalent focused Modules.
+- [x] Recommender orchestration remains responsible for high-level ranking flow, not per-product implementation details.
+- [x] Ranking behavior is preserved.
+- [x] What-if materialization behavior is preserved.
+- [x] Product-level tests cover visible candidate behavior, reasons, ranking inputs, and materialized what-if effects.
+- [x] Existing recommender tests continue to pass.
 
 ## Blocked by
 

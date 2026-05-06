@@ -1,6 +1,6 @@
 # Introduce inventory product registry
 
-Status: needs-triage
+Status: done
 
 ## Parent
 
@@ -16,14 +16,14 @@ First-cut target: collapse the product switch inside workspace add-instance beha
 
 ## Acceptance criteria
 
-- [ ] Inventory product metadata is centralized in a registry-style Module.
-- [ ] Default draft construction is centralized or routed through the registry.
-- [ ] Draft-to-instance conversion is centralized or routed through the registry.
-- [ ] Product label fallback behavior is centralized or routed through the registry.
-- [ ] The add-instance product switch is collapsed or routed through the registry.
-- [ ] Wizard and sidebar product flows consume the shared definitions where practical in this slice.
-- [ ] Existing onboarding, inventory editing, and combine sidebar behavior is preserved.
-- [ ] Tests verify every supported product has registry metadata, default draft behavior, conversion behavior, and label fallback.
+- [x] Inventory product metadata is centralized in a registry-style Module.
+- [x] Default draft construction is centralized or routed through the registry.
+- [x] Draft-to-instance conversion is centralized or routed through the registry.
+- [x] Product label fallback behavior is centralized or routed through the registry.
+- [x] The add-instance product switch is collapsed or routed through the registry.
+- [x] Wizard and sidebar product flows consume the shared definitions where practical in this slice.
+- [x] Existing onboarding, inventory editing, and combine sidebar behavior is preserved.
+- [x] Tests verify every supported product has registry metadata, default draft behavior, conversion behavior, and label fallback.
 
 ## Blocked by
 

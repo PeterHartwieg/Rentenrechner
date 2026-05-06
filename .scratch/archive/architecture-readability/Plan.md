@@ -1,6 +1,6 @@
 # Plan - Architecture readability implementation
 
-Status: draft, ready for triage. Source PRD: `.scratch/architecture-readability/PRD.md`. Issues live in `.scratch/architecture-readability/issues/`.
+Status: done. Source PRD: `.scratch/architecture-readability/PRD.md`. Issues archived at `.scratch/archive/architecture-readability/issues/`.
 
 ## 1. Planning principles
 

@@ -1,6 +1,6 @@
 # Consolidate shared inventory field primitives
 
-Status: needs-triage
+Status: done
 
 ## Parent
 
@@ -14,12 +14,12 @@ This slice should make existing contract input behavior more consistent.
 
 ## Acceptance criteria
 
-- [ ] Common inventory numeric, select, and text field behavior is shared where duplicated today.
-- [ ] Evidence display behavior is preserved while using the shared primitives where appropriate.
-- [ ] Wizard and combine sidebar inputs remain visually and behaviorally consistent with current expectations.
-- [ ] No broad layout redesign is introduced.
-- [ ] Focused tests cover field behavior that previously existed in duplicate paths.
-- [ ] Existing onboarding and combine sidebar tests continue to pass.
+- [x] Common inventory numeric, select, and text field behavior is shared where duplicated today.
+- [x] Evidence display behavior is preserved while using the shared primitives where appropriate.
+- [x] Wizard and combine sidebar inputs remain visually and behaviorally consistent with current expectations.
+- [x] No broad layout redesign is introduced.
+- [x] Focused tests cover field behavior that previously existed in duplicate paths.
+- [x] Existing onboarding and combine sidebar tests continue to pass.
 
 ## Blocked by
 

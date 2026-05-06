@@ -1,6 +1,6 @@
 # PRD — Scenario-led portfolio redesign (Group G)
 
-Status: draft, open for feedback. Source decisions in `.scratch/scenario-led-portfolio/decisions.md`.
+Status: done. Source decisions in `.scratch/archive/scenario-led-portfolio/decisions.md`.
 
 ## 1. Mission
 
