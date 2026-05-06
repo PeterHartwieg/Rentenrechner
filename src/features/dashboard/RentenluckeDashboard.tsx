@@ -26,6 +26,7 @@ import {
   OPTIMIERE_BUTTON_LABEL,
   OPTIMIERE_DISABLED_TOOLTIP,
 } from '../../content/optimiereCopy'
+import { useFeedbackTarget } from '../qa-feedback'
 
 interface Props {
   profile: PersonalProfile
@@ -60,6 +61,36 @@ export function RentenluckeDashboard({
   const { grvNet, productBreakdown, projectedTotal, target, targetIsUserSet, gap, goalReached } =
     overview
 
+  const { targetProps: sectionTargetProps } = useFeedbackTarget({
+    id: 'dashboard.rentenlucke.section',
+    label: 'Rentenlücke-Dashboard',
+    precision: 'section',
+  })
+  const { targetProps: projectedMetricProps } = useFeedbackTarget({
+    id: 'dashboard.rentenlucke.metric.projected',
+    label: 'Voraussichtliche Netto-Rente (mtl.)',
+  })
+  const { targetProps: targetMetricProps } = useFeedbackTarget({
+    id: 'dashboard.rentenlucke.metric.target',
+    label: 'Ziel-Netto-Rente (mtl.)',
+  })
+  const { targetProps: gapMetricProps } = useFeedbackTarget({
+    id: 'dashboard.rentenlucke.metric.gap',
+    label: 'Rentenlücke (mtl.)',
+  })
+  const { targetProps: hintProps } = useFeedbackTarget({
+    id: 'dashboard.rentenlucke.hint',
+    label: 'Hinweis Wunschnetto-Voreinstellung',
+  })
+  const { targetProps: closeCtaProps } = useFeedbackTarget({
+    id: 'dashboard.rentenlucke.cta.close',
+    label: 'CTA Lücke schließen / Mehr sparen',
+  })
+  const { targetProps: optimiereCtaProps } = useFeedbackTarget({
+    id: 'dashboard.rentenlucke.cta.optimiere',
+    label: 'CTA Optimiere deine Vorsorge',
+  })
+
   // Stacked-bar segments (GRV + visible products). Width is share of the
   // larger of (projected, target) so both extremes fit on one axis.
   const axisMax = Math.max(projectedTotal, target, 1)
@@ -74,14 +105,14 @@ export function RentenluckeDashboard({
   const hasMeaningfulTarget = target > 0
 
   return (
-    <section className="rentenlucke-dashboard" aria-label="Rentenlücke-Übersicht">
+    <section className="rentenlucke-dashboard" aria-label="Rentenlücke-Übersicht" {...sectionTargetProps}>
       <header className="rentenlucke-dashboard__header">
         <h2>Rentenlücke</h2>
         <p>Voraussichtliche Netto-Rente vs. Wunschnetto.</p>
       </header>
 
       <div className="rentenlucke-dashboard__headline">
-        <div className="rentenlucke-dashboard__metric">
+        <div className="rentenlucke-dashboard__metric" {...projectedMetricProps}>
           <span>Voraussichtlich (mtl.)</span>
           <strong>{formatCurrency(projectedTotal, 0)}</strong>
           <small>
@@ -91,7 +122,7 @@ export function RentenluckeDashboard({
               : ''}
           </small>
         </div>
-        <div className="rentenlucke-dashboard__metric">
+        <div className="rentenlucke-dashboard__metric" {...targetMetricProps}>
           <span>Ziel (mtl.)</span>
           <strong>{hasMeaningfulTarget ? formatCurrency(target, 0) : '—'}</strong>
           <small>
@@ -105,6 +136,7 @@ export function RentenluckeDashboard({
             'rentenlucke-dashboard__metric rentenlucke-dashboard__metric--' +
             (goalReached ? 'reached' : 'gap')
           }
+          {...gapMetricProps}
         >
           <span>{goalReached ? 'Status' : 'Lücke (mtl.)'}</span>
           <strong>{goalReached ? 'Ziel erreicht' : formatCurrency(gap, 0)}</strong>
@@ -193,6 +225,7 @@ export function RentenluckeDashboard({
           step={50}
           decimals={0}
           suffix="€"
+          feedbackTargetId="dashboard.rentenlucke.input.target"
           onCommit={(raw) => {
             const parsed = Number(raw)
             if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -203,7 +236,7 @@ export function RentenluckeDashboard({
           }}
         />
         {!targetIsUserSet && profile.grossSalaryYear > 0 && (
-          <p className="rentenlucke-dashboard__hint">
+          <p className="rentenlucke-dashboard__hint" {...hintProps}>
             Voreinstellung: {formatPercent(RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO, 0)} Ihres aktuellen Bruttogehalts
             {' '}({formatCurrency((profile.grossSalaryYear / 12) * RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO, 0)} mtl.).
             Eigenen Wert eintragen, um die Lücke individuell zu prüfen.
@@ -217,6 +250,7 @@ export function RentenluckeDashboard({
               (goalReached ? ' rentenlucke-dashboard__cta--secondary' : '')
             }
             onClick={onAdjustContributions}
+            {...closeCtaProps}
           >
             {goalReached ? 'Mehr sparen' : 'Lücke schließen'}
           </button>
@@ -227,6 +261,7 @@ export function RentenluckeDashboard({
               onClick={onOpenOptimiere}
               disabled={!hasActiveInstances}
               title={hasActiveInstances ? undefined : OPTIMIERE_DISABLED_TOOLTIP}
+              {...optimiereCtaProps}
             >
               {OPTIMIERE_BUTTON_LABEL}
             </button>

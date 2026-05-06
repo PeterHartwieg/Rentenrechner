@@ -1,6 +1,7 @@
 import { RefreshCw } from 'lucide-react'
 import type { MonteCarloAssumptions, ReturnScenario } from '../../domain'
 import { formatPercent } from '../../utils/format'
+import { useFeedbackTarget, qaTarget, useQaMode } from '../qa-feedback'
 
 /**
  * Minimal shape of assumptions consumed by the toolbar.
@@ -44,6 +45,48 @@ export function ScenarioToolbar({
   onSelectScenario,
 }: ScenarioToolbarProps) {
   const customScenario = assumptions.returnScenarios.find((s) => s.id === 'custom')
+  const { enabled: qaEnabled } = useQaMode()
+  const { targetProps: sectionTargetProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.section',
+    label: 'Szenario-Toolbar',
+    precision: 'section',
+  })
+  const { targetProps: customRateProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.customRate',
+    label: 'Eigenes Szenario Rendite-Eingabe',
+  })
+  const { targetProps: addCustomProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.addCustom',
+    label: 'Eigenes Szenario hinzufügen',
+  })
+  const { targetProps: removeCustomProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.removeCustom',
+    label: 'Eigenes Szenario entfernen',
+  })
+  const { targetProps: riskSummaryProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.risk.summary',
+    label: 'Risiko-Bereich aufklappen',
+  })
+  const { targetProps: mcToggleProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.monteCarlo.toggle',
+    label: 'Monte-Carlo aktivieren',
+  })
+  const { targetProps: mcRunsProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.monteCarlo.runs',
+    label: 'Monte-Carlo Läufe',
+  })
+  const { targetProps: mcVolProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.monteCarlo.volatility',
+    label: 'Monte-Carlo Schwankung',
+  })
+  const { targetProps: mcSeedProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.monteCarlo.seed',
+    label: 'Monte-Carlo Seed',
+  })
+  const { targetProps: mcReseedProps } = useFeedbackTarget({
+    id: 'workspace.scenarioToolbar.monteCarlo.reseed',
+    label: 'Seed neu',
+  })
 
   function updateCustomRate(annualReturn: number) {
     onAssumptionsChange((current) => ({
@@ -80,7 +123,7 @@ export function ScenarioToolbar({
   }
 
   return (
-    <div className="toolbar">
+    <div className="toolbar" {...sectionTargetProps}>
       <div className="scenario-controls">
         <div className="segmented" aria-label="Rendite-Szenario auswählen">
           {assumptions.returnScenarios.map((scenario) => (
@@ -89,6 +132,9 @@ export function ScenarioToolbar({
               type="button"
               className={scenario.id === selectedScenarioId ? 'active' : ''}
               onClick={() => onSelectScenario(scenario.id)}
+              {...qaTarget(qaEnabled, `workspace.scenarioToolbar.scenario.${scenario.id}`, {
+                label: `Szenario ${scenario.label}`,
+              })}
             >
               {scenario.label} {formatPercent(scenario.annualReturn)}
             </button>
@@ -96,7 +142,7 @@ export function ScenarioToolbar({
         </div>
         {customScenario ? (
           <div className="scenario-custom-edit">
-            <label>
+            <label {...customRateProps}>
               <span>Eigene Rendite</span>
               <input
                 type="number"
@@ -108,19 +154,19 @@ export function ScenarioToolbar({
               />
               <em>%</em>
             </label>
-            <button type="button" className="scenario-remove-btn" onClick={removeCustomScenario}>
+            <button type="button" className="scenario-remove-btn" onClick={removeCustomScenario} {...removeCustomProps}>
               Entfernen
             </button>
           </div>
         ) : (
-          <button type="button" className="scenario-add-btn" onClick={addCustomScenario}>
+          <button type="button" className="scenario-add-btn" onClick={addCustomScenario} {...addCustomProps}>
             + Eigenes Szenario
           </button>
         )}
       </div>
 
       <details className="toolbar-advanced">
-        <summary>
+        <summary {...riskSummaryProps}>
           <span>Risiko</span>
           {assumptions.monteCarlo.enabled && (
             <span className="toolbar-risk-summary">
@@ -128,7 +174,7 @@ export function ScenarioToolbar({
             </span>
           )}
         </summary>
-        <label className="toggle">
+        <label className="toggle" {...mcToggleProps}>
           <input
             type="checkbox"
             checked={assumptions.monteCarlo.enabled}
@@ -138,7 +184,7 @@ export function ScenarioToolbar({
         </label>
         {assumptions.monteCarlo.enabled && (
           <div className="monte-carlo-toolbar-fields">
-            <label>
+            <label {...mcRunsProps}>
               <span>Läufe</span>
               <input
                 type="number"
@@ -151,7 +197,7 @@ export function ScenarioToolbar({
                 }
               />
             </label>
-            <label>
+            <label {...mcVolProps}>
               <span>Schwankung</span>
               <input
                 type="number"
@@ -167,7 +213,7 @@ export function ScenarioToolbar({
               />
               <em>%</em>
             </label>
-            <label>
+            <label {...mcSeedProps}>
               <span>Seed</span>
               <input
                 type="number"
@@ -186,6 +232,7 @@ export function ScenarioToolbar({
               title="Seed neu"
               aria-label="Seed neu"
               onClick={() => updateMonteCarlo({ seed: nextSeed(assumptions.monteCarlo.seed) })}
+              {...mcReseedProps}
             >
               <RefreshCw size={15} aria-hidden="true" />
             </button>
