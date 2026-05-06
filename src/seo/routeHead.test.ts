@@ -52,6 +52,52 @@ describe('buildRouteHead — per-route metadata shape', () => {
     expect(buildRouteHead('/404').jsonLd?.['@type']).toBe('WebSite')
   })
 
+  it('emits Article JSON-LD with author, publisher, datePublished, mainEntityOfPage', () => {
+    // `/etf-vs-bav` is one of the locked Article-type routes (issue #05).
+    // External-reviewer enhancement: Article markup must carry an author,
+    // a mainEntityOfPage WebPage reference, and an explicit datePublished
+    // (falls back to dateModified when the registry entry omits it).
+    const head = buildRouteHead('/etf-vs-bav')
+    const data = head.jsonLd as unknown as Record<string, unknown>
+    expect(data['@type']).toBe('Article')
+    expect(data.headline).toBe(publicRouteRegistry['/etf-vs-bav'].h1)
+    expect(data.author).toEqual({
+      '@type': 'Organization',
+      name: 'RentenWiki.de',
+      url: 'https://rentenwiki.de',
+    })
+    expect(data.publisher).toEqual({
+      '@type': 'Organization',
+      name: 'RentenWiki.de',
+      url: 'https://rentenwiki.de',
+    })
+    expect(data.mainEntityOfPage).toEqual({
+      '@type': 'WebPage',
+      '@id': 'https://rentenwiki.de/etf-vs-bav',
+    })
+    // datePublished may equal dateModified (fallback) or carry the explicit
+    // launch date set on the registry entry. Either path is valid.
+    const expectedPublished =
+      publicRouteRegistry['/etf-vs-bav'].datePublished ??
+      publicRouteRegistry['/etf-vs-bav'].dateModified
+    expect(data.datePublished).toBe(expectedPublished)
+  })
+
+  it('Article datePublished falls back to dateModified when datePublished is omitted', () => {
+    // Backward-compat guard: any future Article-type route added without an
+    // explicit datePublished must still emit a valid datePublished field.
+    // We exercise the fallback path directly through the public buildRouteHead
+    // by checking every Article-type route in the registry.
+    for (const routeId of PUBLIC_ROUTE_IDS) {
+      const entry = publicRouteRegistry[routeId]
+      if (entry.jsonLdType !== 'Article') continue
+      const head = buildRouteHead(routeId)
+      const data = head.jsonLd as unknown as Record<string, unknown>
+      const expected = entry.datePublished ?? entry.dateModified
+      expect(data.datePublished).toBe(expected)
+    }
+  })
+
   it('returns null JSON-LD for `/` (LandingPage emits 3 blocks inline in body)', () => {
     // Issue #03: the homepage emits WebSite + Organization + WebApplication via
     // `<JsonLd>` in the LandingPage body so all three share one authoring path.

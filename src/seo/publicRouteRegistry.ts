@@ -97,6 +97,17 @@ export interface PublicRoute {
   readonly summary: string
   /** ISO-8601 date the page was last reviewed for statutory accuracy. */
   readonly dateModified: string
+  /**
+   * Optional ISO-8601 date the page was first published. Used as
+   * `Article.datePublished` in JSON-LD. Falls back to `dateModified` in
+   * the JSON-LD emission when omitted, so existing entries remain
+   * backward-compatible.
+   *
+   * Most current routes use the public-launch date `2026-05-05` (per
+   * CLAUDE.md "Live at rentenwiki.de since 2026-05-05"); routes with
+   * unknown publication date may omit this field.
+   */
+  readonly datePublished?: string
   /** Static robots policy. Share-state injects `noindex,follow` at runtime. */
   readonly robots: RobotsPolicy
   /** Whether this route appears in `sitemap.xml`. The `/404` route is excluded. */
@@ -154,6 +165,7 @@ export const publicRouteRegistry = {
       'Schicht-1- bis Schicht-3-Wege unter denselben Annahmen, ermittelt Rentenlücke und ' +
       'Nettoauszahlung.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
@@ -189,6 +201,7 @@ export const publicRouteRegistry = {
       'Berechnet die Rentenlücke aus Wunschrente, gesetzlicher Rente und privater Vorsorge. ' +
       'Zeigt, welche Werte aus deiner Renteninformation der Rechner braucht.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
@@ -222,6 +235,7 @@ export const publicRouteRegistry = {
       'nachgelagerter Besteuerung rechnet und wo bAV gegenüber einem ETF-Sparplan profitiert ' +
       'oder zurückfällt.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
@@ -246,6 +260,7 @@ export const publicRouteRegistry = {
       'Vergleicht ETF-Sparplan und bAV bei identischer Nettokostenbasis: Steuervorteil, ' +
       'Arbeitgeberzuschuss, GRV-Reduktion, Kosten sowie Steuer und KV/PV in der Auszahlphase.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'Article',
@@ -273,6 +288,7 @@ export const publicRouteRegistry = {
       'Modelliert Riester-Förderung (Zulagen plus Sonderausgabenabzug § 10a EStG mit ' +
       'Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte 2026.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
@@ -303,6 +319,7 @@ export const publicRouteRegistry = {
       'Versicherungsmantel: Anlage, eigener Förderpfad nach Altersvorsorgereformgesetz, ' +
       'nachgelagerte Auszahlung.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
@@ -332,6 +349,7 @@ export const publicRouteRegistry = {
       'Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform ' +
       '(Versicherung oder Depot), Übertragungsmöglichkeiten und nachgelagerte Auszahlung.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'Article',
@@ -365,13 +383,15 @@ export const publicRouteRegistry = {
     title: 'Basisrente (Rürup) Rechner 2026 | RentenWiki.de',
     metaDescription:
       'Basisrente (Rürup) berechnen: Sonderausgabenabzug § 10 Abs. 3 EStG, ' +
-      'Besteuerungsanteil und Auszahlung als Leibrente oder Zeitrente. Werte 2026.',
+      'kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlung als ' +
+      'lebenslange Leibrente. Werte 2026.',
     h1: 'Basisrente (Rürup) Rechner 2026: Steuervorteil und Auszahlungsbeschränkungen',
     summary:
       'Erklärt die Basisrente (Rürup): Sonderausgabenabzug nach § 10 Abs. 3 EStG, ' +
       'kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlungsbeschränkung ' +
       '(keine Kapitalauszahlung).',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
@@ -401,6 +421,7 @@ export const publicRouteRegistry = {
       'je nach Vertragsbeginn (vor 2005, Halbeinkünfte, Abgeltungsteuer) und Leibrente ' +
       'vs. Kapitalverzehr.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
@@ -432,6 +453,7 @@ export const publicRouteRegistry = {
       'Rechnet die gesetzliche Rente netto: nachgelagerte Besteuerung nach § 22 EStG, KVdR ' +
       '(§ 226 SGB V) oder freiwillige GKV (§ 240 SGB V) und Pflegeversicherung.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
@@ -463,6 +485,7 @@ export const publicRouteRegistry = {
       'Portfolio-Modus für mehrere Vorsorgeverträge gleichzeitig (ETF, bAV, Riester, ' +
       'Basisrente, AVD, private Rente) mit Transfer-Ereignissen und Haushaltsperspektive.',
     dateModified: '2026-05-06',
+    datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'Article',

@@ -1,4 +1,4 @@
-## Wann sich Riester (noch) lohnt
+## Wann Riester noch in Frage kommt
 
 Die Riester-Rente ist ein staatlich geförderter Altersvorsorgevertrag der zweiten Schicht mit Zulagen nach §&nbsp;84 EStG und §&nbsp;85 EStG sowie Sonderausgabenabzug nach §&nbsp;10a EStG. Der Rechner ermittelt für einen bestehenden Vertrag die jährlichen Zulagen, den steuerlichen Vorteil aus der Günstigerprüfung und die spätere Auszahlung nach §&nbsp;22 Nr.&nbsp;5 EStG.
 
@@ -28,9 +28,9 @@ Der Rechner bildet die Förderlogik der Riester-Rente nach:
 - **Grundzulage (§&nbsp;84 EStG):** 175&nbsp;€ pro Jahr für unmittelbar Förderberechtigte.
 - **Kinderzulage (§&nbsp;85 EStG):** 185&nbsp;€ pro Kind und Jahr für Kinder vor 2008 geboren, 300&nbsp;€ pro Kind und Jahr für Kinder ab 2008 geboren.
 - **Berufseinsteiger-Bonus (§&nbsp;84 EStG):** einmalig 200&nbsp;€, wenn der Vertrag bei einem Alter bis 24 Jahre abgeschlossen wurde.
-- **Mindesteigenbeitrag (§&nbsp;86 EStG):** max(60&nbsp;€ Sockelbetrag, 4&nbsp;% des rentenversicherungspflichtigen Vorjahres-Brutto abzüglich Zulagen).
+- **Mindesteigenbeitrag (§&nbsp;86 EStG):** max(60&nbsp;€ Sockelbetrag, min(4&nbsp;% des rentenversicherungspflichtigen Vorjahres-Brutto, 2.100&nbsp;€) abzüglich Zulagenanspruch). Bei hohem Vorjahresbrutto (über rund 52.500&nbsp;€) deckelt die 2.100-€-Grenze den geforderten Eigenbeitrag; der Anspruch wächst nicht weiter linear mit dem Einkommen.
 - **Sonderausgabenabzug (§&nbsp;10a EStG):** bis zu 2.100&nbsp;€ pro Jahr aus Eigenbeitrag und Zulagen werden als Sonderausgaben angesetzt; das Finanzamt führt die Günstigerprüfung automatisch durch.
-- **Auszahlphase (§&nbsp;22 Nr.&nbsp;5 EStG):** Leibrente oder Auszahlplan voll mit dem persönlichen Steuersatz im Rentenjahr; KV/PV nach §§&nbsp;229, 240 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__229.html) und §§&nbsp;55, 55a [SGB&nbsp;XI](https://www.gesetze-im-internet.de/sgb_11/__55.html).
+- **Auszahlphase (§&nbsp;22 Nr.&nbsp;5 EStG):** Leibrente oder Auszahlplan voll mit dem persönlichen Steuersatz im Rentenjahr; KV/PV-Behandlung siehe gesonderte FAQ-Antwort unten (Riester ist nicht im Versorgungsbezugskatalog des §&nbsp;229 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__229.html) enumeriert; PV-Beiträge folgen §§&nbsp;55, 55a [SGB&nbsp;XI](https://www.gesetze-im-internet.de/sgb_11/__55.html) entlang der jeweiligen GKV-Route).
 
 ## Was das Ergebnis nicht entscheidet
 
@@ -54,7 +54,7 @@ Förderung im laufenden Jahr:
 | Grundzulage (§&nbsp;84 EStG) | 175,00&nbsp;€ |
 | Kinderzulage 1 Kind ab 2008 (§&nbsp;85 Abs.&nbsp;1 EStG) | 300,00&nbsp;€ |
 | Zulagen gesamt | 475,00&nbsp;€ |
-| Mindesteigenbeitrag (4&nbsp;% × 42.000&nbsp;€ minus Zulagen) | 1.205,00&nbsp;€ |
+| Mindesteigenbeitrag (min(4&nbsp;% × 42.000&nbsp;€, 2.100&nbsp;€) abzüglich Zulagenanspruch; 1.680&nbsp;€ liegt unter dem Cap) | 1.205,00&nbsp;€ |
 | Gesamtbeitrag (Eigenbeitrag plus Zulagen) | 1.680,00&nbsp;€ |
 
 Beim Sonderausgabenabzug (§&nbsp;10a EStG) liegt der Gesamtbeitrag von 1.680&nbsp;€ unter dem Höchstbetrag von 2.100&nbsp;€, der volle Beitrag wird angesetzt. Bei einem angenommenen Grenzsteuersatz von rund 28&nbsp;% ergibt sich eine Steuerersparnis knapp unter dem Zulagenwert. Die Günstigerprüfung belässt es bei den Zulagen; ein zusätzlicher Steuerbonus entsteht nicht. Spätere Auszahlungen unterliegen voll der nachgelagerten Besteuerung.
@@ -71,7 +71,15 @@ Per Altersvorsorgereformgesetz (Bundestag-Beschluss 2026-03-27, Bundesrat-Befass
 
 ### Wie behandelt der Rechner KV- und PV-Beiträge?
 
-Riester-Auszahlungen sind nach §&nbsp;229 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__229.html) Versorgungsbezüge. Für KVdR-Mitglieder gilt §&nbsp;226 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__226.html); für freiwillig gesetzlich Versicherte §&nbsp;240 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__240.html). Der Pflegebeitrag folgt §§&nbsp;55, 55a [SGB&nbsp;XI](https://www.gesetze-im-internet.de/sgb_11/__55.html), inklusive Kinderzuschlag.
+Riester-Auszahlungen sind kein Versorgungsbezug im Sinne des §&nbsp;229 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__229.html); der dortige Katalog zählt geförderte Riester-Leibrenten nicht auf. Für die Beiträge in der gesetzlichen Krankenversicherung ergibt sich daraus:
+
+- **KVdR-Pflichtmitglieder:** §&nbsp;229 SGB&nbsp;V löst auf der geförderten Riester-Rente keine automatische KV-Beitragspflicht aus, weil Riester dort nicht als Versorgungsbezug enumeriert ist. §&nbsp;226 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__226.html) erfasst die Riester-Leibrente daher nicht.
+- **Freiwillig gesetzlich Versicherte:** §&nbsp;240 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__240.html) bemisst die Beiträge nach der gesamten wirtschaftlichen Leistungsfähigkeit bis zur monatlichen Beitragsbemessungsgrenze; die Riester-Auszahlung gehört in diese Bemessungsgrundlage.
+- **PKV-Versicherte:** keine gesetzlichen GKV/PV-Beiträge auf die Riester-Auszahlung.
+
+Der Pflegebeitrag folgt §§&nbsp;55, 55a [SGB&nbsp;XI](https://www.gesetze-im-internet.de/sgb_11/__55.html), einschließlich Kinderzuschlag, im Rahmen der jeweiligen GKV-Routenwahl.
+
+Der Rechner verwendet für alle gesetzlich Krankenversicherten die §&nbsp;240-SGB-V-Schiene als konservative Modellnäherung. Das überschätzt die KV/PV-Last für KVdR-Pflichtmitglieder, weil die rechtliche Behandlung nach geltender Praxis abweicht (siehe oben). Eine getrennte KVdR/freiwillig-Logik für Riester ist auf der Roadmap.
 
 ### Was ist mit Wohn-Riester?
 

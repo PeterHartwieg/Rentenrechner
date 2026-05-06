@@ -150,16 +150,33 @@ function buildJsonLd(
     // Visible-content audit:
     //   - `headline` ↔ rendered H1 on the page
     //   - `description` ↔ summary rendered as page lead paragraph
+    //   - `datePublished` ↔ falls back to `dateModified` when registry entry
+    //     lacks an explicit publication date (backward-compatible default).
     //   - `dateModified` ↔ rendered "Stand …" line
+    //   - `author` ↔ Organization block on homepage (RentenWiki.de itself
+    //     is the editorial author of the calculator content; matches
+    //     `publisher` because we are a single-org publication).
     //   - `publisher` ↔ Organization block on homepage (consistent legalName)
+    //   - `mainEntityOfPage` ↔ canonical URL (tells search engines that this
+    //     Article is the primary entity of the canonical WebPage).
     const article: WithContext<Article> = {
       ...base,
       '@type': 'Article',
       headline: entry.h1,
+      datePublished: entry.datePublished ?? entry.dateModified,
+      author: {
+        '@type': 'Organization',
+        name: 'RentenWiki.de',
+        url: SITE_ORIGIN,
+      },
       publisher: {
         '@type': 'Organization',
         name: 'RentenWiki.de',
         url: SITE_ORIGIN,
+      },
+      mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': canonical,
       },
     }
     return article

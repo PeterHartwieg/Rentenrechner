@@ -31,12 +31,13 @@ Der Rechner setzt die im Altersvorsorgereformgesetz vorgesehenen Parameter um:
   - Stufe 2: 25&nbsp;% Förderquote auf den Anteil von 360&nbsp;€ bis 1.800&nbsp;€ Eigenbeitrag (maximal 360&nbsp;€).
   - Beide Stufen zusammen sind auf insgesamt 540&nbsp;€ pro Person und Jahr gedeckelt.
 - **Mittelbar förderberechtigte Ehepartner:** maximale Grundzulage 175&nbsp;€ pro Jahr.
-- **Kinderzulage:** 300&nbsp;€ pro Kind und Jahr (1,0-Faktor) für jedes Kind, für das Kindergeld bezogen wird.
+- **Kinderzulage:** bis zu 300&nbsp;€ pro Kind und Jahr (100&nbsp;% des Eigenbeitrags, gedeckelt auf 300&nbsp;€). Bei Eigenbeiträgen unter 300&nbsp;€ pro Jahr fällt die Kinderzulage entsprechend niedriger aus. Voraussetzung: Kindergeldbezug für das jeweilige Kind.
 - **Berufseinsteiger-Bonus:** einmalig 200&nbsp;€ bei Vertragsabschluss bis zum Alter von 24 Jahren.
+- **Sonderausgabenabzug nach geändertem §&nbsp;10a [EStG](https://www.gesetze-im-internet.de/estg/__10a.html) (Altersvorsorgereformgesetz, Inkrafttreten 2027 vorgesehen):** Eigenbeiträge bis 1.800&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen sind als Sonderausgaben abzugsfähig. Das Finanzamt führt die Günstigerprüfung automatisch durch; nur der Steuervorteil oberhalb des Zulagenwerts wird als zusätzliche Steuererstattung wirksam.
 - **Standarddepot-Kostendeckel:** Effektivkosten höchstens 1,0&nbsp;% pro Jahr für das gesetzliche Standarddepot.
 - **Glidepath:** Anteil hochriskanter Anlagen höchstens 50&nbsp;% ab fünf Jahren vor Rentenbeginn, höchstens 30&nbsp;% ab zwei Jahren vor Rentenbeginn.
 - **Auszahlphase:** frühester Beginn mit 65 Jahren, spätester Beginn mit 70 Jahren; Teilkapitalauszahlung bis zu 30&nbsp;% des Vertragsguthabens; Auszahlplan mindestens bis zum 85. Lebensjahr; volle nachgelagerte Besteuerung nach §&nbsp;22 Nr.&nbsp;5 [EStG](https://www.gesetze-im-internet.de/estg/__22.html).
-- **KV/PV in der Auszahlphase:** §§&nbsp;229, 240 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__229.html); §§&nbsp;55, 55a [SGB&nbsp;XI](https://www.gesetze-im-internet.de/sgb_11/__55.html).
+- **KV/PV in der Auszahlphase:** AVD-Auszahlungen sind kein bAV-Versorgungsbezug nach §&nbsp;229 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__229.html). Für KVdR-Pflichtmitglieder fällt daher in der Regel keine automatische KV/PV auf die geförderte Auszahlung an. Freiwillig gesetzlich Versicherte werden nach §&nbsp;240 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__240.html) auf die gesamte wirtschaftliche Leistungsfähigkeit beitragspflichtig (inklusive AVD). PKV-Versicherte zahlen keine GKV-Beiträge. Pflegeversicherung folgt den §§&nbsp;55, 55a [SGB&nbsp;XI](https://www.gesetze-im-internet.de/sgb_11/__55.html). Der Rechner verwendet derzeit eine konservative §&nbsp;240-Approximation für alle GKV-Auszahlungen; das gesetzliche Bild ist differenzierter und kann später ausdifferenziert werden.
 
 ## Was das Ergebnis nicht entscheidet
 
@@ -53,11 +54,11 @@ Der Rechner setzt die im Altersvorsorgereformgesetz vorgesehenen Parameter um:
 | Kapitalgarantie | Pflicht zu Rentenbeginn (AltZertG §&nbsp;1) | Keine; Marktrisiko trägt der Anleger |
 | Glidepath | produktabhängig | gesetzlich vorgeschrieben (≤ 50&nbsp;% Risiko 5 Jahre vorher, ≤ 30&nbsp;% 2 Jahre vorher) |
 | Zulagenstruktur | §§&nbsp;84, 85 EStG: 175&nbsp;€ Grundzulage, 185/300&nbsp;€ Kinderzulage | Zweistufige Förderung: 50&nbsp;% auf erste 360&nbsp;€, 25&nbsp;% auf weitere 1.800&nbsp;€, max. 540&nbsp;€ Grundzulage; 300&nbsp;€ Kinderzulage |
-| Eigenbeitrags-Cap für Förderung | §&nbsp;10a EStG: 2.100&nbsp;€ inkl. Zulagen | 1.800&nbsp;€ Eigenbeitrag (Förder-Cap), 6.840&nbsp;€ Vertrags-Cap |
+| Sonderausgabenabzug | §&nbsp;10a EStG (Altvertragsregime): Eigenbeitrag plus Zulagen bis 2.100&nbsp;€ pro Jahr, Günstigerprüfung | §&nbsp;10a EStG (nach Altersvorsorgereformgesetz): Eigenbeitrag bis 1.800&nbsp;€ pro Jahr plus zugehörige Zulagen, Günstigerprüfung. Vertragsbezogene Beitragsobergrenze 6.840&nbsp;€ pro Jahr (oberhalb 1.800&nbsp;€ keine zusätzliche Förderung). |
 | Sockelbeitrag | 60&nbsp;€/Jahr | 120&nbsp;€/Jahr |
 | Auszahlung | Leibrente oder Auszahlplan bis 85 | Teilkapital bis 30&nbsp;%, Auszahlplan mindestens bis 85; Beginn 65 bis 70 |
 | Besteuerung Auszahlung | §&nbsp;22 Nr.&nbsp;5 EStG nachgelagert | §&nbsp;22 Nr.&nbsp;5 EStG nachgelagert |
-| KV/PV | §§&nbsp;229, 240 SGB&nbsp;V; §§&nbsp;55, 55a SGB&nbsp;XI | §§&nbsp;229, 240 SGB&nbsp;V; §§&nbsp;55, 55a SGB&nbsp;XI |
+| KV/PV | KVdR: i.d.R. keine automatische KV/PV auf geförderte Auszahlung (Riester nicht in §&nbsp;229 SGB&nbsp;V enumeriert); freiwillig gesetzlich nach §&nbsp;240 SGB&nbsp;V auf gesamte wirtschaftliche Leistungsfähigkeit; PKV: keine GKV. PV nach §§&nbsp;55, 55a SGB&nbsp;XI. | KVdR: i.d.R. keine automatische KV/PV auf geförderte Auszahlung (AVD nicht in §&nbsp;229 SGB&nbsp;V enumeriert); freiwillig gesetzlich nach §&nbsp;240 SGB&nbsp;V auf gesamte wirtschaftliche Leistungsfähigkeit; PKV: keine GKV. PV nach §§&nbsp;55, 55a SGB&nbsp;XI. |
 | Neuabschluss | nicht mehr ab 2027 | ab 2027 vorgesehen |
 
 ## Beispiel: Bernd
@@ -83,7 +84,7 @@ Förderung im laufenden Jahr (Modell, vorbehaltlich Bundesrats-Zustimmung):
 | Zulagen gesamt | 540,00&nbsp;€ |
 | Effektive Förderquote auf 1.800&nbsp;€ Eigenbeitrag | 30&nbsp;% |
 
-Bei einem Eigenbeitrag von 1.800&nbsp;€ pro Jahr schöpft Bernd die Grundzulage voll aus. Beiträge oberhalb 1.800&nbsp;€ wären möglich (Vertragsobergrenze 6.840&nbsp;€), würden aber keine zusätzliche Zulage mehr auslösen. Die spätere Auszahlung ist voll mit dem persönlichen Steuersatz zu versteuern; KV- und PV-Beiträge fallen wie bei Riester an.
+Bei einem Eigenbeitrag von 1.800&nbsp;€ pro Jahr schöpft Bernd die Grundzulage voll aus. Beiträge oberhalb 1.800&nbsp;€ wären möglich (Vertragsobergrenze 6.840&nbsp;€), würden aber keine zusätzliche Zulage und keinen weiteren Sonderausgabenabzug nach §&nbsp;10a EStG mehr auslösen. Die spätere Auszahlung ist voll mit dem persönlichen Steuersatz im Rentenjahr nach §&nbsp;22 Nr.&nbsp;5 EStG zu versteuern. Die KV/PV-Behandlung folgt Bernds Krankenversicherungsstatus zu Rentenbeginn (KVdR, freiwillig gesetzlich oder PKV); siehe Tabellenzeile zur KV/PV.
 
 ## Häufige Fragen
 

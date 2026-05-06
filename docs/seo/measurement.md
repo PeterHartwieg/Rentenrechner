@@ -39,7 +39,7 @@ After verification:
 
 Use **URL Inspection** to verify that prerendered topic pages are indexable and rendered correctly:
 
-1. Paste the full URL (e.g. `https://rentenwiki.de/topics/rentenluecke-rechner`) into the search box at the top of GSC.
+1. Paste the full URL (e.g. `https://rentenwiki.de/rentenluecke-rechner`) into the search box at the top of GSC.
 2. Confirm:
    - **URL is on Google** (or **URL is not on Google** + the reason).
    - **Coverage** → no `noindex` directive, canonical points where expected.
@@ -109,8 +109,8 @@ Payload:
   "keyLocation": "https://rentenwiki.de/<your-key>.json",
   "urlList": [
     "https://rentenwiki.de/",
-    "https://rentenwiki.de/topics/rentenluecke-rechner",
-    "https://rentenwiki.de/topics/bav-oder-etf",
+    "https://rentenwiki.de/rentenluecke-rechner",
+    "https://rentenwiki.de/etf-vs-bav",
     "https://rentenwiki.de/sitemap.xml"
   ]
 }

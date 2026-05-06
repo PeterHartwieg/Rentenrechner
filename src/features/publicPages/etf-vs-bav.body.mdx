@@ -16,7 +16,7 @@ Aus deiner Gehaltsabrechnung und dem bAV-Angebot:
 
 - Bruttojahresgehalt und Steuerklasse.
 - Geplanter monatlicher Eigenbeitrag und Arbeitgeberzuschuss laut bAV-Angebot.
-- Effektivkosten des bAV-Vertrags (Produktinformationsblatt nach §&nbsp;7 VVG-InfoV).
+- Effektivkosten des bAV-Vertrags (Produktinformationsblatt nach [§&nbsp;2a VVG-InfoV](https://www.gesetze-im-internet.de/vvg-infov/__2a.html)).
 - TER deines geplanten ETFs (typisch 0,07&nbsp;% bis 0,20&nbsp;% pro Jahr).
 - Geplantes Renteneintrittsalter und Auszahlmodus der bAV (Leibrente, Zeitrente, Kapitalverzehr).
 - Mitgliedschaft in der KVdR oder freiwillige GKV im Ruhestand (sofern absehbar).
@@ -43,24 +43,24 @@ Modelliert werden:
 | Produktkosten | TER des ETF (typisch 0,07–0,20&nbsp;% p.a.) | Versicherungsmantel + Fonds-TER (typisch 0,5–2,5&nbsp;% p.a. Effektivkosten) |
 | GRV-Reduktion | Nein | Ja: sv-freie Umwandlung mindert beitragspflichtiges Entgelt (§&nbsp;14 Abs.&nbsp;1 SGB&nbsp;IV) |
 | Besteuerung in der Auszahlphase | Abgeltungsteuer auf Erträge (§&nbsp;20 EStG), zzgl. Vorabpauschale | Voll einkommensteuerpflichtig (§&nbsp;22 Nr.&nbsp;5 EStG) |
-| KV/PV in der Rentenphase | Privatdepot bei KVdR-Mitgliedern in der Regel beitragsfrei; bei freiwillig Versicherten können Erträge herangezogen werden (§&nbsp;240 SGB&nbsp;V) | KVdR: Freibetrag 197,75&nbsp;€ / Monat (§&nbsp;226 Abs.&nbsp;2 SGB&nbsp;V), darüber voll beitragspflichtig. Freiwillig GKV: kein Freibetrag, voller Beitrag auf die ganze bAV-Leistung |
+| KV/PV in der Rentenphase | Privatdepot bei KVdR-Mitgliedern in der Regel beitragsfrei; bei freiwillig Versicherten können Erträge herangezogen werden (§&nbsp;240 SGB&nbsp;V) | KVdR-KV: Freibetrag 197,75&nbsp;€ / Monat (§&nbsp;226 Abs.&nbsp;2 SGB&nbsp;V), darüber voll beitragspflichtig. KVdR-PV: Freigrenze 197,75&nbsp;€ / Monat (§&nbsp;57 Abs.&nbsp;1 SGB&nbsp;XI); bei Überschreitung ist die ganze bAV-Leistung PV-pflichtig. Freiwillig GKV: weder Freibetrag noch Freigrenze, volle Beiträge auf die ganze Leistung |
 | Flexibilität / Liquidität | Hoch, jederzeit Entnahme möglich | Gering, in der Regel keine Auszahlung vor ca. 62 |
 | Portabilität bei Jobwechsel | Vollständig (eigenes Depot) | Eingeschränkt, neue Verträge können neue Abschlusskosten auslösen |
 | Insolvenzschutz | Depot ist Sondervermögen, Pfändbarkeit je nach Freibeträgen | Beiträge aus Entgeltumwandlung sofort unverfallbar (§&nbsp;1b Abs.&nbsp;5 BetrAVG) |
 
 *Caveats: (1) Portabilität bei bAV gilt für Direktversicherung, Pensionskasse und Pensionsfonds; Direktzusage und Unterstützungskasse haben abweichende Regeln. (2) Vertragskosten variieren stark je nach Anbieter und Produktgeneration.*
 
-## Wann überwiegen welche Faktoren?
+## Welche Faktoren wirken in welche Richtung?
 
 ### Arbeitgeberzuschuss als Hebel
 
-Je höher der Arbeitgeberzuschuss, desto günstiger wird die bAV relativ zum ETF-Sparplan. Liegt der Zuschuss deutlich über dem gesetzlichen Minimum von 15&nbsp;% (etwa 50&nbsp;% Matching aus einem Tarifvertrag), verbessert sich die Gesamtrendite erheblich, ohne dass deine Nettobelastung steigt.
+Mit höherem Arbeitgeberzuschuss verschiebt sich das Modellergebnis zugunsten der bAV: Die zusätzliche Einzahlung ins Vertragsguthaben erhöht das Endkapital, ohne dass deine Nettobelastung steigt. Liegt der Zuschuss deutlich über dem gesetzlichen Minimum von 15&nbsp;% (etwa 50&nbsp;% Matching aus einem Tarifvertrag), zeigt der Rechner das in der Endkapital- und Auszahlungssicht.
 
-Bei einem rein gesetzlichen Zuschuss von 15&nbsp;% und gleichzeitig hohen Versicherungsmantelkosten kann der Steuervorteil der Einzahlphase durch Kostenbelastung und nachgelagerte Besteuerung aufgezehrt werden. Die Verbraucherzentrale weist explizit darauf hin, dass der 15&nbsp;%-Pflichtanteil allein oft nicht reicht, wenn die ETF-Alternative kostenarm ist.
+Bei rein gesetzlichem Zuschuss von 15&nbsp;% und gleichzeitig hohen Versicherungsmantelkosten kann der Steuervorteil der Einzahlphase durch Kostenbelastung und nachgelagerte Besteuerung aufgezehrt werden. Die Verbraucherzentrale weist darauf hin, dass der 15&nbsp;%-Pflichtanteil bei kostenarmer ETF-Alternative häufig nicht ausreicht, um die Vertragskosten der bAV auszugleichen.
 
 ### Einkommenshöhe und Steuersatz
 
-Der Steuervorteil der bAV in der Einzahlphase hängt am Grenzsteuersatz: Je höher dein Steuersatz heute, desto wertvoller die Steuerstundung. Im Ruhestand mit oft niedrigerem zu versteuerndem Einkommen kann die nachgelagerte Steuer günstiger ausfallen, vorausgesetzt dein Grenzsteuersatz im Ruhestand liegt unter dem heutigen.
+Der Steuervorteil der bAV in der Einzahlphase hängt am Grenzsteuersatz: Je höher dein Steuersatz heute, desto wertvoller die Steuerstundung. Liegt dein Grenzsteuersatz im Ruhestand unter dem heutigen, fällt die nachgelagerte Steuer im Modell niedriger aus als die heute gestundete; bleibt er gleich oder steigt, kehrt sich der Effekt teilweise oder ganz um.
 
 Für Gutverdiener oberhalb der RV-Beitragsbemessungsgrenze (101.400&nbsp;€ / Jahr 2026) entfällt der sv-freie Vorteil vollständig; der Arbeitgeber schuldet keinen gesetzlichen 15&nbsp;%-Zuschuss mehr, weil er keine SV-Ersparnis realisiert.
 
@@ -70,9 +70,12 @@ ETF-Sparpläne haben sehr geringe laufende Kosten (TER 0,07&nbsp;% bis 0,20&nbsp
 
 ### KVdR vs. freiwillig versichert im Ruhestand
 
-Für KVdR-Pflichtmitglieder gilt der Freibetrag nach §&nbsp;226 Abs.&nbsp;2 SGB&nbsp;V (197,75&nbsp;€ / Monat 2026). Auf den darüber liegenden bAV-Anteil zahlt der Rentner den allgemeinen GKV-Beitragssatz von 14,6&nbsp;% (§&nbsp;241 SGB&nbsp;V) plus durchschnittlichen Zusatzbeitrag (rund 1,7&nbsp;%, also zusammen etwa 16,3&nbsp;%) und den vollen PV-Beitrag, beides allein.
+Für KVdR-Pflichtmitglieder unterscheiden sich KV und PV im Mechanismus, obwohl die Schwelle dieselbe ist:
 
-Für freiwillig gesetzlich Versicherte (§&nbsp;240 SGB&nbsp;V, etwa wenn die Vorversicherungszeit für die KVdR nicht erfüllt ist) gilt dieser Freibetrag nicht. Die volle bAV-Leistung ist KV-pflichtig, und die Krankenkasse kann zusätzlich weitere Einkünfte heranziehen. Der Rechner unterscheidet beide Fälle explizit.
+- **Krankenversicherung.** Auf Versorgungsbezüge greift der **Freibetrag** nach §&nbsp;226 Abs.&nbsp;2 SGB&nbsp;V (197,75&nbsp;€ / Monat 2026). Nur der Anteil **oberhalb** dieses Freibetrags ist KV-pflichtig. Auf den übersteigenden Betrag fällt der allgemeine GKV-Beitragssatz von 14,6&nbsp;% (§&nbsp;241 SGB&nbsp;V) zuzüglich des durchschnittlichen Zusatzbeitragssatzes von 2,9&nbsp;% (BMG-Festlegung 2026), zusammen rund 17,5&nbsp;%. Der Rentner trägt den Beitrag auf Versorgungsbezüge allein (§§&nbsp;248, 250 SGB&nbsp;V).
+- **Pflegeversicherung.** Hier gilt eine **Freigrenze** nach §&nbsp;57 Abs.&nbsp;1 SGB&nbsp;XI in derselben Höhe (197,75&nbsp;€ / Monat 2026). Anders als beim KV-Freibetrag: Sobald die Versorgungsbezüge insgesamt die Freigrenze **überschreiten**, ist die **gesamte** bAV-Leistung PV-pflichtig (kein Selbstbehalt-Sockel). Bleibt die Summe darunter, fällt keine PV an.
+
+Für freiwillig gesetzlich Versicherte (§&nbsp;240 SGB&nbsp;V, etwa wenn die Vorversicherungszeit für die KVdR nicht erfüllt ist) gelten weder Freibetrag noch Freigrenze. Die volle bAV-Leistung ist KV- und PV-pflichtig, und die Krankenkasse kann zusätzlich weitere Einkünfte heranziehen. Der Rechner unterscheidet beide Fälle explizit.
 
 ## Was die Rechnung offenlässt
 
@@ -94,9 +97,9 @@ Anna verdient 52.000&nbsp;€ brutto pro Jahr und ist gesetzlich krankenversiche
 | Angenommene Effektivkosten | 0,2&nbsp;% p.a. (ETF-TER) | 1,0&nbsp;% p.a. (Modellwert) |
 | GRV-Reduktion | keine | ca. 0,02 Entgeltpunkte / Jahr (≈ 1&nbsp;€ / Monat weniger GRV-Rente pro Jahr Beitragszahlung) |
 | Besteuerung der Erträge | Abgeltungsteuer auf Kursgewinn (ca. 26,4&nbsp;%) | Voll steuerpflichtig (§&nbsp;22 Nr.&nbsp;5 EStG) |
-| KV/PV auf Auszahlung | Privatdepot, bei KVdR i.d.R. beitragsfrei | KVdR: oberhalb Freibetrag 197,75&nbsp;€ / Monat. Freiwillig GKV: voller Beitrag auf die ganze Leistung |
+| KV/PV auf Auszahlung | Privatdepot, bei KVdR i.d.R. beitragsfrei | KVdR-KV: oberhalb Freibetrag 197,75&nbsp;€ / Monat (§&nbsp;226 Abs.&nbsp;2 SGB&nbsp;V); KVdR-PV: Freigrenze 197,75&nbsp;€ / Monat (§&nbsp;57 Abs.&nbsp;1 SGB&nbsp;XI), darüber komplette Leistung PV-pflichtig. Freiwillig GKV: voller Beitrag auf die ganze Leistung |
 
-In Annas Beispiel hebt der Arbeitgeberzuschuss von 65&nbsp;€ die bAV gegenüber dem ETF deutlich an, auch wenn Vertragskosten und nachgelagerte Steuer/KV/PV berücksichtigt werden. Bei rein gesetzlichem 15&nbsp;%-Zuschuss und höheren Vertragskosten kann das Ergebnis kippen. Den Rechner für die individuellen Annahmen öffnen.
+In Annas Beispielrechnung erhöht der Arbeitgeberzuschuss von 65&nbsp;€ das Endkapital der bAV gegenüber dem ETF-Pfad spürbar, auch nach Berücksichtigung von Vertragskosten und nachgelagerter Steuer-/KV/PV-Last. Bei rein gesetzlichem 15&nbsp;%-Zuschuss und höheren Vertragskosten verschiebt sich das Rechnerergebnis. Für die eigenen Annahmen lässt sich der Rechner direkt öffnen.
 
 ## Was der Rechner derzeit nicht modelliert
 
@@ -109,11 +112,11 @@ In Annas Beispiel hebt der Arbeitgeberzuschuss von 65&nbsp;€ die bAV gegenübe
 
 ### Kann ich ETF und bAV kombinieren?
 
-Ja. In der Praxis nutzen viele Beschäftigte beide Wege: bAV bis zu dem Beitrag, bei dem Arbeitgeberzuschuss und Steuervorteil noch überwiegen, und einen ETF-Sparplan für den Rest. Im Portfolio-Modus von RentenWiki.de kannst du beides parallel modellieren und die Förderrahmen quer über alle Verträge prüfen.
+Ja. In der Praxis nutzen viele Beschäftigte beide Wege parallel: einen Teil des verfügbaren Sparbeitrags in die bAV (typischerweise so weit, wie Arbeitgeberzuschuss und Steuerstundung im Modell den Kostenaufwand der Versicherung kompensieren) und den Rest in einen ETF-Sparplan. Im Portfolio-Modus von RentenWiki.de kannst du beides parallel modellieren und die Förderrahmen quer über alle Verträge prüfen.
 
-### Lohnt sich bAV ohne Arbeitgeberzuschuss über 15&nbsp;%?
+### Wie verhält sich bAV ohne Arbeitgeberzuschuss über 15&nbsp;%?
 
-Das hängt stark von Einkommen, Steuersatz, Vertragskosten und Rentenannahmen ab. Bei rein gesetzlichem Mindestzuschuss und marktüblichen Kosten eines ETF-basierten Versicherungsmantels ist das Ergebnis im Rechner oft knapp; mal vorne der ETF, mal die bAV. Welcher Weg konkret passt, ist eine individuelle Frage und keine Aussage dieser Seite.
+Das Ergebnis im Modell hängt stark von Einkommen, Steuersatz, Vertragskosten und Rentenannahmen ab. Bei rein gesetzlichem Mindestzuschuss und marktüblichen Kosten eines ETF-basierten Versicherungsmantels liegen ETF und bAV im Rechner häufig nahe beieinander; je nach Annahme zeigt der Rechner mal das eine, mal das andere als rechnerisch vorne. Welcher Weg konkret passt, ist eine individuelle Frage und keine Aussage dieser Seite.
 
 ### Gilt der KV-Freibetrag pro Vertrag oder gesamt?
 
@@ -132,8 +135,10 @@ Auf Kursgewinne und Ausschüttungen fällt Abgeltungsteuer von 25&nbsp;% (§&nbs
 - InvStG, §&nbsp;18: Vorabpauschale für Investmentfonds. [gesetze-im-internet.de/invstg_2018/__18.html](https://www.gesetze-im-internet.de/invstg_2018/__18.html)
 - SvEV, §&nbsp;1: sv-freier Höchstbetrag (4&nbsp;% RV-BBG). [gesetze-im-internet.de/svev/__1.html](https://www.gesetze-im-internet.de/svev/__1.html)
 - SGB&nbsp;IV, §&nbsp;14 Abs.&nbsp;1: beitragspflichtige Einnahme. [gesetze-im-internet.de/sgb_4/__14.html](https://www.gesetze-im-internet.de/sgb_4/__14.html)
-- SGB&nbsp;V, §§&nbsp;226, 229, 240, 241: KV-Freibetrag, 1/120-Regel, freiwillig GKV, allgemeiner Beitragssatz. [gesetze-im-internet.de/sgb_5/__226.html](https://www.gesetze-im-internet.de/sgb_5/__226.html)
-- SGB&nbsp;XI, §§&nbsp;55, 57: Pflegeversicherungsbeiträge, Anwendung des KV-Freibetrags. [gesetze-im-internet.de/sgb_11/__55.html](https://www.gesetze-im-internet.de/sgb_11/__55.html)
+- SGB&nbsp;V, §§&nbsp;226, 229, 240, 241, 248, 250: KV-Freibetrag, 1/120-Regel, freiwillig GKV, allgemeiner Beitragssatz, Beitragstragung Versorgungsbezüge. [gesetze-im-internet.de/sgb_5/__226.html](https://www.gesetze-im-internet.de/sgb_5/__226.html)
+- SGB&nbsp;XI, §&nbsp;57 Abs.&nbsp;1: PV-Freigrenze für Versorgungsbezüge. [gesetze-im-internet.de/sgb_11/__57.html](https://www.gesetze-im-internet.de/sgb_11/__57.html)
+- BMG: durchschnittlicher Zusatzbeitragssatz 2026 (2,9&nbsp;%). [bundesgesundheitsministerium.de/beitraege](https://www.bundesgesundheitsministerium.de/beitraege.html)
+- VVG-Informationspflichtenverordnung (VVG-InfoV), §&nbsp;2a: Effektivkostenquote im Produktinformationsblatt. [gesetze-im-internet.de/vvg-infov/__2a.html](https://www.gesetze-im-internet.de/vvg-infov/__2a.html)
 - Bundesregierung: Beitragsbemessungsgrenzen 2026. [bundesregierung.de](https://www.bundesregierung.de/breg-de/aktuelles/beitragsgemessungsgrenzen-2386514)
 - Deutsche Rentenversicherung: BBG-Übersicht 2026. [deutsche-rentenversicherung.de](https://www.deutsche-rentenversicherung.de/DRV/DE/Experten/Arbeitgeber-und-Steuerberater/summa-summarum/Lexikon/B/beitragsbemessungsgrenze.html)
 - GDV: Effektivkosten richtig lesen. [gdv.de](https://www.gdv.de/gdv/themen/leben/effektivkosten-richtig-lesen-12442)

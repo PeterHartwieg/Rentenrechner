@@ -7,7 +7,7 @@ Brutto-Rente abzüglich Einkommensteuer auf den Besteuerungsanteil und abzüglic
 - Du willst wissen, wie viel von der prognostizierten Brutto-Rente nach Steuern und Sozialabgaben übrig bleibt.
 - Du planst deinen Renteneintritt in einem konkreten Jahr und brauchst den passenden Besteuerungsanteil deines Jahrgangs.
 - Du bist freiwillig gesetzlich krankenversichert und willst sehen, welche Einkünfte über die gesetzliche Rente hinaus den KV-Beitrag erhöhen.
-- Du erhältst neben der gesetzlichen Rente bAV, Basisrente, Riester oder eine private Rente und willst die kombinierte Steuer- und KV-Belastung sehen. Für den vertragsweisen Vergleich aller Vorsorgepfade ist [Altersvorsorgeprodukte vergleichen](/altersvorsorgeprodukte-vergleichen) der passende Einstieg.
+- Du erhältst neben der gesetzlichen Rente bAV, Basisrente, Riester oder eine private Rente und willst die kombinierte Steuer- und KV-Belastung sehen. Für den vertragsweisen Vergleich aller Vorsorgepfade siehe [Altersvorsorgeprodukte vergleichen](/altersvorsorgeprodukte-vergleichen).
 
 ## Was du für die Berechnung kennen musst
 
@@ -40,21 +40,29 @@ Für ältere Jahrgänge (vor 2023) gilt die schnellere alte Progression: Jahrgan
 
 Der steuerfreie Teil der Jahresrente wird im ersten vollen Rentenjahr ermittelt und in Euro eingefroren (sog. Kohortenmodell). Spätere Rentenanpassungen nach § 68 SGB VI sind voll steuerpflichtig, weil sie über den eingefrorenen Freibetrag hinausgehen.
 
-### Versorgungsfreibetrag für Versorgungsbezüge
+### Steuerliche Routen je nach Vorsorgeschicht
 
-Beamtenpensionen und betriebliche Altersversorgung mit Versorgungscharakter laufen nicht über § 22 EStG, sondern über § 19 Abs. 2 EStG (Versorgungsfreibetrag plus Zuschlag, ebenfalls am Versorgungsbeginn eingefroren). Werte für 2026: 12,8 % der Versorgungsbezüge, gedeckelt bei 960 € pro Jahr, plus Zuschlag 288 € pro Jahr.
+Die Auszahlungsphase folgt nicht einer einheitlichen Norm, sondern verzweigt nach Schicht und Durchführungsweg. Der Rechner bildet diese Routen unterschiedlich ab:
 
-Die Werte sinken nach Versorgungsbeginn-Jahrgang gestaffelt; für Versorgungsbeginn ab 2058 entfallen Freibetrag und Zuschlag. Der Rechner verwendet § 22 EStG für die gesetzliche Rente und § 19 Abs. 2 EStG für die bAV-Auszahlung.
+- **Gesetzliche Rente** (§ 22 Nr. 1 Satz 3 a Doppelbuchstabe aa EStG): nachgelagerte Besteuerung mit kohortenbasiertem Besteuerungsanteil; der Rentenfreibetrag wird im ersten vollen Rentenjahr in Euro eingefroren.
+- **Beamtenpensionen** (§ 19 Abs. 2 EStG): Versorgungsbezüge mit Versorgungsfreibetrag und Zuschlag.
+- **bAV via Direktzusage oder Unterstützungskasse** (§ 19 EStG): die Leistung gilt als nachträglicher Arbeitslohn. Laufende Renten können den Versorgungsfreibetrag nach § 19 Abs. 2 EStG nutzen; Kapitalauszahlungen können bei zusammengeballten Bezügen die Fünftelregelung nach § 34 EStG erfüllen.
+- **bAV via Direktversicherung, Pensionskasse oder Pensionsfonds nach § 3 Nr. 63 EStG** (§ 22 Nr. 5 EStG): die Leistung wird in voller Höhe nachgelagert besteuert, soweit die Beiträge steuerlich gefördert waren. Ein Versorgungsfreibetrag nach § 19 Abs. 2 EStG steht hier nicht zu.
+- **Basisrente und Riester** (§ 22 Nr. 1 Satz 3 a Doppelbuchstabe aa EStG für Basisrente, § 22 Nr. 5 EStG für gefördertes Riester-Vermögen): nachgelagerte Besteuerung der geförderten Bestandteile.
+
+Der Versorgungsfreibetrag nach § 19 Abs. 2 EStG (Werte 2026: 12,8 % der Versorgungsbezüge, gedeckelt bei 960 € pro Jahr, plus Zuschlag 288 € pro Jahr) gilt nur für Versorgungsbezüge nach § 19 EStG, also für Beamtenpensionen und für laufende bAV-Renten aus Direktzusage oder Unterstützungskasse. Bei bAV nach § 3 Nr. 63 EStG greift dieser Freibetrag nicht. Die Werte sinken nach Versorgungsbeginn-Jahrgang gestaffelt; für Versorgungsbeginn ab 2058 entfallen Freibetrag und Zuschlag.
 
 ### KV- und PV-Beiträge in der Rente
 
 Der Hauptschalter ist der Versicherungsstatus.
 
-**Pflichtmitglied in der Krankenversicherung der Rentner (KVdR).** Voraussetzung ist die sogenannte 9/10-Regelung: in der zweiten Hälfte des Erwerbslebens zu mindestens 90 % der Zeit gesetzlich krankenversichert (§ 5 Abs. 1 Nr. 11 SGB V). KVdR-Mitglieder zahlen KV-Beiträge nur auf die gesetzliche Rente (§ 226 Abs. 1 SGB V) und auf Versorgungsbezüge (§ 229 SGB V). Auf Versorgungsbezüge wird der § 226 Abs. 2 SGB V Freibetrag von 197,75 € pro Monat im Jahr 2026 abgezogen. Einmalige Kapitalleistungen werden nach § 229 Abs. 1 Satz 3 SGB V auf 120 Monate verteilt.
+**Pflichtmitglied in der Krankenversicherung der Rentner (KVdR).** Voraussetzung ist die sogenannte 9/10-Regelung: in der zweiten Hälfte des Erwerbslebens zu mindestens 90 % der Zeit gesetzlich krankenversichert (§ 5 Abs. 1 Nr. 11 SGB V). KVdR-Mitglieder zahlen KV-Beiträge nur auf die gesetzliche Rente (§ 226 Abs. 1 SGB V) und auf Versorgungsbezüge (§ 229 SGB V). Auf Versorgungsbezüge wird der § 226 Abs. 2 SGB V **Freibetrag** von 197,75 € pro Monat im Jahr 2026 abgezogen: Nur der Anteil oberhalb dieses Freibetrags ist KV-pflichtig. Einmalige Kapitalleistungen werden nach § 229 Abs. 1 Satz 3 SGB V auf 120 Monate verteilt.
 
-**Freiwillig gesetzlich versichert (§ 240 SGB V).** Wer die 9/10-Regelung nicht erfüllt, bleibt freiwillig in der GKV. Bemessungsgrundlage ist die gesamte wirtschaftliche Leistungsfähigkeit, also auch Mieten, Kapitalerträge und private Renten. Der Freibetrag von 197,75 € pro Monat gilt nicht.
+Für die Pflegeversicherung gilt auf Versorgungsbezüge eine **Freigrenze** in derselben Höhe (197,75 €/Monat 2026, § 57 Abs. 1 SGB XI). Anders als beim KV-Freibetrag: Sobald die Versorgungsbezüge insgesamt über der Freigrenze liegen, ist der gesamte Betrag PV-pflichtig (kein Selbstbehalt-Sockel). Liegt die Summe unter der Freigrenze, fällt keine PV an.
 
-**Beitragssätze 2026.** Allgemeiner GKV-Beitragssatz 14,6 % (§ 241 SGB V); kassenindividueller Zusatzbeitrag, im Durchschnitt rund 1,7 %; Pflegeversicherung 3,6 % im Basissatz mit Eltern-Entlastung nach § 55a SGB XI ab dem zweiten Kind unter 25, Zuschlag 0,6 Prozentpunkte für Kinderlose. Vom KV-Beitrag trägt die Rentnerin oder der Rentner die Hälfte, die andere Hälfte zahlt die Deutsche Rentenversicherung (§ 249a SGB V); der PV-Beitrag wird ab 2024 voll vom Rentner getragen.
+**Freiwillig gesetzlich versichert (§ 240 SGB V).** Wer die 9/10-Regelung nicht erfüllt, bleibt freiwillig in der GKV. Bemessungsgrundlage ist die gesamte wirtschaftliche Leistungsfähigkeit, also auch Mieten, Kapitalerträge und private Renten. Der KV-Freibetrag und die PV-Freigrenze für Versorgungsbezüge gelten nicht.
+
+**Beitragssätze 2026.** Allgemeiner GKV-Beitragssatz 14,6 % (§ 241 SGB V); kassenindividueller Zusatzbeitrag, im Durchschnitt rund 2,9 % (BMG-Übersicht GKV-Beitragssätze 2026); Pflegeversicherung 3,6 % im Basissatz mit Eltern-Entlastung nach § 55a SGB XI ab dem zweiten Kind unter 25, Zuschlag 0,6 Prozentpunkte für Kinderlose. Vom KV-Beitrag (allgemeiner Satz plus Zusatzbeitrag, zusammen 17,5 %) trägt die Rentnerin oder der Rentner die Hälfte, also 8,75 %; die andere Hälfte zahlt die Deutsche Rentenversicherung (§ 249a SGB V). Der PV-Beitrag wird ab 2024 voll vom Rentner getragen.
 
 **Beitragsbemessungsgrenze.** Die monatliche Beitragsbemessungsgrenze für KV und PV liegt 2026 bei 5.812,50 € (= 69.750 € pro Jahr; SVBezGrV 2026, BGBl. 2025 I Nr. 278). Beträge oberhalb dieser Grenze sind beitragsfrei. Bei mehreren Einkunftsquellen verteilt der Rechner den Beitrag proportional auf die Einnahmenarten.
 
@@ -81,19 +89,19 @@ Annahmen: Single-Haushalt, Rentenbeginn 2032, Brutto-Rente 1.600 € pro Monat (
 | Besteuerungsanteil 2032 (82,5 % + 9 × 0,5 pp) | 87 % |
 | Steuerpflichtiger Anteil | 16.704 € |
 | Werbungskosten-Pauschbetrag | −102 € |
-| KV-Eigenbeitrag (Hälfte aus 14,6 % + 1,7 %) | rund 1.565 € |
+| KV-Eigenbeitrag (Hälfte aus 14,6 % + 2,9 %, also 8,75 %) | rund 1.680 € |
 | PV-Eigenbeitrag (3,6 %) | rund 691 € |
-| Sonderausgaben (KV/PV als Vorsorgeaufwendungen) | rund −2.256 € |
-| Zu versteuerndes Renteneinkommen | rund 14.346 € |
-| Einkommensteuer (1. Progressionszone) | rund 316 € pro Jahr |
+| Sonderausgaben (KV/PV als Vorsorgeaufwendungen) | rund −2.371 € |
+| Zu versteuerndes Renteneinkommen | rund 14.231 € |
+| Einkommensteuer (1. Progressionszone) | rund 296 € pro Jahr |
 | Solidaritätszuschlag (unterhalb Freigrenze) | 0 € |
 
 Pro Monat ergibt das überschlägig:
 
-- Steuer rund 26 €
-- KV-Beitrag (Eigenanteil) rund 130 €
+- Steuer rund 25 €
+- KV-Beitrag (Eigenanteil) rund 140 €
 - PV-Beitrag rund 58 €
-- **Nettorente rund 1.386 €**
+- **Nettorente rund 1.377 €**
 
 Der Rechner bildet die Steuerprogression, den genauen Pauschbetrag, die KV-/PV-BBG und die jährliche Anpassung exakt ab; die Tabelle ist eine gerundete Annäherung. Für eine verbindliche Auskunft sind das Finanzamt, ein Steuerberater oder die Deutsche Rentenversicherung zuständig.
 
@@ -113,7 +121,7 @@ KVdR-Mitglieder zahlen Beiträge nur auf gesetzliche Rente und Versorgungsbezüg
 
 ### Welche Pflegeversicherungs-Reform gilt 2026?
 
-Maßgeblich ist das Pflegeunterstützungs- und Entlastungsgesetz (PUEG, BGBl. 2023 I Nr. 188): Beitragssatz 3,6 % im Basissatz, Zuschlag 0,6 Prozentpunkte für Kinderlose, gestaffelte Entlastung für Eltern mit zwei oder mehr Kindern unter 25 nach § 55a SGB XI. Die im Rechner hinterlegten Sätze entsprechen dem Stand 2026.
+Maßgeblich ist das Pflegeunterstützungs- und Entlastungsgesetz (PUEG, BGBl. 2023 I Nr. 188): Beitragssatz 3,6 % im Basissatz, Zuschlag 0,6 Prozentpunkte für Kinderlose, gestaffelte Entlastung für Eltern mit zwei oder mehr Kindern unter 25 nach § 55a SGB XI.
 
 ### Warum ist der Rentenfreibetrag eingefroren?
 
