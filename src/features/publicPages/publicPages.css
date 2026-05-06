@@ -1,0 +1,185 @@
+/* ==========================================================================
+   Public discovery pages — shared layout for prerendered SEO routes.
+   First entry: /rentenluecke-rechner (issue 02 tracer bullet).
+   Layout follows the legal-page pattern (back-link header, article body,
+   footer with brand + legal links).
+   ========================================================================== */
+
+.public-shell {
+  min-height: 100vh;
+  background: #f4f7fb;
+  display: flex;
+  flex-direction: column;
+}
+
+.public-main {
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.public-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #475569;
+  font-size: 0.92rem;
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+.public-back-link:hover {
+  color: #172033;
+  text-decoration: underline;
+}
+
+.public-article {
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  border-radius: 16px;
+  padding: 32px clamp(20px, 4vw, 40px);
+  box-shadow: 0 1px 4px rgba(23, 32, 51, 0.04);
+}
+
+.public-article h1 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin: 0 0 12px;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: #172033;
+}
+
+.public-article h2 {
+  font-size: 1.25rem;
+  margin: 28px 0 8px;
+  color: #172033;
+}
+
+.public-article h3 {
+  font-size: 1.05rem;
+  margin: 20px 0 6px;
+  color: #1f2937;
+}
+
+.public-article p,
+.public-article li {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #344054;
+  margin: 0 0 12px;
+}
+
+.public-article ul,
+.public-article ol {
+  padding-left: 22px;
+  margin: 4px 0 16px;
+}
+
+.public-article a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.public-article a:hover {
+  color: #1d4ed8;
+}
+
+.public-summary {
+  font-size: 1.05rem;
+  color: #475569;
+  margin: 0 0 4px;
+}
+
+.public-stand {
+  font-size: 0.85rem;
+  color: #667085;
+  margin: 0 0 24px;
+  letter-spacing: 0.02em;
+}
+
+.public-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-size: 0.96rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin: 8px 0 4px;
+}
+
+.public-cta:hover {
+  background: #1d4ed8;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.public-internal-links {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.public-internal-links li {
+  margin: 0;
+}
+
+.public-faq {
+  border-top: 1px solid #e5edf5;
+  margin-top: 24px;
+  padding-top: 16px;
+}
+
+.public-sources {
+  font-size: 0.92rem;
+}
+
+.public-sources li {
+  margin: 0 0 6px;
+}
+
+.public-page-footer {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px 24px 32px;
+  font-size: 0.85rem;
+  color: #667085;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.public-page-footer a {
+  color: #475569;
+  text-decoration: none;
+}
+
+.public-page-footer a:hover {
+  color: #172033;
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .public-main {
+    padding: 20px 14px 40px;
+    gap: 18px;
+  }
+
+  .public-article {
+    padding: 22px 18px;
+  }
+}

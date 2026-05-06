@@ -43,6 +43,16 @@
   line-height: 1.6;
 }
 
+.landing-subline a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.landing-subline a:hover {
+  color: #1d4ed8;
+}
+
 /* Cards layout */
 .landing-cards {
   display: grid;

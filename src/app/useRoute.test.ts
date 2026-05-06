@@ -26,15 +26,27 @@ describe('normalizeRoute', () => {
     expect(normalizeRoute('/datenschutz')).toBe('/datenschutz')
   })
 
+  it('recognises /rentenluecke-rechner and /404 (issue #02)', () => {
+    expect(normalizeRoute('/rentenluecke-rechner')).toBe('/rentenluecke-rechner')
+    expect(normalizeRoute('/404')).toBe('/404')
+  })
+
   it('strips a trailing slash on legal routes', () => {
     expect(normalizeRoute('/impressum/')).toBe('/impressum')
     expect(normalizeRoute('/datenschutz/')).toBe('/datenschutz')
   })
 
-  it('falls back to "/" for unknown paths', () => {
-    expect(normalizeRoute('/something-else')).toBe('/')
-    expect(normalizeRoute('/admin')).toBe('/')
-    expect(normalizeRoute('')).toBe('/')
+  it('strips a trailing slash on /rentenluecke-rechner', () => {
+    expect(normalizeRoute('/rentenluecke-rechner/')).toBe('/rentenluecke-rechner')
+  })
+
+  it('falls back to "/404" for unknown paths (was "/" before issue #02)', () => {
+    // Previously the legacy `404.html = index.html` copy made unknown URLs look
+    // like the calculator. Issue #02 introduces a real /404 page so unknown
+    // URLs render the not-found body instead of silently substituting `/`.
+    expect(normalizeRoute('/something-else')).toBe('/404')
+    expect(normalizeRoute('/admin')).toBe('/404')
+    expect(normalizeRoute('')).toBe('/404')
   })
 })
 

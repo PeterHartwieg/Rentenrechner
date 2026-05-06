@@ -32,7 +32,9 @@ export function LandingPage({ onChoice }: Props) {
           <h1 className="landing-headline">Deine Altersvorsorge im Blick</h1>
           <p className="landing-subline">
             Berechne, was du in Rente bekommen wirst — und wo dein nächster Euro
-            am meisten bewirkt. Keine Steuer-, Rechts- oder Anlageberatung.
+            am meisten bewirkt. Hilfreich besonders, wenn du deine{' '}
+            <a href="/rentenluecke-rechner">Rentenlücke berechnen</a> möchtest.
+            Keine Steuer-, Rechts- oder Anlageberatung.
           </p>
         </div>
 

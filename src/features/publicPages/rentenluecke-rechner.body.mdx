@@ -1,0 +1,151 @@
+## Was ist die Rentenlücke?
+
+Die **Rentenlücke** (auch *Versorgungslücke*) bezeichnet die Differenz zwischen
+dem Nettoeinkommen, das jemand sich für den Ruhestand wünscht, und dem
+voraussichtlichen Nettoeinkommen aus der gesetzlichen Rentenversicherung
+sowie weiteren Vorsorgequellen. Die gesetzliche Rente in Deutschland ersetzt
+in der Regel nur einen Teil des bisherigen Erwerbseinkommens; das aktuelle
+Sicherungsniveau vor Steuern liegt bei rund 48&nbsp;% (Standardrente nach 45
+Beitragsjahren, vgl. § 154 Abs. 3 SGB&nbsp;VI sowie die jährlichen
+Rentenversicherungsberichte der Bundesregierung).
+
+Diese Differenz ist eine **Modellgröße**: Höhe und Vorzeichen hängen von der
+gewünschten Zielrente, von der individuellen Erwerbsbiografie, vom geplanten
+Renteneintrittsalter und von Annahmen über Inflation, Steuern und
+Sozialabgaben ab.
+
+## Wie wird die Rentenlücke berechnet?
+
+In der Modellrechnung von RentenWiki.de wird die Lücke aus drei Bestandteilen
+gebildet:
+
+1. **Wunsch-Nettorente pro Monat.** Frei wählbarer Zielwert. In der Praxis
+   orientieren sich Nutzer:innen häufig am letzten Nettoeinkommen oder an
+   einem Anteil davon. Der Rechner trifft hier keine Empfehlung.
+2. **Voraussichtliche gesetzliche Nettorente.** Berechnet aus den bisher
+   erworbenen Entgeltpunkten, den Annahmen zum künftigen Bruttogehalt und
+   den anwendbaren gesetzlichen Werten Stand 2026 (Rentenwert,
+   Beitragsbemessungsgrenze, KV-/PV-Beitragssätze; siehe DRV
+   *Rentenversicherung in Zahlen 2025/2026* und § 68 SGB&nbsp;VI für die
+   Rentenwertanpassung).
+3. **Beiträge weiterer Vorsorgewege.** Ergänzend werden je nach
+   Konfiguration ETF-Sparpläne, betriebliche Altersvorsorge (bAV), private
+   Rentenversicherung, Basisrente (Rürup), Altersvorsorgedepot und Riester
+   einbezogen — jeweils mit den Steuer- und Sozialversicherungsregeln, die
+   für die Auszahlphase gelten (z.&nbsp;B. § 22 EStG für Renten aus der
+   Basisversorgung, § 22 Nr.&nbsp;5 EStG für geförderte Verträge,
+   § 226 SGB&nbsp;V bzw. § 240 SGB&nbsp;V für KV-Beiträge in der
+   Auszahlphase).
+
+Aus der Summe der Netto-Auszahlungen abzüglich der Wunsch-Nettorente ergibt
+sich die monatliche Rentenlücke. Ein **negativer** Wert bedeutet rechnerisch,
+dass die Wunschrente unter den geplanten Bedingungen erreichbar wäre; ein
+**positiver** Wert signalisiert eine Lücke, die durch zusätzliche Beiträge
+oder durch eine Anpassung des Zielwerts geschlossen werden müsste.
+
+## Welche Eingaben braucht der Rechner?
+
+Für eine erste Schätzung genügen:
+
+- **Geburtsjahr und geplantes Renteneintrittsalter.** Das Eintrittsalter
+  beeinflusst sowohl die Höhe der gesetzlichen Rente (Abschläge bei
+  vorzeitigem Bezug, Zuschläge bei späterem Bezug nach § 77
+  SGB&nbsp;VI) als auch die Auszahldauer privater Verträge.
+- **Aktuelles Bruttoeinkommen.** Wird für die Hochrechnung künftiger
+  Entgeltpunkte und für die Vorsorgepauschale in der Lohnsteuerberechnung
+  verwendet (BMF, *Programmablaufplan für die Berechnung der Lohnsteuer 2026*).
+- **Bereits erworbene Entgeltpunkte.** Dieser Wert steht in der jährlichen
+  *Renteninformation* der Deutschen Rentenversicherung (Versand ab dem 27.
+  Lebensjahr, vgl. § 109 SGB&nbsp;VI). Ohne diese Eingabe schätzt der
+  Rechner die bisherigen Entgeltpunkte aus dem aktuellen Gehalt und Alter.
+- **Wunsch-Nettorente.** Der Zielwert für die Lückenberechnung. Frei wählbar.
+- **Optional: bestehende Verträge.** bAV, private Rentenversicherung,
+  Basisrente, Altersvorsorgedepot, Riester oder ETF-Sparpläne können
+  einzeln eingebracht werden, damit die jeweiligen Auszahlungen die Lücke
+  vermindern.
+
+## Welche Annahmen variieren?
+
+Die Modellrechnung verwendet gesetzliche Werte mit Stand&nbsp;2026
+(Steuersätze, Sozialversicherungsbeiträge, Rentenwert; Quellen: BMF,
+Deutsche Rentenversicherung, GKV-Spitzenverband). Die Ergebnisse hängen
+darüber hinaus von Annahmen ab, die sich nicht sicher vorhersagen lassen:
+
+- **Künftige Rentenanpassungen.** Die Rentenwertanpassung folgt der
+  Lohnentwicklung gemäß § 68 SGB&nbsp;VI; tatsächliche jährliche Anpassungen
+  weichen davon ab.
+- **Inflationsrate.** Bestimmt, wie sich Wunschrente und nominale
+  Auszahlungen zueinander verschieben. Die Annahme ist im Rechner einstellbar.
+- **Renditen privater Vorsorgewege.** Aktien-, Renten- und
+  Versicherungsmarkt-Renditen sind unbekannt. Der Rechner stellt mehrere
+  Szenarien nebeneinander und liefert zusätzlich eine Monte-Carlo-Streuung.
+- **Künftige Gesetzesänderungen.** Steuer- und Sozialabgaben können sich
+  ändern; die Modellrechnung hält die Werte konstant.
+- **Lebenserwartung und Auszahlphase.** Die unterstellte Bezugsdauer
+  beeinflusst die monatliche Auszahlung bei Kapitalverzehr-Modellen.
+
+## Was die Rentenlücke nicht ist
+
+Die Rentenlücke ist **kein** Anlagevorschlag und **keine** Empfehlung. Die
+Modellrechnung liefert Anhaltspunkte unter den von Ihnen gewählten Annahmen.
+Konkrete Entscheidungen über Verträge, Beiträge oder Förderwege erfordern
+eine individuelle Prüfung durch eine zugelassene Beraterin oder einen
+zugelassenen Berater. RentenWiki.de ist kein Steuerberater, kein
+Versicherungsvermittler im Sinne der §§ 34d, 34e GewO und kein Anlageberater
+nach KWG / WpIG / WpHG (siehe Impressum).
+
+## Häufige Fragen
+
+### Welche Sicherungslücke ist „normal"?
+
+Es gibt keinen statutarisch definierten Zielwert. Das Sicherungsniveau der
+gesetzlichen Rente vor Steuern liegt für die Standardrente bei rund 48&nbsp;%
+(§&nbsp;154 SGB&nbsp;VI; tatsächliche Quoten weichen je nach Erwerbsbiografie
+ab). Wer ein höheres Nettoeinkommen wünscht, hat rechnerisch eine größere
+Lücke — die Höhe ist eine persönliche Entscheidung.
+
+### Berücksichtigt der Rechner die Steuer in der Auszahlphase?
+
+Ja. Renten aus der gesetzlichen Rentenversicherung und aus der Basisrente
+(Rürup) werden mit dem nachgelagerten Besteuerungsanteil belegt
+(§&nbsp;22&nbsp;Nr.&nbsp;1 EStG). Renten aus Riester und Altersvorsorgedepot
+sind nach §&nbsp;22&nbsp;Nr.&nbsp;5 EStG steuerpflichtig. Renten aus der bAV
+(insbesondere §&nbsp;3 Nr. 63 EStG-geförderte Verträge) und Auszahlungen aus
+privaten Rentenversicherungen folgen ihren eigenen Tarifregeln (Leibrente:
+Ertragsanteil nach §&nbsp;22 Nr.&nbsp;1 Satz 3 a EStG; Kapitalauszahlung je
+nach Vertragsbeginn und Laufzeit nach §&nbsp;20 Abs.&nbsp;1 Nr.&nbsp;6 EStG).
+
+### Werden Krankenversicherungs- und Pflegeversicherungsbeiträge mitgerechnet?
+
+Ja. Für Pflichtmitglieder der Krankenversicherung der Rentner (KVdR) gelten
+die Regelungen nach §&nbsp;226 SGB&nbsp;V (gesetzliche Rente und
+Versorgungsbezüge); für freiwillig gesetzlich Versicherte greift §&nbsp;240
+SGB&nbsp;V. Pflegeversicherungsbeiträge werden zusätzlich angesetzt (Satz
+und Kinderzuschlag nach §§&nbsp;55, 55a SGB&nbsp;XI).
+
+### Wie aktuell sind die Werte?
+
+Die Modellrechnung verwendet Werte mit Stand 2026 (siehe Hinweis am
+Seitenanfang). Sobald sich Beitragssätze, Beitragsbemessungsgrenzen oder
+Steuertabellen für ein neues Jahr ändern, werden sie in einem eigenen Release
+aktualisiert. Eine eigene Pflegeprozess für jährliche Updates ist im Backlog
+beschrieben.
+
+## Quellen
+
+- Sozialgesetzbuch VI (SGB&nbsp;VI), insbesondere §§ 68, 77, 109, 154 — gesetzliche
+  Rentenversicherung, Rentenwert, Abschläge, Renteninformation, Sicherungsniveau.
+- Sozialgesetzbuch V (SGB&nbsp;V), §§ 226, 240 — KV-Beiträge in der Auszahlphase.
+- Sozialgesetzbuch XI (SGB&nbsp;XI), §§ 55, 55a — Pflegeversicherungssatz und
+  Kinderzuschlag.
+- Einkommensteuergesetz (EStG), §§ 20 Abs.&nbsp;1 Nr.&nbsp;6, 22 — Besteuerung
+  von Renten und Kapitalauszahlungen.
+- Deutsche Rentenversicherung Bund: *Rentenversicherung in Zahlen 2025/2026*
+  und *Rentenversicherungsbericht der Bundesregierung 2025*.
+- Bundesministerium der Finanzen: *Programmablaufplan für die Berechnung der
+  Lohnsteuer 2026* (BMF-Schreiben vom 19. November 2025).
+- GKV-Spitzenverband: Beitragssatz-Übersicht 2026 (gesetzliche
+  Krankenversicherung, Zusatzbeitragssatz, Pflegeversicherung).
+- Statistisches Bundesamt (Destatis): *Sterbetafeln 2021/2023* und
+  *Bevölkerung und Erwerbstätigkeit*-Reihe als Hintergrund für
+  Lebenserwartungsannahmen.

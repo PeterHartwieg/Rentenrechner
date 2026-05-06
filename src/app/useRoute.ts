@@ -9,16 +9,34 @@ import { readUrlState } from '../utils/urlShare'
 // Static-host SPA fallback (Cloudflare Pages / Vercel / Netlify) is required
 // for direct loads of /impressum or /datenschutz. See `public/_redirects`.
 
-export type Route = '/' | '/impressum' | '/datenschutz'
+export type Route =
+  | '/'
+  | '/impressum'
+  | '/datenschutz'
+  | '/rentenluecke-rechner'
+  | '/404'
 
-const KNOWN_ROUTES: Route[] = ['/', '/impressum', '/datenschutz']
+const KNOWN_ROUTES: Route[] = [
+  '/',
+  '/impressum',
+  '/datenschutz',
+  '/rentenluecke-rechner',
+  '/404',
+]
 
+/**
+ * Normalise a pathname to a known `Route`. Unknown paths fall through to
+ * `/404` (NOT `/` as before issue #02 — the legacy `404.html = index.html`
+ * copy made every unknown URL look like the calculator). The CDN's actual
+ * 404 response keeps the HTTP status correct; this just renders the right
+ * body when the prerendered shell is served.
+ */
 export function normalizeRoute(pathname: string): Route {
   // Strip a trailing slash unless the path is just "/"
   const trimmed = pathname.length > 1 && pathname.endsWith('/')
     ? pathname.slice(0, -1)
     : pathname
-  return (KNOWN_ROUTES as string[]).includes(trimmed) ? (trimmed as Route) : '/'
+  return (KNOWN_ROUTES as string[]).includes(trimmed) ? (trimmed as Route) : '/404'
 }
 
 // ---------------------------------------------------------------------------

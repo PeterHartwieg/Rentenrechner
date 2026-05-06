@@ -62,6 +62,9 @@ import { LIFECYCLE_HORIZON_AGE } from './features/results/lifecycleHorizon'
 import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
+import { RentenluckeRechnerPage } from './features/publicPages/RentenluckeRechnerPage'
+import { PageNotFound } from './features/publicPages/PageNotFound'
+import type { Route } from './app/useRoute'
 import {
   QaFeedbackProvider,
   QaModeIndicator,
@@ -128,6 +131,8 @@ function App() {
   let body: ReactNode
   if (route === '/impressum') body = <ImpressumPage navigate={navigate} />
   else if (route === '/datenschutz') body = <DatenschutzPage navigate={navigate} />
+  else if (route === '/rentenluecke-rechner') body = <RentenluckeRechnerPage />
+  else if (route === '/404') body = <PageNotFound />
   else body = <Calculator navigate={navigate} />
   // QA feedback mode (issue 02 — Phase 1 Lane A). Wraps the entire route
   // surface so the overlay can target legal pages too. Inert when disabled
@@ -141,7 +146,7 @@ function App() {
 }
 
 interface CalculatorProps {
-  navigate: (target: '/' | '/impressum' | '/datenschutz') => void
+  navigate: (target: Route) => void
 }
 
 function Calculator({ navigate }: CalculatorProps) {
