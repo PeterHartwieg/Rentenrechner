@@ -241,6 +241,15 @@ export function QaPreview({
     }
   }
 
+  // Auto-close after a successful submission so the tester doesn't have to
+  // click "Abbrechen" — the success status with the issue link stays
+  // visible for ~4s before the panel closes.
+  useEffect(() => {
+    if (workerState !== 'success') return
+    const timer = window.setTimeout(() => onCancel(), 4000)
+    return () => window.clearTimeout(timer)
+  }, [workerState, onCancel])
+
   const statusNode = renderStatus({
     copied,
     downloaded,
@@ -634,10 +643,14 @@ function renderStatus(args: StatusArgs): React.ReactNode {
   if (workerState === 'success' && workerResult && workerResult.ok) {
     return (
       <>
-        Issue erstellt:{' '}
+        <span aria-hidden="true" style={{ marginRight: 6, color: '#16a34a' }}>
+          ✓
+        </span>
+        <strong>Erfolgreich eingereicht.</strong>{' '}
         <a href={workerResult.issueUrl} target="_blank" rel="noopener noreferrer">
-          {workerResult.issueUrl}
-        </a>
+          Issue auf GitHub öffnen
+        </a>{' '}
+        <span style={{ opacity: 0.7 }}>(Fenster schließt sich gleich…)</span>
       </>
     )
   }

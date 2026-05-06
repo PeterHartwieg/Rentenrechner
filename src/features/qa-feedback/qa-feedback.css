@@ -77,14 +77,15 @@
 }
 
 /* Composer / preview shell — modal-ish floating panel. Uses inline z-index
- * higher than the outline so the form is always on top. */
+ * higher than the outline (9999) so the form is always on top of the
+ * pinned highlight. */
 .qa-panel {
   position: fixed;
   right: 16px;
   bottom: 64px;
   width: min(420px, calc(100vw - 32px));
   max-height: calc(100vh - 96px);
-  z-index: 1001;
+  z-index: 10000;
   background: #ffffff;
   color: #111827;
   border-radius: 12px;

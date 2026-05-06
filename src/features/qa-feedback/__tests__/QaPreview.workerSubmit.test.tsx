@@ -164,7 +164,7 @@ describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
     // Success status renders the issue link.
     await waitFor(() => {
       const status = screen.getByTestId('qa-preview-status')
-      expect(status.textContent).toContain('Issue erstellt')
+      expect(status.textContent).toContain('Erfolgreich eingereicht')
       const link = status.querySelector('a')
       expect(link?.getAttribute('href')).toBe(
         'https://github.com/PeterHartwieg/Rentenrechner/issues/42',

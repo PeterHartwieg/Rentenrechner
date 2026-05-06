@@ -50,7 +50,11 @@ export async function submitToWorker(
   turnstileToken: string,
 ): Promise<WorkerSubmitOutcome> {
   const title = clamp(generateTitle(report), TITLE_MAX)
-  const body = clamp(buildMarkdownTicket(report), BODY_MAX)
+  // The Worker appends its own `## Screenshot` block referencing the
+  // hosted R2 URL. Drop the report's local-file ref so the issue body
+  // doesn't carry a duplicate (broken) screenshot link.
+  const reportForBody = screenshot ? { ...report, screenshot: undefined } : report
+  const body = clamp(buildMarkdownTicket(reportForBody), BODY_MAX)
 
   const payload: Record<string, unknown> = {
     title,
