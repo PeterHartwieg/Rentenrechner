@@ -60,4 +60,15 @@ describe('generateSitemap — content and structure', () => {
   it('is deterministic — same call returns byte-identical output', () => {
     expect(generateSitemap()).toBe(xml)
   })
+
+  it('lists `/` (homepage) as the first canonical URL', () => {
+    // Issue #03 acceptance criteria: sitemap.xml includes / as the first
+    // canonical URL. Iteration order matches the registry's source order
+    // (homepage first, topic pages, 404). Pin this so a future registry
+    // re-ordering surfaces in code review.
+    const locs = xml.match(/<loc>([^<]+)<\/loc>/g) ?? []
+    expect(locs.length).toBeGreaterThan(0)
+    const first = locs[0]?.replace(/<\/?loc>/g, '') ?? ''
+    expect(first).toBe('https://rentenwiki.de/')
+  })
 })

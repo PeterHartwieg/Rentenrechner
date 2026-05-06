@@ -14,6 +14,12 @@ import {
  * HTML; the runtime app does not need to manage these tags.
  *
  * Tests run against this shape directly without booting jsdom.
+ *
+ * `jsonLd` is `null` for routes whose page wrapper emits JSON-LD inline in
+ * the body via the `<JsonLd>` React component. The homepage uses this branch
+ * because it emits three blocks (WebSite, Organization, WebApplication —
+ * issue #03), all of which live in the LandingPage body so they share one
+ * authoring path.
  */
 export interface RouteHead {
   readonly title: string
@@ -30,7 +36,7 @@ export interface RouteHead {
   readonly twitterTitle: string
   readonly twitterDescription: string
   readonly twitterImage: string
-  readonly jsonLd: WithContext<WebApplication> | WithContext<WebSite>
+  readonly jsonLd: WithContext<WebApplication> | WithContext<WebSite> | null
 }
 
 /** Brand string for `og:site_name`. Centralised so renames stay in one place. */
@@ -69,6 +75,13 @@ export function buildRouteHead(routeId: PublicRouteId): RouteHead {
  * the rendered page may appear here — Google's structured-data guidelines
  * forbid markup that doesn't match visible content.
  *
+ * Returns `null` for the homepage `/`: the LandingPage renders three blocks
+ * (WebSite, Organization, WebApplication) inline in its body via the typed
+ * `<JsonLd>` component (issue #03). Keeping head emission here would either
+ * duplicate the WebApplication block or split JSON-LD across two emission
+ * paths. We keep the head pipeline for `/rentenluecke-rechner` and `/404`
+ * unchanged.
+ *
  * Visible-content audit (verified in unit tests):
  *   - `name` ↔ `<title>` (rendered into the page chrome)
  *   - `description` ↔ `summary` (rendered as page lead paragraph)
@@ -79,7 +92,12 @@ export function buildRouteHead(routeId: PublicRouteId): RouteHead {
 function buildJsonLd(
   entry: PublicRoute,
   canonical: string,
-): WithContext<WebApplication> | WithContext<WebSite> {
+): WithContext<WebApplication> | WithContext<WebSite> | null {
+  // Homepage emits its three JSON-LD blocks via the LandingPage body
+  // (`buildHomeWebSiteJsonLd` + `buildHomeOrganizationJsonLd` +
+  // `buildHomeWebApplicationJsonLd`). Skip head emission to avoid duplication.
+  if (entry.canonical === '/') return null
+
   const base = {
     '@context': 'https://schema.org' as const,
     name: entry.title,

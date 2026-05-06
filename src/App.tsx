@@ -442,7 +442,7 @@ function Calculator({ navigate }: CalculatorProps) {
   if (appView === 'landing') {
     return (
       <>
-        <LandingPage onChoice={handleLandingChoice} />
+        <LandingPage onChoice={handleLandingChoice} navigate={navigate} />
         {showInventoryWizard && (
           <InventoryWizard
             grossSalaryYear={profile.grossSalaryYear}

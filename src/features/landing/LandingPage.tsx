@@ -2,9 +2,22 @@ import { useEffect, useRef } from 'react'
 import './LandingPage.css'
 import { ArrowRight, LayoutGrid, BarChart3 } from 'lucide-react'
 import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
+import { LegalFooter } from '../legal/LegalFooter'
 import type { ProductId } from '../../domain'
-import { resolveTopicPreselection } from '../../seo/publicRouteRegistry'
+import type { Route } from '../../app/useRoute'
 import { detectSavedMode } from '../../app/useRoute'
+import { JsonLd } from '../../seo/JsonLd'
+import {
+  buildHomeOrganizationJsonLd,
+  buildHomeWebApplicationJsonLd,
+  buildHomeWebSiteJsonLd,
+} from '../../seo/organization'
+import {
+  buildCanonicalUrl,
+  publicRouteRegistry,
+  resolveTopicPreselection,
+} from '../../seo/publicRouteRegistry'
+import { HUB_CLUSTERS } from './hubClusters'
 
 /**
  * LandingChoice — payload fired by the two CTA buttons (and by the
@@ -21,6 +34,14 @@ export type LandingChoice =
 
 interface Props {
   onChoice: (choice: LandingChoice) => void
+  /**
+   * Optional navigate handler. Threaded through to `LegalFooter` so the
+   * footer's `Impressum` / `Datenschutz` links use SPA navigation when the
+   * landing page is rendered inside the live app. The SSG prerender pass
+   * passes a no-op — the rendered HTML still carries `<a href>` attributes,
+   * so direct loads work; the SPA router takes over after hydration.
+   */
+  navigate?: (target: Route) => void
 }
 
 /**
@@ -40,11 +61,32 @@ interface Props {
  * `preselection` AND `detectSavedMode()` returns `null` (first-time visitor,
  * no saved workspace), the matching `LandingChoice` is auto-fired. Returning
  * users are never overridden — saved state always wins (PRD US-18).
+ *
+ * Below the two CTAs (issue #03):
+ *   - `Erkunde Themen` topic-page hub: 5 clusters, 10 descriptive German
+ *     anchors. Most targets do not have pages yet (issues #04–#07).
+ *   - `LegalFooter`: license posture + Impressum/Datenschutz links.
+ *
+ * Inline JSON-LD (issue #03): `WebSite` + `Organization` + `WebApplication`.
+ * All three blocks are emitted via the typed `<JsonLd>` component into the
+ * page body so the SSG prerender output already carries them. Crawlers parse
+ * JSON-LD wherever it appears in the document; placing the blocks in body
+ * keeps the head emission for `/` empty (the route-head pipeline returns
+ * `null` for `/` so the head is not duplicated).
  */
-export function LandingPage({ onChoice }: Props) {
-  // Auto-fire-once guard: useEffect deps are stable (`onChoice` is the only
-  // referenced value) but React 19 strict-mode runs effects twice in dev. The
-  // ref ensures we never double-fire `onChoice` if the component re-renders.
+export function LandingPage({ onChoice, navigate }: Props) {
+  const route = publicRouteRegistry['/']
+  const canonical = buildCanonicalUrl('/')
+
+  // Prerender path may pass undefined for `navigate`. We pass a stable no-op
+  // through to LegalFooter — the rendered HTML still emits `<a href>` so
+  // direct loads work; the live app threads its real navigate from useRoute.
+  const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
+
+  // Auto-fire-once guard (issue #13): useEffect deps are stable (`onChoice` is
+  // the only referenced value) but React 19 strict-mode runs effects twice in
+  // dev. The ref ensures we never double-fire `onChoice` if the component
+  // re-renders.
   const autoFiredRef = useRef(false)
 
   useEffect(() => {
@@ -126,7 +168,60 @@ export function LandingPage({ onChoice }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Topic-page hub — issue #03. Sectioned `Erkunde Themen` block under
+            the two CTAs. Five clusters, 10 anchors. Most targets ship in
+            issues #04–#07; the hub still lists them so internal links resolve
+            atomically as those issues land. */}
+        <nav className="landing-hub" aria-labelledby="landing-hub-heading">
+          <h2 id="landing-hub-heading" className="landing-hub-heading">
+            Erkunde Themen
+          </h2>
+          <p className="landing-hub-intro">
+            Schau dir gezielt die Bausteine deiner Altersvorsorge an — Rentenlücke,
+            betriebliche und private Vorsorge, geförderte Verträge oder das
+            gesamte Portfolio.
+          </p>
+          <div className="landing-hub-clusters">
+            {HUB_CLUSTERS.map((cluster) => (
+              <section key={cluster.heading} className="landing-hub-cluster">
+                <h3 className="landing-hub-cluster-heading">{cluster.heading}</h3>
+                <ul className="landing-hub-links">
+                  {cluster.links.map((link) => (
+                    <li key={link.href}>
+                      <a href={link.href} className="landing-hub-link">
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </nav>
       </main>
+
+      {/* Visible "Stand" line for JSON-LD `dateModified` (Google structured-data
+          guideline: every JSON-LD field must have a visible counterpart). */}
+      <p className="landing-stand">
+        Stand: {route.dateModified} · Werte für Deutschland 2026
+      </p>
+
+      <LegalFooter navigate={navigateOrNoop} />
+
+      {/* Inline JSON-LD (issue #03): WebSite + Organization + WebApplication.
+          All three blocks emitted via the typed `<JsonLd>` component — the
+          single React JSON-LD path (no parallel raw-string emission). */}
+      <JsonLd data={buildHomeWebSiteJsonLd(canonical)} />
+      <JsonLd data={buildHomeOrganizationJsonLd(canonical)} />
+      <JsonLd
+        data={buildHomeWebApplicationJsonLd({
+          canonical,
+          title: route.title,
+          summary: route.summary,
+          dateModified: route.dateModified,
+        })}
+      />
     </div>
   )
 }

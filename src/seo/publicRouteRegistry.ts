@@ -143,16 +143,36 @@ export const publicRouteRegistry = {
     canonical: '/',
     title: 'RentenWiki.de — Altersvorsorge-Rechner Deutschland 2026',
     metaDescription:
-      'Kostenloser Modellrechner für Altersvorsorge in Deutschland: ETF, bAV, private Rentenversicherung, Basisrente, AVD und Riester vergleichen. Stand 2026. Keine Anlage-, Steuer- oder Rechtsberatung.',
+      'Kostenloser Modellrechner für die Altersvorsorge in Deutschland: ETF, bAV, ' +
+      'private Rentenversicherung, Basisrente, AVD und Riester gemeinsam vergleichen. ' +
+      'Stand 2026. Keine Anlage-, Steuer- oder Rechtsberatung.',
     h1: 'Deine Altersvorsorge im Blick',
     summary:
-      'Modellrechner zur Altersvorsorge in Deutschland mit gesetzlichen Werten Stand 2026. ' +
-      'Vergleicht ETF, bAV, private Rentenversicherung, Basisrente, Altersvorsorgedepot und Riester.',
+      'RentenWiki.de ist ein kostenloser, quelloffener Modellrechner zur Altersvorsorge in ' +
+      'Deutschland mit gesetzlichen Werten Stand 2026. Er vergleicht ETF, bAV, private ' +
+      'Rentenversicherung, Basisrente, Altersvorsorgedepot und Riester unter denselben Annahmen ' +
+      'und ermittelt Rentenlücke, Steuer- und Sozialversicherungsbelastung sowie ' +
+      'erwartete Auszahlungen.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
     jsonLdType: 'WebApplication',
-    relatedRoutes: ['/rentenluecke-rechner'],
+    // Issue #03: the homepage now hubs into all topic-page slugs from the
+    // locked PRD page set. Most are not yet built (#04–#07 ship later); listing
+    // them here keeps the registry as the single source of truth for the
+    // homepage's outbound relations.
+    relatedRoutes: [
+      '/rentenluecke-rechner',
+      '/rente-netto-berechnen',
+      '/bav-rechner',
+      '/etf-vs-bav',
+      '/riester-rechner',
+      '/altersvorsorgedepot-rechner',
+      '/riester-vs-altersvorsorgedepot',
+      '/basisrente-rechner',
+      '/private-rentenversicherung-rechner',
+      '/altersvorsorgeprodukte-vergleichen',
+    ],
     calculatorCta: {
       label: 'Rechner öffnen',
       href: '/',

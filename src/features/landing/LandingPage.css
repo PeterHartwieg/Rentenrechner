@@ -260,6 +260,84 @@
   color: #1d4ed8;
 }
 
+/* ==========================================================================
+   Topic-page hub (issue #03 — `Erkunde Themen`)
+   ========================================================================== */
+
+.landing-hub {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  border-radius: 16px;
+  padding: 28px 28px 24px;
+  box-shadow: 0 1px 4px rgba(23, 32, 51, 0.06);
+}
+
+.landing-hub-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #172033;
+  margin: 0 0 8px;
+  letter-spacing: 0;
+}
+
+.landing-hub-intro {
+  font-size: 0.92rem;
+  color: #475569;
+  line-height: 1.55;
+  margin: 0 0 20px;
+}
+
+.landing-hub-clusters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px 24px;
+}
+
+.landing-hub-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.landing-hub-cluster-heading {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 4px;
+}
+
+.landing-hub-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.landing-hub-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.landing-hub-link:hover {
+  color: #1d4ed8;
+}
+
+.landing-stand {
+  text-align: center;
+  font-size: 0.82rem;
+  color: #667085;
+  margin: 8px 0 0;
+  padding: 0 24px;
+}
+
 /* Responsive: single-column on small screens */
 @media (max-width: 640px) {
   .landing-main {
@@ -281,5 +359,9 @@
 
   .landing-headline {
     font-size: 1.5rem;
+  }
+
+  .landing-hub {
+    padding: 22px 18px 18px;
   }
 }

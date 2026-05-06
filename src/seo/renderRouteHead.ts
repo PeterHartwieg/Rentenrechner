@@ -32,9 +32,14 @@ export function renderRouteHeadHtml(routeId: PublicRouteId): string {
   lines.push(`<meta name="twitter:description" content="${escapeAttr(head.twitterDescription)}" />`)
   lines.push(`<meta name="twitter:image" content="${escapeAttr(head.twitterImage)}" />`)
 
-  // JSON-LD (one block per route, pinned in issue #02)
-  const jsonLdSerialised = JSON.stringify(head.jsonLd, null, 2).replace(/<\/(?=script)/gi, '<\\/')
-  lines.push(`<script type="application/ld+json">\n${jsonLdSerialised}\n</script>`)
+  // JSON-LD: one block per route in head, EXCEPT for `/` which emits three
+  // blocks (WebSite + Organization + WebApplication) inline in the LandingPage
+  // body via the `<JsonLd>` React component (issue #03). The route-head pipeline
+  // returns `null` for `/` to avoid duplication.
+  if (head.jsonLd !== null) {
+    const jsonLdSerialised = JSON.stringify(head.jsonLd, null, 2).replace(/<\/(?=script)/gi, '<\\/')
+    lines.push(`<script type="application/ld+json">\n${jsonLdSerialised}\n</script>`)
+  }
 
   return lines.join('\n    ')
 }
