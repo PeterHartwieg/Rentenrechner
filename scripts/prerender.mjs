@@ -68,6 +68,9 @@ async function loadSourceModules() {
     const pageNotFound = await server.ssrLoadModule('/src/features/publicPages/PageNotFound.tsx')
     const bavRechner = await server.ssrLoadModule('/src/features/publicPages/BavRechnerPage.tsx')
     const etfVsBav = await server.ssrLoadModule('/src/features/publicPages/EtfVsBavPage.tsx')
+    const riesterRechner = await server.ssrLoadModule('/src/features/publicPages/RiesterRechnerPage.tsx')
+    const altersvorsorgedepotRechner = await server.ssrLoadModule('/src/features/publicPages/AltersvorsorgedepotRechnerPage.tsx')
+    const riesterVsAvd = await server.ssrLoadModule('/src/features/publicPages/RiesterVsAltersvorsorgedepotPage.tsx')
     const basisrenteRechner = await server.ssrLoadModule('/src/features/publicPages/BasisrenteRechnerPage.tsx')
     const privateRvRechner = await server.ssrLoadModule('/src/features/publicPages/PrivateRentenversicherungRechnerPage.tsx')
     const renteNettoBerechnen = await server.ssrLoadModule('/src/features/publicPages/RenteNettoBerechnePage.tsx')
@@ -85,6 +88,9 @@ async function loadSourceModules() {
       pageNotFound,
       bavRechner,
       etfVsBav,
+      riesterRechner,
+      altersvorsorgedepotRechner,
+      riesterVsAvd,
       basisrenteRechner,
       privateRvRechner,
       renteNettoBerechnen,
@@ -101,6 +107,9 @@ function pickComponent(routeId, modules) {
   if (routeId === '/404') return modules.pageNotFound.PageNotFound
   if (routeId === '/bav-rechner') return modules.bavRechner.BavRechnerPage
   if (routeId === '/etf-vs-bav') return modules.etfVsBav.EtfVsBavPage
+  if (routeId === '/riester-rechner') return modules.riesterRechner.RiesterRechnerPage
+  if (routeId === '/altersvorsorgedepot-rechner') return modules.altersvorsorgedepotRechner.AltersvorsorgedepotRechnerPage
+  if (routeId === '/riester-vs-altersvorsorgedepot') return modules.riesterVsAvd.RiesterVsAltersvorsorgedepotPage
   if (routeId === '/basisrente-rechner') return modules.basisrenteRechner.BasisrenteRechnerPage
   if (routeId === '/private-rentenversicherung-rechner') return modules.privateRvRechner.PrivateRentenversicherungRechnerPage
   if (routeId === '/rente-netto-berechnen') return modules.renteNettoBerechnen.RenteNettoBerechnePage
@@ -193,6 +202,8 @@ async function main() {
       // first-paint crawlers.
       const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
         || routeId === '/bav-rechner' || routeId === '/etf-vs-bav'
+        || routeId === '/riester-rechner' || routeId === '/altersvorsorgedepot-rechner'
+        || routeId === '/riester-vs-altersvorsorgedepot'
         || routeId === '/basisrente-rechner' || routeId === '/private-rentenversicherung-rechner'
         || routeId === '/rente-netto-berechnen' || routeId === '/altersvorsorgeprodukte-vergleichen'
       const rootMarker = hydrateStable ? ' data-rentenwiki-prerendered="1"' : ''

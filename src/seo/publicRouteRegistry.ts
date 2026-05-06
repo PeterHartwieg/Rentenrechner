@@ -275,8 +275,9 @@ export const publicRouteRegistry = {
     canonical: '/riester-rechner',
     title: 'Riester-Rechner 2026 — Zulagen, Sonderausgabenabzug und Auszahlung | RentenWiki.de',
     metaDescription:
-      'Riester-Rente berechnen: Grundzulage, Kinderzulage, Sonderausgabenabzug § 10a EStG, ' +
-      'Günstigerprüfung und Auszahlungsbesteuerung § 22 Nr. 5 EStG. Modellrechnung Stand 2026.',
+      'Riester-Rente berechnen: Grundzulage (§ 84 EStG), Kinderzulage (§ 85 EStG), ' +
+      'Sonderausgabenabzug § 10a EStG, Günstigerprüfung und Auszahlung § 22 Nr. 5 EStG. ' +
+      'Stand 2026. Keine Anlage- oder Steuerberatung.',
     h1: 'Riester-Rechner 2026 — Zulagen, Steuerförderung und Auszahlung berechnen',
     summary:
       'Erklärt die staatliche Förderung der Riester-Rente: Grundzulage (175 €/Jahr), Kinderzulage ' +
@@ -306,8 +307,9 @@ export const publicRouteRegistry = {
     canonical: '/altersvorsorgedepot-rechner',
     title: 'Altersvorsorgedepot-Rechner 2026 — Neues Schicht-2-Produkt vergleichen | RentenWiki.de',
     metaDescription:
-      'Altersvorsorgedepot (AVD) berechnen: Depot ohne Versicherungsmantel, Förderung § 10a EStG, ' +
-      'Auszahlungsbesteuerung § 22 Nr. 5 EStG (Jahressteuergesetz 2024). Stand 2026.',
+      'Altersvorsorgedepot (AVD) berechnen: neues Depot-Produkt ohne Versicherungsmantel ' +
+      '(Jahressteuergesetz 2024), Förderung § 10a EStG, Auszahlung § 22 Nr. 5 EStG. ' +
+      'Stand 2026. Keine Anlage- oder Steuerberatung.',
     h1: 'Altersvorsorgedepot-Rechner 2026 — Neues Schicht-2-Produkt vergleichen',
     summary:
       'Erklärt das Altersvorsorgedepot (AVD) als neues, durch das Jahressteuergesetz 2024 eingeführtes ' +
@@ -338,8 +340,9 @@ export const publicRouteRegistry = {
     canonical: '/riester-vs-altersvorsorgedepot',
     title: 'Riester oder Altersvorsorgedepot? Vergleich 2026 | RentenWiki.de',
     metaDescription:
-      'Riester vs. AVD im Vergleich: Förderstruktur, Zulagen, Sonderausgabenabzug, ' +
-      'Übertragungsmöglichkeiten und Auszahlungsbesteuerung nach § 22 Nr. 5 EStG. Stand 2026.',
+      'Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, ' +
+      'Sonderausgabenabzug § 10a EStG, Übertragung § 93 EStG und Auszahlung § 22 Nr. 5 EStG. ' +
+      'Stand 2026. Kein Anlagevorschlag.',
     h1: 'Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege 2026',
     summary:
       'Vergleicht Riester-Rente und Altersvorsorgedepot (AVD) anhand Förderstruktur (Grundzulage, ' +
