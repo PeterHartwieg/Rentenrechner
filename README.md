@@ -10,7 +10,7 @@ Interactive German retirement comparison tool evaluating:
 - Riester Altvertrag (Schicht 2)
 - gesetzliche Rente (GRV baseline)
 
-The current version is a local-first React/Vite prototype for personal analysis. It compares products by monthly net burden, projected retirement capital, and estimated monthly net retirement income, using official 2026 German tax and social-security values.
+Live at [rentenwiki.de](https://rentenwiki.de). Local-first React/Vite app — runs entirely in the browser; no backend, no telemetry, no accounts. Compares products by monthly net burden, projected retirement capital, and estimated monthly net retirement income using official 2026 German tax and social-security values.
 
 ## Important Limitation
 
@@ -43,8 +43,8 @@ npm test            # unit tests only
 | `docs/context/products.md` | Product routing table: simulator, validator, types, tests, UI input per product |
 | `docs/context/rules-and-tax.md` | Legal area → engine file mapping |
 | `docs/context/ui.md` | UI section → component and CSS mapping (incl. legal pages, reusable input sections, provenance primitives) |
-| `docs/golden-coverage-audit.md` | What every external oracle pins; the safety net for the Group G migration |
-| `docs/portfolio-schema-design.md` | Binding design for the Group G singleton-to-instance migration |
+| `docs/golden-coverage-audit.md` | What every external oracle pins; the standing safety net for math-touching changes |
+| `docs/portfolio-schema-design.md` | Binding design for the singleton-to-instance migration (`schemaVersion: 1 → 2`); historical reference + invariants |
 | `DESIGN.md` | Design vision, architecture, product assumptions |
 | `BACKLOG.md` | Prioritized accuracy and product backlog |
 | `LICENSE.md` | PolyForm Noncommercial 1.0.0 (free use scope) |

@@ -66,6 +66,8 @@ async function loadSourceModules() {
     const reactDomServer = await import('react-dom/server')
     const rentenluecke = await server.ssrLoadModule('/src/features/publicPages/RentenluckeRechnerPage.tsx')
     const pageNotFound = await server.ssrLoadModule('/src/features/publicPages/PageNotFound.tsx')
+    const basisrenteRechner = await server.ssrLoadModule('/src/features/publicPages/BasisrenteRechnerPage.tsx')
+    const privateRvRechner = await server.ssrLoadModule('/src/features/publicPages/PrivateRentenversicherungRechnerPage.tsx')
 
     return {
       server,
@@ -77,6 +79,8 @@ async function loadSourceModules() {
       reactDomServer,
       rentenluecke,
       pageNotFound,
+      basisrenteRechner,
+      privateRvRechner,
     }
   } catch (err) {
     await server.close()
@@ -87,6 +91,8 @@ async function loadSourceModules() {
 function pickComponent(routeId, modules) {
   if (routeId === '/rentenluecke-rechner') return modules.rentenluecke.RentenluckeRechnerPage
   if (routeId === '/404') return modules.pageNotFound.PageNotFound
+  if (routeId === '/basisrente-rechner') return modules.basisrenteRechner.BasisrenteRechnerPage
+  if (routeId === '/private-rentenversicherung-rechner') return modules.privateRvRechner.PrivateRentenversicherungRechnerPage
   // For `/` we render the full App but force the route via window.location
   // before render. The dashboard requires a DOM environment that we don't
   // have during static prerender — so for `/` we render the LandingPage
@@ -174,6 +180,7 @@ async function main() {
       // returning users. The static HTML still serves as SEO content for
       // first-paint crawlers.
       const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
+        || routeId === '/basisrente-rechner' || routeId === '/private-rentenversicherung-rechner'
       const rootMarker = hydrateStable ? ' data-rentenwiki-prerendered="1"' : ''
       pageHtml = pageHtml.replace(
         '<div id="root"></div>',

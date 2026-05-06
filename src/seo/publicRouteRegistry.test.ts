@@ -13,10 +13,20 @@ import {
 } from './publicRouteRegistry'
 
 describe('publicRouteRegistry — entry shape', () => {
-  it('exposes the registered routes from issue #02', () => {
+  it('exposes all registered routes (issues #02, #05, #06)', () => {
     // Snapshot the canonical paths so adding a new route shows up as a diff
     // in code review (rather than hiding behind a `Object.keys` length test).
-    expect(PUBLIC_ROUTE_IDS).toEqual(['/', '/rentenluecke-rechner', '/404'])
+    // Update this list when adding new public routes.
+    expect(PUBLIC_ROUTE_IDS).toEqual([
+      '/',
+      '/rentenluecke-rechner',
+      '/riester-rechner',
+      '/altersvorsorgedepot-rechner',
+      '/riester-vs-altersvorsorgedepot',
+      '/basisrente-rechner',
+      '/private-rentenversicherung-rechner',
+      '/404',
+    ])
   })
 
   it.each(PUBLIC_ROUTE_IDS)(
@@ -81,6 +91,22 @@ describe('preselection — issue #13', () => {
     expect(entry.preselection).toEqual({
       mode: 'compare',
       visibleProducts: ['etf'],
+    })
+  })
+
+  it('basisrente-rechner declares compare mode with ETF + basisrente preselected (issue #06)', () => {
+    const entry: PublicRoute = publicRouteRegistry['/basisrente-rechner']
+    expect(entry.preselection).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf', 'basisrente'],
+    })
+  })
+
+  it('private-rentenversicherung-rechner declares compare mode with ETF + versicherung preselected (issue #06)', () => {
+    const entry: PublicRoute = publicRouteRegistry['/private-rentenversicherung-rechner']
+    expect(entry.preselection).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf', 'versicherung'],
     })
   })
 
@@ -239,6 +265,21 @@ describe('resolveTopicPreselection — issue #13', () => {
     ).toEqual({
       mode: 'compare',
       visibleProducts: ['etf'],
+    })
+  })
+
+  // Issue #06 — new topic page slugs
+  it('resolves basisrente-rechner slug to ETF + basisrente compare mode (issue #06)', () => {
+    expect(resolveTopicPreselection('?topic=basisrente-rechner')).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf', 'basisrente'],
+    })
+  })
+
+  it('resolves private-rentenversicherung-rechner slug to ETF + versicherung compare mode (issue #06)', () => {
+    expect(resolveTopicPreselection('?topic=private-rentenversicherung-rechner')).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf', 'versicherung'],
     })
   })
 })

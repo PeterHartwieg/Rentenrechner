@@ -201,24 +201,28 @@ Important branches:
 - age-62 / 12-year half-income method
 - fund-linked insurance special treatment
 
-Remaining known issue: `BACKLOG.md` item `#44` tracks deriving contract runtime from calendar
-years instead of using only `retirementAge - age`.
+## Resolved Legal Modeling Questions
+
+### Private Insurance Tax Runtime — resolved
+
+`deriveInsuranceTaxMode()` originally received `retirementAge - age` as the contract runtime, ignoring `contractStartYear`. A contract started before or after the current rule year could be classified into the wrong `halbeinkuenfte` / `abgeltungsteuer` branch.
+
+Fix landed in `src/engine/simulationContext.ts`:
+
+```ts
+const payoutYear = rules.year + (profile.retirementAge - profile.age)
+const contractRuntimeYears = payoutYear - assumptions.insurance.contractStartYear
+```
+
+`deriveInsuranceTaxMode` now branches on `contractRuntimeYears` derived from calendar years.
+
+### Schicht-3 Leibrente Ertragsanteil Taxation — resolved
+
+Private Rentenversicherung monthly Leibrente payouts were originally taxed using a gain-ratio approximation. The correct statutory method for an ungeförderte private Leibrente is the §22 Nr. 1 Satz 3 a EStG Ertragsanteil (age-dependent fixed fraction, e.g. 17 % at age 67).
+
+Fix: `netInsurancePayout` (`src/engine/insurancePayout.ts`) now overrides the derived tax mode with §22 Nr. 1 Satz 3 a EStG Ertragsanteil whenever `payoutMode === 'leibrente'`, including pre-2005 contracts. See CLAUDE.md → "Non-obvious architecture" for the routing summary.
 
 ## Open Legal Modeling Questions
-
-### Private Insurance Tax Runtime (#44)
-
-`deriveInsuranceTaxMode()` receives `retirementAge - age` as the contract runtime, ignoring `contractStartYear`. A contract started before or after the current rule year can be classified into the wrong `halbeinkuenfte` / `abgeltungsteuer` branch.
-
-Correct fix: `payoutYear = rules.year + (retirementAge - age)`, `contractRuntimeYears = payoutYear - contractStartYear`.
-
-Tracked in `BACKLOG.md` item `#44`.
-
-### Schicht-3 Leibrente Ertragsanteil Taxation (#59)
-
-Private Rentenversicherung monthly Leibrente payouts are currently taxed using a gain-ratio approximation (capital minus contributions over capital). The correct statutory method for an ungefoerderte private Leibrente is the §22 EStG Ertragsanteil (age-dependent fixed fraction, e.g. 17 % at age 67), not the gain ratio.
-
-Tracked in `BACKLOG.md` item `#59`.
 
 ### PKV §257 SGB V — Employer Subsidy Cap Basis
 

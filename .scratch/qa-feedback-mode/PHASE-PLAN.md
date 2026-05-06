@@ -2,7 +2,7 @@
 
 # QA feedback mode - parallel phase plan
 
-Status: needs-triage
+Status: done
 Created: 2026-05-05
 
 ## Goal

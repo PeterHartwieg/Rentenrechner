@@ -1,7 +1,8 @@
 # PRD - QA feedback mode
 
-Status: needs-triage
+Status: open
 Created: 2026-05-05
+Updated: 2026-05-05
 
 ## Problem Statement
 
@@ -109,6 +110,18 @@ This gives maintainers precise, reproducible feedback while preserving the exist
 - OCR/document-upload feedback flows.
 - Backend storage of screenshots, share links, localStorage snapshots, or user-entered financial data.
 - Replacing the existing issue tracker workflow; the feature only produces better ticket inputs.
+
+## Dog-fooding feedback (2026-05-05) — all resolved
+
+After hands-on QA testing of the Phase 1 implementation, the following issues were identified and resolved:
+
+1. **Severity labels in German.** `Schweregrad` options (Blocker, Major, Minor, Nit) use English labels in a German UI. Should be German throughout — the PRD already says UI copy should be German (implementation decision, line 79).
+2. **Computed headline instead of "Kommentar".** The composer header says "Kommentar" but the generated title echoes the comment verbatim. A better headline would be auto-computed from Schweregrad + Art + selected container (e.g. "Minor Layout — Eingaben / bAV"), with the comment as body text only.
+3. **Selection granularity too coarse.** Current `data-qa-target` instrumentation covers large sections, so a selection highlights the entire screen area. Need finer targets: individual text fields, graph legend items, table cells, button labels.
+4. **Local issue file creation.** For local QA, add an export option that writes a markdown issue file directly to a local folder in this repo (e.g. `.scratch/qa-feedback-mode/reports/`), avoiding the clipboard/download/email indirection.
+5. **Keyboard shortcut for QA mode toggle.** Currently requires editing the URL (`?qa=1`). A keyboard shortcut (e.g. Ctrl+Shift+Q) would make activation/deactivation fast without URL manipulation.
+
+Issues: `11-*` through `15-*` in `.scratch/qa-feedback-mode/issues/`.
 
 ## Further Notes
 

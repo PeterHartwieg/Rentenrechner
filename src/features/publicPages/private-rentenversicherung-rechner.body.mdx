@@ -1,0 +1,206 @@
+## Was ist eine private Rentenversicherung?
+
+Eine **private Rentenversicherung** (pRV, auch: private Leibrentenversicherung)
+ist ein Versicherungsprodukt, das in der Ansparphase Kapital aufbaut und in der
+Auszahlphase eine lebenslange oder zeitlich befristete Rente auszahlt. Im
+Unterschied zur Basisrente (Rürup) gibt es kein gesetzliches Verbot einer
+Kapitalauszahlung — die meisten Verträge bieten ein Kapitalwahlrecht.
+
+Im Gegensatz zu Riester und bAV gibt es bei privaten Rentenversicherungen keine
+staatliche Zulagenförderung; die steuerliche Behandlung hängt ausschließlich
+vom **Vertragsbeginn** (Era des Vertragsabschlusses) ab.
+
+## Kostenstruktur: Versicherungsmantel und Fondskosten
+
+Die Kosten einer privaten Rentenversicherung setzen sich aus zwei Ebenen zusammen:
+
+### 1. Versicherungsmantel-Gebühr (wrapperAssetFee)
+
+Die laufende Gebühr des Versicherungsmantels deckt Verwaltung,
+Garantien (falls vereinbart) und den Risikoanteil. Sie wird meist als
+Prozentsatz des verwalteten Kapitals pro Jahr ausgewiesen (typische Bandbreite:
+0,2–1,5&nbsp;%&nbsp;p.a., je nach Anbieter und Produkttyp). Im Rechner:
+`wrapperAssetFee`.
+
+### 2. Fondskosten / TER (fundAssetFee)
+
+Fondsgebundene Policen enthalten Investmentfonds mit eigenen laufenden Kosten
+(Total Expense Ratio, TER). Der Fonds-TER kommt zur Mantelgebühr hinzu. Im
+Rechner: `fundAssetFee`. Beide Gebühren zusammen ergeben den **Reduction in Yield
+(RIY)** / die Effektivkostenquote gemäß §&nbsp;2a VVG-InfoV, die Anbieter
+ausweisen müssen.
+
+**Beispielrechnung — Karin, 52, Arbeitnehmerin, Vertrag 2002, Stand&nbsp;2026:**
+
+| Kostenkomponente | Beispielwert |
+|---|---|
+| Versicherungsmantel-Gebühr | 0,40&nbsp;%&nbsp;p.a. |
+| Fondskosten (TER) | 0,20&nbsp;%&nbsp;p.a. |
+| Summe Kostenbelastung (RIY) | 0,60&nbsp;%&nbsp;p.a. |
+
+*Persona: Karin — aus docs/user-scenarios.md (vereinfachte Darstellung).*
+
+## Steuerregime: Automatische Ableitung aus dem Vertragsbeginn
+
+Das Steuerrecht für Kapitalauszahlungen und Leibrenten aus privaten
+Rentenversicherungen unterscheidet drei **Eras**, die der Rechner
+(Funktion `deriveInsuranceTaxMode`) automatisch aus dem eingegebenen
+Vertragsbeginn ableitet:
+
+### Era 1 — Verträge vor dem 1. Januar 2005 (Steuerfreiheit / Halbeinkünfte)
+
+Für Kapitallebensversicherungen und private Rentenversicherungen, die **vor dem
+1.&nbsp;Januar 2005** abgeschlossen wurden und die gesetzlichen
+Mindestlaufzeitbedingungen erfüllen (mindestens 12&nbsp;Jahre Laufzeit, Todesfallschutz
+≥&nbsp;60&nbsp;% der Beitragssumme), gilt:
+
+- **Kapitalauszahlung:** Die Erträge (Differenz Auszahlung minus eingezahlte
+  Beiträge) sind **zur Hälfte** einkommensteuerpflichtig
+  (§&nbsp;20 Abs.&nbsp;1 Nr.&nbsp;6 EStG i.d.F. vor 2025; so genanntes
+  *Halbeinkünfteverfahren*). Verträge, die **vor dem 1.&nbsp;Januar 1997** abgeschlossen
+  wurden, können sogar vollständig steuerfrei sein — abhängig von weiteren
+  Voraussetzungen.
+- **Leibrente aus solchen Verträgen:** Ertragsanteilbesteuerung nach
+  §&nbsp;22 Nr.&nbsp;1 Satz&nbsp;3 a bb EStG (Tabelle je nach Lebensalter
+  bei Rentenbeginn).
+
+Solche Altverträge sind im Markt selten geworden, aber noch vorhanden — z.&nbsp;B.
+bei Personen, die zwischen 1995 und 2004 eine Police abgeschlossen haben.
+**Das Halbeinkünfte-Privileg für Altverträge ist häufig mehr wert als es auf
+den ersten Blick scheint** — eine Kündigung oder ein Wechsel vernichtet dieses
+Privileg unwiderruflich.
+
+### Era 2 — Verträge zwischen dem 1. Januar 2005 und dem 31. Dezember 2008 (Halbeinkünfte-Regime)
+
+Für Verträge, die ab dem 1.&nbsp;Januar 2005 abgeschlossen wurden, gilt
+§&nbsp;20 Abs.&nbsp;1 Nr.&nbsp;6 EStG in der Fassung des
+Alterseinkünftegesetzes (AltEinkG):
+
+- **Voraussetzungen für Halbeinkünfte:** Laufzeit mindestens 12&nbsp;Jahre,
+  Auszahlung nicht vor dem vollendeten 60. Lebensjahr (bei Vertragsabschlüssen
+  ab 2012: nicht vor dem 62. Lebensjahr, §&nbsp;20 Abs.&nbsp;1 Nr.&nbsp;6 Satz&nbsp;2
+  EStG).
+- **Kapitalauszahlung:** Nur **die Hälfte** des Ertrags ist
+  einkommensteuerpflichtig (Halbeinkünfteverfahren).
+- **Leibrente:** §&nbsp;22 Nr.&nbsp;1 Satz&nbsp;3 a EStG Ertragsanteil
+  (unabhängig von der Era, sobald die Auszahlung als Leibrente erfolgt).
+
+### Era 3 — Verträge ab dem 1. Januar 2009 (Abgeltungsteuer)
+
+Seit dem 1.&nbsp;Januar 2009 gilt für Neuverträge grundsätzlich die
+Abgeltungsteuer (§&nbsp;32d EStG, §&nbsp;20 Abs.&nbsp;1 Nr.&nbsp;6 EStG,
+25&nbsp;%&nbsp;+&nbsp;SolZ).
+
+- **Kapitalauszahlung:** Der volle Ertrag unterliegt der Abgeltungsteuer
+  von 25&nbsp;%&nbsp;+ Solidaritätszuschlag (ggf. vermindert durch den
+  Sparerpauschbetrag von 1&nbsp;000&nbsp;€/Jahr, §&nbsp;20 Abs.&nbsp;9 EStG).
+- **Ausnahme:** Werden die Bedingungen für Halbeinkünfte trotzdem erfüllt
+  (Laufzeit ≥&nbsp;12 Jahre, Auszahlung nicht vor 62), kommt für ab-2005-Verträge
+  das Teileinkünfteverfahren zur Anwendung — der Rechner leitet das ab.
+
+| Vertragsbeginn | Bezeichnung im Rechner | Steuerregime Kapitalauszahlung |
+|---|---|---|
+| vor 01.01.2005 | `pre2005` | Halbeinkünfte oder steuerfrei (Altvertrag) |
+| 01.01.2005–31.12.2008 | `halbeinkuenfte` | Halbeinkünfteverfahren (50&nbsp;% des Ertrags) |
+| ab 01.01.2009 | `abgeltungsteuer` | Abgeltungsteuer 25&nbsp;% auf vollen Ertrag |
+
+Der Rechner leitet das Regime automatisch aus **Vertragsbeginn + Laufzeit +
+Renteneintrittsalter** ab (Funktion `deriveInsuranceTaxMode` in
+`src/engine/insurancePayout.ts`). Keine manuelle Auswahl nötig.
+
+## Leibrente vs. Kapitalverzehr (Kapitalwahlrecht)
+
+Private Rentenversicherungen bieten in der Regel ein **Kapitalwahlrecht**:
+Der Versicherte kann bei Vertragsende entweder:
+
+1. **Leibrente:** Lebenslange monatliche Rente (Versicherungsschutz gegen
+   Langlebigkeitsrisiko). Die Besteuerung folgt dem Ertragsanteil nach
+   §&nbsp;22 Nr.&nbsp;1 Satz&nbsp;3 a bb EStG — unabhängig von der Era des
+   Vertragsbeginns.
+
+2. **Kapitalauszahlung (Kapitalverzehr):** Das gesamte oder teilweise angesparte
+   Kapital wird als Einmalbetrag ausgezahlt. Die Besteuerung hängt von der Era
+   des Vertragsbeginns ab (siehe Tabelle oben).
+
+Der Rechner von RentenWiki.de ermöglicht beide Varianten und zeigt, wie sich
+die Nettoauszahlung je nach Wahl unterscheidet.
+
+## Was der Rechner berechnet
+
+RentenWiki.de vergleicht ETF-Sparplan und private Rentenversicherung auf Basis
+identischer Annahmen (gleicher Nettoeinzahlungsbetrag, gleiche Renditeerwartung,
+gleiches Renteneintrittsalter):
+
+- **Ansparphase:** Renditewirkung nach Kosten (Wrapper + Fondskosten), kein
+  staatlicher Abzug (keine Zulagen, kein §&nbsp;10 EStG wie bei Basisrente).
+- **Auszahlphase je nach Wahl:**
+  - *Leibrente:* Ertragsanteil nach §&nbsp;22 Nr.&nbsp;1 Satz&nbsp;3 a bb EStG,
+    KV/PV-Beiträge (§&nbsp;226 bzw. §&nbsp;240 SGB&nbsp;V).
+  - *Kapitalauszahlung:* Steuerregime aus Era (pre2005 / Halbeinkünfte /
+    Abgeltungsteuer), Sparerpauschbetrag-Anteil (§&nbsp;20 Abs.&nbsp;9 EStG).
+- Die monatliche Nettorente (bei Leibrente) oder das Netto-Einmalkapital
+  (bei Kapitalauszahlung) wird dem ETF-Vergleichsszenario gegenübergestellt.
+
+Die Modellrechnung liefert Anhaltspunkte — sie ist kein Steuerrat und keine
+Anlageempfehlung.
+
+## Häufige Fragen
+
+### Wie erkenne ich, ob mein Vertrag pre2005, Halbeinkünfte oder Abgeltungsteuer gilt?
+
+Der Vertragsbeginn (Datum des Abschlusses) entscheidet:
+- Vor 01.01.2005 → pre2005 (potenziell Halbeinkünfte oder steuerfrei je nach
+  genauen Voraussetzungen).
+- 01.01.2005–31.12.2008 → Halbeinkünfte-Regime (wenn 12-Jahres-Bedingung und
+  Altersgrenze erfüllt).
+- Ab 01.01.2009 → Abgeltungsteuer (25&nbsp;% auf Ertrag), es sei denn, die
+  Halbeinkünfte-Bedingungen sind noch erfüllbar.
+
+### Sollte ich eine alte Lebensversicherung kündigen und in ETF umschichten?
+
+Das ist von der individuellen Vertragssituation abhängig. Altverträge (vor 2005)
+haben oft ein steuerliches Privileg, das nach einer Kündigung verloren geht.
+Außerdem können Stornoabzüge das tatsächlich ausbezahlte Kapital deutlich
+mindern. Der Rechner erlaubt den Vergleich „Weiterführen vs. Beitragsfrei
+stellen vs. Kündigen und in ETF investieren" — als reine Modellrechnung ohne
+Empfehlung.
+
+### Was ist der Unterschied zur Basisrente?
+
+Die wichtigsten Unterschiede:
+
+| Aspekt | Private Rentenversicherung | Basisrente (Rürup) |
+|---|---|---|
+| Steuerliche Förderung Anspar | Nein | Sonderausgabenabzug §&nbsp;10 Abs.&nbsp;3 EStG |
+| Kapitalauszahlung | Ja (Kapitalwahlrecht) | Nein (gesetzlich verboten) |
+| Pfändungsschutz | Nein | Ja (§&nbsp;10 Abs.&nbsp;1 Nr.&nbsp;2 EStG) |
+| Vererbbarkeit | Möglich (Todesfallschutz) | Nur Hinterbliebenenrente |
+| Steuer Auszahlung | Era-abhängig | Nachgelagert (Besteuerungsanteil §&nbsp;22 EStG) |
+
+### Wie aktuell sind die Werte im Rechner?
+
+Der Rechner verwendet gesetzliche Werte mit Stand 2026
+(Sparerpauschbetrag 1&nbsp;000&nbsp;€, Abgeltungsteuer 25&nbsp;%, KV/PV-Sätze).
+Änderungen durch künftige Gesetzgebung fließen mit dem nächsten Release ein.
+
+## Quellen
+
+- Einkommensteuergesetz (EStG) §&nbsp;20 Abs.&nbsp;1 Nr.&nbsp;6 — Steuerregime
+  für Erträge aus privaten Rentenversicherungen (Kapitalauszahlung, alle Eras).
+- EStG §&nbsp;20 Abs.&nbsp;9 — Sparerpauschbetrag 1&nbsp;000&nbsp;€/Jahr.
+- EStG §&nbsp;22 Nr.&nbsp;1 Satz&nbsp;3 a bb — Ertragsanteil-Besteuerung bei
+  Leibrenten aus privaten Rentenversicherungen; Tabelle nach Alter bei Rentenbeginn.
+- EStG §&nbsp;32d — Abgeltungsteuer-Tarif (25&nbsp;%&nbsp;+ SolZ).
+- Alterseinkünftegesetz (AltEinkG) — Übergangsregelung für Verträge ab 2005.
+- Bundesministerium der Finanzen (BMF): *Schreiben zur steuerlichen Behandlung
+  von Leibrenten und anderen Leistungen aus Rentenversicherungen* (aktuelle
+  Fassung, Stand 2025/2026).
+- BaFin: *Merkblatt zu Lebensversicherungsprodukten* — aufsichtsrechtliche
+  Rahmenbedingungen für private Rentenversicherungen nach VAG und VVG.
+- VVG-Informationspflichtenverordnung (VVG-InfoV) §&nbsp;2a — Effektivkostenquote
+  (Reduction in Yield), Pflichtangabe bei zertifizierten Produkten.
+- Sozialgesetzbuch V (SGB&nbsp;V) §&nbsp;226, §&nbsp;240 — KV-Beitragspflicht
+  auf Leibrenten (KVdR / freiwillig gesetzlich versichert).
+- Sozialgesetzbuch XI (SGB&nbsp;XI) §§&nbsp;55, 55a — Pflegeversicherungsbeitrag.
+- Statistisches Bundesamt (Destatis): *Sterbetafeln 2021/2023* — Grundlage für
+  Lebenserwartungsannahmen und Ertragsanteiltabellen.

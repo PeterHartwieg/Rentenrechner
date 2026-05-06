@@ -594,7 +594,7 @@ Drawn from the capability matrix above. Each item below maps to a vertical slice
 11. **"Retire later" slider + Monte-Carlo highlights in the recommendation.** Surface existing engine capability. Lights up 8 cleanly, helps 1, 5, 6.
 12. **Three-card per-contract template (Weiterführen / Beitragsfrei / Kündigen).** Per-product UI affordance for inventoried contracts. Lights up 4 (bAV) and 10 (pAV); reusable for Riester (paused/active), Basisrente (rare), AVD (rare).
 
-Items 1–6 cover seven of the original ten scenarios; 7–12 cover the rest. Scenarios 11 (Lena) and 12 (Markus) are partially addressed by the issue-18 trigger seeds — the wizard entry flow and visibleProducts preset are in place; the Mindesteigenbeitrag gap callout and Beamtenpension income card are follow-on Group G items. A reasonable first milestone is "ship 1 + 2 + 5" — that alone changes the tool from "compare six products from scratch" to "tell me what to do given what I already have."
+Items 1–6 cover seven of the original ten scenarios; 7–12 cover the rest. Scenarios 11 (Lena) and 12 (Markus) are partially addressed by the existing trigger seeds — the wizard entry flow and visibleProducts preset are in place; the Mindesteigenbeitrag gap callout and Beamtenpension income card are follow-on combine-mode items tracked under "Decision views and UX expansion" in `BACKLOG.md`. A reasonable first milestone is "ship 1 + 2 + 5" — that alone changes the tool from "compare six products from scratch" to "tell me what to do given what I already have."
 
 ---
 

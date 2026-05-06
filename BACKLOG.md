@@ -1,75 +1,85 @@
-# Rentenrechner Backlog
+# RentenWiki Backlog
 
-Open work only. Completed history belongs in git; implementation detail belongs in code, tests, and research notes.
+Open work and ideas. Shipped work lives in `git log`; closed PRDs/issues are moved under `.scratch/archive/<slug>/`.
 
-Research references:
+## Where work lives
+
+Each non-trivial initiative gets a directory under `.scratch/<slug>/` with a `PRD.md` and numbered issue files (`issues/NN-...md`). Conventions:
+
+- Issue tracker: `docs/agents/issue-tracker.md`
+- Triage labels: `docs/agents/triage-labels.md`
+- Domain doc updates: `docs/agents/domain.md`
+
+This file is the **index** — when you're about to dispatch work, start from a PRD, not from a bullet here. Bullets without a PRD are theme-level ideas, not actionable issues.
+
+Before large implementation work, run `npm run repo:stats`. After code or docs changes, run `npm run verify`.
+
+## Active PRDs
+
+| PRD | Status | Notes |
+|---|---|---|
+| [`qa-feedback-mode`](.scratch/qa-feedback-mode/PRD.md) | active | In-app QA capture / annotation overlay; `PHASE-PLAN.md` drives waves. |
+| [`group-g-qa`](.scratch/group-g-qa/) | active | Combine-mode QA pass against shipped portfolio mode; ~30 open issues across three orchestrator handoff rounds. |
+| [`pure-frontend-api`](.scratch/pure-frontend-api/PRD.md) | needs-triage | Pure front-end API facade over the engine + comparison pipeline. |
+
+## Research references
 
 - Legal and tax: `LEGAL_REVIEW.md`, `TAX_SOCIAL_SECURITY_2026_RESEARCH.md`, `LEGAL_IMPLEMENTATION_AUDIT_2026.md`
 - Product research: `ETF_RESEARCH.md`, `BAV_RESEARCH.md`, `PRIVATE_RENTENVERSICHERUNG_RESEARCH.md`, `BASISRENTE_RESEARCH.md`, `ALTERSVORSORGEDEPOT_2027_RESEARCH.md`, `RIESTER_RESEARCH.md`, `GRV_RESEARCH.md`
 - User scenarios: `docs/user-scenarios.md`
-- Agent routing: `AGENTS.md`, `docs/context/*.md`
+- Agent routing: `AGENTS.md`, `CONTEXT.md`, `docs/context/*.md`
 
-## Priority Legend
+## Open themes (not-yet-PRD'd)
 
-- `P0`: Required before public launch.
-- `P1`: Important for v1 publish.
-- `P2`: Useful expansion.
-- `P3`: Later.
+Bullets here are seeds — promote one to a `.scratch/<slug>/PRD.md` when you're ready to scope it.
 
-## Current focus
+### Publication polish (post-launch)
 
-Publication push. Recommended order:
+- Donation UI — GitHub Sponsors badge in README + Stripe Payment Link "Spenden" / "Support this project" button in topbar. No account flow; single-click external checkout.
+- Commercial license inquiry — "Für Berater & Vermittler" footer link → static page describing the commercial license + `mailto:peter@hartwieg.com` (HTML form once a backend lands).
+- PDF report polish — print-only branded logo / OG-style banner once a logo exists; per-page disclaimer footer for multi-page output; client-ready advisor formatting requested after the first hosted release. Disclaimer + brand header/footer already wired in `PrintReport.tsx`.
+- License-tier feature matrix — at launch, paid commercial license is **permission-only** (no feature gating). Revisit before adding features that primarily benefit professional users (white-label, batch scenarios, branded PDF). Capture decisions in `COMMERCIAL_LICENSE.md`.
+- Privacy-respecting analytics — Plausible or Umami (cookie-free, EU-hosted); page views + basic funnel only, no PII. Update Datenschutzerklärung when added.
+- Bilingual UI (DE/EN) — likely `react-i18next`; defer until DE UX is stable.
+- Landing copy — short marketing page (or extended deployed README) explaining what the tool is, who it's for, the donation/commercial model, and the disclaimer.
+- Logo / wordmark / OG images — pending; track here until a designer pass lands.
+- Basic error tracking — frontend error logging (Sentry browser SDK or similar) once a backend / collector exists.
 
-1. **Group P** (remaining items) — public deployment.
-2. **Group B** — Backend introduction (only when OCR/upload feature is picked up).
-3. **Group G** — Scenario-led portfolio redesign (P1 foundation, then P2).
-4. **Group F** — Later analytical / publishing work.
+### Decision views and UX expansion
 
-Group 0 (pre-flight foundation cleanup) shipped 2026-05-03 (commit `56fdec9`). The Group P P0 legal/export guardrails landed alongside it: OSS license, commercial license terms, disclaimer infrastructure (session-only banner, first block in CSV + PDF), Impressum + Datenschutzerklärung as `/impressum` and `/datenschutz` routes, plus SPA-fallback config for Cloudflare Pages / Netlify / Vercel. See `docs/golden-coverage-audit.md` and `docs/portfolio-schema-design.md` for the Group G safety-net audit and schema-migration plan; per-instance code lands in Group G.
+- More trigger flows — bAV offer, job change, windfall/inheritance, old-insurance check, PKV switch, close-to-retirement, general comparison. Infra exists (`WIZARD_REGISTRY` + `src/content/triggers.ts`); each new trigger = one row in `PATH_OPTIONS` + one row in `WIZARD_REGISTRY` + one component file.
+- Inline dismissal of irrelevant products — when a user asks "what about Riester/Basisrente/etc.", answer in context with a one-line reason and an "add anyway" affordance.
+- Employment-status routing — explicit employed / self-employed / civil-servant / Versorgungswerk / mixed-career paths; hide impossible products instead of showing zero-filled placeholders.
+- Household / dual-profile mode — two profile blocks, joint zvE in tax pipeline (engine ready), per-spouse product attribution, household-level children/allowances, household Wunschnetto, per-spouse action items.
+- GKV/PKV switch decision view — PKV premium today, expected premium growth, salary-phase cashflow delta, retirement KV/PV consequences, lifetime net-cash comparison; explicit non-modeled factors (benefits, family insurance, switch-back difficulty after 55).
+- Windfall and cash/buffer allocation — household-level lump sums modeled separately from existing balances; allocation sliders/templates across ETF, AVD, Basisrente, cash reserve, debt/mortgage once that module exists.
+- Variable-income stress mode — self-employed users rerun the same plan under low/base/high income years so Basisrente tax leverage doesn't look falsely stable.
+- Prominent uncertainty / stress framing — surface Monte Carlo P10/median/P90, Wunschnetto gap, and "retire later" effects in the recommendation surface, not only in Details.
+- Scenario library roles — distinguish baseline / draft what-if / chosen plan / archived plan in saved scenarios; naming prompts ("Plan 2026") and annual check-in copy.
+- Year-by-year tax-saving table — tax/advisor-friendly export for Basisrente, bAV, Riester, AVD scenarios showing gross contribution, tax saving, allowance, and net burden.
+- Already-at-payout decision — 63–67-year-old choosing lump sum vs. annuity vs. staged withdrawals, with KVdR/PKV consequences and sequence-of-returns risk.
+- Career break / Elternzeit / divorce history scenario — interrupted contribution years, child pension credits, Versorgungsausgleich, restart after divorce; tests GRV and subsidy assumptions.
+- Homeowner with mortgage trade-off scenario — household deciding between Sondertilgung, ETF, bAV/Basisrente, and liquidity reserve; guides the real-estate / balance-sheet module.
+- Data-driven trigger mapping — `src/content/triggers.ts` already carries `PATH_OPTIONS`, `VISIBLE_PRODUCTS_BY_PATH`, `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS`. Extend it for new entry flows / trigger cards before adding more hard-coded paths in `GuidedSetup`.
 
-Before large implementation work, run `npm run repo:stats`. After code or docs changes, run `npm run verify`.
-
----
-
-## Group P: Publication readiness
-
-Everything required to publish the tool publicly under the donation + commercial-license model.
-
-### P0 launch blockers
-
-- ~~`P0` **Branding decision.**~~ Shipped in Phase 3 release-readiness wave (`1378705`): public brand is `RentenWiki.de` (long) / `RentenWiki` (short, tight UI). Logo/wordmark and OG images still pending — track under launch polish if blocking. CSV exports use ASCII slug `rentenwiki-export.csv`.
-- `P0` **Public deployment.** Hosting (Cloudflare Pages or Vercel for the static frontend — SPA-fallback already wired in `public/_redirects` and `vercel.json`), build pipeline (GitHub Actions on `main`), custom domain, HTTPS, basic error tracking. No backend yet → no DB or auth.
-
-### P1 launch-essential
-
-- `P1` **Donation UI.** GitHub Sponsors badge on README. Stripe Payment Link "Spenden" / "Support this project" button in the topbar. No account flow — single-click external checkout.
-- `P1` **Commercial license inquiry.** "Für Berater & Vermittler" link in footer → static page describing the commercial license + `mailto:peter@hartwieg.com` (later: HTML form once backend lands).
-- `P1` **PDF report polish.** Disclaimer block is already the first block of `PrintReport.tsx`; the report covers profile, GRV/bAV figures, scenarios, and the per-product comparison table; the `RentenWiki.de Deutschland 2026` brand header/footer is wired (Phase 3). Remaining: print-only branded logo/OG-style banner (once a logo lands), per-page disclaimer footer for multi-page output, and any client-ready advisor formatting requested after the first hosted release.
-- `P1` **License-tier feature matrix.** Decide and document: at launch, paid commercial license is **permission-only** (no feature gating). Revisit before adding features that primarily benefit professional users (white-label, batch scenarios, branded PDF). Capture the decision in `COMMERCIAL_LICENSE.md`.
-
-### P2 publication polish
-
-- `P2` **Privacy-respecting analytics.** Plausible or Umami (cookie-free, EU-hosted). Page views + basic funnel only, no PII. Update Datenschutzerklärung when added.
-- `P2` **Bilingual UI (DE/EN).** Translation infrastructure (likely `react-i18next`), content extraction, fallback to DE. Defer until UX is stable for DE.
-- `P2` **Landing copy.** Short marketing page (or extended README on the deployed site) explaining what the tool is, who it's for, the donation/commercial model, and the disclaimer.
-
----
-
-## Group B: Backend introduction (deferred until first feature requires it)
+### Backend (deferred until a feature requires it)
 
 Today the app is frontend-only. Introduce the backend only when triggered by a real feature.
 
-- `P2` **Choose backend stack.** Constraints: GDPR-compliant region, low fixed cost, file-upload-friendly. Candidates: Cloudflare Workers + R2, Vercel functions + S3, Hetzner VPS with Node/FastAPI. Decide at the time of the first backend feature — don't pre-commit.
-- `P2` **OCR / document upload.** Parse Riester/bAV/GRV-Renteninformation statements and brokerage statements; map fields onto inputs. Files processed ephemerally, never stored. User-side: drag-and-drop in the inputs panel, manual confirm/override before applying. Likely first backend feature — drives the stack decision above.
-- `P3` **Hosted scenario sync.** Multi-device save for licensed users. Requires auth + DB; significant scope expansion — only if user feedback demands it.
-- `P3` **License-key validation endpoint.** Only if/when feature gating returns. Today the commercial license is permission-only.
-- `P3` **Server-side error tracking.** Sentry or similar, for backend code only — frontend stays opt-in.
+- Choose backend stack at the time. Constraints: GDPR-compliant region, low fixed cost, file-upload-friendly. Candidates: Cloudflare Workers + R2, Vercel functions + S3, Hetzner VPS with Node/FastAPI. Don't pre-commit.
+- OCR / document upload — parse Riester/bAV/GRV-Renteninformation statements and brokerage statements; map fields onto inputs. Files processed ephemerally, never stored. User-side: drag-and-drop in the inputs panel, manual confirm/override before applying. Likely first backend feature — drives the stack decision.
+- Hosted scenario sync — multi-device save for licensed users. Requires auth + DB; significant scope expansion — only if user feedback demands it.
+- License-key validation endpoint — only if/when feature gating returns. Today the commercial license is permission-only.
+- Server-side error tracking — Sentry or similar, for backend code only; frontend stays opt-in.
 
----
+### Analytical / publishing (later)
 
-## Group G: Scenario-led portfolio redesign
+- Sensitivity heatmap — useful once deterministic and portfolio-combination flows are stable.
+- Retirement cash / bond buffer module — needed for late-starter, windfall, and pre-retirement planning.
+- Real estate / owner-occupied housing module — household balance-sheet trade-offs (Sondertilgung vs. ETF vs. pension products).
+- Multi-ETF portfolio — multiple ETF sleeves, asset classes, and rebalancing assumptions.
 
-Source: `docs/user-scenarios.md` (Anna, Bernd, Clara, Dilan, Eva+Frank, Gabi, Hans, Inge, Jens, Karin).
+### Scenario coverage gaps
 
 Main gap: the app still behaves like "compare six new products from scratch." The scenarios need "enter my current portfolio, preserve a baseline, then tell me the next best action."
 
@@ -139,9 +149,9 @@ Suggested order:
 
 ## Watchlist
 
-- No active `P0` legal or calculation blockers are recorded. Re-check `LEGAL_IMPLEMENTATION_AUDIT_2026.md` and product research notes before touching rules, tax, or payout logic.
-- Keep `docs/user-scenarios.md` and this backlog in sync when adding or removing scenario-led work.
-- Monte Carlo (engine in `src/engine/monteCarlo.ts`, UI in `MonteCarloPanel.tsx`) is shipped — no follow-up work tracked here. Stress-framing surfacing is a UX item under Group G P2.
-- Group G safety net: `docs/golden-coverage-audit.md` documents what every external oracle pins and the integration-snapshot coverage. Re-read before changing test files; the BACKLOG explicitly forbids "tidying" goldens before the singleton-to-instance migration.
-- Group G schema reference: `docs/portfolio-schema-design.md` is the binding design for instance ids, baseline-vs-what-if semantics, and the v1 → v2 migration. Update it (not in PRs) if any Group G implementation has to deviate.
-- Disclaimer guardrail: keep `DisclaimerBanner` session-only (`sessionStorage`, never `localStorage`); keep the disclaimer block as the literal first child of `PrintReport`'s `#print-report` and the first section of `buildExportCsv`. Tests and the project memory call this out — regressions are a publication-blocking compliance issue.
+- No active legal or calculation blockers. Re-check `LEGAL_IMPLEMENTATION_AUDIT_2026.md` and product research notes before touching rules, tax, or payout logic.
+- Keep `docs/user-scenarios.md` and this file in sync when adding or removing scenario-led work.
+- Monte Carlo (engine `src/engine/monteCarlo.ts`, UI `MonteCarloPanel.tsx`) is shipped — see "Decision views and UX expansion" for the recommendation-surface framing follow-up.
+- Oracle safety net: `docs/golden-coverage-audit.md` documents what every external oracle pins and the integration-snapshot coverage. Re-read before changing test files; do not "tidy" goldens — they are our externally-verified anchor.
+- Schema reference: `docs/portfolio-schema-design.md` is the binding design for instance ids, baseline-vs-what-if semantics, and the v1 → v2 migration. Treat as authoritative for the invariants it pins; update it (not in PRs) if a future change has to deviate.
+- Disclaimer guardrail: keep `DisclaimerBanner` session-only (`sessionStorage`, never `localStorage`); keep the disclaimer block as the literal first child of `PrintReport`'s `#print-report` and the first section of `buildExportCsv`. Tests and project memory call this out — regressions are publication-blocking compliance.

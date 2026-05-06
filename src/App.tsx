@@ -63,6 +63,11 @@ import { ImpressumPage } from './features/legal/ImpressumPage'
 import { DatenschutzPage } from './features/legal/DatenschutzPage'
 import { LegalFooter } from './features/legal/LegalFooter'
 import { RentenluckeRechnerPage } from './features/publicPages/RentenluckeRechnerPage'
+import { RiesterRechnerPage } from './features/publicPages/RiesterRechnerPage'
+import { AltersvorsorgedepotRechnerPage } from './features/publicPages/AltersvorsorgedepotRechnerPage'
+import { RiesterVsAltersvorsorgedepotPage } from './features/publicPages/RiesterVsAltersvorsorgedepotPage'
+import { BasisrenteRechnerPage } from './features/publicPages/BasisrenteRechnerPage'
+import { PrivateRentenversicherungRechnerPage } from './features/publicPages/PrivateRentenversicherungRechnerPage'
 import { PageNotFound } from './features/publicPages/PageNotFound'
 import type { Route } from './app/useRoute'
 import {
@@ -132,6 +137,11 @@ function App() {
   if (route === '/impressum') body = <ImpressumPage navigate={navigate} />
   else if (route === '/datenschutz') body = <DatenschutzPage navigate={navigate} />
   else if (route === '/rentenluecke-rechner') body = <RentenluckeRechnerPage />
+  else if (route === '/riester-rechner') body = <RiesterRechnerPage />
+  else if (route === '/altersvorsorgedepot-rechner') body = <AltersvorsorgedepotRechnerPage />
+  else if (route === '/riester-vs-altersvorsorgedepot') body = <RiesterVsAltersvorsorgedepotPage />
+  else if (route === '/basisrente-rechner') body = <BasisrenteRechnerPage />
+  else if (route === '/private-rentenversicherung-rechner') body = <PrivateRentenversicherungRechnerPage />
   else if (route === '/404') body = <PageNotFound />
   else body = <Calculator navigate={navigate} />
   // QA feedback mode (issue 02 — Phase 1 Lane A). Wraps the entire route

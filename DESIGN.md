@@ -82,7 +82,7 @@ German legal values and product contract assumptions are separated:
 
 ### Conservative Precision
 
-The app uses official 2026 German tax and social-security values where already implemented, but avoids pretending the first prototype is a full payroll engine. The model is precise enough for directional personal comparison and structured so a full BMF PAP implementation can replace the simplified pieces later.
+The app uses official 2026 German tax and social-security values where already implemented, but avoids pretending it is a full BMF PAP wage-tax engine. The model is precise enough for directional personal comparison and structured so a full BMF PAP implementation can replace the simplified pieces later.
 
 ### Local-First
 
@@ -489,8 +489,4 @@ Important references:
 
 ## Next Recommended Milestones
 
-See `BACKLOG.md` for the current prioritized list. High-level sequence:
-
-1. Scenario UX: presets for common profiles, scenario duplication.
-2. Retirement-income refinements: GRV salary growth / Rentenwert indexation, Versorgungswerk variants.
-3. Later: Monte Carlo, sensitivity heatmap, bilingual UI, public deployment.
+The site is live at [rentenwiki.de](https://rentenwiki.de). Open work lives in PRDs under `.scratch/<slug>/` (currently `qa-feedback-mode`, `group-g-qa`, `pure-frontend-api`) and as themed bullets in `BACKLOG.md`. See `BACKLOG.md` → "Active PRDs" and "Open themes" for the current state. Themes worth watching: publication polish, decision views and UX expansion, deferred backend (OCR/upload), analytical/publishing.

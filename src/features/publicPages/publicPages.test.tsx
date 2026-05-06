@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { cleanup, render } from '@testing-library/react'
 import { RentenluckeRechnerPage } from './RentenluckeRechnerPage'
+import { RiesterRechnerPage } from './RiesterRechnerPage'
+import { AltersvorsorgedepotRechnerPage } from './AltersvorsorgedepotRechnerPage'
+import { RiesterVsAltersvorsorgedepotPage } from './RiesterVsAltersvorsorgedepotPage'
+import { BasisrenteRechnerPage } from './BasisrenteRechnerPage'
+import { PrivateRentenversicherungRechnerPage } from './PrivateRentenversicherungRechnerPage'
 import { PageNotFound } from './PageNotFound'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 
@@ -153,5 +158,591 @@ describe('Prerender HTML output — disclaimer survives renderToString', () => {
   it('PageNotFound prerendered HTML contains the disclaimer text', () => {
     const html = renderToString(<PageNotFound />)
     expect(html).toContain('Modellrechnung')
+  })
+
+  it('BasisrenteRechnerPage prerendered HTML contains the disclaimer text', () => {
+    const html = renderToString(<BasisrenteRechnerPage />)
+    expect(html).toContain('Modellrechnung')
+    expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('PrivateRentenversicherungRechnerPage prerendered HTML contains the disclaimer text', () => {
+    const html = renderToString(<PrivateRentenversicherungRechnerPage />)
+    expect(html).toContain('Modellrechnung')
+    expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #06: BasisrenteRechnerPage — visible content for prerender
+// ---------------------------------------------------------------------------
+
+describe('BasisrenteRechnerPage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<BasisrenteRechnerPage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/basisrente-rechner'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    // Summary contains the first ~40 chars of the registered summary string
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/basisrente-rechner'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer (compliance — every public page must)', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=basisrente-rechner')
+  })
+
+  it('renders an internal link back to the homepage and to the legal pages', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+  })
+
+  it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    // relatedRoutes for /basisrente-rechner: '/', '/rentenluecke-rechner', '/private-rentenversicherung-rechner'
+    const siblingLinks = links.filter((href) =>
+      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href !== '/?topic=basisrente-rechner',
+    )
+    expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('cites §10 Abs. 3 EStG (Sonderausgabenabzug) inline (YMYL guardrail)', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    const text = container.textContent ?? ''
+    // Must cite the primary statutory source for Basisrente tax deduction
+    expect(text).toMatch(/§\s?10\s*Abs\.?\s*3\s*EStG/i)
+  })
+
+  it('cites §22 Nr. 1 EStG (Besteuerungsanteil) inline (YMYL guardrail)', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?22\s*Nr\.?\s*1/i)
+  })
+
+  it('makes the no-Kapitalauszahlung constraint explicitly visible (YMYL guardrail)', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    const text = container.textContent ?? ''
+    // Users frequently discover this constraint only after sign-up — make it prominent
+    expect(text).toMatch(/Kapitalauszahlung.*verboten|keine.*Kapitalauszahlung|Kapitalauszahlung.*nicht.*möglich/i)
+  })
+
+  it('cites AltZertG or authoritative publication (YMYL guardrail)', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/(AltZertG|Altersvorsorgeverträge-Zertifizierungsgesetz|BMF|Deutsche Rentenversicherung)/i)
+  })
+
+  it('does not call simulation engine modules during render', () => {
+    const html = renderToString(<BasisrenteRechnerPage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws (no-localStorage-dependency)', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<BasisrenteRechnerPage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #06: PrivateRentenversicherungRechnerPage — visible content for prerender
+// ---------------------------------------------------------------------------
+
+describe('PrivateRentenversicherungRechnerPage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<PrivateRentenversicherungRechnerPage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/private-rentenversicherung-rechner'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/private-rentenversicherung-rechner'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer (compliance — every public page must)', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=private-rentenversicherung-rechner')
+  })
+
+  it('renders an internal link back to the homepage and to the legal pages', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+  })
+
+  it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    // relatedRoutes: '/', '/rentenluecke-rechner', '/basisrente-rechner'
+    const siblingLinks = links.filter((href) =>
+      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href !== '/?topic=private-rentenversicherung-rechner',
+    )
+    expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('cites §20 Abs. 1 Nr. 6 EStG (capital-gains tax on insurance) inline (YMYL guardrail)', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?20\s*Abs\.?\s*1\s*Nr\.?\s*6\s*EStG/i)
+  })
+
+  it('cites §22 Nr. 1 Satz 3 a EStG (Ertragsanteil Leibrente) inline (YMYL guardrail)', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?22\s*Nr\.?\s*1\s*Satz\s*3/i)
+  })
+
+  it('explains all three contract-era tax modes (pre2005, Halbeinkünfte, Abgeltungsteuer)', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const text = container.textContent ?? ''
+    // All three eras must be visibly explained per the YMYL brief requirement
+    expect(text).toMatch(/vor.*2005|pre.?2005|vor dem.*Januar 2005/i)
+    expect(text).toMatch(/Halbeinkünfte/i)
+    expect(text).toMatch(/Abgeltungsteuer/i)
+  })
+
+  it('cites BMF or BaFin authoritative publication (YMYL guardrail)', () => {
+    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/(BMF|BaFin|Bundesministerium der Finanzen)/i)
+  })
+
+  it('does not call simulation engine modules during render', () => {
+    const html = renderToString(<PrivateRentenversicherungRechnerPage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws (no-localStorage-dependency)', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<PrivateRentenversicherungRechnerPage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #05: RiesterRechnerPage — visible content for prerender
+// ---------------------------------------------------------------------------
+
+describe('RiesterRechnerPage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<RiesterRechnerPage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/riester-rechner'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/riester-rechner'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer (compliance — every public page must)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=riester-rechner')
+  })
+
+  it('renders an internal link back to the homepage and to the legal pages', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+  })
+
+  it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    const siblingLinks = links.filter((href) =>
+      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href !== '/?topic=riester-rechner',
+    )
+    expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('cites § 84 EStG (Grundzulage) inline (YMYL guardrail)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?84\s*EStG/i)
+  })
+
+  it('cites § 85 EStG (Kinderzulage) inline (YMYL guardrail)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?85\s*EStG/i)
+  })
+
+  it('cites § 10a EStG (Sonderausgabenabzug) inline (YMYL guardrail)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?10a\s*EStG/i)
+  })
+
+  it('cites § 22 Nr. 5 EStG (Auszahlungsbesteuerung) inline (YMYL guardrail)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?22\s*Nr\.?\s*5\s*EStG/i)
+  })
+
+  it('mentions ZfA (Zentrale Zulagenstelle) (YMYL guardrail)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/(ZfA|Zentrale Zulagenstelle)/i)
+  })
+
+  it('cites AltZertG (certification basis) inline (YMYL guardrail)', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/(AltZertG|Altersvorsorgeverträge-Zertifizierungsgesetz)/i)
+  })
+
+  it('does not call simulation engine modules during render', () => {
+    const html = renderToString(<RiesterRechnerPage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws (no-localStorage-dependency)', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<RiesterRechnerPage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #05: AltersvorsorgedepotRechnerPage — visible content for prerender
+// ---------------------------------------------------------------------------
+
+describe('AltersvorsorgedepotRechnerPage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<AltersvorsorgedepotRechnerPage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/altersvorsorgedepot-rechner'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/altersvorsorgedepot-rechner'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer (compliance — every public page must)', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=altersvorsorgedepot-rechner')
+  })
+
+  it('renders an internal link back to the homepage and to the legal pages', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+  })
+
+  it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    const siblingLinks = links.filter((href) =>
+      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href !== '/?topic=altersvorsorgedepot-rechner',
+    )
+    expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('mentions Jahressteuergesetz 2024 (new product status) inline (YMYL guardrail)', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/(Jahressteuergesetz 2024|Jahressteuergesetz)/i)
+  })
+
+  it('cites § 22 Nr. 5 EStG (Auszahlungsbesteuerung) inline (YMYL guardrail)', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?22\s*Nr\.?\s*5\s*EStG/i)
+  })
+
+  it('cites AltvVerbG (Altersvorsorge-Verbesserungsgesetz) inline (YMYL guardrail)', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/(AltvVerbG|Altersvorsorge-Verbesserungsgesetz)/i)
+  })
+
+  it('cites § 10a EStG (Sonderausgabenabzug) inline (YMYL guardrail)', () => {
+    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?10a\s*EStG/i)
+  })
+
+  it('does not call simulation engine modules during render', () => {
+    const html = renderToString(<AltersvorsorgedepotRechnerPage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws (no-localStorage-dependency)', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<AltersvorsorgedepotRechnerPage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #05: RiesterVsAltersvorsorgedepotPage — visible content for prerender
+// ---------------------------------------------------------------------------
+
+describe('RiesterVsAltersvorsorgedepotPage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<RiesterVsAltersvorsorgedepotPage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/riester-vs-altersvorsorgedepot'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/riester-vs-altersvorsorgedepot'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer (compliance — every public page must)', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=riester-vs-altersvorsorgedepot')
+  })
+
+  it('renders an internal link back to the homepage and to the legal pages', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+  })
+
+  it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    const siblingLinks = links.filter((href) =>
+      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href !== '/?topic=riester-vs-altersvorsorgedepot',
+    )
+    expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('does NOT contain winner copy (YMYL guardrail — no besser/lohnt/empfohlen)', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const text = container.textContent ?? ''
+    // The comparison page must not declare a winner
+    expect(text).not.toMatch(/\bist besser\b/i)
+    expect(text).not.toMatch(/\bempfohlen\b/i)
+  })
+
+  it('cites § 22 Nr. 5 EStG (Auszahlungsbesteuerung) inline (YMYL guardrail)', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?22\s*Nr\.?\s*5\s*EStG/i)
+  })
+
+  it('cites § 84 and § 85 EStG (Zulagen) inline (YMYL guardrail)', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?84\s*EStG/i)
+    expect(text).toMatch(/§\s?85\s*EStG/i)
+  })
+
+  it('mentions Jahressteuergesetz 2024 and the AVD transfer mechanism', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/(Jahressteuergesetz 2024|schädlichkeitsfreie Übertragung|schädlichkeitsfrei)/i)
+  })
+
+  it('cites ZfA (Zentrale Zulagenstelle) inline (YMYL guardrail)', () => {
+    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/(ZfA|Zentrale Zulagenstelle)/i)
+  })
+
+  it('does not call simulation engine modules during render', () => {
+    const html = renderToString(<RiesterVsAltersvorsorgedepotPage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws (no-localStorage-dependency)', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<RiesterVsAltersvorsorgedepotPage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
   })
 })

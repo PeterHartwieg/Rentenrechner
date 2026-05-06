@@ -1,20 +1,23 @@
-# Portfolio / schema design note (Phase 0)
+# Portfolio / schema design note
 
-**Status.** Design only — no implementation. This note exists per the
-Phase 0 backlog item "Portfolio / schema design note before implementation",
-to lock in baseline-vs-what-if semantics, instance-id stability, the
-singleton-to-instance migration, share-URL / localStorage compatibility,
-and the first portfolio adapter, **before** Group G code lands.
+**Status.** Historical reference for the singleton-to-instance migration
+(`schemaVersion: 1 → 2`). Originally written as a pre-implementation design note
+to lock in baseline-vs-what-if semantics, instance-id stability, share-URL /
+localStorage compatibility, and the first portfolio adapter shape **before** any
+combine-mode code landed. The migration shipped; this note is the binding
+record of the invariants and is authoritative for any future change that
+touches schema, persistence, or the adapter.
 
-**Why up front.** Group G replaces the singleton-per-product assumption
-with N-instances-per-product. Without an agreed schema, the migration
-breaks share URLs and saved scenarios silently. Defining the
-schema once and the adapter shape lets every later Group-G PR slot in
-without re-shaping the migration.
+**Why it still matters.** Schema decisions made up front (additive `mergeDeep`
+migration, deterministic `${productId}-singleton` ids, `Workspace.baseline`
+pinning, length-1 array adapter wrapping for byte-identical singleton paths)
+are now baked into `storage.ts`, `scenarioSchema.ts`, `portfolioAdapter.ts`,
+and the share-URL layer. Any deviation needs to update this note and demonstrate
+that legacy v1/v2 saved states still round-trip.
 
-**Out of scope here.** UI flows for inventory wizards, recommendation
-ranking, decision views, household mode. Those build on top of the
-schema; this note only fixes the schema.
+**Out of scope here.** UI flows for inventory wizards, recommendation ranking,
+decision views, household mode — those build on top of the schema and ship as
+their own work.
 
 ---
 
@@ -84,12 +87,13 @@ embed the diff in PDF/CSV alongside the existing tables.
 
 ## 2. Stable per-instance ids and per-product instance arrays
 
-Today: each product is a singleton on `ScenarioAssumptions` (e.g.
-`assumptions.bav: BavAssumptions`). The user has at most one bAV.
+Compare-mode (`STORAGE_KEY_V1`): each product is a singleton on
+`ScenarioAssumptions` (e.g. `assumptions.bav: BavAssumptions`). The user has at
+most one bAV.
 
-Group G: the user can have multiple bAV/pAV/Riester/ETF/AVD contracts
-side-by-side, each with its own contract vintage, paid-up flag,
-provider fees.
+Combine-mode (`STORAGE_KEY_V2`): the user can have multiple
+bAV/pAV/Riester/ETF/AVD contracts side-by-side, each with its own contract
+vintage, paid-up flag, provider fees.
 
 ### Schema
 
@@ -187,8 +191,9 @@ them safely.
 
 ### Adapter shape
 
-`SimulationContext` and the per-product simulators today read singletons.
-Group G introduces a thin adapter so the math layer stays untouched:
+`SimulationContext` and the per-product simulators read singletons. The
+adapter (`src/engine/portfolioAdapter.ts`, since split into focused modules —
+see `CONTEXT.md`) keeps the math layer untouched:
 
 ```ts
 // src/engine/portfolioAdapter.ts (planned)
@@ -280,10 +285,10 @@ correctly-shaped instance arrays.
 
 ## 4. Paid-up and existing-contract representation
 
-Today: paid-up is a flag on the singleton (`InsuranceAssumptions.paidUpAge`)
+Compare-mode singleton: paid-up is a flag (`InsuranceAssumptions.paidUpAge`)
 that triggers a two-phase accumulation. Surrender is separate.
 
-Group G:
+Combine-mode instance:
 
 - `InstanceCommon.status` is the canonical paid-up / surrendered indicator.
 - Existing per-product paid-up fields (`paidUpAge`, `surrenderHaircutPct`)
@@ -311,52 +316,32 @@ status field with mode-specific extra fields.
 
 ---
 
-## 5. First portfolio adapter and rollout sequence
+## 5. Rollout sequence (historical record)
 
-The Group G P1 list orders the work. The schema in this note unblocks all
-of it but only the **first adapter** is critical for migration safety.
+The migration shipped in this order. The schema in this note stayed stable
+through steps 1–4; later work added fields but did not rename any keys above.
 
-### Sequence
-
-1. **Schema + migration only** (this note → code).
+1. **Schema + migration only.**
    - `Workspace` shape, `schemaVersion: 2`, instance-array fields,
      migration in `storage.ts`, validator in `scenarioSchema.ts`.
-   - **No UI changes.** The adapter wraps the singleton-shaped state into
-     a length-1 array internally and unwraps before calling existing
+   - **No UI changes.** The adapter wrapped the singleton-shaped state into
+     a length-1 array internally and unwrapped before calling existing
      simulators.
-   - Integration tests must stay byte-identical green.
+   - Integration tests stayed byte-identical green.
 
-2. **Inventory wizard** + per-instance UI (Group G P1).
-   - Builds on step 1 by allowing the user to add a second instance for
-     any product type. Uses the existing component shapes from the P1
-     "split fat input components" item.
+2. **Inventory wizard** + per-instance UI.
+   - Allowed the user to add a second instance for any product type.
 
-3. **Baseline pinning + diff** (Group G P1).
-   - Adds `Workspace.baseline` semantics; UI for "save as baseline",
+3. **Baseline pinning + diff.**
+   - Added `Workspace.baseline` semantics; UI for "save as baseline",
      "compare to baseline", "what changed".
 
-4. **Multi-instance aggregation** (Group G P1, larger).
+4. **Multi-instance aggregation.**
    - Cross-instance KV/PV apportionment, combined retirement-income
-     waterfall. The adapter grows a `combineAcrossInstances()` step.
+     waterfall. The adapter grew a `combineAcrossInstances()` step.
 
-5. **Recommender** (Group G P1).
-   - Reads the workspace, ranks "next-EUR-X" what-ifs against the
-     baseline.
-
-The schema in this note must be stable through steps 1–4. Step 5 may add
-new fields but should not require renaming any of the keys above.
-
-### What can ship in parallel
-
-- Phase 0 P1 items (component splits, scenario-library hardening,
-  trigger-config module) ship independently of this schema. They are
-  prerequisites for steps 2–5 but don't touch the schema.
-
-### What must wait
-
-- The P1 "harden scenario-library persistence" item should validate
-  against **the v1 shape** to begin with, then learn v2 once step 1
-  ships. Coupling this to step 1 risks blocking publication.
+5. **Recommender.**
+   - Reads the workspace, ranks "next-EUR-X" what-ifs against the baseline.
 
 ---
 
@@ -367,8 +352,9 @@ new fields but should not require renaming any of the keys above.
   key and labels can collide.
 - **Per-instance scenario visibility.** `assumptions.visibleProducts` is
   product-level today. With multiple instances, do we need
-  `visibleInstanceIds`? Likely yes; the UI work in Group G will
-  introduce it.
+  `visibleInstanceIds`? Deferred — combine-mode UI surfaces all instances by
+  default, with hide/show driven from `InstanceCommon.status`
+  (`active` / `paid_up` / `surrendered` / `offered`).
 - **Cross-instance share URL size.** A workspace with 5 bAV + 3 pAV +
   2 Riester instances will inflate the URL payload. We may need a
   lossless compression layer (e.g. msgpack + base64url) before the

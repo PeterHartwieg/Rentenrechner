@@ -1,5 +1,17 @@
 # Agent-Readability Refactor Plan
 
+> **SUPERSEDED — see [`CONTEXT.md`](CONTEXT.md) and [`docs/architecture-refactor-session-briefs.md`](docs/architecture-refactor-session-briefs.md).**
+>
+> This plan was the 2026-04-28 baseline for the architecture readability /
+> simplification effort. The work it scoped (App.tsx split, product-local
+> capsules, narrower domain barrels, discriminated result types, app-layer
+> hook splits, combine-mode submodule extraction) all shipped under
+> `.scratch/architecture-readability/` issues 01–13. The current ownership
+> map lives in `CONTEXT.md`.
+>
+> Preserved as historical context only. Do **not** treat its proposals as
+> open work. New architecture changes start from `CONTEXT.md`.
+
 This plan improves the project for AI coding agents and human maintainers by reducing context size, making ownership boundaries explicit, and letting TypeScript guide product-specific changes more precisely.
 
 Current baseline observed on 2026-04-28:

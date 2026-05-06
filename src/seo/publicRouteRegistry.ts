@@ -35,8 +35,11 @@ export type RobotsPolicy = 'index,follow' | 'noindex,follow'
 /**
  * Subset of schema.org @type values we currently emit. Kept intentionally
  * narrow — adding a new value here forces a JSON-LD generator update.
+ *
+ * `Article` is used for comparison/explanatory pages (e.g.
+ * `/riester-vs-altersvorsorgedepot`) per the locked decision in issue #05.
  */
-export type JsonLdType = 'WebApplication' | 'WebSite'
+export type JsonLdType = 'WebApplication' | 'WebSite' | 'Article'
 
 export interface CalculatorCta {
   /** Visible button label (German). */
@@ -209,23 +212,178 @@ export const publicRouteRegistry = {
     },
   },
   // ---------------------------------------------------------------------------
-  // Future topic pages (#04–#07) — registered by their owning agents.
-  // The preselection seeds below are reference defaults that the future
-  // topic-page agents may transcribe (or adjust based on their content brief)
-  // when registering their own route entries here. GRV is implicitly always
-  // shown alongside the comparison and is NOT a ProductId, so it is omitted
-  // from `visibleProducts` arrays even where the topic page is "X vs GRV".
+  // Issue #05 — Subsidized pension paths cluster (Riester + AVD)
+  // ---------------------------------------------------------------------------
+  '/riester-rechner': {
+    canonical: '/riester-rechner',
+    title: 'Riester-Rechner 2026 — Zulagen, Sonderausgabenabzug und Auszahlung | RentenWiki.de',
+    metaDescription:
+      'Riester-Rente berechnen: Grundzulage, Kinderzulage, Sonderausgabenabzug § 10a EStG, ' +
+      'Günstigerprüfung und Auszahlungsbesteuerung § 22 Nr. 5 EStG. Modellrechnung Stand 2026.',
+    h1: 'Riester-Rechner 2026 — Zulagen, Steuerförderung und Auszahlung berechnen',
+    summary:
+      'Erklärt die staatliche Förderung der Riester-Rente: Grundzulage (175 €/Jahr), Kinderzulage ' +
+      '(300 €/Kind/Jahr für Kinder ab 2008), Sonderausgabenabzug nach § 10a EStG, Günstigerprüfung ' +
+      'sowie die nachgelagerte Besteuerung der Auszahlung nach § 22 Nr. 5 EStG. Mit Beispielrechnung ' +
+      'und Rechner-Einstieg. Stand 2026, keine Beratung.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebApplication',
+    relatedRoutes: [
+      '/',
+      '/rentenluecke-rechner',
+      '/altersvorsorgedepot-rechner',
+      '/riester-vs-altersvorsorgedepot',
+    ],
+    calculatorCta: {
+      label: 'Riester-Rente jetzt berechnen',
+      href: '/?topic=riester-rechner',
+    },
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['etf', 'riester'],
+    },
+  },
+  '/altersvorsorgedepot-rechner': {
+    canonical: '/altersvorsorgedepot-rechner',
+    title: 'Altersvorsorgedepot-Rechner 2026 — Neues Schicht-2-Produkt vergleichen | RentenWiki.de',
+    metaDescription:
+      'Altersvorsorgedepot (AVD) berechnen: Depot ohne Versicherungsmantel, Förderung § 10a EStG, ' +
+      'Auszahlungsbesteuerung § 22 Nr. 5 EStG (Jahressteuergesetz 2024). Stand 2026.',
+    h1: 'Altersvorsorgedepot-Rechner 2026 — Neues Schicht-2-Produkt vergleichen',
+    summary:
+      'Erklärt das Altersvorsorgedepot (AVD) als neues, durch das Jahressteuergesetz 2024 eingeführtes ' +
+      'Schicht-2-Altersvorsorgeprodukt: depot-basierte Anlage ohne Versicherungsmantel, staatliche ' +
+      'Förderung nach § 10a EStG und § 84 EStG (Grundzulage), nachgelagerte Besteuerung nach ' +
+      '§ 22 Nr. 5 EStG, zertifiziert nach AltvVerbG. Mit Beispielrechnung und Rechner-Einstieg. ' +
+      'Stand 2026, keine Beratung.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebApplication',
+    relatedRoutes: [
+      '/',
+      '/rentenluecke-rechner',
+      '/riester-rechner',
+      '/riester-vs-altersvorsorgedepot',
+    ],
+    calculatorCta: {
+      label: 'Altersvorsorgedepot jetzt berechnen',
+      href: '/?topic=altersvorsorgedepot-rechner',
+    },
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['etf', 'altersvorsorgedepot'],
+    },
+  },
+  '/riester-vs-altersvorsorgedepot': {
+    canonical: '/riester-vs-altersvorsorgedepot',
+    title: 'Riester oder Altersvorsorgedepot? Vergleich 2026 | RentenWiki.de',
+    metaDescription:
+      'Riester vs. AVD im Vergleich: Förderstruktur, Zulagen, Sonderausgabenabzug, ' +
+      'Übertragungsmöglichkeiten und Auszahlungsbesteuerung nach § 22 Nr. 5 EStG. Stand 2026.',
+    h1: 'Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege 2026',
+    summary:
+      'Vergleicht Riester-Rente und Altersvorsorgedepot (AVD) anhand Förderstruktur (Grundzulage, ' +
+      'Kinderzulage, Sonderausgabenabzug § 10a EStG), Produktform (Versicherung/Fondssparplan vs. ' +
+      'reines Wertpapierdepot), Übertragungsmöglichkeiten von Riester auf AVD sowie Auszahlungs' +
+      'besteuerung nach § 22 Nr. 5 EStG. Keine Empfehlung — framt Bedingungen und Annahmen. ' +
+      'Stand 2026.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'Article',
+    relatedRoutes: [
+      '/',
+      '/rentenluecke-rechner',
+      '/riester-rechner',
+      '/altersvorsorgedepot-rechner',
+    ],
+    calculatorCta: {
+      label: 'Riester vs. AVD selbst berechnen',
+      href: '/?topic=riester-vs-altersvorsorgedepot',
+    },
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['riester', 'altersvorsorgedepot'],
+    },
+  },
+  // ---------------------------------------------------------------------------
+  // Future topic pages (#04/#07) — registered by their owning agents.
+  // The preselection seeds below are reference defaults.
   //
   //   '/bav-rechner':                       { mode: 'compare', visibleProducts: ['etf', 'bav'] },
   //   '/etf-vs-bav':                        { mode: 'compare', visibleProducts: ['etf', 'bav'] },
-  //   '/riester-rechner':                   { mode: 'compare', visibleProducts: ['etf', 'riester'] },
-  //   '/altersvorsorgedepot-rechner':       { mode: 'compare', visibleProducts: ['etf', 'altersvorsorgedepot'] },
-  //   '/riester-vs-altersvorsorgedepot':    { mode: 'compare', visibleProducts: ['riester', 'altersvorsorgedepot'] },
-  //   '/basisrente-rechner':                { mode: 'compare', visibleProducts: ['etf', 'basisrente'] },
-  //   '/private-rentenversicherung-rechner':{ mode: 'compare', visibleProducts: ['etf', 'versicherung'] },
   //   '/rente-netto-berechnen':             { mode: 'compare', visibleProducts: [] },  // GRV-only landing
   //   '/altersvorsorgeprodukte-vergleichen':{ mode: 'combine' },  // omit visibleProducts: user adds via wizard
   // ---------------------------------------------------------------------------
+  // Issue #06: Basisrente + private RV topic cluster
+  '/basisrente-rechner': {
+    canonical: '/basisrente-rechner',
+    title: 'Basisrente Rechner 2026 — Rürup: Steuervorteil & Rentenhöhe berechnen | RentenWiki.de',
+    metaDescription:
+      'Basisrente (Rürup) berechnen: Sonderausgabenabzug § 10 Abs. 3 EStG, ' +
+      'Besteuerungsanteil und Auszahlungsformen (nur Leibrente / Zeitrente — ' +
+      'keine Kapitalauszahlung). Modellrechnung Stand 2026.',
+    h1: 'Basisrente Rechner 2026 — Rürup: Steuervorteil & Auszahlungsbeschränkungen',
+    summary:
+      'Erklärt die Basisrente (Rürup): Sonderausgabenabzug nach §​10 Abs. 3 EStG (bis zu ' +
+      '100 % des Höchstbetrags abzugsfähig), nachgelagerte Besteuerung nach ' +
+      '§​22 Nr. 1 Satz 3 a EStG mit Besteuerungsanteil je nach ' +
+      'Renteneintrittskohorte sowie die gesetzlich verankerte Auszahlungsbeschränkung: ' +
+      'Kapitalauszahlung ist verboten — nur Leibrente oder Zeitrente möglich. Stand 2026.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebApplication',
+    relatedRoutes: [
+      '/',
+      '/rentenluecke-rechner',
+      '/private-rentenversicherung-rechner',
+    ],
+    calculatorCta: {
+      label: 'Basisrente jetzt berechnen',
+      href: '/?topic=basisrente-rechner',
+    },
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['etf', 'basisrente'],
+    },
+  },
+  '/private-rentenversicherung-rechner': {
+    canonical: '/private-rentenversicherung-rechner',
+    title: 'Private Rentenversicherung Rechner 2026 — Kosten, Steuer & Auszahlung | RentenWiki.de',
+    metaDescription:
+      'Private Rentenversicherung berechnen: Versicherungsmantel-Kosten, ' +
+      'Steuerregime nach Vertragsbeginn (vor 2005 / Halbeinkünfte / Abgeltungsteuer), ' +
+      'Leibrente vs. Kapitalverzehr. Modellrechnung Stand 2026.',
+    h1: 'Private Rentenversicherung Rechner 2026 — Kosten, Steuerregime & Auszahlung',
+    summary:
+      'Zeigt, wie eine private Rentenversicherung modellhaft berechnet wird: ' +
+      'zweiteilige Kostenstruktur aus Versicherungsmantel-Gebühr und Fondskosten (TER), ' +
+      'automatische Ableitung des Steuerregimes aus dem Vertragsbeginn ' +
+      '(vor 2005, Halbeinkünfte §​20 Abs. 1 Nr. 6 EStG, Abgeltungsteuer) ' +
+      'sowie Unterschied zwischen Leibrente (Ertragsanteil §​22 Nr. 1 Satz 3 a EStG) ' +
+      'und Kapitalverzehr. Stand 2026. Keine Anlage-, Steuer- oder Rechtsberatung.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebApplication',
+    relatedRoutes: [
+      '/',
+      '/rentenluecke-rechner',
+      '/basisrente-rechner',
+    ],
+    calculatorCta: {
+      label: 'Private Rentenversicherung jetzt berechnen',
+      href: '/?topic=private-rentenversicherung-rechner',
+    },
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['etf', 'versicherung'],
+    },
+  },
   '/404': {
     canonical: '/404',
     title: 'Seite nicht gefunden — RentenWiki.de',

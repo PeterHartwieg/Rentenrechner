@@ -1,4 +1,4 @@
-import type { WebApplication, WebSite, WithContext } from 'schema-dts'
+import type { Article, WebApplication, WebSite, WithContext } from 'schema-dts'
 import {
   OG_DEFAULT_IMAGE_PATH,
   SITE_ORIGIN,
@@ -36,7 +36,7 @@ export interface RouteHead {
   readonly twitterTitle: string
   readonly twitterDescription: string
   readonly twitterImage: string
-  readonly jsonLd: WithContext<WebApplication> | WithContext<WebSite> | null
+  readonly jsonLd: WithContext<WebApplication> | WithContext<WebSite> | WithContext<Article> | null
 }
 
 /** Brand string for `og:site_name`. Centralised so renames stay in one place. */
@@ -92,7 +92,7 @@ export function buildRouteHead(routeId: PublicRouteId): RouteHead {
 function buildJsonLd(
   entry: PublicRoute,
   canonical: string,
-): WithContext<WebApplication> | WithContext<WebSite> | null {
+): WithContext<WebApplication> | WithContext<WebSite> | WithContext<Article> | null {
   // Homepage emits its three JSON-LD blocks via the LandingPage body
   // (`buildHomeWebSiteJsonLd` + `buildHomeOrganizationJsonLd` +
   // `buildHomeWebApplicationJsonLd`). Skip head emission to avoid duplication.
@@ -121,6 +121,27 @@ function buildJsonLd(
       },
     }
     return webApp
+  }
+
+  if (entry.jsonLdType === 'Article') {
+    // Comparison/explanatory pages (e.g. /riester-vs-altersvorsorgedepot)
+    // use `Article` per the locked decision in issue #05.
+    // Visible-content audit:
+    //   - `headline` ↔ rendered H1 on the page
+    //   - `description` ↔ summary rendered as page lead paragraph
+    //   - `dateModified` ↔ rendered "Stand …" line
+    //   - `publisher` ↔ Organization block on homepage (consistent legalName)
+    const article: WithContext<Article> = {
+      ...base,
+      '@type': 'Article',
+      headline: entry.h1,
+      publisher: {
+        '@type': 'Organization',
+        name: 'RentenWiki.de',
+        url: SITE_ORIGIN,
+      },
+    }
+    return article
   }
 
   const webSite: WithContext<WebSite> = {

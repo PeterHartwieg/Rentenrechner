@@ -119,7 +119,7 @@ Calculator
 
 Extracted from `BavInputs` / `InsuranceInputs` / `InputsPanel`. Each takes a
 generic `value + onChange` pair instead of reading `assumptions.<product>` so
-the same components plug into per-instance state in Group G without changes.
+the same components plug into per-instance combine-mode state without changes.
 
 | File | Used by | What it owns |
 |------|---------|--------------|
@@ -142,7 +142,7 @@ the same components plug into per-instance state in Group G without changes.
 
 | File | Exports |
 |------|---------|
-| `provenance.tsx` | `ProvLabel` (von dir / geprüft / Modellwert / Standardwert pill) and `FieldWithProv` (wraps a field with the pill + optional "Wert stimmt" / "↺ als Schätzwert" toggle). Consumed by `ProductEditCards` today and by Group G inventory cards next. |
+| `provenance.tsx` | `ProvLabel` (von dir / geprüft / Modellwert / Standardwert pill) and `FieldWithProv` (wraps a field with the pill + optional "Wert stimmt" / "↺ als Schätzwert" toggle). Consumed by `ProductEditCards` (compare-mode) and combine-mode inventory cards. |
 
 ## Disclaimer guardrail
 

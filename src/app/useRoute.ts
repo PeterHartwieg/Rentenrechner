@@ -14,6 +14,11 @@ export type Route =
   | '/impressum'
   | '/datenschutz'
   | '/rentenluecke-rechner'
+  | '/riester-rechner'
+  | '/altersvorsorgedepot-rechner'
+  | '/riester-vs-altersvorsorgedepot'
+  | '/basisrente-rechner'
+  | '/private-rentenversicherung-rechner'
   | '/404'
 
 const KNOWN_ROUTES: Route[] = [
@@ -21,6 +26,11 @@ const KNOWN_ROUTES: Route[] = [
   '/impressum',
   '/datenschutz',
   '/rentenluecke-rechner',
+  '/riester-rechner',
+  '/altersvorsorgedepot-rechner',
+  '/riester-vs-altersvorsorgedepot',
+  '/basisrente-rechner',
+  '/private-rentenversicherung-rechner',
   '/404',
 ]
 

@@ -56,7 +56,7 @@ For the full module map (combine mode, projection, transfer, funding, allowance,
 | Change UI layout or inputs (compare mode) | `docs/context/ui.md`, `src/features/inputs/productUiRegistry.tsx` |
 | Add a new product | `src/engine/products/README.md`, plus `src/features/inventory/inventoryProductRegistry.ts` (inventory side) |
 | Update annual statutory values | `src/rules/de2026.ts` |
-| Add a publication / commercial-license feature | `BACKLOG.md` Group P |
+| Add a publication / commercial-license feature | `BACKLOG.md` → "Publication polish" |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/{ImpressumPage,DatenschutzPage,LegalFooter}.tsx` |
 | Add a new app route | `src/app/useRoute.ts` (`Route` union + `KNOWN_ROUTES`), then render in `src/App.tsx` |
 | Deep-link a topic page into the calculator (mode + product preselection) | `src/seo/publicRouteRegistry.ts` (`preselection` on the route entry); `LandingPage` reads `?topic=<slug>` via `resolveTopicPreselection`. Issue #13. |
@@ -193,8 +193,11 @@ Product-specific gotchas (will surprise you when first opening these simulators)
 
 ## Current state
 
-All UX backlog tiers and Phase 0 (Group 0) preflight shipped (commit `56fdec9`, 585 tests). The Group P P0 legal/export guardrails landed alongside Phase 0:
+Live at **rentenwiki.de** since 2026-05-05 (Cloudflare Pages, deploy commit `348fe8c`). Branding (`RentenWiki.de`), legal/export guardrails, and the combine-mode (= portfolio-mode) foundation are all shipped. Headline behaviour now in main:
 
+- **Combine mode** — workspace with per-product instance arrays (`schemaVersion: 2`), baseline + what-if scenarios, transfer events (`surrender_reinvest` / `partial_transfer` / `paid_up`), cross-instance funding caps, shared §20 Abs. 9 EStG Sparerpauschbetrag, and household-level results via `combinePortfolio`. Architecture map in [`CONTEXT.md`](CONTEXT.md). Compare mode remains as the singleton path for the legacy share-URL / scenario-library surface.
+- **Recommender** — "Wo geht mein nächster Euro hin?" with cap-headroom-driven candidates and Monte Carlo P10 risk score (`src/app/recommender.ts`, per-product candidates under `src/app/recommenderCandidates/`).
+- **Decision UI** — three-card per-contract menu (weiterführen / kündigen / übertragen) wired through `applyContractDecision` in `src/app/contractDecisions.ts`. Beitragsfrei is engine-supported across all 5 paid-up-capable simulators (`portfolioAdapter.ts` `paidUpFeeModel`). The `Optimiere deine Vorsorge` portfolio-audit modal (`OptimiereVorsorgeModal`) wraps the per-contract decisions in a step machine.
 - **License files** at root: `LICENSE.md` (PolyForm Noncommercial 1.0.0 verbatim) and `COMMERCIAL_LICENSE.md` (scope, indemnification, German jurisdiction).
 - **Disclaimer infrastructure**: `DisclaimerBanner` is session-only via `sessionStorage` (never `localStorage` — regressing this is a publication-blocking compliance issue). Disclaimer is the literal first child of `#print-report` in `PrintReport.tsx` and the first section of `buildExportCsv` output. README carries the same notice.
 - **Legal pages** at `/impressum` and `/datenschutz` via the small custom router in `src/app/useRoute.ts` (no react-router dependency). Wired through `LegalLayout`/`LegalFooter` in `src/features/legal/`. SPA fallback for static hosts is configured in `public/_redirects` (Cloudflare Pages / Netlify) and `vercel.json` (root).
@@ -202,8 +205,9 @@ All UX backlog tiers and Phase 0 (Group 0) preflight shipped (commit `56fdec9`, 
 - **Reusable input sections** in `src/features/inputs/sections/`: `PayoutModeSection`, `FeeSection`, `BeitragsdynamikField`, `OfferCapitalCompareField`. Provenance primitives in `src/features/results/provenance.tsx`. `BavInputs` and `InsuranceInputs` share one fee-input implementation (presets, threshold warnings, Effektivkosten all-in toggle).
 - **Hardened scenario-library load**: `migrateAndValidateState` in `storage.ts` is the shared migrate+validate pipeline; `scenarioLibrary.ts` runs every entry through it on load and drops malformed entries silently. Forward-compat guard via `SAVED_SCENARIO_VERSION`.
 - **Trigger config** in `src/content/triggers.ts`: `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS` group the comparison picker. The earlier `PATH_OPTIONS` / `VISIBLE_PRODUCTS_BY_PATH` / `WIZARD_REGISTRY` mechanism is gone — guided-setup flow is now `LandingPage` → `InventoryWizard`. Topic-page deep-linking lives in the SEO route registry (issue #13): each `PublicRoute` may declare an optional `preselection: { mode, visibleProducts? }`, and `LandingPage` reads `?topic=<slug>` via `resolveTopicPreselection` to auto-fire the right mode + product seed for first-time visitors. Returning users (saved state) are never overridden.
+- **Reusable scaffolding** still in place: input sections in `src/features/inputs/sections/`; provenance primitives in `src/features/results/provenance.tsx`; trigger config in `src/content/triggers.ts`. Design docs `docs/golden-coverage-audit.md` (oracle safety net) and `docs/portfolio-schema-design.md` (historical reference for the v1 → v2 migration) remain authoritative for the invariants they pin.
 
-Remaining publication work: public deployment (hosting + CI). The branding decision (`RentenWiki.de`) shipped in the Phase 3 release-readiness wave. After that, OCR + backend introduction (Group B) and scenario-led portfolio redesign (Group G P1, including the singleton-to-instance migration). See `BACKLOG.md`.
+Open work after launch lives in PRDs under `.scratch/<slug>/` (active: `qa-feedback-mode`, `group-g-qa`, `pure-frontend-api`) and as themes in `BACKLOG.md` (publication polish, decision views and UX expansion, deferred backend, analytical/publishing, scenario coverage gaps).
 
 ## Agent skills
 

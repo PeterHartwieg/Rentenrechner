@@ -1,9 +1,13 @@
-# Golden coverage audit (Phase 0)
+# Golden coverage audit
 
-**Purpose.** Phase 0 of the publication push asks for a read-only audit of the
-existing golden tests so that the singleton-to-instance migration in Group G
-has a known, complete safety net. No structural changes to the golden tests
-are made; this document is the deliverable.
+**Status.** Historical reference. Originally written as a pre-flight audit so that the
+singleton-to-instance schema migration (`schemaVersion: 1 → 2`) had a known, complete safety
+net. The migration shipped; this document remains authoritative for what each oracle pins
+and which behaviours are anchored externally vs. by snapshot.
+
+**Use this when** you're about to change anything that could affect tax / payroll / payout /
+funding numbers, or when you want to understand which tests would catch a regression. Do
+not "tidy" the goldens — they are our externally-verified anchor.
 
 **Sources read.**
 
@@ -49,14 +53,14 @@ default three return scenarios.
 
 ## Real coverage gaps?
 
-> **Conclusion: none that warrants adding a black-box case before Group G.**
+> **Conclusion: none that warranted adding a black-box case before the schema migration, and none that warrant adding one now.**
 
 Below is the conservative reasoning, item by item, against the temptation to
 "top up" the goldens prophylactically.
 
 | Candidate gap | Decision | Reasoning |
 |---|---|---|
-| Literal numbers for Basisrente / AVD / Riester in the default-profile end-to-end block | **Skip.** | Already locked in `simulate.integration.test.ts.snap` (committed). A drift would surface as a snapshot diff in the PR. Adding literal duplicates would be cosmetic and counts as "tidying" — explicitly out of scope for Phase 0. |
+| Literal numbers for Basisrente / AVD / Riester in the default-profile end-to-end block | **Skip.** | Already locked in `simulate.integration.test.ts.snap` (committed). A drift would surface as a snapshot diff in the PR. Adding literal duplicates would be cosmetic and counts as "tidying" — out of scope. |
 | Other bAV `Durchführungsweg` branches (`direktzusage`, `unterstuetzungskasse`, `40b_alt`, `pensionskasse_3_63`, `pensionsfonds_3_63`) | **Skip.** | `deriveBavLumpSumTaxMode` is unit-tested per branch in `bav.test.ts`. End-to-end coverage uses `direktversicherung_3_63` (the default). Adding new branches as oracles requires a calculator that distinguishes routes (Bayerisches LfSt does not). The unit-test net is sufficient. |
 | `calculateRetirementKvPv` against an external KV/PV calculator | **Skip.** | No widely-available oracle covers multi-source retirement-phase KV/PV with BBG-proportional scaling. The proportional apportionment is a documented modeling choice (see `LEGAL_REVIEW.md`); unit tests exercise the branches. An "oracle" here would have to be a homegrown spreadsheet, which would not add information. |
 | AVD / Riester payout (§22 Nr. 5 EStG) against an external oracle | **Skip.** | No public calculator exposes §22 Nr. 5 routing for AVD or Riester payouts cleanly. Funding-side coverage is strong (ZfA-Rechner). Payout side is unit-tested and locked end-to-end via the snapshot file. |
@@ -66,25 +70,27 @@ Below is the conservative reasoning, item by item, against the temptation to
 | Negative-return ETF payout schedule (#45 fix) | **Skip.** | Unit-tested in `etfPayout.test.ts`. Integration snapshots cover positive-return scenarios; negative-return is a guard, not a default. |
 | Per-product `valueMultipleOnUserCost` | **Skip.** | Not pinned in literal numbers, but trivially derivable from the locked numerator/denominator. Adding a separate oracle line would be circular. |
 
-## Implications for Group G
+## Why this still matters after the schema migration
 
-The Group G singleton-to-instance migration touches:
+The singleton-to-instance migration (`schemaVersion: 1 → 2`) touched:
 
 1. **Schema and persistence** (`storage.ts`, `scenarioSchema.ts`, share-URL).
 2. **Iteration over multiple instances per product type** (simulators).
 3. **Result aggregation across instances** (UI, charts, tables).
 
-It does **not** touch the math underlying tax, KV/PV, payroll, payout, cohort
-tables, or fee modeling. The current goldens lock all of those and the
-default-profile end-to-end behavior. If Group G stages a singleton instance
-through the new array path and the integration tests still pass, the math
-hasn't shifted — exactly the safety net the BACKLOG asks for.
+It did **not** touch the math underlying tax, KV/PV, payroll, payout, cohort
+tables, or fee modeling. The goldens listed above lock all of those and the
+default-profile end-to-end behavior. The first instance-array adapter
+reproduced the singleton path byte-identically and the integration snapshots
+stayed green — that is the gate the next math-touching change should pass too.
 
-**Action items for Group G** (carried as design-note inputs, not test changes):
+**Standing rules** (apply to any change that runs through these surfaces):
 
-- The first instance-array adapter must reproduce the singleton path
-  byte-identical at runtime to keep the existing integration snapshots green.
-- New per-instance schema fields (e.g. stable instance id) must be additive
-  via `mergeDeep`; legacy saved states must round-trip.
+- New per-instance schema fields must be additive via `mergeDeep`; legacy
+  saved states must round-trip.
 - Any change in default-profile output requires explicit test updates and a
-  one-line comment explaining the magnitude and reason (existing convention).
+  one-line comment in the test diff explaining the magnitude and reason
+  (existing convention).
+- Compare-mode singleton oracle goldens must remain byte-identical when only
+  combine-mode behaviour changes — the byte-identical invariant is what makes
+  this audit meaningful for future refactors.

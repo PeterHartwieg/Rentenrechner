@@ -106,6 +106,6 @@ export interface BavFundingResult {
   svFreePortionAnnual: number
   taxableOverflowAnnual: number
   svLiableOverflowAnnual: number
-  // #5: estimated monthly GRV pension loss from salary conversion (see BACKLOG #5)
+  // Estimated monthly GRV pension loss from salary conversion.
   estimatedMonthlyGrvReduction: number
 }
