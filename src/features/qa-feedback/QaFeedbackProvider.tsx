@@ -106,7 +106,7 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey
-      if (mod && e.shiftKey && e.key === '.') {
+      if (mod && e.shiftKey && (e.key === '.' || e.key === '>' || e.code === 'Period')) {
         e.preventDefault()
         setEnabled((prev) => {
           const next = !prev
