@@ -22,5 +22,7 @@ GH_REPO = "PeterHartwieg/Rentenrechner"
 ALLOWED_ORIGINS = "https://rentenwiki.de,https://www.rentenwiki.de"
 
 # Secrets (set via `wrangler secret put <NAME>` after first deploy):
-#   TURNSTILE_SECRET — secret key from the Turnstile site
-#   GH_PAT          — fine-grained PAT for PeterHartwieg/Rentenrechner
+#   TURNSTILE_SECRET   — secret key from the Turnstile site
+#   GH_PAT             — fine-grained PAT for PeterHartwieg/Rentenrechner
+#   GH_WEBHOOK_SECRET  — shared secret configured on the GitHub `issues.closed`
+#                        webhook (https://github.com/PeterHartwieg/Rentenrechner/settings/hooks)

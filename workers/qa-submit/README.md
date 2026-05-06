@@ -65,7 +65,38 @@ npm run dev
   Response: `{ ok: true, issueUrl, issueNumber }` or `{ ok: false, error, message }`.
 - `GET /screenshot/<uuid>.{png,jpg}` — serves a screenshot from the private R2
   bucket. GitHub uses this URL to render images in issue bodies.
-- `POST /cleanup` — Phase 4, GitHub `issues.closed` webhook. Not yet wired.
+- `POST /cleanup` — GitHub `issues.closed` webhook. Verifies HMAC-SHA256
+  signature with `GH_WEBHOOK_SECRET`, extracts screenshot keys from the issue
+  body, deletes the matching R2 objects. Acks `ping` events with 200.
+
+## Webhook configuration (one-time)
+
+After the first `wrangler deploy` succeeds:
+
+1. Generate a webhook secret. Any cryptographically random hex string works:
+   ```sh
+   openssl rand -hex 32
+   # or, with Node:
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+2. Save it as a Worker secret:
+   ```sh
+   wrangler secret put GH_WEBHOOK_SECRET
+   # paste the hex string when prompted
+   ```
+3. Configure the webhook on the GitHub repo:
+   - https://github.com/PeterHartwieg/Rentenrechner/settings/hooks → **Add webhook**
+   - **Payload URL:** `https://qa.rentenwiki.de/cleanup`
+   - **Content type:** `application/json`
+   - **Secret:** paste the same hex string
+   - **SSL verification:** Enable
+   - **Which events?** *Let me select individual events* → check **Issues** only
+   - **Active:** ticked
+   - Click *Add webhook*. GitHub immediately sends a `ping` event — the
+     **Recent Deliveries** tab should show a green check.
+4. Sanity-check by closing any test issue. The webhook delivery should return
+   `{ ok: true, deleted: <0 or 1> }` depending on whether the issue body had a
+   screenshot link.
 
 ## Local dev secrets
 

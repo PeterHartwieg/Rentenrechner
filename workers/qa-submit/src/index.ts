@@ -1,5 +1,6 @@
 import { createIssue } from "./github";
 import { verifyTurnstile } from "./turnstile";
+import { extractScreenshotKeys, verifyWebhookSignature } from "./webhook";
 import type { ErrorResponse, SubmitRequest, SubmitResponse } from "./types";
 
 export interface Env {
@@ -8,6 +9,7 @@ export interface Env {
   TURNSTILE_SECRET: string;
   GH_PAT: string;
   GH_REPO: string;
+  GH_WEBHOOK_SECRET: string;
   ALLOWED_ORIGINS: string;
 }
 
@@ -38,6 +40,13 @@ export default {
         return handleSubmit(request, origin, env);
       }
       return errorResponse(405, "method_not_allowed", "Methode nicht erlaubt.", origin);
+    }
+
+    if (url.pathname === "/cleanup") {
+      if (request.method !== "POST") {
+        return new Response("method not allowed", { status: 405 });
+      }
+      return handleCleanup(request, env);
     }
 
     return new Response("not found", { status: 404 });
@@ -220,6 +229,82 @@ async function handleSubmit(
       issueNumber: issue.number,
     } satisfies SubmitResponse,
     { status: 201, headers: corsHeaders(origin) },
+  );
+}
+
+/**
+ * GitHub webhook handler. Configured at
+ * https://github.com/PeterHartwieg/Rentenrechner/settings/hooks with
+ * `X-Hub-Signature-256` derived from `GH_WEBHOOK_SECRET`. On
+ * `issues.closed` events we extract every R2 screenshot key referenced
+ * from the issue body and delete the corresponding objects.
+ *
+ * All other events / actions short-circuit with 200 so GitHub doesn't
+ * mark the webhook as failing.
+ */
+async function handleCleanup(request: Request, env: Env): Promise<Response> {
+  if (!env.GH_WEBHOOK_SECRET) {
+    return new Response("webhook secret not configured", { status: 500 });
+  }
+
+  const rawBody = await request.text();
+  const signatureHeader = request.headers.get("x-hub-signature-256");
+  const valid = await verifyWebhookSignature(rawBody, signatureHeader, env.GH_WEBHOOK_SECRET);
+  if (!valid) {
+    return new Response("invalid signature", { status: 401 });
+  }
+
+  const event = request.headers.get("x-github-event");
+  if (event === "ping") {
+    return new Response(JSON.stringify({ ok: true, pong: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  if (event !== "issues") {
+    return new Response(JSON.stringify({ ok: true, ignored: "event" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  let payload: { action?: string; issue?: { number?: number; body?: string | null } };
+  try {
+    payload = JSON.parse(rawBody) as typeof payload;
+  } catch {
+    return new Response("invalid json", { status: 400 });
+  }
+
+  if (payload.action !== "closed") {
+    return new Response(JSON.stringify({ ok: true, ignored: "action" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  const keys = extractScreenshotKeys(payload.issue?.body ?? null);
+  let deleted = 0;
+  for (const key of keys) {
+    try {
+      await env.QA_SCREENSHOTS.delete(key);
+      deleted++;
+    } catch {
+      // Continue with the remaining keys; per-object failure shouldn't
+      // mark the whole webhook as failed.
+    }
+  }
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      issueNumber: payload.issue?.number ?? null,
+      keys,
+      deleted,
+    }),
+    {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    },
   );
 }
 
