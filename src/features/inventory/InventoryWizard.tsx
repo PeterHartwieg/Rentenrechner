@@ -23,6 +23,7 @@
 
 import './InventoryWizard.css'
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
+import { useFeedbackTarget, qaTarget, useQaMode } from '../../features/qa-feedback'
 import { X, Check, Plus, Trash2, ArrowRight } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
 import type { EvidenceState } from '../../domain/instances'
@@ -135,6 +136,10 @@ interface PersonalDetailsStepProps {
 function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDetailsStepProps) {
   const derivedAge = CURRENT_YEAR - draft.birthYear
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const { targetProps: nextBtnTargetProps } = useFeedbackTarget({
+    id: 'inventory.wizard.step0.primaryCta',
+    label: 'Weiter zu deinen Verträgen',
+  })
 
   // Wrap onChange so any user edit clears stale validation messages immediately.
   const handleChange = useCallback(
@@ -407,6 +412,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
             type="button"
             className="inventory-btn-primary"
             onClick={handleNext}
+            {...nextBtnTargetProps}
           >
             Weiter zu deinen Verträgen
             <ArrowRight size={16} aria-hidden="true" />
@@ -673,6 +679,23 @@ export function InventoryWizard({
     label: string
   } | null>(null)
 
+  const { enabled: qaEnabled } = useQaMode()
+  const { targetProps: dialogTargetProps } = useFeedbackTarget({
+    id: 'inventory.wizard.dialog',
+    label: 'Bestandsaufnahme',
+    precision: 'section',
+  })
+  const { targetProps: stepContainerTargetProps } = useFeedbackTarget({
+    id: `inventory.wizard.step${step}`,
+    label: step === 0 ? 'Schritt 1: Persönliche Angaben' : 'Schritt 2: Vertragsauswahl',
+    precision: 'section',
+  })
+  // Step 1 finish button. Step 0 button is instrumented directly in PersonalDetailsStep.
+  const { targetProps: primaryCtaTargetProps } = useFeedbackTarget({
+    id: 'inventory.wizard.step1.primaryCta',
+    label: 'Fertig & Vergleich starten',
+  })
+
   const isChecked = (id: string) => checkedProducts.has(id)
 
   function toggleProduct(id: string) {
@@ -920,6 +943,14 @@ export function InventoryWizard({
     }
   }
 
+  /** Returns QA target props for an instance wrapper inside the wizard step. */
+  function instanceWrapperQaProps(productId: string, index: number) {
+    return qaTarget(qaEnabled, `inventory.wizard.instance.${productId}.${index}`, {
+      label: getLabelForInstance(productId, index),
+      precision: 'section',
+    })
+  }
+
   function renderProductInstances(productId: string) {
     const count = getInstanceCount(productId)
     const canRemove = count > 1
@@ -927,7 +958,7 @@ export function InventoryWizard({
     switch (productId) {
       case 'bav':
         return bavDrafts.map((draft, i) => (
-          <div key={i} className="inv-instance-wrapper">
+          <div key={i} className="inv-instance-wrapper" {...instanceWrapperQaProps(productId, i)}>
             <InstanceHeader
               label={getLabelForInstance(productId, i)}
               instanceIndex={i}
@@ -955,7 +986,7 @@ export function InventoryWizard({
 
       case 'versicherung':
         return pavDrafts.map((draft, i) => (
-          <div key={i} className="inv-instance-wrapper">
+          <div key={i} className="inv-instance-wrapper" {...instanceWrapperQaProps(productId, i)}>
             <InstanceHeader
               label={getLabelForInstance(productId, i)}
               instanceIndex={i}
@@ -983,7 +1014,7 @@ export function InventoryWizard({
 
       case 'riester':
         return riesterDrafts.map((draft, i) => (
-          <div key={i} className="inv-instance-wrapper">
+          <div key={i} className="inv-instance-wrapper" {...instanceWrapperQaProps(productId, i)}>
             <InstanceHeader
               label={getLabelForInstance(productId, i)}
               instanceIndex={i}
@@ -1012,7 +1043,7 @@ export function InventoryWizard({
 
       case 'basisrente':
         return basisrenteDrafts.map((draft, i) => (
-          <div key={i} className="inv-instance-wrapper">
+          <div key={i} className="inv-instance-wrapper" {...instanceWrapperQaProps(productId, i)}>
             <InstanceHeader
               label={getLabelForInstance(productId, i)}
               instanceIndex={i}
@@ -1039,7 +1070,7 @@ export function InventoryWizard({
 
       case 'altersvorsorgedepot':
         return avdDrafts.map((draft, i) => (
-          <div key={i} className="inv-instance-wrapper">
+          <div key={i} className="inv-instance-wrapper" {...instanceWrapperQaProps(productId, i)}>
             <InstanceHeader
               label={getLabelForInstance(productId, i)}
               instanceIndex={i}
@@ -1066,7 +1097,7 @@ export function InventoryWizard({
 
       case 'etf':
         return etfDrafts.map((draft, i) => (
-          <div key={i} className="inv-instance-wrapper">
+          <div key={i} className="inv-instance-wrapper" {...instanceWrapperQaProps(productId, i)}>
             <InstanceHeader
               label={getLabelForInstance(productId, i)}
               instanceIndex={i}
@@ -1111,6 +1142,7 @@ export function InventoryWizard({
       aria-modal="true"
       aria-labelledby="inventory-wizard-heading"
       onKeyDown={handleKeyDown}
+      {...dialogTargetProps}
     >
       <div className="inventory-card">
         {/* ── Header ───────────────────────────────────────────────── */}
@@ -1133,19 +1165,21 @@ export function InventoryWizard({
 
         {/* ── Step 0: personal details ──────────────────────────────── */}
         {step === 0 && (
-          <PersonalDetailsStep
-            draft={personalDetails}
-            onChange={setPersonalDetails}
-            onNext={() => setStep(1)}
-            onDismiss={onDismiss}
-          />
+          <div {...stepContainerTargetProps}>
+            <PersonalDetailsStep
+              draft={personalDetails}
+              onChange={setPersonalDetails}
+              onNext={() => setStep(1)}
+              onDismiss={onDismiss}
+            />
+          </div>
         )}
 
         {/* ── Step 1: product checklist ─────────────────────────────── */}
         {step === 1 && (
           <>
         {/* ── Body ─────────────────────────────────────────────────── */}
-        <div className="inventory-body">
+        <div className="inventory-body" {...stepContainerTargetProps}>
           <p className="inventory-lede">
             Welche Verträge hast du bereits? Nur die wichtigsten Werte — den Rest schätzen wir.
           </p>
@@ -1173,6 +1207,7 @@ export function InventoryWizard({
               <div
                 key={row.id}
                 className={`inventory-product-row${checked ? ' inventory-product-row--checked' : ''}`}
+                {...qaTarget(qaEnabled, `inventory.wizard.productRow.${row.id}`, { label: row.name })}
               >
                 {/* Checkbox row — label wraps input so the entire row is clickable */}
                 <label
@@ -1252,6 +1287,7 @@ export function InventoryWizard({
               type="button"
               className="inventory-btn-primary"
               onClick={handleComplete}
+              {...primaryCtaTargetProps}
             >
               <Check size={16} aria-hidden="true" />
               {buttonLabel}

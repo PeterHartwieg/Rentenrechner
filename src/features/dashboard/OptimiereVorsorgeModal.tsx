@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import type { Workspace, WhatIfScenario } from '../../domain/workspace'
+import { useFeedbackTarget, qaTarget, useQaMode } from '../../features/qa-feedback'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { GermanRules } from '../../domain/rules'
 import type { ContractDecision } from '../../app/contractDecisions'
@@ -100,6 +101,21 @@ export function OptimiereVorsorgeModal({
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
   const [ticked, setTicked] = useState<Map<string, TickedDecision>>(new Map())
   const [savedNames, setSavedNames] = useState<string[]>([])
+
+  const { enabled: qaEnabled } = useQaMode()
+  const { targetProps: modalTargetProps } = useFeedbackTarget({
+    id: 'dashboard.optimiereModal.dialog',
+    label: 'Optimiere deine Vorsorge',
+    precision: 'section',
+  })
+  const { targetProps: stepHeadingTargetProps } = useFeedbackTarget({
+    id: `dashboard.optimiereModal.step.${step}.heading`,
+    label: `Schritt: ${step}`,
+  })
+  const { targetProps: primaryCtaTargetProps } = useFeedbackTarget({
+    id: `dashboard.optimiereModal.step.${step}.primaryCta`,
+    label: 'Primäre Aktion',
+  })
 
   // Beitrag-erhoehen overrides per instance (user-typed values).
   const [beitragOverrides, setBeitragOverrides] = useState<Map<string, number>>(new Map())
@@ -294,6 +310,7 @@ export function OptimiereVorsorgeModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="optimiere-modal-title"
+        {...modalTargetProps}
       >
         <header className="optimiere-modal__header">
           <h2 id="optimiere-modal-title">Optimiere deine Vorsorge</h2>
@@ -310,7 +327,7 @@ export function OptimiereVorsorgeModal({
         {/* ── Disclaimer step ── */}
         {step === 'disclaimer' && (
           <div className="optimiere-modal__body">
-            <h3>{OPTIMIERE_DISCLAIMER_HEADING}</h3>
+            <h3 {...stepHeadingTargetProps}>{OPTIMIERE_DISCLAIMER_HEADING}</h3>
             {OPTIMIERE_DISCLAIMER_PARAGRAPHS.map((para, idx) => (
               <p key={idx} className="optimiere-modal__disclaimer-para">
                 {renderMarkdownBold(para)}
@@ -328,6 +345,7 @@ export function OptimiereVorsorgeModal({
                 type="button"
                 className="optimiere-modal__primary"
                 onClick={() => setStep('overview')}
+                {...primaryCtaTargetProps}
               >
                 {OPTIMIERE_BUTTON_ACCEPT}
               </button>
@@ -357,6 +375,9 @@ export function OptimiereVorsorgeModal({
                   <div
                     key={row.instance.instanceId}
                     className="optimiere-modal__overview-row"
+                    {...qaTarget(qaEnabled, `dashboard.optimiereModal.overview.row.${row.instance.instanceId}`, {
+                      label: row.instance.label,
+                    })}
                   >
                     <div className="optimiere-modal__overview-info">
                       <span className="optimiere-modal__contract-label">
@@ -427,6 +448,7 @@ export function OptimiereVorsorgeModal({
                     ))
                     setStep('confirm')
                   }}
+                  {...primaryCtaTargetProps}
                 >
                   Weiter ({ticked.size})
                 </button>
@@ -441,7 +463,7 @@ export function OptimiereVorsorgeModal({
             <div className="optimiere-modal__banner" role="status">
               {OPTIMIERE_BANNER}
             </div>
-            <h3 className="optimiere-modal__instance-heading">
+            <h3 className="optimiere-modal__instance-heading" {...stepHeadingTargetProps}>
               {selectedAudit.instance.label}
             </h3>
 
@@ -492,6 +514,7 @@ export function OptimiereVorsorgeModal({
                   ))
                   setStep('confirm')
                 }}
+                {...primaryCtaTargetProps}
               >
                 Weiter
               </button>
@@ -505,7 +528,7 @@ export function OptimiereVorsorgeModal({
             <div className="optimiere-modal__banner" role="status">
               {OPTIMIERE_BANNER}
             </div>
-            <h3>{OPTIMIERE_CONFIRM_HEADING}</h3>
+            <h3 {...stepHeadingTargetProps}>{OPTIMIERE_CONFIRM_HEADING}</h3>
             <ul className="optimiere-modal__confirm-list">
               {Array.from(ticked.values()).map((entry) => (
                 <li key={entry.decisionId} className="optimiere-modal__confirm-row">
@@ -537,6 +560,7 @@ export function OptimiereVorsorgeModal({
                 type="button"
                 className="optimiere-modal__primary"
                 onClick={handleSave}
+                {...primaryCtaTargetProps}
               >
                 {OPTIMIERE_CONFIRM_SAVE}
               </button>
@@ -550,7 +574,7 @@ export function OptimiereVorsorgeModal({
             <div className="optimiere-modal__banner" role="status">
               {OPTIMIERE_BANNER}
             </div>
-            <h3>{OPTIMIERE_SAVED_HEADING}</h3>
+            <h3 {...stepHeadingTargetProps}>{OPTIMIERE_SAVED_HEADING}</h3>
             <ul className="optimiere-modal__saved-list">
               {savedNames.map((name, idx) => (
                 <li key={idx}>{name}</li>
@@ -564,6 +588,7 @@ export function OptimiereVorsorgeModal({
                 type="button"
                 className="optimiere-modal__primary"
                 onClick={onClose}
+                {...primaryCtaTargetProps}
               >
                 {OPTIMIERE_SAVED_CLOSE}
               </button>

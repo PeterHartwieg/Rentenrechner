@@ -13,6 +13,7 @@ import './ContractDecisionCards.css'
 import type { ContractDecision } from '../../app/contractDecisions'
 import { renderAtom } from '../../content/recommendationCopy'
 import { formatCurrency } from '../../utils/format'
+import { qaTarget, useQaMode } from '../../features/qa-feedback'
 
 // ---------------------------------------------------------------------------
 // Chip variant mapping
@@ -113,6 +114,7 @@ export function ContractDecisionCards({
   onToggle,
   deltaByDecisionId,
 }: ContractDecisionCardsProps) {
+  const { enabled: qaEnabled } = useQaMode()
   return (
     <div className="contract-decision-cards">
       {decisions.map((decision) => {
@@ -124,6 +126,9 @@ export function ContractDecisionCards({
             key={decision.id}
             className={`contract-decision-card contract-decision-card--${decision.kind}`}
             data-kind={decision.kind}
+            {...qaTarget(qaEnabled, `dashboard.contractDecision.card.${decision.kind}`, {
+              label: KIND_LABELS[decision.kind],
+            })}
           >
             <div className="contract-decision-card-header">
               <span className="contract-decision-kind">{KIND_LABELS[decision.kind]}</span>

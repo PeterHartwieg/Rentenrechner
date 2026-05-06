@@ -27,6 +27,7 @@ import type { ContractDecision } from '../../app/contractDecisions'
 import { generateContractDecisions, applyContractDecision } from '../../app/contractDecisions'
 import { forkBaselineScenario, newScenarioId } from '../../app/portfolioState'
 import { ContractDecisionCards } from './ContractDecisionCards'
+import { useFeedbackTarget } from '../../features/qa-feedback'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -55,6 +56,17 @@ export function ContractDecisionMenu({
 
   // Track which non-identity decisions are checked.
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
+
+  // QA targets for modal container and actions.
+  const { targetProps: dialogTargetProps } = useFeedbackTarget({
+    id: 'dashboard.contractDecisionMenu.dialog',
+    label: 'Optionen für diesen Vertrag',
+    precision: 'section',
+  })
+  const { targetProps: saveBtnTargetProps } = useFeedbackTarget({
+    id: 'dashboard.contractDecisionMenu.saveBtn',
+    label: 'Plan erstellen',
+  })
 
   // Ref for the inner dialog card — click-outside detection compares against it.
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -136,6 +148,7 @@ export function ContractDecisionMenu({
       aria-label="Optionen für diesen Vertrag"
       ref={dialogRef}
       tabIndex={-1}
+      {...dialogTargetProps}
     >
       <div className="contract-decision-menu-header">
         <h3>Optionen für diesen Vertrag</h3>
@@ -161,6 +174,7 @@ export function ContractDecisionMenu({
           className="contract-decision-save-btn"
           disabled={saveable.length === 0}
           onClick={handleCreatePlans}
+          {...saveBtnTargetProps}
         >
           {saveable.length === 0
             ? 'Plan erstellen'

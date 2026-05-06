@@ -9,6 +9,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react'
 import './RecommenderCard.css'
+import { useFeedbackTarget, qaTarget, useQaMode } from '../../features/qa-feedback'
 import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
@@ -90,6 +91,12 @@ export function RecommenderCard({
 }: Props) {
   const [ranking, setRanking] = useState<RecommenderRankingCriterion>('median_net_pension')
   const [expandedAtomIds, setExpandedAtomIds] = useState<Set<string>>(() => new Set<string>())
+  const { enabled: qaEnabled } = useQaMode()
+  const { targetProps: sectionTargetProps } = useFeedbackTarget({
+    id: 'dashboard.recommenderCard.section',
+    label: 'Empfehlungen',
+    precision: 'section',
+  })
 
   const candidates = useMemo(() => {
     if (marginalMonthlyEUR <= 0) return []
@@ -155,7 +162,7 @@ export function RecommenderCard({
   }, [workspace.baseline.assumptions])
 
   return (
-    <section className="recommender-card" aria-label="Empfehlungen für deinen nächsten Beitrag">
+    <section className="recommender-card" aria-label="Empfehlungen für deinen nächsten Beitrag" {...sectionTargetProps}>
       <h3>Beste Optionen für {formatCurrency(marginalMonthlyEUR, 0)} zusätzlich im Monat</h3>
 
       {marginalMonthlyEUR > 0 && sorted.length === 0 && (
@@ -196,7 +203,7 @@ export function RecommenderCard({
               const atomDetailsId = `recommender-${cand.id}-atom-details`
               const atomsExpanded = expandedAtomIds.has(cand.id)
               return (
-              <li key={cand.id} className="recommender-candidate">
+              <li key={cand.id} className="recommender-candidate" {...qaTarget(qaEnabled, `dashboard.recommenderCard.candidate.${cand.productId}`, { label: cand.label })}>
                 {index === 0 && (
                   <span className="recommender-candidate-winner">
                     Beste Option für {RECOMMENDER_RANKING_LABELS[ranking]}: {winningMetric(cand, ranking)}

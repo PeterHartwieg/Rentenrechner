@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
+import { useFeedbackTarget } from '../../features/qa-feedback'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
 import type { BavEmployerOfferInput, RecommendedCandidate } from '../../app/recommender'
@@ -33,6 +34,20 @@ export function LueckeSchliessenModal({
 }: Props) {
   const [step, setStep] = useState<Step>('budget')
   const [budget, setBudget] = useState(200)
+
+  const { targetProps: modalTargetProps } = useFeedbackTarget({
+    id: 'dashboard.lueckeModal.dialog',
+    label: 'Lücke schließen',
+    precision: 'section',
+  })
+  const { targetProps: stepHeadingTargetProps } = useFeedbackTarget({
+    id: `dashboard.lueckeModal.step.${step}.heading`,
+    label: `Lücke-schließen Schritt: ${step}`,
+  })
+  const { targetProps: primaryCtaTargetProps } = useFeedbackTarget({
+    id: `dashboard.lueckeModal.step.${step}.primaryCta`,
+    label: 'Weiter',
+  })
   const [offerChoice, setOfferChoice] = useState<OfferChoice>(null)
   const [employerPercentPct, setEmployerPercentPct] = useState(15)
   const [fixedMonthlyEUR, setFixedMonthlyEUR] = useState(0)
@@ -94,6 +109,7 @@ export function LueckeSchliessenModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="luecke-modal-title"
+        {...modalTargetProps}
       >
         <header className="luecke-modal__header">
           <div>
@@ -112,7 +128,7 @@ export function LueckeSchliessenModal({
 
         {step === 'budget' && (
           <div className="luecke-modal__body">
-            <h3>Wie viel möchtest du zusätzlich sparen?</h3>
+            <h3 {...stepHeadingTargetProps}>Wie viel möchtest du zusätzlich sparen?</h3>
             <div className="luecke-modal__presets" role="group" aria-label="Monatliche Sparrate auswählen">
               {[100, 200, 400].map((preset) => (
                 <button
@@ -144,6 +160,7 @@ export function LueckeSchliessenModal({
                 className="luecke-modal__primary"
                 onClick={() => setStep('bav-offer')}
                 disabled={safeBudget <= 0}
+                {...primaryCtaTargetProps}
               >
                 Weiter
               </button>
@@ -153,7 +170,7 @@ export function LueckeSchliessenModal({
 
         {step === 'bav-offer' && (
           <div className="luecke-modal__body">
-            <h3>Hast du ein bAV-Angebot vom Arbeitgeber?</h3>
+            <h3 {...stepHeadingTargetProps}>Hast du ein bAV-Angebot vom Arbeitgeber?</h3>
             <div className="luecke-modal__choice-row">
               <button
                 type="button"
@@ -266,6 +283,7 @@ export function LueckeSchliessenModal({
                 className="luecke-modal__primary"
                 onClick={() => setStep('result')}
                 disabled={offerChoice === null}
+                {...primaryCtaTargetProps}
               >
                 Optionen anzeigen
               </button>
@@ -279,7 +297,7 @@ export function LueckeSchliessenModal({
             role="status"
             aria-live="polite"
           >
-            <h3>Plan gespeichert</h3>
+            <h3 {...stepHeadingTargetProps}>Plan gespeichert</h3>
             <p className="luecke-modal__saved-summary">
               <strong>{savedCandidate.label}</strong> wurde als Was-wäre-wenn-Szenario gespeichert.
               Zu finden unter Meine Verträge → Szenarien.

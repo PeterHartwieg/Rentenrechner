@@ -30,6 +30,32 @@ interface OutlineRect {
  *
  * Nested feedback targets are handled by `closest()`: clicks deepest first,
  * so a child target outranks its container.
+ *
+ * ── Z-index / portal layering rule (issue 17) ────────────────────────────
+ *
+ * The QA overlay outline uses `z-index: 998` (defined in qa-feedback.css).
+ * All modals and dialogs in this codebase use z-index ≤ 200:
+ *   - OptimiereVorsorgeModal backdrop:   z-index: 200
+ *   - ContractDecisionMenu overlay:      z-index: 200
+ *   - InventoryWizard overlay:           z-index: 200  (defined inline/CSS)
+ *   - LueckeSchliessenModal:             z-index: 200
+ *
+ * The QA outline at z-index 998 therefore always renders ABOVE the topmost
+ * modal layer WITHOUT needing a portal. The QA composer panel sits at
+ * z-index 1001, also above all modals.
+ *
+ * Rule for new modals: keep backdrop z-index ≤ 500. Never raise a modal's
+ * z-index above 900 without also updating the QA overlay z-index in
+ * qa-feedback.css so the outline remains visible inside the modal.
+ *
+ * Pinning invariant (issue 17): The QA overlay intercepts clicks in the
+ * capture phase (`addEventListener('click', handler, true)`) and calls
+ * `event.stopPropagation()` + `event.preventDefault()`. This means the
+ * click never reaches the modal's click-outside handler, so pinning a
+ * target inside an open modal or popover does NOT close that modal/popover.
+ * Popovers like InfoTip that use `mousedown` for click-outside detection
+ * must additionally guard against QA-mode clicks — see InfoTip.tsx.
+ * ─────────────────────────────────────────────────────────────────────────
  */
 export function QaOverlay() {
   const ctx = useContext(QaFeedbackContext)
