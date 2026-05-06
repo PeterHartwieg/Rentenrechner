@@ -28,14 +28,13 @@ vi.mock('html-to-image', () => ({
 }))
 
 let fetchSpy: ReturnType<typeof vi.fn>
-let openSpy: ReturnType<typeof vi.spyOn>
 
 beforeEach(() => {
   // QA mode on; the provider reads ?qa=1 on mount.
   window.history.replaceState(null, '', '/?qa=1')
 
   // Stub window.open so any incidental mailto/github clicks don't pop tabs.
-  openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+  vi.spyOn(window, 'open').mockReturnValue(null)
 
   // Stub a synchronous Turnstile API. The composer renders the widget into
   // a div; our fake `render` invokes the supplied callback on the next
@@ -118,7 +117,7 @@ async function navigateToPreview() {
 describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
   it('happy path: consent → Turnstile token → POST reaches Worker, success status shows issue URL', async () => {
     fetchSpy = vi.fn(
-      async (url: string) =>
+      async () =>
         new Response(
           JSON.stringify({
             ok: true,
