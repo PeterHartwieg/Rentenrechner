@@ -40,7 +40,8 @@ The engine swap point is documented in `src/rules/index.ts` itself
       payroll/retirement-tax/bAV-funding oracles) carefully before bumping
       golden values.
 - [ ] Cross-year statutory constants (1/120 spreading, Fünftelregelung
-      divisor, 12-year contract minimum, halbeinkünfte factor) live in
+      divisor, 12-year contract minimum, Halbeinkünfte age split by
+      contract year, halbeinkünfte factor) live in
       `src/rules/legalConstants.ts` and only change on actual law amendment
       — leave them unless legislation changed.
 
