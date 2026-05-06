@@ -47,9 +47,14 @@
 // frontend analytics remain forbidden.
 // ---------------------------------------------------------------------------
 
+// Live-verified safe default (2026-05-06): only ai_bots_protection is set.
+// crawler_protection was deliberately left disabled — enabling it activates
+// aggressive bot challenges that risk false positives on legit users (shared
+// IPs, VPN, Tor exit nodes). To enable it intentionally, edit this object,
+// run apply, and watch analytics for traffic regressions. See
+// `docs/seo/crawler-policy.md` for the full rationale.
 const POLICY_BODY = {
   ai_bots_protection: 'block',
-  crawler_protection: 'enabled',
 }
 
 const ALLOWED_BOT_USER_AGENTS = [

@@ -165,13 +165,15 @@ When something needs to change, here's where it lives:
   managed Disallow list is updated independently (Cloudflare-controlled); the
   two compose, so adding a bot only at the origin layer is fine.
 
-- **Want to flip `crawler_protection` on** —
-  `node scripts/apply-cloudflare-policy.mjs apply` will set both
-  `ai_bots_protection: block` and `crawler_protection: enabled`. Be aware
-  this can fire managed challenges (CAPTCHA, JS) at legit users on shared,
-  corporate-NAT, or VPN IPs. Watch the analytics for a few days after
-  enabling. To revert, edit the script's `POLICY_BODY` and re-run `apply`,
-  or flip via the dashboard.
+- **Want to flip `crawler_protection` on** — by default the script's
+  `POLICY_BODY` only re-affirms `ai_bots_protection: block` (so re-running
+  `apply` is a no-op against the live-verified state). To enable
+  `crawler_protection`, edit `POLICY_BODY` in `scripts/apply-cloudflare-policy.mjs`
+  to add `crawler_protection: 'enabled'`, then run
+  `node scripts/apply-cloudflare-policy.mjs apply`. Be aware this can fire
+  managed challenges (CAPTCHA, JS) at legit users on shared, corporate-NAT,
+  or VPN IPs. Watch the analytics for a few days after enabling. To revert,
+  remove the field from `POLICY_BODY` and re-run, or flip via the dashboard.
 
 - **Change `cf_robots_variant`** — dashboard only. Security → Bots → Crawl
   Control / Managed robots.txt. The variants (e.g. `off`, more permissive
