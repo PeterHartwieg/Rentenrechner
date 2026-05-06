@@ -17,6 +17,7 @@ import type { Atom } from '../../app/recommendations'
 import { renderAtom } from '../../content/recommendationCopy'
 import { InfoTip } from '../../ui/InfoTip'
 import { VINTAGE_ATOM_IDS, chipVariant } from './vintageChipsUtils'
+import { useFeedbackTarget, qaTarget, useQaMode } from '../qa-feedback'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -32,12 +33,18 @@ export interface VintageChipsProps {
 // ---------------------------------------------------------------------------
 
 export function VintageChips({ atoms }: VintageChipsProps) {
+  const { enabled: qaEnabled } = useQaMode()
+  const { targetProps: containerTargetProps } = useFeedbackTarget({
+    id: 'inventory.vintageChips.container',
+    label: 'Vintage-Hinweise Container',
+    precision: 'section',
+  })
   // Defensive re-filter; host already filters. Belt-and-suspenders so a future refactor at the call-site can't smuggle non-vintage atoms in.
   const vintageAtoms = atoms.filter((a) => VINTAGE_ATOM_IDS.has(a.id))
   if (vintageAtoms.length === 0) return null
 
   return (
-    <div className="vintage-chips">
+    <div className="vintage-chips" {...containerTargetProps}>
       {vintageAtoms.map((atom, i) => {
         const { headline, body } = renderAtom(atom)
         const variant = chipVariant(atom.id)
@@ -45,9 +52,10 @@ export function VintageChips({ atoms }: VintageChipsProps) {
           <span
             key={`${atom.id}-${i}`}
             className={`vintage-chip vintage-chip--${variant}`}
+            {...qaTarget(qaEnabled, `inventory.vintageChips.chip.${atom.id}`, { label: `Chip ${headline}` })}
           >
             <span className="vintage-chip-label">{headline}</span>
-            <InfoTip icon="info" label={headline}>
+            <InfoTip icon="info" label={headline} feedbackTargetId={`inventory.vintageChips.chip.${atom.id}.tip`}>
               <span className="vintage-chip-body">{body}</span>
             </InfoTip>
           </span>

@@ -42,6 +42,7 @@ import { runRules } from '../../app/recommendations'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { SIMPLIFIED_PRESETS } from '../inputs/sections/feePresets'
+import { useFeedbackTarget, qaTarget, useQaMode } from '../qa-feedback'
 import {
   bavOfferDraftToInstance,
   bavDraftToInstance,
@@ -210,9 +211,18 @@ function PersonalProfileSection({
     })
   }
 
+  const { targetProps: profileSectionProps } = useFeedbackTarget({
+    id: 'combine.sidebar.personalProfile.section',
+    label: 'Persönliche Angaben',
+    precision: 'section',
+  })
+  const { targetProps: profileHeadingProps } = useFeedbackTarget({
+    id: 'combine.sidebar.personalProfile.heading',
+    label: 'Persönliche-Angaben-Überschrift',
+  })
   return (
-    <section className="cds-profile-section" aria-label="Persönliche Angaben">
-      <p className="combine-sidebar-heading">Persönliche Angaben</p>
+    <section className="cds-profile-section" aria-label="Persönliche Angaben" {...profileSectionProps}>
+      <p className="combine-sidebar-heading" {...profileHeadingProps}>Persönliche Angaben</p>
       <div className="combine-instance-fields">
         <CombineField label="Alter">
           <input
@@ -1595,6 +1605,7 @@ export function AddVertragSection({
   const visibleItems = addBavOffer
     ? ADD_VERTRAG_ITEMS
     : ADD_VERTRAG_ITEMS.filter((item) => item.kind !== 'bav_offer')
+  const { enabled: qaEnabled } = useQaMode()
 
   return (
     <div className="cds-add-vertrag-section">
@@ -1626,12 +1637,21 @@ export function AddVertragSection({
           className="cds-add-vertrag-btn"
           onClick={() => setOpen(true)}
           data-testid="add-vertrag-btn"
+          {...qaTarget(qaEnabled, 'combine.sidebar.addVertrag.cta', { label: 'Vertrag hinzufügen' })}
         >
           <Plus size={14} aria-hidden="true" />
           Vertrag hinzufügen
         </button>
       ) : (
-        <div className="cds-add-vertrag-menu" role="menu" aria-label="Vertragstyp auswählen">
+        <div
+          className="cds-add-vertrag-menu"
+          role="menu"
+          aria-label="Vertragstyp auswählen"
+          {...qaTarget(qaEnabled, 'combine.sidebar.addVertrag.menu', {
+            label: 'Vertragstyp-Menü',
+            precision: 'section',
+          })}
+        >
           <p className="cds-add-vertrag-menu-label">Welchen Vertragstyp möchtest du hinzufügen?</p>
           <div className="cds-add-vertrag-options">
             {visibleItems.map((item) => (
@@ -1643,6 +1663,11 @@ export function AddVertragSection({
                 onClick={() => {
                   setDraftItem(item)
                 }}
+                {...qaTarget(
+                  qaEnabled,
+                  `combine.sidebar.addVertrag.option.${item.kind === 'bav_offer' ? 'bav_offer' : item.productId}`,
+                  { label: `Vertragstyp ${item.label}` },
+                )}
               >
                 {item.label}
               </button>
@@ -1652,6 +1677,7 @@ export function AddVertragSection({
             type="button"
             className="cds-add-vertrag-cancel-btn"
             onClick={() => setOpen(false)}
+            {...qaTarget(qaEnabled, 'combine.sidebar.addVertrag.cancel', { label: 'Vertragstyp-Auswahl abbrechen' })}
           >
             Abbrechen
           </button>
@@ -1680,6 +1706,31 @@ export function CombineDashboardSidebar({
 }: Props) {
   // Guard against rapid double-clicks on the archive button.
   const [archiving, setArchiving] = useState(false)
+  const { targetProps: sidebarTargetProps } = useFeedbackTarget({
+    id: 'combine.sidebar.container',
+    label: 'Combine-Dashboard-Sidebar',
+    precision: 'section',
+  })
+  const { targetProps: baselineLabelProps } = useFeedbackTarget({
+    id: 'combine.sidebar.baseline.label',
+    label: 'Baseline-Label',
+  })
+  const { targetProps: baselineNameProps } = useFeedbackTarget({
+    id: 'combine.sidebar.baseline.name',
+    label: 'Baseline-Name',
+  })
+  const { targetProps: contractsHeadingProps } = useFeedbackTarget({
+    id: 'combine.sidebar.contracts.heading',
+    label: 'Meine-Verträge-Überschrift',
+  })
+  const { targetProps: whatIfsHeadingProps } = useFeedbackTarget({
+    id: 'combine.sidebar.whatIfs.heading',
+    label: 'Szenarien-Überschrift',
+  })
+  const { targetProps: archiveCtaProps } = useFeedbackTarget({
+    id: 'combine.sidebar.archive.cta',
+    label: 'Aktuellen Stand als Baseline speichern',
+  })
 
   // Run vintage rules once per assumptions + profile change — rules are pure.
   const vintageAtoms = useMemo(() => runRules({
@@ -1707,11 +1758,11 @@ export function CombineDashboardSidebar({
   const showArchiveButton = hasContracts || whatIfs.length > 0
 
   return (
-    <div className="combine-sidebar">
+    <div className="combine-sidebar" {...sidebarTargetProps}>
       {/* ── Baseline header ───────────────────────────────────────── */}
       <div className="cds-baseline-header">
-        <p className="cds-baseline-label">Baseline: dein aktueller Plan</p>
-        <p className="cds-baseline-name">{baseline.label}</p>
+        <p className="cds-baseline-label" {...baselineLabelProps}>Baseline: dein aktueller Plan</p>
+        <p className="cds-baseline-name" {...baselineNameProps}>{baseline.label}</p>
       </div>
 
       <PersonalProfileSection
@@ -1729,7 +1780,7 @@ export function CombineDashboardSidebar({
 
       {hasContracts && (
         <>
-          <p className="combine-sidebar-heading">Meine Verträge</p>
+          <p className="combine-sidebar-heading" {...contractsHeadingProps}>Meine Verträge</p>
 
       {hasBav && (
         <ProductGroup
@@ -1915,7 +1966,7 @@ export function CombineDashboardSidebar({
       {/* ── What-if scenarios ─────────────────────────────────────── */}
       {whatIfs.length > 0 && (
         <div className="cds-whatifs-section">
-          <p className="cds-whatifs-heading">Szenarien</p>
+          <p className="cds-whatifs-heading" {...whatIfsHeadingProps}>Szenarien</p>
           {whatIfs.map((wi) => (
             <WhatIfCard
               key={wi.id}
@@ -1941,6 +1992,7 @@ export function CombineDashboardSidebar({
             type="button"
             className="cds-archive-btn"
             disabled={archiving}
+            {...archiveCtaProps}
             onClick={() => {
               // Prevent double-clicks from writing two library entries.
               if (archiving) return

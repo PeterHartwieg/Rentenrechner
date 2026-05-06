@@ -16,6 +16,7 @@ import { useState, useRef, useEffect } from 'react'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
 import { formatCurrency } from '../../utils/format'
+import { useFeedbackTarget } from '../qa-feedback'
 
 interface CombineIncomePanelProps {
   combinedResult: CombinedResult
@@ -32,6 +33,31 @@ export function CombineIncomePanel({
 }: CombineIncomePanelProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const wrapRef = useRef<HTMLSpanElement>(null)
+  const { targetProps: sectionTargetProps } = useFeedbackTarget({
+    id: 'combine.incomePanel.section',
+    label: 'Monatliches Nettoeinkommen im Ruhestand',
+    precision: 'section',
+  })
+  const { targetProps: labelProps } = useFeedbackTarget({
+    id: 'combine.incomePanel.label',
+    label: 'Income-Panel Überschrift',
+  })
+  const { targetProps: valueProps } = useFeedbackTarget({
+    id: 'combine.incomePanel.value',
+    label: 'Monatliches Nettoeinkommen Wert',
+  })
+  const { targetProps: scenarioProps } = useFeedbackTarget({
+    id: 'combine.incomePanel.scenario',
+    label: 'Aktives Szenario',
+  })
+  const { targetProps: estimateBadgeProps } = useFeedbackTarget({
+    id: 'combine.incomePanel.estimateBadge',
+    label: 'Teilweise-geschätzt-Badge',
+  })
+  const { targetProps: estimatePopoverProps } = useFeedbackTarget({
+    id: 'combine.incomePanel.estimatePopover',
+    label: 'Liste der geschätzten Eingaben',
+  })
 
   useEffect(() => {
     if (!popoverOpen) return
@@ -61,13 +87,13 @@ export function CombineIncomePanel({
   const hasEstimates = estimatedResults.length > 0
 
   return (
-    <div className="combine-income-panel">
-      <p className="combine-income-label">Monatliches Nettoeinkommen im Ruhestand</p>
+    <div className="combine-income-panel" {...sectionTargetProps}>
+      <p className="combine-income-label" {...labelProps}>Monatliches Nettoeinkommen im Ruhestand</p>
       <div className="combine-income-row">
-        <span className="combine-income-value">
+        <span className="combine-income-value" {...valueProps}>
           {formatCurrency(combinedResult.monthlyNetIncome, 0)}/Monat
         </span>
-        <span className="combine-income-scenario">{scenarioLabel}</span>
+        <span className="combine-income-scenario" {...scenarioProps}>{scenarioLabel}</span>
         {hasEstimates && (
           <span style={{ position: 'relative' }} ref={wrapRef}>
             <button
@@ -76,11 +102,12 @@ export function CombineIncomePanel({
               onClick={() => setPopoverOpen((v) => !v)}
               aria-expanded={popoverOpen}
               aria-haspopup="true"
+              {...estimateBadgeProps}
             >
               {'🤔'} Teilweise geschätzt
             </button>
             {popoverOpen && (
-              <div className="combine-estimate-popover" role="tooltip">
+              <div className="combine-estimate-popover" role="tooltip" {...estimatePopoverProps}>
                 <strong>Geschätzte Eingaben:</strong>
                 <ul>
                   {estimatedResults.map((r) => (

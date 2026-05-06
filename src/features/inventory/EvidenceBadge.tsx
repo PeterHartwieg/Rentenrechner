@@ -16,16 +16,28 @@
  */
 
 import type { EvidenceState } from '../../domain/instances'
+import { useFeedbackTarget } from '../qa-feedback'
 
 interface EvidenceBadgeProps {
   state: EvidenceState
   onConfirm?: () => void
+  /** Optional id suffix so each per-field badge can be uniquely targeted (e.g. `bav.0.contribution`). */
+  feedbackTargetSuffix?: string
 }
 
-export function EvidenceBadge({ state, onConfirm }: EvidenceBadgeProps) {
+export function EvidenceBadge({ state, onConfirm, feedbackTargetSuffix }: EvidenceBadgeProps) {
+  const idSuffix = feedbackTargetSuffix ? `.${feedbackTargetSuffix}` : ''
+  const { targetProps: badgeProps } = useFeedbackTarget({
+    id: `inventory.evidenceBadge.${state}${idSuffix}`,
+    label: `Evidence-Badge ${state}`,
+  })
+  const { targetProps: confirmProps } = useFeedbackTarget({
+    id: `inventory.evidenceBadge.confirm${idSuffix}`,
+    label: 'Evidence-Badge Übernehmen-Button',
+  })
   if (state === 'model_estimate') {
     return (
-      <span className="evidence-badge evidence-badge--estimate">
+      <span className="evidence-badge evidence-badge--estimate" {...badgeProps}>
         {'🤔'} Schätzung
         {onConfirm && (
           <button
@@ -33,6 +45,7 @@ export function EvidenceBadge({ state, onConfirm }: EvidenceBadgeProps) {
             className="evidence-badge-confirm-btn"
             onClick={onConfirm}
             title="Schätzwert übernehmen"
+            {...confirmProps}
           >
             Übernehmen
           </button>
@@ -43,14 +56,14 @@ export function EvidenceBadge({ state, onConfirm }: EvidenceBadgeProps) {
 
   if (state === 'statement') {
     return (
-      <span className="evidence-badge evidence-badge--statement">
+      <span className="evidence-badge evidence-badge--statement" {...badgeProps}>
         {'📄'} lt. Beleg
       </span>
     )
   }
 
   return (
-    <span className="evidence-badge evidence-badge--confirmed">
+    <span className="evidence-badge evidence-badge--confirmed" {...badgeProps}>
       ✓ bestätigt
     </span>
   )
