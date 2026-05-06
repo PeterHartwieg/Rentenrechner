@@ -26,6 +26,7 @@ import { useCallback, useState, type Dispatch, type SetStateAction } from 'react
 import { X, Check, Plus, Trash2, ArrowRight } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
 import type { EvidenceState } from '../../domain/instances'
+import type { ProductId } from '../../engine/productRegistry'
 import { saveWorkspace } from '../../storage'
 import { buildWorkspaceFromDraft } from './inventoryHelpers'
 import {
@@ -72,6 +73,18 @@ interface Props {
   retirementAge: number
   /** GKV vs PKV — seeds the step-0 KV select. */
   publicHealthInsurance: boolean
+  /**
+   * Optional product seed (issue #13 topic preselection): when supplied, the
+   * wizard's product checklist mounts with these products' rows pre-checked,
+   * so a topic-page deep-link (e.g. `/?topic=etf-vs-bav`) lands the user on
+   * a wizard with bAV + ETF (and any others in the list) already enabled.
+   *
+   * GRV is universally checked and cannot be unchecked — it is implicit and
+   * does not need to appear in this list. Only non-GRV product ids are
+   * honoured; unknown ids are silently ignored. Defaults to no preselection
+   * (GRV-only checked) when `undefined`.
+   */
+  initialEnabledProducts?: readonly ProductId[]
   /** Called on successful exit with the new workspace. */
   onComplete: (workspace: Workspace) => void
   /** Called on dismiss without saving (close X, Escape, Abbrechen). */
@@ -603,6 +616,7 @@ export function InventoryWizard({
   age,
   retirementAge,
   publicHealthInsurance,
+  initialEnabledProducts,
   onComplete,
   onDismiss,
 }: Props) {
@@ -627,8 +641,20 @@ export function InventoryWizard({
   const effectiveRetirementAge = personalDetails.retirementAge
 
   // GRV is always "checked" (read-only) — everyone has the statutory pension.
+  // Issue #13: when `initialEnabledProducts` is supplied via topic-preselection,
+  // those product rows arrive pre-checked. GRV stays implicitly checked. The
+  // checklist render below filters by known PRODUCT_ROWS ids, so any unknown
+  // string in the seed is silently ignored.
   const [checkedProducts, setCheckedProducts] = useState<Set<string>>(
-    () => new Set(['grv']),
+    () => {
+      const seed = new Set<string>(['grv'])
+      if (initialEnabledProducts) {
+        for (const id of initialEnabledProducts) {
+          seed.add(id)
+        }
+      }
+      return seed
+    },
   )
 
   // Draft state: arrays for multi-instance, singleton for GRV.

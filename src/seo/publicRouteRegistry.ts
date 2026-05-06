@@ -5,6 +5,9 @@
 //   - sitemap.xml generation
 //   - <head> metadata: <title>, meta description, canonical, Open Graph,
 //     Twitter, JSON-LD WebApplication
+//   - `?topic=<slug>` preselection deep-links (issue #13): each entry may
+//     declare an optional `preselection` so SEO topic pages can hand the
+//     calculator a starting compare/combine view + visibleProducts seed.
 //
 // Mirrors the architectural pattern of `src/engine/productRegistry.ts`:
 // typed entry shape; the union of legal route paths (`PublicRouteId`) is
@@ -17,6 +20,8 @@
 // PRD's "out of scope" list (line 152) excludes them, and `Article` /
 // `WebApplication` JSON-LD on Impressum/Datenschutz adds no SEO value.
 // ---------------------------------------------------------------------------
+
+import type { ProductId } from '../engine/productRegistry'
 
 /**
  * Allow / disallow values for a route's `<meta name="robots">` tag.
@@ -37,10 +42,40 @@ export interface CalculatorCta {
   /** Visible button label (German). */
   readonly label: string
   /**
-   * Destination path relative to origin. For #02 every CTA is `/`.
-   * The `?topic=<slug>` preselection mechanism is deferred to issue #13.
+   * Destination path relative to origin. Topic pages may use the
+   * `?topic=<slug>` deep-link form (issue #13) so `LandingPage` can preselect
+   * the calculator's mode + visibleProducts on first-time landing.
    */
   readonly href: string
+}
+
+/**
+ * Topic-page preselection seeds (issue #13).
+ *
+ * Each topic page may declare which calculator view to land on (`compare` or
+ * `combine`) and, for compare-mode, the initial product comparison. The
+ * resolver in `resolveTopicPreselection` reads `?topic=<slug>` from the URL
+ * and, when the slug matches a registered route AND the user has no saved
+ * state (`detectSavedMode()` returns null), `LandingPage` auto-fires the
+ * matching `LandingChoice`.
+ *
+ * For combine-mode entries, `visibleProducts` is forwarded to
+ * `InventoryWizard.initialEnabledProducts` so the wizard's product checklist
+ * lands with the relevant rows pre-checked. GRV is universally checked and
+ * cannot be unchecked, so it is implicit and does not need to appear in the
+ * list — only non-GRV products are honoured by the wizard.
+ *
+ * Returning users are never overridden — saved state always wins (PRD US-18).
+ */
+export interface TopicPreselection {
+  /** Which view the user lands on. */
+  readonly mode: 'compare' | 'combine'
+  /**
+   * Optional product seed. In compare-mode this becomes the workspace's
+   * `visibleProducts` selection. In combine-mode it is forwarded to the
+   * InventoryWizard's `initialEnabledProducts` checklist.
+   */
+  readonly visibleProducts?: readonly ProductId[]
 }
 
 export interface PublicRoute {
@@ -67,8 +102,18 @@ export interface PublicRoute {
   readonly jsonLdType: JsonLdType
   /** Sibling slugs for internal-link compliance and breadcrumb hints. */
   readonly relatedRoutes: readonly string[]
-  /** Calculator deep-link CTA. Plain `/` until issue #13 lands `?topic=`. */
+  /**
+   * Calculator deep-link CTA. Topic pages may use `/?topic=<slug>` for
+   * the issue #13 preselection mechanism; the homepage and 404 keep `/`.
+   */
   readonly calculatorCta: CalculatorCta
+  /**
+   * Optional topic-preselection seeds (issue #13). When set on a topic page,
+   * arriving via `/?topic=<this-route's-slug>` preselects the calculator
+   * mode + visibleProducts for first-time visitors. Returning users (saved
+   * state present) are not overridden.
+   */
+  readonly preselection?: TopicPreselection
 }
 
 // ---------------------------------------------------------------------------
@@ -131,9 +176,36 @@ export const publicRouteRegistry = {
     relatedRoutes: ['/'],
     calculatorCta: {
       label: 'Rentenlücke jetzt berechnen',
-      href: '/',
+      href: '/?topic=rentenluecke-rechner',
+    },
+    // Topic-preselection: arrive at the calculator with ETF preselected as the
+    // sole comparison product. GRV is always shown alongside the comparison
+    // (it's universal and not a `ProductId` in the engine registry), so we do
+    // not list it here — the existing always-on GRV display handles the
+    // "Rentenlücke (GRV vs ETF)" framing the topic page promises.
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['etf'],
     },
   },
+  // ---------------------------------------------------------------------------
+  // Future topic pages (#04–#07) — registered by their owning agents.
+  // The preselection seeds below are reference defaults that the future
+  // topic-page agents may transcribe (or adjust based on their content brief)
+  // when registering their own route entries here. GRV is implicitly always
+  // shown alongside the comparison and is NOT a ProductId, so it is omitted
+  // from `visibleProducts` arrays even where the topic page is "X vs GRV".
+  //
+  //   '/bav-rechner':                       { mode: 'compare', visibleProducts: ['etf', 'bav'] },
+  //   '/etf-vs-bav':                        { mode: 'compare', visibleProducts: ['etf', 'bav'] },
+  //   '/riester-rechner':                   { mode: 'compare', visibleProducts: ['etf', 'riester'] },
+  //   '/altersvorsorgedepot-rechner':       { mode: 'compare', visibleProducts: ['etf', 'altersvorsorgedepot'] },
+  //   '/riester-vs-altersvorsorgedepot':    { mode: 'compare', visibleProducts: ['riester', 'altersvorsorgedepot'] },
+  //   '/basisrente-rechner':                { mode: 'compare', visibleProducts: ['etf', 'basisrente'] },
+  //   '/private-rentenversicherung-rechner':{ mode: 'compare', visibleProducts: ['etf', 'versicherung'] },
+  //   '/rente-netto-berechnen':             { mode: 'compare', visibleProducts: [] },  // GRV-only landing
+  //   '/altersvorsorgeprodukte-vergleichen':{ mode: 'combine' },  // omit visibleProducts: user adds via wizard
+  // ---------------------------------------------------------------------------
   '/404': {
     canonical: '/404',
     title: 'Seite nicht gefunden — RentenWiki.de',
@@ -200,7 +272,7 @@ export function buildCanonicalUrl(routeId: PublicRouteId): string {
  *
  * Stripped keys:
  *   - `s` (share-state encoded by `urlShare.ts`)
- *   - `topic` (deferred preselection mechanism — issue #13)
+ *   - `topic` (preselection mechanism — issue #13; runtime hint, not canonical)
  *   - `utm_*` (defensive — we never emit these but inbound traffic might)
  *
  * Hash fragments are also dropped.
@@ -223,4 +295,49 @@ export function stripShareStateFromUrl(input: string): string {
   // URLSearchParams emits "?" even when empty; collapse to no query string.
   if ([...url.searchParams.keys()].length === 0) url.search = ''
   return url.toString()
+}
+
+// ---------------------------------------------------------------------------
+// Topic preselection resolver (issue #13)
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve a `?topic=<slug>` query string to a `TopicPreselection` seed.
+ *
+ * Returns `null` for any of:
+ *   - missing `?topic=` parameter
+ *   - unknown slug (no matching registry entry)
+ *   - matching slug but the entry has no `preselection` declared
+ *   - malformed query string (defensive)
+ *
+ * Pure function over `URLSearchParams` and the registry — no DOM, no
+ * localStorage. Callers (e.g. `LandingPage`) are responsible for combining
+ * this with `detectSavedMode()` so returning users are never overridden.
+ *
+ * Slug semantics: a topic slug is the canonical path WITHOUT the leading
+ * slash. E.g. `?topic=rentenluecke-rechner` matches `/rentenluecke-rechner`.
+ *
+ * @param searchString  Raw `window.location.search` (with or without leading `?`).
+ */
+export function resolveTopicPreselection(searchString: string): TopicPreselection | null {
+  if (!searchString) return null
+  let params: URLSearchParams
+  try {
+    // URLSearchParams accepts both "?foo=1" and "foo=1"; the former is
+    // produced by `window.location.search` so we normalise here.
+    const normalised = searchString.startsWith('?') ? searchString.slice(1) : searchString
+    params = new URLSearchParams(normalised)
+  } catch {
+    return null
+  }
+  const slug = params.get('topic')
+  if (!slug) return null
+  // Reject empty / whitespace-only slugs.
+  if (slug.trim() === '') return null
+  // Look up the registry entry by canonical path (`/<slug>`).
+  const canonicalPath = '/' + slug
+  const entry = (publicRouteRegistry as Record<string, PublicRoute>)[canonicalPath]
+  if (!entry) return null
+  if (!entry.preselection) return null
+  return entry.preselection
 }

@@ -302,24 +302,41 @@ function Calculator({ navigate }: CalculatorProps) {
   }, [profile, assumptions, hasComparisonSet])
 
   // -------------------------------------------------------------------------
-  // Landing page handlers (Group G issue 04)
+  // Landing page handlers (Group G issue 04 + topic preselection issue #13)
   // -------------------------------------------------------------------------
+
+  // Issue #13: when a topic-preselection auto-fires the combine-mode flow,
+  // the wizard has to mount with the matching products pre-checked. The
+  // wizard reads its `initialEnabledProducts` only on first render, so we
+  // must have this state set BEFORE setShowInventoryWizard(true).
+  const [wizardInitialProducts, setWizardInitialProducts] = useState<readonly ProductId[] | undefined>(
+    undefined,
+  )
 
   /**
    * Handle the user's choice from the landing page.
    * - combine: opens the InventoryWizard which handles both "I have contracts"
    *   and "I'm starting fresh" via its "Weiter ohne Verträge" finish button.
-   * - compare: direct entry to the compare dashboard.
+   *   When `visibleProducts` is supplied (issue #13 topic preselection), the
+   *   wizard mounts with those products pre-checked.
+   * - compare: direct entry to the compare dashboard. When `visibleProducts`
+   *   is supplied, the workspace's `visibleProducts` is seeded so the
+   *   ComparisonPicker lands with the topic page's products selected.
    */
   function handleLandingChoice(choice: LandingChoice) {
     if (choice.kind === 'compare') {
       portfolioState.setMode('compare')
+      if (choice.visibleProducts) {
+        const seed = [...choice.visibleProducts]
+        setAssumptions((current) => ({ ...current, visibleProducts: seed }))
+      }
       setAppView('compare')
       workspace.setActiveView('vergleich')
       return
     }
     if (choice.kind === 'combine') {
       portfolioState.setMode('combine')
+      setWizardInitialProducts(choice.visibleProducts)
       setShowInventoryWizard(true)
       return
     }
@@ -433,6 +450,7 @@ function Calculator({ navigate }: CalculatorProps) {
             age={profile.age}
             retirementAge={profile.retirementAge}
             publicHealthInsurance={profile.publicHealthInsurance}
+            initialEnabledProducts={wizardInitialProducts}
             onComplete={(workspace) => {
               // #09: write the wizard's workspace into portfolioState BEFORE
               // setMode so the first combine-mode render sees the new data, not
@@ -461,11 +479,13 @@ function Calculator({ navigate }: CalculatorProps) {
                 },
               }))
               setShowInventoryWizard(false)
+              setWizardInitialProducts(undefined)
               portfolioState.setMode('combine')
               setAppView('combine')
             }}
             onDismiss={() => {
               setShowInventoryWizard(false)
+              setWizardInitialProducts(undefined)
             }}
           />
         )}

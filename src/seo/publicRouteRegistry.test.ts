@@ -4,9 +4,11 @@ import {
   buildCanonicalUrl,
   getPublicRoute,
   publicRouteRegistry,
+  resolveTopicPreselection,
   stripShareStateFromUrl,
   SITE_ORIGIN,
   OG_DEFAULT_IMAGE_PATH,
+  type PublicRoute,
   type PublicRouteId,
 } from './publicRouteRegistry'
 
@@ -53,13 +55,43 @@ describe('publicRouteRegistry — entry shape', () => {
     expect(publicRouteRegistry['/rentenluecke-rechner'].inSitemap).toBe(true)
   })
 
-  it('every calculator CTA points at "/" (issue #13 deferred)', () => {
-    // The `?topic=<slug>` preselection mechanism is deferred to issue #13.
-    // This slice ships plain `/` for every CTA — capturing that here so the
-    // change is visible if a later edit accidentally regresses to a deep link.
-    for (const routeId of PUBLIC_ROUTE_IDS) {
-      expect(publicRouteRegistry[routeId].calculatorCta.href).toBe('/')
-    }
+  it('homepage and 404 calculator CTAs point at "/" (no preselection)', () => {
+    // Homepage and 404 do not declare `preselection` and therefore must use a
+    // bare-`/` CTA. Topic pages may use `/?topic=<slug>` (issue #13) — see
+    // the dedicated test below for that.
+    expect(publicRouteRegistry['/'].calculatorCta.href).toBe('/')
+    expect(publicRouteRegistry['/404'].calculatorCta.href).toBe('/')
+  })
+
+  it('topic-page CTA uses ?topic=<slug> when preselection is declared (issue #13)', () => {
+    const entry = publicRouteRegistry['/rentenluecke-rechner']
+    expect(entry.preselection).toBeDefined()
+    // The CTA href should embed the slug so first-time landings auto-fire
+    // the matching LandingChoice in `LandingPage`.
+    expect(entry.calculatorCta.href).toBe('/?topic=rentenluecke-rechner')
+  })
+})
+
+describe('preselection — issue #13', () => {
+  it('rentenluecke-rechner declares compare mode with ETF preselected', () => {
+    // The narrow inferred type (`as const satisfies …`) does not surface the
+    // optional `preselection` field on every entry literally, so we read via
+    // the wider `PublicRoute` type to assert the runtime value.
+    const entry: PublicRoute = publicRouteRegistry['/rentenluecke-rechner']
+    expect(entry.preselection).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf'],
+    })
+  })
+
+  it('homepage has no preselection (visiting / itself never auto-selects)', () => {
+    const entry: PublicRoute = publicRouteRegistry['/']
+    expect(entry.preselection).toBeUndefined()
+  })
+
+  it('404 has no preselection', () => {
+    const entry: PublicRoute = publicRouteRegistry['/404']
+    expect(entry.preselection).toBeUndefined()
   })
 })
 
@@ -118,8 +150,11 @@ describe('stripShareStateFromUrl — canonical strip', () => {
     expect(stripped).toBe('https://rentenwiki.de/')
   })
 
-  it('removes the deferred ?topic=<slug> parameter (issue #13)', () => {
-    const original = 'https://rentenwiki.de/?topic=rentenluecke'
+  it('removes the ?topic=<slug> preselection parameter (issue #13)', () => {
+    // ?topic=<slug> is a runtime hint for `LandingPage`'s auto-fire path;
+    // canonical surfaces (sitemap, link rel=canonical, og:url) must never
+    // carry it, even though the topic-page CTA href does (issue #13).
+    const original = 'https://rentenwiki.de/?topic=rentenluecke-rechner'
     const stripped = stripShareStateFromUrl(original)
     expect(stripped).toBe('https://rentenwiki.de/')
   })
@@ -152,5 +187,58 @@ describe('stripShareStateFromUrl — canonical strip', () => {
 describe('OG_DEFAULT_IMAGE_PATH', () => {
   it('points at the shared brand placeholder (per-route cards in issue #08)', () => {
     expect(OG_DEFAULT_IMAGE_PATH).toBe('/og/default.png')
+  })
+})
+
+describe('resolveTopicPreselection — issue #13', () => {
+  it('returns the registered preselection for a known slug', () => {
+    expect(resolveTopicPreselection('?topic=rentenluecke-rechner')).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf'],
+    })
+  })
+
+  it('accepts query strings without a leading "?"', () => {
+    // window.location.search includes the "?" but URLSearchParams sometimes
+    // does not. Both forms must resolve identically.
+    expect(resolveTopicPreselection('topic=rentenluecke-rechner')).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf'],
+    })
+  })
+
+  it('returns null for an unknown slug', () => {
+    expect(resolveTopicPreselection('?topic=does-not-exist')).toBeNull()
+  })
+
+  it('returns null when the topic param is missing', () => {
+    expect(resolveTopicPreselection('?lang=de')).toBeNull()
+  })
+
+  it('returns null for an empty query string', () => {
+    expect(resolveTopicPreselection('')).toBeNull()
+  })
+
+  it('returns null when the topic value is empty', () => {
+    expect(resolveTopicPreselection('?topic=')).toBeNull()
+  })
+
+  it('returns null when the matching route has no preselection', () => {
+    // The homepage entry exists but declares no preselection — visiting
+    // /?topic=/ would trigger this branch (defensive: no slug ever resolves
+    // to "/" because slug lacks the leading slash, but a future entry
+    // without a preselection should also return null).
+    expect(resolveTopicPreselection('?topic=')).toBeNull()
+  })
+
+  it('ignores other query parameters and returns the topic match', () => {
+    // Defensive: extra query params (utm_*, share-state) must not break the
+    // resolver. The resolver only reads `topic`.
+    expect(
+      resolveTopicPreselection('?topic=rentenluecke-rechner&utm_source=email&s=abc'),
+    ).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf'],
+    })
   })
 })

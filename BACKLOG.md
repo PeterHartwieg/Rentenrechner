@@ -122,7 +122,7 @@ Suggested order:
 
 - `P3` **Ad-hoc savings mode.** Irregular ETF/cash contributions and one-off deposits without a fixed monthly savings rate.
 - `P3` **Recommendation rule engine.** Dedicated module (e.g. `src/app/recommendations.ts`) that turns results, portfolio metadata, cap headroom, and risk metrics into explainable recommendation reasons.
-- `P3` **Data-driven trigger mapping.** `src/content/triggers.ts` exists today (carries `PATH_OPTIONS`, `VISIBLE_PRODUCTS_BY_PATH`, `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS`). Extend it for new Group G entry flows / trigger cards before adding more hard-coded paths in `GuidedSetup`.
+- `P3` **Data-driven trigger mapping.** `src/content/triggers.ts` carries `PRIMARY_PRODUCT_IDS` / `SECONDARY_PRODUCT_IDS` (comparison-picker grouping). Topic-page deep-link preselection is owned by `src/seo/publicRouteRegistry.ts` — each route may declare a `preselection: { mode, visibleProducts? }` and `LandingPage` reads `?topic=<slug>` via `resolveTopicPreselection` (issue #13). When new entry-flow needs arise, prefer extending the SEO registry's `preselection` field over inventing a new keyspace. The legacy `PATH_OPTIONS` / `VISIBLE_PRODUCTS_BY_PATH` / `WIZARD_REGISTRY` mechanism has been removed.
 - `P3` **Partial German career or international returnee scenario.** Decide whether in scope; if yes, add a user with foreign pension rights and incomplete German GRV history. If no, document as out of scope.
 - `P3` **Risk-averse guarantee seeker scenario.** A user who values guaranteed income more than expected capital so the recommendation can trade off certainty, flexibility, and return instead of always ranking by expected net value.
 

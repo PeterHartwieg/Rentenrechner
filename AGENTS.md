@@ -59,7 +59,7 @@ For the full module map (combine mode, projection, transfer, funding, allowance,
 | Add a publication / commercial-license feature | `BACKLOG.md` Group P |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/{ImpressumPage,DatenschutzPage,LegalFooter}.tsx` |
 | Add a new app route | `src/app/useRoute.ts` (`Route` union + `KNOWN_ROUTES`), then render in `src/App.tsx` |
-| Add or extend a guided-setup entry flow | `src/content/triggers.ts` (`PATH_OPTIONS` + `VISIBLE_PRODUCTS_BY_PATH`) |
+| Deep-link a topic page into the calculator (mode + product preselection) | `src/seo/publicRouteRegistry.ts` (`preselection` on the route entry); `LandingPage` reads `?topic=<slug>` via `resolveTopicPreselection`. Issue #13. |
 | Reuse a payout-mode / fee / Beitragsdynamik / offer-capital section | `src/features/inputs/sections/` |
 | Reuse an inventory field component (`InvField`, option tables) | `src/features/inventory/{fields.tsx,fieldHelpers.ts}` |
 | Change combine-mode instance projection (singleton view, neutralised defaults) | `src/engine/portfolioProjection.ts` |
@@ -201,7 +201,7 @@ All UX backlog tiers and Phase 0 (Group 0) preflight shipped (commit `56fdec9`, 
 - **Phase 0 design docs** in `docs/`: `golden-coverage-audit.md` (read-only audit of every external oracle and integration snapshot — Group G's safety net) and `portfolio-schema-design.md` (binding design for the singleton-to-instance migration: schemaVersion 1 → 2, instance-id format, storage-key bump, `PortfolioAdapter` shape).
 - **Reusable input sections** in `src/features/inputs/sections/`: `PayoutModeSection`, `FeeSection`, `BeitragsdynamikField`, `OfferCapitalCompareField`. Provenance primitives in `src/features/results/provenance.tsx`. `BavInputs` and `InsuranceInputs` share one fee-input implementation (presets, threshold warnings, Effektivkosten all-in toggle).
 - **Hardened scenario-library load**: `migrateAndValidateState` in `storage.ts` is the shared migrate+validate pipeline; `scenarioLibrary.ts` runs every entry through it on load and drops malformed entries silently. Forward-compat guard via `SAVED_SCENARIO_VERSION`.
-- **Trigger config** in `src/content/triggers.ts`: `PATH_OPTIONS`, `VISIBLE_PRODUCTS_BY_PATH`, `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS`. Add new Group G entry flows here, not inline in components.
+- **Trigger config** in `src/content/triggers.ts`: `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS` group the comparison picker. The earlier `PATH_OPTIONS` / `VISIBLE_PRODUCTS_BY_PATH` / `WIZARD_REGISTRY` mechanism is gone — guided-setup flow is now `LandingPage` → `InventoryWizard`. Topic-page deep-linking lives in the SEO route registry (issue #13): each `PublicRoute` may declare an optional `preselection: { mode, visibleProducts? }`, and `LandingPage` reads `?topic=<slug>` via `resolveTopicPreselection` to auto-fire the right mode + product seed for first-time visitors. Returning users (saved state) are never overridden.
 
 Remaining publication work: public deployment (hosting + CI). The branding decision (`RentenWiki.de`) shipped in the Phase 3 release-readiness wave. After that, OCR + backend introduction (Group B) and scenario-led portfolio redesign (Group G P1, including the singleton-to-instance migration). See `BACKLOG.md`.
 

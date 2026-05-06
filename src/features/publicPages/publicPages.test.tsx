@@ -38,11 +38,16 @@ describe('RentenluckeRechnerPage — visible content for prerender', () => {
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
 
-  it('renders a calculator CTA deep-link to /', () => {
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<RentenluckeRechnerPage />)
     const cta = container.querySelector('.public-cta')
     expect(cta).not.toBeNull()
-    expect(cta?.getAttribute('href')).toBe('/')
+    // Issue #13: topic-page CTAs use `/?topic=<slug>` so first-time visitors
+    // land in the calculator with the right comparison preselected. The
+    // canonical URL of the page itself (sitemap, link rel=canonical, JSON-LD)
+    // remains the bare `/rentenluecke-rechner` — covered by the registry
+    // and stripShareStateFromUrl tests.
+    expect(cta?.getAttribute('href')).toBe('/?topic=rentenluecke-rechner')
   })
 
   it('renders an internal link back to the homepage and to the legal pages', () => {
