@@ -74,15 +74,20 @@ export async function saveReportLocally(input: LocalSaveInput): Promise<LocalSav
 
   const base = buildIssueFilenameBase(report)
   const mdFilename = `${base}.md`
+  const pngFilename = report.screenshot && screenshot ? `${base}-screenshot.png` : undefined
+  const reportForMarkdown: FeedbackReport =
+    pngFilename && report.screenshot
+      ? { ...report, screenshot: { ...report.screenshot, fileName: pngFilename } }
+      : report.screenshot && !screenshot
+        ? { ...report, screenshot: undefined }
+        : report
 
   // Build and write the Markdown file.
-  const mdContent = buildIssueMarkdown(report)
+  const mdContent = buildIssueMarkdown(reportForMarkdown)
   await saveToDirectory(handle, mdFilename, mdContent)
 
   // Write the screenshot PNG alongside the .md when the report includes one.
-  let pngFilename: string | undefined
-  if (report.screenshot && screenshot) {
-    pngFilename = `${base}-screenshot.png`
+  if (pngFilename && screenshot) {
     const pngBytes = dataUrlToUint8Array(screenshot.dataUrl)
     await saveBinaryToDirectory(handle, pngFilename, pngBytes)
   }

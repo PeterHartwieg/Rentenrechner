@@ -257,6 +257,23 @@ describe('saveReportLocally()', () => {
     expect(mdBase).toBe(pngBase)
   })
 
+  it('md screenshot reference points to the written png filename', async () => {
+    const { handle, writes } = makeFakeHandle()
+    installPicker(handle)
+
+    const screenshot = makeScreenshot()
+    const report = makeReport({
+      privacyFlags: defaultPrivacyFlags(true),
+      screenshot: { fileName: 'screenshot.png', width: 1280, height: 800 },
+    })
+    const { mdFilename, pngFilename } = await saveReportLocally({ report, screenshot })
+
+    const content = writes[mdFilename] as string
+    expect(pngFilename).toBeDefined()
+    expect(content).toContain(`](./${pngFilename})`)
+    expect(content).not.toContain('](./screenshot.png)')
+  })
+
   it('re-throws errors from the directory handle', async () => {
     const writeError = new Error('Disk full')
     ;(window as { showDirectoryPicker?: unknown }).showDirectoryPicker = vi.fn().mockResolvedValue({
