@@ -66,6 +66,8 @@ async function loadSourceModules() {
     const reactDomServer = await import('react-dom/server')
     const rentenluecke = await server.ssrLoadModule('/src/features/publicPages/RentenluckeRechnerPage.tsx')
     const pageNotFound = await server.ssrLoadModule('/src/features/publicPages/PageNotFound.tsx')
+    const bavRechner = await server.ssrLoadModule('/src/features/publicPages/BavRechnerPage.tsx')
+    const etfVsBav = await server.ssrLoadModule('/src/features/publicPages/EtfVsBavPage.tsx')
     const basisrenteRechner = await server.ssrLoadModule('/src/features/publicPages/BasisrenteRechnerPage.tsx')
     const privateRvRechner = await server.ssrLoadModule('/src/features/publicPages/PrivateRentenversicherungRechnerPage.tsx')
     const renteNettoBerechnen = await server.ssrLoadModule('/src/features/publicPages/RenteNettoBerechnePage.tsx')
@@ -81,6 +83,8 @@ async function loadSourceModules() {
       reactDomServer,
       rentenluecke,
       pageNotFound,
+      bavRechner,
+      etfVsBav,
       basisrenteRechner,
       privateRvRechner,
       renteNettoBerechnen,
@@ -95,6 +99,8 @@ async function loadSourceModules() {
 function pickComponent(routeId, modules) {
   if (routeId === '/rentenluecke-rechner') return modules.rentenluecke.RentenluckeRechnerPage
   if (routeId === '/404') return modules.pageNotFound.PageNotFound
+  if (routeId === '/bav-rechner') return modules.bavRechner.BavRechnerPage
+  if (routeId === '/etf-vs-bav') return modules.etfVsBav.EtfVsBavPage
   if (routeId === '/basisrente-rechner') return modules.basisrenteRechner.BasisrenteRechnerPage
   if (routeId === '/private-rentenversicherung-rechner') return modules.privateRvRechner.PrivateRentenversicherungRechnerPage
   if (routeId === '/rente-netto-berechnen') return modules.renteNettoBerechnen.RenteNettoBerechnePage
@@ -186,6 +192,7 @@ async function main() {
       // returning users. The static HTML still serves as SEO content for
       // first-paint crawlers.
       const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
+        || routeId === '/bav-rechner' || routeId === '/etf-vs-bav'
         || routeId === '/basisrente-rechner' || routeId === '/private-rentenversicherung-rechner'
         || routeId === '/rente-netto-berechnen' || routeId === '/altersvorsorgeprodukte-vergleichen'
       const rootMarker = hydrateStable ? ' data-rentenwiki-prerendered="1"' : ''

@@ -14,6 +14,8 @@ export type Route =
   | '/impressum'
   | '/datenschutz'
   | '/rentenluecke-rechner'
+  | '/bav-rechner'
+  | '/etf-vs-bav'
   | '/riester-rechner'
   | '/altersvorsorgedepot-rechner'
   | '/riester-vs-altersvorsorgedepot'
@@ -28,6 +30,8 @@ const KNOWN_ROUTES: Route[] = [
   '/impressum',
   '/datenschutz',
   '/rentenluecke-rechner',
+  '/bav-rechner',
+  '/etf-vs-bav',
   '/riester-rechner',
   '/altersvorsorgedepot-rechner',
   '/riester-vs-altersvorsorgedepot',

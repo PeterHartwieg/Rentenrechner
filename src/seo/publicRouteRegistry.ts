@@ -212,6 +212,63 @@ export const publicRouteRegistry = {
     },
   },
   // ---------------------------------------------------------------------------
+  // Issue #04 — bAV ↔ ETF cluster
+  // ---------------------------------------------------------------------------
+  '/bav-rechner': {
+    canonical: '/bav-rechner',
+    title: 'bAV Rechner — Betriebliche Altersvorsorge Entgeltumwandlung 2026 | RentenWiki.de',
+    metaDescription:
+      'Betriebliche Altersvorsorge (bAV) berechnen: Entgeltumwandlung, Arbeitgeberzuschuss ' +
+      '(§ 1a BetrAVG), §3 Nr. 63 EStG-Grenzen, GRV-Reduktion und KV/PV in der Rente. Stand 2026.',
+    h1: 'bAV Rechner — Betriebliche Altersvorsorge und Entgeltumwandlung 2026',
+    summary:
+      'Erklärt, wie Entgeltumwandlung funktioniert, welche Steuer- und SV-Grenzen gelten ' +
+      '(§ 3 Nr. 63 EStG, § 1 SvEV), warum der gesetzliche Arbeitgeberzuschuss (§ 1a Abs. 1a ' +
+      'BetrAVG) und die GRV-Reduktion für die Gesamtbewertung entscheidend sind, und wie ' +
+      'Kranken- und Pflegeversicherung in der Rentenphase berechnet werden. Stand 2026, keine Beratung.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebApplication',
+    relatedRoutes: ['/', '/etf-vs-bav', '/rentenluecke-rechner'],
+    calculatorCta: {
+      label: 'bAV jetzt berechnen',
+      href: '/?topic=bav-rechner',
+    },
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['etf', 'bav'],
+    },
+  },
+  '/etf-vs-bav': {
+    canonical: '/etf-vs-bav',
+    title: 'ETF vs. bAV — Vergleich mit gleicher Nettokostenbasis 2026 | RentenWiki.de',
+    metaDescription:
+      'ETF-Sparplan und betriebliche Altersvorsorge (bAV) vergleichen: gleiche Nettokostenbasis, ' +
+      'Steuern, Arbeitgeberzuschuss, Kosten, Flexibilität und KV/PV-Unterschiede. Stand 2026. ' +
+      'Keine Empfehlung.',
+    h1: 'ETF vs. bAV — Vergleich der Altersvorsorge mit gleicher Nettokostenbasis 2026',
+    summary:
+      'Stellt ETF-Sparplan und betriebliche Altersvorsorge (Entgeltumwandlung) auf derselben ' +
+      'Nettokostenbasis gegenüber: Steuervorteil und SV-Einsparung in der Einzahlphase, ' +
+      'Arbeitgeberzuschuss, Produktkosten, GRV-Reduktion, Steuer und KV/PV in der Auszahlphase, ' +
+      'Flexibilität und Portabilität. Ergebnis hängt von Einkommen, Arbeitgeberzuschuss, ' +
+      'Vertragskosten und Ruhestandsannahmen ab. Stand 2026, keine Empfehlung.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'Article',
+    relatedRoutes: ['/', '/bav-rechner', '/rentenluecke-rechner'],
+    calculatorCta: {
+      label: 'ETF und bAV jetzt vergleichen',
+      href: '/?topic=etf-vs-bav',
+    },
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['etf', 'bav'],
+    },
+  },
+  // ---------------------------------------------------------------------------
   // Issue #05 — Subsidized pension paths cluster (Riester + AVD)
   // ---------------------------------------------------------------------------
   '/riester-rechner': {

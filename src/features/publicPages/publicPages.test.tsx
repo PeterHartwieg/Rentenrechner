@@ -11,6 +11,8 @@ import { BasisrenteRechnerPage } from './BasisrenteRechnerPage'
 import { PrivateRentenversicherungRechnerPage } from './PrivateRentenversicherungRechnerPage'
 import { RenteNettoBerechnePage } from './RenteNettoBerechnePage'
 import { AltersvorsorgeproduktePage } from './AltersvorsorgeproduktePage'
+import { BavRechnerPage } from './BavRechnerPage'
+import { EtfVsBavPage } from './EtfVsBavPage'
 import { PageNotFound } from './PageNotFound'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 
@@ -953,6 +955,275 @@ describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
 describe('AltersvorsorgeproduktePage — prerendered disclaimer', () => {
   it('prerendered HTML contains the disclaimer text', () => {
     const html = renderToString(<AltersvorsorgeproduktePage />)
+    expect(html).toContain('Modellrechnung')
+    expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// BavRechnerPage — issue #04
+// ---------------------------------------------------------------------------
+
+describe('BavRechnerPage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<BavRechnerPage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/bav-rechner'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<BavRechnerPage />)
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/bav-rechner'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line', () => {
+    const { container } = render(<BavRechnerPage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer', () => {
+    const { container } = render(<BavRechnerPage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
+    const { container } = render(<BavRechnerPage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=bav-rechner')
+  })
+
+  it('renders internal links to homepage, etf-vs-bav sibling, and legal pages', () => {
+    const { container } = render(<BavRechnerPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))
+    expect(links).toContain('/')
+    expect(links).toContain('/etf-vs-bav')
+    expect(links).toContain('/rentenluecke-rechner')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+    const siblingLinks = links.filter(
+      (h) => h && h !== '/' && h !== '/impressum' && h !== '/datenschutz' && !h.startsWith('/?'),
+    )
+    expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('cites §-references and public sources inline (YMYL guardrail)', () => {
+    const { container } = render(<BavRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?\d+\s?(SGB\s?V|SGB\s?IV|EStG|BetrAVG|SvEV)/i)
+    expect(text).toMatch(/(Bundesregierung|Deutsche Rentenversicherung|BMAS|Verbraucherzentrale|GDV)/i)
+  })
+
+  it('does not contain empfohlen winner copy', () => {
+    const { container } = render(<BavRechnerPage />)
+    const text = container.textContent ?? ''
+    expect(text).not.toMatch(/\bempfohlen\b/i)
+  })
+
+  it('does not call simulation engine modules during render', () => {
+    const html = renderToString(<BavRechnerPage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<BavRechnerPage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
+  })
+})
+
+describe('BavRechnerPage — registry entry (issue #04)', () => {
+  it('/bav-rechner is registered with full metadata', () => {
+    const entry = publicRouteRegistry['/bav-rechner']
+    expect(entry.canonical).toBe('/bav-rechner')
+    expect(entry.title).toContain('RentenWiki.de')
+    expect(entry.metaDescription.length).toBeGreaterThan(40)
+    expect(entry.metaDescription.length).toBeLessThanOrEqual(220)
+    expect(entry.h1.length).toBeGreaterThan(5)
+    expect(entry.robots).toBe('index,follow')
+    expect(entry.inSitemap).toBe(true)
+    expect(entry.jsonLdType).toBe('WebApplication')
+  })
+
+  it('/bav-rechner declares preselection with compare mode + etf + bav', () => {
+    const entry = publicRouteRegistry['/bav-rechner']
+    expect(entry.preselection).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf', 'bav'],
+    })
+  })
+
+  it('/bav-rechner CTA uses ?topic=bav-rechner', () => {
+    expect(publicRouteRegistry['/bav-rechner'].calculatorCta.href).toBe('/?topic=bav-rechner')
+  })
+
+  it('/bav-rechner has at least 2 related routes including etf-vs-bav', () => {
+    const entry = publicRouteRegistry['/bav-rechner']
+    expect(entry.relatedRoutes.length).toBeGreaterThanOrEqual(2)
+    expect(entry.relatedRoutes).toContain('/etf-vs-bav')
+  })
+})
+
+describe('BavRechnerPage — prerender disclaimer', () => {
+  it('prerendered HTML contains the disclaimer text', () => {
+    const html = renderToString(<BavRechnerPage />)
+    expect(html).toContain('Modellrechnung')
+    expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// EtfVsBavPage — issue #04
+// ---------------------------------------------------------------------------
+
+describe('EtfVsBavPage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<EtfVsBavPage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/etf-vs-bav'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<EtfVsBavPage />)
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/etf-vs-bav'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line', () => {
+    const { container } = render(<EtfVsBavPage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer', () => {
+    const { container } = render(<EtfVsBavPage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
+    const { container } = render(<EtfVsBavPage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=etf-vs-bav')
+  })
+
+  it('renders internal links to homepage, bav-rechner sibling, and legal pages', () => {
+    const { container } = render(<EtfVsBavPage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))
+    expect(links).toContain('/')
+    expect(links).toContain('/bav-rechner')
+    expect(links).toContain('/rentenluecke-rechner')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+    const siblingLinks = links.filter(
+      (h) => h && h !== '/' && h !== '/impressum' && h !== '/datenschutz' && !h.startsWith('/?'),
+    )
+    expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('contains a comparison table', () => {
+    const { container } = render(<EtfVsBavPage />)
+    const tables = container.querySelectorAll('table')
+    expect(tables.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('contains plain-language caveats about conditions (no winner framing)', () => {
+    const { container } = render(<EtfVsBavPage />)
+    const text = container.textContent ?? ''
+    expect(text).not.toMatch(/\bbessere?\b/i)
+    expect(text).not.toMatch(/\bempfohlen\b/i)
+    expect(text).toMatch(/(hängt.*ab|abhängig|Annahmen|Einflussgrößen|Einflussgröße)/i)
+  })
+
+  it('cites §-references and public sources inline (YMYL guardrail)', () => {
+    const { container } = render(<EtfVsBavPage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?\d+\s?(SGB\s?V|SGB\s?IV|EStG|BetrAVG|SvEV)/i)
+    expect(text).toMatch(/(Bundesregierung|Deutsche Rentenversicherung|Verbraucherzentrale|GDV)/i)
+  })
+
+  it('does not call simulation engine modules during render', () => {
+    const html = renderToString(<EtfVsBavPage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<EtfVsBavPage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
+  })
+})
+
+describe('EtfVsBavPage — registry entry (issue #04)', () => {
+  it('/etf-vs-bav is registered with full metadata', () => {
+    const entry = publicRouteRegistry['/etf-vs-bav']
+    expect(entry.canonical).toBe('/etf-vs-bav')
+    expect(entry.title).toContain('RentenWiki.de')
+    expect(entry.metaDescription.length).toBeGreaterThan(40)
+    expect(entry.metaDescription.length).toBeLessThanOrEqual(220)
+    expect(entry.h1.length).toBeGreaterThan(5)
+    expect(entry.robots).toBe('index,follow')
+    expect(entry.inSitemap).toBe(true)
+    // Comparison page → Article JSON-LD per locked decision in issue #04 brief
+    expect(entry.jsonLdType).toBe('Article')
+  })
+
+  it('/etf-vs-bav declares preselection with compare mode + etf + bav', () => {
+    const entry = publicRouteRegistry['/etf-vs-bav']
+    expect(entry.preselection).toEqual({
+      mode: 'compare',
+      visibleProducts: ['etf', 'bav'],
+    })
+  })
+
+  it('/etf-vs-bav CTA uses ?topic=etf-vs-bav', () => {
+    expect(publicRouteRegistry['/etf-vs-bav'].calculatorCta.href).toBe('/?topic=etf-vs-bav')
+  })
+
+  it('/etf-vs-bav has at least 2 related routes including /bav-rechner', () => {
+    const entry = publicRouteRegistry['/etf-vs-bav']
+    expect(entry.relatedRoutes.length).toBeGreaterThanOrEqual(2)
+    expect(entry.relatedRoutes).toContain('/bav-rechner')
+  })
+})
+
+describe('EtfVsBavPage — prerender disclaimer', () => {
+  it('prerendered HTML contains the disclaimer text', () => {
+    const html = renderToString(<EtfVsBavPage />)
     expect(html).toContain('Modellrechnung')
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })

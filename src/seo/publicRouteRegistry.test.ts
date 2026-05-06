@@ -13,13 +13,15 @@ import {
 } from './publicRouteRegistry'
 
 describe('publicRouteRegistry — entry shape', () => {
-  it('exposes all registered routes (issues #02, #05, #06, #07)', () => {
+  it('exposes all registered routes (issues #02, #04, #05, #06, #07)', () => {
     // Snapshot the canonical paths so adding a new route shows up as a diff
     // in code review (rather than hiding behind a `Object.keys` length test).
     // Update this list when adding new public routes.
     expect(PUBLIC_ROUTE_IDS).toEqual([
       '/',
       '/rentenluecke-rechner',
+      '/bav-rechner',
+      '/etf-vs-bav',
       '/riester-rechner',
       '/altersvorsorgedepot-rechner',
       '/riester-vs-altersvorsorgedepot',
