@@ -56,6 +56,7 @@ For the full module map (combine mode, projection, transfer, funding, allowance,
 | Change UI layout or inputs (compare mode) | `docs/context/ui.md`, `src/features/inputs/productUiRegistry.tsx` |
 | Add a new product | `src/engine/products/README.md`, plus `src/features/inventory/inventoryProductRegistry.ts` (inventory side) |
 | Update annual statutory values | `src/rules/de2026.ts` |
+| SEO content freshness for rule-year update | `docs/seo/yearly-update-checklist.md` |
 | Add a publication / commercial-license feature | `BACKLOG.md` → "Publication polish" |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/{ImpressumPage,DatenschutzPage,LegalFooter}.tsx` |
 | Add a new app route | `src/app/useRoute.ts` (`Route` union + `KNOWN_ROUTES`), then render in `src/App.tsx` |
