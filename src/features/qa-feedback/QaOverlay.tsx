@@ -1,6 +1,13 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { QaFeedbackContext } from './QaFeedbackContext'
-import { resolveTarget } from './resolveTarget'
+import { resolveTarget, QA_INTERACTIVE_SELECTOR } from './resolveTarget'
+
+/**
+ * Elements the overlay must NEVER pin. Without this guard the catch-all
+ * interactive selector would match the "QA-Modus aktiv / Beenden" chip and
+ * prevent deactivation, and would also try to pin the overlay's own DOM.
+ */
+const QA_EXCLUDE_SELECTOR = '[data-qa-overlay], [data-testid="qa-indicator"]'
 
 interface OutlineRect {
   top: number
@@ -77,14 +84,16 @@ export function QaOverlay() {
     if (!ctx.enabled) return
 
     function onPointerMove(event: PointerEvent) {
-      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-qa-target]')
+      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(
+        QA_INTERACTIVE_SELECTOR,
+      )
       if (!target) {
         setHover(null)
         return
       }
-      // Skip the overlay's own DOM (it has no data-qa-target anyway, but
-      // this guards against future overlay sub-children that might).
-      if (target.closest('[data-qa-overlay]')) {
+      // Skip the overlay's own DOM and the QA-mode indicator chip — those
+      // are infrastructure controls the tester needs to keep operating QA mode.
+      if (target.closest(QA_EXCLUDE_SELECTOR)) {
         setHover(null)
         return
       }
@@ -102,9 +111,9 @@ export function QaOverlay() {
 
     function onClick(event: MouseEvent) {
       const originalTarget = event.target as HTMLElement | null
-      const target = originalTarget?.closest<HTMLElement>('[data-qa-target]')
+      const target = originalTarget?.closest<HTMLElement>(QA_INTERACTIVE_SELECTOR)
       if (!target) return
-      if (target.closest('[data-qa-overlay]')) return
+      if (target.closest(QA_EXCLUDE_SELECTOR)) return
       // Suppress the underlying click so the calculator doesn't react to the
       // tester's selection (e.g. a button submit).
       event.preventDefault()
@@ -114,9 +123,11 @@ export function QaOverlay() {
     }
 
     function onFocusIn(event: FocusEvent) {
-      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-qa-target]')
+      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(
+        QA_INTERACTIVE_SELECTOR,
+      )
       // Only track focus on qa-targets outside the overlay panel itself.
-      if (!target || target.closest('[data-qa-overlay]')) {
+      if (!target || target.closest(QA_EXCLUDE_SELECTOR)) {
         keyboardFocusRef.current = null
         setKbFocusRect(null)
         return
@@ -132,7 +143,7 @@ export function QaOverlay() {
       requestAnimationFrame(() => {
         if (
           !document.activeElement ||
-          !document.activeElement.closest('[data-qa-target]')
+          !document.activeElement.closest(QA_INTERACTIVE_SELECTOR)
         ) {
           keyboardFocusRef.current = null
           setKbFocusRect(null)

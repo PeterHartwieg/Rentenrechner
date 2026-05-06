@@ -512,6 +512,11 @@ function triggerBlobDownload(blob: Blob, fileName: string) {
   anchor.href = url
   anchor.download = fileName
   anchor.style.display = 'none'
+  // Mark the synthetic anchor as overlay infrastructure so QaOverlay's
+  // capture-phase click handler does NOT intercept the download click.
+  // Without this, the catch-all interactive selector (`a[href]`) would match
+  // the anchor and call preventDefault, blocking the download.
+  anchor.setAttribute('data-qa-overlay', '')
   document.body.appendChild(anchor)
   anchor.click()
   document.body.removeChild(anchor)

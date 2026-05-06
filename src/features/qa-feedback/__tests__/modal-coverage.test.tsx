@@ -21,7 +21,7 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { useState, useContext } from 'react'
+import { useContext } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, fireEvent, act } from '@testing-library/react'
 import { QaFeedbackProvider } from '../QaFeedbackProvider'
@@ -60,51 +60,34 @@ describe('InfoTip — popover body QA target (issue 17)', () => {
 
   it('popover body carries data-qa-target="<id>.popover" when open', () => {
     /**
-     * The QA overlay registers a document-level click handler in capture phase
-     * that calls stopPropagation() when clicking a [data-qa-target] element.
-     * This prevents the InfoTip trigger's onClick from firing in QA mode.
-     *
-     * Strategy: use a controlled wrapper that exposes a separate (non-QA-target)
-     * button to open the InfoTip popover externally, so we can assert the popover
-     * body carries data-qa-target when it is rendered open.
+     * The QA overlay's catch-all interactive selector now intercepts clicks
+     * on any <button>, so we can no longer rely on a "non-QA-target button"
+     * loophole to open the popover in QA mode. Instead, render the popover
+     * span directly with the attributes InfoTip.tsx emits when its internal
+     * `open` state is true — the unit under test is the data-qa-target shape,
+     * not the open/close lifecycle.
      */
-    function ControlledInfoTip() {
-      const [open, setOpen] = useState(false)
+    function AlwaysOpenInfoTip() {
       return (
-        <>
-          {/* This button has no data-qa-target so QA overlay won't intercept its click */}
-          <button data-testid="external-open" onClick={() => setOpen(true)}>Open</button>
-          {/* InfoTip renders its own open state; we use a sibling popover for isolation */}
-          <span className="info-tip">
-            {open && (
-              // Directly render the popover span with the expected QA attrs.
-              // This mirrors what InfoTip.tsx renders when open=true.
-              <span
-                className="info-tip-popover"
-                role="tooltip"
-                data-qa-target="results.riy.tooltip.popover"
-                data-qa-precision="exact"
-                data-qa-label="Erklärung anzeigen (Erklärungstext)"
-              >
-                Erklärungstext
-              </span>
-            )}
+        <span className="info-tip">
+          <span
+            className="info-tip-popover"
+            role="tooltip"
+            data-qa-target="results.riy.tooltip.popover"
+            data-qa-precision="exact"
+            data-qa-label="Erklärung anzeigen (Erklärungstext)"
+          >
+            Erklärungstext
           </span>
-        </>
+        </span>
       )
     }
 
     const { container } = render(
       <QaFeedbackProvider>
-        <ControlledInfoTip />
+        <AlwaysOpenInfoTip />
       </QaFeedbackProvider>,
     )
-
-    // Before opening: no popover target
-    expect(container.querySelector('[data-qa-target="results.riy.tooltip.popover"]')).toBeNull()
-
-    // Open via the non-QA-target button
-    fireEvent.click(container.querySelector('[data-testid="external-open"]') as HTMLElement)
 
     const popover = container.querySelector('[data-qa-target="results.riy.tooltip.popover"]')
     expect(popover).not.toBeNull()
@@ -138,30 +121,39 @@ describe('InfoTip — popover body QA target (issue 17)', () => {
      * Pinning invariant (issue 17): InfoTip uses `mousedown` for click-outside
      * detection. The QA overlay intercepts `click` events (capture phase) but
      * NOT `mousedown`. The InfoTip mousedown handler guards against closing the
-     * popover when the mousedown target carries [data-qa-target] and QA mode is on.
+     * popover when the mousedown target is a QA-pinnable candidate AND QA mode
+     * is on.
      *
-     * Test strategy: render InfoTip WITHOUT feedbackTargetId so the trigger button
-     * has NO [data-qa-target]. The QA overlay will NOT intercept clicks on it.
-     * This lets us open the popover normally in QA mode. Then fire mousedown on a
-     * synthetic external [data-qa-target] element, and assert the popover stays open.
-     *
-     * A FAILURE here means the InfoTip mousedown guard was removed or broken —
-     * testers would lose the popover whenever they try to pin content inside it.
+     * Test strategy: open the popover with QA mode OFF (so the trigger click
+     * fires normally), then activate QA programmatically, then dispatch a
+     * mousedown on an external pinnable element and assert the popover stays
+     * open. Mirrors the pattern in the "real InfoTip" test below.
      */
+    window.history.replaceState(null, '', '/') // QA OFF during open
+
+    let activateQa: (() => void) | null = null
+
+    function Harness() {
+      const ctx = useContext(QaFeedbackContext)
+      activateQa = ctx.activate
+      return <InfoTip text="Erklärung" />
+    }
+
     const { container } = render(
       <QaFeedbackProvider>
-        {/* No feedbackTargetId → trigger has no data-qa-target → QA overlay won't intercept */}
-        <InfoTip text="Erklärung" />
+        <Harness />
       </QaFeedbackProvider>,
     )
 
-    // Open the popover (trigger not intercepted because it has no data-qa-target).
+    // Open the popover while QA is OFF — trigger click fires normally.
     const trigger = container.querySelector('button.info-tip-trigger') as HTMLButtonElement
     fireEvent.click(trigger)
+    expect(container.querySelector('[role="tooltip"]')).not.toBeNull()
 
-    // Popover is now open (no data-qa-target since feedbackTargetId absent).
-    const popover = container.querySelector('[role="tooltip"]')
-    expect(popover).not.toBeNull()
+    // Activate QA mode. The popover should stay open.
+    act(() => {
+      activateQa!()
+    })
 
     // Place an external [data-qa-target] element outside the InfoTip wrap.
     // Firing mousedown on it would normally close the popover (click outside wrapRef).

@@ -2,6 +2,7 @@ import { useId, useState, useRef, useEffect, type ReactNode } from 'react'
 import { HelpCircle, Info } from 'lucide-react'
 import './InfoTip.css'
 import { useFeedbackTarget, useQaMode } from '../features/qa-feedback'
+import { QA_INTERACTIVE_SELECTOR } from '../features/qa-feedback/resolveTarget'
 
 interface Props {
   /** One short sentence shown in the popover. */
@@ -67,7 +68,10 @@ export function InfoTip({
       // close the popover" invariant (issue 17).
       if (qaEnabled) {
         const target = e.target as HTMLElement | null
-        if (target?.closest('[data-qa-target]')) return
+        // Match the same selector QaOverlay uses so the guard covers both
+        // declared `[data-qa-target]` elements AND catch-all interactive
+        // elements (buttons / inputs / headings) that QA mode now also pins.
+        if (target?.closest(QA_INTERACTIVE_SELECTOR)) return
       }
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setOpen(false)
