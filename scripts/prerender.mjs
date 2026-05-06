@@ -60,6 +60,7 @@ async function loadSourceModules() {
     const headMod = await server.ssrLoadModule('/src/seo/renderRouteHead.ts')
     const sitemapMod = await server.ssrLoadModule('/src/seo/sitemap.ts')
     const robotsMod = await server.ssrLoadModule('/src/seo/robots.ts')
+    const llmsTxtMod = await server.ssrLoadModule('/src/seo/llmsTxt.ts')
     // React + react-dom/server load via Node's native ESM resolution. Their
     // CJS interop is handled by the package's "exports" map.
     const reactMod = await import('react')
@@ -82,6 +83,7 @@ async function loadSourceModules() {
       headMod,
       sitemapMod,
       robotsMod,
+      llmsTxtMod,
       reactMod,
       reactDomServer,
       rentenluecke,
@@ -148,6 +150,81 @@ async function ensureDir(filePath) {
   await mkdir(dirname(filePath), { recursive: true })
 }
 
+// ---------------------------------------------------------------------------
+// llms-full.txt builder — issue #10. Reads the prerendered HTML output for
+// each in-sitemap, non-404 route and emits a stripped-text body per route,
+// concatenated with `---` separators. Build-output dependent (must run after
+// the SSG pass), so it lives in the script rather than `src/seo/`.
+//
+// Each route section has the format:
+//
+//   # <title>
+//
+//   URL: <absolute-canonical-url>
+//   Stand: <dateModified>
+//
+//   <stripped-text-of-prerendered-HTML>
+//
+//   ---
+//
+// HTML stripping uses a simple regex per the locked decisions (no parser).
+// Script + style content is dropped first so their JS/CSS bodies do not
+// pollute the output.
+// ---------------------------------------------------------------------------
+function stripHtmlToText(html) {
+  // Drop entire <script>...</script> and <style>...</style> blocks first so
+  // their inline content (JS, CSS) does not leak through.
+  let out = html.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+  out = out.replace(/<style[\s\S]*?<\/style>/gi, ' ')
+  // Strip remaining tags.
+  out = out.replace(/<[^>]+>/g, ' ')
+  // Decode the most common HTML entities — the prerendered shell only emits
+  // these handful via React's escaping, so a minimal table is sufficient.
+  out = out
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+  // Collapse whitespace runs to single spaces.
+  out = out.replace(/\s+/g, ' ').trim()
+  return out
+}
+
+function htmlPathForRoute(routeId) {
+  if (routeId === '/') return join(distDir, 'index.html')
+  return join(distDir, routeId.replace(/^\//, ''), 'index.html')
+}
+
+async function generateLlmsFullTxt({ PUBLIC_ROUTE_IDS, publicRouteRegistry, buildCanonicalUrl }) {
+  const sections = []
+  for (const routeId of PUBLIC_ROUTE_IDS) {
+    const entry = publicRouteRegistry[routeId]
+    if (!entry.inSitemap) continue
+    const htmlPath = htmlPathForRoute(routeId)
+    let html
+    try {
+      html = await readFile(htmlPath, 'utf8')
+    } catch {
+      // Defensive: if a route did not produce an HTML file (should not happen
+      // in a clean build), skip it rather than fail the whole pipeline.
+      continue
+    }
+    const text = stripHtmlToText(html)
+    const url = buildCanonicalUrl(routeId)
+    const section =
+      `# ${entry.title}\n\n` +
+      `URL: ${url}\n` +
+      `Stand: ${entry.dateModified}\n\n` +
+      `${text}\n`
+    sections.push(section)
+  }
+  // Sections separated by `---` on its own line.
+  return sections.join('\n---\n\n') + (sections.length > 0 ? '\n' : '')
+}
+
 async function copyOgPlaceholder() {
   // Public folder assets are already copied by Vite, but we ensure the
   // `og/default.png` placeholder is on disk even if a fresh checkout hasn't
@@ -177,6 +254,8 @@ async function main() {
     const { renderRouteHeadHtml } = modules.headMod
     const { generateSitemap } = modules.sitemapMod
     const { generateRobots } = modules.robotsMod
+    const { generateLlmsTxt } = modules.llmsTxtMod
+    const { buildCanonicalUrl } = modules.seoMod
 
     for (const routeId of PUBLIC_ROUTE_IDS) {
       const html = await renderRoute(routeId, modules, { React, renderToString })
@@ -223,9 +302,23 @@ async function main() {
     await writeFile(join(distDir, 'sitemap.xml'), generateSitemap(), 'utf8')
     await writeFile(join(distDir, 'robots.txt'), generateRobots(), 'utf8')
 
+    // ---------------------------------------------------------------------
+    // llms.txt + llms-full.txt — issue #10. Experimental discovery surfaces
+    // for AI assistants. Both are generated AFTER the SSG pass so the full
+    // file can read the prerendered HTML for stripped-text bodies. Neither
+    // is added to the sitemap (they are not web pages). Documentation in
+    // `docs/seo/llms-txt.md` marks them as experimental.
+    // ---------------------------------------------------------------------
+    await writeFile(join(distDir, 'llms.txt'), generateLlmsTxt(), 'utf8')
+    await writeFile(
+      join(distDir, 'llms-full.txt'),
+      await generateLlmsFullTxt({ PUBLIC_ROUTE_IDS, publicRouteRegistry, buildCanonicalUrl }),
+      'utf8',
+    )
+
     await copyOgPlaceholder()
 
-    console.log('[prerender] sitemap.xml + robots.txt written')
+    console.log('[prerender] sitemap.xml + robots.txt + llms.txt + llms-full.txt written')
   } finally {
     await modules.server.close()
   }
