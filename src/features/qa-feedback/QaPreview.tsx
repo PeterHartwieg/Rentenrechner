@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   buildMarkdownTicket,
   defaultPrivacyFlags,
@@ -14,6 +14,11 @@ import { buildFeedbackBundle } from './export/bundleExport'
 import { buildMailtoUrl, buildGithubIssueUrl } from './export/outboundDestinations'
 import { saveReportLocally } from './export/localSave'
 import { isLocalSaveSupported } from './export/localDirectoryHandle'
+import {
+  submitToWorker,
+  TURNSTILE_SITE_KEY,
+  type WorkerSubmitOutcome,
+} from './export/workerSubmit'
 
 interface PreviewProps {
   target: ResolvedTarget
@@ -36,21 +41,46 @@ interface PreviewProps {
   collectWorkspaceContext?: (pinnedElement?: Element | null) => WorkspaceContext
 }
 
+interface TurnstileApi {
+  render(
+    el: HTMLElement,
+    options: {
+      sitekey: string
+      callback: (token: string) => void
+      'error-callback'?: () => void
+      'expired-callback'?: () => void
+    },
+  ): string
+}
+
+const TURNSTILE_SCRIPT_ID = 'qa-turnstile-script'
+const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+
 /**
  * Final review screen for the QA-feedback ticket (PRD US-20).
  *
  * Composes the full `FeedbackReport` from draft + environment + screenshot,
- * renders the metadata + privacy flags inline, and exposes two export paths:
+ * renders the metadata + privacy flags inline, and exposes three export
+ * lanes:
  *
- *   1. **Markdown kopieren** — `navigator.clipboard.writeText`. Synchronous
- *      DOM operation, no network.
- *   2. **Bundle herunterladen** — single-file JSON envelope (issue 07 / Lane E)
- *      assembled by `buildFeedbackBundle`. Includes the Markdown ticket, the
- *      full `FeedbackReport`, and the screenshot as base64 when included.
+ *   1. **Lokal exportieren** — Markdown clipboard, single-file bundle
+ *      download (issue 07 / Lane E), and File System Access API local save
+ *      (issue 14). All synchronous DOM operations, zero network.
+ *   2. **Externes Ziel öffnen** — `mailto:` and GitHub-prefilled-URL
+ *      builders (issue 08). Pure URL strings handed to `window.open`, zero
+ *      network from this app.
+ *   3. **Direkt an GitHub einreichen** — POSTs to the qa-submit Cloudflare
+ *      Worker at qa.rentenwiki.de (sanctioned by ADR-0001). The Worker
+ *      verifies a Turnstile token, optionally uploads the screenshot to a
+ *      private R2 bucket, and creates the GitHub issue with a
+ *      `needs-triage` label. Gated behind an explicit consent checkbox so
+ *      the no-network default for lanes 1 + 2 still holds for any tester
+ *      who doesn't opt in.
  *
- * The "no network" guarantee holds for both paths — see
- * `buildMarkdown.test.ts` and `export/bundleExport.test.ts` for the
- * `fetch` + `XMLHttpRequest` spies.
+ * The "no network" guarantee for lanes 1 + 2 is pinned by
+ * `__tests__/no-network-e2e.test.tsx`, which exercises every export
+ * EXCEPT the lane-3 button — that path has its own targeted test in
+ * `__tests__/QaPreview.workerSubmit.test.tsx`.
  */
 export function QaPreview({
   target,
@@ -73,12 +103,66 @@ export function QaPreview({
    */
   const [includeScenario, setIncludeScenario] = useState(false)
 
+  // Lane 3 (ADR-0001) — Worker submission state. All defaults preserve
+  // the no-network posture: nothing leaves the page until `workerConsent`
+  // flips true AND the user clicks the submit button.
+  const [workerConsent, setWorkerConsent] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [workerState, setWorkerState] = useState<
+    'idle' | 'submitting' | 'success' | 'error'
+  >('idle')
+  const [workerResult, setWorkerResult] = useState<WorkerSubmitOutcome | null>(null)
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null)
+
   const report = useMemo<FeedbackReport>(
     () => buildReport({ target, draft, screenshot, includeScenario, collectScenarioJson, collectWorkspaceContext }),
     [target, draft, screenshot, includeScenario, collectScenarioJson, collectWorkspaceContext],
   )
 
   const markdown = useMemo(() => buildMarkdownTicket(report), [report])
+
+  // Lazy-load the Turnstile widget script and render the widget into our
+  // container — but only AFTER the tester ticks the consent box. Until then
+  // no network request originates from this component.
+  useEffect(() => {
+    if (!workerConsent) return
+    const win = window as unknown as { turnstile?: TurnstileApi }
+
+    function renderWidget() {
+      const container = turnstileContainerRef.current
+      const api = win.turnstile
+      if (!container || !api) return
+      if (container.dataset.qaTurnstileRendered === 'true') return
+      container.dataset.qaTurnstileRendered = 'true'
+      api.render(container, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: (token: string) => setTurnstileToken(token),
+        'error-callback': () => setTurnstileToken(null),
+        'expired-callback': () => setTurnstileToken(null),
+      })
+    }
+
+    if (win.turnstile) {
+      renderWidget()
+      return
+    }
+
+    const existing = document.getElementById(
+      TURNSTILE_SCRIPT_ID,
+    ) as HTMLScriptElement | null
+    if (existing) {
+      existing.addEventListener('load', renderWidget, { once: true })
+      return () => existing.removeEventListener('load', renderWidget)
+    }
+
+    const script = document.createElement('script')
+    script.id = TURNSTILE_SCRIPT_ID
+    script.src = TURNSTILE_SCRIPT_SRC
+    script.async = true
+    script.defer = true
+    script.addEventListener('load', renderWidget, { once: true })
+    document.head.appendChild(script)
+  }, [workerConsent])
 
   async function handleCopy() {
     try {
@@ -141,6 +225,31 @@ export function QaPreview({
       setLocalSaveError(message)
     }
   }
+
+  async function handleWorkerSubmit() {
+    if (!turnstileToken || workerState === 'submitting') return
+    setWorkerState('submitting')
+    const outcome = await submitToWorker(report, screenshot, turnstileToken)
+    setWorkerResult(outcome)
+    setWorkerState(outcome.ok ? 'success' : 'error')
+    if (outcome.ok) {
+      // Clear other status messages so the success notice is unambiguous.
+      setCopied(false)
+      setDownloaded(false)
+      setExternalOpened(null)
+      setLocalSaveState('idle')
+    }
+  }
+
+  const statusNode = renderStatus({
+    copied,
+    downloaded,
+    externalOpened,
+    localSaveState,
+    localSaveError,
+    workerState,
+    workerResult,
+  })
 
   return (
     <section
@@ -267,25 +376,13 @@ export function QaPreview({
           <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11.5, marginTop: 8 }}>{markdown}</pre>
         </details>
 
-        {(copied || downloaded || externalOpened || localSaveState !== 'idle') && (
+        {statusNode && (
           <p
             className="qa-preview__copy-state"
             role="status"
             data-testid="qa-preview-status"
           >
-            {copied
-              ? 'Markdown in Zwischenablage kopiert.'
-              : downloaded
-                ? 'Bundle heruntergeladen.'
-                : externalOpened === 'mailto'
-                  ? 'E-Mail-Entwurf geöffnet.'
-                  : externalOpened === 'github'
-                    ? 'GitHub-Issue-Formular geöffnet.'
-                    : localSaveState === 'saved'
-                      ? 'Issue-Datei lokal gespeichert.'
-                      : localSaveState === 'error'
-                        ? `Fehler beim Speichern: ${localSaveError ?? 'Unbekannter Fehler'}`
-                        : null}
+            {statusNode}
           </p>
         )}
       </div>
@@ -349,6 +446,58 @@ export function QaPreview({
               >
                 GitHub-Issue öffnen
               </button>
+            </div>
+          </div>
+          <div className="qa-preview__export-group">
+            <span className="qa-preview__export-group-label">Direkt an GitHub einreichen</span>
+            <div
+              className="qa-preview__worker-consent"
+              style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+            >
+              <label
+                style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 11.5 }}
+              >
+                <input
+                  type="checkbox"
+                  checked={workerConsent}
+                  onChange={(event) => setWorkerConsent(event.target.checked)}
+                  data-testid="qa-preview-worker-consent"
+                />
+                <span>
+                  Mit dem Absenden werden dein Feedback und – falls beigefügt – der
+                  Screenshot über <code>qa.rentenwiki.de</code> als öffentliches
+                  GitHub-Issue veröffentlicht. Du brauchst kein GitHub-Konto. Spam-Schutz
+                  via Cloudflare Turnstile.
+                </span>
+              </label>
+              {workerConsent && (
+                <div
+                  ref={turnstileContainerRef}
+                  data-testid="qa-preview-worker-turnstile"
+                  className="qa-preview__worker-turnstile"
+                  style={{ minHeight: 65 }}
+                />
+              )}
+              <div className="qa-preview__export-group-btns">
+                <button
+                  type="button"
+                  className="qa-panel__btn qa-panel__btn--primary"
+                  onClick={handleWorkerSubmit}
+                  disabled={
+                    !workerConsent ||
+                    !turnstileToken ||
+                    workerState === 'submitting' ||
+                    workerState === 'success'
+                  }
+                  data-testid="qa-preview-worker-submit"
+                >
+                  {workerState === 'submitting'
+                    ? 'Wird gesendet…'
+                    : workerState === 'success'
+                      ? 'Eingereicht'
+                      : 'An GitHub senden'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -446,6 +595,56 @@ function buildReport({
     scenarioContext,
     workspaceContext,
   }
+}
+
+interface StatusArgs {
+  copied: boolean
+  downloaded: boolean
+  externalOpened: 'mailto' | 'github' | null
+  localSaveState: 'idle' | 'saved' | 'error'
+  localSaveError: string | null
+  workerState: 'idle' | 'submitting' | 'success' | 'error'
+  workerResult: WorkerSubmitOutcome | null
+}
+
+/**
+ * Centralised status-line renderer. Returns a React node (string or JSX
+ * fragment with a link for the worker-submit success case) or null when no
+ * status should display. Keeps the JSX in `QaPreview` flat.
+ */
+function renderStatus(args: StatusArgs): React.ReactNode {
+  const {
+    copied,
+    downloaded,
+    externalOpened,
+    localSaveState,
+    localSaveError,
+    workerState,
+    workerResult,
+  } = args
+  if (copied) return 'Markdown in Zwischenablage kopiert.'
+  if (downloaded) return 'Bundle heruntergeladen.'
+  if (externalOpened === 'mailto') return 'E-Mail-Entwurf geöffnet.'
+  if (externalOpened === 'github') return 'GitHub-Issue-Formular geöffnet.'
+  if (localSaveState === 'saved') return 'Issue-Datei lokal gespeichert.'
+  if (localSaveState === 'error') {
+    return `Fehler beim Speichern: ${localSaveError ?? 'Unbekannter Fehler'}`
+  }
+  if (workerState === 'submitting') return 'Wird an GitHub gesendet…'
+  if (workerState === 'success' && workerResult && workerResult.ok) {
+    return (
+      <>
+        Issue erstellt:{' '}
+        <a href={workerResult.issueUrl} target="_blank" rel="noopener noreferrer">
+          {workerResult.issueUrl}
+        </a>
+      </>
+    )
+  }
+  if (workerState === 'error' && workerResult && !workerResult.ok) {
+    return `Fehler beim Einreichen: ${workerResult.message}`
+  }
+  return null
 }
 
 /**
