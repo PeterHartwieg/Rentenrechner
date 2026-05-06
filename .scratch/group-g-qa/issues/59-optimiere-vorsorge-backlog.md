@@ -1,6 +1,6 @@
 ---
 title: "Backlog: Optimiere deine Vorsorge existing-contract decision flow"
-Status: ready-for-human
+Status: done
 Severity: P3
 Type: HITL
 Area: backlog / contract decisions / what-if planning
@@ -27,6 +27,20 @@ The optimization flow audits existing contracts and creates what-if options for 
 Decision source: `.scratch/group-g-qa/decisions.md`.
 
 This is a backlog/product-design placeholder, not ready for an AFK implementation agent yet.
+
+## Resolution
+
+Shipped in 7 slices (B1–B7) under `.scratch/optimiere-vorsorge/issues/`:
+
+- **B1**: `Beitrag erhöhen` decision + `funding_cap_hit` atom (commit `0b5424a`)
+- **B2**: `simulateContractDecision` + decision-simulation cache (commit `23002ae`)
+- **B3**: Audit-flag atoms: `high_cost_active`, `weak_guarantee`, `low_flexibility`, `missing_offer_data` (commit `a6df7e0`)
+- **B4**: `auditPortfolio` aggregator (commit `9adf251`)
+- **B5**: Extract `<ContractDecisionCards>` from `ContractDecisionMenu` (commits `63e77bf`, `57c71f2`)
+- **B6**: `OptimiereVorsorgeModal` — full 5-step state machine + entry trigger (commit `8b88a70`, fix `93fddc8`)
+- **B7**: Preview verification gate — disclaimer/overview/instance screenshots, zero-external-request network proof, `npm run verify` green (2139 tests)
+
+All acceptance criteria met. Disclaimer-acknowledge state is modal-scoped, never persisted. What-if scenarios created with `origin: 'recommender'`. Engine remains React-free.
 
 ## Blocked by
 
