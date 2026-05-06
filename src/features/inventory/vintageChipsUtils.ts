@@ -7,6 +7,7 @@ import type { Atom, AtomId } from '../../app/recommendations'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from '../../engine/insurancePayout'
 import { deriveBavLumpSumTaxMode } from '../../engine/bavPayout'
 import { activeRules } from '../../rules'
+import { halbeinkuenfteMinAgeForContractStartYear } from '../../rules/legalConstants'
 import type { BavDraft, PavDraft, RiesterDraft } from './types'
 
 const PRIVILEGE_ATOM_IDS: ReadonlySet<AtomId> = new Set<AtomId>([
@@ -91,7 +92,13 @@ export function pavDraftVintageAtoms(draft: PavDraft, age: number, retirementAge
     atoms.push({
       id: 'halbeinkuenfte_pav_eligible',
       priority: 'medium',
-      context: { instanceId: DRAFT_INSTANCE_SENTINEL, productId: 'versicherung' },
+      context: {
+        instanceId: DRAFT_INSTANCE_SENTINEL,
+        contractStartYear: draft.contractStartYear,
+        runtimeYearsAtRetirement: runtimeYears,
+        minPayoutAge: halbeinkuenfteMinAgeForContractStartYear(draft.contractStartYear),
+        productId: 'versicherung',
+      },
     })
   }
 

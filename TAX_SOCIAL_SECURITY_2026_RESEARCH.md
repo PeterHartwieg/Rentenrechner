@@ -3,6 +3,7 @@
 Focused companion to `LEGAL_REVIEW.md` for cross-product German 2026 tax and social-security constants used by the calculator.
 
 Last reviewed: 2026-04-28.
+Targeted update: 2026-05-06 — private-insurance Halbeinkuenfte payout-age split.
 
 ## Executive Summary For The Tool
 
@@ -44,6 +45,7 @@ The highest-value audit targets are payroll-side details rather than product pay
 | bAV SV-free limit | 4% RV BBG = 4,056 EUR/year | [SvEV Section 1](https://www.gesetze-im-internet.de/svev/__1.html) | `bav.socialSecurityFreePctOfPensionCap` |
 | Sparerpauschbetrag | 1,000 EUR single; 2,000 EUR joint | [EStG Section 20(9)](https://www.gesetze-im-internet.de/estg/__20.html) | `capitalGains.saverAllowance` |
 | Capital gains tax | 25% plus Soli | [EStG Section 32d](https://www.gesetze-im-internet.de/estg/__32d.html); [SolZG 1995 Section 3](https://www.gesetze-im-internet.de/solzg_1995/__3.html) | `calculateCapitalGainsTax` |
+| Private-insurance Halbeinkuenfte age | Age 60 after 12-year runtime under EStG Section 20(1) Nr. 6; age 62 for contracts after 2011 under EStG Section 52(28) Satz 7 | [EStG Section 20](https://www.gesetze-im-internet.de/estg/__20.html); [EStG Section 52](https://www.gesetze-im-internet.de/estg/__52.html) | `halbeinkuenfteMinAgeForContractStartYear`; `deriveInsuranceTaxMode` |
 | 2026 InvStG Basiszins | 3.20% | [BMF letter, 2026-01-13](https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Investmentsteuer/2026-01-13-basiszins-berechnung-vorabpauschale.pdf?__blob=publicationFile&v=1) | `capitalGains.basiszins` |
 | Employee Werbungskosten-Pauschbetrag | 1,230 EUR/year | [EStG Section 9a](https://www.gesetze-im-internet.de/estg/__9a.html) | `employeeAllowance` |
 | Retirement Werbungskosten-Pauschbeträge | 102 EUR/year for Versorgungsbezüge; 102 EUR/year for pensions/other recurring pension income | [EStG Section 9a](https://www.gesetze-im-internet.de/estg/__9a.html) | `werbungskostenPauschalVersorgungsbezuege`; `werbungskostenPauschalRenten` |
@@ -132,6 +134,12 @@ Capital gains use 25% Abgeltungsteuer plus Soli, with a 1,000 EUR Sparerpauschbe
 
 Implementation implication: because `calculateRetirementTax` currently supports only `filingStatus = 'single'`, any joint-assessment support must revisit Sparerpauschbetrag, Soli thresholds, Section 32a splitting, and Pauschbeträge together.
 
+### 7. Private Insurance Capital-Payout Tax Mode
+
+For private life / pension insurance capital payouts, EStG Section 20(1) Nr. 6 Satz 2 applies the half-income method when the insurance benefit is paid after completion of age 60 and after twelve years since contract conclusion. EStG Section 52(28) Satz 7 modifies that rule for contracts concluded after 31 December 2011: those contracts need payout after completion of age 62.
+
+Implementation implication: do not model Halbeinkuenfte with one global payout age. `src/rules/legalConstants.ts` owns `halbeinkuenfteMinAgeForContractStartYear(contractStartYear)`: contracts through 2011 use 60; contracts from 2012 use 62. `deriveInsuranceTaxMode()` remains the central routing function for `pre2005`, `halbeinkuenfte`, and `abgeltungsteuer`.
+
 ## Current Tool Fit / Gaps
 
 Fit:
@@ -142,6 +150,7 @@ Fit:
 - `careEmployeeRateForChildren` implements the children-under-25 discount and the lifetime one-child exemption from the childless surcharge.
 - `calculateRetirementKvPv` models aggregate KV Freibetrag, PV Freigrenze, 120-month bAV spreading, and BBG-aware apportionment in one function.
 - Fixed in 2026-04-28 audit: the freiwillig-versichert path no longer applies the KVdR-only PV Freigrenze to Versorgungsbezuege; full freiwillig broad-income assessment is used before BBG capping.
+- Fixed in 2026-05-06 targeted update: private-insurance Halbeinkuenfte payout age is contract-year-aware (age 60 through 2011 contracts, age 62 from 2012 contracts).
 - Rule updates for `durchschnittsentgelt` and `aktuellerRentenwert` noted in `LEGAL_REVIEW.md` appear to have been incorporated into `de2026.ts`.
 
 Gaps / red flags:
@@ -212,7 +221,10 @@ Rules/constants:
   - `sonderausgabenPauschbetrag`
 - `src/rules/legalConstants.ts`
   - `insurance.halbeinkuenfteMinRuntimeYears`
-  - `insurance.halbeinkuenfteMinAge`
+  - `insurance.halbeinkuenfteMinAgePre2012Contracts`
+  - `insurance.halbeinkuenfteRaisedMinAgeContractStartYear`
+  - `insurance.halbeinkuenfteMinAgePost2011Contracts`
+  - `halbeinkuenfteMinAgeForContractStartYear(contractStartYear)`
   - `insurance.halbeinkuenfteFactor`
   - `bav.versorgungsbezugSpreadingMonths`
   - `bav.fuenftelregelungDivisor`

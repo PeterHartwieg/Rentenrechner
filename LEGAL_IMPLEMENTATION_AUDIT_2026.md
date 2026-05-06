@@ -1,6 +1,7 @@
 # Legal vs Implementation Audit 2026
 
 Last audited: 2026-04-28
+Targeted update: 2026-05-06 — private-insurance Halbeinkuenfte payout-age split.
 
 This audit compares the legal research notes against the actual implementation. It is a technical/legal consistency audit for the calculator, not legal, tax, or financial advice.
 
@@ -83,6 +84,20 @@ The highest-priority remaining legal/modeling gaps are:
   - `src/engine/retirementKvPv.test.ts`
   - `TAX_SOCIAL_SECURITY_2026_RESEARCH.md`
 
+### Private Insurance Halbeinkuenfte Age Split
+
+- Research item: EStG Sec. 20 Abs. 1 Nr. 6 Satz 2 uses payout after age 60 and 12-year runtime for the half-income method; EStG Sec. 52 Abs. 28 Satz 7 raises the payout-age threshold to 62 only for contracts concluded after 2011.
+- Previous implementation: `deriveInsuranceTaxMode()` used one global `halbeinkuenfteMinAge = 62`, so 2005-2011 contracts paid at age 60/61 were conservatively routed to `abgeltungsteuer`.
+- Current implementation: `halbeinkuenfteMinAgeForContractStartYear(contractStartYear)` returns 60 for contracts through 2011 and 62 from 2012 onward; all private-insurance tax-mode callers continue to route through `deriveInsuranceTaxMode()`.
+- Changed files:
+  - `src/rules/legalConstants.ts`
+  - `src/engine/insurancePayout.ts`
+  - `src/engine/products/insurance.test.ts`
+  - `src/app/recommendations.ts`
+  - `src/features/inventory/vintageChipsUtils.ts`
+  - `LEGAL_REVIEW.md`
+  - `TAX_SOCIAL_SECURITY_2026_RESEARCH.md`
+
 ## Cross-Product Tax And Social Security
 
 Aligned:
@@ -151,6 +166,7 @@ Remaining gaps / explicit simplifications:
 Aligned:
 
 - Contract-start/runtime/retirement-age tax mode derives `pre2005`, `halbeinkuenfte`, or `abgeltungsteuer`.
+- Halbeinkuenfte minimum payout age follows contract vintage: 60 for contracts through 2011, 62 from 2012 onward.
 - Leibrente payout uses Ertragsanteil instead of capital-gain modes.
 - Lump-sum and running payout routes use the shared retirement tax pipeline where appropriate.
 - Wrapper/fund fee split and pension payout fees are modeled.

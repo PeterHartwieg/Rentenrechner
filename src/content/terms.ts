@@ -182,7 +182,7 @@ export const TERMS_LIST: Term[] = [
     plainLabel: 'Halbeinkünfte­verfahren',
     expertLabel: 'Halbeinkünfte­verfahren',
     shortHelp:
-      'Bei Kapital­auszahlung aus Verträgen ab 2005 mit Mindest­laufzeit 12 Jahren und Auszahlung ab Alter 62: nur die Hälfte der Erträge wird mit deinem persönlichen Steuersatz versteuert.',
+      'Bei Kapital­auszahlung aus Verträgen ab 2005 mit Mindest­laufzeit 12 Jahren und Auszahlung ab Alter 60 (Verträge bis 2011) bzw. 62 (ab 2012): nur die Hälfte der Erträge wird mit deinem persönlichen Steuersatz versteuert.',
     legalReference: '§20 Abs. 1 Nr. 6 EStG',
     category: 'insurance',
   },

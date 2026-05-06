@@ -270,13 +270,20 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
       'Achtung — bei Leibrente-Auszahlung gilt §22 Nr. 1 Satz 3 a EStG Ertragsanteil auch für pre-2005-Verträge.',
   }),
 
-  halbeinkuenfte_pav_eligible: () => ({
-    headline: 'Halbeinkünfte (halbe Steuer auf Gewinn) — §20 Abs. 1 Nr. 6 EStG',
-    body:
-      'Dein Vertrag erfüllt die Bedingungen für das Halbeinkünfteverfahren bei Kapitalauszahlung ' +
-      '(Vertragsbeginn ab 2005, Laufzeit ≥ 12 Jahre, Auszahlung ab Alter 62). ' +
-      'Nur die Hälfte des Gewinns wird mit dem persönlichen Steuersatz besteuert — §20 Abs. 1 Nr. 6 EStG.',
-  }),
+  halbeinkuenfte_pav_eligible: (atom) => {
+    const minPayoutAge = typeof atom.context.minPayoutAge === 'number' ? atom.context.minPayoutAge : null
+    const ageText = minPayoutAge === null
+      ? 'Auszahlung ab Alter 60 (Verträge bis 2011) bzw. 62 (ab 2012)'
+      : `Auszahlung ab Alter ${minPayoutAge}`
+
+    return {
+      headline: 'Halbeinkünfte (halbe Steuer auf Gewinn) — §20 Abs. 1 Nr. 6 EStG',
+      body:
+        'Dein Vertrag erfüllt die Bedingungen für das Halbeinkünfteverfahren bei Kapitalauszahlung ' +
+        `(Vertragsbeginn ab 2005, Laufzeit ≥ 12 Jahre, ${ageText}). ` +
+        'Nur die Hälfte des Gewinns wird mit dem persönlichen Steuersatz besteuert — §20 Abs. 1 Nr. 6 EStG.',
+    }
+  },
 
   pre_2005_pav_high_garantiezins: () => ({
     headline: 'Hoher Garantiezins (4 % bis 2024 auf Beiträge)',

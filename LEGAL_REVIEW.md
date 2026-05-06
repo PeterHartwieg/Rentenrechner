@@ -3,6 +3,7 @@
 This document tracks legal/rules research for the German retirement calculator. It is intentionally source-heavy and separate from `BACKLOG.md`, which should stay focused on actionable implementation work.
 
 Last structured review: 2026-04-27.
+Targeted update: 2026-05-06 — private-insurance Halbeinkuenfte payout-age split (age 60 through 2011 contracts, age 62 from 2012 contracts).
 
 ## Purpose
 
@@ -50,6 +51,7 @@ src/rules/de2026.ts
 | PKV §257 SGB V employer subsidy | 50% of PKV premium, capped at GKV equivalent (§257 Abs. 2 SGB V); §3 Nr. 62 EStG tax-free | implemented (#50) |
 | Sparerpauschbetrag | 1,000 EUR | implemented in ETF model |
 | Abgeltungsteuer | 25% + Soli | implemented |
+| Private insurance Halbeinkuenfte | >=12-year runtime; payout after age 60 under EStG §20 Abs. 1 Nr. 6, raised to age 62 for contracts after 2011 by EStG §52 Abs. 28 Satz 7 | implemented |
 | 2026 InvStG Basiszins | 3.20% | implemented |
 | KV Freibetrag Versorgungsbezüge | 197.75 EUR/month | implemented |
 | PV treatment for Versorgungsbezüge | Freigrenze, not Freibetrag | implemented |
@@ -198,10 +200,21 @@ Important branches:
 
 - pre-2005 potentially tax-free contracts
 - post-2004 EStG §20 treatment
-- age-62 / 12-year half-income method
+- 12-year half-income method with contract-year-specific payout age: age 60 for contracts through 2011, age 62 for contracts from 2012
 - fund-linked insurance special treatment
 
 ## Resolved Legal Modeling Questions
+
+### Private Insurance Halbeinkuenfte Payout Age — resolved
+
+EStG §20 Abs. 1 Nr. 6 Satz 2 uses payout after completion of age 60 plus a 12-year contract runtime for the half-income method. EStG §52 Abs. 28 Satz 7 raises that payout-age threshold to 62 only for contracts concluded after 31 December 2011.
+
+The engine now models this split in `src/rules/legalConstants.ts` via `halbeinkuenfteMinAgeForContractStartYear(contractStartYear)`, consumed by `deriveInsuranceTaxMode()`:
+
+- `contractStartYear <= 2011`: minimum payout age 60
+- `contractStartYear >= 2012`: minimum payout age 62
+
+Regression coverage lives in `src/engine/products/insurance.test.ts`, with additional recommender and vintage-chip coverage for the 2005/2011/2012 boundary.
 
 ### Private Insurance Tax Runtime — resolved
 

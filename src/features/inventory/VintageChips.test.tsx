@@ -220,11 +220,11 @@ describe('VintageChips — wizard draft preview (F5)', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders a privilege chip (halbeinkuenfte) for a post-2004 pAV draft with sufficient runtime and retirementAge >= 62', () => {
-    // contractStartYear=2010, age=40, retirementAge=67, RULES_YEAR=2026
-    // retirementYear = 2026 + (67 - 40) = 2053
-    // runtimeYears = 2053 - 2010 = 43 → >= 12 (halbeinkuenfte min)
-    // retirementAge 67 >= 62 (halbeinkuenfte min age)
+  it('renders a privilege chip (halbeinkuenfte) for a 2005-2011 pAV draft with sufficient runtime and retirementAge >= 60', () => {
+    // contractStartYear=2010, age=58, retirementAge=60, RULES_YEAR=2026
+    // retirementYear = 2026 + (60 - 58) = 2028
+    // runtimeYears = 2028 - 2010 = 18 → >= 12 (halbeinkuenfte min)
+    // retirementAge 60 meets the pre-2012-contract min age
     // contractStartYear 2010 > 2004 → NOT pre2005 → routes to 'halbeinkuenfte'
     const draft: PavDraft = {
       productId: 'versicherung',
@@ -235,13 +235,27 @@ describe('VintageChips — wizard draft preview (F5)', () => {
       rentenfaktor: 28,
       payoutMode: 'kapitalverzehr',
     }
-    const atoms = pavDraftVintageAtoms(draft, 40, 67)
+    const atoms = pavDraftVintageAtoms(draft, 58, 60)
     expect(atoms).toHaveLength(1)
     expect(atoms[0].id).toBe('halbeinkuenfte_pav_eligible')
+    expect(atoms[0].context.minPayoutAge).toBe(60)
     const { container } = render(<VintageChips atoms={atoms} />)
     expect(container.querySelector('.vintage-chip--privilege')).not.toBeNull()
     const { headline } = renderAtom(atoms[0])
     expect(container.querySelector('.vintage-chip-label')?.textContent).toBe(headline)
+  })
+
+  it('does not render a halbeinkuenfte chip for a 2012 pAV draft at retirementAge 60', () => {
+    const draft: PavDraft = {
+      productId: 'versicherung',
+      status: 'active',
+      contractStartYear: 2012,
+      monthlyContribution: 150,
+      effektivkostenPct: 0.8,
+      rentenfaktor: 28,
+      payoutMode: 'kapitalverzehr',
+    }
+    expect(pavDraftVintageAtoms(draft, 58, 60)).toHaveLength(0)
   })
 
   it('renders an info chip for a bAV draft with direktzusage', () => {

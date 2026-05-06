@@ -25,8 +25,8 @@ describe('deriveInsuranceTaxMode — calendar-year classification', () => {
     expect(deriveInsuranceTaxMode(1995, 38, 67, false)).toBe('halbeinkuenfte')
   })
 
-  it('pre-2005 contract with eligible=false and retirementAge < 62 → abgeltungsteuer', () => {
-    expect(deriveInsuranceTaxMode(1995, 38, 60, false)).toBe('abgeltungsteuer')
+  it('pre-2005 contract with eligible=false → halbeinkuenfte when runtime ≥ 12 and retirementAge ≥ 60', () => {
+    expect(deriveInsuranceTaxMode(1995, 38, 60, false)).toBe('halbeinkuenfte')
   })
 
   // pre-2005 contract, eligible true but runtime < 12 → falls through (NOT pre2005)
@@ -45,9 +45,18 @@ describe('deriveInsuranceTaxMode — calendar-year classification', () => {
     expect(deriveInsuranceTaxMode(2020, 8, 67, true)).toBe('abgeltungsteuer')
   })
 
-  // post-2005 contract, payout before age 62 → abgeltungsteuer
-  it('post-2005 contract, retirementAge < 62 → abgeltungsteuer', () => {
-    expect(deriveInsuranceTaxMode(2010, 20, 60, true)).toBe('abgeltungsteuer')
+  it('2005-2011 contract, retirementAge 60, runtime ≥ 12 → halbeinkuenfte', () => {
+    expect(deriveInsuranceTaxMode(2005, 20, 60, true)).toBe('halbeinkuenfte')
+    expect(deriveInsuranceTaxMode(2011, 20, 60, true)).toBe('halbeinkuenfte')
+  })
+
+  it('2005-2011 contract, retirementAge below 60 → abgeltungsteuer', () => {
+    expect(deriveInsuranceTaxMode(2011, 20, 59, true)).toBe('abgeltungsteuer')
+  })
+
+  it('post-2011 contract requires retirementAge ≥ 62 for halbeinkuenfte', () => {
+    expect(deriveInsuranceTaxMode(2012, 20, 60, true)).toBe('abgeltungsteuer')
+    expect(deriveInsuranceTaxMode(2012, 20, 62, true)).toBe('halbeinkuenfte')
   })
 
   // The original bug case: age=60, retirement=62, contractStartYear=2004

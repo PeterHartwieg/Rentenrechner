@@ -13,8 +13,12 @@ export const legalConstants = {
     pre2005YearBoundary: 2005,
     /** Minimum contract runtime (years) for Halbeinkünfteverfahren / pre-2005 tax-free (§20 Abs. 1 Nr. 6 EStG; §52 Abs. 28 EStG a.F.). */
     halbeinkuenfteMinRuntimeYears: 12,
-    /** Minimum age at payout for Halbeinkünfteverfahren (§20 Abs. 1 Nr. 6 EStG). */
-    halbeinkuenfteMinAge: 62,
+    /** Base minimum payout age for Halbeinkünfteverfahren (§20 Abs. 1 Nr. 6 EStG). */
+    halbeinkuenfteMinAgePre2012Contracts: 60,
+    /** Contract-start year from which §52 Abs. 28 Satz 7 EStG raises the minimum payout age to 62. */
+    halbeinkuenfteRaisedMinAgeContractStartYear: 2012,
+    /** Raised minimum payout age for contracts concluded after 31 Dec 2011 (§52 Abs. 28 Satz 7 EStG). */
+    halbeinkuenfteMinAgePost2011Contracts: 62,
     /** Halbeinkünfte factor — only half the gain enters the personal-tax base (§20 Abs. 1 Nr. 6 EStG). */
     halbeinkuenfteFactor: 0.5,
   },
@@ -29,6 +33,18 @@ export const legalConstants = {
     minPayoutAge: 62,
   },
 } as const
+
+export function halbeinkuenfteMinAgeForContractStartYear(contractStartYear: number): number {
+  const {
+    halbeinkuenfteMinAgePre2012Contracts,
+    halbeinkuenfteRaisedMinAgeContractStartYear,
+    halbeinkuenfteMinAgePost2011Contracts,
+  } = legalConstants.insurance
+
+  return contractStartYear >= halbeinkuenfteRaisedMinAgeContractStartYear
+    ? halbeinkuenfteMinAgePost2011Contracts
+    : halbeinkuenfteMinAgePre2012Contracts
+}
 
 /**
  * Ertragsanteil für lebenslange Leibrenten nach §22 Nr. 1 Satz 3 a aa EStG (Anlage 1 zu §22).

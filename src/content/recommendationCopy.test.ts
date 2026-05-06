@@ -124,6 +124,12 @@ describe('renderAtom', () => {
     expect(bav.body).not.toContain('1,2 %')
   })
 
+  it('halbeinkuenfte copy uses the contract-year-specific minimum payout age', () => {
+    expect(renderAtom(makeAtom('halbeinkuenfte_pav_eligible', { minPayoutAge: 60 })).body).toContain('Alter 60')
+    expect(renderAtom(makeAtom('halbeinkuenfte_pav_eligible', { minPayoutAge: 62 })).body).toContain('Alter 62')
+    expect(renderAtom(makeAtom('halbeinkuenfte_pav_eligible')).body).toContain('60 (Verträge bis 2011) bzw. 62')
+  })
+
   it('reason_tax_deferral body differs by productId — basisrente vs bav', () => {
     const basisrente = renderAtom(makeAtom('reason_tax_deferral', { productId: 'basisrente' }))
     const bav = renderAtom(makeAtom('reason_tax_deferral', { productId: 'bav' }))
@@ -257,7 +263,7 @@ describe('renderAtom copy snapshot', () => {
     { id: 'sparerpauschbetrag_remaining', context: { usedAnnual: 0, remainingAnnual: 1_000, married: false } },
     { id: 'sparerpauschbetrag_remaining', context: { usedAnnual: 400, remainingAnnual: 1_600, married: true } },
     { id: 'pre_2005_pav_taxfree_capital', context: {} },
-    { id: 'halbeinkuenfte_pav_eligible', context: {} },
+    { id: 'halbeinkuenfte_pav_eligible', context: { minPayoutAge: 60 } },
     { id: 'pre_2005_pav_high_garantiezins', context: {} },
     { id: 'bav_40b_alt_eligible', context: {} },
     { id: 'bav_40b_alt_conditions_unmet', context: {} },

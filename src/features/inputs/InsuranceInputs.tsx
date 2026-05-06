@@ -16,6 +16,7 @@ import { InfoTip } from '../../ui/InfoTip';
 import { formatCurrency, formatPercent } from '../../utils/format';
 import { PAV_FEE_PRESETS } from '../../app/productPresentation';
 import { getTerm } from '../../content/terms';
+import { halbeinkuenfteMinAgeForContractStartYear } from '../../rules/legalConstants';
 import { PayoutModeSection } from './sections/PayoutModeSection';
 import { OfferCapitalCompareField } from './sections/OfferCapitalCompareField';
 import { BeitragsdynamikField } from './sections/BeitragsdynamikField';
@@ -45,6 +46,7 @@ export function InsuranceInputs({
   insuranceProductResult,
 }: Props) {
   const ins = assumptions.insurance;
+  const halbeinkuenfteMinAge = halbeinkuenfteMinAgeForContractStartYear(ins.contractStartYear)
   const riy = insuranceProductResult?.accumulationRiy ?? 0
   const [feeInputMode, setFeeInputMode] = useState<FeeInputMode>('aufgeschluesselt')
   const [offerCapital, setOfferCapital] = useState<number | null>(null)
@@ -77,7 +79,7 @@ export function InsuranceInputs({
           <>Altvertrag (vor 2005): Kapitalwahl steuerfrei. Rechtsgrundlage: §52 Abs. 28 EStG a.F.</>
         )}
         {insuranceTaxMode === 'halbeinkuenfte' && (
-          <>Nur die Hälfte des Ertrags wird mit Ihrem persönlichen Steuersatz versteuert (≥ 12 Jahre Laufzeit, Auszahlung ab 62). Rechtsgrundlage: §20 Abs. 1 Nr. 6 EStG.</>
+          <>Nur die Hälfte des Ertrags wird mit Ihrem persönlichen Steuersatz versteuert (≥ 12 Jahre Laufzeit, Auszahlung ab {halbeinkuenfteMinAge}). Rechtsgrundlage: §20 Abs. 1 Nr. 6 EStG.</>
         )}
         {insuranceTaxMode === 'abgeltungsteuer' && (
           <>Voller Ertrag mit 25 % Abgeltungsteuer + Soli (Bedingungen für Halbeinkünfteverfahren nicht erfüllt). Rechtsgrundlage: §20 Abs. 2 EStG.</>

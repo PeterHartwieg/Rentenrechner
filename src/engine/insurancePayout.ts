@@ -4,7 +4,7 @@ import type {
   PayoutMode,
   PersonalProfile,
 } from '../domain'
-import { ertragsanteilByAge, legalConstants } from '../rules/legalConstants'
+import { ertragsanteilByAge, halbeinkuenfteMinAgeForContractStartYear, legalConstants } from '../rules/legalConstants'
 import type { LumpSumDeductionBreakdown } from './lumpSumBreakdown'
 import {
   calculateMarginalRetirementTax,
@@ -33,7 +33,9 @@ export function computeRuntimeYearsAtRetirement(
 // pre2005: §52 Abs. 28 EStG a.F. — payout is tax-free. Requires contractStartYear < 2005,
 //   oldContractTaxFreeEligible = true (user-confirmed: ≥5 annual premiums, capital payout),
 //   AND contractRuntimeYears ≥ 12.
-// halbeinkuenfte: §20 Abs. 1 Nr. 6 EStG — ≥12-year contract, payout at age ≥62: only half the gain taxable at personal income tax rate.
+// halbeinkuenfte: §20 Abs. 1 Nr. 6 EStG — ≥12-year contract, payout at the age
+// threshold for the contract year (60 for pre-2012 contracts, 62 from 2012):
+// only half the gain taxable at personal income tax rate.
 // abgeltungsteuer: §20 Abs. 2 EStG — all other post-2004 contracts: full gain at 25% Abgeltungsteuer.
 export function deriveInsuranceTaxMode(
   contractStartYear: number,
@@ -41,7 +43,8 @@ export function deriveInsuranceTaxMode(
   retirementAge: number,
   oldContractTaxFreeEligible = true,
 ): 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer' {
-  const { pre2005YearBoundary, halbeinkuenfteMinRuntimeYears, halbeinkuenfteMinAge } = legalConstants.insurance
+  const { pre2005YearBoundary, halbeinkuenfteMinRuntimeYears } = legalConstants.insurance
+  const halbeinkuenfteMinAge = halbeinkuenfteMinAgeForContractStartYear(contractStartYear)
   if (
     contractStartYear < pre2005YearBoundary &&
     oldContractTaxFreeEligible &&

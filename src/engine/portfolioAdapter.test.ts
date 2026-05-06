@@ -1610,7 +1610,7 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     // Pins V1 conservative cost-basis approximation; relax when issue 15 P2 addresses
     // mid-horizon contribution preflight.
     const workspace = rich()
-    // retirementAge=60 < halbeinkuenfteMinAge(62) → abgeltungsteuer regardless of runtime
+    // contractStartYear=2015 uses the post-2011 min age 62; retirementAge=60 → abgeltungsteuer regardless of runtime
     const profileAbgelt = { ...workspace.baseline.profile, retirementAge: 60 }
     const abgeltTransferEvent = {
       type: 'surrender_reinvest' as const,

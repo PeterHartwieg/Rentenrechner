@@ -7,7 +7,7 @@ For each legal / rule area: the source file, the rule file, and the research doc
 | File | What it contains | When to edit |
 |------|-----------------|--------------|
 | `src/rules/de2026.ts` | All 2026 statutory values: BBG (RV/KV), GKV/PV rates, GKV additional rate, Rentenwert, Basiszins, Besteuerungsanteil cohort table, Versorgungsfreibetrag table, Ertragsanteil table, AVD allowance constants, Riester constants | Once a year when BBG-Bekanntmachung and rate updates are published |
-| `src/rules/legalConstants.ts` | Cross-year structural constants: 1/120 SGB V spreading factor, §34 EStG Fünftelregelung divisor, §20 Abs. 1 Nr. 6 age/runtime thresholds, halbeinkünfte factor 0.5 | Only when underlying law changes, not on the annual cycle |
+| `src/rules/legalConstants.ts` | Cross-year structural constants: 1/120 SGB V spreading factor, §34 EStG Fünftelregelung divisor, §20 Abs. 1 Nr. 6 / §52 Abs. 28 age split by contract year, 12-year runtime threshold, halbeinkünfte factor 0.5 | Only when underlying law changes, not on the annual cycle |
 | `src/rules/index.ts` | Re-exports `activeRules` and `legalConstants`; swap to a new year by changing one line | To add a new rule year |
 
 ## Engine files by legal area
@@ -27,7 +27,7 @@ For each legal / rule area: the source file, the rule file, and the research doc
 | KV/PV on Versorgungsbezüge (§229 SGB V, §226(2), §57 SGB XI) | `src/engine/bavPayout.ts`, `src/engine/retirementPayout.ts` | `netBavPayout`, `afterTaxBavLumpSum`, shared KV/PV helpers |
 | KVdR (§249a SGB V half-rate) | `src/engine/grv.ts`, `src/engine/bavPayout.ts` | `projectStatutoryPension`, `netBavPayout` |
 | §22 Nr. 1 Satz 3a Ertragsanteil (private RV Leibrente) | `src/engine/insurancePayout.ts`, `src/rules/de2026.ts` | `netInsurancePayout` + ertragsanteilByAge table |
-| Insurance tax mode (§20 Abs. 1 Nr. 6, §52 Abs. 28 EStG) | `src/engine/insurancePayout.ts` | `deriveInsuranceTaxMode` |
+| Insurance tax mode (§20 Abs. 1 Nr. 6, §52 Abs. 28 EStG) | `src/engine/insurancePayout.ts` | `deriveInsuranceTaxMode` + `halbeinkuenfteMinAgeForContractStartYear` |
 | bAV lump-sum tax routing (§34 Abs. 2, §22 Nr. 5 EStG) | `src/engine/bavPayout.ts` | `afterTaxBavLumpSum`, `deriveBavLumpSumTaxMode` |
 | Certified §22 Nr. 5 payout tax (AVD / Riester) | `src/engine/certifiedPensionPayout.ts` | `netCertifiedPensionPayout`, `afterTaxCertifiedPensionLumpSum` |
 | ETF Vorabpauschale (InvStG §18, §19) | `src/engine/accumulation.ts`, `src/engine/etfPayout.ts` | `projectAccumulation` (`etfVorabpauschale` param), `etfPayoutSchedule` |

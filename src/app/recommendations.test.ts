@@ -994,12 +994,23 @@ describe('pAV vintage rules', () => {
     expect(atoms.some((a) => a.id === 'pre_2005_pav_high_garantiezins')).toBe(true)
   })
 
-  it('2005 contract (post-2004 boundary) with runtime ≥ 12, age ≥ 62 → halbeinkuenfte (not pre2005)', () => {
+  it('2005 contract (post-2004 boundary) with runtime ≥ 12, age ≥ 60 → halbeinkuenfte (not pre2005)', () => {
     const inst = makeInsuranceInstance({ contractStartYear: 2005 })
-    // age 50, retirement 67 → payoutYear = CURRENT_YEAR + 17; runtime = CURRENT_YEAR + 17 - 2005 ≥ 12 ✓; retirementAge 67 ≥ 62 ✓
-    const input = makeWorkspaceInput({ insurance: [inst] }, { age: 50, retirementAge: 67 })
+    // age 58, retirement 60 → payoutYear = CURRENT_YEAR + 2; runtime = CURRENT_YEAR + 2 - 2005 ≥ 12; retirementAge 60 meets the pre-2012 threshold.
+    const input = makeWorkspaceInput({ insurance: [inst] }, { age: 58, retirementAge: 60 })
     const atoms = runRules(input)
-    expect(atoms.some((a) => a.id === 'halbeinkuenfte_pav_eligible')).toBe(true)
+    const atom = atoms.find((a) => a.id === 'halbeinkuenfte_pav_eligible')
+    expect(atom).toBeDefined()
+    expect(atom?.context.minPayoutAge).toBe(60)
+    expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(false)
+  })
+
+  it('2012 contract with runtime ≥ 12 and retirementAge 60 → no halbeinkuenfte privilege', () => {
+    const inst = makeInsuranceInstance({ contractStartYear: 2012 })
+    // age 58, retirement 60 → payoutYear = CURRENT_YEAR + 2; runtime = CURRENT_YEAR + 2 - 2012 ≥ 12, but post-2011 contracts need age 62.
+    const input = makeWorkspaceInput({ insurance: [inst] }, { age: 58, retirementAge: 60 })
+    const atoms = runRules(input)
+    expect(atoms.some((a) => a.id === 'halbeinkuenfte_pav_eligible')).toBe(false)
     expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(false)
   })
 
@@ -1023,7 +1034,7 @@ describe('pAV vintage rules', () => {
     const atoms = runRules(input)
     expect(atoms.some((a) => a.id === 'pre_2005_pav_taxfree_capital')).toBe(false)
     // Without pre2005 eligibility, a 2002 contract still qualifies for halbeinkuenfte
-    // (runtime ≥ 12 and retirementAge ≥ 62)
+    // (runtime ≥ 12 and retirementAge ≥ 60)
     expect(atoms.some((a) => a.id === 'halbeinkuenfte_pav_eligible')).toBe(true)
   })
 
@@ -1152,7 +1163,7 @@ describe('renderAtom snapshots — vintage atoms', () => {
     {
       id: 'halbeinkuenfte_pav_eligible',
       priority: 'medium',
-      context: { instanceId: 'pav-2', productId: 'versicherung' },
+      context: { instanceId: 'pav-2', contractStartYear: 2008, runtimeYearsAtRetirement: 24, minPayoutAge: 60, productId: 'versicherung' },
     },
     {
       id: 'pre_2005_pav_high_garantiezins',

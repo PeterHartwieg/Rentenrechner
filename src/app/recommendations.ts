@@ -23,6 +23,7 @@ import type { GermanRules, ProductResult } from '../domain'
 import type { Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { activeRules } from '../rules'
+import { halbeinkuenfteMinAgeForContractStartYear } from '../rules/legalConstants'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from '../engine/insurancePayout'
 import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
 import { childBirthYearsUnder25InYear } from '../engine/childEligibility'
@@ -604,7 +605,13 @@ const pavVintageRule: Rule = ({ workspace }: RuleEngineInput): Atom[] => {
       atoms.push({
         id: 'halbeinkuenfte_pav_eligible',
         priority: 'medium',
-        context: { instanceId: inst.instanceId, productId: 'versicherung' },
+        context: {
+          instanceId: inst.instanceId,
+          contractStartYear: inst.contractStartYear,
+          runtimeYearsAtRetirement: runtimeYears,
+          minPayoutAge: halbeinkuenfteMinAgeForContractStartYear(inst.contractStartYear),
+          productId: 'versicherung',
+        },
       })
     }
 
