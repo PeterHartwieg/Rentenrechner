@@ -19,6 +19,8 @@ export type Route =
   | '/riester-vs-altersvorsorgedepot'
   | '/basisrente-rechner'
   | '/private-rentenversicherung-rechner'
+  | '/rente-netto-berechnen'
+  | '/altersvorsorgeprodukte-vergleichen'
   | '/404'
 
 const KNOWN_ROUTES: Route[] = [
@@ -31,6 +33,8 @@ const KNOWN_ROUTES: Route[] = [
   '/riester-vs-altersvorsorgedepot',
   '/basisrente-rechner',
   '/private-rentenversicherung-rechner',
+  '/rente-netto-berechnen',
+  '/altersvorsorgeprodukte-vergleichen',
   '/404',
 ]
 

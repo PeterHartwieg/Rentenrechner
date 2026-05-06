@@ -68,6 +68,8 @@ import { AltersvorsorgedepotRechnerPage } from './features/publicPages/Altersvor
 import { RiesterVsAltersvorsorgedepotPage } from './features/publicPages/RiesterVsAltersvorsorgedepotPage'
 import { BasisrenteRechnerPage } from './features/publicPages/BasisrenteRechnerPage'
 import { PrivateRentenversicherungRechnerPage } from './features/publicPages/PrivateRentenversicherungRechnerPage'
+import { RenteNettoBerechnePage } from './features/publicPages/RenteNettoBerechnePage'
+import { AltersvorsorgeproduktePage } from './features/publicPages/AltersvorsorgeproduktePage'
 import { PageNotFound } from './features/publicPages/PageNotFound'
 import type { Route } from './app/useRoute'
 import {
@@ -142,6 +144,8 @@ function App() {
   else if (route === '/riester-vs-altersvorsorgedepot') body = <RiesterVsAltersvorsorgedepotPage />
   else if (route === '/basisrente-rechner') body = <BasisrenteRechnerPage />
   else if (route === '/private-rentenversicherung-rechner') body = <PrivateRentenversicherungRechnerPage />
+  else if (route === '/rente-netto-berechnen') body = <RenteNettoBerechnePage />
+  else if (route === '/altersvorsorgeprodukte-vergleichen') body = <AltersvorsorgeproduktePage />
   else if (route === '/404') body = <PageNotFound />
   else body = <Calculator navigate={navigate} />
   // QA feedback mode (issue 02 — Phase 1 Lane A). Wraps the entire route

@@ -1,0 +1,208 @@
+## Was bedeutet „Rente netto"?
+
+Die gesetzliche Rente wird **nicht in voller Höhe ausgezahlt**. Vom Bruttobetrag
+werden Einkommensteuer sowie Beiträge zur Kranken- und Pflegeversicherung
+abgezogen. Der verbleibende Betrag ist die Nettorente. Wie hoch der Abzug
+ausfällt, hängt von drei Faktoren ab:
+
+1. **Dem Besteuerungsanteil** — er steigt nach Renteneintrittsjahrgang (Kohorten).
+2. **Dem Versicherungsstatus** — KVdR-Mitglied oder freiwillig versichert.
+3. **Den Pauschbeträgen** — Werbungskosten und Sonderausgaben mindern das
+   zu versteuernde Einkommen.
+
+Dieser Rechner bildet alle drei Faktoren für die Modellrechnung ab.
+
+## Besteuerung der gesetzlichen Rente: der Besteuerungsanteil
+
+Die gesetzliche Rente ist **nicht vollständig steuerfrei**, aber auch nicht
+vollständig steuerpflichtig. Das Einkommensteuergesetz sieht eine schrittweise
+Ausweitung des steuerpflichtigen Anteils vor (§ 22 Nr. 1 Satz 3 a EStG):
+
+- **Renteneintrittsjahrgang 2005:** 50 % der Rente sind steuerpflichtig.
+- **Jährliche Erhöhung** um 2 Prozentpunkte je Jahrgang bis 2020.
+- **Ab 2021:** jährlich + 1 Prozentpunkt, bis 100 % im Jahrgang 2058 erreicht
+  werden.
+
+Wer also 2030 in Rente geht, hat einen Besteuerungsanteil von 90 %. Das gilt für
+den **gesamten Rentenbezug**, nicht nur die ersten Jahre. Der **Rentenfreibetrag**
+ergibt sich einmalig im ersten vollen Rentenjahr als der steuerfreie Teil der
+Jahresrente; er wird danach in Euro eingefroren (§ 22 Nr. 1 Satz 3 a EStG Satz 6
+— sog. Kohortenmodell, vgl. BMF-Schreiben vom 19. November 2025
+*Programmablaufplan 2026*).
+
+### Versorgungsfreibetrag für Beamtenrenten
+
+Empfängerinnen und Empfänger von **Versorgungsbezügen** (Beamtenpensionen,
+betriebliche Altersversorgung mit Versorgungscharakter) erhalten keinen
+Besteuerungsanteil nach § 22 EStG, sondern den **Versorgungsfreibetrag**
+nach § 19 Abs. 2 EStG. Dieser betrug für den Versorgungsbeginn 2005:
+40 % der Versorgungsbezüge (max. 3 000 EUR jährlich), und sinkt für spätere
+Zugangsjahrgänge ebenfalls schrittweise ab.
+
+Der Rechner verwendet den § 22 EStG-Pfad für gesetzliche GRV-Renten; der
+§ 19 EStG-Pfad gilt für die bAV-Auszahlungen, die separat modelliert werden.
+
+## KV-Beiträge in der Rente: KVdR vs. freiwillige Mitgliedschaft
+
+Der wichtigste Schalter bei den Krankenversicherungsbeiträgen ist, ob jemand
+**Mitglied der Krankenversicherung der Rentner (KVdR)** ist oder freiwillig
+gesetzlich versichert bleibt.
+
+### KVdR — §§ 226, 237 SGB V
+
+Die KVdR gilt für Rentnerinnen und Rentner, die in der zweiten Hälfte ihres
+Erwerbslebens zu mehr als 90 % der Zeit in der gesetzlichen Krankenversicherung
+versichert waren (§ 5 Abs. 1 Nr. 11 SGB V, Halbbelegung). KVdR-Mitglieder
+zahlen KV-Beiträge auf folgende Einkünfte:
+
+- Gesetzliche Rente (§ 226 Abs. 1 SGB V).
+- Versorgungsbezüge und Betriebsrenten (§ 229 SGB V), nach dem 1/120-Modell
+  auf laufende Beträge; einmalige Kapitalleistungen nach § 229 Abs. 1 Satz 3
+  SGB V, 1/120 der Kapitalleistung monatlich für 120 Monate.
+
+Die **Beitragsbemessungsgrenze (BBG)** der gesetzlichen KV begrenzt die Summe
+der beitragspflichtigen Einnahmen; darüber hinausgehende Beträge bleiben
+beitragsfrei. Für 2026 liegt die monatliche KV-BBG bei 5 512,50 EUR (§ 228 SGB V,
+Wert nach BMAS-Bekanntmachung 2025/2026).
+
+### Freiwillige Mitgliedschaft — § 240 SGB V
+
+Wer die Halbbelegung **nicht** erfüllt (z. B. wegen längerer PKV-Zeiten), ist
+in der Rente freiwillig gesetzlich versichert. Die Beitragsberechnung erfolgt
+dann nach § 240 SGB V auf Grundlage der **gesamten wirtschaftlichen
+Leistungsfähigkeit**, also auf alle relevanten Einkünfte inkl. Mieteinkünfte,
+Kapitaleinkünfte und Leibrenteneinkünfte — nicht nur auf gesetzliche Rente und
+Versorgungsbezüge. Auch hier gilt die BBG als Deckel.
+
+Der monatliche Beitragssatz setzt sich zusammen aus:
+
+- Allgemeiner Beitragssatz GKV 2026: 14,6 % (§ 241 SGB V).
+- Zusatzbeitragssatz (kassenindividuell; durchschnittlich ca. 1,7 % in 2026,
+  Quelle: GKV-Spitzenverband *Beitragssatz-Übersicht 2026*).
+- Rentnerinnen und Rentner zahlen davon die Hälfte; die andere Hälfte trägt
+  die DRV (§ 249a SGB V).
+
+### Pflegeversicherung — §§ 55, 55a SGB XI
+
+Die Beiträge zur Pflegeversicherung werden auf dieselbe Bemessungsgrundlage wie
+der KV-Beitrag erhoben. Der Beitragssatz 2026 beträgt 3,6 % (§ 55 Abs. 1 SGB XI).
+Kinderlose zahlen einen Zuschlag von 0,6 Prozentpunkten (§ 55 Abs. 3 SGB XI);
+Eltern erhalten ab dem zweiten Kind eine stufenweise Entlastung nach § 55a SGB XI
+(Reform in Kraft seit 2024).
+
+## Pauschbeträge: Werbungskosten und Sonderausgaben
+
+Bevor die Einkommensteuer auf die Rentenbezüge berechnet wird, werden
+Pauschbeträge abgezogen:
+
+- **Werbungskostenpauschbetrag für Renteneinkünfte:** 102 EUR jährlich
+  (§ 9a Satz 1 Nr. 3 EStG); kann durch höhere tatsächliche Werbungskosten
+  ersetzt werden.
+- **Sonderausgaben-Pauschbetrag:** 36 EUR jährlich (§ 10c EStG); in der Praxis
+  meist von tatsächlichen Sonderausgaben (Krankenversicherungsbeiträge,
+  Pflegeversicherung) überschritten, da diese vollständig abzugsfähig sind
+  (§ 10 Abs. 1 Nr. 3 EStG).
+
+In der Praxis übersteigen die tatsächlichen Sonderausgaben (insbesondere die
+KV/PV-Beiträge selbst) den Pauschbetrag, weshalb der Rechner die tatsächlichen
+KV/PV-Beiträge als Sonderausgaben einsetzt.
+
+## Beispiel: Anna (Stand 2026)
+
+*Persona aus `docs/user-scenarios.md`, Werte modellhaft.*
+
+| Annahme | Wert |
+|---------|------|
+| Renteneintrittsjahrgang | 2032 |
+| Bruttorente monatlich | 1 600 EUR |
+| Besteuerungsanteil (Jahrgang 2032) | 96 % |
+| Steuerpflichtiger Anteil monatlich | 1 536 EUR |
+| Werbungskosten-Pauschbetrag | 8,50 EUR / Monat |
+| Zu versteuerndes Renteneinkommen | ca. 1 527 EUR / Monat |
+| Grenzsteuersatz (Schätzung, Singlehaushalt) | ca. 20 % |
+| Einkommensteuer monatlich (vereinfacht) | ca. 130 EUR |
+| KV-Beitrag (KVdR, Hälfte ≈ 8,15 % × 1 600 EUR) | ca. 130 EUR |
+| PV-Beitrag (Hälfte ≈ 1,8 % × 1 600 EUR, mit Kind) | ca. 29 EUR |
+| **Nettorente ungefähr** | **ca. 1 311 EUR** |
+
+Diese Rechnung ist eine grobe Modellschätzung. Der Rechner bildet die
+Steuerprogression, den individuellen Grenzsteuersatz, die genaue
+Pauschbetragsstruktur und die KV/PV-BBG exakt ab. Für eine verbindliche
+Auskunft ist ein steuerlicher Berater oder die Deutsche Rentenversicherung
+zuständig.
+
+## Was der Rechner nicht berechnet
+
+Die Modellrechnung liefert **Illustrationen**, keine verbindliche
+Steuerberechnung. Insbesondere:
+
+- **Günstigerprüfung (§ 32d Abs. 6 EStG):** Wenn die tatsächliche
+  Einkommensteuer auf die Renteneinkünfte (Abgeltungsteuer) günstiger wäre
+  als die Progression, ist eine gesonderte Prüfung erforderlich.
+- **Ehegatten-/Lebenspartner-Splitting:** Die Modellrechnung erlaubt die Wahl
+  des Ehegattensplittings (§ 32a Abs. 5 EStG); dies kann die Steuerlast
+  deutlich verändern.
+- **Weitere Einkünfte im Alter:** Kapital-, Miet- oder Erwerbseinkünfte neben
+  der Rente können den Grenzsteuersatz erhöhen.
+- **Rentenanpassungen:** Jährliche Rentenanpassungen (§ 68 SGB VI)
+  verändern die Steuerlast, da der Freibetrag eingefroren ist und der
+  angepasste Betrag zu 100 % steuerpflichtig wird.
+
+## Häufige Fragen
+
+### Ist die gesetzliche Rente vollständig steuerpflichtig?
+
+Nein. Abhängig vom Renteneintrittsjahrgang ist nur ein Teil der Rente
+steuerpflichtig (§ 22 Nr. 1 Satz 3 a EStG). Für Zugangsjahrgänge ab 2058
+sind 100 % steuerpflichtig. Ein steuerfreier Rest bleibt aber auch dann
+bestehen, wenn der Grundfreibetrag (§ 32a EStG; 2026: 12 096 EUR jährlich)
+nicht überschritten wird.
+
+### Zahle ich als Rentnerin KV auf meine gesamte Rente?
+
+Nicht zwingend. Der Beitrag ist auf die Beitragsbemessungsgrenze der gesetzlichen
+Krankenversicherung gedeckelt (§ 228 SGB V; monatlich 5 512,50 EUR in 2026).
+Für KVdR-Mitglieder (§§ 226, 237 SGB V) werden Rentenbezüge und
+Versorgungsbezüge (z. B. bAV-Rente) addiert; wer über der BBG liegt, zahlt
+nur auf den Betrag bis zur BBG.
+
+### Was ist der Unterschied zwischen KVdR und freiwilliger GKV?
+
+KVdR-Mitglieder zahlen nur auf gesetzliche Rente und Versorgungsbezüge;
+freiwillig GKV-Versicherte zahlen nach § 240 SGB V auf die gesamte
+wirtschaftliche Leistungsfähigkeit — also auch auf Kapital- und Mieteinkünfte.
+Die Halbbelegungsregel entscheidet über die Zugehörigkeit
+(§ 5 Abs. 1 Nr. 11 SGB V).
+
+### Was ändert sich durch das Rentenbonus-Reformgesetz 2026?
+
+Die Pflegeversicherungs-Beitragssätze wurden per 1. Januar 2024 reformiert
+(§ 55a SGB XI): Eltern ab zwei Kindern unter 25 Jahren erhalten gestaffelte
+Entlastungen; Kinderlose zahlen weiterhin den Zuschlag von 0,6 Prozentpunkten.
+Die im Rechner hinterlegten Sätze entsprechen dem Stand 2026.
+
+## Quellen
+
+- Einkommensteuergesetz (EStG), § 22 Nr. 1 Satz 3 a — Besteuerungsanteil
+  bei Leibrenten aus gesetzlicher Rentenversicherung und Basisrente (Kohortenmodell).
+- Einkommensteuergesetz (EStG), § 19 Abs. 2 — Versorgungsfreibetrag für
+  Beamtenpensionen und vergleichbare Bezüge.
+- Einkommensteuergesetz (EStG), § 9a Satz 1 Nr. 3 — Werbungskosten-Pauschbetrag
+  für Renteneinkünfte (102 EUR jährlich).
+- Einkommensteuergesetz (EStG), § 10c — Sonderausgaben-Pauschbetrag (36 EUR).
+- Sozialgesetzbuch V (SGB V), §§ 5 Abs. 1 Nr. 11, 226, 228, 229, 237, 240,
+  241, 249a — KVdR-Zugang, Beitragsbasis, BBG, freiwillige Mitgliedschaft,
+  allgemeiner Beitragssatz, Rentnerbeitragsteilung.
+- Sozialgesetzbuch XI (SGB XI), §§ 55, 55a — Pflegeversicherungs-Beitragssatz
+  und Eltern-Entlastung (Stand 2026).
+- Bundesministerium der Finanzen (BMF): *Programmablaufplan für die Berechnung
+  der Lohnsteuer 2026* (BMF-Schreiben vom 19. November 2025) — Grundlage für
+  die steuerliche Behandlung der Renteneinkünfte.
+- Deutsche Rentenversicherung Bund: *Rentenversicherung in Zahlen 2025/2026* —
+  aktuelle Rentenwerte, Entgeltpunkte, Beitragsbemessungsgrenzen.
+- GKV-Spitzenverband: *Beitragssatz-Übersicht 2026* — allgemeiner Beitragssatz,
+  durchschnittlicher Zusatzbeitragssatz 2026.
+- Bundesministerium für Arbeit und Soziales (BMAS): *Sozialversicherungs­
+  Rechengrößen-Verordnung 2026* — BBG GKV/PV 5 512,50 EUR/Monat.
+- Statistisches Bundesamt (Destatis): *Sterbetafeln 2021/2023* — Hintergrund
+  für Lebenserwartungsannahmen in der Modellrechnung.

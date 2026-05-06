@@ -384,6 +384,80 @@ export const publicRouteRegistry = {
       visibleProducts: ['etf', 'versicherung'],
     },
   },
+  // ---------------------------------------------------------------------------
+  // Issue #07 — Portfolio planner + Rente netto cluster
+  // ---------------------------------------------------------------------------
+  '/rente-netto-berechnen': {
+    canonical: '/rente-netto-berechnen',
+    title: 'Rente netto berechnen — gesetzliche Rente nach Steuer und KV/PV 2026 | RentenWiki.de',
+    metaDescription:
+      'Gesetzliche Rente netto berechnen: Besteuerungsanteil §22 EStG (Kohorten), ' +
+      'KVdR vs. freiwillige GKV §240 SGB V, Pflegeversicherung §55 SGB XI, ' +
+      'Werbungskosten- und Sonderausgaben-Pauschbetrag. Modellrechnung Stand 2026.',
+    h1: 'Rente netto berechnen — gesetzliche Rente nach Steuer und KV/PV 2026',
+    summary:
+      'Erklärt, wie die gesetzliche Rente in der Auszahlphase besteuert wird (kohortenbezogener ' +
+      'Besteuerungsanteil nach §22 Nr. 1 Satz 3 a EStG, Versorgungsfreibetrag §19 Abs. 2 EStG), ' +
+      'wie KV- und PV-Beiträge berechnet werden (KVdR §226 SGB V vs. freiwillig §240 SGB V, ' +
+      'Pflegeversicherung §55 SGB XI) und welche Pauschbeträge abgezogen werden. ' +
+      'Modellrechner RentenWiki.de, Stand 2026, keine Steuer- oder Rechtsberatung.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebApplication',
+    relatedRoutes: [
+      '/',
+      '/rentenluecke-rechner',
+      '/altersvorsorgeprodukte-vergleichen',
+    ],
+    calculatorCta: {
+      label: 'Rente netto jetzt berechnen',
+      href: '/?topic=rente-netto-berechnen',
+    },
+    // Natural seed: ETF supplement alongside the implicit GRV baseline.
+    // This is the most common "Rentenlücke schließen" framing:
+    // statutory pension net (always shown) + ETF savings as supplement.
+    preselection: {
+      mode: 'compare',
+      visibleProducts: ['etf'],
+    },
+  },
+  '/altersvorsorgeprodukte-vergleichen': {
+    canonical: '/altersvorsorgeprodukte-vergleichen',
+    title: 'Altersvorsorgeprodukte vergleichen — ETF, bAV, Riester, Basisrente & Co. 2026 | RentenWiki.de',
+    metaDescription:
+      'ETF, bAV, private Rentenversicherung, Basisrente, AVD und Riester gemeinsam planen: ' +
+      'kostenloser Portfolio-Modellrechner. "Nächster Euro"-Assistent. ' +
+      'Kein Broker, keine Empfehlung. Stand 2026.',
+    h1: 'Altersvorsorgeprodukte vergleichen — ETF, bAV, Riester und mehr gemeinsam planen 2026',
+    summary:
+      'RentenWiki.de ist ein kostenloser, quelloffener Modellrechner ohne Broker- oder ' +
+      'Provisionsbindung. Im Portfolio-Modus lassen sich mehrere Verträge (ETF, bAV, private ' +
+      'Rentenversicherung, Basisrente/Rürup, Altersvorsorgedepot, Riester) gleichzeitig erfassen, ' +
+      'mit Transfer-Ereignissen (beitragsfrei, Rückkauf, Übertragung) kombinieren und als ' +
+      'Haushaltsperspektive auswerten. Der "Wo geht mein nächster Euro hin?"-Assistent nutzt ' +
+      'Deckungsbeitragspotenzialmessung und Monte-Carlo-P10-Risikoabschätzung — keine Empfehlung. ' +
+      'Stand 2026, keine Steuer-, Rechts- oder Anlageberatung.',
+    dateModified: '2026-05-06',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'Article',
+    relatedRoutes: [
+      '/',
+      '/rentenluecke-rechner',
+      '/rente-netto-berechnen',
+    ],
+    calculatorCta: {
+      label: 'Portfolio-Modus öffnen',
+      href: '/?topic=altersvorsorgeprodukte-vergleichen',
+    },
+    // Combine-mode: user adds their own contracts via the InventoryWizard.
+    // No visibleProducts seed — the wizard's product checklist starts empty
+    // so users self-select which products they actually have.
+    preselection: {
+      mode: 'combine',
+    },
+  },
   '/404': {
     canonical: '/404',
     title: 'Seite nicht gefunden — RentenWiki.de',

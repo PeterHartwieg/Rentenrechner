@@ -9,6 +9,8 @@ import { AltersvorsorgedepotRechnerPage } from './AltersvorsorgedepotRechnerPage
 import { RiesterVsAltersvorsorgedepotPage } from './RiesterVsAltersvorsorgedepotPage'
 import { BasisrenteRechnerPage } from './BasisrenteRechnerPage'
 import { PrivateRentenversicherungRechnerPage } from './PrivateRentenversicherungRechnerPage'
+import { RenteNettoBerechnePage } from './RenteNettoBerechnePage'
+import { AltersvorsorgeproduktePage } from './AltersvorsorgeproduktePage'
 import { PageNotFound } from './PageNotFound'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 
@@ -744,5 +746,214 @@ describe('RiesterVsAltersvorsorgedepotPage — visible content for prerender', (
     } finally {
       Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// RenteNettoBerechnePage — issue #07
+// ---------------------------------------------------------------------------
+
+describe('RenteNettoBerechnePage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<RenteNettoBerechnePage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/rente-netto-berechnen'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<RenteNettoBerechnePage />)
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/rente-netto-berechnen'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
+    const { container } = render(<RenteNettoBerechnePage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer (compliance — every public page must)', () => {
+    const { container } = render(<RenteNettoBerechnePage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
+    const { container } = render(<RenteNettoBerechnePage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=rente-netto-berechnen')
+  })
+
+  it('renders an internal link back to the homepage and to the legal pages', () => {
+    const { container } = render(<RenteNettoBerechnePage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+  })
+
+  it('links to at least two sibling topic pages (internal-link requirement)', () => {
+    const { container } = render(<RenteNettoBerechnePage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/rentenluecke-rechner')
+    expect(links).toContain('/altersvorsorgeprodukte-vergleichen')
+  })
+
+  it('cites statutory sources inline (§-refs EStG / SGB V / SGB XI)', () => {
+    const { container } = render(<RenteNettoBerechnePage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?\d+\s?(EStG|SGB\s?V|SGB\s?XI)/i)
+    expect(text).toMatch(/(BMF|Deutsche Rentenversicherung|GKV-Spitzenverband|Statistisches Bundesamt)/i)
+  })
+
+  it('does not import simulation engine modules during render', () => {
+    const html = renderToString(<RenteNettoBerechnePage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<RenteNettoBerechnePage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
+  })
+})
+
+describe('RenteNettoBerechnePage — prerendered disclaimer', () => {
+  it('prerendered HTML contains the disclaimer text', () => {
+    const html = renderToString(<RenteNettoBerechnePage />)
+    expect(html).toContain('Modellrechnung')
+    expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// AltersvorsorgeproduktePage — issue #07
+// ---------------------------------------------------------------------------
+
+describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
+  it('renders the H1 from the registry', () => {
+    const { getByRole } = render(<AltersvorsorgeproduktePage />)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe(
+      publicRouteRegistry['/altersvorsorgeprodukte-vergleichen'].h1,
+    )
+  })
+
+  it('renders the page summary', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    expect(container.textContent).toContain(
+      publicRouteRegistry['/altersvorsorgeprodukte-vergleichen'].summary.slice(0, 40),
+    )
+  })
+
+  it('renders the visible "Stand 2026" line', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Deutschland 2026')
+  })
+
+  it('renders the not-advice disclaimer', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    expect(container.textContent).toContain('Modellrechnung')
+    expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
+  })
+
+  it('renders a combine-mode CTA with topic preselection (issue #13)', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    const cta = container.querySelector('.public-cta')
+    expect(cta).not.toBeNull()
+    expect(cta?.getAttribute('href')).toBe('/?topic=altersvorsorgeprodukte-vergleichen')
+  })
+
+  it('renders an internal link back to the homepage and to the legal pages', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/')
+    expect(links).toContain('/impressum')
+    expect(links).toContain('/datenschutz')
+  })
+
+  it('links to at least two sibling topic pages', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(links).toContain('/rentenluecke-rechner')
+    expect(links).toContain('/rente-netto-berechnen')
+  })
+
+  it('explicitly frames the tool as a free model calculator (no broker framing)', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/kostenlos/i)
+    expect(text).not.toMatch(/\bwir empfehlen\b|\bich empfehle\b/i)
+    expect(text).toMatch(/kein.*Broker|Broker.*nicht|kein.*Vermittler|Vermittler.*nicht/i)
+  })
+
+  it('mentions combine-mode concepts (portfolio framing)', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/Portfolio/i)
+    expect(text).toMatch(/Transfer|beitragsfrei|Übertrag/i)
+  })
+
+  it('cites statutory sources inline (§-refs EStG / SGB V / BetrAVG)', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s?\d+\s?(EStG|SGB\s?V|BetrAVG)/i)
+    expect(text).toMatch(/(BMF|Deutsche Rentenversicherung|GKV-Spitzenverband)/i)
+  })
+
+  it('does not import simulation engine modules during render', () => {
+    const html = renderToString(<AltersvorsorgeproduktePage />)
+    expect(html.length).toBeGreaterThan(500)
+    expect(html).not.toMatch(/[€]\s?[\d.]+/)
+  })
+
+  it('renders without throwing when localStorage access throws', () => {
+    const originalLocalStorage = window.localStorage
+    const blocked = {
+      getItem: () => { throw new Error('blocked') },
+      setItem: () => { throw new Error('blocked') },
+      removeItem: () => { throw new Error('blocked') },
+      clear: () => { throw new Error('blocked') },
+      key: () => { throw new Error('blocked') },
+      length: 0,
+    } as unknown as Storage
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
+    try {
+      expect(() => renderToString(<AltersvorsorgeproduktePage />)).not.toThrow()
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
+    }
+  })
+})
+
+describe('AltersvorsorgeproduktePage — prerendered disclaimer', () => {
+  it('prerendered HTML contains the disclaimer text', () => {
+    const html = renderToString(<AltersvorsorgeproduktePage />)
+    expect(html).toContain('Modellrechnung')
+    expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
 })

@@ -68,6 +68,8 @@ async function loadSourceModules() {
     const pageNotFound = await server.ssrLoadModule('/src/features/publicPages/PageNotFound.tsx')
     const basisrenteRechner = await server.ssrLoadModule('/src/features/publicPages/BasisrenteRechnerPage.tsx')
     const privateRvRechner = await server.ssrLoadModule('/src/features/publicPages/PrivateRentenversicherungRechnerPage.tsx')
+    const renteNettoBerechnen = await server.ssrLoadModule('/src/features/publicPages/RenteNettoBerechnePage.tsx')
+    const altersvorsorgeprodukte = await server.ssrLoadModule('/src/features/publicPages/AltersvorsorgeproduktePage.tsx')
 
     return {
       server,
@@ -81,6 +83,8 @@ async function loadSourceModules() {
       pageNotFound,
       basisrenteRechner,
       privateRvRechner,
+      renteNettoBerechnen,
+      altersvorsorgeprodukte,
     }
   } catch (err) {
     await server.close()
@@ -93,6 +97,8 @@ function pickComponent(routeId, modules) {
   if (routeId === '/404') return modules.pageNotFound.PageNotFound
   if (routeId === '/basisrente-rechner') return modules.basisrenteRechner.BasisrenteRechnerPage
   if (routeId === '/private-rentenversicherung-rechner') return modules.privateRvRechner.PrivateRentenversicherungRechnerPage
+  if (routeId === '/rente-netto-berechnen') return modules.renteNettoBerechnen.RenteNettoBerechnePage
+  if (routeId === '/altersvorsorgeprodukte-vergleichen') return modules.altersvorsorgeprodukte.AltersvorsorgeproduktePage
   // For `/` we render the full App but force the route via window.location
   // before render. The dashboard requires a DOM environment that we don't
   // have during static prerender — so for `/` we render the LandingPage
@@ -181,6 +187,7 @@ async function main() {
       // first-paint crawlers.
       const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
         || routeId === '/basisrente-rechner' || routeId === '/private-rentenversicherung-rechner'
+        || routeId === '/rente-netto-berechnen' || routeId === '/altersvorsorgeprodukte-vergleichen'
       const rootMarker = hydrateStable ? ' data-rentenwiki-prerendered="1"' : ''
       pageHtml = pageHtml.replace(
         '<div id="root"></div>',
