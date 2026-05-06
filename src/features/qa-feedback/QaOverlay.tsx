@@ -33,20 +33,27 @@ interface OutlineRect {
  *
  * ── Z-index / portal layering rule (issue 17) ────────────────────────────
  *
- * The QA overlay outline uses `z-index: 998` (defined in qa-feedback.css).
- * All modals and dialogs in this codebase use z-index ≤ 200:
+ * The QA overlay outline uses `z-index: 9999` (defined in qa-feedback.css).
+ * This is deliberately above all known modal/dialog/overlay layers:
  *   - OptimiereVorsorgeModal backdrop:   z-index: 200
  *   - ContractDecisionMenu overlay:      z-index: 200
- *   - InventoryWizard overlay:           z-index: 200  (defined inline/CSS)
  *   - LueckeSchliessenModal:             z-index: 200
+ *   - InventoryWizard .inventory-overlay: z-index: 1000
+ *   - InventoryWizard .inv-remove-dialog: z-index: 2000
  *
- * The QA outline at z-index 998 therefore always renders ABOVE the topmost
- * modal layer WITHOUT needing a portal. The QA composer panel sits at
- * z-index 1001, also above all modals.
+ * The QA outline at z-index 9999 therefore always renders ABOVE every modal
+ * layer WITHOUT needing a portal. The QA composer panel sits at
+ * z-index 1001 (kept intentionally below 9999 — the outline still paints
+ * over it so pinned targets stay visible).
  *
- * Rule for new modals: keep backdrop z-index ≤ 500. Never raise a modal's
- * z-index above 900 without also updating the QA overlay z-index in
- * qa-feedback.css so the outline remains visible inside the modal.
+ * Rule for new modals: any future modal MUST use z-index < 9999, or the QA
+ * outline will be hidden under it and testers cannot pin elements inside.
+ * The CSS regression test in
+ * `src/features/qa-feedback/__tests__/modal-coverage.test.tsx`
+ * ("Z-index layering — CSS-parsed") enforces this automatically: it reads
+ * every modal/overlay CSS file at test time and asserts max(otherZ) < 9999.
+ * Add new modal CSS files to the scan list in that test when introducing a
+ * new modal.
  *
  * Pinning invariant (issue 17): The QA overlay intercepts clicks in the
  * capture phase (`addEventListener('click', handler, true)`) and calls

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/// <reference types="node" />
 
 /**
  * Issue 17 — Modal, wizard, and popover QA-target coverage.
@@ -13,10 +14,13 @@
  *     `mousedown` for click-outside detection.
  *
  * Z-index regression:
- *   - The QA overlay outline z-index (998) must be > the maximum modal
- *     z-index (200) so outlines are always visible inside modals.
+ *   - The QA overlay outline z-index (9999) must be > the maximum z-index of
+ *     every other modal/overlay CSS file so outlines are always visible inside
+ *     modals. The "CSS-parsed" test reads actual CSS files to enforce this.
  */
 
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import { useState, useContext } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, fireEvent, act } from '@testing-library/react'
@@ -172,6 +176,75 @@ describe('InfoTip — popover body QA target (issue 17)', () => {
     expect(container.querySelector('[role="tooltip"]')).not.toBeNull()
 
     document.body.removeChild(externalQaEl)
+  })
+
+  it('real InfoTip: clicking popover body data-qa-target pins the popover and keeps it open', () => {
+    /**
+     * Blocker 3 (round-2): real component integration test for the InfoTip
+     * popover-body pinning invariant.
+     *
+     * Strategy:
+     *   1. Render with QA mode OFF so the trigger button has no [data-qa-target]
+     *      and the QA overlay capture-phase handler won't intercept its click.
+     *   2. Click the trigger to open the popover (works normally in QA-off mode).
+     *   3. Programmatically enable QA mode via ctx.activate().
+     *   4. Dispatch a click on the real popover-body element
+     *      ([data-qa-target="test.tooltip.popover"]).
+     *   5. Assert (a) the popover is still rendered (QA overlay click handler
+     *      consumed the event via stopPropagation, so InfoTip's click-outside
+     *      mousedown guard + no close from button click keeps popover open), and
+     *      (b) ctx.pinned is set to the .popover target id.
+     *
+     * A FAILURE here means the `.popover` useFeedbackTarget call was removed
+     * from InfoTip.tsx — the popover-body target would be absent and `pickTarget`
+     * would never be called.
+     */
+    window.history.replaceState(null, '', '/') // QA mode OFF during open
+
+    let activateQa: (() => void) | null = null
+    let pinnedId: string | null = null
+
+    function Harness() {
+      const ctx = useContext(QaFeedbackContext)
+      activateQa = ctx.activate
+      pinnedId = ctx.pinned?.target.id ?? null
+      return (
+        <InfoTip text="Erklärungstext" feedbackTargetId="test.tooltip" />
+      )
+    }
+
+    const { container } = render(
+      <QaFeedbackProvider>
+        <Harness />
+      </QaFeedbackProvider>,
+    )
+
+    // Step 1: Open the popover while QA mode is OFF (trigger has no data-qa-target,
+    // so no capture-phase interception).
+    const trigger = container.querySelector('button.info-tip-trigger') as HTMLButtonElement
+    fireEvent.click(trigger)
+
+    // Step 2: Popover is now open.
+    expect(container.querySelector('[role="tooltip"]')).not.toBeNull()
+
+    // Step 3: Enable QA mode — popover-body element now has [data-qa-target].
+    act(() => { activateQa?.() })
+
+    // Step 4: The popover body should carry its data-qa-target now.
+    const popoverBody = container.querySelector('[data-qa-target="test.tooltip.popover"]')
+    expect(popoverBody).not.toBeNull()
+
+    // Step 5a: Click the popover body — QA overlay capture-phase handler calls
+    // stopPropagation + preventDefault, then calls pickTarget. The popover
+    // remains open because the click never reaches any close-handler.
+    fireEvent.click(popoverBody as HTMLElement)
+
+    // Popover must still be rendered.
+    expect(container.querySelector('[role="tooltip"]')).not.toBeNull()
+
+    // Step 5b: pickTarget was called with the .popover id — ctx.pinned is set.
+    // Re-render has occurred; pinnedId is updated via the Harness component.
+    expect(pinnedId).toBe('test.tooltip.popover')
   })
 })
 
@@ -596,21 +669,74 @@ describe('InventoryWizard — dialog and step QA targets (issue 17)', () => {
 // Z-index regression — overlay outline must be above modal layer (issue 17)
 // ---------------------------------------------------------------------------
 
-describe('Z-index layering — QA overlay outline above modals (issue 17)', () => {
-  it('qa-overlay-outline CSS z-index (998) is greater than maximum modal z-index (200)', () => {
-    /**
-     * This test encodes the z-index contract documented in QaOverlay.tsx:
-     *   qa-overlay-outline: z-index 998  (qa-feedback.css)
-     *   modals (all):       z-index ≤ 200 (OptimiereVorsorgeModal.css, ContractDecisionMenu.css)
-     *
-     * If you raise a modal's z-index above 900, this test will NOT catch it
-     * automatically (it's not a DOM style check). The documented rule in
-     * QaOverlay.tsx is the enforcement mechanism; this test acts as a
-     * spec-encoding reminder that the contract exists and is load-bearing.
-     */
-    const QA_OVERLAY_OUTLINE_Z = 998
-    const MAX_MODAL_Z = 200
-    expect(QA_OVERLAY_OUTLINE_Z).toBeGreaterThan(MAX_MODAL_Z)
+describe('Z-index layering — CSS-parsed regression (issue 17)', () => {
+  /**
+   * This test reads actual CSS files at test time and verifies that the QA
+   * overlay outline z-index (9999, defined in qa-feedback.css) is greater
+   * than every other z-index declared in modal/dialog/overlay CSS files.
+   *
+   * HOW TO ADD A NEW MODAL: add its CSS file path to MODAL_CSS_FILES below.
+   * If you don't, this comment and the doc in QaOverlay.tsx remind you.
+   *
+   * Third-party CSS (lucide-react, etc.) is excluded — we cannot control it
+   * and those are icon / layout styles, not overlay stacking contexts.
+   */
+
+  // Resolve paths relative to the repo root (test runs from worktree root).
+  const ROOT = path.resolve(__dirname, '../../../../')
+
+  /** CSS files that contain modal/dialog/overlay z-index declarations. */
+  const MODAL_CSS_FILES = [
+    'src/features/dashboard/ContractDecisionMenu.css',
+    'src/features/dashboard/OptimiereVorsorgeModal.css',
+    'src/features/dashboard/RecommenderCard.css',
+    'src/features/inventory/InventoryWizard.css',
+    'src/ui/InfoTip.css',
+  ]
+
+  /** The CSS file that owns the QA overlay outline z-index. */
+  const QA_CSS_FILE = 'src/features/qa-feedback/qa-feedback.css'
+
+  /** Extract all numeric z-index values from a CSS string. */
+  function extractZIndices(css: string): number[] {
+    const matches = [...css.matchAll(/z-index\s*:\s*(\d+)/g)]
+    return matches.map((m) => parseInt(m[1], 10))
+  }
+
+  /** Extract the z-index value for a named selector from a CSS string. */
+  function extractSelectorZIndex(css: string, selector: string): number | null {
+    // Match the selector block and extract z-index inside it.
+    // We look for the selector, then capture the block content up to the next `}`.
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g')
+    for (const match of css.matchAll(re)) {
+      const block = match[1]
+      const z = block.match(/z-index\s*:\s*(\d+)/)
+      if (z) return parseInt(z[1], 10)
+    }
+    return null
+  }
+
+  it('QA overlay outline z-index (9999) is above every z-index in modal/overlay CSS files', () => {
+    const qaCss = fs.readFileSync(path.join(ROOT, QA_CSS_FILE), 'utf8')
+    const overlayZ = extractSelectorZIndex(qaCss, '.qa-overlay-outline')
+
+    expect(overlayZ).not.toBeNull()
+    expect(overlayZ).toBe(9999)
+
+    const violations: string[] = []
+
+    for (const relPath of MODAL_CSS_FILES) {
+      const cssText = fs.readFileSync(path.join(ROOT, relPath), 'utf8')
+      const zValues = extractZIndices(cssText)
+      for (const z of zValues) {
+        if (z >= overlayZ!) {
+          violations.push(`${relPath}: z-index ${z} >= qa-overlay-outline z-index ${overlayZ}`)
+        }
+      }
+    }
+
+    expect(violations).toEqual([])
   })
 
   it('QaOverlay renders inside QaFeedbackProvider with no portal — relies on z-index layering', () => {

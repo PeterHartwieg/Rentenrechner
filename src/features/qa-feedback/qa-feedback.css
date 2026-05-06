@@ -66,7 +66,7 @@
   border-radius: 4px;
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
   background: rgba(37, 99, 235, 0.08);
-  z-index: 998;
+  z-index: 9999;
   transition: top 60ms linear, left 60ms linear, width 60ms linear, height 60ms linear;
 }
 
