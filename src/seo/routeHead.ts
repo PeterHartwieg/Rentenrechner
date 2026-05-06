@@ -43,13 +43,34 @@ export interface RouteHead {
 export const SITE_NAME = 'RentenWiki.de'
 
 /**
+ * Convention-over-config per-route OG image path (issue #08).
+ *
+ * In-sitemap, non-`/404` routes resolve to `/og/${slug}.png` where
+ * `slug = canonical.slice(1)` (homepage `/` maps to `/og/home.png`).
+ * Other routes — `/404` and any future non-sitemap entries — fall back
+ * to the brand-only `OG_DEFAULT_IMAGE_PATH` placeholder.
+ *
+ * Mirrors `slugForRoute` in `scripts/generate-og-images.mjs`. Keep in sync.
+ *
+ * Returns the path component only (leading `/`); callers prepend
+ * `SITE_ORIGIN` for absolute URLs in meta tags.
+ */
+export function routeOgImagePath(route: PublicRoute): string {
+  if (!route.inSitemap || route.canonical === '/404') {
+    return OG_DEFAULT_IMAGE_PATH
+  }
+  const slug = route.canonical === '/' ? 'home' : route.canonical.slice(1)
+  return `/og/${slug}.png`
+}
+
+/**
  * Build the canonical `<head>` description for a registered public route.
  * Pure function — feed any registry entry, get back a deterministic shape.
  */
 export function buildRouteHead(routeId: PublicRouteId): RouteHead {
   const entry = publicRouteRegistry[routeId]
   const canonical = buildCanonicalUrl(routeId)
-  const ogImage = SITE_ORIGIN + OG_DEFAULT_IMAGE_PATH
+  const ogImage = SITE_ORIGIN + routeOgImagePath(entry)
 
   return {
     title: entry.title,

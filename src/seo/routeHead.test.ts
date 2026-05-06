@@ -1,11 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { buildRouteHead } from './routeHead'
+import { buildRouteHead, routeOgImagePath } from './routeHead'
 import { renderRouteHeadHtml } from './renderRouteHead'
 import {
   PUBLIC_ROUTE_IDS,
   buildCanonicalUrl,
   publicRouteRegistry,
+  OG_DEFAULT_IMAGE_PATH,
 } from './publicRouteRegistry'
+
+/** Mirrors the slug derivation in `scripts/generate-og-images.mjs`. */
+function expectedOgPathFor(routeId: string): string {
+  const entry = publicRouteRegistry[routeId as keyof typeof publicRouteRegistry]
+  // `entry.canonical` is the literal string from each registry entry; we
+  // compare via the path string rather than a typed identifier so the helper
+  // works across the full union (including `/404`).
+  const canonical: string = entry.canonical
+  if (!entry.inSitemap || canonical === '/404') {
+    return OG_DEFAULT_IMAGE_PATH
+  }
+  const slug = canonical === '/' ? 'home' : canonical.slice(1)
+  return `/og/${slug}.png`
+}
 
 describe('buildRouteHead — per-route metadata shape', () => {
   it.each(PUBLIC_ROUTE_IDS)(
@@ -19,7 +34,8 @@ describe('buildRouteHead — per-route metadata shape', () => {
       expect(head.robots).toBe(entry.robots)
       expect(head.ogTitle).toBe(entry.title)
       expect(head.ogUrl).toBe(buildCanonicalUrl(routeId))
-      expect(head.ogImage).toBe('https://rentenwiki.de/og/default.png')
+      expect(head.ogImage).toBe('https://rentenwiki.de' + expectedOgPathFor(routeId))
+      expect(head.twitterImage).toBe('https://rentenwiki.de' + expectedOgPathFor(routeId))
       expect(head.ogType).toBe('website')
       expect(head.twitterCard).toBe('summary_large_image')
     },
@@ -41,6 +57,52 @@ describe('buildRouteHead — per-route metadata shape', () => {
     // `<JsonLd>` in the LandingPage body so all three share one authoring path.
     // Head emission for `/` therefore returns null to avoid duplication.
     expect(buildRouteHead('/').jsonLd).toBeNull()
+  })
+})
+
+describe('routeOgImagePath — per-route OG image convention (issue #08)', () => {
+  it('resolves homepage `/` to /og/home.png', () => {
+    expect(routeOgImagePath(publicRouteRegistry['/'])).toBe('/og/home.png')
+  })
+
+  it('resolves topic routes to /og/<slug>.png', () => {
+    expect(routeOgImagePath(publicRouteRegistry['/rentenluecke-rechner'])).toBe(
+      '/og/rentenluecke-rechner.png',
+    )
+    expect(routeOgImagePath(publicRouteRegistry['/bav-rechner'])).toBe('/og/bav-rechner.png')
+    expect(routeOgImagePath(publicRouteRegistry['/etf-vs-bav'])).toBe('/og/etf-vs-bav.png')
+    expect(routeOgImagePath(publicRouteRegistry['/riester-rechner'])).toBe(
+      '/og/riester-rechner.png',
+    )
+    expect(routeOgImagePath(publicRouteRegistry['/altersvorsorgedepot-rechner'])).toBe(
+      '/og/altersvorsorgedepot-rechner.png',
+    )
+    expect(routeOgImagePath(publicRouteRegistry['/riester-vs-altersvorsorgedepot'])).toBe(
+      '/og/riester-vs-altersvorsorgedepot.png',
+    )
+    expect(routeOgImagePath(publicRouteRegistry['/basisrente-rechner'])).toBe(
+      '/og/basisrente-rechner.png',
+    )
+    expect(routeOgImagePath(publicRouteRegistry['/private-rentenversicherung-rechner'])).toBe(
+      '/og/private-rentenversicherung-rechner.png',
+    )
+    expect(routeOgImagePath(publicRouteRegistry['/rente-netto-berechnen'])).toBe(
+      '/og/rente-netto-berechnen.png',
+    )
+    expect(routeOgImagePath(publicRouteRegistry['/altersvorsorgeprodukte-vergleichen'])).toBe(
+      '/og/altersvorsorgeprodukte-vergleichen.png',
+    )
+  })
+
+  it('falls back to the default placeholder for `/404` (not in sitemap)', () => {
+    expect(routeOgImagePath(publicRouteRegistry['/404'])).toBe(OG_DEFAULT_IMAGE_PATH)
+  })
+
+  it('OG_DEFAULT_IMAGE_PATH constant remains exported for share-state fallback', () => {
+    // Regression guard: the registry still exports the named constant so
+    // `injectShareStateNoindex` and other share-URL surfaces can fall back
+    // to the brand-only placeholder.
+    expect(OG_DEFAULT_IMAGE_PATH).toBe('/og/default.png')
   })
 })
 
@@ -94,7 +156,9 @@ describe('renderRouteHeadHtml — JSON-LD parses + visible-content alignment', (
       expect(html).toContain(`<link rel="canonical" href="${canonical}" />`)
       expect(html).toContain(`<meta name="robots" content="${entry.robots}" />`)
       expect(html).toContain(`<meta property="og:url" content="${canonical}" />`)
-      expect(html).toContain('<meta property="og:image" content="https://rentenwiki.de/og/default.png" />')
+      const expectedOgUrl = 'https://rentenwiki.de' + expectedOgPathFor(routeId)
+      expect(html).toContain(`<meta property="og:image" content="${expectedOgUrl}" />`)
+      expect(html).toContain(`<meta name="twitter:image" content="${expectedOgUrl}" />`)
       expect(html).toContain('<meta name="twitter:card" content="summary_large_image" />')
       expect(html).toContain('<meta property="og:locale" content="de_DE" />')
     },

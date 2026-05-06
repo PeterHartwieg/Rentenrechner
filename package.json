@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-og-images.mjs",
     "build": "tsc -b && vite build && npm run prerender",
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
     "verify": "npm run lint && npm test && npm run build",
     "repo:stats": "node scripts/repo-stats.mjs",
-    "prerender": "node scripts/prerender.mjs"
+    "prerender": "node scripts/prerender.mjs",
+    "og:generate": "node scripts/generate-og-images.mjs"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@mdx-js/rollup": "^3.1.1",
+    "@resvg/resvg-js": "^2.6.2",
     "@testing-library/react": "^16.3.2",
     "@types/mdx": "^2.0.13",
     "@types/node": "^24.12.2",
