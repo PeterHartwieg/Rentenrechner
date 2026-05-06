@@ -3,6 +3,7 @@ import type React from 'react'
 import type { PensionBaselineType, ScenarioAssumptions, StatutoryPensionAssumptions } from '../../domain';
 import { NumberField } from '../../ui/NumberField';
 import { formatCurrency, formatNumber } from '../../utils/format';
+import { useFeedbackTarget } from '../qa-feedback';
 
 type Props = {
   assumptions: ScenarioAssumptions;
@@ -43,6 +44,21 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
   const baselineType: PensionBaselineType = sp.pensionBaselineType ?? 'grv'
   const isManual = sp.manualMonthlyGross !== null
   const isEp = !isManual
+  const { targetProps: baselineTypeProps } = useFeedbackTarget({
+    id: 'inputs.grv.baselineType',
+    label: 'Pflichtversorgungssystem',
+    precision: 'exact',
+  })
+  const { targetProps: grundlageProps } = useFeedbackTarget({
+    id: 'inputs.grv.grundlage',
+    label: 'Grundlage (Schätzen / manuell)',
+    precision: 'exact',
+  })
+  const { targetProps: healthStatusProps } = useFeedbackTarget({
+    id: 'inputs.grv.healthStatus',
+    label: 'Krankenversicherung in Rente',
+    precision: 'exact',
+  })
 
   const salaryGrowth = sp.annualSalaryGrowthRate ?? 0
   const rentenwertGrowth = sp.rentenwertGrowthRate ?? 0
@@ -74,7 +90,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
         </p>
       </div>
 
-      <label className="field">
+      <label className="field" {...baselineTypeProps}>
         <span>Pflichtversorgungssystem</span>
         <select
           value={baselineType}
@@ -104,7 +120,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
       {baselineType !== 'none' && (
         <>
           {baselineType !== 'beamtenpension' && (
-            <label className="field">
+            <label className="field" {...grundlageProps}>
               <span>Grundlage</span>
               <select
                 value={isManual ? 'manual' : 'ep'}
@@ -198,6 +214,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
               {isEp && baselineType !== 'beamtenpension' && (
                 <NumberField
                   label="Gehaltswachstum p.a."
+                  feedbackTargetId="inputs.grv.salaryGrowth"
                   value={(sp.annualSalaryGrowthRate ?? 0) * 100}
                   min={-10}
                   max={20}
@@ -217,6 +234,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                     ? 'Pensionswert-Wachstum p.a.'
                     : 'Rentenwert-Wachstum p.a.'
                 }
+                feedbackTargetId="inputs.grv.rentenwertGrowth"
                 value={(sp.rentenwertGrowthRate ?? 0) * 100}
                 min={-5}
                 max={10}
@@ -263,6 +281,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                   </p>
                   <NumberField
                     label="Eigener VW-Beitrag (Arbeitnehmeranteil)"
+                    feedbackTargetId="inputs.grv.versorgungswerkContribution"
                     value={sp.versorgungswerkMonthlyContribution ?? 0}
                     min={0}
                     step={10}
@@ -277,6 +296,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                   />
                   <NumberField
                     label="AG-Anteil VW (falls angestellt)"
+                    feedbackTargetId="inputs.grv.versorgungswerkEmployer"
                     value={sp.versorgungswerkEmployerMonthly ?? 0}
                     min={0}
                     step={10}
@@ -292,7 +312,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                 </>
               )}
 
-              <label className="field">
+              <label className="field" {...healthStatusProps}>
                 <span>Krankenversicherung in Rente</span>
                 <select
                   value={healthStatus}

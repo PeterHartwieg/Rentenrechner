@@ -131,6 +131,7 @@ export function BasisrenteInputs({
           <div className="field-grid">
             <NumberField
               label="Mantelgebühr p.a."
+              feedbackTargetId="inputs.basisrente.fees.wrapperAssetFee"
               value={assumptions.basisrente.fees.wrapperAssetFee * 100}
               min={0}
               max={5}
@@ -148,6 +149,7 @@ export function BasisrenteInputs({
             />
             <NumberField
               label="Fondsgebühr p.a."
+              feedbackTargetId="inputs.basisrente.fees.fundAssetFee"
               value={assumptions.basisrente.fees.fundAssetFee * 100}
               min={0}
               max={5}
@@ -165,6 +167,7 @@ export function BasisrenteInputs({
             />
             <NumberField
               label="Beitragskostenquote"
+              feedbackTargetId="inputs.basisrente.fees.contributionFee"
               value={assumptions.basisrente.fees.contributionFee * 100}
               min={0}
               max={20}
@@ -182,6 +185,7 @@ export function BasisrenteInputs({
             />
             <NumberField
               label="Monatliche Grundgebühr"
+              feedbackTargetId="inputs.basisrente.fees.fixedMonthlyFee"
               value={assumptions.basisrente.fees.fixedMonthlyFee}
               min={0}
               step={1}
@@ -198,6 +202,7 @@ export function BasisrenteInputs({
             />
             <NumberField
               label="Abschlusskosten"
+              feedbackTargetId="inputs.basisrente.fees.acquisitionCostPct"
               value={assumptions.basisrente.fees.acquisitionCostPct * 100}
               min={0}
               max={10}

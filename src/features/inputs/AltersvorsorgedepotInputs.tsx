@@ -13,6 +13,7 @@ import type {
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { validateAvdPayoutAge } from '../../engine/altersvorsorgedepot'
+import { useFeedbackTarget } from '../qa-feedback'
 
 type Props = {
   assumptions: ScenarioAssumptions
@@ -35,6 +36,16 @@ export function AltersvorsorgedepotInputs({
 }: Props) {
   const riy = avdProductResult?.accumulationRiy ?? 0
   const avd = assumptions.altersvorsorgedepot
+  const { targetProps: subtypeProps } = useFeedbackTarget({
+    id: 'inputs.avd.subtype',
+    label: 'Produktvariante (AVD)',
+    precision: 'exact',
+  })
+  const { targetProps: payoutModeProps } = useFeedbackTarget({
+    id: 'inputs.avd.payoutMode',
+    label: 'Auszahlungsform (AVD)',
+    precision: 'exact',
+  })
   const erweitertParts: string[] = []
   if (riy > 0) erweitertParts.push(`Kosten: ${formatPercent(riy)}`)
   if (avd.partialCapitalPct > 0) erweitertParts.push(`${(avd.partialCapitalPct * 100).toFixed(0)} % Teilkapital`)
@@ -58,7 +69,7 @@ export function AltersvorsorgedepotInputs({
         )}
       </div>
 
-      <label className="field">
+      <label className="field" {...subtypeProps}>
         <span>Produktvariante</span>
         <select
           value={avd.subtype}
@@ -224,7 +235,7 @@ export function AltersvorsorgedepotInputs({
         </p>
       ) : null}
 
-      <label className="field">
+      <label className="field" {...payoutModeProps}>
         <span>Auszahlungsform</span>
         <select
           value={avd.payoutMode}
@@ -247,6 +258,7 @@ export function AltersvorsorgedepotInputs({
       {avd.payoutMode === 'lifelong_annuity' && (
         <NumberField
           label="Rentenfaktor"
+          feedbackTargetId="inputs.avd.rentenfaktor"
           value={avd.rentenfaktor}
           min={0}
           max={100}
@@ -267,6 +279,7 @@ export function AltersvorsorgedepotInputs({
       {avd.payoutMode !== 'lifelong_annuity' && (
         <NumberField
           label="Entnahmeplan bis Alter"
+          feedbackTargetId="inputs.avd.payoutPlanEndAge"
           value={avd.payoutPlanEndAge}
           min={85}
           max={110}
@@ -293,6 +306,7 @@ export function AltersvorsorgedepotInputs({
           <div className="field-grid">
             <NumberField
               label="Teilkapital bei Rentenbeginn"
+              feedbackTargetId="inputs.avd.partialCapitalPct"
               value={avd.partialCapitalPct * 100}
               min={0}
               max={30}
@@ -310,6 +324,7 @@ export function AltersvorsorgedepotInputs({
             />
             <NumberField
               label="Übertragungs­kosten"
+              feedbackTargetId="inputs.avd.transferCostEUR"
               value={avd.transferCostEUR}
               min={0}
               max={300}
@@ -327,6 +342,7 @@ export function AltersvorsorgedepotInputs({
             />
             <NumberField
               label="Andere Renteneinkommen mtl."
+              feedbackTargetId="inputs.avd.otherRetirementIncome"
               value={avd.monthlyOtherRetirementIncome}
               min={0}
               step={50}
@@ -350,6 +366,7 @@ export function AltersvorsorgedepotInputs({
           <div className="field-grid">
             <NumberField
               label="Verwaltungsgebühr p.a."
+              feedbackTargetId="inputs.avd.fees.wrapperAssetFee"
               value={avd.fees.wrapperAssetFee * 100}
               min={0}
               max={5}
@@ -367,6 +384,7 @@ export function AltersvorsorgedepotInputs({
             />
             <NumberField
               label="Fondsgebühr p.a."
+              feedbackTargetId="inputs.avd.fees.fundAssetFee"
               value={avd.fees.fundAssetFee * 100}
               min={0}
               max={5}

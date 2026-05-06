@@ -190,6 +190,9 @@ function Calculator({ navigate }: CalculatorProps) {
   const portfolioState = usePortfolioState()
   const workspace = useWorkspace()
 
+  // Workspace chrome QA instrumentation — topbar home button and mode badge.
+  const { enabled: qaEnabled } = useQaMode()
+
   // Section-fallback targets for the two main workspace views. The hook gates
   // the data-qa-* attributes behind QA mode so non-QA sessions render no extra
   // attributes (PRD US-33 / "inert when disabled").
@@ -875,7 +878,11 @@ function Calculator({ navigate }: CalculatorProps) {
         </div>
         <div className="topbar-actions">
           {appView === 'combine' && (
-            <span className="topbar-mode-badge topbar-mode-badge--combine" aria-label="Mein Plan aktiv">
+            <span
+              className="topbar-mode-badge topbar-mode-badge--combine"
+              aria-label="Mein Plan aktiv"
+              {...qaTargetAttrs(qaEnabled, { id: 'workspace.chrome.modeBadge', label: 'Mein Plan (Modus-Badge)' })}
+            >
               Mein Plan
             </span>
           )}
@@ -884,6 +891,7 @@ function Calculator({ navigate }: CalculatorProps) {
             className="topbar-help-btn"
             onClick={handleGoHome}
             title="Zur Startseite"
+            {...qaTargetAttrs(qaEnabled, { id: 'workspace.chrome.homeButton', label: 'Startseite / Moduswechsel' })}
           >
             <Home size={16} aria-hidden="true" />
             Startseite

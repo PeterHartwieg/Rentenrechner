@@ -9,6 +9,7 @@ import type {
 } from '../../domain'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { useFeedbackTarget } from '../qa-feedback'
 
 type Props = {
   assumptions: ScenarioAssumptions
@@ -26,6 +27,11 @@ export function RiesterInputs({
   riesterFunding,
   riesterProductResult,
 }: Props) {
+  const { targetProps: payoutModeProps } = useFeedbackTarget({
+    id: 'inputs.riester.payoutMode',
+    label: 'Auszahlungsform (Riester)',
+    precision: 'exact',
+  })
   const erweitertParts: string[] = []
   if (assumptions.riester.eligibility.careerStarterBonusUsed) erweitertParts.push('Berufseinsteiger-Bonus erhalten')
   if (assumptions.riester.partialCapitalPct > 0) erweitertParts.push(`${(assumptions.riester.partialCapitalPct * 100).toFixed(0)} % Einmalbetrag`)
@@ -140,7 +146,7 @@ export function RiesterInputs({
         </p>
       ) : null}
 
-      <label className="field">
+      <label className="field" {...payoutModeProps}>
         <span>Auszahlungsform</span>
         <select
           value={assumptions.riester.payoutMode}
@@ -162,6 +168,7 @@ export function RiesterInputs({
       {assumptions.riester.payoutMode === 'leibrente' && (
         <NumberField
           label="Rentenfaktor"
+          feedbackTargetId="inputs.riester.rentenfaktor"
           value={assumptions.riester.rentenfaktor}
           min={1}
           max={60}
@@ -181,6 +188,7 @@ export function RiesterInputs({
       {assumptions.riester.payoutMode === 'zeitrente' && (
         <NumberField
           label="Laufzeit Zeitrente"
+          feedbackTargetId="inputs.riester.zeitrenteYears"
           value={assumptions.riester.zeitrenteYears}
           min={1}
           max={50}
@@ -252,6 +260,7 @@ export function RiesterInputs({
             {assumptions.riester.capitalGuarantee.enabled && (
               <NumberField
                 label="Garantiertes Mindestkapital"
+                feedbackTargetId="inputs.riester.capitalGuarantee.floorPct"
                 value={assumptions.riester.capitalGuarantee.floorPctOfContributions * 100}
                 min={0}
                 max={100}
@@ -275,6 +284,7 @@ export function RiesterInputs({
 
           <NumberField
             label="Einmalbetrag bei Rentenbeginn"
+            feedbackTargetId="inputs.riester.partialCapitalPct"
             value={assumptions.riester.partialCapitalPct * 100}
             min={0}
             max={30}
@@ -293,6 +303,7 @@ export function RiesterInputs({
 
           <NumberField
             label="Andere Renteneinkommen mtl."
+            feedbackTargetId="inputs.riester.otherRetirementIncome"
             value={assumptions.riester.monthlyOtherRetirementIncome}
             min={0}
             step={100}
@@ -319,6 +330,7 @@ export function RiesterInputs({
 
           <NumberField
             label="Riester-Kapital für AVD-Übertrag"
+            feedbackTargetId="inputs.riester.avdTransferCapital"
             value={assumptions.altersvorsorgedepot.riesterTransferCapital}
             min={0}
             step={1000}

@@ -283,6 +283,7 @@ export function InsuranceInputs({
             <>
               <NumberField
                 label="Beitragsfrei ab Alter"
+                feedbackTargetId="inputs.privateInsurance.paidUpAge"
                 value={ins.paidUpAge}
                 min={profile.age + 1}
                 max={profile.retirementAge - 1}
@@ -300,6 +301,7 @@ export function InsuranceInputs({
               />
               <NumberField
                 label="Stornoabzug bei Kündigung"
+                feedbackTargetId="inputs.privateInsurance.surrenderHaircutPct"
                 value={ins.surrenderHaircutPct * 100}
                 min={0}
                 max={50}

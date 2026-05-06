@@ -11,6 +11,12 @@
  *  - FeeSection mode-tab buttons (leaf)
  *  - qaTarget convenience helper
  *
+ * Extended in Issue 16 to cover per-product input panel leaf targets:
+ *  - BasisrenteInputs, RiesterInputs, AltersvorsorgedepotInputs, GRVInputs,
+ *    InsuranceInputs — each panel must have at least one data-qa-target when
+ *    QA mode is on (regression guardrail: add a product without targets → fail).
+ *  - workspace.chrome.homeButton target in the topbar.
+ *
  * Asserts:
  *  - Chart containers carry the expected data-qa-target and data-qa-section
  *    attributes when QA mode is on.
@@ -588,5 +594,291 @@ describe('qaTarget — convenience helper', () => {
     expect(result['data-qa-precision']).toBe('section')
     expect(result['data-qa-section']).toBe('true')
     expect(result['data-qa-sensitive']).toBe('true')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 16: Per-product input panel leaf-level target regression guardrail
+//
+// Renders each product input panel with QA mode on and asserts that at least
+// one leaf-level data-qa-target is emitted. A product added without targets
+// would cause the corresponding test to fail, catching coverage gaps early.
+// ---------------------------------------------------------------------------
+
+import { defaultAssumptions, defaultProfile } from '../../../data/defaultScenario'
+import { de2026Rules } from '../../../rules/de2026'
+import { BasisrenteInputs } from '../../inputs/BasisrenteInputs'
+import { RiesterInputs } from '../../inputs/RiesterInputs'
+import { AltersvorsorgedepotInputs } from '../../inputs/AltersvorsorgedepotInputs'
+import { GRVInputs } from '../../inputs/GRVInputs'
+import { InsuranceInputs } from '../../inputs/InsuranceInputs'
+
+import type { BasisrenteFundingResult } from '../../../domain/products/basisrente'
+import type { RiesterFundingResult } from '../../../domain/products/riester'
+import type { AltersvorsorgedepotFundingResult } from '../../../domain/products/altersvorsorgedepot'
+
+/** Minimal stub for BasisrenteFundingResult */
+const BASISRENTE_FUNDING: BasisrenteFundingResult = {
+  monthlyNetCost: 100,
+  monthlyGrossContribution: 120,
+  monthlyTaxSaving: 20,
+  annualTaxSaving: 240,
+  annualGrossContribution: 1440,
+  annualDeductible: 1440,
+  remainingSchicht1Cap: 5000,
+  annualPensionContributionsTowardsCap: 3000,
+}
+
+/** Minimal stub for RiesterFundingResult */
+const RIESTER_FUNDING: RiesterFundingResult = {
+  monthlyNetCost: 50,
+  monthlyOwnContribution: 50,
+  annualOwnContribution: 600,
+  grundzulageAnnual: 175,
+  childAllowanceAnnual: 0,
+  careerStarterBonusAnnual: 0,
+  totalAllowanceAnnual: 175,
+  guenstigerpruefungBenefitAnnual: 0,
+  minEigenbeitragAnnual: 60,
+  meetsMinContribution: true,
+  prorationFactor: 1,
+  specialExpenseDeductibleAnnual: 775,
+}
+
+/** Minimal stub for AltersvorsorgedepotFundingResult */
+const AVD_FUNDING: AltersvorsorgedepotFundingResult = {
+  monthlyNetCost: 100,
+  monthlyOwnContribution: 100,
+  annualOwnContribution: 1200,
+  basicAllowanceAnnual: 300,
+  childAllowanceAnnual: 0,
+  careerStarterBonusAnnual: 0,
+  indirectSpouseAllowanceAnnual: 0,
+  totalAllowanceAnnual: 300,
+  totalContractContributionAnnual: 1500,
+  guenstigerpruefungBenefitAnnual: 0,
+  cappedAtContractMax: false,
+  specialExpenseBaseAnnual: 1200,
+}
+
+/** Minimal stub for statutoryPensionResult */
+const GRV_RESULT = {
+  projectedEntgeltpunkte: 35,
+  grossMonthlyPension: 1400,
+  netMonthlyPension: 1200,
+  taxMonthly: 100,
+  kvPvMonthly: 100,
+  grvReductionApplied: 0,
+}
+
+describe('Issue 16: BasisrenteInputs — leaf-level QA targets present', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('emits at least one data-qa-target leaf when QA mode is on', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <BasisrenteInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          onSyncMonthlyContribution={vi.fn()}
+          basisrenteFunding={BASISRENTE_FUNDING}
+          basisrenteProductResult={undefined}
+          rules={de2026Rules}
+          retirementAge={defaultProfile.retirementAge}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.basisrente.monthlyNetCost"]')).not.toBeNull()
+    expect(container.querySelector('[data-qa-target="inputs.basisrente.rentenfaktor"]')).not.toBeNull()
+  })
+
+  it('fee fields inside Erweitert carry leaf targets', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <BasisrenteInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          onSyncMonthlyContribution={vi.fn()}
+          basisrenteFunding={BASISRENTE_FUNDING}
+          basisrenteProductResult={undefined}
+          rules={de2026Rules}
+          retirementAge={defaultProfile.retirementAge}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.basisrente.fees.wrapperAssetFee"]')).not.toBeNull()
+    expect(container.querySelector('[data-qa-target="inputs.basisrente.fees.fundAssetFee"]')).not.toBeNull()
+  })
+
+  it('QA targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <BasisrenteInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          onSyncMonthlyContribution={vi.fn()}
+          basisrenteFunding={BASISRENTE_FUNDING}
+          basisrenteProductResult={undefined}
+          rules={de2026Rules}
+          retirementAge={defaultProfile.retirementAge}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target]')).toBeNull()
+  })
+})
+
+describe('Issue 16: RiesterInputs — leaf-level QA targets present', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('emits leaf targets for main contribution fields', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <RiesterInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          onSyncMonthlyContribution={vi.fn()}
+          profile={defaultProfile}
+          riesterFunding={RIESTER_FUNDING}
+          riesterProductResult={undefined}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.riester.monthlyNetCost"]')).not.toBeNull()
+    expect(container.querySelector('[data-qa-target="inputs.riester.existingCapital"]')).not.toBeNull()
+    // Payout mode select carries its leaf target
+    expect(container.querySelector('[data-qa-target="inputs.riester.payoutMode"]')).not.toBeNull()
+  })
+
+  it('QA targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <RiesterInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          onSyncMonthlyContribution={vi.fn()}
+          profile={defaultProfile}
+          riesterFunding={RIESTER_FUNDING}
+          riesterProductResult={undefined}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target]')).toBeNull()
+  })
+})
+
+describe('Issue 16: AltersvorsorgedepotInputs — leaf-level QA targets present', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('emits leaf targets for main fields', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <AltersvorsorgedepotInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          onSyncMonthlyContribution={vi.fn()}
+          profile={defaultProfile}
+          avdFunding={AVD_FUNDING}
+          avdProductResult={undefined}
+          rules={de2026Rules}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.avd.monthlyNetCost"]')).not.toBeNull()
+    expect(container.querySelector('[data-qa-target="inputs.avd.subtype"]')).not.toBeNull()
+    expect(container.querySelector('[data-qa-target="inputs.avd.payoutMode"]')).not.toBeNull()
+  })
+
+  it('QA targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <AltersvorsorgedepotInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          onSyncMonthlyContribution={vi.fn()}
+          profile={defaultProfile}
+          avdFunding={AVD_FUNDING}
+          avdProductResult={undefined}
+          rules={de2026Rules}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target]')).toBeNull()
+  })
+})
+
+describe('Issue 16: GRVInputs — leaf-level QA targets present', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('emits leaf targets for statutory pension fields', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <GRVInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          statutoryPensionResult={GRV_RESULT}
+        />
+      </QaFeedbackProvider>,
+    )
+    // Pflichtversorgungssystem select
+    expect(container.querySelector('[data-qa-target="inputs.grv.baselineType"]')).not.toBeNull()
+    // Entgeltpunkte field (EP mode is default)
+    expect(container.querySelector('[data-qa-target="inputs.grv.currentEntgeltpunkte"]')).not.toBeNull()
+  })
+
+  it('QA targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <GRVInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          statutoryPensionResult={GRV_RESULT}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target]')).toBeNull()
+  })
+})
+
+describe('Issue 16: InsuranceInputs — leaf-level QA targets present', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('emits leaf targets for contractStartYear and payout mode', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <InsuranceInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          profile={defaultProfile}
+          insuranceTaxMode="halbeinkuenfte"
+          insuranceProductResult={undefined}
+          rules={de2026Rules}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="inputs.privateInsurance.contractStartYear"]')).not.toBeNull()
+    // PayoutModeSection is instrumented via feedbackBaseId
+    expect(container.querySelector('[data-qa-target="inputs.privateInsurance.payoutMode.select"]')).not.toBeNull()
+  })
+
+  it('QA targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <InsuranceInputs
+          assumptions={defaultAssumptions}
+          onAssumptionsChange={vi.fn()}
+          profile={defaultProfile}
+          insuranceTaxMode="halbeinkuenfte"
+          insuranceProductResult={undefined}
+          rules={de2026Rules}
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target]')).toBeNull()
   })
 })
