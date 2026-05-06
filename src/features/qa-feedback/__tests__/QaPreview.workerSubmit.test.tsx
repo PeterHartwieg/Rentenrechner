@@ -161,19 +161,10 @@ describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
     expect(body.title).toBeTruthy()
     expect(body.body).toContain('Worker submit test feedback.')
 
-    // Success status renders the issue link.
+    // Panel closes on success — the QaPreview testid disappears.
     await waitFor(() => {
-      const status = screen.getByTestId('qa-preview-status')
-      expect(status.textContent).toContain('Erfolgreich eingereicht')
-      const link = status.querySelector('a')
-      expect(link?.getAttribute('href')).toBe(
-        'https://github.com/PeterHartwieg/Rentenrechner/issues/42',
-      )
+      expect(screen.queryByTestId('qa-preview')).toBeNull()
     })
-
-    // Submit button now disabled (already submitted).
-    const submitBtn = screen.getByTestId('qa-preview-worker-submit') as HTMLButtonElement
-    expect(submitBtn.disabled).toBe(true)
   })
 
   it('error path: Worker responds 403; German error surfaces in status', async () => {
@@ -212,7 +203,12 @@ describe('QaPreview — Direkt an GitHub einreichen (worker submit)', () => {
     await waitFor(() => {
       const status = screen.getByTestId('qa-preview-status')
       expect(status.textContent).toContain('Spam-Schutz-Prüfung fehlgeschlagen')
+      // Error state must use role=alert so screen readers announce it.
+      expect(status.getAttribute('role')).toBe('alert')
     })
+
+    // Panel stays open on error so the tester can adjust + retry.
+    expect(screen.queryByTestId('qa-preview')).not.toBeNull()
   })
 
   it('no-network when consent stays unticked: mounting QaPreview does not call fetch', async () => {

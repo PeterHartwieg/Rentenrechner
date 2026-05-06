@@ -241,12 +241,14 @@ export function QaPreview({
     }
   }
 
-  // Auto-close after a successful submission so the tester doesn't have to
-  // click "Abbrechen" — the success status with the issue link stays
-  // visible for ~4s before the panel closes.
+  // Close the panel as soon as the success state has rendered. Using a
+  // 0ms setTimeout (rather than calling onCancel synchronously inside
+  // handleWorkerSubmit) gives React one paint to commit the success
+  // styling before the panel unmounts — user gets a single-frame
+  // confirmation flash, no lingering "what happened" delay.
   useEffect(() => {
     if (workerState !== 'success') return
-    const timer = window.setTimeout(() => onCancel(), 4000)
+    const timer = window.setTimeout(() => onCancel(), 0)
     return () => window.clearTimeout(timer)
   }, [workerState, onCancel])
 
@@ -388,7 +390,7 @@ export function QaPreview({
         {statusNode && (
           <p
             className="qa-preview__copy-state"
-            role="status"
+            role={workerState === 'error' ? 'alert' : 'status'}
             data-testid="qa-preview-status"
           >
             {statusNode}
@@ -646,16 +648,19 @@ function renderStatus(args: StatusArgs): React.ReactNode {
         <span aria-hidden="true" style={{ marginRight: 6, color: '#16a34a' }}>
           ✓
         </span>
-        <strong>Erfolgreich eingereicht.</strong>{' '}
-        <a href={workerResult.issueUrl} target="_blank" rel="noopener noreferrer">
-          Issue auf GitHub öffnen
-        </a>{' '}
-        <span style={{ opacity: 0.7 }}>(Fenster schließt sich gleich…)</span>
+        <strong>Erfolgreich eingereicht.</strong>
       </>
     )
   }
   if (workerState === 'error' && workerResult && !workerResult.ok) {
-    return `Fehler beim Einreichen: ${workerResult.message}`
+    return (
+      <span style={{ color: '#b91c1c' }}>
+        <span aria-hidden="true" style={{ marginRight: 6 }}>
+          ⚠
+        </span>
+        <strong>Einreichen fehlgeschlagen.</strong> {workerResult.message}
+      </span>
+    )
   }
   return null
 }
