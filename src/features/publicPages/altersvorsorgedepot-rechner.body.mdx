@@ -1,175 +1,119 @@
-## Was ist das Altersvorsorgedepot?
+## Was das Altersvorsorgedepot ist
 
-Das **Altersvorsorgedepot (AVD)** ist ein neues, durch das
-**Jahressteuergesetz 2024** eingeführtes Altersvorsorgeprodukt der zweiten
-Schicht. Es handelt sich um ein **reines Wertpapierdepot** ohne
-Versicherungsmantel, das staatlich gefördert wird. Im Gegensatz zur
-Riester-Rente gibt es keine verpflichtende Kapitalgarantie — dafür sind die
-Produktkosten typischerweise niedriger, weil kein Versicherungsmantel bezahlt
-werden muss.
+Das Altersvorsorgedepot (AVD) ist ein neues, geplantes Altersvorsorgeprodukt der zweiten Schicht: ein reines Wertpapierdepot ohne Versicherungsmantel mit eigener zweistufiger Zulagenförderung und einem gesetzlich vorgeschriebenen Glidepath. Der Rechner bildet die geplanten Rahmenwerte ab, sobald sie verbindlich sind.
 
-Das AVD ist nach dem **Altersvorsorgeverbesserungsgesetz (AltvVerbG)** geregelt
-und muss von der zuständigen Aufsichtsbehörde (**BaFin**) zertifiziert sein.
-Es ersetzt das Riester-Modell nicht vollständig, sondern ergänzt die
-Produktpalette der geförderten Schicht-2-Vorsorge.
+> *Hinweis: Modellrechnung, keine Steuer-, Rechts- oder Anlageberatung. Werte Stand 2026.*
 
-## Staatliche Förderung (analog zur Riester-Rente)
+> **Status (Stand 2026-05-06):** Das AVD wurde am 27. März 2026 vom Bundestag beschlossen (Altersvorsorgereformgesetz, Bundestags- und Bundesrat-Drucksache 206/26). Der Bundesrat befasst sich am 8. Mai 2026; das Inkrafttreten zum 1. Januar 2027 ist vorgesehen. Die hier dargestellten Werte folgen der vom Bundestag beschlossenen Fassung; verbindlich sind sie erst nach Bundesrats-Zustimmung und BGBl.-Veröffentlichung.
 
-Das AVD erhält **dieselbe staatliche Förderung wie die Riester-Rente**:
+## Wer profitieren kann (sobald 2027 verfügbar)
 
-- **Grundzulage: 175&nbsp;€ pro Jahr** (§&nbsp;84 EStG)
-- **Kinderzulage: 185&nbsp;€ (vor 2008) bzw. 300&nbsp;€ (ab 2008) pro Kind
-  und Jahr** (§&nbsp;85 EStG)
-- **Sonderausgabenabzug bis 2.100&nbsp;€ pro Jahr** (§&nbsp;10a EStG) mit
-  automatischer Günstigerprüfung durch das Finanzamt
+- Du erwägst ab 2027 einen Neuabschluss eines geförderten Schicht-2-Vertrags und möchtest die Mechanik des AVD verstehen.
+- Du hast einen bestehenden Riester-Vertrag und prüfst, ob du das aufgebaute Kapital ab 2027 in ein AVD übertragen lässt.
+- Du willst die geplante AVD-Förderlogik in einem Modell mit eigenen Eigenbeitrags-Annahmen durchrechnen.
 
-Der Mindesteigenbeitrag nach §&nbsp;86 EStG gilt entsprechend: 4&nbsp;%
-des rentenversicherungspflichtigen Vorjahresbruttoeinkommens, mindestens
-60&nbsp;€ im Jahr.
+## Welche Annahmen der Rechner braucht
 
-## Depot statt Versicherung: Was ist anders?
+- aktuelles Lebensalter und geplantes Renteneintrittsalter (frühestens 65, spätestens 70 für den Auszahlbeginn)
+- geplanter monatlicher oder jährlicher Eigenbeitrag (mindestens 120&nbsp;€ Sockel pro Jahr; vertragsbezogene Obergrenze 6.840&nbsp;€)
+- Anzahl der Kinder mit Bezug von Kindergeld
+- Geburtsjahr (relevant für den Berufseinsteiger-Bonus bei Vertragsabschluss bis zum Alter von 24 Jahren)
+- Annahmen zu Anlage und Kosten: Aktien-/Anleihen-Mix, laufende Effektivkosten
 
-| Merkmal | Riester-Rente | Altersvorsorgedepot |
-|---------|--------------|---------------------|
-| Produktform | Versicherung / Fondssparplan / Bankplan | Reines Wertpapierdepot |
-| Kapitalgarantie | Ja — Pflicht nach AltZertG | Nein |
-| Versicherungsmantel | Ja (bei Versicherungslösung) | Nein |
-| Glidepath-Vorgabe | Produktabhängig | Gesetzlich vorgeschrieben |
-| Kostenniveau | Höher (Versicherungsmantel) | Tendenziell niedriger |
-| Auszahlungsform | Leibrente (mind.) | Planentnahme / Ratenplan |
-| Förderung | §§&nbsp;84, 85, 10a EStG | §§&nbsp;84, 85, 10a EStG |
-| Besteuerung | § 22 Nr.&nbsp;5 EStG | § 22 Nr.&nbsp;5 EStG |
+## Wie der Rechner die AVD-Förderung abbildet
 
-*Stand 2026. Kein Anlagevorschlag; Produktmerkmale können abweichen.*
+Der Rechner setzt die im Altersvorsorgereformgesetz vorgesehenen Parameter um:
 
-## Glidepath: automatische Umschichtung im Zeitverlauf
+- **Eigenbeitrags-Cap für die Förderung:** bis zu 1.800&nbsp;€ pro Jahr werden für die Zulagenberechnung herangezogen; die vertragliche Beitragsobergrenze liegt bei 6.840&nbsp;€ (Beiträge oberhalb 1.800&nbsp;€ sind möglich, aber nicht zulagenrelevant).
+- **Mindesteigenbeitrag:** 120&nbsp;€ pro Jahr (Sockelbetrag).
+- **Zweistufige Grundzulage:**
+  - Stufe 1: 50&nbsp;% Förderquote auf die ersten 360&nbsp;€ Eigenbeitrag (maximal 180&nbsp;€).
+  - Stufe 2: 25&nbsp;% Förderquote auf den Anteil von 360&nbsp;€ bis 1.800&nbsp;€ Eigenbeitrag (maximal 360&nbsp;€).
+  - Beide Stufen zusammen sind auf insgesamt 540&nbsp;€ pro Person und Jahr gedeckelt.
+- **Mittelbar förderberechtigte Ehepartner:** maximale Grundzulage 175&nbsp;€ pro Jahr.
+- **Kinderzulage:** 300&nbsp;€ pro Kind und Jahr (1,0-Faktor) für jedes Kind, für das Kindergeld bezogen wird.
+- **Berufseinsteiger-Bonus:** einmalig 200&nbsp;€ bei Vertragsabschluss bis zum Alter von 24 Jahren.
+- **Standarddepot-Kostendeckel:** Effektivkosten höchstens 1,0&nbsp;% pro Jahr für das gesetzliche Standarddepot.
+- **Glidepath:** Anteil hochriskanter Anlagen höchstens 50&nbsp;% ab fünf Jahren vor Rentenbeginn, höchstens 30&nbsp;% ab zwei Jahren vor Rentenbeginn.
+- **Auszahlphase:** frühester Beginn mit 65 Jahren, spätester Beginn mit 70 Jahren; Teilkapitalauszahlung bis zu 30&nbsp;% des Vertragsguthabens; Auszahlplan mindestens bis zum 85. Lebensjahr; volle nachgelagerte Besteuerung nach §&nbsp;22 Nr.&nbsp;5 [EStG](https://www.gesetze-im-internet.de/estg/__22.html).
+- **KV/PV in der Auszahlphase:** §§&nbsp;229, 240 [SGB&nbsp;V](https://www.gesetze-im-internet.de/sgb_5/__229.html); §§&nbsp;55, 55a [SGB&nbsp;XI](https://www.gesetze-im-internet.de/sgb_11/__55.html).
 
-Das AVD schreibt einen **gesetzlichen Glidepath** vor: Mit zunehmender
-Nähe zum Rentenbeginn wird das Depot automatisch von risikoreicheren
-(Aktien-ETF) in risikoärmere Anlagen (Anleihen, Festgeld) umgeschichtet.
-Dieser Mechanismus reduziert das Kapitalmarktrisiko kurz vor der Entnahme,
-dämpft aber auch die erwartete Rendite der letzten Anlagejahre. Der Rechner
-bildet den Glidepath modellhaft ab; die konkreten Umschichtungsquoten hängen
-vom Anbieter ab.
+## Was das Ergebnis nicht entscheidet
 
-Im Unterschied zu Riester gibt es beim AVD keine Pflicht zur
-**Kapitalgarantie** — das Verlustrisiko liegt vollständig beim Anleger. Das
-ist zugleich Stärke (weniger Kapital für Garantieaufbau gebunden) und Risiko
-(in schlechten Marktphasen kann der Depotwert unter die eingezahlten Beträge
-fallen).
+- Solange der Bundesrat nicht zugestimmt hat, sind alle Zahlen vorläufig. Bei Änderungen am Gesetzestext aktualisiert RentenWiki.de die Engine-Konstanten nach BGBl.-Veröffentlichung.
+- Anbieter, Produktauswahl und konkrete Kostenstrukturen werden hier nicht modelliert; die im Rechner ausgewiesenen Effektivkosten sind eine Annahme, kein Anbietervergleich.
+- Die genaue Berechtigtenliste folgt aus dem Altersvorsorgereformgesetz und ist erst mit Inkrafttreten endgültig festgelegt; sie ist nicht zwingend identisch mit dem Personenkreis nach §&nbsp;10a Abs.&nbsp;1 [EStG](https://www.gesetze-im-internet.de/estg/__10a.html).
+- Der Glidepath im Rechner ist ein Modellprofil. Konkrete Umschichtungsregeln einzelner Anbieter können davon abweichen, müssen aber innerhalb der gesetzlichen Höchstquoten bleiben.
 
-## Besteuerung in der Auszahlphase (§&nbsp;22 Nr.&nbsp;5 EStG)
+## Vergleich AVD und Riester
 
-AVD-Auszahlungen unterliegen — wie die Riester-Rente — der
-**nachgelagerten Besteuerung nach §&nbsp;22 Nr.&nbsp;5 EStG**: Die
-Entnahmen sind in voller Höhe mit dem persönlichen Steuersatz im
-Rentenalter zu versteuern. Das gilt für Teilentnahmen ebenso wie für
-einen Ratenentnahmeplan.
+| Merkmal | Riester-Rente (Bestand) | Altersvorsorgedepot (geplant ab 2027) |
+|---------|-------------------------|---------------------------------------|
+| Produktform | Versicherung, Banksparplan, Fondssparplan, Wohn-Riester | Wertpapierdepot ohne Versicherungsmantel |
+| Kapitalgarantie | Pflicht zu Rentenbeginn (AltZertG §&nbsp;1) | Keine; Marktrisiko trägt der Anleger |
+| Glidepath | produktabhängig | gesetzlich vorgeschrieben (≤ 50&nbsp;% Risiko 5 Jahre vorher, ≤ 30&nbsp;% 2 Jahre vorher) |
+| Zulagenstruktur | §§&nbsp;84, 85 EStG: 175&nbsp;€ Grundzulage, 185/300&nbsp;€ Kinderzulage | Zweistufige Förderung: 50&nbsp;% auf erste 360&nbsp;€, 25&nbsp;% auf weitere 1.800&nbsp;€, max. 540&nbsp;€ Grundzulage; 300&nbsp;€ Kinderzulage |
+| Eigenbeitrags-Cap für Förderung | §&nbsp;10a EStG: 2.100&nbsp;€ inkl. Zulagen | 1.800&nbsp;€ Eigenbeitrag (Förder-Cap), 6.840&nbsp;€ Vertrags-Cap |
+| Sockelbeitrag | 60&nbsp;€/Jahr | 120&nbsp;€/Jahr |
+| Auszahlung | Leibrente oder Auszahlplan bis 85 | Teilkapital bis 30&nbsp;%, Auszahlplan mindestens bis 85; Beginn 65 bis 70 |
+| Besteuerung Auszahlung | §&nbsp;22 Nr.&nbsp;5 EStG nachgelagert | §&nbsp;22 Nr.&nbsp;5 EStG nachgelagert |
+| KV/PV | §§&nbsp;229, 240 SGB&nbsp;V; §§&nbsp;55, 55a SGB&nbsp;XI | §§&nbsp;229, 240 SGB&nbsp;V; §§&nbsp;55, 55a SGB&nbsp;XI |
+| Neuabschluss | nicht mehr ab 2027 | ab 2027 vorgesehen |
 
-Kapitalerträge, die im Depot vor der Auszahlung anfallen, unterliegen in
-der Ansparphase **nicht** der Abgeltungsteuer nach §&nbsp;20 EStG, sofern
-die Fördervoraussetzungen eingehalten werden — die Steuerstundung ist
-Teil der Förderlogik. In der Auszahlphase wird dann der gesamte Betrag
-(Einzahlungen + Erträge) nach §&nbsp;22 Nr.&nbsp;5 EStG versteuert.
-
-Für KVdR-Mitglieder fallen auf Auszahlungen aus dem AVD
-Krankenversicherungsbeiträge nach §&nbsp;229 SGB&nbsp;V an. Für freiwillig
-gesetzlich Versicherte gilt §&nbsp;240 SGB&nbsp;V. Pflegeversicherung nach
-§§&nbsp;55, 55a SGB&nbsp;XI kommt hinzu.
-
-## Übertragung von Riester auf AVD
-
-Eine Besonderheit des Jahressteuergesetzes 2024: Bestehendes Riester-Kapital
-kann **steuerbefreit auf ein AVD übertragen** werden. Die übertragenen
-Beträge behalten ihre Förderhistorie (Zulagen bleiben erhalten); eine
-schädliche Verwendung im Sinne des §&nbsp;93 EStG liegt bei einer
-ordnungsgemäßen Übertragung nicht vor. Technisch und produktseitig ist diese
-Portabilität noch nicht bei allen Anbietern umgesetzt (Stand: 2026).
-
-## Beispielrechnung: Bernd (Szenario — Stand 2026)
-
-> Diese Modellrechnung dient der Illustration. Keine Anlageberatung.
+## Beispiel: Bernd
 
 | Kenngröße | Wert |
 |-----------|------|
 | Alter | 38 Jahre |
-| Bruttoeinkommen | 55.000&nbsp;€/Jahr |
+| Brutto-Jahreseinkommen | 55.000&nbsp;€ |
 | Kinder | 0 |
-| Rentenbeginn (geplant) | 67 Jahre |
+| Geplanter Eigenbeitrag | 1.800&nbsp;€ pro Jahr |
+| Geplanter Rentenbeginn | 67 Jahre |
 | Anlagehorizont | 29 Jahre |
 
-**Jährliche Förderung (Modell):**
+Förderung im laufenden Jahr (Modell, vorbehaltlich Bundesrats-Zustimmung):
 
 | Position | Betrag |
 |----------|--------|
-| Grundzulage (§&nbsp;84 EStG) | 175,00&nbsp;€ |
+| Stufe 1: 50&nbsp;% × min(360&nbsp;€, 360&nbsp;€) | 180,00&nbsp;€ |
+| Stufe 2: 25&nbsp;% × min(1.440&nbsp;€, 1.800&nbsp;€) | 360,00&nbsp;€ |
+| Zwischensumme aus Stufen | 540,00&nbsp;€ |
+| Grundzulage gedeckelt bei 540&nbsp;€/Jahr | 540,00&nbsp;€ |
 | Kinderzulage | 0,00&nbsp;€ |
-| Zulagen gesamt | **175,00&nbsp;€** |
-| Mindesteigenbeitrag (4&nbsp;% × 55.000&nbsp;€ − Zulagen) | 2.025,00&nbsp;€ |
-| Sonderausgabenabzug (§&nbsp;10a EStG) | bis 2.100&nbsp;€ |
+| Zulagen gesamt | 540,00&nbsp;€ |
+| Effektive Förderquote auf 1.800&nbsp;€ Eigenbeitrag | 30&nbsp;% |
 
-Bei Bernd übersteigt der Steuervorteil aus dem Sonderausgabenabzug
-(≈&nbsp;Grenzsteuersatz × 2.100&nbsp;€) die Grundzulage von 175&nbsp;€,
-sodass die Günstigerprüfung zu einem zusätzlichen Steuerbonus führt. Der
-effektive Nettobeitrag ist damit niedriger als der Nominalbeitrag.
-
-*Der Rechner ermittelt dies automatisch auf Basis von Einkommen und Steuersatz.*
+Bei einem Eigenbeitrag von 1.800&nbsp;€ pro Jahr schöpft Bernd die Grundzulage voll aus. Beiträge oberhalb 1.800&nbsp;€ wären möglich (Vertragsobergrenze 6.840&nbsp;€), würden aber keine zusätzliche Zulage mehr auslösen. Die spätere Auszahlung ist voll mit dem persönlichen Steuersatz zu versteuern; KV- und PV-Beiträge fallen wie bei Riester an.
 
 ## Häufige Fragen
 
-### Ist das Altersvorsorgedepot besser als die Riester-Rente?
-
-Die Frage lässt sich nicht pauschal beantworten — sie hängt von individuellen
-Faktoren ab: Risikobereitschaft, Produktkosten des Anbieters, Fördersituation
-(Kinderzulagen!), Präferenz für Kapitalgarantie vs. Wertpapierdepot. Beide
-Produkte haben dieselbe steuerliche Förderung nach §§&nbsp;84, 85, 10a EStG
-und dieselbe Auszahlungsbesteuerung nach §&nbsp;22 Nr.&nbsp;5 EStG. Der
-Rechner stellt sie mit denselben Annahmen gegenüber — kein Produkt wird als
-Sieger deklariert.
-
 ### Wer kann ein Altersvorsorgedepot eröffnen?
 
-Dieselben Personengruppen wie bei der Riester-Rente: Pflichtversicherte in
-der gesetzlichen Rentenversicherung, Beamtinnen und Beamte, Soldatinnen und
-Soldaten sowie mittelbar förderberechtigte Ehepartner. Die Berechtigung ergibt
-sich aus §&nbsp;10a Abs.&nbsp;1 EStG in Verbindung mit den AVD-Regelungen des
-Jahressteuergesetzes 2024.
+Die genaue Berechtigtenliste steht im Altersvorsorgereformgesetz und ist bei Inkrafttreten zu prüfen. Der Personenkreis ist an die Förderberechtigten der zweiten Schicht angelehnt, weicht aber im Detail vom §&nbsp;10a Abs.&nbsp;1 [EStG](https://www.gesetze-im-internet.de/estg/__10a.html)-Kreis ab. Mittelbar förderberechtigte Ehepartner sind mit einer eigenen Maximalzulage von 175&nbsp;€ vorgesehen.
 
-### Was passiert mit dem AVD-Depot in schlechten Börsenphasen?
+### Was passiert mit dem Depotwert in schlechten Marktphasen?
 
-Da das AVD keine Kapitalgarantie hat, kann der Depotwert unter die
-eingezahlten Beträge fallen — besonders wenn kurz vor Rentenbeginn ein
-Kurseinbruch eintritt. Der gesetzlich vorgeschriebene Glidepath soll dieses
-Risiko mit zunehmender Nähe zum Rentenbeginn reduzieren, kann es aber nicht
-vollständig eliminieren. Im Modell des Rechners wird das Glidepath-Profil
-simuliert; Monte Carlo zeigt die Streubreite unter verschiedenen
-Marktszenarien.
+Das AVD trägt Marktrisiko ohne Kapitalgarantie. Der gesetzlich vorgeschriebene Glidepath senkt den Anteil hochriskanter Anlagen ab fünf Jahren vor Rentenbeginn auf höchstens 50&nbsp;% und ab zwei Jahren vor Rentenbeginn auf höchstens 30&nbsp;%. Das reduziert das Kursrisiko zur Auszahlung, eliminiert es aber nicht. Im Rechner zeigt der Monte-Carlo-Modus die Streubreite über verschiedene Marktszenarien.
 
-### Kann ich mein Riester-Kapital in ein AVD übertragen?
+### Wer beaufsichtigt und zertifiziert das AVD?
 
-Ja — das Jahressteuergesetz 2024 ermöglicht eine steuerbefreite Übertragung.
-Die Portabilität (§&nbsp;93 EStG gilt bei ordnungsgemäßer Übertragung nicht
-als schädliche Verwendung) ist ein zentraler Anreiz des neuen Produkts. Die
-Umsetzung durch Produktanbieter läuft noch an; nicht alle Anbieter unterstützen
-die Übertragung schon vollständig (Stand: 2026).
+Die steuerliche Zertifizierung der AVD-Verträge erfolgt durch das [Bundeszentralamt für Steuern (BZSt)](https://www.bzst.de). Die Zulagenverwaltung läuft über die [Zentrale Zulagenstelle für Altersvermögen (ZfA)](https://www.zfa.deutsche-rentenversicherung.de) bei der Deutschen Rentenversicherung Bund. Die [BaFin](https://www.bafin.de) bleibt zuständig für Anbieter, soweit ein Versicherungsmantel im Spiel ist; das reine AVD-Depot fällt jedoch nicht in deren Produkt-Zertifizierung.
+
+### Wie funktioniert die Übertragung von Riester auf das AVD?
+
+Das Altersvorsorgereformgesetz wertet die Übertragung Riester nach AVD nicht als schädliche Verwendung im Sinne des §&nbsp;93 [EStG](https://www.gesetze-im-internet.de/estg/__93.html). Die Förderhistorie (Zulagen) geht in das aufnehmende Depot über. Die Übertragung ist Teil der Reform, technisch greift sie ab Inkrafttreten 2027. Anbieter, die die Schnittstellen schon umgesetzt haben, können sie früh anbieten; für Bestandskunden ist die Übertragung freiwillig.
+
+### Wie hoch sind die Kosten?
+
+Für das gesetzliche Standarddepot gilt ein Effektivkosten-Deckel von 1,0&nbsp;% pro Jahr. Anbieter dürfen darunter liegen; höhere Kostenquoten sind nur in nicht-standardisierten Vertragsvarianten möglich. Im Rechner ist die Effektivkostenannahme einstellbar.
 
 ## Quellen
 
-- Einkommensteuergesetz (EStG): §§&nbsp;10a, 20, 22 Nr.&nbsp;5, 84, 85, 86,
-  93 — Förderung, nachgelagerte Besteuerung, Zulagen, schädliche Verwendung.
-- **Jahressteuergesetz 2024** — gesetzliche Grundlage für die Einführung des
-  Altersvorsorgedepots (AVD).
-- **Altersvorsorgeverbesserungsgesetz (AltvVerbG)** — Zertifizierungs- und
-  Anforderungsrahmen für das AVD.
-- Sozialgesetzbuch V (SGB&nbsp;V): §§&nbsp;229, 240 — KV-Beiträge auf
-  Versorgungsbezüge und freiwillige Mitgliedschaft.
-- Sozialgesetzbuch XI (SGB&nbsp;XI): §§&nbsp;55, 55a — Pflegeversicherungssatz
-  und Kinderzuschlag.
-- **BaFin — Bundesanstalt für Finanzdienstleistungsaufsicht:** Zertifizierung
-  und Aufsicht über AVD-Anbieter.
-- **Bundesministerium der Finanzen (BMF):** *Programmablaufplan für die
-  Berechnung der Lohnsteuer 2026* (BMF-Schreiben vom 19. November 2025).
-- **Deutsche Rentenversicherung Bund:** *Rentenversicherung in Zahlen
-  2025/2026* — Beitragsbemessungsgrenzen, Rentenwert.
-- **Zentrale Zulagenstelle für Altersvermögen (ZfA):** zuständig für die
-  Zulagegewährung auch beim AVD.
+- Einkommensteuergesetz (EStG): §§&nbsp;[10a](https://www.gesetze-im-internet.de/estg/__10a.html), [22](https://www.gesetze-im-internet.de/estg/__22.html), [93](https://www.gesetze-im-internet.de/estg/__93.html).
+- Altersvorsorgereformgesetz (Bundestag-Beschluss 2026-03-27, Bundesrats-Drucksache 206/26, Bundesrats-Befassung 2026-05-08, Inkrafttreten zum 1. Januar 2027 vorgesehen): rechtliche Grundlage des Altersvorsorgedepots.
+- Sozialgesetzbuch V: §§&nbsp;[229](https://www.gesetze-im-internet.de/sgb_5/__229.html), [240](https://www.gesetze-im-internet.de/sgb_5/__240.html).
+- Sozialgesetzbuch XI: §§&nbsp;[55](https://www.gesetze-im-internet.de/sgb_11/__55.html), [55a](https://www.gesetze-im-internet.de/sgb_11/__55a.html).
+- [Bundeszentralamt für Steuern (BZSt)](https://www.bzst.de): steuerliche Zertifizierung der AVD-Verträge.
+- [Zentrale Zulagenstelle für Altersvermögen (ZfA)](https://www.zfa.deutsche-rentenversicherung.de): Zulagengewährung Riester und Altersvorsorgedepot.
+- Bundesministerium der Finanzen: Programmablaufplan für die Berechnung der Lohnsteuer 2026 (BMF-Schreiben vom 19. November 2025).
+- Deutsche Rentenversicherung Bund: Rentenversicherung in Zahlen 2025/2026.

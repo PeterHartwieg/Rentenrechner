@@ -584,10 +584,17 @@ describe('AltersvorsorgedepotRechnerPage — visible content for prerender', () 
     expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('mentions Jahressteuergesetz 2024 (new product status) inline (YMYL guardrail)', () => {
+  it('cites the Altersvorsorgereformgesetz (legal basis of AVD) inline (YMYL guardrail)', () => {
+    // AVD's legal basis is the Altersvorsorgereformgesetz passed by the
+    // Bundestag on 2026-03-27 (Bundesrats-Drucksache 206/26), with
+    // Bundesrat consent expected 2026-05-08 and entry into force planned
+    // for 2027-01-01 — see ALTERSVORSORGEDEPOT_2027_RESEARCH.md and
+    // src/rules/de2026.ts. Earlier drafts of this test cited
+    // "Jahressteuergesetz 2024" and "AltvVerbG"; both were research-brief
+    // hallucinations and are NOT the legal basis of the new product.
     const { container } = render(<AltersvorsorgedepotRechnerPage />)
     const text = container.textContent ?? ''
-    expect(text).toMatch(/(Jahressteuergesetz 2024|Jahressteuergesetz)/i)
+    expect(text).toMatch(/Altersvorsorgereformgesetz/i)
   })
 
   it('cites § 22 Nr. 5 EStG (Auszahlungsbesteuerung) inline (YMYL guardrail)', () => {
@@ -596,10 +603,15 @@ describe('AltersvorsorgedepotRechnerPage — visible content for prerender', () 
     expect(text).toMatch(/§\s?22\s*Nr\.?\s*5\s*EStG/i)
   })
 
-  it('cites AltvVerbG (Altersvorsorge-Verbesserungsgesetz) inline (YMYL guardrail)', () => {
+  it('cites the Bundestag-Beschluss / Bundesrats-Drucksache (legislative anchor) inline (YMYL guardrail)', () => {
+    // The AVD page must anchor its 2027 constants to the actual bill
+    // (Altersvorsorgereformgesetz, Bundestag-Beschluss 2026-03-27,
+    // Bundesrats-Drucksache 206/26). Asserting at least one of these
+    // anchors is present prevents future copy from drifting back to the
+    // hallucinated "AltvVerbG" / "Jahressteuergesetz 2024" provenance.
     const { container } = render(<AltersvorsorgedepotRechnerPage />)
     const text = container.textContent ?? ''
-    expect(text).toMatch(/(AltvVerbG|Altersvorsorge-Verbesserungsgesetz)/i)
+    expect(text).toMatch(/(Bundestag-Beschluss\s*2026-03-27|Bundestag.*am\s*27\.\s*M(ä|a)rz\s*2026|Bundesrats?-?Drucksache\s*206\/26|Drucksache\s*206\/26)/i)
   })
 
   it('cites § 10a EStG (Sonderausgabenabzug) inline (YMYL guardrail)', () => {
@@ -714,10 +726,17 @@ describe('RiesterVsAltersvorsorgedepotPage — visible content for prerender', (
     expect(text).toMatch(/§\s?85\s*EStG/i)
   })
 
-  it('mentions Jahressteuergesetz 2024 and the AVD transfer mechanism', () => {
+  it('describes the Riester→AVD transfer as schädlichkeitsfrei (legal-technical term)', () => {
+    // The Altersvorsorgereformgesetz makes the Riester→AVD transfer NOT a
+    // "schädliche Verwendung" under § 93 EStG. The correct legal-technical
+    // term for that is "schädlichkeitsfrei" (or
+    // "schädlichkeitsfreie Übertragung"). Earlier drafts of this test
+    // alternatively accepted "Jahressteuergesetz 2024", which was a
+    // research-brief hallucination — the AVD provenance is the
+    // Altersvorsorgereformgesetz, not the JStG 2024.
     const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
     const text = container.textContent ?? ''
-    expect(text).toMatch(/(Jahressteuergesetz 2024|schädlichkeitsfreie Übertragung|schädlichkeitsfrei)/i)
+    expect(text).toMatch(/(schädlichkeitsfreie Übertragung|schädlichkeitsfrei)/i)
   })
 
   it('cites ZfA (Zentrale Zulagenstelle) inline (YMYL guardrail)', () => {

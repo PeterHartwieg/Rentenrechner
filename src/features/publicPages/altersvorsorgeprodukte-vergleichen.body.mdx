@@ -1,216 +1,125 @@
-## Warum Altersvorsorge selten aus einem Produkt besteht
+## Was der Portfolio-Modus löst, was er nicht kann
 
-Wer nur die gesetzliche Rente hat, hat eine Lücke. Wer eine einzige bAV oder
-einen ETF-Sparplan hat, hat vielleicht eine zweite Säule. Wer langjährig
-erwerbstätig war, hat oft mehrere Produkte gleichzeitig: eine bAV aus dem
-aktuellen Arbeitsverhältnis, einen alten Riester-Vertrag, einen privaten
-ETF-Sparplan und vielleicht eine Kapitallebensversicherung. Diese Verträge
-**interagieren**: Beitragsobergrenzen, Steuervorteile und
-Krankenversicherungsbeiträge in der Auszahlphase beeinflussen sich gegenseitig.
+Mehrere Vorsorgeverträge zusammen einplanen statt einzeln vergleichen. RentenWiki.de erfasst pro Vertrag die echten Konditionen, prüft Förderrahmen quer über alle Verträge, rechnet Steuer- und KV/PV-Wirkung in der Auszahlphase durch und zeigt das Ergebnis als Haushaltssicht. *Modellrechnung, keine Beratung.*
 
-RentenWiki.de bildet diese Komplexität im **Portfolio-Modus** (Kombinations-Modus)
-ab: Mehrere Verträge werden gleichzeitig erfasst, mit ihren tatsächlichen Parametern
-hinterlegt, Transfer-Ereignisse (beitragsfrei stellen, kündigen, übertragen) können
-modelliert werden, und das Ergebnis ist eine **Haushaltsperspektive** auf Rentenlücke,
-Kapitalentwicklung und Auszahlungen.
+## Wann ist das für dich relevant?
 
-## Welche Produkte vergleicht RentenWiki.de?
+- Du hast mehr als ein Vorsorgeprodukt nebeneinander (z. B. bAV plus ETF-Sparplan plus alter Riester-Vertrag).
+- Du überlegst, einen alten Vertrag beitragsfrei zu stellen, zu kündigen oder das Kapital in ein anderes Produkt umzuschichten.
+- Du willst wissen, ob dein nächster Sparbeitrag in die bAV, in die Basisrente, in einen ETF oder in das ab 2027 startende Altersvorsorgedepot fließen sollte.
+- Du planst die Auswirkung von Förderrahmen (§ 3 Nr. 63 EStG, § 10 Abs. 3 EStG, § 10a EStG) und KV/PV-Beiträgen in der Rente realistisch durchzurechnen, nicht nur überschlägig.
 
-Der Rechner unterstützt sechs Vorsorgewege. Alle werden im Portfolio-Modus
-einzeln instanziiert und gemeinsam bewertet.
+Wenn du nur die Steuer auf deine gesetzliche Rente berechnen willst, ist [Rente netto berechnen](/rente-netto-berechnen) der direktere Einstieg.
 
-### 1. ETF-Sparplan (3. Schicht / freie Anlage)
+## Welche Verträge du mitbringen solltest
 
-Aktienfondsbasiertes Sparen ohne steuerliche Förderung in der Ansparphase.
-Die jährliche **Vorabpauschale** nach § 18 InvStG wird berücksichtigt;
-in der Entnahmephase gilt § 20 Abs. 1 Nr. 1 EStG (Kapitalertragsteuer) bzw.
-§ 20 Abs. 1 Nr. 2 EStG (Anteilsrückgabe). Der Sparer-Pauschbetrag
-(§ 20 Abs. 9 EStG, 1 000 EUR jährlich) wird im Modell auf mehrere ETF-Instanzen
-aufgeteilt.
+Pro Vertrag: Produkttyp, Vertragsbeginn, monatlicher Beitrag, vereinbarte Endalter, Gebührenstruktur. Für laufende Verträge: aktuelles Vertragsguthaben aus der letzten Standmitteilung. Für die bAV zusätzlich: Durchführungsweg (Direktversicherung, Pensionskasse, Pensionsfonds, Direktzusage, Unterstützungskasse) und Höhe des Arbeitgeberzuschusses.
 
-**Merkmale:** keine Auszahlungspflicht im Alter, flexible Entnahmen
-(Kapitalverzehr-Modell), keine Verpflichtung zur Verrentung, kein
-Versicherungsmantelaufwand.
+Allgemein: Bruttogehalt, geplanter Renteneintritt, Familienstand, Anzahl Kinder, KV-Status (KVdR oder freiwillig versichert nach § 240 SGB V).
 
-### 2. Betriebliche Altersvorsorge (bAV, 2. Schicht)
+Wenn dir Unterlagen fehlen, kannst du den Rechner zuerst mit Schätzwerten füllen. Die Auszahlung markiert dann transparent, welche Annahmen aus Belegen, welche geschätzt sind.
 
-Beitragsumwandlung aus dem Bruttolohn (§ 3 Nr. 63 EStG, § 1 SvEV). Der
-Arbeitgeberzuschuss von mindestens 15 % auf neue Verträge (§ 1a Abs. 1a
-BetrAVG) ist modellierbar. In der Auszahlphase volle nachgelagerte Besteuerung
-sowie KVdR/PV-Beiträge nach § 229 SGB V (1/120-Regel für Kapitalleistungen).
+## Was vergleicht RentenWiki.de?
 
-**Merkmale:** Sozialversicherungsersparnis in der Ansparphase; KV-Pflicht
-auf Rente (§ 229 SGB V); Direktzusage und U-Kasse haben abweichende
-Steuerregeln (Fünftelregelung § 34 Abs. 1 EStG).
+Sechs Vorsorgewege werden in der Kombinations-Sicht einzeln pro Vertrag erfasst und gemeinsam ausgewertet:
 
-### 3. Private Rentenversicherung (3. Schicht)
+**ETF-Sparplan (3. Schicht).** Aktienfonds-Sparen ohne staatliche Förderung in der Ansparphase. Vorabpauschale nach § 18 InvStG, in der Entnahmephase Abgeltungsteuer (§ 20 EStG). Sparer-Pauschbetrag § 20 Abs. 9 EStG: 1.000 € pro Jahr (Single), 2.000 € (verheiratet); bei mehreren ETF-Verträgen wird der Pauschbetrag aufgeteilt.
 
-Aufwendungen nicht steuerlich abzugsfähig; Auszahlung je nach Vertragsbeginn
-und Laufzeit nach § 20 Abs. 1 Nr. 6 EStG (Halbeinkünfte-Methode oder
-Abgeltungsteuer) oder § 22 Nr. 1 Satz 3 a EStG (Ertragsanteil bei Leibrente).
+**Betriebliche Altersvorsorge (2. Schicht).** Steuerfrei nach § 3 Nr. 63 EStG bis 8 % der Beitragsbemessungsgrenze West (8.112 €/Jahr in 2026, also 676 €/Monat). SV-frei nach § 1 SvEV bis 4 % der BBG (4.056 €/Jahr in 2026). Arbeitgeberzuschuss mindestens 15 % auf Neuverträge (§ 1a Abs. 1a BetrAVG), soweit der Arbeitgeber SV spart. In der Auszahlphase: volle nachgelagerte Besteuerung; KV/PV nach § 229 SGB V, bei Kapitalleistung 1/120-Verteilung über 120 Monate.
 
-**Merkmale:** Versicherungsmantelgebühr (Kostenquote), Leibrente oder
-Zeitrente oder Kapitalabfindung wählbar, kein KVdR-Beitragsprivileg für
-Leibrente aus privater Versicherung (KV auf Ertragsanteil nach § 240 SGB V
-bei freiwilliger Mitgliedschaft).
+**Private Rentenversicherung (3. Schicht).** Beiträge nicht steuerlich absetzbar. Steuerregime in der Auszahlphase ist abhängig von Vertragsbeginn und Auszahlart: Verträge vor 2005 weitgehend steuerfrei, Verträge ab 2005 als Halbeinkünfte-Methode oder Abgeltungsteuer (§ 20 Abs. 1 Nr. 6 EStG), bei Verrentung Ertragsanteil (§ 22 Nr. 1 Satz 3 a EStG). Versicherungsmantel-Gebühr separat ausweisen.
 
-### 4. Basisrente / Rürup-Rente (1. Schicht)
+**Basisrente / Rürup-Rente (1. Schicht).** Beiträge zu 100 % als Sonderausgaben absetzbar (§ 10 Abs. 1 Nr. 2 i.V.m. Abs. 3 EStG). Höchstbetrag 2026: 30.826 € (Einzel), 61.652 € (verheiratet). Auszahlung ausschließlich als lebenslange Leibrente, kein Kapitalwahlrecht. Volle nachgelagerte Besteuerung wie gesetzliche Rente. KV/PV-Behandlung wie Leibrente aus privater Versicherung (§ 240 SGB V Bemessung bei freiwillig Versicherten).
 
-Beiträge steuerlich abzugsfähig nach § 10 Abs. 1 Nr. 2 EStG (Höchstbetrag 2026:
-29 344 EUR Arbeitnehmer-Anteil, gemeinsam mit der gesetzlichen Rente). Auszahlung
-ausschließlich als Leibrente (kein Kapitalwahlrecht), volles
-§ 22 Nr. 1 Satz 3 a-EStG-Modell. KVdR-Beitrag in der Auszahlphase wie
-gesetzliche Rente.
+**Altersvorsorgedepot (2. Schicht).** Neues Schicht-2-Produkt aus dem Altersvorsorgereformgesetz (Bundestags-Beschluss 27. März 2026, Bundesrat-Befassung am 8. Mai 2026 erwartet, Produktstart geplant für 2027). Eigene Förderlogik, abweichend von Riester:
 
-**Merkmale:** selbstständige und gut verdienende Angestellte mit hohem
-Grenzsteuersatz profitieren am meisten; keine Kündbarkeit, keine Übertragbarkeit.
+- Grundzulage zweistufig: 50 % auf die ersten 360 € Eigenbeitrag (max. 180 €) plus 25 % auf den Anteil von 360 € bis 1.800 € (max. 360 €), in Summe gedeckelt bei 540 € pro Jahr.
+- Kinderzulage: 300 € pro Kind und Jahr.
+- Berufseinsteiger-Bonus: 200 € einmalig für Verträge mit Beginn bis Alter 24.
+- Eigenbeitrags-Cap pro Vertrag: 1.800 € pro Jahr (eigener Cap, nicht der Riester-§-10a-Rahmen).
+- Auszahlungsbesteuerung nach § 22 Nr. 5 EStG.
 
-### 5. Altersvorsorgedepot (AVD, 2. Schicht)
+**Riester-Vertrag (2. Schicht).** Bestehende Verträge laufen weiter; Neuabschlüsse ab 2027 sind nach dem Altersvorsorgereformgesetz nicht mehr vorgesehen. Grundzulage 175 €/Jahr (§ 84 EStG). Kinderzulage 185 €/Jahr für Kinder vor 2008 geboren, 300 €/Jahr ab 2008 (§ 85 EStG). Sonderausgabenabzug nach § 10a EStG bis 2.100 € jährlich (eigene Beiträge plus Zulagen). Mindesteigenanteil: 4 % des sozialversicherungspflichtigen Vorjahreseinkommens. Auszahlung nach § 22 Nr. 5 EStG.
 
-Das neue Produkt ab 2026 (Jahressteuergesetz 2024). Jährliche staatliche Zulage
-(§ 100 EStG: 20 % der Beiträge, max. 400 EUR) plus Sonderausgabenabzug nach
-§ 10a EStG. Auszahlung nach § 22 Nr. 5 EStG steuerpflichtig wie Riester.
+## Was berechnet RentenWiki.de?
 
-**Merkmale:** flexibel wie ETF (Aktienfonds-Investition ohne Versicherungsmantel),
-staatlich gefördert wie Riester, keine Verrentungspflicht für Depot-Entnahmen.
-Der Rechner bildet Glidepath-Umschichtung und gesetzliche Beitragsobergrenzen ab.
+Pro Vertrag wird je nach Vertragsstatus simuliert:
 
-### 6. Riester-Vertrag (2. Schicht)
+- **Aktiv:** laufende Beiträge, jährliche Kostenbelastung, Kapitalentwicklung mit Vorabpauschale, Glidepath bei Altersvorsorgedepot.
+- **Beitragsfrei:** Ansparphase ist gestoppt, Bestand läuft mit reduzierter Kostenstruktur weiter (beitragsfreies Gebührenmodell pro Produkttyp).
+- **Gekündigt mit Reinvestition:** Rückkaufswert wird mit Stornoabzügen und steuerlicher Wirkung (z. B. Halbeinkünfte) ermittelt; das Netto fließt in einen Folge-Vertrag.
+- **Übertragung:** Riester-Kapital kann nach § 93 Abs. 1a EStG ohne Förderschaden auf das Altersvorsorgedepot übertragen werden.
 
-Jährliche Grundzulage (185 EUR, § 84 EStG) und Kinderzulagen (300 EUR je Kind,
-§ 85 EStG). Alternativ Sonderausgabenabzug nach § 10a EStG bis 2 100 EUR jährlich.
-Auszahlung nach § 22 Nr. 5 EStG vollständig steuerpflichtig; KVdR-Beitrag
-auf Riester-Auszahlungen.
+In der Auszahlphase werden alle Verträge gemeinsam durch die Steuer- und KV/PV-Logik geschickt:
 
-**Merkmale:** besonders vorteilhaft für Eltern mit Kindzulagen; Übertragung auf
-AVD modellierbar; Mindesteigenanteil 4 % des sozialversicherungspflichtigen
-Vorjahreseinkommens für volle Zulage.
+- Die nachgelagerte Besteuerung der gesetzlichen Rente, der bAV, der Basisrente und der geförderten Auszahlungen aus Riester und Altersvorsorgedepot läuft durch dieselbe Pipeline.
+- KV/PV-Beiträge sind auf die monatliche Beitragsbemessungsgrenze von 5.812,50 € gedeckelt; bei Überschreitung wird proportional über alle Einkunftsquellen verteilt.
+- Der Sparer-Pauschbetrag wird über mehrere ETF-Verträge anteilig aufgeteilt.
+- Die §-3-Nr.-63-EStG- und §-1-SvEV-Grenzen für die bAV werden im Modell jahresweise gegen die summierte Förderung aller bAV-Verträge geprüft.
 
-## Der Portfolio-Modus: Verträge gemeinsam planen
+Der Assistent „Wo geht mein nächster Euro hin?" prüft, welche gesetzlichen Förderrahmen pro Jahr noch nicht ausgeschöpft sind, und zeigt für einen zusätzlichen Sparbeitrag den modellierten Effekt auf die Nettorente. Zusätzlich rechnet er einen Risikowert über 1.000 simulierte Marktpfade aus und weist das Ergebnis im pessimistischsten Zehntel der Pfade aus (Risiko-Schwelle, mit der dein Beitrag mindestens noch ankäme).
 
-Im **Portfolio-Modus** von RentenWiki.de wird jeder Vertrag als **Instanz**
-erfasst — mit seinem eigenen Startjahr, seinen Beiträgen, Gebühren,
-Durchführungsweg und Vertragsstatus:
+## Was das Ergebnis nicht entscheidet
 
-- **Aktiv:** Beiträge werden weiter eingezahlt.
-- **Beitragsfrei / ruhend:** Ansparphase gestoppt, Kapital läuft weiter.
-- **Gekündigt / ausbezahlt:** Rückkaufswert kann in eine andere Instanz
-  (z. B. ETF) übertragen werden.
-- **Übertragen:** Riester- oder AVD-Kapital wird in einen anderen Vertrag
-  portiert (§ 93 Abs. 1a EStG für Riester → AVD-Umwandlung).
+RentenWiki.de ist kostenlos, kein Broker und kein Versicherungsvermittler, sondern nur ein Modellrechner. Eine Aussage „Produkt A ist besser als Produkt B" gibt das Tool nicht aus; es zeigt die rechnerische Wirkung deiner Eingaben, sortiert nach Förderrahmen-Auslastung und Steuer-/KV-Wirkung.
 
-Diese **Transfer-Ereignisse** (Surrender, Übertragung, Neuanlage) werden mit
-Kapitalwerten, Steuer- und Surrender-Abzügen modelliert — keine pauschalen
-Schätzungen, sondern der vollständige Rechenweg.
+Der Rechner kennt außerdem nicht:
 
-## „Wo geht mein nächster Euro hin?" — cap-headroom-getriebener Assistent
+- die konkrete Bonität deines Arbeitgebers oder Versicherers,
+- deine vollständige steuerliche Situation (außerordentliche Einkünfte, Verlustvorträge, Werbungskosten oberhalb der Pauschale),
+- bestehende Verpflichtungen wie Unterhalt, Kredite, andere Versorgungsanwartschaften,
+- gesundheitliche Faktoren, die Lebenserwartung und Versicherbarkeit beeinflussen.
 
-Der Assistent **empfiehlt keine Produkte**. Er analysiert stattdessen, welche
-gesetzlichen Beitragsobergrenzen noch ausgeschöpft werden können:
+## Markus mit drei Verträgen (Stand 2026)
 
-- **bAV:** § 3 Nr. 63 EStG-Rahmen (4 % der Beitragsbemessungsgrenze,
-  West 2026 = 3 504 EUR; + 4 % zusätzlich mit § 40b-Altvertrag).
-- **Basisrente:** § 10 Abs. 3 EStG-Rahmen (2026 gemeinsam mit RV-Beitrag
-  bis 29 344 EUR).
-- **Riester / AVD:** § 10a-Rahmen 2 100 EUR jährlich.
-- **ETF:** keine Obergrenze, Sparerpauschbetrag (§ 20 Abs. 9 EStG) noch offen?
-
-Für jeden noch nicht ausgeschöpften Förderrahmen berechnet der Assistent,
-wie sich ein zusätzlicher Euro auf die Nettorente auswirkt — unter dem
-Basis-Rendite-Szenario und als P10-Wert des Monte-Carlo-Modells (schlechtestes
-Dezentil über 1 000 simulierte Marktpfade).
-
-Das Ergebnis ist kein Ranking. Es ist ein **Modell der Kapazitätsauslastung**
-unter den eingegebenen Annahmen. Ob ein Produkt „passt", hängt von Faktoren ab,
-die der Rechner nicht kennt: Bonität des Arbeitgebers, persönliche
-Risikobereitschaft, steuerliche Gesamtsituation, bestehende Verpflichtungen.
-
-## Warum RentenWiki.de kein Broker ist
-
-RentenWiki.de ist ein **kostenloser, quelloffener Modellrechner**:
-
-- Kein Produktverkauf, keine Provision, kein Affiliate-Link.
-- Kein Broker, kein Versicherungsvermittler im Sinne von §§ 34d, 34e GewO.
-- Kein Anlageberater nach KWG / WpIG / WpHG.
-- Keine Empfehlung, kein „Produkt X ist besser als Produkt Y".
-- Die Berechnungen sind Modelle unter den eingegebenen Annahmen — keine
-  Finanz-, Steuer- oder Rechtsberatung.
-
-Der Quellcode ist unter der PolyForm Noncommercial 1.0.0 Lizenz veröffentlicht.
-Kommerzielle Nutzung (z. B. durch Makler, Berater, Arbeitgeber) erfordert eine
-separate Lizenz (Kontakt: peter@hartwieg.com, vgl. COMMERCIAL\_LICENSE.md).
-
-## Beispiel: Markus — mehrere Verträge gemeinsam planen (Stand 2026)
-
-*Persona aus `docs/user-scenarios.md`, Werte modellhaft.*
-
-Markus (43, Bruttolohn 75 000 EUR, geplanter Renteneintritt 67) hat:
+Markus, 43, Bruttogehalt 75.000 € pro Jahr, geplanter Renteneintritt mit 67. Verträge im Bestand:
 
 | Vertrag | Status | Monatlicher Beitrag |
-|---------|--------|---------------------|
-| bAV (§ 3 Nr. 63) | aktiv | 250 EUR Brutto-Umwandlung + 15 % AG-Zuschuss |
-| ETF-Sparplan | aktiv | 300 EUR netto |
-| Riester (alt) | beitragsfrei | — (Kapital ruht) |
+|---|---|---|
+| bAV nach § 3 Nr. 63 EStG (Direktversicherung) | aktiv | 250 € Brutto-Umwandlung + 15 % AG-Zuschuss |
+| ETF-Sparplan | aktiv | 300 € netto |
+| Riester-Vertrag (Altvertrag) | beitragsfrei | Bestand ruht, keine Beiträge |
 
-Im Portfolio-Modus sieht Markus:
+Was der Rechner ausgibt:
 
-1. Sein bAV-§-3-Nr.-63-Rahmen (3 504 EUR/Jahr) ist zu 85 % ausgeschöpft.
-2. Der Riester-Vertrag ist beitragsfrei; er könnte auf AVD übertragen werden
-   (§ 93 Abs. 1a EStG), was die Glidepath-Rendite gegenüber der alten Rente
-   verbessern würde.
-3. Der Sparerpauschbetrag (1 000 EUR) ist im ETF-Sparplan noch nicht
-   vollständig genutzt.
+1. Der § 3 Nr. 63 EStG-Rahmen 2026 (8.112 € jährlich) ist mit 3.000 € Eigenumwandlung plus rund 450 € Arbeitgeberzuschuss zu rund 43 % ausgeschöpft. Eine Erhöhung der Umwandlung um 200 € pro Monat wäre noch steuer- und teilweise SV-frei.
+2. Der Sparer-Pauschbetrag von 1.000 € im ETF-Sparplan ist je nach laufender Vorabpauschale teilweise oder vollständig genutzt.
+3. Der beitragsfreie Riester-Vertrag kann nach § 93 Abs. 1a EStG ohne Förderschaden in ein Altersvorsorgedepot übertragen werden, sobald dieses ab 2027 verfügbar ist. Der Rechner stellt die Modellwirkung gegenüber: Riester-Bestand bleibt liegen vs. Übertrag mit Glidepath-Logik im Altersvorsorgedepot.
 
-Der Assistent zeigt, wo ein zusätzlicher Euro — modellhaft — den größten
-Netto-Auszahlungseffekt hätte. Markus kann das Ergebnis speichern, als
-„Was-wäre-wenn"-Szenario anlegen und den Unterschied im Portfolio-Vergleich sehen.
-
-Das ist eine Modellrechnung. Für eine verbindliche Bewertung der Umwandlung
-ist ein unabhängiger Berater oder die Deutsche Rentenversicherung zuständig.
+Markus speichert diese Konstellation als Basisszenario und legt ein Was-wäre-wenn an, in dem die bAV-Umwandlung um 200 € erhöht und der Riester-Vertrag in ein Altersvorsorgedepot übertragen wird. Der Vergleich zweier Szenarien zeigt die Modell-Differenz in Nettorente, Steuerlast und KV-Belastung.
 
 ## Häufige Fragen
 
-### Kann ich alle meine Verträge zusammen eingeben?
+### Kann ich beliebig viele Verträge erfassen?
 
-Ja. Im Portfolio-Modus wird jeder Vertrag einzeln als Instanz erfasst. Die
-Anzahl der Instanzen ist nicht begrenzt. Für jede Instanz können Vertragsbeginn,
-Beiträge, Gebühren, Durchführungsweg und Auszahlmodus separat angegeben werden.
+Ja. Pro Produkttyp können mehrere Verträge angelegt werden. Für jeden Vertrag werden Beginn, Beitrag, Gebühren, Durchführungsweg, Auszahlmodus und gegebenenfalls Kapitalstand separat angegeben.
 
-### Empfiehlt der Rechner mir ein Produkt?
+### Empfiehlt der Rechner ein Produkt?
 
-Nein. Der Rechner illustriert Kapazitätsauslastung und modellierte Auswirkungen
-unter den eingegebenen Annahmen. Es wird kein Produkt empfohlen; die Entscheidung
-liegt immer bei der Nutzerin oder dem Nutzer. Beratungspflichten liegen bei
-zugelassenen Beratern und Beratungsunternehmen.
+Nein. Es gibt keine Produktempfehlung. Der Assistent zeigt, welcher gesetzliche Förderrahmen rechnerisch noch offen ist, und welche Wirkung ein zusätzlicher Beitrag pro Förderpfad in deinem Modell hätte.
 
 ### Was kostet der Rechner?
 
-Nichts. RentenWiki.de ist und bleibt kostenlos für Privatpersonen. Die Kosten
-werden durch Spenden (Stripe, GitHub Sponsors) gedeckt. Der Quellcode ist
-öffentlich unter PolyForm Noncommercial 1.0.0.
+Nichts. RentenWiki.de ist und bleibt für Privatpersonen kostenlos. Der Quellcode ist unter PolyForm Noncommercial 1.0.0 veröffentlicht. Kommerzielle Nutzung (Makler, Berater, Arbeitgeber, Vermittler) erfordert eine separate Lizenz: peter@hartwieg.com.
+
+### Wie wird die Übertragung von Riester auf das Altersvorsorgedepot abgebildet?
+
+Über § 93 Abs. 1a EStG: das Bestandskapital wird ohne Rückzahlung der Zulagen in das Altersvorsorgedepot überführt. Der Rechner modelliert das als Übertragung mit dem aktuellen Bestand als Anfangskapital für den Folgevertrag.
 
 ### Werden meine Eingaben gespeichert oder weitergegeben?
 
-Nein. Alle Eingaben werden ausschließlich im lokalen Speicher des Browsers
-(localStorage) gesichert. Es gibt keinen Backend-Server, der Daten empfängt.
-Keine Telemetrie, keine Cookies, kein Analytics. Vgl. Datenschutzerklärung.
+Nein. Alle Eingaben bleiben im lokalen Speicher des Browsers (localStorage). Es gibt keinen Server, der Daten empfängt, keine Telemetrie, keine Cookies, kein Analytics. Details in der Datenschutzerklärung.
 
 ## Quellen
 
-- Einkommensteuergesetz (EStG), §§ 10 Abs. 1 Nr. 2 (Basisrente), 10a (Riester/AVD),
-  18 InvStG (Vorabpauschale), 20 (Kapitalerträge), 22 Nr. 1 Satz 3 a (Leibrenten),
-  22 Nr. 5 (geförderte Verträge), 34 Abs. 1 (Fünftelregelung), 84, 85, 93, 100.
-- Sozialgesetzbuch V (SGB V), §§ 226, 229, 237, 240 — KV-Beiträge auf
-  Betriebsrenten, KVdR und freiwillige Mitgliedschaft.
-- Sozialgesetzbuch XI (SGB XI), §§ 55, 55a — Pflegeversicherungsbeiträge.
-- Betriebsrentengesetz (BetrAVG), § 1a — Rechtsanspruch auf Entgeltumwandlung
-  und Arbeitgeberzuschuss.
-- Gewerbeordnung (GewO), §§ 34d, 34e — Versicherungsvermittlung
-  (RentenWiki.de übt diese Tätigkeit nicht aus).
-- KWG / WpIG / WpHG — Anlageberatung (RentenWiki.de übt diese Tätigkeit
-  nicht aus; keine BaFin-Zulassung).
+- Einkommensteuergesetz: § 3 Nr. 63 (bAV-Steuerfreiheit), § 10 Abs. 1 Nr. 2 und Abs. 3 (Basisrente-Sonderausgabenabzug), § 10a (Riester-Sonderausgabenabzug), § 18 InvStG (Vorabpauschale), § 20 (Kapitalerträge, Sparer-Pauschbetrag), § 22 Nr. 1 Satz 3 a (Leibrenten), § 22 Nr. 5 (geförderte Verträge), § 84, § 85, § 93 (Riester-Zulagen, Übertragung).
+- Sozialgesetzbuch V, §§ 226, 229, 237, 240 (KV-Beiträge auf Renten und Versorgungsbezüge, freiwillige Mitgliedschaft).
+- Sozialgesetzbuch XI, §§ 55, 55a (Pflegeversicherungs-Beiträge).
+- Betriebsrentengesetz § 1a Abs. 1a (Arbeitgeberzuschuss zur Entgeltumwandlung).
+- Sozialversicherungsentgeltverordnung § 1 (SV-Freistellung der bAV bis 4 % BBG West).
+- Verordnung über maßgebende Rechengrößen der Sozialversicherung 2026 (BGBl. 2025 I Nr. 278).
+- Altersvorsorgereformgesetz (Bundestags-Beschluss 27. März 2026, Bundesrat-Drucksache 206/26).
+- Wachstumschancengesetz (BGBl. 2024 I Nr. 108): abgeflachte Progression der Besteuerungsanteile.
 - Deutsche Rentenversicherung Bund: *Rentenversicherung in Zahlen 2025/2026*.
 - GKV-Spitzenverband: *Beitragssatz-Übersicht 2026*.
-- Bundesministerium der Finanzen (BMF): *Programmablaufplan für die Berechnung
-  der Lohnsteuer 2026*.
-- Statistisches Bundesamt (Destatis): *Sterbetafeln 2021/2023*.
+- Bundesministerium der Finanzen: *Programmablaufplan für die Berechnung der Lohnsteuer 2026*.

@@ -144,18 +144,15 @@ export const OG_DEFAULT_IMAGE_PATH = '/og/default.png'
 export const publicRouteRegistry = {
   '/': {
     canonical: '/',
-    title: 'RentenWiki.de — Altersvorsorge-Rechner Deutschland 2026',
+    title: 'Altersvorsorge-Rechner 2026 | RentenWiki.de',
     metaDescription:
-      'Kostenloser Modellrechner für die Altersvorsorge in Deutschland: ETF, bAV, ' +
-      'private Rentenversicherung, Basisrente, AVD und Riester gemeinsam vergleichen. ' +
-      'Stand 2026. Keine Anlage-, Steuer- oder Rechtsberatung.',
+      'Kostenloser Rechner für deine Altersvorsorge: ETF, bAV, Riester, Basisrente, ' +
+      'AVD und private Rente vergleichen. Lokal im Browser, kein Account, Werte 2026.',
     h1: 'Deine Altersvorsorge im Blick',
     summary:
-      'RentenWiki.de ist ein kostenloser, quelloffener Modellrechner zur Altersvorsorge in ' +
-      'Deutschland mit gesetzlichen Werten Stand 2026. Er vergleicht ETF, bAV, private ' +
-      'Rentenversicherung, Basisrente, Altersvorsorgedepot und Riester unter denselben Annahmen ' +
-      'und ermittelt Rentenlücke, Steuer- und Sozialversicherungsbelastung sowie ' +
-      'erwartete Auszahlungen.',
+      'Modellrechner für die deutsche Altersvorsorge mit Werten 2026. Vergleicht alle ' +
+      'Schicht-1- bis Schicht-3-Wege unter denselben Annahmen, ermittelt Rentenlücke und ' +
+      'Nettoauszahlung.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -183,15 +180,14 @@ export const publicRouteRegistry = {
   },
   '/rentenluecke-rechner': {
     canonical: '/rentenluecke-rechner',
-    title: 'Rentenlücke berechnen — Rechner für die Versorgungslücke 2026 | RentenWiki.de',
+    title: 'Rentenlücke berechnen 2026 | RentenWiki.de',
     metaDescription:
-      'Rentenlücke (Versorgungslücke) berechnen: Differenz zwischen erwarteter gesetzlicher ' +
-      'Rente und gewünschtem Nettoeinkommen im Ruhestand. Modellrechnung mit Werten Stand 2026.',
-    h1: 'Rentenlücke berechnen — Versorgungslücke in Deutschland 2026',
+      'Rentenlücke berechnen: gewünschte Nettorente minus erwartete GRV-Rente plus ' +
+      'weitere Vorsorge. Kostenlos, lokal im Browser, Werte 2026.',
+    h1: 'Rentenlücke berechnen: Versorgungslücke in Deutschland 2026',
     summary:
-      'Erklärt, was die Rentenlücke (Versorgungslücke) ist, wie sie modellhaft aus erwarteter ' +
-      'gesetzlicher Rente und gewünschtem Nettoeinkommen ermittelt wird, welche Eingaben der ' +
-      'Rechner verwendet und welche Annahmen die Schätzung beeinflussen. Stand 2026, keine Beratung.',
+      'Berechnet die Rentenlücke aus Wunschrente, gesetzlicher Rente und privater Vorsorge. ' +
+      'Zeigt, welche Werte aus deiner Renteninformation der Rechner braucht.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -216,16 +212,15 @@ export const publicRouteRegistry = {
   // ---------------------------------------------------------------------------
   '/bav-rechner': {
     canonical: '/bav-rechner',
-    title: 'bAV Rechner — Betriebliche Altersvorsorge Entgeltumwandlung 2026 | RentenWiki.de',
+    title: 'bAV Rechner: Entgeltumwandlung 2026 | RentenWiki.de',
     metaDescription:
-      'Betriebliche Altersvorsorge (bAV) berechnen: Entgeltumwandlung, Arbeitgeberzuschuss ' +
-      '(§ 1a BetrAVG), §3 Nr. 63 EStG-Grenzen, GRV-Reduktion und KV/PV in der Rente. Stand 2026.',
-    h1: 'bAV Rechner — Betriebliche Altersvorsorge und Entgeltumwandlung 2026',
+      'Betriebliche Altersvorsorge berechnen: Entgeltumwandlung, Arbeitgeberzuschuss, ' +
+      'GRV-Reduktion, KV/PV in der Rente. Lokal im Browser, kostenlos, Werte 2026.',
+    h1: 'bAV Rechner: Betriebliche Altersvorsorge und Entgeltumwandlung 2026',
     summary:
-      'Erklärt, wie Entgeltumwandlung funktioniert, welche Steuer- und SV-Grenzen gelten ' +
-      '(§ 3 Nr. 63 EStG, § 1 SvEV), warum der gesetzliche Arbeitgeberzuschuss (§ 1a Abs. 1a ' +
-      'BetrAVG) und die GRV-Reduktion für die Gesamtbewertung entscheidend sind, und wie ' +
-      'Kranken- und Pflegeversicherung in der Rentenphase berechnet werden. Stand 2026, keine Beratung.',
+      'Zeigt, wie sich Entgeltumwandlung mit Steuer- und SV-Vorteil, Arbeitgeberzuschuss und ' +
+      'nachgelagerter Besteuerung rechnet und wo bAV gegenüber einem ETF-Sparplan profitiert ' +
+      'oder zurückfällt.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -242,18 +237,14 @@ export const publicRouteRegistry = {
   },
   '/etf-vs-bav': {
     canonical: '/etf-vs-bav',
-    title: 'ETF vs. bAV — Vergleich mit gleicher Nettokostenbasis 2026 | RentenWiki.de',
+    title: 'ETF vs. bAV vergleichen 2026 | RentenWiki.de',
     metaDescription:
-      'ETF-Sparplan und betriebliche Altersvorsorge (bAV) vergleichen: gleiche Nettokostenbasis, ' +
-      'Steuern, Arbeitgeberzuschuss, Kosten, Flexibilität und KV/PV-Unterschiede. Stand 2026. ' +
-      'Keine Empfehlung.',
-    h1: 'ETF vs. bAV — Vergleich der Altersvorsorge mit gleicher Nettokostenbasis 2026',
+      'ETF-Sparplan und bAV bei gleicher Nettokostenbasis vergleichen: Steuern, ' +
+      'Arbeitgeberzuschuss, Kosten und KV/PV-Unterschiede. Kostenlos, Werte 2026.',
+    h1: 'ETF vs. bAV: Vergleich der Altersvorsorge bei gleicher Nettokostenbasis 2026',
     summary:
-      'Stellt ETF-Sparplan und betriebliche Altersvorsorge (Entgeltumwandlung) auf derselben ' +
-      'Nettokostenbasis gegenüber: Steuervorteil und SV-Einsparung in der Einzahlphase, ' +
-      'Arbeitgeberzuschuss, Produktkosten, GRV-Reduktion, Steuer und KV/PV in der Auszahlphase, ' +
-      'Flexibilität und Portabilität. Ergebnis hängt von Einkommen, Arbeitgeberzuschuss, ' +
-      'Vertragskosten und Ruhestandsannahmen ab. Stand 2026, keine Empfehlung.',
+      'Vergleicht ETF-Sparplan und bAV bei identischer Nettokostenbasis: Steuervorteil, ' +
+      'Arbeitgeberzuschuss, GRV-Reduktion, Kosten sowie Steuer und KV/PV in der Auszahlphase.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -273,17 +264,14 @@ export const publicRouteRegistry = {
   // ---------------------------------------------------------------------------
   '/riester-rechner': {
     canonical: '/riester-rechner',
-    title: 'Riester-Rechner 2026 — Zulagen, Sonderausgabenabzug und Auszahlung | RentenWiki.de',
+    title: 'Riester-Rechner 2026 | RentenWiki.de',
     metaDescription:
-      'Riester-Rente berechnen: Grundzulage (§ 84 EStG), Kinderzulage (§ 85 EStG), ' +
-      'Sonderausgabenabzug § 10a EStG, Günstigerprüfung und Auszahlung § 22 Nr. 5 EStG. ' +
-      'Stand 2026. Keine Anlage- oder Steuerberatung.',
-    h1: 'Riester-Rechner 2026 — Zulagen, Steuerförderung und Auszahlung berechnen',
+      'Riester-Rente berechnen: Grund- und Kinderzulage, Sonderausgabenabzug § 10a EStG, ' +
+      'Günstigerprüfung, nachgelagerte Auszahlung. Kostenlos, Werte 2026.',
+    h1: 'Riester-Rechner 2026: Zulagen, Steuerförderung und Auszahlung berechnen',
     summary:
-      'Erklärt die staatliche Förderung der Riester-Rente: Grundzulage (175 €/Jahr), Kinderzulage ' +
-      '(300 €/Kind/Jahr für Kinder ab 2008), Sonderausgabenabzug nach § 10a EStG, Günstigerprüfung ' +
-      'sowie die nachgelagerte Besteuerung der Auszahlung nach § 22 Nr. 5 EStG. Mit Beispielrechnung ' +
-      'und Rechner-Einstieg. Stand 2026, keine Beratung.',
+      'Modelliert Riester-Förderung (Zulagen plus Sonderausgabenabzug § 10a EStG mit ' +
+      'Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte 2026.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -305,18 +293,15 @@ export const publicRouteRegistry = {
   },
   '/altersvorsorgedepot-rechner': {
     canonical: '/altersvorsorgedepot-rechner',
-    title: 'Altersvorsorgedepot-Rechner 2026 — Neues Schicht-2-Produkt vergleichen | RentenWiki.de',
+    title: 'Altersvorsorgedepot (AVD) Rechner 2026 | RentenWiki.de',
     metaDescription:
-      'Altersvorsorgedepot (AVD) berechnen: neues Depot-Produkt ohne Versicherungsmantel ' +
-      '(Jahressteuergesetz 2024), Förderung § 10a EStG, Auszahlung § 22 Nr. 5 EStG. ' +
-      'Stand 2026. Keine Anlage- oder Steuerberatung.',
-    h1: 'Altersvorsorgedepot-Rechner 2026 — Neues Schicht-2-Produkt vergleichen',
+      'Altersvorsorgedepot (AVD) berechnen: neues Schicht-2-Depot ab 2027 ohne ' +
+      'Versicherungsmantel, Grundzulage 50/25 %, Auszahlung. Kostenlos, Werte 2026.',
+    h1: 'Altersvorsorgedepot-Rechner 2026: Neues Schicht-2-Produkt vergleichen',
     summary:
-      'Erklärt das Altersvorsorgedepot (AVD) als neues, durch das Jahressteuergesetz 2024 eingeführtes ' +
-      'Schicht-2-Altersvorsorgeprodukt: depot-basierte Anlage ohne Versicherungsmantel, staatliche ' +
-      'Förderung nach § 10a EStG und § 84 EStG (Grundzulage), nachgelagerte Besteuerung nach ' +
-      '§ 22 Nr. 5 EStG, zertifiziert nach AltvVerbG. Mit Beispielrechnung und Rechner-Einstieg. ' +
-      'Stand 2026, keine Beratung.',
+      'Modelliert das Altersvorsorgedepot (AVD), das neue Schicht-2-Depotprodukt ohne ' +
+      'Versicherungsmantel: Anlage, eigener Förderpfad nach Altersvorsorgereformgesetz, ' +
+      'nachgelagerte Auszahlung.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -338,18 +323,14 @@ export const publicRouteRegistry = {
   },
   '/riester-vs-altersvorsorgedepot': {
     canonical: '/riester-vs-altersvorsorgedepot',
-    title: 'Riester oder Altersvorsorgedepot? Vergleich 2026 | RentenWiki.de',
+    title: 'Riester oder AVD? Vergleich 2026 | RentenWiki.de',
     metaDescription:
-      'Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, ' +
-      'Sonderausgabenabzug § 10a EStG, Übertragung § 93 EStG und Auszahlung § 22 Nr. 5 EStG. ' +
-      'Stand 2026. Kein Anlagevorschlag.',
+      'Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, Übertragung, ' +
+      'Auszahlung. Was lohnt sich wann? Kostenlos, Werte 2026.',
     h1: 'Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege 2026',
     summary:
-      'Vergleicht Riester-Rente und Altersvorsorgedepot (AVD) anhand Förderstruktur (Grundzulage, ' +
-      'Kinderzulage, Sonderausgabenabzug § 10a EStG), Produktform (Versicherung/Fondssparplan vs. ' +
-      'reines Wertpapierdepot), Übertragungsmöglichkeiten von Riester auf AVD sowie Auszahlungs' +
-      'besteuerung nach § 22 Nr. 5 EStG. Keine Empfehlung — framt Bedingungen und Annahmen. ' +
-      'Stand 2026.',
+      'Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform ' +
+      '(Versicherung oder Depot), Übertragungsmöglichkeiten und nachgelagerte Auszahlung.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -381,18 +362,15 @@ export const publicRouteRegistry = {
   // Issue #06: Basisrente + private RV topic cluster
   '/basisrente-rechner': {
     canonical: '/basisrente-rechner',
-    title: 'Basisrente Rechner 2026 — Rürup: Steuervorteil & Rentenhöhe berechnen | RentenWiki.de',
+    title: 'Basisrente (Rürup) Rechner 2026 | RentenWiki.de',
     metaDescription:
       'Basisrente (Rürup) berechnen: Sonderausgabenabzug § 10 Abs. 3 EStG, ' +
-      'Besteuerungsanteil und Auszahlungsformen (nur Leibrente / Zeitrente — ' +
-      'keine Kapitalauszahlung). Modellrechnung Stand 2026.',
-    h1: 'Basisrente Rechner 2026 — Rürup: Steuervorteil & Auszahlungsbeschränkungen',
+      'Besteuerungsanteil und Auszahlung als Leibrente oder Zeitrente. Werte 2026.',
+    h1: 'Basisrente (Rürup) Rechner 2026: Steuervorteil und Auszahlungsbeschränkungen',
     summary:
-      'Erklärt die Basisrente (Rürup): Sonderausgabenabzug nach §​10 Abs. 3 EStG (bis zu ' +
-      '100 % des Höchstbetrags abzugsfähig), nachgelagerte Besteuerung nach ' +
-      '§​22 Nr. 1 Satz 3 a EStG mit Besteuerungsanteil je nach ' +
-      'Renteneintrittskohorte sowie die gesetzlich verankerte Auszahlungsbeschränkung: ' +
-      'Kapitalauszahlung ist verboten — nur Leibrente oder Zeitrente möglich. Stand 2026.',
+      'Erklärt die Basisrente (Rürup): Sonderausgabenabzug nach § 10 Abs. 3 EStG, ' +
+      'kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlungsbeschränkung ' +
+      '(keine Kapitalauszahlung).',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -413,19 +391,15 @@ export const publicRouteRegistry = {
   },
   '/private-rentenversicherung-rechner': {
     canonical: '/private-rentenversicherung-rechner',
-    title: 'Private Rentenversicherung Rechner 2026 — Kosten, Steuer & Auszahlung | RentenWiki.de',
+    title: 'Private Rentenversicherung Rechner 2026 | RentenWiki.de',
     metaDescription:
-      'Private Rentenversicherung berechnen: Versicherungsmantel-Kosten, ' +
-      'Steuerregime nach Vertragsbeginn (vor 2005 / Halbeinkünfte / Abgeltungsteuer), ' +
-      'Leibrente vs. Kapitalverzehr. Modellrechnung Stand 2026.',
-    h1: 'Private Rentenversicherung Rechner 2026 — Kosten, Steuerregime & Auszahlung',
+      'Private Rentenversicherung berechnen: Versicherungsmantel-Kosten, Steuerregime ' +
+      'nach Vertragsbeginn, Leibrente vs. Kapitalverzehr. Kostenlos, Werte 2026.',
+    h1: 'Private Rentenversicherung Rechner 2026: Kosten, Steuerregime und Auszahlung',
     summary:
-      'Zeigt, wie eine private Rentenversicherung modellhaft berechnet wird: ' +
-      'zweiteilige Kostenstruktur aus Versicherungsmantel-Gebühr und Fondskosten (TER), ' +
-      'automatische Ableitung des Steuerregimes aus dem Vertragsbeginn ' +
-      '(vor 2005, Halbeinkünfte §​20 Abs. 1 Nr. 6 EStG, Abgeltungsteuer) ' +
-      'sowie Unterschied zwischen Leibrente (Ertragsanteil §​22 Nr. 1 Satz 3 a EStG) ' +
-      'und Kapitalverzehr. Stand 2026. Keine Anlage-, Steuer- oder Rechtsberatung.',
+      'Modelliert die private Rentenversicherung: Mantel- und Fondskosten, Steuerregime ' +
+      'je nach Vertragsbeginn (vor 2005, Halbeinkünfte, Abgeltungsteuer) und Leibrente ' +
+      'vs. Kapitalverzehr.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -449,18 +423,14 @@ export const publicRouteRegistry = {
   // ---------------------------------------------------------------------------
   '/rente-netto-berechnen': {
     canonical: '/rente-netto-berechnen',
-    title: 'Rente netto berechnen — gesetzliche Rente nach Steuer und KV/PV 2026 | RentenWiki.de',
+    title: 'Rente netto berechnen 2026 | RentenWiki.de',
     metaDescription:
-      'Gesetzliche Rente netto berechnen: Besteuerungsanteil §22 EStG (Kohorten), ' +
-      'KVdR vs. freiwillige GKV §240 SGB V, Pflegeversicherung §55 SGB XI, ' +
-      'Werbungskosten- und Sonderausgaben-Pauschbetrag. Modellrechnung Stand 2026.',
-    h1: 'Rente netto berechnen — gesetzliche Rente nach Steuer und KV/PV 2026',
+      'Gesetzliche Rente netto berechnen: nachgelagerte Besteuerung, KVdR oder freiwillige ' +
+      'GKV, Pflegeversicherung. Kostenlos, lokal im Browser, Werte 2026.',
+    h1: 'Rente netto berechnen: gesetzliche Rente nach Steuer und KV/PV 2026',
     summary:
-      'Erklärt, wie die gesetzliche Rente in der Auszahlphase besteuert wird (kohortenbezogener ' +
-      'Besteuerungsanteil nach §22 Nr. 1 Satz 3 a EStG, Versorgungsfreibetrag §19 Abs. 2 EStG), ' +
-      'wie KV- und PV-Beiträge berechnet werden (KVdR §226 SGB V vs. freiwillig §240 SGB V, ' +
-      'Pflegeversicherung §55 SGB XI) und welche Pauschbeträge abgezogen werden. ' +
-      'Modellrechner RentenWiki.de, Stand 2026, keine Steuer- oder Rechtsberatung.',
+      'Rechnet die gesetzliche Rente netto: nachgelagerte Besteuerung nach § 22 EStG, KVdR ' +
+      '(§ 226 SGB V) oder freiwillige GKV (§ 240 SGB V) und Pflegeversicherung.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -484,20 +454,14 @@ export const publicRouteRegistry = {
   },
   '/altersvorsorgeprodukte-vergleichen': {
     canonical: '/altersvorsorgeprodukte-vergleichen',
-    title: 'Altersvorsorgeprodukte vergleichen — ETF, bAV, Riester, Basisrente & Co. 2026 | RentenWiki.de',
+    title: 'Altersvorsorge vergleichen 2026 | RentenWiki.de',
     metaDescription:
-      'ETF, bAV, private Rentenversicherung, Basisrente, AVD und Riester gemeinsam planen: ' +
-      'kostenloser Portfolio-Modellrechner. "Nächster Euro"-Assistent. ' +
-      'Kein Broker, keine Empfehlung. Stand 2026.',
-    h1: 'Altersvorsorgeprodukte vergleichen — ETF, bAV, Riester und mehr gemeinsam planen 2026',
+      'Mehrere Vorsorgeverträge gemeinsam planen: ETF, bAV, Riester, Basisrente, AVD, ' +
+      'private Rente. Portfolio-Modus, kein Broker, keine Provision. Werte 2026.',
+    h1: 'Altersvorsorgeprodukte vergleichen: ETF, bAV, Riester und mehr gemeinsam planen 2026',
     summary:
-      'RentenWiki.de ist ein kostenloser, quelloffener Modellrechner ohne Broker- oder ' +
-      'Provisionsbindung. Im Portfolio-Modus lassen sich mehrere Verträge (ETF, bAV, private ' +
-      'Rentenversicherung, Basisrente/Rürup, Altersvorsorgedepot, Riester) gleichzeitig erfassen, ' +
-      'mit Transfer-Ereignissen (beitragsfrei, Rückkauf, Übertragung) kombinieren und als ' +
-      'Haushaltsperspektive auswerten. Der "Wo geht mein nächster Euro hin?"-Assistent nutzt ' +
-      'Deckungsbeitragspotenzialmessung und Monte-Carlo-P10-Risikoabschätzung — keine Empfehlung. ' +
-      'Stand 2026, keine Steuer-, Rechts- oder Anlageberatung.',
+      'Portfolio-Modus für mehrere Vorsorgeverträge gleichzeitig (ETF, bAV, Riester, ' +
+      'Basisrente, AVD, private Rente) mit Transfer-Ereignissen und Haushaltsperspektive.',
     dateModified: '2026-05-06',
     robots: 'index,follow',
     inSitemap: true,
@@ -520,12 +484,12 @@ export const publicRouteRegistry = {
   },
   '/404': {
     canonical: '/404',
-    title: 'Seite nicht gefunden — RentenWiki.de',
+    title: 'Seite nicht gefunden | RentenWiki.de',
     metaDescription:
       'Die angeforderte Seite ist auf RentenWiki.de nicht verfügbar. Zurück zum Altersvorsorge-Rechner.',
     h1: 'Seite nicht gefunden',
     summary:
-      'Die angeforderte URL existiert auf RentenWiki.de nicht. Über den Link unten gelangst du zurück zum Rechner.',
+      'Die angeforderte URL existiert nicht. Über den Link unten gelangst du zurück zum Rechner.',
     dateModified: '2026-05-06',
     robots: 'noindex,follow',
     inSitemap: false,
