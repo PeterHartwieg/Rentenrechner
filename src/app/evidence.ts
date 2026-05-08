@@ -115,6 +115,39 @@ export function confidenceForResult(
 }
 
 // ---------------------------------------------------------------------------
+// EVIDENCE_FIELD_GERMAN_LABELS — German display labels for popover rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps evidence field keys (as stored in `evidenceMap` and listed in
+ * `PRODUCT_EVIDENCE_FIELDS`) to their German display label for the
+ * estimate-popover in `CombineIncomePanel`.
+ *
+ * Keys that don't appear here fall back to the raw field key.
+ */
+export const EVIDENCE_FIELD_GERMAN_LABELS: Record<string, string> = {
+  monthlyContribution: 'Monatlicher Beitrag',
+  annualAssetFee: 'Jährliche Verwaltungsgebühr',
+  monthlyGrossConversion: 'Monatlicher Brutto-Umwandlungsbetrag',
+  'fees.wrapperAssetFee': 'Effektivkosten p.a.',
+  'fees.fundAssetFee': 'Fondskosten (TER)',
+  'fees.acquisitionCostPct': 'Abschlusskosten',
+  'fees.pensionPayoutFeePct': 'Rentenphase-Verwaltungsgebühr',
+  contractualMatchPercent: 'AG-Zuschuss (%)',
+  contractualFixedMonthly: 'AG-Fixzuschuss (EUR/Monat)',
+  acquisitionCostPct: 'Abschlusskosten',
+  durchfuehrungsweg: 'Durchführungsweg',
+  pre2005EligibleTaxFree: 'Steuerfrei gem. §40b a.F.',
+  rentenfaktor: 'Garantierter Rentenfaktor',
+  payoutMode: 'Auszahlungsform',
+  contractStartYear: 'Vertragsbeginn',
+  monthlyGrossContribution: 'Monatlicher Beitrag',
+  monthlyOwnContribution: 'Eigener monatlicher Beitrag',
+  subtype: 'Untertyp',
+  payoutPlanEndAge: 'Auszahlungsplan bis Alter',
+}
+
+// ---------------------------------------------------------------------------
 // confidenceLanguage — forward-compat for issue 12 recommender card
 // ---------------------------------------------------------------------------
 

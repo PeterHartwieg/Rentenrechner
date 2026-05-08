@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
 import type { ProductId } from './domain'
+import type { EvidenceState } from './domain/instances'
 import type { InstanceTaxModes } from './utils/csvExport'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveBavLumpSumTaxMode } from './engine/bavPayout'
@@ -467,6 +468,17 @@ function Calculator({ navigate }: CalculatorProps) {
     profile.retirementAge,
   ])
 
+  // Evidence maps per instance — used by CombineIncomePanel to list estimated fields.
+  const combineInstanceEvidenceMaps = useMemo(() => {
+    if (!isCombineMode) return {}
+    const wa = portfolioState.workspace.baseline.assumptions
+    const maps: Record<string, Record<string, EvidenceState>> = {}
+    for (const inst of [...wa.bav, ...wa.etf, ...wa.insurance, ...wa.basisrente, ...wa.altersvorsorgedepot, ...wa.riester]) {
+      maps[inst.instanceId] = inst.evidenceMap
+    }
+    return maps
+  }, [isCombineMode, portfolioState.workspace.baseline.assumptions])
+
   // B6: check whether the workspace has at least one active or paid-up instance.
   // Drives the disabled state of the "Optimiere deine Vorsorge" button.
   const hasActiveOrPaidUpInstances = useMemo(() => {
@@ -612,6 +624,7 @@ function Calculator({ navigate }: CalculatorProps) {
             perInstanceResults={combineSimulation.perInstance}
             scenarioId={combineBasisScenarioId}
             scenarioLabel={combineBasisLabel}
+            instanceEvidenceMaps={combineInstanceEvidenceMaps}
           />
           <AddVertragSection
             addInstance={portfolioState.addInstance}
