@@ -51,6 +51,7 @@ import type {
   PensionBaseline,
 } from './types'
 import { NumberField } from '../../ui/NumberField'
+import { InfoTip } from '../../ui/InfoTip'
 import { VintageChips } from './VintageChips'
 import {
   bavDraftVintageAtoms,
@@ -285,6 +286,7 @@ function PersonalDetailsStep({ draft, onChange, onNext, onDismiss }: PersonalDet
                 aria-label="Ehegattensplitting / gemeinsame Veranlagung"
               />
               <span>Ehegattensplitting (gemeinsame Veranlagung)</span>
+              <InfoTip text="Bei aktiviertem Splitting wird das gemeinsam zu versteuernde Einkommen nach §32a Abs. 5 EStG halbiert besteuert. Eine Steuerklassen-Auswahl ist bei Zusammenveranlagung nicht erforderlich. Die Auswirkungen erscheinen automatisch in den Ergebnissen unten." />
             </label>
           </div>
 
