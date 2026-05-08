@@ -20,6 +20,7 @@ interface PreviewProps {
   screenshot: CapturedScreenshot | null
   onBack(): void
   onCancel(): void
+  onSuccess(): void
   /**
    * Lane D: workspace context collector. Called at report-assembly time to
    * read the current mode/view/flow. Never called preemptively.
@@ -61,6 +62,7 @@ export function QaPreview({
   screenshot,
   onBack,
   onCancel,
+  onSuccess,
   collectWorkspaceContext,
 }: PreviewProps) {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
@@ -122,15 +124,14 @@ export function QaPreview({
     setWorkerState(outcome.ok ? 'success' : 'error')
   }
 
-  // Close the panel as soon as the success state has rendered. Using a
-  // 0ms setTimeout (rather than calling onCancel synchronously inside
-  // handleSubmit) gives React one paint to commit the success styling
+  // Exit QA mode as soon as the success state has rendered. Using a
+  // 0ms setTimeout gives React one paint to commit the success styling
   // before the panel unmounts.
   useEffect(() => {
     if (workerState !== 'success') return
-    const timer = window.setTimeout(() => onCancel(), 0)
+    const timer = window.setTimeout(() => onSuccess(), 0)
     return () => window.clearTimeout(timer)
-  }, [workerState, onCancel])
+  }, [workerState, onSuccess])
 
   const statusNode = renderStatus({ workerState, workerResult })
 

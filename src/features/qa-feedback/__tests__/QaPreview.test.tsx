@@ -59,6 +59,7 @@ interface RenderOverrides {
   screenshot?: CapturedScreenshot | null
   onBack?: () => void
   onCancel?: () => void
+  onSuccess?: () => void
 }
 
 function renderPreview(overrides: RenderOverrides = {}) {
@@ -69,6 +70,7 @@ function renderPreview(overrides: RenderOverrides = {}) {
       screenshot={overrides.screenshot ?? null}
       onBack={overrides.onBack ?? (() => undefined)}
       onCancel={overrides.onCancel ?? (() => undefined)}
+      onSuccess={overrides.onSuccess ?? (() => undefined)}
     />,
   )
 }

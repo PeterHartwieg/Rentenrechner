@@ -183,6 +183,7 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
               screenshot={screenshot}
               onBack={() => setPhase('composer')}
               onCancel={cancelDraft}
+              onSuccess={deactivate}
               collectWorkspaceContext={collectWorkspaceContextForReport}
             />
           )}
