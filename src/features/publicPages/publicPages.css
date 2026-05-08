@@ -80,13 +80,13 @@
   margin: 4px 0 16px;
 }
 
-.public-article a {
+.public-article a:not(.public-cta) {
   color: #2563eb;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.public-article a:hover {
+.public-article a:not(.public-cta):hover {
   color: #1d4ed8;
 }
 
