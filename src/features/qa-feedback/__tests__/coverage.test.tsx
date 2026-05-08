@@ -24,6 +24,11 @@
  *    paragraphs and list items are individually selectable without explicit
  *    data-qa-target instrumentation.
  *
+ * Extended in Issue 07 (bug fix) to cover MonteCarloPanel per-product card targets:
+ *  - mc-range-row buttons carry results.monteCarloPanel.range.<productId> (exact)
+ *  - mc-product-tabs buttons carry results.monteCarloPanel.tab.<productId> (exact)
+ *  - Outer container still carries results.monteCarloPanel.container (section)
+ *
  * Asserts:
  *  - Chart containers carry the expected data-qa-target and data-qa-section
  *    attributes when QA mode is on.
@@ -1017,5 +1022,153 @@ describe('Issue 05: QA_INTERACTIVE_SELECTOR — p and li coverage', () => {
     } finally {
       document.body.removeChild(ul)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 07: MonteCarloPanel — per-product card targets at leaf level
+// ---------------------------------------------------------------------------
+
+import { MonteCarloPanel } from '../../results/MonteCarloPanel'
+import type { MonteCarloResult } from '../../../engine/monteCarlo'
+
+function makeMcPercentiles(base: number) {
+  return { p5: base * 0.7, p10: base * 0.8, p25: base * 0.9, p50: base, p75: base * 1.1, p90: base * 1.2, p95: base * 1.3 }
+}
+
+const MC_RESULT: MonteCarloResult = {
+  scenarioId: 'baseline',
+  scenarioLabel: 'Basis',
+  annualReturn: 0.07,
+  annualVolatility: 0.15,
+  runs: 1000,
+  seed: 42,
+  marketAnnualReturn: makeMcPercentiles(0.07),
+  summaries: [
+    {
+      productId: 'etf',
+      label: 'ETF-Sparplan',
+      shortLabel: 'ETF',
+      color: '#0ea5e9',
+      runs: 1000,
+      capital: makeMcPercentiles(150000),
+      netMonthlyPayout: makeMcPercentiles(800),
+      expectedCapital: 150000,
+      expectedNetMonthlyPayout: 800,
+      bestCapitalProbability: 0.6,
+      bestPensionProbability: 0.55,
+      belowUserCostProbability: 0.05,
+      targetNetPensionProbability: null,
+      guaranteeFloor: null,
+      guaranteeDisplay: null,
+      guaranteeAppliedProbability: null,
+    },
+    {
+      productId: 'bav',
+      label: 'Betriebliche Altersvorsorge',
+      shortLabel: 'bAV',
+      color: '#10b981',
+      runs: 1000,
+      capital: makeMcPercentiles(120000),
+      netMonthlyPayout: makeMcPercentiles(650),
+      expectedCapital: 120000,
+      expectedNetMonthlyPayout: 650,
+      bestCapitalProbability: 0.4,
+      bestPensionProbability: 0.45,
+      belowUserCostProbability: 0.1,
+      targetNetPensionProbability: null,
+      guaranteeFloor: null,
+      guaranteeDisplay: null,
+      guaranteeAppliedProbability: null,
+    },
+  ],
+  yearlyBands: [],
+}
+
+describe('Issue 07: MonteCarloPanel — per-product range-row targets (leaf)', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('each mc-range-row button carries data-qa-target="results.monteCarloPanel.range.<productId>"', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <MonteCarloPanel result={MC_RESULT} />
+      </QaFeedbackProvider>,
+    )
+    const etfRow = container.querySelector('[data-qa-target="results.monteCarloPanel.range.etf"]')
+    const bavRow = container.querySelector('[data-qa-target="results.monteCarloPanel.range.bav"]')
+    expect(etfRow).not.toBeNull()
+    expect(bavRow).not.toBeNull()
+  })
+
+  it('range-row targets have exact precision', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <MonteCarloPanel result={MC_RESULT} />
+      </QaFeedbackProvider>,
+    )
+    const etfRow = container.querySelector('[data-qa-target="results.monteCarloPanel.range.etf"]')
+    expect(etfRow?.getAttribute('data-qa-precision')).toBe('exact')
+  })
+
+  it('range-row targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <MonteCarloPanel result={MC_RESULT} />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="results.monteCarloPanel.range.etf"]')).toBeNull()
+  })
+})
+
+describe('Issue 07: MonteCarloPanel — per-product tab targets (leaf)', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('each product tab button carries data-qa-target="results.monteCarloPanel.tab.<productId>"', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <MonteCarloPanel result={MC_RESULT} />
+      </QaFeedbackProvider>,
+    )
+    const etfTab = container.querySelector('[data-qa-target="results.monteCarloPanel.tab.etf"]')
+    const bavTab = container.querySelector('[data-qa-target="results.monteCarloPanel.tab.bav"]')
+    expect(etfTab).not.toBeNull()
+    expect(bavTab).not.toBeNull()
+  })
+
+  it('tab targets have exact precision', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <MonteCarloPanel result={MC_RESULT} />
+      </QaFeedbackProvider>,
+    )
+    const etfTab = container.querySelector('[data-qa-target="results.monteCarloPanel.tab.etf"]')
+    expect(etfTab?.getAttribute('data-qa-precision')).toBe('exact')
+  })
+
+  it('tab targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <MonteCarloPanel result={MC_RESULT} />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target="results.monteCarloPanel.tab.etf"]')).toBeNull()
+  })
+})
+
+describe('Issue 07: MonteCarloPanel — outer container still has section precision', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('outer <section> carries data-qa-target="results.monteCarloPanel.container" with section precision', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <MonteCarloPanel result={MC_RESULT} />
+      </QaFeedbackProvider>,
+    )
+    const outerSection = container.querySelector('[data-qa-target="results.monteCarloPanel.container"]')
+    expect(outerSection).not.toBeNull()
+    expect(outerSection?.getAttribute('data-qa-section')).toBe('true')
+    expect(outerSection?.getAttribute('data-qa-precision')).toBe('section')
   })
 })
