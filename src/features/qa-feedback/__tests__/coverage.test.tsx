@@ -17,6 +17,13 @@
  *    QA mode is on (regression guardrail: add a product without targets → fail).
  *  - workspace.chrome.homeButton target in the topbar.
  *
+ * Extended in Issue 05 (bug fix) to cover article-body QA selection:
+ *  - AltersvorsorgeproduktePage article element carries data-qa-target with
+ *    section precision when QA mode is on; absent when off.
+ *  - QA_INTERACTIVE_SELECTOR now includes `p` and `li` so MDX-rendered
+ *    paragraphs and list items are individually selectable without explicit
+ *    data-qa-target instrumentation.
+ *
  * Asserts:
  *  - Chart containers carry the expected data-qa-target and data-qa-section
  *    attributes when QA mode is on.
@@ -936,5 +943,79 @@ describe('Issue 16: InsuranceInputs — leaf-level QA targets present', () => {
       </QaFeedbackProvider>,
     )
     expect(container.querySelector('[data-qa-target]')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 05: AltersvorsorgeproduktePage — article section QA target
+// ---------------------------------------------------------------------------
+
+import { AltersvorsorgeproduktePage } from '../../publicPages/AltersvorsorgeproduktePage'
+import { QA_INTERACTIVE_SELECTOR } from '../resolveTarget'
+
+describe('Issue 05: AltersvorsorgeproduktePage — article-body QA selection', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('article element carries data-qa-target and data-qa-section when QA mode is on', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <AltersvorsorgeproduktePage />
+      </QaFeedbackProvider>,
+    )
+    const article = container.querySelector(
+      '[data-qa-target="publicPage.altersvorsorgeprodukte.article"]',
+    )
+    expect(article).not.toBeNull()
+    expect(article?.tagName.toLowerCase()).toBe('article')
+    expect(article?.getAttribute('data-qa-section')).toBe('true')
+    expect(article?.getAttribute('data-qa-precision')).toBe('section')
+  })
+
+  it('article QA target is absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <AltersvorsorgeproduktePage />
+      </QaFeedbackProvider>,
+    )
+    expect(
+      container.querySelector('[data-qa-target="publicPage.altersvorsorgeprodukte.article"]'),
+    ).toBeNull()
+  })
+})
+
+describe('Issue 05: QA_INTERACTIVE_SELECTOR — p and li coverage', () => {
+  it('QA_INTERACTIVE_SELECTOR includes "p" so article paragraphs are selectable', () => {
+    expect(QA_INTERACTIVE_SELECTOR).toContain('p')
+  })
+
+  it('QA_INTERACTIVE_SELECTOR includes "li" so article list items are selectable', () => {
+    expect(QA_INTERACTIVE_SELECTOR).toContain('li')
+  })
+
+  it('p elements resolve as a QA target via closest() in a document', () => {
+    const p = document.createElement('p')
+    p.textContent = 'Ein Absatz im Artikel'
+    document.body.appendChild(p)
+    try {
+      const matched = p.closest(QA_INTERACTIVE_SELECTOR)
+      expect(matched).toBe(p)
+    } finally {
+      document.body.removeChild(p)
+    }
+  })
+
+  it('li elements resolve as a QA target via closest() in a document', () => {
+    const ul = document.createElement('ul')
+    const li = document.createElement('li')
+    li.textContent = 'Listeneintrag'
+    ul.appendChild(li)
+    document.body.appendChild(ul)
+    try {
+      const matched = li.closest(QA_INTERACTIVE_SELECTOR)
+      expect(matched).toBe(li)
+    } finally {
+      document.body.removeChild(ul)
+    }
   })
 })
