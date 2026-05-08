@@ -80,6 +80,7 @@ function DeltaChip({ value }: { value: number | 'pending' | 'error' }) {
   return (
     <span
       className={`contract-decision-delta-chip ${isPositive ? 'contract-decision-delta-chip--positive' : 'contract-decision-delta-chip--negative'}`}
+      title={!isPositive ? 'Geringere Netto-Rente trotz höherem Beitrag möglich (z.B. wegen anderer Vertrags-Interaktionen)' : undefined}
     >
       {formatted}
     </span>

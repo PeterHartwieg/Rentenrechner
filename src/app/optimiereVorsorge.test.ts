@@ -26,6 +26,7 @@ import type { Workspace } from '../domain/workspace'
 import type {
   BavInstance,
   EtfInstance,
+  InsuranceInstance,
   AltersvorsorgedepotInstance,
   RiesterInstance,
 } from '../domain/instances'
@@ -34,6 +35,7 @@ import {
   weiterfuehrenWhatIf,
   uebertragenVirtualWhatIf,
   applyContractDecision,
+  beitragErhoehenWhatIf,
 } from './contractDecisions'
 import {
   simulateContractDecision,
@@ -378,6 +380,146 @@ describe('simulateContractDecision — ETF contribution increase', () => {
     const result = simulateContractDecision(wsHigh, decision, de2026Rules, baselineCombined)
 
     // Higher contribution → more capital → higher payout → positive delta.
+    expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// gh#20 regression tests — beitragErhoehenWhatIf → simulateContractDecision
+// ---------------------------------------------------------------------------
+
+/**
+ * Workspace with a single ETF instance at a given monthly contribution.
+ * No bAV, so the ETF drives the entire combined result.
+ */
+function makeEtfOnlyWorkspace(monthlyContribution: number): Workspace {
+  const etfInstance: EtfInstance = {
+    instanceId: 'etf-gh20-1',
+    label: 'ETF Sparplan',
+    status: 'active',
+    contractStartYear: 2022,
+    currentValueEUR: 3_000,
+    monthlyContribution,
+    annualAssetFee: 0.002,
+    annualContributionGrowthRate: 0,
+    equityPartialExemption: 0.3,
+    evidenceMap: {},
+  }
+  const v1 = { ...defaultAssumptions, visibleProducts: ['etf'] }
+  const ws = migrateV1ToV2(
+    defaultProfile as unknown as Record<string, unknown>,
+    v1 as unknown as Record<string, unknown>,
+  )
+  return {
+    ...ws,
+    baseline: {
+      ...ws.baseline,
+      assumptions: {
+        ...ws.baseline.assumptions,
+        etf: [etfInstance],
+        bav: [],
+      },
+    },
+  }
+}
+
+/**
+ * Workspace with a pre-2005 private-insurance instance (PAV) and an ETF
+ * instance. ETF is the vehicle whose contribution is increased in the test.
+ * PAV is pre-2005 (contractStartYear: 2002) to pin the tax-mode path.
+ */
+function makePavEtfWorkspace(etfMonthlyContribution: number): Workspace {
+  const pavInstance: InsuranceInstance = {
+    instanceId: 'versicherung-gh20-1',
+    label: 'Private Rentenversicherung (2002)',
+    status: 'active',
+    contractStartYear: 2002,
+    currentValueEUR: 20_000,
+    monthlyContribution: 100,
+    oldContractTaxFreeEligible: true,
+    monthlyOtherRetirementIncome: 0,
+    capitalGuarantee: { enabled: false, floorPctOfContributions: 0 },
+    fees: {
+      wrapperAssetFee: 0.008,
+      fundAssetFee: 0.002,
+      contributionFee: 0,
+      fixedMonthlyFee: 0,
+      acquisitionCostPct: 0,
+      acquisitionCostSpreadYears: 5,
+      pensionPayoutFeePct: 0,
+    },
+    payoutMode: 'kapitalverzehr',
+    rentenfaktor: 28,
+    rentenfaktorConfirmed: false,
+    zeitrenteYears: 20,
+    surrenderHaircutPct: 0.10,
+    annualContributionGrowthRate: 0,
+    evidenceMap: {},
+  }
+
+  const etfInstance: EtfInstance = {
+    instanceId: 'etf-gh20-2',
+    label: 'ETF Sparplan',
+    status: 'active',
+    contractStartYear: 2023,
+    currentValueEUR: 5_000,
+    monthlyContribution: etfMonthlyContribution,
+    annualAssetFee: 0.002,
+    annualContributionGrowthRate: 0,
+    equityPartialExemption: 0.3,
+    evidenceMap: {},
+  }
+
+  const v1 = { ...defaultAssumptions, visibleProducts: ['versicherung', 'etf'] }
+  const ws = migrateV1ToV2(
+    defaultProfile as unknown as Record<string, unknown>,
+    v1 as unknown as Record<string, unknown>,
+  )
+  return {
+    ...ws,
+    baseline: {
+      ...ws.baseline,
+      assumptions: {
+        ...ws.baseline.assumptions,
+        insurance: [pavInstance],
+        etf: [etfInstance],
+        bav: [],
+      },
+    },
+  }
+}
+
+describe('simulateContractDecision — ETF-only beitrag-erhoehen (gh#20 regression)', () => {
+  it('increasing ETF contribution 200→400 €/month produces a positive delta', () => {
+    const ws = makeEtfOnlyWorkspace(200)
+    const etfInstanceId = ws.baseline.assumptions.etf[0].instanceId
+
+    // Build the decision via the real production path.
+    const decision = beitragErhoehenWhatIf(ws, etfInstanceId, 400)
+    expect(decision).not.toBeNull()
+
+    const baselineCombined = baselineCombinedFor(ws)
+    const result = simulateContractDecision(ws, decision!, de2026Rules, baselineCombined)
+
+    // Higher contribution → more capital → higher payout → positive delta.
+    expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
+  })
+})
+
+describe('simulateContractDecision — PAV pre-2005 + ETF beitrag-erhoehen (gh#20 regression)', () => {
+  it('increasing ETF contribution 350→530 €/month in a PAV+ETF workspace produces a positive delta', () => {
+    const ws = makePavEtfWorkspace(350)
+    const etfInstanceId = ws.baseline.assumptions.etf[0].instanceId
+
+    // Build the decision via the real production path.
+    const decision = beitragErhoehenWhatIf(ws, etfInstanceId, 530)
+    expect(decision).not.toBeNull()
+
+    const baselineCombined = baselineCombinedFor(ws)
+    const result = simulateContractDecision(ws, decision!, de2026Rules, baselineCombined)
+
+    // Higher ETF contribution → more capital → higher payout → positive delta.
+    // This pins the user-reported scenario: ETF +180 €/month should not produce a negative delta.
     expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
   })
 })
