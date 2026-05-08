@@ -306,10 +306,13 @@
 }
 
 .combine-field select,
-.combine-field input[type="text"] {
+.combine-field input[type="text"],
+.combine-field input[type="number"] {
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.4;
   padding: 5px 7px;
   width: 100%;
 }
