@@ -2,6 +2,8 @@ import { ChevronLeft } from 'lucide-react'
 import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import AltersvorsorgeBody from './altersvorsorgeprodukte-vergleichen.body.mdx'
+import { useQaMode } from '../qa-feedback/useQaMode'
+import { qaTargetAttrs } from '../qa-feedback/useFeedbackTarget'
 import './publicPages.css'
 
 const ROUTE = publicRouteRegistry['/altersvorsorgeprodukte-vergleichen']
@@ -27,6 +29,8 @@ const ROUTE = publicRouteRegistry['/altersvorsorgeprodukte-vergleichen']
  *   - No winner/recommendation copy ("besser als", "lohnt sich", "empfohlen").
  */
 export function AltersvorsorgeproduktePage() {
+  const { enabled: qaEnabled } = useQaMode()
+
   return (
     <div className="public-shell">
       <DisclaimerBanner />
@@ -37,7 +41,14 @@ export function AltersvorsorgeproduktePage() {
           Zurück zum Rechner
         </a>
 
-        <article className="public-article">
+        <article
+          className="public-article"
+          {...qaTargetAttrs(qaEnabled, {
+            id: 'publicPage.altersvorsorgeprodukte.article',
+            label: 'Artikel: Altersvorsorgeprodukte vergleichen',
+            precision: 'section',
+          })}
+        >
           <h1>{ROUTE.h1}</h1>
           <p className="public-summary">{ROUTE.summary}</p>
           <p className="public-stand">Redaktion: RentenWiki.de · Stand: {ROUTE.dateModified} · Werte für Deutschland 2026</p>

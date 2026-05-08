@@ -15,9 +15,15 @@ import type { ResolvedTarget, TargetPrecision } from './report'
  * instrumentation. Declared `[data-qa-target]` always wins because
  * `closest()` returns the deepest match — explicit targets that sit
  * deeper than this catch-all still resolve first.
+ *
+ * `p` and `li` are included so that article body paragraphs and list items
+ * in public/SEO pages (e.g. `/altersvorsorgeprodukte-vergleichen/`) are
+ * individually selectable without requiring per-element `data-qa-target`
+ * instrumentation. Clicks on these elements produce an `auto.p.<slug>` /
+ * `auto.li.<slug>` id derived from their text content (issue #05).
  */
 export const QA_INTERACTIVE_SELECTOR =
-  '[data-qa-target], button, [role="button"], a[href], input, select, textarea, summary, label, h1, h2, h3, h4, h5, h6'
+  '[data-qa-target], button, [role="button"], a[href], input, select, textarea, summary, label, h1, h2, h3, h4, h5, h6, p, li'
 
 /**
  * Derive a fallback target id when no explicit `data-qa-target` is set.
