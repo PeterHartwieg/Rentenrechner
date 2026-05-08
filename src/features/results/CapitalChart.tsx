@@ -37,7 +37,7 @@ export function CapitalChart({
       <div className="section-heading">
         <TrendingUp size={18} aria-hidden="true" />
         <div>
-          <h2>Vermögen bis Rentenbeginn</h2>
+          <h2>Vermögen bis Rentenbeginn (vor Auszahlungsteuer)</h2>
           <p>
             {selectedScenario?.label} mit {selectedScenario
               ? formatPercent(selectedScenario.annualReturn)
