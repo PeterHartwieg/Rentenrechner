@@ -116,18 +116,16 @@ describe('InfoTip — popover body QA target (issue 17)', () => {
     expect(container.querySelector('[data-qa-target="results.riy.tooltip.popover"]')).toBeNull()
   })
 
-  it('popover stays open when QA mode mousedown fires on a qa-target inside it', () => {
+  it('popover closes when QA mode mousedown fires on an external qa-target', () => {
     /**
      * Pinning invariant (issue 17): InfoTip uses `mousedown` for click-outside
      * detection. The QA overlay intercepts `click` events (capture phase) but
-     * NOT `mousedown`. The InfoTip mousedown handler guards against closing the
-     * popover when the mousedown target is a QA-pinnable candidate AND QA mode
-     * is on.
-     *
-     * Test strategy: open the popover with QA mode OFF (so the trigger click
-     * fires normally), then activate QA programmatically, then dispatch a
-     * mousedown on an external pinnable element and assert the popover stays
-     * open. Mirrors the pattern in the "real InfoTip" test below.
+     * NOT `mousedown`. The InfoTip mousedown guard is scoped to targets INSIDE
+     * the popover wrapper so pinning inside the popover doesn't close it
+     * (covered by the "real InfoTip" test below). Pinning an external target
+     * is treated as a normal click-outside and dismisses the popover, which is
+     * required UX once `p` / `li` are part of the QA selector — otherwise
+     * article-body pinning would leave stale tooltips visible.
      */
     window.history.replaceState(null, '', '/') // QA OFF during open
 
@@ -145,29 +143,67 @@ describe('InfoTip — popover body QA target (issue 17)', () => {
       </QaFeedbackProvider>,
     )
 
-    // Open the popover while QA is OFF — trigger click fires normally.
     const trigger = container.querySelector('button.info-tip-trigger') as HTMLButtonElement
     fireEvent.click(trigger)
     expect(container.querySelector('[role="tooltip"]')).not.toBeNull()
 
-    // Activate QA mode. The popover should stay open.
     act(() => {
       activateQa!()
     })
 
-    // Place an external [data-qa-target] element outside the InfoTip wrap.
-    // Firing mousedown on it would normally close the popover (click outside wrapRef).
-    // With the QA mode guard, it must stay open.
+    // External pinnable element outside the InfoTip wrapper.
     const externalQaEl = document.createElement('div')
     externalQaEl.setAttribute('data-qa-target', 'some.external.target')
     document.body.appendChild(externalQaEl)
 
     fireEvent.mouseDown(externalQaEl)
 
-    // Popover must remain open.
-    expect(container.querySelector('[role="tooltip"]')).not.toBeNull()
+    // Popover should close — narrowed guard treats external mousedown as a
+    // normal click-outside.
+    expect(container.querySelector('[role="tooltip"]')).toBeNull()
 
     document.body.removeChild(externalQaEl)
+  })
+
+  it('popover stays open when QA mousedown fires on a qa-target inside it', () => {
+    /**
+     * Issue 17 invariant: the InfoTip mousedown guard preserves the popover
+     * when the user is pinning a qa-target INSIDE it. This complements the
+     * external-target test above and the "real InfoTip" test below.
+     */
+    window.history.replaceState(null, '', '/')
+
+    let activateQa: (() => void) | null = null
+
+    function Harness() {
+      const ctx = useContext(QaFeedbackContext)
+      activateQa = ctx.activate
+      return <InfoTip text="Erklärung" feedbackTargetId="test.tooltip" />
+    }
+
+    const { container } = render(
+      <QaFeedbackProvider>
+        <Harness />
+      </QaFeedbackProvider>,
+    )
+
+    const trigger = container.querySelector('button.info-tip-trigger') as HTMLButtonElement
+    fireEvent.click(trigger)
+    expect(container.querySelector('[role="tooltip"]')).not.toBeNull()
+
+    act(() => {
+      activateQa!()
+    })
+
+    // Mousedown on the popover body (inside the wrapper).
+    const popoverBody = container.querySelector(
+      '[data-qa-target="test.tooltip.popover"]',
+    ) as HTMLElement
+    expect(popoverBody).not.toBeNull()
+    fireEvent.mouseDown(popoverBody)
+
+    // Popover must stay open — guard fires for inside-wrapper qa-targets.
+    expect(container.querySelector('[role="tooltip"]')).not.toBeNull()
   })
 
   it('real InfoTip: clicking popover body data-qa-target pins the popover and keeps it open', () => {

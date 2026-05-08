@@ -98,9 +98,17 @@ export function useFeedbackTarget(spec: FeedbackTargetSpec): FeedbackTargetProps
   const ctx = useContext(QaFeedbackContext)
   const ref = useRef<HTMLElement | null>(null)
 
+  // Destructure so the memo deps cover every field qaTargetAttrs reads —
+  // depending on `spec` itself would defeat memoization for the common
+  // call-site pattern of an inline object literal. If FeedbackTargetSpec
+  // gains a new field, add it here AND in the deps array; the eslint
+  // exhaustive-deps rule will catch it because the closure references the
+  // destructured locals directly, not the spec object.
+  const { id, label, sensitive, precision } = spec
+
   const targetProps = useMemo<FeedbackTargetProps['targetProps']>(
-    () => qaTargetAttrs(ctx.enabled, spec),
-    [ctx.enabled, spec.id, spec.label, spec.sensitive, spec.precision],
+    () => qaTargetAttrs(ctx.enabled, { id, label, sensitive, precision }),
+    [ctx.enabled, id, label, sensitive, precision],
   )
 
   return { ref, targetProps }

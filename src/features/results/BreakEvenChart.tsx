@@ -26,9 +26,37 @@ import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon'
 import { lifecyclePickerLabel } from './lifecycleLabels'
 import { qaTargetAttrs, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 import { useQaMode } from '../qa-feedback/useQaMode'
+import type { PensionBaselineType } from '../../domain'
 
 const GRV_PAYOUT_KEY = 'grv__cumNetPayout'
 const GRV_COLOR = '#94a3b8'
+
+const BASELINE_PENSION_LABELS: Record<Exclude<PensionBaselineType, 'none'>, {
+  legend: string
+  tooltipName: string
+  tooltipGroup: string
+}> = {
+  grv: {
+    legend: 'GRV Netto-Auszahlung kumuliert',
+    tooltipName: 'GRV Netto-Auszahlung kumuliert',
+    tooltipGroup: 'Gesetzliche Rente',
+  },
+  versorgungswerk: {
+    legend: 'Versorgungswerk Netto-Auszahlung kumuliert',
+    tooltipName: 'Versorgungswerk Netto-Auszahlung kumuliert',
+    tooltipGroup: 'Versorgungswerk',
+  },
+  beamtenpension: {
+    legend: 'Beamtenpension Netto-Auszahlung kumuliert',
+    tooltipName: 'Beamtenpension Netto-Auszahlung kumuliert',
+    tooltipGroup: 'Beamtenpension',
+  },
+}
+
+function baselineLabels(type: PensionBaselineType | undefined) {
+  if (!type || type === 'none') return BASELINE_PENSION_LABELS.grv
+  return BASELINE_PENSION_LABELS[type]
+}
 
 interface Props {
   selectedResults: LifecycleSeriesResult[]
@@ -41,6 +69,13 @@ interface Props {
   title?: string
   description?: string
   grvNetMonthlyPension?: number
+  /**
+   * Which mandatory pension system the cumulative-payout series represents.
+   * Drives the legend / tooltip labels so the line is not mislabeled as
+   * "GRV" for Beamtenpension or Versorgungswerk users. Defaults to 'grv'
+   * for backwards-compatible callers.
+   */
+  pensionBaselineType?: PensionBaselineType
 }
 
 const PAID_IN_COLOR = '#64748b'
@@ -56,7 +91,9 @@ export function BreakEvenChart({
   title = 'Kapital und Auszahlungen im Alter',
   description = 'Vergleicht Netto-Einzahlungen, Restkapital und kumulierte Netto-Auszahlungen über Anspar- und Rentenphase.',
   grvNetMonthlyPension,
+  pensionBaselineType,
 }: Props) {
+  const baselineLabel = baselineLabels(pensionBaselineType)
   // Default chart picker to the best product (or the first available).
   const defaultProductId = useMemo<string | undefined>(() => {
     if (bestProductId && selectedResults.some((r) => r.productId === bestProductId)) {
@@ -227,6 +264,7 @@ export function BreakEvenChart({
                   paidInKey={paidInKey}
                   retirementAge={retirementAge}
                   showGrv={showGrv}
+                  baselineLabel={baselineLabel}
                 />
               )}
             />
@@ -283,7 +321,7 @@ export function BreakEvenChart({
             {showGrv && (
               <Line
                 type="monotone"
-                name="GRV Netto-Auszahlung kumuliert"
+                name={baselineLabel.legend}
                 dataKey={GRV_PAYOUT_KEY}
                 stroke={GRV_COLOR}
                 strokeWidth={1.5}
@@ -378,7 +416,7 @@ export function BreakEvenChart({
                 className="lifecycle-legend__line"
                 style={{ borderTopStyle: 'dashed', borderTopColor: GRV_COLOR }}
               />
-              GRV Netto-Auszahlung kumuliert
+              {baselineLabel.legend}
             </span>
           )}
           <span
@@ -427,6 +465,7 @@ interface BreakEvenTooltipProps extends TooltipContentProps {
   paidInKey?: string
   retirementAge: number
   showGrv?: boolean
+  baselineLabel: { legend: string; tooltipName: string; tooltipGroup: string }
 }
 
 function BreakEvenTooltip({
@@ -438,6 +477,7 @@ function BreakEvenTooltip({
   paidInKey,
   retirementAge,
   showGrv,
+  baselineLabel,
 }: BreakEvenTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const valuesByKey = new Map(payload.map((item) => [String(item.dataKey), Number(item.value ?? 0)]))
@@ -483,10 +523,10 @@ function BreakEvenTooltip({
         {showGrvRow && (
           <div className="break-even-tooltip__group">
             <div className="break-even-tooltip__product" style={{ color: GRV_COLOR }}>
-              Gesetzliche Rente
+              {baselineLabel.tooltipGroup}
             </div>
             <div className="break-even-tooltip__row">
-              <span className="break-even-tooltip__name">GRV Netto-Auszahlung kumuliert</span>
+              <span className="break-even-tooltip__name">{baselineLabel.tooltipName}</span>
               <span className="break-even-tooltip__value">{formatCurrency(grvCumPayout ?? 0, 0)}</span>
             </div>
           </div>

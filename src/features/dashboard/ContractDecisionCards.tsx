@@ -57,7 +57,13 @@ const KIND_LABELS: Record<ContractDecision['kind'], string> = {
 // Delta chip subcomponent
 // ---------------------------------------------------------------------------
 
-function DeltaChip({ value }: { value: number | 'pending' | 'error' }) {
+function DeltaChip({
+  value,
+  decisionKind,
+}: {
+  value: number | 'pending' | 'error'
+  decisionKind: ContractDecision['kind']
+}) {
   if (value === 'pending') {
     return (
       <span className="contract-decision-delta-chip contract-decision-delta-chip--pending">
@@ -77,10 +83,18 @@ function DeltaChip({ value }: { value: number | 'pending' | 'error' }) {
   // Append "/Monat" for the monthly delta context.
   const base = `${formatCurrency(value, 0)}/Monat`
   const formatted = isPositive ? `+ ${base}` : base
+  // The "trotz höherem Beitrag" copy only makes sense for beitrag-erhoehen,
+  // where the user pays more but might still see lower net pension. For
+  // kuendigen / beitragsfrei / uebertragen a negative delta has different
+  // causes, so leaving the title undefined avoids misleading the user.
+  const title =
+    !isPositive && decisionKind === 'beitrag-erhoehen'
+      ? 'Geringere Netto-Rente trotz höherem Beitrag möglich (z.B. wegen anderer Vertrags-Interaktionen)'
+      : undefined
   return (
     <span
       className={`contract-decision-delta-chip ${isPositive ? 'contract-decision-delta-chip--positive' : 'contract-decision-delta-chip--negative'}`}
-      title={!isPositive ? 'Geringere Netto-Rente trotz höherem Beitrag möglich (z.B. wegen anderer Vertrags-Interaktionen)' : undefined}
+      title={title}
     >
       {formatted}
     </span>
@@ -172,7 +186,9 @@ export function ContractDecisionCards({
               </ul>
             )}
 
-            {deltaValue !== undefined && <DeltaChip value={deltaValue} />}
+            {deltaValue !== undefined && (
+              <DeltaChip value={deltaValue} decisionKind={decision.kind} />
+            )}
           </div>
         )
       })}

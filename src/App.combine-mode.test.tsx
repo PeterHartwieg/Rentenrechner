@@ -74,6 +74,32 @@ describe('App — ?view= query param overrides activeView on first mount', () =>
     expect(detailsTab?.getAttribute('aria-selected')).toBe('false')
   })
 
+  it('does NOT persist the ?view= override to localStorage', async () => {
+    // Regression: previously workspace.setActiveView triggered the persist
+    // useEffect, so the one-shot URL override permanently overwrote the
+    // user's saved tab. The fix routes the override through
+    // setActiveViewTransient which skips the next persist.
+    let workspace = cloneWorkspace(defaultWorkspace)
+    workspace = { ...workspace, mode: 'combine' }
+    workspace = addInstanceToWorkspace(workspace, 'bav')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
+    localStorage.setItem('rentenrechner-workspace-v1', 'details')
+    window.history.pushState(null, '', '/?view=vergleich')
+
+    const { container } = render(<App />)
+    await waitForCalculator()
+
+    // Wait for the override to take effect on the visible tab.
+    await waitFor(() => {
+      const tabs = Array.from(container.querySelectorAll('[role="tab"]'))
+      const vergleichTab = tabs.find((t) => /bersicht/.test(t.textContent ?? ''))
+      expect(vergleichTab?.getAttribute('aria-selected')).toBe('true')
+    })
+
+    // localStorage should still hold the user's previously-saved tab.
+    expect(localStorage.getItem('rentenrechner-workspace-v1')).toBe('details')
+  })
+
   it('preserves saved activeView when no ?view= param is present', async () => {
     // Arrange: save a combine workspace whose active tab is "details".
     let workspace = cloneWorkspace(defaultWorkspace)

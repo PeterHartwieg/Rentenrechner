@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export const WORKSPACE_KEY = 'rentenrechner-workspace-v1'
 
@@ -31,6 +31,13 @@ function writeStoredView(view: WorkspaceView) {
 export type WorkspaceState = {
   activeView: WorkspaceView
   setActiveView: (view: WorkspaceView) => void
+  /**
+   * Set the active view without persisting it to localStorage. Used by the
+   * `?view=<WorkspaceView>` URL override so a one-shot deep-link does not
+   * overwrite the user's saved tab. A subsequent regular `setActiveView`
+   * (i.e. an explicit user tab click) persists normally.
+   */
+  setActiveViewTransient: (view: WorkspaceView) => void
 }
 
 export function useWorkspace(): WorkspaceState {
@@ -39,13 +46,28 @@ export function useWorkspace(): WorkspaceState {
     if (stored) return stored
     return 'angebot'
   })
+  const skipNextPersistRef = useRef(false)
 
   useEffect(() => {
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false
+      return
+    }
     writeStoredView(activeView)
   }, [activeView])
 
+  const setActiveView = useCallback((view: WorkspaceView) => {
+    setActiveViewState(view)
+  }, [])
+
+  const setActiveViewTransient = useCallback((view: WorkspaceView) => {
+    skipNextPersistRef.current = true
+    setActiveViewState(view)
+  }, [])
+
   return {
     activeView,
-    setActiveView: setActiveViewState,
+    setActiveView,
+    setActiveViewTransient,
   }
 }

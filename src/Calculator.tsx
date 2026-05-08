@@ -174,13 +174,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   // override `activeView`. The override fires after useWorkspace has
   // initialised from localStorage so the stored value does not win.
   // `history.replaceState` removes the param so a refresh sees the
-  // truly-saved state.
+  // truly-saved state. Use the transient setter so the override does NOT
+  // overwrite the user's previously-saved tab in localStorage.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const viewParam = params.get('view')
     if (viewParam && (WORKSPACE_VIEWS as readonly string[]).includes(viewParam)) {
-      workspace.setActiveView(viewParam as WorkspaceView)
+      workspace.setActiveViewTransient(viewParam as WorkspaceView)
       params.delete('view')
       const newSearch = params.toString()
       const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '')
@@ -485,6 +486,10 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               singleSelection
               title="Mein Plan: Kapital und Auszahlungen"
               description="Zeigt dein zusätzliches Vorsorgeportfolio ohne gesetzliche Rente."
+              grvNetMonthlyPension={combineSimulation.statutoryPension.netMonthlyPension}
+              pensionBaselineType={
+                portfolioState.workspace.baseline.assumptions.statutoryPension.pensionBaselineType
+              }
             />
           )}
           {showLueckeModal && (
@@ -602,6 +607,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 retirementAge={profile.retirementAge}
                 retirementEndAge={assumptions.retirementEndAge}
                 bestProductId={bestCapital?.productId}
+                grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+                pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
               />
             </>
           ) : (

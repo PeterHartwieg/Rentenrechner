@@ -60,17 +60,15 @@ export function InfoTip({
   useEffect(() => {
     if (!open) return
     function handlePointer(e: MouseEvent) {
-      // In QA mode, clicks on [data-qa-target] elements inside the popover are
-      // intercepted by the overlay (capture phase, stopPropagation). The mousedown
-      // event fires before the QA overlay click handler — so we must not close
-      // the popover if the click target is inside a [data-qa-target] element when
-      // QA mode is active. This preserves the "pinning inside a popover does not
-      // close the popover" invariant (issue 17).
-      if (qaEnabled) {
+      // Issue 17 invariant: in QA mode, pinning a qa-target INSIDE this
+      // popover must not close the popover. The QA overlay intercepts the
+      // subsequent click in capture phase, but mousedown fires first — so we
+      // need to skip the close when the user is pinning inside the popover.
+      // Narrowed to "inside the popover wrapper" so external pinning (e.g.
+      // an article paragraph after `p`/`li` were added to the QA selector)
+      // still closes the popover normally.
+      if (qaEnabled && wrapRef.current?.contains(e.target as Node)) {
         const target = e.target as HTMLElement | null
-        // Match the same selector QaOverlay uses so the guard covers both
-        // declared `[data-qa-target]` elements AND catch-all interactive
-        // elements (buttons / inputs / headings) that QA mode now also pins.
         if (target?.closest(QA_INTERACTIVE_SELECTOR)) return
       }
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
