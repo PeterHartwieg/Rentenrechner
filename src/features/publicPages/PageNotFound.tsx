@@ -45,15 +45,15 @@ export function PageNotFound() {
               if (!sibling) return null
               return (
                 <li key={slug}>
-                  <a href={slug}>{sibling.h1}</a>
+                  <a href={`${slug}/`}>{sibling.h1}</a>
                 </li>
               )
             })}
             <li>
-              <a href="/impressum">Impressum</a>
+              <a href="/impressum/">Impressum</a>
             </li>
             <li>
-              <a href="/datenschutz">Datenschutzerklärung</a>
+              <a href="/datenschutz/">Datenschutzerklärung</a>
             </li>
           </ul>
 
@@ -66,9 +66,9 @@ export function PageNotFound() {
       <footer className="public-page-footer">
         <a href="/">RentenWiki.de</a>
         <span>·</span>
-        <a href="/impressum">Impressum</a>
+        <a href="/impressum/">Impressum</a>
         <span>·</span>
-        <a href="/datenschutz">Datenschutzerklärung</a>
+        <a href="/datenschutz/">Datenschutzerklärung</a>
       </footer>
     </div>
   )

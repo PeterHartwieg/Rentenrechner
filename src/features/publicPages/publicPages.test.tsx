@@ -65,8 +65,8 @@ describe('RentenluckeRechnerPage — visible content for prerender', () => {
       a.getAttribute('href'),
     )
     expect(links).toContain('/')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
   })
 
   it('cites at least one statutory source (BMF / DRV / §-ref) inline (PRD line 168)', () => {
@@ -222,8 +222,8 @@ describe('BasisrenteRechnerPage — visible content for prerender', () => {
       a.getAttribute('href'),
     )
     expect(links).toContain('/')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
   })
 
   it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
@@ -233,7 +233,7 @@ describe('BasisrenteRechnerPage — visible content for prerender', () => {
     )
     // relatedRoutes for /basisrente-rechner: '/', '/rentenluecke-rechner', '/private-rentenversicherung-rechner'
     const siblingLinks = links.filter((href) =>
-      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href && href !== '/' && href !== '/impressum/' && href !== '/datenschutz/' &&
       href !== '/?topic=basisrente-rechner',
     )
     expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
@@ -334,8 +334,8 @@ describe('PrivateRentenversicherungRechnerPage — visible content for prerender
       a.getAttribute('href'),
     )
     expect(links).toContain('/')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
   })
 
   it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
@@ -345,7 +345,7 @@ describe('PrivateRentenversicherungRechnerPage — visible content for prerender
     )
     // relatedRoutes: '/', '/rentenluecke-rechner', '/basisrente-rechner'
     const siblingLinks = links.filter((href) =>
-      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href && href !== '/' && href !== '/impressum/' && href !== '/datenschutz/' &&
       href !== '/?topic=private-rentenversicherung-rechner',
     )
     expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
@@ -447,8 +447,8 @@ describe('RiesterRechnerPage — visible content for prerender', () => {
       a.getAttribute('href'),
     )
     expect(links).toContain('/')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
   })
 
   it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
@@ -457,7 +457,7 @@ describe('RiesterRechnerPage — visible content for prerender', () => {
       a.getAttribute('href'),
     )
     const siblingLinks = links.filter((href) =>
-      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href && href !== '/' && href !== '/impressum/' && href !== '/datenschutz/' &&
       href !== '/?topic=riester-rechner',
     )
     expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
@@ -568,8 +568,8 @@ describe('AltersvorsorgedepotRechnerPage — visible content for prerender', () 
       a.getAttribute('href'),
     )
     expect(links).toContain('/')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
   })
 
   it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
@@ -578,7 +578,7 @@ describe('AltersvorsorgedepotRechnerPage — visible content for prerender', () 
       a.getAttribute('href'),
     )
     const siblingLinks = links.filter((href) =>
-      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href && href !== '/' && href !== '/impressum/' && href !== '/datenschutz/' &&
       href !== '/?topic=altersvorsorgedepot-rechner',
     )
     expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
@@ -689,8 +689,8 @@ describe('RiesterVsAltersvorsorgedepotPage — visible content for prerender', (
       a.getAttribute('href'),
     )
     expect(links).toContain('/')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
   })
 
   it('renders at least two related sibling links (acceptance criterion: ≥2 siblings)', () => {
@@ -699,7 +699,7 @@ describe('RiesterVsAltersvorsorgedepotPage — visible content for prerender', (
       a.getAttribute('href'),
     )
     const siblingLinks = links.filter((href) =>
-      href && href !== '/' && href !== '/impressum' && href !== '/datenschutz' &&
+      href && href !== '/' && href !== '/impressum/' && href !== '/datenschutz/' &&
       href !== '/?topic=riester-vs-altersvorsorgedepot',
     )
     expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
@@ -814,8 +814,8 @@ describe('RenteNettoBerechnePage — visible content for prerender', () => {
       a.getAttribute('href'),
     )
     expect(links).toContain('/')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
   })
 
   it('links to at least two sibling topic pages (internal-link requirement)', () => {
@@ -823,8 +823,8 @@ describe('RenteNettoBerechnePage — visible content for prerender', () => {
     const links = Array.from(container.querySelectorAll('a')).map((a) =>
       a.getAttribute('href'),
     )
-    expect(links).toContain('/rentenluecke-rechner')
-    expect(links).toContain('/altersvorsorgeprodukte-vergleichen')
+    expect(links).toContain('/rentenluecke-rechner/')
+    expect(links).toContain('/altersvorsorgeprodukte-vergleichen/')
   })
 
   it('cites statutory sources inline (§-refs EStG / SGB V / SGB XI)', () => {
@@ -911,8 +911,8 @@ describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
       a.getAttribute('href'),
     )
     expect(links).toContain('/')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
   })
 
   it('links to at least two sibling topic pages', () => {
@@ -920,8 +920,8 @@ describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
     const links = Array.from(container.querySelectorAll('a')).map((a) =>
       a.getAttribute('href'),
     )
-    expect(links).toContain('/rentenluecke-rechner')
-    expect(links).toContain('/rente-netto-berechnen')
+    expect(links).toContain('/rentenluecke-rechner/')
+    expect(links).toContain('/rente-netto-berechnen/')
   })
 
   it('explicitly frames the tool as a free model calculator (no broker framing)', () => {
@@ -1021,12 +1021,12 @@ describe('BavRechnerPage — visible content for prerender', () => {
     const { container } = render(<BavRechnerPage />)
     const links = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))
     expect(links).toContain('/')
-    expect(links).toContain('/etf-vs-bav')
-    expect(links).toContain('/rentenluecke-rechner')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/etf-vs-bav/')
+    expect(links).toContain('/rentenluecke-rechner/')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
     const siblingLinks = links.filter(
-      (h) => h && h !== '/' && h !== '/impressum' && h !== '/datenschutz' && !h.startsWith('/?'),
+      (h) => h && h !== '/' && h !== '/impressum/' && h !== '/datenschutz/' && !h.startsWith('/?'),
     )
     expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
   })
@@ -1151,12 +1151,12 @@ describe('EtfVsBavPage — visible content for prerender', () => {
     const { container } = render(<EtfVsBavPage />)
     const links = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))
     expect(links).toContain('/')
-    expect(links).toContain('/bav-rechner')
-    expect(links).toContain('/rentenluecke-rechner')
-    expect(links).toContain('/impressum')
-    expect(links).toContain('/datenschutz')
+    expect(links).toContain('/bav-rechner/')
+    expect(links).toContain('/rentenluecke-rechner/')
+    expect(links).toContain('/impressum/')
+    expect(links).toContain('/datenschutz/')
     const siblingLinks = links.filter(
-      (h) => h && h !== '/' && h !== '/impressum' && h !== '/datenschutz' && !h.startsWith('/?'),
+      (h) => h && h !== '/' && h !== '/impressum/' && h !== '/datenschutz/' && !h.startsWith('/?'),
     )
     expect(siblingLinks.length).toBeGreaterThanOrEqual(2)
   })

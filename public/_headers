@@ -1,0 +1,35 @@
+# Cloudflare Pages cache-control rules.
+#
+# Default behavior on Pages is `Cache-Control: public, max-age=0, must-revalidate`,
+# which forces a revalidation roundtrip on every request. For content-hashed
+# build outputs and stable image assets that's overkill — the rules below
+# replace it with long-lived caches where the URL is safe to cache.
+#
+# Verification (post-deploy):
+#   curl -sI https://rentenwiki.de/assets/<file>.js  → Cache-Control: ... 31536000, immutable
+#   curl -sI https://rentenwiki.de/og/<slug>.png    → Cache-Control: ... 86400
+
+# Vite-hashed assets carry the content hash in the filename
+# (e.g. /assets/index-<hash>.js). The bytes at a given URL never change, so we
+# can cache for 1 year and add `immutable` (RFC 8246) so browsers skip
+# revalidation entirely.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# OG / social-share images live at stable paths (`/og/<slug>.png`) and may be
+# regenerated when topic copy changes. 24h is enough for OG-card refresh
+# cycles (Facebook, Twitter, LinkedIn re-fetch on roughly daily cadence) while
+# avoiding the default revalidation roundtrip on every share-link click.
+/og/*
+  Cache-Control: public, max-age=86400
+
+# Favicon — small, rarely changes. 1-day cache is plenty.
+/favicon.svg
+  Cache-Control: public, max-age=86400
+
+# robots.txt and sitemap.xml — must be re-fetchable when the policy changes.
+# Keep the default short cache (no override here).
+
+# HTML pages (/, /bav-rechner/, /impressum/, …) — keep the platform default
+# (max-age=0, must-revalidate) so users always get the latest copy after a
+# deploy. No override needed.

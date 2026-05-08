@@ -24,6 +24,17 @@ export default defineConfig({
     { enforce: 'pre', ...mdx({ remarkPlugins: [remarkGfm] }) },
     react({ include: /\.(jsx|tsx|mdx)$/ }),
   ],
+  build: {
+    // The lazy `Calculator` chunk (compare-mode + combine-mode dashboard,
+    // engine, charts, recommender, inventory) is intentionally large at
+    // ~840 kB raw / ~220 kB gzipped. It only loads on `/` when the App
+    // resolves to a non-`landing` view, so its size never impacts first
+    // paint of static-content routes (homepage landing, topic pages,
+    // legal pages, /404). The default 500 kB warning is for code-splitting
+    // candidates; we have already split, so raising the limit here is the
+    // documented decision rather than further fragmenting the dashboard.
+    chunkSizeWarningLimit: 1000,
+  },
   test: {
     exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**'],
   },

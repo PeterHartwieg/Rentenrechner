@@ -60,7 +60,7 @@ export function RentenluckeRechnerPage() {
               if (!sibling) return null
               return (
                 <li key={slug}>
-                  <a href={slug}>{sibling.h1}</a>
+                  <a href={`${slug}/`}>{sibling.h1}</a>
                 </li>
               )
             })}
@@ -71,9 +71,9 @@ export function RentenluckeRechnerPage() {
       <footer className="public-page-footer">
         <a href="/">RentenWiki.de</a>
         <span>·</span>
-        <a href="/impressum">Impressum</a>
+        <a href="/impressum/">Impressum</a>
         <span>·</span>
-        <a href="/datenschutz">Datenschutzerklärung</a>
+        <a href="/datenschutz/">Datenschutzerklärung</a>
       </footer>
     </div>
   )

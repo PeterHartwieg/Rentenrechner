@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../storage'
-import { readUrlState } from '../utils/urlShare'
+import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../storageKeys'
+import { hasShareStateInUrl } from '../utils/urlShareDetect'
 
 // Minimal in-app router. Two static legal pages plus the calculator at /.
 // We avoid pulling in react-router because the only routes we need are these
@@ -85,8 +85,11 @@ export type AppView = 'landing' | 'compare' | 'combine'
 export function detectSavedMode(): 'compare' | 'combine' | null {
   try {
     // Share-URL carries state: if present, treat as returning user in compare mode
-    // (share-URLs today are always compare-mode singleton exports).
-    if (typeof window !== 'undefined' && readUrlState()) return 'compare'
+    // (share-URLs today are always compare-mode singleton exports). We only
+    // check for the presence of `?s=...` here — the full
+    // parse/validate path lives in `urlShare.readUrlState` and stays inside
+    // the lazy Calculator chunk.
+    if (hasShareStateInUrl()) return 'compare'
 
     // V2 key: check mode field directly (fast path, no full migration).
     const rawV2 = typeof localStorage !== 'undefined'

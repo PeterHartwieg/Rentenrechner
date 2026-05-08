@@ -53,10 +53,10 @@ export function BavRechnerPage() {
               <a href="/?view=vergleich">RentenWiki.de — Modellrechner Startseite</a>
             </li>
             <li>
-              <a href="/etf-vs-bav">ETF vs. bAV — Vergleich mit gleicher Nettokostenbasis</a>
+              <a href="/etf-vs-bav/">ETF vs. bAV — Vergleich mit gleicher Nettokostenbasis</a>
             </li>
             <li>
-              <a href="/rentenluecke-rechner">Rentenlücke berechnen — Versorgungslücke 2026</a>
+              <a href="/rentenluecke-rechner/">Rentenlücke berechnen — Versorgungslücke 2026</a>
             </li>
           </ul>
         </article>
@@ -65,9 +65,9 @@ export function BavRechnerPage() {
       <footer className="public-page-footer">
         <a href="/">RentenWiki.de</a>
         <span>·</span>
-        <a href="/impressum">Impressum</a>
+        <a href="/impressum/">Impressum</a>
         <span>·</span>
-        <a href="/datenschutz">Datenschutzerklärung</a>
+        <a href="/datenschutz/">Datenschutzerklärung</a>
       </footer>
     </div>
   )

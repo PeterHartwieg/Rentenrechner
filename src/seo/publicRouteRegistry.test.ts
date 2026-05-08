@@ -13,7 +13,7 @@ import {
 } from './publicRouteRegistry'
 
 describe('publicRouteRegistry — entry shape', () => {
-  it('exposes all registered routes (issues #02, #04, #05, #06, #07)', () => {
+  it('exposes all registered routes (issues #02, #04, #05, #06, #07 + legal pages)', () => {
     // Snapshot the canonical paths so adding a new route shows up as a diff
     // in code review (rather than hiding behind a `Object.keys` length test).
     // Update this list when adding new public routes.
@@ -29,6 +29,8 @@ describe('publicRouteRegistry — entry shape', () => {
       '/private-rentenversicherung-rechner',
       '/rente-netto-berechnen',
       '/altersvorsorgeprodukte-vergleichen',
+      '/impressum',
+      '/datenschutz',
       '/404',
     ])
   })
@@ -60,6 +62,17 @@ describe('publicRouteRegistry — entry shape', () => {
   it('marks /404 as noindex,follow and not in sitemap', () => {
     expect(publicRouteRegistry['/404'].robots).toBe('noindex,follow')
     expect(publicRouteRegistry['/404'].inSitemap).toBe(false)
+  })
+
+  it('marks legal pages (/impressum, /datenschutz) as index,follow and NOT in sitemap', () => {
+    // Prerendered for proper head tags; excluded from sitemap because they
+    // are not topic content (see registry header comment).
+    expect(publicRouteRegistry['/impressum'].robots).toBe('index,follow')
+    expect(publicRouteRegistry['/impressum'].inSitemap).toBe(false)
+    expect(publicRouteRegistry['/impressum'].jsonLdType).toBe('WebSite')
+    expect(publicRouteRegistry['/datenschutz'].robots).toBe('index,follow')
+    expect(publicRouteRegistry['/datenschutz'].inSitemap).toBe(false)
+    expect(publicRouteRegistry['/datenschutz'].jsonLdType).toBe('WebSite')
   })
 
   it('marks the homepage and topic page as indexable and in sitemap', () => {
@@ -151,13 +164,20 @@ describe('buildCanonicalUrl', () => {
     expect(buildCanonicalUrl('/')).toBe(`${SITE_ORIGIN}/`)
   })
 
-  it('builds an absolute URL for topic pages without trailing slash', () => {
+  it('builds an absolute URL for topic pages with a trailing slash (matches CF Pages)', () => {
+    // CF Pages serves dist/<route>/index.html and 307-redirects the no-slash
+    // form to with-slash, so the canonical must declare with-slash to avoid
+    // the canonical-points-at-a-redirect anti-pattern.
     expect(buildCanonicalUrl('/rentenluecke-rechner')).toBe(
-      `${SITE_ORIGIN}/rentenluecke-rechner`,
+      `${SITE_ORIGIN}/rentenluecke-rechner/`,
     )
+    expect(buildCanonicalUrl('/bav-rechner')).toBe(`${SITE_ORIGIN}/bav-rechner/`)
+    expect(buildCanonicalUrl('/impressum')).toBe(`${SITE_ORIGIN}/impressum/`)
   })
 
-  it('builds an absolute URL for /404', () => {
+  it('builds an absolute URL for /404 without trailing slash (served as 404.html)', () => {
+    // /404 is at dist/404.html (not a folder), so no slash redirect happens.
+    // Trailing slash would produce a different URL than the actual file.
     expect(buildCanonicalUrl('/404')).toBe(`${SITE_ORIGIN}/404`)
   })
 

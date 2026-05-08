@@ -73,7 +73,7 @@ describe('buildRouteHead — per-route metadata shape', () => {
     })
     expect(data.mainEntityOfPage).toEqual({
       '@type': 'WebPage',
-      '@id': 'https://rentenwiki.de/etf-vs-bav',
+      '@id': 'https://rentenwiki.de/etf-vs-bav/',
     })
     // datePublished may equal dateModified (fallback) or carry the explicit
     // launch date set on the registry entry. Either path is valid.

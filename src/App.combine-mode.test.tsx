@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import App from './App'
 import { addInstanceToWorkspace } from './features/inventory/inventoryHelpers'
 import { defaultWorkspace, STORAGE_KEY_V2 } from './storage'
@@ -18,6 +18,21 @@ function cloneWorkspace(workspace: Workspace): Workspace {
   return JSON.parse(JSON.stringify(workspace)) as Workspace
 }
 
+/**
+ * App now lazy-loads `Calculator` (compare-mode + combine-mode dashboard)
+ * via `React.lazy`. After `render(<App />)` the dashboard is wrapped in
+ * Suspense and the chunk's import() promise resolves asynchronously. The
+ * first test in the file pays the actual module-resolution cost; subsequent
+ * tests hit the lazy() cache and resolve in a single microtask. We give the
+ * first-load a generous timeout to absorb that one-shot cost.
+ */
+async function waitForCalculator(): Promise<void> {
+  await waitFor(
+    () => expect(document.querySelectorAll('[role="tab"]').length).toBeGreaterThan(0),
+    { timeout: 8000 },
+  )
+}
+
 function saveCombineWorkspace() {
   let workspace = cloneWorkspace(defaultWorkspace)
   workspace = { ...workspace, mode: 'combine' }
@@ -31,7 +46,7 @@ function saveCombineWorkspace() {
 // ---------------------------------------------------------------------------
 
 describe('App — ?view= query param overrides activeView on first mount', () => {
-  it('overrides saved activeView=details with ?view=vergleich', () => {
+  it('overrides saved activeView=details with ?view=vergleich', async () => {
     // Arrange: save a combine workspace whose active tab is "details".
     let workspace = cloneWorkspace(defaultWorkspace)
     workspace = { ...workspace, mode: 'combine' }
@@ -42,19 +57,24 @@ describe('App — ?view= query param overrides activeView on first mount', () =>
     window.history.pushState(null, '', '/?view=vergleich')
 
     const { container } = render(<App />)
+    await waitForCalculator()
 
-    // The "vergleich" tab (labelled "Übersicht" in combine mode) should be active.
+    // Calculator mounts the ?view= override in a useEffect, which fires after
+    // the lazy chunk's first render — wait for the override to take effect
+    // before snapshotting the active tab.
+    await waitFor(() => {
+      const tabs = Array.from(container.querySelectorAll('[role="tab"]'))
+      const vergleichTab = tabs.find((t) => /bersicht/.test(t.textContent ?? ''))
+      expect(vergleichTab?.getAttribute('aria-selected')).toBe('true')
+    })
+
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'))
-    const vergleichTab = tabs.find((t) => /bersicht/.test(t.textContent ?? ''))
-    expect(vergleichTab).not.toBeNull()
-    expect(vergleichTab?.getAttribute('aria-selected')).toBe('true')
-
     // The "details" tab should NOT be active.
     const detailsTab = tabs.find((t) => /Details/.test(t.textContent ?? ''))
     expect(detailsTab?.getAttribute('aria-selected')).toBe('false')
   })
 
-  it('preserves saved activeView when no ?view= param is present', () => {
+  it('preserves saved activeView when no ?view= param is present', async () => {
     // Arrange: save a combine workspace whose active tab is "details".
     let workspace = cloneWorkspace(defaultWorkspace)
     workspace = { ...workspace, mode: 'combine' }
@@ -65,6 +85,7 @@ describe('App — ?view= query param overrides activeView on first mount', () =>
     window.history.pushState(null, '', '/')
 
     const { container } = render(<App />)
+    await waitForCalculator()
 
     // The "details" tab should be active (saved state preserved).
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'))
@@ -75,18 +96,20 @@ describe('App — ?view= query param overrides activeView on first mount', () =>
 })
 
 describe('App — Mein Plan combine-mode chrome and profile editing', () => {
-  it('uses a Mein Plan heading instead of comparison copy in combine mode', () => {
+  it('uses a Mein Plan heading instead of comparison copy in combine mode', async () => {
     saveCombineWorkspace()
     const { container } = render(<App />)
+    await waitForCalculator()
 
     const h1 = container.querySelector('h1')
     expect(h1?.textContent).toContain('Mein Plan')
     expect(h1?.textContent).not.toContain('vergleichen')
   })
 
-  it('uses plan-oriented tab labels in combine mode', () => {
+  it('uses plan-oriented tab labels in combine mode', async () => {
     saveCombineWorkspace()
     const { container } = render(<App />)
+    await waitForCalculator()
 
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'))
       .map((tab) => tab.textContent ?? '')
@@ -96,9 +119,10 @@ describe('App — Mein Plan combine-mode chrome and profile editing', () => {
     expect(tabs).not.toContain('Vergleich')
   })
 
-  it('renders an editable personal-details section in combine mode', () => {
+  it('renders an editable personal-details section in combine mode', async () => {
     saveCombineWorkspace()
     const { container } = render(<App />)
+    await waitForCalculator()
 
     const text = container.textContent ?? ''
     expect(/Pers.nliche Angaben|Persoenliche Angaben|Profil/.test(text)).toBe(true)
@@ -107,9 +131,10 @@ describe('App — Mein Plan combine-mode chrome and profile editing', () => {
     expect(text).toContain('Krankenversicherung')
   })
 
-  it('editing salary writes through to workspace baseline and persists to storage (#40)', () => {
+  it('editing salary writes through to workspace baseline and persists to storage (#40)', async () => {
     saveCombineWorkspace()
     render(<App />)
+    await waitForCalculator()
 
     // Find the Bruttogehalt input in the personal profile section.
     // The sidebar is rendered in the default "angebot" view (Meine Verträge tab).
@@ -132,9 +157,10 @@ describe('App — Mein Plan combine-mode chrome and profile editing', () => {
     expect(persisted.baseline.profile.grossSalaryYear).toBe(75000)
   })
 
-  it('editing retirement age writes through to workspace baseline (#40)', () => {
+  it('editing retirement age writes through to workspace baseline (#40)', async () => {
     saveCombineWorkspace()
     render(<App />)
+    await waitForCalculator()
 
     const allInputs = document.querySelectorAll<HTMLInputElement>('input[type="number"]')
     const retirementAgeInput = Array.from(allInputs).find(

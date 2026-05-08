@@ -33,7 +33,7 @@ export function LegalLayout({ title, navigate, children }: Props) {
         </a>
         <span>·</span>
         <a
-          href="/impressum"
+          href="/impressum/"
           onClick={(event) => {
             event.preventDefault()
             navigate('/impressum')
@@ -43,7 +43,7 @@ export function LegalLayout({ title, navigate, children }: Props) {
         </a>
         <span>·</span>
         <a
-          href="/datenschutz"
+          href="/datenschutz/"
           onClick={(event) => {
             event.preventDefault()
             navigate('/datenschutz')

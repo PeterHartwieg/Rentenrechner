@@ -1,21 +1,22 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { applyShareStateNoindex } from './dynamicRobots'
-import * as urlShare from '../utils/urlShare'
 
-vi.mock('../utils/urlShare', () => ({
-  readUrlState: vi.fn(() => null),
-}))
+function setShareUrl(present: boolean): void {
+  const search = present ? '?s=eyJmb28iOjF9' : ''
+  window.history.replaceState(null, '', '/' + search)
+}
 
 describe('applyShareStateNoindex — dynamic noindex injection on hydration', () => {
   beforeEach(() => {
     document.head.innerHTML = ''
-    vi.mocked(urlShare.readUrlState).mockReturnValue(null)
+    setShareUrl(false)
   })
 
   afterEach(() => {
     document.head.innerHTML = ''
+    setShareUrl(false)
   })
 
   it('does nothing when no share state is present', () => {
@@ -35,8 +36,7 @@ describe('applyShareStateNoindex — dynamic noindex injection on hydration', ()
     meta.setAttribute('content', 'index,follow')
     document.head.appendChild(meta)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(urlShare.readUrlState).mockReturnValueOnce({ profile: {}, assumptions: {} } as any)
+    setShareUrl(true)
 
     expect(applyShareStateNoindex()).toBe(true)
     expect(meta.getAttribute('content')).toBe('noindex,follow')
@@ -45,8 +45,7 @@ describe('applyShareStateNoindex — dynamic noindex injection on hydration', ()
   it('creates a robots meta tag when none exists and share state is present', () => {
     expect(document.querySelector('meta[name="robots"]')).toBeNull()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(urlShare.readUrlState).mockReturnValueOnce({ profile: {}, assumptions: {} } as any)
+    setShareUrl(true)
 
     expect(applyShareStateNoindex()).toBe(true)
     const meta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null
@@ -54,10 +53,12 @@ describe('applyShareStateNoindex — dynamic noindex injection on hydration', ()
     expect(meta?.getAttribute('content')).toBe('noindex,follow')
   })
 
-  it('returns false when readUrlState throws (defensive)', () => {
-    vi.mocked(urlShare.readUrlState).mockImplementationOnce(() => {
-      throw new Error('boom')
-    })
+  it('treats `?s=` with empty value as no share state', () => {
+    // Defensive: a malformed link with an empty `?s=` should not flip the
+    // page to noindex. `hasShareStateInUrl` requires a non-empty value.
+    window.history.replaceState(null, '', '/?s=')
+
     expect(applyShareStateNoindex()).toBe(false)
+    expect(document.querySelector('meta[name="robots"]')).toBeNull()
   })
 })

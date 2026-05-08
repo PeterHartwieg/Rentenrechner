@@ -17,6 +17,8 @@
 //     "lohnt sich" are forbidden).
 //   - No new "Rentenrechner" copy in user-visible labels.
 //   - Bare canonical paths (no `?topic=` deep-link — issue #13 deferred).
+//   - Trailing slash on every href so full-page navigations hit the with-slash
+//     form CF Pages serves natively (avoids the no-slash → with-slash 307).
 // ---------------------------------------------------------------------------
 
 export interface HubLink {
@@ -33,36 +35,36 @@ export const HUB_CLUSTERS: readonly HubCluster[] = [
   {
     heading: 'Renten-Lücke',
     links: [
-      { href: '/rentenluecke-rechner', label: 'Rentenlücke berechnen' },
-      { href: '/rente-netto-berechnen', label: 'Rente netto berechnen' },
+      { href: '/rentenluecke-rechner/', label: 'Rentenlücke berechnen' },
+      { href: '/rente-netto-berechnen/', label: 'Rente netto berechnen' },
     ],
   },
   {
     heading: 'bAV und ETF',
     links: [
-      { href: '/bav-rechner', label: 'bAV-Rechner' },
-      { href: '/etf-vs-bav', label: 'bAV oder ETF vergleichen' },
+      { href: '/bav-rechner/', label: 'bAV-Rechner' },
+      { href: '/etf-vs-bav/', label: 'bAV oder ETF vergleichen' },
     ],
   },
   {
     heading: 'Geförderte Vorsorge',
     links: [
-      { href: '/riester-rechner', label: 'Riester-Rechner' },
-      { href: '/altersvorsorgedepot-rechner', label: 'Altersvorsorgedepot-Rechner' },
-      { href: '/riester-vs-altersvorsorgedepot', label: 'Riester oder Altersvorsorgedepot' },
+      { href: '/riester-rechner/', label: 'Riester-Rechner' },
+      { href: '/altersvorsorgedepot-rechner/', label: 'Altersvorsorgedepot-Rechner' },
+      { href: '/riester-vs-altersvorsorgedepot/', label: 'Riester oder Altersvorsorgedepot' },
     ],
   },
   {
     heading: 'Private Vorsorge',
     links: [
-      { href: '/basisrente-rechner', label: 'Basisrente-Rechner (Rürup)' },
-      { href: '/private-rentenversicherung-rechner', label: 'Private Rentenversicherung-Rechner' },
+      { href: '/basisrente-rechner/', label: 'Basisrente-Rechner (Rürup)' },
+      { href: '/private-rentenversicherung-rechner/', label: 'Private Rentenversicherung-Rechner' },
     ],
   },
   {
     heading: 'Portfolio',
     links: [
-      { href: '/altersvorsorgeprodukte-vergleichen', label: 'Altersvorsorgeprodukte vergleichen' },
+      { href: '/altersvorsorgeprodukte-vergleichen/', label: 'Altersvorsorgeprodukte vergleichen' },
     ],
   },
 ] as const

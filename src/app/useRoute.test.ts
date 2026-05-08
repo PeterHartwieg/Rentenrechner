@@ -1,20 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { normalizeRoute, detectSavedMode, appViewFromMode } from './useRoute'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../storage'
-import * as urlShare from '../utils/urlShare'
-
-// ---------------------------------------------------------------------------
-// Module mock for share-URL tests (Blocker 3 coverage).
-//
-// Share-URLs today carry a v1 singleton payload (profile + assumptions) with
-// NO mode field — they predate the v2 workspace schema. detectSavedMode
-// therefore always returns 'compare' when a share-URL is present, regardless
-// of the payload content. The mock lets us exercise this branch without
-// building a fully-valid encoded URL string.
-// ---------------------------------------------------------------------------
-vi.mock('../utils/urlShare', () => ({
-  readUrlState: vi.fn(() => null),
-}))
 
 describe('normalizeRoute', () => {
   it('returns "/" for the root path', () => {
@@ -112,10 +98,15 @@ describe('detectSavedMode — localStorage integration', () => {
 
   it('returns "compare" when a share-URL is present (share-URLs predate v2 mode field)', () => {
     // Share-URLs carry v1 singleton state (profile + assumptions) with no mode field.
-    // detectSavedMode treats any non-null readUrlState() as a returning compare-mode user
+    // detectSavedMode treats any `?s=` parameter as a returning compare-mode user
     // because share-URLs predate the v2 workspace schema and therefore have no mode tag.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(urlShare.readUrlState).mockReturnValueOnce({ profile: {}, assumptions: {} } as any)
+    // The full parse/validate path lives in `urlShare.readUrlState`; here we only
+    // exercise the lightweight presence check `hasShareStateInUrl` reads from
+    // `window.location.search`.
+    vi.stubGlobal('window', {
+      ...globalThis.window,
+      location: { search: '?s=eyJmb28iOjF9' },
+    })
     expect(detectSavedMode()).toBe('compare')
   })
 })

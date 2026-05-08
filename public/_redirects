@@ -1,4 +1,18 @@
-# SPA fallback — handled via 404.html (see vite.config.ts copy-404 plugin).
-# Cloudflare Pages serves dist/404.html for any unmatched path (status 404,
-# but the client-side router in src/app/useRoute.ts renders the correct view).
-# The old "/* /index.html 200" rule triggers CF error 10021 (infinite loop).
+# Cloudflare Pages: real 404 for any unmatched path.
+#
+# Static prerendered routes (/, /impressum, /datenschutz, /bav-rechner,
+# /etf-vs-bav, /riester-rechner, /altersvorsorgedepot-rechner,
+# /riester-vs-altersvorsorgedepot, /basisrente-rechner,
+# /private-rentenversicherung-rechner, /rente-netto-berechnen,
+# /altersvorsorgeprodukte-vergleichen, /rentenluecke-rechner) take precedence
+# over _redirects, so this catch-all only fires for genuinely-unknown URLs.
+#
+# Avoid the legacy "/* /index.html 200" rule, which triggers CF error 10021
+# (infinite loop). The shape below — rewrite to /404.html with HTTP status 404
+# — is the documented Cloudflare Pages pattern for SPAs that ship a real
+# 404 page. The body is dist/404.html (prerendered with noindex,follow, the
+# right canonical, and route-specific head tags).
+#
+# Live verification: `curl -sI https://rentenwiki.de/<unknown-url>` must show
+# HTTP/1.1 404 after deploy.
+/*  /404.html  404

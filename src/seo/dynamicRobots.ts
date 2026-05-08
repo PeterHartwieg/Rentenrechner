@@ -1,4 +1,4 @@
-import { readUrlState } from '../utils/urlShare'
+import { hasShareStateInUrl } from '../utils/urlShareDetect'
 
 /**
  * Client-side robots-meta injector.
@@ -30,15 +30,12 @@ export function applyShareStateNoindex(): boolean {
   if (typeof document === 'undefined') return false
   if (typeof window === 'undefined') return false
 
-  let hasShareState: boolean
-  try {
-    hasShareState = readUrlState() !== null
-  } catch {
-    // readUrlState already swallows parse errors; the catch here is defensive
-    // for environments where window.location is unavailable.
-    return false
-  }
-  if (!hasShareState) return false
+  // Only the presence of `?s=...` matters for the noindex decision: any
+  // share-URL variant of the page must not enter the search index, even if
+  // the encoded payload is malformed. `hasShareStateInUrl` keeps this code
+  // path independent of `src/storage.ts` so the heavy parse/validate path
+  // stays inside the lazy Calculator chunk.
+  if (!hasShareStateInUrl()) return false
 
   // Replace any existing robots meta (the prerender writes `index,follow`).
   let meta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null

@@ -12,6 +12,7 @@ import type {
 import { defaultAssumptions, defaultProfile, DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
 import { validateState, validateWorkspace } from './utils/scenarioSchema'
 import { singletonViewOfWorkspace } from './engine/portfolioProjection'
+import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from './storageKeys'
 
 // ---------------------------------------------------------------------------
 // Storage keys
@@ -29,8 +30,11 @@ import { singletonViewOfWorkspace } from './engine/portfolioProjection'
 // useCalculatorState must be updated to call saveWorkspace() and removed from
 // the v1 write path once the full workspace edit-flow is complete.
 // ---------------------------------------------------------------------------
-export const STORAGE_KEY_V1 = 'rentenrechner-state-v1'
-export const STORAGE_KEY_V2 = 'rentenrechner-state-v2'
+// `STORAGE_KEY_V1` / `STORAGE_KEY_V2` live in `./storageKeys.ts` so that
+// `useRoute.detectSavedMode` (called from the initial-paint code path of
+// every route) doesn't have to import this module. The original constants
+// are re-exported below to keep existing callers unchanged.
+export { STORAGE_KEY_V1, STORAGE_KEY_V2 }
 
 /**
  * Alias for the legacy write key. Kept for callers that reference STORAGE_KEY

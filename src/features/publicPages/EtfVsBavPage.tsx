@@ -51,10 +51,10 @@ export function EtfVsBavPage() {
               <a href="/?view=vergleich">RentenWiki.de — Modellrechner Startseite</a>
             </li>
             <li>
-              <a href="/bav-rechner">bAV Rechner — Betriebliche Altersvorsorge und Entgeltumwandlung</a>
+              <a href="/bav-rechner/">bAV Rechner — Betriebliche Altersvorsorge und Entgeltumwandlung</a>
             </li>
             <li>
-              <a href="/rentenluecke-rechner">Rentenlücke berechnen — Versorgungslücke 2026</a>
+              <a href="/rentenluecke-rechner/">Rentenlücke berechnen — Versorgungslücke 2026</a>
             </li>
           </ul>
         </article>
@@ -63,9 +63,9 @@ export function EtfVsBavPage() {
       <footer className="public-page-footer">
         <a href="/">RentenWiki.de</a>
         <span>·</span>
-        <a href="/impressum">Impressum</a>
+        <a href="/impressum/">Impressum</a>
         <span>·</span>
-        <a href="/datenschutz">Datenschutzerklärung</a>
+        <a href="/datenschutz/">Datenschutzerklärung</a>
       </footer>
     </div>
   )

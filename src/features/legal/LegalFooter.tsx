@@ -58,11 +58,11 @@ export function LegalFooter({ navigate }: Props) {
         Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.
       </span>
       <nav className="app-footer-nav">
-        <a href="/impressum" onClick={go('/impressum')} {...impressumLinkProps}>
+        <a href="/impressum/" onClick={go('/impressum')} {...impressumLinkProps}>
           Impressum
         </a>
         <span aria-hidden="true">·</span>
-        <a href="/datenschutz" onClick={go('/datenschutz')} {...datenschutzLinkProps}>
+        <a href="/datenschutz/" onClick={go('/datenschutz')} {...datenschutzLinkProps}>
           Datenschutzerklärung
         </a>
         <span aria-hidden="true">·</span>

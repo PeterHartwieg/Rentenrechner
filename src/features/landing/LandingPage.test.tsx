@@ -182,7 +182,6 @@ describe('LandingPage — hero and two-CTA layout (unchanged from #02)', () => {
     expect(getByText('Mein Plan erstellen')).toBeTruthy()
     expect(getByText('Vergleich starten')).toBeTruthy()
   })
-
 })
 
 describe('LandingPage — DisclaimerBanner first-child + session-only', () => {
@@ -266,16 +265,16 @@ describe('LandingPage — Erkunde Themen topic-page hub (issue #03)', () => {
     const hubLinks = container.querySelectorAll('a.landing-hub-link')
     expect(hubLinks.length).toBe(10)
     const expectedPaths = [
-      '/rentenluecke-rechner',
-      '/rente-netto-berechnen',
-      '/bav-rechner',
-      '/etf-vs-bav',
-      '/riester-rechner',
-      '/altersvorsorgedepot-rechner',
-      '/riester-vs-altersvorsorgedepot',
-      '/basisrente-rechner',
-      '/private-rentenversicherung-rechner',
-      '/altersvorsorgeprodukte-vergleichen',
+      '/rentenluecke-rechner/',
+      '/rente-netto-berechnen/',
+      '/bav-rechner/',
+      '/etf-vs-bav/',
+      '/riester-rechner/',
+      '/altersvorsorgedepot-rechner/',
+      '/riester-vs-altersvorsorgedepot/',
+      '/basisrente-rechner/',
+      '/private-rentenversicherung-rechner/',
+      '/altersvorsorgeprodukte-vergleichen/',
     ]
     const actualPaths = Array.from(hubLinks).map((a) => a.getAttribute('href'))
     expect(actualPaths.sort()).toEqual(expectedPaths.sort())
@@ -497,10 +496,12 @@ describe('HUB_CLUSTERS — exported registry (single source of truth)', () => {
     expect(total).toBe(10)
   })
 
-  it('every link href is a valid bare canonical path (no query, no fragment)', () => {
+  it('every link href is a valid canonical path with trailing slash (no query, no fragment)', () => {
+    // Trailing slash matches what CF Pages serves natively from
+    // dist/<route>/index.html — see buildCanonicalUrl for the policy.
     for (const cluster of HUB_CLUSTERS) {
       for (const link of cluster.links) {
-        expect(link.href).toMatch(/^\/[a-z][a-z0-9-]*$/)
+        expect(link.href).toMatch(/^\/[a-z][a-z0-9-]*\/$/)
       }
     }
   })

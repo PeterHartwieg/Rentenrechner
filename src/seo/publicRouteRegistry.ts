@@ -16,9 +16,12 @@
 //
 // The in-app router (`src/app/useRoute.ts`) serves a strict subset of these
 // (`/`, `/impressum`, `/datenschutz`, plus `/rentenluecke-rechner` and `/404`
-// as of issue #02). Legal routes are intentionally NOT in this registry: the
-// PRD's "out of scope" list (line 152) excludes them, and `Article` /
-// `WebApplication` JSON-LD on Impressum/Datenschutz adds no SEO value.
+// as of issue #02). Legal routes (`/impressum`, `/datenschutz`) carry
+// `inSitemap: false` so they are NOT listed in `sitemap.xml` or `llms.txt`
+// (they are not topic content), but they ARE prerendered with route-specific
+// head tags so crawlers see the right title / canonical / robots instead of
+// the homepage shell. JSON-LD type is `WebSite` (lowest-cost; legal pages
+// do not warrant `Article` or `WebApplication` markup).
 // ---------------------------------------------------------------------------
 
 import type { ProductId } from '../engine/productRegistry'
@@ -507,6 +510,52 @@ export const publicRouteRegistry = {
       mode: 'combine',
     },
   },
+  // ---------------------------------------------------------------------------
+  // Legal pages — prerendered with route-specific head tags but NOT in sitemap.
+  // Carry the brand-default OG image and `WebSite` JSON-LD (lowest cost).
+  // ---------------------------------------------------------------------------
+  '/impressum': {
+    canonical: '/impressum',
+    title: 'Impressum | RentenWiki.de',
+    metaDescription:
+      'Impressum von RentenWiki.de mit Anbieterangaben gemäß § 5 TMG, Kontakt, ' +
+      'Hinweis zur beruflichen Stellung sowie Haftungs- und Lizenzhinweisen.',
+    h1: 'Impressum',
+    summary:
+      'Anbieterangaben gemäß § 5 TMG, Kontakt, Hinweis zur beruflichen Stellung ' +
+      'sowie Haftungs- und Lizenzhinweise für RentenWiki.de.',
+    dateModified: '2026-05-05',
+    datePublished: '2026-05-05',
+    robots: 'index,follow',
+    inSitemap: false,
+    jsonLdType: 'WebSite',
+    relatedRoutes: ['/', '/datenschutz'],
+    calculatorCta: {
+      label: 'Zurück zum Rechner',
+      href: '/',
+    },
+  },
+  '/datenschutz': {
+    canonical: '/datenschutz',
+    title: 'Datenschutzerklärung | RentenWiki.de',
+    metaDescription:
+      'Datenschutzerklärung von RentenWiki.de: lokale Speicherung im Browser, ' +
+      'keine Server-seitige Datenverarbeitung, kein Tracking, keine Cookies.',
+    h1: 'Datenschutzerklärung',
+    summary:
+      'Beschreibt die Datenverarbeitung von RentenWiki.de: lokale Speicherung ' +
+      'im Browser, keine Server-Verarbeitung, kein Tracking, keine Cookies.',
+    dateModified: '2026-05-05',
+    datePublished: '2026-05-05',
+    robots: 'index,follow',
+    inSitemap: false,
+    jsonLdType: 'WebSite',
+    relatedRoutes: ['/', '/impressum'],
+    calculatorCta: {
+      label: 'Zurück zum Rechner',
+      href: '/',
+    },
+  },
   '/404': {
     canonical: '/404',
     title: 'Seite nicht gefunden | RentenWiki.de',
@@ -558,12 +607,22 @@ export function getPublicRoute(path: string): PublicRoute | undefined {
  * `<link rel="canonical">`, and `og:url`. Ensures we never emit the share-state
  * query string (`?s=`) into canonical surfaces — the canonical for any route
  * is derived from the registry, not from `window.location.href`.
+ *
+ * Trailing-slash policy: the canonical for every non-`/404` route ends with
+ * a `/`. This matches what Cloudflare Pages serves natively from
+ * `dist/<route>/index.html` (it 307-redirects no-slash to with-slash), so
+ * declaring the with-slash form as canonical avoids the canonical-points-at-
+ * a-redirect anti-pattern. The registry's `canonical` field stays slash-free
+ * because it doubles as the route lookup key; the slash is added here.
+ *
+ * `/404` is the one exception: it carries `noindex,follow` and is served at
+ * the bare path (`dist/404.html`, no folder), so no slash is appended.
  */
 export function buildCanonicalUrl(routeId: PublicRouteId): string {
   const entry = publicRouteRegistry[routeId]
-  // Root path collapses to bare origin to avoid double-slash variants.
   if (entry.canonical === '/') return SITE_ORIGIN + '/'
-  return SITE_ORIGIN + entry.canonical
+  if (entry.canonical === '/404') return SITE_ORIGIN + '/404'
+  return SITE_ORIGIN + entry.canonical + '/'
 }
 
 /**

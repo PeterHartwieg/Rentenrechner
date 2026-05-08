@@ -76,6 +76,8 @@ async function loadSourceModules() {
     const privateRvRechner = await server.ssrLoadModule('/src/features/publicPages/PrivateRentenversicherungRechnerPage.tsx')
     const renteNettoBerechnen = await server.ssrLoadModule('/src/features/publicPages/RenteNettoBerechnePage.tsx')
     const altersvorsorgeprodukte = await server.ssrLoadModule('/src/features/publicPages/AltersvorsorgeproduktePage.tsx')
+    const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
+    const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
 
     return {
       server,
@@ -97,6 +99,8 @@ async function loadSourceModules() {
       privateRvRechner,
       renteNettoBerechnen,
       altersvorsorgeprodukte,
+      impressum,
+      datenschutz,
     }
   } catch (err) {
     await server.close()
@@ -116,6 +120,8 @@ function pickComponent(routeId, modules) {
   if (routeId === '/private-rentenversicherung-rechner') return modules.privateRvRechner.PrivateRentenversicherungRechnerPage
   if (routeId === '/rente-netto-berechnen') return modules.renteNettoBerechnen.RenteNettoBerechnePage
   if (routeId === '/altersvorsorgeprodukte-vergleichen') return modules.altersvorsorgeprodukte.AltersvorsorgeproduktePage
+  if (routeId === '/impressum') return modules.impressum.ImpressumPage
+  if (routeId === '/datenschutz') return modules.datenschutz.DatenschutzPage
   // For `/` we render the full App but force the route via window.location
   // before render. The dashboard requires a DOM environment that we don't
   // have during static prerender — so for `/` we render the LandingPage
@@ -127,6 +133,12 @@ function pickComponent(routeId, modules) {
 async function renderRoute(routeId, modules, { React, renderToString }) {
   const Component = pickComponent(routeId, modules)
   if (Component) {
+    // Legal pages take a `navigate` prop. The prerender pass uses a no-op;
+    // client hydration replaces it with the real router callback. Function
+    // props don't appear in HTML, so the rendered output matches either way.
+    if (routeId === '/impressum' || routeId === '/datenschutz') {
+      return renderToString(React.createElement(Component, { navigate: () => {} }))
+    }
     return renderToString(React.createElement(Component))
   }
   // For `/` the prerendered shell deliberately renders the landing variant
@@ -285,6 +297,7 @@ async function main() {
         || routeId === '/riester-vs-altersvorsorgedepot'
         || routeId === '/basisrente-rechner' || routeId === '/private-rentenversicherung-rechner'
         || routeId === '/rente-netto-berechnen' || routeId === '/altersvorsorgeprodukte-vergleichen'
+        || routeId === '/impressum' || routeId === '/datenschutz'
       const rootMarker = hydrateStable ? ' data-rentenwiki-prerendered="1"' : ''
       pageHtml = pageHtml.replace(
         '<div id="root"></div>',

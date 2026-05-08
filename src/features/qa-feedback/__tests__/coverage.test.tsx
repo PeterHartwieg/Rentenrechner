@@ -284,7 +284,7 @@ describe('LegalFooter — container and link targets', () => {
     )
     const link = container.querySelector('[data-qa-target="legal.footer.impressum"]')
     expect(link?.tagName.toLowerCase()).toBe('a')
-    expect(link?.getAttribute('href')).toBe('/impressum')
+    expect(link?.getAttribute('href')).toBe('/impressum/')
   })
 
   it('Datenschutz link carries data-qa-target="legal.footer.datenschutz"', () => {
@@ -295,7 +295,7 @@ describe('LegalFooter — container and link targets', () => {
     )
     const link = container.querySelector('[data-qa-target="legal.footer.datenschutz"]')
     expect(link?.tagName.toLowerCase()).toBe('a')
-    expect(link?.getAttribute('href')).toBe('/datenschutz')
+    expect(link?.getAttribute('href')).toBe('/datenschutz/')
   })
 
   it('footer target is absent when QA mode is off', () => {
