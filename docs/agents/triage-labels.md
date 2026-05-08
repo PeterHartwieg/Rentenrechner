@@ -10,4 +10,6 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 | `ready-for-human`          | `ready-for-human`    | Requires human implementation            |
 | `wontfix`                  | `wontfix`            | Will not be actioned                     |
 
-When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table. Since this repo uses local markdown, record the status as a `Status: <label>` line near the top of the issue file rather than a GitHub/GitLab label.
+When a skill mentions a role (e.g. "apply the AFK-ready triage label"), apply the corresponding GitHub label from this table.
+
+Every triaged GitHub issue should carry exactly one state label from this table. When a category label is useful, use GitHub's standard `bug` or `enhancement` label alongside the state label.

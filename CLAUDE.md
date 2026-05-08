@@ -213,17 +213,17 @@ Live at **rentenwiki.de** since 2026-05-05 (Cloudflare Pages, deploy commit `348
 - **Trigger config** in `src/content/triggers.ts`: `PRIMARY_PRODUCT_IDS`, `SECONDARY_PRODUCT_IDS` group the comparison picker. The earlier `PATH_OPTIONS` / `VISIBLE_PRODUCTS_BY_PATH` / `WIZARD_REGISTRY` mechanism is gone — guided-setup flow is now `LandingPage` → `InventoryWizard`. Topic-page deep-linking lives in the SEO route registry (issue #13): each `PublicRoute` may declare an optional `preselection: { mode, visibleProducts? }`, and `LandingPage` reads `?topic=<slug>` via `resolveTopicPreselection` to auto-fire the right mode + product seed for first-time visitors. Returning users (saved state) are never overridden.
 - **Reusable scaffolding** still in place: input sections in `src/features/inputs/sections/`; provenance primitives in `src/features/results/provenance.tsx`; trigger config in `src/content/triggers.ts`. Design docs `docs/golden-coverage-audit.md` (oracle safety net) and `docs/portfolio-schema-design.md` (historical reference for the v1 → v2 migration) remain authoritative for the invariants they pin.
 
-Open work after launch lives in PRDs under `.scratch/<slug>/` (active: `qa-feedback-mode`, `group-g-qa`, `pure-frontend-api`) and as themes in `BACKLOG.md` (publication polish, decision views and UX expansion, deferred backend, analytical/publishing, scenario coverage gaps).
+Open work after launch now lives in GitHub Issues. Historical PRDs and scratch notes remain under `.scratch/<slug>/` (notably `qa-feedback-mode`, `group-g-qa`, `pure-frontend-api`) and themes remain in `BACKLOG.md` (publication polish, decision views and UX expansion, deferred backend, analytical/publishing, scenario coverage gaps), but new actionable work should be filed in GitHub.
 
 ## Agent skills
 
 ### Issue tracker
 
-Issues live as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+Issues and PRDs live in GitHub Issues for `PeterHartwieg/Rentenrechner`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Default mattpocock/skills label vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+Default mattpocock/skills label vocabulary maps directly to GitHub labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
