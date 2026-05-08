@@ -40,6 +40,8 @@ import {
   OPTIMIERE_BUTTON_ACCEPT,
   OPTIMIERE_BUTTON_CANCEL,
   OPTIMIERE_BANNER,
+  OPTIMIERE_OVERVIEW_HEADING,
+  OPTIMIERE_OVERVIEW_INTRO,
   OPTIMIERE_CONFIRM_HEADING,
   OPTIMIERE_CONFIRM_SAVE,
   OPTIMIERE_CONFIRM_BACK,
@@ -299,6 +301,16 @@ export function OptimiereVorsorgeModal({
 
   const hasAnyTicks = ticked.size > 0
 
+  // Step counter: 4 post-disclaimer steps (overview=1, instance=2, confirm=3, saved=4).
+  const STEP_NUMBERS: Partial<Record<Step, number>> = {
+    overview: 1,
+    instance: 2,
+    confirm: 3,
+    saved: 4,
+  }
+  const stepNumber = STEP_NUMBERS[step]
+  const stepCounterText = stepNumber !== undefined ? `Schritt ${stepNumber} von 4` : null
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -314,6 +326,11 @@ export function OptimiereVorsorgeModal({
       >
         <header className="optimiere-modal__header">
           <h2 id="optimiere-modal-title">Optimiere deine Vorsorge</h2>
+          {stepCounterText !== null && (
+            <span className="optimiere-modal__step-counter" aria-label={stepCounterText}>
+              {stepCounterText}
+            </span>
+          )}
           <button
             type="button"
             className="optimiere-modal__close"
@@ -359,6 +376,8 @@ export function OptimiereVorsorgeModal({
             <div className="optimiere-modal__banner" role="status">
               {OPTIMIERE_BANNER}
             </div>
+            <h3 {...stepHeadingTargetProps}>{OPTIMIERE_OVERVIEW_HEADING}</h3>
+            <p className="optimiere-modal__overview-intro">{OPTIMIERE_OVERVIEW_INTRO}</p>
             <div className="optimiere-modal__overview-list">
               {auditRows.map((row) => {
                 const productId = productIdFromInstanceId(row.instance.instanceId)
@@ -421,6 +440,11 @@ export function OptimiereVorsorgeModal({
                       }}
                     >
                       Anpassen
+                      {row.decisions.length > 0 && (
+                        <span className="optimiere-modal__option-count">
+                          {row.decisions.length} {row.decisions.length === 1 ? 'Option' : 'Optionen'}
+                        </span>
+                      )}
                     </button>
                   </div>
                 )

@@ -16,6 +16,7 @@ import { afterEach } from 'vitest'
 import { ContractDecisionCards } from './ContractDecisionCards'
 import type { ContractDecisionCardsProps } from './ContractDecisionCards'
 import type { ContractDecision } from '../../app/contractDecisions'
+import { DECISION_KIND_DESCRIPTIONS } from '../../content/optimiereCopy'
 
 afterEach(() => cleanup())
 
@@ -247,5 +248,34 @@ describe('ContractDecisionCards', () => {
     const { container } = renderCards()
     const atoms = container.querySelectorAll('.contract-decision-atom')
     expect(atoms.length).toBeGreaterThan(0)
+  })
+
+  // ── DECISION_KIND_DESCRIPTIONS fallback ──
+
+  it('falls back to DECISION_KIND_DESCRIPTIONS when decision.description is empty', () => {
+    const decisionsWithEmptyDescription: ContractDecision[] = [
+      {
+        ...FIXTURE_DECISIONS[2], // kuendigen
+        description: '',
+      },
+    ]
+    const { container } = render(
+      <ContractDecisionCards
+        decisions={decisionsWithEmptyDescription}
+        checkedIds={new Set()}
+        onToggle={vi.fn()}
+      />,
+    )
+    const descEl = container.querySelector('.contract-decision-description')
+    expect(descEl).toBeTruthy()
+    expect(descEl!.textContent).toBe(DECISION_KIND_DESCRIPTIONS['kuendigen'])
+  })
+
+  it('uses decision.description when present (not the kind-level fallback)', () => {
+    const { container } = renderCards()
+    const kuendigenCard = container.querySelector('.contract-decision-card--kuendigen')
+    const descEl = kuendigenCard!.querySelector('.contract-decision-description')
+    expect(descEl).toBeTruthy()
+    expect(descEl!.textContent).toBe('Vertrag kündigen und Rückkaufswert auszahlen lassen.')
   })
 })
