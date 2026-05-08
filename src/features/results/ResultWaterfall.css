@@ -117,6 +117,12 @@
   font-weight: 700;
 }
 
+.rwf-row.inactive dt,
+.rwf-row.inactive dd {
+  color: var(--text-muted, #94a3b8);
+  font-weight: 400;
+}
+
 .rwf-empty {
   padding: 4px 0;
   color: #667085;
