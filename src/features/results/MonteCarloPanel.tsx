@@ -215,8 +215,36 @@ export function MonteCarloPanel({ result }: Props) {
               width={64}
             />
             <Tooltip
-              formatter={(value) => formatCurrency(Number(value), 0)}
-              labelFormatter={(age) => `Alter ${age}`}
+              content={({ active, payload, label }) => {
+                if (!active || !payload || payload.length === 0) return null
+                const byKey: Record<string, number> = {}
+                for (const entry of payload) {
+                  if (entry.dataKey) byKey[String(entry.dataKey)] = Number(entry.value)
+                }
+                return (
+                  <div className="recharts-default-tooltip" style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px', fontSize: 13 }}>
+                    <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Alter {label}</p>
+                    {byKey.p90 !== undefined && (
+                      <p style={{ margin: '2px 0' }}>
+                        <strong>P90 – starkes Ergebnis:</strong> {formatCurrency(byKey.p90, 0)}
+                        <br /><span style={{ color: '#64748b', fontSize: 11 }}>Nur 10 % der Simulationen lagen über diesem Wert.</span>
+                      </p>
+                    )}
+                    {byKey.p50 !== undefined && (
+                      <p style={{ margin: '2px 0' }}>
+                        <strong>P50 – mittleres Ergebnis:</strong> {formatCurrency(byKey.p50, 0)}
+                        <br /><span style={{ color: '#64748b', fontSize: 11 }}>Die Hälfte der Simulationen lag über, die Hälfte darunter.</span>
+                      </p>
+                    )}
+                    {byKey.p10 !== undefined && (
+                      <p style={{ margin: '2px 0' }}>
+                        <strong>P10 – schwaches Ergebnis:</strong> {formatCurrency(byKey.p10, 0)}
+                        <br /><span style={{ color: '#64748b', fontSize: 11 }}>90 % der Simulationen lagen über diesem Wert.</span>
+                      </p>
+                    )}
+                  </div>
+                )
+              }}
             />
             <Line
               type="monotone"
