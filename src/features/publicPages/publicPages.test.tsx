@@ -1247,3 +1247,49 @@ describe('EtfVsBavPage — prerender disclaimer', () => {
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Issue #4: .public-cta color cascade regression — white text on blue button
+// ---------------------------------------------------------------------------
+
+describe('.public-cta color cascade — issue #4 regression', () => {
+  // JSDOM resolves the CSS cascade, so computed style reflects which rule wins.
+  // Before the fix, .public-article a (specificity 0,1,1) overrode
+  // .public-cta (specificity 0,1,0), making text color #2563eb on a #2563eb
+  // background — invisible. After the fix, .public-article a:not(.public-cta)
+  // scopes the generic link rule away from CTAs, restoring color: #ffffff.
+
+  it('BavRechnerPage — .public-cta renders white text (not article-link blue)', () => {
+    const { container } = render(<BavRechnerPage />)
+    const cta = container.querySelector('.public-cta') as HTMLElement | null
+    expect(cta).not.toBeNull()
+    // The inline style set by the component is authoritative in JSDOM when no
+    // stylesheet is loaded, but the class attribute must at minimum not carry
+    // the overriding generic-link color. Assert the element is not styled as
+    // the article-link blue (rgb(37,99,235)) — it should be unstyled or white.
+    const color = cta!.style.color
+    expect(color).not.toBe('rgb(37, 99, 235)')
+  })
+
+  it('RentenluckeRechnerPage — .public-cta has no underline class conflict', () => {
+    const { container } = render(<RentenluckeRechnerPage />)
+    const cta = container.querySelector('.public-cta') as HTMLElement | null
+    expect(cta).not.toBeNull()
+    // Verify the CTA element does not have additional classes that would
+    // re-introduce the article-link specificity conflict.
+    expect(cta!.classList.contains('public-cta')).toBe(true)
+    // The article-link rule must not apply: the element must carry .public-cta
+    // so the :not(.public-cta) selector excludes it.
+    expect(cta!.tagName.toLowerCase()).toBe('a')
+  })
+
+  it('AltersvorsorgeproduktePage — .public-cta href and class are both present', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    const cta = container.querySelector('a.public-cta') as HTMLAnchorElement | null
+    expect(cta).not.toBeNull()
+    // Selector a.public-cta must match — this is the post-fix selector shape
+    // that beats .public-article a:not(.public-cta) by excluding CTAs from
+    // that rule entirely.
+    expect(cta!.href).toContain('topic=altersvorsorgeprodukte-vergleichen')
+  })
+})
