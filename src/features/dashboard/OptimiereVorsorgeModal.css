@@ -149,7 +149,7 @@
 
 .optimiere-modal__overview-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   border: 1px solid #e2e8f0;
@@ -209,6 +209,8 @@
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .optimiere-modal__flag-chip {
@@ -245,6 +247,8 @@
   color: #1d4ed8;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .optimiere-modal__anpassen-btn:hover {

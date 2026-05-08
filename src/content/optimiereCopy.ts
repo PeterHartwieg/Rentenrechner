@@ -64,11 +64,24 @@ export const OPTIMIERE_SAVED_CLOSE = 'Schließen'
 // ---------------------------------------------------------------------------
 
 export const AUDIT_FLAG_LABELS: Record<string, string> = {
+  // Audit-flag atoms (issue B3)
   high_cost_active: 'Hohe Kosten',
   weak_guarantee: 'Schwache Garantie',
   low_flexibility: 'Geringe Flexibilität',
   missing_offer_data: 'Angebotsdaten fehlen',
   funding_cap_hit: 'Fördergrenze überschritten',
+  // Vintage-detection atoms (pAV)
+  pre_2005_pav_taxfree_capital: 'Steuerfreie Kapitalauszahlung',
+  halbeinkuenfte_pav_eligible: 'Halbeinkünfteverfahren',
+  pre_2005_pav_high_garantiezins: 'Hoher Garantiezins',
+  // Vintage-detection atoms (bAV)
+  bav_40b_alt_eligible: '§40b-Privileg aktiv',
+  bav_40b_alt_conditions_unmet: '§40b-Bedingungen unerfüllt',
+  bav_durchfuehrungsweg_direktzusage: 'Fünftelregelung',
+  // Vintage-detection atoms (Riester)
+  riester_pre_2008_zulage: 'Kinderzulage prüfen',
+  // Cap atoms that are per-instance (AVD)
+  avd_cap_remaining: 'AVD-Beitragslimit',
 }
 
 // ---------------------------------------------------------------------------
