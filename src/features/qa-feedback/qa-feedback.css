@@ -275,6 +275,24 @@
 }
 
 /* -----------------------------------------------------------------------
+ * Intercept dialog — shown on second consecutive pin of the same
+ * interactive element (issue 42).
+ * ----------------------------------------------------------------------- */
+
+.qa-intercept__body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.qa-intercept__target-label {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* -----------------------------------------------------------------------
  * Focus-visible styles — high-contrast ring that survives both light and
  * dark backgrounds (Lane C, issue 06).
  * ----------------------------------------------------------------------- */

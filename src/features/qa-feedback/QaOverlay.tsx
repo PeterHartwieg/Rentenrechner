@@ -119,7 +119,7 @@ export function QaOverlay() {
       event.preventDefault()
       event.stopPropagation()
       const resolved = resolveTarget(target, originalTarget)
-      ctx.pickTarget(resolved, target.getBoundingClientRect())
+      ctx.pickTarget(resolved, target.getBoundingClientRect(), target)
     }
 
     function onFocusIn(event: FocusEvent) {
@@ -168,7 +168,7 @@ export function QaOverlay() {
           // so originalTarget === target → precision will be 'exact' (or
           // section/nested as declared by the element's own data-qa-precision).
           const resolved = resolveTarget(target, target)
-          ctx.pickTarget(resolved, target.getBoundingClientRect())
+          ctx.pickTarget(resolved, target.getBoundingClientRect(), target)
         }
       }
     }

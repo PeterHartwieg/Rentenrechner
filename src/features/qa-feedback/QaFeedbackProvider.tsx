@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import './qa-feedback.css'
-import { QaFeedbackContext, type QaFeedbackContextValue, type QaPinState } from './QaFeedbackContext'
+import {
+  QaFeedbackContext,
+  type QaFeedbackContextValue,
+  type QaInterceptState,
+  type QaPinState,
+} from './QaFeedbackContext'
 import type { ResolvedTarget } from './report'
 import { QaOverlay } from './QaOverlay'
 import { QaComposer } from './QaComposer'
+import { QaIntercept } from './QaIntercept'
 import { QaPreview } from './QaPreview'
 import type { ComposerDraft } from './QaComposer'
 import type { CapturedScreenshot } from './capture/screenshot'
@@ -22,7 +28,7 @@ const ACTIVATE_VALUE = '1'
 const DEACTIVATE_VALUE = '0'
 
 /** Phase of the feedback flow currently visible to the tester. */
-type Phase = 'idle' | 'composer' | 'preview'
+type Phase = 'idle' | 'composer' | 'preview' | 'intercept'
 
 interface ProviderProps {
   children: ReactNode
@@ -47,6 +53,12 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [draft, setDraft] = useState<ComposerDraft | null>(null)
   const [screenshot, setScreenshot] = useState<CapturedScreenshot | null>(null)
+
+  // Intercept-dialog state — tracks the last pinned target id and which ids
+  // have already shown the dialog in this QA session (suppression set).
+  const [interceptState, setInterceptState] = useState<QaInterceptState | null>(null)
+  const lastPinnedTargetIdRef = useRef<string | null>(null)
+  const shownDialogIdsRef = useRef<Set<string>>(new Set())
 
   // Persist enable/disable transitions back to sessionStorage so a fresh tab
   // (same session) honours the active state.
@@ -82,6 +94,9 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
     setDraft(null)
     setScreenshot(null)
     setPhase('idle')
+    setInterceptState(null)
+    lastPinnedTargetIdRef.current = null
+    shownDialogIdsRef.current = new Set()
   }, [])
 
   // Ctrl+Shift+. (or Cmd+Shift+. on macOS) toggles QA mode from any state.
@@ -113,6 +128,9 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
           setDraft(null)
           setScreenshot(null)
           setPhase('idle')
+          setInterceptState(null)
+          lastPinnedTargetIdRef.current = null
+          shownDialogIdsRef.current = new Set()
         }
       }
     }
@@ -120,7 +138,7 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [enabled])
 
-  const onPickTarget = useCallback((target: ResolvedTarget, rect: DOMRect) => {
+  const openComposerForTarget = useCallback((target: ResolvedTarget, rect: DOMRect) => {
     setPinned({ target, rect: serializeRect(rect) })
     setDraft({
       type: 'other',
@@ -129,14 +147,46 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
       suggestedText: '',
       includeScreenshot: true,
     })
+    setInterceptState(null)
     setPhase('composer')
   }, [])
+
+  const onPickTarget = useCallback(
+    (target: ResolvedTarget, rect: DOMRect, element: HTMLElement) => {
+      const targetId = target.id
+
+      // Intercept filter: only interactive elements trigger the dialog.
+      const isInteractive =
+        element instanceof HTMLAnchorElement ||
+        element instanceof HTMLButtonElement ||
+        element instanceof HTMLInputElement ||
+        element.getAttribute('role') === 'button'
+
+      if (
+        isInteractive &&
+        lastPinnedTargetIdRef.current === targetId &&
+        !shownDialogIdsRef.current.has(targetId)
+      ) {
+        // Second consecutive pin on the same interactive element — show dialog.
+        shownDialogIdsRef.current.add(targetId)
+        setInterceptState({ target, element })
+        setPhase('intercept')
+        return
+      }
+
+      // Normal path: open composer and record the last pinned id.
+      lastPinnedTargetIdRef.current = targetId
+      openComposerForTarget(target, rect)
+    },
+    [openComposerForTarget],
+  )
 
   const cancelDraft = useCallback(() => {
     setPinned(null)
     setDraft(null)
     setScreenshot(null)
     setPhase('idle')
+    setInterceptState(null)
   }, [])
 
   const submitDraft = useCallback(
@@ -144,19 +194,73 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
       setDraft(next)
       setScreenshot(capturedScreenshot)
       setPhase('preview')
+      // Composer submit = clean slate for the intercept flow (both refs).
+      lastPinnedTargetIdRef.current = null
+      shownDialogIdsRef.current = new Set()
     },
     [],
   )
+
+  /** Dismiss intercept dialog — no state changes, same element clicked again re-opens it. */
+  const dismissIntercept = useCallback(() => {
+    // Remove from shownDialogIds so the same-id suppression doesn't apply,
+    // but also reset lastPinnedTargetId so the NEXT click on a different element
+    // doesn't falsely trigger the dialog. The dialog itself stays unmounted.
+    // Per spec: "×/Esc closes the dialog without state changes" — we only
+    // unmount the dialog UI here; lastPinnedTargetId stays as the same id
+    // so a third click re-opens the dialog again (until suppression kicks in).
+    // The shownDialogIds.add() already happened in onPickTarget, so subsequent
+    // clicks on the same id will use the normal composer path (suppression active).
+    setInterceptState(null)
+    setPhase('idle')
+  }, [])
+
+  /** Open the composer for the intercepted target (secondary button). */
+  const proceedWithComposer = useCallback(() => {
+    if (!interceptState) return
+    // We need the original rect — re-query it from the live element.
+    const rect = interceptState.element.getBoundingClientRect()
+    openComposerForTarget(interceptState.target, rect)
+    // interceptState cleared inside openComposerForTarget.
+  }, [interceptState, openComposerForTarget])
+
+  /** Deactivate QA mode and re-fire the stored element click (primary button). */
+  const exitAndNavigate = useCallback(() => {
+    const el = interceptState?.element ?? null
+    // Deactivate first — this removes the capture-phase click listener.
+    deactivate()
+    if (el && document.contains(el)) {
+      // Schedule re-fire after the overlay's capture listener has unregistered.
+      requestAnimationFrame(() => {
+        el.click()
+      })
+    }
+    // If element no longer in DOM: graceful degradation — deactivate only.
+  }, [interceptState, deactivate])
 
   const ctx = useMemo<QaFeedbackContextValue>(
     () => ({
       enabled,
       pinned,
+      intercept: interceptState,
       activate,
       deactivate,
       pickTarget: onPickTarget,
+      dismissIntercept,
+      proceedWithComposer,
+      exitAndNavigate,
     }),
-    [enabled, pinned, activate, deactivate, onPickTarget],
+    [
+      enabled,
+      pinned,
+      interceptState,
+      activate,
+      deactivate,
+      onPickTarget,
+      dismissIntercept,
+      proceedWithComposer,
+      exitAndNavigate,
+    ],
   )
 
   // The provider value is always available; consumers (NumberField via
@@ -174,6 +278,14 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
               onChangeDraft={setDraft}
               onCancel={cancelDraft}
               onSubmit={submitDraft}
+            />
+          )}
+          {phase === 'intercept' && interceptState && (
+            <QaIntercept
+              target={interceptState.target}
+              onDismiss={dismissIntercept}
+              onProceed={proceedWithComposer}
+              onExitAndNavigate={exitAndNavigate}
             />
           )}
           {phase === 'preview' && pinned && draft && (

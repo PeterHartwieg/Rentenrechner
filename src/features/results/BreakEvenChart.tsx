@@ -92,13 +92,15 @@ export function BreakEvenChart({
 
   const showGrv = typeof grvNetMonthlyPension === 'number' && grvNetMonthlyPension > 0
 
-  const data = useMemo(() => {
+  const data = useMemo((): Record<string, number>[] => {
     if (!showGrv || !grvNetMonthlyPension) return baseData
     const annualGrv = grvNetMonthlyPension * 12
     let cumGrv = 0
     return baseData.map((point) => {
       if (point.age <= retirementAge) {
-        return { ...point, [GRV_PAYOUT_KEY]: undefined }
+        // undefined signals Recharts to leave a gap in the GRV line before
+        // retirement. The explicit cast keeps the return type homogeneous.
+        return { ...point, [GRV_PAYOUT_KEY]: undefined } as unknown as Record<string, number>
       }
       cumGrv += annualGrv
       return { ...point, [GRV_PAYOUT_KEY]: Math.round(cumGrv) }
