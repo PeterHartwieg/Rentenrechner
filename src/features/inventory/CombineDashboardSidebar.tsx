@@ -55,6 +55,7 @@ import {
   type BavOfferDraft,
 } from './inventoryHelpers'
 import { InvSelect } from './fields'
+import { InfoTip } from '../../ui/InfoTip'
 import { toNumber, DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
 
 // ---------------------------------------------------------------------------
@@ -95,14 +96,16 @@ function atomsForInstance(atoms: Atom[], instanceId: string): Atom[] {
 // rendering to the same pattern but keeps its own class name for styling.
 function CombineField({
   label,
+  labelSuffix,
   children,
 }: {
   label: string
+  labelSuffix?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <div className="combine-field">
-      <span>{label}</span>
+      <span>{label}{labelSuffix}</span>
       {children}
     </div>
   )
@@ -272,7 +275,7 @@ function PersonalProfileSection({
             <option value="pkv">Privat</option>
           </select>
         </CombineField>
-        <CombineField label="Ehegattensplitting">
+        <CombineField label="Ehegattensplitting" labelSuffix={<InfoTip text="Bei aktiviertem Splitting wird das gemeinsam zu versteuernde Einkommen nach §32a Abs. 5 EStG halbiert besteuert. Eine Steuerklassen-Auswahl ist bei Zusammenveranlagung nicht erforderlich. Die Auswirkungen erscheinen automatisch in den Ergebnissen unten." />}>
           <label className="combine-checkbox-field">
             <input
               type="checkbox"
