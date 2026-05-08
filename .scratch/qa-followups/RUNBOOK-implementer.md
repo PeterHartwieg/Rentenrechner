@@ -76,6 +76,17 @@ Working tree: your isolated worktree, on a fresh branch
 `agent/<NUM>-<short-slug>` cut from main. Slug = kebab-case, ≤4 words from
 the issue title.
 
+**Base SHA check (mandatory, before any edits).** Worktree pools sometimes
+fork from a stale base; this is the cheapest thing to catch and the most
+expensive thing to miss. Run:
+
+  git log -1 --oneline main
+
+The first 7+ chars of the SHA must match `<EXPECTED_BASE_SHA>` (passed in
+by the orchestrator from `gh api .../branches/main`). If they differ, STOP
+immediately and emit `RESULT: STALE_BASE <reported-SHA>`. Do not improvise;
+the orchestrator handles the refresh + respawn.
+
 Project conventions: read CLAUDE.md and CONTEXT.md before editing.
 
 Hard constraints:
@@ -176,23 +187,44 @@ Nothing else. No preamble, no apology, no summary.
 1. Spawn reviewer (Opus). Capture its output.
 2. If `REVIEW: 0 items` → break, go to step 4.
 3. If `REVIEW: <N> items` and round < 3:
-   - Resume the implementer subagent (SendMessage):
-     ```
-     Reviewer round <K> found <N> items. Address each, then re-run
-     `npm run verify`. Do not broaden scope; do not refactor outside the
-     items. Commit and re-emit `RESULT: SUCCESS` with the new diff. If an
-     item would force you into a HITL zone, emit `RESULT: HITL_DRIFT`.
+   - Spawn a **fresh** implementer subagent. **Do NOT use SendMessage** to
+     resume the original — it isn't reliably available in cloud routines.
+     The worktree from round 1 still exists; pass its path as a prior so
+     the new agent works in place.
+     - `subagent_type`: `general-purpose`
+     - `model`: `sonnet`
+     - `isolation`: do NOT set (would create a new worktree and lose prior
+       work). Tell the agent to operate at the existing path with
+       `git -C <PATH>` or `cd <PATH> &&` prefixes.
+     - Prompt:
+       ```
+       Continuing implementation of issue gh#<NUM>. Existing worktree:
+       <WORKTREE_PATH>. Branch: agent/<NUM>-<slug>. Prior round's commit
+       is HEAD; do NOT amend it — make a NEW commit on top.
 
-     Items:
-     <NUMBERED_LIST_FROM_REVIEWER>
-     ```
+       Reviewer round <K> found <N> items. Address each, then re-run
+       `npm run verify`. Do NOT broaden scope; do NOT refactor outside
+       the items. After commit, output the updated diff
+       (`git -C <WORKTREE_PATH> diff main..HEAD`) inside a fenced ```diff
+       block, then emit `RESULT: SUCCESS`.
+
+       If an item would force you into a HITL zone, emit
+       `RESULT: HITL_DRIFT <one-line reason>`.
+
+       Curated triage instructions (context — do not re-derive scope):
+
+       <CURATED_COMMENT_VERBATIM>
+
+       Review items to address:
+       <NUMBERED_LIST_FROM_REVIEWER>
+       ```
    - Capture new diff from `RESULT: SUCCESS`. Increment round. Go to (1).
    - If implementer returns `HITL_DRIFT` or `VERIFY_FAILED`: handle as in
      step 2 (comment + relabel `ready-for-human`).
 4. If round = 3 and items still non-zero:
-   - Push the branch so a human can pick up:
-     `git push origin agent/<num>-<slug>` (run via the implementer subagent,
-     since it owns the worktree — SendMessage: "Push the branch and exit").
+   - Orchestrator pushes the branch directly so a human can pick up
+     (no subagent needed; `gh auth setup-git` configured the credentials):
+     `git -C <WORKTREE_PATH> push origin agent/<num>-<slug>`
    - Comment on the issue with the **last** review's items in a fenced
      block, plus a one-line summary: "Stuck after 3 review rounds. Branch
      pushed; human pickup required."
@@ -204,8 +236,8 @@ Nothing else. No preamble, no apology, no summary.
 
 Reviewer returned `0 items`. Now:
 
-1. Push the branch (SendMessage to implementer: "Push origin
-   `agent/<num>-<slug>` and exit").
+1. Orchestrator pushes the branch directly (no subagent needed):
+   `git -C <WORKTREE_PATH> push origin agent/<num>-<slug>`
 2. Open the PR (orchestrator runs):
 
    ```
@@ -277,6 +309,72 @@ no PR opened. Branch can be pushed for human pickup if useful.
 1 tick per day, Europe/Berlin: 05:00. Cron: `0 5 * * *`, TZ
 `Europe/Berlin`. Runs ~1 hour after the triage cron's 04:00 first tick so
 that the morning-triaged batch is ready.
+
+## Operational notes (cloud-specific gotchas)
+
+Distilled from prior multi-agent waves. The cloud routine has no access to
+local memory, so internalize these here.
+
+### Pre-spawn: capture expected base SHA
+
+Before spawning each implementer subagent, the orchestrator captures the
+current main HEAD via:
+
+```
+EXPECTED_BASE_SHA=$(gh api repos/PeterHartwieg/Rentenrechner/branches/main \
+  --jq '.commit.sha[:12]')
+```
+
+Pass this as `<EXPECTED_BASE_SHA>` into the implementer's prompt template
+(see step 2). The implementer's mandatory base check uses it to detect a
+stale-cached worktree. Cache invalidation problems are cheap to detect and
+expensive to miss — never skip this.
+
+### Capture and reuse the worktree path
+
+The Agent tool returns a worktree path in its result envelope when the
+agent makes commits. Capture it from the implementer's first
+`RESULT: SUCCESS` — every subsequent operation (round-2 spawn, reviewer
+diff, push) needs that path. Lose it and you can't continue the issue.
+
+### Verify the implementer actually committed
+
+Implementer subagents sometimes report SUCCESS with edits but no commit
+(verify ran, `git commit` skipped). Before treating SUCCESS as real, the
+orchestrator runs:
+
+```
+git -C <WORKTREE_PATH> log --oneline main..HEAD
+```
+
+Must show ≥1 commit. If empty, treat as `VERIFY_FAILED` — relabel
+`ready-for-human`, no PR.
+
+### Reviewer must check integration, not just file existence
+
+When the curated "What to change" says "wire X into Y" (e.g. import a new
+component into `App.tsx`), the reviewer must verify X is *imported and
+rendered* in Y, not just that X's file exists. Component existence ≠
+integration. Append to the reviewer prompt for any wiring task:
+
+> Verify integration: grep the named integration target for the new
+> component's import. If the component file exists but isn't imported,
+> that's a blocker, not a nit.
+
+### Concise subagent prompts
+
+Target ~400 words per implementer/reviewer prompt for typical issues, ~600
+for math-heavy. Point at files instead of restating their contents
+(`Read CONTEXT.md` beats inlining it). Don't restate CLAUDE.md unless one
+specific constraint is load-bearing for *this* issue. More tokens = worse
+work, not better — agents pattern-match on irrelevant priors instead of
+focusing on what's specific.
+
+### Trust your own git log over agent claims about main
+
+Reviewers occasionally mis-narrate which SHA is on main, especially after
+a rebase. When a reviewer asserts something about main's state, verify
+with `git -C <WORKTREE_PATH> log -3 --oneline main` before trusting it.
 
 ## Cost notes
 
