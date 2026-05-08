@@ -159,7 +159,7 @@ export const publicRouteRegistry = {
     metaDescription:
       'Kostenloser Rechner für deine Altersvorsorge: ETF, bAV, Riester, Basisrente, ' +
       'AVD und private Rente vergleichen. Lokal im Browser, kein Account, Werte 2026.',
-    h1: 'Deine Altersvorsorge im Blick',
+    h1: 'Rente planen, Produkte vergleichen.',
     summary:
       'Modellrechner für die deutsche Altersvorsorge mit Werten 2026. Vergleicht alle ' +
       'Schicht-1- bis Schicht-3-Wege unter denselben Annahmen, ermittelt Rentenlücke und ' +

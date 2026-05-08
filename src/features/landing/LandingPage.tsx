@@ -114,12 +114,9 @@ export function LandingPage({ onChoice, navigate }: Props) {
 
       <main className="landing-main">
         <div className="landing-hero">
-          <h1 className="landing-headline">Deine Altersvorsorge im Blick</h1>
+          <h1 className="landing-headline">Rente planen, Produkte vergleichen.</h1>
           <p className="landing-subline">
-            Berechne, was du in Rente bekommen wirst — und wo dein nächster Euro
-            am meisten bewirkt. Hilfreich besonders, wenn du deine{' '}
-            <a href="/rentenluecke-rechner">Rentenlücke berechnen</a> möchtest.
-            Keine Steuer-, Rechts- oder Anlageberatung.
+            Rentenrechner mit Steuern und Krankenkassenbeiträgen, auch für Betriebsrente und ETF.
           </p>
         </div>
 
@@ -132,8 +129,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
               </div>
               <h2 className="landing-card-title">Mein Plan</h2>
               <p className="landing-card-desc">
-                Persönliche Angaben und bestehende Verträge — oder leg ohne los,
-                wenn du neu anfängst. Empfehlung, wo dein nächster Euro am meisten bringt.
+                Plane deine Rente mithilfe von Vergleichen und Empfehlungen.
               </p>
               <button
                 type="button"
@@ -154,8 +150,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
               </div>
               <h2 className="landing-card-title">Produkte vergleichen</h2>
               <p className="landing-card-desc">
-                ETF, bAV, Versicherung, Basisrente, AVD und Riester direkt nebeneinander
-                — gleiche Netto-Belastung, faire Zahlen.
+                Betriebsrente, ETF und Privatrente direkt vergleichen, bei gleichem Nettoaufwand.
               </p>
               <button
                 type="button"
@@ -175,13 +170,8 @@ export function LandingPage({ onChoice, navigate }: Props) {
             atomically as those issues land. */}
         <nav className="landing-hub" aria-labelledby="landing-hub-heading">
           <h2 id="landing-hub-heading" className="landing-hub-heading">
-            Erkunde Themen
+            Alles im Überblick
           </h2>
-          <p className="landing-hub-intro">
-            Schau dir gezielt die Bausteine deiner Altersvorsorge an — Rentenlücke,
-            betriebliche und private Vorsorge, geförderte Verträge oder das
-            gesamte Portfolio.
-          </p>
           <div className="landing-hub-clusters">
             {HUB_CLUSTERS.map((cluster) => (
               <section key={cluster.heading} className="landing-hub-cluster">

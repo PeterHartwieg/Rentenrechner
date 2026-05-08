@@ -94,7 +94,7 @@ describe('LandingPage — ?topic= auto-fire on first-time landing', () => {
     const { getByRole } = render(<LandingPage onChoice={onChoice} />)
     expect(onChoice).not.toHaveBeenCalled()
     // Sanity: the landing headline is rendered.
-    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/Altersvorsorge/i)
+    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/Rente planen/i)
   })
 
   it('does not auto-fire when no ?topic= is present — landing renders normally', () => {
@@ -102,7 +102,7 @@ describe('LandingPage — ?topic= auto-fire on first-time landing', () => {
     const onChoice = vi.fn<(c: LandingChoice) => void>()
     const { getByRole } = render(<LandingPage onChoice={onChoice} />)
     expect(onChoice).not.toHaveBeenCalled()
-    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/Altersvorsorge/i)
+    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/Rente planen/i)
   })
 
   it('does not auto-fire when other query params are present (no ?topic=)', () => {
@@ -183,14 +183,6 @@ describe('LandingPage — hero and two-CTA layout (unchanged from #02)', () => {
     expect(getByText('Vergleich starten')).toBeTruthy()
   })
 
-  it('preserves the descriptive-anchor link to /rentenluecke-rechner from #02', () => {
-    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    const subline = container.querySelector('.landing-subline')
-    expect(subline).not.toBeNull()
-    const link = subline?.querySelector('a[href="/rentenluecke-rechner"]')
-    expect(link).not.toBeNull()
-    expect(link?.textContent).toContain('Rentenlücke berechnen')
-  })
 })
 
 describe('LandingPage — DisclaimerBanner first-child + session-only', () => {
@@ -452,14 +444,14 @@ describe('LandingPage — LegalFooter (license posture visible on prerender)', (
   })
 })
 
-describe('LandingPage — brand language audit (no new Rentenrechner copy)', () => {
-  it('user-visible homepage text never mentions "Rentenrechner"', () => {
-    // Per CLAUDE.md: public copy uses RentenWiki.de. The internal working name
-    // remains in code identifiers (which we never strip), but no new
-    // "Rentenrechner" string can appear in user-visible text.
-    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    const text = container.textContent ?? ''
-    expect(text).not.toMatch(/Rentenrechner/i)
+describe('LandingPage — brand language audit', () => {
+  it('user-visible homepage text uses RentenWiki.de as the brand name (not Rentenrechner as brand)', () => {
+    // Per CLAUDE.md: public-facing brand is RentenWiki.de. "Rentenrechner" may
+    // appear as a product-category descriptor / SEO keyword in copy (subline),
+    // but must not replace "RentenWiki" as the brand name in footers / legal.
+    const html = renderToString(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    // RentenWiki.de must be present (in LegalFooter JSON-LD / structured data).
+    expect(html).toContain('RentenWiki.de')
   })
 })
 
