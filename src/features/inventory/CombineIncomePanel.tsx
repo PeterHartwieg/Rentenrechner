@@ -15,14 +15,19 @@ import './InventoryWizard.css'
 import { useState, useRef, useEffect } from 'react'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
+import type { EvidenceState } from '../../domain/instances'
 import { formatCurrency } from '../../utils/format'
 import { useFeedbackTarget } from '../qa-feedback'
+import { PRODUCT_EVIDENCE_FIELDS, EVIDENCE_FIELD_GERMAN_LABELS } from '../../app/evidence'
+import { evidenceStateToProvKind } from '../results/provenanceHelpers'
 
 interface CombineIncomePanelProps {
   combinedResult: CombinedResult
   perInstanceResults: Record<string, ProductResult[]>
   scenarioId: string
   scenarioLabel: string
+  /** Maps instanceId → evidenceMap for per-field estimate detail in the popover. */
+  instanceEvidenceMaps?: Record<string, Record<string, EvidenceState>>
 }
 
 export function CombineIncomePanel({
@@ -30,6 +35,7 @@ export function CombineIncomePanel({
   perInstanceResults,
   scenarioId,
   scenarioLabel,
+  instanceEvidenceMaps,
 }: CombineIncomePanelProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const wrapRef = useRef<HTMLSpanElement>(null)
@@ -110,11 +116,41 @@ export function CombineIncomePanel({
               <div className="combine-estimate-popover" role="tooltip" {...estimatePopoverProps}>
                 <strong>Geschätzte Eingaben:</strong>
                 <ul>
-                  {estimatedResults.map((r) => (
-                    <li key={`${r.instanceId ?? r.productId}-${r.scenarioId}`}>
-                      {r.label} — Eingaben geschätzt
-                    </li>
-                  ))}
+                  {estimatedResults.map((r) => {
+                    const instanceId = r.instanceId ?? r.productId
+                    const evidenceMap = instanceEvidenceMaps?.[instanceId] ?? {}
+                    const fieldKeys = PRODUCT_EVIDENCE_FIELDS[r.productId] ?? []
+                    // A field counts as estimated when its evidence state maps to
+                    // 'model' (explicit model_estimate) or 'default' (absent from map).
+                    const estimatedFields = fieldKeys.filter((key) => {
+                      const provKind = evidenceStateToProvKind(evidenceMap[key])
+                      return provKind === 'model' || provKind === 'default'
+                    })
+                    if (estimatedFields.length > 0) {
+                      return (
+                        <li key={`${instanceId}-${r.scenarioId}`}>
+                          <span className="combine-estimate-instance-label">{r.label}</span>
+                          <ul className="combine-estimate-field-list">
+                            {estimatedFields.map((field) => {
+                              const provKind = evidenceStateToProvKind(evidenceMap[field])
+                              const kindLabel = provKind === 'model' ? 'Schätzwert' : 'Unbekannt'
+                              const germanLabel = EVIDENCE_FIELD_GERMAN_LABELS[field] ?? field
+                              return (
+                                <li key={field}>
+                                  {germanLabel} — {kindLabel}
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        </li>
+                      )
+                    }
+                    return (
+                      <li key={`${instanceId}-${r.scenarioId}`}>
+                        {r.label} — Eingaben geschätzt
+                      </li>
+                    )
+                  })}
                 </ul>
               </div>
             )}
