@@ -70,44 +70,86 @@ conservative on purpose.
 
 ### Soft criteria — agent's judgement
 
-Otherwise, pick from `ready-for-agent` / `ready-for-human` / `needs-info` /
-`duplicate` / `wontfix`:
+For non-HITL-zone changes, **default to `ready-for-agent`**. The implementer
+agent + Opus reviewer + 3-round revision loop is the safety net. Reserve
+`ready-for-human` for genuine product/compliance judgement — not for "the
+design isn't fully specified" or "multiple competing fixes exist".
 
-- **`ready-for-agent`** when *all* of:
-  - Issue body is unambiguous about what's wrong and what should change
-  - Target id is `exact` or `field` precision (not `section` / `view`)
-  - Severity is `minor` or `nit`
-  - Type is `copy`, `a11y`, simple `bug`, or `chore`
-  - The change is plausibly localized to one or two files outside the HITL zones above
+#### Decision tree (apply in order)
 
-- **`ready-for-human`** when any of:
-  - Severity is `blocker` or `major`
-  - Reporter is asking for a feature, redesign, or product judgement, not a fix
-  - The choice between fixes has materially different **product or
-    compliance** implications (legal disclaimer wording, fee-disclosure
-    labels, navigation patterns affecting multiple pages, anything that
-    crosses the HITL zones above). **Implementation flavor on its own — CSS
-    approach, where to flex, which container to wrap — does not count.**
-    Multiple plausible fixes for a UI/layout bug stay `ready-for-agent`; the
-    implementer picks the most reasonable one and documents it in the PR.
-  - Cross-cutting (touches multiple cards / views / surfaces)
-  - You're not confident the change is outside the HITL zones — escalate
+1. **HITL zone touched?** (engine, rules, storage, legal, compliance
+   surfaces, product registries, anything that would change a
+   tax/payout/funding/KV-PV/cohort number — see hard list above)
+   → `ready-for-human`. No exceptions.
 
-- **`needs-info`** when:
-  - Issue body is too vague to act on (e.g. "this looks weird")
-  - Target id is a coarse `section` / `view` and the body doesn't disambiguate
-    which element is wrong
-  - You can't form a mental reproduction from the issue context
+2. **Meta-review or open-ended feature request?** Tester comment is
+   "please review this flow", "I don't understand", "this should be
+   overhauled" *without enumerating defects*, or "maybe we could add
+   feature X" → `ready-for-human`. They want product judgement, not a fix.
 
-- **`duplicate`** when:
-  - The issue is the same finding as another open or recently-closed issue.
-    Set `Blocked by:` to `gh#<other-number>` in the curated comment.
+3. **Issue body too vague to act on?** ("This looks weird"; coarse
+   `section`/`view` precision with no comment-level disambiguation)
+   → `needs-info`.
 
-- **`wontfix`** when:
-  - Out of scope for the calculator (e.g. browser bug, OS-level issue)
-  - Already addressed by a recent commit — check
-    `gh search prs --repo PeterHartwieg/Rentenrechner --state merged --created '>=2 weeks ago'`
-    (or equivalent) before deciding.
+4. **Otherwise — tester names a specific defect AND gives a clear ask?**
+   → **`ready-for-agent`**, even when the exact implementation choice
+   (CSS approach, where to flex, which container, which selector) is
+   open. The implementer picks reasonable defaults and documents them
+   in the PR. The reviewer catches bad picks; that's their job.
+
+#### Concrete patterns that STAY `ready-for-agent`
+
+These all surfaced as wrongly-escalated in past triage runs. They are
+agent-bound, not human-bound:
+
+- **Removing a redundant UI element the tester names.** "We don't need
+  this heading" is a deletion task — not an information-architecture call.
+- **Adding explanatory copy for a defined term in a tooltip/popover.**
+  The existing legend, glossary, or sibling panel text is the source.
+- **Enumerating data the UI already has.** "List which fields are
+  estimated" → render task using existing evidence-state / provenance
+  helpers.
+- **Fixing a tooltip whose defects the tester enumerates.** "Wrong order,
+  inconsistent currency format, weird wrapping" → three concrete fixes;
+  the tester just told you the spec.
+
+#### Do NOT escalate just because
+
+- **"Multiple competing fixes exist."** Implementation flavor (CSS
+  approach, where to flex, which container to wrap, choice of breakpoint)
+  stays with the implementer. The reviewer catches bad picks.
+- **"No formal design doc exists for this fix."** The tester's complaint
+  IS the spec. If you find yourself writing 3+ acceptance criteria that
+  fully specify the fix, the spec exists — that's `ready-for-agent`, not
+  `ready-for-human`.
+- **"I'm not 100% sure of the right implementation."** The 3-round review
+  loop catches mistakes. HITL is for product/compliance judgement, not
+  implementation uncertainty.
+
+#### Cases that DO warrant `ready-for-human`
+
+Beyond rules 1 and 2 above:
+
+- The tester's ask requires NEW product/copy they didn't specify
+  (cross-product layout decisions, choosing between competing UX
+  paradigms, structural redesigns, conceptual decisions about new
+  chart series / data shapes).
+- Severity `blocker` or `major` AND the fix is not localized to one
+  or two non-HITL UI files.
+- Cross-cutting **structural** changes (multiple cards/views with
+  coordinated layout changes). Multiple instances of the same small
+  fix stays `ready-for-agent`.
+
+#### Other verdicts
+
+- **`duplicate`** when the issue is the same finding as another open or
+  recently-closed issue. Set `Blocked by:` to `gh#<other-number>` in the
+  curated comment.
+
+- **`wontfix`** when out of scope (browser bug, OS-level issue) or
+  already addressed by a recent commit — check
+  `gh search prs --repo PeterHartwieg/Rentenrechner --state merged --created '>=2 weeks ago'`
+  before deciding.
 
 ## Output
 
