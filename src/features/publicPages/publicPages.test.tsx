@@ -1248,7 +1248,6 @@ describe('EtfVsBavPage — prerender disclaimer', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
 // Issue #4: .public-cta color cascade regression — white text on blue button
 // ---------------------------------------------------------------------------
 
@@ -1291,5 +1290,59 @@ describe('.public-cta color cascade — issue #4 regression', () => {
     // that beats .public-article a:not(.public-cta) by excluding CTAs from
     // that rule entirely.
     expect(cta!.href).toContain('topic=altersvorsorgeprodukte-vergleichen')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue #06: ?view=vergleich — "Verwandte Seiten" Modellrechner Startseite link
+// ---------------------------------------------------------------------------
+
+describe('Public pages — "Verwandte Seiten" Modellrechner Startseite link uses /?view=vergleich', () => {
+  it('RentenluckeRechnerPage renders /?view=vergleich for the Modellrechner Startseite entry', () => {
+    const { container } = render(<RentenluckeRechnerPage />)
+    const verwandteLinks = Array.from(
+      container.querySelectorAll('.public-internal-links a'),
+    )
+    const startseiteLink = verwandteLinks.find(
+      (a) => a.textContent?.includes('Modellrechner Startseite'),
+    )
+    expect(startseiteLink).not.toBeNull()
+    expect(startseiteLink?.getAttribute('href')).toBe('/?view=vergleich')
+  })
+
+  it('BasisrenteRechnerPage renders /?view=vergleich for the Modellrechner Startseite entry', () => {
+    const { container } = render(<BasisrenteRechnerPage />)
+    const verwandteLinks = Array.from(
+      container.querySelectorAll('.public-internal-links a'),
+    )
+    const startseiteLink = verwandteLinks.find(
+      (a) => a.textContent?.includes('Modellrechner Startseite'),
+    )
+    expect(startseiteLink).not.toBeNull()
+    expect(startseiteLink?.getAttribute('href')).toBe('/?view=vergleich')
+  })
+
+  it('BavRechnerPage renders /?view=vergleich for the Modellrechner Startseite entry', () => {
+    const { container } = render(<BavRechnerPage />)
+    const verwandteLinks = Array.from(
+      container.querySelectorAll('.public-internal-links a'),
+    )
+    const startseiteLink = verwandteLinks.find(
+      (a) => a.textContent?.includes('Modellrechner Startseite'),
+    )
+    expect(startseiteLink).not.toBeNull()
+    expect(startseiteLink?.getAttribute('href')).toBe('/?view=vergleich')
+  })
+
+  it('EtfVsBavPage renders /?view=vergleich for the Modellrechner Startseite entry', () => {
+    const { container } = render(<EtfVsBavPage />)
+    const verwandteLinks = Array.from(
+      container.querySelectorAll('.public-internal-links a'),
+    )
+    const startseiteLink = verwandteLinks.find(
+      (a) => a.textContent?.includes('Modellrechner Startseite'),
+    )
+    expect(startseiteLink).not.toBeNull()
+    expect(startseiteLink?.getAttribute('href')).toBe('/?view=vergleich')
   })
 })

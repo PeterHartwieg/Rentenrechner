@@ -62,7 +62,7 @@ export function AltersvorsorgeproduktePage() {
           <h2>Verwandte Seiten</h2>
           <ul className="public-internal-links">
             <li>
-              <a href="/">RentenWiki.de — Modellrechner Startseite</a>
+              <a href="/?view=vergleich">RentenWiki.de — Modellrechner Startseite</a>
             </li>
             {ROUTE.relatedRoutes.map((slug) => {
               if (slug === '/') return null

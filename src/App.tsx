@@ -13,6 +13,7 @@ import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
 import { useWorkspaceUiState } from './app/useWorkspaceUiState'
 import { useWorkspace } from './app/useWorkspace'
+import { WORKSPACE_VIEWS } from './app/useWorkspace'
 import type { WorkspaceView } from './app/useWorkspace'
 import { usePortfolioState } from './app/portfolioState'
 import { useRoute, detectSavedMode, appViewFromMode } from './app/useRoute'
@@ -189,6 +190,25 @@ function Calculator({ navigate }: CalculatorProps) {
   } = useCalculatorState()
   const portfolioState = usePortfolioState()
   const workspace = useWorkspace()
+
+  // Issue #6: read `?view=<WorkspaceView>` query param once on mount and
+  // override `activeView`. The override fires after useWorkspace has
+  // initialised from localStorage so the stored value does not win.
+  // `history.replaceState` removes the param so a refresh sees the
+  // truly-saved state.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const viewParam = params.get('view')
+    if (viewParam && (WORKSPACE_VIEWS as readonly string[]).includes(viewParam)) {
+      workspace.setActiveView(viewParam as WorkspaceView)
+      params.delete('view')
+      const newSearch = params.toString()
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '')
+      window.history.replaceState(null, '', newUrl)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally empty: run once on mount only
 
   // Workspace chrome QA instrumentation — topbar home button and mode badge.
   const { enabled: qaEnabled } = useQaMode()

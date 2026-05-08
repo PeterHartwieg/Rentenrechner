@@ -48,7 +48,7 @@ export function EtfVsBavPage() {
           <h2>Verwandte Seiten</h2>
           <ul className="public-internal-links">
             <li>
-              <a href="/">RentenWiki.de — Modellrechner Startseite</a>
+              <a href="/?view=vergleich">RentenWiki.de — Modellrechner Startseite</a>
             </li>
             <li>
               <a href="/bav-rechner">bAV Rechner — Betriebliche Altersvorsorge und Entgeltumwandlung</a>

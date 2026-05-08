@@ -50,7 +50,7 @@ export function BavRechnerPage() {
           <h2>Verwandte Seiten</h2>
           <ul className="public-internal-links">
             <li>
-              <a href="/">RentenWiki.de — Modellrechner Startseite</a>
+              <a href="/?view=vergleich">RentenWiki.de — Modellrechner Startseite</a>
             </li>
             <li>
               <a href="/etf-vs-bav">ETF vs. bAV — Vergleich mit gleicher Nettokostenbasis</a>

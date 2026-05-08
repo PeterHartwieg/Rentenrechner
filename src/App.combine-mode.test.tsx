@@ -26,6 +26,54 @@ function saveCombineWorkspace() {
   localStorage.setItem('rentenrechner-workspace-v1', 'angebot')
 }
 
+// ---------------------------------------------------------------------------
+// Issue #6: ?view= query param overrides activeView on mount
+// ---------------------------------------------------------------------------
+
+describe('App — ?view= query param overrides activeView on first mount', () => {
+  it('overrides saved activeView=details with ?view=vergleich', () => {
+    // Arrange: save a combine workspace whose active tab is "details".
+    let workspace = cloneWorkspace(defaultWorkspace)
+    workspace = { ...workspace, mode: 'combine' }
+    workspace = addInstanceToWorkspace(workspace, 'bav')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
+    // Simulate saved activeView = 'details'
+    localStorage.setItem('rentenrechner-workspace-v1', 'details')
+    window.history.pushState(null, '', '/?view=vergleich')
+
+    const { container } = render(<App />)
+
+    // The "vergleich" tab (labelled "Übersicht" in combine mode) should be active.
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'))
+    const vergleichTab = tabs.find((t) => /bersicht/.test(t.textContent ?? ''))
+    expect(vergleichTab).not.toBeNull()
+    expect(vergleichTab?.getAttribute('aria-selected')).toBe('true')
+
+    // The "details" tab should NOT be active.
+    const detailsTab = tabs.find((t) => /Details/.test(t.textContent ?? ''))
+    expect(detailsTab?.getAttribute('aria-selected')).toBe('false')
+  })
+
+  it('preserves saved activeView when no ?view= param is present', () => {
+    // Arrange: save a combine workspace whose active tab is "details".
+    let workspace = cloneWorkspace(defaultWorkspace)
+    workspace = { ...workspace, mode: 'combine' }
+    workspace = addInstanceToWorkspace(workspace, 'bav')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
+    localStorage.setItem('rentenrechner-workspace-v1', 'details')
+    // No ?view= param — URL stays at bare /
+    window.history.pushState(null, '', '/')
+
+    const { container } = render(<App />)
+
+    // The "details" tab should be active (saved state preserved).
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'))
+    const detailsTab = tabs.find((t) => /Details/.test(t.textContent ?? ''))
+    expect(detailsTab).not.toBeNull()
+    expect(detailsTab?.getAttribute('aria-selected')).toBe('true')
+  })
+})
+
 describe('App — Mein Plan combine-mode chrome and profile editing', () => {
   it('uses a Mein Plan heading instead of comparison copy in combine mode', () => {
     saveCombineWorkspace()
