@@ -26,8 +26,6 @@ export function DecisionSummary({
 
   return (
     <section className="decision-summary" aria-label="Entscheidungs-Übersicht">
-      <h3>Was sagt das Ergebnis?</h3>
-
       <div className="decision-headline">
         <div
           className="decision-headline-card"
