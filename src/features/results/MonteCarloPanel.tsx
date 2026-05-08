@@ -15,7 +15,8 @@ import type { ProductId } from '../../domain'
 import type { MonteCarloResult, ProductMonteCarloSummary } from '../../engine/monteCarlo'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
-import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
+import { qaTarget, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
+import { useQaMode } from '../qa-feedback/useQaMode'
 
 interface Props {
   result: MonteCarloResult | null
@@ -42,6 +43,7 @@ function clampPct(value: number): number {
 
 export function MonteCarloPanel({ result }: Props) {
   const [selectedProductId, setSelectedProductId] = useState<ProductId | null>(null)
+  const { enabled: qaEnabled } = useQaMode()
 
   const selectedSummary =
     result?.summaries.find((summary) => summary.productId === selectedProductId) ??
@@ -147,6 +149,7 @@ export function MonteCarloPanel({ result }: Props) {
               type="button"
               className={`mc-range-row${summary.productId === selectedSummary?.productId ? ' active' : ''}`}
               onClick={() => setSelectedProductId(summary.productId)}
+              {...qaTarget(qaEnabled, `results.monteCarloPanel.range.${summary.productId}`, { label: summary.shortLabel })}
             >
               <span className="mc-range-product">
                 <i style={{ background: summary.color }} aria-hidden />
@@ -193,6 +196,7 @@ export function MonteCarloPanel({ result }: Props) {
               className={active ? 'active' : ''}
               onClick={() => setSelectedProductId(summary.productId)}
               title={`${summary.label} anzeigen`}
+              {...qaTarget(qaEnabled, `results.monteCarloPanel.tab.${summary.productId}`, { label: summary.shortLabel })}
             >
               <span style={{ background: summary.color }} aria-hidden />
               {summary.shortLabel}
