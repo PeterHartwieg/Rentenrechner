@@ -12,6 +12,7 @@
 import './ContractDecisionCards.css'
 import type { ContractDecision } from '../../app/contractDecisions'
 import { renderAtom } from '../../content/recommendationCopy'
+import { DECISION_KIND_DESCRIPTIONS } from '../../content/optimiereCopy'
 import { formatCurrency } from '../../utils/format'
 import { qaTarget, useQaMode } from '../../features/qa-feedback'
 
@@ -147,7 +148,9 @@ export function ContractDecisionCards({
               )}
             </div>
 
-            <p className="contract-decision-description">{decision.description}</p>
+            <p className="contract-decision-description">
+              {decision.description || DECISION_KIND_DESCRIPTIONS[decision.kind]}
+            </p>
 
             {decision.atoms.length > 0 && (
               <ul className="contract-decision-atoms">

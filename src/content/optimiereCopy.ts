@@ -13,6 +13,15 @@
 import type { ContractDecision } from '../app/contractDecisions'
 
 // ---------------------------------------------------------------------------
+// Overview step intro
+// ---------------------------------------------------------------------------
+
+export const OPTIMIERE_OVERVIEW_HEADING = 'Deine Verträge im Überblick'
+
+export const OPTIMIERE_OVERVIEW_INTRO =
+  'Jede Zeile entspricht einem deiner Verträge — klicke auf „Anpassen", um Optionen wie Weiterführen, Kündigen, Beitrag erhöhen oder Übertragen durchzuspielen. Ausgewählte Pläne werden am Ende als What-if-Szenarien gespeichert.'
+
+// ---------------------------------------------------------------------------
 // Disclaimer step
 // ---------------------------------------------------------------------------
 
@@ -82,6 +91,23 @@ export const AUDIT_FLAG_LABELS: Record<string, string> = {
   riester_pre_2008_zulage: 'Kinderzulage prüfen',
   // Cap atoms that are per-instance (AVD)
   avd_cap_remaining: 'AVD-Beitragslimit',
+}
+
+// ---------------------------------------------------------------------------
+// Decision kind descriptions (one-sentence "what this does" for each card)
+// ---------------------------------------------------------------------------
+
+export const DECISION_KIND_DESCRIPTIONS: Record<ContractDecision['kind'], string> = {
+  weiterfuehren:
+    'Vertrag läuft unverändert weiter — diese Option dient als Referenz für den Vergleich.',
+  'beitrag-erhoehen':
+    'Du zahlst ab sofort einen höheren monatlichen Beitrag in diesen Vertrag ein.',
+  beitragsfrei:
+    'Du stellst den Vertrag beitragsfrei: keine weiteren Einzahlungen, das angesparte Kapital bleibt investiert.',
+  kuendigen:
+    'Vertrag wird aufgelöst und der Rückkaufswert (nach Stornoabzug und Steuern) ausgezahlt.',
+  uebertragen:
+    'Das Guthaben wird auf einen anderen Vertrag übertragen, um Kosten zu senken oder eine bessere Förderung zu nutzen.',
 }
 
 // ---------------------------------------------------------------------------

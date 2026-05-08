@@ -27,6 +27,8 @@ import {
   OPTIMIERE_BANNER,
   OPTIMIERE_DISABLED_TOOLTIP,
   OPTIMIERE_BUTTON_LABEL,
+  OPTIMIERE_OVERVIEW_HEADING,
+  OPTIMIERE_OVERVIEW_INTRO,
 } from '../../content/optimiereCopy'
 
 afterEach(() => cleanup())
@@ -278,6 +280,86 @@ describe('OptimiereVorsorgeModal', () => {
     )
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('step counter is absent on disclaimer step', () => {
+    const { ws } = setupBavWorkspace()
+    const { queryByText } = render(
+      <OptimiereVorsorgeModal
+        workspace={ws}
+        baselineCombined={makeBaseline()}
+        rules={de2026Rules}
+        onClose={() => {}}
+        onCreatePlans={() => {}}
+      />,
+    )
+    expect(queryByText(/Schritt \d von 4/)).toBeNull()
+  })
+
+  it('step counter shows "Schritt 1 von 4" on overview step', () => {
+    const { ws } = setupBavWorkspace()
+    const { getByText } = render(
+      <OptimiereVorsorgeModal
+        workspace={ws}
+        baselineCombined={makeBaseline()}
+        rules={de2026Rules}
+        onClose={() => {}}
+        onCreatePlans={() => {}}
+      />,
+    )
+    fireEvent.click(getByText(OPTIMIERE_BUTTON_ACCEPT))
+    expect(getByText('Schritt 1 von 4')).toBeTruthy()
+  })
+
+  it('step counter shows "Schritt 2 von 4" on instance step', () => {
+    const { ws } = setupBavWorkspace()
+    const { getByText, getAllByText } = render(
+      <OptimiereVorsorgeModal
+        workspace={ws}
+        baselineCombined={makeBaseline()}
+        rules={de2026Rules}
+        onClose={() => {}}
+        onCreatePlans={() => {}}
+      />,
+    )
+    fireEvent.click(getByText(OPTIMIERE_BUTTON_ACCEPT))
+    const anpassenButtons = getAllByText('Anpassen')
+    fireEvent.click(anpassenButtons[0])
+    expect(getByText('Schritt 2 von 4')).toBeTruthy()
+  })
+
+  it('overview step renders heading and intro paragraph', () => {
+    const { ws } = setupBavWorkspace()
+    const { getByText } = render(
+      <OptimiereVorsorgeModal
+        workspace={ws}
+        baselineCombined={makeBaseline()}
+        rules={de2026Rules}
+        onClose={() => {}}
+        onCreatePlans={() => {}}
+      />,
+    )
+    fireEvent.click(getByText(OPTIMIERE_BUTTON_ACCEPT))
+    expect(getByText(OPTIMIERE_OVERVIEW_HEADING)).toBeTruthy()
+    expect(getByText(OPTIMIERE_OVERVIEW_INTRO)).toBeTruthy()
+  })
+
+  it('overview row shows option count hint', () => {
+    const { ws } = setupBavWorkspace()
+    const { getByText } = render(
+      <OptimiereVorsorgeModal
+        workspace={ws}
+        baselineCombined={makeBaseline()}
+        rules={de2026Rules}
+        onClose={() => {}}
+        onCreatePlans={() => {}}
+      />,
+    )
+    fireEvent.click(getByText(OPTIMIERE_BUTTON_ACCEPT))
+    // The option-count hint should appear somewhere containing "Option"
+    const container = getByText(OPTIMIERE_OVERVIEW_HEADING).closest('.optimiere-modal__body')
+    expect(container).toBeTruthy()
+    expect(container!.textContent).toMatch(/\d+\s*(Option|Optionen)/)
   })
 })
 
