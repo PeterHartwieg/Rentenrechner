@@ -182,8 +182,9 @@
  */
 .rentenlucke-dashboard__cta-group {
   display: flex;
-  align-items: end;
-  justify-content: stretch;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   width: 100%;
 }
 
