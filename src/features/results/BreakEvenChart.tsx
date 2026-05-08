@@ -399,8 +399,9 @@ function BreakEvenTooltip({
   return (
     <div className="break-even-tooltip">
       <div className="break-even-tooltip__label">Alter {label}</div>
-      <div className="break-even-tooltip__benchmark">
-        Netto eingezahlt <strong>{formatCurrency(paidIn, 0)}</strong>
+      <div className="break-even-tooltip__row break-even-tooltip__benchmark">
+        <span className="break-even-tooltip__name">Netto eingezahlt</span>
+        <span className="break-even-tooltip__value">{formatCurrency(paidIn, 0)}</span>
       </div>
       <div className="break-even-tooltip__rows">
         {renderedProducts.map((result) => {

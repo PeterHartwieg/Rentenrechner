@@ -102,11 +102,18 @@
   margin-bottom: 6px;
 }
 
+.break-even-tooltip__benchmark {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #64748b;
+}
+
 .break-even-tooltip__rows {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 220px;
+  min-width: 260px;
 }
 
 .break-even-tooltip__group {
@@ -124,16 +131,20 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 16px;
+  white-space: nowrap;
 }
 
 .break-even-tooltip__name {
   text-align: left;
+  white-space: nowrap;
 }
 
 .break-even-tooltip__value {
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: #0f172a;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .lifecycle-crossovers {
