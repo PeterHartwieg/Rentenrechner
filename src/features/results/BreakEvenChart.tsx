@@ -27,6 +27,9 @@ import { lifecyclePickerLabel } from './lifecycleLabels'
 import { qaTargetAttrs, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 import { useQaMode } from '../qa-feedback/useQaMode'
 
+const GRV_PAYOUT_KEY = 'grv__cumNetPayout'
+const GRV_COLOR = '#94a3b8'
+
 interface Props {
   selectedResults: LifecycleSeriesResult[]
   productColors: Record<string, string>
@@ -37,6 +40,7 @@ interface Props {
   singleSelection?: boolean
   title?: string
   description?: string
+  grvNetMonthlyPension?: number
 }
 
 const PAID_IN_COLOR = '#64748b'
@@ -51,6 +55,7 @@ export function BreakEvenChart({
   singleSelection = false,
   title = 'Kapital und Auszahlungen im Alter',
   description = 'Vergleicht Netto-Einzahlungen, Restkapital und kumulierte Netto-Auszahlungen über Anspar- und Rentenphase.',
+  grvNetMonthlyPension,
 }: Props) {
   // Default chart picker to the best product (or the first available).
   const defaultProductId = useMemo<string | undefined>(() => {
@@ -80,10 +85,25 @@ export function BreakEvenChart({
   }, [pickedIds, availableIds, defaultProductId])
 
   const horizonAge = Math.max(LIFECYCLE_HORIZON_AGE, retirementEndAge)
-  const data = useMemo(
+  const baseData = useMemo(
     () => buildLifecycleLineSeries(selectedResults, startAge, retirementAge, horizonAge),
     [selectedResults, startAge, retirementAge, horizonAge],
   )
+
+  const showGrv = typeof grvNetMonthlyPension === 'number' && grvNetMonthlyPension > 0
+
+  const data = useMemo(() => {
+    if (!showGrv || !grvNetMonthlyPension) return baseData
+    const annualGrv = grvNetMonthlyPension * 12
+    let cumGrv = 0
+    return baseData.map((point) => {
+      if (point.age <= retirementAge) {
+        return { ...point, [GRV_PAYOUT_KEY]: undefined }
+      }
+      cumGrv += annualGrv
+      return { ...point, [GRV_PAYOUT_KEY]: Math.round(cumGrv) }
+    })
+  }, [baseData, showGrv, grvNetMonthlyPension, retirementAge])
 
   const { targetProps: containerTargetProps } = useFeedbackTarget({
     id: 'results.breakEvenChart.container',
@@ -204,6 +224,7 @@ export function BreakEvenChart({
                   productColors={productColors}
                   paidInKey={paidInKey}
                   retirementAge={retirementAge}
+                  showGrv={showGrv}
                 />
               )}
             />
@@ -257,6 +278,19 @@ export function BreakEvenChart({
                 </Fragment>
               )
             })}
+            {showGrv && (
+              <Line
+                type="monotone"
+                name="GRV Netto-Auszahlung kumuliert"
+                dataKey={GRV_PAYOUT_KEY}
+                stroke={GRV_COLOR}
+                strokeWidth={1.5}
+                strokeDasharray="8 4 2 4"
+                dot={false}
+                activeDot={{ r: 3 }}
+                connectNulls={false}
+              />
+            )}
             {breakEvenPoints.map((point) => (
               <ReferenceDot
                 key={point.productId}
@@ -336,6 +370,15 @@ export function BreakEvenChart({
             <span className="lifecycle-legend__line lifecycle-legend__line--dashed" />
             Netto ausgezahlt
           </span>
+          {showGrv && (
+            <span className="lifecycle-legend__item">
+              <span
+                className="lifecycle-legend__line"
+                style={{ borderTopStyle: 'dashed', borderTopColor: GRV_COLOR }}
+              />
+              GRV Netto-Auszahlung kumuliert
+            </span>
+          )}
           <span
             className="lifecycle-legend__item"
             {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
@@ -381,6 +424,7 @@ interface BreakEvenTooltipProps extends TooltipContentProps {
   productColors: Record<string, string>
   paidInKey?: string
   retirementAge: number
+  showGrv?: boolean
 }
 
 function BreakEvenTooltip({
@@ -391,10 +435,13 @@ function BreakEvenTooltip({
   productColors,
   paidInKey,
   retirementAge,
+  showGrv,
 }: BreakEvenTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const valuesByKey = new Map(payload.map((item) => [String(item.dataKey), Number(item.value ?? 0)]))
   const paidIn = paidInKey ? valuesByKey.get(paidInKey) ?? 0 : 0
+  const grvCumPayout = valuesByKey.get(GRV_PAYOUT_KEY)
+  const showGrvRow = showGrv && Number(label) > retirementAge && grvCumPayout !== undefined
 
   return (
     <div className="break-even-tooltip">
@@ -431,6 +478,17 @@ function BreakEvenTooltip({
             </div>
           )
         })}
+        {showGrvRow && (
+          <div className="break-even-tooltip__group">
+            <div className="break-even-tooltip__product" style={{ color: GRV_COLOR }}>
+              Gesetzliche Rente
+            </div>
+            <div className="break-even-tooltip__row">
+              <span className="break-even-tooltip__name">GRV Netto-Auszahlung kumuliert</span>
+              <span className="break-even-tooltip__value">{formatCurrency(grvCumPayout ?? 0, 0)}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
