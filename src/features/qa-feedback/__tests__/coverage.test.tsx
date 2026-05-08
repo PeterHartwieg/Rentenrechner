@@ -844,6 +844,62 @@ describe('Issue 16: GRVInputs — leaf-level QA targets present', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Issue 3: CalculationWarnings — individual cards selectable in QA mode
+// ---------------------------------------------------------------------------
+
+import { CalculationWarnings } from '../../results/CalculationWarnings'
+
+describe('CalculationWarnings — individual warning cards selectable (issue 3)', () => {
+  beforeEach(() => withQaEnabled())
+
+  it('each warning card carries a unique data-qa-target when QA mode is on', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <CalculationWarnings />
+      </QaFeedbackProvider>,
+    )
+    // At least one card instrumented
+    const cards = container.querySelectorAll('[data-qa-target^="results.berechnungshinweise.card."]')
+    expect(cards.length).toBeGreaterThan(0)
+  })
+
+  it('each card has exact precision (leaf, not section)', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <CalculationWarnings />
+      </QaFeedbackProvider>,
+    )
+    const cards = container.querySelectorAll('[data-qa-target^="results.berechnungshinweise.card."]')
+    for (const card of Array.from(cards)) {
+      expect(card.getAttribute('data-qa-precision')).toBe('exact')
+    }
+  })
+
+  it('known card id "2026-steuerregeln" is present', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <CalculationWarnings />
+      </QaFeedbackProvider>,
+    )
+    expect(
+      container.querySelector('[data-qa-target="results.berechnungshinweise.card.2026-steuerregeln"]'),
+    ).not.toBeNull()
+  })
+
+  it('card targets are absent when QA mode is off', () => {
+    window.history.replaceState(null, '', '/')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <CalculationWarnings />
+      </QaFeedbackProvider>,
+    )
+    expect(
+      container.querySelector('[data-qa-target^="results.berechnungshinweise.card."]'),
+    ).toBeNull()
+  })
+})
+
 describe('Issue 16: InsuranceInputs — leaf-level QA targets present', () => {
   beforeEach(() => withQaEnabled())
 
