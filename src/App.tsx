@@ -592,6 +592,7 @@ function Calculator({ navigate }: CalculatorProps) {
               singleSelection
               title="Mein Plan: Kapital und Auszahlungen"
               description="Zeigt dein zusätzliches Vorsorgeportfolio ohne gesetzliche Rente."
+              grvNetMonthlyPension={combineSimulation.statutoryPension.netMonthlyPension}
             />
           )}
           {showLueckeModal && (
@@ -710,6 +711,7 @@ function Calculator({ navigate }: CalculatorProps) {
                 retirementAge={profile.retirementAge}
                 retirementEndAge={assumptions.retirementEndAge}
                 bestProductId={bestCapital?.productId}
+                grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
               />
             </>
           ) : (
