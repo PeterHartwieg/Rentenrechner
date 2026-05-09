@@ -72,6 +72,7 @@ import {
 } from './features/results/portfolioLifecycle'
 import { LIFECYCLE_HORIZON_AGE } from './features/results/lifecycleHorizon'
 import { LegalFooter } from './features/legal/LegalFooter'
+import { InvalidLinkBanner } from './ui/InvalidLinkBanner'
 import {
   qaTargetAttrs,
   setQaWorkspaceContext,
@@ -166,6 +167,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     setAssumptions,
     resetToDefaults,
     setSyncedMonthlyContribution,
+    invalidLink,
+    dismissInvalidLink,
   } = useCalculatorState()
   const portfolioState = usePortfolioState()
   const workspace = useWorkspace()
@@ -882,6 +885,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
         </header>
 
         <DisclaimerBanner />
+
+        {invalidLink && <InvalidLinkBanner onDismiss={dismissInvalidLink} />}
 
         <ShellWorkspaceTabs
           activeView={workspace.activeView}

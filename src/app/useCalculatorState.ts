@@ -11,8 +11,21 @@ import {
   syncMonthlyContributions,
 } from './syncContributions'
 
-function loadInitialState() {
-  return readUrlState() ?? loadSavedState()
+type LoadResult = {
+  state: { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null
+  invalidLink: boolean
+}
+
+function loadInitialState(): LoadResult {
+  const urlResult = readUrlState()
+  if (urlResult.kind === 'valid') {
+    return { state: urlResult.state, invalidLink: false }
+  }
+  if (urlResult.kind === 'invalid') {
+    return { state: loadSavedState(), invalidLink: true }
+  }
+  // absent
+  return { state: loadSavedState(), invalidLink: false }
 }
 
 /**
@@ -54,13 +67,14 @@ function harmonizeOnLoad(
 }
 
 export function useCalculatorState() {
+  const [invalidLink, setInvalidLink] = useState<boolean>(() => loadInitialState().invalidLink)
   const [profile, setProfile] = useState<PersonalProfile>(
-    () => loadInitialState()?.profile ?? defaultProfile,
+    () => loadInitialState().state?.profile ?? defaultProfile,
   )
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(() => {
     const initial = loadInitialState()
-    const baseProfile = initial?.profile ?? defaultProfile
-    const baseAssumptions = initial?.assumptions ?? defaultAssumptions
+    const baseProfile = initial.state?.profile ?? defaultProfile
+    const baseAssumptions = initial.state?.assumptions ?? defaultAssumptions
     return harmonizeOnLoad(baseProfile, baseAssumptions)
   })
 
@@ -96,5 +110,7 @@ export function useCalculatorState() {
     setAssumptions,
     resetToDefaults,
     setSyncedMonthlyContribution,
+    invalidLink,
+    dismissInvalidLink: () => setInvalidLink(false),
   }
 }

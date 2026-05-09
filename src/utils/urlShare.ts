@@ -21,13 +21,20 @@ function fromBase64Url(encoded: string): string {
   return new TextDecoder().decode(bytes)
 }
 
-export function readUrlState(): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
+export type UrlStateResult =
+  | { kind: 'valid'; state: { profile: PersonalProfile; assumptions: ScenarioAssumptions } }
+  | { kind: 'invalid' }
+  | { kind: 'absent' }
+
+export function readUrlState(): UrlStateResult {
   try {
     const encoded = new URLSearchParams(window.location.search).get(URL_PARAM)
-    if (!encoded) return null
-    return parseStateFromJson(fromBase64Url(encoded))
+    if (!encoded) return { kind: 'absent' }
+    const state = parseStateFromJson(fromBase64Url(encoded))
+    if (!state) return { kind: 'invalid' }
+    return { kind: 'valid', state }
   } catch {
-    return null
+    return { kind: 'invalid' }
   }
 }
 
