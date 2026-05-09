@@ -20,8 +20,14 @@ type ExportOptions = {
 
 function csvCell(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return ''
-  const s = String(value)
-  return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+  if (typeof value === 'string') {
+    // Neutralize formula injection (Excel / LibreOffice)
+    if (/^[=+\-@\t\r]/.test(value)) value = "'" + value
+    // Quote cells that contain commas, double-quotes, or newlines
+    if (/[",\n]/.test(value)) return '"' + value.replace(/"/g, '""') + '"'
+    return value
+  }
+  return String(value)
 }
 
 function csvRow(...cells: (string | number | null | undefined)[]): string {
