@@ -29,6 +29,7 @@ import {
   loadSavedWorkspace,
   saveWorkspace,
 } from '../storage'
+import { hasShareStateInUrl } from '../utils/urlShareDetect'
 import {
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
@@ -65,8 +66,22 @@ export function applyDisambiguatingLabel<T extends AnyInstance>(instance: T, cou
 // continue to work without changes.
 export { newScenarioId, deepCloneScenario }
 
-function loadInitialWorkspace(): Workspace {
-  return loadSavedWorkspace() ?? deepCloneScenario(defaultWorkspace)
+/**
+ * Load the initial workspace for this session.
+ *
+ * When a valid `?s=` compare share URL is present the active view must show
+ * the shared compare state, not the user's saved combine-mode workspace.
+ * We override `mode` to `'compare'` in that case so `isCombineMode` is false
+ * and `useCalculatorState` (which reads `readUrlState()`) wins for this view.
+ * The underlying combine workspace remains untouched in localStorage — the
+ * override is session-scoped (in-memory only).
+ */
+export function loadInitialWorkspace(): Workspace {
+  const saved = loadSavedWorkspace() ?? deepCloneScenario(defaultWorkspace)
+  if (hasShareStateInUrl() && saved.mode === 'combine') {
+    return { ...saved, mode: 'compare' }
+  }
+  return saved
 }
 
 // ---------------------------------------------------------------------------
