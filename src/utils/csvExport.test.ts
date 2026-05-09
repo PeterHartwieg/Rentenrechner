@@ -242,14 +242,30 @@ describe('buildExportCsv — gh#61 Kapital n. St. column correctness', () => {
     expect(Number(cell)).toBeLessThan(FIXTURE_YEARLY_ROW.balance)
   })
 
-  it('AVD and Riester rows produce the same after-tax capital (same §22 Nr. 5 path)', () => {
+  it('AVD and Riester rows produce the same after-tax capital when both other-income values are equal (same §22 Nr. 5 path)', () => {
     const avdProduct = makeProductWithRow('altersvorsorgedepot', 'Altersvorsorgedepot')
     const riesterProduct = makeProductWithRow('riester', 'Riester')
-    const csvAvd = buildExportCsv({ ...baseOptsNoBav, products: [avdProduct] })
-    const csvRiester = buildExportCsv({ ...baseOptsNoBav, products: [riesterProduct] })
+    const csvAvd = buildExportCsv({ ...baseOptsNoBav, products: [avdProduct], avdOtherAnnualIncome: 0, riesterOtherAnnualIncome: 0 })
+    const csvRiester = buildExportCsv({ ...baseOptsNoBav, products: [riesterProduct], avdOtherAnnualIncome: 0, riesterOtherAnnualIncome: 0 })
     const avdCell = extractKapitalNachSteuerFromCashflows(csvAvd, 'Altersvorsorgedepot')
     const riesterCell = extractKapitalNachSteuerFromCashflows(csvRiester, 'Riester')
     expect(Number(avdCell)).toBeCloseTo(Number(riesterCell), 2)
+  })
+
+  it('AVD and Riester rows respect product-specific other-income (no cross-contamination)', () => {
+    const avdProduct = makeProductWithRow('altersvorsorgedepot', 'Altersvorsorgedepot')
+    const riesterProduct = makeProductWithRow('riester', 'Riester')
+    // Both products in same export, but different other-income values.
+    const csv = buildExportCsv({
+      ...baseOptsNoBav,
+      products: [avdProduct, riesterProduct],
+      avdOtherAnnualIncome: 12000,
+      riesterOtherAnnualIncome: 0,
+    })
+    const avdCell = extractKapitalNachSteuerFromCashflows(csv, 'Altersvorsorgedepot')
+    const riesterCell = extractKapitalNachSteuerFromCashflows(csv, 'Riester')
+    // With higher other-income, AVD has higher marginal tax → lower after-tax.
+    expect(Number(avdCell)).toBeLessThan(Number(riesterCell))
   })
 
   it('bAV row still produces after-tax capital via bAV lump-sum path (unchanged)', () => {

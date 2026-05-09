@@ -16,10 +16,15 @@ type ExportOptions = {
   equityPartialExemption: number
   insuranceOtherAnnualIncome: number
   /** Other annual retirement income used in the §22 Nr. 5 marginal-tax calc for
-   *  AVD and Riester capital lump-sum rows. Corresponds to
-   *  `altersvorsorgedepot.monthlyOtherRetirementIncome * 12` (or the Riester
-   *  equivalent). Defaults to 0 when omitted. */
-  certifiedPensionOtherAnnualIncome?: number
+   *  AVD capital lump-sum rows. Corresponds to
+   *  `altersvorsorgedepot.monthlyOtherRetirementIncome * 12`.
+   *  Defaults to 0 when omitted. */
+  avdOtherAnnualIncome?: number
+  /** Other annual retirement income used in the §22 Nr. 5 marginal-tax calc for
+   *  Riester capital lump-sum rows. Corresponds to
+   *  `riester.monthlyOtherRetirementIncome * 12`.
+   *  Defaults to 0 when omitted. */
+  riesterOtherAnnualIncome?: number
   rules: GermanRules
   inflationRate?: number
 }
@@ -65,7 +70,7 @@ function addActiveAssumptions(lines: string[], inflationRate: number | undefined
 }
 
 export function buildExportCsv(opts: ExportOptions): string {
-  const { products, bavAnnualTaxSvSavings, bavProfile, bavKvdrMember, bavOtherAnnualIncome, insuranceTaxMode, equityPartialExemption, insuranceOtherAnnualIncome, certifiedPensionOtherAnnualIncome, rules } = opts
+  const { products, bavAnnualTaxSvSavings, bavProfile, bavKvdrMember, bavOtherAnnualIncome, insuranceTaxMode, equityPartialExemption, insuranceOtherAnnualIncome, avdOtherAnnualIncome, riesterOtherAnnualIncome, rules } = opts
   const lines: string[] = []
 
   // Section 0: Disclaimer (first block of every export)
@@ -102,7 +107,6 @@ export function buildExportCsv(opts: ExportOptions): string {
     const isBav = r.productId === 'bav'
     const isEtf = r.productId === 'etf'
     const isBasisrente = r.productId === 'basisrente'
-    const isCertifiedPension = r.productId === 'altersvorsorgedepot' || r.productId === 'riester'
     const annualSavings = isBav ? bavAnnualTaxSvSavings : 0
     for (const row of r.rows) {
       let afterTax: number | null
@@ -125,12 +129,19 @@ export function buildExportCsv(opts: ExportOptions): string {
       } else if (isBasisrente) {
         // Capital payout is legally prohibited for Basisrente — export blank.
         afterTax = null
-      } else if (isCertifiedPension) {
-        // AVD and Riester: §22 Nr. 5 EStG certified-pension lump-sum path.
+      } else if (r.productId === 'altersvorsorgedepot') {
+        // AVD: §22 Nr. 5 EStG certified-pension lump-sum path.
         afterTax = afterTaxCertifiedPensionLumpSum(
           row.balance,
           rules,
-          certifiedPensionOtherAnnualIncome ?? 0,
+          avdOtherAnnualIncome ?? 0,
+        )
+      } else if (r.productId === 'riester') {
+        // Riester: §22 Nr. 5 EStG certified-pension lump-sum path.
+        afterTax = afterTaxCertifiedPensionLumpSum(
+          row.balance,
+          rules,
+          riesterOtherAnnualIncome ?? 0,
         )
       } else {
         afterTax = afterTaxInsuranceLumpSum(
