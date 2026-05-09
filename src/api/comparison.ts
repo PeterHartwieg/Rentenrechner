@@ -15,7 +15,7 @@ import { resolveRuleYear } from './rules'
 import { validateComparisonRequest } from './validation'
 import { defaultProfile, defaultAssumptions, DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../data/defaultScenario'
 import { PRODUCT_MANIFEST } from '../engine/productRegistry'
-import { normalizeMonthlyNettoBelastung, syncMonthlyContributions } from '../app/syncContributions'
+import { normalizeMonthlyNettoBelastung, syncMonthlyContributions } from '../utils/syncContributions'
 import { simulateRetirementComparison } from '../engine/simulate'
 import { runMonteCarlo } from '../engine/monteCarlo'
 import {
@@ -25,7 +25,7 @@ import {
   deriveBestCapital,
   deriveBestPension,
   deriveTaxModes,
-} from '../app/simulationSelectors'
+} from '../utils/simulationSelectors'
 import {
   toProductResultSummary,
   toStatutoryPensionSummary,

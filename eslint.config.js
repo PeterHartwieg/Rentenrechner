@@ -19,4 +19,29 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  // Engine and API production code must not import from src/app (which may
+  // carry React and browser-only concerns). Pure helpers belong in src/utils/,
+  // src/domain/, or src/engine/ so the dependency direction stays:
+  //   app → utils/engine/domain   (allowed)
+  //   engine → utils/domain       (allowed)
+  //   api → utils/engine/domain   (allowed)
+  //   engine/api → app            (FORBIDDEN)
+  {
+    files: ['src/engine/**/*.ts', 'src/api/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/app/**', '../app/**', '../../app/**'],
+              message:
+                'engine/ and api/ must not import from src/app/. Move shared pure helpers to src/utils/, src/domain/, or src/engine/.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

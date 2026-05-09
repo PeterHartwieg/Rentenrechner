@@ -39,7 +39,7 @@ import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { TransferEvent } from '../domain/instances'
 import { buildContext, type BuildContextOverrides, type InstanceCapitalPolicy } from './simulationContext'
 import { simulate as simulateEtf } from './products/etf'
-import { confidenceForResult } from '../app/evidence'
+import { confidenceForResult } from '../utils/evidence'
 import {
   detectProductSlot,
   slotToProductId,
