@@ -36,3 +36,22 @@
   border-radius: 2px;
   flex-shrink: 0;
 }
+
+/* ── Mobile (≤ 480px): move legend below the chart so it doesn't overlap bars ── */
+/* The legend is a sibling to .chart-frame inside .fee-drag-chart-wrap so
+   switching to static positioning flows it naturally below the chart.       */
+@media (max-width: 480px) {
+  .fee-drag-legend--overlay {
+    position: static;
+    top: auto;
+    right: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-top: 8px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    pointer-events: auto;
+  }
+}

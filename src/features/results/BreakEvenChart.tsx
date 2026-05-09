@@ -1,6 +1,6 @@
 import '../../ui/charts.css'
 import './BreakEvenChart.css'
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useCallback, useMemo, useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -179,6 +179,10 @@ export function BreakEvenChart({
     })
   }, [baseData, showGrv, grvNetMonthlyPension, retirementAge, showGrvContribution, grvContributionByAge])
 
+  const [chartWidth, setChartWidth] = useState(0)
+  const handleChartResize = useCallback((w: number) => setChartWidth(w), [])
+  const isMobileChart = chartWidth > 0 && chartWidth <= 480
+
   const { targetProps: containerTargetProps } = useFeedbackTarget({
     id: 'results.breakEvenChart.container',
     label: 'Break-Even-Chart',
@@ -264,164 +268,136 @@ export function BreakEvenChart({
         })}
       </div>
 
-      <div className="chart-frame break-even-frame">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 16, right: 16, left: 8, bottom: 56 }}>
-            <CartesianGrid strokeDasharray="4 4" />
-            <XAxis
-              dataKey="age"
-              tickLine={false}
-              label={{
-                value: 'Alter (Jahre)',
-                position: 'insideBottom',
-                offset: -8,
-                fill: '#475569',
-                fontSize: 12,
-              }}
-            />
-            <YAxis
-              tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-              width={68}
-              label={{
-                value: 'EUR',
-                angle: -90,
-                position: 'insideLeft',
-                style: { textAnchor: 'middle', fill: '#475569' },
-                fontSize: 12,
-              }}
-            />
-            <Tooltip
-              content={(props) => (
-                <BreakEvenTooltip
-                  {...props}
-                  renderedProducts={renderedProducts}
-                  productColors={productColors}
-                  paidInKey={paidInKey}
-                  retirementAge={retirementAge}
-                  showGrv={showGrv}
-                  showGrvContribution={showGrvContribution}
-                  baselineLabel={baselineLabel}
-                />
-              )}
-            />
-            <ReferenceLine
-              x={retirementAge}
-              stroke="#94a3b8"
-              strokeDasharray="3 3"
-              label={{ value: `Renteneintritt ${retirementAge}`, position: 'insideTop', fill: '#64748b', fontSize: 11 }}
-            />
-            <ReferenceLine x={retirementEndAge} stroke="#cbd5e1" strokeDasharray="3 3" />
-            {paidInKey && (
-              <Line
-                type="monotone"
-                name="Netto eingezahlt"
-                dataKey={paidInKey}
-                stroke={PAID_IN_COLOR}
-                strokeWidth={2}
-                strokeDasharray="2 5"
-                dot={false}
-                activeDot={false}
-              />
-            )}
-            {renderedProducts.map((r) => {
-              const keys = lifecycleLineKeys(r.productId)
-              const baseColor = productColors[r.productId]
-              const meta = getProductMeta(r.productId)
-              const shortLabel = meta?.shortLabel ?? r.label
-              return (
-                <Fragment key={r.productId}>
-                  <Line
-                    type="monotone"
-                    name={`${shortLabel} - Restkapital`}
-                    dataKey={keys.balance}
-                    stroke={baseColor}
-                    strokeWidth={2.5}
-                    strokeOpacity={strokeOpacity}
-                    dot={false}
-                    activeDot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    name={`${shortLabel} - Netto ausgezahlt`}
-                    dataKey={keys.payout}
-                    stroke={baseColor}
-                    strokeWidth={2}
-                    strokeOpacity={strokeOpacity}
-                    strokeDasharray="6 5"
-                    dot={false}
-                    activeDot={{ r: 3 }}
-                  />
-                </Fragment>
-              )
-            })}
-            {showGrv && (
-              <Line
-                type="monotone"
-                name={baselineLabel.legend}
-                dataKey={GRV_PAYOUT_KEY}
-                stroke={GRV_COLOR}
-                strokeWidth={1.5}
-                strokeDasharray="8 4 2 4"
-                dot={false}
-                activeDot={{ r: 3 }}
-                connectNulls={false}
-              />
-            )}
-            {showGrvContribution && (
-              <Line
-                type="monotone"
-                name="GRV Netto-Einzahlung kumuliert"
-                dataKey={GRV_CONTRIBUTION_KEY}
-                stroke={GRV_CONTRIBUTION_COLOR}
-                strokeWidth={1.5}
-                strokeDasharray="4 4"
-                dot={false}
-                activeDot={{ r: 3 }}
-                connectNulls={false}
-              />
-            )}
-            {breakEvenPoints.map((point) => (
-              <ReferenceDot
-                key={point.productId}
-                x={point.age}
-                y={point.value}
-                r={5}
-                fill={point.color}
-                stroke="#ffffff"
-                strokeWidth={2}
-                label={{
-                  value: `${point.label} ${point.age}`,
-                  position: 'top',
-                  fill: point.color,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  style: {
-                    paintOrder: 'stroke',
-                    stroke: '#ffffff',
-                    strokeWidth: 4,
-                    strokeLinejoin: 'round',
-                    textShadow: '0 1px 3px rgba(15, 23, 42, 0.28)',
-                  },
+      <div className="break-even-frame-wrap">
+        <div className="chart-frame break-even-frame">
+          <ResponsiveContainer width="100%" height="100%" onResize={handleChartResize}>
+            <LineChart data={data} margin={{ top: 16, right: 16, left: 8, bottom: isMobileChart ? 24 : 56 }}>
+              <CartesianGrid strokeDasharray="4 4" />
+              <XAxis
+                dataKey="age"
+                tickLine={false}
+                label={isMobileChart ? undefined : {
+                  value: 'Alter (Jahre)',
+                  position: 'insideBottom',
+                  offset: -8,
+                  fill: '#475569',
+                  fontSize: 12,
                 }}
               />
-            ))}
-            {inFrameCrossovers.map((cross) => {
-              const drawDownLabel =
-                getProductMeta(cross.drawDownId)?.shortLabel ?? cross.drawDownId
-              const color = productColors[cross.leibrenteId]
-              return (
+              <YAxis
+                tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
+                width={isMobileChart ? 48 : 68}
+                label={isMobileChart ? undefined : {
+                  value: 'EUR',
+                  angle: -90,
+                  position: 'insideLeft',
+                  style: { textAnchor: 'middle', fill: '#475569' },
+                  fontSize: 12,
+                }}
+              />
+              <Tooltip
+                content={(props) => (
+                  <BreakEvenTooltip
+                    {...props}
+                    renderedProducts={renderedProducts}
+                    productColors={productColors}
+                    paidInKey={paidInKey}
+                    retirementAge={retirementAge}
+                    showGrv={showGrv}
+                    showGrvContribution={showGrvContribution}
+                    baselineLabel={baselineLabel}
+                  />
+                )}
+              />
+              <ReferenceLine
+                x={retirementAge}
+                stroke="#94a3b8"
+                strokeDasharray="3 3"
+                label={isMobileChart ? undefined : { value: `Renteneintritt ${retirementAge}`, position: 'insideTop', fill: '#64748b', fontSize: 11 }}
+              />
+              <ReferenceLine x={retirementEndAge} stroke="#cbd5e1" strokeDasharray="3 3" />
+              {paidInKey && (
+                <Line
+                  type="monotone"
+                  name="Netto eingezahlt"
+                  dataKey={paidInKey}
+                  stroke={PAID_IN_COLOR}
+                  strokeWidth={2}
+                  strokeDasharray="2 5"
+                  dot={false}
+                  activeDot={false}
+                />
+              )}
+              {renderedProducts.map((r) => {
+                const keys = lifecycleLineKeys(r.productId)
+                const baseColor = productColors[r.productId]
+                const meta = getProductMeta(r.productId)
+                const shortLabel = meta?.shortLabel ?? r.label
+                return (
+                  <Fragment key={r.productId}>
+                    <Line
+                      type="monotone"
+                      name={`${shortLabel} - Restkapital`}
+                      dataKey={keys.balance}
+                      stroke={baseColor}
+                      strokeWidth={2.5}
+                      strokeOpacity={strokeOpacity}
+                      dot={false}
+                      activeDot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      name={`${shortLabel} - Netto ausgezahlt`}
+                      dataKey={keys.payout}
+                      stroke={baseColor}
+                      strokeWidth={2}
+                      strokeOpacity={strokeOpacity}
+                      strokeDasharray="6 5"
+                      dot={false}
+                      activeDot={{ r: 3 }}
+                    />
+                  </Fragment>
+                )
+              })}
+              {showGrv && (
+                <Line
+                  type="monotone"
+                  name={baselineLabel.legend}
+                  dataKey={GRV_PAYOUT_KEY}
+                  stroke={GRV_COLOR}
+                  strokeWidth={1.5}
+                  strokeDasharray="8 4 2 4"
+                  dot={false}
+                  activeDot={{ r: 3 }}
+                  connectNulls={false}
+                />
+              )}
+              {showGrvContribution && (
+                <Line
+                  type="monotone"
+                  name="GRV Netto-Einzahlung kumuliert"
+                  dataKey={GRV_CONTRIBUTION_KEY}
+                  stroke={GRV_CONTRIBUTION_COLOR}
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  activeDot={{ r: 3 }}
+                  connectNulls={false}
+                />
+              )}
+              {breakEvenPoints.map((point) => (
                 <ReferenceDot
-                  key={`crossover-${cross.leibrenteId}-${cross.drawDownId}`}
-                  x={cross.age}
-                  y={cross.amount}
+                  key={point.productId}
+                  x={point.age}
+                  y={point.value}
                   r={5}
-                  fill="#ffffff"
-                  stroke={color}
-                  strokeWidth={2.5}
-                  label={{
-                    value: `holt ${drawDownLabel} ein · ${cross.age}`,
-                    position: 'bottom',
-                    fill: color,
+                  fill={point.color}
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  label={isMobileChart ? undefined : {
+                    value: `${point.label} ${point.age}`,
+                    position: 'top',
+                    fill: point.color,
                     fontSize: 11,
                     fontWeight: 700,
                     style: {
@@ -433,10 +409,40 @@ export function BreakEvenChart({
                     },
                   }}
                 />
-              )
-            })}
-          </LineChart>
-        </ResponsiveContainer>
+              ))}
+              {inFrameCrossovers.map((cross) => {
+                const drawDownLabel =
+                  getProductMeta(cross.drawDownId)?.shortLabel ?? cross.drawDownId
+                const color = productColors[cross.leibrenteId]
+                return (
+                  <ReferenceDot
+                    key={`crossover-${cross.leibrenteId}-${cross.drawDownId}`}
+                    x={cross.age}
+                    y={cross.amount}
+                    r={5}
+                    fill="#ffffff"
+                    stroke={color}
+                    strokeWidth={2.5}
+                    label={isMobileChart ? undefined : {
+                      value: `holt ${drawDownLabel} ein · ${cross.age}`,
+                      position: 'bottom',
+                      fill: color,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      style: {
+                        paintOrder: 'stroke',
+                        stroke: '#ffffff',
+                        strokeWidth: 4,
+                        strokeLinejoin: 'round',
+                        textShadow: '0 1px 3px rgba(15, 23, 42, 0.28)',
+                      },
+                    }}
+                  />
+                )
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
         <div className="lifecycle-legend lifecycle-legend--overlay" aria-hidden="true" {...legendTargetProps}>
           <span
             className="lifecycle-legend__item"
