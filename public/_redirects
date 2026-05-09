@@ -1,4 +1,4 @@
-# Cloudflare Pages: real 404 for any unmatched path.
+# Cloudflare Workers/Pages: rewrite unknown paths to the prerendered 404 page.
 #
 # Static prerendered routes (/, /impressum, /datenschutz, /bav-rechner,
 # /etf-vs-bav, /riester-rechner, /altersvorsorgedepot-rechner,
@@ -7,12 +7,13 @@
 # /altersvorsorgeprodukte-vergleichen, /rentenluecke-rechner) take precedence
 # over _redirects, so this catch-all only fires for genuinely-unknown URLs.
 #
-# Avoid the legacy "/* /index.html 200" rule, which triggers CF error 10021
-# (infinite loop). The shape below — rewrite to /404.html with HTTP status 404
-# — is the documented Cloudflare Pages pattern for SPAs that ship a real
-# 404 page. The body is dist/404.html (prerendered with noindex,follow, the
-# right canonical, and route-specific head tags).
+# Status 200 (rewrite) is used because Cloudflare Workers validates _redirects
+# and rejects 404 as a redirect target (valid codes: 200, 301, 302, 303, 307,
+# 308). The /404.html asset is served directly by the static-asset binding for
+# requests to that exact path, so the catch-all below cannot loop.
+# dist/404.html is prerendered with noindex,follow so the 200 wire status
+# does not affect SEO.
 #
 # Live verification: `curl -sI https://rentenwiki.de/<unknown-url>` must show
-# HTTP/1.1 404 after deploy.
-/*  /404.html  404
+# HTTP/1.1 200 and the 404 page body after deploy.
+/*  /404.html  200
