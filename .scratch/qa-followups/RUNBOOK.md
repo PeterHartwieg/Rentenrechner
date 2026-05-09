@@ -126,6 +126,20 @@ design isn't fully specified" or "multiple competing fixes exist".
    open. The implementer picks reasonable defaults and documents them
    in the PR. The reviewer catches bad picks; that's their job.
 
+#### File overlap with open issues — populate `Blocked by:`
+
+When a `ready-for-agent` candidate likely touches the same files as another
+open `ready-for-agent` issue (or one already in flight), reference that
+issue in the curated comment's `Blocked by:` field. The implementer cron's
+parallel dispatch predicate uses `Blocked by:` to serialize order — without
+the reference, the cron may dispatch both in parallel and one will hit a
+rebase conflict requiring `HITL_DRIFT` escalation.
+
+You don't need to be exhaustive — only flag overlaps you'd notice from a
+quick scan of the open queue. False negatives cost the implementer a
+serialized fallback (cheap); false positives only cost wall-clock (also
+cheap). The asymmetry is fine.
+
 #### Concrete patterns that STAY `ready-for-agent`
 
 These all surfaced as wrongly-escalated in past triage runs. They are
@@ -203,7 +217,11 @@ readable without re-reading the issue body.>
 ## What to change
 
 <Specific. File paths, component names, before/after copy strings. For bugs,
-list suspect files. For copy fixes, give the exact German strings.>
+list suspect files. For copy fixes, give the exact German strings. File-path
+enumeration is **load-bearing for the implementer cron's parallel dispatch
+predicate** (see `RUNBOOK-implementer.md` § Dispatch policy) — list every
+file the fix is expected to touch. Under-specified scope forces the
+implementer to default to serial.>
 
 ## Acceptance criteria
 
