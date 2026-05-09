@@ -348,3 +348,14 @@
   background: #dbeafe;
   border-color: #93c5fd;
 }
+
+/* ── Mobile: constrain add-vertrag picker so it stays within the viewport ── */
+
+@media (max-width: 480px) {
+  .cds-add-vertrag-menu {
+    max-height: 60vh;
+    overflow-y: auto;
+    /* Ensure the browser can scroll the element into view cleanly */
+    scroll-margin-bottom: 12px;
+  }
+}
