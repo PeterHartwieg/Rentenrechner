@@ -45,3 +45,69 @@
   background: #f0f4f8;
   border-color: #a3b5c8;
 }
+
+@media (max-width: 480px) {
+  .table-panel .table-scroll {
+    overflow-x: visible;
+  }
+
+  .table-panel table,
+  .table-panel thead,
+  .table-panel tbody,
+  .table-panel th,
+  .table-panel td,
+  .table-panel tr {
+    display: block;
+  }
+
+  .table-panel thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .table-panel tr {
+    border: 1px solid #d6dce5;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+  }
+
+  .table-panel td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 4px 0;
+    border: none;
+    font-size: 0.84rem;
+  }
+
+  .table-panel td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    max-width: 55%;
+    font-weight: 700;
+    font-size: 0.76rem;
+    color: #667085;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding-top: 2px;
+  }
+
+  .table-panel td:first-child {
+    border-bottom: 1px solid #e5ebf2;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .table-panel td:first-child::before {
+    display: none;
+  }
+}

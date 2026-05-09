@@ -71,10 +71,10 @@ export function SensitivityPanel({ profile, assumptions, visibleProducts, precom
           Basis
           <small>{result.baseline.detail}</small>
         </div>
-        <div className="sg-cell">
+        <div className="sg-cell" data-label="Bestes Kapital">
           <ProductPill productId={baselineCapital} />
         </div>
-        <div className="sg-cell">
+        <div className="sg-cell" data-label="Beste Rente">
           <ProductPill productId={baselinePension} />
         </div>
 
@@ -84,13 +84,13 @@ export function SensitivityPanel({ profile, assumptions, visibleProducts, precom
               {p.label}
               <small>{p.detail}</small>
             </div>
-            <div className="sg-cell">
+            <div className="sg-cell" data-label="Bestes Kapital">
               <ProductPill
                 productId={p.winnerCapital}
                 changed={p.winnerCapital !== baselineCapital}
               />
             </div>
-            <div className="sg-cell">
+            <div className="sg-cell" data-label="Beste Rente">
               <ProductPill
                 productId={p.winnerPension}
                 changed={p.winnerPension !== baselinePension}
