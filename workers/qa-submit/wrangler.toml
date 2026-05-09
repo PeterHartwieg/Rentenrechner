@@ -20,6 +20,12 @@ bucket_name = "rentenwiki-qa-screenshots"
 TURNSTILE_SITE_KEY = "0x4AAAAAADKSdGCO2gQSFrtS"
 GH_REPO = "PeterHartwieg/Rentenrechner"
 ALLOWED_ORIGINS = "https://rentenwiki.de,https://www.rentenwiki.de"
+# Comma-separated list of hostnames whose Turnstile tokens are accepted.
+# Mirrors the ALLOWED_ORIGINS pattern. Tokens for any other hostname are rejected
+# even if Cloudflare reports success: true (defense-in-depth per gh#84).
+TURNSTILE_ALLOWED_HOSTNAMES = "rentenwiki.de,www.rentenwiki.de"
+# Optional: set TURNSTILE_EXPECTED_ACTION via `wrangler secret put` if the widget
+# is configured with an action string. Leave unset to skip action validation.
 
 # Secrets (set via `wrangler secret put <NAME>` after first deploy):
 #   TURNSTILE_SECRET   — secret key from the Turnstile site
