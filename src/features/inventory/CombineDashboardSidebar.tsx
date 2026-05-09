@@ -21,7 +21,7 @@
 
 import './InventoryWizard.css'
 import './CombineDashboardSidebar.css'
-import { useState, useMemo, useId } from 'react'
+import { useState, useMemo, useId, useRef, useEffect } from 'react'
 import { Plus, Trash2, Archive, RefreshCw, Lock } from 'lucide-react'
 import type { WorkspaceAssumptionsV2, WhatIfScenario, Scenario } from '../../domain/workspace'
 import type {
@@ -1627,6 +1627,13 @@ export function AddVertragSection({
     ? ADD_VERTRAG_ITEMS
     : ADD_VERTRAG_ITEMS.filter((item) => item.kind !== 'bav_offer')
   const { enabled: qaEnabled } = useQaMode()
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (open && !draftItem && menuRef.current) {
+      menuRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [open, draftItem])
 
   return (
     <div className="cds-add-vertrag-section">
@@ -1665,6 +1672,7 @@ export function AddVertragSection({
         </button>
       ) : (
         <div
+          ref={menuRef}
           className="cds-add-vertrag-menu"
           role="menu"
           aria-label="Vertragstyp auswählen"
