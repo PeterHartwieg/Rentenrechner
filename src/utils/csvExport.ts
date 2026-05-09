@@ -1,5 +1,6 @@
 import type { BavLumpSumTaxMode, EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult, YearlyProjection } from '../domain'
 import { afterTaxBavLumpSum } from '../engine/bavPayout'
+import { afterTaxCertifiedPensionLumpSum } from '../engine/certifiedPensionPayout'
 import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import { afterTaxInsuranceLumpSum } from '../engine/insurancePayout'
 import type { CombinedResult } from '../engine/portfolioCombine'
@@ -14,6 +15,11 @@ type ExportOptions = {
   insuranceTaxMode: InsuranceTaxMode
   equityPartialExemption: number
   insuranceOtherAnnualIncome: number
+  /** Other annual retirement income used in the §22 Nr. 5 marginal-tax calc for
+   *  AVD and Riester capital lump-sum rows. Corresponds to
+   *  `altersvorsorgedepot.monthlyOtherRetirementIncome * 12` (or the Riester
+   *  equivalent). Defaults to 0 when omitted. */
+  certifiedPensionOtherAnnualIncome?: number
   rules: GermanRules
   inflationRate?: number
 }
@@ -59,7 +65,7 @@ function addActiveAssumptions(lines: string[], inflationRate: number | undefined
 }
 
 export function buildExportCsv(opts: ExportOptions): string {
-  const { products, bavAnnualTaxSvSavings, bavProfile, bavKvdrMember, bavOtherAnnualIncome, insuranceTaxMode, equityPartialExemption, insuranceOtherAnnualIncome, rules } = opts
+  const { products, bavAnnualTaxSvSavings, bavProfile, bavKvdrMember, bavOtherAnnualIncome, insuranceTaxMode, equityPartialExemption, insuranceOtherAnnualIncome, certifiedPensionOtherAnnualIncome, rules } = opts
   const lines: string[] = []
 
   // Section 0: Disclaimer (first block of every export)
@@ -95,6 +101,8 @@ export function buildExportCsv(opts: ExportOptions): string {
   for (const r of products) {
     const isBav = r.productId === 'bav'
     const isEtf = r.productId === 'etf'
+    const isBasisrente = r.productId === 'basisrente'
+    const isCertifiedPension = r.productId === 'altersvorsorgedepot' || r.productId === 'riester'
     const annualSavings = isBav ? bavAnnualTaxSvSavings : 0
     for (const row of r.rows) {
       let afterTax: number | null
@@ -113,6 +121,16 @@ export function buildExportCsv(opts: ExportOptions): string {
           rules,
           equityPartialExemption,
           row.cumulativeVorabpauschale,
+        )
+      } else if (isBasisrente) {
+        // Capital payout is legally prohibited for Basisrente — export blank.
+        afterTax = null
+      } else if (isCertifiedPension) {
+        // AVD and Riester: §22 Nr. 5 EStG certified-pension lump-sum path.
+        afterTax = afterTaxCertifiedPensionLumpSum(
+          row.balance,
+          rules,
+          certifiedPensionOtherAnnualIncome ?? 0,
         )
       } else {
         afterTax = afterTaxInsuranceLumpSum(
