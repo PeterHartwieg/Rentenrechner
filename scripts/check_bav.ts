@@ -10,7 +10,7 @@
  * no Fünftelregelung per BFH X R 25/23). Edit the imports below to audit
  * other Durchführungswege or profiles.
  *
- * Run: npx tsx scripts/check_bav.ts
+ * Run: npm run check:bav
  */
 import { simulateRetirementComparison } from '../src/engine/simulate'
 import { defaultProfile, defaultAssumptions } from '../src/data/defaultScenario'
