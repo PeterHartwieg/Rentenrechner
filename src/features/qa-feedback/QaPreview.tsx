@@ -152,7 +152,18 @@ export function QaPreview({
       <div className="qa-panel__body">
         <p className="qa-preview__intro">
           Vielen Dank! Dein Feedback wird als öffentliches GitHub-Issue an die
-          Entwickler gesendet. Ein GitHub-Konto brauchst du dafür nicht.
+          Entwickler gesendet. Ein GitHub-Konto brauchst du dafür nicht.{' '}
+          Informationen zur Datenverarbeitung (Cloudflare Turnstile, QA-Worker,
+          Screenshot-Speicherung) findest du in der{' '}
+          <a
+            href="/datenschutz#qa-feedback"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="qa-preview__privacy-link"
+          >
+            Datenschutzerklärung, Abschnitt&nbsp;9
+          </a>
+          .
         </p>
 
         <div className="qa-preview__summary" data-testid="qa-preview-summary">
