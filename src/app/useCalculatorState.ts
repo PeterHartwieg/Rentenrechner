@@ -11,8 +11,21 @@ import {
   syncMonthlyContributions,
 } from './syncContributions'
 
-function loadInitialState() {
-  return readUrlState() ?? loadSavedState()
+type LoadResult = {
+  state: { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null
+  invalidLink: boolean
+}
+
+function loadInitialState(): LoadResult {
+  const urlResult = readUrlState()
+  if (urlResult.kind === 'valid') {
+    return { state: urlResult.state, invalidLink: false }
+  }
+  if (urlResult.kind === 'invalid') {
+    return { state: loadSavedState(), invalidLink: true }
+  }
+  // absent
+  return { state: loadSavedState(), invalidLink: false }
 }
 
 /**
@@ -53,16 +66,32 @@ function harmonizeOnLoad(
   )
 }
 
+type InitialHookState = {
+  invalidLink: boolean
+  profile: PersonalProfile
+  assumptions: ScenarioAssumptions
+}
+
+function computeInitialHookState(): InitialHookState {
+  // URL-decode + localStorage read runs exactly once, inside a single lazy
+  // initializer, so mount cost is 1x instead of 3x.
+  const initial = loadInitialState()
+  const baseProfile = initial.state?.profile ?? defaultProfile
+  const baseAssumptions = initial.state?.assumptions ?? defaultAssumptions
+  return {
+    invalidLink: initial.invalidLink,
+    profile: baseProfile,
+    assumptions: harmonizeOnLoad(baseProfile, baseAssumptions),
+  }
+}
+
 export function useCalculatorState() {
-  const [profile, setProfile] = useState<PersonalProfile>(
-    () => loadInitialState()?.profile ?? defaultProfile,
-  )
-  const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(() => {
-    const initial = loadInitialState()
-    const baseProfile = initial?.profile ?? defaultProfile
-    const baseAssumptions = initial?.assumptions ?? defaultAssumptions
-    return harmonizeOnLoad(baseProfile, baseAssumptions)
-  })
+  const [{ invalidLink: invalidLinkInit, profile: profileInit, assumptions: assumptionsInit }] =
+    useState<InitialHookState>(computeInitialHookState)
+
+  const [invalidLink, setInvalidLink] = useState<boolean>(invalidLinkInit)
+  const [profile, setProfile] = useState<PersonalProfile>(profileInit)
+  const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(assumptionsInit)
 
   useEffect(() => {
     // Writer stays on v1 key throughout M1. Issue 03 switches to saveWorkspace()
@@ -96,5 +125,7 @@ export function useCalculatorState() {
     setAssumptions,
     resetToDefaults,
     setSyncedMonthlyContribution,
+    invalidLink,
+    dismissInvalidLink: () => setInvalidLink(false),
   }
 }

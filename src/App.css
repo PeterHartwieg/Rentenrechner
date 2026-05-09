@@ -165,6 +165,43 @@
   color: #374151;
 }
 
+.invalid-link-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 8px 32px;
+  background: #fff7ed;
+  border-bottom: 1px solid #fed7aa;
+  font-size: 0.83rem;
+  color: #92400e;
+}
+
+.invalid-link-banner__icon {
+  flex: 0 0 auto;
+  color: #d97706;
+}
+
+.invalid-link-banner__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.invalid-link-banner__dismiss {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 0;
+  background: transparent;
+  color: #b45309;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.invalid-link-banner__dismiss:hover {
+  color: #78350f;
+}
+
 .dashboard {
   display: grid;
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
