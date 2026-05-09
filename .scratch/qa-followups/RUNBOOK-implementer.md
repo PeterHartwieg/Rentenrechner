@@ -394,9 +394,24 @@ Reviewer returned `0 items`. Now:
      `in-progress-by-agent → ready-for-human`. Leave the PR open for human
      merge. Skip to next issue.
 
-The PR's `Fixes #<NUM>` closes the issue automatically on merge. The
-`in-progress-by-agent` label remains on the closed issue (irrelevant once
-closed).
+4. Strip the `in-progress-by-agent` label after successful merge (label
+   hygiene). The merge auto-closes the issue via `Fixes #<NUM>`, but the
+   label persists unless explicitly removed:
+
+   ```
+   gh issue edit <NUM> --remove-label "in-progress-by-agent"
+   ```
+
+   The label means "an implementer agent is **actively** working on this
+   issue" (per `docs/agents/triage-labels.md`). Once the issue is closed,
+   the label has no remaining function and pollutes label-based queries
+   (e.g. "what's currently in flight?"). Failure to remove it is
+   non-fatal — log + continue. See gh#132 for the broader hygiene policy
+   and rationale.
+
+The PR's `Fixes #<NUM>` closes the issue automatically on merge; step 4
+strips the now-stale `in-progress-by-agent` label so it remains an
+accurate "currently active" signal across the issue tracker.
 
 ## Confidence gates (the "auto-merge only when confident" rule)
 
