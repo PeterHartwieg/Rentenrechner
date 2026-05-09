@@ -18,6 +18,7 @@ import type { InstanceTaxModes } from './utils/csvExport'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveBavLumpSumTaxMode } from './engine/bavPayout'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from './engine/insurancePayout'
+import { projectGrvContributionTimeline } from './engine/grv'
 import { deriveRentenluckeOverviewFromCombine } from './app/simulationSelectors'
 import { de2026Rules } from './rules/de2026'
 import { useCalculatorState } from './app/useCalculatorState'
@@ -451,6 +452,33 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     return all.some((inst) => inst.status === 'active' || inst.status === 'paid_up')
   }, [isCombineMode, portfolioState.workspace.baseline.assumptions])
 
+  // GRV contribution timeline for BreakEvenChart (#27).
+  // Compare-mode: use the singleton profile + assumptions; wire bAV GRV reduction.
+  const compareGrvContributionTimeline = useMemo(
+    () =>
+      projectGrvContributionTimeline(
+        profile,
+        de2026Rules,
+        assumptions.statutoryPension,
+        (simulation.bavFunding.estimatedMonthlyGrvReduction ?? 0) * 12,
+      ),
+    [profile, assumptions.statutoryPension, simulation.bavFunding.estimatedMonthlyGrvReduction],
+  )
+
+  // Combine-mode: use the workspace baseline profile + assumptions.
+  // bAV GRV reduction aggregates across multiple instances — not trivially exposed
+  // here without plumbing rework, so pass undefined (treated as 0).
+  const combineGrvContributionTimeline = useMemo(
+    () =>
+      projectGrvContributionTimeline(
+        combineProfile,
+        de2026Rules,
+        portfolioState.workspace.baseline.assumptions.statutoryPension,
+        undefined,
+      ),
+    [combineProfile, portfolioState.workspace.baseline.assumptions.statutoryPension],
+  )
+
   const vergleichView = (
     <section
       className="workspace-view workspace-view--vergleich"
@@ -501,6 +529,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               pensionBaselineType={
                 portfolioState.workspace.baseline.assumptions.statutoryPension.pensionBaselineType
               }
+              grvContributionTimeline={combineGrvContributionTimeline}
             />
           )}
           {showLueckeModal && (
@@ -620,6 +649,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 bestProductId={bestCapital?.productId}
                 grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
                 pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
+                grvContributionTimeline={compareGrvContributionTimeline}
               />
             </>
           ) : (
