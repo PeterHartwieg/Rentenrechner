@@ -67,18 +67,17 @@ describe('InvField — programmatic label association', () => {
     expect(input.value).toBe('Allianz')
   })
 
-  it('hint is wired via aria-describedby on the label', () => {
+  it('hint is wired via aria-describedby on the input control', () => {
     render(
       <InvField label="Monatsbeitrag" hint="Bruttobetrag eingeben">
         <InvNumber value={200} onChange={() => {}} />
       </InvField>,
     )
     const input = screen.getByLabelText('Monatsbeitrag')
-    // label should have aria-describedby pointing to the hint paragraph
-    const labelEl = input.ownerDocument.querySelector(`label[for="${input.id}"]`) as HTMLLabelElement
-    expect(labelEl.getAttribute('aria-describedby')).toBeTruthy()
-    const hintId = labelEl.getAttribute('aria-describedby')!
-    const hintEl = input.ownerDocument.getElementById(hintId)
+    // the input itself should carry aria-describedby pointing to the hint paragraph
+    const hintId = input.getAttribute('aria-describedby')
+    expect(hintId).toBeTruthy()
+    const hintEl = input.ownerDocument.getElementById(hintId!)
     expect(hintEl?.textContent).toBe('Bruttobetrag eingeben')
   })
 })

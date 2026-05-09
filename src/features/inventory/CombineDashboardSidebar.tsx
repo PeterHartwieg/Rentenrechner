@@ -55,7 +55,7 @@ import {
   type BavOfferDraft,
 } from './inventoryHelpers'
 import { InvSelect } from './fields'
-import { InvFieldContext, useInvFieldId } from './invFieldContext'
+import { InvFieldContext, useInvFieldContext } from './invFieldContext'
 import { InfoTip } from '../../ui/InfoTip'
 import { toNumber, useDraftNumber, DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
 
@@ -110,7 +110,7 @@ function CombineField({
 }) {
   const id = useId()
   return (
-    <InvFieldContext.Provider value={id}>
+    <InvFieldContext.Provider value={{ id }}>
       <div className="combine-field">
         <label htmlFor={id}>{label}{labelSuffix}</label>
         {children}
@@ -144,9 +144,17 @@ function DraftNumberInput({
   value: number
   onCommit: (next: number) => void
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onBlur' | 'onKeyDown' | 'type'>) {
-  const contextId = useInvFieldId()
+  const fieldCtx = useInvFieldContext()
   const { inputProps } = useDraftNumber({ value, onCommit })
-  return <input type="number" id={idProp ?? contextId} {...rest} {...inputProps} />
+  return (
+    <input
+      type="number"
+      id={idProp ?? fieldCtx?.id}
+      aria-describedby={fieldCtx?.describedById}
+      {...rest}
+      {...inputProps}
+    />
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -158,15 +166,15 @@ function DraftNumberInput({
 function CombineNativeInput(
   props: React.InputHTMLAttributes<HTMLInputElement>,
 ) {
-  const fieldId = useInvFieldId()
-  return <input id={props.id ?? fieldId} {...props} />
+  const fieldCtx = useInvFieldContext()
+  return <input id={props.id ?? fieldCtx?.id} aria-describedby={fieldCtx?.describedById} {...props} />
 }
 
 function CombineNativeSelect(
   props: React.SelectHTMLAttributes<HTMLSelectElement>,
 ) {
-  const fieldId = useInvFieldId()
-  return <select id={props.id ?? fieldId} {...props} />
+  const fieldCtx = useInvFieldContext()
+  return <select id={props.id ?? fieldCtx?.id} aria-describedby={fieldCtx?.describedById} {...props} />
 }
 
 function CommonContractFields<T extends InstanceCommon>({
