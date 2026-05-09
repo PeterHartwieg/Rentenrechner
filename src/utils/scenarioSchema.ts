@@ -299,8 +299,8 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
   if (!inRange(a.inflationRate, -0.1, 0.2)) return null
   if (!isFiniteNumber(a.retirementEndAge) || a.retirementEndAge > 120) return null
   if (validateReturnScenarios(a.returnScenarios) === null) return null
-  if (!a.monteCarlo || typeof a.monteCarlo !== 'object') return null
-  if (!a.statutoryPension || typeof a.statutoryPension !== 'object') return null
+  if (!a.monteCarlo || typeof a.monteCarlo !== 'object' || !validateMonteCarlo(a.monteCarlo)) return null
+  if (!a.statutoryPension || typeof a.statutoryPension !== 'object' || !validateStatutoryPension(a.statutoryPension)) return null
 
   if (!Array.isArray(a.visibleProducts)) return null
   if (a.visibleProducts.length > PRODUCT_IDS.length) return null
@@ -309,6 +309,8 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
   }
 
   // Collect all instance ids across every product array for transfer-event target validation.
+  // Duplicate instanceId values across product arrays are rejected — they indicate a corrupt
+  // workspace and would cause silent simulation errors (wrong capital injections, etc.).
   const allInstanceIds = new Set<string>()
   const productArrays: unknown[] = [
     ...(Array.isArray(a.bav) ? a.bav : []),
@@ -321,7 +323,10 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
   for (const inst of productArrays) {
     if (inst && typeof inst === 'object') {
       const id = (inst as Record<string, unknown>).instanceId
-      if (typeof id === 'string') allInstanceIds.add(id)
+      if (typeof id === 'string') {
+        if (allInstanceIds.has(id)) return null
+        allInstanceIds.add(id)
+      }
     }
   }
 
