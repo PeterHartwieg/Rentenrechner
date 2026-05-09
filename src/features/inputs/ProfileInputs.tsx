@@ -46,7 +46,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
           onCommit={(value) =>
             onProfileChange((current) => ({
               ...current,
-              retirementAge: clampNumber(Number(value), current.age + 1, 75),
+              retirementAge: clampNumber(Number(value), Math.max(55, current.age + 1), 75),
             }))
           }
         />
