@@ -14,12 +14,13 @@
  *  - rebaseWhatIfStub refreshes the snapshot but is documented as TODO(P2).
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { defaultProfile } from '../data/defaultScenario'
-import { defaultWorkspace } from '../storage'
+import { defaultWorkspace, STORAGE_KEY_V2 } from '../storage'
 import {
   deepCloneScenario,
   forkBaselineScenario,
+  loadInitialWorkspace,
   newScenarioId,
   rebaseWhatIfStub,
   rebaseWhatIf,
@@ -271,5 +272,82 @@ describe('portfolioState helpers — applyDisambiguatingLabel', () => {
   it('treats a whitespace-only Anbieter as missing', () => {
     const result = applyDisambiguatingLabel(makeEtf({ anbieter: '   ' }), 3)
     expect(result.label).toBe('ETF-Depot #3')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// gh#58 — share URL overrides saved combine workspace (regression)
+// ---------------------------------------------------------------------------
+
+describe('loadInitialWorkspace — share URL overrides saved combine workspace', () => {
+  const store: Record<string, string> = {}
+
+  beforeEach(() => {
+    Object.keys(store).forEach((k) => { delete store[k] })
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => { store[k] = v },
+      removeItem: (k: string) => { delete store[k] },
+    })
+    vi.stubGlobal('window', {
+      ...globalThis.window,
+      location: { search: '' },
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('returns mode="compare" when a ?s= share URL is present and saved workspace has mode="combine"', () => {
+    // Persist a combine-mode v2 workspace in localStorage.
+    const combineWorkspace = { ...deepCloneScenario(defaultWorkspace), mode: 'combine' as const }
+    store[STORAGE_KEY_V2] = JSON.stringify(combineWorkspace)
+
+    // Simulate a ?s= share URL in the address bar.
+    vi.stubGlobal('window', {
+      ...globalThis.window,
+      location: { search: '?s=eyJmb28iOjF9' },
+    })
+
+    const loaded = loadInitialWorkspace()
+    expect(loaded.mode).toBe('compare')
+  })
+
+  it('does not modify the saved workspace in localStorage when share URL overrides mode', () => {
+    const combineWorkspace = { ...deepCloneScenario(defaultWorkspace), mode: 'combine' as const }
+    store[STORAGE_KEY_V2] = JSON.stringify(combineWorkspace)
+
+    vi.stubGlobal('window', {
+      ...globalThis.window,
+      location: { search: '?s=eyJmb28iOjF9' },
+    })
+
+    loadInitialWorkspace()
+
+    // The raw value in localStorage must still carry mode='combine'.
+    const raw = JSON.parse(store[STORAGE_KEY_V2] ?? '{}') as Record<string, unknown>
+    expect(raw.mode).toBe('combine')
+  })
+
+  it('returns the saved mode unchanged when no share URL is present', () => {
+    const combineWorkspace = { ...deepCloneScenario(defaultWorkspace), mode: 'combine' as const }
+    store[STORAGE_KEY_V2] = JSON.stringify(combineWorkspace)
+
+    const loaded = loadInitialWorkspace()
+    expect(loaded.mode).toBe('combine')
+  })
+
+  it('returns mode="compare" for a compare workspace regardless of share URL presence', () => {
+    const compareWorkspace = { ...deepCloneScenario(defaultWorkspace), mode: 'compare' as const }
+    store[STORAGE_KEY_V2] = JSON.stringify(compareWorkspace)
+
+    vi.stubGlobal('window', {
+      ...globalThis.window,
+      location: { search: '?s=eyJmb28iOjF9' },
+    })
+
+    const loaded = loadInitialWorkspace()
+    expect(loaded.mode).toBe('compare')
   })
 })
