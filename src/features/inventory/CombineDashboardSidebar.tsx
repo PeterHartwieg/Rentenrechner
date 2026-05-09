@@ -403,6 +403,7 @@ function BavInstanceCard({
                 min={0}
                 max={5000}
                 step={10}
+                disabled={instance.status === 'paid_up'}
                 onChange={(e) =>
                   onChange({ ...instance, monthlyGrossConversion: Number(e.target.value) })
                 }
@@ -544,6 +545,7 @@ function EtfInstanceCard({
               min={0}
               max={5000}
               step={10}
+              disabled={instance.status === 'paid_up'}
               onChange={(e) =>
                 onChange({
                   ...instance,
@@ -643,6 +645,7 @@ function InsuranceInstanceCard({
               min={0}
               max={5000}
               step={10}
+              disabled={instance.status === 'paid_up'}
               onChange={(e) =>
                 onChange({
                   ...instance,
@@ -751,6 +754,7 @@ function BasisrenteInstanceCard({
               min={0}
               max={5000}
               step={10}
+              disabled={instance.status === 'paid_up'}
               onChange={(e) =>
                 onChange({ ...instance, monthlyGrossContribution: Number(e.target.value) })
               }
@@ -839,6 +843,7 @@ function AvdInstanceCard({
               min={0}
               max={5000}
               step={10}
+              disabled={instance.status === 'paid_up'}
               onChange={(e) =>
                 onChange({ ...instance, monthlyOwnContribution: Number(e.target.value) })
               }
@@ -941,6 +946,7 @@ function RiesterInstanceCard({
               min={0}
               max={5000}
               step={10}
+              disabled={instance.status === 'paid_up'}
               onChange={(e) =>
                 onChange({ ...instance, monthlyOwnContribution: Number(e.target.value) })
               }
