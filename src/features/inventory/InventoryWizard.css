@@ -50,6 +50,37 @@
   color: #92400e;
 }
 
+/* ─── CombineIncomePanel layout ────────────────────────────────────── */
+
+.combine-income-panel {
+  margin-bottom: 8px;
+}
+
+.combine-income-label {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.combine-income-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.combine-income-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.combine-income-scenario {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
 /* Dashboard summary estimate badge */
 .combine-estimate-summary-badge {
   display: inline-flex;
