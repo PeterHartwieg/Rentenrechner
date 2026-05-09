@@ -234,4 +234,38 @@ describe('scenarioLibrary write resilience', () => {
     })
     expect(loadLibrary()).toEqual([])
   })
+
+  it('addToLibrary does not throw when setItem throws (quota exhaustion)', () => {
+    const throwingStorage: Storage = {
+      ...mem.storage,
+      setItem: () => {
+        throw new DOMException('QuotaExceededError')
+      },
+    }
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: throwingStorage,
+      configurable: true,
+      writable: true,
+    })
+    expect(() => addToLibrary('Plan X', defaultProfile, defaultAssumptions)).not.toThrow()
+  })
+
+  it('deleteFromLibrary does not throw when setItem throws', () => {
+    // Seed the library while setItem still works, then break writes.
+    addToLibrary('Plan Y', defaultProfile, defaultAssumptions)
+    const id = loadLibrary()[0].id
+
+    const throwingStorage: Storage = {
+      ...mem.storage,
+      setItem: () => {
+        throw new DOMException('QuotaExceededError')
+      },
+    }
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: throwingStorage,
+      configurable: true,
+      writable: true,
+    })
+    expect(() => deleteFromLibrary(id)).not.toThrow()
+  })
 })
