@@ -10,7 +10,7 @@
  *    open the composer normally on second pin.
  *  - Dialog × / Escape dismisses without state changes; suppression is active
  *    after the dialog has been shown once (third click → composer).
- *  - "QA-Modus beenden" deactivates QA mode and re-fires the element click.
+ *  - "Feedback Modus beenden" deactivates QA mode and re-fires the element click.
  *  - "Feedback geben" opens the composer for the same target.
  *  - Suppression resets on QA deactivate/reactivate and on composer submit.
  *  - Element removed from DOM before re-fire → deactivate only, no crash.
@@ -188,7 +188,7 @@ describe('QaIntercept — dismiss (× / Escape)', () => {
 // Primary button: exit QA mode + re-fire
 // ---------------------------------------------------------------------------
 
-describe('QaIntercept — "QA-Modus beenden" (primary button)', () => {
+describe('QaIntercept — "Feedback Modus beenden" (primary button)', () => {
   it('deactivates QA mode when primary button is clicked', () => {
     render(
       <QaFeedbackProvider>
