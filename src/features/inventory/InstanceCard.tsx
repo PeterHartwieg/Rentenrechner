@@ -14,6 +14,7 @@
  */
 
 import { useState } from 'react'
+import { formatCurrency, formatNumber } from '../../utils/format'
 import type { FeeModel } from '../../domain/fees'
 import type { BavDurchfuehrungsweg } from '../../domain/products/bav'
 import type { AltersvorsorgedepotSubtype } from '../../domain/products/altersvorsorgedepot'
@@ -296,8 +297,8 @@ function Layer3Details({
             <p className="inventory-instance-section-heading">Förderung (geschätzt)</p>
             <p className="inventory-field-hint">
               Mindestens 15 % Arbeitgeber-Zuschuss bei Entgeltumwandlung (§1a Abs. 1a BetrAVG).
-              Eigenbeitrag: {bavSubsidy.monthlyConversion} EUR/Monat brutto.
-              Zuschuss ca. {Math.round(bavSubsidy.monthlyConversion * 0.15)} EUR/Monat (Schätzung).
+              Eigenbeitrag: {formatCurrency(bavSubsidy.monthlyConversion, 0)} EUR/Monat brutto.
+              Zuschuss ca. {formatCurrency(bavSubsidy.monthlyConversion * 0.15, 0)} EUR/Monat (Schätzung).
             </p>
           </div>
         )}
@@ -436,7 +437,7 @@ export function GrvCard({ draft, onChange, grossSalaryYear }: GrvCardProps) {
         {draft.useYearsEstimate ? (
           <InvField
             label="Wie viele Jahre arbeitest du schon?"
-            hint={`≈ ${derivedEp.toFixed(1)} Entgeltpunkte (geschätzt)`}
+            hint={`≈ ${formatNumber(derivedEp, 1)} Entgeltpunkte (geschätzt)`}
           >
             <InvNumber
               value={draft.yearsWorked}

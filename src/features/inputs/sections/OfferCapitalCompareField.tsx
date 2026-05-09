@@ -1,5 +1,5 @@
 import { NumberField } from '../../../ui/NumberField'
-import { formatCurrency } from '../../../utils/format'
+import { formatCurrency, formatPercent } from '../../../utils/format'
 
 /**
  * "Kapital lt. Angebot bei Rentenbeginn" comparison row. Used by bAV and pAV
@@ -50,7 +50,7 @@ export function OfferCapitalCompareField({
           Angebotskapital: {formatCurrency(offerCapital, 0)} ·{' '}
           Abweichung: {offerCapital >= modelCapital ? '+' : ''}
           {formatCurrency(offerCapital - modelCapital, 0)}{' '}
-          ({(((offerCapital - modelCapital) / modelCapital) * 100).toFixed(1)} %)
+          ({offerCapital >= modelCapital ? '+' : ''}{formatPercent((offerCapital - modelCapital) / modelCapital)})
         </p>
       )}
     </>

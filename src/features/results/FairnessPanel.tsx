@@ -33,7 +33,7 @@ export function FairnessPanel({ profile, assumptions, bavFunding, rules }: Props
           <dt>Krankenversicherung</dt>
           <dd>
             {profile.publicHealthInsurance
-              ? `GKV, Zusatzbeitrag ${profile.healthAdditionalContributionPct} %`
+              ? `GKV, Zusatzbeitrag ${formatPercent(profile.healthAdditionalContributionPct / 100)}`
               : `PKV, ${formatCurrency(profile.pkvMonthlyPremium, 0)} KV + ${formatCurrency(profile.pPVMonthlyPremium, 0)} pPV/Monat, AG-Zuschuss zur PKV: ${formatCurrency(bavFunding.salaryWithoutBav.pkv257SubsidyMonthly, 0)}/Monat`}
           </dd>
         </div>
