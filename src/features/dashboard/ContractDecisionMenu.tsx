@@ -20,8 +20,9 @@
  * Card rendering delegated to <ContractDecisionCards> (B5).
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import './ContractDecisionMenu.css'
+import { FocusTrap } from '../../ui/FocusTrap'
 import type { Workspace, WhatIfScenario } from '../../domain/workspace'
 import type { ContractDecision } from '../../app/contractDecisions'
 import { generateContractDecisions, applyContractDecision } from '../../app/contractDecisions'
@@ -71,17 +72,6 @@ export function ContractDecisionMenu({
   // Ref for the inner dialog card — click-outside detection compares against it.
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Keyboard: Escape closes the menu (mirrors InventoryWizard pattern).
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-      }
-    },
-    [onClose],
-  )
-
   // Click-outside: clicking the backdrop overlay closes the menu.
   // The overlay is the outermost element; the inner dialog card is `dialogRef`.
   const handleOverlayClick = useCallback(
@@ -92,11 +82,6 @@ export function ContractDecisionMenu({
     },
     [onClose],
   )
-
-  // Ensure focus stays within the dialog while it is open (basic focus trap via tabIndex on wrapper).
-  useEffect(() => {
-    dialogRef.current?.focus()
-  }, [])
 
   function toggleChecked(id: string) {
     setCheckedIds((prev) => {
@@ -136,57 +121,58 @@ export function ContractDecisionMenu({
   )
 
   return (
-    <div
-      className="contract-decision-menu-overlay"
-      onClick={handleOverlayClick}
-      onKeyDown={handleKeyDown}
-    >
-    <div
-      className="contract-decision-menu"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Optionen für diesen Vertrag"
-      ref={dialogRef}
-      tabIndex={-1}
-      {...dialogTargetProps}
-    >
-      <div className="contract-decision-menu-header">
-        <h3>Optionen für diesen Vertrag</h3>
-        <button
-          type="button"
-          className="contract-decision-menu-close"
-          onClick={onClose}
-          aria-label="Schließen"
-        >
-          ×
-        </button>
-      </div>
+    <FocusTrap onEscape={onClose}>
+      <div
+        className="contract-decision-menu-overlay"
+        onClick={handleOverlayClick}
+      >
+      <div
+        className="contract-decision-menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Optionen für diesen Vertrag"
+        ref={dialogRef}
+        tabIndex={-1}
+        {...dialogTargetProps}
+      >
+        <div className="contract-decision-menu-header">
+          <h3>Optionen für diesen Vertrag</h3>
+          <button
+            type="button"
+            className="contract-decision-menu-close"
+            onClick={onClose}
+            aria-label="Schließen"
+          >
+            ×
+          </button>
+        </div>
 
-      <ContractDecisionCards
-        decisions={decisions}
-        checkedIds={checkedIds}
-        onToggle={toggleChecked}
-      />
+        <ContractDecisionCards
+          decisions={decisions}
+          checkedIds={checkedIds}
+          onToggle={toggleChecked}
+        />
 
-      <div className="contract-decision-footer">
-        <button
-          type="button"
-          className="contract-decision-save-btn"
-          disabled={saveable.length === 0}
-          onClick={handleCreatePlans}
-          {...saveBtnTargetProps}
-        >
-          {saveable.length === 0
-            ? 'Plan erstellen'
-            : saveable.length === 1
-            ? '1 Plan erstellen'
-            : `${saveable.length} Pläne erstellen`}
-        </button>
-        <button type="button" className="contract-decision-cancel-btn" onClick={onClose}>
-          Abbrechen
-        </button>
+        <div className="contract-decision-footer">
+          <button
+            type="button"
+            className="contract-decision-save-btn"
+            disabled={saveable.length === 0}
+            onClick={handleCreatePlans}
+            {...saveBtnTargetProps}
+          >
+            {saveable.length === 0
+              ? 'Plan erstellen'
+              : saveable.length === 1
+              ? '1 Plan erstellen'
+              : `${saveable.length} Pläne erstellen`}
+          </button>
+          <button type="button" className="contract-decision-cancel-btn" onClick={onClose}>
+            Abbrechen
+          </button>
+        </div>
       </div>
-    </div>
-    </div>
+      </div>
+    </FocusTrap>
   )
 }
