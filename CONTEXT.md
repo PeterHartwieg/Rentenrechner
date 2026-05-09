@@ -16,8 +16,10 @@ German retirement calculator (publicly: **RentenWiki.de**, internal codename
 Altersvorsorgedepot (AVD), and Riester against the GRV statutory baseline,
 using BMF-/DRV-/GKV-published 2026 statutory values.
 
-- **Stack:** React + TypeScript + Vite. Frontend-only — no backend, no auth,
-  no telemetry. State is localStorage + share-URLs.
+- **Stack:** React + TypeScript + Vite. Calculator is frontend-only — no auth,
+  no telemetry. State is localStorage + share-URLs. The QA feedback Worker
+  (`qa.rentenwiki.de`) is the first sanctioned backend exception (ADR-0001,
+  opt-in, QA mode only).
 - **License posture:** PolyForm Noncommercial 1.0.0 source-available, with a
   paid commercial license for brokers/advisors/employers.
 - **Output:** illustrations, never advice. The session-only disclaimer banner

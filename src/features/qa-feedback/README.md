@@ -10,11 +10,19 @@ is intentionally walled off from the calculator engine, storage layer, CSV
 exporter, and PDF/print report. A reviewer who lands on this code should
 not need to read those modules to understand or extend the feature.
 
-## No-backend, no-telemetry guarantee
+## Network boundary
 
-The feature performs **zero network requests**. There is no `fetch`, no
-`XMLHttpRequest`, no `navigator.sendBeacon`, no cookie write, no analytics
-ping. Every export path is purely local:
+The local export paths (clipboard, bundle download, mailto, GitHub URL) are
+**zero-network**: no `fetch`, no `XMLHttpRequest`, no `navigator.sendBeacon`,
+no cookie write, no analytics ping.
+
+The **Worker submit path** (`qa.rentenwiki.de`) is the sole network surface,
+and it is the first sanctioned backend exception for this project (ADR-0001).
+It is opt-in — the tester explicitly taps "Einreichen" after reviewing the
+consent gate in `QaPreview`. The Worker processes submissions ephemerally and
+stores screenshots in R2 scoped to the lifetime of the linked GitHub issue.
+
+Local export paths remain:
 
 - Markdown clipboard via `navigator.clipboard.writeText`.
 - JSON bundle download via a constructed `Blob` and `URL.createObjectURL`.
