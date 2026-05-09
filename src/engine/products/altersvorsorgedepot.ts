@@ -146,7 +146,11 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
         avd.payoutMode === 'lifelong_annuity'
           ? (monthlyCapital / 10_000) * avd.rentenfaktor
           : monthlyPayoutFromCapital(monthlyCapital, payoutReturn, payoutPlanYears)
-      const partialCapital = projection.capital * partialPct - avd.transferCostEUR
+      // transferCostEUR is a one-time entry cost already deducted from the initial
+      // transfer capital at line 96–98 (transferInitialCapital). Do NOT subtract it
+      // again here — doing so double-counts it for any AVD with partialCapitalPct > 0.
+      // See gh#64.
+      const partialCapital = projection.capital * partialPct
       const otherAnnual = avd.monthlyOtherRetirementIncome * 12
 
       return {

@@ -436,3 +436,69 @@ describe('AVD_UI_SELECTABLE_PAYOUT_MODES', () => {
     expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toHaveLength(2)
   })
 })
+
+// ---------------------------------------------------------------------------
+// gh#64: transferCostEUR double-deduction regression
+// ---------------------------------------------------------------------------
+// transferCostEUR is a one-time entry cost on the initial Riester→AVD transfer
+// capital (deducted once at transferInitialCapital). It must NOT be deducted a
+// second time when computing the partial-capital lump sum.
+describe('#64: transferCostEUR deducted exactly once with partialCapitalPct > 0', () => {
+  // Use simulateRetirementComparison so we exercise the full simulator path.
+  // Import lazily to keep the unit-test file dependency surface small.
+  it('afterTaxLumpSum with transferCostEUR=1000 equals afterTaxLumpSum with transferCostEUR=0 minus the cost of one deduction', async () => {
+    const { simulateRetirementComparison } = await import('../simulate')
+    const { defaultProfile } = await import('../../data/defaultScenario')
+    type ProductId = import('../../domain').ProductId
+
+    const baseAssumptions = {
+      ...defaultAssumptions,
+      visibleProducts: ['altersvorsorgedepot'] as ProductId[],
+      altersvorsorgedepot: {
+        ...defaultAssumptions.altersvorsorgedepot,
+        partialCapitalPct: 0.2,
+        riesterTransferCapital: 50_000,
+        transferCostEUR: 0,
+      },
+    }
+
+    const withCostAssumptions = {
+      ...baseAssumptions,
+      altersvorsorgedepot: {
+        ...baseAssumptions.altersvorsorgedepot,
+        transferCostEUR: 1_000,
+      },
+    }
+
+    const baseResult = simulateRetirementComparison(defaultProfile, baseAssumptions, rules)
+    const withCostResult = simulateRetirementComparison(defaultProfile, withCostAssumptions, rules)
+
+    const baseAvd = baseResult.products.find(
+      (p) => p.productId === 'altersvorsorgedepot' && p.scenarioId === 'basis',
+    )
+    const withCostAvd = withCostResult.products.find(
+      (p) => p.productId === 'altersvorsorgedepot' && p.scenarioId === 'basis',
+    )
+
+    // Both must have an afterTaxLumpSum (partialCapitalPct = 0.2 > 0)
+    expect(baseAvd?.afterTaxLumpSum).toBeGreaterThan(0)
+    expect(withCostAvd?.afterTaxLumpSum).toBeGreaterThan(0)
+
+    // The only difference between the two runs is 1000 EUR deducted from the
+    // initial transfer capital. The partial-capital lump sum must be smaller
+    // in the withCost run, but NOT by more than would correspond to double-
+    // deducting 1000 EUR.  Concretely: after compound growth, losing 1000 at
+    // the start means the partial capital (20% of accumulated capital) is
+    // smaller; the after-tax difference must be less than 1000 EUR (partial
+    // pct 20% × 1000 initial difference = 200 EUR in capital, less than 200
+    // after tax).  Before the fix the lump sum was understated by a full
+    // extra 1000 EUR, making the difference far larger than 200 EUR.
+    const lumpSumDiff = (baseAvd?.afterTaxLumpSum ?? 0) - (withCostAvd?.afterTaxLumpSum ?? 0)
+
+    // Correct: the difference must be well below 1000 EUR (it comes only
+    // from the 20% growth haircut on the lost 1000 in initial capital).
+    expect(lumpSumDiff).toBeLessThan(1_000)
+    // Sanity: some difference exists (the initial 1000 EUR does reduce capital)
+    expect(lumpSumDiff).toBeGreaterThan(0)
+  })
+})
