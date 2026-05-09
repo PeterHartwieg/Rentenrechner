@@ -598,7 +598,11 @@ th {
   display: flex;
   gap: 4px;
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none; /* hide scrollbar while keeping scroll functionality */
+}
+
+.workspace-tabs-inner::-webkit-scrollbar {
+  display: none;
 }
 
 .workspace-tab {
@@ -957,6 +961,11 @@ th {
 
   .segmented {
     overflow-x: auto;
+    scrollbar-width: none; /* hide horizontal scrollbar on mobile */
+  }
+
+  .segmented::-webkit-scrollbar {
+    display: none;
   }
 
   .segmented button {
