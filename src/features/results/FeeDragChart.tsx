@@ -15,6 +15,7 @@ import { getProductMeta } from '../../engine/productRegistry';
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon';
 import { qaTargetAttrs, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
 import { useQaMode } from '../qa-feedback/useQaMode';
+import { buildFeeDragChartData } from './feeDragChartData';
 
 interface FeeDragChartProps {
   selectedResults: {
@@ -84,30 +85,15 @@ export function FeeDragChart({
         <div>
           <h2>Gebühren-Vergleich</h2>
           <p>
-            Eingezahlter Nettoaufwand bis Rentenbeginn vs. kumulierte Netto-Auszahlungen bis
-            Alter {comparisonEndAge} (bzw. Vertragsende) und Gesamtgebühren – im gewählten Szenario.
+            Kumulierte Netto-Auszahlungen bis Alter {comparisonEndAge} (blau + grün) vs.
+            Gesamtgebühren (rot, separate Säule) – im gewählten Szenario.
           </p>
         </div>
       </div>
       <div className="chart-frame small fee-drag-chart-wrap">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={selectedResults.map((r) => {
-              const endAge = r.payoutEndAge ?? comparisonEndAge;
-              const payoutYears = Math.max(0, endAge - retirementAge);
-              const cumulativeNetPayouts = r.etfPayoutRows
-                ? r.etfPayoutRows.reduce((sum, row) => sum + row.netAnnualPayout, 0)
-                : r.netMonthlyPayout * 12 * payoutYears;
-              const contributed = Math.min(r.totalUserCost, cumulativeNetPayouts);
-              const gain = Math.max(cumulativeNetPayouts - contributed, 0);
-              return {
-                name: getProductMeta(r.productId as Parameters<typeof getProductMeta>[0])?.shortLabel ?? r.label,
-                'Nettoaufwand gesamt': contributed,
-                'Netto-Rendite': gain,
-                'Gebühren gesamt': r.totalFees,
-                productId: r.productId,
-              };
-            })}
+            data={buildFeeDragChartData(selectedResults, retirementAge, comparisonEndAge)}
             margin={{ top: 12, right: 8, left: 0, bottom: 8 }}
           >
             <CartesianGrid strokeDasharray="4 4" vertical={false} />
@@ -123,8 +109,8 @@ export function FeeDragChart({
             />
             <Tooltip formatter={(value) => formatCurrency(Number(value), 0)} />
             <Bar dataKey="Nettoaufwand gesamt" stackId="a" fill="#0ea5e9" isAnimationActive={false} />
-            <Bar dataKey="Netto-Rendite" stackId="a" fill="#22c55e" isAnimationActive={false} />
-            <Bar dataKey="Gebühren gesamt" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="Netto-Rendite" stackId="a" fill="#22c55e" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="Gebühren gesamt" stackId="b" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
         <div className="fee-drag-legend fee-drag-legend--overlay" {...legendTargetProps}>
