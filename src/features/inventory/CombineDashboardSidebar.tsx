@@ -56,7 +56,7 @@ import {
 } from './inventoryHelpers'
 import { InvSelect } from './fields'
 import { InfoTip } from '../../ui/InfoTip'
-import { toNumber, DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
+import { toNumber, useDraftNumber, DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -111,8 +111,31 @@ function CombineField({
   )
 }
 
-// toNumber, InvSelect, and shared option tables (DFW_OPTIONS, PAYOUT_OPTIONS_*)
-// are imported from ./fields. CombineField keeps its own CSS class for sidebar layout.
+// toNumber, useDraftNumber, InvSelect, and shared option tables (DFW_OPTIONS,
+// PAYOUT_OPTIONS_*) are imported from ./fieldHelpers / ./fields.
+// CombineField keeps its own CSS class for sidebar layout.
+
+/**
+ * Thin wrapper around <input type="number"> with draft-before-commit behaviour.
+ *
+ * Displays the raw in-progress string while the user is editing; calls
+ * `onCommit` only on blur or Enter; discards empty / non-finite intermediates
+ * so transient empty-field states never write zero to workspace state.
+ *
+ * All props except `value` / `onCommit` are forwarded to the underlying
+ * <input> element.
+ */
+function DraftNumberInput({
+  value,
+  onCommit,
+  ...rest
+}: {
+  value: number
+  onCommit: (next: number) => void
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onBlur' | 'onKeyDown' | 'type'>) {
+  const { inputProps } = useDraftNumber({ value, onCommit })
+  return <input type="number" {...rest} {...inputProps} />
+}
 
 function CommonContractFields<T extends InstanceCommon>({
   instance,
@@ -155,26 +178,20 @@ function CommonContractFields<T extends InstanceCommon>({
         </select>
       </CombineField>
       <CombineField label="Vertragsbeginn">
-        <input
-          type="number"
+        <DraftNumberInput
           value={instance.contractStartYear}
           min={1970}
           max={new Date().getFullYear()}
           step={1}
-          onChange={(e) =>
-            onChange({ ...instance, contractStartYear: toNumber(e.target.value, instance.contractStartYear) })
-          }
+          onCommit={(v) => onChange({ ...instance, contractStartYear: v })}
         />
       </CombineField>
       <CombineField label={currentValueLabel}>
-        <input
-          type="number"
+        <DraftNumberInput
           value={instance.currentValueEUR ?? 0}
           min={0}
           step={100}
-          onChange={(e) =>
-            onChange({ ...instance, currentValueEUR: toNumber(e.target.value, instance.currentValueEUR ?? 0) })
-          }
+          onCommit={(v) => onChange({ ...instance, currentValueEUR: v })}
         />
       </CombineField>
     </>
@@ -228,36 +245,29 @@ function PersonalProfileSection({
       <p className="combine-sidebar-heading" {...profileHeadingProps}>Persönliche Angaben</p>
       <div className="combine-instance-fields">
         <CombineField label="Alter">
-          <input
-            type="number"
+          <DraftNumberInput
             value={profile.age}
             min={0}
             max={100}
             step={1}
-            onChange={(e) => patchProfile({ age: toNumber(e.target.value, profile.age) })}
+            onCommit={(v) => patchProfile({ age: v })}
           />
         </CombineField>
         <CombineField label="Bruttogehalt">
-          <input
-            type="number"
+          <DraftNumberInput
             value={profile.grossSalaryYear}
             min={0}
             step={1000}
-            onChange={(e) =>
-              patchProfile({ grossSalaryYear: toNumber(e.target.value, profile.grossSalaryYear) })
-            }
+            onCommit={(v) => patchProfile({ grossSalaryYear: v })}
           />
         </CombineField>
         <CombineField label="Renteneintrittsalter">
-          <input
-            type="number"
+          <DraftNumberInput
             value={profile.retirementAge}
             min={profile.age}
             max={85}
             step={1}
-            onChange={(e) =>
-              patchProfile({ retirementAge: toNumber(e.target.value, profile.retirementAge) })
-            }
+            onCommit={(v) => patchProfile({ retirementAge: v })}
           />
         </CombineField>
         <CombineField label="Krankenversicherung">
@@ -321,16 +331,11 @@ function PersonalProfileSection({
         {(statutoryPension.pensionBaselineType === 'beamtenpension' ||
           statutoryPension.pensionBaselineType === 'versorgungswerk') && (
           <CombineField label="Monatliche Brutto-Pension">
-            <input
-              type="number"
+            <DraftNumberInput
               value={statutoryPension.manualMonthlyGross ?? 0}
               min={0}
               step={50}
-              onChange={(e) =>
-                patchStatutoryPension({
-                  manualMonthlyGross: toNumber(e.target.value, statutoryPension.manualMonthlyGross ?? 0),
-                })
-              }
+              onCommit={(v) => patchStatutoryPension({ manualMonthlyGross: v })}
             />
           </CombineField>
         )}
@@ -397,41 +402,32 @@ function BavInstanceCard({
           <CommonContractFields instance={instance} onChange={onChange} />
           {instance.status !== 'offered' && (
             <CombineField label="Brutto-Umwandlung (EUR/Monat)">
-              <input
-                type="number"
+              <DraftNumberInput
                 value={instance.monthlyGrossConversion}
                 min={0}
                 max={5000}
                 step={10}
                 disabled={instance.status === 'paid_up'}
-                onChange={(e) =>
-                  onChange({ ...instance, monthlyGrossConversion: Number(e.target.value) })
-                }
+                onCommit={(v) => onChange({ ...instance, monthlyGrossConversion: v })}
               />
             </CombineField>
           )}
           <CombineField label="Zusätzlicher AG-Zuschuss (%)">
-            <input
-              type="number"
+            <DraftNumberInput
               value={Math.round(instance.contractualMatchPercent * 1000) / 10}
               min={0}
               max={500}
               step={1}
-              onChange={(e) =>
-                onChange({ ...instance, contractualMatchPercent: toNumber(e.target.value, 0) / 100 })
-              }
+              onCommit={(v) => onChange({ ...instance, contractualMatchPercent: v / 100 })}
             />
           </CombineField>
           <CombineField label="Fixer Extra-AG-Beitrag (EUR/Monat)">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.contractualFixedMonthly}
               min={0}
               max={5000}
               step={10}
-              onChange={(e) =>
-                onChange({ ...instance, contractualFixedMonthly: toNumber(e.target.value, 0) })
-              }
+              onCommit={(v) => onChange({ ...instance, contractualFixedMonthly: v })}
             />
           </CombineField>
           <CombineField label="Durchführungsweg">
@@ -449,12 +445,11 @@ function BavInstanceCard({
             />
           </CombineField>
           <CombineField label="Garantierter Rentenfaktor">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.rentenfaktor}
               min={0}
               step={0.5}
-              onChange={(e) => onChange({ ...instance, rentenfaktor: toNumber(e.target.value, instance.rentenfaktor) })}
+              onCommit={(v) => onChange({ ...instance, rentenfaktor: v })}
             />
           </CombineField>
         </div>
@@ -539,19 +534,13 @@ function EtfInstanceCard({
             currentValueLabel="Aktueller Depotwert"
           />
           <CombineField label="Monatliche Sparrate">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.monthlyContribution ?? 0}
               min={0}
               max={5000}
               step={10}
               disabled={instance.status === 'paid_up'}
-              onChange={(e) =>
-                onChange({
-                  ...instance,
-                  monthlyContribution: toNumber(e.target.value, instance.monthlyContribution ?? 0),
-                })
-              }
+              onCommit={(v) => onChange({ ...instance, monthlyContribution: v })}
             />
           </CombineField>
         </div>
@@ -639,19 +628,13 @@ function InsuranceInstanceCard({
         <div className="combine-instance-fields">
           <CommonContractFields instance={instance} onChange={onChange} />
           <CombineField label="Monatsbeitrag (EUR)">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.monthlyContribution ?? 0}
               min={0}
               max={5000}
               step={10}
               disabled={instance.status === 'paid_up'}
-              onChange={(e) =>
-                onChange({
-                  ...instance,
-                  monthlyContribution: toNumber(e.target.value, instance.monthlyContribution ?? 0),
-                })
-              }
+              onCommit={(v) => onChange({ ...instance, monthlyContribution: v })}
             />
           </CombineField>
           <CombineField label="Auszahlungsform">
@@ -662,12 +645,11 @@ function InsuranceInstanceCard({
             />
           </CombineField>
           <CombineField label="Garantierter Rentenfaktor">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.rentenfaktor}
               min={0}
               step={0.5}
-              onChange={(e) => onChange({ ...instance, rentenfaktor: toNumber(e.target.value, instance.rentenfaktor) })}
+              onCommit={(v) => onChange({ ...instance, rentenfaktor: v })}
             />
           </CombineField>
         </div>
@@ -748,25 +730,21 @@ function BasisrenteInstanceCard({
         <div className="combine-instance-fields">
           <CommonContractFields instance={instance} onChange={onChange} />
           <CombineField label="Monatsbeitrag (EUR)">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.monthlyGrossContribution}
               min={0}
               max={5000}
               step={10}
               disabled={instance.status === 'paid_up'}
-              onChange={(e) =>
-                onChange({ ...instance, monthlyGrossContribution: Number(e.target.value) })
-              }
+              onCommit={(v) => onChange({ ...instance, monthlyGrossContribution: v })}
             />
           </CombineField>
           <CombineField label="Garantierter Rentenfaktor">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.rentenfaktor}
               min={0}
               step={0.5}
-              onChange={(e) => onChange({ ...instance, rentenfaktor: toNumber(e.target.value, instance.rentenfaktor) })}
+              onCommit={(v) => onChange({ ...instance, rentenfaktor: v })}
             />
           </CombineField>
         </div>
@@ -837,16 +815,13 @@ function AvdInstanceCard({
         <div className="combine-instance-fields">
           <CommonContractFields instance={instance} onChange={onChange} />
           <CombineField label="Eigenbeitrag (EUR/Monat)">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.monthlyOwnContribution}
               min={0}
               max={5000}
               step={10}
               disabled={instance.status === 'paid_up'}
-              onChange={(e) =>
-                onChange({ ...instance, monthlyOwnContribution: Number(e.target.value) })
-              }
+              onCommit={(v) => onChange({ ...instance, monthlyOwnContribution: v })}
             />
           </CombineField>
           <CombineField label="Depottyp">
@@ -940,16 +915,13 @@ function RiesterInstanceCard({
             }
           />
           <CombineField label="Eigenbeitrag (EUR/Monat)">
-            <input
-              type="number"
+            <DraftNumberInput
               value={instance.monthlyOwnContribution}
               min={0}
               max={5000}
               step={10}
               disabled={instance.status === 'paid_up'}
-              onChange={(e) =>
-                onChange({ ...instance, monthlyOwnContribution: Number(e.target.value) })
-              }
+              onCommit={(v) => onChange({ ...instance, monthlyOwnContribution: v })}
             />
           </CombineField>
           <CombineField label="Auszahlungsform">

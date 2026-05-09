@@ -173,14 +173,18 @@ describe('App — Mein Plan combine-mode chrome and profile editing', () => {
     )
     expect(bruttogehaltInput).not.toBeNull()
 
-    fireEvent.change(bruttogehaltInput!, { target: { value: '75000' } })
+    // DraftNumberInput commits on blur (not on change) — fire change then blur.
+    fireEvent.change(bruttogehaltInput!, { target: { value: '80000' } })
+    fireEvent.blur(bruttogehaltInput!)
 
     // Storage is written reactively via useEffect — give React a tick then
     // read the persisted workspace directly from localStorage.
-    const stored = localStorage.getItem(STORAGE_KEY_V2)
-    expect(stored).not.toBeNull()
-    const persisted = JSON.parse(stored!) as Workspace
-    expect(persisted.baseline.profile.grossSalaryYear).toBe(75000)
+    await waitFor(() => {
+      const stored = localStorage.getItem(STORAGE_KEY_V2)
+      expect(stored).not.toBeNull()
+      const persisted = JSON.parse(stored!) as Workspace
+      expect(persisted.baseline.profile.grossSalaryYear).toBe(80000)
+    })
   })
 
   it('editing retirement age writes through to workspace baseline (#40)', async () => {
@@ -197,11 +201,15 @@ describe('App — Mein Plan combine-mode chrome and profile editing', () => {
     )
     expect(retirementAgeInput).not.toBeNull()
 
+    // DraftNumberInput commits on blur (not on change) — fire change then blur.
     fireEvent.change(retirementAgeInput!, { target: { value: '63' } })
+    fireEvent.blur(retirementAgeInput!)
 
-    const stored = localStorage.getItem(STORAGE_KEY_V2)
-    expect(stored).not.toBeNull()
-    const persisted = JSON.parse(stored!) as Workspace
-    expect(persisted.baseline.profile.retirementAge).toBe(63)
+    await waitFor(() => {
+      const stored = localStorage.getItem(STORAGE_KEY_V2)
+      expect(stored).not.toBeNull()
+      const persisted = JSON.parse(stored!) as Workspace
+      expect(persisted.baseline.profile.retirementAge).toBe(63)
+    })
   })
 })
