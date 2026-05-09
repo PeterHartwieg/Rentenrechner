@@ -60,8 +60,7 @@ describe('readUrlState — invalid', () => {
       .replace(/=/g, '')
     setSearch(`/?s=${badJson}`)
     const result = readUrlState()
-    // Must not be valid — either absent (empty encoded) or invalid
-    expect(result.kind).not.toBe('valid')
+    expect(result).toEqual({ kind: 'invalid' })
   })
 })
 
