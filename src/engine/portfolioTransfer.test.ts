@@ -19,6 +19,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { de2026Rules } from '../rules/de2026'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { migrateV1ToV2 } from '../storage'
+import { afterTaxRiesterLumpSum } from './riester'
 import {
   buildInstanceCapitalPolicy,
   collectTransferEvents,
@@ -323,14 +324,36 @@ describe('portfolioTransfer — computeSurrenderTax', () => {
     expect(tax).toBeGreaterThan(0)
   })
 
-  it('Riester → surrender tax > 0 (§22 Nr. 5 EStG subsidy clawback path)', () => {
+  it('Riester → surrender tax equals §22 Nr. 5 EStG tax only (upper-bound; clawback NOT modelled, gh#81)', () => {
+    // NOTE (gh#81): This test intentionally pins the UPPER-BOUND behaviour.
+    // §93 EStG Zulagen + Sonderausgaben clawback is not modelled; the computed
+    // tax is §22 Nr. 5 EStG payout taxation only. When clawback is eventually
+    // implemented, this test must be updated to assert a lower net value.
     const ws = makeBaseWorkspace()
     const riester: RiesterInstance = {
       ...ws.baseline.assumptions.riester[0],
       instanceId: 'riester-surrender',
     }
-    const tax = computeSurrenderTax(riester, 20_000, ws, de2026Rules, de2026Rules.year + 5)
-    expect(tax).toBeGreaterThanOrEqual(0) // May be 0 if proceeds below basic allowance
+    const surrenderProceeds = 20_000
+    const eventCalendarYear = de2026Rules.year + 5
+    const tax = computeSurrenderTax(riester, surrenderProceeds, ws, de2026Rules, eventCalendarYear)
+
+    // Compute the expected value using the same helper called inside computeSurrenderTax
+    // for the Riester branch: afterTaxRiesterLumpSum with zero otherAnnualIncome and
+    // zero grvBaselineMonthly (matching the computeSurrenderTax call site).
+    const netAfterTax = afterTaxRiesterLumpSum(
+      surrenderProceeds,
+      ws.baseline.profile,
+      de2026Rules,
+      0,
+      eventCalendarYear,
+      0,
+    )
+    const expectedTax = Math.max(0, surrenderProceeds - netAfterTax)
+
+    expect(tax).toBe(expectedTax)
+    // Sanity: tax must be positive (proceeds well above Sparerpauschbetrag).
+    expect(tax).toBeGreaterThan(0)
   })
 
   it('AVD → surrender tax >= 0', () => {
