@@ -94,6 +94,7 @@ export function InfoTip({
         aria-label={label}
         aria-expanded={open}
         aria-controls={id}
+        aria-describedby={open ? id : undefined}
         onClick={() => setOpen((v) => !v)}
         {...triggerQaProps}
       >
