@@ -34,7 +34,7 @@ export interface DerivedViews {
   visibleProducts: ProductResult[]
   selectedResults: ProductResult[]
   capitalChartData: Array<Record<string, string | number>> | undefined
-  pensionBars: Array<{ name: string; value: number; fill: string }>
+  pensionBars: Array<{ name: string; shortName: string; value: number; fill: string }>
   bestCapital: ReturnType<typeof deriveBestCapital>
   bestPension: ReturnType<typeof deriveBestPension>
   cashflowResult: ProductResult | undefined
