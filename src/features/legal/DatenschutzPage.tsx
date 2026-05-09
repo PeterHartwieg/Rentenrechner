@@ -205,6 +205,37 @@ export function DatenschutzPage({ navigate }: Props) {
         </p>
       </section>
 
+      <section>
+        <h2>8. Änderungen dieser Erklärung</h2>
+        <p>
+          Diese Datenschutzerklärung wird angepasst, sobald sich die
+          Verarbeitung personenbezogener Daten ändert. Geplant sind
+          insbesondere folgende Erweiterungen, die jeweils im Vorfeld in
+          dieser Erklärung dokumentiert werden:
+        </p>
+        <ul>
+          <li>
+            <strong>Hosting-Provider:</strong> Ergänzung von Anbieter, Sitz,
+            Speicherdauer der Server-Logs sobald die Anwendung öffentlich
+            ausgeliefert wird;
+          </li>
+          <li>
+            <strong>Reichweitenmessung:</strong> Falls eingeführt, ausschließlich
+            cookiefrei und mit EU-Hosting (z.&nbsp;B. Plausible / Umami);
+          </li>
+          <li>
+            <strong>Document-Upload / OCR:</strong> Falls eingeführt, mit
+            kurzlebiger, automatisch gelöschter Verarbeitung; keine
+            dauerhafte Speicherung der hochgeladenen Dokumente;
+          </li>
+          <li>
+            <strong>Kontaktformular für Lizenzanfragen:</strong> Falls eingeführt,
+            mit klarer Zweckbindung (Bearbeitung der Anfrage) und Angabe der
+            Speicherdauer.
+          </li>
+        </ul>
+      </section>
+
       <section id="qa-feedback">
         <h2>9. QA-Feedback-Modus</h2>
         <p>
@@ -300,37 +331,6 @@ export function DatenschutzPage({ navigate }: Props) {
           </a>
           . Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.
         </p>
-      </section>
-
-      <section>
-        <h2>10. Änderungen dieser Erklärung</h2>
-        <p>
-          Diese Datenschutzerklärung wird angepasst, sobald sich die
-          Verarbeitung personenbezogener Daten ändert. Geplant sind
-          insbesondere folgende Erweiterungen, die jeweils im Vorfeld in
-          dieser Erklärung dokumentiert werden:
-        </p>
-        <ul>
-          <li>
-            <strong>Hosting-Provider:</strong> Ergänzung von Anbieter, Sitz,
-            Speicherdauer der Server-Logs sobald die Anwendung öffentlich
-            ausgeliefert wird;
-          </li>
-          <li>
-            <strong>Reichweitenmessung:</strong> Falls eingeführt, ausschließlich
-            cookiefrei und mit EU-Hosting (z.&nbsp;B. Plausible / Umami);
-          </li>
-          <li>
-            <strong>Document-Upload / OCR:</strong> Falls eingeführt, mit
-            kurzlebiger, automatisch gelöschter Verarbeitung; keine
-            dauerhafte Speicherung der hochgeladenen Dokumente;
-          </li>
-          <li>
-            <strong>Kontaktformular für Lizenzanfragen:</strong> Falls eingeführt,
-            mit klarer Zweckbindung (Bearbeitung der Anfrage) und Angabe der
-            Speicherdauer.
-          </li>
-        </ul>
       </section>
     </LegalLayout>
   )
