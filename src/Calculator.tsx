@@ -250,6 +250,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     setQaWorkspaceContext({ activeView: workspace.activeView })
   }, [workspace.activeView])
 
+  // Issue #91: reset scroll position to top on every main app view change so
+  // users don't land halfway down an unrelated view (e.g. scrolled deep into
+  // Vergleich charts then tapping Details & Export). `behavior: 'instant'`
+  // avoids animation — the view swap already provides enough visual context.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [workspace.activeView])
+
   const combineSimulation = useCombineSimulation(portfolioState.workspace)
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const ui = useWorkspaceUiState()
