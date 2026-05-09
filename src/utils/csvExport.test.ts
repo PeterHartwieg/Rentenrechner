@@ -5,6 +5,7 @@
  *   - Section 0 (Disclaimer) is unchanged — first 4 data lines match known German wording.
  *   - Section 1 header contains a "Confidence" column.
  *   - "Confidence" is the 10th column (0-indexed: index 9) in Section 1 data rows.
+ *   - csvCell formula-injection neutralization (gh#62).
  */
 
 import { describe, it, expect } from 'vitest'
@@ -54,6 +55,68 @@ const BASE_OPTS = {
   rules: de2026Rules,
   inflationRate: 0.02,
 }
+
+// ---------------------------------------------------------------------------
+// csvCell — formula injection neutralization (gh#62)
+// ---------------------------------------------------------------------------
+// csvCell is not exported; we test it indirectly through buildExportCsv by
+// injecting formula-prefixed labels into a product fixture.
+
+function csvCellViaExport(label: string): string {
+  // Build a minimal CSV and extract the label cell from the first data row of
+  // Section 1 (Detailvergleich). The label is always the first column.
+  const fixture = {
+    ...BASE_OPTS,
+    products: [
+      {
+        ...FIXTURE_PRODUCT,
+        label,
+      } as typeof FIXTURE_PRODUCT,
+    ],
+  }
+  const csv = buildExportCsv(fixture)
+  const lines = csv.split('\n')
+  const headerLineIdx = lines.findIndex((l) => l.startsWith('Detailvergleich'))
+  const dataRow = lines[headerLineIdx + 2] // skip section header + column header
+  // Return the raw first cell (may be quoted or prefixed).
+  // Split carefully: the label may itself be quoted.
+  const firstComma = dataRow.indexOf(',')
+  return firstComma === -1 ? dataRow : dataRow.slice(0, firstComma)
+}
+
+describe('csvCell — formula injection neutralization (gh#62)', () => {
+  it('neutralizes = prefix', () => {
+    expect(csvCellViaExport('=SUM(A1)')).toBe("'=SUM(A1)")
+  })
+
+  it('neutralizes + prefix', () => {
+    expect(csvCellViaExport('+foo')).toBe("'+foo")
+  })
+
+  it('neutralizes - prefix', () => {
+    expect(csvCellViaExport('-bar')).toBe("'-bar")
+  })
+
+  it('neutralizes @ prefix', () => {
+    expect(csvCellViaExport('@user')).toBe("'@user")
+  })
+
+  it('neutralizes tab prefix', () => {
+    expect(csvCellViaExport('\tfoo')).toBe("'\tfoo")
+  })
+
+  it('neutralizes CR prefix', () => {
+    expect(csvCellViaExport('\rfoo')).toBe("'\rfoo")
+  })
+
+  it('leaves normal strings unchanged', () => {
+    expect(csvCellViaExport('Mein ETF')).toBe('Mein ETF')
+  })
+
+  it('leaves number strings unchanged', () => {
+    expect(csvCellViaExport('12345')).toBe('12345')
+  })
+})
 
 describe('buildExportCsv', () => {
   it('Section 0 contains the German disclaimer wording unchanged', () => {
