@@ -513,6 +513,14 @@ export function BreakEvenChart({
           })}
         </ul>
       )}
+
+      {/* Visually-hidden data table for screen readers */}
+      <BreakEvenAccessibleTable
+        selectedResults={selectedResults}
+        data={data}
+        breakEvenPoints={breakEvenPoints}
+        horizonAge={horizonAge}
+      />
     </section>
   )
 }
@@ -636,4 +644,70 @@ function breakEvenMarkers(
       label: getProductMeta(result.productId)?.shortLabel ?? result.label,
     }]
   })
+}
+
+// ---------------------------------------------------------------------------
+// Accessible table — visually hidden, screen-reader summary of lifecycle data
+// ---------------------------------------------------------------------------
+
+interface BreakEvenAccessibleTableProps {
+  selectedResults: LifecycleSeriesResult[]
+  data: Record<string, number>[]
+  breakEvenPoints: BreakEvenMarker[]
+  horizonAge: number
+}
+
+function BreakEvenAccessibleTable({
+  selectedResults,
+  data,
+  breakEvenPoints,
+  horizonAge,
+}: BreakEvenAccessibleTableProps) {
+  if (selectedResults.length === 0 || data.length === 0) return null
+
+  // Use the last data point at the horizon age for cumulative totals.
+  const lastPoint = data[data.length - 1] ?? {}
+  const paidInKey = selectedResults[0] ? lifecycleLineKeys(selectedResults[0].productId).paidIn : undefined
+  const totalPaidIn = paidInKey ? Number(lastPoint[paidInKey] ?? 0) : 0
+
+  const breakEvenByProductId = new Map(breakEvenPoints.map((p) => [p.productId, p.age]))
+
+  return (
+    <table className="sr-only" aria-label="Lebenszyklus-Daten (Zusammenfassung)">
+      <caption>
+        Kumulierte Netto-Einzahlungen und Netto-Auszahlungen bis Alter {horizonAge}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Produkt</th>
+          <th scope="col">Netto eingezahlt (kumuliert)</th>
+          <th scope="col">Netto ausgezahlt (kumuliert, Alter {horizonAge})</th>
+          <th scope="col">Break-Even-Alter</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Benchmark (alle Produkte)</td>
+          <td>{formatCurrency(totalPaidIn, 0)}</td>
+          <td>-</td>
+          <td>-</td>
+        </tr>
+        {selectedResults.map((result) => {
+          const keys = lifecycleLineKeys(result.productId)
+          const cumPayout = Number(lastPoint[keys.payout] ?? 0)
+          const meta = getProductMeta(result.productId)
+          const label = meta?.shortLabel ?? result.label
+          const breakEvenAge = breakEvenByProductId.get(result.productId)
+          return (
+            <tr key={result.productId}>
+              <td>{label}</td>
+              <td>{formatCurrency(result.totalUserCost, 0)}</td>
+              <td>{formatCurrency(cumPayout, 0)}</td>
+              <td>{breakEvenAge !== undefined ? `Alter ${breakEvenAge}` : 'nicht erreicht'}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
 }
