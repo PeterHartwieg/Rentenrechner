@@ -46,6 +46,46 @@ import type {
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
 
+/**
+ * Projects the employee-side GRV contribution per year from the user's current
+ * age up to (but not including) retirement age.
+ *
+ * Returns an empty array when `pensionBaselineType` is not `'grv'` (i.e. for
+ * Versorgungswerk, Beamtenpension, and none — the caller should skip rendering
+ * in those cases).
+ *
+ * @param bavGrvReductionAnnual - Optional bAV Entgeltumwandlung reduction (annual EUR)
+ *   from `BavFundingResult.estimatedMonthlyGrvReduction × 12`. Mirrors how
+ *   `projectStatutoryPension` applies `includeGrvReduction`.
+ */
+export function projectGrvContributionTimeline(
+  profile: PersonalProfile,
+  rules: GermanRules,
+  assumptions: StatutoryPensionAssumptions,
+  bavGrvReductionAnnual?: number,
+): Array<{ ageYears: number; employeeAnnualEUR: number }> {
+  const { pensionBaselineType = 'grv', annualSalaryGrowthRate = 0 } = assumptions
+
+  // Only GRV has employee contributions tracked here; VW / Beamte / none → empty.
+  if (pensionBaselineType !== 'grv') return []
+
+  const remainingYears = Math.max(0, profile.retirementAge - profile.age)
+  if (remainingYears === 0) return []
+
+  const result: Array<{ ageYears: number; employeeAnnualEUR: number }> = []
+  const bavReduction = bavGrvReductionAnnual ?? 0
+
+  for (let t = 0; t < remainingYears; t++) {
+    const salaryT = profile.grossSalaryYear * Math.pow(1 + annualSalaryGrowthRate, t)
+    const cappedSalaryT = Math.min(salaryT, rules.socialSecurity.pensionCapYear)
+    const bavReducedSalaryT = Math.max(0, cappedSalaryT - bavReduction)
+    const employeeAnnual = bavReducedSalaryT * rules.socialSecurity.pensionEmployeeRate
+    result.push({ ageYears: profile.age + t, employeeAnnualEUR: employeeAnnual })
+  }
+
+  return result
+}
+
 export function projectStatutoryPension(
   profile: PersonalProfile,
   rules: GermanRules,
