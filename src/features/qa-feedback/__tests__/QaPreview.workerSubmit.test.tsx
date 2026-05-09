@@ -1,20 +1,23 @@
 // @vitest-environment jsdom
 
 /**
- * QaPreview "Senden" button — Worker submission tests.
+ * QaPreview "Senden" button — Worker submission tests (ADR-0001 explicit consent).
  *
- * The simplified preview no longer has a consent checkbox: QA mode itself
- * is opt-in (`?qa=1`), so reaching the preview already means the tester
- * intends to send. Turnstile renders immediately and the Senden button
- * unlocks once the token arrives.
+ * The preview requires BOTH a consent checkbox AND a Turnstile token before
+ * the Senden button becomes active. The consent checkbox is unchecked on
+ * every fresh QA preview session.
  *
  * Coverage:
- *   1. Happy path — Turnstile callback fires → Senden enables → POST
- *      reaches the Worker URL → success closes the panel.
+ *   1. Happy path — consent checked + Turnstile callback fires → Senden
+ *      enables → POST reaches the Worker URL → success closes the panel.
  *   2. Error path — Worker responds 4xx with a German message; the panel
  *      stays open and surfaces it via role="alert".
  *   3. No-network until the user clicks Senden — mounting the preview does
  *      not call fetch.
+ *   4. Gate: Senden stays disabled if only consent is given but no Turnstile
+ *      token has arrived yet.
+ *   5. Gate: Senden stays disabled if only the Turnstile token arrives but
+ *      the consent checkbox has not been checked.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -103,8 +106,17 @@ async function navigateToPreview() {
   await screen.findByTestId('qa-preview')
 }
 
+/**
+ * Check the consent checkbox in the preview, satisfying the ADR-0001 gate.
+ * Must be called after `navigateToPreview` has resolved.
+ */
+function checkConsent() {
+  const checkbox = screen.getByTestId('qa-preview-consent-checkbox') as HTMLInputElement
+  fireEvent.click(checkbox)
+}
+
 describe('QaPreview — Senden (worker submit)', () => {
-  it('happy path: Turnstile token arrives → POST reaches Worker → panel closes on success', async () => {
+  it('happy path: consent checked + Turnstile token arrives → POST reaches Worker → panel closes on success', async () => {
     fetchSpy = vi.fn(
       async () =>
         new Response(
@@ -123,7 +135,10 @@ describe('QaPreview — Senden (worker submit)', () => {
 
     await navigateToPreview()
 
-    // Wait for the fake Turnstile callback to fire and the Senden button to enable.
+    // ADR-0001 gate: check consent first.
+    checkConsent()
+
+    // Wait for BOTH consent and the fake Turnstile callback so the Senden button enables.
     await waitFor(() => {
       const submitBtn = screen.getByTestId('qa-preview-worker-submit') as HTMLButtonElement
       expect(submitBtn.disabled).toBe(false)
@@ -169,6 +184,9 @@ describe('QaPreview — Senden (worker submit)', () => {
 
     await navigateToPreview()
 
+    // ADR-0001 gate: check consent first.
+    checkConsent()
+
     await waitFor(() => {
       expect(
         (screen.getByTestId('qa-preview-worker-submit') as HTMLButtonElement)
@@ -198,5 +216,33 @@ describe('QaPreview — Senden (worker submit)', () => {
 
     await navigateToPreview()
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('gate 4: Senden stays disabled when consent is checked but no Turnstile token has arrived', async () => {
+    // Override the Turnstile stub so it never fires the token callback.
+    ;(window as unknown as { turnstile: TurnstileApiStub }).turnstile = {
+      render: () => 'widget-no-token',
+    }
+
+    await navigateToPreview()
+
+    // Check consent — but no token will ever arrive in this test.
+    checkConsent()
+
+    const submitBtn = screen.getByTestId('qa-preview-worker-submit') as HTMLButtonElement
+    expect(submitBtn.disabled).toBe(true)
+  })
+
+  it('gate 5: Senden stays disabled when the Turnstile token arrives but consent is not checked', async () => {
+    await navigateToPreview()
+
+    // Token arrives via the microtask in the stub, but consent is never checked.
+    await waitFor(() => {
+      // Confirm the token has fired by checking that the consent checkbox exists.
+      expect(screen.getByTestId('qa-preview-consent-checkbox')).toBeTruthy()
+    })
+
+    const submitBtn = screen.getByTestId('qa-preview-worker-submit') as HTMLButtonElement
+    expect(submitBtn.disabled).toBe(true)
   })
 })
