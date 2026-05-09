@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import mdx from '@mdx-js/rollup'
 import remarkGfm from 'remark-gfm'
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 // Static-host SPA fallback — Cloudflare Pages serves dist/404.html for any
 // unmatched path. The legacy `copyFileSync('dist/index.html', 'dist/404.html')`
 // plugin is replaced by `scripts/prerender.mjs`, which writes a real 404 page
@@ -23,6 +25,7 @@ export default defineConfig({
     // comparison tables (issue #04 and onwards).
     { enforce: 'pre', ...mdx({ remarkPlugins: [remarkGfm] }) },
     react({ include: /\.(jsx|tsx|mdx)$/ }),
+    cloudflare(),
   ],
   build: {
     // The lazy `Calculator` chunk (compare-mode + combine-mode dashboard,

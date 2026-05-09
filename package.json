@@ -9,11 +9,12 @@
     "build": "tsc -b && vite build && npm run prerender",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview",
+    "preview": "npm run build && wrangler dev",
     "verify": "npm run lint && npm test && npm run build",
     "repo:stats": "node scripts/repo-stats.mjs",
     "prerender": "node scripts/prerender.mjs",
-    "og:generate": "node scripts/generate-og-images.mjs"
+    "og:generate": "node scripts/generate-og-images.mjs",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
@@ -23,6 +24,7 @@
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.36.3",
     "@eslint/js": "^10.0.1",
     "@mdx-js/rollup": "^3.1.1",
     "@resvg/resvg-js": "^2.6.2",
@@ -43,6 +45,7 @@
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
     "vite-node": "^6.0.0",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "wrangler": "^4.90.0"
   }
 }
