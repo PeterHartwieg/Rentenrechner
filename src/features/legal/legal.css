@@ -135,19 +135,6 @@
   text-decoration: underline;
 }
 
-@media (max-width: 760px) {
-  .legal-page {
-    padding: 16px 16px 48px;
-  }
-
-  .app-footer {
-    padding: 14px 16px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-}
-
 /* TEMPORARY — QA activator button (VITE_QA_FOOTER_BUTTON flag).
    Remove once the soft-launch QA window closes.
    Cleanup: .scratch/qa-feedback-mode/issues/18-temporary-footer-button-to-activate-qa.md */
@@ -160,7 +147,6 @@
   border: none;
   padding: 0;
   font: inherit;
-  font-size: inherit;
   color: #2563eb;
   cursor: pointer;
   text-decoration: underline;
@@ -168,6 +154,23 @@
 
 .app-footer-qa-button:hover {
   color: #1d4ed8;
+}
+
+@media (max-width: 760px) {
+  .legal-page {
+    padding: 16px 16px 48px;
+  }
+
+  .app-footer {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .app-footer-qa-hint {
+    white-space: normal;
+  }
 }
 
 @media print {
