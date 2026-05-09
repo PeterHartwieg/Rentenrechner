@@ -128,8 +128,16 @@ Hard constraints:
 
 1. Implement ONLY the curated "What to change". No refactors, no "while I'm
    here" cleanups, no surrounding fixes.
-2. Do NOT touch any HITL zone. Triage already filtered, but re-check
-   defensively. The list:
+2. HITL zones — read this carefully. The label `ready-for-agent` means
+   triage already approved the scope, **including** any HITL files the
+   curated "What to change" explicitly names. If triage says "edit
+   `src/features/legal/DatenschutzPage.tsx`" or "rename label in
+   `src/features/legal/LegalFooter.tsx`", do that — do not refuse on
+   HITL grounds. The guard below is for **surprise drift**, not
+   triage-approved edits.
+
+   Defensive HITL list (refuse only when your fix wanders into one of
+   these and triage did not name it):
      src/engine/**, src/rules/**, src/storage.ts, src/features/legal/**,
      LICENSE.md, COMMERCIAL_LICENSE.md, README.md license sections,
      DisclaimerBanner / disclaimer block in PrintReport.tsx /
@@ -137,7 +145,11 @@ Hard constraints:
      productRegistry.ts / productUiRegistry.tsx / inventoryProductRegistry.ts,
      anything that would change a tax / payout / funding / KV-PV / cohort
      number.
-   If your fix would force you into one of these, ABORT — emit
+
+   Decision rule: cross-reference the curated "What to change" against
+   the file you are about to edit. If the file is named there (path,
+   glob, or unambiguous reference like "the legal footer"), proceed.
+   Otherwise, if the file is in the list above, ABORT — emit
    `RESULT: HITL_DRIFT <one-line reason>` and stop. Do not commit.
 3. Run `npm run verify` (lint + tests + build) after edits. It MUST pass.
    Never use `--no-verify`.
@@ -146,9 +158,22 @@ Hard constraints:
    - On pass: commit (conventional message — see `git log --oneline -10`
      for style; co-author trailer
      `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`).
-4. After committing, output the diff against main for the reviewer:
-   `git diff main..HEAD`. Then emit `RESULT: SUCCESS` with the branch name
-   on a separate line, followed by the diff inside a fenced ```diff block.
+4. **Commit hygiene — strip build artifacts.** `npm run verify` regenerates
+   `public/og/*.png`, may touch root `package-lock.json` (npm version drift),
+   and creates `.wrangler/` state. None of these belong in your commit.
+   After verify and BEFORE `git commit`, run `git status` and stage only
+   the source files you actually edited via explicit paths:
+     `git add src/path/to/file.ts test/path/to/file.test.ts ...`
+   Do **not** use `git add -A` or `git add .`. If you see `public/og/`,
+   `.wrangler/`, or unintended `package-lock.json` in `git status` after
+   committing, you committed garbage — soft-reset and redo:
+     `git reset --soft main && git restore --staged public/og/ ...`
+5. After committing, run `git status` (must be clean of tracked changes)
+   and `git log --oneline main..HEAD` (must show ≥1 commit on your branch,
+   NOT the parent session branch). Then output the diff against main for
+   the reviewer: `git diff main..HEAD`. Emit `RESULT: SUCCESS` with the
+   branch name on a separate line, followed by the diff inside a fenced
+   ```diff block.
 
 Do NOT push, open PRs, merge, or comment on the issue. The orchestrator
 handles those.
@@ -271,8 +296,20 @@ Nothing else. No preamble, no apology, no summary.
 
 Reviewer returned `0 items`. Now:
 
-1. Orchestrator pushes the branch directly (no subagent needed):
-   `git -C <WORKTREE_PATH> push origin agent/<num>-<slug>`
+1. **Rename the worktree's branch** to the canonical agent slug. The
+   harness's `isolation: "worktree"` creates a branch named
+   `worktree-agent-<random-id>`, NOT `agent/<num>-<slug>`. Before pushing:
+   `git -C <WORKTREE_PATH> branch -m agent/<num>-<slug>`
+
+   Then push:
+   `git -C <WORKTREE_PATH> push -u origin agent/<num>-<slug>`
+
+   **Confirm the branch is based on origin/main, not on a stale or
+   diverged session branch.** If the agent's commit ended up on the
+   session branch instead of the worktree branch (see "Subagent commits
+   drift to session branch" below), `gh pr create` against the polluted
+   branch will hit merge conflicts. Recovery: cherry-pick the agent's
+   single commit onto a fresh branch from origin/main.
 2. Open the PR (orchestrator runs):
 
    ```
@@ -321,8 +358,16 @@ The orchestrator auto-merges only when **all** of these hold:
   re-check at the orchestrator level — read the file paths from the diff
   and grep against the list before opening the PR).
 - The diff is small enough to be plausibly a triage-approved fix: ≤8 files
-  AND ≤200 net lines. Larger changes are suspicious despite passing review;
-  abort to `ready-for-human`.
+  AND ≤200 net lines of **human-authored code** (exclude generated files
+  from the line count: `package-lock.json`, `*-lock.yaml`, regenerated
+  `public/og/*.png`, prerendered `dist/`). Larger authored changes are
+  suspicious despite passing review; abort to `ready-for-human`.
+
+  Carve-out: when triage explicitly authorizes adding test infrastructure
+  ("add smoke tests for X", "add regression tests covering Y/Z/W"), the
+  authored line count for the test file alone may legitimately exceed 200.
+  Apply judgment: if the test file's content matches the triage's enumerated
+  cases 1-for-1 and the source diff is small, proceed.
 
 If any gate fails: comment with the gate name + relabel `ready-for-human`,
 no PR opened. Branch can be pushed for human pickup if useful.
@@ -330,7 +375,12 @@ no PR opened. Branch can be pushed for human pickup if useful.
 ## What you do NOT do
 
 - No edits outside `agent/<num>-<slug>` branches.
-- No force-push, no `git reset --hard` on shared branches.
+- No force-push or `git reset --hard` on `main` or any shared protected
+  branch. Force-push **on the cron's own session branch** (e.g.
+  `claude/trusting-lovelace-*`) is sanctioned for cleanup when stray
+  agent commits accumulate and are subsumed by merged PRs — use
+  `--force-with-lease`, never bare `--force`. See "Session-branch drift"
+  below.
 - No `--no-verify`. If a hook fails, that's a real failure — escalate.
 - No merging without a clean reviewer pass + all confidence gates green.
 - No new GitHub issues. The triaged issue is the canonical record.
@@ -350,10 +400,30 @@ that the morning-triaged batch is ready.
 Distilled from prior multi-agent waves. The cloud routine has no access to
 local memory, so internalize these here.
 
+### Pre-spawn: align local main with origin/main
+
+Local `main` can drift in either direction inside the cloud sandbox: the
+user may have unpushed commits sitting on local main, or a previous
+PR-merge already advanced origin/main past local. Worktrees fork from
+local `main`, so a misaligned local ref produces stale-base failures or
+forks from work-in-progress that has nothing to do with the issue.
+
+Before each implementer spawn:
+
+```
+git fetch origin main
+git update-ref refs/heads/main refs/remotes/origin/main
+```
+
+This is non-destructive (it does NOT touch any checked-out worktree) and
+makes local main = origin/main. If the previous local main had unpushed
+commits, they remain reachable via reflog and via any branch that pointed
+to them, but `main` no longer references them. That's the desired state:
+the cron operates against origin truth.
+
 ### Pre-spawn: capture expected base SHA
 
-Before spawning each implementer subagent, the orchestrator captures the
-current main HEAD via:
+After the alignment above, capture the current main HEAD:
 
 ```
 EXPECTED_BASE_SHA=$(gh api repos/PeterHartwieg/Rentenrechner/branches/main \
@@ -410,6 +480,155 @@ focusing on what's specific.
 Reviewers occasionally mis-narrate which SHA is on main, especially after
 a rebase. When a reviewer asserts something about main's state, verify
 with `git -C <WORKTREE_PATH> log -3 --oneline main` before trusting it.
+
+### Subagent commits drift to session branch
+
+Recurring failure mode (observed across multiple issues in the 2026-05-09
+tick): the implementer subagent runs in its isolated worktree, makes the
+edits, runs verify, and then `git commit` lands on the orchestrator's
+**session branch** (e.g. `claude/trusting-lovelace-cMHt9`) instead of
+the worktree's `worktree-agent-<id>` branch. The cause is likely the
+shared git database treating the worktree's HEAD as the parent repo's
+checked-out branch under some conditions. The result: the worktree
+shows no commits ahead of main, and the session branch sprouts a stray
+commit.
+
+Detection (run after every implementer SUCCESS):
+
+```
+git -C <WORKTREE_PATH> log --oneline main..HEAD   # expect ≥1 commit
+git log --oneline origin/<session-branch>..HEAD   # expect 0 if clean
+```
+
+If the worktree shows 0 commits and the session branch shows a stray
+that matches the issue scope: the agent's work landed on session.
+Recovery (do not lose the work):
+
+```
+git checkout main
+git checkout -b agent/<num>-<slug>
+git cherry-pick <stray-sha>
+git push -u origin agent/<num>-<slug>
+```
+
+Then proceed with PR + merge as normal. Optionally clean up the session
+branch with `git push --force-with-lease origin <session-branch>` after
+the cron PR merges and the stray is subsumed.
+
+### Pre-existing user working-tree edits
+
+The orchestrator's session sandbox sometimes inherits unstaged
+working-tree edits that match the in-flight issue scope (the user has
+been hand-editing the same files locally). When the implementer worktree
+is created, those unstaged edits may carry over via the worktree pool's
+starting state. Symptoms: the agent reports "fix is already present as
+an unstaged working-tree change" or "the implementation was already on
+main" when the diff against `origin/main` is in fact a no-op.
+
+Handling:
+
+1. Before spawning the implementer, run `git status` on the session
+   branch. If unstaged edits match the issue's target files, **stash
+   them with a descriptive message**:
+   `git stash push -m "wip: pre-existing changes for gh#<num>" -- <files>`
+2. Let the agent run. If it reports "already done" or commits a no-op,
+   verify by reading the file at `origin/main` directly (`git show
+   origin/main:<path>`). If main truly has the fix, comment + close the
+   issue as already-resolved.
+3. If main does NOT have the fix but the working tree did, the agent's
+   commit may be the canonical fix — but it needs to be on a clean
+   branch from origin/main, not a polluted one. Use the cherry-pick
+   recovery above.
+
+### Build-artifact noise
+
+`npm run verify` (specifically the `prebuild` step) regenerates
+`public/og/*.png` with non-deterministic byte differences each run. Some
+npm versions also re-canonicalize `package-lock.json`, and Cloudflare
+Wrangler creates a `.wrangler/` state directory. None of these belong in
+PR commits. The orchestrator should clean them up after each verify
+cycle:
+
+```
+git checkout -- public/og/ package-lock.json
+rm -rf .wrangler/
+```
+
+(Optional follow-up: file an issue to add `.wrangler/` to root
+`.gitignore`. Out of scope for the cron itself.)
+
+If an agent commits these artifacts (observed for #54, #60), strip via
+soft-reset before pushing the PR:
+
+```
+git -C <WORKTREE_PATH> reset --soft main
+git -C <WORKTREE_PATH> restore --staged public/og/ package-lock.json
+git -C <WORKTREE_PATH> checkout -- public/og/ package-lock.json
+git -C <WORKTREE_PATH> commit -m "<original message>"
+```
+
+### Session-branch drift
+
+Stray agent commits accumulate on the cron's session branch. Each one is
+typically a fix that ALSO got cherry-picked or recovered into a proper
+`agent/<num>-<slug>` branch and merged via PR. The session branch ends
+up "ahead" of origin/main by several stray commits that are functionally
+subsumed by the merged PRs.
+
+Cleanup (sanctioned for the cron's own session branch only):
+
+```
+git fetch origin main
+git checkout <session-branch>
+git reset --hard origin/main
+git push --force-with-lease origin <session-branch>
+```
+
+Run this between issues, or once per tick at the end. Do **not** apply
+this pattern to any other branch.
+
+### PR base divergence
+
+`gh pr create --head <branch>` uses the branch's full ancestry from
+origin/main. If `<branch>` carries unrelated commits (e.g. it was forked
+from the polluted session branch instead of clean main), the PR will
+include those commits and likely conflict on merge.
+
+Symptom: `gh pr merge` returns `GraphQL: Pull Request has merge
+conflicts (mergePullRequest)` even though the diff "looks fine".
+
+Fix: close the bad PR, recreate the branch via cherry-pick from
+origin/main:
+
+```
+gh pr close <bad-pr> --repo <owner>/<repo>
+git checkout main
+git checkout -b agent/<num>-<slug>-v2   # new name avoids 403 on stale ref
+git cherry-pick <agent-commit-sha>
+git push -u origin agent/<num>-<slug>-v2
+gh pr create --base main --head agent/<num>-<slug>-v2 ...
+```
+
+The branch-name suffix avoids `403` on force-push to a previously-pushed
+remote branch.
+
+### Hook stop-feedback during the tick
+
+Cloud sessions sometimes have a `stop-hook-git-check.sh` that halts the
+turn when the session branch has uncommitted or unpushed changes. Common
+triggers during a cron tick:
+
+- Build artifacts in `public/og/` regenerated by the worktree's verify
+  run leak into the orchestrator's working tree. Discard them:
+  `git checkout -- public/og/ package-lock.json`
+- Pre-existing user edits on session branch (see above) — stash them.
+- Stray subagent commits on session branch — push if subsumed by merged
+  PRs is OK; if blocking work, force-with-lease cleanup (see above).
+- Untracked `.wrangler/` directory — `rm -rf .wrangler/`.
+
+Always investigate the actual contents (`git status`, `git diff`,
+`ls .wrangler/`) before discarding — the same failure mode occasionally
+hides real user work that needs to be preserved.
 
 ## Cost notes
 
