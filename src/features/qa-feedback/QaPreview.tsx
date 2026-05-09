@@ -51,10 +51,9 @@ const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api
  * uploads the screenshot to a private R2 bucket when present, and creates
  * the GitHub issue with a `needs-triage` label.
  *
- * QA mode is itself opt-in via `?qa=1`, so the preview no longer asks for
- * a separate "publish to GitHub" consent — the wording near the Senden
- * button states what happens, and Turnstile renders as soon as the
- * preview opens.
+ * ADR-0001 requires explicit/exhaustive consent before `submitToWorker` is
+ * called. The tester must check a consent checkbox AND hold a valid Turnstile
+ * token before the Senden button becomes active.
  */
 export function QaPreview({
   target,
@@ -65,6 +64,7 @@ export function QaPreview({
   onSuccess,
   collectWorkspaceContext,
 }: PreviewProps) {
+  const [consentChecked, setConsentChecked] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [workerState, setWorkerState] = useState<
     'idle' | 'submitting' | 'success' | 'error'
@@ -117,7 +117,7 @@ export function QaPreview({
   }, [])
 
   async function handleSubmit() {
-    if (!turnstileToken || workerState === 'submitting') return
+    if (!consentChecked || !turnstileToken || workerState === 'submitting') return
     setWorkerState('submitting')
     const outcome = await submitToWorker(report, screenshot, turnstileToken)
     setWorkerResult(outcome)
@@ -152,18 +152,7 @@ export function QaPreview({
       <div className="qa-panel__body">
         <p className="qa-preview__intro">
           Vielen Dank! Dein Feedback wird als öffentliches GitHub-Issue an die
-          Entwickler gesendet. Ein GitHub-Konto brauchst du dafür nicht.{' '}
-          Informationen zur Datenverarbeitung (Cloudflare Turnstile, QA-Worker,
-          Screenshot-Speicherung) findest du in der{' '}
-          <a
-            href="/datenschutz#qa-feedback"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="qa-preview__privacy-link"
-          >
-            Datenschutzerklärung, Abschnitt&nbsp;9
-          </a>
-          .
+          Entwickler gesendet. Ein GitHub-Konto brauchst du dafür nicht.
         </p>
 
         <div className="qa-preview__summary" data-testid="qa-preview-summary">
@@ -177,6 +166,42 @@ export function QaPreview({
             <img src={screenshot.dataUrl} alt="Screenshot der aktuellen Seite" />
           </div>
         )}
+
+        <div className="qa-preview__consent-block">
+          <label className="qa-preview__consent-label">
+            <input
+              type="checkbox"
+              className="qa-preview__consent-checkbox"
+              checked={consentChecked}
+              onChange={(e) => setConsentChecked(e.target.checked)}
+              data-testid="qa-preview-consent-checkbox"
+            />
+            <span>
+              Ich verstehe, dass mein Feedback als öffentliches{' '}
+              <a
+                href="https://github.com/PeterHartwieg/Rentenrechner/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="qa-preview__privacy-link"
+              >
+                GitHub-Issue
+              </a>{' '}
+              veröffentlicht wird, Cloudflare Turnstile zur Spam-Prüfung genutzt
+              wird, und ein optionaler Screenshot in Cloudflare R2 (EU) bis zur
+              Issue-Schließung gespeichert werden kann. Weitere Informationen in
+              der{' '}
+              <a
+                href="/datenschutz#qa-feedback"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="qa-preview__privacy-link"
+              >
+                Datenschutzerklärung, Abschnitt&nbsp;9
+              </a>
+              .
+            </span>
+          </label>
+        </div>
 
         <div className="qa-preview__turnstile-block">
           <span className="qa-preview__summary-label">Bitte bestätige kurz, dass du kein Roboter bist.</span>
@@ -209,6 +234,7 @@ export function QaPreview({
           className="qa-panel__btn qa-panel__btn--primary"
           onClick={handleSubmit}
           disabled={
+            !consentChecked ||
             !turnstileToken ||
             workerState === 'submitting' ||
             workerState === 'success'
