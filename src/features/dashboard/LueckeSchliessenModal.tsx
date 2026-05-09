@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
+import { FocusTrap } from '../../ui/FocusTrap'
 import type { Workspace } from '../../domain/workspace'
 import { useFeedbackTarget } from '../../features/qa-feedback'
 import type { CombinedResult } from '../../engine/portfolioCombine'
@@ -59,14 +60,6 @@ export function LueckeSchliessenModal({
   // can echo what was saved.
   const [savedCandidate, setSavedCandidate] = useState<RecommendedCandidate | null>(null)
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
   const bavOffer = useMemo<BavEmployerOfferInput>(() => {
     if (offerChoice !== 'yes') {
       return {
@@ -103,6 +96,7 @@ export function LueckeSchliessenModal({
   const safeBudget = Math.max(0, budget)
 
   return (
+    <FocusTrap onEscape={onClose}>
     <div className="luecke-modal-backdrop" role="presentation">
       <section
         className="luecke-modal"
@@ -375,6 +369,7 @@ export function LueckeSchliessenModal({
         )}
       </section>
     </div>
+    </FocusTrap>
   )
 }
 

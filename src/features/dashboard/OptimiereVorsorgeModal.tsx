@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { FocusTrap } from '../../ui/FocusTrap'
 import { X } from 'lucide-react'
 import type { Workspace, WhatIfScenario } from '../../domain/workspace'
 import { useFeedbackTarget, qaTarget, useQaMode } from '../../features/qa-feedback'
@@ -131,15 +132,6 @@ export function OptimiereVorsorgeModal({
   useEffect(() => {
     return () => { cache.invalidate() }
   }, [cache])
-
-  // Escape key
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
 
   // Audit rows (memoised by workspace identity)
   const auditRows = useMemo(
@@ -316,6 +308,7 @@ export function OptimiereVorsorgeModal({
   // ---------------------------------------------------------------------------
 
   return (
+    <FocusTrap onEscape={onClose}>
     <div className="optimiere-modal-backdrop" role="presentation">
       <section
         className="optimiere-modal"
@@ -621,6 +614,7 @@ export function OptimiereVorsorgeModal({
         )}
       </section>
     </div>
+    </FocusTrap>
   )
 }
 

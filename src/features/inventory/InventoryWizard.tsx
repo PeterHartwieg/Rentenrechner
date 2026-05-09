@@ -23,6 +23,7 @@
 
 import './InventoryWizard.css'
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
+import { FocusTrap } from '../../ui/FocusTrap'
 import { useFeedbackTarget, qaTarget, useQaMode } from '../../features/qa-feedback'
 import { X, Check, Plus, Trash2, ArrowRight } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
@@ -596,21 +597,23 @@ function ConfirmRemoveDialog({
   onCancel: () => void
 }) {
   return (
-    <div className="inv-remove-dialog" role="alertdialog" aria-modal="true">
-      <div className="inv-remove-dialog-card">
-        <p className="inv-remove-dialog-msg">
-          <strong>{label || productName}</strong> entfernen? Die eingegebenen Daten gehen verloren.
-        </p>
-        <div className="inv-remove-dialog-actions">
-          <button type="button" className="inventory-btn-ghost" onClick={onCancel}>
-            Abbrechen
-          </button>
-          <button type="button" className="inv-btn-danger" onClick={onConfirm}>
-            Entfernen
-          </button>
+    <FocusTrap onEscape={onCancel}>
+      <div className="inv-remove-dialog" role="alertdialog" aria-modal="true">
+        <div className="inv-remove-dialog-card">
+          <p className="inv-remove-dialog-msg">
+            <strong>{label || productName}</strong> entfernen? Die eingegebenen Daten gehen verloren.
+          </p>
+          <div className="inv-remove-dialog-actions">
+            <button type="button" className="inventory-btn-ghost" onClick={onCancel}>
+              Abbrechen
+            </button>
+            <button type="button" className="inv-btn-danger" onClick={onConfirm}>
+              Entfernen
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </FocusTrap>
   )
 }
 
@@ -714,15 +717,16 @@ export function InventoryWizard({
     setValidationErrors([])
   }
 
-  // Keyboard: Escape dismisses without saving
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (removeConfirm) {
-          setRemoveConfirm(null)
-        } else {
-          onDismiss()
-        }
+  // Keyboard: Escape dismisses without saving (passed to FocusTrap as onEscape).
+  // When the ConfirmRemoveDialog is open its own FocusTrap handles Escape first
+  // (closing the confirm), and this callback is also called but is idempotent
+  // (setRemoveConfirm(null) on an already-null state is a no-op).
+  const handleEscape = useCallback(
+    () => {
+      if (removeConfirm) {
+        setRemoveConfirm(null)
+      } else {
+        onDismiss()
       }
     },
     [onDismiss, removeConfirm],
@@ -1138,12 +1142,12 @@ export function InventoryWizard({
   const eyebrowText = step === 0 ? 'Schritt 1 von 2' : 'Schritt 2 von 2'
 
   return (
+    <FocusTrap onEscape={handleEscape}>
     <div
       className="inventory-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="inventory-wizard-heading"
-      onKeyDown={handleKeyDown}
       {...dialogTargetProps}
     >
       <div className="inventory-card">
@@ -1313,6 +1317,7 @@ export function InventoryWizard({
         />
       )}
     </div>
+    </FocusTrap>
   )
 }
 
