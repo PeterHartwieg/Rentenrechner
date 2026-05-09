@@ -29,7 +29,9 @@ import { useQaMode } from '../qa-feedback/useQaMode'
 import type { PensionBaselineType } from '../../domain'
 
 const GRV_PAYOUT_KEY = 'grv__cumNetPayout'
+const GRV_CONTRIBUTION_KEY = 'grv__cumContribution'
 const GRV_COLOR = '#94a3b8'
+const GRV_CONTRIBUTION_COLOR = '#94a3b8'
 
 const BASELINE_PENSION_LABELS: Record<Exclude<PensionBaselineType, 'none'>, {
   legend: string
@@ -70,6 +72,14 @@ interface Props {
   description?: string
   grvNetMonthlyPension?: number
   /**
+   * Pre-computed GRV employee contribution timeline from
+   * `projectGrvContributionTimeline`. When provided and non-empty, a separate
+   * `GRV Netto-Einzahlung kumuliert` line is rendered during the accumulation
+   * phase (current age → retirement age). The series is omitted when the array
+   * is empty (e.g. non-GRV baselines or user already at retirement age).
+   */
+  grvContributionTimeline?: Array<{ ageYears: number; employeeAnnualEUR: number }>
+  /**
    * Which mandatory pension system the cumulative-payout series represents.
    * Drives the legend / tooltip labels so the line is not mislabeled as
    * "GRV" for Beamtenpension or Versorgungswerk users. Defaults to 'grv'
@@ -91,6 +101,7 @@ export function BreakEvenChart({
   title = 'Kapital und Auszahlungen im Alter',
   description = 'Vergleicht Netto-Einzahlungen, Restkapital und kumulierte Netto-Auszahlungen über Anspar- und Rentenphase.',
   grvNetMonthlyPension,
+  grvContributionTimeline,
   pensionBaselineType,
 }: Props) {
   const baselineLabel = baselineLabels(pensionBaselineType)
@@ -129,20 +140,44 @@ export function BreakEvenChart({
 
   const showGrv = typeof grvNetMonthlyPension === 'number' && grvNetMonthlyPension > 0
 
+  // Build a lookup map from ageYears → cumulative employee contribution so we
+  // can merge it into the chart data in a single pass.
+  const showGrvContribution =
+    Array.isArray(grvContributionTimeline) && grvContributionTimeline.length > 0
+
+  const grvContributionByAge = useMemo((): Map<number, number> => {
+    if (!showGrvContribution || !grvContributionTimeline) return new Map()
+    const map = new Map<number, number>()
+    let cumulative = 0
+    for (const { ageYears, employeeAnnualEUR } of grvContributionTimeline) {
+      cumulative += employeeAnnualEUR
+      map.set(ageYears, cumulative)
+    }
+    return map
+  }, [showGrvContribution, grvContributionTimeline])
+
   const data = useMemo((): Record<string, number>[] => {
-    if (!showGrv || !grvNetMonthlyPension) return baseData
-    const annualGrv = grvNetMonthlyPension * 12
+    if (!showGrv && !showGrvContribution) return baseData
+    const annualGrv = showGrv ? (grvNetMonthlyPension ?? 0) * 12 : 0
     let cumGrv = 0
     return baseData.map((point) => {
-      if (point.age <= retirementAge) {
-        // undefined signals Recharts to leave a gap in the GRV line before
-        // retirement. The explicit cast keeps the return type homogeneous.
-        return { ...point, [GRV_PAYOUT_KEY]: undefined } as unknown as Record<string, number>
+      const age = point.age as number
+      const extra: Record<string, number> = {}
+      // GRV payout: accumulates year-by-year after retirement (undefined before)
+      if (showGrv) {
+        if (age > retirementAge) {
+          cumGrv += annualGrv
+          extra[GRV_PAYOUT_KEY] = Math.round(cumGrv)
+        }
+        // Before/at retirement: omit key so Recharts leaves a gap (connectNulls=false)
       }
-      cumGrv += annualGrv
-      return { ...point, [GRV_PAYOUT_KEY]: Math.round(cumGrv) }
+      // GRV contribution: accumulation phase only — use precomputed cumulative map
+      if (showGrvContribution && grvContributionByAge.has(age)) {
+        extra[GRV_CONTRIBUTION_KEY] = Math.round(grvContributionByAge.get(age)!)
+      }
+      return Object.keys(extra).length > 0 ? { ...point, ...extra } : point
     })
-  }, [baseData, showGrv, grvNetMonthlyPension, retirementAge])
+  }, [baseData, showGrv, grvNetMonthlyPension, retirementAge, showGrvContribution, grvContributionByAge])
 
   const { targetProps: containerTargetProps } = useFeedbackTarget({
     id: 'results.breakEvenChart.container',
@@ -264,6 +299,7 @@ export function BreakEvenChart({
                   paidInKey={paidInKey}
                   retirementAge={retirementAge}
                   showGrv={showGrv}
+                  showGrvContribution={showGrvContribution}
                   baselineLabel={baselineLabel}
                 />
               )}
@@ -326,6 +362,19 @@ export function BreakEvenChart({
                 stroke={GRV_COLOR}
                 strokeWidth={1.5}
                 strokeDasharray="8 4 2 4"
+                dot={false}
+                activeDot={{ r: 3 }}
+                connectNulls={false}
+              />
+            )}
+            {showGrvContribution && (
+              <Line
+                type="monotone"
+                name="GRV Netto-Einzahlung kumuliert"
+                dataKey={GRV_CONTRIBUTION_KEY}
+                stroke={GRV_CONTRIBUTION_COLOR}
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
                 dot={false}
                 activeDot={{ r: 3 }}
                 connectNulls={false}
@@ -419,6 +468,15 @@ export function BreakEvenChart({
               {baselineLabel.legend}
             </span>
           )}
+          {showGrvContribution && (
+            <span className="lifecycle-legend__item">
+              <span
+                className="lifecycle-legend__line"
+                style={{ borderTopStyle: 'dashed', borderTopColor: GRV_CONTRIBUTION_COLOR }}
+              />
+              GRV Netto-Einzahlung kumuliert
+            </span>
+          )}
           <span
             className="lifecycle-legend__item"
             {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
@@ -465,6 +523,7 @@ interface BreakEvenTooltipProps extends TooltipContentProps {
   paidInKey?: string
   retirementAge: number
   showGrv?: boolean
+  showGrvContribution?: boolean
   baselineLabel: { legend: string; tooltipName: string; tooltipGroup: string }
 }
 
@@ -477,6 +536,7 @@ function BreakEvenTooltip({
   paidInKey,
   retirementAge,
   showGrv,
+  showGrvContribution,
   baselineLabel,
 }: BreakEvenTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
@@ -484,6 +544,8 @@ function BreakEvenTooltip({
   const paidIn = paidInKey ? valuesByKey.get(paidInKey) ?? 0 : 0
   const grvCumPayout = valuesByKey.get(GRV_PAYOUT_KEY)
   const showGrvRow = showGrv && Number(label) > retirementAge && grvCumPayout !== undefined
+  const grvCumContrib = valuesByKey.get(GRV_CONTRIBUTION_KEY)
+  const showGrvContribRow = showGrvContribution && Number(label) < retirementAge && grvCumContrib !== undefined
 
   return (
     <div className="break-even-tooltip">
@@ -492,6 +554,14 @@ function BreakEvenTooltip({
         <span className="break-even-tooltip__name">Netto eingezahlt</span>
         <span className="break-even-tooltip__value">{formatCurrency(paidIn, 0)}</span>
       </div>
+      {showGrvContribRow && (
+        <div className="break-even-tooltip__row break-even-tooltip__benchmark">
+          <span className="break-even-tooltip__name" style={{ color: GRV_CONTRIBUTION_COLOR }}>
+            GRV Netto-Einzahlung kumuliert
+          </span>
+          <span className="break-even-tooltip__value">{formatCurrency(grvCumContrib ?? 0, 0)}</span>
+        </div>
+      )}
       <div className="break-even-tooltip__rows">
         {renderedProducts.map((result) => {
           const meta = getProductMeta(result.productId)
