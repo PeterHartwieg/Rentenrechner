@@ -22,7 +22,7 @@
  */
 
 import './InventoryWizard.css'
-import { useCallback, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { FocusTrap } from '../../ui/FocusTrap'
 import { useFeedbackTarget, qaTarget, useQaMode } from '../../features/qa-feedback'
 import { X, Check, Plus, Trash2, ArrowRight } from 'lucide-react'
@@ -634,6 +634,17 @@ export function InventoryWizard({
   // Step 0 = personal details; step 1 = product checklist.
   const [step, setStep] = useState<WizardStep>(0)
 
+  // Scroll the dialog overlay back to the top and restore focus to the heading
+  // whenever the step changes (forward or backward navigation).
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (overlayRef.current && typeof overlayRef.current.scrollTo === 'function') {
+      overlayRef.current.scrollTo({ top: 0, behavior: 'instant' })
+    }
+    headingRef.current?.focus()
+  }, [step])
+
   // Step 0 draft — seeded from parent props so the wizard is pre-filled when
   // the user has already set profile values in compare-mode.
   const [personalDetails, setPersonalDetails] = useState<PersonalDetailsDraft>(
@@ -1144,6 +1155,7 @@ export function InventoryWizard({
   return (
     <FocusTrap onEscape={handleEscape}>
     <div
+      ref={overlayRef}
       className="inventory-overlay"
       role="dialog"
       aria-modal="true"
@@ -1155,7 +1167,12 @@ export function InventoryWizard({
         <header className="inventory-header">
           <div className="inventory-header-text">
             <p className="inventory-eyebrow">{eyebrowText}</p>
-            <h2 id="inventory-wizard-heading" className="inventory-title">
+            <h2
+              id="inventory-wizard-heading"
+              className="inventory-title"
+              ref={headingRef}
+              tabIndex={-1}
+            >
               {headingText}
             </h2>
           </div>
