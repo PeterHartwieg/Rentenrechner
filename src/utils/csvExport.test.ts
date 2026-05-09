@@ -379,3 +379,132 @@ describe('buildCombinePortfolioCsv', () => {
     expect(Number(bavCols[10])).toBeGreaterThan(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Regression: gh#59 — combine-mode Section 2 "Netto-Rente mtl." must use
+// CombinedResult.byInstance[instanceId].monthlyNet, not r.netMonthlyPayout.
+//
+// Multi-product households see diverging values because the aggregate pipeline
+// (progressive income tax + KV/PV across all sources) redistributes the tax
+// burden after summing; the per-instance simulator only knows its own source.
+// ---------------------------------------------------------------------------
+
+describe('buildCombinePortfolioCsv — gh#59 byInstance net regression', () => {
+  // Build a two-instance scenario where the aggregate-allocated net
+  // (byInstance.monthlyNet) differs from the per-instance netMonthlyPayout.
+  // The bAV instance has netMonthlyPayout=400 but the aggregate pipeline
+  // apportions a higher tax burden (multi-source progressive bracket), so
+  // byInstance.monthlyNet=350.  The ETF instance passes through unchanged.
+  const BAV_PER_INSTANCE_NET = 400
+  const BAV_AGGREGATE_NET = 350
+  const ETF_PER_INSTANCE_NET = 450
+
+  const bavResult: ProductResult = {
+    ...FIXTURE_PRODUCT,
+    productId: 'bav' as ProductResult['productId'],
+    label: 'bAV Hauptvertrag',
+    instanceId: 'bav-reg-1',
+    scenarioId: 'basis',
+    scenarioLabel: 'Basis',
+    grossMonthlyPayout: 500,
+    netMonthlyPayout: BAV_PER_INSTANCE_NET, // isolated value
+    rows: [],
+  } as unknown as ProductResult
+
+  const etfResult: ProductResult = {
+    ...FIXTURE_PRODUCT,
+    productId: 'etf' as ProductResult['productId'],
+    label: 'ETF Depot',
+    instanceId: 'etf-reg-1',
+    scenarioId: 'basis',
+    scenarioLabel: 'Basis',
+    grossMonthlyPayout: 500,
+    netMonthlyPayout: ETF_PER_INSTANCE_NET,
+    rows: [],
+    etfPayoutRows: [],
+  } as unknown as ProductResult
+
+  const combinedWithByInstance: CombinedResult = {
+    monthlyNetIncome: BAV_AGGREGATE_NET + ETF_PER_INSTANCE_NET + 1100,
+    monthlyGrossPayouts: {
+      statutoryPension: 1200,
+      bav: 500,
+      privateInsurance: 0,
+      basisrente: 0,
+      altersvorsorgedepot: 0,
+      riester: 0,
+      etf: 500,
+    },
+    aggregateTax: { totalTaxAnnual: 0 } as unknown as CombinedResult['aggregateTax'],
+    aggregateKvPv: {} as unknown as CombinedResult['aggregateKvPv'],
+    byInstance: {
+      'bav-reg-1': {
+        instanceId: 'bav-reg-1',
+        productId: 'bav',
+        monthlyGross: 500,
+        monthlyNet: BAV_AGGREGATE_NET, // aggregate-adjusted (lower due to progressive tax)
+        taxShareAnnual: 600,
+        kvPvShare: 50,
+      },
+      'etf-reg-1': {
+        instanceId: 'etf-reg-1',
+        productId: 'etf',
+        monthlyGross: 500,
+        monthlyNet: ETF_PER_INSTANCE_NET,
+        taxShareAnnual: 600,
+        kvPvShare: 0,
+      },
+    },
+    statutoryPensionMonthlyNet: 1100,
+    notes: [],
+  }
+
+  const opts = {
+    perInstance: {
+      'bav-reg-1': [bavResult],
+      'etf-reg-1': [etfResult],
+    },
+    combinedByScenarioId: { basis: combinedWithByInstance },
+    scenarioLabels: { basis: 'Basis' },
+  }
+
+  it('Section 2 Netto-Rente uses byInstance.monthlyNet, not per-instance netMonthlyPayout, for bAV', () => {
+    const csv = buildCombinePortfolioCsv(opts)
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    expect(sectionIdx).toBeGreaterThanOrEqual(0)
+    const sectionBlock = lines.slice(sectionIdx + 2) // skip header row
+    const bavRow = sectionBlock.find((l) => l.startsWith('bav-reg-1,'))
+    expect(bavRow).toBeDefined()
+    const cols = bavRow!.split(',')
+    // Column layout: Instanz(0), Produkt(1), Szenario(2), Nettoaufwand(3),
+    // Beitrag(4), Kapital(5), Brutto-Rente(6), Netto-Rente(7), Kosten(8), Datenqualität(9)
+    const nettoRente = Number(cols[7])
+    // Must use the aggregate-allocated value (350), not the isolated value (400).
+    expect(nettoRente).toBeCloseTo(BAV_AGGREGATE_NET, 1)
+    expect(nettoRente).not.toBeCloseTo(BAV_PER_INSTANCE_NET, 1)
+  })
+
+  it('Section 2 Netto-Rente falls back to per-instance netMonthlyPayout when byInstance is absent', () => {
+    // combinedByScenarioId has an empty byInstance — simulates the case where
+    // the aggregate pipeline hasn't produced an entry for this instance.
+    const combinedEmpty: CombinedResult = {
+      ...combinedWithByInstance,
+      byInstance: {},
+    }
+    const optsNoCombined = {
+      ...opts,
+      combinedByScenarioId: { basis: combinedEmpty },
+    }
+    const csv = buildCombinePortfolioCsv(optsNoCombined)
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const sectionBlock = lines.slice(sectionIdx + 2)
+    const bavRow = sectionBlock.find((l) => l.startsWith('bav-reg-1,'))
+    expect(bavRow).toBeDefined()
+    const cols = bavRow!.split(',')
+    const nettoRente = Number(cols[7])
+    // Falls back to per-instance value (400) when byInstance has no entry.
+    expect(nettoRente).toBeCloseTo(BAV_PER_INSTANCE_NET, 1)
+  })
+})

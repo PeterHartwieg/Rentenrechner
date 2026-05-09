@@ -247,6 +247,12 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
     const results = perInstance[instanceId]
     if (!results) continue
     for (const r of results) {
+      // Use the back-allocated monthlyNet from the aggregate progressive
+      // tax + KV/PV pipeline (byInstance) so this column matches
+      // CombineDetailView for multi-product households. Falls back to the
+      // per-instance simulator value only when byInstance has no entry.
+      const combinedForScenario = combinedByScenarioId[r.scenarioId]
+      const netMonthly = combinedForScenario?.byInstance[instanceId]?.monthlyNet ?? r.netMonthlyPayout
       lines.push(csvRow(
         instanceId,
         r.label,
@@ -255,7 +261,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
         n(r.monthlyProductContribution),
         n(r.capitalAtRetirement),
         n(r.grossMonthlyPayout),
-        n(r.netMonthlyPayout),
+        n(netMonthly),
         n(r.totalFees),
         formatEvidenceStateForExport(r.inputConfidence),
       ))
