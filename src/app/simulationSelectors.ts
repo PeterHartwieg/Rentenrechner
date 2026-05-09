@@ -96,15 +96,17 @@ export function buildCapitalChartData(
 export function buildPensionBars(
   simulation: SimulationResult,
   selectedResults: ProductResult[],
-): Array<{ name: string; value: number; fill: string }> {
+): Array<{ name: string; shortName: string; value: number; fill: string }> {
   return [
     {
       name: 'Gesetzl. Rente',
+      shortName: 'GRV',
       value: simulation.statutoryPension.netMonthlyPension,
       fill: GRV_COLOR,
     },
     ...selectedResults.map((result) => ({
       name: result.label,
+      shortName: getProductMeta(result.productId)?.shortLabel ?? result.label,
       value: result.netMonthlyPayout,
       fill: getProductMeta(result.productId)?.color ?? '#888888',
     })),

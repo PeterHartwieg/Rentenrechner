@@ -90,29 +90,31 @@ export function FeeDragChart({
           </p>
         </div>
       </div>
-      <div className="chart-frame small fee-drag-chart-wrap">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={buildFeeDragChartData(selectedResults, retirementAge, comparisonEndAge)}
-            margin={{ top: 12, right: 8, left: 0, bottom: 8 }}
-          >
-            <CartesianGrid strokeDasharray="4 4" vertical={false} />
-            <XAxis
-              dataKey="name"
-              tickLine={false}
-              tick={(props) => <ColoredXAxisTick {...props} labelToColor={labelToColor} />}
-              interval={0}
-            />
-            <YAxis
-              tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-              width={64}
-            />
-            <Tooltip formatter={(value) => formatCurrency(Number(value), 0)} />
-            <Bar dataKey="Nettoaufwand gesamt" stackId="a" fill="#0ea5e9" isAnimationActive={false} />
-            <Bar dataKey="Netto-Rendite" stackId="a" fill="#22c55e" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-            <Bar dataKey="Gebühren gesamt" stackId="b" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="fee-drag-chart-wrap">
+        <div className="chart-frame small">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={buildFeeDragChartData(selectedResults, retirementAge, comparisonEndAge)}
+              margin={{ top: 12, right: 8, left: 0, bottom: 8 }}
+            >
+              <CartesianGrid strokeDasharray="4 4" vertical={false} />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                tick={(props) => <ColoredXAxisTick {...props} labelToColor={labelToColor} />}
+                interval={0}
+              />
+              <YAxis
+                tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
+                width={64}
+              />
+              <Tooltip formatter={(value) => formatCurrency(Number(value), 0)} />
+              <Bar dataKey="Nettoaufwand gesamt" stackId="a" fill="#0ea5e9" isAnimationActive={false} />
+              <Bar dataKey="Netto-Rendite" stackId="a" fill="#22c55e" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="Gebühren gesamt" stackId="b" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
         <div className="fee-drag-legend fee-drag-legend--overlay" {...legendTargetProps}>
           {LEGEND_ITEMS.map(({ color, label }) => {
             // Derive a stable camelCase id segment from the label.
