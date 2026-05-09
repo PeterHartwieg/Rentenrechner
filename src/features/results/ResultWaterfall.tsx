@@ -1,7 +1,7 @@
 import './ResultWaterfall.css'
 import type { ProductResult } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { InfoTip } from '../../ui/InfoTip'
 
 interface Props {
@@ -87,7 +87,7 @@ export function ResultWaterfall({ result, grvNetMonthlyPension }: Props) {
                       <span>{formatCurrency(afterTaxLump, 0)}</span>
                     </span>
                     <span className="rwf-breakdown-foot">
-                      Abzugsquote {((totalDeduction / result.capitalAtRetirement) * 100).toFixed(1)} %
+                      Abzugsquote {formatPercent(totalDeduction / result.capitalAtRetirement)}
                       {result.productId === 'bav' && lumpDeductions && (
                         <> · §22 Nr. 5 EStG / §229 SGB V</>
                       )}
