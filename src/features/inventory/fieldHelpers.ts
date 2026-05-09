@@ -6,6 +6,7 @@
  * the component file (fields.tsx). Issue 10 (architecture-readability).
  */
 
+import { useState, useCallback } from 'react'
 import type { BavDurchfuehrungsweg } from '../../domain/products/bav'
 
 // ---------------------------------------------------------------------------
@@ -19,6 +20,57 @@ import type { BavDurchfuehrungsweg } from '../../domain/products/bav'
 export function toNumber(value: string, fallback = 0): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+// ---------------------------------------------------------------------------
+// useDraftNumber
+// ---------------------------------------------------------------------------
+
+/**
+ * Draft-before-commit pattern for numeric inputs.
+ *
+ * Keeps a transient string draft while the user is editing, and calls
+ * `onCommit` only on blur or Enter (discarding empty / non-finite strings
+ * so a mid-deletion empty field never commits zero to state).
+ *
+ * Usage:
+ *   const { inputProps } = useDraftNumber({ value, onCommit: (n) => ... })
+ *   <input type="number" {...inputProps} />
+ */
+export function useDraftNumber({
+  value,
+  onCommit,
+}: {
+  value: number
+  onCommit: (next: number) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const commit = useCallback(() => {
+    if (draft === null) return
+    const raw = draft
+    setDraft(null)
+    // Discard empty or non-finite strings — the field reverts to the
+    // canonical value and the engine value is preserved.
+    if (raw.trim() === '' || !Number.isFinite(Number(raw))) return
+    onCommit(Number(raw))
+  }, [draft, onCommit])
+
+  const displayValue = draft ?? String(value)
+
+  const inputProps = {
+    value: displayValue,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value),
+    onBlur: commit,
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        commit()
+        e.currentTarget.blur()
+      }
+    },
+  }
+
+  return { inputProps }
 }
 
 // ---------------------------------------------------------------------------

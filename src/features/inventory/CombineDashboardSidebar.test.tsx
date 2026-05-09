@@ -209,6 +209,124 @@ describe('AddVertragSection — draft-before-save flow (#45)', () => {
     cleanup()
   })
 
+  it('draft numeric field: clearing to empty does not commit 0 to workspace state', () => {
+    // Use an ETF instance card which has a Monatliche Sparrate (monthlyContribution) field.
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'etf')
+    const etfInstance = ws.baseline.assumptions.etf[0]
+    expect(etfInstance).toBeDefined()
+    // Set a known non-zero value.
+    const sparRate = etfInstance.monthlyContribution ?? 100
+    expect(sparRate).toBeGreaterThan(0)
+
+    const onPatchAssumptions = vi.fn()
+    const { container } = render(
+      <CombineDashboardSidebar {...makeProps(ws)} onPatchAssumptions={onPatchAssumptions} />,
+    )
+
+    // Find the Monatliche Sparrate input (ETF card).
+    const allInputs = container.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    // Find the one whose value matches the sparRate.
+    const sparrateInput = Array.from(allInputs).find(
+      (inp) => inp.value === String(sparRate),
+    )
+    expect(sparrateInput).not.toBeUndefined()
+
+    // Simulate the user clearing the field (deleting all characters).
+    fireEvent.change(sparrateInput!, { target: { value: '' } })
+
+    // onPatchAssumptions must NOT have been called — empty field is a transient state.
+    expect(onPatchAssumptions).not.toHaveBeenCalled()
+
+    cleanup()
+  })
+
+  it('draft numeric field: typing a new value commits on blur', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'etf')
+    const etfInstance = ws.baseline.assumptions.etf[0]
+    const sparRate = etfInstance.monthlyContribution ?? 100
+
+    const onPatchAssumptions = vi.fn()
+    const { container } = render(
+      <CombineDashboardSidebar {...makeProps(ws)} onPatchAssumptions={onPatchAssumptions} />,
+    )
+
+    const allInputs = container.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    const sparrateInput = Array.from(allInputs).find(
+      (inp) => inp.value === String(sparRate),
+    )
+    expect(sparrateInput).not.toBeUndefined()
+
+    // Simulate deleting the current value and typing a new one.
+    fireEvent.change(sparrateInput!, { target: { value: '' } })
+    expect(onPatchAssumptions).not.toHaveBeenCalled()
+
+    fireEvent.change(sparrateInput!, { target: { value: '300' } })
+    // Still not committed — just a draft change.
+    expect(onPatchAssumptions).not.toHaveBeenCalled()
+
+    // Commit on blur.
+    fireEvent.blur(sparrateInput!)
+    expect(onPatchAssumptions).toHaveBeenCalledTimes(1)
+    const [patch] = onPatchAssumptions.mock.calls[0]
+    expect(patch.etf).toBeDefined()
+    expect(patch.etf[0].monthlyContribution).toBe(300)
+
+    cleanup()
+  })
+
+  it('draft numeric field: typing a new value commits on Enter', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'etf')
+    const etfInstance = ws.baseline.assumptions.etf[0]
+    const sparRate = etfInstance.monthlyContribution ?? 100
+
+    const onPatchAssumptions = vi.fn()
+    const { container } = render(
+      <CombineDashboardSidebar {...makeProps(ws)} onPatchAssumptions={onPatchAssumptions} />,
+    )
+
+    const allInputs = container.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    const sparrateInput = Array.from(allInputs).find(
+      (inp) => inp.value === String(sparRate),
+    )
+    expect(sparrateInput).not.toBeUndefined()
+
+    fireEvent.change(sparrateInput!, { target: { value: '250' } })
+    expect(onPatchAssumptions).not.toHaveBeenCalled()
+
+    // Commit on Enter key.
+    fireEvent.keyDown(sparrateInput!, { key: 'Enter' })
+    expect(onPatchAssumptions).toHaveBeenCalledTimes(1)
+    const [patch] = onPatchAssumptions.mock.calls[0]
+    expect(patch.etf[0].monthlyContribution).toBe(250)
+
+    cleanup()
+  })
+
+  it('draft numeric field: non-finite input (empty after full delete) does not commit on blur', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'etf')
+    const etfInstance = ws.baseline.assumptions.etf[0]
+    const sparRate = etfInstance.monthlyContribution ?? 100
+
+    const onPatchAssumptions = vi.fn()
+    const { container } = render(
+      <CombineDashboardSidebar {...makeProps(ws)} onPatchAssumptions={onPatchAssumptions} />,
+    )
+
+    const allInputs = container.querySelectorAll<HTMLInputElement>('input[type="number"]')
+    const sparrateInput = Array.from(allInputs).find(
+      (inp) => inp.value === String(sparRate),
+    )
+    expect(sparrateInput).not.toBeUndefined()
+
+    fireEvent.change(sparrateInput!, { target: { value: '' } })
+    fireEvent.blur(sparrateInput!)
+
+    // Empty string must not commit anything.
+    expect(onPatchAssumptions).not.toHaveBeenCalled()
+
+    cleanup()
+  })
+
   it('captures a bAV offer before saving it to Mein Plan', () => {
     const addInstance = vi.fn()
     const addBavOffer = vi.fn()
