@@ -116,7 +116,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
         <div className="landing-hero">
           <h1 className="landing-headline">Rente planen, Produkte vergleichen.</h1>
           <p className="landing-subline">
-            Rentenrechner mit Steuern und Krankenkassenbeiträgen, auch für Betriebsrente und ETF.
+            RentenWiki.de: Altersvorsorge planen mit Steuern und Krankenkassenbeiträgen, auch für Betriebsrente und ETF.
           </p>
         </div>
 
