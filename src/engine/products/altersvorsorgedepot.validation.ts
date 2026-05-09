@@ -18,6 +18,22 @@ const VALID_AVD_PAYOUT_MODES: readonly AltersvorsorgedepotPayoutMode[] = [
   'hybrid_80_annuity',
 ]
 
+/**
+ * Payout modes exposed in the UI select.
+ *
+ * `hybrid_80_annuity` is intentionally excluded: correctly modelling it requires
+ * a `lifelongMonthlyPayoutAfterEnd` field on `BaseProductResult` so that chart
+ * consumers (breakEvenSeries, portfolioLifecycle, FeeDragChart, findLeibrenteCrossovers)
+ * do not silently truncate the 80% lifelong sleeve at `payoutEndAge`. Until that
+ * extension is in place the option is hidden from users. Saved state using
+ * `hybrid_80_annuity` still validates (it remains in `VALID_AVD_PAYOUT_MODES`);
+ * it just cannot be newly selected. See engine TODO in altersvorsorgedepot.ts (gh#63).
+ */
+export const AVD_UI_SELECTABLE_PAYOUT_MODES: readonly AltersvorsorgedepotPayoutMode[] = [
+  'lifelong_annuity',
+  'certified_payout_plan',
+]
+
 export function validateAltersvorsorgedepot(avd: AltersvorsorgedepotAssumptions): boolean {
   if (!VALID_AVD_SUBTYPES.includes(avd.subtype)) return false
   if (!isFiniteNumber(avd.monthlyOwnContribution) || avd.monthlyOwnContribution < 0) return false

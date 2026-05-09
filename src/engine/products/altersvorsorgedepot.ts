@@ -136,15 +136,16 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     buildPayout: ({ projection, payoutReturn }) => {
       const partialPct = Math.min(avd.partialCapitalPct, rules.altersvorsorgedepot.partialCapitalMaxPct)
       const monthlyCapital = projection.capital * (1 - partialPct)
+      const payoutPlanEndAge = Math.max(avd.payoutPlanEndAge, rules.altersvorsorgedepot.payoutPlanMinEndAge)
+      const payoutPlanYears = payoutPlanEndAge - profile.retirementAge
+
+      // TODO(gh#63): hybrid_80_annuity payout mode requires post-payoutEndAge lifelong residual
+      //   support in BaseProductResult before it can be re-exposed in the UI. See
+      //   `AVD_UI_SELECTABLE_PAYOUT_MODES` in altersvorsorgedepot.validation.ts.
       const grossMonthlyPayout =
         avd.payoutMode === 'lifelong_annuity'
           ? (monthlyCapital / 10_000) * avd.rentenfaktor
-          : monthlyPayoutFromCapital(
-              monthlyCapital,
-              payoutReturn,
-              Math.max(avd.payoutPlanEndAge, rules.altersvorsorgedepot.payoutPlanMinEndAge) -
-                profile.retirementAge,
-            )
+          : monthlyPayoutFromCapital(monthlyCapital, payoutReturn, payoutPlanYears)
       const partialCapital = projection.capital * partialPct - avd.transferCostEUR
       const otherAnnual = avd.monthlyOtherRetirementIncome * 12
 
@@ -177,7 +178,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
         ),
         payoutEndAge:
           avd.payoutMode === 'certified_payout_plan'
-            ? Math.max(avd.payoutPlanEndAge, rules.altersvorsorgedepot.payoutPlanMinEndAge)
+            ? payoutPlanEndAge
             : undefined,
       }
     },

@@ -251,7 +251,6 @@ export function AltersvorsorgedepotInputs({
         >
           <option value="certified_payout_plan">Entnahmeplan bis mind. Alter 85</option>
           <option value="lifelong_annuity">Lebenslange Leibrente</option>
-          <option value="hybrid_80_annuity">80 % Leibrente + 20 % variabler Anteil</option>
         </select>
       </label>
 

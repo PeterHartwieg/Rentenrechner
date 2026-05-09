@@ -9,6 +9,7 @@ import {
   netAvdPayout,
   validateAvdPayoutAge,
 } from '../altersvorsorgedepot'
+import { AVD_UI_SELECTABLE_PAYOUT_MODES } from './altersvorsorgedepot.validation'
 import { de2026Rules } from '../../rules/de2026'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 
@@ -420,5 +421,18 @@ describe('afterTaxAvdLumpSum', () => {
     const low = afterTaxAvdLumpSum(30_000, profile, rules, 0, retirementYear)
     const high = afterTaxAvdLumpSum(30_000, profile, rules, 30_000, retirementYear)
     expect(high).toBeLessThan(low)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// UI payout mode list (gh#63 — hybrid_80_annuity gated out pending
+// BaseProductResult extension for lifelongMonthlyPayoutAfterEnd)
+// ---------------------------------------------------------------------------
+describe('AVD_UI_SELECTABLE_PAYOUT_MODES', () => {
+  it('exposes only the two correctly-modelled payout modes (gh#63)', () => {
+    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toContain('lifelong_annuity')
+    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toContain('certified_payout_plan')
+    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).not.toContain('hybrid_80_annuity')
+    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toHaveLength(2)
   })
 })
