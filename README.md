@@ -10,7 +10,7 @@ Interactive German retirement comparison tool evaluating:
 - Riester Altvertrag (Schicht 2)
 - gesetzliche Rente (GRV baseline)
 
-Live at [rentenwiki.de](https://rentenwiki.de). Local-first React/Vite app — runs entirely in the browser; no backend, no telemetry, no accounts. Compares products by monthly net burden, projected retirement capital, and estimated monthly net retirement income using official 2026 German tax and social-security values.
+Live at [rentenwiki.de](https://rentenwiki.de). Local-first React/Vite app — calculator runs entirely in the browser; no telemetry, no accounts. State is localStorage + share-URLs. The QA feedback Worker (`qa.rentenwiki.de`) is the first sanctioned backend exception (ADR-0001, opt-in, QA mode only). Compares products by monthly net burden, projected retirement capital, and estimated monthly net retirement income using official 2026 German tax and social-security values.
 
 ## Important Limitation
 
