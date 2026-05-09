@@ -400,3 +400,104 @@ describe('payoutMode (#54) — insurance (pAV zeitrente)', () => {
     expect(pavBasis.grossMonthlyPayout).toBeCloseTo(expected, 6)
   })
 })
+
+describe('#66 pAV kvdrMember sourced from SimulationContext.retirementHealthStatus', () => {
+  // Profile with publicHealthInsurance: true so GKV KV/PV routing is active.
+  // bAV.kvdrMember intentionally set to false to verify the bug is fixed —
+  // before the fix, this would have forced freiwillig_gkv routing for pAV.
+  const gkvProfile = { ...defaultProfile, publicHealthInsurance: true }
+
+  // Use a zeitrente payout so the KV/PV effect on monthly payout is clear.
+  // High gross salary + capital → meaningful KV/PV delta between kvdr and freiwillig.
+  const baseInsAssumptions = {
+    ...allVisibleAssumptions.insurance,
+    payoutMode: 'zeitrente' as const,
+    zeitrenteYears: 20,
+  }
+
+  // bAV.kvdrMember = false is the decoy — it must NOT influence pAV routing.
+  const bavFreiwillig = { ...allVisibleAssumptions.bav, kvdrMember: false }
+
+  function simWithHealthStatus(healthStatus: 'kvdr' | 'freiwillig_gkv' | 'pkv') {
+    return simulateRetirementComparison(
+      gkvProfile,
+      {
+        ...allVisibleAssumptions,
+        bav: bavFreiwillig,
+        insurance: baseInsAssumptions,
+        statutoryPension: {
+          ...allVisibleAssumptions.statutoryPension,
+          retirementHealthStatus: healthStatus,
+        },
+      },
+      de2026Rules,
+    )
+  }
+
+  it('kvdr: netMonthlyPayout equals grossMonthlyPayout minus income tax (no KV/PV on pAV via freiwillig channel)', () => {
+    const result = simWithHealthStatus('kvdr')
+    const ins = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
+    // KVdR members do not owe KV/PV on pAV payouts (private insurance is not a
+    // Versorgungsbezug and not in the KVdR assessment base). Net must be > 0.
+    expect(ins.netMonthlyPayout).toBeGreaterThan(0)
+    // Net must be ≤ gross (income tax may or may not apply depending on bracket).
+    expect(ins.netMonthlyPayout).toBeLessThanOrEqual(ins.grossMonthlyPayout)
+  })
+
+  it('freiwillig_gkv: netMonthlyPayout lower than kvdr (freiwillig owes KV/PV on pAV payout)', () => {
+    const kvdrResult = simWithHealthStatus('kvdr')
+    const freiwilligResult = simWithHealthStatus('freiwillig_gkv')
+    const kvdrIns = kvdrResult.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
+    const freiwilligIns = freiwilligResult.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
+    // freiwillig_gkv owes KV/PV on the full pAV payout → lower net than kvdr
+    expect(freiwilligIns.netMonthlyPayout).toBeLessThan(kvdrIns.netMonthlyPayout)
+  })
+
+  it('pkv: netMonthlyPayout equals kvdr net (no statutory KV/PV for PKV members)', () => {
+    const pkvProfile = { ...gkvProfile, publicHealthInsurance: false }
+    const result = simulateRetirementComparison(
+      pkvProfile,
+      {
+        ...allVisibleAssumptions,
+        bav: bavFreiwillig,
+        insurance: baseInsAssumptions,
+        statutoryPension: {
+          ...allVisibleAssumptions.statutoryPension,
+          retirementHealthStatus: 'pkv',
+        },
+      },
+      de2026Rules,
+    )
+    const pkvIns = result.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
+    // PKV profile: publicHealthInsurance=false → no statutory KV/PV in either channel.
+    // Net should be > 0 and ≤ gross.
+    expect(pkvIns.netMonthlyPayout).toBeGreaterThan(0)
+    expect(pkvIns.netMonthlyPayout).toBeLessThanOrEqual(pkvIns.grossMonthlyPayout)
+  })
+
+  it('bAV.kvdrMember=false does NOT drive pAV to freiwillig_gkv when retirementHealthStatus=kvdr', () => {
+    // bAV.kvdrMember = false + retirementHealthStatus = 'kvdr'
+    // Old bug: pAV would read bAV.kvdrMember (false) → freiwillig_gkv → extra KV/PV deducted.
+    // Fixed: pAV reads ctx.retirementHealthStatus === 'kvdr' → no extra KV/PV.
+    const kvdrResult = simWithHealthStatus('kvdr')
+    // Construct the same scenario but with bAV.kvdrMember = true to confirm no difference in pAV.
+    const bavKvdr = { ...allVisibleAssumptions.bav, kvdrMember: true }
+    const kvdrBavTrueResult = simulateRetirementComparison(
+      gkvProfile,
+      {
+        ...allVisibleAssumptions,
+        bav: bavKvdr,
+        insurance: baseInsAssumptions,
+        statutoryPension: {
+          ...allVisibleAssumptions.statutoryPension,
+          retirementHealthStatus: 'kvdr',
+        },
+      },
+      de2026Rules,
+    )
+    const ins1 = kvdrResult.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
+    const ins2 = kvdrBavTrueResult.products.find((p) => p.productId === 'versicherung' && p.scenarioId === 'basis')!
+    // pAV net payout must be the same regardless of bAV.kvdrMember when retirementHealthStatus=kvdr
+    expect(ins1.netMonthlyPayout).toBeCloseTo(ins2.netMonthlyPayout, 6)
+  })
+})

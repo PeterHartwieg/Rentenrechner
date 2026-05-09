@@ -74,7 +74,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
         },
         ins.fees,
       )
-      const kvdrMember = assumptions.bav.kvdrMember !== false
+      const kvdrMember = ctx.retirementHealthStatus === 'kvdr'
       const otherAnnual = ins.monthlyOtherRetirementIncome * 12
       const lumpSum = insuranceLumpSumBreakdown(
         projection.capital,
@@ -198,7 +198,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
       ins.fees,
     )
 
-    const kvdrMember = assumptions.bav.kvdrMember !== false
+    const kvdrMember = ctx.retirementHealthStatus === 'kvdr'
     const otherAnnual = ins.monthlyOtherRetirementIncome * 12
 
     const afterTaxLumpSum = afterTaxInsuranceLumpSum(
