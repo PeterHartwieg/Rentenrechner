@@ -9,11 +9,9 @@ import {
   netAvdPayout,
   validateAvdPayoutAge,
 } from '../altersvorsorgedepot'
-import { monthlyPayoutFromCapital } from '../payoutMath'
 import { AVD_UI_SELECTABLE_PAYOUT_MODES } from './altersvorsorgedepot.validation'
 import { de2026Rules } from '../../rules/de2026'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
-import { simulateRetirementComparison } from '../simulate'
 
 const rules = de2026Rules
 const avd = rules.altersvorsorgedepot
@@ -427,93 +425,14 @@ describe('afterTaxAvdLumpSum', () => {
 })
 
 // ---------------------------------------------------------------------------
-// UI payout mode list (gh#63 — all three modes now correctly modelled)
+// UI payout mode list (gh#63 — hybrid_80_annuity gated out pending
+// BaseProductResult extension for lifelongMonthlyPayoutAfterEnd)
 // ---------------------------------------------------------------------------
 describe('AVD_UI_SELECTABLE_PAYOUT_MODES', () => {
-  it('exposes all three payout modes including hybrid_80_annuity', () => {
-    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toContain('certified_payout_plan')
+  it('exposes only the two correctly-modelled payout modes (gh#63)', () => {
     expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toContain('lifelong_annuity')
-    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toContain('hybrid_80_annuity')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// hybrid_80_annuity payout mode — regression tests (gh#63)
-//
-// Verifies that the 80/20 hybrid correctly:
-//   (a) sums the lifelong-annuity sleeve (80%) and the finite drawdown sleeve (20%)
-//   (b) exposes a defined payoutEndAge matching the finite sleeve's end age
-//   (c) produces a sensible net payout (0 < net < gross)
-// ---------------------------------------------------------------------------
-
-describe('hybrid_80_annuity payout mode', () => {
-  const hybridAssumptions = {
-    ...defaultAssumptions,
-    altersvorsorgedepot: {
-      ...defaultAssumptions.altersvorsorgedepot,
-      payoutMode: 'hybrid_80_annuity' as const,
-      subtype: 'depot_no_guarantee' as const,
-      payoutPlanEndAge: 90,
-      rentenfaktor: 28,
-    },
-    visibleProducts: ['altersvorsorgedepot' as const],
-  }
-
-  it('grossMonthlyPayout equals 80% lifelong annuity + 20% finite drawdown', () => {
-    const result = simulateRetirementComparison(defaultProfile, hybridAssumptions, rules)
-    const avdResult = result.products[0]
-    expect(avdResult).toBeDefined()
-
-    // Re-derive the expected gross from first-principles using the same helpers
-    // the simulator calls. Capital after partial-capital deduction (partialPct=0).
-    // payoutReturn = scenario.annualReturn − totalAssetFee (see buildResult.ts line 211).
-    const capital = avdResult.capitalAtRetirement
-    const fees = hybridAssumptions.altersvorsorgedepot.fees
-    const payoutReturn = avdResult.annualReturn - (fees.wrapperAssetFee + fees.fundAssetFee)
-    const endAge = Math.max(
-      hybridAssumptions.altersvorsorgedepot.payoutPlanEndAge,
-      rules.altersvorsorgedepot.payoutPlanMinEndAge,
-    )
-    const payoutYears = endAge - defaultProfile.retirementAge
-    const expectedGross =
-      (capital * 0.80 / 10_000) * hybridAssumptions.altersvorsorgedepot.rentenfaktor +
-      monthlyPayoutFromCapital(capital * 0.20, payoutReturn, payoutYears)
-
-    expect(avdResult.grossMonthlyPayout).toBeCloseTo(expectedGross, 2)
-  })
-
-  it('payoutEndAge is defined and equals max(payoutPlanEndAge, payoutPlanMinEndAge)', () => {
-    const result = simulateRetirementComparison(defaultProfile, hybridAssumptions, rules)
-    const avdResult = result.products[0]
-    const expectedEndAge = Math.max(
-      hybridAssumptions.altersvorsorgedepot.payoutPlanEndAge,
-      rules.altersvorsorgedepot.payoutPlanMinEndAge,
-    )
-    expect(avdResult.payoutEndAge).toBe(expectedEndAge)
-  })
-
-  it('netMonthlyPayout is positive and less than grossMonthlyPayout', () => {
-    const result = simulateRetirementComparison(defaultProfile, hybridAssumptions, rules)
-    const avdResult = result.products[0]
-    expect(avdResult.netMonthlyPayout).toBeGreaterThan(0)
-    expect(avdResult.netMonthlyPayout).toBeLessThan(avdResult.grossMonthlyPayout)
-  })
-
-  it('grossMonthlyPayout differs from pure certified_payout_plan (different math)', () => {
-    // The hybrid and pure drawdown modes use different math for the same capital —
-    // the hybrid splits into lifelong-annuity + finite-drawdown sleeves, while
-    // certified_payout_plan uses all capital as finite drawdown.
-    const certifiedAssumptions = {
-      ...hybridAssumptions,
-      altersvorsorgedepot: {
-        ...hybridAssumptions.altersvorsorgedepot,
-        payoutMode: 'certified_payout_plan' as const,
-      },
-    }
-    const hybridResult = simulateRetirementComparison(defaultProfile, hybridAssumptions, rules)
-    const certifiedResult = simulateRetirementComparison(defaultProfile, certifiedAssumptions, rules)
-    expect(hybridResult.products[0].grossMonthlyPayout).not.toBeCloseTo(
-      certifiedResult.products[0].grossMonthlyPayout, 0,
-    )
+    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toContain('certified_payout_plan')
+    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).not.toContain('hybrid_80_annuity')
+    expect(AVD_UI_SELECTABLE_PAYOUT_MODES).toHaveLength(2)
   })
 })
