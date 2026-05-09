@@ -7,7 +7,7 @@
     "dev": "vite",
     "prebuild": "node scripts/generate-og-images.mjs",
     "build": "tsc -b && vite build && npm run prerender",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
     "preview": "npm run build && wrangler dev",
     "worker:typecheck": "npm --prefix workers/qa-submit run typecheck",
