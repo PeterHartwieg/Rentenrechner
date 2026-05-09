@@ -6,6 +6,8 @@
  *   3. Screenshot upload failure
  *   4. GitHub issue creation failure
  *
+ * gh#84 adds Turnstile hostname + action validation; new cases are in section 2.
+ *
  * Tests run in a standard Node environment (vitest + node). The Cloudflare
  * runtime globals (R2Bucket, ExportedHandler) are type-only; at runtime we
  * supply plain object mocks that satisfy the same interface.
@@ -33,6 +35,8 @@ function makeEnv(overrides: Partial<MockEnv> = {}): MockEnv {
     } as unknown as R2Bucket,
     TURNSTILE_SITE_KEY: "test-site-key",
     TURNSTILE_SECRET: "test-secret",
+    TURNSTILE_ALLOWED_HOSTNAMES: "rentenwiki.de,www.rentenwiki.de",
+    TURNSTILE_EXPECTED_ACTION: undefined,
     GH_PAT: "test-pat",
     GH_REPO: "owner/repo",
     GH_WEBHOOK_SECRET: "test-webhook-secret",
@@ -45,10 +49,31 @@ interface MockEnv {
   QA_SCREENSHOTS: R2Bucket;
   TURNSTILE_SITE_KEY: string;
   TURNSTILE_SECRET: string;
+  TURNSTILE_ALLOWED_HOSTNAMES: string;
+  TURNSTILE_EXPECTED_ACTION?: string;
   GH_PAT: string;
   GH_REPO: string;
   GH_WEBHOOK_SECRET: string;
   ALLOWED_ORIGINS: string;
+}
+
+/**
+ * Build a Turnstile success response with the given hostname (and optional action).
+ * The returned Response is suitable for passing to mockFetch.mockResolvedValueOnce.
+ */
+function turnstileSuccess(hostname = "rentenwiki.de", action?: string): Response {
+  return new Response(
+    JSON.stringify({ success: true, hostname, ...(action ? { action } : {}) }),
+    { status: 200 },
+  );
+}
+
+/** Build a Turnstile failure response (success: false). */
+function turnstileFailure(): Response {
+  return new Response(
+    JSON.stringify({ success: false, "error-codes": ["invalid-input-response"] }),
+    { status: 200 },
+  );
 }
 
 // Helper to build a valid POST /submit request
@@ -167,9 +192,7 @@ describe("request validation", () => {
 // ---------------------------------------------------------------------------
 describe("Turnstile failure", () => {
   it("returns 403 when Turnstile verification fails (success: false)", async () => {
-    mockFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ success: false }), { status: 200 }),
-    );
+    mockFetch.mockResolvedValueOnce(turnstileFailure());
 
     const req = makeSubmitRequest(VALID_PAYLOAD);
     const res = await fetchWorker(req, makeEnv());
@@ -187,6 +210,92 @@ describe("Turnstile failure", () => {
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("turnstile_failed");
   });
+
+  it("returns 403 when Turnstile response contains an unexpected hostname", async () => {
+    // Token was minted for a different Cloudflare site — must be rejected.
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true, hostname: "evil.example.com" }), {
+        status: 200,
+      }),
+    );
+
+    const req = makeSubmitRequest(VALID_PAYLOAD);
+    const res = await fetchWorker(req, makeEnv());
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("turnstile_failed");
+  });
+
+  it("returns 403 when Turnstile response is missing hostname entirely", async () => {
+    // Hostname field absent — cannot verify origin; must be rejected.
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true /* no hostname field */ }), { status: 200 }),
+    );
+
+    const req = makeSubmitRequest(VALID_PAYLOAD);
+    const res = await fetchWorker(req, makeEnv());
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("turnstile_failed");
+  });
+
+  it("returns 403 when Turnstile response has wrong action (action validation configured)", async () => {
+    // Widget is configured with action "qa-submit"; token carries "other-action".
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ success: true, hostname: "rentenwiki.de", action: "other-action" }),
+        { status: 200 },
+      ),
+    );
+
+    const req = makeSubmitRequest(VALID_PAYLOAD);
+    const res = await fetchWorker(req, makeEnv({ TURNSTILE_EXPECTED_ACTION: "qa-submit" }));
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("turnstile_failed");
+  });
+
+  it("accepts token when action matches configured expected action", async () => {
+    // Action matches — proceeds to GitHub (which we make fail so we can stop early).
+    mockFetch
+      .mockResolvedValueOnce(turnstileSuccess("rentenwiki.de", "qa-submit"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "Bad credentials" }), { status: 401 }),
+      );
+
+    const req = makeSubmitRequest(VALID_PAYLOAD);
+    const res = await fetchWorker(req, makeEnv({ TURNSTILE_EXPECTED_ACTION: "qa-submit" }));
+    // Turnstile passed; failure is downstream (GitHub) → 502.
+    expect(res.status).toBe(502);
+  });
+
+  it("accepts token when action validation is not configured (no TURNSTILE_EXPECTED_ACTION)", async () => {
+    // No expected action set — action field in response is irrelevant.
+    mockFetch
+      .mockResolvedValueOnce(turnstileSuccess("rentenwiki.de", "anything"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "Bad credentials" }), { status: 401 }),
+      );
+
+    const req = makeSubmitRequest(VALID_PAYLOAD);
+    const res = await fetchWorker(req, makeEnv({ TURNSTILE_EXPECTED_ACTION: undefined }));
+    expect(res.status).toBe(502);
+  });
+
+  it("accepts token for www subdomain listed in TURNSTILE_ALLOWED_HOSTNAMES", async () => {
+    mockFetch
+      .mockResolvedValueOnce(turnstileSuccess("www.rentenwiki.de"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "Bad credentials" }), { status: 401 }),
+      );
+
+    const req = makeSubmitRequest(VALID_PAYLOAD, "https://www.rentenwiki.de");
+    const res = await fetchWorker(
+      req,
+      makeEnv({ ALLOWED_ORIGINS: "https://rentenwiki.de,https://www.rentenwiki.de" }),
+    );
+    expect(res.status).toBe(502);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -195,9 +304,7 @@ describe("Turnstile failure", () => {
 describe("screenshot upload failure", () => {
   it("returns 400 for invalid base64 screenshot data", async () => {
     // Turnstile passes
-    mockFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ success: true }), { status: 200 }),
-    );
+    mockFetch.mockResolvedValueOnce(turnstileSuccess());
 
     const req = makeSubmitRequest({
       ...VALID_PAYLOAD,
@@ -212,9 +319,7 @@ describe("screenshot upload failure", () => {
 
   it("returns 400 for disallowed image content type", async () => {
     // Turnstile passes
-    mockFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ success: true }), { status: 200 }),
-    );
+    mockFetch.mockResolvedValueOnce(turnstileSuccess());
 
     const req = makeSubmitRequest({
       ...VALID_PAYLOAD,
@@ -229,9 +334,7 @@ describe("screenshot upload failure", () => {
 
   it("returns 413 when screenshot exceeds size limit", async () => {
     // Turnstile passes
-    mockFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ success: true }), { status: 200 }),
-    );
+    mockFetch.mockResolvedValueOnce(turnstileSuccess());
 
     // 9 MB — exceeds SCREENSHOT_MAX_BYTES (8 MB)
     const bigData = "A".repeat(9 * 1024 * 1024);
@@ -254,9 +357,7 @@ describe("GitHub issue creation failure", () => {
   it("returns 502 when GitHub API returns non-OK response", async () => {
     // Turnstile passes, then GitHub fails
     mockFetch
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ success: true }), { status: 200 }),
-      )
+      .mockResolvedValueOnce(turnstileSuccess())
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ message: "Bad credentials" }), { status: 401 }),
       );
@@ -275,9 +376,7 @@ describe("GitHub issue creation failure", () => {
 
     // Turnstile passes, GitHub fails
     mockFetch
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ success: true }), { status: 200 }),
-      )
+      .mockResolvedValueOnce(turnstileSuccess())
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ message: "Unprocessable Entity" }), { status: 422 }),
       );
@@ -305,9 +404,7 @@ describe("successful submission", () => {
   it("returns 201 with issueUrl and issueNumber on success", async () => {
     // Turnstile passes, GitHub returns created issue
     mockFetch
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ success: true }), { status: 200 }),
-      )
+      .mockResolvedValueOnce(turnstileSuccess())
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({

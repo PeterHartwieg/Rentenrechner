@@ -7,6 +7,17 @@ export interface Env {
   QA_SCREENSHOTS: R2Bucket;
   TURNSTILE_SITE_KEY: string;
   TURNSTILE_SECRET: string;
+  /**
+   * Comma-separated list of hostnames whose Turnstile tokens are accepted
+   * (e.g. "rentenwiki.de,www.rentenwiki.de"). Mirrors the pattern used by
+   * `ALLOWED_ORIGINS`. Set via `[vars]` in wrangler.toml.
+   */
+  TURNSTILE_ALLOWED_HOSTNAMES: string;
+  /**
+   * Optional Turnstile widget action string. When non-empty, tokens whose
+   * `action` field doesn't match are rejected.
+   */
+  TURNSTILE_EXPECTED_ACTION?: string;
   GH_PAT: string;
   GH_REPO: string;
   GH_WEBHOOK_SECRET: string;
@@ -139,12 +150,16 @@ async function handleSubmit(
   }
 
   const remoteIp = request.headers.get("cf-connecting-ip");
-  const turnstileOk = await verifyTurnstile(
+  const turnstileResult = await verifyTurnstile(
     payload.turnstileToken,
     env.TURNSTILE_SECRET,
     remoteIp,
+    {
+      allowedHostnames: env.TURNSTILE_ALLOWED_HOSTNAMES ?? "",
+      expectedAction: env.TURNSTILE_EXPECTED_ACTION,
+    },
   );
-  if (!turnstileOk) {
+  if (!turnstileResult.ok) {
     return errorResponse(
       403,
       "turnstile_failed",
