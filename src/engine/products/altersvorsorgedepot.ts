@@ -136,15 +136,19 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
     buildPayout: ({ projection, payoutReturn }) => {
       const partialPct = Math.min(avd.partialCapitalPct, rules.altersvorsorgedepot.partialCapitalMaxPct)
       const monthlyCapital = projection.capital * (1 - partialPct)
+      const payoutPlanEndAge = Math.max(avd.payoutPlanEndAge, rules.altersvorsorgedepot.payoutPlanMinEndAge)
+      const payoutPlanYears = payoutPlanEndAge - profile.retirementAge
+
+      // hybrid_80_annuity: 80% of capital goes into a lifelong Leibrente (Rentenfaktor),
+      // 20% goes into a finite drawdown sleeve ending at payoutPlanEndAge (same end-age
+      // parameter as certified_payout_plan). The monthly payouts from both sleeves are summed.
       const grossMonthlyPayout =
         avd.payoutMode === 'lifelong_annuity'
           ? (monthlyCapital / 10_000) * avd.rentenfaktor
-          : monthlyPayoutFromCapital(
-              monthlyCapital,
-              payoutReturn,
-              Math.max(avd.payoutPlanEndAge, rules.altersvorsorgedepot.payoutPlanMinEndAge) -
-                profile.retirementAge,
-            )
+          : avd.payoutMode === 'hybrid_80_annuity'
+            ? (monthlyCapital * 0.80 / 10_000) * avd.rentenfaktor +
+              monthlyPayoutFromCapital(monthlyCapital * 0.20, payoutReturn, payoutPlanYears)
+            : monthlyPayoutFromCapital(monthlyCapital, payoutReturn, payoutPlanYears)
       const partialCapital = projection.capital * partialPct - avd.transferCostEUR
       const otherAnnual = avd.monthlyOtherRetirementIncome * 12
 
@@ -176,8 +180,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
           avd.payoutMode === 'lifelong_annuity',
         ),
         payoutEndAge:
-          avd.payoutMode === 'certified_payout_plan'
-            ? Math.max(avd.payoutPlanEndAge, rules.altersvorsorgedepot.payoutPlanMinEndAge)
+          avd.payoutMode === 'certified_payout_plan' || avd.payoutMode === 'hybrid_80_annuity'
+            ? payoutPlanEndAge
             : undefined,
       }
     },
