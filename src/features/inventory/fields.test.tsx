@@ -24,6 +24,65 @@ import {
 afterEach(() => cleanup())
 
 // ---------------------------------------------------------------------------
+// Programmatic label association (issue #69)
+// ---------------------------------------------------------------------------
+
+describe('InvField — programmatic label association', () => {
+  it('getByLabelText finds the InvNumber input by its label', () => {
+    render(
+      <InvField label="Vertragsbeginn">
+        <InvNumber value={2020} onChange={() => {}} />
+      </InvField>,
+    )
+    const input = screen.getByLabelText('Vertragsbeginn') as HTMLInputElement
+    expect(input.tagName).toBe('INPUT')
+    expect(input.type).toBe('number')
+    expect(input.value).toBe('2020')
+  })
+
+  it('getByLabelText finds the InvSelect control by its label', () => {
+    const OPTIONS = [
+      { value: 'leibrente', label: 'Leibrente' },
+      { value: 'zeitrente', label: 'Zeitrente' },
+    ] as const
+    render(
+      <InvField label="Auszahlungsform">
+        <InvSelect value="leibrente" options={OPTIONS} onChange={() => {}} />
+      </InvField>,
+    )
+    const select = screen.getByLabelText('Auszahlungsform') as HTMLSelectElement
+    expect(select.tagName).toBe('SELECT')
+    expect(select.value).toBe('leibrente')
+  })
+
+  it('getByLabelText finds the InvText input by its label', () => {
+    render(
+      <InvField label="Anbieter">
+        <InvText value="Allianz" onChange={() => {}} />
+      </InvField>,
+    )
+    const input = screen.getByLabelText('Anbieter') as HTMLInputElement
+    expect(input.tagName).toBe('INPUT')
+    expect(input.type).toBe('text')
+    expect(input.value).toBe('Allianz')
+  })
+
+  it('hint is wired via aria-describedby on the input control', () => {
+    render(
+      <InvField label="Monatsbeitrag" hint="Bruttobetrag eingeben">
+        <InvNumber value={200} onChange={() => {}} />
+      </InvField>,
+    )
+    const input = screen.getByLabelText('Monatsbeitrag')
+    // the input itself should carry aria-describedby pointing to the hint paragraph
+    const hintId = input.getAttribute('aria-describedby')
+    expect(hintId).toBeTruthy()
+    const hintEl = input.ownerDocument.getElementById(hintId!)
+    expect(hintEl?.textContent).toBe('Bruttobetrag eingeben')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // toNumber
 // ---------------------------------------------------------------------------
 

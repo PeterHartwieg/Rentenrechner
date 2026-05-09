@@ -12,7 +12,8 @@
  *   .inventory-input-shell  .inventory-select-shell
  */
 
-import { useState } from 'react'
+import { useState, useId } from 'react'
+import { InvFieldContext, useInvFieldContext } from './invFieldContext'
 
 // ---------------------------------------------------------------------------
 // InvField
@@ -21,8 +22,12 @@ import { useState } from 'react'
 /**
  * Labelled field wrapper for inventory cards.
  *
- * Renders a `<div className="inventory-field">` containing a `<span>` label,
- * the child input control, and an optional hint paragraph.
+ * Renders a `<div className="inventory-field">` containing a `<label>`,
+ * the child input control (receives the generated id via context), and an
+ * optional hint paragraph wired via `aria-describedby`.
+ *
+ * Uses `useId()` to generate a stable, unique id per instance so that
+ * `<label htmlFor>` → `<input id>` association works for screen readers.
  */
 export function InvField({
   label,
@@ -33,12 +38,16 @@ export function InvField({
   hint?: string
   children: React.ReactNode
 }) {
+  const id = useId()
+  const hintId = hint ? `${id}-hint` : undefined
   return (
-    <div className="inventory-field">
-      <span>{label}</span>
-      {children}
-      {hint && <p className="inventory-field-hint">{hint}</p>}
-    </div>
+    <InvFieldContext.Provider value={{ id, describedById: hintId }}>
+      <div className="inventory-field">
+        <label htmlFor={id}>{label}</label>
+        {children}
+        {hint && <p id={hintId} className="inventory-field-hint">{hint}</p>}
+      </div>
+    </InvFieldContext.Provider>
   )
 }
 
@@ -71,6 +80,7 @@ export function InvNumber({
   disabled?: boolean
   onChange: (n: number) => void
 }) {
+  const fieldCtx = useInvFieldContext()
   const [draft, setDraft] = useState<string | null>(null)
   const displayValue = draft ?? (Number.isFinite(value) ? String(value) : '0')
 
@@ -87,6 +97,8 @@ export function InvNumber({
   return (
     <div className="inventory-input-shell" aria-disabled={disabled || undefined}>
       <input
+        id={fieldCtx?.id}
+        aria-describedby={fieldCtx?.describedById}
         type="number"
         value={displayValue}
         min={min}
@@ -130,9 +142,15 @@ export function InvSelect({
   options: readonly { value: string; label: string }[]
   onChange: (v: string) => void
 }) {
+  const fieldCtx = useInvFieldContext()
   return (
     <div className="inventory-select-shell">
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <select
+        id={fieldCtx?.id}
+        aria-describedby={fieldCtx?.describedById}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -159,9 +177,12 @@ export function InvText({
   placeholder?: string
   onChange: (v: string) => void
 }) {
+  const fieldCtx = useInvFieldContext()
   return (
     <div className="inventory-input-shell">
       <input
+        id={fieldCtx?.id}
+        aria-describedby={fieldCtx?.describedById}
         type="text"
         value={value}
         placeholder={placeholder}

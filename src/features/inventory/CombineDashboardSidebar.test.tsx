@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, cleanup } from '@testing-library/react'
+import { fireEvent, render, screen, cleanup } from '@testing-library/react'
 import { AddVertragSection, CombineDashboardSidebar } from './CombineDashboardSidebar'
 import { addInstanceToWorkspace } from './inventoryHelpers'
 import { defaultWorkspace } from '../../storage'
@@ -361,6 +361,46 @@ describe('AddVertragSection — draft-before-save flow (#45)', () => {
         contractualFixedMonthly: 50,
       }),
     )
+    cleanup()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Programmatic label association (issue #69)
+// ---------------------------------------------------------------------------
+
+describe('CombineDashboardSidebar — programmatic label association (a11y #69)', () => {
+  it('ETF instance: getByLabelText finds the Monatliche Sparrate numeric input', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'etf')
+    render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const input = screen.getByLabelText('Monatliche Sparrate') as HTMLInputElement
+    expect(input.tagName).toBe('INPUT')
+    expect(input.type).toBe('number')
+    cleanup()
+  })
+
+  it('bAV instance: getByLabelText finds the Auszahlungsform select', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const select = screen.getByLabelText('Auszahlungsform') as HTMLSelectElement
+    expect(select.tagName).toBe('SELECT')
+    cleanup()
+  })
+
+  it('PersonalProfileSection: getByLabelText finds the Alter numeric input', () => {
+    const ws = { ...defaultWorkspace, mode: 'combine' } as typeof defaultWorkspace
+    render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const input = screen.getByLabelText('Alter') as HTMLInputElement
+    expect(input.tagName).toBe('INPUT')
+    expect(input.type).toBe('number')
+    cleanup()
+  })
+
+  it('PersonalProfileSection: getByLabelText finds the Krankenversicherung select', () => {
+    const ws = { ...defaultWorkspace, mode: 'combine' } as typeof defaultWorkspace
+    render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const select = screen.getByLabelText('Krankenversicherung') as HTMLSelectElement
+    expect(select.tagName).toBe('SELECT')
     cleanup()
   })
 })
