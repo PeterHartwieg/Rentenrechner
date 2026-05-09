@@ -50,7 +50,7 @@ export function DetailComparisonTable({
   const { enabled: qaEnabled } = useQaMode()
 
   return (
-    <section className="table-panel" {...sectionTargetProps}>
+    <section className="table-panel detail-comparison-table" {...sectionTargetProps}>
       <div className="section-header">
         <h2>Detailvergleich</h2>
         <div className="section-actions">
@@ -95,17 +95,17 @@ export function DetailComparisonTable({
                   id: `results.detailComparisonTable.rowGroup.${result.productId}`,
                 })}
               >
-                <td>{result.label}</td>
-                <td>{result.scenarioLabel}</td>
-                <td>{formatCurrency(result.monthlyUserCost, 0)}</td>
-                <td>{formatCurrency(result.monthlyProductContribution, 0)}</td>
-                <td>{formatCurrency(result.capitalAtRetirement, 0)}</td>
-                <td>
+                <td data-label="Produkt">{result.label}</td>
+                <td data-label="Szenario">{result.scenarioLabel}</td>
+                <td data-label="Nettoaufwand mtl.">{formatCurrency(result.monthlyUserCost, 0)}</td>
+                <td data-label="Beitrag mtl.">{formatCurrency(result.monthlyProductContribution, 0)}</td>
+                <td data-label="Kapital">{formatCurrency(result.capitalAtRetirement, 0)}</td>
+                <td data-label="Kapital nach Steuer">
                   {result.afterTaxLumpSum === null
                     ? '-'
                     : formatCurrency(result.afterTaxLumpSum, 0)}
                 </td>
-                <td>
+                <td data-label="Netto-Rente">
                   {formatCurrency(result.netMonthlyPayout, 0)}
                   {result.leibrenteBreakEvenAge !== undefined && (
                     <span className="break-even-note">
@@ -113,8 +113,8 @@ export function DetailComparisonTable({
                     </span>
                   )}
                 </td>
-                <td>{formatCurrency(result.totalFees, 0)}</td>
-                <td>
+                <td data-label="Kosten">{formatCurrency(result.totalFees, 0)}</td>
+                <td data-label="Faktor">
                   {result.valueMultipleOnUserCost === null
                     ? '-'
                     : `${formatNumber(result.valueMultipleOnUserCost, 1)}x`}

@@ -116,3 +116,45 @@
   border-color: #fecaca;
   color: #991b1b;
 }
+
+@media (max-width: 480px) {
+  .sensitivity-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .sensitivity-grid > .sg-head {
+    display: none;
+  }
+
+  .sensitivity-grid > .sg-row-label {
+    border-top: 1px solid #e5ebf2;
+    padding-top: 8px;
+    margin-top: 4px;
+    font-weight: 700;
+  }
+
+  .sensitivity-grid > .sg-row-label:first-of-type {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .sensitivity-grid > .sg-cell {
+    padding: 2px 0 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sensitivity-grid > .sg-cell::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #667085;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    min-width: 90px;
+  }
+}

@@ -299,33 +299,33 @@ export function MonteCarloPanel({ result }: Props) {
           <tbody>
             {result.summaries.map((summary) => (
               <tr key={summary.productId}>
-                <td>
+                <td data-label="Produkt">
                   <span className="mc-product-name">
                     <span style={{ background: summary.color }} aria-hidden />
                     {summary.shortLabel}
                   </span>
                 </td>
-                <td>{percentileTriple(summary.capital)}</td>
-                <td>{formatPercent(summary.bestCapitalProbability)}</td>
-                <td>{percentileTriple(summary.netMonthlyPayout, ' / Mon.')}</td>
-                <td>{formatPercent(summary.bestPensionProbability)}</td>
-                <td>{formatPercent(summary.belowUserCostProbability)}</td>
+                <td data-label="Kapital P10 / P50 / P90">{percentileTriple(summary.capital)}</td>
+                <td data-label="Chance bestes Kapital">{formatPercent(summary.bestCapitalProbability)}</td>
+                <td data-label="Netto-Rente P10 / P50 / P90">{percentileTriple(summary.netMonthlyPayout, ' / Mon.')}</td>
+                <td data-label="Chance beste Rente">{formatPercent(summary.bestPensionProbability)}</td>
+                <td data-label="Unter Einzahlungen">{formatPercent(summary.belowUserCostProbability)}</td>
                 {showGuarantees && (
-                  <td>
+                  <td data-label="Garantie">
                     {summary.guaranteeFloor
                       ? `${summary.guaranteeLabel ?? 'Garantie'} - ${formatCurrency(summary.guaranteeFloor.p50, 0)}`
                       : '-'}
                   </td>
                 )}
                 {showGuarantees && (
-                  <td>
+                  <td data-label="Greift">
                     {summary.guaranteeAppliedProbability === null
                       ? '-'
                       : formatPercent(summary.guaranteeAppliedProbability)}
                   </td>
                 )}
                 {showTarget && (
-                  <td>
+                  <td data-label="Wunschnetto erreicht">
                     {summary.targetNetPensionProbability === null
                       ? '-'
                       : formatPercent(summary.targetNetPensionProbability)}
