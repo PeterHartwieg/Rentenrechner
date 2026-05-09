@@ -165,6 +165,127 @@ describe('buildExportCsv', () => {
 })
 
 // ---------------------------------------------------------------------------
+// gh#61 — Kapital n. St. column: Basisrente / AVD / Riester product rows.
+// ---------------------------------------------------------------------------
+
+// Yearly cashflow row fixture used by the §22 Nr. 5 / Basisrente tests.
+// Balance is set to a positive amount so after-tax logic runs.
+const FIXTURE_YEARLY_ROW: YearlyProjection = {
+  year: 20,
+  age: 60,
+  productId: 'etf', // overridden per fixture below
+  scenarioId: 'basis',
+  balance: 50000,
+  realBalance: 40000,
+  yearlyUserCost: 1200,
+  yearlyProductContribution: 1200,
+  yearlyEmployerContribution: 0,
+  yearlyFees: 60,
+  cumulativeFees: 600,
+  cumulativeProductContributions: 24000,
+  cumulativeVorabpauschale: 100,
+}
+
+function makeProductWithRow(productId: ProductResult['productId'], label: string): ProductResult {
+  return {
+    ...FIXTURE_PRODUCT,
+    productId,
+    label,
+    rows: [{ ...FIXTURE_YEARLY_ROW, productId }],
+  } as unknown as ProductResult
+}
+
+function extractKapitalNachSteuerFromCashflows(csv: string, label: string): string {
+  // Find the "Jahres-Cashflows" section, then locate the data row for this product.
+  const lines = csv.split('\n')
+  const sectionIdx = lines.findIndex((l) => l === 'Jahres-Cashflows')
+  if (sectionIdx < 0) throw new Error('Jahres-Cashflows section not found')
+  // Header row: Produkt(0), Szenario(1), Alter(2), Nettoaufwand(3), Beitrag(4),
+  //             AG-Anteil(5), Steuer-/SV-Ersparnis(6), Gebühren(7), Kum.Gebühren(8),
+  //             Kapital(9), Kapital n. St.(10), Reales Kapital(11), Real n. St.(12)
+  const dataRows = lines.slice(sectionIdx + 2) // skip section header + column header
+  const row = dataRows.find((l) => l.startsWith(label + ','))
+  if (!row) throw new Error(`Row for label "${label}" not found`)
+  const cols = row.split(',')
+  return cols[10] // Kapital n. St. (EUR) — index 10
+}
+
+describe('buildExportCsv — gh#61 Kapital n. St. column correctness', () => {
+  const baseOptsNoBav = {
+    ...BASE_OPTS,
+    bavAnnualTaxSvSavings: 0,
+  }
+
+  it('Basisrente row exports blank for Kapital n. St. (capital payout legally prohibited)', () => {
+    const product = makeProductWithRow('basisrente', 'Basisrente')
+    const csv = buildExportCsv({ ...baseOptsNoBav, products: [product] })
+    const cell = extractKapitalNachSteuerFromCashflows(csv, 'Basisrente')
+    expect(cell).toBe('')
+  })
+
+  it('AVD row exports §22 Nr. 5 after-tax capital (non-blank, positive)', () => {
+    const product = makeProductWithRow('altersvorsorgedepot', 'Altersvorsorgedepot')
+    const csv = buildExportCsv({ ...baseOptsNoBav, products: [product] })
+    const cell = extractKapitalNachSteuerFromCashflows(csv, 'Altersvorsorgedepot')
+    expect(cell).not.toBe('')
+    expect(Number(cell)).toBeGreaterThan(0)
+    // Must be less than gross balance (tax was deducted).
+    expect(Number(cell)).toBeLessThan(FIXTURE_YEARLY_ROW.balance)
+  })
+
+  it('Riester row exports §22 Nr. 5 after-tax capital (non-blank, positive)', () => {
+    const product = makeProductWithRow('riester', 'Riester')
+    const csv = buildExportCsv({ ...baseOptsNoBav, products: [product] })
+    const cell = extractKapitalNachSteuerFromCashflows(csv, 'Riester')
+    expect(cell).not.toBe('')
+    expect(Number(cell)).toBeGreaterThan(0)
+    expect(Number(cell)).toBeLessThan(FIXTURE_YEARLY_ROW.balance)
+  })
+
+  it('AVD and Riester rows produce the same after-tax capital when both other-income values are equal (same §22 Nr. 5 path)', () => {
+    const avdProduct = makeProductWithRow('altersvorsorgedepot', 'Altersvorsorgedepot')
+    const riesterProduct = makeProductWithRow('riester', 'Riester')
+    const csvAvd = buildExportCsv({ ...baseOptsNoBav, products: [avdProduct], avdOtherAnnualIncome: 0, riesterOtherAnnualIncome: 0 })
+    const csvRiester = buildExportCsv({ ...baseOptsNoBav, products: [riesterProduct], avdOtherAnnualIncome: 0, riesterOtherAnnualIncome: 0 })
+    const avdCell = extractKapitalNachSteuerFromCashflows(csvAvd, 'Altersvorsorgedepot')
+    const riesterCell = extractKapitalNachSteuerFromCashflows(csvRiester, 'Riester')
+    expect(Number(avdCell)).toBeCloseTo(Number(riesterCell), 2)
+  })
+
+  it('AVD and Riester rows respect product-specific other-income (no cross-contamination)', () => {
+    const avdProduct = makeProductWithRow('altersvorsorgedepot', 'Altersvorsorgedepot')
+    const riesterProduct = makeProductWithRow('riester', 'Riester')
+    // Both products in same export, but different other-income values.
+    const csv = buildExportCsv({
+      ...baseOptsNoBav,
+      products: [avdProduct, riesterProduct],
+      avdOtherAnnualIncome: 12000,
+      riesterOtherAnnualIncome: 0,
+    })
+    const avdCell = extractKapitalNachSteuerFromCashflows(csv, 'Altersvorsorgedepot')
+    const riesterCell = extractKapitalNachSteuerFromCashflows(csv, 'Riester')
+    // With higher other-income, AVD has higher marginal tax → lower after-tax.
+    expect(Number(avdCell)).toBeLessThan(Number(riesterCell))
+  })
+
+  it('bAV row still produces after-tax capital via bAV lump-sum path (unchanged)', () => {
+    const product = makeProductWithRow('bav', 'bAV')
+    const csv = buildExportCsv({ ...baseOptsNoBav, products: [product] })
+    const cell = extractKapitalNachSteuerFromCashflows(csv, 'bAV')
+    expect(cell).not.toBe('')
+    expect(Number(cell)).toBeGreaterThan(0)
+  })
+
+  it('private-insurance row still uses insurance lump-sum path (fallthrough unchanged)', () => {
+    const product = makeProductWithRow('versicherung', 'Versicherung')
+    const csv = buildExportCsv({ ...baseOptsNoBav, products: [product] })
+    const cell = extractKapitalNachSteuerFromCashflows(csv, 'Versicherung')
+    expect(cell).not.toBe('')
+    expect(Number(cell)).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Combine-mode CSV builder (Group G issue 11).
 // ---------------------------------------------------------------------------
 

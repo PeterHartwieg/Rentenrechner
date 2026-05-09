@@ -159,6 +159,8 @@ export function useDerivedViews(
       insuranceTaxMode: taxModes.insuranceTaxMode,
       equityPartialExemption: assumptions.etf.equityPartialExemption,
       insuranceOtherAnnualIncome: assumptions.insurance.monthlyOtherRetirementIncome * 12,
+      avdOtherAnnualIncome: assumptions.altersvorsorgedepot.monthlyOtherRetirementIncome * 12,
+      riesterOtherAnnualIncome: assumptions.riester.monthlyOtherRetirementIncome * 12,
       rules: de2026Rules,
       inflationRate: assumptions.inflationRate,
     })
