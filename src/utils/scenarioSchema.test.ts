@@ -724,6 +724,101 @@ describe('validateWorkspace — deep what-if validation', () => {
   })
 })
 
+describe('validateWorkspaceAssumptions — strict monteCarlo / statutoryPension / duplicate instanceId (#60)', () => {
+  function makeWorkspaceAssumptions() {
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      defaultAssumptions as unknown as Record<string, unknown>,
+    )
+    return ws.baseline.assumptions
+  }
+
+  it('accepts valid workspace assumptions', () => {
+    expect(validateWorkspaceAssumptions(makeWorkspaceAssumptions())).not.toBeNull()
+  })
+
+  it('rejects invalid monteCarlo.annualVolatility (negative)', () => {
+    const a = makeWorkspaceAssumptions()
+    const patched = {
+      ...a,
+      monteCarlo: { ...a.monteCarlo, annualVolatility: -0.01 },
+    }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+
+  it('rejects invalid monteCarlo.runs (too low)', () => {
+    const a = makeWorkspaceAssumptions()
+    const patched = {
+      ...a,
+      monteCarlo: { ...a.monteCarlo, runs: 99 },
+    }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+
+  it('rejects invalid monteCarlo.seed (zero)', () => {
+    const a = makeWorkspaceAssumptions()
+    const patched = {
+      ...a,
+      monteCarlo: { ...a.monteCarlo, seed: 0 },
+    }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+
+  it('rejects invalid monteCarlo.enabled (non-boolean)', () => {
+    const a = makeWorkspaceAssumptions()
+    const patched = {
+      ...a,
+      monteCarlo: { ...a.monteCarlo, enabled: 'yes' },
+    }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+
+  it('rejects invalid statutoryPension.currentEntgeltpunkte (out of range)', () => {
+    const a = makeWorkspaceAssumptions()
+    const patched = {
+      ...a,
+      statutoryPension: { ...a.statutoryPension, currentEntgeltpunkte: 201 },
+    }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+
+  it('rejects invalid statutoryPension.pensionBaselineType (unknown enum)', () => {
+    const a = makeWorkspaceAssumptions()
+    const patched = {
+      ...a,
+      statutoryPension: { ...a.statutoryPension, pensionBaselineType: 'bogus' },
+    }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+
+  it('rejects invalid statutoryPension.includeGrvReduction (non-boolean)', () => {
+    const a = makeWorkspaceAssumptions()
+    const patched = {
+      ...a,
+      statutoryPension: { ...a.statutoryPension, includeGrvReduction: 'yes' },
+    }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+
+  it('rejects duplicate instanceId across ETF and bAV arrays', () => {
+    const a = makeWorkspaceAssumptions()
+    // Force bAV instance to use the same instanceId as the ETF instance
+    const etfId = a.etf[0].instanceId
+    const patchedBav = [{ ...a.bav[0], instanceId: etfId }]
+    const patched = { ...a, bav: patchedBav }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+
+  it('rejects duplicate instanceId within the same product array', () => {
+    const a = makeWorkspaceAssumptions()
+    const etfId = a.etf[0].instanceId
+    // Add a second ETF instance with the same instanceId
+    const patchedEtf = [a.etf[0], { ...a.etf[0], instanceId: etfId }]
+    const patched = { ...a, etf: patchedEtf }
+    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+  })
+})
+
 describe('validateTransferEvent — both source and target must exist', () => {
   function makeWorkspaceWithTwoInstances() {
     return migrateV1ToV2(
