@@ -16,6 +16,7 @@ dist-ssr
 
 # Scratch tooling artifacts (coworker session logs, debug screenshots, archived sessions)
 .scratch/cowork/
+.scratch/cowork-codex/
 .scratch/screenshots/
 .scratch/archive/sessions/
 
