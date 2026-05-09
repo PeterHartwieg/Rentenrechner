@@ -15,7 +15,7 @@ import { getProductMeta } from '../../engine/productRegistry';
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon';
 import { qaTargetAttrs, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
 import { useQaMode } from '../qa-feedback/useQaMode';
-import { buildFeeDragChartData } from './feeDragChartData';
+import { buildFeeDragChartData, type FeeDragResultEntry } from './feeDragChartData';
 
 interface FeeDragChartProps {
   selectedResults: {
@@ -137,6 +137,57 @@ export function FeeDragChart({
           })}
         </div>
       </div>
+
+      {/* Visually-hidden data table for screen readers */}
+      <FeeDragAccessibleTable
+        selectedResults={selectedResults}
+        retirementAge={retirementAge}
+        comparisonEndAge={comparisonEndAge}
+      />
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Accessible table — visually hidden, screen-reader summary of fee-drag data
+// ---------------------------------------------------------------------------
+
+interface FeeDragAccessibleTableProps {
+  selectedResults: FeeDragResultEntry[];
+  retirementAge: number;
+  comparisonEndAge: number;
+}
+
+function FeeDragAccessibleTable({
+  selectedResults,
+  retirementAge,
+  comparisonEndAge,
+}: FeeDragAccessibleTableProps) {
+  if (selectedResults.length === 0) return null;
+  const rows = buildFeeDragChartData(selectedResults, retirementAge, comparisonEndAge);
+  return (
+    <table className="sr-only" aria-label="Gebühren-Vergleich (Zusammenfassung)">
+      <caption>
+        Nettoaufwand, Netto-Rendite und Gebühren pro Produkt bis Alter {comparisonEndAge}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Produkt</th>
+          <th scope="col">Nettoaufwand gesamt</th>
+          <th scope="col">Netto-Rendite</th>
+          <th scope="col">Gebühren gesamt</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.productId}>
+            <td>{row.name}</td>
+            <td>{formatCurrency(row['Nettoaufwand gesamt'], 0)}</td>
+            <td>{formatCurrency(row['Netto-Rendite'], 0)}</td>
+            <td>{formatCurrency(row['Gebühren gesamt'], 0)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
