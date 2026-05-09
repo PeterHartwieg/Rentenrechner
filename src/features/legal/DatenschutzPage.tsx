@@ -235,6 +235,103 @@ export function DatenschutzPage({ navigate }: Props) {
           </li>
         </ul>
       </section>
+
+      <section id="qa-feedback">
+        <h2>9. QA-Feedback-Modus</h2>
+        <p>
+          Die Anwendung enthält einen optionalen QA-Feedback-Modus (erreichbar
+          über <code>?qa=1</code> in der URL), der ausgewählten Testerinnen und
+          Testern erlaubt, Rückmeldungen und Screenshots direkt an die
+          Entwickler zu senden, ohne ein GitHub-Konto zu benötigen. Dieser
+          Modus ist für die breite Öffentlichkeit nicht vorgesehen und nur über
+          einen expliziten URL-Parameter aktivierbar. Beim Aufruf des
+          Feedback-Formulars werden folgende Datenflüsse ausgelöst:
+        </p>
+
+        <h3>a) Cloudflare Turnstile</h3>
+        <p>
+          Zur Spam-Abwehr wird das Widget <strong>Cloudflare Turnstile</strong>{' '}
+          eingebunden. Es wird ein Skript von{' '}
+          <code>challenges.cloudflare.com</code> geladen, sobald die
+          Vorschauansicht des Feedback-Formulars geöffnet wird. Dabei werden
+          technische Signale (IP-Adresse, User-Agent, Browserverhalten) an
+          Cloudflare Inc. (USA) übertragen.
+        </p>
+        <p>
+          Drittanbieter: Cloudflare Inc., 101 Townsend St, San Francisco, CA
+          94107, USA.{' '}
+          <a
+            href="https://www.cloudflare.com/de-de/privacypolicy/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Datenschutzerklärung von Cloudflare
+          </a>
+          . Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse
+          an der Abwehr von Spam und Missbrauch).
+        </p>
+
+        <h3>b) QA-Feedback-Worker</h3>
+        <p>
+          Nach Bestätigung des Turnstile-Widgets wird das Feedback (Kommentartext,
+          technische Umgebungsdaten wie Route, Viewport und Browser-Familie sowie
+          optional ein Screenshot) an den Endpunkt{' '}
+          <code>https://qa.rentenwiki.de/submit</code> übertragen. Dieser
+          Cloudflare Worker erstellt auf Basis der übermittelten Daten ein{' '}
+          <strong>öffentliches GitHub-Issue</strong> im Repository{' '}
+          <code>PeterHartwieg/Rentenrechner</code>.
+        </p>
+        <p>
+          Das Issue ist öffentlich einsehbar und enthält den Kommentartext sowie
+          die technischen Umgebungsdaten. Falls ein Screenshot hochgeladen wurde,
+          enthält das Issue einen Link zur gespeicherten Bilddatei (siehe
+          Abschnitt c). Eine Zuordnung zum Gerät oder zur Person ist nur möglich,
+          wenn der Kommentartext personenbezogene Angaben enthält; solche Angaben
+          sollten daher vermieden werden.
+        </p>
+        <p>
+          Drittanbieter: GitHub Inc. (Microsoft Corporation), 88 Colin P. Kelly
+          Jr. St, San Francisco, CA 94107, USA.{' '}
+          <a
+            href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Datenschutzerklärung von GitHub
+          </a>
+          . Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse
+          an der Qualitätssicherung des Dienstes).
+        </p>
+
+        <h3>c) R2-Screenshot-Bucket</h3>
+        <p>
+          Wenn beim Absenden des Feedbacks ein Screenshot beigefügt wird,
+          speichert der QA-Worker diesen in einem{' '}
+          <strong>Cloudflare R2</strong>-Objektspeicher unter dem Namen{' '}
+          <code>rentenwiki-qa-screenshots</code>. Die Region des Buckets ist
+          derzeit nicht explizit festgelegt (siehe ADR-0001); Cloudflare R2
+          wählt in diesem Fall automatisch eine Region.
+        </p>
+        <p>
+          <strong>Aufbewahrungsdauer:</strong> Screenshots werden an die
+          Lebensdauer des zugehörigen GitHub-Issues gekoppelt. Sobald das Issue
+          geschlossen wird, löscht ein GitHub-Webhook-Handler die Bilddatei
+          automatisch aus dem R2-Bucket. Eine darüber hinausgehende Speicherung
+          findet nicht statt.
+        </p>
+        <p>
+          Drittanbieter: Cloudflare Inc., 101 Townsend St, San Francisco, CA
+          94107, USA.{' '}
+          <a
+            href="https://www.cloudflare.com/de-de/privacypolicy/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Datenschutzerklärung von Cloudflare
+          </a>
+          . Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.
+        </p>
+      </section>
     </LegalLayout>
   )
 }
