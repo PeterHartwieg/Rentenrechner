@@ -85,6 +85,7 @@ export function runCombineSimulation(
     rules,
     statutoryPension: wsa.statutoryPension,
     grvGrossMonthlyPension: statutoryPension.grossMonthlyPension,
+    hasPartner: workspace.baseline.partner !== undefined,
   })
 
   // 4. Combine per scenario.

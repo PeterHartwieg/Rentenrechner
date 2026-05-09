@@ -60,6 +60,13 @@ export interface CombineContextInputs {
    * when `pensionBaselineType` is 'none'.
    */
   grvGrossMonthlyPension: number
+  /**
+   * Whether the workspace models a married household (i.e. `scenario.partner`
+   * is present). When true, `buildCombineContext` sets `filingStatus` to
+   * 'married' so `combinePortfolio` applies §32a Abs. 5 EStG Ehegattensplitting.
+   * Defaults to false (Einzelveranlagung).
+   */
+  hasPartner?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -78,8 +85,9 @@ export interface CombineContextInputs {
  * or KV/PV channel are derived must be made here.
  */
 export function buildCombineContext(inputs: CombineContextInputs): CombineContext {
-  const { profile, rules, statutoryPension, grvGrossMonthlyPension } = inputs
+  const { profile, rules, statutoryPension, grvGrossMonthlyPension, hasPartner } = inputs
   const retirementYear = rules.year + (profile.retirementAge - profile.age)
+  const filingStatus: 'single' | 'married' = hasPartner ? 'married' : 'single'
 
   const pensionType = statutoryPension.pensionBaselineType ?? 'grv'
 
@@ -128,5 +136,6 @@ export function buildCombineContext(inputs: CombineContextInputs): CombineContex
     statutoryPensionTaxChannel,
     statutoryPensionKvChannel,
     retirementHealthStatus,
+    filingStatus,
   }
 }

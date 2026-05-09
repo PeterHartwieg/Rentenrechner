@@ -772,6 +772,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
     rules,
     statutoryPension: workspace.baseline.assumptions.statutoryPension,
     grvGrossMonthlyPension: input.grvGrossMonthlyPension,
+    hasPartner: workspace.baseline.partner !== undefined,
   })
   const wsa = workspace.baseline.assumptions
   const mcSeedBase = wsa.monteCarlo?.seed ?? 2026

@@ -87,6 +87,7 @@ export function buildGeneratorContext(
     rules: de2026Rules,
     statutoryPension: wsa.statutoryPension,
     grvGrossMonthlyPension: bundle.statutoryPension.grossMonthlyPension,
+    hasPartner: workspace.baseline.partner !== undefined,
   })
   return {
     workspace,
