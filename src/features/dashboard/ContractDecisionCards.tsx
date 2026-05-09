@@ -167,6 +167,16 @@ export function ContractDecisionCards({
               {decision.description || DECISION_KIND_DESCRIPTIONS[decision.kind]}
             </p>
 
+            {/* gh#81: Riester surrender clawback disclaimer.
+                §93 EStG Zulagen- und Sonderausgaben-Rückforderung is not
+                modelled; the displayed surrender value is an upper bound. */}
+            {(decision.kind === 'kuendigen' || decision.kind === 'uebertragen') &&
+              decision.sourceInstanceId.startsWith('riester-') && (
+                <small className="contract-decision-riester-clawback-note">
+                  {'Förderzulagen-Rückforderung nicht berücksichtigt — Auszahlung kann in der Praxis niedriger ausfallen (§93 EStG).'}
+                </small>
+              )}
+
             {decision.atoms.length > 0 && (
               <ul className="contract-decision-atoms">
                 {decision.atoms.map((atom, idx) => {

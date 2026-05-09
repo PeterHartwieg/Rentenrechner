@@ -171,9 +171,14 @@ export function collectTransferEvents(
  * short-circuits — e.g. pre-2005 insurance contracts are tax-free).
  *
  * Pre-2005 insurance: helper short-circuits to zero tax. Other modes use the
- * standard gain-ratio × marginal-rate cascade. Riester surrender clawback is
- * applied via `afterTaxRiesterLumpSum` (§22 Nr. 5 EStG; subsidy clawback math
- * is already inside the helper).
+ * standard gain-ratio × marginal-rate cascade.
+ *
+ * NOTE (gh#81): For Riester, only §22 Nr. 5 EStG capital-payout taxation is
+ * applied via `afterTaxRiesterLumpSum`. Subsidy clawback (§93 EStG — repayment
+ * of all Zulagen received plus Sonderausgaben tax savings) is NOT modelled; the
+ * surrender value is therefore an UPPER BOUND on the actual capital available.
+ * In practice the user may owe substantial clawback that reduces the ETF
+ * injection. The UI must disclaim this (see ContractDecisionCards.tsx).
  *
  * Returns 0 when the source product class has no recognised surrender path
  * (e.g. ETF — those should be rejected by the validator anyway).
@@ -237,6 +242,15 @@ export function computeSurrenderTax(
   }
 
   if (slot === 'riester') {
+    // NOTE (gh#81): Riester surrender clawback is NOT modelled here.
+    // §93 EStG requires repayment of all Zulagen received plus the
+    // Sonderausgaben tax savings if the contract is surrendered before
+    // age 60 or used for non-housing purposes. The afterTaxRiesterLumpSum
+    // helper applies §22 Nr. 5 EStG capital-payout taxation only.
+    // The reinvest amount is therefore an UPPER BOUND on the actual
+    // capital available; in practice the user may owe substantial
+    // clawback that reduces the ETF injection. UI must disclaim this
+    // (see ContractDecisionCards.tsx).
     const grossNet = afterTaxRiesterLumpSum(surrenderProceeds, profile, rules, 0, eventCalendarYear, 0)
     return Math.max(0, surrenderProceeds - grossNet)
   }
