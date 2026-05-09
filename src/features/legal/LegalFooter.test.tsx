@@ -87,10 +87,10 @@ describe('LegalFooter — VITE_QA_FOOTER_BUTTON=true, QA mode off', () => {
     expect(screen.getByRole('button', { name: QA_BUTTON_ARIA_LABEL })).toBeTruthy()
   })
 
-  it('button label text is "QA-Modus starten"', () => {
+  it('button label text is "Feedback Modus starten"', () => {
     renderFooter()
     const btn = screen.getByRole('button', { name: QA_BUTTON_ARIA_LABEL })
-    expect(btn.textContent).toBe('QA-Modus starten')
+    expect(btn.textContent).toBe('Feedback Modus starten')
   })
 
   it('button aria-label matches the German copy spec exactly', () => {
