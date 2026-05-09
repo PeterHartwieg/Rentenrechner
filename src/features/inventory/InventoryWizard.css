@@ -863,7 +863,24 @@ details[open] .inv-layer3-summary::before {
   }
 
   .inventory-footer-actions {
-    justify-content: flex-end;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .inventory-footer-actions .inventory-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .inventory-footer-actions .inventory-btn-ghost {
+    width: 100%;
+    text-align: center;
+    border-color: transparent;
+    background: transparent;
+    color: #475569;
+    padding: 6px 14px;
+    min-height: 40px;
   }
 
   .combine-instance-fields {
