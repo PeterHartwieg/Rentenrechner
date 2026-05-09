@@ -25,14 +25,13 @@ These shape every change. Read before touching UI, exports, or anything user-fac
 
 ## Backend boundary
 
-Today: **no backend.** All state in localStorage + share-URLs. No accounts, no telemetry, no cookies.
+The calculator is **frontend-only** — all state in localStorage + share-URLs. No accounts, no telemetry, no cookies.
 
-Planned: a small backend will be introduced **only** when a feature requires it. First trigger is OCR / document upload (Riester, bAV, GRV-Renteninformation parsing). When that lands:
-- Stack chosen at the time (Cloudflare Workers + R2, Vercel + S3, or Hetzner VPS — GDPR region required).
-- Files processed ephemerally; not stored.
-- Calculator continues to work fully offline for users who don't use upload features.
+The **QA feedback Worker** (`qa.rentenwiki.de`) is the first sanctioned backend exception (ADR-0001). It is opt-in and QA mode only: testers without GitHub accounts can submit screenshots via the `?qa=1` overlay; the Worker processes submissions ephemerally and stores screenshots in R2 scoped to the lifetime of the linked GitHub issue. The calculator continues to work fully offline for users who do not use the QA feature.
 
-Until then, do not add fetch/auth/cookies to the frontend.
+A second sanctioned backend trigger is OCR / document upload (Riester, bAV, GRV-Renteninformation parsing), which is still planned and not yet implemented.
+
+Outside these two sanctioned triggers, do not add fetch/auth/cookies to the frontend.
 
 ## Commands
 
