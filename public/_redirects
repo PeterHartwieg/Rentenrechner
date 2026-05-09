@@ -1,19 +1,16 @@
-# Cloudflare Workers/Pages: rewrite unknown paths to the prerendered 404 page.
+# Cloudflare Workers: no catch-all redirect needed.
 #
-# Static prerendered routes (/, /impressum, /datenschutz, /bav-rechner,
-# /etf-vs-bav, /riester-rechner, /altersvorsorgedepot-rechner,
+# All app routes (/, /impressum, /datenschutz, /bav-rechner, /etf-vs-bav,
+# /riester-rechner, /altersvorsorgedepot-rechner,
 # /riester-vs-altersvorsorgedepot, /basisrente-rechner,
 # /private-rentenversicherung-rechner, /rente-netto-berechnen,
-# /altersvorsorgeprodukte-vergleichen, /rentenluecke-rechner) take precedence
-# over _redirects, so this catch-all only fires for genuinely-unknown URLs.
+# /altersvorsorgeprodukte-vergleichen, /rentenluecke-rechner) are prerendered
+# as static files and served directly by the Workers asset binding.
+# Unknown URLs get Workers' native 404 — no _redirects rule required.
 #
-# Status 200 (rewrite) is used because Cloudflare Workers validates _redirects
-# and rejects 404 as a redirect target (valid codes: 200, 301, 302, 303, 307,
-# 308). The /404.html asset is served directly by the static-asset binding for
-# requests to that exact path, so the catch-all below cannot loop.
-# dist/404.html is prerendered with noindex,follow so the 200 wire status
-# does not affect SEO.
-#
-# Live verification: `curl -sI https://rentenwiki.de/<unknown-url>` must show
-# HTTP/1.1 200 and the 404 page body after deploy.
-/*  /404.html  200
+# A "/* /404.html 200" catch-all loops on Cloudflare Workers because the
+# rewritten request also matches /* and cycles indefinitely. Workers validates
+# _redirects and rejects 404 as a target status (valid: 200, 301-303, 307, 308),
+# so a proper 404-returning catch-all is not possible via _redirects alone.
+# Use wrangler.toml not_found_handling = "404-page" if a custom 404 page is
+# needed for unknown paths.
