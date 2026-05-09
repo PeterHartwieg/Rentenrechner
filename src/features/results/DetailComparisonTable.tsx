@@ -50,7 +50,7 @@ export function DetailComparisonTable({
   const { enabled: qaEnabled } = useQaMode()
 
   return (
-    <section className="table-panel" {...sectionTargetProps}>
+    <section className="table-panel detail-comparison-table" {...sectionTargetProps}>
       <div className="section-header">
         <h2>Detailvergleich</h2>
         <div className="section-actions">
