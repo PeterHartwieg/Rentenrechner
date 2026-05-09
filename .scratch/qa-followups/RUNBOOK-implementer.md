@@ -60,9 +60,9 @@ read and write under `gh`. Stay in `gh`.
 gh issue list --label ready-for-agent --json number,title,body,labels,createdAt --limit 50
 ```
 
-Sort by `createdAt` ascending. Process **sequentially, oldest-first**. Do
-NOT parallelize across issues — concurrent `npm install` / `npm run verify`
-runs will thrash the cloud sandbox.
+Sort by `createdAt` ascending. Dispatch up to **3 implementer agents
+concurrently per tick** subject to the dispatch policy below — otherwise
+serialize.
 
 For each issue, fetch the curated triage comment (the one carrying
 `<!-- triage-curated -->`):
@@ -74,6 +74,51 @@ gh issue view <num> --json comments \
 
 If no curated comment exists, **skip** the issue (triage hasn't run yet).
 Do not synthesize an implementation plan from the raw issue body.
+
+## Dispatch policy
+
+### When parallel dispatch is allowed
+
+A candidate may run in parallel with already-dispatched candidates only if
+**both** hold:
+
+1. Its curated `What to change` file paths are **disjoint** from the file
+   paths of all in-flight implementers AND of all candidates already
+   dispatched in this tick.
+2. Its curated `Blocked by:` field does not reference an issue in-flight in
+   this tick.
+
+When the predicate is unclear (curated comment doesn't enumerate file
+paths, or a fix could plausibly reach into an unstated file): **default to
+serial**. Cost asymmetry — a missed parallelism opportunity costs
+wall-clock; a wrongly-parallel dispatch costs a wasted implementer + a
+cleanup rebase.
+
+### Merge cursor (serialized)
+
+Implementations and reviews run up to 3-wide. **Step 4 (Open PR +
+auto-merge) is a serialized cursor** — only one issue may be opening-and-
+merging at a time. If another issue's merge is in flight when this one's
+review returns clean, queue and wait for the merge to land. This avoids
+`gh pr merge` racing on a main that just moved.
+
+### Rebase after a sibling merges
+
+When a sibling issue in this tick merges to main while a parallel issue is
+mid-flow, rebase the parallel branch before its next step:
+
+```
+git -C <WORKTREE_PATH> fetch origin main
+git -C <WORKTREE_PATH> rebase origin/main
+```
+
+Re-run `npm run verify` after rebase as cheap insurance — should still
+pass since the dispatch predicate guaranteed file-path disjointness.
+
+If the rebase conflicts, the dispatch predicate failed (the candidate's
+files weren't actually disjoint from the merged issue's). Treat as
+`HITL_DRIFT`: relabel `ready-for-human`, comment with the conflict file
+list, skip.
 
 ## Per-issue flow
 
@@ -127,7 +172,9 @@ Project conventions: read CLAUDE.md and CONTEXT.md before editing.
 Hard constraints:
 
 1. Implement ONLY the curated "What to change". No refactors, no "while I'm
-   here" cleanups, no surrounding fixes.
+   here" cleanups, no surrounding fixes. File scope is load-bearing for
+   parallelism — a sibling implementer may be editing other files this tick
+   assuming you stay within your curated list.
 2. HITL zones — read this carefully. The label `ready-for-agent` means
    triage already approved the scope, **including** any HITL files the
    curated "What to change" explicitly names. If triage says "edit
@@ -227,6 +274,9 @@ Review focus:
    conventions?
 4. Is the change minimal — no scope creep, no unrelated refactors,
    no introduced abstractions beyond what the task requires?
+5. Are all modified files within the curated "What to change" list? Files
+   outside the list are a parallelism collision risk and should be flagged
+   even when the change itself is correct.
 
 Do NOT nitpick formatting/style if the codebase isn't consistent on
 that axis. Do NOT request preference-driven changes (CSS approach, where
@@ -637,3 +687,6 @@ edits + verify + Opus review + possible iterations). A queue of 20 issues
 per tick is well within Max-tier budget. If you observe a single tick
 exceeding ~40 issues queued, consider raising cadence or capping per-tick
 issue count — flag in the tick's exit summary.
+
+Per-issue cost is unchanged by parallelism. 3-wide dispatch cuts wall-clock
+~3x on independent issues but does not reduce token spend per issue.
