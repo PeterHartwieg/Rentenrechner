@@ -173,7 +173,6 @@ describe('PortfolioAdapter — two bAV instances share the §3 Nr. 63 cap', () =
       baseV1.profile as unknown as Record<string, unknown>,
       baseV1.assumptions as unknown as Record<string, unknown>,
     )
-    const taxFreeLimitMonthly = (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap) / 12
 
     const instA: BavInstance = {
       ...workspace.baseline.assumptions.bav[0],
@@ -204,16 +203,15 @@ describe('PortfolioAdapter — two bAV instances share the §3 Nr. 63 cap', () =
     expect(fundingA).toBeDefined()
     expect(fundingB).toBeDefined()
 
-    // The aggregate scaled gross conversion sits at the cap (within rounding tolerance).
-    const totalScaledGrossMonthly =
-      fundingA.monthlyGrossConversion + fundingB.monthlyGrossConversion
-    expect(totalScaledGrossMonthly).toBeLessThanOrEqual(taxFreeLimitMonthly + 0.01)
+    // The aggregate total bAV (employee + employer) must sit at or below the annual cap.
+    // The cap applies to total contributions, not just the employee conversion.
+    const bavCapAnnual = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
+    const totalBavAnnual = fundingA.totalBavContributionAnnual + fundingB.totalBavContributionAnnual
+    expect(totalBavAnnual).toBeLessThanOrEqual(bavCapAnnual + 0.01)
 
-    // Per-instance scaling ratio matches the aggregate scaling factor — A keeps its
-    // pre-scale share of the total, same for B.
-    const expectedScale = taxFreeLimitMonthly / 750
-    expect(fundingA.monthlyGrossConversion).toBeCloseTo(400 * expectedScale, 2)
-    expect(fundingB.monthlyGrossConversion).toBeCloseTo(350 * expectedScale, 2)
+    // Per-instance employee scaling remains proportional to input (400:350 ratio).
+    const ratio = fundingA.monthlyGrossConversion / fundingB.monthlyGrossConversion
+    expect(ratio).toBeCloseTo(400 / 350, 2)
   })
 
   it('when both instances stay under the §3 Nr. 63 cap, statutory subsidy is proportional to gross conversion', () => {

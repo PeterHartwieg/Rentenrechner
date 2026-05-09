@@ -12,7 +12,9 @@
  *   8. AVD paid-up instance — zero contribution, zero eligibility.
  *   9. Riester two instances — aggregate scaling when over §10a cap.
  *  10. Riester paid-up instance — zero contribution funding entry.
- *  11. Salary baseline derived from first active bAV funding.
+ *  11. Salary baseline derived from aggregate of all active bAV instances.
+ *  12. Multi-bAV cap with employer contributions (bug fix gh#55).
+ *  13. Downstream Basisrente/AVD/Riester use household post-bAV salary baseline.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -55,10 +57,6 @@ function makeBaseWorkspace(): Workspace {
   )
 }
 
-// §3 Nr. 63 cap: 8% × 101 400 / 12 ≈ 676 EUR/month
-const BAV_TAX_FREE_LIMIT_MONTHLY =
-  (de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap) / 12
-
 // Riester §10a cap: 2 100 EUR/year
 const RIESTER_CAP_ANNUAL = de2026Rules.riester.annualCapInclAllowances
 
@@ -85,9 +83,11 @@ describe('buildPortfolioFunding — bAV', () => {
     expect(funding.bavByInstanceId['bav-a'].monthlyGrossConversion).toBe(200)
   })
 
-  it('two active bAV instances: aggregate is scaled when over §3 Nr. 63 cap', () => {
+  it('two active bAV instances: aggregate total (employee + employer) is at or below §3 Nr. 63 cap', () => {
     const ws = makeBaseWorkspace()
-    // 400 + 350 = 750 EUR/month aggregate, over the ~676 EUR/month cap.
+    // 400 + 350 = 750 EUR/month employee aggregate. Both instances have
+    // statutoryMinimumSubsidyEnabled=true (default), so employer contributions
+    // are included in the total. The cap applies to employee + employer combined.
     const instA: BavInstance = {
       ...ws.baseline.assumptions.bav[0],
       instanceId: 'bav-a',
@@ -111,14 +111,14 @@ describe('buildPortfolioFunding — bAV', () => {
     expect(fundA).toBeDefined()
     expect(fundB).toBeDefined()
 
-    // Aggregate scaled gross ≤ cap.
-    const totalScaledGross = fundA.monthlyGrossConversion + fundB.monthlyGrossConversion
-    expect(totalScaledGross).toBeLessThanOrEqual(BAV_TAX_FREE_LIMIT_MONTHLY + 0.01)
+    // Aggregate total bAV (employee + employer) must be at or below the annual cap.
+    const bavCapAnnual = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
+    const totalBavAnnual = fundA.totalBavContributionAnnual + fundB.totalBavContributionAnnual
+    expect(totalBavAnnual).toBeLessThanOrEqual(bavCapAnnual + 0.01)
 
-    // Per-instance scaling is proportional to input.
-    const expectedScale = BAV_TAX_FREE_LIMIT_MONTHLY / 750
-    expect(fundA.monthlyGrossConversion).toBeCloseTo(400 * expectedScale, 2)
-    expect(fundB.monthlyGrossConversion).toBeCloseTo(350 * expectedScale, 2)
+    // Per-instance employee scaling remains proportional to input (400:350 ratio).
+    const ratio = fundA.monthlyGrossConversion / fundB.monthlyGrossConversion
+    expect(ratio).toBeCloseTo(400 / 350, 2)
   })
 
   it('two active bAV instances under cap: no scaling, contributions pass through unchanged', () => {
@@ -409,11 +409,11 @@ describe('buildPortfolioFunding — Riester', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 11. Salary baseline — derived from first active bAV
+// 11. Salary baseline — derived from aggregate of all active bAV instances
 // ---------------------------------------------------------------------------
 
 describe('buildPortfolioFunding — salary baseline', () => {
-  it('uses first active bAV salaryWithBav as baseline for Basisrente/AVD/Riester', () => {
+  it('uses aggregate post-bAV salary as baseline for Basisrente/AVD/Riester (single bAV)', () => {
     const ws = makeBaseWorkspace()
     const bavInst: BavInstance = {
       ...ws.baseline.assumptions.bav[0],
@@ -468,6 +468,282 @@ describe('buildPortfolioFunding — salary baseline', () => {
     // No bAV → pristine salary baseline; should not throw.
     const funding = buildPortfolioFunding(testWs, de2026Rules)
     expect(funding.basisrenteByInstanceId['basis-noBav']).toBeDefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 12. Multi-bAV cap with employer contributions (bug fix gh#55)
+// ---------------------------------------------------------------------------
+
+describe('buildPortfolioFunding — multi-bAV cap including employer contributions', () => {
+  it('two bAV instances with only statutory subsidy: total (employee + employer) stays at or below §3 Nr. 63 cap', () => {
+    const ws = makeBaseWorkspace()
+    // §3 Nr. 63 cap annual = 8% × 101 400 = 8 112 EUR/year = 676 EUR/month.
+    // Two instances at 400 EUR/month employee each → 800 EUR/month employee.
+    // Statutory subsidy = 15% of each conversion (capped by employer SV savings).
+    // Without the fix, only the 800 EUR employee total was checked against the cap,
+    // ignoring employer contributions. With the fix, total (employee + employer)
+    // is summed and capped together.
+    const instA: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-emp-a',
+      label: 'bAV with subsidy A',
+      monthlyGrossConversion: 400,
+      statutoryMinimumSubsidyEnabled: true,
+    }
+    const instB: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-emp-b',
+      label: 'bAV with subsidy B',
+      monthlyGrossConversion: 400,
+      statutoryMinimumSubsidyEnabled: true,
+    }
+    const testWs: Workspace = {
+      ...ws,
+      baseline: { ...ws.baseline, assumptions: { ...ws.baseline.assumptions, bav: [instA, instB] } },
+    }
+
+    const funding = buildPortfolioFunding(testWs, de2026Rules)
+    const fundA = funding.bavByInstanceId['bav-emp-a']
+    const fundB = funding.bavByInstanceId['bav-emp-b']
+    expect(fundA).toBeDefined()
+    expect(fundB).toBeDefined()
+
+    // Total bAV contribution (employee + employer) must be at or below the §3 Nr. 63 annual cap.
+    const totalBavAnnual = fundA.totalBavContributionAnnual + fundB.totalBavContributionAnnual
+    const bavCapAnnual = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
+    expect(totalBavAnnual).toBeLessThanOrEqual(bavCapAnnual + 0.01)
+  })
+
+  it('two bAV instances with contractual employer match: total funding capped at §3 Nr. 63 limit', () => {
+    const ws = makeBaseWorkspace()
+    // Use high contractual employer match to force total over the cap even when
+    // employee conversion alone would be under the cap.
+    // 300 EUR/month each (employee) + 50% match → ~450 EUR/month total per instance
+    // → ~900 EUR/month combined total, over the ~676 EUR/month cap.
+    const instA: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-match-a',
+      label: 'bAV with match A',
+      monthlyGrossConversion: 300,
+      contractualMatchPercent: 50,
+      contractualFixedMonthly: 0,
+      statutoryMinimumSubsidyEnabled: false,
+    }
+    const instB: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-match-b',
+      label: 'bAV with match B',
+      monthlyGrossConversion: 300,
+      contractualMatchPercent: 50,
+      contractualFixedMonthly: 0,
+      statutoryMinimumSubsidyEnabled: false,
+    }
+    const testWs: Workspace = {
+      ...ws,
+      baseline: { ...ws.baseline, assumptions: { ...ws.baseline.assumptions, bav: [instA, instB] } },
+    }
+
+    const funding = buildPortfolioFunding(testWs, de2026Rules)
+    const fundA = funding.bavByInstanceId['bav-match-a']
+    const fundB = funding.bavByInstanceId['bav-match-b']
+    expect(fundA).toBeDefined()
+    expect(fundB).toBeDefined()
+
+    // Total bAV contribution (employee + employer) must respect the §3 Nr. 63 annual cap.
+    const totalBavAnnual = fundA.totalBavContributionAnnual + fundB.totalBavContributionAnnual
+    const bavCapAnnual = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
+    expect(totalBavAnnual).toBeLessThanOrEqual(bavCapAnnual + 0.01)
+  })
+
+  it('two bAV instances under cap even with employer contributions: no scaling applied', () => {
+    const ws = makeBaseWorkspace()
+    // 100 EUR/month each (employee) + 15% statutory ≈ 115 EUR/month total each
+    // → ~230 EUR/month combined, well under the ~676 EUR/month cap. No scaling.
+    const instA: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-under-a',
+      label: 'bAV under cap A',
+      monthlyGrossConversion: 100,
+      statutoryMinimumSubsidyEnabled: true,
+    }
+    const instB: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-under-b',
+      label: 'bAV under cap B',
+      monthlyGrossConversion: 100,
+      statutoryMinimumSubsidyEnabled: true,
+    }
+    const testWs: Workspace = {
+      ...ws,
+      baseline: { ...ws.baseline, assumptions: { ...ws.baseline.assumptions, bav: [instA, instB] } },
+    }
+
+    const funding = buildPortfolioFunding(testWs, de2026Rules)
+    const fundA = funding.bavByInstanceId['bav-under-a']
+    const fundB = funding.bavByInstanceId['bav-under-b']
+
+    // Employee gross conversions must pass through unchanged (no scaling).
+    expect(fundA.monthlyGrossConversion).toBeCloseTo(100, 2)
+    expect(fundB.monthlyGrossConversion).toBeCloseTo(100, 2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 13. Downstream Basisrente/AVD/Riester use household post-bAV salary baseline
+// ---------------------------------------------------------------------------
+
+describe('buildPortfolioFunding — downstream salary baseline accuracy', () => {
+  it('two bAV instances: downstream Basisrente GRV base reflects combined bAV conversion', () => {
+    const ws = makeBaseWorkspace()
+    // Two bAV instances at 200 EUR/month each — combined 400 EUR/month conversion.
+    // The salary baseline for Basisrente must reflect the full 400 EUR/month bAV
+    // deduction, not just one instance's 200 EUR/month.
+    const instA: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-dual-a',
+      label: 'bAV dual A',
+      monthlyGrossConversion: 200,
+      statutoryMinimumSubsidyEnabled: false,
+    }
+    const instB: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-dual-b',
+      label: 'bAV dual B',
+      monthlyGrossConversion: 200,
+      statutoryMinimumSubsidyEnabled: false,
+    }
+    const basisrenteInst: BasisrenteInstance = {
+      ...ws.baseline.assumptions.basisrente[0],
+      instanceId: 'basis-downstream',
+      label: 'Basisrente downstream',
+      monthlyGrossContribution: 100,
+    }
+    const testWsOneBav: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: [instA],
+          basisrente: [basisrenteInst],
+        },
+      },
+    }
+    const testWsTwoBav: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: [instA, instB],
+          basisrente: [basisrenteInst],
+        },
+      },
+    }
+
+    const fundingOne = buildPortfolioFunding(testWsOneBav, de2026Rules)
+    const fundingTwo = buildPortfolioFunding(testWsTwoBav, de2026Rules)
+
+    // With two bAV instances (combined higher conversion), the annual GRV pension
+    // contribution used for Schicht-1 headroom calculation should be lower (because
+    // more salary is SV-free). This means more Schicht-1 headroom for Basisrente.
+    // We verify this by checking Basisrente gets at least as much headroom.
+    const basisOneAnnual = fundingOne.basisrenteByInstanceId['basis-downstream'].annualGrossContribution
+    const basisTwoAnnual = fundingTwo.basisrenteByInstanceId['basis-downstream'].annualGrossContribution
+
+    // Both must be defined and computed.
+    expect(fundingOne.basisrenteByInstanceId['basis-downstream']).toBeDefined()
+    expect(fundingTwo.basisrenteByInstanceId['basis-downstream']).toBeDefined()
+
+    // With more bAV (lower pensionable base), GRV contributions are lower,
+    // leaving more Schicht-1 headroom. Basisrente contribution should be
+    // the same or higher in the two-bAV case (never lower from headroom reduction).
+    expect(basisTwoAnnual).toBeGreaterThanOrEqual(basisOneAnnual - 0.01)
+  })
+
+  it('two bAV instances: downstream AVD funding uses combined post-bAV salary', () => {
+    const ws = makeBaseWorkspace()
+    const instA: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-avd-a',
+      label: 'bAV avd A',
+      monthlyGrossConversion: 200,
+      statutoryMinimumSubsidyEnabled: false,
+    }
+    const instB: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-avd-b',
+      label: 'bAV avd B',
+      monthlyGrossConversion: 200,
+      statutoryMinimumSubsidyEnabled: false,
+    }
+    const avdInst: AltersvorsorgedepotInstance = {
+      ...ws.baseline.assumptions.altersvorsorgedepot[0],
+      instanceId: 'avd-downstream',
+      label: 'AVD downstream',
+      monthlyOwnContribution: 100,
+    }
+    const testWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: [instA, instB],
+          altersvorsorgedepot: [avdInst],
+        },
+      },
+    }
+
+    // Should not throw and AVD must have a funding entry.
+    const funding = buildPortfolioFunding(testWs, de2026Rules)
+    expect(funding.altersvorsorgedepotByInstanceId['avd-downstream']).toBeDefined()
+    // Own contribution must be present (not zeroed out by an incorrect baseline).
+    expect(funding.altersvorsorgedepotByInstanceId['avd-downstream'].annualOwnContribution)
+      .toBeGreaterThan(0)
+  })
+
+  it('two bAV instances: downstream Riester funding uses combined post-bAV salary', () => {
+    const ws = makeBaseWorkspace()
+    const instA: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-riester-a',
+      label: 'bAV riester A',
+      monthlyGrossConversion: 200,
+      statutoryMinimumSubsidyEnabled: false,
+    }
+    const instB: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-riester-b',
+      label: 'bAV riester B',
+      monthlyGrossConversion: 200,
+      statutoryMinimumSubsidyEnabled: false,
+    }
+    const riesterInst: RiesterInstance = {
+      ...ws.baseline.assumptions.riester[0],
+      instanceId: 'riester-downstream',
+      label: 'Riester downstream',
+      monthlyOwnContribution: 50,
+    }
+    const testWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: [instA, instB],
+          riester: [riesterInst],
+        },
+      },
+    }
+
+    // Should not throw and Riester must have a funding entry.
+    const funding = buildPortfolioFunding(testWs, de2026Rules)
+    expect(funding.riesterByInstanceId['riester-downstream']).toBeDefined()
+    // Own contribution must be present.
+    expect(funding.riesterByInstanceId['riester-downstream'].annualOwnContribution)
+      .toBeGreaterThan(0)
   })
 })
 

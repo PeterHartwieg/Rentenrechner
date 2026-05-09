@@ -9,7 +9,9 @@
  * instances, respecting statutory cap constraints.
  *
  * Caps handled:
- *   - bAV §3 Nr. 63 + §1 SvEV: proportional scaling when aggregate exceeds cap.
+ *   - bAV §3 Nr. 63 + §1 SvEV: two-pass proportional scaling when aggregate total
+ *     bAV (employee + employer) exceeds cap; household-level post-bAV salary
+ *     derived from the combined capped conversions across all active instances.
  *   - Basisrente §10 Abs. 3 (Schicht-1): proportional scaling when aggregate
  *     exceeds the remaining cap after GRV/Versorgungswerk contributions.
  *   - Riester §10a EStG: proportional scaling when aggregate exceeds the
@@ -147,11 +149,15 @@ export function paidUpRiesterFunding(
  *
  * Caps handled:
  *   - bAV §3 Nr. 63 + §1 SvEV: single user/single employer assumption (P1).
- *     Sum monthlyGrossConversion across active bAV instances, scale each
- *     instance proportionally so the aggregate respects the cap, then call
- *     `calculateBavFunding` with the scaled gross. The statutory subsidy
- *     follows proportionally because it's derived from the scaled gross
- *     conversion inside `calculateBavFunding`.
+ *     Two-pass approach: first run calculateBavFunding at full gross for each
+ *     instance to get preliminary total bAV (employee + employer). Sum across
+ *     instances. If aggregate exceeds the §3 Nr. 63 limit, scale each instance's
+ *     monthlyGrossConversion proportionally; employer contributions scale with it
+ *     because they are derived from gross in calculateBavFunding's fixed-point loop.
+ *     After scaling, derive a household-level post-bAV salary baseline by summing
+ *     all instances' capped employee gross conversions and calling
+ *     calculateSalaryResult once with the aggregate. Downstream Basisrente / AVD /
+ *     Riester funding uses this combined baseline.
  *   - Basisrente §10 Abs. 3: sum monthlyGrossContribution; scale; call
  *     `calculateBasisrenteFunding` with the scaled value. The §10 Abs. 3
  *     deductible cap then no longer binds inside the funding helper because
@@ -183,33 +189,92 @@ export function buildPortfolioFunding(
   // Paid-up instances do NOT consume cap headroom (no contributions flowing).
   // We still emit a funding entry for them via `paidUpBavFunding` so the
   // simulator runs against a zero-contribution baseline.
+  //
+  // The §3 Nr. 63 / §1 SvEV cap applies to TOTAL bAV per employee — i.e.
+  // the sum of employee salary-sacrifice + employer contribution (statutory
+  // subsidy + contractual match) across ALL active instances. The old code
+  // only checked the employee conversion, which allowed employer contributions
+  // to push the aggregate over the cap. It also derived the downstream salary
+  // baseline from only the first instance, ignoring the salary reduction from
+  // all other instances.
+  //
+  // Fix (bisection-based cap enforcement):
+  //   We find the employee-gross scale factor `s` via bisection such that
+  //   sum_i(calculateBavFunding(employee_i × s).totalBavContributionAnnual) ≤ cap.
+  //   A simple proportional scale (cap / aggregate_at_s=1) would overshoot
+  //   slightly because employer contributions (statutory subsidy capped by
+  //   employer SV savings) are not perfectly linear in the employee gross when
+  //   health/care SV bases are already capped at the BBG. Bisection is exact
+  //   and converges quickly (30 iterations ≤ 1 EUR/year residual).
+  //
+  //   After determining `s`, the household-level post-bAV salary baseline is
+  //   derived from the aggregate of all instances' capped employee conversions
+  //   and passed to Basisrente / AVD / Riester funding so their §10 / AVD
+  //   headroom reflects the full bAV salary reduction.
   const allBav = wsa.bav.filter(b => b.status !== 'surrendered' && b.status !== 'offered')
   const activeBav = allBav.filter(b => b.status === 'active')
   const paidUpBav = allBav.filter(b => b.status === 'paid_up')
-  const totalBavGrossMonthly = activeBav.reduce(
-    (s, b) => s + (b.monthlyGrossConversion ?? 0),
-    0,
-  )
+
   const bavTaxFreeLimitAnnual =
     rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
-  const bavTaxFreeLimitMonthly = bavTaxFreeLimitAnnual / 12
+  const bavSvFreeLimitAnnual =
+    rules.socialSecurity.pensionCapYear * rules.bav.socialSecurityFreePctOfPensionCap
 
-  // Scale factor: 1 if aggregate is under the cap, else cap / aggregate.
-  // Note: this only scales the EMPLOYEE conversion. Statutory subsidy follows
-  // because it's a function of the scaled gross conversion inside
-  // calculateBavFunding. Contractual subsidies stay attached to each instance.
-  const bavScale =
-    totalBavGrossMonthly > bavTaxFreeLimitMonthly && totalBavGrossMonthly > 0
-      ? bavTaxFreeLimitMonthly / totalBavGrossMonthly
-      : 1
-
-  const bavByInstanceId: Record<string, BavFundingResult> = {}
-  for (const inst of activeBav) {
-    // Build the singleton bAV assumptions used by calculateBavFunding.
-    // Strip InstanceCommon keys; bavFunding does not read them.
-    const singleton = stripInstanceCommonKeys(
+  // Build stripped singletons once (reused across bisection iterations and final pass).
+  const activeBavSingletons: BavAssumptions[] = activeBav.map(
+    inst => stripInstanceCommonKeys(
       inst as unknown as Record<string, unknown>,
-    ) as unknown as BavAssumptions
+    ) as unknown as BavAssumptions,
+  )
+  const totalEmployeeGrossMonthly = activeBavSingletons.reduce(
+    (s, singleton) => s + singleton.monthlyGrossConversion,
+    0,
+  )
+
+  // Helper: compute aggregate totalBavContributionAnnual for a given scale.
+  // Used both for the "needs scaling?" check and inside the bisection loop.
+  function computeAggregateBavTotal(scale: number): number {
+    return activeBavSingletons.reduce((sum, singleton) => {
+      const scaled: BavAssumptions = scale === 1
+        ? singleton
+        : { ...singleton, monthlyGrossConversion: singleton.monthlyGrossConversion * scale }
+      return sum + calculateBavFunding(profile, rules, scaled).totalBavContributionAnnual
+    }, 0)
+  }
+
+  // Quick check at full scale (s=1) to decide whether bisection is needed.
+  const aggregateAtFullScale = totalEmployeeGrossMonthly > 0
+    ? computeAggregateBavTotal(1)
+    : 0
+  const needsBavScaling = aggregateAtFullScale > bavTaxFreeLimitAnnual
+
+  let bavScale = 1
+  if (needsBavScaling && totalEmployeeGrossMonthly > 0) {
+    // Bisection: find `s` ∈ (0, 1] such that computeAggregateBavTotal(s) ≤ bavCap.
+    // aggregate(s) is monotone increasing in s → bisection converges.
+    let lo = 0
+    let hi = 1
+    for (let iter = 0; iter < 30; iter++) {
+      const mid = (lo + hi) / 2
+      const agg = computeAggregateBavTotal(mid)
+      if (Math.abs(agg - bavTaxFreeLimitAnnual) < 0.01) {
+        lo = mid
+        break
+      }
+      if (agg > bavTaxFreeLimitAnnual) {
+        hi = mid
+      } else {
+        lo = mid
+      }
+    }
+    bavScale = lo
+  }
+
+  // Final pass: compute per-instance funding results with the determined scale.
+  const bavByInstanceId: Record<string, BavFundingResult> = {}
+  for (let i = 0; i < activeBav.length; i++) {
+    const inst = activeBav[i]
+    const singleton = activeBavSingletons[i]
     const scaledSingleton: BavAssumptions = bavScale === 1
       ? singleton
       : { ...singleton, monthlyGrossConversion: singleton.monthlyGrossConversion * bavScale }
@@ -223,16 +288,49 @@ export function buildPortfolioFunding(
   }
 
   // -------------------------------------------------------------------------
-  // Basisrente cap aggregation
+  // Household-level post-bAV salary baseline
   // -------------------------------------------------------------------------
-  // We need a salary baseline for the Basisrente / AVD / Riester funding
-  // helpers. Use the FIRST active bAV instance's salaryWithBav when present;
-  // otherwise compute a pristine salary (no bAV).
-  const firstBavFunding = activeBav.length > 0
-    ? bavByInstanceId[activeBav[0].instanceId]
-    : undefined
-  const salaryForOtherFunding =
-    firstBavFunding?.salaryWithBav ?? calculateSalaryResult(profile, rules, 0)
+  // Aggregate the capped employee gross conversions across all active instances
+  // and compute a single household-level salary that reflects the full bAV
+  // reduction. This baseline is used by Basisrente / AVD / Riester funding so
+  // their §10 / AVD headroom is computed against the correct post-bAV income.
+  //
+  // We derive each instance's effective tax-free / SV-free employee conversion
+  // from the BavFundingResult (without new exports from salary.ts):
+  //   effectiveTaxFree_i = max(0, min(employeeGross_i, taxFreePortionAnnual_i − employerContribution_i))
+  //   effectiveSvFree_i  = max(0, min(employeeGross_i, svFreePortionAnnual_i  − employerContribution_i))
+  // Sum these across instances, clamped to the statutory limits, then call
+  // calculateSalaryResult once with the household aggregates.
+  let totalEmployeeGrossAnnual = 0
+  let totalEffectiveTaxFreeAnnual = 0
+  let totalEffectiveSvFreeAnnual = 0
+  for (const inst of activeBav) {
+    const f = bavByInstanceId[inst.instanceId]
+    totalEmployeeGrossAnnual += f.annualGrossConversion
+    const instEffectiveTaxFree = Math.max(
+      0,
+      Math.min(f.annualGrossConversion, f.taxFreePortionAnnual - f.annualEmployerContribution),
+    )
+    const instEffectiveSvFree = Math.max(
+      0,
+      Math.min(f.annualGrossConversion, f.svFreePortionAnnual - f.annualEmployerContribution),
+    )
+    totalEffectiveTaxFreeAnnual += instEffectiveTaxFree
+    totalEffectiveSvFreeAnnual += instEffectiveSvFree
+  }
+  // Clamp to statutory limits (defensive: rounding in the bisection can nudge slightly over).
+  totalEffectiveTaxFreeAnnual = Math.min(totalEffectiveTaxFreeAnnual, bavTaxFreeLimitAnnual)
+  totalEffectiveSvFreeAnnual = Math.min(totalEffectiveSvFreeAnnual, bavSvFreeLimitAnnual)
+
+  const salaryForOtherFunding = activeBav.length > 0
+    ? calculateSalaryResult(
+        profile,
+        rules,
+        totalEmployeeGrossAnnual,
+        totalEffectiveTaxFreeAnnual,
+        totalEffectiveSvFreeAnnual,
+      )
+    : calculateSalaryResult(profile, rules, 0)
 
   // Versorgungswerk override (mirrors buildContext logic).
   const { pensionBaselineType, versorgungswerkMonthlyContribution, versorgungswerkEmployerMonthly } =
