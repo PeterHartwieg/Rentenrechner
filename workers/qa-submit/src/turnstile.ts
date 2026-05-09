@@ -52,13 +52,14 @@ export async function verifyTurnstile(
   }
 
   // Hostname validation — tokens minted for a different Cloudflare site are rejected.
+  // Both sides are lowercased because DNS hostnames are case-insensitive (RFC 4343).
   const allowed = options.allowedHostnames
     .split(",")
-    .map((h) => h.trim())
+    .map((h) => h.trim().toLowerCase())
     .filter(Boolean);
 
   if (allowed.length > 0 && data.hostname !== undefined) {
-    if (!allowed.includes(data.hostname)) {
+    if (!allowed.includes(data.hostname.toLowerCase())) {
       return { ok: false, error: "turnstile_hostname_mismatch" };
     }
   } else if (allowed.length > 0 && data.hostname === undefined) {

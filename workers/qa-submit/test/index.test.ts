@@ -296,6 +296,21 @@ describe("Turnstile failure", () => {
     );
     expect(res.status).toBe(502);
   });
+
+  it("accepts token when Cloudflare returns hostname in different case (RFC 4343)", async () => {
+    // DNS hostnames are case-insensitive; Cloudflare may return e.g. "RentenWiki.de"
+    // even though wrangler.toml lists "rentenwiki.de". Both should match.
+    mockFetch
+      .mockResolvedValueOnce(turnstileSuccess("RentenWiki.de"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "Bad credentials" }), { status: 401 }),
+      );
+
+    const req = makeSubmitRequest(VALID_PAYLOAD);
+    const res = await fetchWorker(req, makeEnv());
+    // Turnstile passed (case-insensitive match); downstream GitHub fails → 502.
+    expect(res.status).toBe(502);
+  });
 });
 
 // ---------------------------------------------------------------------------
