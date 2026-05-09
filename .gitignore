@@ -14,9 +14,10 @@ dist-ssr
 .claude/*
 !.claude/settings.local.json
 
-# Scratch tooling artifacts (coworker session logs, debug screenshots)
+# Scratch tooling artifacts (coworker session logs, debug screenshots, archived sessions)
 .scratch/cowork/
 .scratch/screenshots/
+.scratch/archive/sessions/
 
 # Editor directories and files
 .vscode/*
