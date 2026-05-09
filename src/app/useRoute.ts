@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../storageKeys'
 import { hasShareStateInUrl } from '../utils/urlShareDetect'
+import { publicRouteRegistry } from '../seo/publicRouteRegistry'
 
 // Minimal in-app router. Two static legal pages plus the calculator at /.
 // We avoid pulling in react-router because the only routes we need are these
@@ -144,6 +145,11 @@ export function useRoute(): { route: Route; navigate: (target: Route) => void } 
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
+
+  useEffect(() => {
+    const entry = (publicRouteRegistry as Record<string, { title?: string }>)[route]
+    if (entry?.title) document.title = entry.title
+  }, [route])
 
   function navigate(target: Route): void {
     if (typeof window === 'undefined') return
