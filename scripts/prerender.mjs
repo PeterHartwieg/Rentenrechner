@@ -108,30 +108,49 @@ async function loadSourceModules() {
   }
 }
 
-function pickComponent(routeId, modules) {
-  if (routeId === '/rentenluecke-rechner') return modules.rentenluecke.RentenluckeRechnerPage
-  if (routeId === '/404') return modules.pageNotFound.PageNotFound
-  if (routeId === '/bav-rechner') return modules.bavRechner.BavRechnerPage
-  if (routeId === '/etf-vs-bav') return modules.etfVsBav.EtfVsBavPage
-  if (routeId === '/riester-rechner') return modules.riesterRechner.RiesterRechnerPage
-  if (routeId === '/altersvorsorgedepot-rechner') return modules.altersvorsorgedepotRechner.AltersvorsorgedepotRechnerPage
-  if (routeId === '/riester-vs-altersvorsorgedepot') return modules.riesterVsAvd.RiesterVsAltersvorsorgedepotPage
-  if (routeId === '/basisrente-rechner') return modules.basisrenteRechner.BasisrenteRechnerPage
-  if (routeId === '/private-rentenversicherung-rechner') return modules.privateRvRechner.PrivateRentenversicherungRechnerPage
-  if (routeId === '/rente-netto-berechnen') return modules.renteNettoBerechnen.RenteNettoBerechnePage
-  if (routeId === '/altersvorsorgeprodukte-vergleichen') return modules.altersvorsorgeprodukte.AltersvorsorgeproduktePage
-  if (routeId === '/impressum') return modules.impressum.ImpressumPage
-  if (routeId === '/datenschutz') return modules.datenschutz.DatenschutzPage
-  // For `/` we render the full App but force the route via window.location
-  // before render. The dashboard requires a DOM environment that we don't
-  // have during static prerender — so for `/` we render the LandingPage
-  // alone (the static first-paint variant). Returning users on the client
-  // immediately swap to their dashboard via hydration.
-  return null
+// Explicit mapping from every PUBLIC_ROUTE_IDS entry to its prerender
+// component (or null for routes that deliberately use LandingPage as the
+// static first-paint shell). If a route ID appears in PUBLIC_ROUTE_IDS but
+// is absent from this map, prerender will exit with a non-zero code so the
+// build fails loudly instead of silently writing wrong page content.
+//
+// `/` is intentionally mapped to null: the dashboard requires a DOM
+// environment unavailable during static prerender, so LandingPage is used
+// as the static first-paint variant. Returning users swap to their dashboard
+// on hydration.
+function buildComponentMap(modules) {
+  return {
+    '/': null,
+    '/404': modules.pageNotFound.PageNotFound,
+    '/rentenluecke-rechner': modules.rentenluecke.RentenluckeRechnerPage,
+    '/bav-rechner': modules.bavRechner.BavRechnerPage,
+    '/etf-vs-bav': modules.etfVsBav.EtfVsBavPage,
+    '/riester-rechner': modules.riesterRechner.RiesterRechnerPage,
+    '/altersvorsorgedepot-rechner': modules.altersvorsorgedepotRechner.AltersvorsorgedepotRechnerPage,
+    '/riester-vs-altersvorsorgedepot': modules.riesterVsAvd.RiesterVsAltersvorsorgedepotPage,
+    '/basisrente-rechner': modules.basisrenteRechner.BasisrenteRechnerPage,
+    '/private-rentenversicherung-rechner': modules.privateRvRechner.PrivateRentenversicherungRechnerPage,
+    '/rente-netto-berechnen': modules.renteNettoBerechnen.RenteNettoBerechnePage,
+    '/altersvorsorgeprodukte-vergleichen': modules.altersvorsorgeprodukte.AltersvorsorgeproduktePage,
+    '/impressum': modules.impressum.ImpressumPage,
+    '/datenschutz': modules.datenschutz.DatenschutzPage,
+  }
 }
 
-async function renderRoute(routeId, modules, { React, renderToString }) {
-  const Component = pickComponent(routeId, modules)
+function pickComponent(routeId, componentMap) {
+  if (!Object.prototype.hasOwnProperty.call(componentMap, routeId)) {
+    console.error(
+      `[prerender] ERROR: route "${routeId}" is listed in PUBLIC_ROUTE_IDS but has no` +
+      ` explicit prerender component mapping in buildComponentMap().` +
+      ` Add an entry for this route before running the build.`,
+    )
+    process.exit(1)
+  }
+  return componentMap[routeId]
+}
+
+async function renderRoute(routeId, componentMap, modules, { React, renderToString }) {
+  const Component = pickComponent(routeId, componentMap)
   if (Component) {
     // Legal pages take a `navigate` prop. The prerender pass uses a no-op;
     // client hydration replaces it with the real router callback. Function
@@ -141,9 +160,9 @@ async function renderRoute(routeId, modules, { React, renderToString }) {
     }
     return renderToString(React.createElement(Component))
   }
-  // For `/` the prerendered shell deliberately renders the landing variant
-  // first-paint markup. The client hydrates with full state immediately
-  // after.
+  // Component is null — this route deliberately uses LandingPage as the
+  // static first-paint shell (currently only `/`). The client hydrates with
+  // full state immediately after.
   const landingMod = await modules.server.ssrLoadModule('/src/features/landing/LandingPage.tsx')
   const Landing = landingMod.LandingPage
   // No-op handler — the prerendered HTML is replaced on hydration.
@@ -269,8 +288,15 @@ async function main() {
     const { generateLlmsTxt } = modules.llmsTxtMod
     const { buildCanonicalUrl } = modules.seoMod
 
+    // Build the component map once and validate all PUBLIC_ROUTE_IDS up front
+    // so missing mappings fail early (before any files are written).
+    const componentMap = buildComponentMap(modules)
     for (const routeId of PUBLIC_ROUTE_IDS) {
-      const html = await renderRoute(routeId, modules, { React, renderToString })
+      pickComponent(routeId, componentMap) // exits with code 1 if not mapped
+    }
+
+    for (const routeId of PUBLIC_ROUTE_IDS) {
+      const html = await renderRoute(routeId, componentMap, modules, { React, renderToString })
       const headHtml = renderRouteHeadHtml(routeId)
 
       let pageHtml = indexHtml
