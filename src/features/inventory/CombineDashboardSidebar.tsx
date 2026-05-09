@@ -21,7 +21,7 @@
 
 import './InventoryWizard.css'
 import './CombineDashboardSidebar.css'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useId } from 'react'
 import { Plus, Trash2, Archive, RefreshCw, Lock } from 'lucide-react'
 import type { WorkspaceAssumptionsV2, WhatIfScenario, Scenario } from '../../domain/workspace'
 import type {
@@ -55,6 +55,7 @@ import {
   type BavOfferDraft,
 } from './inventoryHelpers'
 import { InvSelect } from './fields'
+import { InvFieldContext, useInvFieldId } from './invFieldContext'
 import { InfoTip } from '../../ui/InfoTip'
 import { toNumber, useDraftNumber, DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
 
@@ -94,6 +95,10 @@ function atomsForInstance(atoms: Atom[], instanceId: string): Atom[] {
 // CombineField is a sidebar-specific layout variant (combine-field CSS class
 // vs. inventory-field used in the wizard). It delegates label + children
 // rendering to the same pattern but keeps its own class name for styling.
+//
+// Uses useId() to generate a stable id per field so that the <label htmlFor>
+// → <input id> association works for screen readers. The id is provided via
+// InvFieldContext so DraftNumberInput and InvSelect pick it up automatically.
 function CombineField({
   label,
   labelSuffix,
@@ -103,11 +108,14 @@ function CombineField({
   labelSuffix?: React.ReactNode
   children: React.ReactNode
 }) {
+  const id = useId()
   return (
-    <div className="combine-field">
-      <span>{label}{labelSuffix}</span>
-      {children}
-    </div>
+    <InvFieldContext.Provider value={id}>
+      <div className="combine-field">
+        <label htmlFor={id}>{label}{labelSuffix}</label>
+        {children}
+      </div>
+    </InvFieldContext.Provider>
   )
 }
 
@@ -123,18 +131,42 @@ function CombineField({
  * so transient empty-field states never write zero to workspace state.
  *
  * All props except `value` / `onCommit` are forwarded to the underlying
- * <input> element.
+ * <input> element. When rendered inside a `CombineField` (or `InvField`),
+ * the context-provided id is used automatically so the label association works
+ * for screen readers; an explicit `id` prop overrides the context id.
  */
 function DraftNumberInput({
   value,
   onCommit,
+  id: idProp,
   ...rest
 }: {
   value: number
   onCommit: (next: number) => void
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onBlur' | 'onKeyDown' | 'type'>) {
+  const contextId = useInvFieldId()
   const { inputProps } = useDraftNumber({ value, onCommit })
-  return <input type="number" {...rest} {...inputProps} />
+  return <input type="number" id={idProp ?? contextId} {...rest} {...inputProps} />
+}
+
+// ---------------------------------------------------------------------------
+// Context-aware wrappers for native <input> and <select> inside CombineField.
+// These consume InvFieldContext so the label → control association is wired
+// automatically, matching the DraftNumberInput + InvSelect behaviour above.
+// ---------------------------------------------------------------------------
+
+function CombineNativeInput(
+  props: React.InputHTMLAttributes<HTMLInputElement>,
+) {
+  const fieldId = useInvFieldId()
+  return <input id={props.id ?? fieldId} {...props} />
+}
+
+function CombineNativeSelect(
+  props: React.SelectHTMLAttributes<HTMLSelectElement>,
+) {
+  const fieldId = useInvFieldId()
+  return <select id={props.id ?? fieldId} {...props} />
 }
 
 function CommonContractFields<T extends InstanceCommon>({
@@ -149,14 +181,14 @@ function CommonContractFields<T extends InstanceCommon>({
   return (
     <>
       <CombineField label="Bezeichnung">
-        <input
+        <CombineNativeInput
           type="text"
           value={instance.label}
           onChange={(e) => onChange({ ...instance, label: e.target.value })}
         />
       </CombineField>
       <CombineField label="Anbieter">
-        <input
+        <CombineNativeInput
           type="text"
           value={instance.anbieter ?? ''}
           onChange={(e) =>
@@ -165,7 +197,7 @@ function CommonContractFields<T extends InstanceCommon>({
         />
       </CombineField>
       <CombineField label="Status">
-        <select
+        <CombineNativeSelect
           value={instance.status}
           onChange={(e) =>
             onChange({ ...instance, status: e.target.value as InstanceCommon['status'] })
@@ -175,7 +207,7 @@ function CommonContractFields<T extends InstanceCommon>({
           <option value="paid_up">beitragsfrei</option>
           <option value="surrendered">gekündigt</option>
           <option value="offered">Angebot</option>
-        </select>
+        </CombineNativeSelect>
       </CombineField>
       <CombineField label="Vertragsbeginn">
         <DraftNumberInput
@@ -271,7 +303,7 @@ function PersonalProfileSection({
           />
         </CombineField>
         <CombineField label="Krankenversicherung">
-          <select
+          <CombineNativeSelect
             value={profile.publicHealthInsurance ? 'gkv' : 'pkv'}
             onChange={(e) => {
               const publicHealthInsurance = e.target.value === 'gkv'
@@ -283,20 +315,20 @@ function PersonalProfileSection({
           >
             <option value="gkv">Gesetzlich</option>
             <option value="pkv">Privat</option>
-          </select>
+          </CombineNativeSelect>
         </CombineField>
         <CombineField label="Ehegattensplitting" labelSuffix={<InfoTip text="Bei aktiviertem Splitting wird das gemeinsam zu versteuernde Einkommen nach §32a Abs. 5 EStG halbiert besteuert. Eine Steuerklassen-Auswahl ist bei Zusammenveranlagung nicht erforderlich. Die Auswirkungen erscheinen automatisch in den Ergebnissen unten." />}>
           <label className="combine-checkbox-field">
-            <input
+            <CombineNativeInput
               type="checkbox"
               checked={partnerEnabled}
-              onChange={(e) => patchPartner(e.target.checked)}
+              onChange={(e) => patchPartner((e.target as HTMLInputElement).checked)}
             />
             gemeinsam veranlagen
           </label>
         </CombineField>
         <CombineField label="Geburtsjahre Kinder">
-          <input
+          <CombineNativeInput
             type="text"
             value={profile.childBirthYears.join(', ')}
             onChange={(e) => {
@@ -309,7 +341,7 @@ function PersonalProfileSection({
           />
         </CombineField>
         <CombineField label="Pensionssystem">
-          <select
+          <CombineNativeSelect
             value={statutoryPension.pensionBaselineType ?? 'grv'}
             onChange={(e) => {
               const pensionBaselineType = e.target.value as PensionBaselineType
@@ -326,7 +358,7 @@ function PersonalProfileSection({
             <option value="beamtenpension">Beamtenpension</option>
             <option value="versorgungswerk">Versorgungswerk</option>
             <option value="none">keine Pflichtversorgung</option>
-          </select>
+          </CombineNativeSelect>
         </CombineField>
         {(statutoryPension.pensionBaselineType === 'beamtenpension' ||
           statutoryPension.pensionBaselineType === 'versorgungswerk') && (
@@ -825,7 +857,7 @@ function AvdInstanceCard({
             />
           </CombineField>
           <CombineField label="Depottyp">
-            <select
+            <CombineNativeSelect
               value={instance.subtype}
               onChange={(e) =>
                 onChange({
@@ -838,17 +870,17 @@ function AvdInstanceCard({
               <option value="standarddepot">Standarddepot</option>
               <option value="guarantee_80">80% Garantie</option>
               <option value="guarantee_100">100% Garantie</option>
-            </select>
+            </CombineNativeSelect>
           </CombineField>
           <CombineField label="Glidepath">
             <label className="combine-checkbox-field">
-              <input
+              <CombineNativeInput
                 type="checkbox"
                 checked={instance.riskAllocationPct < 1}
                 onChange={(e) =>
                   onChange({
                     ...instance,
-                    riskAllocationPct: e.target.checked ? 0.8 : 1,
+                    riskAllocationPct: (e.target as HTMLInputElement).checked ? 0.8 : 1,
                   })
                 }
               />
@@ -1273,10 +1305,10 @@ function DraftContractForm({
       <p className="cds-add-vertrag-menu-label">{item.label} erfassen</p>
       <div className="combine-instance-fields">
         <CombineField label="Anbieter">
-          <input type="text" value={anbieter} onChange={(e) => setAnbieter(e.target.value)} />
+          <CombineNativeInput type="text" value={anbieter} onChange={(e) => setAnbieter(e.target.value)} />
         </CombineField>
         <CombineField label="Vertragsbeginn">
-          <input
+          <CombineNativeInput
             type="number"
             value={contractStartYear}
             min={1970}
@@ -1287,7 +1319,7 @@ function DraftContractForm({
         {item.kind === 'bav_offer' ? (
           <>
             <CombineField label="Zusätzlicher AG-Zuschuss (%)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={agMatchPct}
                 min={0}
@@ -1297,7 +1329,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Fixer Extra-AG-Beitrag (EUR/Monat)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={fixedAgMonthly}
                 min={0}
@@ -1306,7 +1338,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Effektivkosten (% p.a.)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={offerEffektivkostenPct}
                 min={0}
@@ -1315,7 +1347,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Garantierter Rentenfaktor">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={offerRentenfaktor}
                 min={0}
@@ -1341,7 +1373,7 @@ function DraftContractForm({
         ) : productId === 'etf' ? (
           <>
             <CombineField label="Monatliche Sparrate">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={etfMonthly}
                 min={0}
@@ -1350,7 +1382,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Aktueller Depotwert">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={etfCurrentValue}
                 min={0}
@@ -1362,7 +1394,7 @@ function DraftContractForm({
         ) : productId === 'bav' ? (
           <>
             <CombineField label="Brutto-Umwandlung (EUR/Monat)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={bavMonthlyGross}
                 min={0}
@@ -1371,7 +1403,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Aktueller Vertragswert">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={bavCurrentValue}
                 min={0}
@@ -1387,7 +1419,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Effektivkosten (% p.a.)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={bavEffektivkostenPct}
                 min={0}
@@ -1398,7 +1430,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Garantierter Rentenfaktor">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={bavRentenfaktor}
                 min={0}
@@ -1417,7 +1449,7 @@ function DraftContractForm({
         ) : productId === 'versicherung' || productId === 'basisrente' ? (
           <>
             <CombineField label="Monatsbeitrag (EUR)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={insMonthly}
                 min={0}
@@ -1426,7 +1458,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Aktueller Vertragswert">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={insCurrentValue}
                 min={0}
@@ -1435,7 +1467,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Effektivkosten (% p.a.)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={insEffektivkostenPct}
                 min={0}
@@ -1446,7 +1478,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Garantierter Rentenfaktor">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={insRentenfaktor}
                 min={0}
@@ -1467,7 +1499,7 @@ function DraftContractForm({
         ) : productId === 'altersvorsorgedepot' ? (
           <>
             <CombineField label="Eigenbeitrag (EUR/Monat)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={otherMonthly}
                 min={0}
@@ -1476,7 +1508,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Aktueller Vertragswert">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={otherCurrentValue}
                 min={0}
@@ -1487,7 +1519,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Depottyp">
-              <select
+              <CombineNativeSelect
                 value={avdSubtype}
                 onChange={(e) =>
                   setAvdSubtype(e.target.value as AltersvorsorgedepotInstance['subtype'])
@@ -1497,14 +1529,14 @@ function DraftContractForm({
                 <option value="standarddepot">Standarddepot</option>
                 <option value="guarantee_80">80% Garantie</option>
                 <option value="guarantee_100">100% Garantie</option>
-              </select>
+              </CombineNativeSelect>
             </CombineField>
             <CombineField label="Glidepath">
               <label className="combine-checkbox-field">
-                <input
+                <CombineNativeInput
                   type="checkbox"
                   checked={avdUseGlidepath}
-                  onChange={(e) => setAvdUseGlidepath(e.target.checked)}
+                  onChange={(e) => setAvdUseGlidepath((e.target as HTMLInputElement).checked)}
                 />
                 automatische Risikoabsenkung
               </label>
@@ -1513,7 +1545,7 @@ function DraftContractForm({
         ) : (
           <>
             <CombineField label="Eigenbeitrag (EUR/Monat)">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={otherMonthly}
                 min={0}
@@ -1522,7 +1554,7 @@ function DraftContractForm({
               />
             </CombineField>
             <CombineField label="Aktueller Vertragswert">
-              <input
+              <CombineNativeInput
                 type="number"
                 value={otherCurrentValue}
                 min={0}
