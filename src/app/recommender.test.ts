@@ -506,6 +506,7 @@ function buildCombineCtx(workspace: ReturnType<typeof buildBerndWorkspace>) {
     statutoryPensionTaxChannel: taxChannel,
     statutoryPensionKvChannel: kvChannel,
     retirementHealthStatus,
+    filingStatus: (workspace.baseline.partner !== undefined ? 'married' : 'single') as 'single' | 'married',
   }
 }
 

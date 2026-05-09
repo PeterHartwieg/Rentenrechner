@@ -24,6 +24,7 @@ import { migrateV1ToV2 } from '../storage'
 import { simulateRetirementComparison } from './simulate'
 import { simulatePortfolio } from './portfolioAdapter'
 import { combinePortfolio, type CombineContext } from './portfolioCombine'
+import { buildCombineContext } from './combineContext'
 import { calculateRetirementTax } from './retirementTax'
 import type {
   BavInstance,
@@ -44,6 +45,7 @@ import type { ScenarioAssumptions } from '../domain/results'
 function makeBaseCombineContext(
   profile: PersonalProfile = defaultProfile,
   grvGrossMonthlyPension = 0,
+  filingStatus: 'single' | 'married' = 'single',
 ): CombineContext {
   return {
     profile,
@@ -53,6 +55,7 @@ function makeBaseCombineContext(
     statutoryPensionTaxChannel: grvGrossMonthlyPension > 0 ? 'statutory_pension' : 'none',
     statutoryPensionKvChannel: grvGrossMonthlyPension > 0 ? 'kvdr_half_rate' : 'none',
     retirementHealthStatus: 'kvdr',
+    filingStatus,
   }
 }
 
@@ -636,6 +639,83 @@ describe('combinePortfolio — edge cases', () => {
     const ctx = makeBaseCombineContext(defaultProfile, 0)
     const combined = combinePortfolio(ws, [], ctx)
     expect(combined.monthlyNetIncome).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 7. Regression — married vs. single filing (§32a Abs. 5 EStG Ehegattensplitting)
+// ---------------------------------------------------------------------------
+
+describe('combinePortfolio — married vs. single filing status', () => {
+  it('married filing produces lower aggregate retirement tax than single for substantial GRV income', () => {
+    // Use only GRV income (no instances) so we can check statutory tax directly.
+    // A single pensioner with 2 400 EUR/month GRV is taxed at Grundtarif;
+    // a married couple with the same combined gross benefits from Splittingtarif.
+    const ws = makeWorkspaceFromV1(0, false, false, 0, 0, 0)
+    const grvGross = 2_400
+
+    const ctxSingle = makeBaseCombineContext(defaultProfile, grvGross, 'single')
+    const ctxMarried = makeBaseCombineContext(defaultProfile, grvGross, 'married')
+
+    const combinedSingle = combinePortfolio(ws, [], ctxSingle)
+    const combinedMarried = combinePortfolio(ws, [], ctxMarried)
+
+    // Married Splittingtarif must produce lower total tax.
+    expect(combinedMarried.aggregateTax.totalTaxAnnual).toBeLessThan(
+      combinedSingle.aggregateTax.totalTaxAnnual,
+    )
+    // Married net must be higher than single net.
+    expect(combinedMarried.monthlyNetIncome).toBeGreaterThan(combinedSingle.monthlyNetIncome)
+  })
+
+  it('married filing produces lower aggregate retirement tax than single for bAV + GRV combined', () => {
+    const ws = makeWorkspaceFromV1(300, false, false, 0, 0, 0)
+    const grvGross = 1_500
+    const { perInstance } = simulatePortfolio(ws, de2026Rules)
+    const bavInstanceId = ws.baseline.assumptions.bav[0].instanceId
+    const bavResult = perInstance[bavInstanceId].find((r) => r.scenarioId === 'basis')!
+
+    const ctxSingle = makeBaseCombineContext(defaultProfile, grvGross, 'single')
+    const ctxMarried = makeBaseCombineContext(defaultProfile, grvGross, 'married')
+
+    const combinedSingle = combinePortfolio(ws, [bavResult], ctxSingle)
+    const combinedMarried = combinePortfolio(ws, [bavResult], ctxMarried)
+
+    // Married Splittingtarif must produce lower total tax.
+    expect(combinedMarried.aggregateTax.totalTaxAnnual).toBeLessThan(
+      combinedSingle.aggregateTax.totalTaxAnnual,
+    )
+    // Higher net income for married.
+    expect(combinedMarried.monthlyNetIncome).toBeGreaterThan(combinedSingle.monthlyNetIncome)
+  })
+
+  it('buildCombineContext with hasPartner=true sets filingStatus to married', () => {
+    // Verify the context builder wires the flag correctly.
+    const ctxWithPartner = buildCombineContext({
+      profile: defaultProfile,
+      rules: de2026Rules,
+      statutoryPension: defaultAssumptions.statutoryPension,
+      grvGrossMonthlyPension: 0,
+      hasPartner: true,
+    })
+    expect(ctxWithPartner.filingStatus).toBe('married')
+
+    const ctxNoPartner = buildCombineContext({
+      profile: defaultProfile,
+      rules: de2026Rules,
+      statutoryPension: defaultAssumptions.statutoryPension,
+      grvGrossMonthlyPension: 0,
+      hasPartner: false,
+    })
+    expect(ctxNoPartner.filingStatus).toBe('single')
+
+    const ctxDefault = buildCombineContext({
+      profile: defaultProfile,
+      rules: de2026Rules,
+      statutoryPension: defaultAssumptions.statutoryPension,
+      grvGrossMonthlyPension: 0,
+    })
+    expect(ctxDefault.filingStatus).toBe('single')
   })
 })
 

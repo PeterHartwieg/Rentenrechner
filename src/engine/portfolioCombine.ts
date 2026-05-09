@@ -174,6 +174,13 @@ export interface CombineContext {
   statutoryPensionKvChannel: 'kvdr_half_rate' | 'versorgungsbezug_full_rate' | 'none'
   /** Retirement health-insurance status — drives every per-instance KV/PV branch. */
   retirementHealthStatus: RetirementHealthStatus
+  /**
+   * Household filing status for retirement income tax.
+   * 'married' activates §32a Abs. 5 EStG Ehegattensplitting (Zusammenveranlagung);
+   * 'single' uses the Grundtarif (Einzelveranlagung).
+   * Derived from whether `workspace.baseline.partner` is present.
+   */
+  filingStatus: 'single' | 'married'
 }
 
 // ---------------------------------------------------------------------------
@@ -490,6 +497,7 @@ function instanceMarginalTax(
   line: PerSourceLine,
   rules: GermanRules,
   totalTaxFull: number,
+  filingStatus: 'single' | 'married',
 ): number {
   // Build an "aggregate minus this line" components view and re-call the tax
   // pipeline. This is ~N tax calls in the worst case (one per instance) — for
@@ -527,7 +535,7 @@ function instanceMarginalTax(
     otherTaxableAnnual,
     privateInsuranceContributions: insuranceContributions,
   }
-  const reducedTax = calculateRetirementTax(reduced, rules, 'single').totalTaxAnnual
+  const reducedTax = calculateRetirementTax(reduced, rules, filingStatus).totalTaxAnnual
   return Math.max(0, totalTaxFull - reducedTax)
 }
 
@@ -554,11 +562,12 @@ export function combinePortfolio(
 ): CombinedResult {
   const lines = buildPerSourceLines(workspace, perInstanceResults, ctx)
   const aggregate = buildAggregateInputs(lines, ctx)
+  const filingStatus = ctx.filingStatus
 
   // -------------------------------------------------------------------------
   // 1. Aggregate retirement-tax (single call over all sources).
   // -------------------------------------------------------------------------
-  const aggregateTax = calculateRetirementTax(aggregate.components, ctx.rules, 'single')
+  const aggregateTax = calculateRetirementTax(aggregate.components, ctx.rules, filingStatus)
 
   // -------------------------------------------------------------------------
   // 2. Aggregate KV/PV (single call over all monthly bases).
@@ -604,7 +613,7 @@ export function combinePortfolio(
       otherTaxableAnnual: 0,
       retirementYear: ctx.retirementYear,
     }
-    statutoryTaxAnnual = calculateRetirementTax(statutoryOnlyComponents, ctx.rules, 'single').totalTaxAnnual
+    statutoryTaxAnnual = calculateRetirementTax(statutoryOnlyComponents, ctx.rules, filingStatus).totalTaxAnnual
   }
 
   // Statutory's KV/PV share — for KVdR half-rate route, use the breakdown's
@@ -639,7 +648,7 @@ export function combinePortfolio(
   const marginalTaxByInstance: Record<string, number> = {}
   let sumMarginals = 0
   for (const line of lines) {
-    const m = instanceMarginalTax(aggregate, line, ctx.rules, aggregateTax.totalTaxAnnual)
+    const m = instanceMarginalTax(aggregate, line, ctx.rules, aggregateTax.totalTaxAnnual, filingStatus)
     marginalTaxByInstance[line.instanceId] = m
     sumMarginals += m
   }
