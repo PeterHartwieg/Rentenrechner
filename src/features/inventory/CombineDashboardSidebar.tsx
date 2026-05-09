@@ -1630,7 +1630,15 @@ export function AddVertragSection({
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (open && !draftItem && menuRef.current) {
+    // Guarded with `typeof === 'function'` — jsdom (used by vitest) does not
+    // implement Element.prototype.scrollIntoView, so unguarded calls throw
+    // during test runs that render `AddVertragSection` with `open={true}`.
+    if (
+      open &&
+      !draftItem &&
+      menuRef.current &&
+      typeof menuRef.current.scrollIntoView === 'function'
+    ) {
       menuRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
     }
   }, [open, draftItem])
