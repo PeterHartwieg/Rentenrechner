@@ -60,6 +60,7 @@ export function InvNumber({
   max,
   step = 1,
   suffix,
+  disabled,
   onChange,
 }: {
   value: number
@@ -67,6 +68,7 @@ export function InvNumber({
   max?: number
   step?: number
   suffix?: string
+  disabled?: boolean
   onChange: (n: number) => void
 }) {
   const [draft, setDraft] = useState<string | null>(null)
@@ -83,14 +85,16 @@ export function InvNumber({
   }
 
   return (
-    <div className="inventory-input-shell">
+    <div className="inventory-input-shell" aria-disabled={disabled || undefined}>
       <input
         type="number"
         value={displayValue}
         min={min}
         max={max}
         step={step}
+        disabled={disabled}
         onChange={(e) => {
+          if (disabled) return
           const raw = e.target.value
           setDraft(raw)
           if (raw.trim() === '') return

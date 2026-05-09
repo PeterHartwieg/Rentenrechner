@@ -151,6 +151,7 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
           max={50_000}
           step={10}
           suffix="EUR/Monat"
+          disabled={draft.status === 'paid_up'}
           onChange={(n) => {
             update({ monthlyContribution: n })
             setEvidence?.('monthlyContribution', 'user_confirmed')
