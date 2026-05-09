@@ -589,24 +589,32 @@ function CombinePrintReport({
             </tr>
           </thead>
           <tbody>
-            {instanceRows.map(({ instanceId, result: r }) => (
-              <tr
-                key={`${instanceId}-${r.scenarioId}`}
-                className={r.scenarioId === 'basis' ? 'pr-basis' : ''}
-              >
-                <td>{instanceLabelMap[instanceId] ?? r.label}</td>
-                <td>{getProductMeta(r.productId)?.label ?? r.productId}</td>
-                <td>{r.scenarioLabel}</td>
-                <td className="pr-num">{formatCurrency(r.monthlyProductContribution, 0)}</td>
-                <td className="pr-num">{formatCurrency(r.capitalAtRetirement, 0)}</td>
-                <td className="pr-num">{formatCurrency(r.grossMonthlyPayout, 0)}</td>
-                <td className="pr-num">
-                  {formatCurrency(r.netMonthlyPayout, 0)}
-                  <ConfidenceIndicator state={r.inputConfidence} />
-                </td>
-                <td className="pr-num">{formatPercent(r.accumulationRiy, 2)}</td>
-              </tr>
-            ))}
+            {instanceRows.map(({ instanceId, result: r }) => {
+              // Use the back-allocated monthly net from the aggregate progressive
+              // retirement-tax + KV/PV pipeline — matches CombineDetailView
+              // (byInstance[instanceId].monthlyNet). Falls back to the per-instance
+              // simulator value only when byInstance has no entry (defensive).
+              const aggregateNet = combinedByScenarioId[r.scenarioId]?.byInstance[instanceId]?.monthlyNet
+              const netMonthly = aggregateNet ?? r.netMonthlyPayout
+              return (
+                <tr
+                  key={`${instanceId}-${r.scenarioId}`}
+                  className={r.scenarioId === 'basis' ? 'pr-basis' : ''}
+                >
+                  <td>{instanceLabelMap[instanceId] ?? r.label}</td>
+                  <td>{getProductMeta(r.productId)?.label ?? r.productId}</td>
+                  <td>{r.scenarioLabel}</td>
+                  <td className="pr-num">{formatCurrency(r.monthlyProductContribution, 0)}</td>
+                  <td className="pr-num">{formatCurrency(r.capitalAtRetirement, 0)}</td>
+                  <td className="pr-num">{formatCurrency(r.grossMonthlyPayout, 0)}</td>
+                  <td className="pr-num">
+                    {formatCurrency(netMonthly, 0)}
+                    <ConfidenceIndicator state={r.inputConfidence} />
+                  </td>
+                  <td className="pr-num">{formatPercent(r.accumulationRiy, 2)}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
         <p className="pr-note pr-table-note">

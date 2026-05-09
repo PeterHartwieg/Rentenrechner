@@ -357,6 +357,88 @@ describe('buildCombinePortfolioCsv', () => {
     expect(Number(etfCols[10])).toBeGreaterThan(0)
   })
 
+  // -------------------------------------------------------------------------
+  // gh#59 regression: combine-mode Section 2 net payout must use
+  // byInstance.monthlyNet (aggregate-allocated) not r.netMonthlyPayout
+  // (per-instance isolated). Multi-product households diverge because
+  // progressive retirement tax applies jointly.
+  // -------------------------------------------------------------------------
+
+  it('gh#59: Section 2 Netto-Rente uses byInstance.monthlyNet, not isolated r.netMonthlyPayout', () => {
+    // Two instances where the aggregate-allocated net differs from the
+    // isolated simulator net (simulates progressive tax interaction).
+    const bavIsolatedNet = 450.00
+    const bavAggregateNet = 390.00 // lower due to joint progressive taxation
+
+    const etfIsolatedNet = 458.33
+    const etfAggregateNet = 458.33 // ETF unchanged (Abgeltungsteuer, flat)
+
+    const bavResult: ProductResult = {
+      ...FIXTURE_BAV_INSTANCE_RESULT,
+      instanceId: 'bav-1',
+      scenarioId: 'basis',
+      scenarioLabel: 'Basis',
+      netMonthlyPayout: bavIsolatedNet,
+      grossMonthlyPayout: 500,
+    } as unknown as ProductResult
+
+    const etfResult: ProductResult = {
+      ...FIXTURE_ETF_INSTANCE_RESULT,
+      instanceId: 'etf-1',
+      scenarioId: 'basis',
+      scenarioLabel: 'Basis',
+      netMonthlyPayout: etfIsolatedNet,
+      grossMonthlyPayout: 500,
+    } as unknown as ProductResult
+
+    const combinedResult: CombinedResult = {
+      ...FIXTURE_COMBINED,
+      byInstance: {
+        'bav-1': {
+          instanceId: 'bav-1',
+          productId: 'bav',
+          monthlyGross: 500,
+          monthlyNet: bavAggregateNet,
+          taxShareAnnual: 1320,
+          kvPvShare: 60,
+        },
+        'etf-1': {
+          instanceId: 'etf-1',
+          productId: 'etf',
+          monthlyGross: 500,
+          monthlyNet: etfAggregateNet,
+          taxShareAnnual: 0,
+          kvPvShare: 0,
+        },
+      },
+    }
+
+    const csv = buildCombinePortfolioCsv({
+      perInstance: {
+        'bav-1': [bavResult],
+        'etf-1': [etfResult],
+      },
+      combinedByScenarioId: { basis: combinedResult },
+      scenarioLabels: { basis: 'Basis' },
+    })
+
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    expect(sectionIdx).toBeGreaterThanOrEqual(0)
+
+    // Find the bAV row — it starts with 'bav-1'.
+    const detailBlock = lines.slice(sectionIdx + 2) // skip section header + column header
+    const bavRow = detailBlock.find((l) => l.startsWith('bav-1,'))
+    expect(bavRow).toBeDefined()
+    const bavCols = bavRow!.split(',')
+    // Column 7 = Netto-Rente mtl. (EUR) — must be aggregate net, not isolated.
+    // Header: Instanz, Produkt, Szenario, Nettoaufwand, Beitrag, Kapital, Brutto-Rente, Netto-Rente, Kosten, Datenqualität
+    const bavNetCol = bavCols[7]
+    expect(bavNetCol).toBe(bavAggregateNet.toFixed(2))
+    // Sanity: the isolated net must differ so the test actually validates the fix.
+    expect(bavNetCol).not.toBe(bavIsolatedNet.toFixed(2))
+  })
+
   it('Section 3 — after-tax columns present for bAV instance when perInstanceTaxModes supplied', () => {
     const optsWithTax = {
       ...TWO_INSTANCE_OPTS,
