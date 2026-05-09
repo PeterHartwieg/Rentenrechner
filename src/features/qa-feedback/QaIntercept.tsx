@@ -79,9 +79,9 @@ export function QaIntercept({ target, onDismiss, onProceed, onExitAndNavigate }:
 
       <div className="qa-panel__body">
         <p id={descId} className="qa-intercept__body">
-          Du hast diesen Punkt gerade schon einmal angeklickt. Im QA-Modus werden alle Klicks
+          Du hast diesen Punkt gerade schon einmal angeklickt. Im Feedback Modus werden alle Klicks
           abgefangen, damit du Feedback dazu geben kannst. Wenn du normal interagieren willst,
-          beende den QA-Modus.
+          beende den Feedback Modus.
         </p>
         {target.label && (
           <p className="qa-intercept__target-label">
@@ -106,7 +106,7 @@ export function QaIntercept({ target, onDismiss, onProceed, onExitAndNavigate }:
           onClick={onExitAndNavigate}
           data-testid="qa-intercept-exit"
         >
-          QA-Modus beenden
+          Feedback Modus beenden
         </button>
       </div>
     </div>

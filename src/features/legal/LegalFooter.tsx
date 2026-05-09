@@ -89,7 +89,7 @@ export function LegalFooter({ navigate }: Props) {
                 onClick={activateQa}
                 {...qaButtonTargetProps}
               >
-                QA-Modus starten
+                Feedback Modus starten
               </button>{' '}
               — dann auf das fragliche Element klicken.
             </span>
