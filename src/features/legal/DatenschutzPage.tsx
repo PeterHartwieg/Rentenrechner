@@ -97,10 +97,23 @@ export function DatenschutzPage({ navigate }: Props) {
           Interesse an einem stabilen, sicheren Betrieb).
         </p>
         <p>
-          <em>Hinweis:</em> Sobald ein konkreter Hosting-Provider gewählt
-          ist, wird hier dessen Name, Sitz, Speicherdauer und der Link zu
-          dessen eigener Datenschutzerklärung ergänzt. Bis dahin gilt: vor
-          öffentlichem Launch wird diese Information ergänzt.
+          Hosting-Provider: <strong>Cloudflare, Inc.</strong>, 101 Townsend
+          St., San Francisco, CA 94107, USA (Auftragsverarbeiter). Die
+          Anwendung wird über Cloudflare Pages ausgeliefert. Cloudflare
+          erfasst dabei serverseitige Zugriffsprotokolle (u.&nbsp;a.
+          IP-Adresse, Zeitstempel, aufgerufener Pfad, User-Agent, Referrer)
+          im Rahmen der standardmäßigen Protokollaufbewahrung von Cloudflare.
+          Deutsche Nutzerinnen und Nutzer werden typischerweise von
+          EU-Standorten (Points of Presence) bedient. Weitere Informationen
+          zur Datenverarbeitung durch Cloudflare finden Sie in der{' '}
+          <a
+            href="https://www.cloudflare.com/privacypolicy/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Datenschutzerklärung von Cloudflare
+          </a>
+          .
         </p>
       </section>
 
@@ -214,11 +227,6 @@ export function DatenschutzPage({ navigate }: Props) {
           dieser Erklärung dokumentiert werden:
         </p>
         <ul>
-          <li>
-            <strong>Hosting-Provider:</strong> Ergänzung von Anbieter, Sitz,
-            Speicherdauer der Server-Logs sobald die Anwendung öffentlich
-            ausgeliefert wird;
-          </li>
           <li>
             <strong>Reichweitenmessung:</strong> Falls eingeführt, ausschließlich
             cookiefrei und mit EU-Hosting (z.&nbsp;B. Plausible / Umami);
