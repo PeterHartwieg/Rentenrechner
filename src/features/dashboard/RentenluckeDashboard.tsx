@@ -237,9 +237,7 @@ export function RentenluckeDashboard({
         />
         {!targetIsUserSet && profile.grossSalaryYear > 0 && (
           <p className="rentenlucke-dashboard__hint" {...hintProps}>
-            Voreinstellung: {formatPercent(RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO, 0)} Ihres aktuellen Bruttogehalts
-            {' '}({formatCurrency((profile.grossSalaryYear / 12) * RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO, 0)} mtl.).
-            Eigenen Wert eintragen, um die Lücke individuell zu prüfen.
+            Voreinstellung: {formatPercent(RENTENLUCKE_DEFAULT_REPLACEMENT_RATIO, 0)} des Bruttogehalts — eigenen Wert eintragen.
           </p>
         )}
         <div className="rentenlucke-dashboard__cta-group">
