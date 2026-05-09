@@ -1,5 +1,6 @@
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import { migrateAndValidateState } from '../storage'
+import { safeSetItem } from '../utils/safeStorage'
 
 export interface SavedScenario {
   id: string
@@ -93,7 +94,7 @@ export function loadLibrary(): SavedScenario[] {
 }
 
 function persistLibrary(scenarios: SavedScenario[]): void {
-  localStorage.setItem(LIBRARY_KEY, JSON.stringify(scenarios))
+  safeSetItem(LIBRARY_KEY, JSON.stringify(scenarios))
 }
 
 function makeId(): string {
