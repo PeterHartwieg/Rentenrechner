@@ -30,17 +30,31 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     ? riester.capitalGuarantee.floorPctOfContributions
     : 0
 
-  // Total monthly contribution = user-entered Eigenbeitrag (actual out-of-pocket cash)
+  // In combine mode the funding override carries a scaled (capped) own contribution.
+  // Use `riesterFunding.monthlyOwnContribution` rather than reading the raw assumption
+  // directly so the accumulation loop respects the household §10a cap apportionment
+  // computed by `portfolioFunding.ts`.  In compare mode (no override) the two values
+  // are identical, so this change is backwards-compatible.
+  const effectiveMonthlyOwnContribution = riesterFunding.monthlyOwnContribution
+
+  // Build a patched assumption object that carries the capped contribution so
+  // `fundingForYear` re-runs produce per-year allowances and Günstigerprüfung
+  // on the correct (scaled) base — not the raw instance value.
+  const scaledRiester: typeof riester = effectiveMonthlyOwnContribution === riester.monthlyOwnContribution
+    ? riester
+    : { ...riester, monthlyOwnContribution: effectiveMonthlyOwnContribution }
+
+  // Total monthly contribution = portfolio-capped Eigenbeitrag
   // + state allowances + Günstigerprüfung tax refund flowing back into the contract.
   const totalMonthlyContribution =
-    assumptions.riester.monthlyOwnContribution +
+    effectiveMonthlyOwnContribution +
     riesterFunding.guenstigerpruefungBenefitAnnual / 12 +
     riesterFunding.totalAllowanceAnnual / 12
   const fundingForYear = (yearIndex: number) =>
     calculateRiesterFunding(
       rules,
       ctx.bavFunding.salaryWithBav,
-      riester,
+      scaledRiester,
       profile,
       {
         contributionYear: rules.year + yearIndex,
@@ -87,7 +101,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
           return {
             monthlyUserCost: funding.monthlyNetCost,
             monthlyProductContribution:
-              riester.monthlyOwnContribution +
+              effectiveMonthlyOwnContribution +
               funding.guenstigerpruefungBenefitAnnual / 12 +
               funding.totalAllowanceAnnual / 12,
           }
