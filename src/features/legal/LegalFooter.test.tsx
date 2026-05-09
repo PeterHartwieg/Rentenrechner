@@ -62,7 +62,7 @@ describe('LegalFooter — VITE_QA_FOOTER_BUTTON unset', () => {
     expect(screen.getByText('Datenschutzerklärung')).toBeTruthy()
   })
 
-  it('does NOT render the QA-Modus button', () => {
+  it('does NOT render the Feedback Modus button', () => {
     renderFooter()
     expect(screen.queryByRole('button', { name: QA_BUTTON_ARIA_LABEL })).toBeNull()
   })
@@ -82,15 +82,15 @@ describe('LegalFooter — VITE_QA_FOOTER_BUTTON=true, QA mode off', () => {
     vi.stubEnv('VITE_QA_FOOTER_BUTTON', 'true')
   })
 
-  it('renders the QA-Modus starten button', () => {
+  it('renders the Feedback Modus starten button', () => {
     renderFooter()
     expect(screen.getByRole('button', { name: QA_BUTTON_ARIA_LABEL })).toBeTruthy()
   })
 
-  it('button label text is "QA-Modus starten"', () => {
+  it('button label text is "Feedback Modus starten"', () => {
     renderFooter()
     const btn = screen.getByRole('button', { name: QA_BUTTON_ARIA_LABEL })
-    expect(btn.textContent).toBe('QA-Modus starten')
+    expect(btn.textContent).toBe('Feedback Modus starten')
   })
 
   it('button aria-label matches the German copy spec exactly', () => {

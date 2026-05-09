@@ -50,13 +50,13 @@ export function QaModeIndicator() {
     <button
       type="button"
       className="qa-indicator"
-      aria-label={`QA-Modus aktiv. Klicken zum Deaktivieren oder Beenden. Tastenkürzel: ${hint}`}
-      title={`QA-Modus aktiv – ${hint} zum Umschalten`}
+      aria-label={`Feedback Modus aktiv. Klicken zum Deaktivieren oder Beenden. Tastenkürzel: ${hint}`}
+      title={`Feedback Modus aktiv – ${hint} zum Umschalten`}
       data-testid="qa-indicator"
       onClick={deactivate}
     >
       <span className="qa-indicator__dot" aria-hidden="true" />
-      <span aria-hidden="true">QA-Modus aktiv</span>
+      <span aria-hidden="true">Feedback Modus aktiv</span>
       <span className="qa-indicator__deactivate" aria-hidden="true">
         Beenden
       </span>

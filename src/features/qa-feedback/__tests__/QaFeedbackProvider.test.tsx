@@ -115,7 +115,7 @@ describe('QaFeedbackProvider — activation', () => {
     expect(indicator.tagName).toBe('BUTTON')
     expect(indicator.getAttribute('role')).toBeNull()
     expect(indicator.getAttribute('aria-live')).toBeNull()
-    expect(indicator.getAttribute('aria-label')).toMatch(/QA-Modus aktiv/)
+    expect(indicator.getAttribute('aria-label')).toMatch(/Feedback Modus aktiv/)
   })
 })
 
