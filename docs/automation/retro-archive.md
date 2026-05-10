@@ -619,3 +619,23 @@ labels: [bug]
 ## What would have helped
 
 - Checking `git stash && npx vitest run <path>` before concluding a test failure is due to my change. Saved a small amount of confusion about the flaky `app-bridge.test.tsx`.
+
+---
+date: 2026-05-10T16:36:00Z
+issue: 114
+pr: 199
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- **One-character fix (`{' '}` at span start) cleared the bug.** `OptimiereVorsorgeModal.tsx:437`: adding `{' '}` as the first child of `<span className="optimiere-modal__option-count">` separates the "Anpassen" text node from the span in `textContent`. No test changes needed — Stage 1's test was well-scoped and the fix made it pass immediately.
+- **`app-bridge.test.tsx` is a flaky test in the full suite.** It failed once during the first `npm run verify` run (assertion `typeof ctx.activeView` received `'undefined'`), then passed on a second run and in isolation. Same flakiness pattern observed in the #111 implement retro. Future agents: don't assume a single `npm run verify` failure in that file is caused by your change — verify with isolation first.
+- **`git stash / stash pop` is the right way to confirm pre-existing failures.** Stashing the fix, running the suspect test, and popping the stash takes ~10 seconds and definitively separates pre-existing vs. introduced failures.
+- **Stage 1's failing test used `container.querySelectorAll('.optimiere-modal__anpassen-btn')` + normalized textContent.** This was more robust than `getAllByText('Anpassen')` because RTL's `getAllByText` would match buttons with `textContent` `"Anpassen4 Optionen"` (mixed-content node quirk). Good pattern to remember for button content bugs.
