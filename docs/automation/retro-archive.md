@@ -297,3 +297,29 @@ labels: [enhancement]
 
 - Nothing; the issue body listed exact file:line references. The violation grep confirmed in one command.
 
+---
+date: 2026-05-10T15:10:00Z
+issue: 44
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Both bugs were confirmed in under 5 minutes by reading `src/app/optimiereVorsorge.ts` and `src/app/contractDecisions.ts:443`. The issue body cited exact file:line references that were all still valid in `main`.
+- **Bug A (scenario mismatch):** `simulateContractDecision` at `src/app/optimiereVorsorge.ts:92` hardcodes `returnScenarios[0]` (`konservativ`, 3 %) for picking the applied-workspace result. The default scenario order in `src/data/defaultScenario.ts:123-125` is `konservativ` first, `basis` second — so `[0]` always picks the wrong scenario when the modal uses `basis` (5 %). The fastest reproduction shortcut for "sign flip" bugs in `simulateContractDecision` is to grep for `returnScenarios[0]` in `optimiereVorsorge.ts`; any hardcoded index is suspect.
+- **Bug B (stale cache):** `beitragErhoehenWhatIf` at `contractDecisions.ts:443` builds `id: \`beitrag-erhoehen-\${instanceId}\`` with no `newMonthlyEUR` component. The cache key in `optimiereVorsorge.ts:144` is `\${fingerprint}::\${decision.id}`, so different `newMonthlyEUR` values on the same instance share one cache entry. The fingerprint only covers `workspace.baseline`, not `decision.workspaceDelta`.
+- The correct pattern for scenario selection is `pickBasisScenario` in `src/app/recommender.ts:362–377`: find by `id === 'basis'`, fall back to `returnScenarios[0]` only when 'basis' doesn't exist.
+- For Bug A failing test: use `basisCombinedFor` (finds `id === 'basis'`) vs the existing `baselineCombinedFor` (uses `[0]`) helper. A `weiterfuehren` (identity) decision with a `basisCombined` baseline produces `|delta| ≈ 0` after the fix; before the fix, `delta ≈ 728 EUR/month` (2 pp × 39 years compounded).
+- For Bug B failing test: build two decisions with different `newMonthlyEUR` (300 and 400), both produce the same `id`. After cache.get for decision300, cache.get for decision400 returns the stale result — confirmed by `expected -991.41 to be greater than -991.41`.
+
+## What would have helped
+
+- The audit comment posted on 2026-05-09 naming exact commit `cb7315e` and exact line numbers made this the fastest possible investigation run — no exploration needed at all.
+
