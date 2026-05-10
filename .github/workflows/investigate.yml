@@ -202,11 +202,50 @@ jobs:
                This fires `implement.yml`. Do NOT remove `in-progress-by-agent` —
                it stays on through Stage 2 and is cleared by the eventual merge.
 
-            7. **Done.** Stop. Do not implement the fix. Do not open a PR.
+            7. **Retro entry (mandatory, all exit paths).** Before stopping,
+               append one entry to `docs/automation/retro-archive.md` and push
+               directly to `main`. This applies to EVERY exit path: successful
+               hand-off, can't-reproduce, vague-report, already-implemented. Even
+               "no novel learnings" runs append an entry — it confirms the run
+               was routine.
+
+               Read `docs/automation/retro-archive.md` first to see the format
+               (frontmatter + Blockers + Learnings + optional "What would have
+               helped"). Then:
+
+               ```bash
+               git checkout main
+               git pull --rebase origin main
+               # append your entry to docs/automation/retro-archive.md
+               git add docs/automation/retro-archive.md
+               git commit -m "retro: investigate #$ISSUE_NUMBER"
+               git push origin main
+               ```
+
+               If `git push` fails because of a concurrent retro push from
+               another agent run, `git pull --rebase origin main` and retry once.
+
+               Be specific. "I learned about the codebase" is useless. File
+               paths, function names, line ranges, exact failure modes — that's
+               what helps future runs.
+
+               Stage-specific signal worth capturing in investigator retros:
+               - Reproduction shortcuts (where to start reading for class X)
+               - False-failure patterns (signals that look like bugs but aren't)
+               - Cases where the test was hard to write (and what would help)
+               - QA-tooling gotchas that masked the real issue (like target-id
+                 misidentification)
+
+            8. **Done.** Stop. Do not implement the fix. Do not open a PR.
 
             **Hard rules**
-            - Stay on the `agent/issue-$ISSUE_NUMBER` branch. Never push to `main`.
+            - Stay on the `agent/issue-$ISSUE_NUMBER` branch for code work. The
+              ONLY sanctioned push to `main` is the Step 7 retro append to
+              `docs/automation/retro-archive.md`.
             - Never commit secrets, credentials, or `.env` files.
+            - Step 7 retro fires on EVERY exit path — successful hand-off,
+              can't-reproduce, vague-report, already-implemented, error
+              escalation. No exit without a retro entry.
             - Never commit a fix in this stage. If you write a fix, you've done
               Stage 2's job — that's not your job and the test won't validate it.
             - If you cannot decide reproducible vs not-reproducible after careful

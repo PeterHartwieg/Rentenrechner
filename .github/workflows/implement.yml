@@ -128,13 +128,54 @@ jobs:
                  - The standard AI-generated marker from
                    docs/agents/issue-tracker.md
 
-            6. **Done.** Stop after the PR is created. Do NOT comment `@codex review` —
+            6. **Retro entry (mandatory, all exit paths).** Before stopping,
+               append one entry to `docs/automation/retro-archive.md` and push
+               directly to `main`. This applies to EVERY exit path: PR opened,
+               Stage 1 misdiagnosis escalation, missing investigation comment,
+               `npm run verify` won't pass. Even "no novel learnings" runs
+               append an entry — it confirms the run was routine.
+
+               Read `docs/automation/retro-archive.md` first to see the format
+               (frontmatter + Blockers + Learnings + optional "What would have
+               helped"). Then:
+
+               ```bash
+               git checkout main
+               git pull --rebase origin main
+               # append your entry to docs/automation/retro-archive.md
+               git add docs/automation/retro-archive.md
+               git commit -m "retro: implement #$ISSUE_NUMBER"
+               git push origin main
+               ```
+
+               If `git push` fails because of a concurrent retro push from
+               another agent run, `git pull --rebase origin main` and retry once.
+
+               Be specific. "I learned about the codebase" is useless. File
+               paths, function names, line ranges, exact failure modes — that's
+               what helps future runs.
+
+               Stage-specific signal worth capturing in implementer retros:
+               - Fix patterns that paid off (or surprised you)
+               - Verify-flow gotchas (`npm run verify` failures with non-obvious
+                 root causes)
+               - Cases where Stage 1's failing test was wrong / weak / had to
+                 be widened (Stage 1 escape signal)
+               - Codebase invariants you ran into mid-fix (e.g. "X must always
+                 happen before Y or Z breaks")
+
+            7. **Done.** Stop after the PR is created. Do NOT comment `@codex review` —
                the Codex GitHub integration auto-reviews on PR open. Do NOT remove
                `in-progress-by-agent` — that label is cleared by the merge step.
 
             **Hard rules**
-            - Stay on the `agent/issue-$ISSUE_NUMBER` branch. Never push to `main`.
+            - Stay on the `agent/issue-$ISSUE_NUMBER` branch for code work. The
+              ONLY sanctioned push to `main` is the Step 6 retro append to
+              `docs/automation/retro-archive.md`.
             - Never commit secrets, credentials, or `.env` files.
+            - Step 6 retro fires on EVERY exit path — PR opened, Stage 1
+              misdiagnosis escalation, missing investigation comment, verify
+              failure escalation. No exit without a retro entry.
             - Never modify or delete Stage 1's failing-test commit. If the test is
               wrong, that's a Stage 1 escape — escalate via `ready-for-human`, do
               not silently fix the test.

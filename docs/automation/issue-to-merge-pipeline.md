@@ -1,9 +1,11 @@
 # Issue → PR → Merge Pipeline
 
-Six GitHub Actions workflows that turn an `issues.opened` event into a
-merged PR with **one** human gate (label-based). Combines the Anthropic
-Claude Code Action with the OpenAI Codex GitHub integration for dual-LLM
-code review. Built to be portable across repos.
+Seven GitHub Actions workflows that turn an `issues.opened` event into a
+merged PR with **one** human gate (label-based), plus a continuous-
+learning loop that promotes recurring agent learnings into operational
+memory. Combines the Anthropic Claude Code Action with the OpenAI Codex
+GitHub integration for dual-LLM code review. Built to be portable across
+repos.
 
 > **Status on this repo**: live since 2026-05-10. Validated end-to-end on
 > issue #149 / PR #181.
@@ -30,7 +32,8 @@ issues (typo fixes, small bugs, copy changes, refactors found in code
 review) wants those issues to ship without manual implementation, and
 without sacrificing review quality.
 
-**Solution.** Six chained GitHub Actions workflows:
+**Solution.** Six chained GitHub Actions workflows for the issue → merge
+path, plus one daily cron for continuous learning:
 
 1. **Triage** an incoming issue (enrich body, classify bug/feature, apply
    area labels for downstream skip decisions) — leaves the issue at a
@@ -52,6 +55,20 @@ without sacrificing review quality.
 7. **Sweep** workflow handles Codex's intentional silence on P2/P3 PRs:
    merges any agent PR Claude approved + Codex didn't review within 20 min.
 
+**Continuous learning loop:**
+
+- Each `investigate.yml` and `implement.yml` agent session, before
+  exiting, appends a **retro entry** (Blockers + Learnings) to
+  `docs/automation/retro-archive.md` and pushes directly to `main`.
+- `retro-curate.yml` runs daily at 09:00 UTC. It reads entries from the
+  past 7 days, identifies recurring patterns or single high-signal
+  items, and opens a curation PR proposing promotions to **CLAUDE.md**
+  (project-wide knowledge), **`investigate.yml` prompt** (Stage-1-
+  specific signal), or **`implement.yml` prompt** (Stage-2-specific
+  signal).
+- Maintainer reviews + merges the curation PR. Promoted text becomes
+  operational memory; the archive is the evidence trail.
+
 **Why two stages for the agent's work?** A single Sonnet session that
 reads code, articulates a failure path, writes a test, applies a fix,
 and runs verify can balloon to 25–30 minutes — at the edge of useful
@@ -59,6 +76,12 @@ context for the model. The natural seam is between *deciding what's
 broken* (and proving it via a failing test) and *fixing it*. Splitting
 also means a non-reproducible bug exits cheaply — no wasted "fix" on a
 report that wasn't a real bug.
+
+**Why retro is inline (end of agent session) and not a separate post-
+merge workflow?** The agent that just did the work has full context in
+its working memory. A separate retro session would re-read the diff and
+re-derive learnings from cold context — high cost, less signal. Inline
+retro is a few extra prompt tokens at end of session for free.
 
 **What this does NOT do.**
 
@@ -149,6 +172,20 @@ review-loop.yml (Claude Code Action, Opus 4.7 — implementer-as-merger)
     ↓
 review-loop-sweep.yml (cron */30 min, pure shell — no Claude agent)
     merges any agent PR > 20 min old where Claude approved + Codex silent
+
+[parallel — every agent session ends with a retro append to main]
+    investigate.yml Step 7 + implement.yml Step 6 →
+    docs/automation/retro-archive.md (append-only, direct push to main)
+
+[daily 09:00 UTC]
+    ↓
+retro-curate.yml (Claude Code Action, Sonnet)
+    1. skip if a curate PR is already open
+    2. read entries from past 7 days, group by stage
+    3. identify promotable patterns (recurring OR single high-signal)
+    4. for each: decide target (CLAUDE.md / investigate.yml / implement.yml)
+    5. branch automation/retro-curate-YYYY-MM-DD, edit, open PR
+    6. maintainer reviews + merges (curation PR is for human review)
 ```
 
 ## Design decisions locked in
@@ -253,7 +290,7 @@ section in `CLAUDE.md` so the Claude reviewer applies the same bar.
 See this repo's `AGENTS.md` and `CLAUDE.md` for an example structure
 (P0 / P1 / Out-of-scope categories).
 
-## The six workflow files
+## The seven workflow files
 
 All live in `.github/workflows/`. Each is a few dozen lines — see the
 canonical files for the full content; this section explains what each
@@ -436,6 +473,33 @@ If a reviewer's feedback is unaddressable, posts a status comment on the
 PR, labels linked issue `ready-for-human`, removes
 `in-progress-by-agent`, exits.
 
+### `retro-curate.yml`
+
+| Trigger | Permissions | Model |
+|---------|-------------|-------|
+| `schedule: '0 9 * * *'`, `workflow_dispatch` | `contents:write`, `issues:write`, `pull-requests:write`, `id-token:write` | Sonnet (default) |
+
+Continuous-learning loop. Reads `docs/automation/retro-archive.md`,
+filters to entries from the past 7 days, identifies recurring patterns
+or single high-signal items, decides per-item whether the target is
+CLAUDE.md (project-wide), `investigate.yml` prompt (Stage-1-specific),
+or `implement.yml` prompt (Stage-2-specific), opens a curation PR with
+surgical edits.
+
+The retro archive is **append-only** — neither the curation agent nor
+the agent sessions ever modify or delete prior entries. Promoted text
+becomes operational memory; the archive is the immutable evidence
+trail. Sources are cited in the curation PR body by date + issue number
+so the maintainer can audit each proposed addition.
+
+Key safeguards:
+- Skips if any `automation/retro-curate-*` PR is already open (prevents
+  double-curation while a batch is pending review).
+- Exits cleanly on no-promotable-patterns days — many cron runs will
+  find nothing worth promoting; that's the intended steady state.
+- Never widens hard rules in workflow prompts without retro evidence;
+  hard rules are gates, not soft guidance.
+
 ### `review-loop-sweep.yml`
 
 | Trigger | Permissions | Model |
@@ -538,6 +602,8 @@ Each of these is tunable without touching the architecture.
 | Halt cap | Currently none. | Add an `iteration-cap` step to `review-loop.yml` that counts commits on the agent branch since open and bails to `ready-for-human` above N. |
 | Sweep threshold | `MIN_AGE_MINUTES` env var in `review-loop-sweep.yml` | Default 20 min. Increase if Codex sometimes takes longer; decrease for faster routine merges. |
 | Sweep cadence | `cron: '*/30 * * * *'` in `review-loop-sweep.yml` | Default every 30 min. Tighten for faster turnaround at small extra runner-minute cost. |
+| Retro curation cadence | `cron: '0 9 * * *'` in `retro-curate.yml` | Default daily 09:00 UTC. Tighten to `0 */12 * * *` (twice daily) if you want faster promotion of urgent learnings; loosen to weekly if PR queue noise is too high. |
+| Retro lookback window | "past 7 days" filter in `retro-curate.yml` Step 2 | Default 7 days — robust to skipped cron days and pending curation PRs. Tighten to 3 days if your archive grows fast; widen to 14 days if you want more cross-issue pattern detection. |
 | Reviewer prompt strictness | `prompt:` block in `claude-review.yml` | Tune the bullet list of "What to review" + reference your repo's `## Review guidelines`. |
 | Branch naming | `agent/issue-$ISSUE_NUMBER` in `investigate.yml` (creates) + `implement.yml` (consumes) + `startsWith(...,'agent/issue-')` in every other workflow | Change the prefix consistently across all five files. |
 | Merge style | `gh pr merge --squash --delete-branch` in `review-loop.yml` step 4a + `review-loop-sweep.yml` | Switch to `--merge` or `--rebase` if you want a different history. |
