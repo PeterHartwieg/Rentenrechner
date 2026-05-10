@@ -361,6 +361,34 @@ describe('OptimiereVorsorgeModal', () => {
     expect(container).toBeTruthy()
     expect(container!.textContent).toMatch(/\d+\s*(Option|Optionen)/)
   })
+
+  it('anpassen button text has a space between label and option count (#114)', () => {
+    // Bug #114: button textContent was "Anpassen4 Optionen" (no space) because the
+    // option-count <span> was concatenated directly after the "Anpassen" text node.
+    const { ws } = setupBavWorkspace()
+    const { getByText, container } = render(
+      <OptimiereVorsorgeModal
+        workspace={ws}
+        baselineCombined={makeBaseline()}
+        rules={de2026Rules}
+        onClose={() => {}}
+        onCreatePlans={() => {}}
+      />,
+    )
+    fireEvent.click(getByText(OPTIMIERE_BUTTON_ACCEPT))
+
+    const anpassenBtns = container.querySelectorAll('.optimiere-modal__anpassen-btn')
+    expect(anpassenBtns.length).toBeGreaterThanOrEqual(1)
+
+    // Every Anpassen button that shows an option count must have a space separator
+    // so the accessible name reads "Anpassen 4 Optionen", not "Anpassen4 Optionen".
+    for (const btn of Array.from(anpassenBtns)) {
+      const text = (btn.textContent ?? '').replace(/\s+/g, ' ').trim()
+      if (/\d+\s*(Option|Optionen)/.test(text)) {
+        expect(text).toMatch(/^Anpassen \d+ (Option|Optionen)$/)
+      }
+    }
+  })
 })
 
 describe('RentenluckeDashboard — Optimiere button', () => {
