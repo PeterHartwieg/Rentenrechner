@@ -158,3 +158,27 @@ labels: [code-review, enhancement]
 ## What would have helped
 
 - Stage 1's retro note "Stage 2 must extend the union AND verify the generator handles the new types correctly" was correct, but didn't name `routeHead.ts` explicitly. Naming the file would have surfaced the `buildJsonLd` fallthrough issue before the first verify run.
+
+---
+date: 2026-05-10T13:00:00Z
+issue: 146
+pr: null
+stage: investigate
+outcome: needs-info
+labels: [code-review, enhancement]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue #146 was filed against code that had already been patched. The fix (`computeInitialHookState` in `src/app/useCalculatorState.ts:75–86`) was applied in commit `01e78c6` as part of PR #129's reviewer round-1 cleanup — the same day the issue was filed from a code-review session.
+- For `code-review` / `enhancement` issues: always check `git log --oneline --all -- <file>` first. If the most recent commit touching the file postdates the issue's reported source session, read that commit message — the fix may already be in. The message in `01e78c6` explicitly stated "hoist loadInitialState + tighten test assertion" which directly addresses issue #146.
+- The comment in the current file ("URL-decode + localStorage read runs exactly once, inside a single lazy initializer, so mount cost is 1x instead of 3x") is a strong in-code signal that the enhancement was already applied — searching for it confirms the match immediately.
+- False-positive risk: code-review sessions produce issues that may lag behind concurrent PRs. The issue date (2026-05-09) and the fix commit date (2026-05-09 13:56) overlapped within the same day.
+
+## What would have helped
+
+- A grep for "loadInitialState" and reading `git log -- src/app/useCalculatorState.ts` before any code reading would have surfaced the answer in under 30 seconds.
