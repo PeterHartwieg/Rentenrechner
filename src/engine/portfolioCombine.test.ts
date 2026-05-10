@@ -555,6 +555,7 @@ describe('combinePortfolio — mixed insurance tax modes', () => {
       monthlyEmployerContribution: 0,
       totalUserCost: 200 * 12 * 39,
       totalProductContributions: 200 * 12 * 39,
+      totalContributionsBeforeFees: 200 * 12 * 39,
       totalEmployerContributions: 0,
       totalFees: 0,
       capitalAtRetirement: 200_000, // 100% gain over 93,600 contributions

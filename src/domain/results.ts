@@ -62,6 +62,9 @@ export interface BaseProductResult {
   monthlyEmployerContribution: number
   totalUserCost: number
   totalProductContributions: number
+  /** Full accumulation cost basis: regular contributions + injected transfer principal.
+   *  Equal to `totalProductContributions` when no transfer has injected capital. */
+  totalContributionsBeforeFees: number
   totalEmployerContributions: number
   totalFees: number
   capitalAtRetirement: number
