@@ -20,8 +20,8 @@
 // `inSitemap: false` so they are NOT listed in `sitemap.xml` or `llms.txt`
 // (they are not topic content), but they ARE prerendered with route-specific
 // head tags so crawlers see the right title / canonical / robots instead of
-// the homepage shell. JSON-LD type is `WebSite` (lowest-cost; legal pages
-// do not warrant `Article` or `WebApplication` markup).
+// the homepage shell. JSON-LD type is `AboutPage` for Impressum and `WebPage`
+// for Datenschutz (legal pages do not warrant `Article` or `WebApplication` markup).
 // ---------------------------------------------------------------------------
 
 import type { ProductId } from '../engine/productRegistry'
@@ -42,7 +42,7 @@ export type RobotsPolicy = 'index,follow' | 'noindex,follow'
  * `Article` is used for comparison/explanatory pages (e.g.
  * `/riester-vs-altersvorsorgedepot`) per the locked decision in issue #05.
  */
-export type JsonLdType = 'WebApplication' | 'WebSite' | 'Article'
+export type JsonLdType = 'WebApplication' | 'WebSite' | 'Article' | 'AboutPage' | 'WebPage'
 
 export interface CalculatorCta {
   /** Visible button label (German). */
@@ -512,7 +512,7 @@ export const publicRouteRegistry = {
   },
   // ---------------------------------------------------------------------------
   // Legal pages — prerendered with route-specific head tags but NOT in sitemap.
-  // Carry the brand-default OG image and `WebSite` JSON-LD (lowest cost).
+  // Carry the brand-default OG image and page-specific JSON-LD types.
   // ---------------------------------------------------------------------------
   '/impressum': {
     canonical: '/impressum',
@@ -528,7 +528,7 @@ export const publicRouteRegistry = {
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: false,
-    jsonLdType: 'WebSite',
+    jsonLdType: 'AboutPage',
     relatedRoutes: ['/', '/datenschutz'],
     calculatorCta: {
       label: 'Zurück zum Rechner',
@@ -549,7 +549,7 @@ export const publicRouteRegistry = {
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: false,
-    jsonLdType: 'WebSite',
+    jsonLdType: 'WebPage',
     relatedRoutes: ['/', '/impressum'],
     calculatorCta: {
       label: 'Zurück zum Rechner',

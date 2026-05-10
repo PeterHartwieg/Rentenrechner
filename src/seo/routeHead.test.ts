@@ -52,6 +52,16 @@ describe('buildRouteHead — per-route metadata shape', () => {
     expect(buildRouteHead('/404').jsonLd?.['@type']).toBe('WebSite')
   })
 
+  it('emits AboutPage JSON-LD for /impressum and WebPage for /datenschutz (#143)', () => {
+    // schema.org/WebSite represents the site as a whole; legal pages need
+    // page-specific types so crawlers can categorise them correctly.
+    // Registry-only assertions live in publicRouteRegistry.test.ts; this test
+    // exercises the full buildJsonLd → emitted `@type` path so a future
+    // regression in routeHead's branching is caught here.
+    expect(buildRouteHead('/impressum').jsonLd?.['@type']).toBe('AboutPage')
+    expect(buildRouteHead('/datenschutz').jsonLd?.['@type']).toBe('WebPage')
+  })
+
   it('emits Article JSON-LD with author, publisher, datePublished, mainEntityOfPage', () => {
     // `/etf-vs-bav` is one of the locked Article-type routes (issue #05).
     // External-reviewer enhancement: Article markup must carry an author,

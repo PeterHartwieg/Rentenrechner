@@ -69,10 +69,17 @@ describe('publicRouteRegistry — entry shape', () => {
     // are not topic content (see registry header comment).
     expect(publicRouteRegistry['/impressum'].robots).toBe('index,follow')
     expect(publicRouteRegistry['/impressum'].inSitemap).toBe(false)
-    expect(publicRouteRegistry['/impressum'].jsonLdType).toBe('WebSite')
     expect(publicRouteRegistry['/datenschutz'].robots).toBe('index,follow')
     expect(publicRouteRegistry['/datenschutz'].inSitemap).toBe(false)
-    expect(publicRouteRegistry['/datenschutz'].jsonLdType).toBe('WebSite')
+  })
+
+  // issue #143 — legal pages must use page-level JSON-LD types, not 'WebSite'
+  it('legal pages use page-specific JSON-LD types, not the site-level WebSite type (#143)', () => {
+    // schema.org/AboutPage is correct for an Impressum (legal notice / imprint).
+    expect(publicRouteRegistry['/impressum'].jsonLdType).toBe('AboutPage')
+    // schema.org/WebPage is the safe choice for Datenschutz; PrivacyPolicyPage
+    // exists in schema.org but is rarely emitted by major crawlers.
+    expect(publicRouteRegistry['/datenschutz'].jsonLdType).toBe('WebPage')
   })
 
   it('marks the homepage and topic page as indexable and in sitemap', () => {
