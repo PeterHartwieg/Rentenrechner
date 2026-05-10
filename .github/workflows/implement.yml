@@ -31,7 +31,7 @@ jobs:
           cache: npm
 
       - name: Install deps
-        run: npm ci
+        run: npm ci && npm --prefix workers/qa-submit ci
 
       - name: Mark in-progress-by-agent
         env:
