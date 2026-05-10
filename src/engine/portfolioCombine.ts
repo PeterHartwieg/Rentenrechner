@@ -359,8 +359,9 @@ function derivePavInsuranceTaxModeForCombine(
  * Compute the per-instance pAV `taxableAnnual` consistent with the existing
  * `netInsurancePayout` math (Ertragsanteil for Leibrente; gain ratio otherwise).
  *
- * `result.totalProductContributions` is treated as `totalContributionsBeforeFees`
- * — the two are equal in the accumulation projection (see `projectAccumulation`).
+ * Uses `result.totalContributionsBeforeFees` (regular contributions + injected transfer
+ * principal) as the cost basis so that surrender_reinvest transfers into pAV do not
+ * inflate the taxable gain.
  */
 function computePavTaxableAnnual(
   result: ProductResult,
@@ -377,7 +378,7 @@ function computePavTaxableAnnual(
   }
   // halbeinkuenfte / abgeltungsteuer: gain-ratio method
   const capital = result.capitalAtRetirement
-  const totalContributions = result.totalProductContributions
+  const totalContributions = result.totalContributionsBeforeFees
   const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
   return grossAnnual * gainRatio
   // Note: for `instance.payoutMode === 'leibrente'` we already returned above;

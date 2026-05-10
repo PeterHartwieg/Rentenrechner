@@ -196,6 +196,7 @@ export function synthesizeProductResult(args: {
     monthlyEmployerContribution: 0,
     totalUserCost: args.totalProductContributions,
     totalProductContributions: args.totalProductContributions,
+    totalContributionsBeforeFees: args.totalProductContributions,
     totalEmployerContributions: 0,
     totalFees: 0,
     capitalAtRetirement: args.capitalAtRetirement,

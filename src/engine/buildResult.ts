@@ -228,6 +228,7 @@ export function buildProductResult<
     monthlyEmployerContribution: params.monthlyEmployerContribution,
     totalUserCost: effectiveProjection.totalUserCost,
     totalProductContributions: effectiveProjection.totalProductContributions,
+    totalContributionsBeforeFees: effectiveProjection.totalContributionsBeforeFees,
     totalEmployerContributions: effectiveProjection.totalEmployerContributions,
     totalFees: effectiveProjection.totalFees,
     capitalAtRetirement: effectiveProjection.capital,
