@@ -14,11 +14,12 @@ repo, not just operate it on this one.
 |-----|-----------|--------|
 | [`issue-to-merge-pipeline.md`](issue-to-merge-pipeline.md) | `triage.yml`, `implement.yml`, `claude-review.yml`, `review-loop.yml`, `review-loop-sweep.yml` | ✅ Live |
 
-## Planned
-
-| Doc | Purpose | Status |
-|-----|---------|--------|
-| `feedback-loop.md` | Auto-respond to user/QA feedback issues with a templated triage comment + categorization, before the issue→PR pipeline picks them up | 📝 Planned |
+The QA-feedback "feedback loop" originally planned as a separate workflow
+is now folded into `triage.yml` as an 8-step decision tree (see the
+`triage.yml` section in `issue-to-merge-pipeline.md`). A separate workflow
+becomes worth building only when we want a different trigger surface —
+e.g. a periodic cron that re-scans the existing open-issue queue for
+emergent duplicates as new issues land.
 
 ## How to add a new automation
 

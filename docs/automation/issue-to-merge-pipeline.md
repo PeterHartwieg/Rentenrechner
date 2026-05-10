@@ -66,10 +66,15 @@ without sacrificing review quality.
 [issues.opened — human-created OR via QA worker / external automation]
     ↓
 triage.yml (Claude Code Action, Sonnet)
-    enriches issue body if bug, applies bug/enhancement + area:* labels,
-    leaves at needs-triage. Never applies ready-for-agent.
+    8-step decision tree: classifies into 5 source categories
+    (QA-anonymous, QA-maintainer, non-QA pre-curated, non-QA pre-reviewed,
+    non-QA plain), runs per-category dedup / already-fixed / enrichment /
+    guardrail-keyword / gate-state. Bounded QA bug reports (Major/Minor/Nit
+    × copy/layout/a11y × exact/nested precision × non-empty comment)
+    auto-promote to ready-for-agent. All other paths leave needs-triage on.
     ↓
-[human reviews triage; applies `ready-for-agent`]   ← only human gate
+[human reviews triage output; applies `ready-for-agent`]   ← human gate
+    (skipped on auto-promote; bypassed for from-maintainer QA submissions)
     ↓
 implement.yml (Claude Code Action, Sonnet)
     1. checks issue labels for area:ui-only / area:copy / documentation
@@ -167,6 +172,13 @@ gh label create in-progress-by-agent --color BFD4F2 --description "Implementer a
 gh label create area:ui-only         --color FBCA04 --description "Pure CSS/layout/visual change — TDD skip"
 gh label create area:copy            --color FBCA04 --description "Pure user-facing text change — TDD skip"
 # (the 'documentation' label is a GitHub default)
+
+# Triage decision-tree labels
+gh label create from-maintainer       --color 5319E7 --description "Submitted by maintainer via QA dev-code; pre-validated, skip dedup"
+gh label create needs-product-review  --color FFAA00 --description "Touches CLAUDE.md guardrails — needs product/license review before agent picks up"
+gh label create possible-duplicate    --color C5DEF5 --description "Title fuzzy-match against an existing open issue; maintainer please confirm"
+gh label create fixed-in-PR           --color 0E8A16 --description "Closed by triage as likely fixed by a recent merged PR; verify after deploy"
+# (the 'duplicate' label is a GitHub default — used for the strong-signal QA auto-close path)
 ```
 
 ### Branch protection
@@ -212,15 +224,54 @@ does and the key parameters that shape behavior.
 |---------|-------------|-------|
 | `issues.opened` | `contents:read`, `issues:write`, `id-token:write` | Sonnet (default) |
 
-Fires on every new issue (including QA-Worker-created submissions).
-Reads the issue, classifies it as bug / enhancement / needs-info, applies
-the right state and area labels, enriches the body with reproduction
-steps + relevant code paths if it's a bug. **Never applies
-`ready-for-agent`** — that's the human gate.
+Fires on every new issue. Runs an 8-step decision tree that classifies
+the issue into one of five **source categories** and branches per
+category for dedup / enrichment / guardrail-keyword / gate-state.
 
-Key behavior: detects QA-feedback Markdown shape (`## Was`, `## Wie
-reproduzieren`, etc.) and treats already-structured submissions as
-classification-only.
+**Source categories:**
+
+| Category | Detection signal | Treatment |
+|---|---|---|
+| **A. QA-anonymous** | Title `[Severity] qa(type): ...` regex match + body header table (`Target id`, `Route`, `Privacy flags`, …) + no `from-maintainer` label | **Strong dedup** (same `Target id` + `Route` → auto-close + label `duplicate`). **Already-fixed** check (any merged PR in last 14 days touching files matching the target id's semantic prefix → close + label `fixed-in-PR`). No body enrichment (header table + screenshot pinpoint the issue). |
+| **B. QA-maintainer** | A's signals + `from-maintainer` label (set by Worker on `?dev=` match) | **Skip dedup, already-fixed, product-review** — the maintainer has already considered the queue. |
+| **C. Non-QA pre-curated** | Body has checkboxes (`- [ ]`), or both `## What to change` + `## Acceptance criteria` headings, or a reference to `docs/adr/` / `docs/.../*.md` | No enrichment, no dedup — body is already curated. |
+| **D. Non-QA pre-reviewed** | Body has literal `Source: code-review session` or `Source: ultrareview` marker | No enrichment, no dedup — code-review session output is the curation. |
+| **E. Non-QA plain** | None of A–D | Light **title-only** dedup → label `possible-duplicate`, no auto-close. Enrich body if bug; leave alone if enhancement. |
+
+**Auto-promote to `ready-for-agent`** (skip the human gate, fire
+`implement.yml` immediately) only when ALL hold:
+
+- Source A or B (QA-Worker)
+- Classified as `bug` (not enhancement, not needs-info)
+- Step 4 dedup did not exit early
+- Title severity `Major` / `Minor` / `Nit` (NOT `BLOCKER`)
+- Title type `copy` / `layout` / `a11y`
+- `Target id` row present, `Precision` is `exact` or `nested`
+- `## Tester comment` non-empty (>10 chars of substance)
+
+**Maintainer dev-code path.** Open the calculator with `?dev=<code>` once
+per browser tab. Frontend (`src/features/qa-feedback/devCode.ts`) persists
+the code to sessionStorage and strips the URL param. The qa-submit Worker
+validates the POST payload's `devCode` field against the
+`MAINTAINER_DEV_CODE` Wrangler secret and applies the `from-maintainer`
+label on match — the code never appears in the issue body or any public
+surface. Triage then routes via category B and skips dedup +
+product-review on the maintainer's own filings.
+
+**Guardrail keyword check (enhancements only).** For sources A, D, and E
+(skipped for B and C — implicit maintainer trust), scans the body and
+`## Tester comment` for backend / commercial / compliance keywords
+(`telemetry`, `analytics`, `Berater`, `premium`, `Disclaimer entfernen`,
+…). On match: applies `needs-product-review` + posts a comment listing
+the matched keyword and the CLAUDE.md guardrail line it touches. The
+human still applies `ready-for-agent` after confirming the request is
+in-scope.
+
+**Wish re-route.** A QA-shape submission whose `## Tester comment` reads
+as a feature wish ("Wäre schön wenn…", "Kann das auch X?") is
+re-classified as `enhancement` despite the QA shape — preserving the
+screenshot and metadata while routing through the enhancement path
+(no auto-promote, guardrail check still runs).
 
 ### `implement.yml`
 
@@ -295,6 +346,8 @@ turnaround.
 | Action | How |
 |--------|-----|
 | Trigger an issue into implementation | `gh issue edit N --add-label ready-for-agent` (after reviewing triage output) |
+| Submit QA feedback as the maintainer (skip dedup) | Open the calculator with `?qa=1&dev=<your-code>` once per browser tab. Triage routes via category B. The code is set as the `MAINTAINER_DEV_CODE` Wrangler secret on `rentenwiki-qa-submit`. |
+| Override an auto-promote that's misclassified | Remove `ready-for-agent` and add `needs-info` or `ready-for-human`. If `implement.yml` already ran, close the PR — review loop won't re-open it. |
 | Re-fire a stuck Claude review | `git commit --allow-empty -m "kick" && git push` to the PR branch — fires `pull_request.synchronize` |
 | Re-fire a stuck Codex review | `gh pr comment N --body "@codex review"` |
 | Halt mid-pipeline | Remove `ready-for-agent` (no effect if implementation already started); close the PR (loop won't re-open it) |
@@ -365,6 +418,10 @@ Each of these is tunable without touching the architecture.
 | Reviewer model | `claude_args: --model <id>` in `claude-review.yml` and `review-loop.yml` `with:` block | Default Opus 4.7. Switch to Sonnet for faster/cheaper, or upgrade as new models ship. |
 | Implementer model | `claude_args` in `implement.yml` | Default Sonnet. Switch to Opus for harder bugs (slower / more expensive). |
 | TDD-skip categories | `if it contains any of area:ui-only, area:copy, documentation` clause in `implement.yml` prompt | Add or remove labels from the skip list. |
+| QA auto-promote eligibility | "Auto-promote to `ready-for-agent`" block in `triage.yml` prompt (Step 8) | Tighten/widen the severity × type matrix. Default: `Major`/`Minor`/`Nit` × `copy`/`layout`/`a11y`. Adding `qa(value)` widens to calc-output bugs; tightening to `Minor`/`Nit` only narrows to lowest-stakes. |
+| Guardrail keyword list | "Step 7" block in `triage.yml` prompt | Three groups (Backend / Commercial / Compliance). Each is a comma-separated keyword list, case-insensitive whole-word match. Add German equivalents as needed. |
+| QA Target id → file path mapping | "Step 4" block in `triage.yml` prompt (semantic prefix table) | Maps semantic ids like `inputs.<product>.*` to file globs. Update when your project's component layout differs. |
+| Maintainer dev-code | `MAINTAINER_DEV_CODE` Wrangler secret on `rentenwiki-qa-submit`; URL param `?dev=` in the QA-feedback frontend | Rotate via `wrangler secret put`. The code lives only in your sessionStorage and on the wire — never in any public surface. |
 | Halt cap | Currently none. | Add an `iteration-cap` step to `review-loop.yml` that counts commits on the agent branch since open and bails to `ready-for-human` above N. |
 | Sweep threshold | `MIN_AGE_MINUTES` env var in `review-loop-sweep.yml` | Default 20 min. Increase if Codex sometimes takes longer; decrease for faster routine merges. |
 | Sweep cadence | `cron: '*/30 * * * *'` in `review-loop-sweep.yml` | Default every 30 min. Tighten for faster turnaround at small extra runner-minute cost. |
@@ -395,20 +452,34 @@ end-to-end run to validate).
      in-progress-by-agent" prompt — adjust or drop if your repo doesn't
      have that convention.
 
-3. **Run the prerequisites checklist** above:
+3. **Subprojects with their own `package.json`.** If your repo has
+   subdirectories that ship their own `package.json` (in this repo:
+   `workers/qa-submit/`), the workflows that run `npm run verify` need
+   to install those subdir deps too — the root `npm ci` doesn't traverse
+   into them. The "Install deps" step in `implement.yml` and
+   `review-loop.yml` runs `npm ci && npm --prefix workers/qa-submit ci`
+   for that reason (this repo's `npm run verify` chains
+   `worker:typecheck` and `worker:test`, both of which need
+   `@cloudflare/workers-types` from the subdir). When porting to a
+   different repo, replace `workers/qa-submit` with your subproject path
+   — or drop the second `npm ci` if you don't have one. Symptom of
+   forgetting: `tsc --noEmit` fails in CI with "Cannot find type
+   definition file for ..." (commit `efcfc75` for the original fix).
+
+4. **Run the prerequisites checklist** above:
    - Install Codex GitHub App + configure auto-review
    - Generate `CLAUDE_CODE_OAUTH_TOKEN` + add as repo secret
    - Create labels (`gh label create ...`)
    - Optional: branch protection
    - Add `## Review guidelines` to your `AGENTS.md` + `CLAUDE.md`
 
-4. **First-PR workaround**: when you fire your first issue through, the
+5. **First-PR workaround**: when you fire your first issue through, the
    PR branch will be missing the latest workflow YAML on `main`. Merge
    `main` into the PR branch and push (one-time per install). See
    "Known quirks" §3.
 
-5. **Validate end-to-end** on a tiny throwaway issue (e.g. a typo fix in
+6. **Validate end-to-end** on a tiny throwaway issue (e.g. a typo fix in
    README). Watch the Actions tab for each phase. Don't fire your real
    backlog until this works clean.
 
-6. **Tune** to taste — see "Customization points" above.
+7. **Tune** to taste — see "Customization points" above.
