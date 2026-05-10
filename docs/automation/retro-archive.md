@@ -571,3 +571,27 @@ labels: [area:ui-only]
 - **Test selector flexibility**: Stage 1's test used `querySelectorAll('h3, [role="heading"], .warnings-group-heading')` — any of the three works. Using `h3` with an additional class `warnings-group-heading` satisfies all three selectors at once.
 - **CSS scope**: group-heading styles are small and self-contained — 4 rules added to `CalculationWarnings.css` (`.warnings-group`, `.warnings-group:last-child`, `.warnings-group-heading`, `.warnings-group-empty`). No global stylesheet touched.
 - **`npm run verify` is the right gate**: all 141 test files + lint + build passed in one shot after the implementation. No type errors because `WarningStatus` was already exported from `productPresentation.ts`.
+
+---
+date: 2026-05-10T16:32:00Z
+issue: 114
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- **JSX text-node concatenation omits whitespace.** In `OptimiereVorsorgeModal.tsx:435–439`, the "Anpassen" text literal and the `<span class="optimiere-modal__option-count">` child are siblings in the JSX tree with no explicit space between them. JSX strips the trailing newline/whitespace between a text literal and a following JSX expression, so the rendered DOM is `<button>Anpassen<span>4 Optionen</span></button>` — `button.textContent` = `"Anpassen4 Optionen"` (no space). The fix is to add `{' '}` between the text node and the span.
+- **RTL `getAllByText('Anpassen')` finds buttons with text `"Anpassen4 Optionen"`.** Despite `exact: true`, RTL matched buttons whose `textContent` was `"Anpassen4 Optionen"`. This is a surprising RTL behavior for mixed-content nodes; don't rely on `getAllByText(string)` to gate the bug — use `element.textContent` and `replace(/\s+/g, ' ').trim()` in the assertion instead.
+- **Right test anchor for this class of bug**: use `container.querySelectorAll('.optimiere-modal__anpassen-btn')` to locate all "Anpassen" buttons, then assert each button's normalized `textContent` matches `/^Anpassen \d+ (Option|Optionen)$/` when a count span is present. This fails with the current code and passes after the fix.
+- **`migrateV1ToV2` with `visibleProducts: ['bav']` creates 6 bAV instances**, not 1. The `bav[0]` reference in the test fixture is just one of them. When debugging the overview step, `querySelectorAll('.optimiere-modal__anpassen-btn')` returns 6 buttons, each showing a different option count.
+
+## What would have helped
+
+- A quick `container.querySelectorAll('.optimiere-modal__anpassen-btn')` debug run before writing the test confirmed the exact textContent format immediately. For JSX spacing bugs, DOM inspection via `innerHTML` is faster than reasoning through JSX whitespace rules.
