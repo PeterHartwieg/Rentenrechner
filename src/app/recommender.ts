@@ -480,6 +480,8 @@ function combinedForCandidate(
         netMonthlyPayout: r.netMonthlyPayout + draft.candidateResult.netMonthlyPayout,
         capitalAtRetirement: r.capitalAtRetirement + draft.candidateResult.capitalAtRetirement,
         totalProductContributions: r.totalProductContributions + draft.candidateResult.totalProductContributions,
+        totalContributionsBeforeFees:
+          r.totalContributionsBeforeFees + draft.candidateResult.totalContributionsBeforeFees,
       }
     })
     if (!matchedExistingResult) {
