@@ -10,6 +10,7 @@ function isWorkspaceView(value: unknown): value is WorkspaceView {
 }
 
 function readStoredView(): WorkspaceView | null {
+  if (typeof localStorage === 'undefined') return null
   try {
     const raw = localStorage.getItem(WORKSPACE_KEY)
     if (!raw) return null
@@ -21,6 +22,7 @@ function readStoredView(): WorkspaceView | null {
 }
 
 function writeStoredView(view: WorkspaceView) {
+  if (typeof localStorage === 'undefined') return
   try {
     localStorage.setItem(WORKSPACE_KEY, view)
   } catch {
