@@ -22,7 +22,7 @@ describe('generateLlmsTxt — content and structure', () => {
     expect(txt).toContain(`> ${LLMS_TXT_PURPOSE}`)
     expect(LLMS_TXT_PURPOSE).toMatch(/keine Steuer-, Rechts- oder Anlageberatung/i)
     expect(LLMS_TXT_PURPOSE).toMatch(/PolyForm Noncommercial/i)
-    expect(LLMS_TXT_PURPOSE).toMatch(/Stand 2026/i)
+    expect(LLMS_TXT_PURPOSE).toMatch(/Stand \d{4}/i)
   })
 
   it('contains the German section heading for the route list', () => {

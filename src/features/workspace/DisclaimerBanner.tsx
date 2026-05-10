@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Info } from 'lucide-react'
+import { RULES_YEAR } from '../../rules'
 import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 
 export const DISMISS_KEY = 'disclaimer-dismissed'
@@ -69,7 +70,7 @@ export function DisclaimerBanner() {
       {showPopup && (
         <div className="disclaimer-popup" role="note">
           <p>
-            Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (Steuersätze,
+            Alle Berechnungen verwenden gesetzliche Werte mit Stand {RULES_YEAR} (Steuersätze,
             Sozialversicherungsbeiträge, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband).
             Die Ergebnisse sind Schätzungen unter Ihren Annahmen — Renditen, Inflation,
             Lebenserwartung und künftige Gesetzesänderungen sind unbekannt.

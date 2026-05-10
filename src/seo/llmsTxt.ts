@@ -24,6 +24,7 @@
 // Treated as experimental — see `docs/seo/llms-txt.md`.
 // ---------------------------------------------------------------------------
 
+import { RULES_YEAR } from '../rules'
 import {
   PUBLIC_ROUTE_IDS,
   buildCanonicalUrl,
@@ -34,14 +35,14 @@ import {
 
 /**
  * Site purpose statement embedded as the llms.txt blockquote header. Matches
- * the disclaimer posture (not advice, non-commercial license) and the 2026
- * statutory-data window. Kept in sync with the homepage meta description but
- * trimmed to a single sentence per llmstxt.org convention.
+ * the disclaimer posture (not advice, non-commercial license) and the active
+ * rules-year statutory-data window. Kept in sync with the homepage meta
+ * description but trimmed to a single sentence per llmstxt.org convention.
  */
 export const LLMS_TXT_PURPOSE =
   'Kostenloser Modellrechner für die Altersvorsorge in Deutschland. ' +
   'Keine Steuer-, Rechts- oder Anlageberatung. ' +
-  'Quelloffen, nicht-kommerziell (PolyForm Noncommercial 1.0.0). Stand 2026.'
+  `Quelloffen, nicht-kommerziell (PolyForm Noncommercial 1.0.0). Stand ${RULES_YEAR}.`
 
 /**
  * Heading for the route list section. German to match the rest of the site.
