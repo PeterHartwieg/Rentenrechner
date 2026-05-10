@@ -126,6 +126,14 @@ jobs:
                `enhancement`): Confirm the requested behavior is currently MISSING.
                Sometimes the codebase already supports what the issue asks for and
                the reporter missed it.
+
+               **`code-review` issues** ($ISSUE_LABELS contains `code-review`): before
+               reading each affected file, run `git log --oneline --all -- <file>`.
+               Code-review sessions may lag concurrent PRs by hours — the most recent
+               commit touching the file may already address the report. If the commit
+               message references the same behavior, read it and exit via "Already
+               present" if the fix is confirmed.
+
                - **Already present** → comment with where the existing implementation
                  lives, apply `needs-info` (so the human can confirm it's actually a
                  different ask), remove `in-progress-by-agent`, exit cleanly.
@@ -230,6 +238,7 @@ jobs:
                prior entries. Then:
 
                ```bash
+               git stash  # npm run verify regenerates public/og/*.png — stash to keep checkout clean
                git checkout main
                git pull --rebase origin main
                # append your entry to docs/automation/retro-archive.md

@@ -166,6 +166,15 @@ jobs:
                unrelated reason, leave a note in the PR body and continue — do not
                silently disable tests.
 
+               Type-check note: `npm run verify` uses `tsc -b` (project-reference
+               mode). `npx tsc --noEmit` alone misses errors in files that use `as T`
+               casts or project references — never use it as a substitute.
+
+               Pre-existing flakiness: `src/features/qa-feedback/__tests__/app-bridge.test.tsx`
+               has an intermittent failure on `typeof ctx.activeView`. If it fails,
+               confirm it's pre-existing before attributing it to your change:
+               `git stash && npx vitest run src/features/qa-feedback/__tests__/app-bridge.test.tsx && git stash pop`.
+
             4. **Commit + push.** Commit with a clear message ending with
                `Refs #$ISSUE_NUMBER`. Push the branch.
 
@@ -196,6 +205,7 @@ jobs:
                prior entries. Then:
 
                ```bash
+               git stash  # npm run verify regenerates public/og/*.png — stash to keep checkout clean
                git checkout main
                git pull --rebase origin main
                # append your entry to docs/automation/retro-archive.md
