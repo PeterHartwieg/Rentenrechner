@@ -196,10 +196,10 @@ export const publicRouteRegistry = {
   },
   '/rentenluecke-rechner': {
     canonical: '/rentenluecke-rechner',
-    title: 'Rentenlücke berechnen 2026 | RentenWiki.de',
+    title: `Rentenlücke berechnen ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Rentenlücke berechnen: gewünschte Nettorente minus erwartete GRV-Rente plus ' +
-      'weitere Vorsorge. Kostenlos, lokal im Browser, Werte 2026.',
+      `weitere Vorsorge. Kostenlos, lokal im Browser, Werte ${RULES_YEAR}.`,
     h1: `Rentenlücke berechnen: Versorgungslücke in Deutschland ${RULES_YEAR}`,
     summary:
       'Berechnet die Rentenlücke aus Wunschrente, gesetzlicher Rente und privater Vorsorge. ' +

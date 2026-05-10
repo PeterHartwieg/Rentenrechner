@@ -20,8 +20,7 @@ import { deriveBavLumpSumTaxMode } from './engine/bavPayout'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from './engine/insurancePayout'
 import { projectGrvContributionTimeline } from './engine/grv'
 import { deriveRentenluckeOverviewFromCombine } from './app/simulationSelectors'
-import { de2026Rules } from './rules/de2026'
-import { RULES_YEAR } from './rules'
+import { activeRules, RULES_YEAR } from './rules'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useDerivedViews } from './app/useDerivedViews'
@@ -297,7 +296,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     for (const inst of wa.insurance) {
       const runtimeYears = computeRuntimeYearsAtRetirement(
         inst.contractStartYear,
-        de2026Rules.year,
+        activeRules.year,
         combineProfile.age,
         combineProfile.retirementAge,
       )
@@ -354,7 +353,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     handleExportCsv,
   } = views
 
-  const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
+  const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(activeRules)
 
   const hasComparisonSet = assumptions.visibleProducts.length > 0
 
@@ -363,7 +362,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     return runSensitivity({
       profile,
       assumptions,
-      rules: de2026Rules,
+      rules: activeRules,
       visibleProducts: assumptions.visibleProducts,
     })
   }, [profile, assumptions, hasComparisonSet])
@@ -459,7 +458,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     () =>
       projectGrvContributionTimeline(
         profile,
-        de2026Rules,
+        activeRules,
         assumptions.statutoryPension,
         (simulation.bavFunding.estimatedMonthlyGrvReduction ?? 0) * 12,
       ),
@@ -473,7 +472,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     () =>
       projectGrvContributionTimeline(
         combineProfile,
-        de2026Rules,
+        activeRules,
         portfolioState.workspace.baseline.assumptions.statutoryPension,
         undefined,
       ),
@@ -551,7 +550,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             <OptimiereVorsorgeModal
               workspace={portfolioState.workspace}
               baselineCombined={combineBasisResult}
-              rules={de2026Rules}
+              rules={activeRules}
               onClose={() => setShowOptimiereModal(false)}
               onCreatePlans={(whatIfs) => {
                 whatIfs.forEach((wi) => portfolioState.addWhatIf(wi))
@@ -617,7 +616,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 assumptions={assumptions}
                 onAssumptionsChange={setAssumptions}
                 avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
-                avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
+                avdContractCapAnnual={activeRules.altersvorsorgedepot.contractContributionCapAnnual}
                 onOpenInputsForProduct={(productId) => {
                   setRequestedInputsTab(productId)
                   workspace.setActiveView('angebot')
@@ -689,7 +688,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
           <AssumptionsPanel
             show={ui.showAssumptions}
             onToggle={() => ui.setShowAssumptions((v) => !v)}
-            rules={de2026Rules}
+            rules={activeRules}
             bavMinAnnual={bavMinAnnual}
             bavMinMonthly={bavMinMonthly}
           />
@@ -725,7 +724,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 profile={profile}
                 assumptions={assumptions}
                 bavFunding={simulation.bavFunding}
-                rules={de2026Rules}
+                rules={activeRules}
               />
 
               <CalculationWarnings />
@@ -756,7 +755,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               <AssumptionsPanel
                 show={ui.showAssumptions}
                 onToggle={() => ui.setShowAssumptions((v) => !v)}
-                rules={de2026Rules}
+                rules={activeRules}
                 bavMinAnnual={bavMinAnnual}
                 bavMinMonthly={bavMinMonthly}
               />
