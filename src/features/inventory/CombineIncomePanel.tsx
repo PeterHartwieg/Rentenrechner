@@ -88,8 +88,19 @@ export function CombineIncomePanel({
     .map((arr) => arr.find((r) => r.scenarioId === scenarioId))
     .filter((r): r is ProductResult => r !== undefined)
 
-  // Instances with model_estimate confidence.
-  const estimatedResults = allResults.filter((r) => r.inputConfidence === 'model_estimate')
+  // Instances with explicit model_estimate evidence.
+  // When instanceEvidenceMaps is provided for an instance, only count fields
+  // explicitly set to 'model_estimate' — absent fields (zero values, "übernommen")
+  // must not trigger the badge. Without a map entry, fall back to inputConfidence.
+  const estimatedResults = allResults.filter((r) => {
+    const instanceId = r.instanceId ?? r.productId
+    if (instanceEvidenceMaps !== undefined && instanceId in instanceEvidenceMaps) {
+      return Object.values(instanceEvidenceMaps[instanceId]).some(
+        (state) => state === 'model_estimate',
+      )
+    }
+    return r.inputConfidence === 'model_estimate'
+  })
   const hasEstimates = estimatedResults.length > 0
 
   return (

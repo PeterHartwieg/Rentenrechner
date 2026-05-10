@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render tests for CombineIncomePanel (Group G issue 09).
+ * Render tests for CombineIncomePanel (Group G issue 09 + issue 111).
  *
  * Karin shape: one bAV instance with empty evidenceMap → inputConfidence is
  * 'model_estimate' → the "🤔 Teilweise geschätzt" badge must appear.
@@ -12,6 +12,10 @@
  *     inputConfidence === 'model_estimate'.
  *   - Does NOT render the badge when all instances are user_confirmed.
  *   - Badge click opens the popover listing estimated instances.
+ *   - Issue #111: Badge must NOT appear when inputConfidence is model_estimate
+ *     solely because evidenceMap fields are absent (not explicitly estimated).
+ *     Only explicit EvidenceState === 'model_estimate' in instanceEvidenceMaps
+ *     should trigger the badge ("übernommen"/zero values must not trigger it).
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
@@ -161,5 +165,80 @@ describe('CombineIncomePanel', () => {
     expect(screen.queryByRole('tooltip')).toBeTruthy()
     fireEvent.click(badge)
     expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
+  // Issue #111 regression tests: badge must be driven by explicit EvidenceState,
+  // not by absent/undefined evidenceMap entries.
+  // lowestConfidence() returns 'model_estimate' for absent fields, but the badge
+  // should only trigger on explicit 'model_estimate' in instanceEvidenceMaps.
+
+  it('[#111] does NOT show badge when instanceEvidenceMaps is empty (all-übernommen / zero values)', () => {
+    // Real-world trigger: user accepts zero values via wizard but the wizard
+    // does not write evidenceMap entries for them. lowestConfidence() then
+    // returns 'model_estimate' (treating absent fields as estimated), which
+    // propagates to ProductResult.inputConfidence. The badge must not fire for
+    // these instances — only explicit model_estimate values should trigger it.
+    render(
+      <CombineIncomePanel
+        combinedResult={makeCombinedResult()}
+        perInstanceResults={{
+          'bav-test01': [makeProductResult({ inputConfidence: 'model_estimate' })],
+        }}
+        scenarioId="basis"
+        scenarioLabel="Basis"
+        instanceEvidenceMaps={{ 'bav-test01': {} }}
+      />,
+    )
+    expect(screen.queryByText(/Teilweise geschätzt/)).toBeNull()
+  })
+
+  it('[#111] does NOT show badge when all instanceEvidenceMaps fields are user_confirmed (all-bestätigt)', () => {
+    render(
+      <CombineIncomePanel
+        combinedResult={makeCombinedResult()}
+        perInstanceResults={{
+          'bav-test01': [makeProductResult({ inputConfidence: 'model_estimate' })],
+        }}
+        scenarioId="basis"
+        scenarioLabel="Basis"
+        instanceEvidenceMaps={{
+          'bav-test01': {
+            monthlyGrossConversion: 'user_confirmed',
+            'fees.wrapperAssetFee': 'user_confirmed',
+            'fees.fundAssetFee': 'user_confirmed',
+            'fees.acquisitionCostPct': 'user_confirmed',
+            'fees.pensionPayoutFeePct': 'user_confirmed',
+            contractualMatchPercent: 'user_confirmed',
+            contractualFixedMonthly: 'user_confirmed',
+            acquisitionCostPct: 'user_confirmed',
+            durchfuehrungsweg: 'user_confirmed',
+            pre2005EligibleTaxFree: 'user_confirmed',
+            rentenfaktor: 'user_confirmed',
+            payoutMode: 'user_confirmed',
+          },
+        }}
+      />,
+    )
+    expect(screen.queryByText(/Teilweise geschätzt/)).toBeNull()
+  })
+
+  it('[#111] shows badge when instanceEvidenceMaps has at least one explicit model_estimate field (mixed bestätigt+geschätzt)', () => {
+    render(
+      <CombineIncomePanel
+        combinedResult={makeCombinedResult()}
+        perInstanceResults={{
+          'bav-test01': [makeProductResult({ inputConfidence: 'model_estimate' })],
+        }}
+        scenarioId="basis"
+        scenarioLabel="Basis"
+        instanceEvidenceMaps={{
+          'bav-test01': {
+            monthlyGrossConversion: 'model_estimate',
+            'fees.wrapperAssetFee': 'user_confirmed',
+          },
+        }}
+      />,
+    )
+    expect(screen.getByText(/Teilweise geschätzt/)).toBeTruthy()
   })
 })
