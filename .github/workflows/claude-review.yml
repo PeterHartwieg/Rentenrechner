@@ -41,14 +41,16 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: '*'
-          claude_args: --model claude-opus-4-7 --allowed-tools Bash(gh:*),Bash(git:*),Bash(npx:*),Bash(npm:*),Read,Grep,Glob
+          claude_args: --model claude-opus-4-7 --allowed-tools Bash(gh:*),Bash(git:*),Read,Grep,Glob
           prompt: |
             You are the Claude reviewer for PR #$PR_NUMBER on commit $PR_HEAD_SHA in
             PeterHartwieg/Rentenrechner. Branch: $PR_BRANCH.
 
-            Read `CLAUDE.md` and `CONTEXT.md` first — those define project conventions,
-            critical guardrails (license disclaimer, no PII, fair-comparison invariant),
-            and module ownership.
+            `CLAUDE.md` and `CONTEXT.md` are already loaded into your context via the
+            harness's `claudeMd` system reminder — do NOT issue Read calls on those
+            files. The sections you'll most often need: "Critical guardrails",
+            "Review guidelines" (P0/P1 categories), "UI rounding boundary",
+            "Non-obvious architecture".
 
             **Inputs**
             - Use `gh pr view $PR_NUMBER --json title,body,labels,files,additions,deletions`
@@ -75,8 +77,15 @@ jobs:
             5. **Critical guardrails.** Disclaimer banner stays session-only. No new
                network surfaces without ADR. No PII collection. Fair-comparison invariant
                preserved in compare-mode. Public copy uses `RentenWiki.de`.
-            6. **Verification.** Run `npm run verify` to confirm lint + tests + build pass
-               on this commit.
+            6. **Verification.** A separate `pr-verify` workflow runs `npm run verify`
+               on every PR — do NOT re-run it from this prompt (you don't have the
+               npm allow-list anyway). Check its result via
+               `gh pr checks $PR_NUMBER --json name,state,conclusion --jq '.[] | select(.name == "verify")'`.
+               If verify failed or is still running with a known failure, that's
+               automatic `Verdict: Request changes` with the failure summary in
+               the body. If verify is queued or in-progress, you may approve on
+               other criteria — review-loop will block the merge until verify
+               passes (it re-checks before `gh pr merge`).
 
             **Output**
 
@@ -120,8 +129,9 @@ jobs:
               the sweep cannot merge it.
             - Do not push commits, do not edit files, do not edit the PR body, do not
               add or remove labels — your only output is the formal review.
-            - If `npm run verify` fails on the head commit, that's automatic
-              `Verdict: Request changes` with the failure summary in the body.
+            - If the `pr-verify` check (separate workflow) failed on the head commit,
+              that's automatic `Verdict: Request changes` with the failure summary
+              copied from `gh run view` in the body.
             - Stay terse. The review body is read by both humans and the implementer
               agent on the next iteration; bulleted findings beat prose paragraphs.
             - **Do not expand the agent's scope by suggesting "could also do X"** in your

@@ -210,11 +210,40 @@ jobs:
             - `Target id` row is present AND `Precision` is `exact` or `nested`.
             - `## Tester comment` is non-empty after trim (>10 characters of substance).
 
-            On auto-promote: apply `ready-for-agent` and the area label from Step 6.
-            `implement.yml` will fire immediately on the labeling event. Do NOT post an
-            audit-trail comment — the labels alone are the trail.
+            **Single-stage shortcut.** Within the auto-promote bucket, additionally
+            check: if the area label from Step 6 is `area:copy` OR `area:ui-only`
+            AND `Precision` is `exact` (NOT `nested`), apply `ready-for-PR`
+            DIRECTLY instead of `ready-for-agent`. This skips Stage 1
+            (`investigate.yml`) for trivial fixes — the implementer agent will do
+            the lightweight reproduction inline. Saves one full agent session on
+            the easiest issues.
 
-            Otherwise: keep `needs-triage` on. Do NOT apply `ready-for-agent`.
+            **On EITHER auto-promote path** (standard `ready-for-agent` or
+            single-stage `ready-for-PR`), the label edit must remove
+            `needs-triage` in the same call so the issue's state stays accurate
+            once triage is done. Use one combined command. Examples:
+
+            ```bash
+            # Standard two-stage auto-promote:
+            gh issue edit $ISSUE_NUMBER \
+              --add-label ready-for-agent,<area-label-if-any> \
+              --remove-label needs-triage
+
+            # Single-stage shortcut (also adds in-progress-by-agent because Stage 1
+            # is skipped and Stage 1 is what normally applies it):
+            gh issue edit $ISSUE_NUMBER \
+              --add-label ready-for-PR,in-progress-by-agent,<area-label-if-any> \
+              --remove-label needs-triage
+            ```
+
+            For all other auto-promote cases (a11y, value, or `nested` precision):
+            standard two-stage path. `investigate.yml` fires.
+
+            Do NOT post an audit-trail comment in either case — the labels alone are
+            the trail.
+
+            Otherwise (not auto-promote-eligible): keep `needs-triage` on. Do NOT
+            apply `ready-for-agent` or `ready-for-PR`.
 
             **Hard rules**
             - Use only the `gh` CLI for label edits, body edits, comments, and closes.

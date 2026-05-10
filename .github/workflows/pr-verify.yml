@@ -1,0 +1,42 @@
+name: pr-verify
+
+# Standalone `npm run verify` for agent PRs. Replaces the verify step that
+# claude-review.yml used to invoke under Opus — runs the same lint+test+build
+# without burning model tokens. claude-review.yml now reads this check's
+# result via `gh pr checks` instead of running verify itself.
+#
+# Also gates review-loop's merge step (review-loop re-checks before
+# `gh pr merge --squash --delete-branch` per its own contract).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-verify-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        run: npm ci && npm --prefix workers/qa-submit ci
+
+      - name: Run verify
+        run: npm run verify

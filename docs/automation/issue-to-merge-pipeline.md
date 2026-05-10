@@ -1,6 +1,6 @@
 # Issue → PR → Merge Pipeline
 
-Seven GitHub Actions workflows that turn an `issues.opened` event into a
+Eight GitHub Actions workflows that turn an `issues.opened` event into a
 merged PR with **one** human gate (label-based), plus a continuous-
 learning loop that promotes recurring agent learnings into operational
 memory. Combines the Anthropic Claude Code Action with the OpenAI Codex
@@ -8,7 +8,10 @@ GitHub integration for dual-LLM code review. Built to be portable across
 repos.
 
 > **Status on this repo**: live since 2026-05-10. Validated end-to-end on
-> issue #149 / PR #181.
+> issue #149 / PR #181. Token-optimized 2026-05-10 (Opus→Sonnet on
+> review-loop, single-stage shortcut for trivial issues, retro template
+> extracted, verify split into standalone workflow, etc. — see
+> [Token-optimization changelog](#token-optimization-changelog)).
 
 ## Table of contents
 
@@ -689,3 +692,66 @@ end-to-end run to validate).
    backlog until this works clean.
 
 7. **Tune** to taste — see "Customization points" above.
+
+## Token-optimization changelog
+
+Applied 2026-05-10 after the first ~13 retro entries showed where tokens
+were going. Order matches the optimization PR — see commit history for
+the diffs.
+
+1. **`review-loop.yml`: Opus 4.7 → Sonnet (default).** The implementer-as-
+   merger does the same cognitive work as `implement.yml` (which is
+   already Sonnet) — read asks, edit, verify, commit — plus a shell
+   merge. Opus on this surface was the largest unjustified cost. The
+   3-commit runaway cap (Step 0) protects against Sonnet looping.
+   `claude-review.yml` stays on Opus 4.7 — that's the judgement layer
+   where the model uplift matters.
+2. **Single-stage shortcut for trivial issues.** Triage now applies
+   `ready-for-PR` directly (skipping `investigate.yml`) when ALL hold:
+   QA-source bug, auto-promote eligible, area label is `area:copy` or
+   `area:ui-only`, `Precision: exact`. The implementer detects the
+   single-stage path via "no Stage 1 comment + no commits beyond main"
+   and does a lightweight inline reproduction. Saves a full Sonnet
+   session on the easiest issues (which the retro showed were also the
+   most numerous).
+3. **Stop re-reading CLAUDE.md and CONTEXT.md.** Both files auto-load
+   via the harness's `claudeMd` system reminder. All five Claude
+   workflow prompts now explicitly tell the agent NOT to issue Read
+   calls on those files (was: "Read CLAUDE.md and CONTEXT.md first" —
+   prompted redundant tool calls). Cuts 2-4 tool round-trips per agent
+   run.
+4. **Retro template extracted.** Agents read
+   `docs/automation/retro-template.md` (~1 KB, stable) for entry format
+   instead of `docs/automation/retro-archive.md` (grows monotonically,
+   already ~600 lines). `retro-curate.yml` switched from re-reading the
+   full archive to `git log --since='7 days ago' --pretty=format:%H --
+   docs/automation/retro-archive.md` + per-commit `git show` — only
+   reads the entries it actually needs.
+5. **Filter `review-loop.yml` on noisy COMMENTED events.** Pre-filter
+   step at the top of the workflow: if the triggering review is
+   `COMMENTED` with no `Verdict: Request changes` AND Claude has already
+   approved on HEAD, skip every subsequent step. The 10-min sweep
+   handles the merge. Worst-case latency penalty: 10 min on routine
+   approvals. Best case (most common): zero Claude tokens.
+6. **`npm run verify` split out of `claude-review.yml`.** New
+   `pr-verify.yml` runs lint+test+build on every agent PR — pure
+   Actions, no Claude. The reviewer reads the result via
+   `gh pr checks --json` instead of running verify itself (and lost the
+   `Bash(npm:*)` / `Bash(npx:*)` allow-list as a result). Saves the
+   reviewer Opus session minutes-of-waiting + parsing of verify output.
+7. **Compressed Stage 1 → Stage 2 handoff.** Stage 1's investigation
+   comment now starts with a literal handoff marker
+   (`<!-- agent-handoff:investigate -->`) and includes a `## Files to
+   edit` section. Stage 2 fetches ONLY that comment via
+   `gh api .../comments --jq '... | startswith("<!-- agent-handoff…")'`
+   instead of `gh issue view --comments` (which loaded triage +
+   investigation + any human chatter). Self-contained handoff means
+   Stage 2 rarely needs the issue body at all.
+
+**Combined back-of-envelope savings** (per typical issue, happy path):
+- Opus tokens: ~50% reduction (review-loop downgrade + verify-split +
+  COMMENTED skip together hit the most-expensive surfaces)
+- Sonnet tokens: ~30% reduction (single-stage shortcut on trivial
+  issues + skipping CLAUDE.md re-reads + skipping retro-archive read)
+- Latency: marginal. Sweep latency only matters on routine merges
+  where the user isn't actively waiting.

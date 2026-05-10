@@ -20,27 +20,55 @@ jobs:
     if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Skip if non-blocking COMMENTED + Claude already approved
+        id: skip_check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Cheap pre-filter: if this review is non-blocking AND Claude has
+          # already approved on HEAD, do nothing — sweep will merge within
+          # 10 min. Avoids waking a Claude session just to confirm a merge.
+          if [ "$REVIEW_STATE" = "COMMENTED" ] && ! printf '%s' "$REVIEW_BODY" | grep -qF 'Verdict: Request changes'; then
+            CLAUDE_APPROVED=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\" and (.body | startswith(\"[Claude Review]\")) and (.body | contains(\"Verdict: Approve\")))] | length")
+            if [ "$CLAUDE_APPROVED" -gt 0 ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "Non-blocking COMMENTED review + Claude already approved on HEAD — letting sweep handle merge."
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: Checkout PR head
+        if: steps.skip_check.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Setup Node
+        if: steps.skip_check.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Install deps
+        if: steps.skip_check.outputs.skip != 'true'
         run: npm ci && npm --prefix workers/qa-submit ci
 
       - name: Configure git
+        if: steps.skip_check.outputs.skip != 'true'
         run: |
           git config user.name  "rentenwiki-agent[bot]"
           git config user.email "rentenwiki-agent[bot]@users.noreply.github.com"
 
       - name: Run implementer-as-merger
+        if: steps.skip_check.outputs.skip != 'true'
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,13 +81,15 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: '*'
-          claude_args: --model claude-opus-4-7 --allowed-tools Bash,Read,Edit,Write,Grep,Glob
+          claude_args: --allowed-tools Bash,Read,Edit,Write,Grep,Glob
           prompt: |
             You are the implementer-as-merger for PR #$PR_NUMBER on branch $PR_BRANCH
             (head $PR_HEAD_SHA). This run was triggered by $REVIEW_AUTHOR submitting a
             $REVIEW_STATE review (id $REVIEW_ID).
 
-            Read `CLAUDE.md` and `CONTEXT.md` first. Read the linked issue (find via
+            `CLAUDE.md` and `CONTEXT.md` are already loaded into your context via the
+            harness's `claudeMd` system reminder — do NOT issue Read calls on those
+            files. Read the linked issue (find via
             `gh pr view $PR_NUMBER --json body --jq .body` and look for `Closes #N`).
 
             **Step 0 — runaway cap.**
