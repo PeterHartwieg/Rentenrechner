@@ -73,38 +73,84 @@ jobs:
 
             1. **Branch.** Create and check out `agent/issue-$ISSUE_NUMBER`.
 
-            2. **TDD decision.** Look at $ISSUE_LABELS:
+            2. **Reproduce (bugs only).** Skip this step if $ISSUE_LABELS does not
+               contain `bug` (enhancements have nothing to reproduce — proceed to Step 3).
+
+               For bugs: before writing any test or fix, you must first confirm the
+               reported behavior is real and currently present in the code. Users
+               sometimes report user-error or stale behavior as bugs. A speculative
+               fix on a non-bug wastes a review cycle and can introduce regressions.
+
+               Procedure:
+               - Identify the affected files. For QA submissions, the `Target id`
+                 in the body's header table maps to file paths via the conventions
+                 in `docs/agents/issue-tracker.md` and the area structure under
+                 `src/features/` and `src/engine/products/`.
+               - Read those files and trace the data path the reporter describes.
+               - Articulate the failure path in one or two sentences: "When the
+                 user does X, code path Y at <file:line> does Z, which produces the
+                 reported wrong behavior because <reason>."
+
+               Three outcomes:
+               - **Reproduced** — you can point to the specific code path that
+                 produces the reported behavior. Save the failure-path articulation;
+                 it goes in the PR body's "Reproduction" section. Proceed to Step 3.
+               - **Not reproducible — code already does the right thing** — the file
+                 you read clearly handles the case the reporter describes correctly,
+                 and you can't find any path that would produce the reported wrong
+                 behavior. Comment on the issue with: which files you inspected,
+                 what they do, why this contradicts the report (e.g. "input change
+                 already triggers recompute via useEffect at <file:line>"). Apply
+                 `needs-info`, remove `in-progress-by-agent`, exit cleanly. **Do not
+                 write a test or a fix.**
+               - **Not reproducible — report is too vague to locate** — you cannot
+                 identify any plausibly-affected file from the description, target
+                 id, or screenshot URL. Comment listing what you searched for and
+                 what you'd need to act (specific element, exact reproduction steps,
+                 expected vs actual values). Apply `needs-info`, remove
+                 `in-progress-by-agent`, exit cleanly.
+
+               When in doubt between "reproduced" and "not reproducible", prefer
+               not-reproducible — false negatives waste a tester response cycle but
+               are recoverable; false positives produce confidently-wrong PRs that
+               waste a full review cycle.
+
+            3. **TDD decision.** Look at $ISSUE_LABELS:
                - If it contains any of `area:ui-only`, `area:copy`, `documentation` →
                  SKIP the failing-test phase. Note "TDD-skip: <reason>" in the PR body later.
                - Otherwise → write a failing test FIRST that fails today and will pass
-                 only when the issue is fixed. Commit the test alone with message
-                 `test: failing test for #$ISSUE_NUMBER`. Run `npx vitest run <new-test-file>`
-                 to confirm it fails for the expected reason (not a typo / missing import).
+                 only when the issue is fixed. The test should encode the specific
+                 failure path you articulated in Step 2 (for bugs). Commit the test
+                 alone with message `test: failing test for #$ISSUE_NUMBER`. Run
+                 `npx vitest run <new-test-file>` to confirm it fails for the
+                 expected reason (not a typo / missing import).
 
-            3. **Implement the fix.** Edit the relevant code per the issue. Keep the
+            4. **Implement the fix.** Edit the relevant code per the issue. Keep the
                diff minimal and focused on what the issue asks for. Do not refactor
                surrounding code, do not add features beyond what the issue requires
                (per CLAUDE.md "Doing tasks").
 
-            4. **Verify.** Run `npm run verify` (lint + tests + build per CLAUDE.md).
+            5. **Verify.** Run `npm run verify` (lint + tests + build per CLAUDE.md).
                Iterate until it passes. If a test outside your changes fails for an
                unrelated reason, leave a note in the PR body and continue — do not
                silently disable tests.
 
-            5. **Commit + push.** Commit with a clear message ending with
+            6. **Commit + push.** Commit with a clear message ending with
                `Refs #$ISSUE_NUMBER`. Push the branch.
 
-            6. **Open the PR.** Use `gh pr create` with:
+            7. **Open the PR.** Use `gh pr create` with:
                - Title: short imperative summary, prefixed with the conventional type
                  (`fix:`, `feat:`, `docs:`, `refactor:`, etc.) per recent commit history.
                - Body: must include
                  - `Closes #$ISSUE_NUMBER` (so merge auto-closes the issue)
                  - A short description of what changed and why
+                 - A "Reproduction" section (bugs only) with the failure-path
+                   articulation from Step 2
                  - A "TDD" section saying either "Failing test added: <path>" or
                    "TDD-skip: <reason>" (one of the area-label categories)
                  - The standard AI-generated marker from docs/agents/issue-tracker.md
 
-            7. **Done.** Stop after the PR is created. Do NOT comment `@codex review` —
+            8. **Done.** Stop after the PR is created. Do NOT comment `@codex review` —
                the Codex GitHub integration auto-reviews on PR open. Do NOT remove
                `in-progress-by-agent` — that label is cleared by the merge step.
 
@@ -115,5 +161,9 @@ jobs:
               cannot diagnose it, post a comment on the issue explaining where you got
               stuck, remove `in-progress-by-agent`, add `ready-for-human`, and stop.
               Do not open a broken PR.
+            - If Step 2 reproduction fails (for bugs), the cleanup is `needs-info`
+              not `ready-for-human`. The reporter needs to provide more info, not
+              another human implementer. `ready-for-human` is for issues that need
+              human implementation; `needs-info` is for issues that need more detail.
             - Follow `CLAUDE.md` "Critical guardrails" — license disclaimer must remain
               session-only, never collect PII without a backend story, etc.

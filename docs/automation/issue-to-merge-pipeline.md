@@ -80,13 +80,17 @@ triage.yml (Claude Code Action, Sonnet)
     (skipped on auto-promote; bypassed for from-maintainer QA submissions)
     ↓
 implement.yml (Claude Code Action, Sonnet)
-    1. checks issue labels for area:ui-only / area:copy / documentation
+    1. branch agent/issue-N
+    2. if `bug` label: REPRODUCE — read affected files, articulate failure
+       path. If can't reproduce, comment with evidence + needs-info, exit
+       cleanly. No speculative test or fix.
+    3. checks issue labels for area:ui-only / area:copy / documentation
        → TDD-skip flag
-    2. branch agent/issue-N
-    3. if not TDD-skip: write failing test, commit
-    4. implement fix, commit
-    5. npm run verify
-    6. push branch + open PR with "Closes #N"
+    4. if not TDD-skip: write failing test (encoding the Step 2 failure
+       path), commit
+    5. implement fix, commit
+    6. npm run verify
+    7. push branch + open PR with "Closes #N" + "Reproduction" section
     ↓
 [PR opened — pull_request.opened]
     ↓
@@ -299,8 +303,31 @@ screenshot and metadata while routing through the enhancement path
 
 Fires when `ready-for-agent` is added. Sets `in-progress-by-agent`,
 removes `needs-triage` + `ready-for-agent`, branches `agent/issue-N`,
-decides TDD-skip from labels, writes failing test (if not skipped),
-implements fix, runs `npm run verify`, opens PR with `Closes #N` in body.
+**reproduces the bug** (bugs only — see below), decides TDD-skip from
+labels, writes failing test (if not skipped), implements fix, runs
+`npm run verify`, opens PR with `Closes #N` in body and a "Reproduction"
+section explaining the failure path.
+
+**Reproduction step (Step 2 in the prompt).** Bug-only — skipped for
+enhancements. Before any test or fix, the agent reads the affected
+files and articulates the failure path: "When the user does X, code
+path Y at <file:line> does Z, which produces the reported wrong
+behavior." Three outcomes:
+
+- **Reproduced** — proceed to TDD with the failure path encoded as the
+  failing test.
+- **Code already does the right thing** — comment with specific
+  evidence (which files inspected, what they do, why this contradicts
+  the report), apply `needs-info`, remove `in-progress-by-agent`, exit
+  cleanly. No speculative fix.
+- **Report too vague to locate** — comment listing what was searched
+  and what's needed (specific element, repro steps, expected vs
+  actual values), apply `needs-info`, exit cleanly.
+
+`needs-info` (reporter must supply more detail) vs `ready-for-human`
+(needs human implementation) are distinct cleanup paths — Step 2
+reproduction failures are `needs-info`, `npm run verify` failures are
+`ready-for-human`.
 
 If `npm run verify` won't pass: posts a comment on the issue, applies
 `ready-for-human`, removes `in-progress-by-agent`, exits cleanly. **Does
