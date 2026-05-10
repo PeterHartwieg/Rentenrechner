@@ -323,3 +323,28 @@ labels: [bug]
 
 - The audit comment posted on 2026-05-09 naming exact commit `cb7315e` and exact line numbers made this the fastest possible investigation run — no exploration needed at all.
 
+
+---
+date: 2026-05-10T15:05:00Z
+issue: 65
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- **ProductResult shape gap is the root cause class**: the bug is not a wrong formula in `portfolioCombine.ts` but a missing field on `BaseProductResult` — `totalContributionsBeforeFees` (tracked in `accumulation.ts:309` as `totalProductContributions + injectedPrincipal`) never makes it onto `ProductResult` because `buildResult.ts:230` only copies `totalProductContributions`. The combine path (`portfolioCombine.ts:380`) then reads the wrong field. This class of bug (accumulation computes something correct, buildResult omits it, combine reads the wrong field) will recur for any new field added to `AccumulationResult` — check `buildResult.ts` when adding accumulation fields.
+- **Reading shortcut for "ProductResult field missing" bugs**: start at `src/domain/results.ts` (`BaseProductResult`), then grep for the field name in `src/engine/buildResult.ts`. If it's missing from `buildProductResult`'s return object (~line 220), that's the gap. The accumulation result type is `ReturnType<typeof projectAccumulation>` — look at `accumulation.ts` return statement.
+- **Misleading comment confirmed as wrong**: `portfolioCombine.ts:362–364` claims `totalProductContributions` equals `totalContributionsBeforeFees` — that's only true for vanilla (no-transfer) cases. The comment is a false-safety signal; future agents should distrust it.
+- **Test strategy for this class**: synthesize a `ProductResult` with `totalProductContributions < capitalAtRetirement` (non-zero regular gain) but `totalContributionsBeforeFees = capitalAtRetirement` (zero true gain). Assert `aggregateTax.privateInsuranceTaxable ≈ 0`. The failing value (3000) matches the halbeinkuenfte gain calculation: `grossAnnual × gainRatio × 0.5 = 12000 × 0.5 × 0.5 = 3000`.
+- **cast pattern for pre-fix type gap**: when the field doesn't exist on the domain type yet, use `as unknown as ProductResult` on the synthetic object and include the new field. The test fails at runtime (assertion), not compile time — which is the right failure mode for Stage 2 to work from.
+
+## What would have helped
+
+- The triage comment from the owner already identified the four exact file paths and line numbers (`accumulation.ts:309`, `products/insurance.ts:81`, `buildResult.ts:230`, `portfolioCombine.ts:380`). That made reproduction trivial — the investigator's main job was to confirm the diagnosis, write the test, and verify the failure value.
