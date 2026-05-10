@@ -53,10 +53,10 @@ function TestHarness() {
 }
 
 describe('InputsPanel standard assumptions', () => {
-  it('renders one public Netto-Belastung input with 100/200/400 presets and no compare-mode copy', () => {
+  it('renders one public Netto-Beitrag input with 100/200/400 presets and no compare-mode copy', () => {
     const { container } = render(<TestHarness />)
 
-    expect((screen.getByLabelText(/Netto-Belastung/) as HTMLInputElement).value).toBe('200')
+    expect((screen.getByLabelText(/Netto-Beitrag/) as HTMLInputElement).value).toBe('200')
     expect(screen.getByRole('button', { name: '100 EUR' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '200 EUR' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '400 EUR' })).toBeTruthy()
