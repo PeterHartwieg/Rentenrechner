@@ -260,12 +260,27 @@ function makeEtfWorkspace(monthlyContribution: number): Workspace {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: extract first-scenario combined result from a workspace.
+// Helper: extract basis-scenario combined result from a workspace.
+// Mirrors the modal's derivation: 'basis' first, then returnScenarios[0].
 // ---------------------------------------------------------------------------
 function baselineCombinedFor(ws: Workspace) {
+  return basisCombinedFor(ws)
+}
+
+/** The scenario id that `basisCombinedFor` is derived against — used as the
+ * `scenarioId` argument when calling `simulateContractDecision` so the
+ * applied side reads from the same return curve as the baseline (gh#44). */
+function basisScenarioIdFor(ws: Workspace): string {
+  const sc =
+    ws.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis') ??
+    ws.baseline.assumptions.returnScenarios[0]
+  return sc.id
+}
+
+/** Extract the 'basis' scenario combined result, as the OptimiereVorsorgeModal does. */
+function basisCombinedFor(ws: Workspace) {
   const bundle = runCombineSimulation(ws, de2026Rules)
-  const firstScenarioId = ws.baseline.assumptions.returnScenarios[0].id
-  return bundle.combinedByScenarioId[firstScenarioId]
+  return bundle.combinedByScenarioId[basisScenarioIdFor(ws)]
 }
 
 // ---------------------------------------------------------------------------
@@ -279,7 +294,7 @@ describe('simulateContractDecision — bAV beitragsfrei (1.5% RIY)', () => {
     const decision = beitragsfreiWhatIf(ws, bavInstanceId)
     const baselineCombined = baselineCombinedFor(ws)
 
-    const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined)
+    const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Going paid-up stops contributions → less accumulation → lower payout.
     // The delta should be negative (though small — only fees and loss of future
@@ -297,7 +312,7 @@ describe('simulateContractDecision — weiterfuehren (identity)', () => {
     const decision = weiterfuehrenWhatIf(ws, bavInstanceId)
     const baselineCombined = baselineCombinedFor(ws)
 
-    const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined)
+    const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Identity delta — no change to workspace; re-simulation must equal baseline.
     expect(Math.abs(result.deltaMonthlyNetEUR)).toBeLessThan(1e-6)
@@ -316,13 +331,16 @@ describe('simulateContractDecision — Riester → AVD certified transfer', () =
     const baselineCombined = baselineCombinedFor(ws)
 
     // Result from simulateContractDecision
-    const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined)
+    const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Manual diff: apply decision ourselves, run simulation, compute delta.
+    // Use the same 'basis' scenario that simulateContractDecision uses internally.
     const applied = applyContractDecision(ws, decision)
     const appliedBundle = runCombineSimulation(applied, de2026Rules)
-    const firstScenarioId = ws.baseline.assumptions.returnScenarios[0].id
-    const appliedCombined = appliedBundle.combinedByScenarioId[firstScenarioId]
+    const basisScenario =
+      applied.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis') ??
+      applied.baseline.assumptions.returnScenarios[0]
+    const appliedCombined = appliedBundle.combinedByScenarioId[basisScenario.id]
     const manualDelta = appliedCombined.monthlyNetIncome - baselineCombined.monthlyNetIncome
 
     // The delta must be non-zero (the certified transfer changes capital allocation).
@@ -347,7 +365,7 @@ describe('simulateContractDecision — Riester → AVD certified transfer', () =
     const decision = uebertragenVirtualWhatIf(ws, riesterInstanceId, 'altersvorsorgedepot', 'all')
     const baselineCombined = baselineCombinedFor(ws)
 
-    const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined)
+    const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // The simulation must produce a result (not throw or return 0 from a missing scenario).
     expect(typeof result.deltaMonthlyNetEUR).toBe('number')
@@ -377,7 +395,7 @@ describe('simulateContractDecision — ETF contribution increase', () => {
     const etfInstanceId = wsHigh.baseline.assumptions.etf[0].instanceId
     const decision = weiterfuehrenWhatIf(wsHigh, etfInstanceId)
 
-    const result = simulateContractDecision(wsHigh, decision, de2026Rules, baselineCombined)
+    const result = simulateContractDecision(wsHigh, decision, de2026Rules, baselineCombined, basisScenarioIdFor(wsHigh))
 
     // Higher contribution → more capital → higher payout → positive delta.
     expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
@@ -499,7 +517,7 @@ describe('simulateContractDecision — ETF-only beitrag-erhoehen (gh#20 regressi
     expect(decision).not.toBeNull()
 
     const baselineCombined = baselineCombinedFor(ws)
-    const result = simulateContractDecision(ws, decision!, de2026Rules, baselineCombined)
+    const result = simulateContractDecision(ws, decision!, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Higher contribution → more capital → higher payout → positive delta.
     expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
@@ -516,7 +534,7 @@ describe('simulateContractDecision — PAV pre-2005 + ETF beitrag-erhoehen (gh#2
     expect(decision).not.toBeNull()
 
     const baselineCombined = baselineCombinedFor(ws)
-    const result = simulateContractDecision(ws, decision!, de2026Rules, baselineCombined)
+    const result = simulateContractDecision(ws, decision!, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Higher ETF contribution → more capital → higher payout → positive delta.
     // This pins the user-reported scenario: ETF +180 €/month should not produce a negative delta.
@@ -537,8 +555,8 @@ describe('createDecisionSimulationCache', () => {
 
     const cache = createDecisionSimulationCache()
 
-    const result1 = cache.get(ws, decision, de2026Rules, baselineCombined)
-    const result2 = cache.get(ws, decision, de2026Rules, baselineCombined)
+    const result1 = cache.get(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
+    const result2 = cache.get(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Same object reference — cache was not re-run.
     expect(result2).toBe(result1)
@@ -555,8 +573,8 @@ describe('createDecisionSimulationCache', () => {
     const baselineCombined = baselineCombinedFor(ws)
 
     const cache = createDecisionSimulationCache()
-    const first = cache.get(ws, decision, de2026Rules, baselineCombined)
-    const second = cache.get(ws, decision, de2026Rules, baselineCombined)
+    const first = cache.get(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
+    const second = cache.get(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // If second call had re-run the simulation it would produce a different object.
     // Same reference is the proof that no re-run occurred.
@@ -572,9 +590,9 @@ describe('createDecisionSimulationCache', () => {
 
     const cache = createDecisionSimulationCache()
 
-    const result1 = cache.get(ws, decision, de2026Rules, baselineCombined)
+    const result1 = cache.get(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
     cache.invalidate()
-    const result2 = cache.get(ws, decision, de2026Rules, baselineCombined)
+    const result2 = cache.get(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // After invalidate() the cache was cleared; result2 is a newly-created object.
     expect(result2).not.toBe(result1)
@@ -591,12 +609,12 @@ describe('createDecisionSimulationCache', () => {
 
     const cache = createDecisionSimulationCache()
 
-    const a1 = cache.get(ws, decisionA, de2026Rules, baselineCombined)
-    const b1 = cache.get(ws, decisionB, de2026Rules, baselineCombined)
+    const a1 = cache.get(ws, decisionA, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
+    const b1 = cache.get(ws, decisionB, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Both are cached now; second call must return same references.
-    const a2 = cache.get(ws, decisionA, de2026Rules, baselineCombined)
-    const b2 = cache.get(ws, decisionB, de2026Rules, baselineCombined)
+    const a2 = cache.get(ws, decisionA, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
+    const b2 = cache.get(ws, decisionB, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     expect(a2).toBe(a1)
     expect(b2).toBe(b1)
@@ -880,5 +898,93 @@ describe('auditPortfolio — deltaNettoRente is zero for all decisions (B4)', ()
         expect(decision.deltaNettoRente).toBe(0)
       }
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// gh#44 regression: Bug A — scenario mismatch (sign flip)
+// ---------------------------------------------------------------------------
+
+describe('simulateContractDecision — Bug A: basis-scenario baseline must use same scenario (gh#44)', () => {
+  it('weiterfuehren with basis-scenario baseline produces delta ≈ 0, not a sign-flipped large value', () => {
+    const ws = makeBavWorkspace()
+    const bavInstanceId = ws.baseline.assumptions.bav[0].instanceId
+    const decision = weiterfuehrenWhatIf(ws, bavInstanceId)
+
+    // The modal computes baselineCombined from the 'basis' scenario (5 % p.a.),
+    // NOT from returnScenarios[0] which is 'konservativ' (3 % p.a.).
+    const basisCombined = basisCombinedFor(ws)
+
+    const result = simulateContractDecision(ws, decision, de2026Rules, basisCombined, basisScenarioIdFor(ws))
+
+    // weiterfuehren is an identity decision — the workspace is unchanged, so the
+    // applied simulation is identical to the baseline. Delta must be ≈ 0.
+    //
+    // Bug A: simulateContractDecision picks returnScenarios[0] ('konservativ', 3 %)
+    // for the applied result but the caller provided a baseline at 'basis' (5 %).
+    // The 2 pp gap compounded over 39 years flips the sign and produces a large
+    // negative delta (many EUR/month). The correct value is < 1 EUR/month.
+    expect(Math.abs(result.deltaMonthlyNetEUR)).toBeLessThan(1)
+  })
+
+  // The original fix (hardcoded 'basis' inside simulateContractDecision) only
+  // closed the bug for users with `basis` selected. As soon as a user switched
+  // the toolbar pill to `konservativ` or `optimistisch`, the modal's
+  // baselineCombined was derived at that selected scenario but the applied
+  // side still picked 'basis' — same scenario-mismatch class, inverted
+  // direction. The canonical fix plumbs the selected scenario through, so an
+  // identity decision must produce ≈ 0 delta on every scenario.
+  it('weiterfuehren with optimistisch-scenario baseline produces delta ≈ 0 (non-basis selected, gh#44)', () => {
+    const ws = makeBavWorkspace()
+    const bavInstanceId = ws.baseline.assumptions.bav[0].instanceId
+    const decision = weiterfuehrenWhatIf(ws, bavInstanceId)
+
+    // User has selected the optimistisch scenario via the toolbar pill.
+    const optimistischId = 'optimistisch'
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const optimistischCombined = bundle.combinedByScenarioId[optimistischId]
+    expect(optimistischCombined).toBeDefined()
+
+    const result = simulateContractDecision(
+      ws,
+      decision,
+      de2026Rules,
+      optimistischCombined,
+      optimistischId,
+    )
+
+    // Identity decision on the same scenario → delta must be ≈ 0. With the
+    // pre-canonical fix (hardcoded basis), the applied side runs at 5 % while
+    // the baseline runs at 7 %, producing a multi-EUR negative delta.
+    expect(Math.abs(result.deltaMonthlyNetEUR)).toBeLessThan(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// gh#44 regression: Bug B — stale cache on newMonthlyEUR change
+// ---------------------------------------------------------------------------
+
+describe('createDecisionSimulationCache — Bug B: different newMonthlyEUR must not share a cache entry (gh#44)', () => {
+  it('cache returns strictly larger delta for 200→400 than for 200→300 on the same instance', () => {
+    const ws = makeEtfOnlyWorkspace(200)
+    const etfId = ws.baseline.assumptions.etf[0].instanceId
+
+    const decision300 = beitragErhoehenWhatIf(ws, etfId, 300)
+    const decision400 = beitragErhoehenWhatIf(ws, etfId, 400)
+    expect(decision300).not.toBeNull()
+    expect(decision400).not.toBeNull()
+
+    // Bug B precondition: both decisions share the same id (no newMonthlyEUR in id).
+    // This causes the cache to return the 300-EUR result for the 400-EUR query.
+    const basisCombined = basisCombinedFor(ws)
+    const cache = createDecisionSimulationCache()
+
+    const result300 = cache.get(ws, decision300!, de2026Rules, basisCombined, basisScenarioIdFor(ws))
+    // With the bug, this hits the cache entry written by result300 (same id).
+    const result400 = cache.get(ws, decision400!, de2026Rules, basisCombined, basisScenarioIdFor(ws))
+
+    // A higher monthly contribution produces a higher delta.
+    // Bug B: result400 === result300 (stale cache hit) → this assertion fails.
+    expect(result400.deltaMonthlyNetEUR).toBeGreaterThan(result300.deltaMonthlyNetEUR)
   })
 })

@@ -91,6 +91,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}
@@ -105,6 +106,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}
@@ -130,6 +132,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={onClose}
         onCreatePlans={() => {}}
@@ -144,6 +147,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={onClose}
         onCreatePlans={() => {}}
@@ -161,6 +165,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={onClose}
         onCreatePlans={onCreatePlans}
@@ -179,6 +184,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={onClose}
         onCreatePlans={onCreatePlans}
@@ -198,6 +204,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}
@@ -215,6 +222,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}
@@ -237,6 +245,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={onCreatePlans}
@@ -273,6 +282,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={onClose}
         onCreatePlans={() => {}}
@@ -288,6 +298,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}
@@ -302,6 +313,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}
@@ -317,6 +329,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}
@@ -334,6 +347,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}
@@ -350,6 +364,7 @@ describe('OptimiereVorsorgeModal', () => {
       <OptimiereVorsorgeModal
         workspace={ws}
         baselineCombined={makeBaseline()}
+        scenarioId="basis"
         rules={de2026Rules}
         onClose={() => {}}
         onCreatePlans={() => {}}

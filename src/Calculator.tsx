@@ -521,6 +521,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             <OptimiereVorsorgeModal
               workspace={portfolioState.workspace}
               baselineCombined={combineBasisResult}
+              scenarioId={combineBasisScenarioId}
               rules={de2026Rules}
               onClose={() => setShowOptimiereModal(false)}
               onCreatePlans={(whatIfs) => {
