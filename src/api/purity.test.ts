@@ -45,6 +45,8 @@ const FORBIDDEN_PATTERNS = [
   { label: 'document.', pattern: /document\./ },
   { label: 'navigator.clipboard', pattern: /navigator\.clipboard/ },
   { label: 'fetch(', pattern: /fetch\(/ },
+  // Upward import direction guard: src/api must not import from src/app
+  { label: "import from '../app/…' (upward dependency direction)", pattern: /from\s+['"][^'"]*\/app\/[^'"]*['"]/ },
 ]
 
 describe('API purity', () => {
