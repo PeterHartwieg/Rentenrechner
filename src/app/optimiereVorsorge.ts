@@ -86,10 +86,14 @@ export function simulateContractDecision(
   // 2. Run the full combine simulation on the what-if workspace.
   const bundle = runCombineSimulation(applied, rules)
 
-  // 3. Pick the first return scenario as the reference scenario (same as
-  //    the UI default "basis" scenario). If the workspace has no scenarios
-  //    we return a zero delta (degenerate case).
-  const firstScenario = applied.baseline.assumptions.returnScenarios[0]
+  // 3. Pick the "basis" scenario (id === 'basis') as the reference, falling
+  //    back to returnScenarios[0]. This matches the modal's baseline derivation
+  //    so that an identity decision (weiterfuehren) always produces delta ≈ 0.
+  //    Using returnScenarios[0] (konservativ) against a basis-scenario baseline
+  //    introduced a 2 pp / 39-year sign-flipping delta (gh#44 Bug A).
+  const returnScenarios = applied.baseline.assumptions.returnScenarios
+  const firstScenario =
+    returnScenarios.find((s) => s.id === 'basis') ?? returnScenarios[0]
   if (!firstScenario) {
     return { deltaMonthlyNetEUR: 0 }
   }

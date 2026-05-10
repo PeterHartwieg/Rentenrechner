@@ -440,7 +440,7 @@ export function beitragErhoehenWhatIf(
   }
 
   return {
-    id: `beitrag-erhoehen-${instanceId}`,
+    id: `beitrag-erhoehen-${instanceId}-${Math.round(newMonthlyEUR)}`,
     kind: 'beitrag-erhoehen',
     label: 'Beitrag erhöhen',
     sourceInstanceId: instanceId,

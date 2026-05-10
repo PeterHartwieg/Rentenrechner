@@ -260,12 +260,11 @@ function makeEtfWorkspace(monthlyContribution: number): Workspace {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: extract first-scenario combined result from a workspace.
+// Helper: extract basis-scenario combined result from a workspace.
+// Mirrors the modal's derivation: 'basis' first, then returnScenarios[0].
 // ---------------------------------------------------------------------------
 function baselineCombinedFor(ws: Workspace) {
-  const bundle = runCombineSimulation(ws, de2026Rules)
-  const firstScenarioId = ws.baseline.assumptions.returnScenarios[0].id
-  return bundle.combinedByScenarioId[firstScenarioId]
+  return basisCombinedFor(ws)
 }
 
 /** Extract the 'basis' scenario combined result, as the OptimiereVorsorgeModal does. */
@@ -328,10 +327,13 @@ describe('simulateContractDecision — Riester → AVD certified transfer', () =
     const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined)
 
     // Manual diff: apply decision ourselves, run simulation, compute delta.
+    // Use the same 'basis' scenario that simulateContractDecision uses internally.
     const applied = applyContractDecision(ws, decision)
     const appliedBundle = runCombineSimulation(applied, de2026Rules)
-    const firstScenarioId = ws.baseline.assumptions.returnScenarios[0].id
-    const appliedCombined = appliedBundle.combinedByScenarioId[firstScenarioId]
+    const basisScenario =
+      applied.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis') ??
+      applied.baseline.assumptions.returnScenarios[0]
+    const appliedCombined = appliedBundle.combinedByScenarioId[basisScenario.id]
     const manualDelta = appliedCombined.monthlyNetIncome - baselineCombined.monthlyNetIncome
 
     // The delta must be non-zero (the certified transfer changes capital allocation).
