@@ -5,6 +5,7 @@ import { afterTaxInvestmentCapital } from '../engine/etfPayout'
 import { afterTaxInsuranceLumpSum } from '../engine/insurancePayout'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { formatEvidenceStateForExport } from '../features/results/provenanceHelpers'
+import { RULES_YEAR } from '../rules'
 
 type ExportOptions = {
   products: ProductResult[]
@@ -58,8 +59,8 @@ function nn(v: number | null): string {
 // is forwarded without the surrounding UI. Mirrors the PDF report header.
 const DISCLAIMER_LINES: readonly string[] = [
   'Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.',
-  'Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine individuelle Beratung.',
-  'Steuersätze, Sozialversicherungsbeiträge und Rentenwert sind auf den Stand 2026 fixiert; tatsächliche Werte zum Renteneintritt können erheblich abweichen.',
+  `Diese Berechnung ist eine Modellrechnung mit Stand ${RULES_YEAR} und ersetzt keine individuelle Beratung.`,
+  `Steuersätze, Sozialversicherungsbeiträge und Rentenwert sind auf den Stand ${RULES_YEAR} fixiert; tatsächliche Werte zum Renteneintritt können erheblich abweichen.`,
   'Annahmen (Rendite, Inflation, Gehaltsentwicklung, Lebenserwartung, Rentenfaktor, Vertragskosten) sind Schätzungen — kleine Abweichungen können das Ergebnis und die Reihenfolge der Produkte ändern.',
 ] as const
 

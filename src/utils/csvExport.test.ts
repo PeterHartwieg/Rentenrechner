@@ -10,6 +10,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { buildCombinePortfolioCsv, buildExportCsv } from './csvExport'
+import { RULES_YEAR } from '../rules'
 import { de2026Rules } from '../rules/de2026'
 import { defaultProfile } from '../data/defaultScenario'
 import type { EtfProductResult, ProductResult, YearlyProjection } from '../domain'
@@ -126,7 +127,7 @@ describe('buildExportCsv', () => {
     expect(lines[0]).toBe('Hinweis')
     // Lines 1-4 are the four disclaimer sentences.
     expect(lines[1]).toContain('Modellrechnung')
-    expect(lines[2]).toContain('Modellrechnung mit Stand 2026')
+    expect(lines[2]).toContain(`Modellrechnung mit Stand ${RULES_YEAR}`)
     expect(lines[3]).toContain('Steuers')
     expect(lines[4]).toContain('Annahmen')
   })
