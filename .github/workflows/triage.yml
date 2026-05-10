@@ -82,6 +82,37 @@ jobs:
               a wish ("Wäre schön wenn…", "Kann das auch X?", "Ich würde mir wünschen…",
               "Wäre toll wenn…") is an enhancement — re-route despite the QA shape.
 
+            **Step 3b: QA type reclassification.** For sources A and B (any classification),
+            the title's `qa(<type>)` token is set by the QA composer, which today always
+            emits `other`. Re-derive the true type from the `## Tester comment` and the
+            screenshot URL (you cannot view the image, but the filename / target id and the
+            comment usually suffice). Pick exactly one:
+
+            - `copy` — text or wording is wrong (typo, awkward phrasing, missing word,
+              wrong language, untranslated string).
+            - `layout` — visual or CSS issue (overlap, misalignment, color, spacing,
+              mobile cutoff, dark-mode contrast, broken responsive break).
+            - `value` — a displayed number is wrong, fails to update on input change, or
+              doesn't match expected math. Includes "X doesn't reflect Y", "total is off",
+              "Effektivkosten doesn't recompute".
+            - `a11y` — keyboard navigation, focus order, screen-reader labels, contrast
+              ratios, ARIA roles.
+            - `flow` — multi-step user journey is broken (wizard step skip, navigation
+              dead-end, mode-switch loses state).
+            - `interaction` — single-component interaction logic (button doesn't fire,
+              dropdown doesn't open, drag handle stuck) — not a value miscalculation.
+            - `other` — genuinely ambiguous after reading the comment. Use sparingly.
+
+            If your derived type differs from the title's token, rewrite the title:
+
+            ```
+            gh issue edit $ISSUE_NUMBER --title "[<Severity>] qa(<derived-type>): <target-id>"
+            ```
+
+            Preserve the original `[Severity]` and `<target-id>` exactly — only the type
+            token changes. If your derivation matches the existing token, leave the title
+            alone.
+
             **Step 4: Deduplication and already-fixed.** Branch on the source category
             from Step 1.
 
@@ -132,11 +163,13 @@ jobs:
             - `area:copy` — pure user-facing text (German copy, button labels, errors)
             - `documentation` — README, docs/, code comments only
 
-            For QA submissions, derive from the `qa(<type>)` token:
-            - `qa(copy)` → `area:copy`
-            - `qa(layout)` → `area:ui-only`
-            - `qa(a11y)` → no area label (a11y fixes carry behavioral assertions; TDD runs)
-            - `qa(flow|interaction|value|other)` → no area label (semantic / behavior)
+            For QA submissions, derive from the type you settled on in Step 3b (NOT the
+            original title token if you rewrote it):
+            - `copy` → `area:copy`
+            - `layout` → `area:ui-only`
+            - `a11y` → no area label (a11y fixes carry behavioral assertions; TDD runs)
+            - `value` → no area label (calculation bugs are testable; TDD runs)
+            - `flow` / `interaction` / `other` → no area label (semantic / behavior)
 
             For non-QA: judge from body content. Engine / state / calculation changes →
             no area label.
@@ -172,7 +205,8 @@ jobs:
             - Step 3 classified as `bug` (NOT enhancement, NOT needs-info).
             - Step 4 did NOT exit early (no duplicate, no already-fixed close).
             - Title severity is `Major`, `Minor`, or `Nit` (NOT `BLOCKER`).
-            - Title type is `copy`, `layout`, or `a11y`.
+            - Step 3b derived type is `copy`, `layout`, `a11y`, or `value`.
+              (NOT `flow`, `interaction`, or `other` — those need human classification.)
             - `Target id` row is present AND `Precision` is `exact` or `nested`.
             - `## Tester comment` is non-empty after trim (>10 characters of substance).
 

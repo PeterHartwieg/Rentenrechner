@@ -66,12 +66,15 @@ without sacrificing review quality.
 [issues.opened — human-created OR via QA worker / external automation]
     ↓
 triage.yml (Claude Code Action, Sonnet)
-    8-step decision tree: classifies into 5 source categories
+    9-step decision tree: classifies into 5 source categories
     (QA-anonymous, QA-maintainer, non-QA pre-curated, non-QA pre-reviewed,
     non-QA plain), runs per-category dedup / already-fixed / enrichment /
-    guardrail-keyword / gate-state. Bounded QA bug reports (Major/Minor/Nit
-    × copy/layout/a11y × exact/nested precision × non-empty comment)
-    auto-promote to ready-for-agent. All other paths leave needs-triage on.
+    guardrail-keyword / gate-state. For QA sources it also re-derives the
+    `qa(<type>)` token from the tester comment (the composer hardcodes
+    `other`) and rewrites the title to match. Bounded QA bug reports
+    (Major/Minor/Nit × copy/layout/a11y/value × exact/nested precision ×
+    non-empty comment) auto-promote to ready-for-agent. All other paths
+    leave needs-triage on.
     ↓
 [human reviews triage output; applies `ready-for-agent`]   ← human gate
     (skipped on auto-promote; bypassed for from-maintainer QA submissions)
@@ -245,9 +248,24 @@ category for dedup / enrichment / guardrail-keyword / gate-state.
 - Classified as `bug` (not enhancement, not needs-info)
 - Step 4 dedup did not exit early
 - Title severity `Major` / `Minor` / `Nit` (NOT `BLOCKER`)
-- Title type `copy` / `layout` / `a11y`
+- Step 3b re-derived type is `copy` / `layout` / `a11y` / `value`
+  (the agent re-classifies because the QA composer hardcodes `other` —
+  see Step 3b below)
 - `Target id` row present, `Precision` is `exact` or `nested`
 - `## Tester comment` non-empty (>10 chars of substance)
+
+**Step 3b — QA type reclassification.** The QA composer
+(`QaFeedbackProvider.tsx`) currently hardcodes `type: 'other'` on every
+submission, so the title token alone is not a reliable type signal. For
+sources A and B the triage agent re-derives the type from the
+`## Tester comment` and the screenshot URL filename, picking from
+`copy` / `layout` / `value` / `a11y` / `flow` / `interaction` / `other`.
+If the derived type differs from the title's token, triage rewrites the
+title via `gh issue edit --title`. The auto-promote whitelist
+(`copy` / `layout` / `a11y` / `value`) is checked against the derived
+type, not the original token. Calculation bugs (`value`) get no area
+label, so TDD-by-default fires in `implement.yml` — calculation behavior
+is testable, which is exactly when test-first pays off.
 
 **Maintainer dev-code path.** Open the calculator with `?dev=<code>` once
 per browser tab. Frontend (`src/features/qa-feedback/devCode.ts`) persists
@@ -418,7 +436,7 @@ Each of these is tunable without touching the architecture.
 | Reviewer model | `claude_args: --model <id>` in `claude-review.yml` and `review-loop.yml` `with:` block | Default Opus 4.7. Switch to Sonnet for faster/cheaper, or upgrade as new models ship. |
 | Implementer model | `claude_args` in `implement.yml` | Default Sonnet. Switch to Opus for harder bugs (slower / more expensive). |
 | TDD-skip categories | `if it contains any of area:ui-only, area:copy, documentation` clause in `implement.yml` prompt | Add or remove labels from the skip list. |
-| QA auto-promote eligibility | "Auto-promote to `ready-for-agent`" block in `triage.yml` prompt (Step 8) | Tighten/widen the severity × type matrix. Default: `Major`/`Minor`/`Nit` × `copy`/`layout`/`a11y`. Adding `qa(value)` widens to calc-output bugs; tightening to `Minor`/`Nit` only narrows to lowest-stakes. |
+| QA auto-promote eligibility | "Auto-promote to `ready-for-agent`" block in `triage.yml` prompt (Step 8) | Tighten/widen the severity × type matrix. Default: `Major`/`Minor`/`Nit` × `copy`/`layout`/`a11y`/`value` (where `value` is calculation bugs, classified by the Step 3b re-derivation). Tightening to `Minor`/`Nit` only narrows to lowest-stakes; adding `flow`/`interaction` widens to multi-step user-journey bugs. |
 | Guardrail keyword list | "Step 7" block in `triage.yml` prompt | Three groups (Backend / Commercial / Compliance). Each is a comma-separated keyword list, case-insensitive whole-word match. Add German equivalents as needed. |
 | QA Target id → file path mapping | "Step 4" block in `triage.yml` prompt (semantic prefix table) | Maps semantic ids like `inputs.<product>.*` to file globs. Update when your project's component layout differs. |
 | Maintainer dev-code | `MAINTAINER_DEV_CODE` Wrangler secret on `rentenwiki-qa-submit`; URL param `?dev=` in the QA-feedback frontend | Rotate via `wrangler secret put`. The code lives only in your sessionStorage and on the wire — never in any public surface. |
