@@ -21,6 +21,7 @@ import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from './engin
 import { projectGrvContributionTimeline } from './engine/grv'
 import { deriveRentenluckeOverviewFromCombine } from './app/simulationSelectors'
 import { de2026Rules } from './rules/de2026'
+import { RULES_YEAR } from './rules'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useDerivedViews } from './app/useDerivedViews'
@@ -834,11 +835,11 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
 
   const topbarCopy = isCombineMode
     ? {
-        kicker: `Deine Verträge und Rentenlücke in Deutschland ${de2026Rules.year}`,
+        kicker: `Deine Verträge und Rentenlücke in Deutschland ${RULES_YEAR}`,
         title: 'Mein Plan',
       }
     : {
-        kicker: `RentenWiki.de Deutschland ${de2026Rules.year}`,
+        kicker: `RentenWiki.de Deutschland ${RULES_YEAR}`,
         title: 'ETF, bAV und private Versicherung vergleichen',
       }
 

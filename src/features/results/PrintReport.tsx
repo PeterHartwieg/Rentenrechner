@@ -13,6 +13,7 @@ import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { getProductMeta } from '../../app/productPresentation'
+import { RULES_YEAR } from '../../rules'
 import {
   evidenceStateToProvKind,
   formatEvidenceStateForExport,
@@ -174,7 +175,7 @@ export function PrintReport({
       <section className="pr-section pr-disclaimer pr-disclaimer-top">
         <div className="pr-section-title">Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung</div>
         <p className="pr-disclaimer-lead">
-          Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine
+          Diese Berechnung ist eine Modellrechnung mit Stand {RULES_YEAR} und ersetzt keine
           individuelle Anlage-, Steuer- oder Rechtsberatung. Vor Vertragsabschluss
           sollten Sie einen unabhängigen Berater hinzuziehen. Tatsächliche Werte zum
           Renteneintritt können erheblich abweichen; Annahmen wie Rendite, Inflation,
@@ -187,7 +188,7 @@ export function PrintReport({
         <tbody>
           <tr>
             <td className="pr-header-left">
-              <div className="pr-title">RentenWiki.de Deutschland 2026</div>
+              <div className="pr-title">RentenWiki.de Deutschland {RULES_YEAR}</div>
               <div className="pr-subtitle">Persönliches Vorsorgemodell · erstellt am {date}</div>
             </td>
             <td className="pr-header-right">
@@ -339,8 +340,8 @@ export function PrintReport({
             Sie einen unabhängigen Berater hinzuziehen.
           </li>
           <li>
-            <strong>Rechtsstand 2026:</strong> Steuersätze, Sozialversicherungsbeiträge
-            und Rentenwert sind auf den Stand 2026 fixiert (Quellen: BMF, Deutsche
+            <strong>Rechtsstand {RULES_YEAR}:</strong> Steuersätze, Sozialversicherungsbeiträge
+            und Rentenwert sind auf den Stand {RULES_YEAR} fixiert (Quellen: BMF, Deutsche
             Rentenversicherung, GKV-Spitzenverband). Tatsächliche Werte zum Renteneintritt
             können erheblich abweichen.
           </li>
@@ -363,7 +364,7 @@ export function PrintReport({
       </section>
 
       <div className="pr-footer">
-        RentenWiki.de Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
+        RentenWiki.de Deutschland {RULES_YEAR} · {date} · Persönliches Modell · Keine Anlageberatung
       </div>
     </div>
   )
@@ -450,7 +451,7 @@ function CombinePrintReport({
       <section className="pr-section pr-disclaimer pr-disclaimer-top">
         <div className="pr-section-title">Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung</div>
         <p className="pr-disclaimer-lead">
-          Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine
+          Diese Berechnung ist eine Modellrechnung mit Stand {RULES_YEAR} und ersetzt keine
           individuelle Anlage-, Steuer- oder Rechtsberatung. Vor Vertragsabschluss
           sollten Sie einen unabhängigen Berater hinzuziehen. Tatsächliche Werte zum
           Renteneintritt können erheblich abweichen; Annahmen wie Rendite, Inflation,
@@ -462,7 +463,7 @@ function CombinePrintReport({
         <tbody>
           <tr>
             <td className="pr-header-left">
-              <div className="pr-title">RentenWiki.de Deutschland 2026 — Mein Plan</div>
+              <div className="pr-title">RentenWiki.de Deutschland {RULES_YEAR} — Mein Plan</div>
               <div className="pr-subtitle">Persönliches Vorsorgemodell · erstellt am {date}</div>
             </td>
             <td className="pr-header-right">
@@ -633,8 +634,8 @@ function CombinePrintReport({
             Sie einen unabhängigen Berater hinzuziehen.
           </li>
           <li>
-            <strong>Rechtsstand 2026:</strong> Steuersätze, Sozialversicherungsbeiträge
-            und Rentenwert sind auf den Stand 2026 fixiert.
+            <strong>Rechtsstand {RULES_YEAR}:</strong> Steuersätze, Sozialversicherungsbeiträge
+            und Rentenwert sind auf den Stand {RULES_YEAR} fixiert.
           </li>
           <li>
             <strong>Annahmen sind Schätzungen:</strong> Jahresrendite, Inflation, Gehaltsentwicklung,
@@ -648,7 +649,7 @@ function CombinePrintReport({
       </section>
 
       <div className="pr-footer">
-        RentenWiki.de Deutschland 2026 · {date} · Persönliches Modell · Keine Anlageberatung
+        RentenWiki.de Deutschland {RULES_YEAR} · {date} · Persönliches Modell · Keine Anlageberatung
       </div>
     </div>
   )

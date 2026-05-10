@@ -25,6 +25,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ProductId } from '../engine/productRegistry'
+import { RULES_YEAR } from '../rules'
 
 /**
  * Allow / disallow values for a route's `<meta name="robots">` tag.
@@ -199,7 +200,7 @@ export const publicRouteRegistry = {
     metaDescription:
       'Rentenlücke berechnen: gewünschte Nettorente minus erwartete GRV-Rente plus ' +
       'weitere Vorsorge. Kostenlos, lokal im Browser, Werte 2026.',
-    h1: 'Rentenlücke berechnen: Versorgungslücke in Deutschland 2026',
+    h1: `Rentenlücke berechnen: Versorgungslücke in Deutschland ${RULES_YEAR}`,
     summary:
       'Berechnet die Rentenlücke aus Wunschrente, gesetzlicher Rente und privater Vorsorge. ' +
       'Zeigt, welche Werte aus deiner Renteninformation der Rechner braucht.',
