@@ -10,6 +10,30 @@
   letter-spacing: 0;
 }
 
+.warnings-group {
+  margin-bottom: 18px;
+}
+
+.warnings-group:last-child {
+  margin-bottom: 0;
+}
+
+.warnings-group-heading {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #667085;
+}
+
+.warnings-group-empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
 .warnings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
