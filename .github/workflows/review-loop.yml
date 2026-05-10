@@ -32,9 +32,16 @@ jobs:
           # Cheap pre-filter: if this review is non-blocking AND Claude has
           # already approved on HEAD, do nothing — sweep will merge within
           # 10 min. Avoids waking a Claude session just to confirm a merge.
-          if [ "$REVIEW_STATE" = "COMMENTED" ] && ! printf '%s' "$REVIEW_BODY" | grep -qF 'Verdict: Request changes'; then
+          # Treat the review as non-blocking when it neither carries `Verdict: Request changes`
+          # nor a Markdown-bold reject heading (`**Request changes**`). Accept Claude approval
+          # via either the canonical `Verdict: Approve` line OR a bold heading-style approval
+          # at the start of any line (e.g. `**Approve.**`) — see PR #191 for the drift case
+          # this tolerance handles.
+          if [ "$REVIEW_STATE" = "COMMENTED" ] \
+             && ! printf '%s' "$REVIEW_BODY" | grep -qF 'Verdict: Request changes' \
+             && ! printf '%s' "$REVIEW_BODY" | grep -qE '^[*]+[[:space:]]*Request changes\b'; then
             CLAUDE_APPROVED=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
-              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\" and (.body | startswith(\"[Claude Review]\")) and (.body | contains(\"Verdict: Approve\")))] | length")
+              --jq "[.[] | select(.commit_id == \"$HEAD_SHA\" and (.body | startswith(\"[Claude Review]\")) and ((.body | test(\"Verdict.*Approve\"; \"i\")) or (.body | test(\"(?m)^[*]+\\\\s*Approve\\\\b\"; \"i\"))))] | length")
             if [ "$CLAUDE_APPROVED" -gt 0 ]; then
               echo "skip=true" >> "$GITHUB_OUTPUT"
               echo "Non-blocking COMMENTED review + Claude already approved on HEAD — letting sweep handle merge."
@@ -143,13 +150,24 @@ jobs:
             and classify it strictly:
 
             **Claude review classification (body marker is the contract):**
-            - Body contains literal `Verdict: Approve` → **satisfied**.
-            - Body contains literal `Verdict: Request changes` → **needs fix**.
-            - Body contains neither (marker-less / ambiguous) → **wait** (do NOT
-              push speculative fixes; treat as if the review hasn't been posted yet).
-              This handles prompt drift in claude-review.yml — if the reviewer didn't
-              produce a clean Verdict line, the right move is to wait for a clearer
-              signal, not act on guesswork.
+
+            The canonical signal is the literal `Verdict: Approve` /
+            `Verdict: Request changes` line. The reviewer prompt requires it,
+            but Claude has been observed to drift to bold-heading variants like
+            `**Approve.**`. To avoid hanging on routine drift, accept the
+            following equivalents:
+
+            - Body contains literal `Verdict: Approve` OR a line matching
+              `^\*+\s*Approve\b` (e.g. `**Approve.**`, `**Approve**`,
+              `**Verdict: Approve**`) → **satisfied**.
+            - Body contains literal `Verdict: Request changes` OR a line matching
+              `^\*+\s*Request changes\b` → **needs fix**.
+            - Body contains neither variant (marker-less / ambiguous) → **wait**
+              (do NOT push speculative fixes; treat as if the review hasn't been
+              posted yet). Examples that should still wait: `LGTM`, `looks good`,
+              prose paragraphs that mention "approve" mid-sentence. Only the
+              line-leading approval/rejection patterns above count as a contract
+              signal.
 
             **Codex review classification (formal state is the contract):**
             - state APPROVED → **satisfied**.
