@@ -58,6 +58,11 @@
   white-space: nowrap;
 }
 
+.lifecycle-legend__item--baseline {
+  opacity: 0.7;
+  font-style: italic;
+}
+
 .lifecycle-legend__line {
   display: inline-block;
   width: 24px;

@@ -466,7 +466,7 @@ export function BreakEvenChart({
             Netto ausgezahlt
           </span>
           {showGrv && (
-            <span className="lifecycle-legend__item">
+            <span className="lifecycle-legend__item lifecycle-legend__item--baseline">
               <span
                 className="lifecycle-legend__line"
                 style={{ borderTopStyle: 'dashed', borderTopColor: GRV_COLOR }}
@@ -475,7 +475,7 @@ export function BreakEvenChart({
             </span>
           )}
           {showGrvContribution && (
-            <span className="lifecycle-legend__item">
+            <span className="lifecycle-legend__item lifecycle-legend__item--baseline">
               <span
                 className="lifecycle-legend__line"
                 style={{ borderTopStyle: 'dashed', borderTopColor: GRV_CONTRIBUTION_COLOR }}
