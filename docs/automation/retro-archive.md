@@ -304,6 +304,12 @@ pr: null
 stage: investigate
 outcome: ready-for-PR
 labels: [bug]
+date: 2026-05-10T15:05:00Z
+issue: 86
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement]
 ---
 
 ## Blockers
@@ -322,6 +328,15 @@ labels: [bug]
 ## What would have helped
 
 - The audit comment posted on 2026-05-09 naming exact commit `cb7315e` and exact line numbers made this the fastest possible investigation run — no exploration needed at all.
+- For export-architecture enhancements that bundle multiple concrete bugs: check the sibling bug issues first. Issues #59, #61, and #62 were all listed as blockers in #86's body; by the time this run started, #59 (closed via `7cf68dd`) and #62 (closed via `9493c5c`) were already done, and #61 was CLOSED too. A prior automation comment had escalated #86 to human review due to scope concerns, but all concrete blockers had since been resolved.
+- The surviving gap (the test anchor for Stage 2): `buildCombinePortfolioCsv` Section 3 (`src/utils/csvExport.ts:317–349`) has a bAV/ETF/versicherung if/else chain with no branch for `altersvorsorgedepot` or `riester`. The compare-mode path was fixed by #61; the combine-mode path was noted as a "silent gap" in the #61 audit but not fixed. This is the concrete missing behavior for the projection layer.
+- The failing tests live in the existing `src/utils/csvExport.test.ts` in a new describe block `buildCombinePortfolioCsv — gh#86 AVD/Riester Section 3 after-tax gap`. They create AVD and Riester instances with yearly rows, pass `perInstanceTaxModes: { 'avd-gap-1': {} }` and `rules: de2026Rules`, and assert column 10 (`Kapital n. St.`) is non-blank. Both fail with `expected '' not to be ''`.
+- The `InstanceTaxModes` interface (`src/utils/csvExport.ts:221–228`) currently has only `bavTaxMode`, `insuranceTaxMode`, `equityPartialExemption`. Stage 2 will need `avdOtherAnnualIncome?: number` and `riesterOtherAnnualIncome?: number` to match the compare-mode `ExportOptions` shape (lines 21–28).
+- Reproduction shortcut for export-drift issues: compare `buildCombinePortfolioCsv` Section 3 if/else chain (lines ~317–349) against `buildExportCsv` Section 2 (lines ~106–175). Any product missing from combine but present in compare is a gap.
+
+## What would have helped
+
+- Knowing upfront that the prior automation explicitly escalated to human review would have suggested checking all blockers' state first (`gh issue view <blocker-id> --json state`) before deciding scope.
 
 
 ---
