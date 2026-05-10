@@ -1,8 +1,9 @@
 # Retro Entry Template
 
-Format for entries appended to `docs/automation/retro-archive.md` by
-`investigate.yml` and `implement.yml`. Kept in a separate file so agents can
-read this small template (~1 KB) instead of the monotonically-growing archive.
+Format for entries written by `investigate.yml` and `implement.yml` to
+`.automation-retro-entry.md`. A post-agent workflow step appends that file to
+`docs/automation/retro-archive.md`, so agents read this small template instead
+of the monotonically-growing archive.
 
 ## Entry shape
 
@@ -47,16 +48,7 @@ labels: [bug, area:ui-only]
 
 ## Append flow
 
-```bash
-git checkout main
-git pull --rebase origin main
-# append your entry to docs/automation/retro-archive.md
-#   (do NOT read the existing archive — it grows monotonically; this
-#   template is the only file you need to consult for format)
-git add docs/automation/retro-archive.md
-git commit -m "retro: <stage> #<issue-number>"
-git push origin main
-```
-
-If `git push` fails because of a concurrent retro push from another
-agent run, `git pull --rebase origin main` and retry once.
+Agents write only `.automation-retro-entry.md`. The workflow then runs
+`node scripts/automation/append-retro.mjs`, which copies the entry, stashes any
+dirty build artifacts, checks out `main`, rebases, appends to the archive,
+commits `retro: <stage> #<issue-number>`, and retries one concurrent push race.

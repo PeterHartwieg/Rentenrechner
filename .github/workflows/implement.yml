@@ -30,11 +30,9 @@ jobs:
         run: |
           BRANCH="agent/issue-${{ github.event.issue.number }}"
           if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            echo "Stage 1 branch exists — checking it out."
             git fetch origin "$BRANCH"
             git checkout "$BRANCH"
           else
-            echo "No Stage 1 branch — single-stage path. Creating from main."
             git checkout -B "$BRANCH" origin/main
           fi
 
@@ -50,9 +48,7 @@ jobs:
       - name: Remove ready-for-PR label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh issue edit ${{ github.event.issue.number }} \
-            --remove-label ready-for-PR
+        run: gh issue edit ${{ github.event.issue.number }} --remove-label ready-for-PR
 
       - name: Configure git
         run: |
@@ -71,188 +67,67 @@ jobs:
           allowed_bots: '*'
           claude_args: --allowed-tools Bash,Read,Edit,Write,Grep,Glob
           prompt: |
-            You are the implementer agent for issue #${{ github.event.issue.number }} in PeterHartwieg/Rentenrechner.
+            You are Stage 2 for issue #$ISSUE_NUMBER: implement the fix, verify,
+            push, and open the PR.
 
-            `CLAUDE.md` and `CONTEXT.md` are already loaded into your context via the
-            harness's `claudeMd` system reminder — do NOT issue Read calls on those
-            files. Consult specific sections by name when needed.
-
-            **Your job is Stage 2 of a two-stage pipeline.** In the normal path,
-            Stage 1 (`investigate.yml`) already reproduced the bug, made a
-            TDD-vs-skip judgement call, wrote and committed a failing test (or
-            chose to skip), pushed `agent/issue-$ISSUE_NUMBER`, and posted an
-            investigation comment. You apply the fix, verify, and open the PR.
-
-            **Single-stage path.** When triage routes a trivial issue
-            (`area:copy` / `area:ui-only` with `Precision: exact`) directly to
-            `ready-for-PR`, Stage 1 is skipped to save tokens. You'll detect
-            this via: no investigation comment in the issue thread AND `git log
-            origin/main..HEAD` showing zero commits. In that case do a
-            lightweight reproduction inline (read the affected file the QA
-            target id points at, articulate the failure path in one sentence
-            for the PR body), skip TDD (the area label is the contract — pure
-            copy / pure CSS), apply the fix, verify, open the PR.
+            `CLAUDE.md` and `CONTEXT.md` are already loaded via the harness; do
+            NOT Read them.
 
             **Inputs**
-            - Issue number: $ISSUE_NUMBER
             - Title: $ISSUE_TITLE
-            - Labels (comma-separated): $ISSUE_LABELS
-            - **Primary input — Stage 1's investigation comment.** Fetch ONLY this
-              comment (not the full issue thread) via the handoff marker:
-              ```bash
-              gh api "repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments" \
-                --jq '[.[] | select(.body | startswith("<!-- agent-handoff:investigate -->"))] | last | .body'
-              ```
-              The comment is self-contained — it has `## Reproduction`,
-              `## Files to edit`, `## Test status`, `## Branch`. Do NOT call
-              `gh issue view --comments` (that loads triage + investigation +
-              any human chatter unnecessarily).
-              On the single-stage path (no Stage 1 ran), this query returns
-              empty — fall through to the single-stage block below.
-            - **Fallback — issue body.** Only fetch the body if you need the QA
-              header table (target id, route) for the single-stage path:
-              `gh issue view $ISSUE_NUMBER --json title,body --jq .body`. The
-              `--json` form skips comments.
-            - You are checked out on `agent/issue-$ISSUE_NUMBER` (either Stage 1
-              created it, or the Stage 2 workflow created it on the single-stage
-              path). Run `git log --oneline origin/main..HEAD` to see what's
-              already committed.
+            - Labels: $ISSUE_LABELS
+            - You are on `agent/issue-$ISSUE_NUMBER`.
+            - Run `git log --oneline origin/main..HEAD`.
+            - Fetch Stage 1 handoff only:
+              `gh api "repos/${{ github.repository }}/issues/$ISSUE_NUMBER/comments" --jq '[.[] | select(.body | startswith("<!-- agent-handoff:investigate -->"))] | last | .body'`.
+              Do not load the whole comment thread.
 
-            **What to do**
+            **Normal path**
+            1. Read the handoff (`## Reproduction`, `## Files to edit`,
+               `## Test status`). If a test exists, run it once and confirm it
+               still fails. If it already passes, escalate: comment, add
+               `ready-for-human`, remove `in-progress-by-agent`, write retro,
+               stop.
+            2. Implement the minimal fix. If Stage 1 added a failing test, make
+               it pass without weakening or deleting that test.
+            3. Run `npm run verify`; iterate until it passes. Use it instead of
+               `npx tsc --noEmit` because the repo uses project references. If
+               `src/features/qa-feedback/__tests__/app-bridge.test.tsx` flakes,
+               confirm in isolation before blaming your change.
+            4. Commit with a clear message ending in `Closes #$ISSUE_NUMBER`
+               (the squash merge uses commit messages for issue closure). Push.
+            5. Open a PR. Body must include the AI marker, `Closes #$ISSUE_NUMBER`,
+               a short change summary, "Reproduction" from the handoff, and
+               "TDD" with either the Stage 1 test path or skip reason.
 
-            1. **Read Stage 1's output (or detect single-stage path).**
-               - Run `git log --oneline origin/main..HEAD`. Zero commits AND no
-                 investigation comment on the issue → single-stage path. Skip to
-                 the single-stage block below.
-               - Otherwise: find the investigation comment (a comment whose body
-                 contains `## Reproduction`, `## Test status`, `## Branch`).
-                 Tells you the failure path and whether a test was written.
-               - If a test was committed, run it once to confirm it still fails:
-                 `npx vitest run <test-path>`. If it passes already, Stage 1
-                 misdiagnosed — comment on the issue, apply `ready-for-human`,
-                 remove `in-progress-by-agent`, exit. Do not implement.
-               - If you find ZERO commits AND ZERO investigation comment AND the
-                 issue is NOT labeled `area:copy` or `area:ui-only`: something
-                 is broken (the single-stage shortcut requires the area label).
-                 Comment, apply `ready-for-human`, remove `in-progress-by-agent`,
-                 exit.
+            **Single-stage shortcut**
+            If there is no handoff and `git log origin/main..HEAD` is empty, this
+            must be an exact `area:copy` or `area:ui-only` issue. Fetch only the
+            issue body, read the QA target file, write a one-sentence failure path
+            for the PR body, skip TDD with the area-label reason, then follow
+            steps 2-5. If the labels do not match, escalate to `ready-for-human`.
 
-               **Single-stage block (only when no Stage 1 output exists AND label
-               is `area:copy` or `area:ui-only`):**
-               - Read the issue body (`gh issue view $ISSUE_NUMBER --json body`)
-                 to find the `Target id` row in the QA header table.
-               - Map target id to the affected file via the conventions in
-                 `docs/agents/issue-tracker.md`. Read that file. Articulate the
-                 failure path in one or two sentences ("`<file:line>` renders
-                 `<wrong>` instead of `<right>` because <reason>") — that goes
-                 in the PR body's "Reproduction" section.
-               - Skip TDD: the area label is the contract (pure CSS / pure
-                 copy is not unit-testable in this codebase). The PR body's
-                 "TDD" section says `TDD-skip: <area-label>`.
-               - Proceed to Step 2 (implement the fix).
-
-            2. **Implement the fix.** Edit the relevant code per the failure path
-               Stage 1 articulated. Keep the diff minimal and focused on what the
-               issue asks for. Do not refactor surrounding code, do not add features
-               beyond what the issue requires (per CLAUDE.md "Doing tasks").
-
-               If a failing test is on the branch, the fix must make it pass without
-               disabling or weakening it. If you find yourself changing the test to
-               make it pass, you're solving the wrong problem — re-read the test +
-               investigation comment.
-
-            3. **Verify.** Run `npm run verify` (lint + tests + build per CLAUDE.md).
-               Iterate until it passes. If a test outside your changes fails for an
-               unrelated reason, leave a note in the PR body and continue — do not
-               silently disable tests.
-
-               Type-check note: `npm run verify` uses `tsc -b` (project-reference
-               mode). `npx tsc --noEmit` alone misses errors in files that use `as T`
-               casts or project references — never use it as a substitute.
-
-               Pre-existing flakiness: `src/features/qa-feedback/__tests__/app-bridge.test.tsx`
-               has an intermittent failure on `typeof ctx.activeView`. If it fails,
-               confirm it's pre-existing before attributing it to your change:
-               `git stash && npx vitest run src/features/qa-feedback/__tests__/app-bridge.test.tsx && git stash pop`.
-
-            4. **Commit + push.** Commit with a clear message ending with
-               `Closes #$ISSUE_NUMBER`. Push the branch. **Use `Closes` (not
-               `Refs`)** — squash-merge composes the merge commit body from
-               your commit messages, NOT the PR body, so the closing keyword
-               must be in the commit message itself for GitHub to auto-close
-               the issue on merge. Issue #203 → PR #204 missed this and stayed
-               open after merge.
-
-            5. **Open the PR.** Use `gh pr create` with:
-               - Title: short imperative summary, prefixed with the conventional
-                 type (`fix:`, `feat:`, `docs:`, `refactor:`, etc.) per recent
-                 commit history.
-               - Body: must include
-                 - `Closes #$ISSUE_NUMBER` (so merge auto-closes the issue)
-                 - A short description of what changed and why
-                 - A "Reproduction" section copied verbatim from Stage 1's
-                   investigation comment
-                 - A "TDD" section saying either "Failing test added in Stage 1:
-                   <path>" or "TDD-skip: <reason from Stage 1>"
-                 - The standard AI-generated marker from
-                   docs/agents/issue-tracker.md
-
-            6. **Retro entry (mandatory, all exit paths).** Before stopping,
-               append one entry to `docs/automation/retro-archive.md` and push
-               directly to `main`. This applies to EVERY exit path: PR opened,
-               Stage 1 misdiagnosis escalation, missing investigation comment,
-               `npm run verify` won't pass. Even "no novel learnings" runs
-               append an entry — it confirms the run was routine.
-
-               Read `docs/automation/retro-template.md` (small, stable) for the
-               entry format. **Do NOT read `docs/automation/retro-archive.md`** —
-               it grows monotonically and you only need to append, never reference
-               prior entries. Then:
-
-               ```bash
-               git stash  # npm run verify regenerates public/og/*.png — stash to keep checkout clean
-               git checkout main
-               git pull --rebase origin main
-               # append your entry to docs/automation/retro-archive.md
-               git add docs/automation/retro-archive.md
-               git commit -m "retro: implement #$ISSUE_NUMBER"
-               git push origin main
-               ```
-
-               If `git push` fails because of a concurrent retro push from
-               another agent run, `git pull --rebase origin main` and retry once.
-
-               Be specific. "I learned about the codebase" is useless. File
-               paths, function names, line ranges, exact failure modes — that's
-               what helps future runs.
-
-               Stage-specific signal worth capturing in implementer retros:
-               - Fix patterns that paid off (or surprised you)
-               - Verify-flow gotchas (`npm run verify` failures with non-obvious
-                 root causes)
-               - Cases where Stage 1's failing test was wrong / weak / had to
-                 be widened (Stage 1 escape signal)
-               - Codebase invariants you ran into mid-fix (e.g. "X must always
-                 happen before Y or Z breaks")
-
-            7. **Done.** Stop after the PR is created. Do NOT comment `@codex review` —
-               the Codex GitHub integration auto-reviews on PR open. Do NOT remove
-               `in-progress-by-agent` — that label is cleared by the merge step.
+            **Retro**
+            Before every exit, write `.automation-retro-entry.md` using
+            `docs/automation/retro-template.md`. Do not read/edit the archive; the
+            workflow appends it after you exit.
 
             **Hard rules**
-            - Stay on the `agent/issue-$ISSUE_NUMBER` branch for code work. The
-              ONLY sanctioned push to `main` is the Step 6 retro append to
-              `docs/automation/retro-archive.md`.
-            - Never commit secrets, credentials, or `.env` files.
-            - Step 6 retro fires on EVERY exit path — PR opened, Stage 1
-              misdiagnosis escalation, missing investigation comment, verify
-              failure escalation. No exit without a retro entry.
-            - Never modify or delete Stage 1's failing-test commit. If the test is
-              wrong, that's a Stage 1 escape — escalate via `ready-for-human`, do
-              not silently fix the test.
-            - If `npm run verify` fails after a reasonable number of iterations and
-              you cannot diagnose it, post a comment on the issue explaining where
-              you got stuck, remove `in-progress-by-agent`, add `ready-for-human`,
-              and stop. Do not open a broken PR.
-            - Follow `CLAUDE.md` "Critical guardrails" — license disclaimer must
-              remain session-only, never collect PII without a backend story, etc.
+            - Stay on `agent/issue-$ISSUE_NUMBER`.
+            - No main pushes; the workflow owns the retro push.
+            - `.automation-retro-entry.md` is mandatory on every exit path.
+            - Never modify/delete Stage 1's failing-test commit. If the test is
+              wrong, escalate to `ready-for-human`.
+            - Do not open a broken PR. If verify cannot be fixed, comment,
+              remove `in-progress-by-agent`, add `ready-for-human`, write retro,
+              and stop.
+            - Do not post `@codex review`; Codex auto-reviews on PR open.
+            - Follow CLAUDE.md critical guardrails.
+
+      - name: Append retro entry
+        if: always()
+        env:
+          RETRO_STAGE: implement
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RETRO_ENTRY_PATH: .automation-retro-entry.md
+        run: node scripts/automation/append-retro.mjs

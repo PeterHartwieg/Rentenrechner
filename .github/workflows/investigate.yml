@@ -57,227 +57,84 @@ jobs:
           allowed_bots: '*'
           claude_args: --allowed-tools Bash,Read,Edit,Write,Grep,Glob
           prompt: |
-            You are the investigator agent for issue #${{ github.event.issue.number }} in PeterHartwieg/Rentenrechner.
+            You are Stage 1 for issue #$ISSUE_NUMBER: investigate, prove the
+            bug/enhancement with a failing test when useful, then hand off. Do
+            not fix and do not open a PR.
 
-            `CLAUDE.md` and `CONTEXT.md` are already loaded into your context via the
-            harness's `claudeMd` system reminder — do NOT issue Read calls on those
-            files. Consult specific sections by name when you need them; the table
-            of contents in CLAUDE.md ("Quick navigation", "Key files") and CONTEXT.md
-            ("Module map") are the entry points.
-
-            **Your job is Stage 1 of a two-stage pipeline.** You reproduce the bug (or
-            validate the enhancement is missing), write a failing test, push the
-            branch, and hand off to `implement.yml` (Stage 2) by applying the
-            `ready-for-PR` label. You do NOT write the fix. You do NOT open a PR.
+            `CLAUDE.md` and `CONTEXT.md` are already loaded via the harness; do
+            NOT Read them. Use their section names only when needed.
 
             **Inputs**
-            - Issue number: $ISSUE_NUMBER
             - Title: $ISSUE_TITLE
-            - Labels (comma-separated): $ISSUE_LABELS
-            - Read the full body and any comments with `gh issue view $ISSUE_NUMBER --comments`.
+            - Labels: $ISSUE_LABELS
+            - Fetch the issue with `gh issue view $ISSUE_NUMBER --comments`.
 
-            **What to do**
-
-            1. **Branch.** Create `agent/issue-$ISSUE_NUMBER` from `main`:
+            **Steps**
+            1. Branch from main:
                `git checkout -B agent/issue-$ISSUE_NUMBER origin/main`.
-               (Force-create so a stale branch from a prior re-trigger gets reset.)
+            2. Reproduce/validate.
+               - Bug: read the affected files, trace the path, and write a
+                 1-2 sentence failure path: "When X, `<file:line>` does Y,
+                 causing Z."
+               - Enhancement: confirm the requested behavior is missing.
+               - `code-review` issues: before reading each named file, run
+                 `git log --oneline --all -- <file>`; recent commits may have
+                 already fixed the reported gap.
+               - If already correct, already present, or too vague: comment
+                 with evidence, apply `needs-info`, remove
+                 `in-progress-by-agent`, write the retro file, and stop. Do not
+                 push a branch.
+            3. Decide TDD.
+               - Write a failing test for calculation, state/reactivity,
+                 routing/URL, storage, pure helpers, DOM-testable a11y, and
+                 QA tooling behavior.
+               - Skip with `TDD-skip: <reason>` for pure CSS/layout,
+                 pure copy, docs, or manual-visual-only changes.
+               - If writing a test: place it by local convention, run
+                 `npx vitest run <test-file>`, confirm it fails for the right
+                 reason, and commit only the test:
+                 `git add <test-file> && git commit -m "test: failing test for #$ISSUE_NUMBER"`.
+               - If the test passes today, your reproduction is wrong; exit via
+                 the already-correct path.
+            4. Push `agent/issue-$ISSUE_NUMBER`.
+            5. Post one self-contained handoff comment starting with the exact
+               marker `<!-- agent-handoff:investigate -->`:
 
-            2. **Reproduce or validate.** Branch on the issue's classification labels:
-
-               **Bug** ($ISSUE_LABELS contains `bug`): Confirm the reported behavior
-               is real and currently present in the code. Users sometimes report
-               user-error or stale behavior as bugs. A speculative test on a
-               non-bug poisons Stage 2's fix.
-
-               Procedure:
-               - Identify the affected files. For QA submissions, the `Target id`
-                 in the body's header table maps to file paths via the conventions
-                 in `docs/agents/issue-tracker.md` and the area structure under
-                 `src/features/` and `src/engine/products/`.
-               - Read those files and trace the data path the reporter describes.
-               - Articulate the failure path in one or two sentences:
-                 "When the user does X, code path Y at <file:line> does Z, which
-                 produces the reported wrong behavior because <reason>."
-
-               Three outcomes:
-               - **Reproduced** — you can point to the specific code path that
-                 produces the reported behavior. Save the failure-path articulation;
-                 it goes in the investigation comment + the eventual PR body.
-                 Proceed to Step 3.
-               - **Code already does the right thing** — the file you read clearly
-                 handles the case the reporter describes correctly, and you can't
-                 find any path that would produce the reported wrong behavior. Post
-                 a comment listing which files you inspected, what they do, why
-                 this contradicts the report. Apply `needs-info`, remove
-                 `in-progress-by-agent`, exit cleanly. **Do not push a branch, do
-                 not write a test.**
-               - **Report too vague to locate** — you cannot identify any plausibly-
-                 affected file from the description, target id, or screenshot URL.
-                 Post a comment listing what you searched for and what you'd need
-                 to act (specific element, exact reproduction steps, expected vs
-                 actual values). Apply `needs-info`, exit cleanly.
-
-               When in doubt between reproduced and not-reproducible, prefer
-               not-reproducible — false negatives waste a tester response cycle
-               but are recoverable; false positives produce confidently-wrong
-               PRs that waste a full review + fix cycle.
-
-               **Enhancement** ($ISSUE_LABELS does not contain `bug`, or contains
-               `enhancement`): Confirm the requested behavior is currently MISSING.
-               Sometimes the codebase already supports what the issue asks for and
-               the reporter missed it.
-
-               **`code-review` issues** ($ISSUE_LABELS contains `code-review`): before
-               reading each affected file, run `git log --oneline --all -- <file>`.
-               Code-review sessions may lag concurrent PRs by hours — the most recent
-               commit touching the file may already address the report. If the commit
-               message references the same behavior, read it and exit via "Already
-               present" if the fix is confirmed.
-
-               - **Already present** → comment with where the existing implementation
-                 lives, apply `needs-info` (so the human can confirm it's actually a
-                 different ask), remove `in-progress-by-agent`, exit cleanly.
-               - **Missing as described** → save a one-sentence "what should be true
-                 after this lands" articulation. Proceed to Step 3.
-
-            3. **Test-writing decision.** Decide whether a failing test is feasible
-               and useful for this issue. This is your judgement call.
-
-               Strong signals to write a test:
-               - Calculation behavior (`qa(value)`, engine math, retirement-tax flow)
-               - State / reactivity (input change → derived value should change)
-               - Routing / URL handling (share-URL ingest, route preselection)
-               - Storage migration / validation
-               - Pure utility / helper functions
-
-               Strong signals to skip the test (note "TDD-skip: <reason>" in the
-               investigation comment):
-               - Pure CSS / visual layout ($ISSUE_LABELS contains `area:ui-only`)
-               - Pure user-facing copy ($ISSUE_LABELS contains `area:copy`)
-               - Documentation ($ISSUE_LABELS contains `documentation`)
-               - Anything where the only meaningful test is a manual visual check
-
-               Edge cases — your judgement:
-               - a11y bug reporting a focus-management issue: testable (DOM-level)
-               - Mixed bugs (e.g. layout + behavior): write the behavior test, skip
-                 the layout assertion
-               - QA-overlay tooling: testable via DOM-level component tests
-
-               If you decide to write a test:
-               - Place it next to the affected source file or in a dedicated
-                 `__tests__/` folder per existing project conventions (Grep for
-                 sibling tests).
-               - The test must encode the failure path you articulated in Step 2.
-               - Run `npx vitest run <new-test-file>` and confirm it fails for the
-                 expected reason (not a typo / missing import / setup mistake).
-               - If the test passes today, you misdiagnosed reproduction —
-                 STOP, do not push, exit via the "code already does the right
-                 thing" path from Step 2.
-               - Commit the test alone:
-                 `git add <test-file> && git commit -m "test: failing test for #$ISSUE_NUMBER"`
-
-               If you decide to skip the test (TDD-skip): no commit yet. The
-               branch will be at the same SHA as main when pushed.
-
-            4. **Push the branch.** `git push -u origin agent/issue-$ISSUE_NUMBER`.
-               If you have a test commit, this pushes it. If TDD-skip, this just
-               creates the empty branch reference for Stage 2 to commit onto.
-
-            5. **Investigation comment.** Post a structured comment on the issue
-               via `gh issue comment $ISSUE_NUMBER --body-file <file>`. Stage 2
-               (`implement.yml`) reads ONLY this comment (not the full issue body
-               or other comments) — make it self-contained. The first line MUST be
-               the literal handoff marker `<!-- agent-handoff:investigate -->` so
-               Stage 2 can fetch this exact comment via API filter without
-               loading other thread chatter. Format:
-
-               ```
+               ```markdown
                <!-- agent-handoff:investigate -->
                > *This was generated by AI during investigation (Stage 1 of the agentic pipeline).*
 
                ## Reproduction
-
-               <Your one-or-two-sentence failure-path articulation. For enhancements,
-               your "what should be true after this lands" articulation.>
+               <failure path or missing-behavior statement>
 
                ## Files to edit
-
-               - `<path:line>` — <one-phrase reason>
-               - `<path:line>` — <one-phrase reason>
-
-               (List the 1-3 files Stage 2 will need to touch. This is the
-               primary input to Stage 2 — be specific so it doesn't need to
-               re-derive locations from the issue body.)
+               - `<path:line>` — <reason>
 
                ## Test status
-
-               <One of:>
                - Failing test added: `<path>`
-               - TDD-skip: <reason from your Step 3 decision>
+               - OR TDD-skip: <reason>
 
                ## Branch
-
                `agent/issue-$ISSUE_NUMBER` is ready for Stage 2 (`implement.yml`).
                ```
 
-            6. **Hand off to Stage 2.** Apply `ready-for-PR`:
-               `gh issue edit $ISSUE_NUMBER --add-label ready-for-PR`.
-               This fires `implement.yml`. Do NOT remove `in-progress-by-agent` —
-               it stays on through Stage 2 and is cleared by the eventual merge.
-
-            7. **Retro entry (mandatory, all exit paths).** Before stopping,
-               append one entry to `docs/automation/retro-archive.md` and push
-               directly to `main`. This applies to EVERY exit path: successful
-               hand-off, can't-reproduce, vague-report, already-implemented. Even
-               "no novel learnings" runs append an entry — it confirms the run
-               was routine.
-
-               Read `docs/automation/retro-template.md` (small, stable) for the
-               entry format. **Do NOT read `docs/automation/retro-archive.md`** —
-               it grows monotonically and you only need to append, never reference
-               prior entries. Then:
-
-               ```bash
-               git stash  # npm run verify regenerates public/og/*.png — stash to keep checkout clean
-               git checkout main
-               git pull --rebase origin main
-               # append your entry to docs/automation/retro-archive.md
-               git add docs/automation/retro-archive.md
-               git commit -m "retro: investigate #$ISSUE_NUMBER"
-               git push origin main
-               ```
-
-               If `git push` fails because of a concurrent retro push from
-               another agent run, `git pull --rebase origin main` and retry once.
-
-               Be specific. "I learned about the codebase" is useless. File
-               paths, function names, line ranges, exact failure modes — that's
-               what helps future runs.
-
-               Stage-specific signal worth capturing in investigator retros:
-               - Reproduction shortcuts (where to start reading for class X)
-               - False-failure patterns (signals that look like bugs but aren't)
-               - Cases where the test was hard to write (and what would help)
-               - QA-tooling gotchas that masked the real issue (like target-id
-                 misidentification)
-
-            8. **Done.** Stop. Do not implement the fix. Do not open a PR.
+            6. Apply `ready-for-PR`; keep `in-progress-by-agent`.
+            7. Write `.automation-retro-entry.md` using
+               `docs/automation/retro-template.md`. Do not read/edit the
+               archive; the workflow appends it after you exit.
 
             **Hard rules**
-            - Stay on the `agent/issue-$ISSUE_NUMBER` branch for code work. The
-              ONLY sanctioned push to `main` is the Step 7 retro append to
-              `docs/automation/retro-archive.md`.
-            - Never commit secrets, credentials, or `.env` files.
-            - Step 7 retro fires on EVERY exit path — successful hand-off,
-              can't-reproduce, vague-report, already-implemented, error
-              escalation. No exit without a retro entry.
-            - Never commit a fix in this stage. If you write a fix, you've done
-              Stage 2's job — that's not your job and the test won't validate it.
-            - If you cannot decide reproducible vs not-reproducible after careful
-              code reading, default to not-reproducible + `needs-info`. False
-              negatives are cheap.
-            - The cleanup label for "can't reproduce" / "report too vague" is
-              `needs-info` (reporter must supply more detail), NOT `ready-for-human`
-              (which is for `npm run verify` failures in Stage 2).
-            - Follow `CLAUDE.md` "Critical guardrails" — license disclaimer must
-              remain session-only, never collect PII without a backend story, etc.
+            - No fix commits in Stage 1.
+            - No main pushes; the workflow owns the retro push.
+            - `.automation-retro-entry.md` is mandatory on every exit path.
+            - Cleanup for vague/cannot-reproduce is `needs-info`, not
+              `ready-for-human`.
+            - Follow CLAUDE.md critical guardrails.
+
+      - name: Append retro entry
+        if: always()
+        env:
+          RETRO_STAGE: investigate
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RETRO_ENTRY_PATH: .automation-retro-entry.md
+        run: node scripts/automation/append-retro.mjs

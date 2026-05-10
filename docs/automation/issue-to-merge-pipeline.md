@@ -8,9 +8,10 @@ GitHub integration for dual-LLM code review. Built to be portable across
 repos.
 
 > **Status on this repo**: live since 2026-05-10. Validated end-to-end on
-> issue #149 / PR #181. Token-optimized 2026-05-10 (Opus→Sonnet on
-> review-loop, single-stage shortcut for trivial issues, retro template
-> extracted, verify split into standalone workflow, etc. — see
+> issue #149 / PR #181. Token-optimized 2026-05-10 (deterministic
+> review-loop router, compact triage facts, Opus→Sonnet on review-loop,
+> single-stage shortcut for trivial issues, retro template extracted,
+> verify split into standalone workflow, etc. — see
 > [Token-optimization changelog](#token-optimization-changelog)).
 
 ## Table of contents
@@ -747,6 +748,22 @@ the diffs.
    instead of `gh issue view --comments` (which loaded triage +
    investigation + any human chatter). Self-contained handoff means
    Stage 2 rarely needs the issue body at all.
+8. **Deterministic review-loop router.** `review-loop.yml` now calls
+   `scripts/automation/review-loop-decision.mjs` before any Claude action.
+   The script handles `merge`, `wait`, and runaway `cap` outcomes directly;
+   Claude only wakes for real `fix` cases with blocking review feedback.
+9. **Compact triage facts.** `triage.yml` now writes
+   `.automation-triage-facts.json` via `scripts/automation/triage-facts.mjs`.
+   The prompt consumes parsed source category, QA fields, severity/type, and
+   auto-promote shape instead of carrying the whole parser in prose.
+10. **Retro append moved out of agent prompts.** Stage 1 and Stage 2 now write
+    `.automation-retro-entry.md`; `scripts/automation/append-retro.mjs`
+    handles stashing generated OG images, appending to the archive on `main`,
+    and retrying one concurrent retro push.
+11. **QA type inferred before triage.** The QA report builder infers
+    `copy/layout/value/a11y/flow/interaction` from target/comment signals when
+    the tester-facing composer leaves the type as `other`, reducing triage
+    title rewrites.
 
 **Combined back-of-envelope savings** (per typical issue, happy path):
 - Opus tokens: ~50% reduction (review-loop downgrade + verify-split +

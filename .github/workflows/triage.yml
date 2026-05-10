@@ -20,6 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Build triage facts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: node scripts/automation/triage-facts.mjs
+
       - name: Run triage agent
         uses: anthropics/claude-code-action@v1
         env:
@@ -32,229 +38,75 @@ jobs:
           allowed_bots: '*'
           claude_args: --allowed-tools Bash(gh:*),Read,Grep,Glob
           prompt: |
-            You are the triage agent for issue #${{ github.event.issue.number }} in PeterHartwieg/Rentenrechner.
+            You are the triage agent for issue #$ISSUE_NUMBER in
+            PeterHartwieg/Rentenrechner.
 
-            Read `docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md` first — those are
-            authoritative for label vocabulary and the AI-generated marker convention.
+            Read `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`,
+            and `.automation-triage-facts.json` first. The facts file already
+            parsed source category, QA header fields, title severity/type, and
+            auto-promote shape; use it as your compact input.
 
             **Inputs**
             - Issue number: $ISSUE_NUMBER
             - Title: $ISSUE_TITLE
             - Author: $ISSUE_AUTHOR
-            - Read the body, labels, and comments with
+            - Fetch body/labels only when you need exact text:
               `gh issue view $ISSUE_NUMBER --json labels,body,comments,author`.
 
-            **Step 1: Classify the source.** Pick exactly one category:
+            **Flow**
+            1. **Sufficiency.** If the issue body is empty or too vague to act on,
+               apply `needs-info`, comment with the AI-generated triage marker, and stop.
+            2. **Classify bug vs enhancement.** `bug` = broken/wrong behavior;
+               `enhancement` = new capability. QA-shape wishes in German ("Wäre
+               schön...", "Ich würde mir wünschen...") are enhancements even if
+               filed through QA.
+            3. **QA type.** For QA sources, trust the title type unless it is
+               `other` or clearly wrong. If needed, re-derive one of
+               `copy|layout|value|a11y|flow|interaction|other` from tester comment,
+               target id, and screenshot filename. Rewrite only the `qa(type)` token
+               with `gh issue edit --title`; preserve severity and target.
+            4. **Dedup / already-fixed.**
+               - `QA-maintainer`, pre-curated, and pre-reviewed: skip both.
+               - `QA-anonymous` bugs: strong dedup only. Same `Target id` + same
+                 `Route` among open issues => close as duplicate and label
+                 `duplicate`. Otherwise map target prefixes to likely files
+                 (`inputs.*`, `results.*`, `legal.*`) and check merged PRs from the
+                 last 14 days; overlapping files => close with `fixed-in-PR`.
+               - Non-QA plain: title-only near-duplicate check. Label
+                 `possible-duplicate` and comment; never auto-close.
+            5. **Body enrichment.** Only enrich plain non-QA bugs. Add reproduction,
+               expected/actual, environment, and likely code paths. Preserve original
+               text below your AI-generated triage marker. Do not enrich QA,
+               pre-curated, pre-reviewed, or enhancement issues.
+            6. **Area label.** Apply at most one: `area:copy`, `area:ui-only`, or
+               `documentation`. QA type `copy` => `area:copy`; `layout` =>
+               `area:ui-only`; `a11y`, `value`, `flow`, `interaction`, `other` =>
+               no area label.
+            7. **Guardrail check for enhancements.** Skip trusted sources
+               (`QA-maintainer`, pre-curated). For anonymous QA wishes,
+               pre-reviewed enhancements, and plain enhancements, scan for backend,
+               telemetry, analytics, cookies, accounts, commercial/bulk/white-label,
+               or permanent disclaimer removal. On match, apply
+               `needs-product-review` and comment with the touched CLAUDE.md
+               guardrail.
+            8. **Gate state.** Auto-promote only when all hold:
+               QA source; classified `bug`; no Step 4 early exit; severity
+               `Major|Minor|Nit`; derived type `copy|layout|a11y|value`;
+               `Target id` present; precision `exact|nested`; tester comment has
+               >10 chars of substance.
 
-            - **A. QA-anonymous** — title matches the regex
-              `^\[(BLOCKER|Major|Minor|Nit)\] qa\((copy|layout|flow|interaction|value|a11y|other)\): .+$`
-              AND body has the QA-Worker header table (rows include `Target id`,
-              `Precision`, `Route`, `Viewport`, `Browser`, `App build`, `Timestamp`) AND
-              `## Privacy flags` section AND `from-maintainer` label is NOT present.
-            - **B. QA-maintainer** — same QA-Worker shape as A AND `from-maintainer` label
-              IS present. The Worker only applies that label when the maintainer's dev
-              code (`?dev=<code>`) validated server-side.
-            - **C. Non-QA pre-curated** — title does not match the QA regex AND body has
-              at least one of: checkbox acceptance lines (`- [ ]` / `- [x]`); both
-              `## What to change` and `## Acceptance criteria` headings (or close
-              variants); a reference to `docs/adr/` or `docs/.../*.md` paths.
-            - **D. Non-QA pre-reviewed** — title does not match the QA regex AND body
-              contains a literal `Source: code-review session` or `Source: ultrareview`
-              marker (typically near the top or bottom).
-            - **E. Non-QA plain** — title does not match the QA regex AND none of C/D
-              signals are present.
+               If auto-promote and area label is `area:copy` or `area:ui-only`
+               with `Precision: exact`, use the single-stage shortcut:
+               add `ready-for-PR,in-progress-by-agent,<area-label>` and remove
+               `needs-triage`. Otherwise add `ready-for-agent,<area-label-if-any>`
+               and remove `needs-triage`. Use one `gh issue edit` call.
 
-            If multiple non-QA signals fire, prefer D over C over E. For ambiguous cases,
-            prefer treating as plain (E) — enrichment is harmless, skipping it isn't.
-            Solo-repo context: non-QA issue authors are always the maintainer; no author
-            validation needed. The `## Tester comment` field on QA submissions may be in
-            German; everything else is English.
-
-            **Step 2: Sufficiency.** If the body is empty, near-empty, or missing the
-            information you'd need to take any further action: apply `needs-info`, post a
-            clarification comment via `gh issue comment $ISSUE_NUMBER --body-file <file>`,
-            stop here. Skip remaining steps.
-
-            **Step 3: Bug vs enhancement.**
-            - Apply `bug` when the issue describes broken / wrong behavior.
-            - Apply `enhancement` when it describes a feature wish or capability addition.
-            - QA wish re-route: a QA-shape submission whose `## Tester comment` reads as
-              a wish ("Wäre schön wenn…", "Kann das auch X?", "Ich würde mir wünschen…",
-              "Wäre toll wenn…") is an enhancement — re-route despite the QA shape.
-
-            **Step 3b: QA type reclassification.** For sources A and B (any classification),
-            the title's `qa(<type>)` token is set by the QA composer, which today always
-            emits `other`. Re-derive the true type from the `## Tester comment` and the
-            screenshot URL (you cannot view the image, but the filename / target id and the
-            comment usually suffice). Pick exactly one:
-
-            - `copy` — text or wording is wrong (typo, awkward phrasing, missing word,
-              wrong language, untranslated string).
-            - `layout` — visual or CSS issue (overlap, misalignment, color, spacing,
-              mobile cutoff, dark-mode contrast, broken responsive break).
-            - `value` — a displayed number is wrong, fails to update on input change, or
-              doesn't match expected math. Includes "X doesn't reflect Y", "total is off",
-              "Effektivkosten doesn't recompute".
-            - `a11y` — keyboard navigation, focus order, screen-reader labels, contrast
-              ratios, ARIA roles.
-            - `flow` — multi-step user journey is broken (wizard step skip, navigation
-              dead-end, mode-switch loses state).
-            - `interaction` — single-component interaction logic (button doesn't fire,
-              dropdown doesn't open, drag handle stuck) — not a value miscalculation.
-            - `other` — genuinely ambiguous after reading the comment. Use sparingly.
-
-            If your derived type differs from the title's token, rewrite the title:
-
-            ```
-            gh issue edit $ISSUE_NUMBER --title "[<Severity>] qa(<derived-type>): <target-id>"
-            ```
-
-            Preserve the original `[Severity]` and `<target-id>` exactly — only the type
-            token changes. If your derivation matches the existing token, leave the title
-            alone.
-
-            **Step 4: Deduplication and already-fixed.** Branch on the source category
-            from Step 1.
-
-            - **A (QA-anonymous), bug only:**
-              1. Read `Target id` and `Route` from the header table.
-              2. Search open issues for the same Target id:
-                 `gh issue list --search "<Target id>" --state open --json number,title,body`.
-                 If you find an open issue with the SAME `Target id` AND SAME `Route` →
-                 close as duplicate (`gh issue close $ISSUE_NUMBER --comment "<comment>"`),
-                 apply `duplicate` label. STOP.
-              3. Map `Target id` to likely file paths (use Glob to verify):
-                 - `inputs.<product>.*` → `src/features/inputs/<Product>*.tsx`,
-                   `src/engine/products/<product>.ts`
-                 - `results.<view>.*` → `src/features/results/<View>*.tsx`
-                 - `legal.<page>.*` → `src/features/legal/<Page>Page.tsx`
-              4. Search merged PRs in the last 14 days
-                 (`gh pr list --search "is:merged merged:>=$(date -u -d '14 days ago' +%Y-%m-%d)" --json number,title --limit 50`,
-                 then `gh pr view <N> --json files --jq '.files[].path'` for each).
-                 If a merged PR's files overlap with the file paths from step 3 → comment
-                 "Likely fixed by merged PR #M, please verify after next deploy", close
-                 as already-fixed, apply `fixed-in-PR` label. STOP.
-            - **B (QA-maintainer):** skip dedup AND already-fixed. Maintainer dev code
-              signals the queue has already been considered.
-            - **C (Non-QA pre-curated):** skip both. Pre-curation is the maintainer's
-              consideration of the queue.
-            - **D (Non-QA pre-reviewed):** skip both. Code-review session output is the
-              maintainer's curation.
-            - **E (Non-QA plain):** light title-only dedup. Search open issues by title
-              keywords (`gh issue list --search "<keywords>" --state open`). On a near-
-              exact title match (judge as a maintainer skimming would) → label
-              `possible-duplicate`, comment with the link, leave open. Do NOT auto-close.
-              Skip already-fixed.
-
-            **Step 5: Body enrichment.**
-            - **A or B (QA), any type:** NO enrichment — header table + screenshot already
-              pinpoint the issue.
-            - **C (pre-curated), any type:** NO enrichment.
-            - **D (pre-reviewed), any type:** NO enrichment.
-            - **E (plain), bug:** enrich. Use `gh issue edit $ISSUE_NUMBER --body-file <file>`
-              with: reproduction steps, expected vs actual, environment, list of likely
-              relevant code paths (Grep/Glob — don't guess). Preserve the reporter's
-              original text below your section. Prefix your section with the AI-generated
-              marker from docs/agents/issue-tracker.md.
-            - **E (plain), enhancement:** NO enrichment. Leave the body alone.
-
-            **Step 6: TDD-skip area label.** Apply ONE if applicable:
-            - `area:ui-only` — pure CSS / layout / visual change
-            - `area:copy` — pure user-facing text (German copy, button labels, errors)
-            - `documentation` — README, docs/, code comments only
-
-            For QA submissions, derive from the type you settled on in Step 3b (NOT the
-            original title token if you rewrote it):
-            - `copy` → `area:copy`
-            - `layout` → `area:ui-only`
-            - `a11y` → no area label (a11y fixes carry behavioral assertions; TDD runs)
-            - `value` → no area label (calculation bugs are testable; TDD runs)
-            - `flow` / `interaction` / `other` → no area label (semantic / behavior)
-
-            For non-QA: judge from body content. Engine / state / calculation changes →
-            no area label.
-
-            **Step 7: Guardrail keyword check (enhancements only).** Skip for source
-            categories B (QA-maintainer) and C (pre-curated) — implicit maintainer trust.
-            For sources A (QA-anonymous wish), D (pre-reviewed enhancement), and
-            E (plain enhancement), scan the body (and `## Tester comment` for A) for any
-            of these keywords (case-insensitive, whole-word match):
-
-            - **Backend**: telemetry, analytics, tracking, cookie, account, login, signup,
-              backend, server, cloud, API, webhook, integration, Konto, Anmeldung, Statistik
-            - **Commercial**: Berater, advisor, broker, Vermittler, premium, subscription,
-              paid, commercial, bulk, batch, white-label, embed, bezahlt, Abonnement,
-              Werbeagentur
-            - **Compliance**: "Disclaimer entfernen", "dismiss permanently", "remove warning"
-
-            On any match: apply `needs-product-review` label AND post a comment listing
-            the matched keywords + the CLAUDE.md guardrail line they touch:
-
-            > *This was generated by AI during triage.*
-            >
-            > **Guardrail flag.** This issue mentions: `<keyword1>`, `<keyword2>`. These touch:
-            >
-            > - **Backend boundary** (CLAUDE.md → "Backend boundary"): `<keyword1>`
-            > - **Commercial license posture** (CLAUDE.md → guardrail 2): `<keyword2>`
-            >
-            > Apply `ready-for-agent` only after confirming the request is in-scope.
-
-            **Step 8: Decide gate state.** Auto-promote to `ready-for-agent` ONLY when
-            ALL of the following hold:
-            - Source is A (QA-anonymous) OR B (QA-maintainer).
-            - Step 3 classified as `bug` (NOT enhancement, NOT needs-info).
-            - Step 4 did NOT exit early (no duplicate, no already-fixed close).
-            - Title severity is `Major`, `Minor`, or `Nit` (NOT `BLOCKER`).
-            - Step 3b derived type is `copy`, `layout`, `a11y`, or `value`.
-              (NOT `flow`, `interaction`, or `other` — those need human classification.)
-            - `Target id` row is present AND `Precision` is `exact` or `nested`.
-            - `## Tester comment` is non-empty after trim (>10 characters of substance).
-
-            **Single-stage shortcut.** Within the auto-promote bucket, additionally
-            check: if the area label from Step 6 is `area:copy` OR `area:ui-only`
-            AND `Precision` is `exact` (NOT `nested`), apply `ready-for-PR`
-            DIRECTLY instead of `ready-for-agent`. This skips Stage 1
-            (`investigate.yml`) for trivial fixes — the implementer agent will do
-            the lightweight reproduction inline. Saves one full agent session on
-            the easiest issues.
-
-            **On EITHER auto-promote path** (standard `ready-for-agent` or
-            single-stage `ready-for-PR`), the label edit must remove
-            `needs-triage` in the same call so the issue's state stays accurate
-            once triage is done. Use one combined command. Examples:
-
-            ```bash
-            # Standard two-stage auto-promote:
-            gh issue edit $ISSUE_NUMBER \
-              --add-label ready-for-agent,<area-label-if-any> \
-              --remove-label needs-triage
-
-            # Single-stage shortcut (also adds in-progress-by-agent because Stage 1
-            # is skipped and Stage 1 is what normally applies it):
-            gh issue edit $ISSUE_NUMBER \
-              --add-label ready-for-PR,in-progress-by-agent,<area-label-if-any> \
-              --remove-label needs-triage
-            ```
-
-            For all other auto-promote cases (a11y, value, or `nested` precision):
-            standard two-stage path. `investigate.yml` fires.
-
-            Do NOT post an audit-trail comment in either case — the labels alone are
-            the trail.
-
-            Otherwise (not auto-promote-eligible): keep `needs-triage` on. Do NOT
-            apply `ready-for-agent` or `ready-for-PR`.
+               If not auto-promote eligible, leave `needs-triage`; do not add
+               `ready-for-agent` or `ready-for-PR`.
 
             **Hard rules**
-            - Use only the `gh` CLI for label edits, body edits, comments, and closes.
-            - Do NOT push code, open PRs, or modify any files in the repo working tree.
-            - Apply `ready-for-agent` ONLY when the Step 8 criteria are met. When in
-              doubt, leave at `needs-triage` — false negatives are cheap, false positives
-              let unsuitable issues into autonomous implementation.
-            - Auto-close (Step 4) is reserved for QA-anonymous bugs with strong dedup
-              signals (same Target id + same Route) or merged-PR file-path match. For
-              weaker signals, label `possible-duplicate` and leave open.
-            - Do NOT add `in-progress-by-agent`, `wontfix`, or any merge-related labels —
-              those are for later phases.
-            - Every comment or body-section you write must start with the AI-generated
-              marker from docs/agents/issue-tracker.md.
+            - Use only `gh` for issue mutations.
+            - Do not push code, open PRs, or edit repo files.
+            - False positives are expensive: when unsure, leave `needs-triage`.
+            - Every comment/body section you write starts with the AI-generated
+              marker from `docs/agents/issue-tracker.md`.

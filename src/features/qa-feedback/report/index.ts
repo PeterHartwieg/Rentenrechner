@@ -22,3 +22,4 @@ export type {
 
 export { buildMarkdownTicket, defaultPrivacyFlags } from './buildMarkdown'
 export { computeHeadlinePreview, generateTitle } from './buildTitle'
+export { inferFeedbackType } from './inferType'

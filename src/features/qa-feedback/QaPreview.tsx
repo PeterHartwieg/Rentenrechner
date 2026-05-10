@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   defaultPrivacyFlags,
+  inferFeedbackType,
   type FeedbackReport,
   type PrivacyFlags,
   type ResolvedTarget,
@@ -271,7 +272,9 @@ function buildReport({
   const workspaceContext = collectWorkspaceContext?.()
 
   return {
-    type: draft.type,
+    type: draft.type === 'other'
+      ? inferFeedbackType({ comment: draft.comment, suggestedText: draft.suggestedText, target })
+      : draft.type,
     severity: draft.severity,
     comment: draft.comment,
     target,
