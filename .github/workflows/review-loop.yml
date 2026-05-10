@@ -184,23 +184,38 @@ jobs:
 
             **Step 4a — merge.**
 
+            Two gates protect the merge: (a) branch up-to-date with main
+            (preempts logical merge conflicts where two non-conflicting PRs
+            each green individually produce a broken main when squashed in
+            sequence — see #198 vs #199 fallout), and (b) Cloudflare Workers
+            build green on HEAD (the production deploy gate). Branch
+            protection on this repo does NOT enforce required checks (so
+            retro-pushes aren't blocked), so this workflow is responsible
+            for the gates.
+
             1. Run `npm run verify` one final time on $PR_HEAD_SHA. If it fails, abort
                the merge, post a comment explaining the verify failure, and stop.
-            2. Check if the branch is up-to-date with main. Branch protection on
-               this repo enforces strict mode, so a stale branch will reject the
-               merge. Run `gh pr view $PR_NUMBER --json mergeStateStatus --jq .mergeStateStatus`.
+            2. Up-to-date gate. Run
+               `gh pr view $PR_NUMBER --json mergeStateStatus --jq .mergeStateStatus`.
                If the result is `BEHIND`, run `gh pr update-branch $PR_NUMBER`
                (which merges main into the PR branch and fires fresh CI), then
                STOP. The next reviewer event will re-fire this workflow and the
                merge will go through cleanly. Do NOT push another commit yourself
-               and do NOT proceed to step 3.
-            3. Read the linked issue number N from the PR body.
-            4. `gh pr merge $PR_NUMBER --squash --delete-branch`.
-            5. `gh issue edit N --remove-label in-progress-by-agent` (per the
+               and do NOT proceed past this step.
+            3. CF Workers build gate. Run
+               `gh pr checks $PR_NUMBER --json name,bucket --jq '[.[] | select(.name == "Workers Builds: rentenwiki")] | last | .bucket // "missing"'`.
+               If the result is anything other than `pass` (e.g. `fail`,
+               `pending`, `missing`), STOP. Post a status comment if `fail`
+               with a link to the CF build; for `pending` / `missing`, just
+               exit cleanly — the next reviewer event or sweep tick will
+               re-evaluate.
+            4. Read the linked issue number N from the PR body.
+            5. `gh pr merge $PR_NUMBER --squash --delete-branch`.
+            6. `gh issue edit N --remove-label in-progress-by-agent` (per the
                qa-runbook convention — this label tracks active agent work).
-            6. Post a short comment on the PR confirming the merge and which two reviewers
+            7. Post a short comment on the PR confirming the merge and which two reviewers
                approved (start the comment with `[merge]` for traceability).
-            7. Stop.
+            8. Stop.
 
             **Step 4b — fix.**
 

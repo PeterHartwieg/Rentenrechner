@@ -115,22 +115,37 @@ jobs:
               continue
             fi
 
-            echo "Merging: Claude approved, Codex silent for $age_min min (>= $MIN_AGE_MINUTES)"
+            echo "Candidate for merge: Claude approved, Codex silent for $age_min min (>= $MIN_AGE_MINUTES)"
 
-            # Branch protection requires the PR branch to be up-to-date with main
-            # (strict mode). If it's stale, update it via `gh pr update-branch` and
-            # let the NEXT sweep tick complete the merge — the update fires fresh
-            # CI runs that the merge gate is waiting on. Avoids busy-waiting in
-            # the current tick.
+            # Pre-merge gate. Branch protection on main does NOT enforce required
+            # checks (so retro-pushes from agent runs aren't blocked), so the
+            # workflow itself is responsible for these gates:
+            #   1. Branch up-to-date with main (preempts logical merge conflicts
+            #      like #198 vs #199 where two PRs each green individually
+            #      produce a broken main when squashed in sequence).
+            #   2. Cloudflare Workers build green on HEAD (the production deploy
+            #      gate; failed CF build = broken prod).
+
+            # 1. Up-to-date check.
             mergeable_state=$(gh pr view "$pr" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus)
             if [ "$mergeable_state" = "BEHIND" ]; then
-              echo "Branch is BEHIND main — updating and deferring merge to next tick."
+              echo "Branch is BEHIND main — calling update-branch and deferring merge to next tick."
               gh pr update-branch "$pr" --repo "$REPO" || \
                 echo "update-branch failed; will retry on next tick."
               echo "::endgroup::"
               continue
             fi
 
+            # 2. CF Workers Builds check on HEAD.
+            cf_bucket=$(gh pr checks "$pr" --repo "$REPO" --json name,bucket \
+              --jq '[.[] | select(.name == "Workers Builds: rentenwiki")] | last | .bucket // "missing"')
+            if [ "$cf_bucket" != "pass" ]; then
+              echo "Skip: Workers Builds: rentenwiki is '$cf_bucket' (need 'pass'). Will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
+
+            echo "All gates green — merging."
             # Merge — squash + delete branch (matches event-driven loop step 4a)
             gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
 
