@@ -40,6 +40,7 @@ jobs:
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: '*'
           claude_args: --model claude-opus-4-7 --allowed-tools Bash(gh:*),Bash(git:*),Bash(npx:*),Bash(npm:*),Read,Grep,Glob
           prompt: |
             You are the Claude reviewer for PR #$PR_NUMBER on commit $PR_HEAD_SHA in
