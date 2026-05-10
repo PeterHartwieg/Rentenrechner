@@ -478,3 +478,28 @@ labels: [bug]
 ## What would have helped
 
 - Reading the triage comment first (not the issue body) gave the narrowest scope immediately. The owner had already scoped out the stacked-chart follow-up into a separate issue, so no scope ambiguity remained.
+
+---
+date: 2026-05-10T16:30:00Z
+issue: 113
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- **Reproduction shortcut for UI-grouping enhancements**: start at `src/features/results/CalculationWarnings.tsx` (the component) and `src/app/productPresentation.ts` (the data). The `CALCULATION_WARNINGS` array already carries `status: WarningStatus` ('implementiert' | 'vereinfacht' | 'nicht-modelliert') on every entry — confirming the data is ready for grouping required only reading those two files.
+- **Test strategy for status-grouping**: use `data-warning-group="<status>"` attributes on the group containers as the TDD anchor. `container.querySelector('[data-warning-group="implementiert"]')` is precise, survives copy changes, and maps directly to the data model. The alternative (searching for heading text like "Vollständig modelliert") is fragile because Stage 2 chooses the German copy.
+- **Three assertions cover the full enhancement**: (1) at least 3 group-level headings present, (2) `implementiert` and `nicht-modelliert` items land in separate containers, (3) `vereinfacht` items are not mixed into the `implementiert` group. These were sufficient to make all three fail today while keeping the test focused.
+- **`useQaMode` hook does not need mocking here**: outside `QaFeedbackProvider`, `useQaMode()` returns `enabled: false` with no-op functions (documented in the hook file). The component renders fine in isolation.
+- The `BADGE_LABEL` map and per-status CSS classes (`.badge-implementiert`, `.badge-vereinfacht`, `.badge-nicht-modelliert`) are already in place — Stage 2 only needs to add group-level wrappers and headings; the per-item rendering is unchanged.
+
+## What would have helped
+
+- Nothing; the data model and component were easy to locate. Enhancement was confirmed missing in two file reads.
