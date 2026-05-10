@@ -176,7 +176,12 @@ jobs:
                `git stash && npx vitest run src/features/qa-feedback/__tests__/app-bridge.test.tsx && git stash pop`.
 
             4. **Commit + push.** Commit with a clear message ending with
-               `Refs #$ISSUE_NUMBER`. Push the branch.
+               `Closes #$ISSUE_NUMBER`. Push the branch. **Use `Closes` (not
+               `Refs`)** — squash-merge composes the merge commit body from
+               your commit messages, NOT the PR body, so the closing keyword
+               must be in the commit message itself for GitHub to auto-close
+               the issue on merge. Issue #203 → PR #204 missed this and stayed
+               open after merge.
 
             5. **Open the PR.** Use `gh pr create` with:
                - Title: short imperative summary, prefixed with the conventional
