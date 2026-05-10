@@ -454,3 +454,27 @@ labels: [bug]
 ## What would have helped
 
 - Stage 1's investigation comment correctly identified all four fix steps (domain type, buildResult, portfolioCombine, comment). Adding "also check `synthesizeProductResult` in `recommenderCandidates/types.ts`" would have made the list complete.
+
+---
+date: 2026-05-10T16:25:00Z
+issue: 110
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- For UI "baseline vs. product confusion" bugs in `BreakEvenChart.tsx`, the legend rendering lives at lines 446–500. The product-series entries (`Netto eingezahlt`, `Restkapital`, `Netto ausgezahlt`) and the GRV/statutory-baseline entries all use `className="lifecycle-legend__item"` — the absence of a BEM modifier class (e.g. `--baseline`) on the GRV items is the exact signal to look for.
+- The triage comment was very precise: "distinct dash pattern / weight / legend grouping" and "legend ordering or sectioning". The DOM-level test to pin this is checking for a CSS modifier class on the GRV legend item (`querySelector('.lifecycle-legend__item--baseline')`). That fails immediately with the current code (querySelector returns null) — clean single-failure run.
+- The GRV series in the chart itself (`showGrv` branch, line 362–374) already uses a distinct `strokeDasharray="8 4 2 4"` and `strokeWidth={1.5}`, so the chart _line_ is visually differentiated. The missing piece is only the legend's HTML structure — the legend renders all items identically regardless of whether they're product lines or baseline references.
+- For `area:ui-only`-adjacent bugs that also involve DOM structure (CSS class presence): write the test — it's DOM-testable and provides a TDD anchor. Only skip when the assertion would purely be "does it look the right shade of gray" with no structural correlate.
+
+## What would have helped
+
+- Reading the triage comment first (not the issue body) gave the narrowest scope immediately. The owner had already scoped out the stacked-chart follow-up into a separate issue, so no scope ambiguity remained.
