@@ -7,7 +7,7 @@ import { publicRouteRegistry } from '../seo/publicRouteRegistry'
 // We avoid pulling in react-router because the only routes we need are these
 // three and the framework dependency would be larger than the implementation.
 //
-// Static-host SPA fallback (Cloudflare Pages / Vercel / Netlify) is required
+// Static-host SPA fallback (Cloudflare Workers / Vercel / Netlify) is required
 // for direct loads of /impressum or /datenschutz. See `public/_redirects`.
 
 export type Route =

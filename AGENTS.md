@@ -143,7 +143,7 @@ delegates.
 - `src/domain/` — type barrel; import from `src/domain/index.ts` unless you need one product's types.
 - `src/storage.ts` — only load/save module. Sections are clearly marked: storage keys, `mergeDeep` + pre-merge migrations, `migrateAndValidateState` (shared with `scenarioLibrary.ts`), v2 workspace load path (production runs `validateWorkspace`), `transferEventKey` (consumed by `portfolioTransfer.ts` for backfill dedupe), compare-mode and workspace save/load. Scenario-library entries that fail validation are dropped silently on load. Malformed v2 workspaces fall back to defaults locally; malformed share-URL ingest produces a null result so the caller can surface "invalid link".
 - `src/utils/{scenarioSchema,urlShare,csvExport,format}.ts`.
-- `public/_redirects` (Cloudflare Pages / Netlify) and `vercel.json` at repo root supply the SPA fallback so `/impressum` and `/datenschutz` deep-link correctly on static hosts.
+- `public/_redirects` (Netlify) and `vercel.json` at repo root supply the SPA fallback for non-Worker hosts; Cloudflare Workers serves prerendered routes directly via the asset binding (`wrangler.jsonc` `not_found_handling`).
 
 ## UI rounding boundary (display layer only)
 
@@ -192,14 +192,14 @@ Product-specific gotchas (will surprise you when first opening these simulators)
 
 ## Current state
 
-Live at **rentenwiki.de** since 2026-05-05 (Cloudflare Pages, deploy commit `348fe8c`). Branding (`RentenWiki.de`), legal/export guardrails, and the combine-mode (= portfolio-mode) foundation are all shipped. Headline behaviour now in main:
+Live at **rentenwiki.de** since 2026-05-05 (Cloudflare Workers, deploy commit `348fe8c`). Branding (`RentenWiki.de`), legal/export guardrails, and the combine-mode (= portfolio-mode) foundation are all shipped. Headline behaviour now in main:
 
 - **Combine mode** — workspace with per-product instance arrays (`schemaVersion: 2`), baseline + what-if scenarios, transfer events (`surrender_reinvest` / `partial_transfer` / `paid_up`), cross-instance funding caps, shared §20 Abs. 9 EStG Sparerpauschbetrag, and household-level results via `combinePortfolio`. Architecture map in [`CONTEXT.md`](CONTEXT.md). Compare mode remains as the singleton path for the legacy share-URL / scenario-library surface.
 - **Recommender** — "Wo geht mein nächster Euro hin?" with cap-headroom-driven candidates and Monte Carlo P10 risk score (`src/app/recommender.ts`, per-product candidates under `src/app/recommenderCandidates/`).
 - **Decision UI** — three-card per-contract menu (weiterführen / kündigen / übertragen) wired through `applyContractDecision` in `src/app/contractDecisions.ts`. Beitragsfrei is engine-supported across all 5 paid-up-capable simulators (`portfolioAdapter.ts` `paidUpFeeModel`). The `Optimiere deine Vorsorge` portfolio-audit modal (`OptimiereVorsorgeModal`) wraps the per-contract decisions in a step machine.
 - **License files** at root: `LICENSE.md` (PolyForm Noncommercial 1.0.0 verbatim) and `COMMERCIAL_LICENSE.md` (scope, indemnification, German jurisdiction).
 - **Disclaimer infrastructure**: `DisclaimerBanner` is session-only via `sessionStorage` (never `localStorage` — regressing this is a publication-blocking compliance issue). Disclaimer is the literal first child of `#print-report` in `PrintReport.tsx` and the first section of `buildExportCsv` output. README carries the same notice.
-- **Legal pages** at `/impressum` and `/datenschutz` via the small custom router in `src/app/useRoute.ts` (no react-router dependency). Wired through `LegalLayout`/`LegalFooter` in `src/features/legal/`. SPA fallback for static hosts is configured in `public/_redirects` (Cloudflare Pages / Netlify) and `vercel.json` (root).
+- **Legal pages** at `/impressum` and `/datenschutz` via the small custom router in `src/app/useRoute.ts` (no react-router dependency). Wired through `LegalLayout`/`LegalFooter` in `src/features/legal/`. SPA fallback for non-Worker hosts is configured in `public/_redirects` (Netlify) and `vercel.json` (root); Cloudflare Workers uses the asset binding + `not_found_handling`.
 - **Phase 0 design docs** in `docs/`: `golden-coverage-audit.md` (read-only audit of every external oracle and integration snapshot — Group G's safety net) and `portfolio-schema-design.md` (binding design for the singleton-to-instance migration: schemaVersion 1 → 2, instance-id format, storage-key bump, `PortfolioAdapter` shape).
 - **Reusable input sections** in `src/features/inputs/sections/`: `PayoutModeSection`, `FeeSection`, `BeitragsdynamikField`, `OfferCapitalCompareField`. Provenance primitives in `src/features/results/provenance.tsx`. `BavInputs` and `InsuranceInputs` share one fee-input implementation (presets, threshold warnings, Effektivkosten all-in toggle).
 - **Hardened scenario-library load**: `migrateAndValidateState` in `storage.ts` is the shared migrate+validate pipeline; `scenarioLibrary.ts` runs every entry through it on load and drops malformed entries silently. Forward-compat guard via `SAVED_SCENARIO_VERSION`.

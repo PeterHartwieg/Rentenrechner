@@ -17,7 +17,7 @@ App.tsx  (route detector)
 
 Routing is implemented by [`useRoute.ts`](../../src/app/useRoute.ts) — a ~30-line
 pathname-based hook (no react-router dependency). SPA fallback for static hosts
-lives in `public/_redirects` (Cloudflare Pages / Netlify) and `vercel.json` at
+lives in `public/_redirects` (Netlify) and `vercel.json` at
 repo root. Add a route by extending the `Route` union and `KNOWN_ROUTES` array,
 then dispatching in `App.tsx`.
 

@@ -609,7 +609,7 @@ export function getPublicRoute(path: string): PublicRoute | undefined {
  * is derived from the registry, not from `window.location.href`.
  *
  * Trailing-slash policy: the canonical for every non-`/404` route ends with
- * a `/`. This matches what Cloudflare Pages serves natively from
+ * a `/`. This matches what Cloudflare Workers serves natively from
  * `dist/<route>/index.html` (it 307-redirects no-slash to with-slash), so
  * declaring the with-slash form as canonical avoids the canonical-points-at-
  * a-redirect anti-pattern. The registry's `canonical` field stays slash-free
