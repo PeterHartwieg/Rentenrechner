@@ -76,7 +76,7 @@ src/
   test/           factories.ts, externalGoldenFixtures.ts
   storage.ts, App.tsx, App.css, index.css
 public/
-  _redirects                # Cloudflare Pages / Netlify SPA fallback
+  _redirects                # Netlify SPA fallback (Workers uses asset binding + not_found_handling)
 vercel.json                 # Vercel SPA fallback
 LICENSE.md, COMMERCIAL_LICENSE.md
 ```

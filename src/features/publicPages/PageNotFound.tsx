@@ -9,7 +9,7 @@ const ROUTE = publicRouteRegistry['/404']
  * `/404` page — replaces the legacy `dist/404.html = dist/index.html` copy
  * that previously made every unknown URL look like the calculator.
  *
- * Cloudflare Pages serves `dist/404.html` for any unmatched path. The SSG
+ * Cloudflare Workers serves `dist/404.html` for any unmatched path. The SSG
  * pipeline writes this rendered component there so the user sees a real
  * Page-Not-Found, the canonical for `/404` is set, and the page is marked
  * `noindex,follow` (registry default for this route).

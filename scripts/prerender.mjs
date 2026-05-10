@@ -173,7 +173,7 @@ function targetPathForRoute(routeId) {
   if (routeId === '/') return join(distDir, 'index.html')
   if (routeId === '/404') return join(distDir, '404.html')
   // Strip the leading slash and emit `<route>/index.html` so static hosts
-  // (Cloudflare Pages, Netlify) serve the page on direct loads.
+  // (Cloudflare Workers, Netlify) serve the page on direct loads.
   return join(distDir, routeId.replace(/^\//, ''), 'index.html')
 }
 

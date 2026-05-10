@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm'
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
-// Static-host SPA fallback — Cloudflare Pages serves dist/404.html for any
+// Static-host SPA fallback — Cloudflare Workers serves dist/404.html for any
 // unmatched path. The legacy `copyFileSync('dist/index.html', 'dist/404.html')`
 // plugin is replaced by `scripts/prerender.mjs`, which writes a real 404 page
 // alongside the prerendered topic and homepage routes (issue #02).

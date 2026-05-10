@@ -32,7 +32,7 @@ After verification:
    ```
    https://rentenwiki.de/sitemap.xml
    ```
-2. The sitemap is generated from the public route registry at build time (see `src/seo/publicRouteRegistry.ts`) and published as `dist/sitemap.xml` by the build pipeline, which Cloudflare Pages then serves at `/sitemap.xml`.
+2. The sitemap is generated from the public route registry at build time (see `src/seo/publicRouteRegistry.ts`) and published as `dist/sitemap.xml` by the build pipeline, which Cloudflare Workers then serves at `/sitemap.xml`.
 3. GSC re-fetches the sitemap on its own schedule. Re-submit manually after a deploy that adds or renames URLs to speed up discovery.
 
 ### URL inspection workflow
@@ -134,7 +134,7 @@ Limits worth knowing:
 
 ### When to consider CI integration
 
-Out of scope for this iteration. If/when we automate this, the natural place is a post-deploy hook in the Cloudflare Pages workflow that diffs the published route registry against the previous deploy and POSTs only the changed URLs. Until then: do it by hand, document each ping date in the deploy notes if needed.
+Out of scope for this iteration. If/when we automate this, the natural place is a post-deploy hook in the Cloudflare Workers workflow that diffs the published route registry against the previous deploy and POSTs only the changed URLs. Until then: do it by hand, document each ping date in the deploy notes if needed.
 
 ---
 

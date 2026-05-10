@@ -7,7 +7,7 @@ import { hasShareStateInUrl } from '../utils/urlShareDetect'
  * content="index,follow">`. When a user opens a *share-URL* (`?s=<base64>`)
  * the URL carries personal modelling assumptions — that variant of the page
  * must NOT enter the search index, but the static HTML can't vary by query
- * string on a CDN that lacks edge functions (Cloudflare Pages today).
+ * string via static assets alone (Cloudflare Workers serves static HTML; the Worker script handles this client-side).
  *
  * Mitigation pinned in issue #02 acceptance criteria + PRD line 103:
  *   1. Canonical strips `?s=` so even if Google indexes the URL it folds into
