@@ -639,3 +639,27 @@ labels: [bug]
 - **`app-bridge.test.tsx` is a flaky test in the full suite.** It failed once during the first `npm run verify` run (assertion `typeof ctx.activeView` received `'undefined'`), then passed on a second run and in isolation. Same flakiness pattern observed in the #111 implement retro. Future agents: don't assume a single `npm run verify` failure in that file is caused by your change — verify with isolation first.
 - **`git stash / stash pop` is the right way to confirm pre-existing failures.** Stashing the fix, running the suspect test, and popping the stash takes ~10 seconds and definitively separates pre-existing vs. introduced failures.
 - **Stage 1's failing test used `container.querySelectorAll('.optimiere-modal__anpassen-btn')` + normalized textContent.** This was more robust than `getAllByText('Anpassen')` because RTL's `getAllByText` would match buttons with `textContent` `"Anpassen4 Optionen"` (mixed-content node quirk). Good pattern to remember for button content bugs.
+
+---
+date: 2026-05-10T18:00:00Z
+issue: 203
+pr: 204
+stage: implement
+outcome: pr-opened
+labels: [bug, area:copy]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Single-stage path (area:copy, no Stage 1): label "Netto-Belastung" appeared in three user-visible places: `InputsPanel.tsx:363` (useFeedbackTarget label), `InputsPanel.tsx:374` (NumberField label prop), and `ProductEditCards.tsx:33` (NetAnchorNotice paragraph text). All three needed updating to "Netto-Beitrag".
+- Two tests in `src/features/inputs/InputsPanel.test.tsx` and `src/features/results/ProductEditCards.defaults.test.tsx` matched on the old label string via regex `/Netto-Belastung/` — both test descriptions and assertions needed updating. These are legitimate test updates (not test weakening), since the behavior is identical; only the copy changed.
+- Code comments in `src/storage.ts` (lines 132, 188, 383) also reference "Netto-Belastung" but are not user-visible; left unchanged per minimal-diff principle.
+- The "über die Netto-Belastung" phrase in ProductEditCards needed the article to change too ("über die" → "über den") since "Netto-Beitrag" is masculine.
+
+## What would have helped
+
+- Nothing; straightforward run.
