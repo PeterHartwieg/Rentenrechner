@@ -182,3 +182,27 @@ labels: [code-review, enhancement]
 ## What would have helped
 
 - A grep for "loadInitialState" and reading `git log -- src/app/useCalculatorState.ts` before any code reading would have surfaced the answer in under 30 seconds.
+
+---
+date: 2026-05-10T12:45:00Z
+issue: 144
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [code-review, enhancement]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Enhancement confirmed missing in one grep: `grep -rn "RULES_YEAR" src/` returned only `src/features/inventory/vintageChipsUtils.ts` (a local `const RULES_YEAR = activeRules.year` that is not exported). `src/rules/index.ts` exports only `activeRules` and `legalConstants` — no shared `RULES_YEAR` export.
+- The 11 affected public-page TSX files all use the same pattern: `Werte für Deutschland 2026` as a string literal in the `<p className="public-stand">` line. `LandingPage.tsx:197` is the 12th instance (not in `publicPages/`). A single `grep -rn "Werte für Deutschland 2026"` finds all 11 `publicPages/` hits immediately; LandingPage requires a separate grep on the `landing/` subdirectory.
+- For enhancement issues that are purely about exporting a new constant + wiring it into templates, the failing test should check the named export directly (e.g. `'RULES_YEAR' in rulesExports`). Testing DOM text `toContain('Deutschland 2026')` looks correct but passes with either the hardcoded literal or the derived constant (both equal 2026 today) — it would be a regression guard, not a failing TDD anchor. The export-existence check is the only assertion that fails today.
+- MDX files (`*.body.mdx`) also contain hardcoded `Werte Stand 2026.` in disclaimer lines, but those are prose, not TSX interpolation. The TSX pages that host the MDX can import `RULES_YEAR` and pass it as a prop or MDX component context; alternatively Stage 2 may choose to update the MDX strings via find-replace. Neither approach requires a separate failing test.
+
+## What would have helped
+
+- Nothing; the issue body listed exact file:line references for the most-affected files, making reproduction trivial.
