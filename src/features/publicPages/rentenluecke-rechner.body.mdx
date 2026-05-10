@@ -1,4 +1,4 @@
-import { RULES_YEAR } from '../../rules'
+import { RULES_YEAR, activeRules } from '../../rules'
 
 ## Wie groß ist deine Rentenlücke?
 
@@ -54,10 +54,11 @@ In der Modellrechnung wird die Lücke aus drei Bestandteilen gebildet:
    Anteil davon. Der Rechner trifft hier keine Empfehlung.
 2. **Voraussichtliche gesetzliche Nettorente.** Berechnet aus den bisher
    erworbenen Entgeltpunkten, den Annahmen zum künftigen Bruttogehalt und den
-   gesetzlichen Werten {RULES_YEAR} (Rentenwert ab 1. Juli 2026: 42,52&nbsp;€/EP;
-   Durchschnittsentgelt 51.944&nbsp;€/Jahr; Beitragsbemessungsgrenze sowie
-   KV-/PV-Beitragssätze). Grundlage ist § 68 SGB&nbsp;VI für die
-   Rentenwertanpassung.
+   gesetzlichen Werten {RULES_YEAR} (Rentenwert ab 1. Juli {RULES_YEAR}:
+   {activeRules.socialSecurity.aktuellerRentenwert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}&nbsp;€/EP;
+   Durchschnittsentgelt {activeRules.socialSecurity.durchschnittsentgelt.toLocaleString('de-DE')}&nbsp;€/Jahr;
+   Beitragsbemessungsgrenze sowie KV-/PV-Beitragssätze). Grundlage ist § 68
+   SGB&nbsp;VI für die Rentenwertanpassung.
 3. **Beiträge weiterer Vorsorgewege.** Ergänzend werden je nach
    Konfiguration ETF-Sparpläne, betriebliche Altersvorsorge (bAV), private
    Rentenversicherung, Basisrente (Rürup), Altersvorsorgedepot und Riester
@@ -130,8 +131,8 @@ Kinderzuschlag nach §§ 55, 55a SGB&nbsp;XI).
 ### Wie aktuell sind die Werte?
 
 Die Rechnung verwendet Werte {RULES_YEAR} (siehe Hinweis am Seitenanfang).
-Beitragssätze, Bemessungsgrenzen und Steuertabellen werden mit dem
-Jahresupdate 2027 aktualisiert.
+Beitragssätze, Bemessungsgrenzen und Steuertabellen werden mit dem nächsten
+Jahresupdate aktualisiert.
 
 ### Was ist mit Witwen- und Witwerrente, Erwerbsminderung oder Hinterbliebenenversorgung?
 

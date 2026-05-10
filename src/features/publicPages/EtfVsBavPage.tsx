@@ -55,7 +55,7 @@ export function EtfVsBavPage() {
               <a href="/bav-rechner/">bAV Rechner — Betriebliche Altersvorsorge und Entgeltumwandlung</a>
             </li>
             <li>
-              <a href="/rentenluecke-rechner/">Rentenlücke berechnen — Versorgungslücke 2026</a>
+              <a href="/rentenluecke-rechner/">Rentenlücke berechnen — Versorgungslücke {RULES_YEAR}</a>
             </li>
           </ul>
         </article>

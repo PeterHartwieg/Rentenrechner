@@ -13,7 +13,7 @@ import type {
   ScenarioAssumptions,
 } from '../domain'
 import type { CombinedResult } from '../engine/portfolioCombine'
-import { de2026Rules } from '../rules/de2026'
+import { activeRules } from '../rules'
 import { buildCombinePortfolioCsv, buildExportCsv, downloadCsv } from '../utils/csvExport'
 import type { InstanceTaxModes } from '../utils/csvExport'
 import { buildShareUrl } from '../utils/urlShare'
@@ -116,7 +116,7 @@ export function useDerivedViews(
         effectiveCashflowProductId: cashflowBinding.effectiveCashflowProductId,
         profile,
         assumptions,
-        rules: de2026Rules,
+        rules: activeRules,
         simulation,
         taxModes,
       }),
@@ -143,7 +143,7 @@ export function useDerivedViews(
     if (options?.combineMode && options.combine) {
       const csv = buildCombinePortfolioCsv({
         ...options.combine,
-        rules: de2026Rules,
+        rules: activeRules,
         profile,
         inflationRate: options.combine.inflationRate ?? assumptions.inflationRate,
       })
@@ -161,7 +161,7 @@ export function useDerivedViews(
       insuranceOtherAnnualIncome: assumptions.insurance.monthlyOtherRetirementIncome * 12,
       avdOtherAnnualIncome: assumptions.altersvorsorgedepot.monthlyOtherRetirementIncome * 12,
       riesterOtherAnnualIncome: assumptions.riester.monthlyOtherRetirementIncome * 12,
-      rules: de2026Rules,
+      rules: activeRules,
       inflationRate: assumptions.inflationRate,
     })
     downloadCsv('rentenwiki-export.csv', csv)

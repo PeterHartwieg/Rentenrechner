@@ -6,7 +6,7 @@ import { useMemo } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import { runMonteCarlo } from '../engine/monteCarlo'
 import { simulateRetirementComparison } from '../engine/simulate'
-import { de2026Rules } from '../rules/de2026'
+import { activeRules } from '../rules'
 import {
   deriveTaxModes,
   resolveEffectiveScenarioId,
@@ -50,13 +50,13 @@ export function useSimulationResult(
         ),
         assumptions,
         profile,
-        de2026Rules,
+        activeRules,
       ),
     [profile, assumptions],
   )
 
   const simulation = useMemo(
-    () => simulateRetirementComparison(profile, activeAssumptions, de2026Rules),
+    () => simulateRetirementComparison(profile, activeAssumptions, activeRules),
     [profile, activeAssumptions],
   )
 
@@ -71,7 +71,7 @@ export function useSimulationResult(
         ? runMonteCarlo({
             profile,
             assumptions: activeAssumptions,
-            rules: de2026Rules,
+            rules: activeRules,
             scenarioId: effectiveScenarioId,
             visibleProducts: activeAssumptions.visibleProducts,
           })
@@ -80,7 +80,7 @@ export function useSimulationResult(
   )
 
   const taxModes = useMemo(
-    () => deriveTaxModes(profile, activeAssumptions, de2026Rules),
+    () => deriveTaxModes(profile, activeAssumptions, activeRules),
     [profile, activeAssumptions],
   )
 

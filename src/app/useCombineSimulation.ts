@@ -27,7 +27,7 @@ import {
 } from '../engine/portfolioCombine'
 import { buildCombineContext } from '../engine/combineContext'
 import { projectStatutoryPension } from '../engine/grv'
-import { de2026Rules } from '../rules/de2026'
+import { activeRules } from '../rules'
 
 export interface CombineSimulationBundle {
   /** Per-instance ProductResults (one entry per active instance, all scenarios). */
@@ -109,11 +109,12 @@ export function runCombineSimulation(
  * Run the portfolio adapter and combine pipeline for a v2 Workspace.
  *
  * `rules` is configurable for tests; production callers should pass
- * `de2026Rules`. The default is wired so non-test callers can omit it.
+ * `activeRules` (currently `de2026Rules`). The default is wired so non-test
+ * callers can omit it and inherit whichever rule year is active.
  */
 export function useCombineSimulation(
   workspace: Workspace,
-  rules: GermanRules = de2026Rules,
+  rules: GermanRules = activeRules,
 ): CombineSimulationBundle {
   return useMemo(() => runCombineSimulation(workspace, rules), [workspace, rules])
 }

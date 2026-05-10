@@ -57,7 +57,7 @@ export function BavRechnerPage() {
               <a href="/etf-vs-bav/">ETF vs. bAV — Vergleich mit gleicher Nettokostenbasis</a>
             </li>
             <li>
-              <a href="/rentenluecke-rechner/">Rentenlücke berechnen — Versorgungslücke 2026</a>
+              <a href="/rentenluecke-rechner/">Rentenlücke berechnen — Versorgungslücke {RULES_YEAR}</a>
             </li>
           </ul>
         </article>
