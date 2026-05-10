@@ -3,13 +3,16 @@ name: review-loop-sweep
 # Codex GitHub integration intentionally only flags P0/P1 issues — for routine
 # PRs (docs, copy, small refactors) it stays silent. The event-driven
 # review-loop.yml waits for both reviewers, so silence would block forever.
-# This sweep runs every 30 min, finds any open agent PR where Claude has
-# already approved and Codex has been silent for at least 20 min, and merges
-# it. Fast, pure-shell, no Claude agent invocation (cost-zero on idle).
+# This sweep runs every 10 min (GitHub Actions cron drops ticks under load —
+# tightened from */30 after observing 6 consecutive missed ticks), finds any
+# open agent PR where Claude has approved and Codex has been silent for at
+# least 20 min, and merges it. review-loop.yml's wait branch also dispatches
+# this workflow to make sweep event-driven on top of the cron — defense in
+# depth. Fast, pure-shell, no Claude agent invocation (cost-zero on idle).
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch: {}
 
 permissions:

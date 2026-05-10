@@ -504,7 +504,7 @@ Key safeguards:
 
 | Trigger | Permissions | Model |
 |---------|-------------|-------|
-| `schedule: '*/30 * * * *'`, `workflow_dispatch` | `contents:write`, `pull-requests:write`, `issues:write` | None (pure shell) |
+| `schedule: '*/10 * * * *'` + `workflow_dispatch` (also dispatched event-driven from `review-loop.yml`'s wait branch) | `contents:write`, `pull-requests:write`, `issues:write` | None (pure shell) |
 
 Codex's GitHub review integration intentionally only flags P0/P1 — for
 routine PRs (docs, copy, small refactors) it stays silent. The
@@ -626,7 +626,7 @@ Each of these is tunable without touching the architecture.
 | Maintainer dev-code | `MAINTAINER_DEV_CODE` Wrangler secret on `rentenwiki-qa-submit`; URL param `?dev=` in the QA-feedback frontend | Rotate via `wrangler secret put`. The code lives only in your sessionStorage and on the wire — never in any public surface. |
 | Halt cap | Currently none. | Add an `iteration-cap` step to `review-loop.yml` that counts commits on the agent branch since open and bails to `ready-for-human` above N. |
 | Sweep threshold | `MIN_AGE_MINUTES` env var in `review-loop-sweep.yml` | Default 20 min. Increase if Codex sometimes takes longer; decrease for faster routine merges. |
-| Sweep cadence | `cron: '*/30 * * * *'` in `review-loop-sweep.yml` | Default every 30 min. Tighten for faster turnaround at small extra runner-minute cost. |
+| Sweep cadence | `cron: '*/10 * * * *'` in `review-loop-sweep.yml` | Default every 10 min (tightened from */30 after observing GitHub Actions drop 6 consecutive cron ticks under cluster load). Sweep is also dispatched event-driven from `review-loop.yml`'s wait branch — defense in depth. |
 | Retro curation cadence | `cron: '0 9 * * *'` in `retro-curate.yml` | Default daily 09:00 UTC. Tighten to `0 */12 * * *` (twice daily) if you want faster promotion of urgent learnings; loosen to weekly if PR queue noise is too high. |
 | Retro lookback window | "past 7 days" filter in `retro-curate.yml` Step 2 | Default 7 days — robust to skipped cron days and pending curation PRs. Tighten to 3 days if your archive grows fast; widen to 14 days if you want more cross-issue pattern detection. |
 | Reviewer prompt strictness | `prompt:` block in `claude-review.yml` | Tune the bullet list of "What to review" + reference your repo's `## Review guidelines`. |

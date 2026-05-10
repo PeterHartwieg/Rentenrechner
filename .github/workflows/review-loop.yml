@@ -9,6 +9,7 @@ permissions:
   pull-requests: write
   issues: write
   id-token: write
+  actions: write   # for `gh workflow run review-loop-sweep.yml` in Step 4c
 
 concurrency:
   group: review-loop-${{ github.event.pull_request.number }}
@@ -172,9 +173,18 @@ jobs:
 
             **Step 4c — wait.**
 
-            1. Do nothing. Print a one-line status ("Waiting for the other reviewer on
-               $PR_HEAD_SHA") and exit cleanly. Do NOT post a comment, do NOT push, do
-               NOT use `gh pr review` (that would re-trigger this workflow and loop).
+            1. Do nothing structural. Print a one-line status ("Waiting for the other
+               reviewer on $PR_HEAD_SHA") and exit cleanly. Do NOT post a comment, do
+               NOT push, do NOT use `gh pr review` (that would re-trigger this workflow
+               and loop).
+            2. **Kick the sweep before exiting.** Run
+               `gh workflow run review-loop-sweep.yml` to dispatch a sweep tick
+               event-driven instead of cron-driven. This catches the case where the
+               other reviewer is permanently silent (Codex on P2/P3 PRs) and the
+               cron sweep ticks are dropped by GitHub Actions under load. Sweep is
+               pure shell (~10s, cost-zero on idle), so dispatching opportunistically
+               is safe. The dispatched run will skip this PR until it's >20 min old,
+               and skip any PR where Claude hasn't approved on HEAD.
 
             **Hard rules**
             - Never use `gh pr review` from this workflow — only the dedicated reviewers
