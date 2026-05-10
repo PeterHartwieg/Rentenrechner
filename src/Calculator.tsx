@@ -16,6 +16,7 @@ import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
 import type { ProductId } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
+import { composeInstanceEvidenceMaps } from './app/composeInstanceEvidenceMaps'
 import { projectGrvContributionTimeline } from './engine/grv'
 import { deriveRentenluckeOverviewFromCombine } from './app/simulationSelectors'
 import { de2026Rules } from './rules/de2026'
@@ -450,6 +451,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     [combineProfile, portfolioState.workspace.baseline.assumptions.statutoryPension],
   )
 
+  // Per-instance evidenceMap lookup for the CombineIncomePanel badge predicate
+  // (issue #111). Without this, the panel falls back to inputConfidence, which
+  // treats absent fields as model_estimate and produces false-positive badges.
+  const combineInstanceEvidenceMaps = useMemo(
+    () => composeInstanceEvidenceMaps(portfolioState.workspace),
+    [portfolioState.workspace],
+  )
+
   const vergleichView = (
     <section
       className="workspace-view workspace-view--vergleich"
@@ -533,6 +542,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             perInstanceResults={combineSimulation.perInstance}
             scenarioId={combineBasisScenarioId}
             scenarioLabel={combineBasisLabel}
+            instanceEvidenceMaps={combineInstanceEvidenceMaps}
           />
           <AddVertragSection
             addInstance={portfolioState.addInstance}
