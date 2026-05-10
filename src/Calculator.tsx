@@ -834,11 +834,11 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
 
   const topbarCopy = isCombineMode
     ? {
-        kicker: 'Deine Verträge und Rentenlücke in Deutschland 2026',
+        kicker: `Deine Verträge und Rentenlücke in Deutschland ${de2026Rules.year}`,
         title: 'Mein Plan',
       }
     : {
-        kicker: 'RentenWiki.de Deutschland 2026',
+        kicker: `RentenWiki.de Deutschland ${de2026Rules.year}`,
         title: 'ETF, bAV und private Versicherung vergleichen',
       }
 

@@ -14,3 +14,6 @@
  */
 export { de2026Rules as activeRules } from './de2026'
 export { legalConstants } from './legalConstants'
+
+import { de2026Rules } from './de2026'
+export const RULES_YEAR: number = de2026Rules.year

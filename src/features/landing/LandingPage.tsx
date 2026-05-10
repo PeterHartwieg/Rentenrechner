@@ -7,6 +7,7 @@ import type { ProductId } from '../../domain'
 import type { Route } from '../../app/useRoute'
 import { detectSavedMode } from '../../app/useRoute'
 import { JsonLd } from '../../seo/JsonLd'
+import { RULES_YEAR } from '../../rules'
 import {
   buildHomeOrganizationJsonLd,
   buildHomeWebApplicationJsonLd,
@@ -194,7 +195,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
       {/* Visible "Stand" line for JSON-LD `dateModified` (Google structured-data
           guideline: every JSON-LD field must have a visible counterpart). */}
       <p className="landing-stand">
-        Stand: {route.dateModified} · Werte für Deutschland 2026
+        Stand: {route.dateModified} · Werte für Deutschland {RULES_YEAR}
       </p>
 
       <LegalFooter navigate={navigateOrNoop} />
