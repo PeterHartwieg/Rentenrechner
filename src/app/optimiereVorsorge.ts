@@ -67,9 +67,10 @@ export function workspaceFingerprint(workspace: Workspace): string {
  * Apply `decision` to `workspace`, re-run the combine simulation, and return
  * the EUR/month delta in combined Netto-Rente vs. `baselineCombined`.
  *
- * The baseline combined result for a specific scenarioId is compared against
- * the applied-decision result for the same scenarioId. The first return
- * scenario in the workspace is used as the reference (typically "basis").
+ * `scenarioId` selects which scenario is read out of the applied bundle. The
+ * caller MUST pass the same scenario id used to derive `baselineCombined` —
+ * otherwise the applied and baseline results live on different return curves
+ * and the delta sign-flips on identity decisions (gh#44 Bug A).
  *
  * Engine values are returned raw; rounding belongs at the display layer
  * (`formatCurrency(delta.deltaMonthlyNetEUR, 0)`).
@@ -79,6 +80,7 @@ export function simulateContractDecision(
   decision: ContractDecision,
   rules: GermanRules,
   baselineCombined: CombinedResult,
+  scenarioId: string,
 ): DecisionDelta {
   // 1. Apply the decision to produce a what-if workspace (deep-cloned).
   const applied = applyContractDecision(workspace, decision)
@@ -86,19 +88,16 @@ export function simulateContractDecision(
   // 2. Run the full combine simulation on the what-if workspace.
   const bundle = runCombineSimulation(applied, rules)
 
-  // 3. Pick the "basis" scenario (id === 'basis') as the reference, falling
-  //    back to returnScenarios[0]. This matches the modal's baseline derivation
-  //    so that an identity decision (weiterfuehren) always produces delta ≈ 0.
-  //    Using returnScenarios[0] (konservativ) against a basis-scenario baseline
-  //    introduced a 2 pp / 39-year sign-flipping delta (gh#44 Bug A).
-  const returnScenarios = applied.baseline.assumptions.returnScenarios
-  const firstScenario =
-    returnScenarios.find((s) => s.id === 'basis') ?? returnScenarios[0]
-  if (!firstScenario) {
-    return { deltaMonthlyNetEUR: 0 }
-  }
-
-  const appliedCombined = bundle.combinedByScenarioId[firstScenario.id]
+  // 3. Read the applied result at the SAME scenarioId the caller used for the
+  //    baseline. Falls back to 'basis' then returnScenarios[0] only if the
+  //    caller's scenarioId is missing from the applied bundle (e.g. a custom
+  //    scenario that didn't survive applyContractDecision) — this fallback
+  //    preserves the old behaviour for edge cases but should not be hit in
+  //    normal use, since baseline and applied share the same returnScenarios.
+  const appliedCombined =
+    bundle.combinedByScenarioId[scenarioId] ??
+    bundle.combinedByScenarioId['basis'] ??
+    bundle.combinedByScenarioId[applied.baseline.assumptions.returnScenarios[0]?.id ?? '']
   if (!appliedCombined) {
     return { deltaMonthlyNetEUR: 0 }
   }
@@ -114,7 +113,11 @@ export function simulateContractDecision(
 /**
  * Create a per-modal memoisation cache for `simulateContractDecision`.
  *
- * Cache key: `(workspaceFingerprint, decision.id)`.
+ * Cache key: `(workspaceFingerprint, decision.id, scenarioId)`. The scenarioId
+ * is part of the key because the same workspace+decision pair produces
+ * different deltas on different return curves — sharing the entry would
+ * resurrect the gh#44 sign-flip class as soon as the user switches scenarios
+ * via the toolbar pill while the modal is open.
  *
  * The modal in B6 calls `cache.get(...)` lazily per decision card, so the
  * initial render is instant and simulation runs only when the user opens a
@@ -132,6 +135,7 @@ export function createDecisionSimulationCache(): {
     decision: ContractDecision,
     rules: GermanRules,
     baselineCombined: CombinedResult,
+    scenarioId: string,
   ) => DecisionDelta
   invalidate: () => void
 } {
@@ -143,14 +147,21 @@ export function createDecisionSimulationCache(): {
       decision: ContractDecision,
       rules: GermanRules,
       baselineCombined: CombinedResult,
+      scenarioId: string,
     ): DecisionDelta {
       const fingerprint = workspaceFingerprint(workspace)
-      const key = `${fingerprint}::${decision.id}`
+      const key = `${fingerprint}::${decision.id}::${scenarioId}`
       const cached = cache.get(key)
       if (cached !== undefined) {
         return cached
       }
-      const result = simulateContractDecision(workspace, decision, rules, baselineCombined)
+      const result = simulateContractDecision(
+        workspace,
+        decision,
+        rules,
+        baselineCombined,
+        scenarioId,
+      )
       cache.set(key, result)
       return result
     },

@@ -366,6 +366,7 @@ describe('OptimiereVorsorgeModal — QA targets (issue 17)', () => {
         <OptimiereVorsorgeModal
           workspace={STUB_WORKSPACE}
           baselineCombined={STUB_COMBINED}
+          scenarioId="basis"
           rules={STUB_RULES}
           onClose={vi.fn()}
           onCreatePlans={vi.fn()}
@@ -383,6 +384,7 @@ describe('OptimiereVorsorgeModal — QA targets (issue 17)', () => {
         <OptimiereVorsorgeModal
           workspace={STUB_WORKSPACE}
           baselineCombined={STUB_COMBINED}
+          scenarioId="basis"
           rules={STUB_RULES}
           onClose={vi.fn()}
           onCreatePlans={vi.fn()}
@@ -400,6 +402,7 @@ describe('OptimiereVorsorgeModal — QA targets (issue 17)', () => {
         <OptimiereVorsorgeModal
           workspace={STUB_WORKSPACE}
           baselineCombined={STUB_COMBINED}
+          scenarioId="basis"
           rules={STUB_RULES}
           onClose={vi.fn()}
           onCreatePlans={vi.fn()}
@@ -417,6 +420,7 @@ describe('OptimiereVorsorgeModal — QA targets (issue 17)', () => {
         <OptimiereVorsorgeModal
           workspace={STUB_WORKSPACE}
           baselineCombined={STUB_COMBINED}
+          scenarioId="basis"
           rules={STUB_RULES}
           onClose={vi.fn()}
           onCreatePlans={vi.fn()}

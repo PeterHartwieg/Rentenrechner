@@ -63,6 +63,12 @@ type Step = 'disclaimer' | 'overview' | 'instance' | 'confirm' | 'saved'
 interface Props {
   workspace: Workspace
   baselineCombined: CombinedResult
+  /**
+   * Return-scenario id used to derive `baselineCombined`. The applied-decision
+   * simulation is read out of the same scenario — passing a mismatched id
+   * sign-flips deltas on identity decisions (gh#44 Bug A).
+   */
+  scenarioId: string
   rules: GermanRules
   onClose: () => void
   onCreatePlans: (whatIfs: WhatIfScenario[]) => void
@@ -96,6 +102,7 @@ function productIdFromInstanceId(instanceId: string): string {
 export function OptimiereVorsorgeModal({
   workspace,
   baselineCombined,
+  scenarioId,
   rules,
   onClose,
   onCreatePlans,
@@ -172,7 +179,7 @@ export function OptimiereVorsorgeModal({
       }
       try {
         const delta: DecisionDelta = cache.get(
-          workspace, decision, rules, baselineCombined,
+          workspace, decision, rules, baselineCombined, scenarioId,
         )
         result[decision.id] = delta.deltaMonthlyNetEUR
       } catch {
@@ -180,7 +187,7 @@ export function OptimiereVorsorgeModal({
       }
     }
     return result
-  }, [instanceDecisions, workspace, rules, baselineCombined, cache])
+  }, [instanceDecisions, workspace, rules, baselineCombined, scenarioId, cache])
 
   // Checked decisions for ContractDecisionCards (this instance only).
   const instanceCheckedIds = useMemo(() => {
