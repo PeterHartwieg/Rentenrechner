@@ -386,6 +386,7 @@ describe('OptimiereVorsorgeModal', () => {
         workspace={ws}
         baselineCombined={makeBaseline()}
         rules={de2026Rules}
+        scenarioId="basis"
         onClose={() => {}}
         onCreatePlans={() => {}}
       />,
