@@ -14,10 +14,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
 import type { ProductId } from './domain'
-import type { InstanceTaxModes } from './utils/csvExport'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
-import { deriveBavLumpSumTaxMode } from './engine/bavPayout'
-import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from './engine/insurancePayout'
+import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
 import { projectGrvContributionTimeline } from './engine/grv'
 import { deriveRentenluckeOverviewFromCombine } from './app/simulationSelectors'
 import { de2026Rules } from './rules/de2026'
@@ -284,36 +282,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     for (const s of wa.returnScenarios) {
       scenarioLabels[s.id] = s.label
     }
-    // Per-instance tax modes for Section 3 after-tax columns (issue #24 follow-up).
-    // Mirrors the derivation in simulationContext.ts / simulationSelectors.ts but
-    // applied per-instance so each contract's era/Durchführungsweg is respected.
-    const perInstanceTaxModes: Record<string, InstanceTaxModes> = {}
-    for (const inst of wa.bav) {
-      perInstanceTaxModes[inst.instanceId] = {
-        bavTaxMode: deriveBavLumpSumTaxMode(inst.durchfuehrungsweg, inst.pre2005EligibleTaxFree),
-      }
-    }
-    for (const inst of wa.insurance) {
-      const runtimeYears = computeRuntimeYearsAtRetirement(
-        inst.contractStartYear,
-        de2026Rules.year,
-        combineProfile.age,
-        combineProfile.retirementAge,
-      )
-      perInstanceTaxModes[inst.instanceId] = {
-        insuranceTaxMode: deriveInsuranceTaxMode(
-          inst.contractStartYear,
-          runtimeYears,
-          combineProfile.retirementAge,
-          inst.oldContractTaxFreeEligible,
-        ),
-      }
-    }
-    for (const inst of wa.etf) {
-      perInstanceTaxModes[inst.instanceId] = {
-        equityPartialExemption: inst.equityPartialExemption,
-      }
-    }
+    // Per-instance tax modes for Section 3 after-tax columns. Pure derivation
+    // lives in combineCsvWiring so the production flow is unit-tested.
+    const perInstanceTaxModes = deriveCombinePerInstanceTaxModes(wa, combineProfile)
     return {
       perInstance: combineSimulation.perInstance,
       combinedByScenarioId: combineSimulation.combinedByScenarioId,
