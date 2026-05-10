@@ -87,15 +87,45 @@ jobs:
             - `gh pr review $PR_NUMBER --comment --body-file <file>` for soft observations
               that don't block merge (rare — prefer approve if you have no blockers)
 
-            The review body MUST start with the literal marker `[Claude Review]` on its
-            own first line. The review-loop workflow uses this marker to identify your
-            reviews.
+            **Mandatory body format** (parsed by review-loop.yml + review-loop-sweep.yml):
+
+            ```
+            [Claude Review]
+
+            Verdict: Approve
+            <or>
+            Verdict: Request changes
+
+            <one-line summary>
+
+            <bulleted findings — what was reviewed, what passed, what didn't>
+            ```
+
+            The first line MUST be the literal `[Claude Review]`. The third line MUST be
+            either `Verdict: Approve` or `Verdict: Request changes` (exact spelling, no
+            other variants — not "LGTM", not "Approve.", not "**Approve**"). Both
+            review-loop and sweep regex-match these strings and ignore the formal review
+            state (because Claude can't self-approve when claude[bot] also authored the
+            PR — see Known Quirk #4 in docs/automation/issue-to-merge-pipeline.md).
+
+            "Soft observations" reviews still need `Verdict: Approve` if you want the PR
+            to merge. If your finding is genuinely blocking, use `Verdict: Request
+            changes`. There is no third state.
 
             **Hard rules**
             - Post exactly ONE review. Do not post multiple reviews per workflow run.
+            - Body MUST contain the exact `Verdict: Approve` or `Verdict: Request
+              changes` line. A review without this line will hang the PR — the loop
+              treats marker-less reviews as "ambiguous, wait for a clearer signal" and
+              the sweep cannot merge it.
             - Do not push commits, do not edit files, do not edit the PR body, do not
               add or remove labels — your only output is the formal review.
             - If `npm run verify` fails on the head commit, that's automatic
-              `--request-changes` with the failure summary in the body.
+              `Verdict: Request changes` with the failure summary in the body.
             - Stay terse. The review body is read by both humans and the implementer
               agent on the next iteration; bulleted findings beat prose paragraphs.
+            - **Do not expand the agent's scope by suggesting "could also do X"** in your
+              findings. The implementer agent treats reviewer suggestions as actionable
+              asks. If X is in scope, request changes for X explicitly. If X is out of
+              scope, do not mention it — file a separate issue or leave it for retro
+              curation.

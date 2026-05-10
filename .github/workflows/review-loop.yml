@@ -61,6 +61,27 @@ jobs:
             Read `CLAUDE.md` and `CONTEXT.md` first. Read the linked issue (find via
             `gh pr view $PR_NUMBER --json body --jq .body` and look for `Closes #N`).
 
+            **Step 0 — runaway cap.**
+
+            Count commits on the branch since it diverged from main:
+            `git rev-list --count main..HEAD`. If the count is **greater than 3**, do
+            NOT push another fix. The loop has likely run away — typically because
+            reviewer suggestions phrased as "could also..." were misinterpreted as
+            actionable asks across multiple iterations. Escalate to human:
+
+            1. Post a comment on the PR: "[loop-cap] Branch has N commits beyond main;
+               loop is escalating to ready-for-human to prevent scope creep. Maintainer
+               review the diff and either merge as-is, reset the branch, or close +
+               re-fire the issue."
+            2. Find the linked issue number from the PR body (`Closes #N`).
+            3. `gh issue edit N --add-label ready-for-human --remove-label in-progress-by-agent`.
+            4. Stop. Do NOT push another commit.
+
+            This cap is intentional. A correct fix usually takes 1 implementer commit
+            (initial fix) + at most 1 loop commit (addressing one round of real
+            review feedback). 3+ commits beyond main is a strong signal something has
+            gone wrong with the contract.
+
             **Step 1 — read all review state for the head commit.**
 
             Run `gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews`. Each
@@ -87,18 +108,30 @@ jobs:
 
             **Step 3 — decide.**
 
-            For each reviewer (Claude, Codex), find the latest review-on-head-commit:
+            For each reviewer (Claude, Codex), find the latest review-on-head-commit
+            and classify it strictly:
 
-            - **No review yet**: that reviewer hasn't weighed in on this commit.
-            - **APPROVED**: satisfied.
-            - **COMMENTED** with no actionable asks: treat as satisfied.
-            - **COMMENTED** with actionable asks OR **CHANGES_REQUESTED**: needs fix.
+            **Claude review classification (body marker is the contract):**
+            - Body contains literal `Verdict: Approve` → **satisfied**.
+            - Body contains literal `Verdict: Request changes` → **needs fix**.
+            - Body contains neither (marker-less / ambiguous) → **wait** (do NOT
+              push speculative fixes; treat as if the review hasn't been posted yet).
+              This handles prompt drift in claude-review.yml — if the reviewer didn't
+              produce a clean Verdict line, the right move is to wait for a clearer
+              signal, not act on guesswork.
+
+            **Codex review classification (formal state is the contract):**
+            - state APPROVED → **satisfied**.
+            - state CHANGES_REQUESTED → **needs fix**.
+            - state COMMENTED → **satisfied** if no explicit P0/P1 finding bullets in
+              the body; **needs fix** only if Codex explicitly flags one. Codex's
+              COMMENTED state usually means "P2/P3 nits, not blocking" per its design.
 
             Then:
 
             - If BOTH reviewers are satisfied → **merge** (Step 4a).
-            - If ANY reviewer needs a fix → **fix** (Step 4b).
-            - If only one reviewer has weighed in on $PR_HEAD_SHA → **wait** (Step 4c).
+            - If ANY reviewer is **needs fix** → **fix** (Step 4b).
+            - Otherwise (one or both ambiguous / not-yet-reviewed) → **wait** (Step 4c).
 
             **Step 4a — merge.**
 
@@ -114,11 +147,16 @@ jobs:
 
             **Step 4b — fix.**
 
-            1. Read the body of every reviewer's CHANGES_REQUESTED / actionable-COMMENTED
-               review on $PR_HEAD_SHA. Make a list of concrete asks.
+            1. Read the body of every reviewer's `Verdict: Request changes` (Claude) /
+               CHANGES_REQUESTED (Codex) review on $PR_HEAD_SHA. Make a list of concrete
+               asks. **Do not act on suggestions phrased as "could also..." / "consider
+               also..." / "optionally..."** — those are reviewer musings, not
+               actionable asks. Only address explicit blockers: things the reviewer
+               said must change for the PR to merge.
             2. Address each one. Edit files, write tests for new behavior the reviewer
                asked you to add, etc. Keep the diff minimal — fix what was asked, don't
-               re-architect.
+               re-architect, don't expand scope to nearby files the original issue
+               didn't ask about.
             3. Run `npm run verify` until it passes.
             4. Commit with a clear message ending with
                `Addresses review on PR #$PR_NUMBER`. Push to $PR_BRANCH.
