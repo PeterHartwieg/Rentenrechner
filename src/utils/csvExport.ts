@@ -225,6 +225,10 @@ export interface InstanceTaxModes {
   insuranceTaxMode?: InsuranceTaxMode
   /** ETF equity partial exemption ratio (e.g. 0.3 for equity funds). */
   equityPartialExemption?: number
+  /** Other annual retirement income for AVD §22 Nr. 5 marginal-tax calc. Defaults to 0. */
+  avdOtherAnnualIncome?: number
+  /** Other annual retirement income for Riester §22 Nr. 5 marginal-tax calc. Defaults to 0. */
+  riesterOtherAnnualIncome?: number
 }
 
 export interface CombinePortfolioCsvOptions {
@@ -345,6 +349,18 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
               taxModes.insuranceTaxMode,
               rules,
               0,
+            )
+          } else if (r.productId === 'altersvorsorgedepot') {
+            afterTax = afterTaxCertifiedPensionLumpSum(
+              row.balance,
+              rules,
+              taxModes.avdOtherAnnualIncome ?? 0,
+            )
+          } else if (r.productId === 'riester') {
+            afterTax = afterTaxCertifiedPensionLumpSum(
+              row.balance,
+              rules,
+              taxModes.riesterOtherAnnualIncome ?? 0,
             )
           }
         }

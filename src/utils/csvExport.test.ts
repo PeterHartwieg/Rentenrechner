@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildCombinePortfolioCsv, buildExportCsv } from './csvExport'
+import { buildCombinePortfolioCsv, buildExportCsv, type InstanceTaxModes } from './csvExport'
 import { de2026Rules } from '../rules/de2026'
 import { defaultProfile } from '../data/defaultScenario'
 import type { EtfProductResult, ProductResult, YearlyProjection } from '../domain'
