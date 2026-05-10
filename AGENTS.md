@@ -33,6 +33,37 @@ A second sanctioned backend trigger is OCR / document upload (Riester, bAV, GRV-
 
 Outside these two sanctioned triggers, do not add fetch/auth/cookies to the frontend.
 
+## Review guidelines
+
+Read by the Codex GitHub review integration (and the Claude reviewer in `.github/workflows/claude-review.yml`) to focus PR review on serious findings. Mirrored in `CLAUDE.md` so both reviewers apply the same bar. **P0 = block merge; P1 = strong objection; everything else = nit at most.**
+
+### P0 — must be addressed before merge
+
+- **Disclaimer regression.** `DisclaimerBanner` switched from `sessionStorage` to `localStorage`; OR disclaimer no longer the literal first child of `#print-report` in `PrintReport.tsx`; OR removed from the first section of `buildExportCsv` output; OR README's not-advice notice removed. See "Critical guardrails" §1.
+- **Unsanctioned network call.** New `fetch` / `XMLHttpRequest` / `navigator.sendBeacon` / `Image()` ping / `<iframe src=>` to a remote endpoint, anywhere outside the QA Worker (`qa.rentenwiki.de`) or the planned OCR upload. Backend boundary is binding; new endpoints need an ADR.
+- **PII or telemetry without ADR.** Cookies, accounts, analytics, error tracking, persisted user identifiers — none allowed without GDPR-by-design (region, retention, consent) and a sanctioned ADR.
+- **Public copy regresses to "Rentenrechner".** Page titles, marketing copy, OG tags, share-URL slugs, PDF/CSV export headers must say `RentenWiki.de`. Internal symbols (npm package, file paths, identifiers) keep "Rentenrechner".
+- **Statutory values hardcoded outside `src/rules/`.** Year-specific values must live in `src/rules/de2026.ts`; cross-year constants in `src/rules/legalConstants.ts`. Any statutory literal in `src/engine/`, `src/app/`, or `src/features/` is P0.
+
+### P1 — strong objection
+
+- **Engine-side rounding.** Engine returns full-precision floats. The only sanctioned engine rounding is statutory (e.g. `floorEuro(zvE)`) where the law requires it. Display rounding belongs in `src/utils/format.ts` (`formatCurrency`, `formatPercent`) or `<NumberField>`. Engine rounding compounds and breaks external oracle goldens.
+- **Fair-comparison invariant broken in compare mode.** ETF and private insurance must invest `bavFunding.monthlyNetCost`. Combine-mode honouring per-instance `monthlyContribution` via `BuildContextOverrides` is intentional, not a violation.
+- **Retirement tax bypassing `calculateRetirementTax`.** All retirement-phase taxable income (cohort-based Versorgungsfreibetrag + Besteuerungsanteil, Werbungskosten, Sonderausgaben, Ehegattensplitting) goes through that single pipeline. Extend it; don't bypass it.
+- **Monthly retirement payouts bypassing `calculateMonthlyRetirementPayout`.** bAV / pAV / certified pension / Basisrente monthly payouts share that one cascade for marginal retirement tax + KV/PV. Lump-sum helpers stay separate; do not fold them in.
+- **`PRODUCT_REGISTRY` bypassed.** New product missing a registry entry; or hardcoded product list / colors / order outside the registry. `ProductId` is derived from `metadata.id` literals — never a hand-maintained union.
+- **`SimulationContext` / `buildContext` bypassed.** Product simulators must consume `ctx`, never call funding helpers (bAV, Basisrente, AVD, Riester) directly. Combine mode also routes through `portfolioFunding.ts` and `combineContext.ts` so recommender + combine cannot drift.
+- **Storage path bypassing `migrateAndValidateState`.** Compare-mode localStorage and the scenario library both go through that single migrate+validate pipeline (`src/storage.ts`). Direct `localStorage.getItem` / `JSON.parse` of saved state is P1.
+- **`AccumulationPolicy` extension point ignored.** New accumulation behavior (per-year override, glidepath, contribution growth, initial capital) belongs in `AccumulationPolicy`, not as new top-level options on `ScenarioAssumptions`.
+- **Statutory pension / KV/PV routing diverges between recommender and combine simulation.** Both must consume `combineContext.ts` (`buildCombineContext`). Local re-derivation is P1.
+
+### Out of scope for review
+
+- Style nits, formatting preferences, naming bikesheds.
+- Test additions for already-passing behavior — suggest, don't block.
+- Refactoring opportunities in unrelated code — comment, don't block.
+- Documentation phrasing (unless it's a P0 like brand or disclaimer).
+
 ## Commands
 
 ```bash
