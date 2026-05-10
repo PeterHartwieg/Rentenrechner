@@ -42,11 +42,13 @@ jobs:
             high-signal items, and propose promotions to the operational memory
             (CLAUDE.md or the workflow YAML prompts) via a PR.
 
-            Read `docs/automation/retro-archive.md` first to understand the
-            archive format. Read `docs/automation/issue-to-merge-pipeline.md`
-            for the pipeline architecture (six workflows + this seventh
-            curation workflow). Read `CLAUDE.md` so you know what's already
-            documented.
+            `CLAUDE.md` is already loaded into your context via the harness's
+            `claudeMd` system reminder — do NOT issue a Read call on it. When
+            checking whether a candidate promotion is already documented, grep
+            CLAUDE.md for keywords from the candidate, don't re-read the whole
+            file. Read `docs/automation/retro-template.md` for the archive
+            entry format and `docs/automation/issue-to-merge-pipeline.md` for
+            pipeline architecture.
 
             **Step 1: Skip if a curate PR is already open.**
 
@@ -60,9 +62,24 @@ jobs:
 
             **Step 2: Identify candidate entries.**
 
-            Read `docs/automation/retro-archive.md`. Filter to entries where
-            the frontmatter `date:` is within the past 7 days from today
-            (`date -u +%Y-%m-%dT%H:%M:%SZ`).
+            Do NOT read the full `docs/automation/retro-archive.md` (it grows
+            monotonically and is mostly irrelevant by date). Instead, list
+            commits to the archive in the last 7 days and read just their
+            diffs:
+
+            ```bash
+            COMMITS=$(git log --since='7 days ago' --pretty=format:%H -- docs/automation/retro-archive.md)
+            for c in $COMMITS; do
+              echo "=== commit $c ==="
+              git show --no-color --format= "$c" -- docs/automation/retro-archive.md
+            done
+            ```
+
+            Each `git show` diff contains exactly the entry that was appended
+            in that commit (the file is append-only). Parse the frontmatter
+            (`date:`, `issue:`, `pr:`, `stage:`, `outcome:`, `labels:`) and
+            the body sections from each diff. This avoids re-reading the
+            growing archive on every run.
 
             Group entries by:
             - `stage: investigate` — investigator-specific signal
