@@ -216,7 +216,7 @@ describe('ProductEditCards – defaults notice', () => {
     expect(getAllByText('Einstellungen anpassen').length).toBe(2)
   })
 
-  it('does not expose product-specific contribution fields that bypass Netto-Belastung', () => {
+  it('does not expose product-specific contribution fields that bypass Netto-Beitrag', () => {
     const { queryByText, getAllByText } = render(
       <ProductEditCards
         selectedResults={[
@@ -237,6 +237,6 @@ describe('ProductEditCards – defaults notice', () => {
     expect(queryByText('Brutto-Umwandlung')).toBeNull()
     expect(queryByText('Monatsbeitrag')).toBeNull()
     expect(queryByText('Eigenbeitrag')).toBeNull()
-    expect(getAllByText(/Netto-Belastung/).length).toBeGreaterThan(0)
+    expect(getAllByText(/Netto-Beitrag/).length).toBeGreaterThan(0)
   })
 })

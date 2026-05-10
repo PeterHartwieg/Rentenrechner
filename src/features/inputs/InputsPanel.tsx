@@ -360,7 +360,7 @@ function NettoBelastungControl({
 }: NettoBelastungControlProps) {
   const { targetProps: nettoSectionProps } = useFeedbackTarget({
     id: 'inputs.nettoBelastung.section',
-    label: 'Netto-Belastung',
+    label: 'Netto-Beitrag',
     precision: 'section',
   })
   return (
@@ -371,7 +371,7 @@ function NettoBelastungControl({
     >
       <div className="netto-belastung-row">
         <NumberField
-          label="Netto-Belastung"
+          label="Netto-Beitrag"
           feedbackTargetId="inputs.nettoBelastung.amount"
           value={amountEUR}
           min={0}

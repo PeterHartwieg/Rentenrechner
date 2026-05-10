@@ -30,7 +30,7 @@ const TIP_TEILFREISTELLUNG =
 function NetAnchorNotice() {
   return (
     <p className="pec-fee-hint">
-      Der Beitrag wird über die Netto-Belastung in den Eingaben gesetzt.
+      Der Beitrag wird über den Netto-Beitrag in den Eingaben gesetzt.
     </p>
   )
 }
