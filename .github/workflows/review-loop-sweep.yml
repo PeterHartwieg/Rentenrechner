@@ -117,6 +117,20 @@ jobs:
 
             echo "Merging: Claude approved, Codex silent for $age_min min (>= $MIN_AGE_MINUTES)"
 
+            # Branch protection requires the PR branch to be up-to-date with main
+            # (strict mode). If it's stale, update it via `gh pr update-branch` and
+            # let the NEXT sweep tick complete the merge — the update fires fresh
+            # CI runs that the merge gate is waiting on. Avoids busy-waiting in
+            # the current tick.
+            mergeable_state=$(gh pr view "$pr" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus)
+            if [ "$mergeable_state" = "BEHIND" ]; then
+              echo "Branch is BEHIND main — updating and deferring merge to next tick."
+              gh pr update-branch "$pr" --repo "$REPO" || \
+                echo "update-branch failed; will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
+
             # Merge — squash + delete branch (matches event-driven loop step 4a)
             gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
 

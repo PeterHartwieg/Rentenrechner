@@ -186,13 +186,21 @@ jobs:
 
             1. Run `npm run verify` one final time on $PR_HEAD_SHA. If it fails, abort
                the merge, post a comment explaining the verify failure, and stop.
-            2. Read the linked issue number N from the PR body.
-            3. `gh pr merge $PR_NUMBER --squash --delete-branch`.
-            4. `gh issue edit N --remove-label in-progress-by-agent` (per the
+            2. Check if the branch is up-to-date with main. Branch protection on
+               this repo enforces strict mode, so a stale branch will reject the
+               merge. Run `gh pr view $PR_NUMBER --json mergeStateStatus --jq .mergeStateStatus`.
+               If the result is `BEHIND`, run `gh pr update-branch $PR_NUMBER`
+               (which merges main into the PR branch and fires fresh CI), then
+               STOP. The next reviewer event will re-fire this workflow and the
+               merge will go through cleanly. Do NOT push another commit yourself
+               and do NOT proceed to step 3.
+            3. Read the linked issue number N from the PR body.
+            4. `gh pr merge $PR_NUMBER --squash --delete-branch`.
+            5. `gh issue edit N --remove-label in-progress-by-agent` (per the
                qa-runbook convention — this label tracks active agent work).
-            5. Post a short comment on the PR confirming the merge and which two reviewers
+            6. Post a short comment on the PR confirming the merge and which two reviewers
                approved (start the comment with `[merge]` for traceability).
-            6. Stop.
+            7. Stop.
 
             **Step 4b — fix.**
 
