@@ -363,3 +363,24 @@ labels: [bug]
 ## What would have helped
 
 - The triage comment from the owner already identified the four exact file paths and line numbers (`accumulation.ts:309`, `products/insurance.ts:81`, `buildResult.ts:230`, `portfolioCombine.ts:380`). That made reproduction trivial — the investigator's main job was to confirm the diagnosis, write the test, and verify the failure value.
+
+---
+date: 2026-05-10T15:10:00Z
+issue: 75
+pr: 192
+stage: implement
+outcome: pr-opened
+labels: [chore]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- **Re-export barrel pattern for import-direction fixes**: when moving pure helpers out of `src/app/` to break an upward engine/API dependency, keep the original `src/app/*.ts` files as thin re-export barrels (`export { … } from '../utils/…'`). This avoids touching every app-layer caller and makes the diff focused on the files the tests care about.
+- **Partial extraction from a large module**: `src/app/simulationSelectors.ts` contains both pure selectors (safe for `src/utils/`) and UI-coupled ones (`buildPensionBars` uses `GRV_COLOR` from `src/app/productPresentation`). Only the subset consumed by `src/api/comparison.ts` was extracted — the app file now re-exports those from `src/utils/simulationSelectors` and keeps the UI-only functions in place. Avoids dragging `GRV_COLOR` and `getProductMeta` into utils unnecessarily.
+- **`getProductMeta` import chain**: `src/app/productPresentation.ts` re-exports `getProductMeta` from `src/engine/productManifest`, which itself re-exports from `src/engine/productRegistry`. When a util module needs `getProductMeta`, import from `'../engine/productRegistry'` directly.
+- **Build produces uncommitted OG images**: `npm run verify` calls `npm run build` which calls `scripts/generate-og-images.mjs`, dirtying `public/og/*.png`. When switching to `main` for the retro commit, stash these first (`git stash`) to avoid a pull-rebase conflict.
+- **Stage 1 investigation comment was accurate**: the three file paths, function names, and fix strategy described in Stage 1's comment were correct. No surprises during implementation.
