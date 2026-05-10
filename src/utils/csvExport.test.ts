@@ -565,6 +565,94 @@ describe('buildCombinePortfolioCsv', () => {
 })
 
 // ---------------------------------------------------------------------------
+// gh#86 — export projection layer: combine-mode Section 3 missing AVD/Riester
+// after-tax capital.
+//
+// The compare-mode path was fixed by #61; combine-mode Section 3 still emits
+// blank for `altersvorsorgedepot` and `riester` instances because the
+// if/else chain in buildCombinePortfolioCsv only handles bAV, ETF, and
+// versicherung.  The projection layer (#86) must close this gap.
+// ---------------------------------------------------------------------------
+
+describe('buildCombinePortfolioCsv — gh#86 AVD/Riester Section 3 after-tax gap', () => {
+  const AVD_BALANCE = 50_000
+
+  const avdInstanceProduct: ProductResult = {
+    ...FIXTURE_PRODUCT,
+    productId: 'altersvorsorgedepot' as ProductResult['productId'],
+    label: 'AVD Gap Test',
+    instanceId: 'avd-gap-1',
+    scenarioId: 'basis',
+    scenarioLabel: 'Basis',
+    rows: [
+      {
+        ...FIXTURE_YEARLY_ROW,
+        productId: 'altersvorsorgedepot',
+        balance: AVD_BALANCE,
+        realBalance: 40_000,
+      },
+    ],
+  } as unknown as ProductResult
+
+  const riesterInstanceProduct: ProductResult = {
+    ...FIXTURE_PRODUCT,
+    productId: 'riester' as ProductResult['productId'],
+    label: 'Riester Gap Test',
+    instanceId: 'riester-gap-1',
+    scenarioId: 'basis',
+    scenarioLabel: 'Basis',
+    rows: [
+      {
+        ...FIXTURE_YEARLY_ROW,
+        productId: 'riester',
+        balance: AVD_BALANCE,
+        realBalance: 40_000,
+      },
+    ],
+  } as unknown as ProductResult
+
+  it('AVD instance exports §22 Nr. 5 after-tax capital in Section 3 (non-blank, positive) when rules supplied', () => {
+    const csv = buildCombinePortfolioCsv({
+      perInstance: { 'avd-gap-1': [avdInstanceProduct] },
+      combinedByScenarioId: { basis: FIXTURE_COMBINED },
+      scenarioLabels: { basis: 'Basis' },
+      perInstanceTaxModes: { 'avd-gap-1': {} as InstanceTaxModes },
+      rules: de2026Rules,
+    })
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Jahres-Cashflows je Instanz')
+    const sectionBlock = lines.slice(sectionIdx + 2)
+    const avdRow = sectionBlock.find((l) => l.startsWith('avd-gap-1,'))
+    expect(avdRow).toBeDefined()
+    const cols = avdRow!.split(',')
+    // Column 10 = Kapital n. St. — currently blank; must be non-blank after #86.
+    expect(cols[10]).not.toBe('')
+    expect(Number(cols[10])).toBeGreaterThan(0)
+    expect(Number(cols[10])).toBeLessThan(AVD_BALANCE)
+  })
+
+  it('Riester instance exports §22 Nr. 5 after-tax capital in Section 3 (non-blank, positive) when rules supplied', () => {
+    const csv = buildCombinePortfolioCsv({
+      perInstance: { 'riester-gap-1': [riesterInstanceProduct] },
+      combinedByScenarioId: { basis: FIXTURE_COMBINED },
+      scenarioLabels: { basis: 'Basis' },
+      perInstanceTaxModes: { 'riester-gap-1': {} as InstanceTaxModes },
+      rules: de2026Rules,
+    })
+    const lines = csv.split('\n')
+    const sectionIdx = lines.findIndex((l) => l === 'Jahres-Cashflows je Instanz')
+    const sectionBlock = lines.slice(sectionIdx + 2)
+    const riesterRow = sectionBlock.find((l) => l.startsWith('riester-gap-1,'))
+    expect(riesterRow).toBeDefined()
+    const cols = riesterRow!.split(',')
+    // Column 10 = Kapital n. St. — currently blank; must be non-blank after #86.
+    expect(cols[10]).not.toBe('')
+    expect(Number(cols[10])).toBeGreaterThan(0)
+    expect(Number(cols[10])).toBeLessThan(AVD_BALANCE)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Regression: gh#59 — combine-mode Section 2 "Netto-Rente mtl." must use
 // CombinedResult.byInstance[instanceId].monthlyNet, not r.netMonthlyPayout.
 //
