@@ -441,7 +441,7 @@ export function OptimiereVorsorgeModal({
                     >
                       Anpassen
                       {row.decisions.length > 0 && (
-                        <span className="optimiere-modal__option-count">
+                        <span className="optimiere-modal__option-count">{' '}
                           {row.decisions.length} {row.decisions.length === 1 ? 'Option' : 'Optionen'}
                         </span>
                       )}
