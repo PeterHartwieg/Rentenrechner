@@ -186,6 +186,7 @@
   align-items: stretch;
   gap: 8px;
   width: 100%;
+  grid-column: 3;
 }
 
 .rentenlucke-dashboard__cta {
@@ -223,6 +224,7 @@
     grid-template-columns: 1fr;
   }
   .rentenlucke-dashboard__cta-group {
+    grid-column: auto;
     width: 100%;
   }
   .rentenlucke-dashboard__cta {
