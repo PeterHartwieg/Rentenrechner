@@ -29,6 +29,7 @@ jobs:
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: '*'
           claude_args: --allowed-tools Bash(gh:*),Read,Grep,Glob
           prompt: |
             You are the triage agent for issue #${{ github.event.issue.number }} in PeterHartwieg/Rentenrechner.
