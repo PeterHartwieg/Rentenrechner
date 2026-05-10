@@ -1,0 +1,117 @@
+name: implement
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: implement-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  implement:
+    if: ${{ github.event.label.name == 'ready-for-agent' && !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Mark in-progress-by-agent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --add-label in-progress-by-agent \
+            --remove-label needs-triage,ready-for-agent
+
+      - name: Configure git
+        run: |
+          git config user.name  "rentenwiki-agent[bot]"
+          git config user.email "rentenwiki-agent[bot]@users.noreply.github.com"
+
+      - name: Run implementer agent
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: --allowed-tools Bash,Read,Edit,Write,Grep,Glob
+          prompt: |
+            You are the implementer agent for issue #${{ github.event.issue.number }} in PeterHartwieg/Rentenrechner.
+
+            Read `CLAUDE.md` and `CONTEXT.md` first — those are authoritative for the
+            project's conventions, command list, and module map.
+
+            **Inputs**
+            - Issue number: $ISSUE_NUMBER
+            - Title: $ISSUE_TITLE
+            - Labels (comma-separated): $ISSUE_LABELS
+            - Read the full body and any comments with `gh issue view $ISSUE_NUMBER --comments`.
+
+            **What to do**
+
+            1. **Branch.** Create and check out `agent/issue-$ISSUE_NUMBER`.
+
+            2. **TDD decision.** Look at $ISSUE_LABELS:
+               - If it contains any of `area:ui-only`, `area:copy`, `documentation` →
+                 SKIP the failing-test phase. Note "TDD-skip: <reason>" in the PR body later.
+               - Otherwise → write a failing test FIRST that fails today and will pass
+                 only when the issue is fixed. Commit the test alone with message
+                 `test: failing test for #$ISSUE_NUMBER`. Run `npx vitest run <new-test-file>`
+                 to confirm it fails for the expected reason (not a typo / missing import).
+
+            3. **Implement the fix.** Edit the relevant code per the issue. Keep the
+               diff minimal and focused on what the issue asks for. Do not refactor
+               surrounding code, do not add features beyond what the issue requires
+               (per CLAUDE.md "Doing tasks").
+
+            4. **Verify.** Run `npm run verify` (lint + tests + build per CLAUDE.md).
+               Iterate until it passes. If a test outside your changes fails for an
+               unrelated reason, leave a note in the PR body and continue — do not
+               silently disable tests.
+
+            5. **Commit + push.** Commit with a clear message ending with
+               `Refs #$ISSUE_NUMBER`. Push the branch.
+
+            6. **Open the PR.** Use `gh pr create` with:
+               - Title: short imperative summary, prefixed with the conventional type
+                 (`fix:`, `feat:`, `docs:`, `refactor:`, etc.) per recent commit history.
+               - Body: must include
+                 - `Closes #$ISSUE_NUMBER` (so merge auto-closes the issue)
+                 - A short description of what changed and why
+                 - A "TDD" section saying either "Failing test added: <path>" or
+                   "TDD-skip: <reason>" (one of the area-label categories)
+                 - The standard AI-generated marker from docs/agents/issue-tracker.md
+
+            7. **Done.** Stop after the PR is created. Do NOT comment `@codex review` —
+               the Codex GitHub integration auto-reviews on PR open. Do NOT remove
+               `in-progress-by-agent` — that label is cleared by the merge step.
+
+            **Hard rules**
+            - Stay on the `agent/issue-$ISSUE_NUMBER` branch. Never push to `main`.
+            - Never commit secrets, credentials, or `.env` files.
+            - If `npm run verify` fails after a reasonable number of iterations and you
+              cannot diagnose it, post a comment on the issue explaining where you got
+              stuck, remove `in-progress-by-agent`, add `ready-for-human`, and stop.
+              Do not open a broken PR.
+            - Follow `CLAUDE.md` "Critical guardrails" — license disclaimer must remain
+              session-only, never collect PII without a backend story, etc.

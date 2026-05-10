@@ -1,0 +1,99 @@
+name: claude-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Run Claude reviewer
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: --model claude-opus-4-7 --allowed-tools Bash(gh:*),Bash(git:*),Bash(npx:*),Bash(npm:*),Read,Grep,Glob
+          prompt: |
+            You are the Claude reviewer for PR #$PR_NUMBER on commit $PR_HEAD_SHA in
+            PeterHartwieg/Rentenrechner. Branch: $PR_BRANCH.
+
+            Read `CLAUDE.md` and `CONTEXT.md` first — those define project conventions,
+            critical guardrails (license disclaimer, no PII, fair-comparison invariant),
+            and module ownership.
+
+            **Inputs**
+            - Use `gh pr view $PR_NUMBER --json title,body,labels,files,additions,deletions`
+              to get PR metadata.
+            - Use `gh pr diff $PR_NUMBER` to read the full diff.
+            - Use `gh pr view $PR_NUMBER --json body --jq .body` to find the linked
+              issue (look for `Closes #N`). Read the issue with `gh issue view N`.
+
+            **What to review**
+
+            1. **Scope.** Does the diff stay focused on what the issue asks for, or does
+               it sprawl into unrelated refactors/cleanup? Per CLAUDE.md "Doing tasks":
+               no premature abstractions, no fixes outside scope, no unrequested features.
+            2. **Correctness.** Does the change actually fix what the issue describes?
+               Are edge cases handled? Are statutory values / tax rules / engine math
+               touched safely (cohort tables, oracle goldens still pass)?
+            3. **Test coverage.** If TDD ran, does the failing test actually exercise the
+               bug (and would it catch a regression)? If TDD was skipped, is the skip
+               reason valid (one of the listed area-label categories)?
+            4. **Conventions.** Identifiers, file locations, formatter usage at the UI
+               boundary (`formatCurrency`, `formatPercent`), engine vs UI separation,
+               registry-based product extension. Cross-check against CLAUDE.md "Key files"
+               and "UI rounding boundary".
+            5. **Critical guardrails.** Disclaimer banner stays session-only. No new
+               network surfaces without ADR. No PII collection. Fair-comparison invariant
+               preserved in compare-mode. Public copy uses `RentenWiki.de`.
+            6. **Verification.** Run `npm run verify` to confirm lint + tests + build pass
+               on this commit.
+
+            **Output**
+
+            Post exactly one formal PR review using `gh pr review`:
+            - `gh pr review $PR_NUMBER --approve --body-file <file>` if everything looks good
+            - `gh pr review $PR_NUMBER --request-changes --body-file <file>` if you found
+              issues that must be addressed before merge
+            - `gh pr review $PR_NUMBER --comment --body-file <file>` for soft observations
+              that don't block merge (rare — prefer approve if you have no blockers)
+
+            The review body MUST start with the literal marker `[Claude Review]` on its
+            own first line. The review-loop workflow uses this marker to identify your
+            reviews.
+
+            **Hard rules**
+            - Post exactly ONE review. Do not post multiple reviews per workflow run.
+            - Do not push commits, do not edit files, do not edit the PR body, do not
+              add or remove labels — your only output is the formal review.
+            - If `npm run verify` fails on the head commit, that's automatic
+              `--request-changes` with the failure summary in the body.
+            - Stay terse. The review body is read by both humans and the implementer
+              agent on the next iteration; bulleted findings beat prose paragraphs.

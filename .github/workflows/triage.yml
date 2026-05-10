@@ -1,0 +1,81 @@
+name: triage
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run triage agent
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: --allowed-tools Bash(gh:*),Read,Grep,Glob
+          prompt: |
+            You are the triage agent for issue #${{ github.event.issue.number }} in PeterHartwieg/Rentenrechner.
+
+            Read `docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md` first — those are
+            authoritative for label vocabulary and the AI-generated marker convention.
+
+            **Inputs**
+            - Issue number: $ISSUE_NUMBER
+            - Title: $ISSUE_TITLE
+            - Author: $ISSUE_AUTHOR
+            - Read the full body and any comments with `gh issue view $ISSUE_NUMBER --comments`.
+
+            **What to produce**
+
+            1. **Classify the source.** If the body matches the QA-feedback Markdown shape
+               (look for `## Was`, `## Wie reproduzieren`, `## Erwartet`, `## Stattdessen`,
+               and a `## Screenshot` block linking qa.rentenwiki.de) it was created by the
+               QA Worker — the report is already structured, you mostly need to categorize.
+               Otherwise treat as a regular issue.
+
+            2. **Decide bug vs enhancement vs needs-info.**
+               - Bug: apply `bug` label. Enrich the body with: clear reproduction steps,
+                 expected vs actual behavior, environment context, and a list of likely
+                 relevant code paths (use Grep/Glob to find them; don't guess). Use
+                 `gh issue edit $ISSUE_NUMBER --body-file <file>` to update — preserve
+                 the original reporter's text below your enrichment, and prefix your
+                 added section with the AI-generated marker per docs/agents/issue-tracker.md.
+               - Enhancement / feature: apply `enhancement` label, leave the body alone.
+               - Insufficient info: apply `needs-info` label and post a clarification
+                 comment via `gh issue comment $ISSUE_NUMBER --body-file <file>`. Stop here.
+
+            3. **Categorize for the TDD-skip decision.** Apply ONE area label if applicable:
+               - `area:ui-only` — pure CSS / layout / visual change with no behavioral assertion possible
+               - `area:copy` — pure user-facing text (German copy, button labels, error messages)
+               - `documentation` — README, docs/, code comments only (use the existing `documentation` label)
+               If the issue requires engine / state / calculation / behavior changes, do NOT
+               apply any area label — TDD will run on it.
+
+            4. **Leave the gate state.** Keep the `needs-triage` label on. Do NOT apply
+               `ready-for-agent` — that is the human gate per the pipeline design. The
+               human reviews your triage output and applies `ready-for-agent` when they
+               want implementation to start.
+
+            **Hard rules**
+            - Use only the `gh` CLI for label edits, body edits, and comments.
+            - Do NOT push code, open PRs, or modify any files in the repo working tree.
+            - Do NOT add `ready-for-agent`, `in-progress-by-agent`, `wontfix`, or any
+              merge-related labels — those are for later phases.
+            - Every comment or body-section you write must start with the AI-generated
+              marker from docs/agents/issue-tracker.md.

@@ -1,0 +1,142 @@
+name: review-loop
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: review-loop-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Configure git
+        run: |
+          git config user.name  "rentenwiki-agent[bot]"
+          git config user.email "rentenwiki-agent[bot]@users.noreply.github.com"
+
+      - name: Run implementer-as-merger
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEW_AUTHOR: ${{ github.event.review.user.login }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEW_ID: ${{ github.event.review.id }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: --model claude-opus-4-7 --allowed-tools Bash,Read,Edit,Write,Grep,Glob
+          prompt: |
+            You are the implementer-as-merger for PR #$PR_NUMBER on branch $PR_BRANCH
+            (head $PR_HEAD_SHA). This run was triggered by $REVIEW_AUTHOR submitting a
+            $REVIEW_STATE review (id $REVIEW_ID).
+
+            Read `CLAUDE.md` and `CONTEXT.md` first. Read the linked issue (find via
+            `gh pr view $PR_NUMBER --json body --jq .body` and look for `Closes #N`).
+
+            **Step 1 — read all review state for the head commit.**
+
+            Run `gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews`. Each
+            review has `user.login`, `state` (APPROVED / CHANGES_REQUESTED / COMMENTED),
+            `body`, `submitted_at`, and `commit_id`.
+
+            Filter to reviews where `commit_id == $PR_HEAD_SHA`. These are reviews of
+            the current code, not stale reviews from prior commits.
+
+            **Step 2 — identify the two reviewers.**
+
+            There are exactly two automated reviewers:
+            - **Claude reviewer**: review body starts with the literal marker `[Claude Review]`.
+            - **Codex reviewer**: posted by the Codex GitHub App (the Codex integration
+              installed on this repo). Identify it as: any review on $PR_HEAD_SHA whose
+              author login ends with `[bot]`, contains `codex` or `openai`, AND whose body
+              does NOT start with `[Claude Review]`. If multiple candidates remain, pick
+              the most recent.
+
+            Ignore reviews from human users (the maintainer might leave their own review
+            — that is not part of the automated loop, but if a human leaves
+            CHANGES_REQUESTED you should still address it; if a human leaves APPROVED
+            it counts toward "satisfied" same as a bot).
+
+            **Step 3 — decide.**
+
+            For each reviewer (Claude, Codex), find the latest review-on-head-commit:
+
+            - **No review yet**: that reviewer hasn't weighed in on this commit.
+            - **APPROVED**: satisfied.
+            - **COMMENTED** with no actionable asks: treat as satisfied.
+            - **COMMENTED** with actionable asks OR **CHANGES_REQUESTED**: needs fix.
+
+            Then:
+
+            - If BOTH reviewers are satisfied → **merge** (Step 4a).
+            - If ANY reviewer needs a fix → **fix** (Step 4b).
+            - If only one reviewer has weighed in on $PR_HEAD_SHA → **wait** (Step 4c).
+
+            **Step 4a — merge.**
+
+            1. Run `npm run verify` one final time on $PR_HEAD_SHA. If it fails, abort
+               the merge, post a comment explaining the verify failure, and stop.
+            2. Read the linked issue number N from the PR body.
+            3. `gh pr merge $PR_NUMBER --squash --delete-branch`.
+            4. `gh issue edit N --remove-label in-progress-by-agent` (per the
+               qa-runbook convention — this label tracks active agent work).
+            5. Post a short comment on the PR confirming the merge and which two reviewers
+               approved (start the comment with `[merge]` for traceability).
+            6. Stop.
+
+            **Step 4b — fix.**
+
+            1. Read the body of every reviewer's CHANGES_REQUESTED / actionable-COMMENTED
+               review on $PR_HEAD_SHA. Make a list of concrete asks.
+            2. Address each one. Edit files, write tests for new behavior the reviewer
+               asked you to add, etc. Keep the diff minimal — fix what was asked, don't
+               re-architect.
+            3. Run `npm run verify` until it passes.
+            4. Commit with a clear message ending with
+               `Addresses review on PR #$PR_NUMBER`. Push to $PR_BRANCH.
+            5. Pushing fires `pull_request.synchronize` which auto-fires Claude review.
+               Codex does NOT auto-re-review on synchronize, so post a `@codex review`
+               comment via `gh pr comment $PR_NUMBER --body "@codex review"` to ping it.
+            6. Stop. The next reviewer submission will re-fire this workflow.
+
+            **Step 4c — wait.**
+
+            1. Do nothing. Print a one-line status ("Waiting for the other reviewer on
+               $PR_HEAD_SHA") and exit cleanly. Do NOT post a comment, do NOT push, do
+               NOT use `gh pr review` (that would re-trigger this workflow and loop).
+
+            **Hard rules**
+            - Never use `gh pr review` from this workflow — only the dedicated reviewers
+              post formal reviews. Use `gh pr comment` for status / merge confirmation.
+            - Never push to `main`, never force-push, never amend.
+            - If you cannot understand or address a reviewer's feedback after a real
+              attempt, post a comment on the PR explaining where you got stuck, label
+              the linked issue `ready-for-human`, remove `in-progress-by-agent`, and stop.
+            - The merge step removes `in-progress-by-agent` from the linked issue — do
+              not skip this; the qa-runbook depends on it.
