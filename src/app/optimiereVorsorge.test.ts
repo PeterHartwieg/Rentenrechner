@@ -268,6 +268,15 @@ function baselineCombinedFor(ws: Workspace) {
   return bundle.combinedByScenarioId[firstScenarioId]
 }
 
+/** Extract the 'basis' scenario combined result, as the OptimiereVorsorgeModal does. */
+function basisCombinedFor(ws: Workspace) {
+  const bundle = runCombineSimulation(ws, de2026Rules)
+  const basisScenario =
+    ws.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis') ??
+    ws.baseline.assumptions.returnScenarios[0]
+  return bundle.combinedByScenarioId[basisScenario.id]
+}
+
 // ---------------------------------------------------------------------------
 // B2 tests
 // ---------------------------------------------------------------------------
@@ -880,5 +889,61 @@ describe('auditPortfolio — deltaNettoRente is zero for all decisions (B4)', ()
         expect(decision.deltaNettoRente).toBe(0)
       }
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// gh#44 regression: Bug A — scenario mismatch (sign flip)
+// ---------------------------------------------------------------------------
+
+describe('simulateContractDecision — Bug A: basis-scenario baseline must use same scenario (gh#44)', () => {
+  it('weiterfuehren with basis-scenario baseline produces delta ≈ 0, not a sign-flipped large value', () => {
+    const ws = makeBavWorkspace()
+    const bavInstanceId = ws.baseline.assumptions.bav[0].instanceId
+    const decision = weiterfuehrenWhatIf(ws, bavInstanceId)
+
+    // The modal computes baselineCombined from the 'basis' scenario (5 % p.a.),
+    // NOT from returnScenarios[0] which is 'konservativ' (3 % p.a.).
+    const basisCombined = basisCombinedFor(ws)
+
+    const result = simulateContractDecision(ws, decision, de2026Rules, basisCombined)
+
+    // weiterfuehren is an identity decision — the workspace is unchanged, so the
+    // applied simulation is identical to the baseline. Delta must be ≈ 0.
+    //
+    // Bug A: simulateContractDecision picks returnScenarios[0] ('konservativ', 3 %)
+    // for the applied result but the caller provided a baseline at 'basis' (5 %).
+    // The 2 pp gap compounded over 39 years flips the sign and produces a large
+    // negative delta (many EUR/month). The correct value is < 1 EUR/month.
+    expect(Math.abs(result.deltaMonthlyNetEUR)).toBeLessThan(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// gh#44 regression: Bug B — stale cache on newMonthlyEUR change
+// ---------------------------------------------------------------------------
+
+describe('createDecisionSimulationCache — Bug B: different newMonthlyEUR must not share a cache entry (gh#44)', () => {
+  it('cache returns strictly larger delta for 200→400 than for 200→300 on the same instance', () => {
+    const ws = makeEtfOnlyWorkspace(200)
+    const etfId = ws.baseline.assumptions.etf[0].instanceId
+
+    const decision300 = beitragErhoehenWhatIf(ws, etfId, 300)
+    const decision400 = beitragErhoehenWhatIf(ws, etfId, 400)
+    expect(decision300).not.toBeNull()
+    expect(decision400).not.toBeNull()
+
+    // Bug B precondition: both decisions share the same id (no newMonthlyEUR in id).
+    // This causes the cache to return the 300-EUR result for the 400-EUR query.
+    const basisCombined = basisCombinedFor(ws)
+    const cache = createDecisionSimulationCache()
+
+    const result300 = cache.get(ws, decision300!, de2026Rules, basisCombined)
+    // With the bug, this hits the cache entry written by result300 (same id).
+    const result400 = cache.get(ws, decision400!, de2026Rules, basisCombined)
+
+    // A higher monthly contribution produces a higher delta.
+    // Bug B: result400 === result300 (stale cache hit) → this assertion fails.
+    expect(result400.deltaMonthlyNetEUR).toBeGreaterThan(result300.deltaMonthlyNetEUR)
   })
 })
