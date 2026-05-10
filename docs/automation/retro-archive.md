@@ -112,3 +112,26 @@ labels: [code-review, enhancement]
 ## What would have helped
 
 - Knowing upfront that an existing test was already pinning the old (wrong) value — a grep for the string `'WebSite'` in test files would have surfaced this immediately without reading the full test file.
+
+---
+date: 2026-05-10T12:30:00Z
+issue: 148
+pr: 187
+stage: implement
+outcome: pr-opened
+labels: [code-review, enhancement]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The fix was a two-line addition: `if (typeof localStorage === 'undefined') return null` at the top of `readStoredView` (src/app/useWorkspace.ts:13) and `if (typeof localStorage === 'undefined') return` at the top of `writeStoredView` (src/app/useWorkspace.ts:24). Exactly the same short-circuit pattern used in `detectSavedMode` in `src/app/useRoute.ts:96,114`.
+- `npm run verify` regenerates OG PNG images as a `prebuild` step, leaving the `public/og/*.png` files modified in the working tree. When checking out `main` after working on a feature branch, stash or discard those generated PNG changes first — they're build artifacts, not source changes.
+- TDD-skip issues (pure code-style consistency, no behavioral delta) are the fastest implement runs: no test to locate, no test to run, just apply the pattern from the canonical example already cited by Stage 1.
+
+## What would have helped
+
+- Stage 1 already identified both functions, the exact lines, and the reference pattern. Nothing was missing; the retro is truly routine.
