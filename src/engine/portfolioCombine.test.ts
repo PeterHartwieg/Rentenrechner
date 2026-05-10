@@ -719,5 +719,88 @@ describe('combinePortfolio — married vs. single filing status', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// 8. Regression #65 — surrender/reinvest pAV: transferred principal excluded
+//    from gain in combine path
+// ---------------------------------------------------------------------------
+
+describe('combinePortfolio — regression #65: pAV gain ratio uses totalContributionsBeforeFees', () => {
+  it('transferred principal from surrender_reinvest is excluded from pAV gain (combine path)', () => {
+    // Regression for issue #65.
+    //
+    // Scenario: a pAV (halbeinkuenfte mode) received a 50,000 EUR capital injection
+    // from a surrender_reinvest transfer. Regular contributions are 50,000 EUR.
+    // True cost basis (totalContributionsBeforeFees) = 100,000 EUR.
+    // Capital at retirement = 100,000 EUR → zero real gain.
+    //
+    // The bug: portfolioCombine.ts computePavTaxableAnnual reads
+    // `result.totalProductContributions` (= 50,000 EUR, regular contributions only)
+    // as the cost basis. This gives gainRatio = 0.5, taxableAnnual = 6,000 EUR,
+    // and privateInsuranceTaxable = 3,000 EUR (after halbeinkuenfte 0.5 factor).
+    //
+    // The fix: expose `totalContributionsBeforeFees` on ProductResult (sum of
+    // totalProductContributions + injectedPrincipal from transfer events) and use
+    // it in computePavTaxableAnnual. With totalContributionsBeforeFees = 100,000
+    // (= capitalAtRetirement), gainRatio = 0 → taxableAnnual = 0.
+    const ws = makeWorkspaceFromV1(0, false, true, 0, 0, 0)
+    const baseIns = ws.baseline.assumptions.insurance[0]
+    const insInstance: InsuranceInstance = {
+      ...baseIns,
+      instanceId: 'versicherung-transferred',
+      contractStartYear: 2010, // runtime 55yr, retirementAge 67 → halbeinkuenfte mode
+      payoutMode: 'kapitalverzehr',
+    }
+    ws.baseline.assumptions.insurance = [insInstance]
+    ws.baseline.assumptions.visibleProducts = ['versicherung']
+
+    // Synthetic ProductResult:
+    //   totalProductContributions = 50,000 EUR (regular contributions only)
+    //   totalContributionsBeforeFees = 100,000 EUR (includes 50k injected principal)
+    //   capitalAtRetirement = 100,000 EUR → zero real gain (basis == capital)
+    //
+    // The field `totalContributionsBeforeFees` does not yet exist on ProductResult
+    // (that is the type gap this issue must fix). Cast past the type system so the
+    // test encodes the expected post-fix contract and fails at runtime today.
+    const synthResult = {
+      productId: 'versicherung' as const,
+      label: 'pAV (surrendered contract reinvested)',
+      scenarioId: 'basis' as const,
+      scenarioLabel: 'Basis',
+      instanceId: 'versicherung-transferred',
+      annualReturn: 0.04,
+      monthlyUserCost: 100,
+      monthlyProductContribution: 100,
+      monthlyEmployerContribution: 0,
+      totalUserCost: 50_000,
+      totalProductContributions: 50_000,      // regular contributions only
+      totalContributionsBeforeFees: 100_000,  // includes 50k injected transfer principal
+      totalEmployerContributions: 0,
+      totalFees: 0,
+      capitalAtRetirement: 100_000,           // zero real gain: true basis == capital
+      realCapitalAtRetirement: 70_000,
+      afterTaxLumpSum: 100_000,
+      grossMonthlyPayout: 1_000,
+      netMonthlyPayout: 950,
+      taxAndSvSavings: 0,
+      valueMultipleOnUserCost: null,
+      capitalMultipleAnnualized: 0,
+      accumulationRiy: 0,
+      rows: [],
+    } as unknown as ProductResult
+
+    const ctx = makeBaseCombineContext(defaultProfile, 0)
+    const combined = combinePortfolio(ws, [synthResult], ctx)
+
+    // With zero real gain (true basis = capital), the private-insurance
+    // progressive-base contribution must be 0.
+    //
+    // Bug (totalProductContributions used): gainRatio = (100k-50k)/100k = 0.5,
+    //   taxableAnnual = 12,000 × 0.5 = 6,000 → privateInsuranceTaxable = 3,000.
+    // Fix (totalContributionsBeforeFees used): gainRatio = (100k-100k)/100k = 0,
+    //   taxableAnnual = 0 → privateInsuranceTaxable = 0.
+    expect(combined.aggregateTax.privateInsuranceTaxable).toBeCloseTo(0, 4)
+  })
+})
+
 // Suppress unused-import warnings for types kept for documentation completeness.
 void undefined as void | EtfInstance | AltersvorsorgedepotInstance | BasisrenteInstance | RiesterInstance
