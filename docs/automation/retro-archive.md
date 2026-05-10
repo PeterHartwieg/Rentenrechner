@@ -89,3 +89,26 @@ labels: [code-review, enhancement]
 ## What would have helped
 
 - The issue body already contained all the context needed (file:line, the pattern in `useRoute.ts` to mirror). No exploration was required beyond reading the two files.
+
+---
+date: 2026-05-10T12:20:00Z
+issue: 143
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [code-review, enhancement]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- For SEO-registry enhancements, the fastest entry point is `src/seo/publicRouteRegistry.ts`. The `JsonLdType` union (line 45) and the per-route `jsonLdType` fields are the only two things that need changing for a JSON-LD type update; comments in the file header and section headers also reference the type and need updating.
+- The existing test in `src/seo/publicRouteRegistry.test.ts` at the "marks legal pages" block (lines 67–76) was already asserting `toBe('WebSite')` and passing. The right move was to split that test: keep the `robots`/`inSitemap` assertions in the existing test and add a new test that asserts the correct target types (`'AboutPage'`, `'WebPage'`). This produced a clean single-failure run without touching passing assertions.
+- `JsonLdType` at line 45 is intentionally kept narrow — adding new values forces a review of the JSON-LD generator (`src/seo/JsonLd.tsx`). Stage 2 must extend the union AND verify the generator handles the new types correctly.
+
+## What would have helped
+
+- Knowing upfront that an existing test was already pinning the old (wrong) value — a grep for the string `'WebSite'` in test files would have surfaced this immediately without reading the full test file.
