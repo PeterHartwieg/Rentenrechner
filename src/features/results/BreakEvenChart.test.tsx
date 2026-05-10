@@ -190,3 +190,60 @@ describe('BreakEvenChart – GRV contribution series', () => {
     expect(queryByText('GRV Netto-Einzahlung kumuliert')).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// BreakEvenChart GRV legend baseline distinction (#110)
+// ---------------------------------------------------------------------------
+
+describe('BreakEvenChart – GRV legend baseline styling', () => {
+  const etfResult: LifecycleSeriesResult = {
+    productId: 'etf',
+    label: 'ETF',
+    rows: [{ age: 40, balance: 1000 }],
+    monthlyUserCost: 200,
+    totalUserCost: 48_000,
+    capitalAtRetirement: 100_000,
+    grossMonthlyPayout: 1000,
+    netMonthlyPayout: 900,
+  }
+  const colors: Record<string, string> = { etf: '#3b82f6' }
+
+  it('GRV payout legend entry carries the --baseline modifier class to distinguish it from product lines', () => {
+    const { container } = render(
+      <BreakEvenChart
+        selectedResults={[etfResult]}
+        productColors={colors}
+        startAge={40}
+        retirementAge={67}
+        retirementEndAge={85}
+        pensionBaselineType="grv"
+        grvNetMonthlyPension={1200}
+      />,
+    )
+    const legend = container.querySelector('.lifecycle-legend--overlay')
+    expect(legend).not.toBeNull()
+    // The GRV entry must carry a distinct modifier so it reads as a baseline,
+    // not as a product-series line. Currently it only has lifecycle-legend__item.
+    const grvItem = legend!.querySelector('.lifecycle-legend__item--baseline')
+    expect(grvItem).not.toBeNull()
+    expect(grvItem!.textContent).toContain('GRV')
+  })
+
+  it('product-series legend entries (Netto eingezahlt, Restkapital, Netto ausgezahlt) do not carry the --baseline modifier', () => {
+    const { container } = render(
+      <BreakEvenChart
+        selectedResults={[etfResult]}
+        productColors={colors}
+        startAge={40}
+        retirementAge={67}
+        retirementEndAge={85}
+        pensionBaselineType="grv"
+        grvNetMonthlyPension={1200}
+      />,
+    )
+    const legend = container.querySelector('.lifecycle-legend--overlay')!
+    const baselineItems = legend.querySelectorAll('.lifecycle-legend__item--baseline')
+    // Only the GRV entry should be baseline-marked; product-series entries should not.
+    expect(baselineItems.length).toBe(1)
+  })
+})
