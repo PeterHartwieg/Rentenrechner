@@ -585,6 +585,31 @@ folding here so they don't bite next time:
    add a `## Review guidelines` section to `AGENTS.md` listing your
    repo's P0/P1 categories.
 
+6. **`@codex review` mention does NOT work from a bot identity.** Codex
+   gates the mention path on the *commenter*'s account having a Codex
+   subscription. When `claude[bot]` posts `@codex review` (e.g. from
+   `review-loop.yml` after a fix push), Codex replies "To use Codex
+   here, create a Codex account and connect to github" — pointed at
+   the bot, which can't follow it. Codex's auto-review on
+   `pull_request.opened` works fine because it triggers under the
+   App's own server-side identity, not via a comment mention.
+
+   **Implication:** routine PRs survive (Codex is silent → sweep
+   merges). The case that breaks: Codex posts CHANGES_REQUESTED on
+   open, fix is pushed, Codex doesn't auto-re-review on synchronize,
+   bot can't ping Codex to re-review, sweep is blocked by the stale
+   CHANGES_REQUESTED → maintainer must manually post `@codex review`
+   from their own account to unblock. Logged in `review-loop.yml`'s
+   Step 4b for visibility.
+
+7. **Stage 1 retro timestamps may be agent-fabricated, not from
+   `date -u`.** Sonnet sometimes invents the timestamp in the
+   frontmatter `date:` field rather than running `date -u
+   +%Y-%m-%dT%H:%M:%SZ`. Frontmatter is still parseable and dates are
+   correct to the day, so the curation cron's 7-day window still
+   works. Tighten the prompt if minute-precision matters for your
+   curation logic.
+
 ## Customization points
 
 Each of these is tunable without touching the architecture.

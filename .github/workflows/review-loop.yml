@@ -123,8 +123,13 @@ jobs:
             4. Commit with a clear message ending with
                `Addresses review on PR #$PR_NUMBER`. Push to $PR_BRANCH.
             5. Pushing fires `pull_request.synchronize` which auto-fires Claude review.
-               Codex does NOT auto-re-review on synchronize, so post a `@codex review`
-               comment via `gh pr comment $PR_NUMBER --body "@codex review"` to ping it.
+               Codex does NOT auto-re-review on synchronize, and the `@codex review`
+               mention does NOT work from a bot identity (Codex shows "create a Codex
+               account" in reply to the bot — see Known Quirk #7 in
+               `docs/automation/issue-to-merge-pipeline.md`). Do NOT post the mention.
+               If Codex's initial review on this PR was CHANGES_REQUESTED, the human
+               will need to manually post `@codex review` after the fix push to
+               unblock Codex re-review; the loop cannot self-resolve that case.
             6. Stop. The next reviewer submission will re-fire this workflow.
 
             **Step 4c — wait.**
