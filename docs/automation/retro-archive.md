@@ -549,3 +549,25 @@ labels: [bug]
 ## What would have helped
 
 - The triage comment already identified the target file (`combine.incomePanel.estimateBadge`) and specified the fix approach (use `evidenceStateToProvKind`, only `'model'` provKind counts). That made reproduction a one-read exercise: read `CombineIncomePanel.tsx`, confirm the predicate, confirm the `lowestConfidence` definition.
+
+---
+date: 2026-05-10T16:26:00Z
+issue: 113
+pr: 197
+stage: implement
+outcome: pr-opened
+labels: [area:ui-only]
+---
+
+## Blockers
+
+- `git checkout main` after `npm run verify` left the generated OG images (`public/og/*.png`) as unstaged changes. `git stash` before the checkout resolved this — consistent with the pattern noted in the #190 retro.
+
+## Learnings
+
+- **Fix location**: `src/features/results/CalculationWarnings.tsx` (component) and `src/features/results/CalculationWarnings.css` (styling).
+- **Flat-to-grouped refactor pattern**: introduced `STATUS_ORDER: WarningStatus[]` and `GROUP_HEADING: Record<WarningStatus, string>` as module-level constants, then replaced the single `CALCULATION_WARNINGS.map(...)` with `STATUS_ORDER.map(status => ...)` where each iteration filters items by status and wraps them in a `data-warning-group={status}` container with an `h3` heading. No new imports beyond adding `type WarningStatus` to the existing import.
+- **Always render all three groups**: the test unconditionally asserts `container.querySelector('[data-warning-group="nicht-modelliert"]') !== null`, even though the current `CALCULATION_WARNINGS` data has zero `nicht-modelliert` entries. Rendering an empty-state placeholder (`<p className="warnings-group-empty">Keine Einträge.</p>`) satisfies this requirement without hiding the group's heading from users who want to know what is NOT modelled.
+- **Test selector flexibility**: Stage 1's test used `querySelectorAll('h3, [role="heading"], .warnings-group-heading')` — any of the three works. Using `h3` with an additional class `warnings-group-heading` satisfies all three selectors at once.
+- **CSS scope**: group-heading styles are small and self-contained — 4 rules added to `CalculationWarnings.css` (`.warnings-group`, `.warnings-group:last-child`, `.warnings-group-heading`, `.warnings-group-empty`). No global stylesheet touched.
+- **`npm run verify` is the right gate**: all 141 test files + lint + build passed in one shot after the implementation. No type errors because `WarningStatus` was already exported from `productPresentation.ts`.
