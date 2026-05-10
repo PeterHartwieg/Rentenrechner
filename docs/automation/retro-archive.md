@@ -66,3 +66,26 @@ promoted text is the *operational memory*.
 ---
 
 <!-- entries below; newest at the bottom -->
+
+---
+date: 2026-05-10T00:00:00Z
+issue: 148
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [code-review, enhancement]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- For `code-review`/`enhancement` issues about SSR-safety guards: the existing `try/catch` in `readStoredView()` and `writeStoredView()` (`src/app/useWorkspace.ts:12-29`) already makes them functionally safe in non-DOM environments. The enhancement is purely about adding a `typeof localStorage !== 'undefined'` check for consistency with `detectSavedMode()` in `src/app/useRoute.ts:96-115`, which guards both storage key reads with this check.
+- TDD-skip signals for code-style consistency issues: when the bug/enhancement has no observable behavioral difference (both before/after return the same values), and the affected functions are private/unexported, there's no failing test to write. Record "TDD-skip: behavioral contract unchanged" rather than forcing a contrived test.
+- The pattern in this codebase for testable localStorage helpers is to export pure functions — `detectSavedMode` in `useRoute.ts` is exported and has a full test suite in `useRoute.test.ts`. If Stage 2 exports `readStoredView` as part of the fix, a test can be added to a new `useWorkspace.test.ts`.
+
+## What would have helped
+
+- The issue body already contained all the context needed (file:line, the pattern in `useRoute.ts` to mirror). No exploration was required beyond reading the two files.
