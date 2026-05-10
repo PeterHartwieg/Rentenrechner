@@ -40,7 +40,7 @@ import { simulate as simulateInsurance } from './products/insurance'
 import { simulate as simulateBasisrente } from './products/basisrente'
 import { simulate as simulateAvd } from './products/altersvorsorgedepot'
 import { simulate as simulateRiester } from './products/riester'
-import { confidenceForResult } from '../app/evidence'
+import { confidenceForResult } from '../utils/evidence'
 import {
   NEUTRALISED_BAV,
   NEUTRALISED_ETF,
