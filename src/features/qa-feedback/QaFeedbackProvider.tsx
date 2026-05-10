@@ -16,6 +16,7 @@ import type { ComposerDraft } from './QaComposer'
 import type { CapturedScreenshot } from './capture/screenshot'
 import { collectWorkspaceContext } from './context/collectWorkspaceContext'
 import { getQaWorkspaceContext } from './context/workspaceContextRef'
+import { readDevCodeFromUrl } from './devCode'
 
 /**
  * Session-storage key that mirrors the `?qa=1` URL flag (DECISIONS §2).
@@ -53,6 +54,13 @@ export function QaFeedbackProvider({ children }: ProviderProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [draft, setDraft] = useState<ComposerDraft | null>(null)
   const [screenshot, setScreenshot] = useState<CapturedScreenshot | null>(null)
+
+  // Pull `?dev=<code>` out of the URL once on mount and stash it in
+  // sessionStorage. The Worker validates it server-side; we never display it
+  // and the URL strip prevents leakage via bookmarks or shared share-URLs.
+  useEffect(() => {
+    readDevCodeFromUrl()
+  }, [])
 
   // Intercept-dialog state — tracks the last pinned target id and which ids
   // have already shown the dialog in this QA session (suppression set).

@@ -14,6 +14,7 @@
  */
 
 import type { CapturedScreenshot } from '../capture/screenshot'
+import { getDevCode } from '../devCode'
 import type { FeedbackReport } from '../report'
 import { buildMarkdownTicket, generateTitle } from '../report'
 
@@ -60,6 +61,11 @@ export async function submitToWorker(
     title,
     body,
     turnstileToken,
+  }
+
+  const devCode = getDevCode()
+  if (devCode) {
+    payload.devCode = devCode
   }
 
   if (screenshot) {

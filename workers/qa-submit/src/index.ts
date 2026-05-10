@@ -22,6 +22,15 @@ export interface Env {
   GH_REPO: string;
   GH_WEBHOOK_SECRET: string;
   ALLOWED_ORIGINS: string;
+  /**
+   * Optional maintainer dev-code. When set (via `wrangler secret put
+   * MAINTAINER_DEV_CODE`) and a submission's `devCode` payload field
+   * matches, the created issue gets the `from-maintainer` label so triage
+   * can skip dedup / product-review checks on the maintainer's own
+   * filings. Leave unset to disable the feature; submissions then ignore
+   * any payload `devCode`.
+   */
+  MAINTAINER_DEV_CODE?: string;
 }
 
 const TITLE_MAX = 250;
@@ -217,12 +226,23 @@ async function handleSubmit(
     finalBody += `\n\n## Screenshot\n\n![screenshot](https://qa.rentenwiki.de/screenshot/${screenshotKey})`;
   }
 
+  const labels = ["needs-triage"];
+  if (
+    typeof payload.devCode === "string" &&
+    payload.devCode.length > 0 &&
+    typeof env.MAINTAINER_DEV_CODE === "string" &&
+    env.MAINTAINER_DEV_CODE.length > 0 &&
+    payload.devCode === env.MAINTAINER_DEV_CODE
+  ) {
+    labels.push("from-maintainer");
+  }
+
   const issue = await createIssue(
     env.GH_PAT,
     env.GH_REPO,
     payload.title,
     finalBody,
-    ["needs-triage"],
+    labels,
   );
 
   if (!issue) {

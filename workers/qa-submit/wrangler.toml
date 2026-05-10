@@ -28,7 +28,11 @@ TURNSTILE_ALLOWED_HOSTNAMES = "rentenwiki.de,www.rentenwiki.de"
 # is configured with an action string. Leave unset to skip action validation.
 
 # Secrets (set via `wrangler secret put <NAME>` after first deploy):
-#   TURNSTILE_SECRET   — secret key from the Turnstile site
-#   GH_PAT             — fine-grained PAT for PeterHartwieg/Rentenrechner
-#   GH_WEBHOOK_SECRET  — shared secret configured on the GitHub `issues.closed`
-#                        webhook (https://github.com/PeterHartwieg/Rentenrechner/settings/hooks)
+#   TURNSTILE_SECRET     — secret key from the Turnstile site
+#   GH_PAT               — fine-grained PAT for PeterHartwieg/Rentenrechner
+#   GH_WEBHOOK_SECRET    — shared secret configured on the GitHub `issues.closed`
+#                          webhook (https://github.com/PeterHartwieg/Rentenrechner/settings/hooks)
+#   MAINTAINER_DEV_CODE  — optional. When set, submissions whose `devCode` payload
+#                          field matches will be labeled `from-maintainer` so the
+#                          triage agent can skip dedup / product-review checks.
+#                          Leave unset to disable the feature.
