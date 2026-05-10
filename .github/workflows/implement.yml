@@ -16,13 +16,14 @@ concurrency:
 
 jobs:
   implement:
-    if: ${{ github.event.label.name == 'ready-for-agent' && !github.event.issue.pull_request }}
+    if: ${{ github.event.label.name == 'ready-for-PR' && !github.event.issue.pull_request }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: agent/issue-${{ github.event.issue.number }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -33,13 +34,12 @@ jobs:
       - name: Install deps
         run: npm ci && npm --prefix workers/qa-submit ci
 
-      - name: Mark in-progress-by-agent
+      - name: Remove ready-for-PR label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh issue edit ${{ github.event.issue.number }} \
-            --add-label in-progress-by-agent \
-            --remove-label needs-triage,ready-for-agent
+            --remove-label ready-for-PR
 
       - name: Configure git
         run: |
@@ -63,107 +63,84 @@ jobs:
             Read `CLAUDE.md` and `CONTEXT.md` first — those are authoritative for the
             project's conventions, command list, and module map.
 
+            **Your job is Stage 2 of a two-stage pipeline.** Stage 1 (`investigate.yml`)
+            already reproduced the bug, made a TDD-vs-skip judgement call, wrote
+            and committed a failing test (or chose to skip), pushed
+            `agent/issue-$ISSUE_NUMBER`, and posted an investigation comment. You
+            apply the fix, verify, and open the PR.
+
             **Inputs**
             - Issue number: $ISSUE_NUMBER
             - Title: $ISSUE_TITLE
             - Labels (comma-separated): $ISSUE_LABELS
-            - Read the full body and any comments with `gh issue view $ISSUE_NUMBER --comments`.
+            - Read the issue body and ALL comments — Stage 1's investigation comment
+              is critical: `gh issue view $ISSUE_NUMBER --comments`. Look for the
+              comment whose body starts with the AI-generated marker and contains
+              `## Reproduction` + `## Test status` + `## Branch` sections.
+            - You are checked out on `agent/issue-$ISSUE_NUMBER` (Stage 1 created
+              it). Run `git log --oneline main..HEAD` to see what Stage 1
+              committed (typically a single `test: failing test for #N` commit, or
+              nothing if Stage 1 chose TDD-skip).
 
             **What to do**
 
-            1. **Branch.** Create and check out `agent/issue-$ISSUE_NUMBER`.
+            1. **Read Stage 1's output.**
+               - Investigation comment: tells you the failure path and whether a
+                 test was written.
+               - `git log` on this branch: confirms what's already committed.
+               - If a test was committed, run it once to confirm it still fails:
+                 `npx vitest run <test-path>`. If it passes already, Stage 1
+                 misdiagnosed — comment on the issue, apply `ready-for-human`,
+                 remove `in-progress-by-agent`, exit. Do not implement.
+               - If you cannot find Stage 1's investigation comment at all,
+                 something is broken — comment on the issue, apply
+                 `ready-for-human`, remove `in-progress-by-agent`, exit.
 
-            2. **Reproduce (bugs only).** Skip this step if $ISSUE_LABELS does not
-               contain `bug` (enhancements have nothing to reproduce — proceed to Step 3).
+            2. **Implement the fix.** Edit the relevant code per the failure path
+               Stage 1 articulated. Keep the diff minimal and focused on what the
+               issue asks for. Do not refactor surrounding code, do not add features
+               beyond what the issue requires (per CLAUDE.md "Doing tasks").
 
-               For bugs: before writing any test or fix, you must first confirm the
-               reported behavior is real and currently present in the code. Users
-               sometimes report user-error or stale behavior as bugs. A speculative
-               fix on a non-bug wastes a review cycle and can introduce regressions.
+               If a failing test is on the branch, the fix must make it pass without
+               disabling or weakening it. If you find yourself changing the test to
+               make it pass, you're solving the wrong problem — re-read the test +
+               investigation comment.
 
-               Procedure:
-               - Identify the affected files. For QA submissions, the `Target id`
-                 in the body's header table maps to file paths via the conventions
-                 in `docs/agents/issue-tracker.md` and the area structure under
-                 `src/features/` and `src/engine/products/`.
-               - Read those files and trace the data path the reporter describes.
-               - Articulate the failure path in one or two sentences: "When the
-                 user does X, code path Y at <file:line> does Z, which produces the
-                 reported wrong behavior because <reason>."
-
-               Three outcomes:
-               - **Reproduced** — you can point to the specific code path that
-                 produces the reported behavior. Save the failure-path articulation;
-                 it goes in the PR body's "Reproduction" section. Proceed to Step 3.
-               - **Not reproducible — code already does the right thing** — the file
-                 you read clearly handles the case the reporter describes correctly,
-                 and you can't find any path that would produce the reported wrong
-                 behavior. Comment on the issue with: which files you inspected,
-                 what they do, why this contradicts the report (e.g. "input change
-                 already triggers recompute via useEffect at <file:line>"). Apply
-                 `needs-info`, remove `in-progress-by-agent`, exit cleanly. **Do not
-                 write a test or a fix.**
-               - **Not reproducible — report is too vague to locate** — you cannot
-                 identify any plausibly-affected file from the description, target
-                 id, or screenshot URL. Comment listing what you searched for and
-                 what you'd need to act (specific element, exact reproduction steps,
-                 expected vs actual values). Apply `needs-info`, remove
-                 `in-progress-by-agent`, exit cleanly.
-
-               When in doubt between "reproduced" and "not reproducible", prefer
-               not-reproducible — false negatives waste a tester response cycle but
-               are recoverable; false positives produce confidently-wrong PRs that
-               waste a full review cycle.
-
-            3. **TDD decision.** Look at $ISSUE_LABELS:
-               - If it contains any of `area:ui-only`, `area:copy`, `documentation` →
-                 SKIP the failing-test phase. Note "TDD-skip: <reason>" in the PR body later.
-               - Otherwise → write a failing test FIRST that fails today and will pass
-                 only when the issue is fixed. The test should encode the specific
-                 failure path you articulated in Step 2 (for bugs). Commit the test
-                 alone with message `test: failing test for #$ISSUE_NUMBER`. Run
-                 `npx vitest run <new-test-file>` to confirm it fails for the
-                 expected reason (not a typo / missing import).
-
-            4. **Implement the fix.** Edit the relevant code per the issue. Keep the
-               diff minimal and focused on what the issue asks for. Do not refactor
-               surrounding code, do not add features beyond what the issue requires
-               (per CLAUDE.md "Doing tasks").
-
-            5. **Verify.** Run `npm run verify` (lint + tests + build per CLAUDE.md).
+            3. **Verify.** Run `npm run verify` (lint + tests + build per CLAUDE.md).
                Iterate until it passes. If a test outside your changes fails for an
                unrelated reason, leave a note in the PR body and continue — do not
                silently disable tests.
 
-            6. **Commit + push.** Commit with a clear message ending with
+            4. **Commit + push.** Commit with a clear message ending with
                `Refs #$ISSUE_NUMBER`. Push the branch.
 
-            7. **Open the PR.** Use `gh pr create` with:
-               - Title: short imperative summary, prefixed with the conventional type
-                 (`fix:`, `feat:`, `docs:`, `refactor:`, etc.) per recent commit history.
+            5. **Open the PR.** Use `gh pr create` with:
+               - Title: short imperative summary, prefixed with the conventional
+                 type (`fix:`, `feat:`, `docs:`, `refactor:`, etc.) per recent
+                 commit history.
                - Body: must include
                  - `Closes #$ISSUE_NUMBER` (so merge auto-closes the issue)
                  - A short description of what changed and why
-                 - A "Reproduction" section (bugs only) with the failure-path
-                   articulation from Step 2
-                 - A "TDD" section saying either "Failing test added: <path>" or
-                   "TDD-skip: <reason>" (one of the area-label categories)
-                 - The standard AI-generated marker from docs/agents/issue-tracker.md
+                 - A "Reproduction" section copied verbatim from Stage 1's
+                   investigation comment
+                 - A "TDD" section saying either "Failing test added in Stage 1:
+                   <path>" or "TDD-skip: <reason from Stage 1>"
+                 - The standard AI-generated marker from
+                   docs/agents/issue-tracker.md
 
-            8. **Done.** Stop after the PR is created. Do NOT comment `@codex review` —
+            6. **Done.** Stop after the PR is created. Do NOT comment `@codex review` —
                the Codex GitHub integration auto-reviews on PR open. Do NOT remove
                `in-progress-by-agent` — that label is cleared by the merge step.
 
             **Hard rules**
             - Stay on the `agent/issue-$ISSUE_NUMBER` branch. Never push to `main`.
             - Never commit secrets, credentials, or `.env` files.
-            - If `npm run verify` fails after a reasonable number of iterations and you
-              cannot diagnose it, post a comment on the issue explaining where you got
-              stuck, remove `in-progress-by-agent`, add `ready-for-human`, and stop.
-              Do not open a broken PR.
-            - If Step 2 reproduction fails (for bugs), the cleanup is `needs-info`
-              not `ready-for-human`. The reporter needs to provide more info, not
-              another human implementer. `ready-for-human` is for issues that need
-              human implementation; `needs-info` is for issues that need more detail.
-            - Follow `CLAUDE.md` "Critical guardrails" — license disclaimer must remain
-              session-only, never collect PII without a backend story, etc.
+            - Never modify or delete Stage 1's failing-test commit. If the test is
+              wrong, that's a Stage 1 escape — escalate via `ready-for-human`, do
+              not silently fix the test.
+            - If `npm run verify` fails after a reasonable number of iterations and
+              you cannot diagnose it, post a comment on the issue explaining where
+              you got stuck, remove `in-progress-by-agent`, add `ready-for-human`,
+              and stop. Do not open a broken PR.
+            - Follow `CLAUDE.md` "Critical guardrails" — license disclaimer must
+              remain session-only, never collect PII without a backend story, etc.

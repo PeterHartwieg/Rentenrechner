@@ -1,6 +1,6 @@
 # Issue → PR → Merge Pipeline
 
-Five GitHub Actions workflows that turn an `issues.opened` event into a
+Six GitHub Actions workflows that turn an `issues.opened` event into a
 merged PR with **one** human gate (label-based). Combines the Anthropic
 Claude Code Action with the OpenAI Codex GitHub integration for dual-LLM
 code review. Built to be portable across repos.
@@ -30,22 +30,35 @@ issues (typo fixes, small bugs, copy changes, refactors found in code
 review) wants those issues to ship without manual implementation, and
 without sacrificing review quality.
 
-**Solution.** Five chained GitHub Actions workflows:
+**Solution.** Six chained GitHub Actions workflows:
 
 1. **Triage** an incoming issue (enrich body, classify bug/feature, apply
    area labels for downstream skip decisions) — leaves the issue at a
    human-readable `needs-triage` state.
 2. **Human reads triage output**, applies `ready-for-agent` if happy.
-3. **Implement**: branch, write failing test (unless area-skip applies),
-   fix, run `npm run verify` (or your equivalent), open PR.
-4. **Two independent reviewers** — Anthropic Claude (via the action,
+3. **Investigate**: reproduce the bug (or validate the enhancement is
+   missing), branch `agent/issue-N`, write a failing test (or
+   judgement-call TDD-skip), push the branch, post an investigation
+   comment, hand off to Stage 2 by labeling `ready-for-PR`. On
+   not-reproducible: comment + `needs-info`, exit cleanly. No fix.
+4. **Implement**: read Stage 1's investigation comment + the failing
+   test on the branch, apply the fix, run `npm run verify`, open PR.
+5. **Two independent reviewers** — Anthropic Claude (via the action,
    tailored prompt) and OpenAI Codex (via the official GitHub integration)
    — each post a formal PR review.
-5. **Implementer-as-merger loop** wakes on every review submission and
+6. **Implementer-as-merger loop** wakes on every review submission and
    either fixes-and-pushes (if changes requested) or merges (if both
    reviewers satisfied).
-6. **Sweep** workflow handles Codex's intentional silence on P2/P3 PRs:
+7. **Sweep** workflow handles Codex's intentional silence on P2/P3 PRs:
    merges any agent PR Claude approved + Codex didn't review within 20 min.
+
+**Why two stages for the agent's work?** A single Sonnet session that
+reads code, articulates a failure path, writes a test, applies a fix,
+and runs verify can balloon to 25–30 minutes — at the edge of useful
+context for the model. The natural seam is between *deciding what's
+broken* (and proving it via a failing test) and *fixing it*. Splitting
+also means a non-reproducible bug exits cheaply — no wasted "fix" on a
+report that wasn't a real bug.
 
 **What this does NOT do.**
 
@@ -79,18 +92,37 @@ triage.yml (Claude Code Action, Sonnet)
 [human reviews triage output; applies `ready-for-agent`]   ← human gate
     (skipped on auto-promote; bypassed for from-maintainer QA submissions)
     ↓
-implement.yml (Claude Code Action, Sonnet)
-    1. branch agent/issue-N
-    2. if `bug` label: REPRODUCE — read affected files, articulate failure
-       path. If can't reproduce, comment with evidence + needs-info, exit
-       cleanly. No speculative test or fix.
-    3. checks issue labels for area:ui-only / area:copy / documentation
-       → TDD-skip flag
-    4. if not TDD-skip: write failing test (encoding the Step 2 failure
-       path), commit
-    5. implement fix, commit
-    6. npm run verify
-    7. push branch + open PR with "Closes #N" + "Reproduction" section
+investigate.yml (Claude Code Action, Sonnet) — Stage 1 of the agent's work
+    1. branch agent/issue-N (force-create from main, idempotent)
+    2. if `bug` label: REPRODUCE — read affected files, articulate
+       failure path
+       if `enhancement` label: VALIDATE — confirm requested behavior is
+       actually missing
+    3. agent's judgement call: is a failing test feasible + useful?
+       (test-write OR TDD-skip with reason in the investigation comment)
+    4. if test-write: place test, run `npx vitest run <new-test>` to
+       confirm it fails for the right reason, commit `test: failing
+       test for #N`
+       if TDD-skip: no commit; branch will be at main's SHA when pushed
+    5. push branch + post structured investigation comment
+       (`## Reproduction`, `## Test status`, `## Branch` sections)
+    6. apply `ready-for-PR` label → fires implement.yml
+    on not-reproducible / behavior already correct / report too vague:
+       comment with evidence + `needs-info`, remove `in-progress-by-agent`,
+       exit. No branch push. No fix. (Cheap exit.)
+    ↓
+[ready-for-PR label fires implement.yml]
+    ↓
+implement.yml (Claude Code Action, Sonnet) — Stage 2
+    1. checkout existing agent/issue-N (Stage 1 created it)
+    2. read Stage 1's investigation comment + git log on branch (test
+       commit confirms test-write; missing test commit confirms TDD-skip)
+    3. if test exists: re-run it once to confirm still failing
+       (Stage 1 misdiagnosis check)
+    4. implement fix (must make Stage 1's test pass without weakening it)
+    5. npm run verify
+    6. push fix commit + open PR with "Closes #N" + "Reproduction"
+       section copied from Stage 1's comment + "TDD" section
     ↓
 [PR opened — pull_request.opened]
     ↓
@@ -132,7 +164,8 @@ a different project.
 | Human gate | **Single gate**: `ready-for-agent` label after triage | Fully autonomous (no gate); gate at merge instead; gates at both ends |
 | Approval signal | **Implementer-as-merger pattern**: review-loop reads all review state on head commit and decides itself; doesn't wait for explicit "approve" | Native GitHub APPROVE counting; custom approval labels; magic marker comments |
 | Halt rule | **No iteration cap**, trust convergence (plan rate limits = backstop) | Hard cap (e.g. 4 cycles) → escalate to human; token/cost cap; time-based (24h) |
-| TDD scope | **Test-first by default**, skip for `area:ui-only` / `area:copy` / `documentation` | Test-first no exceptions; best-effort by judgement; opt-in via label |
+| TDD scope | **Test-first by default**, with the investigator agent making the judgement call. Strong signals to skip: `area:ui-only` / `area:copy` / `documentation`. Strong signals to write: calculation, reactivity, routing, storage, pure utility. Edge cases (a11y focus, mixed bugs) are agent-judgement. | Test-first no exceptions; best-effort by judgement; opt-in via label |
+| Stage split | **Two stages for the agent's work** (`investigate.yml` → `implement.yml`) so each Sonnet session stays under ~15 min and a non-reproducible bug exits cheap. Stage boundary: failing test on branch + structured investigation comment. | Single 25–30 min session per issue; three stages (reproduce / test / fix); separate test-writer model |
 | Codex P2/P3 silence handling | **Time-based 20-min timeout** via sweep workflow | Severity labels (p0/p1/p2/p3) gate; reuse area-labels as proxy; belt-and-suspenders combination |
 
 ## Prerequisites
@@ -172,6 +205,7 @@ Create these once via `gh label create`:
 gh label create needs-triage         --color FBCA04 --description "Maintainer needs to evaluate this issue"
 gh label create needs-info           --color D93F0B --description "Waiting on reporter for more information"
 gh label create ready-for-agent      --color 0E8A16 --description "Fully specified, ready for an AFK agent"
+gh label create ready-for-PR         --color 0A788C --description "Stage 1 done: failing test on branch, ready for the implementer to fix and open the PR"
 gh label create ready-for-human      --color 1D76DB --description "Requires human implementation"
 gh label create in-progress-by-agent --color BFD4F2 --description "Implementer agent is actively working on this issue"
 
@@ -219,7 +253,7 @@ section in `CLAUDE.md` so the Claude reviewer applies the same bar.
 See this repo's `AGENTS.md` and `CLAUDE.md` for an example structure
 (P0 / P1 / Out-of-scope categories).
 
-## The five workflow files
+## The six workflow files
 
 All live in `.github/workflows/`. Each is a few dozen lines — see the
 canonical files for the full content; this section explains what each
@@ -246,7 +280,8 @@ category for dedup / enrichment / guardrail-keyword / gate-state.
 | **E. Non-QA plain** | None of A–D | Light **title-only** dedup → label `possible-duplicate`, no auto-close. Enrich body if bug; leave alone if enhancement. |
 
 **Auto-promote to `ready-for-agent`** (skip the human gate, fire
-`implement.yml` immediately) only when ALL hold:
+`investigate.yml` immediately, which on success hands off to
+`implement.yml`) only when ALL hold:
 
 - Source A or B (QA-Worker)
 - Classified as `bug` (not enhancement, not needs-info)
@@ -268,8 +303,9 @@ If the derived type differs from the title's token, triage rewrites the
 title via `gh issue edit --title`. The auto-promote whitelist
 (`copy` / `layout` / `a11y` / `value`) is checked against the derived
 type, not the original token. Calculation bugs (`value`) get no area
-label, so TDD-by-default fires in `implement.yml` — calculation behavior
-is testable, which is exactly when test-first pays off.
+label, so the investigator agent's TDD-feasibility judgement defaults to
+"write a test" — calculation behavior is testable, which is exactly
+when test-first pays off.
 
 **Maintainer dev-code path.** Open the calculator with `?dev=<code>` once
 per browser tab. Frontend (`src/features/qa-feedback/devCode.ts`) persists
@@ -295,43 +331,74 @@ re-classified as `enhancement` despite the QA shape — preserving the
 screenshot and metadata while routing through the enhancement path
 (no auto-promote, guardrail check still runs).
 
-### `implement.yml`
+### `investigate.yml` (Stage 1)
 
 | Trigger | Permissions | Model |
 |---------|-------------|-------|
-| `issues.labeled` (gate: `ready-for-agent`) | `contents:write`, `issues:write`, `pull-requests:write`, `id-token:write` | Sonnet (default) |
+| `issues.labeled` (gate: `ready-for-agent`) | `contents:write`, `issues:write`, `id-token:write` | Sonnet (default) |
 
 Fires when `ready-for-agent` is added. Sets `in-progress-by-agent`,
-removes `needs-triage` + `ready-for-agent`, branches `agent/issue-N`,
-**reproduces the bug** (bugs only — see below), decides TDD-skip from
-labels, writes failing test (if not skipped), implements fix, runs
-`npm run verify`, opens PR with `Closes #N` in body and a "Reproduction"
-section explaining the failure path.
+removes `needs-triage` + `ready-for-agent`, branches
+`agent/issue-N` (force-create from `main`, idempotent on re-trigger),
+**reproduces the bug** (or **validates the enhancement is missing**),
+makes a judgement call on whether a failing test is feasible + useful,
+optionally writes + commits the test, pushes the branch, posts a
+structured investigation comment, applies `ready-for-PR` to fire Stage 2.
 
-**Reproduction step (Step 2 in the prompt).** Bug-only — skipped for
-enhancements. Before any test or fix, the agent reads the affected
-files and articulates the failure path: "When the user does X, code
-path Y at <file:line> does Z, which produces the reported wrong
-behavior." Three outcomes:
+**Three reproduction outcomes (bugs).** Before any test or fix, the
+agent reads the affected files and articulates the failure path:
+"When the user does X, code path Y at <file:line> does Z, which
+produces the reported wrong behavior."
 
-- **Reproduced** — proceed to TDD with the failure path encoded as the
-  failing test.
+- **Reproduced** — proceed to test-writing decision.
 - **Code already does the right thing** — comment with specific
   evidence (which files inspected, what they do, why this contradicts
   the report), apply `needs-info`, remove `in-progress-by-agent`, exit
-  cleanly. No speculative fix.
+  cleanly. **No branch push, no test, no fix.**
 - **Report too vague to locate** — comment listing what was searched
-  and what's needed (specific element, repro steps, expected vs
-  actual values), apply `needs-info`, exit cleanly.
+  and what's needed (specific element, repro steps, expected vs actual
+  values), apply `needs-info`, exit cleanly.
+
+**Test-writing decision (agent judgement).** Strong signals to write:
+calculation, reactivity, routing, storage, pure utility. Strong signals
+to skip (TDD-skip): `area:ui-only` / `area:copy` / `documentation`,
+or anything where the only meaningful test is a manual visual check.
+Edge cases (a11y focus, mixed bugs) are agent-judgement.
+
+**Investigation comment.** Always posted on success. Stage 2 reads it.
+Format: `## Reproduction` (failure path) + `## Test status` (failing
+test path OR `TDD-skip: <reason>`) + `## Branch` (`agent/issue-N`
+ready-for-Stage-2 marker).
 
 `needs-info` (reporter must supply more detail) vs `ready-for-human`
-(needs human implementation) are distinct cleanup paths — Step 2
-reproduction failures are `needs-info`, `npm run verify` failures are
-`ready-for-human`.
+(needs human implementation) are distinct cleanup paths — Stage 1
+reproduction failures are `needs-info`; Stage 2 verify failures and
+Stage 1 misdiagnosis escapes are `ready-for-human`.
+
+### `implement.yml` (Stage 2)
+
+| Trigger | Permissions | Model |
+|---------|-------------|-------|
+| `issues.labeled` (gate: `ready-for-PR`) | `contents:write`, `issues:write`, `pull-requests:write`, `id-token:write` | Sonnet (default) |
+
+Fires when `ready-for-PR` is added (typically by `investigate.yml`,
+but a maintainer may apply it manually to skip Stage 1 if a failing
+test is already on the branch). Removes `ready-for-PR`, checks out the
+existing `agent/issue-N` branch, reads Stage 1's investigation comment,
+re-runs Stage 1's failing test once to confirm it still fails (escape
+hatch: if it now passes, Stage 1 misdiagnosed — comment + apply
+`ready-for-human` + exit, do not implement), implements the fix,
+runs `npm run verify`, opens PR with `Closes #N` + a "Reproduction"
+section copied from Stage 1's comment + a "TDD" section.
 
 If `npm run verify` won't pass: posts a comment on the issue, applies
 `ready-for-human`, removes `in-progress-by-agent`, exits cleanly. **Does
 not open a broken PR.**
+
+The implementer agent must NOT modify or delete Stage 1's failing-test
+commit. If the test is wrong, escalate via `ready-for-human` instead of
+silently rewriting it — that's a Stage 1 escape that needs human
+inspection.
 
 ### `claude-review.yml`
 
@@ -392,10 +459,10 @@ turnaround.
 |--------|-----|
 | Trigger an issue into implementation | `gh issue edit N --add-label ready-for-agent` (after reviewing triage output) |
 | Submit QA feedback as the maintainer (skip dedup) | Open the calculator with `?qa=1&dev=<your-code>` once per browser tab. Triage routes via category B. The code is set as the `MAINTAINER_DEV_CODE` Wrangler secret on `rentenwiki-qa-submit`. |
-| Override an auto-promote that's misclassified | Remove `ready-for-agent` and add `needs-info` or `ready-for-human`. If `implement.yml` already ran, close the PR — review loop won't re-open it. |
+| Override an auto-promote that's misclassified | Remove `ready-for-agent` and add `needs-info` or `ready-for-human`. If `investigate.yml` already ran (branch + investigation comment exist) and you want to halt before the fix: remove `ready-for-PR` if it's been applied. If `implement.yml` already opened a PR, close the PR — review loop won't re-open it. |
 | Re-fire a stuck Claude review | `git commit --allow-empty -m "kick" && git push` to the PR branch — fires `pull_request.synchronize` |
 | Re-fire a stuck Codex review | `gh pr comment N --body "@codex review"` |
-| Halt mid-pipeline | Remove `ready-for-agent` (no effect if implementation already started); close the PR (loop won't re-open it) |
+| Halt mid-pipeline | Remove `ready-for-agent` (only effective before `investigate.yml` fires); remove `ready-for-PR` (only effective before `implement.yml` fires); close the PR (loop won't re-open it) |
 | Self-escalation | If implementer or loop can't make progress, it labels linked issue `ready-for-human`, removes `in-progress-by-agent`, posts a status comment, and stops. Watch your `ready-for-human` queue. |
 | Override sweep merge | Don't add `[Claude Review]\nVerdict: Approve` to the review body. Sweep matches that exact pattern; if Claude reviewer didn't approve, sweep won't merge. |
 | Manual sweep run | `gh workflow run review-loop-sweep.yml` |
@@ -461,8 +528,9 @@ Each of these is tunable without touching the architecture.
 | What | Where | How |
 |------|-------|-----|
 | Reviewer model | `claude_args: --model <id>` in `claude-review.yml` and `review-loop.yml` `with:` block | Default Opus 4.7. Switch to Sonnet for faster/cheaper, or upgrade as new models ship. |
-| Implementer model | `claude_args` in `implement.yml` | Default Sonnet. Switch to Opus for harder bugs (slower / more expensive). |
-| TDD-skip categories | `if it contains any of area:ui-only, area:copy, documentation` clause in `implement.yml` prompt | Add or remove labels from the skip list. |
+| Investigator model | `claude_args` in `investigate.yml` | Default Sonnet. Switch to Opus for harder reproductions (more thorough code reading, better test-design judgement). |
+| Implementer model | `claude_args` in `implement.yml` | Default Sonnet. Switch to Opus for harder fixes. |
+| TDD-skip judgement | "Test-writing decision" block in `investigate.yml` prompt (Step 3) | The agent decides per-issue using strong-signal lists for write/skip and judgement on edge cases. Tighten by adding more "skip" signals; loosen by removing them. |
 | QA auto-promote eligibility | "Auto-promote to `ready-for-agent`" block in `triage.yml` prompt (Step 8) | Tighten/widen the severity × type matrix. Default: `Major`/`Minor`/`Nit` × `copy`/`layout`/`a11y`/`value` (where `value` is calculation bugs, classified by the Step 3b re-derivation). Tightening to `Minor`/`Nit` only narrows to lowest-stakes; adding `flow`/`interaction` widens to multi-step user-journey bugs. |
 | Guardrail keyword list | "Step 7" block in `triage.yml` prompt | Three groups (Backend / Commercial / Compliance). Each is a comma-separated keyword list, case-insensitive whole-word match. Add German equivalents as needed. |
 | QA Target id → file path mapping | "Step 4" block in `triage.yml` prompt (semantic prefix table) | Maps semantic ids like `inputs.<product>.*` to file globs. Update when your project's component layout differs. |
@@ -471,7 +539,7 @@ Each of these is tunable without touching the architecture.
 | Sweep threshold | `MIN_AGE_MINUTES` env var in `review-loop-sweep.yml` | Default 20 min. Increase if Codex sometimes takes longer; decrease for faster routine merges. |
 | Sweep cadence | `cron: '*/30 * * * *'` in `review-loop-sweep.yml` | Default every 30 min. Tighten for faster turnaround at small extra runner-minute cost. |
 | Reviewer prompt strictness | `prompt:` block in `claude-review.yml` | Tune the bullet list of "What to review" + reference your repo's `## Review guidelines`. |
-| Branch naming | `agent/issue-$ISSUE_NUMBER` in `implement.yml` + `startsWith(...,'agent/issue-')` in every other workflow | Change the prefix consistently across all four files. |
+| Branch naming | `agent/issue-$ISSUE_NUMBER` in `investigate.yml` (creates) + `implement.yml` (consumes) + `startsWith(...,'agent/issue-')` in every other workflow | Change the prefix consistently across all five files. |
 | Merge style | `gh pr merge --squash --delete-branch` in `review-loop.yml` step 4a + `review-loop-sweep.yml` | Switch to `--merge` or `--rebase` if you want a different history. |
 | Approval body marker | `[Claude Review]` in `claude-review.yml` and parsed in loop + sweep | Change in all three places. |
 | Codex reviewer detection heuristic | `select(.user.login \| test("codex\|chatgpt"; "i"))` in loop + sweep | Tighten if your repo has unrelated bots whose login matches that pattern. |
@@ -489,7 +557,8 @@ end-to-end run to validate).
    - Repo name (`PeterHartwieg/Rentenrechner` → yours) — only in commit
      messages / status comments, not in workflow logic.
    - Verify command (`npm run verify`) — adjust to your test/build script
-     in `implement.yml`, `claude-review.yml`, `review-loop.yml`.
+     in `investigate.yml`, `implement.yml`, `claude-review.yml`,
+     `review-loop.yml`.
    - Linked-issue marker (`Closes #N`) — keep, it's the GitHub standard.
    - Project-specific instruction lines like "Read CLAUDE.md and
      CONTEXT.md first" — point to your project's equivalent docs.
@@ -501,8 +570,9 @@ end-to-end run to validate).
    subdirectories that ship their own `package.json` (in this repo:
    `workers/qa-submit/`), the workflows that run `npm run verify` need
    to install those subdir deps too — the root `npm ci` doesn't traverse
-   into them. The "Install deps" step in `implement.yml` and
-   `review-loop.yml` runs `npm ci && npm --prefix workers/qa-submit ci`
+   into them. The "Install deps" step in `investigate.yml`,
+   `implement.yml`, and `review-loop.yml` runs
+   `npm ci && npm --prefix workers/qa-submit ci`
    for that reason (this repo's `npm run verify` chains
    `worker:typecheck` and `worker:test`, both of which need
    `@cloudflare/workers-types` from the subdir). When porting to a

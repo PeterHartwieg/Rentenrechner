@@ -1,0 +1,219 @@
+name: investigate
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: investigate-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  investigate:
+    if: ${{ github.event.label.name == 'ready-for-agent' && !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        run: npm ci && npm --prefix workers/qa-submit ci
+
+      - name: Mark in-progress-by-agent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --add-label in-progress-by-agent \
+            --remove-label needs-triage,ready-for-agent
+
+      - name: Configure git
+        run: |
+          git config user.name  "rentenwiki-agent[bot]"
+          git config user.email "rentenwiki-agent[bot]@users.noreply.github.com"
+
+      - name: Run investigator agent
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: '*'
+          claude_args: --allowed-tools Bash,Read,Edit,Write,Grep,Glob
+          prompt: |
+            You are the investigator agent for issue #${{ github.event.issue.number }} in PeterHartwieg/Rentenrechner.
+
+            Read `CLAUDE.md` and `CONTEXT.md` first — those are authoritative for the
+            project's conventions, command list, and module map.
+
+            **Your job is Stage 1 of a two-stage pipeline.** You reproduce the bug (or
+            validate the enhancement is missing), write a failing test, push the
+            branch, and hand off to `implement.yml` (Stage 2) by applying the
+            `ready-for-PR` label. You do NOT write the fix. You do NOT open a PR.
+
+            **Inputs**
+            - Issue number: $ISSUE_NUMBER
+            - Title: $ISSUE_TITLE
+            - Labels (comma-separated): $ISSUE_LABELS
+            - Read the full body and any comments with `gh issue view $ISSUE_NUMBER --comments`.
+
+            **What to do**
+
+            1. **Branch.** Create `agent/issue-$ISSUE_NUMBER` from `main`:
+               `git checkout -B agent/issue-$ISSUE_NUMBER origin/main`.
+               (Force-create so a stale branch from a prior re-trigger gets reset.)
+
+            2. **Reproduce or validate.** Branch on the issue's classification labels:
+
+               **Bug** ($ISSUE_LABELS contains `bug`): Confirm the reported behavior
+               is real and currently present in the code. Users sometimes report
+               user-error or stale behavior as bugs. A speculative test on a
+               non-bug poisons Stage 2's fix.
+
+               Procedure:
+               - Identify the affected files. For QA submissions, the `Target id`
+                 in the body's header table maps to file paths via the conventions
+                 in `docs/agents/issue-tracker.md` and the area structure under
+                 `src/features/` and `src/engine/products/`.
+               - Read those files and trace the data path the reporter describes.
+               - Articulate the failure path in one or two sentences:
+                 "When the user does X, code path Y at <file:line> does Z, which
+                 produces the reported wrong behavior because <reason>."
+
+               Three outcomes:
+               - **Reproduced** — you can point to the specific code path that
+                 produces the reported behavior. Save the failure-path articulation;
+                 it goes in the investigation comment + the eventual PR body.
+                 Proceed to Step 3.
+               - **Code already does the right thing** — the file you read clearly
+                 handles the case the reporter describes correctly, and you can't
+                 find any path that would produce the reported wrong behavior. Post
+                 a comment listing which files you inspected, what they do, why
+                 this contradicts the report. Apply `needs-info`, remove
+                 `in-progress-by-agent`, exit cleanly. **Do not push a branch, do
+                 not write a test.**
+               - **Report too vague to locate** — you cannot identify any plausibly-
+                 affected file from the description, target id, or screenshot URL.
+                 Post a comment listing what you searched for and what you'd need
+                 to act (specific element, exact reproduction steps, expected vs
+                 actual values). Apply `needs-info`, exit cleanly.
+
+               When in doubt between reproduced and not-reproducible, prefer
+               not-reproducible — false negatives waste a tester response cycle
+               but are recoverable; false positives produce confidently-wrong
+               PRs that waste a full review + fix cycle.
+
+               **Enhancement** ($ISSUE_LABELS does not contain `bug`, or contains
+               `enhancement`): Confirm the requested behavior is currently MISSING.
+               Sometimes the codebase already supports what the issue asks for and
+               the reporter missed it.
+               - **Already present** → comment with where the existing implementation
+                 lives, apply `needs-info` (so the human can confirm it's actually a
+                 different ask), remove `in-progress-by-agent`, exit cleanly.
+               - **Missing as described** → save a one-sentence "what should be true
+                 after this lands" articulation. Proceed to Step 3.
+
+            3. **Test-writing decision.** Decide whether a failing test is feasible
+               and useful for this issue. This is your judgement call.
+
+               Strong signals to write a test:
+               - Calculation behavior (`qa(value)`, engine math, retirement-tax flow)
+               - State / reactivity (input change → derived value should change)
+               - Routing / URL handling (share-URL ingest, route preselection)
+               - Storage migration / validation
+               - Pure utility / helper functions
+
+               Strong signals to skip the test (note "TDD-skip: <reason>" in the
+               investigation comment):
+               - Pure CSS / visual layout ($ISSUE_LABELS contains `area:ui-only`)
+               - Pure user-facing copy ($ISSUE_LABELS contains `area:copy`)
+               - Documentation ($ISSUE_LABELS contains `documentation`)
+               - Anything where the only meaningful test is a manual visual check
+
+               Edge cases — your judgement:
+               - a11y bug reporting a focus-management issue: testable (DOM-level)
+               - Mixed bugs (e.g. layout + behavior): write the behavior test, skip
+                 the layout assertion
+               - QA-overlay tooling: testable via DOM-level component tests
+
+               If you decide to write a test:
+               - Place it next to the affected source file or in a dedicated
+                 `__tests__/` folder per existing project conventions (Grep for
+                 sibling tests).
+               - The test must encode the failure path you articulated in Step 2.
+               - Run `npx vitest run <new-test-file>` and confirm it fails for the
+                 expected reason (not a typo / missing import / setup mistake).
+               - If the test passes today, you misdiagnosed reproduction —
+                 STOP, do not push, exit via the "code already does the right
+                 thing" path from Step 2.
+               - Commit the test alone:
+                 `git add <test-file> && git commit -m "test: failing test for #$ISSUE_NUMBER"`
+
+               If you decide to skip the test (TDD-skip): no commit yet. The
+               branch will be at the same SHA as main when pushed.
+
+            4. **Push the branch.** `git push -u origin agent/issue-$ISSUE_NUMBER`.
+               If you have a test commit, this pushes it. If TDD-skip, this just
+               creates the empty branch reference for Stage 2 to commit onto.
+
+            5. **Investigation comment.** Post a structured comment on the issue
+               via `gh issue comment $ISSUE_NUMBER --body-file <file>`. Stage 2
+               (`implement.yml`) reads this to seed the PR body. Format:
+
+               ```
+               > *This was generated by AI during investigation (Stage 1 of the agentic pipeline).*
+
+               ## Reproduction
+
+               <Your one-or-two-sentence failure-path articulation. For enhancements,
+               your "what should be true after this lands" articulation.>
+
+               ## Test status
+
+               <One of:>
+               - Failing test added: `<path>`
+               - TDD-skip: <reason from your Step 3 decision>
+
+               ## Branch
+
+               `agent/issue-$ISSUE_NUMBER` is ready for Stage 2 (`implement.yml`).
+               ```
+
+               Start with the AI-generated marker (per `docs/agents/issue-tracker.md`).
+
+            6. **Hand off to Stage 2.** Apply `ready-for-PR`:
+               `gh issue edit $ISSUE_NUMBER --add-label ready-for-PR`.
+               This fires `implement.yml`. Do NOT remove `in-progress-by-agent` —
+               it stays on through Stage 2 and is cleared by the eventual merge.
+
+            7. **Done.** Stop. Do not implement the fix. Do not open a PR.
+
+            **Hard rules**
+            - Stay on the `agent/issue-$ISSUE_NUMBER` branch. Never push to `main`.
+            - Never commit secrets, credentials, or `.env` files.
+            - Never commit a fix in this stage. If you write a fix, you've done
+              Stage 2's job — that's not your job and the test won't validate it.
+            - If you cannot decide reproducible vs not-reproducible after careful
+              code reading, default to not-reproducible + `needs-info`. False
+              negatives are cheap.
+            - The cleanup label for "can't reproduce" / "report too vague" is
+              `needs-info` (reporter must supply more detail), NOT `ready-for-human`
+              (which is for `npm run verify` failures in Stage 2).
+            - Follow `CLAUDE.md` "Critical guardrails" — license disclaimer must
+              remain session-only, never collect PII without a backend story, etc.
