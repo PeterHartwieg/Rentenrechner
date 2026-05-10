@@ -595,3 +595,27 @@ labels: [bug]
 ## What would have helped
 
 - A quick `container.querySelectorAll('.optimiere-modal__anpassen-btn')` debug run before writing the test confirmed the exact textContent format immediately. For JSX spacing bugs, DOM inspection via `innerHTML` is faster than reasoning through JSX whitespace rules.
+
+---
+date: 2026-05-10T16:32:00Z
+issue: 111
+pr: 198
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- **Badge predicate was not consulting `instanceEvidenceMaps`.** `CombineIncomePanel.tsx:92` used `r.inputConfidence === 'model_estimate'` as the sole badge gate. `inputConfidence` is computed by `lowestConfidence()` in `portfolioAdapter.ts`, which returns `'model_estimate'` for _absent_ fields, not just explicitly estimated ones. The fix adds a two-branch predicate: when `instanceEvidenceMaps` is provided for an instance, check `Object.values(map).some(state => state === 'model_estimate')`; fall back to `inputConfidence` only when no map entry exists.
+- **`evidenceStateToProvKind(undefined)` returns `'default'`, not `'model'`.** Absent fields produce `'default'`, so the popover detail filter (`provKind === 'model' || provKind === 'default'`) intentionally includes unknowns. The badge fix correctly restricts to only `'model'` (explicit) at the badge level while leaving the popover detail wider.
+- **Flaky test in full suite, passes in isolation.** `src/features/qa-feedback/__tests__/app-bridge.test.tsx` failed once during `npm run verify` (assertion on `typeof ctx.activeView`), then passed on a second run and on isolation. Pre-existing flakiness unrelated to this fix — noted in PR body.
+- **Stage 1 test structure was well-targeted.** The three `[#111]` test cases (empty map → no badge; all `user_confirmed` → no badge; explicit `model_estimate` → badge) mapped directly to the three branches of the fix. No test changes needed.
+
+## What would have helped
+
+- Checking `git stash && npx vitest run <path>` before concluding a test failure is due to my change. Saved a small amount of confusion about the flaky `app-bridge.test.tsx`.
