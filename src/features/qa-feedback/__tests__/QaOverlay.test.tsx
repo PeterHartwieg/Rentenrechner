@@ -107,4 +107,29 @@ describe('QaOverlay — hover and click-to-pin', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByTestId('qa-overlay-hover')).toBeNull()
   })
+
+  it('clicking inner <input> of a labeled field resolves to the label target, not auto.input', () => {
+    function LabeledInput() {
+      const { targetProps } = useFeedbackTarget({
+        id: 'inputs.bav.fees.wrapperAssetFee',
+        label: 'Mantelgebühr',
+        precision: 'exact',
+      })
+      return (
+        <label {...targetProps}>
+          <span>Mantelgebühr (Versicherer)</span>
+          <input type="number" data-testid="fee-input" defaultValue={0} />
+        </label>
+      )
+    }
+    render(
+      <QaFeedbackProvider>
+        <LabeledInput />
+      </QaFeedbackProvider>,
+    )
+    fireEvent.click(screen.getByTestId('fee-input'))
+    expect(screen.getByTestId('qa-composer')).toBeTruthy()
+    // Before fix: shows "Zu: auto.input". After fix: shows "Zu: Mantelgebühr".
+    expect(screen.getByText(/Zu: Mantelgebühr/)).toBeTruthy()
+  })
 })

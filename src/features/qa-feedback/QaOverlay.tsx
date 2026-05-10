@@ -84,9 +84,10 @@ export function QaOverlay() {
     if (!ctx.enabled) return
 
     function onPointerMove(event: PointerEvent) {
-      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(
-        QA_INTERACTIVE_SELECTOR,
-      )
+      const eventTarget = event.target as HTMLElement | null
+      const target =
+        eventTarget?.closest<HTMLElement>('[data-qa-target]') ??
+        eventTarget?.closest<HTMLElement>(QA_INTERACTIVE_SELECTOR)
       if (!target) {
         setHover(null)
         return
@@ -111,7 +112,9 @@ export function QaOverlay() {
 
     function onClick(event: MouseEvent) {
       const originalTarget = event.target as HTMLElement | null
-      const target = originalTarget?.closest<HTMLElement>(QA_INTERACTIVE_SELECTOR)
+      const target =
+        originalTarget?.closest<HTMLElement>('[data-qa-target]') ??
+        originalTarget?.closest<HTMLElement>(QA_INTERACTIVE_SELECTOR)
       if (!target) return
       if (target.closest(QA_EXCLUDE_SELECTOR)) return
       // Suppress the underlying click so the calculator doesn't react to the
@@ -123,9 +126,10 @@ export function QaOverlay() {
     }
 
     function onFocusIn(event: FocusEvent) {
-      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(
-        QA_INTERACTIVE_SELECTOR,
-      )
+      const focusTarget = event.target as HTMLElement | null
+      const target =
+        focusTarget?.closest<HTMLElement>('[data-qa-target]') ??
+        focusTarget?.closest<HTMLElement>(QA_INTERACTIVE_SELECTOR)
       // Only track focus on qa-targets outside the overlay panel itself.
       if (!target || target.closest(QA_EXCLUDE_SELECTOR)) {
         keyboardFocusRef.current = null
