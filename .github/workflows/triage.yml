@@ -216,13 +216,28 @@ jobs:
             DIRECTLY instead of `ready-for-agent`. This skips Stage 1
             (`investigate.yml`) for trivial fixes — the implementer agent will do
             the lightweight reproduction inline. Saves one full agent session on
-            the easiest issues. Apply `ready-for-PR` + the area label + the
-            standard `in-progress-by-agent` (because Stage 1 normally applies it
-            and we're skipping Stage 1).
+            the easiest issues.
+
+            **On EITHER auto-promote path** (standard `ready-for-agent` or
+            single-stage `ready-for-PR`), the label edit must remove
+            `needs-triage` in the same call so the issue's state stays accurate
+            once triage is done. Use one combined command. Examples:
+
+            ```bash
+            # Standard two-stage auto-promote:
+            gh issue edit $ISSUE_NUMBER \
+              --add-label ready-for-agent,<area-label-if-any> \
+              --remove-label needs-triage
+
+            # Single-stage shortcut (also adds in-progress-by-agent because Stage 1
+            # is skipped and Stage 1 is what normally applies it):
+            gh issue edit $ISSUE_NUMBER \
+              --add-label ready-for-PR,in-progress-by-agent,<area-label-if-any> \
+              --remove-label needs-triage
+            ```
 
             For all other auto-promote cases (a11y, value, or `nested` precision):
-            apply `ready-for-agent` + the area label as before. `investigate.yml`
-            fires.
+            standard two-stage path. `investigate.yml` fires.
 
             Do NOT post an audit-trail comment in either case — the labels alone are
             the trail.
