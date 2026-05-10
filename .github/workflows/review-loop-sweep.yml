@@ -1,0 +1,134 @@
+name: review-loop-sweep
+
+# Codex GitHub integration intentionally only flags P0/P1 issues — for routine
+# PRs (docs, copy, small refactors) it stays silent. The event-driven
+# review-loop.yml waits for both reviewers, so silence would block forever.
+# This sweep runs every 30 min, finds any open agent PR where Claude has
+# already approved and Codex has been silent for at least 20 min, and merges
+# it. Fast, pure-shell, no Claude agent invocation (cost-zero on idle).
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: review-loop-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sweep open agent PRs for Codex-silence merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          MIN_AGE_MINUTES: '20'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          now_ts=$(date -u +%s)
+          merged_any=0
+
+          # Enumerate open PRs from agent/issue-* branches
+          pr_numbers=$(gh pr list --repo "$REPO" --state open \
+            --search 'head:agent/issue-' \
+            --json number --jq '.[].number')
+
+          if [ -z "$pr_numbers" ]; then
+            echo "No open agent PRs. Sweep idle."
+            exit 0
+          fi
+
+          for pr in $pr_numbers; do
+            echo "::group::PR #$pr"
+
+            pr_json=$(gh pr view "$pr" --repo "$REPO" \
+              --json createdAt,headRefOid,body,headRefName)
+            created=$(echo "$pr_json" | jq -r .createdAt)
+            head_sha=$(echo "$pr_json" | jq -r .headRefOid)
+            pr_body=$(echo "$pr_json" | jq -r .body)
+            head_ref=$(echo "$pr_json" | jq -r .headRefName)
+
+            created_ts=$(date -u -d "$created" +%s)
+            age_min=$(( (now_ts - created_ts) / 60 ))
+
+            if [ "$age_min" -lt "$MIN_AGE_MINUTES" ]; then
+              echo "Skip: too young ($age_min min < $MIN_AGE_MINUTES min)"
+              echo "::endgroup::"
+              continue
+            fi
+
+            reviews=$(gh api "repos/$REPO/pulls/$pr/reviews")
+
+            # Latest Claude review on the current head SHA — approved if body
+            # carries the [Claude Review] marker AND mentions an Approve verdict.
+            claude_ok=$(echo "$reviews" | jq -r --arg sha "$head_sha" '
+              [ .[]
+                | select(.user.login == "claude[bot]")
+                | select(.commit_id == $sha)
+                | select(.body | startswith("[Claude Review]"))
+              ]
+              | last
+              | if . == null then "false"
+                elif (.body | test("Verdict.*Approve"; "i")) then "true"
+                else "false"
+                end
+            ')
+
+            if [ "$claude_ok" != "true" ]; then
+              echo "Skip: no Claude approval on head $head_sha yet"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Any Codex review on the current head SHA?
+            codex_seen=$(echo "$reviews" | jq -r --arg sha "$head_sha" '
+              [ .[]
+                | select(.commit_id == $sha)
+                | select(.user.login | test("codex|chatgpt"; "i"))
+              ]
+              | length > 0
+            ')
+
+            if [ "$codex_seen" = "true" ]; then
+              echo "Skip: Codex has reviewed head $head_sha — event-driven loop owns this case"
+              echo "::endgroup::"
+              continue
+            fi
+
+            echo "Merging: Claude approved, Codex silent for $age_min min (>= $MIN_AGE_MINUTES)"
+
+            # Merge — squash + delete branch (matches event-driven loop step 4a)
+            gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
+
+            # Clear in-progress-by-agent on the linked issue (qa-runbook convention).
+            # Look for "Closes #N" or "Fixes #N" in the PR body.
+            issue_num=$(echo "$pr_body" \
+              | grep -ioE '(closes|fixes|resolves)[[:space:]]+#[0-9]+' \
+              | head -1 \
+              | grep -oE '[0-9]+' || true)
+            if [ -n "$issue_num" ]; then
+              echo "Clearing in-progress-by-agent on issue #$issue_num"
+              gh issue edit "$issue_num" --repo "$REPO" \
+                --remove-label in-progress-by-agent || true
+            fi
+
+            # Post a confirmation comment matching the event-driven loop's [merge] marker
+            gh pr comment "$pr" --repo "$REPO" --body \
+              "[merge] Sweep merged: Claude approved on \`$head_sha\`, Codex silent for $age_min min (>= $MIN_AGE_MINUTES min Codex-silence threshold). PRs of low P0/P1 risk often draw no Codex review — see review-loop-sweep.yml."
+
+            merged_any=1
+            echo "::endgroup::"
+          done
+
+          if [ "$merged_any" = "0" ]; then
+            echo "Sweep complete: no PRs eligible for Codex-silence merge."
+          fi

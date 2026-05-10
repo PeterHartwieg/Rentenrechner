@@ -27,8 +27,10 @@ parallel: claude-review.yml + Codex GitHub integration auto-review
     ↓
 review-loop.yml             → reads both reviewers' state on the head commit
                               → fix-and-push, OR merge, OR wait for the other reviewer
-    ↓
-gh pr merge --squash --delete-branch + remove in-progress-by-agent
+    ↓                                                     ↓ (if Codex stays silent on P2/P3)
+gh pr merge --squash --delete-branch                review-loop-sweep.yml (cron */30 min)
++ remove in-progress-by-agent                           → merges agent PRs > 20 min old
+                                                        where Claude approved + Codex silent
 ```
 
 ## Workflows
@@ -39,9 +41,11 @@ gh pr merge --squash --delete-branch + remove in-progress-by-agent
 | `.github/workflows/implement.yml` | `issues.labeled` (gate: `ready-for-agent`) | Branch, failing test (unless area-skip), implementation, `npm run verify`, open PR. |
 | `.github/workflows/claude-review.yml` | `pull_request.opened` / `synchronize` | Independent Claude reviewer. Posts a formal `gh pr review` with body marker `[Claude Review]`. |
 | `.github/workflows/review-loop.yml` | `pull_request_review.submitted` | Implementer-as-merger. Reads both reviewers' state on the head commit. Three outcomes: merge, fix-and-push, or wait. |
+| `.github/workflows/review-loop-sweep.yml` | `schedule` (every 30 min) | Codex-silence merge sweep. Codex intentionally stays silent on P2/P3 PRs (docs, copy, routine cleanup) — the event-driven loop would wait forever. Sweep merges any agent PR > 20 min old where Claude approved and Codex never posted. Pure shell, no Claude agent (cost-zero on idle). |
 
-All workflows scope to PRs from `agent/issue-*` branches via `if:` conditions —
-human-authored PRs are not touched.
+All event-driven workflows scope to PRs from `agent/issue-*` branches via `if:`
+conditions — human-authored PRs are not touched. The sweep enumerates them via
+`gh pr list --search 'head:agent/issue-'`.
 
 ## Prerequisites (one-time setup)
 
@@ -88,9 +92,56 @@ The natural backstops are: your Max-plan rate limit (Claude side) and your
 Pro cloud-task quota (Codex side). If a PR ping-pongs unproductively, the
 quota will throttle before runaway cost.
 
+The Codex-silence case (Codex skipped the PR because nothing crossed its
+P0/P1 bar) is handled separately by `review-loop-sweep.yml` — after 20 min
+of silence the sweep merges any PR Claude approved.
+
 If you want a soft cap later, add an `iteration-cap` step to `review-loop.yml`
 that counts commits on the branch since open and bails to `ready-for-human`
 above N.
+
+## Known quirks (lessons from first install)
+
+These came from setting up the pipeline on `PeterHartwieg/Rentenrechner`;
+folding them here so they don't bite next time.
+
+1. **`id-token: write` permission required.** `claude-code-action` does an
+   OIDC handshake even when authenticating with `CLAUDE_CODE_OAUTH_TOKEN`.
+   Symptom: *"Could not fetch an OIDC token"*. Fix: add `id-token: write` to
+   every workflow's `permissions:` block.
+
+2. **`allowed_bots: '*'` required for bot-to-bot triggering.** By default the
+   action refuses to run if its triggering event came from another bot. The
+   dual-review design intentionally chains bots (implementer Claude opens PR
+   → fires Claude reviewer → fires review-loop). Symptom: *"Workflow initiated
+   by non-human actor"*. Fix: pass `allowed_bots: '*'` in every step's
+   `with:` block.
+
+3. **First PR after pipeline install fails workflow-validation.** The action
+   checks that the workflow YAML on the PR's branch matches the version on
+   `main`. The very first PR is branched from a `main` that doesn't yet have
+   the latest workflow tweaks. Symptom: *"The workflow file must exist and
+   have identical content to the version on the repository's default branch"*.
+   Fix: `git merge origin/main` into the PR branch and push. Subsequent PRs
+   branch from a `main` that already has the workflows, so the issue doesn't
+   recur.
+
+4. **Claude review state is `COMMENTED`, not `APPROVED`.** GitHub doesn't let
+   you approve a PR you authored. Since `claude[bot]` authored the implementer
+   commits AND posts the review, it's blocked from `--approve` and falls back
+   to `--comment`. The review body still starts with `[Claude Review]` and
+   contains `Verdict: Approve` (or `Verdict: Request changes`). Both
+   `review-loop.yml` and `review-loop-sweep.yml` parse the body marker, not
+   the formal review state.
+
+5. **Codex stays silent on P2/P3 PRs by design.** Codex's GitHub integration
+   intentionally only posts findings for P0/P1 issues. For routine PRs (docs,
+   copy, small refactors) it produces no review at all. The sweep workflow
+   handles this: after 20 min of Codex silence, if Claude has approved, the
+   PR merges. To make Codex's reviews more project-aware on the PRs it does
+   process, add a `## Review guidelines` section to `AGENTS.md` listing your
+   repo's P0/P1 categories (compliance regressions, statutory invariants,
+   etc.); Codex reads it automatically.
 
 ## State labels at a glance
 
