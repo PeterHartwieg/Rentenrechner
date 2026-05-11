@@ -876,4 +876,23 @@ describe('validateTransferEvent — both source and target must exist', () => {
     ]
     expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).not.toBeNull()
   })
+
+  it.each(['bav', 'basisrente', 'riester'] as const)(
+    'rejects a certified %s self-target transfer',
+    (slot) => {
+      const ws = makeWorkspaceWithTwoInstances()
+      const inst = ws.baseline.assumptions[slot][0] as unknown as Record<string, unknown>
+      inst.transferEvents = [
+        {
+          type: 'certified',
+          year: 2030,
+          sourceInstanceId: inst.instanceId,
+          targetInstanceId: inst.instanceId,
+          amountEUR: 1000,
+        },
+      ]
+
+      expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).toBeNull()
+    },
+  )
 })
