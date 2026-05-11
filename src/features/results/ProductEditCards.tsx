@@ -531,15 +531,44 @@ function BasisrenteFields({ assumptions, onAssumptionsChange }: FieldProps) {
 }
 
 function AvdFields({ assumptions, onAssumptionsChange }: FieldProps) {
-  void assumptions
-  void onAssumptionsChange
+  const { altersvorsorgedepot } = assumptions
+  const def = defaultAssumptions.altersvorsorgedepot
+  const totalFee = altersvorsorgedepot.fees.wrapperAssetFee + altersvorsorgedepot.fees.fundAssetFee
+  const defTotalFee = def.fees.wrapperAssetFee + def.fees.fundAssetFee
 
-  return <NetAnchorNotice />
+  return (
+    <>
+      <NetAnchorNotice />
+      <FieldWithProv modified={diff(totalFee, defTotalFee)}>
+        <NumberField
+          label="Gesamtkosten p.a."
+          value={totalFee * 100}
+          min={0}
+          max={5}
+          step={0.05}
+          suffix="%"
+          onCommit={(v) => {
+            const pct = Math.min(5, Math.max(0, Number(v))) / 100
+            onAssumptionsChange((cur) => ({
+              ...cur,
+              altersvorsorgedepot: {
+                ...cur.altersvorsorgedepot,
+                fees: { ...cur.altersvorsorgedepot.fees, wrapperAssetFee: pct, fundAssetFee: 0 },
+              },
+            }))
+          }}
+        />
+        <p className="pec-fee-hint">Detailaufschlüsselung: Eingaben → Erweitert</p>
+      </FieldWithProv>
+    </>
+  )
 }
 
 function RiesterFields({ assumptions, onAssumptionsChange }: FieldProps) {
   const { riester } = assumptions
   const def = defaultAssumptions.riester
+  const totalFee = riester.fees.wrapperAssetFee + riester.fees.fundAssetFee
+  const defTotalFee = def.fees.wrapperAssetFee + def.fees.fundAssetFee
 
   return (
     <>
@@ -577,6 +606,27 @@ function RiesterFields({ assumptions, onAssumptionsChange }: FieldProps) {
           />
         </FieldWithProv>
       )}
+      <FieldWithProv modified={diff(totalFee, defTotalFee)}>
+        <NumberField
+          label="Gesamtkosten p.a."
+          value={totalFee * 100}
+          min={0}
+          max={5}
+          step={0.05}
+          suffix="%"
+          onCommit={(v) => {
+            const pct = Math.min(5, Math.max(0, Number(v))) / 100
+            onAssumptionsChange((cur) => ({
+              ...cur,
+              riester: {
+                ...cur.riester,
+                fees: { ...cur.riester.fees, wrapperAssetFee: pct, fundAssetFee: 0 },
+              },
+            }))
+          }}
+        />
+        <p className="pec-fee-hint">Detailaufschlüsselung: Eingaben → Erweitert</p>
+      </FieldWithProv>
     </>
   )
 }

@@ -239,4 +239,21 @@ describe('ProductEditCards – defaults notice', () => {
     expect(queryByText('Eigenbeitrag')).toBeNull()
     expect(getAllByText(/Netto-Beitrag/).length).toBeGreaterThan(0)
   })
+
+  it.each([
+    ['altersvorsorgedepot' as const],
+    ['riester' as const],
+  ])('exposes a total annual cost editor for %s in the assumptions menu', (productId) => {
+    const { getByText } = render(
+      <ProductEditCards
+        selectedResults={[makeResult(productId)]}
+        assumptions={defaultAssumptions}
+        onAssumptionsChange={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(getByText('Annahmen anpassen'))
+
+    expect(getByText('Gesamtkosten p.a.')).not.toBeNull()
+  })
 })
