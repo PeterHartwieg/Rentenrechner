@@ -1221,3 +1221,26 @@ labels: [bug, code-review, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A Windows-compatible ready-for-PR verification command in `docs/automation/codex-stage1-investigator.md`.
+
+---
+date: 2026-05-11T11:43:00Z
+issue: 140
+pr: 213
+stage: implement
+outcome: pr-opened
+labels: [bug, area:seo]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `vercel.json` `rewrites` run **before** filesystem check, so a broad catch-all like `/((?!.*\.).*) → /index.html` shadows prerendered `dist/<route>/index.html` files. Removing the rewrite is sufficient when all routes are prerendered.
+- The Stage 1 test (`src/seo/vercelRouting.test.ts`) reads `vercel.json` directly at `process.cwd()` and checks each `PUBLIC_ROUTE_IDS` entry (excluding `/` and `/404`) against rewrites. The test uses a regex match via `new RegExp('^' + source + '$')` — a clean approach for catching config drift.
+- `PUBLIC_ROUTE_IDS` is derived from `Object.keys(publicRouteRegistry)` at `src/seo/publicRouteRegistry.ts:595`.
+
+## What would have helped
+
+- Knowing upfront that Vercel rewrites are "before filesystem" by default would have made the root cause immediately obvious without needing to trace the routing order.
