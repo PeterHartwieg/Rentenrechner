@@ -1570,3 +1570,26 @@ labels: []
 ## What would have helped
 
 - Stage 1 handoff could have noted the `API_VERSION = 'v1'` vs. semver mismatch so I didn't need to discover it by reading `src/api/contracts.ts`.
+
+---
+date: 2026-05-11T13:41:23Z
+issue: 166
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The pure frontend API owns a separate public profile contract in `src/api/apiTypes.ts`, but salary and funding facades cast that shape into `PersonalProfile`; Stage 2 should widen both the API type and `src/domain/profile.ts` or the implementation will keep relying on casts around a literal-1 domain type.
+- `src/api/validation.ts` and `src/utils/scenarioSchema.ts` intentionally mirror profile bounds; broadening `taxClass` in only the API validator would leave storage/share-URL profile validation rejecting the same values.
+- `calculateBavFundingApi()` inherits salary-phase tax behavior through `calculateBavFunding()` in `src/engine/salary.ts`, so a class-aware `calculateSalaryResult()` path is the central engine change for both salary and bAV net-cost tests.
+
+## What would have helped
+
+- A documented oracle or PAP fixture for class III/V would let Stage 2 pin exact annual Lohnsteuer values instead of starting from qualitative class-order tests.
