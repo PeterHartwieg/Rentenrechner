@@ -952,3 +952,26 @@ labels: [enhancement]
 ## What would have helped
 
 - Nothing additional; the triage comment narrowed the desired fix to option 1 plus one-shot cleanup.
+
+---
+date: 2026-05-11T00:00:00Z
+issue: 131
+pr: 207
+stage: implement
+outcome: pr-opened
+labels: [documentation]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Documentation-only change (no code): `npm run verify` regenerates `public/og/*.png` as a side effect of the build step — these must be excluded from staging; only the two edited files were committed.
+- The hard constraints in `RUNBOOK-implementer.md` live inside a fenced code block (the implementer prompt template). New constraints must be inserted before the closing "Do NOT push…" line, still within that block, so they're included in the prompt the cron sends to subagents.
+- `CLAUDE.md` already had a "Critical guardrails" numbered list; adding a `### Cron-dispatch guardrails` subsection underneath was the right nesting level — keeps it discoverable without displacing existing guardrails.
+
+## What would have helped
+
+- Stage 1 handoff could have noted the exact line range in the RUNBOOK code block where the new constraints belong — it named line 172 but the insertion point (before "Do NOT push…") is around line 224.
