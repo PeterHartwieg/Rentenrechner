@@ -1662,3 +1662,27 @@ labels: [bug, area:api]
 ## What would have helped
 
 - The Stage 1 handoff named `src/api/README.md:481` as a documentation target but the file was not in scope for a failing test. Skipping it kept the PR minimal; documentation can follow separately.
+
+---
+date: 2026-05-11T13:50:00Z
+issue: 167
+pr: 222
+stage: implement
+outcome: pr-opened
+labels: [enhancement, in-progress-by-agent]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `calculateSalaryPhaseTaxDelta` (`src/engine/salaryPhaseFunding.ts`) is the single point for §10a Günstigerprüfung tax-delta across AVD and Riester. Adding a `filingStatus` parameter there (with default `'single'`) was sufficient to unlock Ehegattensplitting for both products — the Splittingtarif pattern is identical to `retirementTax.ts`: `2 × incomeTax(zvE / 2)` with the married soli threshold.
+- Both `AvdFundingOptions` and `RiesterFundingOptions` already existed as extension points; adding `filingStatus?` to each propagated cleanly without touching engine callers that don't pass options.
+- `ApiProfile` in `src/api/apiTypes.ts` is intentionally decoupled from `PersonalProfile` in `src/domain/profile.ts`; `maritalStatus` is an API-only concern and does not need to be added to the domain type. The API facade converts it to `filingStatus` before passing to the engine.
+- Stage 1's three failing tests in `src/api/validation.test.ts` and `src/api/funding.test.ts` covered both the validation path (reject unsupported string) and the numeric-difference check (married ≠ single Günstigerprüfung benefit). Both passed with the minimal fix.
+
+## What would have helped
+
+- None — the Stage 1 handoff clearly identified all affected call sites.
