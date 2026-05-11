@@ -75,6 +75,7 @@ export interface YearlyRowEntry {
   returnAmount: number
   // bAV-only funding breakdown (present when productId === 'bav')
   agZuschussMonthly?: number
+  /** Annual income-tax saving (Lohnsteuer + Soli) vs. no-conversion baseline. */
   lohnsteuerErsparnis?: number
   svVorteilMonthly?: number
   employeeContributionMonthly?: number
@@ -243,7 +244,7 @@ export function toYearlyRowEntries(
         entry.agZuschussMonthly = bavFunding.monthlyEmployerContribution
         entry.employeeContributionMonthly = bavFunding.monthlyNetCost
         entry.lohnsteuerErsparnis =
-          (without.incomeTax - with_.incomeTax + without.solidarityTax - with_.solidarityTax) / 12
+          without.incomeTax - with_.incomeTax + without.solidarityTax - with_.solidarityTax
         entry.svVorteilMonthly = (without.social.total - with_.social.total) / 12
       }
       entries.push(entry)

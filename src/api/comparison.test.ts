@@ -328,6 +328,14 @@ describe('runComparison', () => {
   })
 
   it('full detail exposes bAV funding breakdown on yearly rows', () => {
+    const ruleResult = resolveRuleYear()
+    if (!ruleResult.ok) throw new Error('resolveRuleYear failed')
+    const { rules } = ruleResult.data
+    const netto = normalizeMonthlyNettoBelastung(DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR)
+    const synced = syncMonthlyContributions(netto, defaultAssumptions, defaultProfile, rules)
+    const simulation = simulateRetirementComparison(defaultProfile, synced, rules)
+    const { salaryWithoutBav: without, salaryWithBav: with_ } = simulation.bavFunding
+
     const result = runComparison({ detailLevel: 'full' })
     expect(result.ok).toBe(true)
     if (!result.ok) return
@@ -337,7 +345,9 @@ describe('runComparison', () => {
 
     const row = bavRow as unknown as Record<string, number>
     expect(row.agZuschussMonthly).toBe(result.data.fundingSummaries.bav.monthlyEmployerContribution)
-    expect(row.lohnsteuerErsparnis).toBeGreaterThan(0)
+    expect(row.lohnsteuerErsparnis).toBe(
+      without.incomeTax - with_.incomeTax + without.solidarityTax - with_.solidarityTax,
+    )
     expect(row.svVorteilMonthly).toBeGreaterThan(0)
     expect(row.employeeContributionMonthly).toBe(result.data.fundingSummaries.bav.monthlyNetCost)
   })
