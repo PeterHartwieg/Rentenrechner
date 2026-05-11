@@ -41,6 +41,17 @@ describe('validateProfile', () => {
     expect(ds).toHaveLength(1)
     expect(ds[0].path).toBe('profile')
   })
+
+  it('accepts supported maritalStatus values when provided', () => {
+    for (const maritalStatus of ['single', 'married', 'divorced', 'widowed']) {
+      expect(validateProfile({ ...defaultProfile, maritalStatus })).toHaveLength(0)
+    }
+  })
+
+  it('rejects unsupported maritalStatus values', () => {
+    const ds = validateProfile({ ...defaultProfile, maritalStatus: 'registered-partnership' })
+    expect(ds.some((d) => d.path === 'profile.maritalStatus')).toBe(true)
+  })
 })
 
 describe('validateSharedAssumptions', () => {
