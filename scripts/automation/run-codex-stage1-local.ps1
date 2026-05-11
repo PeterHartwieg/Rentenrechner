@@ -26,6 +26,31 @@ function Write-Log {
   Write-Output $line
 }
 
+function Test-GitTrackedPath {
+  param([string]$Path)
+
+  $relativePath = [System.IO.Path]::GetRelativePath($Repo, $Path) -replace '\\', '/'
+
+  & git -C $Repo ls-files --error-unmatch -- $relativePath *> $null
+  return $LASTEXITCODE -eq 0
+}
+
+function Remove-RetroScratchIfUntracked {
+  param([string]$When)
+
+  if (-not (Test-Path -LiteralPath $retroScratch)) {
+    return
+  }
+
+  if (Test-GitTrackedPath -Path $retroScratch) {
+    Write-Log "Leaving tracked Stage 1 retro scratch file in place during $When cleanup: $retroScratch"
+    return
+  }
+
+  Write-Log "Removing $When Stage 1 retro scratch file: $retroScratch"
+  Remove-Item -LiteralPath $retroScratch -Force
+}
+
 if (Test-Path -LiteralPath $lockFile) {
   $lockAge = (Get-Date) - (Get-Item -LiteralPath $lockFile).LastWriteTime
   if ($lockAge.TotalHours -lt 3) {
@@ -58,10 +83,7 @@ try {
     throw "Codex executable does not exist: $CodexExe"
   }
 
-  if (Test-Path -LiteralPath $retroScratch) {
-    Write-Log "Removing stale Stage 1 retro scratch file before run: $retroScratch"
-    Remove-Item -LiteralPath $retroScratch -Force
-  }
+  Remove-RetroScratchIfUntracked -When "stale"
 
   $prompt = @'
 Run the versioned Stage 1 issue investigation prompt for this repository.
@@ -112,10 +134,7 @@ When applying `ready-for-PR`, run the explicit `gh issue edit <N> --add-label re
   }
 
   Remove-Item -LiteralPath $stderrFile -Force -ErrorAction SilentlyContinue
-  if (Test-Path -LiteralPath $retroScratch) {
-    Write-Log "Removing post-run Stage 1 retro scratch file: $retroScratch"
-    Remove-Item -LiteralPath $retroScratch -Force
-  }
+  Remove-RetroScratchIfUntracked -When "post-run"
 
   Write-Log "Completed local Codex Stage 1 run."
 }
