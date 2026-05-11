@@ -56,12 +56,14 @@ describe('review-loop-decision', () => {
   })
 
   it('routes to fix when Codex leaves a P1 inline review comment', () => {
+    const codexReviewId = 42
     const result = computeReviewLoopDecision({
       headSha,
       commitCount: 1,
       reviews: [
         review(),
         review({
+          id: codexReviewId,
           user: { login: 'chatgpt-codex-connector[bot]' },
           state: 'COMMENTED',
           body: '### Codex Review\n\nHere are some automated review suggestions.',
@@ -71,6 +73,7 @@ describe('review-loop-decision', () => {
         {
           user: { login: 'chatgpt-codex-connector[bot]' },
           commit_id: headSha,
+          pull_request_review_id: codexReviewId,
           body: '**P1** Clamp surrender-year age before deriving tax mode',
         },
       ],
@@ -78,6 +81,46 @@ describe('review-loop-decision', () => {
 
     expect(result.decision).toBe('fix')
     expect(result.codexStatus).toBe('needs_fix')
+  })
+
+  it('ignores stale Codex inline blockers superseded by a later clean Codex review', () => {
+    const result = computeReviewLoopDecision({
+      headSha,
+      commitCount: 1,
+      reviews: [
+        review(),
+        review({
+          id: 1,
+          user: { login: 'chatgpt-codex-connector[bot]' },
+          state: 'COMMENTED',
+          body: '### Codex Review\n\nHere are some automated review suggestions.',
+        }),
+        review({
+          id: 2,
+          user: { login: 'chatgpt-codex-connector[bot]' },
+          state: 'COMMENTED',
+          body: '### Codex Review\n\nNo findings.',
+        }),
+      ],
+      reviewComments: [
+        {
+          user: { login: 'chatgpt-codex-connector[bot]' },
+          commit_id: headSha,
+          pull_request_review_id: 1,
+          body: '**P1** Fail closed when the API secret is unset',
+        },
+        {
+          user: { login: 'chatgpt-codex-connector[bot]' },
+          commit_id: headSha,
+          pull_request_review_id: 2,
+          body: '**P2** Optional hardening',
+        },
+      ],
+    })
+
+    expect(result.decision).toBe('merge')
+    expect(result.codexStatus).toBe('satisfied')
+    expect(result.codexBlockingInlineCommentCount).toBe(0)
   })
 
   it('routes to wait while Codex is silent', () => {

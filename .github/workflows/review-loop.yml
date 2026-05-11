@@ -26,6 +26,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
 
+      - name: Load main-branch router
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show origin/main:scripts/automation/review-loop-decision.mjs \
+            > "$RUNNER_TEMP/review-loop-decision.mjs"
+
       - name: Route review state
         id: route
         env:
@@ -34,7 +41,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MAX_REVIEW_LOOP_COMMITS: '10'
-        run: node scripts/automation/review-loop-decision.mjs
+        run: node "$RUNNER_TEMP/review-loop-decision.mjs"
 
       - name: Setup Node
         if: steps.route.outputs.decision == 'fix' || steps.route.outputs.decision == 'merge'
