@@ -1335,3 +1335,27 @@ labels: [bug]
 ## What would have helped
 
 - The comment at line 634–636 actively misled by claiming validation was unnecessary. A brief note that v1 field values pass through unvalidated would have surfaced this gap sooner.
+
+---
+date: 2026-05-11T12:22:20Z
+issue: 144
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, code-review, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- The explicit prompt verification command `gh issue view 144 --json labels --jq '.labels[].name' | grep -x ready-for-PR` failed because `grep` is not installed in this Windows PowerShell environment. A PowerShell fallback using `Select-String -Pattern '^ready-for-PR$'` verified that the label is present, but the run stopped after issue #144 as instructed for a failed verification command.
+- `origin/agent/issue-144` already existed with stale implementation commits and broad unrelated diffs. The Stage 1 branch was reset from `origin/main` and force-pushed with an explicit lease to restore the test-only Stage 1 contract.
+
+## Learnings
+
+- `src/rules/index.ts` currently re-exports only `activeRules`; it does not expose a `RULES_YEAR` derived from `activeRules.year`.
+- The hardcoded freshness-year issue is still reproducible on current `main`: `src/features/landing/LandingPage.tsx`, public page `*Page.tsx` wrappers, and public page `*.body.mdx` files contain `Werte für Deutschland 2026` or `Werte Stand 2026`.
+- A narrow static Vitest test is enough to characterize the maintenance bug without implementing the fix: `src/features/publicPages/rulesYearFreshness.test.ts` fails on both missing `RULES_YEAR` and hardcoded public freshness-year offenders.
+
+## What would have helped
+
+- The versioned prompt's verification command needs a PowerShell-compatible fallback or should invoke Git Bash's `grep` explicitly on Windows runners.
