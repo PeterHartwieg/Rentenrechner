@@ -844,3 +844,25 @@ labels: [bug, needs-info]
 ## What would have helped
 
 - Removing `ready-for-agent` when the earlier #110 fix landed, or adding a maintainer comment describing any remaining distinct visual concern.
+
+---
+date: 2026-05-11T10:02:42Z
+issue: 111
+pr: null
+stage: investigate
+outcome: needs-info
+labels: [bug, needs-info]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue #111 had already been investigated and fixed on `origin/main`; the stale `ready-for-agent` label caused it to be selected again. Before adding a Stage 1 test, search for the issue number and target id (`estimateBadge`) because `src/features/inventory/CombineIncomePanel.tsx`, `src/app/composeInstanceEvidenceMaps.ts`, and `src/features/inventory/CombineIncomePanel.test.tsx` may already contain the full fix and regression coverage.
+- For this badge, the important distinction is explicit `EvidenceState === 'model_estimate'` in `instanceEvidenceMaps` versus `ProductResult.inputConfidence`, because `lowestConfidence` can summarize absent fields as `model_estimate`.
+
+## What would have helped
+
+- A cleanup step after Stage 2 completion that removes stale `ready-for-agent` from issues already fixed on `main`.
