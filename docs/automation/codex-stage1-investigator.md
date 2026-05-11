@@ -86,8 +86,18 @@ repository state is uncertain.
 9. Post one self-contained handoff comment beginning exactly with
    `<!-- agent-handoff:investigate -->` and containing `## Reproduction`,
    `## Files to edit`, `## Test status`, and `## Branch`.
-10. Apply `ready-for-PR`; keep `in-progress-by-agent` so
-    `.github/workflows/implement.yml` can pick up Stage 2.
+10. Apply `ready-for-PR` with an actual GitHub label command; keep
+    `in-progress-by-agent` so `.github/workflows/implement.yml` can pick up
+    Stage 2. Do not merely say the label is applied.
+
+    ```bash
+    gh issue edit <N> --add-label ready-for-PR
+    gh issue view <N> --json labels --jq '.labels[].name' | grep -x ready-for-PR
+    ```
+
+    If the verification command does not print `ready-for-PR`, stop before
+    starting another issue, record the blocker in the retro entry, and report
+    the label failure.
 11. Before every issue exit, write `.automation-retro-entry.md` using
     `docs/automation/retro-template.md`, then append it:
 

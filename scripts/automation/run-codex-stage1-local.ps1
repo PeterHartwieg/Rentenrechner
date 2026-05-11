@@ -78,6 +78,7 @@ Preflight:
 Then read `docs/automation/codex-stage1-investigator.md` and execute that prompt exactly, processing up to two eligible `ready-for-agent` issues.
 
 This automation owns Stage 1 investigation. It must not implement fixes; successful issue runs hand off by posting the Stage 1 handoff comment and applying `ready-for-PR`.
+When applying `ready-for-PR`, run the explicit `gh issue edit <N> --add-label ready-for-PR` command from the versioned prompt and verify the label with `gh issue view`; do not only state that the label is in place.
 '@
 
   $codexArgs = @(
