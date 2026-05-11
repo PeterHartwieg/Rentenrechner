@@ -929,3 +929,26 @@ labels: [documentation, enhancement]
 ## What would have helped
 
 - Nothing additional; the issue body named the exact destination files and rules.
+
+---
+date: 2026-05-11T10:52:20Z
+issue: 132
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `stale-in-progress-reset.yml` already handles stale open issues with `in-progress-by-agent`, and `review-loop.yml` / `review-loop-sweep.yml` clear the label on known agent merge paths. The remaining gap for #132 is close-event hygiene plus one-shot cleanup of already-closed issues.
+- At investigation time, `gh issue list --search 'is:issue is:closed label:in-progress-by-agent'` returned #148, #143, and #69, which gives Stage 2 concrete cleanup targets.
+- Automation behavior has a lightweight Vitest home under `scripts/automation/*.test.mjs`; a workflow-presence regression test is a good Stage 1 pin for this kind of issue.
+
+## What would have helped
+
+- Nothing additional; the triage comment narrowed the desired fix to option 1 plus one-shot cleanup.
