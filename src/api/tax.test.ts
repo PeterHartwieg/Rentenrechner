@@ -342,6 +342,29 @@ describe('calculateSalary', () => {
     // Class VI has no personal deductions so it is more heavily taxed than class V.
     expect(classSix.data.annualIncomeTax).toBeGreaterThan(classFive.data.annualIncomeTax)
   })
+
+  it('PAP MST5-6 floor: Steuerklasse V/VI pay non-zero tax at low wages where the standard formula gives 0', () => {
+    // At €11,000 annual gross the standard 2*(f(1.25x)-f(0.75x)) formula returns 0 because
+    // 1.25*zvE falls below the Grundfreibetrag. The PAP MST5/MST6 minimum ensures the earner
+    // does not benefit from the Grundfreibetrag they already use at their primary employment.
+    const lowGross = 11_000
+    const classOne = calculateSalary({ profile: { ...defaultProfile, grossSalaryYear: lowGross, taxClass: 1 } })
+    const classFive = calculateSalary({ profile: { ...defaultProfile, grossSalaryYear: lowGross, taxClass: 5 } })
+    const classSix = calculateSalary({ profile: { ...defaultProfile, grossSalaryYear: lowGross, taxClass: 6 } })
+
+    expect(classOne.ok).toBe(true)
+    expect(classFive.ok).toBe(true)
+    expect(classSix.ok).toBe(true)
+    if (!classOne.ok || !classFive.ok || !classSix.ok) return
+
+    // Class I has no income tax at this wage (below the effective Grundfreibetrag threshold).
+    expect(classOne.data.annualIncomeTax).toBe(0)
+    // Class V/VI apply the PAP floor so tax is non-zero even where the formula gives 0.
+    expect(classFive.data.annualIncomeTax).toBeGreaterThan(0)
+    expect(classSix.data.annualIncomeTax).toBeGreaterThan(0)
+    // VI > V because class VI has no personal deductions.
+    expect(classSix.data.annualIncomeTax).toBeGreaterThan(classFive.data.annualIncomeTax)
+  })
 })
 
 // ---------------------------------------------------------------------------

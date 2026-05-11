@@ -203,8 +203,8 @@ export function calculateSalaryResult(
   // §39b EStG tax-class dispatch.
   // III: Ehegattensplitting (§32a Abs. 5 EStG) — 2 × f(income/2); Soli uses married threshold.
   // II: single-filer table with §24b EStG Entlastungsbetrag für Alleinerziehende deducted first.
-  // V: §39b tariff 2 × (f(1.25 × zvE) − f(0.75 × zvE)); deductions still apply, no Grundfreibetrag.
-  // VI: same tariff on raw steuerlichArbeitslohn — no Vorsorgepauschale/AN-/SA-Pauschbetrag.
+  // V: §39b tariff 2 × (f(1.25 × zvE) − f(0.75 × zvE)) with PAP MST5 floor.
+  // VI: same tariff on raw steuerlichArbeitslohn with PAP MST6 floor.
   // I, IV: standard single-filer table.
   let incomeTax: number
   let solidarityFilingStatus: 'single' | 'married' = 'single'
@@ -219,17 +219,24 @@ export function calculateSalaryResult(
       (childCount - 1) * rules.entlastungsbetragAlleinerziehendePro
     incomeTax = calculateIncomeTax2026(Math.max(0, taxableIncome - entlastung), rules)
   } else if (profile.taxClass === 5) {
-    // §39b Abs. 2 Satz 2 Nr. 2 EStG: use the statutory V/VI tariff on the pre-floor zvE.
-    incomeTax =
+    // §39b Abs. 2 Satz 2 Nr. 2 EStG: statutory V/VI tariff on pre-floor zvE.
+    // PAP MST5: floor at f(zvE + basicAllowance) so low-wage earners don't benefit
+    // from the Grundfreibetrag they already consume at their primary employment.
+    const gf = rules.incomeTax.basicAllowance
+    const formula =
       2 *
       (calculateIncomeTax2026(1.25 * zvEBeforeFloor, rules) -
         calculateIncomeTax2026(0.75 * zvEBeforeFloor, rules))
+    incomeTax = Math.max(formula, calculateIncomeTax2026(Math.max(0, zvEBeforeFloor) + gf, rules))
   } else if (profile.taxClass === 6) {
-    // Class VI has no personal deductions at all (§39b Abs. 2 Satz 2 Nr. 2 EStG).
-    incomeTax =
+    // Class VI has no personal deductions (§39b Abs. 2 Satz 2 Nr. 2 EStG).
+    // PAP MST6: same floor on raw steuerlichArbeitslohn.
+    const gf = rules.incomeTax.basicAllowance
+    const formula =
       2 *
       (calculateIncomeTax2026(1.25 * steuerlichArbeitslohn, rules) -
         calculateIncomeTax2026(0.75 * steuerlichArbeitslohn, rules))
+    incomeTax = Math.max(formula, calculateIncomeTax2026(steuerlichArbeitslohn + gf, rules))
   } else {
     incomeTax = calculateIncomeTax2026(taxableIncome, rules)
   }
