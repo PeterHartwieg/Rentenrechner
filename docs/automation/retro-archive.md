@@ -1616,3 +1616,25 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A product decision on how to map `divorced` and `widowed` into the existing `'single' | 'married'` filing-status engines would make Stage 2's implementation choices less ambiguous.
+
+---
+date: 2026-05-11T13:52:00Z
+issue: 168
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- The literal verification pipeline `gh issue view 168 --json labels --jq '.labels[].name' | grep -x ready-for-PR` could not run because `grep` is unavailable in this Windows PowerShell environment. The label was verified with `gh issue view 168 --json labels --jq '.labels[].name' | Select-String -Pattern '^ready-for-PR$'`, which printed `ready-for-PR`, and the run stopped before a second issue.
+
+## Learnings
+
+- `calculateBavFunding()` already has both ingredients requested by #168: the uncapped candidate is `annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct`, and the cap is `employerSocialSecuritySavingAnnual` in `src/engine/salary.ts`.
+- The public API facade drops those intermediates in `src/api/funding.ts`; Stage 2 should extend `BavFundingResult`, `BavFundingResponse`, the DTO mapping, and API docs.
+
+## What would have helped
+
+- A PowerShell-native label verification command in the automation prompt, or a bundled `grep`, would avoid false blocker handling on Windows.
