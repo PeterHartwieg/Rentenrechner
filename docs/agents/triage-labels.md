@@ -13,3 +13,5 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), apply the corresponding GitHub label from this table.
 
 Every triaged GitHub issue should carry exactly one state label from this table. When a category label is useful, use GitHub's standard `bug` or `enhancement` label alongside the state label.
+
+`in-progress-by-agent` is a transient automation lock, not a triage state. It may coexist with an open issue while Stage 1, Stage 2, or an agent PR is active, but it must be cleared when the linked issue is closed; `.github/workflows/clear-in-progress-on-close.yml` is the backstop for close paths outside the normal review loop.
