@@ -213,11 +213,17 @@ export function calculateSalaryResult(
     solidarityFilingStatus = 'married'
   } else if (profile.taxClass === 2) {
     // §24b EStG: base 4,260 EUR + 240 EUR per additional child beyond the first.
-    const childCount = Math.max(1, profile.childBirthYears.length)
-    const entlastung =
-      rules.entlastungsbetragAlleinerziehende +
-      (childCount - 1) * rules.entlastungsbetragAlleinerziehendePro
-    incomeTax = calculateIncomeTax2026(Math.max(0, taxableIncome - entlastung), rules)
+    // Only children born by the payroll year are eligible; planned/future children don't count.
+    const eligibleChildren = childBirthYearsBornByYear(profile.childBirthYears, rules.year)
+    const childCount = eligibleChildren.length
+    if (childCount > 0) {
+      const entlastung =
+        rules.entlastungsbetragAlleinerziehende +
+        (childCount - 1) * rules.entlastungsbetragAlleinerziehendePro
+      incomeTax = calculateIncomeTax2026(Math.max(0, taxableIncome - entlastung), rules)
+    } else {
+      incomeTax = calculateIncomeTax2026(taxableIncome, rules)
+    }
   } else if (profile.taxClass === 5) {
     // §39b Abs. 2 Satz 2 Nr. 2 EStG: statutory V/VI tariff on pre-floor zvE.
     // PAP MST5: floor at f(zvE + basicAllowance) so low-wage earners don't benefit

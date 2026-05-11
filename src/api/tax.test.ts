@@ -327,6 +327,26 @@ describe('calculateSalary', () => {
     expect(classTwoTwoChildren.data.annualIncomeTax).toBeLessThan(classTwo.data.annualIncomeTax)
   })
 
+  it('Steuerklasse II with no eligible children applies no Entlastungsbetrag (equals class I)', () => {
+    const classOne = calculateSalary({ profile: { ...defaultProfile, taxClass: 1 } })
+    // Empty childBirthYears: no §24b relief.
+    const classTwoNoChildren = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 2, childBirthYears: [] },
+    })
+    // Future child not yet born in the payroll year: no §24b relief.
+    const classTwoFutureChild = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 2, childBirthYears: [2030] },
+    })
+
+    expect(classOne.ok).toBe(true)
+    expect(classTwoNoChildren.ok).toBe(true)
+    expect(classTwoFutureChild.ok).toBe(true)
+    if (!classOne.ok || !classTwoNoChildren.ok || !classTwoFutureChild.ok) return
+
+    expect(classTwoNoChildren.data.annualIncomeTax).toBe(classOne.data.annualIncomeTax)
+    expect(classTwoFutureChild.data.annualIncomeTax).toBe(classOne.data.annualIncomeTax)
+  })
+
   it('separates Steuerklasse VI from V: VI pays more tax than V for the same wage', () => {
     const classFive = calculateSalary({
       profile: { ...defaultProfile, taxClass: 5 as unknown as 1 },
