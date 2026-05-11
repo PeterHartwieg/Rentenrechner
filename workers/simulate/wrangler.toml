@@ -2,11 +2,12 @@ name = "rentenwiki-simulate"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
 
-# Custom domain — Cloudflare creates the api.rentenwiki.de DNS record on deploy.
-# rentenwiki.de must be an active zone on this Cloudflare account.
+# Zone-based route — rentenwiki.de must be an active zone on this Cloudflare account.
+# custom_domain does not support path-scoped routing; use zone_name so the /simulate*
+# glob is enforced by Cloudflare before the Worker fires.
 [[routes]]
-pattern = "api.rentenwiki.de/simulate"
-custom_domain = true
+pattern = "api.rentenwiki.de/simulate*"
+zone_name = "rentenwiki.de"
 
 # Secrets (set via `wrangler secret put <NAME>` after first deploy):
 #   API_SHARED_SECRET  — shared Bearer token issued to licensed commercial callers.

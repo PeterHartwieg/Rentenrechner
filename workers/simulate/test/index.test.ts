@@ -27,6 +27,25 @@ async function json(response: Response) {
 }
 
 describe('simulate Worker HTTP API', () => {
+  it('returns 503 when the API secret is not configured (fail closed on misconfigured deploy)', async () => {
+    const unconfiguredEnv = { API_SHARED_SECRET: '', CRM_ALLOWED_ORIGIN: env.CRM_ALLOWED_ORIGIN }
+    const response = await worker.fetch(
+      simulateRequest({
+        method: 'POST',
+        origin: env.CRM_ALLOWED_ORIGIN,
+        headers: {
+          Authorization: 'Bearer ',
+          'Content-Type': 'application/json',
+        },
+        body: '{}',
+      }),
+      unconfiguredEnv,
+    )
+
+    expect(response.status).toBe(503)
+    expect(await json(response)).toMatchObject({ ok: false })
+  })
+
   it('rejects requests without the shared-secret bearer token', async () => {
     const response = await worker.fetch(
       simulateRequest({

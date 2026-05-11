@@ -45,6 +45,11 @@ export default {
       })
     }
 
+    // Fail closed if the secret was never set — prevents auth bypass on misconfigured deploys.
+    if (!env.API_SHARED_SECRET) {
+      return jsonResponse({ ok: false, error: 'Service unavailable' }, 503)
+    }
+
     const authHeader = request.headers.get('Authorization')
     if (authHeader !== `Bearer ${env.API_SHARED_SECRET}`) {
       // Include CORS headers so browsers from the allowed origin can read the 401 body.
