@@ -4,6 +4,7 @@ import {
   classifyCodexReview,
   computeReviewLoopDecision,
   extractLinkedIssue,
+  isRetryableCommandError,
 } from './review-loop-decision.mjs'
 
 const headSha = 'abc123'
@@ -89,10 +90,20 @@ describe('review-loop-decision', () => {
     expect(result.decision).toBe('wait')
   })
 
+  it('allows ten commits before the runaway threshold', () => {
+    const result = computeReviewLoopDecision({
+      headSha,
+      commitCount: 10,
+      reviews: [review()],
+    })
+
+    expect(result.decision).toBe('wait')
+  })
+
   it('routes to cap above the runaway commit threshold', () => {
     const result = computeReviewLoopDecision({
       headSha,
-      commitCount: 4,
+      commitCount: 11,
       reviews: [review()],
     })
 
@@ -101,5 +112,18 @@ describe('review-loop-decision', () => {
 
   it('extracts the linked issue closing marker', () => {
     expect(extractLinkedIssue('Summary\n\nCloses #203')).toBe('203')
+  })
+
+  it('classifies transient GitHub API failures as retryable', () => {
+    expect(
+      isRetryableCommandError({
+        stderr:
+          "HTTP 504: We couldn't respond to your request in time. Sorry about that. Please try resubmitting your request.",
+      }),
+    ).toBe(true)
+  })
+
+  it('does not retry deterministic command failures', () => {
+    expect(isRetryableCommandError({ stderr: 'unknown flag: --json' })).toBe(false)
   })
 })

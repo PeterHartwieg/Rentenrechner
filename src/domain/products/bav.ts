@@ -92,6 +92,12 @@ export interface BavFundingResult {
   annualTaxAndSvSavings: number
   // #51: §1a Abs. 1a BetrAVG statutory minimum subsidy (15 % conversion, capped by employer SV savings).
   monthlyStatutoryEmployerSubsidy: number
+  // #168: uncapped 15 % candidate before the employer-SV-savings cap is applied.
+  monthlyStatutoryEmployerSubsidyUncapped: number
+  // #168: employer SV savings that form the cap (0 when salary already above BBG).
+  monthlyStatutoryEmployerSubsidyCap: number
+  // #168: true when the uncapped value exceeds the cap and was reduced.
+  monthlyStatutoryEmployerSubsidyCapApplied: boolean
   // #51: contractual employer match + fixed contribution (uncapped).
   monthlyContractualEmployerContribution: number
   // Total employer contribution paid into the bAV (statutory §1a Abs. 1a + contractual).

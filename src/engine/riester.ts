@@ -144,6 +144,7 @@ function computeFullRiesterAllowances(
 export interface RiesterFundingOptions {
   contributionYear?: number
   isFirstContributionYear?: boolean
+  filingStatus?: 'single' | 'married'
 }
 
 // ---------------------------------------------------------------------------
@@ -256,6 +257,7 @@ export function calculateRiesterFunding(
     rules,
     salaryResult.taxableIncome,
     specialExpenseDeductibleAnnual,
+    options.filingStatus ?? 'single',
   )
   const guenstigerpruefungBenefitAnnual = calculateAllowanceExcessBenefit(
     totalTaxSavingAnnual,

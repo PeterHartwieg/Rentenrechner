@@ -91,7 +91,7 @@ export interface BaseProductResult {
   taxAndSvSavings: number
   valueMultipleOnUserCost: number | null
   capitalMultipleAnnualized: number
-  // #57: Effektivkosten / Reduction in Yield for the accumulation phase (pp)
+  // #57: Effektivkosten / Reduction in Yield for the accumulation phase — decimal (0.012 = 1.2 pp p.a.)
   accumulationRiy: number
   // #64: nominal break-even age for Leibrente mode
   leibrenteBreakEvenAge?: number

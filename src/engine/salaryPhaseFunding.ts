@@ -20,11 +20,13 @@ import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
  * @param rules           - Year-specific German rules (income-tax brackets, soli threshold).
  * @param taxableIncome   - Salary-phase zvE before the deduction (from SalaryResult.taxableIncome).
  * @param deductionAnnual - Annual deductible amount (already capped/fraction-adjusted by caller).
+ * @param filingStatus    - 'married' applies §32a Abs. 5 EStG Splittingtarif; defaults to 'single'.
  */
 export function calculateSalaryPhaseTaxDelta(
   rules: GermanRules,
   taxableIncome: number,
   deductionAnnual: number,
+  filingStatus: 'single' | 'married' = 'single',
 ): {
   taxableIncomeWithout: number
   taxableIncomeWith: number
@@ -35,13 +37,16 @@ export function calculateSalaryPhaseTaxDelta(
   const taxableIncomeWithout = taxableIncome
   const taxableIncomeWith = Math.max(0, taxableIncome - deductionAnnual)
 
-  const taxWithout =
-    calculateIncomeTax2026(taxableIncomeWithout, rules) +
-    calculateSolidarityTax(calculateIncomeTax2026(taxableIncomeWithout, rules), rules)
-  const taxWith =
-    calculateIncomeTax2026(taxableIncomeWith, rules) +
-    calculateSolidarityTax(calculateIncomeTax2026(taxableIncomeWith, rules), rules)
+  const computeTax = (zvE: number): number => {
+    const ist =
+      filingStatus === 'married'
+        ? 2 * calculateIncomeTax2026(zvE / 2, rules)
+        : calculateIncomeTax2026(zvE, rules)
+    return ist + calculateSolidarityTax(ist, rules, filingStatus)
+  }
 
+  const taxWithout = computeTax(taxableIncomeWithout)
+  const taxWith = computeTax(taxableIncomeWith)
   const taxSavingAnnual = Math.max(0, taxWithout - taxWith)
 
   return {

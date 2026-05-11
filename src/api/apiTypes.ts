@@ -25,6 +25,13 @@ export interface ApiProfile {
   pkvMonthlyPremium: number
   pPVMonthlyPremium: number
   desiredNetMonthlyPension?: number
+  /**
+   * Marital status for tax calculation (§32a Abs. 5 EStG Splittingtarif).
+   * 'married' triggers Ehegattensplitting for Günstigerprüfung (AVD, Riester).
+   * 'divorced' and 'widowed' are treated as 'single' (Grundtarif).
+   * Defaults to 'single' when omitted.
+   */
+  maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed'
 }
 
 // ---------------------------------------------------------------------------

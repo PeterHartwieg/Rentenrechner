@@ -1,3 +1,5 @@
+import { RULES_YEAR } from '../../rules'
+
 ## Vom Brutto zum Netto: Steuer und KV/PV
 
 Brutto-Rente abzüglich Einkommensteuer auf den Besteuerungsanteil und abzüglich der Beiträge zur Kranken- und Pflegeversicherung ergibt die Nettorente. Der Besteuerungsanteil hängt vom Renteneintrittsjahrgang ab und ist nach dem ersten vollen Rentenjahr in Euro eingefroren. *Modellrechnung, keine Beratung.*
@@ -50,7 +52,7 @@ Die Auszahlungsphase folgt nicht einer einheitlichen Norm, sondern verzweigt nac
 - **bAV via Direktversicherung, Pensionskasse oder Pensionsfonds nach § 3 Nr. 63 EStG** (§ 22 Nr. 5 EStG): die Leistung wird in voller Höhe nachgelagert besteuert, soweit die Beiträge steuerlich gefördert waren. Ein Versorgungsfreibetrag nach § 19 Abs. 2 EStG steht hier nicht zu.
 - **Basisrente und Riester** (§ 22 Nr. 1 Satz 3 a Doppelbuchstabe aa EStG für Basisrente, § 22 Nr. 5 EStG für gefördertes Riester-Vermögen): nachgelagerte Besteuerung der geförderten Bestandteile.
 
-Der Versorgungsfreibetrag nach § 19 Abs. 2 EStG (Werte 2026: 12,8 % der Versorgungsbezüge, gedeckelt bei 960 € pro Jahr, plus Zuschlag 288 € pro Jahr) gilt nur für Versorgungsbezüge nach § 19 EStG, also für Beamtenpensionen und für laufende bAV-Renten aus Direktzusage oder Unterstützungskasse. Bei bAV nach § 3 Nr. 63 EStG greift dieser Freibetrag nicht. Die Werte sinken nach Versorgungsbeginn-Jahrgang gestaffelt; für Versorgungsbeginn ab 2058 entfallen Freibetrag und Zuschlag.
+Der Versorgungsfreibetrag nach § 19 Abs. 2 EStG (Werte {RULES_YEAR}: 12,8 % der Versorgungsbezüge, gedeckelt bei 960 € pro Jahr, plus Zuschlag 288 € pro Jahr) gilt nur für Versorgungsbezüge nach § 19 EStG, also für Beamtenpensionen und für laufende bAV-Renten aus Direktzusage oder Unterstützungskasse. Bei bAV nach § 3 Nr. 63 EStG greift dieser Freibetrag nicht. Die Werte sinken nach Versorgungsbeginn-Jahrgang gestaffelt; für Versorgungsbeginn ab 2058 entfallen Freibetrag und Zuschlag.
 
 ### KV- und PV-Beiträge in der Rente
 

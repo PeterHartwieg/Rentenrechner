@@ -5,6 +5,7 @@ import AltersvorsorgeBody from './altersvorsorgeprodukte-vergleichen.body.mdx'
 import { useQaMode } from '../qa-feedback/useQaMode'
 import { qaTargetAttrs } from '../qa-feedback/useFeedbackTarget'
 import './publicPages.css'
+import { RULES_YEAR } from '../../rules'
 
 const ROUTE = publicRouteRegistry['/altersvorsorgeprodukte-vergleichen']
 
@@ -51,7 +52,7 @@ export function AltersvorsorgeproduktePage() {
         >
           <h1>{ROUTE.h1}</h1>
           <p className="public-summary">{ROUTE.summary}</p>
-          <p className="public-stand">Redaktion: RentenWiki.de · Stand: {ROUTE.dateModified} · Werte für Deutschland 2026</p>
+          <p className="public-stand">Redaktion: RentenWiki.de · Stand: {ROUTE.dateModified} · Werte für Deutschland {RULES_YEAR}</p>
 
           <a href={ROUTE.calculatorCta.href} className="public-cta">
             {ROUTE.calculatorCta.label}
