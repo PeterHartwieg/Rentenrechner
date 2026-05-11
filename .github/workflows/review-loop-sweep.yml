@@ -53,8 +53,12 @@ jobs:
           for pr in $pr_numbers; do
             echo "::group::PR #$pr"
 
-            pr_json=$(gh pr view "$pr" --repo "$REPO" \
-              --json createdAt,headRefOid,body,headRefName)
+            if ! pr_json=$(gh pr view "$pr" --repo "$REPO" \
+              --json createdAt,headRefOid,body,headRefName); then
+              echo "Skip: failed to load PR metadata; will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
             created=$(echo "$pr_json" | jq -r .createdAt)
             head_sha=$(echo "$pr_json" | jq -r .headRefOid)
             pr_body=$(echo "$pr_json" | jq -r .body)
@@ -69,7 +73,11 @@ jobs:
               continue
             fi
 
-            reviews=$(gh api "repos/$REPO/pulls/$pr/reviews")
+            if ! reviews=$(gh api "repos/$REPO/pulls/$pr/reviews"); then
+              echo "Skip: failed to fetch reviews; will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
 
             # Latest Claude review on the current head SHA — approved if body
             # carries the [Claude Review] marker AND mentions an Approve verdict.
@@ -127,7 +135,11 @@ jobs:
             #      gate; failed CF build = broken prod).
 
             # 1. Up-to-date check.
-            mergeable_state=$(gh pr view "$pr" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus)
+            if ! mergeable_state=$(gh pr view "$pr" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus); then
+              echo "Skip: failed to load mergeable state; will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
             if [ "$mergeable_state" = "BEHIND" ]; then
               echo "Branch is BEHIND main — calling update-branch and deferring merge to next tick."
               gh pr update-branch "$pr" --repo "$REPO" || \
@@ -138,7 +150,12 @@ jobs:
 
             # 2. CF Workers Builds check on HEAD.
             cf_bucket=$(gh pr checks "$pr" --repo "$REPO" --json name,bucket \
-              --jq '[.[] | select(.name == "Workers Builds: rentenwiki")] | last | .bucket // "missing"')
+              --jq '[.[] | select(.name == "Workers Builds: rentenwiki")] | last | .bucket // "missing"' || true)
+            if [ -z "$cf_bucket" ]; then
+              echo "Skip: failed to load Workers Builds: rentenwiki status; will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
             if [ "$cf_bucket" != "pass" ]; then
               echo "Skip: Workers Builds: rentenwiki is '$cf_bucket' (need 'pass'). Will retry on next tick."
               echo "::endgroup::"
@@ -147,7 +164,11 @@ jobs:
 
             echo "All gates green — merging."
             # Merge — squash + delete branch (matches event-driven loop step 4a)
-            gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
+            if ! gh pr merge "$pr" --repo "$REPO" --squash --delete-branch; then
+              echo "Skip: merge failed; will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
 
             # Close the linked issue and clear in-progress-by-agent. The PR body
             # uses GitHub's "Closes #N" convention, but we still close
@@ -163,7 +184,8 @@ jobs:
               if [ "$issue_state" = "OPEN" ]; then
                 echo "Closing linked issue #$issue_num"
                 gh issue close "$issue_num" --repo "$REPO" --reason completed \
-                  --comment "Closed by merged agent PR #$pr."
+                  --comment "Closed by merged agent PR #$pr." || \
+                  echo "Issue close failed after merge; leaving for cleanup."
               fi
               echo "Clearing in-progress-by-agent on issue #$issue_num"
               gh issue edit "$issue_num" --repo "$REPO" \
