@@ -1289,3 +1289,27 @@ labels: [bug, area:qa-feedback]
 ## What would have helped
 
 - Stage 1 could have checked whether `@types/jsdom` was installed before writing a test that imports `JSDOM` from `jsdom` directly.
+
+---
+date: 2026-05-11T12:11:35Z
+issue: 142
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- The versioned label verification command `gh issue view 142 --json labels --jq '.labels[].name' | grep -x ready-for-PR` failed in Windows PowerShell because `grep` is not installed. The label was then verified with `gh issue view 142 --json labels --jq '.labels[].name' | Select-String -Pattern '^ready-for-PR$'`, but the failed explicit verification command required stopping before a second issue.
+- The first `gh issue comment` call for the handoff returned HTTP 504 from GitHub GraphQL. A follow-up `gh issue view` showed no comment had landed, and the retry succeeded.
+
+## Learnings
+
+- `parseWorkspaceJson` validates v2 payloads via `validateWorkspace` after `mergeDeep`, but the v1 branch returns `migrateV1ToV2(...)` directly at `src/storage.ts:640-645`; `loadSavedWorkspace` has a second direct v1 fallback return at `src/storage.ts:786`.
+- `validateWorkspace` already rejects the reproduced corruption through `validateScenario` -> `validateProfile`, where `retirementAge > 120` is invalid. A post-migration validation gate should make both new `src/storage.migration.test.ts` cases pass without inventing a new validator.
+- `src/storage.migration.test.ts` is the narrowest home for v1-to-v2 load-path regressions; the failing tests added there cover both share-URL parsing and localStorage v1 fallback.
+
+## What would have helped
+
+- A PowerShell-compatible version of the ready-for-PR verification command in `docs/automation/codex-stage1-investigator.md`.
