@@ -1523,3 +1523,26 @@ labels: [enhancement, needs-info]
 ## What would have helped
 
 - The issue should specify the chart representation contract before `ready-for-agent`: chart type, stacked metric(s), GRV/baseline inclusion, and annotation rules.
+
+---
+date: 2026-05-11T15:28:55Z
+issue: 165
+pr: null
+stage: investigate
+outcome: label-blocked
+labels: [enhancement, in-progress-by-agent]
+---
+
+## Blockers
+
+- `gh issue edit 165 --add-label ready-for-PR` failed with a GitHub 504 while fetching labels. A follow-up `gh issue view 165 --json labels --jq '.labels[].name'` showed only `enhancement` and `in-progress-by-agent`, so `ready-for-PR` was not verified/applied and Stage 2 will not pick up the issue until the label is added.
+
+## Learnings
+
+- The HTTP API facade already exists at `src/api/comparison.ts:148` (`runComparison`) and `src/api/manifest.ts:43` (`getManifest`); the missing surface is the Cloudflare Worker package/config/docs for `POST /simulate`.
+- The only existing Worker package is `workers/qa-submit`, and the only backend-boundary ADR is `docs/adr/0001-qa-submission-backend-amendment.md`; Stage 2 should add a separate sanctioned-trigger ADR for the simulate API Worker.
+- A Stage 1 contract test at `workers/simulate/test/index.test.ts` fails with `Cannot find module '../src/index'`, which cleanly proves the Worker entry point is absent without adding implementation logic.
+
+## What would have helped
+
+- A transient-safe label application wrapper in the automation prompt would avoid leaving a fully investigated issue stuck before `ready-for-PR` when GitHub returns a 504.
