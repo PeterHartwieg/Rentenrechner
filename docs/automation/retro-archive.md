@@ -686,3 +686,26 @@ labels: [bug, code-review, area:copy]
 ## What would have helped
 
 - Checking `git log --oneline --all -- <file>` immediately (as the instructions say for code-review issues) saved time: the single relevant commit `f60f0a3` surfaced the origin of the bug at once.
+
+---
+date: 2026-05-11T06:10:00Z
+issue: 134
+pr: 205
+stage: implement
+outcome: pr-opened
+labels: [bug, area:copy]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The erroneous copy "Cloudflare Pages" lived at `src/features/legal/DatenschutzPage.tsx:102` (a single JSX text node inside a `<p>` block). Replacing it with "Cloudflare Workers" was the entire fix.
+- Stage 1's test in `src/features/legal/DatenschutzPage.test.tsx` checked both `toContain('Cloudflare Workers')` and `not.toContain('Cloudflare Pages')`, which made verification unambiguous.
+- `npm run verify` passes cleanly; the "Not implemented: Window's getComputedStyle()" noise in test output is a known jsdom artefact, not a signal.
+
+## What would have helped
+
+- Nothing would have materially shortened this run — the Stage 1 handoff was precise and the fix was one word.
