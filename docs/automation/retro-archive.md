@@ -1964,3 +1964,26 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A small automation wrapper for the `ready-for-PR` verification command on PowerShell would avoid jq quoting drift.
+
+---
+date: 2026-05-11T20:05:00Z
+issue: 183
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, from-maintainer, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The QA target `auto.summary.annahmen-anpassen` maps to `ProductEditCards.tsx`, not the full input sidebar.
+- `ProductEditCards` already has a simple total annual fee editor pattern for bAV, private insurance, and Basisrente; AVD and Riester both have `fees` in the domain assumptions but no matching cost editor in this summary panel.
+- For this kind of QA UI issue, `ProductEditCards.defaults.test.tsx` is a good low-cost DOM regression location because it already opens the `Annahmen anpassen` details panel and checks which fields are intentionally exposed.
+
+## What would have helped
+
+- A route-level map from generated QA `auto.*` target ids back to component ownership would make these investigations faster.
