@@ -172,11 +172,23 @@ describe('Test 1 — migration round-trip (v1 → v2 → re-serialize → stable
     expect(workspace!.schemaVersion).toBe(2)
   })
 
+  it('v1 share-URL payload with out-of-range profile fields is rejected after migration', () => {
+    const raw = makeV1Json({ ...defaultProfile, retirementAge: 999 })
+    const workspace = parseWorkspaceJson(raw)
+    expect(workspace).toBeNull()
+  })
+
   it('v1 localStorage read via loadSavedWorkspace returns a v2 Workspace', () => {
     mem.store[STORAGE_KEY_V1] = makeV1Json()
     const workspace = loadSavedWorkspace()
     expect(workspace).not.toBeNull()
     expect(workspace!.schemaVersion).toBe(2)
+  })
+
+  it('v1 localStorage read with out-of-range profile fields is rejected after migration', () => {
+    mem.store[STORAGE_KEY_V1] = makeV1Json({ ...defaultProfile, retirementAge: 999 })
+    const workspace = loadSavedWorkspace()
+    expect(workspace).toBeNull()
   })
 
   it('v1 library entry shape migrates losslessly via migrateV1ToV2', () => {

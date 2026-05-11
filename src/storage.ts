@@ -631,9 +631,6 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
   // v1 payload: { version: 1, profile: {...}, assumptions: {...} }
   if (typeof obj.version === 'number' && obj.version !== CURRENT_VERSION_V1) return null
 
-  // Run v1→v2 migration. The migrated workspace is built entirely from
-  // validated defaults + migrated fields, so validateWorkspace is not called
-  // here — the migration itself is the correctness guarantee.
   if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
   if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
 
@@ -641,8 +638,11 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
     obj.profile as Record<string, unknown>,
     obj.assumptions as Record<string, unknown>,
   )
-  if (v1migrated) backfillWorkspaceTransferEvents(v1migrated)
-  return v1migrated
+  if (!v1migrated) return null
+  const v1validated = validateWorkspace(v1migrated)
+  if (!v1validated) return null
+  backfillWorkspaceTransferEvents(v1validated)
+  return v1validated
 }
 
 // ---------------------------------------------------------------------------
@@ -783,10 +783,12 @@ export function loadSavedWorkspace(): Workspace | null {
     if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
     if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
 
-    return migrateV1ToV2(
+    const v1migrated = migrateV1ToV2(
       obj.profile as Record<string, unknown>,
       obj.assumptions as Record<string, unknown>,
     )
+    if (!v1migrated) return null
+    return validateWorkspace(v1migrated)
   } catch {
     return null
   }
