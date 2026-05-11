@@ -1940,3 +1940,27 @@ labels: [enhancement]
 ## What would have helped
 
 - Stage 1 test could have followed the established `as unknown as SomeType` pattern for partial fixtures, or used the `makeCombinedResult` factory from `src/test/factories.ts`.
+
+---
+date: 2026-05-11T20:02:20Z
+issue: 154
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- `ready-for-PR` did not appear after the first `gh issue edit 154 --add-label ready-for-PR` despite exit code 0; rerunning the explicit add command made the label visible and verification passed.
+- On Windows PowerShell, the prompt's `gh issue view ... --jq '.labels[] | select(.name == "ready-for-PR") | .name'` needs escaped inner quotes as `\\\"ready-for-PR\\\"`; otherwise jq receives `ready-for-PR` without string quotes.
+
+## Learnings
+
+- #154 had an earlier Stage 1 bounce for missing UX decisions, but a later maintainer triage comment narrowed scope enough for implementation: combine-mode `Gesamtportfolio` only, savings-phase `Restkapital` stack by product, GRV excluded, payout phase unchanged.
+- `buildPortfolioLifecycleViews` in `src/features/results/portfolioLifecycle.ts` already has product aggregate views plus one flattened `Gesamtportfolio` view, so the clean Stage 2 data contract is to add portfolio-only savings stack rows whose totals match `portfolio.result.rows`.
+- `BreakEvenChart.tsx` currently renders every selected lifecycle result through the same `Line` pair loop; Stage 2 should branch only for the portfolio stack and leave product-specific views on the existing path.
+
+## What would have helped
+
+- A small automation wrapper for the `ready-for-PR` verification command on PowerShell would avoid jq quoting drift.
