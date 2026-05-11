@@ -1732,3 +1732,26 @@ labels: [enhancement, area:api]
 ## What would have helped
 
 - A grep for all manual `BavFundingResult`-shaped object literals in Stage 1 would have surfaced the recommender candidate and prevented the build breakage.
+
+---
+date: 2026-05-11T14:01:44Z
+issue: 169
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, ready-for-agent]
+---
+
+## Blockers
+
+- Dependencies were not installed in the isolated worktree; the first `npx vitest run src/api/comparison.test.ts` failed during Vite config loading with missing `vitest` and Vite plugin imports. Running `npm ci` fixed the harness.
+
+## Learnings
+
+- Full-detail comparison API rows are assembled at `src/api/comparison.ts:263` by `toYearlyRowEntries(selectedResults)`, not directly from the simulation object.
+- `src/api/resultSummaries.ts` owns the external `YearlyRowEntry` DTO and currently maps generic row fields only, so bAV funding summary values are not available unless Stage 2 passes funding context into the mapper or extends the product result shape.
+- `src/engine/accumulation.ts` already records yearly user/product/employer contribution totals on `YearlyProjection`, which should cover the contribution split without recalculating statutory funding in the API layer.
+
+## What would have helped
+
+- A short API DTO ownership note in `src/api/README.md` for where full-detail extension fields should be added would make future external-consumer issues faster.
