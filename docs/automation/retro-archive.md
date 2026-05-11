@@ -1109,3 +1109,25 @@ labels: [bug, code-review]
 ## What would have helped
 
 - A small exported test helper for building workspaces with one transfer event would reduce repeated fixture mutation in validator tests.
+
+---
+date: 2026-05-11T11:25:00Z
+issue: 138
+pr: 210
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The fix was a 3-line change in `src/utils/scenarioSchema.ts`: move the `sourceInstanceId === targetInstanceId` self-target guard (previously line 196 inside the `surrender_reinvest` branch only) to just after the instance-existence checks (lines 180–181), before any type-specific branching, so it covers both `certified` and `surrender_reinvest` transfer types.
+- Stage 1's handoff was precise: line numbers, branch structure, and the exact test file and line (879) where the regression test was added — Stage 2 needed only to read lines 175–208 of `scenarioSchema.ts` to implement confidently.
+
+## What would have helped
+
+- Nothing; the Stage 1 handoff was complete and accurate.
