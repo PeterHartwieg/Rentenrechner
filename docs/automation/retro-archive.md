@@ -731,3 +731,27 @@ labels: [bug]
 ## What would have helped
 
 - A browser-based viewport regression helper for modal footer visibility would turn this class of QA issue into a testable handoff.
+
+---
+date: 2026-05-11T07:38:00Z
+issue: 115
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `OptimiereVorsorgeModal` uses a flex-column layout where each step renders a `.optimiere-modal__body` that contains both scrollable content and the `.optimiere-modal__actions` footer. The fix is three CSS properties: `overflow: hidden` on the shell (was `overflow-y: auto`), `flex: 1; min-height: 0; overflow-y: auto` on the body, and `position: sticky; bottom: 0; background: #fff` on the actions row.
+- `min-height: 0` is required on the flex child (`.optimiere-modal__body`) so it can shrink below its content height and actually scroll — without it the flex child expands to fit all content and `overflow-y: auto` never activates.
+- The `padding-bottom` on `.optimiere-modal__body` was reduced to 0 and replaced with `padding-bottom` on `.optimiere-modal__actions` so there is no dead scroll space below the sticky footer.
+- All five step views (`disclaimer`, `overview`, `instance`, `confirm`, `saved`) share the same `.optimiere-modal__body` / `.optimiere-modal__actions` pattern, so the fix applies uniformly without per-step CSS.
+
+## What would have helped
+
+- A viewport screenshot in the handoff (there was a QA screenshot URL but not rendered inline) would have confirmed the exact overflow direction immediately.
