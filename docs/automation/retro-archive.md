@@ -755,3 +755,26 @@ labels: [bug]
 ## What would have helped
 
 - A viewport screenshot in the handoff (there was a QA screenshot URL but not rendered inline) would have confirmed the exact overflow direction immediately.
+
+---
+date: 2026-05-11T09:21:21Z
+issue: 44
+pr: null
+stage: investigate
+outcome: no-fix-needed
+labels: [bug, needs-info]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue #44 had an earlier Stage 1-style handoff comment, but current `origin/main` already contains the gh#44 code changes and regression tests. Before duplicating handoff work, check for issue-number references in the smallest relevant test file.
+- `src/app/optimiereVorsorge.ts` now plumbs a `scenarioId` into `simulateContractDecision(...)` and includes `scenarioId` in the decision simulation cache key.
+- `src/app/contractDecisions.ts` now includes `newMonthlyEUR` in the `beitrag-erhoehen` decision id, closing the stale cache collision.
+
+## What would have helped
+
+- Keeping issue labels in sync after the earlier Stage 1 handoff would have avoided re-claiming an already-investigated and already-fixed issue.
