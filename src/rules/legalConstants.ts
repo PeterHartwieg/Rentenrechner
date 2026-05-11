@@ -32,6 +32,12 @@ export const legalConstants = {
     /** §10 Abs. 1 Nr. 2 b Doppelbuchst. aa EStG / AltZertG §2: earliest old-age payout age for a certified Basisrentenvertrag. */
     minPayoutAge: 62,
   },
+  payrollTax: {
+    /** §39b Abs. 2 Satz 2 EStG: upper scaling factor for the Steuerklasse V/VI tariff formula 2 × (f(1.25x) − f(0.75x)). */
+    taxClassVVIUpperFactor: 1.25,
+    /** §39b Abs. 2 Satz 2 EStG: lower scaling factor for the Steuerklasse V/VI tariff formula 2 × (f(1.25x) − f(0.75x)). */
+    taxClassVVILowerFactor: 0.75,
+  },
 } as const
 
 export function halbeinkuenfteMinAgeForContractStartYear(contractStartYear: number): number {

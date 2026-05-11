@@ -12,6 +12,7 @@ import {
   childBirthYearsBornByYear,
   childBirthYearsUnder25InYear,
 } from './childEligibility'
+import { legalConstants } from '../rules/legalConstants'
 
 function contributionBase(annualGross: number, cap: number): number {
   return Math.min(Math.max(0, annualGross), cap)
@@ -229,19 +230,21 @@ export function calculateSalaryResult(
     // PAP MST5: floor at f(zvE + basicAllowance) so low-wage earners don't benefit
     // from the Grundfreibetrag they already consume at their primary employment.
     const gf = rules.incomeTax.basicAllowance
+    const { taxClassVVIUpperFactor, taxClassVVILowerFactor } = legalConstants.payrollTax
     const formula =
       2 *
-      (calculateIncomeTax2026(1.25 * zvEBeforeFloor, rules) -
-        calculateIncomeTax2026(0.75 * zvEBeforeFloor, rules))
+      (calculateIncomeTax2026(taxClassVVIUpperFactor * zvEBeforeFloor, rules) -
+        calculateIncomeTax2026(taxClassVVILowerFactor * zvEBeforeFloor, rules))
     incomeTax = Math.max(formula, calculateIncomeTax2026(Math.max(0, zvEBeforeFloor) + gf, rules))
   } else if (profile.taxClass === 6) {
     // Class VI has no personal deductions (§39b Abs. 2 Satz 2 Nr. 2 EStG).
     // PAP MST6: same floor on raw steuerlichArbeitslohn.
     const gf = rules.incomeTax.basicAllowance
+    const { taxClassVVIUpperFactor, taxClassVVILowerFactor } = legalConstants.payrollTax
     const formula =
       2 *
-      (calculateIncomeTax2026(1.25 * steuerlichArbeitslohn, rules) -
-        calculateIncomeTax2026(0.75 * steuerlichArbeitslohn, rules))
+      (calculateIncomeTax2026(taxClassVVIUpperFactor * steuerlichArbeitslohn, rules) -
+        calculateIncomeTax2026(taxClassVVILowerFactor * steuerlichArbeitslohn, rules))
     incomeTax = Math.max(formula, calculateIncomeTax2026(steuerlichArbeitslohn + gf, rules))
   } else {
     incomeTax = calculateIncomeTax2026(taxableIncome, rules)
