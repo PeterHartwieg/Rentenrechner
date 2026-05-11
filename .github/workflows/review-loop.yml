@@ -86,6 +86,11 @@ jobs:
           gh pr merge "$PR_NUMBER" --squash --delete-branch
 
           if [ -n "$ISSUE_NUMBER" ]; then
+            issue_state=$(gh issue view "$ISSUE_NUMBER" --json state --jq .state || echo "")
+            if [ "$issue_state" = "OPEN" ]; then
+              gh issue close "$ISSUE_NUMBER" --reason completed \
+                --comment "Closed by merged agent PR #$PR_NUMBER."
+            fi
             gh issue edit "$ISSUE_NUMBER" --remove-label in-progress-by-agent || true
           fi
 

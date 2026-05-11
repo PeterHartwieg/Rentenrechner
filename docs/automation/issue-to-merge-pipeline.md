@@ -172,6 +172,7 @@ review-loop.yml (Claude Code Action, Opus 4.7 — implementer-as-merger)
             + post `@codex review` comment (Codex doesn't auto-re-review)
       - both reviewers satisfied
             → gh pr merge --squash --delete-branch
+            + explicitly close linked issue as completed
             + remove `in-progress-by-agent` from linked issue
       - only one reviewer in
             → no-op, wait
@@ -480,8 +481,8 @@ two reviewers (Claude by `[Claude Review]` body marker; Codex by
 current head SHA. Three outcomes:
 
 - **Both satisfied** → run `npm run verify` once more → `gh pr merge
-  --squash --delete-branch` → remove `in-progress-by-agent` from linked
-  issue.
+  --squash --delete-branch` → explicitly close linked issue as completed
+  → remove `in-progress-by-agent` from linked issue.
 - **Any change requested** → address all asks in one commit + push +
   ping `@codex review` (Codex doesn't auto-re-review on synchronize).
 - **Only one reviewer in** → no-op (wait for the other).

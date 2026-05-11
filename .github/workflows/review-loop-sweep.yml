@@ -149,13 +149,22 @@ jobs:
             # Merge — squash + delete branch (matches event-driven loop step 4a)
             gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
 
-            # Clear in-progress-by-agent on the linked issue (qa-runbook convention).
+            # Close the linked issue and clear in-progress-by-agent. The PR body
+            # uses GitHub's "Closes #N" convention, but we still close
+            # explicitly because sweep merges can otherwise leave the issue open
+            # while only removing the in-progress label.
             # Look for "Closes #N" or "Fixes #N" in the PR body.
             issue_num=$(echo "$pr_body" \
               | grep -ioE '(closes|fixes|resolves)[[:space:]]+#[0-9]+' \
               | head -1 \
               | grep -oE '[0-9]+' || true)
             if [ -n "$issue_num" ]; then
+              issue_state=$(gh issue view "$issue_num" --repo "$REPO" --json state --jq .state || echo "")
+              if [ "$issue_state" = "OPEN" ]; then
+                echo "Closing linked issue #$issue_num"
+                gh issue close "$issue_num" --repo "$REPO" --reason completed \
+                  --comment "Closed by merged agent PR #$pr."
+              fi
               echo "Clearing in-progress-by-agent on issue #$issue_num"
               gh issue edit "$issue_num" --repo "$REPO" \
                 --remove-label in-progress-by-agent || true
