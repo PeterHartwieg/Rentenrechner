@@ -530,7 +530,7 @@ Four standalone validators are exported for pre-flight input checking. Each retu
 | `grossMonthlyPayout` | `number` | Gross monthly payout. |
 | `netMonthlyPayout` | `number` | Net monthly payout after tax and KV/PV. |
 | `taxAndSvSavings` | `number` | Accumulated tax/SV savings during savings phase. |
-| `accumulationRiy` | `number` | Reduction in yield (decimal, e.g. 0.012 = 1.2% p.a.). |
+| `accumulationRiy` | `number` | PRIIPs/VVG-InfoV Reduction in Yield (Effektivkosten) — decimal annual pp reduction (e.g. `0.012` = 1.2 pp p.a.). Scope: accumulation phase only (investor payments → terminal capital); does not include retirement payout-phase fees or taxes. No display rounding applied. Regulatory basis: PRIIPs Delegated Regulation (EU) 2017/653 Annex VI/VII; VVG-InfoV § 2 Abs. 1 Nr. 9 + § 2 Abs. 6. |
 | `totalUserCost` | `number` | Total user cost over accumulation phase. |
 | `totalFees` | `number` | Total fees over accumulation phase. |
 
