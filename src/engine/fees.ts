@@ -1,9 +1,23 @@
 /**
  * Reduction in Yield (RIY) / Effektivkosten for the accumulation phase.
  *
- * Definition: the constant annual return reduction (in percentage points) that, when
- * subtracted from the gross return and applied with zero explicit fees, produces the
- * same terminal capital as the actual fee-laden product.
+ * Regulatory basis:
+ *   - PRIIPs Delegated Regulation (EU) 2017/653, Annex VI/VII: the summary cost
+ *     indicator is the difference between the cost-free scenario annual return and
+ *     the annual return from investor payments to benefit payments over the
+ *     recommended holding period.
+ *   - VVG-InfoV § 2 Abs. 1 Nr. 9 requires pre-contract life-insurance disclosure of
+ *     this percentage-point cost reduction; § 2 Abs. 6 ties it to Annex VI of
+ *     Delegated Regulation (EU) 2017/653.
+ *   - BaFin describes "Effektivkosten" as the impact of total policyholder costs on
+ *     the annual return for insurance-based investment products.
+ *
+ * Definition: the constant annual return reduction (as a decimal, e.g. 0.012 = 1.2 pp)
+ * that, when subtracted from the gross return and applied with zero explicit fees,
+ * produces the same terminal capital as the actual fee-laden product.
+ *
+ * Scope: accumulation phase only (investor payments → terminal capital). Does not
+ * include retirement payout-phase fees or taxes.
  *
  * Method: bisection on the beginning-of-period annuity future-value formula.
  * The closed-form FV is a good proxy for the simulation because the dominant fee
