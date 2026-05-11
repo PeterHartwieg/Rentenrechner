@@ -975,3 +975,25 @@ labels: [documentation]
 ## What would have helped
 
 - Stage 1 handoff could have noted the exact line range in the RUNBOOK code block where the new constraints belong — it named line 172 but the insertion point (before "Do NOT push…") is around line 224.
+
+---
+date: 2026-05-11T11:00:16Z
+issue: 135
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Code-review issue #135 was still present on `origin/main`: `src/features/assumptions/AssumptionsPanel.tsx:92` renders a stale "2026-Anpassung ausstehend" suffix while `src/rules/de2026.ts:214` documents the post-2026-07-01 Rentenwert and `src/rules/de2026.ts:226` exposes `42.52`.
+- `GermanRules` already carries `year`, but it does not carry structured per-field effective-date/source metadata. Stage 2 can either derive the label from `rules.year` or extend the rules shape if it wants stronger drift prevention.
+
+## What would have helped
+
+- A small display metadata convention for statutory rule rows would make Stage 2 less likely to hardcode another source suffix.
