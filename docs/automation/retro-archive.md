@@ -2010,3 +2010,26 @@ labels: [area:ui-only]
 ## What would have helped
 
 - Stage 1 handoff naming the exact fee field structure (`wrapperAssetFee` + `fundAssetFee`) would have saved one grep, though it was quick to verify.
+
+---
+date: 2026-05-11T20:10:00Z
+issue: 154
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- Stage 1's failing test assumed that `migrateV1ToV2(defaultAssumptions, ...)` produces a workspace with only `bav` and `etf` instances. In practice it creates instances for all 6 products (insurance is always-meaningful; basisrente/avd/riester have non-zero default contributions of 200). This made the `layers.map(l => l.productId).sort()` assertion fail with 6 products instead of 2. Resolved by filtering `productGroups` by `visibleProducts` — the test workspace explicitly sets `visibleProducts: ['bav', 'etf']`, so both the aggregate and the stack became consistent.
+
+## Learnings
+
+- `isEtfMeaningful()` and `isInsuranceMeaningful()` in `src/storage.ts:221,229` always return `true`, so `migrateV1ToV2` unconditionally creates ETF and insurance singletons for any v1 save. Tests that call `migrateV1ToV2(defaultProfile, defaultAssumptions)` and then only replace `bav` + `etf` arrays must also zero out `insurance`, `basisrente`, `altersvorsorgedepot`, and `riester` if they don't want those products simulated.
+- `portfolioLifecycle.ts:buildPortfolioLifecycleViews` now respects `workspace.baseline.assumptions.visibleProducts` as the filter for which product groups appear in both the aggregate result and `savingsStackRows`. This is semantically correct: Gesamtportfolio shows only the products currently being compared.
+- The `buildSavingsStackRows` helper co-locates product-layer balance logic alongside `aggregateLifecycleResults`, making the per-age totalBalance invariant (`layers.sum === aggregateRow.balance`) easy to verify.
+
+## What would have helped
+
+- A note in Stage 1's handoff that the test workspace inherits default product instances for all 6 products from `migrateV1ToV2`, so the `visibleProducts` filter was required for the test assertions to be internally consistent.
