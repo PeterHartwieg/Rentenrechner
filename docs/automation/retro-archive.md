@@ -1087,3 +1087,25 @@ labels: [bug, code-review]
 ## What would have helped
 
 - A named invariant in `AccumulationPolicy` docs clarifying whether `capitalInjections` imply cost basis, or whether `costBasisInjections` is the only basis signal.
+
+---
+date: 2026-05-11T11:23:00Z
+issue: 138
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review]
+---
+
+## Blockers
+
+- One transient `.git/config` lock appeared because author name/email were configured in parallel; the lock cleared immediately and the values were already set. Future runs should keep git config writes sequential.
+
+## Learnings
+
+- `validateTransferEvent` in `src/utils/scenarioSchema.ts` has a type-specific self-target guard only for `surrender_reinvest`; certified transfer validation only checks missing endpoints and illegal product pairings.
+- `src/utils/scenarioSchema.test.ts` already has a `validateTransferEvent` workspace-assumptions section that can reproduce validator issues by mutating singleton instances from `migrateV1ToV2`.
+
+## What would have helped
+
+- A small exported test helper for building workspaces with one transfer event would reduce repeated fixture mutation in validator tests.
