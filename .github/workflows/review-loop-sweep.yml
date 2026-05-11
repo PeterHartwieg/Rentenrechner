@@ -131,7 +131,9 @@ jobs:
             #   1. Branch up-to-date with main (preempts logical merge conflicts
             #      like #198 vs #199 where two PRs each green individually
             #      produce a broken main when squashed in sequence).
-            #   2. Cloudflare Workers build green on HEAD (the production deploy
+            #   2. Full `npm run verify` on the current head SHA (covers bot-pushed
+            #      fix commits that do not trigger pull_request CI).
+            #   3. Cloudflare Workers build green on HEAD (the production deploy
             #      gate; failed CF build = broken prod).
 
             # 1. Up-to-date check.
@@ -148,7 +150,28 @@ jobs:
               continue
             fi
 
-            # 2. CF Workers Builds check on HEAD.
+            verify_dir=$(mktemp -d)
+
+            echo "Running npm run verify on $head_sha before merge."
+            if ! (
+              git init "$verify_dir"
+              git -C "$verify_dir" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+              git -C "$verify_dir" fetch --depth=1 origin "$head_sha"
+              git -C "$verify_dir" checkout --detach FETCH_HEAD
+              cd "$verify_dir"
+              npm ci
+              npm --prefix workers/qa-submit ci
+              npm run verify
+            ); then
+              echo "Skip: npm run verify failed on $head_sha; merge deferred."
+              rm -rf "$verify_dir"
+              echo "::endgroup::"
+              continue
+            fi
+
+            rm -rf "$verify_dir"
+
+            # 3. CF Workers Builds check on HEAD.
             cf_bucket=$(gh pr checks "$pr" --repo "$REPO" --json name,bucket \
               --jq '[.[] | select(.name == "Workers Builds: rentenwiki")] | last | .bucket // "missing"' || true)
             if [ -z "$cf_bucket" ]; then

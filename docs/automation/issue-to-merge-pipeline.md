@@ -538,6 +538,10 @@ merges any agent PR > 20 min old where Claude approved + Codex never
 posted. **No Claude agent invocation** — pure `gh` + `jq` shell, so it's
 cost-zero on idle (just runner minutes for the cron tick).
 
+Before merging, the sweep also runs full `npm run verify` on the exact PR
+head SHA. This covers bot-pushed fix commits that may not trigger a fresh
+`pull_request` verify run, so sweep merges do not trust stale or missing CI.
+
 The 20-min threshold is the only tunable. Increase if Codex sometimes
 takes > 20 min on this repo; decrease if you want faster routine-PR
 turnaround.
