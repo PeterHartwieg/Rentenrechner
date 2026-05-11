@@ -1476,3 +1476,27 @@ labels: [area:copy]
 ## What would have helped
 
 - Nothing; Stage 1 handoff was precise and complete with exact line numbers for all three locations.
+
+---
+date: 2026-05-11T12:35:00Z
+issue: 144
+pr: 217
+stage: implement
+outcome: pr-opened
+labels: [enhancement, in-progress-by-agent, code-review]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The fix commit (`01d6789`) was already present on the branch when Stage 2 started — Stage 1 had implemented both the failing test (`c02fa12`) and the fix in a single session. Stage 2's role was to verify, push, and open the PR rather than implement from scratch.
+- `npm run verify` triggers `scripts/generate-og-images.mjs` as a prebuild step, which regenerates all `public/og/*.png` files. These PNGs are tracked in git, so running verify produces unstaged modifications that must be committed before pushing. Future implement runs should check for this class of generated-artifact drift after verify.
+- PR 217 was already opened by a prior pipeline run; `gh pr create` returns exit code 1 in that case, which is harmless — the PR body was already correct.
+- `RULES_YEAR` exported from `src/rules/index.ts` is the single swap-point pattern for the rules year: adding `de2027.ts` and changing one import line now automatically propagates to all public copy.
+
+## What would have helped
+
+- Stage 1 could note in the handoff whether it already committed the fix (not just the test), so Stage 2 knows immediately that its job is verify-and-ship rather than implement.
