@@ -1891,3 +1891,25 @@ labels: []
 ## What would have helped
 
 - Stage 1 could note whether the test file compiles cleanly with `tsc --noEmit`; flagging the cast as "will need updating in Stage 2" would save one iteration.
+
+---
+date: 2026-05-11T14:31:55Z
+issue: 209
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- The prompt's required verification command `gh issue view 209 --json labels --jq '.labels[].name' | grep -x ready-for-PR` failed in this Windows PowerShell worktree because `grep` is not installed. The label was applied and then verified with the PowerShell equivalent `Select-String -Pattern '^ready-for-PR$'`, which printed `ready-for-PR`. Stopped before processing a second issue per the prompt.
+
+## Learnings
+
+- `src/utils/csvExport.ts` still owns product-specific after-tax capital derivation inline in both compare and combine CSV paths, while `src/features/results/PrintReport.tsx` separately derives combine per-instance monthly net from `CombinedResult.byInstance`.
+- A narrow Stage 1 test can define the missing projection boundary without implementing it: `src/utils/exportProjection.test.ts` expects `projectCompareExportRows` and `projectCombineInstanceExportRows` to centralize compare and combine row shaping.
+
+## What would have helped
+
+- A PowerShell-compatible verification command in the versioned prompt, or a guaranteed Unix shell with `grep` on Windows automation runners.
