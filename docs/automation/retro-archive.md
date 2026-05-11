@@ -1244,3 +1244,25 @@ labels: [bug, area:seo]
 ## What would have helped
 
 - Knowing upfront that Vercel rewrites are "before filesystem" by default would have made the root cause immediately obvious without needing to trace the routing order.
+
+---
+date: 2026-05-11T12:00:00Z
+issue: 141
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- The versioned verification command `gh issue view 141 --json labels --jq '.labels[].name' | grep -x ready-for-PR` could not run in Windows PowerShell because `grep` is not available. A plain `gh issue view 141 --json labels --jq '.labels[].name'` showed `ready-for-PR` is present, but the prompt required stopping before a second issue when the explicit verification command did not print the label.
+
+## Learnings
+
+- `src/features/qa-feedback/context/collectWorkspaceContext.ts` still resolves dialog `aria-labelledby` IDREFs with `document.getElementById(...).textContent` and returns that value in `WorkspaceContext.flow`, which can put arbitrary modal title text into public QA issue context.
+- `src/features/qa-feedback/__tests__/context.test.ts` runs in a node-like environment with stubbed globals; importing `JSDOM` locally is enough for a focused DOM regression test without changing Vitest configuration.
+
+## What would have helped
+
+- Use a PowerShell-compatible verification command in `docs/automation/codex-stage1-investigator.md`, or require Git Bash for automation runs that use `grep`.
