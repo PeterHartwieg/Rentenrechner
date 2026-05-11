@@ -260,7 +260,7 @@ export function runComparison(
 
   // 15. Yearly rows + ETF payout rows (Full only)
   if (detailLevel === 'full') {
-    data.yearlyRows = toYearlyRowEntries(selectedResults)
+    data.yearlyRows = toYearlyRowEntries(selectedResults, simulation.bavFunding)
     data.etfPayoutRows = toEtfPayoutRowEntries(selectedResults)
   }
 
