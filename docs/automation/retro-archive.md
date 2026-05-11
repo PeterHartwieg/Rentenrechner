@@ -778,3 +778,25 @@ labels: [bug, needs-info]
 ## What would have helped
 
 - Keeping issue labels in sync after the earlier Stage 1 handoff would have avoided re-claiming an already-investigated and already-fixed issue.
+
+---
+date: 2026-05-11T09:52:10Z
+issue: 65
+pr: null
+stage: investigate
+outcome: needs-info
+labels: [bug, needs-info]
+---
+
+## Blockers
+
+- None. The only command failure was the first targeted Vitest run before dependencies were installed; `npm ci` resolved the missing `vitest` / Vite plugin imports.
+
+## Learnings
+
+- Issue #65 is already fixed on `origin/main`: `BaseProductResult.totalContributionsBeforeFees` exists in `src/domain/results.ts`, `buildProductResult` populates it from `effectiveProjection.totalContributionsBeforeFees`, and `computePavTaxableAnnual` in `src/engine/portfolioCombine.ts` uses it instead of `totalProductContributions`.
+- The regression test already lives in `src/engine/portfolioCombine.test.ts` under `combinePortfolio — regression #65: pAV gain ratio uses totalContributionsBeforeFees`; after dependency install, `npx vitest run src/engine/portfolioCombine.test.ts` passed with 17 tests.
+
+## What would have helped
+
+- The issue still had `ready-for-agent` even though the fix and regression were already present on main; clearing that label earlier would have avoided a Stage 1 reclaim.
