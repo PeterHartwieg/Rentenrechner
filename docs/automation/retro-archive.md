@@ -1778,3 +1778,26 @@ labels: [enhancement, ready-for-agent]
 ## What would have helped
 
 - A repo-local source policy for regulatory citations would make these compliance-documentation issues more mechanical.
+
+---
+date: 2026-05-11T14:10:00Z
+issue: 170
+pr: 224
+stage: implement
+outcome: pr-opened
+labels: [area:docs]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue was a pure documentation/compliance clarification — no engine logic changed. The three touch-points were `src/engine/fees.ts` (block comment), `src/domain/results.ts:94` (inline comment), and `src/api/README.md:533` (table row).
+- The `(pp)` annotation in `results.ts` was technically wrong: `accumulationRiy` is a decimal ratio (0.012), not a percentage-point literal (1.2). Small but meaningful for API consumers who might multiply by 100 themselves.
+- `npm run verify` generates OG images as a prebuild step, leaving 11 untracked files in `public/og/`. These are normal build artifacts — do not commit them alongside doc-only PRs.
+
+## What would have helped
+
+- Stage 1 handoff already identified all three files and confirmed TDD-skip with passing tests — implementation was straightforward.
