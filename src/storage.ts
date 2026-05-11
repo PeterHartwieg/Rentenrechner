@@ -26,9 +26,9 @@ import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from './storageKeys'
 // Read order: both loadSavedState and loadSavedWorkspace prefer STORAGE_KEY_V2,
 // then fall back to STORAGE_KEY_V1 with v1→v2 migration applied.
 //
-// The compare-mode writer (useCalculatorState) still writes to STORAGE_KEY_V1.
-// useCalculatorState must be updated to call saveWorkspace() and removed from
-// the v1 write path once the full workspace edit-flow is complete.
+// The compare-mode writer (useCalculatorState) intentionally keeps writing to
+// STORAGE_KEY_V1. Combine/workspace mode writes STORAGE_KEY_V2 via saveWorkspace().
+// The dual-key coexistence is the stable, shipped architecture — not a migration debt.
 // ---------------------------------------------------------------------------
 // `STORAGE_KEY_V1` / `STORAGE_KEY_V2` live in `./storageKeys.ts` so that
 // `useRoute.detectSavedMode` (called from the initial-paint code path of
@@ -631,9 +631,6 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
   // v1 payload: { version: 1, profile: {...}, assumptions: {...} }
   if (typeof obj.version === 'number' && obj.version !== CURRENT_VERSION_V1) return null
 
-  // Run v1→v2 migration. The migrated workspace is built entirely from
-  // validated defaults + migrated fields, so validateWorkspace is not called
-  // here — the migration itself is the correctness guarantee.
   if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
   if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
 
@@ -641,8 +638,11 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
     obj.profile as Record<string, unknown>,
     obj.assumptions as Record<string, unknown>,
   )
-  if (v1migrated) backfillWorkspaceTransferEvents(v1migrated)
-  return v1migrated
+  if (!v1migrated) return null
+  const v1validated = validateWorkspace(v1migrated)
+  if (!v1validated) return null
+  backfillWorkspaceTransferEvents(v1validated)
+  return v1validated
 }
 
 // ---------------------------------------------------------------------------
@@ -783,10 +783,12 @@ export function loadSavedWorkspace(): Workspace | null {
     if (!obj.profile || typeof obj.profile !== 'object' || Array.isArray(obj.profile)) return null
     if (!obj.assumptions || typeof obj.assumptions !== 'object' || Array.isArray(obj.assumptions)) return null
 
-    return migrateV1ToV2(
+    const v1migrated = migrateV1ToV2(
       obj.profile as Record<string, unknown>,
       obj.assumptions as Record<string, unknown>,
     )
+    if (!v1migrated) return null
+    return validateWorkspace(v1migrated)
   } catch {
     return null
   }
@@ -795,9 +797,8 @@ export function loadSavedWorkspace(): Workspace | null {
 /**
  * Save a Workspace to localStorage using the v2 key.
  * Called by portfolioState (combine-mode). The compare-mode write path
- * (useCalculatorState) still writes v1-shaped JSON to STORAGE_KEY_V1 and
- * must be updated to call this function once the full workspace edit-flow
- * is complete.
+ * (useCalculatorState) intentionally writes v1-shaped JSON to STORAGE_KEY_V1 —
+ * dual-key coexistence is the stable, shipped architecture.
  */
 export function saveWorkspace(workspace: Workspace): void {
   try {

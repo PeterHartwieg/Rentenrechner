@@ -50,6 +50,27 @@ describe('calculateBavFundingApi', () => {
     expect(d.monthlyNetCost).toBeGreaterThan(0)
     expect(d.monthlyNetCost).toBeLessThan(d.monthlyGrossConversion)
   })
+
+  it('exposes statutory employer subsidy uncapped amount, cap, and cap flag', () => {
+    const result = calculateBavFundingApi({
+      profile: { ...defaultProfile, grossSalaryYear: 150_000 },
+      bav: {
+        ...defaultAssumptions.bav,
+        monthlyGrossConversion: 200,
+        statutoryMinimumSubsidyEnabled: true,
+        contractualMatchPercent: 0,
+        contractualFixedMonthly: 0,
+      },
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const d = result.data
+    expect(d.monthlyStatutoryEmployerSubsidyUncapped).toBeCloseTo(30, 2)
+    expect(d.monthlyStatutoryEmployerSubsidyCap).toBeCloseTo(0, 2)
+    expect(d.monthlyStatutoryEmployerSubsidyCapApplied).toBe(true)
+    expect(d.monthlyStatutoryEmployerSubsidy).toBeCloseTo(0, 2)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -127,6 +148,25 @@ describe('calculateAvdFundingApi', () => {
     expect(d.basicAllowanceAnnual).toBeGreaterThan(0)
     expect(d.totalAllowanceAnnual).toBeGreaterThan(0)
   })
+
+  it('uses maritalStatus for AVD Guenstigerpruefung', () => {
+    const single = calculateAvdFundingApi({
+      profile: { ...defaultProfile, maritalStatus: 'single' } as never,
+      altersvorsorgedepot: defaultAvdAssumptions,
+    })
+    const married = calculateAvdFundingApi({
+      profile: { ...defaultProfile, maritalStatus: 'married' } as never,
+      altersvorsorgedepot: defaultAvdAssumptions,
+    })
+
+    expect(single.ok).toBe(true)
+    expect(married.ok).toBe(true)
+    if (!single.ok || !married.ok) return
+
+    expect(married.data.guenstigerpruefungBenefitAnnual).not.toBe(
+      single.data.guenstigerpruefungBenefitAnnual,
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -154,6 +194,25 @@ describe('calculateRiesterFundingApi', () => {
     // Default profile is directly eligible → Grundzulage should be positive
     expect(d.grundzulageAnnual).toBeGreaterThan(0)
     expect(d.totalAllowanceAnnual).toBeGreaterThan(0)
+  })
+
+  it('uses maritalStatus for Riester Guenstigerpruefung', () => {
+    const single = calculateRiesterFundingApi({
+      profile: { ...defaultProfile, maritalStatus: 'single' } as never,
+      riester: defaultRiesterAssumptions,
+    })
+    const married = calculateRiesterFundingApi({
+      profile: { ...defaultProfile, maritalStatus: 'married' } as never,
+      riester: defaultRiesterAssumptions,
+    })
+
+    expect(single.ok).toBe(true)
+    expect(married.ok).toBe(true)
+    if (!single.ok || !married.ok) return
+
+    expect(married.data.guenstigerpruefungBenefitAnnual).not.toBe(
+      single.data.guenstigerpruefungBenefitAnnual,
+    )
   })
 })
 

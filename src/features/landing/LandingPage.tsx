@@ -18,6 +18,7 @@ import {
   resolveTopicPreselection,
 } from '../../seo/publicRouteRegistry'
 import { HUB_CLUSTERS } from './hubClusters'
+import { RULES_YEAR } from '../../rules'
 
 /**
  * LandingChoice — payload fired by the two CTA buttons (and by the
@@ -194,7 +195,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
       {/* Visible "Stand" line for JSON-LD `dateModified` (Google structured-data
           guideline: every JSON-LD field must have a visible counterpart). */}
       <p className="landing-stand">
-        Stand: {route.dateModified} · Werte für Deutschland 2026
+        Stand: {route.dateModified} · Werte für Deutschland {RULES_YEAR}
       </p>
 
       <LegalFooter navigate={navigateOrNoop} />

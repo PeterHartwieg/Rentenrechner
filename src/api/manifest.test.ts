@@ -26,6 +26,13 @@ describe('getManifest', () => {
     expect(result.data.supportedRuleYears).toContain(activeRules.year)
   })
 
+  it('documents that supported rule years are retained for archive re-runs', () => {
+    expect(result.data.ruleYearRetention).toEqual({
+      policy: 'never_remove_supported_years',
+      text: 'Rule years are never removed once added to supportedRuleYears.',
+    })
+  })
+
   it('all product IDs from registry are present', () => {
     for (const id of PRODUCT_IDS) {
       expect(result.data.productIds).toContain(id)

@@ -44,6 +44,12 @@ export interface BavFundingResponse {
   monthlyNetCost: number
   monthlyTaxAndSvSavings: number
   monthlyStatutoryEmployerSubsidy: number
+  // #168: uncapped 15 % candidate before the employer-SV-savings cap.
+  monthlyStatutoryEmployerSubsidyUncapped: number
+  // #168: employer SV savings that form the statutory subsidy cap.
+  monthlyStatutoryEmployerSubsidyCap: number
+  // #168: true when the subsidy was reduced by the cap.
+  monthlyStatutoryEmployerSubsidyCapApplied: boolean
   monthlyContractualEmployerContribution: number
   monthlyEmployerContribution: number
   estimatedMonthlyGrvReduction: number
@@ -89,6 +95,9 @@ export function calculateBavFundingApi(
     monthlyNetCost: result.monthlyNetCost,
     monthlyTaxAndSvSavings: result.monthlyTaxAndSvSavings,
     monthlyStatutoryEmployerSubsidy: result.monthlyStatutoryEmployerSubsidy,
+    monthlyStatutoryEmployerSubsidyUncapped: result.monthlyStatutoryEmployerSubsidyUncapped,
+    monthlyStatutoryEmployerSubsidyCap: result.monthlyStatutoryEmployerSubsidyCap,
+    monthlyStatutoryEmployerSubsidyCapApplied: result.monthlyStatutoryEmployerSubsidyCapApplied,
     monthlyContractualEmployerContribution: result.monthlyContractualEmployerContribution,
     monthlyEmployerContribution: result.monthlyEmployerContribution,
     estimatedMonthlyGrvReduction: result.estimatedMonthlyGrvReduction,
@@ -281,10 +290,12 @@ export function calculateAvdFundingApi(
   const avdCheck = requireObject(request.altersvorsorgedepot, 'altersvorsorgedepot')
   if (avdCheck) return error([avdCheck], meta, warnings)
 
+  const filingStatus = request.profile.maritalStatus === 'married' ? 'married' : 'single'
+
   const engineResult = safeEngineCall(
     () => {
       const salaryResult = calculateSalaryResult(request.profile as unknown as PersonalProfile, rules)
-      return calculateAvdFunding(rules, salaryResult, request.altersvorsorgedepot as unknown as AltersvorsorgedepotAssumptions)
+      return calculateAvdFunding(rules, salaryResult, request.altersvorsorgedepot as unknown as AltersvorsorgedepotAssumptions, { filingStatus })
     },
     meta,
   )
@@ -350,10 +361,12 @@ export function calculateRiesterFundingApi(
   const riesterCheck = requireObject(request.riester, 'riester')
   if (riesterCheck) return error([riesterCheck], meta, warnings)
 
+  const filingStatus = request.profile.maritalStatus === 'married' ? 'married' : 'single'
+
   const engineResult = safeEngineCall(
     () => {
       const salaryResult = calculateSalaryResult(request.profile as unknown as PersonalProfile, rules)
-      return calculateRiesterFunding(rules, salaryResult, request.riester as unknown as RiesterAssumptions, request.profile as unknown as PersonalProfile)
+      return calculateRiesterFunding(rules, salaryResult, request.riester as unknown as RiesterAssumptions, request.profile as unknown as PersonalProfile, { filingStatus })
     },
     meta,
   )

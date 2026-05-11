@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   loop:
-    if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') }}
+    if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') || startsWith(github.event.pull_request.head.ref, 'automation/retro-curate-') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head
@@ -33,7 +33,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          MAX_REVIEW_LOOP_COMMITS: '3'
+          MAX_REVIEW_LOOP_COMMITS: '10'
         run: node scripts/automation/review-loop-decision.mjs
 
       - name: Setup Node
@@ -58,6 +58,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           ISSUE_NUMBER: ${{ steps.route.outputs.issue_number }}
         shell: bash
@@ -70,6 +72,17 @@ jobs:
           if [ "$mergeable_state" = "BEHIND" ]; then
             echo "Branch is BEHIND main — updating branch and deferring merge."
             gh pr update-branch "$PR_NUMBER"
+            exit 0
+          fi
+          if [ "$mergeable_state" = "DIRTY" ]; then
+            echo "Branch is DIRTY — dispatching merge-conflict repair workflow and deferring merge."
+            gh workflow run resolve-merge-conflict.yml \
+              -f pr_number="$PR_NUMBER" \
+              -f pr_title="$PR_TITLE" \
+              -f head_sha="$PR_HEAD_SHA" \
+              -f head_ref="$PR_BRANCH"
+            gh pr comment "$PR_NUMBER" --body \
+              "[conflict-fix] Branch is not cleanly mergeable with main. Dispatched resolve-merge-conflict.yml for \`$PR_HEAD_SHA\`."
             exit 0
           fi
 
@@ -175,5 +188,28 @@ jobs:
             - Never use `gh pr review` from this workflow.
             - Never push to `main`, force-push, amend, or broaden scope.
             - Do NOT post `@codex review`; bot mentions cannot trigger Codex re-review.
-            - If a blocker is unaddressable, comment on the PR, label the linked issue
-              `ready-for-human`, remove `in-progress-by-agent`, and stop.
+            - If a blocker is unaddressable, comment on the PR. If there is a linked
+              issue, label it `ready-for-human` and remove `in-progress-by-agent`;
+              retro-curation PRs usually have no linked issue.
+
+      - name: Dispatch post-fix checks
+        if: steps.route.outputs.decision == 'fix'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          new_head_sha=$(gh pr view "$PR_NUMBER" --json headRefOid --jq .headRefOid)
+          echo "Dispatching post-fix verify and Claude review for PR #$PR_NUMBER at $new_head_sha"
+          gh workflow run pr-verify.yml \
+            -f pr_number="$PR_NUMBER" \
+            -f head_sha="$new_head_sha" \
+            -f head_ref="$PR_BRANCH"
+          gh workflow run claude-review.yml \
+            -f pr_number="$PR_NUMBER" \
+            -f pr_title="$PR_TITLE" \
+            -f head_sha="$new_head_sha" \
+            -f head_ref="$PR_BRANCH"

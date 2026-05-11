@@ -77,6 +77,7 @@ export function validateProfile(profile: unknown): ApiDiagnostic[] {
     pkvMonthlyPremium,
     pPVMonthlyPremium,
     desiredNetMonthlyPension,
+    maritalStatus,
   } = profile
 
   if (!isFiniteNumber(age) || age < 18 || age > 99) {
@@ -143,6 +144,18 @@ export function validateProfile(profile: unknown): ApiDiagnostic[] {
   if (desiredNetMonthlyPension !== undefined) {
     if (!isFiniteNumber(desiredNetMonthlyPension) || desiredNetMonthlyPension < 0) {
       ds.push(diag('profile.desiredNetMonthlyPension', 'INVALID_RANGE', 'desiredNetMonthlyPension must be a non-negative finite number when provided.'))
+    }
+  }
+
+  // maritalStatus is optional — only validate when present.
+  const VALID_MARITAL_STATUSES = ['single', 'married', 'divorced', 'widowed']
+  if (maritalStatus !== undefined) {
+    if (!VALID_MARITAL_STATUSES.includes(maritalStatus as string)) {
+      ds.push(diag(
+        'profile.maritalStatus',
+        'INVALID_VALUE',
+        `maritalStatus must be one of: ${VALID_MARITAL_STATUSES.join(', ')}.`,
+      ))
     }
   }
 

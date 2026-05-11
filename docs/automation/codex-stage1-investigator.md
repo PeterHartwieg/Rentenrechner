@@ -20,17 +20,19 @@ Run the following loop up to two times. Stop early if there is no eligible
 issue, the current run has become long enough that quality would suffer, or the
 repository state is uncertain.
 
-1. Verify the working tree is clean, then refresh `main` from `origin/main`
-   without writing `.git/FETCH_HEAD`:
+1. Verify the working tree is clean, then refresh `origin/main` without writing
+   `.git/FETCH_HEAD`. Stage 1 normally runs in an isolated detached worktree,
+   so reset that worktree to the refreshed `origin/main` instead of checking
+   out local `main`:
 
    ```bash
    git status --short
    git fetch --no-write-fetch-head origin +refs/heads/main:refs/remotes/origin/main
-   git checkout main
-   git merge --ff-only origin/main
+   git checkout --detach origin/main
+   git reset --hard origin/main
    ```
 
-   If fetch/merge fails, stop before claiming any issue. Do not fall back to a
+   If fetch/reset fails, stop before claiming any issue. Do not fall back to a
    plain `git fetch origin main`, because concurrent local Git activity can
    leave `.git/FETCH_HEAD` unavailable.
 2. Use `gh issue list` and `gh issue view` to find the oldest open non-PR
@@ -117,9 +119,9 @@ repository state is uncertain.
     RETRO_STAGE=investigate ISSUE_NUMBER=<N> RETRO_ENTRY_PATH=.automation-retro-entry.md node scripts/automation/append-retro.mjs
     ```
 
-    The append script returns the repo to `main`. Start the next loop iteration
-    from a fresh `main` pull. Do not carry issue-specific assumptions from one
-    issue into the next.
+    The append script returns the repo to a fresh detached `origin/main`
+    worktree state. Start the next loop iteration from step 1. Do not carry
+    issue-specific assumptions from one issue into the next.
 
 ## Handoff Comment
 

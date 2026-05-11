@@ -3,6 +3,7 @@ import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import RentenluckeBody from './rentenluecke-rechner.body.mdx'
 import './publicPages.css'
+import { RULES_YEAR } from '../../rules'
 
 const ROUTE = publicRouteRegistry['/rentenluecke-rechner']
 
@@ -41,7 +42,7 @@ export function RentenluckeRechnerPage() {
         <article className="public-article">
           <h1>{ROUTE.h1}</h1>
           <p className="public-summary">{ROUTE.summary}</p>
-          <p className="public-stand">Redaktion: RentenWiki.de · Stand: {ROUTE.dateModified} · Werte für Deutschland 2026</p>
+          <p className="public-stand">Redaktion: RentenWiki.de · Stand: {ROUTE.dateModified} · Werte für Deutschland {RULES_YEAR}</p>
 
           <a href={ROUTE.calculatorCta.href} className="public-cta">
             {ROUTE.calculatorCta.label}

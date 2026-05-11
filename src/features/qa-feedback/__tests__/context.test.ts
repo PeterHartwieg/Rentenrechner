@@ -22,6 +22,17 @@ const localStorageMock = {
   key: vi.fn(),
 }
 
+function fakeElement(
+  attrs: Record<string, string> = {},
+  parentElement: Element | null = null,
+): Element {
+  return {
+    getAttribute: vi.fn((name: string) => attrs[name] ?? null),
+    hasAttribute: vi.fn((name: string) => Object.hasOwn(attrs, name)),
+    parentElement,
+  } as unknown as Element
+}
+
 vi.stubGlobal('localStorage', localStorageMock)
 vi.stubGlobal('window', { location: { search: '' } })
 
@@ -89,5 +100,26 @@ describe('collectWorkspaceContext — flow detection (DOM)', () => {
   it('returns undefined flow when pinnedElement is null', () => {
     const ctx = collectWorkspaceContext({ pinnedElement: null })
     expect(ctx.flow).toBeUndefined()
+  })
+
+  it('does not leak aria-labelledby text from dialog labels into QA context', () => {
+    const previousDocument = globalThis.document
+    const root = fakeElement()
+    const dialog = fakeElement({ role: 'dialog', 'aria-labelledby': 'contract-name' }, root)
+    const target = fakeElement({}, dialog)
+
+    try {
+      vi.stubGlobal('document', {
+        documentElement: root,
+        getElementById: vi.fn(() => ({
+          textContent: 'Private Vertragsnotiz: Alice Musterfrau',
+        })),
+      })
+      const ctx = collectWorkspaceContext({ pinnedElement: target })
+
+      expect(ctx.flow).toBe('dialog')
+    } finally {
+      vi.stubGlobal('document', previousDocument)
+    }
   })
 })
