@@ -822,3 +822,25 @@ labels: [enhancement, needs-info]
 ## What would have helped
 
 - A follow-up comment on #86 clarifying whether the remaining desired work is the broader export projection architecture, after the concrete AVD/Riester CSV gap had already landed.
+
+---
+date: 2026-05-11T09:57:33Z
+issue: 110
+pr: null
+stage: investigate
+outcome: no-fix-needed
+labels: [bug, needs-info]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue #110's prior Stage 1 handoff was stale on current `origin/main`: `BreakEvenChart.tsx` already applies `lifecycle-legend__item--baseline` to GRV legend entries, `BreakEvenChart.css` defines the modifier, and `BreakEvenChart.test.tsx` contains the gh#110 regression coverage.
+- For QA issues that have prior agent handoff comments but still carry `ready-for-agent`, inspect the current branch before adding another failing test. The targeted test suite (`npx vitest run src/features/results/BreakEvenChart.test.tsx`) passing with 11 tests confirmed no Stage 2 handoff was warranted.
+
+## What would have helped
+
+- Removing `ready-for-agent` when the earlier #110 fix landed, or adding a maintainer comment describing any remaining distinct visual concern.
