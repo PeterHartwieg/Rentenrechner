@@ -1199,3 +1199,25 @@ labels: [bug]
 ## What would have helped
 
 - Stage 1 handoff could have flagged that the pre-existing directional test at line 431 was relying on the buggy semantics, reducing the need for re-analysis.
+
+---
+date: 2026-05-11T11:40:33Z
+issue: 140
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- The prompt's literal verification command `gh issue view 140 --json labels --jq '.labels[].name' | grep -x ready-for-PR` could not run because `grep` is not installed in this PowerShell environment. A direct `gh issue view 140 --json labels --jq '.labels[].name'` check did show `ready-for-PR`.
+
+## Learnings
+
+- `vercel.json` still contains a blanket clean-URL rewrite to `/index.html`, while `scripts/prerender.mjs` writes public routes to `dist/<route>/index.html`; a config-level Vitest regression can catch this without implementing the deployment fix in Stage 1.
+- For Windows Stage 1 runs, the versioned prompt's Unix `grep` verification is brittle; PowerShell has no `grep` command in this environment.
+
+## What would have helped
+
+- A Windows-compatible ready-for-PR verification command in `docs/automation/codex-stage1-investigator.md`.
