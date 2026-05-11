@@ -1359,3 +1359,26 @@ labels: [enhancement, code-review, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - The versioned prompt's verification command needs a PowerShell-compatible fallback or should invoke Git Bash's `grep` explicitly on Windows runners.
+
+---
+date: 2026-05-11T12:31:00Z
+issue: 145
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Code-review issues require `git log --oneline --all -- <file>` before reading named files; for #145 that showed recent Datenschutz and registry edits but no fix for the duplicated review date.
+- `src/features/legal/DatenschutzPage.test.tsx` already covers legal-page compliance details and is the right place for DOM-level regression tests on the privacy page.
+- Public topic pages generally expose registry `dateModified` as an ISO `Stand: YYYY-MM-DD` line; using that same contract for `/datenschutz` makes the registry the single source of truth and keeps the test capable of failing on drift.
+
+## What would have helped
+
+- A small shared formatter/constant for legal-page `Stand` lines would remove ambiguity between prose month/year and registry ISO date expectations.
