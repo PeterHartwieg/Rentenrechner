@@ -1382,3 +1382,27 @@ labels: [bug, code-review]
 ## What would have helped
 
 - A small shared formatter/constant for legal-page `Stand` lines would remove ambiguity between prose month/year and registry ISO date expectations.
+
+---
+date: 2026-05-11T12:29:00Z
+issue: 144
+pr: 217
+stage: implement
+outcome: pr-opened
+labels: [area:copy]
+---
+
+## Blockers
+
+- The test regex `/Werte(?:\s+f[üu]r\s+Deutschland|\s+Stand)?\s+2026/` also matches bare `Werte 2026` (optional middle group). `rentenluecke-rechner.body.mdx` had two additional inline occurrences (`gesetzliche Werte 2026`, `Werte 2026 (siehe…)`) beyond the top disclaimer — required extra passes.
+
+## Learnings
+
+- `GermanRules` (in `src/domain/rules.ts`) exposes a `year: number` field, so `activeRules.year` is the right derivation point — no magic constant needed.
+- MDX files support ESM `import` statements at the top of the file; JSX expressions `{RULES_YEAR}` work inside Markdown italic spans (`*...*`) and blockquote lines without issues.
+- Because `src/rules/index.ts` used a bare re-export (`export { de2026Rules as activeRules } from './de2026'`), deriving `RULES_YEAR` required switching to an import-then-export pattern.
+- The test scans only files ending in `Page.tsx` or `.body.mdx` plus `LandingPage.tsx`; the body file `altersvorsorgeprodukte-vergleichen.body.mdx` was not in scope because its only `2026` references don't match the pattern.
+
+## What would have helped
+
+- Stage 1 handoff could have flagged the extra `Werte 2026` occurrences in `rentenluecke-rechner.body.mdx` beyond the top disclaimer, saving one debug loop.
