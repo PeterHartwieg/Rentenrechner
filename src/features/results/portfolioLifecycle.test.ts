@@ -92,4 +92,34 @@ describe('buildPortfolioLifecycleViews', () => {
       .reduce((sum, view) => sum + view.result.capitalAtRetirement, 0)
     expect(portfolio.result.capitalAtRetirement).toBeCloseTo(productSum, 2)
   })
+
+  it('exposes product-colored savings-phase stack rows for Gesamtportfolio only', () => {
+    const { views, ws } = buildViews()
+    const portfolio = views.find((view) => view.id === PORTFOLIO_LIFECYCLE_ID)!
+    const productView = views.find((view) => view.id === 'bav')!
+
+    const stackRows = (
+      portfolio as unknown as {
+        savingsStackRows?: Array<{
+          age: number
+          totalBalance: number
+          layers: Array<{ productId: string; balance: number }>
+        }>
+      }
+    ).savingsStackRows
+
+    expect(stackRows).toBeDefined()
+    expect(productView).not.toHaveProperty('savingsStackRows')
+
+    for (const row of stackRows ?? []) {
+      expect(row.age).toBeGreaterThan(ws.baseline.profile.age)
+      expect(row.age).toBeLessThanOrEqual(ws.baseline.profile.retirementAge)
+      expect(row.layers.some((layer) => layer.productId === 'grv')).toBe(false)
+      expect(row.layers.map((layer) => layer.productId).sort()).toEqual(['bav', 'etf'])
+      expect(row.layers.reduce((sum, layer) => sum + layer.balance, 0)).toBeCloseTo(row.totalBalance, 2)
+
+      const aggregateRow = portfolio.result.rows.find((point) => point.age === row.age)!
+      expect(row.totalBalance).toBeCloseTo(aggregateRow.balance, 2)
+    }
+  })
 })
