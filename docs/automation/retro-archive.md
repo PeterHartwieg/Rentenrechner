@@ -1638,3 +1638,27 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A PowerShell-native label verification command in the automation prompt, or a bundled `grep`, would avoid false blocker handling on Windows.
+
+---
+date: 2026-05-11T13:47:00Z
+issue: 166
+pr: 221
+stage: implement
+outcome: pr-opened
+labels: [bug, area:api]
+---
+
+## Blockers
+
+- `Number.isInteger(taxClass)` does not narrow `unknown` to `number` in tsc project-references mode (`tsc -b`), causing a build error. Used the existing `isInt()` type guard from `src/domain/validation/primitives.ts` instead — it is both a runtime check and a TypeScript type predicate.
+- An existing test in `src/utils/scenarioSchema.test.ts` ("rejects taxClass !== 1") tested the old-behavior boundary (reject 2+), so it broke after widening the validation. Updated it to test the new boundary (reject 0 and 7) and added a positive case for 1–6.
+
+## Learnings
+
+- The tax-class dispatch lives entirely in `calculateSalaryResult` (`src/engine/salary.ts:203`). Three paths suffice: class III uses `2 × calculateIncomeTax2026(income/2, rules)` plus `solidarityFilingStatus = 'married'`; classes V/VI shift taxable income up by `rules.incomeTax.basicAllowance` before calling the standard formula (removes the Grundfreibetrag zero-tax zone); all other classes use the existing single-filer path.
+- `calculateBavFunding` calls `calculateSalaryResult` twice (with/without bAV). Tax-class dispatch propagates automatically through the marginal-rate difference, so no changes were needed in `src/api/funding.ts` or `src/api/tax.ts`.
+- `scenarioSchema.ts:validateProfile` (storage/share-URL load path) also hardcoded `taxClass !== 1`. Always grep for all usages of a narrowed type before widening it.
+
+## What would have helped
+
+- The Stage 1 handoff named `src/api/README.md:481` as a documentation target but the file was not in scope for a failing test. Skipping it kept the PR minimal; documentation can follow separately.
