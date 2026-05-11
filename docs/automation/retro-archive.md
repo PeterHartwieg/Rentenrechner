@@ -1153,3 +1153,26 @@ labels: [bug, code-review, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - The versioned prompt should use a PowerShell-portable verification command or invoke a known shell that includes `grep`.
+
+---
+date: 2026-05-11T11:30:00Z
+issue: 137
+pr: 211
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- Initial attempt added `costBasisInjections` for certified inbound transfers in `portfolioTransfer.ts` to maintain cost-basis tracking after removing `injectedPrincipal += inj`. This broke an existing test at `src/engine/portfolioTransfer.test.ts:523` that explicitly asserts `tgtPolicy!.costBasisInjections` is `undefined` for certified transfers ("Tax-neutral — no costBasisInjections"). Reverted that change; the one-line deletion in `accumulation.ts` was sufficient.
+
+## Learnings
+
+- `capitalInjections` and `costBasisInjections` now have clean single-responsibility semantics: capital-only vs cost-basis-only. The existing passing test at `accumulation.test.ts:151` ("costBasisInjections increase totalContributionsBeforeFees by the injected principal") checks a *delta* (withCB minus withoutCB), so it passes under both the old and new semantics — making it a weaker oracle than the new absolute-value test added for issue #137.
+- `portfolioTransfer.test.ts:523` explicitly guards the certified-transfer invariant ("Tax-neutral — no costBasisInjections"). Always check `portfolioTransfer.test.ts` when changing transfer-event emission logic.
+- The Stage 1 handoff offered two fix sites (`accumulation.ts:212` and `portfolioTransfer.ts:350`). The correct fix is `accumulation.ts` only because the failing test calls `projectAccumulation` directly with both arrays set — `portfolioTransfer.ts` alone cannot fix a direct accumulation-layer test.
+
+## What would have helped
+
+- A note in the handoff confirming that certified transfers intentionally have no `costBasisInjections` (the test comment says so, but it's easy to miss when evaluating the side-effects of changing `capitalInjections` semantics).
