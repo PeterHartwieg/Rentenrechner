@@ -5,6 +5,7 @@
  */
 
 import type { ProductResult, SimulationResult, EtfProductResult } from '../domain'
+import type { BavFundingResult } from '../domain/products/bav'
 import type { StatutoryPensionResult } from '../domain/products/grv'
 import type { MonteCarloResult } from '../engine/monteCarlo'
 
@@ -72,6 +73,11 @@ export interface YearlyRowEntry {
   contribution: number
   fees: number
   returnAmount: number
+  // bAV-only funding breakdown (present when productId === 'bav')
+  agZuschussMonthly?: number
+  lohnsteuerErsparnis?: number
+  svVorteilMonthly?: number
+  employeeContributionMonthly?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -205,8 +211,15 @@ export function toFundingSummaries(sim: SimulationResult): FundingSummaries {
  * For each product result, iterates its `.rows` array and maps each
  * `YearlyProjection` to a `YearlyRowEntry`. The `returnAmount` is derived
  * as the year-over-year balance change minus contributions plus fees.
+ *
+ * When `bavFunding` is provided, bAV rows are enriched with the funding
+ * breakdown fields (`agZuschussMonthly`, `lohnsteuerErsparnis`,
+ * `svVorteilMonthly`, `employeeContributionMonthly`).
  */
-export function toYearlyRowEntries(results: ProductResult[]): YearlyRowEntry[] {
+export function toYearlyRowEntries(
+  results: ProductResult[],
+  bavFunding?: BavFundingResult,
+): YearlyRowEntry[] {
   const entries: YearlyRowEntry[] = []
   for (const r of results) {
     let prevBalance = 0
@@ -214,7 +227,7 @@ export function toYearlyRowEntries(results: ProductResult[]): YearlyRowEntry[] {
       const contribution = row.yearlyProductContribution + row.yearlyEmployerContribution
       // Return = balance change + fees - contribution
       const returnAmount = row.balance - prevBalance - contribution + row.yearlyFees
-      entries.push({
+      const entry: YearlyRowEntry = {
         productId: r.productId,
         scenarioId: r.scenarioId,
         year: row.year,
@@ -224,7 +237,16 @@ export function toYearlyRowEntries(results: ProductResult[]): YearlyRowEntry[] {
         contribution,
         fees: row.yearlyFees,
         returnAmount,
-      })
+      }
+      if (r.productId === 'bav' && bavFunding !== undefined) {
+        const { salaryWithoutBav: without, salaryWithBav: with_ } = bavFunding
+        entry.agZuschussMonthly = bavFunding.monthlyEmployerContribution
+        entry.employeeContributionMonthly = bavFunding.monthlyNetCost
+        entry.lohnsteuerErsparnis =
+          (without.incomeTax - with_.incomeTax + without.solidarityTax - with_.solidarityTax) / 12
+        entry.svVorteilMonthly = (without.social.total - with_.social.total) / 12
+      }
+      entries.push(entry)
       prevBalance = row.balance
     }
   }
