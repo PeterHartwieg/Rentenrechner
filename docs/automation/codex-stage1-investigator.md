@@ -23,8 +23,17 @@ repository state is uncertain.
 1. Refresh `main` from `origin/main` and verify the working tree is clean.
 2. Use `gh issue list` and `gh issue view` to find the oldest open non-PR
    issue with label `ready-for-agent` and without label
-   `in-progress-by-agent`. If none exists, report that there was no work left
-   and stop.
+   `in-progress-by-agent`. Do not use the default CLI output order; sort
+   candidates by `createdAt` ascending and pick the first issue:
+
+   ```bash
+   gh issue list \
+     --search 'is:issue is:open label:ready-for-agent -label:in-progress-by-agent sort:created-asc' \
+     --limit 1 \
+     --json number,title,labels,createdAt
+   ```
+
+   If none exists, report that there was no work left and stop.
 3. Re-fetch that issue immediately before claiming it. If it no longer has
    `ready-for-agent`, restart the loop and pick the next eligible issue.
 4. Claim it:
