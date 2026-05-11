@@ -1987,3 +1987,26 @@ labels: [enhancement, from-maintainer, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A route-level map from generated QA `auto.*` target ids back to component ownership would make these investigations faster.
+
+---
+date: 2026-05-11T20:12:00Z
+issue: 183
+pr: 233
+stage: implement
+outcome: pr-opened
+labels: [area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `AvdFields` and `RiesterFields` in `src/features/results/ProductEditCards.tsx` (lines 533/540) had placeholder stubs (`void assumptions` / `void onAssumptionsChange`) for the fee editor. Adding the `Gesamtkosten p.a.` block follows the exact same pattern as `BasisrenteFields` (lines 468–531): destructure `fees`, compute `totalFee = wrapperAssetFee + fundAssetFee`, render `<FieldWithProv>` + `<NumberField>` + fee hint paragraph.
+- `app-bridge.test.tsx` in `src/features/qa-feedback/__tests__/` is a known flake when run as part of the full suite via `npm run verify`, but passes consistently in isolation. No action needed for an implement run.
+- Both AVD and Riester fees are shaped as `{ wrapperAssetFee, fundAssetFee }` — confirmed via `sensitivity.ts` and `inventoryProductRegistry.ts` grep before touching the implementation.
+
+## What would have helped
+
+- Stage 1 handoff naming the exact fee field structure (`wrapperAssetFee` + `fundAssetFee`) would have saved one grep, though it was quick to verify.
