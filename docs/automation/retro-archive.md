@@ -1020,3 +1020,25 @@ labels: [area:ci]
 ## What would have helped
 
 - `workflows: write` added to `implement.yml`'s `permissions` block, or a separate PAT secret (`WORKFLOW_PAT`) scoped to `workflow` and injected as the push token when the changed file set touches `.github/workflows/`.
+
+---
+date: 2026-05-11T11:02:30Z
+issue: 136
+pr: null
+stage: investigate
+outcome: needs-info
+labels: [bug, code-review, needs-info]
+---
+
+## Blockers
+
+- The issue report pointed at `src/app/useDerivedViews.ts:131`, where the v1 share URL callback still exists, but current `main` no longer exposes that callback from the combine-mode details view. This made the original failure path already-correct rather than ready for Stage 2.
+
+## Learnings
+
+- Combine-mode details now branch in `src/Calculator.tsx`: `CombineDetailView` is rendered for `isCombineMode`, while `DetailComparisonTable` with `onCopyLink={handleCopyLink}` is only rendered in the compare-mode branch.
+- `src/features/results/DetailComparisonTable.tsx` already hides the share button when `onCopyLink` is undefined, and existing tests pin both sides of the guard in `DetailComparisonTable.test.tsx` and `CombineDetailView.test.tsx`.
+
+## What would have helped
+
+- A quick issue pre-check after recent UI fixes would have avoided claiming an already-correct report.
