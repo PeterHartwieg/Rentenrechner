@@ -89,7 +89,7 @@ export function AssumptionsPanel({
             <h3>Gesetzliche Rente (Schätzwerte für #5)</h3>
             <dl>
               <div><dt>Vorläufiges Durchschnittsentgelt 2026</dt><dd>{formatCurrency(rules.socialSecurity.durchschnittsentgelt, 0)} EUR · SGB VI Anlage 1</dd></div>
-              <div><dt>Aktueller Rentenwert West</dt><dd>{formatCurrency(rules.socialSecurity.aktuellerRentenwert, 2)} EUR/EP (ab 1.7.2025, 2026-Anpassung ausstehend)</dd></div>
+              <div><dt>Aktueller Rentenwert West</dt><dd>{formatCurrency(rules.socialSecurity.aktuellerRentenwert, 2)} EUR/EP (ab 1.7.{rules.year})</dd></div>
               <div><dt>Zugangsfaktor / Rentenartfaktor</dt><dd>1,0 / 1,0 (vereinfacht: Regelaltersrente ohne Abschläge)</dd></div>
             </dl>
             <p className="assumptions-note">
