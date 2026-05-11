@@ -180,6 +180,9 @@ function validateTransferEvent(event: unknown, allInstanceIds: Set<string>): boo
   if (!allInstanceIds.has(e.sourceInstanceId as string)) return false
   if (!allInstanceIds.has(e.targetInstanceId as string)) return false
 
+  // Self-target is never legal for any transfer type.
+  if (e.sourceInstanceId === e.targetInstanceId) return false
+
   // For certified transfers, check illegal pairings.
   if (e.type === 'certified') {
     const sourcePid = productIdFromInstanceId(e.sourceInstanceId as string)
@@ -192,8 +195,6 @@ function validateTransferEvent(event: unknown, allInstanceIds: Set<string>): boo
 
   if (e.type === 'surrender_reinvest') {
     if (!inRange(e.surrenderHaircutPct as unknown, 0, 1)) return false
-    // Self-target is never legal (would be a contractual no-op with tax cost).
-    if (e.sourceInstanceId === e.targetInstanceId) return false
     const sourcePid = productIdFromInstanceId(e.sourceInstanceId as string)
     const targetPid = productIdFromInstanceId(e.targetInstanceId as string)
     if (sourcePid && ILLEGAL_SURRENDER_REINVEST_SOURCES.has(sourcePid)) return false
