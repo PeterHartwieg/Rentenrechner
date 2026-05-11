@@ -312,6 +312,48 @@ describe('portfolioTransfer — computeSurrenderTax', () => {
     expect(tax).toBeGreaterThan(0)
   })
 
+  it('uses surrender-year age, not eventual retirementAge, for private-insurance surrender tax mode', () => {
+    const ws = makeBaseWorkspace()
+    const eventYear = de2026Rules.year + 2
+    const surrenderBeforeThreshold: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        profile: { ...ws.baseline.profile, age: 45, retirementAge: 67 },
+      },
+    }
+    const sameSurrenderAgeAsRetirementAge: Workspace = {
+      ...surrenderBeforeThreshold,
+      baseline: {
+        ...surrenderBeforeThreshold.baseline,
+        profile: { ...surrenderBeforeThreshold.baseline.profile, retirementAge: 47 },
+      },
+    }
+    const insurance: InsuranceInstance = {
+      ...ws.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-early-surrender',
+      contractStartYear: 2010,
+      oldContractTaxFreeEligible: false,
+    }
+
+    const actual = computeSurrenderTax(
+      insurance,
+      100_000,
+      surrenderBeforeThreshold,
+      de2026Rules,
+      eventYear,
+    )
+    const expectedAbgeltungsteuer = computeSurrenderTax(
+      insurance,
+      100_000,
+      sameSurrenderAgeAsRetirementAge,
+      de2026Rules,
+      eventYear,
+    )
+
+    expect(actual).toBeCloseTo(expectedAbgeltungsteuer, 2)
+  })
+
   it('bAV (direktversicherung_3_63) → surrender tax > 0 (marginal rate, no Fünftelregelung)', () => {
     const ws = makeBaseWorkspace()
     const bav: BavInstance = {
@@ -391,25 +433,30 @@ describe('portfolioTransfer — computeSurrenderTax', () => {
     // (which for typical incomes < 25% Abgeltungsteuer), so tax should differ
     // depending on the mode. We just verify both are > 0 and different enough to
     // confirm separate code paths ran.
-    const wsHalbe = makeBaseWorkspace()
-    const wsAbgelt: Workspace = {
-      ...wsHalbe,
-      baseline: { ...wsHalbe.baseline, profile: { ...wsHalbe.baseline.profile, retirementAge: 60 } },
+    // Profile age 56 → surrender-year age 61 (at rules.year+5).
+    // 2008 contract: pre-2012 min-age threshold is 60 → 61 >= 60 → halbeinkuenfte.
+    // 2015 contract: post-2011 min-age threshold is 62 → 61 < 62 → abgeltungsteuer.
+    const ws = {
+      ...makeBaseWorkspace(),
+      baseline: {
+        ...makeBaseWorkspace().baseline,
+        profile: { ...makeBaseWorkspace().baseline.profile, age: 56 },
+      },
     }
     const halbeIns: InsuranceInstance = {
-      ...wsHalbe.baseline.assumptions.insurance[0],
+      ...ws.baseline.assumptions.insurance[0],
       instanceId: 'versicherung-halbe-2',
       contractStartYear: 2008,
       oldContractTaxFreeEligible: false,
     }
     const abgeltIns: InsuranceInstance = {
-      ...wsAbgelt.baseline.assumptions.insurance[0],
+      ...ws.baseline.assumptions.insurance[0],
       instanceId: 'versicherung-abgelt-2',
       contractStartYear: 2015,
       oldContractTaxFreeEligible: false,
     }
-    const taxHalbe = computeSurrenderTax(halbeIns, 100_000, wsHalbe, de2026Rules, de2026Rules.year + 5)
-    const taxAbgelt = computeSurrenderTax(abgeltIns, 100_000, wsAbgelt, de2026Rules, de2026Rules.year + 5)
+    const taxHalbe = computeSurrenderTax(halbeIns, 100_000, ws, de2026Rules, de2026Rules.year + 5)
+    const taxAbgelt = computeSurrenderTax(abgeltIns, 100_000, ws, de2026Rules, de2026Rules.year + 5)
     expect(taxHalbe).toBeGreaterThan(0)
     expect(taxAbgelt).toBeGreaterThan(0)
     // Abgeltungsteuer is a flat ~26.375% on full gain; halbeinkuenfte taxes half
