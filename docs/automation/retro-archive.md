@@ -1131,3 +1131,25 @@ labels: [bug]
 ## What would have helped
 
 - Nothing; the Stage 1 handoff was complete and accurate.
+
+---
+date: 2026-05-11T11:30:00Z
+issue: 139
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- The required PowerShell command `gh issue view 139 --json labels --jq '.labels[].name' | grep -x ready-for-PR` failed because `grep` is not installed or on PATH in this Windows environment. A plain `gh issue view 139 --json labels --jq '.labels[].name'` immediately after showed `ready-for-PR` is present, but the versioned prompt says to stop if the explicit verification command does not print `ready-for-PR`, so no second issue was processed.
+
+## Learnings
+
+- `src/engine/portfolioTransfer.ts:206` already receives `eventCalendarYear`, and `workspace.baseline.profile.age` plus `rules.year` are enough to derive the holder's age at surrender. The current call passes `profile.retirementAge` to `deriveInsuranceTaxMode`, which misclassifies early private-insurance surrender as `halbeinkuenfte`.
+- A focused red test in `src/engine/portfolioTransfer.test.ts` can compare the current retirement-age-sensitive path against the same scenario with `retirementAge` set to the event-year age. On current main, the test fails with `10535` versus `26375`, demonstrating Halbeinkuenfte tax instead of Abgeltungsteuer.
+
+## What would have helped
+
+- The versioned prompt should use a PowerShell-portable verification command or invoke a known shell that includes `grep`.
