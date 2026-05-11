@@ -1593,3 +1593,26 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A documented oracle or PAP fixture for class III/V would let Stage 2 pin exact annual Lohnsteuer values instead of starting from qualitative class-order tests.
+
+---
+date: 2026-05-11T13:44:29Z
+issue: 167
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `ApiProfile` currently has no `maritalStatus`, and `validateProfile` ignores unknown fields; tests for this class of API extension need a negative case, not just "accepted enum" cases, because acceptance alone can pass through permissive validation.
+- AVD and Riester Günstigerprüfung share `calculateSalaryPhaseTaxDelta` in `src/engine/salaryPhaseFunding.ts`; marital-status support should be added once there instead of duplicating single/married tax-delta code in product engines.
+- The current API funding path for AVD/Riester builds a `SalaryResult` and then calls `calculateAvdFunding` / `calculateRiesterFunding`; forwarding marital status may require either a new funding option or a `SalaryResult`-adjacent filing-status argument, because `SalaryResult` itself does not carry filing status.
+
+## What would have helped
+
+- A product decision on how to map `divorced` and `widowed` into the existing `'single' | 'married'` filing-status engines would make Stage 2's implementation choices less ambiguous.
