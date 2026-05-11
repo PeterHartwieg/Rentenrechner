@@ -9,7 +9,6 @@ permissions:
   issues: write
   pull-requests: write
   id-token: write
-  workflows: write
 
 concurrency:
   group: implement-${{ github.event.issue.number }}
