@@ -800,3 +800,25 @@ labels: [bug, needs-info]
 ## What would have helped
 
 - The issue still had `ready-for-agent` even though the fix and regression were already present on main; clearing that label earlier would have avoided a Stage 1 reclaim.
+
+---
+date: 2026-05-11T09:56:07Z
+issue: 86
+pr: null
+stage: investigate
+outcome: no-fix-needed
+labels: [enhancement, needs-info]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue #86 had already been partially investigated and then re-opened for agent pickup, but current `origin/main` already contains the narrowed maintainer-approved concrete fix: `buildCombinePortfolioCsv` has `altersvorsorgedepot` and `riester` Section 3 after-tax branches, and `src/utils/csvExport.test.ts` contains the gh#86 combine CSV regression tests.
+- For renewed Stage 1 runs, check current `main` before adding a new failing test. `npx vitest run src/utils/csvExport.test.ts` passing with 35 tests showed the originally failing reproduction is now stale.
+
+## What would have helped
+
+- A follow-up comment on #86 clarifying whether the remaining desired work is the broader export projection architecture, after the concrete AVD/Riester CSV gap had already landed.
