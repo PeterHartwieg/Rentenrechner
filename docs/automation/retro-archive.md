@@ -1500,3 +1500,26 @@ labels: [enhancement, in-progress-by-agent, code-review]
 ## What would have helped
 
 - Stage 1 could note in the handoff whether it already committed the fix (not just the test), so Stage 2 knows immediately that its job is verify-and-ship rather than implement.
+
+---
+date: 2026-05-11T12:30:00Z
+issue: 154
+pr: null
+stage: investigate
+outcome: needs-info
+labels: [enhancement, needs-info]
+---
+
+## Blockers
+
+- Issue #154 was labeled `ready-for-agent`, but its body explicitly left core UX decisions open: stacked line versus stacked area, remaining capital versus cumulative payouts versus both, GRV treatment, and break-even/crossover annotation behavior. Stage 1 confirmed the feature is absent but could not produce a concrete Stage 2 handoff without those decisions.
+
+## Learnings
+
+- `src/features/results/portfolioLifecycle.ts:65` builds `Gesamtportfolio` by flattening all product groups into one aggregate `LifecycleSeriesResult`; no per-product contribution layers survive on the aggregate view.
+- `src/features/results/BreakEvenChart.tsx:331` renders selected lifecycle results as ordinary product lines (`Restkapital` solid, `Netto ausgezahlt` dashed) inside one `LineChart`; there is no stacked-series or `AreaChart` path today.
+- For visual chart redesign issues, Stage 1 should treat unresolved representation questions as `needs-info` even if the current implementation gap is easy to locate.
+
+## What would have helped
+
+- The issue should specify the chart representation contract before `ready-for-agent`: chart type, stacked metric(s), GRV/baseline inclusion, and annotation rules.
