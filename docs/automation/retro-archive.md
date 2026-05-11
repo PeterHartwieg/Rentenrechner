@@ -1847,3 +1847,24 @@ labels: [bug]
 ## What would have helped
 
 - The Stage 1 handoff correctly identified the three files to touch; the only gap was that it didn't name which salary fields to use for the lohnsteuer/SV split (required reading `src/domain/salary.ts` and `src/engine/salary.ts` briefly).
+
+---
+date: 2026-05-11T14:20:00Z
+issue: null
+pr: null
+stage: investigate
+outcome: preflight-blocked
+labels: []
+---
+
+## Blockers
+
+- Preflight failed before any GitHub issue labels/comments were touched. `git status --short` was clean and `git fetch --no-write-fetch-head origin +refs/heads/main:refs/remotes/origin/main` succeeded. `git checkout --detach origin/main` succeeded, then `git reset --hard origin/main` failed because Git could not create `C:/Users/Peter/Coding_Projects/Rentenrechner-automation/.git/worktrees/stage1-20260511-161802/index.lock`; Git reported that the lock file already exists.
+
+## Learnings
+
+- Stage 1 preflight reset can be blocked by an existing worktree `index.lock`; when that happens, stop before claiming an issue or touching labels, as required by the prompt.
+
+## What would have helped
+
+- A documented preflight-blocked retro convention for runs that fail before an issue number exists.
