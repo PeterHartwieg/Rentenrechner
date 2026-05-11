@@ -68,7 +68,55 @@ function buildViews() {
   }
 }
 
+function buildViewsWithEmptyVisibleProducts() {
+  const ws = migrateV1ToV2(
+    defaultProfile as unknown as Record<string, unknown>,
+    {
+      ...defaultAssumptions,
+      visibleProducts: [],
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 100 },
+    } as unknown as Record<string, unknown>,
+  )
+  ws.baseline.assumptions.bav = [
+    {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-a',
+      label: 'bAV A',
+      status: 'active',
+      monthlyGrossConversion: 100,
+    },
+  ]
+  ws.baseline.assumptions.etf = [
+    {
+      ...ws.baseline.assumptions.etf[0],
+      instanceId: 'etf-a',
+      label: 'ETF A',
+      status: 'active',
+      monthlyContribution: 100,
+    },
+  ]
+  const bundle = runCombineSimulation(ws, de2026Rules)
+  const basisId = ws.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')?.id
+    ?? ws.baseline.assumptions.returnScenarios[0].id
+  return buildPortfolioLifecycleViews({
+    workspace: ws,
+    perInstance: bundle.perInstance,
+    scenarioId: basisId,
+    startAge: ws.baseline.profile.age,
+    retirementAge: ws.baseline.profile.retirementAge,
+    horizonAge: ws.baseline.assumptions.retirementEndAge,
+  })
+}
+
 describe('buildPortfolioLifecycleViews', () => {
+  it('shows all products when visibleProducts is empty (wizard-created combine workspace)', () => {
+    const views = buildViewsWithEmptyVisibleProducts()
+    expect(views.length).toBeGreaterThan(0)
+    expect(views[0].id).toBe(PORTFOLIO_LIFECYCLE_ID)
+    expect(views.some((v) => v.id === 'bav')).toBe(true)
+    expect(views.some((v) => v.id === 'etf')).toBe(true)
+  })
+
   it('defaults to a Gesamtportfolio aggregate and excludes GRV', () => {
     const { views } = buildViews()
     expect(views[0].id).toBe(PORTFOLIO_LIFECYCLE_ID)
