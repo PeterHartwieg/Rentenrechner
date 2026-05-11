@@ -1042,3 +1042,26 @@ labels: [bug, code-review, needs-info]
 ## What would have helped
 
 - A quick issue pre-check after recent UI fixes would have avoided claiming an already-correct report.
+
+---
+date: 2026-05-11T11:05:00Z
+issue: 135
+pr: 208
+stage: implement
+outcome: pr-opened
+labels: [area:copy]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `AssumptionsPanel.tsx:92` showed a Rentenwert label referencing the wrong year (2025) and incorrectly marking the 2026 adjustment as pending. The fix was a one-line JSX change replacing the hardcoded string with `(ab 1.7.{rules.year})` using the already-available `rules.year` field from `GermanRules`.
+- `de2026.ts:226` sets `aktuellerRentenwert: 42.52` (post-July 2026 value); the comment block at lines 214–225 clearly documents the two-period step and why the post-July value is used for forward-looking projections.
+- Stage 1 had correctly identified TDD-skip as appropriate for pure copy corrections; no test was needed.
+
+## What would have helped
+
+- Nothing — the Stage 1 handoff was precise (file + line + exact stale text), making Stage 2 a straight one-line fix.
