@@ -47,7 +47,15 @@ jobs:
           cache: npm
 
       - name: Install deps
-        run: npm ci && npm --prefix workers/qa-submit ci
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          for worker in workers/qa-submit workers/simulate; do
+            if [ -f "$worker/package-lock.json" ]; then
+              npm --prefix "$worker" ci
+            fi
+          done
 
       - name: Run verify
         run: npm run verify
