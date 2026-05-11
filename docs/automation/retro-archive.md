@@ -866,3 +866,25 @@ labels: [bug, needs-info]
 ## What would have helped
 
 - A cleanup step after Stage 2 completion that removes stale `ready-for-agent` from issues already fixed on `main`.
+
+---
+date: 2026-05-11T10:33:17Z
+issue: 113
+pr: null
+stage: investigate
+outcome: needs-info
+labels: [enhancement, needs-info]
+---
+
+## Blockers
+
+- None for the issue investigation. A PowerShell `Get-Date -AsUTC` helper was unavailable in this environment, so UTC was generated with `(Get-Date).ToUniversalTime()` instead.
+
+## Learnings
+
+- `src/features/results/CalculationWarnings.tsx` already groups Berechnungshinweise by `WarningStatus` using `STATUS_ORDER`, `GROUP_HEADING`, and `data-warning-group` containers.
+- `src/features/results/CalculationWarnings.test.tsx` already verifies that `implementiert`, `vereinfacht`, and `nicht-modelliert` items render in separate groups; `npx vitest run src/features/results/CalculationWarnings.test.tsx` passed.
+
+## What would have helped
+
+- A reopened QA note should name the remaining readability gap now that the three requested status buckets already exist on `main`.
