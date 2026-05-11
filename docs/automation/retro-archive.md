@@ -1755,3 +1755,26 @@ labels: [enhancement, ready-for-agent]
 ## What would have helped
 
 - A short API DTO ownership note in `src/api/README.md` for where full-detail extension fields should be added would make future external-consumer issues faster.
+
+---
+date: 2026-05-11T14:04:45Z
+issue: 170
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, ready-for-agent]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `accumulationRiy` is calculated in `src/engine/buildResult.ts` by passing the product's monthly product contribution, accumulation horizon, gross annual scenario return, and fee-laden terminal capital into `computeRIY`.
+- `src/engine/fees.ts` already implements the core RIY shape as the annual return gap between a cost-free annuity future value and the net annual return that reproduces the actual terminal capital.
+- The compliance gap is documentation rather than calculation: `src/api/README.md` currently gives only a one-line decimal description and does not cite VVG-InfoV or Delegated Regulation (EU) 2017/653, nor does it state the accumulation-phase scope.
+
+## What would have helped
+
+- A repo-local source policy for regulatory citations would make these compliance-documentation issues more mechanical.
