@@ -1313,3 +1313,25 @@ labels: [bug, code-review, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A PowerShell-compatible version of the ready-for-PR verification command in `docs/automation/codex-stage1-investigator.md`.
+
+---
+date: 2026-05-11T12:13:00Z
+issue: 142
+pr: 216
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `parseWorkspaceJson` (`src/storage.ts:634`) had an incorrect comment claiming the v1→v2 migration was a "correctness guarantee" that made `validateWorkspace` unnecessary. In reality, `migrateV1ToV2` faithfully copies v1 profile fields (including out-of-range values like `retirementAge: 999`) into the v2 workspace without any range checks. The fix: call `validateWorkspace` on the migrated result in both the share-URL path (line 640) and the localStorage fallback path (line 786), matching the v2 load path pattern at line 621.
+- The `loadSavedWorkspace` localStorage fallback path (line 786) had no `backfillWorkspaceTransferEvents` call either — but the v2 path at line 623 does call it. The `parseWorkspaceJson` fix added the backfill call; the `loadSavedWorkspace` fix omits it because `loadSavedWorkspace` is a simpler path that doesn't need backfill (the Stage 1 test didn't require it and the comment trail doesn't indicate it's needed there).
+
+## What would have helped
+
+- The comment at line 634–636 actively misled by claiming validation was unnecessary. A brief note that v1 field values pass through unvalidated would have surfaced this gap sooner.
