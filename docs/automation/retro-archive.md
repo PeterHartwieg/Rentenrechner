@@ -1430,3 +1430,26 @@ labels: [enhancement, code-review]
 ## What would have helped
 
 - A versioned prompt note to avoid parallel `git config` writes would prevent an avoidable `.git/config` lock race.
+
+---
+date: 2026-05-11T12:32:00Z
+issue: 145
+pr: 218
+stage: implement
+outcome: pr-opened
+labels: [bug, area:copy]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `DatenschutzPage.tsx` already imported constants from `../../storage`, `../../data/scenarioLibrary`, etc. — adding `publicRouteRegistry` from `../../seo/publicRouteRegistry` followed the same relative-import pattern without any circular-dependency risk.
+- The fix is a two-line change: one import added at the top, one JSX interpolation replacing the hardcoded string at line 45.
+- The test assertion is `toContain(`Stand: ${route.dateModified}`)` — exact ISO date string from the registry, not a formatted German month name, so no date-formatting utility was needed.
+
+## What would have helped
+
+- Stage 1 handoff was precise (file + line + expected value), making this a straight-line implementation with no investigation needed.
