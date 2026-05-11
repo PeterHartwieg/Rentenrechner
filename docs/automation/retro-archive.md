@@ -1801,3 +1801,26 @@ labels: [area:docs]
 ## What would have helped
 
 - Stage 1 handoff already identified all three files and confirmed TDD-skip with passing tests — implementation was straightforward.
+
+---
+date: 2026-05-11T14:12:16Z
+issue: 171
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, ready-for-PR]
+---
+
+## Blockers
+
+- The versioned prompt's exact verification pipeline `gh issue view 171 --json labels --jq '.labels[].name' | grep -x ready-for-PR` could not run in this Windows PowerShell environment because `grep` is unavailable. A direct `gh issue view 171 --json labels --jq '.labels[].name'` did verify that `ready-for-PR` is present, but the run stopped after one issue instead of processing a second candidate.
+
+## Learnings
+
+- Rule-year API discovery is currently split between `src/api/manifest.ts` and `src/api/rules.ts`: `getManifest()` hardcodes `supportedRuleYears: [activeRules.year]`, while `resolveRuleYear()` accepts only `undefined` or `activeRules.year`.
+- The public API README documents unsupported-year behavior at `src/api/README.md:73`, but there is no current retention commitment in either docs or `getManifest()` output.
+- A narrow red test in `src/api/manifest.test.ts` can pin the Stage 2 implementation by expecting a `ruleYearRetention` manifest field without requiring a second compiled rule year yet.
+
+## What would have helped
+
+- A PowerShell-compatible verification command in the versioned prompt, or a repository-provided `grep` shim for Windows automation worktrees.
