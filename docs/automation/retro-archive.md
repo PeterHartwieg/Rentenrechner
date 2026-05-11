@@ -1406,3 +1406,27 @@ labels: [area:copy]
 ## What would have helped
 
 - Stage 1 handoff could have flagged the extra `Werte 2026` occurrences in `rentenluecke-rechner.body.mdx` beyond the top disclaimer, saving one debug loop.
+
+---
+date: 2026-05-11T12:36:00Z
+issue: 147
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, code-review]
+---
+
+## Blockers
+
+- PowerShell argument parsing rejected one `gh issue comment --body @'...'` invocation for the handoff body; posting the same structured handoff through the GitHub connector worked.
+- Running two `git config` writes in parallel can collide on `.git/config`; use separate commands for local author setup.
+
+## Learnings
+
+- `src/app/useCalculatorState.ts` still has the stale M1/issue-03 TODO, while `src/storage.ts` already documents the current dual-storage model and exposes `saveWorkspace` for the v2 workspace path.
+- This issue is pure comment cleanup, so the right Stage 1 outcome is `TDD-skip` with no failing test commit.
+- Optional Stage 2 cleanup should consider aligning nearby `src/storage.ts` comments that still say compare mode must eventually switch to `saveWorkspace`.
+
+## What would have helped
+
+- A versioned prompt note to avoid parallel `git config` writes would prevent an avoidable `.git/config` lock race.
