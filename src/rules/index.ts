@@ -12,5 +12,8 @@
  * 12-year contract minimum, etc.) live in `legalConstants.ts` and are
  * year-independent — they change only when the underlying law changes.
  */
-export { de2026Rules as activeRules } from './de2026'
+import { de2026Rules as activeRules } from './de2026'
+
+export { activeRules }
 export { legalConstants } from './legalConstants'
+export const RULES_YEAR: number = activeRules.year
