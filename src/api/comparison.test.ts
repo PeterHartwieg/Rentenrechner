@@ -327,6 +327,21 @@ describe('runComparison', () => {
     expect(typeof firstPayout.taxPaid).toBe('number')
   })
 
+  it('full detail exposes bAV funding breakdown on yearly rows', () => {
+    const result = runComparison({ detailLevel: 'full' })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const bavRow = result.data.yearlyRows!.find((row) => row.productId === 'bav')
+    expect(bavRow).toBeDefined()
+
+    const row = bavRow as unknown as Record<string, number>
+    expect(row.agZuschussMonthly).toBe(result.data.fundingSummaries.bav.monthlyEmployerContribution)
+    expect(row.lohnsteuerErsparnis).toBeGreaterThan(0)
+    expect(row.svVorteilMonthly).toBeGreaterThan(0)
+    expect(row.employeeContributionMonthly).toBe(result.data.fundingSummaries.bav.monthlyNetCost)
+  })
+
   // ---------------------------------------------------------------------------
   // 13. Summary numbers match across detail levels
   // ---------------------------------------------------------------------------
