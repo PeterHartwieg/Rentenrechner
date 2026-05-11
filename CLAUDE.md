@@ -38,15 +38,16 @@ Today: **no backend.** All calculator state in localStorage + share-URLs. No acc
 
 Planned: a small backend will be introduced **only** when a feature requires it. Sanctioned triggers:
 
-1. **OCR / document upload** (Riester, bAV, GRV-Renteninformation parsing). Files processed ephemerally; not stored beyond the request.
-2. **QA submission for testers without GitHub accounts** — Cloudflare Worker (or equivalent) that creates a GitHub issue with screenshot included. Requires object storage (R2 / S3) for screenshots because GitHub user-attachment URLs cannot be minted server-side via the public API. Storage scoped to the lifetime of the linked GitHub issue; purge on closure. **Sanctioned by [ADR-0001](docs/adr/0001-qa-submission-backend-amendment.md).**
+1. **QA submission for testers without GitHub accounts** — Cloudflare Worker (or equivalent) that creates a GitHub issue with screenshot included. Requires object storage (R2 / S3) for screenshots because GitHub user-attachment URLs cannot be minted server-side via the public API. Storage scoped to the lifetime of the linked GitHub issue; purge on closure. **Sanctioned by [ADR-0001](docs/adr/0001-qa-submission-backend-amendment.md).**
+2. **Simulate API Worker** (`api.rentenwiki.de/simulate`) — authenticated HTTP facade over `runComparison()` for commercial-licence holders (brokers, advisors, employers) who need programmatic access. Input profiles processed ephemerally; no PII stored. EU residency required for GDPR compliance. **Sanctioned by [ADR-0002](docs/adr/0002-simulate-api-worker.md).**
+3. **OCR / document upload** (Riester, bAV, GRV-Renteninformation parsing). Files processed ephemerally; not stored beyond the request. *(Planned — not yet implemented.)*
 
 Constraints (apply to every sanctioned backend):
 - Stack chosen at implementation time (Cloudflare Workers + R2, Vercel + S3, or Hetzner VPS — GDPR region required).
 - Calculator continues to work fully offline for users who don't use these features.
 - GDPR-compliant by design (region, retention, consent) per guardrail 3.
 
-Outside these triggers, do not add fetch/auth/cookies to the frontend.
+Outside these three sanctioned triggers, do not add fetch/auth/cookies to the frontend.
 
 ## Review guidelines
 
@@ -55,7 +56,7 @@ Read by the Codex GitHub review integration (and the Claude reviewer in `.github
 ### P0 — must be addressed before merge
 
 - **Disclaimer regression.** `DisclaimerBanner` switched from `sessionStorage` to `localStorage`; OR disclaimer no longer the literal first child of `#print-report` in `PrintReport.tsx`; OR removed from the first section of `buildExportCsv` output; OR README's not-advice notice removed. See "Critical guardrails" §1.
-- **Unsanctioned network call.** New `fetch` / `XMLHttpRequest` / `navigator.sendBeacon` / `Image()` ping / `<iframe src=>` to a remote endpoint, anywhere outside the QA Worker (`qa.rentenwiki.de`) or the planned OCR upload. Backend boundary is binding; new endpoints need an ADR.
+- **Unsanctioned network call.** New `fetch` / `XMLHttpRequest` / `navigator.sendBeacon` / `Image()` ping / `<iframe src=>` to a remote endpoint, anywhere outside the QA Worker (`qa.rentenwiki.de`), the Simulate API Worker (`api.rentenwiki.de/simulate`), or the planned OCR upload. Backend boundary is binding; new endpoints need an ADR.
 - **PII or telemetry without ADR.** Cookies, accounts, analytics, error tracking, persisted user identifiers — none allowed without GDPR-by-design (region, retention, consent) and a sanctioned ADR.
 - **Public copy regresses to "Rentenrechner".** Page titles, marketing copy, OG tags, share-URL slugs, PDF/CSV export headers must say `RentenWiki.de`. Internal symbols (npm package, file paths, identifiers) keep "Rentenrechner".
 - **Statutory values hardcoded outside `src/rules/`.** Year-specific values must live in `src/rules/de2026.ts`; cross-year constants in `src/rules/legalConstants.ts`. Any statutory literal in `src/engine/`, `src/app/`, or `src/features/` is P0.

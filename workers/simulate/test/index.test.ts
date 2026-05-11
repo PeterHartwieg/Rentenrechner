@@ -42,6 +42,21 @@ describe('simulate Worker HTTP API', () => {
     expect(await json(response)).toMatchObject({ ok: false })
   })
 
+  it('returns CORS headers on 401 so browsers from the allowed origin can read the error body', async () => {
+    const response = await worker.fetch(
+      simulateRequest({
+        method: 'POST',
+        origin: env.CRM_ALLOWED_ORIGIN,
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      }),
+      env,
+    )
+
+    expect(response.status).toBe(401)
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(env.CRM_ALLOWED_ORIGIN)
+  })
+
   it('rejects disallowed CORS origins', async () => {
     const response = await worker.fetch(
       simulateRequest({
@@ -106,6 +121,60 @@ describe('simulate Worker HTTP API', () => {
     expect(await json(response)).toMatchObject({ ok: false })
   })
 
+  it('allows server-to-server requests with valid auth and no Origin header', async () => {
+    const response = await worker.fetch(
+      simulateRequest({
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.API_SHARED_SECRET}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ monthlyNettoBelastungEur: 200 }),
+      }),
+      env,
+    )
+
+    expect(response.status).toBe(200)
+    // No Origin → no CORS headers needed
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
+    expect(await json(response)).toMatchObject({ ok: true })
+  })
+
+  it('rejects server-to-server requests with missing auth and no Origin header', async () => {
+    const response = await worker.fetch(
+      simulateRequest({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      }),
+      env,
+    )
+
+    expect(response.status).toBe(401)
+    expect(await json(response)).toMatchObject({ ok: false })
+  })
+
+  it('returns a structured 500 envelope for malformed JSON shapes that crash the engine', async () => {
+    const response = await worker.fetch(
+      simulateRequest({
+        method: 'POST',
+        origin: env.CRM_ALLOWED_ORIGIN,
+        headers: {
+          Authorization: `Bearer ${env.API_SHARED_SECRET}`,
+          'Content-Type': 'application/json',
+        },
+        // null profile triggers a runtime throw inside runComparison
+        body: JSON.stringify({ profile: null, assumptions: null }),
+      }),
+      env,
+    )
+
+    // Must be a structured error envelope, not an unhandled 500 crash
+    const body = await json(response)
+    expect(body).toMatchObject({ ok: false })
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(env.CRM_ALLOWED_ORIGIN)
+  })
+
   it('returns runComparison data and the manifest API version for authenticated calls', async () => {
     const response = await worker.fetch(
       simulateRequest({
@@ -128,7 +197,8 @@ describe('simulate Worker HTTP API', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe(env.CRM_ALLOWED_ORIGIN)
-    expect(response.headers.get('X-Api-Version')).toMatch(/^\d+\.\d+\.\d+$/)
+    // X-Api-Version must match the manifest apiVersion exactly (e.g. 'v1')
+    expect(response.headers.get('X-Api-Version')).toBe('v1')
     expect(await json(response)).toMatchObject({
       ok: true,
       data: {

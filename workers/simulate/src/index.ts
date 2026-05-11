@@ -16,7 +16,7 @@ function jsonResponse(
   if (corsOrigin) {
     headers['Access-Control-Allow-Origin'] = corsOrigin
     headers['Vary'] = 'Origin'
-    headers['X-Api-Version'] = getManifest().data.apiVersion.replace(/^v/, '') + '.0.0'
+    headers['X-Api-Version'] = getManifest().data.apiVersion
   }
   return new Response(JSON.stringify(body), { status, headers })
 }
@@ -25,6 +25,9 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = request.headers.get('Origin')
     const isAllowedOrigin = origin === env.CRM_ALLOWED_ORIGIN
+    // CORS headers are only added when Origin is present and matches the allowed origin.
+    // Server-to-server callers (no Origin header) receive no CORS headers — this is correct.
+    const corsOrigin = isAllowedOrigin ? origin : null
 
     if (request.method === 'OPTIONS') {
       if (!isAllowedOrigin) {
@@ -44,10 +47,13 @@ export default {
 
     const authHeader = request.headers.get('Authorization')
     if (authHeader !== `Bearer ${env.API_SHARED_SECRET}`) {
-      return jsonResponse({ ok: false, error: 'Unauthorized' }, 401)
+      // Include CORS headers so browsers from the allowed origin can read the 401 body.
+      return jsonResponse({ ok: false, error: 'Unauthorized' }, 401, corsOrigin)
     }
 
-    if (!isAllowedOrigin) {
+    // Reject cross-origin browser requests from disallowed origins.
+    // Server-to-server callers (no Origin header) are allowed through with auth only.
+    if (origin !== null && !isAllowedOrigin) {
       return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -55,17 +61,22 @@ export default {
     }
 
     if (request.method !== 'POST') {
-      return jsonResponse({ ok: false, error: 'Method not allowed' }, 405, origin)
+      return jsonResponse({ ok: false, error: 'Method not allowed' }, 405, corsOrigin)
     }
 
     let body: ComparisonRequest
     try {
       body = (await request.json()) as ComparisonRequest
     } catch {
-      return jsonResponse({ ok: false, error: 'Invalid JSON' }, 400, origin)
+      return jsonResponse({ ok: false, error: 'Invalid JSON' }, 400, corsOrigin)
     }
 
-    const result = runComparison(body)
-    return jsonResponse(result, 200, origin)
+    try {
+      const result = runComparison(body)
+      return jsonResponse(result, 200, corsOrigin)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      return jsonResponse({ ok: false, error: `Engine error: ${msg}` }, 500, corsOrigin)
+    }
   },
 }
