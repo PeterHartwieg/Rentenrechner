@@ -79,14 +79,11 @@ function detectFlow(el: Element | null): string | undefined {
 
     const role = node.getAttribute('role')
     if (role === 'dialog') {
-      // Prefer the aria-label as the breadcrumb; fall back to the role token.
-      const label = node.getAttribute('aria-label') || node.getAttribute('aria-labelledby')
+      // Only use aria-label (static, author-controlled) as the breadcrumb.
+      // aria-labelledby is an IDREF that resolves to arbitrary DOM text, which
+      // may contain private user data — never dereference it here.
+      const label = node.getAttribute('aria-label')
       if (label && label.trim()) {
-        // If the label is an IDREF, try to resolve it.
-        if (!label.includes(' ') && document.getElementById(label)) {
-          const resolved = document.getElementById(label)?.textContent?.trim()
-          return resolved ? `dialog: ${resolved}` : 'dialog'
-        }
         return `dialog: ${label.trim()}`
       }
       return 'dialog'
