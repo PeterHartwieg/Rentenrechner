@@ -663,3 +663,26 @@ labels: [bug, area:copy]
 ## What would have helped
 
 - Nothing; straightforward run.
+
+---
+date: 2026-05-11T06:07:00Z
+issue: 134
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review, area:copy]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The erroneous "Cloudflare Pages" string lives at `src/features/legal/DatenschutzPage.tsx:102`, introduced by commit `f60f0a3` which replaced a placeholder with the wrong Cloudflare product name.
+- The existing test file `src/features/legal/DatenschutzPage.test.tsx` covers storage-key enumeration but had no assertion on the hosting-provider copy; a new `describe` block is the right insertion point.
+- The `not.toContain('Cloudflare Pages')` assertion is important in addition to `toContain('Cloudflare Workers')` because "Cloudflare Pages" appears nowhere else in the component, making it a precise regression guard.
+
+## What would have helped
+
+- Checking `git log --oneline --all -- <file>` immediately (as the instructions say for code-review issues) saved time: the single relevant commit `f60f0a3` surfaced the origin of the bug at once.
