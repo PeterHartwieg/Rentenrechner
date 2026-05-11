@@ -20,7 +20,19 @@ Run the following loop up to two times. Stop early if there is no eligible
 issue, the current run has become long enough that quality would suffer, or the
 repository state is uncertain.
 
-1. Refresh `main` from `origin/main` and verify the working tree is clean.
+1. Verify the working tree is clean, then refresh `main` from `origin/main`
+   without writing `.git/FETCH_HEAD`:
+
+   ```bash
+   git status --short
+   git fetch --no-write-fetch-head origin +refs/heads/main:refs/remotes/origin/main
+   git checkout main
+   git merge --ff-only origin/main
+   ```
+
+   If fetch/merge fails, stop before claiming any issue. Do not fall back to a
+   plain `git fetch origin main`, because concurrent local Git activity can
+   leave `.git/FETCH_HEAD` unavailable.
 2. Use `gh issue list` and `gh issue view` to find the oldest open non-PR
    issue with label `ready-for-agent` and without label
    `in-progress-by-agent`. Do not use the default CLI output order; sort
