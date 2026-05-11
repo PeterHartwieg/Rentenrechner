@@ -9,6 +9,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { DatenschutzPage } from './DatenschutzPage'
+import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { LIBRARY_KEY } from '../../data/scenarioLibrary'
 import { WORKSPACE_KEY } from '../../app/useWorkspace'
@@ -27,6 +28,16 @@ describe('DatenschutzPage hosting-provider copy (issue #134)', () => {
     const text = container.textContent ?? ''
     expect(text).toContain('Cloudflare Workers')
     expect(text).not.toContain('Cloudflare Pages')
+  })
+})
+
+describe('DatenschutzPage review date', () => {
+  it('renders the visible Stand line from the public route registry dateModified', () => {
+    const { container } = render(
+      <DatenschutzPage navigate={() => undefined} />
+    )
+    const route = publicRouteRegistry['/datenschutz']
+    expect(container.textContent).toContain(`Stand: ${route.dateModified}`)
   })
 })
 

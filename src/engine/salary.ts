@@ -326,6 +326,21 @@ export function calculateBavFunding(
   }
 
   const annualEmployerContribution = employerContribution
+
+  // #168: expose subsidy breakdown for API consumers.
+  const statutorySubsidyEnabled =
+    bav.statutoryMinimumSubsidyEnabled &&
+    bavHasStatutoryMinimumSubsidyRoute(bav.durchfuehrungsweg)
+  const uncappedStatutorySubsidyAnnual = statutorySubsidyEnabled
+    ? annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct
+    : 0
+  const statutorySubsidyCapAnnual = statutorySubsidyEnabled
+    ? employerSocialSecuritySavingAnnual
+    : 0
+  const statutorySubsidyCapApplied =
+    statutorySubsidyEnabled &&
+    uncappedStatutorySubsidyAnnual > employerSocialSecuritySavingAnnual
+
   const salaryWithBav = calculateSalaryResult(
     profile,
     rules,
@@ -368,6 +383,9 @@ export function calculateBavFunding(
     monthlyTaxAndSvSavings: annualTaxAndSvSavings / 12,
     annualTaxAndSvSavings,
     monthlyStatutoryEmployerSubsidy: statutorySubsidyAnnual / 12,
+    monthlyStatutoryEmployerSubsidyUncapped: uncappedStatutorySubsidyAnnual / 12,
+    monthlyStatutoryEmployerSubsidyCap: statutorySubsidyCapAnnual / 12,
+    monthlyStatutoryEmployerSubsidyCapApplied: statutorySubsidyCapApplied,
     monthlyContractualEmployerContribution: contractualSubsidyAnnual / 12,
     monthlyEmployerContribution: annualEmployerContribution / 12,
     annualEmployerContribution,

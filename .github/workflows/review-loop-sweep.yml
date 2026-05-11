@@ -19,6 +19,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write
 
 concurrency:
   group: review-loop-sweep
@@ -40,13 +41,15 @@ jobs:
           now_ts=$(date -u +%s)
           merged_any=0
 
-          # Enumerate open PRs from agent/issue-* branches
+          # Enumerate open automation-owned PRs. Retro-curation PRs carry the
+          # same self-learning contract as issue-fix PRs, but use a different
+          # branch prefix because they are not linked to a single issue.
           pr_numbers=$(gh pr list --repo "$REPO" --state open \
-            --search 'head:agent/issue-' \
-            --json number --jq '.[].number')
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("agent/issue-") or startswith("automation/retro-curate-")) | .number')
 
           if [ -z "$pr_numbers" ]; then
-            echo "No open agent PRs. Sweep idle."
+            echo "No open automation-owned PRs. Sweep idle."
             exit 0
           fi
 
@@ -54,7 +57,7 @@ jobs:
             echo "::group::PR #$pr"
 
             if ! pr_json=$(gh pr view "$pr" --repo "$REPO" \
-              --json createdAt,headRefOid,body,headRefName); then
+              --json createdAt,headRefOid,body,headRefName,title); then
               echo "Skip: failed to load PR metadata; will retry on next tick."
               echo "::endgroup::"
               continue
@@ -63,6 +66,7 @@ jobs:
             head_sha=$(echo "$pr_json" | jq -r .headRefOid)
             pr_body=$(echo "$pr_json" | jq -r .body)
             head_ref=$(echo "$pr_json" | jq -r .headRefName)
+            pr_title=$(echo "$pr_json" | jq -r .title)
 
             created_ts=$(date -u -d "$created" +%s)
             age_min=$(( (now_ts - created_ts) / 60 ))
@@ -131,7 +135,9 @@ jobs:
             #   1. Branch up-to-date with main (preempts logical merge conflicts
             #      like #198 vs #199 where two PRs each green individually
             #      produce a broken main when squashed in sequence).
-            #   2. Cloudflare Workers build green on HEAD (the production deploy
+            #   2. Full `npm run verify` on the current head SHA (covers bot-pushed
+            #      fix commits that do not trigger pull_request CI).
+            #   3. Cloudflare Workers build green on HEAD (the production deploy
             #      gate; failed CF build = broken prod).
 
             # 1. Up-to-date check.
@@ -147,8 +153,44 @@ jobs:
               echo "::endgroup::"
               continue
             fi
+            if [ "$mergeable_state" = "DIRTY" ]; then
+              echo "Branch is DIRTY — dispatching merge-conflict repair workflow and deferring merge."
+              gh workflow run resolve-merge-conflict.yml \
+                -f pr_number="$pr" \
+                -f pr_title="$pr_title" \
+                -f head_sha="$head_sha" \
+                -f head_ref="$head_ref"
+              if ! gh pr view "$pr" --repo "$REPO" --json comments \
+                --jq '.comments[].body' | grep -q '^\[conflict-fix\]'; then
+                gh pr comment "$pr" --repo "$REPO" --body \
+                  "[conflict-fix] Branch is not cleanly mergeable with main. Dispatched resolve-merge-conflict.yml for \`$head_sha\`."
+              fi
+              echo "::endgroup::"
+              continue
+            fi
 
-            # 2. CF Workers Builds check on HEAD.
+            verify_dir=$(mktemp -d)
+
+            echo "Running npm run verify on $head_sha before merge."
+            if ! (
+              git init "$verify_dir"
+              git -C "$verify_dir" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+              git -C "$verify_dir" fetch --depth=1 origin "$head_sha"
+              git -C "$verify_dir" checkout --detach FETCH_HEAD
+              cd "$verify_dir"
+              npm ci
+              npm --prefix workers/qa-submit ci
+              npm run verify
+            ); then
+              echo "Skip: npm run verify failed on $head_sha; merge deferred."
+              rm -rf "$verify_dir"
+              echo "::endgroup::"
+              continue
+            fi
+
+            rm -rf "$verify_dir"
+
+            # 3. CF Workers Builds check on HEAD.
             cf_bucket=$(gh pr checks "$pr" --repo "$REPO" --json name,bucket \
               --jq '[.[] | select(.name == "Workers Builds: rentenwiki")] | last | .bucket // "missing"' || true)
             if [ -z "$cf_bucket" ]; then

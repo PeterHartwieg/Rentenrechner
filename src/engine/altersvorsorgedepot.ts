@@ -168,6 +168,7 @@ export interface AvdFundingOptions {
   contributionYear?: number
   isFirstContributionYear?: boolean
   profile?: PersonalProfile
+  filingStatus?: 'single' | 'married'
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +250,7 @@ export function calculateAvdFunding(
     rules,
     salaryResult.taxableIncome,
     specialExpenseBaseAnnual,
+    options.filingStatus ?? 'single',
   )
   // Extra refund above the allowance = Günstigerprüfung benefit.
   const guenstigerpruefungBenefitAnnual = calculateAllowanceExcessBenefit(

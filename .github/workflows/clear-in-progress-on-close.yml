@@ -1,0 +1,24 @@
+name: clear-in-progress-on-close
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: clear-in-progress-on-close-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  clear:
+    if: ${{ !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove stale in-progress label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label in-progress-by-agent || true

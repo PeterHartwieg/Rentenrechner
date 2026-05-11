@@ -52,6 +52,17 @@ describe('validateProfile', () => {
     const ds = validateProfile({ ...defaultProfile, taxClass: 7 })
     expect(ds.some((d) => d.path === 'profile.taxClass')).toBe(true)
   })
+
+  it('accepts supported maritalStatus values when provided', () => {
+    for (const maritalStatus of ['single', 'married', 'divorced', 'widowed']) {
+      expect(validateProfile({ ...defaultProfile, maritalStatus })).toHaveLength(0)
+    }
+  })
+
+  it('rejects unsupported maritalStatus values', () => {
+    const ds = validateProfile({ ...defaultProfile, maritalStatus: 'registered-partnership' })
+    expect(ds.some((d) => d.path === 'profile.maritalStatus')).toBe(true)
+  })
 })
 
 describe('validateSharedAssumptions', () => {

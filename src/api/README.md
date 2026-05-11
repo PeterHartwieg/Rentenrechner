@@ -227,7 +227,10 @@ Computes bAV (betriebliche Altersvorsorge) salary conversion funding including e
 | `monthlyGrossConversion` | `number` | Monthly Entgeltumwandlung in EUR. |
 | `monthlyNetCost` | `number` | Actual net cost to the employee. |
 | `monthlyTaxAndSvSavings` | `number` | Monthly tax and social security savings. |
-| `monthlyStatutoryEmployerSubsidy` | `number` | Statutory 15% employer subsidy. |
+| `monthlyStatutoryEmployerSubsidy` | `number` | Statutory 15% employer subsidy (effective, after cap). |
+| `monthlyStatutoryEmployerSubsidyUncapped` | `number` | Uncapped 15% candidate (annualGrossConversion × 15%). 0 when subsidy is disabled or not applicable for the Durchführungsweg. |
+| `monthlyStatutoryEmployerSubsidyCap` | `number` | Employer social-security savings that form the subsidy cap. 0 when salary is already above the SV BBG. |
+| `monthlyStatutoryEmployerSubsidyCapApplied` | `boolean` | `true` when the uncapped value exceeded the cap and was reduced. |
 | `monthlyContractualEmployerContribution` | `number` | Additional contractual employer match. |
 | `monthlyEmployerContribution` | `number` | Total employer contribution. |
 | `estimatedMonthlyGrvReduction` | `number` | Estimated GRV pension reduction. |
@@ -530,7 +533,7 @@ Four standalone validators are exported for pre-flight input checking. Each retu
 | `grossMonthlyPayout` | `number` | Gross monthly payout. |
 | `netMonthlyPayout` | `number` | Net monthly payout after tax and KV/PV. |
 | `taxAndSvSavings` | `number` | Accumulated tax/SV savings during savings phase. |
-| `accumulationRiy` | `number` | Reduction in yield (decimal, e.g. 0.012 = 1.2% p.a.). |
+| `accumulationRiy` | `number` | PRIIPs/VVG-InfoV Reduction in Yield (Effektivkosten) — decimal annual pp reduction (e.g. `0.012` = 1.2 pp p.a.). Scope: accumulation phase only (investor payments → terminal capital); does not include retirement payout-phase fees or taxes. No display rounding applied. Regulatory basis: PRIIPs Delegated Regulation (EU) 2017/653 Annex VI/VII; VVG-InfoV § 2 Abs. 1 Nr. 9 + § 2 Abs. 6. |
 | `totalUserCost` | `number` | Total user cost over accumulation phase. |
 | `totalFees` | `number` | Total fees over accumulation phase. |
 

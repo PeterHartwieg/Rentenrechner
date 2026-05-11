@@ -12,6 +12,7 @@ const LEGACY_SETUP_FLAG_KEY = 'rentenrechner-guided-setup-v1'
 import { DISMISS_KEY } from '../workspace/DisclaimerBanner'
 import { LegalLayout } from './LegalLayout'
 import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
+import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 
 interface Props {
   navigate: (target: Route) => void
@@ -42,7 +43,7 @@ export function DatenschutzPage({ navigate }: Props) {
   return (
     <LegalLayout title="Datenschutzerklärung" navigate={navigate}>
       <p className="legal-intro" {...headerProps}>
-        Stand: Mai 2026. Diese Erklärung beschreibt den aktuellen technischen
+        Stand: {publicRouteRegistry['/datenschutz'].dateModified}. Diese Erklärung beschreibt den aktuellen technischen
         Zustand der Anwendung und wird aktualisiert, sobald sich die
         Verarbeitung personenbezogener Daten ändert (z.&nbsp;B. durch die
         Einführung eines Backends, einer Upload-/OCR-Funktion oder einer
