@@ -99,7 +99,7 @@ export function DatenschutzPage({ navigate }: Props) {
         <p>
           Hosting-Provider: <strong>Cloudflare, Inc.</strong>, 101 Townsend
           St., San Francisco, CA 94107, USA (Auftragsverarbeiter). Die
-          Anwendung wird über Cloudflare Pages ausgeliefert. Cloudflare
+          Anwendung wird über Cloudflare Workers ausgeliefert. Cloudflare
           erfasst dabei serverseitige Zugriffsprotokolle (u.&nbsp;a.
           IP-Adresse, Zeitstempel, aufgerufener Pfad, User-Agent, Referrer)
           im Rahmen der standardmäßigen Protokollaufbewahrung von Cloudflare.

@@ -19,6 +19,17 @@ const LEGACY_SETUP_FLAG_KEY = 'rentenrechner-guided-setup-v1'
 
 afterEach(() => cleanup())
 
+describe('DatenschutzPage hosting-provider copy (issue #134)', () => {
+  it('names Cloudflare Workers as the delivery mechanism, not Cloudflare Pages', () => {
+    const { container } = render(
+      <DatenschutzPage navigate={() => undefined} />
+    )
+    const text = container.textContent ?? ''
+    expect(text).toContain('Cloudflare Workers')
+    expect(text).not.toContain('Cloudflare Pages')
+  })
+})
+
 describe('DatenschutzPage storage key enumeration', () => {
   function renderPage() {
     const { container } = render(
