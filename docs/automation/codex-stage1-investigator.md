@@ -59,10 +59,20 @@ repository state is uncertain.
    and inspect only the issue, `AGENTS.md`, `CONTEXT.md`, and the smallest
    relevant code/test files.
 6. Investigate only. Do not implement the fix.
+   - **For all issue types**, before reading implementation files, run a
+     quick already-fixed pre-check:
+     ```bash
+     git grep -r "#<N>" src/ --include="*.test.*" -l
+     git log --oneline --grep="#<N>" origin/main
+     ```
+     If a regression test already exists and passes (`npx vitest run
+     <test-file>`), take the already-correct exit path immediately (see below).
+     This avoids reclaiming issues whose fix landed on `main` after the label
+     was set.
    - Bug: reproduce or validate the failure path in 1-2 sentences:
      "When X, `<file:line>` does Y, causing Z."
    - Enhancement: confirm the requested behavior is absent.
-   - Code-review issue: before reading each named file, run
+   - Code-review issue: before reading each named file, also run
      `git log --oneline --all -- <file>` to catch already-fixed reports.
    - If already correct or already present on current `main`: comment with
      objective evidence, close the issue as completed, remove
@@ -92,12 +102,14 @@ repository state is uncertain.
 
     ```bash
     gh issue edit <N> --add-label ready-for-PR
-    gh issue view <N> --json labels --jq '.labels[].name' | grep -x ready-for-PR
+    gh issue view <N> --json labels --jq '.labels[] | select(.name == "ready-for-PR") | .name'
     ```
 
-    If the verification command does not print `ready-for-PR`, stop before
-    starting another issue, record the blocker in the retro entry, and report
-    the label failure.
+    The verification command prints `ready-for-PR` if the label is present,
+    nothing if absent. It uses only `jq` (no `grep`) so it works on Windows
+    PowerShell and Unix alike. If it prints nothing, stop before starting
+    another issue, record the blocker in the retro entry, and report the label
+    failure.
 11. Before every issue exit, write `.automation-retro-entry.md` using
     `docs/automation/retro-template.md`, then append it:
 
