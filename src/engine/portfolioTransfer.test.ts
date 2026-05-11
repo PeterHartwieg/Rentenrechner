@@ -312,6 +312,48 @@ describe('portfolioTransfer — computeSurrenderTax', () => {
     expect(tax).toBeGreaterThan(0)
   })
 
+  it('uses surrender-year age, not eventual retirementAge, for private-insurance surrender tax mode', () => {
+    const ws = makeBaseWorkspace()
+    const eventYear = de2026Rules.year + 2
+    const surrenderBeforeThreshold: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        profile: { ...ws.baseline.profile, age: 45, retirementAge: 67 },
+      },
+    }
+    const sameSurrenderAgeAsRetirementAge: Workspace = {
+      ...surrenderBeforeThreshold,
+      baseline: {
+        ...surrenderBeforeThreshold.baseline,
+        profile: { ...surrenderBeforeThreshold.baseline.profile, retirementAge: 47 },
+      },
+    }
+    const insurance: InsuranceInstance = {
+      ...ws.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-early-surrender',
+      contractStartYear: 2010,
+      oldContractTaxFreeEligible: false,
+    }
+
+    const actual = computeSurrenderTax(
+      insurance,
+      100_000,
+      surrenderBeforeThreshold,
+      de2026Rules,
+      eventYear,
+    )
+    const expectedAbgeltungsteuer = computeSurrenderTax(
+      insurance,
+      100_000,
+      sameSurrenderAgeAsRetirementAge,
+      de2026Rules,
+      eventYear,
+    )
+
+    expect(actual).toBeCloseTo(expectedAbgeltungsteuer, 2)
+  })
+
   it('bAV (direktversicherung_3_63) → surrender tax > 0 (marginal rate, no Fünftelregelung)', () => {
     const ws = makeBaseWorkspace()
     const bav: BavInstance = {
