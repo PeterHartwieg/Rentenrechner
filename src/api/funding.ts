@@ -281,10 +281,12 @@ export function calculateAvdFundingApi(
   const avdCheck = requireObject(request.altersvorsorgedepot, 'altersvorsorgedepot')
   if (avdCheck) return error([avdCheck], meta, warnings)
 
+  const filingStatus = request.profile.maritalStatus === 'married' ? 'married' : 'single'
+
   const engineResult = safeEngineCall(
     () => {
       const salaryResult = calculateSalaryResult(request.profile as unknown as PersonalProfile, rules)
-      return calculateAvdFunding(rules, salaryResult, request.altersvorsorgedepot as unknown as AltersvorsorgedepotAssumptions)
+      return calculateAvdFunding(rules, salaryResult, request.altersvorsorgedepot as unknown as AltersvorsorgedepotAssumptions, { filingStatus })
     },
     meta,
   )
@@ -350,10 +352,12 @@ export function calculateRiesterFundingApi(
   const riesterCheck = requireObject(request.riester, 'riester')
   if (riesterCheck) return error([riesterCheck], meta, warnings)
 
+  const filingStatus = request.profile.maritalStatus === 'married' ? 'married' : 'single'
+
   const engineResult = safeEngineCall(
     () => {
       const salaryResult = calculateSalaryResult(request.profile as unknown as PersonalProfile, rules)
-      return calculateRiesterFunding(rules, salaryResult, request.riester as unknown as RiesterAssumptions, request.profile as unknown as PersonalProfile)
+      return calculateRiesterFunding(rules, salaryResult, request.riester as unknown as RiesterAssumptions, request.profile as unknown as PersonalProfile, { filingStatus })
     },
     meta,
   )
