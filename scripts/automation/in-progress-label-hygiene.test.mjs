@@ -11,9 +11,10 @@ describe('in-progress-by-agent label hygiene', () => {
     expect(workflow).toContain('--remove-label in-progress-by-agent')
   })
 
-  it('allows implementer workflow pushes that add or update workflow files', () => {
+  it('uses only valid implementer workflow permission keys', () => {
     const workflow = readFileSync('.github/workflows/implement.yml', 'utf8')
 
-    expect(workflow).toMatch(/\r?\npermissions:\r?\n(?:  .+\r?\n)*  workflows: write\r?\n/)
+    expect(workflow).toContain('contents: write')
+    expect(workflow).not.toMatch(/\r?\n  workflows: write\r?\n/)
   })
 })
