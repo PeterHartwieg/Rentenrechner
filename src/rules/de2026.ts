@@ -143,6 +143,11 @@ export const de2026Rules: GermanRules = {
   year: 2026,
   employeeAllowance: 1_230,
   specialExpensesAllowance: 36,
+  // §24b EStG 2026 Entlastungsbetrag für Alleinerziehende (Steuerklasse II).
+  // Source: §24b Abs. 2 EStG: 4,260 EUR base (first child) + 240 EUR per additional child.
+  // https://www.gesetze-im-internet.de/estg/__24b.html
+  entlastungsbetragAlleinerziehende: 4_260,
+  entlastungsbetragAlleinerziehendePro: 240,
   // Altersvorsorgedepot 2027 — Altersvorsorgereformgesetz (Bundestag 2026-03-27).
   // Constants from Bundesrat Drucksache 206/26 (Bundestag-adopted text).
   // Bundesrat consent expected 2026-05-08; re-verify against BGBl. before relying on

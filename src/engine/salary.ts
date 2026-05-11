@@ -202,15 +202,27 @@ export function calculateSalaryResult(
   )
   // §39b EStG tax-class dispatch.
   // III: Ehegattensplitting (§32a Abs. 5 EStG) — 2 × f(income/2); Soli uses married threshold.
-  // V/VI: no Grundfreibetrag — pass income + basicAllowance so the free zone is consumed.
-  // I, II, IV: standard single-filer table.
+  // II: single-filer table with §24b EStG Entlastungsbetrag für Alleinerziehende deducted first.
+  // V: no Grundfreibetrag — shift income + basicAllowance (deductions still apply).
+  // VI: no Grundfreibetrag, no Vorsorgepauschale, no AN-/SA-Pauschbetrag — shift steuerlichArbeitslohn.
+  // I, IV: standard single-filer table.
   let incomeTax: number
   let solidarityFilingStatus: 'single' | 'married' = 'single'
   if (profile.taxClass === 3) {
     incomeTax = 2 * calculateIncomeTax2026(taxableIncome / 2, rules)
     solidarityFilingStatus = 'married'
-  } else if (profile.taxClass === 5 || profile.taxClass === 6) {
+  } else if (profile.taxClass === 2) {
+    // §24b EStG: base 4,260 EUR + 240 EUR per additional child beyond the first.
+    const childCount = Math.max(1, profile.childBirthYears.length)
+    const entlastung =
+      rules.entlastungsbetragAlleinerziehende +
+      (childCount - 1) * rules.entlastungsbetragAlleinerziehendePro
+    incomeTax = calculateIncomeTax2026(Math.max(0, taxableIncome - entlastung), rules)
+  } else if (profile.taxClass === 5) {
     incomeTax = calculateIncomeTax2026(taxableIncome + rules.incomeTax.basicAllowance, rules)
+  } else if (profile.taxClass === 6) {
+    // Class VI has no personal deductions at all (§39b Abs. 2 Satz 2 Nr. 2 EStG).
+    incomeTax = calculateIncomeTax2026(steuerlichArbeitslohn + rules.incomeTax.basicAllowance, rules)
   } else {
     incomeTax = calculateIncomeTax2026(taxableIncome, rules)
   }

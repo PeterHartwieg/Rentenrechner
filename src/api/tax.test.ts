@@ -302,6 +302,46 @@ describe('calculateSalary', () => {
     expect(classThree.data.annualIncomeTax).toBeLessThan(classOne.data.annualIncomeTax)
     expect(classFive.data.annualIncomeTax).toBeGreaterThan(classOne.data.annualIncomeTax)
   })
+
+  it('applies §24b EStG Entlastungsbetrag for Steuerklasse II (lower tax than class I)', () => {
+    const classOne = calculateSalary({ profile: { ...defaultProfile, taxClass: 1 } })
+    const classTwo = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 2 as unknown as 1, childBirthYears: [2015] },
+    })
+    const classTwoTwoChildren = calculateSalary({
+      profile: {
+        ...defaultProfile,
+        taxClass: 2 as unknown as 1,
+        childBirthYears: [2015, 2018],
+      },
+    })
+
+    expect(classOne.ok).toBe(true)
+    expect(classTwo.ok).toBe(true)
+    expect(classTwoTwoChildren.ok).toBe(true)
+    if (!classOne.ok || !classTwo.ok || !classTwoTwoChildren.ok) return
+
+    // Class II pays less tax than class I due to §24b EStG Entlastungsbetrag.
+    expect(classTwo.data.annualIncomeTax).toBeLessThan(classOne.data.annualIncomeTax)
+    // More children → more Entlastungsbetrag → less tax.
+    expect(classTwoTwoChildren.data.annualIncomeTax).toBeLessThan(classTwo.data.annualIncomeTax)
+  })
+
+  it('separates Steuerklasse VI from V: VI pays more tax than V for the same wage', () => {
+    const classFive = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 5 as unknown as 1 },
+    })
+    const classSix = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 6 as unknown as 1 },
+    })
+
+    expect(classFive.ok).toBe(true)
+    expect(classSix.ok).toBe(true)
+    if (!classFive.ok || !classSix.ok) return
+
+    // Class VI has no personal deductions so it is more heavily taxed than class V.
+    expect(classSix.data.annualIncomeTax).toBeGreaterThan(classFive.data.annualIncomeTax)
+  })
 })
 
 // ---------------------------------------------------------------------------
