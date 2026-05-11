@@ -1,0 +1,174 @@
+name: stale-in-progress-reset
+
+# Recovers issues that were claimed by an agent but never reached an open PR or
+# a clean self-escalation. The reset is intentionally conservative: any recent
+# issue activity, recent agent-branch commit, or open agent PR keeps the issue
+# untouched.
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log proposed resets without mutating issues"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  issues: write
+  pull-requests: read
+  contents: read
+
+concurrency:
+  group: stale-in-progress-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reset stale in-progress issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          STALE_HOURS: "12"
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          now_ts=$(date -u +%s)
+          stale_seconds=$(( STALE_HOURS * 3600 ))
+
+          issues_json=$(gh issue list --repo "$REPO" \
+            --search 'is:issue is:open label:in-progress-by-agent' \
+            --limit 100 \
+            --json number,title,updatedAt,labels)
+
+          issue_count=$(echo "$issues_json" | jq 'length')
+          if [ "$issue_count" -eq 0 ]; then
+            echo "No open issues with in-progress-by-agent. Reset idle."
+            exit 0
+          fi
+
+          echo "Found $issue_count open issue(s) with in-progress-by-agent."
+          open_prs_json=$(gh pr list --repo "$REPO" \
+            --state open \
+            --limit 100 \
+            --json number,headRefName,body)
+
+          reset_count=0
+
+          while IFS= read -r issue; do
+            number=$(echo "$issue" | jq -r '.number')
+            title=$(echo "$issue" | jq -r '.title')
+            updated_at=$(echo "$issue" | jq -r '.updatedAt')
+            labels=$(echo "$issue" | jq -r '[.labels[].name] | join(",")')
+
+            echo "::group::Issue #$number"
+            echo "$title"
+            echo "Labels: $labels"
+
+            linked_pr=$(echo "$open_prs_json" | jq -r \
+              --arg branch "agent/issue-$number" \
+              --arg number "$number" '
+                [
+                  .[]
+                  | select(
+                      .headRefName == $branch
+                      or ((.body // "") | test("(?i)(closes|fixes|resolves)\\s+#" + $number + "\\b"))
+                    )
+                  | .number
+                ][0] // empty
+              ')
+            if [ -n "$linked_pr" ]; then
+              echo "Skip: open PR #$linked_pr is linked to issue #$number."
+              echo "::endgroup::"
+              continue
+            fi
+
+            updated_ts=$(date -u -d "$updated_at" +%s)
+            newest_ts=$updated_ts
+            newest_source="issue update"
+
+            branch_commit_at=$(gh api "repos/$REPO/branches/agent%2Fissue-$number" \
+              --jq '.commit.committer.date // .commit.commit.author.date // empty' 2>/dev/null || true)
+            if [ -n "$branch_commit_at" ]; then
+              branch_ts=$(date -u -d "$branch_commit_at" +%s)
+              if [ "$branch_ts" -gt "$newest_ts" ]; then
+                newest_ts=$branch_ts
+                newest_source="agent branch commit"
+              fi
+            fi
+
+            age_seconds=$(( now_ts - newest_ts ))
+            age_hours=$(( age_seconds / 3600 ))
+            if [ "$age_seconds" -lt "$stale_seconds" ]; then
+              echo "Skip: latest activity is $age_hours h old from $newest_source (< $STALE_HOURS h)."
+              echo "::endgroup::"
+              continue
+            fi
+
+            has_label() {
+              local wanted="$1"
+              echo "$issue" | jq -e --arg wanted "$wanted" \
+                '[.labels[].name] | index($wanted) != null' >/dev/null
+            }
+
+            has_blocking_state=false
+            for state in needs-triage needs-info ready-for-human wontfix; do
+              if has_label "$state"; then
+                has_blocking_state=true
+              fi
+            done
+
+            already_ready=false
+            if has_label ready-for-agent; then
+              already_ready=true
+            fi
+
+            restore_ready=false
+            if [ "$has_blocking_state" = "false" ] && [ "$already_ready" = "false" ]; then
+              restore_ready=true
+            fi
+
+            if [ "$restore_ready" = "true" ]; then
+              action_sentence="Removed \`in-progress-by-agent\` and restored \`ready-for-agent\` so the next Stage 1 run can retry it."
+            elif [ "$already_ready" = "true" ]; then
+              action_sentence="Removed \`in-progress-by-agent\`; \`ready-for-agent\` was already present."
+            else
+              action_sentence="Removed \`in-progress-by-agent\` only. A human/info terminal state is already present, so \`ready-for-agent\` was not restored."
+            fi
+
+            echo "Stale: latest activity is $age_hours h old from $newest_source (>= $STALE_HOURS h)."
+            echo "$action_sentence"
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "Dry run: no issue labels or comments changed."
+              reset_count=$(( reset_count + 1 ))
+              echo "::endgroup::"
+              continue
+            fi
+
+            gh issue edit "$number" --repo "$REPO" --remove-label in-progress-by-agent || true
+            if has_label ready-for-PR; then
+              gh issue edit "$number" --repo "$REPO" --remove-label ready-for-PR || true
+            fi
+            if [ "$restore_ready" = "true" ]; then
+              gh issue edit "$number" --repo "$REPO" --add-label ready-for-agent
+            fi
+
+            body=$(printf '%s\n\n## Stale Agent Reset\n\nThis issue had `in-progress-by-agent`, but no linked open PR and no issue/agent-branch activity for %s h (threshold: %s h).\n\n%s\n' \
+              '> *This was generated by AI during triage.*' \
+              "$age_hours" \
+              "$STALE_HOURS" \
+              "$action_sentence")
+            gh issue comment "$number" --repo "$REPO" --body "$body"
+
+            reset_count=$(( reset_count + 1 ))
+            echo "::endgroup::"
+          done < <(echo "$issues_json" | jq -c '.[]')
+
+          echo "Reset complete: $reset_count stale issue(s) reset."

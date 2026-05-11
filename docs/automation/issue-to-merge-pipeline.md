@@ -534,6 +534,29 @@ The 20-min threshold is the only tunable. Increase if Codex sometimes
 takes > 20 min on this repo; decrease if you want faster routine-PR
 turnaround.
 
+### `stale-in-progress-reset.yml`
+
+| Trigger | Permissions | Model |
+|---------|-------------|-------|
+| `schedule: '17 * * * *'`, `workflow_dispatch` | `issues:write`, `pull-requests:read`, `contents:read` | None (pure shell) |
+
+Resets open issues that were claimed by an agent but never reached an
+open PR or a clean self-escalation. The stale timeout is **12 hours**.
+The workflow scans open issues with `in-progress-by-agent` and skips any
+issue with:
+
+- an open PR from `agent/issue-N` or with a closing reference to the
+  issue (`Closes #N`, `Fixes #N`, or `Resolves #N`),
+- issue activity within the last 12 hours, or
+- an `agent/issue-N` branch commit within the last 12 hours.
+
+When an issue is stale, it removes `in-progress-by-agent`; removes
+`ready-for-PR` if present; and restores `ready-for-agent` unless the
+issue already has a human/info terminal state (`needs-triage`,
+`needs-info`, `ready-for-human`, or `wontfix`). Each reset gets an audit
+comment. `workflow_dispatch` supports a `dry_run` input for checking
+which issues would be reset without mutating labels.
+
 ## Operator playbook
 
 | Action | How |
@@ -547,6 +570,7 @@ turnaround.
 | Self-escalation | If implementer or loop can't make progress, it labels linked issue `ready-for-human`, removes `in-progress-by-agent`, posts a status comment, and stops. Watch your `ready-for-human` queue. |
 | Override sweep merge | Don't add `[Claude Review]\nVerdict: Approve` to the review body. Sweep matches that exact pattern; if Claude reviewer didn't approve, sweep won't merge. |
 | Manual sweep run | `gh workflow run review-loop-sweep.yml` |
+| Dry-run stale issue reset | `gh workflow run stale-in-progress-reset.yml -f dry_run=true` |
 
 ## Cost model
 
@@ -644,6 +668,7 @@ Each of these is tunable without touching the architecture.
 | Maintainer dev-code | `MAINTAINER_DEV_CODE` Wrangler secret on `rentenwiki-qa-submit`; URL param `?dev=` in the QA-feedback frontend | Rotate via `wrangler secret put`. The code lives only in your sessionStorage and on the wire — never in any public surface. |
 | Halt cap | Currently none. | Add an `iteration-cap` step to `review-loop.yml` that counts commits on the agent branch since open and bails to `ready-for-human` above N. |
 | Sweep threshold | `MIN_AGE_MINUTES` env var in `review-loop-sweep.yml` | Default 20 min. Increase if Codex sometimes takes longer; decrease for faster routine merges. |
+| Stale in-progress reset threshold | `STALE_HOURS` env var in `stale-in-progress-reset.yml` | Default 12 hours. Increase if long-running Stage 1/Stage 2 work is common; decrease for faster recovery from crashed agents. |
 | Sweep cadence | `cron: '*/10 * * * *'` in `review-loop-sweep.yml` | Default every 10 min (tightened from */30 after observing GitHub Actions drop 6 consecutive cron ticks under cluster load). Sweep is also dispatched event-driven from `review-loop.yml`'s wait branch — defense in depth. |
 | Retro curation cadence | `cron: '0 9 * * *'` in `retro-curate.yml` | Default daily 09:00 UTC. Tighten to `0 */12 * * *` (twice daily) if you want faster promotion of urgent learnings; loosen to weekly if PR queue noise is too high. |
 | Retro lookback window | "past 7 days" filter in `retro-curate.yml` Step 2 | Default 7 days — robust to skipped cron days and pending curation PRs. Tighten to 3 days if your archive grows fast; widen to 14 days if you want more cross-issue pattern detection. |
