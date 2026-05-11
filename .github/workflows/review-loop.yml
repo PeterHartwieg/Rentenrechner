@@ -177,3 +177,25 @@ jobs:
             - Do NOT post `@codex review`; bot mentions cannot trigger Codex re-review.
             - If a blocker is unaddressable, comment on the PR, label the linked issue
               `ready-for-human`, remove `in-progress-by-agent`, and stop.
+
+      - name: Dispatch post-fix checks
+        if: steps.route.outputs.decision == 'fix'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          new_head_sha=$(gh pr view "$PR_NUMBER" --json headRefOid --jq .headRefOid)
+          echo "Dispatching post-fix verify and Claude review for PR #$PR_NUMBER at $new_head_sha"
+          gh workflow run pr-verify.yml \
+            -f pr_number="$PR_NUMBER" \
+            -f head_sha="$new_head_sha" \
+            -f head_ref="$PR_BRANCH"
+          gh workflow run claude-review.yml \
+            -f pr_number="$PR_NUMBER" \
+            -f pr_title="$PR_TITLE" \
+            -f head_sha="$new_head_sha" \
+            -f head_ref="$PR_BRANCH"

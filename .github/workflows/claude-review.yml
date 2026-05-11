@@ -3,6 +3,20 @@ name: claude-review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number to review"
+        required: true
+      pr_title:
+        description: "Pull request title"
+        required: true
+      head_sha:
+        description: "Exact pull request head SHA to review"
+        required: true
+      head_ref:
+        description: "Pull request head branch"
+        required: true
 
 permissions:
   contents: read
@@ -11,17 +25,17 @@ permissions:
   id-token: write
 
 concurrency:
-  group: claude-review-${{ github.event.pull_request.number }}
+  group: claude-review-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: true
 
 jobs:
   review:
-    if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') }}
+    if: ${{ startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
           fetch-depth: 0
 
       - name: Setup Node
@@ -34,10 +48,10 @@ jobs:
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          PR_TITLE: ${{ github.event.pull_request.title || inputs.pr_title }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref || inputs.head_ref }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: '*'
@@ -139,3 +153,18 @@ jobs:
               asks. If X is in scope, request changes for X explicitly. If X is out of
               scope, do not mention it — file a separate issue or leave it for retro
               curation.
+
+      - name: Assert Claude review was posted
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          review_count=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" \
+            --jq '[.[] | select(.commit_id == "'"$PR_HEAD_SHA"'") | select(.body | startswith("[Claude Review]"))] | length')
+          if [ "$review_count" -eq 0 ]; then
+            echo "Claude review workflow completed without posting a [Claude Review] review on $PR_HEAD_SHA."
+            exit 1
+          fi
