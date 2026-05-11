@@ -169,6 +169,24 @@ describe('projectAccumulation — capitalInjections (issue 15)', () => {
     ).toBeCloseTo(20_000, 6)
   })
 
+  it('does not double-count surrender reinvest principal when capital and cost-basis injections match', () => {
+    const horizon = 10
+    const monthlyContribution = 100
+    const afterTaxSurrenderProceeds = 20_000
+    const result = projectAccumulation({
+      ...baseInput(monthlyContribution, horizon),
+      policy: {
+        capitalInjections: [{ year: 3, amount: afterTaxSurrenderProceeds }],
+        costBasisInjections: [{ year: 3, amount: afterTaxSurrenderProceeds }],
+      },
+    })
+
+    expect(result.totalContributionsBeforeFees).toBeCloseTo(
+      monthlyContribution * 12 * horizon + afterTaxSurrenderProceeds,
+      6,
+    )
+  })
+
   it('no transfer arrays = no change to legacy oracle output (byte-identical)', () => {
     const horizon = 10
     const baseline = projectAccumulation({

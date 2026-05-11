@@ -209,7 +209,6 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
       const cb = costBasisInjectionsByYear.get(contractYear) ?? 0
       if (inj > 0) {
         capital += inj
-        injectedPrincipal += inj
         balanceAtYearStart += inj
       }
       if (wd > 0) {
