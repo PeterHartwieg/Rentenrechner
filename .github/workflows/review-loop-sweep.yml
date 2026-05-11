@@ -179,7 +179,11 @@ jobs:
               git -C "$verify_dir" checkout --detach FETCH_HEAD
               cd "$verify_dir"
               npm ci
-              npm --prefix workers/qa-submit ci
+              for worker in workers/qa-submit workers/simulate; do
+                if [ -f "$worker/package-lock.json" ]; then
+                  npm --prefix "$worker" ci
+                fi
+              done
               npm run verify
             ); then
               echo "Skip: npm run verify failed on $head_sha; merge deferred."
