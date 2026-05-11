@@ -1176,3 +1176,26 @@ labels: [bug]
 ## What would have helped
 
 - A note in the handoff confirming that certified transfers intentionally have no `costBasisInjections` (the test comment says so, but it's easy to miss when evaluating the side-effects of changing `capitalInjections` semantics).
+
+---
+date: 2026-05-11T11:34:00Z
+issue: 139
+pr: 212
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- The fix to `portfolioTransfer.ts:206` (passing `ageAtEventYear` instead of `profile.retirementAge`) broke a pre-existing directional test ("halbeinkuenfte surrender tax is less than abgeltungsteuer equivalent"). That test was written assuming retirement-age semantics: a default profile (age 28) with `retirementAge: 67` triggered halbeinkuenfte, while `retirementAge: 60` triggered abgeltungsteuer. With the fix, both code paths use `ageAtEventYear = 28 + 5 = 33`, which falls below both thresholds, yielding abgeltungsteuer for both.
+
+## Learnings
+
+- When fixing a semantics bug where "wrong parameter was passed", check all existing tests that exercise the same function — they may have been written to work *around* the bug rather than express correct domain semantics.
+- `halbeinkuenfteMinAgeForContractStartYear` returns 60 for pre-2012 contracts and 62 for post-2011 contracts (`src/rules/legalConstants.ts`). To exercise both modes with event-year-age semantics, use profile `age: 56` at `eventYear = rules.year + 5` → age 61 at event, which is >= 60 (2008 contract) but < 62 (2015 contract).
+- `defaultProfile.age = 28` in `src/data/defaultScenario.ts` — the default is deliberately young (new entrant), so any test using the default profile will be in abgeltungsteuer territory for event years near the rules year.
+
+## What would have helped
+
+- Stage 1 handoff could have flagged that the pre-existing directional test at line 431 was relying on the buggy semantics, reducing the need for re-analysis.
