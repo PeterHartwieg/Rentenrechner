@@ -17,7 +17,7 @@ export interface ApiProfile {
   age: number
   retirementAge: number
   grossSalaryYear: number
-  taxClass: 1
+  taxClass: 1 | 2 | 3 | 4 | 5 | 6
   childBirthYears: number[]
   churchTax: boolean
   publicHealthInsurance: boolean

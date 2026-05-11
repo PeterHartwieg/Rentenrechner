@@ -2,6 +2,10 @@ export interface GermanRules {
   year: number
   employeeAllowance: number
   specialExpensesAllowance: number
+  /** §24b EStG Entlastungsbetrag für Alleinerziehende — base amount for first child (Steuerklasse II). */
+  entlastungsbetragAlleinerziehende: number
+  /** §24b Abs. 2 EStG: additional amount per each child beyond the first. */
+  entlastungsbetragAlleinerziehendePro: number
   /**
    * Altersvorsorgedepot 2027 constants.
    * Source: Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent expected 2026-05-08).

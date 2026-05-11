@@ -12,6 +12,7 @@ import {
   childBirthYearsBornByYear,
   childBirthYearsUnder25InYear,
 } from './childEligibility'
+import { legalConstants } from '../rules/legalConstants'
 
 function contributionBase(annualGross: number, cap: number): number {
   return Math.min(Math.max(0, annualGross), cap)
@@ -193,15 +194,67 @@ export function calculateSalaryResult(
   // §39b EStG 2026 Vorsorgepauschale based on steuerlicher Arbeitslohn
   const steuerlichArbeitslohn = profile.grossSalaryYear - taxFreeConversion
   const vorsorgepauschale = calculateVorsorgepauschale2026(steuerlichArbeitslohn, profile, rules)
-  const taxableIncome = Math.max(
-    0,
+  // Pre-floor zvE (can be negative for very low wages after deductions).
+  const zvEBeforeFloor =
     steuerlichArbeitslohn -
-      vorsorgepauschale -
-      rules.employeeAllowance -
-      rules.specialExpensesAllowance,
-  )
-  const incomeTax = calculateIncomeTax2026(taxableIncome, rules)
-  const solidarityTax = calculateSolidarityTax(incomeTax, rules)
+    vorsorgepauschale -
+    rules.employeeAllowance -
+    rules.specialExpensesAllowance
+  const taxableIncome = Math.max(0, zvEBeforeFloor)
+  // §39b EStG tax-class dispatch.
+  // III: Ehegattensplitting (§32a Abs. 5 EStG) — 2 × f(income/2); Soli uses married threshold.
+  // II: single-filer table with §24b EStG Entlastungsbetrag für Alleinerziehende deducted first.
+  // V: §39b tariff 2 × (f(1.25 × zvE) − f(0.75 × zvE)) with PAP MST5 floor.
+  // VI: same tariff on raw steuerlichArbeitslohn with PAP MST6 floor.
+  // I, IV: standard single-filer table.
+  let incomeTax: number
+  let solidarityFilingStatus: 'single' | 'married' = 'single'
+  // taxableIncomeForDeductions: effective zvE for Sonderausgaben savings (Basisrente/AVD/Riester).
+  // For class II with eligible children, §24b Entlastungsbetrag lowers the marginal-rate base.
+  let taxableIncomeForDeductions = taxableIncome
+  const deductionFilingStatus: 'single' | 'married' = profile.taxClass === 3 ? 'married' : 'single'
+  if (profile.taxClass === 3) {
+    incomeTax = 2 * calculateIncomeTax2026(taxableIncome / 2, rules)
+    solidarityFilingStatus = 'married'
+  } else if (profile.taxClass === 2) {
+    // §24b EStG: base 4,260 EUR + 240 EUR per additional child beyond the first.
+    // Only children born by the payroll year are eligible; planned/future children don't count.
+    const eligibleChildren = childBirthYearsBornByYear(profile.childBirthYears, rules.year)
+    const childCount = eligibleChildren.length
+    if (childCount > 0) {
+      const entlastung =
+        rules.entlastungsbetragAlleinerziehende +
+        (childCount - 1) * rules.entlastungsbetragAlleinerziehendePro
+      incomeTax = calculateIncomeTax2026(Math.max(0, taxableIncome - entlastung), rules)
+      taxableIncomeForDeductions = Math.max(0, taxableIncome - entlastung)
+    } else {
+      incomeTax = calculateIncomeTax2026(taxableIncome, rules)
+    }
+  } else if (profile.taxClass === 5) {
+    // §39b Abs. 2 Satz 2 Nr. 2 EStG: statutory V/VI tariff on pre-floor zvE.
+    // PAP MST5: floor at f(zvE + basicAllowance) so low-wage earners don't benefit
+    // from the Grundfreibetrag they already consume at their primary employment.
+    const gf = rules.incomeTax.basicAllowance
+    const { taxClassVVIUpperFactor, taxClassVVILowerFactor } = legalConstants.payrollTax
+    const formula =
+      2 *
+      (calculateIncomeTax2026(taxClassVVIUpperFactor * zvEBeforeFloor, rules) -
+        calculateIncomeTax2026(taxClassVVILowerFactor * zvEBeforeFloor, rules))
+    incomeTax = Math.max(formula, calculateIncomeTax2026(Math.max(0, zvEBeforeFloor) + gf, rules))
+  } else if (profile.taxClass === 6) {
+    // Class VI has no personal deductions (§39b Abs. 2 Satz 2 Nr. 2 EStG).
+    // PAP MST6: same floor on raw steuerlichArbeitslohn.
+    const gf = rules.incomeTax.basicAllowance
+    const { taxClassVVIUpperFactor, taxClassVVILowerFactor } = legalConstants.payrollTax
+    const formula =
+      2 *
+      (calculateIncomeTax2026(taxClassVVIUpperFactor * steuerlichArbeitslohn, rules) -
+        calculateIncomeTax2026(taxClassVVILowerFactor * steuerlichArbeitslohn, rules))
+    incomeTax = Math.max(formula, calculateIncomeTax2026(steuerlichArbeitslohn + gf, rules))
+  } else {
+    incomeTax = calculateIncomeTax2026(taxableIncome, rules)
+  }
+  const solidarityTax = calculateSolidarityTax(incomeTax, rules, solidarityFilingStatus)
 
   // #50: §257 SGB V employer subsidy + net PKV cost (zero for GKV members).
   // The employer's §257 subsidy is §3 Nr. 62 EStG tax-free and is not subject to social
@@ -231,6 +284,8 @@ export function calculateSalaryResult(
     annualGross: profile.grossSalaryYear,
     annualNet,
     taxableIncome,
+    taxableIncomeForDeductions,
+    deductionFilingStatus,
     incomeTax,
     solidarityTax,
     social,

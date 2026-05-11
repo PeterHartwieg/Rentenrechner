@@ -227,6 +227,49 @@ describe('Basisrente legal compliance (Group E step 3)', () => {
   })
 })
 
+describe('calculateBasisrenteFunding — deduction filing status (issue #166)', () => {
+  it('SalaryResult.deductionFilingStatus is married for class III, single for others', () => {
+    const classI = calculateSalaryResult(defaultProfile, de2026Rules)
+    const classIII = calculateSalaryResult({ ...defaultProfile, taxClass: 3 as never }, de2026Rules)
+    const classV = calculateSalaryResult({ ...defaultProfile, taxClass: 5 as never }, de2026Rules)
+    expect(classI.deductionFilingStatus).toBe('single')
+    expect(classIII.deductionFilingStatus).toBe('married')
+    expect(classV.deductionFilingStatus).toBe('single')
+  })
+
+  it('class III uses Ehegattensplitting tariff — savings lower than class I at high income', () => {
+    // Ehegattensplitting 2 × f(zvE/2) gives lower marginal rate than f(zvE) at high incomes.
+    // Before the fix, basisrente always defaulted to 'single', overestimating class III savings.
+    const highIncome = { ...defaultProfile, grossSalaryYear: 120_000 }
+    const salaryI = calculateSalaryResult(highIncome, de2026Rules)
+    const salaryIII = calculateSalaryResult({ ...highIncome, taxClass: 3 as never }, de2026Rules)
+    const fundingI = calculateBasisrenteFunding(de2026Rules, salaryI, defaultAssumptions.basisrente)
+    const fundingIII = calculateBasisrenteFunding(de2026Rules, salaryIII, defaultAssumptions.basisrente)
+    expect(fundingIII.annualTaxSaving).toBeLessThan(fundingI.annualTaxSaving)
+  })
+
+  it('class II with eligible child: taxableIncomeForDeductions is §24b-adjusted', () => {
+    // §24b Entlastungsbetrag reduces the effective tax base for Sonderausgaben savings.
+    const childYear = de2026Rules.year - 5
+    const salaryWithChild = calculateSalaryResult(
+      { ...defaultProfile, taxClass: 2 as never, childBirthYears: [childYear] },
+      de2026Rules,
+    )
+    const salaryNoChild = calculateSalaryResult(
+      { ...defaultProfile, taxClass: 2 as never, childBirthYears: [] },
+      de2026Rules,
+    )
+    // With eligible child: effective deduction base is zvE - §24b relief
+    expect(salaryWithChild.taxableIncomeForDeductions).toBeLessThan(salaryWithChild.taxableIncome)
+    // Without child: base equals taxableIncome
+    expect(salaryNoChild.taxableIncomeForDeductions).toBe(salaryNoChild.taxableIncome)
+    // Savings differ because the marginal-rate base differs
+    const fundingWithChild = calculateBasisrenteFunding(de2026Rules, salaryWithChild, defaultAssumptions.basisrente)
+    const fundingNoChild = calculateBasisrenteFunding(de2026Rules, salaryNoChild, defaultAssumptions.basisrente)
+    expect(fundingWithChild.annualTaxSaving).not.toBe(fundingNoChild.annualTaxSaving)
+  })
+})
+
 describe('validateBasisrentePayoutAge — §10 Abs. 1 Nr. 2 b aa EStG age-62 floor', () => {
   it('returns null at the §10 EStG / AltZertG §2 minimum (62)', () => {
     expect(validateBasisrentePayoutAge(62)).toBeNull()

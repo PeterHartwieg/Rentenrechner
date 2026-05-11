@@ -42,6 +42,17 @@ describe('validateProfile', () => {
     expect(ds[0].path).toBe('profile')
   })
 
+  it('accepts supported Steuerklasse values 1 through 6', () => {
+    for (const taxClass of [1, 2, 3, 4, 5, 6]) {
+      expect(validateProfile({ ...defaultProfile, taxClass })).toHaveLength(0)
+    }
+  })
+
+  it('rejects Steuerklasse values outside 1 through 6', () => {
+    const ds = validateProfile({ ...defaultProfile, taxClass: 7 })
+    expect(ds.some((d) => d.path === 'profile.taxClass')).toBe(true)
+  })
+
   it('accepts supported maritalStatus values when provided', () => {
     for (const maritalStatus of ['single', 'married', 'divorced', 'widowed']) {
       expect(validateProfile({ ...defaultProfile, maritalStatus })).toHaveLength(0)

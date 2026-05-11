@@ -284,6 +284,107 @@ describe('calculateSalary', () => {
     expect(result.data.socialContributions.healthInsurance).toBe(0)
     expect(result.data.socialContributions.nursingCareInsurance).toBe(0)
   })
+
+  it('applies married-household tax class III/V payroll tables', () => {
+    const classOne = calculateSalary({ profile: { ...defaultProfile, taxClass: 1 } })
+    const classThree = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 3 as unknown as 1 },
+    })
+    const classFive = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 5 as unknown as 1 },
+    })
+
+    expect(classOne.ok).toBe(true)
+    expect(classThree.ok).toBe(true)
+    expect(classFive.ok).toBe(true)
+    if (!classOne.ok || !classThree.ok || !classFive.ok) return
+
+    expect(classThree.data.annualIncomeTax).toBeLessThan(classOne.data.annualIncomeTax)
+    expect(classFive.data.annualIncomeTax).toBeGreaterThan(classOne.data.annualIncomeTax)
+  })
+
+  it('applies §24b EStG Entlastungsbetrag for Steuerklasse II (lower tax than class I)', () => {
+    const classOne = calculateSalary({ profile: { ...defaultProfile, taxClass: 1 } })
+    const classTwo = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 2 as unknown as 1, childBirthYears: [2015] },
+    })
+    const classTwoTwoChildren = calculateSalary({
+      profile: {
+        ...defaultProfile,
+        taxClass: 2 as unknown as 1,
+        childBirthYears: [2015, 2018],
+      },
+    })
+
+    expect(classOne.ok).toBe(true)
+    expect(classTwo.ok).toBe(true)
+    expect(classTwoTwoChildren.ok).toBe(true)
+    if (!classOne.ok || !classTwo.ok || !classTwoTwoChildren.ok) return
+
+    // Class II pays less tax than class I due to §24b EStG Entlastungsbetrag.
+    expect(classTwo.data.annualIncomeTax).toBeLessThan(classOne.data.annualIncomeTax)
+    // More children → more Entlastungsbetrag → less tax.
+    expect(classTwoTwoChildren.data.annualIncomeTax).toBeLessThan(classTwo.data.annualIncomeTax)
+  })
+
+  it('Steuerklasse II with no eligible children applies no Entlastungsbetrag (equals class I)', () => {
+    const classOne = calculateSalary({ profile: { ...defaultProfile, taxClass: 1 } })
+    // Empty childBirthYears: no §24b relief.
+    const classTwoNoChildren = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 2, childBirthYears: [] },
+    })
+    // Future child not yet born in the payroll year: no §24b relief.
+    const classTwoFutureChild = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 2, childBirthYears: [2030] },
+    })
+
+    expect(classOne.ok).toBe(true)
+    expect(classTwoNoChildren.ok).toBe(true)
+    expect(classTwoFutureChild.ok).toBe(true)
+    if (!classOne.ok || !classTwoNoChildren.ok || !classTwoFutureChild.ok) return
+
+    expect(classTwoNoChildren.data.annualIncomeTax).toBe(classOne.data.annualIncomeTax)
+    expect(classTwoFutureChild.data.annualIncomeTax).toBe(classOne.data.annualIncomeTax)
+  })
+
+  it('separates Steuerklasse VI from V: VI pays more tax than V for the same wage', () => {
+    const classFive = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 5 as unknown as 1 },
+    })
+    const classSix = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 6 as unknown as 1 },
+    })
+
+    expect(classFive.ok).toBe(true)
+    expect(classSix.ok).toBe(true)
+    if (!classFive.ok || !classSix.ok) return
+
+    // Class VI has no personal deductions so it is more heavily taxed than class V.
+    expect(classSix.data.annualIncomeTax).toBeGreaterThan(classFive.data.annualIncomeTax)
+  })
+
+  it('PAP MST5-6 floor: Steuerklasse V/VI pay non-zero tax at low wages where the standard formula gives 0', () => {
+    // At €11,000 annual gross the standard 2*(f(1.25x)-f(0.75x)) formula returns 0 because
+    // 1.25*zvE falls below the Grundfreibetrag. The PAP MST5/MST6 minimum ensures the earner
+    // does not benefit from the Grundfreibetrag they already use at their primary employment.
+    const lowGross = 11_000
+    const classOne = calculateSalary({ profile: { ...defaultProfile, grossSalaryYear: lowGross, taxClass: 1 } })
+    const classFive = calculateSalary({ profile: { ...defaultProfile, grossSalaryYear: lowGross, taxClass: 5 } })
+    const classSix = calculateSalary({ profile: { ...defaultProfile, grossSalaryYear: lowGross, taxClass: 6 } })
+
+    expect(classOne.ok).toBe(true)
+    expect(classFive.ok).toBe(true)
+    expect(classSix.ok).toBe(true)
+    if (!classOne.ok || !classFive.ok || !classSix.ok) return
+
+    // Class I has no income tax at this wage (below the effective Grundfreibetrag threshold).
+    expect(classOne.data.annualIncomeTax).toBe(0)
+    // Class V/VI apply the PAP floor so tax is non-zero even where the formula gives 0.
+    expect(classFive.data.annualIncomeTax).toBeGreaterThan(0)
+    expect(classSix.data.annualIncomeTax).toBeGreaterThan(0)
+    // VI > V because class VI has no personal deductions.
+    expect(classSix.data.annualIncomeTax).toBeGreaterThan(classFive.data.annualIncomeTax)
+  })
 })
 
 // ---------------------------------------------------------------------------

@@ -96,8 +96,8 @@ export function validateProfile(profile: unknown): ApiDiagnostic[] {
     ds.push(diag('profile.grossSalaryYear', 'INVALID_RANGE', 'grossSalaryYear must be a non-negative finite number.'))
   }
 
-  if (taxClass !== 1) {
-    ds.push(diag('profile.taxClass', 'INVALID_VALUE', 'taxClass must be 1.'))
+  if (!isInt(taxClass) || taxClass < 1 || taxClass > 6) {
+    ds.push(diag('profile.taxClass', 'INVALID_VALUE', 'taxClass must be an integer between 1 and 6.'))
   }
 
   // childBirthYears — required: array of finite year numbers.
