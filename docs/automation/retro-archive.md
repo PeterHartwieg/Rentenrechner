@@ -1686,3 +1686,27 @@ labels: [enhancement, in-progress-by-agent]
 ## What would have helped
 
 - None — the Stage 1 handoff clearly identified all affected call sites.
+
+---
+date: 2026-05-11T13:55:00Z
+issue: 168
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:api]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The `BavFundingResult` type in `src/domain/products/bav.ts` is the domain contract; `BavFundingResponse` in `src/api/funding.ts` is the DTO — both need updating when adding new fields.
+- The uncapped statutory subsidy and cap values are naturally available after the iterative loop in `calculateBavFunding` (`src/engine/salary.ts:~295`) converges; computed via `annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct` vs. `employerSocialSecuritySavingAnnual`.
+- `bavHasStatutoryMinimumSubsidyRoute` and `bav.statutoryMinimumSubsidyEnabled` both gate the subsidy — the uncapped/cap fields must return 0 when either is false, consistent with the effective subsidy being 0.
+- The `app-bridge.test.tsx` flake (passes in isolation, fails in full suite) is pre-existing and unrelated to API changes.
+
+## What would have helped
+
+- Stage 1 handoff already named exact file paths and line numbers, which made this a straight mechanical edit with no exploration needed.
