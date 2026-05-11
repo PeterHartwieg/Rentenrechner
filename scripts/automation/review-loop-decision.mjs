@@ -3,6 +3,7 @@ import { appendFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
 const DEFAULT_MAX_COMMITS = 3
+const BLOCKING_REVIEW_TEXT = /\bP[01]\b|\bmust\b|\bblocking\b|\brequest changes\b/i
 
 export function classifyClaudeReview(body = '') {
   if (!body.startsWith('[Claude Review]')) return 'wait'
@@ -21,9 +22,7 @@ export function classifyCodexReview(review) {
   if (state === 'APPROVED') return 'satisfied'
   if (state === 'CHANGES_REQUESTED') return 'needs_fix'
   if (state === 'COMMENTED') {
-    return /\bP[01]\b|\bmust\b|\bblocking\b|\brequest changes\b/i.test(body)
-      ? 'needs_fix'
-      : 'satisfied'
+    return BLOCKING_REVIEW_TEXT.test(body) ? 'needs_fix' : 'satisfied'
   }
   return 'wait'
 }
@@ -37,6 +36,11 @@ export function isCodexReview(review) {
   return /codex|openai|chatgpt/i.test(login) && !isClaudeReview(review)
 }
 
+export function isCodexReviewComment(comment) {
+  const login = String(comment?.user?.login ?? '')
+  return /codex|openai|chatgpt/i.test(login)
+}
+
 export function latestReview(reviews, predicate) {
   return reviews.filter(predicate).at(-1) ?? null
 }
@@ -48,19 +52,27 @@ export function extractLinkedIssue(body = '') {
 
 export function computeReviewLoopDecision({
   reviews,
+  reviewComments = [],
   headSha,
   commitCount,
   maxCommits = DEFAULT_MAX_COMMITS,
 }) {
   const headReviews = reviews.filter((review) => review.commit_id === headSha)
+  const headReviewComments = reviewComments.filter((comment) => comment.commit_id === headSha)
   const humanBlocking = headReviews.filter((review) => {
     const login = String(review?.user?.login ?? '')
     return !login.endsWith('[bot]') && String(review?.state ?? '').toUpperCase() === 'CHANGES_REQUESTED'
   })
+  const codexBlockingInlineComments = headReviewComments.filter((comment) =>
+    isCodexReviewComment(comment) && BLOCKING_REVIEW_TEXT.test(String(comment?.body ?? '')),
+  )
   const claude = latestReview(headReviews, isClaudeReview)
   const codex = latestReview(headReviews, isCodexReview)
   const claudeStatus = claude ? classifyClaudeReview(claude.body) : 'wait'
-  const codexStatus = codex ? classifyCodexReview(codex) : 'wait'
+  let codexStatus = codex ? classifyCodexReview(codex) : 'wait'
+  if (codexBlockingInlineComments.length > 0) {
+    codexStatus = 'needs_fix'
+  }
 
   if (commitCount > maxCommits) {
     return {
@@ -69,6 +81,7 @@ export function computeReviewLoopDecision({
       claudeStatus,
       codexStatus,
       humanBlockingCount: humanBlocking.length,
+      codexBlockingInlineCommentCount: codexBlockingInlineComments.length,
     }
   }
 
@@ -79,6 +92,7 @@ export function computeReviewLoopDecision({
       claudeStatus,
       codexStatus,
       humanBlockingCount: humanBlocking.length,
+      codexBlockingInlineCommentCount: codexBlockingInlineComments.length,
     }
   }
 
@@ -89,6 +103,7 @@ export function computeReviewLoopDecision({
       claudeStatus,
       codexStatus,
       humanBlockingCount: humanBlocking.length,
+      codexBlockingInlineCommentCount: codexBlockingInlineComments.length,
     }
   }
 
@@ -98,6 +113,7 @@ export function computeReviewLoopDecision({
     claudeStatus,
     codexStatus,
     humanBlockingCount: humanBlocking.length,
+    codexBlockingInlineCommentCount: codexBlockingInlineComments.length,
   }
 }
 
@@ -124,8 +140,9 @@ async function main() {
 
   const commitCount = Number(run('git', ['rev-list', '--count', 'origin/main..HEAD']).trim())
   const reviews = JSON.parse(run('gh', ['api', `repos/${repo}/pulls/${prNumber}/reviews`]))
+  const reviewComments = JSON.parse(run('gh', ['api', `repos/${repo}/pulls/${prNumber}/comments`]))
   const body = run('gh', ['pr', 'view', prNumber, '--repo', repo, '--json', 'body', '--jq', '.body'])
-  const result = computeReviewLoopDecision({ reviews, headSha, commitCount, maxCommits })
+  const result = computeReviewLoopDecision({ reviews, reviewComments, headSha, commitCount, maxCommits })
 
   writeOutputs({
     decision: result.decision,
@@ -133,6 +150,7 @@ async function main() {
     claude_status: result.claudeStatus,
     codex_status: result.codexStatus,
     human_blocking_count: result.humanBlockingCount,
+    codex_blocking_inline_comment_count: result.codexBlockingInlineCommentCount,
     commit_count: commitCount,
     issue_number: extractLinkedIssue(body),
   })

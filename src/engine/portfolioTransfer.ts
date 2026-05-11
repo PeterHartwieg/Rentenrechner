@@ -203,10 +203,11 @@ export function computeSurrenderTax(
     // circuits (pre-2005 contracts). Scope-limited per spec: other surrender
     // modes follow the same direct-helper invocation pattern.
     const totalContributedToDate = 0
-    const ageAtEventYear = profile.age + (eventCalendarYear - rules.year)
+    const effectiveEventCalendarYear = Math.max(eventCalendarYear, rules.year)
+    const ageAtEventYear = profile.age + (effectiveEventCalendarYear - rules.year)
     const taxMode = deriveInsuranceTaxMode(
       ins.contractStartYear,
-      Math.max(1, eventCalendarYear - ins.contractStartYear),
+      Math.max(1, effectiveEventCalendarYear - ins.contractStartYear),
       ageAtEventYear,
       ins.oldContractTaxFreeEligible,
     )

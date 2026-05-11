@@ -54,6 +54,31 @@ describe('review-loop-decision', () => {
     expect(result.decision).toBe('merge')
   })
 
+  it('routes to fix when Codex leaves a P1 inline review comment', () => {
+    const result = computeReviewLoopDecision({
+      headSha,
+      commitCount: 1,
+      reviews: [
+        review(),
+        review({
+          user: { login: 'chatgpt-codex-connector[bot]' },
+          state: 'COMMENTED',
+          body: '### Codex Review\n\nHere are some automated review suggestions.',
+        }),
+      ],
+      reviewComments: [
+        {
+          user: { login: 'chatgpt-codex-connector[bot]' },
+          commit_id: headSha,
+          body: '**P1** Clamp surrender-year age before deriving tax mode',
+        },
+      ],
+    })
+
+    expect(result.decision).toBe('fix')
+    expect(result.codexStatus).toBe('needs_fix')
+  })
+
   it('routes to wait while Codex is silent', () => {
     const result = computeReviewLoopDecision({
       headSha,

@@ -152,14 +152,17 @@ jobs:
             files.
 
             **Task**
-            1. Read current-head reviews:
+            1. Read current-head reviews and inline review comments:
                `gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews`.
-               Only use reviews where `commit_id == "$PR_HEAD_SHA"`.
+               `gh api repos/${{ github.repository }}/pulls/$PR_NUMBER/comments`.
+               Only use records where `commit_id == "$PR_HEAD_SHA"`.
             2. Collect concrete blockers from:
                - Claude reviews with `[Claude Review]` and `Verdict: Request changes`
                  (or a line-leading `Request changes` heading).
                - Codex/OpenAI reviews with `CHANGES_REQUESTED`, or `COMMENTED` bodies
                  that explicitly flag P0/P1 blockers.
+               - Codex/OpenAI inline review comments that explicitly flag P0/P1
+                 blockers.
                - Human `CHANGES_REQUESTED` reviews.
                Ignore "could also", "consider", and optional suggestions.
             3. Fix exactly those blockers. Keep the diff focused on the original PR.

@@ -354,6 +354,48 @@ describe('portfolioTransfer — computeSurrenderTax', () => {
     expect(actual).toBeCloseTo(expectedAbgeltungsteuer, 2)
   })
 
+  it('clamps pre-rules surrender years before deriving private-insurance tax mode', () => {
+    const ws = makeBaseWorkspace()
+    const eventYearBeforeRules = de2026Rules.year - 1
+    const preRulesEvent: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        profile: { ...ws.baseline.profile, age: 60, retirementAge: 67 },
+      },
+    }
+    const sameRawEventAgeAsClampedRulesYear: Workspace = {
+      ...preRulesEvent,
+      baseline: {
+        ...preRulesEvent.baseline,
+        profile: { ...preRulesEvent.baseline.profile, age: 61 },
+      },
+    }
+    const insurance: InsuranceInstance = {
+      ...ws.baseline.assumptions.insurance[0],
+      instanceId: 'versicherung-pre-rules-surrender',
+      contractStartYear: 2008,
+      oldContractTaxFreeEligible: false,
+    }
+
+    const actual = computeSurrenderTax(
+      insurance,
+      100_000,
+      preRulesEvent,
+      de2026Rules,
+      eventYearBeforeRules,
+    )
+    const expectedClampedTaxMode = computeSurrenderTax(
+      insurance,
+      100_000,
+      sameRawEventAgeAsClampedRulesYear,
+      de2026Rules,
+      eventYearBeforeRules,
+    )
+
+    expect(actual).toBeCloseTo(expectedClampedTaxMode, 2)
+  })
+
   it('bAV (direktversicherung_3_63) → surrender tax > 0 (marginal rate, no Fünftelregelung)', () => {
     const ws = makeBaseWorkspace()
     const bav: BavInstance = {
