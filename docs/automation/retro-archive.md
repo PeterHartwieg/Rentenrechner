@@ -1065,3 +1065,25 @@ labels: [area:copy]
 ## What would have helped
 
 - Nothing — the Stage 1 handoff was precise (file + line + exact stale text), making Stage 2 a straight one-line fix.
+
+---
+date: 2026-05-11T11:21:00Z
+issue: 137
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, code-review]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- For surrender reinvest transfers, `portfolioTransfer.ts` currently emits both `capitalInjections` and `costBasisInjections` with the same after-tax proceeds for the target instance.
+- `projectAccumulation` tracks both arrays through the same `injectedPrincipal` accumulator, so a direct accumulation test can reproduce the double-counted basis without needing a full workspace fixture.
+
+## What would have helped
+
+- A named invariant in `AccumulationPolicy` docs clarifying whether `capitalInjections` imply cost basis, or whether `costBasisInjections` is the only basis signal.
