@@ -466,11 +466,11 @@ inspection.
 
 | Trigger | Permissions | Model |
 |---------|-------------|-------|
-| `pull_request.opened/synchronize/reopened` (only `agent/issue-*` branches) | `contents:read`, `pull-requests:write`, `issues:read`, `id-token:write` | **Opus 4.7** |
+| `pull_request.opened/synchronize/reopened` (only `agent/issue-*` and `automation/retro-curate-*` branches) | `contents:read`, `pull-requests:write`, `issues:read`, `id-token:write` | **Opus 4.7** |
 
 Independent Claude reviewer. Different model than implementer (Opus for
-deeper judgement). Reads PR diff + linked issue + `CLAUDE.md` +
-`CONTEXT.md`, runs `npm run verify` to confirm head commit passes, posts
+deeper judgement). Reads PR diff + linked issue when present + `CLAUDE.md` +
+`CONTEXT.md`, checks the separate `pr-verify` result, posts
 exactly one formal `gh pr review`. Body MUST start with literal marker
 `[Claude Review]` and contain `Verdict: Approve` or `Verdict: Request
 changes` — both `review-loop.yml` and `review-loop-sweep.yml` parse the
@@ -480,7 +480,7 @@ body, not the formal review state (see "Known quirks").
 
 | Trigger | Permissions | Model |
 |---------|-------------|-------|
-| `pull_request_review.submitted` (only `agent/issue-*` branches) | `contents:write`, `pull-requests:write`, `issues:write`, `id-token:write` | **Opus 4.7** |
+| `pull_request_review.submitted` (only `agent/issue-*` and `automation/retro-curate-*` branches) | `contents:write`, `pull-requests:write`, `issues:write`, `id-token:write` | **Opus 4.7** |
 
 Implementer-as-merger. Wakes on every review submission, identifies the
 two reviewers (Claude by `[Claude Review]` body marker; Codex by
@@ -489,14 +489,15 @@ current head SHA. Three outcomes:
 
 - **Both satisfied** → run `npm run verify` once more → `gh pr merge
   --squash --delete-branch` → explicitly close linked issue as completed
-  → remove `in-progress-by-agent` from linked issue.
+  and remove `in-progress-by-agent` when a linked issue exists.
 - **Any change requested** → address all asks in one commit + push +
-  ping `@codex review` (Codex doesn't auto-re-review on synchronize).
+  dispatch fresh `pr-verify` and `claude-review` runs. Codex silence on
+  the new head is handled by `review-loop-sweep.yml`.
 - **Only one reviewer in** → no-op (wait for the other).
 
 If a reviewer's feedback is unaddressable, posts a status comment on the
-PR, labels linked issue `ready-for-human`, removes
-`in-progress-by-agent`, exits.
+PR, labels linked issue `ready-for-human` and removes
+`in-progress-by-agent` when a linked issue exists, exits.
 
 ### `retro-curate.yml`
 
@@ -533,8 +534,9 @@ Key safeguards:
 
 Codex's GitHub review integration intentionally only flags P0/P1 — for
 routine PRs (docs, copy, small refactors) it stays silent. The
-event-driven loop would wait forever. This sweep runs every 30 min and
-merges any agent PR > 20 min old where Claude approved + Codex never
+event-driven loop would wait forever. This sweep runs every 10 min and
+merges any automation-owned PR (`agent/issue-*` or
+`automation/retro-curate-*`) > 20 min old where Claude approved + Codex never
 posted. **No Claude agent invocation** — pure `gh` + `jq` shell, so it's
 cost-zero on idle (just runner minutes for the cron tick).
 
@@ -685,7 +687,7 @@ Each of these is tunable without touching the architecture.
 | Retro curation cadence | `cron: '0 9 * * *'` in `retro-curate.yml` | Default daily 09:00 UTC. Tighten to `0 */12 * * *` (twice daily) if you want faster promotion of urgent learnings; loosen to weekly if PR queue noise is too high. |
 | Retro lookback window | "past 7 days" filter in `retro-curate.yml` Step 2 | Default 7 days — robust to skipped cron days and pending curation PRs. Tighten to 3 days if your archive grows fast; widen to 14 days if you want more cross-issue pattern detection. |
 | Reviewer prompt strictness | `prompt:` block in `claude-review.yml` | Tune the bullet list of "What to review" + reference your repo's `## Review guidelines`. |
-| Branch naming | `agent/issue-<N>` in `docs/automation/codex-stage1-investigator.md` (creates) + `implement.yml` (consumes) + `startsWith(...,'agent/issue-')` in every other workflow | Change the prefix consistently across all surfaces. |
+| Branch naming | `agent/issue-<N>` in `docs/automation/codex-stage1-investigator.md` (creates) + `implement.yml` (consumes), and `automation/retro-curate-<date>` in `retro-curate.yml`. Review/verify/merge workflows admit both prefixes. | Change prefixes consistently across all surfaces. |
 | Merge style | `gh pr merge --squash --delete-branch` in `review-loop.yml` step 4a + `review-loop-sweep.yml` | Switch to `--merge` or `--rebase` if you want a different history. |
 | Approval body marker | `[Claude Review]` in `claude-review.yml` and parsed in loop + sweep | Change in all three places. |
 | Codex reviewer detection heuristic | `select(.user.login \| test("codex\|chatgpt"; "i"))` in loop + sweep | Tighten if your repo has unrelated bots whose login matches that pattern. |

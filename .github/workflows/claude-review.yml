@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   review:
-    if: ${{ startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-') }}
+    if: ${{ startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-') || startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'automation/retro-curate-') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -71,7 +71,10 @@ jobs:
               to get PR metadata.
             - Use `gh pr diff $PR_NUMBER` to read the full diff.
             - Use `gh pr view $PR_NUMBER --json body --jq .body` to find the linked
-              issue (look for `Closes #N`). Read the issue with `gh issue view N`.
+              issue (look for `Closes #N`). If present, read the issue with
+              `gh issue view N`. Retro-curation PRs usually have no linked issue;
+              review their Sources/Proposed promotions/Why-these body sections
+              against the diff and the automation docs instead.
 
             **What to review**
 
