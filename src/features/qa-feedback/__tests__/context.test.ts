@@ -6,6 +6,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { JSDOM } from 'jsdom'
 import { collectWorkspaceContext } from '../context/collectWorkspaceContext'
 import { STORAGE_KEY_V2 } from '../../../storage'
 
@@ -89,5 +90,22 @@ describe('collectWorkspaceContext — flow detection (DOM)', () => {
   it('returns undefined flow when pinnedElement is null', () => {
     const ctx = collectWorkspaceContext({ pinnedElement: null })
     expect(ctx.flow).toBeUndefined()
+  })
+
+  it('does not leak aria-labelledby text from dialog labels into QA context', () => {
+    const dom = new JSDOM(`
+      <section>
+        <h2 id="contract-name">Private Vertragsnotiz: Alice Musterfrau</h2>
+        <div role="dialog" aria-labelledby="contract-name">
+          <button id="target">Feedback</button>
+        </div>
+      </section>
+    `)
+    vi.stubGlobal('document', dom.window.document)
+
+    const target = dom.window.document.getElementById('target')
+    const ctx = collectWorkspaceContext({ pinnedElement: target })
+
+    expect(ctx.flow).toBe('dialog')
   })
 })
