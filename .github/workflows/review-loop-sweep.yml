@@ -19,6 +19,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write
 
 concurrency:
   group: review-loop-sweep
@@ -56,7 +57,7 @@ jobs:
             echo "::group::PR #$pr"
 
             if ! pr_json=$(gh pr view "$pr" --repo "$REPO" \
-              --json createdAt,headRefOid,body,headRefName); then
+              --json createdAt,headRefOid,body,headRefName,title); then
               echo "Skip: failed to load PR metadata; will retry on next tick."
               echo "::endgroup::"
               continue
@@ -65,6 +66,7 @@ jobs:
             head_sha=$(echo "$pr_json" | jq -r .headRefOid)
             pr_body=$(echo "$pr_json" | jq -r .body)
             head_ref=$(echo "$pr_json" | jq -r .headRefName)
+            pr_title=$(echo "$pr_json" | jq -r .title)
 
             created_ts=$(date -u -d "$created" +%s)
             age_min=$(( (now_ts - created_ts) / 60 ))
@@ -148,6 +150,21 @@ jobs:
               echo "Branch is BEHIND main — calling update-branch and deferring merge to next tick."
               gh pr update-branch "$pr" --repo "$REPO" || \
                 echo "update-branch failed; will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
+            if [ "$mergeable_state" = "DIRTY" ]; then
+              echo "Branch is DIRTY — dispatching merge-conflict repair workflow and deferring merge."
+              gh workflow run resolve-merge-conflict.yml \
+                -f pr_number="$pr" \
+                -f pr_title="$pr_title" \
+                -f head_sha="$head_sha" \
+                -f head_ref="$head_ref"
+              if ! gh pr view "$pr" --repo "$REPO" --json comments \
+                --jq '.comments[].body' | grep -q '^\[conflict-fix\]'; then
+                gh pr comment "$pr" --repo "$REPO" --body \
+                  "[conflict-fix] Branch is not cleanly mergeable with main. Dispatched resolve-merge-conflict.yml for \`$head_sha\`."
+              fi
               echo "::endgroup::"
               continue
             fi

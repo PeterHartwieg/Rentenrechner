@@ -60,4 +60,21 @@ describe('review-loop workflow handoff', () => {
     expect(workflow).toContain('gh workflow run claude-review.yml')
     expect(workflow).toContain('head_sha="$new_head_sha"')
   })
+
+  it('dispatches a conflict repair workflow when sweep finds a dirty PR', () => {
+    const sweep = readFileSync('.github/workflows/review-loop-sweep.yml', 'utf8')
+    const reviewLoop = readFileSync('.github/workflows/review-loop.yml', 'utf8')
+    const conflictWorkflow = readFileSync('.github/workflows/resolve-merge-conflict.yml', 'utf8')
+
+    expect(sweep).toContain('if [ "$mergeable_state" = "DIRTY" ]; then')
+    expect(sweep).toContain('gh workflow run resolve-merge-conflict.yml')
+    expect(sweep).toContain('actions: write')
+    expect(reviewLoop).toContain('if [ "$mergeable_state" = "DIRTY" ]; then')
+    expect(reviewLoop).toContain('gh workflow run resolve-merge-conflict.yml')
+    expect(conflictWorkflow).toContain('workflow_dispatch:')
+    expect(conflictWorkflow).toContain('git merge --no-ff --no-commit origin/main')
+    expect(conflictWorkflow).toContain('Resolves merge conflict on PR #$PR_NUMBER')
+    expect(conflictWorkflow).toContain('gh workflow run pr-verify.yml')
+    expect(conflictWorkflow).toContain('gh workflow run claude-review.yml')
+  })
 })

@@ -58,6 +58,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           ISSUE_NUMBER: ${{ steps.route.outputs.issue_number }}
         shell: bash
@@ -70,6 +72,17 @@ jobs:
           if [ "$mergeable_state" = "BEHIND" ]; then
             echo "Branch is BEHIND main — updating branch and deferring merge."
             gh pr update-branch "$PR_NUMBER"
+            exit 0
+          fi
+          if [ "$mergeable_state" = "DIRTY" ]; then
+            echo "Branch is DIRTY — dispatching merge-conflict repair workflow and deferring merge."
+            gh workflow run resolve-merge-conflict.yml \
+              -f pr_number="$PR_NUMBER" \
+              -f pr_title="$PR_TITLE" \
+              -f head_sha="$PR_HEAD_SHA" \
+              -f head_ref="$PR_BRANCH"
+            gh pr comment "$PR_NUMBER" --body \
+              "[conflict-fix] Branch is not cleanly mergeable with main. Dispatched resolve-merge-conflict.yml for \`$PR_HEAD_SHA\`."
             exit 0
           fi
 
