@@ -26,9 +26,9 @@ import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from './storageKeys'
 // Read order: both loadSavedState and loadSavedWorkspace prefer STORAGE_KEY_V2,
 // then fall back to STORAGE_KEY_V1 with v1→v2 migration applied.
 //
-// The compare-mode writer (useCalculatorState) still writes to STORAGE_KEY_V1.
-// useCalculatorState must be updated to call saveWorkspace() and removed from
-// the v1 write path once the full workspace edit-flow is complete.
+// The compare-mode writer (useCalculatorState) intentionally keeps writing to
+// STORAGE_KEY_V1. Combine/workspace mode writes STORAGE_KEY_V2 via saveWorkspace().
+// The dual-key coexistence is the stable, shipped architecture — not a migration debt.
 // ---------------------------------------------------------------------------
 // `STORAGE_KEY_V1` / `STORAGE_KEY_V2` live in `./storageKeys.ts` so that
 // `useRoute.detectSavedMode` (called from the initial-paint code path of
@@ -797,9 +797,8 @@ export function loadSavedWorkspace(): Workspace | null {
 /**
  * Save a Workspace to localStorage using the v2 key.
  * Called by portfolioState (combine-mode). The compare-mode write path
- * (useCalculatorState) still writes v1-shaped JSON to STORAGE_KEY_V1 and
- * must be updated to call this function once the full workspace edit-flow
- * is complete.
+ * (useCalculatorState) intentionally writes v1-shaped JSON to STORAGE_KEY_V1 —
+ * dual-key coexistence is the stable, shipped architecture.
  */
 export function saveWorkspace(workspace: Workspace): void {
   try {
