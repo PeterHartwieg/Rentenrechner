@@ -1546,3 +1546,27 @@ labels: [enhancement, in-progress-by-agent]
 ## What would have helped
 
 - A transient-safe label application wrapper in the automation prompt would avoid leaving a fully investigated issue stuck before `ready-for-PR` when GitHub returns a 504.
+
+---
+date: 2026-05-11T13:37:00Z
+issue: 165
+pr: 220
+stage: implement
+outcome: pr-opened
+labels: []
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The simulate Worker imports `runComparison` and `getManifest` directly from `../../../src/api/comparison` and `../../../src/api/manifest` using relative paths. The root vitest picks these up transparently — no separate vitest config is needed for `workers/simulate/`.
+- `API_VERSION = 'v1'` (not semver). The test expects `X-Api-Version` to match `/^\d+\.\d+\.\d+$/`, so the Worker strips the `v` prefix and appends `.0.0` via `apiVersion.replace(/^v/, '') + '.0.0'` — simple but sufficient for a v1 API.
+- Auth check must precede origin check for POST requests: the 401 test (correct origin, no auth) and the 403 test (wrong origin, valid auth) pin this ordering. The 403 response intentionally omits `Access-Control-Allow-Origin` — tested explicitly.
+- `workers/simulate/test/` was picked up by the root vitest (148 test files total) because the root `vite.config.ts` excludes only `node_modules`, `dist`, and `.claude` — it does not exclude `workers/`.
+
+## What would have helped
+
+- Stage 1 handoff could have noted the `API_VERSION = 'v1'` vs. semver mismatch so I didn't need to discover it by reading `src/api/contracts.ts`.
