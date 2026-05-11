@@ -39,8 +39,9 @@ export function appendRetroEntry({ entryPath, stage, issueNumber }) {
     runInherit('git', ['stash', 'push', '-u', '-m', `pre-retro-${stage}-${issueNumber}`])
   }
 
-  runInherit('git', ['checkout', 'main'])
-  runInherit('git', ['pull', '--rebase', 'origin', 'main'])
+  const retroBranch = `automation/retro-${stage}-${issueNumber}-${Date.now()}`
+  runInherit('git', ['fetch', '--no-write-fetch-head', 'origin', '+refs/heads/main:refs/remotes/origin/main'])
+  runInherit('git', ['checkout', '-B', retroBranch, 'origin/main'])
 
   const entry = normalizeRetroEntry(readFileSync(tempEntry, 'utf8'))
   const archiveBefore = readFileSync(ARCHIVE_PATH, 'utf8')
@@ -51,13 +52,17 @@ export function appendRetroEntry({ entryPath, stage, issueNumber }) {
   runInherit('git', ['commit', '-m', `retro: ${stage} #${issueNumber}`])
 
   try {
-    runInherit('git', ['push', 'origin', 'main'])
+    runInherit('git', ['push', 'origin', 'HEAD:main'])
   } catch {
-    runInherit('git', ['pull', '--rebase', 'origin', 'main'])
-    runInherit('git', ['push', 'origin', 'main'])
+    runInherit('git', ['fetch', '--no-write-fetch-head', 'origin', '+refs/heads/main:refs/remotes/origin/main'])
+    runInherit('git', ['rebase', 'origin/main'])
+    runInherit('git', ['push', 'origin', 'HEAD:main'])
   } finally {
     rmSync(tempEntry, { force: true })
   }
+
+  runInherit('git', ['checkout', '--detach', 'origin/main'])
+  runInherit('git', ['branch', '-D', retroBranch])
 }
 
 async function main() {
