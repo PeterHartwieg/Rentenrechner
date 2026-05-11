@@ -121,6 +121,48 @@ function run(command, args, options = {}) {
   return execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...options })
 }
 
+export function isRetryableCommandError(error) {
+  const text = [
+    error?.message,
+    error?.stderr,
+    error?.stdout,
+    Array.isArray(error?.output) ? error.output.join('\n') : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  return /HTTP 5\d\d|timed? out|timeout|ECONNRESET|ETIMEDOUT|EAI_AGAIN|Bad Gateway|Service Unavailable|Gateway Timeout/i.test(
+    text,
+  )
+}
+
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+function runWithRetry(command, args, options = {}) {
+  const attempts = Number(options.attempts ?? 3)
+  const delayMs = Number(options.delayMs ?? 2000)
+  const runOptions = { ...options }
+  delete runOptions.attempts
+  delete runOptions.delayMs
+
+  let lastError
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return run(command, args, runOptions)
+    } catch (error) {
+      lastError = error
+      if (attempt >= attempts || !isRetryableCommandError(error)) throw error
+      console.warn(
+        `Retrying ${command} ${args.join(' ')} after transient failure (${attempt}/${attempts})`,
+      )
+      sleep(delayMs)
+    }
+  }
+  throw lastError
+}
+
 function writeOutputs(values) {
   const target = process.env.GITHUB_OUTPUT
   const lines = Object.entries(values).map(([key, value]) => `${key}=${String(value).replace(/\r?\n/g, ' ')}`)
@@ -139,9 +181,21 @@ async function main() {
   }
 
   const commitCount = Number(run('git', ['rev-list', '--count', 'origin/main..HEAD']).trim())
-  const reviews = JSON.parse(run('gh', ['api', `repos/${repo}/pulls/${prNumber}/reviews`]))
-  const reviewComments = JSON.parse(run('gh', ['api', `repos/${repo}/pulls/${prNumber}/comments`]))
-  const body = run('gh', ['pr', 'view', prNumber, '--repo', repo, '--json', 'body', '--jq', '.body'])
+  const reviews = JSON.parse(runWithRetry('gh', ['api', `repos/${repo}/pulls/${prNumber}/reviews`]))
+  const reviewComments = JSON.parse(
+    runWithRetry('gh', ['api', `repos/${repo}/pulls/${prNumber}/comments`]),
+  )
+  const body = runWithRetry('gh', [
+    'pr',
+    'view',
+    prNumber,
+    '--repo',
+    repo,
+    '--json',
+    'body',
+    '--jq',
+    '.body',
+  ])
   const result = computeReviewLoopDecision({ reviews, reviewComments, headSha, commitCount, maxCommits })
 
   writeOutputs({
