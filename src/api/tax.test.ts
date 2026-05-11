@@ -284,6 +284,24 @@ describe('calculateSalary', () => {
     expect(result.data.socialContributions.healthInsurance).toBe(0)
     expect(result.data.socialContributions.nursingCareInsurance).toBe(0)
   })
+
+  it('applies married-household tax class III/V payroll tables', () => {
+    const classOne = calculateSalary({ profile: { ...defaultProfile, taxClass: 1 } })
+    const classThree = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 3 as unknown as 1 },
+    })
+    const classFive = calculateSalary({
+      profile: { ...defaultProfile, taxClass: 5 as unknown as 1 },
+    })
+
+    expect(classOne.ok).toBe(true)
+    expect(classThree.ok).toBe(true)
+    expect(classFive.ok).toBe(true)
+    if (!classOne.ok || !classThree.ok || !classFive.ok) return
+
+    expect(classThree.data.annualIncomeTax).toBeLessThan(classOne.data.annualIncomeTax)
+    expect(classFive.data.annualIncomeTax).toBeGreaterThan(classOne.data.annualIncomeTax)
+  })
 })
 
 // ---------------------------------------------------------------------------

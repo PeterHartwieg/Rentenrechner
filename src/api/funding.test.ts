@@ -50,6 +50,26 @@ describe('calculateBavFundingApi', () => {
     expect(d.monthlyNetCost).toBeGreaterThan(0)
     expect(d.monthlyNetCost).toBeLessThan(d.monthlyGrossConversion)
   })
+
+  it('uses the profile tax class when calculating bAV net cost', () => {
+    const classThree = calculateBavFundingApi({
+      profile: { ...defaultProfile, taxClass: 3 as unknown as 1 },
+      bav: defaultAssumptions.bav,
+    })
+    const classFive = calculateBavFundingApi({
+      profile: { ...defaultProfile, taxClass: 5 as unknown as 1 },
+      bav: defaultAssumptions.bav,
+    })
+
+    expect(classThree.ok).toBe(true)
+    expect(classFive.ok).toBe(true)
+    if (!classThree.ok || !classFive.ok) return
+
+    expect(classFive.data.monthlyTaxAndSvSavings).toBeGreaterThan(
+      classThree.data.monthlyTaxAndSvSavings,
+    )
+    expect(classFive.data.monthlyNetCost).toBeLessThan(classThree.data.monthlyNetCost)
+  })
 })
 
 // ---------------------------------------------------------------------------
