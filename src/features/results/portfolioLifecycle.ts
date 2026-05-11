@@ -5,12 +5,19 @@ import { getProductMeta } from '../../app/productPresentation'
 
 export const PORTFOLIO_LIFECYCLE_ID = 'portfolio'
 
+export interface SavingsStackRow {
+  age: number
+  totalBalance: number
+  layers: Array<{ productId: string; balance: number }>
+}
+
 export interface PortfolioLifecycleView {
   id: string
   label: string
   count: number
   productId?: ProductId
   result: LifecycleSeriesResult
+  savingsStackRows?: SavingsStackRow[]
 }
 
 type InstanceLike = {
@@ -75,6 +82,7 @@ export function buildPortfolioLifecycleViews(args: {
       retirementAge: args.retirementAge,
       horizonAge: args.horizonAge,
     }),
+    savingsStackRows: buildSavingsStackRows(groups, args.startAge, args.retirementAge),
   }
 
   return [portfolioView, ...productViews]
@@ -96,6 +104,26 @@ function productGroups(wsa: WorkspaceAssumptionsV2): Array<{
 
 function isIncludedLifecycleStatus(status: string): boolean {
   return status === 'active' || status === 'paid_up'
+}
+
+function buildSavingsStackRows(
+  groups: Array<{ productId: ProductId; results: ProductResult[] }>,
+  startAge: number,
+  retirementAge: number,
+): SavingsStackRow[] {
+  const rows: SavingsStackRow[] = []
+  for (let age = startAge + 1; age <= retirementAge; age++) {
+    const layers = groups.map((group) => ({
+      productId: group.productId as string,
+      balance: group.results.reduce((sum, result) => {
+        const row = result.rows.find((r) => r.age === age)
+        return sum + (row?.balance ?? (age >= retirementAge ? result.capitalAtRetirement : 0))
+      }, 0),
+    }))
+    const totalBalance = layers.reduce((sum, layer) => sum + layer.balance, 0)
+    rows.push({ age, totalBalance, layers })
+  }
+  return rows
 }
 
 function aggregateLifecycleResults(args: {
