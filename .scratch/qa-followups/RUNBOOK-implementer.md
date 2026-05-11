@@ -221,6 +221,28 @@ Hard constraints:
    the reviewer: `git diff main..HEAD`. Emit `RESULT: SUCCESS` with the
    branch name on a separate line, followed by the diff inside a fenced
    ```diff block.
+6. **Wrong-number-fix preflight (engine/combine/export math bugs).** If
+   the issue fixes a wrong number (tax, payout, KV/PV, funding), your PR
+   body MUST explicitly name: (a) one CLAUDE.md or CONTEXT.md invariant
+   the fix preserves or restores; (b) one user-visible surface (UI metric,
+   CSV column, PDF row); (c) one regression test file created or updated
+   in this PR. Missing any of the three is a block — emit
+   `RESULT: VERIFY_FAILED` if you cannot satisfy all three.
+7. **Paired test assertions.** For combine-mode bugs, the regression test
+   must assert both compare-mode singleton parity AND a combine-mode
+   multi-instance / transfer case. For export-layer bugs (CSV/PDF), the
+   test must assert the exported cell value or blank, not only the helper
+   return value.
+8. **Oracle-snapshot prohibition.** Do NOT edit oracle snapshots
+   (`simulate.integration.test.ts`, any file whose name contains "oracle"
+   or "golden") unless the issue body explicitly states the old oracle was
+   wrong. If your fix breaks an oracle snapshot, STOP — the fix is wrong,
+   not the oracle. Emit `RESULT: VERIFY_FAILED` with the oracle failure
+   excerpt.
+9. **Architectural-invariant naming (polish fixes).** If the fix touches
+   user-visible state (UI layout, mobile, accessibility, copy) without
+   changing engine math, the PR body must still name the nearest
+   architectural invariant from CONTEXT.md that the fix must preserve.
 
 Do NOT push, open PRs, merge, or comment on the issue. The orchestrator
 handles those.
