@@ -29,9 +29,11 @@ The calculator is **frontend-only** — all state in localStorage + share-URLs. 
 
 The **QA feedback Worker** (`qa.rentenwiki.de`) is the first sanctioned backend exception (ADR-0001). It is opt-in and QA mode only: testers without GitHub accounts can submit screenshots via the `?qa=1` overlay; the Worker processes submissions ephemerally and stores screenshots in R2 scoped to the lifetime of the linked GitHub issue. The calculator continues to work fully offline for users who do not use the QA feature.
 
-A second sanctioned backend trigger is OCR / document upload (Riester, bAV, GRV-Renteninformation parsing), which is still planned and not yet implemented.
+The **Simulate API Worker** (`api.rentenwiki.de/simulate`) is the second sanctioned backend exception (ADR-0002). It exposes `POST /simulate` as an authenticated HTTP facade over `runComparison()` for commercial-licence holders (brokers, advisors, employers) who need programmatic access. Access is gated by a Bearer `API_SHARED_SECRET`; CORS is restricted to a single `CRM_ALLOWED_ORIGIN` per deployment. Input profiles are processed ephemerally — no PII is stored. EU residency required for GDPR compliance. The public calculator remains fully offline for non-commercial users.
 
-Outside these two sanctioned triggers, do not add fetch/auth/cookies to the frontend.
+A third sanctioned backend trigger is OCR / document upload (Riester, bAV, GRV-Renteninformation parsing), which is still planned and not yet implemented.
+
+Outside these three sanctioned triggers, do not add fetch/auth/cookies to the frontend.
 
 ## Review guidelines
 
@@ -40,7 +42,7 @@ Read by the Codex GitHub review integration (and the Claude reviewer in `.github
 ### P0 — must be addressed before merge
 
 - **Disclaimer regression.** `DisclaimerBanner` switched from `sessionStorage` to `localStorage`; OR disclaimer no longer the literal first child of `#print-report` in `PrintReport.tsx`; OR removed from the first section of `buildExportCsv` output; OR README's not-advice notice removed. See "Critical guardrails" §1.
-- **Unsanctioned network call.** New `fetch` / `XMLHttpRequest` / `navigator.sendBeacon` / `Image()` ping / `<iframe src=>` to a remote endpoint, anywhere outside the QA Worker (`qa.rentenwiki.de`) or the planned OCR upload. Backend boundary is binding; new endpoints need an ADR.
+- **Unsanctioned network call.** New `fetch` / `XMLHttpRequest` / `navigator.sendBeacon` / `Image()` ping / `<iframe src=>` to a remote endpoint, anywhere outside the QA Worker (`qa.rentenwiki.de`), the Simulate API Worker (`api.rentenwiki.de/simulate`), or the planned OCR upload. Backend boundary is binding; new endpoints need an ADR.
 - **PII or telemetry without ADR.** Cookies, accounts, analytics, error tracking, persisted user identifiers — none allowed without GDPR-by-design (region, retention, consent) and a sanctioned ADR.
 - **Public copy regresses to "Rentenrechner".** Page titles, marketing copy, OG tags, share-URL slugs, PDF/CSV export headers must say `RentenWiki.de`. Internal symbols (npm package, file paths, identifiers) keep "Rentenrechner".
 - **Statutory values hardcoded outside `src/rules/`.** Year-specific values must live in `src/rules/de2026.ts`; cross-year constants in `src/rules/legalConstants.ts`. Any statutory literal in `src/engine/`, `src/app/`, or `src/features/` is P0.

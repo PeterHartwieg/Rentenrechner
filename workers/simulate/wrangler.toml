@@ -1,0 +1,26 @@
+name = "rentenwiki-simulate"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Zone-based route — rentenwiki.de must be an active zone on this Cloudflare account.
+# custom_domain does not support path-scoped routing; use zone_name so the /simulate*
+# glob is enforced by Cloudflare before the Worker fires.
+[[routes]]
+pattern = "api.rentenwiki.de/simulate*"
+zone_name = "rentenwiki.de"
+
+# Secrets (set via `wrangler secret put <NAME>` after first deploy):
+#   API_SHARED_SECRET  — shared Bearer token issued to licensed commercial callers.
+#                        Rotate on every new commercial licence.
+#   CRM_ALLOWED_ORIGIN — single origin permitted to call the Worker from a browser
+#                        (e.g. "https://crm.example.com"). Set to the licensee's
+#                        CRM hostname. Update when the licensee changes domains.
+
+# Data handling notes:
+# - No PII is persisted. Input profiles and assumption objects are processed
+#   ephemerally inside the Worker and discarded after the response is sent.
+# - No R2 / KV / D1 bindings — compute-only Worker.
+# - EU residency: deploy to Cloudflare's EU region via
+#   `wrangler deploy --env production` with `[env.production]` smart-placement
+#   or a Cloudflare Regional Services policy for GDPR compliance.
+#   See ADR-0002 for the full data-handling rationale.
