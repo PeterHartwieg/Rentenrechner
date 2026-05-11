@@ -10,6 +10,12 @@ export interface SalaryResult {
   annualGross: number
   annualNet: number
   taxableIncome: number
+  // For Sonderausgaben deduction savings (Basisrente/AVD/Riester).
+  // Class II: taxableIncome already deducted by §24b Entlastungsbetrag when children are eligible.
+  // All other classes: equals taxableIncome.
+  taxableIncomeForDeductions: number
+  // 'married' for Steuerklasse III (Ehegattensplitting tariff for deduction savings).
+  deductionFilingStatus: 'single' | 'married'
   incomeTax: number
   solidarityTax: number
   social: SocialContributionBreakdown

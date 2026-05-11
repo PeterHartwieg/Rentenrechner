@@ -248,9 +248,9 @@ export function calculateAvdFunding(
   // -------------------------------------------------------------------------
   const { taxSavingAnnual: totalTaxSavingAnnual } = calculateSalaryPhaseTaxDelta(
     rules,
-    salaryResult.taxableIncome,
+    salaryResult.taxableIncomeForDeductions ?? salaryResult.taxableIncome,
     specialExpenseBaseAnnual,
-    options.filingStatus ?? 'single',
+    options.filingStatus ?? salaryResult.deductionFilingStatus ?? 'single',
   )
   // Extra refund above the allowance = Günstigerprüfung benefit.
   const guenstigerpruefungBenefitAnnual = calculateAllowanceExcessBenefit(

@@ -255,9 +255,9 @@ export function calculateRiesterFunding(
   // -------------------------------------------------------------------------
   const { taxSavingAnnual: totalTaxSavingAnnual } = calculateSalaryPhaseTaxDelta(
     rules,
-    salaryResult.taxableIncome,
+    salaryResult.taxableIncomeForDeductions ?? salaryResult.taxableIncome,
     specialExpenseDeductibleAnnual,
-    options.filingStatus ?? 'single',
+    options.filingStatus ?? salaryResult.deductionFilingStatus ?? 'single',
   )
   const guenstigerpruefungBenefitAnnual = calculateAllowanceExcessBenefit(
     totalTaxSavingAnnual,

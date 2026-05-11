@@ -96,8 +96,9 @@ export function calculateBasisrenteFunding(
   // -------------------------------------------------------------------------
   const { taxSavingAnnual: annualTaxSaving } = calculateSalaryPhaseTaxDelta(
     rules,
-    salaryResult.taxableIncome,
+    salaryResult.taxableIncomeForDeductions ?? salaryResult.taxableIncome,
     annualDeductible,
+    salaryResult.deductionFilingStatus ?? 'single',
   )
   const monthlyTaxSaving = annualTaxSaving / 12
   const monthlyNetCost = Math.max(0, basisrente.monthlyGrossContribution - monthlyTaxSaving)

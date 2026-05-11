@@ -209,6 +209,10 @@ export function calculateSalaryResult(
   // I, IV: standard single-filer table.
   let incomeTax: number
   let solidarityFilingStatus: 'single' | 'married' = 'single'
+  // taxableIncomeForDeductions: effective zvE for Sonderausgaben savings (Basisrente/AVD/Riester).
+  // For class II with eligible children, §24b Entlastungsbetrag lowers the marginal-rate base.
+  let taxableIncomeForDeductions = taxableIncome
+  const deductionFilingStatus: 'single' | 'married' = profile.taxClass === 3 ? 'married' : 'single'
   if (profile.taxClass === 3) {
     incomeTax = 2 * calculateIncomeTax2026(taxableIncome / 2, rules)
     solidarityFilingStatus = 'married'
@@ -222,6 +226,7 @@ export function calculateSalaryResult(
         rules.entlastungsbetragAlleinerziehende +
         (childCount - 1) * rules.entlastungsbetragAlleinerziehendePro
       incomeTax = calculateIncomeTax2026(Math.max(0, taxableIncome - entlastung), rules)
+      taxableIncomeForDeductions = Math.max(0, taxableIncome - entlastung)
     } else {
       incomeTax = calculateIncomeTax2026(taxableIncome, rules)
     }
@@ -279,6 +284,8 @@ export function calculateSalaryResult(
     annualGross: profile.grossSalaryYear,
     annualNet,
     taxableIncome,
+    taxableIncomeForDeductions,
+    deductionFilingStatus,
     incomeTax,
     solidarityTax,
     social,
