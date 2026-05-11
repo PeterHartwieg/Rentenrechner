@@ -60,8 +60,15 @@ describe('validateProfile', () => {
     expect(validateProfile({ ...defaultProfile, childBirthYears: [1990, 2010] })).not.toBeNull()
   })
 
-  it('rejects taxClass !== 1', () => {
-    expect(validateProfile({ ...defaultProfile, taxClass: 3 as unknown as 1 })).toBeNull()
+  it('accepts taxClass 1 through 6', () => {
+    for (const taxClass of [1, 2, 3, 4, 5, 6] as const) {
+      expect(validateProfile({ ...defaultProfile, taxClass })).not.toBeNull()
+    }
+  })
+
+  it('rejects taxClass outside 1 through 6', () => {
+    expect(validateProfile({ ...defaultProfile, taxClass: 0 as unknown as 1 })).toBeNull()
+    expect(validateProfile({ ...defaultProfile, taxClass: 7 as unknown as 1 })).toBeNull()
   })
 
   it('rejects healthAdditionalContributionPct out of [0,10]', () => {

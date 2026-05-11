@@ -200,8 +200,21 @@ export function calculateSalaryResult(
       rules.employeeAllowance -
       rules.specialExpensesAllowance,
   )
-  const incomeTax = calculateIncomeTax2026(taxableIncome, rules)
-  const solidarityTax = calculateSolidarityTax(incomeTax, rules)
+  // §39b EStG tax-class dispatch.
+  // III: Ehegattensplitting (§32a Abs. 5 EStG) — 2 × f(income/2); Soli uses married threshold.
+  // V/VI: no Grundfreibetrag — pass income + basicAllowance so the free zone is consumed.
+  // I, II, IV: standard single-filer table.
+  let incomeTax: number
+  let solidarityFilingStatus: 'single' | 'married' = 'single'
+  if (profile.taxClass === 3) {
+    incomeTax = 2 * calculateIncomeTax2026(taxableIncome / 2, rules)
+    solidarityFilingStatus = 'married'
+  } else if (profile.taxClass === 5 || profile.taxClass === 6) {
+    incomeTax = calculateIncomeTax2026(taxableIncome + rules.incomeTax.basicAllowance, rules)
+  } else {
+    incomeTax = calculateIncomeTax2026(taxableIncome, rules)
+  }
+  const solidarityTax = calculateSolidarityTax(incomeTax, rules, solidarityFilingStatus)
 
   // #50: §257 SGB V employer subsidy + net PKV cost (zero for GKV members).
   // The employer's §257 subsidy is §3 Nr. 62 EStG tax-free and is not subject to social

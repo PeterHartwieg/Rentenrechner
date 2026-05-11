@@ -31,7 +31,7 @@ export function validateProfile(input: unknown): PersonalProfile | null {
   if (!isFiniteNumber(p.retirementAge)) return null
   if (p.retirementAge < p.age || p.retirementAge > 120) return null
   if (!isFiniteNumber(p.grossSalaryYear) || p.grossSalaryYear < 0) return null
-  if (p.taxClass !== 1) return null
+  if (!isInt(p.taxClass) || p.taxClass < 1 || p.taxClass > 6) return null
   if (!Array.isArray(p.childBirthYears) || p.childBirthYears.length > 20) return null
   for (const y of p.childBirthYears) {
     if (!isInt(y) || y < 1900 || y > 2200) return null
