@@ -1824,3 +1824,26 @@ labels: [enhancement, ready-for-PR]
 ## What would have helped
 
 - A PowerShell-compatible verification command in the versioned prompt, or a repository-provided `grep` shim for Windows automation worktrees.
+
+---
+date: 2026-05-11T14:08:00Z
+issue: 169
+pr: 225
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- GitHub returned HTTP 500 on the first two push attempts; succeeded on the third retry without any change.
+
+## Learnings
+
+- `toYearlyRowEntries` in `src/api/resultSummaries.ts` is the sole DTO projection layer for yearly rows; enriching it with an optional `bavFunding?: BavFundingResult` parameter keeps the bAV breakdown entirely in the API layer without touching the engine.
+- The `lohnsteuerErsparnis` and `svVorteilMonthly` breakdown is not stored as discrete fields on `BavFundingResult`; it must be derived from `salaryWithoutBav` vs `salaryWithBav` at projection time: `(without.incomeTax - with_.incomeTax + without.solidarityTax - with_.solidarityTax) / 12` and `(without.social.total - with_.social.total) / 12`.
+- `src/features/qa-feedback/__tests__/app-bridge.test.tsx` reliably fails in the full parallel test run but passes in isolation — confirmed as a known environment interaction flake, not related to this change.
+
+## What would have helped
+
+- The Stage 1 handoff correctly identified the three files to touch; the only gap was that it didn't name which salary fields to use for the lohnsteuer/SV split (required reading `src/domain/salary.ts` and `src/engine/salary.ts` briefly).
