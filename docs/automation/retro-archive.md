@@ -709,3 +709,25 @@ labels: [bug, area:copy]
 ## What would have helped
 
 - Nothing would have materially shortened this run — the Stage 1 handoff was precise and the fix was one word.
+
+---
+date: 2026-05-11T07:33:10Z
+issue: 115
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- For OptimiereVorsorgeModal viewport issues, inspect both `src/features/dashboard/OptimiereVorsorgeModal.tsx` action-row placement and `src/features/dashboard/OptimiereVorsorgeModal.css` modal overflow rules before deciding whether the issue is a behavior bug or layout-only.
+- Sticky footer requests inside this modal are layout-only when the buttons already exist and the failure is visibility at a constrained viewport; use TDD-skip and ask Stage 2 for a browser viewport check.
+
+## What would have helped
+
+- A browser-based viewport regression helper for modal footer visibility would turn this class of QA issue into a testable handoff.
