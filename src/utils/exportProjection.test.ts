@@ -6,7 +6,7 @@ import {
   projectCompareExportRows,
 } from './exportProjection'
 
-const BASE_PRODUCT: ProductResult = {
+const BASE_PRODUCT = {
   productId: 'bav',
   label: 'bAV',
   scenarioId: 'basis',
@@ -24,9 +24,9 @@ const BASE_PRODUCT: ProductResult = {
   valueMultipleOnUserCost: 2.1,
   leibrenteBreakEvenAge: 82,
   lumpSumDeductions: null,
-}
+} as unknown as ProductResult
 
-const COMBINED: CombinedResult = {
+const COMBINED = {
   scenarioId: 'basis',
   scenarioLabel: 'Basis',
   monthlyNetIncome: 1_800,
@@ -42,7 +42,7 @@ const COMBINED: CombinedResult = {
       kvPvShare: 60,
     },
   },
-}
+} as unknown as CombinedResult
 
 describe('export projection layer', () => {
   it('projects compare-mode rows from ProductResult without recalculating after-tax capital', () => {
