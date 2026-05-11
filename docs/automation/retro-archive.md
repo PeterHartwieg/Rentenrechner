@@ -888,3 +888,22 @@ labels: [enhancement, needs-info]
 ## What would have helped
 
 - A reopened QA note should name the remaining readability gap now that the three requested status buckets already exist on `main`.
+
+---
+date: 2026-05-11T10:39:46Z
+issue: 114
+pr: null
+stage: investigate
+outcome: needs-info
+labels: [bug, needs-info]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue #114 was already fixed on main by `src/features/dashboard/OptimiereVorsorgeModal.tsx:444`, which inserts an explicit whitespace text node before the option-count span.
+- The regression is pinned in `src/features/dashboard/OptimiereVorsorgeModal.test.tsx:380` with a test named for #114; running `npx vitest run src/features/dashboard/OptimiereVorsorgeModal.test.tsx` passed 18 tests.
+- Older Windows PowerShell in this environment does not support `Get-Date -AsUTC`; use `(Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')` for automation timestamps.
