@@ -64,10 +64,13 @@ repository state is uncertain.
    - Enhancement: confirm the requested behavior is absent.
    - Code-review issue: before reading each named file, run
      `git log --oneline --all -- <file>` to catch already-fixed reports.
-   - If already correct, already present, too vague, or not reproducible:
-     comment with evidence, apply `needs-info`, remove
-     `in-progress-by-agent`, write and append the retro entry, and stop
-     without pushing a branch.
+   - If already correct or already present on current `main`: comment with
+     objective evidence, close the issue as completed, remove
+     `in-progress-by-agent`, write and append the retro entry, and stop without
+     pushing a branch.
+   - If too vague or not reproducible: comment with the missing evidence needed,
+     apply `needs-info`, remove `in-progress-by-agent`, write and append the
+     retro entry, and stop without pushing a branch.
 7. Decide TDD.
    - Write a failing test for calculation, state/reactivity, routing/URL,
      storage, pure helpers, DOM-testable a11y, and QA tooling behavior.

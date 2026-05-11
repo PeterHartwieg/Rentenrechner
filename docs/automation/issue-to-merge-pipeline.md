@@ -48,8 +48,9 @@ for the issue → merge path, plus one daily cron for continuous learning:
    one `ready-for-agent` issue, reproduce the bug (or validate the enhancement
    is missing), branch `agent/issue-N`, write a failing test (or judgement-call
    TDD-skip), push the branch, post an investigation comment, hand off to Stage
-   2 by labeling `ready-for-PR`. On not-reproducible: comment + `needs-info`,
-   exit cleanly. No fix.
+   2 by labeling `ready-for-PR`. On already-correct: comment with evidence and
+   close as completed. On not-reproducible: comment + `needs-info`, exit
+   cleanly. No fix.
 4. **Implement**: read Stage 1's investigation comment + the failing
    test on the branch, apply the fix, run `npm run verify`, open PR.
 5. **Two independent reviewers** — Anthropic Claude (via the action,
@@ -138,9 +139,12 @@ Codex app automation (gpt-5.5, medium) — Stage 1 of the agent's work
     6. push branch + post structured investigation comment
        (`## Reproduction`, `## Test status`, `## Branch` sections)
     7. apply `ready-for-PR` label → fires implement.yml
-    on not-reproducible / behavior already correct / report too vague:
-       comment with evidence + `needs-info`, remove `in-progress-by-agent`,
+    on behavior already correct:
+       comment with evidence, close as completed, remove `in-progress-by-agent`,
        exit. No branch push. No fix. (Cheap exit.)
+    on not-reproducible / report too vague:
+       comment with missing evidence needed + `needs-info`, remove
+       `in-progress-by-agent`, exit. No branch push. No fix.
     ↓
 [ready-for-PR label fires implement.yml]
     ↓
@@ -408,8 +412,9 @@ produces the reported wrong behavior."
 - **Reproduced** — proceed to test-writing decision.
 - **Code already does the right thing** — comment with specific
   evidence (which files inspected, what they do, why this contradicts
-  the report), apply `needs-info`, remove `in-progress-by-agent`, exit
-  cleanly. **No branch push, no test, no fix.**
+  the report), close the issue as completed, remove
+  `in-progress-by-agent`, exit cleanly. **No branch push, no test, no
+  fix.**
 - **Report too vague to locate** — comment listing what was searched
   and what's needed (specific element, repro steps, expected vs actual
   values), apply `needs-info`, exit cleanly.
@@ -425,10 +430,12 @@ Format: `## Reproduction` (failure path) + `## Test status` (failing
 test path OR `TDD-skip: <reason>`) + `## Branch` (`agent/issue-N`
 ready-for-Stage-2 marker).
 
-`needs-info` (reporter must supply more detail) vs `ready-for-human`
+`needs-info` (reporter must supply more detail), close-as-completed
+(already correct on `main`), and `ready-for-human`
 (needs human implementation) are distinct cleanup paths — Stage 1
-reproduction failures are `needs-info`; Stage 2 verify failures and
-Stage 1 misdiagnosis escapes are `ready-for-human`.
+reproduction failures are `needs-info`; Stage 1 already-correct exits
+are closed; Stage 2 verify failures and Stage 1 misdiagnosis escapes
+are `ready-for-human`.
 
 ### `implement.yml` (Stage 2)
 
