@@ -117,6 +117,61 @@ describe('buildPortfolioLifecycleViews', () => {
     expect(views.some((v) => v.id === 'etf')).toBe(true)
   })
 
+  it('shows all active products even when visibleProducts does not include them (stale compare-mode field)', () => {
+    // Simulates a user who had visibleProducts=['etf','bav'] from compare mode and then added
+    // an insurance instance in combine mode — that instance must not be silently hidden.
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      {
+        ...defaultAssumptions,
+        visibleProducts: ['etf', 'bav'],
+        bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 100 },
+      } as unknown as Record<string, unknown>,
+    )
+    ws.baseline.assumptions.bav = [
+      {
+        ...ws.baseline.assumptions.bav[0],
+        instanceId: 'bav-a',
+        label: 'bAV A',
+        status: 'active',
+        monthlyGrossConversion: 100,
+      },
+    ]
+    ws.baseline.assumptions.etf = [
+      {
+        ...ws.baseline.assumptions.etf[0],
+        instanceId: 'etf-a',
+        label: 'ETF A',
+        status: 'active',
+        monthlyContribution: 100,
+      },
+    ]
+    // insurance is not in visibleProducts, but has an active instance
+    ws.baseline.assumptions.insurance = [
+      {
+        ...ws.baseline.assumptions.insurance[0],
+        instanceId: 'ins-a',
+        label: 'Versicherung A',
+        status: 'active',
+        monthlyContribution: 50,
+      },
+    ]
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const basisId = ws.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')?.id
+      ?? ws.baseline.assumptions.returnScenarios[0].id
+    const views = buildPortfolioLifecycleViews({
+      workspace: ws,
+      perInstance: bundle.perInstance,
+      scenarioId: basisId,
+      startAge: ws.baseline.profile.age,
+      retirementAge: ws.baseline.profile.retirementAge,
+      horizonAge: ws.baseline.assumptions.retirementEndAge,
+    })
+    expect(views.some((v) => v.id === 'versicherung')).toBe(true)
+    expect(views.some((v) => v.id === 'bav')).toBe(true)
+    expect(views.some((v) => v.id === 'etf')).toBe(true)
+  })
+
   it('defaults to a Gesamtportfolio aggregate and excludes GRV', () => {
     const { views } = buildViews()
     expect(views[0].id).toBe(PORTFOLIO_LIFECYCLE_ID)
@@ -163,7 +218,9 @@ describe('buildPortfolioLifecycleViews', () => {
       expect(row.age).toBeGreaterThan(ws.baseline.profile.age)
       expect(row.age).toBeLessThanOrEqual(ws.baseline.profile.retirementAge)
       expect(row.layers.some((layer) => layer.productId === 'grv')).toBe(false)
-      expect(row.layers.map((layer) => layer.productId).sort()).toEqual(['bav', 'etf'])
+      // bav and etf have active instances in the workspace
+      expect(row.layers.some((layer) => layer.productId === 'bav')).toBe(true)
+      expect(row.layers.some((layer) => layer.productId === 'etf')).toBe(true)
       expect(row.layers.reduce((sum, layer) => sum + layer.balance, 0)).toBeCloseTo(row.totalBalance, 2)
 
       const aggregateRow = portfolio.result.rows.find((point) => point.age === row.age)!

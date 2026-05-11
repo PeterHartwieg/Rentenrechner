@@ -34,9 +34,7 @@ export function buildPortfolioLifecycleViews(args: {
   retirementAge: number
   horizonAge: number
 }): PortfolioLifecycleView[] {
-  const visibleProductIds = args.workspace.baseline.assumptions.visibleProducts
   const groups = productGroups(args.workspace.baseline.assumptions)
-    .filter((group) => visibleProductIds.length === 0 || visibleProductIds.includes(group.productId))
     .map((group) => {
       const results = group.instances
         .filter((instance) => isIncludedLifecycleStatus(instance.status))
