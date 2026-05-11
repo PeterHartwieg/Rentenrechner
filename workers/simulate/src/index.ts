@@ -12,11 +12,13 @@ function jsonResponse(
   status: number,
   corsOrigin?: string | null,
 ): Response {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Api-Version': getManifest().data.apiVersion,
+  }
   if (corsOrigin) {
     headers['Access-Control-Allow-Origin'] = corsOrigin
     headers['Vary'] = 'Origin'
-    headers['X-Api-Version'] = getManifest().data.apiVersion
   }
   return new Response(JSON.stringify(body), { status, headers })
 }

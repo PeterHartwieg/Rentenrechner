@@ -156,6 +156,8 @@ describe('simulate Worker HTTP API', () => {
     expect(response.status).toBe(200)
     // No Origin → no CORS headers needed
     expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
+    // X-Api-Version must be present even without an Origin header (server-to-server callers need it)
+    expect(response.headers.get('X-Api-Version')).toBe('v1')
     expect(await json(response)).toMatchObject({ ok: true })
   })
 
