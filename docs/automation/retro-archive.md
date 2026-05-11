@@ -2033,3 +2033,26 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A note in Stage 1's handoff that the test workspace inherits default product instances for all 6 products from `migrateV1ToV2`, so the `visibleProducts` filter was required for the test assertions to be internally consistent.
+
+---
+date: 2026-05-11T20:14:00Z
+issue: 154
+pr: 234
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:ui]
+---
+
+## Blockers
+
+- None. The implementation commit (`9337011`) was already present on the branch when Stage 2 started. All 4 tests passed immediately; `npm run verify` passed with 3010 tests.
+
+## Learnings
+
+- `buildPortfolioLifecycleViews` in `src/features/results/portfolioLifecycle.ts` is the right place to attach `savingsStackRows` to the `Gesamtportfolio` view. The view object is typed as `PortfolioLifecycleView`; the stack payload was added as an optional `savingsStackRows?: SavingsStackRow[]` field (only populated for `PORTFOLIO_LIFECYCLE_ID`, not per-product views).
+- GRV exclusion comes naturally from iterating `productGroups` (which already excludes GRV from the lifecycle view loop) rather than requiring an explicit filter.
+- Test pattern in `portfolioLifecycle.test.ts`: use `migrateV1ToV2` + `runCombineSimulation` to build a realistic workspace bundle; cast the view through `unknown as { savingsStackRows? }` to keep the test type-safe without widening the production type.
+
+## What would have helped
+
+- Stage 1 could have left a note confirming whether the implementation commit was intentional (e.g. a prior partial run) or unexpected, to avoid Stage 2 re-checking from scratch.
