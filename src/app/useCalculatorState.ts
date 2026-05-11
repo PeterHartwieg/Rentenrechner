@@ -94,9 +94,9 @@ export function useCalculatorState() {
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(assumptionsInit)
 
   useEffect(() => {
-    // Writer stays on v1 key throughout M1. Issue 03 switches to saveWorkspace()
-    // writing v2-shaped JSON to STORAGE_KEY_V2.
-    // TODO(issue 03): replace with saveWorkspace(workspace) once PortfolioAdapter lands.
+    // Compare mode intentionally writes STORAGE_KEY_V1. Combine/workspace mode
+    // writes STORAGE_KEY_V2 via saveWorkspace() in portfolioState. Both keys
+    // coexist by design; see storage.ts for the dual-key architecture.
     safeSetItem(STORAGE_KEY_V1, buildStateJson(profile, assumptions))
   }, [profile, assumptions])
 
