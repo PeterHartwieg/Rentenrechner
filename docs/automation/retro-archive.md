@@ -1453,3 +1453,26 @@ labels: [bug, area:copy]
 ## What would have helped
 
 - Stage 1 handoff was precise (file + line + expected value), making this a straight-line implementation with no investigation needed.
+
+---
+date: 2026-05-11T12:36:00Z
+issue: 147
+pr: 219
+stage: implement
+outcome: pr-opened
+labels: [area:copy]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Stage 1 handoff correctly identified three comment locations needing update: `src/app/useCalculatorState.ts:97-99`, `src/storage.ts:29-31`, and the JSDoc on `saveWorkspace` at `src/storage.ts:795-800`. All three were stale M1-era migration TODOs that no longer reflect the shipped dual-key architecture.
+- The dual-key design (STORAGE_KEY_V1 for compare mode, STORAGE_KEY_V2 for combine mode) is stable and intentional — not a pending migration. Any future agent seeing "TODO(issue 03)" references should treat them as cleaned up after this PR.
+- `npm run verify` is required over `npx tsc --noEmit` because the repo uses project references (`tsc -b`); the verify script includes this.
+
+## What would have helped
+
+- Nothing; Stage 1 handoff was precise and complete with exact line numbers for all three locations.
