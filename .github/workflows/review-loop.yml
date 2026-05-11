@@ -33,7 +33,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          MAX_REVIEW_LOOP_COMMITS: '3'
+          MAX_REVIEW_LOOP_COMMITS: '10'
         run: node scripts/automation/review-loop-decision.mjs
 
       - name: Setup Node

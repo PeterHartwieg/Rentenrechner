@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { appendFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
-const DEFAULT_MAX_COMMITS = 3
+const DEFAULT_MAX_COMMITS = 10
 const BLOCKING_REVIEW_TEXT = /\bP[01]\b|\bmust\b|\bblocking\b|\brequest changes\b/i
 
 export function classifyClaudeReview(body = '') {

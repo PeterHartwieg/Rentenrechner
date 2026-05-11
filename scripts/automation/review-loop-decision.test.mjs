@@ -90,10 +90,20 @@ describe('review-loop-decision', () => {
     expect(result.decision).toBe('wait')
   })
 
+  it('allows ten commits before the runaway threshold', () => {
+    const result = computeReviewLoopDecision({
+      headSha,
+      commitCount: 10,
+      reviews: [review()],
+    })
+
+    expect(result.decision).toBe('wait')
+  })
+
   it('routes to cap above the runaway commit threshold', () => {
     const result = computeReviewLoopDecision({
       headSha,
-      commitCount: 4,
+      commitCount: 11,
       reviews: [review()],
     })
 
