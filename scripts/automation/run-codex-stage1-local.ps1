@@ -10,6 +10,7 @@ $automationDir = Join-Path $env:USERPROFILE ".codex\automations\codex-stage-1-in
 $logDir = Join-Path $automationDir "logs"
 $lockFile = Join-Path $automationDir "local-run.lock"
 $lastMessage = Join-Path $automationDir "last-local-message.txt"
+$retroScratch = Join-Path $Repo ".automation-retro-entry.md"
 
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
@@ -57,6 +58,11 @@ try {
     throw "Codex executable does not exist: $CodexExe"
   }
 
+  if (Test-Path -LiteralPath $retroScratch) {
+    Write-Log "Removing stale Stage 1 retro scratch file before run: $retroScratch"
+    Remove-Item -LiteralPath $retroScratch -Force
+  }
+
   $prompt = @'
 Run the versioned Stage 1 issue investigation prompt for this repository.
 
@@ -64,8 +70,9 @@ Preflight:
 1. Verify the working tree is clean with `git status --short`; if it is not clean, stop before touching GitHub labels.
 2. Refresh `origin/main` without writing `.git/FETCH_HEAD`:
    `git fetch --no-write-fetch-head origin +refs/heads/main:refs/remotes/origin/main`
-3. Check out and fast-forward local main:
-   `git checkout main && git merge --ff-only origin/main`
+3. Check out and fast-forward local main, using separate commands so Windows PowerShell can run them:
+   `git checkout main`
+   `git merge --ff-only origin/main`
 4. If any preflight command fails, stop before touching GitHub labels/comments and record the blocker in automation memory. Do not retry with plain `git fetch origin main`.
 
 Then read `docs/automation/codex-stage1-investigator.md` and execute that prompt exactly, processing up to two eligible `ready-for-agent` issues.
@@ -104,6 +111,11 @@ This automation owns Stage 1 investigation. It must not implement fixes; success
   }
 
   Remove-Item -LiteralPath $stderrFile -Force -ErrorAction SilentlyContinue
+  if (Test-Path -LiteralPath $retroScratch) {
+    Write-Log "Removing post-run Stage 1 retro scratch file: $retroScratch"
+    Remove-Item -LiteralPath $retroScratch -Force
+  }
+
   Write-Log "Completed local Codex Stage 1 run."
 }
 finally {

@@ -73,10 +73,10 @@ repository state is uncertain.
      storage, pure helpers, DOM-testable a11y, and QA tooling behavior.
    - Use `TDD-skip: <reason>` for pure CSS/layout, pure copy, docs, or
      manual-visual-only changes.
-   - If writing a test: install dependencies if needed with
-     `npm ci && npm --prefix workers/qa-submit ci`, run
-     `npx vitest run <test-file>`, confirm it fails for the right reason,
-     and commit only that test with `test: failing test for #<N>`.
+   - If writing a test: install dependencies if needed with separate commands
+     (`npm ci`, then `npm --prefix workers/qa-submit ci`), run
+     `npx vitest run <test-file>`, confirm it fails for the right reason, and
+     commit only that test with `test: failing test for #<N>`.
    - If the new test passes today, your reproduction is wrong; exit through
      the already-correct path.
 8. Push `agent/issue-<N>`.
