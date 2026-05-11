@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   loop:
-    if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') }}
+    if: ${{ startsWith(github.event.pull_request.head.ref, 'agent/issue-') || startsWith(github.event.pull_request.head.ref, 'automation/retro-curate-') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head
@@ -175,8 +175,9 @@ jobs:
             - Never use `gh pr review` from this workflow.
             - Never push to `main`, force-push, amend, or broaden scope.
             - Do NOT post `@codex review`; bot mentions cannot trigger Codex re-review.
-            - If a blocker is unaddressable, comment on the PR, label the linked issue
-              `ready-for-human`, remove `in-progress-by-agent`, and stop.
+            - If a blocker is unaddressable, comment on the PR. If there is a linked
+              issue, label it `ready-for-human` and remove `in-progress-by-agent`;
+              retro-curation PRs usually have no linked issue.
 
       - name: Dispatch post-fix checks
         if: steps.route.outputs.decision == 'fix'

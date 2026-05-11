@@ -14,6 +14,6 @@ describe('in-progress-by-agent label hygiene', () => {
   it('allows implementer workflow pushes that add or update workflow files', () => {
     const workflow = readFileSync('.github/workflows/implement.yml', 'utf8')
 
-    expect(workflow).toMatch(/\npermissions:\n(?:  .+\n)*  workflows: write\n/)
+    expect(workflow).toMatch(/\r?\npermissions:\r?\n(?:  .+\r?\n)*  workflows: write\r?\n/)
   })
 })

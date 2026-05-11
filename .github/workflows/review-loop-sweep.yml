@@ -40,13 +40,15 @@ jobs:
           now_ts=$(date -u +%s)
           merged_any=0
 
-          # Enumerate open PRs from agent/issue-* branches
+          # Enumerate open automation-owned PRs. Retro-curation PRs carry the
+          # same self-learning contract as issue-fix PRs, but use a different
+          # branch prefix because they are not linked to a single issue.
           pr_numbers=$(gh pr list --repo "$REPO" --state open \
-            --search 'head:agent/issue-' \
-            --json number --jq '.[].number')
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("agent/issue-") or startswith("automation/retro-curate-")) | .number')
 
           if [ -z "$pr_numbers" ]; then
-            echo "No open agent PRs. Sweep idle."
+            echo "No open automation-owned PRs. Sweep idle."
             exit 0
           fi
 

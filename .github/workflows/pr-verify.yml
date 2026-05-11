@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   verify:
-    if: ${{ startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-') }}
+    if: ${{ startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-') || startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'automation/retro-curate-') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

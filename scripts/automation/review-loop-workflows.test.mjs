@@ -2,6 +2,27 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 describe('review-loop workflow handoff', () => {
+  it('runs verify and Claude review for agent and retro-curation PR branches', () => {
+    const claudeReview = readFileSync('.github/workflows/claude-review.yml', 'utf8')
+    const prVerify = readFileSync('.github/workflows/pr-verify.yml', 'utf8')
+
+    for (const workflow of [claudeReview, prVerify]) {
+      expect(workflow).toContain("startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-')")
+      expect(workflow).toContain(
+        "startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'automation/retro-curate-')",
+      )
+    }
+  })
+
+  it('runs the review loop and sweep for agent and retro-curation PR branches', () => {
+    const reviewLoop = readFileSync('.github/workflows/review-loop.yml', 'utf8')
+    const sweep = readFileSync('.github/workflows/review-loop-sweep.yml', 'utf8')
+
+    expect(reviewLoop).toContain("startsWith(github.event.pull_request.head.ref, 'agent/issue-')")
+    expect(reviewLoop).toContain("startsWith(github.event.pull_request.head.ref, 'automation/retro-curate-')")
+    expect(sweep).toContain('startswith("agent/issue-") or startswith("automation/retro-curate-")')
+  })
+
   it('can manually re-run Claude review for a post-fix head SHA', () => {
     const workflow = readFileSync('.github/workflows/claude-review.yml', 'utf8')
 
