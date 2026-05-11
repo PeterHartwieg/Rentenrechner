@@ -44,6 +44,12 @@ export interface BavFundingResponse {
   monthlyNetCost: number
   monthlyTaxAndSvSavings: number
   monthlyStatutoryEmployerSubsidy: number
+  // #168: uncapped 15 % candidate before the employer-SV-savings cap.
+  monthlyStatutoryEmployerSubsidyUncapped: number
+  // #168: employer SV savings that form the statutory subsidy cap.
+  monthlyStatutoryEmployerSubsidyCap: number
+  // #168: true when the subsidy was reduced by the cap.
+  monthlyStatutoryEmployerSubsidyCapApplied: boolean
   monthlyContractualEmployerContribution: number
   monthlyEmployerContribution: number
   estimatedMonthlyGrvReduction: number
@@ -89,6 +95,9 @@ export function calculateBavFundingApi(
     monthlyNetCost: result.monthlyNetCost,
     monthlyTaxAndSvSavings: result.monthlyTaxAndSvSavings,
     monthlyStatutoryEmployerSubsidy: result.monthlyStatutoryEmployerSubsidy,
+    monthlyStatutoryEmployerSubsidyUncapped: result.monthlyStatutoryEmployerSubsidyUncapped,
+    monthlyStatutoryEmployerSubsidyCap: result.monthlyStatutoryEmployerSubsidyCap,
+    monthlyStatutoryEmployerSubsidyCapApplied: result.monthlyStatutoryEmployerSubsidyCapApplied,
     monthlyContractualEmployerContribution: result.monthlyContractualEmployerContribution,
     monthlyEmployerContribution: result.monthlyEmployerContribution,
     estimatedMonthlyGrvReduction: result.estimatedMonthlyGrvReduction,

@@ -227,7 +227,10 @@ Computes bAV (betriebliche Altersvorsorge) salary conversion funding including e
 | `monthlyGrossConversion` | `number` | Monthly Entgeltumwandlung in EUR. |
 | `monthlyNetCost` | `number` | Actual net cost to the employee. |
 | `monthlyTaxAndSvSavings` | `number` | Monthly tax and social security savings. |
-| `monthlyStatutoryEmployerSubsidy` | `number` | Statutory 15% employer subsidy. |
+| `monthlyStatutoryEmployerSubsidy` | `number` | Statutory 15% employer subsidy (effective, after cap). |
+| `monthlyStatutoryEmployerSubsidyUncapped` | `number` | Uncapped 15% candidate (annualGrossConversion × 15%). 0 when subsidy is disabled or not applicable for the Durchführungsweg. |
+| `monthlyStatutoryEmployerSubsidyCap` | `number` | Employer social-security savings that form the subsidy cap. 0 when salary is already above the SV BBG. |
+| `monthlyStatutoryEmployerSubsidyCapApplied` | `boolean` | `true` when the uncapped value exceeded the cap and was reduced. |
 | `monthlyContractualEmployerContribution` | `number` | Additional contractual employer match. |
 | `monthlyEmployerContribution` | `number` | Total employer contribution. |
 | `estimatedMonthlyGrvReduction` | `number` | Estimated GRV pension reduction. |
