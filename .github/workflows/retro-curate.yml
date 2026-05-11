@@ -62,7 +62,7 @@ jobs:
                a guardrail.
             4. Target the smallest useful surface:
                - `CLAUDE.md`: project-wide invariant or module ownership fact.
-               - `investigate.yml`: reproduction/test-writing shortcut.
+               - `docs/automation/codex-stage1-investigator.md`: reproduction/test-writing shortcut.
                - `implement.yml`: fix/verify/Stage-1-escape shortcut.
                If borderline, prefer workflow prompt over CLAUDE.md.
             5. If nothing is promotable, print a short summary and exit.

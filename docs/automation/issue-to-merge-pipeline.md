@@ -1,18 +1,19 @@
 # Issue → PR → Merge Pipeline
 
-Eight GitHub Actions workflows that turn an `issues.opened` event into a
-merged PR with **one** human gate (label-based), plus a continuous-
-learning loop that promotes recurring agent learnings into operational
-memory. Combines the Anthropic Claude Code Action with the OpenAI Codex
-GitHub integration for dual-LLM code review. Built to be portable across
-repos.
+GitHub Actions plus a Codex app automation turn an `issues.opened` event into
+a merged PR with **one** human gate (label-based), plus a continuous-learning
+loop that promotes recurring agent learnings into operational memory. Stage 1
+investigation runs in the Codex app; implementation and Claude review/merge
+loops stay in GitHub Actions; Codex GitHub integration remains the independent
+PR reviewer. Built to be portable across repos.
 
 > **Status on this repo**: live since 2026-05-10. Validated end-to-end on
 > issue #149 / PR #181. Token-optimized 2026-05-10 (deterministic
 > review-loop router, compact triage facts, Opus→Sonnet on review-loop,
 > single-stage shortcut for trivial issues, retro template extracted,
 > verify split into standalone workflow, etc. — see
-> [Token-optimization changelog](#token-optimization-changelog)).
+> [Token-optimization changelog](#token-optimization-changelog)). Stage 1 moved
+> from a Claude GitHub Action to the Codex app automation on 2026-05-11.
 
 ## Table of contents
 
@@ -20,7 +21,7 @@ repos.
 - [Architecture](#architecture)
 - [Design decisions locked in](#design-decisions-locked-in)
 - [Prerequisites](#prerequisites)
-- [The five workflow files](#the-five-workflow-files)
+- [Automation surfaces](#automation-surfaces)
 - [Operator playbook](#operator-playbook)
 - [Cost model](#cost-model)
 - [Known quirks (lessons from first install)](#known-quirks-lessons-from-first-install)
@@ -36,18 +37,19 @@ issues (typo fixes, small bugs, copy changes, refactors found in code
 review) wants those issues to ship without manual implementation, and
 without sacrificing review quality.
 
-**Solution.** Six chained GitHub Actions workflows for the issue → merge
-path, plus one daily cron for continuous learning:
+**Solution.** A Codex app Stage 1 poller plus chained GitHub Actions workflows
+for the issue → merge path, plus one daily cron for continuous learning:
 
 1. **Triage** an incoming issue (enrich body, classify bug/feature, apply
    area labels for downstream skip decisions) — leaves the issue at a
    human-readable `needs-triage` state.
 2. **Human reads triage output**, applies `ready-for-agent` if happy.
-3. **Investigate**: reproduce the bug (or validate the enhancement is
-   missing), branch `agent/issue-N`, write a failing test (or
-   judgement-call TDD-skip), push the branch, post an investigation
-   comment, hand off to Stage 2 by labeling `ready-for-PR`. On
-   not-reproducible: comment + `needs-info`, exit cleanly. No fix.
+3. **Investigate** (Codex app automation): on each scheduled run, claim at most
+   one `ready-for-agent` issue, reproduce the bug (or validate the enhancement
+   is missing), branch `agent/issue-N`, write a failing test (or judgement-call
+   TDD-skip), push the branch, post an investigation comment, hand off to Stage
+   2 by labeling `ready-for-PR`. On not-reproducible: comment + `needs-info`,
+   exit cleanly. No fix.
 4. **Implement**: read Stage 1's investigation comment + the failing
    test on the branch, apply the fix, run `npm run verify`, open PR.
 5. **Two independent reviewers** — Anthropic Claude (via the action,
@@ -61,22 +63,22 @@ path, plus one daily cron for continuous learning:
 
 **Continuous learning loop:**
 
-- Each `investigate.yml` and `implement.yml` agent session, before
+- Each Codex Stage 1 automation and `implement.yml` agent session, before
   exiting, appends a **retro entry** (Blockers + Learnings) to
   `docs/automation/retro-archive.md` and pushes directly to `main`.
 - `retro-curate.yml` runs daily at 09:00 UTC. It reads entries from the
   past 7 days, identifies recurring patterns or single high-signal
   items, and opens a curation PR proposing promotions to **CLAUDE.md**
-  (project-wide knowledge), **`investigate.yml` prompt** (Stage-1-
-  specific signal), or **`implement.yml` prompt** (Stage-2-specific
+  (project-wide knowledge), **`docs/automation/codex-stage1-investigator.md`**
+  (Stage-1-specific signal), or **`implement.yml` prompt** (Stage-2-specific
   signal).
 - Maintainer reviews + merges the curation PR. Promoted text becomes
   operational memory; the archive is the evidence trail.
 
-**Why two stages for the agent's work?** A single Sonnet session that
-reads code, articulates a failure path, writes a test, applies a fix,
-and runs verify can balloon to 25–30 minutes — at the edge of useful
-context for the model. The natural seam is between *deciding what's
+**Why two stages for the agent's work?** A single agent session that reads
+code, articulates a failure path, writes a test, applies a fix, and runs verify
+can balloon to 25–30 minutes — at the edge of useful context for the model.
+The natural seam is between *deciding what's
 broken* (and proving it via a failing test) and *fixing it*. Splitting
 also means a non-reproducible bug exits cheaply — no wasted "fix" on a
 report that wasn't a real bug.
@@ -119,21 +121,23 @@ triage.yml (Claude Code Action, Sonnet)
 [human reviews triage output; applies `ready-for-agent`]   ← human gate
     (skipped on auto-promote; bypassed for from-maintainer QA submissions)
     ↓
-investigate.yml (Claude Code Action, Sonnet) — Stage 1 of the agent's work
-    1. branch agent/issue-N (force-create from main, idempotent)
-    2. if `bug` label: REPRODUCE — read affected files, articulate
+Codex app automation (gpt-5.5, medium) — Stage 1 of the agent's work
+    scheduled poller, up to two ready issues per run
+    1. claim oldest ready-for-agent issue with in-progress-by-agent
+    2. branch agent/issue-N (force-create from main, idempotent)
+    3. if `bug` label: REPRODUCE — read affected files, articulate
        failure path
        if `enhancement` label: VALIDATE — confirm requested behavior is
        actually missing
-    3. agent's judgement call: is a failing test feasible + useful?
+    4. agent's judgement call: is a failing test feasible + useful?
        (test-write OR TDD-skip with reason in the investigation comment)
-    4. if test-write: place test, run `npx vitest run <new-test>` to
+    5. if test-write: place test, run `npx vitest run <new-test>` to
        confirm it fails for the right reason, commit `test: failing
        test for #N`
        if TDD-skip: no commit; branch will be at main's SHA when pushed
-    5. push branch + post structured investigation comment
+    6. push branch + post structured investigation comment
        (`## Reproduction`, `## Test status`, `## Branch` sections)
-    6. apply `ready-for-PR` label → fires implement.yml
+    7. apply `ready-for-PR` label → fires implement.yml
     on not-reproducible / behavior already correct / report too vague:
        comment with evidence + `needs-info`, remove `in-progress-by-agent`,
        exit. No branch push. No fix. (Cheap exit.)
@@ -178,7 +182,7 @@ review-loop-sweep.yml (cron */30 min, pure shell — no Claude agent)
     merges any agent PR > 20 min old where Claude approved + Codex silent
 
 [parallel — every agent session ends with a retro append to main]
-    investigate.yml Step 7 + implement.yml Step 6 →
+    Codex Stage 1 prompt + implement.yml Step 6 →
     docs/automation/retro-archive.md (append-only, direct push to main)
 
 [daily 09:00 UTC]
@@ -187,7 +191,7 @@ retro-curate.yml (Claude Code Action, Sonnet)
     1. skip if a curate PR is already open
     2. read entries from past 7 days, group by stage
     3. identify promotable patterns (recurring OR single high-signal)
-    4. for each: decide target (CLAUDE.md / investigate.yml / implement.yml)
+    4. for each: decide target (CLAUDE.md / codex-stage1-investigator.md / implement.yml)
     5. branch automation/retro-curate-YYYY-MM-DD, edit, open PR
     6. maintainer reviews + merges (curation PR is for human review)
 ```
@@ -199,14 +203,14 @@ a different project.
 
 | Decision | This pipeline | Alternatives considered |
 |----------|--------------|-------------------------|
-| Run platform | **GitHub Actions** event-driven workflows | Local cron via mcp__scheduled-tasks; claude.ai cloud Routines; hybrid |
-| Codex side | **Official Codex GitHub App** (auto-review on PR open + `@codex` mentions) | Codex CLI in runner with API key; Codex CLI in runner with subscription auth (icoretech/codex-action); skip Codex (use 2nd Claude) |
-| Claude side | **`anthropics/claude-code-action@v1`** with OAuth token (`claude setup-token`) — uses your Max subscription | Claude API key (per-token billing); the separate Claude Code Review managed product (Team/Enterprise only) |
+| Run platform | **Hybrid**: Codex app cron for Stage 1; GitHub Actions for triage, implementation, verification, review, merge, and sweep | Pure GitHub Actions; local cron; claude.ai cloud Routines |
+| Codex side | **Codex app automation** for Stage 1 investigation, plus the official Codex GitHub App for PR auto-review | Codex CLI in runner with API key; Codex CLI in runner with subscription auth; skip Codex (use 2nd Claude) |
+| Claude side | **`anthropics/claude-code-action@v1`** with OAuth token (`claude setup-token`) for triage, implementer, Claude review, review loop, and retro curation | Claude API key (per-token billing); the separate Claude Code Review managed product (Team/Enterprise only) |
 | Human gate | **Single gate**: `ready-for-agent` label after triage | Fully autonomous (no gate); gate at merge instead; gates at both ends |
 | Approval signal | **Implementer-as-merger pattern**: review-loop reads all review state on head commit and decides itself; doesn't wait for explicit "approve" | Native GitHub APPROVE counting; custom approval labels; magic marker comments |
 | Halt rule | **No iteration cap**, trust convergence (plan rate limits = backstop) | Hard cap (e.g. 4 cycles) → escalate to human; token/cost cap; time-based (24h) |
 | TDD scope | **Test-first by default**, with the investigator agent making the judgement call. Strong signals to skip: `area:ui-only` / `area:copy` / `documentation`. Strong signals to write: calculation, reactivity, routing, storage, pure utility. Edge cases (a11y focus, mixed bugs) are agent-judgement. | Test-first no exceptions; best-effort by judgement; opt-in via label |
-| Stage split | **Two stages for the agent's work** (`investigate.yml` → `implement.yml`) so each Sonnet session stays under ~15 min and a non-reproducible bug exits cheap. Stage boundary: failing test on branch + structured investigation comment. | Single 25–30 min session per issue; three stages (reproduce / test / fix); separate test-writer model |
+| Stage split | **Two stages for the agent's work** (Codex app Stage 1 → `implement.yml`) so each session stays smaller and a non-reproducible bug exits cheap. Stage boundary: failing test on branch + structured investigation comment. | Single 25–30 min session per issue; three stages (reproduce / test / fix); separate test-writer model |
 | Codex P2/P3 silence handling | **Time-based 20-min timeout** via sweep workflow | Severity labels (p0/p1/p2/p3) gate; reuse area-labels as proxy; belt-and-suspenders combination |
 
 ## Prerequisites
@@ -218,9 +222,8 @@ you need to set up new accounts.
 
 1. **Anthropic Claude Max subscription** (Pro $100 or higher).
    Plus / API-only doesn't work for OAuth-token auth.
-2. **OpenAI ChatGPT Pro $100 or $200 subscription**. Plus has zero
-   Codex cloud-task quota; you need at least Pro $100 (50–300 cloud
-   tasks per 5 hours).
+2. **OpenAI ChatGPT plan with Codex app automation access**. Stage 1 uses the
+   signed-in Codex app subscription path, not an OpenAI API key.
 3. **OpenAI Codex GitHub App** installed on the repo. Configure at
    <https://chatgpt.com/codex/settings/code-review>:
    - Repo in the auto-review list
@@ -231,11 +234,12 @@ you need to set up new accounts.
 In `Settings → Secrets and variables → Actions → New repository secret`:
 
 - **`CLAUDE_CODE_OAUTH_TOKEN`** — generated locally with
-  `claude setup-token`, paste the resulting string. Used by all four
-  Claude-Code-Action workflows.
+  `claude setup-token`, paste the resulting string. Used by the Claude Code
+  Action workflows.
 
 (`GITHUB_TOKEN` is provided automatically by Actions; `OPENAI_*` is **not
-needed** because Codex runs server-side via the App, not in the runner.)
+needed**. Stage 1 uses the Codex app automation, and PR review uses the Codex
+GitHub App.)
 
 ### Repo labels
 
@@ -294,11 +298,11 @@ section in `CLAUDE.md` so the Claude reviewer applies the same bar.
 See this repo's `AGENTS.md` and `CLAUDE.md` for an example structure
 (P0 / P1 / Out-of-scope categories).
 
-## The seven workflow files
+## Automation surfaces
 
-All live in `.github/workflows/`. Each is a few dozen lines — see the
-canonical files for the full content; this section explains what each
-does and the key parameters that shape behavior.
+Most live in `.github/workflows/`; the Stage 1 app prompt lives in
+`docs/automation/codex-stage1-investigator.md`. This section explains what
+each surface does and the key parameters that shape behavior.
 
 ### `triage.yml`
 
@@ -320,9 +324,9 @@ category for dedup / enrichment / guardrail-keyword / gate-state.
 | **D. Non-QA pre-reviewed** | Body has literal `Source: code-review session` or `Source: ultrareview` marker | No enrichment, no dedup — code-review session output is the curation. |
 | **E. Non-QA plain** | None of A–D | Light **title-only** dedup → label `possible-duplicate`, no auto-close. Enrich body if bug; leave alone if enhancement. |
 
-**Auto-promote to `ready-for-agent`** (skip the human gate, fire
-`investigate.yml` immediately, which on success hands off to
-`implement.yml`) only when ALL hold:
+**Auto-promote to `ready-for-agent`** (skip the human gate; the next Codex
+Stage 1 poller run claims it and, on success, hands off to `implement.yml`)
+only when ALL hold:
 
 - Source A or B (QA-Worker)
 - Classified as `bug` (not enhancement, not needs-info)
@@ -372,19 +376,28 @@ re-classified as `enhancement` despite the QA shape — preserving the
 screenshot and metadata while routing through the enhancement path
 (no auto-promote, guardrail check still runs).
 
-### `investigate.yml` (Stage 1)
+### Codex app automation (Stage 1)
 
 | Trigger | Permissions | Model |
 |---------|-------------|-------|
-| `issues.labeled` (gate: `ready-for-agent`) | `contents:write`, `issues:write`, `id-token:write` | Sonnet (default) |
+| Hourly app cron, plus manual app run | Local repo + authenticated `gh` | `gpt-5.5`, medium reasoning |
 
-Fires when `ready-for-agent` is added. Sets `in-progress-by-agent`,
-removes `needs-triage` + `ready-for-agent`, branches
-`agent/issue-N` (force-create from `main`, idempotent on re-trigger),
-**reproduces the bug** (or **validates the enhancement is missing**),
-makes a judgement call on whether a failing test is feasible + useful,
-optionally writes + commits the test, pushes the branch, posts a
-structured investigation comment, applies `ready-for-PR` to fire Stage 2.
+The app automation is a poller, not a label-event fan-out. Each run starts one
+Codex session, reads `docs/automation/codex-stage1-investigator.md`, and
+processes up to two open non-PR issues that have `ready-for-agent` and do not
+have `in-progress-by-agent`. If five issues are ready, one run handles up to
+two issues; later runs drain the rest.
+
+On a claimed issue it sets `in-progress-by-agent`, removes `needs-triage` +
+`ready-for-agent`, branches `agent/issue-N` (force-create from `main`,
+idempotent on re-trigger), **reproduces the bug** (or **validates the
+enhancement is missing**), makes a judgement call on whether a failing test is
+feasible + useful, optionally writes + commits the test, pushes the branch,
+posts a structured investigation comment, applies `ready-for-PR` to fire Stage
+2.
+
+`.github/workflows/investigate.yml` is intentionally disabled as a visible
+placeholder so adding `ready-for-agent` cannot race a Claude GitHub Action.
 
 **Three reproduction outcomes (bugs).** Before any test or fix, the
 agent reads the affected files and articulates the failure path:
@@ -422,7 +435,7 @@ Stage 1 misdiagnosis escapes are `ready-for-human`.
 |---------|-------------|-------|
 | `issues.labeled` (gate: `ready-for-PR`) | `contents:write`, `issues:write`, `pull-requests:write`, `id-token:write` | Sonnet (default) |
 
-Fires when `ready-for-PR` is added (typically by `investigate.yml`,
+Fires when `ready-for-PR` is added (typically by the Codex Stage 1 automation,
 but a maintainer may apply it manually to skip Stage 1 if a failing
 test is already on the branch). Removes `ready-for-PR`, checks out the
 existing `agent/issue-N` branch, reads Stage 1's investigation comment,
@@ -486,9 +499,9 @@ PR, labels linked issue `ready-for-human`, removes
 Continuous-learning loop. Reads `docs/automation/retro-archive.md`,
 filters to entries from the past 7 days, identifies recurring patterns
 or single high-signal items, decides per-item whether the target is
-CLAUDE.md (project-wide), `investigate.yml` prompt (Stage-1-specific),
-or `implement.yml` prompt (Stage-2-specific), opens a curation PR with
-surgical edits.
+CLAUDE.md (project-wide), `docs/automation/codex-stage1-investigator.md`
+(Stage-1-specific), or `implement.yml` prompt (Stage-2-specific), opens a
+curation PR with surgical edits.
 
 The retro archive is **append-only** — neither the curation agent nor
 the agent sessions ever modify or delete prior entries. Promoted text
@@ -525,12 +538,12 @@ turnaround.
 
 | Action | How |
 |--------|-----|
-| Trigger an issue into implementation | `gh issue edit N --add-label ready-for-agent` (after reviewing triage output) |
+| Trigger an issue into implementation | `gh issue edit N --add-label ready-for-agent` (after reviewing triage output). The next Codex app run claims it. |
 | Submit QA feedback as the maintainer (skip dedup) | Open the calculator with `?qa=1&dev=<your-code>` once per browser tab. Triage routes via category B. The code is set as the `MAINTAINER_DEV_CODE` Wrangler secret on `rentenwiki-qa-submit`. |
-| Override an auto-promote that's misclassified | Remove `ready-for-agent` and add `needs-info` or `ready-for-human`. If `investigate.yml` already ran (branch + investigation comment exist) and you want to halt before the fix: remove `ready-for-PR` if it's been applied. If `implement.yml` already opened a PR, close the PR — review loop won't re-open it. |
+| Override an auto-promote that's misclassified | Remove `ready-for-agent` and add `needs-info` or `ready-for-human`. If Codex Stage 1 already ran (branch + investigation comment exist) and you want to halt before the fix: remove `ready-for-PR` if it's been applied. If `implement.yml` already opened a PR, close the PR — review loop won't re-open it. |
 | Re-fire a stuck Claude review | `git commit --allow-empty -m "kick" && git push` to the PR branch — fires `pull_request.synchronize` |
 | Re-fire a stuck Codex review | `gh pr comment N --body "@codex review"` |
-| Halt mid-pipeline | Remove `ready-for-agent` (only effective before `investigate.yml` fires); remove `ready-for-PR` (only effective before `implement.yml` fires); close the PR (loop won't re-open it) |
+| Halt mid-pipeline | Remove `ready-for-agent` (only effective before the Codex app claims it); remove `ready-for-PR` (only effective before `implement.yml` fires); close the PR (loop won't re-open it) |
 | Self-escalation | If implementer or loop can't make progress, it labels linked issue `ready-for-human`, removes `in-progress-by-agent`, posts a status comment, and stops. Watch your `ready-for-human` queue. |
 | Override sweep merge | Don't add `[Claude Review]\nVerdict: Approve` to the review body. Sweep matches that exact pattern; if Claude reviewer didn't approve, sweep won't merge. |
 | Manual sweep run | `gh workflow run review-loop-sweep.yml` |
@@ -539,13 +552,14 @@ turnaround.
 
 | Surface | Billing | Backstop |
 |---------|---------|----------|
-| Claude (triage / implement / claude-review / review-loop) | Max subscription tokens via `CLAUDE_CODE_OAUTH_TOKEN` | Max plan rate limit |
-| Codex (PR review) | ChatGPT Pro cloud-task quota | Pro $100: 50–300 / 5h; Pro $200: 200–1,200 / 5h |
+| Claude (triage / implement / claude-review / review-loop / retro-curate) | Max subscription tokens via `CLAUDE_CODE_OAUTH_TOKEN` | Max plan rate limit |
+| Codex (Stage 1 app automation + PR review) | ChatGPT/Codex plan quota through the app and GitHub App; no OpenAI API key | Plan/task limits |
 | GitHub Actions runner minutes | Free for public repos / 2 000 min/mo private | Workflow concurrency groups + sweep cron rate |
 | Claude Code Review (separate product) | NOT used in this design — Team/Enterprise only, $15–25/review | n/a |
 
-For a solo dev's volume (~5–10 PRs / day, 2–3 review iterations each):
-both quotas are comfortable on Pro $100 and very comfortable on Pro $200.
+For a solo dev's volume (~5–10 PRs / day, 2–3 review iterations each), the
+main backstops are plan/task limits plus the Stage 1 poller's two-issue batch
+shape.
 
 ## Known quirks (lessons from first install)
 
@@ -607,7 +621,7 @@ folding here so they don't bite next time:
    Step 4b for visibility.
 
 7. **Stage 1 retro timestamps may be agent-fabricated, not from
-   `date -u`.** Sonnet sometimes invents the timestamp in the
+   `date -u`.** Agents sometimes invent the timestamp in the
    frontmatter `date:` field rather than running `date -u
    +%Y-%m-%dT%H:%M:%SZ`. Frontmatter is still parseable and dates are
    correct to the day, so the curation cron's 7-day window still
@@ -621,9 +635,9 @@ Each of these is tunable without touching the architecture.
 | What | Where | How |
 |------|-------|-----|
 | Reviewer model | `claude_args: --model <id>` in `claude-review.yml` and `review-loop.yml` `with:` block | Default Opus 4.7. Switch to Sonnet for faster/cheaper, or upgrade as new models ship. |
-| Investigator model | `claude_args` in `investigate.yml` | Default Sonnet. Switch to Opus for harder reproductions (more thorough code reading, better test-design judgement). |
+| Investigator model | Codex app automation card | Default `gpt-5.5`, medium reasoning. Increase reasoning for harder reproductions. |
 | Implementer model | `claude_args` in `implement.yml` | Default Sonnet. Switch to Opus for harder fixes. |
-| TDD-skip judgement | "Test-writing decision" block in `investigate.yml` prompt (Step 3) | The agent decides per-issue using strong-signal lists for write/skip and judgement on edge cases. Tighten by adding more "skip" signals; loosen by removing them. |
+| TDD-skip judgement | `docs/automation/codex-stage1-investigator.md` Step 7 | The agent decides per-issue using strong-signal lists for write/skip and judgement on edge cases. Tighten by adding more "skip" signals; loosen by removing them. |
 | QA auto-promote eligibility | "Auto-promote to `ready-for-agent`" block in `triage.yml` prompt (Step 8) | Tighten/widen the severity × type matrix. Default: `Major`/`Minor`/`Nit` × `copy`/`layout`/`a11y`/`value` (where `value` is calculation bugs, classified by the Step 3b re-derivation). Tightening to `Minor`/`Nit` only narrows to lowest-stakes; adding `flow`/`interaction` widens to multi-step user-journey bugs. |
 | Guardrail keyword list | "Step 7" block in `triage.yml` prompt | Three groups (Backend / Commercial / Compliance). Each is a comma-separated keyword list, case-insensitive whole-word match. Add German equivalents as needed. |
 | QA Target id → file path mapping | "Step 4" block in `triage.yml` prompt (semantic prefix table) | Maps semantic ids like `inputs.<product>.*` to file globs. Update when your project's component layout differs. |
@@ -634,7 +648,7 @@ Each of these is tunable without touching the architecture.
 | Retro curation cadence | `cron: '0 9 * * *'` in `retro-curate.yml` | Default daily 09:00 UTC. Tighten to `0 */12 * * *` (twice daily) if you want faster promotion of urgent learnings; loosen to weekly if PR queue noise is too high. |
 | Retro lookback window | "past 7 days" filter in `retro-curate.yml` Step 2 | Default 7 days — robust to skipped cron days and pending curation PRs. Tighten to 3 days if your archive grows fast; widen to 14 days if you want more cross-issue pattern detection. |
 | Reviewer prompt strictness | `prompt:` block in `claude-review.yml` | Tune the bullet list of "What to review" + reference your repo's `## Review guidelines`. |
-| Branch naming | `agent/issue-$ISSUE_NUMBER` in `investigate.yml` (creates) + `implement.yml` (consumes) + `startsWith(...,'agent/issue-')` in every other workflow | Change the prefix consistently across all five files. |
+| Branch naming | `agent/issue-<N>` in `docs/automation/codex-stage1-investigator.md` (creates) + `implement.yml` (consumes) + `startsWith(...,'agent/issue-')` in every other workflow | Change the prefix consistently across all surfaces. |
 | Merge style | `gh pr merge --squash --delete-branch` in `review-loop.yml` step 4a + `review-loop-sweep.yml` | Switch to `--merge` or `--rebase` if you want a different history. |
 | Approval body marker | `[Claude Review]` in `claude-review.yml` and parsed in loop + sweep | Change in all three places. |
 | Codex reviewer detection heuristic | `select(.user.login \| test("codex\|chatgpt"; "i"))` in loop + sweep | Tighten if your repo has unrelated bots whose login matches that pattern. |
@@ -644,16 +658,16 @@ Each of these is tunable without touching the architecture.
 Step-by-step. Estimate: 30–45 min total (most is waiting for first
 end-to-end run to validate).
 
-1. **Copy the five workflow files** from `.github/workflows/` of this
-   repo into your new repo's `.github/workflows/`.
+1. **Copy the workflow files** from `.github/workflows/` plus
+   `docs/automation/codex-stage1-investigator.md` into the new repo.
 
 2. **Find and replace project-specific bits** in the workflow prompts
    (search for and update):
    - Repo name (`PeterHartwieg/Rentenrechner` → yours) — only in commit
      messages / status comments, not in workflow logic.
    - Verify command (`npm run verify`) — adjust to your test/build script
-     in `investigate.yml`, `implement.yml`, `claude-review.yml`,
-     `review-loop.yml`.
+     in `docs/automation/codex-stage1-investigator.md`, `implement.yml`,
+     `claude-review.yml`, and `review-loop.yml`.
    - Linked-issue marker (`Closes #N`) — keep, it's the GitHub standard.
    - Project-specific instruction lines like "Read CLAUDE.md and
      CONTEXT.md first" — point to your project's equivalent docs.
@@ -665,8 +679,8 @@ end-to-end run to validate).
    subdirectories that ship their own `package.json` (in this repo:
    `workers/qa-submit/`), the workflows that run `npm run verify` need
    to install those subdir deps too — the root `npm ci` doesn't traverse
-   into them. The "Install deps" step in `investigate.yml`,
-   `implement.yml`, and `review-loop.yml` runs
+   into them. Stage 1's Codex prompt and the "Install deps" steps in
+   `implement.yml` and `review-loop.yml` run
    `npm ci && npm --prefix workers/qa-submit ci`
    for that reason (this repo's `npm run verify` chains
    `worker:typecheck` and `worker:test`, both of which need
@@ -677,6 +691,8 @@ end-to-end run to validate).
    definition file for ..." (commit `efcfc75` for the original fix).
 
 4. **Run the prerequisites checklist** above:
+   - Create the Codex app automation from the Stage 1 prompt, using
+     `gpt-5.5` with medium reasoning
    - Install Codex GitHub App + configure auto-review
    - Generate `CLAUDE_CODE_OAUTH_TOKEN` + add as repo secret
    - Create labels (`gh label create ...`)
@@ -708,19 +724,17 @@ the diffs.
    `claude-review.yml` stays on Opus 4.7 — that's the judgement layer
    where the model uplift matters.
 2. **Single-stage shortcut for trivial issues.** Triage now applies
-   `ready-for-PR` directly (skipping `investigate.yml`) when ALL hold:
+   `ready-for-PR` directly (skipping Stage 1) when ALL hold:
    QA-source bug, auto-promote eligible, area label is `area:copy` or
    `area:ui-only`, `Precision: exact`. The implementer detects the
    single-stage path via "no Stage 1 comment + no commits beyond main"
    and does a lightweight inline reproduction. Saves a full Sonnet
    session on the easiest issues (which the retro showed were also the
    most numerous).
-3. **Stop re-reading CLAUDE.md and CONTEXT.md.** Both files auto-load
-   via the harness's `claudeMd` system reminder. All five Claude
-   workflow prompts now explicitly tell the agent NOT to issue Read
-   calls on those files (was: "Read CLAUDE.md and CONTEXT.md first" —
-   prompted redundant tool calls). Cuts 2-4 tool round-trips per agent
-   run.
+3. **Stop re-reading CLAUDE.md and CONTEXT.md.** Claude workflow prompts now
+   explicitly tell the agent NOT to issue Read calls on those files when the
+   harness already loads them (was: "Read CLAUDE.md and CONTEXT.md first" —
+   prompted redundant tool calls). Cuts 2-4 tool round-trips per agent run.
 4. **Retro template extracted.** Agents read
    `docs/automation/retro-template.md` (~1 KB, stable) for entry format
    instead of `docs/automation/retro-archive.md` (grows monotonically,
