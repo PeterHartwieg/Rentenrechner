@@ -63,11 +63,16 @@ export function computeReviewLoopDecision({
     const login = String(review?.user?.login ?? '')
     return !login.endsWith('[bot]') && String(review?.state ?? '').toUpperCase() === 'CHANGES_REQUESTED'
   })
-  const codexBlockingInlineComments = headReviewComments.filter((comment) =>
-    isCodexReviewComment(comment) && BLOCKING_REVIEW_TEXT.test(String(comment?.body ?? '')),
-  )
   const claude = latestReview(headReviews, isClaudeReview)
   const codex = latestReview(headReviews, isCodexReview)
+  const latestCodexReviewId = codex?.id ?? null
+  const codexBlockingInlineComments = headReviewComments.filter((comment) => {
+    if (!isCodexReviewComment(comment)) return false
+    if (latestCodexReviewId !== null && comment.pull_request_review_id !== latestCodexReviewId) {
+      return false
+    }
+    return BLOCKING_REVIEW_TEXT.test(String(comment?.body ?? ''))
+  })
   const claudeStatus = claude ? classifyClaudeReview(claude.body) : 'wait'
   let codexStatus = codex ? classifyCodexReview(codex) : 'wait'
   if (codexBlockingInlineComments.length > 0) {

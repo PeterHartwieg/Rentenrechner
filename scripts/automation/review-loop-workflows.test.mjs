@@ -23,6 +23,14 @@ describe('review-loop workflow handoff', () => {
     expect(sweep).toContain('startswith("agent/issue-") or startswith("automation/retro-curate-")')
   })
 
+  it('routes review-loop decisions using the main-branch router', () => {
+    const reviewLoop = readFileSync('.github/workflows/review-loop.yml', 'utf8')
+
+    expect(reviewLoop).toContain('name: Load main-branch router')
+    expect(reviewLoop).toContain('git show origin/main:scripts/automation/review-loop-decision.mjs')
+    expect(reviewLoop).toContain('node "$RUNNER_TEMP/review-loop-decision.mjs"')
+  })
+
   it('can manually re-run Claude review for a post-fix head SHA', () => {
     const workflow = readFileSync('.github/workflows/claude-review.yml', 'utf8')
 
