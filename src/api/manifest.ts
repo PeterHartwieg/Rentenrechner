@@ -34,6 +34,10 @@ export interface ManifestData {
     /** Valid return-scenario ids (matches storage schema). */
     validScenarioIds: readonly string[]
   }
+  ruleYearRetention: {
+    policy: 'never_remove_supported_years'
+    text: string
+  }
   disclaimer: {
     type: 'not_advice'
     text: string
@@ -65,6 +69,10 @@ export function getManifest(): ApiSuccess<ManifestData> {
       monteCarloMaxRuns: 5_000,
       monteCarloMaxVolatility: 0.6,
       validScenarioIds: ['konservativ', 'basis', 'optimistisch', 'custom'],
+    },
+    ruleYearRetention: {
+      policy: 'never_remove_supported_years',
+      text: 'Rule years are never removed once added to supportedRuleYears.',
     },
     disclaimer: {
       type: 'not_advice',
