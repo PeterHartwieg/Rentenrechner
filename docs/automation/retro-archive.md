@@ -1710,3 +1710,25 @@ labels: [enhancement, area:api]
 ## What would have helped
 
 - Stage 1 handoff already named exact file paths and line numbers, which made this a straight mechanical edit with no exploration needed.
+
+---
+date: 2026-05-11T13:57:00Z
+issue: 168
+pr: 223
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:api]
+---
+
+## Blockers
+
+- The main implementation commit (7294816) was already on the branch when Stage 2 started, and `npm run verify` revealed a missing-fields build error in `src/app/recommenderCandidates/bav.ts:106` — the synthesized `BavFundingResult` object there was not updated when the three new fields were added to the interface. Required an additional fix commit.
+
+## Learnings
+
+- When adding fields to `BavFundingResult` (or any domain result interface), `npx tsc --noEmit` misses the gap in `src/app/recommenderCandidates/bav.ts` because that function uses an implicit return type. Only `tsc -b` (i.e., `npm run verify`) catches it. CLAUDE.md documents this pattern for `synthesizeProductResult` in `types.ts` (step 4 of the `ProductResult` shape gap fix path), but the same applies to the recommender bAV candidate's inline funding synthesizer.
+- The recommender bAV candidate synthesizes a `BavFundingResult` manually without calling `calculateBavFunding`; new fields added there need zero/false defaults added to the synthesized return object in `recommenderCandidates/bav.ts`.
+
+## What would have helped
+
+- A grep for all manual `BavFundingResult`-shaped object literals in Stage 1 would have surfaced the recommender candidate and prevented the build breakage.
