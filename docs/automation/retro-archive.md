@@ -1868,3 +1868,26 @@ labels: []
 ## What would have helped
 
 - A documented preflight-blocked retro convention for runs that fail before an issue number exists.
+
+---
+date: 2026-05-11T14:17:00Z
+issue: 171
+pr: 226
+stage: implement
+outcome: pr-opened
+labels: []
+---
+
+## Blockers
+
+- Stage 1's test used `(result.data as Record<string, unknown>)['ruleYearRetention']` to access the not-yet-typed field. Once `ruleYearRetention` was added to `ManifestData`, `tsc -b` (run by `npm run build`) rejected the unsafe cast with TS2352. Needed to update the test accessor to `result.data.ruleYearRetention` in a separate commit.
+
+## Learnings
+
+- `npx vitest run` passes even when `tsc -b` rejects casts in test files; always run `npm run verify` (which calls `tsc -b` via `build`) to catch this class of error.
+- For "discovery/guard" tests written against a field that doesn't exist yet, a `Record<string, unknown>` cast is a common Stage 1 pattern — Stage 2 should expect to replace it with the typed accessor after adding the field to the interface.
+- The fix itself was minimal: two edits to `src/api/manifest.ts` (add to interface + populate in function body).
+
+## What would have helped
+
+- Stage 1 could note whether the test file compiles cleanly with `tsc --noEmit`; flagging the cast as "will need updating in Stage 2" would save one iteration.
