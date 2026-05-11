@@ -64,7 +64,7 @@ repository state is uncertain.
    - **For all issue types**, before reading implementation files, run a
      quick already-fixed pre-check:
      ```bash
-     git grep -r "#<N>" src/ --include="*.test.*" -l
+     git grep -l "#<N>" -- ":(glob)src/**/*.test.*"
      git log --oneline --grep="#<N>" origin/main
      ```
      If a regression test already exists and passes (`npx vitest run
