@@ -193,18 +193,18 @@ export function calculateSalaryResult(
   // §39b EStG 2026 Vorsorgepauschale based on steuerlicher Arbeitslohn
   const steuerlichArbeitslohn = profile.grossSalaryYear - taxFreeConversion
   const vorsorgepauschale = calculateVorsorgepauschale2026(steuerlichArbeitslohn, profile, rules)
-  const taxableIncome = Math.max(
-    0,
+  // Pre-floor zvE (can be negative for very low wages after deductions).
+  const zvEBeforeFloor =
     steuerlichArbeitslohn -
-      vorsorgepauschale -
-      rules.employeeAllowance -
-      rules.specialExpensesAllowance,
-  )
+    vorsorgepauschale -
+    rules.employeeAllowance -
+    rules.specialExpensesAllowance
+  const taxableIncome = Math.max(0, zvEBeforeFloor)
   // §39b EStG tax-class dispatch.
   // III: Ehegattensplitting (§32a Abs. 5 EStG) — 2 × f(income/2); Soli uses married threshold.
   // II: single-filer table with §24b EStG Entlastungsbetrag für Alleinerziehende deducted first.
-  // V: no Grundfreibetrag — shift income + basicAllowance (deductions still apply).
-  // VI: no Grundfreibetrag, no Vorsorgepauschale, no AN-/SA-Pauschbetrag — shift steuerlichArbeitslohn.
+  // V: §39b tariff 2 × (f(1.25 × zvE) − f(0.75 × zvE)); deductions still apply, no Grundfreibetrag.
+  // VI: same tariff on raw steuerlichArbeitslohn — no Vorsorgepauschale/AN-/SA-Pauschbetrag.
   // I, IV: standard single-filer table.
   let incomeTax: number
   let solidarityFilingStatus: 'single' | 'married' = 'single'
@@ -219,10 +219,17 @@ export function calculateSalaryResult(
       (childCount - 1) * rules.entlastungsbetragAlleinerziehendePro
     incomeTax = calculateIncomeTax2026(Math.max(0, taxableIncome - entlastung), rules)
   } else if (profile.taxClass === 5) {
-    incomeTax = calculateIncomeTax2026(taxableIncome + rules.incomeTax.basicAllowance, rules)
+    // §39b Abs. 2 Satz 2 Nr. 2 EStG: use the statutory V/VI tariff on the pre-floor zvE.
+    incomeTax =
+      2 *
+      (calculateIncomeTax2026(1.25 * zvEBeforeFloor, rules) -
+        calculateIncomeTax2026(0.75 * zvEBeforeFloor, rules))
   } else if (profile.taxClass === 6) {
     // Class VI has no personal deductions at all (§39b Abs. 2 Satz 2 Nr. 2 EStG).
-    incomeTax = calculateIncomeTax2026(steuerlichArbeitslohn + rules.incomeTax.basicAllowance, rules)
+    incomeTax =
+      2 *
+      (calculateIncomeTax2026(1.25 * steuerlichArbeitslohn, rules) -
+        calculateIncomeTax2026(0.75 * steuerlichArbeitslohn, rules))
   } else {
     incomeTax = calculateIncomeTax2026(taxableIncome, rules)
   }
