@@ -1,6 +1,7 @@
 import './ResultWaterfall.css'
 import type { ProductResult } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
+import { de2026Rules } from '../../rules/de2026'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { InfoTip } from '../../ui/InfoTip'
 
@@ -108,11 +109,23 @@ export function ResultWaterfall({ result, grvNetMonthlyPension }: Props) {
             <dd>{formatCurrency(result.monthlyUserCost, 0)}</dd>
           </div>
           <div className={`rwf-row plus${monthlyRelief <= 0.5 ? ' inactive' : ''}`}>
-            <dt>+ Steuer-/SV-Vorteil</dt>
+            <dt>
+              + Steuer-/SV-Vorteil
+              <InfoTip
+                label="Steuer-/SV-Vorteil erklären"
+                text="Steuer- und Sozialversicherungsersparnis durch steuerlich geförderte Einzahlungen (z. B. §3 Nr. 63 EStG bei bAV, §10 EStG bei AVD/Riester). Hängt vom individuellen Grenzsteuersatz ab."
+              />
+            </dt>
             <dd>{monthlyRelief > 0.5 ? formatCurrency(monthlyRelief, 0) : '—'}</dd>
           </div>
           <div className={`rwf-row plus${result.monthlyEmployerContribution <= 0.5 ? ' inactive' : ''}`}>
-            <dt>+ Arbeitgeber / Zulagen</dt>
+            <dt>
+              + Arbeitgeber / Zulagen
+              <InfoTip
+                label="Arbeitgeber / Zulagen erklären"
+                text={`Arbeitgeberzuschuss (bAV: mind. ${Math.round(de2026Rules.bav.statutoryEmployerSubsidyPct * 100)} % Pflicht-AG-Zuschuss nach §1a Abs. 1a BetrAVG) oder staatliche Zulagen (Riester: Grundzulage €${de2026Rules.riester.grundzulage}, Kinderzulagen bis €${de2026Rules.riester.childAllowancePost2007} pro Kind).`}
+              />
+            </dt>
             <dd>{result.monthlyEmployerContribution > 0.5 ? formatCurrency(result.monthlyEmployerContribution, 0) : '—'}</dd>
           </div>
           <div className="rwf-row total">
@@ -130,7 +143,15 @@ export function ResultWaterfall({ result, grvNetMonthlyPension }: Props) {
             <dd>{result.grossMonthlyPayout > 0.5 ? formatCurrency(result.grossMonthlyPayout, 0) : '—'}</dd>
           </div>
           <div className={`rwf-row minus${payoutDeduction <= 0.5 ? ' inactive' : ''}`}>
-            <dt>− Steuer & KV/PV</dt>
+            <dt>
+              − Steuer & KV/PV
+              <InfoTip
+                label="Steuer & KV/PV erklären"
+                text={result.productId === 'etf'
+                  ? `Abgeltungsteuer (${Math.round(de2026Rules.capitalGains.taxRate * 100)} % + Soli) auf Kursgewinne und Ausschüttungen – keine KV/PV-Pflicht auf private Kapitalerträge.`
+                  : 'Einkommensteuer und Beiträge zur Kranken-/Pflegeversicherung (KV/PV) auf die monatliche Rente. Die Höhe hängt von Einkommen, Besteuerungsanteil und Kassenart (KVdR/freiwillig) ab.'}
+              />
+            </dt>
             <dd>{payoutDeduction > 0.5 ? formatCurrency(payoutDeduction, 0) : '—'}</dd>
           </div>
           <div className="rwf-row total">
