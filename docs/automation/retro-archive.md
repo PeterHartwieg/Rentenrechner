@@ -2056,3 +2056,25 @@ labels: [enhancement, area:ui]
 ## What would have helped
 
 - Stage 1 could have left a note confirming whether the implementation commit was intentional (e.g. a prior partial run) or unexpected, to avoid Stage 2 re-checking from scratch.
+
+---
+date: 2026-05-12T06:02:00Z
+issue: 184
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, from-maintainer]
+---
+
+## Blockers
+
+- PowerShell quoting caused the literal verification command with `select(.name == "ready-for-PR")` to be parsed incorrectly by `gh --jq`; verifying with `gh issue view 184 --json labels --jq '.labels[].name'` printed `ready-for-PR`.
+
+## Learnings
+
+- `ResultWaterfall.tsx` already has one `InfoTip` in the header for lump-sum deduction breakdowns, but the monthly contribution and payout rows at `src/features/results/ResultWaterfall.tsx:111`, `:115`, and `:133` are plain `<dt>` labels.
+- A focused jsdom test can pin this issue at the accessibility boundary by requiring row-level info buttons with labels `Steuer-/SV-Vorteil erklären`, `Arbeitgeber / Zulagen erklären`, and `Steuer & KV/PV erklären`.
+
+## What would have helped
+
+- A documented PowerShell-safe variant of the label verification command in the Stage 1 prompt.
