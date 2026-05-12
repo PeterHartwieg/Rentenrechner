@@ -77,6 +77,9 @@
 
 .rwf-row dt {
   color: #344054;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .rwf-row dd {

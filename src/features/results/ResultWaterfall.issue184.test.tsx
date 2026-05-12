@@ -30,10 +30,10 @@ function makeResult(overrides: Partial<ProductResult> = {}): ProductResult {
     monthlyProductContribution: 260,
     monthlyEmployerContribution: 0,
     accumulationRiy: 0.01,
-    yearlyRows: [],
+    rows: [],
     monteCarlo: null,
     ...overrides,
-  } as ProductResult
+  } as unknown as ProductResult
 }
 
 describe('ResultWaterfall row explanations (issue #184)', () => {
