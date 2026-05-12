@@ -842,6 +842,29 @@ describe('beitragErhoehenWhatIf (B1)', () => {
     expect(capAtom).toBeUndefined()
   })
 
+  it('does not create an increase card when the proposed contribution is not above the current contribution (#235)', () => {
+    const ws = makeKarinWorkspace()
+    const instance = {
+      ...ws.baseline.assumptions.insurance[0],
+      monthlyContribution: 100,
+    }
+    const workspaceWithContribution: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          insurance: [instance],
+        },
+      },
+    }
+
+    const decision = beitragErhoehenWhatIf(workspaceWithContribution, instance.instanceId, 0)
+
+    expect(instance.monthlyContribution).toBe(100)
+    expect(decision).toBeNull()
+  })
+
   it('surrendered instance: generator returns null', () => {
     const ws = makeDilanWorkspace()
     const instanceId = ws.baseline.assumptions.bav[0].instanceId
