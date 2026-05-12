@@ -2101,3 +2101,27 @@ labels: [bug, from-maintainer]
 ## What would have helped
 
 - None.
+
+---
+date: 2026-05-12T06:05:00Z
+issue: 184
+pr: 236
+stage: implement
+outcome: pr-opened
+labels: [area:ui-only]
+---
+
+## Blockers
+
+- Stage 1 test fixture used `yearlyRows: []` (wrong field name — `BaseProductResult` uses `rows`) and `as ProductResult` (insufficient overlap, TypeScript rejected it). These were fixture typos that blocked `npm run verify` (type check). Fixed both without touching assertions.
+
+## Learnings
+
+- `BaseProductResult` in `src/domain/results.ts:110` uses `rows: YearlyProjection[]` — not `yearlyRows`. Stage 1 fixtures that construct a `ProductResult` mock should use `rows: []` and cast with `as unknown as ProductResult` when the fixture is intentionally sparse.
+- `InfoTip` in `src/ui/InfoTip.tsx` accepts `label` (aria-label for the trigger button), `text` (plain string popover), or `children` (rich JSX). The `label` prop is what `getByRole('button', { name })` matches in tests.
+- `ResultWaterfall` `dt` elements needed `display: inline-flex; align-items: center; gap: 3px` in `ResultWaterfall.css:78` to accommodate the inline InfoTip icon without disturbing responsive layout.
+- Product-specific tip text for `Steuer & KV/PV` branches on `result.productId === 'etf'` — ETF payouts use Abgeltungsteuer only (no KV/PV), all others use income-tax + KV/PV.
+
+## What would have helped
+
+- Stage 1 test fixtures that cast as `unknown as ProductResult` from the start would save one debug cycle during implement.
