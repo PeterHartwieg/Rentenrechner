@@ -427,6 +427,9 @@ export function beitragErhoehenWhatIf(
     oldEUR = (instance as { monthlyContribution?: number }).monthlyContribution ?? 0
   }
 
+  // Suppress non-increases: proposed amount must be strictly above the current one.
+  if (newMonthlyEUR <= oldEUR) return null
+
   // Funding-cap check.
   const atoms: Atom[] = []
   const capAnnualEUR = fundingCapAnnualFor(slot)
