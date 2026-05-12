@@ -2170,3 +2170,25 @@ labels: [enhancement, area:ui-only]
 ## What would have helped
 
 - The handoff could note if Stage 2 was already completed, saving the test-run and file-inspection step.
+
+---
+date: 2026-05-12T06:14:00Z
+issue: 235
+pr: 237
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- None. The fix and PR were already present on the branch when Stage 2 ran; this was a re-run that confirmed everything was in order.
+
+## Learnings
+
+- `beitragErhoehenWhatIf` in `src/app/contractDecisions.ts` computes `oldEUR` slot-specifically from the instance's current `monthlyContribution`. The guard `if (newMonthlyEUR <= oldEUR) return null;` inserted before the decision object is built is sufficient to suppress incoherent "von 100 € auf 0 € erhöhen" cards.
+- The Stage 1 test in `src/app/contractDecisions.test.ts` covers the `newMonthlyEUR: 0` edge case (below current) and `newMonthlyEUR === oldEUR` (equal, no increase); both are now pinned by the regression test.
+
+## What would have helped
+
+- Nothing; the run was routine.
