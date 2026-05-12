@@ -2147,3 +2147,26 @@ labels: [bug]
 ## What would have helped
 
 - Nothing material; Stage 1 pinpointed the exact line and the fix was straightforward.
+
+---
+date: 2026-05-12T06:13:00Z
+issue: 184
+pr: 236
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- When `git log origin/main..HEAD` shows both the test commit and a feat commit, Stage 2 was already completed in a prior run. The test passes, the PR is open, and `npm run verify` is green — no further implementation needed; just write the retro and exit.
+- The `InfoTip` component (used in `src/features/results/ResultWaterfall.tsx`) accepts an optional `text` prop for inline tooltip content and a `label` prop that maps to the button's accessible name. The test asserts on `getByRole('button', { name: '…' })` which checks the `label` prop.
+- `ResultWaterfall.tsx` uses `result.productId` to conditionally branch tip copy for ETF vs. other products (lines 149–151), a pattern usable in other product-specific UI explanations.
+
+## What would have helped
+
+- The handoff could note if Stage 2 was already completed, saving the test-run and file-inspection step.
