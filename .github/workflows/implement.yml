@@ -91,6 +91,11 @@ jobs:
               Do not load the whole comment thread.
 
             **Normal path**
+            0. Before reading the handoff, run `git log --oneline origin/main..HEAD`.
+               If the log shows **both** a test commit (`test: failing test`) **and**
+               a non-test commit (the fix), a prior run already completed Stage 2.
+               Run `npm run verify`; if it passes, skip to step 4 (push + open PR)
+               without re-implementing.
             1. Read the handoff (`## Reproduction`, `## Files to edit`,
                `## Test status`). If a test exists, run it once and confirm it
                still fails. If it already passes, escalate: comment, add
