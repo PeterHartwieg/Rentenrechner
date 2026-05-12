@@ -92,6 +92,20 @@ repository state is uncertain.
      (`npm ci`, then `npm --prefix workers/qa-submit ci`), run
      `npx vitest run <test-file>`, confirm it fails for the right reason, and
      commit only that test with `test: failing test for #<N>`.
+   - **Partial fixture cast.** When a test fixture only needs a few fields from
+     a large domain result type (`ProductResult`, `CombinedResult`,
+     `BavFundingResult`, etc.), cast with `as unknown as <Type>` rather than
+     using a direct type annotation (`const x: ProductResult = { ... }`).
+     Direct annotations fail `tsc -b` (used by `npm run verify`) when required
+     fields are missing, causing Stage 2 to spend an iteration fixing the
+     fixture before it can implement the fix.
+   - **`migrateV1ToV2` creates all 6 product instances.** Tests that call
+     `migrateV1ToV2(defaultProfile, defaultAssumptions)` receive a workspace
+     with instances for bav, etf, insurance, basisrente, altersvorsorgedepot,
+     and riester because `isEtfMeaningful()` and `isInsuranceMeaningful()`
+     always return `true`. If the test only exercises a product subset, either
+     filter results by `visibleProducts` or zero out the unwanted product
+     arrays in the workspace after migration.
    - If the new test passes today, your reproduction is wrong; exit through
      the already-correct path.
 8. Push `agent/issue-<N>`.
