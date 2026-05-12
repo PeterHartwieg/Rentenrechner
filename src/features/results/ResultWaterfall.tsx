@@ -1,6 +1,7 @@
 import './ResultWaterfall.css'
 import type { ProductResult } from '../../domain'
 import { getProductMeta } from '../../app/productPresentation'
+import { de2026Rules } from '../../rules/de2026'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { InfoTip } from '../../ui/InfoTip'
 
@@ -122,7 +123,7 @@ export function ResultWaterfall({ result, grvNetMonthlyPension }: Props) {
               + Arbeitgeber / Zulagen
               <InfoTip
                 label="Arbeitgeber / Zulagen erklären"
-                text="Arbeitgeberzuschuss (bAV: mind. 15 % Pflicht-AG-Zuschuss nach §1a Abs. 1a BetrAVG) oder staatliche Zulagen (Riester: Grundzulage €175, Kinderzulagen bis €300 pro Kind)."
+                text={`Arbeitgeberzuschuss (bAV: mind. ${Math.round(de2026Rules.bav.statutoryEmployerSubsidyPct * 100)} % Pflicht-AG-Zuschuss nach §1a Abs. 1a BetrAVG) oder staatliche Zulagen (Riester: Grundzulage €${de2026Rules.riester.grundzulage}, Kinderzulagen bis €${de2026Rules.riester.childAllowancePost2007} pro Kind).`}
               />
             </dt>
             <dd>{result.monthlyEmployerContribution > 0.5 ? formatCurrency(result.monthlyEmployerContribution, 0) : '—'}</dd>
@@ -147,7 +148,7 @@ export function ResultWaterfall({ result, grvNetMonthlyPension }: Props) {
               <InfoTip
                 label="Steuer & KV/PV erklären"
                 text={result.productId === 'etf'
-                  ? 'Abgeltungsteuer (25 % + Soli) auf Kursgewinne und Ausschüttungen – keine KV/PV-Pflicht auf private Kapitalerträge.'
+                  ? `Abgeltungsteuer (${Math.round(de2026Rules.capitalGains.taxRate * 100)} % + Soli) auf Kursgewinne und Ausschüttungen – keine KV/PV-Pflicht auf private Kapitalerträge.`
                   : 'Einkommensteuer und Beiträge zur Kranken-/Pflegeversicherung (KV/PV) auf die monatliche Rente. Die Höhe hängt von Einkommen, Besteuerungsanteil und Kassenart (KVdR/freiwillig) ab.'}
               />
             </dt>
