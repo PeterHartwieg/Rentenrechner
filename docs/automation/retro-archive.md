@@ -2078,3 +2078,26 @@ labels: [enhancement, from-maintainer]
 ## What would have helped
 
 - A documented PowerShell-safe variant of the label verification command in the Stage 1 prompt.
+
+---
+date: 2026-05-12T06:06:00Z
+issue: 235
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [bug, from-maintainer]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `beitragErhoehenWhatIf` in `src/app/contractDecisions.ts` computes the current contribution as `oldEUR`, but it does not check whether `newMonthlyEUR` is actually greater before returning a `beitrag-erhoehen` decision.
+- The QA-visible string `Private Rentenversicherung: Beitrag von 100 € auf 0 € pro Monat erhöhen.` can be reproduced with a pure unit test by setting an insurance instance `monthlyContribution` to 100 and calling `beitragErhoehenWhatIf(..., 0)`.
+- `OptimiereVorsorgeModal` regenerates the decision from user overrides through the same pure helper, so fixing the helper should also cover the modal override path.
+
+## What would have helped
+
+- None.
