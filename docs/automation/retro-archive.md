@@ -2192,3 +2192,24 @@ labels: [bug]
 ## What would have helped
 
 - Nothing; the run was routine.
+
+---
+date: 2026-05-12T07:01:24Z
+issue: 209
+pr: null
+stage: investigate
+outcome: ready-for-human
+labels: [enhancement, ready-for-human]
+---
+
+## Blockers
+
+- `#209` was still selected by the ready-for-agent query, but the issue history already contained a Stage 1 handoff, a Stage 2 escalation, and a maintainer follow-up fixing the Stage 1 test fixture. `origin/main` also already contained `retro: investigate #209` and `retro: implement #209`, so a duplicate Stage 1 run would have been misleading.
+
+## Learnings
+
+- The Stage 1 already-fixed pre-check can reveal stale workflow labels via retro commits even when no `src/**/*.test.*` reference to the issue exists on `origin/main`. In this case, checking issue comments before implementation files showed that the correct action was to release the issue to `ready-for-human`, not add another failing test.
+
+## What would have helped
+
+- Removing stale `ready-for-agent` from issues that already have a Stage 1 handoff would prevent the oldest-eligible query from reclaiming them.
