@@ -2125,3 +2125,25 @@ labels: [area:ui-only]
 ## What would have helped
 
 - Stage 1 test fixtures that cast as `unknown as ProductResult` from the start would save one debug cycle during implement.
+
+---
+date: 2026-05-12T06:10:00Z
+issue: 235
+pr: 237
+stage: implement
+outcome: pr-opened
+labels: [bug]
+---
+
+## Blockers
+
+- `src/features/qa-feedback/__tests__/app-bridge.test.tsx` failed once under the full `npm run verify` run but passed in isolation (known flaky test). A second `npm run verify` run passed cleanly.
+
+## Learnings
+
+- The fix was a single 3-line guard in `beitragErhoehenWhatIf` (`src/app/contractDecisions.ts:430`): `if (newMonthlyEUR <= oldEUR) return null`. The `oldEUR` calculation already handled all slot types (bav, basisrente, altersvorsorgedepot/riester, etf/insurance), so the guard inserted after it covers all cases uniformly.
+- Stage 1's `oldEUR` extraction block (lines 418–428) used slot-specific field names — verifying this before inserting the guard is important to avoid using a stale `0` as the comparison baseline for slots with non-standard field names.
+
+## What would have helped
+
+- Nothing material; Stage 1 pinpointed the exact line and the fix was straightforward.
