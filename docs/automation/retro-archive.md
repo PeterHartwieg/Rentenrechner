@@ -2755,3 +2755,27 @@ labels: [feature, area:ui]
 ## What would have helped
 
 - Stage 1 handoff named `src/Calculator.tsx:649` as the insertion point but the actual routing block is at line 694; a line-range reference would be more precise.
+
+---
+date: 2026-05-13T15:01:07Z
+issue: 247
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- Dependencies were not installed in the isolated worktree, so the first `npx vitest run src/features/results/VergleichSidebar.test.tsx` failed during Vite config loading with unresolved `vitest/config` and Vite plugin imports. `npm ci` fixed the environment and the focused test then failed for the intended assertion.
+- PowerShell in this environment did not support `Get-Date -AsUTC`; `[DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")` produced the retro timestamp.
+
+## Learnings
+
+- `#247` is partially present under the wrong slug: `src/features/results/VergleichSidebar.tsx` already has a Renteneintrittsalter leaf, but it points to `renteneintrittsalter`; `src/features/results/vergleichPanes.ts` registers the same slug. The issue asks for `sens-retirement-age`, so `?view=vergleich&pane=sens-retirement-age` is ignored by the `ALL_VERGLEICH_PANES` check in `Calculator.tsx`.
+- The current compare sidebar render path in `Calculator.tsx` only special-cases overview, decision, fee drag, tax waterfall, and inflation stress. Other leaves fall through to generic Capital/Pension/BreakEven chart combinations, so Stage 2 needs a dedicated branch and should exclude the new slug from the generic fallbacks.
+- `src/features/results/sensitivity.ts` already has `retire_minus_2` and `retire_plus_2` perturbations that re-run `simulateRetirementComparison`; they are useful reference code but do not satisfy the requested ±5/yearly sweep pane.
+
+## What would have helped
+
+- A named component/helper target for the new Sensitivität leaf would make Stage 2 less likely to accidentally reuse the old generic chart fallthrough.
