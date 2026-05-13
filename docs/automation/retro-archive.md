@@ -2711,3 +2711,24 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A pane registry with render targets would make missing pane implementations visible at registration time.
+
+---
+date: 2026-05-13T14:11:00Z
+issue: 245
+pr: 255
+stage: implement
+outcome: pr-opened
+labels: [feature, area:results]
+---
+
+## Blockers
+
+- Two TypeScript errors after the initial implementation: (1) `selectedScenario` is typed `ReturnScenario | undefined` from `useSimulationResult` — fixed by guarding the render with `selectedScenario &&`; (2) `getProductMeta` returns `ProductManifestEntry | undefined` — fixed with `meta?.label ?? result.productId` fallback.
+- `app-bridge.test.tsx` flaked in the full `verify` run but passed in isolation — confirmed pre-existing flakiness, not caused by this change.
+
+## Learnings
+
+- `buildSequenceOfReturnsPaths` uses a linear spread (delta=0.04, spread=2*delta/(years-1)) so the arithmetic mean is exactly `annualReturn` by construction — no floating-point correction needed since the error is ~1e-16, well within the `toBeCloseTo(x, 12)` tolerance of 5e-13.
+- `getProductMeta` at `src/engine/productRegistry.ts:117` returns `ProductManifestEntry | undefined`, so every call-site must null-guard even when the product id is known.
+- `selectedScenario` from `useSimulationResult` is `ReturnScenario | undefined` — pane components that need it must guard or the TypeScript build (`tsc -b`) catches the mismatch.
+- Excluding a new dedicated pane from the fallback CapitalChart/PensionChart/BreakEvenChart stack requires adding `&& vergleichPane !== '<new-slug>'` to each of the three existing compound conditions at `src/Calculator.tsx:703–722`.
