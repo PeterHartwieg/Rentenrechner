@@ -2381,3 +2381,27 @@ labels: [enhancement, ready-for-human]
 ## What would have helped
 
 - Keep blocked issues out of `ready-for-agent` until their explicit blocker has closed, or include a note that Stage 1 should ignore the blocker.
+
+---
+date: 2026-05-13T11:05:13Z
+issue: 240
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- The first focused Vitest run could not start because dependencies were absent (`vitest/config`, `@vitejs/plugin-react`, `@mdx-js/rollup`, `remark-gfm`, `@cloudflare/vite-plugin` unresolved); `npm ci` fixed the local test environment.
+- PowerShell/`gh --jq` stripped the quoted `ready-for-PR` string from the exact select expression, producing `function not defined: PR/0`. A direct `gh issue view 240 --json labels --jq '.labels[].name'` verified `ready-for-PR` immediately after the label add; shortly afterward the `implement` workflow consumed the label and started running.
+
+## Learnings
+
+- #239 has landed on `origin/main`: `src/features/results/VergleichSidebar.tsx`, `src/features/results/vergleichPanes.ts`, URL `pane` parsing in `src/Calculator.tsx`, and `src/App.vergleich-sidebar.test.tsx` now exist.
+- #240 is no longer blocked, but `src/Calculator.tsx:648` still has the #239 placeholder: non-`kapital`/`rente`/`break-even` panes fall through to the legacy chart stack instead of dispatching to exactly one pane.
+- The requested #240 slugs differ from the #239 registry: issue body wants `ueberblick` and `sens-rendite`/`sens-beitrag`/`sens-lebenserwartung`, while current `vergleichPanes.ts` exposes `dashboard`, `entscheidung`, `rendite`, `beitrag`, and `lebenserwartung`.
+
+## What would have helped
+
+- A pane-registry owner type that includes both sidebar metadata and render component would make Stage 2 less likely to leave URL slugs, sidebar leaves, and pane dispatch out of sync.
