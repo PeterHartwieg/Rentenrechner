@@ -492,7 +492,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
       className="workspace-view workspace-view--vergleich"
       {...vergleichSectionProps}
     >
-      {toolbar}
+      {isCombineMode && toolbar}
 
       {portfolioState.mode === 'combine' && combineBasisResult && (
         <>
@@ -591,61 +591,68 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
           the source of truth — the user is modelling actual contracts, not
           comparing product candidates. */}
       {!isCombineMode && (
-        <>
-          <ComparisonPicker
-            visible={assumptions.visibleProducts}
-            onChange={(next) =>
-              setAssumptions((current) => ({ ...current, visibleProducts: next }))
-            }
-          />
+        <div className="compare-layout">
+          {hasComparisonSet && (
+            <div className="compare-layout-sidebar">
+              <VergleichSidebar
+                activePane={vergleichPane}
+                onPaneChange={handleVergleichPaneChange}
+                bavVisible={assumptions.visibleProducts.includes('bav')}
+              />
+            </div>
+          )}
 
-          {hasComparisonSet ? (
-            <>
-              {vergleichPane !== 'entscheidung' && (
-                <DecisionSummary
+          <div className="compare-layout-main">
+            {toolbar}
+
+            <ComparisonPicker
+              visible={assumptions.visibleProducts}
+              onChange={(next) =>
+                setAssumptions((current) => ({ ...current, visibleProducts: next }))
+              }
+            />
+
+            {hasComparisonSet ? (
+              <>
+                {vergleichPane !== 'entscheidung' && (
+                  <DecisionSummary
+                    results={selectedResults}
+                    bestCapital={bestCapital}
+                    bestPension={bestPension}
+                  />
+                )}
+
+                <MonteCarloHighlights result={monteCarloResult} />
+
+                <SummaryMetrics
+                  grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+                  grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
+                  grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
+                  bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
+                  bavTotalMonthlyContribution={
+                    simulation.bavFunding.monthlyGrossConversion +
+                    simulation.bavFunding.monthlyEmployerContribution
+                  }
+                  showBav={assumptions.visibleProducts.includes('bav')}
+                />
+
+                <ProductEditCards
+                  selectedResults={selectedResults}
+                  assumptions={assumptions}
+                  onAssumptionsChange={setAssumptions}
+                  avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
+                  avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
+                  onOpenInputsForProduct={(productId) => {
+                    setRequestedInputsTab(productId)
+                    workspace.setActiveView('angebot')
+                  }}
+                />
+
+                <ResultWaterfalls
                   results={selectedResults}
-                  bestCapital={bestCapital}
-                  bestPension={bestPension}
+                  grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
                 />
-              )}
 
-              <MonteCarloHighlights result={monteCarloResult} />
-
-              <SummaryMetrics
-                grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
-                grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
-                bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
-                bavTotalMonthlyContribution={
-                  simulation.bavFunding.monthlyGrossConversion +
-                  simulation.bavFunding.monthlyEmployerContribution
-                }
-                showBav={assumptions.visibleProducts.includes('bav')}
-              />
-
-              <ProductEditCards
-                selectedResults={selectedResults}
-                assumptions={assumptions}
-                onAssumptionsChange={setAssumptions}
-                avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
-                avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
-                onOpenInputsForProduct={(productId) => {
-                  setRequestedInputsTab(productId)
-                  workspace.setActiveView('angebot')
-                }}
-              />
-
-              <ResultWaterfalls
-                results={selectedResults}
-                grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-              />
-
-              <div className="vergleich-with-sidebar">
-                <VergleichSidebar
-                  activePane={vergleichPane}
-                  onPaneChange={handleVergleichPaneChange}
-                  bavVisible={assumptions.visibleProducts.includes('bav')}
-                />
                 <div className="vergleich-pane-content">
                   {/* Each non-stub slug isolates exactly one chart component. */}
                   {vergleichPane === 'ueberblick' && (
@@ -731,12 +738,12 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
                 </div>
-              </div>
-            </>
-          ) : (
-            <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
-          )}
-        </>
+              </>
+            ) : (
+              <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
+            )}
+          </div>
+        </div>
       )}
     </section>
   )
