@@ -2571,3 +2571,26 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A small helper that maps each Vergleich pane slug to its rendered component would reduce repeated Stage 1 findings for newly registered but unimplemented pane slugs.
+
+---
+date: 2026-05-13T13:06:00Z
+issue: 243
+pr: 253
+stage: implement
+outcome: pr-opened
+labels: [bug, area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The Vergleich sidebar pane dispatch pattern in `Calculator.tsx:675–710` uses two mechanisms: (1) positive `vergleichPane === '<slug>'` branches for dedicated components, and (2) negative predicates on the three generic charts (CapitalChart, PensionChart, BreakEvenChart). Adding a new pane requires both: a positive branch AND exclusions from all three generic predicates, otherwise the generic charts render alongside (or instead of) the new panel.
+- `ProductResult.grossMonthlyPayout` and `netMonthlyPayout` are available on all six product types — a tax waterfall can be built purely from these without touching `RetirementTaxBreakdown` or any engine code.
+- The `getProductMeta` helper from `src/engine/productRegistry` is the correct way to look up product colors in a new pane component; importing `PRODUCT_COLORS` from Calculator is not possible since it's a `const` inside the module.
+
+## What would have helped
+
+- The handoff mentioned `src/domain/retirementTax.ts:71` as a file to edit, but the test required only a heading and isolation — no deep tax breakdown was needed for a passing green. Clarifying whether stage-1 expects a minimal or full implementation would reduce uncertainty about scope.
