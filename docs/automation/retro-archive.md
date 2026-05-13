@@ -2688,3 +2688,26 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A small pane registry would make it harder for newly registered slugs to silently inherit generic fallback charts.
+
+---
+date: 2026-05-13T14:05:39Z
+issue: 246
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `inflations-stress` was already registered in `src/features/results/vergleichPanes.ts` and visible in `src/features/results/VergleichSidebar.tsx`, so the gap is the dedicated pane and data helper rather than sidebar registration.
+- `src/Calculator.tsx` routes unhandled Vergleich pane slugs through the generic `CapitalChart` / `PensionChart` / `BreakEvenChart` fallback stack. Stage 2 needs to explicitly route `inflations-stress` and exclude it from those fallback conditions.
+- Existing real-value support in `src/app/simulationSelectors.ts` covers capital balances through `realBalance`; it does not build nominal-vs-real retirement monthly payout rows, so a small `src/features/results/inflationStress.ts` helper is the narrowest place to pin the pane behavior.
+
+## What would have helped
+
+- A pane registry with render targets would make missing pane implementations visible at registration time.
