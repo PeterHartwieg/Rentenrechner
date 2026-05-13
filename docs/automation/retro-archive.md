@@ -2642,3 +2642,26 @@ labels: [enhancement, area:ui-only]
 ## What would have helped
 
 - A guard in the workflow to detect an existing implementation commit and skip re-running Stage 2 would avoid redundant invocations.
+
+---
+date: 2026-05-13T13:15:00Z
+issue: 244
+pr: 254
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- None. Stage 1 had already committed both the failing test (`f8c05ef`) and the implementation (`da083af`) and opened PR #254 before Stage 2 ran. All 8 tests in `src/App.vergleich-sidebar.test.tsx` and `npm run verify` (154 test files, 3026 tests) passed on arrival.
+
+## Learnings
+
+- When Stage 1 commits both the failing test and the implementation in the same pipeline run, Stage 2 arrives with a green branch and an open PR — Stage 2's only obligation is to confirm `npm run verify` is clean and write the retro entry.
+- `KvPvLastPanel.tsx` sources the monthly BBG from `de2026Rules.socialSecurity.healthAndCareCapMonth` — the P0 guardrail (no statutory literals outside `src/rules/`) was correctly respected.
+- The three generic fallback chart predicates in `Calculator.tsx` (lines ~683, ~692, ~699) must be updated whenever a new `vergleichPane` slug is added; forgetting any one of them causes the new pane to silently render the wrong chart.
+
+## What would have helped
+
+- Stage 1 handoff could note whether the implementation commit was already pushed, so Stage 2 knows immediately that the only remaining steps are verify + retro.
