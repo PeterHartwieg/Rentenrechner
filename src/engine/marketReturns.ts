@@ -2,6 +2,59 @@ import type { ReturnScenario } from '../domain'
 import type { BuildProductPolicy } from './buildResult'
 import type { SimulationContext } from './simulationContext'
 
+export type SequenceOfReturnsPath = {
+  id: 'good-early' | 'bad-early' | 'shuffled-baseline'
+  returns: readonly number[]
+}
+
+/**
+ * Builds three deterministic return paths with identical arithmetic means:
+ * - good-early: high returns first, declining (favorable sequence)
+ * - bad-early:  low returns first, rising (unfavorable sequence)
+ * - shuffled-baseline: uniform returns equal to the mean
+ */
+export function buildSequenceOfReturnsPaths(params: {
+  annualReturn: number
+  years: number
+}): SequenceOfReturnsPath[] {
+  const { annualReturn, years } = params
+
+  if (years <= 0) {
+    return [
+      { id: 'good-early', returns: [] },
+      { id: 'bad-early', returns: [] },
+      { id: 'shuffled-baseline', returns: [] },
+    ]
+  }
+
+  if (years === 1) {
+    return [
+      { id: 'good-early', returns: [annualReturn] },
+      { id: 'bad-early', returns: [annualReturn] },
+      { id: 'shuffled-baseline', returns: [annualReturn] },
+    ]
+  }
+
+  const delta = 0.04
+  const spread = (delta * 2) / (years - 1)
+
+  const goodEarly: number[] = Array.from({ length: years }, (_, i) =>
+    annualReturn + delta - i * spread,
+  )
+
+  const badEarly: number[] = Array.from({ length: years }, (_, i) =>
+    annualReturn - delta + i * spread,
+  )
+
+  const shuffledBaseline: number[] = Array.from({ length: years }, () => annualReturn)
+
+  return [
+    { id: 'good-early', returns: goodEarly },
+    { id: 'bad-early', returns: badEarly },
+    { id: 'shuffled-baseline', returns: shuffledBaseline },
+  ]
+}
+
 export function marketReturnAt(
   ctx: SimulationContext,
   scenario: ReturnScenario,
