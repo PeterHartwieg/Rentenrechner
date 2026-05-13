@@ -2665,3 +2665,160 @@ labels: [enhancement, area:ui-only]
 ## What would have helped
 
 - Stage 1 handoff could note whether the implementation commit was already pushed, so Stage 2 knows immediately that the only remaining steps are verify + retro.
+
+---
+date: 2026-05-13T14:02:17Z
+issue: 245
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `sequence-of-returns` was already present in `src/features/results/vergleichPanes.ts` and `src/features/results/VergleichSidebar.tsx`, so the missing behavior is the dedicated pane and shared return-path helper rather than basic navigation registration.
+- In `src/Calculator.tsx`, unhandled Vergleich pane slugs fall through to the generic `CapitalChart` / `PensionChart` / `BreakEvenChart` stack. Stage 2 should explicitly route `sequence-of-returns` and exclude it from those fallback conditions.
+- `src/engine/marketReturns.ts` currently owns only market-return lookup and policy merging. A deterministic same-arithmetic-mean sequence helper belongs there so the UI does not inline return-path generation.
+
+## What would have helped
+
+- A small pane registry would make it harder for newly registered slugs to silently inherit generic fallback charts.
+
+---
+date: 2026-05-13T14:05:39Z
+issue: 246
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `inflations-stress` was already registered in `src/features/results/vergleichPanes.ts` and visible in `src/features/results/VergleichSidebar.tsx`, so the gap is the dedicated pane and data helper rather than sidebar registration.
+- `src/Calculator.tsx` routes unhandled Vergleich pane slugs through the generic `CapitalChart` / `PensionChart` / `BreakEvenChart` fallback stack. Stage 2 needs to explicitly route `inflations-stress` and exclude it from those fallback conditions.
+- Existing real-value support in `src/app/simulationSelectors.ts` covers capital balances through `realBalance`; it does not build nominal-vs-real retirement monthly payout rows, so a small `src/features/results/inflationStress.ts` helper is the narrowest place to pin the pane behavior.
+
+## What would have helped
+
+- A pane registry with render targets would make missing pane implementations visible at registration time.
+
+---
+date: 2026-05-13T14:11:00Z
+issue: 245
+pr: 255
+stage: implement
+outcome: pr-opened
+labels: [feature, area:results]
+---
+
+## Blockers
+
+- Two TypeScript errors after the initial implementation: (1) `selectedScenario` is typed `ReturnScenario | undefined` from `useSimulationResult` — fixed by guarding the render with `selectedScenario &&`; (2) `getProductMeta` returns `ProductManifestEntry | undefined` — fixed with `meta?.label ?? result.productId` fallback.
+- `app-bridge.test.tsx` flaked in the full `verify` run but passed in isolation — confirmed pre-existing flakiness, not caused by this change.
+
+## Learnings
+
+- `buildSequenceOfReturnsPaths` uses a linear spread (delta=0.04, spread=2*delta/(years-1)) so the arithmetic mean is exactly `annualReturn` by construction — no floating-point correction needed since the error is ~1e-16, well within the `toBeCloseTo(x, 12)` tolerance of 5e-13.
+- `getProductMeta` at `src/engine/productRegistry.ts:117` returns `ProductManifestEntry | undefined`, so every call-site must null-guard even when the product id is known.
+- `selectedScenario` from `useSimulationResult` is `ReturnScenario | undefined` — pane components that need it must guard or the TypeScript build (`tsc -b`) catches the mismatch.
+- Excluding a new dedicated pane from the fallback CapitalChart/PensionChart/BreakEvenChart stack requires adding `&& vergleichPane !== '<new-slug>'` to each of the three existing compound conditions at `src/Calculator.tsx:703–722`.
+
+---
+date: 2026-05-13T14:08:00Z
+issue: 246
+pr: 256
+stage: implement
+outcome: pr-opened
+labels: [feature, area:ui]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The generic fallback chart stack in `Calculator.tsx:694–721` uses negative `vergleichPane !==` guards — adding a new dedicated pane requires appending `&& vergleichPane !== 'inflations-stress'` to all three guards, not just inserting a new `{pane === X && ...}` block.
+- `buildInflationStressRows` uses `product.label` as the dynamic chart key (e.g. `"Private Rentenversicherung nominal"`). This matches how `CapitalChart` uses `result.label` as `dataKey`, so Recharts picks it up automatically without a `name` override.
+- Recharts `<Line>` inside a fragment works but each `Line` must still have a unique `key`; the fragment itself needs no key.
+
+## What would have helped
+
+- Stage 1 handoff named `src/Calculator.tsx:649` as the insertion point but the actual routing block is at line 694; a line-range reference would be more precise.
+
+---
+date: 2026-05-13T15:01:07Z
+issue: 247
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- Dependencies were not installed in the isolated worktree, so the first `npx vitest run src/features/results/VergleichSidebar.test.tsx` failed during Vite config loading with unresolved `vitest/config` and Vite plugin imports. `npm ci` fixed the environment and the focused test then failed for the intended assertion.
+- PowerShell in this environment did not support `Get-Date -AsUTC`; `[DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")` produced the retro timestamp.
+
+## Learnings
+
+- `#247` is partially present under the wrong slug: `src/features/results/VergleichSidebar.tsx` already has a Renteneintrittsalter leaf, but it points to `renteneintrittsalter`; `src/features/results/vergleichPanes.ts` registers the same slug. The issue asks for `sens-retirement-age`, so `?view=vergleich&pane=sens-retirement-age` is ignored by the `ALL_VERGLEICH_PANES` check in `Calculator.tsx`.
+- The current compare sidebar render path in `Calculator.tsx` only special-cases overview, decision, fee drag, tax waterfall, and inflation stress. Other leaves fall through to generic Capital/Pension/BreakEven chart combinations, so Stage 2 needs a dedicated branch and should exclude the new slug from the generic fallbacks.
+- `src/features/results/sensitivity.ts` already has `retire_minus_2` and `retire_plus_2` perturbations that re-run `simulateRetirementComparison`; they are useful reference code but do not satisfy the requested ±5/yearly sweep pane.
+
+## What would have helped
+
+- A named component/helper target for the new Sensitivität leaf would make Stage 2 less likely to accidentally reuse the old generic chart fallthrough.
+
+---
+date: 2026-05-13T15:03:00Z
+issue: 247
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [bug, area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The slug rename was purely in `vergleichPanes.ts` (type union + `ALL_VERGLEICH_PANES` array) and `VergleichSidebar.tsx` line 65 (`{ id: ... }`). Calculator.tsx had no direct slug references for this leaf — the handoff mention was precautionary.
+- The fix is 3 one-line edits across 2 files; the Stage 1 test fully specified both assertions (slug in `ALL_VERGLEICH_PANES` and `onPaneChange` call value), so the minimal fix scope was clear from the test.
+
+## What would have helped
+
+- The handoff flagged Calculator.tsx and sensitivity.ts as potential edit sites; a quick grep before reading those files would have immediately scoped the fix to just the two files above.
+
+---
+date: 2026-05-13T16:59:04Z
+issue: null
+pr: null
+stage: investigate
+outcome: preflight-blocked
+labels: []
+---
+
+## Blockers
+
+- Stage 1 loop preflight failed before any GitHub issue was claimed or any labels/comments were touched. `git reset --hard origin/main` failed with `fatal: Unable to create 'C:/Users/Peter/Coding_Projects/Rentenrechner-automation/.git/worktrees/stage1-20260513-185802/index.lock': File exists.` This was caused by running `git checkout --detach origin/main` and `git reset --hard origin/main` in parallel instead of as separate sequential PowerShell commands.
+
+## Learnings
+
+- The versioned Stage 1 prompt's "using separate commands so Windows PowerShell can run them" instruction is operationally important: `checkout` and `reset` must not be parallelized, because both touch the worktree index lock.
+
+## What would have helped
+
+- A documented preflight-blocked retro append convention for runs that fail before an issue number exists; the current append script requires an `ISSUE_NUMBER`, while this failure happened before issue selection.
