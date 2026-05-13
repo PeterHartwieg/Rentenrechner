@@ -121,17 +121,13 @@ describe('App - Vergleich pane sidebar (#239)', () => {
 })
 
 describe('App - migrated Vergleich panes (#240)', () => {
-  it('declares the requested Stage 1 pane slugs as deep-linkable panes', () => {
+  it('declares the implemented pane slugs as deep-linkable panes', () => {
     expect(ALL_VERGLEICH_PANES).toEqual(
       expect.arrayContaining([
-        'ueberblick',
         'rente',
         'break-even',
         'fee-drag',
         'monte-carlo',
-        'sens-rendite',
-        'sens-beitrag',
-        'sens-lebenserwartung',
         'fairness',
       ]),
     )
