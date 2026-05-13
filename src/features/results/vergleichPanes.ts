@@ -1,5 +1,5 @@
 export type VergleichPaneSlug =
-  | 'dashboard'
+  | 'ueberblick'
   | 'entscheidung'
   | 'kapital'
   | 'rente'
@@ -18,7 +18,7 @@ export type VergleichPaneSlug =
   | 'fairness'
 
 export const ALL_VERGLEICH_PANES: readonly VergleichPaneSlug[] = [
-  'dashboard',
+  'ueberblick',
   'entscheidung',
   'kapital',
   'rente',

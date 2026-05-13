@@ -14,6 +14,7 @@ type LeafDef = {
 type GroupDef = {
   id: string
   label: string
+  paneSlug?: VergleichPaneSlug
   leaves: LeafDef[]
 }
 
@@ -21,8 +22,8 @@ const SIDEBAR_GROUPS: GroupDef[] = [
   {
     id: 'ueberblick',
     label: 'Überblick',
+    paneSlug: 'ueberblick',
     leaves: [
-      { id: 'dashboard', label: 'Dashboard' },
       { id: 'entscheidung', label: 'Entscheidung' },
     ],
   },
@@ -81,7 +82,9 @@ export function VergleichSidebar({ activePane, onPaneChange, bavVisible }: Props
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const activePaneLabel =
-    SIDEBAR_GROUPS.flatMap((g) => g.leaves).find((l) => l.id === activePane)?.label ?? activePane
+    SIDEBAR_GROUPS.find((g) => g.paneSlug === activePane)?.label ??
+    SIDEBAR_GROUPS.flatMap((g) => g.leaves).find((l) => l.id === activePane)?.label ??
+    activePane
 
   function handleLeafClick(pane: VergleichPaneSlug) {
     onPaneChange(pane)
@@ -97,7 +100,18 @@ export function VergleichSidebar({ activePane, onPaneChange, bavVisible }: Props
         if (visibleLeaves.length === 0) return null
         return (
           <div key={group.id} className="vergleich-sidebar-group">
-            <span className="vergleich-sidebar-group-label">{group.label}</span>
+            {group.paneSlug ? (
+              <button
+                type="button"
+                className={`vergleich-sidebar-group-label vergleich-sidebar-group-label--selectable${activePane === group.paneSlug ? ' active' : ''}`}
+                aria-current={activePane === group.paneSlug ? 'page' : undefined}
+                onClick={() => handleLeafClick(group.paneSlug!)}
+              >
+                {group.label}
+              </button>
+            ) : (
+              <span className="vergleich-sidebar-group-label">{group.label}</span>
+            )}
             {visibleLeaves.map((leaf) => (
               <button
                 key={leaf.id}

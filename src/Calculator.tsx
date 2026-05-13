@@ -69,6 +69,7 @@ import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
 import { OptimiereVorsorgeModal } from './features/dashboard/OptimiereVorsorgeModal'
 import { RentenluckeDashboard } from './features/dashboard/RentenluckeDashboard'
+import { VergleichDashboard } from './features/dashboard/VergleichDashboard'
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
 import {
@@ -165,8 +166,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   // Issue 23: product tab to pre-select when navigating from a ProductEditCard
   // default-state notice to the InputsPanel ("Einstellungen anpassen").
   const [requestedInputsTab, setRequestedInputsTab] = useState<ProductId | null>(null)
-  // Issue #239: active pane for the compare-mode Vergleich sidebar.
-  const [vergleichPane, setVergleichPane] = useState<VergleichPaneSlug>('kapital')
+  // Issue #239/#241: active pane for the compare-mode Vergleich sidebar.
+  const [vergleichPane, setVergleichPane] = useState<VergleichPaneSlug>('ueberblick')
 
   const {
     profile,
@@ -646,6 +647,23 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 />
                 <div className="vergleich-pane-content">
                   {/* Each non-stub slug isolates exactly one chart component. */}
+                  {vergleichPane === 'ueberblick' && (
+                    <VergleichDashboard
+                      selectedResults={selectedResults}
+                      capitalChartData={capitalChartData}
+                      selectedScenario={selectedScenario}
+                      pensionBars={pensionBars}
+                      monteCarloResult={monteCarloResult}
+                      productColors={PRODUCT_COLORS}
+                      bestCapital={bestCapital}
+                      bestPension={bestPension}
+                      grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+                      retirementAge={profile.retirementAge}
+                      retirementEndAge={assumptions.retirementEndAge}
+                      onNavigate={(pane) => setVergleichPane(pane)}
+                    />
+                  )}
+
                   {vergleichPane === 'fee-drag' && (
                     <FeeDragChart
                       selectedResults={selectedResults}
@@ -655,7 +673,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
                     <CapitalChart
                       capitalChartData={capitalChartData}
                       selectedScenario={selectedScenario}
@@ -664,14 +682,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
                     <PensionChart
                       pensionBars={pensionBars}
                       retirementEndAge={assumptions.retirementEndAge}
                     />
                   )}
 
-                  {(vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag') && (
                     <BreakEvenChart
                       selectedResults={selectedResults}
                       productColors={PRODUCT_COLORS}

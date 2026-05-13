@@ -1,0 +1,144 @@
+.vergleich-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.vergleich-dashboard__header h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.vergleich-dashboard__subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+}
+
+/* Top KPI row */
+.vergleich-dashboard__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.vergleich-dashboard__kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface-1, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+}
+
+.vergleich-dashboard__kpi-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vergleich-dashboard__kpi-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.vergleich-dashboard__kpi-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tile grid */
+.vergleich-dashboard__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .vergleich-dashboard__tiles {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vergleich-dashboard__tile {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-0, #fff);
+}
+
+.vergleich-dashboard__tile-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.625rem 0.75rem 0.375rem;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  background: var(--surface-1, #f8fafc);
+}
+
+.vergleich-dashboard__tile-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.vergleich-dashboard__tile-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.vergleich-dashboard__tile-chart {
+  flex: 1;
+  padding: 0.5rem 0.25rem 0;
+}
+
+.vergleich-dashboard__tile-empty {
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  color: var(--text-muted, #64748b);
+}
+
+.vergleich-dashboard__tile-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--border, #e2e8f0);
+  background: var(--surface-1, #f8fafc);
+}
+
+.vergleich-dashboard__tile-number {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.vergleich-dashboard__tile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--accent, #3b82f6);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vergleich-dashboard__tile-link:hover {
+  text-decoration: underline;
+}
