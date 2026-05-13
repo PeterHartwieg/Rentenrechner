@@ -2453,3 +2453,26 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A small exported `DEFAULT_VERGLEICH_PANE` constant would make the default-pane acceptance criterion testable without rendering the full calculator.
+
+---
+date: 2026-05-13T12:05:00Z
+issue: 242
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue #242's sidebar registration is partially present from the shell work: `lifetime-einkommen` exists in `vergleichPanes.ts` and as a Charts leaf in `VergleichSidebar.tsx`.
+- The missing behavior is the pane content. `Calculator.tsx` still lets `lifetime-einkommen` fall through to the generic non-`kapital`/non-`rente`/non-`fee-drag` conditions, so it renders multiple existing charts instead of one lifetime-income visualization.
+- `breakEvenSeries.ts` already has payout-row logic for cumulative net payouts; Stage 2 can either reuse that or add a sibling `lifetimeIncomeSeries.ts` helper. The failing test pins the latter surface and the required lump-sum folding behavior.
+
+## What would have helped
+
+- A pane-to-component dispatch table would make missing pane implementations easier to detect than the current negative-condition fallback in `Calculator.tsx`.
