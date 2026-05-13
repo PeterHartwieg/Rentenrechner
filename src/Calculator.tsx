@@ -48,6 +48,7 @@ import { PensionChart } from './features/results/PensionChart'
 import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
+import { LifetimeIncomeChart } from './features/results/LifetimeIncomeChart'
 import { MonteCarloHighlights } from './features/results/MonteCarloHighlights'
 import { MonteCarloPanel } from './features/results/MonteCarloPanel'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
@@ -655,7 +656,16 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
+                  {vergleichPane === 'lifetime-einkommen' && (
+                    <LifetimeIncomeChart
+                      selectedResults={selectedResults}
+                      productColors={PRODUCT_COLORS}
+                      retirementAge={profile.retirementAge}
+                      retirementEndAge={assumptions.retirementEndAge}
+                    />
+                  )}
+
+                  {(vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen') && (
                     <CapitalChart
                       capitalChartData={capitalChartData}
                       selectedScenario={selectedScenario}
@@ -664,14 +674,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
+                  {(vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen') && (
                     <PensionChart
                       pensionBars={pensionBars}
                       retirementEndAge={assumptions.retirementEndAge}
                     />
                   )}
 
-                  {(vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag') && (
+                  {(vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen') && (
                     <BreakEvenChart
                       selectedResults={selectedResults}
                       productColors={PRODUCT_COLORS}
