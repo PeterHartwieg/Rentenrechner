@@ -48,6 +48,7 @@ import { PensionChart } from './features/results/PensionChart'
 import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
+import { LifetimeIncomeChart } from './features/results/LifetimeIncomeChart'
 import { SteuerWasserfallPanel } from './features/results/SteuerWasserfallPanel'
 import { SequenceOfReturnsPanel } from './features/results/SequenceOfReturnsPanel'
 import { InflationStressPanel } from './features/results/InflationStressPanel'
@@ -683,6 +684,15 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
+                  {vergleichPane === 'lifetime-einkommen' && (
+                    <LifetimeIncomeChart
+                      selectedResults={selectedResults}
+                      productColors={PRODUCT_COLORS}
+                      retirementAge={profile.retirementAge}
+                      retirementEndAge={assumptions.retirementEndAge}
+                    />
+                  )}
+
                   {vergleichPane === 'steuer-wasserfall' && (
                     <SteuerWasserfallPanel
                       selectedResults={selectedResults}
@@ -712,7 +722,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <CapitalChart
                       capitalChartData={capitalChartData}
                       selectedScenario={selectedScenario}
@@ -721,14 +731,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <PensionChart
                       pensionBars={pensionBars}
                       retirementEndAge={assumptions.retirementEndAge}
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <BreakEvenChart
                       selectedResults={selectedResults}
                       productColors={PRODUCT_COLORS}
