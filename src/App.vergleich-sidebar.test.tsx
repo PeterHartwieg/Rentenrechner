@@ -158,4 +158,27 @@ describe('App - migrated Vergleich panes (#240)', () => {
       screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
     ).not.toBeInTheDocument()
   })
+
+  it('opens the Steuer-Wasserfall pane from ?pane=steuer-wasserfall and isolates its visualization (#243)', async () => {
+    seedState()
+    window.history.pushState(null, '', '/?view=vergleich&pane=steuer-wasserfall')
+
+    render(<App />)
+    await waitForCalculator()
+
+    const steuerLeaf = await screen.findByRole('button', { name: /Steuer-Wasserfall/ })
+    expect(steuerLeaf).toHaveAttribute('aria-current', 'page')
+    expect(
+      screen.getByRole('heading', { name: /Steuer-Wasserfall/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Monatliche Netto-Rente/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
+    ).not.toBeInTheDocument()
+  })
 })
