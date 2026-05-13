@@ -22,6 +22,7 @@ interface Props {
 export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMonthly, healthStatus }: Props) {
   const bbgFillPct = Math.min(combinedGrossMonthly / monthlyKvPvBbg, 1) * 100
   const exceedsBbg = combinedGrossMonthly > monthlyKvPvBbg
+
   const healthLabel =
     healthStatus === 'kvdr'
       ? 'KVdR-Pflichtversichert'
@@ -31,7 +32,7 @@ export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMo
 
   const healthExplainer =
     healthStatus === 'kvdr'
-      ? 'Als KVdR-Mitglied zahlen Sie KV/PV nur auf Versorgungsbezuege (z. B. bAV); private Rentenversicherung, Basisrente, AVD und Riester sind fuer KVdR-Mitglieder beitragsfrei.'
+      ? 'Als KVdR-Mitglied zahlen Sie KV/PV nur auf Versorgungsbezuege (bAV, pAV); Basisrente, AVD und Riester sind fuer KVdR-Mitglieder beitragsfrei.'
       : healthStatus === 'freiwillig_gkv'
         ? 'Als freiwillig GKV-Versicherte/r wird das gesamte Renteneinkommen bis zur BBG mit dem allgemeinen Beitragssatz verbeitragt.'
         : 'PKV-Versicherte zahlen keine gesetzlichen KV/PV-Beitraege auf Renteneinkunefte.'
@@ -49,12 +50,12 @@ export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMo
 
       <div style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-          <span>GRV-Rente: <strong>{formatCurrency(combinedGrossMonthly, 0)}/Monat</strong></span>
+          <span>Gesamteinkommen: <strong>{formatCurrency(combinedGrossMonthly, 0)}/Monat</strong></span>
           <span>BBG: <strong>{formatCurrency(monthlyKvPvBbg, 0)}/Monat</strong></span>
         </div>
         <div
           role="meter"
-          aria-label={`GRV-Rente ${formatCurrency(combinedGrossMonthly, 0)} von BBG ${formatCurrency(monthlyKvPvBbg, 0)}`}
+          aria-label={`Gesamteinkommen ${formatCurrency(combinedGrossMonthly, 0)} von BBG ${formatCurrency(monthlyKvPvBbg, 0)}`}
           style={{
             height: '10px',
             background: '#e5e7eb',
@@ -75,7 +76,7 @@ export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMo
         </div>
         {exceedsBbg && (
           <p className="small-print" style={{ marginTop: '4px', color: '#dc2626' }}>
-            GRV-Rente uebersteigt BBG. KV/PV wird anteilig auf alle Einkommensquellen verteilt (proportionale Aufteilung nach §240 SGB V).
+            Gesamteinkommen uebersteigt BBG. KV/PV wird anteilig auf alle Einkommensquellen verteilt (proportionale Aufteilung nach §240 SGB V).
           </p>
         )}
       </div>
