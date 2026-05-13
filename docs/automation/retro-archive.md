@@ -2429,3 +2429,27 @@ labels: [bug, area:ui-only]
 ## What would have helped
 
 - The handoff named `ueberblick` and `sens-*` as missing slugs, and `fee-drag` as the broken pane. Tracing the `ALL_VERGLEICH_PANES` guard on the URL init useEffect immediately explains why the slug wasn't being set; noting the fallthrough pattern immediately explains why the wrong charts rendered.
+
+---
+date: 2026-05-13T12:01:30Z
+issue: 241
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- Initial `npx vitest run src/features/results/VergleichSidebar.test.tsx` could not start because the reset worktree had no installed dependencies; `npm ci` resolved it.
+- The prompt's jq verification command needed PowerShell stop-parsing (`gh --% ...`) because the plain quoted form stripped `"ready-for-PR"` before jq evaluation.
+
+## Learnings
+
+- Issue #241 was previously blocked by #240, but #240 is now closed and `origin/main` contains `feat: add fee-drag pane isolation and missing slug deep-links (#240) (#249)`.
+- The current compare sidebar still has a transitional `dashboard` pane: `ALL_VERGLEICH_PANES` starts with `dashboard`, `Calculator` initializes `vergleichPane` to `kapital`, and `VergleichSidebar` renders an `Überblick` group with a selectable `Dashboard` leaf.
+- A focused Stage 1 test can pin the missing routing contract without implementing the dashboard: assert `ALL_VERGLEICH_PANES` contains `ueberblick` and that the sidebar has a selectable `Überblick` entry that calls `onPaneChange('ueberblick')`.
+
+## What would have helped
+
+- A small exported `DEFAULT_VERGLEICH_PANE` constant would make the default-pane acceptance criterion testable without rendering the full calculator.
