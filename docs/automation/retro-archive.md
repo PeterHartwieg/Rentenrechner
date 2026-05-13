@@ -2312,3 +2312,28 @@ labels: [enhancement]
 ## What would have helped
 
 - Keeping blocked follow-on issues out of `ready-for-agent` until their prerequisite branch lands would avoid Stage 1 claim/unclaim churn.
+
+---
+date: 2026-05-13T09:15:00Z
+issue: 239
+pr: 248
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- `@testing-library/jest-dom` was not installed — Stage 1's test used `toHaveAttribute` / `toBeInTheDocument` which are jest-dom matchers, causing "Invalid Chai property" errors. Had to install the package and wire a `src/vitest.setup.ts` setup file (with `vite.config.ts` `setupFiles`) using the `@testing-library/jest-dom/vitest` entry point (the bare import errors with "expect is not defined" because vitest's global `expect` isn't available at setup time).
+- ESLint `react-hooks/set-state-in-effect` flagged `setVergleichPane(...)` inside the mount-time URL effect. Added the same `// eslint-disable-next-line react-hooks/set-state-in-effect` comment used by the existing `pendingChoice` effect at `src/Calculator.tsx:221–223`.
+
+## Learnings
+
+- The mount-time URL effect (`src/Calculator.tsx` ~line 188) is the single place to add new URL-param-to-state bootstrapping. It uses `window.history.replaceState` to clean the URL after consuming params. Extend it; don't add a second effect.
+- Chart headings in `CapitalChart.tsx:40`, `PensionChart.tsx:69`, and `BreakEvenChart.tsx:238` are always rendered (not gated on data), so pane-isolation tests can assert headings without waiting for simulation results.
+- `@testing-library/jest-dom` v6+ ships a `dist/vitest.js` entry that works with vitest's per-test `expect` instance. The bare `@testing-library/jest-dom` import requires a global `expect` (jest-style) and will error in vitest without `globals: true`.
+- Stage 1's handoff said "extend `src/Calculator.tsx:185`" — that line number shifted slightly due to earlier edits, but the intent was clear from context.
+
+## What would have helped
+
+- Stage 1 noting that `@testing-library/jest-dom` needed to be installed would have saved a diagnostic round-trip.
