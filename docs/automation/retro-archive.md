@@ -2289,3 +2289,26 @@ labels: [enhancement, area:ui-only]
 ## What would have helped
 
 - A documented PowerShell-safe form of the required `gh issue view --jq` verification command would avoid failed verification attempts on Windows runners.
+
+---
+date: 2026-05-13T09:08:46Z
+issue: 240
+pr: null
+stage: investigate
+outcome: ready-for-human
+labels: [enhancement]
+---
+
+## Blockers
+
+- Issue #240 is explicitly blocked by #239, and #239 is only handed off; its sidebar shell is not on `origin/main`.
+- `src/Calculator.tsx` still renders the legacy long-scroll Vergleich stack directly, and `rg "VergleichSidebar|vergleichPaneRegistry|params.get\('pane'\)" src` finds no shell, pane registry, or pane URL handling to extend.
+
+## Learnings
+
+- Stage 1 should not write a failing test for a follow-on pane migration while the prerequisite sidebar architecture is absent; the test would duplicate #239's missing-shell failure rather than isolate #240's requested behavior.
+- The ready queue can contain dependent issues whose body still says "Blocked by"; check that field before spending time on code-level investigation.
+
+## What would have helped
+
+- Keeping blocked follow-on issues out of `ready-for-agent` until their prerequisite branch lands would avoid Stage 1 claim/unclaim churn.
