@@ -2665,3 +2665,26 @@ labels: [enhancement, area:ui-only]
 ## What would have helped
 
 - Stage 1 handoff could note whether the implementation commit was already pushed, so Stage 2 knows immediately that the only remaining steps are verify + retro.
+
+---
+date: 2026-05-13T14:02:17Z
+issue: 245
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `sequence-of-returns` was already present in `src/features/results/vergleichPanes.ts` and `src/features/results/VergleichSidebar.tsx`, so the missing behavior is the dedicated pane and shared return-path helper rather than basic navigation registration.
+- In `src/Calculator.tsx`, unhandled Vergleich pane slugs fall through to the generic `CapitalChart` / `PensionChart` / `BreakEvenChart` stack. Stage 2 should explicitly route `sequence-of-returns` and exclude it from those fallback conditions.
+- `src/engine/marketReturns.ts` currently owns only market-return lookup and policy merging. A deterministic same-arithmetic-mean sequence helper belongs there so the UI does not inline return-path generation.
+
+## What would have helped
+
+- A small pane registry would make it harder for newly registered slugs to silently inherit generic fallback charts.
