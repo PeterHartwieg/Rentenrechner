@@ -19,7 +19,15 @@ export function buildSequenceOfReturnsPaths(params: {
 }): SequenceOfReturnsPath[] {
   const { annualReturn, years } = params
 
-  if (years <= 1) {
+  if (years <= 0) {
+    return [
+      { id: 'good-early', returns: [] },
+      { id: 'bad-early', returns: [] },
+      { id: 'shuffled-baseline', returns: [] },
+    ]
+  }
+
+  if (years === 1) {
     return [
       { id: 'good-early', returns: [annualReturn] },
       { id: 'bad-early', returns: [annualReturn] },

@@ -6,6 +6,14 @@ function arithmeticMean(values: readonly number[]): number {
 }
 
 describe('buildSequenceOfReturnsPaths (#245)', () => {
+  it('returns empty paths for zero-year horizon', () => {
+    const paths = buildSequenceOfReturnsPaths({ annualReturn: 0.05, years: 0 })
+    expect(paths).toHaveLength(3)
+    for (const path of paths) {
+      expect(path.returns).toHaveLength(0)
+    }
+  })
+
   it('builds deterministic paths with the same arithmetic mean but different ordering', () => {
     const paths = buildSequenceOfReturnsPaths({
       annualReturn: 0.05,
