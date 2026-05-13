@@ -2360,3 +2360,24 @@ labels: [enhancement, area:ui-only]
 ## What would have helped
 
 - A clear signal in the handoff or branch state indicating a prior Stage 2 run had already completed would have avoided the re-entry verification loop.
+
+---
+date: 2026-05-13T00:00:00Z
+issue: 241
+pr: null
+stage: investigate
+outcome: ready-for-human
+labels: [enhancement, ready-for-human]
+---
+
+## Blockers
+
+- Issue #241 explicitly says it is blocked by #240, and `gh issue view 240` showed #240 is still open with `ready-for-human`. Stage 1 stopped before adding a failing test or applying `ready-for-PR`.
+
+## Learnings
+
+- The Vergleich sidebar pane shell is in `src/Calculator.tsx` and currently defaults `vergleichPane` to `'kapital'`; `dashboard` and `entscheidung` exist in `src/features/results/vergleichPanes.ts` / `VergleichSidebar.tsx` but still fall through the transitional inline chart rendering.
+
+## What would have helped
+
+- Keep blocked issues out of `ready-for-agent` until their explicit blocker has closed, or include a note that Stage 1 should ignore the blocker.
