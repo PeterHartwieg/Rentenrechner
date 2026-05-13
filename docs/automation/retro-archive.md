@@ -2337,3 +2337,26 @@ labels: [enhancement, area:ui-only]
 ## What would have helped
 
 - Stage 1 noting that `@testing-library/jest-dom` needed to be installed would have saved a diagnostic round-trip.
+
+---
+date: 2026-05-13T09:15:00Z
+issue: 239
+pr: 248
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The implementation and PR were already completed by a prior Stage 2 run (`bfa57b4`). Stage 2 re-entry found `npm run verify` green (153 test files, 3017 tests passing) and PR #248 open with the correct body including `Closes #239`.
+- The test in `src/App.vergleich-sidebar.test.tsx` required `@testing-library/jest-dom` to be installed and wired via `src/vitest.setup.ts` — that setup step was part of the implementation commit, not just the test commit.
+- `git log --oneline origin/main..HEAD` is the correct signal to detect prior Stage 2 work; two commits (`feat:` + `test:`) ahead of main confirmed the branch was already implemented.
+
+## What would have helped
+
+- A clear signal in the handoff or branch state indicating a prior Stage 2 run had already completed would have avoided the re-entry verification loop.
