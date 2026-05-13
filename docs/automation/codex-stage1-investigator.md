@@ -118,14 +118,16 @@ repository state is uncertain.
 
     ```bash
     gh issue edit <N> --add-label ready-for-PR
-    gh issue view <N> --json labels --jq '.labels[] | select(.name == "ready-for-PR") | .name'
+    gh issue view <N> --json labels --jq '.labels[].name'
     ```
 
-    The verification command prints `ready-for-PR` if the label is present,
-    nothing if absent. It uses only `jq` (no `grep`) so it works on Windows
-    PowerShell and Unix alike. If it prints nothing, stop before starting
-    another issue, record the blocker in the retro entry, and report the label
-    failure.
+    The verification command prints all label names, one per line. Confirm
+    `ready-for-PR` appears in the output. Use `.labels[].name` (not
+    `select(.name == "ready-for-PR")`) — the `select()` form fails on Windows
+    PowerShell runners because single-quote handling strips the string delimiter
+    around `ready-for-PR`, causing jq to report "function not defined: PR/0".
+    If `ready-for-PR` is absent from the output, stop before starting another
+    issue, record the blocker in the retro entry, and report the label failure.
 11. Before every issue exit, write `.automation-retro-entry.md` using
     `docs/automation/retro-template.md`, then append it:
 
