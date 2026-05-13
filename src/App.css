@@ -629,6 +629,37 @@ th {
   border-bottom-color: #2563eb;
 }
 
+/* Vergleich pane navigation (issue #239) */
+.vergleich-pane-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vergleich-pane-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border: 1px solid #d9e1ea;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vergleich-pane-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.vergleich-pane-btn.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
 .workspace {
   padding: 24px;
 }

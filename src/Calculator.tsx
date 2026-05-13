@@ -83,6 +83,14 @@ import {
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 const PORTFOLIO_COLOR = '#1f2937'
 
+type VergleichPane = 'kapital' | 'rente' | 'break-even'
+const VERGLEICH_PANES: readonly VergleichPane[] = ['kapital', 'rente', 'break-even']
+const VERGLEICH_PANE_LABELS: Record<VergleichPane, string> = {
+  kapital: 'Kapital',
+  rente: 'Monatliche Rente',
+  'break-even': 'Break-Even',
+}
+
 type ShellTabDef = {
   id: WorkspaceView
   compareLabel: string
@@ -159,6 +167,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   // Issue 23: product tab to pre-select when navigating from a ProductEditCard
   // default-state notice to the InputsPanel ("Einstellungen anpassen").
   const [requestedInputsTab, setRequestedInputsTab] = useState<ProductId | null>(null)
+  // Issue #239: active pane for the compare-mode Vergleich chart sidebar.
+  // null = show all charts (default); a pane value isolates that chart.
+  const [vergleichPane, setVergleichPane] = useState<VergleichPane | null>(null)
 
   const {
     profile,
@@ -182,10 +193,21 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
+    let dirty = false
     const viewParam = params.get('view')
     if (viewParam && (WORKSPACE_VIEWS as readonly string[]).includes(viewParam)) {
       workspace.setActiveViewTransient(viewParam as WorkspaceView)
       params.delete('view')
+      dirty = true
+    }
+    const paneParam = params.get('pane')
+    if (paneParam && (VERGLEICH_PANES as readonly string[]).includes(paneParam)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVergleichPane(paneParam as VergleichPane)
+      params.delete('pane')
+      dirty = true
+    }
+    if (dirty) {
       const newSearch = params.toString()
       const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '')
       window.history.replaceState(null, '', newUrl)
@@ -610,29 +632,49 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
               />
 
-              <CapitalChart
-                capitalChartData={capitalChartData}
-                selectedScenario={selectedScenario}
-                selectedResults={selectedResults}
-                productColors={PRODUCT_COLORS}
-              />
+              <nav className="vergleich-pane-nav" aria-label="Diagramm wählen">
+                {VERGLEICH_PANES.map((pane) => (
+                  <button
+                    key={pane}
+                    type="button"
+                    aria-current={vergleichPane === pane ? 'page' : undefined}
+                    className={`vergleich-pane-btn${vergleichPane === pane ? ' active' : ''}`}
+                    onClick={() => setVergleichPane((p) => p === pane ? null : pane)}
+                  >
+                    {VERGLEICH_PANE_LABELS[pane]}
+                  </button>
+                ))}
+              </nav>
 
-              <PensionChart
-                pensionBars={pensionBars}
-                retirementEndAge={assumptions.retirementEndAge}
-              />
+              {(vergleichPane === null || vergleichPane === 'kapital') && (
+                <CapitalChart
+                  capitalChartData={capitalChartData}
+                  selectedScenario={selectedScenario}
+                  selectedResults={selectedResults}
+                  productColors={PRODUCT_COLORS}
+                />
+              )}
 
-              <BreakEvenChart
-                selectedResults={selectedResults}
-                productColors={PRODUCT_COLORS}
-                startAge={profile.age}
-                retirementAge={profile.retirementAge}
-                retirementEndAge={assumptions.retirementEndAge}
-                bestProductId={bestCapital?.productId}
-                grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
-                grvContributionTimeline={compareGrvContributionTimeline}
-              />
+              {(vergleichPane === null || vergleichPane === 'rente') && (
+                <PensionChart
+                  pensionBars={pensionBars}
+                  retirementEndAge={assumptions.retirementEndAge}
+                />
+              )}
+
+              {(vergleichPane === null || vergleichPane === 'break-even') && (
+                <BreakEvenChart
+                  selectedResults={selectedResults}
+                  productColors={PRODUCT_COLORS}
+                  startAge={profile.age}
+                  retirementAge={profile.retirementAge}
+                  retirementEndAge={assumptions.retirementEndAge}
+                  bestProductId={bestCapital?.productId}
+                  grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+                  pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
+                  grvContributionTimeline={compareGrvContributionTimeline}
+                />
+              )}
             </>
           ) : (
             <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
