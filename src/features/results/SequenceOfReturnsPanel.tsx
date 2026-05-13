@@ -1,4 +1,14 @@
-import { useMemo } from 'react'
+import '../../ui/charts.css'
+import { useMemo, useState } from 'react'
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { TrendingDown } from 'lucide-react'
 import type { ProductResult } from '../../domain'
 import type { ReturnScenario } from '../../domain/profile'
@@ -8,59 +18,92 @@ import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {
   selectedResults: ProductResult[]
-  accumulationYears: number
+  payoutYears: number
+  retirementAge: number
   selectedScenario: ReturnScenario
   productColors: Record<string, string>
 }
 
-function projectCapital(monthlyContribution: number, returns: readonly number[]): number {
-  let capital = 0
+type ChartRow = {
+  age: number
+  goodEarly: number
+  badEarly: number
+  baseline: number
+}
+
+// Returns a year-by-year capital trajectory during the decumulation phase.
+// Bad-early sequences (low returns when capital is large) exhaust funds sooner.
+function buildDecumulationTrajectory(
+  capitalAtRetirement: number,
+  annualWithdrawal: number,
+  returns: readonly number[],
+): number[] {
+  const points: number[] = [capitalAtRetirement]
+  let capital = capitalAtRetirement
   for (const r of returns) {
-    capital = (capital + monthlyContribution * 12) * (1 + r)
+    capital = Math.max(0, capital * (1 + r) - annualWithdrawal)
+    points.push(capital)
   }
-  return capital
-}
-
-const PATH_LABELS: Record<string, string> = {
-  'good-early': 'Günstige Reihenfolge',
-  'bad-early': 'Ungünstige Reihenfolge',
-  'shuffled-baseline': 'Gleichmäßige Rendite',
-}
-
-const PATH_DESCRIPTIONS: Record<string, string> = {
-  'good-early': 'Hohe Renditen in den frühen Jahren, niedrige gegen Ende.',
-  'bad-early': 'Niedrige Renditen in den frühen Jahren, hohe gegen Ende.',
-  'shuffled-baseline': 'Jedes Jahr dieselbe Durchschnittsrendite.',
+  return points
 }
 
 export function SequenceOfReturnsPanel({
   selectedResults,
-  accumulationYears,
+  payoutYears,
+  retirementAge,
   selectedScenario,
   productColors,
 }: Props) {
+  const [selectedProductKey, setSelectedProductKey] = useState<string | null>(null)
+
+  const activeResult = useMemo(() => {
+    if (selectedResults.length === 0) return null
+    return (
+      selectedResults.find((r) => (r.instanceId ?? r.productId) === selectedProductKey) ??
+      selectedResults[0]
+    )
+  }, [selectedResults, selectedProductKey])
+
   const paths = useMemo(
     () =>
       buildSequenceOfReturnsPaths({
         annualReturn: selectedScenario.annualReturn,
-        years: accumulationYears,
+        years: payoutYears,
       }),
-    [selectedScenario.annualReturn, accumulationYears],
+    [selectedScenario.annualReturn, payoutYears],
   )
 
-  const rows = useMemo(
-    () =>
-      selectedResults.map((result) => {
-        const meta = getProductMeta(result.productId)
-        const projections = paths.map((path) => ({
-          pathId: path.id,
-          capital: projectCapital(result.monthlyProductContribution, path.returns),
-        }))
-        const baseline = projections.find((p) => p.pathId === 'shuffled-baseline')?.capital ?? 0
-        return { result, meta, projections, baseline }
-      }),
-    [selectedResults, paths],
-  )
+  const chartData = useMemo((): ChartRow[] => {
+    if (!activeResult) return []
+    const annualWithdrawal = activeResult.netMonthlyPayout * 12
+
+    const goodEarlyReturns = paths.find((p) => p.id === 'good-early')?.returns ?? []
+    const badEarlyReturns = paths.find((p) => p.id === 'bad-early')?.returns ?? []
+    const baselineReturns = paths.find((p) => p.id === 'shuffled-baseline')?.returns ?? []
+
+    const goodEarly = buildDecumulationTrajectory(
+      activeResult.capitalAtRetirement,
+      annualWithdrawal,
+      goodEarlyReturns,
+    )
+    const badEarly = buildDecumulationTrajectory(
+      activeResult.capitalAtRetirement,
+      annualWithdrawal,
+      badEarlyReturns,
+    )
+    const baseline = buildDecumulationTrajectory(
+      activeResult.capitalAtRetirement,
+      annualWithdrawal,
+      baselineReturns,
+    )
+
+    return goodEarly.map((_, i) => ({
+      age: retirementAge + i,
+      goodEarly: goodEarly[i],
+      badEarly: badEarly[i],
+      baseline: baseline[i],
+    }))
+  }, [activeResult, paths, retirementAge])
 
   if (selectedResults.length === 0) {
     return (
@@ -78,84 +121,117 @@ export function SequenceOfReturnsPanel({
         Sequence-of-Returns-Risiko
       </h2>
       <p style={{ marginBottom: '1rem', color: 'var(--color-text-muted, #6b7280)', fontSize: '0.875rem' }}>
-        Drei Renditesequenzen mit identischem arithmetischen Mittel ({formatPercent(selectedScenario.annualReturn, 1)}
-        p.a.) zeigen, wie die Reihenfolge der Jahresrenditen das Endkapital beeinflusst.
+        Gleiche Durchschnittsrendite ({formatPercent(selectedScenario.annualReturn, 1)} p.a.), andere Reihenfolge —
+        schlechte Renditen früh in der Rente erschöpfen das Kapital deutlich schneller als gute Frührenditen.
       </p>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '2px solid var(--color-border, #e5e7eb)' }}>
-              Produkt
-            </th>
-            {paths.map((path) => (
-              <th
-                key={path.id}
+      {selectedResults.length > 1 && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          {selectedResults.map((r) => {
+            const meta = getProductMeta(r.productId)
+            const key = r.instanceId ?? r.productId
+            const isActive =
+              activeResult && (activeResult.instanceId ?? activeResult.productId) === key
+            return (
+              <button
+                key={key}
+                onClick={() => setSelectedProductKey(key)}
                 style={{
-                  textAlign: 'right',
-                  padding: '0.5rem',
-                  borderBottom: '2px solid var(--color-border, #e5e7eb)',
-                  whiteSpace: 'nowrap',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: 4,
+                  border: isActive
+                    ? '2px solid var(--color-primary, #2563eb)'
+                    : '1px solid var(--color-border, #e5e7eb)',
+                  background: isActive ? 'var(--color-primary-light, #eff6ff)' : 'transparent',
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
                 }}
-                title={PATH_DESCRIPTIONS[path.id]}
               >
-                {PATH_LABELS[path.id]}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ result, meta, projections, baseline }) => (
-            <tr key={`${result.productId}-${result.instanceId ?? ''}`}>
-              <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--color-border, #e5e7eb)' }}>
                 <span
                   style={{
                     display: 'inline-block',
-                    width: 10,
-                    height: 10,
+                    width: 8,
+                    height: 8,
                     borderRadius: '50%',
-                    background: productColors[result.productId] ?? '#888',
-                    marginRight: 6,
+                    background: productColors[r.productId] ?? '#888',
+                    marginRight: 4,
                   }}
                 />
-                {meta?.label ?? result.productId}
-              </td>
-              {projections.map((p) => {
-                const diff = p.capital - baseline
-                const isBaseline = p.pathId === 'shuffled-baseline'
+                {meta?.label ?? r.productId}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div style={{ height: 280 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #e5e7eb)" />
+            <XAxis dataKey="age" tick={{ fontSize: 11 }} />
+            <YAxis
+              tickFormatter={(v: number) => formatCurrency(v, 0)}
+              tick={{ fontSize: 10 }}
+              width={72}
+            />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (!active || !payload || payload.length === 0) return null
                 return (
-                  <td
-                    key={p.pathId}
+                  <div
                     style={{
-                      textAlign: 'right',
-                      padding: '0.5rem',
-                      borderBottom: '1px solid var(--color-border, #e5e7eb)',
+                      background: '#fff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                      fontSize: 13,
                     }}
                   >
-                    {formatCurrency(p.capital, 0)}
-                    {!isBaseline && (
-                      <span
-                        style={{
-                          display: 'block',
-                          fontSize: '0.75rem',
-                          color: diff >= 0 ? 'var(--color-success, #16a34a)' : 'var(--color-danger, #dc2626)',
-                        }}
-                      >
-                        {diff >= 0 ? '+' : ''}
-                        {formatCurrency(diff, 0)}
-                      </span>
-                    )}
-                  </td>
+                    <p style={{ margin: '0 0 4px', fontWeight: 600 }}>Alter {label}</p>
+                    {payload.map((entry) => (
+                      <p key={String(entry.dataKey)} style={{ margin: '2px 0', color: entry.stroke as string }}>
+                        {entry.name}: {formatCurrency(Number(entry.value), 0)}
+                      </p>
+                    ))}
+                  </div>
                 )
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="goodEarly"
+              name="Günstige Reihenfolge"
+              stroke="#16a34a"
+              strokeWidth={2}
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="badEarly"
+              name="Ungünstige Reihenfolge"
+              stroke="#dc2626"
+              strokeWidth={2}
+              strokeDasharray="5 3"
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="baseline"
+              name="Gleichmäßige Rendite"
+              stroke="#6b7280"
+              strokeWidth={1.5}
+              strokeDasharray="2 2"
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
 
-      <p style={{ marginTop: '1rem', color: 'var(--color-text-muted, #6b7280)', fontSize: '0.75rem' }}>
-        Vereinfachte Projektion (gleiche monatliche Beiträge, ohne Gebühren und Steuern) zur Illustration des
-        Reihenfolgeeffekts. Differenz zur gleichmäßigen Rendite in Klammern.
+      <p
+        style={{ marginTop: '0.75rem', color: 'var(--color-text-muted, #6b7280)', fontSize: '0.75rem' }}
+      >
+        Vereinfachte Projektion (konstante Nettorente, ohne Anpassung von Steuern und Sozialversicherung) zur
+        Illustration des Reihenfolgeeffekts im Ruhestand.
       </p>
     </div>
   )

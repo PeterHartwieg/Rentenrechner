@@ -694,7 +694,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                   {vergleichPane === 'sequence-of-returns' && selectedScenario && (
                     <SequenceOfReturnsPanel
                       selectedResults={selectedResults}
-                      accumulationYears={profile.retirementAge - profile.age}
+                      payoutYears={assumptions.retirementEndAge - profile.retirementAge}
+                      retirementAge={profile.retirementAge}
                       selectedScenario={selectedScenario}
                       productColors={PRODUCT_COLORS}
                     />
