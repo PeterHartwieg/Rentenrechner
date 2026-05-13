@@ -13,6 +13,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
+import { VergleichSidebar } from './features/results/VergleichSidebar'
+import {
+  type VergleichPaneSlug,
+  ALL_VERGLEICH_PANES,
+} from './features/results/vergleichPanes'
 import type { ProductId } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
@@ -83,13 +88,6 @@ import {
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 const PORTFOLIO_COLOR = '#1f2937'
 
-type VergleichPane = 'kapital' | 'rente' | 'break-even'
-const VERGLEICH_PANES: readonly VergleichPane[] = ['kapital', 'rente', 'break-even']
-const VERGLEICH_PANE_LABELS: Record<VergleichPane, string> = {
-  kapital: 'Kapital',
-  rente: 'Monatliche Rente',
-  'break-even': 'Break-Even',
-}
 
 type ShellTabDef = {
   id: WorkspaceView
@@ -167,9 +165,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   // Issue 23: product tab to pre-select when navigating from a ProductEditCard
   // default-state notice to the InputsPanel ("Einstellungen anpassen").
   const [requestedInputsTab, setRequestedInputsTab] = useState<ProductId | null>(null)
-  // Issue #239: active pane for the compare-mode Vergleich chart sidebar.
-  // null = show all charts (default); a pane value isolates that chart.
-  const [vergleichPane, setVergleichPane] = useState<VergleichPane | null>(null)
+  // Issue #239: active pane for the compare-mode Vergleich sidebar.
+  const [vergleichPane, setVergleichPane] = useState<VergleichPaneSlug>('kapital')
 
   const {
     profile,
@@ -201,9 +198,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
       dirty = true
     }
     const paneParam = params.get('pane')
-    if (paneParam && (VERGLEICH_PANES as readonly string[]).includes(paneParam)) {
+    if (paneParam && (ALL_VERGLEICH_PANES as readonly string[]).includes(paneParam)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setVergleichPane(paneParam as VergleichPane)
+      setVergleichPane(paneParam as VergleichPaneSlug)
       params.delete('pane')
       dirty = true
     }
@@ -632,49 +629,55 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
               />
 
-              <nav className="vergleich-pane-nav" aria-label="Diagramm wählen">
-                {VERGLEICH_PANES.map((pane) => (
-                  <button
-                    key={pane}
-                    type="button"
-                    aria-current={vergleichPane === pane ? 'page' : undefined}
-                    className={`vergleich-pane-btn${vergleichPane === pane ? ' active' : ''}`}
-                    onClick={() => setVergleichPane((p) => p === pane ? null : pane)}
-                  >
-                    {VERGLEICH_PANE_LABELS[pane]}
-                  </button>
-                ))}
-              </nav>
-
-              {(vergleichPane === null || vergleichPane === 'kapital') && (
-                <CapitalChart
-                  capitalChartData={capitalChartData}
-                  selectedScenario={selectedScenario}
-                  selectedResults={selectedResults}
-                  productColors={PRODUCT_COLORS}
+              <div className="vergleich-with-sidebar">
+                <VergleichSidebar
+                  activePane={vergleichPane}
+                  onPaneChange={(pane) => {
+                    setVergleichPane(pane)
+                    const params = new URLSearchParams(window.location.search)
+                    params.set('pane', pane)
+                    window.history.pushState(
+                      null,
+                      '',
+                      `${window.location.pathname}?${params.toString()}`,
+                    )
+                  }}
+                  bavVisible={assumptions.visibleProducts.includes('bav')}
                 />
-              )}
+                <div className="vergleich-pane-content">
+                  {/* Real panes isolate a single chart; all other slugs are stubs
+                      that fall through to show all three charts inline. */}
+                  {(vergleichPane !== 'rente' && vergleichPane !== 'break-even') && (
+                    <CapitalChart
+                      capitalChartData={capitalChartData}
+                      selectedScenario={selectedScenario}
+                      selectedResults={selectedResults}
+                      productColors={PRODUCT_COLORS}
+                    />
+                  )}
 
-              {(vergleichPane === null || vergleichPane === 'rente') && (
-                <PensionChart
-                  pensionBars={pensionBars}
-                  retirementEndAge={assumptions.retirementEndAge}
-                />
-              )}
+                  {(vergleichPane !== 'kapital' && vergleichPane !== 'break-even') && (
+                    <PensionChart
+                      pensionBars={pensionBars}
+                      retirementEndAge={assumptions.retirementEndAge}
+                    />
+                  )}
 
-              {(vergleichPane === null || vergleichPane === 'break-even') && (
-                <BreakEvenChart
-                  selectedResults={selectedResults}
-                  productColors={PRODUCT_COLORS}
-                  startAge={profile.age}
-                  retirementAge={profile.retirementAge}
-                  retirementEndAge={assumptions.retirementEndAge}
-                  bestProductId={bestCapital?.productId}
-                  grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                  pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
-                  grvContributionTimeline={compareGrvContributionTimeline}
-                />
-              )}
+                  {(vergleichPane !== 'kapital' && vergleichPane !== 'rente') && (
+                    <BreakEvenChart
+                      selectedResults={selectedResults}
+                      productColors={PRODUCT_COLORS}
+                      startAge={profile.age}
+                      retirementAge={profile.retirementAge}
+                      retirementEndAge={assumptions.retirementEndAge}
+                      bestProductId={bestCapital?.productId}
+                      grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+                      pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
+                      grvContributionTimeline={compareGrvContributionTimeline}
+                    />
+                  )}
+                </div>
+              </div>
             </>
           ) : (
             <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
