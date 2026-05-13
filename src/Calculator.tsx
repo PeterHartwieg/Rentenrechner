@@ -49,6 +49,7 @@ import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
 import { SteuerWasserfallPanel } from './features/results/SteuerWasserfallPanel'
+import { SequenceOfReturnsPanel } from './features/results/SequenceOfReturnsPanel'
 import { InflationStressPanel } from './features/results/InflationStressPanel'
 import { MonteCarloHighlights } from './features/results/MonteCarloHighlights'
 import { MonteCarloPanel } from './features/results/MonteCarloPanel'
@@ -691,6 +692,16 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
+                  {vergleichPane === 'sequence-of-returns' && selectedScenario && (
+                    <SequenceOfReturnsPanel
+                      selectedResults={selectedResults}
+                      payoutYears={assumptions.retirementEndAge - profile.retirementAge}
+                      retirementAge={profile.retirementAge}
+                      selectedScenario={selectedScenario}
+                      productColors={PRODUCT_COLORS}
+                    />
+                  )}
+
                   {vergleichPane === 'inflations-stress' && (
                     <InflationStressPanel
                       selectedResults={selectedResults}
@@ -701,7 +712,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <CapitalChart
                       capitalChartData={capitalChartData}
                       selectedScenario={selectedScenario}
@@ -710,14 +721,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <PensionChart
                       pensionBars={pensionBars}
                       retirementEndAge={assumptions.retirementEndAge}
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <BreakEvenChart
                       selectedResults={selectedResults}
                       productColors={PRODUCT_COLORS}
