@@ -1,0 +1,169 @@
+.steuer-wasserfall-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Controls row ── */
+.swf-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.swf-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #667085;
+}
+
+.swf-select {
+  appearance: none;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%23667085' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 8px center;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  padding: 5px 28px 5px 10px;
+  font-size: 0.875rem;
+  color: #172033;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+.swf-select:focus {
+  outline: 2px solid var(--swf-product-color, #64748b);
+  outline-offset: 1px;
+}
+
+/* ── Waterfall rows ── */
+.swf-waterfall {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.swf-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(80px, 160px) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.swf-row-label {
+  font-size: 0.85rem;
+  color: #344054;
+  white-space: nowrap;
+}
+
+.swf-row-bar-wrap {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.swf-row-bar {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--swf-product-color, #64748b);
+  transition: width 0.25s ease;
+}
+
+.swf-row-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #172033;
+  text-align: right;
+  min-width: 80px;
+}
+
+.swf-row-unit {
+  font-weight: 400;
+  color: #667085;
+  margin-left: 2px;
+  font-size: 0.75rem;
+}
+
+/* Deduction rows — label indented, value amber */
+.swf-row--deduction .swf-row-label {
+  padding-left: 10px;
+  color: #667085;
+}
+
+.swf-row--deduction .swf-row-value {
+  color: #b45309;
+}
+
+.swf-row--deduction .swf-row-bar {
+  background: #fca5a5;
+}
+
+/* Subtotal rows — top border, muted */
+.swf-row--subtotal {
+  border-top: 1px solid #e3e8ef;
+  margin-top: 2px;
+  padding-top: 5px;
+}
+
+.swf-row--subtotal .swf-row-label {
+  color: #344054;
+  font-style: italic;
+}
+
+.swf-row--subtotal .swf-row-value {
+  color: #344054;
+}
+
+.swf-row--subtotal .swf-row-bar {
+  background: #94a3b8;
+}
+
+/* Total (net) row */
+.swf-row--total {
+  border-top: 2px solid #e3e8ef;
+  margin-top: 3px;
+  padding-top: 6px;
+}
+
+.swf-row--total .swf-row-label {
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.swf-row--total .swf-row-value {
+  color: #0f766e;
+  font-size: 0.95rem;
+}
+
+.swf-row--total .swf-row-bar {
+  background: var(--swf-product-color, #0f766e);
+}
+
+/* ── Note footer ── */
+.swf-note {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.45;
+  margin: 0;
+  padding-top: 4px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .swf-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .swf-row-bar-wrap {
+    display: none;
+  }
+}
