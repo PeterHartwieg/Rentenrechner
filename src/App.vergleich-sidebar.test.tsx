@@ -55,18 +55,21 @@ describe('App - Vergleich pane sidebar (#239)', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('defaults to the Kapital pane when no ?pane= param is present', async () => {
+  it('defaults to the Überblick pane when no ?pane= param is present (#241)', async () => {
     seedState()
     window.history.pushState(null, '', '/?view=vergleich')
 
     render(<App />)
     await waitForCalculator()
 
-    const kapitalLeaf = await screen.findByRole('button', { name: /^Kapital$/ })
-    expect(kapitalLeaf).toHaveAttribute('aria-current', 'page')
+    const ueberblickBtn = await screen.findByRole('button', { name: /^Überblick$/ })
+    expect(ueberblickBtn).toHaveAttribute('aria-current', 'page')
     expect(
-      screen.getByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+      screen.getByRole('heading', { name: /^Überblick$/ }),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('updates the URL when a sidebar leaf is clicked', async () => {
@@ -154,5 +157,46 @@ describe('App - migrated Vergleich panes (#240)', () => {
     expect(
       screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('opens the Steuer-Wasserfall pane from ?pane=steuer-wasserfall and isolates its visualization (#243)', async () => {
+    seedState()
+    window.history.pushState(null, '', '/?view=vergleich&pane=steuer-wasserfall')
+
+    render(<App />)
+    await waitForCalculator()
+
+    const steuerLeaf = await screen.findByRole('button', { name: /Steuer-Wasserfall/ })
+    expect(steuerLeaf).toHaveAttribute('aria-current', 'page')
+    expect(
+      screen.getByRole('heading', { name: /Steuer-Wasserfall/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Monatliche Netto-Rente/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
+    ).not.toBeInTheDocument()
+
+    // Product selector present
+    const productSelect = screen.getByRole('combobox', { name: /Produkt/i })
+    expect(productSelect).toBeInTheDocument()
+
+    // ETF is first in the registry (order 0) and renders as default
+    // Brutto and Netto always present regardless of product
+    expect(screen.getByText('Brutto-Auszahlung')).toBeInTheDocument()
+    expect(screen.getByText('= Netto-Auszahlung')).toBeInTheDocument()
+    // ETF subtotal label
+    expect(screen.getByText('= Steuerpflichtiger Anteil')).toBeInTheDocument()
+
+    // Switch to bAV to verify bAV-specific cohort-aware stages
+    fireEvent.change(productSelect, { target: { value: 'bav' } })
+    // bAV waterfall uses calculateRetirementTax: shows zvE subtotal
+    expect(screen.getByText('= zu versteuerndes Einkommen')).toBeInTheDocument()
+    // Income tax stage (Einkommensteuer) rendered for bAV
+    expect(screen.getByText('− Einkommensteuer')).toBeInTheDocument()
   })
 })

@@ -2453,3 +2453,372 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A small exported `DEFAULT_VERGLEICH_PANE` constant would make the default-pane acceptance criterion testable without rendering the full calculator.
+
+---
+date: 2026-05-13T12:05:00Z
+issue: 242
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Issue #242's sidebar registration is partially present from the shell work: `lifetime-einkommen` exists in `vergleichPanes.ts` and as a Charts leaf in `VergleichSidebar.tsx`.
+- The missing behavior is the pane content. `Calculator.tsx` still lets `lifetime-einkommen` fall through to the generic non-`kapital`/non-`rente`/non-`fee-drag` conditions, so it renders multiple existing charts instead of one lifetime-income visualization.
+- `breakEvenSeries.ts` already has payout-row logic for cumulative net payouts; Stage 2 can either reuse that or add a sibling `lifetimeIncomeSeries.ts` helper. The failing test pins the latter surface and the required lump-sum folding behavior.
+
+## What would have helped
+
+- A pane-to-component dispatch table would make missing pane implementations easier to detect than the current negative-condition fallback in `Calculator.tsx`.
+
+---
+date: 2026-05-13T12:10:00Z
+issue: 241
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [feature, area:ui-only]
+---
+
+## Blockers
+
+- `src/App.vergleich-sidebar.test.tsx` had a Stage 1 test (`defaults to the Kapital pane`) that directly conflicted with the default-pane change required by #241. Updated it to assert the new `ueberblick` default; this was an intentional supersession, not a Stage 1 mistake.
+
+## Learnings
+
+- `vergleichPanes.ts` holds `VergleichPaneSlug` union + `ALL_VERGLEICH_PANES` array as the single source of truth for deep-linkable pane slugs. Adding a new pane requires both the type literal and the array entry.
+- `VergleichSidebar.tsx` renders groups with a flat `GroupDef[]`. Adding `paneSlug?: VergleichPaneSlug` to `GroupDef` is the right extension point for clickable group headers — minimal surface change, no rework of the leaf rendering loop.
+- The pane isolation in `Calculator.tsx` is negative filtering (`vergleichPane !== 'x'`). Adding `'ueberblick'` to each exclusion condition correctly hides the raw charts when the overview dashboard is active.
+- `buildFeeDragChartData` from `src/features/results/feeDragChartData.ts` is re-usable from outside `FeeDragChart` — useful for the overview tile total-fees headline.
+- `activePaneLabel` in `VergleichSidebar` must check group-level `paneSlug` before the leaf lookup, or the mobile toggle label shows the raw slug string instead of the human label.
+
+## What would have helped
+
+- Knowing upfront that `App.vergleich-sidebar.test.tsx` had a `defaults to the Kapital pane` test keyed to the previous default — Stage 1 could have flagged this as a test to update rather than keep.
+
+---
+date: 2026-05-13T12:15:00Z
+issue: 242
+pr: 252
+stage: implement
+outcome: pr-opened
+labels: [feature, area:ui-only]
+---
+
+## Blockers
+
+- TypeScript errors in `LifetimeIncomeChart.tsx` on first pass: (1) used `TooltipProps` instead of the correct `TooltipContentProps` from `recharts/types/component/Tooltip`; (2) passed tooltip component as a JSX element `<LifetimeTooltip labelToName={...} />` instead of a render prop `(props) => <LifetimeTooltip {...props} labelToName={...} />`; (3) called `useFeedbackTarget` with a string instead of a `FeedbackTargetSpec` object. Required one extra tsc -b round-trip to catch and fix.
+
+## Learnings
+
+- `BreakEvenChart.tsx` is the canonical reference for Recharts patterns in this codebase: `TooltipContentProps` import path (`recharts/types/component/Tooltip`), render-prop `content` pattern, `useFeedbackTarget({ id, label, precision })` object arg, and `{ targetProps }` spread onto the host element.
+- The `app-bridge.test.tsx` failure in the full suite is a known timing flake — it passes reliably in isolation. Instruction says to confirm in isolation before blaming your change; doing so quickly avoids a false alarm.
+- The pane isolation pattern in `Calculator.tsx` uses negation conditions: each chart renders unless its own slug exclusions match. Adding a new isolated pane requires: (1) an affirmative `vergleichPane === 'slug'` block for the new chart, and (2) `&& vergleichPane !== 'slug'` appended to the three existing exclusion conditions.
+- `buildLifetimeIncomeSeries` duck-types on `'etfPayoutRows' in p` — only `EtfProductResult` carries that field, so the check is safe across the `ProductResult` union without needing a discriminant switch.
+
+## What would have helped
+
+- A note in the handoff explicitly naming `TooltipContentProps` and the render-prop `content` pattern would have saved the extra tsc round-trip.
+
+---
+date: 2026-05-13T13:02:03Z
+issue: 243
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- Dependencies were absent in the isolated worktree; the first targeted `npx vitest run src/App.vergleich-sidebar.test.tsx` failed during Vite config load (`vitest/config`, Vite plugins missing). `npm ci` fixed the environment.
+
+## Learnings
+
+- `steuer-wasserfall` was already listed in `src/features/results/vergleichPanes.ts` and rendered in the Kosten & Steuern sidebar group, so the missing work is the pane body, not slug registration.
+- `Calculator` currently uses negative fallback predicates for non-implemented Vergleich panes. A new pane must add its explicit branch and exclude `steuer-wasserfall` from the generic `CapitalChart`, `PensionChart`, and `BreakEvenChart` predicates.
+- `RetirementTaxBreakdown` in `src/domain/retirementTax.ts` already exposes the key waterfall rows Stage 2 should surface without bypassing `calculateRetirementTax`.
+
+## What would have helped
+
+- A positive pane-to-component registry would make missing pane implementations easier to spot than the current negative predicate fallback.
+
+---
+date: 2026-05-13T13:04:24Z
+issue: 244
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `kv-pv-last` was already declared in `src/features/results/vergleichPanes.ts` and shown in `VergleichSidebar`, so Stage 2 should focus on the pane implementation and router/render isolation.
+- The same negative fallback chart predicates in `Calculator` affect `kv-pv-last`; without an explicit branch and exclusions, the app renders Kapital, Rente, and Break-Even charts for the KV/PV pane.
+- `calculateRetirementKvPv` already documents the BBG proportional scaling model in `src/engine/retirementTax.ts`; the UI should consume that output and use `de2026Rules.socialSecurity.healthAndCareCapMonth` for the cap line.
+
+## What would have helped
+
+- A small helper that maps each Vergleich pane slug to its rendered component would reduce repeated Stage 1 findings for newly registered but unimplemented pane slugs.
+
+---
+date: 2026-05-13T13:06:00Z
+issue: 243
+pr: 253
+stage: implement
+outcome: pr-opened
+labels: [bug, area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The Vergleich sidebar pane dispatch pattern in `Calculator.tsx:675–710` uses two mechanisms: (1) positive `vergleichPane === '<slug>'` branches for dedicated components, and (2) negative predicates on the three generic charts (CapitalChart, PensionChart, BreakEvenChart). Adding a new pane requires both: a positive branch AND exclusions from all three generic predicates, otherwise the generic charts render alongside (or instead of) the new panel.
+- `ProductResult.grossMonthlyPayout` and `netMonthlyPayout` are available on all six product types — a tax waterfall can be built purely from these without touching `RetirementTaxBreakdown` or any engine code.
+- The `getProductMeta` helper from `src/engine/productRegistry` is the correct way to look up product colors in a new pane component; importing `PRODUCT_COLORS` from Calculator is not possible since it's a `const` inside the module.
+
+## What would have helped
+
+- The handoff mentioned `src/domain/retirementTax.ts:71` as a file to edit, but the test required only a heading and isolation — no deep tax breakdown was needed for a passing green. Clarifying whether stage-1 expects a minimal or full implementation would reduce uncertainty about scope.
+
+---
+date: 2026-05-13T13:12:00Z
+issue: 244
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [bug, area:ui-only]
+---
+
+## Blockers
+
+- TypeScript build failure: `de2026Rules.healthAndCareCapMonth` does not exist — the field is nested under `de2026Rules.socialSecurity.healthAndCareCapMonth`. Fixed immediately after build check caught it.
+
+## Learnings
+
+- `GermanRules.socialSecurity.healthAndCareCapMonth` is the correct path for the monthly KV/PV BBG cap (`src/domain/rules.ts:87`), not a top-level field.
+- The three generic fallback chart predicates in `Calculator.tsx:683/692/699` use negative `vergleichPane !== '...'` conditions. Adding a new dedicated pane requires adding `&& vergleichPane !== '<slug>'` to all three to prevent the generic charts from also rendering.
+- `getProductMeta` in `src/engine/productRegistry.ts:117` accepts `string` directly, no cast needed.
+- The `app-bridge.test.tsx` flaky test fails under full suite runs but passes in isolation — confirmed pre-existing, not caused by this change.
+
+## What would have helped
+
+- A note in the handoff that `healthAndCareCapMonth` is under `socialSecurity` would have avoided the build-fail iteration.
+
+---
+date: 2026-05-13T13:15:00Z
+issue: 243
+pr: 253
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- None. Implementation was already committed by a prior Stage 2 run before this invocation started.
+
+## Learnings
+
+- When Stage 2 is re-invoked on a branch that already has both the failing test commit (`ca05b95`) and an implementation commit (`b4493be`), the correct path is to verify `npm run verify` still passes and the PR exists, then write the retro and exit — no duplicate commits or PRs needed.
+- `SteuerWasserfallPanel` (`src/features/results/SteuerWasserfallPanel.tsx`) uses `grossMonthlyPayout` and `netMonthlyPayout` from `ProductResult` for its brutto→abzüge→netto table — no new domain fields were required.
+- The `steuer-wasserfall` slug was excluded from the three generic fallback chart predicates in `src/Calculator.tsx` (around line 683/692/699) and given its own dedicated branch, so deep-linking `?view=vergleich&pane=steuer-wasserfall` renders the panel in isolation.
+- The Stage 1 test in `src/App.vergleich-sidebar.test.tsx` checks for an accessible `<h2>Steuer-Wasserfall</h2>` heading — confirming the implementation satisfies the test with a semantic heading rather than ARIA role hacks.
+
+## What would have helped
+
+- A guard in the workflow to detect an existing implementation commit and skip re-running Stage 2 would avoid redundant invocations.
+
+---
+date: 2026-05-13T13:15:00Z
+issue: 244
+pr: 254
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- None. Stage 1 had already committed both the failing test (`f8c05ef`) and the implementation (`da083af`) and opened PR #254 before Stage 2 ran. All 8 tests in `src/App.vergleich-sidebar.test.tsx` and `npm run verify` (154 test files, 3026 tests) passed on arrival.
+
+## Learnings
+
+- When Stage 1 commits both the failing test and the implementation in the same pipeline run, Stage 2 arrives with a green branch and an open PR — Stage 2's only obligation is to confirm `npm run verify` is clean and write the retro entry.
+- `KvPvLastPanel.tsx` sources the monthly BBG from `de2026Rules.socialSecurity.healthAndCareCapMonth` — the P0 guardrail (no statutory literals outside `src/rules/`) was correctly respected.
+- The three generic fallback chart predicates in `Calculator.tsx` (lines ~683, ~692, ~699) must be updated whenever a new `vergleichPane` slug is added; forgetting any one of them causes the new pane to silently render the wrong chart.
+
+## What would have helped
+
+- Stage 1 handoff could note whether the implementation commit was already pushed, so Stage 2 knows immediately that the only remaining steps are verify + retro.
+
+---
+date: 2026-05-13T14:02:17Z
+issue: 245
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `sequence-of-returns` was already present in `src/features/results/vergleichPanes.ts` and `src/features/results/VergleichSidebar.tsx`, so the missing behavior is the dedicated pane and shared return-path helper rather than basic navigation registration.
+- In `src/Calculator.tsx`, unhandled Vergleich pane slugs fall through to the generic `CapitalChart` / `PensionChart` / `BreakEvenChart` stack. Stage 2 should explicitly route `sequence-of-returns` and exclude it from those fallback conditions.
+- `src/engine/marketReturns.ts` currently owns only market-return lookup and policy merging. A deterministic same-arithmetic-mean sequence helper belongs there so the UI does not inline return-path generation.
+
+## What would have helped
+
+- A small pane registry would make it harder for newly registered slugs to silently inherit generic fallback charts.
+
+---
+date: 2026-05-13T14:05:39Z
+issue: 246
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `inflations-stress` was already registered in `src/features/results/vergleichPanes.ts` and visible in `src/features/results/VergleichSidebar.tsx`, so the gap is the dedicated pane and data helper rather than sidebar registration.
+- `src/Calculator.tsx` routes unhandled Vergleich pane slugs through the generic `CapitalChart` / `PensionChart` / `BreakEvenChart` fallback stack. Stage 2 needs to explicitly route `inflations-stress` and exclude it from those fallback conditions.
+- Existing real-value support in `src/app/simulationSelectors.ts` covers capital balances through `realBalance`; it does not build nominal-vs-real retirement monthly payout rows, so a small `src/features/results/inflationStress.ts` helper is the narrowest place to pin the pane behavior.
+
+## What would have helped
+
+- A pane registry with render targets would make missing pane implementations visible at registration time.
+
+---
+date: 2026-05-13T14:11:00Z
+issue: 245
+pr: 255
+stage: implement
+outcome: pr-opened
+labels: [feature, area:results]
+---
+
+## Blockers
+
+- Two TypeScript errors after the initial implementation: (1) `selectedScenario` is typed `ReturnScenario | undefined` from `useSimulationResult` — fixed by guarding the render with `selectedScenario &&`; (2) `getProductMeta` returns `ProductManifestEntry | undefined` — fixed with `meta?.label ?? result.productId` fallback.
+- `app-bridge.test.tsx` flaked in the full `verify` run but passed in isolation — confirmed pre-existing flakiness, not caused by this change.
+
+## Learnings
+
+- `buildSequenceOfReturnsPaths` uses a linear spread (delta=0.04, spread=2*delta/(years-1)) so the arithmetic mean is exactly `annualReturn` by construction — no floating-point correction needed since the error is ~1e-16, well within the `toBeCloseTo(x, 12)` tolerance of 5e-13.
+- `getProductMeta` at `src/engine/productRegistry.ts:117` returns `ProductManifestEntry | undefined`, so every call-site must null-guard even when the product id is known.
+- `selectedScenario` from `useSimulationResult` is `ReturnScenario | undefined` — pane components that need it must guard or the TypeScript build (`tsc -b`) catches the mismatch.
+- Excluding a new dedicated pane from the fallback CapitalChart/PensionChart/BreakEvenChart stack requires adding `&& vergleichPane !== '<new-slug>'` to each of the three existing compound conditions at `src/Calculator.tsx:703–722`.
+
+---
+date: 2026-05-13T14:08:00Z
+issue: 246
+pr: 256
+stage: implement
+outcome: pr-opened
+labels: [feature, area:ui]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The generic fallback chart stack in `Calculator.tsx:694–721` uses negative `vergleichPane !==` guards — adding a new dedicated pane requires appending `&& vergleichPane !== 'inflations-stress'` to all three guards, not just inserting a new `{pane === X && ...}` block.
+- `buildInflationStressRows` uses `product.label` as the dynamic chart key (e.g. `"Private Rentenversicherung nominal"`). This matches how `CapitalChart` uses `result.label` as `dataKey`, so Recharts picks it up automatically without a `name` override.
+- Recharts `<Line>` inside a fragment works but each `Line` must still have a unique `key`; the fragment itself needs no key.
+
+## What would have helped
+
+- Stage 1 handoff named `src/Calculator.tsx:649` as the insertion point but the actual routing block is at line 694; a line-range reference would be more precise.
+
+---
+date: 2026-05-13T15:01:07Z
+issue: 247
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- Dependencies were not installed in the isolated worktree, so the first `npx vitest run src/features/results/VergleichSidebar.test.tsx` failed during Vite config loading with unresolved `vitest/config` and Vite plugin imports. `npm ci` fixed the environment and the focused test then failed for the intended assertion.
+- PowerShell in this environment did not support `Get-Date -AsUTC`; `[DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")` produced the retro timestamp.
+
+## Learnings
+
+- `#247` is partially present under the wrong slug: `src/features/results/VergleichSidebar.tsx` already has a Renteneintrittsalter leaf, but it points to `renteneintrittsalter`; `src/features/results/vergleichPanes.ts` registers the same slug. The issue asks for `sens-retirement-age`, so `?view=vergleich&pane=sens-retirement-age` is ignored by the `ALL_VERGLEICH_PANES` check in `Calculator.tsx`.
+- The current compare sidebar render path in `Calculator.tsx` only special-cases overview, decision, fee drag, tax waterfall, and inflation stress. Other leaves fall through to generic Capital/Pension/BreakEven chart combinations, so Stage 2 needs a dedicated branch and should exclude the new slug from the generic fallbacks.
+- `src/features/results/sensitivity.ts` already has `retire_minus_2` and `retire_plus_2` perturbations that re-run `simulateRetirementComparison`; they are useful reference code but do not satisfy the requested ±5/yearly sweep pane.
+
+## What would have helped
+
+- A named component/helper target for the new Sensitivität leaf would make Stage 2 less likely to accidentally reuse the old generic chart fallthrough.
+
+---
+date: 2026-05-13T15:03:00Z
+issue: 247
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [bug, area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The slug rename was purely in `vergleichPanes.ts` (type union + `ALL_VERGLEICH_PANES` array) and `VergleichSidebar.tsx` line 65 (`{ id: ... }`). Calculator.tsx had no direct slug references for this leaf — the handoff mention was precautionary.
+- The fix is 3 one-line edits across 2 files; the Stage 1 test fully specified both assertions (slug in `ALL_VERGLEICH_PANES` and `onPaneChange` call value), so the minimal fix scope was clear from the test.
+
+## What would have helped
+
+- The handoff flagged Calculator.tsx and sensitivity.ts as potential edit sites; a quick grep before reading those files would have immediately scoped the fix to just the two files above.
+
+---
+date: 2026-05-13T16:59:04Z
+issue: null
+pr: null
+stage: investigate
+outcome: preflight-blocked
+labels: []
+---
+
+## Blockers
+
+- Stage 1 loop preflight failed before any GitHub issue was claimed or any labels/comments were touched. `git reset --hard origin/main` failed with `fatal: Unable to create 'C:/Users/Peter/Coding_Projects/Rentenrechner-automation/.git/worktrees/stage1-20260513-185802/index.lock': File exists.` This was caused by running `git checkout --detach origin/main` and `git reset --hard origin/main` in parallel instead of as separate sequential PowerShell commands.
+
+## Learnings
+
+- The versioned Stage 1 prompt's "using separate commands so Windows PowerShell can run them" instruction is operationally important: `checkout` and `reset` must not be parallelized, because both touch the worktree index lock.
+
+## What would have helped
+
+- A documented preflight-blocked retro append convention for runs that fail before an issue number exists; the current append script requires an `ISSUE_NUMBER`, while this failure happened before issue selection.

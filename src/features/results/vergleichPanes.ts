@@ -1,5 +1,5 @@
 export type VergleichPaneSlug =
-  | 'dashboard'
+  | 'ueberblick'
   | 'entscheidung'
   | 'kapital'
   | 'rente'
@@ -14,11 +14,11 @@ export type VergleichPaneSlug =
   | 'rendite'
   | 'beitrag'
   | 'lebenserwartung'
-  | 'renteneintrittsalter'
+  | 'sens-retirement-age'
   | 'fairness'
 
 export const ALL_VERGLEICH_PANES: readonly VergleichPaneSlug[] = [
-  'dashboard',
+  'ueberblick',
   'entscheidung',
   'kapital',
   'rente',
@@ -33,6 +33,6 @@ export const ALL_VERGLEICH_PANES: readonly VergleichPaneSlug[] = [
   'rendite',
   'beitrag',
   'lebenserwartung',
-  'renteneintrittsalter',
+  'sens-retirement-age',
   'fairness',
 ]
