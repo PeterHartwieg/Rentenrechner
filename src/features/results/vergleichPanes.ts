@@ -1,4 +1,5 @@
 export type VergleichPaneSlug =
+  | 'ueberblick'
   | 'dashboard'
   | 'entscheidung'
   | 'kapital'
@@ -11,6 +12,9 @@ export type VergleichPaneSlug =
   | 'monte-carlo'
   | 'sequence-of-returns'
   | 'inflations-stress'
+  | 'sens-rendite'
+  | 'sens-beitrag'
+  | 'sens-lebenserwartung'
   | 'rendite'
   | 'beitrag'
   | 'lebenserwartung'
@@ -18,6 +22,7 @@ export type VergleichPaneSlug =
   | 'fairness'
 
 export const ALL_VERGLEICH_PANES: readonly VergleichPaneSlug[] = [
+  'ueberblick',
   'dashboard',
   'entscheidung',
   'kapital',
@@ -30,6 +35,9 @@ export const ALL_VERGLEICH_PANES: readonly VergleichPaneSlug[] = [
   'monte-carlo',
   'sequence-of-returns',
   'inflations-stress',
+  'sens-rendite',
+  'sens-beitrag',
+  'sens-lebenserwartung',
   'rendite',
   'beitrag',
   'lebenserwartung',

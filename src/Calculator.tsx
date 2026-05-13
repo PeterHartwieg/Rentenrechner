@@ -645,9 +645,17 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                   bavVisible={assumptions.visibleProducts.includes('bav')}
                 />
                 <div className="vergleich-pane-content">
-                  {/* Real panes isolate a single chart; all other slugs are stubs
-                      that fall through to show all three charts inline. */}
-                  {(vergleichPane !== 'rente' && vergleichPane !== 'break-even') && (
+                  {/* Each non-stub slug isolates exactly one chart component. */}
+                  {vergleichPane === 'fee-drag' && (
+                    <FeeDragChart
+                      selectedResults={selectedResults}
+                      productColors={PRODUCT_COLORS}
+                      retirementAge={profile.retirementAge}
+                      retirementEndAge={assumptions.retirementEndAge}
+                    />
+                  )}
+
+                  {(vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
                     <CapitalChart
                       capitalChartData={capitalChartData}
                       selectedScenario={selectedScenario}
@@ -656,14 +664,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'kapital' && vergleichPane !== 'break-even') && (
+                  {(vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
                     <PensionChart
                       pensionBars={pensionBars}
                       retirementEndAge={assumptions.retirementEndAge}
                     />
                   )}
 
-                  {(vergleichPane !== 'kapital' && vergleichPane !== 'rente') && (
+                  {(vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag') && (
                     <BreakEvenChart
                       selectedResults={selectedResults}
                       productColors={PRODUCT_COLORS}
