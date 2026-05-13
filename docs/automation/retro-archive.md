@@ -2594,3 +2594,27 @@ labels: [bug, area:ui-only]
 ## What would have helped
 
 - The handoff mentioned `src/domain/retirementTax.ts:71` as a file to edit, but the test required only a heading and isolation — no deep tax breakdown was needed for a passing green. Clarifying whether stage-1 expects a minimal or full implementation would reduce uncertainty about scope.
+
+---
+date: 2026-05-13T13:12:00Z
+issue: 244
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [bug, area:ui-only]
+---
+
+## Blockers
+
+- TypeScript build failure: `de2026Rules.healthAndCareCapMonth` does not exist — the field is nested under `de2026Rules.socialSecurity.healthAndCareCapMonth`. Fixed immediately after build check caught it.
+
+## Learnings
+
+- `GermanRules.socialSecurity.healthAndCareCapMonth` is the correct path for the monthly KV/PV BBG cap (`src/domain/rules.ts:87`), not a top-level field.
+- The three generic fallback chart predicates in `Calculator.tsx:683/692/699` use negative `vergleichPane !== '...'` conditions. Adding a new dedicated pane requires adding `&& vergleichPane !== '<slug>'` to all three to prevent the generic charts from also rendering.
+- `getProductMeta` in `src/engine/productRegistry.ts:117` accepts `string` directly, no cast needed.
+- The `app-bridge.test.tsx` flaky test fails under full suite runs but passes in isolation — confirmed pre-existing, not caused by this change.
+
+## What would have helped
+
+- A note in the handoff that `healthAndCareCapMonth` is under `socialSecurity` would have avoided the build-fail iteration.
