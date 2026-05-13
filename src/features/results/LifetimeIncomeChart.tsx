@@ -84,7 +84,8 @@ export function LifetimeIncomeChart({
         <div>
           <h2>Lifetime-Einkommen</h2>
           <p>
-            Kumulierte Netto-Auszahlungen von Rentenbeginn bis Alter {horizonAge}.
+            Kumulierte laufende Netto-Auszahlungen von Rentenbeginn bis Alter{' '}
+            {horizonAge}. Einmalzahlungen nicht enthalten.
           </p>
         </div>
       </div>
