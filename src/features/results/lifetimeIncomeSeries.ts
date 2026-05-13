@@ -26,7 +26,8 @@ export function buildLifetimeIncomeSeries(
         const row = p.etfPayoutRows.find((r) => r.age === age)
         annual = row ? row.netAnnualPayout : 0
       } else {
-        annual = p.netMonthlyPayout * 12
+        const payoutActive = p.payoutEndAge === undefined || age <= p.payoutEndAge
+        annual = payoutActive ? p.netMonthlyPayout * 12 : 0
       }
       if (age === retirementAge && p.afterTaxLumpSum != null) {
         annual += p.afterTaxLumpSum

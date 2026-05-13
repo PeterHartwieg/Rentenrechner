@@ -69,6 +69,26 @@ describe('buildLifetimeIncomeSeries (#242)', () => {
     })
   })
 
+  it('stops accruing after payoutEndAge for finite payout modes (Zeitrente / Kapitalverzehr)', () => {
+    const result = makeProduct({
+      productId: 'bav',
+      label: 'bAV',
+      netMonthlyPayout: 500,
+      payoutEndAge: 82,
+    } as Partial<ProductResult>)
+
+    const series = buildLifetimeIncomeSeries([result], {
+      retirementAge: 67,
+      horizonAge: 85,
+    })
+
+    // 67..82 inclusive = 16 years of payouts
+    const expectedAtEnd = 16 * 500 * 12
+    expect(series.find((p) => p.age === 82)?.bav).toBe(expectedAtEnd)
+    expect(series.find((p) => p.age === 83)?.bav).toBe(expectedAtEnd)
+    expect(series.at(-1)?.bav).toBe(expectedAtEnd)
+  })
+
   it('uses monthly net payout for lifelong products without payout rows', () => {
     const result = makeProduct({
       productId: 'basisrente',
