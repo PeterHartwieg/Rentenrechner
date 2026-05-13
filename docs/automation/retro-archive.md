@@ -2213,3 +2213,27 @@ labels: [enhancement, ready-for-human]
 ## What would have helped
 
 - Removing stale `ready-for-agent` from issues that already have a Stage 1 handoff would prevent the oldest-eligible query from reclaiming them.
+
+---
+date: 2026-05-13T08:07:14Z
+issue: 239
+pr: null
+stage: investigate
+outcome: ready-for-PR-blocked
+labels: [enhancement, area:ui-only, in-progress-by-agent]
+---
+
+## Blockers
+
+- `gh issue edit 239 --add-label ready-for-PR` returned successfully, but the required verification printed nothing and `gh issue view 239 --json labels --jq '.labels[].name'` showed only `enhancement`, `in-progress-by-agent`, and `area:ui-only`. Per the Stage 1 prompt, I stopped before processing a second issue and reported the label failure.
+- PowerShell quoting for the exact verification command is fragile: the unescaped jq expression was parsed as `ready-for-PR` arithmetic (`function not defined: PR/0`). Escaping the quotes avoided the parse error but still printed nothing because the label was absent.
+
+## Learnings
+
+- `src/Calculator.tsx:184` owns the current one-shot `?view=` handling and deletes `view` after applying it; there is no `pane` owner yet.
+- `src/Calculator.tsx:574` renders the compare-mode Vergleich content as one flat fragment, with `CapitalChart` at `src/Calculator.tsx:613` followed immediately by `PensionChart` and `BreakEvenChart`, so `?pane=kapital` cannot isolate the capital view on current `main`.
+- A focused App-level jsdom test can exercise the returning compare-user path by writing `buildStateJson(defaultProfile, defaultAssumptions)` to `STORAGE_KEY_V1`; no workspace migration fixture is needed for this issue.
+
+## What would have helped
+
+- A repo-local PowerShell-safe wrapper or documented quoting variant for the required `gh issue view --jq` label verification command.
