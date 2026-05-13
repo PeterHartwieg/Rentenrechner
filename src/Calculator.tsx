@@ -697,6 +697,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                       productColors={PRODUCT_COLORS}
                       retirementAge={profile.retirementAge}
                       retirementEndAge={assumptions.retirementEndAge}
+                      inflationRate={assumptions.inflationRate}
                     />
                   )}
 

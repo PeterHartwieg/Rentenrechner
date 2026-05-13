@@ -1,5 +1,5 @@
 import '../../ui/charts.css'
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import {
   CartesianGrid,
   Legend,
@@ -12,7 +12,7 @@ import {
 } from 'recharts'
 import { TrendingDown } from 'lucide-react'
 import type { ProductResult } from '../../domain'
-import { formatCurrency, formatNumber } from '../../utils/format'
+import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { buildInflationStressRows } from './inflationStress'
 
 const INFLATION_OPTIONS = [
@@ -26,6 +26,7 @@ interface Props {
   productColors: Record<string, string>
   retirementAge: number
   retirementEndAge: number
+  inflationRate: number
 }
 
 export function InflationStressPanel({
@@ -33,8 +34,9 @@ export function InflationStressPanel({
   productColors,
   retirementAge,
   retirementEndAge,
+  inflationRate: scenarioInflationRate,
 }: Props) {
-  const [inflationRate, setInflationRate] = useState(0.03)
+  const [inflationRate, setInflationRate] = useState(scenarioInflationRate)
 
   const rows = useMemo(
     () =>
@@ -55,7 +57,11 @@ export function InflationStressPanel({
           <h2>Inflations-Stress: reale Kaufkraft der Monatsrente</h2>
           <p>
             Nominale vs. reale Netto-Monatsrente ab Alter {retirementAge} bei{' '}
-            {INFLATION_OPTIONS.find((o) => o.value === inflationRate)?.label} Inflation p.a.
+            {INFLATION_OPTIONS.find((o) => o.value === inflationRate)?.label ??
+              formatPercent(inflationRate, 1)} Inflation p.a.
+          </p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #6b7280)' }}>
+            Annahme: {formatPercent(scenarioInflationRate, 1)} p.a.
           </p>
         </div>
       </div>
@@ -100,9 +106,8 @@ export function InflationStressPanel({
             />
             <Legend />
             {selectedResults.map((result) => (
-              <>
+              <Fragment key={result.productId}>
                 <Line
-                  key={`${result.label} nominal`}
                   type="monotone"
                   dataKey={`${result.label} nominal`}
                   stroke={productColors[result.productId]}
@@ -111,7 +116,6 @@ export function InflationStressPanel({
                   dot={false}
                 />
                 <Line
-                  key={`${result.label} real`}
                   type="monotone"
                   dataKey={`${result.label} real`}
                   stroke={productColors[result.productId]}
@@ -120,7 +124,7 @@ export function InflationStressPanel({
                   dot={false}
                   name={`${result.label} real`}
                 />
-              </>
+              </Fragment>
             ))}
           </LineChart>
         </ResponsiveContainer>

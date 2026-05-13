@@ -24,8 +24,9 @@ export function buildInflationStressRows({
     const deflator = Math.pow(1 + inflationRate, yearsElapsed)
     const row: InflationStressRow = { age }
     for (const product of products) {
-      row[`${product.label} nominal`] = product.netMonthlyPayout
-      row[`${product.label} real`] = product.netMonthlyPayout / deflator
+      const paidOut = product.payoutEndAge === undefined || age <= product.payoutEndAge
+      row[`${product.label} nominal`] = paidOut ? product.netMonthlyPayout : 0
+      row[`${product.label} real`] = paidOut ? product.netMonthlyPayout / deflator : 0
     }
     rows.push(row)
   }
