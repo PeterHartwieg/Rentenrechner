@@ -2618,3 +2618,27 @@ labels: [bug, area:ui-only]
 ## What would have helped
 
 - A note in the handoff that `healthAndCareCapMonth` is under `socialSecurity` would have avoided the build-fail iteration.
+
+---
+date: 2026-05-13T13:15:00Z
+issue: 243
+pr: 253
+stage: implement
+outcome: pr-opened
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- None. Implementation was already committed by a prior Stage 2 run before this invocation started.
+
+## Learnings
+
+- When Stage 2 is re-invoked on a branch that already has both the failing test commit (`ca05b95`) and an implementation commit (`b4493be`), the correct path is to verify `npm run verify` still passes and the PR exists, then write the retro and exit — no duplicate commits or PRs needed.
+- `SteuerWasserfallPanel` (`src/features/results/SteuerWasserfallPanel.tsx`) uses `grossMonthlyPayout` and `netMonthlyPayout` from `ProductResult` for its brutto→abzüge→netto table — no new domain fields were required.
+- The `steuer-wasserfall` slug was excluded from the three generic fallback chart predicates in `src/Calculator.tsx` (around line 683/692/699) and given its own dedicated branch, so deep-linking `?view=vergleich&pane=steuer-wasserfall` renders the panel in isolation.
+- The Stage 1 test in `src/App.vergleich-sidebar.test.tsx` checks for an accessible `<h2>Steuer-Wasserfall</h2>` heading — confirming the implementation satisfies the test with a semantic heading rather than ARIA role hacks.
+
+## What would have helped
+
+- A guard in the workflow to detect an existing implementation commit and skip re-running Stage 2 would avoid redundant invocations.
