@@ -4,6 +4,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -59,7 +60,7 @@ export function LifetimeIncomeChart({
     precision: 'section',
   })
 
-  const horizonAge = Math.max(retirementEndAge, retirementAge + 1)
+  const horizonAge = Math.max(retirementEndAge, 95)
   const data = useMemo(
     () => buildLifetimeIncomeSeries(selectedResults, { retirementAge, horizonAge }),
     [selectedResults, retirementAge, horizonAge],
@@ -101,6 +102,18 @@ export function LifetimeIncomeChart({
             />
             <Tooltip
               content={(props) => <LifetimeTooltip {...props} labelToName={labelToName} />}
+            />
+            <ReferenceLine
+              x={85}
+              stroke="#94a3b8"
+              strokeDasharray="3 3"
+              label={{ value: 'Ø Lebenserwartung (85)', position: 'insideTopLeft', fill: '#64748b', fontSize: 10 }}
+            />
+            <ReferenceLine
+              x={90}
+              stroke="#cbd5e1"
+              strokeDasharray="3 3"
+              label={{ value: '90', position: 'insideTopLeft', fill: '#94a3b8', fontSize: 10 }}
             />
             {selectedResults.map((r) => (
               <Line
