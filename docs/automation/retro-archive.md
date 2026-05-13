@@ -2732,3 +2732,26 @@ labels: [feature, area:results]
 - `getProductMeta` at `src/engine/productRegistry.ts:117` returns `ProductManifestEntry | undefined`, so every call-site must null-guard even when the product id is known.
 - `selectedScenario` from `useSimulationResult` is `ReturnScenario | undefined` — pane components that need it must guard or the TypeScript build (`tsc -b`) catches the mismatch.
 - Excluding a new dedicated pane from the fallback CapitalChart/PensionChart/BreakEvenChart stack requires adding `&& vergleichPane !== '<new-slug>'` to each of the three existing compound conditions at `src/Calculator.tsx:703–722`.
+
+---
+date: 2026-05-13T14:08:00Z
+issue: 246
+pr: 256
+stage: implement
+outcome: pr-opened
+labels: [feature, area:ui]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The generic fallback chart stack in `Calculator.tsx:694–721` uses negative `vergleichPane !==` guards — adding a new dedicated pane requires appending `&& vergleichPane !== 'inflations-stress'` to all three guards, not just inserting a new `{pane === X && ...}` block.
+- `buildInflationStressRows` uses `product.label` as the dynamic chart key (e.g. `"Private Rentenversicherung nominal"`). This matches how `CapitalChart` uses `result.label` as `dataKey`, so Recharts picks it up automatically without a `name` override.
+- Recharts `<Line>` inside a fragment works but each `Line` must still have a unique `key`; the fragment itself needs no key.
+
+## What would have helped
+
+- Stage 1 handoff named `src/Calculator.tsx:649` as the insertion point but the actual routing block is at line 694; a line-range reference would be more precise.
