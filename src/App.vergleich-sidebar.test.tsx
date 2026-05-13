@@ -55,18 +55,21 @@ describe('App - Vergleich pane sidebar (#239)', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('defaults to the Kapital pane when no ?pane= param is present', async () => {
+  it('defaults to the Überblick pane when no ?pane= param is present (#241)', async () => {
     seedState()
     window.history.pushState(null, '', '/?view=vergleich')
 
     render(<App />)
     await waitForCalculator()
 
-    const kapitalLeaf = await screen.findByRole('button', { name: /^Kapital$/ })
-    expect(kapitalLeaf).toHaveAttribute('aria-current', 'page')
+    const ueberblickBtn = await screen.findByRole('button', { name: /^Überblick$/ })
+    expect(ueberblickBtn).toHaveAttribute('aria-current', 'page')
     expect(
-      screen.getByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+      screen.getByRole('heading', { name: /^Überblick$/ }),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('updates the URL when a sidebar leaf is clicked', async () => {
