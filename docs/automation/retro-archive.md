@@ -2548,3 +2548,26 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A positive pane-to-component registry would make missing pane implementations easier to spot than the current negative predicate fallback.
+
+---
+date: 2026-05-13T13:04:24Z
+issue: 244
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `kv-pv-last` was already declared in `src/features/results/vergleichPanes.ts` and shown in `VergleichSidebar`, so Stage 2 should focus on the pane implementation and router/render isolation.
+- The same negative fallback chart predicates in `Calculator` affect `kv-pv-last`; without an explicit branch and exclusions, the app renders Kapital, Rente, and Break-Even charts for the KV/PV pane.
+- `calculateRetirementKvPv` already documents the BBG proportional scaling model in `src/engine/retirementTax.ts`; the UI should consume that output and use `de2026Rules.socialSecurity.healthAndCareCapMonth` for the cap line.
+
+## What would have helped
+
+- A small helper that maps each Vergleich pane slug to its rendered component would reduce repeated Stage 1 findings for newly registered but unimplemented pane slugs.
