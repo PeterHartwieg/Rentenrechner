@@ -32,7 +32,7 @@ function makeProduct(overrides: Partial<ProductResult>): ProductResult {
 }
 
 describe('buildLifetimeIncomeSeries (#242)', () => {
-  it('accumulates net retirement payouts through age 95 and folds lump sums into the first payout year', () => {
+  it('accumulates net retirement payouts through age 95 using etfPayoutRows (lump sum excluded)', () => {
     const result = makeProduct({
       productId: 'etf',
       label: 'ETF',
@@ -53,19 +53,19 @@ describe('buildLifetimeIncomeSeries (#242)', () => {
     expect(series).toHaveLength(29)
     expect(series[0]).toMatchObject({
       age: 67,
-      etf: 22_000,
+      etf: 10_000,
     })
     expect(series[1]).toMatchObject({
       age: 68,
-      etf: 33_000,
+      etf: 21_000,
     })
     expect(series[2]).toMatchObject({
       age: 69,
-      etf: 45_000,
+      etf: 33_000,
     })
     expect(series.at(-1)).toMatchObject({
       age: 95,
-      etf: 45_000,
+      etf: 33_000,
     })
   })
 

@@ -29,9 +29,6 @@ export function buildLifetimeIncomeSeries(
         const payoutActive = p.payoutEndAge === undefined || age <= p.payoutEndAge
         annual = payoutActive ? p.netMonthlyPayout * 12 : 0
       }
-      if (age === retirementAge && p.afterTaxLumpSum != null) {
-        annual += p.afterTaxLumpSum
-      }
       cumulative[p.productId] = (cumulative[p.productId] ?? 0) + annual
       point[p.productId] = cumulative[p.productId]
     }
