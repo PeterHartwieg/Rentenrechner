@@ -2801,3 +2801,24 @@ labels: [bug, area:ui-only]
 ## What would have helped
 
 - The handoff flagged Calculator.tsx and sensitivity.ts as potential edit sites; a quick grep before reading those files would have immediately scoped the fix to just the two files above.
+
+---
+date: 2026-05-13T16:59:04Z
+issue: null
+pr: null
+stage: investigate
+outcome: preflight-blocked
+labels: []
+---
+
+## Blockers
+
+- Stage 1 loop preflight failed before any GitHub issue was claimed or any labels/comments were touched. `git reset --hard origin/main` failed with `fatal: Unable to create 'C:/Users/Peter/Coding_Projects/Rentenrechner-automation/.git/worktrees/stage1-20260513-185802/index.lock': File exists.` This was caused by running `git checkout --detach origin/main` and `git reset --hard origin/main` in parallel instead of as separate sequential PowerShell commands.
+
+## Learnings
+
+- The versioned Stage 1 prompt's "using separate commands so Windows PowerShell can run them" instruction is operationally important: `checkout` and `reset` must not be parallelized, because both touch the worktree index lock.
+
+## What would have helped
+
+- A documented preflight-blocked retro append convention for runs that fail before an issue number exists; the current append script requires an `ISSUE_NUMBER`, while this failure happened before issue selection.
