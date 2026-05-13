@@ -6,8 +6,8 @@ import {
 import {
   afterTaxRiesterLumpSum,
   calculateRiesterFunding,
-  netRiesterPayout,
 } from '../riester'
+import { netCertifiedPensionPayoutFull } from '../certifiedPensionPayout'
 import { computeGrossMonthlyPayout } from '../payoutMath'
 import { calculateLeibrenteBreakEvenAge } from '../productPayout'
 import { withMarketReturnPolicy } from '../marketReturns'
@@ -121,6 +121,15 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
       const partialCapital = projection.capital * partialPct
       const otherAnnual = riester.monthlyOtherRetirementIncome * 12
 
+      const riesterPayout = netCertifiedPensionPayoutFull(
+        grossMonthlyPayout,
+        profile,
+        rules,
+        riester.monthlyOtherRetirementIncome,
+        payoutYear,
+        ctx.grvGrossMonthlyPension,
+        ctx.retirementHealthStatus,
+      )
       return {
         afterTaxLumpSum: partialPct > 0
           ? afterTaxRiesterLumpSum(
@@ -133,15 +142,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
             )
           : null,
         grossMonthlyPayout,
-        netMonthlyPayout: netRiesterPayout(
-          grossMonthlyPayout,
-          profile,
-          rules,
-          riester.monthlyOtherRetirementIncome,
-          payoutYear,
-          ctx.grvGrossMonthlyPension,
-          ctx.retirementHealthStatus,
-        ),
+        netMonthlyPayout: riesterPayout.netMonthly,
+        kvPvMonthly: riesterPayout.kvPvMonthly,
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,
           projection.capital,

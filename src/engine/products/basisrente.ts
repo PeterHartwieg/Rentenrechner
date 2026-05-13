@@ -3,7 +3,7 @@ import type { SimulationContext } from '../simulationContext'
 import {
   buildProductResult,
 } from '../buildResult'
-import { netBasisrentePayout } from '../basisrente'
+import { netBasisrentePayoutFull } from '../basisrente'
 import {
   calculateLeibrenteBreakEvenAge,
   computeFeeAdjustedGrossMonthlyPayout,
@@ -51,18 +51,20 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Basi
         basisrente.fees,
       )
 
+      const basisrentePayout = netBasisrentePayoutFull(
+        grossMonthlyPayout,
+        profile,
+        rules,
+        basisrente.monthlyOtherRetirementIncome,
+        payoutYear,
+        ctx.retirementHealthStatus,
+        ctx.grvGrossMonthlyPension,
+      )
       return {
         afterTaxLumpSum: null,
         grossMonthlyPayout,
-        netMonthlyPayout: netBasisrentePayout(
-          grossMonthlyPayout,
-          profile,
-          rules,
-          basisrente.monthlyOtherRetirementIncome,
-          payoutYear,
-          ctx.retirementHealthStatus,
-          ctx.grvGrossMonthlyPension,
-        ),
+        netMonthlyPayout: basisrentePayout.netMonthly,
+        kvPvMonthly: basisrentePayout.kvPvMonthly,
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,
           projection.capital,

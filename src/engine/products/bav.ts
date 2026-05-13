@@ -5,7 +5,7 @@ import {
 } from '../buildResult'
 import {
   bavLumpSumBreakdown,
-  netBavPayout,
+  netBavPayoutFull,
 } from '../bavPayout'
 import {
   calculateLeibrenteBreakEvenAge,
@@ -69,7 +69,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
         bavLumpSumTaxMode,
         ctx.grvGrossMonthlyPension,
       )
-      let netMonthlyPayout = netBavPayout(
+      const bavPayout = netBavPayoutFull(
         grossMonthlyPayout,
         profile,
         rules,
@@ -78,6 +78,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
         payoutYear,
         ctx.grvGrossMonthlyPension,
       )
+      let netMonthlyPayout = bavPayout.netMonthly
       if (bav.includeGrvReduction) {
         netMonthlyPayout = Math.max(0, netMonthlyPayout - bavFunding.estimatedMonthlyGrvReduction)
       }
@@ -87,6 +88,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
         lumpSumDeductions: { incomeTax: lumpSum.incomeTax, kvPv: lumpSum.kvPv },
         grossMonthlyPayout,
         netMonthlyPayout,
+        kvPvMonthly: bavPayout.kvPvMonthly,
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,
           projection.capital,

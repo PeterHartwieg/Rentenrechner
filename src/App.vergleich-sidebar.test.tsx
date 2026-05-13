@@ -171,6 +171,7 @@ describe('App - migrated Vergleich panes (#240)', () => {
     expect(
       screen.getByRole('heading', { name: /KV\/PV-Last/ }),
     ).toBeInTheDocument()
+    // Fallback charts must not be shown
     expect(
       screen.queryByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
     ).not.toBeInTheDocument()
@@ -180,5 +181,18 @@ describe('App - migrated Vergleich panes (#240)', () => {
     expect(
       screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
     ).not.toBeInTheDocument()
+
+    // KVdR status visible (defaultAssumptions.bav.kvdrMember = true, publicHealthInsurance = true)
+    expect(screen.getByText(/KVdR-Pflichtversichert/)).toBeInTheDocument()
+
+    // BBG cap value visible (de2026Rules: 5812.50 €/month)
+    expect(screen.getByText(/BBG:/)).toBeInTheDocument()
+
+    // Table columns: KV/PV-specific column header present
+    expect(screen.getByRole('columnheader', { name: /KV\/PV\/Monat/ })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: /Brutto-Rente/ })).toBeInTheDocument()
+
+    // BBG meter element present (combined-income visualisation)
+    expect(screen.getByRole('meter')).toBeInTheDocument()
   })
 })
