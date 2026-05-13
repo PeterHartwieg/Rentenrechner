@@ -22,8 +22,6 @@ interface Props {
 export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMonthly, healthStatus }: Props) {
   const bbgFillPct = Math.min(combinedGrossMonthly / monthlyKvPvBbg, 1) * 100
   const exceedsBbg = combinedGrossMonthly > monthlyKvPvBbg
-  const totalKvPv = selectedResults.reduce((s, r) => s + r.kvPvMonthly, 0)
-
   const healthLabel =
     healthStatus === 'kvdr'
       ? 'KVdR-Pflichtversichert'
@@ -105,14 +103,6 @@ export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMo
               </tr>
             )
           })}
-          {selectedResults.length > 1 && (
-            <tr style={{ fontWeight: 600 }}>
-              <td>Gesamt</td>
-              <td></td>
-              <td>{formatCurrency(totalKvPv, 0)}</td>
-              <td></td>
-            </tr>
-          )}
         </tbody>
       </table>
 
