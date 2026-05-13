@@ -43,6 +43,30 @@ export function netCertifiedPensionPayout(
   }).netMonthly
 }
 
+/** Like netCertifiedPensionPayout but returns both netMonthly and kvPvMonthly. */
+export function netCertifiedPensionPayoutFull(
+  grossMonthlyPayout: number,
+  profile: PersonalProfile,
+  rules: GermanRules,
+  otherMonthlyIncome = 0,
+  retirementYear = rules.year,
+  grvBaselineMonthly = 0,
+  retirementHealthStatus: RetirementHealthStatus = 'freiwillig_gkv',
+): { netMonthly: number; kvPvMonthly: number } {
+  const r = calculateMonthlyRetirementPayout({
+    rules,
+    retirementYear,
+    grvBaselineMonthly,
+    otherMonthlyIncome,
+    grossMonthlyPayout,
+    taxChannel: 'other',
+    kvPvChannel: 'freiwillig_other',
+    profile,
+    healthStatus: retirementHealthStatus,
+  })
+  return { netMonthly: r.netMonthly, kvPvMonthly: r.kvPvMonthly }
+}
+
 /**
  * After-tax value of a certified §22 Nr. 5 partial capital payout.
  *

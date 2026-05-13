@@ -159,6 +159,43 @@ describe('App - migrated Vergleich panes (#240)', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('opens the KV/PV-Last pane from ?pane=kv-pv-last and isolates its visualization (#244)', async () => {
+    seedState()
+    window.history.pushState(null, '', '/?view=vergleich&pane=kv-pv-last')
+
+    render(<App />)
+    await waitForCalculator()
+
+    const kvPvLeaf = await screen.findByRole('button', { name: /KV\/PV-Last/ })
+    expect(kvPvLeaf).toHaveAttribute('aria-current', 'page')
+    expect(
+      screen.getByRole('heading', { name: /KV\/PV-Last/ }),
+    ).toBeInTheDocument()
+    // Fallback charts must not be shown
+    expect(
+      screen.queryByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Monatliche Netto-Rente/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
+    ).not.toBeInTheDocument()
+
+    // KVdR status visible (defaultAssumptions.bav.kvdrMember = true, publicHealthInsurance = true)
+    expect(screen.getByText(/KVdR-Pflichtversichert/)).toBeInTheDocument()
+
+    // BBG cap value visible (de2026Rules: 5812.50 €/month)
+    expect(screen.getByText(/BBG:/)).toBeInTheDocument()
+
+    // Table columns: KV/PV-specific column header present
+    expect(screen.getByRole('columnheader', { name: /KV\/PV\/Monat/ })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: /Brutto-Rente/ })).toBeInTheDocument()
+
+    // BBG meter element present (combined-income visualisation)
+    expect(screen.getByRole('meter')).toBeInTheDocument()
+  })
+
   it('opens the Steuer-Wasserfall pane from ?pane=steuer-wasserfall and isolates its visualization (#243)', async () => {
     seedState()
     window.history.pushState(null, '', '/?view=vergleich&pane=steuer-wasserfall')

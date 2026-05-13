@@ -136,6 +136,66 @@ export function netInsurancePayout(
   }).netMonthly
 }
 
+/** Like netInsurancePayout but returns both netMonthly and kvPvMonthly. Used by the
+ *  product simulator to populate BaseProductResult.kvPvMonthly for the KV/PV-Last panel. */
+export function netInsurancePayoutFull(
+  grossMonthlyPayout: number,
+  capital: number,
+  totalContributions: number,
+  taxMode: InsuranceTaxMode,
+  rules: GermanRules,
+  otherMonthlyIncome = 0,
+  retirementYear = rules.year,
+  profile?: PersonalProfile,
+  kvdrMember = true,
+  payoutMode?: PayoutMode,
+  retirementAge?: number,
+  grvBaselineMonthly = 0,
+): { netMonthly: number; kvPvMonthly: number } {
+  let effectiveTaxMode: InsuranceTaxMode = taxMode
+  let annualGain: number
+  if (payoutMode === 'leibrente' && retirementAge !== undefined) {
+    annualGain = grossMonthlyPayout * 12 * ertragsanteilByAge(retirementAge)
+    effectiveTaxMode = 'ertragsanteil'
+  } else {
+    const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
+    annualGain = grossMonthlyPayout * 12 * gainRatio
+  }
+
+  if (effectiveTaxMode === 'pre2005' && (!profile?.publicHealthInsurance || kvdrMember || !profile)) {
+    return { netMonthly: grossMonthlyPayout, kvPvMonthly: 0 }
+  }
+
+  if (!profile) {
+    const marginalTax = calculateMarginalRetirementTax(
+      rules,
+      retirementIncomeBase(retirementYear, {
+        grvBaselineMonthly,
+        otherTaxableAnnual: otherMonthlyIncome * 12,
+        privateInsuranceTaxMode: effectiveTaxMode,
+      }),
+      { privateInsuranceTaxableAnnual: annualGain },
+    )
+    return { netMonthly: Math.max(0, grossMonthlyPayout - marginalTax / 12), kvPvMonthly: 0 }
+  }
+
+  const kvPvChannel = profile.publicHealthInsurance && !kvdrMember ? 'freiwillig_other' : 'none'
+  const r = calculateMonthlyRetirementPayout({
+    rules,
+    retirementYear,
+    grvBaselineMonthly,
+    otherMonthlyIncome,
+    grossMonthlyPayout,
+    taxableAnnualOverride: annualGain,
+    taxChannel: 'private_insurance',
+    privateInsuranceTaxMode: effectiveTaxMode,
+    kvPvChannel,
+    profile,
+    healthStatus: kvdrMember ? 'kvdr' : 'freiwillig_gkv',
+  })
+  return { netMonthly: r.netMonthly, kvPvMonthly: r.kvPvMonthly }
+}
+
 // After-tax lump-sum insurance capital. (#46, #47)
 // otherAnnualIncome is only used for the Halbeinkünfteverfahren marginal-tax calculation.
 export function afterTaxInsuranceLumpSum(

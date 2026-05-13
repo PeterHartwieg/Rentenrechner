@@ -7,6 +7,7 @@ import {
   afterTaxInsuranceLumpSum,
   insuranceLumpSumBreakdown,
   netInsurancePayout,
+  netInsurancePayoutFull,
 } from '../insurancePayout'
 import {
   calculateLeibrenteBreakEvenAge,
@@ -87,7 +88,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
         kvdrMember,
         ctx.grvGrossMonthlyPension,
       )
-      const netMonthlyPayout = netInsurancePayout(
+      const insPayout = netInsurancePayoutFull(
         grossMonthlyPayout,
         projection.capital,
         projection.totalContributionsBeforeFees,
@@ -106,7 +107,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Insu
         afterTaxLumpSum: lumpSum.net,
         lumpSumDeductions: { incomeTax: lumpSum.incomeTax, kvPv: lumpSum.kvPv },
         grossMonthlyPayout,
-        netMonthlyPayout,
+        netMonthlyPayout: insPayout.netMonthly,
+        kvPvMonthly: insPayout.kvPvMonthly,
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,
           projection.capital,

@@ -48,6 +48,7 @@ import { PensionChart } from './features/results/PensionChart'
 import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
+import { KvPvLastPanel } from './features/results/KvPvLastPanel'
 import { LifetimeIncomeChart } from './features/results/LifetimeIncomeChart'
 import { SteuerWasserfallPanel } from './features/results/SteuerWasserfallPanel'
 import { SequenceOfReturnsPanel } from './features/results/SequenceOfReturnsPanel'
@@ -693,6 +694,29 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
+                  {vergleichPane === 'kv-pv-last' && (
+                    <KvPvLastPanel
+                      selectedResults={selectedResults.map((r) => ({
+                        productId: r.productId,
+                        label: r.label,
+                        grossMonthlyPayout: r.grossMonthlyPayout,
+                        kvPvMonthly: r.kvPvMonthly ?? 0,
+                      }))}
+                      monthlyKvPvBbg={de2026Rules.socialSecurity.healthAndCareCapMonth}
+                      combinedGrossMonthly={
+                        selectedResults.reduce((s, r) => s + r.grossMonthlyPayout, 0) +
+                        simulation.statutoryPension.grossMonthlyPension
+                      }
+                      healthStatus={
+                        !profile.publicHealthInsurance
+                          ? 'pkv'
+                          : taxModes.kvdrMember
+                            ? 'kvdr'
+                            : 'freiwillig_gkv'
+                      }
+                    />
+                  )}
+
                   {vergleichPane === 'steuer-wasserfall' && (
                     <SteuerWasserfallPanel
                       selectedResults={selectedResults}
@@ -722,7 +746,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <CapitalChart
                       capitalChartData={capitalChartData}
                       selectedScenario={selectedScenario}
@@ -731,14 +755,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <PensionChart
                       pensionBars={pensionBars}
                       retirementEndAge={assumptions.retirementEndAge}
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <BreakEvenChart
                       selectedResults={selectedResults}
                       productColors={PRODUCT_COLORS}

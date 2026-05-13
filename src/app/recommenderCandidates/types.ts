@@ -204,6 +204,7 @@ export function synthesizeProductResult(args: {
     afterTaxLumpSum: args.afterTaxLumpSum,
     grossMonthlyPayout: args.grossMonthlyPayout,
     netMonthlyPayout: args.netMonthlyPayoutForEtf ?? args.grossMonthlyPayout,
+    kvPvMonthly: 0,
     taxAndSvSavings: 0,
     valueMultipleOnUserCost: args.totalProductContributions > 0
       ? (args.afterTaxLumpSum ?? args.capitalAtRetirement) / args.totalProductContributions
