@@ -2265,3 +2265,27 @@ labels: [enhancement, area:ui-only]
 ## What would have helped
 
 - Stage 1 running the test with a trial implementation would have caught the contradiction before handing off to Stage 2.
+
+---
+date: 2026-05-13T09:06:14Z
+issue: 239
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- Initial `npx vitest run src/App.vergleich-sidebar.test.tsx` could not start because dependencies were missing; `npm ci` resolved it.
+- `gh issue view 239 --json labels --jq '.labels[] | select(.name == "ready-for-PR") | .name'` needed PowerShell stop-parsing (`gh --% ...`) to preserve the quoted label literal. Without it, jq saw `ready-for-PR` as an expression and failed with `function not defined: PR/0`.
+
+## Learnings
+
+- `git log --grep="#239" origin/main` can find retro-only commits; confirm file stats before treating a referenced issue as already implemented.
+- Compare-mode `?view=` handling lives inline in `src/Calculator.tsx` and currently deletes only `view`; there is no `pane` state or `VergleichSidebar` component on main.
+- A focused App-level jsdom test can seed compare mode with `buildStateJson(defaultProfile, assumptions)` under `STORAGE_KEY_V1`, then open `/?view=vergleich&pane=kapital` to pin the missing sidebar/deep-link behavior.
+
+## What would have helped
+
+- A documented PowerShell-safe form of the required `gh issue view --jq` verification command would avoid failed verification attempts on Windows runners.
