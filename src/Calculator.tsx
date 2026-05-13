@@ -49,6 +49,7 @@ import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
 import { KvPvLastPanel } from './features/results/KvPvLastPanel'
+import { LifetimeIncomeChart } from './features/results/LifetimeIncomeChart'
 import { SteuerWasserfallPanel } from './features/results/SteuerWasserfallPanel'
 import { SequenceOfReturnsPanel } from './features/results/SequenceOfReturnsPanel'
 import { InflationStressPanel } from './features/results/InflationStressPanel'
@@ -684,6 +685,15 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
+                  {vergleichPane === 'lifetime-einkommen' && (
+                    <LifetimeIncomeChart
+                      selectedResults={selectedResults}
+                      productColors={PRODUCT_COLORS}
+                      retirementAge={profile.retirementAge}
+                      retirementEndAge={assumptions.retirementEndAge}
+                    />
+                  )}
+
                   {vergleichPane === 'kv-pv-last' && (
                     <KvPvLastPanel
                       selectedResults={selectedResults.map((r) => ({
@@ -736,7 +746,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <CapitalChart
                       capitalChartData={capitalChartData}
                       selectedScenario={selectedScenario}
@@ -745,14 +755,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <PensionChart
                       pensionBars={pensionBars}
                       retirementEndAge={assumptions.retirementEndAge}
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'lifetime-einkommen' && vergleichPane !== 'kv-pv-last' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'sequence-of-returns' && vergleichPane !== 'inflations-stress') && (
                     <BreakEvenChart
                       selectedResults={selectedResults}
                       productColors={PRODUCT_COLORS}
