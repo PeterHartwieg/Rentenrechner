@@ -4,7 +4,7 @@ import type { ProductResult } from '../../domain'
 import type { ReturnScenario } from '../../domain/profile'
 import { getProductMeta } from '../../engine/productRegistry'
 import { buildSequenceOfReturnsPaths } from '../../engine/marketReturns'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {
   selectedResults: ProductResult[]
@@ -78,7 +78,7 @@ export function SequenceOfReturnsPanel({
         Sequence-of-Returns-Risiko
       </h2>
       <p style={{ marginBottom: '1rem', color: 'var(--color-text-muted, #6b7280)', fontSize: '0.875rem' }}>
-        Drei Renditesequenzen mit identischem arithmetischen Mittel ({formatCurrency(selectedScenario.annualReturn * 100, 1)} %
+        Drei Renditesequenzen mit identischem arithmetischen Mittel ({formatPercent(selectedScenario.annualReturn, 1)}
         p.a.) zeigen, wie die Reihenfolge der Jahresrenditen das Endkapital beeinflusst.
       </p>
 
