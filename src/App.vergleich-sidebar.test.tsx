@@ -158,4 +158,27 @@ describe('App - migrated Vergleich panes (#240)', () => {
       screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
     ).not.toBeInTheDocument()
   })
+
+  it('opens the KV/PV-Last pane from ?pane=kv-pv-last and isolates its visualization (#244)', async () => {
+    seedState()
+    window.history.pushState(null, '', '/?view=vergleich&pane=kv-pv-last')
+
+    render(<App />)
+    await waitForCalculator()
+
+    const kvPvLeaf = await screen.findByRole('button', { name: /KV\/PV-Last/ })
+    expect(kvPvLeaf).toHaveAttribute('aria-current', 'page')
+    expect(
+      screen.getByRole('heading', { name: /KV\/PV-Last/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Monatliche Netto-Rente/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
+    ).not.toBeInTheDocument()
+  })
 })
