@@ -168,6 +168,12 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   const [requestedInputsTab, setRequestedInputsTab] = useState<ProductId | null>(null)
   // Issue #239/#241: active pane for the compare-mode Vergleich sidebar.
   const [vergleichPane, setVergleichPane] = useState<VergleichPaneSlug>('ueberblick')
+  const handleVergleichPaneChange = (pane: VergleichPaneSlug) => {
+    setVergleichPane(pane)
+    const params = new URLSearchParams(window.location.search)
+    params.set('pane', pane)
+    window.history.pushState(null, '', `${window.location.pathname}?${params.toString()}`)
+  }
 
   const {
     profile,
@@ -593,11 +599,13 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
 
           {hasComparisonSet ? (
             <>
-              <DecisionSummary
-                results={selectedResults}
-                bestCapital={bestCapital}
-                bestPension={bestPension}
-              />
+              {vergleichPane !== 'entscheidung' && (
+                <DecisionSummary
+                  results={selectedResults}
+                  bestCapital={bestCapital}
+                  bestPension={bestPension}
+                />
+              )}
 
               <MonteCarloHighlights result={monteCarloResult} />
 
@@ -633,16 +641,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               <div className="vergleich-with-sidebar">
                 <VergleichSidebar
                   activePane={vergleichPane}
-                  onPaneChange={(pane) => {
-                    setVergleichPane(pane)
-                    const params = new URLSearchParams(window.location.search)
-                    params.set('pane', pane)
-                    window.history.pushState(
-                      null,
-                      '',
-                      `${window.location.pathname}?${params.toString()}`,
-                    )
-                  }}
+                  onPaneChange={handleVergleichPaneChange}
                   bavVisible={assumptions.visibleProducts.includes('bav')}
                 />
                 <div className="vergleich-pane-content">
@@ -660,7 +659,15 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                       grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
                       retirementAge={profile.retirementAge}
                       retirementEndAge={assumptions.retirementEndAge}
-                      onNavigate={(pane) => setVergleichPane(pane)}
+                      onNavigate={handleVergleichPaneChange}
+                    />
+                  )}
+
+                  {vergleichPane === 'entscheidung' && (
+                    <DecisionSummary
+                      results={selectedResults}
+                      bestCapital={bestCapital}
+                      bestPension={bestPension}
                     />
                   )}
 
@@ -673,7 +680,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
                     <CapitalChart
                       capitalChartData={capitalChartData}
                       selectedScenario={selectedScenario}
@@ -682,14 +689,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag') && (
                     <PensionChart
                       pensionBars={pensionBars}
                       retirementEndAge={assumptions.retirementEndAge}
                     />
                   )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag') && (
+                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag') && (
                     <BreakEvenChart
                       selectedResults={selectedResults}
                       productColors={PRODUCT_COLORS}

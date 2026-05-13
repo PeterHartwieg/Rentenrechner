@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -55,9 +56,9 @@ export function VergleichDashboard({
   const feeDragRows = buildFeeDragChartData(selectedResults, retirementAge, retirementEndAge)
   const totalFees = feeDragRows.reduce((sum, r) => sum + r['Gebühren gesamt'], 0)
 
-  const productLineKeys = selectedResults
+  const productLines = selectedResults
     .filter((r) => r.productId in productColors)
-    .map((r) => r.productId)
+    .map((r) => ({ label: r.label, color: productColors[r.productId] ?? '#94a3b8' }))
 
   return (
     <section className="vergleich-dashboard" aria-label="Überblick">
@@ -116,18 +117,18 @@ export function VergleichDashboard({
             )}
           </div>
           <div className="vergleich-dashboard__tile-chart">
-            {capitalChartData && capitalChartData.length > 0 && productLineKeys.length > 0 ? (
+            {capitalChartData && capitalChartData.length > 0 && productLines.length > 0 ? (
               <ResponsiveContainer width="100%" height={100}>
                 <LineChart data={capitalChartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="age" hide />
                   <YAxis hide />
-                  {productLineKeys.map((pid) => (
+                  {productLines.map(({ label, color }) => (
                     <Line
-                      key={pid}
+                      key={label}
                       type="monotone"
-                      dataKey={pid}
-                      stroke={productColors[pid] ?? '#94a3b8'}
+                      dataKey={label}
+                      stroke={color}
                       dot={false}
                       strokeWidth={1.5}
                     />
@@ -167,7 +168,7 @@ export function VergleichDashboard({
                   <YAxis hide />
                   <Bar dataKey="value" isAnimationActive={false}>
                     {pensionBars.map((bar, i) => (
-                      <rect key={i} fill={bar.fill} />
+                      <Cell key={i} fill={bar.fill} />
                     ))}
                   </Bar>
                 </BarChart>
