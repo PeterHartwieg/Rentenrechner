@@ -2525,3 +2525,26 @@ labels: [feature, area:ui-only]
 ## What would have helped
 
 - A note in the handoff explicitly naming `TooltipContentProps` and the render-prop `content` pattern would have saved the extra tsc round-trip.
+
+---
+date: 2026-05-13T13:02:03Z
+issue: 243
+pr: null
+stage: investigate
+outcome: ready-for-PR
+labels: [enhancement, in-progress-by-agent, ready-for-PR]
+---
+
+## Blockers
+
+- Dependencies were absent in the isolated worktree; the first targeted `npx vitest run src/App.vergleich-sidebar.test.tsx` failed during Vite config load (`vitest/config`, Vite plugins missing). `npm ci` fixed the environment.
+
+## Learnings
+
+- `steuer-wasserfall` was already listed in `src/features/results/vergleichPanes.ts` and rendered in the Kosten & Steuern sidebar group, so the missing work is the pane body, not slug registration.
+- `Calculator` currently uses negative fallback predicates for non-implemented Vergleich panes. A new pane must add its explicit branch and exclude `steuer-wasserfall` from the generic `CapitalChart`, `PensionChart`, and `BreakEvenChart` predicates.
+- `RetirementTaxBreakdown` in `src/domain/retirementTax.ts` already exposes the key waterfall rows Stage 2 should surface without bypassing `calculateRetirementTax`.
+
+## What would have helped
+
+- A positive pane-to-component registry would make missing pane implementations easier to spot than the current negative predicate fallback.
