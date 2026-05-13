@@ -2405,3 +2405,27 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A pane-registry owner type that includes both sidebar metadata and render component would make Stage 2 less likely to leave URL slugs, sidebar leaves, and pane dispatch out of sync.
+
+---
+date: 2026-05-13T11:10:00Z
+issue: 240
+pr: 249
+stage: implement
+outcome: pr-opened
+labels: [bug, area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `ALL_VERGLEICH_PANES` at `src/features/results/vergleichPanes.ts` is the registry that gates `?pane=` deep-linking (see `Calculator.tsx:201`). Any slug not in that array is silently ignored by the URL-init useEffect.
+- The vergleich pane dispatcher at `Calculator.tsx:648` used a fallthrough pattern (three independent `!==` guards). Any slug not explicitly excluded from all three conditions caused all three charts to render simultaneously. The fix is to add the new slug to each guard, and add an explicit `===` condition to render the correct component.
+- `FeeDragChart` was already imported in `Calculator.tsx` (line 50) and used in `detailsView` with the same props available in `vergleichView`, so lifting it into the pane dispatcher required no new imports.
+- The Stage 1 test used `expect.arrayContaining` for the slug-registry check, so only the listed slugs had to be present — no need to add sidebar leaves for `ueberblick`/`sens-*` to pass the test.
+
+## What would have helped
+
+- The handoff named `ueberblick` and `sens-*` as missing slugs, and `fee-drag` as the broken pane. Tracing the `ALL_VERGLEICH_PANES` guard on the URL init useEffect immediately explains why the slug wasn't being set; noting the fallthrough pattern immediately explains why the wrong charts rendered.
