@@ -62,7 +62,7 @@ const SIDEBAR_GROUPS: GroupDef[] = [
       { id: 'rendite', label: 'Rendite' },
       { id: 'beitrag', label: 'Beitrag' },
       { id: 'lebenserwartung', label: 'Lebenserwartung' },
-      { id: 'renteneintrittsalter', label: 'Renteneintrittsalter' },
+      { id: 'sens-retirement-age', label: 'Renteneintrittsalter' },
     ],
   },
   {

@@ -27,3 +27,24 @@ describe('VergleichSidebar overview pane (#241)', () => {
     expect(onPaneChange).toHaveBeenCalledWith('ueberblick')
   })
 })
+
+describe('VergleichSidebar retirement-age sensitivity pane (#247)', () => {
+  it('registers sens-retirement-age as the deep-linkable pane slug', () => {
+    expect(ALL_VERGLEICH_PANES).toContain('sens-retirement-age')
+  })
+
+  it('selects sens-retirement-age from the Renteneintrittsalter sidebar leaf', () => {
+    const onPaneChange = vi.fn()
+    const { getByRole } = render(
+      <VergleichSidebar
+        activePane={'ueberblick' as unknown as VergleichPaneSlug}
+        onPaneChange={onPaneChange}
+        bavVisible={true}
+      />,
+    )
+
+    fireEvent.click(getByRole('button', { name: 'Renteneintrittsalter' }))
+
+    expect(onPaneChange).toHaveBeenCalledWith('sens-retirement-age')
+  })
+})
