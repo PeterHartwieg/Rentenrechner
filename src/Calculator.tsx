@@ -703,16 +703,11 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                         kvPvMonthly: r.kvPvMonthly ?? 0,
                       }))}
                       monthlyKvPvBbg={de2026Rules.socialSecurity.healthAndCareCapMonth}
-                      combinedGrossMonthly={
-                        selectedResults.reduce((s, r) => s + r.grossMonthlyPayout, 0) +
-                        simulation.statutoryPension.grossMonthlyPension
-                      }
+                      combinedGrossMonthly={simulation.statutoryPension.grossMonthlyPension}
                       healthStatus={
                         !profile.publicHealthInsurance
                           ? 'pkv'
-                          : taxModes.kvdrMember
-                            ? 'kvdr'
-                            : 'freiwillig_gkv'
+                          : (assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr')
                       }
                     />
                   )}
