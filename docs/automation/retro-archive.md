@@ -2779,3 +2779,25 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A named component/helper target for the new Sensitivität leaf would make Stage 2 less likely to accidentally reuse the old generic chart fallthrough.
+
+---
+date: 2026-05-13T15:03:00Z
+issue: 247
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [bug, area:ui-only]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The slug rename was purely in `vergleichPanes.ts` (type union + `ALL_VERGLEICH_PANES` array) and `VergleichSidebar.tsx` line 65 (`{ id: ... }`). Calculator.tsx had no direct slug references for this leaf — the handoff mention was precautionary.
+- The fix is 3 one-line edits across 2 files; the Stage 1 test fully specified both assertions (slug in `ALL_VERGLEICH_PANES` and `onPaneChange` call value), so the minimal fix scope was clear from the test.
+
+## What would have helped
+
+- The handoff flagged Calculator.tsx and sensitivity.ts as potential edit sites; a quick grep before reading those files would have immediately scoped the fix to just the two files above.
