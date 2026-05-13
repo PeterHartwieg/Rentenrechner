@@ -2237,3 +2237,31 @@ labels: [enhancement, area:ui-only, in-progress-by-agent]
 ## What would have helped
 
 - A repo-local PowerShell-safe wrapper or documented quoting variant for the required `gh issue view --jq` label verification command.
+
+---
+date: 2026-05-13T08:10:00Z
+issue: 239
+pr: null
+stage: implement
+outcome: ready-for-human
+labels: [enhancement, area:ui-only]
+---
+
+## Blockers
+
+- Stage 1's failing test (`src/App.vergleich-sidebar.test.tsx`) contains a logical contradiction that makes it impossible to pass. Lines 49 and 51:
+  ```js
+  expect(sidebar.textContent).toContain('Break-Even')   // sidebar is nav inside container
+  expect(container.textContent).not.toContain('Break-Even')
+  ```
+  `sidebar` is obtained via `container.querySelector(...)`, making it a descendant of `container`. If `sidebar.textContent` contains 'Break-Even', `container.textContent` must too — DOM `textContent` recursively concatenates all text descendants. No implementation trick resolves this: CSS visibility, `aria-hidden`, and React portals all fail for different reasons.
+
+## Learnings
+
+- The `BreakEvenChart` renders visible text "Break-Even-Alter" in an accessible `<th>` at line 691, and "Break-Even-Chart" only as an aria-label (not in textContent). So the `not.toContain('Break-Even')` check would be meaningful if the chart is not rendered — it would check for the `<th>` text — but that test intent is undermined by the nav label containing the same substring.
+- The most likely fix for the human: replace `container.textContent` with `container.querySelector('.vergleich-main-pane')?.textContent` (or whatever class the main pane area uses) so the nav is excluded from the check.
+- Issue #239's acceptance criteria has a tension: "Kapital leaf renders CapitalChart as a dedicated full-width pane (no other charts visible)" vs "all other leaves still render their existing component inline as a transitional stub". The test resolves this ambiguity in favor of only-CapitalChart-visible when on Kapital pane.
+
+## What would have helped
+
+- Stage 1 running the test with a trial implementation would have caught the contradiction before handing off to Stage 2.
