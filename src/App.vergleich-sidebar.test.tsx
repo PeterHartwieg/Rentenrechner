@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import App from './App'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import { buildStateJson, STORAGE_KEY_V1 } from './storage'
+import { ALL_VERGLEICH_PANES } from './features/results/vergleichPanes'
 
 afterEach(() => {
   cleanup()
@@ -116,5 +117,42 @@ describe('App - Vergleich pane sidebar (#239)', () => {
     expect(
       await screen.findByRole('button', { name: /Fairness/ }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('App - migrated Vergleich panes (#240)', () => {
+  it('declares the implemented pane slugs as deep-linkable panes', () => {
+    expect(ALL_VERGLEICH_PANES).toEqual(
+      expect.arrayContaining([
+        'rente',
+        'break-even',
+        'fee-drag',
+        'monte-carlo',
+        'fairness',
+      ]),
+    )
+  })
+
+  it('opens the Fee Drag pane from ?pane=fee-drag and isolates FeeDragChart', async () => {
+    seedState()
+    window.history.pushState(null, '', '/?view=vergleich&pane=fee-drag')
+
+    render(<App />)
+    await waitForCalculator()
+
+    const feeDragLeaf = await screen.findByRole('button', { name: /Fee Drag/ })
+    expect(feeDragLeaf).toHaveAttribute('aria-current', 'page')
+    expect(
+      screen.getByRole('heading', { name: /Geb.hren-Vergleich/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Verm.gen bis Rentenbeginn/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Monatliche Netto-Rente/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
+    ).not.toBeInTheDocument()
   })
 })
