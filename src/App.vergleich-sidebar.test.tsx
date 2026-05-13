@@ -180,5 +180,23 @@ describe('App - migrated Vergleich panes (#240)', () => {
     expect(
       screen.queryByRole('heading', { name: /Kapital und Auszahlungen im Alter/ }),
     ).not.toBeInTheDocument()
+
+    // Product selector present
+    const productSelect = screen.getByRole('combobox', { name: /Produkt/i })
+    expect(productSelect).toBeInTheDocument()
+
+    // ETF is first in the registry (order 0) and renders as default
+    // Brutto and Netto always present regardless of product
+    expect(screen.getByText('Brutto-Auszahlung')).toBeInTheDocument()
+    expect(screen.getByText('= Netto-Auszahlung')).toBeInTheDocument()
+    // ETF subtotal label
+    expect(screen.getByText('= Steuerpflichtiger Anteil')).toBeInTheDocument()
+
+    // Switch to bAV to verify bAV-specific cohort-aware stages
+    fireEvent.change(productSelect, { target: { value: 'bav' } })
+    // bAV waterfall uses calculateRetirementTax: shows zvE subtotal
+    expect(screen.getByText('= zu versteuerndes Einkommen')).toBeInTheDocument()
+    // Income tax stage (Einkommensteuer) rendered for bAV
+    expect(screen.getByText('− Einkommensteuer')).toBeInTheDocument()
   })
 })

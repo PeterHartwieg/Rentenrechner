@@ -682,7 +682,12 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                   )}
 
                   {vergleichPane === 'steuer-wasserfall' && (
-                    <SteuerWasserfallPanel selectedResults={selectedResults} />
+                    <SteuerWasserfallPanel
+                      selectedResults={selectedResults}
+                      profile={profile}
+                      rules={de2026Rules}
+                      taxModes={taxModes}
+                    />
                   )}
 
                   {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall') && (
