@@ -156,6 +156,7 @@ jobs:
             if [ "$mergeable_state" = "DIRTY" ]; then
               echo "Branch is DIRTY — dispatching merge-conflict repair workflow and deferring merge."
               gh workflow run resolve-merge-conflict.yml \
+                --repo "$REPO" \
                 -f pr_number="$pr" \
                 -f pr_title="$pr_title" \
                 -f head_sha="$head_sha" \
