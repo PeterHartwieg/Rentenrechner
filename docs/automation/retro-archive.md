@@ -2501,3 +2501,27 @@ labels: [feature, area:ui-only]
 ## What would have helped
 
 - Knowing upfront that `App.vergleich-sidebar.test.tsx` had a `defaults to the Kapital pane` test keyed to the previous default — Stage 1 could have flagged this as a test to update rather than keep.
+
+---
+date: 2026-05-13T12:15:00Z
+issue: 242
+pr: 252
+stage: implement
+outcome: pr-opened
+labels: [feature, area:ui-only]
+---
+
+## Blockers
+
+- TypeScript errors in `LifetimeIncomeChart.tsx` on first pass: (1) used `TooltipProps` instead of the correct `TooltipContentProps` from `recharts/types/component/Tooltip`; (2) passed tooltip component as a JSX element `<LifetimeTooltip labelToName={...} />` instead of a render prop `(props) => <LifetimeTooltip {...props} labelToName={...} />`; (3) called `useFeedbackTarget` with a string instead of a `FeedbackTargetSpec` object. Required one extra tsc -b round-trip to catch and fix.
+
+## Learnings
+
+- `BreakEvenChart.tsx` is the canonical reference for Recharts patterns in this codebase: `TooltipContentProps` import path (`recharts/types/component/Tooltip`), render-prop `content` pattern, `useFeedbackTarget({ id, label, precision })` object arg, and `{ targetProps }` spread onto the host element.
+- The `app-bridge.test.tsx` failure in the full suite is a known timing flake — it passes reliably in isolation. Instruction says to confirm in isolation before blaming your change; doing so quickly avoids a false alarm.
+- The pane isolation pattern in `Calculator.tsx` uses negation conditions: each chart renders unless its own slug exclusions match. Adding a new isolated pane requires: (1) an affirmative `vergleichPane === 'slug'` block for the new chart, and (2) `&& vergleichPane !== 'slug'` appended to the three existing exclusion conditions.
+- `buildLifetimeIncomeSeries` duck-types on `'etfPayoutRows' in p` — only `EtfProductResult` carries that field, so the check is safe across the `ProductResult` union without needing a discriminant switch.
+
+## What would have helped
+
+- A note in the handoff explicitly naming `TooltipContentProps` and the render-prop `content` pattern would have saved the extra tsc round-trip.
