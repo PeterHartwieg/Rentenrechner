@@ -2476,3 +2476,28 @@ labels: [enhancement, in-progress-by-agent, ready-for-PR]
 ## What would have helped
 
 - A pane-to-component dispatch table would make missing pane implementations easier to detect than the current negative-condition fallback in `Calculator.tsx`.
+
+---
+date: 2026-05-13T12:10:00Z
+issue: 241
+pr: null
+stage: implement
+outcome: pr-opened
+labels: [feature, area:ui-only]
+---
+
+## Blockers
+
+- `src/App.vergleich-sidebar.test.tsx` had a Stage 1 test (`defaults to the Kapital pane`) that directly conflicted with the default-pane change required by #241. Updated it to assert the new `ueberblick` default; this was an intentional supersession, not a Stage 1 mistake.
+
+## Learnings
+
+- `vergleichPanes.ts` holds `VergleichPaneSlug` union + `ALL_VERGLEICH_PANES` array as the single source of truth for deep-linkable pane slugs. Adding a new pane requires both the type literal and the array entry.
+- `VergleichSidebar.tsx` renders groups with a flat `GroupDef[]`. Adding `paneSlug?: VergleichPaneSlug` to `GroupDef` is the right extension point for clickable group headers — minimal surface change, no rework of the leaf rendering loop.
+- The pane isolation in `Calculator.tsx` is negative filtering (`vergleichPane !== 'x'`). Adding `'ueberblick'` to each exclusion condition correctly hides the raw charts when the overview dashboard is active.
+- `buildFeeDragChartData` from `src/features/results/feeDragChartData.ts` is re-usable from outside `FeeDragChart` — useful for the overview tile total-fees headline.
+- `activePaneLabel` in `VergleichSidebar` must check group-level `paneSlug` before the leaf lookup, or the mobile toggle label shows the raw slug string instead of the human label.
+
+## What would have helped
+
+- Knowing upfront that `App.vergleich-sidebar.test.tsx` had a `defaults to the Kapital pane` test keyed to the previous default — Stage 1 could have flagged this as a test to update rather than keep.
