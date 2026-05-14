@@ -26,7 +26,7 @@ export function buildLifetimeIncomeSeries(
         const row = p.etfPayoutRows.find((r) => r.age === age)
         annual = row ? row.netAnnualPayout : 0
       } else {
-        const payoutActive = p.payoutEndAge === undefined || age <= p.payoutEndAge
+        const payoutActive = p.payoutEndAge === undefined || age < p.payoutEndAge
         annual = payoutActive ? p.netMonthlyPayout * 12 : 0
       }
       cumulative[p.productId] = (cumulative[p.productId] ?? 0) + annual

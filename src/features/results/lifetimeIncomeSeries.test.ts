@@ -82,10 +82,10 @@ describe('buildLifetimeIncomeSeries (#242)', () => {
       horizonAge: 85,
     })
 
-    // 67..82 inclusive = 16 years of payouts
-    const expectedAtEnd = 16 * 500 * 12
+    // payoutEndAge=82 is exclusive: last payout at age 81, so 67..81 = 15 years
+    const expectedAtEnd = 15 * 500 * 12
+    expect(series.find((p) => p.age === 81)?.bav).toBe(expectedAtEnd)
     expect(series.find((p) => p.age === 82)?.bav).toBe(expectedAtEnd)
-    expect(series.find((p) => p.age === 83)?.bav).toBe(expectedAtEnd)
     expect(series.at(-1)?.bav).toBe(expectedAtEnd)
   })
 
