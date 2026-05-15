@@ -88,10 +88,19 @@ repository state is uncertain.
      storage, pure helpers, DOM-testable a11y, and QA tooling behavior.
    - Use `TDD-skip: <reason>` for pure CSS/layout, pure copy, docs, or
      manual-visual-only changes.
-   - If writing a test: install dependencies if needed with separate commands
-     (`npm ci`, then `npm --prefix workers/qa-submit ci`), run
-     `npx vitest run <test-file>`, confirm it fails for the right reason, and
-     commit only that test with `test: failing test for #<N>`.
+   - **Install dependencies first.** Stage 1 runs in an isolated worktree
+     that does not have `node_modules` pre-populated. Before running any
+     `npx vitest run` invocation, always run:
+     ```bash
+     npm ci
+     npm --prefix workers/qa-submit ci  # if workers/qa-submit/package-lock.json exists
+     ```
+     Skipping this causes `vitest/config`, `@vitejs/plugin-react`, and other
+     module resolution failures that look like test-environment errors rather
+     than the actual failing assertion.
+   - If writing a test: run `npx vitest run <test-file>`, confirm it fails
+     for the right reason, and commit only that test with
+     `test: failing test for #<N>`.
    - **Partial fixture cast.** When a test fixture only needs a few fields from
      a large domain result type (`ProductResult`, `CombinedResult`,
      `BavFundingResult`, etc.), cast with `as unknown as <Type>` rather than
