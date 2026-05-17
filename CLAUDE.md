@@ -31,6 +31,7 @@ These apply to every PR shipped by the QA implementer cron (engine/combine/expor
 2. **Paired test assertions.** For combine-mode bugs, the regression test must cover both the compare-mode singleton path (fix must not break it) and a combine-mode multi-instance or transfer case. For export-layer bugs (CSV/PDF), the test must assert the exported cell value or blank directly, not only the helper output.
 3. **Oracle-snapshot guardrail.** Do NOT update oracle snapshots (`simulate.integration.test.ts`, dedicated oracle tests) unless the issue body explicitly states the old oracle was wrong. Oracles pin externally-verified math — if a fix breaks an oracle, the fix is wrong, not the oracle.
 4. **Architectural-invariant naming.** Polish fixes (UI layout, mobile, accessibility, copy) that do not touch engine/tax math must still name the nearest architectural invariant from `CONTEXT.md` in the PR body.
+5. **Stage-2 already-completed detection.** At the start of every Stage 2 (`implement.yml`) run, check `git log --oneline origin/main..HEAD`. If it shows **two or more commits** (a test commit and an implementation commit), a prior Stage 2 run already completed the fix. Confirm `npm run verify` passes and the PR is open (`gh pr list --head $(git branch --show-current)`), then write the retro and exit — do not re-implement or escalate to `ready-for-human`.
 
 ## Backend boundary
 
