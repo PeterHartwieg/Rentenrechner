@@ -150,6 +150,37 @@
   margin: 0 0 6px;
 }
 
+/* MDX table rendering */
+.public-article table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 16px 0 20px;
+  table-layout: fixed;
+}
+
+.public-article th,
+.public-article td {
+  padding: 8px 12px;
+  border: 1px solid #d9e1ea;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.public-article th {
+  background: #f4f7fb;
+  font-weight: 600;
+  color: #172033;
+  white-space: normal;
+}
+
+.public-article td {
+  color: #344054;
+}
+
 .public-page-footer {
   width: 100%;
   max-width: 760px;
@@ -181,5 +212,11 @@
 
   .public-article {
     padding: 22px 18px;
+  }
+
+  .public-article table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
