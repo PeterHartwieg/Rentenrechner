@@ -18,6 +18,8 @@ import {
   type VergleichPaneSlug,
   ALL_VERGLEICH_PANES,
 } from './features/results/vergleichPanes'
+import { MeinPlanSidebar } from './features/results/MeinPlanSidebar'
+import type { MeinPlanPaneSlug } from './features/results/meinPlanPanes'
 import type { ProductId } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
@@ -90,6 +92,31 @@ import {
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 const PORTFOLIO_COLOR = '#1f2937'
+
+// Compare-mode menu points that don't yet have a dedicated chart. They render
+// an "in Arbeit" placeholder rather than falling back to other charts so the
+// sidebar is honest about coverage.
+const VERGLEICH_STUB_PANES: ReadonlySet<VergleichPaneSlug> = new Set([
+  'lifetime-einkommen',
+  'kv-pv-last',
+  'sequence-of-returns',
+  'rendite',
+  'beitrag',
+  'lebenserwartung',
+  'sens-retirement-age',
+  'fairness',
+])
+
+// Mein-Plan (combine-mode) menu points that don't yet have a dedicated view.
+const MEIN_PLAN_STUB_PANES: ReadonlySet<MeinPlanPaneSlug> = new Set([
+  'monte-carlo',
+  'sequence-of-returns',
+  'inflations-stress',
+  'rendite',
+  'beitrag',
+  'lebenserwartung',
+  'renteneintrittsalter',
+])
 
 
 type ShellTabDef = {
@@ -176,6 +203,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     params.set('pane', pane)
     window.history.pushState(null, '', `${window.location.pathname}?${params.toString()}`)
   }
+  // Active pane for the combine-mode Mein-Plan sidebar.
+  const [meinPlanPane, setMeinPlanPane] = useState<MeinPlanPaneSlug>('ueberblick')
 
   const {
     profile,
@@ -492,54 +521,94 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
       className="workspace-view workspace-view--vergleich"
       {...vergleichSectionProps}
     >
-      {isCombineMode && toolbar}
-
       {portfolioState.mode === 'combine' && combineBasisResult && (
-        <>
-          {/* Issue #20 — top-of-page Rentenlücke dashboard. Combine-mode is
-              where users have multiple Verträge aimed at a target net pension
-              and need the gap as their headline figure. Compare-mode is
-              product-vs-product head-to-head and deliberately omits this. */}
-          <RentenluckeDashboard
-            profile={combineProfile}
-            overview={deriveRentenluckeOverviewFromCombine(
-              portfolioState.workspace,
-              combineBasisResult,
-              combineProfile,
-            )}
-            onTargetChange={(next) =>
-              portfolioState.patchBaseline({
-                profile: {
-                  ...combineProfile,
-                  desiredNetMonthlyPension: next,
-                },
-              })
-            }
-            onAdjustContributions={() => setShowLueckeModal(true)}
-            onOpenOptimiere={() => setShowOptimiereModal(true)}
-            hasActiveInstances={hasActiveOrPaidUpInstances}
-          />
-          {portfolioLifecycleViews.length > 0 && (
-            <BreakEvenChart
-              selectedResults={portfolioLifecycleViews.map((view) => view.result)}
-              productColors={{
-                ...PRODUCT_COLORS,
-                [PORTFOLIO_LIFECYCLE_ID]: PORTFOLIO_COLOR,
-              }}
-              startAge={profile.age}
-              retirementAge={profile.retirementAge}
-              retirementEndAge={portfolioState.workspace.baseline.assumptions.retirementEndAge}
-              bestProductId={PORTFOLIO_LIFECYCLE_ID}
-              singleSelection
-              title="Mein Plan: Kapital und Auszahlungen"
-              description="Zeigt dein zusätzliches Vorsorgeportfolio ohne gesetzliche Rente."
-              grvNetMonthlyPension={combineSimulation.statutoryPension.netMonthlyPension}
-              pensionBaselineType={
-                portfolioState.workspace.baseline.assumptions.statutoryPension.pensionBaselineType
-              }
-              grvContributionTimeline={combineGrvContributionTimeline}
+        <div className="compare-layout">
+          <div className="compare-layout-sidebar">
+            <MeinPlanSidebar
+              activePane={meinPlanPane}
+              onPaneChange={setMeinPlanPane}
             />
-          )}
+          </div>
+
+          <div className="compare-layout-main">
+            {toolbar}
+
+            <div className="vergleich-pane-content">
+              {meinPlanPane === 'ueberblick' && (
+                <RentenluckeDashboard
+                  profile={combineProfile}
+                  overview={deriveRentenluckeOverviewFromCombine(
+                    portfolioState.workspace,
+                    combineBasisResult,
+                    combineProfile,
+                  )}
+                  onTargetChange={(next) =>
+                    portfolioState.patchBaseline({
+                      profile: {
+                        ...combineProfile,
+                        desiredNetMonthlyPension: next,
+                      },
+                    })
+                  }
+                  onAdjustContributions={() => setShowLueckeModal(true)}
+                  onOpenOptimiere={() => setShowOptimiereModal(true)}
+                  hasActiveInstances={hasActiveOrPaidUpInstances}
+                />
+              )}
+
+              {meinPlanPane === 'lifecycle' && (
+                portfolioLifecycleViews.length > 0 ? (
+                  <BreakEvenChart
+                    selectedResults={portfolioLifecycleViews.map((view) => view.result)}
+                    productColors={{
+                      ...PRODUCT_COLORS,
+                      [PORTFOLIO_LIFECYCLE_ID]: PORTFOLIO_COLOR,
+                    }}
+                    startAge={profile.age}
+                    retirementAge={profile.retirementAge}
+                    retirementEndAge={portfolioState.workspace.baseline.assumptions.retirementEndAge}
+                    bestProductId={PORTFOLIO_LIFECYCLE_ID}
+                    singleSelection
+                    title="Mein Plan: Kapital und Auszahlungen"
+                    description="Zeigt dein zusätzliches Vorsorgeportfolio ohne gesetzliche Rente."
+                    grvNetMonthlyPension={combineSimulation.statutoryPension.netMonthlyPension}
+                    pensionBaselineType={
+                      portfolioState.workspace.baseline.assumptions.statutoryPension.pensionBaselineType
+                    }
+                    grvContributionTimeline={combineGrvContributionTimeline}
+                  />
+                ) : (
+                  <section className="vergleich-pane-stub" role="note">
+                    <p>Noch keine aktiven Verträge im Plan — füge unter „Verträge“ einen hinzu.</p>
+                  </section>
+                )
+              )}
+
+              {meinPlanPane === 'einkommen' && (
+                <CombineIncomePanel
+                  combinedResult={combineBasisResult}
+                  perInstanceResults={combineSimulation.perInstance}
+                  scenarioId={combineBasisScenarioId}
+                  scenarioLabel={combineBasisLabel}
+                  instanceEvidenceMaps={combineInstanceEvidenceMaps}
+                />
+              )}
+
+              {meinPlanPane === 'vertraege' && (
+                <AddVertragSection
+                  addInstance={portfolioState.addInstance}
+                  addPopulatedInstance={portfolioState.addPopulatedInstance}
+                />
+              )}
+
+              {MEIN_PLAN_STUB_PANES.has(meinPlanPane) && (
+                <section className="vergleich-pane-stub" role="note">
+                  <p>Diese Ansicht ist noch in Arbeit.</p>
+                </section>
+              )}
+            </div>
+          </div>
+
           {showLueckeModal && (
             <LueckeSchliessenModal
               workspace={portfolioState.workspace}
@@ -566,24 +635,16 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               }}
             />
           )}
-          <CombineIncomePanel
-            combinedResult={combineBasisResult}
-            perInstanceResults={combineSimulation.perInstance}
-            scenarioId={combineBasisScenarioId}
-            scenarioLabel={combineBasisLabel}
-            instanceEvidenceMaps={combineInstanceEvidenceMaps}
-          />
+        </div>
+      )}
+      {portfolioState.mode === 'combine' && !combineBasisResult && (
+        <>
+          {toolbar}
           <AddVertragSection
             addInstance={portfolioState.addInstance}
             addPopulatedInstance={portfolioState.addPopulatedInstance}
           />
         </>
-      )}
-      {portfolioState.mode === 'combine' && !combineBasisResult && (
-        <AddVertragSection
-          addInstance={portfolioState.addInstance}
-          addPopulatedInstance={portfolioState.addPopulatedInstance}
-        />
       )}
 
       {/* Singleton-compare sections gated to compare-mode (Group G issue 11).
@@ -613,49 +674,36 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             />
 
             {hasComparisonSet ? (
-              <>
-                {vergleichPane !== 'entscheidung' && (
-                  <DecisionSummary
-                    results={selectedResults}
-                    bestCapital={bestCapital}
-                    bestPension={bestPension}
-                  />
-                )}
-
-                <MonteCarloHighlights result={monteCarloResult} />
-
-                <SummaryMetrics
-                  grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                  grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
-                  grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
-                  bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
-                  bavTotalMonthlyContribution={
-                    simulation.bavFunding.monthlyGrossConversion +
-                    simulation.bavFunding.monthlyEmployerContribution
-                  }
-                  showBav={assumptions.visibleProducts.includes('bav')}
-                />
-
-                <ProductEditCards
-                  selectedResults={selectedResults}
-                  assumptions={assumptions}
-                  onAssumptionsChange={setAssumptions}
-                  avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
-                  avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
-                  onOpenInputsForProduct={(productId) => {
-                    setRequestedInputsTab(productId)
-                    workspace.setActiveView('angebot')
-                  }}
-                />
-
-                <ResultWaterfalls
-                  results={selectedResults}
-                  grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                />
-
-                <div className="vergleich-pane-content">
-                  {/* Each non-stub slug isolates exactly one chart component. */}
-                  {vergleichPane === 'ueberblick' && (
+              <div className="vergleich-pane-content">
+                {/* Each pane owns the components that belong to it. Components
+                    that previously rendered on every pane (DecisionSummary,
+                    MonteCarloHighlights, SummaryMetrics, ProductEditCards,
+                    ResultWaterfalls) now live on the menu point that matches
+                    their content. */}
+                {vergleichPane === 'ueberblick' && (
+                  <>
+                    <SummaryMetrics
+                      grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+                      grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
+                      grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
+                      bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
+                      bavTotalMonthlyContribution={
+                        simulation.bavFunding.monthlyGrossConversion +
+                        simulation.bavFunding.monthlyEmployerContribution
+                      }
+                      showBav={assumptions.visibleProducts.includes('bav')}
+                    />
+                    <ProductEditCards
+                      selectedResults={selectedResults}
+                      assumptions={assumptions}
+                      onAssumptionsChange={setAssumptions}
+                      avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
+                      avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
+                      onOpenInputsForProduct={(productId) => {
+                        setRequestedInputsTab(productId)
+                        workspace.setActiveView('angebot')
+                      }}
+                    />
                     <VergleichDashboard
                       selectedResults={selectedResults}
                       capitalChartData={capitalChartData}
@@ -670,75 +718,91 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                       retirementEndAge={assumptions.retirementEndAge}
                       onNavigate={handleVergleichPaneChange}
                     />
-                  )}
+                  </>
+                )}
 
-                  {vergleichPane === 'entscheidung' && (
-                    <DecisionSummary
+                {vergleichPane === 'entscheidung' && (
+                  <DecisionSummary
+                    results={selectedResults}
+                    bestCapital={bestCapital}
+                    bestPension={bestPension}
+                  />
+                )}
+
+                {vergleichPane === 'kapital' && (
+                  <CapitalChart
+                    capitalChartData={capitalChartData}
+                    selectedScenario={selectedScenario}
+                    selectedResults={selectedResults}
+                    productColors={PRODUCT_COLORS}
+                  />
+                )}
+
+                {vergleichPane === 'rente' && (
+                  <PensionChart
+                    pensionBars={pensionBars}
+                    retirementEndAge={assumptions.retirementEndAge}
+                  />
+                )}
+
+                {vergleichPane === 'break-even' && (
+                  <BreakEvenChart
+                    selectedResults={selectedResults}
+                    productColors={PRODUCT_COLORS}
+                    startAge={profile.age}
+                    retirementAge={profile.retirementAge}
+                    retirementEndAge={assumptions.retirementEndAge}
+                    bestProductId={bestCapital?.productId}
+                    grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
+                    pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
+                    grvContributionTimeline={compareGrvContributionTimeline}
+                  />
+                )}
+
+                {vergleichPane === 'fee-drag' && (
+                  <FeeDragChart
+                    selectedResults={selectedResults}
+                    productColors={PRODUCT_COLORS}
+                    retirementAge={profile.retirementAge}
+                    retirementEndAge={assumptions.retirementEndAge}
+                  />
+                )}
+
+                {vergleichPane === 'steuer-wasserfall' && (
+                  <>
+                    <ResultWaterfalls
                       results={selectedResults}
-                      bestCapital={bestCapital}
-                      bestPension={bestPension}
+                      grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
                     />
-                  )}
-
-                  {vergleichPane === 'fee-drag' && (
-                    <FeeDragChart
-                      selectedResults={selectedResults}
-                      productColors={PRODUCT_COLORS}
-                      retirementAge={profile.retirementAge}
-                      retirementEndAge={assumptions.retirementEndAge}
-                    />
-                  )}
-
-                  {vergleichPane === 'steuer-wasserfall' && (
                     <SteuerWasserfallPanel
                       selectedResults={selectedResults}
                       profile={profile}
                       rules={de2026Rules}
                       taxModes={taxModes}
                     />
-                  )}
+                  </>
+                )}
 
-                  {vergleichPane === 'inflations-stress' && (
-                    <InflationStressPanel
-                      selectedResults={selectedResults}
-                      productColors={PRODUCT_COLORS}
-                      retirementAge={profile.retirementAge}
-                      retirementEndAge={assumptions.retirementEndAge}
-                      inflationRate={assumptions.inflationRate}
-                    />
-                  )}
+                {vergleichPane === 'monte-carlo' && (
+                  <MonteCarloHighlights result={monteCarloResult} />
+                )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'rente' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'inflations-stress') && (
-                    <CapitalChart
-                      capitalChartData={capitalChartData}
-                      selectedScenario={selectedScenario}
-                      selectedResults={selectedResults}
-                      productColors={PRODUCT_COLORS}
-                    />
-                  )}
+                {vergleichPane === 'inflations-stress' && (
+                  <InflationStressPanel
+                    selectedResults={selectedResults}
+                    productColors={PRODUCT_COLORS}
+                    retirementAge={profile.retirementAge}
+                    retirementEndAge={assumptions.retirementEndAge}
+                    inflationRate={assumptions.inflationRate}
+                  />
+                )}
 
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'break-even' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'inflations-stress') && (
-                    <PensionChart
-                      pensionBars={pensionBars}
-                      retirementEndAge={assumptions.retirementEndAge}
-                    />
-                  )}
-
-                  {(vergleichPane !== 'ueberblick' && vergleichPane !== 'entscheidung' && vergleichPane !== 'kapital' && vergleichPane !== 'rente' && vergleichPane !== 'fee-drag' && vergleichPane !== 'steuer-wasserfall' && vergleichPane !== 'inflations-stress') && (
-                    <BreakEvenChart
-                      selectedResults={selectedResults}
-                      productColors={PRODUCT_COLORS}
-                      startAge={profile.age}
-                      retirementAge={profile.retirementAge}
-                      retirementEndAge={assumptions.retirementEndAge}
-                      bestProductId={bestCapital?.productId}
-                      grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                      pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
-                      grvContributionTimeline={compareGrvContributionTimeline}
-                    />
-                  )}
-                </div>
-              </>
+                {VERGLEICH_STUB_PANES.has(vergleichPane) && (
+                  <section className="vergleich-pane-stub" role="note">
+                    <p>Diese Ansicht ist noch in Arbeit.</p>
+                  </section>
+                )}
+              </div>
             ) : (
               <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
             )}

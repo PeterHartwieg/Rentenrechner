@@ -661,6 +661,18 @@ th {
   gap: 18px;
 }
 
+.vergleich-pane-stub {
+  padding: 18px 20px;
+  border: 1px dashed #c9d7e5;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #475467;
+}
+
+.vergleich-pane-stub p {
+  margin: 0;
+}
+
 .vergleich-sidebar {
   display: flex;
   flex-direction: column;
