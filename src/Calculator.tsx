@@ -108,8 +108,9 @@ const VERGLEICH_STUB_PANES: ReadonlySet<VergleichPaneSlug> = new Set([
 ])
 
 // Mein-Plan (combine-mode) menu points that don't yet have a dedicated view.
+// Monte-Carlo is not in this set: its pane has its own branch that handles the
+// MC-disabled state with a specific message.
 const MEIN_PLAN_STUB_PANES: ReadonlySet<MeinPlanPaneSlug> = new Set([
-  'monte-carlo',
   'sequence-of-returns',
   'inflations-stress',
   'rendite',
@@ -521,7 +522,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
       className="workspace-view workspace-view--vergleich"
       {...vergleichSectionProps}
     >
-      {portfolioState.mode === 'combine' && combineBasisResult && (
+      {portfolioState.mode === 'combine' && (
         <div className="compare-layout">
           <div className="compare-layout-sidebar">
             <MeinPlanSidebar
@@ -535,37 +536,43 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
 
             <div className="vergleich-pane-content">
               {meinPlanPane === 'ueberblick' && (
-                <RentenluckeDashboard
-                  profile={combineProfile}
-                  overview={deriveRentenluckeOverviewFromCombine(
-                    portfolioState.workspace,
-                    combineBasisResult,
-                    combineProfile,
-                  )}
-                  onTargetChange={(next) =>
-                    portfolioState.patchBaseline({
-                      profile: {
-                        ...combineProfile,
-                        desiredNetMonthlyPension: next,
-                      },
-                    })
-                  }
-                  onAdjustContributions={() => setShowLueckeModal(true)}
-                  onOpenOptimiere={() => setShowOptimiereModal(true)}
-                  hasActiveInstances={hasActiveOrPaidUpInstances}
-                />
+                combineBasisResult ? (
+                  <RentenluckeDashboard
+                    profile={combineProfile}
+                    overview={deriveRentenluckeOverviewFromCombine(
+                      portfolioState.workspace,
+                      combineBasisResult,
+                      combineProfile,
+                    )}
+                    onTargetChange={(next) =>
+                      portfolioState.patchBaseline({
+                        profile: {
+                          ...combineProfile,
+                          desiredNetMonthlyPension: next,
+                        },
+                      })
+                    }
+                    onAdjustContributions={() => setShowLueckeModal(true)}
+                    onOpenOptimiere={() => setShowOptimiereModal(true)}
+                    hasActiveInstances={hasActiveOrPaidUpInstances}
+                  />
+                ) : (
+                  <section className="vergleich-pane-stub" role="note">
+                    <p>Noch keine Verträge im Plan — füge unter „Verträge“ deinen ersten Vertrag hinzu.</p>
+                  </section>
+                )
               )}
 
               {meinPlanPane === 'lifecycle' && (
-                portfolioLifecycleViews.length > 0 ? (
+                combineBasisResult && portfolioLifecycleViews.length > 0 ? (
                   <BreakEvenChart
                     selectedResults={portfolioLifecycleViews.map((view) => view.result)}
                     productColors={{
                       ...PRODUCT_COLORS,
                       [PORTFOLIO_LIFECYCLE_ID]: PORTFOLIO_COLOR,
                     }}
-                    startAge={profile.age}
-                    retirementAge={profile.retirementAge}
+                    startAge={combineProfile.age}
+                    retirementAge={combineProfile.retirementAge}
                     retirementEndAge={portfolioState.workspace.baseline.assumptions.retirementEndAge}
                     bestProductId={PORTFOLIO_LIFECYCLE_ID}
                     singleSelection
@@ -585,13 +592,19 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               )}
 
               {meinPlanPane === 'einkommen' && (
-                <CombineIncomePanel
-                  combinedResult={combineBasisResult}
-                  perInstanceResults={combineSimulation.perInstance}
-                  scenarioId={combineBasisScenarioId}
-                  scenarioLabel={combineBasisLabel}
-                  instanceEvidenceMaps={combineInstanceEvidenceMaps}
-                />
+                combineBasisResult ? (
+                  <CombineIncomePanel
+                    combinedResult={combineBasisResult}
+                    perInstanceResults={combineSimulation.perInstance}
+                    scenarioId={combineBasisScenarioId}
+                    scenarioLabel={combineBasisLabel}
+                    instanceEvidenceMaps={combineInstanceEvidenceMaps}
+                  />
+                ) : (
+                  <section className="vergleich-pane-stub" role="note">
+                    <p>Noch keine Verträge im Plan — füge unter „Verträge“ einen hinzu.</p>
+                  </section>
+                )
               )}
 
               {meinPlanPane === 'vertraege' && (
@@ -599,6 +612,16 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                   addInstance={portfolioState.addInstance}
                   addPopulatedInstance={portfolioState.addPopulatedInstance}
                 />
+              )}
+
+              {meinPlanPane === 'monte-carlo' && (
+                monteCarloResult ? (
+                  <MonteCarloHighlights result={monteCarloResult} />
+                ) : (
+                  <section className="vergleich-pane-stub" role="note">
+                    <p>Monte-Carlo ist im Szenario-Toolbar deaktiviert. Aktiviere es, um Risiko-Highlights zu sehen.</p>
+                  </section>
+                )
               )}
 
               {MEIN_PLAN_STUB_PANES.has(meinPlanPane) && (
@@ -609,7 +632,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             </div>
           </div>
 
-          {showLueckeModal && (
+          {showLueckeModal && combineBasisResult && (
             <LueckeSchliessenModal
               workspace={portfolioState.workspace}
               baselineCombined={combineBasisResult}
@@ -623,7 +646,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               }}
             />
           )}
-          {showOptimiereModal && (
+          {showOptimiereModal && combineBasisResult && (
             <OptimiereVorsorgeModal
               workspace={portfolioState.workspace}
               baselineCombined={combineBasisResult}
@@ -636,15 +659,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             />
           )}
         </div>
-      )}
-      {portfolioState.mode === 'combine' && !combineBasisResult && (
-        <>
-          {toolbar}
-          <AddVertragSection
-            addInstance={portfolioState.addInstance}
-            addPopulatedInstance={portfolioState.addPopulatedInstance}
-          />
-        </>
       )}
 
       {/* Singleton-compare sections gated to compare-mode (Group G issue 11).
@@ -784,7 +798,13 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 )}
 
                 {vergleichPane === 'monte-carlo' && (
-                  <MonteCarloHighlights result={monteCarloResult} />
+                  monteCarloResult ? (
+                    <MonteCarloHighlights result={monteCarloResult} />
+                  ) : (
+                    <section className="vergleich-pane-stub" role="note">
+                      <p>Monte-Carlo ist im Szenario-Toolbar deaktiviert. Aktiviere es, um Risiko-Highlights zu sehen.</p>
+                    </section>
+                  )
                 )}
 
                 {vergleichPane === 'inflations-stress' && (
