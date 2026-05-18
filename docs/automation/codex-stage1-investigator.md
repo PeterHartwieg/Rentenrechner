@@ -115,6 +115,14 @@ repository state is uncertain.
      always return `true`. If the test only exercises a product subset, either
      filter results by `visibleProducts` or zero out the unwanted product
      arrays in the workspace after migration.
+   - **`GermanRules` field paths are grouped sub-objects.** When a test or
+     handoff references `de2026Rules.*`, verify the full path via
+     `src/domain/rules.ts` before assuming a top-level field. The monthly
+     KV/PV BBG cap, for example, lives at
+     `de2026Rules.socialSecurity.healthAndCareCapMonth` — a top-level
+     `de2026Rules.healthAndCareCapMonth` access compiles but fails
+     `npm run verify` (tsc -b) with a type error, costing Stage 2 an
+     extra iteration. Mention the exact nested path in the handoff.
    - If the new test passes today, your reproduction is wrong; exit through
      the already-correct path.
 8. Push `agent/issue-<N>`.
