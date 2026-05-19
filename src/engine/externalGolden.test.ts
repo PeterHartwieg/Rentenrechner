@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile, defaultRiesterAssumptions } from '../data/defaultScenario'
 import type { PersonalProfile } from '../domain'
-import { besteuerungsanteilGrv, de2026Rules, versorgungsfreibetrag } from '../rules/de2026'
+import { de2026Rules } from '../rules/de2026'
+import { besteuerungsanteilGrv, versorgungsfreibetrag } from '../rules/legalConstants'
 import {
   bavContributionLimitGoldenValues,
   bavFundingBoundaryGoldenCases,

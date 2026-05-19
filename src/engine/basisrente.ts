@@ -33,8 +33,7 @@ import type {
   PersonalProfile,
   SalaryResult,
 } from '../domain'
-import { besteuerungsanteilGrv } from '../rules/de2026'
-import { legalConstants } from '../rules/legalConstants'
+import { besteuerungsanteilGrv, legalConstants } from '../rules/legalConstants'
 import {
   calculateMonthlyRetirementPayout,
   type RetirementHealthStatus,

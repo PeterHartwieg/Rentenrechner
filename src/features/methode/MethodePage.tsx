@@ -3,14 +3,15 @@ import './MethodePage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR, activeRules, legalConstants } from '../../rules'
-import { ertragsanteilByAge } from '../../rules/legalConstants'
 import {
   besteuerungsanteilGrv,
+  ertragsanteilByAge,
+  sonderausgabenPauschbetrag,
   versorgungsfreibetrag,
   werbungskostenPauschalRenten,
   werbungskostenPauschalVersorgungsbezuege,
-  sonderausgabenPauschbetrag,
-} from '../../rules'
+} from '../../rules/legalConstants'
+import { defaultAssumptions } from '../../data/defaultScenario'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { slugify } from '../../utils/slugify'
@@ -57,7 +58,6 @@ const SOURCES: readonly string[] = [
   'BMF-Schreiben 2026-01-13 — Basiszins § 18 InvStG (Vorabpauschale)',
   'SVBezGrV 2026 — Beitragsbemessungsgrenzen, Bezugsgröße, Durchschnittsentgelt (BGBl. 2025 I Nr. 278)',
   'Deutsche Rentenversicherung Bund — Renteninformation und Aktueller Rentenwert (§ 69 SGB VI)',
-  'Altersvorsorgereformgesetz — Bundesrat-Drucksache 206/26 (Altersvorsorgedepot)',
 ]
 
 /**
@@ -125,13 +125,17 @@ export function MethodePage({ navigate }: Props) {
   }, [])
 
   // ─── Renditeannahmen-Tabelle ───────────────────────────────────────────
-  // Aligned with `defaultAssumptions.returnScenarios` (3 % / 5 % / 7 %),
-  // but values are pulled per row via `formatPercent` so the labels render
-  // German-conventionally and the engine remains the source of truth.
+  // Source of truth: `defaultAssumptions.returnScenarios` in
+  // `src/data/defaultScenario.ts`. Look up by `id` (NOT by index — per
+  // CLAUDE.md the array order is [konservativ, basis, optimistisch] but
+  // is not part of the contract; hardcoding `[0]` would silently pick the
+  // wrong scenario if the order ever changes).
+  const scenarioById = (id: 'konservativ' | 'basis' | 'optimistisch'): number =>
+    defaultAssumptions.returnScenarios.find((s) => s.id === id)?.annualReturn ?? 0
   const renditeRows: ReadonlyArray<readonly [string, number, string]> = [
-    ['konservativ', 0.03, 'MSCI World rollierend 30 J., 10er-Quantil'],
-    ['Basis', 0.05, 'Realer Median MSCI World 1900–2025 (~ 5,2 % real)'],
-    ['optimistisch', 0.07, 'MSCI World rollierend 30 J., 90er-Quantil'],
+    ['konservativ', scenarioById('konservativ'), 'MSCI World rollierend 30 J., 10er-Quantil'],
+    ['Basis', scenarioById('basis'), 'Realer Median MSCI World 1900–2025 (~ 5,2 % real)'],
+    ['optimistisch', scenarioById('optimistisch'), 'MSCI World rollierend 30 J., 90er-Quantil'],
   ]
 
   // ─── Statutorische Werte (RULES_YEAR) ─────────────────────────────────
@@ -408,8 +412,8 @@ export function MethodePage({ navigate }: Props) {
                 </h2>
               </div>
               <p className="methode-section-lead">
-                Alle untenstehenden Werte stammen aus{' '}
-                <code className="methode-code">src/rules/de2026.ts</code> und
+                Alle untenstehenden Werte stammen aus dem aktiven Regel-Modul
+                unter <code className="methode-code">src/rules/</code> und
                 werden jährlich nach BMF- / BMAS-Bekanntmachung aktualisiert.
               </p>
               <table

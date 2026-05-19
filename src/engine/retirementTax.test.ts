@@ -12,7 +12,7 @@ import {
   werbungskostenPauschalVersorgungsbezuege,
   werbungskostenPauschalRenten,
   sonderausgabenPauschbetrag,
-} from '../rules/de2026'
+} from '../rules/legalConstants'
 import { de2026Rules } from '../rules/de2026'
 import { calculateRetirementTax } from './retirementTax'
 
