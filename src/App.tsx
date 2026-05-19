@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react'
-import type { Route, AppView } from './app/useRoute'
+import type { AppView } from './app/useRoute'
 import { useRoute, detectSavedMode, appViewFromMode } from './app/useRoute'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { QaFeedbackProvider, QaModeIndicator } from './features/qa-feedback'
@@ -79,6 +79,31 @@ const PageNotFound = lazy(() =>
 
 function App() {
   const { route, navigate } = useRoute()
+
+  // Landing-vs-dashboard decision for route `/`. Lifted into `App` (from the
+  // pre-PR-2 `CalculatorRoute` wrapper) so the top-level `<AppShell>` can read
+  // the view and flip into editorial mode when the LandingPage is showing.
+  // Returning users (`detectSavedMode()` non-null) bypass the landing branch
+  // entirely — they pay the lazy Calculator chunk cost on first paint.
+  const [calculatorView, setCalculatorView] = useState<AppView>(() =>
+    appViewFromMode(detectSavedMode()),
+  )
+  const [pendingChoice, setPendingChoice] = useState<LandingChoice | null>(null)
+
+  function handleLandingChoice(choice: LandingChoice) {
+    // The dashboard's mode + (compare-mode) visibleProducts seed + (combine-
+    // mode) wizard launch all happen inside Calculator's pendingChoice
+    // useEffect. We only flip the view here so the lazy boundary
+    // unsuspends and Calculator mounts.
+    setPendingChoice(choice)
+    setCalculatorView(choice.kind)
+  }
+
+  function handleGoHome() {
+    setCalculatorView('landing')
+    setPendingChoice(null)
+  }
+
   let body: ReactNode
   if (route === '/impressum') body = <ImpressumPage navigate={navigate} />
   else if (route === '/datenschutz') body = <DatenschutzPage navigate={navigate} />
@@ -93,7 +118,24 @@ function App() {
   else if (route === '/rente-netto-berechnen') body = <RenteNettoBerechnePage />
   else if (route === '/altersvorsorgeprodukte-vergleichen') body = <AltersvorsorgeproduktePage />
   else if (route === '/404') body = <PageNotFound />
-  else body = <CalculatorRoute navigate={navigate} />
+  else if (calculatorView === 'landing') {
+    body = <LandingPage onChoice={handleLandingChoice} navigate={navigate} />
+  } else {
+    body = (
+      <Calculator
+        navigate={navigate}
+        pendingChoice={pendingChoice}
+        onPendingChoiceConsumed={() => setPendingChoice(null)}
+        onGoHome={handleGoHome}
+      />
+    )
+  }
+
+  // Editorial mode (cream bg + serif H1) is enabled when the LandingPage is
+  // the current body. PR 3 / PR 4 will extend this set with `/artikel` and
+  // `/methode` once those routes ship.
+  const isEditorial = route === '/' && calculatorView === 'landing'
+
   // QA feedback mode (issue 02 — Phase 1 Lane A). Wraps the entire route
   // surface so the overlay can target legal pages too. Inert when disabled
   // (?qa=1 / ?qa=0 controls activation; sessionStorage persists per session).
@@ -101,65 +143,17 @@ function App() {
   // The single Suspense boundary covers every lazy route component above.
   // For prerendered routes the lazy chunks load after initial paint; the
   // prerendered HTML stays visible until React swaps in the hydrated tree.
-  // Wrap every route in the shared chrome (PR 1). Page bodies are unchanged
-  // for now — subsequent PRs replace them one by one. AppShell takes over
-  // rendering DisclaimerBanner so it sits above the StatusBar; individual
-  // pages must NOT render their own DisclaimerBanner (PrintReport.tsx
-  // remains the only other render path, for the printed report).
+  // Wrap every route in the shared chrome (PR 1). AppShell renders the
+  // DisclaimerBanner above the StatusBar; individual pages must NOT render
+  // their own DisclaimerBanner (PrintReport.tsx remains the only other
+  // render path, for the printed report).
   return (
     <QaFeedbackProvider>
-      <AppShell route={route} navigate={navigate}>
+      <AppShell route={route} navigate={navigate} editorial={isEditorial}>
         <Suspense fallback={null}>{body}</Suspense>
       </AppShell>
       <QaModeIndicator />
     </QaFeedbackProvider>
-  )
-}
-
-interface CalculatorRouteProps {
-  navigate: (target: Route) => void
-}
-
-/**
- * Owner of the landing-vs-dashboard decision for route `/`. Lives in
- * `App.tsx` (not inside the lazy `Calculator`) so a first-time visitor sees
- * the LandingPage from the initial bundle without paying for the calculator
- * chunk. Only when the user clicks a CTA (or is a returning user with saved
- * state) do we suspend on the lazy `Calculator` import.
- *
- * Returning users (`detectSavedMode()` non-null) skip the landing branch
- * entirely; the parent Suspense boundary is the only thing they see while
- * the dashboard chunk loads — typically a single frame on broadband.
- */
-function CalculatorRoute({ navigate }: CalculatorRouteProps) {
-  const [view, setView] = useState<AppView>(() => appViewFromMode(detectSavedMode()))
-  const [pendingChoice, setPendingChoice] = useState<LandingChoice | null>(null)
-
-  function handleLandingChoice(choice: LandingChoice) {
-    // The dashboard's mode + (compare-mode) visibleProducts seed + (combine-
-    // mode) wizard launch all happen inside Calculator's pendingChoice
-    // useEffect. We only flip the local view here so the lazy boundary
-    // unsuspends and Calculator mounts.
-    setPendingChoice(choice)
-    setView(choice.kind)
-  }
-
-  function handleGoHome() {
-    setView('landing')
-    setPendingChoice(null)
-  }
-
-  if (view === 'landing') {
-    return <LandingPage onChoice={handleLandingChoice} navigate={navigate} />
-  }
-
-  return (
-    <Calculator
-      navigate={navigate}
-      pendingChoice={pendingChoice}
-      onPendingChoiceConsumed={() => setPendingChoice(null)}
-      onGoHome={handleGoHome}
-    />
   )
 }
 

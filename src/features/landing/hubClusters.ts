@@ -68,3 +68,45 @@ export const HUB_CLUSTERS: readonly HubCluster[] = [
     ],
   },
 ] as const
+
+// ---------------------------------------------------------------------------
+// Featured articles — editorial right-rail on the Landing page (PR 2).
+//
+// Curated subset of HUB_CLUSTERS links, in display order. Each href MUST
+// match a `link.href` in HUB_CLUSTERS so labels stay consistent — the
+// resolver below walks the clusters once and yields `{ href, label, cluster }`
+// triplets. The cluster heading doubles as the per-article kicker so readers
+// see what topic family the article belongs to without us inventing a
+// separate taxonomy.
+// ---------------------------------------------------------------------------
+
+export interface FeaturedArticle {
+  readonly href: string
+  readonly label: string
+  readonly cluster: string
+}
+
+export const FEATURED_ARTICLE_HREFS: readonly string[] = [
+  '/rentenluecke-rechner/',
+  '/etf-vs-bav/',
+  '/basisrente-rechner/',
+  '/altersvorsorgeprodukte-vergleichen/',
+] as const
+
+export function resolveFeaturedArticles(): readonly FeaturedArticle[] {
+  const out: FeaturedArticle[] = []
+  for (const href of FEATURED_ARTICLE_HREFS) {
+    for (const cluster of HUB_CLUSTERS) {
+      const match = cluster.links.find((l) => l.href === href)
+      if (match) {
+        out.push({ href: match.href, label: match.label, cluster: cluster.heading })
+        break
+      }
+    }
+  }
+  return out
+}
+
+export function countHubArticles(): number {
+  return HUB_CLUSTERS.reduce((acc, c) => acc + c.links.length, 0)
+}
