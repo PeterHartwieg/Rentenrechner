@@ -59,10 +59,16 @@ repository state is uncertain.
    ```
 
    If a blocker issue is still `"open"`, apply `ready-for-human`, remove
-   `in-progress-by-agent`, write a one-line retro entry noting the open
-   blocker, and stop. Do not investigate or write a test. Issues in the
-   `ready-for-agent` queue can have a blocking dependency that has not yet
-   closed; spending an investigation run on them wastes the slot.
+   `ready-for-agent` and `in-progress-by-agent`, write a one-line retro
+   entry noting the open blocker, and stop. Do not investigate or write a
+   test. Issues in the `ready-for-agent` queue can have a blocking
+   dependency that has not yet closed; spending an investigation run on
+   them wastes the slot. Removing `ready-for-agent` prevents the next
+   Stage 1 run from reselecting the same blocked ticket.
+
+   ```bash
+   gh issue edit <N> --add-label ready-for-human --remove-label ready-for-agent
+   ```
 4. Claim it:
 
    ```bash
