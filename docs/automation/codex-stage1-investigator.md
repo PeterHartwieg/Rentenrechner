@@ -50,6 +50,19 @@ repository state is uncertain.
    If none exists, report that there was no work left and stop.
 3. Re-fetch that issue immediately before claiming it. If it no longer has
    `ready-for-agent`, restart the loop and pick the next eligible issue.
+   Also check the issue body for a "Blocked by #X" line referencing another
+   open issue:
+
+   ```bash
+   gh issue view <N> --json body --jq '.body' | grep -i "blocked by"
+   gh issue view <BLOCKER_N> --json state --jq '.state'
+   ```
+
+   If a blocker issue is still `"open"`, apply `ready-for-human`, remove
+   `in-progress-by-agent`, write a one-line retro entry noting the open
+   blocker, and stop. Do not investigate or write a test. Issues in the
+   `ready-for-agent` queue can have a blocking dependency that has not yet
+   closed; spending an investigation run on them wastes the slot.
 4. Claim it:
 
    ```bash
