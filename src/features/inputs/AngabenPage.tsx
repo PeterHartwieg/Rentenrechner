@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import './AngabenPage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
@@ -7,7 +7,11 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import type { PersonalProfile, ScenarioAssumptions } from '../../domain'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
-import { formatPercent } from '../../utils/format'
+import { useViewport } from '../../ui/chrome/useViewport'
+import { AngabenPersonSection } from './sections/AngabenPersonSection'
+import { AngabenEinkommenSection } from './sections/AngabenEinkommenSection'
+import { AngabenRenteneintrittSection } from './sections/AngabenRenteneintrittSection'
+import { AngabenAnnahmenSection } from './sections/AngabenAnnahmenSection'
 
 interface Props {
   navigate?: (target: Route) => void
@@ -60,23 +64,78 @@ const RESOLVED_RENDITEN: Readonly<Record<ScenarioId, number>> = (() => {
   return out
 })()
 
+/**
+ * Right-rail aside card. Renders a single explanation card. The card is
+ * always expanded on tablet + desktop (the kicker is decorative). On phone
+ * the kicker becomes a `<button>` that toggles the card body; markup carries
+ * `aria-expanded` and `aria-controls` per WAI-ARIA disclosure pattern.
+ *
+ * Implementation note: the body is always present in the DOM so screen
+ * readers parse the full source on tablet + desktop without depending on JS
+ * state. On phone, CSS hides the body (`display: none`) when the wrapper
+ * carries `data-open="false"`. Toggling the button updates the data
+ * attribute and the `aria-expanded` value; the body re-displays without a
+ * remount. Keyboard a11y comes for free from the native `<button>` element
+ * (Enter / Space toggle).
+ *
+ * On desktop + tablet, `data-open` is forced to `"true"` and the button
+ * scoping disables the click handler so the card behaves exactly like the
+ * pre-PR-1-round-1 implementation. The kicker keeps its visual `kicker`
+ * styling on desktop + tablet via CSS.
+ */
+function AngabenAsideCard({
+  kicker,
+  bodyId,
+  children,
+}: {
+  kicker: string
+  /** Stable id used by `aria-controls`. Must be unique on the page. */
+  bodyId: string
+  children: ReactNode
+}) {
+  const viewport = useViewport()
+  // Default phone state: collapsed. Desktop + tablet: forced open via CSS,
+  // but `expanded` is still true so the aria-expanded value reads "true" for
+  // assistive tech parsing the rendered DOM.
+  const isPhone = viewport === 'phone'
+  const [open, setOpen] = useState<boolean>(false)
+  const expanded = isPhone ? open : true
+
+  return (
+    <div className="angaben-aside-card" data-open={expanded ? 'true' : 'false'}>
+      <button
+        type="button"
+        className="angaben-aside-toggle"
+        // Disabled on desktop + tablet so users see the kicker as a label
+        // (not a clickable affordance) and screen readers do not surface a
+        // false button. The CSS hides the chevron on those viewports too.
+        // `aria-disabled` is the correct attribute for a button whose role
+        // is intentionally suppressed without removing it from the focus
+        // order in unexpected ways; we additionally use the `disabled`
+        // attribute so click + keyboard activation are both no-ops.
+        disabled={!isPhone}
+        aria-expanded={expanded}
+        aria-controls={bodyId}
+        onClick={() => {
+          if (!isPhone) return
+          setOpen((v) => !v)
+        }}
+      >
+        <span className="angaben-aside-kicker">{kicker}</span>
+        <span className="angaben-aside-chevron" aria-hidden="true">
+          {expanded ? '▾' : '▸'}
+        </span>
+      </button>
+      <div id={bodyId} className="angaben-aside-body-wrap" hidden={isPhone && !open}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // Static labelling for the GKV vs PKV radio (cross-year — kept inline as copy).
-const KV_OPTIONS = [
-  { value: 'gkv', label: 'Gesetzlich (GKV)' },
-  { value: 'pkv', label: 'Privat (PKV)' },
-] as const
-
-const FAMILIENSTAND_OPTIONS = [
-  { value: 'ledig', label: 'ledig' },
-  { value: 'verheiratet', label: 'verheiratet (Splitting)' },
-  { value: 'eingetragene-partnerschaft', label: 'eingetragene Lebenspartnerschaft' },
-] as const
-
-const RETIREMENT_HEALTH_OPTIONS = [
-  { value: 'kvdr', label: 'KVdR (§ 226 SGB V)' },
-  { value: 'freiwillig_gkv', label: 'freiwillige GKV (§ 240 SGB V)' },
-  { value: 'pkv', label: 'PKV in der Rente' },
-] as const
+const FAMILIENSTAND_DEFAULT = 'ledig'
+const BUNDESLAND_DEFAULT = 'Berlin'
 
 /**
  * `/eingaben` — Deine Angaben (PR 5).
@@ -91,8 +150,16 @@ const RETIREMENT_HEALTH_OPTIONS = [
  *   - left rail: sticky TOC of `<h2 id>` anchors with `aria-current`
  *     reflecting the active section + post-hydration scroll-to-hash retry.
  *   - center: H1 (from registry) + lead paragraph + four § sections
- *     (Person / Einkommen / Renteneintritt / Annahmen).
- *   - right rail: "Warum wir das fragen" explanations + storage / source note.
+ *     (Person / Einkommen / Renteneintritt / Annahmen). Each section lives
+ *     in its own file under `sections/AngabenXxxSection.tsx` — the page
+ *     shell is a thin orchestrator that owns ephemeral state and wires the
+ *     setters in. Round-1 review feedback: the inline implementation drifted
+ *     from the `src/features/inputs/sections/` convention used by other
+ *     input surfaces (PayoutModeSection, FeeSection, etc.).
+ *   - right rail: "Warum wir das fragen" explanations + storage / source
+ *     note. On phone each card folds into a button-triggered disclosure
+ *     (round-1 review: the PR objective wanted phone collapse and we shipped
+ *     a CSS-reorder that left both cards expanded).
  *
  * State scope: the page owns ephemeral local state for the form fields so
  * the receipt renders interactively at all three viewports. Engine-side
@@ -119,8 +186,8 @@ export function AngabenPage({ navigate }: Props) {
   // values come from `defaultProfile` + `defaultAssumptions` so the receipt
   // shows realistic numbers from the first render.
   const [profile, setProfile] = useState<PersonalProfile>(defaultProfile)
-  const [familienstand, setFamilienstand] = useState<string>('ledig')
-  const [bundesland, setBundesland] = useState<string>('Berlin')
+  const [familienstand, setFamilienstand] = useState<string>(FAMILIENSTAND_DEFAULT)
+  const [bundesland, setBundesland] = useState<string>(BUNDESLAND_DEFAULT)
   // `retirementHealthStatus` is optional in `GrvAssumptions` (defaults to
   // KVdR semantically); fall back to 'kvdr' if the default scenario does not
   // carry one so the radio always has a checked option.
@@ -167,12 +234,11 @@ export function AngabenPage({ navigate }: Props) {
   // Derived: contribution-cap headroom for the "Brutto" hint.
   // §3 Nr. 63 EStG cap, computed from `activeRules` (no statutory literals
   // are rendered inline as values — only as paragraph citations).
-  const bavTaxFreeAnnual =
-    activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap
-  const bavTaxFreeMonthly = bavTaxFreeAnnual / 12
-
-  // Inflation control toggles the inflation rate around an Expert-mode default.
-  const inflationEnabled = assumptions.inflationRate > 0
+  const bavTaxFreeMonthly = useMemo(
+    () =>
+      (activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap) / 12,
+    [],
+  )
 
   return (
     <div className="angaben-shell">
@@ -237,524 +303,58 @@ export function AngabenPage({ navigate }: Props) {
               gesetzt und keine Identifier persistiert.
             </div>
 
-            {/* ─── § 1 Person ─────────────────────────────────────────── */}
-            <section className="angaben-section">
-              <div className="angaben-section-head">
-                <span className="angaben-section-num">{SECTIONS[0].n}</span>
-                <h2 id={SECTIONS[0].id} className="angaben-section-title">
-                  {SECTIONS[0].title}
-                </h2>
-              </div>
-              <p className="angaben-section-lead">
-                Geburtsjahr, Familienstand und Krankenversicherung. Treiben die
-                Kohortenwerte für Versorgungsfreibetrag und Besteuerungsanteil
-                sowie den Splittingtarif.
-              </p>
+            <AngabenPersonSection
+              profile={profile}
+              setProfile={setProfile}
+              familienstand={familienstand}
+              setFamilienstand={setFamilienstand}
+              bundesland={bundesland}
+              setBundesland={setBundesland}
+              num={SECTIONS[0].n}
+              id={SECTIONS[0].id}
+              title={SECTIONS[0].title}
+            />
 
-              <div className="angaben-fields">
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Alter</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="number"
-                      min={18}
-                      max={profile.retirementAge - 1}
-                      value={profile.age}
-                      onChange={(e) =>
-                        setProfile((p) => ({ ...p, age: Number(e.target.value) }))
-                      }
-                    />
-                    <span className="angaben-field-suffix">Jahre</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Geburtsjahr fixiert Kohortenwerte (§ 22 Nr. 1, § 19 Abs. 2 EStG)
-                    </span>
-                  </span>
-                </label>
+            <AngabenEinkommenSection
+              profile={profile}
+              setProfile={setProfile}
+              assumptions={assumptions}
+              setAssumptions={setAssumptions}
+              bavTaxFreeMonthly={bavTaxFreeMonthly}
+              num={SECTIONS[1].n}
+              id={SECTIONS[1].id}
+              title={SECTIONS[1].title}
+            />
 
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Familienstand</span>
-                  <span className="angaben-field-shell">
-                    <select
-                      value={familienstand}
-                      onChange={(e) => setFamilienstand(e.target.value)}
-                    >
-                      {FAMILIENSTAND_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="angaben-field-caret" aria-hidden="true">▾</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Ehegattensplitting nach § 32a Abs. 5 EStG
-                    </span>
-                  </span>
-                </label>
+            <AngabenRenteneintrittSection
+              profile={profile}
+              setProfile={setProfile}
+              assumptions={assumptions}
+              setAssumptions={setAssumptions}
+              retirementHealthStatus={retirementHealthStatus}
+              setRetirementHealthStatus={setRetirementHealthStatus}
+              num={SECTIONS[2].n}
+              id={SECTIONS[2].id}
+              title={SECTIONS[2].title}
+            />
 
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Bundesland</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="text"
-                      value={bundesland}
-                      onChange={(e) => setBundesland(e.target.value)}
-                    />
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Kirchensteuersatz Bayern/BW vs. übrige Länder
-                    </span>
-                  </span>
-                </label>
-
-                <div className="angaben-field">
-                  <span className="angaben-field-label">Krankenversicherung</span>
-                  <div className="angaben-radio-group">
-                    {KV_OPTIONS.map((opt) => (
-                      <label key={opt.value} className="angaben-radio">
-                        <input
-                          type="radio"
-                          name="kv"
-                          checked={
-                            opt.value === (profile.publicHealthInsurance ? 'gkv' : 'pkv')
-                          }
-                          onChange={() =>
-                            setProfile((p) => ({
-                              ...p,
-                              publicHealthInsurance: opt.value === 'gkv',
-                            }))
-                          }
-                        />
-                        <span>{opt.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Kinder (Anzahl)</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={profile.childBirthYears.length}
-                      onChange={(e) => {
-                        const n = Math.max(0, Math.min(10, Number(e.target.value)))
-                        setProfile((p) => {
-                          const current = p.childBirthYears
-                          if (n === current.length) return p
-                          if (n > current.length) {
-                            // Default to 5 years before RULES_YEAR for new entries.
-                            const extra = Array.from(
-                              { length: n - current.length },
-                              () => RULES_YEAR - 5,
-                            )
-                            return { ...p, childBirthYears: [...current, ...extra] }
-                          }
-                          return { ...p, childBirthYears: current.slice(0, n) }
-                        })
-                      }}
-                    />
-                    <span className="angaben-field-suffix">Kinder</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Pflegebeiträge-Zuschlag (§ 55 SGB XI) und Riester-Kinderzulagen
-                    </span>
-                  </span>
-                </label>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Kirchensteuer</span>
-                  <span className="angaben-check">
-                    <input
-                      type="checkbox"
-                      checked={profile.churchTax}
-                      onChange={(e) =>
-                        setProfile((p) => ({ ...p, churchTax: e.target.checked }))
-                      }
-                    />
-                    <span>kirchensteuerpflichtig</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Auf Einkommen- und Kapitalertragsteuer; Satz je Bundesland
-                    </span>
-                  </span>
-                </label>
-              </div>
-            </section>
-
-            {/* ─── § 2 Einkommen ──────────────────────────────────────── */}
-            <section className="angaben-section">
-              <div className="angaben-section-head">
-                <span className="angaben-section-num">{SECTIONS[1].n}</span>
-                <h2 id={SECTIONS[1].id} className="angaben-section-title">
-                  {SECTIONS[1].title}
-                </h2>
-              </div>
-              <p className="angaben-section-lead">
-                Bruttogehalt steuert Lohnsteuer, Vorsorgepauschale und die
-                Förderhöchstbeträge der betrieblichen Altersvorsorge.
-              </p>
-
-              <div className="angaben-fields">
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Bruttoeinkommen pro Jahr</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="number"
-                      min={0}
-                      step={500}
-                      value={profile.grossSalaryYear}
-                      onChange={(e) =>
-                        setProfile((p) => ({
-                          ...p,
-                          grossSalaryYear: Math.max(0, Number(e.target.value)),
-                        }))
-                      }
-                    />
-                    <span className="angaben-field-suffix">EUR p.a.</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Vorsorgepauschale § 39b EStG; § 3 Nr. 63 EStG / § 1 SvEV
-                    </span>
-                  </span>
-                </label>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">bAV-Brutto pro Monat</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="number"
-                      min={0}
-                      step={10}
-                      value={assumptions.bav.monthlyGrossConversion}
-                      onChange={(e) =>
-                        setAssumptions((a) => ({
-                          ...a,
-                          bav: {
-                            ...a.bav,
-                            monthlyGrossConversion: Math.max(0, Number(e.target.value)),
-                          },
-                        }))
-                      }
-                    />
-                    <span className="angaben-field-suffix">EUR mtl.</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Voll steuer- und SV-frei bis ca. {Math.round(bavTaxFreeMonthly)} EUR/Monat
-                      (§ 3 Nr. 63 EStG)
-                    </span>
-                  </span>
-                </label>
-
-                {profile.publicHealthInsurance && (
-                  <label className="angaben-field">
-                    <span className="angaben-field-label">GKV-Zusatzbeitrag</span>
-                    <span className="angaben-field-shell">
-                      <input
-                        type="number"
-                        min={0}
-                        max={5}
-                        step={0.1}
-                        value={profile.healthAdditionalContributionPct}
-                        onChange={(e) =>
-                          setProfile((p) => ({
-                            ...p,
-                            healthAdditionalContributionPct: Math.max(0, Number(e.target.value)),
-                          }))
-                        }
-                      />
-                      <span className="angaben-field-suffix">% p.a.</span>
-                    </span>
-                    <span className="angaben-field-meta">
-                      <span className="angaben-field-hint">
-                        Kassenindividuell; Lohnsteuer-PAP nutzt diesen Wert direkt
-                      </span>
-                    </span>
-                  </label>
-                )}
-
-                {!profile.publicHealthInsurance && (
-                  <label className="angaben-field">
-                    <span className="angaben-field-label">PKV-Prämie (KV)</span>
-                    <span className="angaben-field-shell">
-                      <input
-                        type="number"
-                        min={0}
-                        step={10}
-                        value={profile.pkvMonthlyPremium}
-                        onChange={(e) =>
-                          setProfile((p) => ({
-                            ...p,
-                            pkvMonthlyPremium: Math.max(0, Number(e.target.value)),
-                          }))
-                        }
-                      />
-                      <span className="angaben-field-suffix">EUR mtl.</span>
-                    </span>
-                    <span className="angaben-field-meta">
-                      <span className="angaben-field-hint">
-                        Beitragszuschuss § 257 SGB V; Teilbeträge gehen in die Vorsorgepauschale
-                      </span>
-                    </span>
-                  </label>
-                )}
-              </div>
-            </section>
-
-            {/* ─── § 3 Renteneintritt ─────────────────────────────────── */}
-            <section className="angaben-section">
-              <div className="angaben-section-head">
-                <span className="angaben-section-num">{SECTIONS[2].n}</span>
-                <h2 id={SECTIONS[2].id} className="angaben-section-title">
-                  {SECTIONS[2].title}
-                </h2>
-              </div>
-              <p className="angaben-section-lead">
-                Renteneintrittsalter und Status in der Krankenversicherung der
-                Rentner fixieren Besteuerungsanteil und Versorgungsfreibetrag —
-                beide sind kohortengebunden.
-              </p>
-
-              <div className="angaben-fields">
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Renteneintrittsalter</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="number"
-                      min={Math.max(55, profile.age + 1)}
-                      max={75}
-                      value={profile.retirementAge}
-                      onChange={(e) =>
-                        setProfile((p) => ({
-                          ...p,
-                          retirementAge: Number(e.target.value),
-                        }))
-                      }
-                    />
-                    <span className="angaben-field-suffix">Jahre</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Renteneintrittsjahr fixiert Kohortenwerte zum Renteneintritt
-                    </span>
-                  </span>
-                </label>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Kapital aufgebraucht bis</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="number"
-                      min={profile.retirementAge + 1}
-                      max={110}
-                      value={assumptions.retirementEndAge}
-                      onChange={(e) =>
-                        setAssumptions((a) => ({
-                          ...a,
-                          retirementEndAge: Number(e.target.value),
-                        }))
-                      }
-                    />
-                    <span className="angaben-field-suffix">Jahre</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Nur für Kapitalverzehr (ETF, bAV/pAV in „selbstgesteuert"-Modus)
-                    </span>
-                  </span>
-                </label>
-
-                <div className="angaben-field">
-                  <span className="angaben-field-label">Status KV in der Rente</span>
-                  <div className="angaben-radio-group">
-                    {RETIREMENT_HEALTH_OPTIONS.map((opt) => (
-                      <label key={opt.value} className="angaben-radio">
-                        <input
-                          type="radio"
-                          name="retirementHealth"
-                          checked={retirementHealthStatus === opt.value}
-                          onChange={() => setRetirementHealthStatus(opt.value)}
-                        />
-                        <span>{opt.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Wunsch-Nettorente pro Monat</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="number"
-                      min={0}
-                      step={50}
-                      value={profile.desiredNetMonthlyPension}
-                      onChange={(e) =>
-                        setProfile((p) => ({
-                          ...p,
-                          desiredNetMonthlyPension: Math.max(0, Number(e.target.value)),
-                        }))
-                      }
-                    />
-                    <span className="angaben-field-suffix">EUR mtl.</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Optional — leeren oder 0 setzen, falls keine Zielmarke gesetzt
-                    </span>
-                  </span>
-                </label>
-              </div>
-            </section>
-
-            {/* ─── § 4 Annahmen (folds in old Annahmen tab) ───────────── */}
-            <section className="angaben-section">
-              <div className="angaben-section-head">
-                <span className="angaben-section-num">{SECTIONS[3].n}</span>
-                <h2 id={SECTIONS[3].id} className="angaben-section-title">
-                  {SECTIONS[3].title}
-                </h2>
-              </div>
-              <p className="angaben-section-lead">
-                Renditeannahmen für die kapitalmarktgebundenen Produkte und
-                Inflationsmodellierung. Voreinstellungen folgen MSCI-World-Werten
-                über 30-jährige Rolling-Fenster.
-              </p>
-
-              <div className="angaben-fields">
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Konservatives Szenario</span>
-                  <span className="angaben-field-shell">
-                    <span>{formatPercent(RESOLVED_RENDITEN.konservativ, 1)}</span>
-                    <span className="angaben-field-suffix">real p.a.</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      10er-Quantil rollierend 30 J., MSCI World
-                    </span>
-                  </span>
-                </label>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Basis-Szenario</span>
-                  <span className="angaben-field-shell">
-                    <span>{formatPercent(RESOLVED_RENDITEN.basis, 1)}</span>
-                    <span className="angaben-field-suffix">real p.a.</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Realer Median MSCI World 1900–2025 (~ 5,2 % real)
-                    </span>
-                  </span>
-                </label>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Optimistisches Szenario</span>
-                  <span className="angaben-field-shell">
-                    <span>{formatPercent(RESOLVED_RENDITEN.optimistisch, 1)}</span>
-                    <span className="angaben-field-suffix">real p.a.</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      90er-Quantil rollierend 30 J., MSCI World
-                    </span>
-                  </span>
-                </label>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Monte-Carlo-Volatilität</span>
-                  <span className="angaben-field-shell">
-                    <input
-                      type="number"
-                      min={0}
-                      max={50}
-                      step={1}
-                      value={Math.round(assumptions.monteCarlo.annualVolatility * 100)}
-                      onChange={(e) =>
-                        setAssumptions((a) => ({
-                          ...a,
-                          monteCarlo: {
-                            ...a.monteCarlo,
-                            annualVolatility: Math.max(0, Number(e.target.value)) / 100,
-                          },
-                        }))
-                      }
-                    />
-                    <span className="angaben-field-suffix">% p.a.</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      Annualisierte Volatilität für die stochastische Bandbreite
-                    </span>
-                  </span>
-                </label>
-
-                <label className="angaben-field">
-                  <span className="angaben-field-label">Inflation</span>
-                  <span className="angaben-check">
-                    <input
-                      type="checkbox"
-                      checked={inflationEnabled}
-                      onChange={(e) =>
-                        setAssumptions((a) => ({
-                          ...a,
-                          inflationRate: e.target.checked ? 0.02 : 0,
-                        }))
-                      }
-                    />
-                    <span>Inflation modellieren</span>
-                  </span>
-                  <span className="angaben-field-meta">
-                    <span className="angaben-field-hint">
-                      EZB-Mittelfrist-Ziel 2 % als Vorbelegung — beliebig anpassbar
-                    </span>
-                  </span>
-                </label>
-
-                {inflationEnabled && (
-                  <label className="angaben-field">
-                    <span className="angaben-field-label">Inflationsrate p.a.</span>
-                    <span className="angaben-field-shell">
-                      <input
-                        type="number"
-                        min={0}
-                        max={8}
-                        step={0.1}
-                        value={Number((assumptions.inflationRate * 100).toFixed(1))}
-                        onChange={(e) =>
-                          setAssumptions((a) => ({
-                            ...a,
-                            inflationRate: Math.max(0, Number(e.target.value)) / 100,
-                          }))
-                        }
-                      />
-                      <span className="angaben-field-suffix">% p.a.</span>
-                    </span>
-                    <span className="angaben-field-meta">
-                      <span className="angaben-field-hint">
-                        Reduziert reale Werte in der Auszahlphase
-                      </span>
-                    </span>
-                  </label>
-                )}
-              </div>
-            </section>
+            <AngabenAnnahmenSection
+              assumptions={assumptions}
+              setAssumptions={setAssumptions}
+              resolvedRenditen={RESOLVED_RENDITEN}
+              num={SECTIONS[3].n}
+              id={SECTIONS[3].id}
+              title={SECTIONS[3].title}
+            />
           </article>
 
-          {/* Right rail — "Warum wir das fragen". Folds below body on phone. */}
+          {/* Right rail — "Warum wir das fragen". Folds below body on phone
+              and each card collapses into a button-triggered disclosure. */}
           <aside className="angaben-aside">
-            <div className="angaben-aside-card">
-              <div className="angaben-aside-kicker">Warum wir das fragen</div>
+            <AngabenAsideCard
+              kicker="Warum wir das fragen"
+              bodyId="angaben-aside-warum"
+            >
               <ul className="angaben-aside-list">
                 <li className="angaben-aside-list-item">
                   <span className="angaben-aside-list-key">§ Person</span>
@@ -790,10 +390,12 @@ export function AngabenPage({ navigate }: Props) {
                   </span>
                 </li>
               </ul>
-            </div>
+            </AngabenAsideCard>
 
-            <div className="angaben-aside-card">
-              <div className="angaben-aside-kicker">Datenhaltung</div>
+            <AngabenAsideCard
+              kicker="Datenhaltung"
+              bodyId="angaben-aside-datenhaltung"
+            >
               <p className="angaben-aside-body">
                 <strong>Lokal im Browser.</strong> Keine Server-Übertragung, kein
                 Account, keine Cookies, keine Identifier. Du kannst den
@@ -817,7 +419,7 @@ export function AngabenPage({ navigate }: Props) {
                 </a>
                 .
               </p>
-            </div>
+            </AngabenAsideCard>
           </aside>
         </div>
       </div>

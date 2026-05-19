@@ -208,7 +208,104 @@ describe('AngabenPage — phone tap target rule', () => {
     const formsCss = await readFile(formsCssPath, 'utf8')
     expect(formsCss).toContain('max-width: 639px')
     expect(formsCss).toMatch(/\.field\s+\.input-shell\s+input/)
+    // Parallel rule for `<select>` — without this, select-size regressions
+    // (e.g. someone editing forms.css and dropping the `, .field select`
+    // selector from the phone-padding bump) would slip past the test that
+    // currently only guards the `input` half of the pair.
+    expect(formsCss).toMatch(/\.field\s+select/)
     expect(formsCss).toMatch(/padding-top:\s*12px/)
     expect(formsCss).toMatch(/padding-bottom:\s*12px/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Right-rail accordion (round-1 review finding 5). Each `.angaben-aside-card`
+// folds into a button-triggered disclosure on phone. The disclosure pattern
+// is WAI-ARIA's: a `<button>` carries `aria-expanded` + `aria-controls`
+// pointing to a body region with the matching `id`. Desktop + tablet render
+// the cards expanded with the button `disabled` (kicker reads as a label).
+// ---------------------------------------------------------------------------
+describe('AngabenPage — right-rail accordion a11y', () => {
+  it('renders an aria-expanded button per aside card with matching aria-controls/id', () => {
+    const { container } = render(<AngabenPage />)
+    const toggles = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.angaben-aside-toggle'),
+    )
+    // Two aside cards (Warum wir das fragen / Datenhaltung).
+    expect(toggles.length).toBe(2)
+    for (const toggle of toggles) {
+      // Every toggle is a real `<button>` so keyboard a11y (Enter/Space)
+      // comes for free from the platform.
+      expect(toggle.tagName).toBe('BUTTON')
+      expect(toggle.getAttribute('aria-expanded')).not.toBeNull()
+      const controlsId = toggle.getAttribute('aria-controls')
+      expect(controlsId).toBeTruthy()
+      // The id must resolve to a real element so screen readers can
+      // navigate from disclosure to body.
+      const body = container.querySelector(`#${controlsId}`)
+      expect(body).not.toBeNull()
+    }
+  })
+
+  it('starts expanded on desktop (kicker is a label, body always visible)', () => {
+    mockViewport('desktop')
+    const { container } = render(<AngabenPage />)
+    const toggles = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.angaben-aside-toggle'),
+    )
+    for (const toggle of toggles) {
+      // aria-expanded="true" so the kicker reads as a label that owns the
+      // visible body, not a closed disclosure.
+      expect(toggle.getAttribute('aria-expanded')).toBe('true')
+      // Disabled on desktop + tablet so the click handler is a no-op and
+      // assistive tech does not surface a false interactive control.
+      expect(toggle.hasAttribute('disabled')).toBe(true)
+    }
+  })
+
+  it('starts collapsed on phone and toggles on click', () => {
+    mockViewport('phone')
+    const { container } = render(<AngabenPage />)
+    const toggle = container.querySelector<HTMLButtonElement>('.angaben-aside-toggle')
+    expect(toggle).not.toBeNull()
+    // Phone: collapsed by default — aria-expanded reads "false" and the
+    // body region carries the `hidden` attribute.
+    expect(toggle!.getAttribute('aria-expanded')).toBe('false')
+    expect(toggle!.hasAttribute('disabled')).toBe(false)
+    const controlsId = toggle!.getAttribute('aria-controls')!
+    const body = container.querySelector(`#${controlsId}`) as HTMLElement
+    expect(body.hasAttribute('hidden')).toBe(true)
+
+    // Click expands.
+    fireEvent.click(toggle!)
+    expect(toggle!.getAttribute('aria-expanded')).toBe('true')
+    expect(body.hasAttribute('hidden')).toBe(false)
+
+    // Click again collapses.
+    fireEvent.click(toggle!)
+    expect(toggle!.getAttribute('aria-expanded')).toBe('false')
+    expect(body.hasAttribute('hidden')).toBe(true)
+  })
+
+  it('keeps the Methode link inside the Datenhaltung card functional after expand', () => {
+    mockViewport('phone')
+    const navigate = vi.fn()
+    const { container } = render(<AngabenPage navigate={navigate} />)
+    const toggles = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.angaben-aside-toggle'),
+    )
+    // Datenhaltung is the second card; expand it so the Methode link is
+    // visible to the click event.
+    fireEvent.click(toggles[1])
+    const methodeLink = container.querySelector(
+      'a[href="/methode"]',
+    ) as HTMLAnchorElement | null
+    expect(methodeLink).not.toBeNull()
+    fireEvent.click(methodeLink!)
+    expect(navigate).toHaveBeenCalledWith('/methode')
+    // Modified-click still falls through to native navigation.
+    navigate.mockClear()
+    fireEvent.click(methodeLink!, { ctrlKey: true })
+    expect(navigate).not.toHaveBeenCalled()
   })
 })
