@@ -578,6 +578,34 @@ export const publicRouteRegistry = {
     },
   },
   // ---------------------------------------------------------------------------
+  // PR 5 — Deine Angaben. Form-receipt entry surface for the calculator. Sober
+  // D chrome (white + IBM Plex Sans). Folds in the old Annahmen tab as § 4.
+  // `jsonLdType: 'WebPage'` mirrors `/methode` and `/artikel` (it is a tool
+  // surface, not an article). The route is intentionally excluded from
+  // `isEditorialChromeRoute` — Sober D, not editorial cream.
+  // ---------------------------------------------------------------------------
+  '/eingaben': {
+    canonical: '/eingaben',
+    title: 'Deine Angaben | RentenWiki.de',
+    metaDescription:
+      'Eingabeflächen für den RentenWiki-Modellrechner: Person, Einkommen, geplanter ' +
+      'Renteneintritt und wirtschaftliche Annahmen. Lokal im Browser, kein Account, Werte 2026.',
+    h1: 'Deine Angaben',
+    summary:
+      'Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen. Alle ' +
+      'Eingaben bleiben lokal in deinem Browser; nichts wird an Server übertragen.',
+    dateModified: '2026-05-19',
+    datePublished: '2026-05-19',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebPage',
+    relatedRoutes: ['/', '/methode', '/artikel'],
+    calculatorCta: {
+      label: 'Rechner öffnen',
+      href: '/',
+    },
+  },
+  // ---------------------------------------------------------------------------
   // Legal pages — prerendered with route-specific head tags but NOT in sitemap.
   // Carry the brand-default OG image and page-specific JSON-LD types.
   // ---------------------------------------------------------------------------

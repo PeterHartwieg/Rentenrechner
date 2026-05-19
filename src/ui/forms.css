@@ -253,3 +253,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* PR 5: bump NumberField vertical padding at phone breakpoint so the
+   wrapper measures ≥ 44 × 44 px (WCAG 2.2 SC 2.5.8 target size).
+   Desktop and tablet padding (10 px) is intentionally unchanged so the
+   compare-mode dashboard does not visually regress as a side effect.
+   The CSS scoping is the `.field .input-shell` pair so we only bump
+   fields rendered via `<NumberField>` / `<ProfileInputs>` and not
+   unrelated `<input type="number">` controls (e.g. the scenario edit
+   modal's tighter inline numeric pickers). */
+@media (max-width: 639px) {
+  .field .input-shell input,
+  .field select {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    /* min-height keeps the visual target predictable even when the user-
+       agent line-height varies. 44 - (2 × 12 px padding) - 2 px border = 18 px;
+       round up to 20 px for a half-pixel safety margin. */
+    min-height: 20px;
+  }
+}
