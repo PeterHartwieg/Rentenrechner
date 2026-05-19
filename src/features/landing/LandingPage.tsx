@@ -51,7 +51,7 @@ const PROCESS_STEPS: ReadonlyArray<{ n: string; h: string; p: string }> = [
   {
     n: 'I.',
     h: 'Du beschreibst deine Lage.',
-    p: 'Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Bleibt in deinem Browser — wir speichern nichts.',
+    p: 'Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Bleibt lokal in deinem Browser — nichts wird an einen Server gesendet.',
   },
   {
     n: 'II.',
@@ -61,7 +61,7 @@ const PROCESS_STEPS: ReadonlyArray<{ n: string; h: string; p: string }> = [
   {
     n: 'III.',
     h: 'Du entscheidest selbst.',
-    p: 'Wir nennen kein „bestes" Produkt. Wir zeigen, was die Optionen kosten und was sie bringen.',
+    p: 'Wir nennen kein „bestes“ Produkt. Wir zeigen, was die Optionen kosten und was sie bringen.',
   },
 ]
 

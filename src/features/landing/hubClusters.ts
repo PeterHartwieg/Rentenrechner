@@ -94,17 +94,31 @@ export const FEATURED_ARTICLE_HREFS: readonly string[] = [
 ] as const
 
 export function resolveFeaturedArticles(): readonly FeaturedArticle[] {
-  const out: FeaturedArticle[] = []
-  for (const href of FEATURED_ARTICLE_HREFS) {
-    for (const cluster of HUB_CLUSTERS) {
-      const match = cluster.links.find((l) => l.href === href)
-      if (match) {
-        out.push({ href: match.href, label: match.label, cluster: cluster.heading })
-        break
-      }
+  // Build the href → article index once so each FEATURED_ARTICLE_HREFS lookup
+  // is O(1) and so a missing curated href fails fast at module-evaluation time
+  // (catches drift between `FEATURED_ARTICLE_HREFS` and `HUB_CLUSTERS` during
+  // build/test instead of silently shrinking the right rail).
+  const index = new Map<string, FeaturedArticle>()
+  for (const cluster of HUB_CLUSTERS) {
+    for (const link of cluster.links) {
+      index.set(link.href, {
+        href: link.href,
+        label: link.label,
+        cluster: cluster.heading,
+      })
     }
   }
-  return out
+  return FEATURED_ARTICLE_HREFS.map((href) => {
+    const article = index.get(href)
+    if (!article) {
+      throw new Error(
+        `resolveFeaturedArticles: FEATURED_ARTICLE_HREFS contains "${href}" ` +
+          `but no matching HUB_CLUSTERS link exists. Update either the curated ` +
+          `featured list or the hub clusters so the two stay in sync.`,
+      )
+    }
+    return article
+  })
 }
 
 export function countHubArticles(): number {
