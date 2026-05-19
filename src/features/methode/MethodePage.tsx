@@ -3,6 +3,7 @@ import './MethodePage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR, activeRules, legalConstants } from '../../rules'
+import { ertragsanteilByAge } from '../../rules/legalConstants'
 import {
   besteuerungsanteilGrv,
   versorgungsfreibetrag,
@@ -289,8 +290,7 @@ export function MethodePage({ navigate }: Props) {
                   <span className="methode-deflist-val">
                     Grundtarif § 32a EStG, mit Solidaritätszuschlag oberhalb
                     der Freigrenze von {formatCurrency(activeRules.incomeTax.solidarityFreeTax)}{' '}
-                    (Einzelveranlagung){' '}
-                    <sup className="methode-footnote-ref">[1]</sup>.
+                    (Einzelveranlagung).
                   </span>
                 </li>
                 <li>
@@ -320,8 +320,8 @@ export function MethodePage({ navigate }: Props) {
                   <span className="methode-deflist-key">Ertragsanteil (Schicht 3)</span>
                   <span className="methode-deflist-val">
                     Private Leibrenten nach § 22 Nr. 1 Satz 3 a aa EStG; Anlage 1
-                    (z. B. {formatPercent(0.18, 0)} mit Rentenbeginn 65/66,{' '}
-                    {formatPercent(0.17, 0)} mit 67). Der restliche Anteil bleibt
+                    (z. B. {formatPercent(ertragsanteilByAge(65), 0)} mit Rentenbeginn 65/66,{' '}
+                    {formatPercent(ertragsanteilByAge(67), 0)} mit 67). Der restliche Anteil bleibt
                     als Kapitalrückgewähr steuerfrei.
                   </span>
                 </li>
