@@ -78,6 +78,10 @@ async function loadSourceModules() {
     const altersvorsorgeprodukte = await server.ssrLoadModule('/src/features/publicPages/AltersvorsorgeproduktePage.tsx')
     const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
     const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
+    // AppShell wraps every prerendered page so the disclaimer banner appears
+    // in the static HTML the crawler fetches (P0 compliance invariant —
+    // verified by publicPages.test.tsx prerender suites).
+    const appShellMod = await server.ssrLoadModule('/src/ui/chrome/AppShell.tsx')
 
     return {
       server,
@@ -101,6 +105,7 @@ async function loadSourceModules() {
       altersvorsorgeprodukte,
       impressum,
       datenschutz,
+      appShellMod,
     }
   } catch (err) {
     await server.close()
@@ -151,14 +156,27 @@ function pickComponent(routeId, componentMap) {
 
 async function renderRoute(routeId, componentMap, modules, { React, renderToString }) {
   const Component = pickComponent(routeId, componentMap)
+  const AppShell = modules.appShellMod.AppShell
+  const noopNavigate = () => {}
+  // Wrap every prerendered route in AppShell so the chrome (disclaimer,
+  // status bar, header, footer) appears in the static HTML. Crawlers see
+  // exactly what hydrated clients see; the disclaimer P0 compliance
+  // invariant is preserved.
+  function withShell(child) {
+    return React.createElement(
+      AppShell,
+      { route: routeId, navigate: noopNavigate },
+      child,
+    )
+  }
   if (Component) {
     // Legal pages take a `navigate` prop. The prerender pass uses a no-op;
     // client hydration replaces it with the real router callback. Function
     // props don't appear in HTML, so the rendered output matches either way.
     if (routeId === '/impressum' || routeId === '/datenschutz') {
-      return renderToString(React.createElement(Component, { navigate: () => {} }))
+      return renderToString(withShell(React.createElement(Component, { navigate: noopNavigate })))
     }
-    return renderToString(React.createElement(Component))
+    return renderToString(withShell(React.createElement(Component)))
   }
   // Component is null — this route deliberately uses LandingPage as the
   // static first-paint shell (currently only `/`). The client hydrates with
@@ -166,7 +184,7 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
   const landingMod = await modules.server.ssrLoadModule('/src/features/landing/LandingPage.tsx')
   const Landing = landingMod.LandingPage
   // No-op handler — the prerendered HTML is replaced on hydration.
-  return renderToString(React.createElement(Landing, { onChoice: () => {} }))
+  return renderToString(withShell(React.createElement(Landing, { onChoice: () => {}, navigate: noopNavigate })))
 }
 
 function targetPathForRoute(routeId) {

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import './LandingPage.css'
 import { ArrowRight, LayoutGrid, BarChart3 } from 'lucide-react'
-import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
 import { LegalFooter } from '../legal/LegalFooter'
 import type { ProductId } from '../../domain'
 import type { Route } from '../../app/useRoute'
@@ -111,8 +110,6 @@ export function LandingPage({ onChoice, navigate }: Props) {
 
   return (
     <div className="landing-shell">
-      <DisclaimerBanner />
-
       <main className="landing-main">
         <div className="landing-hero">
           <h1 className="landing-headline">Rente planen, Produkte vergleichen.</h1>

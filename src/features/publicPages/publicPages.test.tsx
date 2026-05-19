@@ -3,6 +3,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { cleanup, render } from '@testing-library/react'
+import { createElement, type ReactElement } from 'react'
+import { AppShell } from '../../ui/chrome/AppShell'
 import { RentenluckeRechnerPage } from './RentenluckeRechnerPage'
 import { RiesterRechnerPage } from './RiesterRechnerPage'
 import { AltersvorsorgedepotRechnerPage } from './AltersvorsorgedepotRechnerPage'
@@ -20,6 +22,17 @@ afterEach(() => {
   cleanup()
 })
 
+/**
+ * Wrap a page in the AppShell chrome so disclaimer-presence and other
+ * chrome-level invariants can be asserted on the page. PR 1 centralised
+ * DisclaimerBanner rendering in AppShell; in-isolation render(<Page />)
+ * no longer surfaces the disclaimer text, but the production pipeline
+ * (App.tsx and the SSG prerender script) always wraps pages in AppShell.
+ */
+function inShell(node: ReactElement) {
+  return createElement(AppShell, { route: '/', navigate: () => {}, children: node })
+}
+
 describe('RentenluckeRechnerPage — visible content for prerender', () => {
   it('renders the H1 from the registry', () => {
     const { getByRole } = render(<RentenluckeRechnerPage />)
@@ -36,13 +49,13 @@ describe('RentenluckeRechnerPage — visible content for prerender', () => {
   })
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
-    const { container } = render(<RentenluckeRechnerPage />)
+    const { container } = render(inShell(<RentenluckeRechnerPage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer (compliance — every public page must)', () => {
-    const { container } = render(<RentenluckeRechnerPage />)
+    const { container } = render(inShell(<RentenluckeRechnerPage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -123,14 +136,14 @@ describe('RentenluckeRechnerPage — visible content for prerender', () => {
 
 describe('PageNotFound — visible content for prerender', () => {
   it('renders the H1 from the registry', () => {
-    const { getByRole } = render(<PageNotFound />)
+    const { getByRole } = render(inShell(<PageNotFound />))
     expect(getByRole('heading', { level: 1 }).textContent).toBe(
       publicRouteRegistry['/404'].h1,
     )
   })
 
   it('renders the not-advice disclaimer (compliance)', () => {
-    const { container } = render(<PageNotFound />)
+    const { container } = render(inShell(<PageNotFound />))
     expect(container.textContent).toContain('Modellrechnung')
   })
 
@@ -154,24 +167,24 @@ describe('Prerender HTML output — disclaimer survives renderToString', () => {
   // The DisclaimerBanner uses sessionStorage; SSG renders without a session.
   // Verify the disclaimer text lives in the static HTML so crawlers see it.
   it('Rentenluecke prerendered HTML contains the disclaimer text', () => {
-    const html = renderToString(<RentenluckeRechnerPage />)
+    const html = renderToString(inShell(<RentenluckeRechnerPage />))
     expect(html).toContain('Modellrechnung')
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
 
   it('PageNotFound prerendered HTML contains the disclaimer text', () => {
-    const html = renderToString(<PageNotFound />)
+    const html = renderToString(inShell(<PageNotFound />))
     expect(html).toContain('Modellrechnung')
   })
 
   it('BasisrenteRechnerPage prerendered HTML contains the disclaimer text', () => {
-    const html = renderToString(<BasisrenteRechnerPage />)
+    const html = renderToString(inShell(<BasisrenteRechnerPage />))
     expect(html).toContain('Modellrechnung')
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
 
   it('PrivateRentenversicherungRechnerPage prerendered HTML contains the disclaimer text', () => {
-    const html = renderToString(<PrivateRentenversicherungRechnerPage />)
+    const html = renderToString(inShell(<PrivateRentenversicherungRechnerPage />))
     expect(html).toContain('Modellrechnung')
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -198,13 +211,13 @@ describe('BasisrenteRechnerPage — visible content for prerender', () => {
   })
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
-    const { container } = render(<BasisrenteRechnerPage />)
+    const { container } = render(inShell(<BasisrenteRechnerPage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer (compliance — every public page must)', () => {
-    const { container } = render(<BasisrenteRechnerPage />)
+    const { container } = render(inShell(<BasisrenteRechnerPage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -310,13 +323,13 @@ describe('PrivateRentenversicherungRechnerPage — visible content for prerender
   })
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
-    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const { container } = render(inShell(<PrivateRentenversicherungRechnerPage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer (compliance — every public page must)', () => {
-    const { container } = render(<PrivateRentenversicherungRechnerPage />)
+    const { container } = render(inShell(<PrivateRentenversicherungRechnerPage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -423,13 +436,13 @@ describe('RiesterRechnerPage — visible content for prerender', () => {
   })
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
-    const { container } = render(<RiesterRechnerPage />)
+    const { container } = render(inShell(<RiesterRechnerPage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer (compliance — every public page must)', () => {
-    const { container } = render(<RiesterRechnerPage />)
+    const { container } = render(inShell(<RiesterRechnerPage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -544,13 +557,13 @@ describe('AltersvorsorgedepotRechnerPage — visible content for prerender', () 
   })
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
-    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const { container } = render(inShell(<AltersvorsorgedepotRechnerPage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer (compliance — every public page must)', () => {
-    const { container } = render(<AltersvorsorgedepotRechnerPage />)
+    const { container } = render(inShell(<AltersvorsorgedepotRechnerPage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -665,13 +678,13 @@ describe('RiesterVsAltersvorsorgedepotPage — visible content for prerender', (
   })
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
-    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const { container } = render(inShell(<RiesterVsAltersvorsorgedepotPage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer (compliance — every public page must)', () => {
-    const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
+    const { container } = render(inShell(<RiesterVsAltersvorsorgedepotPage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -790,13 +803,13 @@ describe('RenteNettoBerechnePage — visible content for prerender', () => {
   })
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
-    const { container } = render(<RenteNettoBerechnePage />)
+    const { container } = render(inShell(<RenteNettoBerechnePage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer (compliance — every public page must)', () => {
-    const { container } = render(<RenteNettoBerechnePage />)
+    const { container } = render(inShell(<RenteNettoBerechnePage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -852,7 +865,7 @@ describe('RenteNettoBerechnePage — visible content for prerender', () => {
     } as unknown as Storage
     Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
     try {
-      expect(() => renderToString(<RenteNettoBerechnePage />)).not.toThrow()
+      expect(() => renderToString(inShell(<RenteNettoBerechnePage />))).not.toThrow()
     } finally {
       Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
     }
@@ -861,7 +874,7 @@ describe('RenteNettoBerechnePage — visible content for prerender', () => {
 
 describe('RenteNettoBerechnePage — prerendered disclaimer', () => {
   it('prerendered HTML contains the disclaimer text', () => {
-    const html = renderToString(<RenteNettoBerechnePage />)
+    const html = renderToString(inShell(<RenteNettoBerechnePage />))
     expect(html).toContain('Modellrechnung')
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -887,13 +900,13 @@ describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
   })
 
   it('renders the visible "Stand 2026" line', () => {
-    const { container } = render(<AltersvorsorgeproduktePage />)
+    const { container } = render(inShell(<AltersvorsorgeproduktePage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer', () => {
-    const { container } = render(<AltersvorsorgeproduktePage />)
+    const { container } = render(inShell(<AltersvorsorgeproduktePage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -964,7 +977,7 @@ describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
     } as unknown as Storage
     Object.defineProperty(window, 'localStorage', { configurable: true, value: blocked })
     try {
-      expect(() => renderToString(<AltersvorsorgeproduktePage />)).not.toThrow()
+      expect(() => renderToString(inShell(<AltersvorsorgeproduktePage />))).not.toThrow()
     } finally {
       Object.defineProperty(window, 'localStorage', { configurable: true, value: originalLocalStorage })
     }
@@ -973,7 +986,7 @@ describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
 
 describe('AltersvorsorgeproduktePage — prerendered disclaimer', () => {
   it('prerendered HTML contains the disclaimer text', () => {
-    const html = renderToString(<AltersvorsorgeproduktePage />)
+    const html = renderToString(inShell(<AltersvorsorgeproduktePage />))
     expect(html).toContain('Modellrechnung')
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -999,13 +1012,13 @@ describe('BavRechnerPage — visible content for prerender', () => {
   })
 
   it('renders the visible "Stand 2026" line', () => {
-    const { container } = render(<BavRechnerPage />)
+    const { container } = render(inShell(<BavRechnerPage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer', () => {
-    const { container } = render(<BavRechnerPage />)
+    const { container } = render(inShell(<BavRechnerPage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -1103,7 +1116,7 @@ describe('BavRechnerPage — registry entry (issue #04)', () => {
 
 describe('BavRechnerPage — prerender disclaimer', () => {
   it('prerendered HTML contains the disclaimer text', () => {
-    const html = renderToString(<BavRechnerPage />)
+    const html = renderToString(inShell(<BavRechnerPage />))
     expect(html).toContain('Modellrechnung')
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -1129,13 +1142,13 @@ describe('EtfVsBavPage — visible content for prerender', () => {
   })
 
   it('renders the visible "Stand 2026" line', () => {
-    const { container } = render(<EtfVsBavPage />)
+    const { container } = render(inShell(<EtfVsBavPage />))
     expect(container.textContent).toContain('Stand: 2026-05-06')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
   it('renders the not-advice disclaimer', () => {
-    const { container } = render(<EtfVsBavPage />)
+    const { container } = render(inShell(<EtfVsBavPage />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
@@ -1242,7 +1255,7 @@ describe('EtfVsBavPage — registry entry (issue #04)', () => {
 
 describe('EtfVsBavPage — prerender disclaimer', () => {
   it('prerendered HTML contains the disclaimer text', () => {
-    const html = renderToString(<EtfVsBavPage />)
+    const html = renderToString(inShell(<EtfVsBavPage />))
     expect(html).toContain('Modellrechnung')
     expect(html).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })

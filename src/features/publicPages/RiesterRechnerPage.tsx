@@ -1,5 +1,4 @@
 import { ChevronLeft } from 'lucide-react'
-import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import RiesterBody from './riester-rechner.body.mdx'
 import './publicPages.css'
@@ -32,8 +31,6 @@ const ROUTE = publicRouteRegistry['/riester-rechner']
 export function RiesterRechnerPage() {
   return (
     <div className="public-shell">
-      <DisclaimerBanner />
-
       <main className="public-main">
         <a href="/" className="public-back-link">
           <ChevronLeft size={16} aria-hidden="true" />

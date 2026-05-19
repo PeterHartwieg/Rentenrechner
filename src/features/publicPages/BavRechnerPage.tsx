@@ -1,5 +1,4 @@
 import { ChevronLeft } from 'lucide-react'
-import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import BavRechnerBody from './bav-rechner.body.mdx'
 import './publicPages.css'
@@ -29,8 +28,6 @@ const ROUTE = publicRouteRegistry['/bav-rechner']
 export function BavRechnerPage() {
   return (
     <div className="public-shell">
-      <DisclaimerBanner />
-
       <main className="public-main">
         <a href="/" className="public-back-link">
           <ChevronLeft size={16} aria-hidden="true" />

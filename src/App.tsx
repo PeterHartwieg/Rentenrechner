@@ -3,6 +3,7 @@ import type { Route, AppView } from './app/useRoute'
 import { useRoute, detectSavedMode, appViewFromMode } from './app/useRoute'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { QaFeedbackProvider, QaModeIndicator } from './features/qa-feedback'
+import { AppShell } from './ui/chrome/AppShell'
 import './App.css'
 
 // ---------------------------------------------------------------------------
@@ -100,9 +101,16 @@ function App() {
   // The single Suspense boundary covers every lazy route component above.
   // For prerendered routes the lazy chunks load after initial paint; the
   // prerendered HTML stays visible until React swaps in the hydrated tree.
+  // Wrap every route in the shared chrome (PR 1). Page bodies are unchanged
+  // for now — subsequent PRs replace them one by one. AppShell takes over
+  // rendering DisclaimerBanner so it sits above the StatusBar; individual
+  // pages must NOT render their own DisclaimerBanner (PrintReport.tsx
+  // remains the only other render path, for the printed report).
   return (
     <QaFeedbackProvider>
-      <Suspense fallback={null}>{body}</Suspense>
+      <AppShell route={route} navigate={navigate}>
+        <Suspense fallback={null}>{body}</Suspense>
+      </AppShell>
       <QaModeIndicator />
     </QaFeedbackProvider>
   )
