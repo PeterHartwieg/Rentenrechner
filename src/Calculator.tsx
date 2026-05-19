@@ -100,9 +100,6 @@ const PORTFOLIO_COLOR = '#1f2937'
 // an "in Arbeit" placeholder rather than falling back to other charts so the
 // sidebar is honest about coverage.
 const VERGLEICH_STUB_PANES: ReadonlySet<VergleichPaneSlug> = new Set([
-  'lifetime-einkommen',
-  'kv-pv-last',
-  'sequence-of-returns',
   'rendite',
   'beitrag',
   'lebenserwartung',
