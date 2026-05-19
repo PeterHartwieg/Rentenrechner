@@ -199,6 +199,32 @@ export function halbeinkuenfteMinAgeForContractStartYear(contractStartYear: numb
     : halbeinkuenfteMinAgePre2012Contracts
 }
 
+// ---------------------------------------------------------------------------
+// InvStG — Investment-tax partial exemptions
+// ---------------------------------------------------------------------------
+
+/**
+ * §20 Abs. 1 Nr. 1 InvStG — Teilfreistellung für Aktienfonds im Privatvermögen.
+ * 30 % der Erträge bleiben steuerfrei, sofern der Aktienfonds dauerhaft
+ * mindestens 51 % seines Vermögens in Aktien anlegt.
+ * Cross-year: changes only on law amendment.
+ * Source: §20 Abs. 1 InvStG (gesetze-im-internet.de/invstg/__20.html)
+ */
+export const aktienfondsTeilfreistellungPrivat = 0.30
+
+// ---------------------------------------------------------------------------
+// SGB XI — Pflegeversicherung childless surcharge age threshold
+// ---------------------------------------------------------------------------
+
+/**
+ * §55 Abs. 3 SGB XI — Pflegeversicherung-Beitragszuschlag für Kinderlose.
+ * Versicherte ohne Kinder zahlen ab Vollendung des 23. Lebensjahrs einen
+ * Zuschlag zum PV-Beitrag (in der Rente: ohne Arbeitgeberanteil).
+ * Cross-year: changes only on law amendment.
+ * Source: §55 Abs. 3 SGB XI (gesetze-im-internet.de/sgb_11/__55.html)
+ */
+export const pvBeitragszuschlagKinderloseMinAge = 23
+
 /**
  * Ertragsanteil für lebenslange Leibrenten nach §22 Nr. 1 Satz 3 a aa EStG (Anlage 1 zu §22).
  * Returns the fraction (0–1) of each pension payment that is taxable at the personal income-tax rate.

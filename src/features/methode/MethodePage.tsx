@@ -4,8 +4,10 @@ import { LegalFooter } from '../legal/LegalFooter'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR, activeRules, legalConstants } from '../../rules'
 import {
+  aktienfondsTeilfreistellungPrivat,
   besteuerungsanteilGrv,
   ertragsanteilByAge,
+  pvBeitragszuschlagKinderloseMinAge,
   sonderausgabenPauschbetrag,
   versorgungsfreibetrag,
   werbungskostenPauschalRenten,
@@ -319,7 +321,7 @@ export function MethodePage({ navigate }: Props) {
                     Abgeltungsteuer {formatPercent(activeRules.capitalGains.taxRate, 0)}{' '}
                     plus Soli, Sparer-Pauschbetrag{' '}
                     {formatCurrency(activeRules.capitalGains.saverAllowance)} pro
-                    Person; Teilfreistellung 30 % bei Aktienfonds (§ 20 EStG){' '}
+                    Person; Teilfreistellung {formatPercent(aktienfondsTeilfreistellungPrivat, 0)} bei Aktienfonds (§ 20 EStG){' '}
                     <sup className="methode-footnote-ref">[4]</sup>.
                   </span>
                 </li>
@@ -391,7 +393,7 @@ export function MethodePage({ navigate }: Props) {
                   <span className="methode-deflist-key">Pflegeversicherung</span>
                   <span className="methode-deflist-val">
                     Basissatz {formatPercent(activeRules.socialSecurity.careEmployeeBaseRate, 1)};
-                    Kinderlose ab 23 Jahren in der Rente{' '}
+                    Kinderlose ab {pvBeitragszuschlagKinderloseMinAge} Jahren in der Rente{' '}
                     {formatPercent(activeRules.socialSecurity.careRetirementChildlessRate, 1)}{' '}
                     (§ 55 SGB XI).
                   </span>
