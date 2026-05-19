@@ -49,11 +49,12 @@ export function ArticleHubPage({ navigate }: Props) {
             Artikel · {total} Beiträge · zuletzt aktualisiert {latest}
           </div>
           <h1 className="hub-headline">{route.h1}</h1>
-          <p className="hub-dek">
-            Erklärungen zu Begriffen, Produkten und Rechtsfragen rund um die
-            deutsche Altersvorsorge. Jede Seite ist quelloffen und kann auf
-            GitHub kommentiert oder verbessert werden.
-          </p>
+          {/* Visible lead is sourced from `publicRouteRegistry['/artikel'].summary`
+              so the prerendered JSON-LD `description` (emitted by
+              `renderRouteHeadHtml`) always matches the rendered copy — Google's
+              structured-data audit fails otherwise. Update the registry, not
+              this paragraph, when reworking the hub's lead copy. */}
+          <p className="hub-dek">{route.summary}</p>
         </header>
 
         <div className="hub-groups">
