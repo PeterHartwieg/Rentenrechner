@@ -2822,3 +2822,26 @@ labels: []
 ## What would have helped
 
 - A documented preflight-blocked retro append convention for runs that fail before an issue number exists; the current append script requires an `ISSUE_NUMBER`, while this failure happened before issue selection.
+
+---
+date: 2026-05-18T20:30:00Z
+issue: 268
+pr: 269
+stage: implement
+outcome: pr-opened
+labels: [area:ui-only, from-maintainer]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- `publicPages.css` had no `table/th/td` rules at all; MDX-rendered markdown tables throughout all 9 public pages (`etf-vs-bav`, `bav-rechner`, `riester-rechner`, etc.) were completely unstyled. Adding `table-layout: fixed` + `overflow-wrap: break-word` + `word-break: break-word` to `.public-article th, .public-article td` is the correct fix — it forces proportional column widths and wraps long text.
+- For mobile (≤640px), `display: block` + `overflow-x: auto` on the `table` allows horizontal scroll without needing an HTML wrapper in MDX.
+- Single-stage shortcut path (no Stage 1 handoff, `area:ui-only` label): fetch issue body, read the QA target file, implement CSS-only fix, skip TDD with label justification.
+
+## What would have helped
+
+- A snapshot/visual regression test for the public pages table layout would catch this class of issue automatically.

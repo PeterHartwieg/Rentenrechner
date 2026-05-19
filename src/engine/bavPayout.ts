@@ -169,3 +169,28 @@ export function netBavPayout(
     healthStatus: kvdrMember ? 'kvdr' : 'freiwillig_gkv',
   }).netMonthly
 }
+
+/** Like netBavPayout but returns both netMonthly and kvPvMonthly. Used by the product
+ *  simulator to populate BaseProductResult.kvPvMonthly for the KV/PV-Last panel. */
+export function netBavPayoutFull(
+  grossMonthlyPayout: number,
+  profile: PersonalProfile,
+  rules: GermanRules,
+  otherMonthlyIncome = 0,
+  kvdrMember = true,
+  retirementYear = rules.year,
+  grvBaselineMonthly = 0,
+): { netMonthly: number; kvPvMonthly: number } {
+  const r = calculateMonthlyRetirementPayout({
+    rules,
+    retirementYear,
+    grvBaselineMonthly,
+    otherMonthlyIncome,
+    grossMonthlyPayout,
+    taxChannel: 'bav_pension',
+    kvPvChannel: 'bav_versorgungsbezug',
+    profile,
+    healthStatus: kvdrMember ? 'kvdr' : 'freiwillig_gkv',
+  })
+  return { netMonthly: r.netMonthly, kvPvMonthly: r.kvPvMonthly }
+}

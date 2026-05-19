@@ -50,7 +50,10 @@ import { PensionChart } from './features/results/PensionChart'
 import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
+import { KvPvLastPanel } from './features/results/KvPvLastPanel'
+import { LifetimeIncomeChart } from './features/results/LifetimeIncomeChart'
 import { SteuerWasserfallPanel } from './features/results/SteuerWasserfallPanel'
+import { SequenceOfReturnsPanel } from './features/results/SequenceOfReturnsPanel'
 import { InflationStressPanel } from './features/results/InflationStressPanel'
 import { MonteCarloHighlights } from './features/results/MonteCarloHighlights'
 import { MonteCarloPanel } from './features/results/MonteCarloPanel'
@@ -782,6 +785,15 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                   />
                 )}
 
+                {vergleichPane === 'lifetime-einkommen' && (
+                  <LifetimeIncomeChart
+                    selectedResults={selectedResults}
+                    productColors={PRODUCT_COLORS}
+                    retirementAge={profile.retirementAge}
+                    retirementEndAge={assumptions.retirementEndAge}
+                  />
+                )}
+
                 {vergleichPane === 'steuer-wasserfall' && (
                   <>
                     <ResultWaterfalls
@@ -797,12 +809,51 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                   </>
                 )}
 
+                {vergleichPane === 'kv-pv-last' && (
+                  <KvPvLastPanel
+                    selectedResults={selectedResults.map((r) => ({
+                      productId: r.productId,
+                      label: r.label,
+                      grossMonthlyPayout: r.grossMonthlyPayout,
+                      kvPvMonthly: r.kvPvMonthly ?? 0,
+                    }))}
+                    monthlyKvPvBbg={de2026Rules.socialSecurity.healthAndCareCapMonth}
+                    combinedGrossMonthly={
+                      selectedResults.reduce((s, r) => s + r.grossMonthlyPayout, 0) +
+                      simulation.statutoryPension.grossMonthlyPension
+                    }
+                    healthStatus={
+                      !profile.publicHealthInsurance
+                        ? 'pkv'
+                        : taxModes.kvdrMember
+                          ? 'kvdr'
+                          : 'freiwillig_gkv'
+                    }
+                  />
+                )}
+
                 {vergleichPane === 'monte-carlo' && (
                   monteCarloResult ? (
                     <MonteCarloHighlights result={monteCarloResult} />
                   ) : (
                     <section className="vergleich-pane-stub" role="note">
                       <p>Monte-Carlo ist im Szenario-Toolbar deaktiviert. Aktiviere es, um Risiko-Highlights zu sehen.</p>
+                    </section>
+                  )
+                )}
+
+                {vergleichPane === 'sequence-of-returns' && (
+                  selectedScenario ? (
+                    <SequenceOfReturnsPanel
+                      selectedResults={selectedResults}
+                      payoutYears={assumptions.retirementEndAge - profile.retirementAge}
+                      retirementAge={profile.retirementAge}
+                      selectedScenario={selectedScenario}
+                      productColors={PRODUCT_COLORS}
+                    />
+                  ) : (
+                    <section className="vergleich-pane-stub" role="note">
+                      <p>Kein Renditeszenario ausgewählt — wähle eines im Szenario-Toolbar.</p>
                     </section>
                   )
                 )}

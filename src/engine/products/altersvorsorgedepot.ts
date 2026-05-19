@@ -7,8 +7,8 @@ import {
   afterTaxAvdLumpSum,
   calculateAvdFunding,
   computeAvdGlidepathReturn,
-  netAvdPayout,
 } from '../altersvorsorgedepot'
+import { netCertifiedPensionPayoutFull } from '../certifiedPensionPayout'
 import { monthlyPayoutFromCapital } from '../payoutMath'
 import { calculateLeibrenteBreakEvenAge } from '../productPayout'
 import { marketReturnAt, mergeInstanceCapitalPolicy } from '../marketReturns'
@@ -153,6 +153,15 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
       const partialCapital = projection.capital * partialPct
       const otherAnnual = avd.monthlyOtherRetirementIncome * 12
 
+      const avdPayout = netCertifiedPensionPayoutFull(
+        grossMonthlyPayout,
+        profile,
+        rules,
+        avd.monthlyOtherRetirementIncome,
+        payoutYear,
+        ctx.grvGrossMonthlyPension,
+        ctx.retirementHealthStatus,
+      )
       return {
         afterTaxLumpSum: partialPct > 0
           ? afterTaxAvdLumpSum(
@@ -165,15 +174,8 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
             )
           : null,
         grossMonthlyPayout,
-        netMonthlyPayout: netAvdPayout(
-          grossMonthlyPayout,
-          profile,
-          rules,
-          avd.monthlyOtherRetirementIncome,
-          payoutYear,
-          ctx.grvGrossMonthlyPension,
-          ctx.retirementHealthStatus,
-        ),
+        netMonthlyPayout: avdPayout.netMonthly,
+        kvPvMonthly: avdPayout.kvPvMonthly,
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,
           projection.capital,

@@ -77,6 +77,38 @@ jobs:
               continue
             fi
 
+            # Check merge state BEFORE approval checks — a DIRTY branch needs
+            # conflict resolution regardless of Claude/Codex review status.
+            # Without this early check, DIRTY PRs with no Claude approval or a
+            # Codex-reviewed head are silently skipped by the guards below and
+            # never get conflict resolution dispatched.
+            if ! mergeable_state=$(gh pr view "$pr" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus); then
+              echo "Skip: failed to load mergeable state; will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
+            if [ "$mergeable_state" = "UNKNOWN" ]; then
+              echo "Skip: mergeability UNKNOWN (GitHub still computing) — will retry on next tick."
+              echo "::endgroup::"
+              continue
+            fi
+            if [ "$mergeable_state" = "DIRTY" ]; then
+              echo "Branch is DIRTY — dispatching merge-conflict repair workflow and deferring merge."
+              gh workflow run resolve-merge-conflict.yml \
+                --repo "$REPO" \
+                -f pr_number="$pr" \
+                -f pr_title="$pr_title" \
+                -f head_sha="$head_sha" \
+                -f head_ref="$head_ref"
+              if ! gh pr view "$pr" --repo "$REPO" --json comments \
+                --jq '.comments[].body' | grep -q '^\[conflict-fix\]'; then
+                gh pr comment "$pr" --repo "$REPO" --body \
+                  "[conflict-fix] Branch is not cleanly mergeable with main. Dispatched resolve-merge-conflict.yml for \`$head_sha\`."
+              fi
+              echo "::endgroup::"
+              continue
+            fi
+
             if ! reviews=$(gh api "repos/$REPO/pulls/$pr/reviews"); then
               echo "Skip: failed to fetch reviews; will retry on next tick."
               echo "::endgroup::"
@@ -140,31 +172,11 @@ jobs:
             #   3. Cloudflare Workers build green on HEAD (the production deploy
             #      gate; failed CF build = broken prod).
 
-            # 1. Up-to-date check.
-            if ! mergeable_state=$(gh pr view "$pr" --repo "$REPO" --json mergeStateStatus --jq .mergeStateStatus); then
-              echo "Skip: failed to load mergeable state; will retry on next tick."
-              echo "::endgroup::"
-              continue
-            fi
+            # 1. BEHIND check (DIRTY already handled above).
             if [ "$mergeable_state" = "BEHIND" ]; then
               echo "Branch is BEHIND main — calling update-branch and deferring merge to next tick."
               gh pr update-branch "$pr" --repo "$REPO" || \
                 echo "update-branch failed; will retry on next tick."
-              echo "::endgroup::"
-              continue
-            fi
-            if [ "$mergeable_state" = "DIRTY" ]; then
-              echo "Branch is DIRTY — dispatching merge-conflict repair workflow and deferring merge."
-              gh workflow run resolve-merge-conflict.yml \
-                -f pr_number="$pr" \
-                -f pr_title="$pr_title" \
-                -f head_sha="$head_sha" \
-                -f head_ref="$head_ref"
-              if ! gh pr view "$pr" --repo "$REPO" --json comments \
-                --jq '.comments[].body' | grep -q '^\[conflict-fix\]'; then
-                gh pr comment "$pr" --repo "$REPO" --body \
-                  "[conflict-fix] Branch is not cleanly mergeable with main. Dispatched resolve-merge-conflict.yml for \`$head_sha\`."
-              fi
               echo "::endgroup::"
               continue
             fi

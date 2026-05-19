@@ -34,6 +34,8 @@ export interface ProductPayoutFields {
   afterTaxLumpSum: number | null
   grossMonthlyPayout: number
   netMonthlyPayout: number
+  /** Monthly KV + PV from calculateRetirementKvPv. Omit for ETF (defaults to 0). */
+  kvPvMonthly?: number
   leibrenteBreakEvenAge?: number
   /** undefined = lifelong (Leibrente). See BaseProductResult.payoutEndAge. */
   payoutEndAge?: number

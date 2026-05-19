@@ -88,10 +88,19 @@ repository state is uncertain.
      storage, pure helpers, DOM-testable a11y, and QA tooling behavior.
    - Use `TDD-skip: <reason>` for pure CSS/layout, pure copy, docs, or
      manual-visual-only changes.
-   - If writing a test: install dependencies if needed with separate commands
-     (`npm ci`, then `npm --prefix workers/qa-submit ci`), run
-     `npx vitest run <test-file>`, confirm it fails for the right reason, and
-     commit only that test with `test: failing test for #<N>`.
+   - **Install dependencies first.** Stage 1 runs in an isolated worktree
+     that does not have `node_modules` pre-populated. Before running any
+     `npx vitest run` invocation, always run:
+     ```bash
+     npm ci
+     npm --prefix workers/qa-submit ci  # if workers/qa-submit/package-lock.json exists
+     ```
+     Skipping this causes `vitest/config`, `@vitejs/plugin-react`, and other
+     module resolution failures that look like test-environment errors rather
+     than the actual failing assertion.
+   - If writing a test: run `npx vitest run <test-file>`, confirm it fails
+     for the right reason, and commit only that test with
+     `test: failing test for #<N>`.
    - **Partial fixture cast.** When a test fixture only needs a few fields from
      a large domain result type (`ProductResult`, `CombinedResult`,
      `BavFundingResult`, etc.), cast with `as unknown as <Type>` rather than
@@ -106,6 +115,14 @@ repository state is uncertain.
      always return `true`. If the test only exercises a product subset, either
      filter results by `visibleProducts` or zero out the unwanted product
      arrays in the workspace after migration.
+   - **`GermanRules` field paths are grouped sub-objects.** When a test or
+     handoff references `de2026Rules.*`, verify the full path via
+     `src/domain/rules.ts` before assuming a top-level field. The monthly
+     KV/PV BBG cap, for example, lives at
+     `de2026Rules.socialSecurity.healthAndCareCapMonth` — a top-level
+     `de2026Rules.healthAndCareCapMonth` access compiles but fails
+     `npm run verify` (tsc -b) with a type error, costing Stage 2 an
+     extra iteration. Mention the exact nested path in the handoff.
    - If the new test passes today, your reproduction is wrong; exit through
      the already-correct path.
 8. Push `agent/issue-<N>`.

@@ -158,6 +158,30 @@ export function netBasisrentePayout(
   }).netMonthly
 }
 
+/** Like netBasisrentePayout but returns both netMonthly and kvPvMonthly. */
+export function netBasisrentePayoutFull(
+  grossMonthlyPayout: number,
+  profile: PersonalProfile,
+  rules: GermanRules,
+  otherMonthlyIncome = 0,
+  retirementYear = rules.year,
+  retirementHealthStatus: RetirementHealthStatus = 'freiwillig_gkv',
+  grvBaselineMonthly = 0,
+): { netMonthly: number; kvPvMonthly: number } {
+  const r = calculateMonthlyRetirementPayout({
+    rules,
+    retirementYear,
+    grvBaselineMonthly,
+    otherMonthlyIncome,
+    grossMonthlyPayout,
+    taxChannel: 'statutory_pension',
+    kvPvChannel: 'freiwillig_other',
+    profile,
+    healthStatus: retirementHealthStatus,
+  })
+  return { netMonthly: r.netMonthly, kvPvMonthly: r.kvPvMonthly }
+}
+
 /**
  * Inverse of calculateBasisrenteFunding: given a target monthly net cost
  * (out-of-pocket after the §10 Abs. 3 EStG marginal tax saving), return the

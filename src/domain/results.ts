@@ -88,6 +88,9 @@ export interface BaseProductResult {
   lumpSumDeductions?: { incomeTax: number; kvPv: number }
   grossMonthlyPayout: number
   netMonthlyPayout: number
+  /** Monthly KV + PV deduction from `calculateRetirementKvPv`. 0 for ETF (kapitalverzehr).
+   *  Populated by product simulators; undefined on legacy paths (treat as 0). */
+  kvPvMonthly?: number
   taxAndSvSavings: number
   valueMultipleOnUserCost: number | null
   capitalMultipleAnnualized: number
