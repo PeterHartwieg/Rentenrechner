@@ -19,6 +19,7 @@ describe('publicRouteRegistry — entry shape', () => {
     // Update this list when adding new public routes.
     expect(PUBLIC_ROUTE_IDS).toEqual([
       '/',
+      '/artikel',
       '/rentenluecke-rechner',
       '/bav-rechner',
       '/etf-vs-bav',

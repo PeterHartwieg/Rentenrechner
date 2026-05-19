@@ -76,6 +76,7 @@ async function loadSourceModules() {
     const privateRvRechner = await server.ssrLoadModule('/src/features/publicPages/PrivateRentenversicherungRechnerPage.tsx')
     const renteNettoBerechnen = await server.ssrLoadModule('/src/features/publicPages/RenteNettoBerechnePage.tsx')
     const altersvorsorgeprodukte = await server.ssrLoadModule('/src/features/publicPages/AltersvorsorgeproduktePage.tsx')
+    const articleHub = await server.ssrLoadModule('/src/features/articles/ArticleHubPage.tsx')
     const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
     const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
     // AppShell wraps every prerendered page so the disclaimer banner appears
@@ -103,6 +104,7 @@ async function loadSourceModules() {
       privateRvRechner,
       renteNettoBerechnen,
       altersvorsorgeprodukte,
+      articleHub,
       impressum,
       datenschutz,
       appShellMod,
@@ -127,6 +129,7 @@ function buildComponentMap(modules) {
   return {
     '/': null,
     '/404': modules.pageNotFound.PageNotFound,
+    '/artikel': modules.articleHub.ArticleHubPage,
     '/rentenluecke-rechner': modules.rentenluecke.RentenluckeRechnerPage,
     '/bav-rechner': modules.bavRechner.BavRechnerPage,
     '/etf-vs-bav': modules.etfVsBav.EtfVsBavPage,
@@ -141,6 +144,29 @@ function buildComponentMap(modules) {
     '/datenschutz': modules.datenschutz.DatenschutzPage,
   }
 }
+
+/**
+ * Mirror of `isEditorialChromeRoute` from `src/features/articles/
+ * articleResolver.ts`. Kept inline because the prerender script runs in a
+ * plain Node ESM context and we want to avoid an extra `ssrLoadModule` call
+ * just to read this set. If the article-route taxonomy changes, both this
+ * list and the resolver must update in lockstep — the PR3 acceptance test
+ * pins the two together.
+ */
+const EDITORIAL_ROUTE_IDS = new Set([
+  '/',
+  '/artikel',
+  '/rentenluecke-rechner',
+  '/bav-rechner',
+  '/etf-vs-bav',
+  '/riester-rechner',
+  '/altersvorsorgedepot-rechner',
+  '/riester-vs-altersvorsorgedepot',
+  '/basisrente-rechner',
+  '/private-rentenversicherung-rechner',
+  '/rente-netto-berechnen',
+  '/altersvorsorgeprodukte-vergleichen',
+])
 
 function pickComponent(routeId, componentMap) {
   if (!Object.prototype.hasOwnProperty.call(componentMap, routeId)) {
@@ -163,10 +189,11 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
   // exactly what hydrated clients see; the disclaimer P0 compliance
   // invariant is preserved.
   //
-  // Editorial mode (PR 2): cream bg + serif H1. Currently only the homepage
-  // ('/') renders the LandingPage which uses editorial styling. PR 3 / PR 4
-  // will extend this set to '/artikel' and '/methode' once those routes ship.
-  const editorial = routeId === '/'
+  // Editorial mode (cream bg + serif H1). PR 3 promotes the Artikel hub
+  // plus every clustered topic page (they all sit inside ArticleLayout).
+  // The homepage stays editorial because the LandingPage renders in
+  // editorial styling during prerender. PR 4 will add `/methode`.
+  const editorial = EDITORIAL_ROUTE_IDS.has(routeId)
   function withShell(child) {
     return React.createElement(
       AppShell,
@@ -175,10 +202,11 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
     )
   }
   if (Component) {
-    // Legal pages take a `navigate` prop. The prerender pass uses a no-op;
-    // client hydration replaces it with the real router callback. Function
-    // props don't appear in HTML, so the rendered output matches either way.
-    if (routeId === '/impressum' || routeId === '/datenschutz') {
+    // Legal pages + the ArticleHubPage take a `navigate` prop. The prerender
+    // pass uses a no-op; client hydration replaces it with the real router
+    // callback. Function props don't appear in HTML, so the rendered output
+    // matches either way.
+    if (routeId === '/impressum' || routeId === '/datenschutz' || routeId === '/artikel') {
       return renderToString(withShell(React.createElement(Component, { navigate: noopNavigate })))
     }
     return renderToString(withShell(React.createElement(Component)))
@@ -341,6 +369,7 @@ async function main() {
       // returning users. The static HTML still serves as SEO content for
       // first-paint crawlers.
       const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
+        || routeId === '/artikel'
         || routeId === '/bav-rechner' || routeId === '/etf-vs-bav'
         || routeId === '/riester-rechner' || routeId === '/altersvorsorgedepot-rechner'
         || routeId === '/riester-vs-altersvorsorgedepot'

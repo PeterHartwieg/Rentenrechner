@@ -193,6 +193,45 @@ export const publicRouteRegistry = {
       href: '/',
     },
   },
+  // ---------------------------------------------------------------------------
+  // PR 3 — Artikel hub. Cream/serif editorial index over every topic page.
+  // The hub itself is not an article — `jsonLdType: 'WebPage'` reflects that
+  // (the topic pages keep their existing `WebApplication`/`Article` types).
+  // ---------------------------------------------------------------------------
+  '/artikel': {
+    canonical: '/artikel',
+    title: 'Artikel zur Altersvorsorge | RentenWiki.de',
+    metaDescription:
+      'Übersicht aller Artikel von RentenWiki.de: Rentenlücke, bAV, ETF, ' +
+      'Riester, Altersvorsorgedepot, Basisrente, private Rentenversicherung und ' +
+      'Portfolio-Planung. Quelloffen, ohne Werbung, Werte 2026.',
+    h1: 'Artikel',
+    summary:
+      'Übersicht aller Themen rund um die deutsche Altersvorsorge. Jede Seite ' +
+      'ist quelloffen und kann auf GitHub kommentiert oder verbessert werden.',
+    dateModified: '2026-05-19',
+    datePublished: '2026-05-19',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebPage',
+    relatedRoutes: [
+      '/',
+      '/rentenluecke-rechner',
+      '/rente-netto-berechnen',
+      '/bav-rechner',
+      '/etf-vs-bav',
+      '/riester-rechner',
+      '/altersvorsorgedepot-rechner',
+      '/riester-vs-altersvorsorgedepot',
+      '/basisrente-rechner',
+      '/private-rentenversicherung-rechner',
+      '/altersvorsorgeprodukte-vergleichen',
+    ],
+    calculatorCta: {
+      label: 'Rechner öffnen',
+      href: '/',
+    },
+  },
   '/rentenluecke-rechner': {
     canonical: '/rentenluecke-rechner',
     title: 'Rentenlücke berechnen 2026 | RentenWiki.de',

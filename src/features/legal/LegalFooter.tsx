@@ -2,6 +2,7 @@ import type { Route } from '../../app/useRoute'
 import './legal.css'
 import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 import { useQaMode } from '../qa-feedback/useQaMode'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface Props {
   navigate: (target: Route) => void
@@ -47,6 +48,10 @@ export function LegalFooter({ navigate }: Props) {
 
   function go(target: Route) {
     return (event: React.MouseEvent<HTMLAnchorElement>) => {
+      // Preserve native modified-click behaviour (Cmd/Ctrl/middle/Shift)
+      // so footer links open in a new tab when the user expects them to;
+      // only intercept plain primary-button clicks for SPA navigation.
+      if (!shouldUseSpaNavigation(event)) return
       event.preventDefault()
       navigate(target)
     }

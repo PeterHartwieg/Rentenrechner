@@ -1,10 +1,15 @@
-import { ChevronLeft } from 'lucide-react'
-import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
+import type { Route } from '../../app/useRoute'
+import { ArticleLayout } from '../articles/ArticleLayout'
 import RentenluckeBody from './rentenluecke-rechner.body.mdx'
-import './publicPages.css'
-import { RULES_YEAR } from '../../rules'
 
-const ROUTE = publicRouteRegistry['/rentenluecke-rechner']
+interface Props {
+  /** Threaded through to ArticleLayout so the LegalFooter Impressum /
+   *  Datenschutz links use SPA navigation instead of being swallowed by
+   *  the no-op fallback. SSG prerender supplies undefined; the rendered
+   *  `<a href>` attributes still drive direct loads.
+   */
+  navigate?: (target: Route) => void
+}
 
 /**
  * Public discovery page for `/rentenluecke-rechner`.
@@ -15,64 +20,16 @@ const ROUTE = publicRouteRegistry['/rentenluecke-rechner']
  *   2. Hydration on the client (React 19 hydrateRoot) — preserves the
  *      session-only DisclaimerBanner behavior.
  *
- * Decision pinned in issue #02: page wrapper imports `.mdx` body; metadata
- * registration stays in `publicRouteRegistry.ts`. The wrapper is therefore
- * intentionally thin — chrome + structured navigation, no business logic.
- *
- * Compliance:
- *   - Renders the not-advice DisclaimerBanner (covered by tests).
- *   - Renders the visible "Stand 2026-05-06" line that JSON-LD `dateModified`
- *     references — required by Google's structured-data guidelines.
- *   - Provides explicit internal links to homepage and 404 sibling, plus a
- *     calculator CTA deep-link to `/`.
- *   - Does not import simulation engine code (the body is pure prose).
+ * PR 3: page wrapper is now a thin `ArticleLayout` consumer. Cream + serif
+ * editorial chrome, breadcrumb, TOC left rail (desktop), related-routes
+ * right rail. Page-level concerns (h1, summary, stand, CTA, internal links,
+ * legal footer) all live inside `ArticleLayout` so adding a new topic page
+ * is one component + one registry entry.
  */
-export function RentenluckeRechnerPage() {
+export function RentenluckeRechnerPage({ navigate }: Props = {}) {
   return (
-    <div className="public-shell">
-      <main className="public-main">
-        <a href="/" className="public-back-link">
-          <ChevronLeft size={16} aria-hidden="true" />
-          Zurück zum Rechner
-        </a>
-
-        <article className="public-article">
-          <h1>{ROUTE.h1}</h1>
-          <p className="public-summary">{ROUTE.summary}</p>
-          <p className="public-stand">Redaktion: RentenWiki.de · Stand: {ROUTE.dateModified} · Werte für Deutschland {RULES_YEAR}</p>
-
-          <a href={ROUTE.calculatorCta.href} className="public-cta">
-            {ROUTE.calculatorCta.label}
-          </a>
-
-          <RentenluckeBody />
-
-          <h2>Verwandte Seiten</h2>
-          <ul className="public-internal-links">
-            <li>
-              <a href="/?view=vergleich">RentenWiki.de — Modellrechner Startseite</a>
-            </li>
-            {ROUTE.relatedRoutes.map((slug) => {
-              if (slug === '/') return null
-              const sibling = publicRouteRegistry[slug as keyof typeof publicRouteRegistry]
-              if (!sibling) return null
-              return (
-                <li key={slug}>
-                  <a href={`${slug}/`}>{sibling.h1}</a>
-                </li>
-              )
-            })}
-          </ul>
-        </article>
-      </main>
-
-      <footer className="public-page-footer">
-        <a href="/">RentenWiki.de</a>
-        <span>·</span>
-        <a href="/impressum/">Impressum</a>
-        <span>·</span>
-        <a href="/datenschutz/">Datenschutzerklärung</a>
-      </footer>
-    </div>
+    <ArticleLayout routeId="/rentenluecke-rechner" navigate={navigate}>
+      <RentenluckeBody />
+    </ArticleLayout>
   )
 }

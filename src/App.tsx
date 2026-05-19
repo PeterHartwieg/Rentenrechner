@@ -4,6 +4,7 @@ import { useRoute, detectSavedMode, appViewFromMode } from './app/useRoute'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { QaFeedbackProvider, QaModeIndicator } from './features/qa-feedback'
 import { AppShell } from './ui/chrome/AppShell'
+import { isEditorialChromeRoute } from './features/articles/articleResolver'
 import './App.css'
 
 // ---------------------------------------------------------------------------
@@ -34,6 +35,9 @@ const ImpressumPage = lazy(() =>
 )
 const DatenschutzPage = lazy(() =>
   import('./features/legal/DatenschutzPage').then((m) => ({ default: m.DatenschutzPage })),
+)
+const ArticleHubPage = lazy(() =>
+  import('./features/articles/ArticleHubPage').then((m) => ({ default: m.ArticleHubPage })),
 )
 const RentenluckeRechnerPage = lazy(() =>
   import('./features/publicPages/RentenluckeRechnerPage').then((m) => ({ default: m.RentenluckeRechnerPage })),
@@ -107,16 +111,17 @@ function App() {
   let body: ReactNode
   if (route === '/impressum') body = <ImpressumPage navigate={navigate} />
   else if (route === '/datenschutz') body = <DatenschutzPage navigate={navigate} />
-  else if (route === '/rentenluecke-rechner') body = <RentenluckeRechnerPage />
-  else if (route === '/bav-rechner') body = <BavRechnerPage />
-  else if (route === '/etf-vs-bav') body = <EtfVsBavPage />
-  else if (route === '/riester-rechner') body = <RiesterRechnerPage />
-  else if (route === '/altersvorsorgedepot-rechner') body = <AltersvorsorgedepotRechnerPage />
-  else if (route === '/riester-vs-altersvorsorgedepot') body = <RiesterVsAltersvorsorgedepotPage />
-  else if (route === '/basisrente-rechner') body = <BasisrenteRechnerPage />
-  else if (route === '/private-rentenversicherung-rechner') body = <PrivateRentenversicherungRechnerPage />
-  else if (route === '/rente-netto-berechnen') body = <RenteNettoBerechnePage />
-  else if (route === '/altersvorsorgeprodukte-vergleichen') body = <AltersvorsorgeproduktePage />
+  else if (route === '/artikel') body = <ArticleHubPage navigate={navigate} />
+  else if (route === '/rentenluecke-rechner') body = <RentenluckeRechnerPage navigate={navigate} />
+  else if (route === '/bav-rechner') body = <BavRechnerPage navigate={navigate} />
+  else if (route === '/etf-vs-bav') body = <EtfVsBavPage navigate={navigate} />
+  else if (route === '/riester-rechner') body = <RiesterRechnerPage navigate={navigate} />
+  else if (route === '/altersvorsorgedepot-rechner') body = <AltersvorsorgedepotRechnerPage navigate={navigate} />
+  else if (route === '/riester-vs-altersvorsorgedepot') body = <RiesterVsAltersvorsorgedepotPage navigate={navigate} />
+  else if (route === '/basisrente-rechner') body = <BasisrenteRechnerPage navigate={navigate} />
+  else if (route === '/private-rentenversicherung-rechner') body = <PrivateRentenversicherungRechnerPage navigate={navigate} />
+  else if (route === '/rente-netto-berechnen') body = <RenteNettoBerechnePage navigate={navigate} />
+  else if (route === '/altersvorsorgeprodukte-vergleichen') body = <AltersvorsorgeproduktePage navigate={navigate} />
   else if (route === '/404') body = <PageNotFound />
   else if (calculatorView === 'landing') {
     body = <LandingPage onChoice={handleLandingChoice} navigate={navigate} />
@@ -131,10 +136,13 @@ function App() {
     )
   }
 
-  // Editorial mode (cream bg + serif H1) is enabled when the LandingPage is
-  // the current body. PR 3 / PR 4 will extend this set with `/artikel` and
-  // `/methode` once those routes ship.
-  const isEditorial = route === '/' && calculatorView === 'landing'
+  // Editorial mode (cream bg + serif H1) — extended by PR 3 to cover the
+  // Artikel hub plus every `/<topic>-rechner` route (which now sits inside
+  // the cream-and-serif `ArticleLayout`). PR 4 will add `/methode` once it
+  // ships. Legal pages stay sober (sans + white) because they are not
+  // editorial content.
+  const isEditorial =
+    (route === '/' && calculatorView === 'landing') || isEditorialChromeRoute(route)
 
   // QA feedback mode (issue 02 — Phase 1 Lane A). Wraps the entire route
   // surface so the overlay can target legal pages too. Inert when disabled

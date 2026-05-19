@@ -1,0 +1,112 @@
+import './ArticleHubPage.css'
+import { LegalFooter } from '../legal/LegalFooter'
+import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
+import {
+  countAllArticles,
+  countArticlesInCluster,
+  getLatestArticleModified,
+  resolveHubGroups,
+} from './articleResolver'
+import { RULES_YEAR } from '../../rules'
+import type { Route } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
+import { slugify } from '../../utils/slugify'
+
+interface Props {
+  navigate?: (target: Route) => void
+}
+
+/**
+ * `/artikel` — editorial index over every clustered topic page.
+ *
+ * Re-uses the same `HUB_CLUSTERS` taxonomy the landing hub uses (5 buckets,
+ * 10 entries today) so the two hubs cannot drift. Per-cluster article counts
+ * are sourced via `countArticlesInCluster()` and the latest `dateModified`
+ * across all articles is shown in the kicker (no hardcoded "47 Beiträge").
+ *
+ * Posture (per PR 3 handoff): no fictional authors. Each card surfaces the
+ * route's `h1`, `summary`, and a "Stand: <dateModified>" line — that's the
+ * only by-line we can stand behind for a single-maintainer project.
+ *
+ * JSON-LD: emitted into the document head by the SSG `renderRouteHeadHtml`
+ * pipeline (`buildJsonLd` returns a WebPage block from
+ * `publicRouteRegistry['/artikel']`). We do NOT emit a second block inline
+ * here — that would duplicate the schema and trip the registry's
+ * "no duplicate JSON-LD" invariant (`/` is the only route where head
+ * emission is suppressed in favour of body emission).
+ */
+export function ArticleHubPage({ navigate }: Props) {
+  const route = publicRouteRegistry['/artikel']
+  const groups = resolveHubGroups()
+  const total = countAllArticles()
+  const latest = getLatestArticleModified()
+  const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
+
+  return (
+    <div className="hub-shell">
+      <div className="hub-main">
+        <header className="hub-lead">
+          <div className="hub-kicker">
+            Artikel · {total} Beiträge · zuletzt aktualisiert {latest}
+          </div>
+          <h1 className="hub-headline">{route.h1}</h1>
+          {/* Visible lead is sourced from `publicRouteRegistry['/artikel'].summary`
+              so the prerendered JSON-LD `description` (emitted by
+              `renderRouteHeadHtml`) always matches the rendered copy — Google's
+              structured-data audit fails otherwise. Update the registry, not
+              this paragraph, when reworking the hub's lead copy. */}
+          <p className="hub-dek">{route.summary}</p>
+        </header>
+
+        <div className="hub-groups">
+          {groups.map((group) => (
+            <section key={group.heading} className="hub-group" aria-labelledby={`hub-group-${slugify(group.heading)}`}>
+              <div className="hub-group-head">
+                <h2
+                  id={`hub-group-${slugify(group.heading)}`}
+                  className="hub-group-heading"
+                >
+                  {group.heading}
+                </h2>
+                <span className="hub-group-count">
+                  {countArticlesInCluster(group.heading)} Artikel
+                </span>
+              </div>
+              <div className="hub-group-grid">
+                {group.entries.map((entry) => (
+                  <article key={entry.path} className="hub-card">
+                    <h3 className="hub-card-title">
+                      <a
+                        href={`${entry.path}/`}
+                        className="hub-card-link"
+                        onClick={(event) => {
+                          if (!navigate) return
+                          if (!shouldUseSpaNavigation(event)) return
+                          event.preventDefault()
+                          navigate(entry.path as Route)
+                        }}
+                      >
+                        {entry.label}
+                      </a>
+                    </h3>
+                    <p className="hub-card-dek">{entry.route.summary}</p>
+                    <div className="hub-card-meta">
+                      Stand: {entry.route.dateModified}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+
+      <p className="hub-stand">
+        Stand: {route.dateModified} · Werte für Deutschland {RULES_YEAR}
+      </p>
+
+      <LegalFooter navigate={navigateOrNoop} />
+    </div>
+  )
+}
+

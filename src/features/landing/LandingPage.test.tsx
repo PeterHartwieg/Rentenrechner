@@ -546,6 +546,13 @@ describe('LandingPage — editorial layout (PR 2)', () => {
     expect(link?.textContent ?? '').toContain(`Alle ${expectedCount} Themen`)
   })
 
+  it('"Alle N Themen ansehen" navigates to /artikel (PR 3 hub)', () => {
+    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    const link = container.querySelector('a.landing-featured-all') as HTMLAnchorElement | null
+    expect(link).not.toBeNull()
+    expect(link!.getAttribute('href')).toBe('/artikel')
+  })
+
   it('does NOT carry the mock\'s fictional "47 Artikel" / "318 Contributor" numbers', () => {
     const html = renderToString(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     // The mock's right-rail had `Alle 47 Artikel ansehen →` and

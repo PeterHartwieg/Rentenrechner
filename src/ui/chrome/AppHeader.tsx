@@ -3,6 +3,7 @@ import { useViewport } from './useViewport'
 import { MobileSheet } from './MobileSheet'
 import { routeToNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface AppHeaderProps {
   /** Current route — drives which top-nav tab is highlighted. */
@@ -24,6 +25,17 @@ const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
   { id: 'artikel', label: 'Artikel' },
   { id: 'method', label: 'Methode' },
 ]
+
+/**
+ * Map a nav tab id to a real `Route` target if one exists. Returns `null`
+ * for placeholder tabs (`plan` / `compare` / `method` until their routes
+ * ship). The 'home' tab returns `/`; 'artikel' returns `/artikel` (PR 3).
+ */
+function clickableTarget(id: ChromeNavId): Route | null {
+  if (id === 'home') return '/'
+  if (id === 'artikel') return '/artikel'
+  return null
+}
 
 /**
  * Top page chrome. Three internal viewport variants:
@@ -86,16 +98,17 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
         <nav className="rw-app-header__nav" aria-label="Hauptnavigation">
           {NAV_ITEMS.map((item) => {
             const isActive = item.id === active
-            const clickable = item.id === 'home'
-            if (clickable) {
+            const target = clickableTarget(item.id)
+            if (target) {
               return (
                 <a
                   key={item.id}
-                  href="/"
+                  href={target}
                   className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
                   onClick={(event) => {
+                    if (!shouldUseSpaNavigation(event)) return
                     event.preventDefault()
-                    navigate('/')
+                    navigate(target)
                   }}
                 >
                   {item.label}
