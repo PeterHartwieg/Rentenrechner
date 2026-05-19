@@ -1,0 +1,595 @@
+/* ==========================================================================
+   MethodePage — `/methode` route. Sober D visual treatment: white background,
+   IBM Plex Sans body, mono section labels. Deliberately not editorial cream
+   (that's `ArticleLayout.css`) — Methode is a reference page, sized like a
+   public notice with footnoted statutory values (PR 4).
+
+   Tokens come from src/App.css.
+   ========================================================================== */
+
+.methode-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+}
+
+.methode-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 56px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* --- Breadcrumb ------------------------------------------------------ */
+.methode-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.78rem;
+  color: var(--rw-ink-soft);
+}
+
+.methode-breadcrumb-back {
+  color: var(--rw-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.methode-breadcrumb-back:hover {
+  color: var(--rw-accent);
+}
+
+.methode-breadcrumb-sep {
+  color: var(--rw-ink-faint);
+}
+
+.methode-breadcrumb-cluster {
+  font-family: var(--rw-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+/* --- Grid ------------------------------------------------------------ */
+.methode-grid {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 280px;
+  gap: 40px;
+  align-items: start;
+}
+
+/* --- Left rail (TOC) ------------------------------------------------- */
+.methode-toc {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  font-family: var(--rw-font-sans);
+  font-size: 0.82rem;
+  color: var(--rw-ink-soft);
+}
+
+.methode-toc-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.methode-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.methode-toc-item {
+  padding: 6px 0 6px 10px;
+  border-left: 2px solid transparent;
+  line-height: 1.4;
+}
+
+.methode-toc-item--active {
+  color: var(--rw-ink);
+  border-left-color: var(--rw-accent);
+  font-weight: 600;
+}
+
+.methode-toc-link {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.methode-toc-link:hover {
+  color: var(--rw-accent);
+}
+
+.methode-toc-num {
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.4px;
+  color: var(--rw-ink-faint);
+  font-weight: 600;
+}
+
+/* --- Center (article body) ------------------------------------------- */
+.methode-body {
+  min-width: 0;
+  max-width: 760px;
+}
+
+.methode-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.methode-headline {
+  margin: 6px 0 0;
+  font-family: var(--rw-font-sans);
+  font-weight: 600;
+  font-size: clamp(1.8rem, 3.2vw, 2.4rem);
+  letter-spacing: -0.4px;
+  line-height: 1.1;
+  color: var(--rw-ink);
+}
+
+.methode-summary {
+  margin: 14px 0 0;
+  font-family: var(--rw-font-sans);
+  font-weight: 400;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+  max-width: 640px;
+}
+
+.methode-meta {
+  margin: 16px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--rw-rule-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.78rem;
+  color: var(--rw-ink-faint);
+}
+
+.methode-meta-label {
+  color: var(--rw-ink);
+  font-weight: 600;
+}
+
+.methode-meta-sep {
+  color: var(--rw-ink-faint);
+}
+
+/* --- Sections -------------------------------------------------------- */
+.methode-section {
+  margin-top: 32px;
+}
+
+.methode-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid var(--rw-rule);
+}
+
+.methode-section-num {
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.6px;
+  color: var(--rw-ink-faint);
+  text-transform: uppercase;
+}
+
+.methode-section-title {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-weight: 600;
+  font-size: 1.2rem;
+  letter-spacing: -0.2px;
+  color: var(--rw-ink);
+  scroll-margin-top: 80px;
+}
+
+.methode-section-lead {
+  margin: 0 0 14px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+}
+
+/* --- Definition list (key/value rows) -------------------------------- */
+.methode-deflist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.methode-deflist li {
+  padding: 10px 0;
+  border-top: 1px solid var(--rw-rule-soft);
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.methode-deflist li:last-child {
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.methode-deflist-key {
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.methode-deflist-val {
+  color: var(--rw-ink-soft);
+}
+
+/* --- Tables ---------------------------------------------------------- */
+.methode-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--rw-font-sans);
+  font-size: 0.88rem;
+  margin: 8px 0 8px;
+  table-layout: auto;
+}
+
+.methode-table thead tr {
+  border-bottom: 1px solid var(--rw-rule);
+}
+
+.methode-table th {
+  padding: 8px 12px 8px 0;
+  text-align: left;
+  font-weight: 600;
+  color: var(--rw-ink);
+  font-size: 0.82rem;
+  letter-spacing: 0.1px;
+}
+
+.methode-table tbody tr {
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.methode-table td {
+  padding: 9px 12px 9px 0;
+  vertical-align: top;
+  color: var(--rw-ink);
+  line-height: 1.5;
+}
+
+.methode-table-num {
+  text-align: right;
+  font-family: var(--rw-font-mono);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.methode-table-note {
+  color: var(--rw-ink-soft);
+  font-size: 0.82rem;
+}
+
+.methode-table-key--accent {
+  font-weight: 600;
+  color: var(--rw-accent);
+}
+
+/* --- Bullets --------------------------------------------------------- */
+.methode-bullets {
+  padding-left: 20px;
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--rw-ink-soft);
+}
+
+.methode-bullets li {
+  margin-bottom: 8px;
+}
+
+.methode-bullets li:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Footnote refs --------------------------------------------------- */
+.methode-footnote-ref {
+  font-family: var(--rw-font-mono);
+  font-size: 0.7rem;
+  color: var(--rw-ink-faint);
+  letter-spacing: 0.2px;
+  margin-left: 2px;
+}
+
+/* --- Inline code ----------------------------------------------------- */
+.methode-code {
+  font-family: var(--rw-font-mono);
+  font-size: 0.85em;
+  background: var(--rw-bg-paper-soft);
+  padding: 1px 6px;
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 2px;
+}
+
+/* --- Right rail ------------------------------------------------------ */
+.methode-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-self: start;
+}
+
+.methode-aside-card {
+  border: 1px solid var(--rw-rule-soft);
+  padding: 14px 18px;
+}
+
+.methode-aside-card--sources {
+  background: var(--rw-bg-paper);
+}
+
+.methode-aside-card--meta {
+  background: var(--rw-bg-paper-soft);
+}
+
+.methode-aside-card--license {
+  background: var(--rw-bg-paper-soft);
+}
+
+.methode-aside-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.methode-aside-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: methode-source;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--rw-ink-soft);
+}
+
+.methode-aside-list-item {
+  padding: 6px 0;
+  border-top: 1px solid var(--rw-rule-soft);
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+  align-items: baseline;
+}
+
+.methode-aside-list-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.methode-aside-num {
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  color: var(--rw-ink-faint);
+  letter-spacing: 0.2px;
+}
+
+.methode-aside-body {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+}
+
+.methode-aside-body:last-child {
+  margin-bottom: 0;
+}
+
+.methode-aside-body strong {
+  color: var(--rw-ink);
+  font-weight: 600;
+}
+
+.methode-aside-link {
+  color: var(--rw-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.methode-aside-link:hover {
+  color: var(--rw-ink);
+}
+
+.methode-aside-github {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--rw-ink);
+  border: 1px solid var(--rw-rule);
+  font-family: var(--rw-font-sans);
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  text-decoration: none;
+  min-height: 44px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.methode-aside-github:hover {
+  background: var(--rw-ink);
+  color: var(--rw-bg-paper);
+}
+
+/* --- Stand line ------------------------------------------------------ */
+.methode-stand {
+  text-align: center;
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  color: var(--rw-ink-faint);
+  margin: 0 0 16px;
+  padding: 0 24px;
+}
+
+/* ==========================================================================
+   Tablet — 640–1023 px. TOC hides; right rail narrows.
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .methode-main {
+    padding: 28px 32px 28px;
+    gap: 20px;
+  }
+
+  .methode-grid {
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 28px;
+  }
+
+  .methode-toc {
+    display: none;
+  }
+
+  .methode-headline {
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    letter-spacing: -0.3px;
+  }
+
+  .methode-summary {
+    font-size: 0.95rem;
+  }
+
+  .methode-deflist li {
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 12px;
+  }
+}
+
+/* ==========================================================================
+   Phone — <640 px. Right rail folds below body. Tables collapse to row blocks
+   (vertical key/value pairs), mirroring the ArticleLayout MDX-table treatment.
+   ========================================================================== */
+@media (max-width: 639px) {
+  .methode-main {
+    padding: 22px 16px 28px;
+    gap: 18px;
+  }
+
+  .methode-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .methode-aside {
+    order: 2;
+  }
+
+  .methode-headline {
+    font-size: 1.5rem;
+    letter-spacing: -0.3px;
+  }
+
+  .methode-summary {
+    font-size: 0.95rem;
+  }
+
+  .methode-section-title {
+    font-size: 1.1rem;
+  }
+
+  /* Definition lists collapse to vertical pairs at phone width so the long
+     statutory descriptions stop fighting with the narrow value column. */
+  .methode-deflist li {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  /* Tables collapse to row blocks — same convention as ArticleLayout.css for
+     MDX tables. We render header rows visually-hidden and use `data-label` on
+     each `<td>` to surface the column label inline. */
+  .methode-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .methode-table,
+  .methode-table tbody,
+  .methode-table tr,
+  .methode-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .methode-table tr {
+    border-bottom: 1px solid var(--rw-rule);
+    padding: 10px 0;
+  }
+
+  .methode-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .methode-table td {
+    padding: 3px 0;
+    border-bottom: none;
+    text-align: left;
+  }
+
+  .methode-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-family: var(--rw-font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.4px;
+    color: var(--rw-ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* The "no label" cells (e.g. when data-label is omitted on the lead row)
+     skip the kicker so we don't render an empty pseudo-element. */
+  .methode-table td[data-label='']::before,
+  .methode-table td:not([data-label])::before {
+    content: none;
+  }
+
+  .methode-table-num {
+    text-align: left;
+  }
+}

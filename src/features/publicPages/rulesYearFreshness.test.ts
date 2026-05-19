@@ -20,6 +20,7 @@ describe('public freshness stamps', () => {
 
     const filesToScan = [
       join(root, 'src/features/landing/LandingPage.tsx'),
+      join(root, 'src/features/methode/MethodePage.tsx'),
       ...publicPageSources,
     ]
 

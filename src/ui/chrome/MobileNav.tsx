@@ -19,7 +19,7 @@ const ITEMS: readonly NavEntry[] = [
   { id: 'plan', label: 'Plan', target: null },
   { id: 'compare', label: 'Vergleich', target: null },
   { id: 'artikel', label: 'Artikel', target: '/artikel' },
-  { id: 'method', label: 'Methode', target: null },
+  { id: 'method', label: 'Methode', target: '/methode' },
 ]
 
 /**

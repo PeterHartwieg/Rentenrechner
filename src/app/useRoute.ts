@@ -13,6 +13,7 @@ import { publicRouteRegistry } from '../seo/publicRouteRegistry'
 export type Route =
   | '/'
   | '/artikel'
+  | '/methode'
   | '/impressum'
   | '/datenschutz'
   | '/rentenluecke-rechner'
@@ -30,6 +31,7 @@ export type Route =
 const KNOWN_ROUTES: Route[] = [
   '/',
   '/artikel',
+  '/methode',
   '/impressum',
   '/datenschutz',
   '/rentenluecke-rechner',

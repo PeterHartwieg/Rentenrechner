@@ -78,12 +78,12 @@ import type {
 } from '../domain'
 import {
   besteuerungsanteilGrv,
+  legalConstants,
   sonderausgabenPauschbetrag,
   versorgungsfreibetrag,
   werbungskostenPauschalRenten,
   werbungskostenPauschalVersorgungsbezuege,
-} from '../rules/de2026'
-import { legalConstants } from '../rules/legalConstants'
+} from '../rules/legalConstants'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 export function calculateRetirementTax(

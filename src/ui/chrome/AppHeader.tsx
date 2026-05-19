@@ -28,12 +28,14 @@ const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
 
 /**
  * Map a nav tab id to a real `Route` target if one exists. Returns `null`
- * for placeholder tabs (`plan` / `compare` / `method` until their routes
- * ship). The 'home' tab returns `/`; 'artikel' returns `/artikel` (PR 3).
+ * for placeholder tabs (`plan` / `compare` until their routes ship). The
+ * 'home' tab returns `/`; 'artikel' returns `/artikel' (PR 3); 'method'
+ * returns `/methode` (PR 4).
  */
 function clickableTarget(id: ChromeNavId): Route | null {
   if (id === 'home') return '/'
   if (id === 'artikel') return '/artikel'
+  if (id === 'method') return '/methode'
   return null
 }
 

@@ -114,6 +114,21 @@ describe('AppHeader', () => {
     const active = document.querySelector('.rw-app-header__nav-item--active')
     expect(active?.textContent).toBe('Artikel')
   })
+
+  it('navigates to /methode when Methode is clicked on desktop (PR 4)', () => {
+    mockViewport('desktop')
+    const navigate = vi.fn()
+    render(<AppHeader route="/" title="" navigate={navigate} />)
+    fireEvent.click(screen.getByText('Methode'))
+    expect(navigate).toHaveBeenCalledWith('/methode')
+  })
+
+  it('highlights Methode as active when route is /methode (PR 4)', () => {
+    mockViewport('desktop')
+    render(<AppHeader route="/methode" title="" navigate={() => {}} />)
+    const active = document.querySelector('.rw-app-header__nav-item--active')
+    expect(active?.textContent).toBe('Methode')
+  })
 })
 
 describe('MobileNav', () => {
@@ -133,12 +148,12 @@ describe('MobileNav', () => {
     expect(active?.textContent).toBe('Start')
   })
 
-  it('keeps the unbuilt tabs as inert placeholders (PR 3: Plan / Vergleich / Methode)', () => {
+  it('keeps the unbuilt tabs as inert placeholders (PR 4: Plan / Vergleich)', () => {
     render(<MobileNav route="/" navigate={() => {}} />)
     const placeholders = document.querySelectorAll('.rw-mobile-nav__tab--placeholder')
-    // PR 3 promoted Artikel to a clickable link (`/artikel`) so only Plan,
-    // Vergleich and Methode remain as inert placeholders.
-    expect(placeholders.length).toBe(3)
+    // PR 3 promoted Artikel to a clickable link; PR 4 promotes Methode.
+    // Only Plan and Vergleich remain as inert placeholders.
+    expect(placeholders.length).toBe(2)
   })
 
   it('navigates home when Start is tapped', () => {
@@ -159,6 +174,19 @@ describe('MobileNav', () => {
     render(<MobileNav route="/bav-rechner" navigate={() => {}} />)
     const active = document.querySelector('.rw-mobile-nav__tab--active')
     expect(active?.textContent).toBe('Artikel')
+  })
+
+  it('navigates to /methode when Methode is tapped (PR 4)', () => {
+    const navigate = vi.fn()
+    render(<MobileNav route="/" navigate={navigate} />)
+    fireEvent.click(screen.getByText('Methode'))
+    expect(navigate).toHaveBeenCalledWith('/methode')
+  })
+
+  it('highlights Methode as active when route is /methode (PR 4)', () => {
+    render(<MobileNav route="/methode" navigate={() => {}} />)
+    const active = document.querySelector('.rw-mobile-nav__tab--active')
+    expect(active?.textContent).toBe('Methode')
   })
 })
 

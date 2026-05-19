@@ -550,6 +550,34 @@ export const publicRouteRegistry = {
     },
   },
   // ---------------------------------------------------------------------------
+  // PR 4 — Methode & Quellen reference page. Sober D (white + IBM Plex Sans),
+  // not editorial cream — see `isEditorialChromeRoute` in
+  // `src/features/articles/articleResolver.ts` (Methode is deliberately not
+  // included). `jsonLdType: 'WebPage'` mirrors the Artikel hub since this is
+  // a reference page, not an article.
+  // ---------------------------------------------------------------------------
+  '/methode': {
+    canonical: '/methode',
+    title: 'Methode & Quellen | RentenWiki.de',
+    metaDescription:
+      'Wie RentenWiki.de rechnet: Renditeannahmen, Steuer- und Sozialversicherungs-Modell, ' +
+      'statutorische Werte 2026 und Quellen. Quelloffen, ohne Werbung, ohne Provisionen.',
+    h1: 'Methode & Quellen',
+    summary:
+      'Diese Seite dokumentiert alle Berechnungsmodelle, Annahmen und Datenquellen, die ' +
+      'RentenWiki.de verwendet. Sämtliche Algorithmen sind quelloffen auf GitHub einsehbar.',
+    dateModified: '2026-05-19',
+    datePublished: '2026-05-19',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebPage',
+    relatedRoutes: ['/', '/artikel'],
+    calculatorCta: {
+      label: 'Rechner öffnen',
+      href: '/',
+    },
+  },
+  // ---------------------------------------------------------------------------
   // Legal pages — prerendered with route-specific head tags but NOT in sitemap.
   // Carry the brand-default OG image and page-specific JSON-LD types.
   // ---------------------------------------------------------------------------

@@ -39,6 +39,9 @@ const DatenschutzPage = lazy(() =>
 const ArticleHubPage = lazy(() =>
   import('./features/articles/ArticleHubPage').then((m) => ({ default: m.ArticleHubPage })),
 )
+const MethodePage = lazy(() =>
+  import('./features/methode/MethodePage').then((m) => ({ default: m.MethodePage })),
+)
 const RentenluckeRechnerPage = lazy(() =>
   import('./features/publicPages/RentenluckeRechnerPage').then((m) => ({ default: m.RentenluckeRechnerPage })),
 )
@@ -112,6 +115,7 @@ function App() {
   if (route === '/impressum') body = <ImpressumPage navigate={navigate} />
   else if (route === '/datenschutz') body = <DatenschutzPage navigate={navigate} />
   else if (route === '/artikel') body = <ArticleHubPage navigate={navigate} />
+  else if (route === '/methode') body = <MethodePage navigate={navigate} />
   else if (route === '/rentenluecke-rechner') body = <RentenluckeRechnerPage navigate={navigate} />
   else if (route === '/bav-rechner') body = <BavRechnerPage navigate={navigate} />
   else if (route === '/etf-vs-bav') body = <EtfVsBavPage navigate={navigate} />
