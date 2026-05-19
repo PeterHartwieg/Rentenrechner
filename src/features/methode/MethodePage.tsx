@@ -14,7 +14,6 @@ import {
 import { defaultAssumptions } from '../../data/defaultScenario'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
-import { slugify } from '../../utils/slugify'
 import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {
@@ -22,25 +21,27 @@ interface Props {
 }
 
 interface Section {
+  /** Stable fragment id — used for `<h2 id>`, TOC `href`, and aria-current.
+   *  Must NOT contain the rule year so `/methode#steuer-modell` keeps working
+   *  when `RULES_YEAR` rolls forward. */
+  readonly id: string
   /** Mono kicker label, e.g. "§ 1". */
   readonly n: string
-  /** Section heading, e.g. "Renditeannahmen". */
+  /** Section heading shown to the user (year-bearing copy is fine here). */
   readonly title: string
 }
 
-// Sections rendered in this order. Each gets a `<h2 id={slugify(title)}>`
-// anchor so the in-page TOC + direct-fragment loads (`/methode#steuermodell`)
-// work end-to-end. Mirrors the responsive mock (`DirectionDMethode` ~line 695
-// in `direction-d-pages.jsx`).
-// Section titles use `${RULES_YEAR}` for the year-stamped headings so the
-// freshness guardrail in `rulesYearFreshness.test.ts` keeps catching drift
-// when the active rule year rolls forward.
+// Sections rendered in this order. Each `<h2>` uses `section.id` (stable) as
+// its DOM id so the in-page TOC + direct-fragment loads (`/methode#steuer-modell`)
+// survive rule-year rollover without breaking incoming deep-links.
+// The user-visible `title` may carry `${RULES_YEAR}` for freshness; only the
+// `id` must remain year-free.
 const SECTIONS: ReadonlyArray<Section> = [
-  { n: '§ 1', title: 'Renditeannahmen' },
-  { n: '§ 2', title: `Steuer-Modell (Stand ${RULES_YEAR})` },
-  { n: '§ 3', title: 'Sozialversicherung (KV/PV/RV)' },
-  { n: '§ 4', title: `Statutorische Werte ${RULES_YEAR}` },
-  { n: '§ 5', title: 'Was wir bewusst nicht modellieren' },
+  { id: 'renditeannahmen', n: '§ 1', title: 'Renditeannahmen' },
+  { id: 'steuer-modell', n: '§ 2', title: `Steuer-Modell (Stand ${RULES_YEAR})` },
+  { id: 'sozialversicherung', n: '§ 3', title: 'Sozialversicherung (KV/PV/RV)' },
+  { id: 'statutorische-werte', n: '§ 4', title: `Statutorische Werte ${RULES_YEAR}` },
+  { id: 'nicht-modelliert', n: '§ 5', title: 'Was wir bewusst nicht modellieren' },
 ]
 
 /**
@@ -55,8 +56,8 @@ const SOURCES: readonly string[] = [
   '§ 10 Abs. 3 EStG — Sonderausgabenabzug Basisrente',
   '§ 20 Abs. 9 EStG — Sparer-Pauschbetrag',
   '§ 3 Nr. 63 EStG / § 1 SvEV — Förderhöchstbeträge bAV',
-  'BMF-Schreiben 2026-01-13 — Basiszins § 18 InvStG (Vorabpauschale)',
-  'SVBezGrV 2026 — Beitragsbemessungsgrenzen, Bezugsgröße, Durchschnittsentgelt (BGBl. 2025 I Nr. 278)',
+  `BMF-Schreiben ${RULES_YEAR}-01-13 — Basiszins § 18 InvStG (Vorabpauschale)`,
+  `SVBezGrV ${RULES_YEAR} — Beitragsbemessungsgrenzen, Bezugsgröße, Durchschnittsentgelt (BGBl. 2025 I Nr. 278)`,
   'Deutsche Rentenversicherung Bund — Renteninformation und Aktueller Rentenwert (§ 69 SGB VI)',
 ]
 
@@ -118,7 +119,7 @@ export function MethodePage({ navigate }: Props) {
       { rootMargin: '-30% 0px -60% 0px' },
     )
     for (const section of SECTIONS) {
-      const el = document.getElementById(slugify(section.title))
+      const el = document.getElementById(section.id)
       if (el) observer.observe(el)
     }
     return () => observer.disconnect()
@@ -180,12 +181,11 @@ export function MethodePage({ navigate }: Props) {
             <div className="methode-toc-kicker">In diesem Dokument</div>
             <ol className="methode-toc-list">
               {SECTIONS.map((section, i) => {
-                const id = slugify(section.title)
                 const isActive =
-                  activeAnchor === id || (activeAnchor === null && i === 0)
+                  activeAnchor === section.id || (activeAnchor === null && i === 0)
                 return (
                   <li
-                    key={id}
+                    key={section.id}
                     className={
                       isActive
                         ? 'methode-toc-item methode-toc-item--active'
@@ -193,7 +193,7 @@ export function MethodePage({ navigate }: Props) {
                     }
                   >
                     <a
-                      href={`#${id}`}
+                      href={`#${section.id}`}
                       className="methode-toc-link"
                       aria-current={isActive ? 'location' : undefined}
                     >
@@ -226,7 +226,7 @@ export function MethodePage({ navigate }: Props) {
               <div className="methode-section-head">
                 <span className="methode-section-num">{SECTIONS[0].n}</span>
                 <h2
-                  id={slugify(SECTIONS[0].title)}
+                  id={SECTIONS[0].id}
                   className="methode-section-title"
                 >
                   {SECTIONS[0].title}
@@ -282,7 +282,7 @@ export function MethodePage({ navigate }: Props) {
               <div className="methode-section-head">
                 <span className="methode-section-num">{SECTIONS[1].n}</span>
                 <h2
-                  id={slugify(SECTIONS[1].title)}
+                  id={SECTIONS[1].id}
                   className="methode-section-title"
                 >
                   {SECTIONS[1].title}
@@ -355,7 +355,7 @@ export function MethodePage({ navigate }: Props) {
               <div className="methode-section-head">
                 <span className="methode-section-num">{SECTIONS[2].n}</span>
                 <h2
-                  id={slugify(SECTIONS[2].title)}
+                  id={SECTIONS[2].id}
                   className="methode-section-title"
                 >
                   {SECTIONS[2].title}
@@ -405,7 +405,7 @@ export function MethodePage({ navigate }: Props) {
               <div className="methode-section-head">
                 <span className="methode-section-num">{SECTIONS[3].n}</span>
                 <h2
-                  id={slugify(SECTIONS[3].title)}
+                  id={SECTIONS[3].id}
                   className="methode-section-title"
                 >
                   {SECTIONS[3].title}
@@ -436,7 +436,7 @@ export function MethodePage({ navigate }: Props) {
                       {formatCurrency(activeRules.socialSecurity.pensionCapYear)} / Jahr
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
-                      SVBezGrV 2026 § 2 Abs. 1{' '}
+                      SVBezGrV {RULES_YEAR} § 2 Abs. 1{' '}
                       <sup className="methode-footnote-ref">[7]</sup>
                     </td>
                   </tr>
@@ -465,7 +465,7 @@ export function MethodePage({ navigate }: Props) {
                       {formatCurrency(activeRules.socialSecurity.durchschnittsentgelt)}
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
-                      SGB VI Anlage 1; SVBezGrV 2026 § 3 Abs. 2
+                      SGB VI Anlage 1; SVBezGrV {RULES_YEAR} § 3 Abs. 2
                     </td>
                   </tr>
                   <tr>
@@ -474,7 +474,7 @@ export function MethodePage({ navigate }: Props) {
                       {formatCurrency(activeRules.socialSecurity.aktuellerRentenwert, 2)} / EP
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
-                      § 69 SGB VI; Rentenwertbestimmungsverordnung 2026{' '}
+                      § 69 SGB VI; Rentenwertbestimmungsverordnung {RULES_YEAR}{' '}
                       <sup className="methode-footnote-ref">[8]</sup>
                     </td>
                   </tr>
@@ -551,7 +551,7 @@ export function MethodePage({ navigate }: Props) {
                       {formatPercent(activeRules.capitalGains.basiszins, 2)}
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
-                      § 18 InvStG; BMF-Schreiben 2026-01-13{' '}
+                      § 18 InvStG; BMF-Schreiben {RULES_YEAR}-01-13{' '}
                       <sup className="methode-footnote-ref">[6]</sup>
                     </td>
                   </tr>
@@ -582,7 +582,7 @@ export function MethodePage({ navigate }: Props) {
               <div className="methode-section-head">
                 <span className="methode-section-num">{SECTIONS[4].n}</span>
                 <h2
-                  id={slugify(SECTIONS[4].title)}
+                  id={SECTIONS[4].id}
                   className="methode-section-title"
                 >
                   {SECTIONS[4].title}

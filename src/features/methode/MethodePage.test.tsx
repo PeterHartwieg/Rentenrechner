@@ -41,15 +41,15 @@ describe('MethodePage — /methode route content', () => {
     const h2 = Array.from(container.querySelectorAll('h2'))
     // The body emits five § sections; their ids drive `/methode#…` deep links.
     expect(h2.length).toBeGreaterThanOrEqual(5)
-    // The two year-stamped section titles use `${RULES_YEAR}` so the slugs
-    // follow the active rule year — derive them here so this assertion does
-    // not fossilise the year either.
+    // Ids are year-free so `/methode#steuer-modell` keeps working when
+    // RULES_YEAR rolls forward (the visible title may carry the year, the id
+    // must not).
     const expectedIds = [
       'renditeannahmen',
-      `steuer-modell-stand-${RULES_YEAR}`,
-      'sozialversicherung-kv-pv-rv',
-      `statutorische-werte-${RULES_YEAR}`,
-      'was-wir-bewusst-nicht-modellieren',
+      'steuer-modell',
+      'sozialversicherung',
+      'statutorische-werte',
+      'nicht-modelliert',
     ]
     const renderedIds = h2.map((h) => h.id)
     for (const id of expectedIds) {
