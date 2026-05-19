@@ -1,12 +1,12 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode, type SetStateAction } from 'react'
 import './AngabenPage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR, activeRules } from '../../rules'
-import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
-import type { PersonalProfile, ScenarioAssumptions } from '../../domain'
+import { defaultAssumptions } from '../../data/defaultScenario'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
+import { useCalculatorState } from '../../app/useCalculatorState'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { AngabenPersonSection } from './sections/AngabenPersonSection'
 import { AngabenEinkommenSection } from './sections/AngabenEinkommenSection'
@@ -167,12 +167,17 @@ const BAV_TAX_FREE_MONTHLY =
  *     (round-1 review: the PR objective wanted phone collapse and we shipped
  *     a CSS-reorder that left both cards expanded).
  *
- * State scope: the page owns ephemeral local state for the form fields so
- * the receipt renders interactively at all three viewports. Engine-side
- * state (compare-mode `useCalculatorState`, combine-mode workspace,
- * scenario library, share-URL) is intentionally untouched in PR 5 — the
- * storage hookup is queued for a later PR. Engine, storage, and prerender
- * data shapes stay byte-identical.
+ * State scope: profile / assumptions flow into `useCalculatorState`
+ * (compare-mode singleton) and persist via `src/storage.ts` (STORAGE_KEY_V1).
+ * Edits on `/eingaben` survive refresh and navigation and are picked up by
+ * the compare-mode dashboard on `/`. Combine-mode workspace mapping is out
+ * of scope here and tracked as a follow-up GitHub issue — when the user is
+ * in combine-mode (workspace), this page still writes the compare-mode
+ * singleton; the v2 workspace remains untouched. `familienstand` /
+ * `bundesland` / `retirementHealthStatus` stay local where they are not
+ * already part of `PersonalProfile` / `ScenarioAssumptions` — only the
+ * `retirementHealthStatus` slice routes through the engine-shaped
+ * assumptions object (it lives on `assumptions.statutoryPension`).
  *
  * Statutory values rendered on this page (return scenarios, Sparer-
  * Pauschbetrag, Bezugsgröße, etc.) are read from `activeRules` and
@@ -187,20 +192,43 @@ export function AngabenPage({ navigate }: Props) {
   const route = publicRouteRegistry['/eingaben']
   const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
 
-  // Ephemeral local state. The page is illustrative — engine and storage
-  // wiring stays in `useCalculatorState` / `useWorkspace` (PR 6+). Initial
-  // values come from `defaultProfile` + `defaultAssumptions` so the receipt
-  // shows realistic numbers from the first render.
-  const [profile, setProfile] = useState<PersonalProfile>(defaultProfile)
+  // Compare-mode singleton state. Edits on `/eingaben` flow back through
+  // `useCalculatorState`, which lazy-initialises from URL + localStorage on
+  // mount and writes to STORAGE_KEY_V1 on every change. The `/` dashboard
+  // reads the same key on its next mount, so the two routes stay in sync
+  // round-trip. Combine-mode workspace (STORAGE_KEY_V2) is intentionally not
+  // touched here — see follow-up issue for combine-mode mapping.
+  const { profile, setProfile, assumptions, setAssumptions } = useCalculatorState()
+  // `familienstand` and `bundesland` are not part of `PersonalProfile`, so
+  // they remain ephemeral on this page until a domain-side home exists for
+  // them. (Tracked alongside the combine-mode follow-up.)
   const [familienstand, setFamilienstand] = useState<string>(FAMILIENSTAND_DEFAULT)
   const [bundesland, setBundesland] = useState<string>(BUNDESLAND_DEFAULT)
-  // `retirementHealthStatus` is optional in `GrvAssumptions` (defaults to
-  // KVdR semantically); fall back to 'kvdr' if the default scenario does not
-  // carry one so the radio always has a checked option.
-  const [retirementHealthStatus, setRetirementHealthStatus] = useState<
-    'kvdr' | 'freiwillig_gkv' | 'pkv'
-  >(defaultAssumptions.statutoryPension.retirementHealthStatus ?? 'kvdr')
-  const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(defaultAssumptions)
+  // `retirementHealthStatus` lives on `assumptions.statutoryPension`, so the
+  // page reads it directly from the persisted scenario and writes it back via
+  // `setAssumptions`. Fall back to 'kvdr' if the persisted scenario does not
+  // carry one so the radio always has a checked option. The section component
+  // takes a narrow `Dispatch<SetStateAction<RetirementHealthStatus>>` setter,
+  // so we adapt the assumption-side update behind a memoised callback.
+  const retirementHealthStatus =
+    assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr'
+  const setRetirementHealthStatus = useCallback(
+    (next: SetStateAction<'kvdr' | 'freiwillig_gkv' | 'pkv'>) => {
+      setAssumptions((current) => {
+        const prev = current.statutoryPension.retirementHealthStatus ?? 'kvdr'
+        const resolved = typeof next === 'function' ? next(prev) : next
+        if (resolved === prev) return current
+        return {
+          ...current,
+          statutoryPension: {
+            ...current.statutoryPension,
+            retirementHealthStatus: resolved,
+          },
+        }
+      })
+    },
+    [setAssumptions],
+  )
 
   // Active-anchor state for the TOC `aria-current="location"` highlight.
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null)

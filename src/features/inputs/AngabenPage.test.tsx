@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
@@ -9,7 +9,20 @@ import type { Route } from '../../app/useRoute'
 import { AngabenPage } from './AngabenPage'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR } from '../../rules'
+import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
+import { buildStateJson, STORAGE_KEY_V1 } from '../../storage'
 import { eachViewport, mockViewport } from '../../test/viewport'
+
+beforeEach(() => {
+  // Compare-mode useCalculatorState lazy-initialises from URL + localStorage
+  // on mount; tests that don't seed state must see a clean slate so the page
+  // boots with `defaultProfile` / `defaultAssumptions`. Clearing both keys
+  // prevents pollution from any v2 workspace a previous test wrote.
+  localStorage.clear()
+  // `?` query params are read once by `readUrlState`; reset the URL so the
+  // page mounts in the absent-URL-state branch.
+  window.history.pushState(null, '', '/eingaben')
+})
 
 afterEach(() => {
   cleanup()
@@ -307,5 +320,110 @@ describe('AngabenPage — right-rail accordion a11y', () => {
     navigate.mockClear()
     fireEvent.click(methodeLink!, { ctrlKey: true })
     expect(navigate).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// State pipeline — Codex round-3 P1: AngabenPage was discarding edits on
+// refresh / navigation. The page now consumes `useCalculatorState`
+// (compare-mode singleton) so edits flow into STORAGE_KEY_V1 and the `/`
+// dashboard picks them up on the next mount.
+// ---------------------------------------------------------------------------
+describe('AngabenPage — compare-mode state wiring (useCalculatorState)', () => {
+  /**
+   * Find the "Alter" NumberField. The section component renders the label as
+   * the first `<span>` child of the wrapping `<label>` — we read every label
+   * on the page and pick the one whose text starts with "Alter".
+   */
+  function findAgeInput(container: HTMLElement): HTMLInputElement {
+    const labels = Array.from(container.querySelectorAll('label.field'))
+    for (const label of labels) {
+      const span = label.querySelector('span')
+      if (span && (span.textContent ?? '').trim().startsWith('Alter')) {
+        const input = label.querySelector('input[type="number"]')
+        if (input) return input as HTMLInputElement
+      }
+    }
+    throw new Error('Alter NumberField not found in rendered AngabenPage')
+  }
+
+  it('writes edits to STORAGE_KEY_V1 (compare-mode singleton)', () => {
+    // Clean slate (no seed) — page boots with `defaultProfile`. Editing the
+    // Alter NumberField fires `onChange` per keystroke, which dispatches
+    // `setProfile`. The `useEffect` in `useCalculatorState` then writes the
+    // new state to STORAGE_KEY_V1.
+    const { container } = render(<AngabenPage />)
+    const ageInput = findAgeInput(container)
+    expect(ageInput.value).toBe(String(defaultProfile.age))
+
+    fireEvent.change(ageInput, { target: { value: '42' } })
+
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as {
+      version: number
+      profile: { age: number }
+    }
+    expect(parsed.version).toBe(1)
+    expect(parsed.profile.age).toBe(42)
+  })
+
+  it('hydrates from STORAGE_KEY_V1 so persisted edits survive a fresh mount', () => {
+    // Seed a non-default profile.age and assert the page renders it on mount.
+    // This is the round-trip the Codex P1 finding called out: edits made on
+    // /eingaben must persist across reload + navigation.
+    const seededProfile = { ...defaultProfile, age: 47 }
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      buildStateJson(seededProfile, defaultAssumptions),
+    )
+
+    const { container } = render(<AngabenPage />)
+    const ageInput = findAgeInput(container)
+    expect(ageInput.value).toBe('47')
+  })
+
+  it('shares state with the compare-mode dashboard via STORAGE_KEY_V1', () => {
+    // Edits made on /eingaben must be visible to the compare-mode dashboard
+    // on / — both routes use the same STORAGE_KEY_V1 envelope. We can't
+    // mount Calculator here cheaply, so we assert the persisted envelope is
+    // shape-compatible with the v1 reader: `{ version, profile, assumptions }`
+    // with the new profile value in place.
+    const { container } = render(<AngabenPage />)
+    const ageInput = findAgeInput(container)
+    fireEvent.change(ageInput, { target: { value: '55' } })
+
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as {
+      version: number
+      profile: { age: number; retirementAge: number; grossSalaryYear: number }
+      assumptions: { compareSubMode?: string }
+    }
+    expect(parsed.version).toBe(1)
+    expect(parsed.profile.age).toBe(55)
+    // Other profile fields are preserved — only `age` changed.
+    expect(parsed.profile.retirementAge).toBe(defaultProfile.retirementAge)
+    expect(parsed.profile.grossSalaryYear).toBe(defaultProfile.grossSalaryYear)
+    // The assumptions side is left intact so compare-mode rendering does
+    // not pick up a stripped scenario shape.
+    expect(parsed.assumptions).toBeDefined()
+  })
+
+  it('does not regress to the local-state defaults when a v1 envelope is present', () => {
+    // Codex P1: before the fix the page initialised from `defaultProfile`
+    // every mount, discarding any prior edits. This regression-guards that
+    // path — seed a non-default `age`, mount, and confirm the input does
+    // NOT show `defaultProfile.age`.
+    const seededProfile = { ...defaultProfile, age: 33 }
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      buildStateJson(seededProfile, defaultAssumptions),
+    )
+
+    const { container } = render(<AngabenPage />)
+    const ageInput = findAgeInput(container)
+    expect(ageInput.value).not.toBe(String(defaultProfile.age))
+    expect(ageInput.value).toBe('33')
   })
 })
