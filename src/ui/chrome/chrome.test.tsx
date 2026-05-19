@@ -23,7 +23,9 @@ describe('StatusBar', () => {
     expect(bar).toBeInTheDocument()
     expect(bar?.textContent).toContain('rentenwiki.de')
     expect(bar?.textContent).toContain('Gemeinnütziges Projekt')
-    expect(bar?.textContent).toContain('github.com/PeterHartwieg/Rentenrechner')
+    expect(bar?.textContent).toContain('Open Source')
+    // P0 guardrail: the internal working name must not appear in public chrome.
+    expect(bar?.textContent).not.toContain('Rentenrechner')
   })
 
   it('uses the tablet variant at tablet width', () => {

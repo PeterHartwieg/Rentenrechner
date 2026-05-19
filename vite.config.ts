@@ -17,7 +17,16 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 // remark-gfm enables GitHub-Flavored Markdown: pipe tables, task lists,
 // strikethrough — required by topic pages that use comparison tables (issue #04).
 
+// Build-time constant injected into client + SSR bundles. Used by the
+// StatusBar to display the build date; evaluated once at build time so the
+// prerendered HTML and the hydrated client agree (otherwise the value
+// drifts across UTC midnight on long-lived prerenders).
+const BUILD_DATE_ISO = new Date().toISOString().slice(0, 10)
+
 export default defineConfig({
+  define: {
+    __RW_BUILD_DATE__: JSON.stringify(BUILD_DATE_ISO),
+  },
   plugins: [
     // MDX must run before the React plugin so JSX inside `.mdx` is processed
     // through `@vitejs/plugin-react`'s fast-refresh transform.

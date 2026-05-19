@@ -24,9 +24,17 @@ export function resolveViewport(): Viewport {
  * variants differ in *mount* (e.g. MobileNav only on phone). CSS-only
  * visual differences should stay in stylesheets — this hook is for cases
  * where conditional React subtrees matter.
+ *
+ * Hydration safety: SSR has no `window`, so the prerender pass renders
+ * the "desktop" variant. The hook's initial client-side state is also
+ * "desktop"; the real viewport is only resolved inside `useEffect` (which
+ * does not run during SSR). Without this two-phase resolution, the HTML
+ * shipped from the prerender and the first client render disagree
+ * whenever the user opens the page on a phone or tablet, producing a
+ * hydration mismatch.
  */
 export function useViewport(): Viewport {
-  const [viewport, setViewport] = useState<Viewport>(resolveViewport)
+  const [viewport, setViewport] = useState<Viewport>('desktop')
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
