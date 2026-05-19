@@ -57,9 +57,10 @@ const SOURCES: readonly string[] = [
   '§ 19 Abs. 2 EStG — Versorgungsfreibetrag (Anlage zu § 19)',
   '§ 10 Abs. 3 EStG — Sonderausgabenabzug Basisrente',
   '§ 20 Abs. 9 EStG — Sparer-Pauschbetrag',
+  '§ 20 Abs. 1 InvStG — Teilfreistellung für Aktienfonds (gesetze-im-internet.de)',
   '§ 3 Nr. 63 EStG / § 1 SvEV — Förderhöchstbeträge bAV',
-  `BMF-Schreiben ${RULES_YEAR}-01-13 — Basiszins § 18 InvStG (Vorabpauschale)`,
-  `SVBezGrV ${RULES_YEAR} — Beitragsbemessungsgrenzen, Bezugsgröße, Durchschnittsentgelt (BGBl. 2025 I Nr. 278)`,
+  'BMF-Schreiben (jährlich) — Basiszins § 18 InvStG (Vorabpauschale)',
+  `SVBezGrV ${RULES_YEAR} — Beitragsbemessungsgrenzen, Bezugsgröße, Durchschnittsentgelt`,
   'Deutsche Rentenversicherung Bund — Renteninformation und Aktueller Rentenwert (§ 69 SGB VI)',
 ]
 
@@ -321,8 +322,8 @@ export function MethodePage({ navigate }: Props) {
                     Abgeltungsteuer {formatPercent(activeRules.capitalGains.taxRate, 0)}{' '}
                     plus Soli, Sparer-Pauschbetrag{' '}
                     {formatCurrency(activeRules.capitalGains.saverAllowance)} pro
-                    Person; Teilfreistellung {formatPercent(aktienfondsTeilfreistellungPrivat, 0)} bei Aktienfonds (§ 20 EStG){' '}
-                    <sup className="methode-footnote-ref">[4]</sup>.
+                    Person; Teilfreistellung {formatPercent(aktienfondsTeilfreistellungPrivat, 0)} bei Aktienfonds (§ 20 Abs. 1 InvStG){' '}
+                    <sup className="methode-footnote-ref">[5]</sup>.
                   </span>
                 </li>
                 <li>
@@ -455,7 +456,7 @@ export function MethodePage({ navigate }: Props) {
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
                       SVBezGrV {RULES_YEAR} § 2 Abs. 1{' '}
-                      <sup className="methode-footnote-ref">[7]</sup>
+                      <sup className="methode-footnote-ref">[8]</sup>
                     </td>
                   </tr>
                   <tr>
@@ -465,7 +466,7 @@ export function MethodePage({ navigate }: Props) {
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
                       § 6 Abs. 7 SGB V / § 55 Abs. 2 SGB XI{' '}
-                      <sup className="methode-footnote-ref">[7]</sup>
+                      <sup className="methode-footnote-ref">[8]</sup>
                     </td>
                   </tr>
                   <tr>
@@ -493,7 +494,7 @@ export function MethodePage({ navigate }: Props) {
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
                       § 69 SGB VI; Rentenwertbestimmungsverordnung {RULES_YEAR}{' '}
-                      <sup className="methode-footnote-ref">[8]</sup>
+                      <sup className="methode-footnote-ref">[9]</sup>
                     </td>
                   </tr>
                   <tr>
@@ -503,7 +504,7 @@ export function MethodePage({ navigate }: Props) {
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
                       {formatPercent(activeRules.bav.taxFreePctOfPensionCap, 0)} BBG RV West{' '}
-                      <sup className="methode-footnote-ref">[5]</sup>
+                      <sup className="methode-footnote-ref">[6]</sup>
                     </td>
                   </tr>
                   <tr>
@@ -513,7 +514,7 @@ export function MethodePage({ navigate }: Props) {
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
                       {formatPercent(activeRules.bav.socialSecurityFreePctOfPensionCap, 0)} BBG RV West{' '}
-                      <sup className="methode-footnote-ref">[5]</sup>
+                      <sup className="methode-footnote-ref">[6]</sup>
                     </td>
                   </tr>
                   <tr>
@@ -569,8 +570,8 @@ export function MethodePage({ navigate }: Props) {
                       {formatPercent(activeRules.capitalGains.basiszins, 2)}
                     </td>
                     <td data-label="Grundlage" className="methode-table-note">
-                      § 18 InvStG; BMF-Schreiben {RULES_YEAR}-01-13{' '}
-                      <sup className="methode-footnote-ref">[6]</sup>
+                      § 18 InvStG; BMF-Schreiben (jährlich){' '}
+                      <sup className="methode-footnote-ref">[7]</sup>
                     </td>
                   </tr>
                   <tr>
