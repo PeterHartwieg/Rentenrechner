@@ -4,6 +4,7 @@ import { LegalFooter } from '../legal/LegalFooter'
 import type { ProductId } from '../../domain'
 import type { Route } from '../../app/useRoute'
 import { detectSavedMode } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { JsonLd } from '../../seo/JsonLd'
 import {
   buildHomeOrganizationJsonLd,
@@ -190,10 +191,10 @@ export function LandingPage({ onChoice, navigate }: Props) {
                 href="/artikel"
                 className="landing-featured-all"
                 onClick={(event) => {
-                  if (navigate) {
-                    event.preventDefault()
-                    navigate('/artikel')
-                  }
+                  if (!navigate) return
+                  if (!shouldUseSpaNavigation(event)) return
+                  event.preventDefault()
+                  navigate('/artikel')
                 }}
               >
                 Alle {hubArticleCount} Themen ansehen →

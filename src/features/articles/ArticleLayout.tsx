@@ -11,6 +11,7 @@ import {
 import { findArticleByPath } from './articleResolver'
 import { RULES_YEAR } from '../../rules'
 import type { Route } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 const GITHUB_REPO_URL = 'https://github.com/PeterHartwieg/Rentenrechner'
 
@@ -194,10 +195,10 @@ export function ArticleLayout({
             href="/"
             className="article-breadcrumb-back"
             onClick={(event) => {
-              if (navigate) {
-                event.preventDefault()
-                navigate('/')
-              }
+              if (!navigate) return
+              if (!shouldUseSpaNavigation(event)) return
+              event.preventDefault()
+              navigate('/')
             }}
           >
             Startseite
@@ -207,10 +208,10 @@ export function ArticleLayout({
             href="/artikel"
             className="article-breadcrumb-back"
             onClick={(event) => {
-              if (navigate) {
-                event.preventDefault()
-                navigate('/artikel')
-              }
+              if (!navigate) return
+              if (!shouldUseSpaNavigation(event)) return
+              event.preventDefault()
+              navigate('/artikel')
             }}
           >
             Alle Artikel

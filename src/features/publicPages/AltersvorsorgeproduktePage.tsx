@@ -1,7 +1,12 @@
+import type { Route } from '../../app/useRoute'
 import { ArticleLayout } from '../articles/ArticleLayout'
 import AltersvorsorgeBody from './altersvorsorgeprodukte-vergleichen.body.mdx'
 import { useQaMode } from '../qa-feedback/useQaMode'
 import { qaTargetAttrs } from '../qa-feedback/useFeedbackTarget'
+
+interface Props {
+  navigate?: (target: Route) => void
+}
 
 /**
  * Public discovery page for `/altersvorsorgeprodukte-vergleichen`.
@@ -15,11 +20,11 @@ import { qaTargetAttrs } from '../qa-feedback/useFeedbackTarget'
  * QA-mode wrapper around the body preserves the per-page feedback target so
  * the QA overlay can capture screenshots scoped to this article.
  */
-export function AltersvorsorgeproduktePage() {
+export function AltersvorsorgeproduktePage({ navigate }: Props = {}) {
   const { enabled: qaEnabled } = useQaMode()
 
   return (
-    <ArticleLayout routeId="/altersvorsorgeprodukte-vergleichen">
+    <ArticleLayout routeId="/altersvorsorgeprodukte-vergleichen" navigate={navigate}>
       <section
         {...qaTargetAttrs(qaEnabled, {
           id: 'publicPage.altersvorsorgeprodukte.article',

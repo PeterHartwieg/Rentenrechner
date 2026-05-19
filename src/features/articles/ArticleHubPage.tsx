@@ -14,6 +14,7 @@ import {
 } from './articleResolver'
 import { RULES_YEAR } from '../../rules'
 import type { Route } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface Props {
   navigate?: (target: Route) => void
@@ -101,10 +102,10 @@ export function ArticleHubPage({ navigate }: Props) {
                         href={`${entry.path}/`}
                         className="hub-card-link"
                         onClick={(event) => {
-                          if (navigate) {
-                            event.preventDefault()
-                            navigate(entry.path as Route)
-                          }
+                          if (!navigate) return
+                          if (!shouldUseSpaNavigation(event)) return
+                          event.preventDefault()
+                          navigate(entry.path as Route)
                         }}
                       >
                         {entry.label}

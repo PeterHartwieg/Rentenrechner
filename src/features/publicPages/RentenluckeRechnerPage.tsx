@@ -1,5 +1,15 @@
+import type { Route } from '../../app/useRoute'
 import { ArticleLayout } from '../articles/ArticleLayout'
 import RentenluckeBody from './rentenluecke-rechner.body.mdx'
+
+interface Props {
+  /** Threaded through to ArticleLayout so the LegalFooter Impressum /
+   *  Datenschutz links use SPA navigation instead of being swallowed by
+   *  the no-op fallback. SSG prerender supplies undefined; the rendered
+   *  `<a href>` attributes still drive direct loads.
+   */
+  navigate?: (target: Route) => void
+}
 
 /**
  * Public discovery page for `/rentenluecke-rechner`.
@@ -16,9 +26,9 @@ import RentenluckeBody from './rentenluecke-rechner.body.mdx'
  * legal footer) all live inside `ArticleLayout` so adding a new topic page
  * is one component + one registry entry.
  */
-export function RentenluckeRechnerPage() {
+export function RentenluckeRechnerPage({ navigate }: Props = {}) {
   return (
-    <ArticleLayout routeId="/rentenluecke-rechner">
+    <ArticleLayout routeId="/rentenluecke-rechner" navigate={navigate}>
       <RentenluckeBody />
     </ArticleLayout>
   )

@@ -49,11 +49,13 @@ export interface ArticleClusterGroup {
  * Walk HUB_CLUSTERS once, resolve every link's canonical path against
  * publicRouteRegistry, and group the results by cluster heading.
  *
- * Throws at module-evaluation time if a cluster link references a path that
- * is not in publicRouteRegistry. This guards two sources of truth (taxonomy
- * vs. metadata) from drifting silently.
+ * Throws if a cluster link references a path that is not in
+ * publicRouteRegistry. The walk happens at module-evaluation time (see
+ * `RESOLVED_HUB_GROUPS` below) so taxonomy/registry drift fails at import,
+ * not when the hub first renders — that means tests, build-time bundling,
+ * and SSR all surface the error before a user can hit it.
  */
-export function resolveHubGroups(): readonly ArticleClusterGroup[] {
+function computeHubGroups(): readonly ArticleClusterGroup[] {
   return HUB_CLUSTERS.map((cluster) => ({
     heading: cluster.heading,
     entries: cluster.links.map((link) => {
@@ -74,6 +76,19 @@ export function resolveHubGroups(): readonly ArticleClusterGroup[] {
       }
     }),
   }))
+}
+
+/**
+ * Module-eval-time cache of the resolved hub groups. Importing this file
+ * (which every editorial route does, directly or transitively) throws if
+ * HUB_CLUSTERS references a registry path that does not exist. Consumers
+ * always read from this constant; `resolveHubGroups()` is preserved as a
+ * thin facade so existing call sites keep working.
+ */
+const RESOLVED_HUB_GROUPS: readonly ArticleClusterGroup[] = computeHubGroups()
+
+export function resolveHubGroups(): readonly ArticleClusterGroup[] {
+  return RESOLVED_HUB_GROUPS
 }
 
 /**

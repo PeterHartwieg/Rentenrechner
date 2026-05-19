@@ -112,16 +112,16 @@ function App() {
   if (route === '/impressum') body = <ImpressumPage navigate={navigate} />
   else if (route === '/datenschutz') body = <DatenschutzPage navigate={navigate} />
   else if (route === '/artikel') body = <ArticleHubPage navigate={navigate} />
-  else if (route === '/rentenluecke-rechner') body = <RentenluckeRechnerPage />
-  else if (route === '/bav-rechner') body = <BavRechnerPage />
-  else if (route === '/etf-vs-bav') body = <EtfVsBavPage />
-  else if (route === '/riester-rechner') body = <RiesterRechnerPage />
-  else if (route === '/altersvorsorgedepot-rechner') body = <AltersvorsorgedepotRechnerPage />
-  else if (route === '/riester-vs-altersvorsorgedepot') body = <RiesterVsAltersvorsorgedepotPage />
-  else if (route === '/basisrente-rechner') body = <BasisrenteRechnerPage />
-  else if (route === '/private-rentenversicherung-rechner') body = <PrivateRentenversicherungRechnerPage />
-  else if (route === '/rente-netto-berechnen') body = <RenteNettoBerechnePage />
-  else if (route === '/altersvorsorgeprodukte-vergleichen') body = <AltersvorsorgeproduktePage />
+  else if (route === '/rentenluecke-rechner') body = <RentenluckeRechnerPage navigate={navigate} />
+  else if (route === '/bav-rechner') body = <BavRechnerPage navigate={navigate} />
+  else if (route === '/etf-vs-bav') body = <EtfVsBavPage navigate={navigate} />
+  else if (route === '/riester-rechner') body = <RiesterRechnerPage navigate={navigate} />
+  else if (route === '/altersvorsorgedepot-rechner') body = <AltersvorsorgedepotRechnerPage navigate={navigate} />
+  else if (route === '/riester-vs-altersvorsorgedepot') body = <RiesterVsAltersvorsorgedepotPage navigate={navigate} />
+  else if (route === '/basisrente-rechner') body = <BasisrenteRechnerPage navigate={navigate} />
+  else if (route === '/private-rentenversicherung-rechner') body = <PrivateRentenversicherungRechnerPage navigate={navigate} />
+  else if (route === '/rente-netto-berechnen') body = <RenteNettoBerechnePage navigate={navigate} />
+  else if (route === '/altersvorsorgeprodukte-vergleichen') body = <AltersvorsorgeproduktePage navigate={navigate} />
   else if (route === '/404') body = <PageNotFound />
   else if (calculatorView === 'landing') {
     body = <LandingPage onChoice={handleLandingChoice} navigate={navigate} />

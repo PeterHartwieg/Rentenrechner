@@ -274,7 +274,7 @@
   text-align: left;
   vertical-align: top;
   overflow-wrap: break-word;
-  word-break: break-word;
+  word-break: normal;
   line-height: 1.5;
 }
 
