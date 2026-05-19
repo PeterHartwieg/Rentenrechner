@@ -1,0 +1,526 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Chrome primitives — PR 1 (redesign foundation).
+
+   Two visual systems share one chrome:
+   - Editorial (cream bg + Newsreader serif) for Landing + Articles.
+   - Sober    (white bg + IBM Plex Sans)    for tool pages.
+
+   Three viewport variants per primitive, driven by min/max-width media
+   queries that match the useViewport hook constants:
+   - phone   : <640px
+   - tablet  : 640–1023px
+   - desktop : ≥1024px
+   --------------------------------------------------------------------- */
+
+.rw-app-shell {
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Disclaimer-banner restyle (scoped to AppShell only).
+   Tunes the visual join: warm-cream banner above the black status bar.
+   Behaviour (sessionStorage, dismissable, popup) is unchanged — these
+   selectors only override colors. */
+.rw-app-shell .disclaimer-wrap {
+  background: var(--rw-accent-bg);
+  border-bottom-color: var(--rw-rule);
+}
+
+.rw-app-shell .disclaimer-btn,
+.rw-app-shell .disclaimer-btn:hover,
+.rw-app-shell .disclaimer-btn svg {
+  color: var(--rw-accent);
+}
+
+.rw-app-shell .disclaimer-dismiss {
+  color: var(--rw-ink-faint);
+}
+
+.rw-app-shell .disclaimer-dismiss:hover {
+  color: var(--rw-ink);
+}
+
+.rw-app-shell--editorial {
+  background: var(--rw-bg-cream);
+  color: var(--rw-ink-editorial);
+}
+
+.rw-app-shell__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rw-app-shell--phone .rw-app-shell__body {
+  /* Reserve room so MobileNav's fixed bar never occludes the last row. */
+  padding-bottom: calc(var(--rw-mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ───── StatusBar ───────────────────────────────────────────────────────── */
+
+.rw-status-bar {
+  background: var(--rw-ink);
+  color: #ffffff;
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+}
+
+.rw-status-bar--desktop {
+  padding: 6px 56px;
+}
+
+.rw-status-bar--tablet {
+  padding: 6px 24px;
+  font-size: 10.5px;
+}
+
+.rw-status-bar--phone {
+  padding: 5px 14px;
+  font-size: 9.5px;
+  letter-spacing: 0.3px;
+  justify-content: space-between;
+}
+
+.rw-status-bar__dim {
+  opacity: 0.7;
+}
+
+.rw-status-bar__sep {
+  opacity: 0.45;
+}
+
+.rw-status-bar__trailing {
+  margin-left: auto;
+}
+
+/* ───── AppHeader (desktop + tablet) ────────────────────────────────────── */
+
+.rw-app-header {
+  border-bottom: 2px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+}
+
+.rw-app-header--editorial {
+  background: var(--rw-bg-cream);
+}
+
+.rw-app-header--desktop {
+  padding: 24px 56px 20px;
+}
+
+.rw-app-header--tablet {
+  padding: 18px 24px 14px;
+}
+
+.rw-app-header__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.rw-app-header__title-row {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rw-app-header__kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--rw-ink-faint);
+  text-transform: uppercase;
+}
+
+.rw-app-header--editorial .rw-app-header__kicker {
+  color: var(--rw-ink-editorial-faint);
+}
+
+.rw-app-header__title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink);
+}
+
+.rw-app-header--editorial .rw-app-header__title {
+  font-family: var(--rw-font-serif);
+  font-weight: 400;
+  letter-spacing: -0.9px;
+  color: var(--rw-ink-editorial);
+  font-size: 42px;
+}
+
+.rw-app-header--tablet .rw-app-header__title {
+  font-size: 27px;
+}
+
+.rw-app-header--tablet.rw-app-header--editorial .rw-app-header__title {
+  font-size: 32px;
+}
+
+.rw-app-header__nav {
+  display: flex;
+  gap: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.rw-app-header__nav-item {
+  padding: 4px 14px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  color: var(--rw-ink-soft);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rw-app-header--editorial .rw-app-header__nav-item {
+  color: var(--rw-ink-editorial-soft);
+}
+
+.rw-app-header__nav-item--active {
+  border-bottom-color: var(--rw-rule);
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.rw-app-header--editorial .rw-app-header__nav-item--active {
+  color: var(--rw-ink-editorial);
+}
+
+.rw-app-header__nav-item--placeholder {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.rw-app-header__nav-item--placeholder:hover {
+  opacity: 0.7;
+}
+
+/* ───── AppHeader — phone variant ───────────────────────────────────────── */
+
+.rw-app-header--phone {
+  display: flex;
+  align-items: center;
+  padding: 11px 16px 9px;
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.rw-app-header--phone.rw-app-header--editorial {
+  border-bottom-color: var(--rw-rule-cream);
+}
+
+.rw-app-header__brand {
+  font-family: var(--rw-font-sans);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--rw-ink);
+}
+
+.rw-app-header--editorial .rw-app-header__brand {
+  font-family: var(--rw-font-serif);
+  font-weight: 500;
+  color: var(--rw-ink-editorial);
+}
+
+.rw-app-header__brand-meta {
+  margin-left: auto;
+  font-family: var(--rw-font-mono);
+  font-size: 10px;
+  color: var(--rw-ink-faint);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.rw-app-header__menu-btn {
+  margin-left: 14px;
+  background: transparent;
+  border: 0;
+  color: var(--rw-ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 8px;
+  /* Minimum 44×44 tap target on phone */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-app-header-body--phone {
+  padding: 14px 16px 12px;
+  border-bottom: 2px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+}
+
+.rw-app-header-body--phone.rw-app-header-body--editorial {
+  background: var(--rw-bg-cream);
+}
+
+.rw-app-header-body--phone .rw-app-header__title {
+  font-size: 21px;
+  line-height: 1.12;
+}
+
+.rw-app-header-body--phone.rw-app-header-body--editorial .rw-app-header__title {
+  font-size: 25px;
+  letter-spacing: -0.5px;
+}
+
+/* ───── MethodFooter ────────────────────────────────────────────────────── */
+
+.rw-method-footer {
+  border-top: 1px solid var(--rw-rule-soft);
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  color: var(--rw-ink-faint);
+  display: flex;
+  letter-spacing: 0.3px;
+  flex-wrap: wrap;
+}
+
+.rw-method-footer--desktop {
+  padding: 12px 56px;
+  gap: 32px;
+}
+
+.rw-method-footer--tablet {
+  padding: 10px 24px;
+  gap: 22px;
+  font-size: 10.5px;
+}
+
+.rw-method-footer__link {
+  margin-left: auto;
+  cursor: pointer;
+}
+
+/* ───── MobileNav (phone bottom tab bar) ────────────────────────────────── */
+
+.rw-mobile-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: var(--rw-bg-paper);
+  border-top: 1px solid var(--rw-rule-soft);
+  display: flex;
+  padding: 7px 4px calc(11px + env(safe-area-inset-bottom, 0px));
+  min-height: var(--rw-mobile-nav-height);
+}
+
+.rw-mobile-nav__tab {
+  flex: 1;
+  text-align: center;
+  font-family: var(--rw-font-sans);
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--rw-ink-soft);
+  text-decoration: none;
+  padding: 6px 4px;
+  border-top: 2px solid transparent;
+  margin-top: -7px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rw-mobile-nav__tab--active {
+  font-weight: 600;
+  color: var(--rw-ink);
+  border-top-color: var(--rw-ink);
+}
+
+.rw-mobile-nav__tab--placeholder {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* ───── MobileSheet (overflow menu, phone) ──────────────────────────────── */
+
+.rw-mobile-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.rw-mobile-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  border: 0;
+  cursor: pointer;
+}
+
+.rw-mobile-sheet__panel {
+  position: relative;
+  background: var(--rw-bg-paper);
+  border-top: 1px solid var(--rw-rule-soft);
+  padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+  max-height: 70vh;
+  overflow-y: auto;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.rw-mobile-sheet__handle {
+  width: 40px;
+  height: 4px;
+  background: var(--rw-rule-soft);
+  border-radius: 2px;
+  margin: 0 auto 12px;
+}
+
+.rw-mobile-sheet__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rw-mobile-sheet__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 14px 24px;
+  font-family: var(--rw-font-sans);
+  font-size: 15px;
+  color: var(--rw-ink);
+  cursor: pointer;
+  min-height: 44px;
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.rw-mobile-sheet__item:last-child {
+  border-bottom: 0;
+}
+
+/* ───── RightRailAccordion ─────────────────────────────────────────────── */
+
+.rw-right-rail {
+  border: 1px solid var(--rw-rule);
+  padding: 16px 20px;
+  background: var(--rw-bg-paper-soft);
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.rw-right-rail__label {
+  font-family: var(--rw-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  margin-bottom: 10px;
+}
+
+.rw-right-rail__body {
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  color: var(--rw-ink);
+}
+
+/* Phone: collapsed sticky strip above MobileNav, expandable drawer. */
+.rw-right-rail__strip {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  /* Sit above the MobileNav so the two stack cleanly. */
+  bottom: calc(var(--rw-mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
+  z-index: 25;
+  background: var(--rw-bg-paper-soft);
+  border: 1px solid var(--rw-rule);
+  padding: 10px 14px;
+  font-family: var(--rw-font-mono);
+  font-size: 11.5px;
+  color: var(--rw-ink-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.rw-right-rail__strip-caret {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.rw-right-rail__strip-count {
+  color: var(--rw-ink-faint);
+}
+
+.rw-right-rail__drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--rw-mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+  top: 60px; /* Leave the status bar + header partly visible. */
+  z-index: 35;
+  background: var(--rw-bg-paper);
+  border-top: 1px solid var(--rw-rule);
+  display: flex;
+  flex-direction: column;
+}
+
+.rw-right-rail__drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.rw-right-rail__drawer-title {
+  font-family: var(--rw-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.rw-right-rail__drawer-close {
+  background: transparent;
+  border: 0;
+  font-size: 18px;
+  color: var(--rw-ink);
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-right-rail__drawer-body {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  font-family: var(--rw-font-sans);
+  font-size: 14px;
+  color: var(--rw-ink);
+}

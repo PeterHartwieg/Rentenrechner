@@ -66,7 +66,6 @@ import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { AssumptionReviewPanel } from './features/results/AssumptionReviewPanel'
 import { ComparisonPicker } from './features/workspace/ComparisonPicker'
 import { EmptyComparison } from './features/workspace/EmptyComparison'
-import { DisclaimerBanner } from './features/workspace/DisclaimerBanner'
 import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { InventoryWizard } from './features/inventory/InventoryWizard'
@@ -1141,8 +1140,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             </button>
           </div>
         </header>
-
-        <DisclaimerBanner />
 
         {invalidLink && <InvalidLinkBanner onDismiss={dismissInvalidLink} />}
 

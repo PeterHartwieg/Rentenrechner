@@ -26,6 +26,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { cleanup, render } from '@testing-library/react'
+import { createElement, type ReactElement } from 'react'
+import { AppShell } from '../../ui/chrome/AppShell'
 import { LandingPage, type LandingChoice } from './LandingPage'
 import { HUB_CLUSTERS } from './hubClusters'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
@@ -36,6 +38,10 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.clearAllMocks()
 })
+
+function inShell(node: ReactElement) {
+  return createElement(AppShell, { route: '/', navigate: () => {}, children: node })
+}
 
 // `useRoute.ts` reads `urlShare.readUrlState()` to decide whether a share-URL
 // counts as a returning user. We mock it to return null by default so the
@@ -186,17 +192,17 @@ describe('LandingPage — hero and two-CTA layout (unchanged from #02)', () => {
 
 describe('LandingPage — DisclaimerBanner first-child + session-only', () => {
   it('renders the not-advice disclaimer (compliance — every public page must)', () => {
-    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    const { container } = render(inShell(<LandingPage onChoice={NOOP} navigate={NOOP} />))
     expect(container.textContent).toContain('Modellrechnung')
     expect(container.textContent).toMatch(/keine Anlage-, Steuer- oder Rechtsberatung/i)
   })
 
-  it('renders the DisclaimerBanner as the literal first interactive child of the landing shell', () => {
+  it('renders the DisclaimerBanner as the literal first interactive child of the AppShell', () => {
     // Compliance guardrail (PRD line 157): disclaimer is the first thing
-    // crawlers / users see. Regression test — issue #03 must not push the
-    // banner below the hero or hub.
-    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    const shell = container.querySelector('.landing-shell')
+    // crawlers / users see. PR 1 centralised the banner in AppShell, so the
+    // first-child assertion now lives at the shell level (.rw-app-shell).
+    const { container } = render(inShell(<LandingPage onChoice={NOOP} navigate={NOOP} />))
+    const shell = container.querySelector('.rw-app-shell')
     expect(shell).not.toBeNull()
     const firstChild = shell?.firstElementChild
     expect(firstChild?.classList.contains('disclaimer-wrap')).toBe(true)
@@ -227,7 +233,7 @@ describe('LandingPage — DisclaimerBanner first-child + session-only', () => {
       },
     })
     try {
-      const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+      const { container } = render(inShell(<LandingPage onChoice={NOOP} navigate={NOOP} />))
       const dismissBtn = container.querySelector(
         'button.disclaimer-dismiss',
       ) as HTMLButtonElement | null

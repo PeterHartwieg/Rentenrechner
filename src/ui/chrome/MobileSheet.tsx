@@ -1,0 +1,87 @@
+import { useEffect } from 'react'
+import type { Route } from '../../app/useRoute'
+
+interface MobileSheetProps {
+  open: boolean
+  onClose: () => void
+  navigate: (target: Route) => void
+}
+
+interface SheetItem {
+  label: string
+  route?: Route
+  href?: string
+}
+
+const ITEMS: readonly SheetItem[] = [
+  { label: 'Methode', href: '#methode' },
+  { label: 'Annahmen', href: '#annahmen' },
+  { label: 'Datenschutz', route: '/datenschutz' },
+  { label: 'Impressum', route: '/impressum' },
+  { label: 'GitHub', href: 'https://github.com/PeterHartwieg/Rentenrechner' },
+  { label: 'Spenden', href: 'https://github.com/sponsors/PeterHartwieg' },
+]
+
+/**
+ * Slide-up sheet from the bottom of the viewport, used as the overflow
+ * destination for hamburger-menu links on phone. The five most important
+ * destinations live in the bottom MobileNav; everything else (legal,
+ * external) lands here.
+ *
+ * Hash links (#methode, #annahmen) are placeholders until PRs 4/5 wire
+ * dedicated routes; navigation is no-op for now so the sheet behaves
+ * predictably.
+ */
+export function MobileSheet({ open, onClose, navigate }: MobileSheetProps) {
+  useEffect(() => {
+    if (!open) return
+    function onEsc(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  function handleItemClick(item: SheetItem) {
+    if (item.route) {
+      navigate(item.route)
+      onClose()
+      return
+    }
+    if (item.href && item.href.startsWith('http')) {
+      window.open(item.href, '_blank', 'noopener,noreferrer')
+      onClose()
+    }
+    // Hash placeholders: close the sheet, leave navigation to a future PR.
+    onClose()
+  }
+
+  return (
+    <div className="rw-mobile-sheet" role="dialog" aria-modal="true" aria-label="Weitere Menüpunkte">
+      <button
+        type="button"
+        className="rw-mobile-sheet__backdrop"
+        aria-label="Menü schließen"
+        onClick={onClose}
+      />
+      <div className="rw-mobile-sheet__panel">
+        <div className="rw-mobile-sheet__handle" aria-hidden="true" />
+        <ul className="rw-mobile-sheet__list">
+          {ITEMS.map((item) => (
+            <li key={item.label}>
+              <button
+                type="button"
+                className="rw-mobile-sheet__item"
+                onClick={() => handleItemClick(item)}
+              >
+                {item.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}

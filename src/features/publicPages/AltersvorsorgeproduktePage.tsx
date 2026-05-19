@@ -1,5 +1,4 @@
 import { ChevronLeft } from 'lucide-react'
-import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import AltersvorsorgeBody from './altersvorsorgeprodukte-vergleichen.body.mdx'
 import { useQaMode } from '../qa-feedback/useQaMode'
@@ -34,8 +33,6 @@ export function AltersvorsorgeproduktePage() {
 
   return (
     <div className="public-shell">
-      <DisclaimerBanner />
-
       <main className="public-main">
         <a href="/" className="public-back-link">
           <ChevronLeft size={16} aria-hidden="true" />

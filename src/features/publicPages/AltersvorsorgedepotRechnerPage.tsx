@@ -1,5 +1,4 @@
 import { ChevronLeft } from 'lucide-react'
-import { DisclaimerBanner } from '../workspace/DisclaimerBanner'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import AvdBody from './altersvorsorgedepot-rechner.body.mdx'
 import './publicPages.css'
@@ -30,8 +29,6 @@ const ROUTE = publicRouteRegistry['/altersvorsorgedepot-rechner']
 export function AltersvorsorgedepotRechnerPage() {
   return (
     <div className="public-shell">
-      <DisclaimerBanner />
-
       <main className="public-main">
         <a href="/" className="public-back-link">
           <ChevronLeft size={16} aria-hidden="true" />
