@@ -62,6 +62,14 @@ describe('articleResolver — HUB_CLUSTERS × publicRouteRegistry resolution', (
     expect(isEditorialChromeRoute('/impressum')).toBe(false)
   })
 
+  it('isEditorialChromeRoute keeps /methode sober (PR 4 — Sober D, not editorial)', () => {
+    // The Methode page wears the same white + IBM Plex Sans chrome as the
+    // tool pages. Promoting it into the editorial set would flip its
+    // background to cream and the H1 to Newsreader serif, breaking the
+    // sober reference-page visual treatment shipped in PR 4.
+    expect(isEditorialChromeRoute('/methode')).toBe(false)
+  })
+
   it('countArticlesInCluster sums to countAllArticles across HUB_CLUSTERS', () => {
     const total = countAllArticles()
     const summed = HUB_CLUSTERS.reduce(
