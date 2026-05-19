@@ -9,15 +9,16 @@ interface MobileNavProps {
 interface NavEntry {
   id: ChromeNavId
   label: string
-  clickable: boolean
+  /** Target route when the tab is clickable. `null` renders an inert placeholder. */
+  target: Route | null
 }
 
 const ITEMS: readonly NavEntry[] = [
-  { id: 'home', label: 'Start', clickable: true },
-  { id: 'plan', label: 'Plan', clickable: false },
-  { id: 'compare', label: 'Vergleich', clickable: false },
-  { id: 'artikel', label: 'Artikel', clickable: false },
-  { id: 'method', label: 'Methode', clickable: false },
+  { id: 'home', label: 'Start', target: '/' },
+  { id: 'plan', label: 'Plan', target: null },
+  { id: 'compare', label: 'Vergleich', target: null },
+  { id: 'artikel', label: 'Artikel', target: '/artikel' },
+  { id: 'method', label: 'Methode', target: null },
 ]
 
 /**
@@ -36,15 +37,16 @@ export function MobileNav({ route, navigate }: MobileNavProps) {
       {ITEMS.map((item) => {
         const isActive = item.id === active
         const className = `rw-mobile-nav__tab${isActive ? ' rw-mobile-nav__tab--active' : ''}`
-        if (item.clickable) {
+        if (item.target) {
+          const target = item.target
           return (
             <a
               key={item.id}
-              href="/"
+              href={target}
               className={className}
               onClick={(event) => {
                 event.preventDefault()
-                navigate('/')
+                navigate(target)
               }}
             >
               {item.label}

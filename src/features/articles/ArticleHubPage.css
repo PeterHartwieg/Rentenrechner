@@ -1,0 +1,202 @@
+/* ==========================================================================
+   ArticleHubPage — `/artikel`. Editorial cream + Newsreader serif index
+   over the clustered topic-page set (PR 3).
+
+   Visual companion to ArticleLayout.css. Tokens come from src/App.css.
+   ========================================================================== */
+
+.hub-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--rw-bg-cream);
+  color: var(--rw-ink-editorial);
+  font-family: var(--rw-font-sans);
+}
+
+.hub-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 56px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+/* --- Lead block ------------------------------------------------------ */
+.hub-lead {
+  max-width: 820px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hub-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 1.4px;
+  color: var(--rw-ink-editorial-faint);
+  text-transform: uppercase;
+}
+
+.hub-headline {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-weight: 400;
+  font-size: clamp(2.4rem, 4vw, 3rem);
+  letter-spacing: -0.8px;
+  line-height: 1.05;
+  color: var(--rw-ink-editorial);
+}
+
+.hub-dek {
+  margin: 8px 0 0;
+  font-family: var(--rw-font-serif);
+  font-weight: 300;
+  font-size: clamp(1rem, 1.4vw, 1.1rem);
+  line-height: 1.55;
+  color: var(--rw-ink-editorial-soft);
+}
+
+/* --- Groups ---------------------------------------------------------- */
+.hub-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.hub-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 2px solid var(--rw-rule);
+  padding-top: 10px;
+  margin-bottom: 14px;
+}
+
+.hub-group-heading {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-weight: 500;
+  font-size: 1.4rem;
+  color: var(--rw-ink-editorial);
+  letter-spacing: -0.3px;
+}
+
+.hub-group-count {
+  font-family: var(--rw-font-mono);
+  font-size: 0.7rem;
+  color: var(--rw-ink-editorial-faint);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.hub-group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 40px;
+}
+
+/* --- Card ------------------------------------------------------------ */
+.hub-card {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rw-rule-cream);
+}
+
+.hub-card-title {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-weight: 500;
+  font-size: 1.08rem;
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+
+.hub-card-link {
+  color: var(--rw-ink-editorial);
+  text-decoration: none;
+}
+
+.hub-card-link:hover {
+  color: var(--rw-accent);
+}
+
+.hub-card-dek {
+  margin: 6px 0 0;
+  font-family: var(--rw-font-serif);
+  font-weight: 300;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--rw-ink-editorial-soft);
+}
+
+.hub-card-meta {
+  margin-top: 6px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.72rem;
+  color: var(--rw-ink-editorial-faint);
+}
+
+/* --- Stand line ------------------------------------------------------ */
+.hub-stand {
+  text-align: center;
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  color: var(--rw-ink-editorial-faint);
+  margin: 0 0 16px;
+  padding: 0 24px;
+}
+
+/* ==========================================================================
+   Tablet — 640–1023 px.
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .hub-main {
+    padding: 36px 32px 28px;
+    gap: 28px;
+  }
+
+  .hub-headline {
+    font-size: clamp(2rem, 3.4vw, 2.4rem);
+    letter-spacing: -0.6px;
+  }
+
+  .hub-group-grid {
+    gap: 12px 24px;
+  }
+}
+
+/* ==========================================================================
+   Phone — <640 px. 1-col card grid.
+   ========================================================================== */
+@media (max-width: 639px) {
+  .hub-main {
+    padding: 28px 16px 28px;
+    gap: 24px;
+  }
+
+  .hub-headline {
+    font-size: 1.85rem;
+    letter-spacing: -0.5px;
+  }
+
+  .hub-dek {
+    font-size: 1rem;
+  }
+
+  .hub-groups {
+    gap: 24px;
+  }
+
+  .hub-group-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .hub-group-heading {
+    font-size: 1.2rem;
+  }
+}

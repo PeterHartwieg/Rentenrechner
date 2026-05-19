@@ -68,7 +68,7 @@ describe('RentenluckeRechnerPage — visible content for prerender', () => {
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<RentenluckeRechnerPage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     // Issue #13: topic-page CTAs use `/?topic=<slug>` so first-time visitors
     // land in the calculator with the right comparison preselected. The
@@ -230,7 +230,7 @@ describe('BasisrenteRechnerPage — visible content for prerender', () => {
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<BasisrenteRechnerPage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=basisrente-rechner')
   })
@@ -342,7 +342,7 @@ describe('PrivateRentenversicherungRechnerPage — visible content for prerender
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<PrivateRentenversicherungRechnerPage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=private-rentenversicherung-rechner')
   })
@@ -455,7 +455,7 @@ describe('RiesterRechnerPage — visible content for prerender', () => {
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<RiesterRechnerPage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=riester-rechner')
   })
@@ -576,7 +576,7 @@ describe('AltersvorsorgedepotRechnerPage — visible content for prerender', () 
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<AltersvorsorgedepotRechnerPage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=altersvorsorgedepot-rechner')
   })
@@ -697,7 +697,7 @@ describe('RiesterVsAltersvorsorgedepotPage — visible content for prerender', (
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=riester-vs-altersvorsorgedepot')
   })
@@ -822,7 +822,7 @@ describe('RenteNettoBerechnePage — visible content for prerender', () => {
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<RenteNettoBerechnePage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=rente-netto-berechnen')
   })
@@ -919,7 +919,7 @@ describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
 
   it('renders a combine-mode CTA with topic preselection (issue #13)', () => {
     const { container } = render(<AltersvorsorgeproduktePage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=altersvorsorgeprodukte-vergleichen')
   })
@@ -1031,7 +1031,7 @@ describe('BavRechnerPage — visible content for prerender', () => {
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<BavRechnerPage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=bav-rechner')
   })
@@ -1161,7 +1161,7 @@ describe('EtfVsBavPage — visible content for prerender', () => {
 
   it('renders a calculator CTA deep-link with topic preselection (issue #13)', () => {
     const { container } = render(<EtfVsBavPage />)
-    const cta = container.querySelector('.public-cta')
+    const cta = container.querySelector('.article-cta')
     expect(cta).not.toBeNull()
     expect(cta?.getAttribute('href')).toBe('/?topic=etf-vs-bav')
   })
@@ -1267,101 +1267,74 @@ describe('EtfVsBavPage — prerender disclaimer', () => {
   })
 })
 
-// Issue #4: .public-cta color cascade regression — white text on blue button
+// ---------------------------------------------------------------------------
+// PR 3 — ArticleLayout integration smoke tests. Replaces the older
+// .public-cta cascade regression suite (the editorial .article-cta has its
+// own scope) and the /?view=vergleich "Modellrechner Startseite" assertions
+// (the new layout reaches the calculator via the per-page calculatorCta).
 // ---------------------------------------------------------------------------
 
-describe('.public-cta color cascade — issue #4 regression', () => {
-  // JSDOM resolves the CSS cascade, so computed style reflects which rule wins.
-  // Before the fix, .public-article a (specificity 0,1,1) overrode
-  // .public-cta (specificity 0,1,0), making text color #2563eb on a #2563eb
-  // background — invisible. After the fix, .public-article a:not(.public-cta)
-  // scopes the generic link rule away from CTAs, restoring color: #ffffff.
-
-  it('BavRechnerPage — .public-cta renders white text (not article-link blue)', () => {
-    const { container } = render(<BavRechnerPage />)
-    const cta = container.querySelector('.public-cta') as HTMLElement | null
-    expect(cta).not.toBeNull()
-    // The inline style set by the component is authoritative in JSDOM when no
-    // stylesheet is loaded, but the class attribute must at minimum not carry
-    // the overriding generic-link color. Assert the element is not styled as
-    // the article-link blue (rgb(37,99,235)) — it should be unstyled or white.
-    const color = cta!.style.color
-    expect(color).not.toBe('rgb(37, 99, 235)')
-  })
-
-  it('RentenluckeRechnerPage — .public-cta has no underline class conflict', () => {
+describe('ArticleLayout wrapper — applied to every publicPages/*Page.tsx', () => {
+  it('renders the editorial breadcrumb with Startseite + Alle Artikel anchors', () => {
     const { container } = render(<RentenluckeRechnerPage />)
-    const cta = container.querySelector('.public-cta') as HTMLElement | null
-    expect(cta).not.toBeNull()
-    // Verify the CTA element does not have additional classes that would
-    // re-introduce the article-link specificity conflict.
-    expect(cta!.classList.contains('public-cta')).toBe(true)
-    // The article-link rule must not apply: the element must carry .public-cta
-    // so the :not(.public-cta) selector excludes it.
-    expect(cta!.tagName.toLowerCase()).toBe('a')
+    const crumb = container.querySelector('.article-breadcrumb')
+    expect(crumb).not.toBeNull()
+    const crumbLinks = Array.from(crumb!.querySelectorAll('a')).map((a) => ({
+      href: a.getAttribute('href'),
+      text: a.textContent ?? '',
+    }))
+    expect(crumbLinks.find((l) => l.href === '/')?.text).toBe('Startseite')
+    expect(crumbLinks.find((l) => l.href === '/artikel')?.text).toBe('Alle Artikel')
   })
 
-  it('AltersvorsorgeproduktePage — .public-cta href and class are both present', () => {
-    const { container } = render(<AltersvorsorgeproduktePage />)
-    const cta = container.querySelector('a.public-cta') as HTMLAnchorElement | null
-    expect(cta).not.toBeNull()
-    // Selector a.public-cta must match — this is the post-fix selector shape
-    // that beats .public-article a:not(.public-cta) by excluding CTAs from
-    // that rule entirely.
-    expect(cta!.href).toContain('topic=altersvorsorgeprodukte-vergleichen')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Issue #06: ?view=vergleich — "Verwandte Seiten" Modellrechner Startseite link
-// ---------------------------------------------------------------------------
-
-describe('Public pages — "Verwandte Seiten" Modellrechner Startseite link uses /?view=vergleich', () => {
-  it('RentenluckeRechnerPage renders /?view=vergleich for the Modellrechner Startseite entry', () => {
-    const { container } = render(<RentenluckeRechnerPage />)
-    const verwandteLinks = Array.from(
-      container.querySelectorAll('.public-internal-links a'),
-    )
-    const startseiteLink = verwandteLinks.find(
-      (a) => a.textContent?.includes('Modellrechner Startseite'),
-    )
-    expect(startseiteLink).not.toBeNull()
-    expect(startseiteLink?.getAttribute('href')).toBe('/?view=vergleich')
-  })
-
-  it('BasisrenteRechnerPage renders /?view=vergleich for the Modellrechner Startseite entry', () => {
-    const { container } = render(<BasisrenteRechnerPage />)
-    const verwandteLinks = Array.from(
-      container.querySelectorAll('.public-internal-links a'),
-    )
-    const startseiteLink = verwandteLinks.find(
-      (a) => a.textContent?.includes('Modellrechner Startseite'),
-    )
-    expect(startseiteLink).not.toBeNull()
-    expect(startseiteLink?.getAttribute('href')).toBe('/?view=vergleich')
-  })
-
-  it('BavRechnerPage renders /?view=vergleich for the Modellrechner Startseite entry', () => {
-    const { container } = render(<BavRechnerPage />)
-    const verwandteLinks = Array.from(
-      container.querySelectorAll('.public-internal-links a'),
-    )
-    const startseiteLink = verwandteLinks.find(
-      (a) => a.textContent?.includes('Modellrechner Startseite'),
-    )
-    expect(startseiteLink).not.toBeNull()
-    expect(startseiteLink?.getAttribute('href')).toBe('/?view=vergleich')
-  })
-
-  it('EtfVsBavPage renders /?view=vergleich for the Modellrechner Startseite entry', () => {
+  it('renders the "Wartung: Peter Hartwieg" maintainer line (no fictional bylines)', () => {
     const { container } = render(<EtfVsBavPage />)
-    const verwandteLinks = Array.from(
-      container.querySelectorAll('.public-internal-links a'),
+    const text = container.textContent ?? ''
+    expect(text).toContain('Wartung: Peter Hartwieg')
+    // The mock's fictional bylines must never appear in shipped copy.
+    expect(text).not.toMatch(/M\.\s?Sahin/i)
+    expect(text).not.toMatch(/L\.\s?Vogel/i)
+    expect(text).not.toMatch(/K\.\s?Bauer/i)
+    expect(text).not.toMatch(/J\.\s?Köhler/i)
+    expect(text).not.toMatch(/Fachprüfung/i)
+  })
+
+  it('renders the right-rail "Zum gleichen Thema" card with related routes', () => {
+    const { container } = render(<BavRechnerPage />)
+    const relatedCard = container.querySelector('.article-aside-card--related')
+    expect(relatedCard).not.toBeNull()
+    const relatedLinks = Array.from(relatedCard!.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
     )
-    const startseiteLink = verwandteLinks.find(
-      (a) => a.textContent?.includes('Modellrechner Startseite'),
-    )
-    expect(startseiteLink).not.toBeNull()
-    expect(startseiteLink?.getAttribute('href')).toBe('/?view=vergleich')
+    // bav-rechner relatedRoutes: '/', '/etf-vs-bav', '/rentenluecke-rechner'.
+    // ArticleLayout filters '/' from the related list (it would duplicate the
+    // breadcrumb), so we expect the two sibling slugs.
+    expect(relatedLinks).toContain('/etf-vs-bav/')
+    expect(relatedLinks).toContain('/rentenluecke-rechner/')
+  })
+
+  it('renders the GitHub edit link as the "Diesen Artikel" action', () => {
+    const { container } = render(<RiesterRechnerPage />)
+    const metaCard = container.querySelector('.article-aside-card--meta')
+    expect(metaCard).not.toBeNull()
+    const editLink = metaCard!.querySelector('a')
+    expect(editLink).not.toBeNull()
+    expect(editLink!.getAttribute('href')).toContain('github.com')
+    expect(editLink!.getAttribute('rel')).toContain('noopener')
+  })
+
+  it('drops the deprecated public-* class names (.public-shell / .public-article / .public-page-footer)', () => {
+    const { container } = render(<RentenluckeRechnerPage />)
+    expect(container.querySelector('.public-shell')).toBeNull()
+    expect(container.querySelector('.public-article')).toBeNull()
+    expect(container.querySelector('.public-page-footer')).toBeNull()
+    expect(container.querySelector('.public-internal-links')).toBeNull()
+  })
+
+  it('AltersvorsorgeproduktePage CTA carries the topic preselection href', () => {
+    const { container } = render(<AltersvorsorgeproduktePage />)
+    const cta = container.querySelector('a.article-cta') as HTMLAnchorElement | null
+    expect(cta).not.toBeNull()
+    expect(cta!.getAttribute('href')).toBe('/?topic=altersvorsorgeprodukte-vergleichen')
   })
 })

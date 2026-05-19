@@ -6,6 +6,7 @@ import {
   buildCanonicalUrl,
   publicRouteRegistry,
   OG_DEFAULT_IMAGE_PATH,
+  type PublicRoute,
 } from './publicRouteRegistry'
 
 /** Mirrors the slug derivation in `scripts/generate-og-images.mjs`. */
@@ -97,9 +98,11 @@ describe('buildRouteHead — per-route metadata shape', () => {
     // Backward-compat guard: any future Article-type route added without an
     // explicit datePublished must still emit a valid datePublished field.
     // We exercise the fallback path directly through the public buildRouteHead
-    // by checking every Article-type route in the registry.
+    // by checking every Article-type route in the registry. The `as PublicRoute`
+    // cast keeps the iteration legible — TS struggles to narrow the const-
+    // inferred 15-member union by `jsonLdType` discriminator alone.
     for (const routeId of PUBLIC_ROUTE_IDS) {
-      const entry = publicRouteRegistry[routeId]
+      const entry = publicRouteRegistry[routeId] as PublicRoute
       if (entry.jsonLdType !== 'Article') continue
       const head = buildRouteHead(routeId)
       const data = head.jsonLd as unknown as Record<string, unknown>

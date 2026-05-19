@@ -186,7 +186,16 @@ export function LandingPage({ onChoice, navigate }: Props) {
                   </li>
                 ))}
               </ul>
-              <a href="#landing-hub-heading" className="landing-featured-all">
+              <a
+                href="/artikel"
+                className="landing-featured-all"
+                onClick={(event) => {
+                  if (navigate) {
+                    event.preventDefault()
+                    navigate('/artikel')
+                  }
+                }}
+              >
                 Alle {hubArticleCount} Themen ansehen →
               </a>
             </div>

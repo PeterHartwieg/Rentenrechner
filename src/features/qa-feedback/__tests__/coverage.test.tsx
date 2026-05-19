@@ -971,7 +971,10 @@ describe('Issue 05: AltersvorsorgeproduktePage — article-body QA selection', (
       '[data-qa-target="publicPage.altersvorsorgeprodukte.article"]',
     )
     expect(article).not.toBeNull()
-    expect(article?.tagName.toLowerCase()).toBe('article')
+    // PR 3 wraps the MDX body inside ArticleLayout's outer `<article>`. The
+    // QA scope is the page-level section *inside* that article, so the
+    // element carrying the QA target is now a `<section>`.
+    expect(article?.tagName.toLowerCase()).toBe('section')
     expect(article?.getAttribute('data-qa-section')).toBe('true')
     expect(article?.getAttribute('data-qa-precision')).toBe('section')
   })

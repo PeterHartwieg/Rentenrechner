@@ -99,6 +99,21 @@ describe('AppHeader', () => {
     fireEvent.click(screen.getByText('Startseite'))
     expect(navigate).toHaveBeenCalledWith('/')
   })
+
+  it('navigates to /artikel when Artikel is clicked on desktop (PR 3)', () => {
+    mockViewport('desktop')
+    const navigate = vi.fn()
+    render(<AppHeader route="/" title="" navigate={navigate} />)
+    fireEvent.click(screen.getByText('Artikel'))
+    expect(navigate).toHaveBeenCalledWith('/artikel')
+  })
+
+  it('highlights Artikel as active on a clustered topic route', () => {
+    mockViewport('desktop')
+    render(<AppHeader route="/bav-rechner" title="" navigate={() => {}} />)
+    const active = document.querySelector('.rw-app-header__nav-item--active')
+    expect(active?.textContent).toBe('Artikel')
+  })
 })
 
 describe('MobileNav', () => {
@@ -118,10 +133,12 @@ describe('MobileNav', () => {
     expect(active?.textContent).toBe('Start')
   })
 
-  it('keeps the non-Start tabs as inert placeholders for PR 1', () => {
+  it('keeps the unbuilt tabs as inert placeholders (PR 3: Plan / Vergleich / Methode)', () => {
     render(<MobileNav route="/" navigate={() => {}} />)
     const placeholders = document.querySelectorAll('.rw-mobile-nav__tab--placeholder')
-    expect(placeholders.length).toBe(4) // Plan / Vergleich / Artikel / Methode
+    // PR 3 promoted Artikel to a clickable link (`/artikel`) so only Plan,
+    // Vergleich and Methode remain as inert placeholders.
+    expect(placeholders.length).toBe(3)
   })
 
   it('navigates home when Start is tapped', () => {
@@ -129,6 +146,19 @@ describe('MobileNav', () => {
     render(<MobileNav route="/impressum" navigate={navigate} />)
     fireEvent.click(screen.getByText('Start'))
     expect(navigate).toHaveBeenCalledWith('/')
+  })
+
+  it('navigates to /artikel when Artikel is tapped (PR 3)', () => {
+    const navigate = vi.fn()
+    render(<MobileNav route="/" navigate={navigate} />)
+    fireEvent.click(screen.getByText('Artikel'))
+    expect(navigate).toHaveBeenCalledWith('/artikel')
+  })
+
+  it('highlights Artikel as active on a clustered topic route', () => {
+    render(<MobileNav route="/bav-rechner" navigate={() => {}} />)
+    const active = document.querySelector('.rw-mobile-nav__tab--active')
+    expect(active?.textContent).toBe('Artikel')
   })
 })
 

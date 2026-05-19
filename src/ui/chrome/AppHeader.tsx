@@ -26,6 +26,17 @@ const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
 ]
 
 /**
+ * Map a nav tab id to a real `Route` target if one exists. Returns `null`
+ * for placeholder tabs (`plan` / `compare` / `method` until their routes
+ * ship). The 'home' tab returns `/`; 'artikel' returns `/artikel` (PR 3).
+ */
+function clickableTarget(id: ChromeNavId): Route | null {
+  if (id === 'home') return '/'
+  if (id === 'artikel') return '/artikel'
+  return null
+}
+
+/**
  * Top page chrome. Three internal viewport variants:
  *   - desktop: kicker + H1 + horizontal 5-tab nav.
  *   - tablet:  same layout, smaller type + tighter padding.
@@ -86,16 +97,16 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
         <nav className="rw-app-header__nav" aria-label="Hauptnavigation">
           {NAV_ITEMS.map((item) => {
             const isActive = item.id === active
-            const clickable = item.id === 'home'
-            if (clickable) {
+            const target = clickableTarget(item.id)
+            if (target) {
               return (
                 <a
                   key={item.id}
-                  href="/"
+                  href={target}
                   className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
                   onClick={(event) => {
                     event.preventDefault()
-                    navigate('/')
+                    navigate(target)
                   }}
                 >
                   {item.label}
