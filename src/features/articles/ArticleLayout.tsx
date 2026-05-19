@@ -1,9 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import './ArticleLayout.css'
 import { LegalFooter } from '../legal/LegalFooter'
-import { JsonLd } from '../../seo/JsonLd'
 import {
-  buildCanonicalUrl,
   publicRouteRegistry,
   type PublicRoute,
   type PublicRouteId,
@@ -12,8 +10,25 @@ import { findArticleByPath } from './articleResolver'
 import { RULES_YEAR } from '../../rules'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
+import { slugify } from '../../utils/slugify'
 
 const GITHUB_REPO_URL = 'https://github.com/PeterHartwieg/Rentenrechner'
+
+/**
+ * Build the default GitHub "edit this article" URL for a route. Each article
+ * body lives at `src/features/publicPages/<slug>.body.mdx`, where `<slug>`
+ * is the route's canonical path without the leading slash. Without this
+ * default, the edit link fell back to the repo root, which dropped readers
+ * on the project home instead of the source of the page they were on.
+ */
+function defaultGithubEditHref(routeId: PublicRouteId): string {
+  if (routeId === '/' || routeId === '/artikel' || routeId === '/404'
+    || routeId === '/impressum' || routeId === '/datenschutz') {
+    return GITHUB_REPO_URL
+  }
+  const slug = routeId.replace(/^\//, '')
+  return `${GITHUB_REPO_URL}/edit/main/src/features/publicPages/${slug}.body.mdx`
+}
 
 interface Props {
   /**
@@ -77,7 +92,6 @@ export function ArticleLayout({
   accentTerm,
 }: Props) {
   const route = publicRouteRegistry[routeId]
-  const canonical = buildCanonicalUrl(routeId)
   const clusterEntry = findArticleByPath(routeId)
 
   // TOC is auto-derived from `<h2 id>` anchors in the article body. We read
@@ -104,7 +118,7 @@ export function ArticleLayout({
       // Same uniqueness loop applies to both authored and synthesised ids:
       // an MDX body with two manually-authored `<h2 id="foo">` would
       // otherwise produce duplicate DOM ids and duplicate React keys.
-      const base = h.id || slugifyHeading(text) || 'section'
+      const base = h.id || slugify(text) || 'section'
       let candidate = base
       let n = 2
       while (used.has(candidate)) {
@@ -122,6 +136,17 @@ export function ArticleLayout({
     // the visible TOC on no-JS clients).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setToc(items)
+
+    // Direct-fragment-load retry: when the user arrives at e.g.
+    // `/bav-rechner/#steuer-und-sv-grenzen-2026`, the browser fires its
+    // fragment scroll before this effect assigns the ids — so the initial
+    // scroll lands at the top. Now that ids exist, scroll the matching
+    // heading into view. Guarded so an unrelated hash (e.g. an MDX-internal
+    // jump that doesn't match an `id`) is a no-op.
+    if (window.location.hash.length > 1) {
+      const target = document.getElementById(window.location.hash.slice(1))
+      if (target) target.scrollIntoView()
+    }
   }, [routeId])
 
   useEffect(() => {
@@ -151,7 +176,7 @@ export function ArticleLayout({
   }, [toc])
 
   const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
-  const editHref = githubEditHref ?? GITHUB_REPO_URL
+  const editHref = githubEditHref ?? defaultGithubEditHref(routeId)
 
   // Render the H1: if `accentTerm` is set, wrap its final occurrence in an
   // italic oxblood span (mirrors the LandingPage `<em class="landing-
@@ -159,13 +184,12 @@ export function ArticleLayout({
   // plain text.
   const headlineNode = renderHeadline(route.h1, accentTerm)
 
-  // JSON-LD for an article. Each page already emits its own JsonLd block in
-  // some cases; we deliberately do NOT emit one here — the route's
-  // jsonLdType is preserved by the page component, and adding a second one
-  // would cause duplicate-schema lint failures. The page-level JSON-LD stays
-  // the authoritative emission.
-  void JsonLd
-  void canonical
+  // JSON-LD is emitted by `renderRouteHeadHtml(routeId)` via the SSG head
+  // pipeline (`buildJsonLd` returns the correct `@type` per registry entry).
+  // We deliberately do NOT emit an inline `<JsonLd>` block here — that would
+  // duplicate the schema and trip the "single JSON-LD per route" invariant
+  // (`/` is the only route where head emission is suppressed in favour of
+  // body emission — see `src/seo/routeHead.ts`).
 
   // Related routes — surfaced as the right-rail "Zum gleichen Thema" card.
   // `relatedRoutes` is inferred as a literal-narrowed tuple by `as const` on
@@ -328,22 +352,6 @@ export function ArticleLayout({
       <LegalFooter navigate={navigateOrNoop} />
     </div>
   )
-}
-
-/**
- * Slugify a heading for use as an anchor id. Lowercases, replaces umlauts,
- * collapses runs of non-alphanumeric chars to dashes. Empty / dash-only
- * results fall back to "section" at the call site.
- */
-function slugifyHeading(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/ß/g, 'ss')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }
 
 /**

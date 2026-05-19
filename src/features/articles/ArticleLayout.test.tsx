@@ -170,4 +170,30 @@ describe('ArticleLayout — chrome and metadata invariants', () => {
     )
     expect(container.querySelector('.article-headline-accent')).toBeNull()
   })
+
+  it('defaults the GitHub edit link to the per-route MDX source path', () => {
+    const { container } = render(
+      <ArticleLayout routeId="/etf-vs-bav">
+        <p>body</p>
+      </ArticleLayout>,
+    )
+    const metaCard = container.querySelector('.article-aside-card--meta')
+    const editLink = metaCard?.querySelector('a') as HTMLAnchorElement | null
+    expect(editLink).not.toBeNull()
+    // Per-route source path lives at src/features/publicPages/<slug>.body.mdx;
+    // the default href must point at that file rather than the repo root.
+    expect(editLink!.getAttribute('href')).toBe(
+      'https://github.com/PeterHartwieg/Rentenrechner/edit/main/src/features/publicPages/etf-vs-bav.body.mdx',
+    )
+  })
+
+  it('respects a caller-supplied githubEditHref override', () => {
+    const { container } = render(
+      <ArticleLayout routeId="/etf-vs-bav" githubEditHref="https://example.test/custom">
+        <p>body</p>
+      </ArticleLayout>,
+    )
+    const editLink = container.querySelector('.article-aside-card--meta a') as HTMLAnchorElement
+    expect(editLink.getAttribute('href')).toBe('https://example.test/custom')
+  })
 })

@@ -10,6 +10,7 @@ import {
 import { RULES_YEAR } from '../../rules'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
+import { slugify } from '../../utils/slugify'
 
 interface Props {
   navigate?: (target: Route) => void
@@ -109,13 +110,3 @@ export function ArticleHubPage({ navigate }: Props) {
   )
 }
 
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/ß/g, 'ss')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
