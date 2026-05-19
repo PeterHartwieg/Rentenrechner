@@ -10,7 +10,7 @@ import {
   werbungskostenPauschalRenten,
   werbungskostenPauschalVersorgungsbezuege,
   sonderausgabenPauschbetrag,
-} from '../../rules/de2026'
+} from '../../rules'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { slugify } from '../../utils/slugify'

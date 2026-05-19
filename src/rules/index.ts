@@ -17,3 +17,10 @@ import { de2026Rules as activeRules } from './de2026'
 export { activeRules }
 export { legalConstants } from './legalConstants'
 export const RULES_YEAR: number = activeRules.year
+export {
+  besteuerungsanteilGrv,
+  versorgungsfreibetrag,
+  werbungskostenPauschalRenten,
+  werbungskostenPauschalVersorgungsbezuege,
+  sonderausgabenPauschbetrag,
+} from './de2026'
