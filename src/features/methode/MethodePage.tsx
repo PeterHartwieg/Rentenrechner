@@ -61,6 +61,26 @@ const SOURCES: readonly string[] = [
   'Deutsche Rentenversicherung Bund — Renteninformation und Aktueller Rentenwert (§ 69 SGB VI)',
 ]
 
+// Module-eval-time fail-fast: every scenario id in this list MUST resolve to
+// a defaultAssumptions.returnScenarios entry. If a scenario is renamed in
+// engine assumptions, this page should fail to import — not silently render 0%.
+const REQUIRED_SCENARIO_IDS = ['konservativ', 'basis', 'optimistisch'] as const
+const RESOLVED_RENDITEN: Readonly<Record<(typeof REQUIRED_SCENARIO_IDS)[number], number>> =
+  (() => {
+    const out = {} as Record<(typeof REQUIRED_SCENARIO_IDS)[number], number>
+    for (const id of REQUIRED_SCENARIO_IDS) {
+      const scenario = defaultAssumptions.returnScenarios.find((s) => s.id === id)
+      if (!scenario) {
+        throw new Error(
+          `MethodePage: missing return scenario "${id}" in defaultAssumptions.returnScenarios — ` +
+            `Renditeannahmen table cannot render without it.`,
+        )
+      }
+      out[id] = scenario.annualReturn
+    }
+    return out
+  })()
+
 /**
  * `/methode` — Methode & Quellen reference page (PR 4).
  *
@@ -126,17 +146,13 @@ export function MethodePage({ navigate }: Props) {
   }, [])
 
   // ─── Renditeannahmen-Tabelle ───────────────────────────────────────────
-  // Source of truth: `defaultAssumptions.returnScenarios` in
-  // `src/data/defaultScenario.ts`. Look up by `id` (NOT by index — per
-  // CLAUDE.md the array order is [konservativ, basis, optimistisch] but
-  // is not part of the contract; hardcoding `[0]` would silently pick the
-  // wrong scenario if the order ever changes).
-  const scenarioById = (id: 'konservativ' | 'basis' | 'optimistisch'): number =>
-    defaultAssumptions.returnScenarios.find((s) => s.id === id)?.annualReturn ?? 0
+  // RESOLVED_RENDITEN is precomputed at module scope (below the component).
+  // Look up by `id` (NOT by index — per CLAUDE.md the array order is
+  // [konservativ, basis, optimistisch] but is not part of the contract).
   const renditeRows: ReadonlyArray<readonly [string, number, string]> = [
-    ['konservativ', scenarioById('konservativ'), 'MSCI World rollierend 30 J., 10er-Quantil'],
-    ['Basis', scenarioById('basis'), 'Realer Median MSCI World 1900–2025 (~ 5,2 % real)'],
-    ['optimistisch', scenarioById('optimistisch'), 'MSCI World rollierend 30 J., 90er-Quantil'],
+    ['konservativ', RESOLVED_RENDITEN.konservativ, 'MSCI World rollierend 30 J., 10er-Quantil'],
+    ['Basis', RESOLVED_RENDITEN.basis, 'Realer Median MSCI World 1900–2025 (~ 5,2 % real)'],
+    ['optimistisch', RESOLVED_RENDITEN.optimistisch, 'MSCI World rollierend 30 J., 90er-Quantil'],
   ]
 
   // ─── Statutorische Werte (RULES_YEAR) ─────────────────────────────────
