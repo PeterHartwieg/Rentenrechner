@@ -30,7 +30,7 @@ import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import type { Route } from '../../app/useRoute'
 import { LandingPage, type LandingChoice } from './LandingPage'
-import { HUB_CLUSTERS } from './hubClusters'
+import { HUB_CLUSTERS, FEATURED_ARTICLE_HREFS, countHubArticles } from './hubClusters'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { STORAGE_KEY_V2 } from '../../storage'
 
@@ -101,7 +101,7 @@ describe('LandingPage — ?topic= auto-fire on first-time landing', () => {
     const { getByRole } = render(<LandingPage onChoice={onChoice} />)
     expect(onChoice).not.toHaveBeenCalled()
     // Sanity: the landing headline is rendered.
-    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/Rente planen/i)
+    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/wirklich/i)
   })
 
   it('does not auto-fire when no ?topic= is present — landing renders normally', () => {
@@ -109,7 +109,7 @@ describe('LandingPage — ?topic= auto-fire on first-time landing', () => {
     const onChoice = vi.fn<(c: LandingChoice) => void>()
     const { getByRole } = render(<LandingPage onChoice={onChoice} />)
     expect(onChoice).not.toHaveBeenCalled()
-    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/Rente planen/i)
+    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/wirklich/i)
   })
 
   it('does not auto-fire when other query params are present (no ?topic=)', () => {
@@ -306,14 +306,16 @@ describe('LandingPage — Erkunde Themen topic-page hub (issue #03)', () => {
     const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     const main = container.querySelector('.landing-main')
     expect(main).not.toBeNull()
-    const cards = main?.querySelector('.landing-cards')
+    // PR 2: the two CTAs live inside `.landing-top` (left column / hero).
+    // The hub sits below as a sibling section.
+    const top = main?.querySelector('.landing-top')
     const hub = main?.querySelector('.landing-hub')
-    expect(cards).not.toBeNull()
+    expect(top).not.toBeNull()
     expect(hub).not.toBeNull()
-    if (cards && hub) {
-      const cardsIndex = Array.from(main!.children).indexOf(cards)
+    if (top && hub) {
+      const topIndex = Array.from(main!.children).indexOf(top)
       const hubIndex = Array.from(main!.children).indexOf(hub)
-      expect(hubIndex).toBeGreaterThan(cardsIndex)
+      expect(hubIndex).toBeGreaterThan(topIndex)
     }
   })
 
@@ -493,6 +495,82 @@ describe('LandingPage — prerender resilience', () => {
         value: originalLocalStorage,
       })
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// PR 2 — Editorial A layout (cream bg + serif hero + 3-step row + right rail)
+// ---------------------------------------------------------------------------
+
+describe('LandingPage — editorial layout (PR 2)', () => {
+  it('renders the mono kicker above the H1', () => {
+    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    const kicker = container.querySelector('.landing-kicker')
+    expect(kicker).not.toBeNull()
+    expect(kicker?.textContent).toMatch(/Eine offene Auskunft/i)
+  })
+
+  it('renders the H1 with an italic oxblood accent on "wirklich"', () => {
+    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    const accent = container.querySelector('.landing-headline-accent')
+    expect(accent).not.toBeNull()
+    expect(accent?.textContent).toBe('wirklich')
+    // The accent element is an <em> so screen readers + crawlers see the
+    // emphasis without relying on CSS-only styling.
+    expect(accent?.tagName.toLowerCase()).toBe('em')
+  })
+
+  it('renders exactly three process steps (I. / II. / III.)', () => {
+    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    const steps = container.querySelectorAll('.landing-step')
+    expect(steps.length).toBe(3)
+    const nums = Array.from(container.querySelectorAll('.landing-step-num')).map(
+      (n) => n.textContent,
+    )
+    expect(nums).toEqual(['I.', 'II.', 'III.'])
+  })
+
+  it('renders the Empfohlene Artikel right-rail with entries derived from hubClusters', () => {
+    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    const featuredLinks = container.querySelectorAll('a.landing-featured-link')
+    expect(featuredLinks.length).toBe(FEATURED_ARTICLE_HREFS.length)
+    const hrefs = Array.from(featuredLinks).map((a) => a.getAttribute('href'))
+    expect(hrefs).toEqual([...FEATURED_ARTICLE_HREFS])
+  })
+
+  it('renders the "Alle N Themen ansehen" link with the live count (no hardcoded 47)', () => {
+    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    const link = container.querySelector('a.landing-featured-all')
+    expect(link).not.toBeNull()
+    const expectedCount = countHubArticles()
+    expect(link?.textContent ?? '').toContain(`Alle ${expectedCount} Themen`)
+  })
+
+  it('does NOT carry the mock\'s fictional "47 Artikel" / "318 Contributor" numbers', () => {
+    const html = renderToString(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    // The mock's right-rail had `Alle 47 Artikel ansehen →` and
+    // `56.412 Nutzer/Mon · 318 Contributor · 0 € Werbeeinnahmen`. Those are
+    // fictional — must not appear in the shipped landing.
+    expect(html).not.toContain('47 Artikel')
+    expect(html).not.toContain('318 Contributor')
+    expect(html).not.toContain('56.412')
+  })
+
+  it('renders the truthful single-maintainer "Wer steht hinter RentenWiki" panel', () => {
+    const html = renderToString(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    // Truthful posture per CLAUDE.md "Critical guardrails" §2.
+    expect(html).toContain('Einzelprojekt')
+    expect(html).toContain('Peter Hartwieg')
+    expect(html).toContain('PolyForm Noncommercial')
+  })
+
+  it('does NOT use the mock\'s fictional e.V. / MIT framing', () => {
+    const html = renderToString(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    // Locked decision §3: no fictional `RentenWiki e.V.`, no `MIT-Lizenz`.
+    expect(html).not.toMatch(/RentenWiki e\.V\./i)
+    expect(html).not.toMatch(/gemeinnütziger Verein/i)
+    expect(html).not.toMatch(/MIT[- ]Lizenz/i)
+    expect(html).not.toMatch(/ehrenamtlich(e|en) Beitragend/i)
   })
 })
 

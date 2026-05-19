@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import './LandingPage.css'
-import { ArrowRight, LayoutGrid, BarChart3 } from 'lucide-react'
 import { LegalFooter } from '../legal/LegalFooter'
 import type { ProductId } from '../../domain'
 import type { Route } from '../../app/useRoute'
@@ -16,12 +15,16 @@ import {
   publicRouteRegistry,
   resolveTopicPreselection,
 } from '../../seo/publicRouteRegistry'
-import { HUB_CLUSTERS } from './hubClusters'
+import {
+  HUB_CLUSTERS,
+  countHubArticles,
+  resolveFeaturedArticles,
+} from './hubClusters'
 import { RULES_YEAR } from '../../rules'
 
 /**
  * LandingChoice — payload fired by the two CTA buttons (and by the
- * `?topic=<slug>` auto-fire on first-time landing, see below).
+ * `?topic=<slug>` auto-fire on first-time landing).
  *
  * `visibleProducts` (issue #13) is optional preselection metadata that the
  * caller may forward into the workspace (compare-mode) or the InventoryWizard
@@ -44,17 +47,42 @@ interface Props {
   navigate?: (target: Route) => void
 }
 
+const PROCESS_STEPS: ReadonlyArray<{ n: string; h: string; p: string }> = [
+  {
+    n: 'I.',
+    h: 'Du beschreibst deine Lage.',
+    p: 'Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Bleibt lokal in deinem Browser — nichts wird an einen Server gesendet.',
+  },
+  {
+    n: 'II.',
+    h: 'Wir rechnen offen.',
+    p: 'Gesetzliche Rente, ETF-Sparpläne, Betriebs- und Privatrenten. Jede Annahme ist erklärt und kann geändert werden.',
+  },
+  {
+    n: 'III.',
+    h: 'Du entscheidest selbst.',
+    p: 'Wir nennen kein „bestes“ Produkt. Wir zeigen, was die Optionen kosten und was sie bringen.',
+  },
+]
+
 /**
- * Two-CTA landing page.
+ * Two-CTA landing page in editorial mode (PR 2).
  *
- * Mein Plan (combine-mode, primary): opens the InventoryWizard which walks
- * the user through personal details and (optionally) existing contracts.
- * The wizard handles both "I have contracts" and "I'm starting fresh" via its
- * "Weiter ohne Verträge" finish button — there is no separate guided-setup
- * flow anymore.
+ * Layout — left column owns the editorial hero (kicker + serif H1 with the
+ * italic oxblood "wirklich" accent + subline + two CTAs + 3-step row); right
+ * column ("aside") carries the "Empfohlene Artikel" feature list (sourced
+ * from `resolveFeaturedArticles()` so labels never drift from
+ * [[hubClusters]]) and the truthful "Wer steht hinter RentenWiki" panel.
+ * Beneath the two columns the "Alles im Überblick" hub (issue #03) keeps
+ * its existing 5-cluster / 10-link structure so the topic-page entry points
+ * remain in sitemap reach.
  *
- * Produkte vergleichen (compare-mode, secondary): direct entry to the
- * compare dashboard for users who already know what they want to compare.
+ * Two CTAs are kept (not the mock's single "Berechnung starten" call):
+ *   - Mein Plan (combine-mode, primary) opens the InventoryWizard. The
+ *     wizard handles both "I have contracts" and "I'm starting fresh" via its
+ *     "Weiter ohne Verträge" finish button.
+ *   - Produkte vergleichen (compare-mode, secondary) takes users straight to
+ *     the compare dashboard.
  *
  * Topic preselection (issue #13): on mount the page reads `?topic=<slug>`
  * from `window.location.search`. If the slug matches a registered route's
@@ -62,21 +90,15 @@ interface Props {
  * no saved workspace), the matching `LandingChoice` is auto-fired. Returning
  * users are never overridden — saved state always wins (PRD US-18).
  *
- * Below the two CTAs (issue #03):
- *   - `Erkunde Themen` topic-page hub: 5 clusters, 10 descriptive German
- *     anchors. Most targets do not have pages yet (issues #04–#07).
- *   - `LegalFooter`: license posture + Impressum/Datenschutz links.
- *
  * Inline JSON-LD (issue #03): `WebSite` + `Organization` + `WebApplication`.
  * All three blocks are emitted via the typed `<JsonLd>` component into the
- * page body so the SSG prerender output already carries them. Crawlers parse
- * JSON-LD wherever it appears in the document; placing the blocks in body
- * keeps the head emission for `/` empty (the route-head pipeline returns
- * `null` for `/` so the head is not duplicated).
+ * page body so the SSG prerender output already carries them.
  */
 export function LandingPage({ onChoice, navigate }: Props) {
   const route = publicRouteRegistry['/']
   const canonical = buildCanonicalUrl('/')
+  const featured = resolveFeaturedArticles()
+  const hubArticleCount = countHubArticles()
 
   // Prerender path may pass undefined for `navigate`. We pass a stable no-op
   // through to LegalFooter — the rendered HTML still emits `<a href>` so
@@ -102,70 +124,93 @@ export function LandingPage({ onChoice, navigate }: Props) {
     } else {
       onChoice({ kind: 'combine', visibleProducts: preselection.visibleProducts })
     }
-    // We intentionally read `onChoice` as a stable callback. It is captured
-    // by handleLandingChoice in App.tsx which is not memoised, but the guard
-    // above ensures we only call it once regardless of how many renders occur.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
-    <div className="landing-shell">
+    <div className="landing-shell landing-shell--editorial">
       <main className="landing-main">
-        <div className="landing-hero">
-          <h1 className="landing-headline">Rente planen, Produkte vergleichen.</h1>
-          <p className="landing-subline">
-            RentenWiki.de: Altersvorsorge planen mit Steuern und Krankenkassenbeiträgen, auch für Betriebsrente und ETF.
-          </p>
-        </div>
+        {/* Top section: editorial hero (left) + aside panels (right) */}
+        <section className="landing-top">
+          <div className="landing-hero">
+            <div className="landing-kicker">Eine offene Auskunft zu deiner Altersvorsorge</div>
+            <h1 className="landing-headline">
+              Was bekommst du <em className="landing-headline-accent">wirklich</em> an Rente?
+            </h1>
+            <p className="landing-subline">
+              Trage deine Verträge ein. Wir rechnen — transparent, ohne Werbung,
+              ohne Provisionen — wieviel pro Monat im Alter auf deinem Konto landet,
+              in heutiger Kaufkraft und in Euro {RULES_YEAR + 39}. Der Quellcode ist
+              offen, die Annahmen sind erklärt.
+            </p>
 
-        <div className="landing-cards">
-          {/* Primary card: Mein Plan (combine-mode) */}
-          <div className="landing-card landing-card--primary">
-            <div className="landing-card-body">
-              <div className="landing-card-icon landing-card-icon--primary" aria-hidden="true">
-                <LayoutGrid size={32} />
-              </div>
-              <h2 className="landing-card-title">Mein Plan</h2>
-              <p className="landing-card-desc">
-                Plane deine Rente mithilfe von Vergleichen und Empfehlungen.
-              </p>
+            <div className="landing-cta-row">
               <button
                 type="button"
                 className="landing-btn landing-btn--primary"
                 onClick={() => onChoice({ kind: 'combine' })}
               >
-                Mein Plan erstellen
-                <ArrowRight size={18} aria-hidden="true" />
+                <span>Mein Plan erstellen</span>
+                <span aria-hidden="true">→</span>
               </button>
-            </div>
-          </div>
-
-          {/* Secondary card: Produkte vergleichen (compare-mode) */}
-          <div className="landing-card landing-card--secondary">
-            <div className="landing-card-body">
-              <div className="landing-card-icon landing-card-icon--secondary" aria-hidden="true">
-                <BarChart3 size={32} />
-              </div>
-              <h2 className="landing-card-title">Produkte vergleichen</h2>
-              <p className="landing-card-desc">
-                Betriebsrente, ETF und Privatrente direkt vergleichen, bei gleichem Nettoaufwand.
-              </p>
               <button
                 type="button"
-                className="landing-btn landing-btn--outline"
+                className="landing-btn landing-btn--secondary"
                 onClick={() => onChoice({ kind: 'compare' })}
               >
                 Vergleich starten
-                <ArrowRight size={18} aria-hidden="true" />
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Topic-page hub — issue #03. Sectioned `Erkunde Themen` block under
-            the two CTAs. Five clusters, 10 anchors. Most targets ship in
-            issues #04–#07; the hub still lists them so internal links resolve
-            atomically as those issues land. */}
+            <ol className="landing-steps" aria-label="So funktioniert es">
+              {PROCESS_STEPS.map((step) => (
+                <li key={step.n} className="landing-step">
+                  <div className="landing-step-num">{step.n}</div>
+                  <div className="landing-step-h">{step.h}</div>
+                  <div className="landing-step-p">{step.p}</div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <aside className="landing-aside" aria-label="Empfohlene Inhalte und Trägerangabe">
+            <div className="landing-aside-card landing-aside-card--featured">
+              <div className="landing-aside-kicker">Empfohlene Artikel</div>
+              <ul className="landing-featured-list">
+                {featured.map((a) => (
+                  <li key={a.href} className="landing-featured-item">
+                    <a href={a.href} className="landing-featured-link">
+                      <span className="landing-featured-title">{a.label}</span>
+                      <span className="landing-featured-meta">{a.cluster}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <a href="#landing-hub-heading" className="landing-featured-all">
+                Alle {hubArticleCount} Themen ansehen →
+              </a>
+            </div>
+
+            <div className="landing-aside-card landing-aside-card--about">
+              <div className="landing-aside-kicker">Wer steht hinter RentenWiki</div>
+              <p className="landing-about-body">
+                RentenWiki.de ist ein Einzelprojekt von Peter Hartwieg. Es
+                gibt keinen Verein, keine Provisionen und keine Werbung —
+                die laufenden Kosten decken Spenden über Stripe und GitHub
+                Sponsors.
+              </p>
+              <p className="landing-about-license">
+                Der Quellcode steht unter{' '}
+                <span className="landing-about-license-name">PolyForm Noncommercial 1.0.0</span>
+                {' '}offen. Die kommerzielle Nutzung — etwa durch Versicherungs­makler,
+                Anlageberater oder Arbeitgeber — ist lizenzpflichtig.
+              </p>
+            </div>
+          </aside>
+        </section>
+
+        {/* Topic-page hub — issue #03. Sectioned `Alles im Überblick` block
+            below the hero. Five clusters, 10 anchors. */}
         <nav className="landing-hub" aria-labelledby="landing-hub-heading">
           <h2 id="landing-hub-heading" className="landing-hub-heading">
             Alles im Überblick
@@ -197,9 +242,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
 
       <LegalFooter navigate={navigateOrNoop} />
 
-      {/* Inline JSON-LD (issue #03): WebSite + Organization + WebApplication.
-          All three blocks emitted via the typed `<JsonLd>` component — the
-          single React JSON-LD path (no parallel raw-string emission). */}
+      {/* Inline JSON-LD (issue #03): WebSite + Organization + WebApplication. */}
       <JsonLd data={buildHomeWebSiteJsonLd(canonical)} />
       <JsonLd data={buildHomeOrganizationJsonLd(canonical)} />
       <JsonLd

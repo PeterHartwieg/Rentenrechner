@@ -1,297 +1,290 @@
 /* ==========================================================================
-   LandingPage — Two-CTA entry screen (Group G issue 04)
+   LandingPage — Editorial A (PR 2).
+   Cream background, Newsreader serif headline, oxblood italic accent, three
+   viewport breakpoints. Tokens defined in src/App.css.
    ========================================================================== */
 
 .landing-shell {
-  min-height: 100vh;
-  background: #f4f7fb;
   display: flex;
   flex-direction: column;
+  min-height: 100%;
+  background: var(--rw-bg-cream);
+  color: var(--rw-ink-editorial);
+  font-family: var(--rw-font-sans);
 }
 
 .landing-main {
   flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 56px 40px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 48px 24px 64px;
-  gap: 40px;
-  max-width: 900px;
-  margin: 0 auto;
-  width: 100%;
+  gap: 48px;
 }
 
-/* Hero text */
-.landing-hero {
-  text-align: center;
-  max-width: 620px;
-}
-
-.landing-headline {
-  font-size: clamp(1.8rem, 3vw, 2.6rem);
-  font-weight: 700;
-  color: #172033;
-  margin: 0 0 12px;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.landing-subline {
-  font-size: 1.05rem;
-  color: #667085;
-  margin: 0;
-  line-height: 1.6;
-}
-
-.landing-subline a {
-  color: #2563eb;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.landing-subline a:hover {
-  color: #1d4ed8;
-}
-
-/* Cards layout */
-.landing-cards {
+/* --- Top section ----------------------------------------------------- */
+.landing-top {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  width: 100%;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 64px;
   align-items: start;
 }
 
-.landing-card {
-  border-radius: 16px;
-  overflow: hidden;
-  background: #ffffff;
-  border: 1px solid #d9e1ea;
-  box-shadow: 0 1px 4px rgba(23, 32, 51, 0.06);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.landing-card:hover {
-  box-shadow: 0 4px 16px rgba(23, 32, 51, 0.10);
-}
-
-/* Primary card: Mein Plan — slightly larger visual weight */
-.landing-card--primary {
-  border-top: 4px solid #2563eb;
-}
-
-/* Secondary card: Produkte vergleichen */
-.landing-card--secondary {
-  border-top: 4px solid #64748b;
-}
-
-.landing-card-body {
-  padding: 28px 28px 32px;
+/* --- Hero (left) ----------------------------------------------------- */
+.landing-hero {
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
-.landing-card-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+.landing-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--rw-ink-editorial-faint);
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.landing-headline {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-weight: 400;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  letter-spacing: -1.2px;
+  line-height: 1.04;
+  color: var(--rw-ink-editorial);
+  max-width: 760px;
+}
+
+.landing-headline-accent {
+  font-style: italic;
+  color: var(--rw-accent);
+}
+
+.landing-subline {
+  margin: 24px 0 0;
+  font-family: var(--rw-font-serif);
+  font-weight: 300;
+  font-size: clamp(1.0rem, 1.4vw, 1.2rem);
+  line-height: 1.55;
+  color: var(--rw-ink-editorial-soft);
+  max-width: 620px;
+}
+
+/* --- CTA row --------------------------------------------------------- */
+.landing-cta-row {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
 }
 
-.landing-card-icon--primary {
-  background: #eff6ff;
-  color: #2563eb;
-}
-
-.landing-card-icon--secondary {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.landing-card-title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #172033;
-  margin: 0;
-  letter-spacing: 0;
-}
-
-.landing-card-desc {
-  font-size: 0.92rem;
-  color: #475569;
-  line-height: 1.6;
-  margin: 0;
-  flex: 1;
-}
-
-/* Buttons */
 .landing-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 12px 20px;
-  border-radius: 10px;
+  padding: 12px 22px;
+  border-radius: 0;
+  font-family: var(--rw-font-sans);
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  border: none;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  align-self: flex-start;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  min-height: 44px;
 }
 
 .landing-btn--primary {
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--rw-ink-editorial);
+  color: var(--rw-bg-cream);
+  border: 1px solid var(--rw-ink-editorial);
 }
 
 .landing-btn--primary:hover {
-  background: #1d4ed8;
+  background: var(--rw-accent);
+  border-color: var(--rw-accent);
 }
 
 .landing-btn--secondary {
-  background: #2563eb;
-  color: #ffffff;
+  background: transparent;
+  color: var(--rw-ink-editorial);
+  border: 1px solid var(--rw-ink-editorial);
 }
 
 .landing-btn--secondary:hover {
-  background: #1d4ed8;
+  background: var(--rw-ink-editorial);
+  color: var(--rw-bg-cream);
 }
 
-.landing-btn--ghost {
-  background: #f1f5f9;
-  color: #344054;
+/* --- 3-step row ------------------------------------------------------ */
+.landing-steps {
+  list-style: none;
+  margin: 48px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--rw-rule-cream);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
 }
 
-.landing-btn--ghost:hover {
-  background: #e2e8f0;
-}
-
-.landing-btn--outline {
-  background: #ffffff;
-  color: #344054;
-  border: 1.5px solid #c9d7e5;
-}
-
-.landing-btn--outline:hover {
-  border-color: #64748b;
-  background: #f8fafc;
-}
-
-/* "Hast du schon Vertraege?" prompt */
-.landing-vertraege-prompt {
+.landing-step {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 10px;
-  padding: 16px;
 }
 
-.landing-vertraege-question {
-  font-weight: 700;
-  color: #172033;
+.landing-step-num {
+  font-family: var(--rw-font-serif);
+  font-size: 2.4rem;
+  font-weight: 300;
+  color: var(--rw-accent);
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.landing-step-h {
+  font-family: var(--rw-font-serif);
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--rw-ink-editorial);
+  margin-top: 6px;
+  letter-spacing: -0.2px;
+}
+
+.landing-step-p {
+  margin: 6px 0 0;
+  font-family: var(--rw-font-sans);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--rw-ink-editorial-soft);
+}
+
+/* --- Aside (right): featured articles + about RentenWiki ------------- */
+.landing-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 24px;
+}
+
+.landing-aside-card {
+  border: 1px solid var(--rw-rule);
+  padding: 18px 22px;
+}
+
+.landing-aside-card--featured {
+  background: #fffcf4;
+}
+
+.landing-aside-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-editorial-faint);
+  margin-bottom: 10px;
+}
+
+.landing-featured-list {
+  list-style: none;
+  padding: 0;
   margin: 0;
-  font-size: 0.95rem;
 }
 
-.landing-vertraege-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.landing-featured-item + .landing-featured-item .landing-featured-link {
+  border-top: 1px solid var(--rw-rule-cream);
 }
 
-.landing-vertraege-actions .landing-btn {
-  justify-content: center;
-  width: 100%;
+.landing-featured-link {
+  display: block;
+  padding: 10px 0;
+  text-decoration: none;
+  color: inherit;
 }
 
-.landing-vertraege-back {
-  background: none;
-  border: none;
-  color: #667085;
-  font-size: 0.82rem;
-  cursor: pointer;
-  padding: 0;
-  text-align: left;
+.landing-featured-link:hover .landing-featured-title {
+  color: var(--rw-accent);
+}
+
+.landing-featured-title {
+  display: block;
+  font-family: var(--rw-font-serif);
+  font-size: 1.03rem;
+  font-weight: 500;
+  color: var(--rw-ink-editorial);
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+  transition: color 0.15s ease;
+}
+
+.landing-featured-meta {
+  display: block;
+  font-family: var(--rw-font-sans);
+  font-size: 0.72rem;
+  color: var(--rw-ink-editorial-faint);
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.landing-featured-all {
+  display: inline-block;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rw-rule-cream);
+  font-family: var(--rw-font-sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--rw-accent);
+  text-decoration: none;
+}
+
+.landing-featured-all:hover {
   text-decoration: underline;
-  text-underline-offset: 2px;
-  align-self: flex-start;
 }
 
-.landing-vertraege-back:hover {
-  color: #344054;
+.landing-about-body {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--rw-ink-editorial);
 }
 
-/* Returning-user row */
-.landing-returning {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
+.landing-about-license {
+  margin: 10px 0 0;
+  font-family: var(--rw-font-sans);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--rw-ink-editorial-soft);
 }
 
-.landing-returning-hint {
-  font-size: 0.88rem;
-  color: #667085;
+.landing-about-license-name {
+  border-bottom: 1px dotted var(--rw-ink-editorial);
 }
 
-.landing-link-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  color: #2563eb;
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.landing-link-btn:hover {
-  color: #1d4ed8;
-}
-
-/* ==========================================================================
-   Topic-page hub (issue #03 — `Erkunde Themen`)
-   ========================================================================== */
-
+/* --- Hub (`Alles im Überblick`) -------------------------------------- */
 .landing-hub {
   width: 100%;
-  background: #ffffff;
-  border: 1px solid #d9e1ea;
-  border-radius: 16px;
-  padding: 28px 28px 24px;
-  box-shadow: 0 1px 4px rgba(23, 32, 51, 0.06);
+  border-top: 2px solid var(--rw-rule);
+  padding-top: 24px;
 }
 
 .landing-hub-heading {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #172033;
-  margin: 0 0 8px;
-  letter-spacing: 0;
-}
-
-.landing-hub-intro {
-  font-size: 0.92rem;
-  color: #475569;
-  line-height: 1.55;
-  margin: 0 0 20px;
+  font-family: var(--rw-font-serif);
+  font-weight: 500;
+  font-size: 1.5rem;
+  color: var(--rw-ink-editorial);
+  margin: 0 0 18px;
+  letter-spacing: -0.3px;
 }
 
 .landing-hub-clusters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 18px 24px;
+  gap: 22px 32px;
 }
 
 .landing-hub-cluster {
@@ -301,12 +294,13 @@
 }
 
 .landing-hub-cluster-heading {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #475569;
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--rw-ink-editorial-soft);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 0 0 4px;
+  letter-spacing: 0.8px;
+  margin: 0 0 6px;
 }
 
 .landing-hub-links {
@@ -315,53 +309,115 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .landing-hub-link {
-  color: #2563eb;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-family: var(--rw-font-serif);
+  font-size: 1rem;
+  color: var(--rw-ink-editorial);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--rw-ink-editorial-faint);
+  padding-bottom: 1px;
+  line-height: 1.4;
 }
 
 .landing-hub-link:hover {
-  color: #1d4ed8;
+  color: var(--rw-accent);
+  border-bottom-color: var(--rw-accent);
 }
 
+/* --- Stand line ------------------------------------------------------ */
 .landing-stand {
   text-align: center;
-  font-size: 0.82rem;
-  color: #667085;
-  margin: 8px 0 0;
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  color: var(--rw-ink-editorial-faint);
+  margin: 0 0 16px;
   padding: 0 24px;
 }
 
-/* Responsive: single-column on small screens */
-@media (max-width: 640px) {
+/* ==========================================================================
+   Tablet — 640–1023 px. Layout stays 2-column but tighter.
+   ========================================================================== */
+@media (max-width: 1023px) {
   .landing-main {
-    padding: 32px 16px 48px;
+    padding: 36px 32px 32px;
+    gap: 40px;
+  }
+
+  .landing-top {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
     gap: 28px;
   }
 
-  .landing-cards {
+  .landing-aside {
+    position: static;
+  }
+
+  .landing-steps {
+    margin-top: 32px;
+    gap: 20px;
+  }
+
+  .landing-step-num {
+    font-size: 1.85rem;
+  }
+
+  .landing-step-h {
+    font-size: 1rem;
+  }
+}
+
+/* ==========================================================================
+   Phone — <640 px. Stack vertically, full-width CTAs.
+   ========================================================================== */
+@media (max-width: 639px) {
+  .landing-main {
+    padding: 28px 16px 32px;
+    gap: 32px;
+  }
+
+  .landing-top {
     grid-template-columns: 1fr;
-  }
-
-  .landing-card--primary {
-    order: 1;
-  }
-
-  .landing-card--secondary {
-    order: 2;
+    gap: 28px;
   }
 
   .landing-headline {
-    font-size: 1.5rem;
+    font-size: 2rem;
+    letter-spacing: -0.6px;
   }
 
-  .landing-hub {
-    padding: 22px 18px 18px;
+  .landing-subline {
+    font-size: 1rem;
+  }
+
+  .landing-cta-row {
+    flex-direction: column;
+  }
+
+  .landing-cta-row .landing-btn {
+    width: 100%;
+  }
+
+  .landing-steps {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 28px;
+    padding-top: 18px;
+  }
+
+  .landing-aside {
+    position: static;
+    order: 2; /* below the steps on phone */
+  }
+
+  .landing-hub-heading {
+    font-size: 1.25rem;
+  }
+
+  .landing-hub-clusters {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }

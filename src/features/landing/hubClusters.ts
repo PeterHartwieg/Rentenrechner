@@ -68,3 +68,59 @@ export const HUB_CLUSTERS: readonly HubCluster[] = [
     ],
   },
 ] as const
+
+// ---------------------------------------------------------------------------
+// Featured articles — editorial right-rail on the Landing page (PR 2).
+//
+// Curated subset of HUB_CLUSTERS links, in display order. Each href MUST
+// match a `link.href` in HUB_CLUSTERS so labels stay consistent — the
+// resolver below walks the clusters once and yields `{ href, label, cluster }`
+// triplets. The cluster heading doubles as the per-article kicker so readers
+// see what topic family the article belongs to without us inventing a
+// separate taxonomy.
+// ---------------------------------------------------------------------------
+
+export interface FeaturedArticle {
+  readonly href: string
+  readonly label: string
+  readonly cluster: string
+}
+
+export const FEATURED_ARTICLE_HREFS: readonly string[] = [
+  '/rentenluecke-rechner/',
+  '/etf-vs-bav/',
+  '/basisrente-rechner/',
+  '/altersvorsorgeprodukte-vergleichen/',
+] as const
+
+export function resolveFeaturedArticles(): readonly FeaturedArticle[] {
+  // Build the href → article index once so each FEATURED_ARTICLE_HREFS lookup
+  // is O(1) and so a missing curated href fails fast at module-evaluation time
+  // (catches drift between `FEATURED_ARTICLE_HREFS` and `HUB_CLUSTERS` during
+  // build/test instead of silently shrinking the right rail).
+  const index = new Map<string, FeaturedArticle>()
+  for (const cluster of HUB_CLUSTERS) {
+    for (const link of cluster.links) {
+      index.set(link.href, {
+        href: link.href,
+        label: link.label,
+        cluster: cluster.heading,
+      })
+    }
+  }
+  return FEATURED_ARTICLE_HREFS.map((href) => {
+    const article = index.get(href)
+    if (!article) {
+      throw new Error(
+        `resolveFeaturedArticles: FEATURED_ARTICLE_HREFS contains "${href}" ` +
+          `but no matching HUB_CLUSTERS link exists. Update either the curated ` +
+          `featured list or the hub clusters so the two stay in sync.`,
+      )
+    }
+    return article
+  })
+}
+
+export function countHubArticles(): number {
+  return HUB_CLUSTERS.reduce((acc, c) => acc + c.links.length, 0)
+}

@@ -162,10 +162,15 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
   // status bar, header, footer) appears in the static HTML. Crawlers see
   // exactly what hydrated clients see; the disclaimer P0 compliance
   // invariant is preserved.
+  //
+  // Editorial mode (PR 2): cream bg + serif H1. Currently only the homepage
+  // ('/') renders the LandingPage which uses editorial styling. PR 3 / PR 4
+  // will extend this set to '/artikel' and '/methode' once those routes ship.
+  const editorial = routeId === '/'
   function withShell(child) {
     return React.createElement(
       AppShell,
-      { route: routeId, navigate: noopNavigate },
+      { route: routeId, navigate: noopNavigate, editorial },
       child,
     )
   }
