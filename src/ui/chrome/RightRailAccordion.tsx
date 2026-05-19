@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useViewport } from './useViewport'
 
 interface RightRailAccordionProps {
@@ -24,6 +24,21 @@ interface RightRailAccordionProps {
 export function RightRailAccordion({ label, count, children, desktopWidth = 320 }: RightRailAccordionProps) {
   const viewport = useViewport()
   const [open, setOpen] = useState(false)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Close on Esc and focus the dismiss button when the drawer opens. The
+  // drawer is rendered as `role="region"` (not a modal dialog) — it doesn't
+  // trap focus or block background scroll — but keyboard users still need
+  // a one-keystroke way out. CodeRabbit nit (PR #270 review).
+  useEffect(() => {
+    if (!open) return
+    closeButtonRef.current?.focus()
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
 
   if (viewport === 'phone') {
     return (
@@ -42,16 +57,16 @@ export function RightRailAccordion({ label, count, children, desktopWidth = 320 
           <span aria-hidden="true">▾</span>
         </button>
         {open && (
-          <div
+          <section
             id="rw-right-rail-drawer"
             className="rw-right-rail__drawer"
-            role="dialog"
-            aria-modal="false"
+            role="region"
             aria-label={label}
           >
             <div className="rw-right-rail__drawer-header">
               <span className="rw-right-rail__drawer-title">{label}</span>
               <button
+                ref={closeButtonRef}
                 type="button"
                 className="rw-right-rail__drawer-close"
                 onClick={() => setOpen(false)}
@@ -61,7 +76,7 @@ export function RightRailAccordion({ label, count, children, desktopWidth = 320 
               </button>
             </div>
             <div className="rw-right-rail__drawer-body">{children}</div>
-          </div>
+          </section>
         )}
       </>
     )
