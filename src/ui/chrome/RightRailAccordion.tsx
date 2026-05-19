@@ -25,25 +25,37 @@ export function RightRailAccordion({ label, count, children, desktopWidth = 320 
   const viewport = useViewport()
   const [open, setOpen] = useState(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const stripButtonRef = useRef<HTMLButtonElement>(null)
+  const isFirstRender = useRef(true)
 
-  // Close on Esc and focus the dismiss button when the drawer opens. The
-  // drawer is rendered as `role="region"` (not a modal dialog) — it doesn't
-  // trap focus or block background scroll — but keyboard users still need
-  // a one-keystroke way out. CodeRabbit nit (PR #270 review).
+  // Focus management for the phone drawer. The drawer is rendered as
+  // `role="region"` (not a modal dialog) — no focus trap or scroll lock —
+  // but keyboard users still need a one-keystroke dismiss (Esc) and a
+  // continuous focus path: opening sends focus to the close button, and
+  // closing returns focus to the strip trigger that opened it.
+  // The first-render guard prevents the closed→closed mount from stealing
+  // focus when the component first renders.
   useEffect(() => {
-    if (!open) return
-    closeButtonRef.current?.focus()
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false)
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      if (!open) return
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    if (open) {
+      closeButtonRef.current?.focus()
+      function onKey(event: KeyboardEvent) {
+        if (event.key === 'Escape') setOpen(false)
+      }
+      document.addEventListener('keydown', onKey)
+      return () => document.removeEventListener('keydown', onKey)
+    }
+    stripButtonRef.current?.focus()
   }, [open])
 
   if (viewport === 'phone') {
     return (
       <>
         <button
+          ref={stripButtonRef}
           type="button"
           className="rw-right-rail__strip"
           onClick={() => setOpen((v) => !v)}

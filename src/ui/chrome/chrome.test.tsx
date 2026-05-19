@@ -247,12 +247,16 @@ describe('RightRailAccordion', () => {
         <span>inner</span>
       </RightRailAccordion>,
     )
-    fireEvent.click(document.querySelector('.rw-right-rail__strip')!)
+    const strip = document.querySelector('.rw-right-rail__strip') as HTMLElement | null
+    fireEvent.click(strip!)
     const closeBtn = document.querySelector('.rw-right-rail__drawer-close') as HTMLElement | null
     expect(closeBtn).toBeInTheDocument()
     expect(document.activeElement).toBe(closeBtn)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(document.querySelector('.rw-right-rail__drawer')).not.toBeInTheDocument()
+    // After dismissal, keyboard focus should land back on the strip trigger
+    // that opened the drawer (continuous focus path — CodeRabbit nit).
+    expect(document.activeElement).toBe(strip)
   })
 })
 
