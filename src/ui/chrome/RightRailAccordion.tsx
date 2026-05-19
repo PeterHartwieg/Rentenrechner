@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useViewport } from './useViewport'
 
 interface RightRailAccordionProps {
@@ -24,11 +24,38 @@ interface RightRailAccordionProps {
 export function RightRailAccordion({ label, count, children, desktopWidth = 320 }: RightRailAccordionProps) {
   const viewport = useViewport()
   const [open, setOpen] = useState(false)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const stripButtonRef = useRef<HTMLButtonElement>(null)
+  const isFirstRender = useRef(true)
+
+  // Focus management for the phone drawer. The drawer is rendered as
+  // `role="region"` (not a modal dialog) — no focus trap or scroll lock —
+  // but keyboard users still need a one-keystroke dismiss (Esc) and a
+  // continuous focus path: opening sends focus to the close button, and
+  // closing returns focus to the strip trigger that opened it.
+  // The first-render guard prevents the closed→closed mount from stealing
+  // focus when the component first renders.
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      if (!open) return
+    }
+    if (open) {
+      closeButtonRef.current?.focus()
+      function onKey(event: KeyboardEvent) {
+        if (event.key === 'Escape') setOpen(false)
+      }
+      document.addEventListener('keydown', onKey)
+      return () => document.removeEventListener('keydown', onKey)
+    }
+    stripButtonRef.current?.focus()
+  }, [open])
 
   if (viewport === 'phone') {
     return (
       <>
         <button
+          ref={stripButtonRef}
           type="button"
           className="rw-right-rail__strip"
           onClick={() => setOpen((v) => !v)}
@@ -42,16 +69,16 @@ export function RightRailAccordion({ label, count, children, desktopWidth = 320 
           <span aria-hidden="true">▾</span>
         </button>
         {open && (
-          <div
+          <section
             id="rw-right-rail-drawer"
             className="rw-right-rail__drawer"
-            role="dialog"
-            aria-modal="false"
+            role="region"
             aria-label={label}
           >
             <div className="rw-right-rail__drawer-header">
               <span className="rw-right-rail__drawer-title">{label}</span>
               <button
+                ref={closeButtonRef}
                 type="button"
                 className="rw-right-rail__drawer-close"
                 onClick={() => setOpen(false)}
@@ -61,7 +88,7 @@ export function RightRailAccordion({ label, count, children, desktopWidth = 320 
               </button>
             </div>
             <div className="rw-right-rail__drawer-body">{children}</div>
-          </div>
+          </section>
         )}
       </>
     )

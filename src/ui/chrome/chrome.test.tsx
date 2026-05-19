@@ -224,6 +224,40 @@ describe('RightRailAccordion', () => {
     expect(document.querySelector('.rw-right-rail__drawer')).toBeInTheDocument()
     expect(screen.getByText('inner')).toBeInTheDocument()
   })
+
+  it('renders the drawer as a labelled region (not a fake non-modal dialog)', () => {
+    mockViewport('phone')
+    render(
+      <RightRailAccordion label="Deine Angaben">
+        <span>inner</span>
+      </RightRailAccordion>,
+    )
+    fireEvent.click(document.querySelector('.rw-right-rail__strip')!)
+    const drawer = document.querySelector('.rw-right-rail__drawer') as HTMLElement | null
+    expect(drawer).toBeInTheDocument()
+    expect(drawer?.getAttribute('role')).toBe('region')
+    expect(drawer?.getAttribute('aria-label')).toBe('Deine Angaben')
+    expect(drawer?.getAttribute('aria-modal')).toBeNull()
+  })
+
+  it('focuses the close button when the drawer opens and Esc dismisses it', () => {
+    mockViewport('phone')
+    render(
+      <RightRailAccordion label="Deine Angaben">
+        <span>inner</span>
+      </RightRailAccordion>,
+    )
+    const strip = document.querySelector('.rw-right-rail__strip') as HTMLElement | null
+    fireEvent.click(strip!)
+    const closeBtn = document.querySelector('.rw-right-rail__drawer-close') as HTMLElement | null
+    expect(closeBtn).toBeInTheDocument()
+    expect(document.activeElement).toBe(closeBtn)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(document.querySelector('.rw-right-rail__drawer')).not.toBeInTheDocument()
+    // After dismissal, keyboard focus should land back on the strip trigger
+    // that opened the drawer (continuous focus path — CodeRabbit nit).
+    expect(document.activeElement).toBe(strip)
+  })
 })
 
 describe('AppShell composition', () => {

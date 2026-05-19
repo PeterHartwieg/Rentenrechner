@@ -63,12 +63,17 @@ export function mockViewport(viewport: Viewport): void {
 /**
  * Run a callback for each of the three viewports. Use in tests that need
  * the same assertion to hold at phone/tablet/desktop. Mock is reset to the
- * default desktop after each iteration so subsequent tests aren't sticky.
+ * default desktop after every iteration via try/finally so a thrown
+ * assertion never leaves the global viewport state pointing at phone or
+ * tablet for whatever runs next.
  */
 export function eachViewport(fn: (viewport: Viewport) => void): void {
-  for (const viewport of ['phone', 'tablet', 'desktop'] as const) {
-    mockViewport(viewport)
-    fn(viewport)
+  try {
+    for (const viewport of ['phone', 'tablet', 'desktop'] as const) {
+      mockViewport(viewport)
+      fn(viewport)
+    }
+  } finally {
+    mockViewport('desktop')
   }
-  mockViewport('desktop')
 }
