@@ -1,5 +1,6 @@
 import { routeToNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface MobileNavProps {
   route: Route
@@ -45,6 +46,7 @@ export function MobileNav({ route, navigate }: MobileNavProps) {
               href={target}
               className={className}
               onClick={(event) => {
+                if (!shouldUseSpaNavigation(event)) return
                 event.preventDefault()
                 navigate(target)
               }}

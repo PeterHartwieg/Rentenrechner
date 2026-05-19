@@ -101,20 +101,19 @@ export function ArticleLayout({
     const items: TocItem[] = []
     for (const h of headings) {
       const text = h.textContent ?? ''
-      let id = h.id
-      if (!id) {
-        const base = slugifyHeading(text)
-        let candidate = base || 'section'
-        let n = 2
-        while (used.has(candidate)) {
-          candidate = `${base || 'section'}-${n}`
-          n += 1
-        }
-        id = candidate
-        h.id = id
+      // Same uniqueness loop applies to both authored and synthesised ids:
+      // an MDX body with two manually-authored `<h2 id="foo">` would
+      // otherwise produce duplicate DOM ids and duplicate React keys.
+      const base = h.id || slugifyHeading(text) || 'section'
+      let candidate = base
+      let n = 2
+      while (used.has(candidate)) {
+        candidate = `${base}-${n}`
+        n += 1
       }
-      used.add(id)
-      items.push({ id, text })
+      if (h.id !== candidate) h.id = candidate
+      used.add(candidate)
+      items.push({ id: candidate, text })
     }
     // DOM-derived progressive-enhancement state: read once after mount so
     // the desktop TOC reflects the actual rendered article headings. The
@@ -241,7 +240,11 @@ export function ArticleLayout({
                           : 'article-toc-item'
                       }
                     >
-                      <a href={`#${item.id}`} className="article-toc-link">
+                      <a
+                        href={`#${item.id}`}
+                        className="article-toc-link"
+                        aria-current={isActive ? 'location' : undefined}
+                      >
                         {item.text}
                       </a>
                     </li>

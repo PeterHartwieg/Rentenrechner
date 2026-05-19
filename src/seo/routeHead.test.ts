@@ -63,6 +63,18 @@ describe('buildRouteHead — per-route metadata shape', () => {
     expect(buildRouteHead('/datenschutz').jsonLd?.['@type']).toBe('WebPage')
   })
 
+  it('emits WebPage JSON-LD for /artikel (PR 3 hub)', () => {
+    // The Artikel hub gets its WebPage block from the head pipeline so the
+    // SSG output never carries a second body-level emission for the same
+    // route — verified by ArticleHubPage.test.tsx ("no inline JSON-LD").
+    const head = buildRouteHead('/artikel')
+    const data = head.jsonLd as unknown as Record<string, unknown>
+    expect(data['@type']).toBe('WebPage')
+    expect(data.name).toBe(publicRouteRegistry['/artikel'].title)
+    expect(data.description).toBe(publicRouteRegistry['/artikel'].summary)
+    expect(data.dateModified).toBe(publicRouteRegistry['/artikel'].dateModified)
+  })
+
   it('emits Article JSON-LD with author, publisher, datePublished, mainEntityOfPage', () => {
     // `/etf-vs-bav` is one of the locked Article-type routes (issue #05).
     // External-reviewer enhancement: Article markup must carry an author,

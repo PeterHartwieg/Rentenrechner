@@ -1,11 +1,6 @@
-import { useMemo } from 'react'
 import './ArticleHubPage.css'
 import { LegalFooter } from '../legal/LegalFooter'
-import { JsonLd } from '../../seo/JsonLd'
-import {
-  buildCanonicalUrl,
-  publicRouteRegistry,
-} from '../../seo/publicRouteRegistry'
+import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import {
   countAllArticles,
   countArticlesInCluster,
@@ -32,38 +27,19 @@ interface Props {
  * route's `h1`, `summary`, and a "Stand: <dateModified>" line — that's the
  * only by-line we can stand behind for a single-maintainer project.
  *
- * JSON-LD: `WebPage` block describing the hub itself. Individual article
- * pages keep their own `WebApplication` / `Article` blocks.
+ * JSON-LD: emitted into the document head by the SSG `renderRouteHeadHtml`
+ * pipeline (`buildJsonLd` returns a WebPage block from
+ * `publicRouteRegistry['/artikel']`). We do NOT emit a second block inline
+ * here — that would duplicate the schema and trip the registry's
+ * "no duplicate JSON-LD" invariant (`/` is the only route where head
+ * emission is suppressed in favour of body emission).
  */
 export function ArticleHubPage({ navigate }: Props) {
   const route = publicRouteRegistry['/artikel']
-  const canonical = buildCanonicalUrl('/artikel')
-  const groups = useMemo(() => resolveHubGroups(), [])
+  const groups = resolveHubGroups()
   const total = countAllArticles()
   const latest = getLatestArticleModified()
   const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
-
-  const webPageJsonLd = useMemo(
-    () => ({
-      '@context': 'https://schema.org' as const,
-      '@type': 'WebPage' as const,
-      '@id': canonical,
-      url: canonical,
-      name: route.title,
-      headline: route.h1,
-      description: route.summary,
-      inLanguage: 'de-DE',
-      dateModified: route.dateModified,
-      ...(route.datePublished ? { datePublished: route.datePublished } : {}),
-      isPartOf: {
-        '@type': 'WebSite' as const,
-        '@id': buildCanonicalUrl('/'),
-        url: buildCanonicalUrl('/'),
-        name: 'RentenWiki.de',
-      },
-    }),
-    [canonical, route.title, route.h1, route.summary, route.dateModified, route.datePublished],
-  )
 
   return (
     <div className="hub-shell">
@@ -128,8 +104,6 @@ export function ArticleHubPage({ navigate }: Props) {
       </p>
 
       <LegalFooter navigate={navigateOrNoop} />
-
-      <JsonLd data={webPageJsonLd} />
     </div>
   )
 }

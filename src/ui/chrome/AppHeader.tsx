@@ -3,6 +3,7 @@ import { useViewport } from './useViewport'
 import { MobileSheet } from './MobileSheet'
 import { routeToNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface AppHeaderProps {
   /** Current route — drives which top-nav tab is highlighted. */
@@ -105,6 +106,7 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
                   href={target}
                   className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
                   onClick={(event) => {
+                    if (!shouldUseSpaNavigation(event)) return
                     event.preventDefault()
                     navigate(target)
                   }}

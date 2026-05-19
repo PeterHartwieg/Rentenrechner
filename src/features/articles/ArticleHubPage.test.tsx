@@ -91,12 +91,14 @@ describe('ArticleHubPage — /artikel route content', () => {
     expect(text).not.toMatch(/CC\s?BY-SA/i)
   })
 
-  it('emits a WebPage JSON-LD block for the hub itself', () => {
+  it('emits no inline JSON-LD (head pipeline owns the /artikel WebPage block)', () => {
+    // The hub's WebPage JSON-LD is emitted into <head> by
+    // `renderRouteHeadHtml('/artikel')` via the SSG prerender path. Emitting
+    // a second copy inline would duplicate the schema and trip the
+    // "single JSON-LD per route" invariant (`/` is the only route that
+    // deliberately moves emission to the body — see `buildJsonLd`).
     const html = renderToString(<ArticleHubPage />)
-    // JSON-LD is pretty-printed (JSON.stringify with spacing) so we match on
-    // the key fragments instead of byte-exact serialisation.
-    expect(html).toMatch(/"@type"\s*:\s*"WebPage"/)
-    expect(html).toMatch(/"name"\s*:\s*"Artikel zur Altersvorsorge \| RentenWiki\.de"/)
+    expect(html).not.toMatch(/application\/ld\+json/)
   })
 
   it('renders the not-advice disclaimer when wrapped in AppShell (compliance)', () => {
