@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import './AngabenPage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
@@ -72,16 +72,16 @@ const RESOLVED_RENDITEN: Readonly<Record<ScenarioId, number>> = (() => {
  *
  * Implementation note: the body is always present in the DOM so screen
  * readers parse the full source on tablet + desktop without depending on JS
- * state. On phone, CSS hides the body (`display: none`) when the wrapper
- * carries `data-open="false"`. Toggling the button updates the data
- * attribute and the `aria-expanded` value; the body re-displays without a
- * remount. Keyboard a11y comes for free from the native `<button>` element
- * (Enter / Space toggle).
+ * state. On phone the body is hidden via the native `hidden` attribute when
+ * collapsed; React sets `hidden={isPhone && !open}` directly on the body
+ * wrapper so no CSS selector is needed. Toggling the button flips that
+ * boolean and updates the `aria-expanded` value; the body re-displays
+ * without a remount. Keyboard a11y comes for free from the native
+ * `<button>` element (Enter / Space toggle).
  *
- * On desktop + tablet, `data-open` is forced to `"true"` and the button
- * scoping disables the click handler so the card behaves exactly like the
- * pre-PR-1-round-1 implementation. The kicker keeps its visual `kicker`
- * styling on desktop + tablet via CSS.
+ * On desktop + tablet the button is `disabled` so the click handler never
+ * fires and the body stays visible. The kicker keeps its visual styling on
+ * desktop + tablet via CSS.
  */
 function AngabenAsideCard({
   kicker,
@@ -94,7 +94,7 @@ function AngabenAsideCard({
   children: ReactNode
 }) {
   const viewport = useViewport()
-  // Default phone state: collapsed. Desktop + tablet: forced open via CSS,
+  // Default phone state: collapsed. Desktop + tablet: body always rendered,
   // but `expanded` is still true so the aria-expanded value reads "true" for
   // assistive tech parsing the rendered DOM.
   const isPhone = viewport === 'phone'
@@ -102,17 +102,16 @@ function AngabenAsideCard({
   const expanded = isPhone ? open : true
 
   return (
-    <div className="angaben-aside-card" data-open={expanded ? 'true' : 'false'}>
+    <div className="angaben-aside-card">
       <button
         type="button"
         className="angaben-aside-toggle"
-        // Disabled on desktop + tablet so users see the kicker as a label
-        // (not a clickable affordance) and screen readers do not surface a
-        // false button. The CSS hides the chevron on those viewports too.
-        // `aria-disabled` is the correct attribute for a button whose role
-        // is intentionally suppressed without removing it from the focus
-        // order in unexpected ways; we additionally use the `disabled`
-        // attribute so click + keyboard activation are both no-ops.
+        // Desktop + tablet: the button is `disabled` so click and keyboard
+        // activation are no-ops and the element is removed from the tab
+        // order. This is acceptable because the card body is always visible
+        // on these viewports — AT users access the content directly without
+        // needing to interact with the toggle. On phone the button is
+        // enabled and drives the disclosure (`aria-expanded` + `hidden`).
         disabled={!isPhone}
         aria-expanded={expanded}
         aria-controls={bodyId}
@@ -136,6 +135,13 @@ function AngabenAsideCard({
 // Static labelling for the GKV vs PKV radio (cross-year — kept inline as copy).
 const FAMILIENSTAND_DEFAULT = 'ledig'
 const BUNDESLAND_DEFAULT = 'Berlin'
+
+// §3 Nr. 63 EStG contribution-cap headroom for the bAV-Brutto hint. Computed
+// at module-eval time — `activeRules` is a module-level constant, so the
+// value is fixed for the lifetime of the bundle. Mirrors `RESOLVED_RENDITEN`
+// above; no React memo / effect is needed.
+const BAV_TAX_FREE_MONTHLY =
+  (activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap) / 12
 
 /**
  * `/eingaben` — Deine Angaben (PR 5).
@@ -231,15 +237,6 @@ export function AngabenPage({ navigate }: Props) {
     return () => observer.disconnect()
   }, [])
 
-  // Derived: contribution-cap headroom for the "Brutto" hint.
-  // §3 Nr. 63 EStG cap, computed from `activeRules` (no statutory literals
-  // are rendered inline as values — only as paragraph citations).
-  const bavTaxFreeMonthly = useMemo(
-    () =>
-      (activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap) / 12,
-    [],
-  )
-
   return (
     <div className="angaben-shell">
       <div className="angaben-main">
@@ -320,7 +317,7 @@ export function AngabenPage({ navigate }: Props) {
               setProfile={setProfile}
               assumptions={assumptions}
               setAssumptions={setAssumptions}
-              bavTaxFreeMonthly={bavTaxFreeMonthly}
+              bavTaxFreeMonthly={BAV_TAX_FREE_MONTHLY}
               num={SECTIONS[1].n}
               id={SECTIONS[1].id}
               title={SECTIONS[1].title}
