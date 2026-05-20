@@ -89,6 +89,9 @@ const PageNotFound = lazy(() =>
 const VertragDetailPage = lazy(() =>
   import('./features/vertrag-detail/VertragDetailPage').then((m) => ({ default: m.VertragDetailPage })),
 )
+const KapitalPage = lazy(() =>
+  import('./features/kapital/KapitalPage').then((m) => ({ default: m.KapitalPage })),
+)
 
 function App() {
   const { route, navigate } = useRoute()
@@ -176,6 +179,12 @@ function App() {
       // invalid-id and compare-mode empty states; App.tsx only routes the
       // tagged variant and forwards the instance id.
       body = <VertragDetailPage instanceId={route.instanceId} navigate={navigate} />
+      break
+    case 'kapital':
+      // Full-page lifecycle chart + Wendepunkte table (PR 8). Dual-source:
+      // the page itself reads workspace.mode and renders compare-mode or
+      // combine-mode data — no per-mode App.tsx branching needed.
+      body = <KapitalPage navigate={navigate} />
       break
     case 'home':
       if (calculatorView === 'landing') {

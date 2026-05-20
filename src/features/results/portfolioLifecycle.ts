@@ -126,7 +126,7 @@ function buildSavingsStackRows(
   return rows
 }
 
-function aggregateLifecycleResults(args: {
+export function aggregateLifecycleResults(args: {
   id: string
   label: string
   results: ProductResult[]

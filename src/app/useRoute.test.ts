@@ -95,6 +95,7 @@ describe('routeToPath', () => {
       [ROUTES.privateRentenversicherungRechner, '/private-rentenversicherung-rechner'],
       [ROUTES.renteNettoBerechnen, '/rente-netto-berechnen'],
       [ROUTES.altersvorsorgeprodukteVergleichen, '/altersvorsorgeprodukte-vergleichen'],
+      [ROUTES.kapital, '/kapital'],
       [ROUTES.notFound, '/404'],
     ]
     for (const [route, expected] of expectations) {
@@ -104,6 +105,15 @@ describe('routeToPath', () => {
 
   it('URL-encodes the :instanceId segment for /vertrag', () => {
     expect(routeToPath(ROUTES.vertrag('bav-x:42'))).toBe('/vertrag/bav-x%3A42')
+  })
+
+  it('round-trips /kapital cleanly (no trailing slash, no query)', () => {
+    // Kapital is a static route, no payload — same shape as /methode and /eingaben.
+    // The round-trip guards against accidental drift between routeToPath and
+    // pathToRoute when extending the tagged union (PR 8 adds this variant).
+    expect(routeToPath(ROUTES.kapital)).toBe('/kapital')
+    expect(pathToRoute('/kapital')).toEqual({ kind: 'kapital' })
+    expect(pathToRoute('/kapital/')).toEqual({ kind: 'kapital' })
   })
 })
 
