@@ -18,9 +18,13 @@ interface AppHeaderProps {
   navigate: (target: Route) => void
 }
 
+// PR 5: the previously-placeholder "Mein Plan" tab is removed from the chrome
+// nav and replaced with the active "Angaben" tab routing to `/eingaben`. The
+// "Annahmen" tab from the pre-redesign nav also collapses here (it now folds
+// into Section 4 of /eingaben). "Vergleich" remains a placeholder until PR 9.
 const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
   { id: 'home', label: 'Startseite' },
-  { id: 'plan', label: 'Mein Plan' },
+  { id: 'angaben', label: 'Angaben' },
   { id: 'compare', label: 'Vergleich' },
   { id: 'artikel', label: 'Artikel' },
   { id: 'method', label: 'Methode' },
@@ -28,14 +32,15 @@ const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
 
 /**
  * Map a nav tab id to a real `Route` target if one exists. Returns `null`
- * for placeholder tabs (`plan` / `compare` until their routes ship). The
+ * for placeholder tabs (`compare` until its route ships in PR 9). The
  * 'home' tab returns `/`; 'artikel' returns `/artikel' (PR 3); 'method'
- * returns `/methode` (PR 4).
+ * returns `/methode` (PR 4); 'angaben' returns `/eingaben` (PR 5).
  */
 function clickableTarget(id: ChromeNavId): Route | null {
   if (id === 'home') return '/'
   if (id === 'artikel') return '/artikel'
   if (id === 'method') return '/methode'
+  if (id === 'angaben') return '/eingaben'
   return null
 }
 

@@ -70,6 +70,14 @@ describe('articleResolver — HUB_CLUSTERS × publicRouteRegistry resolution', (
     expect(isEditorialChromeRoute('/methode')).toBe(false)
   })
 
+  it('isEditorialChromeRoute keeps /eingaben sober (PR 5 — Sober D, not editorial)', () => {
+    // The /eingaben page is the form-receipt entry surface for the calculator
+    // and wears the same Sober D chrome as Methode and the (still-upcoming)
+    // Mein Plan / Vergleich pages. Promoting it into the editorial set would
+    // flip the white-bg + IBM Plex Sans receipt look to cream + Newsreader.
+    expect(isEditorialChromeRoute('/eingaben')).toBe(false)
+  })
+
   it('countArticlesInCluster sums to countAllArticles across HUB_CLUSTERS', () => {
     const total = countAllArticles()
     const summed = HUB_CLUSTERS.reduce(

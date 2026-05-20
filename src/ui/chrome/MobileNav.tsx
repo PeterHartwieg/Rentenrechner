@@ -14,9 +14,12 @@ interface NavEntry {
   target: Route | null
 }
 
+// PR 5: bottom tab bar gets the Angaben tab wired to /eingaben. "Plan" /
+// "Annahmen" placeholders are removed (Annahmen folds into /eingaben § 4;
+// Mein Plan ships in PR 6). "Vergleich" remains a placeholder until PR 9.
 const ITEMS: readonly NavEntry[] = [
   { id: 'home', label: 'Start', target: '/' },
-  { id: 'plan', label: 'Plan', target: null },
+  { id: 'angaben', label: 'Angaben', target: '/eingaben' },
   { id: 'compare', label: 'Vergleich', target: null },
   { id: 'artikel', label: 'Artikel', target: '/artikel' },
   { id: 'method', label: 'Methode', target: '/methode' },

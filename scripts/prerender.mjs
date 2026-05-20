@@ -78,6 +78,7 @@ async function loadSourceModules() {
     const altersvorsorgeprodukte = await server.ssrLoadModule('/src/features/publicPages/AltersvorsorgeproduktePage.tsx')
     const articleHub = await server.ssrLoadModule('/src/features/articles/ArticleHubPage.tsx')
     const methode = await server.ssrLoadModule('/src/features/methode/MethodePage.tsx')
+    const angaben = await server.ssrLoadModule('/src/features/inputs/AngabenPage.tsx')
     const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
     const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
     // AppShell wraps every prerendered page so the disclaimer banner appears
@@ -107,6 +108,7 @@ async function loadSourceModules() {
       altersvorsorgeprodukte,
       articleHub,
       methode,
+      angaben,
       impressum,
       datenschutz,
       appShellMod,
@@ -133,6 +135,7 @@ function buildComponentMap(modules) {
     '/404': modules.pageNotFound.PageNotFound,
     '/artikel': modules.articleHub.ArticleHubPage,
     '/methode': modules.methode.MethodePage,
+    '/eingaben': modules.angaben.AngabenPage,
     '/rentenluecke-rechner': modules.rentenluecke.RentenluckeRechnerPage,
     '/bav-rechner': modules.bavRechner.BavRechnerPage,
     '/etf-vs-bav': modules.etfVsBav.EtfVsBavPage,
@@ -209,7 +212,7 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
     // pass uses a no-op; client hydration replaces it with the real router
     // callback. Function props don't appear in HTML, so the rendered output
     // matches either way.
-    if (routeId === '/impressum' || routeId === '/datenschutz' || routeId === '/artikel' || routeId === '/methode') {
+    if (routeId === '/impressum' || routeId === '/datenschutz' || routeId === '/artikel' || routeId === '/methode' || routeId === '/eingaben') {
       return renderToString(withShell(React.createElement(Component, { navigate: noopNavigate })))
     }
     return renderToString(withShell(React.createElement(Component)))
@@ -371,6 +374,15 @@ async function main() {
       // dashboard. Marking it would trigger React hydration mismatches for
       // returning users. The static HTML still serves as SEO content for
       // first-paint crawlers.
+      //
+      // `/eingaben` is likewise NOT marked: `AngabenPage` consumes
+      // `useCalculatorState`, whose lazy initializer reads URL + localStorage
+      // on mount. The prerendered HTML uses `defaultProfile`/`defaultAssumptions`,
+      // but a returning user's first client render uses the persisted values —
+      // forcing `hydrateRoot` on that tree triggers React hydration mismatches
+      // and leaves stale DOM attributes / text until React re-renders. Mirror
+      // the `/` non-hydrated path: the static HTML still serves first-paint
+      // crawlers, and the client mounts via `createRoot`.
       const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
         || routeId === '/artikel' || routeId === '/methode'
         || routeId === '/bav-rechner' || routeId === '/etf-vs-bav'

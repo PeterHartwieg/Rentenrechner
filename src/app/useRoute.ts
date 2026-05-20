@@ -14,6 +14,7 @@ export type Route =
   | '/'
   | '/artikel'
   | '/methode'
+  | '/eingaben'
   | '/impressum'
   | '/datenschutz'
   | '/rentenluecke-rechner'
@@ -32,6 +33,7 @@ const KNOWN_ROUTES: Route[] = [
   '/',
   '/artikel',
   '/methode',
+  '/eingaben',
   '/impressum',
   '/datenschutz',
   '/rentenluecke-rechner',

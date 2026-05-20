@@ -53,9 +53,15 @@ describe('AppHeader', () => {
     expect(screen.getByRole('heading', { name: 'Hallo' })).toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: /Hauptnavigation/ })
     expect(nav).toBeInTheDocument()
-    for (const label of ['Startseite', 'Mein Plan', 'Vergleich', 'Artikel', 'Methode']) {
+    // PR 5: "Mein Plan" placeholder replaced by clickable "Angaben"
+    // (routes to /eingaben). The Annahmen tab is no longer in chrome;
+    // it folds into § 4 of /eingaben.
+    for (const label of ['Startseite', 'Angaben', 'Vergleich', 'Artikel', 'Methode']) {
       expect(nav.textContent).toContain(label)
     }
+    // Sanity: the old placeholder copy and the Annahmen tab must not return.
+    expect(nav.textContent).not.toContain('Mein Plan')
+    expect(nav.textContent).not.toContain('Annahmen')
   })
 
   it('highlights Startseite as active when route is /', () => {
@@ -129,6 +135,21 @@ describe('AppHeader', () => {
     const active = document.querySelector('.rw-app-header__nav-item--active')
     expect(active?.textContent).toBe('Methode')
   })
+
+  it('navigates to /eingaben when Angaben is clicked on desktop (PR 5)', () => {
+    mockViewport('desktop')
+    const navigate = vi.fn()
+    render(<AppHeader route="/" title="" navigate={navigate} />)
+    fireEvent.click(screen.getByText('Angaben'))
+    expect(navigate).toHaveBeenCalledWith('/eingaben')
+  })
+
+  it('highlights Angaben as active when route is /eingaben (PR 5)', () => {
+    mockViewport('desktop')
+    render(<AppHeader route="/eingaben" title="" navigate={() => {}} />)
+    const active = document.querySelector('.rw-app-header__nav-item--active')
+    expect(active?.textContent).toBe('Angaben')
+  })
 })
 
 describe('MobileNav', () => {
@@ -137,9 +158,12 @@ describe('MobileNav', () => {
   it('renders all five tabs', () => {
     render(<MobileNav route="/" navigate={() => {}} />)
     const nav = screen.getByRole('navigation', { name: /Mobile Hauptnavigation/ })
-    for (const label of ['Start', 'Plan', 'Vergleich', 'Artikel', 'Methode']) {
+    // PR 5: "Plan" placeholder replaced by clickable "Angaben"
+    // (routes to /eingaben). Annahmen tab is removed (folds into § 4).
+    for (const label of ['Start', 'Angaben', 'Vergleich', 'Artikel', 'Methode']) {
       expect(nav.textContent).toContain(label)
     }
+    expect(nav.textContent).not.toContain('Annahmen')
   })
 
   it('marks Start as active when route is /', () => {
@@ -148,12 +172,12 @@ describe('MobileNav', () => {
     expect(active?.textContent).toBe('Start')
   })
 
-  it('keeps the unbuilt tabs as inert placeholders (PR 4: Plan / Vergleich)', () => {
+  it('keeps the unbuilt tabs as inert placeholders (PR 5: Vergleich only)', () => {
     render(<MobileNav route="/" navigate={() => {}} />)
     const placeholders = document.querySelectorAll('.rw-mobile-nav__tab--placeholder')
-    // PR 3 promoted Artikel to a clickable link; PR 4 promotes Methode.
-    // Only Plan and Vergleich remain as inert placeholders.
-    expect(placeholders.length).toBe(2)
+    // PR 3 promoted Artikel; PR 4 promoted Methode; PR 5 promotes Angaben.
+    // Only Vergleich remains as an inert placeholder (PR 9 will ship it).
+    expect(placeholders.length).toBe(1)
   })
 
   it('navigates home when Start is tapped', () => {
@@ -187,6 +211,19 @@ describe('MobileNav', () => {
     render(<MobileNav route="/methode" navigate={() => {}} />)
     const active = document.querySelector('.rw-mobile-nav__tab--active')
     expect(active?.textContent).toBe('Methode')
+  })
+
+  it('navigates to /eingaben when Angaben is tapped (PR 5)', () => {
+    const navigate = vi.fn()
+    render(<MobileNav route="/" navigate={navigate} />)
+    fireEvent.click(screen.getByText('Angaben'))
+    expect(navigate).toHaveBeenCalledWith('/eingaben')
+  })
+
+  it('highlights Angaben as active when route is /eingaben (PR 5)', () => {
+    render(<MobileNav route="/eingaben" navigate={() => {}} />)
+    const active = document.querySelector('.rw-mobile-nav__tab--active')
+    expect(active?.textContent).toBe('Angaben')
   })
 })
 
