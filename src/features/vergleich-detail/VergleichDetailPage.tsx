@@ -17,6 +17,14 @@ import {
 interface Props {
   /** SPA navigator threaded from `App.tsx`. Used by the back-link + empty-state CTA. */
   navigate: (target: Route) => void
+  /**
+   * Selected return-scenario id from `useWorkspaceUiState` (read-only here —
+   * drill-in does not change the scenario). Threaded through App.tsx so the
+   * drill-in honours whatever the user picked on `VergleichPage`. Falls back
+   * to `'basis'` via `resolveEffectiveScenarioId` when the id is missing or
+   * unknown (e.g. test fixtures, legacy saved state).
+   */
+  selectedScenarioId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -37,7 +45,7 @@ interface Props {
 // untouched", "schemaVersion: 2 unchanged").
 // ---------------------------------------------------------------------------
 
-export function VergleichDetailPage({ navigate }: Props) {
+export function VergleichDetailPage({ navigate, selectedScenarioId }: Props) {
   // ---- 1. Hook prelude — runs unconditionally before any early return. ----
   const portfolioState = usePortfolioState()
   const compareState = useCalculatorState()
@@ -46,9 +54,11 @@ export function VergleichDetailPage({ navigate }: Props) {
   // Compare-mode simulation. We must call this even when we're going to render
   // the combine-mode empty state — Rules of Hooks require a stable call order.
   // The cost is the standard `simulateRetirementComparison` pass, which the
-  // existing compare-mode `Calculator` already runs.
-  const result = useSimulationResult(profile, assumptions, '')
-  const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, result.effectiveScenarioId)
+  // existing compare-mode `Calculator` already runs. The hook receives the
+  // live `selectedScenarioId` so the simulation pipeline picks the same
+  // scenario the user chose on `VergleichPage` (no silent basis-fallback).
+  const result = useSimulationResult(profile, assumptions, selectedScenarioId)
+  const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, selectedScenarioId)
 
   // Doc title — `/vergleich/details` is workspace-state-dependent and not
   // in `publicRouteRegistry`, so the title is set here. Must precede every

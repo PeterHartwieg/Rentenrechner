@@ -170,8 +170,9 @@ describe('buildVergleichDetailCardData', () => {
     const rows = d!.sections[2].rows
     const kvPv = rows.find((r) => r.label === '− KV / PV')!
     expect(kvPv.value).toBe(0)
-    // Income tax = 500 − 480 − 0 = 20
-    const tax = rows.find((r) => r.label === '− Einkommensteuer')!
+    // Income tax = 500 − 480 − 0 = 20. ETF is Abgeltungsteuer (§20 Abs. 1
+    // Nr. 1 EStG + §43 EStG), not Einkommensteuer.
+    const tax = rows.find((r) => r.label === '− Abgeltungsteuer')!
     expect(tax.value).toBe(20)
   })
 
@@ -186,9 +187,41 @@ describe('buildVergleichDetailCardData', () => {
       kvPvMonthly: 0,
     })
     const d = buildVergleichDetailCardData({ result, retirementAge: 67, assumptions: ASSUMPTIONS })
-    const tax = d!.sections[2].rows.find((r) => r.label === '− Einkommensteuer')!
+    const tax = d!.sections[2].rows.find((r) => r.label === '− Abgeltungsteuer')!
     expect(tax.value).toBe(0)
   })
+
+  it('ETF surfaces "− Abgeltungsteuer" in Im Alter (§20 Abs. 1 Nr. 1 EStG + §43 EStG)', () => {
+    // The ETF payout deduction is statutorily Abgeltungsteuer — labeling it
+    // "Einkommensteuer" misnames the legal basis. Other products keep
+    // Einkommensteuer (marginal rate via §22 / cohort tables).
+    const result = makeResult({
+      productId: 'etf',
+      grossMonthlyPayout: 600,
+      netMonthlyPayout: 500,
+      kvPvMonthly: 50,
+    })
+    const d = buildVergleichDetailCardData({ result, retirementAge: 67, assumptions: ASSUMPTIONS })
+    const labels = d!.sections[2].rows.map((r) => r.label)
+    expect(labels).toContain('− Abgeltungsteuer')
+    expect(labels).not.toContain('− Einkommensteuer')
+  })
+
+  it.each(['bav', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as const)(
+    '%s surfaces "− Einkommensteuer" in Im Alter (not Abgeltungsteuer)',
+    (productId) => {
+      const result = makeResult({
+        productId,
+        grossMonthlyPayout: 600,
+        netMonthlyPayout: 500,
+        kvPvMonthly: 50,
+      })
+      const d = buildVergleichDetailCardData({ result, retirementAge: 67, assumptions: ASSUMPTIONS })
+      const labels = d!.sections[2].rows.map((r) => r.label)
+      expect(labels).toContain('− Einkommensteuer')
+      expect(labels).not.toContain('− Abgeltungsteuer')
+    },
+  )
 
   it('returns null when the registry has no metadata for the product id', () => {
     const bogus = makeResult({ productId: 'etf' })

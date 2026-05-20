@@ -1,5 +1,4 @@
-import type { ProductId, ScenarioAssumptions } from '../../domain'
-import type { ProductResult } from '../../domain/results'
+import type { ProductId, ProductResult, ScenarioAssumptions } from '../../domain'
 import { getProductMeta } from '../../engine/productRegistry'
 
 // ---------------------------------------------------------------------------
@@ -197,7 +196,7 @@ function buildPayoutSection(result: ProductResult): VergleichDetailSection {
     heading: 'Im Alter, pro Monat',
     rows: [
       { label: 'Brutto-Rente', value: result.grossMonthlyPayout, kind: 'add' },
-      { label: '− Einkommensteuer', value: incomeTaxMonthly, kind: 'sub' },
+      { label: getPayoutTaxLabel(result.productId), value: incomeTaxMonthly, kind: 'sub' },
       { label: '− KV / PV', value: kvPvMonthly, kind: 'sub' },
       {
         label: '= Netto-Rente',
@@ -206,5 +205,38 @@ function buildPayoutSection(result: ProductResult): VergleichDetailSection {
         accent: true,
       },
     ],
+  }
+}
+
+/**
+ * Per-product payout tax-line label routing (PR 290 Codex P2 fix).
+ *
+ * ETF payouts are taxed under §20 Abs. 1 Nr. 1 EStG + §43 EStG as
+ * Abgeltungsteuer (flat 25 % on Kapitalverzehr exit gains after the
+ * Sparerpauschbetrag). Every other product taxes the payout at the
+ * marginal income-tax rate — Einkommensteuer.
+ *
+ * Note: for pAV with Leibrente the legal basis is §22 Nr. 1 Satz 3 a EStG
+ * (Ertragsanteil-style income tax) but the surface label "Einkommensteuer"
+ * stays correct since it is still a marginal-rate income-tax deduction.
+ *
+ * Exhaustive switch with `_exhaustive: never` so a future seventh product
+ * forces a type error here — same convention as
+ * `vergleichDetailAvailability.ts`.
+ */
+function getPayoutTaxLabel(productId: ProductId): string {
+  switch (productId) {
+    case 'etf':
+      return '− Abgeltungsteuer'
+    case 'bav':
+    case 'versicherung':
+    case 'basisrente':
+    case 'altersvorsorgedepot':
+    case 'riester':
+      return '− Einkommensteuer'
+    default: {
+      const _exhaustive: never = productId
+      return _exhaustive
+    }
   }
 }

@@ -7,7 +7,7 @@ import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
 import { VergleichDetailPage } from './VergleichDetailPage'
 import { defaultWorkspace, STORAGE_KEY_V2 } from '../../storage'
-import type { Workspace } from '../../domain/workspace'
+import type { Workspace } from '../../domain'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
 beforeEach(() => {
@@ -43,7 +43,7 @@ function seedCompareMode(): void {
 describe('VergleichDetailPage — compare-mode per-product breakdown surface', () => {
   it('renders the kicker, H1, and a card grid with one card per visible product', () => {
     seedCompareMode()
-    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     expect(container.querySelector('.vd-kicker')).not.toBeNull()
     expect(container.querySelector('.vd-headline')).not.toBeNull()
     const grid = container.querySelector('.vd-card-grid')
@@ -56,7 +56,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
 
   it('renders three labeled sections inside each card', () => {
     seedCompareMode()
-    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     const cards = container.querySelectorAll('.vd-card')
     for (const card of Array.from(cards)) {
       const sections = card.querySelectorAll('.vd-card-section')
@@ -66,7 +66,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
 
   it('uses the dynamic retirementAge in the § 2 heading text', () => {
     seedCompareMode()
-    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     // Default retirement age is 67 (defaultProfile). The § 2 heading must
     // contain "Mit 67, einmalig" — never a hardcoded "Mit 67" without the
     // retirementAge prop threading.
@@ -76,7 +76,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
 
   it('every euro display in the card grid goes through Intl currency formatting', () => {
     seedCompareMode()
-    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     // `formatCurrency` produces `... €` (Intl.NumberFormat 'de-DE') — every
     // value cell in the cards should contain a `€` glyph or a leading "−"
     // followed by `€`. We pick any value cell and check.
@@ -90,7 +90,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
 
   it('renders the Verfügbar-ab footer with a non-empty value on every card', () => {
     seedCompareMode()
-    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     const cards = container.querySelectorAll('.vd-card')
     for (const card of Array.from(cards)) {
       const footer = card.querySelector('.vd-card__footer')
@@ -103,7 +103,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
   it('falls back to the combine-mode empty state when saved mode is combine', () => {
     const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({ ...ws, mode: 'combine' }))
-    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     expect(container.querySelector('.vd-empty')).not.toBeNull()
     expect(container.textContent ?? '').toContain('Vergleichs-Modus')
     // No card grid in the fallback.
@@ -113,7 +113,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
   it('exposes accessible empty-state copy (no aria-hidden on body text)', () => {
     const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({ ...ws, mode: 'combine' }))
-    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     const body = container.querySelector('.vd-empty-body')
     expect(body).not.toBeNull()
     // PR 288 R1 lesson — empty-state explanations must be readable to AT.
@@ -126,7 +126,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     // here is the across-viewport rendering invariant.
     seedCompareMode()
     eachViewport(() => {
-      const { container, unmount } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+      const { container, unmount } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
       const cards = container.querySelectorAll('.vd-card')
       expect(cards.length).toBeGreaterThan(0)
       unmount()
@@ -135,13 +135,13 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
 
   it('sets the document title via useEffect to the brand-compliant string', () => {
     seedCompareMode()
-    render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     expect(document.title).toBe('Wohin geht das Geld | RentenWiki.de')
   })
 
   it('renders a back-link to the home route as a real anchor', () => {
     seedCompareMode()
-    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} />))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" />))
     const backlink = container.querySelector<HTMLAnchorElement>('.vd-backlink')
     expect(backlink).not.toBeNull()
     expect(backlink!.getAttribute('href')).toBe('/')
