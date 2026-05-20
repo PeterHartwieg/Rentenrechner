@@ -66,21 +66,32 @@ import { runCombineSimulation } from '../../app/useCombineSimulation'
 // ---------------------------------------------------------------------------
 
 /**
- * Why a perturbation was a no-op. Lets the UI skip the row or display a
- * structured "nicht anwendbar" caption instead of an unexplained 0 €/Monat.
+ * Why a perturbation was a no-op or was constrained. Lets the UI skip the row
+ * or display a structured "nicht anwendbar" caption instead of an unexplained
+ * 0 €/Monat.
  *
- * - `'no_etf_instance'`: the ETF-bump row needs at least one active or paid-up
- *   ETF instance to apply the bump to. Workspaces with zero ETF instances skip
- *   the row.
+ * - `'no_etf_instance'`: the workspace has zero ETF instances (neither active
+ *   nor paid-up). The ETF-bump row is skipped entirely.
+ * - `'etf_paid_up_only'`: the workspace has ETF instance(s) but all are
+ *   paid-up (beitragsfrei). The bump cannot be applied to a paid-up contract
+ *   because the portfolio adapter forces `etfMonthlyUserCostOverride = 0` for
+ *   paid-up instances regardless of `monthlyContribution`. The row still
+ *   renders with `headlineDelta = 0` but surfacing this note lets the user
+ *   understand why ("ETF-Vertrag vorhanden, aber beitragsfrei").
  * - `'retirement_age_clamped'`: the requested retirement age was above
  *   `retirementEndAge − 1`. We clamp and the row still runs, but the caller
- *   may wish to surface that the clamp happened.
+ *   may wish to surface that the clamp happened. This note is preserved even
+ *   when the clamped value coincides with the user's current retirement age
+ *   (delta = 0) so the row does not silently render "±0 €/Mon." without
+ *   explanation.
  * - `'unchanged'`: the perturbation produced no observable change (e.g. the
- *   scenario id requested already matches the baseline). The row still
+ *   scenario id requested already matches the baseline, or the retirement age
+ *   target equals the current age without any clamping). The row still
  *   renders with `headlineDelta = 0`.
  */
 export type SensitivityNote =
   | 'no_etf_instance'
+  | 'etf_paid_up_only'
   | 'retirement_age_clamped'
   | 'unchanged'
 
@@ -288,11 +299,18 @@ export function sensitivityIfRetirementAge(
   next.baseline.profile.retirementAge = targetAge
 
   if (targetAge === workspace.baseline.profile.retirementAge) {
+    // The target age equals the current age. This can happen two ways:
+    //   (a) The caller passed the same age as the current profile age — a
+    //       genuine no-op, note: 'unchanged'.
+    //   (b) The requested age was clamped down to the current age (e.g.
+    //       retirementAge = 69, retirementEndAge = 70 → clamp to 69 = current).
+    //       In this case we MUST preserve the 'retirement_age_clamped' note so
+    //       the UI does not silently render "±0 €/Mon." without explanation.
     return {
       headlineDelta: 0,
       perInstanceDelta: {},
       perturbedProjectedMonthly: baselineCombined.monthlyNetIncome,
-      note: 'unchanged',
+      note: clamped ? 'retirement_age_clamped' : 'unchanged',
     }
   }
 
@@ -361,18 +379,26 @@ export function sensitivityIfInflation(
 
 /**
  * What if the user invests an additional `bumpEUR` (default 100) per month in
- * the **first active or paid-up ETF instance**?
+ * the **first active ETF instance**?
  *
- * Skips the perturbation entirely (note: `'no_etf_instance'`) when no ETF
- * instance is available. We deliberately do NOT fabricate a synthetic ETF
- * instance — fees, equityPartialExemption, and contractStartYear choices
- * would silently bias the comparison. Users with no ETF can fall back to
- * the recommender's "wo geht mein nächster Euro hin?" surface.
+ * Three cases are distinguished:
  *
- * Paid-up ETF instances are eligible recipients in principle, but the
- * portfolio adapter forces `etfMonthlyUserCostOverride = 0` for paid-up
- * instances regardless of `monthlyContribution`. To keep the perturbation
- * observable, we only target instances with `status === 'active'`.
+ * 1. **No ETF instance at all** (note: `'no_etf_instance'`): the workspace
+ *    contains zero ETF instances. The row is a no-op; the UI should skip it
+ *    or show "Noch kein ETF-Sparplan im Plan". We deliberately do NOT fabricate
+ *    a synthetic ETF instance — fees, equityPartialExemption, and
+ *    contractStartYear choices would silently bias the comparison.
+ *
+ * 2. **ETF exists but all are paid-up** (note: `'etf_paid_up_only'`): the
+ *    workspace has at least one ETF instance, but all carry `status = 'paid_up'`.
+ *    Paid-up instances receive `etfMonthlyUserCostOverride = 0` in the portfolio
+ *    adapter regardless of `monthlyContribution`, so bumping their contribution
+ *    field has no effect on the simulation. Returning this distinct note lets the
+ *    UI tell the user "ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung
+ *    würde einen neuen aktiven Vertrag erfordern" rather than the misleading
+ *    "no_etf_instance" copy.
+ *
+ * 3. **Active ETF exists**: the bump is applied to the first active instance.
  *
  * Cost: O(N) on workspace instances per call.
  */
@@ -383,10 +409,8 @@ export function sensitivityIfEtfBump(
   scenarioId: string,
   bumpEUR: number,
 ): SensitivityRowResult {
-  const firstActiveEtfIdx = workspace.baseline.assumptions.etf.findIndex(
-    (i) => i.status === 'active',
-  )
-  if (firstActiveEtfIdx === -1) {
+  const etfInstances = workspace.baseline.assumptions.etf
+  if (etfInstances.length === 0) {
     return {
       headlineDelta: 0,
       perInstanceDelta: {},
@@ -394,6 +418,18 @@ export function sensitivityIfEtfBump(
       note: 'no_etf_instance',
     }
   }
+
+  const firstActiveEtfIdx = etfInstances.findIndex((i) => i.status === 'active')
+  if (firstActiveEtfIdx === -1) {
+    // ETF instances exist but none are active (all paid_up).
+    return {
+      headlineDelta: 0,
+      perInstanceDelta: {},
+      perturbedProjectedMonthly: baselineCombined.monthlyNetIncome,
+      note: 'etf_paid_up_only',
+    }
+  }
+
   const next = cloneWorkspaceShallow(workspace)
   const target = next.baseline.assumptions.etf[firstActiveEtfIdx]
   const currentContribution = target.monthlyContribution ?? 0

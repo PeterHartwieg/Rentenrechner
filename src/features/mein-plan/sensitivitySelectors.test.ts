@@ -191,4 +191,68 @@ describe('sensitivityIfEtfBump', () => {
     expect(result.headlineDelta).toBe(0)
     expect(Object.keys(result.perInstanceDelta).length).toBe(0)
   })
+
+  // Codex P2 regression: workspace with only paid_up ETF contracts must not
+  // surface 'no_etf_instance' — it must surface 'etf_paid_up_only' so the UI
+  // can show "ETF-Vertrag vorhanden, aber beitragsfrei" instead of the
+  // misleading "Noch kein ETF-Sparplan im Plan".
+  it('surfaces "etf_paid_up_only" when all ETF instances are paid_up', () => {
+    const ws = buildBaseWorkspace()
+    // Force the ETF instance to paid_up status.
+    const wsPaidUpEtf: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          etf: ws.baseline.assumptions.etf.map((inst) => ({
+            ...inst,
+            status: 'paid_up' as const,
+          })),
+        },
+      },
+    }
+    const bundle = runCombineSimulation(wsPaidUpEtf, de2026Rules)
+    const baseline = bundle.combinedByScenarioId['basis']
+    const result = sensitivityIfEtfBump(wsPaidUpEtf, baseline, de2026Rules, 'basis', 100)
+    // Must NOT be 'no_etf_instance' — an ETF contract exists.
+    expect(result.note).toBe('etf_paid_up_only')
+    expect(result.note).not.toBe('no_etf_instance')
+    expect(result.headlineDelta).toBe(0)
+  })
+})
+
+// Codex P3 regression: when retirementAge (69) + retirementEndAge (70) causes
+// the clamp to collapse the perturbation to a no-op delta, the note must be
+// 'retirement_age_clamped' — NOT 'unchanged' — so the row does not render
+// "mit 70 Jahren ±0 €/Mon." without any explanation.
+describe('sensitivityIfRetirementAge — clamp-no-op regression (Codex P3)', () => {
+  it('preserves clamp note when clamped value equals current retirementAge', () => {
+    const ws = buildBaseWorkspace()
+    // Arrange: retirementAge = 69, retirementEndAge = 70.
+    // Requested age = 70 → clamp fires → targetAge = 69 = currentAge.
+    const wsEdge: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        profile: {
+          ...ws.baseline.profile,
+          retirementAge: 69,
+        },
+        assumptions: {
+          ...ws.baseline.assumptions,
+          retirementEndAge: 70,
+        },
+      },
+    }
+    const bundle = runCombineSimulation(wsEdge, de2026Rules)
+    const baseline = bundle.combinedByScenarioId['basis']
+    // Request retirement at 70 — the clamp fires (max = 70 - 1 = 69 = current).
+    const result = sensitivityIfRetirementAge(wsEdge, baseline, de2026Rules, 'basis', 70)
+    // The clamp signal must be preserved — NOT 'unchanged'.
+    expect(result.note).toBe('retirement_age_clamped')
+    expect(result.note).not.toBe('unchanged')
+    // Delta is zero because the clamped target equals the current age.
+    expect(result.headlineDelta).toBe(0)
+  })
 })

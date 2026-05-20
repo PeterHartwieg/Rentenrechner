@@ -867,14 +867,21 @@ function formatDelta(deltaEUR: number): string {
  * Map a `SensitivityNote` to a user-facing German caption, or `null` when no
  * extra copy is needed. `'unchanged'` returns `null` because the `±0 €/Mon.`
  * delta chip is already self-explanatory adjacent to the condition text.
+ *
+ * Complete switch over all `SensitivityNote` values — no fallthrough.
  */
 function formatNote(note: SensitivityRowResult['note']): string | null {
   if (!note) return null
-  if (note === 'no_etf_instance') return 'Noch kein ETF-Sparplan im Plan — kein Vergleich möglich.'
-  if (note === 'retirement_age_clamped') {
-    return 'Renteneintritt auf das Modell-Endalter − 1 begrenzt.'
+  switch (note) {
+    case 'no_etf_instance':
+      return 'Noch kein ETF-Sparplan im Plan — kein Vergleich möglich.'
+    case 'etf_paid_up_only':
+      return 'ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern.'
+    case 'retirement_age_clamped':
+      return 'Renteneintritt auf das Modell-Endalter − 1 begrenzt.'
+    case 'unchanged':
+      // 'unchanged' has no extra copy; the ±0 €/Mon. delta chip is
+      // self-explanatory adjacent to the condition text.
+      return null
   }
-  // 'unchanged' has no extra copy; the row renders ±0 €/Mon. and that is
-  // self-explanatory next to the condition.
-  return null
 }
