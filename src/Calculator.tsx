@@ -18,14 +18,15 @@ import {
   type VergleichPaneSlug,
   ALL_VERGLEICH_PANES,
 } from './features/results/vergleichPanes'
-import { MeinPlanSidebar } from './features/results/MeinPlanSidebar'
-import type { MeinPlanPaneSlug } from './features/results/meinPlanPanes'
+// PR 6: `MeinPlanSidebar` removed from the combine-mode render path. The
+// per-pane switcher has been replaced by the single Sober D `MeinPlanPage`
+// surface; the file itself is kept until PR 9 finishes the deletion across
+// the remaining surfaces (Vergleich + Wohin geht das Geld).
+import { MeinPlanPage } from './features/mein-plan/MeinPlanPage'
 import type { ProductId } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
-import { composeInstanceEvidenceMaps } from './app/composeInstanceEvidenceMaps'
 import { projectGrvContributionTimeline } from './engine/grv'
-import { deriveRentenluckeOverviewFromCombine } from './app/simulationSelectors'
 import { de2026Rules } from './rules/de2026'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
@@ -69,20 +70,13 @@ import { EmptyComparison } from './features/workspace/EmptyComparison'
 import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { InventoryWizard } from './features/inventory/InventoryWizard'
-import { CombineDashboardSidebar, AddVertragSection } from './features/inventory/CombineDashboardSidebar'
-import { CombineIncomePanel } from './features/inventory/CombineIncomePanel'
+import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSidebar'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
 import { OptimiereVorsorgeModal } from './features/dashboard/OptimiereVorsorgeModal'
-import { RentenluckeDashboard } from './features/dashboard/RentenluckeDashboard'
 import { VergleichDashboard } from './features/dashboard/VergleichDashboard'
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
-import {
-  buildPortfolioLifecycleViews,
-  PORTFOLIO_LIFECYCLE_ID,
-} from './features/results/portfolioLifecycle'
-import { LIFECYCLE_HORIZON_AGE } from './features/results/lifecycleHorizon'
 import { LegalFooter } from './features/legal/LegalFooter'
 import { InvalidLinkBanner } from './ui/InvalidLinkBanner'
 import {
@@ -93,7 +87,9 @@ import {
 } from './features/qa-feedback'
 
 const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
-const PORTFOLIO_COLOR = '#1f2937'
+// PR 6: PORTFOLIO_COLOR / PORTFOLIO_LIFECYCLE_ID / buildPortfolioLifecycleViews
+// were tied to the removed combine-mode lifecycle pane. PR 8 (Kapital &
+// Auszahlungen) re-introduces them on a dedicated `/kapital` route.
 
 // Compare-mode menu points that don't yet have a dedicated chart. They render
 // an "in Arbeit" placeholder rather than falling back to other charts so the
@@ -106,18 +102,11 @@ const VERGLEICH_STUB_PANES: ReadonlySet<VergleichPaneSlug> = new Set([
   'fairness',
 ])
 
-// Mein-Plan (combine-mode) menu points that don't yet have a dedicated view.
-// Monte-Carlo is not in this set: its pane has its own branch that handles the
-// MC-disabled state with a specific message.
-const MEIN_PLAN_STUB_PANES: ReadonlySet<MeinPlanPaneSlug> = new Set([
-  'sequence-of-returns',
-  'inflations-stress',
-  'rendite',
-  'beitrag',
-  'lebenserwartung',
-  'renteneintrittsalter',
-])
-
+// PR 6: the combine-mode Mein-Plan pane switcher and its stub-pane set are
+// gone. The new `MeinPlanPage` renders a single linear surface — the panes
+// previously listed here (Sequence-of-Returns / Inflations-Stress /
+// Rendite / Beitrag / Lebenserwartung / Renteneintrittsalter) will be re-
+// surfaced as additional sensitivity rows or detail-page links in later PRs.
 
 type ShellTabDef = {
   id: WorkspaceView
@@ -203,8 +192,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     params.set('pane', pane)
     window.history.pushState(null, '', `${window.location.pathname}?${params.toString()}`)
   }
-  // Active pane for the combine-mode Mein-Plan sidebar.
-  const [meinPlanPane, setMeinPlanPane] = useState<MeinPlanPaneSlug>('ueberblick')
+  // PR 6: combine-mode Mein-Plan pane switcher removed — the Sober D
+  // `MeinPlanPage` renders all sections inline. No per-pane state needed.
 
   const {
     profile,
@@ -447,28 +436,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     portfolioState.workspace.baseline.assumptions.returnScenarios.find(
       (s) => s.id === combineBasisScenarioId,
     )?.label ?? 'Basis'
-  const portfolioLifecycleViews = useMemo(() => {
-    if (!isCombineMode) return []
-    return buildPortfolioLifecycleViews({
-      workspace: portfolioState.workspace,
-      perInstance: combineSimulation.perInstance,
-      scenarioId: combineBasisScenarioId,
-      startAge: profile.age,
-      retirementAge: profile.retirementAge,
-      horizonAge: Math.max(
-        LIFECYCLE_HORIZON_AGE,
-        portfolioState.workspace.baseline.assumptions.retirementEndAge,
-      ),
-    })
-  }, [
-    isCombineMode,
-    portfolioState.workspace,
-    combineSimulation.perInstance,
-    combineBasisScenarioId,
-    profile.age,
-    profile.retirementAge,
-  ])
-
   // B6: check whether the workspace has at least one active or paid-up instance.
   // Drives the disabled state of the "Optimiere deine Vorsorge" button.
   const hasActiveOrPaidUpInstances = useMemo(() => {
@@ -483,6 +450,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
 
   // GRV contribution timeline for BreakEvenChart (#27).
   // Compare-mode: use the singleton profile + assumptions; wire bAV GRV reduction.
+  // PR 6: the combine-mode timeline is no longer needed — the lifecycle pane
+  // was removed from the Mein-Plan surface. PR 8 (Kapital & Auszahlungen) will
+  // re-introduce it on its own `/kapital` route.
   const compareGrvContributionTimeline = useMemo(
     () =>
       projectGrvContributionTimeline(
@@ -494,142 +464,59 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     [profile, assumptions.statutoryPension, simulation.bavFunding.estimatedMonthlyGrvReduction],
   )
 
-  // Combine-mode: use the workspace baseline profile + assumptions.
-  // bAV GRV reduction aggregates across multiple instances — not trivially exposed
-  // here without plumbing rework, so pass undefined (treated as 0).
-  const combineGrvContributionTimeline = useMemo(
-    () =>
-      projectGrvContributionTimeline(
-        combineProfile,
-        de2026Rules,
-        portfolioState.workspace.baseline.assumptions.statutoryPension,
-        undefined,
-      ),
-    [combineProfile, portfolioState.workspace.baseline.assumptions.statutoryPension],
-  )
-
-  // Per-instance evidenceMap lookup for the CombineIncomePanel badge predicate
-  // (issue #111). Without this, the panel falls back to inputConfidence, which
-  // treats absent fields as model_estimate and produces false-positive badges.
-  const combineInstanceEvidenceMaps = useMemo(
-    () => composeInstanceEvidenceMaps(portfolioState.workspace),
-    [portfolioState.workspace],
-  )
-
   const vergleichView = (
     <section
       className="workspace-view workspace-view--vergleich"
       {...vergleichSectionProps}
     >
       {portfolioState.mode === 'combine' && (
-        <div className="compare-layout">
-          <div className="compare-layout-sidebar">
-            <MeinPlanSidebar
-              activePane={meinPlanPane}
-              onPaneChange={setMeinPlanPane}
-            />
-          </div>
+        <div className="mein-plan-host">
+          {/* Scenario toolbar stays above the Sober D page surface so the
+              user can still switch scenarios and toggle Monte-Carlo without
+              leaving Mein Plan. The pre-PR-6 `MeinPlanSidebar` + pane switcher
+              is gone — every section now renders linearly inside MeinPlanPage. */}
+          {toolbar}
 
-          <div className="compare-layout-main">
-            {toolbar}
+          <MeinPlanPage
+            workspace={portfolioState.workspace}
+            perInstance={combineSimulation.perInstance}
+            selectedScenarioId={combineBasisScenarioId}
+            selectedScenarioLabel={combineBasisLabel}
+            combinedForScenario={combineBasisResult}
+            rules={de2026Rules}
+            navigate={navigate}
+          />
 
-            <div className="vergleich-pane-content">
-              {meinPlanPane === 'ueberblick' && (
-                combineBasisResult ? (
-                  <RentenluckeDashboard
-                    profile={combineProfile}
-                    overview={deriveRentenluckeOverviewFromCombine(
-                      portfolioState.workspace,
-                      combineBasisResult,
-                      combineProfile,
-                    )}
-                    onTargetChange={(next) =>
-                      portfolioState.patchBaseline({
-                        profile: {
-                          ...combineProfile,
-                          desiredNetMonthlyPension: next,
-                        },
-                      })
-                    }
-                    onAdjustContributions={() => setShowLueckeModal(true)}
-                    onOpenOptimiere={() => setShowOptimiereModal(true)}
-                    hasActiveInstances={hasActiveOrPaidUpInstances}
-                  />
-                ) : (
-                  <section className="vergleich-pane-stub" role="note">
-                    <p>Noch keine Verträge im Plan — füge unter „Verträge“ deinen ersten Vertrag hinzu.</p>
-                  </section>
-                )
-              )}
-
-              {meinPlanPane === 'lifecycle' && (
-                combineBasisResult && portfolioLifecycleViews.length > 0 ? (
-                  <BreakEvenChart
-                    selectedResults={portfolioLifecycleViews.map((view) => view.result)}
-                    productColors={{
-                      ...PRODUCT_COLORS,
-                      [PORTFOLIO_LIFECYCLE_ID]: PORTFOLIO_COLOR,
-                    }}
-                    startAge={combineProfile.age}
-                    retirementAge={combineProfile.retirementAge}
-                    retirementEndAge={portfolioState.workspace.baseline.assumptions.retirementEndAge}
-                    bestProductId={PORTFOLIO_LIFECYCLE_ID}
-                    singleSelection
-                    title="Mein Plan: Kapital und Auszahlungen"
-                    description="Zeigt dein zusätzliches Vorsorgeportfolio ohne gesetzliche Rente."
-                    grvNetMonthlyPension={combineSimulation.statutoryPension.netMonthlyPension}
-                    pensionBaselineType={
-                      portfolioState.workspace.baseline.assumptions.statutoryPension.pensionBaselineType
-                    }
-                    grvContributionTimeline={combineGrvContributionTimeline}
-                  />
-                ) : (
-                  <section className="vergleich-pane-stub" role="note">
-                    <p>Noch keine aktiven Verträge im Plan — füge unter „Verträge“ einen hinzu.</p>
-                  </section>
-                )
-              )}
-
-              {meinPlanPane === 'einkommen' && (
-                combineBasisResult ? (
-                  <CombineIncomePanel
-                    combinedResult={combineBasisResult}
-                    perInstanceResults={combineSimulation.perInstance}
-                    scenarioId={combineBasisScenarioId}
-                    scenarioLabel={combineBasisLabel}
-                    instanceEvidenceMaps={combineInstanceEvidenceMaps}
-                  />
-                ) : (
-                  <section className="vergleich-pane-stub" role="note">
-                    <p>Noch keine Verträge im Plan — füge unter „Verträge“ einen hinzu.</p>
-                  </section>
-                )
-              )}
-
-              {meinPlanPane === 'vertraege' && (
-                <AddVertragSection
-                  addInstance={portfolioState.addInstance}
-                  addPopulatedInstance={portfolioState.addPopulatedInstance}
-                />
-              )}
-
-              {meinPlanPane === 'monte-carlo' && (
-                monteCarloResult ? (
-                  <MonteCarloHighlights result={monteCarloResult} />
-                ) : (
-                  <section className="vergleich-pane-stub" role="note">
-                    <p>Monte-Carlo ist im Szenario-Toolbar deaktiviert. Aktiviere es, um Risiko-Highlights zu sehen.</p>
-                  </section>
-                )
-              )}
-
-              {MEIN_PLAN_STUB_PANES.has(meinPlanPane) && (
-                <section className="vergleich-pane-stub" role="note">
-                  <p>Diese Ansicht ist noch in Arbeit.</p>
-                </section>
-              )}
+          {/* "Wo geht mein nächster Euro hin?" + "Optimiere deine Vorsorge"
+              triggers — relocated here from the deleted RentenluckeDashboard
+              so the recommender + portfolio-audit remain reachable from
+              Mein Plan. PR 7+ folds these into the new Vertrag-im-Detail
+              architecture; until then they ship as compact CTAs below the
+              page surface. */}
+          {combineBasisResult && (
+            <div className="mein-plan-cta-row" role="group" aria-label="Plan anpassen">
+              <button
+                type="button"
+                className="mein-plan-cta"
+                onClick={() => setShowLueckeModal(true)}
+              >
+                Beiträge anpassen
+              </button>
+              <button
+                type="button"
+                className="mein-plan-cta mein-plan-cta--accent"
+                onClick={() => setShowOptimiereModal(true)}
+                disabled={!hasActiveOrPaidUpInstances}
+                title={
+                  hasActiveOrPaidUpInstances
+                    ? undefined
+                    : 'Erst nach mindestens einem aktiven Vertrag verfügbar.'
+                }
+              >
+                Vorsorge optimieren
+              </button>
             </div>
-          </div>
+          )}
 
           {showLueckeModal && combineBasisResult && (
             <LueckeSchliessenModal

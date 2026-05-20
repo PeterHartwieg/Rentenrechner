@@ -48,13 +48,29 @@ function setup() {
 
 describe('RecommenderCard', () => {
   it('renders the result-only ranking controls', () => {
+    // PR 6: heading + winner-badge framing neutralised. Card now reads as a
+    // neutral "which contract benefits from extra contribution?" surface
+    // rather than crowning a winner.
     const ctx = setup()
     const { container } = render(
       <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
     )
     expect(container.querySelector('.recommender-card')).toBeTruthy()
     expect(container.querySelectorAll('.recommender-sort-button').length).toBe(5)
-    expect(container.textContent).toContain('Beste Option für höchste mittlere Netto-Rente')
+    // Heading is the neutral question, not "Beste Optionen für …".
+    expect(container.querySelector('h3')?.textContent).toContain(
+      'Welcher Vertrag profitiert am stärksten',
+    )
+    // Sort row indicator reads as a sort-by label, not a winner-claim.
+    const indicator = container.querySelector('.recommender-sort-indicator')
+    expect(indicator?.textContent).toContain('Sortieren nach')
+    // Winner badge is gone.
+    expect(container.querySelector('.recommender-candidate-winner')).toBeNull()
+    // Brand-regression sweep (P0 guardrail): no "Empfehlung" framing reads
+    // as a recommendation that we are not licensed to make.
+    expect(container.textContent ?? '').not.toMatch(/Empfehlung/)
+    // No "Beste Option für …" winner badge text anywhere in the card.
+    expect(container.textContent ?? '').not.toMatch(/Beste Option für/)
   })
 
   it('shows candidate cards for the supplied marginal budget', () => {
@@ -66,21 +82,25 @@ describe('RecommenderCard', () => {
     expect(cands.length).toBeGreaterThan(0)
   })
 
-  it('ranking buttons toggle the winner criterion', () => {
+  it('ranking buttons re-sort the candidate list without crowning a winner', () => {
+    // PR 6: clicking a sort button re-orders the list but does NOT label a
+    // candidate as the "winner". The sort row keeps a neutral "Sortieren
+    // nach" label; the active button is reflected via aria-pressed.
     const ctx = setup()
     const { container } = render(
       <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
     )
     const sortButtons = container.querySelectorAll('.recommender-sort-button')
-    // Click the "Flexibilität" button.
     const flexBtn = Array.from(sortButtons).find((b) => b.textContent === 'Flexibilität')
     expect(flexBtn).toBeTruthy()
     fireEvent.click(flexBtn!)
+    // The clicked button now reports aria-pressed=true; the indicator label
+    // stays neutral.
+    expect(flexBtn!.getAttribute('aria-pressed')).toBe('true')
     const indicator = container.querySelector('.recommender-sort-indicator')
-    expect(indicator?.textContent).toContain('Beste Option für Flexibilität')
-    expect(container.querySelector('.recommender-candidate-winner')?.textContent).toContain(
-      'Beste Option für Flexibilität',
-    )
+    expect(indicator?.textContent).toContain('Sortieren nach')
+    // No winner badge anywhere on the card after the sort changes.
+    expect(container.querySelector('.recommender-candidate-winner')).toBeNull()
   })
 
   it('invokes onSaveAsPlan when "Als Plan speichern" is clicked', () => {

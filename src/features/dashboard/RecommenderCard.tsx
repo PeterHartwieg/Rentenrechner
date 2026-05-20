@@ -162,8 +162,15 @@ export function RecommenderCard({
   }, [workspace.baseline.assumptions])
 
   return (
-    <section className="recommender-card" aria-label="Empfehlungen für deinen nächsten Beitrag" {...sectionTargetProps}>
-      <h3>Beste Optionen für {formatCurrency(marginalMonthlyEUR, 0)} zusätzlich im Monat</h3>
+    <section className="recommender-card" aria-label="Beiträge je Vertrag vergleichen" {...sectionTargetProps}>
+      {/* PR 6: heading + per-candidate "winner badge" neutralised — the card
+          now answers a question instead of crowning a winner. The sort row
+          below still lets the user re-rank by criterion; the row order
+          stays informational. */}
+      <h3>
+        Welcher Vertrag profitiert am stärksten von{' '}
+        {formatCurrency(marginalMonthlyEUR, 0)} zusätzlich im Monat?
+      </h3>
 
       {marginalMonthlyEUR > 0 && sorted.length === 0 && (
         <p className="recommender-empty">
@@ -178,10 +185,17 @@ export function RecommenderCard({
           </p>
 
           <div className="recommender-sort-row">
-            <span className="recommender-sort-indicator">
-              Beste Option für {RECOMMENDER_RANKING_LABELS[ranking]}
+            {/* PR 6: dropped the "Beste Option für …" indicator span. The
+                sort buttons below stay informational — they re-rank the
+                list by criterion without crowning a winner. */}
+            <span className="recommender-sort-indicator" id="recommender-sort-label">
+              Sortieren nach
             </span>
-            <div className="recommender-sort-buttons">
+            <div
+              className="recommender-sort-buttons"
+              role="group"
+              aria-labelledby="recommender-sort-label"
+            >
               {RANKING_KEYS.map((key) => (
                 <button
                   key={key}
@@ -197,18 +211,16 @@ export function RecommenderCard({
           </div>
 
           <ol className="recommender-list">
-            {sorted.map((cand, index) => {
+            {sorted.map((cand) => {
               const scorePct = relativeRankingPct(cand, ranking, rankingMax)
               const productColor = getProductMeta(cand.productId)?.color ?? '#2563eb'
               const atomDetailsId = `recommender-${cand.id}-atom-details`
               const atomsExpanded = expandedAtomIds.has(cand.id)
               return (
               <li key={cand.id} className="recommender-candidate" {...qaTarget(qaEnabled, `dashboard.recommenderCard.candidate.${cand.productId}`, { label: cand.label })}>
-                {index === 0 && (
-                  <span className="recommender-candidate-winner">
-                    Beste Option für {RECOMMENDER_RANKING_LABELS[ranking]}: {winningMetric(cand, ranking)}
-                  </span>
-                )}
+                {/* PR 6: per-candidate winner badge removed. The relative
+                    ranking meter below still surfaces how each candidate
+                    scores against the criterion, without crowning a winner. */}
                 <div className="recommender-candidate-header">
                   <strong>{cand.label}</strong>
                   <span className="recommender-candidate-budget">
@@ -355,25 +367,10 @@ export function RecommenderCard({
   )
 }
 
-function winningMetric(
-  candidate: RecommendedCandidate,
-  criterion: RecommenderRankingCriterion,
-): string {
-  if (criterion === 'median_net_pension') {
-    return `${formatCurrency(candidate.medianNettoRente, 0)} / Mon.`
-  }
-  if (criterion === 'capital_at_retirement') {
-    // Issue #67: capital filter uses net capital at retirement, not gross.
-    return formatCurrency(candidate.netCapitalAtRetirement, 0)
-  }
-  if (criterion === 'safety') {
-    return `${formatCurrency(candidate.safetyNettoRenteP10, 0)} / Mon.`
-  }
-  if (criterion === 'flexibility') {
-    return FLEX_LABEL[candidate.flexibilityScore]
-  }
-  return `Aufwand ${EFFORT_LABEL[candidate.effort.level]}`
-}
+// PR 6: `winningMetric` helper removed — its single caller (the per-candidate
+// "Beste Option für …" badge) is gone. The relative ranking meter still
+// surfaces score-versus-best as a percentage so users see how the candidates
+// compare without crowning a winner.
 
 function detectProductId(inst: { instanceId: string }): ProductId {
   return productIdFromInstanceId(inst.instanceId) ?? 'etf'

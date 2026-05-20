@@ -129,6 +129,9 @@ tests.
 | Provenance primitives (`ProvLabel`, `FieldWithProv`) | `src/features/results/provenance.tsx` |
 | Evidence ↔ provenance + export-label mapping | `src/features/results/provenanceHelpers.ts` |
 | Legal pages (Impressum, Datenschutz, footer) | `src/features/legal/` |
+| Combine-mode "Mein Plan" Sober D surface (lead + headline + § 1 Zusammensetzung + § 2 Sensitivität + right-rail "Deine Angaben" receipt) | `src/features/mein-plan/MeinPlanPage.tsx` |
+| Sensitivity-row perturbation selectors (Rendite konservativ / Renteneintritt 70 / Inflation 3 % / ETF-Beitrag +100 €) — pure, framework-agnostic, re-run `runCombineSimulation` over a cloned workspace | `src/features/mein-plan/sensitivitySelectors.ts` |
+| Policy-default constants for the sensitivity rows (target scenario id, age cap, inflation rate, ETF-bump amount) | `src/features/mein-plan/sensitivityConfig.ts` |
 
 ### Storage
 

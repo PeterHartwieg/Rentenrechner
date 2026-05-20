@@ -1,0 +1,591 @@
+/* ==========================================================================
+   MeinPlanPage — combine-mode results surface (PR 6).
+
+   Sober D visual treatment: white background, IBM Plex Sans body, mono
+   `§` section labels, JetBrains Mono headline figure, dark rules. Mirrors
+   `AngabenPage.css` and `MethodePage.css` so the chrome reads as one system.
+
+   Visual fidelity reference: direction-d.jsx `DirectionDMeinPlan` lines
+   122-301 + responsive-views.jsx `MMeinPlan` (phone) / `TMeinPlan` (tablet).
+   Tokens come from src/App.css.
+   ========================================================================== */
+
+.mein-plan-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+}
+
+.mein-plan-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 56px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* --- Grid: body + right-rail receipt ---------------------------------- */
+.mein-plan-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 56px;
+  align-items: start;
+}
+
+.mein-plan-body {
+  min-width: 0;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* --- Kicker + lead ---------------------------------------------------- */
+.mein-plan-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.mein-plan-lead {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 1.06rem;
+  line-height: 1.55;
+  color: var(--rw-ink);
+  max-width: 720px;
+}
+
+.mein-plan-lead strong {
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.mein-plan-lead em {
+  font-style: italic;
+  color: var(--rw-ink-soft);
+}
+
+/* --- Headline figure -------------------------------------------------- */
+.mein-plan-headline {
+  border-top: 1px solid var(--rw-rule);
+  border-bottom: 1px solid var(--rw-rule);
+  padding: 18px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.mein-plan-headline-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.mein-plan-headline-label {
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.mein-plan-headline-value {
+  font-family: var(--rw-font-mono);
+  font-size: 64px;
+  font-weight: 500;
+  letter-spacing: -2px;
+  line-height: 1;
+  color: var(--rw-accent);
+}
+
+.mein-plan-headline-aside {
+  font-family: var(--rw-font-sans);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+  max-width: 320px;
+  padding-bottom: 4px;
+}
+
+.mein-plan-headline-aside strong {
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+/* --- Section heads (§ N · title) ------------------------------------- */
+.mein-plan-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mein-plan-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--rw-rule);
+}
+
+.mein-plan-section-num {
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.6px;
+  color: var(--rw-ink-faint);
+  text-transform: uppercase;
+}
+
+.mein-plan-section-title {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-weight: 600;
+  font-size: 1.06rem;
+  letter-spacing: -0.2px;
+  color: var(--rw-ink);
+  scroll-margin-top: 80px;
+}
+
+/* --- § 1 Zusammensetzung table --------------------------------------- */
+.mein-plan-zusammen-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--rw-font-sans);
+  font-size: 0.9rem;
+}
+
+.mein-plan-zusammen-table thead tr {
+  border-bottom: 1px solid var(--rw-rule);
+}
+
+.mein-plan-zusammen-table th {
+  text-align: left;
+  padding: 8px 0;
+  font-family: var(--rw-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  font-weight: 500;
+}
+
+.mein-plan-zusammen-table th.mein-plan-num {
+  text-align: right;
+}
+
+.mein-plan-zusammen-table tbody tr {
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.mein-plan-zusammen-table td {
+  padding: 12px 0;
+  vertical-align: top;
+}
+
+.mein-plan-zusammen-table td.mein-plan-num {
+  text-align: right;
+  font-family: var(--rw-font-mono);
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.mein-plan-zusammen-table td.mein-plan-num-soft {
+  text-align: right;
+  font-family: var(--rw-font-mono);
+  color: var(--rw-ink-soft);
+}
+
+.mein-plan-zusammen-source {
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.mein-plan-zusammen-sub {
+  font-size: 0.78rem;
+  color: var(--rw-ink-faint);
+  margin-top: 2px;
+}
+
+.mein-plan-zusammen-empty {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--rw-rule);
+  background: var(--rw-bg-paper-soft);
+  font-size: 0.92rem;
+  color: var(--rw-ink-soft);
+}
+
+/* --- Composition bar -------------------------------------------------- */
+.mein-plan-comp-bar {
+  display: flex;
+  height: 10px;
+  margin-top: 14px;
+  border: 1px solid var(--rw-rule);
+}
+
+.mein-plan-comp-bar-seg {
+  border-right: 1px solid var(--rw-bg-paper);
+  min-width: 1px;
+}
+
+.mein-plan-comp-bar-seg:last-child {
+  border-right: none;
+}
+
+.mein-plan-comp-bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 8px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.78rem;
+  color: var(--rw-ink-soft);
+}
+
+.mein-plan-comp-bar-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mein-plan-comp-bar-legend-chip {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--rw-rule);
+}
+
+/* --- § 2 Sensitivität row list --------------------------------------- */
+.mein-plan-sens-intro {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+}
+
+.mein-plan-sens-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--rw-ink);
+}
+
+.mein-plan-sens-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  border-bottom: 1px solid var(--rw-rule-soft);
+  padding: 10px 0;
+}
+
+.mein-plan-sens-row:last-child {
+  border-bottom: none;
+}
+
+.mein-plan-sens-cond {
+  flex: 1;
+  min-width: 0;
+}
+
+.mein-plan-sens-cond-note {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--rw-ink-faint);
+  margin-top: 2px;
+}
+
+.mein-plan-sens-delta {
+  font-family: var(--rw-font-mono);
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.mein-plan-sens-delta--neg {
+  color: var(--rw-accent);
+}
+
+.mein-plan-sens-delta--pos {
+  color: var(--rw-ink);
+}
+
+.mein-plan-sens-delta--neutral {
+  color: var(--rw-ink-faint);
+}
+
+/* --- Right rail receipt ---------------------------------------------- */
+.mein-plan-receipt {
+  background: var(--rw-bg-paper-soft);
+  border: 1px solid var(--rw-rule);
+  padding: 18px 20px;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mein-plan-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-family: var(--rw-font-sans);
+  font-size: 0.82rem;
+  border-top: 1px dotted var(--rw-rule-soft);
+}
+
+.mein-plan-receipt-row:first-child {
+  border-top: none;
+}
+
+.mein-plan-receipt-row-divider {
+  height: 8px;
+  border: 0;
+  margin: 4px 0;
+}
+
+.mein-plan-receipt-key {
+  color: var(--rw-ink-soft);
+}
+
+.mein-plan-receipt-val {
+  font-family: var(--rw-font-mono);
+  font-weight: 500;
+  color: var(--rw-ink);
+  text-align: right;
+}
+
+.mein-plan-receipt-edit {
+  display: inline-block;
+  margin-top: 6px;
+  text-align: center;
+  padding: 9px 0;
+  width: 100%;
+  background: var(--rw-bg-paper);
+  border: 1px solid var(--rw-rule);
+  font-family: var(--rw-font-sans);
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--rw-ink);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.mein-plan-receipt-edit:hover {
+  border-color: var(--rw-ink);
+}
+
+/* --- Stand line + breadcrumb ----------------------------------------- */
+.mein-plan-stand {
+  margin: 18px 0 0;
+  font-family: var(--rw-font-mono);
+  font-size: 0.74rem;
+  color: var(--rw-ink-faint);
+  letter-spacing: 0.4px;
+}
+
+/* --- Host wrapper + CTA row -----------------------------------------
+   Hosted by `Calculator.tsx` outside the page surface itself so the
+   scenario toolbar can sit above the lead statement and the two
+   recommender CTAs can sit below the page without affecting the page
+   grid. The CTA row is a short-term reach to PR 7+ — when the Vertrag
+   im Detail page lands, those buttons will move into the per-contract
+   menus and the row goes away.
+   ------------------------------------------------------------------ */
+.mein-plan-host {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mein-plan-cta-row {
+  display: flex;
+  gap: 12px;
+  padding: 0 56px 24px;
+  max-width: 1180px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+.mein-plan-cta {
+  flex: 1 1 240px;
+  padding: 12px 16px;
+  background: var(--rw-bg-paper);
+  border: 1px solid var(--rw-rule);
+  font-family: var(--rw-font-sans);
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--rw-ink);
+  cursor: pointer;
+  text-align: center;
+  min-height: 44px;
+}
+
+.mein-plan-cta:hover:not(:disabled) {
+  border-color: var(--rw-ink);
+}
+
+.mein-plan-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mein-plan-cta--accent {
+  background: var(--rw-ink);
+  color: var(--rw-bg-paper);
+  border-color: var(--rw-ink);
+}
+
+.mein-plan-cta--accent:hover:not(:disabled) {
+  background: var(--rw-accent);
+  border-color: var(--rw-accent);
+}
+
+@media (max-width: 1023px) {
+  .mein-plan-cta-row {
+    padding: 0 36px 24px;
+  }
+}
+
+@media (max-width: 639px) {
+  .mein-plan-cta-row {
+    padding: 0 20px 18px;
+    flex-direction: column;
+  }
+}
+
+/* --- Tablet (≤1023 px) ----------------------------------------------- */
+@media (max-width: 1023px) {
+  .mein-plan-main {
+    padding: 28px 36px 28px;
+  }
+
+  .mein-plan-grid {
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 32px;
+  }
+
+  .mein-plan-headline-value {
+    font-size: 52px;
+  }
+}
+
+/* --- Phone (≤639 px) -------------------------------------------------- */
+@media (max-width: 639px) {
+  .mein-plan-main {
+    padding: 18px 20px 26px;
+    gap: 18px;
+  }
+
+  .mein-plan-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .mein-plan-headline {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .mein-plan-headline-value {
+    font-size: 44px;
+    letter-spacing: -1.5px;
+  }
+
+  .mein-plan-headline-aside {
+    max-width: none;
+  }
+
+  /* On phone the table collapses to a vertical row stack. We render the
+     same `<table>` markup so screen readers still parse a tabular shape;
+     CSS converts each row into a flex block at this breakpoint. */
+  .mein-plan-zusammen-table,
+  .mein-plan-zusammen-table thead,
+  .mein-plan-zusammen-table tbody,
+  .mein-plan-zusammen-table tr,
+  .mein-plan-zusammen-table td,
+  .mein-plan-zusammen-table th {
+    display: block;
+  }
+
+  .mein-plan-zusammen-table thead {
+    /* Hide the header row visually; column meaning is recoverable from
+       per-row data-attributes that the row markup provides. Screen readers
+       still announce the cell text. Uses the modern accessible hiding
+       pattern (clip-path + white-space) — the deprecated `clip` property
+       was removed per CSS Masking Module L1. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .mein-plan-zusammen-table tbody tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rw-rule-soft);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  .mein-plan-zusammen-table td {
+    padding: 2px 0;
+    text-align: left;
+    flex: 1 1 100%;
+  }
+
+  .mein-plan-zusammen-table td.mein-plan-num,
+  .mein-plan-zusammen-table td.mein-plan-num-soft {
+    text-align: left;
+    flex: 0 0 auto;
+  }
+
+  .mein-plan-zusammen-table td.mein-plan-num::before,
+  .mein-plan-zusammen-table td.mein-plan-num-soft::before {
+    content: attr(data-label) ' ';
+    font-family: var(--rw-font-mono);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--rw-ink-faint);
+    margin-right: 6px;
+  }
+
+  .mein-plan-sens-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  /* Receipt aside flows below body when no right-rail-accordion is in use.
+     Combine-mode page uses `RightRailAccordion` for desktop/phone parity,
+     so this block governs the inline-aside fallback only. */
+  .mein-plan-receipt {
+    padding: 14px 16px;
+  }
+
+  .mein-plan-stand {
+    margin-top: 4px;
+  }
+}
