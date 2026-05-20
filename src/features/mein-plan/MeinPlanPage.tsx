@@ -492,6 +492,14 @@ const FALLBACK_PRODUCT_COLOR = '#888888'
  * All six instance types satisfy this shape; the cast from the concrete
  * instance types is safe because every instance type extends `InstanceCommon`
  * and carries the optional contribution fields.
+ *
+ * Field mapping per product:
+ *   - ETF / versicherung: `monthlyContribution` (per-instance combine-mode field)
+ *   - bAV: `monthlyGrossConversion` (employer gross; user's net cost is derived)
+ *   - Basisrente: `monthlyGrossContribution`
+ *   - AltersvorsorgedepotInstance / RiesterInstance: `monthlyOwnContribution`
+ *     (field name on `AltersvorsorgedepotAssumptions` and `RiesterAssumptions`;
+ *     NOT `eigenbeitragMonthly` — that field does not exist on those types)
  */
 type SlotInstance = {
   instanceId: string
@@ -500,7 +508,7 @@ type SlotInstance = {
   monthlyContribution?: number
   monthlyGrossConversion?: number
   monthlyGrossContribution?: number
-  eigenbeitragMonthly?: number
+  monthlyOwnContribution?: number
 }
 
 /**
@@ -512,8 +520,9 @@ type SlotInstance = {
  *
  * Using `entry.assumptionsKey` to index `wsa` avoids hardcoding six product
  * ids, respects `PRODUCT_REGISTRY` order, and automatically picks up future
- * product additions. Defensive `?? []` guards against missing fields on
- * partially-populated workspace objects (e.g. test stubs).
+ * product additions. `Array.isArray` guards against non-array values (e.g.
+ * objects from schema drift or partially-populated test stubs); the fallback
+ * is `[]` so `collectZusammenRows` never iterates invalid data.
  *
  * Note: `CombineDetailView.tsx` and `simulationSelectors.ts` contain a similar
  * hardcoded slot pattern — migrating those to this helper is a separate task
@@ -522,7 +531,10 @@ type SlotInstance = {
 function buildProductSlots(wsa: WorkspaceAssumptionsV2): Array<{ id: ProductId; instances: SlotInstance[] }> {
   return PRODUCT_REGISTRY.map((entry) => ({
     id: entry.metadata.id as ProductId,
-    instances: ((wsa as unknown as Record<string, unknown>)[entry.assumptionsKey] as SlotInstance[] | undefined) ?? [],
+    instances: (() => {
+      const raw = (wsa as unknown as Record<string, unknown>)[entry.assumptionsKey]
+      return Array.isArray(raw) ? (raw as SlotInstance[]) : []
+    })(),
   }))
 }
 
@@ -581,8 +593,10 @@ function collectZusammenRows(
       //     user's "Beitrag heute"; see CLAUDE.md "fair-comparison invariant"
       //     note for combine-mode honoring `monthlyGrossConversion`).
       //   - Basisrente: monthlyGrossContribution.
-      //   - AVD / Riester: eigenbeitragMonthly (user's own contribution; the
-      //     statutory subsidy is paid separately).
+      //   - AVD / Riester: monthlyOwnContribution (the field on
+      //     AltersvorsorgedepotAssumptions and RiesterAssumptions; statutory
+      //     allowances are paid separately by the state and are NOT part of
+      //     "Beitrag heute" from the user's perspective).
       let contributionMonthly: number | null = null
       if (inst.status === 'paid_up') {
         contributionMonthly = 0
@@ -593,7 +607,7 @@ function collectZusammenRows(
       } else if (slot.id === 'basisrente') {
         contributionMonthly = inst.monthlyGrossContribution ?? null
       } else if (slot.id === 'altersvorsorgedepot' || slot.id === 'riester') {
-        contributionMonthly = inst.eigenbeitragMonthly ?? null
+        contributionMonthly = inst.monthlyOwnContribution ?? null
       }
       const instanceLabel = inst.label?.trim().length ? inst.label : (meta?.label ?? slot.id)
       const subLabel =

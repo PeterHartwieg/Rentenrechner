@@ -12,6 +12,7 @@ import { runCombineSimulation } from '../../app/useCombineSimulation'
 import { de2026Rules } from '../../rules/de2026'
 import type { Workspace } from '../../domain/workspace'
 import { eachViewport, mockViewport } from '../../test/viewport'
+import * as sensitivitySelectors from './sensitivitySelectors'
 
 beforeEach(() => {
   localStorage.clear()
@@ -263,6 +264,41 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     expect(container.textContent).toContain('Noch keine aktiven Verträge')
   })
 
+  it('Zusammensetzung table shows monthlyOwnContribution for AVD and Riester rows (Codex P2 regression)', () => {
+    // Regression guard: AltersvorsorgedepotInstance and RiesterInstance carry
+    // `monthlyOwnContribution` (from their Assumptions types), NOT
+    // `eigenbeitragMonthly`. The R2 code read the wrong field and rendered
+    // '–' (null dash) for every AVD/Riester row. This test seeds a workspace
+    // with one AVD (default 200 €/Mon.) + one Riester (default 100 €/Mon.)
+    // instance and asserts the "Beitrag heute" column shows the real values.
+    let ws: Workspace = { ...defaultWorkspace, mode: 'combine' }
+    ws = addInstanceToWorkspace(ws, 'altersvorsorgedepot')
+    ws = addInstanceToWorkspace(ws, 'riester')
+    const props = buildProps(ws)
+    const { container } = render(<MeinPlanPage {...props} />)
+
+    // Collect "Beitrag" cells from instance rows only (skip the leading
+    // statutory-pension row, which always renders '–' because users don't
+    // directly contribute to the GRV). Instance rows follow the statutory row.
+    const allRows = Array.from(
+      container.querySelectorAll('.mein-plan-zusammen-table tbody tr'),
+    )
+    // First row is the statutory pension row; skip it.
+    const instanceRows = allRows.slice(1)
+    const beitragCells = instanceRows.map(
+      (tr) => tr.querySelector('td[data-label="Beitrag"]')?.textContent?.trim() ?? '',
+    )
+
+    // Neither AVD nor Riester contribution column must be '–' (null fallback).
+    // Before the fix, `eigenbeitragMonthly` was read instead of `monthlyOwnContribution`,
+    // yielding undefined → null → '–' for every AVD/Riester row.
+    const dashes = beitragCells.filter((t) => t === '–')
+    expect(dashes.length).toBe(0)
+    // Default AVD = 200 €/Mon., default Riester = 100 €/Mon.
+    expect(beitragCells.some((t) => t.includes('200'))).toBe(true)
+    expect(beitragCells.some((t) => t.includes('100'))).toBe(true)
+  })
+
   it('does not render the old MeinPlanSidebar pane navigation', () => {
     // PR 6 deleted the pane switcher from the combine-mode render path.
     // The class names that drove it must not appear anywhere in the page
@@ -278,20 +314,29 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     // Regression: when combinedForScenario is truthy but no active/paid_up
     // instances exist, the page must NOT build sensitivity rows (wasted
     // runCombineSimulation reruns) and must show the empty-state copy.
-    // The spy on runCombineSimulation is not needed here — DOM absence is
-    // sufficient because sensitivityRows.length === 0 when hasInstances is
-    // false, regardless of combinedForScenario.
-    const ws: Workspace = { ...defaultWorkspace, mode: 'combine' }
-    const props = buildProps(ws)
-    const { container } = render(<MeinPlanPage {...props} />)
-    // No sensitivity rows rendered.
-    expect(container.querySelectorAll('.mein-plan-sens-row').length).toBe(0)
-    // The § 2 section must show the empty-state copy, not a real row.
-    // The id is on the <h2>; the enclosing <section> uses aria-labelledby.
-    const sensSec = container.querySelector('section[aria-labelledby="mein-plan-sensitivitaet"]')
-    expect(sensSec).not.toBeNull()
-    // The empty-state paragraph (not a <li> row) must be inside the section.
-    expect(sensSec!.querySelector('.mein-plan-zusammen-empty')).not.toBeNull()
-    expect(sensSec!.textContent).toContain('ersten Vertrag im Plan')
+    //
+    // The hasInstances guard in MeinPlanPage short-circuits the useMemo so
+    // none of the sensitivity selectors are called. We spy on
+    // sensitivityIfReturnScenario (the first candidate in buildSensitivityRows)
+    // to assert that the guard holds — if it is called, the guard is broken.
+    const spy = vi.spyOn(sensitivitySelectors, 'sensitivityIfReturnScenario')
+    try {
+      const ws: Workspace = { ...defaultWorkspace, mode: 'combine' }
+      const props = buildProps(ws)
+      const { container } = render(<MeinPlanPage {...props} />)
+      // The sensitivity recompute selector must NOT have been invoked.
+      expect(spy).not.toHaveBeenCalled()
+      // No sensitivity rows rendered.
+      expect(container.querySelectorAll('.mein-plan-sens-row').length).toBe(0)
+      // The § 2 section must show the empty-state copy, not a real row.
+      // The id is on the <h2>; the enclosing <section> uses aria-labelledby.
+      const sensSec = container.querySelector('section[aria-labelledby="mein-plan-sensitivitaet"]')
+      expect(sensSec).not.toBeNull()
+      // The empty-state paragraph (not a <li> row) must be inside the section.
+      expect(sensSec!.querySelector('.mein-plan-zusammen-empty')).not.toBeNull()
+      expect(sensSec!.textContent).toContain('ersten Vertrag im Plan')
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
