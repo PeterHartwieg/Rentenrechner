@@ -529,13 +529,16 @@
   .mein-plan-zusammen-table thead {
     /* Hide the header row visually; column meaning is recoverable from
        per-row data-attributes that the row markup provides. Screen readers
-       still announce the cell text. */
+       still announce the cell text. Uses the modern accessible hiding
+       pattern (clip-path + white-space) — the deprecated `clip` property
+       was removed per CSS Masking Module L1. */
     position: absolute;
     width: 1px;
     height: 1px;
     margin: -1px;
     overflow: hidden;
-    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .mein-plan-zusammen-table tbody tr {

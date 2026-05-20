@@ -30,17 +30,19 @@ function inShell(node: ReactElement, route: Route = '/') {
 /**
  * Build a minimal combine-mode workspace seed with one active bAV + one
  * active ETF instance so the sensitivity-row "ETF +100 €" branch has a
- * target. The workspace mode is set to `'combine'` so the
- * receipt-side `useAngabenState` resolves to combine-mode.
+ * target. The workspace mode is set to `'combine'`.
+ *
+ * Note: the receipt no longer reads from storage via `useAngabenState` — it
+ * receives `profile` and `assumptions` directly from `MeinPlanPage` props.
+ * This helper therefore does NOT need to seed `STORAGE_KEY_V2` for the
+ * receipt to display correct data. The `buildProps` helper passes the
+ * workspace directly as a prop.
  */
 function buildCombineWorkspace(): Workspace {
   let ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
   ws = { ...ws, mode: 'combine' }
   ws = addInstanceToWorkspace(ws, 'bav')
   ws = addInstanceToWorkspace(ws, 'etf')
-  // Persist so MeinPlanReceiptAside (which reads via useAngabenState)
-  // sees the combine workspace rather than falling back to compare defaults.
-  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
   return ws
 }
 
@@ -195,15 +197,12 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
-  it('does not write to STORAGE_KEY_V1 or modify STORAGE_KEY_V2 on first mount (no first-mount writes)', () => {
+  it('does not write to STORAGE_KEY_V1 or STORAGE_KEY_V2 on first mount (no first-mount writes)', () => {
     // PR 6 must not regress the first-mount discipline pinned by PR 283.
     // Rendering MeinPlanPage must NOT trigger any storage writes — the page
-    // only reads workspace + simulation props. The receipt does consume
-    // `useAngabenState`, which has its own mount-time write skip
-    // (`persistOnMount: false` for combine-mode workspaces).
-    // Seed once (random instance ids are stable across a single fixture
-    // call) so the before/after comparison is byte-identical when no
-    // write occurred.
+    // only reads workspace + simulation props. The receipt is now a pure
+    // presentation component receiving profile + assumptions via props, so it
+    // never calls useAngabenState and never writes storage on mount.
     const ws = buildCombineWorkspace()
     const v2Before = localStorage.getItem(STORAGE_KEY_V2)
     const v1Before = localStorage.getItem(STORAGE_KEY_V1)
@@ -213,12 +212,52 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     expect(localStorage.getItem(STORAGE_KEY_V2)).toBe(v2Before)
   })
 
+  it('receipt follows props, not localStorage, when storage lags behind the live workspace (race regression)', () => {
+    // Regression test for Codex P1 (PR #284 R1): the former useAngabenState()
+    // call in MeinPlanReceiptAside read localStorage at mount time to detect
+    // mode. When a user transitioned compare→combine in the same session,
+    // usePortfolioState persisted the new mode asynchronously via a useEffect,
+    // so localStorage could still contain compare-mode data at the moment the
+    // receipt mounted. The receipt would then display stale compare-mode profile
+    // values (e.g. a different retirementAge from the compare-mode singleton).
+    //
+    // The fix: the receipt receives profile + assumptions directly from
+    // MeinPlanPage props (always derived from the live workspace). This test
+    // simulates the race by poisoning localStorage with compare-mode data
+    // carrying a distinct retirementAge (99), while the workspace prop carries
+    // the real combine-mode value (67). The receipt must display 67.
+    const staleCombineAge = 99 // obviously wrong sentinel value
+    const staleCompareState = {
+      profile: { ...defaultWorkspace.baseline.profile, retirementAge: staleCombineAge },
+      assumptions: defaultWorkspace.baseline.assumptions,
+    }
+    // Poison compare-mode storage key (what useAngabenState used to read from
+    // in compare-mode detection when mode was not yet persisted).
+    localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(staleCompareState))
+
+    // The workspace prop carries the correct combine-mode age.
+    const ws = buildCombineWorkspace() // retirementAge = defaultWorkspace.baseline.profile.retirementAge (e.g. 67)
+    const props = buildProps(ws)
+
+    const { container } = render(<MeinPlanPage {...props} />)
+    const receipt = container.querySelector('[data-testid="mein-plan-receipt"]')
+    expect(receipt).not.toBeNull()
+
+    // The receipt must show the prop-driven workspace age, not the stale
+    // localStorage age. The sentinel value 99 must not appear anywhere.
+    expect(receipt!.textContent).not.toContain(`${staleCombineAge}`)
+    // And the real workspace age must appear.
+    expect(receipt!.textContent).toContain(
+      `${ws.baseline.profile.retirementAge} Jahre`,
+    )
+  })
+
   it('renders an empty-state when no instances are active', () => {
     // Default workspace with no instance arrays populated yields an empty
     // composition table; the page surfaces a "noch keine aktiven Verträge"
     // copy block rather than rendering an empty table.
+    // No localStorage seeding needed: the receipt reads from props, not storage.
     const ws: Workspace = { ...defaultWorkspace, mode: 'combine' }
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
     const props = buildProps(ws)
     const { container } = render(<MeinPlanPage {...props} />)
     expect(container.textContent).toContain('Noch keine aktiven Verträge')

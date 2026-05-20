@@ -1,7 +1,8 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import './MeinPlanPage.css'
 import type { GermanRules } from '../../domain'
-import type { Workspace } from '../../domain/workspace'
+import type { PersonalProfile } from '../../domain'
+import type { Workspace, WorkspaceAssumptionsV2 } from '../../domain/workspace'
 import type { ProductId } from '../../domain'
 import type { ProductResult } from '../../domain/results'
 import type { CombinedResult } from '../../engine/portfolioCombine'
@@ -9,7 +10,6 @@ import type { InstanceCommon } from '../../domain/instances'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { getProductMeta } from '../../app/productPresentation'
-import { useAngabenState } from '../../app/useAngabenState'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { RightRailAccordion } from '../../ui/chrome/RightRailAccordion'
 import { formatCurrency, formatPercent } from '../../utils/format'
@@ -67,14 +67,14 @@ export interface MeinPlanPageProps {
 // Mono headline figure (oxblood `#8A2E2E`), dark rules. The layout collapses
 // the old `MeinPlanSidebar` + multi-pane switcher into one linear scrollable
 // page (lead → headline → § 1 Zusammensetzung → § 2 Sensitivität) with a
-// right-rail "Deine Angaben" receipt that mirrors the `/eingaben` page state
-// via `useAngabenState`.
+// right-rail "Deine Angaben" receipt that reflects the live workspace.
 //
 // State scope: this page reads the combine-mode workspace + simulation
 // results from props (driven by Calculator.tsx). The right-rail receipt
-// reads independently via `useAngabenState` so it stays mode-aware in case
-// the user lands here in compare-mode (defensive — the page is mounted from
-// the combine-mode render path so in practice the hook reports `combine`).
+// is a pure presentation component receiving profile + assumptions through
+// props from this component — it does not probe storage or re-detect mode.
+// This avoids a race where `detectSavedMode()` (localStorage) could lag
+// behind the async `usePortfolioState` write on a compare→combine transition.
 //
 // Engine boundary: every figure on the page either comes from props
 // (already engine-derived) or from one of the four sensitivity selectors,
@@ -94,6 +94,13 @@ export function MeinPlanPage({
   rules,
   navigate,
 }: MeinPlanPageProps) {
+  // Profile and assumptions are read from the live workspace prop. This avoids
+  // a race condition where `useAngabenState` (which calls `detectSavedMode` via
+  // localStorage) could pin the receipt to compare-mode data when the user
+  // transitions compare→combine in the same session before storage reflects the
+  // new mode (the `usePortfolioState` mode flag persists asynchronously via
+  // useEffect). The receipt is a pure presentation component; it receives live
+  // values from its parent, never re-probes storage.
   const profile = workspace.baseline.profile
   const wsa = workspace.baseline.assumptions
 
@@ -288,8 +295,14 @@ export function MeinPlanPage({
             </section>
           </article>
 
-          {/* Right-rail receipt — phone folds via RightRailAccordion. */}
-          <MeinPlanReceiptAside navigate={navigate} />
+          {/* Right-rail receipt — phone folds via RightRailAccordion.
+              Profile and assumptions are threaded from the live workspace prop
+              so the receipt never re-detects mode from storage. */}
+          <MeinPlanReceiptAside
+            profile={profile}
+            assumptions={wsa}
+            navigate={navigate}
+          />
         </div>
 
         <p className="mein-plan-stand">
@@ -304,20 +317,44 @@ export function MeinPlanPage({
 // Right-rail "Deine Angaben" receipt
 // ---------------------------------------------------------------------------
 
+interface MeinPlanReceiptAsideProps {
+  /**
+   * Live profile from `workspace.baseline.profile`, threaded through from
+   * `MeinPlanPage`. Never read from storage directly so the receipt does not
+   * race against the async `usePortfolioState` mode-flag write that persists
+   * the compare→combine transition.
+   */
+  profile: PersonalProfile
+  /**
+   * Live workspace assumptions from `workspace.baseline.assumptions`, threaded
+   * through from `MeinPlanPage`. Only scalar workspace-level fields are
+   * consumed (inflationRate, returnScenarios, retirementEndAge); per-instance
+   * arrays are not accessed.
+   */
+  assumptions: WorkspaceAssumptionsV2
+  /** SPA navigator for the "Angaben bearbeiten" link. */
+  navigate?: (target: Route) => void
+}
+
 /**
  * Receipt aside that mirrors the inputs the user has set on `/eingaben` (PR 5).
- * Reads through `useAngabenState` so the values reflect whatever mode is
- * active (compare singleton or combine workspace). In practice this page only
- * mounts in combine-mode, but the hook covers both paths and lets us drop the
- * aside into a hypothetical compare-mode Mein-Plan view without rewiring.
+ * Receives `profile` and `assumptions` directly from `MeinPlanPage` props
+ * (derived from the live workspace) so the values always reflect the current
+ * combine-mode workspace state. This avoids a race condition present in the
+ * former `useAngabenState()` approach: that hook called `detectSavedMode()`
+ * at mount-time (reading localStorage), which could pin the receipt to
+ * compare-mode data when the user transitioned compare→combine in the same
+ * session before `usePortfolioState`'s async storage write had landed.
+ *
+ * The receipt is now a pure presentation component — no hooks that probe
+ * storage, no mode detection, no side effects beyond `useViewport`.
  *
  * The "Angaben bearbeiten" link routes to `/eingaben` via the SPA navigator
  * when one is provided. Modified-click (Cmd/Ctrl/middle/Shift) preserves the
  * platform default — `shouldUseSpaNavigation` guards every SPA-intercept
  * anchor consistently with the rest of the chrome.
  */
-function MeinPlanReceiptAside({ navigate }: { navigate?: (target: Route) => void }) {
-  const { profile, assumptions } = useAngabenState()
+function MeinPlanReceiptAside({ profile, assumptions, navigate }: MeinPlanReceiptAsideProps) {
   const viewport = useViewport()
 
   // Resolve scenario annualReturn by id, never by index (CLAUDE.md gotcha).
@@ -444,6 +481,22 @@ type ZusammenRow = ZusammenInstanceRow | ZusammenStatutoryRow
 const STATUTORY_PENSION_COLOR = '#222222'
 const FALLBACK_PRODUCT_COLOR = '#888888'
 
+/**
+ * Build the ordered row array for § 1 Zusammensetzung.
+ *
+ * Always emits a leading statutory-pension row (may be zero), followed by
+ * one row per non-surrendered, non-offered instance in the workspace (in
+ * product-slot order: bAV, ETF, Versicherung, Basisrente, AVD, Riester).
+ * Monthly-net figures prefer the back-allocated `combinedForScenario.byInstance`
+ * share when available, falling back to the per-instance `netMonthlyPayout`
+ * from `perInstance[id]` for the selected scenario.
+ *
+ * "Beitrag heute" is product-type-specific: ETF/pAV use `monthlyContribution`,
+ * bAV uses `monthlyGrossConversion` (the employer subsidy is not the user's
+ * "Beitrag heute"), Basisrente uses `monthlyGrossContribution`, AVD/Riester
+ * use `eigenbeitragMonthly` (user's own Eigenbeitrag, excluding statutory
+ * subsidy). Paid-up instances always show 0 for the contribution column.
+ */
 function collectZusammenRows(
   workspace: Workspace,
   perInstance: Record<string, ProductResult[]>,
@@ -526,6 +579,11 @@ function collectZusammenRows(
   return rows
 }
 
+/**
+ * Human-readable label for the statutory pension baseline type shown in the
+ * Zusammensetzung leading row. Mirrors the four routing branches in
+ * `src/engine/grv.ts` (`grv` / `versorgungswerk` / `beamten` / `manual`).
+ */
 function pensionBaselineLabel(baselineType: string | undefined): string {
   if (baselineType === 'versorgungswerk') return 'Versorgungswerk'
   if (baselineType === 'beamten') return 'Beamten­versorgung'
@@ -533,10 +591,23 @@ function pensionBaselineLabel(baselineType: string | undefined): string {
   return 'Gesetzliche Rente'
 }
 
+/**
+ * Fallback aggregate when `combinedForScenario` is absent. Sums each row's
+ * `monthlyNet` directly — used only in degraded test or SSR environments where
+ * the combine result is unavailable; in production `combinedForScenario` is
+ * always present so this path does not appear in user-visible calculations.
+ */
 function sumRowsMonthly(rows: ZusammenRow[]): number {
   return rows.reduce((sum, r) => sum + r.monthlyNet, 0)
 }
 
+/**
+ * Single row in the § 1 Zusammensetzung table. Renders the source label,
+ * user-facing "Beitrag heute" column, the net monthly retirement income, and
+ * a rounded percentage share of the headline figure. The `projectedMonthly`
+ * denominator is the whole-portfolio figure, not the row's own value, so
+ * the share column sums to ~100 % across all rows.
+ */
 function ZusammenRowView({
   row,
   projectedMonthly,
@@ -588,6 +659,15 @@ interface BuildSensitivityRowsInput {
   scenarioId: string
 }
 
+/**
+ * Build the ordered row list for § 2 Sensitivität. Each row pairs a
+ * human-readable German condition clause with the result of one sensitivity
+ * selector call (from `sensitivitySelectors.ts`). Rows that do not apply to
+ * the current workspace (e.g. ETF bump when no ETF instance exists, or
+ * Rendite-konservativ when the selected scenario already IS konservativ) are
+ * suppressed. Cost is O(N × rows) on active workspace instances — bounded to
+ * ≤4 rows in the default configuration via the per-condition guards.
+ */
 function buildSensitivityRows({
   workspace,
   baselineCombined,
@@ -685,6 +765,13 @@ function buildSensitivityRows({
   return out
 }
 
+/**
+ * Single item in the § 2 Sensitivität list. Colors the delta chip by sign:
+ * green for positive (more retirement income), red for negative, neutral grey
+ * for deltas below 1 €/Mon. (floating-point noise threshold). Renders the
+ * optional `note` caption below the condition when the perturbation was
+ * constrained (e.g. retirement age clamped to `retirementEndAge − 1`).
+ */
 function SensitivityRowView({ row }: { row: SensitivityRow }) {
   const delta = row.result.headlineDelta
   const note = row.result.note
@@ -713,12 +800,23 @@ function SensitivityRowView({ row }: { row: SensitivityRow }) {
   )
 }
 
+/**
+ * Format a EUR/month delta for the sensitivity chip. Treats |delta| < 1 as
+ * zero to suppress floating-point noise (cohort tax rounding can produce
+ * sub-euro differences that are not user-meaningful). Sign uses a Unicode
+ * minus `−` (U+2212) for negative values to match typographic conventions.
+ */
 function formatDelta(deltaEUR: number): string {
   if (Math.abs(deltaEUR) < 1) return '±0 €/Mon.'
   const sign = deltaEUR > 0 ? '+' : '−'
   return `${sign}${formatCurrency(Math.abs(deltaEUR), 0)} / Mon.`
 }
 
+/**
+ * Map a `SensitivityNote` to a user-facing German caption, or `null` when no
+ * extra copy is needed. `'unchanged'` returns `null` because the `±0 €/Mon.`
+ * delta chip is already self-explanatory adjacent to the condition text.
+ */
 function formatNote(note: SensitivityRowResult['note']): string | null {
   if (!note) return null
   if (note === 'no_etf_instance') return 'Noch kein ETF-Sparplan im Plan — kein Vergleich möglich.'
