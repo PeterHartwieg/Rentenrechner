@@ -13,6 +13,7 @@ import { VertragKpiStrip } from './VertragKpiStrip'
 import { VertragScenarioTable } from './VertragScenarioTable'
 import { VertragProvenanceList } from './VertragProvenanceList'
 import { VertragMetadataAside } from './VertragMetadataAside'
+import { VertragFeeImpact } from './VertragFeeImpact'
 
 interface Props {
   /**
@@ -225,6 +226,16 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
               rules={rules}
               scenarioId={scenarioId}
               combinedForScenario={combinedForScenario}
+            />
+
+            {/* Single-contract Gebühren-Vergleich (relocated from the legacy
+                Vergleich pane dispatcher in PR 9). Shows this contract's
+                Nettoaufwand / Netto-Rendite / Gebühren stack. */}
+            <VertragFeeImpact
+              instanceResult={instanceResult}
+              productId={slotInfo.slot}
+              retirementAge={workspace.baseline.profile.retirementAge}
+              retirementEndAge={workspace.baseline.assumptions.retirementEndAge}
             />
 
             <VertragProvenanceList

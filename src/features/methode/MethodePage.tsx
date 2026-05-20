@@ -18,6 +18,7 @@ import type { Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { MethodeMonteCarloSection } from './MethodeMonteCarloSection'
 
 interface Props {
   navigate?: (target: Route) => void
@@ -295,6 +296,13 @@ export function MethodePage({ navigate }: Props) {
                   ))}
                 </tbody>
               </table>
+
+              {/* Live Monte-Carlo panel (relocated from Vergleich pane dispatcher
+                  in PR 9). Renders the user's saved compare-mode simulation
+                  when MC is enabled in the szenario toolbar; otherwise prints a
+                  short pointer. The panel uses width-based `useChartDensity`
+                  tokens for narrow viewports. */}
+              <MethodeMonteCarloSection />
             </section>
 
             {/* ─── § 2 Steuer-Modell ────────────────────────────────────── */}

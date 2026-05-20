@@ -151,8 +151,8 @@ export function deriveCashflowBinding(
  * Aggregate net monthly retirement income across the comparison set.
  *
  * GRV's `netMonthlyPension` plus each visible product's `netMonthlyPayout`.
- * This is the same data the per-product `PensionChart` consumes — no parallel
- * calculation path is introduced.
+ * This is the same per-product payout figure the Vergleich comparison table
+ * (PR 9) renders — no parallel calculation path is introduced.
  */
 export interface RentenluckeOverview {
   /** Net monthly GRV pension. */

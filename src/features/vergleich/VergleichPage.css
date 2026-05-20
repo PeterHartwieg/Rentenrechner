@@ -1,0 +1,496 @@
+/* VergleichPage — Sober D treatment shared with MeinPlanPage / VertragDetailPage / KapitalPage. */
+
+.vergleich-shell {
+  --vergleich-ink: #161616;
+  --vergleich-ink-soft: #4a4a4a;
+  --vergleich-ink-faint: #8c8c8c;
+  --vergleich-rule: #1f1f1f;
+  --vergleich-rule-soft: #d8d4c8;
+  --vergleich-paper: #f6f4ef;
+  --vergleich-accent: #7e2d2d;
+
+  background: #ffffff;
+  color: var(--vergleich-ink);
+  padding: 28px 24px 64px;
+  min-height: 100%;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+.vergleich-main {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.vergleich-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.vergleich-kicker {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--vergleich-ink-faint);
+}
+
+.vergleich-headline {
+  font-family: Newsreader, Georgia, serif;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--vergleich-ink);
+}
+
+.vergleich-lead {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--vergleich-ink);
+  max-width: 820px;
+  margin: 0;
+}
+
+.vergleich-lead em {
+  font-style: italic;
+}
+
+/* ---- Rendite strip ----------------------------------------------------- */
+
+.vergleich-rendite-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--vergleich-paper);
+  border: 1px solid var(--vergleich-rule-soft);
+}
+
+.vergleich-rendite-strip__label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--vergleich-ink-faint);
+}
+
+.vergleich-rendite-strip__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vergleich-rendite-chip {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 10px 14px;
+  border: 1px solid var(--vergleich-rule-soft);
+  background: transparent;
+  color: var(--vergleich-ink-soft);
+  cursor: pointer;
+  /* 44 px minimum tap target on every viewport — design plan §4 / §7. */
+  min-height: 44px;
+  border-radius: 2px;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.vergleich-rendite-chip:hover {
+  border-color: var(--vergleich-rule);
+  color: var(--vergleich-ink);
+}
+
+.vergleich-rendite-chip:focus-visible {
+  outline: 2px solid var(--vergleich-ink);
+  outline-offset: 2px;
+}
+
+.vergleich-rendite-chip--active {
+  background: var(--vergleich-ink);
+  border-color: var(--vergleich-ink);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.vergleich-rendite-chip__rate {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  margin-left: 6px;
+}
+
+.vergleich-rendite-strip__meta {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: var(--vergleich-ink-faint);
+}
+
+.vergleich-rendite-strip__meta strong {
+  color: var(--vergleich-ink-soft);
+  font-weight: 600;
+}
+
+/* ---- Comparison table -------------------------------------------------- */
+
+.vergleich-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.vergleich-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.vergleich-section-num {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--vergleich-ink-faint);
+}
+
+.vergleich-section-title {
+  font-family: Newsreader, Georgia, serif;
+  font-weight: 400;
+  font-size: 22px;
+  margin: 0;
+}
+
+.vergleich-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  /* `table-layout: fixed` lets the columns honor the container width on tablet
+     rather than expanding to fit the widest cell content. With auto layout
+     the long product labels (e.g. "Betriebliche Altersvorsorge (bAV)") push
+     the table beyond the viewport at 820 px. */
+  table-layout: fixed;
+  /* Override the global `table { min-width: 920px }` rule in App.css — the
+     Sober D Vergleich table is responsive and breaks into vertical cards on
+     phone, so the legacy compare-layout min-width does not apply here. */
+  min-width: 0;
+}
+
+.vergleich-comparison-table td,
+.vergleich-comparison-table th {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.vergleich-comparison-table thead tr {
+  border-bottom: 2px solid var(--vergleich-rule);
+}
+
+.vergleich-comparison-table th {
+  text-align: left;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--vergleich-ink-faint);
+  padding: 10px 8px;
+  font-weight: 500;
+}
+
+.vergleich-comparison-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--vergleich-rule-soft);
+  vertical-align: baseline;
+}
+
+.vergleich-comparison-table .vergleich-cell--num {
+  text-align: right;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.vergleich-comparison-table .vergleich-cell--abzuege {
+  color: var(--vergleich-accent);
+}
+
+.vergleich-cell-product {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 8px;
+}
+
+.vergleich-cell-product__name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--vergleich-ink);
+}
+
+.vergleich-cell-product__short {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--vergleich-ink-faint);
+}
+
+.vergleich-cell-tagline {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--vergleich-ink-soft);
+  max-width: 240px;
+  padding-right: 8px;
+}
+
+.vergleich-cell-netto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vergleich-cell-netto__value {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--vergleich-ink);
+  text-align: right;
+}
+
+.vergleich-cell-netto__bar {
+  position: relative;
+  height: 4px;
+  background: var(--vergleich-rule-soft);
+}
+
+.vergleich-cell-netto__bar-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--vergleich-ink);
+}
+
+/* ---- Phone product cards ---------------------------------------------- */
+
+.vergleich-product-cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vergleich-product-card {
+  border-bottom: 1px solid var(--vergleich-rule-soft);
+  padding: 12px 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vergleich-product-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vergleich-product-card__name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--vergleich-ink);
+}
+
+.vergleich-product-card__short {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--vergleich-ink-faint);
+  margin-top: 2px;
+}
+
+.vergleich-product-card__netto {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--vergleich-ink);
+  text-align: right;
+}
+
+.vergleich-product-card__bar {
+  position: relative;
+  height: 3px;
+  background: var(--vergleich-rule-soft);
+}
+
+.vergleich-product-card__bar-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--vergleich-ink);
+}
+
+.vergleich-product-card__tagline {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--vergleich-ink-soft);
+  margin: 0;
+}
+
+.vergleich-product-card__grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 12px;
+}
+
+.vergleich-product-card__grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vergleich-product-card__grid dt {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--vergleich-ink-faint);
+}
+
+.vergleich-product-card__grid dd {
+  margin: 0;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vergleich-ink);
+}
+
+.vergleich-product-card__grid dd.vergleich-cell--abzuege {
+  color: var(--vergleich-accent);
+}
+
+/* ---- Pro/Contra grid -------------------------------------------------- */
+
+.vergleich-pro-contra-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.vergleich-pro-contra-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vergleich-pro-contra-card__short {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--vergleich-ink-faint);
+}
+
+.vergleich-pro-contra-card__body {
+  border-top: 2px solid var(--vergleich-rule);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vergleich-pro-contra-card__row {
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.vergleich-pro-contra-card__row--pro {
+  color: var(--vergleich-ink);
+}
+
+.vergleich-pro-contra-card__row--contra {
+  color: var(--vergleich-ink-soft);
+}
+
+.vergleich-pro-contra-card__row strong {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  display: inline-block;
+  margin-bottom: 2px;
+}
+
+.vergleich-pro-contra-card__row--contra strong {
+  color: var(--vergleich-accent);
+}
+
+/* ---- Empty state ------------------------------------------------------- */
+
+.vergleich-empty {
+  padding: 24px 0;
+  font-size: 14px;
+  color: var(--vergleich-ink-soft);
+  line-height: 1.5;
+  border-top: 1px solid var(--vergleich-rule-soft);
+  border-bottom: 1px solid var(--vergleich-rule-soft);
+}
+
+.vergleich-empty a {
+  color: var(--vergleich-ink);
+  text-decoration: underline;
+}
+
+/* ---- Phone breakpoint -------------------------------------------------- */
+
+@media (max-width: 639px) {
+  .vergleich-shell {
+    padding: 18px 16px 96px; /* extra bottom for MobileNav tab bar */
+  }
+  .vergleich-headline {
+    font-size: 26px;
+  }
+  .vergleich-rendite-strip__row {
+    gap: 6px;
+  }
+  .vergleich-rendite-chip {
+    font-size: 12px;
+    padding: 12px 12px;
+    min-height: 44px;
+  }
+  .vergleich-pro-contra-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+
+/* ---- Tablet breakpoint ------------------------------------------------- */
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .vergleich-shell {
+    padding: 22px 20px 56px;
+  }
+  .vergleich-headline {
+    font-size: 30px;
+  }
+  .vergleich-pro-contra-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* Tablet: drop the long-form "Wie es funktioniert" column — the same
+     content appears in the § 2 pro/contra grid below. Keeps the 6-column
+     monetary table within the viewport without horizontal scroll. */
+  .vergleich-comparison-table .vergleich-col-tagline {
+    display: none;
+  }
+  .vergleich-comparison-table {
+    font-size: 12.5px;
+  }
+  .vergleich-comparison-table th,
+  .vergleich-comparison-table td {
+    padding: 10px 6px;
+  }
+  .vergleich-cell-netto__value {
+    font-size: 16px;
+  }
+}
