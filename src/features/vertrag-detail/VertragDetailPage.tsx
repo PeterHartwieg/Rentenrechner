@@ -190,7 +190,7 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
             <div className="vertrag-subtitle">{subtitleParts.join(' · ')}</div>
             <div className="vertrag-backline">
               <a
-                href="/"
+                href={routeToPath(ROUTES.home)}
                 className="vertrag-backlink"
                 onClick={(event) => {
                   if (!shouldUseSpaNavigation(event)) return
