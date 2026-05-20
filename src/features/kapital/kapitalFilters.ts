@@ -3,6 +3,7 @@ import type { ProductId, ProductResult, ScenarioAssumptions } from '../../domain
 import type { LifecycleSeriesResult } from '../results/breakEvenSeries'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import {
+  aggregateLifecycleResults,
   buildPortfolioLifecycleViews,
   PORTFOLIO_LIFECYCLE_ID,
   type PortfolioLifecycleView,
@@ -93,28 +94,41 @@ export function buildCombineChipOptions(args: {
 // ---------------------------------------------------------------------------
 
 /**
- * Build the chip list for compare-mode. Same shape as combine-mode but the
- * results are the raw per-product `ProductResult`s from
- * `simulateRetirementComparison` filtered by `visibleProducts` — there is no
- * aggregation across instances because compare-mode does not have
- * per-instance state.
+ * Build the chip list for compare-mode. The "Alle Produkte" chip aggregates
+ * the filtered products into a single portfolio-shaped `LifecycleSeriesResult`
+ * so `BreakEvenChart`'s benchmark line and break-even marker use one summed
+ * paid-in series — necessary when products have different net contribution
+ * paths (e.g. capped AVD / Riester) so the benchmark is not silently
+ * sourced from the first product's paid-in alone. Per-product chips
+ * forward the single `ProductResult` directly.
  *
- * "Alle Verträge" surfaces every selected product on the same chart (the
- * existing compare-mode behaviour of `BreakEvenChart`).
+ * The aggregator (`aggregateLifecycleResults`) is shared with combine-mode's
+ * `Gesamtportfolio` view so both modes' "all" chips have identical math.
  */
 export function buildCompareChipOptions(args: {
   assumptions: ScenarioAssumptions
   productResults: ProductResult[]
+  startAge: number
+  retirementAge: number
+  horizonAge: number
 }): KapitalChipOption[] {
   const visible = new Set(args.assumptions.visibleProducts)
   const filtered = args.productResults.filter((r) => visible.has(r.productId))
   if (filtered.length === 0) return []
 
+  const aggregateResult = aggregateLifecycleResults({
+    id: PORTFOLIO_LIFECYCLE_ID,
+    label: 'Alle Produkte',
+    results: filtered,
+    startAge: args.startAge,
+    retirementAge: args.retirementAge,
+    horizonAge: args.horizonAge,
+  })
   const allOption: KapitalChipOption = {
     id: 'all',
     label: 'Alle Produkte',
     shortLabel: 'Alle',
-    results: filtered,
+    results: [aggregateResult],
     color: NEUTRAL_INK,
   }
   const perProduct: KapitalChipOption[] = []

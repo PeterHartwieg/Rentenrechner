@@ -110,11 +110,16 @@ export function KapitalPage({ navigate }: Props) {
       productResults: compareSimulation.simulation.products.filter(
         (p) => p.scenarioId === compareScenarioId,
       ),
+      startAge: compareState.profile.age,
+      retirementAge: compareState.profile.retirementAge,
+      horizonAge: Math.max(LIFECYCLE_HORIZON_AGE, compareState.assumptions.retirementEndAge),
     })
   }, [
     isCombine,
     compareState.assumptions,
     compareSimulation.simulation.products,
+    compareState.profile.age,
+    compareState.profile.retirementAge,
   ])
 
   const chipOptions = isCombine ? combineChipBundle.options : compareChipOptions
