@@ -353,4 +353,56 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
       spy.mockRestore()
     }
   })
+
+  it('§ 1 leading row shows "Beamtenpension" when pensionBaselineType is beamtenpension (R6 regression)', () => {
+    // Regression guard for Codex P2 (PR #284 R6): the old code checked
+    // 'beamten' which never matched the actual enum value 'beamtenpension',
+    // so Beamte users always saw "Gesetzliche Rente" instead of "Beamtenpension".
+    const ws: Workspace = {
+      ...defaultWorkspace,
+      mode: 'combine',
+      baseline: {
+        ...defaultWorkspace.baseline,
+        assumptions: {
+          ...defaultWorkspace.baseline.assumptions,
+          statutoryPension: {
+            ...defaultWorkspace.baseline.assumptions.statutoryPension,
+            pensionBaselineType: 'beamtenpension',
+          },
+        },
+      },
+    }
+    const props = buildProps(ws)
+    const { container } = render(<MeinPlanPage {...props} />)
+    const rows = container.querySelectorAll('.mein-plan-zusammen-table tbody tr')
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    expect(rows[0].textContent).toContain('Beamtenpension')
+    expect(rows[0].textContent).not.toContain('Gesetzliche Rente')
+  })
+
+  it('§ 1 leading row shows "Keine Pflichtrente" when pensionBaselineType is none (R6 regression)', () => {
+    // Regression guard for Codex P2 (PR #284 R6): the old code checked
+    // 'manual' which never matched the actual enum value 'none', so users
+    // without a mandatory pension baseline always saw "Gesetzliche Rente".
+    const ws: Workspace = {
+      ...defaultWorkspace,
+      mode: 'combine',
+      baseline: {
+        ...defaultWorkspace.baseline,
+        assumptions: {
+          ...defaultWorkspace.baseline.assumptions,
+          statutoryPension: {
+            ...defaultWorkspace.baseline.assumptions.statutoryPension,
+            pensionBaselineType: 'none',
+          },
+        },
+      },
+    }
+    const props = buildProps(ws)
+    const { container } = render(<MeinPlanPage {...props} />)
+    const rows = container.querySelectorAll('.mein-plan-zusammen-table tbody tr')
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    expect(rows[0].textContent).toContain('Keine Pflichtrente')
+    expect(rows[0].textContent).not.toContain('Gesetzliche Rente')
+  })
 })

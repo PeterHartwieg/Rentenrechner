@@ -7,6 +7,7 @@ import type { ProductId } from '../../domain'
 import type { ProductResult } from '../../domain/results'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { InstanceCommon } from '../../domain/instances'
+import type { PensionBaselineType } from '../../domain/products/grv'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { getProductMeta } from '../../app/productPresentation'
@@ -645,14 +646,26 @@ function collectZusammenRows(
 
 /**
  * Human-readable label for the statutory pension baseline type shown in the
- * Zusammensetzung leading row. Mirrors the four routing branches in
- * `src/engine/grv.ts` (`grv` / `versorgungswerk` / `beamten` / `manual`).
+ * Zusammensetzung leading row. Exhaustively maps every `PensionBaselineType`
+ * literal so the TypeScript compiler catches any future enum extension at
+ * build time (the `never` default branch triggers a tsc error).
  */
-function pensionBaselineLabel(baselineType: string | undefined): string {
-  if (baselineType === 'versorgungswerk') return 'Versorgungswerk'
-  if (baselineType === 'beamten') return 'Beamten­versorgung'
-  if (baselineType === 'manual') return 'Manuelle Rente'
-  return 'Gesetzliche Rente'
+function pensionBaselineLabel(baselineType: PensionBaselineType | undefined): string {
+  if (baselineType === undefined) return 'Gesetzliche Rente'
+  switch (baselineType) {
+    case 'grv':
+      return 'Gesetzliche Rente'
+    case 'versorgungswerk':
+      return 'Versorgungswerk'
+    case 'beamtenpension':
+      return 'Beamtenpension'
+    case 'none':
+      return 'Keine Pflichtrente'
+    default: {
+      const _exhaustive: never = baselineType
+      return _exhaustive
+    }
+  }
 }
 
 /**
