@@ -108,7 +108,7 @@ tests.
 | Recommender orchestrator (candidate selection, ranking, what-if materialisation) | `src/app/recommender.ts` |
 | Per-product candidate generation (registry pattern) | `src/app/recommenderCandidates/` |
 | Recommendation rules (pure, atoms in/out) | `src/app/recommendations.ts` |
-| Routing | `src/app/useRoute.ts` |
+| Routing (tagged-union `Route` + `ROUTES` constructors + `pathToRoute` / `routeToPath` translators; dynamic segment for `/vertrag/:instanceId`) | `src/app/useRoute.ts` |
 
 ### Content (no React)
 
@@ -132,6 +132,8 @@ tests.
 | Combine-mode "Mein Plan" Sober D surface (lead + headline + § 1 Zusammensetzung + § 2 Sensitivität + right-rail "Deine Angaben" receipt) | `src/features/mein-plan/MeinPlanPage.tsx` |
 | Sensitivity-row perturbation selectors (Rendite konservativ / Renteneintritt 70 / Inflation 3 % / ETF-Beitrag +100 €) — pure, framework-agnostic, re-run `runCombineSimulation` over a cloned workspace | `src/features/mein-plan/sensitivitySelectors.ts` |
 | Policy-default constants for the sensitivity rows (target scenario id, age cap, inflation rate, ETF-bump amount) | `src/features/mein-plan/sensitivityConfig.ts` |
+| Per-contract Vertrag-Detail Sober D surface (header + KPI strip + § 1 "Was wäre, wenn …" scenarios + § 2 "Wie wir das berechnen" provenance + right-rail Vertragsdaten metadata aside; mounted via the dynamic `/vertrag/:instanceId` route, drill-in from Mein Plan § 1 instance rows) | `src/features/vertrag-detail/VertragDetailPage.tsx`, plus co-located `VertragKpiStrip.tsx`, `VertragScenarioTable.tsx`, `VertragProvenanceList.tsx`, `VertragMetadataAside.tsx` |
+| Per-contract decision atoms (weiterführen / beitragsfrei / beitrag-erhöhen / beitrag-senken / kündigen / übertragen) consumed by the Vertrag-Detail scenario table and `applyContractDecision` mutation pipeline | `src/app/contractDecisions.ts` |
 
 ### Storage
 

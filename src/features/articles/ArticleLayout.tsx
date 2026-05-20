@@ -9,6 +9,7 @@ import {
 import { findArticleByPath } from './articleResolver'
 import { RULES_YEAR } from '../../rules'
 import type { Route } from '../../app/useRoute'
+import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { slugify } from '../../utils/slugify'
 
@@ -221,7 +222,7 @@ export function ArticleLayout({
               if (!navigate) return
               if (!shouldUseSpaNavigation(event)) return
               event.preventDefault()
-              navigate('/')
+              navigate(ROUTES.home)
             }}
           >
             Startseite
@@ -234,7 +235,7 @@ export function ArticleLayout({
               if (!navigate) return
               if (!shouldUseSpaNavigation(event)) return
               event.preventDefault()
-              navigate('/artikel')
+              navigate(ROUTES.artikel)
             }}
           >
             Alle Artikel

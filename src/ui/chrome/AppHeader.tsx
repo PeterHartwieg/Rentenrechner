@@ -3,6 +3,7 @@ import { useViewport } from './useViewport'
 import { MobileSheet } from './MobileSheet'
 import { routeToNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface AppHeaderProps {
@@ -37,10 +38,10 @@ const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
  * returns `/methode` (PR 4); 'angaben' returns `/eingaben` (PR 5).
  */
 function clickableTarget(id: ChromeNavId): Route | null {
-  if (id === 'home') return '/'
-  if (id === 'artikel') return '/artikel'
-  if (id === 'method') return '/methode'
-  if (id === 'angaben') return '/eingaben'
+  if (id === 'home') return ROUTES.home
+  if (id === 'artikel') return ROUTES.artikel
+  if (id === 'method') return ROUTES.methode
+  if (id === 'angaben') return ROUTES.eingaben
   return null
 }
 
@@ -110,7 +111,7 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
               return (
                 <a
                   key={item.id}
-                  href={target}
+                  href={routeToPath(target)}
                   className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
                   onClick={(event) => {
                     if (!shouldUseSpaNavigation(event)) return

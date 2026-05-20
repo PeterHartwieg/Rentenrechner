@@ -277,27 +277,24 @@ describe('InfoTip — popover body QA target (issue 17)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// OptimiereVorsorgeModal — modal container and step headings (issue 17)
+// OptimiereVorsorgeModal QA coverage removed in PR 7 — the modal has been
+// replaced by the full-page `/vertrag/:instanceId` drill-in. The shared
+// types imported below are re-used by the LueckeSchliessenModal block that
+// follows.
 // ---------------------------------------------------------------------------
 
-// Minimal stub workspace + combined result so the modal can render.
-// We mock auditPortfolio so the modal doesn't need a fully-shaped workspace.
 import type { Workspace } from '../../../domain/workspace'
 import type { CombinedResult } from '../../../engine/portfolioCombine'
-import type { GermanRules } from '../../../domain/rules'
-import { OptimiereVorsorgeModal } from '../../dashboard/OptimiereVorsorgeModal'
 
-vi.mock('../../../app/optimiereVorsorge', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../../app/optimiereVorsorge')>()
-  return {
-    ...original,
-    auditPortfolio: vi.fn(() => []),
-    createDecisionSimulationCache: vi.fn(() => ({ get: vi.fn(), invalidate: vi.fn() })),
-  }
-})
+// ---------------------------------------------------------------------------
+// LueckeSchliessenModal — modal container and step headings (issue 17)
+// ---------------------------------------------------------------------------
 
-// Minimal shape — only the fields touched by OptimiereVorsorgeModal's render
-// (auditRows comes from the mock above so wsa fields are not traversed).
+import { LueckeSchliessenModal } from '../../dashboard/LueckeSchliessenModal'
+
+// Minimal stub workspace + combined result so the LueckeSchliessenModal
+// can render without a fully-shaped workspace fixture. Was previously
+// shared with the OptimiereVorsorgeModal block (removed in PR 7).
 const STUB_WORKSPACE = {
   schemaVersion: 2,
   mode: 'combine',
@@ -354,88 +351,6 @@ const STUB_COMBINED = {
   kvdrMember: true,
   isEarlyRetirement: false,
 } as unknown as CombinedResult
-
-const STUB_RULES = {} as GermanRules
-
-describe('OptimiereVorsorgeModal — QA targets (issue 17)', () => {
-  beforeEach(() => withQaEnabled())
-
-  it('modal dialog section carries data-qa-target="dashboard.optimiereModal.dialog" with section precision', () => {
-    const { container } = render(
-      <QaFeedbackProvider>
-        <OptimiereVorsorgeModal
-          workspace={STUB_WORKSPACE}
-          baselineCombined={STUB_COMBINED}
-          scenarioId="basis"
-          rules={STUB_RULES}
-          onClose={vi.fn()}
-          onCreatePlans={vi.fn()}
-        />
-      </QaFeedbackProvider>,
-    )
-    const dialog = container.querySelector('[data-qa-target="dashboard.optimiereModal.dialog"]')
-    expect(dialog).not.toBeNull()
-    expect(dialog?.getAttribute('data-qa-section')).toBe('true')
-  })
-
-  it('disclaimer step heading carries data-qa-target', () => {
-    const { container } = render(
-      <QaFeedbackProvider>
-        <OptimiereVorsorgeModal
-          workspace={STUB_WORKSPACE}
-          baselineCombined={STUB_COMBINED}
-          scenarioId="basis"
-          rules={STUB_RULES}
-          onClose={vi.fn()}
-          onCreatePlans={vi.fn()}
-        />
-      </QaFeedbackProvider>,
-    )
-    // Default step is 'disclaimer'
-    const heading = container.querySelector('[data-qa-target="dashboard.optimiereModal.step.disclaimer.heading"]')
-    expect(heading).not.toBeNull()
-  })
-
-  it('disclaimer step primary CTA carries data-qa-target', () => {
-    const { container } = render(
-      <QaFeedbackProvider>
-        <OptimiereVorsorgeModal
-          workspace={STUB_WORKSPACE}
-          baselineCombined={STUB_COMBINED}
-          scenarioId="basis"
-          rules={STUB_RULES}
-          onClose={vi.fn()}
-          onCreatePlans={vi.fn()}
-        />
-      </QaFeedbackProvider>,
-    )
-    const cta = container.querySelector('[data-qa-target="dashboard.optimiereModal.step.disclaimer.primaryCta"]')
-    expect(cta?.tagName.toLowerCase()).toBe('button')
-  })
-
-  it('modal targets are absent when QA mode is off', () => {
-    window.history.replaceState(null, '', '/')
-    const { container } = render(
-      <QaFeedbackProvider>
-        <OptimiereVorsorgeModal
-          workspace={STUB_WORKSPACE}
-          baselineCombined={STUB_COMBINED}
-          scenarioId="basis"
-          rules={STUB_RULES}
-          onClose={vi.fn()}
-          onCreatePlans={vi.fn()}
-        />
-      </QaFeedbackProvider>,
-    )
-    expect(container.querySelector('[data-qa-target="dashboard.optimiereModal.dialog"]')).toBeNull()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// LueckeSchliessenModal — modal container and step headings (issue 17)
-// ---------------------------------------------------------------------------
-
-import { LueckeSchliessenModal } from '../../dashboard/LueckeSchliessenModal'
 
 const STUB_PER_INSTANCE = {} as Record<string, import('../../../domain/results').ProductResult[]>
 
@@ -720,7 +635,6 @@ describe('Z-index layering — CSS-parsed regression (issue 17)', () => {
   /** CSS files that contain modal/dialog/overlay z-index declarations. */
   const MODAL_CSS_FILES = [
     'src/features/dashboard/ContractDecisionMenu.css',
-    'src/features/dashboard/OptimiereVorsorgeModal.css',
     'src/features/dashboard/RecommenderCard.css',
     'src/features/inventory/InventoryWizard.css',
     'src/ui/InfoTip.css',

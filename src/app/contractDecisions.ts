@@ -46,7 +46,7 @@ import { de2026Rules } from '../rules/de2026'
 export interface ContractDecision {
   /** Stable id — `${kind}-${instanceId}` or `${kind}-${sourceId}-to-${targetId}`. */
   id: string
-  kind: 'weiterfuehren' | 'beitragsfrei' | 'kuendigen' | 'uebertragen' | 'beitrag-erhoehen'
+  kind: 'weiterfuehren' | 'beitragsfrei' | 'kuendigen' | 'uebertragen' | 'beitrag-erhoehen' | 'beitrag-senken'
   /** German display label shown on the card. */
   label: string
   sourceInstanceId: string
@@ -451,6 +451,79 @@ export function beitragErhoehenWhatIf(
     workspaceDelta: { kind: 'increase_contribution', instanceId, newMonthlyEUR },
     deltaNettoRente: 0,
     atoms,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3b. beitragSenkenWhatIf
+// ---------------------------------------------------------------------------
+
+/**
+ * Default first-render `newMonthlyEUR` for the Beitrag-senken row used in the
+ * Vertrag-Detail scenario table (PR 7) — half the current contribution,
+ * rounded to the nearest €10. Returns `null` when the current contribution
+ * is too low for a sensible half (≤ €10) so the table can suppress the row.
+ */
+export function defaultBeitragSenkenEUR(currentMonthlyEUR: number): number | null {
+  if (!isFinite(currentMonthlyEUR) || currentMonthlyEUR <= 10) return null
+  return Math.round((currentMonthlyEUR * 0.5) / 10) * 10
+}
+
+/**
+ * Decrease a single instance's monthly contribution to `newMonthlyEUR`.
+ *
+ * Sibling of `beitragErhoehenWhatIf`. Reuses the same `increase_contribution`
+ * workspace delta (the applier writes the value verbatim regardless of
+ * direction); the distinct `kind` lets the UI label the row differently
+ * (`Beitrag senken` vs. `Beitrag erhöhen`) and lets callers route the
+ * decision through `applyContractDecision` unchanged.
+ *
+ * Returns `null` when the instance is missing, has
+ * `status === 'surrendered'` / `'offered'`, or when `newMonthlyEUR` is not
+ * strictly less than the current contribution. No funding-cap atom is
+ * emitted — a contribution decrease can never breach the statutory caps
+ * the cap-hit warning protects against.
+ */
+export function beitragSenkenWhatIf(
+  workspace: Workspace,
+  instanceId: string,
+  newMonthlyEUR: number,
+): ContractDecision | null {
+  const instance = findInstanceById(workspace, instanceId)
+  if (!instance) return null
+  if (instance.status === 'surrendered' || instance.status === 'offered') return null
+
+  const label = instance.label ?? instanceId
+  const slot = detectSlot(instanceId)
+
+  // Determine old contribution for the description and the lower-bound guard.
+  // Slot-keyed field reads mirror `beitragErhoehenWhatIf` exactly.
+  let oldEUR: number
+  if (slot === 'bav') {
+    oldEUR = (instance as { monthlyGrossConversion?: number }).monthlyGrossConversion ?? 0
+  } else if (slot === 'basisrente') {
+    oldEUR = (instance as { monthlyGrossContribution?: number }).monthlyGrossContribution ?? 0
+  } else if (slot === 'altersvorsorgedepot' || slot === 'riester') {
+    oldEUR = (instance as { monthlyOwnContribution?: number }).monthlyOwnContribution ?? 0
+  } else {
+    oldEUR = (instance as { monthlyContribution?: number }).monthlyContribution ?? 0
+  }
+
+  // Suppress non-decreases: proposed amount must be strictly below the current one.
+  // (A no-op decision would surface a misleading `Δ = 0` row in the Vertrag-Detail
+  // scenario table; the page filters `null` decisions out of the row list.)
+  if (newMonthlyEUR >= oldEUR) return null
+  if (newMonthlyEUR < 0) return null
+
+  return {
+    id: `beitrag-senken-${instanceId}-${Math.round(newMonthlyEUR)}`,
+    kind: 'beitrag-senken',
+    label: 'Beitrag senken',
+    sourceInstanceId: instanceId,
+    description: `${label}: Beitrag von ${Math.round(oldEUR)} € auf ${Math.round(newMonthlyEUR)} € pro Monat senken.`,
+    workspaceDelta: { kind: 'increase_contribution', instanceId, newMonthlyEUR },
+    deltaNettoRente: 0,
+    atoms: [],
   }
 }
 

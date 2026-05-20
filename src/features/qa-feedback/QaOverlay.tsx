@@ -42,7 +42,6 @@ interface OutlineRect {
  *
  * The QA overlay outline uses `z-index: 9999` (defined in qa-feedback.css).
  * This is deliberately above all known modal/dialog/overlay layers:
- *   - OptimiereVorsorgeModal backdrop:   z-index: 200
  *   - ContractDecisionMenu overlay:      z-index: 200
  *   - LueckeSchliessenModal:             z-index: 200
  *   - InventoryWizard .inventory-overlay: z-index: 1000

@@ -9,6 +9,7 @@ import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { InstanceCommon } from '../../domain/instances'
 import type { PensionBaselineType } from '../../domain/products/grv'
 import type { Route } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { getProductMeta } from '../../app/productPresentation'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
@@ -243,6 +244,7 @@ export function MeinPlanPage({
                           key={row.key}
                           row={row}
                           projectedMonthly={projectedMonthly}
+                          navigate={navigate}
                         />
                       ))}
                     </tbody>
@@ -434,7 +436,7 @@ function MeinPlanReceiptAside({ profile, assumptions, navigate }: MeinPlanReceip
         if (!navigate) return
         if (!shouldUseSpaNavigation(event)) return
         event.preventDefault()
-        navigate('/eingaben')
+        navigate(ROUTES.eingaben)
       }}
     >
       Angaben bearbeiten
@@ -717,18 +719,52 @@ function sumRowsMonthly(rows: ZusammenRow[]): number {
 function ZusammenRowView({
   row,
   projectedMonthly,
+  navigate,
 }: {
   row: ZusammenRow
   projectedMonthly: number
+  /** SPA navigator threaded from MeinPlanPage. When absent, instance rows
+   *  render as plain text (e.g. SSR / prerender path). Statutory rows are
+   *  always plain text regardless. */
+  navigate?: (target: Route) => void
 }) {
   const share = projectedMonthly > 0 ? row.monthlyNet / projectedMonthly : 0
   const sharePct = Math.round(share * 100)
+
+  // Instance rows drill into `/vertrag/:instanceId` (PR 7). Statutory rows
+  // ('grv' / 'versorgungswerk' / 'beamtenpension' / 'none') have no
+  // per-row detail surface — they render as plain text.
+  const isInstanceRow = row.kind === 'instance'
+  const target: Route | null = isInstanceRow && navigate
+    ? ROUTES.vertrag(row.instanceId)
+    : null
+  const href = target ? routeToPath(target) : undefined
+  const labelNode = (
+    <>
+      <div className="mein-plan-zusammen-source">{row.label}</div>
+      {row.sublabel !== undefined && (
+        <div className="mein-plan-zusammen-sub">{row.sublabel}</div>
+      )}
+    </>
+  )
+
   return (
     <tr>
       <td>
-        <div className="mein-plan-zusammen-source">{row.label}</div>
-        {row.sublabel !== undefined && (
-          <div className="mein-plan-zusammen-sub">{row.sublabel}</div>
+        {target !== null && href !== undefined ? (
+          <a
+            className="mein-plan-zusammen-link"
+            href={href}
+            onClick={(event) => {
+              if (!shouldUseSpaNavigation(event)) return
+              event.preventDefault()
+              if (navigate) navigate(target)
+            }}
+          >
+            {labelNode}
+          </a>
+        ) : (
+          labelNode
         )}
       </td>
       <td className="mein-plan-num-soft" data-label="Beitrag">

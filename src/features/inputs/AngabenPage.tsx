@@ -5,6 +5,7 @@ import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR, activeRules } from '../../rules'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import type { Route } from '../../app/useRoute'
+import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { useAngabenState } from '../../app/useAngabenState'
 import { useViewport } from '../../ui/chrome/useViewport'
@@ -293,7 +294,7 @@ export function AngabenPage({ navigate }: Props) {
               if (!navigate) return
               if (!shouldUseSpaNavigation(event)) return
               event.preventDefault()
-              navigate('/')
+              navigate(ROUTES.home)
             }}
           >
             Startseite
@@ -462,7 +463,7 @@ export function AngabenPage({ navigate }: Props) {
                     if (!navigate) return
                     if (!shouldUseSpaNavigation(event)) return
                     event.preventDefault()
-                    navigate('/methode')
+                    navigate(ROUTES.methode)
                   }}
                 >
                   Methode &amp; Quellen

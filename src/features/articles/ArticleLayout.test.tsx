@@ -5,7 +5,7 @@ import { renderToString } from 'react-dom/server'
 import { cleanup, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
-import type { Route } from '../../app/useRoute'
+import { pathToRoute } from '../../app/useRoute'
 import { ArticleLayout } from './ArticleLayout'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 
@@ -13,8 +13,12 @@ afterEach(() => {
   cleanup()
 })
 
-function inShell(node: ReactElement, route: Route = '/rentenluecke-rechner') {
-  return createElement(AppShell, { route, navigate: () => {}, children: node })
+function inShell(node: ReactElement, path: string = '/rentenluecke-rechner') {
+  return createElement(AppShell, {
+    route: pathToRoute(path),
+    navigate: () => {},
+    children: node,
+  })
 }
 
 describe('ArticleLayout — chrome and metadata invariants', () => {

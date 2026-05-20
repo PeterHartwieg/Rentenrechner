@@ -106,10 +106,12 @@ For the full module map (combine mode, projection, transfer, funding, allowance,
 | SEO content freshness for rule-year update | `docs/seo/yearly-update-checklist.md` |
 | Add a publication / commercial-license feature | `BACKLOG.md` → "Publication polish" |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/{ImpressumPage,DatenschutzPage,LegalFooter}.tsx` |
-| Add a new app route | `src/app/useRoute.ts` (`Route` union + `KNOWN_ROUTES`), then render in `src/App.tsx` |
+| Add a new app route | `src/app/useRoute.ts` — extend the `Route` tagged-union, add a `ROUTES.x` constructor, extend the `routeToPath` + `pathToRoute` switches, then render the new variant in `src/App.tsx`'s `route.kind` dispatch |
 | Change `/eingaben` (Deine Angaben) mode-aware state binding | `src/app/useAngabenState.ts` — captures `detectSavedMode()` once at mount; compare-mode writes STORAGE_KEY_V1, combine-mode projects onto `baseline.assumptions` and writes STORAGE_KEY_V2 |
 | Change the combine-mode "Mein Plan" Sober D surface (lead + headline + § 1 Zusammensetzung + § 2 Sensitivität + right-rail "Deine Angaben" receipt) | `src/features/mein-plan/MeinPlanPage.tsx` |
 | Add or modify a sensitivity row (perturbation over `runCombineSimulation`) | `src/features/mein-plan/sensitivitySelectors.ts` (selectors) + `src/features/mein-plan/sensitivityConfig.ts` (policy-default constants) + `src/features/mein-plan/MeinPlanPage.tsx` `buildSensitivityRows` for the row copy + condition gating |
+| Change the per-contract Vertrag-Detail surface (KPI strip + § 1 scenarios + § 2 provenance + right-rail Vertragsdaten) | `src/features/vertrag-detail/VertragDetailPage.tsx` (page + empty states); sub-components `VertragKpiStrip.tsx`, `VertragScenarioTable.tsx`, `VertragProvenanceList.tsx`, `VertragMetadataAside.tsx` |
+| Add or modify a per-contract decision atom (weiterführen / beitragsfrei / beitrag-erhöhen / beitrag-senken / kündigen / übertragen) | `src/app/contractDecisions.ts` (helpers + types); the Vertrag-Detail scenario table consumes them via `generateContractDecisions` + the dedicated Beitrag-up/Beitrag-down sibling helpers |
 | Deep-link a topic page into the calculator (mode + product preselection) | `src/seo/publicRouteRegistry.ts` (`preselection` on the route entry); `LandingPage` reads `?topic=<slug>` via `resolveTopicPreselection`. Issue #13. |
 | Reuse a payout-mode / fee / Beitragsdynamik / offer-capital section | `src/features/inputs/sections/` |
 | Reuse an inventory field component (`InvField`, option tables) | `src/features/inventory/{fields.tsx,fieldHelpers.ts}` |

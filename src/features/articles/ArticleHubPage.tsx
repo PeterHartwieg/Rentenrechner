@@ -9,6 +9,7 @@ import {
 } from './articleResolver'
 import { RULES_YEAR } from '../../rules'
 import type { Route } from '../../app/useRoute'
+import { pathToRoute } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { slugify } from '../../utils/slugify'
 
@@ -83,7 +84,7 @@ export function ArticleHubPage({ navigate }: Props) {
                           if (!navigate) return
                           if (!shouldUseSpaNavigation(event)) return
                           event.preventDefault()
-                          navigate(entry.path as Route)
+                          navigate(pathToRoute(entry.path))
                         }}
                       >
                         {entry.label}
