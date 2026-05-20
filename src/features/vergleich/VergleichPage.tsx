@@ -170,9 +170,19 @@ export function VergleichPage({
                     SPA progressive enhancement — real `href` for direct
                     navigation / new-tab support, `onClick` intercepts only
                     plain primary clicks when a `navigate` callback is
-                    available (per `shouldUseSpaNavigation`). */}
+                    available (per `shouldUseSpaNavigation`).
+                    PR 290 R3 Codex P2 fix: encode the current scenario id as
+                    a `?scenario=<id>` query string so non-SPA navigations
+                    (Cmd/Ctrl-click, middle-click, JS-disabled fallback, hard
+                    reload) land on the same scenario the user selected on
+                    `VergleichPage`. The detail page reads this on first mount
+                    via its own `useEffect` and updates the workspace UI
+                    state, then routing flows through props as usual. The
+                    `scenario` param is purely a runtime initialiser; we do
+                    NOT promote it into the `Route` tagged-union — keeping
+                    `routeToPath` / `pathToRoute` unchanged. */}
                 <a
-                  href={routeToPath(ROUTES.vergleichDetail)}
+                  href={`${routeToPath(ROUTES.vergleichDetail)}?scenario=${encodeURIComponent(selectedScenarioId)}`}
                   className="vergleich-drilldown__link"
                   onClick={(event) => {
                     if (!navigate) return

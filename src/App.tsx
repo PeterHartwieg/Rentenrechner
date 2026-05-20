@@ -203,11 +203,15 @@ function App() {
       // reads workspace.mode and renders a combine-mode empty state when
       // the user is on Mein Plan. `selectedScenarioId` flows from the lifted
       // `useWorkspaceUiState` so the drill-in respects the user's scenario
-      // pick on `VergleichPage` (PR 290 Codex P1 fix).
+      // pick on `VergleichPage` (PR 290 Codex P1 fix). `onSelectScenario`
+      // lets the page read a `?scenario=<id>` query param on first mount
+      // and sync the workspace UI for non-SPA arrivals (PR 290 R3 Codex P2
+      // fix — Cmd/Ctrl-click, hard reload, JS-disabled fallback).
       body = (
         <VergleichDetailPage
           navigate={navigate}
           selectedScenarioId={workspaceUi.selectedScenarioId}
+          onSelectScenario={workspaceUi.setSelectedScenarioId}
         />
       )
       break

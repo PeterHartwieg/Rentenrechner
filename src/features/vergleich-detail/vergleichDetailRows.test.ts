@@ -5,7 +5,7 @@ import type {
   ProductResult,
   ScenarioAssumptions,
 } from '../../domain'
-import { PRODUCT_REGISTRY, getProductMeta } from '../../engine/productRegistry'
+import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { buildVergleichDetailCardData } from './vergleichDetailRows'
 
 // ---------------------------------------------------------------------------
@@ -446,6 +446,158 @@ describe('buildVergleichDetailCardData', () => {
     expect(tax.value).toBe(80) // 800 − 600 − 120, no GRV-add-back
   })
 
+  // -----------------------------------------------------------------------
+  // Regression: PR 290 R3 CodeRabbit — surface the bAV GRV reduction as its
+  // own deduction row so Im-Alter rows reconcile to `= Netto-Rente`.
+  // -----------------------------------------------------------------------
+  it('bAV with includeGrvReduction: surfaces "− GRV-Reduktion" row equal to the funding estimate', () => {
+    // Setup: gross 800, net 480, kvPv 120, GRV estimate 50. The visible
+    // cascade must include a "− GRV-Reduktion 50" row BEFORE "= Netto-Rente"
+    // so the user can audit: 800 − 150 (tax) − 120 (KV/PV) − 50 (GRV) = 480.
+    const result = makeResult({
+      productId: 'bav',
+      grossMonthlyPayout: 800,
+      netMonthlyPayout: 480,
+      kvPvMonthly: 120,
+    })
+    const includeGrvAssumptions = {
+      retirementEndAge: 87,
+      bav: { includeGrvReduction: true },
+    } as unknown as ScenarioAssumptions
+    const d = buildVergleichDetailCardData({
+      result,
+      retirementAge: 67,
+      yearsToRetirement: DEFAULT_YEARS_TO_RETIREMENT,
+      assumptions: includeGrvAssumptions,
+      bavFunding: makeBavFunding(50),
+    })
+    const rows = d!.sections[2].rows
+    const grv = rows.find((r) => r.label === '− GRV-Reduktion')
+    expect(grv).toBeDefined()
+    expect(grv!.value).toBe(50)
+    expect(grv!.kind).toBe('sub')
+    // Row order: Brutto → tax → KV/PV → GRV → Netto.
+    const labels = rows.map((r) => r.label)
+    expect(labels).toEqual([
+      'Brutto-Rente',
+      '− Einkommensteuer',
+      '− KV / PV',
+      '− GRV-Reduktion',
+      '= Netto-Rente',
+    ])
+  })
+
+  it('bAV with includeGrvReduction: Im-Alter rows reconcile to = Netto-Rente', () => {
+    // Reconciliation invariant — the visible cascade must close exactly:
+    //   gross − tax − KV/PV − GRV ≡ netMonthlyPayout (within rounding).
+    // Without surfacing the GRV row, the previous 4-row layout was off by
+    // exactly the GRV-loss estimate.
+    const result = makeResult({
+      productId: 'bav',
+      grossMonthlyPayout: 800,
+      netMonthlyPayout: 480,
+      kvPvMonthly: 120,
+    })
+    const includeGrvAssumptions = {
+      retirementEndAge: 87,
+      bav: { includeGrvReduction: true },
+    } as unknown as ScenarioAssumptions
+    const d = buildVergleichDetailCardData({
+      result,
+      retirementAge: 67,
+      yearsToRetirement: DEFAULT_YEARS_TO_RETIREMENT,
+      assumptions: includeGrvAssumptions,
+      bavFunding: makeBavFunding(50),
+    })
+    const rows = d!.sections[2].rows
+    const gross = rows.find((r) => r.label === 'Brutto-Rente')!.value
+    const tax = rows.find((r) => r.label === '− Einkommensteuer')!.value
+    const kvPv = rows.find((r) => r.label === '− KV / PV')!.value
+    const grv = rows.find((r) => r.label === '− GRV-Reduktion')!.value
+    const net = rows.find((r) => r.label === '= Netto-Rente')!.value
+    expect(gross - tax - kvPv - grv).toBeCloseTo(net, 6)
+  })
+
+  it('bAV with includeGrvReduction = false: NO "− GRV-Reduktion" row is inserted', () => {
+    // When the flag is off, even passing a non-zero `bavFunding` must leave
+    // the legacy 4-row layout untouched (no GRV row). Defensive against
+    // accidental over-rendering.
+    const result = makeResult({
+      productId: 'bav',
+      grossMonthlyPayout: 800,
+      netMonthlyPayout: 600,
+      kvPvMonthly: 120,
+    })
+    const d = buildVergleichDetailCardData({
+      result,
+      retirementAge: 67,
+      yearsToRetirement: DEFAULT_YEARS_TO_RETIREMENT,
+      assumptions: ASSUMPTIONS, // includeGrvReduction: false
+      bavFunding: makeBavFunding(80),
+    })
+    const labels = d!.sections[2].rows.map((r) => r.label)
+    expect(labels).not.toContain('− GRV-Reduktion')
+    expect(labels).toEqual([
+      'Brutto-Rente',
+      '− Einkommensteuer',
+      '− KV / PV',
+      '= Netto-Rente',
+    ])
+  })
+
+  it('bAV with includeGrvReduction but zero estimate: NO "− GRV-Reduktion" row is inserted', () => {
+    // Edge case: flag on but engine produced a 0 reduction (e.g. user with
+    // §1 SvEV portion only). Don't surface a row with value 0 — the visible
+    // cascade should remain the legacy 4-row layout.
+    const result = makeResult({
+      productId: 'bav',
+      grossMonthlyPayout: 800,
+      netMonthlyPayout: 600,
+      kvPvMonthly: 120,
+    })
+    const includeGrvAssumptions = {
+      retirementEndAge: 87,
+      bav: { includeGrvReduction: true },
+    } as unknown as ScenarioAssumptions
+    const d = buildVergleichDetailCardData({
+      result,
+      retirementAge: 67,
+      yearsToRetirement: DEFAULT_YEARS_TO_RETIREMENT,
+      assumptions: includeGrvAssumptions,
+      bavFunding: makeBavFunding(0),
+    })
+    const labels = d!.sections[2].rows.map((r) => r.label)
+    expect(labels).not.toContain('− GRV-Reduktion')
+  })
+
+  it.each(['etf', 'versicherung', 'basisrente', 'altersvorsorgedepot', 'riester'] as const)(
+    '%s: NO "− GRV-Reduktion" row even with bavFunding + includeGrvReduction',
+    (productId) => {
+      // Non-bAV products must never surface the GRV row — the reduction is
+      // a bAV-payout-only phenomenon. Defensive coverage for the
+      // `result.productId === 'bav'` guard inside `buildPayoutSection`.
+      const result = makeResult({
+        productId,
+        grossMonthlyPayout: 600,
+        netMonthlyPayout: 500,
+        kvPvMonthly: 50,
+      })
+      const includeGrvAssumptions = {
+        retirementEndAge: 87,
+        bav: { includeGrvReduction: true },
+      } as unknown as ScenarioAssumptions
+      const d = buildVergleichDetailCardData({
+        result,
+        retirementAge: 67,
+        yearsToRetirement: DEFAULT_YEARS_TO_RETIREMENT,
+        assumptions: includeGrvAssumptions,
+        bavFunding: makeBavFunding(50),
+      })
+      const labels = d!.sections[2].rows.map((r) => r.label)
+      expect(labels).not.toContain('− GRV-Reduktion')
+    },
+  )
+
   it('ETF surfaces "− Abgeltungsteuer" in Im Alter (§20 Abs. 1 Nr. 1 EStG + §43 EStG)', () => {
     // The ETF payout deduction is statutorily Abgeltungsteuer — labeling it
     // "Einkommensteuer" misnames the legal basis. Other products keep
@@ -469,15 +621,14 @@ describe('buildVergleichDetailCardData', () => {
 
   // -----------------------------------------------------------------------
   // Registry-driven payout tax-label routing (CodeRabbit Minor on PR 290):
-  // derive the product list from PRODUCT_REGISTRY instead of hardcoding it.
-  // Adding a future seventh product surfaces missing tax-label coverage as
-  // a test failure rather than silent drift.
+  // derive the product list from PRODUCT_REGISTRY directly. `entry.metadata.id`
+  // is the canonical source of `ProductId` (non-nullable on a registry entry),
+  // so no null-guard / silent-drop is needed — a future seventh product surfaces
+  // missing tax-label coverage as a test failure rather than silent drift.
   // -----------------------------------------------------------------------
-  const nonEtfProductIds: ProductId[] = PRODUCT_REGISTRY.map((entry) => {
-    const meta = getProductMeta(entry.metadata.id)
-    return meta?.id
-  })
-    .filter((id): id is ProductId => id !== undefined && id !== 'etf')
+  const nonEtfProductIds: ProductId[] = PRODUCT_REGISTRY
+    .map((entry) => entry.metadata.id)
+    .filter((id): id is ProductId => id !== 'etf')
 
   it.each(nonEtfProductIds)(
     '%s surfaces "− Einkommensteuer" in Im Alter (not Abgeltungsteuer)',

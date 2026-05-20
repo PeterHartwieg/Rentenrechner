@@ -25,6 +25,21 @@ interface Props {
    * unknown (e.g. test fixtures, legacy saved state).
    */
   selectedScenarioId: string
+  /**
+   * Setter for the selected scenario id (PR 290 R3 Codex P2 fix). Called
+   * exactly once on first mount when the URL carries a `?scenario=<id>`
+   * query param AND the value matches one of `assumptions.returnScenarios`.
+   * Used so non-SPA navigations (Cmd/Ctrl-click, hard reload, JS-disabled
+   * fallback) preserve the scenario chosen on `VergleichPage` instead of
+   * silently snapping back to `'basis'`. Without this hook, the in-memory
+   * `useWorkspaceUiState` resets to default and the page disagrees with the
+   * comparison table the user came from.
+   *
+   * The param is purely a runtime initialiser — `routeToPath` /
+   * `pathToRoute` do NOT carry the scenario id (we intentionally keep the
+   * `Route` tagged-union narrow per CLAUDE.md "Add a new app route" lane).
+   */
+  onSelectScenario: (id: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -45,7 +60,7 @@ interface Props {
 // untouched", "schemaVersion: 2 unchanged").
 // ---------------------------------------------------------------------------
 
-export function VergleichDetailPage({ navigate, selectedScenarioId }: Props) {
+export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScenario }: Props) {
   // ---- 1. Hook prelude — runs unconditionally before any early return. ----
   const portfolioState = usePortfolioState()
   const compareState = useCalculatorState()
@@ -65,6 +80,36 @@ export function VergleichDetailPage({ navigate, selectedScenarioId }: Props) {
   // conditional return.
   useEffect(() => {
     document.title = 'Wohin geht das Geld | RentenWiki.de'
+  }, [])
+
+  // PR 290 R3 Codex P2 fix: read `?scenario=<id>` from the URL on first mount
+  // so non-SPA navigations (Cmd/Ctrl-click, middle-click, JS-disabled
+  // fallback, hard reload) preserve the scenario the user picked on
+  // `VergleichPage`. The empty dep array means this runs exactly once per
+  // mount; subsequent scenario changes flow through props (set by the
+  // workspace UI elsewhere). Guarded against:
+  //   - missing `window` (SSR / non-browser)
+  //   - malformed URL (`URLSearchParams` throwing on weird input)
+  //   - missing or unknown scenario id (silent no-op)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let parsedId: string | null = null
+    try {
+      const params = new URLSearchParams(window.location.search)
+      parsedId = params.get('scenario')
+    } catch {
+      // Defensive: a malformed query string should never bubble out of the
+      // initialiser. Fall through to the existing prop-driven default.
+      return
+    }
+    if (!parsedId) return
+    const isKnownScenario = assumptions.returnScenarios.some((s) => s.id === parsedId)
+    if (!isKnownScenario) return
+    onSelectScenario(parsedId)
+    // Intentionally empty — first-mount only. Subsequent prop / URL drift is
+    // not handled here; the user navigates back to `VergleichPage` to change
+    // the scenario, which threads through props.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const cardData = useMemo<ReadonlyArray<VergleichDetailCardData>>(() => {

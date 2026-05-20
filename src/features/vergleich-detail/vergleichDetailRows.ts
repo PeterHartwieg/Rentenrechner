@@ -135,39 +135,65 @@ function buildAnsparSection(
   // investiert". Fixes PR 290 Codex P1.
   const monthlyTaxBenefit = monthlyTaxBenefitOf(result.taxAndSvSavings, yearsToRetirement)
 
-  // bAV uniquely surfaces the employer contribution and labels the §3 Nr. 63 /
-  // §1 SvEV tax + SV delta as "Steuer- & SV-Vorteil". The §10 Sonderausgaben
-  // products (Basisrente / AVD / Riester) label theirs as
-  // "Steuerrückerstattung". ETF / pAV have no Ansparphase Steuer line.
-  if (result.productId === 'bav') {
-    if (result.monthlyEmployerContribution > 0) {
-      rows.push({
-        label: '+ Arbeitgeber',
-        value: result.monthlyEmployerContribution,
-        kind: 'add',
-      })
-    }
-    if (monthlyTaxBenefit > 0) {
-      rows.push({
-        label: '+ Steuer- & SV-Vorteil',
-        value: monthlyTaxBenefit,
-        kind: 'add',
-      })
-    }
-  } else if (
-    result.productId === 'basisrente' ||
-    result.productId === 'altersvorsorgedepot' ||
-    result.productId === 'riester'
-  ) {
-    if (monthlyTaxBenefit > 0) {
-      rows.push({
-        label: '+ Steuerrückerstattung',
-        value: monthlyTaxBenefit,
-        kind: 'add',
-      })
+  // PR 290 R3 CodeRabbit fix: route per-product Ansparphase Steuer-line
+  // labelling through an exhaustive switch over `ProductId`. The previous
+  // chain of `result.productId === 'bav'` / `'basisrente'` checks silently
+  // dropped the Steuer row for any future seventh product — a `_exhaustive:
+  // never` default branch surfaces the gap as a compile error instead.
+  //
+  // Routing rules (compare-mode):
+  //   - `'etf'`           → no Steuer row, no employer row
+  //   - `'bav'`           → `+ Arbeitgeber` (when > 0) + `+ Steuer- & SV-Vorteil`
+  //   - `'versicherung'`  → no Steuer row, no employer row
+  //   - `'basisrente'`    → `+ Steuerrückerstattung`
+  //   - `'altersvorsorgedepot'` → `+ Steuerrückerstattung`
+  //   - `'riester'`       → `+ Steuerrückerstattung`
+  //
+  // The discriminant is hoisted into a `ProductId`-typed local before the
+  // switch so the `_exhaustive: never` default branch type-checks cleanly
+  // under `tsc -b` (which is stricter than `tsc --noEmit` about narrowing
+  // a discriminated-union `result.productId` to `never` post-switch).
+  const productId: ProductId = result.productId
+  switch (productId) {
+    case 'etf':
+    case 'versicherung':
+      // No Ansparphase Steuer line — neither product carries a Sonderausgaben
+      // refund or SV-delta in compare-mode.
+      break
+    case 'bav':
+      if (result.monthlyEmployerContribution > 0) {
+        rows.push({
+          label: '+ Arbeitgeber',
+          value: result.monthlyEmployerContribution,
+          kind: 'add',
+        })
+      }
+      if (monthlyTaxBenefit > 0) {
+        rows.push({
+          label: '+ Steuer- & SV-Vorteil',
+          value: monthlyTaxBenefit,
+          kind: 'add',
+        })
+      }
+      break
+    case 'basisrente':
+    case 'altersvorsorgedepot':
+    case 'riester':
+      if (monthlyTaxBenefit > 0) {
+        rows.push({
+          label: '+ Steuerrückerstattung',
+          value: monthlyTaxBenefit,
+          kind: 'add',
+        })
+      }
+      break
+    default: {
+      // A future seventh product must add a case above; this `_exhaustive`
+      // assignment fails `tsc -b` when the switch is non-exhaustive.
+      const _exhaustive: never = productId
+      void _exhaustive
     }
   }
-  // ETF + pAV (`'versicherung'`): no Ansparphase Steuer line — omit row.
 
   // Total = sum of all `add` rows in this section.
   const totalValue = rows.reduce((sum, row) => (row.kind === 'add' ? sum + row.value : sum), 0)
@@ -259,19 +285,40 @@ function buildPayoutSection(
     result.grossMonthlyPayout - netForTaxDerivation - kvPvMonthly,
   )
 
+  // PR 290 R3 CodeRabbit fix: surface the bAV GRV reduction as its own
+  // deduction row BEFORE `= Netto-Rente` so the Im-Alter rows reconcile.
+  // The R1 fix added the reduction back to net for the income-tax derivation
+  // (so the "− Einkommensteuer" row stays correct) but never displayed the
+  // reduction itself — the visible cascade `gross − tax − KV/PV` therefore
+  // did NOT match `= Netto-Rente`. Show the line only when the flag is on
+  // AND the engine produced a positive reduction estimate; otherwise omit
+  // it so non-bAV cards (and bAV without the flag) keep the legacy
+  // 4-row structure.
+  //
+  // Label: "− GRV-Reduktion" mirrors the established German copy in
+  // `src/features/publicPages/bav-rechner.body.mdx` ("GRV-Reduktion durch
+  // sv-freie Umwandlung") and `etf-vs-bav.body.mdx` ("GRV-Reduktion" column).
+  // The narrower term "bAV-Minderung" used in `GRVInputs.tsx` describes the
+  // reduction from the GRV-side, but here we display it on the bAV-payout
+  // side, so the more general "GRV-Reduktion" is the better fit.
+  const rows: VergleichDetailRow[] = [
+    { label: 'Brutto-Rente', value: result.grossMonthlyPayout, kind: 'add' },
+    { label: getPayoutTaxLabel(result.productId), value: incomeTaxMonthly, kind: 'sub' },
+    { label: '− KV / PV', value: kvPvMonthly, kind: 'sub' },
+  ]
+  if (grvReductionMonthly > 0) {
+    rows.push({ label: '− GRV-Reduktion', value: grvReductionMonthly, kind: 'sub' })
+  }
+  rows.push({
+    label: '= Netto-Rente',
+    value: result.netMonthlyPayout,
+    kind: 'total',
+    accent: true,
+  })
+
   return {
     heading: 'Im Alter, pro Monat',
-    rows: [
-      { label: 'Brutto-Rente', value: result.grossMonthlyPayout, kind: 'add' },
-      { label: getPayoutTaxLabel(result.productId), value: incomeTaxMonthly, kind: 'sub' },
-      { label: '− KV / PV', value: kvPvMonthly, kind: 'sub' },
-      {
-        label: '= Netto-Rente',
-        value: result.netMonthlyPayout,
-        kind: 'total',
-        accent: true,
-      },
-    ],
+    rows,
   }
 }
 
