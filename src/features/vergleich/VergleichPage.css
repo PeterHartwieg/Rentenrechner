@@ -426,6 +426,38 @@
   color: var(--vergleich-accent);
 }
 
+/* ---- Drill-down link (PR 10) ------------------------------------------ */
+
+.vergleich-drilldown {
+  margin-top: 8px;
+  padding: 14px 0 4px;
+  border-top: 1px solid var(--vergleich-rule-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.vergleich-drilldown__link {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--vergleich-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.vergleich-drilldown__link:hover {
+  color: var(--vergleich-accent);
+}
+
+.vergleich-drilldown__link:focus-visible {
+  outline: 2px solid var(--vergleich-ink);
+  outline-offset: 2px;
+}
+
 /* ---- Empty state ------------------------------------------------------- */
 
 .vergleich-empty {

@@ -92,6 +92,9 @@ const VertragDetailPage = lazy(() =>
 const KapitalPage = lazy(() =>
   import('./features/kapital/KapitalPage').then((m) => ({ default: m.KapitalPage })),
 )
+const VergleichDetailPage = lazy(() =>
+  import('./features/vergleich-detail/VergleichDetailPage').then((m) => ({ default: m.VergleichDetailPage })),
+)
 
 function App() {
   const { route, navigate } = useRoute()
@@ -185,6 +188,12 @@ function App() {
       // the page itself reads workspace.mode and renders compare-mode or
       // combine-mode data — no per-mode App.tsx branching needed.
       body = <KapitalPage navigate={navigate} />
+      break
+    case 'vergleich-detail':
+      // Compare-mode-only per-product breakdown drill-in (PR 10). The page
+      // reads workspace.mode and renders a combine-mode empty state when
+      // the user is on Mein Plan.
+      body = <VergleichDetailPage navigate={navigate} />
       break
     case 'home':
       if (calculatorView === 'landing') {

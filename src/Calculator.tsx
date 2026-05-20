@@ -449,7 +449,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
       {/* Compare-mode surface (Group G issue 11): the new Sober D
           `VergleichPage` renders a single linear surface — rendite strip,
           neutral 6-product comparison table, pro/contra grid. Replaces the
-          legacy pane switcher + per-pane chart components (PR 9). */}
+          legacy pane switcher + per-pane chart components (PR 9).
+          PR 10 threads `navigate` so the "Wohin geht das Geld →" drill-in
+          link uses SPA navigation to `/vergleich/details`. */}
       {!isCombineMode && (
         <VergleichPage
           profile={profile}
@@ -461,6 +463,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
           selectedScenarioId={result.effectiveScenarioId}
           onSelectScenario={ui.setSelectedScenarioId}
           onOpenAngebot={() => workspace.setActiveView('angebot')}
+          navigate={navigate}
         />
       )}
     </section>

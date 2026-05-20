@@ -2,6 +2,9 @@ import { useMemo } from 'react'
 import './VergleichPage.css'
 import type { ProductId, ScenarioAssumptions, PersonalProfile } from '../../domain'
 import type { SimulationResultBundle } from '../../app/useSimulationResult'
+import type { Route } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { ComparisonPicker } from '../workspace/ComparisonPicker'
@@ -26,6 +29,13 @@ interface Props {
   onSelectScenario: (id: string) => void
   /** Used by the EmptyComparison CTA to switch to the "Eingaben" tab. */
   onOpenAngebot: () => void
+  /**
+   * Optional SPA navigator. When provided, the "Wohin geht das Geld →"
+   * drill-in link uses SPA navigation to `/vergleich/details`; when absent,
+   * the link still works as a real anchor (progressive enhancement). The
+   * compare-mode `Calculator.tsx` always passes this; tests sometimes omit it.
+   */
+  navigate?: (target: Route) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +78,7 @@ export function VergleichPage({
   selectedScenarioId,
   onSelectScenario,
   onOpenAngebot,
+  navigate,
 }: Props) {
   const hasComparisonSet = assumptions.visibleProducts.length > 0
 
@@ -153,6 +164,26 @@ export function VergleichPage({
                 </div>
                 <VergleichProContraGrid products={productsForProContra} />
               </section>
+
+              <div className="vergleich-drilldown">
+                {/* PR 10: drill-in link to the per-product breakdown page.
+                    SPA progressive enhancement — real `href` for direct
+                    navigation / new-tab support, `onClick` intercepts only
+                    plain primary clicks when a `navigate` callback is
+                    available (per `shouldUseSpaNavigation`). */}
+                <a
+                  href={routeToPath(ROUTES.vergleichDetail)}
+                  className="vergleich-drilldown__link"
+                  onClick={(event) => {
+                    if (!navigate) return
+                    if (!shouldUseSpaNavigation(event)) return
+                    event.preventDefault()
+                    navigate(ROUTES.vergleichDetail)
+                  }}
+                >
+                  Wohin geht das Geld? Aufschlüsselung pro Produkt →
+                </a>
+              </div>
             </>
           ) : (
             <EmptyComparison onOpenAngebot={onOpenAngebot} />
