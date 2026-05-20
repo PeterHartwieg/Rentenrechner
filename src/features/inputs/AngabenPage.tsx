@@ -6,7 +6,7 @@ import { RULES_YEAR, activeRules } from '../../rules'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
-import { useCalculatorState } from '../../app/useCalculatorState'
+import { useAngabenState } from '../../app/useAngabenState'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { AngabenPersonSection } from './sections/AngabenPersonSection'
 import { AngabenEinkommenSection } from './sections/AngabenEinkommenSection'
@@ -167,17 +167,26 @@ const BAV_TAX_FREE_MONTHLY =
  *     (round-1 review: the PR objective wanted phone collapse and we shipped
  *     a CSS-reorder that left both cards expanded).
  *
- * State scope: profile / assumptions flow into `useCalculatorState`
- * (compare-mode singleton) and persist via `src/storage.ts` (STORAGE_KEY_V1).
- * Edits on `/eingaben` survive refresh and navigation and are picked up by
- * the compare-mode dashboard on `/`. Combine-mode workspace mapping is out
- * of scope here and tracked as a follow-up GitHub issue — when the user is
- * in combine-mode (workspace), this page still writes the compare-mode
- * singleton; the v2 workspace remains untouched. `familienstand` /
- * `bundesland` / `retirementHealthStatus` stay local where they are not
- * already part of `PersonalProfile` / `ScenarioAssumptions` — only the
- * `retirementHealthStatus` slice routes through the engine-shaped
- * assumptions object (it lives on `assumptions.statutoryPension`).
+ * State scope: profile / assumptions flow through `useAngabenState`
+ * (issue #282 — mode-aware binding). The hook captures the active mode once
+ * at mount via `detectSavedMode()` and routes reads + writes to whichever
+ * store is authoritative:
+ *   - compare-mode (or first-time visitor with no saved state): edits flow
+ *     into `useCalculatorState` and persist via `STORAGE_KEY_V1`; the `/`
+ *     compare dashboard reads the same key on next mount.
+ *   - combine-mode (returning user with `mode: 'combine'` on the v2
+ *     workspace): edits flow into the workspace `baseline.profile` /
+ *     `baseline.assumptions` and persist via `STORAGE_KEY_V2`; the `/`
+ *     combine dashboard reads the same workspace on next mount.
+ * The mode-detection heuristic and the workspace-projection strategy live in
+ * `src/app/useAngabenState.ts` — extend behaviour there, not here.
+ *
+ * `familienstand` and `bundesland` remain ephemeral on this page in BOTH
+ * modes — they are not part of `PersonalProfile` / `ScenarioAssumptions` and
+ * extending those types is a P0 storage-shape change (per CLAUDE.md
+ * "Storage path bypassing `migrateAndValidateState`"). `retirementHealthStatus`
+ * lives on `assumptions.statutoryPension` and DOES persist via the active
+ * store in both modes.
  *
  * Statutory values rendered on this page (return scenarios, Sparer-
  * Pauschbetrag, Bezugsgröße, etc.) are read from `activeRules` and
@@ -192,20 +201,24 @@ export function AngabenPage({ navigate }: Props) {
   const route = publicRouteRegistry['/eingaben']
   const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
 
-  // Compare-mode singleton state. Edits on `/eingaben` flow back through
-  // `useCalculatorState`, which lazy-initialises from URL + localStorage on
-  // mount and writes to STORAGE_KEY_V1 on every change. The `/` dashboard
-  // reads the same key on its next mount, so the two routes stay in sync
-  // round-trip. Combine-mode workspace (STORAGE_KEY_V2) is intentionally not
-  // touched here — see follow-up issue for combine-mode mapping.
-  const { profile, setProfile, assumptions, setAssumptions } = useCalculatorState()
+  // Mode-aware state binding (issue #282). `useAngabenState` captures the
+  // active session mode once at mount and routes reads + writes to either the
+  // compare-mode singleton (STORAGE_KEY_V1) or the combine-mode workspace
+  // (STORAGE_KEY_V2). The `/` dashboard for the matching mode reads the same
+  // store on its next mount, so edits round-trip in both modes. The hook
+  // exposes the same `{ profile, setProfile, assumptions, setAssumptions }`
+  // shape that `useCalculatorState` does — the four section components below
+  // stay mode-agnostic. See `src/app/useAngabenState.ts` for the routing
+  // logic and the heuristic that pins the mode.
+  const { profile, setProfile, assumptions, setAssumptions, mode } = useAngabenState()
   // `familienstand` and `bundesland` are NOT part of `PersonalProfile`, so
-  // they remain ephemeral on this page and reset to the defaults on every
-  // reload / route change. Routing them through `useCalculatorState` would
-  // require extending `PersonalProfile`'s shape — that is a P0 storage-shape
-  // change and is intentionally out of scope for PR 5. Tracked in issue #282.
-  // The visible storage copy below honestly names which fields persist so the
-  // copy and reality cannot drift.
+  // they remain ephemeral on this page in BOTH modes and reset to the
+  // defaults on every reload / route change. Routing them through the
+  // calculator state would require extending `PersonalProfile`'s shape —
+  // a P0 storage-shape change per CLAUDE.md's "Storage path bypassing
+  // `migrateAndValidateState`" P1 guardrail. The visible storage copy below
+  // honestly names which fields persist (and which do not) so the copy and
+  // reality cannot drift.
   const [familienstand, setFamilienstand] = useState<string>(FAMILIENSTAND_DEFAULT)
   const [bundesland, setBundesland] = useState<string>(BUNDESLAND_DEFAULT)
   // `retirementHealthStatus` lives on `assumptions.statutoryPension`, so the
@@ -329,10 +342,11 @@ export function AngabenPage({ navigate }: Props) {
             <div className="angaben-storage-note">
               Alter, Einkommen, Renteneintrittsalter und Annahmen werden{' '}
               <strong>lokal in deinem Browser</strong> gespeichert (localStorage) und
-              bei späteren Besuchen wiederhergestellt. Familienstand und Bundesland
-              werden in dieser Vorschau noch nicht gespeichert (Issue #282). Es
-              werden keine Daten an Server übertragen, keine Cookies gesetzt und
-              keine Identifier persistiert.
+              bei späteren Besuchen wiederhergestellt
+              {mode === 'combine' ? ' (Workspace-Speicher)' : ''}.
+              Familienstand und Bundesland gelten nur für die laufende Sitzung
+              und werden nicht persistiert. Es werden keine Daten an Server
+              übertragen, keine Cookies gesetzt und keine Identifier persistiert.
             </div>
 
             <AngabenPersonSection
@@ -431,12 +445,12 @@ export function AngabenPage({ navigate }: Props) {
               <p className="angaben-aside-body">
                 <strong>Lokal im Browser.</strong> Alter, Einkommen,
                 Renteneintrittsalter und die Renditeannahmen werden im
-                localStorage gespeichert; Familienstand und Bundesland gelten in
-                dieser Vorschau nur für die laufende Sitzung (Issue #282). Keine
-                Server-Übertragung, kein Account, keine Cookies, keine Identifier.
-                Du kannst den Browser-Speicher jederzeit über die Einstellungen
-                deines Browsers leeren — damit ist auch der gespeicherte
-                RentenWiki-Stand entfernt.
+                localStorage gespeichert; Familienstand und Bundesland gelten
+                nur für die laufende Sitzung und werden nicht persistiert.
+                Keine Server-Übertragung, kein Account, keine Cookies, keine
+                Identifier. Du kannst den Browser-Speicher jederzeit über die
+                Einstellungen deines Browsers leeren — damit ist auch der
+                gespeicherte RentenWiki-Stand entfernt.
               </p>
               <p className="angaben-aside-body">
                 Methodische Details und die zugehörigen Paragrafen findest du auf{' '}
