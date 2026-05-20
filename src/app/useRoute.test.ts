@@ -1,38 +1,109 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { normalizeRoute, detectSavedMode, appViewFromMode } from './useRoute'
+import {
+  pathToRoute,
+  routeToPath,
+  detectSavedMode,
+  appViewFromMode,
+  ROUTES,
+  type Route,
+} from './useRoute'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../storage'
 
-describe('normalizeRoute', () => {
-  it('returns "/" for the root path', () => {
-    expect(normalizeRoute('/')).toBe('/')
+describe('pathToRoute', () => {
+  it('returns the home variant for the root path', () => {
+    expect(pathToRoute('/')).toEqual({ kind: 'home' })
   })
 
   it('recognises /impressum and /datenschutz', () => {
-    expect(normalizeRoute('/impressum')).toBe('/impressum')
-    expect(normalizeRoute('/datenschutz')).toBe('/datenschutz')
+    expect(pathToRoute('/impressum')).toEqual({ kind: 'impressum' })
+    expect(pathToRoute('/datenschutz')).toEqual({ kind: 'datenschutz' })
   })
 
   it('recognises /rentenluecke-rechner and /404 (issue #02)', () => {
-    expect(normalizeRoute('/rentenluecke-rechner')).toBe('/rentenluecke-rechner')
-    expect(normalizeRoute('/404')).toBe('/404')
+    expect(pathToRoute('/rentenluecke-rechner')).toEqual({ kind: 'rentenluecke-rechner' })
+    expect(pathToRoute('/404')).toEqual({ kind: 'not-found' })
   })
 
   it('strips a trailing slash on legal routes', () => {
-    expect(normalizeRoute('/impressum/')).toBe('/impressum')
-    expect(normalizeRoute('/datenschutz/')).toBe('/datenschutz')
+    expect(pathToRoute('/impressum/')).toEqual({ kind: 'impressum' })
+    expect(pathToRoute('/datenschutz/')).toEqual({ kind: 'datenschutz' })
   })
 
   it('strips a trailing slash on /rentenluecke-rechner', () => {
-    expect(normalizeRoute('/rentenluecke-rechner/')).toBe('/rentenluecke-rechner')
+    expect(pathToRoute('/rentenluecke-rechner/')).toEqual({ kind: 'rentenluecke-rechner' })
   })
 
-  it('falls back to "/404" for unknown paths (was "/" before issue #02)', () => {
+  it('falls back to "not-found" for unknown paths (was "/" before issue #02)', () => {
     // Previously the legacy `404.html = index.html` copy made unknown URLs look
     // like the calculator. Issue #02 introduces a real /404 page so unknown
     // URLs render the not-found body instead of silently substituting `/`.
-    expect(normalizeRoute('/something-else')).toBe('/404')
-    expect(normalizeRoute('/admin')).toBe('/404')
-    expect(normalizeRoute('')).toBe('/404')
+    expect(pathToRoute('/something-else')).toEqual({ kind: 'not-found' })
+    expect(pathToRoute('/admin')).toEqual({ kind: 'not-found' })
+    expect(pathToRoute('')).toEqual({ kind: 'not-found' })
+  })
+
+  it('parses dynamic /vertrag/:instanceId with a plain id', () => {
+    expect(pathToRoute('/vertrag/etf-tr-msci')).toEqual({
+      kind: 'vertrag',
+      instanceId: 'etf-tr-msci',
+    })
+  })
+
+  it('URL-decodes the :instanceId segment so colon-bearing ids round-trip', () => {
+    // Instance ids in this codebase contain colons (e.g. `bav-...:1f3a-...`)
+    // which encode to %3A in a URL. Round-tripping through routeToPath +
+    // pathToRoute must preserve the original id literally.
+    const original = 'bav-direktversicherung:1f3a-9b'
+    const url = routeToPath({ kind: 'vertrag', instanceId: original })
+    expect(url).toBe('/vertrag/bav-direktversicherung%3A1f3a-9b')
+    expect(pathToRoute(url)).toEqual({ kind: 'vertrag', instanceId: original })
+  })
+
+  it('strips a trailing slash on /vertrag/:instanceId', () => {
+    expect(pathToRoute('/vertrag/etf-tr-msci/')).toEqual({
+      kind: 'vertrag',
+      instanceId: 'etf-tr-msci',
+    })
+  })
+
+  it('falls back to not-found on a malformed percent-encoded :instanceId', () => {
+    // `decodeURIComponent('%E0%A4%A')` throws `URIError: URI malformed`. The
+    // route parser must catch that and surface the not-found empty state
+    // rather than letting the throw escape and crash initial render /
+    // popstate handling.
+    expect(pathToRoute('/vertrag/%E0%A4%A')).toEqual({ kind: 'not-found' })
+    expect(pathToRoute('/vertrag/%E0')).toEqual({ kind: 'not-found' })
+  })
+})
+
+describe('routeToPath', () => {
+  it('renders every static variant to its canonical pathname', () => {
+    const expectations: ReadonlyArray<readonly [Route, string]> = [
+      [ROUTES.home, '/'],
+      [ROUTES.artikel, '/artikel'],
+      [ROUTES.methode, '/methode'],
+      [ROUTES.eingaben, '/eingaben'],
+      [ROUTES.impressum, '/impressum'],
+      [ROUTES.datenschutz, '/datenschutz'],
+      [ROUTES.rentenlueckeRechner, '/rentenluecke-rechner'],
+      [ROUTES.bavRechner, '/bav-rechner'],
+      [ROUTES.etfVsBav, '/etf-vs-bav'],
+      [ROUTES.riesterRechner, '/riester-rechner'],
+      [ROUTES.altersvorsorgedepotRechner, '/altersvorsorgedepot-rechner'],
+      [ROUTES.riesterVsAltersvorsorgedepot, '/riester-vs-altersvorsorgedepot'],
+      [ROUTES.basisrenteRechner, '/basisrente-rechner'],
+      [ROUTES.privateRentenversicherungRechner, '/private-rentenversicherung-rechner'],
+      [ROUTES.renteNettoBerechnen, '/rente-netto-berechnen'],
+      [ROUTES.altersvorsorgeprodukteVergleichen, '/altersvorsorgeprodukte-vergleichen'],
+      [ROUTES.notFound, '/404'],
+    ]
+    for (const [route, expected] of expectations) {
+      expect(routeToPath(route)).toBe(expected)
+    }
+  })
+
+  it('URL-encodes the :instanceId segment for /vertrag', () => {
+    expect(routeToPath(ROUTES.vertrag('bav-x:42'))).toBe('/vertrag/bav-x%3A42')
   })
 })
 

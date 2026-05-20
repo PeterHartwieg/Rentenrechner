@@ -9,6 +9,7 @@ import { MobileSheet } from './MobileSheet'
 import { MethodFooter } from './MethodFooter'
 import { RightRailAccordion } from './RightRailAccordion'
 import { AppShell } from './AppShell'
+import { pathToRoute as R } from '../../app/useRoute'
 
 afterEach(() => {
   cleanup()
@@ -48,7 +49,7 @@ describe('StatusBar', () => {
 describe('AppHeader', () => {
   it('renders kicker + H1 + 5-tab nav on desktop', () => {
     mockViewport('desktop')
-    render(<AppHeader route="/" kicker="TEST" title="Hallo" navigate={() => {}} />)
+    render(<AppHeader route={R('/')} kicker="TEST" title="Hallo" navigate={() => {}} />)
     expect(screen.getByText('TEST')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Hallo' })).toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: /Hauptnavigation/ })
@@ -66,20 +67,20 @@ describe('AppHeader', () => {
 
   it('highlights Startseite as active when route is /', () => {
     mockViewport('desktop')
-    render(<AppHeader route="/" kicker="" title="" navigate={() => {}} />)
+    render(<AppHeader route={R('/')} kicker="" title="" navigate={() => {}} />)
     const active = document.querySelector('.rw-app-header__nav-item--active')
     expect(active?.textContent).toBe('Startseite')
   })
 
   it('renders smaller tablet variant on tablet width', () => {
     mockViewport('tablet')
-    render(<AppHeader route="/" title="Hallo" navigate={() => {}} />)
+    render(<AppHeader route={R('/')} title="Hallo" navigate={() => {}} />)
     expect(document.querySelector('.rw-app-header--tablet')).toBeInTheDocument()
   })
 
   it('drops top nav and shows brand + hamburger on phone', () => {
     mockViewport('phone')
-    render(<AppHeader route="/" title="Hallo" navigate={() => {}} />)
+    render(<AppHeader route={R('/')} title="Hallo" navigate={() => {}} />)
     expect(screen.getByText('RentenWiki')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Menü öffnen/ })).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: /Hauptnavigation/ })).not.toBeInTheDocument()
@@ -87,13 +88,13 @@ describe('AppHeader', () => {
 
   it('switches to serif H1 in editorial mode', () => {
     mockViewport('desktop')
-    render(<AppHeader route="/" title="Editorial" editorial navigate={() => {}} />)
+    render(<AppHeader route={R('/')} title="Editorial" editorial navigate={() => {}} />)
     expect(document.querySelector('.rw-app-header--editorial')).toBeInTheDocument()
   })
 
   it('opens the mobile sheet when hamburger is pressed', () => {
     mockViewport('phone')
-    render(<AppHeader route="/" title="Hallo" navigate={() => {}} />)
+    render(<AppHeader route={R('/')} title="Hallo" navigate={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: /Menü öffnen/ }))
     expect(screen.getByRole('dialog', { name: /Weitere Menüpunkte/ })).toBeInTheDocument()
   })
@@ -101,22 +102,22 @@ describe('AppHeader', () => {
   it('navigate is called when Startseite is clicked on desktop', () => {
     mockViewport('desktop')
     const navigate = vi.fn()
-    render(<AppHeader route="/impressum" title="" navigate={navigate} />)
+    render(<AppHeader route={R('/impressum')} title="" navigate={navigate} />)
     fireEvent.click(screen.getByText('Startseite'))
-    expect(navigate).toHaveBeenCalledWith('/')
+    expect(navigate).toHaveBeenCalledWith(R('/'))
   })
 
   it('navigates to /artikel when Artikel is clicked on desktop (PR 3)', () => {
     mockViewport('desktop')
     const navigate = vi.fn()
-    render(<AppHeader route="/" title="" navigate={navigate} />)
+    render(<AppHeader route={R('/')} title="" navigate={navigate} />)
     fireEvent.click(screen.getByText('Artikel'))
-    expect(navigate).toHaveBeenCalledWith('/artikel')
+    expect(navigate).toHaveBeenCalledWith(R('/artikel'))
   })
 
   it('highlights Artikel as active on a clustered topic route', () => {
     mockViewport('desktop')
-    render(<AppHeader route="/bav-rechner" title="" navigate={() => {}} />)
+    render(<AppHeader route={R('/bav-rechner')} title="" navigate={() => {}} />)
     const active = document.querySelector('.rw-app-header__nav-item--active')
     expect(active?.textContent).toBe('Artikel')
   })
@@ -124,14 +125,14 @@ describe('AppHeader', () => {
   it('navigates to /methode when Methode is clicked on desktop (PR 4)', () => {
     mockViewport('desktop')
     const navigate = vi.fn()
-    render(<AppHeader route="/" title="" navigate={navigate} />)
+    render(<AppHeader route={R('/')} title="" navigate={navigate} />)
     fireEvent.click(screen.getByText('Methode'))
-    expect(navigate).toHaveBeenCalledWith('/methode')
+    expect(navigate).toHaveBeenCalledWith(R('/methode'))
   })
 
   it('highlights Methode as active when route is /methode (PR 4)', () => {
     mockViewport('desktop')
-    render(<AppHeader route="/methode" title="" navigate={() => {}} />)
+    render(<AppHeader route={R('/methode')} title="" navigate={() => {}} />)
     const active = document.querySelector('.rw-app-header__nav-item--active')
     expect(active?.textContent).toBe('Methode')
   })
@@ -139,14 +140,14 @@ describe('AppHeader', () => {
   it('navigates to /eingaben when Angaben is clicked on desktop (PR 5)', () => {
     mockViewport('desktop')
     const navigate = vi.fn()
-    render(<AppHeader route="/" title="" navigate={navigate} />)
+    render(<AppHeader route={R('/')} title="" navigate={navigate} />)
     fireEvent.click(screen.getByText('Angaben'))
-    expect(navigate).toHaveBeenCalledWith('/eingaben')
+    expect(navigate).toHaveBeenCalledWith(R('/eingaben'))
   })
 
   it('highlights Angaben as active when route is /eingaben (PR 5)', () => {
     mockViewport('desktop')
-    render(<AppHeader route="/eingaben" title="" navigate={() => {}} />)
+    render(<AppHeader route={R('/eingaben')} title="" navigate={() => {}} />)
     const active = document.querySelector('.rw-app-header__nav-item--active')
     expect(active?.textContent).toBe('Angaben')
   })
@@ -156,7 +157,7 @@ describe('MobileNav', () => {
   beforeEach(() => mockViewport('phone'))
 
   it('renders all five tabs', () => {
-    render(<MobileNav route="/" navigate={() => {}} />)
+    render(<MobileNav route={R('/')} navigate={() => {}} />)
     const nav = screen.getByRole('navigation', { name: /Mobile Hauptnavigation/ })
     // PR 5: "Plan" placeholder replaced by clickable "Angaben"
     // (routes to /eingaben). Annahmen tab is removed (folds into § 4).
@@ -167,13 +168,13 @@ describe('MobileNav', () => {
   })
 
   it('marks Start as active when route is /', () => {
-    render(<MobileNav route="/" navigate={() => {}} />)
+    render(<MobileNav route={R('/')} navigate={() => {}} />)
     const active = document.querySelector('.rw-mobile-nav__tab--active')
     expect(active?.textContent).toBe('Start')
   })
 
   it('keeps the unbuilt tabs as inert placeholders (PR 5: Vergleich only)', () => {
-    render(<MobileNav route="/" navigate={() => {}} />)
+    render(<MobileNav route={R('/')} navigate={() => {}} />)
     const placeholders = document.querySelectorAll('.rw-mobile-nav__tab--placeholder')
     // PR 3 promoted Artikel; PR 4 promoted Methode; PR 5 promotes Angaben.
     // Only Vergleich remains as an inert placeholder (PR 9 will ship it).
@@ -182,46 +183,46 @@ describe('MobileNav', () => {
 
   it('navigates home when Start is tapped', () => {
     const navigate = vi.fn()
-    render(<MobileNav route="/impressum" navigate={navigate} />)
+    render(<MobileNav route={R('/impressum')} navigate={navigate} />)
     fireEvent.click(screen.getByText('Start'))
-    expect(navigate).toHaveBeenCalledWith('/')
+    expect(navigate).toHaveBeenCalledWith(R('/'))
   })
 
   it('navigates to /artikel when Artikel is tapped (PR 3)', () => {
     const navigate = vi.fn()
-    render(<MobileNav route="/" navigate={navigate} />)
+    render(<MobileNav route={R('/')} navigate={navigate} />)
     fireEvent.click(screen.getByText('Artikel'))
-    expect(navigate).toHaveBeenCalledWith('/artikel')
+    expect(navigate).toHaveBeenCalledWith(R('/artikel'))
   })
 
   it('highlights Artikel as active on a clustered topic route', () => {
-    render(<MobileNav route="/bav-rechner" navigate={() => {}} />)
+    render(<MobileNav route={R('/bav-rechner')} navigate={() => {}} />)
     const active = document.querySelector('.rw-mobile-nav__tab--active')
     expect(active?.textContent).toBe('Artikel')
   })
 
   it('navigates to /methode when Methode is tapped (PR 4)', () => {
     const navigate = vi.fn()
-    render(<MobileNav route="/" navigate={navigate} />)
+    render(<MobileNav route={R('/')} navigate={navigate} />)
     fireEvent.click(screen.getByText('Methode'))
-    expect(navigate).toHaveBeenCalledWith('/methode')
+    expect(navigate).toHaveBeenCalledWith(R('/methode'))
   })
 
   it('highlights Methode as active when route is /methode (PR 4)', () => {
-    render(<MobileNav route="/methode" navigate={() => {}} />)
+    render(<MobileNav route={R('/methode')} navigate={() => {}} />)
     const active = document.querySelector('.rw-mobile-nav__tab--active')
     expect(active?.textContent).toBe('Methode')
   })
 
   it('navigates to /eingaben when Angaben is tapped (PR 5)', () => {
     const navigate = vi.fn()
-    render(<MobileNav route="/" navigate={navigate} />)
+    render(<MobileNav route={R('/')} navigate={navigate} />)
     fireEvent.click(screen.getByText('Angaben'))
-    expect(navigate).toHaveBeenCalledWith('/eingaben')
+    expect(navigate).toHaveBeenCalledWith(R('/eingaben'))
   })
 
   it('highlights Angaben as active when route is /eingaben (PR 5)', () => {
-    render(<MobileNav route="/eingaben" navigate={() => {}} />)
+    render(<MobileNav route={R('/eingaben')} navigate={() => {}} />)
     const active = document.querySelector('.rw-mobile-nav__tab--active')
     expect(active?.textContent).toBe('Angaben')
   })
@@ -245,7 +246,7 @@ describe('MobileSheet', () => {
     const onClose = vi.fn()
     render(<MobileSheet open onClose={onClose} navigate={navigate} />)
     fireEvent.click(screen.getByText('Datenschutz'))
-    expect(navigate).toHaveBeenCalledWith('/datenschutz')
+    expect(navigate).toHaveBeenCalledWith(R('/datenschutz'))
     expect(onClose).toHaveBeenCalled()
   })
 })
@@ -359,7 +360,7 @@ describe('AppShell composition', () => {
   it('renders disclaimer, status bar, header, body, footer on desktop', () => {
     mockViewport('desktop')
     render(
-      <AppShell route="/" navigate={() => {}} title="Demo">
+      <AppShell route={R('/')} navigate={() => {}} title="Demo">
         <div data-testid="body">page body</div>
       </AppShell>,
     )
@@ -377,7 +378,7 @@ describe('AppShell composition', () => {
   it('mounts MobileNav and skips MethodFooter on phone', () => {
     mockViewport('phone')
     render(
-      <AppShell route="/" navigate={() => {}} title="Demo">
+      <AppShell route={R('/')} navigate={() => {}} title="Demo">
         <div>body</div>
       </AppShell>,
     )
@@ -389,7 +390,7 @@ describe('AppShell composition', () => {
   it('applies editorial mode class when prop is true', () => {
     mockViewport('desktop')
     render(
-      <AppShell route="/" navigate={() => {}} editorial>
+      <AppShell route={R('/')} navigate={() => {}} editorial>
         <div>body</div>
       </AppShell>,
     )
@@ -399,7 +400,7 @@ describe('AppShell composition', () => {
   it('survives every viewport variant', () => {
     eachViewport(() => {
       const { unmount } = render(
-        <AppShell route="/" navigate={() => {}} title="Demo">
+        <AppShell route={R('/')} navigate={() => {}} title="Demo">
           <div>body</div>
         </AppShell>,
       )

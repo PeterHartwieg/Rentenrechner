@@ -9,15 +9,46 @@ import type { Route } from '../../app/useRoute'
  */
 export type ChromeNavId = 'home' | 'angaben' | 'compare' | 'artikel' | 'method'
 
+/**
+ * Map a current `Route` to the chrome nav tab id it should highlight.
+ * Returns `null` for legal pages (no chrome tab applicable) and for the
+ * not-found view.
+ *
+ * The PR 7 `vertrag` dynamic route is a combine-mode drill-in from Mein
+ * Plan; it highlights the "Startseite" tab so the chrome reads coherently
+ * with the user's sense of "I'm still on my plan".
+ */
 export function routeToNavId(route: Route): ChromeNavId | null {
-  if (route === '/') return 'home'
-  if (route === '/methode') return 'method'
-  if (route === '/eingaben') return 'angaben'
-  if (route === '/impressum' || route === '/datenschutz') return null
-  // Every topic page + the `/artikel` hub itself maps to the "Artikel" tab
-  // (PR 3). PR 4 added `/methode` and maps it to "method"; PR 5 added
-  // `/eingaben` and maps it to "angaben". The remaining nav tab
-  // ('compare') is a visual placeholder rendered as a non-clickable span
-  // in `AppHeader`.
-  return 'artikel'
+  switch (route.kind) {
+    case 'home':
+      return 'home'
+    case 'vertrag':
+      // Drill-in from Mein Plan — keep the home tab lit.
+      return 'home'
+    case 'methode':
+      return 'method'
+    case 'eingaben':
+      return 'angaben'
+    case 'impressum':
+    case 'datenschutz':
+    case 'not-found':
+      return null
+    case 'artikel':
+    case 'rentenluecke-rechner':
+    case 'bav-rechner':
+    case 'etf-vs-bav':
+    case 'riester-rechner':
+    case 'altersvorsorgedepot-rechner':
+    case 'riester-vs-altersvorsorgedepot':
+    case 'basisrente-rechner':
+    case 'private-rentenversicherung-rechner':
+    case 'rente-netto-berechnen':
+    case 'altersvorsorgeprodukte-vergleichen':
+      // Every topic page + the `/artikel` hub maps to the "Artikel" tab.
+      return 'artikel'
+    default: {
+      const _exhaustive: never = route
+      return _exhaustive
+    }
+  }
 }

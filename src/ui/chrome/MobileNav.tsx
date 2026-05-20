@@ -1,5 +1,6 @@
 import { routeToNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface MobileNavProps {
@@ -18,11 +19,11 @@ interface NavEntry {
 // "Annahmen" placeholders are removed (Annahmen folds into /eingaben § 4;
 // Mein Plan ships in PR 6). "Vergleich" remains a placeholder until PR 9.
 const ITEMS: readonly NavEntry[] = [
-  { id: 'home', label: 'Start', target: '/' },
-  { id: 'angaben', label: 'Angaben', target: '/eingaben' },
+  { id: 'home', label: 'Start', target: ROUTES.home },
+  { id: 'angaben', label: 'Angaben', target: ROUTES.eingaben },
   { id: 'compare', label: 'Vergleich', target: null },
-  { id: 'artikel', label: 'Artikel', target: '/artikel' },
-  { id: 'method', label: 'Methode', target: '/methode' },
+  { id: 'artikel', label: 'Artikel', target: ROUTES.artikel },
+  { id: 'method', label: 'Methode', target: ROUTES.methode },
 ]
 
 /**
@@ -46,7 +47,7 @@ export function MobileNav({ route, navigate }: MobileNavProps) {
           return (
             <a
               key={item.id}
-              href={target}
+              href={routeToPath(target)}
               className={className}
               onClick={(event) => {
                 if (!shouldUseSpaNavigation(event)) return

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import type { Route } from '../../app/useRoute'
+import { ROUTES } from '../../app/useRoute'
 import './legal.css'
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
 export function LegalLayout({ title, navigate, children }: Props) {
   function goHome(event: React.MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
-    navigate('/')
+    navigate(ROUTES.home)
   }
 
   return (
@@ -36,7 +37,7 @@ export function LegalLayout({ title, navigate, children }: Props) {
           href="/impressum/"
           onClick={(event) => {
             event.preventDefault()
-            navigate('/impressum')
+            navigate(ROUTES.impressum)
           }}
         >
           Impressum
@@ -46,7 +47,7 @@ export function LegalLayout({ title, navigate, children }: Props) {
           href="/datenschutz/"
           onClick={(event) => {
             event.preventDefault()
-            navigate('/datenschutz')
+            navigate(ROUTES.datenschutz)
           }}
         >
           Datenschutzerklärung

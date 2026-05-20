@@ -3,7 +3,7 @@
  *
  * Consumed by:
  *   - ContractDecisionMenu (per-instance "Optionen" panel, B5)
- *   - OptimiereVorsorgeModal (portfolio-level modal, B6)
+ *   - ContractDecisionMenu (combine-mode per-contract pop-out)
  *
  * Extracted from ContractDecisionMenu.tsx (Group G issue B5).
  * React-only; no engine imports.
@@ -51,6 +51,7 @@ const KIND_LABELS: Record<ContractDecision['kind'], string> = {
   kuendigen: 'Kündigen',
   uebertragen: 'Übertragen',
   'beitrag-erhoehen': 'Beitrag erhöhen',
+  'beitrag-senken': 'Beitrag senken',
 }
 
 // ---------------------------------------------------------------------------

@@ -28,7 +28,7 @@ import { renderToString } from 'react-dom/server'
 import { cleanup, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
-import type { Route } from '../../app/useRoute'
+import { pathToRoute } from '../../app/useRoute'
 import { LandingPage, type LandingChoice } from './LandingPage'
 import { HUB_CLUSTERS, FEATURED_ARTICLE_HREFS, countHubArticles } from './hubClusters'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
@@ -40,8 +40,12 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-function inShell(node: ReactElement, route: Route = '/') {
-  return createElement(AppShell, { route, navigate: () => {}, children: node })
+function inShell(node: ReactElement, path: string = '/') {
+  return createElement(AppShell, {
+    route: pathToRoute(path),
+    navigate: () => {},
+    children: node,
+  })
 }
 
 // `useRoute.ts` reads `urlShare.readUrlState()` to decide whether a share-URL

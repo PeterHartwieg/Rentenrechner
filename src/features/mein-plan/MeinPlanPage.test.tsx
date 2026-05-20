@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
-import type { Route } from '../../app/useRoute'
+import { pathToRoute, ROUTES } from '../../app/useRoute'
 import { MeinPlanPage } from './MeinPlanPage'
 import { defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
@@ -24,8 +24,12 @@ afterEach(() => {
   mockViewport('desktop')
 })
 
-function inShell(node: ReactElement, route: Route = '/') {
-  return createElement(AppShell, { route, navigate: () => {}, children: node })
+function inShell(node: ReactElement, path: string = '/') {
+  return createElement(AppShell, {
+    route: pathToRoute(path),
+    navigate: () => {},
+    children: node,
+  })
 }
 
 /**
@@ -180,7 +184,7 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     ) as HTMLAnchorElement | null
     expect(editLink).not.toBeNull()
     fireEvent.click(editLink!)
-    expect(navigate).toHaveBeenCalledWith('/eingaben')
+    expect(navigate).toHaveBeenCalledWith(ROUTES.eingaben)
   })
 
   it('preserves modified-click default on the receipt edit link', () => {

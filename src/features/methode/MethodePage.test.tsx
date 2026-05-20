@@ -5,7 +5,7 @@ import { renderToString } from 'react-dom/server'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
-import type { Route } from '../../app/useRoute'
+import { pathToRoute, ROUTES } from '../../app/useRoute'
 import { MethodePage } from './MethodePage'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { activeRules, RULES_YEAR } from '../../rules'
@@ -17,8 +17,12 @@ afterEach(() => {
   mockViewport('desktop')
 })
 
-function inShell(node: ReactElement, route: Route = '/methode') {
-  return createElement(AppShell, { route, navigate: () => {}, children: node })
+function inShell(node: ReactElement, path: string = '/methode') {
+  return createElement(AppShell, {
+    route: pathToRoute(path),
+    navigate: () => {},
+    children: node,
+  })
 }
 
 describe('MethodePage — /methode route content', () => {
@@ -150,7 +154,7 @@ describe('MethodePage — /methode route content', () => {
     const back = container.querySelector('.methode-breadcrumb-back') as HTMLAnchorElement | null
     expect(back).not.toBeNull()
     fireEvent.click(back!)
-    expect(navigate).toHaveBeenCalledWith('/')
+    expect(navigate).toHaveBeenCalledWith(ROUTES.home)
   })
 
   it('preserves modified-click default on the breadcrumb back-link', () => {

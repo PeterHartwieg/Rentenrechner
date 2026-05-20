@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { Route } from '../../app/useRoute'
+import { ROUTES } from '../../app/useRoute'
 
 interface MobileSheetProps {
   open: boolean
@@ -16,8 +17,8 @@ interface SheetItem {
 const ITEMS: readonly SheetItem[] = [
   { label: 'Methode', href: '#methode' },
   { label: 'Annahmen', href: '#annahmen' },
-  { label: 'Datenschutz', route: '/datenschutz' },
-  { label: 'Impressum', route: '/impressum' },
+  { label: 'Datenschutz', route: ROUTES.datenschutz },
+  { label: 'Impressum', route: ROUTES.impressum },
   { label: 'GitHub', href: 'https://github.com/PeterHartwieg/Rentenrechner' },
   { label: 'Spenden', href: 'https://github.com/sponsors/PeterHartwieg' },
 ]

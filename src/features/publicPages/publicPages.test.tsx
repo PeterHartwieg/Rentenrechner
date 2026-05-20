@@ -5,7 +5,7 @@ import { renderToString } from 'react-dom/server'
 import { cleanup, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
-import type { Route } from '../../app/useRoute'
+import { pathToRoute } from '../../app/useRoute'
 import { RentenluckeRechnerPage } from './RentenluckeRechnerPage'
 import { RiesterRechnerPage } from './RiesterRechnerPage'
 import { AltersvorsorgedepotRechnerPage } from './AltersvorsorgedepotRechnerPage'
@@ -35,8 +35,12 @@ afterEach(() => {
  * (e.g. an article page that incorrectly lights the Startseite tab) stay
  * detectable.
  */
-function inShell(node: ReactElement, route: Route = '/') {
-  return createElement(AppShell, { route, navigate: () => {}, children: node })
+function inShell(node: ReactElement, path: string = '/') {
+  return createElement(AppShell, {
+    route: pathToRoute(path),
+    navigate: () => {},
+    children: node,
+  })
 }
 
 describe('RentenluckeRechnerPage — visible content for prerender', () => {

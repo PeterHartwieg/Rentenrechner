@@ -37,7 +37,9 @@ import {
   applyContractDecision,
   generateContractDecisions,
   beitragErhoehenWhatIf,
+  beitragSenkenWhatIf,
   defaultBeitragErhoehenEUR,
+  defaultBeitragSenkenEUR,
   defaultHaircutFor,
 } from './contractDecisions'
 import { de2026Rules } from '../rules/de2026'
@@ -907,6 +909,105 @@ describe('beitragErhoehenWhatIf (B1)', () => {
     expect(defaultBeitragErhoehenEUR(130)).toBe(200)   // 195 → rounds to 200
     expect(defaultBeitragErhoehenEUR(70)).toBe(110)    // 105 → rounds to 110
     expect(defaultBeitragErhoehenEUR(0)).toBe(0)       // 0 → 0
+  })
+
+  it('beitragSenkenWhatIf: emits a beitrag-senken card when newMonthly < currentMonthly', () => {
+    const ws = makeDilanWorkspace()
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    const currentEUR = bavInstance.monthlyGrossConversion
+    expect(currentEUR).toBeGreaterThan(0)
+
+    const decision = beitragSenkenWhatIf(ws, bavInstance.instanceId, Math.max(0, currentEUR - 100))
+    expect(decision).not.toBeNull()
+    expect(decision!.kind).toBe('beitrag-senken')
+    expect(decision!.label).toBe('Beitrag senken')
+    expect(decision!.workspaceDelta).toEqual({
+      kind: 'increase_contribution',
+      instanceId: bavInstance.instanceId,
+      newMonthlyEUR: Math.max(0, currentEUR - 100),
+    })
+    expect(decision!.atoms).toEqual([])
+  })
+
+  it('beitragSenkenWhatIf: returns null when newMonthly >= currentMonthly', () => {
+    const ws = makeDilanWorkspace()
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    const currentEUR = bavInstance.monthlyGrossConversion
+    expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, currentEUR)).toBeNull()
+    expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, currentEUR + 50)).toBeNull()
+  })
+
+  it('beitragSenkenWhatIf: rejects non-finite proposed values (NaN / ±Infinity)', () => {
+    // NaN and Infinity must NOT escape into a workspace delta — they would
+    // poison the applied simulation downstream. The guard sits before the
+    // < / >= comparisons so non-finite input never reaches them.
+    const ws = makeDilanWorkspace()
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, Number.NaN)).toBeNull()
+    expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, Number.POSITIVE_INFINITY)).toBeNull()
+    expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, Number.NEGATIVE_INFINITY)).toBeNull()
+  })
+
+  it('beitragErhoehenWhatIf: rejects non-finite proposed values (NaN / ±Infinity)', () => {
+    const ws = makeDilanWorkspace()
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    expect(beitragErhoehenWhatIf(ws, bavInstance.instanceId, Number.NaN)).toBeNull()
+    expect(beitragErhoehenWhatIf(ws, bavInstance.instanceId, Number.POSITIVE_INFINITY)).toBeNull()
+    expect(beitragErhoehenWhatIf(ws, bavInstance.instanceId, Number.NEGATIVE_INFINITY)).toBeNull()
+  })
+
+  it('beitragSenkenWhatIf: returns null on surrendered / offered / missing instances', () => {
+    const ws = makeDilanWorkspace()
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    expect(beitragSenkenWhatIf(ws, 'bav-does-not-exist', 100)).toBeNull()
+
+    const wsSurrendered: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: ws.baseline.assumptions.bav.map((b) =>
+            b.instanceId === bavInstance.instanceId ? { ...b, status: 'surrendered' as const } : b,
+          ),
+        },
+      },
+    }
+    expect(beitragSenkenWhatIf(wsSurrendered, bavInstance.instanceId, 50)).toBeNull()
+
+    // Offered instances (broker-supplied offer not yet accepted) are also
+    // rejected — the workspace cannot apply a contribution change to a
+    // contract that is not under contract yet.
+    const wsOffered: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: ws.baseline.assumptions.bav.map((b) =>
+            b.instanceId === bavInstance.instanceId ? { ...b, status: 'offered' as const } : b,
+          ),
+        },
+      },
+    }
+    expect(beitragSenkenWhatIf(wsOffered, bavInstance.instanceId, 50)).toBeNull()
+  })
+
+  it('beitragSenkenWhatIf: applyContractDecision writes the lower amount verbatim', () => {
+    const ws = makeDilanWorkspace()
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    const newAmount = Math.max(0, bavInstance.monthlyGrossConversion - 120)
+    const decision = beitragSenkenWhatIf(ws, bavInstance.instanceId, newAmount)!
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(newAmount)
+  })
+
+  it('defaultBeitragSenkenEUR: halves currentMonthly to nearest €10, suppresses below threshold', () => {
+    expect(defaultBeitragSenkenEUR(200)).toBe(100)   // 100 exactly
+    expect(defaultBeitragSenkenEUR(170)).toBe(90)    // 85 → rounds to 90
+    expect(defaultBeitragSenkenEUR(110)).toBe(60)    // 55 → rounds to 60
+    expect(defaultBeitragSenkenEUR(10)).toBeNull()   // exactly at threshold — caller suppresses row
+    expect(defaultBeitragSenkenEUR(0)).toBeNull()
   })
 
   it('defaultHaircutFor is exported (B3 dependency)', () => {

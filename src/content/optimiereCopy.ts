@@ -102,6 +102,8 @@ export const DECISION_KIND_DESCRIPTIONS: Record<ContractDecision['kind'], string
     'Vertrag läuft unverändert weiter — diese Option dient als Referenz für den Vergleich.',
   'beitrag-erhoehen':
     'Du zahlst ab sofort einen höheren monatlichen Beitrag in diesen Vertrag ein.',
+  'beitrag-senken':
+    'Du zahlst ab sofort einen geringeren monatlichen Beitrag in diesen Vertrag ein.',
   beitragsfrei:
     'Du stellst den Vertrag beitragsfrei: keine weiteren Einzahlungen, das angesparte Kapital bleibt investiert.',
   kuendigen:
@@ -130,7 +132,8 @@ export function defaultScenarioName(
   ctx: ScenarioNameContext,
 ): string {
   switch (decision.kind) {
-    case 'beitrag-erhoehen': {
+    case 'beitrag-erhoehen':
+    case 'beitrag-senken': {
       const eur = decision.workspaceDelta.kind === 'increase_contribution'
         ? decision.workspaceDelta.newMonthlyEUR
         : (ctx.neuerEUR ?? 0)

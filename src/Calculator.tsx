@@ -73,7 +73,6 @@ import { InventoryWizard } from './features/inventory/InventoryWizard'
 import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSidebar'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
-import { OptimiereVorsorgeModal } from './features/dashboard/OptimiereVorsorgeModal'
 import { VergleichDashboard } from './features/dashboard/VergleichDashboard'
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
@@ -179,7 +178,6 @@ interface CalculatorProps {
 function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome }: CalculatorProps) {
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
   const [showLueckeModal, setShowLueckeModal] = useState(false)
-  const [showOptimiereModal, setShowOptimiereModal] = useState(false)
   const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
   // Issue 23: product tab to pre-select when navigating from a ProductEditCard
   // default-state notice to the InputsPanel ("Einstellungen anpassen").
@@ -436,18 +434,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     portfolioState.workspace.baseline.assumptions.returnScenarios.find(
       (s) => s.id === combineBasisScenarioId,
     )?.label ?? 'Basis'
-  // B6: check whether the workspace has at least one active or paid-up instance.
-  // Drives the disabled state of the "Optimiere deine Vorsorge" button.
-  const hasActiveOrPaidUpInstances = useMemo(() => {
-    if (!isCombineMode) return false
-    const wsa = portfolioState.workspace.baseline.assumptions
-    const all = [
-      ...wsa.bav, ...wsa.etf, ...wsa.insurance,
-      ...wsa.basisrente, ...wsa.altersvorsorgedepot, ...wsa.riester,
-    ]
-    return all.some((inst) => inst.status === 'active' || inst.status === 'paid_up')
-  }, [isCombineMode, portfolioState.workspace.baseline.assumptions])
-
   // GRV contribution timeline for BreakEvenChart (#27).
   // Compare-mode: use the singleton profile + assumptions; wire bAV GRV reduction.
   // PR 6: the combine-mode timeline is no longer needed — the lifecycle pane
@@ -487,12 +473,11 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             navigate={navigate}
           />
 
-          {/* "Wo geht mein nächster Euro hin?" + "Optimiere deine Vorsorge"
-              triggers — relocated here from the deleted RentenluckeDashboard
-              so the recommender + portfolio-audit remain reachable from
-              Mein Plan. PR 7+ folds these into the new Vertrag-im-Detail
-              architecture; until then they ship as compact CTAs below the
-              page surface. */}
+          {/* "Wo geht mein nächster Euro hin?" CTA. The previous
+              "Optimiere deine Vorsorge" portfolio-audit modal was replaced
+              in PR 7 by the per-instance `/vertrag/:instanceId` drill-in
+              reached via the Mein Plan § 1 Zusammensetzung row links; the
+              modal entry point is gone here. */}
           {combineBasisResult && (
             <div className="mein-plan-cta-row" role="group" aria-label="Plan anpassen">
               <button
@@ -501,19 +486,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
                 onClick={() => setShowLueckeModal(true)}
               >
                 Beiträge anpassen
-              </button>
-              <button
-                type="button"
-                className="mein-plan-cta mein-plan-cta--accent"
-                onClick={() => setShowOptimiereModal(true)}
-                disabled={!hasActiveOrPaidUpInstances}
-                title={
-                  hasActiveOrPaidUpInstances
-                    ? undefined
-                    : 'Erst nach mindestens einem aktiven Vertrag verfügbar.'
-                }
-              >
-                Vorsorge optimieren
               </button>
             </div>
           )}
@@ -529,18 +501,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               onSaveAsPlan={(candidate) => {
                 const whatIf = buildWhatIfFromCandidate(portfolioState.baseline, candidate)
                 portfolioState.addWhatIf(whatIf)
-              }}
-            />
-          )}
-          {showOptimiereModal && combineBasisResult && (
-            <OptimiereVorsorgeModal
-              workspace={portfolioState.workspace}
-              baselineCombined={combineBasisResult}
-              scenarioId={combineBasisScenarioId}
-              rules={de2026Rules}
-              onClose={() => setShowOptimiereModal(false)}
-              onCreatePlans={(whatIfs) => {
-                whatIfs.forEach((wi) => portfolioState.addWhatIf(wi))
               }}
             />
           )}

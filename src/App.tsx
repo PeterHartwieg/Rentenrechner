@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react'
 import type { AppView } from './app/useRoute'
-import { useRoute, detectSavedMode, appViewFromMode } from './app/useRoute'
+import { useRoute, detectSavedMode, appViewFromMode, routeToPath } from './app/useRoute'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { QaFeedbackProvider, QaModeIndicator } from './features/qa-feedback'
 import { AppShell } from './ui/chrome/AppShell'
@@ -86,6 +86,9 @@ const AltersvorsorgeproduktePage = lazy(() =>
 const PageNotFound = lazy(() =>
   import('./features/publicPages/PageNotFound').then((m) => ({ default: m.PageNotFound })),
 )
+const VertragDetailPage = lazy(() =>
+  import('./features/vertrag-detail/VertragDetailPage').then((m) => ({ default: m.VertragDetailPage })),
+)
 
 function App() {
   const { route, navigate } = useRoute()
@@ -115,42 +118,95 @@ function App() {
   }
 
   let body: ReactNode
-  if (route === '/impressum') body = <ImpressumPage navigate={navigate} />
-  else if (route === '/datenschutz') body = <DatenschutzPage navigate={navigate} />
-  else if (route === '/artikel') body = <ArticleHubPage navigate={navigate} />
-  else if (route === '/methode') body = <MethodePage navigate={navigate} />
-  else if (route === '/eingaben') body = <AngabenPage navigate={navigate} />
-  else if (route === '/rentenluecke-rechner') body = <RentenluckeRechnerPage navigate={navigate} />
-  else if (route === '/bav-rechner') body = <BavRechnerPage navigate={navigate} />
-  else if (route === '/etf-vs-bav') body = <EtfVsBavPage navigate={navigate} />
-  else if (route === '/riester-rechner') body = <RiesterRechnerPage navigate={navigate} />
-  else if (route === '/altersvorsorgedepot-rechner') body = <AltersvorsorgedepotRechnerPage navigate={navigate} />
-  else if (route === '/riester-vs-altersvorsorgedepot') body = <RiesterVsAltersvorsorgedepotPage navigate={navigate} />
-  else if (route === '/basisrente-rechner') body = <BasisrenteRechnerPage navigate={navigate} />
-  else if (route === '/private-rentenversicherung-rechner') body = <PrivateRentenversicherungRechnerPage navigate={navigate} />
-  else if (route === '/rente-netto-berechnen') body = <RenteNettoBerechnePage navigate={navigate} />
-  else if (route === '/altersvorsorgeprodukte-vergleichen') body = <AltersvorsorgeproduktePage navigate={navigate} />
-  else if (route === '/404') body = <PageNotFound />
-  else if (calculatorView === 'landing') {
-    body = <LandingPage onChoice={handleLandingChoice} navigate={navigate} />
-  } else {
-    body = (
-      <Calculator
-        navigate={navigate}
-        pendingChoice={pendingChoice}
-        onPendingChoiceConsumed={() => setPendingChoice(null)}
-        onGoHome={handleGoHome}
-      />
-    )
+  // Dispatch on the tagged-union variant. The `route` value is a stable
+  // object created by `pathToRoute`; the discriminant `kind` field drives
+  // the switch. Dynamic routes carry their payload inside the variant
+  // (e.g. `route.instanceId` for `vertrag`).
+  switch (route.kind) {
+    case 'impressum':
+      body = <ImpressumPage navigate={navigate} />
+      break
+    case 'datenschutz':
+      body = <DatenschutzPage navigate={navigate} />
+      break
+    case 'artikel':
+      body = <ArticleHubPage navigate={navigate} />
+      break
+    case 'methode':
+      body = <MethodePage navigate={navigate} />
+      break
+    case 'eingaben':
+      body = <AngabenPage navigate={navigate} />
+      break
+    case 'rentenluecke-rechner':
+      body = <RentenluckeRechnerPage navigate={navigate} />
+      break
+    case 'bav-rechner':
+      body = <BavRechnerPage navigate={navigate} />
+      break
+    case 'etf-vs-bav':
+      body = <EtfVsBavPage navigate={navigate} />
+      break
+    case 'riester-rechner':
+      body = <RiesterRechnerPage navigate={navigate} />
+      break
+    case 'altersvorsorgedepot-rechner':
+      body = <AltersvorsorgedepotRechnerPage navigate={navigate} />
+      break
+    case 'riester-vs-altersvorsorgedepot':
+      body = <RiesterVsAltersvorsorgedepotPage navigate={navigate} />
+      break
+    case 'basisrente-rechner':
+      body = <BasisrenteRechnerPage navigate={navigate} />
+      break
+    case 'private-rentenversicherung-rechner':
+      body = <PrivateRentenversicherungRechnerPage navigate={navigate} />
+      break
+    case 'rente-netto-berechnen':
+      body = <RenteNettoBerechnePage navigate={navigate} />
+      break
+    case 'altersvorsorgeprodukte-vergleichen':
+      body = <AltersvorsorgeproduktePage navigate={navigate} />
+      break
+    case 'not-found':
+      body = <PageNotFound />
+      break
+    case 'vertrag':
+      // Combine-mode drill-in from Mein Plan. The page itself handles the
+      // invalid-id and compare-mode empty states; App.tsx only routes the
+      // tagged variant and forwards the instance id.
+      body = <VertragDetailPage instanceId={route.instanceId} navigate={navigate} />
+      break
+    case 'home':
+      if (calculatorView === 'landing') {
+        body = <LandingPage onChoice={handleLandingChoice} navigate={navigate} />
+      } else {
+        body = (
+          <Calculator
+            navigate={navigate}
+            pendingChoice={pendingChoice}
+            onPendingChoiceConsumed={() => setPendingChoice(null)}
+            onGoHome={handleGoHome}
+          />
+        )
+      }
+      break
+    default: {
+      const _exhaustive: never = route
+      body = <PageNotFound />
+      void _exhaustive
+    }
   }
 
   // Editorial mode (cream bg + serif H1) — extended by PR 3 to cover the
   // Artikel hub plus every `/<topic>-rechner` route (which now sits inside
-  // the cream-and-serif `ArticleLayout`). PR 4 will add `/methode` once it
-  // ships. Legal pages stay sober (sans + white) because they are not
-  // editorial content.
+  // the cream-and-serif `ArticleLayout`). PR 4 added `/methode` (sober).
+  // Legal pages stay sober. `/vertrag/:id` (PR 7) is sober. The home route
+  // is editorial only when the LandingPage is showing (compare/combine
+  // dashboards are sober).
+  const isHome = route.kind === 'home'
   const isEditorial =
-    (route === '/' && calculatorView === 'landing') || isEditorialChromeRoute(route)
+    (isHome && calculatorView === 'landing') || isEditorialChromeRoute(routeToPath(route))
 
   // QA feedback mode (issue 02 — Phase 1 Lane A). Wraps the entire route
   // surface so the overlay can target legal pages too. Inert when disabled

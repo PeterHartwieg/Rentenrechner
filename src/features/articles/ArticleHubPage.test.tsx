@@ -5,7 +5,7 @@ import { renderToString } from 'react-dom/server'
 import { cleanup, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
-import type { Route } from '../../app/useRoute'
+import { pathToRoute } from '../../app/useRoute'
 import { ArticleHubPage } from './ArticleHubPage'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { HUB_CLUSTERS } from '../landing/hubClusters'
@@ -15,8 +15,12 @@ afterEach(() => {
   cleanup()
 })
 
-function inShell(node: ReactElement, route: Route = '/artikel') {
-  return createElement(AppShell, { route, navigate: () => {}, children: node })
+function inShell(node: ReactElement, path: string = '/artikel') {
+  return createElement(AppShell, {
+    route: pathToRoute(path),
+    navigate: () => {},
+    children: node,
+  })
 }
 
 describe('ArticleHubPage — /artikel route content', () => {

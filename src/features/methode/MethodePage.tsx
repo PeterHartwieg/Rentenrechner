@@ -15,6 +15,7 @@ import {
 } from '../../rules/legalConstants'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import type { Route } from '../../app/useRoute'
+import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { formatCurrency, formatPercent } from '../../utils/format'
 
@@ -185,7 +186,7 @@ export function MethodePage({ navigate }: Props) {
               if (!navigate) return
               if (!shouldUseSpaNavigation(event)) return
               event.preventDefault()
-              navigate('/')
+              navigate(ROUTES.home)
             }}
           >
             Startseite

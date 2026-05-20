@@ -1,0 +1,462 @@
+/* ==========================================================================
+   VertragDetailPage — combine-mode contract drill-in surface (PR 7).
+
+   Sober D visual treatment: white background, IBM Plex Sans body, mono
+   `§` section labels, JetBrains Mono KPI tiles, oxblood headline accents
+   (Kapital + Netto-Rente). Mirrors MeinPlanPage / AngabenPage / MethodePage
+   so the chrome reads as one system. Reference mocks: direction-d-pages.jsx
+   `DirectionDVertragDetail` lines 258-402, responsive-views.jsx `MVertrag`
+   (~506-572) and `TVertrag` (~1438-1546). Tokens come from src/App.css.
+   ========================================================================== */
+
+.vertrag-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+}
+
+.vertrag-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 56px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* --- Grid: body + right-rail metadata ---------------------------------- */
+.vertrag-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 56px;
+  align-items: start;
+}
+
+.vertrag-body {
+  min-width: 0;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* --- Header chrome ---------------------------------------------------- */
+.vertrag-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.vertrag-headline {
+  margin: 8px 0 0;
+  font-family: var(--rw-font-sans);
+  font-weight: 600;
+  font-size: 1.7rem;
+  line-height: 1.2;
+  color: var(--rw-ink);
+  letter-spacing: -0.01em;
+}
+
+.vertrag-subtitle {
+  margin-top: 4px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.96rem;
+  color: var(--rw-ink-soft);
+}
+
+.vertrag-backline {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  font-family: var(--rw-font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  color: var(--rw-ink-faint);
+}
+
+.vertrag-backlink {
+  color: var(--rw-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.vertrag-backlink:hover {
+  color: var(--rw-accent);
+}
+
+.vertrag-meta-id-mono {
+  font-family: var(--rw-font-mono);
+  color: var(--rw-ink-soft);
+}
+
+/* --- KPI strip --------------------------------------------------------- */
+.vertrag-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--rw-rule);
+  border-bottom: 1px solid var(--rw-rule);
+}
+
+.vertrag-kpi-tile {
+  padding: 18px 16px;
+  border-left: 1px solid var(--rw-rule-soft);
+}
+
+.vertrag-kpi-tile[data-idx='0'] {
+  border-left: none;
+}
+
+.vertrag-kpi-label {
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.vertrag-kpi-value {
+  font-family: var(--rw-font-mono);
+  font-size: 1.42rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin-top: 6px;
+  color: var(--rw-ink);
+}
+
+.vertrag-kpi-value--rente,
+.vertrag-kpi-value--capital {
+  color: var(--rw-accent);
+}
+
+.vertrag-kpi-sublabel {
+  margin-top: 4px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.74rem;
+  color: var(--rw-ink-faint);
+}
+
+/* --- Section header pattern (reused from Mein Plan / Angaben) --------- */
+.vertrag-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vertrag-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.vertrag-section-num {
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.vertrag-section-title {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-weight: 600;
+  font-size: 1.08rem;
+  color: var(--rw-ink);
+}
+
+/* --- Scenario table --------------------------------------------------- */
+.vertrag-scenario-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.vertrag-scenario-table thead th {
+  text-align: left;
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  font-weight: 500;
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--rw-rule);
+}
+
+.vertrag-scenario-table .vertrag-num {
+  text-align: right;
+  font-family: var(--rw-font-mono);
+}
+
+.vertrag-scenario-row td {
+  padding: 10px 12px 10px 0;
+  border-bottom: 1px solid var(--rw-rule-soft);
+  vertical-align: top;
+}
+
+.vertrag-scenario-row--current {
+  background: var(--rw-bg-soft, #faf7f1);
+}
+
+.vertrag-scenario-row--current .vertrag-scenario-label {
+  font-weight: 600;
+}
+
+.vertrag-scenario-marker {
+  color: var(--rw-accent);
+  margin-right: 6px;
+}
+
+.vertrag-scenario-detail {
+  color: var(--rw-ink-soft);
+  font-size: 0.86rem;
+}
+
+.vertrag-scenario-delta--pos {
+  color: #1E5E3A;
+}
+
+.vertrag-scenario-delta--neg {
+  color: var(--rw-accent);
+}
+
+.vertrag-scenario-delta--neutral {
+  color: var(--rw-ink-faint);
+}
+
+.vertrag-scenario-empty {
+  margin: 0;
+  padding: 12px 0;
+  font-size: 0.92rem;
+  color: var(--rw-ink-soft);
+}
+
+/* --- Provenance list -------------------------------------------------- */
+.vertrag-provenance-intro {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--rw-ink-soft);
+  line-height: 1.55;
+}
+
+.vertrag-provenance-intro em {
+  font-style: italic;
+  color: var(--rw-ink);
+}
+
+.vertrag-provenance-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vertrag-provenance-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rw-rule-soft);
+  font-size: 0.92rem;
+}
+
+.vertrag-provenance-key {
+  color: var(--rw-ink);
+}
+
+/* --- Metadata aside --------------------------------------------------- */
+.vertrag-metadata-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--rw-rule);
+  background: var(--rw-bg-soft, #faf7f1);
+  font-size: 0.84rem;
+}
+
+.vertrag-metadata-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.vertrag-metadata-row {
+  vertical-align: top;
+}
+
+.vertrag-metadata-key {
+  padding: 4px 0;
+  color: var(--rw-ink-soft);
+}
+
+.vertrag-metadata-val {
+  padding: 4px 0;
+  text-align: right;
+  font-family: var(--rw-font-mono);
+  color: var(--rw-ink);
+}
+
+.vertrag-metadata-edit {
+  align-self: flex-start;
+  font-size: 0.82rem;
+  color: var(--rw-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- Status pill ------------------------------------------------------ */
+.vertrag-status-pill {
+  display: inline-block;
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 1px solid var(--rw-rule);
+  color: var(--rw-ink-soft);
+  background: var(--rw-bg-paper);
+}
+
+.vertrag-status-pill--active {
+  color: #1E5E3A;
+  border-color: #1E5E3A;
+}
+
+.vertrag-status-pill--paid-up {
+  color: var(--rw-ink-soft);
+}
+
+.vertrag-status-pill--surrendered {
+  color: var(--rw-accent);
+  border-color: var(--rw-accent);
+}
+
+.vertrag-status-pill--offered {
+  color: var(--rw-ink-soft);
+  border-style: dashed;
+}
+
+/* --- Empty state ------------------------------------------------------ */
+.vertrag-empty {
+  margin: 32px auto;
+  max-width: 480px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 32px 24px;
+  border: 1px solid var(--rw-rule);
+  background: var(--rw-bg-soft, #faf7f1);
+}
+
+.vertrag-empty-title {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--rw-ink);
+}
+
+.vertrag-empty-body {
+  margin: 0;
+  font-size: 0.96rem;
+  color: var(--rw-ink-soft);
+  line-height: 1.55;
+}
+
+.vertrag-empty-cta {
+  align-self: center;
+  padding: 8px 18px;
+  border: 1px solid var(--rw-rule);
+  font-family: var(--rw-font-sans);
+  font-size: 0.92rem;
+  color: var(--rw-ink);
+  text-decoration: none;
+}
+
+.vertrag-empty-cta:hover {
+  border-color: var(--rw-accent);
+  color: var(--rw-accent);
+}
+
+/* --- Responsive collapses --------------------------------------------- */
+@media (max-width: 1023px) {
+  .vertrag-main {
+    padding: 28px 36px 28px;
+  }
+
+  .vertrag-grid {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 32px;
+  }
+}
+
+@media (max-width: 639px) {
+  .vertrag-main {
+    padding: 20px 18px 16px;
+  }
+
+  .vertrag-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .vertrag-body {
+    max-width: none;
+  }
+
+  .vertrag-kpi-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .vertrag-kpi-tile {
+    padding: 14px 12px;
+  }
+
+  .vertrag-kpi-tile[data-idx='0'] {
+    border-top: none;
+  }
+
+  .vertrag-kpi-tile[data-idx='1'] {
+    border-top: none;
+  }
+
+  .vertrag-kpi-tile[data-idx='2'],
+  .vertrag-kpi-tile[data-idx='3'] {
+    border-top: 1px solid var(--rw-rule-soft);
+  }
+
+  /* Phone scenario table → vertical row blocks (label/value pairs) */
+  .vertrag-scenario-table thead {
+    display: none;
+  }
+
+  .vertrag-scenario-table,
+  .vertrag-scenario-table tbody,
+  .vertrag-scenario-row,
+  .vertrag-scenario-row td {
+    display: block;
+    width: 100%;
+  }
+
+  .vertrag-scenario-row {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--rw-rule-soft);
+  }
+
+  .vertrag-scenario-row td {
+    border-bottom: none;
+    padding: 4px 0;
+  }
+}

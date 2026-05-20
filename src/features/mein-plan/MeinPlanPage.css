@@ -216,6 +216,24 @@
   margin-top: 2px;
 }
 
+/* Instance rows wrap their label in an anchor so the whole label block is
+   clickable. Strip the default underline / blue color so the row reads
+   like the static statutory row by default; the accent only appears on
+   hover/focus to signal interactivity. */
+.mein-plan-zusammen-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.mein-plan-zusammen-link:hover .mein-plan-zusammen-source,
+.mein-plan-zusammen-link:focus-visible .mein-plan-zusammen-source {
+  color: var(--rw-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .mein-plan-zusammen-empty {
   margin: 0;
   padding: 14px 16px;
