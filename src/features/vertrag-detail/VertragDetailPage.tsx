@@ -6,7 +6,6 @@ import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { usePortfolioState } from '../../app/portfolioState'
 import { useCombineSimulation } from '../../app/useCombineSimulation'
 import { de2026Rules } from '../../rules/de2026'
-import { detectSavedMode } from '../../app/useRoute'
 import { getProductMeta } from '../../engine/productRegistry'
 import type { InstanceCommon } from '../../domain/instances'
 import type { ProductId } from '../../domain/products/common'
@@ -110,9 +109,11 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
 
   // Resolve the instance + slot up-front so the document-title effect can
   // run unconditionally before any early return (React's Rules of Hooks
-  // require an identical call order on every render). `detectSavedMode`
-  // is a synchronous localStorage read with no hook semantics.
-  const savedMode = detectSavedMode()
+  // require an identical call order on every render). Use `workspace.mode`
+  // (loaded workspace state) rather than `detectSavedMode()` (URL/storage
+  // hint) so the empty-state gate matches the actually-loaded workspace, not
+  // the `?s=` query hint.
+  const savedMode = workspace.mode
   const slotInfo = detectSlotFromId(instanceId)
   const instance = slotInfo
     ? findInstanceInWorkspace(workspace, slotInfo.wsaKey, instanceId)

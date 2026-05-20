@@ -70,9 +70,13 @@ interface ProvenanceField {
 }
 
 /**
- * Curated per-product field list. Keys mirror the conventions used in the
- * existing inventory cards (`InventoryProductRegistry`); this is a UI
- * concern only — engine code never reads from this list.
+ * Curated per-product field list for § 2 "Wie wir das berechnen".
+ *
+ * `evidenceKey` values MUST match the keys written to `instance.evidenceMap`
+ * by the inventory wizard via `markConfirmed`. The authoritative source is
+ * `PRODUCT_EVIDENCE_FIELDS` in `src/utils/evidence.ts` — keep the two in
+ * sync to avoid rows always rendering as "Modellwert" after the user
+ * confirmed them. This is a UI concern only; engine code never reads this list.
  */
 function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
   switch (productId) {
@@ -86,17 +90,17 @@ function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
     case 'bav':
       return [
         { evidenceKey: 'monthlyGrossConversion', label: 'Bruttoumwandlung pro Monat' },
-        { evidenceKey: 'employerMatchPct', label: 'Arbeitgeberzuschuss' },
-        { evidenceKey: 'wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
-        { evidenceKey: 'fundAssetFee', label: 'Fondskosten (TER)' },
+        { evidenceKey: 'contractualMatchPercent', label: 'Arbeitgeberzuschuss' },
+        { evidenceKey: 'fees.wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
+        { evidenceKey: 'fees.fundAssetFee', label: 'Fondskosten (TER)' },
         { evidenceKey: 'currentValueEUR', label: 'Aktueller Vertragswert' },
         { evidenceKey: 'durchfuehrungsweg', label: 'Durchführungsweg' },
       ]
     case 'versicherung':
       return [
         { evidenceKey: 'monthlyContribution', label: 'Monatlicher Beitrag' },
-        { evidenceKey: 'wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
-        { evidenceKey: 'fundAssetFee', label: 'Fondskosten (TER)' },
+        { evidenceKey: 'fees.wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
+        { evidenceKey: 'fees.fundAssetFee', label: 'Fondskosten (TER)' },
         { evidenceKey: 'currentValueEUR', label: 'Aktueller Rückkaufswert' },
         { evidenceKey: 'guaranteedInterestRate', label: 'Garantiezins' },
         { evidenceKey: 'contractStartYear', label: 'Vertragsbeginn' },
@@ -104,23 +108,23 @@ function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
     case 'basisrente':
       return [
         { evidenceKey: 'monthlyGrossContribution', label: 'Monatlicher Beitrag' },
-        { evidenceKey: 'wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
-        { evidenceKey: 'fundAssetFee', label: 'Fondskosten (TER)' },
+        { evidenceKey: 'fees.wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
+        { evidenceKey: 'fees.fundAssetFee', label: 'Fondskosten (TER)' },
         { evidenceKey: 'currentValueEUR', label: 'Aktueller Vertragswert' },
       ]
     case 'altersvorsorgedepot':
       return [
         { evidenceKey: 'monthlyOwnContribution', label: 'Eigenbeitrag pro Monat' },
-        { evidenceKey: 'wrapperAssetFee', label: 'Depotkosten' },
-        { evidenceKey: 'fundAssetFee', label: 'Fondskosten (TER)' },
+        { evidenceKey: 'fees.wrapperAssetFee', label: 'Depotkosten' },
+        { evidenceKey: 'fees.fundAssetFee', label: 'Fondskosten (TER)' },
         { evidenceKey: 'currentValueEUR', label: 'Aktueller Depotwert' },
         { evidenceKey: 'subtype', label: 'AVD-Variante' },
       ]
     case 'riester':
       return [
         { evidenceKey: 'monthlyOwnContribution', label: 'Eigenbeitrag pro Monat' },
-        { evidenceKey: 'wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
-        { evidenceKey: 'fundAssetFee', label: 'Fondskosten (TER)' },
+        { evidenceKey: 'fees.wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
+        { evidenceKey: 'fees.fundAssetFee', label: 'Fondskosten (TER)' },
         { evidenceKey: 'currentValueEUR', label: 'Aktueller Vertragswert' },
         { evidenceKey: 'guaranteedInterestRate', label: 'Garantiezins' },
       ]
