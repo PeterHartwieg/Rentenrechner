@@ -480,7 +480,7 @@ interface ReceiptRow {
 interface ZusammenRowBase {
   key: string
   label: string
-  sublabel: string
+  sublabel: string | undefined
   contributionMonthly: number | null
   monthlyNet: number
   color: string
@@ -582,11 +582,12 @@ function collectZusammenRows(
   // composition entry. The label tracks the active statutory routing.
   const statutoryMonthly = combinedForScenario?.statutoryPensionMonthlyNet ?? 0
   const statutoryLabel = pensionBaselineLabel(wsa.statutoryPension.pensionBaselineType)
+  const statutorySublabel = pensionBaselineSublabel(wsa.statutoryPension.pensionBaselineType)
   rows.push({
     kind: 'statutory',
     key: 'statutory',
     label: statutoryLabel,
-    sublabel: 'Gesetzlich · § 22 Nr. 1 EStG',
+    sublabel: statutorySublabel,
     contributionMonthly: null,
     monthlyNet: statutoryMonthly,
     color: STATUTORY_PENSION_COLOR,
@@ -669,6 +670,34 @@ function pensionBaselineLabel(baselineType: PensionBaselineType | undefined): st
 }
 
 /**
+ * Human-readable sub-line for the statutory pension baseline type shown below
+ * the label in the Zusammensetzung leading row. Returns `undefined` for the
+ * `'none'` case so the renderer can omit the sub-line entirely.
+ *
+ * Tax-citation rationale:
+ *   - GRV / Versorgungswerk: § 22 Nr. 1 Satz 3 a aa EStG (Besteuerungsanteil)
+ *   - Beamtenversorgung: § 19 Abs. 2 EStG (Versorgungsbezüge, cohort Versorgungsfreibetrag)
+ *   - none: no statutory pension — no citation appropriate
+ */
+function pensionBaselineSublabel(baselineType: PensionBaselineType | undefined): string | undefined {
+  if (baselineType === undefined) return 'Gesetzlich · § 22 Nr. 1 EStG'
+  switch (baselineType) {
+    case 'grv':
+      return 'Gesetzlich · § 22 Nr. 1 EStG'
+    case 'versorgungswerk':
+      return 'Versorgungswerk · § 22 Nr. 1 EStG'
+    case 'beamtenpension':
+      return 'Beamtenversorgung · § 19 EStG'
+    case 'none':
+      return undefined
+    default: {
+      const _exhaustive: never = baselineType
+      return _exhaustive
+    }
+  }
+}
+
+/**
  * Fallback aggregate when `combinedForScenario` is absent. Sums each row's
  * `monthlyNet` directly — used only in degraded test or SSR environments where
  * the combine result is unavailable; in production `combinedForScenario` is
@@ -698,7 +727,9 @@ function ZusammenRowView({
     <tr>
       <td>
         <div className="mein-plan-zusammen-source">{row.label}</div>
-        <div className="mein-plan-zusammen-sub">{row.sublabel}</div>
+        {row.sublabel !== undefined && (
+          <div className="mein-plan-zusammen-sub">{row.sublabel}</div>
+        )}
       </td>
       <td className="mein-plan-num-soft" data-label="Beitrag">
         {row.contributionMonthly === null

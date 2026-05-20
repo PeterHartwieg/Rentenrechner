@@ -405,4 +405,63 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     expect(rows[0].textContent).toContain('Keine Pflichtrente')
     expect(rows[0].textContent).not.toContain('Gesetzliche Rente')
   })
+
+  it('§ 1 leading row sublabel shows "Beamtenversorgung · § 19 EStG" for beamtenpension (R7 regression)', () => {
+    // Regression guard for CR Major (PR #284 R7): before the fix the statutory
+    // row's sublabel was hardcoded to "Gesetzlich · § 22 Nr. 1 EStG" regardless
+    // of PensionBaselineType. A Beamte user would see "Beamtenpension" as the
+    // label but the contradictory GRV tax citation as the sublabel.
+    const ws: Workspace = {
+      ...defaultWorkspace,
+      mode: 'combine',
+      baseline: {
+        ...defaultWorkspace.baseline,
+        assumptions: {
+          ...defaultWorkspace.baseline.assumptions,
+          statutoryPension: {
+            ...defaultWorkspace.baseline.assumptions.statutoryPension,
+            pensionBaselineType: 'beamtenpension',
+          },
+        },
+      },
+    }
+    const props = buildProps(ws)
+    const { container } = render(<MeinPlanPage {...props} />)
+    const rows = container.querySelectorAll('.mein-plan-zusammen-table tbody tr')
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    // Label (R6) must still be correct.
+    expect(rows[0].textContent).toContain('Beamtenpension')
+    // Sublabel (R7) must cite § 19, not the GRV § 22 citation.
+    const subEl = rows[0].querySelector('.mein-plan-zusammen-sub')
+    expect(subEl).not.toBeNull()
+    expect(subEl!.textContent).toContain('§ 19 EStG')
+    expect(subEl!.textContent).not.toContain('§ 22')
+  })
+
+  it('§ 1 leading row has no sublabel element for pensionBaselineType none (R7 regression)', () => {
+    // Regression guard for CR Major (PR #284 R7): the 'none' case renders
+    // "Keine Pflichtrente" as the label but must not show any tax citation
+    // sub-line — there is no statutory pension channel, so no § applies.
+    const ws: Workspace = {
+      ...defaultWorkspace,
+      mode: 'combine',
+      baseline: {
+        ...defaultWorkspace.baseline,
+        assumptions: {
+          ...defaultWorkspace.baseline.assumptions,
+          statutoryPension: {
+            ...defaultWorkspace.baseline.assumptions.statutoryPension,
+            pensionBaselineType: 'none',
+          },
+        },
+      },
+    }
+    const props = buildProps(ws)
+    const { container } = render(<MeinPlanPage {...props} />)
+    const rows = container.querySelectorAll('.mein-plan-zusammen-table tbody tr')
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    // The sublabel <div> must be absent entirely for the 'none' case.
+    const subEl = rows[0].querySelector('.mein-plan-zusammen-sub')
+    expect(subEl).toBeNull()
+  })
 })
