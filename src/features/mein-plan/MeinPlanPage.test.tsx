@@ -273,4 +273,25 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     // Vergleich sidebar specifically — used in compare-mode only.
     expect(container.querySelector('.compare-layout-sidebar')).toBeNull()
   })
+
+  it('hides sensitivity rows and shows empty-state copy when workspace has zero active instances (Codex P2 guard)', () => {
+    // Regression: when combinedForScenario is truthy but no active/paid_up
+    // instances exist, the page must NOT build sensitivity rows (wasted
+    // runCombineSimulation reruns) and must show the empty-state copy.
+    // The spy on runCombineSimulation is not needed here — DOM absence is
+    // sufficient because sensitivityRows.length === 0 when hasInstances is
+    // false, regardless of combinedForScenario.
+    const ws: Workspace = { ...defaultWorkspace, mode: 'combine' }
+    const props = buildProps(ws)
+    const { container } = render(<MeinPlanPage {...props} />)
+    // No sensitivity rows rendered.
+    expect(container.querySelectorAll('.mein-plan-sens-row').length).toBe(0)
+    // The § 2 section must show the empty-state copy, not a real row.
+    // The id is on the <h2>; the enclosing <section> uses aria-labelledby.
+    const sensSec = container.querySelector('section[aria-labelledby="mein-plan-sensitivitaet"]')
+    expect(sensSec).not.toBeNull()
+    // The empty-state paragraph (not a <li> row) must be inside the section.
+    expect(sensSec!.querySelector('.mein-plan-zusammen-empty')).not.toBeNull()
+    expect(sensSec!.textContent).toContain('ersten Vertrag im Plan')
+  })
 })

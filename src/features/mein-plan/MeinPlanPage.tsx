@@ -10,6 +10,7 @@ import type { InstanceCommon } from '../../domain/instances'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { getProductMeta } from '../../app/productPresentation'
+import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { RightRailAccordion } from '../../ui/chrome/RightRailAccordion'
 import { formatCurrency, formatPercent } from '../../utils/format'
@@ -140,23 +141,28 @@ export function MeinPlanPage({
   const realMultiplier = (1 + inflationRate) ** -yearsUntilRetirement
   const realMonthly = projectedMonthly * realMultiplier
 
+  const hasInstances = rows.some((r) => r.kind === 'instance')
+
   // § 2 Sensitivität rows. Each selector is a pure perturbation over
   // `runCombineSimulation`; calling them inside `useMemo` keys them off
   // workspace + scenario id so changes in the right rail (Wunschnetto, etc.)
   // trigger a single re-run pass rather than four. Cost is O(rows × N) where
   // N is the active instance count — bounded by the ≤5-rows budget pinned in
   // `sensitivitySelectors.ts`.
+  //
+  // Gated on `hasInstances`: when the workspace has no active or paid-up
+  // contracts, sensitivity perturbations are meaningless and expensive
+  // (each selector re-runs the full combine simulation). The empty-state
+  // copy in § 2 handles the zero-instance case.
   const sensitivityRows = useMemo<SensitivityRow[]>(() => {
-    if (!combinedForScenario) return []
+    if (!combinedForScenario || !hasInstances) return []
     return buildSensitivityRows({
       workspace,
       baselineCombined: combinedForScenario,
       rules,
       scenarioId: selectedScenarioId,
     })
-  }, [workspace, combinedForScenario, rules, selectedScenarioId])
-
-  const hasInstances = rows.some((r) => r.kind === 'instance')
+  }, [workspace, combinedForScenario, hasInstances, rules, selectedScenarioId])
 
   return (
     <div className="mein-plan-shell">
@@ -482,14 +488,53 @@ const STATUTORY_PENSION_COLOR = '#222222'
 const FALLBACK_PRODUCT_COLOR = '#888888'
 
 /**
+ * The minimal per-instance shape consumed by `collectZusammenRows`.
+ * All six instance types satisfy this shape; the cast from the concrete
+ * instance types is safe because every instance type extends `InstanceCommon`
+ * and carries the optional contribution fields.
+ */
+type SlotInstance = {
+  instanceId: string
+  label?: string
+  status: InstanceCommon['status']
+  monthlyContribution?: number
+  monthlyGrossConversion?: number
+  monthlyGrossContribution?: number
+  eigenbeitragMonthly?: number
+}
+
+/**
+ * Derive the ordered product-slot list from `PRODUCT_REGISTRY`, honouring
+ * canonical product order and the known id→workspace-field mismatch:
+ *
+ *   `versicherung` (ProductId / metadata.id) → `insurance` (assumptionsKey /
+ *   WorkspaceAssumptionsV2 field name).
+ *
+ * Using `entry.assumptionsKey` to index `wsa` avoids hardcoding six product
+ * ids, respects `PRODUCT_REGISTRY` order, and automatically picks up future
+ * product additions. Defensive `?? []` guards against missing fields on
+ * partially-populated workspace objects (e.g. test stubs).
+ *
+ * Note: `CombineDetailView.tsx` and `simulationSelectors.ts` contain a similar
+ * hardcoded slot pattern — migrating those to this helper is a separate task
+ * and out of scope for PR #284.
+ */
+function buildProductSlots(wsa: WorkspaceAssumptionsV2): Array<{ id: ProductId; instances: SlotInstance[] }> {
+  return PRODUCT_REGISTRY.map((entry) => ({
+    id: entry.metadata.id as ProductId,
+    instances: ((wsa as unknown as Record<string, unknown>)[entry.assumptionsKey] as SlotInstance[] | undefined) ?? [],
+  }))
+}
+
+/**
  * Build the ordered row array for § 1 Zusammensetzung.
  *
  * Always emits a leading statutory-pension row (may be zero), followed by
  * one row per non-surrendered, non-offered instance in the workspace (in
- * product-slot order: bAV, ETF, Versicherung, Basisrente, AVD, Riester).
- * Monthly-net figures prefer the back-allocated `combinedForScenario.byInstance`
- * share when available, falling back to the per-instance `netMonthlyPayout`
- * from `perInstance[id]` for the selected scenario.
+ * canonical `PRODUCT_REGISTRY` order). Monthly-net figures prefer the
+ * back-allocated `combinedForScenario.byInstance` share when available,
+ * falling back to the per-instance `netMonthlyPayout` from `perInstance[id]`
+ * for the selected scenario.
  *
  * "Beitrag heute" is product-type-specific: ETF/pAV use `monthlyContribution`,
  * bAV uses `monthlyGrossConversion` (the employer subsidy is not the user's
@@ -521,15 +566,7 @@ function collectZusammenRows(
     color: STATUTORY_PENSION_COLOR,
   })
 
-  type SlotInstance = { instanceId: string; label?: string; status: InstanceCommon['status']; monthlyContribution?: number; monthlyGrossConversion?: number; monthlyGrossContribution?: number; eigenbeitragMonthly?: number }
-  const productSlots: Array<{ id: ProductId; instances: SlotInstance[] }> = [
-    { id: 'bav', instances: wsa.bav as unknown as SlotInstance[] },
-    { id: 'etf', instances: wsa.etf as unknown as SlotInstance[] },
-    { id: 'versicherung', instances: wsa.insurance as unknown as SlotInstance[] },
-    { id: 'basisrente', instances: wsa.basisrente as unknown as SlotInstance[] },
-    { id: 'altersvorsorgedepot', instances: wsa.altersvorsorgedepot as unknown as SlotInstance[] },
-    { id: 'riester', instances: wsa.riester as unknown as SlotInstance[] },
-  ]
+  const productSlots = buildProductSlots(wsa)
 
   for (const slot of productSlots) {
     const meta = getProductMeta(slot.id)
