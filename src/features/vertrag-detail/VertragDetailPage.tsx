@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import './VertragDetailPage.css'
 import type { Route } from '../../app/useRoute'
-import { ROUTES } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { usePortfolioState } from '../../app/portfolioState'
 import { useCombineSimulation } from '../../app/useCombineSimulation'
@@ -264,7 +264,7 @@ function EmptyState({ title, body, ctaLabel, ctaTarget, navigate }: EmptyStatePr
           <h1 className="vertrag-empty-title">{title}</h1>
           <p className="vertrag-empty-body">{body}</p>
           <a
-            href="/"
+            href={routeToPath(ctaTarget)}
             className="vertrag-empty-cta"
             onClick={(event) => {
               if (!shouldUseSpaNavigation(event)) return

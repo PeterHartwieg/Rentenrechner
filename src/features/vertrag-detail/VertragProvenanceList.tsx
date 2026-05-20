@@ -77,6 +77,11 @@ interface ProvenanceField {
  * `PRODUCT_EVIDENCE_FIELDS` in `src/utils/evidence.ts` — keep the two in
  * sync to avoid rows always rendering as "Modellwert" after the user
  * confirmed them. This is a UI concern only; engine code never reads this list.
+ *
+ * Rows whose `evidenceKey` is intentionally absent from `PRODUCT_EVIDENCE_FIELDS`
+ * (because the wizard does not currently capture that field, and the engine uses
+ * a statutory or cohort default) are flagged with an inline
+ * `// not confirmable yet` comment so the sync-gap is intentional, not a bug.
  */
 function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
   switch (productId) {
@@ -85,6 +90,9 @@ function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
         { evidenceKey: 'monthlyContribution', label: 'Monatlicher Sparbeitrag' },
         { evidenceKey: 'annualAssetFee', label: 'Laufende Kosten (TER)' },
         { evidenceKey: 'currentValueEUR', label: 'Aktueller Depotwert' },
+        // not confirmable yet — InvStG Teilfreistellung (30 % Aktienfonds) is a
+        // statutory default; the wizard does not currently capture it as a
+        // user-confirmable input.
         { evidenceKey: 'equityPartialExemption', label: 'Teilfreistellung (Aktienfonds)' },
       ]
     case 'bav':
@@ -102,6 +110,8 @@ function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
         { evidenceKey: 'fees.wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
         { evidenceKey: 'fees.fundAssetFee', label: 'Fondskosten (TER)' },
         { evidenceKey: 'currentValueEUR', label: 'Aktueller Rückkaufswert' },
+        // not confirmable yet — Garantiezins is a real contract attribute but
+        // the wizard does not capture it; the engine uses cohort-based defaults.
         { evidenceKey: 'guaranteedInterestRate', label: 'Garantiezins' },
         { evidenceKey: 'contractStartYear', label: 'Vertragsbeginn' },
       ]
@@ -126,6 +136,8 @@ function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
         { evidenceKey: 'fees.wrapperAssetFee', label: 'Versicherungskosten (Mantel)' },
         { evidenceKey: 'fees.fundAssetFee', label: 'Fondskosten (TER)' },
         { evidenceKey: 'currentValueEUR', label: 'Aktueller Vertragswert' },
+        // not confirmable yet — Garantiezins is a real contract attribute but
+        // the wizard does not capture it; the engine uses cohort-based defaults.
         { evidenceKey: 'guaranteedInterestRate', label: 'Garantiezins' },
       ]
     default: {
