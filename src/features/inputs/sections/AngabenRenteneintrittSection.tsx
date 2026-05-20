@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
+import { clampNumber } from '../../../ui/formatting'
 
 /**
  * `§ 3 Renteneintritt` for `/eingaben`. Extracted from `AngabenPage.tsx` so
@@ -11,6 +12,14 @@ import { NumberField } from '../../../ui/NumberField'
  *
  * Numeric fields bound to engine-shaped state route through `<NumberField>`
  * per the CLAUDE.md "UI rounding boundary" rule.
+ *
+ * Setters defensively clamp to the same min/max bounds the `<NumberField>`
+ * declares so that out-of-range *typed* values never reach `useCalculatorState`.
+ * `<input type="number">` does not reject typed out-of-range values; if an
+ * out-of-range `retirementAge` (e.g. age=30, retirementAge=25) hits
+ * STORAGE_KEY_V1, the next-load `validateState` rejects the snapshot and the
+ * app silently falls back to defaults, discarding all of the user's edits.
+ * Mirrors `ProfileInputs`' `clampNumber` pattern.
  */
 
 const RETIREMENT_HEALTH_OPTIONS = [
@@ -70,7 +79,10 @@ export function AngabenRenteneintrittSection({
             onChange={(value) =>
               setProfile((p) => ({
                 ...p,
-                retirementAge: Number(value),
+                // Clamp so validateState's `retirementAge >= age` invariant
+                // (scenarioSchema.ts:32) is never violated — otherwise the
+                // next-load reader silently falls back to defaults.
+                retirementAge: clampNumber(Number(value), Math.max(55, p.age + 1), 75),
               }))
             }
           />
@@ -92,7 +104,16 @@ export function AngabenRenteneintrittSection({
             onChange={(value) =>
               setAssumptions((a) => ({
                 ...a,
-                retirementEndAge: Number(value),
+                // Clamp so validateState's cross-object invariant
+                // (`retirementEndAge > retirementAge`, scenarioSchema.ts:125)
+                // is never violated. The min depends on the current profile's
+                // retirementAge — read it from `profile` so the latest edit
+                // wins.
+                retirementEndAge: clampNumber(
+                  Number(value),
+                  profile.retirementAge + 1,
+                  110,
+                ),
               }))
             }
           />

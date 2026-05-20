@@ -427,3 +427,143 @@ describe('AngabenPage — compare-mode state wiring (useCalculatorState)', () =>
     expect(ageInput.value).toBe('33')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Field clamping — Codex round-4 P2: section setters wrote `Number(value)`
+// directly to STORAGE_KEY_V1. Because `<input type="number">` does not reject
+// typed out-of-range values, a user could persist an out-of-range
+// `retirementAge` (e.g. age=30, retirementAge=25). validateState then rejects
+// the snapshot on next load and the app silently falls back to defaults.
+// Section setters now clamp to the same min/max bounds the NumberField
+// declares so the persisted envelope is always validator-clean.
+// ---------------------------------------------------------------------------
+describe('AngabenPage — section setters clamp before persisting (round-4 P2)', () => {
+  /**
+   * Find the NumberField whose visible label starts with `prefix`. Reuses the
+   * same `label.field` lookup as the `findAgeInput` helper above so the test
+   * does not depend on internal section structure.
+   */
+  function findNumberInput(container: HTMLElement, prefix: string): HTMLInputElement {
+    const labels = Array.from(container.querySelectorAll('label.field'))
+    for (const label of labels) {
+      const span = label.querySelector('span')
+      if (span && (span.textContent ?? '').trim().startsWith(prefix)) {
+        const input = label.querySelector('input[type="number"]')
+        if (input) return input as HTMLInputElement
+      }
+    }
+    throw new Error(`NumberField "${prefix}" not found in rendered AngabenPage`)
+  }
+
+  it('clamps retirementAge so it never falls below age + 1 (validateState invariant)', () => {
+    // Seed age=30 with the default retirementAge (defaultProfile.retirementAge
+    // is well above 30). Typing "25" into the retirementAge input would,
+    // pre-fix, persist `retirementAge: 25` next to `age: 30`. validateState
+    // would then reject the snapshot (`retirementAge >= age` invariant,
+    // scenarioSchema.ts:32) and loadSavedState would return null. The clamp
+    // adjusts to max(55, age+1) = 55 here.
+    const seededProfile = { ...defaultProfile, age: 30 }
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      buildStateJson(seededProfile, defaultAssumptions),
+    )
+    const { container } = render(<AngabenPage />)
+    const retirementInput = findNumberInput(container, 'Renteneintrittsalter')
+
+    fireEvent.change(retirementInput, { target: { value: '25' } })
+
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as {
+      profile: { age: number; retirementAge: number }
+    }
+    // Clamp lifts 25 to max(55, age+1) = 55 for age=30.
+    expect(parsed.profile.retirementAge).toBeGreaterThanOrEqual(
+      parsed.profile.age + 1,
+    )
+    expect(parsed.profile.retirementAge).toBe(55)
+  })
+
+  it('persists a clamped retirementAge that round-trips through loadSavedState (no fallback to defaults)', () => {
+    // The persisted envelope must pass validateState on next mount —
+    // otherwise loadSavedState returns null and the page falls back to
+    // defaultProfile, discarding the user's age=30. This guards the full
+    // round-trip the wrong-number bug describes.
+    const seededProfile = { ...defaultProfile, age: 30 }
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      buildStateJson(seededProfile, defaultAssumptions),
+    )
+    const first = render(<AngabenPage />)
+    fireEvent.change(
+      findNumberInput(first.container, 'Renteneintrittsalter'),
+      { target: { value: '25' } },
+    )
+    first.unmount()
+
+    // Fresh mount — useCalculatorState re-runs the lazy initializer and
+    // reads STORAGE_KEY_V1. If the persisted snapshot were invalid, the
+    // hook would silently fall back to defaultProfile.age (something other
+    // than 30). The clamp keeps the envelope validator-clean.
+    const second = render(<AngabenPage />)
+    const ageInput = findNumberInput(second.container, 'Alter')
+    expect(ageInput.value).toBe('30')
+  })
+
+  it('clamps retirementAge above the page max (75) on typed overflow', () => {
+    // The dynamic max (75) is enforced symmetrically. Typing 99 must clamp
+    // to 75 so the persisted snapshot is still validator-clean (and
+    // matches the user's visible NumberField max).
+    const { container } = render(<AngabenPage />)
+    const retirementInput = findNumberInput(container, 'Renteneintrittsalter')
+
+    fireEvent.change(retirementInput, { target: { value: '99' } })
+
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as {
+      profile: { retirementAge: number }
+    }
+    expect(parsed.profile.retirementAge).toBe(75)
+  })
+
+  it('clamps profile.age so it never crosses retirementAge - 1', () => {
+    // Age must stay below retirementAge - 1 (validateState invariant).
+    // Default retirementAge is 67, so typing 70 must clamp to 66.
+    const { container } = render(<AngabenPage />)
+    const ageInput = findNumberInput(container, 'Alter')
+
+    fireEvent.change(ageInput, { target: { value: '70' } })
+
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as {
+      profile: { age: number; retirementAge: number }
+    }
+    expect(parsed.profile.age).toBeLessThanOrEqual(parsed.profile.retirementAge - 1)
+    expect(parsed.profile.age).toBe(defaultProfile.retirementAge - 1)
+  })
+
+  it('clamps retirementEndAge so it stays > retirementAge (cross-object invariant)', () => {
+    // validateState rejects when retirementEndAge <= retirementAge
+    // (scenarioSchema.ts:125). Default retirementAge is 67 here, so typing
+    // 60 into "Kapital aufgebraucht bis" must clamp to 68.
+    const { container } = render(<AngabenPage />)
+    const endInput = findNumberInput(container, 'Kapital aufgebraucht bis')
+
+    fireEvent.change(endInput, { target: { value: '60' } })
+
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as {
+      profile: { retirementAge: number }
+      assumptions: { retirementEndAge: number }
+    }
+    expect(parsed.assumptions.retirementEndAge).toBeGreaterThan(
+      parsed.profile.retirementAge,
+    )
+    expect(parsed.assumptions.retirementEndAge).toBe(
+      defaultProfile.retirementAge + 1,
+    )
+  })
+})

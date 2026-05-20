@@ -374,8 +374,17 @@ async function main() {
       // dashboard. Marking it would trigger React hydration mismatches for
       // returning users. The static HTML still serves as SEO content for
       // first-paint crawlers.
+      //
+      // `/eingaben` is likewise NOT marked: `AngabenPage` consumes
+      // `useCalculatorState`, whose lazy initializer reads URL + localStorage
+      // on mount. The prerendered HTML uses `defaultProfile`/`defaultAssumptions`,
+      // but a returning user's first client render uses the persisted values —
+      // forcing `hydrateRoot` on that tree triggers React hydration mismatches
+      // and leaves stale DOM attributes / text until React re-renders. Mirror
+      // the `/` non-hydrated path: the static HTML still serves first-paint
+      // crawlers, and the client mounts via `createRoot`.
       const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
-        || routeId === '/artikel' || routeId === '/methode' || routeId === '/eingaben'
+        || routeId === '/artikel' || routeId === '/methode'
         || routeId === '/bav-rechner' || routeId === '/etf-vs-bav'
         || routeId === '/riester-rechner' || routeId === '/altersvorsorgedepot-rechner'
         || routeId === '/riester-vs-altersvorsorgedepot'

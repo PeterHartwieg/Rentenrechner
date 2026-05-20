@@ -592,8 +592,8 @@ export const publicRouteRegistry = {
       'Renteneintritt und wirtschaftliche Annahmen. Lokal im Browser, kein Account, Werte 2026.',
     h1: 'Deine Angaben',
     summary:
-      'Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen. Alle ' +
-      'Eingaben bleiben lokal in deinem Browser; nichts wird an Server übertragen.',
+      'Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen. ' +
+      'Die Rechnerwerte bleiben lokal in deinem Browser; nichts wird an Server übertragen.',
     dateModified: '2026-05-19',
     datePublished: '2026-05-19',
     robots: 'index,follow',

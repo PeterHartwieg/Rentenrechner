@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile } from '../../../domain'
 import { RULES_YEAR } from '../../../rules'
 import { NumberField } from '../../../ui/NumberField'
+import { clampNumber } from '../../../ui/formatting'
 
 /**
  * `§ 1 Person` for `/eingaben`. Extracted from `AngabenPage.tsx` so the page
@@ -78,7 +79,13 @@ export function AngabenPersonSection({
             step={1}
             suffix="Jahre"
             onChange={(value) =>
-              setProfile((p) => ({ ...p, age: Number(value) }))
+              setProfile((p) => ({
+                ...p,
+                // Clamp so validateState's `retirementAge >= age` invariant
+                // (scenarioSchema.ts:32) is never violated — otherwise the
+                // next-load reader silently falls back to defaults.
+                age: clampNumber(Number(value), 18, p.retirementAge - 1),
+              }))
             }
           />
           <span className="angaben-field-meta">

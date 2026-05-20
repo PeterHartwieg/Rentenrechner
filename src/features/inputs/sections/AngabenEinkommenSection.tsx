@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
+import { clampNumber } from '../../../ui/formatting'
 import { formatCurrency } from '../../../utils/format'
 
 /**
@@ -111,7 +112,12 @@ export function AngabenEinkommenSection({
               onChange={(value) =>
                 setProfile((p) => ({
                   ...p,
-                  healthAdditionalContributionPct: Math.max(0, Number(value)),
+                  // Clamp to the same UI bounds so out-of-range typed values
+                  // never reach STORAGE_KEY_V1 (`<input type="number">` doesn't
+                  // reject typed out-of-range). validateState's permissive
+                  // 0..10 range catches anything above 10 anyway, but we
+                  // mirror the UI bound for clarity.
+                  healthAdditionalContributionPct: clampNumber(Number(value), 0, 5),
                 }))
               }
             />

@@ -199,9 +199,13 @@ export function AngabenPage({ navigate }: Props) {
   // round-trip. Combine-mode workspace (STORAGE_KEY_V2) is intentionally not
   // touched here — see follow-up issue for combine-mode mapping.
   const { profile, setProfile, assumptions, setAssumptions } = useCalculatorState()
-  // `familienstand` and `bundesland` are not part of `PersonalProfile`, so
-  // they remain ephemeral on this page until a domain-side home exists for
-  // them. (Tracked alongside the combine-mode follow-up.)
+  // `familienstand` and `bundesland` are NOT part of `PersonalProfile`, so
+  // they remain ephemeral on this page and reset to the defaults on every
+  // reload / route change. Routing them through `useCalculatorState` would
+  // require extending `PersonalProfile`'s shape — that is a P0 storage-shape
+  // change and is intentionally out of scope for PR 5. Tracked in issue #282.
+  // The visible storage copy below honestly names which fields persist so the
+  // copy and reality cannot drift.
   const [familienstand, setFamilienstand] = useState<string>(FAMILIENSTAND_DEFAULT)
   const [bundesland, setBundesland] = useState<string>(BUNDESLAND_DEFAULT)
   // `retirementHealthStatus` lives on `assumptions.statutoryPension`, so the
@@ -323,9 +327,12 @@ export function AngabenPage({ navigate }: Props) {
             <p className="angaben-summary">{route.summary}</p>
 
             <div className="angaben-storage-note">
-              Alle Angaben werden ausschließlich <strong>lokal in deinem Browser</strong>{' '}
-              gespeichert. Es werden keine Daten an Server übertragen, keine Cookies
-              gesetzt und keine Identifier persistiert.
+              Alter, Einkommen, Renteneintrittsalter und Annahmen werden{' '}
+              <strong>lokal in deinem Browser</strong> gespeichert (localStorage) und
+              bei späteren Besuchen wiederhergestellt. Familienstand und Bundesland
+              werden in dieser Vorschau noch nicht gespeichert (Issue #282). Es
+              werden keine Daten an Server übertragen, keine Cookies gesetzt und
+              keine Identifier persistiert.
             </div>
 
             <AngabenPersonSection
@@ -422,10 +429,14 @@ export function AngabenPage({ navigate }: Props) {
               bodyId="angaben-aside-datenhaltung"
             >
               <p className="angaben-aside-body">
-                <strong>Lokal im Browser.</strong> Keine Server-Übertragung, kein
-                Account, keine Cookies, keine Identifier. Du kannst den
-                Browser-Speicher jederzeit über die Einstellungen deines Browsers
-                leeren — damit ist auch dein RentenWiki-Stand entfernt.
+                <strong>Lokal im Browser.</strong> Alter, Einkommen,
+                Renteneintrittsalter und die Renditeannahmen werden im
+                localStorage gespeichert; Familienstand und Bundesland gelten in
+                dieser Vorschau nur für die laufende Sitzung (Issue #282). Keine
+                Server-Übertragung, kein Account, keine Cookies, keine Identifier.
+                Du kannst den Browser-Speicher jederzeit über die Einstellungen
+                deines Browsers leeren — damit ist auch der gespeicherte
+                RentenWiki-Stand entfernt.
               </p>
               <p className="angaben-aside-body">
                 Methodische Details und die zugehörigen Paragrafen findest du auf{' '}

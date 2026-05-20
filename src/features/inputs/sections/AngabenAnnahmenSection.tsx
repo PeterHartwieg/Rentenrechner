@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { ScenarioAssumptions } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
+import { clampNumber } from '../../../ui/formatting'
 import { formatPercent } from '../../../utils/format'
 
 /**
@@ -117,7 +118,10 @@ export function AngabenAnnahmenSection({
                 ...a,
                 monteCarlo: {
                   ...a.monteCarlo,
-                  annualVolatility: Math.max(0, Number(value)) / 100,
+                  // Clamp to the UI bounds (0..50 %) so out-of-range typed
+                  // values can't push annualVolatility above the schema's
+                  // 0..0.6 range and trip validateState on next load.
+                  annualVolatility: clampNumber(Number(value), 0, 50) / 100,
                 },
               }))
             }
@@ -167,7 +171,10 @@ export function AngabenAnnahmenSection({
               onChange={(value) =>
                 setAssumptions((a) => ({
                   ...a,
-                  inflationRate: Math.max(0, Number(value)) / 100,
+                  // Clamp to the UI bounds (0..8 %) so out-of-range typed
+                  // values can't push inflationRate above the schema's
+                  // 0..0.2 (20 %) range and trip validateState on next load.
+                  inflationRate: clampNumber(Number(value), 0, 8) / 100,
                 }))
               }
             />
