@@ -41,17 +41,18 @@ const LEGEND_ITEMS = [
 ];
 
 function ColoredXAxisTick({
-  x, y, payload, labelToColor,
+  x, y, payload, labelToColor, fontSize = 12,
 }: {
   x?: string | number; y?: string | number;
   payload?: { value: string };
   labelToColor: Record<string, string>;
+  fontSize?: number;
 }) {
   if (!payload) return null;
   const color = labelToColor[payload.value] ?? '#6b7280';
   const yPos = typeof y === 'number' ? y : Number(y ?? 0);
   return (
-    <text x={x} y={yPos + 12} textAnchor="middle" fill={color} fontSize={12} fontWeight={600}>
+    <text x={x} y={yPos + 12} textAnchor="middle" fill={color} fontSize={fontSize} fontWeight={600}>
       {payload.value}
     </text>
   );
@@ -111,7 +112,7 @@ export function FeeDragChart({
               <XAxis
                 dataKey="name"
                 tickLine={false}
-                tick={(props) => <ColoredXAxisTick {...props} labelToColor={labelToColor} />}
+                tick={(props) => <ColoredXAxisTick {...props} labelToColor={labelToColor} fontSize={density.axisLabelFontSize} />}
                 interval={0}
                 fontSize={density.axisLabelFontSize}
               />

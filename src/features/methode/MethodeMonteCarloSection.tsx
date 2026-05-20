@@ -41,11 +41,25 @@ export function MethodeMonteCarloSection() {
     setMounted(true)
   }, [])
 
-  if (!mounted || !assumptions.monteCarlo.enabled || assumptions.visibleProducts.length === 0) {
+  if (!mounted) {
+    // SSR / hydration pass: no aria-live announcement before the client
+    // takes over — avoids announcing "disabled" during prerender.
+    return null
+  }
+
+  if (!assumptions.monteCarlo.enabled) {
     return (
       <p className="methode-section-lead" aria-live="polite">
         Monte-Carlo ist im Szenario-Toolbar deaktiviert. Aktiviere die Simulation
         in deinem Plan, um Risiko-Bandbreiten (P10 / P50 / P90) je Produkt zu sehen.
+      </p>
+    )
+  }
+
+  if (assumptions.visibleProducts.length === 0) {
+    return (
+      <p className="methode-section-lead" aria-hidden="true">
+        Keine Produkte im Vergleich ausgewählt.
       </p>
     )
   }

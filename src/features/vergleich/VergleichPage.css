@@ -177,7 +177,8 @@
 
 .vergleich-comparison-table td,
 .vergleich-comparison-table th {
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 .vergleich-comparison-table thead tr {

@@ -14,7 +14,7 @@ import type { ProductId } from '../domain'
  * Kept in `src/content/` so microcopy edits do not touch engine or feature
  * code. Consumed by `VergleichProContraGrid`.
  */
-export type ProContraEntry = {
+export interface ProContraEntry {
   readonly pro: string
   readonly contra: string
 }

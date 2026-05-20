@@ -1,5 +1,5 @@
 import type { ReturnScenario } from '../../domain'
-import { formatPercent } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {
   /** Scenario list from the active assumptions. */
@@ -64,6 +64,7 @@ export function VergleichRenditeStrip({
 }
 
 function formatEuroPerMonth(value: number): string {
-  // Round to whole euros; the strip is a metadata line, not a precise display.
-  return `${Math.round(value).toLocaleString('de-DE')} €/Mon.`
+  // formatCurrency(value, 0) returns e.g. "1.234 €" — append only the time
+  // suffix so the euro sign appears exactly once.
+  return `${formatCurrency(value, 0)}/Mon.`
 }
