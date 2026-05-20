@@ -36,7 +36,7 @@
 }
 
 .kapital-headline {
-  font-family: 'Newsreader', Georgia, serif;
+  font-family: Newsreader, Georgia, serif;
   font-weight: 400;
   font-size: 34px;
   line-height: 1.15;
@@ -85,15 +85,16 @@
 }
 
 .kapital-chip {
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
   font-size: 13px;
   font-weight: 400;
-  padding: 6px 12px;
+  padding: 10px 14px;
   border: 1px solid var(--kapital-rule-soft);
   background: transparent;
   color: var(--kapital-ink-soft);
   cursor: pointer;
-  min-height: 32px;
+  /* 44 px minimum tap target on every viewport — design plan §4 / §7. */
+  min-height: 44px;
   border-radius: 2px;
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
@@ -152,7 +153,7 @@
 }
 
 .kapital-section-title {
-  font-family: 'Newsreader', Georgia, serif;
+  font-family: Newsreader, Georgia, serif;
   font-weight: 400;
   font-size: 22px;
   margin: 0;
@@ -297,8 +298,8 @@
   }
   .kapital-chip {
     font-size: 12px;
-    padding: 8px 10px; /* taller for 44 px tap target */
-    min-height: 36px;
+    padding: 12px 12px;
+    min-height: 44px;
   }
 }
 

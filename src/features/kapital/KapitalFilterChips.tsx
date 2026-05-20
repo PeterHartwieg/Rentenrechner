@@ -26,8 +26,13 @@ export function KapitalFilterChips({ options, activeId, onSelect }: Props) {
   const isPhone = viewport === 'phone'
   if (options.length === 0) return null
 
+  // Button-group semantics, not tabs: this is a single-select filter chip
+  // row, not a tabbed content switcher. No arrow-key handling, no tabpanels,
+  // no roving tabindex — `role="group"` + `aria-pressed` accurately reports
+  // toggle-button behavior to assistive tech without misleading users into
+  // expecting tab-key navigation.
   return (
-    <div className="kapital-chips" role="tablist" aria-label="Ansicht: Auswahl">
+    <div className="kapital-chips" role="group" aria-label="Ansicht: Auswahl">
       <span className="kapital-chips-label" aria-hidden="true">ANSICHT:</span>
       {options.map((option) => {
         const isActive = option.id === activeId
@@ -35,8 +40,7 @@ export function KapitalFilterChips({ options, activeId, onSelect }: Props) {
           <button
             key={option.id}
             type="button"
-            role="tab"
-            aria-selected={isActive}
+            aria-pressed={isActive}
             className={`kapital-chip${isActive ? ' kapital-chip--active' : ''}`}
             style={isActive ? { background: option.color, borderColor: option.color } : undefined}
             onClick={() => onSelect(option.id)}

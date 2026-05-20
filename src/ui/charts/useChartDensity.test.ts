@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   classifyChartDensity,
   resolveChartDensity,
-  PHONE_CHART_MAX_PX,
-  TABLET_CHART_MAX_PX,
+  phoneChartMaxPx,
+  tabletChartMaxPx,
 } from './useChartDensity'
 
 describe('classifyChartDensity', () => {
@@ -19,17 +19,17 @@ describe('classifyChartDensity', () => {
 
   it('classifies phone widths', () => {
     expect(classifyChartDensity(320)).toBe('phone')
-    expect(classifyChartDensity(PHONE_CHART_MAX_PX)).toBe('phone')
+    expect(classifyChartDensity(phoneChartMaxPx)).toBe('phone')
   })
 
   it('classifies tablet widths (between phone and tablet thresholds)', () => {
-    expect(classifyChartDensity(PHONE_CHART_MAX_PX + 1)).toBe('tablet')
+    expect(classifyChartDensity(phoneChartMaxPx + 1)).toBe('tablet')
     expect(classifyChartDensity(600)).toBe('tablet')
-    expect(classifyChartDensity(TABLET_CHART_MAX_PX)).toBe('tablet')
+    expect(classifyChartDensity(tabletChartMaxPx)).toBe('tablet')
   })
 
   it('classifies desktop widths', () => {
-    expect(classifyChartDensity(TABLET_CHART_MAX_PX + 1)).toBe('desktop')
+    expect(classifyChartDensity(tabletChartMaxPx + 1)).toBe('desktop')
     expect(classifyChartDensity(1200)).toBe('desktop')
   })
 })
@@ -69,7 +69,7 @@ describe('resolveChartDensity', () => {
     // The hook MUST be a no-op at the boundary where BreakEvenChart's
     // hand-rolled `isMobileChart = chartWidth <= 480` flipped, so adopting
     // the hook does not change rendered output on existing tests.
-    const tokens = resolveChartDensity(PHONE_CHART_MAX_PX)
+    const tokens = resolveChartDensity(phoneChartMaxPx)
     expect(tokens.yAxisWidth).toBe(48)
     expect(tokens.margins.bottom).toBe(24)
     expect(tokens.axisLabelsVisible).toBe(false)

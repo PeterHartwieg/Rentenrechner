@@ -339,7 +339,7 @@ URL-encode to `%3A`).
 
 **Invalid `:instanceId` handling**: if the URL contains an instance
 ID that doesn't exist in the active workspace (user shared a link to
-an instance they later deleted), render an explicit "Diese Vertrag
+an instance they later deleted), render an explicit "Dieser Vertrag
 wurde nicht gefunden" empty state with a back link to `/`. Do NOT
 redirect silently — that hides the user's intent.
 

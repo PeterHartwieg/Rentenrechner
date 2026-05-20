@@ -43,12 +43,13 @@ export interface ChartDensityTokens {
   tooltipFontSize: number
 }
 
-// Width thresholds — width <= phoneMax → 'phone'; width <= tabletMax →
-// 'tablet'; else 'desktop'. The phone threshold matches the pre-PR-8
+// Width thresholds — width <= phoneChartMaxPx → 'phone';
+// width <= tabletChartMaxPx → 'tablet'; else 'desktop'.
+// The phone threshold matches the pre-PR-8
 // `isMobileChart = chartWidth <= 480` constant used by BreakEvenChart so
 // adopting the hook there is a no-op at the boundary.
-export const PHONE_CHART_MAX_PX = 480
-export const TABLET_CHART_MAX_PX = 800
+export const phoneChartMaxPx = 480
+export const tabletChartMaxPx = 800
 
 /**
  * Pure tier classifier — exposed so tests and prerender code can decide the
@@ -59,8 +60,8 @@ export const TABLET_CHART_MAX_PX = 800
  */
 export function classifyChartDensity(width: number | undefined): ChartDensityTier {
   if (width === undefined || !Number.isFinite(width) || width <= 0) return 'desktop'
-  if (width <= PHONE_CHART_MAX_PX) return 'phone'
-  if (width <= TABLET_CHART_MAX_PX) return 'tablet'
+  if (width <= phoneChartMaxPx) return 'phone'
+  if (width <= tabletChartMaxPx) return 'tablet'
   return 'desktop'
 }
 
@@ -114,15 +115,10 @@ export function resolveChartDensity(width: number | undefined): ChartDensityToke
 
 /**
  * Resolve density tokens for a chart of the given pixel width. Memoised on
- * the tier (not the raw width) so a chart that resizes within a tier does
- * not produce new token objects on every measurement frame.
+ * the raw width so the dependency-correctness checker stays happy; consumers
+ * read tokens by value (never by identity) so a fresh object per width
+ * change is harmless.
  */
 export function useChartDensity(width: number | undefined): ChartDensityTokens {
-  // We re-memo on every width change (cheap — a tier classification plus a
-  // switch over four constant object literals). An earlier version keyed
-  // the memo on the derived tier to share token identity across widths in
-  // the same tier, but the resulting `react-hooks/exhaustive-deps` warning
-  // is not worth the micro-optimisation: tokens are read by value, never
-  // by identity, so a fresh object per resize is harmless.
   return useMemo(() => resolveChartDensity(width), [width])
 }
