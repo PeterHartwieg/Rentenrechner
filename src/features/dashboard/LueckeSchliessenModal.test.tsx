@@ -80,7 +80,10 @@ describe('LueckeSchliessenModal', () => {
     fireEvent.click(getByText('Weiter'))
     fireEvent.click(getByText('Nein, Standardannahmen nutzen'))
     fireEvent.click(getByText('Optionen anzeigen'))
-    expect(container.textContent).toContain('Beste Optionen für 350')
+    // PR 6: card heading neutralised to a question (no winner framing).
+    expect(container.textContent).toMatch(
+      /Welcher Vertrag profitiert am stärksten von .*350.* zusätzlich/,
+    )
   })
 
   it('only calls save/adopt from the final result action', () => {
