@@ -1,4 +1,4 @@
-import type { ProductId, ProductResult, ScenarioAssumptions } from '../../domain'
+import type { BavFundingResult, ProductId, ProductResult, ScenarioAssumptions } from '../../domain'
 import { getProductMeta } from '../../engine/productRegistry'
 
 // ---------------------------------------------------------------------------
@@ -54,13 +54,36 @@ interface BuildArgs {
   result: ProductResult
   retirementAge: number
   /**
-   * Scenario assumptions for the current run. Currently unused by the row
-   * helpers but reserved as the extension point for future Verfügbarkeit
-   * adjustments that depend on retirementEndAge or contract-start year.
-   * Kept in the signature so callers don't have to rewire when those
-   * helpers gain assumption-driven branches.
+   * Years of accumulation between contract start (current age) and the
+   * configured retirement age. Required to convert the lifetime-accumulated
+   * `ProductResult.taxAndSvSavings` (bAV: `annualTaxAndSvSavings × yearsToRetirement`;
+   * Basisrente / AVD / Riester: per-year `reduce` summed across accumulation
+   * years) into a monthly display figure: `value / (12 * yearsToRetirement)`.
+   *
+   * Threaded from the page via `profile.retirementAge - profile.age`.
+   * See `src/engine/products/bav.ts` (line 41) and the §10 Sonderausgaben
+   * funding helpers (`salaryPhaseFunding.ts`) for the engine semantics.
+   */
+  yearsToRetirement: number
+  /**
+   * Scenario assumptions for the current run. Used to gate the bAV
+   * Fix 2 path: when `assumptions.bav.includeGrvReduction` is `true`,
+   * `netMonthlyPayout` has the bAV-funding GRV-loss estimate subtracted on
+   * top of tax + KV/PV (see `src/engine/products/bav.ts:82-84`). The income-tax
+   * derivation must add that estimate back to net before doing the
+   * `gross − net − kvPv` arithmetic; otherwise the "− Einkommensteuer" row
+   * mislabels the GRV reduction as tax.
    */
   assumptions: ScenarioAssumptions
+  /**
+   * Compare-mode `SimulationResult.bavFunding`. Required for the bAV Fix 2
+   * path so we can read `estimatedMonthlyGrvReduction`. Optional because
+   * non-bAV cards never consult it; if omitted, the bAV GRV adjustment is
+   * skipped (so the row falls back to the legacy `gross − net − kvPv`
+   * derivation — defensive against test fixtures that don't construct a
+   * full bavFunding).
+   */
+  bavFunding?: BavFundingResult
 }
 
 /**
@@ -72,11 +95,7 @@ interface BuildArgs {
 export function buildVergleichDetailCardData(
   args: BuildArgs,
 ): VergleichDetailCardData | null {
-  // `args.assumptions` is intentionally accepted but currently unused by the
-  // section helpers; see the interface comment above. Destructure narrowly
-  // so the unused field doesn't trip @typescript-eslint/no-unused-vars
-  // (the project's default config rejects leading-underscore params too).
-  const { result, retirementAge } = args
+  const { result, retirementAge, yearsToRetirement, assumptions, bavFunding } = args
   const meta = getProductMeta(result.productId)
   if (!meta) return null
 
@@ -85,9 +104,9 @@ export function buildVergleichDetailCardData(
     label: meta.label,
     shortLabel: meta.shortLabel,
     sections: [
-      buildAnsparSection(result),
+      buildAnsparSection(result, yearsToRetirement),
       buildKapitalSection(result, retirementAge),
-      buildPayoutSection(result),
+      buildPayoutSection(result, assumptions, bavFunding),
     ],
     effectiveAnnualCost: result.accumulationRiy,
   }
@@ -97,10 +116,24 @@ export function buildVergleichDetailCardData(
 // Section 1 — § Ansparphase, pro Monat
 // ---------------------------------------------------------------------------
 
-function buildAnsparSection(result: ProductResult): VergleichDetailSection {
+function buildAnsparSection(
+  result: ProductResult,
+  yearsToRetirement: number,
+): VergleichDetailSection {
   const rows: VergleichDetailRow[] = [
     { label: 'Du selbst', value: result.monthlyUserCost, kind: 'add' },
   ]
+
+  // `ProductResult.taxAndSvSavings` is the **lifetime** tax-and-SV benefit over
+  // the whole accumulation phase, NOT a per-year figure. The engine populates
+  // it as `annualSaving × yearsToRetirement` for bAV
+  // (`src/engine/products/bav.ts:41`) and as a `reduce` summing each year's
+  // funding for §10 products (`basisrente.ts:38`, `altersvorsorgedepot.ts:135`,
+  // `riester.ts:111`). To surface the monthly contribution effect, divide by
+  // (12 × yearsToRetirement); dividing by 12 alone inflates the displayed
+  // benefit by `yearsToRetirement` (e.g. ~30×) and overstates "= effektiv
+  // investiert". Fixes PR 290 Codex P1.
+  const monthlyTaxBenefit = monthlyTaxBenefitOf(result.taxAndSvSavings, yearsToRetirement)
 
   // bAV uniquely surfaces the employer contribution and labels the §3 Nr. 63 /
   // §1 SvEV tax + SV delta as "Steuer- & SV-Vorteil". The §10 Sonderausgaben
@@ -114,10 +147,10 @@ function buildAnsparSection(result: ProductResult): VergleichDetailSection {
         kind: 'add',
       })
     }
-    if (result.taxAndSvSavings > 0) {
+    if (monthlyTaxBenefit > 0) {
       rows.push({
         label: '+ Steuer- & SV-Vorteil',
-        value: result.taxAndSvSavings / 12,
+        value: monthlyTaxBenefit,
         kind: 'add',
       })
     }
@@ -126,10 +159,10 @@ function buildAnsparSection(result: ProductResult): VergleichDetailSection {
     result.productId === 'altersvorsorgedepot' ||
     result.productId === 'riester'
   ) {
-    if (result.taxAndSvSavings > 0) {
+    if (monthlyTaxBenefit > 0) {
       rows.push({
         label: '+ Steuerrückerstattung',
-        value: result.taxAndSvSavings / 12,
+        value: monthlyTaxBenefit,
         kind: 'add',
       })
     }
@@ -145,6 +178,16 @@ function buildAnsparSection(result: ProductResult): VergleichDetailSection {
   })
 
   return { heading: 'Ansparphase, pro Monat', rows }
+}
+
+/**
+ * Convert lifetime-accumulated `taxAndSvSavings` (engine convention) into a
+ * per-month display value. Defensive against `yearsToRetirement <= 0` (would
+ * yield `Infinity` otherwise — surfaces as 0 to drop the row). See `buildAnsparSection`.
+ */
+function monthlyTaxBenefitOf(lifetimeTaxAndSvSavings: number, yearsToRetirement: number): number {
+  if (yearsToRetirement <= 0) return 0
+  return lifetimeTaxAndSvSavings / (12 * yearsToRetirement)
 }
 
 // ---------------------------------------------------------------------------
@@ -179,17 +222,41 @@ function buildKapitalSection(
 // Section 3 — § Im Alter, pro Monat
 // ---------------------------------------------------------------------------
 
-function buildPayoutSection(result: ProductResult): VergleichDetailSection {
+function buildPayoutSection(
+  result: ProductResult,
+  assumptions: ScenarioAssumptions,
+  bavFunding: BavFundingResult | undefined,
+): VergleichDetailSection {
   // Per CLAUDE.md "Non-obvious architecture": ProductResult exposes
-  // `grossMonthlyPayout`, `netMonthlyPayout`, and `kvPvMonthly?`. There is no
-  // dedicated `incomeTaxMonthly` field. The cascade
-  // `gross → marginal-tax → KV/PV → net` is owned by
-  // `calculateMonthlyRetirementPayout`, so monthly income tax can be derived
-  // as `gross − net − kvPv` (KV/PV defaults to 0 on legacy paths).
+  // `grossMonthlyPayout`, `netMonthlyPayout`, and `kvPvMonthly?`. The
+  // `calculateMonthlyRetirementPayout` cascade returns `marginalTaxAnnual`
+  // internally, but **does not propagate it** through `buildProductResult`
+  // onto `ProductResult` (see `src/engine/buildResult.ts:222-259`). So we
+  // derive monthly income tax as `gross − net − kvPv` at the display layer,
+  // matching what the engine internally computes.
   const kvPvMonthly = result.kvPvMonthly ?? 0
+
+  // PR 290 Codex P2 fix: for bAV with `assumptions.bav.includeGrvReduction =
+  // true`, `netMonthlyPayout` has an additional deduction beyond tax + KV/PV
+  // — `bavFunding.estimatedMonthlyGrvReduction` — subtracted at
+  // `src/engine/products/bav.ts:82-84`. Without compensating, the naive
+  // derivation `gross − net − kvPv` rolls that GRV-loss estimate into the
+  // "− Einkommensteuer" row, mislabeling a pension-system reduction as a tax.
+  // Add the GRV reduction back to net before deriving income tax so the row
+  // surfaces only the marginal-tax delta produced by the canonical
+  // retirement-tax cascade. (Architectural invariant: monthly retirement
+  // payouts go through `calculateMonthlyRetirementPayout`; the display layer
+  // consumes what the cascade produces rather than re-deriving.)
+  const grvReductionMonthly =
+    result.productId === 'bav' &&
+    assumptions.bav.includeGrvReduction &&
+    bavFunding
+      ? bavFunding.estimatedMonthlyGrvReduction
+      : 0
+  const netForTaxDerivation = result.netMonthlyPayout + grvReductionMonthly
   const incomeTaxMonthly = Math.max(
     0,
-    result.grossMonthlyPayout - result.netMonthlyPayout - kvPvMonthly,
+    result.grossMonthlyPayout - netForTaxDerivation - kvPvMonthly,
   )
 
   return {

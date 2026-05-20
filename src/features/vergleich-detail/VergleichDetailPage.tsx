@@ -79,16 +79,31 @@ export function VergleichDetailPage({ navigate, selectedScenarioId }: Props) {
     const sorted = [...products].sort(
       (a, b) => (orderById.get(a.productId) ?? 99) - (orderById.get(b.productId) ?? 99),
     )
+    // `yearsToRetirement` and the compare-mode `bavFunding` are threaded into
+    // the row builder so it can (a) convert the lifetime-accumulated
+    // `taxAndSvSavings` into a monthly display value and (b) compensate for
+    // the bAV `includeGrvReduction` net-payout deduction when deriving the
+    // monthly income-tax row. See PR 290 review fixes.
+    const yearsToRetirement = Math.max(0, profile.retirementAge - profile.age)
     return sorted
       .map((r) =>
         buildVergleichDetailCardData({
           result: r,
           retirementAge: profile.retirementAge,
+          yearsToRetirement,
           assumptions,
+          bavFunding: result.simulation.bavFunding,
         }),
       )
       .filter((d): d is VergleichDetailCardData => d !== null)
-  }, [result.simulation.products, effectiveScenarioId, profile.retirementAge, assumptions])
+  }, [
+    result.simulation.products,
+    result.simulation.bavFunding,
+    effectiveScenarioId,
+    profile.retirementAge,
+    profile.age,
+    assumptions,
+  ])
 
   const hasComparisonSet = assumptions.visibleProducts.length > 0
   // `workspace.mode` is the canonical mode signal — never `detectSavedMode()`.
