@@ -1,6 +1,6 @@
 import '../../ui/charts.css'
 import './MonteCarloPanel.css'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -15,6 +15,7 @@ import type { ProductId } from '../../domain'
 import type { MonteCarloResult, ProductMonteCarloSummary } from '../../engine/monteCarlo'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
+import { useChartDensity } from '../../ui/charts/useChartDensity'
 import { qaTarget, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 import { useQaMode } from '../qa-feedback/useQaMode'
 
@@ -43,6 +44,12 @@ function clampPct(value: number): number {
 
 export function MonteCarloPanel({ result }: Props) {
   const [selectedProductId, setSelectedProductId] = useState<ProductId | null>(null)
+  const [chartWidth, setChartWidth] = useState(0)
+  const handleChartResize = useCallback((w: number) => setChartWidth(w), [])
+  // Width-based density tokens (PR 8). Picks `phone` / `tablet` / `desktop`
+  // off the chart's measured width so narrow desktop asides still shrink
+  // labels and margins like phones. See `useChartDensity`.
+  const density = useChartDensity(chartWidth || undefined)
   const { enabled: qaEnabled } = useQaMode()
 
   const selectedSummary =
@@ -206,13 +213,18 @@ export function MonteCarloPanel({ result }: Props) {
       </div>
 
       <div className="chart-frame small">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+        <ResponsiveContainer width="100%" height="100%" onResize={handleChartResize}>
+          <LineChart data={chartData} margin={density.margins}>
             <CartesianGrid strokeDasharray="4 4" />
-            <XAxis dataKey="age" tickLine={false} />
+            <XAxis
+              dataKey="age"
+              tickLine={false}
+              fontSize={density.axisLabelFontSize}
+            />
             <YAxis
               tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-              width={64}
+              width={density.yAxisWidth}
+              fontSize={density.axisLabelFontSize}
             />
             <Tooltip
               content={({ active, payload, label }) => {
@@ -222,7 +234,7 @@ export function MonteCarloPanel({ result }: Props) {
                   if (entry.dataKey) byKey[String(entry.dataKey)] = Number(entry.value)
                 }
                 return (
-                  <div className="recharts-default-tooltip" style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px', fontSize: 13 }}>
+                  <div className="recharts-default-tooltip" style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px', fontSize: density.tooltipFontSize }}>
                     <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Alter {label}</p>
                     {byKey.p90 !== undefined && (
                       <p style={{ margin: '2px 0' }}>

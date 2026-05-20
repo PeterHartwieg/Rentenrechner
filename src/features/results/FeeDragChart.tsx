@@ -1,5 +1,6 @@
 import '../../ui/charts.css'
 import './FeeDragChart.css'
+import { useCallback, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -13,6 +14,7 @@ import { Coins } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/format';
 import { getProductMeta } from '../../engine/productRegistry';
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon';
+import { useChartDensity } from '../../ui/charts/useChartDensity';
 import { qaTargetAttrs, useFeedbackTarget } from '../qa-feedback/useFeedbackTarget';
 import { useQaMode } from '../qa-feedback/useQaMode';
 import { buildFeeDragChartData, type FeeDragResultEntry } from './feeDragChartData';
@@ -66,6 +68,14 @@ export function FeeDragChart({
     selectedResults.map((r) => [getProductMeta(r.productId as Parameters<typeof getProductMeta>[0])?.shortLabel ?? r.label, productColors[r.productId]])
   );
 
+  // Width-based density tokens. The chart sits on Vertrag-Detail's
+  // center column (narrow on mobile) and on legacy detail surfaces;
+  // density tier is picked from the chart's measured pixel width via
+  // `useChartDensity` so axis labels + margins shrink on narrow viewports.
+  const [chartWidth, setChartWidth] = useState(0);
+  const handleChartResize = useCallback((w: number) => setChartWidth(w), []);
+  const density = useChartDensity(chartWidth || undefined);
+
   const { targetProps: containerTargetProps } = useFeedbackTarget({
     id: 'results.feeDragChart.container',
     label: 'Gebühren-Vergleich-Chart',
@@ -92,10 +102,10 @@ export function FeeDragChart({
       </div>
       <div className="fee-drag-chart-wrap">
         <div className="chart-frame small">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" onResize={handleChartResize}>
             <BarChart
               data={buildFeeDragChartData(selectedResults, retirementAge, comparisonEndAge)}
-              margin={{ top: 12, right: 8, left: 0, bottom: 8 }}
+              margin={density.margins}
             >
               <CartesianGrid strokeDasharray="4 4" vertical={false} />
               <XAxis
@@ -103,12 +113,17 @@ export function FeeDragChart({
                 tickLine={false}
                 tick={(props) => <ColoredXAxisTick {...props} labelToColor={labelToColor} />}
                 interval={0}
+                fontSize={density.axisLabelFontSize}
               />
               <YAxis
                 tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-                width={64}
+                width={density.yAxisWidth}
+                fontSize={density.axisLabelFontSize}
               />
-              <Tooltip formatter={(value) => formatCurrency(Number(value), 0)} />
+              <Tooltip
+                formatter={(value) => formatCurrency(Number(value), 0)}
+                contentStyle={{ fontSize: density.tooltipFontSize }}
+              />
               <Bar dataKey="Nettoaufwand gesamt" stackId="a" fill="#0ea5e9" isAnimationActive={false} />
               <Bar dataKey="Netto-Rendite" stackId="a" fill="#22c55e" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               <Bar dataKey="Gebühren gesamt" stackId="b" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />

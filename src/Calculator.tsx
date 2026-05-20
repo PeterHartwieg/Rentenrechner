@@ -13,20 +13,14 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
-import { VergleichSidebar } from './features/results/VergleichSidebar'
-import {
-  type VergleichPaneSlug,
-  ALL_VERGLEICH_PANES,
-} from './features/results/vergleichPanes'
-// PR 6: `MeinPlanSidebar` removed from the combine-mode render path. The
-// per-pane switcher has been replaced by the single Sober D `MeinPlanPage`
-// surface; the file itself is kept until PR 9 finishes the deletion across
-// the remaining surfaces (Vergleich + Wohin geht das Geld).
+// PR 6: `MeinPlanSidebar` removed from the combine-mode render path. PR 9:
+// the per-pane Vergleich sidebar + its pane registry are likewise gone — the
+// compare-mode surface is now the linear Sober D `VergleichPage`.
 import { MeinPlanPage } from './features/mein-plan/MeinPlanPage'
+import { VergleichPage } from './features/vergleich/VergleichPage'
 import type { ProductId } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
-import { projectGrvContributionTimeline } from './engine/grv'
 import { de2026Rules } from './rules/de2026'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
@@ -40,23 +34,10 @@ import { usePortfolioState } from './app/portfolioState'
 import type { Route } from './app/useRoute'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
 import { InputsPanel } from './features/inputs/InputsPanel'
-import { SummaryMetrics } from './features/results/SummaryMetrics'
-import { DecisionSummary } from './features/results/DecisionSummary'
-import { ProductEditCards } from './features/results/ProductEditCards'
-import { ResultWaterfalls } from './features/results/ResultWaterfall'
 import { SensitivityPanel } from './features/results/SensitivityPanel'
 import { runSensitivity } from './features/results/sensitivity'
-import { CapitalChart } from './features/results/CapitalChart'
-import { PensionChart } from './features/results/PensionChart'
-import { BreakEvenChart } from './features/results/BreakEvenChart'
 import { FairnessPanel } from './features/results/FairnessPanel'
 import { FeeDragChart } from './features/results/FeeDragChart'
-import { KvPvLastPanel } from './features/results/KvPvLastPanel'
-import { LifetimeIncomeChart } from './features/results/LifetimeIncomeChart'
-import { SteuerWasserfallPanel } from './features/results/SteuerWasserfallPanel'
-import { SequenceOfReturnsPanel } from './features/results/SequenceOfReturnsPanel'
-import { InflationStressPanel } from './features/results/InflationStressPanel'
-import { MonteCarloHighlights } from './features/results/MonteCarloHighlights'
 import { MonteCarloPanel } from './features/results/MonteCarloPanel'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
@@ -73,7 +54,6 @@ import { InventoryWizard } from './features/inventory/InventoryWizard'
 import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSidebar'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
-import { VergleichDashboard } from './features/dashboard/VergleichDashboard'
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
 import { LegalFooter } from './features/legal/LegalFooter'
@@ -89,23 +69,10 @@ const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.col
 // PR 6: PORTFOLIO_COLOR / PORTFOLIO_LIFECYCLE_ID / buildPortfolioLifecycleViews
 // were tied to the removed combine-mode lifecycle pane. PR 8 (Kapital &
 // Auszahlungen) re-introduces them on a dedicated `/kapital` route.
-
-// Compare-mode menu points that don't yet have a dedicated chart. They render
-// an "in Arbeit" placeholder rather than falling back to other charts so the
-// sidebar is honest about coverage.
-const VERGLEICH_STUB_PANES: ReadonlySet<VergleichPaneSlug> = new Set([
-  'rendite',
-  'beitrag',
-  'lebenserwartung',
-  'sens-retirement-age',
-  'fairness',
-])
-
-// PR 6: the combine-mode Mein-Plan pane switcher and its stub-pane set are
-// gone. The new `MeinPlanPage` renders a single linear surface — the panes
-// previously listed here (Sequence-of-Returns / Inflations-Stress /
-// Rendite / Beitrag / Lebenserwartung / Renteneintrittsalter) will be re-
-// surfaced as additional sensitivity rows or detail-page links in later PRs.
+//
+// PR 9: the compare-mode `vergleichPane` switcher + `VERGLEICH_STUB_PANES`
+// set are likewise gone. The compare-mode surface is now the linear Sober D
+// `VergleichPage` (see `src/features/vergleich/VergleichPage.tsx`).
 
 type ShellTabDef = {
   id: WorkspaceView
@@ -182,16 +149,10 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   // Issue 23: product tab to pre-select when navigating from a ProductEditCard
   // default-state notice to the InputsPanel ("Einstellungen anpassen").
   const [requestedInputsTab, setRequestedInputsTab] = useState<ProductId | null>(null)
-  // Issue #239/#241: active pane for the compare-mode Vergleich sidebar.
-  const [vergleichPane, setVergleichPane] = useState<VergleichPaneSlug>('ueberblick')
-  const handleVergleichPaneChange = (pane: VergleichPaneSlug) => {
-    setVergleichPane(pane)
-    const params = new URLSearchParams(window.location.search)
-    params.set('pane', pane)
-    window.history.pushState(null, '', `${window.location.pathname}?${params.toString()}`)
-  }
   // PR 6: combine-mode Mein-Plan pane switcher removed — the Sober D
-  // `MeinPlanPage` renders all sections inline. No per-pane state needed.
+  // `MeinPlanPage` renders all sections inline. PR 9: compare-mode Vergleich
+  // pane switcher likewise gone — `VergleichPage` is now a single linear
+  // surface. No per-pane state needed.
 
   const {
     profile,
@@ -212,24 +173,17 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   // `history.replaceState` removes the param so a refresh sees the
   // truly-saved state. Use the transient setter so the override does NOT
   // overwrite the user's previously-saved tab in localStorage.
+  //
+  // PR 9: the `?pane=<VergleichPaneSlug>` deep-linking is gone — the legacy
+  // pane switcher has been collapsed into a single Sober D `VergleichPage`
+  // surface, so there is no per-pane URL fragment to honour.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    let dirty = false
     const viewParam = params.get('view')
     if (viewParam && (WORKSPACE_VIEWS as readonly string[]).includes(viewParam)) {
       workspace.setActiveViewTransient(viewParam as WorkspaceView)
       params.delete('view')
-      dirty = true
-    }
-    const paneParam = params.get('pane')
-    if (paneParam && (ALL_VERGLEICH_PANES as readonly string[]).includes(paneParam)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setVergleichPane(paneParam as VergleichPaneSlug)
-      params.delete('pane')
-      dirty = true
-    }
-    if (dirty) {
       const newSearch = params.toString()
       const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '')
       window.history.replaceState(null, '', newUrl)
@@ -351,14 +305,10 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     combineMode: isCombineMode,
     combine: combineExportBundle,
   })
-  const { simulation, monteCarloResult, selectedScenario, taxModes } = result
+  const { simulation, monteCarloResult, taxModes } = result
   const {
     visibleProducts,
     selectedResults,
-    capitalChartData,
-    pensionBars,
-    bestCapital,
-    bestPension,
     cashflowResult,
     effectiveCashflowProductId,
     insuranceResult,
@@ -434,21 +384,10 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     portfolioState.workspace.baseline.assumptions.returnScenarios.find(
       (s) => s.id === combineBasisScenarioId,
     )?.label ?? 'Basis'
-  // GRV contribution timeline for BreakEvenChart (#27).
-  // Compare-mode: use the singleton profile + assumptions; wire bAV GRV reduction.
-  // PR 6: the combine-mode timeline is no longer needed — the lifecycle pane
-  // was removed from the Mein-Plan surface. PR 8 (Kapital & Auszahlungen) will
-  // re-introduce it on its own `/kapital` route.
-  const compareGrvContributionTimeline = useMemo(
-    () =>
-      projectGrvContributionTimeline(
-        profile,
-        de2026Rules,
-        assumptions.statutoryPension,
-        (simulation.bavFunding.estimatedMonthlyGrvReduction ?? 0) * 12,
-      ),
-    [profile, assumptions.statutoryPension, simulation.bavFunding.estimatedMonthlyGrvReduction],
-  )
+  // PR 9: compare-mode no longer renders a BreakEvenChart inline — the
+  // lifecycle chart now lives on `/kapital` (PR 8), driven from its own
+  // GRV-contribution timeline. The legacy `compareGrvContributionTimeline`
+  // memo is therefore dropped.
 
   const vergleichView = (
     <section
@@ -507,221 +446,22 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
         </div>
       )}
 
-      {/* Singleton-compare sections gated to compare-mode (Group G issue 11).
-          In combine mode the Lücke-schließen modal + CombineIncomePanel above are
-          the source of truth — the user is modelling actual contracts, not
-          comparing product candidates. */}
+      {/* Compare-mode surface (Group G issue 11): the new Sober D
+          `VergleichPage` renders a single linear surface — rendite strip,
+          neutral 6-product comparison table, pro/contra grid. Replaces the
+          legacy pane switcher + per-pane chart components (PR 9). */}
       {!isCombineMode && (
-        <div className="compare-layout">
-          {hasComparisonSet && (
-            <div className="compare-layout-sidebar">
-              <VergleichSidebar
-                activePane={vergleichPane}
-                onPaneChange={handleVergleichPaneChange}
-                bavVisible={assumptions.visibleProducts.includes('bav')}
-              />
-            </div>
-          )}
-
-          <div className="compare-layout-main">
-            {toolbar}
-
-            <ComparisonPicker
-              visible={assumptions.visibleProducts}
-              onChange={(next) =>
-                setAssumptions((current) => ({ ...current, visibleProducts: next }))
-              }
-            />
-
-            {hasComparisonSet ? (
-              <div className="vergleich-pane-content">
-                {/* Each pane owns the components that belong to it. Components
-                    that previously rendered on every pane (DecisionSummary,
-                    MonteCarloHighlights, SummaryMetrics, ProductEditCards,
-                    ResultWaterfalls) now live on the menu point that matches
-                    their content. */}
-                {vergleichPane === 'ueberblick' && (
-                  <>
-                    <SummaryMetrics
-                      grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                      grvProjectedEp={simulation.statutoryPension.projectedEntgeltpunkte}
-                      grvGrossMonthlyPension={simulation.statutoryPension.grossMonthlyPension}
-                      bavMonthlyNetCost={simulation.bavFunding.monthlyNetCost}
-                      bavTotalMonthlyContribution={
-                        simulation.bavFunding.monthlyGrossConversion +
-                        simulation.bavFunding.monthlyEmployerContribution
-                      }
-                      showBav={assumptions.visibleProducts.includes('bav')}
-                    />
-                    <ProductEditCards
-                      selectedResults={selectedResults}
-                      assumptions={assumptions}
-                      onAssumptionsChange={setAssumptions}
-                      avdCappedAtContractMax={simulation.altersvorsorgedepotFunding.cappedAtContractMax}
-                      avdContractCapAnnual={de2026Rules.altersvorsorgedepot.contractContributionCapAnnual}
-                      onOpenInputsForProduct={(productId) => {
-                        setRequestedInputsTab(productId)
-                        workspace.setActiveView('angebot')
-                      }}
-                    />
-                    <VergleichDashboard
-                      selectedResults={selectedResults}
-                      capitalChartData={capitalChartData}
-                      selectedScenario={selectedScenario}
-                      pensionBars={pensionBars}
-                      monteCarloResult={monteCarloResult}
-                      productColors={PRODUCT_COLORS}
-                      bestCapital={bestCapital}
-                      bestPension={bestPension}
-                      grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                      retirementAge={profile.retirementAge}
-                      retirementEndAge={assumptions.retirementEndAge}
-                      onNavigate={handleVergleichPaneChange}
-                    />
-                  </>
-                )}
-
-                {vergleichPane === 'entscheidung' && (
-                  <DecisionSummary
-                    results={selectedResults}
-                    bestCapital={bestCapital}
-                    bestPension={bestPension}
-                  />
-                )}
-
-                {vergleichPane === 'kapital' && (
-                  <CapitalChart
-                    capitalChartData={capitalChartData}
-                    selectedScenario={selectedScenario}
-                    selectedResults={selectedResults}
-                    productColors={PRODUCT_COLORS}
-                  />
-                )}
-
-                {vergleichPane === 'rente' && (
-                  <PensionChart
-                    pensionBars={pensionBars}
-                    retirementEndAge={assumptions.retirementEndAge}
-                  />
-                )}
-
-                {vergleichPane === 'break-even' && (
-                  <BreakEvenChart
-                    selectedResults={selectedResults}
-                    productColors={PRODUCT_COLORS}
-                    startAge={profile.age}
-                    retirementAge={profile.retirementAge}
-                    retirementEndAge={assumptions.retirementEndAge}
-                    bestProductId={bestCapital?.productId}
-                    grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                    pensionBaselineType={assumptions.statutoryPension.pensionBaselineType}
-                    grvContributionTimeline={compareGrvContributionTimeline}
-                  />
-                )}
-
-                {vergleichPane === 'fee-drag' && (
-                  <FeeDragChart
-                    selectedResults={selectedResults}
-                    productColors={PRODUCT_COLORS}
-                    retirementAge={profile.retirementAge}
-                    retirementEndAge={assumptions.retirementEndAge}
-                  />
-                )}
-
-                {vergleichPane === 'lifetime-einkommen' && (
-                  <LifetimeIncomeChart
-                    selectedResults={selectedResults}
-                    productColors={PRODUCT_COLORS}
-                    retirementAge={profile.retirementAge}
-                    retirementEndAge={assumptions.retirementEndAge}
-                  />
-                )}
-
-                {vergleichPane === 'steuer-wasserfall' && (
-                  <>
-                    <ResultWaterfalls
-                      results={selectedResults}
-                      grvNetMonthlyPension={simulation.statutoryPension.netMonthlyPension}
-                    />
-                    <SteuerWasserfallPanel
-                      selectedResults={selectedResults}
-                      profile={profile}
-                      rules={de2026Rules}
-                      taxModes={taxModes}
-                    />
-                  </>
-                )}
-
-                {vergleichPane === 'kv-pv-last' && (
-                  <KvPvLastPanel
-                    selectedResults={selectedResults.map((r) => ({
-                      productId: r.productId,
-                      label: r.label,
-                      grossMonthlyPayout: r.grossMonthlyPayout,
-                      kvPvMonthly: r.kvPvMonthly ?? 0,
-                    }))}
-                    monthlyKvPvBbg={de2026Rules.socialSecurity.healthAndCareCapMonth}
-                    combinedGrossMonthly={
-                      selectedResults.reduce((s, r) => s + r.grossMonthlyPayout, 0) +
-                      simulation.statutoryPension.grossMonthlyPension
-                    }
-                    healthStatus={
-                      !profile.publicHealthInsurance
-                        ? 'pkv'
-                        : taxModes.kvdrMember
-                          ? 'kvdr'
-                          : 'freiwillig_gkv'
-                    }
-                  />
-                )}
-
-                {vergleichPane === 'monte-carlo' && (
-                  monteCarloResult ? (
-                    <MonteCarloHighlights result={monteCarloResult} />
-                  ) : (
-                    <section className="vergleich-pane-stub" role="note">
-                      <p>Monte-Carlo ist im Szenario-Toolbar deaktiviert. Aktiviere es, um Risiko-Highlights zu sehen.</p>
-                    </section>
-                  )
-                )}
-
-                {vergleichPane === 'sequence-of-returns' && (
-                  selectedScenario ? (
-                    <SequenceOfReturnsPanel
-                      selectedResults={selectedResults}
-                      payoutYears={assumptions.retirementEndAge - profile.retirementAge}
-                      retirementAge={profile.retirementAge}
-                      selectedScenario={selectedScenario}
-                      productColors={PRODUCT_COLORS}
-                    />
-                  ) : (
-                    <section className="vergleich-pane-stub" role="note">
-                      <p>Kein Renditeszenario ausgewählt — wähle eines im Szenario-Toolbar.</p>
-                    </section>
-                  )
-                )}
-
-                {vergleichPane === 'inflations-stress' && (
-                  <InflationStressPanel
-                    selectedResults={selectedResults}
-                    productColors={PRODUCT_COLORS}
-                    retirementAge={profile.retirementAge}
-                    retirementEndAge={assumptions.retirementEndAge}
-                    inflationRate={assumptions.inflationRate}
-                  />
-                )}
-
-                {VERGLEICH_STUB_PANES.has(vergleichPane) && (
-                  <section className="vergleich-pane-stub" role="note">
-                    <p>Diese Ansicht ist noch in Arbeit.</p>
-                  </section>
-                )}
-              </div>
-            ) : (
-              <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
-            )}
-          </div>
-        </div>
+        <VergleichPage
+          profile={profile}
+          assumptions={assumptions}
+          result={result}
+          onAssumptionsChange={(updater) =>
+            setAssumptions((current) => ({ ...current, ...updater(current) }))
+          }
+          selectedScenarioId={result.effectiveScenarioId}
+          onSelectScenario={ui.setSelectedScenarioId}
+          onOpenAngebot={() => workspace.setActiveView('angebot')}
+        />
       )}
     </section>
   )
