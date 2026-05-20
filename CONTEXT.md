@@ -100,6 +100,7 @@ tests.
 | Workspace IDs + pure workspace mutations (no React, breaks the app↔inventory cycle) | `src/app/workspaceIdentity.ts` |
 | Workspace state hook (combine mode) | `src/app/portfolioState.ts`, `src/app/useWorkspace.ts` |
 | Compare-mode state hook | `src/app/useCalculatorState.ts` |
+| Mode-aware state hook for `/eingaben` (Deine Angaben) | `src/app/useAngabenState.ts` |
 | Simulation hook (compare + Monte Carlo + tax-mode derivation) | `src/app/useSimulationResult.ts` |
 | Workspace UI toggles (no simulation deps) | `src/app/useWorkspaceUiState.ts` |
 | Derived chart/table/CSV/share-link views | `src/app/useDerivedViews.ts`, `src/app/simulationSelectors.ts` |

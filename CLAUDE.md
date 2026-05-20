@@ -107,6 +107,7 @@ For the full module map (combine mode, projection, transfer, funding, allowance,
 | Add a publication / commercial-license feature | `BACKLOG.md` → "Publication polish" |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/{ImpressumPage,DatenschutzPage,LegalFooter}.tsx` |
 | Add a new app route | `src/app/useRoute.ts` (`Route` union + `KNOWN_ROUTES`), then render in `src/App.tsx` |
+| Change `/eingaben` (Deine Angaben) mode-aware state binding | `src/app/useAngabenState.ts` — captures `detectSavedMode()` once at mount; compare-mode writes STORAGE_KEY_V1, combine-mode projects onto `baseline.assumptions` and writes STORAGE_KEY_V2 |
 | Deep-link a topic page into the calculator (mode + product preselection) | `src/seo/publicRouteRegistry.ts` (`preselection` on the route entry); `LandingPage` reads `?topic=<slug>` via `resolveTopicPreselection`. Issue #13. |
 | Reuse a payout-mode / fee / Beitragsdynamik / offer-capital section | `src/features/inputs/sections/` |
 | Reuse an inventory field component (`InvField`, option tables) | `src/features/inventory/{fields.tsx,fieldHelpers.ts}` |

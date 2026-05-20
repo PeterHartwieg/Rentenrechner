@@ -10,7 +10,9 @@ import { AngabenPage } from './AngabenPage'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR } from '../../rules'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
-import { buildStateJson, STORAGE_KEY_V1 } from '../../storage'
+import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
+import { addInstanceToWorkspace } from '../../features/inventory/inventoryHelpers'
+import type { Workspace } from '../../domain/workspace'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
 beforeEach(() => {
@@ -565,5 +567,184 @@ describe('AngabenPage — section setters clamp before persisting (round-4 P2)',
     expect(parsed.assumptions.retirementEndAge).toBe(
       defaultProfile.retirementAge + 1,
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Combine-mode state wiring — issue #282. PR 5 wired AngabenPage into
+// compare-mode singleton state via `useCalculatorState`. Issue #282 adds a
+// `useAngabenState` wrapper that detects whether the active session is in
+// compare-mode or combine-mode and routes edits to the matching store. These
+// tests cover the combine-mode branch (workspace at STORAGE_KEY_V2):
+//   - mode detection picks `'combine'` when the v2 workspace says so.
+//   - edits write to the workspace, not the compare-mode singleton.
+//   - v1 is left untouched when the user is in combine-mode (no leak between
+//     the two storage keys).
+//   - the singleton view of the workspace correctly seeds the form on mount.
+// The 4 compare-mode tests above (R3 batch) plus the 5 R4 clamp tests must
+// continue to pass — they all run with a clean slate (no v2 workspace), so
+// detectSavedMode returns null and useAngabenState falls back to the
+// compare-mode branch (parity with PR 5).
+// ---------------------------------------------------------------------------
+describe('AngabenPage — combine-mode state wiring (useAngabenState)', () => {
+  /** Re-implement the helper from the compare-mode block to keep both blocks
+   *  self-contained. */
+  function findNumberInput(container: HTMLElement, prefix: string): HTMLInputElement {
+    const labels = Array.from(container.querySelectorAll('label.field'))
+    for (const label of labels) {
+      const span = label.querySelector('span')
+      if (span && (span.textContent ?? '').trim().startsWith(prefix)) {
+        const input = label.querySelector('input[type="number"]')
+        if (input) return input as HTMLInputElement
+      }
+    }
+    throw new Error(`NumberField "${prefix}" not found in rendered AngabenPage`)
+  }
+
+  /** Deep-clone the default workspace so each test can mutate freely. */
+  function cloneWorkspace(): Workspace {
+    return JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  }
+
+  /** Build a minimal combine-mode workspace seed for these tests. */
+  function buildCombineSeed(profileOverrides: Partial<typeof defaultProfile> = {}): Workspace {
+    let workspace = cloneWorkspace()
+    workspace = {
+      ...workspace,
+      mode: 'combine',
+      baseline: {
+        ...workspace.baseline,
+        profile: { ...workspace.baseline.profile, ...profileOverrides },
+      },
+    }
+    // Add a single bAV instance so the bAV-Brutto field has a place to write
+    // back to (mirrors what a real combine-mode user produces via the wizard).
+    workspace = addInstanceToWorkspace(workspace, 'bav')
+    return workspace
+  }
+
+  it('writes profile edits to STORAGE_KEY_V2 (workspace) when v2 workspace has mode="combine"', () => {
+    // Seed a combine workspace with profile.age=33 so we can detect that the
+    // page actually hydrated from v2 (not from defaults via v1).
+    const seed = buildCombineSeed({ age: 33 })
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { container } = render(<AngabenPage />)
+    const ageInput = findNumberInput(container, 'Alter')
+    expect(ageInput.value).toBe('33')
+
+    fireEvent.change(ageInput, { target: { value: '42' } })
+
+    // Workspace must reflect the edit.
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.schemaVersion).toBe(2)
+    expect(parsed.mode).toBe('combine')
+    expect(parsed.baseline.profile.age).toBe(42)
+  })
+
+  it('does NOT write to STORAGE_KEY_V1 (compare singleton) when in combine-mode', () => {
+    // Critical isolation: combine-mode edits must not leak into v1. If they
+    // do, the next mount of `/` in compare-mode would read those edits, and
+    // the dual-key architecture documented in storage.ts breaks down.
+    const seed = buildCombineSeed({ age: 33 })
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+    // Pre-condition: v1 starts absent.
+    expect(localStorage.getItem(STORAGE_KEY_V1)).toBeNull()
+
+    const { container } = render(<AngabenPage />)
+    const ageInput = findNumberInput(container, 'Alter')
+    fireEvent.change(ageInput, { target: { value: '44' } })
+
+    // v1 must still be absent — combine-mode edits do not touch it.
+    expect(localStorage.getItem(STORAGE_KEY_V1)).toBeNull()
+  })
+
+  it('writes bAV-Brutto edits onto the first active bAV instance in combine-mode', () => {
+    // The bAV-Brutto field is per-instance in combine-mode (vs. workspace-level
+    // singleton in compare-mode). The hook routes the edit to the first active
+    // bAV instance — mirrors `singletonViewOfWorkspace`'s firstActive selector.
+    const seed = buildCombineSeed()
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { container } = render(<AngabenPage />)
+    const bavInput = findNumberInput(container, 'bAV-Brutto pro Monat')
+
+    fireEvent.change(bavInput, { target: { value: '275' } })
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.baseline.assumptions.bav.length).toBeGreaterThanOrEqual(1)
+    expect(parsed.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(275)
+  })
+
+  it('persists workspace-level assumptions (retirementEndAge, monteCarlo, inflation) in combine-mode', () => {
+    // retirementEndAge, monteCarlo.annualVolatility, and inflationRate are
+    // workspace-level fields in v2 (no per-instance projection needed). The
+    // hook writes them directly onto `baseline.assumptions`. This exercises
+    // the 1:1 mapping path in `projectSingletonAssumptionsToWorkspace`.
+    const seed = buildCombineSeed()
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { container } = render(<AngabenPage />)
+    const endInput = findNumberInput(container, 'Kapital aufgebraucht bis')
+    fireEvent.change(endInput, { target: { value: '92' } })
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.baseline.assumptions.retirementEndAge).toBe(92)
+    // Mode is unchanged; schemaVersion is unchanged.
+    expect(parsed.mode).toBe('combine')
+    expect(parsed.schemaVersion).toBe(2)
+  })
+
+  it('falls back to compare-mode when the v2 workspace says mode="compare"', () => {
+    // A v2 workspace can carry mode='compare' (legacy users migrated v1→v2).
+    // In that case the page must NOT treat them as combine-mode — they should
+    // see compare-mode singleton behaviour identical to a fresh visitor. This
+    // is a key safety check for the `detectSavedMode` heuristic.
+    const compareWorkspace: Workspace = {
+      ...cloneWorkspace(),
+      mode: 'compare',
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(compareWorkspace))
+
+    const { container } = render(<AngabenPage />)
+    const ageInput = findNumberInput(container, 'Alter')
+    fireEvent.change(ageInput, { target: { value: '38' } })
+
+    // Compare-mode write target is STORAGE_KEY_V1 — v1 should now hold the edit.
+    const rawV1 = localStorage.getItem(STORAGE_KEY_V1)
+    expect(rawV1).not.toBeNull()
+    const parsed = JSON.parse(rawV1!) as { version: number; profile: { age: number } }
+    expect(parsed.version).toBe(1)
+    expect(parsed.profile.age).toBe(38)
+  })
+
+  it('preserves combine-mode workspace fields the singleton view does not edit (whatIfs, pinnedComparisonIds)', () => {
+    // The hook projects singleton → workspace via per-field mapping. Fields
+    // the singleton does not expose (whatIfs, pinnedComparisonIds, scenario
+    // metadata) must survive a round-trip — otherwise an edit on /eingaben
+    // would silently wipe the user's what-if scenarios. This regression-guards
+    // the architectural invariant that AngabenPage edits only touch the
+    // baseline scenario, never the broader workspace structure.
+    let seed = buildCombineSeed()
+    // Stamp a fake pinned id to verify it survives a round-trip.
+    seed = { ...seed, pinnedComparisonIds: ['some-whatif-id'] }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { container } = render(<AngabenPage />)
+    const ageInput = findNumberInput(container, 'Alter')
+    fireEvent.change(ageInput, { target: { value: '41' } })
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.pinnedComparisonIds).toEqual(['some-whatif-id'])
+    expect(parsed.whatIfs).toEqual([])
+    // The baseline edit still landed.
+    expect(parsed.baseline.profile.age).toBe(41)
   })
 })
