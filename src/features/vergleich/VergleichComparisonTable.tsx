@@ -5,6 +5,8 @@ import type { VergleichTableRow } from './vergleichRows'
 
 interface Props {
   rows: ReadonlyArray<VergleichTableRow>
+  /** User's configured retirement age — used for the "Kapital mit N" column label. */
+  retirementAge: number
 }
 
 /**
@@ -20,7 +22,7 @@ interface Props {
  * The bar inside the netto cell is a visual aid only, scaled to the row
  * with the highest net payout in the current set.
  */
-export function VergleichComparisonTable({ rows }: Props) {
+export function VergleichComparisonTable({ rows, retirementAge }: Props) {
   const viewport = useViewport()
 
   if (rows.length === 0) {
@@ -33,7 +35,7 @@ export function VergleichComparisonTable({ rows }: Props) {
     return (
       <ul className="vergleich-product-cards" aria-label="Produktvergleich">
         {rows.map((row) => (
-          <ProductCard key={row.productId} row={row} maxNet={maxNet} />
+          <ProductCard key={row.productId} row={row} maxNet={maxNet} retirementAge={retirementAge} />
         ))}
       </ul>
     )
@@ -45,7 +47,7 @@ export function VergleichComparisonTable({ rows }: Props) {
         <tr>
           <th scope="col">Sparform</th>
           <th scope="col" className="vergleich-col-tagline">Wie es funktioniert</th>
-          <th scope="col" className="vergleich-cell--num">Kapital mit 67</th>
+          <th scope="col" className="vergleich-cell--num">{`Kapital mit ${retirementAge}`}</th>
           <th scope="col" className="vergleich-cell--num">Kosten p. a.</th>
           <th scope="col" className="vergleich-cell--num">Brutto-Rente</th>
           <th scope="col" className="vergleich-cell--num">Abzüge</th>
@@ -89,9 +91,10 @@ export function VergleichComparisonTable({ rows }: Props) {
 interface CardProps {
   row: VergleichTableRow
   maxNet: number
+  retirementAge: number
 }
 
-function ProductCard({ row, maxNet }: CardProps) {
+function ProductCard({ row, maxNet, retirementAge }: CardProps) {
   return (
     <li className="vergleich-product-card" data-product={row.productId}>
       <div className="vergleich-product-card__head">
@@ -112,7 +115,7 @@ function ProductCard({ row, maxNet }: CardProps) {
       <p className="vergleich-product-card__tagline">{productTaglines[row.productId]}</p>
       <dl className="vergleich-product-card__grid">
         <div>
-          <dt>Kapital mit 67</dt>
+          <dt>{`Kapital mit ${retirementAge}`}</dt>
           <dd>{formatCurrency(row.capitalAtRetirement, 0)}</dd>
         </div>
         <div>

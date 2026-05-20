@@ -141,7 +141,7 @@ export function VergleichPage({
                     {SECTION_TABLE.title}
                   </h2>
                 </div>
-                <VergleichComparisonTable rows={rows} />
+                <VergleichComparisonTable rows={rows} retirementAge={profile.retirementAge} />
               </section>
 
               <section className="vergleich-section" aria-labelledby={SECTION_PRO_CONTRA.id}>

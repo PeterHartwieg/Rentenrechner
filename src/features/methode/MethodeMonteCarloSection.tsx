@@ -58,7 +58,7 @@ export function MethodeMonteCarloSection() {
 
   if (assumptions.visibleProducts.length === 0) {
     return (
-      <p className="methode-section-lead" aria-hidden="true">
+      <p className="methode-section-lead">
         Keine Produkte im Vergleich ausgewählt.
       </p>
     )
