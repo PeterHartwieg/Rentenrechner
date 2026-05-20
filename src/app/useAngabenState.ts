@@ -262,12 +262,36 @@ export function useAngabenState(): UseAngabenStateApi {
   // re-render trigger, so updating it inside the effect does not loop.
   const workspaceRef = useRef<Workspace | null>(initial.workspace)
 
+  // First-effect-run flag. Codex round-1 P1 (PR #283): the persistence effect
+  // runs on initial mount alongside every subsequent `profile` / `assumptions`
+  // change. On the mount tick the React-visible state already equals the value
+  // we just lazy-initialised from storage, so writing it back is a no-op — but
+  // a no-op write in combine-mode still stamps `baseline.lastEditedAt =
+  // Date.now()`, which `BaselineStaleBadge` (CombineDashboardSidebar.tsx:1051)
+  // reads to decide whether what-if snapshots are stale. The mount-time stamp
+  // would invalidate every what-if as soon as the user opens `/eingaben`,
+  // surfacing false "Baseline hat sich geändert" prompts. We skip the first
+  // effect run so only real user mutations (later `setProfile` /
+  // `setAssumptions` dispatches from form interaction) reach the write path.
+  // Compare-mode is also skipped for symmetry and to avoid redundant mount-time
+  // localStorage writes; the v1 envelope is already loaded into state, so
+  // writing it back on mount changes nothing.
+  const isFirstEffectRun = useRef(true)
+
   // Persistence effect. Branches on `initial.mode` (captured at mount; stable
   // for the page's lifetime). Compare-mode writes a v1 envelope to
   // STORAGE_KEY_V1; combine-mode projects the singleton assumptions back onto
   // the workspace and writes STORAGE_KEY_V2 via `saveWorkspace` (which runs
   // through `buildWorkspaceJson` → idempotent JSON serialisation).
+  //
+  // The first effect run (mount-time synchronisation between the lazy-init
+  // state and storage) is skipped via `isFirstEffectRun`. See the ref's
+  // declaration above for the full rationale.
   useEffect(() => {
+    if (isFirstEffectRun.current) {
+      isFirstEffectRun.current = false
+      return
+    }
     if (initial.mode === 'combine') {
       const prev = workspaceRef.current
       if (!prev) return

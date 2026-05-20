@@ -747,4 +747,74 @@ describe('AngabenPage — combine-mode state wiring (useAngabenState)', () => {
     // The baseline edit still landed.
     expect(parsed.baseline.profile.age).toBe(41)
   })
+
+  // -------------------------------------------------------------------------
+  // Codex round-1 P1 (PR #283): mount-only renders must not bump
+  // `baseline.lastEditedAt`. The persistence effect runs once on mount with
+  // `profile` / `assumptions` already equal to the lazy-initialised storage
+  // state, so a write would be a no-op — but a no-op write still stamps
+  // `Date.now()`, which `BaselineStaleBadge` interprets as a baseline edit
+  // and uses to flag every existing what-if as stale. The hook now skips the
+  // first effect run via a `useRef` flag.
+  // -------------------------------------------------------------------------
+  it('does NOT bump baseline.lastEditedAt on mount (no-op write must be skipped)', () => {
+    // Seed a workspace with a fixed `lastEditedAt`. A real what-if would be
+    // pinned at the same timestamp via `derivedFromBaselineSnapshot.createdAt`
+    // — if mount stamps `Date.now()` (a much larger number), the BaselineStaleBadge
+    // logic `editedAt > snapshotCreatedAt` flips to true and the what-if is
+    // mistakenly flagged stale just by opening /eingaben.
+    const FIXED_TS = 1_700_000_000_000 // 2023-11-14, well before Date.now()
+    let seed = buildCombineSeed()
+    seed = {
+      ...seed,
+      baseline: {
+        ...seed.baseline,
+        lastEditedAt: FIXED_TS,
+      },
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    render(<AngabenPage />)
+
+    // After mount with zero user interaction, the persisted workspace must
+    // still carry the original `lastEditedAt`. If the hook stamps Date.now()
+    // here, the badge logic in CombineDashboardSidebar.tsx:1051
+    // (`editedAt > snapshotCreatedAt`) would falsely fire for every
+    // what-if snapshot taken before the page open.
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.baseline.lastEditedAt).toBe(FIXED_TS)
+  })
+
+  it('DOES bump baseline.lastEditedAt when the user edits a profile field', () => {
+    // Regression guard for the inverse path: real user mutations must still
+    // advance `lastEditedAt` so the badge logic CAN flag stale what-ifs once
+    // the user has actually edited the baseline. The first-effect-run skip
+    // must only suppress the mount-time no-op, not subsequent edits.
+    const FIXED_TS = 1_700_000_000_000
+    let seed = buildCombineSeed({ age: 33 })
+    seed = {
+      ...seed,
+      baseline: {
+        ...seed.baseline,
+        lastEditedAt: FIXED_TS,
+      },
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { container } = render(<AngabenPage />)
+    const ageInput = findNumberInput(container, 'Alter')
+    fireEvent.change(ageInput, { target: { value: '42' } })
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    // The edit landed.
+    expect(parsed.baseline.profile.age).toBe(42)
+    // And `lastEditedAt` advanced past the seeded fixed timestamp — proving
+    // real edits still stamp Date.now(), only the mount-time no-op is skipped.
+    expect(parsed.baseline.lastEditedAt).toBeDefined()
+    expect(parsed.baseline.lastEditedAt!).toBeGreaterThan(FIXED_TS)
+  })
 })
