@@ -151,7 +151,12 @@ function projectSingletonAssumptionsToWorkspace(
  *  - for combine-mode, the underlying `Workspace` so subsequent writes can
  *    preserve fields the singleton view does not expose (instance arrays for
  *    products other than bAV's first instance, scenario library entries via
- *    archived state, what-ifs, pinned comparisons, etc.).
+ *    archived state, what-ifs, pinned comparisons, etc.),
+ *  - `persistOnMount` — `true` only when the lazy initializer hydrated state
+ *    from a source that is NOT yet reflected in the canonical write target
+ *    (today: a valid `?s=` compare-mode share-URL). The persistence effect
+ *    consults this on its first run to decide whether the mount-time write is
+ *    a no-op (skip) or a load-bearing import (perform).
  *
  * Runs exactly once via the `useState` lazy initializer so reading
  * localStorage + URL state happens at most once per page mount.
@@ -162,6 +167,18 @@ interface InitialAngabenState {
   assumptions: ScenarioAssumptions
   /** Present only in combine-mode. */
   workspace: Workspace | null
+  /**
+   * `true` when initial state was hydrated from a source that the canonical
+   * write target does not yet contain — currently only the compare-mode
+   * share-URL `?s=` branch. The persistence effect performs the first write
+   * unconditionally if this is `true`, and skips it otherwise.
+   *
+   * - combine-mode (always loaded from storage) → `false`
+   * - compare-mode + URL state present                → `true`
+   * - compare-mode + localStorage v1 envelope present → `false`
+   * - compare-mode + no source (defaults)             → `false`
+   */
+  persistOnMount: boolean
 }
 
 function computeInitialAngabenState(): InitialAngabenState {
@@ -177,6 +194,12 @@ function computeInitialAngabenState(): InitialAngabenState {
       profile: workspace.baseline.profile,
       assumptions: singletonViewOfWorkspace(workspace, SINGLETON_VIEW_DEFAULTS),
       workspace,
+      // Combine-mode never hydrates from a URL; either the workspace already
+      // contains these values, or we just fell back to `defaultWorkspace`
+      // (which the user has not seen yet, so saving it on mount would also be
+      // wrong — it would bump `lastEditedAt` and falsely invalidate any
+      // what-if snapshots taken before the page open).
+      persistOnMount: false,
     }
   }
 
@@ -186,11 +209,17 @@ function computeInitialAngabenState(): InitialAngabenState {
   // routing in a single place and avoid the unused-hook side-effect problem.
   const urlResult = readUrlState()
   if (urlResult.kind === 'valid') {
+    // Share-URL import. STORAGE_KEY_V1 does NOT yet contain this state — the
+    // user navigated to `/eingaben?s=…` from a shared link, and if we skip the
+    // mount-time write the import is lost the moment the user navigates away
+    // without editing anything. The first-run skip in the persistence effect
+    // must NOT apply here. (Codex R2 P2 / CodeRabbit Major on PR #283.)
     return {
       mode,
       profile: urlResult.state.profile,
       assumptions: urlResult.state.assumptions,
       workspace: null,
+      persistOnMount: true,
     }
   }
   const saved = loadSavedState()
@@ -199,6 +228,10 @@ function computeInitialAngabenState(): InitialAngabenState {
     profile: saved?.profile ?? defaultProfile,
     assumptions: saved?.assumptions ?? defaultAssumptions,
     workspace: null,
+    // Either v1 already holds the seeded snapshot, or we fell back to defaults
+    // (which the user has not actively chosen — writing them back on mount
+    // would just be a no-op). In both cases the first-run skip is correct.
+    persistOnMount: false,
   }
 }
 
@@ -270,12 +303,18 @@ export function useAngabenState(): UseAngabenStateApi {
   // Date.now()`, which `BaselineStaleBadge` (CombineDashboardSidebar.tsx:1051)
   // reads to decide whether what-if snapshots are stale. The mount-time stamp
   // would invalidate every what-if as soon as the user opens `/eingaben`,
-  // surfacing false "Baseline hat sich geändert" prompts. We skip the first
-  // effect run so only real user mutations (later `setProfile` /
-  // `setAssumptions` dispatches from form interaction) reach the write path.
-  // Compare-mode is also skipped for symmetry and to avoid redundant mount-time
-  // localStorage writes; the v1 envelope is already loaded into state, so
-  // writing it back on mount changes nothing.
+  // surfacing false "Baseline hat sich geändert" prompts. We therefore skip
+  // the first effect run unless the lazy initializer signalled that the
+  // mount-time write is load-bearing via `initial.persistOnMount`.
+  //
+  // Codex R2 P2 / CodeRabbit Major on PR #283: the unconditional skip from R1
+  // was too broad — it also suppressed the compare-mode mount write when
+  // state came from a `?s=` share-URL. Without that write, opening
+  // `/eingaben?s=…` and navigating away (without editing) discards the
+  // imported state. `initial.persistOnMount` is `true` only on the
+  // share-URL-import branch; all other branches (combine-mode workspace,
+  // compare-mode v1 envelope, compare-mode defaults) leave it `false` so the
+  // first-run skip still suppresses the no-op write.
   const isFirstEffectRun = useRef(true)
 
   // Persistence effect. Branches on `initial.mode` (captured at mount; stable
@@ -285,12 +324,18 @@ export function useAngabenState(): UseAngabenStateApi {
   // through `buildWorkspaceJson` → idempotent JSON serialisation).
   //
   // The first effect run (mount-time synchronisation between the lazy-init
-  // state and storage) is skipped via `isFirstEffectRun`. See the ref's
-  // declaration above for the full rationale.
+  // state and storage) is conditionally skipped via `isFirstEffectRun`. See
+  // the ref's declaration above for the full rationale, including the
+  // load-bearing exception for compare-mode share-URL imports.
   useEffect(() => {
     if (isFirstEffectRun.current) {
       isFirstEffectRun.current = false
-      return
+      if (!initial.persistOnMount) {
+        return
+      }
+      // Fall through to perform the load-bearing first write (compare-mode
+      // share-URL import). This is intentionally restricted to compare-mode:
+      // the combine-mode branch always sets `persistOnMount: false`.
     }
     if (initial.mode === 'combine') {
       const prev = workspaceRef.current
@@ -314,7 +359,11 @@ export function useAngabenState(): UseAngabenStateApi {
     }
     // Compare-mode: legacy v1 write, mirrors `useCalculatorState`.
     safeSetItem(STORAGE_KEY_V1, buildStateJson(profile, assumptions))
-  }, [profile, assumptions, initial.mode])
+    // `initial.persistOnMount` is set once by the lazy initializer in
+    // `computeInitialAngabenState` and never mutated — it's only read on the
+    // first effect tick via the `isFirstEffectRun` branch. We list it so
+    // react-hooks/exhaustive-deps is satisfied without lying about deps.
+  }, [profile, assumptions, initial.mode, initial.persistOnMount])
 
   // Setters: identical shape to `useCalculatorState` so section components do
   // not change.

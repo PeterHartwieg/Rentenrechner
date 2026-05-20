@@ -13,6 +13,7 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { addInstanceToWorkspace } from '../../features/inventory/inventoryHelpers'
 import type { Workspace } from '../../domain/workspace'
+import { buildShareUrl } from '../../utils/urlShare'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
 beforeEach(() => {
@@ -567,6 +568,109 @@ describe('AngabenPage — section setters clamp before persisting (round-4 P2)',
     expect(parsed.assumptions.retirementEndAge).toBe(
       defaultProfile.retirementAge + 1,
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Compare-mode share-URL import — Codex R2 P2 / CodeRabbit Major on PR #283.
+// The R1 fix added an unconditional first-effect-run skip to gate
+// `lastEditedAt` to real user mutations. That skip was too broad — it also
+// suppressed the mount-time write when state was hydrated from a `?s=`
+// share-URL, so opening `/eingaben?s=…` and navigating away (without editing)
+// dropped the imported state. The hook now signals load-bearing first writes
+// via `initial.persistOnMount`; share-URL imports flip it on, while every
+// other branch leaves it `false` so the no-op skip still fires.
+// ---------------------------------------------------------------------------
+describe('AngabenPage — compare-mode share-URL hydration (R2 P2 / Major)', () => {
+  /**
+   * Helper: encode a profile+assumptions pair into the URL's `?s=` query
+   * string via the same `buildShareUrl` helper the calculator uses on its
+   * "Link kopieren" button. Returns the search portion (e.g. `?s=abc…`) so
+   * tests can push it directly into `window.history`.
+   */
+  function buildShareSearch(
+    profile: typeof defaultProfile,
+    assumptions: typeof defaultAssumptions,
+  ): string {
+    // `buildShareUrl` reads `window.location.href`, so we set it to a known
+    // value first. The query portion is what we extract; the protocol/host
+    // are irrelevant for `readUrlState`, which only consults `window.location.search`.
+    window.history.pushState(null, '', '/eingaben')
+    const fullUrl = buildShareUrl(profile, assumptions)
+    return new URL(fullUrl).search
+  }
+
+  function findAgeInput(container: HTMLElement): HTMLInputElement {
+    const labels = Array.from(container.querySelectorAll('label.field'))
+    for (const label of labels) {
+      const span = label.querySelector('span')
+      if (span && (span.textContent ?? '').trim().startsWith('Alter')) {
+        const input = label.querySelector('input[type="number"]')
+        if (input) return input as HTMLInputElement
+      }
+    }
+    throw new Error('Alter NumberField not found in rendered AngabenPage')
+  }
+
+  it('persists URL-imported state to STORAGE_KEY_V1 on mount even without user edits', () => {
+    // Encode a non-default profile into a `?s=` share-URL. Then mount the
+    // page from that URL with NO previously-saved v1 envelope. Without the
+    // mount-time write, the import would be discarded the moment the user
+    // navigates away — the canonical bug Codex R2 P2 + CodeRabbit Major
+    // flagged. We assert the v1 envelope now carries the imported state.
+    const importedProfile = { ...defaultProfile, age: 38 }
+    const search = buildShareSearch(importedProfile, defaultAssumptions)
+    // Pre-condition: v1 starts absent. The page must populate it from the URL.
+    expect(localStorage.getItem(STORAGE_KEY_V1)).toBeNull()
+    window.history.pushState(null, '', `/eingaben${search}`)
+
+    const { container } = render(<AngabenPage />)
+    // The page initially renders the URL-imported state.
+    const ageInput = findAgeInput(container)
+    expect(ageInput.value).toBe('38')
+
+    // No user interaction. The first-effect-run write must still fire because
+    // `initial.persistOnMount === true` for the share-URL branch.
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as {
+      version: number
+      profile: { age: number }
+    }
+    expect(parsed.version).toBe(1)
+    expect(parsed.profile.age).toBe(38)
+  })
+
+  it('does NOT overwrite v1 with defaults when mounted without a share-URL (no-op skip still applies)', () => {
+    // The first-run skip must continue to suppress the redundant mount-time
+    // write when no URL state is present. We pre-seed v1 with a sentinel
+    // value the lazy initializer would NOT have invented, then mount the
+    // page with NO `?s=` query and assert the sentinel is preserved.
+    //
+    // (If the skip regressed and the page wrote `defaultProfile` over the
+    // seeded snapshot, the sentinel `age: 47` would be lost. This guards
+    // against an over-eager fix.)
+    const seededProfile = { ...defaultProfile, age: 47 }
+    const seededRaw = buildStateJson(seededProfile, defaultAssumptions)
+    localStorage.setItem(STORAGE_KEY_V1, seededRaw)
+    // No `?s=` on the URL — page must take the localStorage branch
+    // (`persistOnMount: false`).
+    window.history.pushState(null, '', '/eingaben')
+
+    render(<AngabenPage />)
+
+    const after = localStorage.getItem(STORAGE_KEY_V1)
+    expect(after).not.toBeNull()
+    const parsed = JSON.parse(after!) as {
+      version: number
+      profile: { age: number }
+    }
+    // The seeded sentinel must survive. If the first-effect-run skip
+    // regressed in compare-mode-without-URL, the page would have overwritten
+    // v1 on mount, and depending on the lazy initializer's source the age
+    // could end up as defaultProfile.age (something other than 47).
+    expect(parsed.version).toBe(1)
+    expect(parsed.profile.age).toBe(47)
   })
 })
 
