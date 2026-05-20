@@ -1,7 +1,16 @@
 import { useMemo, useState } from 'react'
 import type { Workspace } from '../../domain/workspace'
-import type { InstanceCommon } from '../../domain/instances'
+import type {
+  InstanceCommon,
+  BavInstance,
+  EtfInstance,
+  InsuranceInstance,
+  BasisrenteInstance,
+  AltersvorsorgedepotInstance,
+  RiesterInstance,
+} from '../../domain/instances'
 import type { GermanRules } from '../../domain'
+import type { ProductId } from '../../domain/products/common'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import {
   generateContractDecisions,
@@ -17,6 +26,13 @@ import { formatCurrency } from '../../utils/format'
 interface Props {
   workspace: Workspace
   instance: InstanceCommon
+  /**
+   * Canonical `ProductId` for this instance (e.g. `'bav'`, `'versicherung'`).
+   * Threaded from `VertragDetailPage` so the per-slot contribution-field
+   * lookup is dispatched via an exhaustive `switch` on the union literal
+   * rather than ad-hoc field probing on the structural `InstanceCommon`.
+   */
+  productId: ProductId
   rules: GermanRules
   scenarioId: string
   /** Baseline combined household result for the selected scenario. */
@@ -54,6 +70,7 @@ interface ScenarioRow {
 export function VertragScenarioTable({
   workspace,
   instance,
+  productId,
   rules,
   scenarioId,
   combinedForScenario,
@@ -69,12 +86,13 @@ export function VertragScenarioTable({
     return buildScenarioRows({
       workspace,
       instance,
+      productId,
       rules,
       scenarioId,
       baselineCombined: combinedForScenario,
       cache,
     })
-  }, [workspace, instance, rules, scenarioId, combinedForScenario, cache])
+  }, [workspace, instance, productId, rules, scenarioId, combinedForScenario, cache])
 
   return (
     <section className="vertrag-section" aria-labelledby="vertrag-section-was-waere">
@@ -113,6 +131,7 @@ export function VertragScenarioTable({
 interface BuildRowsInput {
   workspace: Workspace
   instance: InstanceCommon
+  productId: ProductId
   rules: GermanRules
   scenarioId: string
   baselineCombined: CombinedResult
@@ -138,6 +157,7 @@ interface BuildRowsInput {
 function buildScenarioRows({
   workspace,
   instance,
+  productId,
   rules,
   scenarioId,
   baselineCombined,
@@ -150,7 +170,7 @@ function buildScenarioRows({
   // Inject the Beitrag-up / Beitrag-down decisions when the contract has
   // a non-zero contribution. They sit right after `weiterfuehren` to
   // anchor the table on the contribution axis (matches mock M4a / TVertrag).
-  const currentMonthly = extractCurrentMonthly(instance)
+  const currentMonthly = extractCurrentMonthly(instance, productId)
   const upDefault = defaultBeitragErhoehenEUR(currentMonthly)
   const downDefault = defaultBeitragSenkenEUR(currentMonthly)
   const upDecision = upDefault > currentMonthly
@@ -198,22 +218,44 @@ function buildScenarioRows({
   return rows
 }
 
-function extractCurrentMonthly(instance: InstanceCommon): number {
+/**
+ * Read the per-product "Beitrag heute" field for a single instance.
+ *
+ * Dispatches on the canonical `ProductId` via an exhaustive `switch` so the
+ * compiler enforces full slot coverage (the `never` default catches any
+ * future product addition). Each slot reads from its typed instance shape —
+ * `BavInstance.monthlyGrossConversion` and friends — rather than probing
+ * structural keys on the base `InstanceCommon`. This mirrors how the
+ * engine's per-slot funding pipeline reads contribution fields (e.g.
+ * `portfolioFunding.ts` slot helpers), so the value used to seed the
+ * Beitrag-up / Beitrag-down defaults can never drift from the simulation
+ * model. Paid-up instances always return 0 regardless of the stored
+ * contribution — the engine ignores the field for paid_up status.
+ */
+function extractCurrentMonthly(
+  instance: InstanceCommon,
+  productId: ProductId,
+): number {
   if (instance.status === 'paid_up') return 0
-  // Per-slot contribution field name varies; widen via `unknown` first
-  // because `InstanceCommon` has no index signature.
-  const anyInst = instance as unknown as Record<string, unknown>
-  const candidates: ReadonlyArray<string> = [
-    'monthlyContribution',
-    'monthlyGrossConversion',
-    'monthlyGrossContribution',
-    'monthlyOwnContribution',
-  ]
-  for (const key of candidates) {
-    const v = anyInst[key]
-    if (typeof v === 'number' && isFinite(v) && v > 0) return v
+  switch (productId) {
+    case 'etf':
+      return (instance as EtfInstance).monthlyContribution ?? 0
+    case 'versicherung':
+      return (instance as InsuranceInstance).monthlyContribution ?? 0
+    case 'bav':
+      return (instance as BavInstance).monthlyGrossConversion
+    case 'basisrente':
+      return (instance as BasisrenteInstance).monthlyGrossContribution
+    case 'altersvorsorgedepot':
+      return (instance as AltersvorsorgedepotInstance).monthlyOwnContribution
+    case 'riester':
+      return (instance as RiesterInstance).monthlyOwnContribution
+    default: {
+      const _exhaustive: never = productId
+      void _exhaustive
+      return 0
+    }
   }
-  return 0
 }
 
 /**

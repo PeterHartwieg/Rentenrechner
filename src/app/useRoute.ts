@@ -120,9 +120,19 @@ export function pathToRoute(pathname: string): Route {
     : pathname
 
   // Dynamic match first — `/vertrag/<instanceId>` with any non-empty payload.
+  // `decodeURIComponent` throws `URIError` on malformed percent-encoded
+  // sequences (e.g. `/vertrag/%E0%A4%A`). Without the guard the throw would
+  // bubble out of `pathToRoute`, crashing the initial render or `popstate`
+  // listener before the 404 fallback could fire. The empty state is the
+  // correct surface for an unparseable id, same as for a well-formed id
+  // that simply does not exist in the workspace.
   const vertragMatch = trimmed.match(/^\/vertrag\/(.+)$/)
   if (vertragMatch) {
-    return { kind: 'vertrag', instanceId: decodeURIComponent(vertragMatch[1]) }
+    try {
+      return { kind: 'vertrag', instanceId: decodeURIComponent(vertragMatch[1]) }
+    } catch {
+      return ROUTES.notFound
+    }
   }
 
   switch (trimmed) {

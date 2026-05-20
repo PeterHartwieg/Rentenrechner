@@ -410,6 +410,9 @@ export function beitragErhoehenWhatIf(
   const instance = findInstanceById(workspace, instanceId)
   if (!instance) return null
   if (instance.status === 'surrendered' || instance.status === 'offered') return null
+  // Reject non-finite values up front so NaN / ±Infinity cannot reach the
+  // workspace delta or the funding-cap arithmetic below.
+  if (!Number.isFinite(newMonthlyEUR)) return null
 
   const label = instance.label ?? instanceId
   const slot = detectSlot(instanceId)
@@ -512,6 +515,9 @@ export function beitragSenkenWhatIf(
   // Suppress non-decreases: proposed amount must be strictly below the current one.
   // (A no-op decision would surface a misleading `Δ = 0` row in the Vertrag-Detail
   // scenario table; the page filters `null` decisions out of the row list.)
+  // Reject non-finite proposed values (NaN / ±Infinity) up front so they
+  // cannot reach the `applyContractDecision` writer.
+  if (!Number.isFinite(newMonthlyEUR)) return null
   if (newMonthlyEUR >= oldEUR) return null
   if (newMonthlyEUR < 0) return null
 

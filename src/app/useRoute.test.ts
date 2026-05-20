@@ -65,6 +65,15 @@ describe('pathToRoute', () => {
       instanceId: 'etf-tr-msci',
     })
   })
+
+  it('falls back to not-found on a malformed percent-encoded :instanceId', () => {
+    // `decodeURIComponent('%E0%A4%A')` throws `URIError: URI malformed`. The
+    // route parser must catch that and surface the not-found empty state
+    // rather than letting the throw escape and crash initial render /
+    // popstate handling.
+    expect(pathToRoute('/vertrag/%E0%A4%A')).toEqual({ kind: 'not-found' })
+    expect(pathToRoute('/vertrag/%E0')).toEqual({ kind: 'not-found' })
+  })
 })
 
 describe('routeToPath', () => {

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import './VertragDetailPage.css'
 import type { Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
@@ -108,14 +108,38 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
     [workspace, instanceId],
   )
 
+  // Resolve the instance + slot up-front so the document-title effect can
+  // run unconditionally before any early return (React's Rules of Hooks
+  // require an identical call order on every render). `detectSavedMode`
+  // is a synchronous localStorage read with no hook semantics.
+  const savedMode = detectSavedMode()
+  const slotInfo = detectSlotFromId(instanceId)
+  const instance = slotInfo
+    ? findInstanceInWorkspace(workspace, slotInfo.wsaKey, instanceId)
+    : null
+
+  // Resolved page title. The dynamic `/vertrag/:instanceId` route is not
+  // in `publicRouteRegistry`, so `useRoute`'s title-effect cannot pick it
+  // up — without this local update the browser tab keeps the previous
+  // page's title (e.g. the chrome-default "Altersvorsorge-Rechner 2026 |
+  // RentenWiki.de" after a drill-in from `/`). Brand follows the long-
+  // form convention used everywhere else (page titles, OG tags, exports
+  // per CLAUDE.md "Critical guardrails"). Empty-state branches get a
+  // neutral fallback title.
+  const resolvedH1 = instance?.label?.trim().length
+    ? instance.label
+    : (slotInfo ? getProductMeta(slotInfo.slot)?.label ?? slotInfo.slot : null)
+  const documentTitle = resolvedH1
+    ? `${resolvedH1} – Vertrag im Detail | RentenWiki.de`
+    : 'Vertrag im Detail | RentenWiki.de'
+  useEffect(() => {
+    document.title = documentTitle
+  }, [documentTitle])
+
   // Mode-aware empty state. Combine-mode invariant: contract decisions read
   // from `workspace.baseline.assumptions[wsaKey]`; the singleton compare-mode
   // store has no such per-instance arrays, so the drill-in URL is a no-op
   // there. Surface that explicitly.
-  //
-  // `detectSavedMode` reads `localStorage` directly — pure, no hook — so it
-  // is safe to call after the hook prelude.
-  const savedMode = detectSavedMode()
   if (savedMode === 'compare') {
     return (
       <EmptyState
@@ -128,18 +152,11 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
     )
   }
 
-  // Instance lookup. The slot detector is the only routing signal we have —
-  // a URL with an unknown prefix is treated as a missing instance.
-  const slotInfo = detectSlotFromId(instanceId)
-  const instance = slotInfo
-    ? findInstanceInWorkspace(workspace, slotInfo.wsaKey, instanceId)
-    : null
-
   if (!slotInfo || !instance) {
     return (
       <EmptyState
-        title="Diese Vertrag wurde nicht gefunden"
-        body={`Wir konnten keinen Vertrag mit der Kennung „${instanceId}" in deinem Plan finden. Vielleicht wurde er entfernt, oder der Link ist veraltet.`}
+        title="Dieser Vertrag wurde nicht gefunden"
+        body={`Wir konnten keinen Vertrag mit der Kennung „${instanceId}“ in deinem Plan finden. Vielleicht wurde er entfernt, oder der Link ist veraltet.`}
         ctaLabel="Zurück zu Mein Plan"
         ctaTarget={ROUTES.home}
         navigate={navigate}
@@ -203,6 +220,7 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
             <VertragScenarioTable
               workspace={workspace}
               instance={instance}
+              productId={slotInfo.slot}
               rules={rules}
               scenarioId={scenarioId}
               combinedForScenario={combinedForScenario}

@@ -734,10 +734,15 @@ function ZusammenRowView({
   // Instance rows drill into `/vertrag/:instanceId` (PR 7). Statutory rows
   // ('grv' / 'versorgungswerk' / 'beamtenpension' / 'none') have no
   // per-row detail surface — they render as plain text.
+  //
+  // Progressive enhancement: we always render the anchor with a real `href`
+  // when this is an instance row (so a server-side render, no-JS fallback,
+  // or modified-click reaches the URL just fine). We only intercept the
+  // click for SPA navigation when both the modifier-key guard passes AND
+  // a `navigate` function is available. Removing the anchor entirely when
+  // `navigate` is absent would break right-click → open-in-new-tab.
   const isInstanceRow = row.kind === 'instance'
-  const target: Route | null = isInstanceRow && navigate
-    ? ROUTES.vertrag(row.instanceId)
-    : null
+  const target: Route | null = isInstanceRow ? ROUTES.vertrag(row.instanceId) : null
   const href = target ? routeToPath(target) : undefined
   const labelNode = (
     <>
@@ -756,9 +761,10 @@ function ZusammenRowView({
             className="mein-plan-zusammen-link"
             href={href}
             onClick={(event) => {
+              if (!navigate) return
               if (!shouldUseSpaNavigation(event)) return
               event.preventDefault()
-              if (navigate) navigate(target)
+              navigate(target)
             }}
           >
             {labelNode}

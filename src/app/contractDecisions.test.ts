@@ -937,6 +937,25 @@ describe('beitragErhoehenWhatIf (B1)', () => {
     expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, currentEUR + 50)).toBeNull()
   })
 
+  it('beitragSenkenWhatIf: rejects non-finite proposed values (NaN / ±Infinity)', () => {
+    // NaN and Infinity must NOT escape into a workspace delta — they would
+    // poison the applied simulation downstream. The guard sits before the
+    // < / >= comparisons so non-finite input never reaches them.
+    const ws = makeDilanWorkspace()
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, Number.NaN)).toBeNull()
+    expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, Number.POSITIVE_INFINITY)).toBeNull()
+    expect(beitragSenkenWhatIf(ws, bavInstance.instanceId, Number.NEGATIVE_INFINITY)).toBeNull()
+  })
+
+  it('beitragErhoehenWhatIf: rejects non-finite proposed values (NaN / ±Infinity)', () => {
+    const ws = makeDilanWorkspace()
+    const bavInstance = ws.baseline.assumptions.bav[0]
+    expect(beitragErhoehenWhatIf(ws, bavInstance.instanceId, Number.NaN)).toBeNull()
+    expect(beitragErhoehenWhatIf(ws, bavInstance.instanceId, Number.POSITIVE_INFINITY)).toBeNull()
+    expect(beitragErhoehenWhatIf(ws, bavInstance.instanceId, Number.NEGATIVE_INFINITY)).toBeNull()
+  })
+
   it('beitragSenkenWhatIf: returns null on surrendered / offered / missing instances', () => {
     const ws = makeDilanWorkspace()
     const bavInstance = ws.baseline.assumptions.bav[0]
@@ -955,6 +974,23 @@ describe('beitragErhoehenWhatIf (B1)', () => {
       },
     }
     expect(beitragSenkenWhatIf(wsSurrendered, bavInstance.instanceId, 50)).toBeNull()
+
+    // Offered instances (broker-supplied offer not yet accepted) are also
+    // rejected — the workspace cannot apply a contribution change to a
+    // contract that is not under contract yet.
+    const wsOffered: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          bav: ws.baseline.assumptions.bav.map((b) =>
+            b.instanceId === bavInstance.instanceId ? { ...b, status: 'offered' as const } : b,
+          ),
+        },
+      },
+    }
+    expect(beitragSenkenWhatIf(wsOffered, bavInstance.instanceId, 50)).toBeNull()
   })
 
   it('beitragSenkenWhatIf: applyContractDecision writes the lower amount verbatim', () => {
