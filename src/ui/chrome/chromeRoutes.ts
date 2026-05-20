@@ -23,7 +23,10 @@ export function routeToNavId(route: Route): ChromeNavId | null {
     case 'home':
       return 'home'
     case 'vertrag':
-      // Drill-in from Mein Plan — keep the home tab lit.
+    case 'kapital':
+      // Drill-ins from Mein Plan (per-contract Vertrag-Detail, full-page
+      // Kapital & Auszahlungen) — keep the home tab lit so the chrome reads
+      // coherently with the user's sense of "I'm still on my plan".
       return 'home'
     case 'methode':
       return 'method'

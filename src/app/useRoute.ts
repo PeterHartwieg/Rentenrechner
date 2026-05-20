@@ -41,6 +41,7 @@ export type Route =
   | { kind: 'rente-netto-berechnen' }
   | { kind: 'altersvorsorgeprodukte-vergleichen' }
   | { kind: 'vertrag'; instanceId: string }
+  | { kind: 'kapital' }
   | { kind: 'not-found' }
 
 export type RouteKind = Route['kind']
@@ -69,6 +70,7 @@ export const ROUTES = {
   renteNettoBerechnen: { kind: 'rente-netto-berechnen' } as Route,
   altersvorsorgeprodukteVergleichen: { kind: 'altersvorsorgeprodukte-vergleichen' } as Route,
   vertrag: (instanceId: string): Route => ({ kind: 'vertrag', instanceId }),
+  kapital: { kind: 'kapital' } as Route,
   notFound: { kind: 'not-found' } as Route,
 } as const
 
@@ -96,6 +98,7 @@ export function routeToPath(route: Route): string {
     case 'rente-netto-berechnen': return '/rente-netto-berechnen'
     case 'altersvorsorgeprodukte-vergleichen': return '/altersvorsorgeprodukte-vergleichen'
     case 'vertrag': return `/vertrag/${encodeURIComponent(route.instanceId)}`
+    case 'kapital': return '/kapital'
     case 'not-found': return '/404'
     default: {
       const _exhaustive: never = route
@@ -152,6 +155,7 @@ export function pathToRoute(pathname: string): Route {
     case '/private-rentenversicherung-rechner': return ROUTES.privateRentenversicherungRechner
     case '/rente-netto-berechnen': return ROUTES.renteNettoBerechnen
     case '/altersvorsorgeprodukte-vergleichen': return ROUTES.altersvorsorgeprodukteVergleichen
+    case '/kapital': return ROUTES.kapital
     case '/404': return ROUTES.notFound
     default: return ROUTES.notFound
   }

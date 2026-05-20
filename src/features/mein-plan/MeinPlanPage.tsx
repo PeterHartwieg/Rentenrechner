@@ -215,6 +215,23 @@ export function MeinPlanPage({
                     Inflations&shy;anpassung in den Annahmen.
                   </>
                 )}
+                {/* Drill-in to /kapital (PR 8). Progressive enhancement: real
+                    href so right-click → open-in-new-tab works; SPA intercept
+                    only when both modifier-key guard passes and `navigate` is
+                    available. */}
+                {' '}
+                <a
+                  className="mein-plan-headline-aside-link"
+                  href={routeToPath(ROUTES.kapital)}
+                  onClick={(event) => {
+                    if (!navigate) return
+                    if (!shouldUseSpaNavigation(event)) return
+                    event.preventDefault()
+                    navigate(ROUTES.kapital)
+                  }}
+                >
+                  Kapital im Verlauf →
+                </a>
               </div>
             </div>
 

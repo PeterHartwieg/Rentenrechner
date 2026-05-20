@@ -123,6 +123,22 @@
   color: var(--rw-ink);
 }
 
+.mein-plan-headline-aside-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--rw-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  white-space: nowrap;
+}
+
+.mein-plan-headline-aside-link:focus-visible {
+  outline: 2px solid var(--rw-ink);
+  outline-offset: 2px;
+}
+
 /* --- Section heads (§ N · title) ------------------------------------- */
 .mein-plan-section {
   display: flex;

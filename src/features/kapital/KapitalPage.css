@@ -1,0 +1,314 @@
+/* KapitalPage — Sober D treatment shared with MeinPlanPage / VertragDetailPage. */
+
+.kapital-shell {
+  --kapital-ink: #161616;
+  --kapital-ink-soft: #4a4a4a;
+  --kapital-ink-faint: #8c8c8c;
+  --kapital-rule: #1f1f1f;
+  --kapital-rule-soft: #d8d4c8;
+  --kapital-paper: #f6f4ef;
+  --kapital-accent: #7e2d2d;
+
+  background: #ffffff;
+  color: var(--kapital-ink);
+  padding: 28px 24px 64px;
+  min-height: 100%;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+.kapital-main {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.kapital-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.kapital-kicker {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--kapital-ink-faint);
+}
+
+.kapital-headline {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--kapital-ink);
+}
+
+.kapital-backline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--kapital-ink-faint);
+}
+
+.kapital-backlink {
+  color: var(--kapital-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.kapital-backlink:focus-visible {
+  outline: 2px solid var(--kapital-ink);
+  outline-offset: 3px;
+}
+
+/* ---- Filter chips ------------------------------------------------------- */
+
+.kapital-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 0 2px;
+}
+
+.kapital-chips-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--kapital-ink-faint);
+  margin-right: 4px;
+}
+
+.kapital-chip {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 6px 12px;
+  border: 1px solid var(--kapital-rule-soft);
+  background: transparent;
+  color: var(--kapital-ink-soft);
+  cursor: pointer;
+  min-height: 32px;
+  border-radius: 2px;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.kapital-chip:hover {
+  border-color: var(--kapital-rule);
+  color: var(--kapital-ink);
+}
+
+.kapital-chip:focus-visible {
+  outline: 2px solid var(--kapital-ink);
+  outline-offset: 2px;
+}
+
+.kapital-chip--active {
+  background: var(--kapital-ink);
+  border-color: var(--kapital-ink);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ---- Chart wrapper ----------------------------------------------------- */
+
+.kapital-chart-wrap {
+  border: 1px solid var(--kapital-rule);
+  background: #ffffff;
+  padding: 8px 0 0;
+}
+
+.kapital-chart-wrap .chart-panel {
+  border: none;
+  box-shadow: none;
+  padding: 4px 8px 16px;
+  background: transparent;
+}
+
+/* ---- Section heads ----------------------------------------------------- */
+
+.kapital-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.kapital-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.kapital-section-num {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--kapital-ink-faint);
+}
+
+.kapital-section-title {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 400;
+  font-size: 22px;
+  margin: 0;
+}
+
+/* ---- Wendepunkte table ------------------------------------------------- */
+
+.kapital-wendepunkte-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.kapital-wendepunkte-table thead tr {
+  border-bottom: 1px solid var(--kapital-rule);
+}
+
+.kapital-wendepunkte-table th {
+  text-align: left;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--kapital-ink-faint);
+  padding: 8px 6px;
+  font-weight: 500;
+}
+
+.kapital-wendepunkte-table td {
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--kapital-rule-soft);
+  vertical-align: baseline;
+}
+
+.kapital-wendepunkte-table .kapital-num {
+  text-align: right;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.kapital-wendepunkte-table .kapital-wendepunkte-age {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 600;
+  width: 60px;
+}
+
+/* ---- Wendepunkte phone cards ------------------------------------------ */
+
+.kapital-wendepunkte-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kapital-wendepunkte-card {
+  border-bottom: 1px solid var(--kapital-rule-soft);
+  padding: 10px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kapital-wendepunkte-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.kapital-wendepunkte-card-age {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--kapital-ink);
+  min-width: 30px;
+}
+
+.kapital-wendepunkte-card-label {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--kapital-ink-soft);
+}
+
+.kapital-wendepunkte-card-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 8px;
+}
+
+.kapital-wendepunkte-card-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kapital-wendepunkte-card-grid dt {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--kapital-ink-faint);
+}
+
+.kapital-wendepunkte-card-grid dd {
+  margin: 0;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--kapital-ink);
+}
+
+/* ---- Empty state ------------------------------------------------------- */
+
+.kapital-empty {
+  padding: 24px 0;
+  font-size: 14px;
+  color: var(--kapital-ink-soft);
+  line-height: 1.5;
+  border-top: 1px solid var(--kapital-rule-soft);
+  border-bottom: 1px solid var(--kapital-rule-soft);
+}
+
+.kapital-empty a {
+  color: var(--kapital-ink);
+  text-decoration: underline;
+}
+
+/* ---- Phone breakpoint -------------------------------------------------- */
+
+@media (max-width: 639px) {
+  .kapital-shell {
+    padding: 18px 16px 96px; /* extra bottom for MobileNav tab bar */
+  }
+  .kapital-headline {
+    font-size: 26px;
+  }
+  .kapital-chips {
+    gap: 6px;
+  }
+  .kapital-chip {
+    font-size: 12px;
+    padding: 8px 10px; /* taller for 44 px tap target */
+    min-height: 36px;
+  }
+}
+
+/* ---- Tablet breakpoint ------------------------------------------------- */
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .kapital-shell {
+    padding: 22px 20px 56px;
+  }
+  .kapital-headline {
+    font-size: 30px;
+  }
+}

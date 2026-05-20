@@ -134,6 +134,8 @@ tests.
 | Policy-default constants for the sensitivity rows (target scenario id, age cap, inflation rate, ETF-bump amount) | `src/features/mein-plan/sensitivityConfig.ts` |
 | Per-contract Vertrag-Detail Sober D surface (header + KPI strip + § 1 "Was wäre, wenn …" scenarios + § 2 "Wie wir das berechnen" provenance + right-rail Vertragsdaten metadata aside; mounted via the dynamic `/vertrag/:instanceId` route, drill-in from Mein Plan § 1 instance rows) | `src/features/vertrag-detail/VertragDetailPage.tsx`, plus co-located `VertragKpiStrip.tsx`, `VertragScenarioTable.tsx`, `VertragProvenanceList.tsx`, `VertragMetadataAside.tsx` |
 | Per-contract decision atoms (weiterführen / beitragsfrei / beitrag-erhöhen / beitrag-senken / kündigen / übertragen) consumed by the Vertrag-Detail scenario table and `applyContractDecision` mutation pipeline | `src/app/contractDecisions.ts` |
+| Kapital & Auszahlungen Sober D surface (kicker + H1 + page-level filter chips + full-width lifecycle chart + § 1 Wendepunkte table; mounted on the static `/kapital` route, drill-in from Mein Plan headline aside; dual-source — renders for both compare and combine modes) | `src/features/kapital/KapitalPage.tsx`, plus co-located `KapitalFilterChips.tsx`, `KapitalWendepunkteTable.tsx`, `kapitalFilters.ts`, `wendepunkte.ts` |
+| Viewport-aware chart-density tokens (axis-label visibility, axis width, margins, callout font sizes) consumed by `BreakEvenChart` (and intended for `FeeDragChart` / `MonteCarloPanel` migration) | `src/ui/charts/useChartDensity.ts` |
 
 ### Storage
 

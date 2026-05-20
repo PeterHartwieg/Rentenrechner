@@ -16,6 +16,7 @@ import type { TooltipContentProps } from 'recharts/types/component/Tooltip'
 import { Hourglass } from 'lucide-react'
 import { getProductMeta } from '../../app/productPresentation'
 import { formatCurrency, formatNumber } from '../../utils/format'
+import { useChartDensity } from '../../ui/charts/useChartDensity'
 import {
   buildLifecycleLineSeries,
   findLeibrenteCrossovers,
@@ -86,6 +87,14 @@ interface Props {
    * for backwards-compatible callers.
    */
   pensionBaselineType?: PensionBaselineType
+  /**
+   * When `false`, the internal product-picker chip row is suppressed —
+   * the chart renders `selectedResults` as-is without an in-component
+   * toggle. Used by the `/kapital` page (PR 8), which surfaces a single
+   * page-level filter chip row that drives both the chart and the
+   * Wendepunkte table. Defaults to `true` for compare-mode callers.
+   */
+  showPicker?: boolean
 }
 
 const PAID_IN_COLOR = '#64748b'
@@ -103,6 +112,7 @@ export function BreakEvenChart({
   grvNetMonthlyPension,
   grvContributionTimeline,
   pensionBaselineType,
+  showPicker = true,
 }: Props) {
   const baselineLabel = baselineLabels(pensionBaselineType)
   // Default chart picker to the best product (or the first available).
@@ -181,7 +191,11 @@ export function BreakEvenChart({
 
   const [chartWidth, setChartWidth] = useState(0)
   const handleChartResize = useCallback((w: number) => setChartWidth(w), [])
-  const isMobileChart = chartWidth > 0 && chartWidth <= 480
+  // Density tokens drive every responsive Recharts knob (margins, axis
+  // width, label visibility, callout font sizes). Picking the tokens off
+  // the chart's measured width — not the viewport — keeps narrow asides on
+  // desktop tuned like phone charts. See `src/ui/charts/useChartDensity.ts`.
+  const density = useChartDensity(chartWidth || undefined)
 
   const { targetProps: containerTargetProps } = useFeedbackTarget({
     id: 'results.breakEvenChart.container',
@@ -197,7 +211,13 @@ export function BreakEvenChart({
 
   if (selectedResults.length === 0) return null
 
-  const renderedProducts = selectedResults.filter((r) => effectivePicked.has(r.productId))
+  // When the page suppresses the picker (PR 8 `/kapital`), render every
+  // entry in `selectedResults` directly — the page's external chip row is
+  // already the selection authority and `effectivePicked` would otherwise
+  // collapse to the first product on every render.
+  const renderedProducts = showPicker
+    ? selectedResults.filter((r) => effectivePicked.has(r.productId))
+    : selectedResults
   const paidInKey = renderedProducts[0] ? lifecycleLineKeys(renderedProducts[0].productId).paidIn : undefined
   const breakEvenPoints = paidInKey
     ? breakEvenMarkers(data, renderedProducts, paidInKey, productColors)
@@ -240,6 +260,7 @@ export function BreakEvenChart({
         </div>
       </div>
 
+      {showPicker && (
       <div className="lifecycle-picker">
         {selectedResults.map((r) => {
           const isActive = effectivePicked.has(r.productId)
@@ -267,33 +288,34 @@ export function BreakEvenChart({
           )
         })}
       </div>
+      )}
 
       <div className="break-even-frame-wrap">
         <div className="chart-frame break-even-frame">
           <ResponsiveContainer width="100%" height="100%" onResize={handleChartResize}>
-            <LineChart data={data} margin={{ top: 16, right: 16, left: 8, bottom: isMobileChart ? 24 : 56 }}>
+            <LineChart data={data} margin={density.margins}>
               <CartesianGrid strokeDasharray="4 4" />
               <XAxis
                 dataKey="age"
                 tickLine={false}
-                label={isMobileChart ? undefined : {
+                label={density.axisLabelsVisible ? {
                   value: 'Alter (Jahre)',
                   position: 'insideBottom',
                   offset: -8,
                   fill: '#475569',
-                  fontSize: 12,
-                }}
+                  fontSize: density.axisLabelFontSize,
+                } : undefined}
               />
               <YAxis
                 tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-                width={isMobileChart ? 48 : 68}
-                label={isMobileChart ? undefined : {
+                width={density.yAxisWidth}
+                label={density.axisLabelsVisible ? {
                   value: 'EUR',
                   angle: -90,
                   position: 'insideLeft',
                   style: { textAnchor: 'middle', fill: '#475569' },
-                  fontSize: 12,
-                }}
+                  fontSize: density.axisLabelFontSize,
+                } : undefined}
               />
               <Tooltip
                 content={(props) => (
@@ -313,7 +335,7 @@ export function BreakEvenChart({
                 x={retirementAge}
                 stroke="#94a3b8"
                 strokeDasharray="3 3"
-                label={isMobileChart ? undefined : { value: `Renteneintritt ${retirementAge}`, position: 'insideTop', fill: '#64748b', fontSize: 11 }}
+                label={density.calloutLabelsVisible ? { value: `Renteneintritt ${retirementAge}`, position: 'insideTop', fill: '#64748b', fontSize: density.calloutLabelFontSize } : undefined}
               />
               <ReferenceLine x={retirementEndAge} stroke="#cbd5e1" strokeDasharray="3 3" />
               {paidInKey && (
@@ -394,11 +416,11 @@ export function BreakEvenChart({
                   fill={point.color}
                   stroke="#ffffff"
                   strokeWidth={2}
-                  label={isMobileChart ? undefined : {
+                  label={density.calloutLabelsVisible ? {
                     value: `${point.label} ${point.age}`,
                     position: 'top',
                     fill: point.color,
-                    fontSize: 11,
+                    fontSize: density.calloutLabelFontSize,
                     fontWeight: 700,
                     style: {
                       paintOrder: 'stroke',
@@ -407,7 +429,7 @@ export function BreakEvenChart({
                       strokeLinejoin: 'round',
                       textShadow: '0 1px 3px rgba(15, 23, 42, 0.28)',
                     },
-                  }}
+                  } : undefined}
                 />
               ))}
               {inFrameCrossovers.map((cross) => {
@@ -423,11 +445,11 @@ export function BreakEvenChart({
                     fill="#ffffff"
                     stroke={color}
                     strokeWidth={2.5}
-                    label={isMobileChart ? undefined : {
+                    label={density.calloutLabelsVisible ? {
                       value: `holt ${drawDownLabel} ein · ${cross.age}`,
                       position: 'bottom',
                       fill: color,
-                      fontSize: 11,
+                      fontSize: density.calloutLabelFontSize,
                       fontWeight: 700,
                       style: {
                         paintOrder: 'stroke',
@@ -436,7 +458,7 @@ export function BreakEvenChart({
                         strokeLinejoin: 'round',
                         textShadow: '0 1px 3px rgba(15, 23, 42, 0.28)',
                       },
-                    }}
+                    } : undefined}
                   />
                 )
               })}
