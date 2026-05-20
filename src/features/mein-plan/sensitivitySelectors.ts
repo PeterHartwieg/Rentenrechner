@@ -70,14 +70,19 @@ import { runCombineSimulation } from '../../app/useCombineSimulation'
  * or display a structured "nicht anwendbar" caption instead of an unexplained
  * 0 €/Monat.
  *
- * - `'no_etf_instance'`: the workspace has zero ETF instances (neither active
- *   nor paid-up). The ETF-bump row is skipped entirely.
- * - `'etf_paid_up_only'`: the workspace has ETF instance(s) but all are
- *   paid-up (beitragsfrei). The bump cannot be applied to a paid-up contract
+ * - `'no_etf_instance'`: the workspace has zero ETF instances, OR all existing
+ *   ETF instances are `surrendered` or `offered` (or a mix of non-paid_up
+ *   statuses). In either case the bump cannot be applied to any contract and
+ *   the ETF-bump row is suppressed or shows a neutral caption.
+ * - `'etf_paid_up_only'`: the workspace has at least one ETF instance AND
+ *   every ETF instance is `paid_up` (beitragsfrei). The bump cannot be applied
  *   because the portfolio adapter forces `etfMonthlyUserCostOverride = 0` for
  *   paid-up instances regardless of `monthlyContribution`. The row still
  *   renders with `headlineDelta = 0` but surfacing this note lets the user
- *   understand why ("ETF-Vertrag vorhanden, aber beitragsfrei").
+ *   understand why ("ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung
+ *   würde einen neuen aktiven Vertrag erfordern"). Mixed workspaces (some
+ *   paid_up, some surrendered/offered) also fall back to `'no_etf_instance'`
+ *   because the surrendered/offered instances are not recoverable by bumping.
  * - `'retirement_age_clamped'`: the requested retirement age was above
  *   `retirementEndAge − 1`. We clamp and the row still runs, but the caller
  *   may wish to surface that the clamp happened. This note is preserved even
@@ -381,7 +386,7 @@ export function sensitivityIfInflation(
  * What if the user invests an additional `bumpEUR` (default 100) per month in
  * the **first active ETF instance**?
  *
- * Three cases are distinguished:
+ * Four cases are distinguished:
  *
  * 1. **No ETF instance at all** (note: `'no_etf_instance'`): the workspace
  *    contains zero ETF instances. The row is a no-op; the UI should skip it
@@ -390,15 +395,20 @@ export function sensitivityIfInflation(
  *    contractStartYear choices would silently bias the comparison.
  *
  * 2. **ETF exists but all are paid-up** (note: `'etf_paid_up_only'`): the
- *    workspace has at least one ETF instance, but all carry `status = 'paid_up'`.
- *    Paid-up instances receive `etfMonthlyUserCostOverride = 0` in the portfolio
- *    adapter regardless of `monthlyContribution`, so bumping their contribution
- *    field has no effect on the simulation. Returning this distinct note lets the
- *    UI tell the user "ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung
- *    würde einen neuen aktiven Vertrag erfordern" rather than the misleading
- *    "no_etf_instance" copy.
+ *    workspace has at least one ETF instance, and EVERY instance carries
+ *    `status = 'paid_up'`. Paid-up instances receive `etfMonthlyUserCostOverride
+ *    = 0` in the portfolio adapter regardless of `monthlyContribution`, so
+ *    bumping their contribution field has no effect on the simulation. Returning
+ *    this distinct note lets the UI tell the user "ETF-Vertrag vorhanden, aber
+ *    beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern".
  *
- * 3. **Active ETF exists**: the bump is applied to the first active instance.
+ * 3. **ETF exists but none are active — not all paid-up** (note: `'no_etf_instance'`):
+ *    one or more instances exist but carry `status = 'surrendered'` or `'offered'`
+ *    (or a mix). These are not recoverable by bumping a contribution field.
+ *    The note falls back to `'no_etf_instance'` so the UI does not imply that
+ *    a beitragsfrei contract exists that could be extended.
+ *
+ * 4. **Active ETF exists**: the bump is applied to the first active instance.
  *
  * Cost: O(N) on workspace instances per call.
  */
@@ -421,12 +431,25 @@ export function sensitivityIfEtfBump(
 
   const firstActiveEtfIdx = etfInstances.findIndex((i) => i.status === 'active')
   if (firstActiveEtfIdx === -1) {
-    // ETF instances exist but none are active (all paid_up).
+    // ETF instances exist but none are active.
+    //
+    // Two sub-cases:
+    //   a) Every instance is `paid_up` → `'etf_paid_up_only'`. The user has a
+    //      beitragsfrei ETF contract; the UI shows a specific note about upgrading
+    //      to an active contract.
+    //   b) At least one instance is `surrendered` or `offered` (even if others
+    //      are `paid_up`) → `'no_etf_instance'`. Surrendered/offered contracts
+    //      are not recoverable by bumping a contribution field, so the "paid_up"
+    //      framing would be misleading.
+    //
+    // `etfInstances.length === 0` is already handled above so we never reach
+    // here with an empty array. `Array.every` on a non-empty array is safe.
+    const allPaidUp = etfInstances.every((i) => i.status === 'paid_up')
     return {
       headlineDelta: 0,
       perInstanceDelta: {},
       perturbedProjectedMonthly: baselineCombined.monthlyNetIncome,
-      note: 'etf_paid_up_only',
+      note: allPaidUp ? 'etf_paid_up_only' : 'no_etf_instance',
     }
   }
 

@@ -141,7 +141,20 @@ export function MeinPlanPage({
   const realMultiplier = (1 + inflationRate) ** -yearsUntilRetirement
   const realMonthly = projectedMonthly * realMultiplier
 
-  const hasInstances = rows.some((r) => r.kind === 'instance')
+  // `hasContractRows`: true when the workspace contains at least one active or
+  // paid-up contract instance. Gates § 2 Sensitivität only — perturbations are
+  // meaningless and expensive (each selector re-runs the full combine simulation)
+  // when no contract instances exist.
+  //
+  // `hasZusammenRows`: true when there is at least one row to show in § 1.
+  // `collectZusammenRows` always emits a leading statutory-pension row regardless
+  // of whether any contract instances exist, so `rows.length > 0` is the correct
+  // test for § 1 visibility — NOT `hasContractRows`. A workspace with zero
+  // contracts but a statutory-pension entitlement (GRV, Versorgungswerk, Beamten)
+  // still has a valid § 1 table to show. Using `hasContractRows` for § 1 would
+  // hide the GRV row and drop a valid result surface.
+  const hasContractRows = rows.some((r) => r.kind === 'instance')
+  const hasZusammenRows = rows.length > 0
 
   // § 2 Sensitivität rows. Each selector is a pure perturbation over
   // `runCombineSimulation`; calling them inside `useMemo` keys them off
@@ -150,19 +163,19 @@ export function MeinPlanPage({
   // N is the active instance count — bounded by the ≤5-rows budget pinned in
   // `sensitivitySelectors.ts`.
   //
-  // Gated on `hasInstances`: when the workspace has no active or paid-up
+  // Gated on `hasContractRows`: when the workspace has no active or paid-up
   // contracts, sensitivity perturbations are meaningless and expensive
   // (each selector re-runs the full combine simulation). The empty-state
   // copy in § 2 handles the zero-instance case.
   const sensitivityRows = useMemo<SensitivityRow[]>(() => {
-    if (!combinedForScenario || !hasInstances) return []
+    if (!combinedForScenario || !hasContractRows) return []
     return buildSensitivityRows({
       workspace,
       baselineCombined: combinedForScenario,
       rules,
       scenarioId: selectedScenarioId,
     })
-  }, [workspace, combinedForScenario, hasInstances, rules, selectedScenarioId])
+  }, [workspace, combinedForScenario, hasContractRows, rules, selectedScenarioId])
 
   return (
     <div className="mein-plan-shell">
@@ -212,7 +225,7 @@ export function MeinPlanPage({
                 </h2>
               </div>
 
-              {hasInstances ? (
+              {hasZusammenRows ? (
                 <>
                   <table className="mein-plan-zusammen-table">
                     <thead>

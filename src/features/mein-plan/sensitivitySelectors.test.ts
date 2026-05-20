@@ -220,6 +220,59 @@ describe('sensitivityIfEtfBump', () => {
     expect(result.note).not.toBe('no_etf_instance')
     expect(result.headlineDelta).toBe(0)
   })
+
+  // CR Minor regression (R5): surrendered/offered ETF instances must NOT use the
+  // 'etf_paid_up_only' note — that copy is misleading when no beitragsfrei
+  // contract exists. Must fall back to 'no_etf_instance'.
+  it('surfaces "no_etf_instance" when the ETF instance is surrendered (not paid_up)', () => {
+    const ws = buildBaseWorkspace()
+    const wsSurrendered: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          etf: ws.baseline.assumptions.etf.map((inst) => ({
+            ...inst,
+            status: 'surrendered' as const,
+          })),
+        },
+      },
+    }
+    const bundle = runCombineSimulation(wsSurrendered, de2026Rules)
+    const baseline = bundle.combinedByScenarioId['basis']
+    const result = sensitivityIfEtfBump(wsSurrendered, baseline, de2026Rules, 'basis', 100)
+    expect(result.note).toBe('no_etf_instance')
+    expect(result.note).not.toBe('etf_paid_up_only')
+    expect(result.headlineDelta).toBe(0)
+  })
+
+  it('surfaces "no_etf_instance" when ETF instances are a mix of paid_up + surrendered', () => {
+    // Mixed: one paid_up + one surrendered → not "all paid_up" → 'no_etf_instance'.
+    const ws = buildBaseWorkspace()
+    // The base workspace adds one ETF instance; add a second one.
+    const wsTwo = addInstanceToWorkspace(ws, 'etf')
+    const etfInstances = wsTwo.baseline.assumptions.etf
+    const wsMixed: Workspace = {
+      ...wsTwo,
+      baseline: {
+        ...wsTwo.baseline,
+        assumptions: {
+          ...wsTwo.baseline.assumptions,
+          etf: etfInstances.map((inst, idx) => ({
+            ...inst,
+            status: (idx === 0 ? 'paid_up' : 'surrendered') as 'paid_up' | 'surrendered',
+          })),
+        },
+      },
+    }
+    const bundle = runCombineSimulation(wsMixed, de2026Rules)
+    const baseline = bundle.combinedByScenarioId['basis']
+    const result = sensitivityIfEtfBump(wsMixed, baseline, de2026Rules, 'basis', 100)
+    expect(result.note).toBe('no_etf_instance')
+    expect(result.note).not.toBe('etf_paid_up_only')
+    expect(result.headlineDelta).toBe(0)
+  })
 })
 
 // Codex P3 regression: when retirementAge (69) + retirementEndAge (70) causes

@@ -253,15 +253,26 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     )
   })
 
-  it('renders an empty-state when no instances are active', () => {
-    // Default workspace with no instance arrays populated yields an empty
-    // composition table; the page surfaces a "noch keine aktiven Verträge"
-    // copy block rather than rendering an empty table.
+  it('renders an empty-state for § 1 only when no rows exist at all', () => {
+    // Default workspace with no instance arrays populated: `collectZusammenRows`
+    // always emits a leading statutory-pension row regardless of whether contract
+    // instances exist. So `hasZusammenRows` is true (the GRV row is present) and
+    // the § 1 table renders — it just has only the statutory-pension entry.
+    // The empty-state copy "Noch keine aktiven Verträge" must NOT appear for § 1.
     // No localStorage seeding needed: the receipt reads from props, not storage.
     const ws: Workspace = { ...defaultWorkspace, mode: 'combine' }
     const props = buildProps(ws)
     const { container } = render(<MeinPlanPage {...props} />)
-    expect(container.textContent).toContain('Noch keine aktiven Verträge')
+    // § 1 table must render with the GRV row (statutory pension always present).
+    const zusammenTable = container.querySelector('.mein-plan-zusammen-table')
+    expect(zusammenTable).not.toBeNull()
+    const rows = container.querySelectorAll('.mein-plan-zusammen-table tbody tr')
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    expect(rows[0].textContent).toContain('Gesetzliche Rente')
+    // The "no contracts" empty-state must NOT appear inside § 1.
+    const zusammenSec = container.querySelector('section[aria-labelledby="mein-plan-zusammensetzung"]')
+    expect(zusammenSec).not.toBeNull()
+    expect(zusammenSec!.querySelector('.mein-plan-zusammen-empty')).toBeNull()
   })
 
   it('Zusammensetzung table shows monthlyOwnContribution for AVD and Riester rows (Codex P2 regression)', () => {
@@ -310,12 +321,15 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     expect(container.querySelector('.compare-layout-sidebar')).toBeNull()
   })
 
-  it('hides sensitivity rows and shows empty-state copy when workspace has zero active instances (Codex P2 guard)', () => {
+  it('hides sensitivity rows and shows empty-state copy when workspace has zero contract instances (Codex P2 guard)', () => {
     // Regression: when combinedForScenario is truthy but no active/paid_up
-    // instances exist, the page must NOT build sensitivity rows (wasted
-    // runCombineSimulation reruns) and must show the empty-state copy.
+    // contract instances exist, the page must NOT build sensitivity rows (wasted
+    // runCombineSimulation reruns) and must show the empty-state copy in § 2.
     //
-    // The hasInstances guard in MeinPlanPage short-circuits the useMemo so
+    // Note: § 1 Zusammensetzung DOES render in this case (the statutory-pension
+    // row is always present) — only § 2 is gated on `hasContractRows`.
+    //
+    // The hasContractRows guard in MeinPlanPage short-circuits the useMemo so
     // none of the sensitivity selectors are called. We spy on
     // sensitivityIfReturnScenario (the first candidate in buildSensitivityRows)
     // to assert that the guard holds — if it is called, the guard is broken.
