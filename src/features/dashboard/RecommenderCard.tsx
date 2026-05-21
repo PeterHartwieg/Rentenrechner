@@ -213,7 +213,10 @@ export function RecommenderCard({
           <ol className="recommender-list">
             {sorted.map((cand) => {
               const scorePct = relativeRankingPct(cand, ranking, rankingMax)
-              const productColor = getProductMeta(cand.productId)?.color ?? '#2563eb'
+              // Per-product color (PRODUCT_REGISTRY single source of truth);
+              // Sober D ink as the neutral fallback if the registry lookup
+              // misses, so we never reach for the legacy blue palette.
+              const productColor = getProductMeta(cand.productId)?.color ?? 'var(--rw-ink)'
               const atomDetailsId = `recommender-${cand.id}-atom-details`
               const atomsExpanded = expandedAtomIds.has(cand.id)
               return (

@@ -1,15 +1,15 @@
-import { useMemo, useState } from 'react'
-import { X } from 'lucide-react'
-import { FocusTrap } from '../../ui/FocusTrap'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Workspace } from '../../domain/workspace'
 import { useFeedbackTarget } from '../../features/qa-feedback'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
 import type { BavEmployerOfferInput, RecommendedCandidate } from '../../app/recommender'
+import { ModalSlot } from '../../ui/chrome/ModalSlot'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { RecommenderCard } from './RecommenderCard'
 import './RecommenderCard.css'
+import './LueckeSchliessenModal.css'
 
 type Step = 'budget' | 'bav-offer' | 'result' | 'saved'
 type OfferChoice = 'yes' | 'no' | null
@@ -60,6 +60,17 @@ export function LueckeSchliessenModal({
   // can echo what was saved.
   const [savedCandidate, setSavedCandidate] = useState<RecommendedCandidate | null>(null)
 
+  // Keyboard a11y: ModalSlot's FocusTrap focuses the first focusable element
+  // on mount, which is the invisible backdrop <button>. Override by focusing
+  // the first visible form control in the step body after FocusTrap's mount-
+  // focus runs. useEffect (not useLayoutEffect) ensures this consumer effect
+  // runs after FocusTrap's mount effect, so this focus call wins the race.
+  // Re-runs on step transition so the first field of each step receives focus.
+  const firstFieldRef = useRef<HTMLInputElement | HTMLButtonElement | null>(null)
+  useEffect(() => {
+    firstFieldRef.current?.focus()
+  }, [step])
+
   const bavOffer = useMemo<BavEmployerOfferInput>(() => {
     if (offerChoice !== 'yes') {
       return {
@@ -96,37 +107,23 @@ export function LueckeSchliessenModal({
   const safeBudget = Math.max(0, budget)
 
   return (
-    <FocusTrap onEscape={onClose}>
-    <div className="luecke-modal-backdrop" role="presentation">
-      <section
-        className="luecke-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="luecke-modal-title"
-        {...modalTargetProps}
-      >
-        <header className="luecke-modal__header">
-          <div>
-            <h2 id="luecke-modal-title">Lücke schließen</h2>
-            <p>{stepLabel(step)}</p>
-          </div>
-          <button
-            type="button"
-            className="luecke-modal__icon-button"
-            onClick={onClose}
-            aria-label="Dialog schließen"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-        </header>
-
+    <ModalSlot
+      open
+      onClose={onClose}
+      title="Lücke schließen"
+      eyebrow={stepLabel(step)}
+      closeLabel="Dialog schließen"
+      panelClassName="luecke-modal__panel"
+    >
+      <div {...modalTargetProps}>
         {step === 'budget' && (
           <div className="luecke-modal__body">
             <h3 {...stepHeadingTargetProps}>Wie viel möchtest du zusätzlich sparen?</h3>
             <div className="luecke-modal__presets" role="group" aria-label="Monatliche Sparrate auswählen">
-              {[100, 200, 400].map((preset) => (
+              {[100, 200, 400].map((preset, index) => (
                 <button
                   key={preset}
+                  ref={index === 0 ? (el) => { firstFieldRef.current = el } : undefined}
                   type="button"
                   className={`recommender-preset ${safeBudget === preset ? 'is-active' : ''}`}
                   onClick={() => setBudget(preset)}
@@ -167,6 +164,7 @@ export function LueckeSchliessenModal({
             <h3 {...stepHeadingTargetProps}>Hast du ein bAV-Angebot vom Arbeitgeber?</h3>
             <div className="luecke-modal__choice-row">
               <button
+                ref={(el) => { firstFieldRef.current = el }}
                 type="button"
                 className={`luecke-modal__choice ${offerChoice === 'yes' ? 'is-active' : ''}`}
                 onClick={() => setOfferChoice('yes')}
@@ -319,6 +317,7 @@ export function LueckeSchliessenModal({
             </p>
             <div className="luecke-modal__actions">
               <button
+                ref={(el) => { firstFieldRef.current = el }}
                 type="button"
                 className="luecke-modal__secondary"
                 onClick={() => {
@@ -367,9 +366,8 @@ export function LueckeSchliessenModal({
             </div>
           </div>
         )}
-      </section>
-    </div>
-    </FocusTrap>
+      </div>
+    </ModalSlot>
   )
 }
 
