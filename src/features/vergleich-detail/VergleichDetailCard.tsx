@@ -22,7 +22,15 @@ interface Props {
  * scenario state directly.
  */
 export function VergleichDetailCard({ data }: Props) {
-  const availability = getAvailabilityEntry(data.productId)
+  // PR 290 Codex P2: pass the live `insuranceContractStartYear` so the
+  // `versicherung` registry entry resolves the correct minimum payout age
+  // (pre-2012 contracts → 60, post-2011 → 62 per §52 Abs. 28 Satz 7 EStG).
+  // Other products ignore the context — the registry only consults it for
+  // `versicherung`. Threading it unconditionally keeps the call site
+  // product-agnostic.
+  const availability = getAvailabilityEntry(data.productId, {
+    insuranceContractStartYear: data.insuranceContractStartYear,
+  })
 
   return (
     <article className="vd-card" data-product={data.productId}>

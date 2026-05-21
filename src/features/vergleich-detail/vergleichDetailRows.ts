@@ -1,5 +1,6 @@
 import type { BavFundingResult, ProductId, ProductResult, ScenarioAssumptions } from '../../domain'
 import { getProductMeta } from '../../engine/productRegistry'
+import { legalConstants } from '../../rules/legalConstants'
 
 // ---------------------------------------------------------------------------
 // vergleichDetailRows — pure data layer for the `/vergleich/details` cards.
@@ -48,6 +49,15 @@ export interface VergleichDetailCardData {
   readonly sections: ReadonlyArray<VergleichDetailSection>
   /** Effektivkosten p. a. (decimal — e.g. `0.012` for 1.2 %). */
   readonly effectiveAnnualCost: number
+  /**
+   * Live `assumptions.insurance.contractStartYear`, threaded so the card
+   * footer can resolve the per-scenario "Verfügbar ab" copy (PR 290 Codex
+   * P2). For non-`versicherung` cards this is informational only — the
+   * `productAvailabilityCopy` registry only consults it for `versicherung`,
+   * where the minimum payout age depends on §52 Abs. 28 Satz 7 EStG
+   * (pre-2012 contracts ≥ 60, post-2011 ≥ 62).
+   */
+  readonly insuranceContractStartYear: number
 }
 
 interface BuildArgs {
@@ -109,6 +119,15 @@ export function buildVergleichDetailCardData(
       buildPayoutSection(result, assumptions, bavFunding),
     ],
     effectiveAnnualCost: result.accumulationRiy,
+    // PR 290 Codex P2: forward the live insurance contractStartYear so the
+    // card can resolve per-scenario "Verfügbar ab" copy via the
+    // productAvailabilityCopy registry. Default to the canonical post-2011
+    // boundary year if the value is somehow missing (defensive — type
+    // declares it non-optional, but compare-mode share-URL ingest might
+    // bypass the default).
+    insuranceContractStartYear:
+      assumptions.insurance?.contractStartYear ??
+      legalConstants.insurance.halbeinkuenfteRaisedMinAgeContractStartYear,
   }
 }
 
