@@ -1,4 +1,12 @@
 import { useViewport } from './useViewport'
+import type { Route } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
+
+interface MethodFooterProps {
+  /** Navigate to a route (passed in from useRoute via AppShell). */
+  navigate: (target: Route) => void
+}
 
 /**
  * Methodology footer. Three internal viewport variants:
@@ -10,8 +18,12 @@ import { useViewport } from './useViewport'
  * Footnotes here are placeholders for PR 1 (chrome skeleton). PR 4 will
  * replace them with citations driven from the rule-year tables in
  * src/rules/de2026.ts so the wording stays in sync with statutory values.
+ *
+ * R1.1: the "Methode im Detail" link is a real anchor (keyboard-tabbable,
+ * crawlable, middle-click-openable). Plain primary clicks SPA-navigate;
+ * modifier clicks fall through to the browser's native open-in-new-tab.
  */
-export function MethodFooter() {
+export function MethodFooter({ navigate }: MethodFooterProps) {
   const viewport = useViewport()
 
   if (viewport === 'phone') {
@@ -31,7 +43,17 @@ export function MethodFooter() {
       <span>[1] Annahme: 5 % Rendite p.a., 2 % Inflation</span>
       <span>[2] Steuern nach Stand 2026 (§22 EStG)</span>
       <span>[3] GRV-Werte: DRV-Renteninformation</span>
-      <span className="rw-method-footer__link">↗ Methode im Detail</span>
+      <a
+        href={routeToPath(ROUTES.methode)}
+        className="rw-method-footer__link"
+        onClick={(event) => {
+          if (!shouldUseSpaNavigation(event)) return
+          event.preventDefault()
+          navigate(ROUTES.methode)
+        }}
+      >
+        ↗ Methode im Detail
+      </a>
     </footer>
   )
 }

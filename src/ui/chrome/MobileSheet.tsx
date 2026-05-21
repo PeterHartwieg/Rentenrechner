@@ -15,8 +15,8 @@ interface SheetItem {
 }
 
 const ITEMS: readonly SheetItem[] = [
-  { label: 'Methode', href: '#methode' },
-  { label: 'Annahmen', href: '#annahmen' },
+  { label: 'Methode', route: ROUTES.methode },
+  { label: 'Annahmen', route: ROUTES.eingaben },
   { label: 'Datenschutz', route: ROUTES.datenschutz },
   { label: 'Impressum', route: ROUTES.impressum },
   { label: 'GitHub', href: 'https://github.com/PeterHartwieg/Rentenrechner' },
@@ -29,9 +29,9 @@ const ITEMS: readonly SheetItem[] = [
  * destinations live in the bottom MobileNav; everything else (legal,
  * external) lands here.
  *
- * Hash links (#methode, #annahmen) are placeholders until PRs 4/5 wire
- * dedicated routes; navigation is no-op for now so the sheet behaves
- * predictably.
+ * R1.1: Methode + Annahmen now route to `/methode` and `/eingaben`
+ * respectively (Annahmen folds into Section 4 of /eingaben per PR 5).
+ * External http(s) hrefs still open in a new tab.
  */
 export function MobileSheet({ open, onClose, navigate }: MobileSheetProps) {
   useEffect(() => {
@@ -53,9 +53,7 @@ export function MobileSheet({ open, onClose, navigate }: MobileSheetProps) {
     }
     if (item.href && item.href.startsWith('http')) {
       window.open(item.href, '_blank', 'noopener,noreferrer')
-      onClose()
     }
-    // Hash placeholders: close the sheet, leave navigation to a future PR.
     onClose()
   }
 

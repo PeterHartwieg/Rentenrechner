@@ -22,7 +22,9 @@ interface AppHeaderProps {
 // PR 5: the previously-placeholder "Mein Plan" tab is removed from the chrome
 // nav and replaced with the active "Angaben" tab routing to `/eingaben`. The
 // "Annahmen" tab from the pre-redesign nav also collapses here (it now folds
-// into Section 4 of /eingaben). "Vergleich" remains a placeholder until PR 9.
+// into Section 4 of /eingaben). R1.1: the "Vergleich" tab now routes to the
+// `/` Calculator view (which renders VergleichPage when saved mode = compare);
+// this is the canvas intent and avoids inventing a `/mein-plan` route.
 const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
   { id: 'home', label: 'Startseite' },
   { id: 'angaben', label: 'Angaben' },
@@ -32,17 +34,20 @@ const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
 ]
 
 /**
- * Map a nav tab id to a real `Route` target if one exists. Returns `null`
- * for placeholder tabs (`compare` until its route ships in PR 9). The
- * 'home' tab returns `/`; 'artikel' returns `/artikel' (PR 3); 'method'
- * returns `/methode` (PR 4); 'angaben' returns `/eingaben` (PR 5).
+ * Map a nav tab id to a real `Route` target. The 'home' tab returns `/`;
+ * 'artikel' returns `/artikel' (PR 3); 'method' returns `/methode` (PR 4);
+ * 'angaben' returns `/eingaben` (PR 5); 'compare' returns `/` (R1.1 — the
+ * Calculator renders VergleichPage when saved mode = compare, so this is
+ * the canvas-correct landing for the Vergleich tab). The active-tab visual
+ * treatment that distinguishes compare from home is the PR 2.1 concern.
  */
-function clickableTarget(id: ChromeNavId): Route | null {
+function clickableTarget(id: ChromeNavId): Route {
   if (id === 'home') return ROUTES.home
   if (id === 'artikel') return ROUTES.artikel
   if (id === 'method') return ROUTES.methode
   if (id === 'angaben') return ROUTES.eingaben
-  return null
+  // 'compare' — falls through to home; see comment block above.
+  return ROUTES.home
 }
 
 /**
@@ -52,9 +57,9 @@ function clickableTarget(id: ChromeNavId): Route | null {
  *   - phone:   brand + hamburger row only (bottom tab bar handles the 5-way
  *              nav; hamburger opens MobileSheet for overflow links).
  *
- * Routes other than Startseite are visual placeholders until PRs 3–5 wire
- * their target routes (`/artikel`, `/methode`, ...). The label is rendered
- * as a span (not an anchor) so users don't think they're broken.
+ * R1.1: every nav tab now routes to a real target. The active-tab visual
+ * treatment (which distinguishes compare from home, both rooted at `/`)
+ * is the PR 2.1 concern; this file only owns the route plumbing.
  */
 export function AppHeader({ route, kicker, title, editorial, navigate }: AppHeaderProps) {
   const viewport = useViewport()
@@ -68,7 +73,6 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
           className={`rw-app-header rw-app-header--phone ${editorial ? 'rw-app-header--editorial' : ''}`.trim()}
         >
           <span className="rw-app-header__brand">RentenWiki</span>
-          <span className="rw-app-header__brand-meta">seit 2024 · gemeinnützig</span>
           <button
             type="button"
             className="rw-app-header__menu-btn"
@@ -107,31 +111,19 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
           {NAV_ITEMS.map((item) => {
             const isActive = item.id === active
             const target = clickableTarget(item.id)
-            if (target) {
-              return (
-                <a
-                  key={item.id}
-                  href={routeToPath(target)}
-                  className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
-                  onClick={(event) => {
-                    if (!shouldUseSpaNavigation(event)) return
-                    event.preventDefault()
-                    navigate(target)
-                  }}
-                >
-                  {item.label}
-                </a>
-              )
-            }
             return (
-              <span
+              <a
                 key={item.id}
-                className={`rw-app-header__nav-item rw-app-header__nav-item--placeholder${isActive ? ' rw-app-header__nav-item--active' : ''}`}
-                title="Wird in einer späteren Phase aktiviert"
-                aria-disabled="true"
+                href={routeToPath(target)}
+                className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
+                onClick={(event) => {
+                  if (!shouldUseSpaNavigation(event)) return
+                  event.preventDefault()
+                  navigate(target)
+                }}
               >
                 {item.label}
-              </span>
+              </a>
             )
           })}
         </nav>

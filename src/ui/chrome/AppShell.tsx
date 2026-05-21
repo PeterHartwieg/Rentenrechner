@@ -51,7 +51,7 @@ export function AppShell({ route, navigate, kicker, title, editorial, children }
         navigate={navigate}
       />
       <main className="rw-app-shell__body">{children}</main>
-      <MethodFooter />
+      <MethodFooter navigate={navigate} />
       {isPhone && <MobileNav route={route} navigate={navigate} />}
     </div>
   )
