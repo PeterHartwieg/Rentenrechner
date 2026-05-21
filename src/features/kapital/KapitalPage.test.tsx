@@ -22,7 +22,8 @@ import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
 import { KapitalPage } from './KapitalPage'
-import { defaultWorkspace, STORAGE_KEY_V2 } from '../../storage'
+import { defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
+import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import type { Workspace } from '../../domain'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
@@ -106,8 +107,15 @@ describe('KapitalPage — compare-mode default rendering', () => {
 
 describe('KapitalPage — empty-state branches', () => {
   it('renders the empty-state when compare-mode has no visibleProducts', () => {
-    // Compare-mode with explicit empty `visibleProducts` clears the chip
-    // options and surfaces the empty paragraph.
+    // Per CR3: seed BOTH storage keys with `visibleProducts: []` so the
+    // empty branch fires deterministically.
+    //
+    // useCalculatorState reads via `loadSavedState()`, which prefers
+    // STORAGE_KEY_V2 (projecting the workspace to a singleton via
+    // `singletonViewOfWorkspace` — that helper carries `visibleProducts`
+    // through verbatim). STORAGE_KEY_V1 is the fallback compare-mode
+    // anchor; we seed it for completeness so a future read-order change
+    // does not silently flip this assertion back to "either branch".
     const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
     const seeded = {
       ...ws,
@@ -118,17 +126,18 @@ describe('KapitalPage — empty-state branches', () => {
       },
     }
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seeded))
-    // We also need to seed compare-mode singleton localStorage to honour the
-    // empty visibleProducts; without that, useCalculatorState falls back to
-    // defaults (which carries the full visibleProducts list). For this test
-    // we just verify the page renders without throwing — the empty branch
-    // also triggers when the engine returns no products.
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      JSON.stringify({
+        version: 1,
+        profile: defaultProfile,
+        assumptions: { ...defaultAssumptions, visibleProducts: [] },
+      }),
+    )
+
     const { container } = render(inShell(<KapitalPage navigate={() => {}} />))
-    // Either the empty paragraph OR the chip strip appears — both are
-    // valid stable states for a fresh workspace.
-    const hasEmpty = container.querySelector('.kapital-empty') !== null
-    const hasChips = container.querySelector('.kapital-section') !== null
-    expect(hasEmpty || hasChips).toBe(true)
+    // Empty-state must fire — `.kapital-empty` is non-null.
+    expect(container.querySelector('.kapital-empty')).not.toBeNull()
   })
 
   it('renders the empty-state when combine-mode has no instances', () => {

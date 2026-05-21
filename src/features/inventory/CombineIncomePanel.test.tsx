@@ -256,8 +256,12 @@ describe('CombineIncomePanel', () => {
           scenarioLabel="Basis"
         />,
       )
+      const text = container.textContent ?? ''
       // Headline figure renders at every viewport (responsive via CSS).
-      expect(container.textContent ?? '').toContain('Basis')
+      // CR2: assert the actual headline EUR figure (2.200 in de-DE locale)
+      // alongside the scenario label so the test reflects its title.
+      expect(text).toContain('Basis')
+      expect(text).toMatch(/2\.200/)
       unmount()
     })
   })

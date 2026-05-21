@@ -538,8 +538,9 @@ describe('PrintReport', () => {
       expect(text).toContain('Sozialversicherung')
       expect(text).toContain('Statutorische Werte')
       expect(text).toContain('Bewusst nicht modelliert')
-      // Methode pointer to the live /methode page.
-      expect(text).toContain('rentenwiki.de/methode')
+      // Methode pointer to the live /methode page (brand: RentenWiki.de per
+      // CLAUDE.md public-copy convention).
+      expect(text).toContain('RentenWiki.de/methode')
     })
 
     it('Wohin section sits AFTER the Produktvergleich table and BEFORE Hinweise', () => {
@@ -678,7 +679,8 @@ describe('PrintReport', () => {
       const text = container.textContent ?? ''
       expect(text).toContain('Methode')
       expect(text).toContain('Renditeannahmen')
-      expect(text).toContain('rentenwiki.de/methode')
+      // Branded RentenWiki.de per CLAUDE.md public-copy convention (CR6).
+      expect(text).toContain('RentenWiki.de/methode')
     })
 
     it('combine-mode new sections sit AFTER "Detail je Vertrag" and BEFORE Hinweise', () => {
@@ -696,6 +698,114 @@ describe('PrintReport', () => {
       expect(idxWende).toBeLessThan(idxVertrag)
       expect(idxVertrag).toBeLessThan(idxMethode)
       expect(idxMethode).toBeLessThan(idxHinweise)
+    })
+
+    // ---------------------------------------------------------------------
+    // PR 11 R1 scope restore — sensitivity sub-table inside § Zusammensetzung.
+    // ---------------------------------------------------------------------
+
+    it('renders the Sensitivität sub-table when combineSensitivityRows is passed', () => {
+      // Use the local makeCombineRender fixture and inject sensitivity rows
+      // directly so this test is hermetic — no `runCombineSimulation` cost.
+      const etfBase = makeSimulation('user_confirmed').products[0] as ProductResult
+      const etfResult: ProductResult = {
+        ...etfBase,
+        productId: 'etf',
+        label: 'ETF-Depot',
+        instanceId: 'etf-1',
+        scenarioId: 'basis',
+        scenarioLabel: 'Basis',
+        rows: [],
+      } as unknown as ProductResult
+
+      const workspace: Workspace = {
+        schemaVersion: 2,
+        mode: 'combine',
+        baseline: {
+          id: 'baseline',
+          label: 'Baseline',
+          profile: defaultProfile,
+          assumptions: {
+            bav: [],
+            etf: [
+              {
+                instanceId: 'etf-1',
+                label: 'Depot A',
+                status: 'active',
+                contractStartYear: 2020,
+                evidenceMap: {},
+                annualAssetFee: 0.002,
+                equityPartialExemption: 0.3,
+                annualContributionGrowthRate: 0,
+                monthlyContribution: 200,
+              },
+            ],
+            insurance: [],
+            basisrente: [],
+            altersvorsorgedepot: [],
+            riester: [],
+            statutoryPension: defaultAssumptions.statutoryPension,
+            inflationRate: 0.02,
+            retirementEndAge: defaultAssumptions.retirementEndAge,
+            returnScenarios: defaultAssumptions.returnScenarios,
+            monteCarlo: defaultAssumptions.monteCarlo,
+            visibleProducts: ['etf'],
+          },
+          createdAt: new Date().toISOString(),
+          origin: 'baseline',
+        },
+        whatIfs: [],
+        pinnedComparisonIds: [],
+      }
+
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+          combineMode={true}
+          portfolio={{
+            perInstance: { 'etf-1': [etfResult] },
+            combinedByScenarioId: { basis: makeCombined(2200) },
+            scenarioLabels: { basis: 'Basis' },
+          }}
+          combineWorkspace={workspace}
+          combineSensitivityRows={[
+            {
+              id: 'rendite-konservativ',
+              conditionText:
+                '… die Märkte über die gesamte Laufzeit nur 3,0 % p. a. erwirtschaften (Szenario „Konservativ")',
+              deltaText: '−120 € / Mon.',
+              sign: 'neg',
+              noteText: null,
+            },
+            {
+              id: 'etf-bump',
+              conditionText: '… du den ersten ETF-Sparplan um 100 €/Monat erhöhst',
+              deltaText: '+45 € / Mon.',
+              sign: 'pos',
+              noteText: null,
+            },
+          ]}
+        />,
+      )
+
+      const text = container.textContent ?? ''
+      // Renamed combined section heading.
+      expect(text).toContain('Zusammensetzung & Sensitivität')
+      // Sub-heading rendered.
+      expect(text).toContain('Was sich ändern würde')
+      // Both perturbation conditions render.
+      expect(text).toContain('Märkte über die gesamte Laufzeit')
+      expect(text).toContain('ETF-Sparplan')
+      // Delta text rendered with correct signs.
+      expect(text).toContain('−120 € / Mon.')
+      expect(text).toContain('+45 € / Mon.')
+      // CSS-class hook for the sub-table is present so styling locks in.
+      expect(container.querySelector('.pr-sens-table')).not.toBeNull()
+      // Pos/neg pill classes are applied.
+      expect(container.querySelector('.pr-sens-delta--pos')).not.toBeNull()
+      expect(container.querySelector('.pr-sens-delta--neg')).not.toBeNull()
     })
   })
 })

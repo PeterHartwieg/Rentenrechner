@@ -144,6 +144,15 @@
     page-break-inside: avoid;
   }
 
+  /* Variant: allow the section itself to break across pages while still
+     letting `.pr-vertrag-block` keep its own `break-inside: avoid`. Used by
+     the "Vertrag im Detail" outer section (combine-mode print) so a 4-6
+     contract list does not force-fit on a single page (CR9). */
+  .pr-section-allow-break {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
   /* Generic data tables */
   .pr-table {
     width: 100%;
@@ -278,6 +287,42 @@
     font-size: 7pt;
   }
 
+  /* Combine-mode Sensitivität sub-table (PR 11 R1 scope restore) */
+  .pr-sens-subhead {
+    margin-top: 8pt;
+    margin-bottom: 2pt;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #000;
+  }
+
+  .pr-sens-table {
+    font-size: 7.5pt;
+  }
+
+  .pr-sens-note {
+    color: #555;
+    font-size: 7pt;
+    font-style: italic;
+    margin-top: 1pt;
+  }
+
+  .pr-sens-delta {
+    font-weight: bold;
+  }
+
+  .pr-sens-delta--pos {
+    color: #166534;
+  }
+
+  .pr-sens-delta--neg {
+    color: #991b1b;
+  }
+
+  .pr-sens-delta--neutral {
+    color: #555;
+  }
+
   /* Combine-mode Wendepunkte je Vertrag */
   .pr-wendepunkte-instance {
     background: #f7f7f7;
@@ -292,8 +337,10 @@
 
   .pr-vertrag-block {
     margin-bottom: 8pt;
+    /* `break-inside: avoid` covers modern print targets (Chrome / Firefox /
+       Safari since 2018+). The deprecated `page-break-inside` alias was
+       removed per CR5 (stylelint MD-not-deprecated-property). */
     break-inside: avoid;
-    page-break-inside: avoid;
   }
 
   .pr-vertrag-header {

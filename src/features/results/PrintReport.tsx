@@ -27,6 +27,7 @@ import {
   type PrintZusammenRow,
   type PrintVertragBlock,
   type PrintWendepunkteSection,
+  type PrintSensitivityRow,
 } from './printReportRows'
 
 interface Props {
@@ -68,6 +69,16 @@ interface Props {
    * and falls back to the product meta label only when the instance label is blank.
    */
   combineWorkspace?: Workspace
+  /**
+   * Pre-computed sensitivity perturbation rows (combine mode, PR 11 R1 scope
+   * restore). The caller computes these via `buildPrintSensitivityRows` so the
+   * O(N × ≤4) `runCombineSimulation` cost is paid at the same site as the
+   * existing combine simulation (Calculator.tsx), not inside this component.
+   *
+   * When the prop is omitted or empty, the print § Zusammensetzung section
+   * still renders the composition table but skips the sensitivity sub-table.
+   */
+  combineSensitivityRows?: ReadonlyArray<PrintSensitivityRow>
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -133,6 +144,7 @@ export function PrintReport({
   combineGrv,
   combineReturnScenarios,
   combineWorkspace,
+  combineSensitivityRows,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -154,6 +166,7 @@ export function PrintReport({
         retirementEndAge={combineWorkspace?.baseline.assumptions.retirementEndAge ?? assumptions.retirementEndAge}
         portfolio={portfolio}
         workspace={combineWorkspace}
+        sensitivityRows={combineSensitivityRows}
         date={date}
       />
     )
@@ -430,6 +443,9 @@ interface CombinePrintReportProps {
    * product label (e.g. "ETF-Depot"). Falls back to `r.label` when absent.
    */
   workspace?: Workspace
+  /** Pre-computed sensitivity rows (PR 11 R1). Threaded so this component
+   *  stays presentational; the cost is paid in Calculator.tsx. */
+  sensitivityRows?: ReadonlyArray<PrintSensitivityRow>
   date: string
 }
 
@@ -441,6 +457,7 @@ function CombinePrintReport({
   retirementEndAge,
   portfolio,
   workspace,
+  sensitivityRows,
   date,
 }: CombinePrintReportProps) {
   const { perInstance, combinedByScenarioId, scenarioLabels } = portfolio
@@ -477,8 +494,6 @@ function CombinePrintReport({
   const zusammenRows: PrintZusammenRow[] = workspace
     ? buildPrintZusammenRows({
         workspace,
-        perInstance,
-        scenarioId: basisScenarioId,
         combinedForScenario: basisCombined,
       })
     : []
@@ -710,6 +725,7 @@ function CombinePrintReport({
         <ZusammensetzungSection
           rows={zusammenRows}
           retirementAge={profile.retirementAge}
+          sensitivityRows={sensitivityRows}
         />
       )}
 
@@ -916,7 +932,7 @@ function MethodeSection() {
       </ul>
       <p className="pr-note pr-methode-pointer">
         Vollständige statutorische Werte und § §-Verweise:
-        {' '}rentenwiki.de/methode
+        {' '}RentenWiki.de/methode
         {' '}— BMF / BMAS-Quellen, jährliche Aktualisierung.
       </p>
     </section>
@@ -924,19 +940,29 @@ function MethodeSection() {
 }
 
 /**
- * Combine-mode "Zusammensetzung" print block. Mirrors Mein Plan § 1
- * (statutory pension leading row + one row per active / paid-up instance).
+ * Combine-mode "Zusammensetzung & Sensitivität" print block. Mirrors Mein
+ * Plan § 1 (statutory pension leading row + one row per active / paid-up
+ * instance) and § 2 (sensitivity perturbation rows). Section heading
+ * carries both names so the print mirrors the web section index.
+ *
+ * The sensitivity sub-table is suppressed when `sensitivityRows` is
+ * absent or empty (degraded test path or fully neutral plan) — the
+ * composition table still renders so the user sees the contract list.
  */
 function ZusammensetzungSection({
   rows,
   retirementAge,
+  sensitivityRows,
 }: {
   rows: ReadonlyArray<PrintZusammenRow>
   retirementAge: number
+  sensitivityRows?: ReadonlyArray<PrintSensitivityRow>
 }) {
   return (
     <section className="pr-section">
-      <div className="pr-section-title">Zusammensetzung — Rente mit {retirementAge}</div>
+      <div className="pr-section-title">
+        Zusammensetzung &amp; Sensitivität — Rente mit {retirementAge}
+      </div>
       <table className="pr-table">
         <colgroup>
           <col style={{ width: '32%' }} />
@@ -969,7 +995,7 @@ function ZusammensetzungSection({
                     : `${formatCurrency(row.contributionMonthly, 0)}/Mon.`}
               </td>
               <td className="pr-num">{formatCurrency(row.monthlyNet, 0)}/Mon.</td>
-              <td className="pr-num">{Math.round(row.share * 100)} %</td>
+              <td className="pr-num">{formatPercent(row.share, 1)}</td>
             </tr>
           ))}
         </tbody>
@@ -978,7 +1004,62 @@ function ZusammensetzungSection({
         Werte im Basisszenario. Anteil basiert auf der aggregierten Netto-Rente
         nach Steuer und KV/PV.
       </p>
+
+      {sensitivityRows && sensitivityRows.length > 0 && (
+        <SensitivitaetSubTable rows={sensitivityRows} />
+      )}
     </section>
+  )
+}
+
+/**
+ * Sensitivität sub-table rendered inside the Zusammensetzung print
+ * section. Each row is a single perturbation against the basis scenario;
+ * the delta column carries a sign + colour pill (green / red / neutral)
+ * driven by `row.sign`. The optional `noteText` row below the condition
+ * surfaces selector caveats (clamped retirement age, paid-up ETF, etc.)
+ * so a `±0 €/Mon.` delta is never displayed without explanation.
+ */
+function SensitivitaetSubTable({
+  rows,
+}: {
+  rows: ReadonlyArray<PrintSensitivityRow>
+}) {
+  return (
+    <>
+      <div className="pr-sens-subhead">Was sich ändern würde, wenn …</div>
+      <table className="pr-table pr-sens-table">
+        <colgroup>
+          <col style={{ width: '70%' }} />
+          <col style={{ width: '30%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Bedingung</th>
+            <th className="pr-num">Δ Netto-Rente</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>
+              <td>
+                <div>{row.conditionText}</div>
+                {row.noteText ? (
+                  <div className="pr-sens-note">{row.noteText}</div>
+                ) : null}
+              </td>
+              <td className={`pr-num pr-sens-delta pr-sens-delta--${row.sign}`}>
+                {row.deltaText}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="pr-note pr-table-note">
+        Einzelne Was-wäre-wenn-Perturbationen im Basisszenario, gerundet auf
+        ganze Euro. Werte unter 1 €/Monat werden als ±0 angezeigt.
+      </p>
+    </>
   )
 }
 
@@ -1061,8 +1142,11 @@ function VertragImDetailSection({
 }: {
   blocks: ReadonlyArray<PrintVertragBlock>
 }) {
+  // Per CR9: this outer section uses `pr-section-allow-break` so the per-
+  // contract list can flow across pages. Each `.pr-vertrag-block` inside still
+  // carries `break-inside: avoid` so individual contracts stay atomic.
   return (
-    <section className="pr-section">
+    <section className="pr-section pr-section-allow-break">
       <div className="pr-section-title">Vertrag im Detail</div>
       <div className="pr-vertrag-blocks">
         {blocks.map((block) => (

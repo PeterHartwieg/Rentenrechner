@@ -8,6 +8,14 @@ export interface LifecyclePayoutRow {
 }
 
 export interface LifecycleSeriesResult {
+  /**
+   * Product family discriminant — drives ETF-specific payout-row handling in
+   * `annualNetPayoutAt` / `annualGrossPayoutAt` (which read `etfPayoutRows`
+   * only when `productId === 'etf'`). MUST stay the real product family id;
+   * callers that need a unique key across multiple instances of the same
+   * product (combine-mode print, per-contract Wendepunkte) set `seriesKey`
+   * instead of overwriting `productId`.
+   */
   productId: string
   label: string
   rows: Array<{ age: number; balance: number }>
@@ -20,14 +28,34 @@ export interface LifecycleSeriesResult {
   netMonthlyPayout: number
   payoutEndAge?: number
   leibrenteBreakEvenAge?: number
+  /**
+   * Optional override for the per-series chart data-keys + cumulative-payout
+   * map keys. Defaults to `productId`. Set this in combine-mode contexts
+   * where the same `productId` (e.g. two ETF instances) would otherwise
+   * collide on the shared dataKey namespace. The discriminant (`productId`)
+   * still drives ETF-specific payout-row reads; only the dataKey namespace
+   * is overridden.
+   */
+  seriesKey?: string
 }
 
-/** Stable per-product dataKeys for the lifecycle line chart. */
-export function lifecycleLineKeys(productId: string) {
+/**
+ * Per-series dataKey lookup. Pass either a string (legacy: the productId)
+ * or a `LifecycleSeriesResult` so the caller can opt into `seriesKey`
+ * disambiguation without changing the call shape. When `seriesKey` is
+ * present on the result, it wins; otherwise `productId` is the key.
+ */
+export function lifecycleLineKeys(
+  resultOrId: string | Pick<LifecycleSeriesResult, 'productId' | 'seriesKey'>,
+) {
+  const key =
+    typeof resultOrId === 'string'
+      ? resultOrId
+      : (resultOrId.seriesKey ?? resultOrId.productId)
   return {
-    paidIn: `${productId}__paidIn`,
-    balance: `${productId}__balance`,
-    payout: `${productId}__payout`,
+    paidIn: `${key}__paidIn`,
+    balance: `${key}__balance`,
+    payout: `${key}__payout`,
   }
 }
 
@@ -47,13 +75,18 @@ export function buildLifecycleLineSeries(
   horizonAge: number,
 ): Record<string, number>[] {
   const series: Record<string, number>[] = []
-  const cumGrossPayouts = new Map<string, number>(results.map((r) => [r.productId, 0]))
-  const cumNetPayouts = new Map<string, number>(results.map((r) => [r.productId, 0]))
+  // Map keys are the per-series dataKey namespace (seriesKey ?? productId)
+  // so combine-mode print can pass two instances of the same productId
+  // without colliding on cumulative-payout accumulators.
+  const seriesKeyOf = (r: LifecycleSeriesResult) => r.seriesKey ?? r.productId
+  const cumGrossPayouts = new Map<string, number>(results.map((r) => [seriesKeyOf(r), 0]))
+  const cumNetPayouts = new Map<string, number>(results.map((r) => [seriesKeyOf(r), 0]))
 
   for (let age = startAge; age <= horizonAge; age++) {
     const point: Record<string, number> = { age }
     for (const r of results) {
-      const keys = lifecycleLineKeys(r.productId)
+      const keys = lifecycleLineKeys(r)
+      const accumulatorKey = seriesKeyOf(r)
       let balance: number
       let paidIn: number
       let cumNet: number
@@ -76,10 +109,10 @@ export function buildLifecycleLineSeries(
         const yearIndex = age - retirementAge - 1
         const annualGross = annualGrossPayoutAt(r, retirementAge, yearIndex)
         const annualNet = annualNetPayoutAt(r, retirementAge, yearIndex)
-        const cumGross = (cumGrossPayouts.get(r.productId) ?? 0) + annualGross
-        cumGrossPayouts.set(r.productId, cumGross)
-        cumNet = (cumNetPayouts.get(r.productId) ?? 0) + annualNet
-        cumNetPayouts.set(r.productId, cumNet)
+        const cumGross = (cumGrossPayouts.get(accumulatorKey) ?? 0) + annualGross
+        cumGrossPayouts.set(accumulatorKey, cumGross)
+        cumNet = (cumNetPayouts.get(accumulatorKey) ?? 0) + annualNet
+        cumNetPayouts.set(accumulatorKey, cumNet)
         const lifecycleRow = r.lifecyclePayoutRows?.[yearIndex]
         if (lifecycleRow) {
           balance = Math.max(0, lifecycleRow.capitalAtEnd)
@@ -180,9 +213,9 @@ export function findLeibrenteCrossovers(
   const data = buildLifecycleLineSeries(results, startAge, retirementAge, searchCapAge)
   const out: LeibrenteCrossover[] = []
   for (const lb of leibrenteResults) {
-    const lbKey = lifecycleLineKeys(lb.productId).payout
+    const lbKey = lifecycleLineKeys(lb).payout
     for (const dd of drawDownResults) {
-      const ddKey = lifecycleLineKeys(dd.productId).payout
+      const ddKey = lifecycleLineKeys(dd).payout
       let prevDelta: number | null = null
       for (const point of data) {
         const lbVal = Number(point[lbKey] ?? 0)

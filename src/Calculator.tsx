@@ -43,6 +43,7 @@ import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { CombineDetailView } from './features/results/CombineDetailView'
 import { PrintReport } from './features/results/PrintReport'
+import { buildPrintSensitivityRows } from './features/results/printReportRows'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { AssumptionReviewPanel } from './features/results/AssumptionReviewPanel'
@@ -306,6 +307,33 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     combineSimulation.combinedByScenarioId,
     portfolioState.workspace.baseline.assumptions,
     combineProfile,
+  ])
+
+  // Sensitivity perturbation rows for the combine-mode print (PR 11 R1
+  // scope restore). Each row drives a full `runCombineSimulation` pass — the
+  // memo is keyed on workspace + basis result so this only runs when the
+  // user changes the workspace, not on every render. Compare-mode never
+  // pays the cost (returns undefined).
+  const printSensitivityRows = useMemo(() => {
+    if (!isCombineMode) return undefined
+    const basisScenarioId =
+      portfolioState.workspace.baseline.assumptions.returnScenarios.find(
+        (s) => s.id === 'basis',
+      )?.id ??
+      portfolioState.workspace.baseline.assumptions.returnScenarios[0]?.id ??
+      'basis'
+    const basisCombined = combineSimulation.combinedByScenarioId[basisScenarioId]
+    if (!basisCombined) return undefined
+    return buildPrintSensitivityRows({
+      workspace: portfolioState.workspace,
+      baselineCombined: basisCombined,
+      rules: de2026Rules,
+      scenarioId: basisScenarioId,
+    })
+  }, [
+    isCombineMode,
+    portfolioState.workspace,
+    combineSimulation.combinedByScenarioId,
   ])
   const views = useDerivedViews(profile, assumptions, result, {
     showRealValues: ui.showRealValues,
@@ -766,6 +794,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               : undefined
           }
           combineWorkspace={isCombineMode ? portfolioState.workspace : undefined}
+          combineSensitivityRows={printSensitivityRows}
         />
 
         <LegalFooter navigate={navigate} />

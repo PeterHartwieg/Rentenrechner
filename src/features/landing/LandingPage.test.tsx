@@ -627,6 +627,10 @@ describe('LandingPage — viewport sweep (PR 11)', () => {
       expect(container.querySelector('h1')).not.toBeNull()
       expect(container.textContent ?? '').toContain('Mein Plan erstellen')
       expect(container.textContent ?? '').toContain('Vergleich starten')
+      // CR4: the hub navigation grid (`.landing-hub`) renders at every
+      // viewport — responsive layout collapses its column count via CSS
+      // but the container is always present.
+      expect(container.querySelector('.landing-hub')).not.toBeNull()
       unmount()
     })
   })

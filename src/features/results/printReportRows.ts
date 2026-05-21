@@ -1,4 +1,10 @@
-import type { ProductId, ProductResult, ScenarioAssumptions, BavFundingResult } from '../../domain'
+import type {
+  GermanRules,
+  ProductId,
+  ProductResult,
+  ScenarioAssumptions,
+  BavFundingResult,
+} from '../../domain'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../../domain/workspace'
 import type { InstanceCommon, EvidenceState } from '../../domain/instances'
 import type { CombinedResult } from '../../engine/portfolioCombine'
@@ -12,10 +18,25 @@ import {
 } from '../vergleich-detail/vergleichDetailAvailability'
 import { PRODUCT_REGISTRY, getProductMeta } from '../../engine/productRegistry'
 import { legalConstants } from '../../rules/legalConstants'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { evidenceStateToProvKind, formatEvidenceStateForExport } from './provenanceHelpers'
 import { buildLifecycleLineSeries, type LifecycleSeriesResult } from './breakEvenSeries'
 import { buildWendepunkte, type WendepunktRow } from '../kapital/wendepunkte'
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon'
+import {
+  sensitivityIfReturnScenario,
+  sensitivityIfRetirementAge,
+  sensitivityIfInflation,
+  sensitivityIfEtfBump,
+  type SensitivityNote,
+  type SensitivityRowResult,
+} from '../mein-plan/sensitivitySelectors'
+import {
+  SENSITIVITY_RETURN_KONSERVATIV_ID,
+  SENSITIVITY_RETIREMENT_AGE_DELAY,
+  SENSITIVITY_INFLATION_RATE,
+  SENSITIVITY_ETF_CONTRIBUTION_BUMP_EUR,
+} from '../mein-plan/sensitivityConfig'
 
 // ---------------------------------------------------------------------------
 // printReportRows — pure data builders for the new PrintReport sections
@@ -207,8 +228,6 @@ export interface PrintZusammenRow {
 
 interface BuildPrintZusammenRowsInput {
   workspace: Workspace
-  perInstance: Record<string, ProductResult[]>
-  scenarioId: string
   combinedForScenario: CombinedResult | undefined
 }
 
@@ -222,6 +241,13 @@ interface BuildPrintZusammenRowsInput {
  * user sees the GRV / Versorgungswerk / Beamten baseline as the first
  * composition entry.
  *
+ * Per CR10: the per-row `monthlyNet` is sourced exclusively from
+ * `combinedForScenario.byInstance` (aggregate retirement-tax + KV/PV
+ * pipeline). The earlier `perInstance` + `scenarioId` lookup was used only
+ * to read `result.netMonthlyPayout` as a fallback, but that bypassed the
+ * sanctioned aggregate path and produced wrong household-level numbers; the
+ * parameters are therefore gone from this builder.
+ *
  * Note: this is a copy of the same row-collection logic in
  * `MeinPlanPage.tsx`; extracting it into a single shared helper is a
  * separate task — the web page's `ZusammenRow` carries React-specific fields
@@ -229,8 +255,6 @@ interface BuildPrintZusammenRowsInput {
  */
 export function buildPrintZusammenRows({
   workspace,
-  perInstance,
-  scenarioId,
   combinedForScenario,
 }: BuildPrintZusammenRowsInput): PrintZusammenRow[] {
   const wsa = workspace.baseline.assumptions
@@ -256,8 +280,14 @@ export function buildPrintZusammenRows({
     for (const inst of slot.instances) {
       if (inst.status === 'surrendered' || inst.status === 'offered') continue
       const share = combinedForScenario?.byInstance[inst.instanceId]
-      const result = perInstance[inst.instanceId]?.find((r) => r.scenarioId === scenarioId)
-      const monthlyNet = share?.monthlyNet ?? result?.netMonthlyPayout ?? 0
+      // Per CR10: combine-mode net retirement income must come from the
+      // aggregate retirement-tax pipeline (`combinedForScenario.byInstance`).
+      // The per-instance `result.netMonthlyPayout` ignores progressive
+      // §32a EStG aggregation across instances and KV/PV BBG apportionment,
+      // so falling back to it produces wrong household-level numbers. When
+      // the share is missing, treat as 0 — the row still renders so the user
+      // sees the contract, but no false net figure is shown.
+      const monthlyNet = share?.monthlyNet ?? 0
 
       let contributionMonthly: number | null = null
       if (inst.status === 'paid_up') {
@@ -374,11 +404,13 @@ export function buildPrintVertragBlocks({
 
       const result = perInstance[inst.instanceId]?.find((r) => r.scenarioId === scenarioId)
       const combinedShare = combinedForScenario?.byInstance[inst.instanceId]
-      // Prefer the back-allocated monthly net from the aggregate retirement-tax
-      // pipeline (byInstance) so the per-contract block matches the headline
-      // figure on the web page. Falls back to the per-instance simulator value
-      // when byInstance has no entry (e.g. degraded test path).
-      const netMonthly = combinedShare?.monthlyNet ?? result?.netMonthlyPayout ?? 0
+      // Per CR10: combine-mode net retirement income must come from the
+      // aggregate retirement-tax pipeline (`combinedForScenario.byInstance`).
+      // The per-instance `result.netMonthlyPayout` ignores progressive
+      // §32a EStG aggregation and KV/PV BBG apportionment across instances.
+      // When `byInstance` has no entry, the KPI tile shows 0 rather than a
+      // misleading per-instance figure.
+      const netMonthly = combinedShare?.monthlyNet ?? 0
 
       const monthlyContribution = extractMonthlyContribution(inst, slot.id)
       const totalContributions =
@@ -490,11 +522,18 @@ export function buildPrintWendepunkteRows({
       // `leibrenteBreakEvenAge`. `etfPayoutRows` and `lifecyclePayoutRows`
       // are per-product-discriminant fields on the typed union so we read
       // them defensively via a generic record cast (avoids narrowing on each
-      // product id). We tag with `productId = instanceId` so the line keys
-      // are unique across instances (the helper keys series by `productId`).
+      // product id).
+      //
+      // PR 11 R1 (Codex C1): preserve the real `productId` so
+      // `buildLifecycleLineSeries` / `annualNetPayoutAt` correctly take the
+      // ETF-specific payout-row branch (`r.productId === 'etf'`). Two ETF
+      // instances would otherwise collide on the shared dataKey namespace,
+      // so we disambiguate via `seriesKey = instanceId` — the helper keys
+      // its line/accumulator maps off `seriesKey ?? productId`.
       const resultRecord = result as unknown as Record<string, unknown>
       const seriesResult: LifecycleSeriesResult = {
-        productId: inst.instanceId,
+        productId: result.productId,
+        seriesKey: inst.instanceId,
         label: inst.label?.trim().length ? inst.label : productLabel,
         rows: result.rows ?? [],
         etfPayoutRows: resultRecord.etfPayoutRows as LifecycleSeriesResult['etfPayoutRows'],
@@ -718,4 +757,189 @@ function buildProvenanceRows(instance: SlotInstance, productId: ProductId): Prin
       evidenceKind: kind === 'model' ? 'model' : kind === 'confirmed' ? 'confirmed' : 'default',
     }
   })
+}
+
+// ---------------------------------------------------------------------------
+// "Sensitivität" — combine-mode perturbation rows (PR 11 R1 scope restore)
+//
+// Mirrors `buildSensitivityRows` in `MeinPlanPage.tsx` but emits plain
+// string-shaped rows the A4 print can render without ReactNode conditions.
+// Cost: O(N × ≤4) on workspace instances per call (each row drives a full
+// `runCombineSimulation` pass). Computed once per print render and threaded
+// through `PrintReport` as a prop, so the cost is paid only when the user
+// actually invokes window.print() in combine-mode.
+// ---------------------------------------------------------------------------
+
+/** A single sensitivity row rendered in the combine-mode print § 2 sub-table. */
+export interface PrintSensitivityRow {
+  /** Stable React key (matches the row id in MeinPlanPage). */
+  readonly id: string
+  /**
+   * Plain-text condition copy ("Wenn …"). Print uses string-only copy so the
+   * builder can stay React-free; the equivalent web row carries `ReactNode`
+   * with `<strong>` highlights.
+   */
+  readonly conditionText: string
+  /** Pre-formatted EUR/Monat delta (e.g. "+45 € / Mon.", "−120 € / Mon.", "±0 €/Mon."). */
+  readonly deltaText: string
+  /** Delta sign — drives the print pill colour. */
+  readonly sign: 'pos' | 'neg' | 'neutral'
+  /** Optional caption rendered below the condition (e.g. "Renteneintritt auf …
+   *  begrenzt"). `null` when no extra copy is needed. */
+  readonly noteText: string | null
+}
+
+interface BuildPrintSensitivityRowsInput {
+  workspace: Workspace
+  baselineCombined: CombinedResult | undefined
+  rules: GermanRules
+  scenarioId: string
+}
+
+/**
+ * Build the ordered sensitivity row list for the combine-mode print.
+ * Mirrors `buildSensitivityRows` in `MeinPlanPage.tsx`: same selectors,
+ * same row-suppression rules, same row ids. The print-only differences
+ * are the plain-text condition copy (no `<strong>` markup) and the
+ * pre-formatted delta string (so the print component stays
+ * presentational).
+ *
+ * Returns `[]` when `baselineCombined` is missing (degraded test path) so
+ * the caller can short-circuit the section render.
+ */
+export function buildPrintSensitivityRows({
+  workspace,
+  baselineCombined,
+  rules,
+  scenarioId,
+}: BuildPrintSensitivityRowsInput): PrintSensitivityRow[] {
+  if (!baselineCombined) return []
+  const wsa = workspace.baseline.assumptions
+  const rows: PrintSensitivityRow[] = []
+
+  // Row 1: Rendite konservativ
+  const konservativScenario = wsa.returnScenarios.find(
+    (s) => s.id === SENSITIVITY_RETURN_KONSERVATIV_ID,
+  )
+  if (konservativScenario && scenarioId !== SENSITIVITY_RETURN_KONSERVATIV_ID) {
+    const result = sensitivityIfReturnScenario(
+      workspace,
+      baselineCombined,
+      rules,
+      scenarioId,
+      SENSITIVITY_RETURN_KONSERVATIV_ID,
+    )
+    rows.push({
+      id: 'rendite-konservativ',
+      conditionText:
+        `… die Märkte über die gesamte Laufzeit nur ` +
+        `${formatPercent(konservativScenario.annualReturn, 1)} p. a. erwirtschaften ` +
+        `(Szenario „${konservativScenario.label}")`,
+      ...formatSensitivityDisplay(result),
+    })
+  }
+
+  // Row 2: Renteneintritt 70 statt aktuell
+  const currentAge = workspace.baseline.profile.retirementAge
+  if (currentAge !== SENSITIVITY_RETIREMENT_AGE_DELAY) {
+    const result = sensitivityIfRetirementAge(
+      workspace,
+      baselineCombined,
+      rules,
+      scenarioId,
+      SENSITIVITY_RETIREMENT_AGE_DELAY,
+    )
+    rows.push({
+      id: 'renteneintritt-70',
+      conditionText:
+        `… du mit ${SENSITIVITY_RETIREMENT_AGE_DELAY} Jahren in Rente gehst ` +
+        `(statt aktuell ${currentAge})`,
+      ...formatSensitivityDisplay(result),
+    })
+  }
+
+  // Row 3: Inflation 3 % statt aktuell
+  if (wsa.inflationRate !== SENSITIVITY_INFLATION_RATE) {
+    const result = sensitivityIfInflation(
+      workspace,
+      baselineCombined,
+      rules,
+      scenarioId,
+      SENSITIVITY_INFLATION_RATE,
+    )
+    rows.push({
+      id: 'inflation-3',
+      conditionText:
+        `… die Inflation dauerhaft ${formatPercent(SENSITIVITY_INFLATION_RATE, 1)} ` +
+        `beträgt (statt aktuell ${formatPercent(wsa.inflationRate, 1)})`,
+      ...formatSensitivityDisplay(result),
+    })
+  }
+
+  // Row 4: ETF-Beitrag +100 €/Monat (always emitted; selector reports the no-op note)
+  const etfResult = sensitivityIfEtfBump(
+    workspace,
+    baselineCombined,
+    rules,
+    scenarioId,
+    SENSITIVITY_ETF_CONTRIBUTION_BUMP_EUR,
+  )
+  rows.push({
+    id: 'etf-bump',
+    conditionText:
+      `… du den ersten ETF-Sparplan um ` +
+      `${formatCurrency(SENSITIVITY_ETF_CONTRIBUTION_BUMP_EUR, 0)}/Monat erhöhst`,
+    ...formatSensitivityDisplay(etfResult),
+  })
+
+  return rows
+}
+
+/**
+ * Display-formatting shared by every sensitivity row. Treats |delta| < 1
+ * as neutral (same noise threshold as `formatDelta` in MeinPlanPage). Uses
+ * Unicode minus (U+2212) for negative deltas to match typographic
+ * conventions on the web surface.
+ */
+function formatSensitivityDisplay(result: SensitivityRowResult): {
+  deltaText: string
+  sign: 'pos' | 'neg' | 'neutral'
+  noteText: string | null
+} {
+  const delta = result.headlineDelta
+  const sign: 'pos' | 'neg' | 'neutral' =
+    Math.abs(delta) < 1 ? 'neutral' : delta > 0 ? 'pos' : 'neg'
+  const deltaText =
+    Math.abs(delta) < 1
+      ? '±0 €/Mon.'
+      : `${delta > 0 ? '+' : '−'}${formatCurrency(Math.abs(delta), 0)} / Mon.`
+  return {
+    deltaText,
+    sign,
+    noteText: formatSensitivityNote(result.note),
+  }
+}
+
+/**
+ * Map a `SensitivityNote` to a user-facing German caption, or `null` when
+ * no extra copy is needed. Mirrors `formatNote` in MeinPlanPage so the
+ * print and web surface report the same captions.
+ */
+function formatSensitivityNote(note: SensitivityNote | undefined): string | null {
+  if (!note) return null
+  switch (note) {
+    case 'no_etf_instance':
+      return 'Noch kein ETF-Sparplan im Plan — kein Vergleich möglich.'
+    case 'etf_paid_up_only':
+      return 'ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern.'
+    case 'retirement_age_clamped':
+      return 'Renteneintritt auf das Modell-Endalter − 1 begrenzt.'
+    case 'unchanged':
+      return null
+    default: {
+      const _exhaustive: never = note
+      void _exhaustive
+      return null
+    }
+  }
 }

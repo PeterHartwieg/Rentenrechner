@@ -11,7 +11,7 @@
 
 ## Paste this as the new session's orchestrator prompt
 
-```
+````text
 You are implementing PR 11 of a multi-PR UI redesign for the Rentenrechner
 repo (German retirement calculator, public name "RentenWiki.de"). Working
 dir is the pre-created worktree at
@@ -207,7 +207,7 @@ the merge ITSELF succeeds server-side. The error is from the post-
 merge local cleanup step. Recovery: drop `--delete-branch`, verify
 the PR shows `state: MERGED`, then delete the remote ref:
 
-```
+```bash
 gh api -X DELETE repos/PeterHartwieg/Rentenrechner/git/refs/heads/feat/redesign-print-tests
 ```
 
@@ -424,7 +424,7 @@ carry-forward sections above exist.
 
 ### Commit message template
 
-```
+```text
 feat(print+tests): per-page mirror in A4 + cross-cutting viewport sweep (PR 11)
 
 PR 11 of the redesign sequence — extends `PrintReport.tsx` to mirror
@@ -466,7 +466,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 Open the PR with `gh pr create --base main` and reply with the PR
 URL when done. DO NOT merge — the orchestrator handles merge after
 Codex + CodeRabbit both come back green.
-```
+````
 
 ---
 
