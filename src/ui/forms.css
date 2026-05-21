@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  color: #344054;
+  color: var(--rw-ink-soft);
   font-size: 0.9rem;
   font-weight: 650;
 }
@@ -16,7 +16,7 @@
 .input-shell {
   display: flex;
   align-items: center;
-  border: 1px solid #c9d7e5;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   background: #ffffff;
   overflow: hidden;
@@ -28,14 +28,14 @@
   min-width: 0;
   border: 0;
   padding: 10px 10px;
-  color: #172033;
+  color: var(--rw-ink);
   background: transparent;
   font: inherit;
   font-weight: 600;
 }
 
 .field select {
-  border: 1px solid #c9d7e5;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   background: #ffffff;
 }
@@ -43,14 +43,14 @@
 .field-hint {
   font-size: 0.78rem;
   font-weight: 400;
-  color: #667085;
+  color: var(--rw-ink-faint);
   line-height: 1.4;
 }
 
 .field-warning {
   margin: 4px 0 0;
   font-size: 0.78rem;
-  color: #b45309;
+  color: var(--rw-accent-soft);
   line-height: 1.4;
 }
 
@@ -65,13 +65,13 @@
 
 .field-inline input[type='checkbox'] {
   width: auto;
-  accent-color: #2563eb;
+  accent-color: var(--rw-accent);
 }
 
 .input-shell em {
   flex: 0 0 auto;
   padding-right: 10px;
-  color: #667085;
+  color: var(--rw-ink-faint);
   font-style: normal;
   font-weight: 600;
   white-space: nowrap;
@@ -79,12 +79,12 @@
 
 .divider {
   height: 1px;
-  background: #e5ebf2;
+  background: var(--rw-rule-soft);
 }
 
 .subsection-heading h3 {
   margin: 0;
-  color: #172033;
+  color: var(--rw-ink);
   font-size: 1rem;
 }
 
@@ -96,7 +96,7 @@
 
 .subsection-heading p {
   margin: 0;
-  color: #667085;
+  color: var(--rw-ink-faint);
   font-size: 0.82rem;
 }
 
@@ -107,7 +107,7 @@
    muted derived recap shown to the right. Tier 4 (2026-04-30). */
 .erweitert-section,
 .disclosure-section {
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   margin: 6px 0;
   background: #ffffff;
@@ -139,7 +139,7 @@
 .disclosure-section > summary::before {
   content: '▶';
   font-size: 0.6rem;
-  color: #2563eb;
+  color: var(--rw-accent);
   flex-shrink: 0;
   display: inline-block;
   margin-right: 2px;
@@ -155,13 +155,13 @@
 .disclosure-toggle {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #2563eb;
+  color: var(--rw-accent);
 }
 
 .erweitert-assumption,
 .disclosure-recap {
   font-size: 0.78rem;
-  color: #667085;
+  color: var(--rw-ink-faint);
   margin-left: auto;
 }
 
@@ -189,7 +189,7 @@
 }
 
 .radio-option input[type='radio'] {
-  accent-color: #2563eb;
+  accent-color: var(--rw-accent);
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -204,7 +204,7 @@
 
 .child-label {
   font-size: 0.82rem;
-  color: #667085;
+  color: var(--rw-ink-faint);
   min-width: 52px;
 }
 
@@ -214,16 +214,17 @@
 
 .child-remove-btn {
   padding: 4px 8px;
-  border: 1px solid #c9d7e5;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 4px;
-  background: #fff;
-  color: #667085;
+  background: #ffffff;
+  color: var(--rw-ink-faint);
   font-size: 0.9rem;
   line-height: 1;
   cursor: pointer;
 }
 
 .child-remove-btn:hover {
+  /* action-destructive: intentionally not tokenised */
   border-color: #ef4444;
   color: #ef4444;
   background: #fef2f2;
@@ -232,10 +233,10 @@
 .child-add-btn {
   align-self: flex-start;
   padding: 4px 12px;
-  border: 1px dashed #c9d7e5;
+  border: 1px dashed var(--rw-rule-soft);
   border-radius: 6px;
-  background: #f9fafb;
-  color: #2563eb;
+  background: var(--rw-bg-paper);
+  color: var(--rw-accent);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -243,8 +244,8 @@
 }
 
 .child-add-btn:hover {
-  border-color: #2563eb;
-  background: #eff6ff;
+  border-color: var(--rw-accent);
+  background: var(--rw-accent-bg);
 }
 
 
