@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react'
+import './EmptyComparison.css'
 import { useFeedbackTarget } from '../qa-feedback'
 
 interface Props {
@@ -29,11 +29,10 @@ export function EmptyComparison({ onOpenAngebot }: Props) {
       <h3 {...headingProps}>Wähle mindestens ein Vorsorgeprodukt zum Vergleich</h3>
       <p>
         Die gesetzliche Rente bildet den Sockel. Ergänze ein privates Produkt — z. B.
-        ETF-Depot oder bAV — um den Mehrwert für deine Situation zu sehen.
+        ETF-Depot oder bAV — um den Unterschied für deine Situation zu sehen.
       </p>
       <button type="button" className="empty-comparison-cta" onClick={onOpenAngebot} {...ctaProps}>
         Produkte auswählen
-        <ArrowRight size={14} aria-hidden="true" />
       </button>
     </section>
   )
