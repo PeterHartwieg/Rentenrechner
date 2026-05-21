@@ -2,6 +2,9 @@ import { useMemo } from 'react'
 import './VergleichPage.css'
 import type { ProductId, ScenarioAssumptions, PersonalProfile } from '../../domain'
 import type { SimulationResultBundle } from '../../app/useSimulationResult'
+import type { Route } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { ComparisonPicker } from '../workspace/ComparisonPicker'
@@ -26,6 +29,18 @@ interface Props {
   onSelectScenario: (id: string) => void
   /** Used by the EmptyComparison CTA to switch to the "Eingaben" tab. */
   onOpenAngebot: () => void
+  /**
+   * Optional SPA navigator. When provided, the "Wohin geht das Geld →"
+   * drill-in link uses SPA navigation to `/vergleich/details`; when absent,
+   * the link still works as a real anchor (progressive enhancement). The
+   * compare-mode `Calculator.tsx` always passes this; tests sometimes omit it.
+   *
+   * The optional `search` argument carries the query string (e.g.
+   * `?scenario=basis`) so SPA navigation pushes the same URL the `href`
+   * would (PR 290 R4 Codex P2 — the URL is the source of truth for
+   * shareable state in compare mode).
+   */
+  navigate?: (target: Route, search?: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +83,7 @@ export function VergleichPage({
   selectedScenarioId,
   onSelectScenario,
   onOpenAngebot,
+  navigate,
 }: Props) {
   const hasComparisonSet = assumptions.visibleProducts.length > 0
 
@@ -153,6 +169,49 @@ export function VergleichPage({
                 </div>
                 <VergleichProContraGrid products={productsForProContra} />
               </section>
+
+              <div className="vergleich-drilldown">
+                {/* PR 10: drill-in link to the per-product breakdown page.
+                    SPA progressive enhancement — real `href` for direct
+                    navigation / new-tab support, `onClick` intercepts only
+                    plain primary clicks when a `navigate` callback is
+                    available (per `shouldUseSpaNavigation`).
+                    PR 290 R3 Codex P2 fix: encode the current scenario id as
+                    a `?scenario=<id>` query string so non-SPA navigations
+                    (Cmd/Ctrl-click, middle-click, JS-disabled fallback, hard
+                    reload) land on the same scenario the user selected on
+                    `VergleichPage`. The detail page reads this on first mount
+                    via its own `useEffect` and updates the workspace UI
+                    state, then routing flows through props as usual. The
+                    `scenario` param is purely a runtime initialiser; we do
+                    NOT promote it into the `Route` tagged-union — keeping
+                    `routeToPath` / `pathToRoute` unchanged.
+                    PR 290 R4 Codex P2 fix: also forward the scenario query
+                    on SPA navigation. Previously `navigate(ROUTES.vergleichDetail)`
+                    pushed `/vergleich/details` without the query, so a reload
+                    or share after primary-clicking the link silently fell
+                    back to `basis`. Hoisting `scenarioQuery` to a const keeps
+                    `href` and `navigate` in lockstep — divergence is
+                    structurally impossible. */}
+                {(() => {
+                  const scenarioQuery = `?scenario=${encodeURIComponent(selectedScenarioId)}`
+                  const drillInHref = `${routeToPath(ROUTES.vergleichDetail)}${scenarioQuery}`
+                  return (
+                    <a
+                      href={drillInHref}
+                      className="vergleich-drilldown__link"
+                      onClick={(event) => {
+                        if (!navigate) return
+                        if (!shouldUseSpaNavigation(event)) return
+                        event.preventDefault()
+                        navigate(ROUTES.vergleichDetail, scenarioQuery)
+                      }}
+                    >
+                      Wohin geht das Geld? Aufschlüsselung pro Produkt →
+                    </a>
+                  )
+                })()}
+              </div>
             </>
           ) : (
             <EmptyComparison onOpenAngebot={onOpenAngebot} />

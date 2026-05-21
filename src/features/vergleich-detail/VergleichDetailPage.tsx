@@ -1,0 +1,296 @@
+import { useEffect, useMemo } from 'react'
+import './VergleichDetailPage.css'
+import type { Route } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
+import { shouldUseSpaNavigation } from '../../app/spaNavigation'
+import { usePortfolioState } from '../../app/portfolioState'
+import { useCalculatorState } from '../../app/useCalculatorState'
+import { useSimulationResult } from '../../app/useSimulationResult'
+import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
+import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { VergleichDetailCard } from './VergleichDetailCard'
+import {
+  buildVergleichDetailCardData,
+  type VergleichDetailCardData,
+} from './vergleichDetailRows'
+
+interface Props {
+  /** SPA navigator threaded from `App.tsx`. Used by the back-link + empty-state CTA. */
+  navigate: (target: Route) => void
+  /**
+   * Selected return-scenario id from `useWorkspaceUiState` (read-only here —
+   * drill-in does not change the scenario). Threaded through App.tsx so the
+   * drill-in honours whatever the user picked on `VergleichPage`. Falls back
+   * to `'basis'` via `resolveEffectiveScenarioId` when the id is missing or
+   * unknown (e.g. test fixtures, legacy saved state).
+   */
+  selectedScenarioId: string
+  /**
+   * Setter for the selected scenario id (PR 290 R3 Codex P2 fix). Called
+   * exactly once on first mount when the URL carries a `?scenario=<id>`
+   * query param AND the value matches one of `assumptions.returnScenarios`.
+   * Used so non-SPA navigations (Cmd/Ctrl-click, hard reload, JS-disabled
+   * fallback) preserve the scenario chosen on `VergleichPage` instead of
+   * silently snapping back to `'basis'`. Without this hook, the in-memory
+   * `useWorkspaceUiState` resets to default and the page disagrees with the
+   * comparison table the user came from.
+   *
+   * The param is purely a runtime initialiser — `routeToPath` /
+   * `pathToRoute` do NOT carry the scenario id (we intentionally keep the
+   * `Route` tagged-union narrow per CLAUDE.md "Add a new app route" lane).
+   */
+  onSelectScenario: (id: string) => void
+}
+
+// ---------------------------------------------------------------------------
+// VergleichDetailPage — `/vergleich/details` per-product breakdown (PR 10).
+//
+// Compare-mode-only drill-in from `VergleichPage`. Renders one card per
+// product in `assumptions.visibleProducts`, ordered by registry sort. Each
+// card stacks three sections — Ansparphase / Mit {retirementAge} / Im Alter
+// — built by `buildVergleichDetailCardData` from a single `ProductResult`.
+//
+// Hooks always run unconditionally so empty-state branches still observe the
+// Rules of Hooks. Mode gate uses `workspace.mode` (not `detectSavedMode()`).
+//
+// Engine boundary: this page consumes the existing
+// `useSimulationResult` bundle — no new engine entry points, no schema
+// changes. The legacy `simulateRetirementComparison` path stays the only
+// source of `ProductResult[]` for compare-mode (CLAUDE.md "Engine
+// untouched", "schemaVersion: 2 unchanged").
+// ---------------------------------------------------------------------------
+
+export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScenario }: Props) {
+  // ---- 1. Hook prelude — runs unconditionally before any early return. ----
+  const portfolioState = usePortfolioState()
+  const compareState = useCalculatorState()
+  const { profile, assumptions } = compareState
+
+  // Compare-mode simulation. We must call this even when we're going to render
+  // the combine-mode empty state — Rules of Hooks require a stable call order.
+  // The cost is the standard `simulateRetirementComparison` pass, which the
+  // existing compare-mode `Calculator` already runs. The hook receives the
+  // live `selectedScenarioId` so the simulation pipeline picks the same
+  // scenario the user chose on `VergleichPage` (no silent basis-fallback).
+  const result = useSimulationResult(profile, assumptions, selectedScenarioId)
+  const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, selectedScenarioId)
+
+  // Doc title — `/vergleich/details` is workspace-state-dependent and not
+  // in `publicRouteRegistry`, so the title is set here. Must precede every
+  // conditional return.
+  useEffect(() => {
+    document.title = 'Wohin geht das Geld | RentenWiki.de'
+  }, [])
+
+  // PR 290 R3 Codex P2 fix: read `?scenario=<id>` from the URL on first mount
+  // so non-SPA navigations (Cmd/Ctrl-click, middle-click, JS-disabled
+  // fallback, hard reload) preserve the scenario the user picked on
+  // `VergleichPage`. The empty dep array means this runs exactly once per
+  // mount; subsequent scenario changes flow through props (set by the
+  // workspace UI elsewhere). Guarded against:
+  //   - missing `window` (SSR / non-browser)
+  //   - malformed URL (`URLSearchParams` throwing on weird input)
+  //   - missing or unknown scenario id (silent no-op)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let parsedId: string | null = null
+    try {
+      const params = new URLSearchParams(window.location.search)
+      parsedId = params.get('scenario')
+    } catch {
+      // Defensive: a malformed query string should never bubble out of the
+      // initialiser. Fall through to the existing prop-driven default.
+      return
+    }
+    if (!parsedId) return
+    const isKnownScenario = assumptions.returnScenarios.some((s) => s.id === parsedId)
+    if (!isKnownScenario) return
+    onSelectScenario(parsedId)
+    // Intentionally empty — first-mount only. Subsequent prop / URL drift is
+    // not handled here; the user navigates back to `VergleichPage` to change
+    // the scenario, which threads through props.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const cardData = useMemo<ReadonlyArray<VergleichDetailCardData>>(() => {
+    const products = result.simulation.products.filter(
+      (p) => p.scenarioId === effectiveScenarioId,
+    )
+    // Sort by registry order so the cards render in canonical product order
+    // regardless of `visibleProducts` insertion order. Mirrors VergleichPage.
+    const orderById = new Map(
+      PRODUCT_REGISTRY.map((entry) => [entry.metadata.id, entry.metadata.order]),
+    )
+    const sorted = [...products].sort(
+      (a, b) => (orderById.get(a.productId) ?? 99) - (orderById.get(b.productId) ?? 99),
+    )
+    // `yearsToRetirement` and the compare-mode `bavFunding` are threaded into
+    // the row builder so it can (a) convert the lifetime-accumulated
+    // `taxAndSvSavings` into a monthly display value and (b) compensate for
+    // the bAV `includeGrvReduction` net-payout deduction when deriving the
+    // monthly income-tax row. See PR 290 review fixes.
+    const yearsToRetirement = Math.max(0, profile.retirementAge - profile.age)
+    return sorted
+      .map((r) =>
+        buildVergleichDetailCardData({
+          result: r,
+          retirementAge: profile.retirementAge,
+          yearsToRetirement,
+          assumptions,
+          bavFunding: result.simulation.bavFunding,
+        }),
+      )
+      .filter((d): d is VergleichDetailCardData => d !== null)
+  }, [
+    result.simulation.products,
+    result.simulation.bavFunding,
+    effectiveScenarioId,
+    profile.retirementAge,
+    profile.age,
+    assumptions,
+  ])
+
+  const hasComparisonSet = assumptions.visibleProducts.length > 0
+  // `workspace.mode` is the canonical mode signal — never `detectSavedMode()`.
+  const isCombineMode = portfolioState.workspace.mode === 'combine'
+
+  // ---- 2. Empty states. ---------------------------------------------------
+  if (isCombineMode) {
+    return (
+      <EmptyState
+        title="Wohin geht das Geld — nur im Vergleichs-Modus"
+        body="Diese Detailansicht zerlegt die sechs Sparformen gegeneinander. Im Plan-Modus rechnest du mit deinen tatsächlichen Verträgen — die Aufschlüsselung pro Vertrag findest du auf der Vertrag-Detail-Seite, erreichbar über Mein Plan."
+        ctaLabel="Zu Mein Plan wechseln"
+        ctaTarget={ROUTES.home}
+        navigate={navigate}
+      />
+    )
+  }
+
+  if (!hasComparisonSet || cardData.length === 0) {
+    return (
+      <EmptyComparisonState navigate={navigate} />
+    )
+  }
+
+  // ---- 3. Render. ---------------------------------------------------------
+  return (
+    <div className="vd-shell">
+      <div className="vd-main">
+        <article className="vd-body">
+          <div className="vd-kicker">Vergleich › Wohin geht das Geld</div>
+          <h1 className="vd-headline">Wohin geht jeder Euro?</h1>
+          <p className="vd-lead">
+            Jede Sparform verteilt deinen monatlichen Aufwand anders auf Eigenanteil,
+            Förderung, Kosten und Steuer. Diese Aufschlüsselung zeigt für jedes
+            Produkt, was eingezahlt wird, was am Renteneintritt steht und was im
+            Alter monatlich übrig bleibt — bei deinem aktuellen Renteneintrittsalter
+            von {profile.retirementAge}.
+          </p>
+
+          <div className="vd-backline">
+            <a
+              href={routeToPath(ROUTES.home)}
+              className="vd-backlink"
+              onClick={(event) => {
+                if (!shouldUseSpaNavigation(event)) return
+                event.preventDefault()
+                navigate(ROUTES.home)
+              }}
+            >
+              ← Zurück zum Vergleich
+            </a>
+          </div>
+
+          <div
+            className="vd-card-grid"
+            // Phone view: CSS scroll-snap. The container's
+            // `scroll-snap-type: x mandatory` plus each card's
+            // `scroll-snap-align: start` is pure CSS — no JS carousel.
+            // role="list" / aria-label make the swipe row navigable.
+            role="list"
+            aria-label="Produkt-Aufschlüsselungen"
+          >
+            {cardData.map((data) => (
+              <div key={data.productId} role="listitem" className="vd-card-grid__item">
+                <VergleichDetailCard data={data} />
+              </div>
+            ))}
+          </div>
+        </article>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// EmptyState — combine-mode user landing on the compare-only surface.
+// ---------------------------------------------------------------------------
+
+interface EmptyStateProps {
+  title: string
+  body: string
+  ctaLabel: string
+  ctaTarget: Route
+  navigate: (target: Route) => void
+}
+
+function EmptyState({ title, body, ctaLabel, ctaTarget, navigate }: EmptyStateProps) {
+  return (
+    <div className="vd-shell">
+      <div className="vd-main">
+        <article className="vd-empty">
+          <h1 className="vd-empty-title">{title}</h1>
+          <p className="vd-empty-body">{body}</p>
+          <a
+            href={routeToPath(ctaTarget)}
+            className="vd-empty-cta"
+            onClick={(event) => {
+              if (!shouldUseSpaNavigation(event)) return
+              event.preventDefault()
+              navigate(ctaTarget)
+            }}
+          >
+            {ctaLabel}
+          </a>
+        </article>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// EmptyComparisonState — compare-mode user with no visibleProducts selected.
+// ---------------------------------------------------------------------------
+
+interface EmptyComparisonProps {
+  navigate: (target: Route) => void
+}
+
+function EmptyComparisonState({ navigate }: EmptyComparisonProps) {
+  return (
+    <div className="vd-shell">
+      <div className="vd-main">
+        <article className="vd-empty">
+          <h1 className="vd-empty-title">Noch keine Produkte ausgewählt</h1>
+          <p className="vd-empty-body">
+            Wähle im Vergleich mindestens ein Produkt aus, um die Aufschlüsselung
+            pro Euro zu sehen — wer wieviel zahlt, was Kosten und Steuer
+            wegnehmen und was monatlich im Alter übrig bleibt.
+          </p>
+          <a
+            href={routeToPath(ROUTES.home)}
+            className="vd-empty-cta"
+            onClick={(event) => {
+              if (!shouldUseSpaNavigation(event)) return
+              event.preventDefault()
+              navigate(ROUTES.home)
+            }}
+          >
+            Zurück zum Vergleich
+          </a>
+        </article>
+      </div>
+    </div>
+  )
+}

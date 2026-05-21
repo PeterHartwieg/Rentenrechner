@@ -26,7 +26,7 @@ import { useCalculatorState } from './app/useCalculatorState'
 import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
-import { useWorkspaceUiState } from './app/useWorkspaceUiState'
+import type { WorkspaceUiState } from './app/useWorkspaceUiState'
 import { useWorkspace } from './app/useWorkspace'
 import { WORKSPACE_VIEWS } from './app/useWorkspace'
 import type { WorkspaceView } from './app/useWorkspace'
@@ -140,9 +140,16 @@ interface CalculatorProps {
    * localStorage is preserved so a returning user keeps their data.
    */
   onGoHome: () => void
+  /**
+   * Workspace UI toggles owned by `App` so `selectedScenarioId` survives SPA
+   * navigation to `/vergleich/details` (PR 290 Codex P1 fix). When the user
+   * picks a non-basis scenario on `VergleichPage`, the drill-in receives the
+   * same id from App's lifted `useWorkspaceUiState` call.
+   */
+  workspaceUi: WorkspaceUiState
 }
 
-function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome }: CalculatorProps) {
+function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome, workspaceUi: ui }: CalculatorProps) {
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
   const [showLueckeModal, setShowLueckeModal] = useState(false)
   const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
@@ -258,7 +265,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
 
   const combineSimulation = useCombineSimulation(portfolioState.workspace)
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
-  const ui = useWorkspaceUiState()
+  // `ui` (WorkspaceUiState) is owned by `App` and threaded in via the
+  // `workspaceUi` prop so `selectedScenarioId` survives SPA navigation to
+  // `/vergleich/details` (PR 290 Codex P1).
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
   const isCombineMode = portfolioState.mode === 'combine'
   const combineProfile = portfolioState.workspace.baseline.profile
@@ -449,7 +458,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
       {/* Compare-mode surface (Group G issue 11): the new Sober D
           `VergleichPage` renders a single linear surface — rendite strip,
           neutral 6-product comparison table, pro/contra grid. Replaces the
-          legacy pane switcher + per-pane chart components (PR 9). */}
+          legacy pane switcher + per-pane chart components (PR 9).
+          PR 10 threads `navigate` so the "Wohin geht das Geld →" drill-in
+          link uses SPA navigation to `/vergleich/details`. */}
       {!isCombineMode && (
         <VergleichPage
           profile={profile}
@@ -461,6 +472,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
           selectedScenarioId={result.effectiveScenarioId}
           onSelectScenario={ui.setSelectedScenarioId}
           onOpenAngebot={() => workspace.setActiveView('angebot')}
+          navigate={navigate}
         />
       )}
     </section>

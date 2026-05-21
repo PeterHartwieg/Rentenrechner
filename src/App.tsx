@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react'
 import type { AppView } from './app/useRoute'
 import { useRoute, detectSavedMode, appViewFromMode, routeToPath } from './app/useRoute'
+import { useWorkspaceUiState } from './app/useWorkspaceUiState'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { QaFeedbackProvider, QaModeIndicator } from './features/qa-feedback'
 import { AppShell } from './ui/chrome/AppShell'
@@ -92,6 +93,9 @@ const VertragDetailPage = lazy(() =>
 const KapitalPage = lazy(() =>
   import('./features/kapital/KapitalPage').then((m) => ({ default: m.KapitalPage })),
 )
+const VergleichDetailPage = lazy(() =>
+  import('./features/vergleich-detail/VergleichDetailPage').then((m) => ({ default: m.VergleichDetailPage })),
+)
 
 function App() {
   const { route, navigate } = useRoute()
@@ -105,6 +109,14 @@ function App() {
     appViewFromMode(detectSavedMode()),
   )
   const [pendingChoice, setPendingChoice] = useState<LandingChoice | null>(null)
+
+  // Workspace UI toggles (selected scenario id, real-values toggle, cashflow
+  // product picker, tarifgebunden checkbox, show-assumptions toggle). Lifted
+  // into `App` so the `selectedScenarioId` survives SPA navigation between
+  // `Calculator` and the `/vergleich/details` drill-in — without this lift
+  // the drill-in would default back to `'basis'` even when the user picked a
+  // different return scenario on `VergleichPage` (PR 290 Codex P1 fix).
+  const workspaceUi = useWorkspaceUiState()
 
   function handleLandingChoice(choice: LandingChoice) {
     // The dashboard's mode + (compare-mode) visibleProducts seed + (combine-
@@ -186,6 +198,23 @@ function App() {
       // combine-mode data — no per-mode App.tsx branching needed.
       body = <KapitalPage navigate={navigate} />
       break
+    case 'vergleich-detail':
+      // Compare-mode-only per-product breakdown drill-in (PR 10). The page
+      // reads workspace.mode and renders a combine-mode empty state when
+      // the user is on Mein Plan. `selectedScenarioId` flows from the lifted
+      // `useWorkspaceUiState` so the drill-in respects the user's scenario
+      // pick on `VergleichPage` (PR 290 Codex P1 fix). `onSelectScenario`
+      // lets the page read a `?scenario=<id>` query param on first mount
+      // and sync the workspace UI for non-SPA arrivals (PR 290 R3 Codex P2
+      // fix — Cmd/Ctrl-click, hard reload, JS-disabled fallback).
+      body = (
+        <VergleichDetailPage
+          navigate={navigate}
+          selectedScenarioId={workspaceUi.selectedScenarioId}
+          onSelectScenario={workspaceUi.setSelectedScenarioId}
+        />
+      )
+      break
     case 'home':
       if (calculatorView === 'landing') {
         body = <LandingPage onChoice={handleLandingChoice} navigate={navigate} />
@@ -196,6 +225,7 @@ function App() {
             pendingChoice={pendingChoice}
             onPendingChoiceConsumed={() => setPendingChoice(null)}
             onGoHome={handleGoHome}
+            workspaceUi={workspaceUi}
           />
         )
       }
