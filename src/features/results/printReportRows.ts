@@ -51,6 +51,21 @@ import {
 // existing pure helpers (`buildVergleichDetailCardData`, `getAvailabilityEntry`,
 // `PRODUCT_REGISTRY`) and threads in the precomputed `bavFunding` from the
 // caller. No engine output shape is changed.
+//
+// PR 4.1 (Sober D port) invariant — single source of tax-mode dispatch:
+// per-product tax-mode dispatch (after-tax lump-sum routing for bAV / ETF /
+// Versicherung / Basisrente / AVD / Riester) lives ONCE inside
+// `src/engine/exportProjection.ts` and is consumed by both `csvExport.ts`
+// (CSV side) and `PrintReport.tsx` / row builders (PDF side). This module
+// must NOT import `afterTaxBavLumpSum` / `afterTaxInvestmentCapital` /
+// `afterTaxInsuranceLumpSum` / `afterTaxCertifiedPensionLumpSum`, nor branch
+// on `productId === 'bav' / 'etf' / 'basisrente' / 'versicherung' /
+// 'altersvorsorgedepot' / 'riester'` for tax-mode purposes. The presence of
+// such an import or branch is a regression — see
+// `printReportRows.test.ts:no_tax_mode_dispatch`. Layout-only dispatch
+// (e.g. extracting the right per-product `monthlyContribution` field name,
+// per-product evidence-key lists) is fine and explicitly out of scope of
+// this invariant — those are display routing, not tax routing.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------

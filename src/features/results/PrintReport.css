@@ -1,178 +1,288 @@
-/* Screen: hide the report — only shown when printing */
+/*
+ * PrintReport — Sober D tokens ported to print (PR 4.1).
+ *
+ * Design system: same Sober D vocabulary as the screen surfaces (Vergleich,
+ * Vergleich-Detail, Kapital, Vertrag-Detail, Methode, Mein Plan).
+ *   - var(--rw-bg-paper)   white paper
+ *   - var(--rw-ink)        primary ink
+ *   - var(--rw-ink-soft)   secondary ink
+ *   - var(--rw-ink-faint)  tertiary ink / metadata
+ *   - var(--rw-rule)       primary divider
+ *   - var(--rw-rule-soft)  secondary divider
+ *   - var(--rw-accent)     oxblood accent (headlines only — never body / chrome)
+ *   - var(--rw-accent-bg)  warm accent background
+ *   - var(--rw-font-sans)  IBM Plex Sans (body)
+ *   - var(--rw-font-mono)  JetBrains Mono (tabular + eyebrow + page number)
+ *
+ * Token mapping in print:
+ *   - Backgrounds → var(--rw-bg-paper) (white). Page numbers, soft fill
+ *     backgrounds for "basis" highlight rows use var(--rw-bg-paper-soft).
+ *   - Borders → var(--rw-rule) (heavy / primary) and var(--rw-rule-soft)
+ *     (light / interior).
+ *   - Accent (oxblood) → desaturated print value to avoid muddy red on cheap
+ *     inkjet output. See `--rw-accent-print` below.
+ *   - Color-adjust: exact so user-agents don't strip backgrounds.
+ *
+ * The whole report is hidden on screen and revealed only via @media print —
+ * the @page rule applies to that print context. We use one CSS file for
+ * both layers so token vocabulary stays unified.
+ */
+
 #print-report {
+  /* Hidden on screen; @media print toggles it visible. */
   display: none;
 }
 
+/* Confidence indicators — visible only inside the print report (same as
+ * before). Use Sober D ink tokens with a small accent split so the user can
+ * still distinguish "Bestätigt" vs "Schätzwert" without colour gymnastics. */
 .pr-confidence-estimate {
-  font-size: 0.7em;
-  color: #854d0e;
+  font-size: 0.75em;
+  color: var(--rw-ink-soft);
   font-weight: 500;
 }
 
 .pr-confidence-confirmed {
-  font-size: 0.7em;
-  color: #166534;
+  font-size: 0.75em;
+  color: var(--rw-ink);
   font-weight: 500;
 }
 
 .pr-confidence-default {
-  font-size: 0.7em;
-  color: #6b7280;
+  font-size: 0.75em;
+  color: var(--rw-ink-faint);
   font-weight: 500;
 }
 
-/* ─── Print styles ─────────────────────────────────────────────────── */
+/* ───── Print container ──────────────────────────────────────────────── */
+
+/* A4 portrait page with ~15mm margins. The disclaimer page (page 1) drops
+ * the page number so the legal notice is unencumbered — page numbers feel
+ * transactional next to the disclaimer's contract framing. */
 @page {
-  size: A4 landscape;
-  margin: 12mm 15mm;
+  size: A4 portrait;
+  margin: 15mm 15mm 18mm;
+  /* Bottom-right page number in mono — small, faint, ink. */
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 8pt;
+    color: #4a4a4a;
+  }
+}
+
+@page :first {
+  /* Suppress the page-number marker on page 1 — the page begins with the
+   * disclaimer block and page numbering would clutter the legal notice. */
+  @bottom-right {
+    content: "";
+  }
 }
 
 @media print {
+  /* Force user-agents to honour backgrounds we DO set (e.g. soft fill on
+   * the "basis" highlight row). Without this Chromium / Firefox strip them
+   * by default to save toner. */
+  #print-report,
+  #print-report * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   #print-report {
+    /* Sober D accent in print: slight desaturation so cheap inkjets don't
+     * muddy the oxblood. Defined locally inside @media print so the screen
+     * Sober D value (#8a2e2e) stays untouched. */
+    --rw-accent-print: #6d2424;
+
     display: block;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 9pt;
-    color: #000;
+    font-family: var(--rw-font-sans);
+    font-size: 9.5pt;
+    line-height: 1.4;
+    color: var(--rw-ink);
+    background: var(--rw-bg-paper);
     padding: 0;
     margin: 0;
     width: 100%;
   }
 
-  /* Override global th styles that bleed in from App.css */
+  /* Reset App.css global th styling that bleeds into the print pass.
+   * Sober D table headers: monospace eyebrow text, slight rule line. */
   #print-report th {
-    color: #000 !important;
-    font-size: inherit !important;
-    text-transform: none !important;
-    background: #e8e8e8 !important;
-    font-weight: bold !important;
-    padding: 3pt 4pt !important;
-    border: 0.5pt solid #aaa !important;
+    color: var(--rw-ink) !important;
+    font-family: var(--rw-font-mono) !important;
+    font-size: 8pt !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.3px !important;
+    text-transform: uppercase !important;
+    background: var(--rw-bg-paper-soft) !important;
+    padding: 4pt 5pt !important;
+    border: none !important;
+    border-bottom: 0.75pt solid var(--rw-rule) !important;
     text-align: left !important;
   }
 
-  /* Shared fixed-layout table base */
+  /* Numeric column headers right-align like their cells. */
+  #print-report th.pr-num {
+    text-align: right !important;
+  }
+
+  /* ───── Shared fixed-layout tables ───────────────────────────────── */
+
   .pr-layout-fixed {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
   }
 
-  /* Header table */
+  /* ───── Header table (title + meta) ──────────────────────────────── */
+
   .pr-header-table {
-    margin-bottom: 8pt;
-    border-bottom: 2pt solid #000;
+    margin-bottom: 10pt;
+    border-bottom: 1pt solid var(--rw-rule);
     padding-bottom: 0;
   }
 
   .pr-header-left {
     vertical-align: top;
-    padding-bottom: 6pt;
+    padding-bottom: 8pt;
   }
 
   .pr-header-right {
-    width: 35%;
+    width: 38%;
     vertical-align: top;
     text-align: right;
-    font-size: 7pt;
-    color: #666;
-    padding-bottom: 6pt;
+    font-family: var(--rw-font-mono);
+    font-size: 7.5pt;
+    letter-spacing: 0.2px;
+    color: var(--rw-ink-faint);
+    padding-bottom: 8pt;
   }
 
   .pr-title {
-    font-size: 13pt;
-    font-weight: bold;
-    margin: 0 0 2pt;
+    font-family: var(--rw-font-sans);
+    font-size: 18pt;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--rw-accent-print);
+    margin: 0 0 3pt;
   }
 
   .pr-subtitle {
-    font-size: 8pt;
-    color: #444;
+    font-family: var(--rw-font-mono);
+    font-size: 8.5pt;
+    letter-spacing: 0.25px;
+    color: var(--rw-ink-soft);
     margin: 0;
   }
 
-  /* Two-column summary table */
+  /* ───── Two-column summary table (profile + GRV) ─────────────────── */
+
   .pr-summary-table {
-    margin-bottom: 10pt;
+    margin-bottom: 12pt;
   }
 
   .pr-col-left {
     width: 50%;
     vertical-align: top;
-    padding-right: 12pt;
+    padding-right: 14pt;
   }
 
   .pr-col-right {
     width: 50%;
     vertical-align: top;
-    padding-left: 12pt;
-    border-left: 0.5pt solid #ddd;
+    padding-left: 14pt;
+    border-left: 0.5pt solid var(--rw-rule-soft);
   }
 
-  /* Section title (replaces <h2> to stay outside th/h2 global styles) */
+  /* ───── Section title (Sober D eyebrow + heading split) ──────────── */
+  /* Mirrors `.vd-card-section__head` from VergleichDetailPage.css —
+   * a small monospace eyebrow style above a thin rule. We keep it
+   * single-line in print to save vertical space. */
   .pr-section-title {
-    font-size: 10pt;
-    font-weight: bold;
-    margin: 0 0 4pt;
-    padding-bottom: 2pt;
-    border-bottom: 1pt solid #555;
-    color: #000;
+    font-family: var(--rw-font-mono);
+    font-size: 9pt;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--rw-ink);
+    margin: 0 0 5pt;
+    padding-bottom: 3pt;
+    border-bottom: 0.75pt solid var(--rw-rule);
   }
 
-  /* Key-value table — uses td+td, no th, to avoid global th overrides */
+  /* ───── Key-value tables (profile / GRV) ─────────────────────────── */
+
   .pr-kv {
     width: 100%;
     border-collapse: collapse;
-    font-size: 8.5pt;
+    font-size: 9pt;
   }
 
   .pr-kv-label {
-    color: #444;
-    padding: 1.5pt 6pt 1.5pt 0;
-    width: 55%;
+    color: var(--rw-ink-faint);
+    font-family: var(--rw-font-mono);
+    font-size: 8.5pt;
+    letter-spacing: 0.2px;
+    padding: 2pt 6pt 2pt 0;
+    width: 50%;
     vertical-align: top;
   }
 
   .pr-kv td {
-    padding: 1.5pt 0;
+    padding: 2pt 0;
     vertical-align: top;
+    color: var(--rw-ink);
   }
 
-  /* Generic section wrapper */
+  /* ───── Generic section wrapper ──────────────────────────────────── */
+
   .pr-section {
-    margin-bottom: 10pt;
+    margin-bottom: 12pt;
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  /* Variant: allow the section itself to break across pages while still
-     letting `.pr-vertrag-block` keep its own `break-inside: avoid`. Used by
-     the "Vertrag im Detail" outer section (combine-mode print) so a 4-6
-     contract list does not force-fit on a single page (CR9). */
+  /* Variant: allow this section's content to flow across pages while child
+   * `.pr-vertrag-block` still keeps `break-inside: avoid` per-block. */
   .pr-section-allow-break {
     break-inside: auto;
   }
 
-  /* Generic data tables */
+  /* Section-boundary page-break hint for combine-mode multi-section runs.
+   * Methode reliably starts on a fresh page to give its definition list
+   * full breathing room. */
+  .pr-methode-section {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* ───── Generic data tables ──────────────────────────────────────── */
+
   .pr-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 8pt;
+    font-size: 8.5pt;
     margin-top: 4pt;
   }
 
   .pr-table td {
-    padding: 2.5pt 4pt;
-    border: 0.5pt solid #ccc;
+    padding: 3pt 5pt;
+    border-bottom: 0.5pt solid var(--rw-rule-soft);
     vertical-align: top;
+    color: var(--rw-ink);
   }
 
   .pr-num {
     text-align: right !important;
+    font-family: var(--rw-font-mono);
+    font-variant-numeric: tabular-nums;
   }
 
-  /* Main comparison table */
+  /* Main comparison table — slightly smaller font, basis row gets a soft
+   * highlight ink rather than the legacy grey block. */
   .pr-main-table {
-    font-size: 7.5pt;
+    font-size: 8pt;
   }
 
   .pr-main-table th {
@@ -180,153 +290,178 @@
   }
 
   .pr-main-table .pr-basis {
-    font-weight: bold;
-    background: #f0f0f0;
+    font-weight: 600;
+    background: var(--rw-bg-paper-soft);
   }
 
   .pr-note {
-    font-size: 7pt;
-    color: #555;
+    font-family: var(--rw-font-sans);
+    font-size: 7.5pt;
+    color: var(--rw-ink-soft);
+    line-height: 1.4;
   }
 
   .pr-table-note {
     display: block;
-    margin-top: 4pt;
+    margin-top: 5pt;
   }
 
-  /* Disclaimer / limitations section */
-  .pr-disclaimer-list {
-    margin: 4pt 0 0;
-    padding: 0 0 0 12pt;
-    font-size: 7.5pt;
-    color: #222;
-    line-height: 1.35;
-  }
-
-  .pr-disclaimer-list li {
-    margin: 0 0 2.5pt;
-  }
-
-  .pr-disclaimer-list strong {
-    color: #000;
-  }
-
-  /* Top-of-report disclaimer block — required as the first block per the
-     publication guardrails. Distinct from the longer limitations list at the
-     bottom of the report. */
+  /* ───── Top-of-report disclaimer ─────────────────────────────────── */
+  /* P0 compliance surface — first child of #print-report. Sober D
+   * treatment: thin black rule on warm accent background; copy stays
+   * black on the same warm bg for clear legibility on cheap toner. */
   .pr-disclaimer-top {
-    border: 0.75pt solid #000;
-    padding: 4pt 6pt 5pt;
-    margin-bottom: 8pt;
+    border: 1pt solid var(--rw-rule);
+    background: var(--rw-accent-bg);
+    padding: 6pt 8pt 7pt;
+    margin-bottom: 10pt;
+  }
+
+  .pr-disclaimer-top .pr-section-title {
+    border-bottom: none;
+    padding-bottom: 0;
+    color: var(--rw-accent-print);
+    margin-bottom: 3pt;
   }
 
   .pr-disclaimer-lead {
-    margin: 2pt 0 0;
-    font-size: 8pt;
-    color: #000;
-    line-height: 1.4;
+    margin: 0;
+    font-size: 8.5pt;
+    color: var(--rw-ink);
+    line-height: 1.45;
   }
 
-  /* Footer */
+  /* ───── Bottom Hinweise list ─────────────────────────────────────── */
+
+  .pr-disclaimer-list {
+    margin: 5pt 0 0;
+    padding: 0 0 0 14pt;
+    font-size: 8pt;
+    color: var(--rw-ink);
+    line-height: 1.45;
+  }
+
+  .pr-disclaimer-list li {
+    margin: 0 0 3pt;
+  }
+
+  .pr-disclaimer-list strong {
+    color: var(--rw-ink);
+    font-weight: 600;
+  }
+
+  /* ───── Footer ───────────────────────────────────────────────────── */
+
   .pr-footer {
     margin-top: 14pt;
-    padding-top: 4pt;
-    border-top: 0.5pt solid #999;
-    font-size: 7pt;
-    color: #666;
+    padding-top: 5pt;
+    border-top: 0.5pt solid var(--rw-rule-soft);
+    font-family: var(--rw-font-mono);
+    font-size: 7.5pt;
+    letter-spacing: 0.2px;
+    color: var(--rw-ink-faint);
     text-align: center;
   }
 
-  /* ─── PR 11 sections ──────────────────────────────────────────────── */
+  /* ───── PR 11 sections ───────────────────────────────────────────── */
 
   /* "Wohin geht das Geld" — compare-mode per-product breakdown */
   .pr-wohin-table {
-    font-size: 7.5pt;
+    font-size: 8pt;
   }
 
   .pr-wohin-label {
     vertical-align: top;
-    background: #f7f7f7;
+    background: var(--rw-bg-paper-soft);
+    border-right: 0.5pt solid var(--rw-rule-soft);
   }
 
   .pr-wohin-footer-row td {
-    background: #fafafa;
+    background: var(--rw-bg-paper-soft);
     font-style: italic;
+    color: var(--rw-ink-soft);
   }
 
   /* "Methode & Quellen" — short methodology block */
-  .pr-methode-section {
-    border-top: 0.5pt solid #aaa;
-    padding-top: 6pt;
-  }
-
   .pr-methode-list {
-    margin: 4pt 0 0;
-    padding: 0 0 0 12pt;
-    font-size: 7.5pt;
-    color: #222;
-    line-height: 1.35;
+    margin: 5pt 0 0;
+    padding: 0 0 0 14pt;
+    font-size: 8pt;
+    color: var(--rw-ink);
+    line-height: 1.45;
   }
 
   .pr-methode-list li {
-    margin: 0 0 2.5pt;
+    margin: 0 0 3pt;
   }
 
   .pr-methode-list strong {
-    color: #000;
+    color: var(--rw-ink);
+    font-weight: 600;
   }
 
   .pr-methode-pointer {
-    margin-top: 4pt;
+    margin-top: 5pt;
   }
 
-  /* Combine-mode Zusammensetzung */
+  /* ───── Combine-mode Zusammensetzung ─────────────────────────────── */
+
   .pr-zusammen-sublabel {
-    color: #555;
-    font-size: 7pt;
+    font-family: var(--rw-font-mono);
+    color: var(--rw-ink-faint);
+    font-size: 7.5pt;
+    letter-spacing: 0.2px;
   }
 
-  /* Combine-mode Sensitivität sub-table (PR 11 R1 scope restore) */
+  /* Combine-mode Sensitivität sub-table (PR 11 R1 scope restore).
+   * Sober D ink-only treatment for the pill — keep accent oxblood
+   * reserved for the headline +/- so the reader's eye jumps there. */
   .pr-sens-subhead {
-    margin-top: 8pt;
+    margin-top: 10pt;
     margin-bottom: 2pt;
-    font-size: 8pt;
-    font-weight: bold;
-    color: #000;
+    font-family: var(--rw-font-mono);
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--rw-ink);
   }
 
   .pr-sens-table {
-    font-size: 7.5pt;
+    font-size: 8pt;
   }
 
   .pr-sens-note {
-    color: #555;
-    font-size: 7pt;
+    color: var(--rw-ink-soft);
+    font-family: var(--rw-font-sans);
+    font-size: 7.5pt;
     font-style: italic;
-    margin-top: 1pt;
+    margin-top: 2pt;
   }
 
   .pr-sens-delta {
-    font-weight: bold;
+    font-weight: 600;
+    font-family: var(--rw-font-mono);
   }
 
   .pr-sens-delta--pos {
-    color: #166534;
+    color: var(--rw-ink);
   }
 
   .pr-sens-delta--neg {
-    color: #991b1b;
+    color: var(--rw-accent-print);
   }
 
   .pr-sens-delta--neutral {
-    color: #555;
+    color: var(--rw-ink-faint);
   }
 
   /* Combine-mode Wendepunkte je Vertrag */
   .pr-wendepunkte-instance {
-    background: #f7f7f7;
+    background: var(--rw-bg-paper-soft);
     vertical-align: top;
-    font-weight: bold;
+    font-weight: 600;
+    border-right: 0.5pt solid var(--rw-rule-soft);
   }
 
   /* Combine-mode Vertrag im Detail (KPI + provenance per instance) */
@@ -335,28 +470,42 @@
   }
 
   .pr-vertrag-block {
-    margin-bottom: 8pt;
+    margin-bottom: 10pt;
     /* `break-inside: avoid` covers modern print targets (Chrome / Firefox /
-       Safari since 2018+). The deprecated `page-break-inside` alias was
-       removed per CR5 (stylelint MD-not-deprecated-property). */
+     * Safari since 2018+). */
     break-inside: avoid;
+    padding-bottom: 4pt;
+    border-bottom: 0.5pt solid var(--rw-rule-soft);
+  }
+
+  .pr-vertrag-block:last-child {
+    border-bottom: none;
   }
 
   .pr-vertrag-header {
-    margin-bottom: 2pt;
-    font-size: 8pt;
+    margin-bottom: 3pt;
+    font-size: 9pt;
+    color: var(--rw-ink);
+  }
+
+  .pr-vertrag-header strong {
+    font-weight: 600;
+    color: var(--rw-ink);
   }
 
   .pr-vertrag-kpi-table {
-    margin-bottom: 4pt;
-    font-size: 7.5pt;
+    margin-bottom: 5pt;
+    font-size: 8pt;
   }
 
   .pr-vertrag-kpi-value {
-    font-weight: bold;
+    font-family: var(--rw-font-mono);
+    font-weight: 600;
+    font-size: 10pt;
+    color: var(--rw-ink);
   }
 
   .pr-vertrag-prov-table {
-    font-size: 7pt;
+    font-size: 7.5pt;
   }
 }
