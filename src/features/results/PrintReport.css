@@ -228,4 +228,89 @@
     color: #666;
     text-align: center;
   }
+
+  /* ─── PR 11 sections ──────────────────────────────────────────────── */
+
+  /* "Wohin geht das Geld" — compare-mode per-product breakdown */
+  .pr-wohin-table {
+    font-size: 7.5pt;
+  }
+
+  .pr-wohin-label {
+    vertical-align: top;
+    background: #f7f7f7;
+  }
+
+  .pr-wohin-footer-row td {
+    background: #fafafa;
+    font-style: italic;
+  }
+
+  /* "Methode & Quellen" — short methodology block */
+  .pr-methode-section {
+    border-top: 0.5pt solid #aaa;
+    padding-top: 6pt;
+  }
+
+  .pr-methode-list {
+    margin: 4pt 0 0;
+    padding: 0 0 0 12pt;
+    font-size: 7.5pt;
+    color: #222;
+    line-height: 1.35;
+  }
+
+  .pr-methode-list li {
+    margin: 0 0 2.5pt;
+  }
+
+  .pr-methode-list strong {
+    color: #000;
+  }
+
+  .pr-methode-pointer {
+    margin-top: 4pt;
+  }
+
+  /* Combine-mode Zusammensetzung */
+  .pr-zusammen-sublabel {
+    color: #555;
+    font-size: 7pt;
+  }
+
+  /* Combine-mode Wendepunkte je Vertrag */
+  .pr-wendepunkte-instance {
+    background: #f7f7f7;
+    vertical-align: top;
+    font-weight: bold;
+  }
+
+  /* Combine-mode Vertrag im Detail (KPI + provenance per instance) */
+  .pr-vertrag-blocks {
+    display: block;
+  }
+
+  .pr-vertrag-block {
+    margin-bottom: 8pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .pr-vertrag-header {
+    margin-bottom: 2pt;
+    font-size: 8pt;
+  }
+
+  .pr-vertrag-kpi-table {
+    margin-bottom: 4pt;
+    font-size: 7.5pt;
+  }
+
+  .pr-vertrag-kpi-value {
+    font-weight: bold;
+  }
+
+  .pr-vertrag-prov-table {
+    font-size: 7pt;
+  }
 }

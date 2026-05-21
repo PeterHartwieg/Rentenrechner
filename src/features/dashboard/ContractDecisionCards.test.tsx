@@ -17,8 +17,12 @@ import { ContractDecisionCards } from './ContractDecisionCards'
 import type { ContractDecisionCardsProps } from './ContractDecisionCards'
 import type { ContractDecision } from '../../app/contractDecisions'
 import { DECISION_KIND_DESCRIPTIONS } from '../../content/optimiereCopy'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 // ---------------------------------------------------------------------------
 // 4-decision fixture
@@ -277,5 +281,20 @@ describe('ContractDecisionCards', () => {
     const descEl = kuendigenCard!.querySelector('.contract-decision-description')
     expect(descEl).toBeTruthy()
     expect(descEl!.textContent).toBe('Vertrag kündigen und Rückkaufswert auszahlen lassen.')
+  })
+
+  it('PR 11 viewport sweep — all 4 decision cards render at phone / tablet / desktop', () => {
+    eachViewport(() => {
+      const { container, unmount } = render(
+        <ContractDecisionCards
+          decisions={FIXTURE_DECISIONS}
+          checkedIds={new Set()}
+          onToggle={vi.fn()}
+        />,
+      )
+      const cards = container.querySelectorAll('.contract-decision-card')
+      expect(cards).toHaveLength(4)
+      unmount()
+    })
   })
 })

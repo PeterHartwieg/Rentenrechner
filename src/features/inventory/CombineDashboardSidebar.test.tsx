@@ -7,13 +7,19 @@
  * is required.
  */
 
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, cleanup } from '@testing-library/react'
 import { AddVertragSection, CombineDashboardSidebar } from './CombineDashboardSidebar'
 import { addInstanceToWorkspace } from './inventoryHelpers'
 import { defaultWorkspace } from '../../storage'
 import type { WorkspaceAssumptionsV2, WhatIfScenario, Scenario } from '../../domain/workspace'
 import type { MultiInstanceProductId } from '../../app/portfolioState'
+import { eachViewport, mockViewport } from '../../test/viewport'
+
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 function dilanWorkspace() {
   let ws = { ...defaultWorkspace }
@@ -402,5 +408,17 @@ describe('CombineDashboardSidebar — programmatic label association (a11y #69)'
     const select = screen.getByLabelText('Krankenversicherung') as HTMLSelectElement
     expect(select.tagName).toBe('SELECT')
     cleanup()
+  })
+
+  it('PR 11 viewport sweep — sidebar renders at phone / tablet / desktop', () => {
+    const ws = dilanWorkspace()
+    eachViewport(() => {
+      const { container, unmount } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+      // Sidebar renders an "Add Vertrag" section across every viewport (the
+      // chrome itself folds via RightRailAccordion on phone; the underlying
+      // DOM is the same).
+      expect(container.firstElementChild).not.toBeNull()
+      unmount()
+    })
   })
 })

@@ -33,11 +33,13 @@ import { LandingPage, type LandingChoice } from './LandingPage'
 import { HUB_CLUSTERS, FEATURED_ARTICLE_HREFS, countHubArticles } from './hubClusters'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { STORAGE_KEY_V2 } from '../../storage'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   vi.clearAllMocks()
+  mockViewport('desktop')
 })
 
 function inShell(node: ReactElement, path: string = '/') {
@@ -613,5 +615,19 @@ describe('HUB_CLUSTERS — exported registry (single source of truth)', () => {
         expect(link.label).not.toMatch(/^klick(en)?\b/i)
       }
     }
+  })
+})
+
+describe('LandingPage — viewport sweep (PR 11)', () => {
+  it('renders the hero, CTAs, and hub grid at phone / tablet / desktop without throwing', () => {
+    eachViewport(() => {
+      const { container, unmount } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+      // H1 + both CTA buttons + the hub grid render at every viewport
+      // (responsive layout via CSS; same DOM shape).
+      expect(container.querySelector('h1')).not.toBeNull()
+      expect(container.textContent ?? '').toContain('Mein Plan erstellen')
+      expect(container.textContent ?? '').toContain('Vergleich starten')
+      unmount()
+    })
   })
 })

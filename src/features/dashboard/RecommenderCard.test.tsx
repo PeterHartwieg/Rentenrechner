@@ -21,8 +21,12 @@ import { de2026Rules } from '../../rules/de2026'
 import { confidenceForResult, confidenceLanguage } from '../../app/evidence'
 import type { InsuranceInstance } from '../../domain/instances'
 import { afterEach } from 'vitest'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 function setup() {
   const v1 = {
@@ -222,5 +226,19 @@ describe('RecommenderCard — insurance confidence regression (#32)', () => {
     expect(confidence).toBe('user_confirmed')
     // Verify that this translates to the direct (non-hedged) language.
     expect(confidenceLanguage(confidence).prefix).not.toContain('Schätzungen')
+  })
+})
+
+describe('RecommenderCard — viewport sweep (PR 11)', () => {
+  it('renders the candidate list at phone / tablet / desktop without throwing', () => {
+    const ctx = setup()
+    eachViewport(() => {
+      const { container, unmount } = render(
+        <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
+      )
+      expect(container.querySelector('.recommender-card')).not.toBeNull()
+      expect(container.querySelectorAll('.recommender-candidate').length).toBeGreaterThan(0)
+      unmount()
+    })
   })
 })

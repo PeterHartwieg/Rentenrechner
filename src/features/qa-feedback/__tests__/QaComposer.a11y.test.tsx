@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { QaComposer, type ComposerDraft } from '../QaComposer'
 import type { ResolvedTarget } from '../report'
+import { mockViewport } from '../../../test/viewport'
 
 const TARGET: ResolvedTarget = {
   id: 'inputs.bav.employerSubsidy.label',
@@ -38,11 +39,17 @@ function makeDraft(overrides: Partial<ComposerDraft> = {}): ComposerDraft {
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  // Reset viewport to desktop so a thrown assertion in a phone-mode test
+  // does not leak innerWidth into the next test.
+  mockViewport('desktop')
 })
 
 beforeEach(() => {
-  // Reset window.innerWidth to desktop by default.
-  Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 })
+  // Reset viewport to desktop by default. PR 11 — replaces the previous
+  // ad-hoc `Object.defineProperty(window, 'innerWidth', ...)` stub with the
+  // shared `mockViewport` helper so all viewport mocking goes through one
+  // canonical implementation.
+  mockViewport('desktop')
 })
 
 describe('QaComposer — role and ARIA', () => {
@@ -238,8 +245,12 @@ describe('QaComposer — keyboard handlers', () => {
 })
 
 describe('QaComposer — mobile sheet class', () => {
-  it('adds qa-composer--sheet class when window.innerWidth <= 640', () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 360 })
+  it('adds qa-composer--sheet class on phone viewport', () => {
+    // PR 11 — replaced the previous `Object.defineProperty(window, 'innerWidth', ...)`
+    // stub with `mockViewport('phone')` so all viewport mocking routes through
+    // the canonical helper. `mockViewport('phone')` sets `innerWidth = 390`
+    // which is well below QaComposer's 640px sheet breakpoint.
+    mockViewport('phone')
     render(
       <QaComposer
         target={TARGET}
@@ -253,8 +264,8 @@ describe('QaComposer — mobile sheet class', () => {
     expect(composer.classList.contains('qa-composer--sheet')).toBe(true)
   })
 
-  it('does NOT add qa-composer--sheet class on wide viewports', () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 })
+  it('does NOT add qa-composer--sheet class on desktop viewport', () => {
+    mockViewport('desktop')
     render(
       <QaComposer
         target={TARGET}

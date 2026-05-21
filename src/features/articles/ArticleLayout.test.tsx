@@ -8,9 +8,11 @@ import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
 import { ArticleLayout } from './ArticleLayout'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
 afterEach(() => {
   cleanup()
+  mockViewport('desktop')
 })
 
 function inShell(node: ReactElement, path: string = '/rentenluecke-rechner') {
@@ -199,5 +201,17 @@ describe('ArticleLayout — chrome and metadata invariants', () => {
     )
     const editLink = container.querySelector('.article-aside-card--meta a') as HTMLAnchorElement
     expect(editLink.getAttribute('href')).toBe('https://example.test/custom')
+  })
+
+  it('PR 11 viewport sweep — renders the article shell at phone / tablet / desktop without throwing', () => {
+    eachViewport(() => {
+      expect(() =>
+        renderToString(inShell(
+          <ArticleLayout routeId="/rentenluecke-rechner">
+            <p>body</p>
+          </ArticleLayout>,
+        )),
+      ).not.toThrow()
+    })
   })
 })

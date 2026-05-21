@@ -10,8 +10,12 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import { syncMonthlyContributions } from '../../app/syncContributions'
 import { simulateRetirementComparison } from '../../engine/simulate'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 function TestHarness() {
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(
@@ -87,6 +91,16 @@ describe('InputsPanel standard assumptions', () => {
     fireEvent.click(screen.getByLabelText('Inflation berücksichtigen'))
 
     expect((screen.getByLabelText(/Inflationsrate/) as HTMLInputElement).value).toBe('3.5')
+  })
+})
+
+describe('InputsPanel — viewport sweep (PR 11)', () => {
+  it('renders the Netto-Beitrag input at phone / tablet / desktop', () => {
+    eachViewport(() => {
+      const { unmount } = render(<TestHarness />)
+      expect((screen.getByLabelText(/Netto-Beitrag/) as HTMLInputElement).value).toBe('200')
+      unmount()
+    })
   })
 })
 

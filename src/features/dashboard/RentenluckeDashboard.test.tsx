@@ -7,8 +7,12 @@ import {
 } from '../../app/simulationSelectors'
 import { defaultProfile } from '../../data/defaultScenario'
 import { RentenluckeDashboard } from './RentenluckeDashboard'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 function makeOverview(overrides: Partial<RentenluckeOverview>): RentenluckeOverview {
   return {
@@ -125,5 +129,28 @@ describe('RentenluckeDashboard', () => {
       expect(cta).toBeTruthy()
       unmount()
     }
+  })
+
+  it('PR 11 viewport sweep — dashboard CTA renders at phone / tablet / desktop', () => {
+    const profile = { ...defaultProfile, desiredNetMonthlyPension: 1500 }
+    const overview = makeOverview({
+      target: 1500,
+      targetIsUserSet: true,
+      projectedTotal: 800,
+      gap: 700,
+      goalReached: false,
+    })
+    eachViewport(() => {
+      const { container, unmount } = render(
+        <RentenluckeDashboard
+          profile={profile}
+          overview={overview}
+          onTargetChange={() => {}}
+          onAdjustContributions={() => {}}
+        />,
+      )
+      expect(container.querySelector('.rentenlucke-dashboard__cta')).not.toBeNull()
+      unmount()
+    })
   })
 })

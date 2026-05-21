@@ -145,6 +145,14 @@ describe('PrintReport', () => {
     expect(root).not.toBeNull()
     const firstChild = root!.firstElementChild
     expect(firstChild?.classList.contains('pr-disclaimer-top')).toBe(true)
+    // PR 11 strengthening: also confirm the first child is a <section> (not
+    // a div wrapper or comment) AND that it precedes every other section in
+    // sourceindex order. A DOM walk catches accidental re-ordering even when
+    // a new section accidentally hoists above the disclaimer in JSX.
+    expect(firstChild?.tagName.toLowerCase()).toBe('section')
+    const allSections = Array.from(root!.children)
+    expect(allSections[0]).toBe(firstChild)
+    expect(allSections.filter((c) => c.classList.contains('pr-disclaimer-top')).length).toBe(1)
   })
 
   // -------------------------------------------------------------------------
@@ -224,6 +232,10 @@ describe('PrintReport', () => {
     expect(root).not.toBeNull()
     const firstChild = root!.firstElementChild
     expect(firstChild?.classList.contains('pr-disclaimer-top')).toBe(true)
+    // PR 11 strengthening (mirrors compare-mode): first child is a <section>
+    // and there is exactly one `.pr-disclaimer-top` in the print tree.
+    expect(firstChild?.tagName.toLowerCase()).toBe('section')
+    expect(root!.querySelectorAll('.pr-disclaimer-top').length).toBe(1)
   })
 
   it('compare-mode (combineMode=false / undefined) still renders the singleton product table — byte-identical first child', () => {
@@ -483,5 +495,207 @@ describe('PrintReport', () => {
     expect(vertragTexts).toContain('Depot B')
     // The generic engine label must NOT appear in the Vertrag column.
     expect(vertragTexts.every((t) => t !== 'ETF-Depot')).toBe(true)
+  })
+
+  // -------------------------------------------------------------------------
+  // PR 11 — new per-page mirror print sections.
+  //
+  // Compare-mode prints the "Wohin geht das Geld" per-product breakdown
+  // (mirroring `/vergleich/details`) AND the "Methode & Quellen" pointer
+  // block. Combine-mode prints "Zusammensetzung", "Kapital & Auszahlungen
+  // — Wendepunkte je Vertrag", "Vertrag im Detail" (per-instance KPI +
+  // provenance), AND "Methode & Quellen". Disclaimer-first invariant
+  // remains pinned in both branches.
+  // -------------------------------------------------------------------------
+
+  describe('PR 11 — compare-mode print sections', () => {
+    it('renders the "Wohin geht das Geld" section heading with dynamic retirementAge', () => {
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />
+      )
+      const text = container.textContent ?? ''
+      // Section title interpolates retirementAge (NOT hardcoded 67).
+      expect(text).toContain(`Wohin geht das Geld`)
+      expect(text).toContain(`Mit ${defaultProfile.retirementAge}`)
+    })
+
+    it('renders the "Methode & Quellen" block with all five bullets', () => {
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />
+      )
+      const text = container.textContent ?? ''
+      expect(text).toContain('Methode')
+      expect(text).toContain('Renditeannahmen')
+      expect(text).toContain('Steuermodell')
+      expect(text).toContain('Sozialversicherung')
+      expect(text).toContain('Statutorische Werte')
+      expect(text).toContain('Bewusst nicht modelliert')
+      // Methode pointer to the live /methode page.
+      expect(text).toContain('rentenwiki.de/methode')
+    })
+
+    it('Wohin section sits AFTER the Produktvergleich table and BEFORE Hinweise', () => {
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />
+      )
+      const text = container.textContent ?? ''
+      const idxProdukt = text.indexOf('Produktvergleich')
+      const idxWohin = text.indexOf('Wohin geht das Geld')
+      const idxHinweise = text.indexOf('Hinweise und Grenzen')
+      expect(idxProdukt).toBeGreaterThan(-1)
+      expect(idxWohin).toBeGreaterThan(-1)
+      expect(idxHinweise).toBeGreaterThan(-1)
+      expect(idxProdukt).toBeLessThan(idxWohin)
+      expect(idxWohin).toBeLessThan(idxHinweise)
+    })
+  })
+
+  describe('PR 11 — combine-mode print sections', () => {
+    function makeCombineRender(opts?: {
+      etfLabel?: string
+      etfInstance?: 'etf-1' | 'etf-2'
+    }) {
+      const etfBase = makeSimulation('user_confirmed').products[0] as ProductResult
+      const etfResult: ProductResult = {
+        ...etfBase,
+        productId: 'etf',
+        label: 'ETF-Depot',
+        instanceId: opts?.etfInstance ?? 'etf-1',
+        scenarioId: 'basis',
+        scenarioLabel: 'Basis',
+        // Provide rows for buildLifecycleLineSeries — empty is acceptable;
+        // helper short-circuits to capitalAtRetirement defaults.
+        rows: [],
+      } as unknown as ProductResult
+
+      const workspace: Workspace = {
+        schemaVersion: 2,
+        mode: 'combine',
+        baseline: {
+          id: 'baseline',
+          label: 'Baseline',
+          profile: defaultProfile,
+          assumptions: {
+            bav: [],
+            etf: [
+              {
+                instanceId: opts?.etfInstance ?? 'etf-1',
+                label: opts?.etfLabel ?? 'Depot A',
+                status: 'active',
+                contractStartYear: 2020,
+                evidenceMap: { monthlyContribution: 'user_confirmed', annualAssetFee: 'model_estimate' },
+                annualAssetFee: 0.002,
+                equityPartialExemption: 0.3,
+                annualContributionGrowthRate: 0,
+                monthlyContribution: 200,
+              },
+            ],
+            insurance: [],
+            basisrente: [],
+            altersvorsorgedepot: [],
+            riester: [],
+            statutoryPension: defaultAssumptions.statutoryPension,
+            inflationRate: 0.02,
+            retirementEndAge: defaultAssumptions.retirementEndAge,
+            returnScenarios: defaultAssumptions.returnScenarios,
+            monteCarlo: defaultAssumptions.monteCarlo,
+            visibleProducts: ['etf'],
+          },
+          createdAt: new Date().toISOString(),
+          origin: 'baseline',
+        },
+        whatIfs: [],
+        pinnedComparisonIds: [],
+      }
+
+      return render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+          combineMode={true}
+          portfolio={{
+            perInstance: { [opts?.etfInstance ?? 'etf-1']: [etfResult] },
+            combinedByScenarioId: { basis: makeCombined(2200) },
+            scenarioLabels: { basis: 'Basis' },
+          }}
+          combineWorkspace={workspace}
+        />
+      )
+    }
+
+    it('renders the Zusammensetzung section with dynamic retirementAge in the heading', () => {
+      const { container } = makeCombineRender()
+      const text = container.textContent ?? ''
+      expect(text).toContain('Zusammensetzung')
+      expect(text).toContain(`Rente mit ${defaultProfile.retirementAge}`)
+      // Statutory pension leading row (label varies by baseline type;
+      // default workspace uses GRV).
+      expect(text).toMatch(/Gesetzliche\s?Rente/)
+    })
+
+    it('renders the Kapital & Auszahlungen Wendepunkte section', () => {
+      const { container } = makeCombineRender()
+      const text = container.textContent ?? ''
+      expect(text).toContain('Wendepunkte')
+      // The four wendepunkte labels from buildWendepunkte:
+      expect(text).toContain('Halbzeit der Ansparphase')
+      expect(text).toContain('Renteneintritt')
+      expect(text).toContain('Voraussichtliches Vertragsende')
+    })
+
+    it('renders the Vertrag im Detail section with one block per active instance', () => {
+      const { container } = makeCombineRender({ etfLabel: 'My Special ETF' })
+      const text = container.textContent ?? ''
+      expect(text).toContain('Vertrag im Detail')
+      // The user-supplied instance label is preferred over the engine label.
+      expect(text).toContain('My Special ETF')
+      // KPI tile labels.
+      expect(text).toContain('Beitrag mtl.')
+      expect(text).toContain('Einzahlungen ges.')
+      expect(text).toContain('Voraussichtl. Kapital')
+      expect(text).toContain('Netto-Rente')
+      // Provenance pill labels — model_estimate → "Schätzwert".
+      expect(text).toContain('Schätzwert')
+      // user_confirmed evidence on monthlyContribution → "Bestätigt".
+      expect(text).toContain('Bestätigt')
+    })
+
+    it('renders the Methode & Quellen block (combine-mode shares the compare-mode block)', () => {
+      const { container } = makeCombineRender()
+      const text = container.textContent ?? ''
+      expect(text).toContain('Methode')
+      expect(text).toContain('Renditeannahmen')
+      expect(text).toContain('rentenwiki.de/methode')
+    })
+
+    it('combine-mode new sections sit AFTER "Detail je Vertrag" and BEFORE Hinweise', () => {
+      const { container } = makeCombineRender()
+      const text = container.textContent ?? ''
+      const idxDetail = text.indexOf('Detail je Vertrag')
+      const idxZusammen = text.indexOf('Zusammensetzung')
+      const idxWende = text.indexOf('Wendepunkte')
+      const idxVertrag = text.indexOf('Vertrag im Detail')
+      const idxMethode = text.indexOf('Methode')
+      const idxHinweise = text.indexOf('Hinweise und Grenzen')
+      expect(idxDetail).toBeGreaterThan(-1)
+      expect(idxDetail).toBeLessThan(idxZusammen)
+      expect(idxZusammen).toBeLessThan(idxWende)
+      expect(idxWende).toBeLessThan(idxVertrag)
+      expect(idxVertrag).toBeLessThan(idxMethode)
+      expect(idxMethode).toBeLessThan(idxHinweise)
+    })
   })
 })

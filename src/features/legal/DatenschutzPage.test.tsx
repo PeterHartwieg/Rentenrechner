@@ -14,11 +14,15 @@ import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { LIBRARY_KEY } from '../../data/scenarioLibrary'
 import { WORKSPACE_KEY } from '../../app/useWorkspace'
 import { DISMISS_KEY } from '../workspace/DisclaimerBanner'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
 /** Legacy key from the removed Geführter-Einstieg feature. */
 const LEGACY_SETUP_FLAG_KEY = 'rentenrechner-guided-setup-v1'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 describe('DatenschutzPage hosting-provider copy (issue #134)', () => {
   it('names Cloudflare Workers as the delivery mechanism, not Cloudflare Pages', () => {
@@ -103,5 +107,18 @@ describe('DatenschutzPage storage key enumeration', () => {
     expect(disclaimerItem?.textContent).toContain('sessionStorage')
     // confirm it does NOT claim localStorage for the disclaimer key
     expect(disclaimerItem?.textContent).not.toMatch(/\blocalStorage\b/)
+  })
+})
+
+describe('DatenschutzPage — viewport sweep (PR 11)', () => {
+  it('renders the storage-keys section at phone / tablet / desktop without throwing', () => {
+    eachViewport(() => {
+      const { container, unmount } = render(
+        <DatenschutzPage navigate={() => undefined} />
+      )
+      expect(container.textContent ?? '').toContain('Lokale Speicherung')
+      expect(container.textContent ?? '').toContain(STORAGE_KEY_V2)
+      unmount()
+    })
   })
 })

@@ -8,8 +8,12 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { migrateV1ToV2 } from '../../storage'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
 import { de2026Rules } from '../../rules/de2026'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 function setup() {
   const ws = migrateV1ToV2(
@@ -126,5 +130,19 @@ describe('LueckeSchliessenModal', () => {
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.click(getByText('Fertig'))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('PR 11 viewport sweep — opens at phone / tablet / desktop', () => {
+    const ctx = setup()
+    eachViewport(() => {
+      const { container, getByRole, unmount } = render(
+        <LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />,
+      )
+      // The modal is rendered as a `role="dialog"` at every viewport.
+      expect(getByRole('dialog')).not.toBeNull()
+      // The intro / budget step always renders the budget input.
+      expect(container.querySelector('input[type="number"]')).not.toBeNull()
+      unmount()
+    })
   })
 })

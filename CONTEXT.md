@@ -137,6 +137,7 @@ tests.
 | Kapital & Auszahlungen Sober D surface (kicker + H1 + page-level filter chips + full-width lifecycle chart + § 1 Wendepunkte table; mounted on the static `/kapital` route, drill-in from Mein Plan headline aside; dual-source — renders for both compare and combine modes) | `src/features/kapital/KapitalPage.tsx`, plus co-located `KapitalFilterChips.tsx`, `KapitalWendepunkteTable.tsx`, `kapitalFilters.ts`, `wendepunkte.ts` |
 | Wohin geht das Geld Sober D surface (kicker + H1 + per-product card grid: § 1 Ansparphase / § 2 Mit `{retirementAge}` / § 3 Im Alter; mounted on the static `/vergleich/details` route, compare-mode drill-in from VergleichPage; combine-mode renders an EmptyState pointing to Mein Plan) | `src/features/vergleich-detail/VergleichDetailPage.tsx`, plus co-located `VergleichDetailCard.tsx`, `VergleichDetailCardSection.tsx`, `vergleichDetailRows.ts`, `vergleichDetailAvailability.ts`; content registry `src/content/productAvailabilityCopy.ts` |
 | Viewport-aware chart-density tokens (axis-label visibility, axis width, margins, callout font sizes) consumed by `BreakEvenChart` (and intended for `FeeDragChart` / `MonteCarloPanel` migration) | `src/ui/charts/useChartDensity.ts` |
+| Printable A4 report (compare-mode + combine-mode branches; disclaimer first child of `#print-report`, header, profile + GRV, scenario table, product table, Wohin geht das Geld, Methode & Quellen pointer, Hinweise und Grenzen, footer; combine-mode adds Zusammensetzung, Wendepunkte je Vertrag, Vertrag im Detail per-contract blocks). Reuses pure helpers from `vergleichDetailRows.ts`, `wendepunkte.ts`, `breakEvenSeries.ts` so the print and web report identical figures | `src/features/results/PrintReport.tsx` + `PrintReport.css`; row builders `src/features/results/printReportRows.ts` |
 
 ### Storage
 
@@ -206,6 +207,7 @@ should be flagged in review.
 | Audit oracle / integration coverage | `docs/golden-coverage-audit.md` |
 | Update annual statutory values | `src/rules/de2026.ts` |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/` |
+| Extend the printable A4 report (compare or combine mode) | `src/features/results/PrintReport.tsx`, plus row builders in `src/features/results/printReportRows.ts` |
 
 ## Out of scope (do not introduce here)
 
