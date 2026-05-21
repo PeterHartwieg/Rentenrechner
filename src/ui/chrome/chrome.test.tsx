@@ -151,6 +151,33 @@ describe('AppHeader', () => {
     const active = document.querySelector('.rw-app-header__nav-item--active')
     expect(active?.textContent).toBe('Angaben')
   })
+
+  it('renders Vergleich as a real anchor with href=/?view=landing on desktop (R1.1+PR296)', () => {
+    mockViewport('desktop')
+    render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
+    // The Vergleich tab is an anchor that carries ?view=landing so that
+    // middle-click / right-click / SSR all land on the mode-picker (PR #296 R1 fix).
+    const tab = screen.getByText('Vergleich')
+    expect(tab.tagName).toBe('A')
+    expect(tab.getAttribute('href')).toBe('/?view=landing')
+    expect(tab.classList.contains('rw-app-header__nav-item--placeholder')).toBe(false)
+  })
+
+  it('SPA-navigates to ROUTES.home with ?view=landing when Vergleich is clicked on desktop (PR296 R1)', () => {
+    mockViewport('desktop')
+    const navigate = vi.fn()
+    render(<AppHeader route={R('/impressum')} title="" navigate={navigate} />)
+    fireEvent.click(screen.getByText('Vergleich'))
+    expect(navigate).toHaveBeenCalledWith(R('/'), '?view=landing')
+  })
+
+  it('phone variant no longer renders the "seit 2024" status string (R1.1, C2/Q5)', () => {
+    mockViewport('phone')
+    const { container } = render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
+    expect(container.textContent ?? '').not.toContain('seit 2024')
+    expect(container.textContent ?? '').not.toContain('gemeinnützig')
+    expect(container.querySelector('.rw-app-header__brand-meta')).toBeNull()
+  })
 })
 
 describe('MobileNav', () => {
@@ -249,26 +276,61 @@ describe('MobileSheet', () => {
     expect(navigate).toHaveBeenCalledWith(R('/datenschutz'))
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('routes Methode → /methode (R1.1, C4)', () => {
+    const navigate = vi.fn()
+    const onClose = vi.fn()
+    render(<MobileSheet open onClose={onClose} navigate={navigate} />)
+    fireEvent.click(screen.getByText('Methode'))
+    expect(navigate).toHaveBeenCalledWith(R('/methode'))
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('routes Annahmen → /eingaben (R1.1, C4)', () => {
+    const navigate = vi.fn()
+    const onClose = vi.fn()
+    render(<MobileSheet open onClose={onClose} navigate={navigate} />)
+    fireEvent.click(screen.getByText('Annahmen'))
+    expect(navigate).toHaveBeenCalledWith(R('/eingaben'))
+    expect(onClose).toHaveBeenCalled()
+  })
 })
 
 describe('MethodFooter', () => {
   it('renders the footnote row on desktop', () => {
     mockViewport('desktop')
-    render(<MethodFooter />)
+    render(<MethodFooter navigate={() => {}} />)
     expect(document.querySelector('.rw-method-footer--desktop')).toBeInTheDocument()
     expect(screen.getByText(/Annahme: 5 % Rendite/)).toBeInTheDocument()
   })
 
   it('uses the tablet variant on tablet width', () => {
     mockViewport('tablet')
-    render(<MethodFooter />)
+    render(<MethodFooter navigate={() => {}} />)
     expect(document.querySelector('.rw-method-footer--tablet')).toBeInTheDocument()
   })
 
   it('renders nothing on phone (page handles inline link)', () => {
     mockViewport('phone')
-    const { container } = render(<MethodFooter />)
+    const { container } = render(<MethodFooter navigate={() => {}} />)
     expect(container.firstChild).toBeNull()
+  })
+
+  it('renders "Methode im Detail" as a real <a href="/methode"> (R1.1, C5)', () => {
+    mockViewport('desktop')
+    render(<MethodFooter navigate={() => {}} />)
+    const link = screen.getByText(/Methode im Detail/)
+    // The element must be an anchor, not a span — keyboard-tabbable + crawlable.
+    expect(link.tagName).toBe('A')
+    expect(link.getAttribute('href')).toBe('/methode')
+  })
+
+  it('SPA-navigates to /methode on primary click (R1.1, C5)', () => {
+    mockViewport('desktop')
+    const navigate = vi.fn()
+    render(<MethodFooter navigate={navigate} />)
+    fireEvent.click(screen.getByText(/Methode im Detail/))
+    expect(navigate).toHaveBeenCalledWith(R('/methode'))
   })
 })
 

@@ -239,6 +239,29 @@ export function appViewFromMode(mode: 'compare' | 'combine' | null): AppView {
   return 'compare'
 }
 
+/**
+ * Read an explicit `?view=` override from a URL search string. Returns
+ * the requested `AppView` when the parameter is present and valid,
+ * otherwise `null`. Used so that the Vergleich tab in the chrome can
+ * deterministically open the landing/mode-picker view regardless of
+ * any saved mode — addresses the "non-deterministic destination"
+ * concern raised by the Codex review of PR #296.
+ *
+ * Today the only supported override is `?view=landing` (force the
+ * picker). `?view=compare` / `?view=combine` are intentionally NOT
+ * supported — the in-app dashboard surfaces own those transitions.
+ */
+export function appViewFromUrl(search: string): AppView | null {
+  // Accept both raw query strings and full URL strings. `URLSearchParams`
+  // treats a leading "?" as part of the first key on some platforms;
+  // strip it defensively.
+  const trimmed = search.startsWith('?') ? search.slice(1) : search
+  const params = new URLSearchParams(trimmed)
+  const view = params.get('view')
+  if (view === 'landing') return 'landing'
+  return null
+}
+
 export function useRoute(): { route: Route; navigate: (target: Route, search?: string) => void } {
   const [route, setRoute] = useState<Route>(() => {
     if (typeof window === 'undefined') return ROUTES.home
@@ -248,6 +271,12 @@ export function useRoute(): { route: Route; navigate: (target: Route, search?: s
   useEffect(() => {
     function onPopState() {
       setRoute(pathToRoute(window.location.pathname))
+      // Re-emit on the single-channel custom event so listeners that
+      // derive React state from `window.location.search` (e.g. App.tsx's
+      // `?view=landing` override) only need to subscribe to one event
+      // type regardless of whether the navigation came from the browser
+      // back/forward buttons or from an in-app `navigate()` call.
+      window.dispatchEvent(new Event('rentenwiki:navigated'))
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
@@ -281,6 +310,14 @@ export function useRoute(): { route: Route; navigate: (target: Route, search?: s
    *
    * The comparison guard inspects `pathname + search` so identical URLs are
    * not re-pushed (matches the prior pathname-only intent).
+   *
+   * After every navigation (even the no-push duplicate-URL case) this function
+   * dispatches a `rentenwiki:navigated` custom event. Listeners that derive
+   * React state from `window.location.search` (e.g. App.tsx's `?view=landing`
+   * override) subscribe to this event so they re-read the URL after SPA
+   * navigation — `pushState` does not fire `popstate`, so we need an explicit
+   * signal. The `popstate` handler emits the same event so listeners subscribe
+   * to a single channel regardless of navigation source.
    */
   function navigate(target: Route, search?: string): void {
     if (typeof window === 'undefined') return
@@ -291,6 +328,7 @@ export function useRoute(): { route: Route; navigate: (target: Route, search?: s
     }
     setRoute(target)
     window.scrollTo(0, 0)
+    window.dispatchEvent(new Event('rentenwiki:navigated'))
   }
 
   return { route, navigate }

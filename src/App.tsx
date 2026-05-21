@@ -1,6 +1,6 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import type { AppView } from './app/useRoute'
-import { useRoute, detectSavedMode, appViewFromMode, routeToPath } from './app/useRoute'
+import { useRoute, detectSavedMode, appViewFromMode, appViewFromUrl, routeToPath, ROUTES } from './app/useRoute'
 import { useWorkspaceUiState } from './app/useWorkspaceUiState'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { QaFeedbackProvider, QaModeIndicator } from './features/qa-feedback'
@@ -105,9 +105,49 @@ function App() {
   // the view and flip into editorial mode when the LandingPage is showing.
   // Returning users (`detectSavedMode()` non-null) bypass the landing branch
   // entirely — they pay the lazy Calculator chunk cost on first paint.
-  const [calculatorView, setCalculatorView] = useState<AppView>(() =>
-    appViewFromMode(detectSavedMode()),
-  )
+  const [calculatorView, setCalculatorView] = useState<AppView>(() => {
+    // URL override (`?view=landing`) wins over saved-mode resolution.
+    // Used by the Vergleich tab to force the picker view regardless of
+    // any saved compare/combine state (PR #296 Codex P1 fix).
+    if (typeof window !== 'undefined') {
+      const override = appViewFromUrl(window.location.search)
+      if (override !== null) return override
+    }
+    return appViewFromMode(detectSavedMode())
+  })
+  // Re-derive `calculatorView` after every SPA hop. The URL is the source
+  // of truth: if `?view=landing` is present we force the picker; if
+  // absent we fall back to `appViewFromMode(detectSavedMode())` so a
+  // saved-mode dashboard restores cleanly when the user navigates away
+  // from the picker (e.g. browser back from `/?view=landing` to `/`).
+  //
+  // Note: `handleLandingChoice` scrubs `?view=landing` via `replaceState`,
+  // which does NOT fire `rentenwiki:navigated` (the popstate handler
+  // only emits on browser back/forward, not on programmatic
+  // replaceState). This is intentional — without it, the scrub would
+  // re-trigger this listener and reset `calculatorView` away from the
+  // user's just-chosen mode before Calculator has had a chance to write
+  // the saved mode to localStorage.
+  useEffect(() => {
+    function rederiveFromUrl() {
+      if (typeof window === 'undefined') return
+      const override = appViewFromUrl(window.location.search)
+      if (override !== null) {
+        setCalculatorView(override)
+      } else {
+        // Override was just removed (e.g. browser back from
+        // `/?view=landing` to `/`). Restore the saved-mode dashboard so
+        // the picker doesn't linger after the user navigates away.
+        // Codex R2 P1 fix.
+        setCalculatorView(appViewFromMode(detectSavedMode()))
+      }
+    }
+    window.addEventListener('rentenwiki:navigated', rederiveFromUrl)
+    return () => {
+      window.removeEventListener('rentenwiki:navigated', rederiveFromUrl)
+    }
+  }, [])
+
   const [pendingChoice, setPendingChoice] = useState<LandingChoice | null>(null)
 
   // Workspace UI toggles (selected scenario id, real-values toggle, cashflow
@@ -119,6 +159,11 @@ function App() {
   const workspaceUi = useWorkspaceUiState()
 
   function handleLandingChoice(choice: LandingChoice) {
+    // Scrub ?view=landing from the URL so back-button + refresh land cleanly
+    // on the chosen dashboard view, not back on the picker.
+    if (typeof window !== 'undefined' && appViewFromUrl(window.location.search) !== null) {
+      window.history.replaceState(null, '', routeToPath(ROUTES.home))
+    }
     // The dashboard's mode + (compare-mode) visibleProducts seed + (combine-
     // mode) wizard launch all happen inside Calculator's pendingChoice
     // useEffect. We only flip the view here so the lazy boundary

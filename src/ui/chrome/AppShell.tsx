@@ -10,7 +10,7 @@ import type { Route } from '../../app/useRoute'
 
 interface AppShellProps {
   route: Route
-  navigate: (target: Route) => void
+  navigate: (target: Route, search?: string) => void
   kicker?: string
   title?: string
   editorial?: boolean
@@ -51,7 +51,7 @@ export function AppShell({ route, navigate, kicker, title, editorial, children }
         navigate={navigate}
       />
       <main className="rw-app-shell__body">{children}</main>
-      <MethodFooter />
+      <MethodFooter navigate={navigate} />
       {isPhone && <MobileNav route={route} navigate={navigate} />}
     </div>
   )

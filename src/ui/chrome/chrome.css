@@ -238,17 +238,8 @@
   color: var(--rw-ink-editorial);
 }
 
-.rw-app-header__brand-meta {
-  margin-left: auto;
-  font-family: var(--rw-font-mono);
-  font-size: 10px;
-  color: var(--rw-ink-faint);
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
 .rw-app-header__menu-btn {
-  margin-left: 14px;
+  margin-left: auto;
   background: transparent;
   border: 0;
   color: var(--rw-ink);
