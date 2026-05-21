@@ -77,6 +77,14 @@ interface Props {
   onPatchBaseline?: (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void
   /** Called when the user clicks "Optionen" on an active or paid-up instance card. */
   onOpenDecisionMenu?: (instanceId: string) => void
+  /**
+   * Called when the user clicks "Vertrag bearbeiten" on any instance card.
+   * The caller routes to the per-contract edit surface (today: the
+   * `/vertrag/:instanceId` drill-in). `productId` mirrors `removeInstance`
+   * for symmetry; the slot is also encoded in the `instanceId` prefix so
+   * downstream consumers can re-derive it if needed.
+   */
+  onEditInstance: (productId: MultiInstanceProductId, instanceId: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -419,19 +427,16 @@ function VertragdatenTable({ rows }: VertragdatenTableProps) {
 interface VertragActionButtonsProps {
   canRemove: boolean
   onRemove: () => void
-  instanceId: string
+  onEdit: () => void
 }
 
-function VertragActionButtons({ canRemove, onRemove, instanceId }: VertragActionButtonsProps) {
+function VertragActionButtons({ canRemove, onRemove, onEdit }: VertragActionButtonsProps) {
   return (
     <div className="cds-vertrag-action-btns">
       <button
         type="button"
         className="cds-vertrag-edit-btn"
-        onClick={() => {
-          // TODO(#new-issue): wire to inventory edit flow once handler is designed
-          void instanceId
-        }}
+        onClick={onEdit}
       >
         Vertrag bearbeiten
       </button>
@@ -462,6 +467,7 @@ function BavInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onEdit,
   vintageAtoms,
   onOpenDecisionMenu,
 }: {
@@ -469,6 +475,7 @@ function BavInstanceCard({
   onChange: (next: BavInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onEdit: () => void
   vintageAtoms: Atom[]
   onOpenDecisionMenu?: () => void
 }) {
@@ -589,7 +596,7 @@ function BavInstanceCard({
         <VertragActionButtons
           canRemove={canRemove}
           onRemove={onRemove}
-          instanceId={instance.instanceId}
+          onEdit={onEdit}
         />
       </div>
     </div>
@@ -605,11 +612,13 @@ function EtfInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onEdit,
 }: {
   instance: EtfInstance
   onChange: (next: EtfInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onEdit: () => void
 }) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
   const [beitragsdynamik, setBeitragsdynamik] = useState(instance.annualContributionGrowthRate ?? 0)
@@ -685,7 +694,7 @@ function EtfInstanceCard({
         <VertragActionButtons
           canRemove={canRemove}
           onRemove={onRemove}
-          instanceId={instance.instanceId}
+          onEdit={onEdit}
         />
       </div>
     </div>
@@ -701,6 +710,7 @@ function InsuranceInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onEdit,
   vintageAtoms,
   onOpenDecisionMenu,
 }: {
@@ -708,6 +718,7 @@ function InsuranceInstanceCard({
   onChange: (next: InsuranceInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onEdit: () => void
   vintageAtoms: Atom[]
   onOpenDecisionMenu?: () => void
 }) {
@@ -797,7 +808,7 @@ function InsuranceInstanceCard({
         <VertragActionButtons
           canRemove={canRemove}
           onRemove={onRemove}
-          instanceId={instance.instanceId}
+          onEdit={onEdit}
         />
       </div>
     </div>
@@ -813,12 +824,14 @@ function BasisrenteInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onEdit,
   onOpenDecisionMenu,
 }: {
   instance: BasisrenteInstance
   onChange: (next: BasisrenteInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onEdit: () => void
   onOpenDecisionMenu?: () => void
 }) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
@@ -891,7 +904,7 @@ function BasisrenteInstanceCard({
         <VertragActionButtons
           canRemove={canRemove}
           onRemove={onRemove}
-          instanceId={instance.instanceId}
+          onEdit={onEdit}
         />
       </div>
     </div>
@@ -907,12 +920,14 @@ function AvdInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onEdit,
   onOpenDecisionMenu,
 }: {
   instance: AltersvorsorgedepotInstance
   onChange: (next: AltersvorsorgedepotInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onEdit: () => void
   onOpenDecisionMenu?: () => void
 }) {
   const vertragdatenRows: VertragdatenRow[] = [
@@ -992,7 +1007,7 @@ function AvdInstanceCard({
         <VertragActionButtons
           canRemove={canRemove}
           onRemove={onRemove}
-          instanceId={instance.instanceId}
+          onEdit={onEdit}
         />
       </div>
     </div>
@@ -1008,12 +1023,14 @@ function RiesterInstanceCard({
   onChange,
   canRemove,
   onRemove,
+  onEdit,
   onOpenDecisionMenu,
 }: {
   instance: RiesterInstance
   onChange: (next: RiesterInstance) => void
   canRemove: boolean
   onRemove: () => void
+  onEdit: () => void
   onOpenDecisionMenu?: () => void
 }) {
   const vertragdatenRows: VertragdatenRow[] = [
@@ -1076,7 +1093,7 @@ function RiesterInstanceCard({
         <VertragActionButtons
           canRemove={canRemove}
           onRemove={onRemove}
-          instanceId={instance.instanceId}
+          onEdit={onEdit}
         />
       </div>
     </div>
@@ -1844,6 +1861,7 @@ export function CombineDashboardSidebar({
   onArchiveAndRestart,
   onPatchBaseline,
   onOpenDecisionMenu,
+  onEditInstance,
 }: Props) {
   // Guard against rapid double-clicks on the archive button.
   const [archiving, setArchiving] = useState(false)
@@ -1940,6 +1958,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('bav', inst.instanceId)}
+              onEdit={() => onEditInstance('bav', inst.instanceId)}
               vintageAtoms={atomsForInstance(vintageAtoms, inst.instanceId)}
               onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
@@ -1966,6 +1985,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('versicherung', inst.instanceId)}
+              onEdit={() => onEditInstance('versicherung', inst.instanceId)}
               vintageAtoms={atomsForInstance(vintageAtoms, inst.instanceId)}
               onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
@@ -1990,6 +2010,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('etf', inst.instanceId)}
+              onEdit={() => onEditInstance('etf', inst.instanceId)}
             />
           ))}
         </ProductGroup>
@@ -2014,6 +2035,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('basisrente', inst.instanceId)}
+              onEdit={() => onEditInstance('basisrente', inst.instanceId)}
               onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
           ))}
@@ -2039,6 +2061,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('altersvorsorgedepot', inst.instanceId)}
+              onEdit={() => onEditInstance('altersvorsorgedepot', inst.instanceId)}
               onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
           ))}
@@ -2064,6 +2087,7 @@ export function CombineDashboardSidebar({
                 })
               }
               onRemove={() => removeInstance('riester', inst.instanceId)}
+              onEdit={() => onEditInstance('riester', inst.instanceId)}
               onOpenDecisionMenu={onOpenDecisionMenu ? () => onOpenDecisionMenu(inst.instanceId) : undefined}
             />
           ))}
