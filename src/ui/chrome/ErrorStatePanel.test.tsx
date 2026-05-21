@@ -139,6 +139,23 @@ describe('ErrorStatePanel — CTA', () => {
     expect(link!.textContent).toBe('Zurück zum Plan')
   })
 
+  it('renders the CTA as an <a> when href is supplied, even if onClick is also given', () => {
+    const onClick = vi.fn()
+    const { container } = render(
+      <ErrorStatePanel
+        tone="error"
+        message="CTA-Priorität-Test"
+        cta={{ label: 'Weiter', href: '/foo', onClick }}
+      />,
+    )
+    const link = container.querySelector<HTMLAnchorElement>('a.rw-error-state__cta')
+    expect(link).not.toBeNull()
+    expect(link!.getAttribute('href')).toBe('/foo')
+    expect(container.querySelector('button.rw-error-state__cta')).toBeNull()
+    fireEvent.click(link!)
+    expect(onClick).toHaveBeenCalledOnce()
+  })
+
   it('renders neither button nor link when no CTA is supplied', () => {
     const { container } = render(
       <ErrorStatePanel tone="empty" message="Kein CTA erwartet." />,

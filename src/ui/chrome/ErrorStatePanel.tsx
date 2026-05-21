@@ -18,16 +18,21 @@ export type ErrorStatePanelTone = 'error' | 'empty'
  * Optional call-to-action. The panel supports either an `href` (rendered as
  * a real anchor so external/internal links work, including middle-click +
  * right-click context menu) or an `onClick` handler (rendered as a
- * `<button>` for in-app actions that do not change the URL). When both are
- * provided, the panel prefers the click handler — consumers that want to
- * intercept SPA navigation should attach their `shouldUseSpaNavigation`
- * pattern inside their own click handler.
+ * `<button>` for in-app actions that do not change the URL).
+ *
+ * **Precedence rule: `href` wins.** When both are provided, the panel
+ * renders `<a href={href}>` and attaches `onClick` to it. This is the
+ * standard SPA interception pattern — the click handler can call
+ * `event.preventDefault()` for plain left-clicks to handle navigation in
+ * JS, while modifier-clicks (Cmd/Ctrl/middle) fall through to the browser's
+ * native anchor behaviour (new tab, etc.). If only `onClick` is supplied
+ * (no `href`), a `<button>` is rendered instead.
  */
 interface ErrorStatePanelCta {
   label: string
-  /** Optional href; rendered when no `onClick` is supplied. */
+  /** Optional href; renders an `<a>` tag (wins over `onClick` when both are supplied). */
   href?: string
-  /** Optional click handler; takes precedence over `href`. */
+  /** Optional click handler; attaches to the `<a>` for SPA interception, or renders a `<button>` when no `href` is supplied. */
   onClick?: (event: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => void
 }
 
@@ -134,15 +139,11 @@ export function ErrorStatePanel({
 
         {cta && (
           <div className="rw-error-state__cta-row">
-            {cta.onClick ? (
-              <button
-                type="button"
-                className="rw-error-state__cta"
-                onClick={cta.onClick}
-              >
-                {cta.label}
-              </button>
-            ) : cta.href ? (
+            {cta.href ? (
+              // href wins — render <a> so Cmd/Ctrl/middle-click work correctly.
+              // onClick attaches to the anchor for SPA interception (caller can
+              // preventDefault() on plain left-clicks while modifier-clicks fall
+              // through to the browser's native anchor navigation).
               <a
                 href={cta.href}
                 className="rw-error-state__cta"
@@ -150,6 +151,14 @@ export function ErrorStatePanel({
               >
                 {cta.label}
               </a>
+            ) : cta.onClick ? (
+              <button
+                type="button"
+                className="rw-error-state__cta"
+                onClick={cta.onClick}
+              >
+                {cta.label}
+              </button>
             ) : null}
           </div>
         )}
