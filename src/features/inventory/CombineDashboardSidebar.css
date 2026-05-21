@@ -49,7 +49,11 @@
   text-align: right;
   font-family: var(--font-mono, monospace);
   color: #1e293b;
-  white-space: nowrap;
+  /* PR 300 R2: free-text fields (Anbieter, contract numbers) can exceed
+     the 280px rail; allow wrap + break-anywhere so long provider names
+     stay visible rather than overflowing the card. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ── Vertrag action buttons (canvas: secondary + accent-red delete) ────── */
