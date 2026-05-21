@@ -374,6 +374,48 @@
   line-height: 1.5;
 }
 
+/* --- Right-rail action buttons -------------------------------------- */
+.article-aside-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.article-aside-action-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--rw-font-sans);
+  font-size: 0.82rem;
+  color: var(--rw-ink-editorial-soft);
+  text-align: left;
+  line-height: 1.7;
+}
+
+.article-aside-action-btn:hover {
+  color: var(--rw-accent);
+  text-decoration: underline;
+}
+
+/* --- Toast ----------------------------------------------------------- */
+.article-aside-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--rw-ink-editorial);
+  color: var(--rw-bg-cream);
+  font-family: var(--rw-font-sans);
+  font-size: 0.85rem;
+  padding: 10px 20px;
+  pointer-events: none;
+  z-index: 9999;
+}
+
 /* --- Stand line ------------------------------------------------------ */
 .article-stand {
   text-align: center;

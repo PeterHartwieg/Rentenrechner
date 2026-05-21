@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, act, fireEvent } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
@@ -213,5 +213,139 @@ describe('ArticleLayout — chrome and metadata invariants', () => {
         )),
       ).not.toThrow()
     })
+  })
+})
+
+describe('ArticleLayout — Teilen + Als PDF speichern (R4.1)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    cleanup()
+    mockViewport('desktop')
+  })
+
+  it('calls navigator.share with title, text, and url when share API is available', async () => {
+    const mockShare = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { ...navigator, share: mockShare })
+
+    const { container } = render(
+      <ArticleLayout routeId="/rentenluecke-rechner">
+        <p>body</p>
+      </ArticleLayout>,
+    )
+    const btns = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.article-aside-action-btn'),
+    )
+    const teilenBtn = btns.find((b) => b.textContent?.includes('Teilen'))
+    expect(teilenBtn).not.toBeNull()
+
+    const expected = publicRouteRegistry['/rentenluecke-rechner']
+    await act(async () => {
+      fireEvent.click(teilenBtn!)
+    })
+
+    expect(mockShare).toHaveBeenCalledOnce()
+    expect(mockShare).toHaveBeenCalledWith({
+      title: expected.h1,
+      text: expected.summary,
+      url: window.location.href,
+    })
+  })
+
+  it('falls back to clipboard.writeText and shows "Link kopiert" toast when navigator.share is undefined', async () => {
+    const mockWrite = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      share: undefined,
+      clipboard: { writeText: mockWrite },
+    })
+
+    const { container } = render(
+      <ArticleLayout routeId="/rentenluecke-rechner">
+        <p>body</p>
+      </ArticleLayout>,
+    )
+    const btns = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.article-aside-action-btn'),
+    )
+    const teilenBtn = btns.find((b) => b.textContent?.includes('Teilen'))!
+
+    await act(async () => {
+      fireEvent.click(teilenBtn)
+    })
+
+    expect(mockWrite).toHaveBeenCalledOnce()
+    expect(mockWrite).toHaveBeenCalledWith(window.location.href)
+
+    const toast = container.querySelector('.article-aside-toast')
+    expect(toast).not.toBeNull()
+    expect(toast!.textContent).toBe('Link kopiert')
+  })
+
+  it('shows fallback toast with "Adresszeile kopieren" copy when both share API and clipboard are unavailable', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      share: undefined,
+      clipboard: undefined,
+    })
+
+    const { container } = render(
+      <ArticleLayout routeId="/rentenluecke-rechner">
+        <p>body</p>
+      </ArticleLayout>,
+    )
+    const btns = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.article-aside-action-btn'),
+    )
+    const teilenBtn = btns.find((b) => b.textContent?.includes('Teilen'))!
+
+    await act(async () => {
+      fireEvent.click(teilenBtn)
+    })
+
+    const toast = container.querySelector('.article-aside-toast')
+    expect(toast).not.toBeNull()
+    expect(toast!.textContent).toContain('Adresszeile kopieren')
+  })
+
+  it('calls window.print when Als PDF speichern is clicked', () => {
+    const mockPrint = vi.fn()
+    vi.stubGlobal('print', mockPrint)
+
+    const { container } = render(
+      <ArticleLayout routeId="/rentenluecke-rechner">
+        <p>body</p>
+      </ArticleLayout>,
+    )
+    const btns = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.article-aside-action-btn'),
+    )
+    const pdfBtn = btns.find((b) => b.textContent?.includes('PDF'))!
+    expect(pdfBtn).not.toBeNull()
+
+    fireEvent.click(pdfBtn)
+
+    expect(mockPrint).toHaveBeenCalledOnce()
+  })
+
+  it('preserves the existing GitHub-edit link and license note in the meta card', () => {
+    const { container } = render(
+      <ArticleLayout routeId="/etf-vs-bav">
+        <p>body</p>
+      </ArticleLayout>,
+    )
+    const metaCard = container.querySelector('.article-aside-card--meta')
+    expect(metaCard).not.toBeNull()
+
+    const editLink = metaCard!.querySelector('a') as HTMLAnchorElement | null
+    expect(editLink).not.toBeNull()
+    expect(editLink!.getAttribute('href')).toContain('github.com')
+
+    expect(metaCard!.textContent).toContain('Auf GitHub bearbeiten')
+    expect(metaCard!.textContent).toContain('PolyForm Noncommercial')
   })
 })
