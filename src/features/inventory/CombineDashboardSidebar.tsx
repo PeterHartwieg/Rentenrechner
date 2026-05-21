@@ -22,7 +22,7 @@
 import './InventoryWizard.css'
 import './CombineDashboardSidebar.css'
 import { useState, useMemo, useId, useRef, useEffect } from 'react'
-import { Plus, Trash2, Archive, RefreshCw, Lock } from 'lucide-react'
+import { Plus, Archive, RefreshCw, Lock } from 'lucide-react'
 import type { WorkspaceAssumptionsV2, WhatIfScenario, Scenario } from '../../domain/workspace'
 import type {
   BavInstance,
@@ -58,6 +58,7 @@ import { InvSelect } from './fields'
 import { InvFieldContext, useInvFieldContext } from './invFieldContext'
 import { InfoTip } from '../../ui/InfoTip'
 import { toNumber, useDraftNumber, DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
+import { formatCurrency } from '../../utils/format'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -385,6 +386,74 @@ function PersonalProfileSection({
 }
 
 // ---------------------------------------------------------------------------
+// Vertragsdaten metadata table — canvas DirectionDVertragDetail right-rail
+// ---------------------------------------------------------------------------
+
+interface VertragdatenRow {
+  label: string
+  value: string
+}
+
+interface VertragdatenTableProps {
+  rows: VertragdatenRow[]
+}
+
+function VertragdatenTable({ rows }: VertragdatenTableProps) {
+  return (
+    <div className="cds-vertragdaten-panel" data-testid="vertragdaten-table">
+      <div className="cds-vertragdaten-header">Vertragsdaten</div>
+      <table className="cds-vertragdaten-table">
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="cds-vertragdaten-row">
+              <td className="cds-vertragdaten-key">{row.label}</td>
+              <td className="cds-vertragdaten-val">{row.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+interface VertragActionButtonsProps {
+  canRemove: boolean
+  onRemove: () => void
+  instanceId: string
+}
+
+function VertragActionButtons({ canRemove, onRemove, instanceId }: VertragActionButtonsProps) {
+  return (
+    <div className="cds-vertrag-action-btns">
+      <button
+        type="button"
+        className="cds-vertrag-edit-btn"
+        onClick={() => {
+          // TODO(#new-issue): wire to inventory edit flow once handler is designed
+          void instanceId
+        }}
+      >
+        Vertrag bearbeiten
+      </button>
+      {canRemove && (
+        <button
+          type="button"
+          className="cds-vertrag-remove-btn"
+          onClick={onRemove}
+        >
+          Vertrag entfernen
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Returns the short contract identifier for display (last 12 chars of instanceId). */
+function shortInstanceId(instanceId: string): string {
+  return instanceId.length > 12 ? '…' + instanceId.slice(-12) : instanceId
+}
+
+// ---------------------------------------------------------------------------
 // bAV instance sidebar card
 // ---------------------------------------------------------------------------
 
@@ -407,6 +476,17 @@ function BavInstanceCard({
   const [beitragsdynamik, setBeitragsdynamik] = useState(instance.annualContributionGrowthRate ?? 0)
   const riy = instance.fees.wrapperAssetFee + instance.fees.fundAssetFee
 
+  const vertragdatenRows: VertragdatenRow[] = [
+    { label: 'Vertragsnummer', value: shortInstanceId(instance.instanceId) },
+    { label: 'Produkt', value: 'Betriebliche AV (bAV)' },
+    { label: 'Schicht', value: 'Schicht 2' },
+    { label: 'Anbieter', value: instance.anbieter ?? '—' },
+    { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyGrossConversion, 0)} / Monat` },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
+  ]
+
   return (
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
@@ -422,20 +502,10 @@ function BavInstanceCard({
               Optionen
             </button>
           )}
-          {canRemove && (
-            <button
-              type="button"
-              className="combine-sidebar-remove-btn"
-              onClick={onRemove}
-              title="Instanz entfernen"
-            >
-              <Trash2 size={13} aria-hidden="true" />
-              Entfernen
-            </button>
-          )}
         </div>
       </div>
       <div className="combine-instance-body">
+        <VertragdatenTable rows={vertragdatenRows} />
         <VintageChips atoms={vintageAtoms} />
 
         <div className="combine-instance-fields">
@@ -516,6 +586,11 @@ function BavInstanceCard({
             />
           </div>
         </details>
+        <VertragActionButtons
+          canRemove={canRemove}
+          onRemove={onRemove}
+          instanceId={instance.instanceId}
+        />
       </div>
     </div>
   )
@@ -550,23 +625,23 @@ function EtfInstanceCard({
   }
   const riy = instance.annualAssetFee
 
+  const vertragdatenRows: VertragdatenRow[] = [
+    { label: 'Vertragsnummer', value: shortInstanceId(instance.instanceId) },
+    { label: 'Produkt', value: 'ETF-Sparplan' },
+    { label: 'Schicht', value: 'Schicht 3' },
+    { label: 'Anbieter', value: instance.anbieter ?? '—' },
+    { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyContribution ?? 0, 0)} / Monat` },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
+  ]
+
   return (
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
         <span className="combine-instance-label">{instance.label}</span>
-        {canRemove && (
-          <button
-            type="button"
-            className="combine-sidebar-remove-btn"
-            onClick={onRemove}
-            title="Instanz entfernen"
-          >
-            <Trash2 size={13} aria-hidden="true" />
-            Entfernen
-          </button>
-        )}
       </div>
       <div className="combine-instance-body">
+        <VertragdatenTable rows={vertragdatenRows} />
         <div className="combine-instance-fields">
           <CommonContractFields
             instance={instance}
@@ -607,6 +682,11 @@ function EtfInstanceCard({
             />
           </div>
         </details>
+        <VertragActionButtons
+          canRemove={canRemove}
+          onRemove={onRemove}
+          instanceId={instance.instanceId}
+        />
       </div>
     </div>
   )
@@ -635,6 +715,17 @@ function InsuranceInstanceCard({
   const [beitragsdynamik, setBeitragsdynamik] = useState(instance.annualContributionGrowthRate ?? 0)
   const riy = instance.fees.wrapperAssetFee + instance.fees.fundAssetFee
 
+  const vertragdatenRows: VertragdatenRow[] = [
+    { label: 'Vertragsnummer', value: shortInstanceId(instance.instanceId) },
+    { label: 'Produkt', value: 'Private Rentenversicherung (pAV)' },
+    { label: 'Schicht', value: 'Schicht 3' },
+    { label: 'Anbieter', value: instance.anbieter ?? '—' },
+    { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyContribution ?? 0, 0)} / Monat` },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
+  ]
+
   return (
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
@@ -650,20 +741,10 @@ function InsuranceInstanceCard({
               Optionen
             </button>
           )}
-          {canRemove && (
-            <button
-              type="button"
-              className="combine-sidebar-remove-btn"
-              onClick={onRemove}
-              title="Instanz entfernen"
-            >
-              <Trash2 size={13} aria-hidden="true" />
-              Entfernen
-            </button>
-          )}
         </div>
       </div>
       <div className="combine-instance-body">
+        <VertragdatenTable rows={vertragdatenRows} />
         <VintageChips atoms={vintageAtoms} />
         <div className="combine-instance-fields">
           <CommonContractFields instance={instance} onChange={onChange} />
@@ -713,6 +794,11 @@ function InsuranceInstanceCard({
             />
           </div>
         </details>
+        <VertragActionButtons
+          canRemove={canRemove}
+          onRemove={onRemove}
+          instanceId={instance.instanceId}
+        />
       </div>
     </div>
   )
@@ -738,6 +824,17 @@ function BasisrenteInstanceCard({
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
   const riy = instance.fees.wrapperAssetFee + instance.fees.fundAssetFee
 
+  const vertragdatenRows: VertragdatenRow[] = [
+    { label: 'Vertragsnummer', value: shortInstanceId(instance.instanceId) },
+    { label: 'Produkt', value: 'Basisrente (Rürup)' },
+    { label: 'Schicht', value: 'Schicht 1' },
+    { label: 'Anbieter', value: instance.anbieter ?? '—' },
+    { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyGrossContribution, 0)} / Monat` },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
+  ]
+
   return (
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
@@ -753,20 +850,10 @@ function BasisrenteInstanceCard({
               Optionen
             </button>
           )}
-          {canRemove && (
-            <button
-              type="button"
-              className="combine-sidebar-remove-btn"
-              onClick={onRemove}
-              title="Instanz entfernen"
-            >
-              <Trash2 size={13} aria-hidden="true" />
-              Entfernen
-            </button>
-          )}
         </div>
       </div>
       <div className="combine-instance-body">
+        <VertragdatenTable rows={vertragdatenRows} />
         <div className="combine-instance-fields">
           <CommonContractFields instance={instance} onChange={onChange} />
           <CombineField label="Monatsbeitrag (EUR)">
@@ -801,6 +888,11 @@ function BasisrenteInstanceCard({
             />
           </div>
         </details>
+        <VertragActionButtons
+          canRemove={canRemove}
+          onRemove={onRemove}
+          instanceId={instance.instanceId}
+        />
       </div>
     </div>
   )
@@ -823,6 +915,17 @@ function AvdInstanceCard({
   onRemove: () => void
   onOpenDecisionMenu?: () => void
 }) {
+  const vertragdatenRows: VertragdatenRow[] = [
+    { label: 'Vertragsnummer', value: shortInstanceId(instance.instanceId) },
+    { label: 'Produkt', value: 'Altersvorsorgedepot (AVD)' },
+    { label: 'Schicht', value: 'Schicht 2' },
+    { label: 'Anbieter', value: instance.anbieter ?? '—' },
+    { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} / Monat` },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
+  ]
+
   return (
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
@@ -838,20 +941,10 @@ function AvdInstanceCard({
               Optionen
             </button>
           )}
-          {canRemove && (
-            <button
-              type="button"
-              className="combine-sidebar-remove-btn"
-              onClick={onRemove}
-              title="Instanz entfernen"
-            >
-              <Trash2 size={13} aria-hidden="true" />
-              Entfernen
-            </button>
-          )}
         </div>
       </div>
       <div className="combine-instance-body">
+        <VertragdatenTable rows={vertragdatenRows} />
         <div className="combine-instance-fields">
           <CommonContractFields instance={instance} onChange={onChange} />
           <CombineField label="Eigenbeitrag (EUR/Monat)">
@@ -896,6 +989,11 @@ function AvdInstanceCard({
             </label>
           </CombineField>
         </div>
+        <VertragActionButtons
+          canRemove={canRemove}
+          onRemove={onRemove}
+          instanceId={instance.instanceId}
+        />
       </div>
     </div>
   )
@@ -918,6 +1016,17 @@ function RiesterInstanceCard({
   onRemove: () => void
   onOpenDecisionMenu?: () => void
 }) {
+  const vertragdatenRows: VertragdatenRow[] = [
+    { label: 'Vertragsnummer', value: shortInstanceId(instance.instanceId) },
+    { label: 'Produkt', value: 'Riester-Rente' },
+    { label: 'Schicht', value: 'Schicht 2' },
+    { label: 'Anbieter', value: instance.anbieter ?? '—' },
+    { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} / Monat` },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
+  ]
+
   return (
     <div className="combine-instance-card">
       <div className="combine-instance-card-header">
@@ -933,20 +1042,10 @@ function RiesterInstanceCard({
               Optionen
             </button>
           )}
-          {canRemove && (
-            <button
-              type="button"
-              className="combine-sidebar-remove-btn"
-              onClick={onRemove}
-              title="Instanz entfernen"
-            >
-              <Trash2 size={13} aria-hidden="true" />
-              Entfernen
-            </button>
-          )}
         </div>
       </div>
       <div className="combine-instance-body">
+        <VertragdatenTable rows={vertragdatenRows} />
         <div className="combine-instance-fields">
           <CommonContractFields
             instance={instance}
@@ -974,6 +1073,11 @@ function RiesterInstanceCard({
             />
           </CombineField>
         </div>
+        <VertragActionButtons
+          canRemove={canRemove}
+          onRemove={onRemove}
+          instanceId={instance.instanceId}
+        />
       </div>
     </div>
   )

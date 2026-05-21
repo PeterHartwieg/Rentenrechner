@@ -1,5 +1,106 @@
 /* CombineDashboardSidebar — baseline header, stale badges, archive button */
 
+/* ── Rail width (Sober D canvas: 280px right-rail spec, H11) ─────────── */
+
+.combine-sidebar {
+  min-width: 280px;
+}
+
+/* ── Vertragsdaten metadata panel (canvas DirectionDVertragDetail rail) ── */
+
+.cds-vertragdaten-panel {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  margin-bottom: 12px;
+}
+
+.cds-vertragdaten-header {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  padding: 6px 10px 5px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cds-vertragdaten-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.cds-vertragdaten-row {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cds-vertragdaten-row:last-child {
+  border-bottom: none;
+}
+
+.cds-vertragdaten-key {
+  padding: 4px 10px;
+  color: #64748b;
+  width: 50%;
+}
+
+.cds-vertragdaten-val {
+  padding: 4px 10px 4px 4px;
+  text-align: right;
+  font-family: var(--font-mono, monospace);
+  color: #1e293b;
+  /* PR 300 R2: free-text fields (Anbieter, contract numbers) can exceed
+     the 280px rail; allow wrap + break-anywhere so long provider names
+     stay visible rather than overflowing the card. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ── Vertrag action buttons (canvas: secondary + accent-red delete) ────── */
+
+.cds-vertrag-action-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.cds-vertrag-edit-btn {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #1e293b;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s;
+}
+
+.cds-vertrag-edit-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.cds-vertrag-remove-btn {
+  background: transparent;
+  border: 1px solid #fca5a5;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #dc2626;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.cds-vertrag-remove-btn:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
 /* ── Baseline header ─────────────────────────────────────────────────── */
 
 .cds-baseline-header {

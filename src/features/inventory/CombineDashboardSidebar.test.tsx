@@ -422,3 +422,99 @@ describe('CombineDashboardSidebar — programmatic label association (a11y #69)'
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// H11: Vertragsdaten right-rail metadata table + action buttons (R2.4)
+// ---------------------------------------------------------------------------
+
+describe('CombineDashboardSidebar — Vertragsdaten right-rail (H11)', () => {
+  it('.combine-sidebar class is present for the 280px rail width token', () => {
+    const ws = dilanWorkspace()
+    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    // The outermost rendered element carries .combine-sidebar so the
+    // min-width: 280px rule in CombineDashboardSidebar.css applies.
+    const sidebar = container.querySelector('.combine-sidebar')
+    expect(sidebar).not.toBeNull()
+    cleanup()
+  })
+
+  it('each instance card renders a vertragdaten-table panel', () => {
+    const ws = dilanWorkspace() // 2 bAV + 1 ETF + 1 Riester = 4 cards
+    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const tables = container.querySelectorAll('[data-testid="vertragdaten-table"]')
+    expect(tables.length).toBe(4)
+    cleanup()
+  })
+
+  it('each vertragdaten-table has exactly 8 metadata rows', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const table = container.querySelector('[data-testid="vertragdaten-table"]')
+    expect(table).not.toBeNull()
+    const rows = table!.querySelectorAll('.cds-vertragdaten-row')
+    expect(rows.length).toBe(8)
+    cleanup()
+  })
+
+  it('vertragdaten-table contains the 8 canonical row labels', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const tableText = container.querySelector('[data-testid="vertragdaten-table"]')!.textContent ?? ''
+    for (const label of ['Vertragsnummer', 'Produkt', 'Schicht', 'Anbieter', 'Vertragsbeginn', 'Beitragshöhe', 'Rentenfaktor', 'Stand']) {
+      expect(tableText).toContain(label)
+    }
+    cleanup()
+  })
+
+  it('"Vertrag bearbeiten" button is present on a bAV card', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const editBtn = screen.getByRole('button', { name: 'Vertrag bearbeiten' })
+    expect(editBtn).toBeDefined()
+    cleanup()
+  })
+
+  it('"Vertrag entfernen" button is present on a bAV card when canRemove=true (2+ instances)', () => {
+    // canRemove is true only when there are 2 or more instances of the product.
+    let ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    ws = addInstanceToWorkspace(ws, 'bav')
+    render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    // With 2 bAV cards, both should show "Vertrag entfernen".
+    const removeBtns = screen.getAllByRole('button', { name: 'Vertrag entfernen' })
+    expect(removeBtns.length).toBe(2)
+    cleanup()
+  })
+
+  it('"Vertrag entfernen" click calls removeInstance with the correct product + instanceId', () => {
+    let ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    ws = addInstanceToWorkspace(ws, 'bav')
+    const firstInstanceId = ws.baseline.assumptions.bav[0].instanceId
+
+    const removeInstance = vi.fn()
+    const props = { ...makeProps(ws), removeInstance }
+    render(<CombineDashboardSidebar {...props} />)
+
+    const removeBtns = screen.getAllByRole('button', { name: 'Vertrag entfernen' })
+    fireEvent.click(removeBtns[0])
+
+    expect(removeInstance).toHaveBeenCalledTimes(1)
+    expect(removeInstance).toHaveBeenCalledWith('bav', firstInstanceId)
+    cleanup()
+  })
+
+  it('vertragdaten-table for ETF shows Schicht 3', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'etf')
+    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const tableText = container.querySelector('[data-testid="vertragdaten-table"]')!.textContent ?? ''
+    expect(tableText).toContain('Schicht 3')
+    cleanup()
+  })
+
+  it('vertragdaten-table for Basisrente shows Schicht 1', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'basisrente')
+    const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
+    const tableText = container.querySelector('[data-testid="vertragdaten-table"]')!.textContent ?? ''
+    expect(tableText).toContain('Schicht 1')
+    cleanup()
+  })
+})
