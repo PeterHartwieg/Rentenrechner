@@ -460,7 +460,7 @@ describe('CombineDashboardSidebar — Vertragsdaten right-rail (H11)', () => {
     const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
     const { container } = render(<CombineDashboardSidebar {...makeProps(ws)} />)
     const tableText = container.querySelector('[data-testid="vertragdaten-table"]')!.textContent ?? ''
-    for (const label of ['Vertragsnummer', 'Produkt', 'Schicht', 'Anbieter', 'Vertragsbeginn', 'Beitragshöhe', 'Garantiezins', 'Stand']) {
+    for (const label of ['Vertragsnummer', 'Produkt', 'Schicht', 'Anbieter', 'Vertragsbeginn', 'Beitragshöhe', 'Rentenfaktor', 'Stand']) {
       expect(tableText).toContain(label)
     }
     cleanup()

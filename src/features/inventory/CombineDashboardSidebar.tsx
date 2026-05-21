@@ -483,7 +483,7 @@ function BavInstanceCard({
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
     { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyGrossConversion, 0)} €/Monat` },
-    { label: 'Garantiezins', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
     { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
   ]
 
@@ -632,7 +632,6 @@ function EtfInstanceCard({
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
     { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyContribution ?? 0, 0)} €/Monat` },
-    { label: 'Garantiezins', value: '—' },
     { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
   ]
 
@@ -723,7 +722,7 @@ function InsuranceInstanceCard({
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
     { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyContribution ?? 0, 0)} €/Monat` },
-    { label: 'Garantiezins', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
     { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
   ]
 
@@ -832,7 +831,7 @@ function BasisrenteInstanceCard({
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
     { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyGrossContribution, 0)} €/Monat` },
-    { label: 'Garantiezins', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
     { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
   ]
 
@@ -923,7 +922,6 @@ function AvdInstanceCard({
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
     { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} €/Monat` },
-    { label: 'Garantiezins', value: '—' },
     { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
   ]
 
@@ -1024,7 +1022,7 @@ function RiesterInstanceCard({
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
     { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} €/Monat` },
-    { label: 'Garantiezins', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
     { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
   ]
 
