@@ -172,6 +172,29 @@ describe('LueckeSchliessenModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  // Codex P2 (R3.1 R1): ModalSlot's FocusTrap focuses the first focusable
+  // element (the invisible backdrop button) on mount. The consumer useEffect
+  // on [step] must override this so the first visible form field has focus
+  // when the modal opens — otherwise pressing Space/Enter immediately
+  // dismisses the dialog.
+  it('focuses the first form field (not the backdrop button) on open', () => {
+    const ctx = setup()
+    const { container } = render(
+      <LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />,
+    )
+    // The backdrop button is the invisible dismiss affordance — it must NOT
+    // have focus when the modal opens.
+    const backdropBtn = container.querySelector<HTMLButtonElement>('.rw-modal-slot__backdrop')
+    expect(backdropBtn).not.toBeNull()
+    expect(document.activeElement).not.toBe(backdropBtn)
+
+    // The first preset button ("100 €") is the first visible form control in
+    // step 1 and should have received focus via the consumer useEffect.
+    const firstPresetBtn = container.querySelector<HTMLButtonElement>('.recommender-preset')
+    expect(firstPresetBtn).not.toBeNull()
+    expect(document.activeElement).toBe(firstPresetBtn)
+  })
+
   it('PR 11 viewport sweep — opens at phone / tablet / desktop', () => {
     const ctx = setup()
     eachViewport(() => {

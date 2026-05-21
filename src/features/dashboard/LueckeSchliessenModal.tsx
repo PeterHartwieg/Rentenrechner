@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Workspace } from '../../domain/workspace'
 import { useFeedbackTarget } from '../../features/qa-feedback'
 import type { CombinedResult } from '../../engine/portfolioCombine'
@@ -60,6 +60,17 @@ export function LueckeSchliessenModal({
   // can echo what was saved.
   const [savedCandidate, setSavedCandidate] = useState<RecommendedCandidate | null>(null)
 
+  // Keyboard a11y: ModalSlot's FocusTrap focuses the first focusable element
+  // on mount, which is the invisible backdrop <button>. Override by focusing
+  // the first visible form control in the step body after FocusTrap's mount-
+  // focus runs. useEffect (not useLayoutEffect) ensures this consumer effect
+  // runs after FocusTrap's mount effect, so this focus call wins the race.
+  // Re-runs on step transition so the first field of each step receives focus.
+  const firstFieldRef = useRef<HTMLInputElement | HTMLButtonElement | null>(null)
+  useEffect(() => {
+    firstFieldRef.current?.focus()
+  }, [step])
+
   const bavOffer = useMemo<BavEmployerOfferInput>(() => {
     if (offerChoice !== 'yes') {
       return {
@@ -109,9 +120,10 @@ export function LueckeSchliessenModal({
           <div className="luecke-modal__body">
             <h3 {...stepHeadingTargetProps}>Wie viel möchtest du zusätzlich sparen?</h3>
             <div className="luecke-modal__presets" role="group" aria-label="Monatliche Sparrate auswählen">
-              {[100, 200, 400].map((preset) => (
+              {[100, 200, 400].map((preset, index) => (
                 <button
                   key={preset}
+                  ref={index === 0 ? (el) => { firstFieldRef.current = el } : undefined}
                   type="button"
                   className={`recommender-preset ${safeBudget === preset ? 'is-active' : ''}`}
                   onClick={() => setBudget(preset)}
@@ -152,6 +164,7 @@ export function LueckeSchliessenModal({
             <h3 {...stepHeadingTargetProps}>Hast du ein bAV-Angebot vom Arbeitgeber?</h3>
             <div className="luecke-modal__choice-row">
               <button
+                ref={(el) => { firstFieldRef.current = el }}
                 type="button"
                 className={`luecke-modal__choice ${offerChoice === 'yes' ? 'is-active' : ''}`}
                 onClick={() => setOfferChoice('yes')}
@@ -304,6 +317,7 @@ export function LueckeSchliessenModal({
             </p>
             <div className="luecke-modal__actions">
               <button
+                ref={(el) => { firstFieldRef.current = el }}
                 type="button"
                 className="luecke-modal__secondary"
                 onClick={() => {

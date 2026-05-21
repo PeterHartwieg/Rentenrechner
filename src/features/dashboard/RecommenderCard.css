@@ -10,9 +10,9 @@
    Tokens come from src/App.css (`--rw-*`). No legacy dashboard palette
    (#fafbfd / #2563eb / 10px radius) is permitted anywhere in this file.
 
-   The `.luecke-modal__body--result > .recommender-card` override is the
-   one place this card is nested inside a modal body; we keep that reset
-   so the modal owns the panel chrome and this section blends into it.
+   When nested inside the Lücke-schließen modal body, styling overrides
+   in LueckeSchliessenModal.css ensure the modal owns the panel chrome
+   and this card blends into it.
    ========================================================================== */
 
 .recommender-card {
