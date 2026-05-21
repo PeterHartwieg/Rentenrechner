@@ -1,56 +1,760 @@
-/* InventoryWizard — full-screen modal overlay
- * Mirrors GuidedSetup chrome patterns (guided-setup-overlay / guided-setup-card).
+/* InventoryWizard — Sober D port (R2.1 / H1)
+ *
+ * The dialog chrome (backdrop, panel, header, close button, body scroll
+ * container, phone safe-area inset) is owned by the shared ModalSlot
+ * primitive in src/ui/chrome/ModalSlot.{tsx,css}. This file styles only
+ * the wizard's own surfaces inside the slot:
+ *
+ *   .inventory-modal             — `panelClassName` modifier passed to
+ *                                  ModalSlot (currently no overrides;
+ *                                  reserved hook for per-wizard width
+ *                                  tweaks without forking ModalSlot CSS).
+ *   .inventory-step-content      — flex-column wrapper that sits inside
+ *                                  ModalSlot.__body. Step 1's sticky
+ *                                  footer anchors against this scroll
+ *                                  container.
+ *   .inventory-body              — step content grid (lede + product
+ *                                  rows + validation banner).
+ *   .inventory-product-row       — checklist row (label + nested
+ *                                  instance cards).
+ *   .inventory-instance-card     — per-product card body.
+ *   .inventory-field*            — field shells used by NumberField +
+ *                                  selects rendered inside the wizard.
+ *   .inventory-footer            — sticky CTA footer with Abbrechen +
+ *                                  Fertig actions.
+ *   .inv-instance-*              — multi-instance header (label input +
+ *                                  remove button) + the dashed
+ *                                  add-instance button.
+ *   .inv-remove-dialog           — confirm-remove modal (a separate
+ *                                  alertdialog stacked over ModalSlot).
+ *   .inv-layer3-*                — Layer 3 disclosure inside per-product
+ *                                  cards.
+ *   .inv-vintage-chip            — vintage chips above each instance.
+ *   .evidence-badge*             — per-field evidence indicators
+ *                                  (rendered by ../EvidenceBadge.tsx;
+ *                                  the component writes class names, the
+ *                                  styling lives here).
+ *
+ * Sober D tokens come from src/App.css :root — see ModalSlot.css for the
+ * inventory of token names.
  */
 
-/* ─── Evidence badges (issue 09) ──────────────────────────────────── */
+/* ─── Evidence badges (Sober D restyle) ──────────────────────────── */
 
 .evidence-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.72rem;
+  font-family: var(--rw-font-mono);
+  font-size: 10.5px;
   font-weight: 500;
-  border-radius: 4px;
-  padding: 1px 6px;
-  line-height: 1.6;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  border-radius: 0;
+  padding: 2px 6px;
+  line-height: 1.5;
   white-space: nowrap;
+  border: 1px solid var(--rw-rule-soft);
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink-soft);
 }
 
 .evidence-badge--estimate {
-  background: #fef9c3;
-  color: #854d0e;
-  border: 1px solid #fde047;
+  background: var(--rw-accent-bg);
+  color: var(--rw-accent);
+  border-color: var(--rw-accent);
 }
 
 .evidence-badge--confirmed {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  border-color: var(--rw-rule);
 }
 
 .evidence-badge--statement {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #93c5fd;
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink);
+  border-color: var(--rw-rule);
 }
 
 .evidence-badge-confirm-btn {
   background: none;
-  border: none;
+  border: 0;
   padding: 0 2px;
-  font-size: 0.68rem;
+  font-family: var(--rw-font-mono);
+  font-size: 10.5px;
   font-weight: 600;
-  color: #b45309;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--rw-accent);
   cursor: pointer;
   text-decoration: underline;
   line-height: 1;
 }
 
 .evidence-badge-confirm-btn:hover {
-  color: #92400e;
+  color: var(--rw-ink);
 }
 
-/* ─── CombineIncomePanel layout ────────────────────────────────────── */
+/* ─── Step wrapper + body ────────────────────────────────────────── */
+
+.inventory-step-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.inventory-body {
+  flex: 1 1 auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink);
+}
+
+.inventory-lede {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+  max-width: 64ch;
+}
+
+/* ─── Product rows ───────────────────────────────────────────────── */
+
+.inventory-product-row {
+  border: 1px solid var(--rw-rule-soft);
+  background: var(--rw-bg-paper);
+}
+
+.inventory-product-row--checked {
+  border-color: var(--rw-rule);
+}
+
+.inventory-product-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  background: var(--rw-bg-paper-soft);
+  user-select: none;
+  font-family: var(--rw-font-sans);
+}
+
+.inventory-product-row--checked .inventory-product-check {
+  background: var(--rw-bg-paper);
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.inventory-product-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--rw-ink);
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.inventory-product-check-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.inventory-product-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rw-ink);
+  letter-spacing: -0.1px;
+}
+
+.inventory-product-hint {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--rw-ink-faint);
+}
+
+/* ─── Instance card (expanded per-product body) ──────────────────── */
+
+.inventory-instance-card {
+  padding: 16px 16px 18px;
+  background: var(--rw-bg-paper);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inventory-instance-card + .inventory-instance-card {
+  border-top: 1px solid var(--rw-rule-soft);
+}
+
+.inventory-instance-section-heading {
+  margin: 0;
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.inventory-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.inventory-field-grid--narrow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inventory-field-grid--wide {
+  grid-template-columns: 1fr;
+}
+
+.inventory-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  color: var(--rw-ink);
+}
+
+.inventory-field span,
+.inventory-field label > span:first-child {
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--rw-ink);
+  letter-spacing: -0.05px;
+}
+
+.inventory-input-shell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 0;
+  padding: 7px 10px;
+  background: var(--rw-bg-paper);
+}
+
+.inventory-input-shell:focus-within {
+  border-color: var(--rw-ink);
+  box-shadow: 0 0 0 2px var(--rw-accent-bg);
+}
+
+.inventory-input-shell[aria-disabled="true"] {
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-rule-soft);
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.inventory-input-shell[aria-disabled="true"] input {
+  cursor: not-allowed;
+}
+
+.inventory-input-shell input,
+.inventory-input-shell select {
+  flex: 1;
+  border: 0;
+  outline: none;
+  font-family: var(--rw-font-sans);
+  font-size: 14px;
+  color: var(--rw-ink);
+  width: 100%;
+  background: transparent;
+}
+
+.inventory-input-shell em {
+  font-style: normal;
+  font-family: var(--rw-font-mono);
+  font-size: 11.5px;
+  color: var(--rw-ink-faint);
+  white-space: nowrap;
+}
+
+.inventory-select-shell {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 0;
+  background: var(--rw-bg-paper);
+  overflow: hidden;
+}
+
+.inventory-select-shell:focus-within {
+  border-color: var(--rw-ink);
+  box-shadow: 0 0 0 2px var(--rw-accent-bg);
+}
+
+.inventory-select-shell select {
+  flex: 1;
+  border: 0;
+  outline: none;
+  font-family: var(--rw-font-sans);
+  font-size: 14px;
+  color: var(--rw-ink);
+  padding: 8px 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Estimation placeholder copy */
+.inventory-estimate-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--rw-accent);
+  background: var(--rw-accent-bg);
+  border: 1px solid var(--rw-accent);
+  border-radius: 0;
+  padding: 2px 6px;
+  margin-top: 2px;
+  width: fit-content;
+}
+
+.inventory-field-hint {
+  font-size: 12px;
+  color: var(--rw-ink-faint);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.inventory-field-error {
+  font-family: var(--rw-font-sans);
+  font-size: 12px;
+  color: var(--rw-accent);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Child birth-year row in step 0 — NumberField + Entfernen button on one line. */
+.inventory-child-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.inventory-child-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ─── Sticky footer / actions ────────────────────────────────────── */
+
+.inventory-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-top: 2px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+  font-family: var(--rw-font-sans);
+}
+
+.inventory-footer-note {
+  font-size: 12px;
+  color: var(--rw-ink-faint);
+  line-height: 1.45;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.inventory-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.inventory-btn-ghost {
+  padding: 8px 16px;
+  border: 1px solid var(--rw-rule);
+  border-radius: 0;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.inventory-btn-ghost:hover {
+  background: var(--rw-bg-paper-soft);
+}
+
+.inventory-btn-ghost:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+.inventory-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 1px solid var(--rw-ink);
+  border-radius: 0;
+  background: var(--rw-ink);
+  color: var(--rw-bg-paper);
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.05px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inventory-btn-primary:hover {
+  background: var(--rw-ink-soft);
+  border-color: var(--rw-ink-soft);
+}
+
+.inventory-btn-primary:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+.inventory-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Validation errors banner ───────────────────────────────────── */
+
+.inventory-validation-errors {
+  margin: 0;
+  padding: 12px 16px 12px 32px;
+  border-radius: 0;
+  background: var(--rw-accent-bg);
+  border: 1px solid var(--rw-accent);
+  color: var(--rw-accent);
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ─── Multi-instance wrapper ─────────────────────────────────────── */
+
+.inv-instance-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.inv-instance-wrapper + .inv-instance-wrapper {
+  border-top: 1px dashed var(--rw-rule-soft);
+  margin-top: 4px;
+}
+
+/* ─── Instance header (label + remove button) ───────────────────── */
+
+.inv-instance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px 8px;
+  background: var(--rw-bg-paper-soft);
+  border-top: 1px solid var(--rw-rule-soft);
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.inv-instance-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.inv-instance-label-prefix {
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  white-space: nowrap;
+}
+
+.inv-instance-label-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 0;
+  padding: 5px 8px;
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  color: var(--rw-ink);
+  background: var(--rw-bg-paper);
+  outline: none;
+}
+
+.inv-instance-label-input:focus {
+  border-color: var(--rw-ink);
+  box-shadow: 0 0 0 2px var(--rw-accent-bg);
+}
+
+.inv-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--rw-accent);
+  border-radius: 0;
+  background: var(--rw-bg-paper);
+  color: var(--rw-accent);
+  font-family: var(--rw-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.inv-remove-btn:hover {
+  background: var(--rw-accent-bg);
+}
+
+.inv-remove-btn:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Add-instance button ────────────────────────────────────────── */
+
+.inv-add-instance-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 16px 14px;
+  padding: 8px 14px;
+  border: 1px dashed var(--rw-rule);
+  border-radius: 0;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  width: calc(100% - 32px);
+  justify-content: center;
+}
+
+.inv-add-instance-btn:hover {
+  background: var(--rw-bg-paper-soft);
+}
+
+.inv-add-instance-btn:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Remove confirmation dialog ─────────────────────────────────── */
+
+.inv-remove-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 17, 17, 0.55);
+  padding: 16px;
+}
+
+.inv-remove-dialog-card {
+  background: var(--rw-bg-paper);
+  border-radius: 0;
+  border: 1px solid var(--rw-rule);
+  box-shadow: 0 24px 48px rgba(17, 17, 17, 0.2);
+  padding: 22px 24px 20px;
+  max-width: 380px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--rw-font-sans);
+}
+
+.inv-remove-dialog-msg {
+  margin: 0;
+  font-size: 14px;
+  color: var(--rw-ink);
+  line-height: 1.55;
+}
+
+.inv-remove-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.inv-btn-danger {
+  padding: 8px 16px;
+  border: 1px solid var(--rw-accent);
+  border-radius: 0;
+  background: var(--rw-accent);
+  color: var(--rw-bg-paper);
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inv-btn-danger:hover {
+  background: var(--rw-ink);
+  border-color: var(--rw-ink);
+}
+
+.inv-btn-danger:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Layer 3 details / disclosure ───────────────────────────────── */
+
+.inv-layer3-details {
+  border-top: 1px solid var(--rw-rule-soft);
+  margin: 0;
+}
+
+.inv-layer3-summary {
+  padding: 10px 16px;
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-soft);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--rw-bg-paper-soft);
+  user-select: none;
+}
+
+.inv-layer3-summary::-webkit-details-marker {
+  display: none;
+}
+
+.inv-layer3-summary::before {
+  content: '▶';
+  font-size: 9px;
+  color: var(--rw-ink-faint);
+  transition: transform 0.15s;
+}
+
+details[open] .inv-layer3-summary::before {
+  transform: rotate(90deg);
+}
+
+.inv-layer3-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inv-layer3-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Vintage chips ──────────────────────────────────────────────── */
+
+.inv-vintage-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.inv-vintage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 0;
+  background: var(--rw-bg-paper);
+  border: 1px solid var(--rw-rule);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* ─── Phone variant ──────────────────────────────────────────────── */
+
+@media (max-width: 639px) {
+  .inventory-body {
+    padding: 16px 16px;
+    gap: 14px;
+  }
+
+  .inventory-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inventory-footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+  }
+
+  .inventory-footer-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .inventory-footer-actions .inventory-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .inventory-footer-actions .inventory-btn-ghost {
+    width: 100%;
+    text-align: center;
+    min-height: 40px;
+    justify-content: center;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Combine-mode sidebar styles (PR 3.6 / H11 scope).
+ *
+ * These selectors style the combine dashboard sidebar + per-contract
+ * "Vertragsdaten" cards rendered by CombineDashboardSidebar / CombineIncomePanel.
+ * They are NOT part of the wizard chrome — they were colocated here when
+ * the inventory feature was first scaffolded. R2.1 leaves them on the
+ * legacy slate/blue palette; PR 3.6 ports them to Sober D as part of
+ * the broader sidebar redesign.
+ * ═══════════════════════════════════════════════════════════════════════ */
 
 .combine-income-panel {
   margin-bottom: 8px;
@@ -126,622 +830,6 @@
   margin-bottom: 4px;
   color: #475569;
 }
-
-.inventory-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 4vh 16px 6vh;
-  background: rgba(15, 23, 42, 0.65);
-  overflow-y: auto;
-}
-
-.inventory-card {
-  position: relative;
-  width: min(700px, 100%);
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #d9e1ea;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ─── Header ──────────────────────────────────── */
-
-.inventory-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid #e9eef5;
-  background: #ffffff;
-}
-
-.inventory-header-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.inventory-eyebrow {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #0f766e;
-}
-
-.inventory-title {
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #172033;
-  line-height: 1.2;
-}
-
-.inventory-close {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  background: #ffffff;
-  color: #475569;
-  cursor: pointer;
-}
-
-.inventory-close:hover {
-  background: #f4f7fb;
-}
-
-/* ─── Body / scroll area ──────────────────────── */
-
-.inventory-body {
-  flex: 1 1 auto;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-}
-
-.inventory-lede {
-  margin: 0 0 4px;
-  font-size: 0.9rem;
-  color: #475569;
-  line-height: 1.5;
-}
-
-/* ─── Product rows ────────────────────────────── */
-
-.inventory-product-row {
-  border: 1px solid #d9e1ea;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.inventory-product-row--checked {
-  border-color: #2563eb;
-}
-
-.inventory-product-check {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  cursor: pointer;
-  background: #f8fafc;
-  user-select: none;
-}
-
-.inventory-product-check input[type="checkbox"] {
-  width: 17px;
-  height: 17px;
-  flex-shrink: 0;
-  accent-color: #2563eb;
-  cursor: pointer;
-}
-
-.inventory-product-check-label {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.inventory-product-name {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #172033;
-}
-
-.inventory-product-hint {
-  font-size: 0.78rem;
-  color: #667085;
-}
-
-/* ─── Instance card (expanded per-product body) ─ */
-
-.inventory-instance-card {
-  padding: 14px 16px 16px;
-  border-top: 1px solid #e2e8f0;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.inventory-instance-section-heading {
-  margin: 4px 0 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
-}
-
-.inventory-field-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 16px;
-}
-
-.inventory-field-grid--narrow {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.inventory-field-grid--wide {
-  grid-template-columns: 1fr;
-}
-
-.inventory-field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 0.85rem;
-  color: #344054;
-}
-
-.inventory-field span,
-.inventory-field label > span:first-child {
-  font-weight: 600;
-  font-size: 0.83rem;
-  color: #344054;
-}
-
-.inventory-input-shell {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #c9d7e5;
-  border-radius: 6px;
-  padding: 6px 10px;
-  background: #ffffff;
-}
-
-.inventory-input-shell:focus-within {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-.inventory-input-shell[aria-disabled="true"] {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-.inventory-input-shell[aria-disabled="true"] input {
-  cursor: not-allowed;
-}
-
-.inventory-input-shell input,
-.inventory-input-shell select {
-  flex: 1;
-  border: 0;
-  outline: none;
-  font-size: 0.9rem;
-  color: #172033;
-  width: 100%;
-  background: transparent;
-}
-
-.inventory-input-shell em {
-  font-style: normal;
-  font-size: 0.78rem;
-  color: #667085;
-  white-space: nowrap;
-}
-
-.inventory-select-shell {
-  display: flex;
-  align-items: center;
-  border: 1px solid #c9d7e5;
-  border-radius: 6px;
-  background: #ffffff;
-  overflow: hidden;
-}
-
-.inventory-select-shell:focus-within {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-.inventory-select-shell select {
-  flex: 1;
-  border: 0;
-  outline: none;
-  font-size: 0.9rem;
-  color: #172033;
-  padding: 7px 10px;
-  background: transparent;
-  cursor: pointer;
-}
-
-/* Estimation placeholder copy */
-.inventory-estimate-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.75rem;
-  color: #92400e;
-  background: #fffbeb;
-  border: 1px solid #fcd34d;
-  border-radius: 4px;
-  padding: 2px 6px;
-  margin-top: 2px;
-  width: fit-content;
-}
-
-.inventory-field-hint {
-  font-size: 0.76rem;
-  color: #667085;
-  line-height: 1.4;
-  margin: 0;
-}
-
-.inventory-field-error {
-  font-size: 0.76rem;
-  color: #b91c1c;
-  line-height: 1.4;
-  margin: 0;
-}
-
-/* Child birth-year row in step 0 — NumberField + Entfernen button on one line. */
-.inventory-child-row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-  margin-bottom: 8px;
-}
-
-.inventory-child-row > :first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-/* ─── Sticky footer / actions ─────────────────── */
-
-.inventory-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 20px;
-  border-top: 1px solid #e9eef5;
-  background: #ffffff;
-}
-
-.inventory-footer-note {
-  font-size: 0.78rem;
-  color: #667085;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.inventory-footer-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.inventory-btn-ghost {
-  padding: 8px 14px;
-  border: 1px solid #d9e1ea;
-  border-radius: 7px;
-  background: #ffffff;
-  color: #475569;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.inventory-btn-ghost:hover {
-  background: #f4f7fb;
-}
-
-.inventory-btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 18px;
-  border: 0;
-  border-radius: 7px;
-  background: #2563eb;
-  color: #ffffff;
-  font-size: 0.92rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.inventory-btn-primary:hover {
-  background: #1d4ed8;
-}
-
-.inventory-btn-primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* ─── Validation errors banner ────────────────── */
-
-.inventory-validation-errors {
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 6px;
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  color: #b91c1c;
-  font-size: 0.83rem;
-  list-style: disc;
-  padding-left: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* ─── Multi-instance wrapper ──────────────────── */
-
-.inv-instance-wrapper {
-  display: flex;
-  flex-direction: column;
-}
-
-.inv-instance-wrapper + .inv-instance-wrapper {
-  border-top: 1px dashed #d1d5db;
-  margin-top: 4px;
-}
-
-/* ─── Instance header (label + remove button) ─── */
-
-.inv-instance-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 16px 6px;
-  background: #f0f4fb;
-  border-top: 1px solid #e2e8f0;
-}
-
-.inv-instance-label-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
-}
-
-.inv-instance-label-prefix {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #475569;
-  white-space: nowrap;
-}
-
-.inv-instance-label-input {
-  flex: 1;
-  min-width: 0;
-  border: 1px solid #c9d7e5;
-  border-radius: 5px;
-  padding: 4px 8px;
-  font-size: 0.88rem;
-  color: #172033;
-  background: #fff;
-  outline: none;
-}
-
-.inv-instance-label-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
-}
-
-.inv-remove-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border: 1px solid #fca5a5;
-  border-radius: 5px;
-  background: #fef2f2;
-  color: #b91c1c;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.inv-remove-btn:hover {
-  background: #fee2e2;
-}
-
-/* ─── Add-instance button ─────────────────────── */
-
-.inv-add-instance-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 16px 12px;
-  padding: 7px 14px;
-  border: 1px dashed #2563eb;
-  border-radius: 6px;
-  background: #eff6ff;
-  color: #2563eb;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  width: calc(100% - 32px);
-  justify-content: center;
-}
-
-.inv-add-instance-btn:hover {
-  background: #dbeafe;
-}
-
-/* ─── Remove confirmation dialog ─────────────── */
-
-.inv-remove-dialog {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(15, 23, 42, 0.5);
-  padding: 16px;
-}
-
-.inv-remove-dialog-card {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #d9e1ea;
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
-  padding: 20px 22px 18px;
-  max-width: 340px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.inv-remove-dialog-msg {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #172033;
-  line-height: 1.5;
-}
-
-.inv-remove-dialog-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.inv-btn-danger {
-  padding: 8px 16px;
-  border: 0;
-  border-radius: 7px;
-  background: #dc2626;
-  color: #fff;
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.inv-btn-danger:hover {
-  background: #b91c1c;
-}
-
-/* ─── Layer 3 details / disclosure ───────────── */
-
-.inv-layer3-details {
-  border-top: 1px solid #e2e8f0;
-  margin: 0;
-}
-
-.inv-layer3-summary {
-  padding: 8px 16px;
-  font-size: 0.83rem;
-  font-weight: 700;
-  color: #475569;
-  cursor: pointer;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #f8fafc;
-  user-select: none;
-}
-
-.inv-layer3-summary::-webkit-details-marker {
-  display: none;
-}
-
-.inv-layer3-summary::before {
-  content: '▶';
-  font-size: 0.65rem;
-  color: #94a3b8;
-  transition: transform 0.15s;
-}
-
-details[open] .inv-layer3-summary::before {
-  transform: rotate(90deg);
-}
-
-.inv-layer3-body {
-  padding: 12px 16px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.inv-layer3-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* ─── Vintage chips ───────────────────────────── */
-
-.inv-vintage-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.inv-vintage-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
-  font-size: 0.76rem;
-  font-weight: 600;
-}
-
-/* ─── Dashboard combine-mode sidebar ─────────── */
 
 .combine-sidebar {
   display: flex;
@@ -884,36 +972,6 @@ details[open] .inv-layer3-summary::before {
 }
 
 @media (max-width: 560px) {
-  .inventory-field-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .inventory-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .inventory-footer-actions {
-    flex-direction: column-reverse;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .inventory-footer-actions .inventory-btn-primary {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .inventory-footer-actions .inventory-btn-ghost {
-    width: 100%;
-    text-align: center;
-    border-color: transparent;
-    background: transparent;
-    color: #475569;
-    padding: 6px 14px;
-    min-height: 40px;
-  }
-
   .combine-instance-fields {
     grid-template-columns: 1fr;
   }
