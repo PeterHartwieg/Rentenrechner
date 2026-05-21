@@ -1,12 +1,18 @@
-import type { BavLumpSumTaxMode, EtfProductResult, GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult, YearlyProjection } from '../domain'
-import { afterTaxBavLumpSum } from '../engine/bavPayout'
-import { afterTaxCertifiedPensionLumpSum } from '../engine/certifiedPensionPayout'
-import { afterTaxInvestmentCapital } from '../engine/etfPayout'
-import { afterTaxInsuranceLumpSum } from '../engine/insurancePayout'
+import type { GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain'
+import {
+  buildCombineExportProjection,
+  buildCompareExportProjection,
+  type InstanceTaxModes,
+} from '../engine/exportProjection'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { formatEvidenceStateForExport } from '../features/results/provenanceHelpers'
 
-type ExportOptions = {
+// Re-export so existing call-sites (`useDerivedViews.ts`, `combineCsvWiring.ts`)
+// keep working without a sweeping import-path change. Canonical home is
+// `src/engine/exportProjection.ts`.
+export type { InstanceTaxModes } from '../engine/exportProjection'
+
+interface ExportOptions {
   products: ProductResult[]
   bavAnnualTaxSvSavings: number
   bavProfile: PersonalProfile
@@ -70,7 +76,6 @@ function addActiveAssumptions(lines: string[], inflationRate: number | undefined
 }
 
 export function buildExportCsv(opts: ExportOptions): string {
-  const { products, bavAnnualTaxSvSavings, bavProfile, bavKvdrMember, bavOtherAnnualIncome, insuranceTaxMode, equityPartialExemption, insuranceOtherAnnualIncome, avdOtherAnnualIncome, riesterOtherAnnualIncome, rules } = opts
   const lines: string[] = []
 
   // Section 0: Disclaimer (first block of every export)
@@ -81,21 +86,35 @@ export function buildExportCsv(opts: ExportOptions): string {
   lines.push('')
   addActiveAssumptions(lines, opts.inflationRate)
 
+  const projection = buildCompareExportProjection({
+    products: opts.products,
+    bavAnnualTaxSvSavings: opts.bavAnnualTaxSvSavings,
+    bavProfile: opts.bavProfile,
+    bavKvdrMember: opts.bavKvdrMember,
+    bavOtherAnnualIncome: opts.bavOtherAnnualIncome,
+    insuranceTaxMode: opts.insuranceTaxMode,
+    equityPartialExemption: opts.equityPartialExemption,
+    insuranceOtherAnnualIncome: opts.insuranceOtherAnnualIncome,
+    avdOtherAnnualIncome: opts.avdOtherAnnualIncome,
+    riesterOtherAnnualIncome: opts.riesterOtherAnnualIncome,
+    rules: opts.rules,
+  })
+
   // Section 1: Summary
   lines.push('Detailvergleich')
   lines.push(csvRow('Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Kapital nach Steuer (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Wert-Faktor', 'Datenqualität'))
-  for (const r of products) {
+  for (const row of projection.summary) {
     lines.push(csvRow(
-      r.label,
-      r.scenarioLabel,
-      n(r.monthlyUserCost),
-      n(r.monthlyProductContribution),
-      n(r.capitalAtRetirement),
-      nn(r.afterTaxLumpSum),
-      n(r.netMonthlyPayout),
-      n(r.totalFees),
-      r.valueMultipleOnUserCost === null ? '' : r.valueMultipleOnUserCost.toFixed(2),
-      formatEvidenceStateForExport(r.inputConfidence),
+      row.label,
+      row.scenarioLabel,
+      n(row.monthlyUserCost),
+      n(row.monthlyProductContribution),
+      n(row.capitalAtRetirement),
+      nn(row.afterTaxLumpSum),
+      n(row.netMonthlyPayout),
+      n(row.totalFees),
+      row.valueMultipleOnUserCost === null ? '' : row.valueMultipleOnUserCost.toFixed(2),
+      formatEvidenceStateForExport(row.inputConfidence),
     ))
   }
 
@@ -103,96 +122,41 @@ export function buildExportCsv(opts: ExportOptions): string {
   lines.push('')
   lines.push('Jahres-Cashflows')
   lines.push(csvRow('Produkt', 'Szenario', 'Alter', 'Nettoaufwand p.a. (EUR)', 'Beitrag p.a. (EUR)', 'AG-Anteil p.a. (EUR)', 'Steuer-/SV-Ersparnis p.a. (EUR)', 'Gebühren p.a. (EUR)', 'Kum. Gebühren (EUR)', 'Kapital (EUR)', 'Kapital n. St. (EUR)', 'Reales Kapital (EUR)', 'Real n. St. (EUR)'))
-  for (const r of products) {
-    const isBav = r.productId === 'bav'
-    const isEtf = r.productId === 'etf'
-    const isBasisrente = r.productId === 'basisrente'
-    const annualSavings = isBav ? bavAnnualTaxSvSavings : 0
-    for (const row of r.rows) {
-      let afterTax: number | null
-      if (isBav) {
-        afterTax = afterTaxBavLumpSum(
-          row.balance,
-          bavProfile,
-          rules,
-          bavOtherAnnualIncome,
-          bavKvdrMember,
-        )
-      } else if (isEtf) {
-        afterTax = afterTaxInvestmentCapital(
-          row.balance,
-          row.cumulativeProductContributions,
-          rules,
-          equityPartialExemption,
-          row.cumulativeVorabpauschale,
-        )
-      } else if (isBasisrente) {
-        // Capital payout is legally prohibited for Basisrente — export blank.
-        afterTax = null
-      } else if (r.productId === 'altersvorsorgedepot') {
-        // AVD: §22 Nr. 5 EStG certified-pension lump-sum path.
-        afterTax = afterTaxCertifiedPensionLumpSum(
-          row.balance,
-          rules,
-          avdOtherAnnualIncome ?? 0,
-        )
-      } else if (r.productId === 'riester') {
-        // Riester: §22 Nr. 5 EStG certified-pension lump-sum path.
-        afterTax = afterTaxCertifiedPensionLumpSum(
-          row.balance,
-          rules,
-          riesterOtherAnnualIncome ?? 0,
-        )
-      } else {
-        afterTax = afterTaxInsuranceLumpSum(
-          row.balance,
-          row.cumulativeProductContributions,
-          insuranceTaxMode,
-          rules,
-          insuranceOtherAnnualIncome,
-        )
-      }
-      const realAfterTax = afterTax !== null && row.balance > 0
-        ? afterTax * (row.realBalance / row.balance)
-        : null
-      lines.push(csvRow(
-        r.label,
-        r.scenarioLabel,
-        row.age,
-        n(row.yearlyUserCost),
-        n(row.yearlyProductContribution),
-        n(row.yearlyEmployerContribution),
-        annualSavings > 0 ? n(annualSavings) : '',
-        n(row.yearlyFees),
-        n(row.cumulativeFees),
-        n(row.balance),
-        nn(afterTax),
-        n(row.realBalance),
-        nn(realAfterTax),
-      ))
-    }
+  for (const row of projection.yearly) {
+    lines.push(csvRow(
+      row.label,
+      row.scenarioLabel,
+      row.age,
+      n(row.yearlyUserCost),
+      n(row.yearlyProductContribution),
+      n(row.yearlyEmployerContribution),
+      row.annualTaxSvSavings !== null && row.annualTaxSvSavings > 0 ? n(row.annualTaxSvSavings) : '',
+      n(row.yearlyFees),
+      n(row.cumulativeFees),
+      n(row.balance),
+      nn(row.afterTaxBalance),
+      n(row.realBalance),
+      nn(row.realAfterTaxBalance),
+    ))
   }
 
   // Section 3: ETF payout schedule
-  const etfWithPayouts = products.filter((r): r is EtfProductResult => r.productId === 'etf' && r.etfPayoutRows.length > 0)
-  if (etfWithPayouts.length > 0) {
+  if (projection.etfPayouts.length > 0) {
     lines.push('')
     lines.push('Rentenphase (ETF-Entnahme)')
     lines.push(csvRow('Szenario', 'Alter', 'Kapital Anfang (EUR)', 'Brutto p.a. (EUR)', 'Steuerpfl. Gewinn (EUR)', 'Sparerpauschb. (EUR)', 'Steuer (EUR)', 'Netto mtl. (EUR)', 'Kapital Ende (EUR)'))
-    for (const r of etfWithPayouts) {
-      for (const row of r.etfPayoutRows) {
-        lines.push(csvRow(
-          r.scenarioLabel,
-          row.age,
-          n(row.capitalAtStart),
-          n(row.grossAnnualPayout),
-          n(row.taxableGain),
-          n(row.saverAllowanceUsed),
-          n(row.taxDue),
-          n(row.netMonthlyPayout),
-          n(row.capitalAtEnd),
-        ))
-      }
+    for (const row of projection.etfPayouts) {
+      lines.push(csvRow(
+        row.scenarioLabel,
+        row.age,
+        n(row.capitalAtStart),
+        n(row.grossAnnualPayout),
+        n(row.taxableGain),
+        n(row.saverAllowanceUsed),
+        n(row.taxDue),
+        n(row.netMonthlyPayout),
+        n(row.capitalAtEnd),
+      ))
     }
   }
 
@@ -217,20 +181,6 @@ export function buildExportCsv(opts: ExportOptions): string {
 //     instance yearly payout schedule, same columns as compare-mode section
 // ---------------------------------------------------------------------------
 
-/** Per-instance tax-mode bundle for combine-mode after-tax column derivation. */
-export interface InstanceTaxModes {
-  /** bAV lump-sum income-tax routing (derived by `deriveBavLumpSumTaxMode`). */
-  bavTaxMode?: BavLumpSumTaxMode
-  /** Private-insurance capital-payout tax era (derived by `deriveInsuranceTaxMode`). */
-  insuranceTaxMode?: InsuranceTaxMode
-  /** ETF equity partial exemption ratio (e.g. 0.3 for equity funds). */
-  equityPartialExemption?: number
-  /** Other annual retirement income for AVD §22 Nr. 5 marginal-tax calc. Defaults to 0. */
-  avdOtherAnnualIncome?: number
-  /** Other annual retirement income for Riester §22 Nr. 5 marginal-tax calc. Defaults to 0. */
-  riesterOtherAnnualIncome?: number
-}
-
 export interface CombinePortfolioCsvOptions {
   /** Per-instance ProductResults keyed by instanceId, all scenarios. */
   perInstance: Record<string, ProductResult[]>
@@ -253,7 +203,7 @@ export interface CombinePortfolioCsvOptions {
 }
 
 export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): string {
-  const { perInstance, combinedByScenarioId, scenarioLabels, perInstanceTaxModes, rules, profile } = opts
+  const { combinedByScenarioId, scenarioLabels } = opts
   const lines: string[] = []
 
   // Section 0: Disclaimer (mirror compare-mode export so legal notice is the
@@ -276,35 +226,32 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
     ))
   }
 
+  const projection = buildCombineExportProjection({
+    perInstance: opts.perInstance,
+    combinedByScenarioId: opts.combinedByScenarioId,
+    scenarioLabels: opts.scenarioLabels,
+    perInstanceTaxModes: opts.perInstanceTaxModes,
+    rules: opts.rules,
+    profile: opts.profile,
+  })
+
   // Section 2: Per-instance detail (one row per instance × scenario).
   lines.push('')
   lines.push('Mein Plan — Detail je Instanz')
   lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Brutto-Rente mtl. (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Datenqualität'))
-  // Sort by instanceId for stable output.
-  const ids = Object.keys(perInstance).sort()
-  for (const instanceId of ids) {
-    const results = perInstance[instanceId]
-    if (!results) continue
-    for (const r of results) {
-      // Use the back-allocated monthlyNet from the aggregate progressive
-      // tax + KV/PV pipeline (byInstance) so this column matches
-      // CombineDetailView for multi-product households. Falls back to the
-      // per-instance simulator value only when byInstance has no entry.
-      const combinedForScenario = combinedByScenarioId[r.scenarioId]
-      const netMonthly = combinedForScenario?.byInstance[instanceId]?.monthlyNet ?? r.netMonthlyPayout
-      lines.push(csvRow(
-        instanceId,
-        r.label,
-        r.scenarioLabel,
-        n(r.monthlyUserCost),
-        n(r.monthlyProductContribution),
-        n(r.capitalAtRetirement),
-        n(r.grossMonthlyPayout),
-        n(netMonthly),
-        n(r.totalFees),
-        formatEvidenceStateForExport(r.inputConfidence),
-      ))
-    }
+  for (const row of projection.summary) {
+    lines.push(csvRow(
+      row.instanceId,
+      row.label,
+      row.scenarioLabel,
+      n(row.monthlyUserCost),
+      n(row.monthlyProductContribution),
+      n(row.capitalAtRetirement),
+      n(row.grossMonthlyPayout),
+      n(row.netMonthlyPayout),
+      n(row.totalFees),
+      formatEvidenceStateForExport(row.inputConfidence),
+    ))
   }
 
   // Section 3: Per-instance yearly cashflows — same columns as compare-mode
@@ -313,116 +260,44 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   lines.push('')
   lines.push('Jahres-Cashflows je Instanz')
   lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Alter', 'Nettoaufwand p.a. (EUR)', 'Beitrag p.a. (EUR)', 'AG-Anteil p.a. (EUR)', 'Gebühren p.a. (EUR)', 'Kum. Gebühren (EUR)', 'Kapital (EUR)', 'Kapital n. St. (EUR)', 'Reales Kapital (EUR)', 'Real n. St. (EUR)'))
-  for (const instanceId of ids) {
-    const results = perInstance[instanceId]
-    if (!results) continue
-    const taxModes = perInstanceTaxModes?.[instanceId]
-    for (const r of results) {
-      const isBav = r.productId === 'bav'
-      const isEtf = r.productId === 'etf'
-      const isInsurance = r.productId === 'versicherung'
-      for (const row of r.rows as YearlyProjection[]) {
-        let afterTax: number | null = null
-        if (rules && taxModes) {
-          if (isBav && profile) {
-            afterTax = afterTaxBavLumpSum(
-              row.balance,
-              profile,
-              rules,
-              0,
-              true,
-              rules.year,
-              taxModes.bavTaxMode ?? 'voll_versorgungsbezug',
-            )
-          } else if (isEtf) {
-            afterTax = afterTaxInvestmentCapital(
-              row.balance,
-              row.cumulativeProductContributions,
-              rules,
-              taxModes.equityPartialExemption ?? 0,
-              row.cumulativeVorabpauschale,
-            )
-          } else if (isInsurance && taxModes.insuranceTaxMode) {
-            afterTax = afterTaxInsuranceLumpSum(
-              row.balance,
-              row.cumulativeProductContributions,
-              taxModes.insuranceTaxMode,
-              rules,
-              0,
-            )
-          } else if (r.productId === 'altersvorsorgedepot') {
-            afterTax = afterTaxCertifiedPensionLumpSum(
-              row.balance,
-              rules,
-              taxModes.avdOtherAnnualIncome ?? 0,
-            )
-          } else if (r.productId === 'riester') {
-            afterTax = afterTaxCertifiedPensionLumpSum(
-              row.balance,
-              rules,
-              taxModes.riesterOtherAnnualIncome ?? 0,
-            )
-          }
-        }
-        const realAfterTax = afterTax !== null && row.balance > 0
-          ? afterTax * (row.realBalance / row.balance)
-          : null
-        lines.push(csvRow(
-          instanceId,
-          r.label,
-          r.scenarioLabel,
-          row.age,
-          n(row.yearlyUserCost),
-          n(row.yearlyProductContribution),
-          n(row.yearlyEmployerContribution),
-          n(row.yearlyFees),
-          n(row.cumulativeFees),
-          n(row.balance),
-          nn(afterTax),
-          n(row.realBalance),
-          nn(realAfterTax),
-        ))
-      }
-    }
+  for (const row of projection.yearly) {
+    lines.push(csvRow(
+      row.instanceId,
+      row.label,
+      row.scenarioLabel,
+      row.age,
+      n(row.yearlyUserCost),
+      n(row.yearlyProductContribution),
+      n(row.yearlyEmployerContribution),
+      n(row.yearlyFees),
+      n(row.cumulativeFees),
+      n(row.balance),
+      nn(row.afterTaxBalance),
+      n(row.realBalance),
+      nn(row.realAfterTaxBalance),
+    ))
   }
 
   // Section 4: ETF payout schedule per ETF instance — same columns as
   // compare-mode "Rentenphase (ETF-Entnahme)".
-  const etfInstanceIds = ids.filter((id) => {
-    const results = perInstance[id]
-    return results?.some(
-      (r): r is EtfProductResult =>
-        r.productId === 'etf' &&
-        (r as EtfProductResult).etfPayoutRows.length > 0,
-    )
-  })
-  if (etfInstanceIds.length > 0) {
+  if (projection.etfPayouts.length > 0) {
     lines.push('')
     lines.push('Rentenphase (ETF-Entnahme) je ETF-Instanz')
     lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Alter', 'Kapital Anfang (EUR)', 'Brutto p.a. (EUR)', 'Steuerpfl. Gewinn (EUR)', 'Sparerpauschb. (EUR)', 'Steuer (EUR)', 'Netto mtl. (EUR)', 'Kapital Ende (EUR)'))
-    for (const instanceId of etfInstanceIds) {
-      const results = perInstance[instanceId]
-      if (!results) continue
-      for (const r of results) {
-        if (r.productId !== 'etf') continue
-        const etfResult = r as EtfProductResult
-        if (etfResult.etfPayoutRows.length === 0) continue
-        for (const row of etfResult.etfPayoutRows) {
-          lines.push(csvRow(
-            instanceId,
-            r.label,
-            r.scenarioLabel,
-            row.age,
-            n(row.capitalAtStart),
-            n(row.grossAnnualPayout),
-            n(row.taxableGain),
-            n(row.saverAllowanceUsed),
-            n(row.taxDue),
-            n(row.netMonthlyPayout),
-            n(row.capitalAtEnd),
-          ))
-        }
-      }
+    for (const row of projection.etfPayouts) {
+      lines.push(csvRow(
+        row.instanceId,
+        row.label,
+        row.scenarioLabel,
+        row.age,
+        n(row.capitalAtStart),
+        n(row.grossAnnualPayout),
+        n(row.taxableGain),
+        n(row.saverAllowanceUsed),
+        n(row.taxDue),
+        n(row.netMonthlyPayout),
+        n(row.capitalAtEnd),
+      ))
     }
   }
 
