@@ -922,6 +922,7 @@ function AvdInstanceCard({
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
     { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} / Monat` },
+    { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
     { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
   ]
 
