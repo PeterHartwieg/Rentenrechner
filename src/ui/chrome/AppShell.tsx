@@ -10,7 +10,7 @@ import type { Route } from '../../app/useRoute'
 
 interface AppShellProps {
   route: Route
-  navigate: (target: Route) => void
+  navigate: (target: Route, search?: string) => void
   kicker?: string
   title?: string
   editorial?: boolean

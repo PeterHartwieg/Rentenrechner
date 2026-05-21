@@ -6,6 +6,11 @@ import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
+interface NavTarget {
+  route: Route
+  search?: string
+}
+
 interface AppHeaderProps {
   /** Current route — drives which top-nav tab is highlighted. */
   route: Route
@@ -16,7 +21,7 @@ interface AppHeaderProps {
   /** Editorial mode: cream background + serif H1. Default sober: white + sans. */
   editorial?: boolean
   /** Navigate to a route (passed in from useRoute). */
-  navigate: (target: Route) => void
+  navigate: (target: Route, search?: string) => void
 }
 
 // PR 5: the previously-placeholder "Mein Plan" tab is removed from the chrome
@@ -34,20 +39,22 @@ const NAV_ITEMS: ReadonlyArray<{ id: ChromeNavId; label: string }> = [
 ]
 
 /**
- * Map a nav tab id to a real `Route` target. The 'home' tab returns `/`;
- * 'artikel' returns `/artikel' (PR 3); 'method' returns `/methode` (PR 4);
- * 'angaben' returns `/eingaben` (PR 5); 'compare' returns `/` (R1.1 — the
- * Calculator renders VergleichPage when saved mode = compare, so this is
- * the canvas-correct landing for the Vergleich tab). The active-tab visual
- * treatment that distinguishes compare from home is the PR 2.1 concern.
+ * Map a nav tab id to a `NavTarget` (route + optional search override).
+ * The 'home' tab returns `/`; 'artikel' returns `/artikel` (PR 3);
+ * 'method' returns `/methode` (PR 4); 'angaben' returns `/eingaben` (PR 5).
+ * 'compare' returns `{ route: ROUTES.home, search: '?view=landing' }` so
+ * that clicking the Vergleich tab always opens the landing/mode-picker,
+ * regardless of any saved mode — fixes the non-deterministic destination
+ * flagged by Codex P1 + P2 in PR #296. The `?view=landing` param is read
+ * by `appViewFromUrl` in `App.tsx` and wins over `detectSavedMode()`.
  */
-function clickableTarget(id: ChromeNavId): Route {
-  if (id === 'home') return ROUTES.home
-  if (id === 'artikel') return ROUTES.artikel
-  if (id === 'method') return ROUTES.methode
-  if (id === 'angaben') return ROUTES.eingaben
-  // 'compare' — falls through to home; see comment block above.
-  return ROUTES.home
+function clickableTarget(id: ChromeNavId): NavTarget {
+  if (id === 'home') return { route: ROUTES.home }
+  if (id === 'artikel') return { route: ROUTES.artikel }
+  if (id === 'method') return { route: ROUTES.methode }
+  if (id === 'angaben') return { route: ROUTES.eingaben }
+  // 'compare' — forces landing/mode-picker via URL override (PR #296 R1 fix).
+  return { route: ROUTES.home, search: '?view=landing' }
 }
 
 /**
@@ -111,15 +118,20 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
           {NAV_ITEMS.map((item) => {
             const isActive = item.id === active
             const target = clickableTarget(item.id)
+            const href = routeToPath(target.route) + (target.search ?? '')
             return (
               <a
                 key={item.id}
-                href={routeToPath(target)}
+                href={href}
                 className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
                 onClick={(event) => {
                   if (!shouldUseSpaNavigation(event)) return
                   event.preventDefault()
-                  navigate(target)
+                  if (target.search !== undefined) {
+                    navigate(target.route, target.search)
+                  } else {
+                    navigate(target.route)
+                  }
                 }}
               >
                 {item.label}

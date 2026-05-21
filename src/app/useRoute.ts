@@ -239,6 +239,29 @@ export function appViewFromMode(mode: 'compare' | 'combine' | null): AppView {
   return 'compare'
 }
 
+/**
+ * Read an explicit `?view=` override from a URL search string. Returns
+ * the requested `AppView` when the parameter is present and valid,
+ * otherwise `null`. Used so that the Vergleich tab in the chrome can
+ * deterministically open the landing/mode-picker view regardless of
+ * any saved mode — addresses the "non-deterministic destination"
+ * concern raised by the Codex review of PR #296.
+ *
+ * Today the only supported override is `?view=landing` (force the
+ * picker). `?view=compare` / `?view=combine` are intentionally NOT
+ * supported — the in-app dashboard surfaces own those transitions.
+ */
+export function appViewFromUrl(search: string): AppView | null {
+  // Accept both raw query strings and full URL strings. `URLSearchParams`
+  // treats a leading "?" as part of the first key on some platforms;
+  // strip it defensively.
+  const trimmed = search.startsWith('?') ? search.slice(1) : search
+  const params = new URLSearchParams(trimmed)
+  const view = params.get('view')
+  if (view === 'landing') return 'landing'
+  return null
+}
+
 export function useRoute(): { route: Route; navigate: (target: Route, search?: string) => void } {
   const [route, setRoute] = useState<Route>(() => {
     if (typeof window === 'undefined') return ROUTES.home

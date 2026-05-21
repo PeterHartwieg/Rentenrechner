@@ -152,23 +152,23 @@ describe('AppHeader', () => {
     expect(active?.textContent).toBe('Angaben')
   })
 
-  it('renders Vergleich as a real anchor on desktop (R1.1, C1a)', () => {
+  it('renders Vergleich as a real anchor with href=/?view=landing on desktop (R1.1+PR296)', () => {
     mockViewport('desktop')
     render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
-    // The Vergleich tab is no longer a placeholder span — it's an anchor
-    // that routes to `/` (Calculator renders VergleichPage in compare mode).
+    // The Vergleich tab is an anchor that carries ?view=landing so that
+    // middle-click / right-click / SSR all land on the mode-picker (PR #296 R1 fix).
     const tab = screen.getByText('Vergleich')
     expect(tab.tagName).toBe('A')
-    expect(tab.getAttribute('href')).toBe('/')
+    expect(tab.getAttribute('href')).toBe('/?view=landing')
     expect(tab.classList.contains('rw-app-header__nav-item--placeholder')).toBe(false)
   })
 
-  it('SPA-navigates to / when Vergleich is clicked on desktop (R1.1, C1a)', () => {
+  it('SPA-navigates to ROUTES.home with ?view=landing when Vergleich is clicked on desktop (PR296 R1)', () => {
     mockViewport('desktop')
     const navigate = vi.fn()
     render(<AppHeader route={R('/impressum')} title="" navigate={navigate} />)
     fireEvent.click(screen.getByText('Vergleich'))
-    expect(navigate).toHaveBeenCalledWith(R('/'))
+    expect(navigate).toHaveBeenCalledWith(R('/'), '?view=landing')
   })
 
   it('phone variant no longer renders the "seit 2024" status string (R1.1, C2/Q5)', () => {

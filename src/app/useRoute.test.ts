@@ -6,6 +6,7 @@ import {
   routeToPath,
   detectSavedMode,
   appViewFromMode,
+  appViewFromUrl,
   useRoute,
   ROUTES,
   type Route,
@@ -228,6 +229,42 @@ describe('/ route landing decision — end-to-end via appViewFromMode + detectSa
   it('saved compare state → compare dashboard', () => {
     store[STORAGE_KEY_V2] = JSON.stringify({ schemaVersion: 2, mode: 'compare' })
     expect(appViewFromMode(detectSavedMode())).toBe('compare')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// appViewFromUrl — URL override helper (PR #296 R1 fix).
+//
+// `appViewFromUrl(search)` reads `?view=` from a URL search string and
+// returns the matching `AppView`, or `null` if the param is absent or
+// unsupported. Only `?view=landing` is honoured — `?view=compare` and
+// `?view=combine` are intentionally NOT supported so the in-app dashboard
+// surfaces own those transitions.
+// ---------------------------------------------------------------------------
+
+describe('appViewFromUrl', () => {
+  it('?view=landing returns "landing"', () => {
+    expect(appViewFromUrl('?view=landing')).toBe('landing')
+  })
+
+  it('empty string returns null', () => {
+    expect(appViewFromUrl('')).toBeNull()
+  })
+
+  it('?view=compare returns null (intentionally not honoured)', () => {
+    expect(appViewFromUrl('?view=compare')).toBeNull()
+  })
+
+  it('?view=combine returns null (intentionally not honoured)', () => {
+    expect(appViewFromUrl('?view=combine')).toBeNull()
+  })
+
+  it('"?" alone returns null', () => {
+    expect(appViewFromUrl('?')).toBeNull()
+  })
+
+  it('?view=landing&extra=1 returns "landing" (extra params ignored)', () => {
+    expect(appViewFromUrl('?view=landing&extra=1')).toBe('landing')
   })
 })
 
