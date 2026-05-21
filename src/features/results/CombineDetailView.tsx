@@ -91,7 +91,10 @@ export function CombineDetailView({
   return (
     <section className="table-panel">
       <div className="section-header">
-        <h2>Detailansicht (Mein Plan)</h2>
+        <div className="combine-detail-heading">
+          <div className="combine-detail-kicker">§ Detail</div>
+          <h2>Detailansicht (Mein Plan)</h2>
+        </div>
         <div className="section-actions">
           <span className="combine-detail-scenario-pill" aria-label="Aktives Szenario">
             Szenario: {selectedScenarioLabel}
@@ -109,8 +112,8 @@ export function CombineDetailView({
 
       {rows.length === 0 ? (
         <p className="combine-detail-empty">
-          Noch keine Verträge im Workspace. Im Tab „Mein Plan“ kannst du Bestandsverträge
-          hinzufügen oder einen Empfehlungs-Plan übernehmen.
+          Noch keine Verträge erfasst. In „Mein Plan“ Bestandsverträge hinzufügen oder eine
+          Vorlage öffnen.
         </p>
       ) : (
         <div className="table-scroll">

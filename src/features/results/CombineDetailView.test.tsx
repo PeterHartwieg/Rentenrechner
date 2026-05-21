@@ -175,7 +175,22 @@ describe('CombineDetailView — multi-instance row rendering (#28)', () => {
     const { container, queryByText } = render(<CombineDetailView {...defaultProps(ws)} />)
     const rows = container.querySelectorAll('tbody tr')
     expect(rows.length).toBe(0)
-    expect(queryByText(/Noch keine Verträge im Workspace/)).not.toBeNull()
+    expect(queryByText(/Noch keine Verträge erfasst/)).not.toBeNull()
+  })
+
+  it('empty state does not contain "Empfehlungs-Plan" (Sober D voice guard)', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.assumptions.bav = []
+    ws.baseline.assumptions.etf = []
+    ws.baseline.assumptions.insurance = []
+    ws.baseline.assumptions.basisrente = []
+    ws.baseline.assumptions.altersvorsorgedepot = []
+    ws.baseline.assumptions.riester = []
+
+    const { container } = render(<CombineDetailView {...defaultProps(ws)} />)
+    const emptyPara = container.querySelector('.combine-detail-empty')
+    expect(emptyPara).not.toBeNull()
+    expect(emptyPara?.textContent).not.toContain('Empfehlungs-Plan')
   })
 
   it('CSV and print buttons fire the supplied handlers', () => {

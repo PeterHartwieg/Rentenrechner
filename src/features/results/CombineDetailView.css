@@ -1,80 +1,116 @@
 /* Combine-mode details view (Group G issue 28). Visual sibling of
  * DetailComparisonTable: the table-panel chrome is reused via the shared
  * .table-panel / .section-header / .export-btn classes from
- * DetailComparisonTable.css; this file only adds combine-specific bits. */
+ * DetailComparisonTable.css; this file only adds combine-specific bits.
+ *
+ * Palette: Sober D tokens (--rw-*). No raw hex slate / blue. */
 
+/* --- Heading block --------------------------------------------------- */
+.combine-detail-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.combine-detail-kicker {
+  font-family: var(--rw-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  font-weight: 400;
+}
+
+/* --- Empty state ------------------------------------------------------ */
 .combine-detail-empty {
   margin: 0;
   padding: 24px 8px;
   font-size: 0.95rem;
-  color: #6b7280;
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink-faint);
   text-align: center;
 }
 
+/* --- Table head ------------------------------------------------------- */
 .combine-detail-table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .combine-detail-table thead th {
-  font-size: 0.78rem;
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #475569;
+  letter-spacing: 0.5px;
+  color: var(--rw-ink-faint);
 }
 
+/* --- Instance label -------------------------------------------------- */
 .combine-detail-instance-label {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--rw-ink);
 }
 
+/* --- Product pill (background color set inline from meta.color) ------ */
 .combine-detail-product-pill {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.3px;
   color: #ffffff;
   white-space: nowrap;
 }
 
+/* --- Status chips ----------------------------------------------------- */
 .combine-detail-status {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 600;
+  font-family: var(--rw-font-mono);
+  font-size: 0.7rem;
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.5px;
 }
 
+/* aktiv: muted green dot + ink text */
 .combine-detail-status--active {
-  background: #dcfce7;
-  color: #166534;
+  background: #e8f2ec;
+  color: var(--rw-ink-soft);
 }
 
+/* beitragsfrei: warm cream tone */
 .combine-detail-status--paid_up {
-  background: #fef3c7;
-  color: #854d0e;
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink-soft);
 }
 
+/* gekundigt: muted rose / faded */
 .combine-detail-status--surrendered {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #f5eaea;
+  color: var(--rw-ink-soft);
 }
 
+/* --- Locked capital indicator ---------------------------------------- */
 .combine-detail-locked {
-  color: #6b7280;
+  color: var(--rw-ink-faint);
   font-style: italic;
 }
 
+/* --- Scenario pill ---------------------------------------------------- */
 .combine-detail-scenario-pill {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
-  font-size: 0.8rem;
-  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink);
+  border: 1px solid #e7e2da;
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.3px;
 }

@@ -1,0 +1,55 @@
+/* EmptyComparison — compare-mode empty state (UX10).
+ * Sober D visual treatment — overrides legacy App.css `.empty-comparison*`
+ * rules via cascade order (Vite bundles component CSS after App.css).
+ *
+ * Note: the base `.empty-comparison*` selectors still live in src/App.css
+ * (global file). Moving them out is tracked as a follow-up task. */
+
+.empty-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 20px 24px;
+  border: 1px solid #e7e2da;
+  border-radius: 4px;
+  background: var(--rw-bg-paper);
+}
+
+.empty-comparison h3 {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--rw-ink);
+  line-height: 1.3;
+}
+
+.empty-comparison p {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 0.9rem;
+  color: var(--rw-ink-soft);
+  line-height: 1.55;
+}
+
+.empty-comparison-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 7px 14px;
+  border: 1px solid #d0cbc3;
+  border-radius: 4px;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.empty-comparison-cta:hover {
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-accent);
+}
