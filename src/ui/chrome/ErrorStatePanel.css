@@ -40,6 +40,9 @@
 
 .rw-error-state--empty {
   background: var(--rw-bg-paper);
+  /* No icon column for empty tone — drop the leading `auto` track so content
+     starts at column 1 and doesn't auto-place into the icon slot. */
+  grid-template-columns: 1fr auto;
 }
 
 .rw-error-state__icon {

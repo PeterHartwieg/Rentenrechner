@@ -139,7 +139,8 @@ describe('ErrorStatePanel — CTA', () => {
     expect(link!.textContent).toBe('Zurück zum Plan')
   })
 
-  it('renders the CTA as an <a> when href is supplied, even if onClick is also given', () => {
+  // Locks in the href-wins precedence (Codex P2, PR #303 R0). Inverting this is a P2 a11y/UX regression.
+  it('CTA precedence: href wins over onClick when both supplied (renders <a>, attaches onClick)', () => {
     const onClick = vi.fn()
     const { container } = render(
       <ErrorStatePanel

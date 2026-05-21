@@ -135,7 +135,7 @@ export function ErrorStatePanel({
 
       <div className="rw-error-state__content">
         {title && <p className="rw-error-state__title">{title}</p>}
-        <p className="rw-error-state__message">{message}</p>
+        <div className="rw-error-state__message">{message}</div>
 
         {cta && (
           <div className="rw-error-state__cta-row">
