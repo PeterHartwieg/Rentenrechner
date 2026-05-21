@@ -763,7 +763,7 @@ details[open] .inv-layer3-summary::before {
 .combine-income-label {
   margin: 0 0 4px;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--rw-ink-faint);
 }
 
 .combine-income-row {
@@ -776,16 +776,17 @@ details[open] .inv-layer3-summary::before {
 .combine-income-value {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--rw-ink);
   white-space: nowrap;
 }
 
 .combine-income-scenario {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--rw-ink-faint);
 }
 
 /* Dashboard summary estimate badge */
+/* Semantic warning yellow: not in --rw-* token palette; kept as raw hex */
 .combine-estimate-summary-badge {
   display: inline-flex;
   align-items: center;
@@ -813,7 +814,7 @@ details[open] .inv-layer3-summary::before {
   left: 0;
   margin-top: 6px;
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 8px;
   padding: 12px 16px;
   box-shadow: 0 4px 16px rgba(15,23,42,0.12);
@@ -828,7 +829,7 @@ details[open] .inv-layer3-summary::before {
 
 .combine-estimate-popover li {
   margin-bottom: 4px;
-  color: #475569;
+  color: var(--rw-ink-soft);
 }
 
 .combine-sidebar {
@@ -843,7 +844,7 @@ details[open] .inv-layer3-summary::before {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--rw-ink-faint);
 }
 
 .combine-sidebar-product-group {
@@ -855,13 +856,13 @@ details[open] .inv-layer3-summary::before {
 .combine-sidebar-product-label {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #334155;
+  color: var(--rw-ink-soft);
   padding: 4px 0 2px;
-  border-bottom: 1px solid #e9eef5;
+  border-bottom: 1px solid var(--rw-rule-soft);
 }
 
 .combine-instance-card {
-  border: 1px solid #d9e1ea;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
@@ -872,15 +873,15 @@ details[open] .inv-layer3-summary::before {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e9eef5;
+  background: var(--rw-bg-paper-soft);
+  border-bottom: 1px solid var(--rw-rule-soft);
   gap: 8px;
 }
 
 .combine-instance-label {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #172033;
+  color: var(--rw-ink);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -905,22 +906,22 @@ details[open] .inv-layer3-summary::before {
   flex-direction: column;
   gap: 4px;
   font-size: 0.82rem;
-  color: #334155;
+  color: var(--rw-ink-soft);
 }
 
 .combine-field span:first-child {
   font-weight: 600;
   font-size: 0.78rem;
-  color: #475569;
+  color: var(--rw-ink-soft);
 }
 
 .combine-field input[type="number"],
 .combine-field select {
-  border: 1px solid #c9d7e5;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 5px;
   padding: 5px 8px;
   font-size: 0.85rem;
-  color: #172033;
+  color: var(--rw-ink);
   background: #fff;
   outline: none;
   width: 100%;
@@ -928,8 +929,8 @@ details[open] .inv-layer3-summary::before {
 
 .combine-field input[type="number"]:focus,
 .combine-field select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+  border-color: var(--rw-accent);
+  box-shadow: 0 0 0 2px rgba(138, 46, 46, 0.12);
 }
 
 .combine-sidebar-add-btn {
@@ -937,10 +938,10 @@ details[open] .inv-layer3-summary::before {
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
-  border: 1px dashed #2563eb;
+  border: 1px dashed var(--rw-accent);
   border-radius: 5px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--rw-accent-bg);
+  color: var(--rw-accent);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -949,7 +950,7 @@ details[open] .inv-layer3-summary::before {
 }
 
 .combine-sidebar-add-btn:hover {
-  background: #dbeafe;
+  background: var(--rw-rule-soft);
 }
 
 .combine-sidebar-remove-btn {
