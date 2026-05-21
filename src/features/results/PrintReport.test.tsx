@@ -808,4 +808,256 @@ describe('PrintReport', () => {
       expect(container.querySelector('.pr-sens-delta--neg')).not.toBeNull()
     })
   })
+
+  // ---------------------------------------------------------------------
+  // PR 4.1 (H4) Sober D port regression coverage.
+  //
+  // The visual port is observable mostly via CSS — JSDOM does not apply
+  // `@media print` styling, so the regression tests below assert the
+  // structural / textual contracts of the printed output:
+  //   - Public brand "RentenWiki.de" is in the printed title (P0).
+  //   - The `.pr-disclaimer-top` block is the LITERAL first child of
+  //     `#print-report` even with `combineSensitivityRows` threaded in.
+  //   - The compare-mode summary table row count matches what the
+  //     `exportProjection.buildCompareExportProjection` produces, so the
+  //     CSV and PDF exports stay row-aligned even as new products are added.
+  // ---------------------------------------------------------------------
+
+  describe('PR 4.1 — Sober D port regression coverage', () => {
+    it('compare-mode header still says "RentenWiki.de" (public-brand P0)', () => {
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />,
+      )
+      const title = container.querySelector('.pr-title')
+      expect(title).not.toBeNull()
+      expect(title?.textContent ?? '').toContain('RentenWiki.de')
+      // The legacy "Rentenrechner" surface must not have leaked into a
+      // public-facing brand string.
+      expect(title?.textContent ?? '').not.toContain('Rentenrechner')
+    })
+
+    it('combine-mode header still says "RentenWiki.de" (public-brand P0)', () => {
+      const bavResult: ProductResult = {
+        ...(makeSimulation('user_confirmed').products[0] as ProductResult),
+        productId: 'bav',
+        label: 'bAV',
+        instanceId: 'bav-1',
+      } as unknown as ProductResult
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+          combineMode={true}
+          portfolio={{
+            perInstance: { 'bav-1': [bavResult] },
+            combinedByScenarioId: { basis: makeCombined(2200) },
+            scenarioLabels: { basis: 'Basis' },
+          }}
+        />,
+      )
+      const title = container.querySelector('.pr-title')
+      expect(title).not.toBeNull()
+      expect(title?.textContent ?? '').toContain('RentenWiki.de')
+    })
+
+    it('disclaimer-first invariant holds with combineSensitivityRows + workspace threaded in', () => {
+      // Belt-and-braces: re-pin the P0 disclaimer-first invariant for the
+      // combine-mode branch when EVERY combine prop is set (the path
+      // Calculator.tsx exercises in production).
+      const etfBase = makeSimulation('user_confirmed').products[0] as ProductResult
+      const etfResult: ProductResult = {
+        ...etfBase,
+        productId: 'etf',
+        label: 'ETF-Depot',
+        instanceId: 'etf-1',
+        scenarioId: 'basis',
+        scenarioLabel: 'Basis',
+        rows: [],
+      } as unknown as ProductResult
+
+      const workspace: Workspace = {
+        schemaVersion: 2,
+        mode: 'combine',
+        baseline: {
+          id: 'baseline',
+          label: 'Baseline',
+          profile: defaultProfile,
+          assumptions: {
+            bav: [],
+            etf: [
+              {
+                instanceId: 'etf-1',
+                label: 'Depot A',
+                status: 'active',
+                contractStartYear: 2020,
+                evidenceMap: {},
+                annualAssetFee: 0.002,
+                equityPartialExemption: 0.3,
+                annualContributionGrowthRate: 0,
+                monthlyContribution: 200,
+              },
+            ],
+            insurance: [],
+            basisrente: [],
+            altersvorsorgedepot: [],
+            riester: [],
+            statutoryPension: defaultAssumptions.statutoryPension,
+            inflationRate: 0.02,
+            retirementEndAge: defaultAssumptions.retirementEndAge,
+            returnScenarios: defaultAssumptions.returnScenarios,
+            monteCarlo: defaultAssumptions.monteCarlo,
+            visibleProducts: ['etf'],
+          },
+          createdAt: new Date().toISOString(),
+          origin: 'baseline',
+        },
+        whatIfs: [],
+        pinnedComparisonIds: [],
+      }
+
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+          combineMode={true}
+          portfolio={{
+            perInstance: { 'etf-1': [etfResult] },
+            combinedByScenarioId: { basis: makeCombined(2200) },
+            scenarioLabels: { basis: 'Basis' },
+          }}
+          combineWorkspace={workspace}
+          combineSensitivityRows={[
+            {
+              id: 'etf-bump',
+              conditionText: '… du den ersten ETF-Sparplan um 100 €/Monat erhöhst',
+              deltaText: '+45 € / Mon.',
+              sign: 'pos',
+              noteText: null,
+            },
+          ]}
+        />,
+      )
+      const root = container.querySelector('#print-report')
+      expect(root).not.toBeNull()
+      const firstChild = root!.firstElementChild
+      expect(firstChild?.classList.contains('pr-disclaimer-top')).toBe(true)
+      expect(firstChild?.tagName.toLowerCase()).toBe('section')
+      // Exactly one disclaimer-top in the entire print tree.
+      expect(root!.querySelectorAll('.pr-disclaimer-top').length).toBe(1)
+    })
+
+    it('compare summary table row count equals buildCompareExportProjection summary length', async () => {
+      // Phase B (row-builder migration) acceptance: both the print summary
+      // table and the CSV "Detailvergleich" section iterate the same set of
+      // rows — the projection layer is the canonical source. We do not
+      // re-thread `bavFunding` etc. into PrintReport (which would be a
+      // larger API change); instead we assert that for the same input the
+      // print row count matches the projection row count, so any future
+      // filter / sort change must update both sides consistently.
+      const { buildCompareExportProjection } = await import(
+        '../../engine/exportProjection'
+      )
+      const { de2026Rules } = await import('../../rules/de2026')
+
+      // Two scenarios so we get >1 row per product and the count check is
+      // meaningful (singleton products × scenarios).
+      const sim = makeSimulation('user_confirmed')
+      const productBase = sim.products[0] as ProductResult
+      const productKonservativ: ProductResult = {
+        ...productBase,
+        scenarioId: 'konservativ',
+        scenarioLabel: 'Konservativ',
+      } as unknown as ProductResult
+      const productsForBoth: ProductResult[] = [productBase, productKonservativ]
+
+      const projection = buildCompareExportProjection({
+        products: productsForBoth,
+        bavAnnualTaxSvSavings: 0,
+        bavProfile: defaultProfile,
+        bavKvdrMember: true,
+        bavOtherAnnualIncome: 0,
+        insuranceTaxMode: 'abgeltungsteuer',
+        equityPartialExemption: 0.3,
+        insuranceOtherAnnualIncome: 0,
+        rules: de2026Rules,
+      })
+
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={{
+            ...defaultAssumptions,
+            visibleProducts: ['etf'],
+          }}
+          simulation={{ ...sim, products: productsForBoth }}
+        />,
+      )
+      const mainTable = container.querySelector('.pr-main-table')
+      expect(mainTable).not.toBeNull()
+      const rows = mainTable!.querySelectorAll('tbody tr')
+      // Print and projection sourced from the same `products` array →
+      // identical row count. The projection layer applies no extra
+      // filter / sort that the print does not.
+      expect(rows.length).toBe(projection.summary.length)
+      // The afterTaxLumpSum displayed in the print matches the projection
+      // value formatted to whole euros — this is the "single source of truth"
+      // assertion required by the cron-dispatch §2 paired-test guardrail.
+      // (Both rows correspond to the same product so afterTax is consistent;
+      //  we sample row 0.)
+      const row0 = rows[0]
+      const projRow0 = projection.summary[0]
+      if (projRow0 && projRow0.afterTaxLumpSum !== null) {
+        // The "Kapital n. St." cell is the 5th td (0-indexed: 4).
+        const afterTaxCell = row0.querySelectorAll('td')[4]
+        expect(afterTaxCell).toBeDefined()
+        // Engine returns full precision; print formatter rounds to whole €.
+        const expected = Math.round(projRow0.afterTaxLumpSum)
+        // We assert containment rather than equality so locale formatting
+        // (thousands separator) does not break the assertion.
+        expect(afterTaxCell.textContent ?? '').toMatch(
+          new RegExp(String(expected).replace(/(?<=\d)(?=(\d{3})+$)/g, '\\.?')),
+        )
+      }
+    })
+
+    it('CSS file declares the load-bearing Sober D tokens, @page rule, and @media print block', async () => {
+      // String-content regression test. The CSS file is shipped via a
+      // co-located `import './PrintReport.css'` — vitest's CSS handler does
+      // not parse it, so we read the raw file and assert structural tokens
+      // appear. This protects against accidental removal of the print
+      // boundary (@page / @media print) and the Sober D token vocabulary.
+      const { readFileSync } = await import('node:fs')
+      const { resolve } = await import('node:path')
+      // Resolve via the project working directory rather than
+      // `import.meta.url` — the latter is not a `file://` URL under vitest
+      // ESM transform on Windows.
+      const cssPath = resolve(
+        process.cwd(),
+        'src/features/results/PrintReport.css',
+      )
+      const css = readFileSync(cssPath, 'utf8')
+
+      // Sober D tokens — the load-bearing five.
+      expect(css).toContain('var(--rw-bg-paper)')
+      expect(css).toContain('var(--rw-ink)')
+      expect(css).toContain('var(--rw-rule)')
+      expect(css).toContain('var(--rw-font-sans)')
+      expect(css).toContain('var(--rw-font-mono)')
+      // Print boundary.
+      expect(css).toMatch(/@page\s*{[^]*?size:\s*A4\s+portrait/)
+      expect(css).toMatch(/@media\s+print\s*{/)
+      // Color-adjust hook so user-agents do not strip backgrounds.
+      expect(css).toMatch(/print-color-adjust:\s*exact/)
+      // Page-number suppression on page 1 (disclaimer page).
+      expect(css).toMatch(/@page\s*:first/)
+      // Disclaimer-top still has its own class block (no accidental rename).
+      expect(css).toContain('.pr-disclaimer-top')
+    })
+  })
 })

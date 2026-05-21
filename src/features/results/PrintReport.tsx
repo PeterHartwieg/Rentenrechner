@@ -1,3 +1,25 @@
+/**
+ * PrintReport — Sober D port (PR 4.1, H4).
+ *
+ * Visual treatment: every per-class colour / font is now driven by the
+ * Sober D tokens in src/App.css (`--rw-bg-paper`, `--rw-ink`, `--rw-rule`,
+ * `--rw-accent`, IBM Plex / JetBrains Mono). See `./PrintReport.css` for
+ * the print-only mapping including `@page` (A4 portrait, page numbers in
+ * mono) and `@media print` (page-break behaviour + color-adjust).
+ *
+ * Structural invariant — P0 compliance:
+ *   - The `.pr-disclaimer-top` block MUST remain the LITERAL first child
+ *     of `#print-report` in BOTH the compare-mode and the combine-mode
+ *     branch. Adding a section means inserting AFTER this block, never
+ *     before. Regression-tested in `PrintReport.test.tsx`.
+ *
+ * The row-builder layer (`./printReportRows.ts`) consumes
+ * `src/engine/exportProjection.ts` for cross-product tax-mode dispatch
+ * (single source of truth shared with `src/utils/csvExport.ts`). The
+ * print side has zero per-product `productId === 'X'` tax branching —
+ * dispatch happens once in the projection layer.
+ */
+
 import './PrintReport.css'
 import type { ReactNode } from 'react'
 import type {
