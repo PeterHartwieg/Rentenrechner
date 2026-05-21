@@ -482,9 +482,9 @@ function BavInstanceCard({
     { label: 'Schicht', value: 'Schicht 2' },
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
-    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyGrossConversion, 0)} €/Monat` },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyGrossConversion, 0)} / Monat` },
     { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
-    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
   ]
 
   return (
@@ -631,8 +631,8 @@ function EtfInstanceCard({
     { label: 'Schicht', value: 'Schicht 3' },
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
-    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyContribution ?? 0, 0)} €/Monat` },
-    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyContribution ?? 0, 0)} / Monat` },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
   ]
 
   return (
@@ -721,9 +721,9 @@ function InsuranceInstanceCard({
     { label: 'Schicht', value: 'Schicht 3' },
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
-    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyContribution ?? 0, 0)} €/Monat` },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyContribution ?? 0, 0)} / Monat` },
     { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
-    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
   ]
 
   return (
@@ -830,9 +830,9 @@ function BasisrenteInstanceCard({
     { label: 'Schicht', value: 'Schicht 1' },
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
-    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyGrossContribution, 0)} €/Monat` },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyGrossContribution, 0)} / Monat` },
     { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
-    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
   ]
 
   return (
@@ -921,8 +921,8 @@ function AvdInstanceCard({
     { label: 'Schicht', value: 'Schicht 2' },
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
-    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} €/Monat` },
-    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} / Monat` },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
   ]
 
   return (
@@ -1021,9 +1021,9 @@ function RiesterInstanceCard({
     { label: 'Schicht', value: 'Schicht 2' },
     { label: 'Anbieter', value: instance.anbieter ?? '—' },
     { label: 'Vertragsbeginn', value: String(instance.contractStartYear) },
-    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} €/Monat` },
+    { label: 'Beitragshöhe', value: `${formatCurrency(instance.monthlyOwnContribution, 0)} / Monat` },
     { label: 'Rentenfaktor', value: instance.rentenfaktor > 0 ? `${instance.rentenfaktor} €/10k mtl.` : '—' },
-    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) + ' €' : '—' },
+    { label: 'Stand', value: instance.currentValueEUR != null ? formatCurrency(instance.currentValueEUR, 0) : '—' },
   ]
 
   return (
