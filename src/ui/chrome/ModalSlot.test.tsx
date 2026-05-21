@@ -278,6 +278,18 @@ describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
   })
 
   it('adds .is-dragging while a touch drag is in progress', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
     const { container } = render(
       <ModalSlot open onClose={() => {}} title="Dragging class test">
         <p>Body</p>
@@ -292,9 +304,23 @@ describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
 
     fireEvent.touchEnd(region, { touches: [] })
     expect(panel.classList.contains('is-dragging')).toBe(false)
+
+    window.matchMedia = originalMatchMedia
   })
 
   it('translates the panel during touchmove past the start position', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
     const { container } = render(
       <ModalSlot open onClose={() => {}} title="Drag transform test">
         <p>Body</p>
@@ -312,9 +338,23 @@ describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
     // .is-dragging removal) handles the visible animation.
     fireEvent.touchEnd(region, { touches: [] })
     expect(panel.style.transform).toBe('')
+
+    window.matchMedia = originalMatchMedia
   })
 
   it('does not move the panel upward (drag-up is ignored)', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
     const { container } = render(
       <ModalSlot open onClose={() => {}} title="Drag up test">
         <p>Body</p>
@@ -330,9 +370,23 @@ describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
 
     fireEvent.touchEnd(region, { touches: [] })
     expect(panel.style.transform).toBe('')
+
+    window.matchMedia = originalMatchMedia
   })
 
   it('does NOT fire onClose when the drag ends below the dismiss threshold', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
     const onClose = vi.fn()
     const { container } = render(
       <ModalSlot open onClose={onClose} title="Below threshold test">
@@ -347,6 +401,8 @@ describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
     fireEvent.touchEnd(region, { touches: [] })
 
     expect(onClose).not.toHaveBeenCalled()
+
+    window.matchMedia = originalMatchMedia
   })
 
   it('fires onClose when the drag ends past the dismiss threshold', () => {
@@ -358,6 +414,21 @@ describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
       configurable: true,
       writable: true,
     })
+    // Stub matchMedia to simulate a phone viewport so handleTouchStart
+    // does not bail out early (jsdom returns matches: false by default,
+    // which would block the swipe even on this test).
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true, // phone breakpoint matches
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
     const onClose = vi.fn()
     const { container } = render(
       <ModalSlot open onClose={onClose} title="Past threshold test">
@@ -371,9 +442,58 @@ describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
     fireEvent.touchEnd(region, { touches: [] })
 
     expect(onClose).toHaveBeenCalledTimes(1)
+
+    window.matchMedia = originalMatchMedia
+  })
+
+  it('does not dismiss on swipe when viewport is wider than phone breakpoint', () => {
+    // Stub matchMedia to report a tablet/desktop viewport — no match for
+    // '(max-width: 639px)'. The swipe gesture must be a no-op because the
+    // drag handle is CSS-hidden outside the phone breakpoint and the JS
+    // gate must complement that CSS treatment.
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false, // tablet/desktop — phone breakpoint does not match
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    const onClose = vi.fn()
+    const { container } = render(
+      <ModalSlot open onClose={onClose} title="Tablet swipe test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')!
+
+    // 300 px downward drag — well past any dismiss threshold.
+    fireEvent.touchStart(region, { touches: [{ clientY: 100 }] })
+    fireEvent.touchMove(region, { touches: [{ clientY: 400 }] })
+    fireEvent.touchEnd(region)
+
+    expect(onClose).not.toHaveBeenCalled()
+
+    window.matchMedia = originalMatchMedia
   })
 
   it('treats touchcancel like touchend (cancel snaps back, no onClose)', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
     const onClose = vi.fn()
     const { container } = render(
       <ModalSlot open onClose={onClose} title="Touch cancel test">
@@ -390,5 +510,7 @@ describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
     expect(onClose).not.toHaveBeenCalled()
     expect(panel.style.transform).toBe('')
     expect(panel.classList.contains('is-dragging')).toBe(false)
+
+    window.matchMedia = originalMatchMedia
   })
 })

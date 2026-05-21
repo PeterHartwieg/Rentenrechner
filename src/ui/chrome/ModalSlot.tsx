@@ -135,6 +135,16 @@ export function ModalSlot({
   }, [])
 
   function handleTouchStart(event: ReactTouchEvent<HTMLElement>) {
+    // Gate swipe-dismiss to phone-width viewports only. The drag handle is
+    // CSS-hidden on tablet/desktop, so allowing the touch handlers to fire
+    // there creates an undiscoverable dismiss gesture and risks accidental
+    // dismissals when users drag the header area. Checking at touch-start
+    // time (rather than at mount) handles viewport changes mid-session
+    // (e.g. orientation flip, devtools resize) without needing a matchMedia
+    // listener.
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 639px)').matches) {
+      return
+    }
     const touch = event.touches[0]
     if (!touch) return
     dragStateRef.current = { startY: touch.clientY, deltaY: 0, active: true }
