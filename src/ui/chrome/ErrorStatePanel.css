@@ -1,0 +1,202 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   ErrorStatePanel — Sober D / Hybrid recovery + empty-state primitive.
+
+   Sits in src/ui/chrome/ alongside ModalSlot / AppHeader / AppShell so the
+   recovery surfaces share the same token vocabulary as the rest of the
+   chrome:
+
+     --rw-bg-paper         #ffffff      panel fill (empty tone)
+     --rw-bg-paper-soft    #f6f4ef      panel fill (error tone, warm paper)
+     --rw-ink              #111111      title + body
+     --rw-ink-soft         #4a4a4a      body fallback ink
+     --rw-rule             #1a1a1a      Sober D 1px border
+     --rw-rule-soft        #d8d2c7      hairline interior dividers
+     --rw-accent           #8a2e2e      icon + CTA hover (sparing use)
+     --rw-font-sans        IBM Plex Sans
+
+   The primitive owns: layout grid (icon · content · dismiss), tone-driven
+   background + border, CTA + dismiss-button visuals. Per-consumer layout
+   overrides (e.g. centred + max-width for the VertragDetail empty state)
+   come in via the `className` prop and the page's own CSS.
+   --------------------------------------------------------------------- */
+
+.rw-error-state {
+  display: grid;
+  /* Three-column track: optional icon, content (flex column), optional
+     dismiss. Empty tone collapses the icon column with auto-sizing. */
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink);
+}
+
+.rw-error-state--error {
+  background: var(--rw-bg-paper-soft);
+}
+
+.rw-error-state--empty {
+  background: var(--rw-bg-paper);
+}
+
+.rw-error-state__icon {
+  margin-top: 2px;
+  color: var(--rw-accent);
+  flex-shrink: 0;
+}
+
+.rw-error-state__content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rw-error-state__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--rw-ink);
+}
+
+.rw-error-state__message {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+}
+
+.rw-error-state__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.rw-error-state__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 7px 14px;
+  border: 1px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.rw-error-state__cta:hover {
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-accent);
+  color: var(--rw-accent);
+}
+
+.rw-error-state__cta:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+.rw-error-state__dismiss {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--rw-ink-soft);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.rw-error-state__dismiss:hover {
+  background: var(--rw-bg-paper);
+  border-color: var(--rw-rule-soft);
+  color: var(--rw-ink);
+}
+
+.rw-error-state__dismiss:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+/* ───── Per-consumer layout modifiers ──────────────────────────────────
+   Centred-card variant used by the VertragDetailPage stale-id /
+   compare-mode-only empty states. Mirrors the legacy `.vertrag-empty`
+   visual rhythm (centred title + body + CTA, max-width 480px). */
+
+.rw-error-state--centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  margin: 32px auto;
+  max-width: 480px;
+  padding: 32px 24px;
+}
+
+.rw-error-state--centered .rw-error-state__icon {
+  margin: 0;
+}
+
+.rw-error-state--centered .rw-error-state__content {
+  align-items: center;
+  text-align: center;
+}
+
+.rw-error-state--centered .rw-error-state__title {
+  font-size: 1.2rem;
+}
+
+.rw-error-state--centered .rw-error-state__message {
+  font-size: 0.96rem;
+}
+
+.rw-error-state--centered .rw-error-state__cta {
+  padding: 8px 18px;
+  font-size: 0.92rem;
+}
+
+/* ───── Page-banner variant ───────────────────────────────────────────
+   Used by the share-link recovery banner in Calculator.tsx — the panel
+   sits at the top of the app shell, full-width, between the topbar and
+   the workspace tabs. Drops the side border so it reads as a horizontal
+   strip rather than a card. */
+
+.rw-error-state--banner {
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  padding: 10px 16px;
+}
+
+.rw-error-state--banner .rw-error-state__title {
+  font-size: 0.95rem;
+}
+
+.rw-error-state--banner .rw-error-state__message {
+  font-size: 0.85rem;
+}
+
+/* ───── Phone variant ──────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .rw-error-state {
+    padding: 12px 14px;
+  }
+
+  .rw-error-state--centered {
+    margin: 20px auto;
+    padding: 24px 18px;
+  }
+}

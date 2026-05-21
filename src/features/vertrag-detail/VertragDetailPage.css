@@ -347,48 +347,14 @@
   border-style: dashed;
 }
 
-/* --- Empty state ------------------------------------------------------ */
-.vertrag-empty {
-  margin: 32px auto;
-  max-width: 480px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 32px 24px;
-  border: 1px solid var(--rw-rule);
-  background: var(--rw-bg-soft, #faf7f1);
-}
-
-.vertrag-empty-title {
-  margin: 0;
-  font-family: var(--rw-font-sans);
-  font-weight: 600;
-  font-size: 1.2rem;
-  color: var(--rw-ink);
-}
-
-.vertrag-empty-body {
-  margin: 0;
-  font-size: 0.96rem;
-  color: var(--rw-ink-soft);
-  line-height: 1.55;
-}
-
-.vertrag-empty-cta {
-  align-self: center;
-  padding: 8px 18px;
-  border: 1px solid var(--rw-rule);
-  font-family: var(--rw-font-sans);
-  font-size: 0.92rem;
-  color: var(--rw-ink);
-  text-decoration: none;
-}
-
-.vertrag-empty-cta:hover {
-  border-color: var(--rw-accent);
-  color: var(--rw-accent);
-}
+/* --- Empty state ------------------------------------------------------
+   Visual rhythm now provided by the shared Sober D
+   `ErrorStatePanel.--centered` modifier (R3.2). The `.vertrag-empty`
+   class is kept as a passthrough hook on the rendered panel so existing
+   selectors (DOM queries, future styling) continue to resolve, but the
+   centred-card visuals (margin, max-width, padding, border, typography)
+   live in `src/ui/chrome/ErrorStatePanel.css` to keep the three call
+   sites visually consistent. */
 
 /* --- Responsive collapses --------------------------------------------- */
 @media (max-width: 1023px) {
