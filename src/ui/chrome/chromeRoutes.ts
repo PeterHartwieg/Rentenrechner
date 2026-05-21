@@ -1,4 +1,5 @@
 import type { Route } from '../../app/useRoute'
+import { appViewFromUrl } from '../../app/useRoute'
 
 /**
  * Chrome nav tab ids. PR 5 promotes the previously-placeholder "plan" tab to
@@ -17,6 +18,9 @@ export type ChromeNavId = 'home' | 'angaben' | 'compare' | 'artikel' | 'method'
  * The PR 7 `vertrag` dynamic route is a combine-mode drill-in from Mein
  * Plan; it highlights the "Startseite" tab so the chrome reads coherently
  * with the user's sense of "I'm still on my plan".
+ *
+ * Note: this is the URL-only resolver. For URL + `?view=landing` override
+ * awareness (R1.1) use `activeChromeNavId(route, search)` instead.
  */
 export function routeToNavId(route: Route): ChromeNavId | null {
   switch (route.kind) {
@@ -56,4 +60,30 @@ export function routeToNavId(route: Route): ChromeNavId | null {
       return _exhaustive
     }
   }
+}
+
+/**
+ * Resolve the nav tab id to highlight, considering both the current `Route`
+ * and the `?view=landing` URL search-param override (R1.1).
+ *
+ * Why this exists: `routeToNavId(ROUTES.home)` returns `'home'` for both
+ * `/` and `/?view=landing`. The Vergleich tab's `clickableTarget` returns
+ * `{ route: ROUTES.home, search: '?view=landing' }` (PR #296 R1 fix) so
+ * clicking it routes to `/?view=landing`. Without this helper, the chrome
+ * would highlight Startseite there — but the user's intent (and the
+ * canvas comparison-page semantics) is the Vergleich tab.
+ *
+ * Rule: when the URL carries `?view=landing`, map `/` to `'compare'`.
+ * For every other route the override is ignored — only the Vergleich-tab
+ * entry point uses the override today (per `appViewFromUrl` allowing
+ * only the `landing` value).
+ *
+ * Pure function: pass `search` explicitly in tests. In the browser the
+ * caller reads `window.location.search` at the call site.
+ */
+export function activeChromeNavId(route: Route, search: string): ChromeNavId | null {
+  if (route.kind === 'home' && appViewFromUrl(search) === 'landing') {
+    return 'compare'
+  }
+  return routeToNavId(route)
 }

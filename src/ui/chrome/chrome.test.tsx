@@ -9,11 +9,26 @@ import { MobileSheet } from './MobileSheet'
 import { MethodFooter } from './MethodFooter'
 import { RightRailAccordion } from './RightRailAccordion'
 import { AppShell } from './AppShell'
-import { pathToRoute as R } from '../../app/useRoute'
+import { pathToRoute as R, ROUTES } from '../../app/useRoute'
+import { activeChromeNavId, routeToNavId } from './chromeRoutes'
+
+/**
+ * jsdom's `window.location` properties are read-only; redefine the whole
+ * `location` object to swap `.search`. Mirrors the helper in
+ * `LandingPage.test.tsx`. The PR 2.1 active-tab tests rely on this to
+ * pin the R1.1 `?view=landing` URL override behaviour.
+ */
+function stubLocationSearch(search: string) {
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: { ...window.location, search },
+  })
+}
 
 afterEach(() => {
   cleanup()
   mockViewport('desktop')
+  stubLocationSearch('')
 })
 
 describe('StatusBar', () => {
@@ -43,6 +58,40 @@ describe('StatusBar', () => {
     expect(bar).toBeInTheDocument()
     expect(bar?.textContent).toContain('rentenwiki.de')
     expect(bar?.textContent).not.toContain('Gemeinnütziges Projekt')
+  })
+})
+
+describe('activeChromeNavId (R1.1 ?view=landing override resolver)', () => {
+  it('maps / + empty search to "home" (regression: R1.1 unchanged routeToNavId)', () => {
+    expect(activeChromeNavId(ROUTES.home, '')).toBe('home')
+    // Sanity: the underlying routeToNavId is unchanged for the home route.
+    expect(routeToNavId(ROUTES.home)).toBe('home')
+  })
+
+  it('maps / + ?view=landing to "compare" (R1.1 invariant: Vergleich tab lights up)', () => {
+    expect(activeChromeNavId(ROUTES.home, '?view=landing')).toBe('compare')
+    // The URL-only resolver still returns "home" — the override is
+    // chrome-internal only and must not leak into route semantics.
+    expect(routeToNavId(ROUTES.home)).toBe('home')
+  })
+
+  it('ignores ?view=landing on non-home routes (override is home-only)', () => {
+    expect(activeChromeNavId(ROUTES.methode, '?view=landing')).toBe('method')
+    expect(activeChromeNavId(ROUTES.eingaben, '?view=landing')).toBe('angaben')
+    expect(activeChromeNavId(ROUTES.artikel, '?view=landing')).toBe('artikel')
+  })
+
+  it('returns null for legal routes regardless of search', () => {
+    expect(activeChromeNavId(ROUTES.impressum, '')).toBeNull()
+    expect(activeChromeNavId(ROUTES.datenschutz, '?view=landing')).toBeNull()
+  })
+
+  it('ignores unsupported ?view= values (only "landing" is honoured)', () => {
+    // Defensive: appViewFromUrl rejects compare/combine/unknown — the
+    // chrome must not light up Vergleich for those either.
+    expect(activeChromeNavId(ROUTES.home, '?view=compare')).toBe('home')
+    expect(activeChromeNavId(ROUTES.home, '?view=combine')).toBe('home')
+    expect(activeChromeNavId(ROUTES.home, '?view=garbage')).toBe('home')
   })
 })
 
@@ -178,6 +227,42 @@ describe('AppHeader', () => {
     expect(container.textContent ?? '').not.toContain('gemeinnützig')
     expect(container.querySelector('.rw-app-header__brand-meta')).toBeNull()
   })
+
+  // ---------------------------------------------------------------------------
+  // R2.1 / C1b — active-tab visual treatment + R1.1 `?view=landing` override.
+  //
+  // The R1.1 commit (PR #296) added the URL-search override so the Vergleich
+  // tab routes to /?view=landing (the mode picker) regardless of saved mode.
+  // PR 2.1 extends the chrome's active-state resolver to honour the override
+  // so the tab the user just clicked is the one that lights up.
+  // ---------------------------------------------------------------------------
+
+  it('lights up Vergleich (not Startseite) when URL is /?view=landing (R1.1 invariant + R2.1)', () => {
+    mockViewport('desktop')
+    stubLocationSearch('?view=landing')
+    render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
+    const active = document.querySelector('.rw-app-header__nav-item--active')
+    expect(active?.textContent).toBe('Vergleich')
+    // Startseite must NOT be highlighted simultaneously — the override
+    // chooses the destination tab unambiguously.
+    const allActive = document.querySelectorAll('.rw-app-header__nav-item--active')
+    expect(allActive.length).toBe(1)
+  })
+
+  it('lights up Startseite when URL is / with no search param (R1.1 baseline)', () => {
+    mockViewport('desktop')
+    stubLocationSearch('')
+    render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
+    const active = document.querySelector('.rw-app-header__nav-item--active')
+    expect(active?.textContent).toBe('Startseite')
+  })
+
+  it('applies aria-current="page" to the active desktop top-nav tab', () => {
+    mockViewport('desktop')
+    render(<AppHeader route={R('/methode')} title="" navigate={() => {}} />)
+    const current = document.querySelector('[aria-current="page"]')
+    expect(current?.textContent).toBe('Methode')
+  })
 })
 
 describe('MobileNav', () => {
@@ -253,6 +338,29 @@ describe('MobileNav', () => {
     const active = document.querySelector('.rw-mobile-nav__tab--active')
     expect(active?.textContent).toBe('Angaben')
   })
+
+  // R2.1 / C1b — same `?view=landing` override semantics on the phone bottom-tab.
+  it('lights up Vergleich on phone bottom-tab when URL is /?view=landing (R1.1 + R2.1)', () => {
+    stubLocationSearch('?view=landing')
+    render(<MobileNav route={R('/')} navigate={() => {}} />)
+    const active = document.querySelector('.rw-mobile-nav__tab--active')
+    expect(active?.textContent).toBe('Vergleich')
+    const allActive = document.querySelectorAll('.rw-mobile-nav__tab--active')
+    expect(allActive.length).toBe(1)
+  })
+
+  it('lights up Start when URL is / with no search param (R1.1 baseline on phone)', () => {
+    stubLocationSearch('')
+    render(<MobileNav route={R('/')} navigate={() => {}} />)
+    const active = document.querySelector('.rw-mobile-nav__tab--active')
+    expect(active?.textContent).toBe('Start')
+  })
+
+  it('applies aria-current="page" to the active bottom-tab link', () => {
+    render(<MobileNav route={R('/methode')} navigate={() => {}} />)
+    const current = document.querySelector('[aria-current="page"]')
+    expect(current?.textContent).toBe('Methode')
+  })
 })
 
 describe('MobileSheet', () => {
@@ -293,6 +401,36 @@ describe('MobileSheet', () => {
     fireEvent.click(screen.getByText('Annahmen'))
     expect(navigate).toHaveBeenCalledWith(R('/eingaben'))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  // R2.1 / C1b — visual active state for the overflow sheet item that
+  // matches the current route (matches the Sober D canvas left-border
+  // accent pattern in responsive-views.jsx).
+  it('marks the sheet item that matches the current route as active', () => {
+    render(<MobileSheet open onClose={() => {}} navigate={() => {}} route={R('/methode')} />)
+    const active = document.querySelector('.rw-mobile-sheet__item--active')
+    expect(active?.textContent).toBe('Methode')
+    // Only one item should be active at a time.
+    const allActive = document.querySelectorAll('.rw-mobile-sheet__item--active')
+    expect(allActive.length).toBe(1)
+  })
+
+  it('applies aria-current="page" to the active sheet item', () => {
+    render(<MobileSheet open onClose={() => {}} navigate={() => {}} route={R('/datenschutz')} />)
+    const current = document.querySelector('[aria-current="page"]')
+    expect(current?.textContent).toBe('Datenschutz')
+  })
+
+  it('marks no item active when route prop is omitted (back-compat)', () => {
+    render(<MobileSheet open onClose={() => {}} navigate={() => {}} />)
+    expect(document.querySelector('.rw-mobile-sheet__item--active')).toBeNull()
+  })
+
+  it('marks no item active when current route does not match any sheet item', () => {
+    // `/artikel` is a top-nav destination, not a sheet item — nothing
+    // should highlight even though the sheet is open.
+    render(<MobileSheet open onClose={() => {}} navigate={() => {}} route={R('/artikel')} />)
+    expect(document.querySelector('.rw-mobile-sheet__item--active')).toBeNull()
   })
 })
 
@@ -457,6 +595,21 @@ describe('AppShell composition', () => {
       </AppShell>,
     )
     expect(document.querySelector('.rw-app-shell--editorial')).toBeInTheDocument()
+  })
+
+  it('lights up Vergleich tab end-to-end when URL carries ?view=landing (R1.1 + R2.1)', () => {
+    mockViewport('desktop')
+    stubLocationSearch('?view=landing')
+    render(
+      <AppShell route={R('/')} navigate={() => {}} title="Demo">
+        <div>body</div>
+      </AppShell>,
+    )
+    // The chrome's active-tab resolver consumes window.location.search;
+    // the AppShell composition must pass the URL state down to AppHeader
+    // without intermediate refactoring breaking the chain.
+    const active = document.querySelector('.rw-app-header__nav-item--active')
+    expect(active?.textContent).toBe('Vergleich')
   })
 
   it('survives every viewport variant', () => {

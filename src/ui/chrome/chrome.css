@@ -397,7 +397,11 @@
   text-align: left;
   background: transparent;
   border: 0;
-  padding: 14px 24px;
+  /* Reserve a 2px left-border slot via padding-left increment for the
+     active state. Inactive items leave the slot transparent so the row
+     baseline stays stable when the active item moves between routes. */
+  padding: 14px 24px 14px 22px;
+  border-left: 2px solid transparent;
   font-family: var(--rw-font-sans);
   font-size: 15px;
   color: var(--rw-ink);
@@ -408,6 +412,17 @@
 
 .rw-mobile-sheet__item:last-child {
   border-bottom: 0;
+}
+
+/* MobileSheet active item — oxblood left-border accent + bold weight.
+   Mirrors the Sober D canvas left-border treatment in
+   `responsive-views.jsx` (article TOC pattern at line 1204). The accent
+   is used here (not on the desktop top-nav underline) because the
+   overflow sheet is a low-frequency surface where a stronger cue is
+   helpful and the brand colour does not compete with adjacent UI. */
+.rw-mobile-sheet__item--active {
+  border-left-color: var(--rw-accent);
+  font-weight: 600;
 }
 
 /* ───── RightRailAccordion ─────────────────────────────────────────────── */

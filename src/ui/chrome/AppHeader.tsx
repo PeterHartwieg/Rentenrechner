@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useViewport } from './useViewport'
 import { MobileSheet } from './MobileSheet'
-import { routeToNavId, type ChromeNavId } from './chromeRoutes'
+import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
@@ -70,8 +70,26 @@ function clickableTarget(id: ChromeNavId): NavTarget {
  */
 export function AppHeader({ route, kicker, title, editorial, navigate }: AppHeaderProps) {
   const viewport = useViewport()
-  const active = routeToNavId(route)
   const [sheetOpen, setSheetOpen] = useState(false)
+  // Track `window.location.search` so the Vergleich tab lights up when the
+  // URL carries `?view=landing` (PR #296 R1 override). `navigate(...)` in
+  // useRoute.ts dispatches `rentenwiki:navigated` after every SPA hop, and
+  // the same event is re-emitted from the `popstate` handler — so we
+  // subscribe to one channel for both navigation sources.
+  const [search, setSearch] = useState<string>(() =>
+    typeof window === 'undefined' ? '' : window.location.search,
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    function syncSearch() {
+      setSearch(window.location.search)
+    }
+    window.addEventListener('rentenwiki:navigated', syncSearch)
+    return () => {
+      window.removeEventListener('rentenwiki:navigated', syncSearch)
+    }
+  }, [])
+  const active = activeChromeNavId(route, search)
 
   if (viewport === 'phone') {
     return (
@@ -98,7 +116,12 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
             {title && <h1 className="rw-app-header__title">{title}</h1>}
           </div>
         )}
-        <MobileSheet open={sheetOpen} onClose={() => setSheetOpen(false)} navigate={navigate} />
+        <MobileSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          navigate={navigate}
+          route={route}
+        />
       </>
     )
   }
@@ -123,6 +146,7 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
               <a
                 key={item.id}
                 href={href}
+                aria-current={isActive ? 'page' : undefined}
                 className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
                 onClick={(event) => {
                   if (!shouldUseSpaNavigation(event)) return

@@ -1,4 +1,5 @@
-import { routeToNavId, type ChromeNavId } from './chromeRoutes'
+import { useEffect, useState } from 'react'
+import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
@@ -36,7 +37,23 @@ const ITEMS: readonly NavEntry[] = [
  * does not query matchMedia itself and assumes it is only rendered on phone.
  */
 export function MobileNav({ route, navigate }: MobileNavProps) {
-  const active = routeToNavId(route)
+  // Mirror AppHeader's search-tracking so the bottom-tab bar lights up the
+  // Vergleich tab when the URL carries `?view=landing` (PR #296 R1
+  // override, plumbed through `activeChromeNavId`).
+  const [search, setSearch] = useState<string>(() =>
+    typeof window === 'undefined' ? '' : window.location.search,
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    function syncSearch() {
+      setSearch(window.location.search)
+    }
+    window.addEventListener('rentenwiki:navigated', syncSearch)
+    return () => {
+      window.removeEventListener('rentenwiki:navigated', syncSearch)
+    }
+  }, [])
+  const active = activeChromeNavId(route, search)
   return (
     <nav className="rw-mobile-nav" aria-label="Mobile Hauptnavigation">
       {ITEMS.map((item) => {
@@ -48,6 +65,7 @@ export function MobileNav({ route, navigate }: MobileNavProps) {
             <a
               key={item.id}
               href={routeToPath(target)}
+              aria-current={isActive ? 'page' : undefined}
               className={className}
               onClick={(event) => {
                 if (!shouldUseSpaNavigation(event)) return
@@ -64,6 +82,7 @@ export function MobileNav({ route, navigate }: MobileNavProps) {
             key={item.id}
             className={`${className} rw-mobile-nav__tab--placeholder`}
             aria-disabled="true"
+            aria-current={isActive ? 'page' : undefined}
           >
             {item.label}
           </span>

@@ -6,6 +6,14 @@ interface MobileSheetProps {
   open: boolean
   onClose: () => void
   navigate: (target: Route) => void
+  /**
+   * Current route. Used to mark the matching sheet item as active so the
+   * overflow menu communicates "you are here" — matches the Sober D
+   * canvas left-border accent pattern (responsive-views.jsx article TOC).
+   * Optional so direct tests that don't care about the active state can
+   * omit it; in that case no item is highlighted.
+   */
+  route?: Route
 }
 
 interface SheetItem {
@@ -33,7 +41,7 @@ const ITEMS: readonly SheetItem[] = [
  * respectively (Annahmen folds into Section 4 of /eingaben per PR 5).
  * External http(s) hrefs still open in a new tab.
  */
-export function MobileSheet({ open, onClose, navigate }: MobileSheetProps) {
+export function MobileSheet({ open, onClose, navigate, route }: MobileSheetProps) {
   useEffect(() => {
     if (!open) return
     function onEsc(event: KeyboardEvent) {
@@ -68,17 +76,27 @@ export function MobileSheet({ open, onClose, navigate }: MobileSheetProps) {
       <div className="rw-mobile-sheet__panel">
         <div className="rw-mobile-sheet__handle" aria-hidden="true" />
         <ul className="rw-mobile-sheet__list">
-          {ITEMS.map((item) => (
-            <li key={item.label}>
-              <button
-                type="button"
-                className="rw-mobile-sheet__item"
-                onClick={() => handleItemClick(item)}
-              >
-                {item.label}
-              </button>
-            </li>
-          ))}
+          {ITEMS.map((item) => {
+            const isActive =
+              route !== undefined &&
+              item.route !== undefined &&
+              item.route.kind === route.kind
+            const className = `rw-mobile-sheet__item${
+              isActive ? ' rw-mobile-sheet__item--active' : ''
+            }`
+            return (
+              <li key={item.label}>
+                <button
+                  type="button"
+                  className={className}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => handleItemClick(item)}
+                >
+                  {item.label}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       </div>
     </div>
