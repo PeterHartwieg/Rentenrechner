@@ -218,6 +218,11 @@ async function main() {
       const png = resvg.render().asPng()
       const slug = slugForRoute(entry.canonical)
       const outPath = join(ogOutDir, `${slug}.png`)
+      // Some canonical paths contain a slash (e.g. `/vergleich/details`) so
+      // `slugForRoute` returns `vergleich/details`. The resulting outPath
+      // lives in a subdirectory of `og/`; ensure that directory exists before
+      // writing or `writeFile` throws ENOENT on Windows + POSIX alike.
+      await mkdir(dirname(outPath), { recursive: true })
       await writeFile(outPath, png)
       count += 1
       console.log(`[og] ${routeId.padEnd(40)} -> public/og/${slug}.png (${png.byteLength} bytes)`)

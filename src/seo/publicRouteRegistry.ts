@@ -578,6 +578,43 @@ export const publicRouteRegistry = {
     },
   },
   // ---------------------------------------------------------------------------
+  // R3.3 — `/vergleich/details` per-product breakdown. Public SEO surface.
+  // Sober D chrome (white + IBM Plex Sans). `jsonLdType: 'WebPage'` mirrors
+  // `/methode` and `/eingaben` — it is a tool surface, not editorial article
+  // content. Excluded from `isEditorialChromeRoute`. Prerendered with a live
+  // default-assumption demo run when no comparison state is loaded (audit ID
+  // C6, Q4); the demo seeds `visibleProducts` with the three primary products
+  // (ETF + bAV + private Rente) so crawlers index a real, populated grid.
+  // ---------------------------------------------------------------------------
+  '/vergleich/details': {
+    canonical: '/vergleich/details',
+    title: 'Wohin geht das Geld? Vergleich im Detail | RentenWiki.de',
+    metaDescription:
+      'Aufschlüsselung pro Sparform: was du selbst zahlst, was Förderung oder Arbeitgeber ' +
+      'beisteuert, was Kosten und Steuer wegnehmen und was im Alter monatlich übrig bleibt. ' +
+      'Werte 2026.',
+    h1: 'Wohin geht jeder Euro?',
+    summary:
+      'Pro-Produkt-Aufschlüsselung der sechs Sparformen entlang dreier Phasen — Ansparphase, ' +
+      'Rentenbeginn und laufender Bezug. Modell-Werte 2026 mit Beispielannahmen, wenn noch ' +
+      'kein eigener Vergleich angelegt ist.',
+    dateModified: '2026-05-21',
+    datePublished: '2026-05-21',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebPage',
+    relatedRoutes: [
+      '/',
+      '/etf-vs-bav',
+      '/altersvorsorgeprodukte-vergleichen',
+      '/methode',
+    ],
+    calculatorCta: {
+      label: 'Zum Vergleich',
+      href: '/',
+    },
+  },
+  // ---------------------------------------------------------------------------
   // PR 5 — Deine Angaben. Form-receipt entry surface for the calculator. Sober
   // D chrome (white + IBM Plex Sans). Folds in the old Annahmen tab as § 4.
   // `jsonLdType: 'WebPage'` mirrors `/methode` and `/artikel` (it is a tool
