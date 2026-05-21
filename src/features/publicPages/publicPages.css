@@ -204,6 +204,24 @@
   text-decoration: underline;
 }
 
+/* ==========================================================================
+   PageNotFound (R3.4) — scoped classes rendered inside LegalLayout / legal-article.
+   Uses Sober D token palette (var(--rw-*)) inherited from the legal context.
+   ========================================================================== */
+
+.pnf-links {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pnf-links li {
+  margin: 0;
+}
+
 @media (max-width: 640px) {
   .public-main {
     padding: 20px 14px 40px;
