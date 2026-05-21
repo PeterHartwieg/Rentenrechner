@@ -23,7 +23,12 @@
  *   workspace + combined results and caches them in state. Fires reliably
  *   on `Ctrl+P`, the browser print menu, and `window.print()` in
  *   Chromium / Firefox / Safari — that contract is part of the platform.
- * - **Compare-mode:** handler short-circuits to `undefined`.
+ * - **Compare-mode:** the row computation short-circuits to `undefined` inside
+ *   the handler AND the returned value is gated on `isCombineMode` so any
+ *   rows cached from a previous combine-mode print do not leak through when
+ *   the user flips modes without unmounting.
+ * - **Print-DOM commit:** the `setRows` update fires inside `flushSync` so it
+ *   commits synchronously before `window.print()` captures the print DOM.
  * - **Unmount:** listener is removed in the effect cleanup.
  *
  * The hook intentionally does not subscribe to `afterprint` — we keep the
@@ -33,6 +38,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import type { GermanRules } from '../domain'
 import type { Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
@@ -89,7 +95,14 @@ export function usePrintSensitivityRows(
     if (typeof window === 'undefined') return
     const handleBeforePrint = () => {
       const next = computePrintSensitivityRows(inputsRef.current)
-      setRows(next)
+      // `window.print()` (and the browser's Ctrl+P / print-menu paths) snapshot
+      // the print DOM *synchronously* after `beforeprint` returns. A plain
+      // `setRows(next)` queues an async commit, so the first print after a
+      // workspace change would capture the stale DOM (Codex P1, PR 11 R3).
+      // `flushSync` forces React to commit the update before the browser
+      // captures, ensuring the freshly-computed rows are in the print snapshot
+      // on the very first attempt.
+      flushSync(() => setRows(next))
     }
     window.addEventListener('beforeprint', handleBeforePrint)
     return () => {
@@ -97,5 +110,10 @@ export function usePrintSensitivityRows(
     }
   }, [])
 
-  return rows
+  // Gate on `isCombineMode` so cached combine-mode rows do not leak into a
+  // compare-mode render when the user flips modes without unmounting the
+  // hook (CodeRabbit Minor, PR 11 R3). Cache itself is preserved across the
+  // toggle so flipping back to combine-mode reuses the last computed rows
+  // without forcing a recompute on the toggle event.
+  return inputs.isCombineMode ? rows : undefined
 }
