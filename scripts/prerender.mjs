@@ -439,6 +439,10 @@ async function main() {
       // and leaves stale DOM attributes / text until React re-renders. Mirror
       // the `/` non-hydrated path: the static HTML still serves first-paint
       // crawlers, and the client mounts via `createRoot`.
+      //
+      // `/vergleich/details` (R3.3): demo mode reads localStorage via
+      // detectSavedMode(), so server HTML differs from client first render.
+      // Same non-hydrate path as `/` to avoid hydration mismatches.
       const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
         || routeId === '/artikel' || routeId === '/methode'
         || routeId === '/bav-rechner' || routeId === '/etf-vs-bav'

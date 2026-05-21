@@ -126,11 +126,10 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
   const result = useSimulationResult(profile, assumptions, selectedScenarioId)
   const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, selectedScenarioId)
 
-  // Doc title — `/vergleich/details` is workspace-state-dependent and not
-  // in `publicRouteRegistry`, so the title is set here. Must precede every
-  // conditional return.
+  // Doc title — kept in sync with publicRouteRegistry's /vergleich/details entry.
+  // Must precede every conditional return.
   useEffect(() => {
-    document.title = 'Wohin geht das Geld | RentenWiki.de'
+    document.title = 'Wohin geht das Geld? Vergleich im Detail | RentenWiki.de' // Kept in sync with publicRouteRegistry's /vergleich/details entry.
   }, [])
 
   // PR 290 R3 Codex P2 fix: read `?scenario=<id>` from the URL on first mount

@@ -149,7 +149,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
   it('sets the document title via useEffect to the brand-compliant string', () => {
     seedCompareMode()
     render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
-    expect(document.title).toBe('Wohin geht das Geld | RentenWiki.de')
+    expect(document.title).toBe('Wohin geht das Geld? Vergleich im Detail | RentenWiki.de')
   })
 
   it('renders a back-link to the home route as a real anchor', () => {
