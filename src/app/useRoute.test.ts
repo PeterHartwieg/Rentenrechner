@@ -1,9 +1,12 @@
+// @vitest-environment jsdom
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
 import {
   pathToRoute,
   routeToPath,
   detectSavedMode,
   appViewFromMode,
+  useRoute,
   ROUTES,
   type Route,
 } from './useRoute'
@@ -225,5 +228,88 @@ describe('/ route landing decision — end-to-end via appViewFromMode + detectSa
   it('saved compare state → compare dashboard', () => {
     store[STORAGE_KEY_V2] = JSON.stringify({ schemaVersion: 2, mode: 'compare' })
     expect(appViewFromMode(detectSavedMode())).toBe('compare')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// useRoute.navigate — SPA navigation (PR 290 R4 Codex P2).
+//
+// `navigate(target, search?)` must:
+//   1. Push `routeToPath(target)` (no query) when `search` is omitted.
+//      Backward compat with every existing call site (`AppHeader`,
+//      `MobileNav`, `LegalLayout`, `KapitalPage`, `AngabenPage`, etc. all
+//      pass only `target`).
+//   2. Push `routeToPath(target) + search` when `search` is provided. This
+//      is the new branch added for the `VergleichPage → /vergleich/details`
+//      drill-in so the scenario id survives SPA navigation in addition to
+//      Cmd-click / hard-reload (those carry the query via `href` already).
+//
+// The duplicate-URL guard inspects `pathname + search` so identical URLs
+// don't trigger a redundant `pushState` (matches the prior pathname-only
+// intent — we just have to look at the full URL now, not just the path).
+// ---------------------------------------------------------------------------
+
+describe('useRoute.navigate — SPA push semantics (PR 290 R4 Codex P2)', () => {
+  let pushStateSpy: ReturnType<typeof vi.spyOn>
+  let scrollToSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    // Start each test from `/` with no query so `pushState` is always
+    // exercised (the duplicate-URL guard inside `navigate` would skip the
+    // push otherwise). Using jsdom's real `window.history.replaceState`
+    // keeps `window.location.pathname` and `window.location.search` in sync.
+    window.history.replaceState(null, '', '/')
+    pushStateSpy = vi.spyOn(window.history, 'pushState')
+    scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    pushStateSpy.mockRestore()
+    scrollToSpy.mockRestore()
+    window.history.replaceState(null, '', '/')
+  })
+
+  it('navigate(target) — no search arg pushes pathname only (backward compat)', () => {
+    const { result } = renderHook(() => useRoute())
+    act(() => {
+      result.current.navigate(ROUTES.vergleichDetail)
+    })
+    expect(pushStateSpy).toHaveBeenCalledTimes(1)
+    expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/vergleich/details')
+  })
+
+  it('navigate(target, "?scenario=optimistisch") forwards the query on SPA push', () => {
+    // This is the bug Codex called out: previously `navigate(target)` dropped
+    // the query, so a primary-click drill-in landed on `/vergleich/details`
+    // even though the `href` carried `?scenario=optimistisch`. The fix makes
+    // SPA navigation preserve the scenario id alongside hard-reload / new-tab
+    // paths.
+    const { result } = renderHook(() => useRoute())
+    act(() => {
+      result.current.navigate(ROUTES.vergleichDetail, '?scenario=optimistisch')
+    })
+    expect(pushStateSpy).toHaveBeenCalledTimes(1)
+    expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/vergleich/details?scenario=optimistisch')
+  })
+
+  it('navigate(target) does NOT push when the destination URL matches the current pathname + search', () => {
+    // Duplicate-URL guard: if we are already at the target URL, no push.
+    window.history.replaceState(null, '', '/vergleich/details?scenario=basis')
+    const { result } = renderHook(() => useRoute())
+    act(() => {
+      result.current.navigate(ROUTES.vergleichDetail, '?scenario=basis')
+    })
+    expect(pushStateSpy).not.toHaveBeenCalled()
+  })
+
+  it('navigate(target, newSearch) pushes when only the search differs', () => {
+    // If pathname matches but search differs, the URL is different — push.
+    window.history.replaceState(null, '', '/vergleich/details?scenario=basis')
+    const { result } = renderHook(() => useRoute())
+    act(() => {
+      result.current.navigate(ROUTES.vergleichDetail, '?scenario=optimistisch')
+    })
+    expect(pushStateSpy).toHaveBeenCalledTimes(1)
+    expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/vergleich/details?scenario=optimistisch')
   })
 })

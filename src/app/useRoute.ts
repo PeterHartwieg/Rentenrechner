@@ -239,7 +239,7 @@ export function appViewFromMode(mode: 'compare' | 'combine' | null): AppView {
   return 'compare'
 }
 
-export function useRoute(): { route: Route; navigate: (target: Route) => void } {
+export function useRoute(): { route: Route; navigate: (target: Route, search?: string) => void } {
   const [route, setRoute] = useState<Route>(() => {
     if (typeof window === 'undefined') return ROUTES.home
     return pathToRoute(window.location.pathname)
@@ -264,11 +264,30 @@ export function useRoute(): { route: Route; navigate: (target: Route) => void } 
     if (entry?.title) document.title = entry.title
   }, [route])
 
-  function navigate(target: Route): void {
+  /**
+   * SPA navigation primitive. `target` is the destination route; the optional
+   * `search` is a query string that begins with `?` (e.g. `?scenario=basis`)
+   * — the caller composes it (typically via `URLSearchParams` or a template
+   * literal) and this helper stays agnostic about which params are present.
+   *
+   * PR 290 R4 Codex P2 fix: the previous signature ignored search params,
+   * which dropped `?scenario=<id>` on SPA navigation from `VergleichPage` to
+   * `/vergleich/details`. The drill-in `href` carries the scenario id but the
+   * primary-click handler used to call `navigate(target)` without it, pushing
+   * a URL with no query — so a reload/bookmark/share after SPA navigation
+   * silently fell back to `basis` instead of the selected scenario. Accepting
+   * the search arg keeps the URL the source of truth for shareable state in
+   * every navigation path (hard reload, new tab, AND SPA navigate).
+   *
+   * The comparison guard inspects `pathname + search` so identical URLs are
+   * not re-pushed (matches the prior pathname-only intent).
+   */
+  function navigate(target: Route, search?: string): void {
     if (typeof window === 'undefined') return
     const path = routeToPath(target)
-    if (window.location.pathname !== path) {
-      window.history.pushState(null, '', path)
+    const url = search ? `${path}${search}` : path
+    if (window.location.pathname + window.location.search !== url) {
+      window.history.pushState(null, '', url)
     }
     setRoute(target)
     window.scrollTo(0, 0)

@@ -34,8 +34,13 @@ interface Props {
    * drill-in link uses SPA navigation to `/vergleich/details`; when absent,
    * the link still works as a real anchor (progressive enhancement). The
    * compare-mode `Calculator.tsx` always passes this; tests sometimes omit it.
+   *
+   * The optional `search` argument carries the query string (e.g.
+   * `?scenario=basis`) so SPA navigation pushes the same URL the `href`
+   * would (PR 290 R4 Codex P2 — the URL is the source of truth for
+   * shareable state in compare mode).
    */
-  navigate?: (target: Route) => void
+  navigate?: (target: Route, search?: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -180,19 +185,32 @@ export function VergleichPage({
                     state, then routing flows through props as usual. The
                     `scenario` param is purely a runtime initialiser; we do
                     NOT promote it into the `Route` tagged-union — keeping
-                    `routeToPath` / `pathToRoute` unchanged. */}
-                <a
-                  href={`${routeToPath(ROUTES.vergleichDetail)}?scenario=${encodeURIComponent(selectedScenarioId)}`}
-                  className="vergleich-drilldown__link"
-                  onClick={(event) => {
-                    if (!navigate) return
-                    if (!shouldUseSpaNavigation(event)) return
-                    event.preventDefault()
-                    navigate(ROUTES.vergleichDetail)
-                  }}
-                >
-                  Wohin geht das Geld? Aufschlüsselung pro Produkt →
-                </a>
+                    `routeToPath` / `pathToRoute` unchanged.
+                    PR 290 R4 Codex P2 fix: also forward the scenario query
+                    on SPA navigation. Previously `navigate(ROUTES.vergleichDetail)`
+                    pushed `/vergleich/details` without the query, so a reload
+                    or share after primary-clicking the link silently fell
+                    back to `basis`. Hoisting `scenarioQuery` to a const keeps
+                    `href` and `navigate` in lockstep — divergence is
+                    structurally impossible. */}
+                {(() => {
+                  const scenarioQuery = `?scenario=${encodeURIComponent(selectedScenarioId)}`
+                  const drillInHref = `${routeToPath(ROUTES.vergleichDetail)}${scenarioQuery}`
+                  return (
+                    <a
+                      href={drillInHref}
+                      className="vergleich-drilldown__link"
+                      onClick={(event) => {
+                        if (!navigate) return
+                        if (!shouldUseSpaNavigation(event)) return
+                        event.preventDefault()
+                        navigate(ROUTES.vergleichDetail, scenarioQuery)
+                      }}
+                    >
+                      Wohin geht das Geld? Aufschlüsselung pro Produkt →
+                    </a>
+                  )
+                })()}
               </div>
             </>
           ) : (
