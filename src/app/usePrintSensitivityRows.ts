@@ -37,7 +37,7 @@
  * on the next `beforeprint` because the listener reads via ref every time.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import type { GermanRules } from '../domain'
 import type { Workspace } from '../domain/workspace'
@@ -83,11 +83,15 @@ export function usePrintSensitivityRows(
   const [rows, setRows] = useState<PrintSensitivityRow[] | undefined>(undefined)
   // Track latest inputs via a ref so the listener never goes stale without
   // forcing a re-attach (and without forcing a recompute on every workspace
-  // mutation, which is the whole point of this hook). The ref is written
-  // in a layout-effect to satisfy the `react-hooks/refs` lint rule which
-  // forbids ref mutations during render.
+  // mutation, which is the whole point of this hook). The ref is written in
+  // `useLayoutEffect` (not `useEffect`) so it is always current before paint:
+  // a user who mutates workspace inputs and synchronously calls `window.print()`
+  // in the same tick would otherwise hit the `beforeprint` handler with a
+  // stale ref (Codex P1, PR 11 R4). `useLayoutEffect` runs synchronously
+  // after commit but before paint — the React-documented pattern for "ref
+  // must always reflect the latest committed render".
   const inputsRef = useRef(inputs)
-  useEffect(() => {
+  useLayoutEffect(() => {
     inputsRef.current = inputs
   })
 

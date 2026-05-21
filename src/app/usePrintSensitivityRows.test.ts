@@ -442,4 +442,63 @@ describe('usePrintSensitivityRows', () => {
 
     expect(buildPrintSensitivityRowsSpy).not.toHaveBeenCalled()
   })
+
+  // PR 11 R4 — Codex P1: useLayoutEffect ref-update contract.
+  //
+  // In a real browser, a user can mutate workspace inputs then synchronously
+  // call `window.print()` in the same tick (e.g. a keyboard handler that
+  // calls `window.print()` immediately after a state setter). Because
+  // `window.print()` dispatches `beforeprint` synchronously before returning,
+  // the listener reads `inputsRef.current` in the same tick. If the ref were
+  // assigned in `useEffect` (which fires after paint), it would still hold the
+  // previous render's inputs and the print DOM would be stale.
+  //
+  // `useLayoutEffect` runs synchronously after React's commit phase — before
+  // the browser paints and before `window.print()` captures the print DOM —
+  // so `inputsRef.current` always reflects the latest committed render.
+  //
+  // jsdom limitation: jsdom has no paint model, so both `useLayoutEffect` and
+  // `useEffect` flush eagerly inside `act()`. This test validates the correct
+  // ref-read behaviour (builder receives fresh inputs on `beforeprint` after a
+  // workspace mutation) and serves as a regression guard for the useLayoutEffect
+  // annotation. The comment above and the hook's inline comment are the
+  // authoritative documentation of the real-browser guarantee.
+  it('useLayoutEffect annotation: builder receives fresh inputs when beforeprint fires after a workspace mutation (PR 11 R4 regression guard)', () => {
+    const ws1 = makeWorkspace()
+    const combined1 = { basis: makeStubCombined() }
+    const { rerender } = renderHook(
+      ({ workspace, combinedByScenarioId }) =>
+        usePrintSensitivityRows({
+          isCombineMode: true,
+          workspace,
+          combinedByScenarioId,
+          rules: de2026Rules,
+        }),
+      { initialProps: { workspace: ws1, combinedByScenarioId: combined1 } },
+    )
+
+    const ws2 = makeWorkspace()
+    const combined2 = { basis: makeStubCombined() }
+
+    // Rerender with the new workspace (commits the useLayoutEffect ref-update).
+    act(() => {
+      rerender({ workspace: ws2, combinedByScenarioId: combined2 })
+    })
+
+    // The builder must NOT have been called yet (no workspace-mutation compute).
+    expect(buildPrintSensitivityRowsSpy).not.toHaveBeenCalled()
+
+    // Now fire beforeprint — the listener reads inputsRef.current which the
+    // useLayoutEffect has already updated to ws2.
+    act(() => {
+      window.dispatchEvent(new Event('beforeprint'))
+    })
+
+    expect(buildPrintSensitivityRowsSpy).toHaveBeenCalledTimes(1)
+    const callArgs = buildPrintSensitivityRowsSpy.mock.calls[0]?.[0]
+    // Must receive the NEW workspace reference, not the previous ws1.
+    expect(callArgs?.workspace).toBe(ws2)
+    expect(callArgs?.baselineCombined).toBe(combined2.basis)
+    expect(callArgs?.workspace).not.toBe(ws1)
+  })
 })
