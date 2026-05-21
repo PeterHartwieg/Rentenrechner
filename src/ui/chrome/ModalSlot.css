@@ -20,6 +20,12 @@
    close), body scroll container, and phone safe-area inset. Per-modal
    layout (sticky footer, validation banners, body grids) is the
    consumer's responsibility and is composed inside `.rw-modal-slot__body`.
+
+   R4.2 (H10) added:
+     - Tablet variant (640-820 px): panel narrows from 720 px → 520 px.
+     - Phone variant gains a drag handle + swipe-down dismiss affordance.
+     - Snap-back transition on the panel root; suppressed during active
+       drag and when `prefers-reduced-motion: reduce`.
    --------------------------------------------------------------------- */
 
 .rw-modal-slot {
@@ -61,6 +67,41 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* R4.2: snap-back animation for phone swipe-to-dismiss. The transform
+     value itself is set inline by the React touchmove handler; this
+     transition only fires when the inline value is cleared on touchend
+     (i.e. below the dismiss threshold), producing a smooth return to
+     origin. The `.is-dragging` modifier below disables the transition
+     so direct-finger tracking during the drag stays glued to the touch
+     position. Desktop/tablet never transform the panel, so this rule is
+     effectively phone-only at runtime. */
+  transition: transform 200ms ease-out;
+}
+
+.rw-modal-slot__panel.is-dragging {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rw-modal-slot__panel {
+    transition: none;
+  }
+}
+
+/* ───── Drag region + handle (phone-only affordance) ─────────────────
+   The drag region wraps the handle + header so a user dragging anywhere
+   in the dialog chrome dismisses, but a swipe inside the body content
+   still scrolls normally. The handle itself is a thin pill shown only
+   at the phone breakpoint; on tablet and desktop the handle is hidden
+   and the region is just a passive container around the header. */
+
+.rw-modal-slot__drag-region {
+  flex-shrink: 0;
+  background: var(--rw-bg-paper);
+}
+
+.rw-modal-slot__drag-handle {
+  display: none;
 }
 
 /* ───── Header ──────────────────────────────────────────────────────── */
@@ -137,6 +178,18 @@
      content gutter. */
 }
 
+/* ───── Tablet variant (640-820 px) ──────────────────────────────────
+   Small tablets and landscape phones get a slightly narrower panel so
+   the dialog still reads as a focused affordance rather than a near-
+   full-width sheet. Wider tablets (>820 px) and desktops keep the
+   default 720 px panel. */
+
+@media (min-width: 640px) and (max-width: 820px) {
+  .rw-modal-slot__panel {
+    width: min(520px, 100%);
+  }
+}
+
 /* ───── Phone variant ───────────────────────────────────────────────── */
 
 @media (max-width: 639px) {
@@ -161,6 +214,23 @@
     border-left: 0;
     border-right: 0;
     border-bottom: 0;
+    /* GPU hint: only the panel transforms during drag. Keeping this in
+       the phone @media block (the only viewport where transform actually
+       changes) avoids cost on viewports that never animate. */
+    will-change: transform;
+  }
+
+  .rw-modal-slot__drag-handle {
+    /* Visible pill above the header — 4 px tall, ~32 px wide, fully
+       rounded. Soft-rule color so it reads as a hint without competing
+       with the title for attention. Mirrors iOS/Material bottom-sheet
+       affordance. */
+    display: block;
+    width: 32px;
+    height: 4px;
+    margin: 8px auto;
+    background: var(--rw-rule-soft);
+    border-radius: 999px;
   }
 
   .rw-modal-slot__header {
