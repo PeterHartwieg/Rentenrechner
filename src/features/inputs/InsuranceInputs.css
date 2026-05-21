@@ -1,18 +1,18 @@
 .paid-up-summary {
   margin-top: 12px;
   padding: 10px 12px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--rw-bg-paper-soft);
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   font-size: 0.82rem;
-  color: #0c4a6e;
+  color: var(--rw-ink);
 }
 
 .paid-up-summary h4 {
   margin: 0 0 8px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #075985;
+  color: var(--rw-ink);
 }
 
 .paid-up-table {
@@ -36,6 +36,6 @@
   padding-top: 8px;
   padding-bottom: 2px;
   font-weight: 600;
-  color: #075985;
+  color: var(--rw-ink);
   font-size: 0.8rem;
 }
