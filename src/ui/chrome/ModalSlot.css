@@ -1,0 +1,174 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   ModalSlot — Sober D / Hybrid modal primitive.
+
+   Sits in src/ui/chrome/ alongside AppHeader / AppShell / MobileSheet so
+   the dialog system shares the same token vocabulary as the page chrome:
+
+     --rw-bg-paper         #ffffff      panel + close-button fill
+     --rw-bg-paper-soft    #f6f4ef      eyebrow/strip warm-paper background
+     --rw-ink              #111111      title + close-button glyph
+     --rw-ink-soft         #4a4a4a      body fallback ink
+     --rw-ink-faint        #7a7268      eyebrow mono caps
+     --rw-rule             #1a1a1a      2px Sober D header rule + panel edge
+     --rw-rule-soft        #d8d2c7      hairline interior dividers
+     --rw-accent           #8a2e2e      focus ring (sparing use, no headline)
+     --rw-font-sans        IBM Plex Sans (title, body)
+     --rw-font-mono        JetBrains Mono (eyebrow)
+     --rw-mobile-nav-height                phone tab bar reserve
+
+   The primitive owns: backdrop, panel chrome, header (eyebrow + title +
+   close), body scroll container, and phone safe-area inset. Per-modal
+   layout (sticky footer, validation banners, body grids) is the
+   consumer's responsibility and is composed inside `.rw-modal-slot__body`.
+   --------------------------------------------------------------------- */
+
+.rw-modal-slot {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  /* Top padding gives the dialog a small ambient gap from the status
+     bar; bottom padding ensures the panel never butts against the
+     phone tab bar or the iOS safe-area inset. */
+  padding: 4vh 16px calc(4vh + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+}
+
+.rw-modal-slot__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.55);
+  border: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.rw-modal-slot__panel {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: 100%;
+  background: var(--rw-bg-paper);
+  border: 1px solid var(--rw-rule);
+  /* Sober D is square-edged on chrome; corners stay sharp so the dialog
+     reads as a printed notice rather than a glossy app card. */
+  border-radius: 0;
+  box-shadow: 0 24px 48px rgba(17, 17, 17, 0.18);
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ───── Header ──────────────────────────────────────────────────────── */
+
+.rw-modal-slot__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px 14px;
+  border-bottom: 2px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+  flex-shrink: 0;
+}
+
+.rw-modal-slot__header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rw-modal-slot__eyebrow {
+  margin: 0;
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.rw-modal-slot__title {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+  color: var(--rw-ink);
+}
+
+.rw-modal-slot__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rw-bg-paper);
+  border: 1px solid var(--rw-rule);
+  color: var(--rw-ink);
+  cursor: pointer;
+  font-family: var(--rw-font-sans);
+}
+
+.rw-modal-slot__close:hover {
+  background: var(--rw-bg-paper-soft);
+}
+
+.rw-modal-slot__close:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+/* ───── Body (scroll container) ─────────────────────────────────────── */
+
+.rw-modal-slot__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  background: var(--rw-bg-paper);
+  /* Body padding is consumer-driven (each modal composes its own section
+     grid). The primitive only guarantees scroll behaviour and a clean
+     content gutter. */
+}
+
+/* ───── Phone variant ───────────────────────────────────────────────── */
+
+@media (max-width: 639px) {
+  .rw-modal-slot {
+    /* Full-bleed on phone: drop the side padding and bottom-anchor the
+       panel just above the MobileNav so the bottom-tab-bar never
+       occludes the modal footer. */
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .rw-modal-slot__panel {
+    width: 100%;
+    max-height: 100%;
+    min-height: 100%;
+    /* Reserve room above the bottom tab bar + iOS safe-area inset so the
+       last row of the dialog body (typically the sticky footer / CTA) is
+       always reachable. */
+    padding-bottom: calc(
+      var(--rw-mobile-nav-height) + env(safe-area-inset-bottom, 0px)
+    );
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .rw-modal-slot__header {
+    padding: 14px 16px 12px;
+  }
+
+  .rw-modal-slot__title {
+    font-size: 19px;
+    letter-spacing: -0.2px;
+  }
+}

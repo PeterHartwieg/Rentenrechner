@@ -24,8 +24,9 @@
 import './InventoryWizard.css'
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { FocusTrap } from '../../ui/FocusTrap'
+import { ModalSlot } from '../../ui/chrome/ModalSlot'
 import { useFeedbackTarget, qaTarget, useQaMode } from '../../features/qa-feedback'
-import { X, Check, Plus, Trash2, ArrowRight } from 'lucide-react'
+import { Check, Plus, Trash2, ArrowRight } from 'lucide-react'
 import type { Workspace } from '../../domain/workspace'
 import type { EvidenceState } from '../../domain/instances'
 import type { ProductId } from '../../engine/productRegistry'
@@ -634,15 +635,20 @@ export function InventoryWizard({
   // Step 0 = personal details; step 1 = product checklist.
   const [step, setStep] = useState<WizardStep>(0)
 
-  // Scroll the dialog overlay back to the top and restore focus to the heading
-  // whenever the step changes (forward or backward navigation).
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const headingRef = useRef<HTMLHeadingElement>(null)
+  // When the step changes, scroll the ModalSlot body container back to the top
+  // so the user lands on the new step's first field. The step-content wrapper
+  // is mounted inside ModalSlot's `.rw-modal-slot__body` (the scroll
+  // container); we resolve the ancestor at effect time. ModalSlot's title
+  // updates per step, so screen-readers get the change through aria-labelledby
+  // on the dialog panel — no inner heading focus dance needed.
+  const stepContentRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (overlayRef.current && typeof overlayRef.current.scrollTo === 'function') {
-      overlayRef.current.scrollTo({ top: 0, behavior: 'instant' })
+    const scrollHost = stepContentRef.current?.closest<HTMLElement>(
+      '.rw-modal-slot__body',
+    )
+    if (scrollHost && typeof scrollHost.scrollTo === 'function') {
+      scrollHost.scrollTo({ top: 0, behavior: 'instant' })
     }
-    headingRef.current?.focus()
   }, [step])
 
   // Step 0 draft — seeded from parent props so the wizard is pre-filled when
@@ -1153,173 +1159,155 @@ export function InventoryWizard({
   const eyebrowText = step === 0 ? 'Schritt 1 von 2' : 'Schritt 2 von 2'
 
   return (
-    <FocusTrap onEscape={handleEscape}>
-    <div
-      ref={overlayRef}
-      className="inventory-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="inventory-wizard-heading"
-      {...dialogTargetProps}
-    >
-      <div className="inventory-card">
-        {/* ── Header ───────────────────────────────────────────────── */}
-        <header className="inventory-header">
-          <div className="inventory-header-text">
-            <p className="inventory-eyebrow">{eyebrowText}</p>
-            <h2
-              id="inventory-wizard-heading"
-              className="inventory-title"
-              ref={headingRef}
-              tabIndex={-1}
-            >
-              {headingText}
-            </h2>
-          </div>
-          <button
-            type="button"
-            className="inventory-close"
-            onClick={onDismiss}
-            aria-label="Bestandsaufnahme schließen"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-        </header>
-
-        {/* ── Step 0: personal details ──────────────────────────────── */}
-        {step === 0 && (
-          <div {...stepContainerTargetProps}>
-            <PersonalDetailsStep
-              draft={personalDetails}
-              onChange={setPersonalDetails}
-              onNext={() => setStep(1)}
-              onDismiss={onDismiss}
-            />
-          </div>
-        )}
-
-        {/* ── Step 1: product checklist ─────────────────────────────── */}
-        {step === 1 && (
-          <>
-        {/* ── Body ─────────────────────────────────────────────────── */}
-        <div className="inventory-body" {...stepContainerTargetProps}>
-          <p className="inventory-lede">
-            Welche Verträge hast du bereits? Nur die wichtigsten Werte — den Rest schätzen wir.
-          </p>
-
-          {validationErrors.length > 0 && (
-            <ul className="inventory-validation-errors" role="alert">
-              {validationErrors.map((err) => (
-                <li key={err}>{err}</li>
-              ))}
-            </ul>
+    <>
+      <ModalSlot
+        open
+        onClose={handleEscape}
+        title={headingText}
+        eyebrow={eyebrowText}
+        closeLabel="Bestandsaufnahme schließen"
+        panelClassName="inventory-modal"
+      >
+        <div
+          ref={stepContentRef}
+          className="inventory-step-content"
+          {...dialogTargetProps}
+        >
+          {/* ── Step 0: personal details ──────────────────────────────── */}
+          {step === 0 && (
+            <div {...stepContainerTargetProps}>
+              <PersonalDetailsStep
+                draft={personalDetails}
+                onChange={setPersonalDetails}
+                onNext={() => setStep(1)}
+                onDismiss={onDismiss}
+              />
+            </div>
           )}
 
-          {PRODUCT_ROWS.map((row) => {
-            const isGrv = row.id === 'grv'
-            // GRV row only relevant when the user picked "Gesetzliche Rente" as
-            // baseline. Beamtenpension and Versorgungswerk replace GRV — the
-            // estimate from step 0's manualMonthlyGrossPension feeds the engine
-            // instead.
-            if (isGrv && personalDetails.pensionBaseline !== 'grv') {
-              return null
-            }
-            const checked = isChecked(row.id)
-            const canMulti = MULTI_INSTANCE_PRODUCTS.has(row.id)
-            return (
-              <div
-                key={row.id}
-                className={`inventory-product-row${checked ? ' inventory-product-row--checked' : ''}`}
-                {...qaTarget(qaEnabled, `inventory.wizard.productRow.${row.id}`, { label: row.name })}
-              >
-                {/* Checkbox row — label wraps input so the entire row is clickable */}
-                <label
-                  htmlFor={`inventory-check-${row.id}`}
-                  className="inventory-product-check"
-                  style={isGrv ? { cursor: 'default' } : undefined}
-                >
-                  <input
-                    type="checkbox"
-                    id={`inventory-check-${row.id}`}
-                    checked={checked}
-                    readOnly={isGrv}
-                    onChange={!isGrv ? () => toggleProduct(row.id) : undefined}
-                    aria-label={`${row.name} einbeziehen`}
-                  />
-                  <span className="inventory-product-check-label">
-                    <span className="inventory-product-name">{row.name}</span>
-                    <span className="inventory-product-hint">
-                      {isGrv
-                        ? 'Immer dabei — wir schätzen deine GRV-Rente.'
-                        : row.hint}
-                    </span>
-                  </span>
-                </label>
+          {/* ── Step 1: product checklist ─────────────────────────────── */}
+          {step === 1 && (
+            <>
+              {/* ── Body ─────────────────────────────────────────────────── */}
+              <div className="inventory-body" {...stepContainerTargetProps}>
+                <p className="inventory-lede">
+                  Welche Verträge hast du bereits? Nur die wichtigsten Werte — den Rest schätzen wir.
+                </p>
 
-                {/* Expanded instance cards */}
-                {checked && (
-                  <>
-                    {isGrv && (
-                      <div className="inventory-instance-card" data-testid="instance-card-grv">
-                        <GrvCard
-                          draft={grvDraft}
-                          onChange={setGrvDraft}
-                          grossSalaryYear={personalDetails.grossSalaryYear}
-                        />
-                      </div>
-                    )}
-
-                    {!isGrv && (
-                      <>
-                        {renderProductInstances(row.id)}
-
-                        {canMulti && (
-                          <button
-                            type="button"
-                            className="inv-add-instance-btn"
-                            onClick={() => addInstance(row.id)}
-                          >
-                            <Plus size={14} aria-hidden="true" />
-                            {row.addLabel}
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </>
+                {validationErrors.length > 0 && (
+                  <ul className="inventory-validation-errors" role="alert">
+                    {validationErrors.map((err) => (
+                      <li key={err}>{err}</li>
+                    ))}
+                  </ul>
                 )}
-              </div>
-            )
-          })}
-        </div>
 
-        {/* ── Sticky footer ────────────────────────────────────────── */}
-        <footer className="inventory-footer">
-          <p className="inventory-footer-note">
-            Keine Steuer-, Rechts- oder Anlageberatung. Diese Angaben dienen der
-            Illustration.
-          </p>
-          <div className="inventory-footer-actions">
-            <button
-              type="button"
-              className="inventory-btn-ghost"
-              onClick={onDismiss}
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              className="inventory-btn-primary"
-              onClick={handleComplete}
-              {...primaryCtaTargetProps}
-            >
-              <Check size={16} aria-hidden="true" />
-              {buttonLabel}
-            </button>
-          </div>
-        </footer>
-          </>
-        )}
-      </div>
+                {PRODUCT_ROWS.map((row) => {
+                  const isGrv = row.id === 'grv'
+                  // GRV row only relevant when the user picked "Gesetzliche Rente" as
+                  // baseline. Beamtenpension and Versorgungswerk replace GRV — the
+                  // estimate from step 0's manualMonthlyGrossPension feeds the engine
+                  // instead.
+                  if (isGrv && personalDetails.pensionBaseline !== 'grv') {
+                    return null
+                  }
+                  const checked = isChecked(row.id)
+                  const canMulti = MULTI_INSTANCE_PRODUCTS.has(row.id)
+                  return (
+                    <div
+                      key={row.id}
+                      className={`inventory-product-row${checked ? ' inventory-product-row--checked' : ''}`}
+                      {...qaTarget(qaEnabled, `inventory.wizard.productRow.${row.id}`, { label: row.name })}
+                    >
+                      {/* Checkbox row — label wraps input so the entire row is clickable */}
+                      <label
+                        htmlFor={`inventory-check-${row.id}`}
+                        className="inventory-product-check"
+                        style={isGrv ? { cursor: 'default' } : undefined}
+                      >
+                        <input
+                          type="checkbox"
+                          id={`inventory-check-${row.id}`}
+                          checked={checked}
+                          readOnly={isGrv}
+                          onChange={!isGrv ? () => toggleProduct(row.id) : undefined}
+                          aria-label={`${row.name} einbeziehen`}
+                        />
+                        <span className="inventory-product-check-label">
+                          <span className="inventory-product-name">{row.name}</span>
+                          <span className="inventory-product-hint">
+                            {isGrv
+                              ? 'Immer dabei — wir schätzen deine GRV-Rente.'
+                              : row.hint}
+                          </span>
+                        </span>
+                      </label>
+
+                      {/* Expanded instance cards */}
+                      {checked && (
+                        <>
+                          {isGrv && (
+                            <div className="inventory-instance-card" data-testid="instance-card-grv">
+                              <GrvCard
+                                draft={grvDraft}
+                                onChange={setGrvDraft}
+                                grossSalaryYear={personalDetails.grossSalaryYear}
+                              />
+                            </div>
+                          )}
+
+                          {!isGrv && (
+                            <>
+                              {renderProductInstances(row.id)}
+
+                              {canMulti && (
+                                <button
+                                  type="button"
+                                  className="inv-add-instance-btn"
+                                  onClick={() => addInstance(row.id)}
+                                >
+                                  <Plus size={14} aria-hidden="true" />
+                                  {row.addLabel}
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* ── Sticky footer ────────────────────────────────────────── */}
+              <footer className="inventory-footer">
+                <p className="inventory-footer-note">
+                  Keine Steuer-, Rechts- oder Anlageberatung. Diese Angaben dienen der
+                  Illustration.
+                </p>
+                <div className="inventory-footer-actions">
+                  <button
+                    type="button"
+                    className="inventory-btn-ghost"
+                    onClick={onDismiss}
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    type="button"
+                    className="inventory-btn-primary"
+                    onClick={handleComplete}
+                    {...primaryCtaTargetProps}
+                  >
+                    <Check size={16} aria-hidden="true" />
+                    {buttonLabel}
+                  </button>
+                </div>
+              </footer>
+            </>
+          )}
+        </div>
+      </ModalSlot>
 
       {/* ── Remove confirmation dialog ─────────────────────────────── */}
       {removeConfirm && (
@@ -1333,8 +1321,7 @@ export function InventoryWizard({
           onCancel={() => setRemoveConfirm(null)}
         />
       )}
-    </div>
-    </FocusTrap>
+    </>
   )
 }
 
