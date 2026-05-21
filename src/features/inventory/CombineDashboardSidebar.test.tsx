@@ -53,6 +53,7 @@ function makeProps(ws: ReturnType<typeof dilanWorkspace>) {
     onRebaseWhatIf: () => {},
     onFreezeWhatIf: () => {},
     onArchiveAndRestart: () => {},
+    onEditInstance: (_pid: MultiInstanceProductId, _iid: string) => { void _pid; void _iid },
   }
 }
 
@@ -471,6 +472,58 @@ describe('CombineDashboardSidebar — Vertragsdaten right-rail (H11)', () => {
     render(<CombineDashboardSidebar {...makeProps(ws)} />)
     const editBtn = screen.getByRole('button', { name: 'Vertrag bearbeiten' })
     expect(editBtn).toBeDefined()
+    cleanup()
+  })
+
+  it('"Vertrag bearbeiten" click on a bAV card invokes onEditInstance with productId + instanceId (issue #299)', () => {
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    const bavInstanceId = ws.baseline.assumptions.bav[0].instanceId
+
+    const onEditInstance = vi.fn()
+    const props = { ...makeProps(ws), onEditInstance }
+    render(<CombineDashboardSidebar {...props} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vertrag bearbeiten' }))
+
+    expect(onEditInstance).toHaveBeenCalledTimes(1)
+    expect(onEditInstance).toHaveBeenCalledWith('bav', bavInstanceId)
+    cleanup()
+  })
+
+  it('"Vertrag bearbeiten" click on an ETF card invokes onEditInstance with the ETF productId (issue #299)', () => {
+    // Cover a non-bAV slot to prove the productId is wired per card, not hardcoded.
+    const ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'etf')
+    const etfInstanceId = ws.baseline.assumptions.etf[0].instanceId
+
+    const onEditInstance = vi.fn()
+    const props = { ...makeProps(ws), onEditInstance }
+    render(<CombineDashboardSidebar {...props} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vertrag bearbeiten' }))
+
+    expect(onEditInstance).toHaveBeenCalledTimes(1)
+    expect(onEditInstance).toHaveBeenCalledWith('etf', etfInstanceId)
+    cleanup()
+  })
+
+  it('"Vertrag bearbeiten" disambiguates per card when multiple instances of the same product exist (issue #299)', () => {
+    // With two bAV cards, clicking the second card's button must pass the
+    // second instanceId — guards against a stale-closure / first-instance
+    // regression in the per-card onEdit closure.
+    let ws = addInstanceToWorkspace({ ...defaultWorkspace, mode: 'combine' }, 'bav')
+    ws = addInstanceToWorkspace(ws, 'bav')
+    const secondInstanceId = ws.baseline.assumptions.bav[1].instanceId
+
+    const onEditInstance = vi.fn()
+    const props = { ...makeProps(ws), onEditInstance }
+    render(<CombineDashboardSidebar {...props} />)
+
+    const editBtns = screen.getAllByRole('button', { name: 'Vertrag bearbeiten' })
+    expect(editBtns.length).toBe(2)
+    fireEvent.click(editBtns[1])
+
+    expect(onEditInstance).toHaveBeenCalledTimes(1)
+    expect(onEditInstance).toHaveBeenCalledWith('bav', secondInstanceId)
     cleanup()
   })
 

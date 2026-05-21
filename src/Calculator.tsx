@@ -31,6 +31,7 @@ import { useWorkspace } from './app/useWorkspace'
 import { WORKSPACE_VIEWS } from './app/useWorkspace'
 import type { WorkspaceView } from './app/useWorkspace'
 import { usePortfolioState } from './app/portfolioState'
+import { ROUTES } from './app/useRoute'
 import type { Route } from './app/useRoute'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
 import { InputsPanel } from './features/inputs/InputsPanel'
@@ -627,6 +628,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
           onFreezeWhatIf={portfolioState.freezeWhatIf}
           onArchiveAndRestart={() => portfolioState.archiveAndRestart()}
           onOpenDecisionMenu={setActiveMenuInstanceId}
+          onEditInstance={(_productId, instanceId) => navigate(ROUTES.vertrag(instanceId))}
         />
         {portfolioState.mode === 'combine' && activeMenuInstanceId !== null && (
           <ContractDecisionMenu
