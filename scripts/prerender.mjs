@@ -85,6 +85,12 @@ async function loadSourceModules() {
     // in the static HTML the crawler fetches (P0 compliance invariant —
     // verified by publicPages.test.tsx prerender suites).
     const appShellMod = await server.ssrLoadModule('/src/ui/chrome/AppShell.tsx')
+    // `pathToRoute` converts the canonical path string into the tagged-union
+    // `Route` object that AppShell expects on its `route` prop. Loaded via
+    // Vite SSR so the React + DOM dependencies inside `useRoute.ts` resolve
+    // through the configured plugin pipeline rather than Node's bare ESM
+    // loader (audit C3).
+    const useRouteMod = await server.ssrLoadModule('/src/app/useRoute.ts')
 
     return {
       server,
@@ -112,6 +118,7 @@ async function loadSourceModules() {
       impressum,
       datenschutz,
       appShellMod,
+      useRouteMod,
     }
   } catch (err) {
     await server.close()
@@ -189,7 +196,15 @@ function pickComponent(routeId, componentMap) {
 async function renderRoute(routeId, componentMap, modules, { React, renderToString }) {
   const Component = pickComponent(routeId, componentMap)
   const AppShell = modules.appShellMod.AppShell
+  const { pathToRoute } = modules.useRouteMod
   const noopNavigate = () => {}
+  // AppShell's `route` prop is the tagged-union `Route` object (see
+  // `src/app/useRoute.ts`). Pre-PR-1.4 we passed `routeId` (the canonical
+  // path string) directly, which fell through `routeToNavId`'s
+  // `switch (route.kind)` to the `never`-exhaustive default and silently
+  // dropped active-tab highlighting from the prerendered HTML. Convert
+  // here so static (no-JS) chrome computes the active nav correctly.
+  const route = pathToRoute(routeId)
   // Wrap every prerendered route in AppShell so the chrome (disclaimer,
   // status bar, header, footer) appears in the static HTML. Crawlers see
   // exactly what hydrated clients see; the disclaimer P0 compliance
@@ -203,7 +218,7 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
   function withShell(child) {
     return React.createElement(
       AppShell,
-      { route: routeId, navigate: noopNavigate, editorial },
+      { route, navigate: noopNavigate, editorial },
       child,
     )
   }
@@ -350,6 +365,27 @@ async function main() {
     const componentMap = buildComponentMap(modules)
     for (const routeId of PUBLIC_ROUTE_IDS) {
       pickComponent(routeId, componentMap) // exits with code 1 if not mapped
+    }
+
+    // Audit C3 guard: every prerendered route id must map to a well-formed
+    // `Route` variant under `pathToRoute`, otherwise AppShell + `routeToNavId`
+    // silently drop active-tab highlighting from the static HTML. `/404` is
+    // the one entry that legitimately resolves to `{ kind: 'not-found' }` —
+    // its prerendered page intentionally has no active nav tab. Any OTHER
+    // route id falling through to `not-found` means `PUBLIC_ROUTE_IDS` has
+    // drifted ahead of the `pathToRoute` switch; fail the build loudly with
+    // the offending route id so the gap is caught here, not at runtime.
+    const { pathToRoute } = modules.useRouteMod
+    for (const routeId of PUBLIC_ROUTE_IDS) {
+      const route = pathToRoute(routeId)
+      if (routeId !== '/404' && route.kind === 'not-found') {
+        console.error(
+          `[prerender] ERROR: route "${routeId}" is listed in PUBLIC_ROUTE_IDS but` +
+          ` pathToRoute() resolves it to {kind:'not-found'}. Add a matching case to` +
+          ` the switch in src/app/useRoute.ts or remove the route from the registry.`,
+        )
+        process.exit(1)
+      }
     }
 
     for (const routeId of PUBLIC_ROUTE_IDS) {
