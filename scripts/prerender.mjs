@@ -79,6 +79,7 @@ async function loadSourceModules() {
     const articleHub = await server.ssrLoadModule('/src/features/articles/ArticleHubPage.tsx')
     const methode = await server.ssrLoadModule('/src/features/methode/MethodePage.tsx')
     const angaben = await server.ssrLoadModule('/src/features/inputs/AngabenPage.tsx')
+    const vergleichDetail = await server.ssrLoadModule('/src/features/vergleich-detail/VergleichDetailPage.tsx')
     const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
     const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
     // AppShell wraps every prerendered page so the disclaimer banner appears
@@ -115,6 +116,7 @@ async function loadSourceModules() {
       articleHub,
       methode,
       angaben,
+      vergleichDetail,
       impressum,
       datenschutz,
       appShellMod,
@@ -153,6 +155,7 @@ function buildComponentMap(modules) {
     '/private-rentenversicherung-rechner': modules.privateRvRechner.PrivateRentenversicherungRechnerPage,
     '/rente-netto-berechnen': modules.renteNettoBerechnen.RenteNettoBerechnePage,
     '/altersvorsorgeprodukte-vergleichen': modules.altersvorsorgeprodukte.AltersvorsorgeproduktePage,
+    '/vergleich/details': modules.vergleichDetail.VergleichDetailPage,
     '/impressum': modules.impressum.ImpressumPage,
     '/datenschutz': modules.datenschutz.DatenschutzPage,
   }
@@ -229,6 +232,23 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
     // matches either way.
     if (routeId === '/impressum' || routeId === '/datenschutz' || routeId === '/artikel' || routeId === '/methode' || routeId === '/eingaben') {
       return renderToString(withShell(React.createElement(Component, { navigate: noopNavigate })))
+    }
+    // R3.3 — `/vergleich/details` consumes the lifted workspace UI state in
+    // the live app. In prerender, no workspace state exists yet, so seed
+    // `selectedScenarioId: 'basis'` (the canonical default) and supply a
+    // no-op setter. The page's first-mount `?scenario=<id>` URL initialiser
+    // is a no-op in the SSR pass (no `window`), so the basis seed is the
+    // value the rendered cards reflect.
+    if (routeId === '/vergleich/details') {
+      return renderToString(
+        withShell(
+          React.createElement(Component, {
+            navigate: noopNavigate,
+            selectedScenarioId: 'basis',
+            onSelectScenario: () => {},
+          }),
+        ),
+      )
     }
     return renderToString(withShell(React.createElement(Component)))
   }

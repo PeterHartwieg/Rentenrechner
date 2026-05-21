@@ -13,7 +13,7 @@ import {
 } from './publicRouteRegistry'
 
 describe('publicRouteRegistry — entry shape', () => {
-  it('exposes all registered routes (issues #02, #04, #05, #06, #07 + PR 4 Methode + PR 5 Angaben + legal pages)', () => {
+  it('exposes all registered routes (issues #02, #04, #05, #06, #07 + PR 4 Methode + PR 5 Angaben + R3.3 Vergleich-Detail + legal pages)', () => {
     // Snapshot the canonical paths so adding a new route shows up as a diff
     // in code review (rather than hiding behind a `Object.keys` length test).
     // Update this list when adding new public routes.
@@ -31,6 +31,7 @@ describe('publicRouteRegistry — entry shape', () => {
       '/rente-netto-berechnen',
       '/altersvorsorgeprodukte-vergleichen',
       '/methode',
+      '/vergleich/details',
       '/eingaben',
       '/impressum',
       '/datenschutz',
@@ -106,6 +107,28 @@ describe('publicRouteRegistry — entry shape', () => {
     // The CTA href should embed the slug so first-time landings auto-fire
     // the matching LandingChoice in `LandingPage`.
     expect(entry.calculatorCta.href).toBe('/?topic=rentenluecke-rechner')
+  })
+
+  // R3.3 — `/vergleich/details` public SEO posture (audit ID C6, decision Q4).
+  it('vergleich/details declares Sober D head metadata + WebPage JSON-LD', () => {
+    // Use the wider `PublicRoute` type so the optional `preselection` field
+    // is visible to TypeScript (the `as const satisfies` narrow does not
+    // surface it on entries that omit it). Mirrors the pattern used in the
+    // `preselection — issue #13` describe block above.
+    const entry: PublicRoute = publicRouteRegistry['/vergleich/details']
+    expect(entry.title).toContain('RentenWiki.de')
+    expect(entry.title).toContain('Vergleich im Detail')
+    expect(entry.metaDescription.length).toBeGreaterThan(80)
+    expect(entry.metaDescription).toMatch(/Sparform|Aufschlüsselung/)
+    expect(entry.h1).toBe('Wohin geht jeder Euro?')
+    // Tool surface — WebPage, not Article (mirrors /methode + /eingaben).
+    expect(entry.jsonLdType).toBe('WebPage')
+    // In sitemap so crawlers discover the breakdown alongside the topic pages.
+    expect(entry.inSitemap).toBe(true)
+    expect(entry.robots).toBe('index,follow')
+    // No `preselection` — the page is its own surface, not a topic deep-link.
+    expect(entry.preselection).toBeUndefined()
+    expect(entry.calculatorCta.href).toBe('/')
   })
 })
 

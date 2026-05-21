@@ -7,7 +7,11 @@ import { usePortfolioState } from '../../app/portfolioState'
 import { useCalculatorState } from '../../app/useCalculatorState'
 import { useSimulationResult } from '../../app/useSimulationResult'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
+import { detectSavedMode } from '../../app/useRoute'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
+import { PRIMARY_PRODUCT_IDS } from '../../content/triggers'
+import type { ScenarioAssumptions, PersonalProfile } from '../../domain'
 import { VergleichDetailCard } from './VergleichDetailCard'
 import {
   buildVergleichDetailCardData,
@@ -60,11 +64,58 @@ interface Props {
 // untouched", "schemaVersion: 2 unchanged").
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Demo-mode (R3.3): when the page is loaded without an active comparison
+// (empty `visibleProducts` in compare-mode), the page renders a live default-
+// assumption demo run so SEO indexes real content and first-time visitors land
+// on a populated grid instead of an empty state. Audit decision Q4 (locked
+// 2026-05-21): "live default-assumption demo run … real comparison built from
+// defaultAssumptions (all primary products visible)".
+//
+// `DEMO_VISIBLE_PRODUCTS` widens the registry default (`['etf', 'bav']`) to
+// the full primary lineup (ETF + bAV + private Rente) so all three Sober D
+// breakdown cards appear above the fold. Secondary products (Basisrente,
+// AVD, Riester) are intentionally excluded so the demo grid stays digestible.
+// ---------------------------------------------------------------------------
+const DEMO_VISIBLE_PRODUCTS = PRIMARY_PRODUCT_IDS
+
+function buildDemoAssumptions(): ScenarioAssumptions {
+  return { ...defaultAssumptions, visibleProducts: [...DEMO_VISIBLE_PRODUCTS] }
+}
+
 export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScenario }: Props) {
   // ---- 1. Hook prelude — runs unconditionally before any early return. ----
   const portfolioState = usePortfolioState()
   const compareState = useCalculatorState()
-  const { profile, assumptions } = compareState
+  const { profile: liveProfile, assumptions: liveAssumptions } = compareState
+
+  // Demo-mode gate. Combine-mode users always see the existing dedicated
+  // empty state (Mein Plan / Vertrag-Detail). For compare-mode the page
+  // swaps in a default-assumption demo run when EITHER:
+  //   1. the user has no saved state at all (`detectSavedMode()` is null —
+  //      first-time visitor or fresh prerender), OR
+  //   2. saved state is present but `visibleProducts` is empty (existing
+  //      compare-mode user cleared the comparison picker).
+  // The "no saved state" branch is what SEO crawlers + the SSG prerender
+  // pass hit, so they index a populated card grid with all primary
+  // products. Audit decision Q4 (locked 2026-05-21): "no saved state OR
+  // empty visible-products → live default-assumption demo run".
+  //
+  // `detectSavedMode()` is a pure synchronous read of localStorage that the
+  // existing router code already calls on initial paint; reusing it here
+  // adds no new I/O. Memoised so re-renders don't re-read storage.
+  const isCombineMode = portfolioState.workspace.mode === 'combine'
+  const savedMode = useMemo(() => detectSavedMode(), [])
+  const isDemo =
+    !isCombineMode &&
+    (savedMode === null || liveAssumptions.visibleProducts.length === 0)
+
+  const profile: PersonalProfile = isDemo ? defaultProfile : liveProfile
+  // Memoise the demo assumptions so the simulation hook's dep array stays
+  // stable across renders (avoids re-running `simulateRetirementComparison`
+  // on every parent re-render when the page is in demo mode).
+  const demoAssumptions = useMemo(() => buildDemoAssumptions(), [])
+  const assumptions = isDemo ? demoAssumptions : liveAssumptions
 
   // Compare-mode simulation. We must call this even when we're going to render
   // the combine-mode empty state — Rules of Hooks require a stable call order.
@@ -150,10 +201,6 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
     assumptions,
   ])
 
-  const hasComparisonSet = assumptions.visibleProducts.length > 0
-  // `workspace.mode` is the canonical mode signal — never `detectSavedMode()`.
-  const isCombineMode = portfolioState.workspace.mode === 'combine'
-
   // ---- 2. Empty states. ---------------------------------------------------
   if (isCombineMode) {
     return (
@@ -167,7 +214,13 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
     )
   }
 
-  if (!hasComparisonSet || cardData.length === 0) {
+  // Defensive: if the demo seed itself produces zero cards (e.g. registry
+  // filter mismatch) we surface the legacy empty state so the page never
+  // renders an empty grid silently. This branch should never fire in
+  // practice — the primary products always have at least one renderable
+  // ProductResult — but it preserves the pre-R3.3 behaviour for any
+  // remaining edge case.
+  if (cardData.length === 0) {
     return (
       <EmptyComparisonState navigate={navigate} />
     )
@@ -178,15 +231,29 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
     <div className="vd-shell">
       <div className="vd-main">
         <article className="vd-body">
-          <div className="vd-kicker">Vergleich › Wohin geht das Geld</div>
+          <div className="vd-kicker">
+            {isDemo ? 'Beispielrechnung · Standardannahmen 2026' : 'Vergleich › Wohin geht das Geld'}
+          </div>
           <h1 className="vd-headline">Wohin geht jeder Euro?</h1>
-          <p className="vd-lead">
-            Jede Sparform verteilt deinen monatlichen Aufwand anders auf Eigenanteil,
-            Förderung, Kosten und Steuer. Diese Aufschlüsselung zeigt für jedes
-            Produkt, was eingezahlt wird, was am Renteneintritt steht und was im
-            Alter monatlich übrig bleibt — bei deinem aktuellen Renteneintrittsalter
-            von {profile.retirementAge}.
-          </p>
+          {isDemo ? (
+            <p className="vd-lead">
+              Diese Seite zeigt für jede Sparform, wohin jeder eingezahlte Euro
+              fließt — Eigenanteil, Förderung oder Arbeitgeberzuschuss, Kosten und
+              Steuer — und was im Alter monatlich übrig bleibt. Solange noch kein
+              eigener Vergleich angelegt ist, rechnen wir mit Standardannahmen für
+              2026 (ein/e {profile.age}-Jährige/r mit {profile.retirementAge} als
+              Renteneintrittsalter, monatliche Netto-Belastung 200&nbsp;€). Eigene
+              Werte ändern die Aufschlüsselung sofort.
+            </p>
+          ) : (
+            <p className="vd-lead">
+              Jede Sparform verteilt deinen monatlichen Aufwand anders auf Eigenanteil,
+              Förderung, Kosten und Steuer. Diese Aufschlüsselung zeigt für jedes
+              Produkt, was eingezahlt wird, was am Renteneintritt steht und was im
+              Alter monatlich übrig bleibt — bei deinem aktuellen Renteneintrittsalter
+              von {profile.retirementAge}.
+            </p>
+          )}
 
           <div className="vd-backline">
             <a

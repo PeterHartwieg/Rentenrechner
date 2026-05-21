@@ -162,6 +162,92 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
 })
 
 // ---------------------------------------------------------------------------
+// R3.3 — demo-mode (no comparison loaded) renders a live default-assumption
+// run. Audit decision Q4 (locked 2026-05-21): "live default-assumption demo
+// run … real comparison built from defaultAssumptions (all primary products
+// visible)". The page seeds ETF + bAV + Versicherung so SEO crawlers and
+// first-time visitors see a populated grid instead of an empty state.
+// ---------------------------------------------------------------------------
+
+/**
+ * Seed compare-mode with `visibleProducts: []` so the page enters the demo
+ * branch. The V2 key is the preferred read path (`loadSavedState` reads V2
+ * before V1), so we must clear `visibleProducts` on the baseline assumptions
+ * inside the workspace. `mergeDeep` in `storage.ts` preserves explicit empty
+ * arrays (CLAUDE.md "visibleProducts empty means no comparison"), so the
+ * empty array round-trips intact.
+ */
+function seedCompareModeWithoutComparison(): void {
+  const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+  ws.mode = 'compare'
+  ws.baseline.assumptions.visibleProducts = []
+  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+}
+
+describe('VergleichDetailPage — demo-mode (R3.3 audit decision Q4)', () => {
+  it('renders the demo kicker + populated card grid when no saved state exists at all', () => {
+    // Audit decision Q4 (locked 2026-05-21): the prerender pass + first-time
+    // visitor branch must show a populated grid so SEO indexes real content.
+    // `localStorage.clear()` runs in `beforeEach`, so this test inherits an
+    // empty storage. `detectSavedMode()` returns `null` → demo path fires.
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
+    const kicker = container.querySelector('.vd-kicker')
+    expect(kicker?.textContent ?? '').toContain('Beispielrechnung')
+    const cards = container.querySelectorAll('.vd-card')
+    expect(cards.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('renders the demo kicker + ETF + bAV + private Rente cards when saved compare-mode has empty visibleProducts', () => {
+    seedCompareModeWithoutComparison()
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
+    // Kicker swaps in the "Beispielrechnung" copy so users / crawlers know
+    // the figures below are default-assumption demo numbers, not their own.
+    const kicker = container.querySelector('.vd-kicker')
+    expect(kicker?.textContent ?? '').toContain('Beispielrechnung')
+    // H1 stays identical — the live + demo paths share the same headline so
+    // the page identity is consistent for SEO.
+    expect(container.querySelector('.vd-headline')?.textContent ?? '').toBe('Wohin geht jeder Euro?')
+    // Three primary products → at least one card per product. The actual
+    // count depends on which ProductResult rows the engine emits; PRIMARY
+    // covers ETF + bAV + Versicherung, all of which are renderable.
+    const cards = container.querySelectorAll('.vd-card')
+    expect(cards.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('demo lead paragraph explains the default-annahmen seed (Sober D voice)', () => {
+    seedCompareModeWithoutComparison()
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
+    // The lead copy must communicate "this is a demo with default values"
+    // so visitors understand the figures aren't their own. We check for the
+    // anchor word "Standardannahmen" rather than the full copy to keep the
+    // assertion resilient to copy tweaks.
+    const lead = container.querySelector('.vd-lead')
+    expect(lead?.textContent ?? '').toContain('Standardannahmen')
+  })
+
+  it('demo branch still surfaces the Zurück-zum-Vergleich back-link', () => {
+    seedCompareModeWithoutComparison()
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
+    const backlink = container.querySelector<HTMLAnchorElement>('.vd-backlink')
+    expect(backlink).not.toBeNull()
+    expect(backlink!.getAttribute('href')).toBe('/')
+  })
+
+  it('combine-mode still renders the combine empty state (demo path does NOT swap in)', () => {
+    // Audit guard: demo seed only applies in compare-mode. Combine-mode users
+    // keep the existing dedicated empty state pointing them at Mein Plan /
+    // Vertrag-Detail.
+    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+    ws.mode = 'combine'
+    ws.baseline.assumptions.visibleProducts = []
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
+    expect(container.querySelector('.vd-empty')).not.toBeNull()
+    expect(container.querySelector('.vd-card-grid')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // PR 290 R3 Codex P2 — `?scenario=<id>` URL-init on first mount.
 //
 // The drill-in `<a href>` on `VergleichPage` carries the live scenario id as
