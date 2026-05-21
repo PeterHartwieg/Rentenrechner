@@ -458,6 +458,9 @@ function dispatchAfterTaxBalanceCombine(
   switch (productId) {
     case 'bav':
       if (!profile) return null
+      // otherAnnualIncome=0 and kvdrMember=true mirror the pre-PR-12 buildCombinePortfolioCsv
+      // behavior; surfacing them on InstanceTaxModes is a separate concern (combine-mode CSV
+      // byte parity is a hard constraint for this PR).
       return afterTaxBavLumpSum(
         row.balance,
         profile,

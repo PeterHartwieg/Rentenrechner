@@ -235,16 +235,18 @@ confirm HEAD is <prior-sha>.
 2. <Any new test count assertions>.
 3. Commit:
 
-```
+```text
 fix(<scope>): <one-line> (PR <N> R<round>)
 
 R<N-1> review (Codex + CodeRabbit) flagged <count> findings; this
 commit addresses all of them.
 
 ## Codex P<N>
+
 - <finding>: <fix>
 
 ## CodeRabbit <severity>
+
 - <finding>: <fix>
 
 Co-Authored-By: Claude <Model> <noreply@anthropic.com>
@@ -255,7 +257,6 @@ Co-Authored-By: Claude <Model> <noreply@anthropic.com>
    - `npm run verify` exit code
    - Any finding where you DIDN'T apply the reviewer's text verbatim,
      with a one-line reason
-```
 
 Model choice (per multi-agent orchestration memory):
 - **Opus** for: architectural (cross-cutting refactor, hook design, engine routing), multi-finding rounds, P0/P1 Codex findings.
@@ -333,7 +334,7 @@ If the orchestrator's working copy is on `main`, also `git pull --ff-only`.
 
 `Rentenrechner-conflict-auto` was removed in the PR 11 cleanup, so the historical gotcha doesn't bite this round. `gh pr merge --squash --delete-branch` should now work cleanly. But if it fails for any other reason (e.g. lingering Windows file locks on the worktree), the recovery path is unchanged:
 
-```
+```bash
 gh api -X DELETE repos/PeterHartwieg/Rentenrechner/git/refs/heads/feat/export-projection-layer
 ```
 
@@ -482,4 +483,5 @@ When the PR is merged, reply with:
 | Untouched (Decision 2) | likely `src/features/results/{PrintReport.tsx,printReportRows.ts}` |
 | P0 invariant | CSV disclaimer prefix is literal first section of `buildExportCsv` |
 | P1 invariant | Engine returns full-precision floats; no rounding in projection |
+| P1 pattern | Never index `returnScenarios[0]` for 'basis' — use `find(s => s.id === 'basis')` |
 | Estimate | ~3-5 days impl + 2-4 review rounds |
