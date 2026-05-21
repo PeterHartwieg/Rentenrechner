@@ -115,25 +115,31 @@ function App() {
     }
     return appViewFromMode(detectSavedMode())
   })
-  // Re-derive calculatorView after SPA navigation so that the `?view=landing`
-  // override applied by the Vergleich tab is picked up by already-mounted App
-  // instances. `pushState` does not fire `popstate`, so `useRoute.navigate()`
-  // dispatches a `rentenwiki:navigated` custom event after every SPA hop; the
-  // popstate handler emits the same event for browser back/forward. Subscribers
-  // therefore only need one channel.
+  // Re-derive `calculatorView` after every SPA hop. The URL is the source
+  // of truth: if `?view=landing` is present we force the picker; if
+  // absent we fall back to `appViewFromMode(detectSavedMode())` so a
+  // saved-mode dashboard restores cleanly when the user navigates away
+  // from the picker (e.g. browser back from `/?view=landing` to `/`).
   //
-  // When the URL carries no override (override === null) we leave
-  // `calculatorView` unchanged — saved-mode dashboards (compare/combine) must
-  // persist across navigations that don't carry an explicit `?view=` param.
-  // The `handleLandingChoice` URL scrub uses `replaceState` which does NOT
-  // fire the custom event — intentional: we don't want the scrub to re-trigger
-  // this derivation and flip back to the dashboard view the user just chose.
+  // Note: `handleLandingChoice` scrubs `?view=landing` via `replaceState`,
+  // which does NOT fire `rentenwiki:navigated` (the popstate handler
+  // only emits on browser back/forward, not on programmatic
+  // replaceState). This is intentional — without it, the scrub would
+  // re-trigger this listener and reset `calculatorView` away from the
+  // user's just-chosen mode before Calculator has had a chance to write
+  // the saved mode to localStorage.
   useEffect(() => {
     function rederiveFromUrl() {
       if (typeof window === 'undefined') return
       const override = appViewFromUrl(window.location.search)
       if (override !== null) {
         setCalculatorView(override)
+      } else {
+        // Override was just removed (e.g. browser back from
+        // `/?view=landing` to `/`). Restore the saved-mode dashboard so
+        // the picker doesn't linger after the user navigates away.
+        // Codex R2 P1 fix.
+        setCalculatorView(appViewFromMode(detectSavedMode()))
       }
     }
     window.addEventListener('rentenwiki:navigated', rederiveFromUrl)
