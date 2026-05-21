@@ -334,7 +334,8 @@
     padding: 22px 20px 56px;
   }
   .vd-headline {
-    font-size: 30px;
+    /* Canvas TVergleichDetail: Sober-D H1 fontSize 27 px at tablet. */
+    font-size: 27px;
   }
   .vd-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -344,9 +345,10 @@
 
 /* ---- Phone breakpoint ------------------------------------------------- */
 /*
-   Pure CSS scroll-snap row. The grid becomes a horizontal flex container
-   with `scroll-snap-type: x mandatory`; each card carries
-   `scroll-snap-align: start`. NO JavaScript carousel.
+   Canvas MVergleichDetail: cards stack vertically (flexDirection: 'column')
+   with the first two visible and a "↓ 2 weitere" affordance. We match this
+   with a single-column block layout — simpler than the earlier scroll-snap
+   approach and matches the artboard intent at 390 px.
 */
 
 @media (max-width: 639px) {
@@ -354,29 +356,21 @@
     padding: 18px 16px 96px; /* extra bottom for MobileNav tab bar */
   }
   .vd-headline {
-    font-size: 26px;
+    /* Canvas MVergleichDetail: Sober-D (non-editorial) H1 21 px on phone. */
+    font-size: 21px;
   }
   .vd-card-grid {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     grid-template-columns: none;
     gap: 14px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    /* Bleed to the page edge for a natural swipe affordance, then add
-       inline padding so the first / last card don't snap to a hard edge. */
-    margin-inline: -16px;
-    padding-inline: 16px;
-    padding-bottom: 8px;
   }
   .vd-card-grid__item {
-    flex: 0 0 86%;
-    scroll-snap-align: start;
-    max-width: 320px;
+    flex: none;
+    max-width: none;
   }
   .vd-card {
-    height: 100%;
+    height: auto;
   }
   .vd-card-section__row {
     font-size: 13.5px;

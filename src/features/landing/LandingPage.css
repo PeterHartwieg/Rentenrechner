@@ -384,8 +384,9 @@
   }
 
   .landing-headline {
-    font-size: 2rem;
-    letter-spacing: -0.6px;
+    /* Canvas MStartseite: H1 ~25 px; 1.55rem ≈ 24.8 px at base 16 px. */
+    font-size: 1.55rem;
+    letter-spacing: -0.4px;
   }
 
   .landing-subline {

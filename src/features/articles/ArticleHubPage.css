@@ -155,7 +155,8 @@
    ========================================================================== */
 @media (max-width: 1023px) {
   .hub-main {
-    padding: 36px 32px 28px;
+    /* Canvas TBase: padding 22px 24px 18px; align hub to 24px side gutters. */
+    padding: 36px 24px 28px;
     gap: 28px;
   }
 
