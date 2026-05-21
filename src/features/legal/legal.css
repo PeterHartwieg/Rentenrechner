@@ -1,9 +1,26 @@
+/* ─── Legal pages (Impressum, Datenschutz) ────────────────────────────────
+   Sober D shell parity (R2.3). All color values use the global --rw-* tokens
+   set in App.css so legal pages stay visually consistent with the rest of the
+   tool. No cream background, no Newsreader serif — canvas explicitly excludes
+   legal pages from editorial treatment.
+
+   Page-level layout: rendered inside AppShell (which provides StatusBar +
+   AppHeader nav + MethodFooter). LegalLayout adds a sober back-link header
+   and a mini-footer with page-scoped nav links. Both inherit the Sober D
+   token palette.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Page wrapper ──────────────────────────────────────────────────────── */
+
 .legal-page {
   max-width: 760px;
   margin: 0 auto;
   padding: 24px 24px 64px;
-  color: #172033;
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
 }
+
+/* ── Back-link header ──────────────────────────────────────────────────── */
 
 .legal-header {
   padding: 8px 0 24px;
@@ -13,38 +30,51 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #2563eb;
-  font-weight: 700;
+  color: var(--rw-ink-soft);
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  font-weight: 400;
   text-decoration: none;
-  font-size: 0.9rem;
+  transition: color 0.1s;
 }
 
 .legal-back-link:hover {
-  text-decoration: underline;
+  color: var(--rw-ink);
 }
+
+/* ── Article typography ────────────────────────────────────────────────── */
 
 .legal-article h1 {
   margin: 0 0 8px;
   font-size: clamp(1.6rem, 2.2vw, 2.1rem);
+  font-family: var(--rw-font-sans);
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--rw-accent);
 }
 
 .legal-article h2 {
   margin: 28px 0 8px;
   font-size: 1.15rem;
-  color: #1f2937;
+  font-weight: 600;
+  color: var(--rw-ink);
+  border-bottom: 1px solid var(--rw-rule-soft);
+  padding-bottom: 4px;
 }
 
 .legal-article h3 {
   margin: 18px 0 6px;
   font-size: 1.0rem;
-  color: #374151;
+  font-weight: 600;
+  color: var(--rw-ink);
 }
 
 .legal-article p,
 .legal-article address,
 .legal-article ul {
-  line-height: 1.6;
-  color: #344054;
+  line-height: 1.65;
+  color: var(--rw-ink-soft);
   font-size: 0.95rem;
 }
 
@@ -61,57 +91,77 @@
 }
 
 .legal-article a {
-  color: #2563eb;
+  color: var(--rw-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rw-rule-soft);
+  text-underline-offset: 2px;
+}
+
+.legal-article a:hover {
+  text-decoration-color: var(--rw-ink);
 }
 
 .legal-article code {
-  background: #f1f5f9;
-  border-radius: 4px;
+  background: var(--rw-bg-paper-soft);
+  border: 1px solid var(--rw-rule-soft);
   padding: 1px 5px;
   font-size: 0.85em;
+  font-family: var(--rw-font-mono);
 }
 
 .legal-intro {
-  color: #475467 !important;
+  color: var(--rw-ink-faint) !important;
   font-style: italic;
-  border-left: 3px solid #d9e1ea;
+  border-left: 2px solid var(--rw-rule-soft);
   padding-left: 12px;
   margin: 0 0 16px;
 }
 
+/* ── Page-scoped footer nav ─────────────────────────────────────────────── */
+
 .legal-page-footer {
   margin-top: 48px;
-  padding-top: 14px;
-  border-top: 1px solid #d9e1ea;
+  padding-top: 12px;
+  border-top: 1px solid var(--rw-rule-soft);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: #667085;
+  gap: 16px;
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: var(--rw-ink-faint);
+  align-items: center;
 }
 
 .legal-page-footer a {
-  color: #2563eb;
+  color: var(--rw-ink-soft);
   text-decoration: none;
+  transition: color 0.1s;
 }
 
 .legal-page-footer a:hover {
-  text-decoration: underline;
+  color: var(--rw-ink);
 }
 
-/* Footer rendered on the calculator (home) page */
+.legal-page-footer .legal-page-footer__sep {
+  opacity: 0.45;
+}
+
+/* ── App footer (rendered on the calculator home page) ─────────────────── */
+
 .app-footer {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
-  margin-top: 16px;
-  border-top: 1px solid #d9e1ea;
-  background: #ffffff;
-  color: #667085;
-  font-size: 0.85rem;
+  padding: 12px 56px;
+  border-top: 1px solid var(--rw-rule-soft);
+  background: var(--rw-bg-paper);
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: var(--rw-ink-faint);
 }
 
 .app-footer-copy {
@@ -127,12 +177,13 @@
 }
 
 .app-footer-nav a {
-  color: #2563eb;
+  color: var(--rw-ink-soft);
   text-decoration: none;
+  transition: color 0.1s;
 }
 
 .app-footer-nav a:hover {
-  text-decoration: underline;
+  color: var(--rw-ink);
 }
 
 /* TEMPORARY — QA activator button (VITE_QA_FOOTER_BUTTON flag).
@@ -147,14 +198,17 @@
   border: none;
   padding: 0;
   font: inherit;
-  color: #2563eb;
+  color: var(--rw-ink-soft);
   cursor: pointer;
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .app-footer-qa-button:hover {
-  color: #1d4ed8;
+  color: var(--rw-ink);
 }
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
 
 @media (max-width: 760px) {
   .legal-page {
@@ -162,7 +216,7 @@
   }
 
   .app-footer {
-    padding: 14px 16px;
+    padding: 12px 16px;
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
@@ -170,6 +224,14 @@
 
   .app-footer-qa-hint {
     white-space: normal;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Phone: tablet-width switch at 640 px — match the chrome's phone breakpoint. */
+  .app-footer {
+    padding: 10px 14px;
+    font-size: 10.5px;
   }
 }
 
