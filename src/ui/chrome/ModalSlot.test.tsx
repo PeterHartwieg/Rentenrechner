@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Tests for ModalSlot (R2.1 / H1) — Sober D modal primitive.
+ * Tests for ModalSlot — Sober D modal primitive.
  *
  * Coverage:
+ *   R2.1 / H1 baseline:
  *   - Renders nothing when `open === false`.
  *   - Renders panel + header + close button + body when open.
  *   - Title + eyebrow surface as accessible text.
@@ -16,6 +17,16 @@
  *     on both the X button and the backdrop.
  *   - panelClassName extends the panel class list without replacing the
  *     base `.rw-modal-slot__panel` class.
+ *
+ *   R4.2 / H10 additions:
+ *   - Drag handle node renders unconditionally (CSS hides it outside the
+ *     phone breakpoint) so SSR + hydration agree across viewports.
+ *   - Touch-drag below the dismiss threshold snaps back (no onClose; inline
+ *     transform cleared).
+ *   - Touch-drag past the dismiss threshold (smaller of 80 px or 25 vh)
+ *     fires onClose.
+ *   - Active drag adds `.is-dragging` to the panel so CSS can suppress the
+ *     snap-back transition for direct-finger tracking.
  *
  * These are the primitive's own a11y + interaction guarantees. Each
  * downstream consumer (InventoryWizard, future RecommenderCard modal,
@@ -226,5 +237,280 @@ describe('ModalSlot — composition', () => {
     const panel = container.querySelector('.rw-modal-slot__panel')
     expect(panel).not.toBeNull()
     expect(panel!.classList.contains('rw-modal-slot__panel--wide')).toBe(true)
+  })
+})
+
+// R4.2 / H10 — phone swipe-to-dismiss + drag handle.
+//
+// The drag handle is rendered unconditionally so SSR + hydration agree
+// across viewports; CSS hides it outside the phone breakpoint. Touch
+// events bind to the drag-region wrapper around the handle + header so
+// scrolling inside the body content is not hijacked.
+describe('ModalSlot — phone drag-to-dismiss (R4.2 / H10)', () => {
+  it('renders the drag handle node unconditionally', () => {
+    const { container } = render(
+      <ModalSlot open onClose={() => {}} title="Drag handle test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    // The handle is always in the DOM so SSR + first client render agree
+    // — the phone-only treatment is CSS-driven (display: block inside the
+    // phone @media block, otherwise display: none).
+    const handle = container.querySelector('.rw-modal-slot__drag-handle')
+    expect(handle).not.toBeNull()
+    // aria-hidden because the handle is decorative; the close path stays
+    // owned by the X button + ESC + backdrop.
+    expect(handle?.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('wraps the handle and header in a drag-region with touch handlers', () => {
+    const { container } = render(
+      <ModalSlot open onClose={() => {}} title="Drag region test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')
+    expect(region).not.toBeNull()
+    // The region wraps both the handle and the header (so dragging on
+    // the header dismisses too, not only the tiny handle pill).
+    expect(region!.querySelector('.rw-modal-slot__drag-handle')).not.toBeNull()
+    expect(region!.querySelector('.rw-modal-slot__header')).not.toBeNull()
+  })
+
+  it('adds .is-dragging while a touch drag is in progress', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    const { container } = render(
+      <ModalSlot open onClose={() => {}} title="Dragging class test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')!
+    const panel = container.querySelector('.rw-modal-slot__panel')!
+    expect(panel.classList.contains('is-dragging')).toBe(false)
+
+    fireEvent.touchStart(region, { touches: [{ clientY: 100 }] })
+    expect(panel.classList.contains('is-dragging')).toBe(true)
+
+    fireEvent.touchEnd(region, { touches: [] })
+    expect(panel.classList.contains('is-dragging')).toBe(false)
+
+    window.matchMedia = originalMatchMedia
+  })
+
+  it('translates the panel during touchmove past the start position', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    const { container } = render(
+      <ModalSlot open onClose={() => {}} title="Drag transform test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')!
+    const panel = container.querySelector<HTMLElement>('.rw-modal-slot__panel')!
+
+    fireEvent.touchStart(region, { touches: [{ clientY: 100 }] })
+    fireEvent.touchMove(region, { touches: [{ clientY: 140 }] })
+    expect(panel.style.transform).toBe('translateY(40px)')
+
+    // Releasing below the threshold (40 < 80) snaps back: transform is
+    // cleared on touchend and the CSS transition (re-enabled by the
+    // .is-dragging removal) handles the visible animation.
+    fireEvent.touchEnd(region, { touches: [] })
+    expect(panel.style.transform).toBe('')
+
+    window.matchMedia = originalMatchMedia
+  })
+
+  it('does not move the panel upward (drag-up is ignored)', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    const { container } = render(
+      <ModalSlot open onClose={() => {}} title="Drag up test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')!
+    const panel = container.querySelector<HTMLElement>('.rw-modal-slot__panel')!
+
+    fireEvent.touchStart(region, { touches: [{ clientY: 200 }] })
+    fireEvent.touchMove(region, { touches: [{ clientY: 100 }] }) // deltaY = -100
+    // Drag-up is a no-op: only the panel transform stays clear.
+    expect(panel.style.transform).toBe('')
+
+    fireEvent.touchEnd(region, { touches: [] })
+    expect(panel.style.transform).toBe('')
+
+    window.matchMedia = originalMatchMedia
+  })
+
+  it('does NOT fire onClose when the drag ends below the dismiss threshold', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    const onClose = vi.fn()
+    const { container } = render(
+      <ModalSlot open onClose={onClose} title="Below threshold test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')!
+
+    fireEvent.touchStart(region, { touches: [{ clientY: 100 }] })
+    // deltaY = 70 — below the 80 px minimum threshold.
+    fireEvent.touchMove(region, { touches: [{ clientY: 170 }] })
+    fireEvent.touchEnd(region, { touches: [] })
+
+    expect(onClose).not.toHaveBeenCalled()
+
+    window.matchMedia = originalMatchMedia
+  })
+
+  it('fires onClose when the drag ends past the dismiss threshold', () => {
+    // Force a tall viewport so the 25 vh upper bound stays above the
+    // 80 px floor, making the floor the effective threshold; the touch
+    // delta (200 px) is comfortably past it either way.
+    Object.defineProperty(window, 'innerHeight', {
+      value: 900,
+      configurable: true,
+      writable: true,
+    })
+    // Stub matchMedia to simulate a phone viewport so handleTouchStart
+    // does not bail out early (jsdom returns matches: false by default,
+    // which would block the swipe even on this test).
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true, // phone breakpoint matches
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    const onClose = vi.fn()
+    const { container } = render(
+      <ModalSlot open onClose={onClose} title="Past threshold test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')!
+
+    fireEvent.touchStart(region, { touches: [{ clientY: 100 }] })
+    fireEvent.touchMove(region, { touches: [{ clientY: 300 }] }) // deltaY = 200
+    fireEvent.touchEnd(region, { touches: [] })
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    window.matchMedia = originalMatchMedia
+  })
+
+  it('does not dismiss on swipe when viewport is wider than phone breakpoint', () => {
+    // Stub matchMedia to report a tablet/desktop viewport — no match for
+    // '(max-width: 639px)'. The swipe gesture must be a no-op because the
+    // drag handle is CSS-hidden outside the phone breakpoint and the JS
+    // gate must complement that CSS treatment.
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false, // tablet/desktop — phone breakpoint does not match
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    const onClose = vi.fn()
+    const { container } = render(
+      <ModalSlot open onClose={onClose} title="Tablet swipe test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')!
+
+    // 300 px downward drag — well past any dismiss threshold.
+    fireEvent.touchStart(region, { touches: [{ clientY: 100 }] })
+    fireEvent.touchMove(region, { touches: [{ clientY: 400 }] })
+    fireEvent.touchEnd(region)
+
+    expect(onClose).not.toHaveBeenCalled()
+
+    window.matchMedia = originalMatchMedia
+  })
+
+  it('treats touchcancel like touchend (cancel snaps back, no onClose)', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    const onClose = vi.fn()
+    const { container } = render(
+      <ModalSlot open onClose={onClose} title="Touch cancel test">
+        <p>Body</p>
+      </ModalSlot>,
+    )
+    const region = container.querySelector('.rw-modal-slot__drag-region')!
+    const panel = container.querySelector<HTMLElement>('.rw-modal-slot__panel')!
+
+    fireEvent.touchStart(region, { touches: [{ clientY: 100 }] })
+    fireEvent.touchMove(region, { touches: [{ clientY: 150 }] })
+    fireEvent.touchCancel(region, { touches: [] })
+
+    expect(onClose).not.toHaveBeenCalled()
+    expect(panel.style.transform).toBe('')
+    expect(panel.classList.contains('is-dragging')).toBe(false)
+
+    window.matchMedia = originalMatchMedia
   })
 })
