@@ -1,7 +1,53 @@
-/* Subsection layout inside the combined Szenarien panel. Each subsection
-   reuses the existing preset/library class names; this file only adds the
-   thin subheading and inter-section divider. */
+/* ScenariosPanel — Sober D token port (R1.3 / H7).
+   Overrides the legacy forms.css blue-palette on .disclosure-* classes and
+   the hardcoded greys in the sub-panel CSS files, bringing the combined
+   Szenarien collapsible in line with the AngabenPage / Sober D vocabulary.
 
+   Tokens are defined in src/App.css:
+     --rw-bg-paper         #ffffff
+     --rw-bg-paper-soft    #f6f4ef
+     --rw-ink              #111
+     --rw-ink-soft         #4a4a4a
+     --rw-ink-faint        #7a7268
+     --rw-accent           #8a2e2e  (oxblood — headlines + active states only)
+     --rw-font-sans        'IBM Plex Sans', sans-serif
+     --rw-font-mono        'JetBrains Mono', monospace
+
+   Sober D border tone: #e7e2da (warm rule used across Sober D pages).
+   ======================================================================== */
+
+/* ── Disclosure chrome overrides ─────────────────────────────────────── */
+/* forms.css supplies the structural rules (border-radius, padding, flex,
+   chevron rotation). We only replace the blue-palette colour values. */
+
+.scenarios-panel.disclosure-section {
+  background: var(--rw-bg-paper);
+  border-color: #e7e2da;
+}
+
+.scenarios-panel > summary::before {
+  color: var(--rw-ink-faint);
+}
+
+.scenarios-panel .disclosure-toggle {
+  font-family: var(--rw-font-sans);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rw-ink);
+}
+
+/* § kicker pattern for the recap — mono + faint + small caps sizing */
+.scenarios-panel .disclosure-recap {
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  font-weight: 600;
+  margin-left: auto;
+}
+
+/* ── Sub-section layout ──────────────────────────────────────────────── */
 .scenarios-subsection {
   display: flex;
   flex-direction: column;
@@ -11,15 +57,191 @@
 
 .scenarios-subheading {
   margin: 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #344054;
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--rw-ink-faint);
 }
 
 .scenarios-divider {
   height: 1px;
   margin: 0 12px;
-  background: #e5ebf2;
+  background: #e7e2da;
+}
+
+/* ── Preset intro text ───────────────────────────────────────────────── */
+/* Overrides ScenarioPresetPanel.css .preset-intro slate colour */
+.scenarios-panel .preset-intro {
+  color: var(--rw-ink-soft);
+  margin: 0 0 6px;
+  font-family: var(--rw-font-sans);
+}
+
+/* ── Preset buttons ──────────────────────────────────────────────────── */
+/* Overrides ScenarioPresetPanel.css blue hover on .scenario-preset-btn */
+.scenarios-panel .scenario-preset-btn {
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid #e7e2da;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink-soft);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.scenarios-panel .scenario-preset-btn:hover {
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-ink-faint);
+  color: var(--rw-ink);
+}
+
+/* ── Save row ─────────────────────────────────────────────────────────── */
+/* Overrides ScenarioLibraryPanel.css .library-save-row border */
+.scenarios-panel .library-save-row {
+  border-bottom-color: #e7e2da;
+  padding: 8px 0 6px;
+}
+
+/* Name input */
+.scenarios-panel .library-name-input {
+  font-family: var(--rw-font-sans);
+  font-size: 0.75rem;
+  border: 1px solid #e7e2da;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  border-radius: 4px;
+}
+
+.scenarios-panel .library-name-input:focus {
+  outline: none;
+  border-color: var(--rw-ink-soft);
+}
+
+/* Save button — Sober D: white bg, ink text, warm border */
+.scenarios-panel .library-save-btn {
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid #e7e2da;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink-soft);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.scenarios-panel .library-save-btn:not(:disabled):hover {
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-ink-faint);
+}
+
+.scenarios-panel .library-save-btn:disabled {
+  color: var(--rw-ink-faint);
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── Library list ────────────────────────────────────────────────────── */
+.scenarios-panel .library-empty {
+  color: var(--rw-ink-faint);
+  font-family: var(--rw-font-sans);
+  font-size: 0.75rem;
+  margin: 4px 0 6px;
+}
+
+.scenarios-panel .library-item {
+  border-bottom-color: #e7e2da;
+}
+
+/* Item name button — hover shifts to ink, no blue */
+.scenarios-panel .library-item-name:hover .library-item-label {
+  color: var(--rw-ink);
+}
+
+.scenarios-panel .library-item-label {
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink-soft);
+}
+
+/* Date pill — mono, faint */
+.scenarios-panel .library-item-date {
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  color: var(--rw-ink-faint);
+}
+
+/* Rename input */
+.scenarios-panel .library-rename-input {
+  font-family: var(--rw-font-sans);
+  border: 1px solid #e7e2da;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  border-radius: 3px;
+}
+
+.scenarios-panel .library-rename-input:focus {
+  outline: none;
+  border-color: var(--rw-ink-soft);
+}
+
+/* ── Action buttons (Laden / Kopie / ✕) ─────────────────────────────── */
+.scenarios-panel .lib-btn {
+  font-family: var(--rw-font-mono);
+  font-size: 0.68rem;
+  border: 1px solid #e7e2da;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink-soft);
+  border-radius: 3px;
+  padding: 2px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+/* Laden — neutral hover (no blue) */
+.scenarios-panel .lib-btn-load {
+  color: var(--rw-ink-soft);
+  border-color: #e7e2da;
+}
+
+.scenarios-panel .lib-btn-load:hover {
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-ink-faint);
+  color: var(--rw-ink);
+}
+
+/* Kopie — same neutral */
+.scenarios-panel .lib-btn-copy {
+  color: var(--rw-ink-soft);
+}
+
+.scenarios-panel .lib-btn-copy:hover {
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-ink-faint);
+}
+
+/* Delete (✕) — warm muted danger, oxblood accent on hover */
+.scenarios-panel .lib-btn-delete {
+  color: var(--rw-ink-faint);
+  border-color: #e7e2da;
+}
+
+.scenarios-panel .lib-btn-delete:hover {
+  background: #fdf6f6;
+  border-color: var(--rw-accent);
+  color: var(--rw-accent);
+}
+
+/* ── Archived chip ───────────────────────────────────────────────────── */
+/* Tone down from green to neutral warm-grey — no red, no green. */
+.scenarios-panel .library-item-chip--archived {
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink-faint);
+  border: 1px solid #e7e2da;
 }
