@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react'
-import { X } from 'lucide-react'
-import { FocusTrap } from '../../ui/FocusTrap'
 import type { Workspace } from '../../domain/workspace'
 import { useFeedbackTarget } from '../../features/qa-feedback'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
 import type { BavEmployerOfferInput, RecommendedCandidate } from '../../app/recommender'
+import { ModalSlot } from '../../ui/chrome/ModalSlot'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { RecommenderCard } from './RecommenderCard'
 import './RecommenderCard.css'
+import './LueckeSchliessenModal.css'
 
 type Step = 'budget' | 'bav-offer' | 'result' | 'saved'
 type OfferChoice = 'yes' | 'no' | null
@@ -96,30 +96,15 @@ export function LueckeSchliessenModal({
   const safeBudget = Math.max(0, budget)
 
   return (
-    <FocusTrap onEscape={onClose}>
-    <div className="luecke-modal-backdrop" role="presentation">
-      <section
-        className="luecke-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="luecke-modal-title"
-        {...modalTargetProps}
-      >
-        <header className="luecke-modal__header">
-          <div>
-            <h2 id="luecke-modal-title">Lücke schließen</h2>
-            <p>{stepLabel(step)}</p>
-          </div>
-          <button
-            type="button"
-            className="luecke-modal__icon-button"
-            onClick={onClose}
-            aria-label="Dialog schließen"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-        </header>
-
+    <ModalSlot
+      open
+      onClose={onClose}
+      title="Lücke schließen"
+      eyebrow={stepLabel(step)}
+      closeLabel="Dialog schließen"
+      panelClassName="luecke-modal__panel"
+    >
+      <div {...modalTargetProps}>
         {step === 'budget' && (
           <div className="luecke-modal__body">
             <h3 {...stepHeadingTargetProps}>Wie viel möchtest du zusätzlich sparen?</h3>
@@ -367,9 +352,8 @@ export function LueckeSchliessenModal({
             </div>
           </div>
         )}
-      </section>
-    </div>
-    </FocusTrap>
+      </div>
+    </ModalSlot>
   )
 }
 
