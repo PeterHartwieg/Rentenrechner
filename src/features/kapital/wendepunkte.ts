@@ -127,7 +127,7 @@ function rowAt(
   let paidIn = 0
   let payout = 0
   for (const result of selectedResults) {
-    const keys = lifecycleLineKeys(result.productId)
+    const keys = lifecycleLineKeys(result)
     capital += Number(row[keys.balance] ?? 0)
     paidIn += Number(row[keys.paidIn] ?? 0)
     payout += Number(row[keys.payout] ?? 0)
@@ -152,7 +152,7 @@ function findBreakEvenAge(
     let paidIn = 0
     let payout = 0
     for (const result of selectedResults) {
-      const keys = lifecycleLineKeys(result.productId)
+      const keys = lifecycleLineKeys(result)
       paidIn += Number(row[keys.paidIn] ?? 0)
       payout += Number(row[keys.payout] ?? 0)
     }

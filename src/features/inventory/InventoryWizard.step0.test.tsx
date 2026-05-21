@@ -14,8 +14,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, cleanup, fireEvent, screen } from '@testing-library/react'
 import { InventoryWizard } from './InventoryWizard'
 import type { Workspace } from '../../domain/workspace'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 function makeProps(overrides?: Partial<Parameters<typeof InventoryWizard>[0]>) {
   return {
@@ -388,5 +392,15 @@ describe('InventoryWizard step 0 — validation errors surface on invalid submit
     // Clicking Weiter now advances
     fireEvent.click(getNextButton(container)!)
     expect(container.querySelector('#inventory-check-grv')).not.toBeNull()
+  })
+})
+
+describe('InventoryWizard step 0 — viewport sweep (PR 11)', () => {
+  it('renders step 0 with the personal-details panel at phone / tablet / desktop', () => {
+    eachViewport(() => {
+      const { container, unmount } = render(<InventoryWizard {...makeProps()} />)
+      expect(container.querySelector('[data-testid="personal-details-step"]')).not.toBeNull()
+      unmount()
+    })
   })
 })

@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, cleanup, screen, fireEvent } from '@testing-library/react'
 import { QaFeedbackProvider } from '../qa-feedback/QaFeedbackProvider'
 import { LegalFooter } from './LegalFooter'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -43,6 +44,7 @@ afterEach(() => {
   window.history.replaceState(null, '', '/')
   document.documentElement.removeAttribute('data-qa-mode')
   vi.unstubAllEnvs()
+  mockViewport('desktop')
 })
 
 beforeEach(() => {
@@ -141,5 +143,26 @@ describe('LegalFooter — VITE_QA_FOOTER_BUTTON=true, QA mode already on', () =>
   it('does NOT render the helper text when QA mode is already active', () => {
     renderFooter()
     expect(screen.queryByText(/Sie testen für uns/)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// PR 11 — viewport sweep
+// ---------------------------------------------------------------------------
+
+describe('LegalFooter — viewport sweep (PR 11)', () => {
+  it('renders the footer links at phone / tablet / desktop without throwing', () => {
+    eachViewport(() => {
+      const { container, unmount } = render(
+        <QaFeedbackProvider>
+          <LegalFooter navigate={() => undefined} />
+        </QaFeedbackProvider>,
+      )
+      // Impressum + Datenschutzerklärung are non-collapsible at every viewport;
+      // the legal footer is a stable bottom bar.
+      expect(container.textContent ?? '').toContain('Impressum')
+      expect(container.textContent ?? '').toContain('Datenschutzerklärung')
+      unmount()
+    })
   })
 })

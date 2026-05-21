@@ -23,6 +23,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { CombineIncomePanel } from './CombineIncomePanel'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
 function makeCombinedResult(overrides: Partial<CombinedResult> = {}): CombinedResult {
   // Minimal stub: CombineIncomePanel only reads monthlyNetIncome from this.
@@ -56,7 +57,10 @@ function makeProductResult(
 }
 
 describe('CombineIncomePanel', () => {
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    mockViewport('desktop')
+  })
 
   it('renders the combined monthly income', () => {
     const combinedResult = makeCombinedResult({ monthlyNetIncome: 1500 })
@@ -240,5 +244,25 @@ describe('CombineIncomePanel', () => {
       />,
     )
     expect(screen.getByText(/Teilweise geschätzt/)).toBeTruthy()
+  })
+
+  it('PR 11 viewport sweep — renders the combined income figure at phone / tablet / desktop', () => {
+    eachViewport(() => {
+      const { container, unmount } = render(
+        <CombineIncomePanel
+          combinedResult={makeCombinedResult({ monthlyNetIncome: 2200 })}
+          perInstanceResults={{ 'bav-test01': [makeProductResult({ inputConfidence: 'user_confirmed' })] }}
+          scenarioId="basis"
+          scenarioLabel="Basis"
+        />,
+      )
+      const text = container.textContent ?? ''
+      // Headline figure renders at every viewport (responsive via CSS).
+      // CR2: assert the actual headline EUR figure (2.200 in de-DE locale)
+      // alongside the scenario label so the test reflects its title.
+      expect(text).toContain('Basis')
+      expect(text).toMatch(/2\.200/)
+      unmount()
+    })
   })
 })

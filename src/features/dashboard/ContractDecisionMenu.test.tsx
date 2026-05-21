@@ -17,8 +17,12 @@ import { ContractDecisionMenu } from './ContractDecisionMenu'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { migrateV1ToV2 } from '../../storage'
 import type { Workspace, WhatIfScenario } from '../../domain/workspace'
+import { eachViewport, mockViewport } from '../../test/viewport'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  mockViewport('desktop')
+})
 
 // ---------------------------------------------------------------------------
 // Fixture workspace with a pAV (insurance) instance
@@ -178,5 +182,21 @@ describe('ContractDecisionMenu', () => {
     )
     const checkboxLabels = container.querySelectorAll('.contract-decision-checkbox')
     expect(checkboxLabels.length).toBeGreaterThan(0)
+  })
+
+  it('PR 11 viewport sweep — menu renders at phone / tablet / desktop', () => {
+    const { ws, instanceId } = setupPavWorkspace()
+    eachViewport(() => {
+      const { container, unmount } = render(
+        <ContractDecisionMenu
+          workspace={ws}
+          instanceId={instanceId}
+          onCreatePlans={() => {}}
+          onClose={() => {}}
+        />,
+      )
+      expect(container.querySelector('.contract-decision-menu')).not.toBeNull()
+      unmount()
+    })
   })
 })

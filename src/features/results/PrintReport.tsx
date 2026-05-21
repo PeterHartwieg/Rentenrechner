@@ -17,6 +17,18 @@ import {
   evidenceStateToProvKind,
   formatEvidenceStateForExport,
 } from './provenanceHelpers'
+import {
+  buildPrintWohinRows,
+  buildPrintZusammenRows,
+  buildPrintVertragBlocks,
+  buildPrintWendepunkteRows,
+  PRINT_METHODE_BULLETS,
+  type PrintWohinRow,
+  type PrintZusammenRow,
+  type PrintVertragBlock,
+  type PrintWendepunkteSection,
+  type PrintSensitivityRow,
+} from './printReportRows'
 
 interface Props {
   profile: PersonalProfile
@@ -57,6 +69,16 @@ interface Props {
    * and falls back to the product meta label only when the instance label is blank.
    */
   combineWorkspace?: Workspace
+  /**
+   * Pre-computed sensitivity perturbation rows (combine mode, PR 11 R1 scope
+   * restore). The caller computes these via `buildPrintSensitivityRows` so the
+   * O(N × ≤4) `runCombineSimulation` cost is paid at the same site as the
+   * existing combine simulation (Calculator.tsx), not inside this component.
+   *
+   * When the prop is omitted or empty, the print § Zusammensetzung section
+   * still renders the composition table but skips the sensitivity sub-table.
+   */
+  combineSensitivityRows?: ReadonlyArray<PrintSensitivityRow>
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -122,6 +144,7 @@ export function PrintReport({
   combineGrv,
   combineReturnScenarios,
   combineWorkspace,
+  combineSensitivityRows,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -143,6 +166,7 @@ export function PrintReport({
         retirementEndAge={combineWorkspace?.baseline.assumptions.retirementEndAge ?? assumptions.retirementEndAge}
         portfolio={portfolio}
         workspace={combineWorkspace}
+        sensitivityRows={combineSensitivityRows}
         date={date}
       />
     )
@@ -164,6 +188,22 @@ export function PrintReport({
 
   const grv = simulation.statutoryPension
   const bav = simulation.bavFunding
+
+  // PR 11: build the "Wohin geht das Geld" per-product print rows from the
+  // basis-scenario results. Reuses the same `vergleichDetailRows` helper as
+  // the web `/vergleich/details` surface so the print and web report
+  // identical figures. Sort + filter happen inside the builder.
+  const basisScenarioId =
+    assumptions.returnScenarios.find((s) => s.id === 'basis')?.id ??
+    assumptions.returnScenarios[0]?.id ??
+    'basis'
+  const wohinRows = buildPrintWohinRows({
+    results: sorted.filter((r) => r.scenarioId === basisScenarioId),
+    assumptions,
+    bavFunding: bav,
+    retirementAge: profile.retirementAge,
+    currentAge: profile.age,
+  })
 
   return (
     <div id="print-report">
@@ -330,6 +370,12 @@ export function PrintReport({
         </p>
       </section>
 
+      {wohinRows.length > 0 && (
+        <WohinSection rows={wohinRows} retirementAge={profile.retirementAge} />
+      )}
+
+      <MethodeSection />
+
       <section className="pr-section pr-disclaimer">
         <div className="pr-section-title">Hinweise und Grenzen der Rechnung</div>
         <ul className="pr-disclaimer-list">
@@ -397,6 +443,9 @@ interface CombinePrintReportProps {
    * product label (e.g. "ETF-Depot"). Falls back to `r.label` when absent.
    */
   workspace?: Workspace
+  /** Pre-computed sensitivity rows (PR 11 R1). Threaded so this component
+   *  stays presentational; the cost is paid in Calculator.tsx. */
+  sensitivityRows?: ReadonlyArray<PrintSensitivityRow>
   date: string
 }
 
@@ -408,6 +457,7 @@ function CombinePrintReport({
   retirementEndAge,
   portfolio,
   workspace,
+  sensitivityRows,
   date,
 }: CombinePrintReportProps) {
   const { perInstance, combinedByScenarioId, scenarioLabels } = portfolio
@@ -428,6 +478,53 @@ function CombinePrintReport({
     const remainder = Object.keys(combinedByScenarioId).filter((id) => !seen.has(id))
     return [...fromScenarios, ...remainder]
   })()
+
+  // PR 11: pick the basis-scenario CombinedResult for the new print
+  // sub-sections (Zusammensetzung, Kapital, Vertrag-Detail). Falls back to
+  // the first ordered scenario when basis is not in the bundle (rare;
+  // workspaces ship the canonical [konservativ, basis, optimistisch] triple).
+  const basisScenarioId =
+    orderedScenarioIds.find((id) => id === 'basis') ?? orderedScenarioIds[0] ?? 'basis'
+  const basisCombined: CombinedResult | undefined = combinedByScenarioId[basisScenarioId]
+
+  // Mein Plan § 1 Zusammensetzung — composition rows for the basis scenario.
+  // Always emitted (statutory row is always rendered) when a workspace is in
+  // scope; degraded test fixtures without a workspace fall back to an empty
+  // section by returning `[]` from the builder.
+  const zusammenRows: PrintZusammenRow[] = workspace
+    ? buildPrintZusammenRows({
+        workspace,
+        combinedForScenario: basisCombined,
+      })
+    : []
+
+  // Per-contract Vertrag-Detail blocks (one per active / paid-up instance).
+  // Skipped when the workspace is missing (degraded test path).
+  const vertragBlocks: PrintVertragBlock[] = workspace
+    ? buildPrintVertragBlocks({
+        workspace,
+        perInstance,
+        scenarioId: basisScenarioId,
+        combinedForScenario: basisCombined,
+      })
+    : []
+
+  // Per-instance Kapital & Auszahlungen wendepunkte. The lifecycle line
+  // series is built per instance so the print table renders one block per
+  // contract; combine-mode users expect to see the trajectory of each
+  // contract, not the aggregate (the aggregate is mirrored on the web
+  // /kapital page but does not narrow per-contract decisions). The print
+  // emits a single combined table with an instance-id column so the layout
+  // stays page-bounded (one section, not one section-per-contract — print
+  // pages cannot absorb a wendepunkte block per contract without going
+  // past the A4 budget).
+  const wendepunkteByInstance: PrintWendepunkteSection[] = workspace
+    ? buildPrintWendepunkteRows({
+        workspace,
+        perInstance,
+        scenarioId: basisScenarioId,
+      })
+    : []
 
   // Flatten per-instance × scenario rows; sort by instanceId then scenarioId
   // for stable output across renders.
@@ -624,6 +721,24 @@ function CombinePrintReport({
         </p>
       </section>
 
+      {zusammenRows.length > 0 && (
+        <ZusammensetzungSection
+          rows={zusammenRows}
+          retirementAge={profile.retirementAge}
+          sensitivityRows={sensitivityRows}
+        />
+      )}
+
+      {wendepunkteByInstance.length > 0 && (
+        <WendepunkteSection rows={wendepunkteByInstance} />
+      )}
+
+      {vertragBlocks.length > 0 && (
+        <VertragImDetailSection blocks={vertragBlocks} />
+      )}
+
+      <MethodeSection />
+
       <section className="pr-section pr-disclaimer">
         <div className="pr-section-title">Hinweise und Grenzen der Rechnung</div>
         <ul className="pr-disclaimer-list">
@@ -652,6 +767,468 @@ function CombinePrintReport({
       </div>
     </div>
   )
+}
+
+// ---------------------------------------------------------------------------
+// PR 11 print sections (compare + combine)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compare-mode "Wohin geht das Geld" print block. Mirrors the web
+ * `/vergleich/details` card grid but flattens to a per-product stacked
+ * table (A4 needs fixed widths — a card grid does not fit predictably).
+ *
+ * One inner table per product, three labelled section rows
+ * (Ansparphase / Mit {retirementAge} / Im Alter), plus an "Effektivkost." +
+ * "Verfügbar ab" footer line. Pure presentational — every figure is
+ * pre-formatted by the helper layer or `formatCurrency`.
+ */
+function WohinSection({
+  rows,
+  retirementAge,
+}: {
+  rows: ReadonlyArray<PrintWohinRow>
+  retirementAge: number
+}) {
+  return (
+    <section className="pr-section">
+      <div className="pr-section-title">
+        Wohin geht das Geld — Aufschlüsselung pro Produkt (Mit {retirementAge})
+      </div>
+      <table className="pr-table pr-wohin-table">
+        <colgroup>
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '18%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Produkt</th>
+            <th>Ansparphase</th>
+            <th className="pr-num">€/Mon.</th>
+            <th>Mit {retirementAge}</th>
+            <th className="pr-num">€</th>
+            <th>Im Alter</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <WohinProductRows key={row.productId} row={row} />
+          ))}
+        </tbody>
+      </table>
+      <p className="pr-note pr-table-note">
+        Aufschlüsselung im Basisszenario. „Effektivkosten p. a." nach IVASS / RIY-Methode
+        über die gesamte Ansparphase. Verfügbarkeit pro Produkt: siehe Hinweis je Zeile.
+      </p>
+    </section>
+  )
+}
+
+function WohinProductRows({ row }: { row: PrintWohinRow }) {
+  // The three sections are uniform in length (3-4 rows each); we render them
+  // as parallel cell groups so the product label only appears once. To keep
+  // the table portable we render one tr per section, with the product label
+  // rowspan'd over the three section rows + the footer row.
+  const ansparRows = sectionLines(row.sections[0]?.rows ?? [])
+  const kapitalRows = sectionLines(row.sections[1]?.rows ?? [])
+  const payoutRows = sectionLines(row.sections[2]?.rows ?? [])
+  const totalRowSpan = Math.max(ansparRows.length, kapitalRows.length, payoutRows.length) + 1
+  return (
+    <>
+      {Array.from({ length: totalRowSpan }, (_, idx) => {
+        const isFirst = idx === 0
+        const isFooter = idx === totalRowSpan - 1
+        const a = ansparRows[idx]
+        const k = kapitalRows[idx]
+        const p = payoutRows[idx]
+        return (
+          <tr
+            key={`${row.productId}-${idx}`}
+            className={isFooter ? 'pr-wohin-footer-row' : ''}
+          >
+            {isFirst ? (
+              <td rowSpan={totalRowSpan} className="pr-wohin-label">
+                <strong>{row.label}</strong>
+              </td>
+            ) : null}
+            {isFooter ? (
+              <>
+                <td className="pr-note" colSpan={2}>
+                  Effektivkosten p. a.: {formatPercent(row.effectiveAnnualCost, 2)}
+                </td>
+                <td className="pr-note" colSpan={2}>
+                  Verfügbar ab: {row.availabilityLabel}
+                </td>
+                <td className="pr-note">
+                  {row.availabilityNote ?? ''}
+                </td>
+              </>
+            ) : (
+              <>
+                <td>{a?.label ?? ''}</td>
+                <td className="pr-num">{a ? formatWohinValue(a) : ''}</td>
+                <td>{k?.label ?? ''}</td>
+                <td className="pr-num">{k ? formatWohinValue(k) : ''}</td>
+                <td>
+                  {p?.label ?? ''}
+                  {p ? ` ${formatWohinValue(p)}` : ''}
+                </td>
+              </>
+            )}
+          </tr>
+        )
+      })}
+    </>
+  )
+}
+
+/**
+ * Filter `info` rows out of the section line set so they don't compete with
+ * monetary rows for table-row alignment. Effektivkosten p. a. is rendered
+ * separately in the footer row.
+ */
+function sectionLines(
+  rows: ReadonlyArray<{ kind: string; label: string; value: number }>,
+) {
+  return rows.filter((r) => r.kind !== 'info')
+}
+
+/**
+ * Format a Wohin row's value with section-aware rules:
+ * - `'sub'` rows render with a leading Unicode minus (the row label already
+ *   carries "− ..." in many cases, but for the Kapital section we keep the
+ *   minus on the value side per CLAUDE.md "minus on value side" convention).
+ * - All other kinds render as plain currency.
+ */
+function formatWohinValue(row: { kind: string; value: number }): string {
+  if (row.kind === 'sub') {
+    return formatCurrency(row.value, 0)
+  }
+  return formatCurrency(row.value, 0)
+}
+
+/**
+ * Compact "Methode & Quellen" block, shared by compare-mode and
+ * combine-mode print. Renders the five high-level themes from the web
+ * `/methode` page (Renditeannahmen / Steuermodell / Sozialversicherung /
+ * Statutorische Werte / Bewusst nicht modellieren) as a short definition
+ * list, plus a pointer to the live `/methode` page for full statutory
+ * tables. Kept terse — the print budget is ≤ 1 A4 page for this block.
+ */
+function MethodeSection() {
+  return (
+    <section className="pr-section pr-methode-section">
+      <div className="pr-section-title">Methode &amp; Quellen</div>
+      <ul className="pr-methode-list">
+        {PRINT_METHODE_BULLETS.map((bullet) => (
+          <li key={bullet.label}>
+            <strong>{bullet.label}:</strong> {bullet.body}
+          </li>
+        ))}
+      </ul>
+      <p className="pr-note pr-methode-pointer">
+        Vollständige statutorische Werte und § §-Verweise:
+        {' '}RentenWiki.de/methode
+        {' '}— BMF / BMAS-Quellen, jährliche Aktualisierung.
+      </p>
+    </section>
+  )
+}
+
+/**
+ * Combine-mode "Zusammensetzung & Sensitivität" print block. Mirrors Mein
+ * Plan § 1 (statutory pension leading row + one row per active / paid-up
+ * instance) and § 2 (sensitivity perturbation rows). Section heading
+ * carries both names so the print mirrors the web section index.
+ *
+ * The sensitivity sub-table is suppressed when `sensitivityRows` is
+ * absent or empty (degraded test path or fully neutral plan) — the
+ * composition table still renders so the user sees the contract list.
+ */
+function ZusammensetzungSection({
+  rows,
+  retirementAge,
+  sensitivityRows,
+}: {
+  rows: ReadonlyArray<PrintZusammenRow>
+  retirementAge: number
+  sensitivityRows?: ReadonlyArray<PrintSensitivityRow>
+}) {
+  return (
+    <section className="pr-section">
+      <div className="pr-section-title">
+        Zusammensetzung &amp; Sensitivität — Rente mit {retirementAge}
+      </div>
+      <table className="pr-table">
+        <colgroup>
+          <col style={{ width: '32%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '14%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Quelle</th>
+            <th className="pr-num">Beitrag heute</th>
+            <th className="pr-num">Rente mit {retirementAge}</th>
+            <th className="pr-num">Anteil</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.key}>
+              <td>
+                <div>{row.label}</div>
+                {row.sublabel ? (
+                  <div className="pr-zusammen-sublabel">{row.sublabel}</div>
+                ) : null}
+              </td>
+              <td className="pr-num">
+                {row.contributionMonthly === null
+                  ? '–'
+                  : row.contributionMonthly === 0
+                    ? 'beitragsfrei'
+                    : `${formatCurrency(row.contributionMonthly, 0)}/Mon.`}
+              </td>
+              <td className="pr-num">{formatCurrency(row.monthlyNet, 0)}/Mon.</td>
+              <td className="pr-num">{formatPercent(row.share, 1)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="pr-note pr-table-note">
+        Werte im Basisszenario. Anteil basiert auf der aggregierten Netto-Rente
+        nach Steuer und KV/PV.
+      </p>
+
+      {sensitivityRows && sensitivityRows.length > 0 && (
+        <SensitivitaetSubTable rows={sensitivityRows} />
+      )}
+    </section>
+  )
+}
+
+/**
+ * Sensitivität sub-table rendered inside the Zusammensetzung print
+ * section. Each row is a single perturbation against the basis scenario;
+ * the delta column carries a sign + colour pill (green / red / neutral)
+ * driven by `row.sign`. The optional `noteText` row below the condition
+ * surfaces selector caveats (clamped retirement age, paid-up ETF, etc.)
+ * so a `±0 €/Mon.` delta is never displayed without explanation.
+ */
+function SensitivitaetSubTable({
+  rows,
+}: {
+  rows: ReadonlyArray<PrintSensitivityRow>
+}) {
+  return (
+    <>
+      <div className="pr-sens-subhead">Was sich ändern würde, wenn …</div>
+      <table className="pr-table pr-sens-table">
+        <colgroup>
+          <col style={{ width: '70%' }} />
+          <col style={{ width: '30%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Bedingung</th>
+            <th className="pr-num">Δ Netto-Rente</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>
+              <td>
+                <div>{row.conditionText}</div>
+                {row.noteText ? (
+                  <div className="pr-sens-note">{row.noteText}</div>
+                ) : null}
+              </td>
+              <td className={`pr-num pr-sens-delta pr-sens-delta--${row.sign}`}>
+                {row.deltaText}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="pr-note pr-table-note">
+        Einzelne Was-wäre-wenn-Perturbationen im Basisszenario, gerundet auf
+        ganze Euro. Werte unter 1 €/Monat werden als ±0 angezeigt.
+      </p>
+    </>
+  )
+}
+
+/**
+ * Combine-mode "Kapital & Auszahlungen" print block. One row per
+ * (instance × turning point) so the print stays page-bounded with multi-
+ * contract workspaces. Mirrors `KapitalWendepunkteTable` from the web
+ * `/kapital` page (PR 8).
+ */
+function WendepunkteSection({
+  rows,
+}: {
+  rows: ReadonlyArray<PrintWendepunkteSection>
+}) {
+  return (
+    <section className="pr-section">
+      <div className="pr-section-title">Kapital &amp; Auszahlungen — Wendepunkte je Vertrag</div>
+      <table className="pr-table">
+        <colgroup>
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '24%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '16%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Vertrag</th>
+            <th>Ereignis</th>
+            <th className="pr-num">Alter</th>
+            <th className="pr-num">Kapital</th>
+            <th className="pr-num">Eingezahlt</th>
+            <th className="pr-num">Ausgezahlt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((section) =>
+            section.rows.map((row, idx) => (
+              <tr key={`${section.instanceId}-${row.kind}`}>
+                {idx === 0 ? (
+                  <td rowSpan={section.rows.length} className="pr-wendepunkte-instance">
+                    {section.title}
+                  </td>
+                ) : null}
+                <td>{row.label}</td>
+                <td className="pr-num">{row.age === null ? '–' : `${row.age}`}</td>
+                <td className="pr-num">{row.capital === null ? '–' : formatCurrency(row.capital, 0)}</td>
+                <td className="pr-num">{row.paidIn === null ? '–' : formatCurrency(row.paidIn, 0)}</td>
+                <td className="pr-num">{row.payout === null ? '–' : formatCurrency(row.payout, 0)}</td>
+              </tr>
+            )),
+          )}
+        </tbody>
+      </table>
+      <p className="pr-note pr-table-note">
+        Aggregierte Wendepunkte je Vertrag — Halbzeit der Ansparphase, Renteneintritt,
+        Break-even (Auszahlungen ≥ Einzahlungen) und voraussichtliches Modell-Endalter.
+      </p>
+    </section>
+  )
+}
+
+/**
+ * Combine-mode "Vertrag im Detail" print block. One sub-block per active /
+ * paid-up instance, containing four KPI cells (Beitrag / Einzahlungen /
+ * Voraussichtl. Kapital / Netto-Rente) plus the per-contract evidence
+ * provenance list. Mirrors `VertragKpiStrip` + `VertragProvenanceList`
+ * from the web `/vertrag/:instanceId` page (PR 7).
+ *
+ * Layout choice (handoff doc pre-anticipated decision): compact stacked
+ * layout on shared pages, NOT one block per contract on its own page —
+ * `page-break-before` per block is wasteful for users with 4-6 instances
+ * (a typical combine-mode plan). `break-inside: avoid` keeps individual
+ * blocks together; if a block does not fit on the current page, it moves
+ * to the next.
+ */
+function VertragImDetailSection({
+  blocks,
+}: {
+  blocks: ReadonlyArray<PrintVertragBlock>
+}) {
+  // Per CR9: this outer section uses `pr-section-allow-break` so the per-
+  // contract list can flow across pages. Each `.pr-vertrag-block` inside still
+  // carries `break-inside: avoid` so individual contracts stay atomic.
+  return (
+    <section className="pr-section pr-section-allow-break">
+      <div className="pr-section-title">Vertrag im Detail</div>
+      <div className="pr-vertrag-blocks">
+        {blocks.map((block) => (
+          <VertragBlockView key={block.instanceId} block={block} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function VertragBlockView({ block }: { block: PrintVertragBlock }) {
+  return (
+    <div className="pr-vertrag-block">
+      <div className="pr-vertrag-header">
+        <strong>{block.title}</strong>
+        <span className="pr-note">
+          {' · '}
+          {block.productLabel}
+          {block.statusLabel ? ` · ${block.statusLabel}` : ''}
+          {' · angelegt: '}
+          {block.contractStartLabel}
+          {block.anbieter ? ` · ${block.anbieter}` : ''}
+        </span>
+      </div>
+      <table className="pr-table pr-vertrag-kpi-table">
+        <thead>
+          <tr>
+            {block.kpis.map((kpi) => (
+              <th key={kpi.label} className="pr-num">{kpi.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {block.kpis.map((kpi) => (
+              <td key={kpi.label} className="pr-num">
+                <div className="pr-vertrag-kpi-value">
+                  {kpi.displayOverride ?? (kpi.value === null ? '–' : formatCurrency(kpi.value, 0))}
+                </div>
+                <div className="pr-note">{kpi.sublabel}</div>
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+      <table className="pr-table pr-vertrag-prov-table">
+        <colgroup>
+          <col style={{ width: '60%' }} />
+          <col style={{ width: '40%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Eingabe</th>
+            <th>Herkunft</th>
+          </tr>
+        </thead>
+        <tbody>
+          {block.provenance.map((row) => (
+            <tr key={row.label}>
+              <td>{row.label}</td>
+              <td>
+                <span className={vertragProvenanceClassName(row.evidenceKind)}>
+                  {row.evidenceLabel}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function vertragProvenanceClassName(kind: 'confirmed' | 'model' | 'default'): string {
+  switch (kind) {
+    case 'confirmed':
+      return 'pr-confidence-confirmed'
+    case 'model':
+      return 'pr-confidence-estimate'
+    case 'default':
+      return 'pr-confidence-default'
+  }
 }
 
 // ---------------------------------------------------------------------------

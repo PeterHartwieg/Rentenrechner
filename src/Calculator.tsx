@@ -43,6 +43,7 @@ import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { CombineDetailView } from './features/results/CombineDetailView'
 import { PrintReport } from './features/results/PrintReport'
+import { usePrintSensitivityRows } from './app/usePrintSensitivityRows'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { AssumptionReviewPanel } from './features/results/AssumptionReviewPanel'
@@ -307,6 +308,25 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     portfolioState.workspace.baseline.assumptions,
     combineProfile,
   ])
+
+  // Sensitivity perturbation rows for the combine-mode print (PR 11 R1
+  // scope restore + R2 perf fix). Each row drives a full
+  // `runCombineSimulation` pass — up to 4 extra simulations per build.
+  //
+  // PR 11 R2 (Codex P1): the previous `useMemo` keyed on
+  // `portfolioState.workspace` recomputed on every combine-mode workspace
+  // mutation, so users paid the cost during normal editing even when they
+  // never printed. The work is now deferred to `window.beforeprint` inside
+  // `usePrintSensitivityRows` — initial value is `undefined`, the listener
+  // computes + caches on first print, and subsequent workspace edits do not
+  // trigger a recompute. PrintReport's `sensitivityRows && length > 0`
+  // guard handles the empty / undefined branch gracefully.
+  const printSensitivityRows = usePrintSensitivityRows({
+    isCombineMode,
+    workspace: portfolioState.workspace,
+    combinedByScenarioId: combineSimulation.combinedByScenarioId,
+    rules: de2026Rules,
+  })
   const views = useDerivedViews(profile, assumptions, result, {
     showRealValues: ui.showRealValues,
     cashflowProductId: ui.cashflowProductId,
@@ -766,6 +786,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               : undefined
           }
           combineWorkspace={isCombineMode ? portfolioState.workspace : undefined}
+          combineSensitivityRows={printSensitivityRows}
         />
 
         <LegalFooter navigate={navigate} />
