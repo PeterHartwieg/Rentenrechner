@@ -426,6 +426,23 @@
   padding: 0 24px;
 }
 
+/* --- PageNotFound (/404) body — nav link list -------------------------
+   Unstyled flex-column list used inside the "Stattdessen verfügbar"
+   section rendered as ArticleLayout children for the 404 route.
+   ========================================================================== */
+.pnf-links {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pnf-links li {
+  margin: 0;
+}
+
 /* ==========================================================================
    Tablet — 640–1023 px. TOC hides; meta rail shrinks.
    ========================================================================== */
