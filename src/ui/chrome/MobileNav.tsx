@@ -1,4 +1,4 @@
-import { routeToNavId, type ChromeNavId } from './chromeRoutes'
+import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
@@ -36,7 +36,14 @@ const ITEMS: readonly NavEntry[] = [
  * does not query matchMedia itself and assumes it is only rendered on phone.
  */
 export function MobileNav({ route, navigate }: MobileNavProps) {
-  const active = routeToNavId(route)
+  // Read `window.location.search` synchronously each render so the bottom-tab
+  // bar lights up the Vergleich tab when the URL carries `?view=landing`
+  // (PR #296 R1 override). Mirrors the AppHeader fix from PR #298 R1: the
+  // earlier `useState`+`rentenwiki:navigated` subscription went stale when
+  // App.tsx's `handleLandingChoice` cleared the override via
+  // `history.replaceState` without dispatching the event (Codex P2).
+  const search = typeof window !== 'undefined' ? window.location.search : ''
+  const active = activeChromeNavId(route, search)
   return (
     <nav className="rw-mobile-nav" aria-label="Mobile Hauptnavigation">
       {ITEMS.map((item) => {
@@ -48,6 +55,7 @@ export function MobileNav({ route, navigate }: MobileNavProps) {
             <a
               key={item.id}
               href={routeToPath(target)}
+              aria-current={isActive ? 'page' : undefined}
               className={className}
               onClick={(event) => {
                 if (!shouldUseSpaNavigation(event)) return
@@ -64,6 +72,7 @@ export function MobileNav({ route, navigate }: MobileNavProps) {
             key={item.id}
             className={`${className} rw-mobile-nav__tab--placeholder`}
             aria-disabled="true"
+            aria-current={isActive ? 'page' : undefined}
           >
             {item.label}
           </span>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useViewport } from './useViewport'
 import { MobileSheet } from './MobileSheet'
-import { routeToNavId, type ChromeNavId } from './chromeRoutes'
+import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
@@ -70,8 +70,18 @@ function clickableTarget(id: ChromeNavId): NavTarget {
  */
 export function AppHeader({ route, kicker, title, editorial, navigate }: AppHeaderProps) {
   const viewport = useViewport()
-  const active = routeToNavId(route)
   const [sheetOpen, setSheetOpen] = useState(false)
+  // Read `window.location.search` synchronously each render so the Vergleich
+  // tab lights up when the URL carries `?view=landing` (PR #296 R1 override).
+  // Caching the search string in `useState` + subscribing to
+  // `rentenwiki:navigated` went stale when `handleLandingChoice` in
+  // `App.tsx` cleared the override via `history.replaceState` without
+  // dispatching the event (Codex P2 on PR #298). The synchronisation point
+  // is the parent re-render triggered by `setAppView` — by the time React
+  // re-renders AppShell → AppHeader, `window.location.search` already
+  // reflects the new URL. No event subscription needed.
+  const search = typeof window !== 'undefined' ? window.location.search : ''
+  const active = activeChromeNavId(route, search)
 
   if (viewport === 'phone') {
     return (
@@ -98,7 +108,12 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
             {title && <h1 className="rw-app-header__title">{title}</h1>}
           </div>
         )}
-        <MobileSheet open={sheetOpen} onClose={() => setSheetOpen(false)} navigate={navigate} />
+        <MobileSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          navigate={navigate}
+          route={route}
+        />
       </>
     )
   }
@@ -123,6 +138,7 @@ export function AppHeader({ route, kicker, title, editorial, navigate }: AppHead
               <a
                 key={item.id}
                 href={href}
+                aria-current={isActive ? 'page' : undefined}
                 className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
                 onClick={(event) => {
                   if (!shouldUseSpaNavigation(event)) return
