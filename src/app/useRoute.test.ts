@@ -350,3 +350,82 @@ describe('useRoute.navigate — SPA push semantics (PR 290 R4 Codex P2)', () => 
     expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/vergleich/details?scenario=optimistisch')
   })
 })
+
+// ---------------------------------------------------------------------------
+// rentenwiki:navigated custom event (PR #296 R2 fix).
+//
+// `navigate()` must dispatch a `rentenwiki:navigated` event after every SPA
+// navigation so that URL-derived React state (e.g. App.tsx's `?view=landing`
+// override) can re-read `window.location.search` without relying on
+// `popstate` — which `pushState` does not fire.
+//
+// The existing `popstate` handler also emits the same event so subscribers
+// only need to listen to a single channel.
+// ---------------------------------------------------------------------------
+
+describe('navigate() dispatches rentenwiki:navigated custom event (PR #296 R2)', () => {
+  let pushStateSpy: ReturnType<typeof vi.spyOn>
+  let scrollToSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/')
+    pushStateSpy = vi.spyOn(window.history, 'pushState')
+    scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    pushStateSpy.mockRestore()
+    scrollToSpy.mockRestore()
+    window.history.replaceState(null, '', '/')
+  })
+
+  it('calling navigate(ROUTES.home, "?view=landing") dispatches rentenwiki:navigated', () => {
+    const listener = vi.fn()
+    window.addEventListener('rentenwiki:navigated', listener)
+
+    const { result } = renderHook(() => useRoute())
+    act(() => {
+      result.current.navigate(ROUTES.home, '?view=landing')
+    })
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    window.removeEventListener('rentenwiki:navigated', listener)
+  })
+
+  it('navigate() without a search arg still dispatches rentenwiki:navigated', () => {
+    const listener = vi.fn()
+    window.addEventListener('rentenwiki:navigated', listener)
+
+    const { result } = renderHook(() => useRoute())
+    act(() => {
+      result.current.navigate(ROUTES.methode)
+    })
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    window.removeEventListener('rentenwiki:navigated', listener)
+  })
+})
+
+describe('popstate dispatches rentenwiki:navigated (single-channel guarantee)', () => {
+  it('a browser popstate event re-emits rentenwiki:navigated', () => {
+    const listener = vi.fn()
+    window.addEventListener('rentenwiki:navigated', listener)
+
+    // Mount the hook so its popstate listener is registered, then capture
+    // the count before we fire popstate so we can assert the delta is >= 1
+    // regardless of how many other useRoute instances the jsdom environment
+    // accumulated from earlier tests in this file.
+    const { unmount } = renderHook(() => useRoute())
+    const callsBefore = listener.mock.calls.length
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate', { state: null }))
+    })
+
+    const callsAfter = listener.mock.calls.length
+    expect(callsAfter - callsBefore).toBeGreaterThanOrEqual(1)
+
+    unmount()
+    window.removeEventListener('rentenwiki:navigated', listener)
+  })
+})

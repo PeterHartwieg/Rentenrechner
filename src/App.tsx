@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import type { AppView } from './app/useRoute'
 import { useRoute, detectSavedMode, appViewFromMode, appViewFromUrl, routeToPath, ROUTES } from './app/useRoute'
 import { useWorkspaceUiState } from './app/useWorkspaceUiState'
@@ -115,6 +115,33 @@ function App() {
     }
     return appViewFromMode(detectSavedMode())
   })
+  // Re-derive calculatorView after SPA navigation so that the `?view=landing`
+  // override applied by the Vergleich tab is picked up by already-mounted App
+  // instances. `pushState` does not fire `popstate`, so `useRoute.navigate()`
+  // dispatches a `rentenwiki:navigated` custom event after every SPA hop; the
+  // popstate handler emits the same event for browser back/forward. Subscribers
+  // therefore only need one channel.
+  //
+  // When the URL carries no override (override === null) we leave
+  // `calculatorView` unchanged — saved-mode dashboards (compare/combine) must
+  // persist across navigations that don't carry an explicit `?view=` param.
+  // The `handleLandingChoice` URL scrub uses `replaceState` which does NOT
+  // fire the custom event — intentional: we don't want the scrub to re-trigger
+  // this derivation and flip back to the dashboard view the user just chose.
+  useEffect(() => {
+    function rederiveFromUrl() {
+      if (typeof window === 'undefined') return
+      const override = appViewFromUrl(window.location.search)
+      if (override !== null) {
+        setCalculatorView(override)
+      }
+    }
+    window.addEventListener('rentenwiki:navigated', rederiveFromUrl)
+    return () => {
+      window.removeEventListener('rentenwiki:navigated', rederiveFromUrl)
+    }
+  }, [])
+
   const [pendingChoice, setPendingChoice] = useState<LandingChoice | null>(null)
 
   // Workspace UI toggles (selected scenario id, real-values toggle, cashflow
