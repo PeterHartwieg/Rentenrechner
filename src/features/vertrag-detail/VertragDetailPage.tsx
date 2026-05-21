@@ -9,6 +9,7 @@ import { de2026Rules } from '../../rules/de2026'
 import { getProductMeta } from '../../engine/productRegistry'
 import type { InstanceCommon } from '../../domain/instances'
 import type { ProductId } from '../../domain/products/common'
+import { ErrorStatePanel } from '../../ui/chrome/ErrorStatePanel'
 import { VertragKpiStrip } from './VertragKpiStrip'
 import { VertragScenarioTable } from './VertragScenarioTable'
 import { VertragProvenanceList } from './VertragProvenanceList'
@@ -257,6 +258,12 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
 
 // ---------------------------------------------------------------------------
 // EmptyState — invalid id or compare-mode user
+//
+// Composes the shared Sober D `ErrorStatePanel` primitive (R3.2 / audit C7)
+// inside the page's own `.vertrag-shell` chrome so the empty state lives in
+// the same horizontal rhythm as the populated detail page. The panel itself
+// owns the centred card visual (title + body + CTA + warning icon for the
+// error tone); this helper just supplies the recovery copy + navigator.
 // ---------------------------------------------------------------------------
 
 interface EmptyStateProps {
@@ -268,24 +275,25 @@ interface EmptyStateProps {
 }
 
 function EmptyState({ title, body, ctaLabel, ctaTarget, navigate }: EmptyStateProps) {
+  const ctaHref = routeToPath(ctaTarget)
   return (
     <div className="vertrag-shell">
       <div className="vertrag-main">
-        <article className="vertrag-empty">
-          <h1 className="vertrag-empty-title">{title}</h1>
-          <p className="vertrag-empty-body">{body}</p>
-          <a
-            href={routeToPath(ctaTarget)}
-            className="vertrag-empty-cta"
-            onClick={(event) => {
+        <ErrorStatePanel
+          tone="error"
+          title={title}
+          message={body}
+          cta={{
+            label: ctaLabel,
+            href: ctaHref,
+            onClick: (event) => {
               if (!shouldUseSpaNavigation(event)) return
               event.preventDefault()
               navigate(ctaTarget)
-            }}
-          >
-            {ctaLabel}
-          </a>
-        </article>
+            },
+          }}
+          className="rw-error-state--centered vertrag-empty"
+        />
       </div>
     </div>
   )

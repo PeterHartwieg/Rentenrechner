@@ -8,7 +8,7 @@ import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { ComparisonPicker } from '../workspace/ComparisonPicker'
-import { EmptyComparison } from '../workspace/EmptyComparison'
+import { ErrorStatePanel } from '../../ui/chrome/ErrorStatePanel'
 import { VergleichRenditeStrip } from './VergleichRenditeStrip'
 import { VergleichComparisonTable } from './VergleichComparisonTable'
 import { rowFromResult, type VergleichTableRow } from './vergleichRows'
@@ -214,7 +214,12 @@ export function VergleichPage({
               </div>
             </>
           ) : (
-            <EmptyComparison onOpenAngebot={onOpenAngebot} />
+            <ErrorStatePanel
+              tone="empty"
+              title="Wähle mindestens ein Vorsorgeprodukt zum Vergleich"
+              message="Die gesetzliche Rente bildet den Sockel. Ergänze ein privates Produkt — z. B. ETF-Depot oder bAV — um den Unterschied für deine Situation zu sehen."
+              cta={{ label: 'Produkte auswählen', onClick: onOpenAngebot }}
+            />
           )}
         </article>
       </div>

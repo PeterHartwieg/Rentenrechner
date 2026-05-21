@@ -58,7 +58,7 @@ import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModa
 import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
 import { LegalFooter } from './features/legal/LegalFooter'
-import { InvalidLinkBanner } from './ui/InvalidLinkBanner'
+import { ErrorStatePanel } from './ui/chrome/ErrorStatePanel'
 import {
   qaTargetAttrs,
   setQaWorkspaceContext,
@@ -760,7 +760,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
           </div>
         </header>
 
-        {invalidLink && <InvalidLinkBanner onDismiss={dismissInvalidLink} />}
+        {invalidLink && (
+          <ErrorStatePanel
+            tone="error"
+            message="Dieser Link ist ungültig oder abgelaufen. Es werden stattdessen die gespeicherten oder Standard-Eingaben angezeigt."
+            onDismiss={dismissInvalidLink}
+            className="rw-error-state--banner"
+          />
+        )}
 
         <ShellWorkspaceTabs
           activeView={workspace.activeView}

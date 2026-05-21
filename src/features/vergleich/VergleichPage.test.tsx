@@ -144,7 +144,7 @@ describe('VergleichPage — compare-mode comparison surface', () => {
     expect(drilldown!.getAttribute('href')).toBe('/vergleich/details?scenario=optimistisch')
   })
 
-  it('renders the EmptyComparison state when visibleProducts is empty', () => {
+  it('renders the empty-state ErrorStatePanel when visibleProducts is empty', () => {
     const assumptions: ScenarioAssumptions = {
       ...defaultAssumptions,
       visibleProducts: [] as ProductId[],
@@ -164,8 +164,12 @@ describe('VergleichPage — compare-mode comparison surface', () => {
       ),
     )
     // The § 1 comparison table heading should NOT render when there is no
-    // comparison set; the empty-state component takes over.
+    // comparison set; the shared Sober D ErrorStatePanel takes over (R3.2
+    // migration replaced the legacy EmptyComparison component on this page).
     expect(container.textContent ?? '').not.toContain('Sechs Sparformen im Überblick')
+    const panel = container.querySelector('.rw-error-state.rw-error-state--empty')
+    expect(panel).not.toBeNull()
+    expect(panel!.textContent ?? '').toContain('Wähle mindestens ein Vorsorgeprodukt')
   })
 
   it('renders all visible products in the § 1 table (iterates PRODUCT_REGISTRY, not a hardcoded list)', () => {
