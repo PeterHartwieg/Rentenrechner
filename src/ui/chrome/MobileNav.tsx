@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
@@ -37,22 +36,13 @@ const ITEMS: readonly NavEntry[] = [
  * does not query matchMedia itself and assumes it is only rendered on phone.
  */
 export function MobileNav({ route, navigate }: MobileNavProps) {
-  // Mirror AppHeader's search-tracking so the bottom-tab bar lights up the
-  // Vergleich tab when the URL carries `?view=landing` (PR #296 R1
-  // override, plumbed through `activeChromeNavId`).
-  const [search, setSearch] = useState<string>(() =>
-    typeof window === 'undefined' ? '' : window.location.search,
-  )
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    function syncSearch() {
-      setSearch(window.location.search)
-    }
-    window.addEventListener('rentenwiki:navigated', syncSearch)
-    return () => {
-      window.removeEventListener('rentenwiki:navigated', syncSearch)
-    }
-  }, [])
+  // Read `window.location.search` synchronously each render so the bottom-tab
+  // bar lights up the Vergleich tab when the URL carries `?view=landing`
+  // (PR #296 R1 override). Mirrors the AppHeader fix from PR #298 R1: the
+  // earlier `useState`+`rentenwiki:navigated` subscription went stale when
+  // App.tsx's `handleLandingChoice` cleared the override via
+  // `history.replaceState` without dispatching the event (Codex P2).
+  const search = typeof window !== 'undefined' ? window.location.search : ''
   const active = activeChromeNavId(route, search)
   return (
     <nav className="rw-mobile-nav" aria-label="Mobile Hauptnavigation">

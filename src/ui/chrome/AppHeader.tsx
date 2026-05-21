@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useViewport } from './useViewport'
 import { MobileSheet } from './MobileSheet'
 import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
@@ -71,24 +71,16 @@ function clickableTarget(id: ChromeNavId): NavTarget {
 export function AppHeader({ route, kicker, title, editorial, navigate }: AppHeaderProps) {
   const viewport = useViewport()
   const [sheetOpen, setSheetOpen] = useState(false)
-  // Track `window.location.search` so the Vergleich tab lights up when the
-  // URL carries `?view=landing` (PR #296 R1 override). `navigate(...)` in
-  // useRoute.ts dispatches `rentenwiki:navigated` after every SPA hop, and
-  // the same event is re-emitted from the `popstate` handler — so we
-  // subscribe to one channel for both navigation sources.
-  const [search, setSearch] = useState<string>(() =>
-    typeof window === 'undefined' ? '' : window.location.search,
-  )
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    function syncSearch() {
-      setSearch(window.location.search)
-    }
-    window.addEventListener('rentenwiki:navigated', syncSearch)
-    return () => {
-      window.removeEventListener('rentenwiki:navigated', syncSearch)
-    }
-  }, [])
+  // Read `window.location.search` synchronously each render so the Vergleich
+  // tab lights up when the URL carries `?view=landing` (PR #296 R1 override).
+  // Caching the search string in `useState` + subscribing to
+  // `rentenwiki:navigated` went stale when `handleLandingChoice` in
+  // `App.tsx` cleared the override via `history.replaceState` without
+  // dispatching the event (Codex P2 on PR #298). The synchronisation point
+  // is the parent re-render triggered by `setAppView` — by the time React
+  // re-renders AppShell → AppHeader, `window.location.search` already
+  // reflects the new URL. No event subscription needed.
+  const search = typeof window !== 'undefined' ? window.location.search : ''
   const active = activeChromeNavId(route, search)
 
   if (viewport === 'phone') {

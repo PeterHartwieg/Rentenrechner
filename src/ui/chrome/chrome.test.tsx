@@ -263,6 +263,24 @@ describe('AppHeader', () => {
     const current = document.querySelector('[aria-current="page"]')
     expect(current?.textContent).toBe('Methode')
   })
+
+  // PR #298 R1 — Codex P2: after App.tsx's `handleLandingChoice` clears
+  // ?view=landing via history.replaceState (no `rentenwiki:navigated` event),
+  // the AppHeader must re-derive the active tab on the next parent re-render
+  // rather than keeping the stale '?view=landing' string.
+  it('clears Vergleich highlight on parent re-render after handleLandingChoice replaceState (PR298 R1)', () => {
+    mockViewport('desktop')
+    stubLocationSearch('?view=landing')
+    const { rerender } = render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
+    let active = document.querySelector('.rw-app-header__nav-item--active')
+    expect(active?.textContent).toBe('Vergleich')
+    // Simulate handleLandingChoice('compare'): replaceState without firing
+    // rentenwiki:navigated, then a parent re-render from setAppView.
+    stubLocationSearch('')
+    rerender(<AppHeader route={R('/')} title="" navigate={() => {}} />)
+    active = document.querySelector('.rw-app-header__nav-item--active')
+    expect(active?.textContent).toBe('Startseite')
+  })
 })
 
 describe('MobileNav', () => {
@@ -360,6 +378,20 @@ describe('MobileNav', () => {
     render(<MobileNav route={R('/methode')} navigate={() => {}} />)
     const current = document.querySelector('[aria-current="page"]')
     expect(current?.textContent).toBe('Methode')
+  })
+
+  // PR #298 R1 — same stale-state regression as the AppHeader test above:
+  // MobileNav must re-derive the active tab on parent re-render even when
+  // `handleLandingChoice`'s replaceState skips the navigated event.
+  it('clears Vergleich highlight on parent re-render after handleLandingChoice replaceState (PR298 R1)', () => {
+    stubLocationSearch('?view=landing')
+    const { rerender } = render(<MobileNav route={R('/')} navigate={() => {}} />)
+    let active = document.querySelector('.rw-mobile-nav__tab--active')
+    expect(active?.textContent).toBe('Vergleich')
+    stubLocationSearch('')
+    rerender(<MobileNav route={R('/')} navigate={() => {}} />)
+    active = document.querySelector('.rw-mobile-nav__tab--active')
+    expect(active?.textContent).toBe('Start')
   })
 })
 
