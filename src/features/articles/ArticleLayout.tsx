@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import './ArticleLayout.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import {
@@ -102,6 +102,55 @@ export function ArticleLayout({
   // the static markup, so SEO permalinks (`#section-1`) keep working.
   const [toc, setToc] = useState<readonly TocItem[]>([])
   const [activeAnchor, setActiveAnchor] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        clearTimeout(toastTimerRef.current)
+      }
+    }
+  }, [])
+
+  function showToast(message: string): void {
+    if (toastTimerRef.current !== null) {
+      clearTimeout(toastTimerRef.current)
+    }
+    setToast(message)
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null)
+      toastTimerRef.current = null
+    }, 2500)
+  }
+
+  async function handleShare(): Promise<void> {
+    const url = window.location.href
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: route.h1, text: route.summary, url })
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
+        // Non-AbortError from navigator.share — fall through to clipboard
+        await writeToClipboard(url)
+      }
+      return
+    }
+    await writeToClipboard(url)
+  }
+
+  async function writeToClipboard(url: string): Promise<void> {
+    if (typeof navigator.clipboard?.writeText === 'function') {
+      try {
+        await navigator.clipboard.writeText(url)
+        showToast('Link kopiert')
+        return
+      } catch {
+        // fall through
+      }
+    }
+    showToast('Teilen nicht möglich — URL aus Adresszeile kopieren')
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -325,6 +374,22 @@ export function ArticleLayout({
 
             <div className="article-aside-card article-aside-card--meta">
               <div className="article-aside-kicker">Diesen Artikel</div>
+              <div className="article-aside-actions">
+                <button
+                  type="button"
+                  className="article-aside-action-btn"
+                  onClick={() => { void handleShare() }}
+                >
+                  ↗ Teilen
+                </button>
+                <button
+                  type="button"
+                  className="article-aside-action-btn"
+                  onClick={() => { window.print() }}
+                >
+                  ↓ Als PDF speichern
+                </button>
+              </div>
               <ul className="article-aside-meta-list">
                 <li>
                   <a
@@ -351,6 +416,16 @@ export function ArticleLayout({
       </p>
 
       <LegalFooter navigate={navigateOrNoop} />
+
+      {toast !== null && (
+        <div
+          className="article-aside-toast"
+          role="status"
+          aria-live="polite"
+        >
+          {toast}
+        </div>
+      )}
     </div>
   )
 }
