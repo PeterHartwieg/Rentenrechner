@@ -1,7 +1,12 @@
 /* ───────────────────────────────────────────────────────────────────────────
    Redesign tokens — PR 1 (chrome foundation). The redesign palette + font
-   stacks coexist with the existing .app-shell styles below; old page bodies
-   still render with the legacy look until later PRs replace them.
+   stacks now drive every chrome surface; legacy `.app-shell` / `.topbar` /
+   `.workspace-tabs` styles were removed in R3.1 (Batch 1) — see
+   `src/ui/chrome/chrome.css` for the replacements (`.rw-app-shell`,
+   `.rw-dashboard-meta`, `.rw-workspace-tabs`, `.rw-dashboard-body`).
+   Per-panel legacy styles (`.assumption-panel`, `.table-panel`,
+   `.section-heading`, `.panel-heading`, etc.) still live below; those
+   migrate in Batch 3a/3b/3c.
 
    Two visual systems share one chrome:
    - Editorial (cream, Newsreader) for Landing + Artikel.
@@ -103,30 +108,24 @@
    below. Component-level styles consume them via @media; the canonical
    widths are: phone <640, tablet 640–1023, desktop ≥1024. */
 
-.app-shell {
-  min-height: 100vh;
-  color: #172033;
-  background: #f4f7fb;
-}
+/* R3.1 (Batch 1): the legacy `.app-shell`, `.topbar`, `.topbar-actions`,
+   `.topbar-help-btn`, `.topbar-mode-badge*`, and `.workspace-tabs*` /
+   `.workspace-tab*` chrome classes have been removed. The redesign
+   chrome now lives in `src/ui/chrome/*` (AppShell + AppHeader wrap every
+   route in App.tsx; `WorkspaceTabs` carries the segmented control). The
+   dashboard's kicker + mode badge + Home button + tabs render via
+   `.rw-dashboard-meta*` and `.rw-workspace-tabs*` blocks defined in
+   `src/ui/chrome/chrome.css`. Heading rules below are scoped to the
+   classes that still survive (`.section-heading`, `.panel-heading`,
+   `.assumption-panel`, `.table-panel`) until those panels are migrated
+   in Batch 3a/3b/3c. */
 
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: center;
-  padding: 28px 32px;
-  border-bottom: 1px solid #d9e1ea;
-  background: #ffffff;
-}
-
-.topbar p,
 .section-heading p,
 .assumption-panel p {
   margin: 0;
   color: #667085;
 }
 
-.topbar h1,
 .section-heading h2,
 .panel-heading h2,
 .assumption-panel h2,
@@ -135,68 +134,11 @@
   letter-spacing: 0;
 }
 
-.topbar h1 {
-  font-size: clamp(1.7rem, 2vw, 2.4rem);
-}
-
 .panel-heading,
 .section-heading {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.topbar-help-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid #c9d7e5;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #344054;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.topbar-help-btn:hover {
-  background: #f4f7fb;
-  border-color: #2563eb;
-  color: #2563eb;
-}
-
-/* Mode badge — shown in the topbar when a specific workspace mode is active */
-.topbar-mode-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  pointer-events: none;
-  user-select: none;
-}
-
-.topbar-mode-badge--compare {
-  background: #f0f4ff;
-  color: #3b5bdb;
-  border: 1px solid #c5d0fa;
-}
-
-/* Combine mode: muted slate-blue — subtle, since combine is the default mode */
-.topbar-mode-badge--combine {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
 }
 
 .disclaimer-wrap {
@@ -656,50 +598,9 @@ th {
   background: #e8eef6;
 }
 
-/* Workspace tab strip */
-.workspace-tabs {
-  background: #ffffff;
-  border-bottom: 1px solid #d9e1ea;
-  padding: 0 24px;
-  position: sticky;
-  top: 0;
-  z-index: 5;
-}
-
-.workspace-tabs-inner {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none; /* hide scrollbar while keeping scroll functionality */
-}
-
-.workspace-tabs-inner::-webkit-scrollbar {
-  display: none;
-}
-
-.workspace-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border: 0;
-  border-bottom: 3px solid transparent;
-  background: transparent;
-  color: #344054;
-  font-size: 0.92rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.workspace-tab:hover {
-  color: #2563eb;
-}
-
-.workspace-tab.active {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
-}
+/* R3.1 (Batch 1): the legacy `.workspace-tabs` / `.workspace-tab` strip
+   moved to `.rw-workspace-tabs` in `src/ui/chrome/chrome.css`, rendered
+   by the new `<WorkspaceTabs>` component in `src/ui/chrome/`. */
 
 /* Vergleich sidebar layout (issue #239) */
 .compare-layout {
@@ -843,9 +744,12 @@ th {
   }
 }
 
-.workspace {
-  padding: 24px;
-}
+/* R3.1 (Batch 1): the legacy `.workspace { padding: 24px }` wrapper is
+   gone — the dashboard body is now `.rw-dashboard-body` in chrome.css.
+   `.workspace-view` survives because Calculator.tsx still tags each
+   per-tab content block with it for the vertical-gap rhythm; once the
+   per-view bodies migrate to their own Sober D wrappers this can also
+   move to chrome.css under `.rw-dashboard-section`. */
 
 .workspace-view {
   display: flex;
@@ -1083,20 +987,14 @@ th {
     grid-template-columns: 1fr;
   }
 
-  .topbar,
-  .dashboard,
-  .workspace {
+  .dashboard {
     padding: 16px;
   }
 
-  .workspace-tabs {
-    padding: 0 12px;
-  }
-
-  .workspace-tab {
-    padding: 10px 10px;
-    font-size: 0.85rem;
-  }
+  /* R3.1 (Batch 1): `.topbar`, `.workspace`, `.workspace-tabs`, and
+     `.workspace-tab` responsive overrides removed alongside the legacy
+     chrome they targeted. The Sober D chrome carries its own
+     responsive rules in `src/ui/chrome/chrome.css`. */
 
   /* Mobile disclaimer: bigger ✕ touch target and a popup that wraps inside
      the viewport instead of overflowing horizontally. Tier 4 (2026-04-30). */
@@ -1123,46 +1021,10 @@ th {
     max-width: none;
   }
 
-  /* Single-row topbar on mobile: compact title + Help icon only. */
-  .topbar {
-    padding: 10px 14px;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .topbar p {
-    display: none;
-  }
-
-  .topbar > div:first-child {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-
-  .topbar h1 {
-    font-size: 0.95rem;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .topbar-actions {
-    flex: 0 0 auto;
-    margin-left: auto;
-  }
-
-  .topbar-help-btn {
-    padding: 6px 8px;
-    font-size: 0;
-  }
-
-  .topbar-help-btn svg {
-    width: 18px;
-    height: 18px;
-  }
+  /* R3.1 (Batch 1): legacy `.topbar*` mobile overrides removed — the
+     redesign `.rw-dashboard-meta*` block in chrome.css covers single-
+     row mobile layout (kicker hidden, title ellipsised, icon-only
+     Home button). */
 
   .toolbar {
     align-items: stretch;
@@ -1220,10 +1082,12 @@ th {
 }
 
 @media print {
-  .topbar,
+  /* R3.1 (Batch 1): `.topbar`, `.workspace-tabs`, and `.workspace` were
+     removed; their print equivalents live in chrome.css (hides
+     `.rw-dashboard-meta`, `.rw-workspace-tabs`, `.rw-dashboard-body`).
+     `.disclaimer-wrap` + `.dashboard` are still consumed in the legacy
+     compare-mode panels — keep until those migrate in Batch 3. */
   .disclaimer-wrap,
-  .workspace-tabs,
-  .workspace,
   .dashboard {
     display: none !important;
   }

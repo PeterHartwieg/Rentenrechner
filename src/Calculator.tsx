@@ -13,6 +13,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
+import { WorkspaceTabs } from './ui/chrome/WorkspaceTabs'
+import type { WorkspaceTabDef } from './ui/chrome/WorkspaceTabs'
 // PR 6: `MeinPlanSidebar` removed from the combine-mode render path. PR 9:
 // the per-pane Vergleich sidebar + its pane registry are likewise gone — the
 // compare-mode surface is now the linear Sober D `VergleichPage`.
@@ -75,7 +77,7 @@ const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.col
 // set are likewise gone. The compare-mode surface is now the linear Sober D
 // `VergleichPage` (see `src/features/vergleich/VergleichPage.tsx`).
 
-type ShellTabDef = {
+interface ShellTabDef {
   id: WorkspaceView
   compareLabel: string
   combineLabel: string
@@ -88,39 +90,18 @@ const SHELL_TABS: readonly ShellTabDef[] = [
   { id: 'details', compareLabel: 'Details & Export', combineLabel: 'Details & Export', icon: FileSpreadsheet },
 ] as const
 
-type ShellWorkspaceTabsProps = {
-  activeView: WorkspaceView
-  combineMode: boolean
-  onSelect: (view: WorkspaceView) => void
-}
-
-function ShellWorkspaceTabs({ activeView, combineMode, onSelect }: ShellWorkspaceTabsProps) {
-  const { enabled: qaEnabled } = useQaMode()
-  return (
-    <nav className="workspace-tabs" aria-label="Ansicht wählen">
-      <div className="workspace-tabs-inner" role="tablist">
-        {SHELL_TABS.map((tab) => {
-          const Icon = tab.icon
-          const active = tab.id === activeView
-          const label = combineMode ? tab.combineLabel : tab.compareLabel
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              className={active ? 'workspace-tab active' : 'workspace-tab'}
-              onClick={() => onSelect(tab.id)}
-              {...qaTargetAttrs(qaEnabled, { id: `workspace.tabs.${tab.id}` })}
-            >
-              <Icon size={16} aria-hidden="true" />
-              <span>{label}</span>
-            </button>
-          )
-        })}
-      </div>
-    </nav>
-  )
+/**
+ * Map the shared `SHELL_TABS` definition to the mode-aware label set
+ * consumed by the Sober D `<WorkspaceTabs>` segmented control. The
+ * combine-mode labels swap "Eingaben → Meine Verträge" and "Vergleich →
+ * Übersicht"; the "Details & Export" leg is identical across modes.
+ */
+function buildWorkspaceTabs(combineMode: boolean): ReadonlyArray<WorkspaceTabDef<WorkspaceView>> {
+  return SHELL_TABS.map((tab) => ({
+    id: tab.id,
+    label: combineMode ? tab.combineLabel : tab.compareLabel,
+    icon: tab.icon,
+  }))
 }
 
 interface CalculatorProps {
@@ -731,73 +712,82 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
           }}
         />
       )}
-      <main className="app-shell">
-        <header className="topbar">
-          <div>
-            <p>{topbarCopy.kicker}</p>
-            <h1>{topbarCopy.title}</h1>
-          </div>
-          <div className="topbar-actions">
-            {isCombineMode && (
-              <span
-                className="topbar-mode-badge topbar-mode-badge--combine"
-                aria-label="Mein Plan aktiv"
-                {...qaTargetAttrs(qaEnabled, { id: 'workspace.chrome.modeBadge', label: 'Mein Plan (Modus-Badge)' })}
-              >
-                Mein Plan
-              </span>
-            )}
-            <button
-              type="button"
-              className="topbar-help-btn"
-              onClick={onGoHome}
-              title="Zur Startseite"
-              {...qaTargetAttrs(qaEnabled, { id: 'workspace.chrome.homeButton', label: 'Startseite / Moduswechsel' })}
+      {/*
+        R3.1 (Batch 1): the legacy `<main class="app-shell">` +
+        `<header class="topbar">` chrome is gone. The outer `AppShell`
+        from `App.tsx` carries the brand chrome (PR 1); below that the
+        dashboard renders an inline Sober D meta strip (mode-aware kicker
+        + title + optional Mein-Plan badge + Home button), the
+        token-driven `WorkspaceTabs` segmented control, and the per-view
+        body. PrintReport + LegalFooter remain siblings of the body so
+        the printable A4 report stays available regardless of the active
+        tab.
+      */}
+      <div className="rw-dashboard-meta">
+        <div className="rw-dashboard-meta__copy">
+          <p className="rw-dashboard-meta__kicker">{topbarCopy.kicker}</p>
+          <h1 className="rw-dashboard-meta__title">{topbarCopy.title}</h1>
+        </div>
+        <div className="rw-dashboard-meta__actions">
+          {isCombineMode && (
+            <span
+              className="rw-dashboard-meta__badge"
+              aria-label="Mein Plan aktiv"
+              {...qaTargetAttrs(qaEnabled, { id: 'workspace.chrome.modeBadge', label: 'Mein Plan (Modus-Badge)' })}
             >
-              <Home size={16} aria-hidden="true" />
-              Startseite
-            </button>
-          </div>
-        </header>
+              Mein Plan
+            </span>
+          )}
+          <button
+            type="button"
+            className="rw-dashboard-meta__home-btn"
+            onClick={onGoHome}
+            title="Zur Startseite"
+            {...qaTargetAttrs(qaEnabled, { id: 'workspace.chrome.homeButton', label: 'Startseite / Moduswechsel' })}
+          >
+            <Home size={16} aria-hidden="true" />
+            Startseite
+          </button>
+        </div>
+      </div>
 
-        {invalidLink && (
-          <ErrorStatePanel
-            tone="error"
-            message="Dieser Link ist ungültig oder abgelaufen. Es werden stattdessen die gespeicherten oder Standard-Eingaben angezeigt."
-            onDismiss={dismissInvalidLink}
-            className="rw-error-state--banner"
-          />
-        )}
-
-        <ShellWorkspaceTabs
-          activeView={workspace.activeView}
-          combineMode={isCombineMode}
-          onSelect={workspace.setActiveView}
+      {invalidLink && (
+        <ErrorStatePanel
+          tone="error"
+          message="Dieser Link ist ungültig oder abgelaufen. Es werden stattdessen die gespeicherten oder Standard-Eingaben angezeigt."
+          onDismiss={dismissInvalidLink}
+          className="rw-error-state--banner"
         />
+      )}
 
-        <section className="workspace">
-          {viewsByTab[workspace.activeView as keyof typeof viewsByTab] ?? vergleichView}
-        </section>
+      <WorkspaceTabs
+        tabs={buildWorkspaceTabs(isCombineMode)}
+        activeId={workspace.activeView}
+        onSelect={workspace.setActiveView}
+      />
 
-        <PrintReport
-          profile={profile}
-          assumptions={assumptions}
-          simulation={simulation}
-          combineMode={isCombineMode}
-          portfolio={combineExportBundle}
-          combineProfile={isCombineMode ? portfolioState.workspace.baseline.profile : undefined}
-          combineGrv={isCombineMode ? combineSimulation.statutoryPension : undefined}
-          combineReturnScenarios={
-            isCombineMode
-              ? portfolioState.workspace.baseline.assumptions.returnScenarios
-              : undefined
-          }
-          combineWorkspace={isCombineMode ? portfolioState.workspace : undefined}
-          combineSensitivityRows={printSensitivityRows}
-        />
+      <section className="rw-dashboard-body">
+        {viewsByTab[workspace.activeView as keyof typeof viewsByTab] ?? vergleichView}
+      </section>
 
-        <LegalFooter navigate={navigate} />
-      </main>
+      <PrintReport
+        profile={profile}
+        assumptions={assumptions}
+        simulation={simulation}
+        combineMode={isCombineMode}
+        portfolio={combineExportBundle}
+        combineProfile={isCombineMode ? portfolioState.workspace.baseline.profile : undefined}
+        combineGrv={isCombineMode ? combineSimulation.statutoryPension : undefined}
+        combineReturnScenarios={
+          isCombineMode
+            ? portfolioState.workspace.baseline.assumptions.returnScenarios
+            : undefined
+        }
+        combineWorkspace={isCombineMode ? portfolioState.workspace : undefined}
+        combineSensitivityRows={printSensitivityRows}
+      />
+
+      <LegalFooter navigate={navigate} />
     </>
   )
 }
