@@ -229,7 +229,7 @@ function App() {
       body = <AltersvorsorgeproduktePage navigate={navigate} />
       break
     case 'not-found':
-      body = <PageNotFound />
+      body = <PageNotFound navigate={navigate} />
       break
     case 'vertrag':
       // Combine-mode drill-in from Mein Plan. The page itself handles the
@@ -277,7 +277,7 @@ function App() {
       break
     default: {
       const _exhaustive: never = route
-      body = <PageNotFound />
+      body = <PageNotFound navigate={navigate} />
       void _exhaustive
     }
   }
