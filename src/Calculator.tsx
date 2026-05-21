@@ -43,7 +43,7 @@ import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { CombineDetailView } from './features/results/CombineDetailView'
 import { PrintReport } from './features/results/PrintReport'
-import { buildPrintSensitivityRows } from './features/results/printReportRows'
+import { usePrintSensitivityRows } from './app/usePrintSensitivityRows'
 import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { AssumptionReviewPanel } from './features/results/AssumptionReviewPanel'
@@ -310,31 +310,23 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   ])
 
   // Sensitivity perturbation rows for the combine-mode print (PR 11 R1
-  // scope restore). Each row drives a full `runCombineSimulation` pass — the
-  // memo is keyed on workspace + basis result so this only runs when the
-  // user changes the workspace, not on every render. Compare-mode never
-  // pays the cost (returns undefined).
-  const printSensitivityRows = useMemo(() => {
-    if (!isCombineMode) return undefined
-    const basisScenarioId =
-      portfolioState.workspace.baseline.assumptions.returnScenarios.find(
-        (s) => s.id === 'basis',
-      )?.id ??
-      portfolioState.workspace.baseline.assumptions.returnScenarios[0]?.id ??
-      'basis'
-    const basisCombined = combineSimulation.combinedByScenarioId[basisScenarioId]
-    if (!basisCombined) return undefined
-    return buildPrintSensitivityRows({
-      workspace: portfolioState.workspace,
-      baselineCombined: basisCombined,
-      rules: de2026Rules,
-      scenarioId: basisScenarioId,
-    })
-  }, [
+  // scope restore + R2 perf fix). Each row drives a full
+  // `runCombineSimulation` pass — up to 4 extra simulations per build.
+  //
+  // PR 11 R2 (Codex P1): the previous `useMemo` keyed on
+  // `portfolioState.workspace` recomputed on every combine-mode workspace
+  // mutation, so users paid the cost during normal editing even when they
+  // never printed. The work is now deferred to `window.beforeprint` inside
+  // `usePrintSensitivityRows` — initial value is `undefined`, the listener
+  // computes + caches on first print, and subsequent workspace edits do not
+  // trigger a recompute. PrintReport's `sensitivityRows && length > 0`
+  // guard handles the empty / undefined branch gracefully.
+  const printSensitivityRows = usePrintSensitivityRows({
     isCombineMode,
-    portfolioState.workspace,
-    combineSimulation.combinedByScenarioId,
-  ])
+    workspace: portfolioState.workspace,
+    combinedByScenarioId: combineSimulation.combinedByScenarioId,
+    rules: de2026Rules,
+  })
   const views = useDerivedViews(profile, assumptions, result, {
     showRealValues: ui.showRealValues,
     cashflowProductId: ui.cashflowProductId,

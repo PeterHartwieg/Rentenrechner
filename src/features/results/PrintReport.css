@@ -150,7 +150,6 @@
      contract list does not force-fit on a single page (CR9). */
   .pr-section-allow-break {
     break-inside: auto;
-    page-break-inside: auto;
   }
 
   /* Generic data tables */
