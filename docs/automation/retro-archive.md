@@ -2845,3 +2845,27 @@ labels: [area:ui-only, from-maintainer]
 ## What would have helped
 
 - A snapshot/visual regression test for the public pages table layout would catch this class of issue automatically.
+
+---
+date: 2026-05-22T00:00:00Z
+issue: 318
+pr: 320
+stage: implement
+outcome: pr-opened
+labels: [area:ui-only, from-maintainer]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Single-stage shortcut applies: no Stage 1 handoff, no prior commits, `area:ui-only` label confirmed.
+- The `hub-stand` paragraph in `ArticleHubPage.tsx` (line 105) served a JSON-LD visible-counterpart purpose but was redundant: the hub kicker already shows "zuletzt aktualisiert {latest}" via `getLatestArticleModified()`. The `RULES_YEAR` import was only used by that paragraph and was safely dropped.
+- The `.hub-stand` CSS rule lived at the bottom of `ArticleHubPage.css` under a "Stand line" comment — easy to locate and remove cleanly.
+- The existing test at `ArticleHubPage.test.tsx:81` asserted `.hub-stand` is present; it was updated to assert absence instead of deletion — keeping the test file coherent.
+
+## What would have helped
+
+- A note in the issue body clarifying whether "doubles with footer" meant visual proximity or actual duplicate render would have saved a few minutes of grepping for duplicate DOM output.
