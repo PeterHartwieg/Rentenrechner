@@ -8,6 +8,7 @@ import type { Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { useAngabenState } from '../../app/useAngabenState'
+import { useWorkspaceUiState, type WorkspaceUiState } from '../../app/useWorkspaceUiState'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { AngabenPersonSection } from './sections/AngabenPersonSection'
 import { AngabenEinkommenSection } from './sections/AngabenEinkommenSection'
@@ -17,6 +18,21 @@ import { AngabenProduktSection } from './sections/AngabenProduktSection'
 
 interface Props {
   navigate?: (target: Route) => void
+  /**
+   * Workspace UI state lifted from `App`. The compare-mode body of
+   * `AngabenProduktSection` reads `selectedScenarioId` from here so the § 5
+   * InputsPanel binds against the same scenario the user picked on Vergleich
+   * (or any other surface). Without the lift, opening `/eingaben` mounted a
+   * fresh `useWorkspaceUiState` and reset the selection back to `'basis'`
+   * (Codex R5 P2).
+   *
+   * Optional so existing `<AngabenPage />` test call-sites (which don't
+   * exercise § 5 scenario binding) compile unchanged. `App.tsx` is the
+   * production caller and always passes this; if it's missing we fall back
+   * to a local `useWorkspaceUiState()` mount so the section's required prop
+   * still receives a valid store.
+   */
+  workspaceUi?: WorkspaceUiState
 }
 
 interface Section {
@@ -217,9 +233,21 @@ const BAV_TAX_FREE_MONTHLY =
  * pipeline (`buildJsonLd` returns a WebPage block from
  * `publicRouteRegistry['/eingaben']`). We do NOT emit a second block inline.
  */
-export function AngabenPage({ navigate }: Props) {
+export function AngabenPage({ navigate, workspaceUi }: Props) {
   const route = publicRouteRegistry['/eingaben']
   const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
+  // Fall back to a local `useWorkspaceUiState()` if the parent did not lift
+  // one. Production (`App.tsx`) always passes the lifted store so the
+  // selected scenario survives SPA navigation (Codex R5 P2). The fallback
+  // keeps existing test call-sites that render `<AngabenPage />` working —
+  // they pin the test's WorkspaceUiState directly via the prop when they
+  // care about § 5 scenario binding.
+  //
+  // The hook is unconditionally called (React rules-of-hooks); we then
+  // prefer the prop when present. Both branches return the same
+  // `WorkspaceUiState` shape.
+  const localWorkspaceUi = useWorkspaceUiState()
+  const effectiveWorkspaceUi = workspaceUi ?? localWorkspaceUi
 
   // Mode-aware state binding (issue #282). `useAngabenState` captures the
   // active session mode once at mount and routes reads + writes to either the
@@ -421,6 +449,7 @@ export function AngabenPage({ navigate }: Props) {
             <AngabenProduktSection
               angabenState={angabenState}
               navigate={navigate}
+              workspaceUi={effectiveWorkspaceUi}
               num={SECTIONS[4].n}
               id={SECTIONS[4].id}
               title={produktTitleFor(mode)}

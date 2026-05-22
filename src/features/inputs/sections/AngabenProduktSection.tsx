@@ -3,7 +3,7 @@ import { ROUTES } from '../../../app/useRoute'
 import type { InsuranceProductResult } from '../../../domain'
 import { useScenarioLibrary } from '../../../app/useScenarioLibrary'
 import { useSimulationResult } from '../../../app/useSimulationResult'
-import { useWorkspaceUiState } from '../../../app/useWorkspaceUiState'
+import type { WorkspaceUiState } from '../../../app/useWorkspaceUiState'
 import { deriveSelectedResults } from '../../../app/simulationSelectors'
 import type { UseAngabenStateApi } from '../../../app/useAngabenState'
 import { useState } from 'react'
@@ -29,9 +29,11 @@ import { ContractDecisionMenu } from '../../dashboard/ContractDecisionMenu'
  * setter on this page goes through the same source of truth.
  *
  *   - **compare-mode** → `<InputsPanel>` driven by the section-owned
- *     `useScenarioLibrary` + `useSimulationResult` + `useWorkspaceUiState`
- *     (all read-only against `profile` / `assumptions` from props, or own
- *     separate storage keys, so no parallel-store risk).
+ *     `useScenarioLibrary` + `useSimulationResult`, and the lifted
+ *     `WorkspaceUiState` (passed down from `App` via `AngabenPage`) so the
+ *     `selectedScenarioId` survives SPA navigation. Earlier revisions
+ *     mounted a fresh `useWorkspaceUiState()` here — that reset the scenario
+ *     back to `'basis'` whenever `/eingaben` was opened (Codex R5 P2).
  *   - **combine-mode** → `<CombineDashboardSidebar>` driven by the
  *     workspace mutators from the lifted `UseAngabenStateApi`, plus the
  *     `<ContractDecisionMenu>` modal that `Calculator.tsx` formerly
@@ -41,6 +43,12 @@ import { ContractDecisionMenu } from '../../dashboard/ContractDecisionMenu'
 interface Props {
   angabenState: UseAngabenStateApi
   navigate?: (target: Route) => void
+  /** Lifted workspace UI state from `App` (via `AngabenPage`). Compare-mode
+   *  consumes `selectedScenarioId` so § 5 binds to the active scenario; the
+   *  combine-mode body ignores it. Required, not optional — the fix to
+   *  Codex R5 P2 explicitly removed the local `useWorkspaceUiState()` mount
+   *  that used to default `selectedScenarioId` to `'basis'` per visit. */
+  workspaceUi: WorkspaceUiState
   /** Section heading + § kicker — provided by the parent so the SECTIONS
    *  array stays the single source of truth for ordering and slug ids. */
   num: string
@@ -48,7 +56,7 @@ interface Props {
   title: string
 }
 
-export function AngabenProduktSection({ angabenState, navigate, num, id, title }: Props) {
+export function AngabenProduktSection({ angabenState, navigate, workspaceUi, num, id, title }: Props) {
   const mode = angabenState.mode
   return (
     <section className="angaben-section">
@@ -67,7 +75,7 @@ export function AngabenProduktSection({ angabenState, navigate, num, id, title }
       {mode === 'combine' ? (
         <AngabenProduktCombineBody angabenState={angabenState} navigate={navigate} />
       ) : (
-        <AngabenProduktCompareBody angabenState={angabenState} />
+        <AngabenProduktCompareBody angabenState={angabenState} workspaceUi={workspaceUi} />
       )}
     </section>
   )
@@ -77,7 +85,13 @@ export function AngabenProduktSection({ angabenState, navigate, num, id, title }
 // Compare-mode body — wraps <InputsPanel>.
 // ---------------------------------------------------------------------------
 
-function AngabenProduktCompareBody({ angabenState }: { angabenState: UseAngabenStateApi }) {
+function AngabenProduktCompareBody({
+  angabenState,
+  workspaceUi,
+}: {
+  angabenState: UseAngabenStateApi
+  workspaceUi: WorkspaceUiState
+}) {
   const { profile, setProfile, assumptions, setAssumptions } = angabenState
   // Compare-mode-only convenience setters. The API field types are
   // `(...) => void | undefined`; in compare-mode they MUST be defined. We
@@ -91,7 +105,11 @@ function AngabenProduktCompareBody({ angabenState }: { angabenState: UseAngabenS
       'AngabenProduktCompareBody requires compare-mode useAngabenState API',
     )
   }
-  const ui = useWorkspaceUiState()
+  // `ui` comes from the lifted `useWorkspaceUiState` in `App.tsx` (threaded
+  // through `AngabenPage`). Mounting a local `useWorkspaceUiState()` here
+  // would create a fresh per-visit store and reset `selectedScenarioId` to
+  // `'basis'` on every `/eingaben` open — the original Codex R5 P2 bug.
+  const ui = workspaceUi
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
   const { simulation, effectiveScenarioId, taxModes } = result

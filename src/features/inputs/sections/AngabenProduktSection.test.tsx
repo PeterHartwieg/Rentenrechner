@@ -12,7 +12,7 @@
  * `BavInputs`) then read whichever scenario happened to come first in the
  * array — typically `konservativ` — instead of the user's active scenario.
  *
- * Post-fix call site (`AngabenProduktSection.tsx:111`):
+ * Post-fix call site (`AngabenProduktSection.tsx`):
  *   selectedResults = deriveSelectedResults(simulation, visibleProducts, effectiveScenarioId)
  *
  * The previous smoke test only asserted that the literal "Versicherung"
@@ -20,15 +20,17 @@
  * smoke test would silently pass even if the fix regressed. This file replaces
  * that smoke test with the real wiring check:
  *
- *   1. Mock `useWorkspaceUiState` so the active scenario is non-default
- *      ('optimistisch'). Without this, `selectedScenarioId` defaults to
- *      'basis' — the same value `effectiveScenarioId` would fall back to —
- *      so we cannot distinguish "filtered by the right scenario" from
- *      "happened to use basis by coincidence".
+ *   1. Pass `workspaceUi` to `<AngabenPage>` with `selectedScenarioId =
+ *      'optimistisch'`. The Codex R5 P2 fix lifted `useWorkspaceUiState`
+ *      into `App.tsx` and threads it down through `AngabenPage` →
+ *      `AngabenProduktSection`; the section no longer mounts its own hook.
+ *      Without a non-default value, `effectiveScenarioId` would coincide
+ *      with `'basis'` and we couldn't distinguish "filtered by the right
+ *      scenario" from "happened to use basis by coincidence".
  *   2. Mock `<InputsPanel>` with a capture spy so we can read the
  *      `selectedResults` prop the section passes in directly.
- *   3. Render `<AngabenPage />` (default state — compare-mode, visibleProducts
- *      = ['etf', 'bav']).
+ *   3. Render `<AngabenPage workspaceUi={…} />` (default state — compare-mode,
+ *      visibleProducts = ['etf', 'bav']).
  *   4. Assert: spy fired exactly once; `selectedResults.length` is 2 (not 6,
  *      which is the pre-fix all-scenarios shape); every entry's `scenarioId`
  *      equals 'optimistisch' (catches the "hardcoded 'basis'" regression).
@@ -51,8 +53,10 @@ import type { ProductResult } from '../../../domain'
 // Mocks (hoisted by vi.mock to before any importer captures the symbol)
 // ---------------------------------------------------------------------------
 
-// Inject a non-default `selectedScenarioId`. The other fields preserve the
-// real hook's defaults so the rest of the page renders normally.
+// Stand-in for the lifted workspace UI store. The Codex R5 P2 fix removed
+// the local `useWorkspaceUiState()` mount inside the section; we now hand the
+// store down explicitly via `<AngabenPage workspaceUi=…>` so the test can
+// pin a non-default `selectedScenarioId` without mocking any module.
 const mockWorkspaceUiState: WorkspaceUiState = {
   selectedScenarioId: 'optimistisch',
   setSelectedScenarioId: vi.fn(),
@@ -65,18 +69,16 @@ const mockWorkspaceUiState: WorkspaceUiState = {
   showAssumptions: false,
   setShowAssumptions: vi.fn(),
 }
-vi.mock('../../../app/useWorkspaceUiState', () => ({
-  useWorkspaceUiState: () => mockWorkspaceUiState,
-}))
 
 // Capture the props `AngabenProduktCompareBody` hands to `<InputsPanel>`.
 // We only care about `selectedResults`; the stub renders a marker so the
 // surrounding page does not throw on hydrate.
-const inputsPanelSpy = vi.fn<(props: { selectedResults: ProductResult[] }) => null>(
-  () => null,
-)
+interface MockInputsPanelProps {
+  selectedResults: ProductResult[]
+}
+const inputsPanelSpy = vi.fn<(props: MockInputsPanelProps) => null>(() => null)
 vi.mock('../InputsPanel', () => ({
-  InputsPanel: (props: { selectedResults: ProductResult[] }) => {
+  InputsPanel: (props: MockInputsPanelProps) => {
     inputsPanelSpy(props)
     return null
   },
@@ -98,7 +100,7 @@ afterEach(() => {
 
 describe('AngabenProduktSection — § 5 binds to the active scenario (Codex R3 P1)', () => {
   it('compare-mode: selectedResults is filtered by the active scenario and visibleProducts only', () => {
-    render(<AngabenPage />)
+    render(<AngabenPage workspaceUi={mockWorkspaceUiState} />)
 
     // The compare-mode body must mount the panel exactly once on initial render.
     expect(inputsPanelSpy).toHaveBeenCalled()
