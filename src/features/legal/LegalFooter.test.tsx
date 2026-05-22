@@ -166,3 +166,37 @@ describe('LegalFooter — viewport sweep (PR 11)', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// Methodology row folded in from the legacy MethodFooter component.
+// CSS hides `.app-footer__method` on phone (≤639px); the row itself is still
+// in the DOM so non-CSS-aware tests assert its presence. SPA navigation +
+// real-anchor invariants mirror the prior MethodFooter contract (C5).
+// ---------------------------------------------------------------------------
+
+describe('LegalFooter — methodology row', () => {
+  it('renders the [1] / [2] / [3] footnotes', () => {
+    renderFooter()
+    expect(screen.getByText(/Annahme: 5 % Rendite/)).toBeInTheDocument()
+    expect(screen.getByText(/Steuern nach Stand 2026/)).toBeInTheDocument()
+    expect(screen.getByText(/GRV-Werte: DRV-Renteninformation/)).toBeInTheDocument()
+  })
+
+  it('renders "Methode im Detail" as a real <a href="/methode">', () => {
+    renderFooter()
+    const link = screen.getByText(/Methode im Detail/)
+    expect(link.tagName).toBe('A')
+    expect(link.getAttribute('href')).toBe('/methode')
+  })
+
+  it('SPA-navigates to /methode on primary click', () => {
+    const navigate = vi.fn()
+    render(
+      <QaFeedbackProvider>
+        <LegalFooter navigate={navigate} />
+      </QaFeedbackProvider>,
+    )
+    fireEvent.click(screen.getByText(/Methode im Detail/))
+    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ kind: 'methode' }))
+  })
+})

@@ -3,8 +3,9 @@
  * LegalLayout — Sober D shell parity tests (R2.3, audit H5).
  *
  * Legal pages render inside AppShell, which provides StatusBar + AppHeader
- * nav-tabs + MethodFooter. LegalLayout itself adds a back-link header,
- * content area, and a compact mono page-footer. These tests verify:
+ * nav-tabs. LegalLayout itself adds a back-link header, content area, and a
+ * compact mono page-footer (the legacy `MethodFooter` was folded into
+ * `LegalFooter` and is not used on legal routes). These tests verify:
  *
  *   1. AppShell chrome (StatusBar, nav-tabs) is present when legal pages are
  *      rendered via the AppShell wrapper — nav-tab active state is null for
@@ -150,7 +151,7 @@ describe('AppHeader on legal routes', () => {
 // ─── AppShell wrapping a legal page ─────────────────────────────────────────
 
 describe('AppShell on legal routes', () => {
-  it('renders StatusBar + AppHeader + content + MethodFooter on desktop', () => {
+  it('renders StatusBar + AppHeader + content on desktop (no MethodFooter)', () => {
     mockViewport('desktop')
     render(
       <AppShell route={R('/impressum')} navigate={() => {}}>
@@ -162,7 +163,10 @@ describe('AppShell on legal routes', () => {
     expect(document.querySelector('.rw-status-bar')).toBeInTheDocument()
     expect(document.querySelector('.rw-app-header')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Impressum' })).toBeInTheDocument()
-    expect(document.querySelector('.rw-method-footer')).toBeInTheDocument()
+    // Legal pages use LegalLayout's own slim page-footer; the methodology
+    // footnotes that used to live in MethodFooter now ride along with the
+    // body-rendered LegalFooter on non-legal routes only.
+    expect(document.querySelector('.rw-method-footer')).not.toBeInTheDocument()
   })
 
   it('does NOT apply editorial mode to the legal shell', () => {

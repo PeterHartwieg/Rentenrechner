@@ -275,34 +275,6 @@
   letter-spacing: -0.5px;
 }
 
-/* ───── MethodFooter ────────────────────────────────────────────────────── */
-
-.rw-method-footer {
-  border-top: 1px solid var(--rw-rule-soft);
-  font-family: var(--rw-font-mono);
-  font-size: 11px;
-  color: var(--rw-ink-faint);
-  display: flex;
-  letter-spacing: 0.3px;
-  flex-wrap: wrap;
-}
-
-.rw-method-footer--desktop {
-  padding: 12px 56px;
-  gap: 32px;
-}
-
-.rw-method-footer--tablet {
-  padding: 10px 24px;
-  gap: 22px;
-  font-size: 10.5px;
-}
-
-.rw-method-footer__link {
-  margin-left: auto;
-  cursor: pointer;
-}
-
 /* ───── MobileNav (phone bottom tab bar) ────────────────────────────────── */
 
 .rw-mobile-nav {

@@ -6,7 +6,6 @@ import { StatusBar } from './StatusBar'
 import { AppHeader } from './AppHeader'
 import { MobileNav } from './MobileNav'
 import { MobileSheet } from './MobileSheet'
-import { MethodFooter } from './MethodFooter'
 import { RightRailAccordion } from './RightRailAccordion'
 import { AppShell } from './AppShell'
 import { pathToRoute as R, ROUTES } from '../../app/useRoute'
@@ -466,43 +465,9 @@ describe('MobileSheet', () => {
   })
 })
 
-describe('MethodFooter', () => {
-  it('renders the footnote row on desktop', () => {
-    mockViewport('desktop')
-    render(<MethodFooter navigate={() => {}} />)
-    expect(document.querySelector('.rw-method-footer--desktop')).toBeInTheDocument()
-    expect(screen.getByText(/Annahme: 5 % Rendite/)).toBeInTheDocument()
-  })
-
-  it('uses the tablet variant on tablet width', () => {
-    mockViewport('tablet')
-    render(<MethodFooter navigate={() => {}} />)
-    expect(document.querySelector('.rw-method-footer--tablet')).toBeInTheDocument()
-  })
-
-  it('renders nothing on phone (page handles inline link)', () => {
-    mockViewport('phone')
-    const { container } = render(<MethodFooter navigate={() => {}} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('renders "Methode im Detail" as a real <a href="/methode"> (R1.1, C5)', () => {
-    mockViewport('desktop')
-    render(<MethodFooter navigate={() => {}} />)
-    const link = screen.getByText(/Methode im Detail/)
-    // The element must be an anchor, not a span — keyboard-tabbable + crawlable.
-    expect(link.tagName).toBe('A')
-    expect(link.getAttribute('href')).toBe('/methode')
-  })
-
-  it('SPA-navigates to /methode on primary click (R1.1, C5)', () => {
-    mockViewport('desktop')
-    const navigate = vi.fn()
-    render(<MethodFooter navigate={navigate} />)
-    fireEvent.click(screen.getByText(/Methode im Detail/))
-    expect(navigate).toHaveBeenCalledWith(R('/methode'))
-  })
-})
+// `MethodFooter` was folded into `LegalFooter` so the site has a single
+// footer per page. The methodology row + "Methode im Detail" link assertions
+// now live in `src/features/legal/LegalFooter.test.tsx`.
 
 describe('RightRailAccordion', () => {
   it('renders as a fixed-width aside on desktop', () => {
@@ -589,7 +554,7 @@ describe('RightRailAccordion', () => {
 })
 
 describe('AppShell composition', () => {
-  it('renders disclaimer, status bar, header, body, footer on desktop', () => {
+  it('renders disclaimer, status bar, header, body on desktop', () => {
     mockViewport('desktop')
     render(
       <AppShell route={R('/')} navigate={() => {}} title="Demo">
@@ -602,12 +567,15 @@ describe('AppShell composition', () => {
     expect(document.querySelector('.rw-status-bar')).toBeInTheDocument()
     expect(document.querySelector('.rw-app-header')).toBeInTheDocument()
     expect(screen.getByTestId('body')).toBeInTheDocument()
-    expect(document.querySelector('.rw-method-footer')).toBeInTheDocument()
+    // The legacy MethodFooter has been folded into LegalFooter (rendered per
+    // page inside the body slot), so AppShell itself no longer renders a
+    // standalone `.rw-method-footer` element.
+    expect(document.querySelector('.rw-method-footer')).not.toBeInTheDocument()
     // Mobile nav NOT mounted on desktop.
     expect(document.querySelector('.rw-mobile-nav')).not.toBeInTheDocument()
   })
 
-  it('mounts MobileNav and skips MethodFooter on phone', () => {
+  it('mounts MobileNav on phone', () => {
     mockViewport('phone')
     render(
       <AppShell route={R('/')} navigate={() => {}} title="Demo">
@@ -615,7 +583,6 @@ describe('AppShell composition', () => {
       </AppShell>,
     )
     expect(document.querySelector('.rw-mobile-nav')).toBeInTheDocument()
-    expect(document.querySelector('.rw-method-footer')).not.toBeInTheDocument()
     expect(document.querySelector('.rw-app-shell--phone')).toBeInTheDocument()
   })
 

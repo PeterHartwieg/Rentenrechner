@@ -3,7 +3,6 @@ import './chrome.css'
 import { DisclaimerBanner } from '../../features/workspace/DisclaimerBanner'
 import { StatusBar } from './StatusBar'
 import { AppHeader } from './AppHeader'
-import { MethodFooter } from './MethodFooter'
 import { MobileNav } from './MobileNav'
 import { useViewport } from './useViewport'
 import type { Route } from '../../app/useRoute'
@@ -24,14 +23,13 @@ interface AppShellProps {
  *     disclaimer sits ABOVE the status bar per the design spec).
  *   - StatusBar (dark mono ribbon).
  *   - AppHeader (kicker + H1 + nav; or brand + hamburger on phone).
- *   - body slot (children — the route page content, unchanged from
- *     pre-redesign during PR 1).
- *   - MethodFooter (desktop/tablet only; hidden on phone — pages render
- *     an inline "Methode im Detail" link at content end instead).
+ *   - body slot (children — the route page content). Pages render their own
+ *     `LegalFooter` inline, which carries both the methodology footnotes
+ *     and the Impressum / Datenschutz / Lizenz strip (legal pages use the
+ *     thinner `LegalLayout` footer instead). The previously-separate
+ *     `MethodFooter` was folded into `LegalFooter` so there is only one
+ *     footer per page.
  *   - MobileNav (phone only — bottom tab bar with safe-area inset).
- *
- * PR 1's intent: chrome is visible, but every page body still renders the
- * pre-redesign UI inside it. Subsequent PRs replace page bodies one by one.
  */
 export function AppShell({ route, navigate, kicker, title, editorial, children }: AppShellProps) {
   const viewport = useViewport()
@@ -51,7 +49,6 @@ export function AppShell({ route, navigate, kicker, title, editorial, children }
         navigate={navigate}
       />
       <main className="rw-app-shell__body">{children}</main>
-      <MethodFooter navigate={navigate} />
       {isPhone && <MobileNav route={route} navigate={navigate} />}
     </div>
   )
