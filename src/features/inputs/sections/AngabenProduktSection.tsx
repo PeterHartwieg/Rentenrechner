@@ -1,5 +1,6 @@
 import type { Route } from '../../../app/useRoute'
 import { ROUTES } from '../../../app/useRoute'
+import type { InsuranceProductResult } from '../../../domain'
 import { useCalculatorState } from '../../../app/useCalculatorState'
 import { useScenarioLibrary } from '../../../app/useScenarioLibrary'
 import { useSimulationResult } from '../../../app/useSimulationResult'
@@ -101,9 +102,14 @@ function AngabenProduktCompareBody() {
     assumptions.visibleProducts.includes(r.productId),
   )
   const selectedResults = visibleProducts
-  const insuranceResult = simulation.products.find((r) => r.productId === 'versicherung') as
-    | (typeof simulation.products)[number] & { productId: 'versicherung' }
-    | undefined
+  // `productId: 'versicherung'` discriminates the `ProductResult` union into
+  // `InsuranceProductResult` — the engine guarantees this at construction
+  // time. `find` does not narrow the union, so we annotate the local
+  // explicitly to give `<InputsPanel>` the precise shape its prop type
+  // declares (avoids an unsound `as never` cast).
+  const insuranceResult: InsuranceProductResult | undefined = simulation.products.find(
+    (r): r is InsuranceProductResult => r.productId === 'versicherung',
+  )
 
   return (
     <InputsPanel
@@ -119,9 +125,7 @@ function AngabenProduktCompareBody() {
       kvdrMember={taxModes.kvdrMember}
       bavLumpSumTaxMode={taxModes.bavLumpSumTaxMode}
       insuranceTaxMode={taxModes.insuranceTaxMode}
-      // Cast preserves the narrowed `InsuranceProductResult` shape — the
-      // engine guarantees products with id 'versicherung' carry that type.
-      insuranceResult={insuranceResult as never}
+      insuranceResult={insuranceResult}
       tarifgebunden={ui.tarifgebunden}
       onTarifgebundenChange={ui.setTarifgebunden}
     />

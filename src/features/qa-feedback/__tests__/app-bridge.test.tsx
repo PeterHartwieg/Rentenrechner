@@ -45,7 +45,10 @@ describe('App — wires QA workspace-context ref', () => {
     )
 
     const ctx = getQaWorkspaceContext()
-    expect(typeof ctx.activeView).toBe('string')
-    expect(ctx.activeView).toBeTruthy()
+    // Workspace-tabs collapse: Calculator stamps a stable `'vergleich'`
+    // constant into the QA context (the live tab id is gone). Pin the
+    // exact value so a regression to `''` / `'angebot'` / a stale tab id
+    // would fail this assertion.
+    expect(ctx.activeView).toBe('vergleich')
   })
 })

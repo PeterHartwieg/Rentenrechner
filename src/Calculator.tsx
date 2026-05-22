@@ -82,7 +82,7 @@ const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.col
 const QA_WORKSPACE_CONTEXT = { activeView: 'vergleich' } as const
 
 interface CalculatorProps {
-  navigate: (target: Route) => void
+  navigate: (target: Route, search?: string, hash?: string) => void
   /**
    * Optional landing-page choice forwarded from App.RootRouter. Applied once
    * on mount via useEffect: sets the workspace mode, optionally seeds
@@ -422,7 +422,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
           }
           selectedScenarioId={result.effectiveScenarioId}
           onSelectScenario={ui.setSelectedScenarioId}
-          onOpenAngebot={() => navigate(ROUTES.eingaben)}
+          onOpenAngebot={() => navigate(ROUTES.eingaben, undefined, '#produkt')}
           navigate={navigate}
         />
       )}
@@ -531,7 +531,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
               />
             </>
           ) : (
-            <EmptyComparison onOpenAngebot={() => navigate(ROUTES.eingaben)} />
+            <EmptyComparison onOpenAngebot={() => navigate(ROUTES.eingaben, undefined, '#produkt')} />
           )}
         </>
       )}
