@@ -4,6 +4,7 @@ import type { InsuranceProductResult } from '../../../domain'
 import { useScenarioLibrary } from '../../../app/useScenarioLibrary'
 import { useSimulationResult } from '../../../app/useSimulationResult'
 import { useWorkspaceUiState } from '../../../app/useWorkspaceUiState'
+import { deriveSelectedResults } from '../../../app/simulationSelectors'
 import type { UseAngabenStateApi } from '../../../app/useAngabenState'
 import { useState } from 'react'
 import { InputsPanel } from '../InputsPanel'
@@ -93,22 +94,34 @@ function AngabenProduktCompareBody({ angabenState }: { angabenState: UseAngabenS
   const ui = useWorkspaceUiState()
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
-  const { simulation, taxModes } = result
+  const { simulation, effectiveScenarioId, taxModes } = result
 
   // Mirror the slice of `useDerivedViews` that `<InputsPanel>` needs without
   // pulling in the full chart/table derivation cost — the panel only consumes
   // `selectedResults` + `insuranceResult` from that bundle.
-  const visibleProducts = simulation.products.filter((r) =>
-    assumptions.visibleProducts.includes(r.productId),
+  //
+  // Codex R3 P1: `simulation.products` contains rows for ALL return scenarios
+  // (konservativ + basis + optimistisch). Filtering by `visibleProducts` alone
+  // surfaces whichever scenario happens to appear first — typically
+  // `konservativ` — so a user who picks "Optimistisch" elsewhere and then edits
+  // a product setting in § 5 sees stale `konservativ` numbers. We reuse the
+  // pure `deriveSelectedResults` helper that drives `useDerivedViews` so the
+  // panel binds against the same (active-scenario + visible-products + registry
+  // order) slice every other surface uses.
+  const selectedResults = deriveSelectedResults(
+    simulation,
+    assumptions.visibleProducts,
+    effectiveScenarioId,
   )
-  const selectedResults = visibleProducts
   // `productId: 'versicherung'` discriminates the `ProductResult` union into
   // `InsuranceProductResult` — the engine guarantees this at construction
   // time. `find` does not narrow the union, so we annotate the local
   // explicitly to give `<InputsPanel>` the precise shape its prop type
-  // declares (avoids an unsound `as never` cast).
+  // declares (avoids an unsound `as never` cast). Filter to the active
+  // scenario so the insurance result matches the rest of the panel.
   const insuranceResult: InsuranceProductResult | undefined = simulation.products.find(
-    (r): r is InsuranceProductResult => r.productId === 'versicherung',
+    (r): r is InsuranceProductResult =>
+      r.productId === 'versicherung' && r.scenarioId === effectiveScenarioId,
   )
 
   return (

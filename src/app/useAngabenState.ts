@@ -471,6 +471,13 @@ export function useAngabenState(): UseAngabenStateApi {
                   prevSingleton,
                 )
               : action
+          // CodeRabbit R3 Major: a no-op updater (`setAssumptions(prev => prev)`)
+          // returned the same reference, but `projectSingletonAssumptionsToWorkspace`
+          // always allocates a fresh object, so the workspace update + Date.now()
+          // stamp fired unconditionally — falsely flagging every what-if as
+          // stale even though no edit happened. Short-circuit on reference
+          // equality before projection runs.
+          if (nextSingleton === prevSingleton) return prev
           const updatedAssumptions = projectSingletonAssumptionsToWorkspace(
             nextSingleton,
             prev.baseline.assumptions,
