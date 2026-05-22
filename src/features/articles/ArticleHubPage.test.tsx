@@ -78,11 +78,9 @@ describe('ArticleHubPage — /artikel route content', () => {
     expect(kicker!.textContent).toMatch(/zuletzt aktualisiert \d{4}-\d{2}-\d{2}/)
   })
 
-  it('renders a "Stand:" line tied to the registry dateModified', () => {
+  it('does not render a redundant hub-stand paragraph (date already in kicker)', () => {
     const { container } = render(<ArticleHubPage />)
-    const stand = container.querySelector('.hub-stand')
-    expect(stand).not.toBeNull()
-    expect(stand!.textContent).toContain(`Stand: ${publicRouteRegistry['/artikel'].dateModified}`)
+    expect(container.querySelector('.hub-stand')).toBeNull()
   })
 
   it('contains no fictional bylines (M. Sahin / L. Vogel / Fachprüfung / 318 Contributor)', () => {

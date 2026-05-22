@@ -140,16 +140,6 @@
   color: var(--rw-ink-editorial-faint);
 }
 
-/* --- Stand line ------------------------------------------------------ */
-.hub-stand {
-  text-align: center;
-  font-family: var(--rw-font-mono);
-  font-size: 0.72rem;
-  color: var(--rw-ink-editorial-faint);
-  margin: 0 0 16px;
-  padding: 0 24px;
-}
-
 /* ==========================================================================
    Tablet — 640–1023 px.
    ========================================================================== */

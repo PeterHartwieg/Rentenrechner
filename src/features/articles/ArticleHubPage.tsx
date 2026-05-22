@@ -7,7 +7,6 @@ import {
   getLatestArticleModified,
   resolveHubGroups,
 } from './articleResolver'
-import { RULES_YEAR } from '../../rules'
 import type { Route } from '../../app/useRoute'
 import { pathToRoute } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
@@ -101,10 +100,6 @@ export function ArticleHubPage({ navigate }: Props) {
           ))}
         </div>
       </div>
-
-      <p className="hub-stand">
-        Stand: {route.dateModified} · Werte für Deutschland {RULES_YEAR}
-      </p>
 
       <LegalFooter navigate={navigateOrNoop} />
     </div>
