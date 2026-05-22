@@ -58,7 +58,7 @@ export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMo
           aria-label={`Gesamteinkommen ${formatCurrency(combinedGrossMonthly, 0)} von BBG ${formatCurrency(monthlyKvPvBbg, 0)}`}
           style={{
             height: '10px',
-            background: '#e5e7eb',
+            background: 'var(--rw-rule-soft)',
             borderRadius: '5px',
             overflow: 'hidden',
             position: 'relative',
@@ -68,6 +68,7 @@ export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMo
             style={{
               width: `${bbgFillPct}%`,
               height: '100%',
+              /* semantic positive (#0f766e) / negative (#ef4444) — no positive/negative tokens in --rw-* catalogue */
               background: exceedsBbg ? '#ef4444' : '#0f766e',
               borderRadius: '5px',
               transition: 'width 0.3s',
@@ -75,6 +76,7 @@ export function KvPvLastPanel({ selectedResults, monthlyKvPvBbg, combinedGrossMo
           />
         </div>
         {exceedsBbg && (
+          /* semantic negative — BBG-overflow warning copy */
           <p className="small-print" style={{ marginTop: '4px', color: '#dc2626' }}>
             Gesamteinkommen uebersteigt BBG. KV/PV wird anteilig auf alle Einkommensquellen verteilt (proportionale Aufteilung nach §240 SGB V).
           </p>

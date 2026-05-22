@@ -123,7 +123,7 @@
 .section-heading p,
 .assumption-panel p {
   margin: 0;
-  color: #667085;
+  color: var(--rw-ink-faint);
 }
 
 .section-heading h2,
@@ -229,9 +229,9 @@
 .assumption-panel,
 .table-panel,
 .metric {
-  border: 1px solid #d9e1ea;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--rw-bg-paper);
 }
 
 .input-panel {
@@ -522,17 +522,17 @@
 
 .assumption-panel dl div {
   padding-bottom: 12px;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--rw-rule-soft);
 }
 
 .assumption-panel dt {
-  color: #667085;
+  color: var(--rw-ink-faint);
   font-weight: 700;
 }
 
 .assumption-panel dd {
   margin: 4px 0 0;
-  color: #172033;
+  color: var(--rw-ink);
   font-weight: 700;
 }
 

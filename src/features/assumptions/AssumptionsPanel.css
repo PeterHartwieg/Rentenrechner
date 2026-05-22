@@ -1,8 +1,9 @@
 /* Outer .disclosure-section provides the border, summary, and chevron.
    Inner .assumptions-content overrides .disclosure-content's flex layout
-   with the desired auto-fill grid for the rule groups. Tier 4 (2026-04-30). */
+   with the desired auto-fill grid for the rule groups. Tier 4 (2026-04-30).
+   Migrated to --rw-* tokens in R3.3b. */
 .assumptions-section {
-  background: #ffffff;
+  background: var(--rw-bg-paper);
 }
 
 .assumptions-content {
@@ -10,13 +11,13 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 0;
   padding: 0;
-  border-top: 1px solid #d9e1ea;
+  border-top: 1px solid var(--rw-rule-soft);
 }
 
 .assumptions-group {
   padding: 16px 20px;
-  border-right: 1px solid #d9e1ea;
-  border-bottom: 1px solid #d9e1ea;
+  border-right: 1px solid var(--rw-rule-soft);
+  border-bottom: 1px solid var(--rw-rule-soft);
 }
 
 .assumptions-group:last-child {
@@ -29,7 +30,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #667085;
+  color: var(--rw-ink-faint);
 }
 
 .assumptions-group dl {
@@ -47,19 +48,19 @@
 
 .assumptions-group dt {
   font-size: 0.78rem;
-  color: #667085;
+  color: var(--rw-ink-faint);
   font-weight: 600;
 }
 
 .assumptions-group dd {
   margin: 0;
   font-size: 0.85rem;
-  color: #172033;
+  color: var(--rw-ink);
   font-weight: 600;
 }
 
 .assumptions-group dd a {
-  color: #2563eb;
+  color: var(--rw-accent);
   text-decoration: none;
   font-size: 0.78rem;
 }
@@ -71,5 +72,5 @@
 .assumptions-note {
   margin: 10px 0 0;
   font-size: 0.78rem;
-  color: #667085;
+  color: var(--rw-ink-faint);
 }

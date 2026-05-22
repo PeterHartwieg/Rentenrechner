@@ -19,23 +19,24 @@
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #667085;
+  color: var(--rw-ink-faint);
 }
 
+/* The data-URI chevron stroke %237a7268 matches --rw-ink-faint (#7a7268). */
 .swf-select {
   appearance: none;
-  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%23667085' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 8px center;
-  border: 1px solid #d1d9e0;
+  background: var(--rw-bg-paper-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%237a7268' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 8px center;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   padding: 5px 28px 5px 10px;
   font-size: 0.875rem;
-  color: #172033;
+  color: var(--rw-ink);
   cursor: pointer;
   min-width: 160px;
 }
 
 .swf-select:focus {
-  outline: 2px solid var(--swf-product-color, #64748b);
+  outline: 2px solid var(--swf-product-color, var(--rw-ink-faint));
   outline-offset: 1px;
 }
 
@@ -56,13 +57,13 @@
 
 .swf-row-label {
   font-size: 0.85rem;
-  color: #344054;
+  color: var(--rw-ink-soft);
   white-space: nowrap;
 }
 
 .swf-row-bar-wrap {
   height: 8px;
-  background: #f1f5f9;
+  background: var(--rw-bg-paper-soft);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -71,7 +72,7 @@
   display: block;
   height: 100%;
   border-radius: 4px;
-  background: var(--swf-product-color, #64748b);
+  background: var(--swf-product-color, var(--rw-ink-faint));
   transition: width 0.25s ease;
 }
 
@@ -80,81 +81,81 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: #172033;
+  color: var(--rw-ink);
   text-align: right;
   min-width: 80px;
 }
 
 .swf-row-unit {
   font-weight: 400;
-  color: #667085;
+  color: var(--rw-ink-faint);
   margin-left: 2px;
   font-size: 0.75rem;
 }
 
-/* Deduction rows — label indented, value amber */
+/* Deduction rows — label indented, value in accent-soft amber */
 .swf-row--deduction .swf-row-label {
   padding-left: 10px;
-  color: #667085;
+  color: var(--rw-ink-faint);
 }
 
 .swf-row--deduction .swf-row-value {
-  color: #b45309;
+  color: var(--rw-accent-soft);
 }
 
 .swf-row--deduction .swf-row-bar {
-  background: #fca5a5;
+  background: var(--rw-accent-soft);
 }
 
 /* Subtotal rows — top border, muted */
 .swf-row--subtotal {
-  border-top: 1px solid #e3e8ef;
+  border-top: 1px solid var(--rw-rule-soft);
   margin-top: 2px;
   padding-top: 5px;
 }
 
 .swf-row--subtotal .swf-row-label {
-  color: #344054;
+  color: var(--rw-ink-soft);
   font-style: italic;
 }
 
 .swf-row--subtotal .swf-row-value {
-  color: #344054;
+  color: var(--rw-ink-soft);
 }
 
 .swf-row--subtotal .swf-row-bar {
-  background: #94a3b8;
+  background: var(--rw-ink-faint);
 }
 
 /* Total (net) row */
 .swf-row--total {
-  border-top: 2px solid #e3e8ef;
+  border-top: 2px solid var(--rw-rule-soft);
   margin-top: 3px;
   padding-top: 6px;
 }
 
 .swf-row--total .swf-row-label {
   font-weight: 700;
-  color: #0f766e;
+  color: #0f766e; /* semantic positive — net payout total */
 }
 
 .swf-row--total .swf-row-value {
-  color: #0f766e;
+  color: #0f766e; /* semantic positive — net payout total */
   font-size: 0.95rem;
 }
 
 .swf-row--total .swf-row-bar {
-  background: var(--swf-product-color, #0f766e);
+  background: var(--swf-product-color, #0f766e); /* semantic positive fallback */
 }
 
 /* ── Note footer ── */
 .swf-note {
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: var(--rw-ink-faint);
   line-height: 1.45;
   margin: 0;
   padding-top: 4px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--rw-rule-soft);
 }
 
 /* ── Mobile ── */
