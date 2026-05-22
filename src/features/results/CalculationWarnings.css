@@ -1,5 +1,5 @@
 .warnings-panel {
-  border: 1px solid #d9e1ea;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 8px;
   background: #ffffff;
   padding: 18px;
@@ -24,13 +24,13 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #667085;
+  color: var(--rw-ink-faint);
 }
 
 .warnings-group-empty {
   margin: 0;
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: var(--rw-ink-faint);
   font-style: italic;
 }
 
@@ -45,7 +45,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
 }
 
@@ -59,13 +59,13 @@
 .warning-item-category {
   font-weight: 700;
   font-size: 0.87rem;
-  color: #172033;
+  color: var(--rw-ink);
 }
 
 .warning-item-note {
   margin: 0;
   font-size: 0.8rem;
-  color: #667085;
+  color: var(--rw-ink-faint);
 }
 
 .badge {
@@ -78,16 +78,19 @@
 }
 
 .badge-implementiert {
+  /* semantic status: success-green — intentionally not tokenised */
   color: #065f46;
   background: #d1fae5;
 }
 
 .badge-vereinfacht {
+  /* semantic status: warning-amber — intentionally not tokenised */
   color: #92400e;
   background: #fef3c7;
 }
 
 .badge-nicht-modelliert {
+  /* semantic status: error-red — intentionally not tokenised */
   color: #991b1b;
   background: #fee2e2;
 }

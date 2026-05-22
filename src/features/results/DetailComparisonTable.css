@@ -1,7 +1,7 @@
 .break-even-note {
   display: block;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--rw-ink-faint);
   font-weight: normal;
 }
 
@@ -30,20 +30,20 @@
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  border: 1px solid #c9d7e5;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   background: #ffffff;
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #344054;
+  color: var(--rw-ink-soft);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 
 .export-btn:hover {
-  background: #f0f4f8;
-  border-color: #a3b5c8;
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-rule-soft);
 }
 
 @media (max-width: 480px) {
@@ -70,11 +70,11 @@
   }
 
   .detail-comparison-table tr {
-    border: 1px solid #d6dce5;
+    border: 1px solid var(--rw-rule-soft);
     border-radius: 8px;
     margin-bottom: 10px;
     padding: 10px 12px;
-    background: #f8fafc;
+    background: var(--rw-bg-paper-soft);
   }
 
   .detail-comparison-table td {
@@ -93,14 +93,14 @@
     max-width: 55%;
     font-weight: 700;
     font-size: 0.76rem;
-    color: #667085;
+    color: var(--rw-ink-faint);
     text-transform: uppercase;
     letter-spacing: 0.03em;
     padding-top: 2px;
   }
 
   .detail-comparison-table td:first-child {
-    border-bottom: 1px solid #e5ebf2;
+    border-bottom: 1px solid var(--rw-rule-soft);
     padding-bottom: 8px;
     margin-bottom: 4px;
     font-weight: 700;
