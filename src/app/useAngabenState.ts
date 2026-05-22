@@ -1,9 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import type { BavInstance } from '../domain/instances'
-import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
+import type {
+  Scenario,
+  WhatIfScenario,
+  Workspace,
+  WorkspaceAssumptionsV2,
+} from '../domain/workspace'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
+import { de2026Rules } from '../rules/de2026'
+import {
+  addArchivedEntry,
+  type SavedScenario,
+} from '../data/scenarioLibrary'
 import {
   buildStateJson,
   defaultWorkspace,
@@ -15,6 +25,16 @@ import {
 import { safeSetItem } from '../utils/safeStorage'
 import { singletonViewOfWorkspace } from '../engine/portfolioProjection'
 import { readUrlState } from '../utils/urlShare'
+import {
+  addInstanceToWorkspace,
+  removeInstanceFromWorkspace,
+} from './workspaceIdentity'
+import { rebaseWhatIf as rebaseWhatIfPure } from './portfolioState'
+import type { MultiInstanceProductId } from './portfolioState'
+import {
+  normalizeMonthlyNettoBelastung,
+  syncMonthlyContributions,
+} from './syncContributions'
 import { detectSavedMode } from './useRoute'
 
 /**
@@ -47,6 +67,17 @@ export type AngabenStateMode = 'compare' | 'combine'
  * The extra `mode` field lets the page tailor disclosure copy (which storage
  * key gets written, which fields are persisted) without re-running the
  * detection itself.
+ *
+ * Codex R2 P1 fix: `AngabenProduktSection` (§ 5) historically mounted a
+ * second `useCalculatorState` / `usePortfolioState` to source the per-product
+ * inputs surface. Two parallel stores on the same storage key caused
+ * last-write-wins data loss: a § 1 profile edit followed by a § 5 product
+ * edit would silently revert the § 1 edit because the § 5 store wrote a stale
+ * profile snapshot back to the same envelope. The fix is to expose ONE store
+ * per mode via this hook and let `AngabenPage` thread the relevant slice
+ * down to § 5 as props. The compare-mode-only and combine-mode-only fields
+ * below carry the slice each branch needs; the section discriminates on
+ * `mode` and consumes the matching subset.
  */
 export interface UseAngabenStateApi {
   profile: PersonalProfile
@@ -54,6 +85,39 @@ export interface UseAngabenStateApi {
   assumptions: ScenarioAssumptions
   setAssumptions: Dispatch<SetStateAction<ScenarioAssumptions>>
   mode: AngabenStateMode
+  // ------- Compare-mode-only convenience setters (mirror `useCalculatorState`) -------
+  /** Reset profile + assumptions to defaults (compare-mode only). `undefined` in combine-mode. */
+  resetToDefaults: (() => void) | undefined
+  /**
+   * Single entry point for every "monthly investment" field in compare-mode.
+   * Back-solves ETF / private-insurance contributions so they share the same
+   * out-of-pocket netto cash as bAV (the fair-comparison invariant). `undefined`
+   * in combine-mode (per-instance `monthlyContribution` is the source of truth there).
+   */
+  setSyncedMonthlyContribution: ((targetNet: number) => void) | undefined
+  // ------- Combine-mode-only workspace surface (mirror `usePortfolioState` subset) -------
+  /** The full workspace (combine-mode only). `undefined` in compare-mode. */
+  workspace: Workspace | undefined
+  /** Baseline scenario (combine-mode only). */
+  baseline: Scenario | undefined
+  /** What-if scenarios (combine-mode only). */
+  whatIfs: WhatIfScenario[] | undefined
+  /** Patch the baseline scenario (combine-mode only). Stamps `lastEditedAt`. */
+  patchBaseline: ((patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void) | undefined
+  /** Add a default instance of the given product type (combine-mode only). */
+  addInstance: ((productId: MultiInstanceProductId) => void) | undefined
+  /** Remove an instance by productId + instanceId (combine-mode only). */
+  removeInstance:
+    | ((productId: MultiInstanceProductId, instanceId: string) => void)
+    | undefined
+  /** Append a what-if scenario (combine-mode only). */
+  addWhatIf: ((whatIf: WhatIfScenario) => void) | undefined
+  /** Re-base a what-if against the current baseline (combine-mode only). */
+  rebaseWhatIf: ((id: string) => void) | undefined
+  /** Freeze a what-if to suppress the stale-badge until next baseline edit (combine-mode only). */
+  freezeWhatIf: ((id: string) => void) | undefined
+  /** Archive baseline + clear what-ifs (combine-mode only). Returns the archived entry. */
+  archiveAndRestart: (() => SavedScenario) | undefined
 }
 
 /**
@@ -284,49 +348,59 @@ export function useAngabenState(): UseAngabenStateApi {
   // underlying workspace (combine-mode only).
   const [initial] = useState<InitialAngabenState>(computeInitialAngabenState)
 
-  const [profile, setProfileState] = useState<PersonalProfile>(initial.profile)
-  const [assumptions, setAssumptionsState] = useState<ScenarioAssumptions>(
+  // Compare-mode primary state — held as the canonical source. In combine-mode
+  // these slots are unused (we derive the singleton view from `workspace`
+  // below) but we keep them allocated unconditionally so React hooks order is
+  // stable across renders.
+  const [compareProfile, setCompareProfile] = useState<PersonalProfile>(initial.profile)
+  const [compareAssumptions, setCompareAssumptions] = useState<ScenarioAssumptions>(
     initial.assumptions,
   )
 
-  // Underlying workspace ref (combine-mode only). Held in a ref because it is
-  // a persistence buffer, not a React-visible value — the React-visible value
-  // is the projected singleton `assumptions`. Refs are not part of the
-  // re-render trigger, so updating it inside the effect does not loop.
-  const workspaceRef = useRef<Workspace | null>(initial.workspace)
+  // Combine-mode primary state — the workspace IS the source of truth. The
+  // singleton-view `profile` + `assumptions` returned to consumers are derived
+  // freshly from this on every render, so a sidebar mutation in § 5 that
+  // patches `baseline.assumptions.visibleProducts` (via `patchBaseline`) is
+  // immediately reflected in the § 4 receipt without any extra synchronisation
+  // effect. Codex R2 P1: this is what eliminates the parallel-store data loss
+  // — there is exactly one store per mode, owned by this hook.
+  const [workspace, setWorkspaceState] = useState<Workspace | null>(initial.workspace)
+
+  const isCombine = initial.mode === 'combine'
+
+  // Derive the canonical `profile` + `assumptions` for the active mode. In
+  // combine-mode we re-derive on every render via `singletonViewOfWorkspace`;
+  // the projection is pure + cheap so this is fine. In compare-mode we just
+  // forward the `useState` values. `useMemo` keeps the singleton view stable
+  // across renders that don't touch `workspace`.
+  const assumptions = useMemo<ScenarioAssumptions>(() => {
+    if (isCombine && workspace) {
+      return singletonViewOfWorkspace(workspace, SINGLETON_VIEW_DEFAULTS)
+    }
+    return compareAssumptions
+  }, [isCombine, workspace, compareAssumptions])
+  const profile: PersonalProfile = isCombine && workspace
+    ? workspace.baseline.profile
+    : compareProfile
 
   // First-effect-run flag. Codex round-1 P1 (PR #283): the persistence effect
-  // runs on initial mount alongside every subsequent `profile` / `assumptions`
-  // change. On the mount tick the React-visible state already equals the value
-  // we just lazy-initialised from storage, so writing it back is a no-op — but
-  // a no-op write in combine-mode still stamps `baseline.lastEditedAt =
-  // Date.now()`, which `BaselineStaleBadge` (CombineDashboardSidebar.tsx:1051)
-  // reads to decide whether what-if snapshots are stale. The mount-time stamp
-  // would invalidate every what-if as soon as the user opens `/eingaben`,
-  // surfacing false "Baseline hat sich geändert" prompts. We therefore skip
-  // the first effect run unless the lazy initializer signalled that the
-  // mount-time write is load-bearing via `initial.persistOnMount`.
-  //
-  // Codex R2 P2 / CodeRabbit Major on PR #283: the unconditional skip from R1
-  // was too broad — it also suppressed the compare-mode mount write when
-  // state came from a `?s=` share-URL. Without that write, opening
-  // `/eingaben?s=…` and navigating away (without editing) discards the
-  // imported state. `initial.persistOnMount` is `true` only on the
-  // share-URL-import branch; all other branches (combine-mode workspace,
-  // compare-mode v1 envelope, compare-mode defaults) leave it `false` so the
-  // first-run skip still suppresses the no-op write.
+  // runs on initial mount. On the mount tick the React-visible state already
+  // equals the value we just lazy-initialised from storage, so writing it back
+  // is a no-op — but a no-op write in combine-mode still stamps
+  // `baseline.lastEditedAt = Date.now()`, which `BaselineStaleBadge`
+  // (CombineDashboardSidebar.tsx:1051) reads to decide whether what-if
+  // snapshots are stale. We therefore skip the first effect run unless the
+  // lazy initializer signalled that the mount-time write is load-bearing via
+  // `initial.persistOnMount` (today only set for compare-mode share-URL
+  // imports — Codex R2 P2 / CodeRabbit Major on PR #283).
   const isFirstEffectRun = useRef(true)
 
-  // Persistence effect. Branches on `initial.mode` (captured at mount; stable
-  // for the page's lifetime). Compare-mode writes a v1 envelope to
-  // STORAGE_KEY_V1; combine-mode projects the singleton assumptions back onto
-  // the workspace and writes STORAGE_KEY_V2 via `saveWorkspace` (which runs
-  // through `buildWorkspaceJson` → idempotent JSON serialisation).
-  //
-  // The first effect run (mount-time synchronisation between the lazy-init
-  // state and storage) is conditionally skipped via `isFirstEffectRun`. See
-  // the ref's declaration above for the full rationale, including the
-  // load-bearing exception for compare-mode share-URL imports.
+  // Persistence effect. Single dispatch by mode. Compare-mode writes a v1
+  // envelope to STORAGE_KEY_V1; combine-mode writes the full workspace to
+  // STORAGE_KEY_V2 via `saveWorkspace`. The dependency array picks up every
+  // mutation that should trigger a save: in combine-mode it's `workspace`
+  // (every mutator routes through `setWorkspaceState`); in compare-mode it's
+  // `compareProfile` + `compareAssumptions`.
   useEffect(() => {
     if (isFirstEffectRun.current) {
       isFirstEffectRun.current = false
@@ -337,44 +411,212 @@ export function useAngabenState(): UseAngabenStateApi {
       // share-URL import). This is intentionally restricted to compare-mode:
       // the combine-mode branch always sets `persistOnMount: false`.
     }
-    if (initial.mode === 'combine') {
-      const prev = workspaceRef.current
-      if (!prev) return
-      const updatedAssumptions = projectSingletonAssumptionsToWorkspace(
-        assumptions,
-        prev.baseline.assumptions,
-      )
-      const next: Workspace = {
-        ...prev,
-        baseline: {
-          ...prev.baseline,
-          profile,
-          assumptions: updatedAssumptions,
-          lastEditedAt: Date.now(),
-        },
-      }
-      workspaceRef.current = next
-      saveWorkspace(next)
+    if (isCombine) {
+      if (!workspace) return
+      saveWorkspace(workspace)
       return
     }
     // Compare-mode: legacy v1 write, mirrors `useCalculatorState`.
-    safeSetItem(STORAGE_KEY_V1, buildStateJson(profile, assumptions))
-    // `initial.persistOnMount` is set once by the lazy initializer in
-    // `computeInitialAngabenState` and never mutated — it's only read on the
-    // first effect tick via the `isFirstEffectRun` branch. We list it so
-    // react-hooks/exhaustive-deps is satisfied without lying about deps.
-  }, [profile, assumptions, initial.mode, initial.persistOnMount])
+    safeSetItem(STORAGE_KEY_V1, buildStateJson(compareProfile, compareAssumptions))
+  }, [
+    compareProfile,
+    compareAssumptions,
+    workspace,
+    isCombine,
+    initial.persistOnMount,
+  ])
 
-  // Setters: identical shape to `useCalculatorState` so section components do
-  // not change.
+  // Setters: same shape as `useCalculatorState` so section components do not
+  // change. In combine-mode they route through `setWorkspaceState` with the
+  // singleton-view projection so the workspace stays the single source of
+  // truth; in compare-mode they update the React-state directly.
   const setProfile: Dispatch<SetStateAction<PersonalProfile>> = useCallback(
-    (action) => setProfileState(action),
-    [],
+    (action) => {
+      if (isCombine) {
+        setWorkspaceState((prev) => {
+          if (!prev) return prev
+          const nextProfile =
+            typeof action === 'function'
+              ? (action as (p: PersonalProfile) => PersonalProfile)(prev.baseline.profile)
+              : action
+          if (nextProfile === prev.baseline.profile) return prev
+          return {
+            ...prev,
+            baseline: {
+              ...prev.baseline,
+              profile: nextProfile,
+              lastEditedAt: Date.now(),
+            },
+          }
+        })
+        return
+      }
+      setCompareProfile(action)
+    },
+    [isCombine],
   )
+
   const setAssumptions: Dispatch<SetStateAction<ScenarioAssumptions>> = useCallback(
-    (action) => setAssumptionsState(action),
+    (action) => {
+      if (isCombine) {
+        setWorkspaceState((prev) => {
+          if (!prev) return prev
+          const prevSingleton = singletonViewOfWorkspace(
+            prev,
+            SINGLETON_VIEW_DEFAULTS,
+          )
+          const nextSingleton =
+            typeof action === 'function'
+              ? (action as (a: ScenarioAssumptions) => ScenarioAssumptions)(
+                  prevSingleton,
+                )
+              : action
+          // CodeRabbit R3 Major: a no-op updater (`setAssumptions(prev => prev)`)
+          // returned the same reference, but `projectSingletonAssumptionsToWorkspace`
+          // always allocates a fresh object, so the workspace update + Date.now()
+          // stamp fired unconditionally — falsely flagging every what-if as
+          // stale even though no edit happened. Short-circuit on reference
+          // equality before projection runs.
+          if (nextSingleton === prevSingleton) return prev
+          const updatedAssumptions = projectSingletonAssumptionsToWorkspace(
+            nextSingleton,
+            prev.baseline.assumptions,
+          )
+          if (updatedAssumptions === prev.baseline.assumptions) return prev
+          return {
+            ...prev,
+            baseline: {
+              ...prev.baseline,
+              assumptions: updatedAssumptions,
+              lastEditedAt: Date.now(),
+            },
+          }
+        })
+        return
+      }
+      setCompareAssumptions(action)
+    },
+    [isCombine],
+  )
+
+  // ----- Compare-mode convenience setters (used by § 5 `InputsPanel`) -----
+  // These mirror the helpers `useCalculatorState` exposes. They are only
+  // meaningful in compare-mode; in combine-mode they are `undefined` on the
+  // returned API surface.
+  const resetToDefaults = useCallback(() => {
+    setCompareProfile(defaultProfile)
+    setCompareAssumptions(
+      syncMonthlyContributions(
+        normalizeMonthlyNettoBelastung(
+          defaultAssumptions.equalInputAmountEUR ?? 0,
+        ),
+        defaultAssumptions,
+        defaultProfile,
+        de2026Rules,
+      ),
+    )
+  }, [])
+
+  const setSyncedMonthlyContribution = useCallback(
+    (targetNet: number) => {
+      const target = normalizeMonthlyNettoBelastung(targetNet)
+      setCompareAssumptions((current) =>
+        syncMonthlyContributions(target, current, compareProfile, de2026Rules),
+      )
+    },
+    [compareProfile],
+  )
+
+  // ----- Combine-mode workspace mutators (used by § 5 `CombineDashboardSidebar`) -----
+  // Each mutator routes through `setWorkspaceState`. Because the singleton
+  // `assumptions` returned to consumers is derived freshly from `workspace`
+  // on every render, a sidebar mutation here is immediately visible to
+  // § 1–§ 4 — no separate synchronisation step is needed. Patching the
+  // baseline bumps `lastEditedAt` so `BaselineStaleBadge` can flag stale
+  // what-ifs; instance edits + assumption patches both count as user edits.
+  const patchBaseline = useCallback(
+    (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => {
+      setWorkspaceState((w) =>
+        w
+          ? {
+              ...w,
+              baseline: { ...w.baseline, ...patch, lastEditedAt: Date.now() },
+            }
+          : w,
+      )
+    },
     [],
   )
+
+  const addInstance = useCallback((productId: MultiInstanceProductId) => {
+    setWorkspaceState((w) => (w ? addInstanceToWorkspace(w, productId) : w))
+  }, [])
+
+  const removeInstance = useCallback(
+    (productId: MultiInstanceProductId, instanceId: string) => {
+      setWorkspaceState((w) =>
+        w ? removeInstanceFromWorkspace(w, productId, instanceId) : w,
+      )
+    },
+    [],
+  )
+
+  const addWhatIf = useCallback((whatIf: WhatIfScenario) => {
+    setWorkspaceState((w) =>
+      w ? { ...w, whatIfs: [...w.whatIfs, whatIf] } : w,
+    )
+  }, [])
+
+  const rebaseWhatIfCallback = useCallback((id: string) => {
+    setWorkspaceState((w) =>
+      w
+        ? {
+            ...w,
+            whatIfs: w.whatIfs.map((wi) =>
+              wi.id === id ? rebaseWhatIfPure(wi, w.baseline) : wi,
+            ),
+          }
+        : w,
+    )
+  }, [])
+
+  const freezeWhatIf = useCallback((id: string) => {
+    setWorkspaceState((w) =>
+      w
+        ? {
+            ...w,
+            whatIfs: w.whatIfs.map((wi) =>
+              wi.id === id ? { ...wi, frozenAt: Date.now() } : wi,
+            ),
+          }
+        : w,
+    )
+  }, [])
+
+  // `archiveAndRestart` returns the created `SavedScenario` (for callers that
+  // want to display its name in a confirmation toast). The archived entry is
+  // added to the scenario library synchronously, and the workspace is updated
+  // via `setWorkspaceState`. Combine-mode-only.
+  const archiveAndRestart = useCallback((): SavedScenario => {
+    if (!workspace) {
+      throw new Error(
+        'useAngabenState.archiveAndRestart called without a workspace',
+      )
+    }
+    const currentYear = new Date().getFullYear()
+    const archiveName = `Baseline ${currentYear}`
+    const projectedAssumptions = singletonViewOfWorkspace(
+      workspace,
+      SINGLETON_VIEW_DEFAULTS,
+    )
+    const archived = addArchivedEntry(
+      archiveName,
+      workspace.baseline.profile,
+      projectedAssumptions,
+    )
+    setWorkspaceState((w) => (w ? { ...w, whatIfs: [] } : w))
+    return archived
+  }, [workspace])
 
   return {
     profile,
@@ -382,5 +624,19 @@ export function useAngabenState(): UseAngabenStateApi {
     assumptions,
     setAssumptions,
     mode: initial.mode,
+    // Compare-mode-only convenience setters
+    resetToDefaults: isCombine ? undefined : resetToDefaults,
+    setSyncedMonthlyContribution: isCombine ? undefined : setSyncedMonthlyContribution,
+    // Combine-mode-only workspace surface
+    workspace: isCombine && workspace ? workspace : undefined,
+    baseline: isCombine && workspace ? workspace.baseline : undefined,
+    whatIfs: isCombine && workspace ? workspace.whatIfs : undefined,
+    patchBaseline: isCombine ? patchBaseline : undefined,
+    addInstance: isCombine ? addInstance : undefined,
+    removeInstance: isCombine ? removeInstance : undefined,
+    addWhatIf: isCombine ? addWhatIf : undefined,
+    rebaseWhatIf: isCombine ? rebaseWhatIfCallback : undefined,
+    freezeWhatIf: isCombine ? freezeWhatIf : undefined,
+    archiveAndRestart: isCombine ? archiveAndRestart : undefined,
   }
 }

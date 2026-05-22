@@ -3,7 +3,7 @@
    stacks now drive every chrome surface; legacy `.app-shell` / `.topbar` /
    `.workspace-tabs` styles were removed in R3.1 (Batch 1) — see
    `src/ui/chrome/chrome.css` for the replacements (`.rw-app-shell`,
-   `.rw-dashboard-meta`, `.rw-workspace-tabs`, `.rw-dashboard-body`).
+   `.rw-dashboard-meta`, `.rw-dashboard-body`).
    Per-panel legacy styles (`.assumption-panel`, `.table-panel`,
    `.section-heading`, `.panel-heading`, etc.) still live below; those
    migrate in Batch 3a/3b/3c.
@@ -112,13 +112,14 @@
    `.topbar-help-btn`, `.topbar-mode-badge*`, and `.workspace-tabs*` /
    `.workspace-tab*` chrome classes have been removed. The redesign
    chrome now lives in `src/ui/chrome/*` (AppShell + AppHeader wrap every
-   route in App.tsx; `WorkspaceTabs` carries the segmented control). The
-   dashboard's kicker + mode badge + Home button + tabs render via
-   `.rw-dashboard-meta*` and `.rw-workspace-tabs*` blocks defined in
-   `src/ui/chrome/chrome.css`. Heading rules below are scoped to the
-   classes that still survive (`.section-heading`, `.panel-heading`,
-   `.assumption-panel`, `.table-panel`) until those panels are migrated
-   in Batch 3a/3b/3c. */
+   route in App.tsx). The dashboard's kicker + mode badge render via the
+   `.rw-dashboard-meta*` block defined in `src/ui/chrome/chrome.css`. The
+   workspace-tabs collapse (this PR) dropped the Home button and the
+   per-workspace tab strip — chrome nav owns route-level navigation, and
+   the dashboard surface is a single linear body. Heading rules below are
+   scoped to the classes that still survive (`.section-heading`,
+   `.panel-heading`, `.assumption-panel`, `.table-panel`) until those
+   panels are migrated in Batch 3a/3b/3c. */
 
 .section-heading p,
 .assumption-panel p {
@@ -598,9 +599,11 @@ th {
   background: #e8eef6;
 }
 
-/* R3.1 (Batch 1): the legacy `.workspace-tabs` / `.workspace-tab` strip
-   moved to `.rw-workspace-tabs` in `src/ui/chrome/chrome.css`, rendered
-   by the new `<WorkspaceTabs>` component in `src/ui/chrome/`. */
+/* R3.1 (Batch 1) introduced an `.rw-workspace-tabs` segmented control to
+   replace the legacy `.workspace-tabs` strip. The workspace-tabs collapse
+   PR removed that control too — the chrome nav now owns route-level
+   navigation and the dashboard renders its surface as a single linear
+   body. */
 
 /* Vergleich sidebar layout (issue #239) */
 .compare-layout {
@@ -1084,7 +1087,8 @@ th {
 @media print {
   /* R3.1 (Batch 1): `.topbar`, `.workspace-tabs`, and `.workspace` were
      removed; their print equivalents live in chrome.css (hides
-     `.rw-dashboard-meta`, `.rw-workspace-tabs`, `.rw-dashboard-body`).
+     `.rw-dashboard-meta` and `.rw-dashboard-body`; the workspace-tabs
+     collapse removed `.rw-workspace-tabs` too).
      `.disclaimer-wrap` + `.dashboard` are still consumed in the legacy
      compare-mode panels — keep until those migrate in Batch 3. */
   .disclaimer-wrap,

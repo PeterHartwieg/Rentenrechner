@@ -36,13 +36,19 @@ describe('App — wires QA workspace-context ref', () => {
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
 
     render(<App />)
+    // Workspace-tabs collapse: the dashboard no longer renders a
+    // `[role="tab"]` strip, so wait for the meta H1 instead — it mounts as
+    // soon as the lazy `Calculator` chunk resolves.
     await waitFor(
-      () => expect(document.querySelectorAll('[role="tab"]').length).toBeGreaterThan(0),
+      () => expect(document.querySelector('.rw-dashboard-meta__title')).not.toBeNull(),
       { timeout: 8000 },
     )
 
     const ctx = getQaWorkspaceContext()
-    expect(typeof ctx.activeView).toBe('string')
-    expect(ctx.activeView).toBeTruthy()
+    // Workspace-tabs collapse: Calculator stamps a stable `'vergleich'`
+    // constant into the QA context (the live tab id is gone). Pin the
+    // exact value so a regression to `''` / `'angebot'` / a stale tab id
+    // would fail this assertion.
+    expect(ctx.activeView).toBe('vergleich')
   })
 })

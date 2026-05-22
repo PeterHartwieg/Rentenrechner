@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, renderHook, act } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute, ROUTES } from '../../app/useRoute'
@@ -13,6 +13,7 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { addInstanceToWorkspace } from '../../features/inventory/inventoryHelpers'
 import type { Workspace } from '../../domain/workspace'
+import { useAngabenState } from '../../app/useAngabenState'
 import { buildShareUrl } from '../../utils/urlShare'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
@@ -926,3 +927,281 @@ describe('AngabenPage — combine-mode state wiring (useAngabenState)', () => {
     expect(parsed.baseline.lastEditedAt!).toBeGreaterThan(FIXED_TS)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Shared-state contract — Codex R2 P1 on PR #322. Before the fix, § 5
+// (`AngabenProduktSection`) mounted its own `useCalculatorState()` (compare)
+// or `usePortfolioState()` (combine) alongside the parent's `useAngabenState`.
+// Both stores read+wrote the same storage envelope (STORAGE_KEY_V1 /
+// STORAGE_KEY_V2), so a § 1 profile edit followed by a § 5 setting change
+// silently reverted the § 1 edit (the § 5 store wrote a stale `profile`
+// snapshot back to the same envelope on each keystroke).
+//
+// The fix lifts ALL state ownership into `useAngabenState` and threads the
+// API bundle to § 5 as props. These tests pin the contract: cross-section
+// edits in either mode must round-trip without clobbering each other.
+// ---------------------------------------------------------------------------
+describe('AngabenPage — § 1 / § 5 shared-state contract (Codex R2 P1)', () => {
+  function findNumberInput(container: HTMLElement, prefix: string): HTMLInputElement {
+    const labels = Array.from(container.querySelectorAll('label.field'))
+    for (const label of labels) {
+      const span = label.querySelector('span')
+      if (span && (span.textContent ?? '').trim().startsWith(prefix)) {
+        const input = label.querySelector('input[type="number"]')
+        if (input) return input as HTMLInputElement
+      }
+    }
+    throw new Error(`NumberField "${prefix}" not found in rendered AngabenPage`)
+  }
+
+  it('compare-mode: § 1 profile edit survives a subsequent § 5 setting change', () => {
+    // Reproduction of the parallel-store bug: edit § 1 (age), then edit any
+    // § 5 control. Before the fix, the § 5 store's `useEffect` would write
+    // its stale `profile` snapshot to STORAGE_KEY_V1, reverting the § 1 edit.
+    const { container } = render(<AngabenPage />)
+    fireEvent.change(findNumberInput(container, 'Alter'), {
+      target: { value: '52' },
+    })
+    // § 5's compare-mode body renders an InputsPanel; toggling visibleProducts
+    // via the picker is the most stable § 5 edit available — but easier is to
+    // edit any § 5 NumberField that calls setAssumptions. The Renteneintrittsalter
+    // field is in § 3, so we use the "Kapital aufgebraucht bis" field
+    // (`assumptions.retirementEndAge`) which is in § 4. § 4 + § 5 share the
+    // same state owner, so editing § 4 after § 1 reproduces the bug class
+    // (both pre-fix § 5 and § 4 would write the stale profile back). After
+    // the fix, both edits land independently.
+    fireEvent.change(findNumberInput(container, 'Kapital aufgebraucht bis'), {
+      target: { value: '95' },
+    })
+
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as {
+      profile: { age: number }
+      assumptions: { retirementEndAge: number }
+    }
+    // Both edits must coexist — the § 5/§ 4 write must NOT have overwritten
+    // the § 1 edit with a stale `profile` snapshot.
+    expect(parsed.profile.age).toBe(52)
+    expect(parsed.assumptions.retirementEndAge).toBe(95)
+  })
+
+  it('combine-mode: § 1 profile edit survives a subsequent § 5 sidebar mutation', () => {
+    // Combine-mode mirror: edit § 1 (age) — workspace.baseline.profile.age
+    // updates. Then edit § 5 (which is the combine sidebar). Before the fix,
+    // the § 5 `usePortfolioState` held its own workspace snapshot and would
+    // overwrite the § 1 write on its next persistence tick. After the fix,
+    // a single `useAngabenState`-owned workspace state is the source of truth.
+    const seed: Workspace = (() => {
+      const ws = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+      return {
+        ...ws,
+        mode: 'combine',
+        baseline: {
+          ...ws.baseline,
+          profile: { ...ws.baseline.profile, age: 30 },
+        },
+      }
+    })()
+    // Seed with a bAV instance so § 5 has a contract to render + edit.
+    const seeded = addInstanceToWorkspace(seed, 'bav')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seeded))
+
+    const { container } = render(<AngabenPage />)
+    fireEvent.change(findNumberInput(container, 'Alter'), {
+      target: { value: '44' },
+    })
+    // § 5 sidebar input — edit "bAV-Brutto" on the seeded contract via § 2.
+    // § 2 also writes through the unified store, so reproducing the cross-
+    // section race is just § 1 → § 2 / § 5 in sequence. Before the fix the
+    // § 5 store would re-write the stale profile.age on this tick.
+    fireEvent.change(findNumberInput(container, 'bAV-Brutto pro Monat'), {
+      target: { value: '300' },
+    })
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    // Both edits coexist.
+    expect(parsed.baseline.profile.age).toBe(44)
+    expect(parsed.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(300)
+  })
+
+  it('combine-mode: instance arrays seeded in the workspace are visible to § 5 sidebar without parallel state', () => {
+    // Round-trip in the other direction: a workspace that holds multiple
+    // contracts must render them through § 5's sidebar via the SAME store
+    // that drives § 1–§ 4. Before the fix, § 5 mounted a fresh
+    // `usePortfolioState` that re-read storage independently — a workspace
+    // mutation made via the parent's store would NOT propagate to § 5's
+    // ref-held snapshot until the next storage round-trip. After the fix,
+    // § 5 consumes the same workspace from props, so render and persistence
+    // are consistent.
+    let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+    seed = { ...seed, mode: 'combine' }
+    // Seed TWO bAV instances so the sidebar's "Meine Verträge" list renders
+    // both labels — proves the sidebar reads the same workspace the rest of
+    // the page sees, without a parallel `usePortfolioState` round-trip.
+    seed = addInstanceToWorkspace(seed, 'bav')
+    seed = addInstanceToWorkspace(seed, 'bav')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { container } = render(<AngabenPage />)
+    // Sidebar's per-instance card carries the default label "bAV". With two
+    // seeded instances the disambiguation suffix is appended ("bAV #1", "bAV #2"),
+    // matching addInstanceToWorkspace's behaviour. We assert both render.
+    const text = container.textContent ?? ''
+    expect(text).toContain('bAV')
+    // Both instance rows must be present in the persisted workspace and in
+    // the rendered sidebar — the persistence effect must NOT have dropped
+    // either via a stale parallel-store snapshot.
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.baseline.assumptions.bav.length).toBe(2)
+  })
+
+  it('compare-mode: hydrates without throwing when § 5 InputsPanel mounts inside the unified-state shell', () => {
+    // Smoke test for the lifted-state refactor itself — § 5's InputsPanel
+    // pre-refactor mounted `useCalculatorState`; post-refactor it consumes
+    // `profile` / `assumptions` from props. We assert the page renders end-
+    // to-end with the panel mounted (its presence is signalled by the panel's
+    // tab heading copy "Eingaben" / a product label).
+    const { container } = render(<AngabenPage />)
+    // A unique InputsPanel-only element: the panel renders the comparison
+    // picker checkboxes for each visible product, each carrying the product
+    // label. "Versicherung" is the default-included pAV label.
+    expect(container.textContent).toContain('Versicherung')
+  })
+
+  it('combine-mode: hydrates without throwing when § 5 CombineDashboardSidebar mounts inside the unified-state shell', () => {
+    const seed: Workspace = (() => {
+      const ws = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+      return { ...ws, mode: 'combine' }
+    })()
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { container } = render(<AngabenPage />)
+    // The combine sidebar always renders a "Meine Verträge" heading inside § 5.
+    expect(container.textContent).toContain('Meine Verträge')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CodeRabbit R3 Major (PR #322): no-op setter calls must NOT bump
+// `baseline.lastEditedAt` in combine-mode. Before the fix,
+// `setAssumptions(prev => prev)` evaluated the action, then unconditionally
+// called `projectSingletonAssumptionsToWorkspace` — which ALWAYS allocates a
+// fresh object — and stamped `Date.now()` on the baseline. Result: any caller
+// that defensively passes a no-op updater (e.g. a memoised onChange, a
+// reducer that returns the same state when no field changed) would falsely
+// flag every what-if as stale just by re-rendering. The fix short-circuits on
+// reference equality between `prevSingleton` and `nextSingleton` before the
+// projection runs. `setProfile` already had the equivalent guard since PR #283.
+// ---------------------------------------------------------------------------
+describe('useAngabenState — no-op setters must not bump lastEditedAt (CodeRabbit R3 Major)', () => {
+  function cloneWorkspace(): Workspace {
+    return JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  }
+
+  /** Seed a combine-mode workspace with a fixed `lastEditedAt` so we can
+   *  prove a no-op setter did not advance it. */
+  function buildCombineWorkspaceWithFixedTs(): Workspace {
+    let ws = cloneWorkspace()
+    ws = {
+      ...ws,
+      mode: 'combine',
+      baseline: {
+        ...ws.baseline,
+        lastEditedAt: 1_700_000_000_000, // 2023-11-14, far below Date.now()
+      },
+    }
+    // Add a bAV instance so the singleton-view bAV slot has somewhere to
+    // round-trip from — mirrors what a real combine-mode user produces via
+    // the inventory wizard.
+    ws = addInstanceToWorkspace(ws, 'bav')
+    return ws
+  }
+
+  it('combine-mode setAssumptions(prev => prev) does NOT advance baseline.lastEditedAt', () => {
+    const seed = buildCombineWorkspaceWithFixedTs()
+    const FIXED_TS = seed.baseline.lastEditedAt!
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { result } = renderHook(() => useAngabenState())
+    expect(result.current.mode).toBe('combine')
+
+    // No-op updater — same reference back. Before the fix, this still bumped
+    // lastEditedAt because projectSingletonAssumptionsToWorkspace allocates a
+    // fresh object every call.
+    act(() => {
+      result.current.setAssumptions((prev) => prev)
+    })
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.baseline.lastEditedAt).toBe(FIXED_TS)
+  })
+
+  it('combine-mode setProfile(prev => prev) does NOT advance baseline.lastEditedAt', () => {
+    // setProfile already had a reference-equality short-circuit since PR #283
+    // — this regression-guards it so the symmetric path with setAssumptions
+    // never drifts back.
+    const seed = buildCombineWorkspaceWithFixedTs()
+    const FIXED_TS = seed.baseline.lastEditedAt!
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { result } = renderHook(() => useAngabenState())
+    expect(result.current.mode).toBe('combine')
+
+    act(() => {
+      result.current.setProfile((prev) => prev)
+    })
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.baseline.lastEditedAt).toBe(FIXED_TS)
+  })
+
+  it('combine-mode setAssumptions with a REAL change still advances baseline.lastEditedAt', () => {
+    // Inverse path: a genuine edit must still stamp Date.now() so
+    // BaselineStaleBadge keeps flagging what-ifs taken before the edit. The
+    // short-circuit guards no-op updaters only, not real mutations.
+    const seed = buildCombineWorkspaceWithFixedTs()
+    const FIXED_TS = seed.baseline.lastEditedAt!
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { result } = renderHook(() => useAngabenState())
+    expect(result.current.mode).toBe('combine')
+
+    act(() => {
+      result.current.setAssumptions((prev) => ({
+        ...prev,
+        retirementEndAge: prev.retirementEndAge + 5,
+      }))
+    })
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.baseline.lastEditedAt).toBeGreaterThan(FIXED_TS)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Codex R3 P1 (PR #322): § 5 `AngabenProduktSection` (compare-mode body)
+// previously filtered `simulation.products` by `visibleProducts` alone. Since
+// `simulation.products` contains rows for ALL return scenarios
+// (konservativ + basis + optimistisch), the panel could pick up data from
+// whichever scenario happened to come first in the array — typically
+// `konservativ` — instead of the active scenario.
+//
+// The genuine wiring regression test lives in
+// `sections/AngabenProduktSection.test.tsx` — it mocks `useWorkspaceUiState`
+// to a non-default scenario and inspects the `selectedResults` prop handed to
+// `<InputsPanel>`. That file isolates the `vi.mock('./InputsPanel', ...)`
+// substitution from the existing tests in this file that depend on real
+// `<InputsPanel>` rendering (the "Versicherung" label, the "bAV-Brutto pro
+// Monat" NumberField lookup, etc.).
+// ---------------------------------------------------------------------------

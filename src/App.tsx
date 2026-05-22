@@ -172,10 +172,10 @@ function App() {
     setCalculatorView(choice.kind)
   }
 
-  function handleGoHome() {
-    setCalculatorView('landing')
-    setPendingChoice(null)
-  }
+  // Workspace-tabs collapse: the legacy `rw-dashboard-meta__home-btn`
+  // duplicated the chrome nav's Startseite tab and has been removed.
+  // The only remaining caller for `handleGoHome` was that button; the chrome
+  // nav owns "go back to landing" via the route swap to `/`.
 
   let body: ReactNode
   // Dispatch on the tagged-union variant. The `route` value is a stable
@@ -196,7 +196,11 @@ function App() {
       body = <MethodePage navigate={navigate} />
       break
     case 'eingaben':
-      body = <AngabenPage navigate={navigate} />
+      // Pass the lifted `workspaceUi` so `/eingaben` §5 sees the same
+      // `selectedScenarioId` the user picked on `VergleichPage` or any other
+      // surface. Without this, mounting AngabenPage's compare-mode body
+      // resets the scenario back to `'basis'` per visit (Codex R5 P2).
+      body = <AngabenPage navigate={navigate} workspaceUi={workspaceUi} />
       break
     case 'rentenluecke-rechner':
       body = <RentenluckeRechnerPage navigate={navigate} />
@@ -269,7 +273,6 @@ function App() {
             navigate={navigate}
             pendingChoice={pendingChoice}
             onPendingChoiceConsumed={() => setPendingChoice(null)}
-            onGoHome={handleGoHome}
             workspaceUi={workspaceUi}
           />
         )

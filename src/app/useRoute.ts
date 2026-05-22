@@ -262,7 +262,12 @@ export function appViewFromUrl(search: string): AppView | null {
   return null
 }
 
-export function useRoute(): { route: Route; navigate: (target: Route, search?: string) => void } {
+export interface UseRouteResult {
+  route: Route
+  navigate: (target: Route, search?: string, hash?: string) => void
+}
+
+export function useRoute(): UseRouteResult {
   const [route, setRoute] = useState<Route>(() => {
     if (typeof window === 'undefined') return ROUTES.home
     return pathToRoute(window.location.pathname)
@@ -298,6 +303,9 @@ export function useRoute(): { route: Route; navigate: (target: Route, search?: s
    * `search` is a query string that begins with `?` (e.g. `?scenario=basis`)
    * — the caller composes it (typically via `URLSearchParams` or a template
    * literal) and this helper stays agnostic about which params are present.
+   * The optional `hash` is a fragment that begins with `#` (e.g. `#produkt`)
+   * and is appended after `search`; on direct loads the page's hash-scroll
+   * effect (see `AngabenPage.tsx`) honours it to deep-link a section.
    *
    * PR 290 R4 Codex P2 fix: the previous signature ignored search params,
    * which dropped `?scenario=<id>` on SPA navigation from `VergleichPage` to
@@ -306,10 +314,12 @@ export function useRoute(): { route: Route; navigate: (target: Route, search?: s
    * a URL with no query — so a reload/bookmark/share after SPA navigation
    * silently fell back to `basis` instead of the selected scenario. Accepting
    * the search arg keeps the URL the source of truth for shareable state in
-   * every navigation path (hard reload, new tab, AND SPA navigate).
+   * every navigation path (hard reload, new tab, AND SPA navigate). The
+   * later `hash` extension follows the same principle for `/eingaben#produkt`
+   * deep links from the dashboard's "Angebot bearbeiten" CTAs.
    *
-   * The comparison guard inspects `pathname + search` so identical URLs are
-   * not re-pushed (matches the prior pathname-only intent).
+   * The comparison guard inspects `pathname + search + hash` so identical URLs
+   * are not re-pushed (matches the prior intent and extends it to the fragment).
    *
    * After every navigation (even the no-push duplicate-URL case) this function
    * dispatches a `rentenwiki:navigated` custom event. Listeners that derive
@@ -319,11 +329,11 @@ export function useRoute(): { route: Route; navigate: (target: Route, search?: s
    * signal. The `popstate` handler emits the same event so listeners subscribe
    * to a single channel regardless of navigation source.
    */
-  function navigate(target: Route, search?: string): void {
+  function navigate(target: Route, search?: string, hash?: string): void {
     if (typeof window === 'undefined') return
     const path = routeToPath(target)
-    const url = search ? `${path}${search}` : path
-    if (window.location.pathname + window.location.search !== url) {
+    const url = `${path}${search ?? ''}${hash ?? ''}`
+    if (window.location.pathname + window.location.search + window.location.hash !== url) {
       window.history.pushState(null, '', url)
     }
     setRoute(target)
