@@ -120,7 +120,7 @@ export function SequenceOfReturnsPanel({
         <TrendingDown size={18} style={{ verticalAlign: 'middle', marginRight: 6 }} />
         Sequence-of-Returns-Risiko
       </h2>
-      <p style={{ marginBottom: '1rem', color: 'var(--color-text-muted, #6b7280)', fontSize: '0.875rem' }}>
+      <p style={{ marginBottom: '1rem', color: 'var(--rw-ink-faint)', fontSize: '0.875rem' }}>
         Gleiche Durchschnittsrendite ({formatPercent(selectedScenario.annualReturn, 1)} p.a.), andere Reihenfolge —
         schlechte Renditen früh in der Rente erschöpfen das Kapital deutlich schneller als gute Frührenditen.
       </p>
@@ -140,9 +140,9 @@ export function SequenceOfReturnsPanel({
                   padding: '0.25rem 0.75rem',
                   borderRadius: 4,
                   border: isActive
-                    ? '2px solid var(--color-primary, #2563eb)'
-                    : '1px solid var(--color-border, #e5e7eb)',
-                  background: isActive ? 'var(--color-primary-light, #eff6ff)' : 'transparent',
+                    ? '2px solid var(--rw-accent)'
+                    : '1px solid var(--rw-rule-soft)',
+                  background: isActive ? 'var(--rw-accent-bg)' : 'transparent',
                   cursor: 'pointer',
                   fontSize: '0.8125rem',
                 }}
@@ -153,7 +153,7 @@ export function SequenceOfReturnsPanel({
                     width: 8,
                     height: 8,
                     borderRadius: '50%',
-                    background: productColors[r.productId] ?? '#888',
+                    background: productColors[r.productId] ?? 'var(--rw-ink-faint)',
                     marginRight: 4,
                   }}
                 />
@@ -167,7 +167,7 @@ export function SequenceOfReturnsPanel({
       <div style={{ height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #e5e7eb)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--rw-rule-soft)" />
             <XAxis dataKey="age" tick={{ fontSize: 11 }} />
             <YAxis
               tickFormatter={(v: number) => formatCurrency(v, 0)}
@@ -180,8 +180,8 @@ export function SequenceOfReturnsPanel({
                 return (
                   <div
                     style={{
-                      background: '#fff',
-                      border: '1px solid #e2e8f0',
+                      background: 'var(--rw-bg-paper)',
+                      border: '1px solid var(--rw-rule-soft)',
                       borderRadius: 6,
                       padding: '8px 12px',
                       fontSize: 13,
@@ -201,7 +201,7 @@ export function SequenceOfReturnsPanel({
               type="monotone"
               dataKey="goodEarly"
               name="Günstige Reihenfolge"
-              stroke="#16a34a"
+              stroke="#16a34a" /* semantic positive */
               strokeWidth={2}
               dot={false}
             />
@@ -209,7 +209,7 @@ export function SequenceOfReturnsPanel({
               type="monotone"
               dataKey="badEarly"
               name="Ungünstige Reihenfolge"
-              stroke="#dc2626"
+              stroke="#dc2626" /* action-destructive */
               strokeWidth={2}
               strokeDasharray="5 3"
               dot={false}
@@ -218,7 +218,7 @@ export function SequenceOfReturnsPanel({
               type="monotone"
               dataKey="baseline"
               name="Gleichmäßige Rendite"
-              stroke="#6b7280"
+              stroke="var(--rw-ink-faint)"
               strokeWidth={1.5}
               strokeDasharray="2 2"
               dot={false}
@@ -228,7 +228,7 @@ export function SequenceOfReturnsPanel({
       </div>
 
       <p
-        style={{ marginTop: '0.75rem', color: 'var(--color-text-muted, #6b7280)', fontSize: '0.75rem' }}
+        style={{ marginTop: '0.75rem', color: 'var(--rw-ink-faint)', fontSize: '0.75rem' }}
       >
         Vereinfachte Projektion (konstante Nettorente, ohne Anpassung von Steuern und Sozialversicherung) zur
         Illustration des Reihenfolgeeffekts im Ruhestand.

@@ -1,7 +1,7 @@
 .sensitivity-panel {
-  border: 1px solid #d6dce5;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--rw-bg-paper);
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
@@ -11,13 +11,13 @@
 .sensitivity-panel > header h3 {
   margin: 0 0 4px;
   font-size: 0.92rem;
-  color: #172033;
+  color: var(--rw-ink);
 }
 
 .sensitivity-panel > header p {
   margin: 0;
   font-size: 0.82rem;
-  color: #667085;
+  color: var(--rw-ink-faint);
 }
 
 .sensitivity-grid {
@@ -32,18 +32,18 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #667085;
-  border-bottom: 1px solid #e3e8ef;
+  color: var(--rw-ink-faint);
+  border-bottom: 1px solid var(--rw-rule-soft);
   padding-bottom: 4px;
 }
 
 .sensitivity-grid > .sg-row-label {
-  color: #344054;
+  color: var(--rw-ink-soft);
 }
 
 .sensitivity-grid > .sg-row-label small {
   display: block;
-  color: #667085;
+  color: var(--rw-ink-faint);
   font-size: 0.78rem;
 }
 
@@ -58,9 +58,9 @@
   gap: 6px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: var(--rw-bg-paper-soft);
   font-size: 0.8rem;
-  color: #172033;
+  color: var(--rw-ink);
 }
 
 .sensitivity-grid > .sg-cell .product-pill .pill-dot {
@@ -70,9 +70,9 @@
 }
 
 .sensitivity-grid > .sg-cell .product-pill.changed {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: var(--rw-accent-bg);
+  border: 1px solid var(--rw-accent-soft);
+  color: var(--rw-accent);
 }
 
 .robustness-strip {
@@ -99,22 +99,25 @@
   border-radius: 50%;
 }
 
+/* Robustness states use semantic traffic-light colours (green/amber/red) to
+   communicate result stability. Kept as raw hex with comments per CLAUDE.md
+   guideline for action-destructive and semantic-positive palettes. */
 .robustness-pill.robust {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #065f46;
+  background: #ecfdf5; /* semantic positive */
+  border-color: #a7f3d0; /* semantic positive */
+  color: #065f46; /* semantic positive */
 }
 
 .robustness-pill.knapp {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #92400e;
+  background: #fffbeb; /* semantic warning amber */
+  border-color: #fde68a; /* semantic warning amber */
+  color: #92400e; /* semantic warning amber */
 }
 
 .robustness-pill.annahmenabhaengig {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+  background: #fef2f2; /* action-destructive */
+  border-color: #fecaca; /* action-destructive */
+  color: #991b1b; /* action-destructive */
 }
 
 @media (max-width: 480px) {
@@ -128,7 +131,7 @@
   }
 
   .sensitivity-grid > .sg-row-label {
-    border-top: 1px solid #e5ebf2;
+    border-top: 1px solid var(--rw-rule-soft);
     padding-top: 8px;
     margin-top: 4px;
     font-weight: 700;
@@ -152,7 +155,7 @@
     flex: 0 0 auto;
     font-size: 0.76rem;
     font-weight: 700;
-    color: #667085;
+    color: var(--rw-ink-faint);
     text-transform: uppercase;
     letter-spacing: 0.03em;
     min-width: 90px;
