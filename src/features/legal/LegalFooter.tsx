@@ -1,5 +1,5 @@
 import type { Route } from '../../app/useRoute'
-import { ROUTES } from '../../app/useRoute'
+import { ROUTES, routeToPath } from '../../app/useRoute'
 import './legal.css'
 import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 import { useQaMode } from '../qa-feedback/useQaMode'
@@ -60,48 +60,62 @@ export function LegalFooter({ navigate }: Props) {
 
   return (
     <footer className="app-footer" {...containerTargetProps}>
-      <span className="app-footer-copy">
-        Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.
-      </span>
-      <nav className="app-footer-nav">
-        <a href="/impressum/" onClick={go(ROUTES.impressum)} {...impressumLinkProps}>
-          Impressum
-        </a>
-        <span aria-hidden="true">·</span>
-        <a href="/datenschutz/" onClick={go(ROUTES.datenschutz)} {...datenschutzLinkProps}>
-          Datenschutzerklärung
-        </a>
-        <span aria-hidden="true">·</span>
-        <span
-          title="PolyForm Noncommercial 1.0.0 — kommerzielle Nutzung lizenzpflichtig"
-          {...lizenzProps}
+      <div className="app-footer__method">
+        <span>[1] Annahme: 5 % Rendite p.a., 2 % Inflation</span>
+        <span>[2] Steuern nach Stand 2026 (§22 EStG)</span>
+        <span>[3] GRV-Werte: DRV-Renteninformation</span>
+        <a
+          href={routeToPath(ROUTES.methode)}
+          className="app-footer__method-link"
+          onClick={go(ROUTES.methode)}
         >
-          Lizenz: PolyForm Noncommercial 1.0.0
+          ↗ Methode im Detail
+        </a>
+      </div>
+      <div className="app-footer__legal">
+        <span className="app-footer-copy">
+          Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.
         </span>
-        {/* TEMPORARY — flag-gated QA activator for non-technical testers.
-            Remove this block, the qaFooterButtonEnabled constant, the
-            qaButtonTargetProps hook call, and the useQaMode import once the
-            QA window closes. Cleanup task ref: see JSDoc above. */}
-        {qaFooterButtonEnabled && !qaEnabled && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span className="app-footer-qa-hint">
-              Sie testen für uns?{' '}
-              <button
-                type="button"
-                className="app-footer-qa-button"
-                aria-label="Aktiviert den Feedback-Modus. Klicken Sie anschließend ein UI-Element an, um Feedback zu geben."
-                title="Aktiviert den Feedback-Modus. Klicken Sie anschließend ein UI-Element an, um Feedback zu geben."
-                onClick={activateQa}
-                {...qaButtonTargetProps}
-              >
-                Feedback Modus starten
-              </button>{' '}
-              — dann auf das fragliche Element klicken.
-            </span>
-          </>
-        )}
-      </nav>
+        <nav className="app-footer-nav">
+          <a href="/impressum/" onClick={go(ROUTES.impressum)} {...impressumLinkProps}>
+            Impressum
+          </a>
+          <span aria-hidden="true">·</span>
+          <a href="/datenschutz/" onClick={go(ROUTES.datenschutz)} {...datenschutzLinkProps}>
+            Datenschutzerklärung
+          </a>
+          <span aria-hidden="true">·</span>
+          <span
+            title="PolyForm Noncommercial 1.0.0 — kommerzielle Nutzung lizenzpflichtig"
+            {...lizenzProps}
+          >
+            Lizenz: PolyForm Noncommercial 1.0.0
+          </span>
+          {/* TEMPORARY — flag-gated QA activator for non-technical testers.
+              Remove this block, the qaFooterButtonEnabled constant, the
+              qaButtonTargetProps hook call, and the useQaMode import once the
+              QA window closes. Cleanup task ref: see JSDoc above. */}
+          {qaFooterButtonEnabled && !qaEnabled && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="app-footer-qa-hint">
+                Sie testen für uns?{' '}
+                <button
+                  type="button"
+                  className="app-footer-qa-button"
+                  aria-label="Aktiviert den Feedback-Modus. Klicken Sie anschließend ein UI-Element an, um Feedback zu geben."
+                  title="Aktiviert den Feedback-Modus. Klicken Sie anschließend ein UI-Element an, um Feedback zu geben."
+                  onClick={activateQa}
+                  {...qaButtonTargetProps}
+                >
+                  Feedback Modus starten
+                </button>{' '}
+                — dann auf das fragliche Element klicken.
+              </span>
+            </>
+          )}
+        </nav>
+      </div>
     </footer>
   )
 }

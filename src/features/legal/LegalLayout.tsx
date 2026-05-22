@@ -13,11 +13,17 @@ interface Props {
 /**
  * Content wrapper for legal pages (Impressum, Datenschutz).
  *
- * Rendered inside AppShell, which supplies the StatusBar, AppHeader nav-tabs,
- * and MethodFooter. LegalLayout adds only:
+ * Rendered inside AppShell, which supplies the StatusBar and AppHeader
+ * nav-tabs. LegalLayout adds:
  *  - a sober mono back-link header (← Zurück zum Rechner)
  *  - the article content area
  *  - a compact mono page-footer with Impressum + Datenschutz cross-links
+ *
+ * Non-legal pages render `LegalFooter` (which now also carries the
+ * methodology footnotes folded in from the legacy `MethodFooter`). Legal
+ * pages intentionally do NOT render `LegalFooter` — the slim page-footer
+ * below is sufficient and avoids re-duplicating the Impressum / Datenschutz
+ * links on the very pages those links lead to.
  *
  * R2.3: Shell parity — Sober D token palette (white + IBM Plex + oxblood H1
  * only). No cream background, no Newsreader serif.
