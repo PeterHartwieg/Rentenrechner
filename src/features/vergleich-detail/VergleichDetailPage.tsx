@@ -13,6 +13,7 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { PRIMARY_PRODUCT_IDS } from '../../content/triggers'
 import type { ScenarioAssumptions, PersonalProfile } from '../../domain'
 import { VergleichDetailCard } from './VergleichDetailCard'
+import { LegalFooter } from '../legal/LegalFooter'
 import {
   buildVergleichDetailCardData,
   type VergleichDetailCardData,
@@ -285,6 +286,7 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
           </div>
         </article>
       </div>
+      <LegalFooter navigate={navigate} />
     </div>
   )
 }
@@ -321,6 +323,7 @@ function EmptyState({ title, body, ctaLabel, ctaTarget, navigate }: EmptyStatePr
           </a>
         </article>
       </div>
+      <LegalFooter navigate={navigate} />
     </div>
   )
 }
@@ -357,6 +360,7 @@ function EmptyComparisonState({ navigate }: EmptyComparisonProps) {
           </a>
         </article>
       </div>
+      <LegalFooter navigate={navigate} />
     </div>
   )
 }

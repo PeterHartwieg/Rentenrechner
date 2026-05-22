@@ -15,6 +15,7 @@ import { LIFECYCLE_HORIZON_AGE } from '../results/lifecycleHorizon'
 import { KapitalFilterChips } from './KapitalFilterChips'
 import { KapitalWendepunkteTable } from './KapitalWendepunkteTable'
 import { buildWendepunkte } from './wendepunkte'
+import { LegalFooter } from '../legal/LegalFooter'
 import {
   buildChartColorMap,
   buildCombineChipOptions,
@@ -291,6 +292,7 @@ export function KapitalPage({ navigate }: Props) {
           )}
         </article>
       </div>
+      <LegalFooter navigate={navigate} />
     </div>
   )
 }

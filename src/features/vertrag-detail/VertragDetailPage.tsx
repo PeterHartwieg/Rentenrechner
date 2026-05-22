@@ -15,6 +15,7 @@ import { VertragScenarioTable } from './VertragScenarioTable'
 import { VertragProvenanceList } from './VertragProvenanceList'
 import { VertragMetadataAside } from './VertragMetadataAside'
 import { VertragFeeImpact } from './VertragFeeImpact'
+import { LegalFooter } from '../legal/LegalFooter'
 
 interface Props {
   /**
@@ -252,6 +253,7 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
           />
         </div>
       </div>
+      <LegalFooter navigate={navigate} />
     </div>
   )
 }
@@ -295,6 +297,7 @@ function EmptyState({ title, body, ctaLabel, ctaTarget, navigate }: EmptyStatePr
           className="rw-error-state--centered vertrag-empty"
         />
       </div>
+      <LegalFooter navigate={navigate} />
     </div>
   )
 }
