@@ -230,7 +230,8 @@ export function AngabenPage({ navigate }: Props) {
   // shape that `useCalculatorState` does — the four section components below
   // stay mode-agnostic. See `src/app/useAngabenState.ts` for the routing
   // logic and the heuristic that pins the mode.
-  const { profile, setProfile, assumptions, setAssumptions, mode } = useAngabenState()
+  const angabenState = useAngabenState()
+  const { profile, setProfile, assumptions, setAssumptions, mode } = angabenState
   // `familienstand` and `bundesland` are NOT part of `PersonalProfile`, so
   // they remain ephemeral on this page in BOTH modes and reset to the
   // defaults on every reload / route change. Routing them through the
@@ -418,7 +419,7 @@ export function AngabenPage({ navigate }: Props) {
             />
 
             <AngabenProduktSection
-              mode={mode}
+              angabenState={angabenState}
               navigate={navigate}
               num={SECTIONS[4].n}
               id={SECTIONS[4].id}

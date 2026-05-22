@@ -1,12 +1,10 @@
 import type { Route } from '../../../app/useRoute'
 import { ROUTES } from '../../../app/useRoute'
 import type { InsuranceProductResult } from '../../../domain'
-import { useCalculatorState } from '../../../app/useCalculatorState'
 import { useScenarioLibrary } from '../../../app/useScenarioLibrary'
 import { useSimulationResult } from '../../../app/useSimulationResult'
 import { useWorkspaceUiState } from '../../../app/useWorkspaceUiState'
-import { usePortfolioState } from '../../../app/portfolioState'
-import type { AngabenStateMode } from '../../../app/useAngabenState'
+import type { UseAngabenStateApi } from '../../../app/useAngabenState'
 import { useState } from 'react'
 import { InputsPanel } from '../InputsPanel'
 import { CombineDashboardSidebar } from '../../inventory/CombineDashboardSidebar'
@@ -18,33 +16,29 @@ import { ContractDecisionMenu } from '../../dashboard/ContractDecisionMenu'
  * the workspace `angebot` tab (`Calculator.tsx`) into the Sober D § layout —
  * the workspace tab strip itself is being removed in the same PR.
  *
- * The section is intentionally self-contained: it owns the simulation,
- * scenario-library, and UI-state hooks the panels need so `AngabenPage`
- * stays a thin orchestrator. The four pre-existing § sections still flow
- * through `useAngabenState`; this new section reads the mode AngabenPage
- * already pinned (via `detectSavedMode()` at mount) and branches between
+ * The section is intentionally state-thin: it receives the full
+ * `UseAngabenStateApi` bundle from `AngabenPage` and consumes the slice that
+ * matches the active mode. This is the post–Codex R2 P1 shape — earlier
+ * revisions mounted a fresh `useCalculatorState()` / `usePortfolioState()`
+ * here, but those second stores collided with the parent's `useAngabenState`
+ * on the same storage envelope (STORAGE_KEY_V1 / STORAGE_KEY_V2) and caused
+ * last-write-wins data loss: a § 1 profile edit followed by a § 5 setting
+ * change would silently revert the § 1 edit because the § 5 store wrote a
+ * stale snapshot. With ONE store per mode owned by `AngabenPage`, every
+ * setter on this page goes through the same source of truth.
  *
- *   - **compare-mode** → `<InputsPanel>` driven by `useCalculatorState` +
- *     `useScenarioLibrary` + `useSimulationResult` + `useWorkspaceUiState`.
- *   - **combine-mode** → `<CombineDashboardSidebar>` driven by
- *     `usePortfolioState`, plus the `<ContractDecisionMenu>` modal that
- *     `Calculator.tsx` formerly rendered next to the sidebar.
- *
- * The compare-mode branch mounts `useCalculatorState` alongside
- * `AngabenPage`'s `useAngabenState`. Both write to STORAGE_KEY_V1 on edit —
- * mirrors the pre-existing co-existence between `AngabenPage` and the
- * `Calculator` dashboard when the user navigates between routes. The combine
- * branch mounts `usePortfolioState` alongside `useAngabenState`'s ref-based
- * combine writer: each instance update goes through `patchBaseline` (here);
- * each profile / workspace-level assumption update goes through
- * `useAngabenState` (in the parent § 1 – § 4 sections). They share the same
- * `Workspace` shape and the same STORAGE_KEY_V2 envelope; last-effect-wins on
- * the rare overlap of simultaneous edits, consistent with how the two stores
- * behaved when they were on separate routes.
+ *   - **compare-mode** → `<InputsPanel>` driven by the section-owned
+ *     `useScenarioLibrary` + `useSimulationResult` + `useWorkspaceUiState`
+ *     (all read-only against `profile` / `assumptions` from props, or own
+ *     separate storage keys, so no parallel-store risk).
+ *   - **combine-mode** → `<CombineDashboardSidebar>` driven by the
+ *     workspace mutators from the lifted `UseAngabenStateApi`, plus the
+ *     `<ContractDecisionMenu>` modal that `Calculator.tsx` formerly
+ *     rendered next to the sidebar.
  */
 
 interface Props {
-  mode: AngabenStateMode
+  angabenState: UseAngabenStateApi
   navigate?: (target: Route) => void
   /** Section heading + § kicker — provided by the parent so the SECTIONS
    *  array stays the single source of truth for ordering and slug ids. */
@@ -53,7 +47,8 @@ interface Props {
   title: string
 }
 
-export function AngabenProduktSection({ mode, navigate, num, id, title }: Props) {
+export function AngabenProduktSection({ angabenState, navigate, num, id, title }: Props) {
+  const mode = angabenState.mode
   return (
     <section className="angaben-section">
       <div className="angaben-section-head">
@@ -69,9 +64,9 @@ export function AngabenProduktSection({ mode, navigate, num, id, title }: Props)
       </p>
 
       {mode === 'combine' ? (
-        <AngabenProduktCombineBody navigate={navigate} />
+        <AngabenProduktCombineBody angabenState={angabenState} navigate={navigate} />
       ) : (
-        <AngabenProduktCompareBody />
+        <AngabenProduktCompareBody angabenState={angabenState} />
       )}
     </section>
   )
@@ -81,15 +76,20 @@ export function AngabenProduktSection({ mode, navigate, num, id, title }: Props)
 // Compare-mode body — wraps <InputsPanel>.
 // ---------------------------------------------------------------------------
 
-function AngabenProduktCompareBody() {
-  const {
-    profile,
-    setProfile,
-    assumptions,
-    setAssumptions,
-    resetToDefaults,
-    setSyncedMonthlyContribution,
-  } = useCalculatorState()
+function AngabenProduktCompareBody({ angabenState }: { angabenState: UseAngabenStateApi }) {
+  const { profile, setProfile, assumptions, setAssumptions } = angabenState
+  // Compare-mode-only convenience setters. The API field types are
+  // `(...) => void | undefined`; in compare-mode they MUST be defined. We
+  // narrow with a guard so a misconfigured caller (combine-mode body invoking
+  // this compare-mode component by mistake) fails loud rather than silently
+  // dispatching to undefined.
+  const resetToDefaults = angabenState.resetToDefaults
+  const setSyncedMonthlyContribution = angabenState.setSyncedMonthlyContribution
+  if (!resetToDefaults || !setSyncedMonthlyContribution) {
+    throw new Error(
+      'AngabenProduktCompareBody requires compare-mode useAngabenState API',
+    )
+  }
   const ui = useWorkspaceUiState()
   const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
@@ -136,27 +136,66 @@ function AngabenProduktCompareBody() {
 // Combine-mode body — wraps <CombineDashboardSidebar> + decision menu modal.
 // ---------------------------------------------------------------------------
 
-function AngabenProduktCombineBody({ navigate }: { navigate?: (target: Route) => void }) {
-  const portfolioState = usePortfolioState()
+function AngabenProduktCombineBody({
+  angabenState,
+  navigate,
+}: {
+  angabenState: UseAngabenStateApi
+  navigate?: (target: Route) => void
+}) {
+  // Narrow the combine-mode-only slice. As with the compare-mode body, every
+  // combine-mode field on `UseAngabenStateApi` is `T | undefined`. Throwing
+  // here keeps the body component's downstream code free of repeated null
+  // guards while still failing loud if the parent miswires modes.
+  const {
+    workspace,
+    baseline,
+    whatIfs,
+    patchBaseline,
+    addInstance,
+    removeInstance,
+    rebaseWhatIf,
+    freezeWhatIf,
+    archiveAndRestart,
+    addWhatIf,
+  } = angabenState
+  if (
+    !workspace ||
+    !baseline ||
+    !whatIfs ||
+    !patchBaseline ||
+    !addInstance ||
+    !removeInstance ||
+    !rebaseWhatIf ||
+    !freezeWhatIf ||
+    !archiveAndRestart ||
+    !addWhatIf
+  ) {
+    throw new Error(
+      'AngabenProduktCombineBody requires combine-mode useAngabenState API',
+    )
+  }
   const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
 
   return (
     <>
       <CombineDashboardSidebar
-        baseline={portfolioState.baseline}
-        assumptions={portfolioState.baseline.assumptions}
-        whatIfs={portfolioState.whatIfs}
+        baseline={baseline}
+        assumptions={baseline.assumptions}
+        whatIfs={whatIfs}
         onPatchAssumptions={(patch) =>
-          portfolioState.patchBaseline({
-            assumptions: { ...portfolioState.baseline.assumptions, ...patch },
+          patchBaseline({
+            assumptions: { ...baseline.assumptions, ...patch },
           })
         }
-        onPatchBaseline={portfolioState.patchBaseline}
-        addInstance={portfolioState.addInstance}
-        removeInstance={portfolioState.removeInstance}
-        onRebaseWhatIf={portfolioState.rebaseWhatIf}
-        onFreezeWhatIf={portfolioState.freezeWhatIf}
-        onArchiveAndRestart={() => portfolioState.archiveAndRestart()}
+        onPatchBaseline={patchBaseline}
+        addInstance={addInstance}
+        removeInstance={removeInstance}
+        onRebaseWhatIf={rebaseWhatIf}
+        onFreezeWhatIf={freezeWhatIf}
+        onArchiveAndRestart={() => {
+          archiveAndRestart()
+        }}
         onOpenDecisionMenu={setActiveMenuInstanceId}
         onEditInstance={(_productId, instanceId) => {
           if (navigate) navigate(ROUTES.vertrag(instanceId))
@@ -164,11 +203,11 @@ function AngabenProduktCombineBody({ navigate }: { navigate?: (target: Route) =>
       />
       {activeMenuInstanceId !== null && (
         <ContractDecisionMenu
-          workspace={portfolioState.workspace}
+          workspace={workspace}
           instanceId={activeMenuInstanceId}
           onClose={() => setActiveMenuInstanceId(null)}
-          onCreatePlans={(whatIfs) => {
-            whatIfs.forEach((wi) => portfolioState.addWhatIf(wi))
+          onCreatePlans={(whatIfsList) => {
+            whatIfsList.forEach((wi) => addWhatIf(wi))
             setActiveMenuInstanceId(null)
           }}
         />

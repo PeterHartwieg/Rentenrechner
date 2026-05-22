@@ -262,10 +262,12 @@ export function appViewFromUrl(search: string): AppView | null {
   return null
 }
 
-export function useRoute(): {
+export interface UseRouteResult {
   route: Route
   navigate: (target: Route, search?: string, hash?: string) => void
-} {
+}
+
+export function useRoute(): UseRouteResult {
   const [route, setRoute] = useState<Route>(() => {
     if (typeof window === 'undefined') return ROUTES.home
     return pathToRoute(window.location.pathname)
