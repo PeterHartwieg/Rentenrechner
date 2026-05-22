@@ -5,7 +5,7 @@
 .payout-phase-heading {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--rw-ink);
   margin: 0 0 8px;
 }
 
@@ -29,17 +29,17 @@
   gap: 8px;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #344054;
+  color: var(--rw-ink-soft);
 }
 
 .cashflow-selector select {
-  border: 1px solid #c9d7e5;
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   padding: 8px 10px;
   background: #ffffff;
   font: inherit;
   font-weight: 600;
-  color: #172033;
+  color: var(--rw-ink);
 }
 
 .cashflow-panel table {
@@ -48,5 +48,5 @@
 
 tfoot .totals-row td {
   font-weight: 700;
-  border-top: 2px solid #c9d7e5;
+  border-top: 2px solid var(--rw-rule-soft);
 }
