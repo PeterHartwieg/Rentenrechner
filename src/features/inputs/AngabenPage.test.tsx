@@ -1195,22 +1195,13 @@ describe('useAngabenState — no-op setters must not bump lastEditedAt (CodeRabb
 // `simulation.products` contains rows for ALL return scenarios
 // (konservativ + basis + optimistisch), the panel could pick up data from
 // whichever scenario happened to come first in the array — typically
-// `konservativ` — instead of the active scenario. The fix routes through the
-// same `deriveSelectedResults` helper `useDerivedViews` uses, filtering by
-// BOTH `effectiveScenarioId` AND `visibleProducts`. This smoke test confirms
-// the panel mounts and renders the active-scenario product card (proxy for
-// the helper being wired correctly).
+// `konservativ` — instead of the active scenario.
+//
+// The genuine wiring regression test lives in
+// `sections/AngabenProduktSection.test.tsx` — it mocks `useWorkspaceUiState`
+// to a non-default scenario and inspects the `selectedResults` prop handed to
+// `<InputsPanel>`. That file isolates the `vi.mock('./InputsPanel', ...)`
+// substitution from the existing tests in this file that depend on real
+// `<InputsPanel>` rendering (the "Versicherung" label, the "bAV-Brutto pro
+// Monat" NumberField lookup, etc.).
 // ---------------------------------------------------------------------------
-describe('AngabenProduktSection — § 5 binds to the active scenario (Codex R3 P1)', () => {
-  it('compare-mode: § 5 renders without throwing when active scenario is non-default', () => {
-    // Pre-seed the comparison set so `visibleProducts` is non-empty and the
-    // panel actually mounts. A blank slate is sufficient because
-    // `effectiveScenarioId` defaults to 'basis' and the bug was about whichever
-    // scenario shows first vs. the active one — rendering proves the filter
-    // function compiles and resolves an active-scenario slice.
-    const { container } = render(<AngabenPage />)
-    // § 5's InputsPanel renders the comparison picker — its presence proves
-    // the panel mounted with the post-fix `deriveSelectedResults` call site.
-    expect(container.textContent).toContain('Versicherung')
-  })
-})
