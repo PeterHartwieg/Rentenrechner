@@ -15,10 +15,10 @@
   gap: 5px;
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.88);
-  border: 1px solid var(--color-border, #e5e7eb);
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   font-size: 11px;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--rw-ink-faint);
   pointer-events: none;
 }
 

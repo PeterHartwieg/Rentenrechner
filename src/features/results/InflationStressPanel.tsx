@@ -60,7 +60,7 @@ export function InflationStressPanel({
             {INFLATION_OPTIONS.find((o) => o.value === inflationRate)?.label ??
               formatPercent(inflationRate, 1)} Inflation p.a.
           </p>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #6b7280)' }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--rw-ink-faint)' }}>
             Annahme: {formatPercent(scenarioInflationRate, 1)} p.a.
           </p>
         </div>
@@ -76,7 +76,7 @@ export function InflationStressPanel({
               padding: '0.25rem 0.75rem',
               borderRadius: '9999px',
               border: '1px solid currentColor',
-              background: inflationRate === opt.value ? '#1d4ed8' : 'transparent',
+              background: inflationRate === opt.value ? 'var(--rw-accent)' : 'transparent',
               color: inflationRate === opt.value ? '#fff' : 'inherit',
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -129,7 +129,7 @@ export function InflationStressPanel({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #6b7280)', marginTop: '0.5rem' }}>
+      <p style={{ fontSize: '0.75rem', color: 'var(--rw-ink-faint)', marginTop: '0.5rem' }}>
         Durchgezogene Linie = nominal, gestrichelt = real (Kaufkraft in heutigen Preisen ab Alter {retirementAge}).
         Inflationsrate {INFLATION_OPTIONS.find((o) => o.value === inflationRate)?.label} p.a.
       </p>
