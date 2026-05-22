@@ -13,6 +13,7 @@ import { AngabenPersonSection } from './sections/AngabenPersonSection'
 import { AngabenEinkommenSection } from './sections/AngabenEinkommenSection'
 import { AngabenRenteneintrittSection } from './sections/AngabenRenteneintrittSection'
 import { AngabenAnnahmenSection } from './sections/AngabenAnnahmenSection'
+import { AngabenProduktSection } from './sections/AngabenProduktSection'
 
 interface Props {
   navigate?: (target: Route) => void
@@ -31,12 +32,30 @@ interface Section {
 
 // Sections rendered in this order. Section 4 ("Annahmen") folds in the
 // pre-redesign Annahmen tab; the chrome nav drops Annahmen entirely.
+// Section 5 ("Produkt-Eingaben" / "Meine Verträge") folds in the per-product
+// input surfaces that used to live in the workspace `angebot` tab — the
+// workspace tab strip is removed in the same PR. The title is mode-aware
+// (compare → "Produkt-Eingaben", combine → "Meine Verträge"); the SECTIONS
+// entry below carries the compare label and `produktTitleFor(mode)` resolves
+// the active copy at render time so the TOC + section heading stay in sync.
 const SECTIONS: ReadonlyArray<Section> = [
   { id: 'person', n: '§ 1', title: 'Person' },
   { id: 'einkommen', n: '§ 2', title: 'Einkommen' },
   { id: 'renteneintritt', n: '§ 3', title: 'Renteneintritt' },
   { id: 'annahmen', n: '§ 4', title: 'Annahmen' },
+  { id: 'produkt', n: '§ 5', title: 'Produkt-Eingaben' },
 ]
+
+/**
+ * Mode-aware label for the § 5 section. Compare-mode keeps the literal copy
+ * stored in `SECTIONS` (the singleton InputsPanel surfaces "Produkt-Eingaben");
+ * combine-mode swaps it to "Meine Verträge" to match the combine sidebar
+ * surface inside the section body. Used for both the TOC link and the section
+ * heading so the two never drift.
+ */
+function produktTitleFor(mode: 'compare' | 'combine'): string {
+  return mode === 'combine' ? 'Meine Verträge' : 'Produkt-Eingaben'
+}
 
 /**
  * Required return-scenario ids — module-eval-time fail-fast (mirrors
@@ -311,6 +330,10 @@ export function AngabenPage({ navigate }: Props) {
               {SECTIONS.map((section, i) => {
                 const isActive =
                   activeAnchor === section.id || (activeAnchor === null && i === 0)
+                // § 5 swaps label in combine mode so the TOC entry and the
+                // section heading inside the body always agree.
+                const label =
+                  section.id === 'produkt' ? produktTitleFor(mode) : section.title
                 return (
                   <li
                     key={section.id}
@@ -326,7 +349,7 @@ export function AngabenPage({ navigate }: Props) {
                       aria-current={isActive ? 'location' : undefined}
                     >
                       <span className="angaben-toc-num">{section.n}</span>
-                      {section.title}
+                      {label}
                     </a>
                   </li>
                 )
@@ -392,6 +415,14 @@ export function AngabenPage({ navigate }: Props) {
               num={SECTIONS[3].n}
               id={SECTIONS[3].id}
               title={SECTIONS[3].title}
+            />
+
+            <AngabenProduktSection
+              mode={mode}
+              navigate={navigate}
+              num={SECTIONS[4].n}
+              id={SECTIONS[4].id}
+              title={produktTitleFor(mode)}
             />
           </article>
 

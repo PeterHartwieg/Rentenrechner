@@ -12,9 +12,6 @@
 // component receives the choice via props and applies it on mount.
 
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart3, FileSpreadsheet, Home, Pencil } from 'lucide-react'
-import { WorkspaceTabs } from './ui/chrome/WorkspaceTabs'
-import type { WorkspaceTabDef } from './ui/chrome/WorkspaceTabs'
 // PR 6: `MeinPlanSidebar` removed from the combine-mode render path. PR 9:
 // the per-pane Vergleich sidebar + its pane registry are likewise gone — the
 // compare-mode surface is now the linear Sober D `VergleichPage`.
@@ -25,18 +22,13 @@ import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
 import { de2026Rules } from './rules/de2026'
 import { useCalculatorState } from './app/useCalculatorState'
-import { useScenarioLibrary } from './app/useScenarioLibrary'
 import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
 import type { WorkspaceUiState } from './app/useWorkspaceUiState'
-import { useWorkspace } from './app/useWorkspace'
-import { WORKSPACE_VIEWS } from './app/useWorkspace'
-import type { WorkspaceView } from './app/useWorkspace'
 import { usePortfolioState } from './app/portfolioState'
 import { ROUTES } from './app/useRoute'
 import type { Route } from './app/useRoute'
 import { PRODUCT_MANIFEST } from './app/productPresentation'
-import { InputsPanel } from './features/inputs/InputsPanel'
 import { SensitivityPanel } from './features/results/SensitivityPanel'
 import { runSensitivity } from './features/results/sensitivity'
 import { FairnessPanel } from './features/results/FairnessPanel'
@@ -55,10 +47,8 @@ import { EmptyComparison } from './features/workspace/EmptyComparison'
 import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { InventoryWizard } from './features/inventory/InventoryWizard'
-import { CombineDashboardSidebar } from './features/inventory/CombineDashboardSidebar'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
-import { ContractDecisionMenu } from './features/dashboard/ContractDecisionMenu'
 import { buildWhatIfFromCandidate } from './app/recommender'
 import { LegalFooter } from './features/legal/LegalFooter'
 import { ErrorStatePanel } from './ui/chrome/ErrorStatePanel'
@@ -76,34 +66,20 @@ const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.col
 //
 // PR 9: the compare-mode `vergleichPane` switcher + `VERGLEICH_STUB_PANES`
 // set are likewise gone. The compare-mode surface is now the linear Sober D
-// `VergleichPage` (see `src/features/vergleich/VergleichPage.tsx`).
+// `VergleichPage`.
+//
+// Workspace-tabs collapse (this PR): the per-workspace nav strip
+// (`Eingaben/Vergleich/Details & Export` and the combine-mode swap) is gone.
+// Inputs (compare + combine) moved to `/eingaben` § 5 via
+// `AngabenProduktSection`. Vergleich and Details & Export now render as one
+// linear surface here, scrolled via the chrome nav's existing routing.
 
-interface ShellTabDef {
-  id: WorkspaceView
-  compareLabel: string
-  combineLabel: string
-  icon: typeof BarChart3
-}
-
-const SHELL_TABS: readonly ShellTabDef[] = [
-  { id: 'angebot', compareLabel: 'Eingaben', combineLabel: 'Meine Verträge', icon: Pencil },
-  { id: 'vergleich', compareLabel: 'Vergleich', combineLabel: 'Übersicht', icon: BarChart3 },
-  { id: 'details', compareLabel: 'Details & Export', combineLabel: 'Details & Export', icon: FileSpreadsheet },
-] as const
-
-/**
- * Map the shared `SHELL_TABS` definition to the mode-aware label set
- * consumed by the Sober D `<WorkspaceTabs>` segmented control. The
- * combine-mode labels swap "Eingaben → Meine Verträge" and "Vergleich →
- * Übersicht"; the "Details & Export" leg is identical across modes.
- */
-function buildWorkspaceTabs(combineMode: boolean): ReadonlyArray<WorkspaceTabDef<WorkspaceView>> {
-  return SHELL_TABS.map((tab) => ({
-    id: tab.id,
-    label: combineMode ? tab.combineLabel : tab.compareLabel,
-    icon: tab.icon,
-  }))
-}
+// Workspace-context value pushed into the QA-feedback ref. The legacy
+// `activeView` field tracked the now-removed workspace tab; passing a stable
+// `'vergleich'` keeps QA reports populated without claiming a tab still
+// exists. Defined as a module constant so the `useEffect` below sees a stable
+// reference and never re-fires.
+const QA_WORKSPACE_CONTEXT = { activeView: 'vergleich' } as const
 
 interface CalculatorProps {
   navigate: (target: Route) => void
@@ -117,13 +93,6 @@ interface CalculatorProps {
   pendingChoice?: LandingChoice | null
   onPendingChoiceConsumed?: () => void
   /**
-   * Called when the user clicks the topbar "Startseite" button. The parent
-   * is expected to flip back to the landing view (which unmounts this
-   * component). In-memory navigation state is dropped intentionally;
-   * localStorage is preserved so a returning user keeps their data.
-   */
-  onGoHome: () => void
-  /**
    * Workspace UI toggles owned by `App` so `selectedScenarioId` survives SPA
    * navigation to `/vergleich/details` (PR 290 Codex P1 fix). When the user
    * picks a non-basis scenario on `VergleichPage`, the drill-in receives the
@@ -132,13 +101,9 @@ interface CalculatorProps {
   workspaceUi: WorkspaceUiState
 }
 
-function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome, workspaceUi: ui }: CalculatorProps) {
+function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspaceUi: ui }: CalculatorProps) {
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
   const [showLueckeModal, setShowLueckeModal] = useState(false)
-  const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
-  // Issue 23: product tab to pre-select when navigating from a ProductEditCard
-  // default-state notice to the InputsPanel ("Einstellungen anpassen").
-  const [requestedInputsTab, setRequestedInputsTab] = useState<ProductId | null>(null)
   // PR 6: combine-mode Mein-Plan pane switcher removed — the Sober D
   // `MeinPlanPage` renders all sections inline. PR 9: compare-mode Vergleich
   // pane switcher likewise gone — `VergleichPage` is now a single linear
@@ -149,37 +114,19 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     setProfile,
     assumptions,
     setAssumptions,
-    resetToDefaults,
-    setSyncedMonthlyContribution,
     invalidLink,
     dismissInvalidLink,
   } = useCalculatorState()
   const portfolioState = usePortfolioState()
-  const workspace = useWorkspace()
 
-  // Issue #6: read `?view=<WorkspaceView>` query param once on mount and
-  // override `activeView`. The override fires after useWorkspace has
-  // initialised from localStorage so the stored value does not win.
-  // `history.replaceState` removes the param so a refresh sees the
-  // truly-saved state. Use the transient setter so the override does NOT
-  // overwrite the user's previously-saved tab in localStorage.
+  // Workspace-tabs collapse (this PR): the pre-existing `?view=<WorkspaceView>`
+  // deep-link is gone — the tab strip it routed to was removed. Any legacy
+  // share-URL that still carries `?view=…` is silently ignored; the chrome
+  // nav owns route-level navigation, and Inputs live at `/eingaben`.
   //
   // PR 9: the `?pane=<VergleichPaneSlug>` deep-linking is gone — the legacy
   // pane switcher has been collapsed into a single Sober D `VergleichPage`
   // surface, so there is no per-pane URL fragment to honour.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    const viewParam = params.get('view')
-    if (viewParam && (WORKSPACE_VIEWS as readonly string[]).includes(viewParam)) {
-      workspace.setActiveViewTransient(viewParam as WorkspaceView)
-      params.delete('view')
-      const newSearch = params.toString()
-      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '')
-      window.history.replaceState(null, '', newUrl)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentionally empty: run once on mount only
 
   // Issue #13: landing-CTA preselection. App stores the LandingChoice and
   // mounts us; we apply mode + visibleProducts (compare) or open the wizard
@@ -197,7 +144,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
         const seed = [...pendingChoice.visibleProducts]
         setAssumptions((current) => ({ ...current, visibleProducts: seed }))
       }
-      workspace.setActiveView('vergleich')
     } else if (pendingChoice.kind === 'combine') {
       portfolioState.setMode('combine')
       // One-shot initialization from a parent-provided choice. Calling
@@ -214,12 +160,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingChoice])
 
-  // Workspace chrome QA instrumentation — topbar home button and mode badge.
+  // Workspace chrome QA instrumentation — mode badge.
   const { enabled: qaEnabled } = useQaMode()
 
-  // Section-fallback targets for the two main workspace views. The hook gates
-  // the data-qa-* attributes behind QA mode so non-QA sessions render no extra
-  // attributes (PRD US-33 / "inert when disabled").
+  // Section-fallback targets for the two main workspace surfaces. The hook
+  // gates the data-qa-* attributes behind QA mode so non-QA sessions render
+  // no extra attributes (PRD US-33 / "inert when disabled"). The legacy
+  // workspace-tab nav is gone (this PR) but the section ids stay so existing
+  // QA report selectors keep resolving against the inlined surface below.
   const { targetProps: vergleichSectionProps } = useFeedbackTarget({
     id: 'results.section',
     label: 'Vergleich',
@@ -231,23 +179,19 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     precision: 'section',
   })
 
-  // Push the live workspace view + mode into the QA-feedback context ref so
-  // `?qa=1` reports include "Aktive Ansicht" / "Mode" instead of dashes.
-  // No simulation deps; the ref read is cheap and runs only when these change.
+  // Push a stable workspace context into the QA-feedback ref. The pre-collapse
+  // implementation stamped the live tab id; with tabs gone the constant keeps
+  // `?qa=1` reports populated (the field is still read by the report
+  // assembler) without claiming a tab still exists.
   useEffect(() => {
-    setQaWorkspaceContext({ activeView: workspace.activeView })
-  }, [workspace.activeView])
-
-  // Issue #91: reset scroll position to top on every main app view change so
-  // users don't land halfway down an unrelated view (e.g. scrolled deep into
-  // Vergleich charts then tapping Details & Export). `behavior: 'instant'`
-  // avoids animation — the view swap already provides enough visual context.
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' })
-  }, [workspace.activeView])
+    setQaWorkspaceContext(QA_WORKSPACE_CONTEXT)
+  }, [])
 
   const combineSimulation = useCombineSimulation(portfolioState.workspace)
-  const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
+  // Workspace-tabs collapse: `useScenarioLibrary` was wired into the
+  // `InputsPanel` that moved to `/eingaben` § 5; the singleton scenario lib
+  // is now mounted there. The dashboard no longer needs it.
+  //
   // `ui` (WorkspaceUiState) is owned by `App` and threaded in via the
   // `workspaceUi` prop so `selectedScenarioId` survives SPA navigation to
   // `/vergleich/details` (PR 290 Codex P1).
@@ -316,13 +260,12 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
     combineMode: isCombineMode,
     combine: combineExportBundle,
   })
-  const { simulation, monteCarloResult, taxModes } = result
+  const { simulation, monteCarloResult } = result
   const {
     visibleProducts,
     selectedResults,
     cashflowResult,
     effectiveCashflowProductId,
-    insuranceResult,
     cashflowAnnualTaxSvSavings,
     rowAfterTaxBalance,
     linkCopied,
@@ -400,6 +343,12 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
   // GRV-contribution timeline. The legacy `compareGrvContributionTimeline`
   // memo is therefore dropped.
 
+  // Workspace-tabs collapse (this PR): the page body renders as a single
+  // linear surface — the Vergleich/Mein-Plan headline view followed by the
+  // Details & Export section. Inputs (compare) and the per-contract sidebar
+  // (combine) moved to `/eingaben` § 5; the old `angebot` tab + workspace
+  // tab strip are gone, along with the per-tab scroll-on-change effect
+  // (chrome nav's `navigate()` already scrolls).
   const vergleichView = (
     <section
       className="workspace-view workspace-view--vergleich"
@@ -473,7 +422,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
           }
           selectedScenarioId={result.effectiveScenarioId}
           onSelectScenario={ui.setSelectedScenarioId}
-          onOpenAngebot={() => workspace.setActiveView('angebot')}
+          onOpenAngebot={() => navigate(ROUTES.eingaben)}
           navigate={navigate}
         />
       )}
@@ -482,10 +431,11 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
 
   const detailsView = (
     <section
+      id="details"
       className="workspace-view workspace-view--details"
       {...detailsSectionProps}
     >
-      {toolbar}
+      {/* No second toolbar — the linear layout already shows it above. */}
 
       {/* Combine-mode (Group G issue 11): the singleton compare detail panels
           (sensitivity, fairness, comparison table tied to visibleProducts) do
@@ -581,77 +531,12 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
               />
             </>
           ) : (
-            <EmptyComparison onOpenAngebot={() => workspace.setActiveView('angebot')} />
+            <EmptyComparison onOpenAngebot={() => navigate(ROUTES.eingaben)} />
           )}
         </>
       )}
     </section>
   )
-
-  // Approach B (per orchestrator brief): branch in App.tsx so combine-mode renders
-  // CombineDashboardSidebar (reads workspace state via usePortfolioState) while
-  // compare-mode keeps the existing InputsPanel (reads singleton useCalculatorState).
-  // useCalculatorState itself is NOT modified — it keeps driving compare-mode.
-  const angebotView =
-    portfolioState.mode === 'combine' ? (
-      <section className="workspace-view workspace-view--angebot">
-        <CombineDashboardSidebar
-          baseline={portfolioState.baseline}
-          assumptions={portfolioState.baseline.assumptions}
-          whatIfs={portfolioState.whatIfs}
-          onPatchAssumptions={(patch) =>
-            portfolioState.patchBaseline({ assumptions: { ...portfolioState.baseline.assumptions, ...patch } })
-          }
-          onPatchBaseline={portfolioState.patchBaseline}
-          addInstance={portfolioState.addInstance}
-          removeInstance={portfolioState.removeInstance}
-          onRebaseWhatIf={portfolioState.rebaseWhatIf}
-          onFreezeWhatIf={portfolioState.freezeWhatIf}
-          onArchiveAndRestart={() => portfolioState.archiveAndRestart()}
-          onOpenDecisionMenu={setActiveMenuInstanceId}
-          onEditInstance={(_productId, instanceId) => navigate(ROUTES.vertrag(instanceId))}
-        />
-        {portfolioState.mode === 'combine' && activeMenuInstanceId !== null && (
-          <ContractDecisionMenu
-            workspace={portfolioState.workspace}
-            instanceId={activeMenuInstanceId}
-            onClose={() => setActiveMenuInstanceId(null)}
-            onCreatePlans={(whatIfs) => {
-              whatIfs.forEach((wi) => portfolioState.addWhatIf(wi))
-              setActiveMenuInstanceId(null)
-            }}
-          />
-        )}
-      </section>
-    ) : (
-      <section className="workspace-view workspace-view--angebot">
-        <InputsPanel
-          profile={profile}
-          onProfileChange={setProfile}
-          assumptions={assumptions}
-          onAssumptionsChange={setAssumptions}
-          onSyncMonthlyContribution={setSyncedMonthlyContribution}
-          resetToDefaults={resetToDefaults}
-          simulation={simulation}
-          selectedResults={selectedResults}
-          scenarioLib={scenarioLib}
-          kvdrMember={taxModes.kvdrMember}
-          bavLumpSumTaxMode={taxModes.bavLumpSumTaxMode}
-          insuranceTaxMode={taxModes.insuranceTaxMode}
-          insuranceResult={insuranceResult}
-          tarifgebunden={ui.tarifgebunden}
-          onTarifgebundenChange={ui.setTarifgebunden}
-          requestActiveTab={requestedInputsTab}
-          onActiveTabConsumed={() => setRequestedInputsTab(null)}
-        />
-      </section>
-    )
-
-  const viewsByTab = {
-    vergleich: vergleichView,
-    details: detailsView,
-    angebot: angebotView,
-  }
 
   const topbarCopy = isCombineMode
     ? {
@@ -719,19 +604,22 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
         `<header class="topbar">` chrome is gone. The outer `AppShell`
         from `App.tsx` carries the brand chrome (PR 1); below that the
         dashboard renders an inline Sober D meta strip (mode-aware kicker
-        + title + optional Mein-Plan badge + Home button), the
-        token-driven `WorkspaceTabs` segmented control, and the per-view
-        body. PrintReport + LegalFooter remain siblings of the body so
-        the printable A4 report stays available regardless of the active
-        tab.
+        + title + optional Mein-Plan badge). PrintReport + LegalFooter
+        remain siblings of the body so the printable A4 report stays
+        available regardless of route.
+
+        Workspace-tabs collapse (this PR): the `WorkspaceTabs` segmented
+        control between the meta strip and the body is removed. The chrome
+        nav (AppHeader) already exposes Startseite as its first tab, so the
+        duplicate "Startseite" button on the meta strip is gone too.
       */}
       <div className="rw-dashboard-meta">
         <div className="rw-dashboard-meta__copy">
           <p className="rw-dashboard-meta__kicker">{topbarCopy.kicker}</p>
           <h1 className="rw-dashboard-meta__title">{topbarCopy.title}</h1>
         </div>
-        <div className="rw-dashboard-meta__actions">
-          {isCombineMode && (
+        {isCombineMode && (
+          <div className="rw-dashboard-meta__actions">
             <span
               className="rw-dashboard-meta__badge"
               aria-label="Mein Plan aktiv"
@@ -739,18 +627,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
             >
               Mein Plan
             </span>
-          )}
-          <button
-            type="button"
-            className="rw-dashboard-meta__home-btn"
-            onClick={onGoHome}
-            title="Zur Startseite"
-            {...qaTargetAttrs(qaEnabled, { id: 'workspace.chrome.homeButton', label: 'Startseite / Moduswechsel' })}
-          >
-            <Home size={16} aria-hidden="true" />
-            Startseite
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {invalidLink && (
@@ -762,14 +640,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, onGoHome
         />
       )}
 
-      <WorkspaceTabs
-        tabs={buildWorkspaceTabs(isCombineMode)}
-        activeId={workspace.activeView}
-        onSelect={workspace.setActiveView}
-      />
-
       <section className="rw-dashboard-body">
-        {viewsByTab[workspace.activeView as keyof typeof viewsByTab] ?? vergleichView}
+        {vergleichView}
+        {detailsView}
       </section>
 
       <PrintReport

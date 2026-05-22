@@ -14,7 +14,7 @@
  *   - `useCalculatorState`: compare-mode keeps the singleton API.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Scenario, WhatIfScenario, Workspace } from '../domain/workspace'
 import type {
   BavInstance,
@@ -243,7 +243,25 @@ export interface UsePortfolioStateApi {
 export function usePortfolioState(): UsePortfolioStateApi {
   const [workspace, setWorkspace] = useState<Workspace>(() => loadInitialWorkspace())
 
+  // Skip the first-effect-run no-op write. On the mount tick `workspace`
+  // equals the value we just lazy-initialised from storage, so writing it
+  // back is purely a no-op — but the v2 load pipeline (`parseWorkspaceJson`
+  // → `mergeDeep` against `defaultWorkspace`) only iterates keys present on
+  // the *default* shape, so any saved field that is not enumerated in the
+  // default (today: `baseline.lastEditedAt`, used by `BaselineStaleBadge` to
+  // decide whether what-ifs are stale) gets dropped on the round trip and
+  // re-persisted as `undefined`. That falsely invalidates every what-if as
+  // soon as a `/eingaben` mount + the dashboard share the same workspace
+  // (`AngabenProduktSection` + `Calculator`). Mirrors the same first-mount
+  // skip in `useAngabenState`; pinned by `AngabenPage.test.tsx`
+  // "does NOT bump baseline.lastEditedAt on mount".
+  const isFirstEffectRun = useRef(true)
+
   useEffect(() => {
+    if (isFirstEffectRun.current) {
+      isFirstEffectRun.current = false
+      return
+    }
     saveWorkspace(workspace)
   }, [workspace])
 

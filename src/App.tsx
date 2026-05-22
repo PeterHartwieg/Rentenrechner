@@ -172,10 +172,10 @@ function App() {
     setCalculatorView(choice.kind)
   }
 
-  function handleGoHome() {
-    setCalculatorView('landing')
-    setPendingChoice(null)
-  }
+  // Workspace-tabs collapse: the legacy `rw-dashboard-meta__home-btn`
+  // duplicated the chrome nav's Startseite tab and has been removed.
+  // The only remaining caller for `handleGoHome` was that button; the chrome
+  // nav owns "go back to landing" via the route swap to `/`.
 
   let body: ReactNode
   // Dispatch on the tagged-union variant. The `route` value is a stable
@@ -269,7 +269,6 @@ function App() {
             navigate={navigate}
             pendingChoice={pendingChoice}
             onPendingChoiceConsumed={() => setPendingChoice(null)}
-            onGoHome={handleGoHome}
             workspaceUi={workspaceUi}
           />
         )
