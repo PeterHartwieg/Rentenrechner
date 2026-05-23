@@ -303,9 +303,22 @@ function App() {
   // DisclaimerBanner above the StatusBar; individual pages must NOT render
   // their own DisclaimerBanner (PrintReport.tsx remains the only other
   // render path, for the printed report).
+  // Pass the resolved `calculatorView` down to the chrome on every route so
+  // the AppHeader / MobileNav label of the dashboard tab matches the user's
+  // saved mode — a combine-mode user on `/kapital` sees "Mein Plan", not
+  // "Vergleich". `calculatorView` stays in sync with saved mode + URL
+  // overrides via the `rentenwiki:navigated` useEffect above, so it is
+  // valid for non-`/` routes too. The active-tab resolver only consults
+  // `appView` for `/` (drill-ins return `'compare'` from `routeToNavId`
+  // unconditionally), so passing it everywhere is safe.
   return (
     <QaFeedbackProvider>
-      <AppShell route={route} navigate={navigate} editorial={isEditorial}>
+      <AppShell
+        route={route}
+        navigate={navigate}
+        editorial={isEditorial}
+        appView={calculatorView}
+      >
         <Suspense fallback={null}>{body}</Suspense>
       </AppShell>
       <QaModeIndicator />

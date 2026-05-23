@@ -5,7 +5,7 @@ import { StatusBar } from './StatusBar'
 import { AppHeader } from './AppHeader'
 import { MobileNav } from './MobileNav'
 import { useViewport } from './useViewport'
-import type { Route } from '../../app/useRoute'
+import type { AppView, Route } from '../../app/useRoute'
 
 interface AppShellProps {
   route: Route
@@ -13,6 +13,13 @@ interface AppShellProps {
   kicker?: string
   title?: string
   editorial?: boolean
+  /**
+   * Resolved in-app view for route `/`. Threaded down to AppHeader and
+   * MobileNav so the Vergleich tab swaps to "Mein Plan" in combine mode
+   * and the active-tab resolver can disambiguate dashboard vs landing on
+   * `/`. Optional for back-compat with tests / SSR.
+   */
+  appView?: AppView | null
   children: ReactNode
 }
 
@@ -31,7 +38,15 @@ interface AppShellProps {
  *     footer per page.
  *   - MobileNav (phone only — bottom tab bar with safe-area inset).
  */
-export function AppShell({ route, navigate, kicker, title, editorial, children }: AppShellProps) {
+export function AppShell({
+  route,
+  navigate,
+  kicker,
+  title,
+  editorial,
+  appView,
+  children,
+}: AppShellProps) {
   const viewport = useViewport()
   const isPhone = viewport === 'phone'
 
@@ -46,10 +61,11 @@ export function AppShell({ route, navigate, kicker, title, editorial, children }
         kicker={kicker}
         title={title}
         editorial={editorial}
+        appView={appView}
         navigate={navigate}
       />
       <main className="rw-app-shell__body">{children}</main>
-      {isPhone && <MobileNav route={route} navigate={navigate} />}
+      {isPhone && <MobileNav route={route} navigate={navigate} appView={appView} />}
     </div>
   )
 }
