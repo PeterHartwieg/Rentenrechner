@@ -541,9 +541,24 @@
   overflow-x: auto;
 }
 
+/* The 920px min-width is intentional for wide compare/breakdown tables and was
+   the source of the universal `table { min-width: 920px }` rule that used to
+   live here. Restricting it to `.table-scroll table` keeps the legacy wide
+   layout while letting Sober D tables (Vergleich, Kapital Wendepunkte,
+   Vertrag, Mein Plan Sensitivität) size to their container without forcing
+   horizontal page scroll outside dedicated scroll wrappers.
+
+   `:where(.table-scroll)` zeroes out the scope's contribution to specificity
+   so this rule does not outrank per-table mobile resets like
+   `.mc-table { min-width: 0 }` inside `@media (max-width: 480px)` — without
+   `:where()`, the (0,1,1) selector would beat the (0,1,0) reset and the
+   phone-cardified tables would stay 920px wide. */
+:where(.table-scroll) table {
+  min-width: 920px;
+}
+
 table {
   width: 100%;
-  min-width: 920px;
   border-collapse: collapse;
   font-size: 0.92rem;
 }
@@ -551,7 +566,7 @@ table {
 th,
 td {
   padding: 12px 10px;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--rw-rule-soft);
   text-align: right;
   white-space: nowrap;
 }
@@ -564,14 +579,14 @@ td:nth-child(2) {
 }
 
 th {
-  color: #667085;
+  color: var(--rw-ink-faint);
   font-size: 0.78rem;
   text-transform: uppercase;
 }
 
 .table-note {
   margin: 12px 0 0;
-  color: #667085;
+  color: var(--rw-ink-faint);
   font-size: 0.86rem;
 }
 

@@ -1,19 +1,22 @@
-/* KapitalPage — Sober D treatment shared with MeinPlanPage / VertragDetailPage. */
+/* KapitalPage — Sober D treatment shared with MeinPlanPage / VertragDetailPage.
+   Local `--kapital-*` names are kept for in-file readability but resolve to the
+   canonical `--rw-*` tokens defined in src/App.css so this surface cannot drift
+   from MeinPlan, Vertrag, and the rest of the chrome. */
 
 .kapital-shell {
-  --kapital-ink: #161616;
-  --kapital-ink-soft: #4a4a4a;
-  --kapital-ink-faint: #8c8c8c;
-  --kapital-rule: #1f1f1f;
-  --kapital-rule-soft: #d8d4c8;
-  --kapital-paper: #f6f4ef;
-  --kapital-accent: #7e2d2d;
+  --kapital-ink: var(--rw-ink);
+  --kapital-ink-soft: var(--rw-ink-soft);
+  --kapital-ink-faint: var(--rw-ink-faint);
+  --kapital-rule: var(--rw-rule);
+  --kapital-rule-soft: var(--rw-rule-soft);
+  --kapital-paper: var(--rw-bg-paper-soft);
+  --kapital-accent: var(--rw-accent);
 
-  background: #ffffff;
+  background: var(--rw-bg-paper);
   color: var(--kapital-ink);
   padding: 28px 24px 64px;
   min-height: 100%;
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: var(--rw-font-sans);
 }
 
 .kapital-main {
@@ -120,7 +123,7 @@
 
 .kapital-chart-wrap {
   border: 1px solid var(--kapital-rule);
-  background: #ffffff;
+  background: var(--rw-bg-paper);
   padding: 8px 0 0;
 }
 

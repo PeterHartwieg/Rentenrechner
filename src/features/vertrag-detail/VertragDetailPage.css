@@ -204,7 +204,7 @@
 }
 
 .vertrag-scenario-row--current {
-  background: var(--rw-bg-soft, #faf7f1);
+  background: var(--rw-bg-cream);
 }
 
 .vertrag-scenario-row--current .vertrag-scenario-label {
@@ -282,7 +282,7 @@
   gap: 12px;
   padding: 14px 16px;
   border: 1px solid var(--rw-rule);
-  background: var(--rw-bg-soft, #faf7f1);
+  background: var(--rw-bg-cream);
   font-size: 0.84rem;
 }
 

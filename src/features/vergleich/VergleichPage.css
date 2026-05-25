@@ -1,19 +1,22 @@
-/* VergleichPage — Sober D treatment shared with MeinPlanPage / VertragDetailPage / KapitalPage. */
+/* VergleichPage — Sober D treatment shared with MeinPlanPage / VertragDetailPage / KapitalPage.
+   Local `--vergleich-*` names are kept for in-file readability but resolve to
+   the canonical `--rw-*` tokens defined in src/App.css so this surface cannot
+   drift from MeinPlan, Vertrag, Kapital, and the rest of the chrome. */
 
 .vergleich-shell {
-  --vergleich-ink: #161616;
-  --vergleich-ink-soft: #4a4a4a;
-  --vergleich-ink-faint: #8c8c8c;
-  --vergleich-rule: #1f1f1f;
-  --vergleich-rule-soft: #d8d4c8;
-  --vergleich-paper: #f6f4ef;
-  --vergleich-accent: #7e2d2d;
+  --vergleich-ink: var(--rw-ink);
+  --vergleich-ink-soft: var(--rw-ink-soft);
+  --vergleich-ink-faint: var(--rw-ink-faint);
+  --vergleich-rule: var(--rw-rule);
+  --vergleich-rule-soft: var(--rw-rule-soft);
+  --vergleich-paper: var(--rw-bg-paper-soft);
+  --vergleich-accent: var(--rw-accent);
 
-  background: #ffffff;
+  background: var(--rw-bg-paper);
   color: var(--vergleich-ink);
   padding: 28px 24px 64px;
   min-height: 100%;
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-family: var(--rw-font-sans);
 }
 
 .vergleich-main {

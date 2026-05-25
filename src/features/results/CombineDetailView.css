@@ -60,7 +60,7 @@
   font-size: 0.72rem;
   font-weight: 400;
   letter-spacing: 0.3px;
-  color: #ffffff;
+  color: var(--rw-bg-paper);
   white-space: nowrap;
 }
 
@@ -108,7 +108,7 @@
   border-radius: 4px;
   background: var(--rw-bg-paper-soft);
   color: var(--rw-ink);
-  border: 1px solid #e7e2da;
+  border: 1px solid var(--rw-rule-soft);
   font-family: var(--rw-font-mono);
   font-size: 0.72rem;
   font-weight: 400;
