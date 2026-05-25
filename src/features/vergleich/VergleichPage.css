@@ -12,7 +12,7 @@
   --vergleich-paper: var(--rw-bg-paper-soft);
   --vergleich-accent: var(--rw-accent);
 
-  background: var(--rw-bg-paper);
+  background: var(--rw-bg-cream);
   color: var(--vergleich-ink);
   padding: 28px 24px 64px;
   min-height: 100%;

@@ -13,7 +13,13 @@
    --------------------------------------------------------------------- */
 
 .rw-app-shell {
-  background: var(--rw-bg-paper);
+  /* Cream page body is the canonical surface for both editorial (landing,
+     articles) and Sober D (tool) pages — unified per visible-consistency fix.
+     Cards, nav, and floating popovers keep `--rw-bg-paper` (white) so they
+     pop above the cream body. The `--editorial` modifier still flips the
+     ink color to `--rw-ink-editorial`; the background rule on that modifier
+     is now redundant (same value) but harmless. */
+  background: var(--rw-bg-cream);
   color: var(--rw-ink);
   font-family: var(--rw-font-sans);
   min-height: 100vh;
