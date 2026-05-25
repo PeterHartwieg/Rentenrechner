@@ -14,7 +14,7 @@
   flex-direction: column;
   gap: 5px;
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--rw-bg-paper);
   border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   font-size: 11px;

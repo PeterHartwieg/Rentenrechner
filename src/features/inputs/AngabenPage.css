@@ -159,22 +159,6 @@
   max-width: 640px;
 }
 
-.angaben-storage-note {
-  margin: 14px 0 0;
-  padding: 10px 12px;
-  border: 1px solid var(--rw-rule-soft);
-  background: var(--rw-bg-paper-soft);
-  font-family: var(--rw-font-sans);
-  font-size: 0.86rem;
-  line-height: 1.5;
-  color: var(--rw-ink-soft);
-}
-
-.angaben-storage-note strong {
-  color: var(--rw-ink);
-  font-weight: 600;
-}
-
 /* --- Sections -------------------------------------------------------- */
 .angaben-section {
   margin-top: 32px;

@@ -32,7 +32,7 @@
   padding: 7px 14px;
   border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--rw-bg-paper);
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
@@ -57,6 +57,7 @@
   .detail-comparison-table th,
   .detail-comparison-table td,
   .detail-comparison-table tr {
+    min-width: 0;
     display: block;
   }
 

@@ -322,6 +322,7 @@
   .mc-table th,
   .mc-table td,
   .mc-table tr {
+    min-width: 0;
     display: block;
   }
 

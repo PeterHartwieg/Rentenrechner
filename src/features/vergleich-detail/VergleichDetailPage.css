@@ -1,21 +1,24 @@
 /* VergleichDetailPage — Sober D treatment, mirrors VergleichPage chrome.
    Six product breakdown cards laid out 3-wide desktop → 2-wide tablet →
-   1-wide scroll-snap on phone. Pure CSS — no JS carousel. */
+   1-wide scroll-snap on phone. Pure CSS — no JS carousel.
+   Local `--vd-*` names are kept for in-file readability but resolve to the
+   canonical `--rw-*` tokens defined in src/App.css so this surface cannot
+   drift from MeinPlan, Vertrag, Kapital, Vergleich, and the rest of the chrome. */
 
 .vd-shell {
-  --vd-ink: #161616;
-  --vd-ink-soft: #4a4a4a;
-  --vd-ink-faint: #8c8c8c;
-  --vd-rule: #1f1f1f;
-  --vd-rule-soft: #d8d4c8;
-  --vd-paper: #f6f4ef;
-  --vd-accent: #7e2d2d;
+  --vd-ink: var(--rw-ink);
+  --vd-ink-soft: var(--rw-ink-soft);
+  --vd-ink-faint: var(--rw-ink-faint);
+  --vd-rule: var(--rw-rule);
+  --vd-rule-soft: var(--rw-rule-soft);
+  --vd-paper: var(--rw-bg-paper-soft);
+  --vd-accent: var(--rw-accent);
 
-  background: #ffffff;
+  background: var(--rw-bg-paper);
   color: var(--vd-ink);
   padding: 28px 24px 64px;
   min-height: 100%;
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-family: var(--rw-font-sans);
 }
 
 .vd-main {
@@ -110,7 +113,7 @@
   gap: 14px;
   padding: 16px 18px 18px;
   border: 1px solid var(--vd-rule-soft);
-  background: #ffffff;
+  background: var(--rw-bg-paper);
   border-radius: 2px;
   min-width: 0;
   word-break: normal;

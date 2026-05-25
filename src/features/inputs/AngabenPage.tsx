@@ -392,16 +392,6 @@ export function AngabenPage({ navigate, workspaceUi }: Props) {
             <h1 className="angaben-headline">{route.h1}</h1>
             <p className="angaben-summary">{route.summary}</p>
 
-            <div className="angaben-storage-note">
-              Alter, Einkommen, Renteneintrittsalter und Annahmen werden{' '}
-              <strong>lokal in deinem Browser</strong> gespeichert (localStorage) und
-              bei späteren Besuchen wiederhergestellt
-              {mode === 'combine' ? ' (Workspace-Speicher)' : ''}.
-              Familienstand und Bundesland gelten nur für die laufende Sitzung
-              und werden nicht persistiert. Es werden keine Daten an Server
-              übertragen, keine Cookies gesetzt und keine Identifier persistiert.
-            </div>
-
             <AngabenPersonSection
               profile={profile}
               setProfile={setProfile}

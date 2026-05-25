@@ -31,7 +31,7 @@
 }
 
 .lifecycle-chip:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--rw-ink);
   outline-offset: 2px;
 }
 
@@ -43,11 +43,11 @@
   flex-direction: column;
   gap: 5px;
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--rw-bg-paper);
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   font-size: 11px;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--rw-ink-faint);
   pointer-events: none;
 }
 
@@ -86,18 +86,18 @@
   margin-right: 8px;
   border-radius: 50%;
   background: #334155;
-  box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px #94a3b8;
+  box-shadow: 0 0 0 2px var(--rw-bg-paper), 0 0 0 3px var(--rw-rule-soft);
   flex-shrink: 0;
 }
 
 .lifecycle-legend__dot--ring {
-  background: #ffffff;
+  background: var(--rw-bg-paper);
   box-shadow: 0 0 0 2px #334155;
 }
 
 .break-even-tooltip {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--rw-bg-paper);
+  border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 12px;
@@ -106,15 +106,15 @@
 
 .break-even-tooltip__label {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--rw-ink);
   margin-bottom: 6px;
 }
 
 .break-even-tooltip__benchmark {
   margin-bottom: 6px;
   padding-bottom: 6px;
-  border-bottom: 1px solid #e5e7eb;
-  color: #64748b;
+  border-bottom: 1px solid var(--rw-rule-soft);
+  color: var(--rw-ink-faint);
 }
 
 .break-even-tooltip__rows {
@@ -150,7 +150,7 @@
 .break-even-tooltip__value {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: #0f172a;
+  color: var(--rw-ink);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -166,16 +166,16 @@
 
 .lifecycle-crossovers > li {
   padding: 6px 10px;
-  border-left: 3px solid #94a3b8;
-  background: #f8fafc;
+  border-left: 3px solid var(--rw-rule-soft);
+  background: var(--rw-bg-paper-soft);
   border-radius: 4px;
   font-size: 13px;
-  color: #334155;
+  color: var(--rw-ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
 .lifecycle-crossovers__note {
-  color: #94a3b8;
+  color: var(--rw-ink-faint);
   font-size: 12px;
 }
 
