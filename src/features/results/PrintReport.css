@@ -363,23 +363,275 @@
     text-align: center;
   }
 
-  /* ───── PR 11 sections ───────────────────────────────────────────── */
+  /* ───── PR R3 — Compare-mode Vergleich + Vergleich-Detail mirror ─── */
 
-  /* "Wohin geht das Geld" — compare-mode per-product breakdown */
-  .pr-wohin-table {
+  /* "Sechs Wege, fürs Alter zu sparen" — compare-mode Vergleich table */
+  .pr-vergleich-lead {
+    margin: 0 0 6pt;
+    font-size: 9pt;
+    color: var(--rw-ink);
+    line-height: 1.5;
+  }
+
+  .pr-vergleich-lead strong {
+    font-weight: 600;
+    color: var(--rw-ink);
+  }
+
+  .pr-vergleich-table {
     font-size: 8pt;
   }
 
-  .pr-wohin-label {
-    vertical-align: top;
-    background: var(--rw-bg-paper-soft);
-    border-right: 0.5pt solid var(--rw-rule-soft);
+  .pr-vergleich-cell-product {
+    display: flex;
+    flex-direction: column;
+    gap: 1pt;
   }
 
-  .pr-wohin-footer-row td {
-    background: var(--rw-bg-paper-soft);
-    font-style: italic;
+  .pr-vergleich-cell-product__name {
+    font-family: var(--rw-font-sans);
+    font-weight: 500;
+    color: var(--rw-ink);
+  }
+
+  .pr-vergleich-cell-product__short {
+    font-family: var(--rw-font-mono);
+    font-size: 7pt;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--rw-ink-faint);
+  }
+
+  .pr-vergleich-cell-tagline {
     color: var(--rw-ink-soft);
+    font-family: var(--rw-font-sans);
+    font-size: 7.5pt;
+    line-height: 1.45;
+  }
+
+  /* Oxblood accent — Abzüge column only (matches the screen treatment). */
+  .pr-vergleich-cell-abzuege {
+    color: var(--rw-accent-print);
+    font-weight: 500;
+  }
+
+  /* Netto cell stays default ink — bold so the rank reads at a glance. */
+  .pr-vergleich-cell-netto {
+    font-weight: 600;
+    color: var(--rw-ink);
+  }
+
+  /* "§ 1 — Wofür welche Sparform spricht — und wogegen" — pro/contra grid */
+  .pr-procontra-table {
+    font-size: 8pt;
+  }
+
+  .pr-procontra-cell-product {
+    display: flex;
+    flex-direction: column;
+    gap: 1pt;
+  }
+
+  .pr-procontra-cell-product__name {
+    font-family: var(--rw-font-sans);
+    font-weight: 500;
+    color: var(--rw-ink);
+  }
+
+  .pr-procontra-cell-product__short {
+    font-family: var(--rw-font-mono);
+    font-size: 7pt;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--rw-ink-faint);
+  }
+
+  .pr-procontra-cell-pro {
+    color: var(--rw-ink);
+    font-family: var(--rw-font-sans);
+    font-size: 7.5pt;
+    line-height: 1.5;
+  }
+
+  .pr-procontra-cell-contra {
+    color: var(--rw-accent-print);
+    font-family: var(--rw-font-sans);
+    font-size: 7.5pt;
+    line-height: 1.5;
+  }
+
+  /* "Wohin geht das Geld" — compare-mode Vergleich-Detail card mirror.
+   * Six cards laid out 3-wide × 2 rows, mirroring the screen .vd-card-grid.
+   * `break-inside: avoid` per card keeps each atomic across pages. */
+  .pr-wohin-cards-section {
+    margin-bottom: 14pt;
+  }
+
+  .pr-wohin-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8pt;
+    margin-top: 4pt;
+  }
+
+  .pr-wohin-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 0.75pt solid var(--rw-rule-soft);
+    background: var(--rw-bg-paper);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pr-wohin-card__head {
+    display: flex;
+    flex-direction: column;
+    gap: 1pt;
+    border-bottom: 0.5pt solid var(--rw-rule);
+    padding: 4pt 6pt;
+  }
+
+  .pr-wohin-card__short {
+    font-family: var(--rw-font-mono);
+    font-size: 7pt;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--rw-ink-faint);
+  }
+
+  .pr-wohin-card__label {
+    font-family: var(--rw-font-sans);
+    font-size: 9pt;
+    font-weight: 600;
+    color: var(--rw-ink);
+    line-height: 1.2;
+  }
+
+  .pr-wohin-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 6pt;
+    padding: 5pt 6pt;
+    flex: 1;
+  }
+
+  .pr-wohin-card__footer {
+    border-top: 0.5pt solid var(--rw-rule-soft);
+    background: var(--rw-bg-paper-soft);
+    padding: 4pt 6pt;
+    font-family: var(--rw-font-mono);
+    font-size: 7pt;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--rw-ink-soft);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2pt 6pt;
+    align-items: baseline;
+  }
+
+  .pr-wohin-card__footer-key {
+    color: var(--rw-ink-faint);
+  }
+
+  .pr-wohin-card__footer-value {
+    color: var(--rw-ink);
+    font-weight: 600;
+  }
+
+  .pr-wohin-card__footer-note {
+    font-family: var(--rw-font-sans);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 7pt;
+    color: var(--rw-ink-soft);
+    margin: 2pt 0 0;
+    width: 100%;
+    line-height: 1.35;
+  }
+
+  /* DMoneyRow-equivalent inside the card body */
+  .pr-wohin-card-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2pt;
+  }
+
+  .pr-wohin-card-section__heading {
+    font-family: var(--rw-font-mono);
+    font-size: 6.5pt;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--rw-ink-faint);
+  }
+
+  .pr-wohin-card-section__rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pr-wohin-money-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6pt;
+    padding: 1pt 0;
+    font-size: 8pt;
+    line-height: 1.4;
+  }
+
+  .pr-wohin-money-row__label {
+    color: var(--rw-ink);
+    font-family: var(--rw-font-sans);
+    font-weight: 400;
+  }
+
+  .pr-wohin-money-row__label-suffix {
+    color: var(--rw-ink-faint);
+    font-size: 7pt;
+  }
+
+  .pr-wohin-money-row__value {
+    color: var(--rw-ink);
+    font-family: var(--rw-font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    font-weight: 500;
+    font-size: 8pt;
+    white-space: nowrap;
+  }
+
+  /* Modifier — muted (additive summands, deductions, info rows). */
+  .pr-wohin-money-row--muted .pr-wohin-money-row__label,
+  .pr-wohin-money-row--muted .pr-wohin-money-row__value {
+    color: var(--rw-ink-soft);
+  }
+
+  /* Modifier — bold (close rows, "Kapital brutto"). */
+  .pr-wohin-money-row--bold .pr-wohin-money-row__label,
+  .pr-wohin-money-row--bold .pr-wohin-money-row__value {
+    font-weight: 600;
+  }
+
+  .pr-wohin-money-row--bold .pr-wohin-money-row__value {
+    font-size: 9pt;
+  }
+
+  /* Modifier — border-top + extra padding (close rows). */
+  .pr-wohin-money-row--border {
+    border-top: 0.5pt solid var(--rw-rule);
+    margin-top: 2pt;
+    padding-top: 3pt;
+  }
+
+  /* Modifier — oxblood accent value (= Netto-Rente only). */
+  .pr-wohin-money-row--accent .pr-wohin-money-row__value {
+    color: var(--rw-accent-print);
+  }
+
+  /* Kind=info — dimmed value (caller pre-formats). */
+  .pr-wohin-money-row--info .pr-wohin-money-row__value {
+    color: var(--rw-ink-faint);
   }
 
   /* "Methode & Quellen" — short methodology block */
