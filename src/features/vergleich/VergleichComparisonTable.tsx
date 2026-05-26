@@ -10,17 +10,23 @@ interface Props {
 }
 
 /**
- * Vergleich 6-product comparison table (PR 9).
+ * Vergleich 6-product comparison table (R1 rewrite).
  *
- * Desktop / tablet: 6-column table — Sparform | Wie es funktioniert |
- * Kapital mit 67 | Kosten p.a. | Brutto-Rente | Abzüge | Netto/Monat.
- * Phone: vertical product cards with the same fields as label/value pairs
- * (mirrors `KapitalWendepunkteTable` and `MVergleich` from the responsive
- * artboard).
+ * Desktop: 7-column table — Sparform | Wie es funktioniert | Kapital mit N |
+ * Kosten p.a. | Brutto-Rente | Abzüge | Netto pro Monat.
+ * Tablet: same 7 columns minus "Wie es funktioniert".
+ * Phone: vertical product cards with the same six monetary fields (mirrors
+ * `MVergleich` in `responsive-views.jsx`).
  *
- * Neutral: no winner highlight, no sorting by netto, no ranking badges.
- * The bar inside the netto cell is a visual aid only, scaled to the row
- * with the highest net payout in the current set.
+ * Neutral: no winner highlight, no ranking badges, no row tint. The bar inside
+ * the netto cell is a visual aid scaled to the row with the highest net
+ * payout in the current set; the top-sorted row's bar reaches the right edge
+ * as a natural consequence, not a special case. Rows arrive pre-sorted by
+ * net payout desc from the parent page.
+ *
+ * Color guard: oxblood (`var(--rw-accent)`) is applied ONLY to the Abzüge
+ * cell. The Netto value stays in default ink — direction-d treats the table
+ * as a sober register, not a headline figure.
  */
 export function VergleichComparisonTable({ rows, retirementAge }: Props) {
   const viewport = useViewport()
@@ -29,6 +35,9 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
     return null
   }
 
+  // Bar denominator uses the visible max; floor at 1 to keep the bar div
+  // healthy even when every product produces a zero payout (synthetic test
+  // edge case).
   const maxNet = Math.max(1, ...rows.map((r) => r.netMonthlyPayout))
 
   if (viewport === 'phone') {
@@ -51,7 +60,7 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
           <th scope="col" className="vergleich-cell--num">Kosten p. a.</th>
           <th scope="col" className="vergleich-cell--num">Brutto-Rente</th>
           <th scope="col" className="vergleich-cell--num">Abzüge</th>
-          <th scope="col" className="vergleich-cell--num">Netto pro Monat</th>
+          <th scope="col" className="vergleich-cell--num vergleich-col-netto">Netto pro Monat</th>
         </tr>
       </thead>
       <tbody>
@@ -70,7 +79,7 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
             <td className="vergleich-cell--num vergleich-cell--abzuege">
               −{formatCurrency(row.deductionsMonthly, 0)}
             </td>
-            <td className="vergleich-cell--num">
+            <td className="vergleich-cell--num vergleich-col-netto">
               <div className="vergleich-cell-netto">
                 <span className="vergleich-cell-netto__value">{formatCurrency(row.netMonthlyPayout, 0)}</span>
                 <span className="vergleich-cell-netto__bar" aria-hidden="true">
@@ -94,6 +103,12 @@ interface CardProps {
   retirementAge: number
 }
 
+/**
+ * Phone variant: vertical card per product. Matches `MVergleich` in
+ * `responsive-views.jsx` — name + short tag on the left, large mono Netto on
+ * the right, full-width bar below, tagline as a single sentence, no
+ * monetary-grid table columns.
+ */
 function ProductCard({ row, maxNet, retirementAge }: CardProps) {
   return (
     <li className="vergleich-product-card" data-product={row.productId}>
@@ -104,6 +119,9 @@ function ProductCard({ row, maxNet, retirementAge }: CardProps) {
         </div>
         <div>
           <div className="vergleich-product-card__netto">{formatCurrency(row.netMonthlyPayout, 0)}</div>
+          <div className="vergleich-product-card__kosten">
+            Kosten {formatPercent(row.effectiveAnnualCost, 2)}
+          </div>
         </div>
       </div>
       <div className="vergleich-product-card__bar" aria-hidden="true">
@@ -117,10 +135,6 @@ function ProductCard({ row, maxNet, retirementAge }: CardProps) {
         <div>
           <dt>{`Kapital mit ${retirementAge}`}</dt>
           <dd>{formatCurrency(row.capitalAtRetirement, 0)}</dd>
-        </div>
-        <div>
-          <dt>Kosten p. a.</dt>
-          <dd>{formatPercent(row.effectiveAnnualCost, 2)}</dd>
         </div>
         <div>
           <dt>Brutto-Rente</dt>

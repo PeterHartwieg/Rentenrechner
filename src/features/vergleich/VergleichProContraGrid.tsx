@@ -8,14 +8,18 @@ interface Props {
 }
 
 /**
- * Vergleich pro/contra grid (PR 9).
+ * Vergleich pro/contra grid (R1 rewrite).
  *
  * Six narrow cards (PRO / CONTRA pair per product), arranged 3-wide on
- * desktop → 2-wide on tablet → 1-col on phone. Copy lives in
- * `src/content/proContraCopy.ts`; this component is presentation only.
+ * desktop (per Decision A — 3 across × 2 rows), 2-wide on tablet, 1-col on
+ * phone. The grid uses `align-items: stretch` (default for `display: grid`)
+ * so both desktop rows pad to the same height — long contra text on one
+ * card no longer leaves a sibling card looking truncated.
  *
- * Neutral: no winner highlight, no recommendation copy. Mirrors the
- * Sober artboard's pro/contra section (`direction-d.jsx` `dProsCons` block).
+ * Copy lives in `src/content/proContraCopy.ts`; this component is pure
+ * presentation. Neutral: no winner highlight, no "recommended" framing,
+ * CONTRA label rendered in `var(--rw-accent)` so the trade-off side reads
+ * with a deliberate visual weight without crowning a side.
  */
 export function VergleichProContraGrid({ products }: Props) {
   if (products.length === 0) return null

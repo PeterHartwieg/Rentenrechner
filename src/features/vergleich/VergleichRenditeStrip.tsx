@@ -1,5 +1,5 @@
 import type { ReturnScenario } from '../../domain'
-import { formatCurrency, formatPercent } from '../../utils/format'
+import { formatPercent } from '../../utils/format'
 
 interface Props {
   /** Scenario list from the active assumptions. */
@@ -8,63 +8,46 @@ interface Props {
   selectedId: string
   /** Callback when the user picks a scenario chip. */
   onSelect: (id: string) => void
-  /** Monthly net cash committed per scenario, in EUR. */
-  monthlyContribution: number
-  /** Number of full years between the user's current age and the retirement age. */
-  runtimeYears: number
 }
 
 /**
- * Sober D rendite-annahme strip for the Vergleich page (PR 9).
+ * Sober D rendite-annahme chip strip for the Vergleich page (R1 rewrite).
  *
- * Replaces the legacy `ScenarioToolbar` segmented control for the Vergleich
- * surface. The control is intentionally tightened to one row: scenario chips
- * + a short metadata line for Beitrag / Laufzeit. Monte-Carlo configuration
- * has moved to the `/methode` page's Renditeannahmen section (PR 9 plan §4).
+ * Terse rate-only display per `direction-d.jsx` `DirectionDVergleich`: each
+ * chip shows the rate (e.g. "3 %"), the selected chip wraps its rate in
+ * brackets ("[ 5 % ]"), monospace. No visible scenario labels (Konservativ /
+ * Basis / Optimistisch), no inline meta line, no "RENDITE-ANNAHME:" prefix
+ * — the design treats this as a numeric filter, not a labelled control.
  *
  * Button-group semantics (`role="group"` + `aria-pressed`), not tabs — this
- * is a single-select filter chip row, not a tabbed content switcher. The
- * pattern mirrors `KapitalFilterChips`.
+ * is a single-select filter chip row. `aria-label` on each button preserves
+ * accessible name (the scenario label) for screen readers, even though the
+ * visible glyph is just the rate.
  */
 export function VergleichRenditeStrip({
   scenarios,
   selectedId,
   onSelect,
-  monthlyContribution,
-  runtimeYears,
 }: Props) {
   if (scenarios.length === 0) return null
   return (
-    <div className="vergleich-rendite-strip">
-      <div className="vergleich-rendite-strip__row" role="group" aria-label="Rendite-Annahme wählen">
-        <span className="vergleich-rendite-strip__label" aria-hidden="true">RENDITE:</span>
-        {scenarios.map((scenario) => {
-          const isActive = scenario.id === selectedId
-          return (
-            <button
-              key={scenario.id}
-              type="button"
-              aria-pressed={isActive}
-              className={`vergleich-rendite-chip${isActive ? ' vergleich-rendite-chip--active' : ''}`}
-              onClick={() => onSelect(scenario.id)}
-            >
-              {scenario.label}
-              <span className="vergleich-rendite-chip__rate">{formatPercent(scenario.annualReturn, 1)}</span>
-            </button>
-          )
-        })}
-      </div>
-      <div className="vergleich-rendite-strip__meta">
-        BEITRAG: <strong>{formatEuroPerMonth(monthlyContribution)}</strong>
-        {' · '}
-        LAUFZEIT: <strong>{runtimeYears} J.</strong>
-      </div>
+    <div className="vergleich-rendite-strip" role="group" aria-label="Rendite-Annahme wählen">
+      {scenarios.map((scenario) => {
+        const isActive = scenario.id === selectedId
+        const rate = formatPercent(scenario.annualReturn, 0)
+        return (
+          <button
+            key={scenario.id}
+            type="button"
+            aria-pressed={isActive}
+            aria-label={`Rendite-Annahme: ${scenario.label} (${rate})`}
+            className={`vergleich-rendite-chip${isActive ? ' vergleich-rendite-chip--active' : ''}`}
+            onClick={() => onSelect(scenario.id)}
+          >
+            {isActive ? `[ ${rate} ]` : rate}
+          </button>
+        )
+      })}
     </div>
   )
-}
-
-function formatEuroPerMonth(value: number): string {
-  // formatCurrency(value, 0) returns e.g. "1.234 €" — append only the time
-  // suffix so the euro sign appears exactly once.
-  return `${formatCurrency(value, 0)}/Mon.`
 }
