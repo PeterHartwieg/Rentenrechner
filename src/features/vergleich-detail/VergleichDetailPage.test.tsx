@@ -54,7 +54,7 @@ function seedCompareMode(): void {
 }
 
 describe('VergleichDetailPage — compare-mode per-product breakdown surface', () => {
-  it('renders the kicker, H1, and a card grid with one card per visible product', () => {
+  it('renders the kicker, H1, and a card grid with all 6 product cards', () => {
     seedCompareMode()
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
     expect(container.querySelector('.vd-kicker')).not.toBeNull()
@@ -62,9 +62,10 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     const grid = container.querySelector('.vd-card-grid')
     expect(grid).not.toBeNull()
     const cards = container.querySelectorAll('.vd-card')
-    // All six products selected by default → six cards.
-    expect(cards.length).toBeGreaterThan(0)
-    expect(cards.length).toBeLessThanOrEqual(6)
+    // R1 cross-page consistency: /vergleich/details always renders all 6 cards
+    // for logged-in users, regardless of assumptions.visibleProducts selection.
+    // Mirrors the always-6 contract of /vergleich.
+    expect(cards.length).toBe(6)
   })
 
   it('renders three labeled sections inside each card', () => {
@@ -162,20 +163,22 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
 })
 
 // ---------------------------------------------------------------------------
-// R3.3 — demo-mode (no comparison loaded) renders a live default-assumption
-// run. Audit decision Q4 (locked 2026-05-21): "live default-assumption demo
-// run … real comparison built from defaultAssumptions (all primary products
+// R3.3 — demo-mode (no saved state) renders a live default-assumption run.
+// Audit decision Q4 (locked 2026-05-21): "live default-assumption demo run
+// … real comparison built from defaultAssumptions (all primary products
 // visible)". The page seeds ETF + bAV + Versicherung so SEO crawlers and
 // first-time visitors see a populated grid instead of an empty state.
+//
+// R1 cross-page consistency (Codex PR 329 R2): saved-state with empty
+// visibleProducts is no longer demo — it goes to the all-6 path to match
+// /vergleich's always-6 contract. Demo fires only when savedMode === null
+// (no saved state = first-time visitor / SEO prerender).
 // ---------------------------------------------------------------------------
 
 /**
- * Seed compare-mode with `visibleProducts: []` so the page enters the demo
- * branch. The V2 key is the preferred read path (`loadSavedState` reads V2
- * before V1), so we must clear `visibleProducts` on the baseline assumptions
- * inside the workspace. `mergeDeep` in `storage.ts` preserves explicit empty
- * arrays (CLAUDE.md "visibleProducts empty means no comparison"), so the
- * empty array round-trips intact.
+ * Seed compare-mode with `visibleProducts: []`. Under the R1 cross-page
+ * consistency fix, this is the non-demo logged-in-user path (saved state
+ * exists, so isDemo = false). The page forces all 6 products regardless.
  */
 function seedCompareModeWithoutComparison(): void {
   const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
@@ -197,32 +200,41 @@ describe('VergleichDetailPage — demo-mode (R3.3 audit decision Q4)', () => {
     expect(cards.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('renders the demo kicker + ETF + bAV + private Rente cards when saved compare-mode has empty visibleProducts', () => {
+  it('renders all 6 cards (not demo) when saved compare-mode has empty visibleProducts', () => {
+    // R1 cross-page consistency: saved state with empty visibleProducts is now
+    // the all-6 non-demo path — not the demo path. The kicker shows the live
+    // copy ("Vergleich › Wohin geht das Geld"), not "Beispielrechnung", and
+    // all 6 product cards render to match /vergleich.
     seedCompareModeWithoutComparison()
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
-    // Kicker swaps in the "Beispielrechnung" copy so users / crawlers know
-    // the figures below are default-assumption demo numbers, not their own.
+    // Kicker must show the live (non-demo) copy — the user has saved state.
     const kicker = container.querySelector('.vd-kicker')
-    expect(kicker?.textContent ?? '').toContain('Beispielrechnung')
-    // H1 stays identical — the live + demo paths share the same headline so
-    // the page identity is consistent for SEO.
+    expect(kicker?.textContent ?? '').not.toContain('Beispielrechnung')
+    expect(kicker?.textContent ?? '').toContain('Vergleich')
+    // H1 stays identical across demo and live paths.
     expect(container.querySelector('.vd-headline')?.textContent ?? '').toBe('Wohin geht jeder Euro?')
-    // Three primary products → at least one card per product. The actual
-    // count depends on which ProductResult rows the engine emits; PRIMARY
-    // covers ETF + bAV + Versicherung, all of which are renderable.
+    // All 6 products render — the empty visibleProducts is overridden by PRODUCT_IDS.
     const cards = container.querySelectorAll('.vd-card')
-    expect(cards.length).toBeGreaterThanOrEqual(2)
+    expect(cards.length).toBe(6)
   })
 
-  it('demo lead paragraph explains the default-annahmen seed (Sober D voice)', () => {
-    seedCompareModeWithoutComparison()
+  // Regression test (PR 329 R3): a logged-in user with a non-empty subset of
+  // visibleProducts should still see all 6 cards on /vergleich/details,
+  // matching the always-6 contract of /vergleich. This was the inconsistency
+  // flagged by Codex P2.
+  it('renders all 6 cards even when assumptions.visibleProducts is a subset', () => {
+    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+    ws.mode = 'compare'
+    ws.baseline.assumptions.visibleProducts = ['etf', 'bav']
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
-    // The lead copy must communicate "this is a demo with default values"
-    // so visitors understand the figures aren't their own. We check for the
-    // anchor word "Standardannahmen" rather than the full copy to keep the
-    // assertion resilient to copy tweaks.
-    const lead = container.querySelector('.vd-lead')
-    expect(lead?.textContent ?? '').toContain('Standardannahmen')
+    // The detail page must always render 6 cards regardless of the user's
+    // product selection on /eingaben. Cross-page consistency with /vergleich.
+    const cards = container.querySelectorAll('.vd-card')
+    expect(cards.length).toBe(6)
+    // Kicker shows the live (non-demo) copy.
+    const kicker = container.querySelector('.vd-kicker')
+    expect(kicker?.textContent ?? '').not.toContain('Beispielrechnung')
   })
 
   it('demo branch still surfaces the Zurück-zum-Vergleich back-link', () => {
