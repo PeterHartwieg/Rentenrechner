@@ -35,10 +35,10 @@ export interface VergleichDetailRow {
   readonly accent?: boolean
   /**
    * Optional pre-built suffix appended to the label (e.g. `"(1,2 % p.a.)"` for
-   * the `− Kosten p.a.` row). Kept separate from `label` so test fixtures can
-   * assert against a stable base label without depending on the current
-   * Effektivkosten rate; the section component composes label + suffix at the
-   * display boundary.
+   * the `− Kosten` row — the rate is per annum, the value is the lifetime fee
+   * bite). Kept separate from `label` so test fixtures can assert against a
+   * stable base label without depending on the current Effektivkosten rate;
+   * the section component composes label + suffix at the display boundary.
    */
   readonly labelSuffix?: string
 }
@@ -268,18 +268,18 @@ function buildKapitalSection(
 ): VergleichDetailSection {
   // PR R2: collapse the legacy two-row Kosten display (separate `− Kosten
   // gesamt` sub row + `Effektivkosten p. a.` info row) into a single
-  // `− Kosten p.a.` sub row whose label embeds the rate, per the
-  // direction-d design (`DProductBreakdown` / `TBreakdown`). The integrated
-  // euro figure goes into the row value; the percentage rides in the label
-  // suffix (`(1,2 % p.a.)`) so we keep one numeric formatter per row.
+  // `− Kosten` sub row, per the direction-d design (`DProductBreakdown` /
+  // `TBreakdown`). The lifetime fee bite goes into the row value; the
+  // annualised rate rides in the suffix (`(1,2 % p.a.)`) so the label does
+  // not claim the euro figure is itself a per-annum amount.
   const ratePct = formatPercent(result.accumulationRiy, 1)
   return {
     heading: `Mit ${retirementAge}, einmalig`,
     rows: [
       { label: 'Kapital brutto', value: result.capitalAtRetirement, kind: 'add' },
       {
-        label: '− Kosten p.a.',
-        labelSuffix: `(${ratePct})`,
+        label: '− Kosten',
+        labelSuffix: `(${ratePct} p.a.)`,
         value: result.totalFees,
         kind: 'sub',
       },

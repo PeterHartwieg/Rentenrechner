@@ -64,8 +64,8 @@ describe('VergleichDetailCardSection — labeled section block', () => {
           rows: [
             { label: 'Kapital brutto', value: 250_000, kind: 'add' },
             {
-              label: '− Kosten p.a.',
-              labelSuffix: '(1,2 %)',
+              label: '− Kosten',
+              labelSuffix: '(1,2 % p.a.)',
               value: 8_500,
               kind: 'sub',
             },
@@ -75,7 +75,7 @@ describe('VergleichDetailCardSection — labeled section block', () => {
     )
     const suffix = container.querySelector('.vd-money-row__label-suffix')
     expect(suffix).not.toBeNull()
-    expect(suffix!.textContent).toContain('(1,2 %)')
+    expect(suffix!.textContent).toContain('(1,2 % p.a.)')
   })
 
   it('maps `total` row kind to total + border modifiers (close-row chrome)', () => {

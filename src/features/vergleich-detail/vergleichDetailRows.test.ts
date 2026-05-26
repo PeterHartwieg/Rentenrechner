@@ -316,11 +316,13 @@ describe('buildVergleichDetailCardData', () => {
     expect(total.value).toBe(330) // 200 + 30 + 100
   })
 
-  it('§ Mit X surfaces Kapital brutto + collapsed "− Kosten p.a." sub row with rate suffix', () => {
+  it('§ Mit X surfaces Kapital brutto + collapsed "− Kosten" sub row with rate-p.a. suffix', () => {
     // PR R2: the legacy two-row Kosten display (separate `− Kosten gesamt`
     // sub row + `Effektivkosten p. a.` info row) is collapsed into one
-    // `− Kosten p.a.` sub row whose label suffix carries the rate. This
-    // matches `direction-d-pages.jsx` `DProductBreakdown` Section 2.
+    // `− Kosten` sub row whose labelSuffix carries the annualised rate
+    // (`(0,9 % p.a.)`). The euro value is the lifetime fee bite, not a
+    // per-annum amount, so "p.a." must not appear in the base label.
+    // Matches `direction-d-pages.jsx` `DProductBreakdown` Section 2.
     const result = makeResult({
       productId: 'etf',
       capitalAtRetirement: 250_000,
@@ -336,16 +338,15 @@ describe('buildVergleichDetailCardData', () => {
     const rows = d!.sections[1].rows
     expect(rows).toHaveLength(2)
     expect(rows[0]).toMatchObject({ label: 'Kapital brutto', value: 250_000, kind: 'add' })
-    // Label embeds the "p.a." marker; the rate rides in `labelSuffix` so the
-    // row stays one numeric formatter.
-    expect(rows[1].label).toBe('− Kosten p.a.')
+    // Base label has no "p.a." — the value is the lifetime fee sum.
+    expect(rows[1].label).toBe('− Kosten')
     expect(rows[1].value).toBe(8_500)
     expect(rows[1].kind).toBe('sub')
-    // Rate suffix is pre-formatted by the row builder (1 decimal); checks
-    // that the suffix is present + carries a percent glyph + the 0,9 % rate
-    // (Intl rounds 0.0085 → "0,9 %" at 1 dp).
+    // Rate suffix is pre-formatted by the row builder (1 decimal) and carries
+    // "p.a." to signal the rate is annualised: "(0,9 % p.a.)".
     expect(rows[1].labelSuffix).toBeDefined()
     expect(rows[1].labelSuffix!).toMatch(/0,?\s?9?\s*%/)
+    expect(rows[1].labelSuffix!).toContain('p.a.')
   })
 
   it('§ Im Alter derives income tax as gross − net − kvPv', () => {
