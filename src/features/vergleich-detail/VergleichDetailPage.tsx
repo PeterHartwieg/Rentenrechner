@@ -8,7 +8,7 @@ import { useCalculatorState } from '../../app/useCalculatorState'
 import { useSimulationResult } from '../../app/useSimulationResult'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { detectSavedMode } from '../../app/useRoute'
-import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { PRIMARY_PRODUCT_IDS } from '../../content/triggers'
 import type { ScenarioAssumptions, PersonalProfile } from '../../domain'
@@ -107,16 +107,27 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
   // adds no new I/O. Memoised so re-renders don't re-read storage.
   const isCombineMode = portfolioState.workspace.mode === 'combine'
   const savedMode = useMemo(() => detectSavedMode(), [])
-  const isDemo =
-    !isCombineMode &&
-    (savedMode === null || liveAssumptions.visibleProducts.length === 0)
+  // Demo-mode fires ONLY when there is no saved state at all (first-time
+  // visitor / SEO prerender). Saved-state with empty visibleProducts is now
+  // handled by the all-6 branch below instead of the demo branch, so crawlers
+  // and first-time visitors still see PRIMARY_PRODUCT_IDS (3 cards) while
+  // logged-in users always see 6 cards — matching /vergleich's contract.
+  const isDemo = !isCombineMode && savedMode === null
 
   const profile: PersonalProfile = isDemo ? defaultProfile : liveProfile
   // Memoise the demo assumptions so the simulation hook's dep array stays
   // stable across renders (avoids re-running `simulateRetirementComparison`
   // on every parent re-render when the page is in demo mode).
   const demoAssumptions = useMemo(() => buildDemoAssumptions(), [])
-  const assumptions = isDemo ? demoAssumptions : liveAssumptions
+  // R1 cross-page consistency (Codex PR 329 R2): force all 6 products on
+  // /vergleich/details so it matches the always-6 contract of /vergleich.
+  // Demo-mode (no saved state) stays at PRIMARY_PRODUCT_IDS for SEO.
+  // PR R2 will rewrite the card layout; this plumbing remains.
+  const allProductsAssumptions = useMemo(
+    () => ({ ...liveAssumptions, visibleProducts: [...PRODUCT_IDS] }),
+    [liveAssumptions],
+  )
+  const assumptions = isDemo ? demoAssumptions : allProductsAssumptions
 
   // Compare-mode simulation. We must call this even when we're going to render
   // the combine-mode empty state — Rules of Hooks require a stable call order.

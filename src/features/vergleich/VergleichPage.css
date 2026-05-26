@@ -1,7 +1,9 @@
 /* VergleichPage — Sober D treatment shared with MeinPlanPage / VertragDetailPage / KapitalPage.
-   Local `--vergleich-*` names are kept for in-file readability but resolve to
-   the canonical `--rw-*` tokens defined in src/App.css so this surface cannot
-   drift from MeinPlan, Vertrag, Kapital, and the rest of the chrome. */
+   Local `--vergleich-*` names resolve to the canonical `--rw-*` tokens defined
+   in src/App.css so this surface cannot drift from the rest of the chrome.
+   R1 rewrite (issue #319): the ComparisonPicker is gone, rendite chips are
+   bracket-style rate-only, table sorts by netMonthlyPayout desc, pro/contra
+   grid is 3-wide on desktop, single § 1 heading above the grid. */
 
 .vergleich-shell {
   --vergleich-ink: var(--rw-ink);
@@ -27,7 +29,7 @@
 .vergleich-body {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
 }
 
 .vergleich-kicker {
@@ -59,36 +61,30 @@
   font-style: italic;
 }
 
-/* ---- Rendite strip ----------------------------------------------------- */
+.vergleich-lead strong {
+  font-weight: 600;
+}
+
+/* ---- Rendite strip (R1: terse, rate-only) ----------------------------- */
 
 .vergleich-rendite-strip {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--vergleich-paper);
-  border: 1px solid var(--vergleich-rule-soft);
-}
-
-.vergleich-rendite-strip__label {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  color: var(--vergleich-ink-faint);
-}
-
-.vergleich-rendite-strip__row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 10px 14px;
+  background: var(--vergleich-paper);
+  border: 1px solid var(--vergleich-rule-soft);
 }
 
 .vergleich-rendite-chip {
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  /* Mono is the design's signal that the chip is a numeric filter, not a
+     label. Tabular nums keep the bracket-wrapped variant from jumping width
+     when the active chip toggles. */
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
   padding: 10px 14px;
   border: 1px solid var(--vergleich-rule-soft);
   background: transparent;
@@ -96,6 +92,7 @@
   cursor: pointer;
   /* 44 px minimum tap target on every viewport — design plan §4 / §7. */
   min-height: 44px;
+  min-width: 44px;
   border-radius: 2px;
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
@@ -111,28 +108,13 @@
 }
 
 .vergleich-rendite-chip--active {
-  background: var(--vergleich-ink);
-  border-color: var(--vergleich-ink);
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.vergleich-rendite-chip__rate {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  margin-left: 6px;
-}
-
-.vergleich-rendite-strip__meta {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.3px;
-  color: var(--vergleich-ink-faint);
-}
-
-.vergleich-rendite-strip__meta strong {
-  color: var(--vergleich-ink-soft);
-  font-weight: 600;
+  /* Selected chip: brackets around the rate, bold weight, ink colour. The
+     bracket glyphs come from the rendered text — CSS only handles weight
+     and colour. */
+  color: var(--vergleich-ink);
+  border-color: var(--vergleich-rule);
+  font-weight: 700;
+  background: transparent;
 }
 
 /* ---- Comparison table -------------------------------------------------- */
@@ -141,18 +123,21 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .vergleich-section-head {
   display: flex;
   align-items: baseline;
   gap: 12px;
+  border-bottom: 2px solid var(--vergleich-rule);
+  padding-bottom: 6px;
 }
 
 .vergleich-section-num {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 12px;
+  letter-spacing: 0.5px;
   color: var(--vergleich-ink-faint);
 }
 
@@ -160,6 +145,7 @@
   font-family: Newsreader, Georgia, serif;
   font-weight: 400;
   font-size: 22px;
+  letter-spacing: -0.2px;
   margin: 0;
 }
 
@@ -202,7 +188,7 @@
 .vergleich-comparison-table td {
   padding: 12px 8px;
   border-bottom: 1px solid var(--vergleich-rule-soft);
-  vertical-align: baseline;
+  vertical-align: top;
 }
 
 .vergleich-comparison-table .vergleich-cell--num {
@@ -213,6 +199,13 @@
 
 .vergleich-comparison-table .vergleich-cell--abzuege {
   color: var(--vergleich-accent);
+}
+
+/* Reserve a fixed width for the Netto column so the proportional bar has a
+   consistent base across viewports. The fixed width lets the bar fill the
+   right edge for the top-sorted row without depending on text length. */
+.vergleich-comparison-table .vergleich-col-netto {
+  width: 168px;
 }
 
 .vergleich-cell-product {
@@ -240,7 +233,6 @@
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--vergleich-ink-soft);
-  max-width: 240px;
   padding-right: 8px;
 }
 
@@ -255,7 +247,7 @@
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.5px;
-  color: var(--vergleich-ink);
+  color: var(--vergleich-accent);
   text-align: right;
 }
 
@@ -287,7 +279,7 @@
   padding: 12px 0 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .vergleich-product-card__head {
@@ -317,8 +309,16 @@
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.3px;
-  color: var(--vergleich-ink);
+  color: var(--vergleich-accent);
   text-align: right;
+}
+
+.vergleich-product-card__kosten {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--vergleich-ink-faint);
+  text-align: right;
+  margin-top: 2px;
 }
 
 .vergleich-product-card__bar {
@@ -343,7 +343,7 @@
 .vergleich-product-card__grid {
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px 12px;
 }
 
@@ -373,11 +373,16 @@
   color: var(--vergleich-accent);
 }
 
-/* ---- Pro/Contra grid -------------------------------------------------- */
+/* ---- Pro/Contra grid (3-wide desktop per Decision A) ----------------- */
 
 .vergleich-pro-contra-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  /* `align-items: stretch` is the default for `display: grid`, but stating
+     it explicitly documents the intent (Decision A): both desktop rows pad
+     to the same height so a long contra line on one card does not leave a
+     sibling looking truncated. */
+  align-items: stretch;
   gap: 24px;
 }
 
@@ -401,11 +406,13 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
 }
 
 .vergleich-pro-contra-card__row {
   font-size: 12.5px;
   line-height: 1.5;
+  margin: 0;
 }
 
 .vergleich-pro-contra-card__row--pro {
@@ -429,7 +436,7 @@
   color: var(--vergleich-accent);
 }
 
-/* ---- Drill-down link (PR 10) ------------------------------------------ */
+/* ---- Drill-down link --------------------------------------------------- */
 
 .vergleich-drilldown {
   margin-top: 8px;
@@ -486,12 +493,16 @@
   .vergleich-headline {
     font-size: 26px;
   }
-  .vergleich-rendite-strip__row {
+  .vergleich-lead {
+    font-size: 14px;
+  }
+  .vergleich-rendite-strip {
     gap: 6px;
+    padding: 8px 12px;
   }
   .vergleich-rendite-chip {
     font-size: 12px;
-    padding: 12px 12px;
+    padding: 10px 12px;
     min-height: 44px;
   }
   .vergleich-pro-contra-grid {
@@ -511,9 +522,10 @@
   }
   .vergleich-pro-contra-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
   }
   /* Tablet: drop the long-form "Wie es funktioniert" column — the same
-     content appears in the § 2 pro/contra grid below. Keeps the 6-column
+     content appears in the § 1 pro/contra grid below. Keeps the 7-column
      monetary table within the viewport without horizontal scroll. */
   .vergleich-comparison-table .vergleich-col-tagline {
     display: none;
@@ -526,6 +538,9 @@
     padding: 10px 6px;
   }
   .vergleich-cell-netto__value {
-    font-size: 16px;
+    font-size: 17px;
+  }
+  .vergleich-comparison-table .vergleich-col-netto {
+    width: 140px;
   }
 }

@@ -422,7 +422,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
           }
           selectedScenarioId={result.effectiveScenarioId}
           onSelectScenario={ui.setSelectedScenarioId}
-          onOpenAngebot={() => navigate(ROUTES.eingaben, undefined, '#produkt')}
           navigate={navigate}
         />
       )}
