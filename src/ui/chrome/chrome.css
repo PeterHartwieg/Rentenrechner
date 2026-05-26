@@ -110,8 +110,16 @@
 /* ───── AppHeader (desktop + tablet) ────────────────────────────────────── */
 
 .rw-app-header {
+  /* Cream chrome header matches the cream page body (PR #325). Same logic
+     applies here: both editorial (landing, articles) and Sober D (tool)
+     pages share one canonical surface so navigating between routes never
+     produces a horizontal seam between the top nav strip and the page
+     body below it. The `--editorial` modifier still flips ink colors to
+     `--rw-ink-editorial` for the kicker, title, and nav items; the
+     background rule on that modifier is now redundant (same value) but
+     harmless. */
   border-bottom: 2px solid var(--rw-rule);
-  background: var(--rw-bg-paper);
+  background: var(--rw-bg-cream);
 }
 
 .rw-app-header--editorial {
@@ -262,9 +270,14 @@
 }
 
 .rw-app-header-body--phone {
+  /* Phone variant mirrors the desktop chrome header: cream for both
+     editorial and Sober D so the in-page H1 strip never seams against
+     the cream body below it. The editorial modifier stays in place to
+     flip ink/font for landing + article routes; its background rule
+     is now redundant (same value) but harmless. */
   padding: 14px 16px 12px;
   border-bottom: 2px solid var(--rw-rule);
-  background: var(--rw-bg-paper);
+  background: var(--rw-bg-cream);
 }
 
 .rw-app-header-body--phone.rw-app-header-body--editorial {
