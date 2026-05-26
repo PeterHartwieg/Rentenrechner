@@ -1,20 +1,23 @@
 // @vitest-environment jsdom
 
 /**
- * VergleichPage tests (R1 rewrite — issue #319).
+ * VergleichPage tests (R1 rewrite — issue #319, R1 review fixes).
  *
  * Coverage:
  *   - Renders kicker, H1, lead paragraph (with live Beitrag / Laufzeit /
- *     Renteneintritt values from bavFunding.monthlyNetCost + profile)
+ *     Renteneintritt values from the LOCAL all-6 simulation, independent
+ *     of `assumptions.visibleProducts` — Codex R1 P2 fix)
  *   - Renders rendite chip strip with terse rate-only labels (bracket-style
  *     active chip per Decision C)
  *   - Does NOT render the ComparisonPicker (R1 removed it from /vergleich;
  *     the page now shows all 6 products always)
  *   - Renders ONE section heading only — § 1 above the pro/contra grid; the
  *     comparison table has no section number / heading above it
- *   - Renders the "Wohin geht das Geld" drill-in link with the active
- *     scenario as a `?scenario=<id>` query string (preserved from PR 290)
- *   - Empty-state (no visibleProducts) surfaces the ErrorStatePanel
+ *   - Renders the "Wohin geht das Geld" drill-in link with the EFFECTIVE
+ *     scenario id as the `?scenario=<id>` query string (CodeRabbit R1 Major
+ *     fix — `effectiveScenarioId`, not `selectedScenarioId`)
+ *   - Even when `assumptions.visibleProducts` is empty, the table still
+ *     renders 6 product rows (R1 contract: "shows all 6 products always")
  *   - Table rows are sorted by netMonthlyPayout desc, ties broken by
  *     PRODUCT_REGISTRY order
  *   - Column header for "Kapital mit N" uses dynamic profile.retirementAge
@@ -85,7 +88,6 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
@@ -105,7 +107,6 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
@@ -123,7 +124,6 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
@@ -150,7 +150,6 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
@@ -169,7 +168,6 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
@@ -188,7 +186,6 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
@@ -213,7 +210,6 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="optimistisch"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
@@ -222,7 +218,39 @@ describe('VergleichPage — R1 layout', () => {
     expect(drilldown!.getAttribute('href')).toBe('/vergleich/details?scenario=optimistisch')
   })
 
-  it('renders the empty-state ErrorStatePanel when visibleProducts is empty', () => {
+  it('drill-in link encodes the EFFECTIVE scenario id, not a stale selectedScenarioId (CodeRabbit R1 Major)', () => {
+    // When the caller passes a `selectedScenarioId` that does not exist
+    // among the live `returnScenarios`, `resolveEffectiveScenarioId`
+    // falls back to the basis scenario. The drill-in URL must reflect
+    // what the page actually rendered (effective id), not the stale
+    // selection. Otherwise the detail page reads a different scenario.
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          // Stale id: nothing in defaultAssumptions.returnScenarios uses this.
+          selectedScenarioId="does-not-exist"
+          onSelectScenario={NOOP}
+        />,
+      ),
+    )
+    const drilldown = container.querySelector<HTMLAnchorElement>('.vergleich-drilldown__link')
+    expect(drilldown).not.toBeNull()
+    const href = drilldown!.getAttribute('href') ?? ''
+    // The URL must NOT carry the stale id.
+    expect(href).not.toContain('does-not-exist')
+    // It must carry the fallback (basis) which is what the page rendered.
+    expect(href).toBe('/vergleich/details?scenario=basis')
+  })
+
+  it('renders all 6 product rows even when assumptions.visibleProducts is empty (R1 contract: shows all 6 always)', () => {
+    // R1 Codex P2: the page runs its own simulation with visibleProducts
+    // forced to the full PRODUCT_REGISTRY list, so the user's `/eingaben`
+    // selection cannot suppress rows here. This is the new contract.
     const assumptions: ScenarioAssumptions = {
       ...defaultAssumptions,
       visibleProducts: [] as ProductId[],
@@ -237,18 +265,22 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
-    const panel = container.querySelector('.rw-error-state.rw-error-state--empty')
-    expect(panel).not.toBeNull()
-    expect(panel!.textContent ?? '').toContain('Wähle mindestens ein Vorsorgeprodukt')
-    // Pro/contra grid suppressed in empty state.
-    expect(container.querySelector('.vergleich-pro-contra-grid')).toBeNull()
+    // No empty-state panel — that branch is gone.
+    expect(container.querySelector('.rw-error-state.rw-error-state--empty')).toBeNull()
+    // Pro/contra grid still rendered.
+    expect(container.querySelector('.vergleich-pro-contra-grid')).not.toBeNull()
+    // Comparison table renders 6 rows on desktop (one per product in
+    // PRODUCT_REGISTRY), regardless of the empty `visibleProducts`.
+    const table = container.querySelector('.vergleich-comparison-table')
+    expect(table).not.toBeNull()
+    const rows = table!.querySelectorAll('tbody tr')
+    expect(rows.length).toBe(6)
   })
 
-  it('renders all visible products in the comparison table (iterates PRODUCT_REGISTRY, not a hardcoded list)', () => {
+  it('renders all 6 products in the comparison table (iterates PRODUCT_REGISTRY, not a hardcoded list)', () => {
     const result = buildResult(defaultAssumptions)
     const { container } = render(
       inShell(
@@ -259,14 +291,15 @@ describe('VergleichPage — R1 layout', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
     const table = container.querySelector('.vergleich-comparison-table')
     expect(table).not.toBeNull()
     const rows = table!.querySelectorAll('tbody tr')
-    expect(rows.length).toBe(defaultAssumptions.visibleProducts.length)
+    // R1 contract: always shows all 6 products from PRODUCT_REGISTRY, never
+    // a hardcoded list or a `visibleProducts`-filtered subset.
+    expect(rows.length).toBe(6)
   })
 })
 
@@ -283,7 +316,6 @@ describe('VergleichPage — viewport sweep', () => {
             onAssumptionsChange={NOOP}
             selectedScenarioId="basis"
             onSelectScenario={NOOP}
-            onOpenAngebot={NOOP}
           />,
         ),
       )
@@ -304,7 +336,6 @@ describe('VergleichPage — viewport sweep', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
@@ -324,7 +355,6 @@ describe('VergleichPage — viewport sweep', () => {
           onAssumptionsChange={NOOP}
           selectedScenarioId="basis"
           onSelectScenario={NOOP}
-          onOpenAngebot={NOOP}
         />,
       ),
     )
