@@ -52,7 +52,7 @@ const PROCESS_STEPS: ReadonlyArray<{ n: string; h: string; p: string }> = [
   {
     n: 'I.',
     h: 'Du beschreibst deine Lage.',
-    p: 'Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Bleibt lokal in deinem Browser — nichts wird an einen Server gesendet.',
+    p: 'Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Alles bleibt in deinem Browser. Es wird nichts an einen Server gesendet.',
   },
   {
     n: 'II.',
@@ -62,7 +62,7 @@ const PROCESS_STEPS: ReadonlyArray<{ n: string; h: string; p: string }> = [
   {
     n: 'III.',
     h: 'Du entscheidest selbst.',
-    p: 'Wir nennen kein „bestes“ Produkt. Wir zeigen, was die Optionen kosten und was sie bringen.',
+    p: 'Wir nennen kein „bestes“ Produkt. Du siehst die Zahlen zu jeder Option und entscheidest selbst.',
   },
 ]
 
@@ -139,10 +139,10 @@ export function LandingPage({ onChoice, navigate }: Props) {
               Was bekommst du <em className="landing-headline-accent">wirklich</em> an Rente?
             </h1>
             <p className="landing-subline">
-              Trage deine Verträge ein. Wir rechnen — transparent, ohne Werbung,
-              ohne Provisionen — wieviel pro Monat im Alter auf deinem Konto landet,
-              in heutiger Kaufkraft und in Euro {RULES_YEAR + 39}. Der Quellcode ist
-              offen, die Annahmen sind erklärt.
+              Trage deine Verträge ein. Wir rechnen aus, wieviel pro Monat im Alter
+              auf deinem Konto landet, in heutiger Kaufkraft und in Euro {RULES_YEAR + 39}.
+              Ohne Werbung, ohne Provisionen. Der Quellcode ist offen, jede Annahme
+              ist erklärt.
             </p>
 
             <div className="landing-cta-row">
@@ -204,16 +204,15 @@ export function LandingPage({ onChoice, navigate }: Props) {
             <div className="landing-aside-card landing-aside-card--about">
               <div className="landing-aside-kicker">Wer steht hinter RentenWiki</div>
               <p className="landing-about-body">
-                RentenWiki.de ist ein Einzelprojekt von Peter Hartwieg. Es
-                gibt keinen Verein, keine Provisionen und keine Werbung —
-                die laufenden Kosten decken Spenden über Stripe und GitHub
-                Sponsors.
+                RentenWiki.de ist ein Einzelprojekt von Peter Hartwieg.
+                Keine Werbung, keine Provisionen. Spenden über Stripe und
+                GitHub Sponsors decken die Hosting-Kosten.
               </p>
               <p className="landing-about-license">
                 Der Quellcode steht unter{' '}
                 <span className="landing-about-license-name">PolyForm Noncommercial 1.0.0</span>
-                {' '}offen. Die kommerzielle Nutzung — etwa durch Versicherungs­makler,
-                Anlageberater oder Arbeitgeber — ist lizenzpflichtig.
+                {' '}offen. Versicherungs­makler, Anlageberater und Arbeitgeber
+                brauchen eine separate kommerzielle Lizenz.
               </p>
             </div>
           </aside>

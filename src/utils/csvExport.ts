@@ -63,7 +63,7 @@ function nn(v: number | null): string {
 // guardrails — keeps the disclaimer attached to the data even when the file
 // is forwarded without the surrounding UI. Mirrors the PDF report header.
 const DISCLAIMER_LINES: readonly string[] = [
-  'Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.',
+  'Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.',
   'Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine individuelle Beratung.',
   'Steuersätze, Sozialversicherungsbeiträge und Rentenwert sind auf den Stand 2026 fixiert; tatsächliche Werte zum Renteneintritt können erheblich abweichen.',
   'Annahmen (Rendite, Inflation, Gehaltsentwicklung, Lebenserwartung, Rentenfaktor, Vertragskosten) sind Schätzungen — kleine Abweichungen können das Ergebnis und die Reihenfolge der Produkte ändern.',
