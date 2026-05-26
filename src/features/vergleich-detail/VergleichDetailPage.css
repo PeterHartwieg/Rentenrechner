@@ -384,6 +384,12 @@
     flex-direction: column;
     grid-template-columns: none;
     gap: 14px;
+    /* Make this a real scroll-snap container so the y mandatory snap
+       actually engages. Without overflow-y + a height constraint the
+       element is not a scroll container and snapping is silently skipped
+       by the browser (Codex P2 / PR 330 R2). */
+    overflow-y: auto;
+    max-height: calc(100dvh - var(--rw-mobile-nav-height, 56px) - 180px);
     scroll-snap-type: y mandatory;
     overscroll-behavior-y: contain;
   }
