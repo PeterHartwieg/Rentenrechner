@@ -34,6 +34,7 @@ import { VergleichPage } from './VergleichPage'
 import { defaultProfile, defaultAssumptions } from '../../data/defaultScenario'
 import type { PersonalProfile, ProductId, ScenarioAssumptions } from '../../domain'
 import type { SimulationResultBundle } from '../../app/useSimulationResult'
+import { resolveEffectiveScenarioId, deriveTaxModes } from '../../app/simulationSelectors'
 import { simulateRetirementComparison } from '../../engine/simulate'
 import { de2026Rules } from '../../rules/de2026'
 import { eachViewport, mockViewport } from '../../test/viewport'
@@ -64,14 +65,16 @@ function inShell(node: ReactElement, path: string = '/vergleich') {
  */
 function buildResult(assumptions: ScenarioAssumptions, profile: PersonalProfile = defaultProfile): SimulationResultBundle {
   const simulation = simulateRetirementComparison(profile, assumptions, de2026Rules)
+  const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, 'basis')
+  const selectedScenario = assumptions.returnScenarios.find((s) => s.id === effectiveScenarioId)
+  const taxModes = deriveTaxModes(profile, assumptions, de2026Rules)
   return {
     simulation,
-    monteCarloResult: undefined,
-    taxModes: {
-      bav: 'p3nr63',
-      insurance: 'abgeltungsteuer',
-    },
-  } as unknown as SimulationResultBundle
+    monteCarloResult: null,
+    effectiveScenarioId,
+    selectedScenario,
+    taxModes,
+  }
 }
 
 const NOOP = () => undefined
