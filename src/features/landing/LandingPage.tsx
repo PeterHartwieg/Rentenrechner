@@ -206,8 +206,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
               <p className="landing-about-body">
                 RentenWiki.de ist ein Einzelprojekt von Peter Hartwieg. Es
                 gibt keinen Verein, keine Provisionen und keine Werbung —
-                die laufenden Kosten decken Spenden über Stripe und GitHub
-                Sponsors.
+                die laufenden Kosten decken Spenden über GitHub Sponsors.
               </p>
               <p className="landing-about-license">
                 Der Quellcode steht unter{' '}

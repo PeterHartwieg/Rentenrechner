@@ -695,7 +695,7 @@ export function MethodePage({ navigate }: Props) {
                 >
                   GitHub Sponsors
                 </a>{' '}
-                und Stripe (sobald aufgesetzt) finanzieren das Hosting.
+                finanziert das Hosting.
               </p>
             </div>
 
