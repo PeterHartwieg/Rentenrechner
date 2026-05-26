@@ -74,7 +74,7 @@ export function LegalFooter({ navigate }: Props) {
       </div>
       <div className="app-footer__legal">
         <span className="app-footer-copy">
-          Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.
+          Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.
         </span>
         <nav className="app-footer-nav">
           <a href="/impressum/" onClick={go(ROUTES.impressum)} {...impressumLinkProps}>

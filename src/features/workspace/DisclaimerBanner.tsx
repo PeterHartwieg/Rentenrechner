@@ -64,14 +64,14 @@ export function DisclaimerBanner() {
         onClick={() => setShowPopup((v) => !v)}
       >
         <Info size={14} aria-hidden="true" />
-        <strong>Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung.</strong>
+        <strong>Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.</strong>
       </button>
       {showPopup && (
         <div className="disclaimer-popup" role="note">
           <p>
             Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (Steuersätze,
             Sozialversicherungsbeiträge, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband).
-            Die Ergebnisse sind Schätzungen unter Ihren Annahmen — Renditen, Inflation,
+            Die Ergebnisse sind Schätzungen unter Ihren Annahmen. Renditen, Inflation,
             Lebenserwartung und künftige Gesetzesänderungen sind unbekannt.
           </p>
         </div>

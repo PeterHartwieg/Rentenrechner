@@ -8,9 +8,10 @@ import { useCalculatorState } from '../../app/useCalculatorState'
 import { useSimulationResult } from '../../app/useSimulationResult'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { detectSavedMode } from '../../app/useRoute'
-import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { PRIMARY_PRODUCT_IDS } from '../../content/triggers'
+import { formatCurrency } from '../../utils/format'
 import type { ScenarioAssumptions, PersonalProfile } from '../../domain'
 import { VergleichDetailCard } from './VergleichDetailCard'
 import { LegalFooter } from '../legal/LegalFooter'
@@ -107,16 +108,27 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
   // adds no new I/O. Memoised so re-renders don't re-read storage.
   const isCombineMode = portfolioState.workspace.mode === 'combine'
   const savedMode = useMemo(() => detectSavedMode(), [])
-  const isDemo =
-    !isCombineMode &&
-    (savedMode === null || liveAssumptions.visibleProducts.length === 0)
+  // Demo-mode fires ONLY when there is no saved state at all (first-time
+  // visitor / SEO prerender). Saved-state with empty visibleProducts is now
+  // handled by the all-6 branch below instead of the demo branch, so crawlers
+  // and first-time visitors still see PRIMARY_PRODUCT_IDS (3 cards) while
+  // logged-in users always see 6 cards — matching /vergleich's contract.
+  const isDemo = !isCombineMode && savedMode === null
 
   const profile: PersonalProfile = isDemo ? defaultProfile : liveProfile
   // Memoise the demo assumptions so the simulation hook's dep array stays
   // stable across renders (avoids re-running `simulateRetirementComparison`
   // on every parent re-render when the page is in demo mode).
   const demoAssumptions = useMemo(() => buildDemoAssumptions(), [])
-  const assumptions = isDemo ? demoAssumptions : liveAssumptions
+  // R1 cross-page consistency (Codex PR 329 R2): force all 6 products on
+  // /vergleich/details so it matches the always-6 contract of /vergleich.
+  // Demo-mode (no saved state) stays at PRIMARY_PRODUCT_IDS for SEO.
+  // PR R2 will rewrite the card layout; this plumbing remains.
+  const allProductsAssumptions = useMemo(
+    () => ({ ...liveAssumptions, visibleProducts: [...PRODUCT_IDS] }),
+    [liveAssumptions],
+  )
+  const assumptions = isDemo ? demoAssumptions : allProductsAssumptions
 
   // Compare-mode simulation. We must call this even when we're going to render
   // the combine-mode empty state — Rules of Hooks require a stable call order.
@@ -226,6 +238,17 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
     )
   }
 
+  // PR R2 §18: lead paragraph cites the same live Beitrag / Laufzeit /
+  // Renteneintritt figures as `VergleichPage`. Beitrag comes from the
+  // page-local simulation's `bavFunding.monthlyNetCost` — the same net cash
+  // the user pays for bAV, which the compare-mode fair-comparison invariant
+  // pins ETF + insurance to. Laufzeit + Renteneintritt come from `profile`.
+  // Both paths (demo + live) cite live figures so the lead never disagrees
+  // with what the cards show.
+  const monthlyContribution = result.simulation.bavFunding.monthlyNetCost
+  const runtimeYears = Math.max(0, profile.retirementAge - profile.age)
+  const retirementAge = profile.retirementAge
+
   // ---- 3. Render. ---------------------------------------------------------
   return (
     <div className="vd-shell">
@@ -241,17 +264,21 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
               fließt — Eigenanteil, Förderung oder Arbeitgeberzuschuss, Kosten und
               Steuer — und was im Alter monatlich übrig bleibt. Solange noch kein
               eigener Vergleich angelegt ist, rechnen wir mit Standardannahmen für
-              2026 (ein/e {profile.age}-Jährige/r mit {profile.retirementAge} als
-              Renteneintrittsalter, monatliche Netto-Belastung 200&nbsp;€). Eigene
-              Werte ändern die Aufschlüsselung sofort.
+              2026: monatlicher Netto-Aufwand{' '}
+              <strong>{formatCurrency(monthlyContribution, 0)}</strong>, Laufzeit{' '}
+              <strong>{runtimeYears} Jahre</strong>, Renteneintritt mit{' '}
+              <strong>{retirementAge}</strong>. Eigene Werte ändern die
+              Aufschlüsselung sofort.
             </p>
           ) : (
             <p className="vd-lead">
-              Jede Sparform verteilt deinen monatlichen Aufwand anders auf Eigenanteil,
-              Förderung, Kosten und Steuer. Diese Aufschlüsselung zeigt für jedes
-              Produkt, was eingezahlt wird, was am Renteneintritt steht und was im
-              Alter monatlich übrig bleibt — bei deinem aktuellen Renteneintrittsalter
-              von {profile.retirementAge}.
+              Jede Sparform verteilt deinen monatlichen Aufwand anders auf
+              Eigenanteil, Förderung, Kosten und Steuer. Bei einem Netto-Aufwand
+              von <strong>{formatCurrency(monthlyContribution, 0)}</strong> pro
+              Monat, Laufzeit <strong>{runtimeYears} Jahre</strong> und
+              Renteneintritt mit <strong>{retirementAge}</strong> zeigt jede
+              Karte: was eingezahlt wird, was am Renteneintritt steht und was im
+              Alter monatlich übrig bleibt.
             </p>
           )}
 

@@ -234,7 +234,7 @@ export function PrintReport({
           Must precede the title header so the legal notice is the literal first
           thing on the printed page. */}
       <section className="pr-section pr-disclaimer pr-disclaimer-top">
-        <div className="pr-section-title">Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung</div>
+        <div className="pr-section-title">Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung</div>
         <p className="pr-disclaimer-lead">
           Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine
           individuelle Anlage-, Steuer- oder Rechtsberatung. Vor Vertragsabschluss
@@ -567,7 +567,7 @@ function CombinePrintReport({
       {/* Disclaimer — first block of every export per the publication
           guardrails. MUST stay the literal first child of #print-report. */}
       <section className="pr-section pr-disclaimer pr-disclaimer-top">
-        <div className="pr-section-title">Modellrechnung — keine Anlage-, Steuer- oder Rechtsberatung</div>
+        <div className="pr-section-title">Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung</div>
         <p className="pr-disclaimer-lead">
           Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine
           individuelle Anlage-, Steuer- oder Rechtsberatung. Vor Vertragsabschluss

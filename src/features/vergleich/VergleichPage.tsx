@@ -5,10 +5,13 @@ import type { SimulationResultBundle } from '../../app/useSimulationResult'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
-import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
-import { ComparisonPicker } from '../workspace/ComparisonPicker'
-import { ErrorStatePanel } from '../../ui/chrome/ErrorStatePanel'
+import { simulateRetirementComparison } from '../../engine/simulate'
+import { de2026Rules } from '../../rules/de2026'
+import { normalizeMonthlyNettoBelastung, syncMonthlyContributions } from '../../app/syncContributions'
+import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../../data/defaultScenario'
+import { formatCurrency } from '../../utils/format'
 import { VergleichRenditeStrip } from './VergleichRenditeStrip'
 import { VergleichComparisonTable } from './VergleichComparisonTable'
 import { rowFromResult, type VergleichTableRow } from './vergleichRows'
@@ -19,42 +22,51 @@ interface Props {
   profile: PersonalProfile
   /** Live assumptions from `useCalculatorState`. */
   assumptions: ScenarioAssumptions
-  /** Bundle from `useSimulationResult` — `simulation.products` is filtered by scenario. */
+  /**
+   * Bundle from `useSimulationResult`. R1 fix (Codex P2): the page no longer
+   * reads `simulation.products` from this bundle — it runs its own local
+   * simulation with `visibleProducts` forced to all 6 so `/vergleich` is
+   * independent of the user's portfolio selection. The prop stays declared
+   * for shape stability with `Calculator.tsx` and future re-introduction
+   * (Monte Carlo overlay, taxModes consumers); same pattern as
+   * `onAssumptionsChange` below.
+   */
   result: SimulationResultBundle
-  /** Setter so the picker can adjust `visibleProducts` and the rendite chips can swap scenario. */
+  /** Setter so the rendite chips can swap scenario / future picker re-introductions. */
   onAssumptionsChange: (updater: (current: ScenarioAssumptions) => ScenarioAssumptions) => void
   /** Selected return-scenario id from `useWorkspaceUiState`. */
   selectedScenarioId: string
   /** Setter for the selected scenario id (workspace UI state, not assumptions). */
   onSelectScenario: (id: string) => void
-  /** Used by the EmptyComparison CTA to switch to the "Eingaben" tab. */
-  onOpenAngebot: () => void
   /**
    * Optional SPA navigator. When provided, the "Wohin geht das Geld →"
    * drill-in link uses SPA navigation to `/vergleich/details`; when absent,
-   * the link still works as a real anchor (progressive enhancement). The
-   * compare-mode `Calculator.tsx` always passes this; tests sometimes omit it.
+   * the link still works as a real anchor (progressive enhancement).
    *
    * The optional `search` argument carries the query string (e.g.
    * `?scenario=basis`) so SPA navigation pushes the same URL the `href`
-   * would (PR 290 R4 Codex P2 — the URL is the source of truth for
-   * shareable state in compare mode).
+   * would (the URL is the source of truth for shareable state).
    */
   navigate?: (target: Route, search?: string) => void
 }
 
 // ---------------------------------------------------------------------------
-// VergleichPage — compare-mode results surface (PR 9).
+// VergleichPage — compare-mode results surface (R1 rewrite, May 2026).
 //
 // Sober D visual treatment shared with MeinPlanPage / VertragDetailPage /
-// KapitalPage. Replaces the legacy `vergleichPane`-switcher + multi-chart
-// dispatch with a single linear surface:
+// KapitalPage. The R1 rewrite (issue #319) drops the ComparisonPicker — the
+// page now shows all six products always — and switches the table sort to
+// `netMonthlyPayout` desc with PRODUCT_REGISTRY order as tiebreak. The
+// rendite-annahme strip is reduced to bracket-wrapped rates per the
+// direction-d design. There is ONE section heading (§ 1 above the
+// pro/contra grid); the table has no section number above it.
 //
-//   1. Lead paragraph (neutral framing — no recommendation)
-//   2. Rendite-Annahme chip strip (folds in the legacy ScenarioToolbar)
-//   3. Comparison picker (existing component, reused as-is)
-//   4. § 1 Comparison table — 6 products, neutral
-//   5. § 2 Pro/Contra grid — 3-wide → 2-wide → 1-col
+// Layout:
+//   1. Kicker + H1 + lead paragraph (live Beitrag / Laufzeit / Renteneintritt)
+//   2. Rendite-Annahme chip strip (terse, rate-only)
+//   3. Comparison table — six products, sorted by net payout desc
+//   4. § 1 Pro/Contra grid — 3-wide → 2-wide → 1-col
+//   5. "Wohin geht das Geld? →" drill-in link
 //
 // Mode: compare-mode only. Combine-mode renders `MeinPlanPage` from
 // Calculator.tsx; this page is never reached in combine.
@@ -64,63 +76,111 @@ interface Props {
 // `ProductResult` (filtered to the effective scenario).
 // ---------------------------------------------------------------------------
 
-const SECTION_TABLE = {
-  id: 'vergleich-tabelle',
-  n: '§ 1',
-  title: 'Sechs Sparformen im Überblick',
-}
 const SECTION_PRO_CONTRA = {
   id: 'vergleich-pro-contra',
-  n: '§ 2',
+  n: '§ 1',
   title: 'Wofür welche Sparform spricht — und wogegen',
 }
 
+// `onAssumptionsChange` and `result` are intentionally absent from the
+// destructure. R1 removed the in-page ComparisonPicker (no caller-mutation
+// hook on the surface) AND switched the page to a local simulation with all
+// 6 products forced visible (no longer reads `result.simulation`). Both
+// props stay declared on `Props` for shape stability with the workspace
+// dispatch in Calculator.tsx and for future re-introduction (e.g. inline
+// tax-mode toggles, Monte Carlo overlay).
 export function VergleichPage({
   profile,
   assumptions,
-  result,
-  onAssumptionsChange,
   selectedScenarioId,
   onSelectScenario,
-  onOpenAngebot,
   navigate,
 }: Props) {
-  const hasComparisonSet = assumptions.visibleProducts.length > 0
+  // R1 fix (Codex P2): the page contract is "shows all 6 products always".
+  // `simulateRetirementComparison` filters by `assumptions.visibleProducts`,
+  // so a user who deselected products on /eingaben would have silently seen
+  // a subset here. Force `visibleProducts` to the full registry list before
+  // simulating; this makes /vergleich independent of the portfolio selection.
+  //
+  // We mirror `useSimulationResult`'s exact construction: normalize the
+  // monthly netto-belastung, then run `syncMonthlyContributions` so the
+  // bavFunding two-pass and the fair-comparison invariant
+  // (`bavFunding.monthlyNetCost` is what ETF + insurance invest) still hold.
+  const allProductsResult = useMemo(() => {
+    const overridden: ScenarioAssumptions = {
+      ...assumptions,
+      visibleProducts: [...PRODUCT_IDS] as ProductId[],
+    }
+    const activeAssumptions = syncMonthlyContributions(
+      normalizeMonthlyNettoBelastung(
+        overridden.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
+      ),
+      overridden,
+      profile,
+      de2026Rules,
+    )
+    return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
+  }, [profile, assumptions])
 
-  // The simulation runs every scenario; filter to the effective one so the
-  // table renders one row per visible product. `resolveEffectiveScenarioId`
-  // is the canonical helper that already handles missing-scenario fallback
-  // (see CLAUDE.md "returnScenarios[0] is not necessarily basis" gotcha).
+  // Resolve the effective scenario against the LIVE assumptions (so the
+  // rendite chip strip and selection stay aligned with what the user sees).
+  // `resolveEffectiveScenarioId` is the canonical helper that already handles
+  // missing-scenario fallback (see CLAUDE.md "returnScenarios[0] is not
+  // necessarily basis" gotcha).
   const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, selectedScenarioId)
 
   const rows = useMemo<VergleichTableRow[]>(() => {
-    if (!hasComparisonSet) return []
-    const products = result.simulation.products.filter((p) => p.scenarioId === effectiveScenarioId)
-    // Sort registry order so the table is stable regardless of `visibleProducts` order.
-    const orderById = new Map(PRODUCT_REGISTRY.map((entry) => [entry.metadata.id, entry.metadata.order]))
-    const sorted = [...products].sort(
-      (a, b) => (orderById.get(a.productId) ?? 99) - (orderById.get(b.productId) ?? 99),
+    const products = allProductsResult.products.filter(
+      (p) => p.scenarioId === effectiveScenarioId,
     )
-    return sorted
+
+    // R1: sort by `netMonthlyPayout` desc; ties broken by PRODUCT_REGISTRY
+    // order so the table is stable when payouts coincide. NOT a "winner"
+    // ranking — the bar in the Netto cell is the only visualization; no row
+    // highlight, no badge. The top row's bar reaches the right edge as a
+    // natural consequence of bar scaling, not a special case.
+    const orderById = new Map(PRODUCT_REGISTRY.map((entry) => [entry.metadata.id, entry.metadata.order]))
+    const built = products
       .map(rowFromResult)
       .filter((row): row is VergleichTableRow => row !== null)
-  }, [hasComparisonSet, result.simulation.products, effectiveScenarioId])
+    return built.sort((a, b) => {
+      const delta = b.netMonthlyPayout - a.netMonthlyPayout
+      if (delta !== 0) return delta
+      return (orderById.get(a.productId) ?? 99) - (orderById.get(b.productId) ?? 99)
+    })
+  }, [allProductsResult.products, effectiveScenarioId])
 
   const productsForProContra = useMemo<ProductId[]>(
     () => rows.map((row) => row.productId),
     [rows],
   )
 
-  // Beitrag / Laufzeit metadata for the rendite strip. The compare-mode
-  // fair-comparison invariant pins ETF + insurance to `bavFunding.monthlyNetCost`,
-  // but the user's commitment baseline is `equalInputAmountEUR`. Display the
-  // user's commitment, not the per-product derivation.
-  const monthlyContribution = assumptions.equalInputAmountEUR ?? 0
+  // Live lead-copy figures.
+  //
+  // Beitrag: `bavFunding.monthlyNetCost` from the local all-6 simulation —
+  // the same net cash the user pays for bAV, which the compare-mode
+  // fair-comparison invariant pins ETF + insurance to. Sourced from the
+  // local sim (not the parent `result` bundle) so it stays consistent with
+  // the table the page actually renders.
+  //
+  // Laufzeit: full years between current age and retirement age.
+  //
+  // Renteneintritt: retirement age. Never hardcoded — `profile.retirementAge`
+  // is the single source of truth across the page (lead copy, table column
+  // header, scenario hooks).
+  const monthlyContribution = allProductsResult.bavFunding.monthlyNetCost
   const runtimeYears = Math.max(0, profile.retirementAge - profile.age)
+  const retirementAge = profile.retirementAge
 
-  function handleVisibleProductsChange(next: ProductId[]) {
-    onAssumptionsChange((current) => ({ ...current, visibleProducts: next }))
-  }
+  // Pre-encode the drill-in URL/query in one place so `href` and `navigate`
+  // cannot drift. CodeRabbit Major (R1): use `effectiveScenarioId` (the
+  // value the page actually rendered with), not `selectedScenarioId` —
+  // if selection is stale/missing, the drill-in would otherwise carry a
+  // different scenario than the user sees. Encoding the scenario id
+  // preserves it on Cmd/Ctrl-click, middle-click, JS-disabled fallback,
+  // and reload (the detail page reads `?scenario=<id>` on first mount).
+  const scenarioQuery = `?scenario=${encodeURIComponent(effectiveScenarioId)}`
+  const drillInHref = `${routeToPath(ROUTES.vergleichDetail)}${scenarioQuery}`
 
   return (
     <section className="vergleich-shell" aria-label="Vergleich">
@@ -129,9 +189,11 @@ export function VergleichPage({
           <div className="vergleich-kicker">Persönliche Auskunft · ohne Empfehlung</div>
           <h1 className="vergleich-headline">Sechs Wege, fürs Alter zu sparen</h1>
           <p className="vergleich-lead">
-            Sechs Sparformen, sechs Steuersystematiken. Vergleich bei gleichem
-            Netto-Aufwand und gleicher Laufzeit. „Welcher der beste ist" hängt
-            davon ab, was du gewichtest — <em>Rendite, Sicherheit, Flexibilität</em>.
+            Sechs Sparformen, sechs Steuersystematiken: Vergleich bei gleichem
+            Netto-Aufwand von <strong>{formatCurrency(monthlyContribution, 0)}</strong> pro
+            Monat, Laufzeit <strong>{runtimeYears} Jahre</strong>, Renteneintritt
+            mit <strong>{retirementAge}</strong>. Welcher der beste ist, hängt
+            davon ab, was du gewichtest: <em>Rendite, Sicherheit, Flexibilität</em>.
             Wir nennen keine Empfehlung.
           </p>
 
@@ -139,88 +201,34 @@ export function VergleichPage({
             scenarios={assumptions.returnScenarios}
             selectedId={effectiveScenarioId}
             onSelect={onSelectScenario}
-            monthlyContribution={monthlyContribution}
-            runtimeYears={runtimeYears}
           />
 
-          <ComparisonPicker
-            visible={assumptions.visibleProducts}
-            onChange={handleVisibleProductsChange}
-          />
+          <VergleichComparisonTable rows={rows} retirementAge={retirementAge} />
 
-          {hasComparisonSet ? (
-            <>
-              <section className="vergleich-section" aria-labelledby={SECTION_TABLE.id}>
-                <div className="vergleich-section-head">
-                  <span className="vergleich-section-num">{SECTION_TABLE.n}</span>
-                  <h2 id={SECTION_TABLE.id} className="vergleich-section-title">
-                    {SECTION_TABLE.title}
-                  </h2>
-                </div>
-                <VergleichComparisonTable rows={rows} retirementAge={profile.retirementAge} />
-              </section>
+          <section className="vergleich-section" aria-labelledby={SECTION_PRO_CONTRA.id}>
+            <div className="vergleich-section-head">
+              <span className="vergleich-section-num">{SECTION_PRO_CONTRA.n}</span>
+              <h2 id={SECTION_PRO_CONTRA.id} className="vergleich-section-title">
+                {SECTION_PRO_CONTRA.title}
+              </h2>
+            </div>
+            <VergleichProContraGrid products={productsForProContra} />
+          </section>
 
-              <section className="vergleich-section" aria-labelledby={SECTION_PRO_CONTRA.id}>
-                <div className="vergleich-section-head">
-                  <span className="vergleich-section-num">{SECTION_PRO_CONTRA.n}</span>
-                  <h2 id={SECTION_PRO_CONTRA.id} className="vergleich-section-title">
-                    {SECTION_PRO_CONTRA.title}
-                  </h2>
-                </div>
-                <VergleichProContraGrid products={productsForProContra} />
-              </section>
-
-              <div className="vergleich-drilldown">
-                {/* PR 10: drill-in link to the per-product breakdown page.
-                    SPA progressive enhancement — real `href` for direct
-                    navigation / new-tab support, `onClick` intercepts only
-                    plain primary clicks when a `navigate` callback is
-                    available (per `shouldUseSpaNavigation`).
-                    PR 290 R3 Codex P2 fix: encode the current scenario id as
-                    a `?scenario=<id>` query string so non-SPA navigations
-                    (Cmd/Ctrl-click, middle-click, JS-disabled fallback, hard
-                    reload) land on the same scenario the user selected on
-                    `VergleichPage`. The detail page reads this on first mount
-                    via its own `useEffect` and updates the workspace UI
-                    state, then routing flows through props as usual. The
-                    `scenario` param is purely a runtime initialiser; we do
-                    NOT promote it into the `Route` tagged-union — keeping
-                    `routeToPath` / `pathToRoute` unchanged.
-                    PR 290 R4 Codex P2 fix: also forward the scenario query
-                    on SPA navigation. Previously `navigate(ROUTES.vergleichDetail)`
-                    pushed `/vergleich/details` without the query, so a reload
-                    or share after primary-clicking the link silently fell
-                    back to `basis`. Hoisting `scenarioQuery` to a const keeps
-                    `href` and `navigate` in lockstep — divergence is
-                    structurally impossible. */}
-                {(() => {
-                  const scenarioQuery = `?scenario=${encodeURIComponent(selectedScenarioId)}`
-                  const drillInHref = `${routeToPath(ROUTES.vergleichDetail)}${scenarioQuery}`
-                  return (
-                    <a
-                      href={drillInHref}
-                      className="vergleich-drilldown__link"
-                      onClick={(event) => {
-                        if (!navigate) return
-                        if (!shouldUseSpaNavigation(event)) return
-                        event.preventDefault()
-                        navigate(ROUTES.vergleichDetail, scenarioQuery)
-                      }}
-                    >
-                      Wohin geht das Geld? Aufschlüsselung pro Produkt →
-                    </a>
-                  )
-                })()}
-              </div>
-            </>
-          ) : (
-            <ErrorStatePanel
-              tone="empty"
-              title="Wähle mindestens ein Vorsorgeprodukt zum Vergleich"
-              message="Die gesetzliche Rente bildet den Sockel. Ergänze ein privates Produkt — z. B. ETF-Depot oder bAV — um den Unterschied für deine Situation zu sehen."
-              cta={{ label: 'Produkte auswählen', onClick: onOpenAngebot }}
-            />
-          )}
+          <div className="vergleich-drilldown">
+            <a
+              href={drillInHref}
+              className="vergleich-drilldown__link"
+              onClick={(event) => {
+                if (!navigate) return
+                if (!shouldUseSpaNavigation(event)) return
+                event.preventDefault()
+                navigate(ROUTES.vergleichDetail, scenarioQuery)
+              }}
+            >
+              Wohin geht das Geld? Aufschlüsselung pro Produkt →
+            </a>
+          </div>
         </article>
       </div>
     </section>
