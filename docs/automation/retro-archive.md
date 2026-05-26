@@ -2869,3 +2869,25 @@ labels: [area:ui-only, from-maintainer]
 ## What would have helped
 
 - A note in the issue body clarifying whether "doubles with footer" meant visual proximity or actual duplicate render would have saved a few minutes of grepping for duplicate DOM output.
+
+---
+date: 2026-05-26T00:00:00Z
+issue: 326
+pr: 327
+stage: implement
+outcome: pr-opened
+labels: [bug, area:copy, from-maintainer]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- Stripe mention appeared in two places: `src/features/landing/LandingPage.tsx:209` (the QA-reported line) and `src/features/methode/MethodePage.tsx:698` (a forward-reference "und Stripe (sobald aufgesetzt)"). Both needed updating for consistency.
+- For `area:copy` single-stage issues, `grep -r "Stripe" src --include="*.tsx"` surfaces all occurrences in one shot — safer than trusting the QA screenshot to cover every instance.
+
+## What would have helped
+
+- Nothing; straightforward two-file copy change.
