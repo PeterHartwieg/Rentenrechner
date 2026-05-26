@@ -7,19 +7,23 @@ interface Props {
 }
 
 /**
- * One per-product breakdown card on `/vergleich/details` (PR 10).
+ * One per-product breakdown card on `/vergleich/details` (PR R2 rewrite).
  *
- * Layout:
- *   - Header: short mono code + long product label.
- *   - Three labeled sections (built upstream by `buildVergleichDetailCardData`):
- *       § 1 Ansparphase, pro Monat
- *       § 2 Mit {retirementAge}, einmalig  ← dynamic age
- *       § 3 Im Alter, pro Monat
- *   - Footer: `Verfügbar ab: <text>` from `vergleichDetailAvailability.ts`.
+ * Layout per `direction-d-pages.jsx` `DProductBreakdown` + the responsive
+ * variants (`TBreakdown` / `MBreakdown` in `responsive-views.jsx`):
+ *
+ *   - Header: short mono code + long product label, bottom-bordered.
+ *   - Three labeled sections (built upstream by
+ *     `buildVergleichDetailCardData`):
+ *       ANSPARPHASE, PRO MONAT
+ *       MIT {retirementAge}, EINMALIG  ← dynamic age
+ *       IM ALTER, PRO MONAT
+ *   - Footer: `Verfügbar ab: <text>` from `vergleichDetailAvailability.ts`,
+ *     mono 11 px, paper-soft background, top-bordered.
  *
  * The component is pure presentation — all values arrive pre-built via
- * `data: VergleichDetailCardData`. The card never reads simulation results or
- * scenario state directly.
+ * `data: VergleichDetailCardData`. The card never reads simulation results
+ * or scenario state directly.
  */
 export function VergleichDetailCard({ data }: Props) {
   // PR 290 Codex P2: pass the live `insuranceContractStartYear` so the
@@ -40,8 +44,8 @@ export function VergleichDetailCard({ data }: Props) {
       </header>
 
       <div className="vd-card__body">
-        {data.sections.map((section, idx) => (
-          <VergleichDetailCardSection key={section.heading} section={section} index={idx + 1} />
+        {data.sections.map((section) => (
+          <VergleichDetailCardSection key={section.heading} section={section} />
         ))}
       </div>
 
