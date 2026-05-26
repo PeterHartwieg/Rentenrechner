@@ -94,11 +94,14 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     // `formatCurrency` produces `... €` (Intl.NumberFormat 'de-DE') — every
     // value cell in the cards should contain a `€` glyph or a leading "−"
     // followed by `€`. We pick any value cell and check.
-    const values = container.querySelectorAll('.vd-card-section__value')
+    // PR R2 selectors: rows are rendered by the `DMoneyRow` primitive
+    // (`.vd-money-row` / `.vd-money-row__value`).
+    const values = container.querySelectorAll('.vd-money-row__value')
     expect(values.length).toBeGreaterThan(0)
-    // At least the first card's Brutto-Rente cell must include the euro sign.
+    // At least the first card's first `add` row (Brutto-Rente / Du selbst /
+    // Kapital brutto, depending on section ordering) must include the euro sign.
     const firstCard = container.querySelector('.vd-card')!
-    const firstCurrencyCell = firstCard.querySelector('.vd-card-section__row--add .vd-card-section__value')
+    const firstCurrencyCell = firstCard.querySelector('.vd-money-row--add .vd-money-row__value')
     expect(firstCurrencyCell?.textContent ?? '').toContain('€')
   })
 
@@ -147,6 +150,23 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     })
   })
 
+  it('renders all 6 cards on phone / tablet / desktop (PR R2 layout: 3-wide → 2-wide → 1-wide)', () => {
+    // PR R2 grid invariant: the card count is constant across viewports; only
+    // the CSS column count changes (3 / 2 / 1). Verify the DOM shape so the
+    // CSS responsive switch never silently changes what content renders.
+    seedCompareMode()
+    eachViewport(() => {
+      const { container, unmount } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
+      const cards = container.querySelectorAll('.vd-card')
+      expect(cards.length).toBe(6)
+      // Three sections per card persist on every viewport.
+      for (const card of Array.from(cards)) {
+        expect(card.querySelectorAll('.vd-card-section').length).toBe(3)
+      }
+      unmount()
+    })
+  })
+
   it('sets the document title via useEffect to the brand-compliant string', () => {
     seedCompareMode()
     render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
@@ -159,6 +179,23 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     const backlink = container.querySelector<HTMLAnchorElement>('.vd-backlink')
     expect(backlink).not.toBeNull()
     expect(backlink!.getAttribute('href')).toBe('/')
+  })
+
+  it('lead paragraph cites live Beitrag / Laufzeit / Renteneintritt with € + Jahre + age', () => {
+    // PR R2 §18: the lead must cite live figures from the page-local
+    // simulation (Beitrag = `bavFunding.monthlyNetCost`) + the profile
+    // (Laufzeit + Renteneintritt). The default profile is 37 → 67, so the
+    // lead reads "200 € pro Monat, Laufzeit 30 Jahre, Renteneintritt mit 67"
+    // (live figures may differ slightly depending on bavFunding two-pass).
+    seedCompareMode()
+    const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
+    const lead = container.querySelector('.vd-lead')
+    expect(lead).not.toBeNull()
+    const text = lead!.textContent ?? ''
+    expect(text).toContain('€')
+    expect(text).toContain('Jahre')
+    // Renteneintritt with 67 (default profile retirementAge).
+    expect(text).toContain('67')
   })
 })
 

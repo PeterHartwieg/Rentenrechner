@@ -11,6 +11,7 @@ import { detectSavedMode } from '../../app/useRoute'
 import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { PRIMARY_PRODUCT_IDS } from '../../content/triggers'
+import { formatCurrency } from '../../utils/format'
 import type { ScenarioAssumptions, PersonalProfile } from '../../domain'
 import { VergleichDetailCard } from './VergleichDetailCard'
 import { LegalFooter } from '../legal/LegalFooter'
@@ -237,6 +238,17 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
     )
   }
 
+  // PR R2 §18: lead paragraph cites the same live Beitrag / Laufzeit /
+  // Renteneintritt figures as `VergleichPage`. Beitrag comes from the
+  // page-local simulation's `bavFunding.monthlyNetCost` — the same net cash
+  // the user pays for bAV, which the compare-mode fair-comparison invariant
+  // pins ETF + insurance to. Laufzeit + Renteneintritt come from `profile`.
+  // Both paths (demo + live) cite live figures so the lead never disagrees
+  // with what the cards show.
+  const monthlyContribution = result.simulation.bavFunding.monthlyNetCost
+  const runtimeYears = Math.max(0, profile.retirementAge - profile.age)
+  const retirementAge = profile.retirementAge
+
   // ---- 3. Render. ---------------------------------------------------------
   return (
     <div className="vd-shell">
@@ -252,17 +264,21 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
               fließt — Eigenanteil, Förderung oder Arbeitgeberzuschuss, Kosten und
               Steuer — und was im Alter monatlich übrig bleibt. Solange noch kein
               eigener Vergleich angelegt ist, rechnen wir mit Standardannahmen für
-              2026 (ein/e {profile.age}-Jährige/r mit {profile.retirementAge} als
-              Renteneintrittsalter, monatliche Netto-Belastung 200&nbsp;€). Eigene
-              Werte ändern die Aufschlüsselung sofort.
+              2026: monatlicher Netto-Aufwand{' '}
+              <strong>{formatCurrency(monthlyContribution, 0)}</strong>, Laufzeit{' '}
+              <strong>{runtimeYears} Jahre</strong>, Renteneintritt mit{' '}
+              <strong>{retirementAge}</strong>. Eigene Werte ändern die
+              Aufschlüsselung sofort.
             </p>
           ) : (
             <p className="vd-lead">
-              Jede Sparform verteilt deinen monatlichen Aufwand anders auf Eigenanteil,
-              Förderung, Kosten und Steuer. Diese Aufschlüsselung zeigt für jedes
-              Produkt, was eingezahlt wird, was am Renteneintritt steht und was im
-              Alter monatlich übrig bleibt — bei deinem aktuellen Renteneintrittsalter
-              von {profile.retirementAge}.
+              Jede Sparform verteilt deinen monatlichen Aufwand anders auf
+              Eigenanteil, Förderung, Kosten und Steuer. Bei einem Netto-Aufwand
+              von <strong>{formatCurrency(monthlyContribution, 0)}</strong> pro
+              Monat, Laufzeit <strong>{runtimeYears} Jahre</strong> und
+              Renteneintritt mit <strong>{retirementAge}</strong> zeigt jede
+              Karte: was eingezahlt wird, was am Renteneintritt steht und was im
+              Alter monatlich übrig bleibt.
             </p>
           )}
 

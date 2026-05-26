@@ -1,6 +1,7 @@
-/* VergleichDetailPage — Sober D treatment, mirrors VergleichPage chrome.
-   Six product breakdown cards laid out 3-wide desktop → 2-wide tablet →
-   1-wide scroll-snap on phone. Pure CSS — no JS carousel.
+/* VergleichDetailPage — Sober D treatment, PR R2 rewrite (May 2026).
+   Six product breakdown cards laid out 3-wide desktop (2 rows × 3) →
+   2-wide tablet (3 rows × 2) → 1-wide phone scroll-snap-y stack.
+   Pure CSS — no JS carousel.
    Local `--vd-*` names are kept for in-file readability but resolve to the
    canonical `--rw-*` tokens defined in src/App.css so this surface cannot
    drift from MeinPlan, Vertrag, Kapital, Vergleich, and the rest of the chrome. */
@@ -90,6 +91,9 @@
 }
 
 /* ---- Card grid -------------------------------------------------------- */
+/* Desktop: 3-wide so 6 cards lay out as 2 rows × 3 cards (per
+   `direction-d-pages.jsx` adapted from the original 4-wide single-row
+   layout — we have 6 products now, not 4). */
 
 .vd-card-grid {
   display: grid;
@@ -110,28 +114,27 @@
 .vd-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px 18px 18px;
   border: 1px solid var(--vd-rule-soft);
   background: var(--rw-bg-paper);
   border-radius: 2px;
   min-width: 0;
   word-break: normal;
   overflow-wrap: anywhere;
+  height: 100%;
 }
 
 .vd-card__head {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  border-bottom: 2px solid var(--vd-rule);
-  padding-bottom: 10px;
+  border-bottom: 1px solid var(--vd-rule);
+  padding: 14px 16px;
 }
 
 .vd-card__short {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   text-transform: uppercase;
   color: var(--vd-ink-faint);
 }
@@ -148,21 +151,28 @@
 .vd-card__body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  padding: 14px 16px;
+  flex: 1;
 }
+
+/* ---- Card footer (`Verfügbar ab`) -------------------------------------- */
+/* Mono 11 px, `--rw-paper` background, top-bordered — per
+   `direction-d-pages.jsx` `DProductBreakdown` footer. */
 
 .vd-card__footer {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
   align-items: baseline;
-  padding-top: 10px;
+  padding: 10px 16px;
   border-top: 1px solid var(--vd-rule-soft);
+  background: var(--vd-paper);
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  color: var(--vd-ink-faint);
+  color: var(--vd-ink-soft);
 }
 
 .vd-card__footer-key {
@@ -197,85 +207,91 @@
 }
 
 .vd-card-section__head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  border-bottom: 1px solid var(--vd-rule-soft);
-  padding-bottom: 4px;
-}
-
-.vd-card-section__num {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.3px;
-  color: var(--vd-ink-faint);
+  /* PR R2: dropped the `§ N` mono prefix per `DProductBreakdown` —
+     the section heading is the only mono-uppercase label. */
+  padding-bottom: 2px;
 }
 
 .vd-card-section__heading {
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
-  font-size: 12px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--vd-ink-soft);
-  font-weight: 600;
+  color: var(--vd-ink-faint);
 }
 
 .vd-card-section__rows {
-  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
-.vd-card-section__row {
+/* ---- DMoneyRow primitive --------------------------------------------- */
+/* One row per money-line. The five modifier classes
+   (`muted` / `bold` / `border` / `accent` / kind) drive the visual
+   differences. Per `DMoneyRow` in `direction-d-pages.jsx`. */
+
+.vd-money-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  padding: 3px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
-.vd-card-section__label {
-  margin: 0;
-  color: var(--vd-ink-soft);
+.vd-money-row__label {
+  color: var(--vd-ink);
   font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-weight: 400;
 }
 
-.vd-card-section__value {
-  margin: 0;
+.vd-money-row__label-suffix {
+  color: var(--vd-ink-faint);
+  font-size: 11px;
+}
+
+.vd-money-row__value {
   color: var(--vd-ink);
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   text-align: right;
+  font-weight: 500;
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 
-.vd-card-section__row--sub .vd-card-section__value {
-  color: var(--vd-accent);
+/* Modifier — muted label + value (additive `+` summands, deductions, info). */
+.vd-money-row--muted .vd-money-row__label,
+.vd-money-row--muted .vd-money-row__value {
+  color: var(--vd-ink-soft);
 }
 
-.vd-card-section__row--info .vd-card-section__value {
-  color: var(--vd-ink-faint);
-}
-
-.vd-card-section__row--info .vd-card-section__label {
-  color: var(--vd-ink-faint);
-}
-
-.vd-card-section__row--total {
-  border-top: 1px solid var(--vd-rule);
-  padding-top: 6px;
-  margin-top: 2px;
-}
-
-.vd-card-section__row--total .vd-card-section__label,
-.vd-card-section__row--total .vd-card-section__value {
+/* Modifier — bold label + value. Pair with `border` for close-rows. */
+.vd-money-row--bold .vd-money-row__label,
+.vd-money-row--bold .vd-money-row__value {
   font-weight: 600;
-  color: var(--vd-ink);
 }
 
-.vd-card-section__row--accent .vd-card-section__value {
+.vd-money-row--bold .vd-money-row__value {
+  font-size: 14px;
+}
+
+/* Modifier — top rule + extra top padding (close-rows). */
+.vd-money-row--border {
+  border-top: 1px solid var(--vd-rule);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+/* Modifier — oxblood accent on the value (`= Netto-Rente` only). */
+.vd-money-row--accent .vd-money-row__value {
   color: var(--vd-accent);
-  font-size: 15px;
+}
+
+/* Kind=info — caller pre-formats the value string; we just dim it. */
+.vd-money-row--info .vd-money-row__value {
+  color: var(--vd-ink-faint);
 }
 
 /* ---- Empty state ------------------------------------------------------- */
@@ -331,6 +347,7 @@
 }
 
 /* ---- Tablet breakpoint ------------------------------------------------- */
+/* Per `TVergleichDetail`: 2 columns × 3 rows. */
 
 @media (min-width: 640px) and (max-width: 1023px) {
   .vd-shell {
@@ -348,10 +365,10 @@
 
 /* ---- Phone breakpoint ------------------------------------------------- */
 /*
-   Canvas MVergleichDetail: cards stack vertically (flexDirection: 'column')
-   with the first two visible and a "↓ 2 weitere" affordance. We match this
-   with a single-column block layout — simpler than the earlier scroll-snap
-   approach and matches the artboard intent at 390 px.
+   Per `MVergleichDetail` (responsive-views.jsx): vertical card stack with
+   CSS scroll-snap-y so the user pages through cards one at a time.
+   `scroll-snap-type: y mandatory` on the grid + `scroll-snap-align: start`
+   on each card item. Pure CSS — no JS carousel.
 */
 
 @media (max-width: 639px) {
@@ -367,15 +384,24 @@
     flex-direction: column;
     grid-template-columns: none;
     gap: 14px;
+    /* Make this a real scroll-snap container so the y mandatory snap
+       actually engages. Without overflow-y + a height constraint the
+       element is not a scroll container and snapping is silently skipped
+       by the browser (Codex P2 / PR 330 R2). */
+    overflow-y: auto;
+    max-height: calc(100dvh - var(--rw-mobile-nav-height, 56px) - 180px);
+    scroll-snap-type: y mandatory;
+    overscroll-behavior-y: contain;
   }
   .vd-card-grid__item {
     flex: none;
     max-width: none;
+    scroll-snap-align: start;
   }
   .vd-card {
     height: auto;
   }
-  .vd-card-section__row {
-    font-size: 13.5px;
+  .vd-money-row {
+    font-size: 12.5px;
   }
 }

@@ -1,6 +1,7 @@
 import type { BavFundingResult, ProductId, ProductResult, ScenarioAssumptions } from '../../domain'
 import { getProductMeta } from '../../engine/productRegistry'
 import { legalConstants } from '../../rules/legalConstants'
+import { formatPercent } from '../../utils/format'
 
 // ---------------------------------------------------------------------------
 // vergleichDetailRows — pure data layer for the `/vergleich/details` cards.
@@ -32,6 +33,14 @@ export interface VergleichDetailRow {
   readonly display?: string
   /** When `true`, the row is rendered with the oxblood accent (net-payout closing line only). */
   readonly accent?: boolean
+  /**
+   * Optional pre-built suffix appended to the label (e.g. `"(1,2 % p.a.)"` for
+   * the `− Kosten` row — the rate is per annum, the value is the lifetime fee
+   * bite). Kept separate from `label` so test fixtures can assert against a
+   * stable base label without depending on the current Effektivkosten rate;
+   * the section component composes label + suffix at the display boundary.
+   */
+  readonly labelSuffix?: string
 }
 
 /** A labeled section inside one product card. */
@@ -196,11 +205,25 @@ function buildAnsparSection(
       }
       break
     case 'basisrente':
-    case 'altersvorsorgedepot':
-    case 'riester':
       if (monthlyTaxBenefit > 0) {
         rows.push({
           label: '+ Steuerrückerstattung',
+          value: monthlyTaxBenefit,
+          kind: 'add',
+        })
+      }
+      break
+    case 'altersvorsorgedepot':
+    case 'riester':
+      // PR R2 §15e/§15f: design lists "+ Steuerrückerstattung (§10a EStG)" and
+      // "+ Zulagen" as separate rows. Engine returns `taxAndSvSavings` as the
+      // combined annual benefit (Zulagen + Günstigerprüfung tax delta) —
+      // splitting them faithfully would require an engine-side breakdown,
+      // which is out of scope for this rewrite (P0: no engine changes).
+      // The combined label keeps the row honest at the display layer.
+      if (monthlyTaxBenefit > 0) {
+        rows.push({
+          label: '+ Steuerrückerstattung & Zulagen',
           value: monthlyTaxBenefit,
           kind: 'add',
         })
@@ -243,21 +266,22 @@ function buildKapitalSection(
   result: ProductResult,
   retirementAge: number,
 ): VergleichDetailSection {
+  // PR R2: collapse the legacy two-row Kosten display (separate `− Kosten
+  // gesamt` sub row + `Effektivkosten p. a.` info row) into a single
+  // `− Kosten` sub row, per the direction-d design (`DProductBreakdown` /
+  // `TBreakdown`). The lifetime fee bite goes into the row value; the
+  // annualised rate rides in the suffix (`(1,2 % p.a.)`) so the label does
+  // not claim the euro figure is itself a per-annum amount.
+  const ratePct = formatPercent(result.accumulationRiy, 1)
   return {
     heading: `Mit ${retirementAge}, einmalig`,
     rows: [
       { label: 'Kapital brutto', value: result.capitalAtRetirement, kind: 'add' },
-      // Cumulative fees over the accumulation period — paired with the
-      // Effektivkosten p. a. info row so the user sees both the headline % and
-      // the integrated euro figure.
-      { label: '− Kosten gesamt', value: result.totalFees, kind: 'sub' },
-      // `accumulationRiy` is a decimal (0.012 = 1.2 % p.a.). The card formats
-      // via `formatPercent(value, 2)` — we store the ratio, the card renders
-      // the display string.
       {
-        label: 'Effektivkosten p. a.',
-        value: result.accumulationRiy,
-        kind: 'info',
+        label: '− Kosten',
+        labelSuffix: `(${ratePct} p.a.)`,
+        value: result.totalFees,
+        kind: 'sub',
       },
     ],
   }

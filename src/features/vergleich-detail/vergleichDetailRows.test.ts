@@ -175,8 +175,31 @@ describe('buildVergleichDetailCardData', () => {
     expect(labels).toEqual(['Du selbst', '+ Steuer- & SV-Vorteil', '= effektiv investiert'])
   })
 
-  it.each(['basisrente', 'altersvorsorgedepot', 'riester'] as const)(
-    '%s: surfaces "+ Steuerrückerstattung" (not "Steuer- & SV-Vorteil")',
+  it('basisrente: surfaces "+ Steuerrückerstattung" (not "Steuer- & SV-Vorteil")', () => {
+    const annualSaving = 240
+    const result = makeResult({
+      productId: 'basisrente',
+      taxAndSvSavings: annualSaving * DEFAULT_YEARS_TO_RETIREMENT,
+    })
+    const d = buildVergleichDetailCardData({
+      result,
+      retirementAge: 67,
+      yearsToRetirement: DEFAULT_YEARS_TO_RETIREMENT,
+      assumptions: ASSUMPTIONS,
+    })
+    const labels = d!.sections[0].rows.map((r) => r.label)
+    expect(labels).toEqual(['Du selbst', '+ Steuerrückerstattung', '= effektiv investiert'])
+    const taxRow = d!.sections[0].rows.find((r) => r.label === '+ Steuerrückerstattung')!
+    // 240 / 12 = 20.
+    expect(taxRow.value).toBe(20)
+  })
+
+  // PR R2 §15e/§15f: AVD + Riester combine Zulagen + Günstigerprüfung tax
+  // delta into one engine-side `taxAndSvSavings` figure. Surface the row
+  // with a combined label so the user knows it covers both. Basisrente keeps
+  // the plain "+ Steuerrückerstattung" because §10 Abs. 3 EStG has no Zulagen.
+  it.each(['altersvorsorgedepot', 'riester'] as const)(
+    '%s: surfaces "+ Steuerrückerstattung & Zulagen" (Zulagen-bearing products)',
     (productId) => {
       const annualSaving = 240
       const result = makeResult({
@@ -190,9 +213,14 @@ describe('buildVergleichDetailCardData', () => {
         assumptions: ASSUMPTIONS,
       })
       const labels = d!.sections[0].rows.map((r) => r.label)
-      expect(labels).toEqual(['Du selbst', '+ Steuerrückerstattung', '= effektiv investiert'])
-      const taxRow = d!.sections[0].rows.find((r) => r.label === '+ Steuerrückerstattung')!
-      // 240 / 12 = 20.
+      expect(labels).toEqual([
+        'Du selbst',
+        '+ Steuerrückerstattung & Zulagen',
+        '= effektiv investiert',
+      ])
+      const taxRow = d!.sections[0].rows.find(
+        (r) => r.label === '+ Steuerrückerstattung & Zulagen',
+      )!
       expect(taxRow.value).toBe(20)
     },
   )
@@ -229,6 +257,9 @@ describe('buildVergleichDetailCardData', () => {
     (productId) => {
       // Pin the §10 Sonderausgaben products to the same monthly-conversion
       // rule as bAV. With 35 years and 600 EUR/year refund, expect ~50/month.
+      // PR R2: AVD + Riester use the combined "+ Steuerrückerstattung & Zulagen"
+      // label; Basisrente uses the plain "+ Steuerrückerstattung". Both row
+      // labels resolve to the same per-month conversion rule.
       const annualSaving = 600
       const yearsToRetirement = 35
       const result = makeResult({
@@ -241,7 +272,11 @@ describe('buildVergleichDetailCardData', () => {
         yearsToRetirement,
         assumptions: ASSUMPTIONS,
       })
-      const row = d!.sections[0].rows.find((r) => r.label === '+ Steuerrückerstattung')!
+      const taxRowLabel =
+        productId === 'basisrente'
+          ? '+ Steuerrückerstattung'
+          : '+ Steuerrückerstattung & Zulagen'
+      const row = d!.sections[0].rows.find((r) => r.label === taxRowLabel)!
       expect(row.value).toBeCloseTo(annualSaving / 12, 2)
     },
   )
@@ -281,7 +316,13 @@ describe('buildVergleichDetailCardData', () => {
     expect(total.value).toBe(330) // 200 + 30 + 100
   })
 
-  it('§ Mit X surfaces Kapital brutto + Kosten gesamt + Effektivkosten p. a. info', () => {
+  it('§ Mit X surfaces Kapital brutto + collapsed "− Kosten" sub row with rate-p.a. suffix', () => {
+    // PR R2: the legacy two-row Kosten display (separate `− Kosten gesamt`
+    // sub row + `Effektivkosten p. a.` info row) is collapsed into one
+    // `− Kosten` sub row whose labelSuffix carries the annualised rate
+    // (`(0,9 % p.a.)`). The euro value is the lifetime fee bite, not a
+    // per-annum amount, so "p.a." must not appear in the base label.
+    // Matches `direction-d-pages.jsx` `DProductBreakdown` Section 2.
     const result = makeResult({
       productId: 'etf',
       capitalAtRetirement: 250_000,
@@ -295,9 +336,17 @@ describe('buildVergleichDetailCardData', () => {
       assumptions: ASSUMPTIONS,
     })
     const rows = d!.sections[1].rows
+    expect(rows).toHaveLength(2)
     expect(rows[0]).toMatchObject({ label: 'Kapital brutto', value: 250_000, kind: 'add' })
-    expect(rows[1]).toMatchObject({ label: '− Kosten gesamt', value: 8_500, kind: 'sub' })
-    expect(rows[2]).toMatchObject({ label: 'Effektivkosten p. a.', value: 0.0085, kind: 'info' })
+    // Base label has no "p.a." — the value is the lifetime fee sum.
+    expect(rows[1].label).toBe('− Kosten')
+    expect(rows[1].value).toBe(8_500)
+    expect(rows[1].kind).toBe('sub')
+    // Rate suffix is pre-formatted by the row builder (1 decimal) and carries
+    // "p.a." to signal the rate is annualised: "(0,9 % p.a.)".
+    expect(rows[1].labelSuffix).toBeDefined()
+    expect(rows[1].labelSuffix!).toMatch(/0,?\s?9?\s*%/)
+    expect(rows[1].labelSuffix!).toContain('p.a.')
   })
 
   it('§ Im Alter derives income tax as gross − net − kvPv', () => {
