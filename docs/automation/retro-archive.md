@@ -2915,3 +2915,27 @@ labels: [bug, area:copy, from-maintainer]
 ## What would have helped
 
 - Nothing significant; the area:copy single-stage path was clean and fast.
+
+---
+date: 2026-05-27T12:30:00Z
+issue: 337
+pr: 339
+stage: implement
+outcome: pr-opened
+labels: [area:copy, from-maintainer]
+---
+
+## Blockers
+
+- None.
+
+## Learnings
+
+- The `VergleichDetailCard.tsx` footer renders `"Verfügbar ab"` as a fixed key (`vd-card__footer-key`) and then appends the label from `productAvailabilityCopy.ts` (`vd-card__footer-value`). Labels must NOT begin with `"ab "` or the rendered output reads `"Verfügbar ab ab XX J."`.
+- The same footer pattern is mirrored in `PrintReport.tsx` (`pr-wohin-card__footer-key` / `pr-wohin-card__footer-value`), so all five age-based labels needed the fix.
+- The availability tests in `vergleichDetailAvailability.test.ts` use `toContain(String(age))` — robust to prefix changes, so no logic changes were needed, only a comment update on line 24.
+- Single-stage shortcut applied correctly: `area:copy` label, clean branch, no handoff comment.
+
+## What would have helped
+
+- The `AvailabilityEntry.label` JSDoc already says "rendered after 'Verfügbar ab:' in the card footer" — a lint rule or snapshot test asserting `!label.startsWith("ab ")` would have caught this at authoring time.
