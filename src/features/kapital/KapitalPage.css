@@ -12,16 +12,24 @@
   --kapital-paper: var(--rw-bg-paper-soft);
   --kapital-accent: var(--rw-accent);
 
+  /* Flex column so .kapital-main can fill the available height and the
+     LegalFooter rendered as the last child sits flush at the shell's
+     bottom edge (was: shell carried padding-bottom: 64px which pushed the
+     footer up from the page edge). */
+  display: flex;
+  flex-direction: column;
   background: var(--rw-bg-cream);
   color: var(--kapital-ink);
-  padding: 28px 24px 64px;
   min-height: 100%;
   font-family: var(--rw-font-sans);
 }
 
 .kapital-main {
+  flex: 1;
+  width: 100%;
   max-width: 1180px;
   margin: 0 auto;
+  padding: 28px 24px 64px;
 }
 
 .kapital-body {
@@ -290,7 +298,7 @@
 /* ---- Phone breakpoint -------------------------------------------------- */
 
 @media (max-width: 639px) {
-  .kapital-shell {
+  .kapital-main {
     padding: 18px 16px 96px; /* extra bottom for MobileNav tab bar */
   }
   .kapital-headline {
@@ -309,7 +317,7 @@
 /* ---- Tablet breakpoint ------------------------------------------------- */
 
 @media (min-width: 640px) and (max-width: 1023px) {
-  .kapital-shell {
+  .kapital-main {
     padding: 22px 20px 56px;
   }
   .kapital-headline {

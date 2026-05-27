@@ -58,6 +58,12 @@
 .rw-app-shell__body {
   flex: 1 1 auto;
   min-width: 0;
+  /* Flex column so LegalFooter (rendered as a direct child of <main> on /
+     and the topic pages) sticks to the bottom via `margin-top: auto`,
+     and the in-page Sober D shells fill the height instead of leaving a
+     cream gap below the footer when content is shorter than the viewport. */
+  display: flex;
+  flex-direction: column;
 }
 
 .rw-app-shell--phone .rw-app-shell__body {
@@ -551,6 +557,10 @@
    mode legacy panel area still needs the white card chrome — that lives
    on `.workspace-view--details` (see App.css). */
 .rw-dashboard-body {
+  /* Fill the flex column inside <main> so the Sober D shells (cream bg)
+     reach the bottom of the viewport and the trailing LegalFooter lands at
+     the very edge — not on a strip of cream below shorter pages. */
+  flex: 1 1 auto;
   padding: 0;
   background: transparent;
 }

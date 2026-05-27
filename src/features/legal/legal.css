@@ -161,13 +161,18 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 56px 12px;
+  padding: 18px 56px 16px;
   border-top: 1px solid var(--rw-rule-soft);
   background: var(--rw-bg-paper);
   font-family: var(--rw-font-mono);
   font-size: 11px;
   letter-spacing: 0.3px;
   color: var(--rw-ink-faint);
+  /* Stick to the bottom of any flex column parent (AppShell <main>,
+     .kapital-shell, .vd-shell, .angaben-shell, …) so content has visible
+     breathing room above the footer and the footer reaches the edge of
+     the viewport even when the page content is short. */
+  margin-top: auto;
 }
 
 .app-footer__method {
