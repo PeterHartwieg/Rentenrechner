@@ -320,6 +320,7 @@ describe('PrintReport', () => {
       />
     )
     const optCapitalCell = readEtfCapitalCell(containerOpt)
+    expect(containerOpt.textContent ?? '').toContain('Werte im Optimistisch-Szenario')
     unmountOpt()
 
     // Without selectedScenarioId (backwards compat: defaults to 'basis', 5 %)
@@ -331,6 +332,9 @@ describe('PrintReport', () => {
       />
     )
     const defaultCapitalCell = readEtfCapitalCell(containerDefault)
+    const defaultText = containerDefault.textContent ?? ''
+    expect(defaultText).toContain('Werte im Basis-Szenario')
+    expect(defaultText).not.toContain('Werte im Optimistisch-Szenario')
 
     // R4 scenario-threading assertion: the ETF row's capital cell must
     // differ between optimistisch (12 % return) and default (basis, 5 %).
