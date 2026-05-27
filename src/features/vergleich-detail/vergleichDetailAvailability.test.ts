@@ -21,7 +21,7 @@ import { getAvailabilityEntry } from './vergleichDetailAvailability'
 // ---------------------------------------------------------------------------
 
 // Default context = post-2011 boundary, which preserves the historic test
-// expectations (label = "ab 62 J." for `versicherung`, bAV, AVD, Riester).
+// expectations (label = "62 J." for `versicherung`, bAV, AVD, Riester).
 const DEFAULT_CTX = {
   insuranceContractStartYear:
     legalConstants.insurance.halbeinkuenfteRaisedMinAgeContractStartYear,
@@ -68,7 +68,7 @@ describe('getAvailabilityEntry', () => {
   // returns 60 for years < `halbeinkuenfteRaisedMinAgeContractStartYear`
   // (currently 2012) and 62 for years ≥ that boundary. The card footer
   // must mirror that dispatch so a pre-2012 Altvertrag does not falsely
-  // read "ab 62 J."
+  // read "62 J."
   // ---------------------------------------------------------------------
   it('versicherung with a pre-2012 contractStartYear surfaces the §20 Abs. 1 Nr. 6 EStG original 60-year minimum', () => {
     const pre2012 = getAvailabilityEntry('versicherung', { insuranceContractStartYear: 2008 })
