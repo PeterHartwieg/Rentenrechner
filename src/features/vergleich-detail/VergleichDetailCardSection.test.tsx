@@ -60,7 +60,7 @@ describe('VergleichDetailCardSection — labeled section block', () => {
     const { container } = render(
       <VergleichDetailCardSection
         section={{
-          heading: 'Mit 67, einmalig',
+          heading: 'Mit 67, Kapital',
           rows: [
             { label: 'Kapital brutto', value: 250_000, kind: 'add' },
             {

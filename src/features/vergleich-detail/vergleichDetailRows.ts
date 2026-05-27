@@ -259,7 +259,7 @@ function monthlyTaxBenefitOf(lifetimeTaxAndSvSavings: number, yearsToRetirement:
 }
 
 // ---------------------------------------------------------------------------
-// Section 2 — § Mit {retirementAge}, einmalig
+// Section 2 — § Mit {retirementAge}, Kapital
 // ---------------------------------------------------------------------------
 
 function buildKapitalSection(
@@ -274,7 +274,7 @@ function buildKapitalSection(
   // not claim the euro figure is itself a per-annum amount.
   const ratePct = formatPercent(result.accumulationRiy, 1)
   return {
-    heading: `Mit ${retirementAge}, einmalig`,
+    heading: `Mit ${retirementAge}, Kapital`,
     rows: [
       { label: 'Kapital brutto', value: result.capitalAtRetirement, kind: 'add' },
       {
