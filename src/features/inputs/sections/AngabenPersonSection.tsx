@@ -30,6 +30,29 @@ const KV_OPTIONS = [
   { value: 'pkv', label: 'Privat (PKV)' },
 ] as const
 
+/** The 16 German Länder, alphabetically sorted. Source list for the
+ *  Bundesland dropdown — eliminates spelling concerns vs. the previous
+ *  free-text input (issue #335). Still ephemeral string state; not bound
+ *  to engine math (Kirchensteuer routing comes from `profile.churchTax`). */
+const BUNDESLAENDER = [
+  'Baden-Württemberg',
+  'Bayern',
+  'Berlin',
+  'Brandenburg',
+  'Bremen',
+  'Hamburg',
+  'Hessen',
+  'Mecklenburg-Vorpommern',
+  'Niedersachsen',
+  'Nordrhein-Westfalen',
+  'Rheinland-Pfalz',
+  'Saarland',
+  'Sachsen',
+  'Sachsen-Anhalt',
+  'Schleswig-Holstein',
+  'Thüringen',
+] as const
+
 interface Props {
   profile: PersonalProfile
   setProfile: Dispatch<SetStateAction<PersonalProfile>>
@@ -120,14 +143,21 @@ export function AngabenPersonSection({
         <label className="angaben-field">
           <span className="angaben-field-label">Bundesland</span>
           <span className="angaben-field-shell">
-            {/* Free-text Bundesland — not bound to engine state. Kept as a
-                hand-rolled <input type="text"> because it is a string label,
-                not a numeric quantity. */}
-            <input
-              type="text"
+            {/* Bundesland is a dropdown of the 16 Länder — still a string
+                label, still not bound to engine math. The dropdown form
+                avoids spelling mismatches (issue #335). Kirchensteuer
+                routing continues to come from `profile.churchTax`. */}
+            <select
               value={bundesland}
               onChange={(e) => setBundesland(e.target.value)}
-            />
+            >
+              {BUNDESLAENDER.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <span className="angaben-field-caret" aria-hidden="true">▾</span>
           </span>
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
