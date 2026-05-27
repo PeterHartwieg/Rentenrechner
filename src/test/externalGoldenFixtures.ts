@@ -647,6 +647,38 @@ export const besteuerungsanteilGoldenValues = [
 
 export const versorgungsfreibetragGoldenValues = [
   {
+    // §19 Abs. 2 EStG Anlage: 2020 is the anchor before the slowed transitional
+    // schedule (2021–2022) kicks in. Pinning this value guards against a future
+    // refactor that re-breaks the 2020 boundary.
+    id: 'versorgungsfreibetrag-2020-anchor',
+    sourceId: 'estg-retirement-cohort-tables',
+    retirementYear: 2020,
+    expectedProzent: 0.16,
+    expectedHoechstbetrag: 1_200,
+    expectedZuschlag: 360,
+  },
+  {
+    // §19 Abs. 2 EStG Anlage: 2021–2022 transitional schedule (slowed pace,
+    // −0.8 pp / −60 EUR / −18 EUR per year from the 2020 anchor, before the
+    // Wachstumschancengesetz reset the post-2023 progression).
+    id: 'versorgungsfreibetrag-2021',
+    sourceId: 'estg-retirement-cohort-tables',
+    retirementYear: 2021,
+    expectedProzent: 0.152,
+    expectedHoechstbetrag: 1_140,
+    expectedZuschlag: 342,
+  },
+  {
+    // §19 Abs. 2 EStG Anlage: 2022 — last transitional year before the
+    // post-Wachstumschancengesetz schedule starts at the 2023 anchor (14.0 %).
+    id: 'versorgungsfreibetrag-2022',
+    sourceId: 'estg-retirement-cohort-tables',
+    retirementYear: 2022,
+    expectedProzent: 0.144,
+    expectedHoechstbetrag: 1_080,
+    expectedZuschlag: 324,
+  },
+  {
     id: 'versorgungsfreibetrag-2026',
     sourceId: 'estg-retirement-cohort-tables',
     retirementYear: 2026,

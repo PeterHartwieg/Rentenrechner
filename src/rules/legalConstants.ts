@@ -87,8 +87,16 @@ export function besteuerungsanteilGrv(retirementYear: number): number {
  *   ...−0.4 pp/year, −30 EUR/year, −9 EUR/year...
  *   2058:  0.0 % /     0 EUR /   0 EUR
  *
- * For years 2005–2022 the pre-Wachstumschancengesetz schedule applies
- * (faster pace; values above the 2023 anchor). For years >= 2058: all zeros.
+ * Pre-2023 the schedule has two stages per §19 Abs. 2 EStG Anlage:
+ *   2005–2020: original Alterseinkünftegesetz pace
+ *              (−1.6 pp / −120 EUR / −36 EUR per year from the 2005 anchor 40 %/3000/900).
+ *   2021–2022: transitional slowed pace
+ *              (−0.8 pp / −60 EUR / −18 EUR per year from the 2020 anchor 16 %/1200/360).
+ *   2021: 15.2 % / 1,140 EUR / 342 EUR
+ *   2022: 14.4 % / 1,080 EUR / 324 EUR
+ * The 2023 anchor (14.0 %/1050/315) is then served by the post-Wachstumschancengesetz branch.
+ *
+ * For years >= 2058: all zeros.
  * For years < 2005 (no Alterseinkünftegesetz): returns 2005 values (40 %/3000/900).
  */
 export interface VersorgungsfreibetragRow {
@@ -106,17 +114,32 @@ export function versorgungsfreibetrag(retirementYear: number): Versorgungsfreibe
     return { prozent: 0, hoechstbetrag: 0, zuschlag: 0 }
   }
 
-  if (retirementYear <= 2022) {
-    // Pre-Wachstumschancengesetz schedule (EStG §19 Abs. 2 original table):
+  if (retirementYear <= 2020) {
+    // 2005–2020: original Alterseinkünftegesetz schedule (§19 Abs. 2 EStG Anlage):
     // 2005: 40.0 % / 3,000 / 900
     // 2006: 38.4 % / 2,880 / 864
-    // ...−1.6 pp/year, −120 EUR/year, −36 EUR/year... → 2040: 0 %
-    // For 2023 anchor (14.0/1050/315) this matches the pre-law 2023 row.
+    // ...−1.6 pp/year, −120 EUR/year, −36 EUR/year...
+    // 2020: 16.0 % / 1,200 / 360 (anchor for the 2021–2022 transitional branch).
     const yearsFrom2005 = retirementYear - 2005
     return {
       prozent: 0.40 - yearsFrom2005 * 0.016,
       hoechstbetrag: 3_000 - yearsFrom2005 * 120,
       zuschlag: 900 - yearsFrom2005 * 36,
+    }
+  }
+
+  if (retirementYear <= 2022) {
+    // 2021–2022: transitional slowed schedule per §19 Abs. 2 EStG Anlage
+    // (pre-Wachstumschancengesetz step): −0.8 pp / −60 EUR / −18 EUR per year
+    // from the 2020 anchor.
+    // 2021: 15.2 % / 1,140 / 342
+    // 2022: 14.4 % / 1,080 / 324
+    // The 2023 anchor (14.0/1050/315) is served by the post-2023 branch below.
+    const yearsFrom2020 = retirementYear - 2020
+    return {
+      prozent: 0.16 - yearsFrom2020 * 0.008,
+      hoechstbetrag: 1_200 - yearsFrom2020 * 60,
+      zuschlag: 360 - yearsFrom2020 * 18,
     }
   }
 
