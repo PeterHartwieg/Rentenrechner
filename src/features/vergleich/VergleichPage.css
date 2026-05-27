@@ -168,6 +168,11 @@
 .vergleich-comparison-table th {
   word-break: normal;
   overflow-wrap: anywhere;
+  /* Override the global `th, td { white-space: nowrap }` rule in App.css.
+     The Sober D Vergleich table needs the long "Wie es funktioniert"
+     taglines and product labels to wrap inside their columns; without this
+     override the text overflows visually into the adjacent numeric cell. */
+  white-space: normal;
 }
 
 .vergleich-comparison-table thead tr {
