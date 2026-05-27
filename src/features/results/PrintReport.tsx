@@ -36,15 +36,9 @@ import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { getProductMeta } from '../../app/productPresentation'
-import { PRODUCT_IDS } from '../../engine/productRegistry'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { simulateRetirementComparison } from '../../engine/simulate'
-import { de2026Rules } from '../../rules/de2026'
-import {
-  normalizeMonthlyNettoBelastung,
-  syncMonthlyContributions,
-} from '../../app/syncContributions'
-import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../../data/defaultScenario'
+import { buildAllProductsSimulation } from '../../app/buildAllProductsSimulation'
 import {
   evidenceStateToProvKind,
   formatEvidenceStateForExport,
@@ -127,6 +121,18 @@ interface Props {
    * Defaults to 'basis' when omitted (backwards-compatible).
    */
   selectedScenarioId?: string
+  /**
+   * Optional pre-built all-6-products simulation lifted from Calculator
+   * (PR 332 R2 — Codex P2). When provided in compare-mode, PrintReport
+   * reuses this result instead of running its own local
+   * `simulateRetirementComparison` pass. Mirrors the lift on VergleichPage
+   * so the screen, the CSV (built in Calculator), and the PDF all consume
+   * the same simulation result. When omitted, the report falls back to its
+   * internal useMemo so existing tests / standalone callers still work.
+   * Ignored in combine-mode (the portfolio branch consumes the per-instance
+   * + combined bundle threaded in via `portfolio`).
+   */
+  compareAllProductsSimulation?: ReturnType<typeof simulateRetirementComparison>
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -194,6 +200,7 @@ export function PrintReport({
   combineWorkspace,
   combineSensitivityRows,
   selectedScenarioId,
+  compareAllProductsSimulation,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -210,6 +217,13 @@ export function PrintReport({
   // holds. Memoised so re-renders driven by parent state changes don't
   // re-trigger the two-pass funding compute on every paint.
   //
+  // PR 332 R2 (Codex P2): when Calculator threads
+  // `compareAllProductsSimulation`, we reuse it instead of running our own
+  // engine pass — this collapses the duplicate useMemo between Calculator
+  // (CSV export), VergleichPage (table), and PrintReport (PDF mirror) into
+  // a single result. Standalone callers (tests, fixtures) keep the local
+  // memo path so backwards compatibility is preserved.
+  //
   // Hooks must run unconditionally before any early return (Rules of Hooks).
   // In combine-mode the result is ignored (the combine branch consumes the
   // pre-built portfolio results threaded in via props), so the useMemo
@@ -217,23 +231,15 @@ export function PrintReport({
   // on every parent re-render. PrintReport mounts continuously alongside the
   // calculator, so an idle compute cost would be paid on every assumptions
   // edit (Codex P2 / CR3 R1 fix).
+  // `buildAllProductsSimulation` (PR 332 R3) owns the normalize → sync →
+  // simulate contract for compare-mode forced-products simulations.
+  // Short-circuits to null in combine-mode (pre-built portfolio results used
+  // instead) and to `compareAllProductsSimulation` when Calculator provides
+  // the pre-built result (avoids a redundant engine pass).
   const allProductsResult = useMemo(() => {
     if (combineMode && portfolio) return null
-
-    const overridden: ScenarioAssumptions = {
-      ...assumptions,
-      visibleProducts: [...PRODUCT_IDS] as ProductId[],
-    }
-    const activeAssumptions = syncMonthlyContributions(
-      normalizeMonthlyNettoBelastung(
-        overridden.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
-      ),
-      overridden,
-      profile,
-      de2026Rules,
-    )
-    return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
-  }, [combineMode, portfolio, profile, assumptions])
+    return compareAllProductsSimulation ?? buildAllProductsSimulation(profile, assumptions)
+  }, [combineMode, portfolio, compareAllProductsSimulation, profile, assumptions])
 
   // Combine-mode branch (Group G issue 11): when combineMode + portfolio are
   // provided, render per-instance + combined view rather than singleton-compare

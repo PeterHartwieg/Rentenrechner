@@ -25,8 +25,8 @@
  *   - Page renders without throwing across phone / tablet / desktop
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
@@ -302,6 +302,164 @@ describe('VergleichPage — R1 layout', () => {
     const rows = table!.querySelectorAll('tbody tr')
     // R1 contract: always shows all 6 products from PRODUCT_REGISTRY, never
     // a hardcoded list or a `visibleProducts`-filtered subset.
+    expect(rows.length).toBe(6)
+  })
+})
+
+describe('VergleichPage — action bar (PR 332 R1 — Codex P2)', () => {
+  it('renders all three buttons when all handlers are provided', () => {
+    const result = buildResult(defaultAssumptions)
+    const { getByRole } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+          onPrint={NOOP}
+          onExportCsv={NOOP}
+          onCopyLink={NOOP}
+          linkCopied={false}
+        />,
+      ),
+    )
+    expect(getByRole('button', { name: 'Drucken' })).not.toBeNull()
+    expect(getByRole('button', { name: 'CSV exportieren' })).not.toBeNull()
+    expect(getByRole('button', { name: 'Link kopieren' })).not.toBeNull()
+  })
+
+  it('each button invokes exactly its own handler on click', () => {
+    const onPrint = vi.fn()
+    const onExportCsv = vi.fn()
+    const onCopyLink = vi.fn()
+    const result = buildResult(defaultAssumptions)
+    const { getByRole } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+          onPrint={onPrint}
+          onExportCsv={onExportCsv}
+          onCopyLink={onCopyLink}
+          linkCopied={false}
+        />,
+      ),
+    )
+
+    fireEvent.click(getByRole('button', { name: 'Drucken' }))
+    expect(onPrint).toHaveBeenCalledOnce()
+    expect(onExportCsv).not.toHaveBeenCalled()
+    expect(onCopyLink).not.toHaveBeenCalled()
+
+    fireEvent.click(getByRole('button', { name: 'CSV exportieren' }))
+    expect(onExportCsv).toHaveBeenCalledOnce()
+    expect(onCopyLink).not.toHaveBeenCalled()
+
+    fireEvent.click(getByRole('button', { name: 'Link kopieren' }))
+    expect(onCopyLink).toHaveBeenCalledOnce()
+  })
+
+  it('shows "Link kopiert ✓" when linkCopied is true', () => {
+    const result = buildResult(defaultAssumptions)
+    const { getByRole, queryByRole } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+          onPrint={NOOP}
+          onExportCsv={NOOP}
+          onCopyLink={NOOP}
+          linkCopied={true}
+        />,
+      ),
+    )
+    expect(getByRole('button', { name: /Link kopiert/ })).not.toBeNull()
+    expect(queryByRole('button', { name: 'Link kopieren' })).toBeNull()
+  })
+
+  it('does not render the action bar toolbar when no handlers are provided', () => {
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+        />,
+      ),
+    )
+    expect(container.querySelector('.vergleich-actions')).toBeNull()
+  })
+})
+
+describe('VergleichPage — allProductsSimulation prop (PR 332 R2 — Codex P2)', () => {
+  it('uses Calculator-supplied allProductsSimulation when provided (no local re-simulation)', () => {
+    // R2 fix: when Calculator lifts the all-6 simulation and threads it as a
+    // prop, VergleichPage must reuse it instead of running its own
+    // simulation. We pin this by patching the basis-scenario ETF row's
+    // `capitalAtRetirement` to a wildly distinct number that no organic
+    // engine run would produce. If the page falls back to its local memo,
+    // the natural figure (~144 628 €) would show up instead.
+    const realSim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const sentinelCapital = 987_654_321
+    const patchedProducts = realSim.products.map((p) =>
+      p.productId === 'etf' && p.scenarioId === 'basis'
+        ? { ...p, capitalAtRetirement: sentinelCapital }
+        : p,
+    )
+    const patchedSim = { ...realSim, products: patchedProducts }
+
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          allProductsSimulation={patchedSim}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+        />,
+      ),
+    )
+    // de-DE formatting: 987.654.321 €
+    expect(container.textContent ?? '').toContain('987.654.321')
+  })
+
+  it('falls back to a local simulation when allProductsSimulation is omitted (backwards compat)', () => {
+    // Without the prop, the page still renders all 6 rows via its internal
+    // useMemo (the R1 contract). Standalone callers + existing tests keep
+    // working unchanged.
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+        />,
+      ),
+    )
+    const table = container.querySelector('.vergleich-comparison-table')
+    expect(table).not.toBeNull()
+    const rows = table!.querySelectorAll('tbody tr')
     expect(rows.length).toBe(6)
   })
 })

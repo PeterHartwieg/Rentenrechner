@@ -344,6 +344,58 @@ describe('PrintReport', () => {
   })
 
   // -------------------------------------------------------------------------
+  // PR 332 R2 (Codex P2): compareAllProductsSimulation prop. Calculator
+  // lifts the all-6 simulation and threads it here so VergleichPage / CSV /
+  // PDF all consume the same result. Backwards-compatible — when the prop
+  // is omitted, the report falls back to its internal useMemo.
+  // -------------------------------------------------------------------------
+
+  it('compare-mode reuses compareAllProductsSimulation prop when provided (no local re-simulation)', async () => {
+    const { simulateRetirementComparison: simulate } = await import('../../engine/simulate')
+    const { de2026Rules: rules } = await import('../../rules/de2026')
+
+    // Run a real simulation and patch the basis-scenario ETF row's
+    // `capitalAtRetirement` to a wildly distinct number that no engine run
+    // would produce. The printed Vergleich mirror reads each row's capital
+    // through `formatCurrency(value, 0)`; the sentinel will show as
+    // "987.654.321 €" in the rendered table when the prop is honoured.
+    const realSim = simulate(defaultProfile, defaultAssumptions, rules)
+    const sentinelCapital = 987_654_321
+    const patchedProducts = realSim.products.map((p) =>
+      p.productId === 'etf' && p.scenarioId === 'basis'
+        ? { ...p, capitalAtRetirement: sentinelCapital }
+        : p,
+    )
+    const patchedSim = { ...realSim, products: patchedProducts }
+
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+        compareAllProductsSimulation={patchedSim}
+      />,
+    )
+    expect(container.textContent ?? '').toContain('987.654.321')
+  })
+
+  it('compare-mode falls back to local simulation when compareAllProductsSimulation is omitted (backwards compat)', async () => {
+    const { PRODUCT_REGISTRY } = await import('../../engine/productRegistry')
+    const { container } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+      />,
+    )
+    // Without the prop, the local memo still runs all 6 products.
+    const table = container.querySelector('.pr-vergleich-table')
+    expect(table).not.toBeNull()
+    const rows = table!.querySelectorAll('tbody tr')
+    expect(rows.length).toBe(PRODUCT_REGISTRY.length)
+  })
+
+  // -------------------------------------------------------------------------
   // Issue 27: combine-mode must source profile/GRV/scenarios from workspace,
   // never from singleton state. Pin the divergence with a workspace that
   // differs from the singleton defaults.

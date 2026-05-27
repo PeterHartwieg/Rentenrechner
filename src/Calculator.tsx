@@ -21,29 +21,19 @@ import type { ProductId } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
 import { de2026Rules } from './rules/de2026'
+import { buildAllProductsSimulation } from './app/buildAllProductsSimulation'
+import { buildExportCsv, downloadCsv } from './utils/csvExport'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
 import type { WorkspaceUiState } from './app/useWorkspaceUiState'
 import { usePortfolioState } from './app/portfolioState'
-import { ROUTES } from './app/useRoute'
 import type { Route } from './app/useRoute'
-import { PRODUCT_MANIFEST } from './app/productPresentation'
-import { SensitivityPanel } from './features/results/SensitivityPanel'
-import { runSensitivity } from './features/results/sensitivity'
-import { FairnessPanel } from './features/results/FairnessPanel'
-import { FeeDragChart } from './features/results/FeeDragChart'
-import { MonteCarloPanel } from './features/results/MonteCarloPanel'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
-import { DetailComparisonTable } from './features/results/DetailComparisonTable'
 import { CombineDetailView } from './features/results/CombineDetailView'
 import { PrintReport } from './features/results/PrintReport'
 import { usePrintSensitivityRows } from './app/usePrintSensitivityRows'
-import { CashflowTable } from './features/cashflows/CashflowTable'
 import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
-import { AssumptionReviewPanel } from './features/results/AssumptionReviewPanel'
-import { ComparisonPicker } from './features/workspace/ComparisonPicker'
-import { EmptyComparison } from './features/workspace/EmptyComparison'
 import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { InventoryWizard } from './features/inventory/InventoryWizard'
@@ -59,7 +49,6 @@ import {
   useQaMode,
 } from './features/qa-feedback'
 
-const PRODUCT_COLORS = Object.fromEntries(PRODUCT_MANIFEST.map(m => [m.id, m.color]))
 // PR 6: PORTFOLIO_COLOR / PORTFOLIO_LIFECYCLE_ID / buildPortfolioLifecycleViews
 // were tied to the removed combine-mode lifecycle pane. PR 8 (Kapital &
 // Auszahlungen) re-introduces them on a dedicated `/kapital` route.
@@ -235,6 +224,29 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     combineProfile,
   ])
 
+  // PR 332 R2 (Codex P2): compare-mode all-6-products simulation lifted
+  // from VergleichPage's local useMemo to here. The Sober D
+  // `VergleichPage` (PR 329 R1) renders all 6 products always — even when
+  // the user's `visibleProducts` is a subset — and the print compare-mode
+  // mirror (PR R3) does the same. Owning the simulation here lets us:
+  //   1. Power a new `handleExportCsvAllProducts` so the CSV matches
+  //      what the user sees on `/vergleich` (the prior `handleExportCsv`
+  //      from `useDerivedViews` was filtered by `assumptions.visibleProducts`).
+  //   2. Thread the same result into VergleichPage and PrintReport
+  //      (collapses their duplicate useMemos into a shared source).
+  //
+  // Mirrors `useSimulationResult`'s construction exactly: normalize the
+  // monthly netto-belastung, then `syncMonthlyContributions` so the
+  // bavFunding two-pass + fair-comparison invariant still hold.
+  //
+  // Returns null in combine-mode — there is no compare-mode export path
+  // there; the combine-mode `handleExportCsv` from useDerivedViews
+  // continues to drive the per-instance + combined CSV.
+  const compareAllProductsSimulation = useMemo(() => {
+    if (isCombineMode) return null
+    return buildAllProductsSimulation(profile, assumptions)
+  }, [isCombineMode, profile, assumptions])
+
   // Sensitivity perturbation rows for the combine-mode print (PR 11 R1
   // scope restore + R2 perf fix). Each row drives a full
   // `runCombineSimulation` pass — up to 4 extra simulations per build.
@@ -260,32 +272,45 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     combineMode: isCombineMode,
     combine: combineExportBundle,
   })
-  const { simulation, monteCarloResult } = result
+  const { simulation } = result
   const {
-    visibleProducts,
-    selectedResults,
-    cashflowResult,
-    effectiveCashflowProductId,
-    cashflowAnnualTaxSvSavings,
-    rowAfterTaxBalance,
-    linkCopied,
-    handleCopyLink,
     handleExportCsv,
+    handleCopyLink,
+    linkCopied,
   } = views
 
-  const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
-
-  const hasComparisonSet = assumptions.visibleProducts.length > 0
-
-  const sensitivityResult = useMemo(() => {
-    if (!hasComparisonSet) return undefined
-    return runSensitivity({
-      profile,
-      assumptions,
+  // PR 332 R2 (Codex P2): compare-mode CSV export aligned with what
+  // VergleichPage actually renders. `useDerivedViews.handleExportCsv` is
+  // built from the singleton simulation filtered by
+  // `assumptions.visibleProducts`, which can be a subset (the user's
+  // `/eingaben` selection). VergleichPage forces all 6 products on screen,
+  // so a stale subset would diverge from the CSV. We rebuild the export
+  // here against `compareAllProductsSimulation` so the file matches the
+  // page byte-for-byte (all 6 rows in registry/payout order).
+  //
+  // Combine-mode keeps `handleExportCsv` (it has its own per-instance +
+  // combined branch in useDerivedViews); compare-mode swaps in this
+  // handler for VergleichPage's action bar.
+  function handleExportCsvAllProducts(): void {
+    if (!compareAllProductsSimulation) return
+    const csv = buildExportCsv({
+      products: compareAllProductsSimulation.products,
+      bavAnnualTaxSvSavings: compareAllProductsSimulation.bavFunding.annualTaxAndSvSavings,
+      bavProfile: profile,
+      bavKvdrMember: result.taxModes.kvdrMember,
+      bavOtherAnnualIncome: assumptions.bav.monthlyOtherRetirementIncome * 12,
+      insuranceTaxMode: result.taxModes.insuranceTaxMode,
+      equityPartialExemption: assumptions.etf.equityPartialExemption,
+      insuranceOtherAnnualIncome: assumptions.insurance.monthlyOtherRetirementIncome * 12,
+      avdOtherAnnualIncome: assumptions.altersvorsorgedepot.monthlyOtherRetirementIncome * 12,
+      riesterOtherAnnualIncome: assumptions.riester.monthlyOtherRetirementIncome * 12,
       rules: de2026Rules,
-      visibleProducts: assumptions.visibleProducts,
+      inflationRate: assumptions.inflationRate,
     })
-  }, [profile, assumptions, hasComparisonSet])
+    downloadCsv('rentenwiki-export.csv', csv)
+  }
+
+  const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
 
   // In combine mode the toolbar must read from and write to the workspace
   // baseline assumptions so that scenario/MC changes propagate to
@@ -417,125 +442,58 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
           profile={profile}
           assumptions={assumptions}
           result={result}
+          allProductsSimulation={compareAllProductsSimulation ?? undefined}
           onAssumptionsChange={(updater) =>
             setAssumptions((current) => ({ ...current, ...updater(current) }))
           }
           selectedScenarioId={result.effectiveScenarioId}
           onSelectScenario={ui.setSelectedScenarioId}
           navigate={navigate}
+          onPrint={() => window.print()}
+          onExportCsv={handleExportCsvAllProducts}
+          onCopyLink={handleCopyLink}
+          linkCopied={linkCopied}
         />
       )}
     </section>
   )
 
-  const detailsView = (
+  // PR R4: compare-mode legacy panels (ComparisonPicker, FeeDragChart,
+  // MonteCarloPanel, SensitivityPanel, FairnessPanel, AssumptionReviewPanel,
+  // DetailComparisonTable, CashflowTable, AssumptionsPanel, EmptyComparison)
+  // have been removed. The Sober D VergleichPage (in vergleichView above) is
+  // now the single linear surface for compare-mode. Combine-mode is unchanged.
+  const detailsView = isCombineMode ? (
     <section
       id="details"
       className="workspace-view workspace-view--details"
       {...detailsSectionProps}
     >
-      {/* No second toolbar — the linear layout already shows it above. */}
-
       {/* Combine-mode (Group G issue 11): the singleton compare detail panels
           (sensitivity, fairness, comparison table tied to visibleProducts) do
           not apply to a portfolio of actual contracts. Render the same
           export/print/assumption affordances driven from portfolio data. */}
-      {isCombineMode ? (
-        <>
-          <CalculationWarnings />
+      <CalculationWarnings />
 
-          <CombineDetailView
-            workspace={portfolioState.workspace}
-            perInstance={combineSimulation.perInstance}
-            selectedScenarioId={combineBasisScenarioId}
-            selectedScenarioLabel={combineBasisLabel}
-            combinedForScenario={combineSimulation.combinedByScenarioId[combineBasisScenarioId]}
-            onExportCsv={handleExportCsv}
-            onPrint={() => window.print()}
-          />
+      <CombineDetailView
+        workspace={portfolioState.workspace}
+        perInstance={combineSimulation.perInstance}
+        selectedScenarioId={combineBasisScenarioId}
+        selectedScenarioLabel={combineBasisLabel}
+        combinedForScenario={combineSimulation.combinedByScenarioId[combineBasisScenarioId]}
+        onExportCsv={handleExportCsv}
+        onPrint={() => window.print()}
+      />
 
-          <AssumptionsPanel
-            show={ui.showAssumptions}
-            onToggle={() => ui.setShowAssumptions((v) => !v)}
-            rules={de2026Rules}
-            bavMinAnnual={bavMinAnnual}
-            bavMinMonthly={bavMinMonthly}
-          />
-        </>
-      ) : (
-        <>
-          <ComparisonPicker
-            visible={assumptions.visibleProducts}
-            onChange={(next) =>
-              setAssumptions((current) => ({ ...current, visibleProducts: next }))
-            }
-          />
-
-          {hasComparisonSet ? (
-            <>
-              <FeeDragChart
-                selectedResults={selectedResults}
-                productColors={PRODUCT_COLORS}
-                retirementAge={profile.retirementAge}
-                retirementEndAge={assumptions.retirementEndAge}
-              />
-
-              <MonteCarloPanel result={monteCarloResult} />
-
-              <SensitivityPanel
-                profile={profile}
-                assumptions={assumptions}
-                visibleProducts={assumptions.visibleProducts}
-                precomputed={sensitivityResult}
-              />
-
-              <FairnessPanel
-                profile={profile}
-                assumptions={assumptions}
-                bavFunding={simulation.bavFunding}
-                rules={de2026Rules}
-              />
-
-              <CalculationWarnings />
-
-              <AssumptionReviewPanel
-                profile={profile}
-                assumptions={assumptions}
-                visibleProducts={assumptions.visibleProducts}
-              />
-
-              <DetailComparisonTable
-                products={visibleProducts}
-                linkCopied={linkCopied}
-                onCopyLink={handleCopyLink}
-                onExportCsv={handleExportCsv}
-                onPrint={() => window.print()}
-              />
-
-              <CashflowTable
-                cashflowResult={cashflowResult}
-                selectedResults={selectedResults}
-                cashflowProductId={effectiveCashflowProductId}
-                cashflowAnnualTaxSvSavings={cashflowAnnualTaxSvSavings}
-                onChangeCashflowProduct={(id) => ui.setCashflowProductId(id as ProductId)}
-                rowAfterTaxBalance={rowAfterTaxBalance}
-              />
-
-              <AssumptionsPanel
-                show={ui.showAssumptions}
-                onToggle={() => ui.setShowAssumptions((v) => !v)}
-                rules={de2026Rules}
-                bavMinAnnual={bavMinAnnual}
-                bavMinMonthly={bavMinMonthly}
-              />
-            </>
-          ) : (
-            <EmptyComparison onOpenAngebot={() => navigate(ROUTES.eingaben, undefined, '#produkt')} />
-          )}
-        </>
-      )}
+      <AssumptionsPanel
+        show={ui.showAssumptions}
+        onToggle={() => ui.setShowAssumptions((v) => !v)}
+        rules={de2026Rules}
+        bavMinAnnual={bavMinAnnual}
+        bavMinMonthly={bavMinMonthly}
+      />
     </section>
-  )
+  ) : null
 
   const topbarCopy = isCombineMode
     ? {
@@ -648,6 +606,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
         profile={profile}
         assumptions={assumptions}
         simulation={simulation}
+        compareAllProductsSimulation={compareAllProductsSimulation ?? undefined}
         combineMode={isCombineMode}
         portfolio={combineExportBundle}
         combineProfile={isCombineMode ? portfolioState.workspace.baseline.profile : undefined}

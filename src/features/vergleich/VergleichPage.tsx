@@ -5,12 +5,10 @@ import type { SimulationResultBundle } from '../../app/useSimulationResult'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
-import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { simulateRetirementComparison } from '../../engine/simulate'
-import { de2026Rules } from '../../rules/de2026'
-import { normalizeMonthlyNettoBelastung, syncMonthlyContributions } from '../../app/syncContributions'
-import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../../data/defaultScenario'
+import { buildAllProductsSimulation } from '../../app/buildAllProductsSimulation'
 import { formatCurrency } from '../../utils/format'
 import { VergleichRenditeStrip } from './VergleichRenditeStrip'
 import { VergleichComparisonTable } from './VergleichComparisonTable'
@@ -32,6 +30,15 @@ interface Props {
    * `onAssumptionsChange` below.
    */
   result: SimulationResultBundle
+  /**
+   * Optional pre-built all-6-products simulation lifted from Calculator
+   * (PR 332 R2 — Codex P2). When provided, VergleichPage uses this instead
+   * of running its own local simulation; this keeps CSV export and the
+   * on-screen table in sync (Calculator builds the CSV from the same
+   * result). When omitted, the page falls back to its internal useMemo so
+   * tests / standalone callers still work without wiring the prop.
+   */
+  allProductsSimulation?: ReturnType<typeof simulateRetirementComparison>
   /** Setter so the rendite chips can swap scenario / future picker re-introductions. */
   onAssumptionsChange: (updater: (current: ScenarioAssumptions) => ScenarioAssumptions) => void
   /** Selected return-scenario id from `useWorkspaceUiState`. */
@@ -48,6 +55,18 @@ interface Props {
    * would (the URL is the source of truth for shareable state).
    */
   navigate?: (target: Route, search?: string) => void
+  /**
+   * Compare-mode export handlers. Wired from Calculator.tsx. The
+   * `onExportCsv` handler is built from the same all-6-products simulation
+   * that the page renders (PR 332 R2), so the file matches the screen.
+   * Rendered as a small action bar at the bottom of the page
+   * (Sober D footer pattern).
+   */
+  onExportCsv?: () => void
+  onCopyLink?: () => void
+  onPrint?: () => void
+  /** True for ~1.5s after the user clicks "Link kopieren" — for transient feedback. */
+  linkCopied?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -92,9 +111,14 @@ const SECTION_PRO_CONTRA = {
 export function VergleichPage({
   profile,
   assumptions,
+  allProductsSimulation,
   selectedScenarioId,
   onSelectScenario,
   navigate,
+  onExportCsv,
+  onCopyLink,
+  onPrint,
+  linkCopied,
 }: Props) {
   // R1 fix (Codex P2): the page contract is "shows all 6 products always".
   // `simulateRetirementComparison` filters by `assumptions.visibleProducts`,
@@ -102,25 +126,22 @@ export function VergleichPage({
   // a subset here. Force `visibleProducts` to the full registry list before
   // simulating; this makes /vergleich independent of the portfolio selection.
   //
-  // We mirror `useSimulationResult`'s exact construction: normalize the
-  // monthly netto-belastung, then run `syncMonthlyContributions` so the
-  // bavFunding two-pass and the fair-comparison invariant
-  // (`bavFunding.monthlyNetCost` is what ETF + insurance invest) still hold.
-  const allProductsResult = useMemo(() => {
-    const overridden: ScenarioAssumptions = {
-      ...assumptions,
-      visibleProducts: [...PRODUCT_IDS] as ProductId[],
-    }
-    const activeAssumptions = syncMonthlyContributions(
-      normalizeMonthlyNettoBelastung(
-        overridden.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
-      ),
-      overridden,
-      profile,
-      de2026Rules,
-    )
-    return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
-  }, [profile, assumptions])
+  // PR 332 R2 (Codex P2): when Calculator passes `allProductsSimulation`,
+  // we reuse that result instead of running our own engine pass — this lets
+  // Calculator's `handleExportCsvAllProducts` build the CSV from the *same*
+  // simulation the page renders (no drift). Standalone callers (tests, or
+  // anywhere VergleichPage is mounted without the prop) keep the local
+  // memo path so the page still works in isolation.
+  //
+  // `buildAllProductsSimulation` (PR 332 R3) owns the normalize → sync →
+  // simulate contract. The fallback path calls it directly; when Calculator
+  // passes `allProductsSimulation`, we reuse that result to avoid a redundant
+  // engine pass (Calculator's CSV export is built from the same object).
+  const localAllProductsResult = useMemo(
+    () => (allProductsSimulation ?? buildAllProductsSimulation(profile, assumptions)),
+    [allProductsSimulation, profile, assumptions],
+  )
+  const allProductsResult = localAllProductsResult
 
   // Resolve the effective scenario against the LIVE assumptions (so the
   // rendite chip strip and selection stay aligned with what the user sees).
@@ -229,6 +250,39 @@ export function VergleichPage({
               Wohin geht das Geld? Aufschlüsselung pro Produkt →
             </a>
           </div>
+
+          {(onPrint || onExportCsv || onCopyLink) && (
+            <div className="vergleich-actions" role="toolbar" aria-label="Ergebnisse exportieren">
+              {onPrint && (
+                <button
+                  type="button"
+                  className="vergleich-actions__button"
+                  onClick={onPrint}
+                >
+                  Drucken
+                </button>
+              )}
+              {onExportCsv && (
+                <button
+                  type="button"
+                  className="vergleich-actions__button"
+                  onClick={onExportCsv}
+                >
+                  CSV exportieren
+                </button>
+              )}
+              {onCopyLink && (
+                <button
+                  type="button"
+                  className="vergleich-actions__button"
+                  onClick={onCopyLink}
+                  aria-live="polite"
+                >
+                  {linkCopied ? 'Link kopiert ✓' : 'Link kopieren'}
+                </button>
+              )}
+            </div>
+          )}
         </article>
       </div>
     </section>
