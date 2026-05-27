@@ -16,6 +16,9 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { buildPrintProContraRows } from './printReportRows'
+import { PRODUCT_IDS } from '../../engine/productRegistry'
+import type { ProductId } from '../../domain'
 
 // Read the source file via a project-rooted relative path so the test
 // works under vitest (which runs source as ESM, where `import.meta.url`
@@ -72,5 +75,63 @@ describe('printReportRows static content', () => {
     // bAV lump-sum tax dispatch live?". This is the lever from #209 / PR 12.
     // We assert on the full SOURCE (not CODE) since this lives in a comment.
     expect(SOURCE).toContain('exportProjection.ts')
+  })
+})
+
+describe('buildPrintProContraRows registry-order invariant (CR1)', () => {
+  // PR R3 R1 fix (CR1): the printed pro/contra grid mirrors the web layout
+  // (`VergleichProContraGrid`), which iterates products in
+  // `PRODUCT_REGISTRY.order` regardless of payout sort. The compare-mode
+  // caller (`PrintReport.tsx`) passes payout-sorted ids derived from the
+  // Vergleich comparison table — without an internal sort the printed grid
+  // would reshuffle with scenario results instead of staying stable.
+
+  it('returns rows in PRODUCT_REGISTRY order regardless of caller input order', () => {
+    // Build a deliberately scrambled input (reverse + rotate so no canonical
+    // order is preserved by accident). The output ids must match
+    // `PRODUCT_IDS` (which iterates `PRODUCT_REGISTRY` in metadata.order).
+    const scrambledInput: ReadonlyArray<ProductId> = [
+      'riester',
+      'etf',
+      'altersvorsorgedepot',
+      'bav',
+      'basisrente',
+      'versicherung',
+    ]
+    const rows = buildPrintProContraRows({ productIds: scrambledInput })
+    const outputIds = rows.map((r) => r.productId)
+    expect(outputIds).toEqual([...PRODUCT_IDS])
+  })
+
+  it('returns rows in PRODUCT_REGISTRY order when caller passes payout-sorted ids (real call-site shape)', () => {
+    // The actual PrintReport call site passes ids in netMonthlyPayout-desc
+    // order, which varies by scenario / profile. We simulate that with an
+    // arbitrary non-registry order and assert the builder restores registry
+    // order.
+    const payoutSorted: ReadonlyArray<ProductId> = [
+      'bav',
+      'versicherung',
+      'altersvorsorgedepot',
+      'basisrente',
+      'riester',
+      'etf',
+    ]
+    const rows = buildPrintProContraRows({ productIds: payoutSorted })
+    const outputIds = rows.map((r) => r.productId)
+    expect(outputIds).toEqual([...PRODUCT_IDS])
+  })
+
+  it('does not mutate the caller-provided productIds array', () => {
+    const callerInput: ProductId[] = [
+      'riester',
+      'etf',
+      'altersvorsorgedepot',
+      'bav',
+      'basisrente',
+      'versicherung',
+    ]
+    const snapshot = [...callerInput]
+    buildPrintProContraRows({ productIds: callerInput })
+    expect(callerInput).toEqual(snapshot)
   })
 })

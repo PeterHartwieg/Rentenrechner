@@ -199,10 +199,15 @@ export function PrintReport({
   // re-trigger the two-pass funding compute on every paint.
   //
   // Hooks must run unconditionally before any early return (Rules of Hooks).
-  // The combine-mode branch below ignores `allProductsResult`; the cost is
-  // paid in compare-mode renders, which is where the report is normally
-  // exported anyway (combine-mode uses the workspace-driven path).
+  // In combine-mode the result is ignored (the combine branch consumes the
+  // pre-built portfolio results threaded in via props), so the useMemo
+  // short-circuits to `null` to avoid the expensive 6-product simulation
+  // on every parent re-render. PrintReport mounts continuously alongside the
+  // calculator, so an idle compute cost would be paid on every assumptions
+  // edit (Codex P2 / CR3 R1 fix).
   const allProductsResult = useMemo(() => {
+    if (combineMode && portfolio) return null
+
     const overridden: ScenarioAssumptions = {
       ...assumptions,
       visibleProducts: [...PRODUCT_IDS] as ProductId[],
@@ -216,7 +221,7 @@ export function PrintReport({
       de2026Rules,
     )
     return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
-  }, [profile, assumptions])
+  }, [combineMode, portfolio, profile, assumptions])
 
   // Combine-mode branch (Group G issue 11): when combineMode + portfolio are
   // provided, render per-instance + combined view rather than singleton-compare
@@ -238,11 +243,16 @@ export function PrintReport({
     )
   }
 
+  // Compare-mode branch reaches this point only when the short-circuit above
+  // returned a real result (`combineMode && portfolio` is false here). The
+  // nullish-coalescing fallback to `simulation` keeps consumers safe if the
+  // contract ever changes upstream.
+  const compareSimulation = allProductsResult ?? simulation
   const grv = simulation.statutoryPension
   // Use the all-6 bAV funding for the lead / summary so the printed value
   // matches the comparison table the user sees. `simulation.bavFunding`
   // would otherwise diverge when `visibleProducts` is a subset upstream.
-  const bav = allProductsResult.bavFunding
+  const bav = compareSimulation.bavFunding
 
   // Resolve the basis scenario via the canonical helper (handles missing /
   // unknown ids defensively). NEVER `returnScenarios[0]` — that picks
@@ -252,7 +262,7 @@ export function PrintReport({
 
   // Comparison-table rows: basis-scenario only, sorted by netMonthlyPayout
   // desc per R1.
-  const basisResults = allProductsResult.products.filter(
+  const basisResults = compareSimulation.products.filter(
     (p) => p.scenarioId === basisScenarioId,
   )
   const vergleichRows = buildPrintVergleichRows({ results: basisResults })
@@ -876,7 +886,7 @@ function VergleichSection({
               </td>
               <td className="pr-vergleich-cell-tagline">{row.tagline}</td>
               <td className="pr-num">{formatCurrency(row.capitalAtRetirement, 0)}</td>
-              <td className="pr-num">{formatPercent(row.effectiveAnnualCost, 2)}</td>
+              <td className="pr-num">{formatPercent(row.effectiveAnnualCost, 1)}</td>
               <td className="pr-num">{formatCurrency(row.grossMonthlyPayout, 0)}</td>
               <td className="pr-num pr-vergleich-cell-abzuege">
                 −{formatCurrency(row.deductionsMonthly, 0)}
@@ -1084,7 +1094,10 @@ function formatRowValue(row: VergleichDetailRow): string {
   if (row.kind === 'info') {
     // Info rows carry an optional pre-formatted display string; fall back to a
     // percent formatter at the row's value (matches `VergleichDetailCardSection`).
-    return row.display ?? formatPercent(row.value, 2)
+    // Use 1 decimal — matches the CLAUDE.md UI rounding boundary
+    // (`formatPercent(value, decimals=1)`) and the rest of the new R3 print
+    // surfaces (CR2 fix, PR R3 R1).
+    return row.display ?? formatPercent(row.value, 1)
   }
   if (row.kind === 'sub') return `− ${formatCurrency(row.value, 0)}`
   return formatCurrency(row.value, 0)

@@ -177,12 +177,24 @@ interface BuildPrintProContraRowsInput {
  * Mirrors `VergleichProContraGrid` (R1) — one row per product, copy pulled
  * from `proContraCopy.ts`. Rows whose registry metadata or copy is missing
  * are dropped, mirroring the web surface's defensive null-guard.
+ *
+ * Iteration order is `PRODUCT_REGISTRY.order` regardless of caller input
+ * (CR1 fix, PR R3 R1). Compare-mode passes payout-sorted product ids
+ * (Vergleich row order); without this sort the printed pro/contra grid
+ * would reshuffle with scenario results instead of matching the web layout
+ * (which uses registry order, not payout-sorted order). Caller input is
+ * spread-copied before sorting so the caller's array stays untouched.
  */
 export function buildPrintProContraRows({
   productIds,
 }: BuildPrintProContraRowsInput): PrintProContraRow[] {
+  const orderById = new Map(
+    PRODUCT_REGISTRY.map((entry) => [entry.metadata.id, entry.metadata.order]),
+  )
   const out: PrintProContraRow[] = []
-  for (const productId of productIds) {
+  for (const productId of [...productIds].sort(
+    (a, b) => (orderById.get(a) ?? 99) - (orderById.get(b) ?? 99),
+  )) {
     const meta = getProductMeta(productId)
     const copy: ProContraEntry | undefined = proContraCopy[productId]
     if (!meta || !copy) continue

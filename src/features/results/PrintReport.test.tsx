@@ -1094,10 +1094,18 @@ describe('PrintReport', () => {
       const nettoCells = rows.map(
         (r) => r.querySelectorAll('td')[6]?.textContent ?? '',
       )
-      const numericValues = nettoCells.map((cell) => {
-        // Strip thousands dots ("1.234"), keep digits + minus.
+      const numericValues = nettoCells.map((cell, index) => {
+        // Strip thousands dots ("1.234"), keep digits + minus. Use an
+        // explicit not-null assertion (rather than a NEGATIVE_INFINITY
+        // fallback) so the test fails clearly if any Netto cell is missing
+        // or non-numeric, instead of silently passing the sort assertion
+        // below on a sentinel value (CR4 fix, PR R3 R1).
         const match = cell.replace(/\./g, '').match(/-?\d+/)
-        return match ? parseInt(match[0], 10) : Number.NEGATIVE_INFINITY
+        expect(
+          match,
+          `Expected numeric Netto value in row ${index + 1}, got "${cell}"`,
+        ).not.toBeNull()
+        return Number.parseInt(match![0], 10)
       })
       for (let i = 1; i < numericValues.length; i++) {
         expect(numericValues[i - 1]).toBeGreaterThanOrEqual(numericValues[i])
