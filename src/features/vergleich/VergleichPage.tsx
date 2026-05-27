@@ -48,6 +48,16 @@ interface Props {
    * would (the URL is the source of truth for shareable state).
    */
   navigate?: (target: Route, search?: string) => void
+  /**
+   * Compare-mode export handlers. Wired from Calculator.tsx's
+   * `useDerivedViews` bundle. Rendered as a small action bar at the
+   * bottom of the page (Sober D footer pattern).
+   */
+  onExportCsv?: () => void
+  onCopyLink?: () => void
+  onPrint?: () => void
+  /** True for ~1.5s after the user clicks "Link kopieren" — for transient feedback. */
+  linkCopied?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +105,10 @@ export function VergleichPage({
   selectedScenarioId,
   onSelectScenario,
   navigate,
+  onExportCsv,
+  onCopyLink,
+  onPrint,
+  linkCopied,
 }: Props) {
   // R1 fix (Codex P2): the page contract is "shows all 6 products always".
   // `simulateRetirementComparison` filters by `assumptions.visibleProducts`,
@@ -229,6 +243,39 @@ export function VergleichPage({
               Wohin geht das Geld? Aufschlüsselung pro Produkt →
             </a>
           </div>
+
+          {(onPrint || onExportCsv || onCopyLink) && (
+            <div className="vergleich-actions" role="toolbar" aria-label="Ergebnisse exportieren">
+              {onPrint && (
+                <button
+                  type="button"
+                  className="vergleich-actions__button"
+                  onClick={onPrint}
+                >
+                  Drucken
+                </button>
+              )}
+              {onExportCsv && (
+                <button
+                  type="button"
+                  className="vergleich-actions__button"
+                  onClick={onExportCsv}
+                >
+                  CSV exportieren
+                </button>
+              )}
+              {onCopyLink && (
+                <button
+                  type="button"
+                  className="vergleich-actions__button"
+                  onClick={onCopyLink}
+                  aria-live="polite"
+                >
+                  {linkCopied ? 'Link kopiert ✓' : 'Link kopieren'}
+                </button>
+              )}
+            </div>
+          )}
         </article>
       </div>
     </section>

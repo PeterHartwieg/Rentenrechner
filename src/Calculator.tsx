@@ -250,6 +250,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   const { simulation } = result
   const {
     handleExportCsv,
+    handleCopyLink,
+    linkCopied,
   } = views
 
   const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
@@ -390,6 +392,10 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
           selectedScenarioId={result.effectiveScenarioId}
           onSelectScenario={ui.setSelectedScenarioId}
           navigate={navigate}
+          onPrint={() => window.print()}
+          onExportCsv={handleExportCsv}
+          onCopyLink={handleCopyLink}
+          linkCopied={linkCopied}
         />
       )}
     </section>

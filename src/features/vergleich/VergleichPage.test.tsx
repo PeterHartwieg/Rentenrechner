@@ -25,8 +25,8 @@
  *   - Page renders without throwing across phone / tablet / desktop
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
@@ -303,6 +303,105 @@ describe('VergleichPage — R1 layout', () => {
     // R1 contract: always shows all 6 products from PRODUCT_REGISTRY, never
     // a hardcoded list or a `visibleProducts`-filtered subset.
     expect(rows.length).toBe(6)
+  })
+})
+
+describe('VergleichPage — action bar (PR 332 R1 — Codex P2)', () => {
+  it('renders all three buttons when all handlers are provided', () => {
+    const result = buildResult(defaultAssumptions)
+    const { getByRole } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+          onPrint={NOOP}
+          onExportCsv={NOOP}
+          onCopyLink={NOOP}
+          linkCopied={false}
+        />,
+      ),
+    )
+    expect(getByRole('button', { name: 'Drucken' })).not.toBeNull()
+    expect(getByRole('button', { name: 'CSV exportieren' })).not.toBeNull()
+    expect(getByRole('button', { name: 'Link kopieren' })).not.toBeNull()
+  })
+
+  it('each button invokes exactly its own handler on click', () => {
+    const onPrint = vi.fn()
+    const onExportCsv = vi.fn()
+    const onCopyLink = vi.fn()
+    const result = buildResult(defaultAssumptions)
+    const { getByRole } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+          onPrint={onPrint}
+          onExportCsv={onExportCsv}
+          onCopyLink={onCopyLink}
+          linkCopied={false}
+        />,
+      ),
+    )
+
+    fireEvent.click(getByRole('button', { name: 'Drucken' }))
+    expect(onPrint).toHaveBeenCalledOnce()
+    expect(onExportCsv).not.toHaveBeenCalled()
+    expect(onCopyLink).not.toHaveBeenCalled()
+
+    fireEvent.click(getByRole('button', { name: 'CSV exportieren' }))
+    expect(onExportCsv).toHaveBeenCalledOnce()
+    expect(onCopyLink).not.toHaveBeenCalled()
+
+    fireEvent.click(getByRole('button', { name: 'Link kopieren' }))
+    expect(onCopyLink).toHaveBeenCalledOnce()
+  })
+
+  it('shows "Link kopiert ✓" when linkCopied is true', () => {
+    const result = buildResult(defaultAssumptions)
+    const { getByRole, queryByRole } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+          onPrint={NOOP}
+          onExportCsv={NOOP}
+          onCopyLink={NOOP}
+          linkCopied={true}
+        />,
+      ),
+    )
+    expect(getByRole('button', { name: /Link kopiert/ })).not.toBeNull()
+    expect(queryByRole('button', { name: 'Link kopieren' })).toBeNull()
+  })
+
+  it('does not render the action bar toolbar when no handlers are provided', () => {
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+        />,
+      ),
+    )
+    expect(container.querySelector('.vergleich-actions')).toBeNull()
   })
 })
 
