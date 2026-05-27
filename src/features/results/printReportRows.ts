@@ -14,6 +14,12 @@ import {
   type VergleichDetailRow,
 } from '../vergleich-detail/vergleichDetailRows'
 import {
+  rowFromResult,
+  type VergleichTableRow,
+} from '../vergleich/vergleichRows'
+import { productTaglines } from '../vergleich/productTaglines'
+import { proContraCopy, type ProContraEntry } from '../../content/proContraCopy'
+import {
   getAvailabilityEntry,
 } from '../vergleich-detail/vergleichDetailAvailability'
 import { PRODUCT_REGISTRY, getProductMeta } from '../../engine/productRegistry'
@@ -69,6 +75,141 @@ import {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+// "Sechs Wege, fürs Alter zu sparen" — compare-mode Vergleich table mirror
+// (PR R3). One row per product, basis-scenario only, sorted by
+// `netMonthlyPayout` desc with `PRODUCT_REGISTRY.order` as the tiebreak —
+// mirrors the screen `VergleichComparisonTable` (R1 rewrite, PR #329).
+//
+// Tagline + short label live in `productTaglines.ts` + the registry, so the
+// print and web surface report identical copy without re-importing the React
+// component. The builder is React-free.
+// ---------------------------------------------------------------------------
+
+/** One row in the print Vergleich comparison-table mirror. */
+export interface PrintVergleichRow {
+  readonly productId: ProductId
+  /** Long display label, e.g. `"Private Rentenversicherung"`. */
+  readonly label: string
+  /** Compact monospace tag (e.g. `"ETF"`). */
+  readonly shortLabel: string
+  /** One-line tagline — `productTaglines[productId]`. */
+  readonly tagline: string
+  /** Engine-precision euro / percent values forwarded from `vergleichRows.ts`. */
+  readonly capitalAtRetirement: number
+  readonly effectiveAnnualCost: number
+  readonly grossMonthlyPayout: number
+  readonly deductionsMonthly: number
+  readonly netMonthlyPayout: number
+}
+
+interface BuildPrintVergleichRowsInput {
+  /** Basis-scenario product results from the compare-mode all-6 simulation. */
+  results: ReadonlyArray<ProductResult>
+}
+
+/**
+ * Build the ordered Vergleich table rows for the print compare-mode mirror.
+ * Sort matches `VergleichPage.tsx`: `netMonthlyPayout` desc, ties broken by
+ * `PRODUCT_REGISTRY.order` so the table is stable when payouts coincide.
+ *
+ * Rows whose registry metadata is missing (defensive — `getProductMeta`
+ * returns `undefined`) are dropped, same as the web page.
+ */
+export function buildPrintVergleichRows({
+  results,
+}: BuildPrintVergleichRowsInput): PrintVergleichRow[] {
+  if (results.length === 0) return []
+
+  const orderById = new Map(
+    PRODUCT_REGISTRY.map((entry) => [entry.metadata.id, entry.metadata.order]),
+  )
+
+  const built: VergleichTableRow[] = results
+    .map(rowFromResult)
+    .filter((row): row is VergleichTableRow => row !== null)
+
+  const sorted = [...built].sort((a, b) => {
+    const delta = b.netMonthlyPayout - a.netMonthlyPayout
+    if (delta !== 0) return delta
+    return (orderById.get(a.productId) ?? 99) - (orderById.get(b.productId) ?? 99)
+  })
+
+  return sorted.map((row) => ({
+    productId: row.productId,
+    label: row.label,
+    shortLabel: row.shortLabel,
+    tagline: productTaglines[row.productId],
+    capitalAtRetirement: row.capitalAtRetirement,
+    effectiveAnnualCost: row.effectiveAnnualCost,
+    grossMonthlyPayout: row.grossMonthlyPayout,
+    deductionsMonthly: row.deductionsMonthly,
+    netMonthlyPayout: row.netMonthlyPayout,
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// "Wofür welche Sparform spricht — und wogegen" — compare-mode pro/contra
+// grid mirror (PR R3). One row per product in `PRODUCT_REGISTRY` order,
+// pulling copy from `proContraCopy.ts` so the print and web surface stay in
+// sync without React-importing `VergleichProContraGrid`.
+// ---------------------------------------------------------------------------
+
+/** One row in the print pro/contra block. */
+export interface PrintProContraRow {
+  readonly productId: ProductId
+  /** Long display label (e.g. `"ETF-Depot"`). */
+  readonly label: string
+  /** Compact monospace tag (e.g. `"ETF"`). */
+  readonly shortLabel: string
+  /** PRO sentence. */
+  readonly pro: string
+  /** CONTRA sentence. */
+  readonly contra: string
+}
+
+interface BuildPrintProContraRowsInput {
+  /** Product ids to render, in display order (typically Vergleich row order). */
+  productIds: ReadonlyArray<ProductId>
+}
+
+/**
+ * Build the pro/contra block row list for the print compare-mode mirror.
+ * Mirrors `VergleichProContraGrid` (R1) — one row per product, copy pulled
+ * from `proContraCopy.ts`. Rows whose registry metadata or copy is missing
+ * are dropped, mirroring the web surface's defensive null-guard.
+ *
+ * Iteration order is `PRODUCT_REGISTRY.order` regardless of caller input
+ * (CR1 fix, PR R3 R1). Compare-mode passes payout-sorted product ids
+ * (Vergleich row order); without this sort the printed pro/contra grid
+ * would reshuffle with scenario results instead of matching the web layout
+ * (which uses registry order, not payout-sorted order). Caller input is
+ * spread-copied before sorting so the caller's array stays untouched.
+ */
+export function buildPrintProContraRows({
+  productIds,
+}: BuildPrintProContraRowsInput): PrintProContraRow[] {
+  const orderById = new Map(
+    PRODUCT_REGISTRY.map((entry) => [entry.metadata.id, entry.metadata.order]),
+  )
+  const out: PrintProContraRow[] = []
+  for (const productId of [...productIds].sort(
+    (a, b) => (orderById.get(a) ?? 99) - (orderById.get(b) ?? 99),
+  )) {
+    const meta = getProductMeta(productId)
+    const copy: ProContraEntry | undefined = proContraCopy[productId]
+    if (!meta || !copy) continue
+    out.push({
+      productId,
+      label: meta.label,
+      shortLabel: meta.shortLabel,
+      pro: copy.pro,
+      contra: copy.contra,
+    })
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
 // "Wohin geht das Geld" — compare-mode per-product breakdown
 // ---------------------------------------------------------------------------
 
@@ -81,6 +222,8 @@ import {
 export interface PrintWohinRow {
   readonly productId: ProductId
   readonly label: string
+  /** Compact monospace tag (e.g. `"ETF"`) — mirrors the card head's mono code. */
+  readonly shortLabel: string
   readonly sections: ReadonlyArray<{
     readonly heading: string
     readonly rows: ReadonlyArray<VergleichDetailRow>
@@ -150,6 +293,7 @@ export function buildPrintWohinRows({
     out.push({
       productId: card.productId,
       label: card.label,
+      shortLabel: card.shortLabel,
       sections: card.sections,
       effectiveAnnualCost: card.effectiveAnnualCost,
       availabilityLabel: availability.label,

@@ -21,6 +21,7 @@
  */
 
 import './PrintReport.css'
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type {
   PersonalProfile,
@@ -35,6 +36,15 @@ import type { Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { getProductMeta } from '../../app/productPresentation'
+import { PRODUCT_IDS } from '../../engine/productRegistry'
+import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
+import { simulateRetirementComparison } from '../../engine/simulate'
+import { de2026Rules } from '../../rules/de2026'
+import {
+  normalizeMonthlyNettoBelastung,
+  syncMonthlyContributions,
+} from '../../app/syncContributions'
+import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../../data/defaultScenario'
 import {
   evidenceStateToProvKind,
   formatEvidenceStateForExport,
@@ -44,13 +54,18 @@ import {
   buildPrintZusammenRows,
   buildPrintVertragBlocks,
   buildPrintWendepunkteRows,
+  buildPrintVergleichRows,
+  buildPrintProContraRows,
   PRINT_METHODE_BULLETS,
   type PrintWohinRow,
   type PrintZusammenRow,
   type PrintVertragBlock,
   type PrintWendepunkteSection,
   type PrintSensitivityRow,
+  type PrintVergleichRow,
+  type PrintProContraRow,
 } from './printReportRows'
+import type { VergleichDetailRow } from '../vergleich-detail/vergleichDetailRows'
 
 interface Props {
   profile: PersonalProfile
@@ -101,6 +116,17 @@ interface Props {
    * still renders the composition table but skips the sensitivity sub-table.
    */
   combineSensitivityRows?: ReadonlyArray<PrintSensitivityRow>
+  /**
+   * The scenario the user has selected in the toolbar (compare mode only).
+   *
+   * When provided, the compare-mode Vergleich table and Wohin-cards mirror
+   * this selection instead of defaulting to 'basis', so the printed output
+   * matches the `/vergleich` page the user is looking at. The canonical
+   * helper `resolveEffectiveScenarioId` guards against unknown ids.
+   *
+   * Defaults to 'basis' when omitted (backwards-compatible).
+   */
+  selectedScenarioId?: string
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -167,6 +193,7 @@ export function PrintReport({
   combineReturnScenarios,
   combineWorkspace,
   combineSensitivityRows,
+  selectedScenarioId,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -174,10 +201,44 @@ export function PrintReport({
     year: 'numeric',
   })
 
+  // PR R3: the print compare-mode mirror shows all 6 products always — the
+  // same contract `/vergleich` carries (PR #329). The caller may have stripped
+  // `visibleProducts` to a subset (e.g. defaultAssumptions.visibleProducts is
+  // `['etf', 'bav']`); the print mirrors the *web* page, not the picker. We
+  // run a local `simulateRetirementComparison` with the full registry list and
+  // sync `bavFunding.monthlyNetCost` so the fair-comparison invariant still
+  // holds. Memoised so re-renders driven by parent state changes don't
+  // re-trigger the two-pass funding compute on every paint.
+  //
+  // Hooks must run unconditionally before any early return (Rules of Hooks).
+  // In combine-mode the result is ignored (the combine branch consumes the
+  // pre-built portfolio results threaded in via props), so the useMemo
+  // short-circuits to `null` to avoid the expensive 6-product simulation
+  // on every parent re-render. PrintReport mounts continuously alongside the
+  // calculator, so an idle compute cost would be paid on every assumptions
+  // edit (Codex P2 / CR3 R1 fix).
+  const allProductsResult = useMemo(() => {
+    if (combineMode && portfolio) return null
+
+    const overridden: ScenarioAssumptions = {
+      ...assumptions,
+      visibleProducts: [...PRODUCT_IDS] as ProductId[],
+    }
+    const activeAssumptions = syncMonthlyContributions(
+      normalizeMonthlyNettoBelastung(
+        overridden.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
+      ),
+      overridden,
+      profile,
+      de2026Rules,
+    )
+    return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
+  }, [combineMode, portfolio, profile, assumptions])
+
   // Combine-mode branch (Group G issue 11): when combineMode + portfolio are
   // provided, render per-instance + combined view rather than singleton-compare
-  // product table. Compare-mode (combineMode=false or undefined) renders the
-  // historical layout byte-identically.
+  // product table. The combine-mode renderer ignores `allProductsResult`
+  // — it consumes the pre-built portfolio results threaded in via props.
   if (combineMode && portfolio) {
     return (
       <CombinePrintReport
@@ -194,38 +255,72 @@ export function PrintReport({
     )
   }
 
-  const visibleSet = new Set(
-    assumptions.visibleProducts.length > 0
-      ? assumptions.visibleProducts
-      : simulation.products.map((p) => p.productId),
+  // Compare-mode branch reaches this point only when the short-circuit above
+  // returned a real result (`combineMode && portfolio` is false here). The
+  // nullish-coalescing fallback to `simulation` keeps consumers safe if the
+  // contract ever changes upstream.
+  const compareSimulation = allProductsResult ?? simulation
+  const grv = simulation.statutoryPension
+  // Use the all-6 bAV funding for the lead / summary so the printed value
+  // matches the comparison table the user sees. `simulation.bavFunding`
+  // would otherwise diverge when `visibleProducts` is a subset upstream.
+  const bav = compareSimulation.bavFunding
+
+  // Resolve the effective scenario via the canonical helper (handles missing /
+  // unknown ids defensively). NEVER `returnScenarios[0]` — that picks
+  // konservativ (3 %) when the user reordered, a documented gotcha
+  // (CLAUDE.md "returnScenarios[0] is not necessarily basis").
+  //
+  // When `selectedScenarioId` is provided (threaded from Calculator.tsx), the
+  // printed Vergleich table mirrors the scenario the user selected in the
+  // toolbar instead of always defaulting to 'basis'. The `?? 'basis'` fallback
+  // preserves backwards compatibility when callers omit the prop.
+  const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, selectedScenarioId ?? 'basis')
+
+  // R4: derive the human-readable scenario label so the printed copy
+  // ("Werte im …", "Aufschlüsselung im …") matches the data that was actually
+  // filtered above. Without this thread, printing after selecting
+  // 'optimistisch' yields optimistisch numbers under a "Basisszenario" caption —
+  // self-contradictory PDF (Codex R3 P2 + CodeRabbit Minor). Default labels are
+  // bare ("Konservativ" / "Basis" / "Optimistisch"); compose with "-Szenario"
+  // for natural German sentence flow. Falls back to "Basisszenario" defensively
+  // if the scenario is missing from the assumptions list.
+  const resolvedScenario = assumptions.returnScenarios.find((s) => s.id === effectiveScenarioId)
+  const resolvedScenarioLabel = resolvedScenario
+    ? `${resolvedScenario.label}-Szenario`
+    : 'Basisszenario'
+
+  // Comparison-table rows: effective scenario only, sorted by netMonthlyPayout
+  // desc per R1.
+  const basisResults = compareSimulation.products.filter(
+    (p) => p.scenarioId === effectiveScenarioId,
   )
-  const sorted = simulation.products
-    .filter((p) => visibleSet.has(p.productId))
-    .sort((a, b) => {
-    const aOrd = getProductMeta(a.productId)?.order ?? 99
-    const bOrd = getProductMeta(b.productId)?.order ?? 99
-    if (aOrd !== bOrd) return aOrd - bOrd
-    return SCENARIO_ORDER.indexOf(a.scenarioId) - SCENARIO_ORDER.indexOf(b.scenarioId)
+  const vergleichRows = buildPrintVergleichRows({ results: basisResults })
+
+  // Pro/contra rows: same product order as the comparison table.
+  const proContraRows = buildPrintProContraRows({
+    productIds: vergleichRows.map((row) => row.productId),
   })
 
-  const grv = simulation.statutoryPension
-  const bav = simulation.bavFunding
-
-  // PR 11: build the "Wohin geht das Geld" per-product print rows from the
-  // basis-scenario results. Reuses the same `vergleichDetailRows` helper as
-  // the web `/vergleich/details` surface so the print and web report
-  // identical figures. Sort + filter happen inside the builder.
-  const basisScenarioId =
-    assumptions.returnScenarios.find((s) => s.id === 'basis')?.id ??
-    assumptions.returnScenarios[0]?.id ??
-    'basis'
+  // "Wohin geht das Geld" per-product card mirror (R2): one card per product
+  // in registry order (matches `/vergleich/details`), three labeled sections
+  // each (ANSPARPHASE / MIT {age} / IM ALTER), DMoneyRow values, Verfügbar-ab
+  // footer.
   const wohinRows = buildPrintWohinRows({
-    results: sorted.filter((r) => r.scenarioId === basisScenarioId),
+    results: basisResults,
     assumptions,
     bavFunding: bav,
     retirementAge: profile.retirementAge,
     currentAge: profile.age,
   })
+
+  // Live lead-copy figures (mirror VergleichPage):
+  // - Beitrag: `bavFunding.monthlyNetCost` (fair-comparison anchor).
+  // - Laufzeit: years between current age and retirement age.
+  // - Renteneintritt: `profile.retirementAge` — never hardcoded (P1).
+  const monthlyContribution = bav.monthlyNetCost
+  const runtimeYears = Math.max(0, profile.retirementAge - profile.age)
+  const retirementAge = profile.retirementAge
 
   return (
     <div id="print-report">
@@ -325,75 +420,34 @@ export function PrintReport({
         </table>
       </section>
 
-      <section className="pr-section">
-        <div className="pr-section-title">Produktvergleich — alle Szenarien</div>
-        <table className="pr-table pr-main-table">
-          <colgroup>
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '9%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '6%' }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Produkt</th>
-              <th>Szenario</th>
-              <th className="pr-num">Nettokost. mtl.</th>
-              <th className="pr-num">Kapital</th>
-              <th className="pr-num">Kapital n. St.</th>
-              <th className="pr-num">Netto-Rente</th>
-              <th className="pr-num">Kosten ges.</th>
-              <th className="pr-num">Effektivkost.</th>
-              <th className="pr-num">Faktor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map(r => (
-              <tr
-                key={`${r.productId}-${r.scenarioId}`}
-                className={r.scenarioId === 'basis' ? 'pr-basis' : ''}
-              >
-                <td>{r.label}</td>
-                <td>{r.scenarioLabel}</td>
-                <td className="pr-num">{formatCurrency(r.monthlyUserCost, 0)}</td>
-                <td className="pr-num">{formatCurrency(r.capitalAtRetirement, 0)}</td>
-                <td className="pr-num">
-                  {r.afterTaxLumpSum === null ? '—' : formatCurrency(r.afterTaxLumpSum, 0)}
-                </td>
-                <td className="pr-num">
-                  {formatCurrency(r.netMonthlyPayout, 0)}
-                  <ConfidenceIndicator state={r.inputConfidence} />
-                  {r.leibrenteBreakEvenAge !== undefined && (
-                    <span className="pr-note">
-                      {' '}(BE {Math.round(r.leibrenteBreakEvenAge)})
-                    </span>
-                  )}
-                </td>
-                <td className="pr-num">{formatCurrency(r.totalFees, 0)}</td>
-                <td className="pr-num">{formatPercent(r.accumulationRiy, 2)}</td>
-                <td className="pr-num">
-                  {r.valueMultipleOnUserCost === null
-                    ? '—'
-                    : `${formatNumber(r.valueMultipleOnUserCost, 1)}x`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="pr-note pr-table-note">
-          Fettgedruckte Zeilen = Basisszenario.
-          Kapital n. St. = Einmalauszahlung nach Steuer (Basisrente: gesetzlich verboten, daher —).
-          BE = Leibrente-Break-even-Alter.
-        </p>
-      </section>
+      {/* PR R3: compare-mode Vergleich mirror — replaces the legacy 9-column
+          scenario-sweep summary table. Lead block + 6-product table sorted by
+          netMonthlyPayout desc, basis-scenario only. Matches the layout the
+          user sees on `/vergleich`. */}
+      <VergleichSection
+        rows={vergleichRows}
+        retirementAge={retirementAge}
+        monthlyContribution={monthlyContribution}
+        runtimeYears={runtimeYears}
+        scenarioLabel={resolvedScenarioLabel}
+      />
 
+      {/* PR R3: § 1 pro/contra grid — registry order, mirrors the web
+          `VergleichProContraGrid`. Section heading numbered "§ 1" to match
+          the screen page's single section. */}
+      {proContraRows.length > 0 && (
+        <ProContraSection rows={proContraRows} />
+      )}
+
+      {/* PR R3: "Wohin geht das Geld" per-product card mirror — replaces the
+          legacy flat row-per-product table with the R2 card layout (three
+          labeled sections + DMoneyRow values + Verfügbar-ab footer). */}
       {wohinRows.length > 0 && (
-        <WohinSection rows={wohinRows} retirementAge={profile.retirementAge} />
+        <WohinCardsSection
+          rows={wohinRows}
+          retirementAge={profile.retirementAge}
+          scenarioLabel={resolvedScenarioLabel}
+        />
       )}
 
       <MethodeSection />
@@ -795,141 +849,296 @@ function CombinePrintReport({
 // PR 11 print sections (compare + combine)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// PR R3 compare-mode print sections — mirror the R1 + R2 Vergleich layouts
+// ---------------------------------------------------------------------------
+
 /**
- * Compare-mode "Wohin geht das Geld" print block. Mirrors the web
- * `/vergleich/details` card grid but flattens to a per-product stacked
- * table (A4 needs fixed widths — a card grid does not fit predictably).
+ * PR R3: compare-mode Vergleich table mirror. Single lead block ("Sechs
+ * Wege …") + 6-row × 7-column comparison table, sorted by `netMonthlyPayout`
+ * desc per R1. Replaces the legacy 9-column scenario-sweep summary.
  *
- * One inner table per product, three labelled section rows
- * (Ansparphase / Mit {retirementAge} / Im Alter), plus an "Effektivkost." +
- * "Verfügbar ab" footer line. Pure presentational — every figure is
- * pre-formatted by the helper layer or `formatCurrency`.
+ * Column structure mirrors `VergleichComparisonTable.tsx`:
+ *   Sparform | Wie es funktioniert | Kapital mit N | Kosten p. a. |
+ *   Brutto-Rente | Abzüge | Netto pro Monat
+ *
+ * Visual treatment per Sober D conventions: oxblood (`var(--rw-accent)`) on
+ * the Abzüge column only; the Netto cell stays default ink (the screen page
+ * uses a bar; the print is tabular-only because A4 column widths leave no
+ * room for a graphical bar and the rounded value already conveys the rank).
  */
-function WohinSection({
+function VergleichSection({
   rows,
   retirementAge,
+  monthlyContribution,
+  runtimeYears,
+  scenarioLabel,
 }: {
-  rows: ReadonlyArray<PrintWohinRow>
+  rows: ReadonlyArray<PrintVergleichRow>
   retirementAge: number
+  monthlyContribution: number
+  runtimeYears: number
+  scenarioLabel: string
 }) {
   return (
-    <section className="pr-section">
-      <div className="pr-section-title">
-        Wohin geht das Geld — Aufschlüsselung pro Produkt (Mit {retirementAge})
-      </div>
-      <table className="pr-table pr-wohin-table">
+    <section className="pr-section pr-vergleich-section">
+      <div className="pr-section-title">Sechs Wege, fürs Alter zu sparen</div>
+      <p className="pr-vergleich-lead">
+        Sechs Sparformen, sechs Steuersystematiken: Vergleich bei gleichem
+        Netto-Aufwand von <strong>{formatCurrency(monthlyContribution, 0)}</strong> pro
+        Monat, Laufzeit <strong>{runtimeYears} Jahre</strong>, Renteneintritt
+        mit <strong>{retirementAge}</strong>. Welcher der beste ist, hängt
+        davon ab, was du gewichtest: Rendite, Sicherheit, Flexibilität.
+        Diese Modellrechnung nennt keine Empfehlung.
+      </p>
+      <table className="pr-table pr-main-table pr-vergleich-table">
         <colgroup>
           <col style={{ width: '18%' }} />
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '18%' }} />
+          <col style={{ width: '24%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '16%' }} />
         </colgroup>
         <thead>
           <tr>
-            <th>Produkt</th>
-            <th>Ansparphase</th>
-            <th className="pr-num">€/Mon.</th>
-            <th>Mit {retirementAge}</th>
-            <th className="pr-num">€</th>
-            <th>Im Alter</th>
+            <th>Sparform</th>
+            <th>Wie es funktioniert</th>
+            <th className="pr-num">{`Kapital mit ${retirementAge}`}</th>
+            <th className="pr-num">Kosten p. a.</th>
+            <th className="pr-num">Brutto-Rente</th>
+            <th className="pr-num">Abzüge</th>
+            <th className="pr-num">Netto pro Monat</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <WohinProductRows key={row.productId} row={row} />
+            <tr key={row.productId}>
+              <td>
+                <div className="pr-vergleich-cell-product">
+                  <span className="pr-vergleich-cell-product__name">{row.label}</span>
+                  <span className="pr-vergleich-cell-product__short">{row.shortLabel}</span>
+                </div>
+              </td>
+              <td className="pr-vergleich-cell-tagline">{row.tagline}</td>
+              <td className="pr-num">{formatCurrency(row.capitalAtRetirement, 0)}</td>
+              <td className="pr-num">{formatPercent(row.effectiveAnnualCost, 1)}</td>
+              <td className="pr-num">{formatCurrency(row.grossMonthlyPayout, 0)}</td>
+              <td className="pr-num pr-vergleich-cell-abzuege">
+                −{formatCurrency(row.deductionsMonthly, 0)}
+              </td>
+              <td className="pr-num pr-vergleich-cell-netto">
+                {formatCurrency(row.netMonthlyPayout, 0)}
+              </td>
+            </tr>
           ))}
         </tbody>
       </table>
       <p className="pr-note pr-table-note">
-        Aufschlüsselung im Basisszenario. „Effektivkosten p. a." nach IVASS / RIY-Methode
-        über die gesamte Ansparphase. Verfügbarkeit pro Produkt: siehe Hinweis je Zeile.
+        Sortierung nach Netto-Rente absteigend. Werte im {scenarioLabel}. Keine
+        Wertung — die beste Wahl hängt vom persönlichen Trade-off zwischen
+        Rendite, Sicherheit und Flexibilität ab.
       </p>
     </section>
   )
 }
 
-function WohinProductRows({ row }: { row: PrintWohinRow }) {
-  // The three sections are uniform in length (3-4 rows each); we render them
-  // as parallel cell groups so the product label only appears once. To keep
-  // the table portable we render one tr per section, with the product label
-  // rowspan'd over the three section rows + the footer row.
-  const ansparRows = sectionLines(row.sections[0]?.rows ?? [])
-  const kapitalRows = sectionLines(row.sections[1]?.rows ?? [])
-  const payoutRows = sectionLines(row.sections[2]?.rows ?? [])
-  const totalRowSpan = Math.max(ansparRows.length, kapitalRows.length, payoutRows.length) + 1
+/**
+ * PR R3: § 1 pro/contra grid mirror. One row per product, PRO + CONTRA copy
+ * sourced from `proContraCopy.ts`. Mirrors the screen `VergleichProContraGrid`
+ * (R1). The CONTRA value is rendered in oxblood — matches the screen's
+ * `var(--rw-accent)` treatment.
+ */
+function ProContraSection({
+  rows,
+}: {
+  rows: ReadonlyArray<PrintProContraRow>
+}) {
   return (
-    <>
-      {Array.from({ length: totalRowSpan }, (_, idx) => {
-        const isFirst = idx === 0
-        const isFooter = idx === totalRowSpan - 1
-        const a = ansparRows[idx]
-        const k = kapitalRows[idx]
-        const p = payoutRows[idx]
-        return (
-          <tr
-            key={`${row.productId}-${idx}`}
-            className={isFooter ? 'pr-wohin-footer-row' : ''}
-          >
-            {isFirst ? (
-              <td rowSpan={totalRowSpan} className="pr-wohin-label">
-                <strong>{row.label}</strong>
-              </td>
-            ) : null}
-            {isFooter ? (
-              <>
-                <td className="pr-note" colSpan={2}>
-                  Effektivkosten p. a.: {formatPercent(row.effectiveAnnualCost, 2)}
-                </td>
-                <td className="pr-note" colSpan={2}>
-                  Verfügbar ab: {row.availabilityLabel}
-                </td>
-                <td className="pr-note">
-                  {row.availabilityNote ?? ''}
-                </td>
-              </>
-            ) : (
-              <>
-                <td>{a?.label ?? ''}</td>
-                <td className="pr-num">{a ? formatWohinValue(a) : ''}</td>
-                <td>{k?.label ?? ''}</td>
-                <td className="pr-num">{k ? formatWohinValue(k) : ''}</td>
-                <td>
-                  {p?.label ?? ''}
-                  {p ? ` ${formatWohinValue(p)}` : ''}
-                </td>
-              </>
-            )}
+    <section className="pr-section pr-procontra-section">
+      <div className="pr-section-title">§ 1 — Wofür welche Sparform spricht — und wogegen</div>
+      <table className="pr-table pr-procontra-table">
+        <colgroup>
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '41%' }} />
+          <col style={{ width: '41%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Sparform</th>
+            <th>PRO</th>
+            <th>CONTRA</th>
           </tr>
-        )
-      })}
-    </>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.productId}>
+              <td>
+                <div className="pr-procontra-cell-product">
+                  <span className="pr-procontra-cell-product__name">{row.label}</span>
+                  <span className="pr-procontra-cell-product__short">{row.shortLabel}</span>
+                </div>
+              </td>
+              <td className="pr-procontra-cell-pro">{row.pro}</td>
+              <td className="pr-procontra-cell-contra">{row.contra}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   )
 }
 
 /**
- * Filter `info` rows out of the section line set so they don't compete with
- * monetary rows for table-row alignment. Effektivkosten p. a. is rendered
- * separately in the footer row.
+ * PR R3: "Wohin geht das Geld" per-product card mirror. Replaces the legacy
+ * flat row-per-product table with the R2 card layout: one card per product,
+ * three labeled sections each (ANSPARPHASE / MIT {retirementAge} / IM ALTER),
+ * DMoneyRow-style rows with bold/border/accent semantics, Verfügbar-ab footer
+ * per card.
+ *
+ * Print layout choice: render the 6 cards as a 3-column × 2-row CSS grid
+ * (mirrors the screen `.vd-card-grid` desktop layout). `break-inside: avoid`
+ * keeps individual cards atomic; if a card cannot fit on the current page,
+ * the grid breaks at the card boundary and reflows on the next page.
+ *
+ * Currency is formatted via `formatCurrency(value, 0)` at the row layer
+ * (UI rounding boundary per CLAUDE.md).
  */
-function sectionLines(
-  rows: ReadonlyArray<{ kind: string; label: string; value: number }>,
-) {
-  return rows.filter((r) => r.kind !== 'info')
+function WohinCardsSection({
+  rows,
+  retirementAge,
+  scenarioLabel,
+}: {
+  rows: ReadonlyArray<PrintWohinRow>
+  retirementAge: number
+  scenarioLabel: string
+}) {
+  return (
+    <section className="pr-section pr-section-allow-break pr-wohin-cards-section">
+      <div className="pr-section-title">
+        Wohin geht das Geld — Aufschlüsselung pro Produkt (Mit {retirementAge})
+      </div>
+      <div className="pr-wohin-cards">
+        {rows.map((row) => (
+          <WohinCard key={row.productId} row={row} />
+        ))}
+      </div>
+      <p className="pr-note pr-table-note">
+        Aufschlüsselung im {scenarioLabel}. „Effektivkosten p. a." nach
+        RIY-Methode über die gesamte Ansparphase. Verfügbarkeit je Karte unten.
+      </p>
+    </section>
+  )
 }
 
 /**
- * Format a Wohin row's value with section-aware rules:
- * - `'sub'` rows render with a leading Unicode minus (the row label already
- *   carries "− ..." in many cases, but for the Kapital section we keep the
- *   minus on the value side per CLAUDE.md "minus on value side" convention).
- * - All other kinds render as plain currency.
+ * Single per-product card in the "Wohin geht das Geld" print mirror. Three
+ * labeled sections (ANSPARPHASE / MIT {age} / IM ALTER) sourced from
+ * `vergleichDetailRows.ts`; each row uses the same `kind`/`bold`/`border`/
+ * `accent`/`labelSuffix` semantics as `DMoneyRow` on the screen.
+ *
+ * Print bold/border mirroring matches `VergleichDetailCardSection`:
+ * - leading `'add'` row whose label is "Kapital brutto" is bold
+ * - `'total'` rows are bold + border-top
+ * - `'sub'` rows render with leading "− " on the value
+ * - `'accent'` flag tints the value oxblood (net-Rente only)
  */
-function formatWohinValue(row: { kind: string; value: number }): string {
-  if (row.kind === 'sub') {
-    return formatCurrency(row.value, 0)
+function WohinCard({ row }: { row: PrintWohinRow }) {
+  return (
+    <article className="pr-wohin-card" data-product={row.productId}>
+      <header className="pr-wohin-card__head">
+        <span className="pr-wohin-card__short">{row.shortLabel}</span>
+        <span className="pr-wohin-card__label">{row.label}</span>
+      </header>
+      <div className="pr-wohin-card__body">
+        {row.sections.map((section) => (
+          <WohinCardSection key={section.heading} heading={section.heading} rows={section.rows} />
+        ))}
+      </div>
+      <footer className="pr-wohin-card__footer">
+        <span className="pr-wohin-card__footer-key">Verfügbar ab</span>
+        <span className="pr-wohin-card__footer-value">{row.availabilityLabel}</span>
+        {row.availabilityNote && (
+          <p className="pr-wohin-card__footer-note">{row.availabilityNote}</p>
+        )}
+      </footer>
+    </article>
+  )
+}
+
+function WohinCardSection({
+  heading,
+  rows,
+}: {
+  heading: string
+  rows: ReadonlyArray<VergleichDetailRow>
+}) {
+  return (
+    <section className="pr-wohin-card-section">
+      <span className="pr-wohin-card-section__heading">{heading}</span>
+      <div className="pr-wohin-card-section__rows">
+        {rows.map((row, idx) => (
+          <WohinMoneyRow key={`${row.label}-${idx}`} row={row} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * DMoneyRow-equivalent for the print mirror. Same visual mapping as the
+ * screen `DMoneyRow`:
+ * - `'add'` row whose label starts with "+" → muted (additive summand)
+ * - `'add'` plain ("Du selbst", "Kapital brutto", "Brutto-Rente") → default ink
+ * - `'sub'` → muted, value prefixed with "− "
+ * - `'total'` → bold + border-top
+ * - `'total'` + `accent` → oxblood value (net-Rente)
+ * - `'info'` → muted, value rendered from `display` (caller pre-formats)
+ */
+function WohinMoneyRow({ row }: { row: VergleichDetailRow }) {
+  const isAddSummand = row.kind === 'add' && row.label.startsWith('+')
+  const isPlainAdd = row.kind === 'add' && !isAddSummand
+  const muted = isAddSummand || row.kind === 'sub' || row.kind === 'info'
+  const bold = row.kind === 'total' || (isPlainAdd && row.label === 'Kapital brutto')
+  const border = row.kind === 'total'
+  const accent = row.accent === true
+
+  const classNames = [
+    'pr-wohin-money-row',
+    `pr-wohin-money-row--${row.kind}`,
+    muted ? 'pr-wohin-money-row--muted' : '',
+    bold ? 'pr-wohin-money-row--bold' : '',
+    border ? 'pr-wohin-money-row--border' : '',
+    accent ? 'pr-wohin-money-row--accent' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const value = formatRowValue(row)
+  return (
+    <div className={classNames}>
+      <span className="pr-wohin-money-row__label">
+        {row.label}
+        {row.labelSuffix && (
+          <span className="pr-wohin-money-row__label-suffix"> {row.labelSuffix}</span>
+        )}
+      </span>
+      <span className="pr-wohin-money-row__value">{value}</span>
+    </div>
+  )
+}
+
+function formatRowValue(row: VergleichDetailRow): string {
+  if (row.kind === 'info') {
+    // Info rows carry an optional pre-formatted display string; fall back to a
+    // percent formatter at the row's value (matches `VergleichDetailCardSection`).
+    // Use 1 decimal — matches the CLAUDE.md UI rounding boundary
+    // (`formatPercent(value, decimals=1)`) and the rest of the new R3 print
+    // surfaces (CR2 fix, PR R3 R1).
+    return row.display ?? formatPercent(row.value, 1)
   }
+  if (row.kind === 'sub') return `− ${formatCurrency(row.value, 0)}`
   return formatCurrency(row.value, 0)
 }
 

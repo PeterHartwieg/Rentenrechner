@@ -78,41 +78,50 @@ function makeSimulation(inputConfidence: ProductResult['inputConfidence']): Simu
 }
 
 describe('PrintReport', () => {
-  it('renders .pr-confidence-estimate for a product with model_estimate inputConfidence', () => {
-    const { container } = render(
+  // Confidence indicators are rendered in combine-mode only (per-instance
+  // "Detail je Vertrag" table). PR R3 compare-mode mirrors `/vergleich` —
+  // it always shows all 6 products synthesised from default assumptions, so
+  // per-row provenance is not meaningful there. The four tests below assert
+  // the four `EvidenceState → ProvKind` mappings via the combine-mode path.
+  function renderCombineWithEvidence(state: ProductResult['inputConfidence']) {
+    const bavResult: ProductResult = {
+      ...(makeSimulation(state).products[0] as ProductResult),
+      productId: 'bav',
+      label: 'bAV Direktversicherung A',
+      instanceId: 'bav-1',
+    } as unknown as ProductResult
+    return render(
       <PrintReport
         profile={defaultProfile}
         assumptions={defaultAssumptions}
-        simulation={makeSimulation('model_estimate')}
+        simulation={makeSimulation(state)}
+        combineMode={true}
+        portfolio={{
+          perInstance: { 'bav-1': [bavResult] },
+          combinedByScenarioId: { basis: makeCombined(2200) },
+          scenarioLabels: { basis: 'Basis' },
+        }}
       />
     )
+  }
+
+  it('renders .pr-confidence-estimate for a product with model_estimate inputConfidence (combine-mode)', () => {
+    const { container } = renderCombineWithEvidence('model_estimate')
     const indicator = container.querySelector('.pr-confidence-estimate')
     expect(indicator).not.toBeNull()
     // Routed through formatEvidenceStateForExport — German label, not raw key.
     expect(indicator?.textContent).toContain('Schätzwert')
   })
 
-  it('renders .pr-confidence-confirmed with German label for user_confirmed', () => {
-    const { container } = render(
-      <PrintReport
-        profile={defaultProfile}
-        assumptions={defaultAssumptions}
-        simulation={makeSimulation('user_confirmed')}
-      />
-    )
+  it('renders .pr-confidence-confirmed with German label for user_confirmed (combine-mode)', () => {
+    const { container } = renderCombineWithEvidence('user_confirmed')
     const indicator = container.querySelector('.pr-confidence-confirmed')
     expect(indicator).not.toBeNull()
     expect(indicator?.textContent).toContain('Bestätigt')
   })
 
-  it('renders .pr-confidence-confirmed with "lt. Beleg" for statement (issue 13 helper routing)', () => {
-    const { container } = render(
-      <PrintReport
-        profile={defaultProfile}
-        assumptions={defaultAssumptions}
-        simulation={makeSimulation('statement')}
-      />
-    )
+  it('renders .pr-confidence-confirmed with "lt. Beleg" for statement (issue 13 helper routing, combine-mode)', () => {
+    const { container } = renderCombineWithEvidence('statement')
     // statement maps to confirmed via evidenceStateToProvKind, but uses a
     // dedicated German export label sourced from formatEvidenceStateForExport.
     const indicator = container.querySelector('.pr-confidence-confirmed')
@@ -120,14 +129,8 @@ describe('PrintReport', () => {
     expect(indicator?.textContent).toContain('lt. Beleg')
   })
 
-  it('renders .pr-confidence-default with "Unbekannt" when inputConfidence is undefined', () => {
-    const { container } = render(
-      <PrintReport
-        profile={defaultProfile}
-        assumptions={defaultAssumptions}
-        simulation={makeSimulation(undefined)}
-      />
-    )
+  it('renders .pr-confidence-default with "Unbekannt" when inputConfidence is undefined (combine-mode)', () => {
+    const { container } = renderCombineWithEvidence(undefined)
     const indicator = container.querySelector('.pr-confidence-default')
     expect(indicator).not.toBeNull()
     expect(indicator?.textContent).toContain('Unbekannt')
@@ -204,8 +207,8 @@ describe('PrintReport', () => {
     expect(container.textContent).toContain('Kombiniertes Renteneinkommen')
     // Per-instance label appears
     expect(container.textContent).toContain('bAV Direktversicherung A')
-    // Singleton-compare specific section title is gone
-    expect(container.textContent).not.toContain('Produktvergleich — alle Szenarien')
+    // The compare-mode-only Vergleich mirror section title must not appear.
+    expect(container.textContent).not.toContain('Sechs Wege, fürs Alter zu sparen')
   })
 
   it('combine-mode keeps .pr-disclaimer-top as FIRST child of #print-report', () => {
@@ -238,10 +241,12 @@ describe('PrintReport', () => {
     expect(root!.querySelectorAll('.pr-disclaimer-top').length).toBe(1)
   })
 
-  it('compare-mode (combineMode=false / undefined) still renders the singleton product table — byte-identical first child', () => {
-    // The compare-mode path is byte-identical to the historical render. We
-    // assert the first-child invariant + presence of the singleton-only
-    // section title.
+  it('compare-mode (combineMode=false / undefined) renders the R3 Vergleich mirror', () => {
+    // PR R3: compare-mode now mirrors the redesigned `/vergleich` page —
+    // single Vergleich table sorted by netMonthlyPayout desc (6 products in
+    // the basis scenario), pro/contra grid, and the Vergleich-Detail card
+    // mirror. The legacy 9-column scenario-sweep "Produktvergleich — alle
+    // Szenarien" section is gone.
     const { container } = render(
       <PrintReport
         profile={defaultProfile}
@@ -249,7 +254,93 @@ describe('PrintReport', () => {
         simulation={makeSimulation('user_confirmed')}
       />
     )
-    expect(container.textContent).toContain('Produktvergleich — alle Szenarien')
+    const text = container.textContent ?? ''
+    // New R3 section titles must appear.
+    expect(text).toContain('Sechs Wege, fürs Alter zu sparen')
+    expect(text).toContain('Wofür welche Sparform spricht — und wogegen')
+    expect(text).toContain('Wohin geht das Geld')
+    // Legacy scenario-sweep section must NOT appear.
+    expect(text).not.toContain('Produktvergleich — alle Szenarien')
+  })
+
+  it('compare-mode: selectedScenarioId threads through so print mirrors web view (C1 regression)', async () => {
+    // Codex R2 P2 (C1): PrintReport was hardcoded to 'basis' so printing from
+    // /vergleich after selecting 'optimistisch' produced basis-scenario rows.
+    // This test pins the fix: passing selectedScenarioId='optimistisch' must
+    // still render all 6 product rows (the effective scenario is used, not
+    // an empty filter), and the default (no prop) must also produce 6 rows.
+    //
+    // R4 (CodeRabbit Trivial): row-count alone proves only the filter is
+    // non-empty — a hardcoded 'basis' impl would also yield 6 rows. To pin
+    // the scenario filter itself, we seed `optimistisch` with a deliberately
+    // high annualReturn (0.12 vs basis 0.05) and assert that at least one
+    // rendered cell differs between the optimistisch and default renders.
+    const { PRODUCT_REGISTRY } = await import('../../engine/productRegistry')
+
+    // Custom assumptions: keep the 3 default scenario IDs but exaggerate
+    // optimistisch so accumulation diverges visibly from basis (37 years of
+    // 12 % vs 5 % returns produce capital deltas in the tens of thousands).
+    const assumptionsWithDivergentOpt: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      returnScenarios: [
+        { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
+        { id: 'basis', label: 'Basis', annualReturn: 0.05 },
+        { id: 'optimistisch', label: 'Optimistisch', annualReturn: 0.12 },
+      ],
+    }
+
+    // Helper: find the ETF row by its product name and read the "Kapital
+    // mit {retirementAge}" cell (column index 2 — see VergleichSection
+    // colgroup: [Sparform, Wie es funktioniert, Kapital, …]). ETF is the
+    // first product in PRODUCT_REGISTRY but rows are sorted by
+    // netMonthlyPayout desc, so positional access would be fragile across
+    // scenarios — we look up by label.
+    const readEtfCapitalCell = (container: Element): string => {
+      const table = container.querySelector('.pr-vergleich-table')
+      expect(table).not.toBeNull()
+      const allRows = table!.querySelectorAll('tbody tr')
+      expect(allRows.length).toBe(PRODUCT_REGISTRY.length)
+      const etfRow = Array.from(allRows).find((row) =>
+        row.querySelector('.pr-vergleich-cell-product__name')?.textContent?.includes('ETF-Depot'),
+      )
+      expect(etfRow, 'ETF row must render in both optimistisch and default').not.toBeUndefined()
+      const cells = etfRow!.querySelectorAll('td')
+      const capitalText = cells[2]?.textContent ?? ''
+      expect(capitalText.length).toBeGreaterThan(0)
+      return capitalText
+    }
+
+    // With selectedScenarioId='optimistisch' (annualReturn = 12 %)
+    const { container: containerOpt, unmount: unmountOpt } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={assumptionsWithDivergentOpt}
+        simulation={makeSimulation('user_confirmed')}
+        selectedScenarioId="optimistisch"
+      />
+    )
+    const optCapitalCell = readEtfCapitalCell(containerOpt)
+    expect(containerOpt.textContent ?? '').toContain('Werte im Optimistisch-Szenario')
+    unmountOpt()
+
+    // Without selectedScenarioId (backwards compat: defaults to 'basis', 5 %)
+    const { container: containerDefault } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={assumptionsWithDivergentOpt}
+        simulation={makeSimulation('user_confirmed')}
+      />
+    )
+    const defaultCapitalCell = readEtfCapitalCell(containerDefault)
+    const defaultText = containerDefault.textContent ?? ''
+    expect(defaultText).toContain('Werte im Basis-Szenario')
+    expect(defaultText).not.toContain('Werte im Optimistisch-Szenario')
+
+    // R4 scenario-threading assertion: the ETF row's capital cell must
+    // differ between optimistisch (12 % return) and default (basis, 5 %).
+    // A hardcoded 'basis' implementation that ignored selectedScenarioId
+    // would produce identical text here and fail this assertion.
+    expect(optCapitalCell).not.toBe(defaultCapitalCell)
   })
 
   // -------------------------------------------------------------------------
@@ -523,6 +614,67 @@ describe('PrintReport', () => {
       expect(text).toContain(`Mit ${defaultProfile.retirementAge}`)
     })
 
+    it('R3 Vergleich table has 7 columns (Sparform | Wie es funktioniert | Kapital | Kosten | Brutto | Abzüge | Netto)', () => {
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />
+      )
+      const mainTable = container.querySelector('.pr-vergleich-table')
+      expect(mainTable).not.toBeNull()
+      const headers = mainTable!.querySelectorAll('thead th')
+      expect(headers.length).toBe(7)
+      // Spot-check the column labels (P1: dynamic retirementAge — never hardcoded 67).
+      expect(headers[0].textContent).toContain('Sparform')
+      expect(headers[1].textContent).toContain('Wie es funktioniert')
+      expect(headers[2].textContent).toContain(`Kapital mit ${defaultProfile.retirementAge}`)
+      expect(headers[3].textContent).toContain('Kosten p.')
+      expect(headers[4].textContent).toContain('Brutto-Rente')
+      expect(headers[5].textContent).toContain('Abzüge')
+      expect(headers[6].textContent).toContain('Netto pro Monat')
+    })
+
+    it('R3 § 1 pro/contra block has one row per registry product (6 rows)', async () => {
+      const { PRODUCT_REGISTRY } = await import('../../engine/productRegistry')
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />
+      )
+      const proContraTable = container.querySelector('.pr-procontra-table')
+      expect(proContraTable).not.toBeNull()
+      const rows = proContraTable!.querySelectorAll('tbody tr')
+      expect(rows.length).toBe(PRODUCT_REGISTRY.length)
+      // Every row carries a PRO + CONTRA cell.
+      for (const row of Array.from(rows)) {
+        expect(row.querySelector('.pr-procontra-cell-pro')).not.toBeNull()
+        expect(row.querySelector('.pr-procontra-cell-contra')).not.toBeNull()
+      }
+    })
+
+    it('R3 Wohin card carries three labeled sections + Verfügbar-ab footer', () => {
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />
+      )
+      const firstCard = container.querySelector('.pr-wohin-card')
+      expect(firstCard).not.toBeNull()
+      // Three labeled sections inside the body.
+      const sections = firstCard!.querySelectorAll('.pr-wohin-card-section')
+      expect(sections.length).toBe(3)
+      // Verfügbar-ab footer present.
+      const footer = firstCard!.querySelector('.pr-wohin-card__footer')
+      expect(footer).not.toBeNull()
+      expect(footer?.textContent).toContain('Verfügbar ab')
+    })
+
     it('renders the "Methode & Quellen" block with all five bullets', () => {
       const { container } = render(
         <PrintReport
@@ -543,7 +695,7 @@ describe('PrintReport', () => {
       expect(text).toContain('RentenWiki.de/methode')
     })
 
-    it('Wohin section sits AFTER the Produktvergleich table and BEFORE Hinweise', () => {
+    it('R3 sections sit in order: Vergleich → Pro/Contra → Wohin → Hinweise', () => {
       const { container } = render(
         <PrintReport
           profile={defaultProfile}
@@ -552,13 +704,16 @@ describe('PrintReport', () => {
         />
       )
       const text = container.textContent ?? ''
-      const idxProdukt = text.indexOf('Produktvergleich')
+      const idxVergleich = text.indexOf('Sechs Wege, fürs Alter zu sparen')
+      const idxProContra = text.indexOf('Wofür welche Sparform spricht')
       const idxWohin = text.indexOf('Wohin geht das Geld')
       const idxHinweise = text.indexOf('Hinweise und Grenzen')
-      expect(idxProdukt).toBeGreaterThan(-1)
+      expect(idxVergleich).toBeGreaterThan(-1)
+      expect(idxProContra).toBeGreaterThan(-1)
       expect(idxWohin).toBeGreaterThan(-1)
       expect(idxHinweise).toBeGreaterThan(-1)
-      expect(idxProdukt).toBeLessThan(idxWohin)
+      expect(idxVergleich).toBeLessThan(idxProContra)
+      expect(idxProContra).toBeLessThan(idxWohin)
       expect(idxWohin).toBeLessThan(idxHinweise)
     })
   })
@@ -952,77 +1107,88 @@ describe('PrintReport', () => {
       expect(root!.querySelectorAll('.pr-disclaimer-top').length).toBe(1)
     })
 
-    it('compare summary table row count equals buildCompareExportProjection summary length', async () => {
-      // Phase B (row-builder migration) acceptance: both the print summary
-      // table and the CSV "Detailvergleich" section iterate the same set of
-      // rows — the projection layer is the canonical source. We do not
-      // re-thread `bavFunding` etc. into PrintReport (which would be a
-      // larger API change); instead we assert that for the same input the
-      // print row count matches the projection row count, so any future
-      // filter / sort change must update both sides consistently.
-      const { buildCompareExportProjection } = await import(
-        '../../engine/exportProjection'
-      )
-      const { de2026Rules } = await import('../../rules/de2026')
-
-      // Two scenarios so we get >1 row per product and the count check is
-      // meaningful (singleton products × scenarios).
-      const sim = makeSimulation('user_confirmed')
-      const productBase = sim.products[0] as ProductResult
-      const productKonservativ: ProductResult = {
-        ...productBase,
-        scenarioId: 'konservativ',
-        scenarioLabel: 'Konservativ',
-      } as unknown as ProductResult
-      const productsForBoth: ProductResult[] = [productBase, productKonservativ]
-
-      const projection = buildCompareExportProjection({
-        products: productsForBoth,
-        bavAnnualTaxSvSavings: 0,
-        bavProfile: defaultProfile,
-        bavKvdrMember: true,
-        bavOtherAnnualIncome: 0,
-        insuranceTaxMode: 'abgeltungsteuer',
-        equityPartialExemption: 0.3,
-        insuranceOtherAnnualIncome: 0,
-        rules: de2026Rules,
-      })
+    it('R3 Vergleich mirror always renders all 6 products regardless of caller visibleProducts', async () => {
+      // PR R3 acceptance: the print compare-mode Vergleich mirror runs a
+      // local all-6 `simulateRetirementComparison` (matching `/vergleich`),
+      // so the table always shows the full PRODUCT_REGISTRY lineup even
+      // when the caller's `visibleProducts` is a subset. This protects the
+      // contract "all 6 products appear in the print mirror" from drift if
+      // upstream `useSimulationResult` or storage migration ever trims
+      // `visibleProducts` further.
+      const { PRODUCT_REGISTRY } = await import('../../engine/productRegistry')
 
       const { container } = render(
         <PrintReport
           profile={defaultProfile}
           assumptions={{
             ...defaultAssumptions,
+            // Caller deliberately strips visibleProducts to one product —
+            // the print must NOT honour this; it always shows all 6.
             visibleProducts: ['etf'],
           }}
-          simulation={{ ...sim, products: productsForBoth }}
+          simulation={makeSimulation('user_confirmed')}
         />,
       )
-      const mainTable = container.querySelector('.pr-main-table')
+      const mainTable = container.querySelector('.pr-vergleich-table')
       expect(mainTable).not.toBeNull()
       const rows = mainTable!.querySelectorAll('tbody tr')
-      // Print and projection sourced from the same `products` array →
-      // identical row count. The projection layer applies no extra
-      // filter / sort that the print does not.
-      expect(rows.length).toBe(projection.summary.length)
-      // The afterTaxLumpSum displayed in the print matches the projection
-      // value formatted to whole euros — this is the "single source of truth"
-      // assertion required by the cron-dispatch §2 paired-test guardrail.
-      // (Both rows correspond to the same product so afterTax is consistent;
-      //  we sample row 0.)
-      const row0 = rows[0]
-      const projRow0 = projection.summary[0]
-      if (projRow0 && projRow0.afterTaxLumpSum !== null) {
-        // The "Kapital n. St." cell is the 5th td (0-indexed: 4).
-        const afterTaxCell = row0.querySelectorAll('td')[4]
-        expect(afterTaxCell).toBeDefined()
-        // Engine returns full precision; print formatter rounds to whole €.
-        const expected = Math.round(projRow0.afterTaxLumpSum)
-        // We assert containment rather than equality so locale formatting
-        // (thousands separator) does not break the assertion.
-        expect(afterTaxCell.textContent ?? '').toMatch(
-          new RegExp(String(expected).replace(/(?<=\d)(?=(\d{3})+$)/g, '\\.?')),
-        )
+      // 6 product rows, basis scenario only.
+      expect(rows.length).toBe(PRODUCT_REGISTRY.length)
+      expect(rows.length).toBe(6)
+
+      // All 6 registry labels appear in the rendered table.
+      const text = mainTable!.textContent ?? ''
+      for (const entry of PRODUCT_REGISTRY) {
+        expect(text).toContain(entry.metadata.label)
+      }
+    })
+
+    it('R3 Wohin-cards section renders one card per product (all 6)', async () => {
+      const { PRODUCT_REGISTRY } = await import('../../engine/productRegistry')
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />,
+      )
+      const cards = container.querySelectorAll('.pr-wohin-card')
+      expect(cards.length).toBe(PRODUCT_REGISTRY.length)
+      expect(cards.length).toBe(6)
+    })
+
+    it('R3 Vergleich rows are sorted by netMonthlyPayout desc', () => {
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={makeSimulation('user_confirmed')}
+        />,
+      )
+      const mainTable = container.querySelector('.pr-vergleich-table')
+      expect(mainTable).not.toBeNull()
+      // The Netto column is the 7th td (0-indexed: 6). Read each row's value
+      // and parse out the leading integer — we only need to assert the
+      // ordering is non-increasing.
+      const rows = Array.from(mainTable!.querySelectorAll('tbody tr'))
+      const nettoCells = rows.map(
+        (r) => r.querySelectorAll('td')[6]?.textContent ?? '',
+      )
+      const numericValues = nettoCells.map((cell, index) => {
+        // Strip thousands dots ("1.234"), keep digits + minus. Use an
+        // explicit not-null assertion (rather than a NEGATIVE_INFINITY
+        // fallback) so the test fails clearly if any Netto cell is missing
+        // or non-numeric, instead of silently passing the sort assertion
+        // below on a sentinel value (CR4 fix, PR R3 R1).
+        const match = cell.replace(/\./g, '').match(/-?\d+/)
+        expect(
+          match,
+          `Expected numeric Netto value in row ${index + 1}, got "${cell}"`,
+        ).not.toBeNull()
+        return Number.parseInt(match![0], 10)
+      })
+      for (let i = 1; i < numericValues.length; i++) {
+        expect(numericValues[i - 1]).toBeGreaterThanOrEqual(numericValues[i])
       }
     })
 
