@@ -52,8 +52,15 @@ afterEach(() => {
 })
 
 async function waitForCalculator(): Promise<void> {
+  // The chrome meta strip was removed; the rendered surface is the first
+  // signal that the lazy Calculator chunk has resolved. Both modes mount
+  // exactly one of the two shell classes (`vergleich-shell` in compare,
+  // `mein-plan-shell` in combine), so a single comma selector covers both.
   await waitFor(
-    () => expect(document.querySelector('.rw-dashboard-meta__title')).not.toBeNull(),
+    () =>
+      expect(
+        document.querySelector('.vergleich-shell, .mein-plan-shell'),
+      ).not.toBeNull(),
     { timeout: 8000 },
   )
 }

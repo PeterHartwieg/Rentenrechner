@@ -43,10 +43,8 @@ import { buildWhatIfFromCandidate } from './app/recommender'
 import { LegalFooter } from './features/legal/LegalFooter'
 import { ErrorStatePanel } from './ui/chrome/ErrorStatePanel'
 import {
-  qaTargetAttrs,
   setQaWorkspaceContext,
   useFeedbackTarget,
-  useQaMode,
 } from './features/qa-feedback'
 
 // PR 6: PORTFOLIO_COLOR / PORTFOLIO_LIFECYCLE_ID / buildPortfolioLifecycleViews
@@ -148,9 +146,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     onPendingChoiceConsumed?.()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingChoice])
-
-  // Workspace chrome QA instrumentation — mode badge.
-  const { enabled: qaEnabled } = useQaMode()
 
   // Section-fallback targets for the two main workspace surfaces. The hook
   // gates the data-qa-* attributes behind QA mode so non-QA sessions render
@@ -495,16 +490,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     </section>
   ) : null
 
-  const topbarCopy = isCombineMode
-    ? {
-        kicker: 'Deine Verträge und Rentenlücke in Deutschland 2026',
-        title: 'Mein Plan',
-      }
-    : {
-        kicker: 'RentenWiki.de Deutschland 2026',
-        title: 'ETF, bAV und private Versicherung vergleichen',
-      }
-
   // The InventoryWizard is `position: fixed` so rendering it as a sibling of
   // <main> is fine — it covers the dashboard whenever showInventoryWizard is
   // true (whether triggered by a landing-CTA pendingChoice or by a returning
@@ -557,37 +542,16 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
         />
       )}
       {/*
-        R3.1 (Batch 1): the legacy `<main class="app-shell">` +
-        `<header class="topbar">` chrome is gone. The outer `AppShell`
-        from `App.tsx` carries the brand chrome (PR 1); below that the
-        dashboard renders an inline Sober D meta strip (mode-aware kicker
-        + title + optional Mein-Plan badge). PrintReport + LegalFooter
-        remain siblings of the body so the printable A4 report stays
-        available regardless of route.
-
-        Workspace-tabs collapse (this PR): the `WorkspaceTabs` segmented
-        control between the meta strip and the body is removed. The chrome
-        nav (AppHeader) already exposes Startseite as its first tab, so the
-        duplicate "Startseite" button on the meta strip is gone too.
+        R3.1 (Batch 1) introduced an inline Sober D meta strip (mode-aware
+        kicker + title + optional Mein-Plan badge). The strip was removed
+        in a later iteration because both surfaces below — `VergleichPage`
+        (compare) and `MeinPlanPage` (combine) — now render their own
+        kicker + H1 inside the Sober D shell, so the chrome heading became
+        a duplicate "two-headers" pattern. The outer `AppShell` from
+        `App.tsx` still carries the brand chrome (PR 1); PrintReport +
+        LegalFooter remain siblings of the body so the printable A4 report
+        stays available regardless of route.
       */}
-      <div className="rw-dashboard-meta">
-        <div className="rw-dashboard-meta__copy">
-          <p className="rw-dashboard-meta__kicker">{topbarCopy.kicker}</p>
-          <h1 className="rw-dashboard-meta__title">{topbarCopy.title}</h1>
-        </div>
-        {isCombineMode && (
-          <div className="rw-dashboard-meta__actions">
-            <span
-              className="rw-dashboard-meta__badge"
-              aria-label="Mein Plan aktiv"
-              {...qaTargetAttrs(qaEnabled, { id: 'workspace.chrome.modeBadge', label: 'Mein Plan (Modus-Badge)' })}
-            >
-              Mein Plan
-            </span>
-          </div>
-        )}
-      </div>
-
       {invalidLink && (
         <ErrorStatePanel
           tone="error"

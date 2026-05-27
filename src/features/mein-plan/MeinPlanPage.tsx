@@ -186,6 +186,7 @@ export function MeinPlanPage({
           {/* Center column: lead + headline + § 1 + § 2 */}
           <article className="mein-plan-body">
             <div className="mein-plan-kicker">Persönliche Auskunft · ohne Gewähr</div>
+            <h1 className="mein-plan-title">Mein Plan</h1>
 
             <p className="mein-plan-lead">
               Auf Basis deiner Angaben sind mit einem Renteneintritt mit{' '}
