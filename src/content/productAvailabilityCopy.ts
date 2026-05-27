@@ -74,7 +74,7 @@ export const productAvailabilityCopy: Record<ProductId, AvailabilityRegistryValu
     note: 'Frei verfügbar. Auszahlplan ab Renteneintritt; Zugriff jederzeit möglich.',
   },
   bav: {
-    label: `ab ${insurancePost2011MinAge} J. (Vertragsbindung)`,
+    label: `${insurancePost2011MinAge} J. (Vertragsbindung)`,
     note: 'Auszahlung an den Renteneintritt gekoppelt. Vorzeitige Verfügung in der Regel ausgeschlossen.',
   },
   // PR 290 Codex P2: dispatch on the live `assumptions.insurance.contractStartYear`
@@ -85,20 +85,20 @@ export const productAvailabilityCopy: Record<ProductId, AvailabilityRegistryValu
   versicherung: (ctx) => {
     const minAge = halbeinkuenfteMinAgeForContractStartYear(ctx.insuranceContractStartYear)
     return {
-      label: `ab ${minAge} J. (Halbeinkünfte)`,
+      label: `${minAge} J. (Halbeinkünfte)`,
       note: 'Auszahlung an Vertragsende oder Renteneintritt; Kündigung möglich, aber meist mit Verlust.',
     }
   },
   basisrente: {
-    label: `ab ${basisrenteMinAge} J. (Leibrente)`,
+    label: `${basisrenteMinAge} J. (Leibrente)`,
     note: 'Auszahlung nur als monatliche Rente — kein Kapitalauszahlungsrecht (§ 10 Abs. 1 Nr. 2 EStG).',
   },
   altersvorsorgedepot: {
-    label: `ab ${insurancePost2011MinAge} J. (Bindung)`,
+    label: `${insurancePost2011MinAge} J. (Bindung)`,
     note: 'Auszahlplan an Renteneintritt gekoppelt. Zertifizierter Vertrag — Kündigung schädlich.',
   },
   riester: {
-    label: `ab ${insurancePost2011MinAge} J. (Bindung)`,
+    label: `${insurancePost2011MinAge} J. (Bindung)`,
     note: 'Auszahlung an Renteneintritt gekoppelt. Bei Kündigung Rückforderung der Zulagen + Steuervorteile.',
   },
 }
