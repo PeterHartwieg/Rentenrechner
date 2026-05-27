@@ -17,17 +17,11 @@ import { useEffect, useMemo, useState } from 'react'
 // compare-mode surface is now the linear Sober D `VergleichPage`.
 import { MeinPlanPage } from './features/mein-plan/MeinPlanPage'
 import { VergleichPage } from './features/vergleich/VergleichPage'
-import type { ProductId, ScenarioAssumptions } from './domain'
+import type { ProductId } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
 import { de2026Rules } from './rules/de2026'
-import { PRODUCT_IDS } from './engine/productRegistry'
-import { simulateRetirementComparison } from './engine/simulate'
-import {
-  normalizeMonthlyNettoBelastung,
-  syncMonthlyContributions,
-} from './app/syncContributions'
-import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from './data/defaultScenario'
+import { buildAllProductsSimulation } from './app/buildAllProductsSimulation'
 import { buildExportCsv, downloadCsv } from './utils/csvExport'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useDerivedViews } from './app/useDerivedViews'
@@ -250,19 +244,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   // continues to drive the per-instance + combined CSV.
   const compareAllProductsSimulation = useMemo(() => {
     if (isCombineMode) return null
-    const overridden: ScenarioAssumptions = {
-      ...assumptions,
-      visibleProducts: [...PRODUCT_IDS] as ProductId[],
-    }
-    const activeAssumptions = syncMonthlyContributions(
-      normalizeMonthlyNettoBelastung(
-        overridden.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
-      ),
-      overridden,
-      profile,
-      de2026Rules,
-    )
-    return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
+    return buildAllProductsSimulation(profile, assumptions)
   }, [isCombineMode, profile, assumptions])
 
   // Sensitivity perturbation rows for the combine-mode print (PR 11 R1

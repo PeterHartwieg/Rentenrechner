@@ -17,7 +17,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react'
 import App from './App'
 import { defaultProfile, defaultAssumptions } from './data/defaultScenario'
 import { buildStateJson, STORAGE_KEY_V1 } from './storage'
@@ -81,18 +81,15 @@ describe('Calculator — compare-mode CSV export aligns with VergleichPage (PR 3
     await waitForCalculator()
 
     // Find the action-bar CSV button rendered by VergleichPage.
-    const buttons = Array.from(container.querySelectorAll('button'))
-    const csvButton = buttons.find((b) => b.textContent?.trim() === 'CSV exportieren')
-    expect(csvButton, 'CSV exportieren button must be rendered on VergleichPage').not.toBeUndefined()
-
-    fireEvent.click(csvButton!)
+    const csvButton = within(container).getByRole('button', { name: /CSV exportieren/i })
+    fireEvent.click(csvButton)
 
     // The captured CSV must mention every product label, not only ETF.
     expect(downloadCsvCalls.length).toBe(1)
     const { filename, content } = downloadCsvCalls[0]!
     expect(filename).toBe('rentenwiki-export.csv')
 
-    // Spot-check at least 5 of the 6 product names. The CSV labels each
+    // Spot-check all 6 product names. The CSV labels each
     // product row by the PRODUCT_REGISTRY label, so a subset path would
     // miss bAV / Versicherung / Basisrente / AVD / Riester.
     expect(content).toContain('ETF')

@@ -5,12 +5,10 @@ import type { SimulationResultBundle } from '../../app/useSimulationResult'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
-import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { simulateRetirementComparison } from '../../engine/simulate'
-import { de2026Rules } from '../../rules/de2026'
-import { normalizeMonthlyNettoBelastung, syncMonthlyContributions } from '../../app/syncContributions'
-import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../../data/defaultScenario'
+import { buildAllProductsSimulation } from '../../app/buildAllProductsSimulation'
 import { formatCurrency } from '../../utils/format'
 import { VergleichRenditeStrip } from './VergleichRenditeStrip'
 import { VergleichComparisonTable } from './VergleichComparisonTable'
@@ -135,27 +133,15 @@ export function VergleichPage({
   // anywhere VergleichPage is mounted without the prop) keep the local
   // memo path so the page still works in isolation.
   //
-  // We mirror `useSimulationResult`'s exact construction: normalize the
-  // monthly netto-belastung, then run `syncMonthlyContributions` so the
-  // bavFunding two-pass and the fair-comparison invariant
-  // (`bavFunding.monthlyNetCost` is what ETF + insurance invest) still hold.
-  const localAllProductsResult = useMemo(() => {
-    if (allProductsSimulation) return allProductsSimulation
-    const overridden: ScenarioAssumptions = {
-      ...assumptions,
-      visibleProducts: [...PRODUCT_IDS] as ProductId[],
-    }
-    const activeAssumptions = syncMonthlyContributions(
-      normalizeMonthlyNettoBelastung(
-        overridden.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
-      ),
-      overridden,
-      profile,
-      de2026Rules,
-    )
-    return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
-  }, [allProductsSimulation, profile, assumptions])
-  const allProductsResult = allProductsSimulation ?? localAllProductsResult
+  // `buildAllProductsSimulation` (PR 332 R3) owns the normalize → sync →
+  // simulate contract. The fallback path calls it directly; when Calculator
+  // passes `allProductsSimulation`, we reuse that result to avoid a redundant
+  // engine pass (Calculator's CSV export is built from the same object).
+  const localAllProductsResult = useMemo(
+    () => (allProductsSimulation ?? buildAllProductsSimulation(profile, assumptions)),
+    [allProductsSimulation, profile, assumptions],
+  )
+  const allProductsResult = localAllProductsResult
 
   // Resolve the effective scenario against the LIVE assumptions (so the
   // rendite chip strip and selection stay aligned with what the user sees).
