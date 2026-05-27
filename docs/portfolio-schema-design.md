@@ -356,11 +356,11 @@ through steps 1–4; later work added fields but did not rename any keys above.
   default, with hide/show driven from `InstanceCommon.status`
   (`active` / `paid_up` / `surrendered` / `offered`).
 - **Cross-instance share URL size.** A workspace with 5 bAV + 3 pAV +
-  2 Riester instances will inflate the URL payload. Compare-mode share
-  URLs already omit default-valued fields before base64url-encoding the
-  JSON payload. Full workspace sharing may still need a lossless
-  compression layer (e.g. msgpack + base64url) before the payload exceeds
-  ~2 kB.
+  2 Riester instances will inflate the URL payload. Share URLs compact
+  against a versioned default snapshot, then omit default-valued fields
+  before base64url-encoding the JSON payload. Full workspace sharing may
+  still need a lossless compression layer (e.g. msgpack + base64url)
+  before the payload exceeds ~2 kB.
 - **Versorgungswerk / Beamten as instance.** Today
   `StatutoryPensionAssumptions` is a singleton. Household mode will
   surface the case where one partner has GRV and the other has a

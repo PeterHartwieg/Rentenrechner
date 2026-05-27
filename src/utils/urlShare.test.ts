@@ -9,18 +9,18 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { readUrlState, buildShareUrl } from './urlShare'
+import { readUrlState, buildShareUrl, toBase64Url } from './urlShare'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { buildStateJson } from '../storage'
+import {
+  COMPACT_SHARE_DEFAULTS_BY_VERSION,
+  COMPACT_STATE_DEFAULTS_VERSION,
+} from './urlShareDefaults'
 
 function setSearch(search: string) {
   // jsdom does not support directly assigning window.location.search,
   // so we use replaceState to update the URL.
   window.history.replaceState(null, '', search || '/')
-}
-
-function toBase64Url(text: string): string {
-  return btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
 beforeEach(() => {
@@ -117,7 +117,10 @@ describe('readUrlState — valid', () => {
     const compactEncoded = new URL(compactUrl).searchParams.get('s')
 
     expect(compactEncoded).not.toBeNull()
-    expect(compactEncoded!.length).toBeLessThan(toBase64Url(fullPayload).length / 4)
+    // buildShareUrl should stay meaningfully smaller than buildStateJson for
+    // defaultProfile/defaultAssumptions. Use the canonical toBase64Url length
+    // on both sides so UTF-8 payload growth is measured the same way.
+    expect(compactEncoded!.length).toBeLessThan(toBase64Url(fullPayload).length / 2)
 
     const search = compactUrl.slice(compactUrl.indexOf('?'))
     setSearch(`/${search}`)
@@ -127,5 +130,44 @@ describe('readUrlState — valid', () => {
       expect(result.state.profile).toEqual(defaultProfile)
       expect(result.state.assumptions).toEqual(defaultAssumptions)
     }
+  })
+
+  it('hydrates sparse payloads from their versioned default snapshot', () => {
+    const payload = JSON.stringify({
+      version: 1,
+      encoding: 'sparse-defaults-v1',
+      defaultsVersion: COMPACT_STATE_DEFAULTS_VERSION,
+      profile: { age: 44 },
+      assumptions: { bav: { monthlyGrossConversion: 321 } },
+    })
+    setSearch(`/?s=${toBase64Url(payload)}`)
+
+    const result = readUrlState()
+    expect(result.kind).toBe('valid')
+    if (result.kind === 'valid') {
+      expect(result.state.profile).toEqual({ ...defaultProfile, age: 44 })
+      expect(result.state.assumptions.bav.monthlyGrossConversion).toBe(321)
+      expect(result.state.assumptions.etf).toEqual(defaultAssumptions.etf)
+    }
+  })
+
+  it('rejects compact links with an unknown default snapshot', () => {
+    const payload = JSON.stringify({
+      version: 1,
+      encoding: 'sparse-defaults-v1',
+      defaultsVersion: 'missing-default-snapshot',
+      profile: {},
+      assumptions: {},
+    })
+    setSearch(`/?s=${toBase64Url(payload)}`)
+
+    expect(readUrlState()).toEqual({ kind: 'invalid' })
+  })
+
+  it('keeps the compact-share default snapshot aligned with current defaults', () => {
+    expect(COMPACT_SHARE_DEFAULTS_BY_VERSION[COMPACT_STATE_DEFAULTS_VERSION]).toEqual({
+      profile: defaultProfile,
+      assumptions: defaultAssumptions,
+    })
   })
 })
