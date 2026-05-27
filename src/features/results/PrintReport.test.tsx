@@ -269,36 +269,74 @@ describe('PrintReport', () => {
     // This test pins the fix: passing selectedScenarioId='optimistisch' must
     // still render all 6 product rows (the effective scenario is used, not
     // an empty filter), and the default (no prop) must also produce 6 rows.
+    //
+    // R4 (CodeRabbit Trivial): row-count alone proves only the filter is
+    // non-empty — a hardcoded 'basis' impl would also yield 6 rows. To pin
+    // the scenario filter itself, we seed `optimistisch` with a deliberately
+    // high annualReturn (0.12 vs basis 0.05) and assert that at least one
+    // rendered cell differs between the optimistisch and default renders.
     const { PRODUCT_REGISTRY } = await import('../../engine/productRegistry')
 
-    // With selectedScenarioId='optimistisch'
+    // Custom assumptions: keep the 3 default scenario IDs but exaggerate
+    // optimistisch so accumulation diverges visibly from basis (37 years of
+    // 12 % vs 5 % returns produce capital deltas in the tens of thousands).
+    const assumptionsWithDivergentOpt: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      returnScenarios: [
+        { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
+        { id: 'basis', label: 'Basis', annualReturn: 0.05 },
+        { id: 'optimistisch', label: 'Optimistisch', annualReturn: 0.12 },
+      ],
+    }
+
+    // Helper: find the ETF row by its product name and read the "Kapital
+    // mit {retirementAge}" cell (column index 2 — see VergleichSection
+    // colgroup: [Sparform, Wie es funktioniert, Kapital, …]). ETF is the
+    // first product in PRODUCT_REGISTRY but rows are sorted by
+    // netMonthlyPayout desc, so positional access would be fragile across
+    // scenarios — we look up by label.
+    const readEtfCapitalCell = (container: Element): string => {
+      const table = container.querySelector('.pr-vergleich-table')
+      expect(table).not.toBeNull()
+      const allRows = table!.querySelectorAll('tbody tr')
+      expect(allRows.length).toBe(PRODUCT_REGISTRY.length)
+      const etfRow = Array.from(allRows).find((row) =>
+        row.querySelector('.pr-vergleich-cell-product__name')?.textContent?.includes('ETF-Depot'),
+      )
+      expect(etfRow, 'ETF row must render in both optimistisch and default').not.toBeUndefined()
+      const cells = etfRow!.querySelectorAll('td')
+      const capitalText = cells[2]?.textContent ?? ''
+      expect(capitalText.length).toBeGreaterThan(0)
+      return capitalText
+    }
+
+    // With selectedScenarioId='optimistisch' (annualReturn = 12 %)
     const { container: containerOpt, unmount: unmountOpt } = render(
       <PrintReport
         profile={defaultProfile}
-        assumptions={defaultAssumptions}
+        assumptions={assumptionsWithDivergentOpt}
         simulation={makeSimulation('user_confirmed')}
         selectedScenarioId="optimistisch"
       />
     )
-    const tableOpt = containerOpt.querySelector('.pr-vergleich-table')
-    expect(tableOpt).not.toBeNull()
-    const rowsOpt = tableOpt!.querySelectorAll('tbody tr')
-    // The optimistisch scenario must produce the same 6 product rows.
-    expect(rowsOpt.length).toBe(PRODUCT_REGISTRY.length)
+    const optCapitalCell = readEtfCapitalCell(containerOpt)
     unmountOpt()
 
-    // Without selectedScenarioId (backwards compat: defaults to 'basis').
+    // Without selectedScenarioId (backwards compat: defaults to 'basis', 5 %)
     const { container: containerDefault } = render(
       <PrintReport
         profile={defaultProfile}
-        assumptions={defaultAssumptions}
+        assumptions={assumptionsWithDivergentOpt}
         simulation={makeSimulation('user_confirmed')}
       />
     )
-    const tableDefault = containerDefault.querySelector('.pr-vergleich-table')
-    expect(tableDefault).not.toBeNull()
-    const rowsDefault = tableDefault!.querySelectorAll('tbody tr')
-    expect(rowsDefault.length).toBe(PRODUCT_REGISTRY.length)
+    const defaultCapitalCell = readEtfCapitalCell(containerDefault)
+
+    // R4 scenario-threading assertion: the ETF row's capital cell must
+    // differ between optimistisch (12 % return) and default (basis, 5 %).
+    // A hardcoded 'basis' implementation that ignored selectedScenarioId
+    // would produce identical text here and fail this assertion.
+    expect(optCapitalCell).not.toBe(defaultCapitalCell)
   })
 
   // -------------------------------------------------------------------------

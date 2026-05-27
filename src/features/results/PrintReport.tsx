@@ -277,6 +277,19 @@ export function PrintReport({
   // preserves backwards compatibility when callers omit the prop.
   const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, selectedScenarioId ?? 'basis')
 
+  // R4: derive the human-readable scenario label so the printed copy
+  // ("Werte im …", "Aufschlüsselung im …") matches the data that was actually
+  // filtered above. Without this thread, printing after selecting
+  // 'optimistisch' yields optimistisch numbers under a "Basisszenario" caption —
+  // self-contradictory PDF (Codex R3 P2 + CodeRabbit Minor). Default labels are
+  // bare ("Konservativ" / "Basis" / "Optimistisch"); compose with "-Szenario"
+  // for natural German sentence flow. Falls back to "Basisszenario" defensively
+  // if the scenario is missing from the assumptions list.
+  const resolvedScenario = assumptions.returnScenarios.find((s) => s.id === effectiveScenarioId)
+  const resolvedScenarioLabel = resolvedScenario
+    ? `${resolvedScenario.label}-Szenario`
+    : 'Basisszenario'
+
   // Comparison-table rows: effective scenario only, sorted by netMonthlyPayout
   // desc per R1.
   const basisResults = compareSimulation.products.filter(
@@ -416,6 +429,7 @@ export function PrintReport({
         retirementAge={retirementAge}
         monthlyContribution={monthlyContribution}
         runtimeYears={runtimeYears}
+        scenarioLabel={resolvedScenarioLabel}
       />
 
       {/* PR R3: § 1 pro/contra grid — registry order, mirrors the web
@@ -429,7 +443,11 @@ export function PrintReport({
           legacy flat row-per-product table with the R2 card layout (three
           labeled sections + DMoneyRow values + Verfügbar-ab footer). */}
       {wohinRows.length > 0 && (
-        <WohinCardsSection rows={wohinRows} retirementAge={profile.retirementAge} />
+        <WohinCardsSection
+          rows={wohinRows}
+          retirementAge={profile.retirementAge}
+          scenarioLabel={resolvedScenarioLabel}
+        />
       )}
 
       <MethodeSection />
@@ -854,11 +872,13 @@ function VergleichSection({
   retirementAge,
   monthlyContribution,
   runtimeYears,
+  scenarioLabel,
 }: {
   rows: ReadonlyArray<PrintVergleichRow>
   retirementAge: number
   monthlyContribution: number
   runtimeYears: number
+  scenarioLabel: string
 }) {
   return (
     <section className="pr-section pr-vergleich-section">
@@ -916,7 +936,7 @@ function VergleichSection({
         </tbody>
       </table>
       <p className="pr-note pr-table-note">
-        Sortierung nach Netto-Rente absteigend. Werte im Basisszenario. Keine
+        Sortierung nach Netto-Rente absteigend. Werte im {scenarioLabel}. Keine
         Wertung — die beste Wahl hängt vom persönlichen Trade-off zwischen
         Rendite, Sicherheit und Flexibilität ab.
       </p>
@@ -988,9 +1008,11 @@ function ProContraSection({
 function WohinCardsSection({
   rows,
   retirementAge,
+  scenarioLabel,
 }: {
   rows: ReadonlyArray<PrintWohinRow>
   retirementAge: number
+  scenarioLabel: string
 }) {
   return (
     <section className="pr-section pr-section-allow-break pr-wohin-cards-section">
@@ -1003,8 +1025,8 @@ function WohinCardsSection({
         ))}
       </div>
       <p className="pr-note pr-table-note">
-        Aufschlüsselung im Basisszenario. „Effektivkosten p. a." nach RIY-Methode
-        über die gesamte Ansparphase. Verfügbarkeit je Karte unten.
+        Aufschlüsselung im {scenarioLabel}. „Effektivkosten p. a." nach
+        RIY-Methode über die gesamte Ansparphase. Verfügbarkeit je Karte unten.
       </p>
     </section>
   )
