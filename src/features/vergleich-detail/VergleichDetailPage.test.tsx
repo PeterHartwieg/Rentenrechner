@@ -82,10 +82,10 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     seedCompareMode()
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
     // Default retirement age is 67 (defaultProfile). The § 2 heading must
-    // contain "Mit 67, einmalig" — never a hardcoded "Mit 67" without the
+    // contain "Mit 67, Kapital" — never a hardcoded "Mit 67" without the
     // retirementAge prop threading.
     const text = container.textContent ?? ''
-    expect(text).toContain('Mit 67, einmalig')
+    expect(text).toContain('Mit 67, Kapital')
   })
 
   it('every euro display in the card grid goes through Intl currency formatting', () => {

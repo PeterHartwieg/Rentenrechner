@@ -86,7 +86,7 @@ describe('buildVergleichDetailCardData', () => {
     expect(data).not.toBeNull()
     expect(data!.sections).toHaveLength(3)
     expect(data!.sections[0].heading).toBe('Ansparphase, pro Monat')
-    expect(data!.sections[1].heading).toBe('Mit 67, einmalig')
+    expect(data!.sections[1].heading).toBe('Mit 67, Kapital')
     expect(data!.sections[2].heading).toBe('Im Alter, pro Monat')
   })
 
@@ -104,8 +104,8 @@ describe('buildVergleichDetailCardData', () => {
       yearsToRetirement: 35,
       assumptions: ASSUMPTIONS,
     })
-    expect(d63!.sections[1].heading).toBe('Mit 63, einmalig')
-    expect(d70!.sections[1].heading).toBe('Mit 70, einmalig')
+    expect(d63!.sections[1].heading).toBe('Mit 63, Kapital')
+    expect(d70!.sections[1].heading).toBe('Mit 70, Kapital')
   })
 
   it('ETF: no Steuer line in Ansparphase — Du selbst + effektiv investiert only', () => {
