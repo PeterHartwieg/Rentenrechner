@@ -173,7 +173,7 @@ describe('PrintReport combine-mode short-circuit (Codex P2 / CR3)', () => {
     expect(simulateRetirementComparisonMock).toHaveBeenCalled()
   })
 
-  it('does NOT call simulateRetirementComparison even when combineMode is true but portfolio is missing', () => {
+  it('calls simulateRetirementComparison when combineMode is true but portfolio is missing', () => {
     // Defensive: the predicate is `combineMode && portfolio`. When the caller
     // sets `combineMode=true` without a portfolio prop the component falls
     // back to the compare-mode render — which DOES need the simulator. The
