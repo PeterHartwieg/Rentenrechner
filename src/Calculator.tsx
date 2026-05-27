@@ -659,6 +659,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
         }
         combineWorkspace={isCombineMode ? portfolioState.workspace : undefined}
         combineSensitivityRows={printSensitivityRows}
+        selectedScenarioId={!isCombineMode ? result.effectiveScenarioId : undefined}
       />
 
       <LegalFooter navigate={navigate} />

@@ -116,6 +116,17 @@ interface Props {
    * still renders the composition table but skips the sensitivity sub-table.
    */
   combineSensitivityRows?: ReadonlyArray<PrintSensitivityRow>
+  /**
+   * The scenario the user has selected in the toolbar (compare mode only).
+   *
+   * When provided, the compare-mode Vergleich table and Wohin-cards mirror
+   * this selection instead of defaulting to 'basis', so the printed output
+   * matches the `/vergleich` page the user is looking at. The canonical
+   * helper `resolveEffectiveScenarioId` guards against unknown ids.
+   *
+   * Defaults to 'basis' when omitted (backwards-compatible).
+   */
+  selectedScenarioId?: string
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -182,6 +193,7 @@ export function PrintReport({
   combineReturnScenarios,
   combineWorkspace,
   combineSensitivityRows,
+  selectedScenarioId,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -254,16 +266,21 @@ export function PrintReport({
   // would otherwise diverge when `visibleProducts` is a subset upstream.
   const bav = compareSimulation.bavFunding
 
-  // Resolve the basis scenario via the canonical helper (handles missing /
+  // Resolve the effective scenario via the canonical helper (handles missing /
   // unknown ids defensively). NEVER `returnScenarios[0]` — that picks
   // konservativ (3 %) when the user reordered, a documented gotcha
   // (CLAUDE.md "returnScenarios[0] is not necessarily basis").
-  const basisScenarioId = resolveEffectiveScenarioId(assumptions, 'basis')
+  //
+  // When `selectedScenarioId` is provided (threaded from Calculator.tsx), the
+  // printed Vergleich table mirrors the scenario the user selected in the
+  // toolbar instead of always defaulting to 'basis'. The `?? 'basis'` fallback
+  // preserves backwards compatibility when callers omit the prop.
+  const effectiveScenarioId = resolveEffectiveScenarioId(assumptions, selectedScenarioId ?? 'basis')
 
-  // Comparison-table rows: basis-scenario only, sorted by netMonthlyPayout
+  // Comparison-table rows: effective scenario only, sorted by netMonthlyPayout
   // desc per R1.
   const basisResults = compareSimulation.products.filter(
-    (p) => p.scenarioId === basisScenarioId,
+    (p) => p.scenarioId === effectiveScenarioId,
   )
   const vergleichRows = buildPrintVergleichRows({ results: basisResults })
 

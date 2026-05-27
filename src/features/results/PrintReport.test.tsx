@@ -263,6 +263,44 @@ describe('PrintReport', () => {
     expect(text).not.toContain('Produktvergleich — alle Szenarien')
   })
 
+  it('compare-mode: selectedScenarioId threads through so print mirrors web view (C1 regression)', async () => {
+    // Codex R2 P2 (C1): PrintReport was hardcoded to 'basis' so printing from
+    // /vergleich after selecting 'optimistisch' produced basis-scenario rows.
+    // This test pins the fix: passing selectedScenarioId='optimistisch' must
+    // still render all 6 product rows (the effective scenario is used, not
+    // an empty filter), and the default (no prop) must also produce 6 rows.
+    const { PRODUCT_REGISTRY } = await import('../../engine/productRegistry')
+
+    // With selectedScenarioId='optimistisch'
+    const { container: containerOpt, unmount: unmountOpt } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+        selectedScenarioId="optimistisch"
+      />
+    )
+    const tableOpt = containerOpt.querySelector('.pr-vergleich-table')
+    expect(tableOpt).not.toBeNull()
+    const rowsOpt = tableOpt!.querySelectorAll('tbody tr')
+    // The optimistisch scenario must produce the same 6 product rows.
+    expect(rowsOpt.length).toBe(PRODUCT_REGISTRY.length)
+    unmountOpt()
+
+    // Without selectedScenarioId (backwards compat: defaults to 'basis').
+    const { container: containerDefault } = render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('user_confirmed')}
+      />
+    )
+    const tableDefault = containerDefault.querySelector('.pr-vergleich-table')
+    expect(tableDefault).not.toBeNull()
+    const rowsDefault = tableDefault!.querySelectorAll('tbody tr')
+    expect(rowsDefault.length).toBe(PRODUCT_REGISTRY.length)
+  })
+
   // -------------------------------------------------------------------------
   // Issue 27: combine-mode must source profile/GRV/scenarios from workspace,
   // never from singleton state. Pin the divergence with a workspace that
