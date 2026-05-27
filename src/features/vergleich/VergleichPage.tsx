@@ -32,6 +32,15 @@ interface Props {
    * `onAssumptionsChange` below.
    */
   result: SimulationResultBundle
+  /**
+   * Optional pre-built all-6-products simulation lifted from Calculator
+   * (PR 332 R2 — Codex P2). When provided, VergleichPage uses this instead
+   * of running its own local simulation; this keeps CSV export and the
+   * on-screen table in sync (Calculator builds the CSV from the same
+   * result). When omitted, the page falls back to its internal useMemo so
+   * tests / standalone callers still work without wiring the prop.
+   */
+  allProductsSimulation?: ReturnType<typeof simulateRetirementComparison>
   /** Setter so the rendite chips can swap scenario / future picker re-introductions. */
   onAssumptionsChange: (updater: (current: ScenarioAssumptions) => ScenarioAssumptions) => void
   /** Selected return-scenario id from `useWorkspaceUiState`. */
@@ -49,9 +58,11 @@ interface Props {
    */
   navigate?: (target: Route, search?: string) => void
   /**
-   * Compare-mode export handlers. Wired from Calculator.tsx's
-   * `useDerivedViews` bundle. Rendered as a small action bar at the
-   * bottom of the page (Sober D footer pattern).
+   * Compare-mode export handlers. Wired from Calculator.tsx. The
+   * `onExportCsv` handler is built from the same all-6-products simulation
+   * that the page renders (PR 332 R2), so the file matches the screen.
+   * Rendered as a small action bar at the bottom of the page
+   * (Sober D footer pattern).
    */
   onExportCsv?: () => void
   onCopyLink?: () => void
@@ -102,6 +113,7 @@ const SECTION_PRO_CONTRA = {
 export function VergleichPage({
   profile,
   assumptions,
+  allProductsSimulation,
   selectedScenarioId,
   onSelectScenario,
   navigate,
@@ -116,11 +128,19 @@ export function VergleichPage({
   // a subset here. Force `visibleProducts` to the full registry list before
   // simulating; this makes /vergleich independent of the portfolio selection.
   //
+  // PR 332 R2 (Codex P2): when Calculator passes `allProductsSimulation`,
+  // we reuse that result instead of running our own engine pass — this lets
+  // Calculator's `handleExportCsvAllProducts` build the CSV from the *same*
+  // simulation the page renders (no drift). Standalone callers (tests, or
+  // anywhere VergleichPage is mounted without the prop) keep the local
+  // memo path so the page still works in isolation.
+  //
   // We mirror `useSimulationResult`'s exact construction: normalize the
   // monthly netto-belastung, then run `syncMonthlyContributions` so the
   // bavFunding two-pass and the fair-comparison invariant
   // (`bavFunding.monthlyNetCost` is what ETF + insurance invest) still hold.
-  const allProductsResult = useMemo(() => {
+  const localAllProductsResult = useMemo(() => {
+    if (allProductsSimulation) return allProductsSimulation
     const overridden: ScenarioAssumptions = {
       ...assumptions,
       visibleProducts: [...PRODUCT_IDS] as ProductId[],
@@ -134,7 +154,8 @@ export function VergleichPage({
       de2026Rules,
     )
     return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
-  }, [profile, assumptions])
+  }, [allProductsSimulation, profile, assumptions])
+  const allProductsResult = allProductsSimulation ?? localAllProductsResult
 
   // Resolve the effective scenario against the LIVE assumptions (so the
   // rendite chip strip and selection stay aligned with what the user sees).

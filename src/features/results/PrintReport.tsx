@@ -127,6 +127,18 @@ interface Props {
    * Defaults to 'basis' when omitted (backwards-compatible).
    */
   selectedScenarioId?: string
+  /**
+   * Optional pre-built all-6-products simulation lifted from Calculator
+   * (PR 332 R2 — Codex P2). When provided in compare-mode, PrintReport
+   * reuses this result instead of running its own local
+   * `simulateRetirementComparison` pass. Mirrors the lift on VergleichPage
+   * so the screen, the CSV (built in Calculator), and the PDF all consume
+   * the same simulation result. When omitted, the report falls back to its
+   * internal useMemo so existing tests / standalone callers still work.
+   * Ignored in combine-mode (the portfolio branch consumes the per-instance
+   * + combined bundle threaded in via `portfolio`).
+   */
+  compareAllProductsSimulation?: ReturnType<typeof simulateRetirementComparison>
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -194,6 +206,7 @@ export function PrintReport({
   combineWorkspace,
   combineSensitivityRows,
   selectedScenarioId,
+  compareAllProductsSimulation,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -210,6 +223,13 @@ export function PrintReport({
   // holds. Memoised so re-renders driven by parent state changes don't
   // re-trigger the two-pass funding compute on every paint.
   //
+  // PR 332 R2 (Codex P2): when Calculator threads
+  // `compareAllProductsSimulation`, we reuse it instead of running our own
+  // engine pass — this collapses the duplicate useMemo between Calculator
+  // (CSV export), VergleichPage (table), and PrintReport (PDF mirror) into
+  // a single result. Standalone callers (tests, fixtures) keep the local
+  // memo path so backwards compatibility is preserved.
+  //
   // Hooks must run unconditionally before any early return (Rules of Hooks).
   // In combine-mode the result is ignored (the combine branch consumes the
   // pre-built portfolio results threaded in via props), so the useMemo
@@ -219,6 +239,7 @@ export function PrintReport({
   // edit (Codex P2 / CR3 R1 fix).
   const allProductsResult = useMemo(() => {
     if (combineMode && portfolio) return null
+    if (compareAllProductsSimulation) return compareAllProductsSimulation
 
     const overridden: ScenarioAssumptions = {
       ...assumptions,
@@ -233,7 +254,7 @@ export function PrintReport({
       de2026Rules,
     )
     return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
-  }, [combineMode, portfolio, profile, assumptions])
+  }, [combineMode, portfolio, compareAllProductsSimulation, profile, assumptions])
 
   // Combine-mode branch (Group G issue 11): when combineMode + portfolio are
   // provided, render per-instance + combined view rather than singleton-compare

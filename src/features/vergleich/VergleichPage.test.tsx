@@ -405,6 +405,65 @@ describe('VergleichPage — action bar (PR 332 R1 — Codex P2)', () => {
   })
 })
 
+describe('VergleichPage — allProductsSimulation prop (PR 332 R2 — Codex P2)', () => {
+  it('uses Calculator-supplied allProductsSimulation when provided (no local re-simulation)', () => {
+    // R2 fix: when Calculator lifts the all-6 simulation and threads it as a
+    // prop, VergleichPage must reuse it instead of running its own
+    // simulation. We pin this by patching the basis-scenario ETF row's
+    // `capitalAtRetirement` to a wildly distinct number that no organic
+    // engine run would produce. If the page falls back to its local memo,
+    // the natural figure (~144 628 €) would show up instead.
+    const realSim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
+    const sentinelCapital = 987_654_321
+    const patchedProducts = realSim.products.map((p) =>
+      p.productId === 'etf' && p.scenarioId === 'basis'
+        ? { ...p, capitalAtRetirement: sentinelCapital }
+        : p,
+    )
+    const patchedSim = { ...realSim, products: patchedProducts }
+
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          allProductsSimulation={patchedSim}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+        />,
+      ),
+    )
+    // de-DE formatting: 987.654.321 €
+    expect(container.textContent ?? '').toContain('987.654.321')
+  })
+
+  it('falls back to a local simulation when allProductsSimulation is omitted (backwards compat)', () => {
+    // Without the prop, the page still renders all 6 rows via its internal
+    // useMemo (the R1 contract). Standalone callers + existing tests keep
+    // working unchanged.
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+        />,
+      ),
+    )
+    const table = container.querySelector('.vergleich-comparison-table')
+    expect(table).not.toBeNull()
+    const rows = table!.querySelectorAll('tbody tr')
+    expect(rows.length).toBe(6)
+  })
+})
+
 describe('VergleichPage — viewport sweep', () => {
   it('renders without throwing at phone / tablet / desktop', () => {
     const result = buildResult(defaultAssumptions)

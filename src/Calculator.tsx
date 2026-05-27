@@ -17,10 +17,18 @@ import { useEffect, useMemo, useState } from 'react'
 // compare-mode surface is now the linear Sober D `VergleichPage`.
 import { MeinPlanPage } from './features/mein-plan/MeinPlanPage'
 import { VergleichPage } from './features/vergleich/VergleichPage'
-import type { ProductId } from './domain'
+import type { ProductId, ScenarioAssumptions } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
 import { de2026Rules } from './rules/de2026'
+import { PRODUCT_IDS } from './engine/productRegistry'
+import { simulateRetirementComparison } from './engine/simulate'
+import {
+  normalizeMonthlyNettoBelastung,
+  syncMonthlyContributions,
+} from './app/syncContributions'
+import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from './data/defaultScenario'
+import { buildExportCsv, downloadCsv } from './utils/csvExport'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
@@ -222,6 +230,41 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     combineProfile,
   ])
 
+  // PR 332 R2 (Codex P2): compare-mode all-6-products simulation lifted
+  // from VergleichPage's local useMemo to here. The Sober D
+  // `VergleichPage` (PR 329 R1) renders all 6 products always — even when
+  // the user's `visibleProducts` is a subset — and the print compare-mode
+  // mirror (PR R3) does the same. Owning the simulation here lets us:
+  //   1. Power a new `handleExportCsvAllProducts` so the CSV matches
+  //      what the user sees on `/vergleich` (the prior `handleExportCsv`
+  //      from `useDerivedViews` was filtered by `assumptions.visibleProducts`).
+  //   2. Thread the same result into VergleichPage and PrintReport
+  //      (collapses their duplicate useMemos into a shared source).
+  //
+  // Mirrors `useSimulationResult`'s construction exactly: normalize the
+  // monthly netto-belastung, then `syncMonthlyContributions` so the
+  // bavFunding two-pass + fair-comparison invariant still hold.
+  //
+  // Returns null in combine-mode — there is no compare-mode export path
+  // there; the combine-mode `handleExportCsv` from useDerivedViews
+  // continues to drive the per-instance + combined CSV.
+  const compareAllProductsSimulation = useMemo(() => {
+    if (isCombineMode) return null
+    const overridden: ScenarioAssumptions = {
+      ...assumptions,
+      visibleProducts: [...PRODUCT_IDS] as ProductId[],
+    }
+    const activeAssumptions = syncMonthlyContributions(
+      normalizeMonthlyNettoBelastung(
+        overridden.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
+      ),
+      overridden,
+      profile,
+      de2026Rules,
+    )
+    return simulateRetirementComparison(profile, activeAssumptions, de2026Rules)
+  }, [isCombineMode, profile, assumptions])
+
   // Sensitivity perturbation rows for the combine-mode print (PR 11 R1
   // scope restore + R2 perf fix). Each row drives a full
   // `runCombineSimulation` pass — up to 4 extra simulations per build.
@@ -253,6 +296,37 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     handleCopyLink,
     linkCopied,
   } = views
+
+  // PR 332 R2 (Codex P2): compare-mode CSV export aligned with what
+  // VergleichPage actually renders. `useDerivedViews.handleExportCsv` is
+  // built from the singleton simulation filtered by
+  // `assumptions.visibleProducts`, which can be a subset (the user's
+  // `/eingaben` selection). VergleichPage forces all 6 products on screen,
+  // so a stale subset would diverge from the CSV. We rebuild the export
+  // here against `compareAllProductsSimulation` so the file matches the
+  // page byte-for-byte (all 6 rows in registry/payout order).
+  //
+  // Combine-mode keeps `handleExportCsv` (it has its own per-instance +
+  // combined branch in useDerivedViews); compare-mode swaps in this
+  // handler for VergleichPage's action bar.
+  function handleExportCsvAllProducts(): void {
+    if (!compareAllProductsSimulation) return
+    const csv = buildExportCsv({
+      products: compareAllProductsSimulation.products,
+      bavAnnualTaxSvSavings: compareAllProductsSimulation.bavFunding.annualTaxAndSvSavings,
+      bavProfile: profile,
+      bavKvdrMember: result.taxModes.kvdrMember,
+      bavOtherAnnualIncome: assumptions.bav.monthlyOtherRetirementIncome * 12,
+      insuranceTaxMode: result.taxModes.insuranceTaxMode,
+      equityPartialExemption: assumptions.etf.equityPartialExemption,
+      insuranceOtherAnnualIncome: assumptions.insurance.monthlyOtherRetirementIncome * 12,
+      avdOtherAnnualIncome: assumptions.altersvorsorgedepot.monthlyOtherRetirementIncome * 12,
+      riesterOtherAnnualIncome: assumptions.riester.monthlyOtherRetirementIncome * 12,
+      rules: de2026Rules,
+      inflationRate: assumptions.inflationRate,
+    })
+    downloadCsv('rentenwiki-export.csv', csv)
+  }
 
   const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } = computeBavMinimumEntitlement(de2026Rules)
 
@@ -386,6 +460,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
           profile={profile}
           assumptions={assumptions}
           result={result}
+          allProductsSimulation={compareAllProductsSimulation ?? undefined}
           onAssumptionsChange={(updater) =>
             setAssumptions((current) => ({ ...current, ...updater(current) }))
           }
@@ -393,7 +468,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
           onSelectScenario={ui.setSelectedScenarioId}
           navigate={navigate}
           onPrint={() => window.print()}
-          onExportCsv={handleExportCsv}
+          onExportCsv={handleExportCsvAllProducts}
           onCopyLink={handleCopyLink}
           linkCopied={linkCopied}
         />
@@ -549,6 +624,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
         profile={profile}
         assumptions={assumptions}
         simulation={simulation}
+        compareAllProductsSimulation={compareAllProductsSimulation ?? undefined}
         combineMode={isCombineMode}
         portfolio={combineExportBundle}
         combineProfile={isCombineMode ? portfolioState.workspace.baseline.profile : undefined}
