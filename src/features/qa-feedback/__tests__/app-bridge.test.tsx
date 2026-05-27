@@ -36,11 +36,12 @@ describe('App — wires QA workspace-context ref', () => {
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
 
     render(<App />)
-    // Workspace-tabs collapse: the dashboard no longer renders a
-    // `[role="tab"]` strip, so wait for the meta H1 instead — it mounts as
-    // soon as the lazy `Calculator` chunk resolves.
+    // The legacy `.rw-dashboard-meta__title` chrome heading was removed —
+    // each Sober D surface owns its own H1. Wait for the combine-mode
+    // shell instead, which mounts as soon as the lazy `Calculator` chunk
+    // resolves for the seeded combine workspace.
     await waitFor(
-      () => expect(document.querySelector('.rw-dashboard-meta__title')).not.toBeNull(),
+      () => expect(document.querySelector('.mein-plan-shell')).not.toBeNull(),
       { timeout: 8000 },
     )
 

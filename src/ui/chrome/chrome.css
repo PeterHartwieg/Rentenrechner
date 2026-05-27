@@ -522,100 +522,15 @@
   color: var(--rw-ink);
 }
 
-/* ───── Calculator dashboard meta strip ─────────────────────────────────
-   R3.1 (Batch 1): the dashboard kicker + mode badge + "Startseite" button
-   used to live in a separate `<header class="topbar">` rendered INSIDE the
-   legacy `<main class="app-shell">`. The chrome (AppShell + AppHeader,
-   PR 1) now carries the top H1; this strip is a thin Sober D meta block
-   that surfaces the workspace's contextual copy (e.g. "Mein Plan" mode
-   badge) plus a home-affordance for returning to the landing page.
+/* ───── Calculator dashboard meta strip — REMOVED ───────────────────────
+   The dashboard's `.rw-dashboard-meta` kicker + H1 + mode-badge strip was
+   removed because both surfaces below — `VergleichPage` (compare) and
+   `MeinPlanPage` (combine) — carry their own kicker + H1 inside the
+   Sober D shell, so the chrome heading became a duplicate "two-headers"
+   pattern. The brand chrome (logo, status bar, app nav) still lives in
+   the outer `AppShell` / `AppHeader`; the page-level H1 is now the
+   responsibility of the rendered surface.
    --------------------------------------------------------------------- */
-
-.rw-dashboard-meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 20px 56px 16px;
-  background: var(--rw-bg-paper);
-  border-bottom: 1px solid var(--rw-rule-soft);
-}
-
-.rw-dashboard-meta__copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rw-dashboard-meta__kicker {
-  font-family: var(--rw-font-mono);
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  color: var(--rw-ink-faint);
-  text-transform: uppercase;
-}
-
-.rw-dashboard-meta__title {
-  margin: 0;
-  font-family: var(--rw-font-sans);
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.3px;
-  color: var(--rw-ink);
-}
-
-.rw-dashboard-meta__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.rw-dashboard-meta__badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  font-family: var(--rw-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--rw-accent);
-  background: var(--rw-accent-bg);
-  border: 1px solid var(--rw-accent);
-  pointer-events: none;
-  user-select: none;
-}
-
-/* Workspace-tabs collapse: the dashboard meta strip used to host a
-   `.rw-dashboard-meta__home-btn` next to the badge; the chrome nav's
-   Startseite tab covers that affordance, so the button + its styles are
-   removed. */
-
-@media (max-width: 1023px) {
-  .rw-dashboard-meta {
-    padding: 16px 24px 14px;
-  }
-}
-
-@media (max-width: 760px) {
-  .rw-dashboard-meta {
-    padding: 12px 16px 10px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .rw-dashboard-meta__kicker {
-    display: none;
-  }
-
-  .rw-dashboard-meta__title {
-    font-size: 17px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
 
 /* Workspace-tabs collapse: the per-workspace segmented control
    (`.rw-workspace-tabs*`) and its sticky strip are removed — the chrome
@@ -629,9 +544,15 @@
    driven so it inherits the Sober D paper/ink baseline.
    --------------------------------------------------------------------- */
 
+/* Transparent + zero-padding wrapper. The Sober D shells inside
+   (`VergleichPage`, `MeinPlanPage`) carry their own cream background and
+   horizontal gutters, so wrapping them in a white card with 56 px padding
+   made them look "embedded" instead of taking over the page. The combine-
+   mode legacy panel area still needs the white card chrome — that lives
+   on `.workspace-view--details` (see App.css). */
 .rw-dashboard-body {
-  padding: 24px 56px;
-  background: var(--rw-bg-paper);
+  padding: 0;
+  background: transparent;
 }
 
 .rw-dashboard-section {
@@ -640,20 +561,7 @@
   gap: 18px;
 }
 
-@media (max-width: 1023px) {
-  .rw-dashboard-body {
-    padding: 20px 24px;
-  }
-}
-
-@media (max-width: 760px) {
-  .rw-dashboard-body {
-    padding: 16px;
-  }
-}
-
 @media print {
-  .rw-dashboard-meta,
   .rw-dashboard-body {
     display: none !important;
   }

@@ -55,6 +55,20 @@
   color: var(--rw-ink-faint);
 }
 
+/* Page-level h1. Replaces the legacy `.rw-dashboard-meta__title` chrome
+   heading that sat above the dashboard body — the meta strip was removed
+   in this PR because it duplicated the kicker+headline pattern already
+   rendered inside the Sober D shell. Sober D serif, matches the visual
+   weight of `.vergleich-headline` in VergleichPage. */
+.mein-plan-title {
+  font-family: Newsreader, Georgia, serif;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--rw-ink);
+}
+
 .mein-plan-lead {
   margin: 0;
   font-family: var(--rw-font-sans);
@@ -526,6 +540,10 @@
   .mein-plan-main {
     padding: 18px 20px 26px;
     gap: 18px;
+  }
+
+  .mein-plan-title {
+    font-size: 26px;
   }
 
   .mein-plan-grid {

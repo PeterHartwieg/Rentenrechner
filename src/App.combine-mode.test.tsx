@@ -27,13 +27,17 @@ function cloneWorkspace(workspace: Workspace): Workspace {
  * first-load a generous timeout to absorb that one-shot cost.
  *
  * Workspace-tabs collapse (this PR): the dashboard no longer renders a
- * workspace tab strip, so the pre-collapse `[role="tab"]` poll is gone. We
- * wait for the dashboard meta strip H1 instead — that mounts as soon as the
- * lazy `Calculator` chunk resolves and renders for both modes.
+ * workspace tab strip, so the pre-collapse `[role="tab"]` poll is gone.
+ * The chrome meta strip that used to carry the readiness H1 is also gone —
+ * each surface now owns its own page-level H1 inside the Sober D shell, so
+ * we poll for either shell class.
  */
 async function waitForCalculator(): Promise<void> {
   await waitFor(
-    () => expect(document.querySelector('.rw-dashboard-meta__title')).not.toBeNull(),
+    () =>
+      expect(
+        document.querySelector('.vergleich-shell, .mein-plan-shell'),
+      ).not.toBeNull(),
     { timeout: 8000 },
   )
 }
