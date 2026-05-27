@@ -11,11 +11,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { readUrlState, buildShareUrl } from './urlShare'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
+import { buildStateJson } from '../storage'
 
 function setSearch(search: string) {
   // jsdom does not support directly assigning window.location.search,
   // so we use replaceState to update the URL.
   window.history.replaceState(null, '', search || '/')
+}
+
+function toBase64Url(text: string): string {
+  return btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
 beforeEach(() => {
@@ -88,6 +93,39 @@ describe('readUrlState — valid', () => {
     expect(result.kind).toBe('valid')
     if (result.kind === 'valid') {
       expect(result.state.profile.age).toBe(42)
+    }
+  })
+
+  it('still reads legacy full-payload share URLs', () => {
+    const fullPayload = buildStateJson(
+      { ...defaultProfile, age: 43 },
+      defaultAssumptions,
+    )
+    setSearch(`/?s=${toBase64Url(fullPayload)}`)
+
+    const result = readUrlState()
+    expect(result.kind).toBe('valid')
+    if (result.kind === 'valid') {
+      expect(result.state.profile.age).toBe(43)
+      expect(result.state.assumptions).toEqual(defaultAssumptions)
+    }
+  })
+
+  it('omits default values from newly built share URLs', () => {
+    const compactUrl = buildShareUrl(defaultProfile, defaultAssumptions)
+    const fullPayload = buildStateJson(defaultProfile, defaultAssumptions)
+    const compactEncoded = new URL(compactUrl).searchParams.get('s')
+
+    expect(compactEncoded).not.toBeNull()
+    expect(compactEncoded!.length).toBeLessThan(toBase64Url(fullPayload).length / 4)
+
+    const search = compactUrl.slice(compactUrl.indexOf('?'))
+    setSearch(`/${search}`)
+    const result = readUrlState()
+    expect(result.kind).toBe('valid')
+    if (result.kind === 'valid') {
+      expect(result.state.profile).toEqual(defaultProfile)
+      expect(result.state.assumptions).toEqual(defaultAssumptions)
     }
   })
 })

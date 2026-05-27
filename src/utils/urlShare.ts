@@ -1,7 +1,55 @@
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
-import { buildStateJson, parseStateFromJson } from '../storage'
+import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
+import { parseStateFromJson } from '../storage'
 
 const URL_PARAM = 's'
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false
+    if (a.length !== b.length) return false
+    return a.every((item, index) => valuesEqual(item, b[index]))
+  }
+  if (isPlainObject(a) || isPlainObject(b)) {
+    if (!isPlainObject(a) || !isPlainObject(b)) return false
+    const aKeys = Object.keys(a)
+    const bKeys = Object.keys(b)
+    if (aKeys.length !== bKeys.length) return false
+    return aKeys.every((key) =>
+      Object.prototype.hasOwnProperty.call(b, key) && valuesEqual(a[key], b[key])
+    )
+  }
+  return false
+}
+
+function omitDefaults(value: unknown, defaults: unknown): unknown {
+  if (valuesEqual(value, defaults)) return undefined
+  if (isPlainObject(value) && isPlainObject(defaults)) {
+    const result: Record<string, unknown> = {}
+    for (const key of Object.keys(value)) {
+      const compact = omitDefaults(value[key], defaults[key])
+      if (compact !== undefined) result[key] = compact
+    }
+    return Object.keys(result).length > 0 ? result : undefined
+  }
+  return value
+}
+
+function buildCompactStateJson(
+  profile: PersonalProfile,
+  assumptions: ScenarioAssumptions,
+): string {
+  return JSON.stringify({
+    version: 1,
+    profile: omitDefaults(profile, defaultProfile) ?? {},
+    assumptions: omitDefaults(assumptions, defaultAssumptions) ?? {},
+  })
+}
 
 function toBase64Url(json: string): string {
   const bytes = new TextEncoder().encode(json)
@@ -40,7 +88,7 @@ export function readUrlState(): UrlStateResult {
 
 export function buildShareUrl(profile: PersonalProfile, assumptions: ScenarioAssumptions): string {
   const url = new URL(window.location.href)
-  url.search = `?${URL_PARAM}=${toBase64Url(buildStateJson(profile, assumptions))}`
+  url.search = `?${URL_PARAM}=${toBase64Url(buildCompactStateJson(profile, assumptions))}`
   url.hash = ''
   return url.toString()
 }
