@@ -249,6 +249,18 @@ export function VergleichPage({
             >
               Wohin geht das Geld? Aufschlüsselung pro Produkt →
             </a>
+            <a
+              className="vergleich-drilldown__link"
+              href={routeToPath(ROUTES.kapital)}
+              onClick={(event) => {
+                if (!navigate) return
+                if (!shouldUseSpaNavigation(event)) return
+                event.preventDefault()
+                navigate(ROUTES.kapital)
+              }}
+            >
+              Kapital im Verlauf →
+            </a>
           </div>
 
           {(onPrint || onExportCsv || onCopyLink) && (

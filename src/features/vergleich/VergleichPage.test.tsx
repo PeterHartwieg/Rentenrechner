@@ -250,6 +250,89 @@ describe('VergleichPage — R1 layout', () => {
     expect(href).toBe('/vergleich/details?scenario=basis')
   })
 
+  it('renders BOTH drill-in links side by side: details + Kapital im Verlauf', () => {
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+        />,
+      ),
+    )
+    const links = container.querySelectorAll<HTMLAnchorElement>('.vergleich-drilldown__link')
+    expect(links.length).toBe(2)
+    // The existing drill-in to /vergleich/details carries the active scenario.
+    expect(links[0].getAttribute('href')).toBe('/vergleich/details?scenario=basis')
+    expect(links[0].textContent ?? '').toContain('Wohin geht das Geld')
+    // The new drill-in to /kapital does not carry a query string.
+    expect(links[1].getAttribute('href')).toBe('/kapital')
+    expect(links[1].textContent ?? '').toContain('Kapital im Verlauf')
+  })
+
+  it('"Kapital im Verlauf" link triggers SPA navigation via navigate(ROUTES.kapital) and preventDefault on plain click', () => {
+    const navigate = vi.fn()
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+          navigate={navigate}
+        />,
+      ),
+    )
+    const links = container.querySelectorAll<HTMLAnchorElement>('.vergleich-drilldown__link')
+    const kapitalLink = links[1]
+    expect(kapitalLink.getAttribute('href')).toBe('/kapital')
+
+    // Plain click → shouldUseSpaNavigation returns true → SPA intercept fires.
+    // `cancelable: true` so we can inspect defaultPrevented after the click.
+    const fired = fireEvent.click(kapitalLink, { button: 0, cancelable: true })
+    // fireEvent returns false when preventDefault was called on the event.
+    expect(fired).toBe(false)
+
+    expect(navigate).toHaveBeenCalledTimes(1)
+    expect(navigate).toHaveBeenCalledWith({ kind: 'kapital' })
+  })
+
+  it('"Kapital im Verlauf" link with metaKey-click falls through to native navigation (no SPA intercept)', () => {
+    const navigate = vi.fn()
+    const result = buildResult(defaultAssumptions)
+    const { container } = render(
+      inShell(
+        <VergleichPage
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          result={result}
+          onAssumptionsChange={NOOP}
+          selectedScenarioId="basis"
+          onSelectScenario={NOOP}
+          navigate={navigate}
+        />,
+      ),
+    )
+    const links = container.querySelectorAll<HTMLAnchorElement>('.vergleich-drilldown__link')
+    const kapitalLink = links[1]
+
+    // Cmd/Ctrl-click → shouldUseSpaNavigation returns false → SPA handler bails
+    // before preventDefault, letting the browser handle the navigation natively
+    // (e.g. open in a new tab on macOS Cmd-click / Win Ctrl-click).
+    const fired = fireEvent.click(kapitalLink, { button: 0, metaKey: true, ctrlKey: true, cancelable: true })
+    // fireEvent returns true when preventDefault was NOT called.
+    expect(fired).toBe(true)
+
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
   it('renders all 6 product rows even when assumptions.visibleProducts is empty (R1 contract: shows all 6 always)', () => {
     // R1 Codex P2: the page runs its own simulation with visibleProducts
     // forced to the full PRODUCT_REGISTRY list, so the user's `/eingaben`
