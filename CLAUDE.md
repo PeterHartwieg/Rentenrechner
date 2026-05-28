@@ -92,6 +92,8 @@ npm run build           # production build
 npm run repo:stats      # file/symbol inventory
 ```
 
+**Build-artifact side effect:** `npm run verify` (and `npm run build`) regenerates `public/og/*.png` via `scripts/generate-og-images.mjs`. These PNGs appear as dirty/unstaged files after every build run. Do not stage or commit them; they are derived artifacts, not source changes.
+
 ## Quick navigation
 
 For the full module map (combine mode, projection, transfer, funding, allowance, recommender, inventory) see [`CONTEXT.md`](CONTEXT.md). High-frequency landings only here:
