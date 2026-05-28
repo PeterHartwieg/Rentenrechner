@@ -79,6 +79,9 @@ async function loadSourceModules() {
     const articleHub = await server.ssrLoadModule('/src/features/articles/ArticleHubPage.tsx')
     const methode = await server.ssrLoadModule('/src/features/methode/MethodePage.tsx')
     const angaben = await server.ssrLoadModule('/src/features/inputs/AngabenPage.tsx')
+    const angabenProdukte = await server.ssrLoadModule(
+      '/src/features/inputs/AngabenProduktePage.tsx',
+    )
     const vergleichDetail = await server.ssrLoadModule('/src/features/vergleich-detail/VergleichDetailPage.tsx')
     const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
     const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
@@ -116,6 +119,7 @@ async function loadSourceModules() {
       articleHub,
       methode,
       angaben,
+      angabenProdukte,
       vergleichDetail,
       impressum,
       datenschutz,
@@ -145,6 +149,7 @@ function buildComponentMap(modules) {
     '/artikel': modules.articleHub.ArticleHubPage,
     '/methode': modules.methode.MethodePage,
     '/eingaben': modules.angaben.AngabenPage,
+    '/eingaben/produkte': modules.angabenProdukte.AngabenProduktePage,
     '/rentenluecke-rechner': modules.rentenluecke.RentenluckeRechnerPage,
     '/bav-rechner': modules.bavRechner.BavRechnerPage,
     '/etf-vs-bav': modules.etfVsBav.EtfVsBavPage,
@@ -230,7 +235,14 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
     // pass uses a no-op; client hydration replaces it with the real router
     // callback. Function props don't appear in HTML, so the rendered output
     // matches either way.
-    if (routeId === '/impressum' || routeId === '/datenschutz' || routeId === '/artikel' || routeId === '/methode' || routeId === '/eingaben') {
+    if (
+      routeId === '/impressum' ||
+      routeId === '/datenschutz' ||
+      routeId === '/artikel' ||
+      routeId === '/methode' ||
+      routeId === '/eingaben' ||
+      routeId === '/eingaben/produkte'
+    ) {
       return renderToString(withShell(React.createElement(Component, { navigate: noopNavigate })))
     }
     // R3.3 — `/vergleich/details` consumes the lifted workspace UI state in

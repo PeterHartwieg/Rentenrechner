@@ -14,7 +14,14 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../storageKeys'
-import { appViewFromUrl, appViewFromMode, detectSavedMode } from './useRoute'
+import {
+  appViewFromUrl,
+  appViewFromMode,
+  detectSavedMode,
+  pathToRoute,
+  routeToPath,
+  ROUTES,
+} from './useRoute'
 
 // ---------------------------------------------------------------------------
 // appViewFromUrl
@@ -161,5 +168,32 @@ describe('detectSavedMode', () => {
 
     const restored = appViewFromMode(detectSavedMode())
     expect(restored).toBe('compare')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// PR 2 — /eingaben/produkte route round-trip. Splits the single-page
+// /eingaben surface into Schritt 1 + Schritt 2; the new route is added to
+// the tagged-union + both switches.
+// ---------------------------------------------------------------------------
+
+describe('pathToRoute / routeToPath — /eingaben/produkte (PR 2)', () => {
+  it('pathToRoute("/eingaben/produkte") returns the eingaben-produkte variant', () => {
+    const route = pathToRoute('/eingaben/produkte')
+    expect(route.kind).toBe('eingaben-produkte')
+    expect(route).toBe(ROUTES.eingabenProdukte)
+  })
+
+  it('routeToPath round-trips /eingaben/produkte', () => {
+    expect(routeToPath(pathToRoute('/eingaben/produkte'))).toBe(
+      '/eingaben/produkte',
+    )
+  })
+
+  it('preserves the existing /eingaben route (not shadowed by /eingaben/produkte)', () => {
+    // Regression guard — adding the deeper route must not change how
+    // pathToRoute resolves the parent.
+    expect(pathToRoute('/eingaben').kind).toBe('eingaben')
+    expect(routeToPath(ROUTES.eingaben)).toBe('/eingaben')
   })
 })

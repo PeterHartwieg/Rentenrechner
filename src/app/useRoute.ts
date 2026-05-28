@@ -28,6 +28,7 @@ export type Route =
   | { kind: 'artikel' }
   | { kind: 'methode' }
   | { kind: 'eingaben' }
+  | { kind: 'eingaben-produkte' }
   | { kind: 'impressum' }
   | { kind: 'datenschutz' }
   | { kind: 'rentenluecke-rechner' }
@@ -58,6 +59,7 @@ export const ROUTES = {
   artikel: { kind: 'artikel' } as Route,
   methode: { kind: 'methode' } as Route,
   eingaben: { kind: 'eingaben' } as Route,
+  eingabenProdukte: { kind: 'eingaben-produkte' } as Route,
   impressum: { kind: 'impressum' } as Route,
   datenschutz: { kind: 'datenschutz' } as Route,
   rentenlueckeRechner: { kind: 'rentenluecke-rechner' } as Route,
@@ -87,6 +89,7 @@ export function routeToPath(route: Route): string {
     case 'artikel': return '/artikel'
     case 'methode': return '/methode'
     case 'eingaben': return '/eingaben'
+    case 'eingaben-produkte': return '/eingaben/produkte'
     case 'impressum': return '/impressum'
     case 'datenschutz': return '/datenschutz'
     case 'rentenluecke-rechner': return '/rentenluecke-rechner'
@@ -146,6 +149,7 @@ export function pathToRoute(pathname: string): Route {
     case '/artikel': return ROUTES.artikel
     case '/methode': return ROUTES.methode
     case '/eingaben': return ROUTES.eingaben
+    case '/eingaben/produkte': return ROUTES.eingabenProdukte
     case '/impressum': return ROUTES.impressum
     case '/datenschutz': return ROUTES.datenschutz
     case '/rentenluecke-rechner': return ROUTES.rentenlueckeRechner

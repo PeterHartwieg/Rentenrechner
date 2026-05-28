@@ -42,18 +42,6 @@ async function waitForCalculator(): Promise<void> {
   )
 }
 
-/**
- * Wait for the lazy `AngabenPage` chunk to mount. The page's TOC kicker
- * ("In diesem Dokument") is the most stable signal — it renders for both
- * modes and is unique to `/eingaben`.
- */
-async function waitForAngabenPage(): Promise<void> {
-  await waitFor(
-    () => expect(document.body.textContent ?? '').toContain('In diesem Dokument'),
-    { timeout: 8000 },
-  )
-}
-
 function saveCombineWorkspace() {
   let workspace = cloneWorkspace(defaultWorkspace)
   workspace = { ...workspace, mode: 'combine' }
@@ -100,19 +88,33 @@ describe('App — Mein Plan combine-mode chrome', () => {
   })
 })
 
-describe('App — combine-mode profile editing lives on /eingaben § 5', () => {
-  // Workspace-tabs collapse: the per-contract sidebar (which carries the
-  // Bruttogehalt / Renteneintrittsalter inputs in combine mode) moved out of
-  // the workspace `angebot` tab and into `/eingaben` § 5 (AngabenProduktSection).
-  // The behaviour-level guarantee — edits to those fields persist to
-  // STORAGE_KEY_V2 — still holds; the tests now drive `/eingaben` instead of
-  // an inert tab.
+describe('App — combine-mode profile editing lives on /eingaben/produkte (PR 2 split)', () => {
+  // PR 2 of the Direction D /eingaben redesign migration split the page in
+  // two. The per-contract `<CombineDashboardSidebar>` (which carries the
+  // combine-mode Bruttogehalt / Renteneintrittsalter inputs inside its
+  // `.combine-field` wrappers) moved from `/eingaben` § 5 onto
+  // `/eingaben/produkte`. The behaviour-level guarantee — edits to those
+  // fields persist to STORAGE_KEY_V2 — still holds; these tests now drive
+  // `/eingaben/produkte` instead of `/eingaben`. Both pages mount the
+  // SAME `useAngabenState` so the round-trip is identical.
 
-  it('renders the personal-details section on /eingaben in combine mode', async () => {
+  /** Schritt 2's hero kicker is "Mein Plan · Schritt 2 von 2" — the
+   *  most stable readiness signal for the new page. */
+  async function waitForAngabenProduktePage(): Promise<void> {
+    await waitFor(
+      () =>
+        expect(document.body.textContent ?? '').toContain(
+          'Schritt 2 von 2',
+        ),
+      { timeout: 8000 },
+    )
+  }
+
+  it('renders the personal-details sidebar on /eingaben/produkte in combine mode', async () => {
     saveCombineWorkspace()
-    window.history.pushState(null, '', '/eingaben')
+    window.history.pushState(null, '', '/eingaben/produkte')
     const { container } = render(<App />)
-    await waitForAngabenPage()
+    await waitForAngabenProduktePage()
 
     const text = container.textContent ?? ''
     expect(/Pers.nliche Angaben|Persoenliche Angaben|Profil/.test(text)).toBe(true)
@@ -120,13 +122,13 @@ describe('App — combine-mode profile editing lives on /eingaben § 5', () => {
     expect(text).toContain('Renteneintrittsalter')
   })
 
-  it('editing salary on /eingaben § 5 writes through to workspace baseline and persists (#40)', async () => {
+  it('editing salary on /eingaben/produkte writes through to workspace baseline and persists (#40)', async () => {
     saveCombineWorkspace()
-    window.history.pushState(null, '', '/eingaben')
+    window.history.pushState(null, '', '/eingaben/produkte')
     render(<App />)
-    await waitForAngabenPage()
+    await waitForAngabenProduktePage()
 
-    // The CombineDashboardSidebar mounts as `/eingaben` § 5's body in combine
+    // The CombineDashboardSidebar mounts as Schritt 2's body in combine
     // mode. The Bruttogehalt input lives inside a `.combine-field` wrapper
     // exactly as before — only the parent shell changed.
     await waitFor(() => {
@@ -158,11 +160,11 @@ describe('App — combine-mode profile editing lives on /eingaben § 5', () => {
     })
   })
 
-  it('editing retirement age on /eingaben § 5 writes through to workspace baseline (#40)', async () => {
+  it('editing retirement age on /eingaben/produkte writes through to workspace baseline (#40)', async () => {
     saveCombineWorkspace()
-    window.history.pushState(null, '', '/eingaben')
+    window.history.pushState(null, '', '/eingaben/produkte')
     render(<App />)
-    await waitForAngabenPage()
+    await waitForAngabenProduktePage()
 
     await waitFor(() => {
       const inputs = document.querySelectorAll<HTMLInputElement>('input[type="number"]')

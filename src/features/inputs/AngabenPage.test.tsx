@@ -17,6 +17,14 @@ import { useAngabenState } from '../../app/useAngabenState'
 import { buildShareUrl } from '../../utils/urlShare'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
+// PR 2 of the Direction D /eingaben redesign split this page in two. § 5
+// (Produkt-Eingaben / Meine Verträge) moved to `/eingaben/produkte`
+// (`AngabenProduktePage`). Tests that depended on § 5 fields being on the
+// same page either moved to `AngabenProduktePage.test.tsx` or were
+// re-cast against § 4 (still on this page). The architectural invariant
+// (Codex R2 P1 — one `useAngabenState` per page, lifted via storage
+// round-trip) holds because both pages mount the SAME hook.
+
 beforeEach(() => {
   // Compare-mode useCalculatorState lazy-initialises from URL + localStorage
   // on mount; tests that don't seed state must see a clean slate so the page
@@ -207,6 +215,67 @@ describe('AngabenPage — /eingaben route content', () => {
     eachViewport(() => {
       expect(() => renderToString(inShell(<AngabenPage />))).not.toThrow()
     })
+  })
+
+  // -------------------------------------------------------------------------
+  // PR 2 — DStepIndicator + footer button row.
+  // -------------------------------------------------------------------------
+
+  it('renders <DStepIndicator current={1} /> with step I active (PR 2)', () => {
+    const { container } = render(<AngabenPage />)
+    const indicator = container.querySelector('[data-testid="d-step-indicator"]')
+    expect(indicator).not.toBeNull()
+    expect(indicator!.getAttribute('data-step')).toBe('1')
+    // Step I label must render verbatim from the brief.
+    const text = indicator!.textContent ?? ''
+    expect(text).toContain('Über dich')
+    expect(text).toContain('Deine Verträge')
+  })
+
+  it('navigates to /eingaben/produkte when "Speichern und weiter zu Verträgen" is clicked', () => {
+    const navigate = vi.fn()
+    const { getByRole } = render(<AngabenPage navigate={navigate} />)
+    const btn = getByRole('button', {
+      name: 'Speichern und weiter zu Verträgen',
+    })
+    fireEvent.click(btn)
+    expect(navigate).toHaveBeenCalledWith(ROUTES.eingabenProdukte)
+  })
+
+  it('"Standardwerte wiederherstellen" resets profile + assumptions to defaults in compare-mode', () => {
+    // Seed a non-default age so we can detect the reset.
+    const seededProfile = { ...defaultProfile, age: 47 }
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      buildStateJson(seededProfile, defaultAssumptions),
+    )
+    const { container, getByRole } = render(<AngabenPage />)
+    // Sanity: the page hydrated from the seeded value.
+    const ageInput = Array.from(container.querySelectorAll('label.field'))
+      .filter((l) => (l.querySelector('span')?.textContent ?? '').startsWith('Alter'))
+      .map((l) => l.querySelector('input[type="number"]'))[0] as HTMLInputElement
+    expect(ageInput.value).toBe('47')
+
+    fireEvent.click(getByRole('button', { name: 'Standardwerte wiederherstellen' }))
+
+    // Reset writes defaults back to STORAGE_KEY_V1.
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const parsed = JSON.parse(raw!) as { profile: { age: number } }
+    expect(parsed.profile.age).toBe(defaultProfile.age)
+  })
+
+  it('hides "Standardwerte wiederherstellen" in combine-mode', () => {
+    // Reset is a compare-mode-only convenience — combine-mode workspaces
+    // don't expose a parallel "reset whole portfolio" surface.
+    const seed: Workspace = (() => {
+      const ws = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+      return { ...ws, mode: 'combine' }
+    })()
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+    const { queryByRole } = render(<AngabenPage />)
+    const btn = queryByRole('button', { name: 'Standardwerte wiederherstellen' })
+    expect(btn).toBeNull()
   })
 })
 
@@ -770,24 +839,9 @@ describe('AngabenPage — combine-mode state wiring (useAngabenState)', () => {
     expect(localStorage.getItem(STORAGE_KEY_V1)).toBeNull()
   })
 
-  it('writes bAV-Brutto edits onto the first active bAV instance in combine-mode', () => {
-    // The bAV-Brutto field is per-instance in combine-mode (vs. workspace-level
-    // singleton in compare-mode). The hook routes the edit to the first active
-    // bAV instance — mirrors `singletonViewOfWorkspace`'s firstActive selector.
-    const seed = buildCombineSeed()
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
-
-    const { container } = render(<AngabenPage />)
-    const bavInput = findNumberInput(container, 'bAV-Brutto pro Monat')
-
-    fireEvent.change(bavInput, { target: { value: '275' } })
-
-    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
-    expect(rawV2).not.toBeNull()
-    const parsed = JSON.parse(rawV2!) as Workspace
-    expect(parsed.baseline.assumptions.bav.length).toBeGreaterThanOrEqual(1)
-    expect(parsed.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(275)
-  })
+  // The bAV-Brutto-edit-on-/eingaben test moved to AngabenProduktePage.test.tsx
+  // when PR 2 split this page in two. Schritt 1 (this page) no longer renders
+  // any per-product field.
 
   it('persists workspace-level assumptions (retirementEndAge, monteCarlo, inflation) in combine-mode', () => {
     // retirementEndAge, monteCarlo.annualVolatility, and inflationRate are
@@ -937,11 +991,15 @@ describe('AngabenPage — combine-mode state wiring (useAngabenState)', () => {
 // silently reverted the § 1 edit (the § 5 store wrote a stale `profile`
 // snapshot back to the same envelope on each keystroke).
 //
-// The fix lifts ALL state ownership into `useAngabenState` and threads the
-// API bundle to § 5 as props. These tests pin the contract: cross-section
-// edits in either mode must round-trip without clobbering each other.
+// PR 2 of the Direction D redesign moved § 5 onto a dedicated Schritt 2
+// page (`AngabenProduktePage`). The contract holds in a different shape:
+// both pages mount the SAME `useAngabenState` (no second `useCalculatorState`
+// / `usePortfolioState`), and edits round-trip via the lifted storage
+// envelope. These tests pin the contract for cross-section edits *within
+// Schritt 1* — the Schritt-1 ↔ Schritt-2 round-trip path is exercised in
+// `AngabenProduktePage.test.tsx` (which mounts both pages in sequence).
 // ---------------------------------------------------------------------------
-describe('AngabenPage — § 1 / § 5 shared-state contract (Codex R2 P1)', () => {
+describe('AngabenPage — § 1 / § 4 shared-state contract (Codex R2 P1)', () => {
   function findNumberInput(container: HTMLElement, prefix: string): HTMLInputElement {
     const labels = Array.from(container.querySelectorAll('label.field'))
     for (const label of labels) {
@@ -954,22 +1012,17 @@ describe('AngabenPage — § 1 / § 5 shared-state contract (Codex R2 P1)', () =
     throw new Error(`NumberField "${prefix}" not found in rendered AngabenPage`)
   }
 
-  it('compare-mode: § 1 profile edit survives a subsequent § 5 setting change', () => {
-    // Reproduction of the parallel-store bug: edit § 1 (age), then edit any
-    // § 5 control. Before the fix, the § 5 store's `useEffect` would write
-    // its stale `profile` snapshot to STORAGE_KEY_V1, reverting the § 1 edit.
+  it('compare-mode: § 1 profile edit survives a subsequent § 4 setting change', () => {
+    // Reproduction of the parallel-store bug shape, scoped to Schritt 1
+    // sections only after PR 2's two-page split. Edit § 1 (age), then edit
+    // § 4 ("Kapital aufgebraucht bis"). Before the fix, parallel stores in
+    // a sibling subtree wrote stale snapshots to the shared envelope; after
+    // the fix, both edits land independently against the single
+    // `useAngabenState`-owned store.
     const { container } = render(<AngabenPage />)
     fireEvent.change(findNumberInput(container, 'Alter'), {
       target: { value: '52' },
     })
-    // § 5's compare-mode body renders an InputsPanel; toggling visibleProducts
-    // via the picker is the most stable § 5 edit available — but easier is to
-    // edit any § 5 NumberField that calls setAssumptions. The Renteneintrittsalter
-    // field is in § 3, so we use the "Kapital aufgebraucht bis" field
-    // (`assumptions.retirementEndAge`) which is in § 4. § 4 + § 5 share the
-    // same state owner, so editing § 4 after § 1 reproduces the bug class
-    // (both pre-fix § 5 and § 4 would write the stale profile back). After
-    // the fix, both edits land independently.
     fireEvent.change(findNumberInput(container, 'Kapital aufgebraucht bis'), {
       target: { value: '95' },
     })
@@ -980,18 +1033,14 @@ describe('AngabenPage — § 1 / § 5 shared-state contract (Codex R2 P1)', () =
       profile: { age: number }
       assumptions: { retirementEndAge: number }
     }
-    // Both edits must coexist — the § 5/§ 4 write must NOT have overwritten
-    // the § 1 edit with a stale `profile` snapshot.
     expect(parsed.profile.age).toBe(52)
     expect(parsed.assumptions.retirementEndAge).toBe(95)
   })
 
-  it('combine-mode: § 1 profile edit survives a subsequent § 5 sidebar mutation', () => {
+  it('combine-mode: § 1 profile edit survives a subsequent § 4 setting change', () => {
     // Combine-mode mirror: edit § 1 (age) — workspace.baseline.profile.age
-    // updates. Then edit § 5 (which is the combine sidebar). Before the fix,
-    // the § 5 `usePortfolioState` held its own workspace snapshot and would
-    // overwrite the § 1 write on its next persistence tick. After the fix,
-    // a single `useAngabenState`-owned workspace state is the source of truth.
+    // updates. Then edit § 4 (retirementEndAge). Single
+    // `useAngabenState`-owned workspace state is the source of truth.
     const seed: Workspace = (() => {
       const ws = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
       return {
@@ -1003,7 +1052,6 @@ describe('AngabenPage — § 1 / § 5 shared-state contract (Codex R2 P1)', () =
         },
       }
     })()
-    // Seed with a bAV instance so § 5 has a contract to render + edit.
     const seeded = addInstanceToWorkspace(seed, 'bav')
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seeded))
 
@@ -1011,12 +1059,8 @@ describe('AngabenPage — § 1 / § 5 shared-state contract (Codex R2 P1)', () =
     fireEvent.change(findNumberInput(container, 'Alter'), {
       target: { value: '44' },
     })
-    // § 5 sidebar input — edit "bAV-Brutto" on the seeded contract via § 2.
-    // § 2 also writes through the unified store, so reproducing the cross-
-    // section race is just § 1 → § 2 / § 5 in sequence. Before the fix the
-    // § 5 store would re-write the stale profile.age on this tick.
-    fireEvent.change(findNumberInput(container, 'bAV-Brutto pro Monat'), {
-      target: { value: '300' },
+    fireEvent.change(findNumberInput(container, 'Kapital aufgebraucht bis'), {
+      target: { value: '92' },
     })
 
     const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
@@ -1024,65 +1068,7 @@ describe('AngabenPage — § 1 / § 5 shared-state contract (Codex R2 P1)', () =
     const parsed = JSON.parse(rawV2!) as Workspace
     // Both edits coexist.
     expect(parsed.baseline.profile.age).toBe(44)
-    expect(parsed.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(300)
-  })
-
-  it('combine-mode: instance arrays seeded in the workspace are visible to § 5 sidebar without parallel state', () => {
-    // Round-trip in the other direction: a workspace that holds multiple
-    // contracts must render them through § 5's sidebar via the SAME store
-    // that drives § 1–§ 4. Before the fix, § 5 mounted a fresh
-    // `usePortfolioState` that re-read storage independently — a workspace
-    // mutation made via the parent's store would NOT propagate to § 5's
-    // ref-held snapshot until the next storage round-trip. After the fix,
-    // § 5 consumes the same workspace from props, so render and persistence
-    // are consistent.
-    let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
-    seed = { ...seed, mode: 'combine' }
-    // Seed TWO bAV instances so the sidebar's "Meine Verträge" list renders
-    // both labels — proves the sidebar reads the same workspace the rest of
-    // the page sees, without a parallel `usePortfolioState` round-trip.
-    seed = addInstanceToWorkspace(seed, 'bav')
-    seed = addInstanceToWorkspace(seed, 'bav')
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
-
-    const { container } = render(<AngabenPage />)
-    // Sidebar's per-instance card carries the default label "bAV". With two
-    // seeded instances the disambiguation suffix is appended ("bAV #1", "bAV #2"),
-    // matching addInstanceToWorkspace's behaviour. We assert both render.
-    const text = container.textContent ?? ''
-    expect(text).toContain('bAV')
-    // Both instance rows must be present in the persisted workspace and in
-    // the rendered sidebar — the persistence effect must NOT have dropped
-    // either via a stale parallel-store snapshot.
-    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
-    expect(rawV2).not.toBeNull()
-    const parsed = JSON.parse(rawV2!) as Workspace
-    expect(parsed.baseline.assumptions.bav.length).toBe(2)
-  })
-
-  it('compare-mode: hydrates without throwing when § 5 InputsPanel mounts inside the unified-state shell', () => {
-    // Smoke test for the lifted-state refactor itself — § 5's InputsPanel
-    // pre-refactor mounted `useCalculatorState`; post-refactor it consumes
-    // `profile` / `assumptions` from props. We assert the page renders end-
-    // to-end with the panel mounted (its presence is signalled by the panel's
-    // tab heading copy "Eingaben" / a product label).
-    const { container } = render(<AngabenPage />)
-    // A unique InputsPanel-only element: the panel renders the comparison
-    // picker checkboxes for each visible product, each carrying the product
-    // label. "Versicherung" is the default-included pAV label.
-    expect(container.textContent).toContain('Versicherung')
-  })
-
-  it('combine-mode: hydrates without throwing when § 5 CombineDashboardSidebar mounts inside the unified-state shell', () => {
-    const seed: Workspace = (() => {
-      const ws = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
-      return { ...ws, mode: 'combine' }
-    })()
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
-
-    const { container } = render(<AngabenPage />)
-    // The combine sidebar always renders a "Meine Verträge" heading inside § 5.
-    expect(container.textContent).toContain('Meine Verträge')
+    expect(parsed.baseline.assumptions.retirementEndAge).toBe(92)
   })
 })
 
@@ -1190,18 +1176,8 @@ describe('useAngabenState — no-op setters must not bump lastEditedAt (CodeRabb
 })
 
 // ---------------------------------------------------------------------------
-// Codex R3 P1 (PR #322): § 5 `AngabenProduktSection` (compare-mode body)
-// previously filtered `simulation.products` by `visibleProducts` alone. Since
-// `simulation.products` contains rows for ALL return scenarios
-// (konservativ + basis + optimistisch), the panel could pick up data from
-// whichever scenario happened to come first in the array — typically
-// `konservativ` — instead of the active scenario.
-//
-// The genuine wiring regression test lives in
-// `sections/AngabenProduktSection.test.tsx` — it mocks `useWorkspaceUiState`
-// to a non-default scenario and inspects the `selectedResults` prop handed to
-// `<InputsPanel>`. That file isolates the `vi.mock('./InputsPanel', ...)`
-// substitution from the existing tests in this file that depend on real
-// `<InputsPanel>` rendering (the "Versicherung" label, the "bAV-Brutto pro
-// Monat" NumberField lookup, etc.).
+// Codex R3 P1 (PR #322): § 5 scenario-filter wiring. The regression test
+// moved to `AngabenProduktePage.test.tsx` when PR 2 split this page in two
+// — § 5 (Produkt-Eingaben / Meine Verträge) now lives on Schritt 2 and the
+// `<InputsPanel>` mount happens there.
 // ---------------------------------------------------------------------------

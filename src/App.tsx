@@ -46,6 +46,11 @@ const MethodePage = lazy(() =>
 const AngabenPage = lazy(() =>
   import('./features/inputs/AngabenPage').then((m) => ({ default: m.AngabenPage })),
 )
+const AngabenProduktePage = lazy(() =>
+  import('./features/inputs/AngabenProduktePage').then((m) => ({
+    default: m.AngabenProduktePage,
+  })),
+)
 const RentenluckeRechnerPage = lazy(() =>
   import('./features/publicPages/RentenluckeRechnerPage').then((m) => ({ default: m.RentenluckeRechnerPage })),
 )
@@ -196,11 +201,19 @@ function App() {
       body = <MethodePage navigate={navigate} />
       break
     case 'eingaben':
-      // Pass the lifted `workspaceUi` so `/eingaben` §5 sees the same
-      // `selectedScenarioId` the user picked on `VergleichPage` or any other
-      // surface. Without this, mounting AngabenPage's compare-mode body
-      // resets the scenario back to `'basis'` per visit (Codex R5 P2).
+      // Pass the lifted `workspaceUi` so `/eingaben` sees the same
+      // `selectedScenarioId` the user picked elsewhere. Schritt 1 itself no
+      // longer mounts a per-product surface (PR 2 split the page); the prop
+      // is kept on both `/eingaben` and `/eingaben/produkte` so `App.tsx`
+      // can pass the same lifted store to either page without branching.
       body = <AngabenPage navigate={navigate} workspaceUi={workspaceUi} />
+      break
+    case 'eingaben-produkte':
+      // Schritt 2 of the two-page /eingaben wizard. PR 2 hosts the legacy
+      // InputsPanel / CombineDashboardSidebar inside the new shell; PR 3
+      // will replace the body with Sober D Produkte components and PR 4
+      // will retire the legacy combine-mode panel.
+      body = <AngabenProduktePage navigate={navigate} workspaceUi={workspaceUi} />
       break
     case 'rentenluecke-rechner':
       body = <RentenluckeRechnerPage navigate={navigate} />

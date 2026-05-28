@@ -13,7 +13,7 @@ import {
 } from './publicRouteRegistry'
 
 describe('publicRouteRegistry — entry shape', () => {
-  it('exposes all registered routes (issues #02, #04, #05, #06, #07 + PR 4 Methode + PR 5 Angaben + R3.3 Vergleich-Detail + legal pages)', () => {
+  it('exposes all registered routes (issues #02, #04, #05, #06, #07 + PR 4 Methode + PR 5 Angaben + Direction D /eingaben split + R3.3 Vergleich-Detail + legal pages)', () => {
     // Snapshot the canonical paths so adding a new route shows up as a diff
     // in code review (rather than hiding behind a `Object.keys` length test).
     // Update this list when adding new public routes.
@@ -33,6 +33,7 @@ describe('publicRouteRegistry — entry shape', () => {
       '/methode',
       '/vergleich/details',
       '/eingaben',
+      '/eingaben/produkte',
       '/impressum',
       '/datenschutz',
       '/404',

@@ -1,0 +1,81 @@
+/* ==========================================================================
+   AngabenProduktePage — `/eingaben/produkte` route (PR 2 of the Direction D
+   migration). Reuses AngabenPage.css tokens + page shell; this file only
+   carries the surfaces unique to Schritt 2:
+     - 2-column grid override (no left TOC like Schritt 1; just body + aside)
+     - "Was wir hier nicht abfragen" exclude list with mono × markers
+     - Static receipt-strip placeholder (PR 4 wires the live timestamp)
+   Tokens come from src/App.css — no new vars introduced.
+   ========================================================================== */
+
+/* PR 2 Schritt 2 collapses the left TOC rail because the body has no §
+   sections of its own (it hosts a legacy panel inside the new shell).
+   Schritt 1's three-column grid (TOC | body | aside) becomes two columns
+   (body | aside) here. */
+.angaben-grid--produkte {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+
+.angaben-produkte-body {
+  margin-top: 24px;
+}
+
+/* "Was wir hier nicht abfragen" — bulleted list with mono × prefix in
+   accent colour. Pattern mirrors the bundle's L432-490 right-rail card 2. */
+.angaben-produkte-exclude-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+}
+
+.angaben-produkte-exclude-item {
+  padding: 6px 0;
+  border-top: 1px solid var(--rw-rule-soft);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+
+.angaben-produkte-exclude-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.angaben-produkte-exclude-mark {
+  font-family: var(--rw-font-mono);
+  color: var(--rw-accent);
+  font-weight: 600;
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+/* Static receipt-strip placeholder (PR 2). PR 4 will wire live
+   "lastEditedAt" data once the workspace data is plumbed through. */
+.angaben-produkte-receipt {
+  margin: 0;
+  font-family: var(--rw-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.4px;
+  color: var(--rw-ink-faint);
+  border-top: 1px solid var(--rw-rule-soft);
+  padding-top: 10px;
+}
+
+/* --- Tablet — match Schritt 1's collapse ----------------------------- */
+@media (max-width: 1023px) {
+  .angaben-grid--produkte {
+    grid-template-columns: minmax(0, 1fr) 240px;
+  }
+}
+
+/* --- Phone — right rail folds below ----------------------------------- */
+@media (max-width: 639px) {
+  .angaben-grid--produkte {
+    grid-template-columns: 1fr;
+  }
+}

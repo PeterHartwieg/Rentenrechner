@@ -8,29 +8,26 @@ import type { Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { useAngabenState } from '../../app/useAngabenState'
-import { useWorkspaceUiState, type WorkspaceUiState } from '../../app/useWorkspaceUiState'
+import type { WorkspaceUiState } from '../../app/useWorkspaceUiState'
 import { useViewport } from '../../ui/chrome/useViewport'
+import { buildStateJson } from '../../storage'
+import { downloadJsonBlob } from '../../app/downloadJsonBlob'
 import { AngabenPersonSection } from './sections/AngabenPersonSection'
 import { AngabenEinkommenSection } from './sections/AngabenEinkommenSection'
 import { AngabenRenteneintrittSection } from './sections/AngabenRenteneintrittSection'
 import { AngabenAnnahmenSection } from './sections/AngabenAnnahmenSection'
-import { AngabenProduktSection } from './sections/AngabenProduktSection'
+import { DStepIndicator } from './DStepIndicator'
 
 interface Props {
   navigate?: (target: Route) => void
   /**
-   * Workspace UI state lifted from `App`. The compare-mode body of
-   * `AngabenProduktSection` reads `selectedScenarioId` from here so the § 5
-   * InputsPanel binds against the same scenario the user picked on Vergleich
-   * (or any other surface). Without the lift, opening `/eingaben` mounted a
-   * fresh `useWorkspaceUiState` and reset the selection back to `'basis'`
-   * (Codex R5 P2).
+   * Workspace UI state lifted from `App`. Schritt 1 (`AngabenPage`) does not
+   * itself consume `selectedScenarioId` — the per-product input surface that
+   * does was moved to Schritt 2 (`AngabenProduktePage`) in PR 2. The prop is
+   * kept on both pages so `App.tsx` can pass the same lifted store to either
+   * page without a branch on route variant.
    *
-   * Optional so existing `<AngabenPage />` test call-sites (which don't
-   * exercise § 5 scenario binding) compile unchanged. `App.tsx` is the
-   * production caller and always passes this; if it's missing we fall back
-   * to a local `useWorkspaceUiState()` mount so the section's required prop
-   * still receives a valid store.
+   * Optional so existing `<AngabenPage />` test call-sites compile unchanged.
    */
   workspaceUi?: WorkspaceUiState
 }
@@ -47,31 +44,15 @@ interface Section {
 }
 
 // Sections rendered in this order. Section 4 ("Annahmen") folds in the
-// pre-redesign Annahmen tab; the chrome nav drops Annahmen entirely.
-// Section 5 ("Produkt-Eingaben" / "Meine Verträge") folds in the per-product
-// input surfaces that used to live in the workspace `angebot` tab — the
-// workspace tab strip is removed in the same PR. The title is mode-aware
-// (compare → "Produkt-Eingaben", combine → "Meine Verträge"); the SECTIONS
-// entry below carries the compare label and `produktTitleFor(mode)` resolves
-// the active copy at render time so the TOC + section heading stay in sync.
+// pre-redesign Annahmen tab; the chrome nav drops Annahmen entirely. The
+// former § 5 "Produkt-Eingaben" / "Meine Verträge" section has moved to a
+// dedicated Schritt-2 page (`/eingaben/produkte`) — see `AngabenProduktePage`.
 const SECTIONS: ReadonlyArray<Section> = [
   { id: 'person', n: '§ 1', title: 'Person' },
   { id: 'einkommen', n: '§ 2', title: 'Einkommen' },
   { id: 'renteneintritt', n: '§ 3', title: 'Renteneintritt' },
   { id: 'annahmen', n: '§ 4', title: 'Annahmen' },
-  { id: 'produkt', n: '§ 5', title: 'Produkt-Eingaben' },
 ]
-
-/**
- * Mode-aware label for the § 5 section. Compare-mode keeps the literal copy
- * stored in `SECTIONS` (the singleton InputsPanel surfaces "Produkt-Eingaben");
- * combine-mode swaps it to "Meine Verträge" to match the combine sidebar
- * surface inside the section body. Used for both the TOC link and the section
- * heading so the two never drift.
- */
-function produktTitleFor(mode: 'compare' | 'combine'): string {
-  return mode === 'combine' ? 'Meine Verträge' : 'Produkt-Eingaben'
-}
 
 /**
  * Required return-scenario ids — module-eval-time fail-fast (mirrors
@@ -233,33 +214,24 @@ const BAV_TAX_FREE_MONTHLY =
  * pipeline (`buildJsonLd` returns a WebPage block from
  * `publicRouteRegistry['/eingaben']`). We do NOT emit a second block inline.
  */
-export function AngabenPage({ navigate, workspaceUi }: Props) {
+export function AngabenPage({ navigate }: Props) {
   const route = publicRouteRegistry['/eingaben']
   const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
-  // Fall back to a local `useWorkspaceUiState()` if the parent did not lift
-  // one. Production (`App.tsx`) always passes the lifted store so the
-  // selected scenario survives SPA navigation (Codex R5 P2). The fallback
-  // keeps existing test call-sites that render `<AngabenPage />` working —
-  // they pin the test's WorkspaceUiState directly via the prop when they
-  // care about § 5 scenario binding.
-  //
-  // The hook is unconditionally called (React rules-of-hooks); we then
-  // prefer the prop when present. Both branches return the same
-  // `WorkspaceUiState` shape.
-  const localWorkspaceUi = useWorkspaceUiState()
-  const effectiveWorkspaceUi = workspaceUi ?? localWorkspaceUi
 
   // Mode-aware state binding (issue #282). `useAngabenState` captures the
   // active session mode once at mount and routes reads + writes to either the
   // compare-mode singleton (STORAGE_KEY_V1) or the combine-mode workspace
-  // (STORAGE_KEY_V2). The `/` dashboard for the matching mode reads the same
-  // store on its next mount, so edits round-trip in both modes. The hook
-  // exposes the same `{ profile, setProfile, assumptions, setAssumptions }`
-  // shape that `useCalculatorState` does — the four section components below
-  // stay mode-agnostic. See `src/app/useAngabenState.ts` for the routing
-  // logic and the heuristic that pins the mode.
+  // (STORAGE_KEY_V2). Both `/eingaben` Schritt 1 (this page) and `/eingaben/
+  // produkte` Schritt 2 mount the SAME hook so the per-page navigation
+  // round-trips through localStorage and the unified-state contract holds.
+  // The hook exposes the same `{ profile, setProfile, assumptions,
+  // setAssumptions }` shape that `useCalculatorState` does — the four
+  // section components below stay mode-agnostic. See
+  // `src/app/useAngabenState.ts` for the routing logic and the heuristic
+  // that pins the mode.
   const angabenState = useAngabenState()
-  const { profile, setProfile, assumptions, setAssumptions, mode } = angabenState
+  const { profile, setProfile, assumptions, setAssumptions, mode, resetToDefaults } =
+    angabenState
   // `familienstand` and `bundesland` are NOT part of `PersonalProfile`, so
   // they remain ephemeral on this page in BOTH modes and reset to the
   // defaults on every reload / route change. Routing them through the
@@ -359,10 +331,7 @@ export function AngabenPage({ navigate, workspaceUi }: Props) {
               {SECTIONS.map((section, i) => {
                 const isActive =
                   activeAnchor === section.id || (activeAnchor === null && i === 0)
-                // § 5 swaps label in combine mode so the TOC entry and the
-                // section heading inside the body always agree.
-                const label =
-                  section.id === 'produkt' ? produktTitleFor(mode) : section.title
+                const label = section.title
                 return (
                   <li
                     key={section.id}
@@ -388,7 +357,8 @@ export function AngabenPage({ navigate, workspaceUi }: Props) {
 
           {/* Center — the receipt body. */}
           <article className="angaben-body">
-            <div className="angaben-kicker">Eingaben für RentenWiki</div>
+            <div className="angaben-kicker">Mein Plan · Schritt 1 von 2</div>
+            <DStepIndicator current={1} />
             <h1 className="angaben-headline">{route.h1}</h1>
             <p className="angaben-summary">{route.summary}</p>
 
@@ -436,14 +406,41 @@ export function AngabenPage({ navigate, workspaceUi }: Props) {
               title={SECTIONS[3].title}
             />
 
-            <AngabenProduktSection
-              angabenState={angabenState}
-              navigate={navigate}
-              workspaceUi={effectiveWorkspaceUi}
-              num={SECTIONS[4].n}
-              id={SECTIONS[4].id}
-              title={produktTitleFor(mode)}
-            />
+            {/* PR 2 footer button row — Schritt-1 → Schritt-2 navigation +
+                compare-mode reset + JSON export. The reset button is
+                compare-mode only (combine-mode has no parallel reset surface
+                because the workspace is multi-instance and per-contract).
+                Buttons do not need `shouldUseSpaNavigation` — there is no
+                native navigation to defer to; `navigate(...)` runs
+                unconditionally for plain activations. */}
+            <div className="angaben-footer">
+              <button
+                type="button"
+                className="angaben-footer__btn angaben-footer__btn--primary"
+                onClick={() => navigate?.(ROUTES.eingabenProdukte)}
+              >
+                Speichern und weiter zu Verträgen
+              </button>
+              {mode === 'compare' && resetToDefaults && (
+                <button
+                  type="button"
+                  className="angaben-footer__btn angaben-footer__btn--secondary"
+                  onClick={() => resetToDefaults()}
+                >
+                  Standardwerte wiederherstellen
+                </button>
+              )}
+              <button
+                type="button"
+                className="angaben-footer__btn angaben-footer__btn--export"
+                onClick={() => downloadJsonBlob(
+                  buildStateJson(profile, assumptions),
+                  'rentenwiki-export.json',
+                )}
+              >
+                Als JSON exportieren ↓
+              </button>
+            </div>
           </article>
 
           {/* Right rail — "Warum wir das fragen". Folds below body on phone
