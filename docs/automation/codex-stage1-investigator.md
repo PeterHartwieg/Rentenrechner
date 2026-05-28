@@ -92,6 +92,13 @@ repository state is uncertain.
      was set.
    - Bug: reproduce or validate the failure path in 1-2 sentences:
      "When X, `<file:line>` does Y, causing Z."
+   - **`area:copy` search shortcut.** For copy-string issues, the QA screenshot
+     often shows only the first occurrence. Before reading files, run:
+     ```bash
+     grep -r "<reported-term>" src --include="*.tsx" --include="*.ts"
+     ```
+     List every hit in `## Files to edit`; Stage 2 will miss instances that are
+     not in the handoff.
    - Enhancement: confirm the requested behavior is absent.
    - Code-review issue: before reading each named file, also run
      `git log --oneline --all -- <file>` to catch already-fixed reports.
