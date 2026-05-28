@@ -265,6 +265,27 @@ describe('AngabenPage — /eingaben route content', () => {
     expect(parsed.profile.age).toBe(defaultProfile.age)
   })
 
+  it('"Standardwerte wiederherstellen" also resets local-only familienstand to default (CR1)', () => {
+    // familienstand is ephemeral local state (not persisted in STORAGE_KEY_V1).
+    // Change it to a non-default value, click reset, assert the select returns
+    // to the default ('ledig'). This guards the CR1 fix: the reset handler must
+    // call setFamilienstand(FAMILIENSTAND_DEFAULT) in addition to resetToDefaults().
+    const { container, getByRole } = render(<AngabenPage />)
+
+    // Find the Familienstand <select> and change it to something non-default.
+    const familienstandSelect = container.querySelector<HTMLSelectElement>(
+      'select',
+    )
+    expect(familienstandSelect).not.toBeNull()
+    fireEvent.change(familienstandSelect!, { target: { value: 'verheiratet' } })
+    expect(familienstandSelect!.value).toBe('verheiratet')
+
+    fireEvent.click(getByRole('button', { name: 'Standardwerte wiederherstellen' }))
+
+    // After reset, familienstand must be back to the default ('ledig').
+    expect(familienstandSelect!.value).toBe('ledig')
+  })
+
   it('hides "Standardwerte wiederherstellen" in combine-mode', () => {
     // Reset is a compare-mode-only convenience — combine-mode workspaces
     // don't expose a parallel "reset whole portfolio" surface.

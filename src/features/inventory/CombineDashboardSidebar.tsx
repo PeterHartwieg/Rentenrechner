@@ -1917,7 +1917,7 @@ export function CombineDashboardSidebar({
   const showArchiveButton = hasContracts || whatIfs.length > 0
 
   return (
-    <div className="combine-sidebar" {...sidebarTargetProps}>
+    <div className="combine-sidebar" data-testid="combine-dashboard-sidebar" {...sidebarTargetProps}>
       {/* ── Baseline header ───────────────────────────────────────── */}
       <div className="cds-baseline-header">
         <p className="cds-baseline-label" {...baselineLabelProps}>Baseline: dein aktueller Plan</p>

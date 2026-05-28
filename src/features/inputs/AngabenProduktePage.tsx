@@ -78,7 +78,7 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
   // hook. NEVER mount a second `useCalculatorState` / `usePortfolioState`
   // here (Codex R2 P1 from prior PRs).
   const angabenState = useAngabenState()
-  const { profile, assumptions, mode } = angabenState
+  const { profile, assumptions, mode, workspace } = angabenState
 
   return (
     <div className="angaben-shell">
@@ -146,10 +146,13 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
               <button
                 type="button"
                 className="angaben-footer__btn angaben-footer__btn--export"
-                onClick={() => downloadJsonBlob(
-                  buildStateJson(profile, assumptions),
-                  'rentenwiki-export.json',
-                )}
+                onClick={() => {
+                  const json = mode === 'combine' && workspace
+                    ? JSON.stringify(workspace, null, 2)
+                    : buildStateJson(profile, assumptions)
+                  const filename = mode === 'combine' ? 'rentenwiki-workspace.json' : 'rentenwiki-export.json'
+                  downloadJsonBlob(json, filename)
+                }}
               >
                 Als JSON exportieren ↓
               </button>
@@ -237,13 +240,15 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
 // Sober D Produkte components.
 // ---------------------------------------------------------------------------
 
+interface CompareBodyProps {
+  angabenState: UseAngabenStateApi
+  workspaceUi: WorkspaceUiState
+}
+
 function CompareBody({
   angabenState,
   workspaceUi,
-}: {
-  angabenState: UseAngabenStateApi
-  workspaceUi: WorkspaceUiState
-}) {
+}: CompareBodyProps) {
   const { profile, setProfile, assumptions, setAssumptions } = angabenState
   // Compare-mode-only convenience setters. The API field types are
   // `(...) => void | undefined`; in compare-mode they MUST be defined. We
@@ -301,13 +306,15 @@ function CompareBody({
 // per-contract decision menu modal. Lifted from the deleted section file.
 // ---------------------------------------------------------------------------
 
+interface CombineBodyProps {
+  angabenState: UseAngabenStateApi
+  navigate?: (target: Route) => void
+}
+
 function CombineBody({
   angabenState,
   navigate,
-}: {
-  angabenState: UseAngabenStateApi
-  navigate?: (target: Route) => void
-}) {
+}: CombineBodyProps) {
   const {
     workspace,
     baseline,

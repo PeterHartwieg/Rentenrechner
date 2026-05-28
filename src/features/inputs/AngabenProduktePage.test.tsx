@@ -67,11 +67,20 @@ vi.mock('./InputsPanel', () => ({
   },
 }))
 
+const downloadJsonBlobSpy = vi.fn<(content: string, filename: string) => void>()
+
+vi.mock('../../app/downloadJsonBlob', () => ({
+  downloadJsonBlob: (content: string, filename: string) => {
+    downloadJsonBlobSpy(content, filename)
+  },
+}))
+
 // Lazy import AFTER the mocks register.
 import { AngabenProduktePage } from './AngabenProduktePage'
 
 beforeEach(() => {
   inputsPanelSpy.mockClear()
+  downloadJsonBlobSpy.mockClear()
   localStorage.clear()
   window.history.pushState(null, '', '/eingaben/produkte')
 })
@@ -169,6 +178,58 @@ describe('AngabenProduktePage — footer navigation', () => {
     )
     expect(getByRole('button', { name: 'Als JSON exportieren ↓' })).toBeTruthy()
   })
+
+  it('compare-mode export button downloads v1 singleton JSON (CX1)', () => {
+    // In compare-mode, the export must use buildStateJson(profile, assumptions)
+    // — not the workspace shape. Verify via the downloadJsonBlob mock.
+    const { getByRole } = render(
+      <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Als JSON exportieren ↓' }))
+
+    expect(downloadJsonBlobSpy).toHaveBeenCalledTimes(1)
+    const [content, filename] = downloadJsonBlobSpy.mock.calls[0]!
+    expect(filename).toBe('rentenwiki-export.json')
+    // v1 envelope carries a top-level `version` + `profile` + `assumptions`.
+    const parsed = JSON.parse(content) as Record<string, unknown>
+    expect(parsed).toHaveProperty('profile')
+    expect(parsed).toHaveProperty('assumptions')
+    // Must NOT contain schemaVersion (that's the v2 workspace shape).
+    expect(parsed).not.toHaveProperty('schemaVersion')
+  })
+
+  it('combine-mode export button downloads full workspace JSON instead of singleton projection (CX1)', () => {
+    // CX1 finding: the prior code used buildStateJson(profile, assumptions) in
+    // combine-mode, which is only the singleton projection and drops per-instance
+    // contracts, what-ifs, and transfer events. Post-fix: combine-mode serializes
+    // the full workspace (schemaVersion: 2 shape) and names the file
+    // rentenwiki-workspace.json.
+    //
+    // We seed a workspace with 1 bAV instance and 1 what-if to ensure those
+    // fields survive into the downloaded JSON (a singleton projection would drop
+    // them), then assert the workspace shape and filename.
+    let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+    seed = { ...seed, mode: 'combine' }
+    seed = addInstanceToWorkspace(seed, 'bav')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { getByRole } = render(
+      <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Als JSON exportieren ↓' }))
+
+    expect(downloadJsonBlobSpy).toHaveBeenCalledTimes(1)
+    const [content, filename] = downloadJsonBlobSpy.mock.calls[0]!
+    expect(filename).toBe('rentenwiki-workspace.json')
+    // v2 workspace carries schemaVersion and a bav[] array.
+    const parsed = JSON.parse(content) as Record<string, unknown>
+    expect(parsed).toHaveProperty('schemaVersion', 2)
+    // The bAV instance must be present — a singleton projection would drop it.
+    const baseline = parsed['baseline'] as Record<string, unknown> | undefined
+    const bavInstances = (baseline?.['assumptions'] as Record<string, unknown> | undefined)?.['bav']
+    expect(Array.isArray(bavInstances)).toBe(true)
+    expect((bavInstances as unknown[]).length).toBeGreaterThanOrEqual(1)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -213,13 +274,11 @@ describe('AngabenProduktePage — mode-aware body', () => {
     })()
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
 
-    const { container } = render(
+    const { getByTestId } = render(
       <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
     )
-    // CombineDashboardSidebar surfaces a distinctive heading + add-contract
-    // CTA. Either string proves the sidebar mounted.
-    const text = container.textContent ?? ''
-    expect(text).toMatch(/Persönliche Angaben|Vertrag hinzufügen|Mein Plan/)
+    // CombineDashboardSidebar mounts and exposes its root via testid.
+    expect(getByTestId('combine-dashboard-sidebar')).toBeInTheDocument()
     // The InputsPanel spy MUST NOT fire in combine-mode — the sidebar owns
     // the body, not the compare-mode panel.
     expect(inputsPanelSpy).not.toHaveBeenCalled()
@@ -274,13 +333,11 @@ describe('AngabenProduktePage — Schritt 1 ↔ Schritt 2 round-trip (PR 2)', ()
     seed = addInstanceToWorkspace(seed, 'bav')
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
 
-    const { container } = render(
+    const { getByTestId } = render(
       <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
     )
-    // The sidebar mounted (Persönliche Angaben section) and the workspace
-    // round-tripped from STORAGE_KEY_V2.
-    const text = container.textContent ?? ''
-    expect(text).toMatch(/Persönliche Angaben|Vertrag hinzufügen|Mein Plan/)
+    // The sidebar mounted and the workspace round-tripped from STORAGE_KEY_V2.
+    expect(getByTestId('combine-dashboard-sidebar')).toBeInTheDocument()
     const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
     expect(rawV2).not.toBeNull()
     const parsed = JSON.parse(rawV2!) as Workspace

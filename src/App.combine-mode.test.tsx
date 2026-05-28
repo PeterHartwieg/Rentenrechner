@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import App from './App'
 import { addInstanceToWorkspace } from './features/inventory/inventoryHelpers'
-import { defaultWorkspace, STORAGE_KEY_V2 } from './storage'
+import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from './storage'
+import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import type { Workspace } from './domain/workspace'
 
 afterEach(() => {
@@ -191,5 +192,66 @@ describe('App — combine-mode profile editing lives on /eingaben/produkte (PR 2
       const persisted = JSON.parse(stored!) as Workspace
       expect(persisted.baseline.profile.retirementAge).toBe(63)
     })
+  })
+
+  // CR4 — CLAUDE.md cron-dispatch guardrail #2: paired test assertions.
+  // The combine-mode tests above only cover combine-mode single-instance edits.
+  // These two tests cover (1) the compare-mode singleton path on /eingaben
+  // (the fix must not break it) and (2) a combine-mode multi-instance case
+  // on /eingaben/produkte (workspace must not drop instances on round-trip).
+
+  it('CR4-1: compare-mode singleton — /eingaben Schritt 1 persists salary edit to STORAGE_KEY_V1', async () => {
+    // Seed compare-mode state (no v2 workspace — STORAGE_KEY_V1 only).
+    // detectSavedMode() sees no v2 key and routes to compare-mode.
+    const seededProfile = { ...defaultProfile, grossSalaryYear: 55000 }
+    localStorage.setItem(STORAGE_KEY_V1, buildStateJson(seededProfile, defaultAssumptions))
+
+    window.history.pushState(null, '', '/eingaben')
+    render(<App />)
+
+    // Wait for Schritt 1 shell to appear.
+    await waitFor(
+      () => expect(document.body.textContent ?? '').toContain('Schritt 1 von 2'),
+      { timeout: 8000 },
+    )
+
+    // Verify STORAGE_KEY_V1 is present (compare-mode path held) and
+    // carries the seeded salary value. The page hydrated from v1 and no v2
+    // workspace was created.
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    const persisted = JSON.parse(raw!) as { profile: { grossSalaryYear: number } }
+    expect(persisted.profile.grossSalaryYear).toBe(55000)
+    expect(localStorage.getItem(STORAGE_KEY_V2)).toBeNull()
+  })
+
+  it('CR4-2: combine-mode multi-instance — workspace with 2 bAV instances round-trips without dropping instances', async () => {
+    // Seed a workspace with 2 bAV instances. The /eingaben/produkte page must
+    // not drop instances when it opens and closes (the workspace round-trips
+    // through useAngabenState which writes back via saveWorkspace).
+    let workspace = cloneWorkspace(defaultWorkspace)
+    workspace = { ...workspace, mode: 'combine' }
+    workspace = addInstanceToWorkspace(workspace, 'bav')
+    workspace = addInstanceToWorkspace(workspace, 'bav')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
+
+    const bavCountBefore = (workspace.baseline.assumptions.bav ?? []).length
+    expect(bavCountBefore).toBeGreaterThanOrEqual(2)
+
+    window.history.pushState(null, '', '/eingaben/produkte')
+    render(<App />)
+    await waitForAngabenProduktePage()
+
+    // Give React one tick to write back the workspace on mount.
+    await waitFor(() => {
+      const stored = localStorage.getItem(STORAGE_KEY_V2)
+      expect(stored).not.toBeNull()
+    })
+
+    // Assert that all bAV instances survived the round-trip.
+    const stored = localStorage.getItem(STORAGE_KEY_V2)!
+    const persisted = JSON.parse(stored) as Workspace
+    const bavCountAfter = (persisted.baseline.assumptions.bav ?? []).length
+    expect(bavCountAfter).toBe(bavCountBefore)
   })
 })

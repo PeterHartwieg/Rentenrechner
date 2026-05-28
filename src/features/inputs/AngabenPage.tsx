@@ -230,7 +230,7 @@ export function AngabenPage({ navigate }: Props) {
   // `src/app/useAngabenState.ts` for the routing logic and the heuristic
   // that pins the mode.
   const angabenState = useAngabenState()
-  const { profile, setProfile, assumptions, setAssumptions, mode, resetToDefaults } =
+  const { profile, setProfile, assumptions, setAssumptions, mode, resetToDefaults, workspace } =
     angabenState
   // `familienstand` and `bundesland` are NOT part of `PersonalProfile`, so
   // they remain ephemeral on this page in BOTH modes and reset to the
@@ -425,7 +425,11 @@ export function AngabenPage({ navigate }: Props) {
                 <button
                   type="button"
                   className="angaben-footer__btn angaben-footer__btn--secondary"
-                  onClick={() => resetToDefaults()}
+                  onClick={() => {
+                  resetToDefaults()
+                  setFamilienstand(FAMILIENSTAND_DEFAULT)
+                  setBundesland(BUNDESLAND_DEFAULT)
+                }}
                 >
                   Standardwerte wiederherstellen
                 </button>
@@ -433,10 +437,13 @@ export function AngabenPage({ navigate }: Props) {
               <button
                 type="button"
                 className="angaben-footer__btn angaben-footer__btn--export"
-                onClick={() => downloadJsonBlob(
-                  buildStateJson(profile, assumptions),
-                  'rentenwiki-export.json',
-                )}
+                onClick={() => {
+                  const json = mode === 'combine' && workspace
+                    ? JSON.stringify(workspace, null, 2)
+                    : buildStateJson(profile, assumptions)
+                  const filename = mode === 'combine' ? 'rentenwiki-workspace.json' : 'rentenwiki-export.json'
+                  downloadJsonBlob(json, filename)
+                }}
               >
                 Als JSON exportieren ↓
               </button>
