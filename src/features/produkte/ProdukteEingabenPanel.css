@@ -307,6 +307,35 @@
   text-transform: uppercase;
 }
 
+/* ----- Combine-mode extensions (PR 4) ------------------------------------- */
+
+/* "Weitere Optionen ⋯" kebab affordance rendered in the row's accent slot
+   when the row's instance is active or paid_up. Plain text-button styling
+   matches the row's mono-kicker treatment. */
+.produkte-eingaben-panel__menu-btn {
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--rw-ink-soft);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.produkte-eingaben-panel__menu-btn:hover {
+  color: var(--rw-ink);
+  text-decoration: underline;
+}
+
+/* Wrapper around the bundle's "+ Vertrag hinzufügen" CTA in § 3. Keeps a
+   small top-gap from the sparform tile grid above. */
+.produkte-eingaben-panel__add-vertrag-wrap {
+  margin-top: 10px;
+}
+
 /* ----- Phone: drop the row sidebar to a stacked footer -------------------- */
 
 @media (max-width: 720px) {

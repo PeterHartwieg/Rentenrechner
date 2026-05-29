@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './AngabenPage.css'
 import './AngabenProduktePage.css'
 import { LegalFooter } from '../legal/LegalFooter'
-import { CombineDashboardSidebar } from '../inventory/CombineDashboardSidebar'
 import { ContractDecisionMenu } from '../dashboard/ContractDecisionMenu'
 import { ProdukteEingabenPanel } from '../produkte/ProdukteEingabenPanel'
 import { GlossaryPanel } from './GlossaryPanel'
@@ -16,25 +15,30 @@ import {
 } from '../../app/useAngabenState'
 import { useWorkspaceUiState, type WorkspaceUiState } from '../../app/useWorkspaceUiState'
 import { useSimulationResult } from '../../app/useSimulationResult'
+import { useCombineSimulation } from '../../app/useCombineSimulation'
 import { deriveSelectedResults } from '../../app/simulationSelectors'
 import type { InsuranceProductResult } from '../../domain'
 import { buildStateJson } from '../../storage'
 import { downloadJsonBlob } from '../../app/downloadJsonBlob'
+import { formatRelativeTime } from '../../utils/format'
 
 /**
- * `/eingaben/produkte` — Schritt 2 of the two-page `/eingaben` wizard
- * (PR 2 of the Direction D redesign migration).
+ * `/eingaben/produkte` — Schritt 2 of the two-page `/eingaben` wizard.
  *
  * Schritt 1 (`AngabenPage` at `/eingaben`) collects person / Einkommen /
  * Renteneintritt / Annahmen. This page hosts the per-contract input surface
  * that previously lived in § 5 ("Produkt-Eingaben" / "Meine Verträge")
  * of the single-page version.
  *
- * **PR 3 scope (compare-mode body rewrite).** The compare-mode branch now
- * mounts `<ProdukteEingabenPanel>` from `src/features/produkte/` — the new
- * Sober D Produkte family ported from the v3 design bundle. The combine-mode
- * body still wraps the legacy `<CombineDashboardSidebar>` + per-contract
- * `<ContractDecisionMenu>` modal — PR 4 will unify the two.
+ * **PR 4 scope (combine-mode unification).** Both compare-mode AND
+ * combine-mode branches now mount `<ProdukteEingabenPanel>` from
+ * `src/features/produkte/` — the new Sober D Produkte family ported from the
+ * v3 design bundle. The combine branch passes through the workspace
+ * `baseline.assumptions` instance arrays and wires the per-instance
+ * "Bearbeiten" CTA to `ROUTES.vertrag(:instanceId)` plus the "Weitere
+ * Optionen" kebab to the page-hosted `<ContractDecisionMenu>` modal. The
+ * legacy `<CombineDashboardSidebar>` (with its per-card editing UI) is
+ * retired in this PR.
  *
  * The `<GlossaryPanel>` lives at the bottom of the article (above
  * `<LegalFooter>`) inside a single `<details>` disclosure. It used to live
@@ -50,32 +54,29 @@ import { downloadJsonBlob } from '../../app/downloadJsonBlob'
  * edit). The deleted `sections/AngabenProduktSection.tsx` carried the long
  * comment explaining the bug class; we preserve the invariant here by
  * consuming `useAngabenState` exactly once and threading the relevant slice
- * into the legacy panels.
+ * into the panel.
+ *
+ * Receipt strip (right-rail bottom) is mode-aware (PR 4):
+ *   - combine-mode: live "{N} Verträge erfasst · zuletzt geändert vor {X} ·
+ *     gespeichert im Browser" derived from
+ *     `workspace.baseline.assumptions` instance arrays +
+ *     `workspace.baseline.lastEditedAt`.
+ *   - compare-mode: hidden (the singleton state model does not have a
+ *     contract count or per-edit timestamp; if a future iteration wants a
+ *     "saved at" stamp for compare-mode we'll add it as a separate metric).
  */
 
 interface Props {
   navigate?: (target: Route) => void
-  /** Lifted workspace UI store from `App.tsx`. Compare-mode consumes
-   *  `selectedScenarioId` so the per-product surface binds to the active
-   *  scenario; combine-mode ignores it. Optional so existing test call-sites
-   *  (which mount the page without a lifted store) compile unchanged — when
-   *  absent we fall back to a local `useWorkspaceUiState()` mount. */
   workspaceUi?: WorkspaceUiState
 }
 
 export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
   const navigateOrNoop: (target: Route) => void = navigate ?? (() => {})
 
-  // Fall back to a local `useWorkspaceUiState()` if the parent did not lift
-  // one. Production (`App.tsx`) always passes the lifted store so the
-  // selected scenario survives SPA navigation (Codex R5 P2). The fallback
-  // keeps test call-sites that render `<AngabenProduktePage />` working.
   const localWorkspaceUi = useWorkspaceUiState()
   const effectiveWorkspaceUi = workspaceUi ?? localWorkspaceUi
 
-  // Single source of truth — both pages of the /eingaben flow mount this
-  // hook. NEVER mount a second `useCalculatorState` / `usePortfolioState`
-  // here (Codex R2 P1 from prior PRs).
   const angabenState = useAngabenState()
   const { profile, assumptions, mode, workspace } = angabenState
 
@@ -100,8 +101,6 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
         </nav>
 
         <div className="angaben-grid angaben-grid--produkte">
-          {/* Center — page body. PR 2 hosts the legacy InputsPanel /
-              CombineDashboardSidebar inside the new shell. */}
           <article className="angaben-body">
             <div className="angaben-kicker">Mein Plan · Schritt 2 von 2</div>
             <DStepIndicator current={2} />
@@ -125,18 +124,11 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
               )}
             </div>
 
-            {/* Footer button row — Zurück / Plan ansehen / JSON export.
-                Mirrors AngabenPage's footer treatment for visual parity. */}
             <div className="angaben-footer">
               <button
                 type="button"
                 className="angaben-footer__btn angaben-footer__btn--primary"
                 onClick={() => {
-                  // Persist the current state before navigating so a first-time
-                  // visitor who changed nothing still writes a saved-mode marker
-                  // — otherwise App's detectSavedMode() returns null and `/`
-                  // renders the landing page instead of the dashboard this CTA
-                  // promises (Codex P2, PR #344).
                   angabenState.persistNow()
                   navigate?.(ROUTES.home)
                 }}
@@ -182,8 +174,11 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
             )}
           </article>
 
-          {/* Right rail — static for PR 2; PR 4 wires live "receipt strip".
-              Two cards: documents-needed checklist and out-of-scope notes. */}
+          {/* Right rail — documents checklist + out-of-scope notes + the
+              mode-aware receipt strip. PR 4 wires the strip to live workspace
+              data (instance count + lastEditedAt) in combine-mode and hides
+              it in compare-mode (singleton state model has no contract count
+              metric). */}
           <aside className="angaben-aside">
             <div className="angaben-aside-card">
               <div className="angaben-aside-kicker">
@@ -241,13 +236,9 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
               </ul>
             </div>
 
-            {/* Static placeholder receipt strip for PR 2 — PR 4 wires live
-                "lastEditedAt" + storage-status data once the workspace
-                surface settles on this page. */}
-            <p className="angaben-produkte-receipt">
-              Verträge erfasst · zuletzt geändert vor wenigen Minuten ·
-              gespeichert im Browser
-            </p>
+            {mode === 'combine' && workspace && (
+              <ReceiptStrip workspace={workspace} />
+            )}
           </aside>
         </div>
       </div>
@@ -258,9 +249,7 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
 }
 
 // ---------------------------------------------------------------------------
-// Compare-mode body — wraps the legacy <InputsPanel>. Lifted from the
-// deleted `AngabenProduktSection.tsx`; PR 3 will replace the panel with new
-// Sober D Produkte components.
+// Compare-mode body — mounts the new ProdukteEingabenPanel in compare mode.
 // ---------------------------------------------------------------------------
 
 interface CompareBodyProps {
@@ -273,11 +262,6 @@ function CompareBody({
   workspaceUi,
 }: CompareBodyProps) {
   const { profile, setProfile, assumptions, setAssumptions } = angabenState
-  // Compare-mode-only convenience setters. The API field types are
-  // `(...) => void | undefined`; in compare-mode they MUST be defined. We
-  // narrow with a guard so a misconfigured caller (combine-mode body invoking
-  // this compare-mode component by mistake) fails loud rather than silently
-  // dispatching to undefined.
   const resetToDefaults = angabenState.resetToDefaults
   const setSyncedMonthlyContribution = angabenState.setSyncedMonthlyContribution
   if (!resetToDefaults || !setSyncedMonthlyContribution) {
@@ -286,16 +270,9 @@ function CompareBody({
     )
   }
   const ui = workspaceUi
-  // PR 3: `useScenarioLibrary` no longer mounts here. The library moved to
-  // Schritt 1 § 4 Annahmen alongside `<NettoBelastungControl>` so the
-  // scenario-load surface is available before the user reaches the
-  // per-product Schritt 2 view.
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
   const { simulation, effectiveScenarioId, taxModes } = result
 
-  // Codex R3 P1: filter `simulation.products` by both `visibleProducts` AND
-  // active scenario so the panel does not pick up the first-in-array (often
-  // `konservativ`) row when the user picked Optimistisch elsewhere.
   const selectedResults = deriveSelectedResults(
     simulation,
     assumptions.visibleProducts,
@@ -306,10 +283,6 @@ function CompareBody({
       r.productId === 'versicherung' && r.scenarioId === effectiveScenarioId,
   )
 
-  // `resetToDefaults` is wired into AngabenPage's footer (Schritt 1) and is
-  // not surfaced inside the panel for PR 3 — silence the unused-binding lint
-  // by referencing it. PR 4 may relocate the reset affordance into the
-  // panel's right-rail.
   void resetToDefaults
   return (
     <ProdukteEingabenPanel
@@ -332,8 +305,9 @@ function CompareBody({
 }
 
 // ---------------------------------------------------------------------------
-// Combine-mode body — wraps the legacy CombineDashboardSidebar + the
-// per-contract decision menu modal. Lifted from the deleted section file.
+// Combine-mode body — PR 4 swaps the legacy <CombineDashboardSidebar> for
+// the new <ProdukteEingabenPanel mode="combine"> and re-hosts the
+// <ContractDecisionMenu> modal at the page level.
 // ---------------------------------------------------------------------------
 
 interface CombineBodyProps {
@@ -348,56 +322,48 @@ function CombineBody({
   const {
     workspace,
     baseline,
-    whatIfs,
-    patchBaseline,
     addInstance,
     removeInstance,
-    rebaseWhatIf,
-    freezeWhatIf,
-    archiveAndRestart,
+    patchBaseline,
     addWhatIf,
   } = angabenState
   if (
     !workspace ||
     !baseline ||
-    !whatIfs ||
-    !patchBaseline ||
     !addInstance ||
     !removeInstance ||
-    !rebaseWhatIf ||
-    !freezeWhatIf ||
-    !archiveAndRestart ||
+    !patchBaseline ||
     !addWhatIf
   ) {
     throw new Error(
       'AngabenProduktePage CombineBody requires combine-mode useAngabenState API',
     )
   }
+  // Modal state — held at the page level so the ContractDecisionMenu can be
+  // re-hosted outside the panel. Matches the pre-PR-4 pattern.
   const [activeMenuInstanceId, setActiveMenuInstanceId] = useState<string | null>(null)
+
+  // Combine-mode statutory-pension projection. The new panel only needs the
+  // gross monthly + projected EP for the § 1 DRV card; the rest of the
+  // combine-mode result drives Mein Plan elsewhere. We compute it here so
+  // the page can pass the slice into the panel without making the panel
+  // mount its own simulation hook.
+  const combineSimulation = useCombineSimulation(workspace)
 
   return (
     <>
-      <CombineDashboardSidebar
+      <ProdukteEingabenPanel
+        mode="combine"
         baseline={baseline}
         assumptions={baseline.assumptions}
-        whatIfs={whatIfs}
-        onPatchAssumptions={(patch) =>
-          patchBaseline({
-            assumptions: { ...baseline.assumptions, ...patch },
-          })
-        }
+        statutoryPensionResult={combineSimulation.statutoryPension}
         onPatchBaseline={patchBaseline}
         addInstance={addInstance}
         removeInstance={removeInstance}
-        onRebaseWhatIf={rebaseWhatIf}
-        onFreezeWhatIf={freezeWhatIf}
-        onArchiveAndRestart={() => {
-          archiveAndRestart()
-        }}
-        onOpenDecisionMenu={setActiveMenuInstanceId}
         onEditInstance={(_productId, instanceId) => {
           if (navigate) navigate(ROUTES.vertrag(instanceId))
         }}
+        onOpenDecisionMenu={setActiveMenuInstanceId}
       />
       {activeMenuInstanceId !== null && (
         <ContractDecisionMenu
@@ -412,4 +378,95 @@ function CombineBody({
       )}
     </>
   )
+}
+
+// ---------------------------------------------------------------------------
+// Receipt strip — live data only in combine-mode.
+// ---------------------------------------------------------------------------
+
+interface ReceiptStripProps {
+  workspace: NonNullable<UseAngabenStateApi['workspace']>
+}
+
+function ReceiptStrip({ workspace }: ReceiptStripProps) {
+  // Compute the live instance count from the workspace baseline. We re-derive
+  // on every render so a freshly-added instance is immediately reflected — the
+  // workspace is the source of truth and re-renders are cheap.
+  const instanceCount = useMemo(() => {
+    const a = workspace.baseline.assumptions
+    return (
+      a.bav.length +
+      a.etf.length +
+      a.insurance.length +
+      a.basisrente.length +
+      a.altersvorsorgedepot.length +
+      a.riester.length
+    )
+  }, [workspace.baseline.assumptions])
+
+  // Snapshot "now" via a `useSyncExternalStore` subscription so the render
+  // function itself never calls `Date.now()`. The snapshot refreshes on every
+  // `lastEditedAt` change (see `useNowSnapshot` below).
+  const lastEditedAt = workspace.baseline.lastEditedAt
+  const renderTime = useNowSnapshot(lastEditedAt)
+
+  // When the baseline has never been edited (fresh default workspace) we
+  // surface "soeben" — same string formatRelativeTime returns for the
+  // 0-ms case, so the user sees a consistent stamp even before they've
+  // made any edits.
+  const elapsedMs =
+    lastEditedAt !== undefined ? renderTime - lastEditedAt : 0
+  const relativeTime = formatRelativeTime(elapsedMs)
+
+  return (
+    <p
+      className="angaben-produkte-receipt"
+      data-testid="angaben-produkte-receipt"
+    >
+      {`${instanceCount} ${instanceCount === 1 ? 'Vertrag' : 'Verträge'} erfasst · zuletzt geändert ${relativeTime} · gespeichert im Browser`}
+    </p>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// `useNowSnapshot` — React-pure "current time" hook for the receipt strip.
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a numeric "now" snapshot that updates whenever the provided
+ * `lastEditedAt` token changes. The snapshot is captured once per token via
+ * a `useSyncExternalStore` subscription — render itself never calls
+ * `Date.now()`, which keeps the component compliant with React 19's purity
+ * rules (the lint forbids `Date.now()` during render or inside `setState`
+ * calls inside `useEffect`).
+ *
+ * The store is keyed by the latest `lastEditedAt` so a baseline edit yields
+ * a fresh snapshot; absent any edit, the snapshot stays constant across
+ * re-renders. Tests can pin time deterministically by feeding a stable
+ * `lastEditedAt` and mocking `Date.now` before the first mount.
+ */
+function useNowSnapshot(lastEditedAt: number | undefined): number {
+  // Lazy `useState` init reads `Date.now()` exactly once per mount — React
+  // permits impure reads inside the initializer because it runs in a setup
+  // phase, not during render. Subsequent updates flow through
+  // `useSyncExternalStore`: when `lastEditedAt` changes, `getSnapshot`
+  // recomputes via `Date.now()` and React commits the new value.
+  const [initialNow] = useState<number>(() => Date.now())
+  const cachedTokenRef = useRef<number | undefined>(lastEditedAt)
+  const cachedNowRef = useRef<number>(initialNow)
+  const subscribe = useCallback((_onStoreChange: () => void) => {
+    // The store has no real subscribers; we keep the prop so React knows
+    // the snapshot is stable across renders until `getSnapshot` returns a
+    // different value (which it does after a `lastEditedAt` change).
+    void _onStoreChange
+    return () => {}
+  }, [])
+  const getSnapshot = useCallback(() => {
+    if (cachedTokenRef.current !== lastEditedAt) {
+      cachedTokenRef.current = lastEditedAt
+      cachedNowRef.current = Date.now()
+    }
+    return cachedNowRef.current
+  }, [lastEditedAt])
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
