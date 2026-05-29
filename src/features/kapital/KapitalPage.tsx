@@ -239,14 +239,19 @@ export function KapitalPage({ navigate }: Props) {
           </div>
 
           {chipOptions.length === 0 ? (
+            // PR #344 R2 (Codex CX3): retarget to Schritt 2. The empty-state copy
+            // names "Verträge oder Produkte" — the user needs the contract editor,
+            // which lives on /eingaben/produkte after the split. Schritt 1
+            // (/eingaben) carries only Person / Einkommen / Annahmen, so the old
+            // target dropped users into the wrong page with no editor in sight.
             <p className="kapital-empty">
               Noch keine Verträge oder Produkte ausgewählt. Lege deinen Plan auf{' '}
               <a
-                href={routeToPath(ROUTES.eingaben)}
+                href={routeToPath(ROUTES.eingabenProdukte)}
                 onClick={(event) => {
                   if (!shouldUseSpaNavigation(event)) return
                   event.preventDefault()
-                  navigate(ROUTES.eingaben)
+                  navigate(ROUTES.eingabenProdukte)
                 }}
               >
                 Deine Angaben

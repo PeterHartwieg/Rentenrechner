@@ -642,6 +642,37 @@ export const publicRouteRegistry = {
       href: '/',
     },
   },
+  // PR 2 of the Direction D /eingaben redesign migration. The single
+  // `/eingaben` page split into a two-page wizard: Schritt 1 (`/eingaben`,
+  // Person / Einkommen / Renteneintritt / Annahmen) and Schritt 2
+  // (`/eingaben/produkte`, the per-contract input surface). The new route
+  // is `inSitemap: false` because direct-load SEO targets stay on
+  // `/eingaben` (the canonical entry point); the deeper page is reached
+  // by the in-app SPA navigation. `robots: 'noindex,follow'` lines up
+  // with the legal pages: the route is needed for prerender / direct-load
+  // hydration on Cloudflare Workers, but is not a fresh indexable
+  // landing.
+  '/eingaben/produkte': {
+    canonical: '/eingaben/produkte',
+    title: 'Deine Verträge und Sparformen | RentenWiki.de',
+    metaDescription:
+      'Erfasse deine bestehenden Altersvorsorge-Verträge — gesetzliche Rente, ' +
+      'ETF-Sparpläne, bAV, private Renten, Riester und Basisrente. Lokal im Browser, kein Account.',
+    h1: 'Deine Verträge und Sparformen',
+    summary:
+      'Schritt 2 des RentenWiki-Eingabe-Flows: trage deine bestehenden Verträge ein. ' +
+      'Du kannst Einträge jederzeit ergänzen oder entfernen.',
+    dateModified: '2026-05-28',
+    datePublished: '2026-05-28',
+    robots: 'noindex,follow',
+    inSitemap: false,
+    jsonLdType: 'WebPage',
+    relatedRoutes: ['/eingaben', '/', '/methode'],
+    calculatorCta: {
+      label: 'Rechner öffnen',
+      href: '/',
+    },
+  },
   // ---------------------------------------------------------------------------
   // Legal pages — prerendered with route-specific head tags but NOT in sitemap.
   // Carry the brand-default OG image and page-specific JSON-LD types.

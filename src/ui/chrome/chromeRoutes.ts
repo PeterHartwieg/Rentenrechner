@@ -41,6 +41,10 @@ export function routeToNavId(route: Route): ChromeNavId | null {
     case 'methode':
       return 'method'
     case 'eingaben':
+    case 'eingaben-produkte':
+      // Schritt 2 of the two-page eingaben flow shares the same nav tab as
+      // Schritt 1 so the chrome reads as "I'm still in the Angaben wizard"
+      // regardless of which page the user is on.
       return 'angaben'
     case 'impressum':
     case 'datenschutz':

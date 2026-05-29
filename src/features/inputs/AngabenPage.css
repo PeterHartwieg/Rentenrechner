@@ -449,6 +449,76 @@
   font-weight: 600;
 }
 
+/* --- Footer button row (PR 2) ----------------------------------------
+   Schritt-1 → Schritt-2 navigation + JSON export. Border-top mirrors the
+   bundle's footer pattern; export button right-aligned via margin-left:auto.
+   Buttons keep Sober D treatment: paper-bg, dark rule, mono-leaning label.
+   ----------------------------------------------------------------------- */
+.angaben-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 36px;
+  padding-top: 18px;
+  border-top: 2px solid var(--rw-rule);
+}
+
+.angaben-footer__btn {
+  font-family: var(--rw-font-sans);
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  padding: 10px 16px;
+  min-height: 40px;
+  border: 1px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.angaben-footer__btn:hover {
+  background: var(--rw-bg-paper-soft);
+}
+
+.angaben-footer__btn:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+.angaben-footer__btn--primary {
+  background: var(--rw-ink);
+  color: var(--rw-bg-paper);
+  border-color: var(--rw-ink);
+}
+
+.angaben-footer__btn--primary:hover {
+  background: var(--rw-ink-soft);
+  color: var(--rw-bg-paper);
+}
+
+.angaben-footer__btn--export {
+  margin-left: auto;
+  font-family: var(--rw-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 639px) {
+  .angaben-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .angaben-footer__btn {
+    min-height: 44px;
+  }
+  .angaben-footer__btn--export {
+    margin-left: 0;
+  }
+}
+
 /* --- Stand line ------------------------------------------------------ */
 .angaben-stand {
   text-align: center;
