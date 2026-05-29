@@ -429,7 +429,7 @@ function buildContractFields(
         },
         {
           key: 'KV in Rente',
-          value: bav.kvdrMember ? 'KVdR' : 'freiwillig GKV',
+          value: retirementHealthLabel(profile, bav.kvdrMember),
         },
       ]
     }
@@ -568,6 +568,21 @@ function buildContractFields(
 // to grow a presentational concern. None of these encode statutory values —
 // they map enums to German display strings only.
 // ---------------------------------------------------------------------------
+
+/**
+ * Returns the correct retirement health-insurance label for display.
+ * PKV takes priority over GKV branches because the bAV payout pipeline
+ * routes PKV separately (src/engine/salary.ts + src/engine/bavPayout.ts):
+ * the KVdR / freiwillig-GKV distinction is only relevant when the member
+ * is in the statutory GKV system.
+ */
+function retirementHealthLabel(
+  profile: PersonalProfile,
+  kvdrMember: boolean,
+): string {
+  if (!profile.publicHealthInsurance) return 'PKV'
+  return kvdrMember ? 'KVdR' : 'freiwillig GKV'
+}
 
 function kindFor(productId: ProductId): string {
   const meta = getProductMeta(productId)

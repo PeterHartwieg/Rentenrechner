@@ -256,3 +256,105 @@ describe('ProdukteEingabenPanel — empty state', () => {
     expect(getByTestId('produkte-eingaben-panel')).toBeInTheDocument()
   })
 })
+
+// ---------------------------------------------------------------------------
+// CX-PR3-1 regression — PKV label on bAV row for PKV users.
+// ---------------------------------------------------------------------------
+
+describe('ProdukteEingabenPanel — CX-PR3-1 PKV label regression', () => {
+  it('renders "PKV" in the bAV KV-in-Rente field when publicHealthInsurance is false', () => {
+    const pkvProfile = { ...defaultProfile, publicHealthInsurance: false }
+    const assumptions: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      visibleProducts: ['bav'],
+    }
+    const simulation = simulateRetirementComparison(pkvProfile, assumptions, de2026Rules)
+    const selectedResults = simulation.products.filter(
+      (r) => r.scenarioId === 'basis' && r.productId === 'bav',
+    )
+    const props = {
+      mode: 'compare' as const,
+      profile: pkvProfile,
+      assumptions,
+      onProfileChange: vi.fn(),
+      onAssumptionsChange: vi.fn(),
+      simulation,
+      selectedResults,
+      kvdrMember: true, // even when kvdrMember is true, PKV must take priority
+      bavLumpSumTaxMode: 'voll_versorgungsbezug' as const,
+      insuranceTaxMode: 'halbeinkuenfte' as const,
+      tarifgebunden: false,
+      onTarifgebundenChange: vi.fn(),
+      onSyncMonthlyContribution: vi.fn(),
+    }
+    const { container } = render(<ProdukteEingabenPanel {...props} />)
+    // The bAV row's "KV in Rente" field must display "PKV" for PKV users,
+    // not "KVdR" or "freiwillig GKV".
+    const text = container.textContent ?? ''
+    expect(text).toContain('PKV')
+    expect(text).not.toContain('KVdR')
+    expect(text).not.toContain('freiwillig GKV')
+  })
+
+  it('renders "KVdR" for GKV users with kvdrMember=true', () => {
+    const gkvProfile = { ...defaultProfile, publicHealthInsurance: true }
+    const assumptions: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      visibleProducts: ['bav'],
+    }
+    const simulation = simulateRetirementComparison(gkvProfile, assumptions, de2026Rules)
+    const selectedResults = simulation.products.filter(
+      (r) => r.scenarioId === 'basis' && r.productId === 'bav',
+    )
+    const props = {
+      mode: 'compare' as const,
+      profile: gkvProfile,
+      assumptions,
+      onProfileChange: vi.fn(),
+      onAssumptionsChange: vi.fn(),
+      simulation,
+      selectedResults,
+      kvdrMember: true,
+      bavLumpSumTaxMode: 'voll_versorgungsbezug' as const,
+      insuranceTaxMode: 'halbeinkuenfte' as const,
+      tarifgebunden: false,
+      onTarifgebundenChange: vi.fn(),
+      onSyncMonthlyContribution: vi.fn(),
+    }
+    const { container } = render(<ProdukteEingabenPanel {...props} />)
+    expect(container.textContent ?? '').toContain('KVdR')
+  })
+
+  it('renders "freiwillig GKV" for GKV users with kvdrMember=false', () => {
+    const gkvProfile = { ...defaultProfile, publicHealthInsurance: true }
+    // The bAV field builder reads assumptions.bav.kvdrMember directly, so we
+    // must set it to false here (the kvdrMember prop only flows to the inputs
+    // disclosure, not to the summary row).
+    const assumptions: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      visibleProducts: ['bav'],
+      bav: { ...defaultAssumptions.bav, kvdrMember: false },
+    }
+    const simulation = simulateRetirementComparison(gkvProfile, assumptions, de2026Rules)
+    const selectedResults = simulation.products.filter(
+      (r) => r.scenarioId === 'basis' && r.productId === 'bav',
+    )
+    const props = {
+      mode: 'compare' as const,
+      profile: gkvProfile,
+      assumptions,
+      onProfileChange: vi.fn(),
+      onAssumptionsChange: vi.fn(),
+      simulation,
+      selectedResults,
+      kvdrMember: false,
+      bavLumpSumTaxMode: 'voll_versorgungsbezug' as const,
+      insuranceTaxMode: 'halbeinkuenfte' as const,
+      tarifgebunden: false,
+      onTarifgebundenChange: vi.fn(),
+      onSyncMonthlyContribution: vi.fn(),
+    }
+    const { container } = render(<ProdukteEingabenPanel {...props} />)
+    expect(container.textContent ?? '').toContain('freiwillig GKV')
+  })
+})
