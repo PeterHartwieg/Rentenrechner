@@ -3,6 +3,10 @@ import type { ScenarioAssumptions } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
 import { clampNumber } from '../../../ui/formatting'
 import { formatPercent } from '../../../utils/format'
+import { NettoBelastungControl } from './NettoBelastungControl'
+import { ScenariosPanel } from '../ScenariosPanel'
+import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../../../data/defaultScenario'
+import type { useScenarioLibrary } from '../../../app/useScenarioLibrary'
 
 /**
  * `§ 4 Annahmen` for `/eingaben`. Folds in the pre-redesign Annahmen tab.
@@ -27,7 +31,7 @@ interface ResolvedRenditen {
   readonly optimistisch: number
 }
 
-interface Props {
+interface AngabenAnnahmenSectionBase {
   assumptions: ScenarioAssumptions
   setAssumptions: Dispatch<SetStateAction<ScenarioAssumptions>>
   resolvedRenditen: ResolvedRenditen
@@ -36,14 +40,43 @@ interface Props {
   title: string
 }
 
-export function AngabenAnnahmenSection({
-  assumptions,
-  setAssumptions,
-  resolvedRenditen,
-  num,
-  id,
-  title,
-}: Props) {
+interface AngabenAnnahmenSectionCompareProps extends AngabenAnnahmenSectionBase {
+  mode: 'compare'
+  /**
+   * Invoked when the user changes the shared `equalInputAmountEUR` anchor.
+   * Required in compare-mode.
+   */
+  onSyncMonthlyContribution: (targetNet: number) => void
+  /**
+   * Compare-mode scenario library handles.
+   * Typed structurally so the section does not directly depend on the hook
+   * (the type is recovered via `ReturnType`).
+   */
+  scenarioLib: ReturnType<typeof useScenarioLibrary>
+}
+
+interface AngabenAnnahmenSectionCombineProps extends AngabenAnnahmenSectionBase {
+  mode: 'combine'
+  /** Not applicable in combine-mode: per-instance contribution model is used instead. */
+  onSyncMonthlyContribution?: never
+  /** Not applicable in combine-mode: per-scenario library (Plan vs. What-if) is used instead. */
+  scenarioLib?: never
+}
+
+type AngabenAnnahmenSectionProps =
+  | AngabenAnnahmenSectionCompareProps
+  | AngabenAnnahmenSectionCombineProps
+
+export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
+  const {
+    assumptions,
+    setAssumptions,
+    resolvedRenditen,
+    num,
+    id,
+    title,
+    mode,
+  } = props
   const inflationEnabled = assumptions.inflationRate > 0
   return (
     <section className="angaben-section">
@@ -186,6 +219,45 @@ export function AngabenAnnahmenSection({
           </div>
         )}
       </div>
+
+      {/* PR 3 — Compare-mode anchors that used to live at the top of
+          <InputsPanel> on /eingaben/produkte. Hosted here so the user can
+          set them on Schritt 1 before reaching the per-product surface.
+          Combine-mode has its own per-instance contribution model and per-
+          scenario library (Plan vs. What-if); we hide both controls there.
+          The discriminated union guarantees both props are present when
+          mode === 'compare', so the runtime && guards are not needed. */}
+      {mode === 'compare' && (
+        <div className="angaben-section-aside">
+          <NettoBelastungControl
+            amountEUR={
+              assumptions.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR
+            }
+            onAmountChange={(value) =>
+              props.onSyncMonthlyContribution(clampNumber(value, 0, 10_000))
+            }
+          />
+        </div>
+      )}
+
+      {mode === 'compare' && (
+        <details className="angaben-section-disclosure">
+          <summary className="angaben-section-disclosure__summary">
+            Szenarien laden / speichern
+          </summary>
+          <div className="angaben-section-disclosure__body">
+            <ScenariosPanel
+              onSelectPreset={setAssumptions}
+              library={props.scenarioLib.library}
+              onSave={props.scenarioLib.save}
+              onLoad={props.scenarioLib.load}
+              onDuplicate={props.scenarioLib.duplicate}
+              onDelete={props.scenarioLib.remove}
+              onRename={props.scenarioLib.rename}
+            />
+          </div>
+        </details>
+      )}
     </section>
   )
 }

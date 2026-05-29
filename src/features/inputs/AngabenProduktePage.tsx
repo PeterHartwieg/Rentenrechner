@@ -4,7 +4,8 @@ import './AngabenProduktePage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import { CombineDashboardSidebar } from '../inventory/CombineDashboardSidebar'
 import { ContractDecisionMenu } from '../dashboard/ContractDecisionMenu'
-import { InputsPanel } from './InputsPanel'
+import { ProdukteEingabenPanel } from '../produkte/ProdukteEingabenPanel'
+import { GlossaryPanel } from './GlossaryPanel'
 import { DStepIndicator } from './DStepIndicator'
 import type { Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
@@ -14,7 +15,6 @@ import {
   type UseAngabenStateApi,
 } from '../../app/useAngabenState'
 import { useWorkspaceUiState, type WorkspaceUiState } from '../../app/useWorkspaceUiState'
-import { useScenarioLibrary } from '../../app/useScenarioLibrary'
 import { useSimulationResult } from '../../app/useSimulationResult'
 import { deriveSelectedResults } from '../../app/simulationSelectors'
 import type { InsuranceProductResult } from '../../domain'
@@ -30,17 +30,16 @@ import { downloadJsonBlob } from '../../app/downloadJsonBlob'
  * that previously lived in § 5 ("Produkt-Eingaben" / "Meine Verträge")
  * of the single-page version.
  *
- * **PR 2 scope (routing shim only).** The body intentionally LIFTS the
- * existing legacy panels:
- *   - compare-mode → `<InputsPanel>` (singleton path), wired the same way
- *     `AngabenProduktSection` did before deletion;
- *   - combine-mode → `<CombineDashboardSidebar>` plus the per-contract
- *     `<ContractDecisionMenu>` modal.
+ * **PR 3 scope (compare-mode body rewrite).** The compare-mode branch now
+ * mounts `<ProdukteEingabenPanel>` from `src/features/produkte/` — the new
+ * Sober D Produkte family ported from the v3 design bundle. The combine-mode
+ * body still wraps the legacy `<CombineDashboardSidebar>` + per-contract
+ * `<ContractDecisionMenu>` modal — PR 4 will unify the two.
  *
- * PR 3 will replace the compare-mode body with new Sober D Produkte
- * components; PR 4 will adopt the same components for combine-mode and
- * retire the legacy panels. The shell (kicker + H1 + DStepIndicator + lead
- * + right rail + footer) is the final PR-2 surface.
+ * The `<GlossaryPanel>` lives at the bottom of the article (above
+ * `<LegalFooter>`) inside a single `<details>` disclosure. It used to live
+ * inside `<InputsPanel>`; this page is the appropriate host because the
+ * glossary is page-scope context, not panel-scope.
  *
  * **Architectural invariant: one `useAngabenState` per page.** Both Schritt 1
  * and Schritt 2 mount this hook directly and rely on localStorage to
@@ -165,6 +164,22 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
                 Als JSON exportieren ↓
               </button>
             </div>
+
+            {/* Glossary — relocated from the bottom of <InputsPanel> in PR 3.
+                Schritt 2 is the appropriate host because the glossary is
+                page-scope context (compare and combine both want to reach
+                it), not panel-scope. Single `<details>` so the body stays
+                collapsed by default. Compare-mode only: combine-mode users
+                land on the workspace sidebar, which carries its own
+                contextual help, so we gate the disclosure on mode. */}
+            {mode === 'compare' && (
+              <details className="angaben-produkte-glossar">
+                <summary className="angaben-produkte-glossar__summary">
+                  Glossar einblenden
+                </summary>
+                <GlossaryPanel />
+              </details>
+            )}
           </article>
 
           {/* Right rail — static for PR 2; PR 4 wires live "receipt strip".
@@ -271,7 +286,10 @@ function CompareBody({
     )
   }
   const ui = workspaceUi
-  const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
+  // PR 3: `useScenarioLibrary` no longer mounts here. The library moved to
+  // Schritt 1 § 4 Annahmen alongside `<NettoBelastungControl>` so the
+  // scenario-load surface is available before the user reaches the
+  // per-product Schritt 2 view.
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
   const { simulation, effectiveScenarioId, taxModes } = result
 
@@ -288,17 +306,21 @@ function CompareBody({
       r.productId === 'versicherung' && r.scenarioId === effectiveScenarioId,
   )
 
+  // `resetToDefaults` is wired into AngabenPage's footer (Schritt 1) and is
+  // not surfaced inside the panel for PR 3 — silence the unused-binding lint
+  // by referencing it. PR 4 may relocate the reset affordance into the
+  // panel's right-rail.
+  void resetToDefaults
   return (
-    <InputsPanel
+    <ProdukteEingabenPanel
+      mode="compare"
       profile={profile}
       onProfileChange={setProfile}
       assumptions={assumptions}
       onAssumptionsChange={setAssumptions}
       onSyncMonthlyContribution={setSyncedMonthlyContribution}
-      resetToDefaults={resetToDefaults}
       simulation={simulation}
       selectedResults={selectedResults}
-      scenarioLib={scenarioLib}
       kvdrMember={taxModes.kvdrMember}
       bavLumpSumTaxMode={taxModes.bavLumpSumTaxMode}
       insuranceTaxMode={taxModes.insuranceTaxMode}

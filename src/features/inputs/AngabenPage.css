@@ -191,6 +191,36 @@
   scroll-margin-top: 80px;
 }
 
+/* PR 3 — Aside container for the compare-mode `<NettoBelastungControl>` host
+   that sits inside § 4 Annahmen on Schritt 1. Keeps the control visually
+   separated from the renditeannahme-fields above it. */
+.angaben-section-aside {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rw-rule-soft);
+}
+
+/* PR 3 — Generic disclosure inside an angaben section. Reused for the
+   `<ScenariosPanel>` mount in § 4 Annahmen. */
+.angaben-section-disclosure {
+  margin-top: 14px;
+  border-top: 1px solid var(--rw-rule-soft);
+  padding-top: 12px;
+}
+
+.angaben-section-disclosure__summary {
+  cursor: pointer;
+  font-family: var(--rw-font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--rw-ink);
+  padding: 4px 0;
+}
+
+.angaben-section-disclosure__body {
+  margin-top: 10px;
+}
+
 .angaben-section-lead {
   margin: 0 0 14px;
   font-size: 0.92rem;

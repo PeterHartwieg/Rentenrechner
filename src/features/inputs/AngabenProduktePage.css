@@ -66,6 +66,24 @@
   padding-top: 10px;
 }
 
+/* Glossary disclosure — relocated from <InputsPanel> body in PR 3. Single
+   <details> sitting below the footer so the body stays collapsed until the
+   user opts in. */
+.angaben-produkte-glossar {
+  margin-top: 24px;
+  border-top: 1px solid var(--rw-rule);
+  padding-top: 16px;
+}
+
+.angaben-produkte-glossar__summary {
+  cursor: pointer;
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rw-ink);
+  padding: 6px 0;
+}
+
 /* --- Tablet — match Schritt 1's collapse ----------------------------- */
 @media (max-width: 1023px) {
   .angaben-grid--produkte {

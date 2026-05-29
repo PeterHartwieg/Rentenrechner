@@ -1,0 +1,326 @@
+/* ==========================================================================
+   ProdukteEingabenPanel — Sober D body for /eingaben/produkte compare-mode.
+   Ported from direction-d-pages.jsx L320-650 of the v3 design bundle.
+
+   Tokens come from src/App.css — NO new design tokens introduced (P1).
+   Layout matches the bundle's inline-styles 1:1: 1fr / 240px split on the
+   row, repeat(2, 1fr) on the sparform grid, dotted-underline field rows,
+   mono kicker labels with `letter-spacing` and uppercase, paper-bg sidebar
+   with left border accent.
+   ========================================================================== */
+
+.produkte-eingaben-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.produkte-eingaben-panel__empty {
+  margin: 0;
+  padding: 12px 0;
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  color: var(--rw-ink-soft);
+  line-height: 1.55;
+}
+
+.produkte-eingaben-panel__sparform-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.produkte-eingaben-panel__row-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Inline disclosure body that hosts the per-product input form (PR 3 reuses
+   PRODUCT_UI_REGISTRY.renderInputs). Visually attached to the row above. */
+.produkte-eingaben-panel__disclosure {
+  border: 1px solid var(--rw-rule);
+  border-top: none;
+  background: #fff;
+  padding: 14px 18px;
+}
+
+/* ----- DProduktSection ---------------------------------------------------- */
+
+.d-produkt-section {
+  border: none;
+  margin: 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--rw-rule);
+}
+
+.d-produkt-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 12px;
+}
+
+.d-produkt-section__legend {
+  font-family: var(--rw-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rw-ink);
+  padding: 0;
+}
+
+.d-produkt-section__note {
+  font-family: var(--rw-font-sans);
+  font-size: 11.5px;
+  color: var(--rw-ink-faint);
+  max-width: 480px;
+  text-align: right;
+  line-height: 1.45;
+}
+
+.d-produkt-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ----- DProduktRow -------------------------------------------------------- */
+
+.d-produkt-row {
+  border: 1px solid var(--rw-rule);
+  background: #fff;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+}
+
+.d-produkt-row__main {
+  padding: 14px 18px;
+  min-width: 0;
+}
+
+.d-produkt-row__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.d-produkt-row__kind {
+  font-family: var(--rw-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+}
+
+.d-produkt-row__status {
+  font-family: var(--rw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  border: 1px solid var(--rw-rule-soft);
+  padding: 1px 8px;
+  color: var(--rw-ink-soft);
+  text-transform: uppercase;
+}
+
+.d-produkt-row__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--rw-ink);
+  letter-spacing: -0.2px;
+}
+
+.d-produkt-row__fields {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 24px;
+}
+
+.d-produkt-row__field {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  border-bottom: 1px dotted var(--rw-rule-soft);
+  padding: 3px 0;
+}
+
+.d-produkt-row__field-key {
+  color: var(--rw-ink-soft);
+}
+
+.d-produkt-row__field-val {
+  font-family: var(--rw-font-mono);
+  font-weight: 500;
+  color: var(--rw-ink);
+}
+
+.d-produkt-row__accent {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--rw-ink-faint);
+  font-family: var(--rw-font-sans);
+  font-style: italic;
+}
+
+.d-produkt-row__aside {
+  padding: 14px 16px;
+  background: var(--rw-bg-paper-soft, #f6f4ef);
+  border-left: 1px solid var(--rw-rule-soft);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.d-produkt-row__aside-copy {
+  font-size: 11.5px;
+  color: var(--rw-ink-faint);
+  line-height: 1.45;
+}
+
+.d-produkt-row__aside-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.d-produkt-row__btn {
+  background: #fff;
+  border: 1px solid var(--rw-rule);
+  padding: 7px 10px;
+  font-family: var(--rw-font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--rw-ink);
+  text-align: left;
+}
+
+.d-produkt-row__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.d-produkt-row__btn--secondary {
+  background: transparent;
+  border-color: var(--rw-rule-soft);
+  font-weight: 400;
+  color: var(--rw-ink-soft);
+}
+
+.d-produkt-row__btn--destructive {
+  color: var(--rw-accent);
+}
+
+/* ----- DSparformOption ---------------------------------------------------- */
+
+.d-sparform-option {
+  border: 1px solid var(--rw-rule);
+  background: #fff;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-family: var(--rw-font-sans);
+  text-align: left;
+  color: inherit;
+  width: 100%;
+}
+
+.d-sparform-option:hover {
+  background: var(--rw-bg-paper-soft, #f6f4ef);
+}
+
+.d-sparform-option__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.d-sparform-option__name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rw-ink);
+  letter-spacing: -0.1px;
+}
+
+.d-sparform-option__sub {
+  font-size: 11.5px;
+  color: var(--rw-ink-faint);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.d-sparform-option__plus {
+  font-family: var(--rw-font-mono);
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--rw-ink);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ----- DAddVertragButton (combine-mode only; PR 4 mounts) ----------------- */
+
+.d-add-vertrag-button {
+  border: 1px dashed var(--rw-rule-soft);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  background: #FCFBF7;
+  font-family: var(--rw-font-sans);
+  text-align: left;
+  color: inherit;
+  width: 100%;
+}
+
+.d-add-vertrag-button__copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.d-add-vertrag-button__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.d-add-vertrag-button__sub {
+  font-size: 11.5px;
+  color: var(--rw-ink-faint);
+  margin-top: 2px;
+}
+
+.d-add-vertrag-button__hint {
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--rw-ink-soft);
+  text-transform: uppercase;
+}
+
+/* ----- Phone: drop the row sidebar to a stacked footer -------------------- */
+
+@media (max-width: 720px) {
+  .d-produkt-row {
+    grid-template-columns: 1fr;
+  }
+  .d-produkt-row__aside {
+    border-left: none;
+    border-top: 1px solid var(--rw-rule-soft);
+  }
+  .d-produkt-row__fields {
+    grid-template-columns: 1fr;
+  }
+  .produkte-eingaben-panel__sparform-grid {
+    grid-template-columns: 1fr;
+  }
+}

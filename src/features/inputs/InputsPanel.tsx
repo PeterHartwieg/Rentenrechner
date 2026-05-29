@@ -15,16 +15,13 @@ import type { SavedScenario } from '../../data/scenarioLibrary'
 import { NumberField } from '../../ui/NumberField'
 import { useFeedbackTarget } from '../qa-feedback'
 import { clampNumber } from '../../ui/formatting'
-import { formatCurrency, formatPercent } from '../../utils/format'
+import { formatPercent } from '../../utils/format'
 import { computeBavMinimumEntitlement } from '../../engine/bavWarnings'
 import { de2026Rules } from '../../rules/de2026'
 import { ScenariosPanel } from './ScenariosPanel'
 import { GlossaryPanel } from './GlossaryPanel'
-import { ProfileInputs } from './ProfileInputs'
-import { GRVInputs } from './GRVInputs'
-import { ComparisonPicker } from '../workspace/ComparisonPicker'
-import { ProductFocusHeader } from '../workspace/ProductFocusHeader'
 import { ProductTabs } from './ProductTabs'
+import { NettoBelastungControl } from './sections/NettoBelastungControl'
 import {
   PRODUCT_UI_REGISTRY,
   type ProductInputsContext,
@@ -34,8 +31,6 @@ import {
   DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
 } from '../../data/defaultScenario'
 import { nextInflationRateForExpertToggle } from './inflationExpert'
-
-const NETTO_BELASTUNG_PRESETS = [100, 200, 400] as const
 
 interface ScenarioLib {
   library: SavedScenario[]
@@ -73,6 +68,10 @@ interface InputsPanelProps {
 
 export function InputsPanel({
   profile,
+  // `onProfileChange` is still part of the public API surface (consumed by
+  // PR 3's `AngabenProduktePage` compare-mode wiring + InputsPanel.test) but
+  // PR 3 removed the inline <ProfileInputs> disclosure, so the panel body no
+  // longer reads from it. PR 4 will delete the entire file.
   onProfileChange,
   assumptions,
   onAssumptionsChange,
@@ -90,6 +89,10 @@ export function InputsPanel({
   requestActiveTab,
   onActiveTabConsumed,
 }: InputsPanelProps) {
+  // PR 3: `onProfileChange` is part of the API but unused inside the panel
+  // body (the inline <ProfileInputs> disclosure moved to /eingaben Schritt 1).
+  // Keep it referenced so the existing test harness compiles unchanged.
+  void onProfileChange
   const { annualMin: bavMinAnnual, monthlyMin: bavMinMonthly } =
     computeBavMinimumEntitlement(de2026Rules)
   const bavEntitlementMax =
@@ -146,14 +149,9 @@ export function InputsPanel({
         </button>
       </div>
 
-      {/* ── Comparison picker — primary navigation, always visible ── */}
-      <ComparisonPicker
-        visible={assumptions.visibleProducts}
-        onChange={(next) =>
-          onAssumptionsChange((current) => ({ ...current, visibleProducts: next }))
-        }
-        heading="Welche Produkte vergleichst du?"
-      />
+      {/* PR 3 removed the inline ComparisonPicker: the new
+          `<ProdukteEingabenPanel>` on /eingaben/produkte (§ 3 Sparformen
+          tiles) is the canonical add/remove surface for compare-mode. */}
 
       <NettoBelastungControl
         amountEUR={assumptions.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR}
@@ -231,12 +229,10 @@ export function InputsPanel({
                 bavMinMonthly,
                 bavEntitlementMax,
               }
-              return (
-                <>
-                  <ProductFocusHeader productId={activeTab} />
-                  {entry.renderInputs(ctx)}
-                </>
-              )
+              // PR 3 removed the inline <ProductFocusHeader>; the new
+              // `<DProduktRow>` kicker on /eingaben/produkte already
+              // surfaces the product label + Schicht number.
+              return entry.renderInputs(ctx)
             })()}
           </>
         )}
@@ -244,42 +240,10 @@ export function InputsPanel({
 
       <div className="divider" />
 
-      {/* ── All collapsibles grouped at bottom: setup (Profile, GRV) + tools ── */}
-      <details className="disclosure-section">
-        <summary>
-          <span className="disclosure-toggle">Profil</span>
-          <span className="disclosure-recap">
-            {profile.age} J · {formatCurrency(profile.grossSalaryYear, 0)}/J ·{' '}
-            {profile.publicHealthInsurance ? 'GKV' : 'PKV'}
-            {profile.childBirthYears.length > 0 &&
-              ` · ${profile.childBirthYears.length} ${profile.childBirthYears.length === 1 ? 'Kind' : 'Kinder'}`}
-          </span>
-        </summary>
-        <div className="disclosure-content">
-          <ProfileInputs
-            profile={profile}
-            onProfileChange={onProfileChange}
-            pkv257SubsidyMonthly={simulation.bavFunding.salaryWithoutBav.pkv257SubsidyMonthly}
-            pkvNetMonthlyCost={simulation.bavFunding.salaryWithoutBav.pkvNetMonthlyCost}
-          />
-        </div>
-      </details>
-
-      <details className="disclosure-section">
-        <summary>
-          <span className="disclosure-toggle">Gesetzliche Rente (GRV)</span>
-          <span className="disclosure-recap">
-            Prognose: {formatCurrency(simulation.statutoryPension.netMonthlyPension, 0)}/Monat netto
-          </span>
-        </summary>
-        <div className="disclosure-content">
-          <GRVInputs
-            assumptions={assumptions}
-            onAssumptionsChange={onAssumptionsChange}
-            statutoryPensionResult={simulation.statutoryPension}
-          />
-        </div>
-      </details>
+      {/* PR 3 deleted the inline "Profil" and "Gesetzliche Rente (GRV)"
+          disclosures. Person inputs live on /eingaben Schritt 1 (§ 1-3);
+          GRV inputs are reachable from the new § 1 DRV card's
+          "Manuell überschreiben" disclosure on /eingaben/produkte. */}
 
       <details className="disclosure-section">
         <summary>
@@ -349,54 +313,7 @@ export function InputsPanel({
   )
 }
 
-interface NettoBelastungControlProps {
-  amountEUR: number
-  onAmountChange: (value: number) => void
-}
-
-function NettoBelastungControl({
-  amountEUR,
-  onAmountChange,
-}: NettoBelastungControlProps) {
-  const { targetProps: nettoSectionProps } = useFeedbackTarget({
-    id: 'inputs.nettoBelastung.section',
-    label: 'Netto-Beitrag',
-    precision: 'section',
-  })
-  return (
-    <section
-      className="netto-belastung-control"
-      aria-label="Monatlicher Vergleichsbetrag"
-      {...nettoSectionProps}
-    >
-      <div className="netto-belastung-row">
-        <NumberField
-          label="Netto-Beitrag"
-          feedbackTargetId="inputs.nettoBelastung.amount"
-          value={amountEUR}
-          min={0}
-          max={10_000}
-          step={10}
-          suffix="EUR mtl."
-          onCommit={(value) => onAmountChange(Number(value))}
-        />
-        <div className="netto-belastung-presets" aria-label="Presets">
-          {NETTO_BELASTUNG_PRESETS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              className={
-                Math.abs(amountEUR - preset) < 0.01
-                  ? 'netto-belastung-preset active'
-                  : 'netto-belastung-preset'
-              }
-              onClick={() => onAmountChange(preset)}
-            >
-              {preset} EUR
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
+// PR 3 relocated `NettoBelastungControl` to
+// `sections/NettoBelastungControl.tsx` so it can be mounted both from this
+// (legacy) panel and from Schritt 1 § 4 Annahmen. See that file for the
+// component definition.

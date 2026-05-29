@@ -15,6 +15,7 @@ import { downloadJsonBlob } from '../../app/downloadJsonBlob'
 import { AngabenPersonSection } from './sections/AngabenPersonSection'
 import { AngabenEinkommenSection } from './sections/AngabenEinkommenSection'
 import { AngabenRenteneintrittSection } from './sections/AngabenRenteneintrittSection'
+import { useScenarioLibrary } from '../../app/useScenarioLibrary'
 import { AngabenAnnahmenSection } from './sections/AngabenAnnahmenSection'
 import { DStepIndicator } from './DStepIndicator'
 
@@ -149,6 +150,52 @@ function AngabenAsideCard({
   )
 }
 
+
+/**
+ * Compare-mode-only wrapper around `AngabenAnnahmenSection` that mounts
+ * `useScenarioLibrary`. The hook is unconditionally called on every render of
+ * this component — React's Rules of Hooks are satisfied because this
+ * component is only ever rendered when `mode === 'compare'` (gated by the
+ * parent). Combine-mode renders the plain `<AngabenAnnahmenSection mode="combine">`
+ * sibling instead, so no scenario-library state is allocated in combine-mode.
+ */
+function CompareModeAnnahmenSection({
+  profile,
+  setProfile,
+  assumptions,
+  setAssumptions,
+  syncMonthlyContribution,
+  resolvedRenditen,
+  num,
+  id,
+  title,
+}: {
+  profile: Parameters<typeof useScenarioLibrary>[0]
+  setProfile: Parameters<typeof useScenarioLibrary>[2]
+  assumptions: Parameters<typeof AngabenAnnahmenSection>[0]['assumptions']
+  setAssumptions: Parameters<typeof AngabenAnnahmenSection>[0]['setAssumptions']
+  syncMonthlyContribution: (targetNet: number) => void
+  resolvedRenditen: Parameters<typeof AngabenAnnahmenSection>[0]['resolvedRenditen']
+  num: string
+  id: string
+  title: string
+}) {
+  const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
+  return (
+    <AngabenAnnahmenSection
+      mode="compare"
+      assumptions={assumptions}
+      setAssumptions={setAssumptions}
+      resolvedRenditen={resolvedRenditen}
+      num={num}
+      id={id}
+      title={title}
+      onSyncMonthlyContribution={syncMonthlyContribution}
+      scenarioLib={scenarioLib}
+    />
+  )
+}
+
 // Static labelling for the GKV vs PKV radio (cross-year — kept inline as copy).
 const FAMILIENSTAND_DEFAULT = 'ledig'
 const BUNDESLAND_DEFAULT = 'Berlin'
@@ -232,6 +279,13 @@ export function AngabenPage({ navigate }: Props) {
   const angabenState = useAngabenState()
   const { profile, setProfile, assumptions, setAssumptions, mode, resetToDefaults, workspace } =
     angabenState
+  // Compare-mode-only contribution-sync setter from useAngabenState.
+  // `useScenarioLibrary` is mounted inside `CompareModeAnnahmenSection`
+  // below, which is only rendered when `mode === 'compare'`. This satisfies
+  // React's Rules of Hooks (the hook always runs on the same render path
+  // for a given component instance) while avoiding allocating scenario-
+  // library state in combine-mode.
+  const setSyncedMonthlyContribution = angabenState.setSyncedMonthlyContribution
   // `familienstand` and `bundesland` are NOT part of `PersonalProfile`, so
   // they remain ephemeral on this page in BOTH modes and reset to the
   // defaults on every reload / route change. Routing them through the
@@ -397,14 +451,40 @@ export function AngabenPage({ navigate }: Props) {
               title={SECTIONS[2].title}
             />
 
-            <AngabenAnnahmenSection
-              assumptions={assumptions}
-              setAssumptions={setAssumptions}
-              resolvedRenditen={RESOLVED_RENDITEN}
-              num={SECTIONS[3].n}
-              id={SECTIONS[3].id}
-              title={SECTIONS[3].title}
-            />
+            {mode === 'compare' ? (
+              <CompareModeAnnahmenSection
+                profile={profile}
+                setProfile={setProfile}
+                assumptions={assumptions}
+                setAssumptions={setAssumptions}
+                // Approach A runtime guard: useAngabenState always provides
+                // this setter in compare-mode, but the type is `| undefined` on
+                // the shared API surface. Throw rather than silently coercing
+                // so a future hook-shape regression fails loud. (CR-R3-1)
+                syncMonthlyContribution={
+                  setSyncedMonthlyContribution ??
+                  (() => {
+                    throw new Error(
+                      'setSyncedMonthlyContribution must be defined in compare mode',
+                    )
+                  })
+                }
+                resolvedRenditen={RESOLVED_RENDITEN}
+                num={SECTIONS[3].n}
+                id={SECTIONS[3].id}
+                title={SECTIONS[3].title}
+              />
+            ) : (
+              <AngabenAnnahmenSection
+                mode="combine"
+                assumptions={assumptions}
+                setAssumptions={setAssumptions}
+                resolvedRenditen={RESOLVED_RENDITEN}
+                num={SECTIONS[3].n}
+                id={SECTIONS[3].id}
+                title={SECTIONS[3].title}
+              />
+            )}
 
             {/* PR 2 footer button row — Schritt-1 → Schritt-2 navigation +
                 compare-mode reset + JSON export. The reset button is
