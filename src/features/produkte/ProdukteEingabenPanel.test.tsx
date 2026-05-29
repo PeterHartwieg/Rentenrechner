@@ -580,11 +580,11 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
     const disclosure = getByTestId(
       `produkte-instance-disclosure-${bavInstanceId}`,
     )
-    const inputs = disclosure.querySelectorAll('input[type="number"]')
     // The numeric fields now render through `<NumberField>`, which wraps its
     // <input> inside the <label> (no htmlFor association). Locate the
     // bAV-specific Brutto-Umwandlung field by label text, then read the nested
-    // input directly.
+    // input directly. Assert the label was found rather than silently falling
+    // back to the wrong input (CR-PR4-R3).
     let target: HTMLInputElement | undefined
     const labels = disclosure.querySelectorAll('label')
     labels.forEach((labelEl) => {
@@ -595,8 +595,8 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
         if (el) target = el
       }
     })
-    expect(target ?? inputs[inputs.length - 1]).toBeDefined()
-    const input = (target ?? inputs[inputs.length - 1]) as HTMLInputElement
+    expect(target).toBeDefined()
+    const input = target as HTMLInputElement
     fireEvent.change(input, { target: { value: '321' } })
     fireEvent.blur(input)
     expect(onPatchBaseline).toHaveBeenCalled()

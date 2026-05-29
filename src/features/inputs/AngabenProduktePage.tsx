@@ -4,6 +4,8 @@ import './AngabenProduktePage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import { ContractDecisionMenu } from '../dashboard/ContractDecisionMenu'
 import { ProdukteEingabenPanel } from '../produkte/ProdukteEingabenPanel'
+import { CombineHaushaltSection } from '../produkte/CombineHaushaltSection'
+import { CombineWhatIfSection } from '../produkte/CombineWhatIfSection'
 import { GlossaryPanel } from './GlossaryPanel'
 import { DStepIndicator } from './DStepIndicator'
 import type { Route } from '../../app/useRoute'
@@ -323,18 +325,26 @@ function CombineBody({
   const {
     workspace,
     baseline,
+    whatIfs,
     addInstance,
     removeInstance,
     patchBaseline,
     addWhatIf,
+    rebaseWhatIf,
+    freezeWhatIf,
+    archiveAndRestart,
   } = angabenState
   if (
     !workspace ||
     !baseline ||
+    !whatIfs ||
     !addInstance ||
     !removeInstance ||
     !patchBaseline ||
-    !addWhatIf
+    !addWhatIf ||
+    !rebaseWhatIf ||
+    !freezeWhatIf ||
+    !archiveAndRestart
   ) {
     throw new Error(
       'AngabenProduktePage CombineBody requires combine-mode useAngabenState API',
@@ -351,6 +361,18 @@ function CombineBody({
   // mount its own simulation hook.
   const combineSimulation = useCombineSimulation(workspace)
 
+  // Whether the workspace holds any contracts — gates the archive-and-restart
+  // affordance (there must be something to archive).
+  const a = baseline.assumptions
+  const hasContracts =
+    a.bav.length +
+      a.etf.length +
+      a.insurance.length +
+      a.basisrente.length +
+      a.altersvorsorgedepot.length +
+      a.riester.length >
+    0
+
   return (
     <>
       <ProdukteEingabenPanel
@@ -365,6 +387,15 @@ function CombineBody({
           if (navigate) navigate(ROUTES.vertrag(instanceId))
         }}
         onOpenDecisionMenu={setActiveMenuInstanceId}
+      />
+      <CombineHaushaltSection baseline={baseline} onPatchBaseline={patchBaseline} />
+      <CombineWhatIfSection
+        whatIfs={whatIfs}
+        baselineLastEditedAt={baseline.lastEditedAt}
+        hasContracts={hasContracts}
+        onRebase={rebaseWhatIf}
+        onFreeze={freezeWhatIf}
+        onArchiveAndRestart={archiveAndRestart}
       />
       {activeMenuInstanceId !== null && (
         <ContractDecisionMenu

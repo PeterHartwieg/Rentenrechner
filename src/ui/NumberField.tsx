@@ -19,21 +19,7 @@ function decimalsFromStep(step: number): number {
   return dotIdx === -1 ? 0 : s.length - dotIdx - 1
 }
 
-export function NumberField({
-  label,
-  labelSuffix,
-  value,
-  min,
-  max,
-  step = 1,
-  decimals,
-  suffix,
-  disabled,
-  onChange,
-  onCommit,
-  feedbackTargetId,
-  feedbackSensitive,
-}: {
+interface NumberFieldProps {
   label: string
   /** Optional inline content rendered next to the label (e.g. <InfoTip />). */
   labelSuffix?: ReactNode
@@ -83,7 +69,23 @@ export function NumberField({
    * Inert when QA mode is disabled — the attribute is harmless on the label.
    */
   feedbackSensitive?: boolean
-}) {
+}
+
+export function NumberField({
+  label,
+  labelSuffix,
+  value,
+  min,
+  max,
+  step = 1,
+  decimals,
+  suffix,
+  disabled,
+  onChange,
+  onCommit,
+  feedbackTargetId,
+  feedbackSensitive,
+}: NumberFieldProps) {
   const { targetProps } = useFeedbackTarget({
     id: feedbackTargetId ?? '',
     label,
