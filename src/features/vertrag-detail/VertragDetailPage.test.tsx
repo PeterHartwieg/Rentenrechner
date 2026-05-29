@@ -89,6 +89,22 @@ describe('VertragDetailPage — combine-mode drill-in surface', () => {
     expect(status).not.toBeNull()
   })
 
+  it('"Angaben bearbeiten" deep-links Schritt 2 (Verträge / Produkte) (PR #344 R2 Codex CX3)', () => {
+    // The right-rail "Angaben bearbeiten" CTA on Vertrag-Detail sits next to
+    // the per-contract Vertragsdaten table. After the /eingaben split, Schritt
+    // 1 (/eingaben) shows only Person / Einkommen / Annahmen — the contract
+    // editor moved to Schritt 2 (/eingaben/produkte). The CTA must point at
+    // Schritt 2 so the link's intent ("edit this contract's numbers") opens
+    // the right surface, not the wrong page with no editor visible.
+    const { bavId } = seedCombineWorkspaceWithBav()
+    const { container } = render(
+      <VertragDetailPage instanceId={bavId} navigate={() => {}} />,
+    )
+    const editLink = container.querySelector<HTMLAnchorElement>('.vertrag-metadata-edit')
+    expect(editLink).not.toBeNull()
+    expect(editLink!.getAttribute('href')).toBe('/eingaben/produkte')
+  })
+
   it('falls back to the empty state when :instanceId does not match a workspace instance', () => {
     seedCombineWorkspaceWithBav()
     const { container } = render(
