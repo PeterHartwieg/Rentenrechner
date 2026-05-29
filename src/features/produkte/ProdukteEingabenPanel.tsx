@@ -99,6 +99,31 @@ const ALL_MULTI_INSTANCE_PRODUCT_IDS: readonly MultiInstanceProductId[] =
     .map((entry) => entry.metadata.id)
     .filter((id): id is MultiInstanceProductId => id in INVENTORY_PRODUCT_REGISTRY)
 
+/**
+ * Union of all per-product workspace instance shapes. Aligned with
+ * `AnyInstance` in `src/app/portfolioState.ts`; we re-declare here so the
+ * panel doesn't drag the React-free portfolio state hook into its dependency
+ * tree just for the type. CR-PR4-R1-4: union stays as a `type` alias
+ * (project convention — `interface` is for object shapes only).
+ */
+type WorkspaceInstance =
+  | BavInstance
+  | EtfInstance
+  | InsuranceInstance
+  | BasisrenteInstance
+  | AltersvorsorgedepotInstance
+  | RiesterInstance
+
+/**
+ * One row in the combine-mode § 2 iteration: a workspace instance tagged
+ * with the multi-instance product id it belongs to. CR-PR4-R1-4: object
+ * shape → `interface`.
+ */
+interface InstanceRow {
+  productId: MultiInstanceProductId
+  instance: WorkspaceInstance
+}
+
 // ---------------------------------------------------------------------------
 // Props — discriminated union over `mode` so compare-mode and combine-mode
 // callers stay type-disjoint at the prop boundary.
@@ -366,22 +391,55 @@ function CombinePanel({
   onOpenDecisionMenu,
 }: ProdukteEingabenPanelCombineProps) {
   const [grvOverrideOpen, setGrvOverrideOpen] = useState(false)
+  // CX-PR4-2 R1: track which instance rows have their inline editor open.
+  // Same useState<Set<…>> shape as compare-mode's `expandedRows` so a future
+  // refactor that lifts the disclosure pattern into a shared helper sees
+  // one consistent model.
+  const [expandedInstances, setExpandedInstances] = useState<Set<string>>(
+    new Set(),
+  )
+
+  /**
+   * Build a per-instance patch dispatcher. Replaces the targeted instance
+   * inside the workspace baseline's per-product array and dispatches the
+   * resulting patch through `onPatchBaseline` so the storage / migration
+   * pipeline is preserved (P1 storage invariant).
+   *
+   * No-op when the panel mounts without `onPatchBaseline` (e.g. test
+   * fixtures that exercise only read-only rendering); the editor cards
+   * tolerate this because their commit callbacks just become inert.
+   */
+  const patchInstanceFactory = (
+    productId: MultiInstanceProductId,
+    instanceId: string,
+  ) => (patch: Partial<WorkspaceInstance>) => {
+    if (!onPatchBaseline) return
+    const arr = getInstanceArrayForProduct(assumptions, productId)
+    const nextArr = arr.map((inst) =>
+      inst.instanceId === instanceId ? { ...inst, ...patch } : inst,
+    )
+    // The workspace baseline assumptions slot for this product receives the
+    // mapped array. Spreading existing assumptions then overwriting the
+    // product slot keeps statutoryPension + retirementEndAge etc. intact.
+    const productKey: keyof typeof assumptions =
+      productId === 'versicherung' ? 'insurance' : productId
+    onPatchBaseline({
+      assumptions: {
+        ...assumptions,
+        [productKey]: nextArr,
+      } as typeof assumptions,
+    })
+  }
 
   // Per-product instance arrays in PRODUCT_REGISTRY order. We iterate the
   // multi-instance product ids (registry-derived constant) so adding a new
   // product to `MultiInstanceProductId` automatically renders here without a
   // local branch chain.
-  type InstanceRow = {
-    productId: MultiInstanceProductId
-    instance:
-      | BavInstance
-      | EtfInstance
-      | InsuranceInstance
-      | BasisrenteInstance
-      | AltersvorsorgedepotInstance
-      | RiesterInstance
-  }
-
+  //
+  // CR-PR4-R1-4: `InstanceRow` is an object shape, not a union — project
+  // convention is `interface` for object shapes (`type` only for unions /
+  // primitive aliases). The `WorkspaceInstance` union is named separately at
+  // module level so the discriminated narrow lives in one place.
   const rows: InstanceRow[] = []
   for (const productId of ALL_MULTI_INSTANCE_PRODUCT_IDS) {
     const arr = getInstanceArrayForProduct(assumptions, productId)
@@ -413,22 +471,40 @@ function CombinePanel({
         legend="§ 1 · Gesetzliche Rente"
         note="Pflicht für die meisten Angestellten. Werte aus deiner DRV-Rentenauskunft übernommen."
       >
-        <DProduktRow
-          kind="DRV · Schicht 1 · Pflicht"
-          title="Rentenauskunft der Deutschen Rentenversicherung"
-          status="übernommen"
-          fields={buildGrvFieldsCombine(
-            baseline.profile,
-            assumptions,
-            statutoryPensionResult,
-          )}
-          primary="PDF erneut hochladen"
-          primaryDisabled
-          primaryTitle="Bald verfügbar — OCR-Upload kommt mit einem späteren Release."
-          secondary={grvOverrideOpen ? 'Schließen' : 'Manuell überschreiben'}
-          onSecondary={() => setGrvOverrideOpen((v) => !v)}
-          accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
-        />
+        {/* CR-PR4-R1-5: gate the secondary CTA label/handler on the same
+            condition as the disclosure body — without `onPatchBaseline` /
+            `statutoryPensionResult` the disclosure cannot mount, so the
+            "Schließen" / "Manuell überschreiben" toggle was a dead control. */}
+        {(() => {
+          const canOverrideGrv =
+            onPatchBaseline !== undefined && statutoryPensionResult !== undefined
+          return (
+            <DProduktRow
+              kind="DRV · Schicht 1 · Pflicht"
+              title="Rentenauskunft der Deutschen Rentenversicherung"
+              status="übernommen"
+              fields={buildGrvFieldsCombine(
+                baseline.profile,
+                assumptions,
+                statutoryPensionResult,
+              )}
+              primary="PDF erneut hochladen"
+              primaryDisabled
+              primaryTitle="Bald verfügbar — OCR-Upload kommt mit einem späteren Release."
+              secondary={
+                canOverrideGrv
+                  ? grvOverrideOpen
+                    ? 'Schließen'
+                    : 'Manuell überschreiben'
+                  : undefined
+              }
+              onSecondary={
+                canOverrideGrv ? () => setGrvOverrideOpen((v) => !v) : undefined
+              }
+              accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
+            />
+          )
+        })()}
         {grvOverrideOpen && onPatchBaseline && statutoryPensionResult && (
           <div
             className="produkte-eingaben-panel__disclosure"
@@ -487,6 +563,26 @@ function CombinePanel({
             const canOpenMenu =
               onOpenDecisionMenu !== undefined &&
               (status === 'active' || status === 'paid_up')
+            // CX-PR4-2 R1: "Bearbeiten" now toggles an inline disclosure
+            // hosting the per-product editor (mirrors compare-mode PR 3
+            // pattern). "Details ansehen ›" is the new secondary affordance
+            // that opens the read-only /vertrag/:id detail page —
+            // `onEditInstance` is reused for that navigation slot. The kebab
+            // "Weitere Optionen ⋯" still opens ContractDecisionMenu.
+            const isOpen = expandedInstances.has(instance.instanceId)
+            const uiEntry = PRODUCT_UI_REGISTRY[productId]
+            const patchInstance = patchInstanceFactory(
+              productId,
+              instance.instanceId,
+            )
+            const toggleEditor = () =>
+              setExpandedInstances((prev) => {
+                const next = new Set(prev)
+                if (next.has(instance.instanceId))
+                  next.delete(instance.instanceId)
+                else next.add(instance.instanceId)
+                return next
+              })
             return (
               <div
                 key={instance.instanceId}
@@ -499,28 +595,64 @@ function CombinePanel({
                   title={titleLabel}
                   status={statusLabel(status)}
                   fields={buildInstanceFieldsCombine(productId, instance)}
-                  primary="Bearbeiten"
-                  onPrimary={() => onEditInstance(productId, instance.instanceId)}
+                  primary={isOpen ? 'Schließen' : 'Bearbeiten'}
+                  onPrimary={toggleEditor}
                   secondary="Entfernen"
                   destructive
-                  onSecondary={() => removeInstance(productId, instance.instanceId)}
+                  onSecondary={() =>
+                    removeInstance(productId, instance.instanceId)
+                  }
                   accent={
-                    canOpenMenu ? (
+                    <div className="produkte-eingaben-panel__row-actions">
                       <button
                         type="button"
                         className="produkte-eingaben-panel__menu-btn"
                         onClick={() =>
-                          onOpenDecisionMenu?.(instance.instanceId)
+                          onEditInstance(productId, instance.instanceId)
                         }
-                        title="Weitere Optionen für diesen Vertrag"
-                        aria-label={`Weitere Optionen für ${titleLabel}`}
-                        data-testid={`produkte-menu-btn-${instance.instanceId}`}
+                        title="Vertrag-Detail öffnen"
+                        aria-label={`Details ansehen für ${titleLabel}`}
+                        data-testid={`produkte-details-btn-${instance.instanceId}`}
                       >
-                        Weitere Optionen ⋯
+                        Details ansehen ›
                       </button>
-                    ) : undefined
+                      {canOpenMenu && (
+                        <button
+                          type="button"
+                          className="produkte-eingaben-panel__menu-btn"
+                          onClick={() =>
+                            onOpenDecisionMenu?.(instance.instanceId)
+                          }
+                          title="Weitere Optionen für diesen Vertrag"
+                          aria-label={`Weitere Optionen für ${titleLabel}`}
+                          data-testid={`produkte-menu-btn-${instance.instanceId}`}
+                        >
+                          Weitere Optionen ⋯
+                        </button>
+                      )}
+                    </div>
                   }
                 />
+                {isOpen && (
+                  <div
+                    className="produkte-eingaben-panel__disclosure"
+                    data-testid={`produkte-instance-disclosure-${instance.instanceId}`}
+                  >
+                    {uiEntry?.renderInstanceInputs ? (
+                      uiEntry.renderInstanceInputs({
+                        instance,
+                        patchInstance,
+                        profile: baseline.profile,
+                        activeRules,
+                      })
+                    ) : (
+                      <p className="produkte-eingaben-panel__empty">
+                        Für diese Sparform ist hier kein Editor verfügbar.
+                        Bitte über „Details ansehen ›" öffnen.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })
@@ -873,13 +1005,7 @@ function buildContractFieldsCompare(
  */
 function buildInstanceFieldsCombine(
   productId: MultiInstanceProductId,
-  instance:
-    | BavInstance
-    | EtfInstance
-    | InsuranceInstance
-    | BasisrenteInstance
-    | AltersvorsorgedepotInstance
-    | RiesterInstance,
+  instance: WorkspaceInstance,
 ): readonly ProduktRowField[] {
   switch (productId) {
     case 'etf': {

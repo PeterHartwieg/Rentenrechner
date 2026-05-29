@@ -330,6 +330,30 @@
   text-decoration: underline;
 }
 
+/* CX-PR4-2 R1: row-action cluster in the accent slot — stacks the
+   "Details ansehen ›" link and the "Weitere Optionen ⋯" kebab one above
+   the other, both styled as plain text-buttons via
+   `.produkte-eingaben-panel__menu-btn`. */
+.produkte-eingaben-panel__row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* CX-PR4-2 R1: tight checkbox-field used by the AVD glidepath toggle inside
+   the inline editor disclosure. The wizard sheet styles the surrounding
+   `.combine-field` already; this rule covers the small inline
+   `<label className="combine-checkbox-field">` wrapper that hosts the
+   checkbox + caption. Uses Sober D tokens — no new design tokens. */
+.combine-checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--rw-font-sans);
+  font-size: 12.5px;
+  color: var(--rw-ink-soft);
+}
+
 /* Wrapper around the bundle's "+ Vertrag hinzufügen" CTA in § 3. Keeps a
    small top-gap from the sparform tile grid above. */
 .produkte-eingaben-panel__add-vertrag-wrap {

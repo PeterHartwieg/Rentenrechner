@@ -1,0 +1,92 @@
+/**
+ * `AltersvorsorgedepotInstanceInputs` — per-instance combine-mode editor
+ * for an AVD (Altersvorsorgedepot) contract.
+ *
+ * Ported from the deleted `CombineDashboardSidebar.AvdInstanceCard`
+ * (git history: commit 56ba1e0). AVD has neither a FeeSection nor a
+ * BeitragsdynamikField in the legacy sidebar — that pattern carries over
+ * here so we keep input parity with the wizard.
+ *
+ * Glidepath checkbox semantics: `riskAllocationPct` flips between 0.8
+ * (Glidepath enabled, modelled as Standarddepot equity sleeve) and 1.0
+ * (no glidepath). Matches the deleted card exactly.
+ */
+
+import type { AltersvorsorgedepotInstance } from '../../../domain/instances'
+import {
+  CombineField,
+  DraftNumberInput,
+  CombineNativeInput,
+  CombineNativeSelect,
+  CommonContractFields,
+} from './_shared'
+
+interface Props {
+  instance: AltersvorsorgedepotInstance
+  patchInstance: (patch: Partial<AltersvorsorgedepotInstance>) => void
+}
+
+export function AltersvorsorgedepotInstanceInputs({
+  instance,
+  patchInstance,
+}: Props) {
+  const onCommonChange = (next: AltersvorsorgedepotInstance) => {
+    const patch: Partial<AltersvorsorgedepotInstance> = {}
+    ;(
+      Object.keys(next) as Array<keyof AltersvorsorgedepotInstance>
+    ).forEach((k) => {
+      if (next[k] !== instance[k]) {
+        ;(patch as Record<string, unknown>)[k as string] = next[k]
+      }
+    })
+    if (Object.keys(patch).length > 0) patchInstance(patch)
+  }
+
+  return (
+    <div className="combine-instance-fields">
+      <CommonContractFields instance={instance} onChange={onCommonChange} />
+      <CombineField label="Eigenbeitrag (EUR/Monat)">
+        <DraftNumberInput
+          value={instance.monthlyOwnContribution}
+          min={0}
+          max={5000}
+          step={10}
+          disabled={instance.status === 'paid_up'}
+          onCommit={(v) => patchInstance({ monthlyOwnContribution: v })}
+        />
+      </CombineField>
+      <CombineField label="Depottyp">
+        <CombineNativeSelect
+          value={instance.subtype}
+          onChange={(e) =>
+            patchInstance({
+              subtype: e.target
+                .value as AltersvorsorgedepotInstance['subtype'],
+            })
+          }
+        >
+          <option value="depot_no_guarantee">Depot ohne Garantie</option>
+          <option value="standarddepot">Standarddepot</option>
+          <option value="guarantee_80">80% Garantie</option>
+          <option value="guarantee_100">100% Garantie</option>
+        </CombineNativeSelect>
+      </CombineField>
+      <CombineField label="Glidepath">
+        <label className="combine-checkbox-field">
+          <CombineNativeInput
+            type="checkbox"
+            checked={instance.riskAllocationPct < 1}
+            onChange={(e) =>
+              patchInstance({
+                riskAllocationPct: (e.target as HTMLInputElement).checked
+                  ? 0.8
+                  : 1,
+              })
+            }
+          />
+          automatische Risikoabsenkung
+        </label>
+      </CombineField>
+    </div>
+  )
+}

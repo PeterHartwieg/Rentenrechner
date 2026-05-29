@@ -11,12 +11,26 @@ import type {
   ScenarioAssumptions,
   SimulationResult,
 } from '../../domain'
+import type {
+  AltersvorsorgedepotInstance,
+  BasisrenteInstance,
+  BavInstance,
+  EtfInstance,
+  InsuranceInstance,
+  RiesterInstance,
+} from '../../domain/instances'
 import { BavInputs } from './BavInputs'
 import { EtfInputs } from './EtfInputs'
 import { InsuranceInputs } from './InsuranceInputs'
 import { BasisrenteInputs } from './BasisrenteInputs'
 import { AltersvorsorgedepotInputs } from './AltersvorsorgedepotInputs'
 import { RiesterInputs } from './RiesterInputs'
+import { BavInstanceInputs } from '../produkte/instances/BavInstanceInputs'
+import { EtfInstanceInputs } from '../produkte/instances/EtfInstanceInputs'
+import { InsuranceInstanceInputs } from '../produkte/instances/InsuranceInstanceInputs'
+import { BasisrenteInstanceInputs } from '../produkte/instances/BasisrenteInstanceInputs'
+import { AltersvorsorgedepotInstanceInputs } from '../produkte/instances/AltersvorsorgedepotInstanceInputs'
+import { RiesterInstanceInputs } from '../produkte/instances/RiesterInstanceInputs'
 
 /**
  * Shared context for product-specific input rendering. `InputsPanel` builds it
@@ -47,13 +61,47 @@ export interface ProductInputsContext {
 }
 
 /**
- * Per-product UI registration. Currently only `renderInputs` collapses real
- * duplication in `InputsPanel`; if `selectFunding`/`selectResult` start
- * appearing in more places (e.g. inventory cards in Group G), promote them
- * here at that point — adding fields now would be speculative.
+ * Union of all per-product workspace instance shapes accepted by
+ * `renderInstanceInputs`. Aligned with `AnyInstance` in
+ * `src/app/portfolioState.ts`; we re-declare here so the registry stays
+ * React-only and doesn't drag the portfolio state hook into its dependency
+ * tree.
+ */
+export type WorkspaceInstance =
+  | BavInstance
+  | EtfInstance
+  | InsuranceInstance
+  | BasisrenteInstance
+  | AltersvorsorgedepotInstance
+  | RiesterInstance
+
+/**
+ * Shared context for a per-instance editor. Each registry entry narrows
+ * `instance` and `patchInstance` to its product's instance type internally;
+ * the panel passes the union shape because it iterates a heterogeneous list.
+ */
+export interface InstanceInputsContext {
+  readonly instance: WorkspaceInstance
+  readonly patchInstance: (patch: Partial<WorkspaceInstance>) => void
+  readonly profile: PersonalProfile
+  readonly activeRules: GermanRules
+}
+
+/**
+ * Per-product UI registration.
+ *
+ * - `renderInputs` (PR 3): compare-mode singleton editor mounted inside the
+ *   Sober D § 2 row disclosure. Reads `ScenarioAssumptions`.
+ * - `renderInstanceInputs` (CX-PR4-2 R1): combine-mode per-instance editor
+ *   mounted inside the same § 2 disclosure when the panel iterates
+ *   `WorkspaceAssumptionsV2`. Optional — products without a registered
+ *   instance editor surface a fallback message and the row's "Details
+ *   ansehen ›" affordance remains the only edit path. All six multi-instance
+ *   products carry an editor today.
  */
 export interface ProductUiEntry {
   readonly renderInputs: (ctx: ProductInputsContext) => ReactNode
+  readonly renderInstanceInputs?: (ctx: InstanceInputsContext) => ReactNode
 }
 
 export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
@@ -62,6 +110,12 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
       <EtfInputs
         assumptions={ctx.assumptions}
         onAssumptionsChange={ctx.onAssumptionsChange}
+      />
+    ),
+    renderInstanceInputs: (ctx) => (
+      <EtfInstanceInputs
+        instance={ctx.instance as EtfInstance}
+        patchInstance={ctx.patchInstance as (p: Partial<EtfInstance>) => void}
       />
     ),
   },
@@ -84,6 +138,12 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
         rules={ctx.rules}
       />
     ),
+    renderInstanceInputs: (ctx) => (
+      <BavInstanceInputs
+        instance={ctx.instance as BavInstance}
+        patchInstance={ctx.patchInstance as (p: Partial<BavInstance>) => void}
+      />
+    ),
   },
   versicherung: {
     renderInputs: (ctx) => (
@@ -94,6 +154,14 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
         insuranceTaxMode={ctx.insuranceTaxMode}
         insuranceProductResult={ctx.insuranceResult}
         rules={ctx.rules}
+      />
+    ),
+    renderInstanceInputs: (ctx) => (
+      <InsuranceInstanceInputs
+        instance={ctx.instance as InsuranceInstance}
+        patchInstance={
+          ctx.patchInstance as (p: Partial<InsuranceInstance>) => void
+        }
       />
     ),
   },
@@ -109,6 +177,14 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
         retirementAge={ctx.profile.retirementAge}
       />
     ),
+    renderInstanceInputs: (ctx) => (
+      <BasisrenteInstanceInputs
+        instance={ctx.instance as BasisrenteInstance}
+        patchInstance={
+          ctx.patchInstance as (p: Partial<BasisrenteInstance>) => void
+        }
+      />
+    ),
   },
   altersvorsorgedepot: {
     renderInputs: (ctx) => (
@@ -122,6 +198,16 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
         rules={ctx.rules}
       />
     ),
+    renderInstanceInputs: (ctx) => (
+      <AltersvorsorgedepotInstanceInputs
+        instance={ctx.instance as AltersvorsorgedepotInstance}
+        patchInstance={
+          ctx.patchInstance as (
+            p: Partial<AltersvorsorgedepotInstance>,
+          ) => void
+        }
+      />
+    ),
   },
   riester: {
     renderInputs: (ctx) => (
@@ -132,6 +218,14 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
         profile={ctx.profile}
         riesterFunding={ctx.simulation.riesterFunding}
         riesterProductResult={ctx.selectedResults.find((r) => r.productId === 'riester')}
+      />
+    ),
+    renderInstanceInputs: (ctx) => (
+      <RiesterInstanceInputs
+        instance={ctx.instance as RiesterInstance}
+        patchInstance={
+          ctx.patchInstance as (p: Partial<RiesterInstance>) => void
+        }
       />
     ),
   },

@@ -21,8 +21,8 @@
  * the same source of truth.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, renderHook } from '@testing-library/react'
 import type { WorkspaceUiState } from '../../app/useWorkspaceUiState'
 import type { ProductResult } from '../../domain'
 import type { Workspace } from '../../domain/workspace'
@@ -99,6 +99,7 @@ vi.mock('../../app/downloadJsonBlob', () => ({
 
 // Lazy import AFTER the mocks register.
 import { AngabenProduktePage } from './AngabenProduktePage'
+import { useNowSnapshot } from './useNowSnapshot'
 
 beforeEach(() => {
   produkteEingabenPanelSpy.mockClear()
@@ -397,6 +398,16 @@ describe('AngabenProduktePage — Schritt 1 ↔ Schritt 2 round-trip (PR 2)', ()
 // ---------------------------------------------------------------------------
 
 describe('AngabenProduktePage — receipt strip (PR 4)', () => {
+  // CR-PR4-R1-2: previous tests relied on the moving wall-clock "<10s" bucket
+  // in `formatRelativeTime`, which could flake on slow CI. Wrapping the block
+  // in fake timers + `vi.setSystemTime` pins the clock to a fixed moment
+  // before the first render, so "soeben" / "1 Vertrag" assertions are
+  // deterministic. We restore real timers in afterAll so unrelated tests
+  // aren't affected.
+  beforeAll(() => vi.useFakeTimers())
+  afterAll(() => vi.useRealTimers())
+  beforeEach(() => vi.setSystemTime(new Date('2026-05-29T13:00:00Z')))
+
   it('compare-mode hides the receipt strip (singleton state has no contract count)', () => {
     const { queryByTestId } = render(
       <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
@@ -406,8 +417,8 @@ describe('AngabenProduktePage — receipt strip (PR 4)', () => {
 
   it('combine-mode renders live "{N} Verträge erfasst" + relative time when the workspace has instances', () => {
     // Seed a workspace with 2 bAV + 1 ETF instance so the count = 3, and a
-    // recent lastEditedAt so the relative-time string is "soeben" (the
-    // < 10-second floor in formatRelativeTime).
+    // lastEditedAt at the pinned "now" so the relative-time string is
+    // "soeben" (the < 10-second floor in formatRelativeTime).
     let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
     seed = {
       ...seed,
@@ -440,5 +451,39 @@ describe('AngabenProduktePage — receipt strip (PR 4)', () => {
     const strip = getByTestId('angaben-produkte-receipt')
     expect(strip.textContent).toContain('1 Vertrag ')
     expect(strip.textContent).not.toContain('1 Verträge')
+  })
+
+  it('useNowSnapshot ticks via 1s interval when lastEditedAt is set (CR-PR4-R1-1)', () => {
+    // Regression for CR-PR4-R1-1: the previous `useNowSnapshot` returned a
+    // no-op `subscribe`, so `useSyncExternalStore` had no way to re-render
+    // over time and the "zuletzt geändert vor X" bucket froze.
+    //
+    // We render-hook the primitive directly because the page-shell receipt
+    // strip's saved `lastEditedAt` is currently being dropped on load by
+    // `mergeDeep` in src/storage.ts (it walks only default keys, and
+    // `defaultWorkspace.baseline` doesn't declare a `lastEditedAt` key) —
+    // an orthogonal storage pre-existing issue not in scope for this PR R1
+    // fix. The primitive's tested behaviour here is exactly what the strip
+    // uses once that storage issue is addressed.
+    const T0 = Date.now()
+    const { result } = renderHook(() => useNowSnapshot(T0))
+    expect(result.current).toBe(T0)
+    act(() => {
+      vi.setSystemTime(new Date('2026-05-29T13:00:15Z'))
+      vi.advanceTimersByTime(1_500)
+    })
+    expect(result.current).toBeGreaterThan(T0)
+  })
+
+  it('useNowSnapshot freezes when lastEditedAt is undefined (CR-PR4-R1-1)', () => {
+    // The fresh-workspace branch: `subscribe` short-circuits to a no-op
+    // cleanup so an idle receipt strip on a default workspace doesn't burn
+    // a setInterval forever just to display the constant "soeben".
+    const { result } = renderHook(() => useNowSnapshot(undefined))
+    const initial = result.current
+    act(() => {
+      vi.advanceTimersByTime(15_000)
+    })
+    expect(result.current).toBe(initial)
   })
 })

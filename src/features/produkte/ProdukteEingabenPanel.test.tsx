@@ -375,12 +375,53 @@ describe('ProdukteEingabenPanel — CX-PR3-1 PKV label regression', () => {
 // affordances back to the page-level mutators.
 // ---------------------------------------------------------------------------
 
+/**
+ * CR-PR4-R1-3: derive the canonical first multi-instance product id and the
+ * total tile count from PRODUCT_REGISTRY instead of hardcoding `'etf'` / `6`.
+ * Adding or reordering a product in the registry then automatically flows
+ * through to these assertions.
+ */
+const REGISTRY_MULTI_INSTANCE_IDS = PRODUCT_REGISTRY
+  .map((e) => e.metadata.id)
+  .filter(
+    (id): id is keyof typeof INVENTORY_PRODUCT_REGISTRY =>
+      id in INVENTORY_PRODUCT_REGISTRY,
+  )
+const FIRST_COMBINE_PRODUCT_ID = REGISTRY_MULTI_INSTANCE_IDS[0]!
+const COMBINE_TILE_COUNT = REGISTRY_MULTI_INSTANCE_IDS.length
+
+/**
+ * Look up the per-instance array for a multi-instance product id on a
+ * workspace assumptions block. `versicherung` maps to the `insurance` key
+ * (engine convention); all other ids map 1:1. Mirrors the same private
+ * helper in `ProdukteEingabenPanel.tsx`.
+ */
+function instancesForProduct(
+  assumptions: Workspace['baseline']['assumptions'],
+  productId: keyof typeof INVENTORY_PRODUCT_REGISTRY,
+) {
+  switch (productId) {
+    case 'bav':
+      return assumptions.bav
+    case 'etf':
+      return assumptions.etf
+    case 'versicherung':
+      return assumptions.insurance
+    case 'basisrente':
+      return assumptions.basisrente
+    case 'altersvorsorgedepot':
+      return assumptions.altersvorsorgedepot
+    case 'riester':
+      return assumptions.riester
+  }
+}
+
 function buildCombineWorkspaceWithInstances(): Workspace {
   let ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
   ws = { ...ws, mode: 'combine' }
   ws = addInstanceToWorkspace(ws, 'bav')
   ws = addInstanceToWorkspace(ws, 'bav')
-  ws = addInstanceToWorkspace(ws, 'etf')
+  ws = addInstanceToWorkspace(ws, FIRST_COMBINE_PRODUCT_ID)
   return ws
 }
 
@@ -430,13 +471,45 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
     expect(panel!.getAttribute('data-mode')).toBe('combine')
   })
 
-  it('clicking "Bearbeiten" calls onEditInstance(productId, instanceId)', () => {
+  it('clicking "Bearbeiten" opens the inline instance editor disclosure', () => {
+    // CX-PR4-2 R1: "Bearbeiten" no longer navigates — it toggles an inline
+    // disclosure that mounts PRODUCT_UI_REGISTRY[productId].renderInstanceInputs.
+    // Editing inside the disclosure dispatches via onPatchBaseline; navigation
+    // is now a separate "Details ansehen ›" affordance (covered in its own
+    // test below).
     const onEditInstance = vi.fn()
     const ws = buildCombineWorkspaceWithInstances()
-    // The canonical sort order in the combine panel is [etf, bav, …]; the
-    // first row is the ETF instance, so the first "Bearbeiten" click dispatches
-    // onto that productId.
-    const firstEtfInstanceId = ws.baseline.assumptions.etf[0]!.instanceId
+    const firstInstanceId =
+      instancesForProduct(ws.baseline.assumptions, FIRST_COMBINE_PRODUCT_ID)[0]!.instanceId
+    const { getAllByRole, queryByTestId } = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({
+          baseline: ws.baseline,
+          assumptions: ws.baseline.assumptions,
+          onEditInstance,
+        })}
+      />,
+    )
+    expect(
+      queryByTestId(`produkte-instance-disclosure-${firstInstanceId}`),
+    ).toBeNull()
+    const editButtons = getAllByRole('button', { name: 'Bearbeiten' })
+    fireEvent.click(editButtons[0]!)
+    // Disclosure mounts.
+    expect(
+      queryByTestId(`produkte-instance-disclosure-${firstInstanceId}`),
+    ).not.toBeNull()
+    // Navigation does NOT fire on Bearbeiten.
+    expect(onEditInstance).not.toHaveBeenCalled()
+  })
+
+  it('clicking "Details ansehen ›" calls onEditInstance(productId, instanceId)', () => {
+    // CX-PR4-2 R1: the read-only /vertrag/:id detail page is still reachable
+    // from the row via the new "Details ansehen ›" secondary affordance.
+    const onEditInstance = vi.fn()
+    const ws = buildCombineWorkspaceWithInstances()
+    const firstInstanceId =
+      instancesForProduct(ws.baseline.assumptions, FIRST_COMBINE_PRODUCT_ID)[0]!.instanceId
     const { getAllByRole } = render(
       <ProdukteEingabenPanel
         {...makeCombineProps({
@@ -446,17 +519,110 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
         })}
       />,
     )
+    const detailButtons = getAllByRole('button', { name: /Details ansehen/ })
+    fireEvent.click(detailButtons[0]!)
+    expect(onEditInstance).toHaveBeenCalledOnce()
+    expect(onEditInstance).toHaveBeenCalledWith(
+      FIRST_COMBINE_PRODUCT_ID,
+      firstInstanceId,
+    )
+  })
+
+  it('toggling "Bearbeiten" twice unmounts the inline disclosure', () => {
+    const ws = buildCombineWorkspaceWithInstances()
+    const firstInstanceId =
+      instancesForProduct(ws.baseline.assumptions, FIRST_COMBINE_PRODUCT_ID)[0]!.instanceId
+    const { getAllByRole, queryByTestId } = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({
+          baseline: ws.baseline,
+          assumptions: ws.baseline.assumptions,
+        })}
+      />,
+    )
     const editButtons = getAllByRole('button', { name: 'Bearbeiten' })
     fireEvent.click(editButtons[0]!)
-    expect(onEditInstance).toHaveBeenCalledOnce()
-    expect(onEditInstance).toHaveBeenCalledWith('etf', firstEtfInstanceId)
+    expect(
+      queryByTestId(`produkte-instance-disclosure-${firstInstanceId}`),
+    ).not.toBeNull()
+    // The button label flips to "Schließen" when the disclosure is open;
+    // clicking it again collapses the disclosure.
+    const closeButtons = getAllByRole('button', { name: 'Schließen' })
+    fireEvent.click(closeButtons[0]!)
+    expect(
+      queryByTestId(`produkte-instance-disclosure-${firstInstanceId}`),
+    ).toBeNull()
+  })
+
+  it('editing a field inside the disclosure calls onPatchBaseline with the patched instance', () => {
+    // CX-PR4-2 R1: smoke-test that the inline editor wires the patch callback
+    // back through `onPatchBaseline`. We seed a single bAV instance and bump
+    // its monthlyGrossConversion via the editor — the panel must dispatch a
+    // workspace patch that contains the updated value on the right instance.
+    let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+    seed = { ...seed, mode: 'combine' }
+    seed = addInstanceToWorkspace(seed, 'bav')
+    const onPatchBaseline = vi.fn()
+    const bavInstanceId = seed.baseline.assumptions.bav[0]!.instanceId
+    const { getAllByRole, getByTestId } = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({
+          baseline: seed.baseline,
+          assumptions: seed.baseline.assumptions,
+          onPatchBaseline,
+        })}
+      />,
+    )
+    // Open the bAV editor.
+    fireEvent.click(getAllByRole('button', { name: 'Bearbeiten' })[0]!)
+    // Find the disclosure host and the monthlyGrossConversion <input> inside
+    // it. The editor uses a labelled `Brutto-Umwandlung` field for bAV.
+    const disclosure = getByTestId(
+      `produkte-instance-disclosure-${bavInstanceId}`,
+    )
+    const inputs = disclosure.querySelectorAll('input[type="number"]')
+    // The first numeric input is `contractStartYear` from CommonContractFields;
+    // we want the bAV-specific Brutto-Umwandlung input. We find it by label.
+    let target: HTMLInputElement | undefined
+    const labels = disclosure.querySelectorAll('label')
+    labels.forEach((labelEl) => {
+      if (
+        labelEl.textContent?.includes('Brutto-Umwandlung') &&
+        labelEl.htmlFor
+      ) {
+        const el = disclosure.querySelector(
+          `#${labelEl.htmlFor}`,
+        ) as HTMLInputElement | null
+        if (el) target = el
+      }
+    })
+    expect(target ?? inputs[inputs.length - 1]).toBeDefined()
+    const input = (target ?? inputs[inputs.length - 1]) as HTMLInputElement
+    fireEvent.change(input, { target: { value: '321' } })
+    fireEvent.blur(input)
+    expect(onPatchBaseline).toHaveBeenCalled()
+    // The first call argument is a partial Scenario; we check that
+    // `assumptions.bav` carries the patched instance id and value.
+    const lastCall =
+      onPatchBaseline.mock.calls[onPatchBaseline.mock.calls.length - 1]!
+    const patch = lastCall[0] as {
+      assumptions?: { bav?: Array<{ instanceId: string; monthlyGrossConversion: number }> }
+    }
+    expect(patch.assumptions?.bav).toBeDefined()
+    const patched = patch.assumptions!.bav!.find(
+      (i) => i.instanceId === bavInstanceId,
+    )
+    expect(patched).toBeDefined()
+    expect(patched!.monthlyGrossConversion).toBe(321)
   })
 
   it('clicking "Entfernen" calls removeInstance(productId, instanceId)', () => {
     const removeInstance = vi.fn()
     const ws = buildCombineWorkspaceWithInstances()
-    // Sort order has ETF first; assert against the ETF row's Entfernen button.
-    const firstEtfInstanceId = ws.baseline.assumptions.etf[0]!.instanceId
+    // Sort order matches PRODUCT_REGISTRY; first row's product id comes from
+    // the derived REGISTRY_MULTI_INSTANCE_IDS[0].
+    const firstInstanceId =
+      instancesForProduct(ws.baseline.assumptions, FIRST_COMBINE_PRODUCT_ID)[0]!.instanceId
     const { getAllByRole } = render(
       <ProdukteEingabenPanel
         {...makeCombineProps({
@@ -469,7 +635,10 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
     const removeButtons = getAllByRole('button', { name: 'Entfernen' })
     fireEvent.click(removeButtons[0]!)
     expect(removeInstance).toHaveBeenCalledOnce()
-    expect(removeInstance).toHaveBeenCalledWith('etf', firstEtfInstanceId)
+    expect(removeInstance).toHaveBeenCalledWith(
+      FIRST_COMBINE_PRODUCT_ID,
+      firstInstanceId,
+    )
   })
 
   it('clicking "Weitere Optionen" calls onOpenDecisionMenu(instanceId)', () => {
@@ -509,8 +678,9 @@ describe('ProdukteEingabenPanel — § 3 combine-mode quick-add tiles', () => {
       <ProdukteEingabenPanel {...makeCombineProps()} />,
     )
     const tiles = container.querySelectorAll('.d-sparform-option')
-    // 6 multi-instance products: bav, etf, versicherung, basisrente, altersvorsorgedepot, riester.
-    expect(tiles.length).toBe(6)
+    // CR-PR4-R1-3: derive the expected tile count from the registry so adding
+    // or removing a multi-instance product flows through automatically.
+    expect(tiles.length).toBe(COMBINE_TILE_COUNT)
   })
 
   it('clicking a § 3 tile calls addInstance(productId) with the correct id', () => {
@@ -518,14 +688,14 @@ describe('ProdukteEingabenPanel — § 3 combine-mode quick-add tiles', () => {
     const { container } = render(
       <ProdukteEingabenPanel {...makeCombineProps({ addInstance })} />,
     )
-    // First tile is ETF (in ALL_MULTI_INSTANCE_PRODUCT_IDS canonical order).
+    // The first tile id matches the first entry of REGISTRY_MULTI_INSTANCE_IDS.
     const firstTile = container.querySelector(
       'button.d-sparform-option',
     ) as HTMLButtonElement
     expect(firstTile).not.toBeNull()
     fireEvent.click(firstTile)
     expect(addInstance).toHaveBeenCalledOnce()
-    expect(addInstance).toHaveBeenCalledWith('etf')
+    expect(addInstance).toHaveBeenCalledWith(FIRST_COMBINE_PRODUCT_ID)
   })
 
   it('mounts the DAddVertragButton CTA in combine-mode (compare-mode omits it)', () => {
@@ -536,10 +706,9 @@ describe('ProdukteEingabenPanel — § 3 combine-mode quick-add tiles', () => {
     const cta = container.querySelector('.d-add-vertrag-button') as HTMLButtonElement | null
     expect(cta).not.toBeNull()
     fireEvent.click(cta!)
-    // Clicking the CTA calls addInstance with the first multi-instance product
-    // (ETF in canonical order).
+    // CTA seeds the registry-canonical first multi-instance product id.
     expect(addInstance).toHaveBeenCalledOnce()
-    expect(addInstance).toHaveBeenCalledWith('etf')
+    expect(addInstance).toHaveBeenCalledWith(FIRST_COMBINE_PRODUCT_ID)
   })
 })
 

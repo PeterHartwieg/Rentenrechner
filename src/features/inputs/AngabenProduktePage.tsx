@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useMemo, useState } from 'react'
 import './AngabenPage.css'
 import './AngabenProduktePage.css'
 import { LegalFooter } from '../legal/LegalFooter'
@@ -21,6 +21,7 @@ import type { InsuranceProductResult } from '../../domain'
 import { buildStateJson } from '../../storage'
 import { downloadJsonBlob } from '../../app/downloadJsonBlob'
 import { formatRelativeTime } from '../../utils/format'
+import { useNowSnapshot } from './useNowSnapshot'
 
 /**
  * `/eingaben/produkte` — Schritt 2 of the two-page `/eingaben` wizard.
@@ -428,45 +429,6 @@ function ReceiptStrip({ workspace }: ReceiptStripProps) {
   )
 }
 
-// ---------------------------------------------------------------------------
 // `useNowSnapshot` — React-pure "current time" hook for the receipt strip.
-// ---------------------------------------------------------------------------
-
-/**
- * Returns a numeric "now" snapshot that updates whenever the provided
- * `lastEditedAt` token changes. The snapshot is captured once per token via
- * a `useSyncExternalStore` subscription — render itself never calls
- * `Date.now()`, which keeps the component compliant with React 19's purity
- * rules (the lint forbids `Date.now()` during render or inside `setState`
- * calls inside `useEffect`).
- *
- * The store is keyed by the latest `lastEditedAt` so a baseline edit yields
- * a fresh snapshot; absent any edit, the snapshot stays constant across
- * re-renders. Tests can pin time deterministically by feeding a stable
- * `lastEditedAt` and mocking `Date.now` before the first mount.
- */
-function useNowSnapshot(lastEditedAt: number | undefined): number {
-  // Lazy `useState` init reads `Date.now()` exactly once per mount — React
-  // permits impure reads inside the initializer because it runs in a setup
-  // phase, not during render. Subsequent updates flow through
-  // `useSyncExternalStore`: when `lastEditedAt` changes, `getSnapshot`
-  // recomputes via `Date.now()` and React commits the new value.
-  const [initialNow] = useState<number>(() => Date.now())
-  const cachedTokenRef = useRef<number | undefined>(lastEditedAt)
-  const cachedNowRef = useRef<number>(initialNow)
-  const subscribe = useCallback((_onStoreChange: () => void) => {
-    // The store has no real subscribers; we keep the prop so React knows
-    // the snapshot is stable across renders until `getSnapshot` returns a
-    // different value (which it does after a `lastEditedAt` change).
-    void _onStoreChange
-    return () => {}
-  }, [])
-  const getSnapshot = useCallback(() => {
-    if (cachedTokenRef.current !== lastEditedAt) {
-      cachedTokenRef.current = lastEditedAt
-      cachedNowRef.current = Date.now()
-    }
-    return cachedNowRef.current
-  }, [lastEditedAt])
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
-}
+// Lives in `./useNowSnapshot.ts` so the `react-refresh/only-export-components`
+// lint on this page-component module stays happy.
