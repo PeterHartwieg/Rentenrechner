@@ -20,11 +20,8 @@ import type { EtfInstance } from '../../../domain/instances'
 import { FeeSection, type FeeInputMode } from '../../inputs/sections/FeeSection'
 import { BeitragsdynamikField } from '../../inputs/sections/BeitragsdynamikField'
 import { SIMPLIFIED_PRESETS } from '../../inputs/sections/feePresets'
-import {
-  CombineField,
-  DraftNumberInput,
-  CommonContractFields,
-} from './_shared'
+import { DraftNumberInput, CommonContractFields } from './_shared'
+import { makeInstancePatcher } from './instancePatch'
 
 interface Props {
   instance: EtfInstance
@@ -52,15 +49,7 @@ export function EtfInstanceInputs({ instance, patchInstance }: Props) {
   }
   const riy = instance.annualAssetFee
 
-  const onCommonChange = (next: EtfInstance) => {
-    const patch: Partial<EtfInstance> = {}
-    ;(Object.keys(next) as Array<keyof EtfInstance>).forEach((k) => {
-      if (next[k] !== instance[k]) {
-        ;(patch as Record<string, unknown>)[k as string] = next[k]
-      }
-    })
-    if (Object.keys(patch).length > 0) patchInstance(patch)
-  }
+  const onCommonChange = makeInstancePatcher(instance, patchInstance)
 
   return (
     <div className="combine-instance-fields">
@@ -69,16 +58,15 @@ export function EtfInstanceInputs({ instance, patchInstance }: Props) {
         onChange={onCommonChange}
         currentValueLabel="Aktueller Depotwert"
       />
-      <CombineField label="Monatliche Sparrate">
-        <DraftNumberInput
-          value={instance.monthlyContribution ?? 0}
-          min={0}
-          max={5000}
-          step={10}
-          disabled={instance.status === 'paid_up'}
-          onCommit={(v) => patchInstance({ monthlyContribution: v })}
-        />
-      </CombineField>
+      <DraftNumberInput
+        label="Monatliche Sparrate"
+        value={instance.monthlyContribution ?? 0}
+        min={0}
+        max={5000}
+        step={10}
+        disabled={instance.status === 'paid_up'}
+        onCommit={(v) => patchInstance({ monthlyContribution: v })}
+      />
 
       <details className="inv-layer3-details">
         <summary className="inv-layer3-summary">Details</summary>

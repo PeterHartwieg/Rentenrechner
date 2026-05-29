@@ -12,11 +12,8 @@ import { useState } from 'react'
 import type { BasisrenteInstance } from '../../../domain/instances'
 import { FeeSection, type FeeInputMode } from '../../inputs/sections/FeeSection'
 import { SIMPLIFIED_PRESETS } from '../../inputs/sections/feePresets'
-import {
-  CombineField,
-  DraftNumberInput,
-  CommonContractFields,
-} from './_shared'
+import { DraftNumberInput, CommonContractFields } from './_shared'
+import { makeInstancePatcher } from './instancePatch'
 
 interface Props {
   instance: BasisrenteInstance
@@ -27,37 +24,27 @@ export function BasisrenteInstanceInputs({ instance, patchInstance }: Props) {
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
   const riy = instance.fees.wrapperAssetFee + instance.fees.fundAssetFee
 
-  const onCommonChange = (next: BasisrenteInstance) => {
-    const patch: Partial<BasisrenteInstance> = {}
-    ;(Object.keys(next) as Array<keyof BasisrenteInstance>).forEach((k) => {
-      if (next[k] !== instance[k]) {
-        ;(patch as Record<string, unknown>)[k as string] = next[k]
-      }
-    })
-    if (Object.keys(patch).length > 0) patchInstance(patch)
-  }
+  const onCommonChange = makeInstancePatcher(instance, patchInstance)
 
   return (
     <div className="combine-instance-fields">
       <CommonContractFields instance={instance} onChange={onCommonChange} />
-      <CombineField label="Monatsbeitrag (EUR)">
-        <DraftNumberInput
-          value={instance.monthlyGrossContribution}
-          min={0}
-          max={5000}
-          step={10}
-          disabled={instance.status === 'paid_up'}
-          onCommit={(v) => patchInstance({ monthlyGrossContribution: v })}
-        />
-      </CombineField>
-      <CombineField label="Garantierter Rentenfaktor">
-        <DraftNumberInput
-          value={instance.rentenfaktor}
-          min={0}
-          step={0.5}
-          onCommit={(v) => patchInstance({ rentenfaktor: v })}
-        />
-      </CombineField>
+      <DraftNumberInput
+        label="Monatsbeitrag (EUR)"
+        value={instance.monthlyGrossContribution}
+        min={0}
+        max={5000}
+        step={10}
+        disabled={instance.status === 'paid_up'}
+        onCommit={(v) => patchInstance({ monthlyGrossContribution: v })}
+      />
+      <DraftNumberInput
+        label="Garantierter Rentenfaktor"
+        value={instance.rentenfaktor}
+        min={0}
+        step={0.5}
+        onCommit={(v) => patchInstance({ rentenfaktor: v })}
+      />
 
       <details className="inv-layer3-details">
         <summary className="inv-layer3-summary">Details</summary>

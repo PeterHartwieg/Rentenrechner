@@ -20,6 +20,7 @@ import {
   CombineNativeSelect,
   CommonContractFields,
 } from './_shared'
+import { makeInstancePatcher } from './instancePatch'
 
 interface Props {
   instance: AltersvorsorgedepotInstance
@@ -30,31 +31,20 @@ export function AltersvorsorgedepotInstanceInputs({
   instance,
   patchInstance,
 }: Props) {
-  const onCommonChange = (next: AltersvorsorgedepotInstance) => {
-    const patch: Partial<AltersvorsorgedepotInstance> = {}
-    ;(
-      Object.keys(next) as Array<keyof AltersvorsorgedepotInstance>
-    ).forEach((k) => {
-      if (next[k] !== instance[k]) {
-        ;(patch as Record<string, unknown>)[k as string] = next[k]
-      }
-    })
-    if (Object.keys(patch).length > 0) patchInstance(patch)
-  }
+  const onCommonChange = makeInstancePatcher(instance, patchInstance)
 
   return (
     <div className="combine-instance-fields">
       <CommonContractFields instance={instance} onChange={onCommonChange} />
-      <CombineField label="Eigenbeitrag (EUR/Monat)">
-        <DraftNumberInput
-          value={instance.monthlyOwnContribution}
-          min={0}
-          max={5000}
-          step={10}
-          disabled={instance.status === 'paid_up'}
-          onCommit={(v) => patchInstance({ monthlyOwnContribution: v })}
-        />
-      </CombineField>
+      <DraftNumberInput
+        label="Eigenbeitrag (EUR/Monat)"
+        value={instance.monthlyOwnContribution}
+        min={0}
+        max={5000}
+        step={10}
+        disabled={instance.status === 'paid_up'}
+        onCommit={(v) => patchInstance({ monthlyOwnContribution: v })}
+      />
       <CombineField label="Depottyp">
         <CombineNativeSelect
           value={instance.subtype}

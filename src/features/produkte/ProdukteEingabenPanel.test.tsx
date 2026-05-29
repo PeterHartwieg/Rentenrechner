@@ -581,17 +581,16 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
       `produkte-instance-disclosure-${bavInstanceId}`,
     )
     const inputs = disclosure.querySelectorAll('input[type="number"]')
-    // The first numeric input is `contractStartYear` from CommonContractFields;
-    // we want the bAV-specific Brutto-Umwandlung input. We find it by label.
+    // The numeric fields now render through `<NumberField>`, which wraps its
+    // <input> inside the <label> (no htmlFor association). Locate the
+    // bAV-specific Brutto-Umwandlung field by label text, then read the nested
+    // input directly.
     let target: HTMLInputElement | undefined
     const labels = disclosure.querySelectorAll('label')
     labels.forEach((labelEl) => {
-      if (
-        labelEl.textContent?.includes('Brutto-Umwandlung') &&
-        labelEl.htmlFor
-      ) {
-        const el = disclosure.querySelector(
-          `#${labelEl.htmlFor}`,
+      if (labelEl.textContent?.includes('Brutto-Umwandlung')) {
+        const el = labelEl.querySelector(
+          'input[type="number"]',
         ) as HTMLInputElement | null
         if (el) target = el
       }

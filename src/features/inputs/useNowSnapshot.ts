@@ -11,9 +11,13 @@
  *   - `subscribe` starts a 1-second `setInterval` that pings React to
  *     re-read the snapshot, and clears the interval on unmount / when
  *     `lastEditedAt` flips back to `undefined`.
- *   - `getSnapshot` returns `Date.now()` when `lastEditedAt` is set; without
- *     a recorded edit it freezes at `initialNow` (captured once per mount)
- *     so the strip doesn't tick uselessly for fresh workspaces.
+ *   - `getSnapshot` returns a *cached* timestamp (`nowRef`, refreshed only by
+ *     the 1-second tick) when `lastEditedAt` is set; without a recorded edit
+ *     it freezes at `initialNow` (captured once per mount) so the strip
+ *     doesn't tick uselessly for fresh workspaces. It never calls `Date.now()`
+ *     during a snapshot read, so `useSyncExternalStore`'s `Object.is` compare
+ *     stays stable across read/compare passes (React 19 "The result of
+ *     getSnapshot should be cached to avoid an infinite loop" — CR-PR4-R2-1).
  *
  * Tests can pin time deterministically by combining
  * `vi.useFakeTimers()` + `vi.setSystemTime()` before the first mount and
@@ -28,7 +32,7 @@
  * `AngabenProduktePage.tsx` (component file).
  */
 
-import { useCallback, useState, useSyncExternalStore } from 'react'
+import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
 
 export function useNowSnapshot(lastEditedAt: number | undefined): number {
   // Lazy `useState` init reads `Date.now()` exactly once per mount — React
@@ -36,16 +40,26 @@ export function useNowSnapshot(lastEditedAt: number | undefined): number {
   // phase, not during render. Used as the "no edit yet" baseline so the
   // computed elapsedMs in the caller stays 0 and the strip reads "soeben".
   const [initialNow] = useState<number>(() => Date.now())
+  // Cache the ticking timestamp in a ref. `getSnapshot` reads this ref instead
+  // of calling `Date.now()` directly, so two consecutive snapshot reads within
+  // the same tick return the identical value. React 19 compares snapshots with
+  // `Object.is` on every read pass; a fresh `Date.now()` per call would look
+  // like a perpetual store change and trip the "getSnapshot should be cached
+  // to avoid an infinite loop" warning. The ref only advances in the tick.
+  const nowRef = useRef<number>(initialNow)
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
       if (lastEditedAt === undefined) return () => {}
-      const intervalId = window.setInterval(onStoreChange, 1_000)
+      const intervalId = window.setInterval(() => {
+        nowRef.current = Date.now()
+        onStoreChange()
+      }, 1_000)
       return () => window.clearInterval(intervalId)
     },
     [lastEditedAt],
   )
   const getSnapshot = useCallback(
-    () => (lastEditedAt === undefined ? initialNow : Date.now()),
+    () => (lastEditedAt === undefined ? initialNow : nowRef.current),
     [initialNow, lastEditedAt],
   )
   // Pass `initialNow` as the SSR fallback (third arg) so renders on the

@@ -28,6 +28,7 @@ export function NumberField({
   step = 1,
   decimals,
   suffix,
+  disabled,
   onChange,
   onCommit,
   feedbackTargetId,
@@ -52,6 +53,12 @@ export function NumberField({
    */
   decimals?: number
   suffix?: string
+  /**
+   * Disables the input — e.g. a paid-up (beitragsfrei) contract whose
+   * contribution can no longer change. Renders identically to today when
+   * omitted (defaults to enabled).
+   */
+  disabled?: boolean
   /** Fires on every keystroke. Use for live preview of unconstrained inputs. */
   onChange?: (value: string) => void
   /** Fires on blur or Enter. Use for clamped/validated inputs so partial keystrokes don't trigger range corrections. */
@@ -136,6 +143,7 @@ export function NumberField({
           min={min}
           max={max}
           step={step}
+          disabled={disabled}
           value={displayValue}
           onChange={(event) => {
             setDraft(event.target.value)

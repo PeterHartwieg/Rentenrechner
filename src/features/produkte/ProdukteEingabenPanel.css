@@ -354,6 +354,20 @@
   color: var(--rw-ink-soft);
 }
 
+/* The per-instance editors now render numeric fields through `<NumberField>`
+   (`.field`) for the UI rounding boundary, alongside the remaining
+   `.combine-field` selects/text. Tighten the NumberField label density so the
+   two sit at the same scale inside the 2-column `.combine-instance-fields`
+   grid. Direct-child only, so FeeSection's nested NumberFields inside the
+   Details disclosure keep their own density. Input padding is left to
+   forms.css so the WCAG 2.5.8 mobile target-size bump survives. Reuses Sober D
+   tokens — no new design tokens. */
+.combine-instance-fields > .field {
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 /* Wrapper around the bundle's "+ Vertrag hinzufügen" CTA in § 3. Keeps a
    small top-gap from the sparform tile grid above. */
 .produkte-eingaben-panel__add-vertrag-wrap {

@@ -42,7 +42,7 @@ import {
   InvFieldContext,
   useInvFieldContext,
 } from '../../inventory/invFieldContext'
-import { useDraftNumber } from '../../inventory/fieldHelpers'
+import { NumberField } from '../../../ui/NumberField'
 
 // ---------------------------------------------------------------------------
 // CombineField — labelled wrapper that pipes a generated id into its child
@@ -74,32 +74,52 @@ export function CombineField({
 }
 
 // ---------------------------------------------------------------------------
-// DraftNumberInput — commit-on-blur numeric input. Same draft-before-commit
-// semantics the deleted sidebar used. Pulls the id from `InvFieldContext`
-// when present so the label association is automatic.
+// DraftNumberInput — labelled commit-on-blur numeric field. Thin adapter over
+// the canonical `<NumberField>` (UI rounding boundary — CLAUDE.md: never bind
+// a raw float to a hand-rolled `<input>`; CR-PR4-R2-3). NumberField owns the
+// label + commit-on-blur draft + range-recovery hint, so the per-instance
+// editors render this directly instead of nesting it inside a `<CombineField>`
+// (the wrapping `<label>` gives the input its accessible name). We keep this
+// adapter so the editor call sites stay number-typed: NumberField hands back a
+// validated numeric string, which we coerce to a number once here rather than
+// at every call site.
 // ---------------------------------------------------------------------------
 
 export function DraftNumberInput({
+  label,
+  labelSuffix,
   value,
   onCommit,
-  id: idProp,
-  ...rest
+  min,
+  max,
+  step,
+  decimals,
+  suffix,
+  disabled,
 }: {
+  label: string
+  labelSuffix?: React.ReactNode
   value: number
   onCommit: (next: number) => void
-} & Omit<
-  React.InputHTMLAttributes<HTMLInputElement>,
-  'value' | 'onChange' | 'onBlur' | 'onKeyDown' | 'type'
->) {
-  const fieldCtx = useInvFieldContext()
-  const { inputProps } = useDraftNumber({ value, onCommit })
+  min?: number
+  max?: number
+  step?: number
+  decimals?: number
+  suffix?: string
+  disabled?: boolean
+}) {
   return (
-    <input
-      type="number"
-      id={idProp ?? fieldCtx?.id}
-      aria-describedby={fieldCtx?.describedById}
-      {...rest}
-      {...inputProps}
+    <NumberField
+      label={label}
+      labelSuffix={labelSuffix}
+      value={value}
+      min={min}
+      max={max}
+      step={step}
+      decimals={decimals}
+      suffix={suffix}
+      disabled={disabled}
+      onCommit={(raw) => onCommit(Number(raw))}
     />
   )
 }
@@ -187,23 +207,21 @@ export function CommonContractFields<T extends InstanceCommon>({
           <option value="offered">Angebot</option>
         </CombineNativeSelect>
       </CombineField>
-      <CombineField label="Vertragsbeginn">
-        <DraftNumberInput
-          value={instance.contractStartYear}
-          min={1970}
-          max={new Date().getFullYear()}
-          step={1}
-          onCommit={(v) => onChange({ ...instance, contractStartYear: v })}
-        />
-      </CombineField>
-      <CombineField label={currentValueLabel}>
-        <DraftNumberInput
-          value={instance.currentValueEUR ?? 0}
-          min={0}
-          step={100}
-          onCommit={(v) => onChange({ ...instance, currentValueEUR: v })}
-        />
-      </CombineField>
+      <DraftNumberInput
+        label="Vertragsbeginn"
+        value={instance.contractStartYear}
+        min={1970}
+        max={new Date().getFullYear()}
+        step={1}
+        onCommit={(v) => onChange({ ...instance, contractStartYear: v })}
+      />
+      <DraftNumberInput
+        label={currentValueLabel}
+        value={instance.currentValueEUR ?? 0}
+        min={0}
+        step={100}
+        onCommit={(v) => onChange({ ...instance, currentValueEUR: v })}
+      />
     </>
   )
 }

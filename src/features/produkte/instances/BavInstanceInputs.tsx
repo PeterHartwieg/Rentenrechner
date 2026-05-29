@@ -31,6 +31,7 @@ import {
   DraftNumberInput,
   CommonContractFields,
 } from './_shared'
+import { makeInstancePatcher } from './instancePatch'
 
 interface Props {
   instance: BavInstance
@@ -43,51 +44,41 @@ export function BavInstanceInputs({ instance, patchInstance }: Props) {
     instance.annualContributionGrowthRate ?? 0,
   )
   const riy = instance.fees.wrapperAssetFee + instance.fees.fundAssetFee
-  // Wrap each field's onChange in a patch dispatch instead of a full
-  // instance-replace. Sibling fields stay untouched in the workspace.
-  const onChange = (next: BavInstance) => {
-    const patch: Partial<BavInstance> = {}
-    ;(Object.keys(next) as Array<keyof BavInstance>).forEach((k) => {
-      if (next[k] !== instance[k]) {
-        ;(patch as Record<string, unknown>)[k as string] = next[k]
-      }
-    })
-    if (Object.keys(patch).length > 0) patchInstance(patch)
-  }
+  // Dispatch only the changed keys instead of a full instance-replace, so
+  // sibling fields stay untouched in the workspace.
+  const onChange = makeInstancePatcher(instance, patchInstance)
 
   return (
     <div className="combine-instance-fields">
       <CommonContractFields instance={instance} onChange={onChange} />
       {instance.status !== 'offered' && (
-        <CombineField label="Brutto-Umwandlung (EUR/Monat)">
-          <DraftNumberInput
-            value={instance.monthlyGrossConversion}
-            min={0}
-            max={5000}
-            step={10}
-            disabled={instance.status === 'paid_up'}
-            onCommit={(v) => patchInstance({ monthlyGrossConversion: v })}
-          />
-        </CombineField>
-      )}
-      <CombineField label="Zusätzlicher AG-Zuschuss (%)">
         <DraftNumberInput
-          value={Math.round(instance.contractualMatchPercent * 1000) / 10}
-          min={0}
-          max={500}
-          step={1}
-          onCommit={(v) => patchInstance({ contractualMatchPercent: v / 100 })}
-        />
-      </CombineField>
-      <CombineField label="Fixer Extra-AG-Beitrag (EUR/Monat)">
-        <DraftNumberInput
-          value={instance.contractualFixedMonthly}
+          label="Brutto-Umwandlung (EUR/Monat)"
+          value={instance.monthlyGrossConversion}
           min={0}
           max={5000}
           step={10}
-          onCommit={(v) => patchInstance({ contractualFixedMonthly: v })}
+          disabled={instance.status === 'paid_up'}
+          onCommit={(v) => patchInstance({ monthlyGrossConversion: v })}
         />
-      </CombineField>
+      )}
+      <DraftNumberInput
+        label="Zusätzlicher AG-Zuschuss (%)"
+        value={Math.round(instance.contractualMatchPercent * 1000) / 10}
+        min={0}
+        max={500}
+        step={1}
+        decimals={1}
+        onCommit={(v) => patchInstance({ contractualMatchPercent: v / 100 })}
+      />
+      <DraftNumberInput
+        label="Fixer Extra-AG-Beitrag (EUR/Monat)"
+        value={instance.contractualFixedMonthly}
+        min={0}
+        max={5000}
+        step={10}
+        onCommit={(v) => patchInstance({ contractualFixedMonthly: v })}
+      />
       <CombineField label="Durchführungsweg">
         <InvSelect
           value={instance.durchfuehrungsweg}
@@ -108,14 +99,13 @@ export function BavInstanceInputs({ instance, patchInstance }: Props) {
           }
         />
       </CombineField>
-      <CombineField label="Garantierter Rentenfaktor">
-        <DraftNumberInput
-          value={instance.rentenfaktor}
-          min={0}
-          step={0.5}
-          onCommit={(v) => patchInstance({ rentenfaktor: v })}
-        />
-      </CombineField>
+      <DraftNumberInput
+        label="Garantierter Rentenfaktor"
+        value={instance.rentenfaktor}
+        min={0}
+        step={0.5}
+        onCommit={(v) => patchInstance({ rentenfaktor: v })}
+      />
 
       <details className="inv-layer3-details">
         <summary className="inv-layer3-summary">Details</summary>

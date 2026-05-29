@@ -21,6 +21,7 @@ import {
   DraftNumberInput,
   CommonContractFields,
 } from './_shared'
+import { diffInstancePatch } from './instancePatch'
 
 interface Props {
   instance: RiesterInstance
@@ -31,13 +32,9 @@ export function RiesterInstanceInputs({ instance, patchInstance }: Props) {
   const onCommonChange = (next: RiesterInstance) => {
     // Keep existingCapital in sync with currentValueEUR per the legacy
     // sidebar's behaviour (see CombineDashboardSidebar.RiesterInstanceCard
-    // line 1069). We do this by merging into the patch we send up.
-    const patch: Partial<RiesterInstance> = {}
-    ;(Object.keys(next) as Array<keyof RiesterInstance>).forEach((k) => {
-      if (next[k] !== instance[k]) {
-        ;(patch as Record<string, unknown>)[k as string] = next[k]
-      }
-    })
+    // line 1069). We compose the shared diff helper, then merge the mirror
+    // field into the patch before dispatching.
+    const patch = diffInstancePatch(instance, next)
     if ('currentValueEUR' in patch) {
       patch.existingCapital = next.currentValueEUR ?? instance.existingCapital
     }
@@ -47,16 +44,15 @@ export function RiesterInstanceInputs({ instance, patchInstance }: Props) {
   return (
     <div className="combine-instance-fields">
       <CommonContractFields instance={instance} onChange={onCommonChange} />
-      <CombineField label="Eigenbeitrag (EUR/Monat)">
-        <DraftNumberInput
-          value={instance.monthlyOwnContribution}
-          min={0}
-          max={5000}
-          step={10}
-          disabled={instance.status === 'paid_up'}
-          onCommit={(v) => patchInstance({ monthlyOwnContribution: v })}
-        />
-      </CombineField>
+      <DraftNumberInput
+        label="Eigenbeitrag (EUR/Monat)"
+        value={instance.monthlyOwnContribution}
+        min={0}
+        max={5000}
+        step={10}
+        disabled={instance.status === 'paid_up'}
+        onCommit={(v) => patchInstance({ monthlyOwnContribution: v })}
+      />
       <CombineField label="Auszahlungsform">
         <InvSelect
           value={instance.payoutMode}
