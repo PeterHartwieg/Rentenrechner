@@ -6,7 +6,7 @@
  *
  *   1. Page-shell rendering: kicker + H1 + DStepIndicator + lead + body.
  *   2. Footer navigation: Schritt 1 ↔ Schritt 2 ↔ Plan transitions.
- *   3. Mode-aware body: compare → <InputsPanel>, combine →
+ *   3. Mode-aware body: compare → <ProdukteEingabenPanel> (PR 3), combine →
  *      <CombineDashboardSidebar>.
  *   4. Round-trip from Schritt 1: an edit on AngabenPage must be visible
  *      to AngabenProduktePage via the shared `useAngabenState` store. This
@@ -38,8 +38,10 @@ import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
 
 // ---------------------------------------------------------------------------
 // Mocks (hoisted by vi.mock to before any importer captures the symbol).
-// Used only by the "Codex R3 P1 scenario filter" test block. The remaining
-// rendering tests use the real InputsPanel / CombineDashboardSidebar.
+// PR 3: the compare-mode body now mounts `<ProdukteEingabenPanel>` (the new
+// Sober D Produkte family) instead of `<InputsPanel>`. The mock here is a
+// thin spy that lets the page-shell tests assert mount + prop wiring without
+// pulling the full Produkte component tree into a jsdom render.
 // ---------------------------------------------------------------------------
 
 const mockWorkspaceUiState: WorkspaceUiState = {
@@ -55,14 +57,16 @@ const mockWorkspaceUiState: WorkspaceUiState = {
   setShowAssumptions: vi.fn(),
 }
 
-interface MockInputsPanelProps {
+interface MockProduktePanelProps {
   selectedResults: ProductResult[]
 }
-const inputsPanelSpy = vi.fn<(props: MockInputsPanelProps) => null>(() => null)
+const produkteEingabenPanelSpy = vi.fn<(props: MockProduktePanelProps) => null>(
+  () => null,
+)
 
-vi.mock('./InputsPanel', () => ({
-  InputsPanel: (props: MockInputsPanelProps) => {
-    inputsPanelSpy(props)
+vi.mock('../produkte/ProdukteEingabenPanel', () => ({
+  ProdukteEingabenPanel: (props: MockProduktePanelProps) => {
+    produkteEingabenPanelSpy(props)
     return null
   },
 }))
@@ -79,7 +83,7 @@ vi.mock('../../app/downloadJsonBlob', () => ({
 import { AngabenProduktePage } from './AngabenProduktePage'
 
 beforeEach(() => {
-  inputsPanelSpy.mockClear()
+  produkteEingabenPanelSpy.mockClear()
   downloadJsonBlobSpy.mockClear()
   localStorage.clear()
   window.history.pushState(null, '', '/eingaben/produkte')
@@ -257,9 +261,9 @@ describe('AngabenProduktePage — footer navigation', () => {
 // ---------------------------------------------------------------------------
 
 describe('AngabenProduktePage — mode-aware body', () => {
-  it('compare-mode body mounts <InputsPanel> via useAngabenState', () => {
+  it('compare-mode body mounts <ProdukteEingabenPanel> via useAngabenState (PR 3)', () => {
     render(<AngabenProduktePage workspaceUi={mockWorkspaceUiState} />)
-    expect(inputsPanelSpy).toHaveBeenCalled()
+    expect(produkteEingabenPanelSpy).toHaveBeenCalled()
   })
 
   it('compare-mode: selectedResults is filtered by visibleProducts and the active scenario (Codex R3 P1)', () => {
@@ -270,8 +274,8 @@ describe('AngabenProduktePage — mode-aware body', () => {
     // mocked 'optimistisch' scenario.
     render(<AngabenProduktePage workspaceUi={mockWorkspaceUiState} />)
 
-    expect(inputsPanelSpy).toHaveBeenCalled()
-    const lastCall = inputsPanelSpy.mock.calls.at(-1)
+    expect(produkteEingabenPanelSpy).toHaveBeenCalled()
+    const lastCall = produkteEingabenPanelSpy.mock.calls.at(-1)
     expect(lastCall).toBeDefined()
     const props = lastCall![0]
     expect(props.selectedResults).toHaveLength(2)
@@ -283,10 +287,10 @@ describe('AngabenProduktePage — mode-aware body', () => {
     expect(productIds).toContain('bav')
   })
 
-  it('combine-mode body mounts <CombineDashboardSidebar> instead of <InputsPanel>', () => {
+  it('combine-mode body mounts <CombineDashboardSidebar> instead of <ProdukteEingabenPanel>', () => {
     // Seed a combine-mode workspace via the v2 envelope. detectSavedMode
     // sees `mode: 'combine'` and useAngabenState routes the body to the
-    // combine sidebar. <InputsPanel> is never reached in this branch
+    // combine sidebar. <ProdukteEingabenPanel> is never reached in this branch
     // (the vi.mock at the top of the file is inert here).
     const seed: Workspace = (() => {
       const ws = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
@@ -299,9 +303,9 @@ describe('AngabenProduktePage — mode-aware body', () => {
     )
     // CombineDashboardSidebar mounts and exposes its root via testid.
     expect(getByTestId('combine-dashboard-sidebar')).toBeInTheDocument()
-    // The InputsPanel spy MUST NOT fire in combine-mode — the sidebar owns
-    // the body, not the compare-mode panel.
-    expect(inputsPanelSpy).not.toHaveBeenCalled()
+    // The ProdukteEingabenPanel spy MUST NOT fire in combine-mode — the sidebar
+    // owns the body, not the compare-mode panel.
+    expect(produkteEingabenPanelSpy).not.toHaveBeenCalled()
   })
 })
 
@@ -325,13 +329,13 @@ describe('AngabenProduktePage — Schritt 1 ↔ Schritt 2 round-trip (PR 2)', ()
 
     render(<AngabenProduktePage workspaceUi={mockWorkspaceUiState} />)
 
-    // The InputsPanel mock captures the profile that Schritt 2 hands down.
-    // Schritt 2 read the same envelope Schritt 1 wrote.
-    const lastCall = inputsPanelSpy.mock.calls.at(-1)
+    // The ProdukteEingabenPanel mock captures the profile that Schritt 2
+    // hands down. Schritt 2 read the same envelope Schritt 1 wrote.
+    const lastCall = produkteEingabenPanelSpy.mock.calls.at(-1)
     expect(lastCall).toBeDefined()
     // The mock only spy'd `selectedResults`; we use the raw call args as a
     // black box — `profile` is at the same spread index.
-    const allProps = lastCall![0] as MockInputsPanelProps & {
+    const allProps = lastCall![0] as MockProduktePanelProps & {
       profile?: { age?: number }
     }
     expect(allProps.profile?.age).toBe(41)

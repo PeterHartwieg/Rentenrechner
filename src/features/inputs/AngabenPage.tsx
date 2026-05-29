@@ -8,6 +8,7 @@ import type { Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { useAngabenState } from '../../app/useAngabenState'
+import { useScenarioLibrary } from '../../app/useScenarioLibrary'
 import type { WorkspaceUiState } from '../../app/useWorkspaceUiState'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { buildStateJson } from '../../storage'
@@ -232,6 +233,14 @@ export function AngabenPage({ navigate }: Props) {
   const angabenState = useAngabenState()
   const { profile, setProfile, assumptions, setAssumptions, mode, resetToDefaults, workspace } =
     angabenState
+  // PR 3 — Schritt 1 § 4 Annahmen now hosts the relocated
+  // `<ScenariosPanel>` and `<NettoBelastungControl>`. Mount the scenario
+  // library here (single mount) so the Schritt-1 disclosure can save / load.
+  // Combine-mode does not consume it — `<AngabenAnnahmenSection>` only
+  // forwards it when `mode === 'compare'`.
+  const scenarioLib = useScenarioLibrary(profile, assumptions, setProfile, setAssumptions)
+  // Compare-mode-only contribution-sync setter from useAngabenState.
+  const setSyncedMonthlyContribution = angabenState.setSyncedMonthlyContribution
   // `familienstand` and `bundesland` are NOT part of `PersonalProfile`, so
   // they remain ephemeral on this page in BOTH modes and reset to the
   // defaults on every reload / route change. Routing them through the
@@ -404,6 +413,9 @@ export function AngabenPage({ navigate }: Props) {
               num={SECTIONS[3].n}
               id={SECTIONS[3].id}
               title={SECTIONS[3].title}
+              mode={mode}
+              onSyncMonthlyContribution={setSyncedMonthlyContribution}
+              scenarioLib={mode === 'compare' ? scenarioLib : undefined}
             />
 
             {/* PR 2 footer button row — Schritt-1 → Schritt-2 navigation +

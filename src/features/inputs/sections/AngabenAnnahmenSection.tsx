@@ -3,6 +3,10 @@ import type { ScenarioAssumptions } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
 import { clampNumber } from '../../../ui/formatting'
 import { formatPercent } from '../../../utils/format'
+import { NettoBelastungControl } from './NettoBelastungControl'
+import { ScenariosPanel } from '../ScenariosPanel'
+import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../../../data/defaultScenario'
+import type { useScenarioLibrary } from '../../../app/useScenarioLibrary'
 
 /**
  * `§ 4 Annahmen` for `/eingaben`. Folds in the pre-redesign Annahmen tab.
@@ -34,6 +38,26 @@ interface Props {
   num: string
   id: string
   title: string
+  /**
+   * Compare-mode session indicator. The `<NettoBelastungControl>` mount and
+   * the `<ScenariosPanel>` disclosure below are compare-mode-only — in
+   * combine-mode the per-instance contribution model and per-scenario library
+   * (Plan vs. What-if) replace them. We pass the flag down rather than
+   * branching at the caller so the section stays the canonical home for
+   * "Annahmen"-shaped controls.
+   */
+  mode: 'compare' | 'combine'
+  /**
+   * Compare-mode-only: invoked when the user changes the shared
+   * `equalInputAmountEUR` anchor. Required when `mode === 'compare'`.
+   */
+  onSyncMonthlyContribution?: (targetNet: number) => void
+  /**
+   * Compare-mode scenario library handles. Required when `mode === 'compare'`.
+   * Typed structurally so the section does not directly depend on the hook
+   * (the type is recovered via `ReturnType`).
+   */
+  scenarioLib?: ReturnType<typeof useScenarioLibrary>
 }
 
 export function AngabenAnnahmenSection({
@@ -43,6 +67,9 @@ export function AngabenAnnahmenSection({
   num,
   id,
   title,
+  mode,
+  onSyncMonthlyContribution,
+  scenarioLib,
 }: Props) {
   const inflationEnabled = assumptions.inflationRate > 0
   return (
@@ -186,6 +213,43 @@ export function AngabenAnnahmenSection({
           </div>
         )}
       </div>
+
+      {/* PR 3 — Compare-mode anchors that used to live at the top of
+          <InputsPanel> on /eingaben/produkte. Hosted here so the user can
+          set them on Schritt 1 before reaching the per-product surface.
+          Combine-mode has its own per-instance contribution model and per-
+          scenario library (Plan vs. What-if); we hide both controls there. */}
+      {mode === 'compare' && onSyncMonthlyContribution && (
+        <div className="angaben-section-aside">
+          <NettoBelastungControl
+            amountEUR={
+              assumptions.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR
+            }
+            onAmountChange={(value) =>
+              onSyncMonthlyContribution(clampNumber(value, 0, 10_000))
+            }
+          />
+        </div>
+      )}
+
+      {mode === 'compare' && scenarioLib && (
+        <details className="angaben-section-disclosure">
+          <summary className="angaben-section-disclosure__summary">
+            Szenarien laden / speichern
+          </summary>
+          <div className="angaben-section-disclosure__body">
+            <ScenariosPanel
+              onSelectPreset={setAssumptions}
+              library={scenarioLib.library}
+              onSave={scenarioLib.save}
+              onLoad={scenarioLib.load}
+              onDuplicate={scenarioLib.duplicate}
+              onDelete={scenarioLib.remove}
+              onRename={scenarioLib.rename}
+            />
+          </div>
+        </details>
+      )}
     </section>
   )
 }

@@ -1,0 +1,7 @@
+/* `NettoBelastungControl` styles already live globally in src/App.css
+   (`.netto-belastung-control`, `.netto-belastung-row`,
+   `.netto-belastung-presets`, `.netto-belastung-preset`) since they were
+   originally rendered from <InputsPanel>. PR 3 relocates the component to
+   Schritt 1 § 4 without forking the styles; this sidecar exists so the
+   `import './NettoBelastungControl.css'` in the .tsx file resolves and to
+   document where the active styles live. */
