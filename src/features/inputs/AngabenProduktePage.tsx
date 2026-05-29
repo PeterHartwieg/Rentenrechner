@@ -132,7 +132,15 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
               <button
                 type="button"
                 className="angaben-footer__btn angaben-footer__btn--primary"
-                onClick={() => navigate?.(ROUTES.home)}
+                onClick={() => {
+                  // Persist the current state before navigating so a first-time
+                  // visitor who changed nothing still writes a saved-mode marker
+                  // — otherwise App's detectSavedMode() returns null and `/`
+                  // renders the landing page instead of the dashboard this CTA
+                  // promises (Codex P2, PR #344).
+                  angabenState.persistNow()
+                  navigate?.(ROUTES.home)
+                }}
               >
                 Speichern und Plan ansehen
               </button>

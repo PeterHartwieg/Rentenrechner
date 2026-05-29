@@ -417,7 +417,15 @@ export function AngabenPage({ navigate }: Props) {
               <button
                 type="button"
                 className="angaben-footer__btn angaben-footer__btn--primary"
-                onClick={() => navigate?.(ROUTES.eingabenProdukte)}
+                onClick={() => {
+                  // "Speichern" should mean saved: persist before navigating so
+                  // a first-time visitor who later reaches `/` lands on the
+                  // dashboard, not the landing page (Codex P2, PR #344). The
+                  // critical path is the Schritt-2 "Plan ansehen" CTA; this is
+                  // the consistency mirror on Schritt 1.
+                  angabenState.persistNow()
+                  navigate?.(ROUTES.eingabenProdukte)
+                }}
               >
                 Speichern und weiter zu Verträgen
               </button>

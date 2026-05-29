@@ -5,7 +5,7 @@ import { renderToString } from 'react-dom/server'
 import { cleanup, fireEvent, render, renderHook, act } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
-import { pathToRoute, ROUTES } from '../../app/useRoute'
+import { pathToRoute, ROUTES, detectSavedMode } from '../../app/useRoute'
 import { AngabenPage } from './AngabenPage'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR } from '../../rules'
@@ -239,6 +239,23 @@ describe('AngabenPage — /eingaben route content', () => {
       name: 'Speichern und weiter zu Verträgen',
     })
     fireEvent.click(btn)
+    expect(navigate).toHaveBeenCalledWith(ROUTES.eingabenProdukte)
+  })
+
+  it('persists compare-mode state on "Speichern und weiter zu Verträgen" before navigating (Codex P2)', () => {
+    // First-time visitor: nothing persisted yet → detectSavedMode would be null.
+    localStorage.clear()
+    const navigate = vi.fn()
+    const { getByRole } = render(<AngabenPage navigate={navigate} />)
+    expect(localStorage.getItem(STORAGE_KEY_V1)).toBeNull()
+
+    fireEvent.click(
+      getByRole('button', { name: 'Speichern und weiter zu Verträgen' }),
+    )
+
+    // "Speichern" wrote the v1 snapshot, so detectSavedMode now resolves.
+    expect(localStorage.getItem(STORAGE_KEY_V1)).not.toBeNull()
+    expect(detectSavedMode()).toBe('compare')
     expect(navigate).toHaveBeenCalledWith(ROUTES.eingabenProdukte)
   })
 

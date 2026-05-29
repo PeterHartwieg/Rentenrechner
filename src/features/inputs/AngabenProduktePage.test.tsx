@@ -32,7 +32,7 @@ import {
   STORAGE_KEY_V2,
 } from '../../storage'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
-import { ROUTES } from '../../app/useRoute'
+import { ROUTES, detectSavedMode } from '../../app/useRoute'
 import { mockViewport } from '../../test/viewport'
 import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
 
@@ -170,6 +170,26 @@ describe('AngabenProduktePage — footer navigation', () => {
     const btn = getByRole('button', { name: 'Speichern und Plan ansehen' })
     fireEvent.click(btn)
     expect(navigate).toHaveBeenCalledWith(ROUTES.home)
+  })
+
+  it('persists compare-mode state on "Speichern und Plan ansehen" so a first-time visitor lands on the dashboard, not the landing page (Codex P2)', () => {
+    // First-time visitor: no localStorage at all.
+    localStorage.clear()
+    const navigate = vi.fn()
+    const { getByRole } = render(
+      <AngabenProduktePage navigate={navigate} workspaceUi={mockWorkspaceUiState} />,
+    )
+    // Precondition: nothing persisted yet → detectSavedMode would return null.
+    expect(localStorage.getItem(STORAGE_KEY_V1)).toBeNull()
+
+    fireEvent.click(getByRole('button', { name: 'Speichern und Plan ansehen' }))
+
+    // After the CTA: STORAGE_KEY_V1 now holds the compare snapshot, so the next
+    // detectSavedMode() returns 'compare' and App renders the dashboard.
+    expect(localStorage.getItem(STORAGE_KEY_V1)).not.toBeNull()
+    expect(navigate).toHaveBeenCalledWith(ROUTES.home)
+    // Strongest assertion: detectSavedMode now resolves to a non-null mode.
+    expect(detectSavedMode()).toBe('compare')
   })
 
   it('renders the "Als JSON exportieren ↓" button', () => {

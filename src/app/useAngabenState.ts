@@ -85,6 +85,17 @@ export interface UseAngabenStateApi {
   assumptions: ScenarioAssumptions
   setAssumptions: Dispatch<SetStateAction<ScenarioAssumptions>>
   mode: AngabenStateMode
+  /**
+   * Force a synchronous write of the current state to the active store. Used by
+   * the "Speichern und …" CTAs so a first-time visitor who changes nothing
+   * still creates a saved-mode marker — otherwise `detectSavedMode()` returns
+   * null and `/` shows the landing page instead of the dashboard the CTA
+   * promised (Codex P2, PR #344). Available in BOTH modes (unlike the
+   * compare-only / combine-only fields below): compare-mode writes
+   * STORAGE_KEY_V1, combine-mode calls `saveWorkspace` (a pure serialise that
+   * does not stamp `lastEditedAt`).
+   */
+  persistNow: () => void
   // ------- Compare-mode-only convenience setters (mirror `useCalculatorState`) -------
   /** Reset profile + assumptions to defaults (compare-mode only). `undefined` in combine-mode. */
   resetToDefaults: (() => void) | undefined
@@ -395,12 +406,36 @@ export function useAngabenState(): UseAngabenStateApi {
   // imports — Codex R2 P2 / CodeRabbit Major on PR #283).
   const isFirstEffectRun = useRef(true)
 
-  // Persistence effect. Single dispatch by mode. Compare-mode writes a v1
-  // envelope to STORAGE_KEY_V1; combine-mode writes the full workspace to
-  // STORAGE_KEY_V2 via `saveWorkspace`. The dependency array picks up every
-  // mutation that should trigger a save: in combine-mode it's `workspace`
-  // (every mutator routes through `setWorkspaceState`); in compare-mode it's
-  // `compareProfile` + `compareAssumptions`.
+  // Force a synchronous write of the current state to the active store. This
+  // is the same write body the persistence effect runs, lifted into a callback
+  // so the "Speichern und …" CTAs (`AngabenPage` / `AngabenProduktePage`) can
+  // invoke it before navigating. Without it, a first-time compare-mode visitor
+  // who changes nothing never writes STORAGE_KEY_V1 (the effect skips its
+  // mount-time write when `persistOnMount` is false), so `detectSavedMode()`
+  // returns null and `/` shows the landing/mode-picker instead of the
+  // dashboard the CTA promised (Codex P2, PR #344). In combine-mode this calls
+  // `saveWorkspace`, which serialises the workspace verbatim and does NOT stamp
+  // `baseline.lastEditedAt` — so forcing a write here cannot falsely invalidate
+  // frozen what-ifs.
+  const persistNow = useCallback(() => {
+    if (isCombine) {
+      if (!workspace) return
+      saveWorkspace(workspace)
+      return
+    }
+    // Compare-mode: legacy v1 write, mirrors `useCalculatorState`.
+    safeSetItem(STORAGE_KEY_V1, buildStateJson(compareProfile, compareAssumptions))
+  }, [isCombine, workspace, compareProfile, compareAssumptions])
+
+  // Persistence effect. Single dispatch by mode via `persistNow`. Compare-mode
+  // writes a v1 envelope to STORAGE_KEY_V1; combine-mode writes the full
+  // workspace to STORAGE_KEY_V2 via `saveWorkspace`. `persistNow` closes over
+  // every mutation that should trigger a save (combine-mode `workspace`,
+  // compare-mode `compareProfile` + `compareAssumptions`), so it is the only
+  // data dependency the effect needs. The first-run skip stays HERE — only the
+  // write body moved into `persistNow`, so the combine-mode `lastEditedAt`
+  // concern (skip the no-op mount write unless `persistOnMount` flags a
+  // load-bearing share-URL import) is unchanged.
   useEffect(() => {
     if (isFirstEffectRun.current) {
       isFirstEffectRun.current = false
@@ -411,20 +446,8 @@ export function useAngabenState(): UseAngabenStateApi {
       // share-URL import). This is intentionally restricted to compare-mode:
       // the combine-mode branch always sets `persistOnMount: false`.
     }
-    if (isCombine) {
-      if (!workspace) return
-      saveWorkspace(workspace)
-      return
-    }
-    // Compare-mode: legacy v1 write, mirrors `useCalculatorState`.
-    safeSetItem(STORAGE_KEY_V1, buildStateJson(compareProfile, compareAssumptions))
-  }, [
-    compareProfile,
-    compareAssumptions,
-    workspace,
-    isCombine,
-    initial.persistOnMount,
-  ])
+    persistNow()
+  }, [persistNow, initial.persistOnMount])
 
   // Setters: same shape as `useCalculatorState` so section components do not
   // change. In combine-mode they route through `setWorkspaceState` with the
@@ -624,6 +647,7 @@ export function useAngabenState(): UseAngabenStateApi {
     assumptions,
     setAssumptions,
     mode: initial.mode,
+    persistNow,
     // Compare-mode-only convenience setters
     resetToDefaults: isCombine ? undefined : resetToDefaults,
     setSyncedMonthlyContribution: isCombine ? undefined : setSyncedMonthlyContribution,
