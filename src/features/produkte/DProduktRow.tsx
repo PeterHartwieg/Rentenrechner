@@ -28,7 +28,8 @@ interface Props {
   onSecondary?: () => void
   /** When true, the secondary CTA is rendered as destructive (accent ink). */
   destructive?: boolean
-  /** Disable both CTAs and prevent clicks. Used for placeholder buttons. */
+  /** Disable the primary CTA and prevent its clicks. The secondary CTA is
+   *  unaffected (e.g. DRV card keeps "Manuell überschreiben" clickable). */
   primaryDisabled?: boolean
   /** Tooltip for the primary button (e.g. when disabled). */
   primaryTitle?: string

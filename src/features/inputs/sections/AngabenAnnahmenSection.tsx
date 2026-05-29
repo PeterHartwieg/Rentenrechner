@@ -31,46 +31,52 @@ interface ResolvedRenditen {
   readonly optimistisch: number
 }
 
-interface Props {
+interface AngabenAnnahmenSectionBase {
   assumptions: ScenarioAssumptions
   setAssumptions: Dispatch<SetStateAction<ScenarioAssumptions>>
   resolvedRenditen: ResolvedRenditen
   num: string
   id: string
   title: string
+}
+
+interface AngabenAnnahmenSectionCompareProps extends AngabenAnnahmenSectionBase {
+  mode: 'compare'
   /**
-   * Compare-mode session indicator. The `<NettoBelastungControl>` mount and
-   * the `<ScenariosPanel>` disclosure below are compare-mode-only — in
-   * combine-mode the per-instance contribution model and per-scenario library
-   * (Plan vs. What-if) replace them. We pass the flag down rather than
-   * branching at the caller so the section stays the canonical home for
-   * "Annahmen"-shaped controls.
+   * Invoked when the user changes the shared `equalInputAmountEUR` anchor.
+   * Required in compare-mode.
    */
-  mode: 'compare' | 'combine'
+  onSyncMonthlyContribution: (targetNet: number) => void
   /**
-   * Compare-mode-only: invoked when the user changes the shared
-   * `equalInputAmountEUR` anchor. Required when `mode === 'compare'`.
-   */
-  onSyncMonthlyContribution?: (targetNet: number) => void
-  /**
-   * Compare-mode scenario library handles. Required when `mode === 'compare'`.
+   * Compare-mode scenario library handles.
    * Typed structurally so the section does not directly depend on the hook
    * (the type is recovered via `ReturnType`).
    */
-  scenarioLib?: ReturnType<typeof useScenarioLibrary>
+  scenarioLib: ReturnType<typeof useScenarioLibrary>
 }
 
-export function AngabenAnnahmenSection({
-  assumptions,
-  setAssumptions,
-  resolvedRenditen,
-  num,
-  id,
-  title,
-  mode,
-  onSyncMonthlyContribution,
-  scenarioLib,
-}: Props) {
+interface AngabenAnnahmenSectionCombineProps extends AngabenAnnahmenSectionBase {
+  mode: 'combine'
+  /** Not applicable in combine-mode: per-instance contribution model is used instead. */
+  onSyncMonthlyContribution?: never
+  /** Not applicable in combine-mode: per-scenario library (Plan vs. What-if) is used instead. */
+  scenarioLib?: never
+}
+
+type AngabenAnnahmenSectionProps =
+  | AngabenAnnahmenSectionCompareProps
+  | AngabenAnnahmenSectionCombineProps
+
+export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
+  const {
+    assumptions,
+    setAssumptions,
+    resolvedRenditen,
+    num,
+    id,
+    title,
+    mode,
+  } = props
   const inflationEnabled = assumptions.inflationRate > 0
   return (
     <section className="angaben-section">
@@ -218,21 +224,23 @@ export function AngabenAnnahmenSection({
           <InputsPanel> on /eingaben/produkte. Hosted here so the user can
           set them on Schritt 1 before reaching the per-product surface.
           Combine-mode has its own per-instance contribution model and per-
-          scenario library (Plan vs. What-if); we hide both controls there. */}
-      {mode === 'compare' && onSyncMonthlyContribution && (
+          scenario library (Plan vs. What-if); we hide both controls there.
+          The discriminated union guarantees both props are present when
+          mode === 'compare', so the runtime && guards are not needed. */}
+      {mode === 'compare' && (
         <div className="angaben-section-aside">
           <NettoBelastungControl
             amountEUR={
               assumptions.equalInputAmountEUR ?? DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR
             }
             onAmountChange={(value) =>
-              onSyncMonthlyContribution(clampNumber(value, 0, 10_000))
+              props.onSyncMonthlyContribution(clampNumber(value, 0, 10_000))
             }
           />
         </div>
       )}
 
-      {mode === 'compare' && scenarioLib && (
+      {mode === 'compare' && (
         <details className="angaben-section-disclosure">
           <summary className="angaben-section-disclosure__summary">
             Szenarien laden / speichern
@@ -240,12 +248,12 @@ export function AngabenAnnahmenSection({
           <div className="angaben-section-disclosure__body">
             <ScenariosPanel
               onSelectPreset={setAssumptions}
-              library={scenarioLib.library}
-              onSave={scenarioLib.save}
-              onLoad={scenarioLib.load}
-              onDuplicate={scenarioLib.duplicate}
-              onDelete={scenarioLib.remove}
-              onRename={scenarioLib.rename}
+              library={props.scenarioLib.library}
+              onSave={props.scenarioLib.save}
+              onLoad={props.scenarioLib.load}
+              onDuplicate={props.scenarioLib.duplicate}
+              onDelete={props.scenarioLib.remove}
+              onRename={props.scenarioLib.rename}
             />
           </div>
         </details>

@@ -29,10 +29,14 @@ function makeSimulation(assumptions: ScenarioAssumptions = defaultAssumptions) {
   return simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
 }
 
-function defaultProps(overrides: Partial<{
-  visibleProducts: ScenarioAssumptions['visibleProducts']
-  onAssumptionsChange: Dispatch<SetStateAction<ScenarioAssumptions>>
-}> = {}): ProdukteEingabenPanelProps {
+interface DefaultPropsOverrides {
+  visibleProducts?: ScenarioAssumptions['visibleProducts']
+  onAssumptionsChange?: Dispatch<SetStateAction<ScenarioAssumptions>>
+}
+
+function defaultProps(
+  overrides: DefaultPropsOverrides = {},
+): ProdukteEingabenPanelProps {
   const visibleProducts = overrides.visibleProducts ?? defaultAssumptions.visibleProducts
   const assumptions: ScenarioAssumptions = {
     ...defaultAssumptions,
