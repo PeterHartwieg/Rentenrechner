@@ -1,3 +1,4 @@
+import { AVD_EFFECTIVE_YEAR } from '../../rules/legalConstants'
 import type { ProductId } from '../../domain'
 
 /**
@@ -16,6 +17,6 @@ export const sparformDescriptions: Record<ProductId, string> = {
   bav: 'bAV · Entgeltumwandlung, 5 Durchführungswege',
   versicherung: 'Schicht 3 · private Rentenversicherung mit Garantie oder Fonds',
   basisrente: 'Rürup · Schicht 1 · steuerlich gefördert',
-  altersvorsorgedepot: 'Schicht 2 · staatlich zertifiziertes Aktiendepot ab 2026',
+  altersvorsorgedepot: `Schicht 2 · staatlich zertifiziertes Aktiendepot ab ${AVD_EFFECTIVE_YEAR}`,
   riester: 'Schicht 2 · staatliche Zulagen & Steuer',
 }

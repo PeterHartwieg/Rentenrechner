@@ -249,6 +249,23 @@ export const aktienfondsTeilfreistellungPrivat = 0.30
 export const pvBeitragszuschlagKinderloseMinAge = 23
 
 /**
+ * Year the Altersvorsorgedepot became available as a certified Schicht-2 vehicle,
+ * introduced by the Altersvorsorgereformgesetz (Bundestag 2026-03-27). New contracts
+ * under this vehicle are available from 2027 (productStartYear), but the legislative
+ * reform that created the product was enacted in 2026 — this constant captures that
+ * reform year for user-visible "ab YYYY" copy in `sparformDescriptions.ts`.
+ *
+ * Cross-year statutory fact — does NOT change when the rules year advances from
+ * 2026 → 2027 → …. If the reform year is ever historically corrected, update here
+ * and the tile copy propagates automatically.
+ *
+ * Statutory basis: Altersvorsorgereformgesetz, Bundestag-Drucksache, in force 2026.
+ * See also: `src/rules/de2026.ts` `altersvorsorgedepot.productStartYear` (= 2027)
+ *   for the first contract-availability year.
+ */
+export const AVD_EFFECTIVE_YEAR = 2026
+
+/**
  * Ertragsanteil für lebenslange Leibrenten nach §22 Nr. 1 Satz 3 a aa EStG (Anlage 1 zu §22).
  * Returns the fraction (0–1) of each pension payment that is taxable at the personal income-tax rate.
  * Applies to ungefoerderte private Leibrenten (Schicht 3); NOT to bAV (§22 Nr. 5 EStG) or GRV.
