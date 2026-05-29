@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { AVD_EFFECTIVE_YEAR } from './legalConstants'
+import { pvBeitragszuschlagKinderloseMinAge } from './legalConstants'
 
 /**
  * Tripwire tests for cross-year statutory constants in legalConstants.ts.
@@ -7,13 +7,19 @@ import { AVD_EFFECTIVE_YEAR } from './legalConstants'
  * These assertions exist to fail loudly if a constant is changed without an
  * accompanying law-amendment citation. They do NOT test business logic — they
  * pin externally-verified statutory facts.
+ *
+ * Note: AVD_EFFECTIVE_YEAR was removed in PR #346 R3 — the single source of
+ * truth for the AVD availability year is `activeRules.altersvorsorgedepot.productStartYear`
+ * (= 2027) in `de2026.ts`. Keeping a parallel constant here introduced a
+ * parallel-constant problem and pointed to the enactment year (2026) rather
+ * than the contract-availability year (2027).
  */
 describe('legalConstants statutory pins', () => {
-  describe('AVD_EFFECTIVE_YEAR', () => {
-    it('equals 2026 — the year the Altersvorsorgereformgesetz entered into force', () => {
-      // Statutory basis: Altersvorsorgereformgesetz, Bundestag 2026-03-27.
-      // Do NOT change this without a BGBl. citation showing a different enactment year.
-      expect(AVD_EFFECTIVE_YEAR).toBe(2026)
+  describe('pvBeitragszuschlagKinderloseMinAge', () => {
+    it('equals 23 — §55 Abs. 3 SGB XI minimum age for childless PV surcharge', () => {
+      // Statutory basis: §55 Abs. 3 SGB XI.
+      // Do NOT change this without a law-amendment citation.
+      expect(pvBeitragszuschlagKinderloseMinAge).toBe(23)
     })
   })
 })

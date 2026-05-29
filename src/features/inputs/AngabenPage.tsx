@@ -457,7 +457,18 @@ export function AngabenPage({ navigate }: Props) {
                 setProfile={setProfile}
                 assumptions={assumptions}
                 setAssumptions={setAssumptions}
-                syncMonthlyContribution={setSyncedMonthlyContribution!}
+                // Approach A runtime guard: useAngabenState always provides
+                // this setter in compare-mode, but the type is `| undefined` on
+                // the shared API surface. Throw rather than silently coercing
+                // so a future hook-shape regression fails loud. (CR-R3-1)
+                syncMonthlyContribution={
+                  setSyncedMonthlyContribution ??
+                  (() => {
+                    throw new Error(
+                      'setSyncedMonthlyContribution must be defined in compare mode',
+                    )
+                  })
+                }
                 resolvedRenditen={RESOLVED_RENDITEN}
                 num={SECTIONS[3].n}
                 id={SECTIONS[3].id}
