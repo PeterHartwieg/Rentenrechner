@@ -26,7 +26,7 @@ import type {
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { activeRules } from '../../rules'
 import { besteuerungsanteilGrv } from '../../rules/legalConstants'
-import { getProductMeta } from '../../engine/productRegistry'
+import { getProductMeta, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import {
   PRIMARY_PRODUCT_IDS,
   SECONDARY_PRODUCT_IDS,
@@ -85,15 +85,19 @@ const ALL_COMPARABLE_PRODUCT_IDS: readonly ProductId[] = [
   ...SECONDARY_PRODUCT_IDS,
 ] as const
 
-/** All multi-instance product ids in canonical PRODUCT_REGISTRY sort order. */
-const ALL_MULTI_INSTANCE_PRODUCT_IDS: readonly MultiInstanceProductId[] = [
-  'etf',
-  'bav',
-  'versicherung',
-  'basisrente',
-  'altersvorsorgedepot',
-  'riester',
-] as const
+/**
+ * All multi-instance product ids in canonical PRODUCT_REGISTRY sort order.
+ *
+ * Derived from PRODUCT_REGISTRY so that adding or reordering a product in
+ * the registry automatically flows through to § 2 row order and § 3 tile
+ * order here. The filter keeps only ids that exist as keys in
+ * INVENTORY_PRODUCT_REGISTRY (i.e. multi-instance products — GRV is a
+ * singleton and is not present there).
+ */
+const ALL_MULTI_INSTANCE_PRODUCT_IDS: readonly MultiInstanceProductId[] =
+  PRODUCT_REGISTRY
+    .map((entry) => entry.metadata.id)
+    .filter((id): id is MultiInstanceProductId => id in INVENTORY_PRODUCT_REGISTRY)
 
 // ---------------------------------------------------------------------------
 // Props — discriminated union over `mode` so compare-mode and combine-mode

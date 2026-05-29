@@ -22,6 +22,8 @@ import type { Scenario, Workspace } from '../../domain/workspace'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import { simulateRetirementComparison } from '../../engine/simulate'
+import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { INVENTORY_PRODUCT_REGISTRY } from '../inventory/inventoryProductRegistry'
 import { defaultWorkspace } from '../../storage'
 import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
 import { ProdukteEingabenPanel, type ProdukteEingabenPanelProps } from './ProdukteEingabenPanel'
@@ -595,5 +597,73 @@ describe('ProdukteEingabenPanel — combine-mode empty state', () => {
     )
     const text = container.textContent ?? ''
     expect(text).toContain('Du hast noch keinen Vertrag erfasst')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CX-PR4-1 regression — § 2 row order is registry-derived, not hardcoded.
+// The derived constant ALL_MULTI_INSTANCE_PRODUCT_IDS must equal
+// PRODUCT_REGISTRY.map(e => id).filter(id in INVENTORY_PRODUCT_REGISTRY),
+// meaning: add/reorder a product in PRODUCT_REGISTRY → order updates here
+// automatically. This test catches any drift.
+// ---------------------------------------------------------------------------
+
+describe('ProdukteEingabenPanel — CX-PR4-1 registry-derived order (R0)', () => {
+  it('§ 2 rows render in PRODUCT_REGISTRY order even when instances are seeded in reverse registry order', () => {
+    // Derive the canonical multi-instance order from the registry (mirrors the
+    // fix in ALL_MULTI_INSTANCE_PRODUCT_IDS).
+    const registryOrder = PRODUCT_REGISTRY
+      .map((e) => e.metadata.id)
+      .filter((id): id is keyof typeof INVENTORY_PRODUCT_REGISTRY => id in INVENTORY_PRODUCT_REGISTRY)
+
+    // Seed instances in reverse registry order: riester → avd → basisrente →
+    // versicherung → bav → etf. The panel must render them in forward order.
+    let ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+    ws = { ...ws, mode: 'combine' }
+    const reversed = [...registryOrder].reverse()
+    for (const productId of reversed) {
+      ws = addInstanceToWorkspace(ws, productId)
+    }
+
+    const { container } = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({
+          baseline: ws.baseline,
+          assumptions: ws.baseline.assumptions,
+        })}
+      />,
+    )
+
+    // Collect rendered row data-product-id attributes in DOM order.
+    const rowGroups = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        '.produkte-eingaben-panel__row-group[data-product-id]',
+      ),
+    )
+    const renderedOrder = rowGroups.map((el) => el.getAttribute('data-product-id'))
+
+    // Each product should appear once (one instance seeded per product).
+    expect(renderedOrder).toEqual(registryOrder)
+  })
+
+  it('§ 3 tiles cover exactly the set of multi-instance product ids from PRODUCT_REGISTRY', () => {
+    // With an empty workspace every product tile is present.
+    const ws: Workspace = { ...defaultWorkspace, mode: 'combine' }
+    const registryOrder = PRODUCT_REGISTRY
+      .map((e) => e.metadata.id)
+      .filter((id): id is keyof typeof INVENTORY_PRODUCT_REGISTRY => id in INVENTORY_PRODUCT_REGISTRY)
+
+    const { container } = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({
+          baseline: ws.baseline,
+          assumptions: ws.baseline.assumptions,
+        })}
+      />,
+    )
+
+    const tiles = container.querySelectorAll('.d-sparform-option')
+    // The tile count must equal the registry-derived multi-instance product count.
+    expect(tiles.length).toBe(registryOrder.length)
   })
 })
