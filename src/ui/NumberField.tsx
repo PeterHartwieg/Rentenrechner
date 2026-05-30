@@ -19,20 +19,7 @@ function decimalsFromStep(step: number): number {
   return dotIdx === -1 ? 0 : s.length - dotIdx - 1
 }
 
-export function NumberField({
-  label,
-  labelSuffix,
-  value,
-  min,
-  max,
-  step = 1,
-  decimals,
-  suffix,
-  onChange,
-  onCommit,
-  feedbackTargetId,
-  feedbackSensitive,
-}: {
+interface NumberFieldProps {
   label: string
   /** Optional inline content rendered next to the label (e.g. <InfoTip />). */
   labelSuffix?: ReactNode
@@ -52,6 +39,12 @@ export function NumberField({
    */
   decimals?: number
   suffix?: string
+  /**
+   * Disables the input — e.g. a paid-up (beitragsfrei) contract whose
+   * contribution can no longer change. Renders identically to today when
+   * omitted (defaults to enabled).
+   */
+  disabled?: boolean
   /** Fires on every keystroke. Use for live preview of unconstrained inputs. */
   onChange?: (value: string) => void
   /** Fires on blur or Enter. Use for clamped/validated inputs so partial keystrokes don't trigger range corrections. */
@@ -76,7 +69,23 @@ export function NumberField({
    * Inert when QA mode is disabled — the attribute is harmless on the label.
    */
   feedbackSensitive?: boolean
-}) {
+}
+
+export function NumberField({
+  label,
+  labelSuffix,
+  value,
+  min,
+  max,
+  step = 1,
+  decimals,
+  suffix,
+  disabled,
+  onChange,
+  onCommit,
+  feedbackTargetId,
+  feedbackSensitive,
+}: NumberFieldProps) {
   const { targetProps } = useFeedbackTarget({
     id: feedbackTargetId ?? '',
     label,
@@ -136,6 +145,7 @@ export function NumberField({
           min={min}
           max={max}
           step={step}
+          disabled={disabled}
           value={displayValue}
           onChange={(event) => {
             setDraft(event.target.value)

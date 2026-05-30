@@ -89,18 +89,32 @@ describe('App — Mein Plan combine-mode chrome', () => {
   })
 })
 
-describe('App — combine-mode profile editing lives on /eingaben/produkte (PR 2 split)', () => {
+describe('App — combine-mode profile editing lives on /eingaben Schritt 1 (PR 4 unification)', () => {
   // PR 2 of the Direction D /eingaben redesign migration split the page in
-  // two. The per-contract `<CombineDashboardSidebar>` (which carries the
-  // combine-mode Bruttogehalt / Renteneintrittsalter inputs inside its
-  // `.combine-field` wrappers) moved from `/eingaben` § 5 onto
-  // `/eingaben/produkte`. The behaviour-level guarantee — edits to those
-  // fields persist to STORAGE_KEY_V2 — still holds; these tests now drive
-  // `/eingaben/produkte` instead of `/eingaben`. Both pages mount the
-  // SAME `useAngabenState` so the round-trip is identical.
+  // two. PR 4 (this PR) retires `<CombineDashboardSidebar>` from Schritt 2 —
+  // the page now hosts only the per-contract Produkte panel. Personal-profile
+  // editing (Bruttogehalt / Renteneintrittsalter) lives on Schritt 1
+  // (`/eingaben`) via the `<AngabenEinkommenSection>` /
+  // `<AngabenRenteneintrittSection>` Sober D sections. The behaviour-level
+  // guarantee — edits to those fields persist to STORAGE_KEY_V2 — still
+  // holds; these tests now drive `/eingaben` Schritt 1.
+  //
+  // The `useAngabenState` invariant from PR #322 stands: both pages mount the
+  // SAME hook so a Schritt-1 profile edit and a Schritt-2 contract edit
+  // round-trip through one store.
 
-  /** Schritt 2's hero kicker is "Mein Plan · Schritt 2 von 2" — the
-   *  most stable readiness signal for the new page. */
+  /** Schritt 1's hero kicker is "Mein Plan · Schritt 1 von 2". */
+  async function waitForAngabenPage(): Promise<void> {
+    await waitFor(
+      () =>
+        expect(document.body.textContent ?? '').toContain(
+          'Schritt 1 von 2',
+        ),
+      { timeout: 8000 },
+    )
+  }
+
+  /** Schritt 2's hero kicker is "Mein Plan · Schritt 2 von 2". */
   async function waitForAngabenProduktePage(): Promise<void> {
     await waitFor(
       () =>
@@ -111,48 +125,51 @@ describe('App — combine-mode profile editing lives on /eingaben/produkte (PR 2
     )
   }
 
-  it('renders the personal-details sidebar on /eingaben/produkte in combine mode', async () => {
+  it('renders the per-contract Produkte panel on /eingaben/produkte in combine mode', async () => {
     saveCombineWorkspace()
     window.history.pushState(null, '', '/eingaben/produkte')
     const { container } = render(<App />)
     await waitForAngabenProduktePage()
 
-    const text = container.textContent ?? ''
-    expect(/Pers.nliche Angaben|Persoenliche Angaben|Profil/.test(text)).toBe(true)
-    expect(text).toContain('Bruttogehalt')
-    expect(text).toContain('Renteneintrittsalter')
+    // PR 4: combine-mode body is the new ProdukteEingabenPanel (data-mode="combine").
+    await waitFor(() => {
+      const panel = container.querySelector('[data-testid="produkte-eingaben-panel"]')
+      expect(panel).not.toBeNull()
+      expect(panel!.getAttribute('data-mode')).toBe('combine')
+    })
   })
 
-  it('editing salary on /eingaben/produkte writes through to workspace baseline and persists (#40)', async () => {
+  it('editing salary on /eingaben Schritt 1 writes through to workspace baseline and persists (#40)', async () => {
     saveCombineWorkspace()
-    window.history.pushState(null, '', '/eingaben/produkte')
+    window.history.pushState(null, '', '/eingaben')
     render(<App />)
-    await waitForAngabenProduktePage()
+    await waitForAngabenPage()
 
-    // The CombineDashboardSidebar mounts as Schritt 2's body in combine
-    // mode. The Bruttogehalt input lives inside a `.combine-field` wrapper
-    // exactly as before — only the parent shell changed.
+    // The Bruttoeinkommen input on Schritt 1 lives in a NumberField rendered
+    // by AngabenEinkommenSection. We locate it via its <label> text.
     await waitFor(() => {
-      const inputs = document.querySelectorAll<HTMLInputElement>('input[type="number"]')
-      const bruttogehalt = Array.from(inputs).find((input) => {
-        const field = input.closest('.combine-field')
-        return field?.textContent?.includes('Bruttogehalt')
-      })
-      expect(bruttogehalt).not.toBeUndefined()
+      const labelSpans = Array.from(
+        document.querySelectorAll<HTMLSpanElement>('label.field > span'),
+      )
+      const hit = labelSpans.find((span) =>
+        (span.textContent ?? '').includes('Bruttoeinkommen pro Jahr'),
+      )
+      expect(hit).not.toBeUndefined()
     })
+    const labelSpans = Array.from(
+      document.querySelectorAll<HTMLSpanElement>('label.field > span'),
+    )
+    const bruttoSpan = labelSpans.find((span) =>
+      (span.textContent ?? '').includes('Bruttoeinkommen pro Jahr'),
+    )!
+    const bruttoLabel = bruttoSpan.closest('label.field') as HTMLLabelElement
+    const bruttoInput = bruttoLabel.querySelector<HTMLInputElement>('input[type="number"]')!
 
-    const allInputs = document.querySelectorAll<HTMLInputElement>('input[type="number"]')
-    const bruttogehaltInput = Array.from(allInputs).find((input) => {
-      const field = input.closest('.combine-field')
-      return field?.textContent?.includes('Bruttogehalt')
-    })!
+    // NumberField (DraftNumberInput) commits on blur — fire change then blur.
+    fireEvent.change(bruttoInput, { target: { value: '80000' } })
+    fireEvent.blur(bruttoInput)
 
-    // DraftNumberInput commits on blur (not on change) — fire change then blur.
-    fireEvent.change(bruttogehaltInput, { target: { value: '80000' } })
-    fireEvent.blur(bruttogehaltInput)
-
-    // Storage is written reactively via useEffect — give React a tick then
-    // read the persisted workspace directly from localStorage.
+    // Storage is written reactively via useEffect.
     await waitFor(() => {
       const stored = localStorage.getItem(STORAGE_KEY_V2)
       expect(stored).not.toBeNull()
@@ -161,30 +178,32 @@ describe('App — combine-mode profile editing lives on /eingaben/produkte (PR 2
     })
   })
 
-  it('editing retirement age on /eingaben/produkte writes through to workspace baseline (#40)', async () => {
+  it('editing retirement age on /eingaben Schritt 1 writes through to workspace baseline (#40)', async () => {
     saveCombineWorkspace()
-    window.history.pushState(null, '', '/eingaben/produkte')
+    window.history.pushState(null, '', '/eingaben')
     render(<App />)
-    await waitForAngabenProduktePage()
+    await waitForAngabenPage()
 
     await waitFor(() => {
-      const inputs = document.querySelectorAll<HTMLInputElement>('input[type="number"]')
-      const retirementAge = Array.from(inputs).find((input) => {
-        const field = input.closest('.combine-field')
-        return field?.textContent?.includes('Renteneintrittsalter')
-      })
-      expect(retirementAge).not.toBeUndefined()
+      const labelSpans = Array.from(
+        document.querySelectorAll<HTMLSpanElement>('label.field > span'),
+      )
+      const hit = labelSpans.find((span) =>
+        (span.textContent ?? '').includes('Renteneintrittsalter'),
+      )
+      expect(hit).not.toBeUndefined()
     })
+    const labelSpans = Array.from(
+      document.querySelectorAll<HTMLSpanElement>('label.field > span'),
+    )
+    const renteneintrittSpan = labelSpans.find((span) =>
+      (span.textContent ?? '').includes('Renteneintrittsalter'),
+    )!
+    const renteneintrittLabel = renteneintrittSpan.closest('label.field') as HTMLLabelElement
+    const renteneintrittInput = renteneintrittLabel.querySelector<HTMLInputElement>('input[type="number"]')!
 
-    const allInputs = document.querySelectorAll<HTMLInputElement>('input[type="number"]')
-    const retirementAgeInput = Array.from(allInputs).find((input) => {
-      const field = input.closest('.combine-field')
-      return field?.textContent?.includes('Renteneintrittsalter')
-    })!
-
-    // DraftNumberInput commits on blur (not on change) — fire change then blur.
-    fireEvent.change(retirementAgeInput, { target: { value: '63' } })
-    fireEvent.blur(retirementAgeInput)
+    fireEvent.change(renteneintrittInput, { target: { value: '63' } })
+    fireEvent.blur(renteneintrittInput)
 
     await waitFor(() => {
       const stored = localStorage.getItem(STORAGE_KEY_V2)

@@ -144,3 +144,19 @@ describe('NumberField — feedbackSensitive prop (issue 03 / Lane B)', () => {
     expect(onCommit).toHaveBeenCalledWith('6000')
   })
 })
+
+describe('NumberField — disabled prop', () => {
+  afterEach(() => cleanup())
+
+  it('renders a disabled input when disabled is set', () => {
+    render(<NumberField label="Beitrag" value={100} disabled />)
+    const input = screen.getByRole('spinbutton') as HTMLInputElement
+    expect(input.disabled).toBe(true)
+  })
+
+  it('renders an enabled input when disabled is omitted', () => {
+    render(<NumberField label="Beitrag" value={100} />)
+    const input = screen.getByRole('spinbutton') as HTMLInputElement
+    expect(input.disabled).toBe(false)
+  })
+})

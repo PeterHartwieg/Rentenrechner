@@ -22,6 +22,7 @@
  */
 
 import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../../domain/workspace'
+import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { defaultWorkspace } from '../../storage'
 import {
@@ -71,6 +72,25 @@ export function estimateEpFromYears(years: number, grossSalaryYear: number): num
   return DURCHSCHNITTSENTGELT > 0
     ? Math.max(0, years * (cappedSalary / DURCHSCHNITTSENTGELT))
     : 0
+}
+
+// ---------------------------------------------------------------------------
+// Workspace instance count
+// ---------------------------------------------------------------------------
+
+/**
+ * Total contract count across every multi-instance product array in a v2
+ * assumptions object. Registry-driven (iterates `PRODUCT_REGISTRY` and indexes
+ * each entry's `assumptionsKey`) so a newly-added product is counted
+ * automatically — never a hardcoded product list outside the registry, which
+ * CLAUDE.md treats as a P1 bypass (Codex PR #347 R6). Single source of truth so
+ * the combine-mode archive CTA and the receipt strip can't drift apart.
+ */
+export function countWorkspaceInstances(a: WorkspaceAssumptionsV2): number {
+  return PRODUCT_REGISTRY.reduce(
+    (sum, entry) => sum + a[entry.assumptionsKey].length,
+    0,
+  )
 }
 
 // ---------------------------------------------------------------------------

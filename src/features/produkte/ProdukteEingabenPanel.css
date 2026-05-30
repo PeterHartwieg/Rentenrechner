@@ -307,6 +307,207 @@
   text-transform: uppercase;
 }
 
+/* ----- Combine-mode extensions (PR 4) ------------------------------------- */
+
+/* "Weitere Optionen ⋯" kebab affordance rendered in the row's accent slot
+   when the row's instance is active or paid_up. Plain text-button styling
+   matches the row's mono-kicker treatment. */
+.produkte-eingaben-panel__menu-btn {
+  font-family: var(--rw-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--rw-ink-soft);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.produkte-eingaben-panel__menu-btn:hover {
+  color: var(--rw-ink);
+  text-decoration: underline;
+}
+
+/* CX-PR4-2 R1: row-action cluster in the accent slot — stacks the
+   "Details ansehen ›" link and the "Weitere Optionen ⋯" kebab one above
+   the other, both styled as plain text-buttons via
+   `.produkte-eingaben-panel__menu-btn`. */
+.produkte-eingaben-panel__row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* CX-PR4-2 R1: tight checkbox-field used by the AVD glidepath toggle inside
+   the inline editor disclosure. The wizard sheet styles the surrounding
+   `.combine-field` already; this rule covers the small inline
+   `<label className="combine-checkbox-field">` wrapper that hosts the
+   checkbox + caption. Uses Sober D tokens — no new design tokens. */
+.combine-checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--rw-font-sans);
+  font-size: 12.5px;
+  color: var(--rw-ink-soft);
+}
+
+/* The per-instance editors now render numeric fields through `<NumberField>`
+   (`.field`) for the UI rounding boundary, alongside the remaining
+   `.combine-field` selects/text. Tighten the NumberField label density so the
+   two sit at the same scale inside the 2-column `.combine-instance-fields`
+   grid. Direct-child only, so FeeSection's nested NumberFields inside the
+   Details disclosure keep their own density. Input padding is left to
+   forms.css so the WCAG 2.5.8 mobile target-size bump survives. Reuses Sober D
+   tokens — no new design tokens. */
+.combine-instance-fields > .field {
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* ── Combine-mode Haushalt + Was-wäre-wenn sections ──────────────────────
+   Restored after the CombineDashboardSidebar retirement (Codex PR #347 R3):
+   household fields (Ehegattensplitting + child birth years) and the what-if
+   lifecycle (re-base / freeze / archive). Logic ported from the deleted
+   sidebar; styling rebuilt with Sober D tokens (no new design tokens). */
+.produkte-haushalt,
+.produkte-whatifs {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rw-rule-soft);
+}
+
+.produkte-haushalt__heading,
+.produkte-whatifs__heading {
+  margin: 0 0 10px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--rw-ink);
+}
+
+.produkte-whatifs__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.produkte-whatif-card {
+  background: #fff;
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.produkte-whatif-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.produkte-whatif-card__label {
+  font-family: var(--rw-font-sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.produkte-whatif-card__origin {
+  font-family: var(--rw-font-sans);
+  font-size: 0.72rem;
+  color: var(--rw-ink-faint);
+}
+
+.produkte-stale-badge {
+  margin-top: 6px;
+  border: 1px solid var(--rw-accent);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.78rem;
+}
+
+.produkte-stale-badge--frozen {
+  border-color: var(--rw-rule);
+  color: var(--rw-ink-faint);
+}
+
+.produkte-stale-badge__label {
+  display: block;
+  font-weight: 700;
+  color: var(--rw-accent);
+  margin-bottom: 5px;
+}
+
+.produkte-stale-badge__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.produkte-stale-badge__action {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.78rem;
+  color: var(--rw-ink-soft);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.produkte-stale-badge__action:hover {
+  border-color: var(--rw-ink-faint);
+}
+
+.produkte-stale-badge__action--rebase {
+  color: var(--rw-accent);
+  border-color: var(--rw-accent);
+}
+
+.produkte-archive {
+  margin-top: 12px;
+}
+
+.produkte-archive__hint {
+  margin: 0 0 6px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.75rem;
+  color: var(--rw-ink-faint);
+  line-height: 1.4;
+}
+
+.produkte-archive__btn {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px dashed var(--rw-ink-faint);
+  border-radius: 6px;
+  font-family: var(--rw-font-sans);
+  font-size: 0.82rem;
+  color: var(--rw-ink-soft);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.produkte-archive__btn:hover {
+  border-color: var(--rw-ink-soft);
+  color: var(--rw-ink);
+}
+
+.produkte-archive__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ----- Phone: drop the row sidebar to a stacked footer -------------------- */
 
 @media (max-width: 720px) {

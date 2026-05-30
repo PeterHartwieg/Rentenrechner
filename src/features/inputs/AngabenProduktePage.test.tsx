@@ -6,8 +6,9 @@
  *
  *   1. Page-shell rendering: kicker + H1 + DStepIndicator + lead + body.
  *   2. Footer navigation: Schritt 1 ↔ Schritt 2 ↔ Plan transitions.
- *   3. Mode-aware body: compare → <ProdukteEingabenPanel> (PR 3), combine →
- *      <CombineDashboardSidebar>.
+ *   3. Mode-aware body: compare → <ProdukteEingabenPanel mode="compare"> (PR 3),
+ *      combine → <ProdukteEingabenPanel mode="combine"> (PR 4, replacing the
+ *      legacy <CombineDashboardSidebar>).
  *   4. Round-trip from Schritt 1: an edit on AngabenPage must be visible
  *      to AngabenProduktePage via the shared `useAngabenState` store. This
  *      mirrors the deleted `sections/AngabenProduktSection.test.tsx`
@@ -20,8 +21,8 @@
  * the same source of truth.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, renderHook } from '@testing-library/react'
 import type { WorkspaceUiState } from '../../app/useWorkspaceUiState'
 import type { ProductResult } from '../../domain'
 import type { Workspace } from '../../domain/workspace'
@@ -38,10 +39,12 @@ import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
 
 // ---------------------------------------------------------------------------
 // Mocks (hoisted by vi.mock to before any importer captures the symbol).
-// PR 3: the compare-mode body now mounts `<ProdukteEingabenPanel>` (the new
-// Sober D Produkte family) instead of `<InputsPanel>`. The mock here is a
-// thin spy that lets the page-shell tests assert mount + prop wiring without
-// pulling the full Produkte component tree into a jsdom render.
+// PR 4: both compare-mode AND combine-mode now mount `<ProdukteEingabenPanel>`
+// (the new Sober D Produkte family). PR 3 introduced the compare-mode mount;
+// PR 4 swaps the combine branch from the legacy `<CombineDashboardSidebar>` to
+// the same panel with `mode="combine"`. The mock here is a thin spy that lets
+// the page-shell tests assert mount + prop wiring without pulling the full
+// Produkte component tree into a jsdom render.
 // ---------------------------------------------------------------------------
 
 const mockWorkspaceUiState: WorkspaceUiState = {
@@ -58,7 +61,9 @@ const mockWorkspaceUiState: WorkspaceUiState = {
 }
 
 interface MockProduktePanelProps {
-  selectedResults: ProductResult[]
+  mode?: 'compare' | 'combine'
+  selectedResults?: ProductResult[]
+  baseline?: { profile?: { age?: number } }
 }
 const produkteEingabenPanelSpy = vi.fn<(props: MockProduktePanelProps) => null>(
   () => null,
@@ -67,8 +72,21 @@ const produkteEingabenPanelSpy = vi.fn<(props: MockProduktePanelProps) => null>(
 vi.mock('../produkte/ProdukteEingabenPanel', () => ({
   ProdukteEingabenPanel: (props: MockProduktePanelProps) => {
     produkteEingabenPanelSpy(props)
-    return null
+    return (
+      <div
+        data-testid="produkte-eingaben-panel"
+        data-mode={props.mode ?? 'compare'}
+      />
+    )
   },
+}))
+
+// Stub the per-contract decision menu so combine-mode tests that exercise the
+// "Weitere Optionen" kebab don't need to mount the full modal tree.
+vi.mock('../dashboard/ContractDecisionMenu', () => ({
+  ContractDecisionMenu: ({ instanceId }: { instanceId: string }) => (
+    <div data-testid={`contract-decision-menu-${instanceId}`} />
+  ),
 }))
 
 const downloadJsonBlobSpy = vi.fn<(content: string, filename: string) => void>()
@@ -81,6 +99,7 @@ vi.mock('../../app/downloadJsonBlob', () => ({
 
 // Lazy import AFTER the mocks register.
 import { AngabenProduktePage } from './AngabenProduktePage'
+import { useNowSnapshot } from './useNowSnapshot'
 
 beforeEach(() => {
   produkteEingabenPanelSpy.mockClear()
@@ -257,7 +276,8 @@ describe('AngabenProduktePage — footer navigation', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Body — compare-mode wraps InputsPanel; combine-mode wraps the sidebar.
+// Body — both modes now mount <ProdukteEingabenPanel>. PR 4 unifies the two
+// branches; PR 3 had only shipped the compare-mode mount.
 // ---------------------------------------------------------------------------
 
 describe('AngabenProduktePage — mode-aware body', () => {
@@ -278,34 +298,32 @@ describe('AngabenProduktePage — mode-aware body', () => {
     const lastCall = produkteEingabenPanelSpy.mock.calls.at(-1)
     expect(lastCall).toBeDefined()
     const props = lastCall![0]
-    expect(props.selectedResults).toHaveLength(2)
-    for (const entry of props.selectedResults) {
+    const selectedResults = props.selectedResults
+    expect(selectedResults).toBeDefined()
+    expect(selectedResults!).toHaveLength(2)
+    for (const entry of selectedResults!) {
       expect(entry.scenarioId).toBe('optimistisch')
     }
-    const productIds = props.selectedResults.map((r) => r.productId)
+    const productIds = selectedResults!.map((r) => r.productId)
     expect(productIds).toContain('etf')
     expect(productIds).toContain('bav')
   })
 
-  it('combine-mode body mounts <CombineDashboardSidebar> instead of <ProdukteEingabenPanel>', () => {
+  it('combine-mode body mounts <ProdukteEingabenPanel mode="combine"> (PR 4)', () => {
     // Seed a combine-mode workspace via the v2 envelope. detectSavedMode
     // sees `mode: 'combine'` and useAngabenState routes the body to the
-    // combine sidebar. <ProdukteEingabenPanel> is never reached in this branch
-    // (the vi.mock at the top of the file is inert here).
+    // panel's combine branch — the legacy <CombineDashboardSidebar> is gone.
     const seed: Workspace = (() => {
       const ws = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
       return { ...ws, mode: 'combine' }
     })()
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
 
-    const { getByTestId } = render(
-      <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
-    )
-    // CombineDashboardSidebar mounts and exposes its root via testid.
-    expect(getByTestId('combine-dashboard-sidebar')).toBeInTheDocument()
-    // The ProdukteEingabenPanel spy MUST NOT fire in combine-mode — the sidebar
-    // owns the body, not the compare-mode panel.
-    expect(produkteEingabenPanelSpy).not.toHaveBeenCalled()
+    render(<AngabenProduktePage workspaceUi={mockWorkspaceUiState} />)
+    // Panel fires with mode === 'combine'.
+    expect(produkteEingabenPanelSpy).toHaveBeenCalled()
+    const lastCall = produkteEingabenPanelSpy.mock.calls.at(-1)
+    expect(lastCall![0].mode).toBe('combine')
   })
 })
 
@@ -343,7 +361,7 @@ describe('AngabenProduktePage — Schritt 1 ↔ Schritt 2 round-trip (PR 2)', ()
 
   it('combine-mode: a Schritt-1 baseline.profile.age write is visible on Schritt 2 via STORAGE_KEY_V2', () => {
     // Combine-mode mirror: seed a v2 workspace with a non-default age,
-    // then mount Schritt 2 and assert the sidebar surface picks it up.
+    // then mount Schritt 2 and assert the panel surface picks it up.
     let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
     seed = {
       ...seed,
@@ -353,18 +371,119 @@ describe('AngabenProduktePage — Schritt 1 ↔ Schritt 2 round-trip (PR 2)', ()
         profile: { ...seed.baseline.profile, age: 38 },
       },
     }
-    // Seed a bAV instance so the sidebar list has at least one row.
+    // Seed a bAV instance so the panel has at least one row.
+    seed = addInstanceToWorkspace(seed, 'bav')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    render(<AngabenProduktePage workspaceUi={mockWorkspaceUiState} />)
+    // PR 4 — the combine-mode body is the new panel. We verify the age
+    // round-tripped via the baseline prop the panel received.
+    expect(produkteEingabenPanelSpy).toHaveBeenCalled()
+    const lastCall = produkteEingabenPanelSpy.mock.calls.at(-1)
+    expect(lastCall![0].mode).toBe('combine')
+    expect(lastCall![0].baseline?.profile?.age).toBe(38)
+
+    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
+    expect(rawV2).not.toBeNull()
+    const parsed = JSON.parse(rawV2!) as Workspace
+    expect(parsed.baseline.profile.age).toBe(38)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// PR 4 receipt strip — right-rail bottom strip is mode-aware. Combine-mode
+// surfaces live workspace data (instance count + formatRelativeTime over
+// baseline.lastEditedAt). Compare-mode hides the strip because the singleton
+// state model has no contract count.
+// ---------------------------------------------------------------------------
+
+describe('AngabenProduktePage — receipt strip (PR 4)', () => {
+  // CR-PR4-R1-2: previous tests relied on the moving wall-clock "<10s" bucket
+  // in `formatRelativeTime`, which could flake on slow CI. Wrapping the block
+  // in fake timers + `vi.setSystemTime` pins the clock to a fixed moment
+  // before the first render, so "soeben" / "1 Vertrag" assertions are
+  // deterministic. We restore real timers in afterAll so unrelated tests
+  // aren't affected.
+  beforeAll(() => vi.useFakeTimers())
+  afterAll(() => vi.useRealTimers())
+  beforeEach(() => vi.setSystemTime(new Date('2026-05-29T13:00:00Z')))
+
+  it('compare-mode hides the receipt strip (singleton state has no contract count)', () => {
+    const { queryByTestId } = render(
+      <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
+    )
+    expect(queryByTestId('angaben-produkte-receipt')).toBeNull()
+  })
+
+  it('combine-mode renders live "{N} Verträge erfasst" + relative time when the workspace has instances', () => {
+    // Seed a workspace with 2 bAV + 1 ETF instance so the count = 3, and a
+    // lastEditedAt at the pinned "now" so the relative-time string is
+    // "soeben" (the < 10-second floor in formatRelativeTime).
+    let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+    seed = {
+      ...seed,
+      mode: 'combine',
+      baseline: { ...seed.baseline, lastEditedAt: Date.now() },
+    }
+    seed = addInstanceToWorkspace(seed, 'bav')
+    seed = addInstanceToWorkspace(seed, 'bav')
+    seed = addInstanceToWorkspace(seed, 'etf')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+
+    const { getByTestId } = render(
+      <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
+    )
+    const strip = getByTestId('angaben-produkte-receipt')
+    expect(strip.textContent).toContain('3 Verträge erfasst')
+    expect(strip.textContent).toContain('soeben')
+    expect(strip.textContent).toContain('gespeichert im Browser')
+  })
+
+  it('combine-mode renders "1 Vertrag" (singular) when only one instance exists', () => {
+    let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+    seed = { ...seed, mode: 'combine' }
     seed = addInstanceToWorkspace(seed, 'bav')
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
 
     const { getByTestId } = render(
       <AngabenProduktePage workspaceUi={mockWorkspaceUiState} />,
     )
-    // The sidebar mounted and the workspace round-tripped from STORAGE_KEY_V2.
-    expect(getByTestId('combine-dashboard-sidebar')).toBeInTheDocument()
-    const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
-    expect(rawV2).not.toBeNull()
-    const parsed = JSON.parse(rawV2!) as Workspace
-    expect(parsed.baseline.profile.age).toBe(38)
+    const strip = getByTestId('angaben-produkte-receipt')
+    expect(strip.textContent).toContain('1 Vertrag ')
+    expect(strip.textContent).not.toContain('1 Verträge')
+  })
+
+  it('useNowSnapshot ticks via 1s interval when lastEditedAt is set (CR-PR4-R1-1)', () => {
+    // Regression for CR-PR4-R1-1: the previous `useNowSnapshot` returned a
+    // no-op `subscribe`, so `useSyncExternalStore` had no way to re-render
+    // over time and the "zuletzt geändert vor X" bucket froze.
+    //
+    // We render-hook the primitive directly because the page-shell receipt
+    // strip's saved `lastEditedAt` is currently being dropped on load by
+    // `mergeDeep` in src/storage.ts (it walks only default keys, and
+    // `defaultWorkspace.baseline` doesn't declare a `lastEditedAt` key) —
+    // an orthogonal storage pre-existing issue not in scope for this PR R1
+    // fix. The primitive's tested behaviour here is exactly what the strip
+    // uses once that storage issue is addressed.
+    const T0 = Date.now()
+    const { result } = renderHook(() => useNowSnapshot(T0))
+    expect(result.current).toBe(T0)
+    act(() => {
+      vi.setSystemTime(new Date('2026-05-29T13:00:15Z'))
+      vi.advanceTimersByTime(1_500)
+    })
+    expect(result.current).toBeGreaterThan(T0)
+  })
+
+  it('useNowSnapshot freezes when lastEditedAt is undefined (CR-PR4-R1-1)', () => {
+    // The fresh-workspace branch: `subscribe` short-circuits to a no-op
+    // cleanup so an idle receipt strip on a default workspace doesn't burn
+    // a setInterval forever just to display the constant "soeben".
+    const { result } = renderHook(() => useNowSnapshot(undefined))
+    const initial = result.current
+    act(() => {
+      vi.advanceTimersByTime(15_000)
+    })
+    expect(result.current).toBe(initial)
   })
 })
