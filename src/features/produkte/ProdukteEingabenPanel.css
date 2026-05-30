@@ -508,12 +508,6 @@
   cursor: not-allowed;
 }
 
-/* Wrapper around the bundle's "+ Vertrag hinzufügen" CTA in § 3. Keeps a
-   small top-gap from the sparform tile grid above. */
-.produkte-eingaben-panel__add-vertrag-wrap {
-  margin-top: 10px;
-}
-
 /* ----- Phone: drop the row sidebar to a stacked footer -------------------- */
 
 @media (max-width: 720px) {

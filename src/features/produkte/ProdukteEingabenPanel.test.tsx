@@ -697,17 +697,15 @@ describe('ProdukteEingabenPanel — § 3 combine-mode quick-add tiles', () => {
     expect(addInstance).toHaveBeenCalledWith(FIRST_COMBINE_PRODUCT_ID)
   })
 
-  it('mounts the DAddVertragButton CTA in combine-mode (compare-mode omits it)', () => {
-    const addInstance = vi.fn()
+  it('does not render the generic add-vertrag CTA in combine-mode (the § 3 tiles are the per-product chooser)', () => {
+    // The generic "+ Vertrag hinzufügen" CTA was removed (Codex PR #347 R4):
+    // it blind-added the registry-first product (ETF), which is misleading
+    // vs. the copy. The § 3 Sparformen tiles provide the explicit per-product
+    // add instead (covered by the tile → addInstance test above).
     const { container } = render(
-      <ProdukteEingabenPanel {...makeCombineProps({ addInstance })} />,
+      <ProdukteEingabenPanel {...makeCombineProps()} />,
     )
-    const cta = container.querySelector('.d-add-vertrag-button') as HTMLButtonElement | null
-    expect(cta).not.toBeNull()
-    fireEvent.click(cta!)
-    // CTA seeds the registry-canonical first multi-instance product id.
-    expect(addInstance).toHaveBeenCalledOnce()
-    expect(addInstance).toHaveBeenCalledWith(FIRST_COMBINE_PRODUCT_ID)
+    expect(container.querySelector('.d-add-vertrag-button')).toBeNull()
   })
 })
 

@@ -42,7 +42,6 @@ import {
   INVENTORY_PRODUCT_REGISTRY,
   type MultiInstanceProductId,
 } from '../inventory/inventoryProductRegistry'
-import { DAddVertragButton } from './DAddVertragButton'
 import { DProduktSection } from './DProduktSection'
 import { DProduktRow, type ProduktRowField } from './DProduktRow'
 import { DSparformOption } from './DSparformOption'
@@ -547,7 +546,7 @@ function CombinePanel({
         {rows.length === 0 ? (
           <p className="produkte-eingaben-panel__empty">
             Du hast noch keinen Vertrag erfasst. Wähle unten in § 3 eine
-            Sparform aus oder klicke auf „+ Vertrag hinzufügen".
+            Sparform aus.
           </p>
         ) : (
           rows.map(({ productId, instance }) => {
@@ -679,19 +678,10 @@ function CombinePanel({
             )
           })}
         </div>
-        <div className="produkte-eingaben-panel__add-vertrag-wrap">
-          <DAddVertragButton
-            // In combine-mode the bundle's "+ Vertrag hinzufügen" CTA appears
-            // alongside the tile grid as a second affordance. We treat the
-            // click as "add the first listed product" — the user can either
-            // pick a specific tile above OR fall back to this button to get
-            // an instance seeded quickly. This matches the v3 design bundle's
-            // intent (L398 of direction-d-pages.jsx: the CTA mounts at the
-            // bottom of § 2 in the bundle; we keep it in § 3 so the
-            // discoverability stays consistent with the existing tile grid).
-            onClick={() => addInstance(sparformIds[0])}
-          />
-        </div>
+        {/* No generic "+ Vertrag hinzufügen" CTA here: it blind-added the
+            registry-first product (ETF), which is misleading vs. the copy
+            (Codex PR #347 R4). The per-product § 3 tiles above are the
+            explicit add-a-contract chooser. */}
       </DProduktSection>
     </section>
   )
