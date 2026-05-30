@@ -74,6 +74,27 @@ export function estimateEpFromYears(years: number, grossSalaryYear: number): num
 }
 
 // ---------------------------------------------------------------------------
+// Workspace instance count
+// ---------------------------------------------------------------------------
+
+/**
+ * Total contract count across every multi-instance product array in a v2
+ * assumptions object. Single source of truth so the combine-mode archive CTA
+ * and the receipt strip can't drift apart when a product is added/removed
+ * (CR PR #347 R5).
+ */
+export function countWorkspaceInstances(a: WorkspaceAssumptionsV2): number {
+  return (
+    a.bav.length +
+    a.etf.length +
+    a.insurance.length +
+    a.basisrente.length +
+    a.altersvorsorgedepot.length +
+    a.riester.length
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Draft → domain instance converters
 //
 // Each function is a thin named wrapper over the corresponding registry entry's

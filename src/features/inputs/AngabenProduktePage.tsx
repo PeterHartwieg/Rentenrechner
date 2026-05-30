@@ -6,6 +6,7 @@ import { ContractDecisionMenu } from '../dashboard/ContractDecisionMenu'
 import { ProdukteEingabenPanel } from '../produkte/ProdukteEingabenPanel'
 import { CombineHaushaltSection } from '../produkte/CombineHaushaltSection'
 import { CombineWhatIfSection } from '../produkte/CombineWhatIfSection'
+import { countWorkspaceInstances } from '../inventory/inventoryHelpers'
 import { GlossaryPanel } from './GlossaryPanel'
 import { DStepIndicator } from './DStepIndicator'
 import type { Route } from '../../app/useRoute'
@@ -363,15 +364,7 @@ function CombineBody({
 
   // Whether the workspace holds any contracts — gates the archive-and-restart
   // affordance (there must be something to archive).
-  const a = baseline.assumptions
-  const hasContracts =
-    a.bav.length +
-      a.etf.length +
-      a.insurance.length +
-      a.basisrente.length +
-      a.altersvorsorgedepot.length +
-      a.riester.length >
-    0
+  const hasContracts = countWorkspaceInstances(baseline.assumptions) > 0
 
   return (
     <>
@@ -424,17 +417,10 @@ function ReceiptStrip({ workspace }: ReceiptStripProps) {
   // Compute the live instance count from the workspace baseline. We re-derive
   // on every render so a freshly-added instance is immediately reflected — the
   // workspace is the source of truth and re-renders are cheap.
-  const instanceCount = useMemo(() => {
-    const a = workspace.baseline.assumptions
-    return (
-      a.bav.length +
-      a.etf.length +
-      a.insurance.length +
-      a.basisrente.length +
-      a.altersvorsorgedepot.length +
-      a.riester.length
-    )
-  }, [workspace.baseline.assumptions])
+  const instanceCount = useMemo(
+    () => countWorkspaceInstances(workspace.baseline.assumptions),
+    [workspace.baseline.assumptions],
+  )
 
   // Snapshot "now" via a `useSyncExternalStore` subscription so the render
   // function itself never calls `Date.now()`. The snapshot refreshes on every

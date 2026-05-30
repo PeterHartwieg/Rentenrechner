@@ -56,6 +56,10 @@ describe('CombineHaushaltSection — child birth years', () => {
     )
     const textInput = container.querySelector('input[type="text"]') as HTMLInputElement
     fireEvent.change(textInput, { target: { value: '2008, 2012; 2015' } })
+    // Commit-on-blur: the draft is not parsed/dispatched until blur, so a
+    // partial edit (e.g. "2008,") isn't normalised away mid-typing.
+    expect(onPatchBaseline).not.toHaveBeenCalled()
+    fireEvent.blur(textInput)
     expect(onPatchBaseline).toHaveBeenCalledWith({
       profile: { ...baseline.profile, childBirthYears: [2008, 2012, 2015] },
     })
@@ -68,6 +72,7 @@ describe('CombineHaushaltSection — child birth years', () => {
     )
     const textInput = container.querySelector('input[type="text"]') as HTMLInputElement
     fireEvent.change(textInput, { target: { value: '2008, abc, 1850, 2020' } })
+    fireEvent.blur(textInput)
     const patch = onPatchBaseline.mock.calls[0]![0] as { profile: { childBirthYears: number[] } }
     expect(patch.profile.childBirthYears).toEqual([2008, 2020])
   })

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Scenario } from '../../domain/workspace'
 import { InfoTip } from '../../ui/InfoTip'
 import { CombineField, CombineNativeInput } from './instances/_shared'
@@ -27,6 +28,19 @@ export function CombineHaushaltSection({
 }) {
   const profile = baseline.profile
   const partnerEnabled = Boolean(baseline.partner)
+  // Local draft for the child-birth-years field so partial edits aren't
+  // normalised away on every keystroke (typing "2008," would otherwise snap
+  // back to "2008"). Parse + commit on blur / Enter (CR PR #347 R5).
+  const [childYearsDraft, setChildYearsDraft] = useState<string | null>(null)
+  const commitChildYears = () => {
+    if (childYearsDraft === null) return
+    const childBirthYears = childYearsDraft
+      .split(/[,\s;]+/)
+      .map((part) => Number(part))
+      .filter((year) => Number.isInteger(year) && year > 1900)
+    setChildYearsDraft(null)
+    onPatchBaseline({ profile: { ...profile, childBirthYears } })
+  }
   return (
     <section className="produkte-haushalt" aria-label="Haushalt">
       <h2 className="produkte-haushalt__heading">Haushalt</h2>
@@ -55,13 +69,14 @@ export function CombineHaushaltSection({
         <CombineField label="Geburtsjahre Kinder">
           <CombineNativeInput
             type="text"
-            value={profile.childBirthYears.join(', ')}
-            onChange={(e) => {
-              const childBirthYears = e.target.value
-                .split(/[,\s;]+/)
-                .map((part) => Number(part))
-                .filter((year) => Number.isInteger(year) && year > 1900)
-              onPatchBaseline({ profile: { ...profile, childBirthYears } })
+            value={childYearsDraft ?? profile.childBirthYears.join(', ')}
+            onChange={(e) => setChildYearsDraft(e.target.value)}
+            onBlur={commitChildYears}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                commitChildYears()
+                e.currentTarget.blur()
+              }
             }}
           />
         </CombineField>
