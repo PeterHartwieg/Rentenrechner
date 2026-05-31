@@ -1,0 +1,93 @@
+[
+  {
+    "key": "landing.hero.kicker",
+    "de": "Eine offene Auskunft zu deiner Altersvorsorge",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Mono kicker above the homepage H1."
+  },
+  {
+    "key": "landing.cta.combine",
+    "de": "Mein Plan erstellen",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Primary CTA label — opens the combine-mode inventory wizard."
+  },
+  {
+    "key": "landing.cta.compare",
+    "de": "Vergleich starten",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Secondary CTA label — opens compare mode."
+  },
+  {
+    "key": "landing.steps.aria",
+    "de": "So funktioniert es",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "aria-label for the 3-step process list."
+  },
+  {
+    "key": "landing.step.beschreiben.heading",
+    "de": "Du beschreibst deine Lage.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Step I heading."
+  },
+  {
+    "key": "landing.step.beschreiben.body",
+    "de": "Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Alles bleibt in deinem Browser. Es wird nichts an einen Server gesendet.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Step I body — privacy reassurance."
+  },
+  {
+    "key": "landing.step.rechnen.heading",
+    "de": "Wir rechnen offen.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Step II heading."
+  },
+  {
+    "key": "landing.step.rechnen.body",
+    "de": "Gesetzliche Rente, ETF-Sparpläne, Betriebs- und Privatrenten. Jede Annahme ist erklärt und kann geändert werden.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Step II body — what is calculated."
+  },
+  {
+    "key": "landing.step.entscheiden.heading",
+    "de": "Du entscheidest selbst.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Step III heading."
+  },
+  {
+    "key": "landing.step.entscheiden.body",
+    "de": "Wir nennen kein „bestes“ Produkt. Du siehst die Zahlen zu jeder Option und entscheidest selbst.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Step III body — no recommendation framing (not-advice posture)."
+  },
+  {
+    "key": "landing.featured.kicker",
+    "de": "Empfohlene Artikel",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Kicker above the featured-articles right-rail card."
+  },
+  {
+    "key": "landing.aside.aria",
+    "de": "Empfohlene Inhalte und Trägerangabe",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "aria-label for the right-rail aside region."
+  },
+  {
+    "key": "landing.hub.heading",
+    "de": "Alles im Überblick",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Heading for the topic-page hub navigation."
+  }
+]
