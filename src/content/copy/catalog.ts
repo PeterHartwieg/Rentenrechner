@@ -14,7 +14,7 @@
  * site. Every shipped key is covered by tests + the build, so the lenient path
  * is a safety net, not a routine.
  */
-import type { CopyEntry } from './types'
+import type { CopyEntry, CopyLang } from './types'
 import { structuralIssues } from './validate'
 import { loadRawCopyEntries } from './sources'
 
@@ -30,6 +30,11 @@ export interface CopyAccessor {
   de(key: string): string
   /** English text for `key`, or `undefined` if not yet translated. */
   en(key: string): string | undefined
+  /**
+   * Text for `key` in `lang`, with an explicit fallback to German when the
+   * English translation is absent. Used by the runtime language pilot (Slice 6).
+   */
+  text(key: string, lang: CopyLang): string
   /** Whether `key` exists in the catalog. */
   has(key: string): boolean
   /** Full entry for `key`. Always throws if missing (no sensible fallback). */
@@ -102,6 +107,14 @@ export function createCopyAccessor(
         return undefined
       }
       return entry.en
+    },
+    text(key, lang) {
+      const entry = index.get(key)
+      if (!entry) return onMissing(key)
+      if (lang === 'en' && typeof entry.en === 'string' && entry.en.trim().length > 0) {
+        return entry.en
+      }
+      return entry.de
     },
     has(key) {
       return index.has(key)

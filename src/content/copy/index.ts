@@ -19,3 +19,4 @@ export {
 export type { CopyIssue, CopyIssueLevel } from './validate'
 export { buildTranslationReport, formatTranslationReport } from './bilingual'
 export type { TranslationReport, MissingTranslation } from './bilingual'
+export { resolveLang, UI_LANGS, DEFAULT_LANG } from './lang'
