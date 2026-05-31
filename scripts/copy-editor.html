@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Copy Editor (dev) — RentenWiki</title>
+    <style>
+      :root {
+        --bg: #f7f6f2; --card: #fff; --ink: #1c1c1c; --muted: #6b6b6b;
+        --line: #e2e0d8; --accent: #7a2230; --err: #b3261e; --warn: #9a6700; --ok: #1a7f37;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font: 14px/1.5 system-ui, sans-serif; color: var(--ink);
+        background: var(--bg); padding-bottom: 72px;
+      }
+      header { padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--card); }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      .dev { font: 11px/1 monospace; background: var(--accent); color: #fff; padding: 3px 6px; border-radius: 4px; vertical-align: middle; margin-left: 8px; }
+      #summary { color: var(--muted); font-size: 13px; }
+      .toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 12px 24px; position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); z-index: 5; }
+      #search { flex: 1; min-width: 240px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; }
+      .toolbar label { font-size: 13px; color: var(--muted); display: inline-flex; gap: 5px; align-items: center; }
+      main { padding: 16px 24px; display: grid; gap: 12px; max-width: 960px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+      .card.dirty { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+      .card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+      .card-head code { font: 13px monospace; background: #f0eee6; padding: 2px 6px; border-radius: 4px; }
+      .card-head .file { color: var(--muted); font-size: 12px; margin-left: auto; }
+      .dot { color: var(--accent); font-weight: 700; visibility: hidden; }
+      .card.dirty .dot { visibility: visible; }
+      select.risk { font-size: 12px; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; }
+      .risk-legal, .risk-disclaimer, .risk-export { color: var(--err); font-weight: 600; }
+      .risk-brand { color: var(--warn); font-weight: 600; }
+      .field { display: grid; grid-template-columns: 64px 1fr; gap: 8px; margin: 6px 0; align-items: start; }
+      .field > span { color: var(--muted); font-size: 12px; padding-top: 6px; text-transform: uppercase; letter-spacing: .03em; }
+      textarea { width: 100%; resize: vertical; min-height: 34px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: 14px/1.4 system-ui, sans-serif; }
+      .card-warn { font-size: 12px; margin-top: 4px; }
+      .card-warn .err { color: var(--err); }
+      .card-warn .warn { color: var(--warn); }
+      .card-warn .info { color: var(--muted); }
+      #issues { max-width: 960px; margin: 4px 24px 24px; font-size: 13px; }
+      #issues h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+      .savebar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; gap: 16px; padding: 12px 24px; background: var(--card); border-top: 1px solid var(--line); }
+      #saveBtn { padding: 8px 18px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font-size: 14px; cursor: pointer; }
+      #saveBtn:disabled { background: #cfcabb; cursor: default; }
+      #status { font-size: 13px; }
+      #status.ok { color: var(--ok); } #status.err { color: var(--err); }
+      .empty { color: var(--muted); padding: 24px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Copy Editor <span class="dev">dev only · not in production build</span></h1>
+      <div id="summary">Loading…</div>
+    </header>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search key / German / English / surface…" autocomplete="off" />
+      <label><input type="checkbox" id="onlyDirty" /> only changed</label>
+      <label><input type="checkbox" id="onlyMissingEn" /> missing EN</label>
+    </div>
+    <main id="list"><div class="empty">Loading…</div></main>
+    <section id="issues"></section>
+    <footer class="savebar">
+      <span id="dirtyInfo">No changes</span>
+      <button id="saveBtn" disabled>Save</button>
+      <span id="status"></span>
+    </footer>
+
+    <script>
+      const ROUTE = '/__copy-editor'
+      const RISKS = ['normal', 'brand', 'legal', 'disclaimer', 'export']
+      const HIGH_RISK = ['legal', 'disclaimer', 'export']
+      // Mirrors validate.ts COPY_KEY_PATTERN so the client validation matches
+      // the server's structural checks (not a partial subset).
+      const KEY_RE = /^[a-z][a-z0-9]*(?:\.[a-z0-9-]+)+$/
+
+      /** @type {{file:string, entries:any[]}[]} */
+      let sources = []
+      // Authoritative issues from the server's /api/catalog (kept and surfaced).
+      let serverIssues = []
+      const dirtyFiles = new Set()
+
+      const $ = (sel) => document.querySelector(sel)
+      const listEl = $('#list')
+      const searchEl = $('#search')
+
+      async function load() {
+        try {
+          const res = await fetch(`${ROUTE}/api/catalog`)
+          const data = await res.json()
+          sources = data.sources || []
+          serverIssues = data.issues || []
+          dirtyFiles.clear()
+          setStatus('', '')
+          renderList()
+          updateChrome()
+        } catch (err) {
+          listEl.innerHTML = `<div class="empty">Failed to load catalog: ${String(err)}</div>`
+        }
+      }
+
+      function eachEntry() {
+        // Skip malformed sources/entries so a broken catalog (non-array file or
+        // null/primitive element, flagged in the server issues panel) can't
+        // crash the client renderer/validator.
+        const out = []
+        for (const src of sources) {
+          if (!Array.isArray(src.entries)) continue
+          for (const e of src.entries) {
+            if (e === null || typeof e !== 'object') continue
+            out.push({ e, file: src.file })
+          }
+        }
+        return out
+      }
+
+      // Complete client-side mirror of validate.ts (structuralIssues +
+      // policyIssues) so live gating matches what the server will accept,
+      // rather than a partial subset that could enable a doomed Save.
+      function clientIssues() {
+        const issues = []
+        const seen = new Set()
+        for (const { e } of eachEntry()) {
+          const key = typeof e.key === 'string' ? e.key : '<no-key>'
+          if (typeof e.key !== 'string' || !KEY_RE.test(e.key)) {
+            issues.push({ level: 'error', code: 'bad-key-format', key })
+          }
+          if (seen.has(key)) issues.push({ level: 'error', code: 'duplicate-key', key })
+          seen.add(key)
+          if (!e.de || !String(e.de).trim()) issues.push({ level: 'error', code: 'missing-de', key })
+          if (!e.surface || !String(e.surface).trim()) issues.push({ level: 'error', code: 'missing-surface', key })
+          if (!RISKS.includes(e.risk)) issues.push({ level: 'error', code: 'bad-risk', key })
+          for (const f of ['de', 'en']) {
+            // Blocking: brand-drift is a save-blocking error server-side, so the
+            // editor surfaces it as an error and disables Save too.
+            if (e[f] && /rentenrechner/i.test(e[f])) issues.push({ level: 'error', code: 'brand-drift', key })
+          }
+          if (!e.en || !String(e.en).trim()) issues.push({ level: 'info', code: 'missing-en', key })
+          if (HIGH_RISK.includes(e.risk) && (!e.description || !String(e.description).trim())) {
+            issues.push({ level: 'warning', code: 'high-risk-needs-context', key })
+          }
+        }
+        return issues
+      }
+
+      function matchesFilter(e) {
+        if ($('#onlyMissingEn').checked && e.en && String(e.en).trim()) return false
+        const term = searchEl.value.trim().toLowerCase()
+        if (!term) return true
+        return [e.key, e.de, e.en || '', e.surface].join('\n').toLowerCase().includes(term)
+      }
+
+      function renderList() {
+        listEl.innerHTML = ''
+        const onlyDirty = $('#onlyDirty').checked
+        let shown = 0
+        for (const { e, file } of eachEntry()) {
+          if (onlyDirty && !dirtyFiles.has(file)) continue
+          if (!matchesFilter(e)) continue
+          listEl.appendChild(makeCard(e, file))
+          shown += 1
+        }
+        if (shown === 0) listEl.innerHTML = '<div class="empty">No entries match.</div>'
+      }
+
+      function makeField(label, e, field) {
+        const wrap = document.createElement('label')
+        wrap.className = 'field'
+        const span = document.createElement('span')
+        span.textContent = label
+        const ta = document.createElement('textarea')
+        ta.value = e[field] || ''
+        ta.rows = field === 'de' || field === 'description' ? 2 : 1
+        ta.addEventListener('input', () => {
+          e[field] = ta.value
+          markDirty(e)
+          updateChrome()
+        })
+        wrap.append(span, ta)
+        return wrap
+      }
+
+      function makeCard(e, file) {
+        const card = document.createElement('div')
+        card.className = 'card'
+        card.dataset.key = e.key
+        card.dataset.file = file
+
+        const head = document.createElement('div')
+        head.className = 'card-head'
+        const code = document.createElement('code')
+        code.textContent = e.key
+        const sel = document.createElement('select')
+        sel.className = 'risk risk-' + e.risk
+        for (const r of RISKS) {
+          const opt = document.createElement('option')
+          opt.value = r; opt.textContent = r; if (r === e.risk) opt.selected = true
+          sel.appendChild(opt)
+        }
+        sel.addEventListener('change', () => {
+          e.risk = sel.value
+          sel.className = 'risk risk-' + e.risk
+          markDirty(e); renderList(); updateChrome()
+        })
+        const dot = document.createElement('span')
+        dot.className = 'dot'; dot.textContent = '●'; dot.title = 'unsaved'
+        const fileEl = document.createElement('span')
+        fileEl.className = 'file'; fileEl.textContent = file.replace('src/content/copy/entries/', '')
+        head.append(code, sel, dot, fileEl)
+
+        const warn = document.createElement('div')
+        warn.className = 'card-warn'
+
+        card.append(head, makeField('de', e, 'de'), makeField('en', e, 'en'), makeField('notes', e, 'description'), warn)
+        paintCardWarn(card, e)
+        return card
+      }
+
+      function paintCardWarn(card, e) {
+        const warn = card.querySelector('.card-warn')
+        const msgs = []
+        if (!e.de || !String(e.de).trim()) msgs.push('<span class="err">German text is required.</span>')
+        if (/rentenrechner/i.test(e.de || '') || /rentenrechner/i.test(e.en || '')) msgs.push('<span class="err">Contains "Rentenrechner" — use RentenWiki.de (blocks save).</span>')
+        if (HIGH_RISK.includes(e.risk) && (!e.description || !String(e.description).trim())) msgs.push('<span class="warn">High-risk copy needs a note/description.</span>')
+        if (!e.en || !String(e.en).trim()) msgs.push('<span class="info">No English yet.</span>')
+        warn.innerHTML = msgs.join(' ')
+      }
+
+      function markDirty(changedEntry) {
+        for (const src of sources) {
+          if (src.entries.includes(changedEntry)) { dirtyFiles.add(src.file); break }
+        }
+      }
+
+      function updateChrome() {
+        const all = eachEntry()
+        const missingEn = all.filter(({ e }) => !e.en || !String(e.en).trim()).length
+        const issues = clientIssues()
+        const errors = issues.filter((i) => i.level === 'error').length
+        $('#summary').textContent =
+          `${all.length} entries · EN ${all.length - missingEn}/${all.length} · ${errors} error(s)`
+
+        // Refresh visible cards' dirty markers + inline warnings.
+        for (const card of document.querySelectorAll('.card')) {
+          card.classList.toggle('dirty', dirtyFiles.has(card.dataset.file))
+          const found = all.find(({ e }) => e.key === card.dataset.key)
+          if (found) paintCardWarn(card, found.e)
+        }
+
+        // Issues panel: live (complete client mirror) + the authoritative
+        // server issues from the last /api/catalog load (kept, not dropped).
+        const renderGroup = (title, list) => {
+          if (!list || list.length === 0) return ''
+          const byCode = {}
+          for (const i of list) (byCode[i.code] = byCode[i.code] || []).push(i)
+          let h = `<h2>${title}</h2><ul>`
+          for (const code of Object.keys(byCode)) {
+            const lvl = byCode[code][0].level
+            h += `<li><span class="${lvl}">[${lvl}] ${code}</span> — ${byCode[code].length}</li>`
+          }
+          return h + '</ul>'
+        }
+        $('#issues').innerHTML =
+          renderGroup('Issues (live)', issues) + renderGroup('Server (last load)', serverIssues)
+
+        // Save bar.
+        const dirtyCount = dirtyFiles.size
+        $('#dirtyInfo').textContent = dirtyCount === 0
+          ? 'No changes'
+          : `Unsaved changes in ${dirtyCount} file(s)`
+        $('#saveBtn').disabled = dirtyCount === 0 || errors > 0
+      }
+
+      function setStatus(text, cls) {
+        const el = $('#status'); el.textContent = text; el.className = cls || ''
+      }
+
+      async function save() {
+        setStatus('Saving…', '')
+        const files = [...dirtyFiles]
+        const failures = []
+        for (const file of files) {
+          const block = sources.find((s) => s.file === file)
+          if (!block) continue
+          const res = await fetch(`${ROUTE}/api/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file, entries: block.entries }),
+          })
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}))
+            failures.push(`${file}: ${body.error || JSON.stringify(body.errors || body)}`)
+          }
+        }
+        if (failures.length > 0) {
+          setStatus('Save failed — ' + failures.join('; '), 'err')
+        } else {
+          setStatus(`Saved ${files.length} file(s).`, 'ok')
+          await load()
+        }
+      }
+
+      searchEl.addEventListener('input', renderList)
+      $('#onlyDirty').addEventListener('change', renderList)
+      $('#onlyMissingEn').addEventListener('change', renderList)
+      $('#saveBtn').addEventListener('click', save)
+      load()
+    </script>
+  </body>
+</html>
