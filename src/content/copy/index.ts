@@ -12,5 +12,6 @@ export {
   COPY_RISKS,
   COPY_KEY_PATTERN,
   structuralIssues,
+  policyIssues,
 } from './validate'
 export type { CopyIssue, CopyIssueLevel } from './validate'
