@@ -22,6 +22,7 @@ import {
   resolveFeaturedArticles,
 } from './hubClusters'
 import { RULES_YEAR } from '../../rules'
+import { copy } from '../../content/copy'
 
 /**
  * LandingChoice — payload fired by the two CTA buttons (and by the
@@ -48,22 +49,12 @@ interface Props {
   navigate?: (target: Route) => void
 }
 
-const PROCESS_STEPS: ReadonlyArray<{ n: string; h: string; p: string }> = [
-  {
-    n: 'I.',
-    h: 'Du beschreibst deine Lage.',
-    p: 'Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Alles bleibt in deinem Browser. Es wird nichts an einen Server gesendet.',
-  },
-  {
-    n: 'II.',
-    h: 'Wir rechnen offen.',
-    p: 'Gesetzliche Rente, ETF-Sparpläne, Betriebs- und Privatrenten. Jede Annahme ist erklärt und kann geändert werden.',
-  },
-  {
-    n: 'III.',
-    h: 'Du entscheidest selbst.',
-    p: 'Wir nennen kein „bestes“ Produkt. Du siehst die Zahlen zu jeder Option und entscheidest selbst.',
-  },
+// Step copy lives in the copy catalog (`landing.step.*`); only the decorative
+// ordinal stays inline. See `src/content/copy/entries/landing.copy.json`.
+const PROCESS_STEPS: ReadonlyArray<{ n: string; headingKey: string; bodyKey: string }> = [
+  { n: 'I.', headingKey: 'landing.step.beschreiben.heading', bodyKey: 'landing.step.beschreiben.body' },
+  { n: 'II.', headingKey: 'landing.step.rechnen.heading', bodyKey: 'landing.step.rechnen.body' },
+  { n: 'III.', headingKey: 'landing.step.entscheiden.heading', bodyKey: 'landing.step.entscheiden.body' },
 ]
 
 /**
@@ -134,7 +125,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
         {/* Top section: editorial hero (left) + aside panels (right) */}
         <section className="landing-top">
           <div className="landing-hero">
-            <div className="landing-kicker">Eine offene Auskunft zu deiner Altersvorsorge</div>
+            <div className="landing-kicker">{copy.de('landing.hero.kicker')}</div>
             <h1 className="landing-headline">
               Was bekommst du <em className="landing-headline-accent">wirklich</em> an Rente?
             </h1>
@@ -151,7 +142,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
                 className="landing-btn landing-btn--primary"
                 onClick={() => onChoice({ kind: 'combine' })}
               >
-                <span>Mein Plan erstellen</span>
+                <span>{copy.de('landing.cta.combine')}</span>
                 <span aria-hidden="true">→</span>
               </button>
               <button
@@ -159,24 +150,24 @@ export function LandingPage({ onChoice, navigate }: Props) {
                 className="landing-btn landing-btn--secondary"
                 onClick={() => onChoice({ kind: 'compare' })}
               >
-                Vergleich starten
+                {copy.de('landing.cta.compare')}
               </button>
             </div>
 
-            <ol className="landing-steps" aria-label="So funktioniert es">
+            <ol className="landing-steps" aria-label={copy.de('landing.steps.aria')}>
               {PROCESS_STEPS.map((step) => (
                 <li key={step.n} className="landing-step">
                   <div className="landing-step-num">{step.n}</div>
-                  <div className="landing-step-h">{step.h}</div>
-                  <div className="landing-step-p">{step.p}</div>
+                  <div className="landing-step-h">{copy.de(step.headingKey)}</div>
+                  <div className="landing-step-p">{copy.de(step.bodyKey)}</div>
                 </li>
               ))}
             </ol>
           </div>
 
-          <aside className="landing-aside" aria-label="Empfohlene Inhalte und Trägerangabe">
+          <aside className="landing-aside" aria-label={copy.de('landing.aside.aria')}>
             <div className="landing-aside-card landing-aside-card--featured">
-              <div className="landing-aside-kicker">Empfohlene Artikel</div>
+              <div className="landing-aside-kicker">{copy.de('landing.featured.kicker')}</div>
               <ul className="landing-featured-list">
                 {featured.map((a) => (
                   <li key={a.href} className="landing-featured-item">
@@ -221,7 +212,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
             below the hero. Five clusters, 10 anchors. */}
         <nav className="landing-hub" aria-labelledby="landing-hub-heading">
           <h2 id="landing-hub-heading" className="landing-hub-heading">
-            Alles im Überblick
+            {copy.de('landing.hub.heading')}
           </h2>
           <div className="landing-hub-clusters">
             {HUB_CLUSTERS.map((cluster) => (
