@@ -16,9 +16,10 @@ describe('buildInventoryReport — over the real catalog', () => {
     expect(report.rows.length).toBe(report.summary.total)
   })
 
-  it('counts missing-en (Slice 1 ships German only)', () => {
+  it('counts missing-en as partial coverage (Slice 5 added some en)', () => {
     const report = buildInventoryReport()
-    expect(report.summary.missingEn).toBe(report.summary.total)
+    expect(report.summary.missingEn).toBeGreaterThan(0)
+    expect(report.summary.missingEn).toBeLessThan(report.summary.total)
     // Each missing-en is a (non-fatal) warning.
     expect(report.summary.warnings).toBeGreaterThanOrEqual(report.summary.missingEn)
   })

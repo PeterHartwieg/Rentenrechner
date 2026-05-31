@@ -56,9 +56,10 @@ describe('copy catalog — fail-loud on missing key', () => {
     expect(() => copy.de('landing.does.not.exist')).toThrow(/missing key/)
   })
 
-  it('en() returns undefined when not yet translated (no throw)', () => {
-    // Slice 1 ships no English; en() of a known key resolves to undefined.
-    expect(copy.en('landing.cta.combine')).toBeUndefined()
+  it('en() returns the translation when present, undefined when not (no throw)', () => {
+    // Slice 5 adds en to the short labels; step bodies stay untranslated.
+    expect(copy.en('landing.cta.combine')).toBe('Create my plan')
+    expect(copy.en('landing.step.beschreiben.body')).toBeUndefined()
   })
 
   it('en() of an unknown key fails loudly', () => {
