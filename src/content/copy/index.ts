@@ -17,3 +17,5 @@ export {
   policyIssues,
 } from './validate'
 export type { CopyIssue, CopyIssueLevel } from './validate'
+export { buildTranslationReport, formatTranslationReport } from './bilingual'
+export type { TranslationReport, MissingTranslation } from './bilingual'

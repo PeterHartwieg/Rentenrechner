@@ -2,6 +2,7 @@
   {
     "key": "landing.hero.kicker",
     "de": "Eine offene Auskunft zu deiner Altersvorsorge",
+    "en": "An open look at your retirement provision",
     "surface": "landing",
     "risk": "normal",
     "description": "Mono kicker above the homepage H1."
@@ -9,6 +10,7 @@
   {
     "key": "landing.cta.combine",
     "de": "Mein Plan erstellen",
+    "en": "Create my plan",
     "surface": "landing",
     "risk": "normal",
     "description": "Primary CTA label — opens the combine-mode inventory wizard."
@@ -16,6 +18,7 @@
   {
     "key": "landing.cta.compare",
     "de": "Vergleich starten",
+    "en": "Start comparison",
     "surface": "landing",
     "risk": "normal",
     "description": "Secondary CTA label — opens compare mode."
@@ -23,6 +26,7 @@
   {
     "key": "landing.steps.aria",
     "de": "So funktioniert es",
+    "en": "How it works",
     "surface": "landing",
     "risk": "normal",
     "description": "aria-label for the 3-step process list."
@@ -72,6 +76,7 @@
   {
     "key": "landing.featured.kicker",
     "de": "Empfohlene Artikel",
+    "en": "Featured articles",
     "surface": "landing",
     "risk": "normal",
     "description": "Kicker above the featured-articles right-rail card."
@@ -79,6 +84,7 @@
   {
     "key": "landing.aside.aria",
     "de": "Empfohlene Inhalte und Trägerangabe",
+    "en": "Recommended content and site operator",
     "surface": "landing",
     "risk": "normal",
     "description": "aria-label for the right-rail aside region."
@@ -86,6 +92,7 @@
   {
     "key": "landing.about.kicker",
     "de": "Wer steht hinter RentenWiki",
+    "en": "Who is behind RentenWiki",
     "surface": "landing",
     "risk": "brand",
     "description": "Kicker on the 'who runs this' panel. Brand-sensitive: names the public brand (RentenWiki) — must never regress to a 'Rentenrechner' reference."
@@ -93,6 +100,7 @@
   {
     "key": "landing.hub.heading",
     "de": "Alles im Überblick",
+    "en": "Everything at a glance",
     "surface": "landing",
     "risk": "normal",
     "description": "Heading for the topic-page hub navigation."
