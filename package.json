@@ -19,7 +19,8 @@
     "deploy": "npm run build && wrangler deploy",
     "check:bav": "vite-node scripts/check_bav.ts",
     "copy:inventory": "vite-node scripts/copy-inventory.ts",
-    "copy:missing": "vite-node scripts/copy-missing.ts"
+    "copy:missing": "vite-node scripts/copy-missing.ts",
+    "copy:editor": "vite --open /__copy-editor/"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",

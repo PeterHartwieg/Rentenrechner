@@ -4,6 +4,7 @@ import mdx from '@mdx-js/rollup'
 import remarkGfm from 'remark-gfm'
 
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { copyEditorPlugin } from './scripts/copyEditorPlugin'
 
 // Static-host SPA fallback — Cloudflare Workers serves dist/404.html for any
 // unmatched path. The legacy `copyFileSync('dist/index.html', 'dist/404.html')`
@@ -35,6 +36,8 @@ export default defineConfig({
     { enforce: 'pre', ...mdx({ remarkPlugins: [remarkGfm] }) },
     react({ include: /\.(jsx|tsx|mdx)$/ }),
     cloudflare(),
+    // Dev-only (apply: 'serve'); absent from production builds.
+    copyEditorPlugin(),
   ],
   build: {
     // The lazy `Calculator` chunk (compare-mode + combine-mode dashboard,
