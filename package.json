@@ -17,7 +17,8 @@
     "prerender": "node scripts/prerender.mjs",
     "og:generate": "node scripts/generate-og-images.mjs",
     "deploy": "npm run build && wrangler deploy",
-    "check:bav": "vite-node scripts/check_bav.ts"
+    "check:bav": "vite-node scripts/check_bav.ts",
+    "copy:inventory": "vite-node scripts/copy-inventory.ts"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",

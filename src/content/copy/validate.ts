@@ -113,3 +113,59 @@ export function structuralIssues(entries: readonly CopyEntry[]): CopyIssue[] {
 
   return issues
 }
+
+/**
+ * The internal working name. All catalog copy is user-facing, so it must never
+ * leak into the public brand; the public name is always `RentenWiki.de`.
+ * (CLAUDE.md "Public brand" guardrail.)
+ */
+const BRAND_DRIFT_PATTERN = /rentenrechner/i
+
+/**
+ * Policy validation: mostly soft warnings the inventory CLI surfaces, plus one
+ * blocking error.
+ *
+ * - `missing-en`  — warning: no English translation yet (expected during migration).
+ * - `brand-drift` — ERROR: public copy contains "Rentenrechner". The public brand
+ *   is RentenWiki.de and this regression is merge-blocking, so it fails the CLI.
+ *
+ * (Risk-tier rules — high-risk copy needing a description — are added in Slice 4.)
+ */
+export function policyIssues(entries: readonly CopyEntry[]): CopyIssue[] {
+  const issues: CopyIssue[] = []
+
+  for (const entry of entries) {
+    // structuralIssues already reports non-object entries; skip them here so a
+    // null / primitive record can't throw on the field reads below.
+    if (entry === null || typeof entry !== 'object') continue
+    const key = typeof entry.key === 'string' ? entry.key : '<no-key>'
+
+    if (typeof entry.en !== 'string' || entry.en.trim().length === 0) {
+      issues.push({
+        level: 'warning',
+        code: 'missing-en',
+        key,
+        message: `Key "${key}" has no English (en) translation.`,
+      })
+    }
+
+    for (const [field, value] of [
+      ['de', entry.de],
+      ['en', entry.en],
+    ] as const) {
+      if (typeof value === 'string' && BRAND_DRIFT_PATTERN.test(value)) {
+        issues.push({
+          // Blocking: a public-copy "Rentenrechner" regression is merge-blocking
+          // per the brand guardrail, so the inventory CLI must exit nonzero on it
+          // (unlike missing-en, which stays a soft migration warning).
+          level: 'error',
+          code: 'brand-drift',
+          key,
+          message: `Key "${key}" (${field}) contains "Rentenrechner" — public copy must say "RentenWiki.de".`,
+        })
+      }
+    }
+  }
+
+  return issues
+}

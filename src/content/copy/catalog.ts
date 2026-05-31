@@ -16,19 +16,7 @@
  */
 import type { CopyEntry } from './types'
 import { structuralIssues } from './validate'
-import landingEntries from './entries/landing.copy.json'
-
-/**
- * Raw JSON sources. Each file is an array of entries for one surface, imported
- * statically so the bundler includes them and tests / CLI see identical data.
- * Add a new surface by importing its `*.copy.json` here.
- */
-const RAW_SOURCES: readonly CopyEntry[][] = [landingEntries as unknown as CopyEntry[]]
-
-/** Flatten the per-surface source arrays into a single ordered entry list. */
-function flattenSources(sources: readonly CopyEntry[][]): CopyEntry[] {
-  return sources.flat()
-}
+import { loadRawCopyEntries } from './sources'
 
 /**
  * Whether to fail loudly. True everywhere except a production build, so dev,
@@ -133,9 +121,9 @@ export function createCopyAccessor(
 }
 
 /** The application copy catalog. */
-export const copy: CopyAccessor = createCopyAccessor(flattenSources(RAW_SOURCES))
+export const copy: CopyAccessor = createCopyAccessor(loadRawCopyEntries())
 
 /** All entries — for tooling (inventory CLI, editor, bilingual reports). */
 export function allCopyEntries(): readonly CopyEntry[] {
-  return flattenSources(RAW_SOURCES)
+  return loadRawCopyEntries()
 }
