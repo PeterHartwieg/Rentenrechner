@@ -11,6 +11,8 @@ export type { CopyAccessor, CreateCopyAccessorOptions } from './catalog'
 export {
   COPY_RISKS,
   COPY_KEY_PATTERN,
+  HIGH_RISK_TIERS,
+  isHighRiskTier,
   structuralIssues,
   policyIssues,
 } from './validate'

@@ -7,7 +7,7 @@
  * shell that prints the output and sets the exit code.
  */
 import type { CopyEntry, CopyRisk } from './types'
-import { structuralIssues, policyIssues } from './validate'
+import { structuralIssues, policyIssues, isHighRiskTier, COPY_RISKS } from './validate'
 import type { CopyIssue } from './validate'
 import { COPY_SOURCES } from './sources'
 import type { CopySource } from './sources'
@@ -50,6 +50,8 @@ export interface InventoryFilter {
   surface?: string
   /** Restrict to one risk tier. */
   risk?: CopyRisk
+  /** Restrict to the high-risk tiers (legal / disclaimer / export). */
+  highRisk?: boolean
 }
 
 function toRows(sources: readonly CopySource[]): CopyInventoryRow[] {
@@ -83,6 +85,7 @@ function toRows(sources: readonly CopySource[]): CopyInventoryRow[] {
 function matchesFilter(row: CopyInventoryRow, filter: InventoryFilter): boolean {
   if (filter.surface && row.surface !== filter.surface) return false
   if (filter.risk && row.risk !== filter.risk) return false
+  if (filter.highRisk && !isHighRiskTier(row.risk)) return false
   if (filter.search) {
     const needle = filter.search.toLowerCase()
     const haystack = `${row.key}\n${row.de}\n${row.en ?? ''}\n${row.surface}`.toLowerCase()
@@ -169,6 +172,12 @@ export function formatInventoryTable(report: CopyInventoryReport): string {
     `${filtered}${summary.total} entries · ${summary.surfaces} surface(s) · ` +
       `${summary.missingEn} missing en · ${summary.errors} error(s) · ${summary.warnings} warning(s)`,
   )
+  const riskBreakdown = COPY_RISKS.filter((tier) => summary.byRisk[tier]).map(
+    (tier) => `${tier} ${summary.byRisk[tier]}`,
+  )
+  if (riskBreakdown.length > 0) {
+    lines.push(`risk tiers: ${riskBreakdown.join(', ')}`)
+  }
 
   if (issues.length > 0) {
     lines.push('')

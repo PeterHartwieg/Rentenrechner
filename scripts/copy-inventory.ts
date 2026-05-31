@@ -6,6 +6,7 @@
  *   npm run copy:inventory -- rente         # rows whose key/de/en/surface match
  *   npm run copy:inventory -- --surface=landing
  *   npm run copy:inventory -- --risk=legal
+ *   npm run copy:inventory -- --high-risk    # legal / disclaimer / export only
  *   npm run copy:inventory -- --json        # machine-readable
  *
  * Works without starting the app (reads the catalog JSON via vite-node). Exits
@@ -30,6 +31,7 @@ if (argv.includes('--help') || argv.includes('-h')) {
       '  search           case-insensitive substring across key / de / en / surface',
       '  --surface=<id>   restrict to one surface (e.g. landing)',
       '  --risk=<tier>    restrict to one risk tier (normal|brand|legal|disclaimer|export)',
+      '  --high-risk      restrict to legal / disclaimer / export entries',
       '  --json           machine-readable output',
     ].join('\n'),
   )
@@ -37,12 +39,13 @@ if (argv.includes('--help') || argv.includes('-h')) {
 }
 
 const json = argv.includes('--json')
+const highRisk = argv.includes('--high-risk')
 let surface: string | undefined
 let risk: string | undefined
 let search: string | undefined
 
 for (const arg of argv) {
-  if (arg === '--json') continue
+  if (arg === '--json' || arg === '--high-risk') continue
   if (arg.startsWith('--surface=')) surface = arg.slice('--surface='.length)
   else if (arg.startsWith('--risk=')) risk = arg.slice('--risk='.length)
   else if (!arg.startsWith('-')) search = arg
@@ -51,6 +54,7 @@ for (const arg of argv) {
 const report = buildInventoryReport(undefined, {
   search,
   surface,
+  highRisk,
   // The filter type wants a CopyRisk; an unknown value simply matches nothing.
   risk: risk as never,
 })
