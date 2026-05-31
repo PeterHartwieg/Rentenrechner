@@ -422,3 +422,28 @@
     gap: 16px;
   }
 }
+
+/* Runtime language pilot (Slice 6): unobtrusive DE/EN switch above the meta line. */
+.landing-lang-switch {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0 6px;
+}
+
+.landing-lang-switch button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  border: 1px solid #d8d4c8;
+  border-radius: 999px;
+  background: transparent;
+  color: #6b6b6b;
+  cursor: pointer;
+}
+
+.landing-lang-switch button.is-active {
+  background: #1c1c1c;
+  color: #fff;
+  border-color: #1c1c1c;
+}

@@ -635,3 +635,43 @@ describe('LandingPage — viewport sweep (PR 11)', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// Slice 6 — runtime language pilot (?lang=en, display-only)
+// ---------------------------------------------------------------------------
+
+describe('LandingPage — runtime language pilot (?lang=en)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', makeStore())
+  })
+  afterEach(() => {
+    // Reset the location stub so this ?lang=en block can't bleed into others.
+    stubLocationSearch('')
+  })
+
+  it('renders German by default (no ?lang)', () => {
+    stubLocationSearch('')
+    const { getByText } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    expect(getByText('Mein Plan erstellen')).toBeTruthy()
+    expect(getByText('Vergleich starten')).toBeTruthy()
+  })
+
+  it('renders English for translated keys and German for untranslated (explicit fallback)', () => {
+    stubLocationSearch('?lang=en')
+    const { getByText, queryByText } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    // Translated labels switch to English…
+    expect(getByText('Create my plan')).toBeTruthy()
+    expect(getByText('Start comparison')).toBeTruthy()
+    // …the German CTA label is replaced…
+    expect(queryByText('Mein Plan erstellen')).toBeNull()
+    // …but the untranslated step body falls back to German.
+    expect(getByText('Du beschreibst deine Lage.')).toBeTruthy()
+  })
+
+  it('exposes a DE/EN switch reflecting the active language', () => {
+    stubLocationSearch('?lang=en')
+    const { getByRole } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
+    expect(getByRole('button', { name: 'English' }).getAttribute('aria-pressed')).toBe('true')
+    expect(getByRole('button', { name: 'Deutsch' }).getAttribute('aria-pressed')).toBe('false')
+  })
+})

@@ -85,6 +85,13 @@ describe('createCopyAccessor — strict validation', () => {
     expect(c.en('a.one')).toBeUndefined()
   })
 
+  it('text(key, lang) returns the language with an explicit German fallback', () => {
+    const c = createCopyAccessor(valid, { strict: true })
+    expect(c.text('a.two', 'en')).toBe('two') // en present
+    expect(c.text('a.two', 'de')).toBe('zwei') // de requested
+    expect(c.text('a.one', 'en')).toBe('eins') // no en → falls back to de
+  })
+
   it('throws on duplicate keys', () => {
     const dup: CopyEntry[] = [
       { key: 'a.one', de: 'eins', surface: 'a', risk: 'normal' },
