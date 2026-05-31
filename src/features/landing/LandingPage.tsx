@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import './LandingPage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import type { ProductId } from '../../domain'
@@ -22,7 +22,8 @@ import {
   resolveFeaturedArticles,
 } from './hubClusters'
 import { RULES_YEAR } from '../../rules'
-import { copy } from '../../content/copy'
+import { copy, resolveLang, DEFAULT_LANG } from '../../content/copy'
+import type { CopyLang } from '../../content/copy'
 
 /**
  * LandingChoice — payload fired by the two CTA buttons (and by the
@@ -56,6 +57,24 @@ const PROCESS_STEPS: ReadonlyArray<{ n: string; headingKey: string; bodyKey: str
   { n: 'II.', headingKey: 'landing.step.rechnen.heading', bodyKey: 'landing.step.rechnen.body' },
   { n: 'III.', headingKey: 'landing.step.entscheiden.heading', bodyKey: 'landing.step.entscheiden.body' },
 ]
+
+// Runtime language pilot (Slice 6): the UI language is derived from the URL
+// `?lang` param read as an *external store*. Using useSyncExternalStore (rather
+// than setState-in-effect) keeps SSR + the German SSG prerender in German and
+// lets the client switch after hydration with no hydration mismatch.
+const LANG_CHANGE_EVENT = 'rw:langchange'
+
+function subscribeLang(onChange: () => void): () => void {
+  window.addEventListener('popstate', onChange)
+  window.addEventListener(LANG_CHANGE_EVENT, onChange)
+  return () => {
+    window.removeEventListener('popstate', onChange)
+    window.removeEventListener(LANG_CHANGE_EVENT, onChange)
+  }
+}
+
+const getLangSnapshot = (): CopyLang => resolveLang(window.location.search)
+const getServerLangSnapshot = (): CopyLang => DEFAULT_LANG
 
 /**
  * Two-CTA landing page in editorial mode (PR 2).
@@ -92,6 +111,21 @@ export function LandingPage({ onChoice, navigate }: Props) {
   const featured = resolveFeaturedArticles()
   const hubArticleCount = countHubArticles()
 
+  // Runtime language pilot (Slice 6): `?lang` read as an external store (see the
+  // module-level helpers). `t` reads the catalog with an explicit German
+  // fallback for untranslated keys.
+  const lang = useSyncExternalStore(subscribeLang, getLangSnapshot, getServerLangSnapshot)
+  const t = (key: string) => copy.text(key, lang)
+
+  function switchLang(next: CopyLang) {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (next === DEFAULT_LANG) url.searchParams.delete('lang')
+    else url.searchParams.set('lang', next)
+    window.history.replaceState(null, '', url.toString())
+    window.dispatchEvent(new Event(LANG_CHANGE_EVENT))
+  }
+
   // Prerender path may pass undefined for `navigate`. We pass a stable no-op
   // through to LegalFooter — the rendered HTML still emits `<a href>` so
   // direct loads work; the live app threads its real navigate from useRoute.
@@ -125,7 +159,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
         {/* Top section: editorial hero (left) + aside panels (right) */}
         <section className="landing-top">
           <div className="landing-hero">
-            <div className="landing-kicker">{copy.de('landing.hero.kicker')}</div>
+            <div className="landing-kicker">{t('landing.hero.kicker')}</div>
             <h1 className="landing-headline">
               Was bekommst du <em className="landing-headline-accent">wirklich</em> an Rente?
             </h1>
@@ -142,7 +176,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
                 className="landing-btn landing-btn--primary"
                 onClick={() => onChoice({ kind: 'combine' })}
               >
-                <span>{copy.de('landing.cta.combine')}</span>
+                <span>{t('landing.cta.combine')}</span>
                 <span aria-hidden="true">→</span>
               </button>
               <button
@@ -150,24 +184,24 @@ export function LandingPage({ onChoice, navigate }: Props) {
                 className="landing-btn landing-btn--secondary"
                 onClick={() => onChoice({ kind: 'compare' })}
               >
-                {copy.de('landing.cta.compare')}
+                {t('landing.cta.compare')}
               </button>
             </div>
 
-            <ol className="landing-steps" aria-label={copy.de('landing.steps.aria')}>
+            <ol className="landing-steps" aria-label={t('landing.steps.aria')}>
               {PROCESS_STEPS.map((step) => (
                 <li key={step.n} className="landing-step">
                   <div className="landing-step-num">{step.n}</div>
-                  <div className="landing-step-h">{copy.de(step.headingKey)}</div>
-                  <div className="landing-step-p">{copy.de(step.bodyKey)}</div>
+                  <div className="landing-step-h">{t(step.headingKey)}</div>
+                  <div className="landing-step-p">{t(step.bodyKey)}</div>
                 </li>
               ))}
             </ol>
           </div>
 
-          <aside className="landing-aside" aria-label={copy.de('landing.aside.aria')}>
+          <aside className="landing-aside" aria-label={t('landing.aside.aria')}>
             <div className="landing-aside-card landing-aside-card--featured">
-              <div className="landing-aside-kicker">{copy.de('landing.featured.kicker')}</div>
+              <div className="landing-aside-kicker">{t('landing.featured.kicker')}</div>
               <ul className="landing-featured-list">
                 {featured.map((a) => (
                   <li key={a.href} className="landing-featured-item">
@@ -193,7 +227,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
             </div>
 
             <div className="landing-aside-card landing-aside-card--about">
-              <div className="landing-aside-kicker">{copy.de('landing.about.kicker')}</div>
+              <div className="landing-aside-kicker">{t('landing.about.kicker')}</div>
               <p className="landing-about-body">
                 RentenWiki.de ist ein Einzelprojekt von Peter Hartwieg.
                 Keine Werbung, keine Provisionen. Spenden über GitHub Sponsors decken die Hosting-Kosten.
@@ -212,7 +246,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
             below the hero. Five clusters, 10 anchors. */}
         <nav className="landing-hub" aria-labelledby="landing-hub-heading">
           <h2 id="landing-hub-heading" className="landing-hub-heading">
-            {copy.de('landing.hub.heading')}
+            {t('landing.hub.heading')}
           </h2>
           <div className="landing-hub-clusters">
             {HUB_CLUSTERS.map((cluster) => (
@@ -235,6 +269,27 @@ export function LandingPage({ onChoice, navigate }: Props) {
 
       {/* Visible "Stand" line for JSON-LD `dateModified` (Google structured-data
           guideline: every JSON-LD field must have a visible counterpart). */}
+      {/* Runtime language pilot (Slice 6): display-only DE/EN switch. Exports
+          and legal text stay German; this only re-renders catalog strings. */}
+      <div className="landing-lang-switch" role="group" aria-label="Sprache / Language">
+        <button
+          type="button"
+          className={lang === 'de' ? 'is-active' : undefined}
+          aria-pressed={lang === 'de'}
+          onClick={() => switchLang('de')}
+        >
+          Deutsch
+        </button>
+        <button
+          type="button"
+          className={lang === 'en' ? 'is-active' : undefined}
+          aria-pressed={lang === 'en'}
+          onClick={() => switchLang('en')}
+        >
+          English
+        </button>
+      </div>
+
       <p className="landing-stand">
         Stand: {route.dateModified} · Werte für Deutschland {RULES_YEAR}
       </p>
