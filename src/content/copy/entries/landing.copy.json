@@ -84,6 +84,13 @@
     "description": "aria-label for the right-rail aside region."
   },
   {
+    "key": "landing.about.kicker",
+    "de": "Wer steht hinter RentenWiki",
+    "surface": "landing",
+    "risk": "brand",
+    "description": "Kicker on the 'who runs this' panel. Brand-sensitive: names the public brand (RentenWiki) — must never regress to a 'Rentenrechner' reference."
+  },
+  {
     "key": "landing.hub.heading",
     "de": "Alles im Überblick",
     "surface": "landing",

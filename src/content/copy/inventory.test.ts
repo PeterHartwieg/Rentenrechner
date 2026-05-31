@@ -111,12 +111,50 @@ describe('policyIssues', () => {
   })
 })
 
+describe('high-risk classification (Slice 4)', () => {
+  it('warns when legal/disclaimer/export copy lacks a description', () => {
+    const issues = policyIssues([
+      { key: 'a.legal', de: 'x', surface: 'a', risk: 'legal' },
+      { key: 'a.disc', de: 'x', surface: 'a', risk: 'disclaimer', description: 'why' },
+      { key: 'a.exp', de: 'x', surface: 'a', risk: 'export', description: '   ' },
+      { key: 'a.norm', de: 'x', surface: 'a', risk: 'normal' },
+    ])
+    const flagged = issues
+      .filter((i) => i.code === 'high-risk-needs-context')
+      .map((i) => i.key)
+    // legal (no desc) + export (blank desc); NOT disclaimer (has desc), NOT normal.
+    expect(flagged.sort()).toEqual(['a.exp', 'a.legal'])
+  })
+
+  it('--high-risk filter surfaces only legal/disclaimer/export', () => {
+    const report = buildInventoryReport(
+      src([
+        { key: 'a.norm', de: 'x', surface: 'a', risk: 'normal' },
+        { key: 'a.brand', de: 'x', surface: 'a', risk: 'brand' },
+        { key: 'a.legal', de: 'x', surface: 'a', risk: 'legal', description: 'd' },
+        { key: 'a.exp', de: 'x', surface: 'a', risk: 'export', description: 'd' },
+      ]),
+      { highRisk: true },
+    )
+    expect(report.rows.map((r) => r.key).sort()).toEqual(['a.exp', 'a.legal'])
+  })
+
+  it('the real catalog carries the brand-classified about kicker', () => {
+    const report = buildInventoryReport()
+    const brandRows = report.rows.filter((r) => r.risk === 'brand')
+    expect(brandRows.map((r) => r.key)).toContain('landing.about.kicker')
+    expect(report.summary.byRisk.brand).toBe(1)
+    expect(report.summary.errors).toBe(0)
+  })
+})
+
 describe('formatInventoryTable', () => {
   it('renders a header, a known key, and the summary line', () => {
     const text = formatInventoryTable(buildInventoryReport())
     expect(text).toContain('KEY')
     expect(text).toContain('landing.cta.combine')
     expect(text).toMatch(/entries ·/)
+    expect(text).toMatch(/risk tiers:.*normal/)
   })
 
   it('shows an empty-result notice when the filter matches nothing', () => {

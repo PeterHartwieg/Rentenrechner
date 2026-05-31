@@ -15,6 +15,19 @@ import type { CopyEntry, CopyRisk } from './types'
 export const COPY_RISKS = ['normal', 'brand', 'legal', 'disclaimer', 'export'] as const
 
 /**
+ * Tiers that need explicit reviewer context (a `description`) and are the
+ * "easy to list separately" set the inventory CLI's `--high-risk` surfaces.
+ * `brand` is sensitive too but is caught by the brand-drift check rather than a
+ * description requirement.
+ */
+export const HIGH_RISK_TIERS: readonly CopyRisk[] = ['legal', 'disclaimer', 'export']
+
+/** Whether a risk tier is one of the description-requiring high-risk tiers. */
+export function isHighRiskTier(risk: CopyRisk): boolean {
+  return HIGH_RISK_TIERS.includes(risk)
+}
+
+/**
  * Stable-key shape: lowercase ASCII segments separated by dots, e.g.
  * `landing.step.beschreiben.heading`. At least two segments so every key names
  * both a surface and a slot. Digits and hyphens are allowed inside a segment.
@@ -128,8 +141,7 @@ const BRAND_DRIFT_PATTERN = /rentenrechner/i
  * - `missing-en`  — warning: no English translation yet (expected during migration).
  * - `brand-drift` — ERROR: public copy contains "Rentenrechner". The public brand
  *   is RentenWiki.de and this regression is merge-blocking, so it fails the CLI.
- *
- * (Risk-tier rules — high-risk copy needing a description — are added in Slice 4.)
+ * - `high-risk-needs-context` — legal/disclaimer/export copy without a description.
  */
 export function policyIssues(entries: readonly CopyEntry[]): CopyIssue[] {
   const issues: CopyIssue[] = []
@@ -164,6 +176,19 @@ export function policyIssues(entries: readonly CopyEntry[]): CopyIssue[] {
           message: `Key "${key}" (${field}) contains "Rentenrechner" — public copy must say "RentenWiki.de".`,
         })
       }
+    }
+
+    if (
+      isCopyRisk(entry.risk) &&
+      isHighRiskTier(entry.risk) &&
+      (typeof entry.description !== 'string' || entry.description.trim().length === 0)
+    ) {
+      issues.push({
+        level: 'warning',
+        code: 'high-risk-needs-context',
+        key,
+        message: `Key "${key}" is risk "${entry.risk}" but has no description — high-risk copy must carry reviewer context.`,
+      })
     }
   }
 
