@@ -48,6 +48,19 @@
       #status { font-size: 13px; }
       #status.ok { color: var(--ok); } #status.err { color: var(--err); }
       .empty { color: var(--muted); padding: 24px; }
+      .toolbar select { font-size: 13px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
+      .toolbar button.link { background: none; border: 0; color: var(--accent); cursor: pointer; font-size: 13px; padding: 2px 4px; }
+      .group { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      .group.dirty { border-color: var(--accent); }
+      .group-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: none; border: 0; cursor: pointer; font: inherit; text-align: left; color: var(--ink); }
+      .group-head:hover { background: #faf9f5; }
+      .group .caret { color: var(--muted); width: 12px; flex: none; }
+      .group-name { font-weight: 600; }
+      .group-counts { color: var(--muted); font-size: 12px; }
+      .group-unsaved { color: var(--accent); font-weight: 700; font-size: 12px; margin-left: auto; visibility: hidden; }
+      .group.dirty .group-unsaved { visibility: visible; }
+      .group-body { padding: 0 14px 14px; display: grid; gap: 12px; }
+      .group:not(.open) .group-body { display: none; }
     </style>
   </head>
   <body>
@@ -56,9 +69,20 @@
       <div id="summary">Loading…</div>
     </header>
     <div class="toolbar">
-      <input id="search" type="search" placeholder="Search key / German / English / surface…" autocomplete="off" />
+      <input id="search" type="search" placeholder="Search key / German / English…" autocomplete="off" />
+      <select id="surfaceFilter" title="Filter by surface"><option value="">All surfaces</option></select>
+      <select id="riskFilter" title="Filter by risk tier">
+        <option value="">All risks</option>
+        <option value="normal">normal</option>
+        <option value="brand">brand</option>
+        <option value="legal">legal</option>
+        <option value="disclaimer">disclaimer</option>
+        <option value="export">export</option>
+      </select>
       <label><input type="checkbox" id="onlyDirty" /> only changed</label>
       <label><input type="checkbox" id="onlyMissingEn" /> missing EN</label>
+      <button type="button" class="link" id="expandAll">expand all</button>
+      <button type="button" class="link" id="collapseAll">collapse all</button>
     </div>
     <main id="list"><div class="empty">Loading…</div></main>
     <section id="issues"></section>
@@ -94,6 +118,7 @@
           serverIssues = data.issues || []
           dirtyFiles.clear()
           setStatus('', '')
+          populateSurfaceFilter()
           renderList()
           updateChrome()
         } catch (err) {
@@ -145,24 +170,116 @@
         return issues
       }
 
-      function matchesFilter(e) {
-        if ($('#onlyMissingEn').checked && e.en && String(e.en).trim()) return false
+      // ── Grouping + lazy render ──────────────────────────────────────────
+      // Cards are rendered per surface group, collapsed by default and rendered
+      // only when their group is expanded (or matches an active filter), so the
+      // catalog can grow to thousands of strings without flooding the DOM.
+      // Edits live on the entry object (makeField writes `e[field]` on input),
+      // so destroying/recreating a card on collapse/expand never loses work.
+      const expanded = new Set() // file paths the user has manually expanded
+      const surfaceFilterEl = $('#surfaceFilter')
+      const riskFilterEl = $('#riskFilter')
+      const onlyDirtyEl = $('#onlyDirty')
+      const onlyMissingEnEl = $('#onlyMissingEn')
+
+      const surfaceOf = (file) =>
+        file.replace('src/content/copy/entries/', '').replace(/\.copy\.json$/, '')
+
+      function filtersActive() {
+        return (
+          searchEl.value.trim() !== '' ||
+          surfaceFilterEl.value !== '' ||
+          riskFilterEl.value !== '' ||
+          onlyMissingEnEl.checked ||
+          onlyDirtyEl.checked
+        )
+      }
+
+      function entryMatches(e) {
+        if (riskFilterEl.value && e.risk !== riskFilterEl.value) return false
+        if (onlyMissingEnEl.checked && e.en && String(e.en).trim()) return false
         const term = searchEl.value.trim().toLowerCase()
         if (!term) return true
         return [e.key, e.de, e.en || '', e.surface].join('\n').toLowerCase().includes(term)
       }
 
+      const validEntries = (src) =>
+        Array.isArray(src.entries) ? src.entries.filter((e) => e && typeof e === 'object') : []
+
+      function populateSurfaceFilter() {
+        const current = surfaceFilterEl.value
+        const surfaces = [...new Set(sources.map((s) => surfaceOf(s.file)))].sort()
+        surfaceFilterEl.innerHTML =
+          '<option value="">All surfaces</option>' +
+          surfaces.map((s) => `<option value="${s}">${s}</option>`).join('')
+        surfaceFilterEl.value = surfaces.includes(current) ? current : ''
+      }
+
       function renderList() {
         listEl.innerHTML = ''
-        const onlyDirty = $('#onlyDirty').checked
-        let shown = 0
-        for (const { e, file } of eachEntry()) {
-          if (onlyDirty && !dirtyFiles.has(file)) continue
-          if (!matchesFilter(e)) continue
-          listEl.appendChild(makeCard(e, file))
-          shown += 1
+        const active = filtersActive()
+        const surfFilter = surfaceFilterEl.value
+        let shownGroups = 0
+        for (const src of sources) {
+          const file = src.file
+          const surface = surfaceOf(file)
+          if (surfFilter && surface !== surfFilter) continue
+          if (onlyDirtyEl.checked && !dirtyFiles.has(file)) continue
+          const entries = validEntries(src)
+          const matching = active ? entries.filter(entryMatches) : entries
+          if (active && matching.length === 0) continue
+          const isOpen = active || expanded.has(file)
+          listEl.appendChild(makeGroup(file, surface, entries, matching, isOpen, active))
+          shownGroups += 1
         }
-        if (shown === 0) listEl.innerHTML = '<div class="empty">No entries match.</div>'
+        if (shownGroups === 0) listEl.innerHTML = '<div class="empty">No entries match.</div>'
+      }
+
+      function makeGroup(file, surface, entries, matching, isOpen, active) {
+        const section = document.createElement('section')
+        section.className = 'group' + (isOpen ? ' open' : '')
+        section.classList.toggle('dirty', dirtyFiles.has(file))
+        section.dataset.file = file
+
+        const head = document.createElement('button')
+        head.type = 'button'
+        head.className = 'group-head'
+        head.setAttribute('aria-expanded', String(isOpen))
+
+        const caret = document.createElement('span')
+        caret.className = 'caret'
+        caret.textContent = isOpen ? '▾' : '▸'
+        const name = document.createElement('span')
+        name.className = 'group-name'
+        name.textContent = surface
+        const counts = document.createElement('span')
+        counts.className = 'group-counts'
+        const missingEn = entries.filter((e) => !e.en || !String(e.en).trim()).length
+        const shownText = active ? `${matching.length} of ${entries.length}` : `${entries.length}`
+        counts.textContent = `${shownText} entr${entries.length === 1 ? 'y' : 'ies'}${missingEn ? ` · ${missingEn} no-EN` : ''}`
+        const unsaved = document.createElement('span')
+        unsaved.className = 'group-unsaved'
+        unsaved.textContent = '● unsaved'
+        head.append(caret, name, counts, unsaved)
+        head.addEventListener('click', () => {
+          if (expanded.has(file)) expanded.delete(file)
+          else expanded.add(file)
+          renderList()
+        })
+
+        const body = document.createElement('div')
+        body.className = 'group-body'
+        if (isOpen) {
+          for (const e of active ? matching : entries) body.appendChild(makeCard(e, file))
+        }
+        section.append(head, body)
+        return section
+      }
+
+      function setAllExpanded(open) {
+        expanded.clear()
+        if (open) for (const src of sources) expanded.add(src.file)
+        renderList()
       }
 
       function makeField(label, e, field) {
@@ -240,7 +357,13 @@
         const issues = clientIssues()
         const errors = issues.filter((i) => i.level === 'error').length
         $('#summary').textContent =
-          `${all.length} entries · EN ${all.length - missingEn}/${all.length} · ${errors} error(s)`
+          `${all.length} entries · ${sources.length} file(s) · EN ${all.length - missingEn}/${all.length} · ${errors} error(s)`
+
+        // Refresh rendered group headers' dirty highlight (the "● unsaved"
+        // marker is driven by the .dirty class via CSS).
+        for (const section of document.querySelectorAll('.group')) {
+          section.classList.toggle('dirty', dirtyFiles.has(section.dataset.file))
+        }
 
         // Refresh visible cards' dirty markers + inline warnings.
         for (const card of document.querySelectorAll('.card')) {
@@ -303,8 +426,12 @@
       }
 
       searchEl.addEventListener('input', renderList)
-      $('#onlyDirty').addEventListener('change', renderList)
-      $('#onlyMissingEn').addEventListener('change', renderList)
+      surfaceFilterEl.addEventListener('change', renderList)
+      riskFilterEl.addEventListener('change', renderList)
+      onlyDirtyEl.addEventListener('change', renderList)
+      onlyMissingEnEl.addEventListener('change', renderList)
+      $('#expandAll').addEventListener('click', () => setAllExpanded(true))
+      $('#collapseAll').addEventListener('click', () => setAllExpanded(false))
       $('#saveBtn').addEventListener('click', save)
       load()
     </script>
