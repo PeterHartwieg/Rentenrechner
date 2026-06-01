@@ -12,9 +12,9 @@ import type { CopyEntry } from './types'
 
 describe('copy catalog — loaded entries', () => {
   it('exposes the migrated landing strings by stable key', () => {
-    expect(copy.de('landing.cta.combine')).toBe('Mein Plan erstellen')
+    expect(copy.de('landing.cta.combine')).toBe('Plan erstellen')
     expect(copy.de('landing.cta.compare')).toBe('Vergleich starten')
-    expect(copy.de('landing.hero.kicker')).toContain('Eine offene Auskunft')
+    expect(copy.de('landing.hero.kicker')).toContain('Plane deine Rente unabhängig')
   })
 
   it('has at least 10 representative entries (spike target: 10–20)', () => {

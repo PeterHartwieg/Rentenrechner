@@ -192,7 +192,7 @@ describe('LandingPage — hero and two-CTA layout (unchanged from #02)', () => {
 
   it('renders the two CTAs (Mein Plan + Vergleich starten)', () => {
     const { getByText } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    expect(getByText('Mein Plan erstellen')).toBeTruthy()
+    expect(getByText('Plan erstellen')).toBeTruthy()
     expect(getByText('Vergleich starten')).toBeTruthy()
   })
 })
@@ -513,7 +513,7 @@ describe('LandingPage — editorial layout (PR 2)', () => {
     const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     const kicker = container.querySelector('.landing-kicker')
     expect(kicker).not.toBeNull()
-    expect(kicker?.textContent).toMatch(/Eine offene Auskunft/i)
+    expect(kicker?.textContent).toMatch(/Plane deine Rente/i)
   })
 
   it('renders the H1 with an italic oxblood accent on "wirklich"', () => {
@@ -625,7 +625,7 @@ describe('LandingPage — viewport sweep (PR 11)', () => {
       // H1 + both CTA buttons + the hub grid render at every viewport
       // (responsive layout via CSS; same DOM shape).
       expect(container.querySelector('h1')).not.toBeNull()
-      expect(container.textContent ?? '').toContain('Mein Plan erstellen')
+      expect(container.textContent ?? '').toContain('Plan erstellen')
       expect(container.textContent ?? '').toContain('Vergleich starten')
       // CR4: the hub navigation grid (`.landing-hub`) renders at every
       // viewport — responsive layout collapses its column count via CSS
@@ -652,7 +652,7 @@ describe('LandingPage — runtime language pilot (?lang=en)', () => {
   it('renders German by default (no ?lang)', () => {
     stubLocationSearch('')
     const { getByText } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    expect(getByText('Mein Plan erstellen')).toBeTruthy()
+    expect(getByText('Plan erstellen')).toBeTruthy()
     expect(getByText('Vergleich starten')).toBeTruthy()
   })
 
@@ -663,9 +663,9 @@ describe('LandingPage — runtime language pilot (?lang=en)', () => {
     expect(getByText('Create my plan')).toBeTruthy()
     expect(getByText('Start comparison')).toBeTruthy()
     // …the German CTA label is replaced…
-    expect(queryByText('Mein Plan erstellen')).toBeNull()
+    expect(queryByText('Plan erstellen')).toBeNull()
     // …but the untranslated step body falls back to German.
-    expect(getByText('Du beschreibst deine Lage.')).toBeTruthy()
+    expect(getByText('Du beschreibst deine Situation.')).toBeTruthy()
   })
 
   it('exposes a DE/EN switch reflecting the active language', () => {
