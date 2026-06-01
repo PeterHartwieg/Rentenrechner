@@ -1,7 +1,7 @@
 [
   {
     "key": "landing.hero.kicker",
-    "de": "Eine offene Auskunft zu deiner Altersvorsorge",
+    "de": "Plane deine Rente unabhängig",
     "en": "An open look at your retirement provision",
     "surface": "landing",
     "risk": "normal",
@@ -9,7 +9,7 @@
   },
   {
     "key": "landing.cta.combine",
-    "de": "Mein Plan erstellen",
+    "de": "Plan erstellen",
     "en": "Create my plan",
     "surface": "landing",
     "risk": "normal",
@@ -33,21 +33,21 @@
   },
   {
     "key": "landing.step.beschreiben.heading",
-    "de": "Du beschreibst deine Lage.",
+    "de": "Du beschreibst deine Situation.",
     "surface": "landing",
     "risk": "normal",
     "description": "Step I heading."
   },
   {
     "key": "landing.step.beschreiben.body",
-    "de": "Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Alles bleibt in deinem Browser. Es wird nichts an einen Server gesendet.",
+    "de": "Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Alles bleibt in deinem Browser. Deine Daten werden nicht extern verarbeitet.",
     "surface": "landing",
     "risk": "normal",
     "description": "Step I body — privacy reassurance."
   },
   {
     "key": "landing.step.rechnen.heading",
-    "de": "Wir rechnen offen.",
+    "de": "Der Rechner zeigt dir transparent die Möglichkeiten.",
     "surface": "landing",
     "risk": "normal",
     "description": "Step II heading."
@@ -61,7 +61,7 @@
   },
   {
     "key": "landing.step.entscheiden.heading",
-    "de": "Du entscheidest selbst.",
+    "de": "Du entscheidest informiert.",
     "surface": "landing",
     "risk": "normal",
     "description": "Step III heading."
