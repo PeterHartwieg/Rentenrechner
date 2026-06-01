@@ -20,6 +20,7 @@
     "check:bav": "vite-node scripts/check_bav.ts",
     "copy:inventory": "vite-node scripts/copy-inventory.ts",
     "copy:missing": "vite-node scripts/copy-missing.ts",
+    "copy:scan": "vite-node scripts/copy-scan.ts",
     "copy:editor": "vite --open /__copy-editor/"
   },
   "dependencies": {
