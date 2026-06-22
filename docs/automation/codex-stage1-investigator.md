@@ -149,6 +149,13 @@ repository state is uncertain.
      `de2026Rules.healthAndCareCapMonth` access compiles but fails
      `npm run verify` (tsc -b) with a type error, costing Stage 2 an
      extra iteration. Mention the exact nested path in the handoff.
+   - **`app-bridge.test.tsx` is a known pre-existing flaky test.**
+     `src/features/qa-feedback/__tests__/app-bridge.test.tsx` fails
+     intermittently under full `npm run verify` suite runs but passes in
+     isolation. If it fails during your run, confirm with
+     `npx vitest run src/features/qa-feedback/__tests__/app-bridge.test.tsx`
+     — a pass there confirms the failure is pre-existing and not caused by
+     this change.
    - If the new test passes today, your reproduction is wrong; exit through
      the already-correct path.
 8. Push `agent/issue-<N>`.
