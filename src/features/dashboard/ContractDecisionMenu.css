@@ -15,11 +15,11 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background: var(--rw-bg-paper);
+  border: 1px solid #e7e2da;
+  border-radius: 4px;
   padding: 1.25rem;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 24px rgba(26, 22, 18, 0.14);
   max-width: 900px;
   width: 100%;
 }
@@ -32,9 +32,10 @@
 }
 
 .contract-decision-menu-header h3 {
+  font-family: var(--rw-font-sans);
   font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--rw-ink);
   margin: 0;
 }
 
@@ -43,13 +44,13 @@
   border: none;
   cursor: pointer;
   font-size: 1.25rem;
-  color: #64748b;
+  color: var(--rw-ink-faint);
   padding: 0 0.25rem;
   line-height: 1;
 }
 
 .contract-decision-menu-close:hover {
-  color: #1e293b;
+  color: var(--rw-ink);
 }
 
 /* ── Footer ── */
@@ -60,39 +61,45 @@
   gap: 0.75rem;
   justify-content: flex-end;
   padding-top: 0.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e7e2da;
 }
 
+/* Sober D primary CTA: ink fill, oxblood on hover (mirrors .mein-plan-cta--accent). */
 .contract-decision-save-btn {
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
+  background: var(--rw-ink);
+  color: var(--rw-bg-paper);
+  border: 1px solid var(--rw-ink);
+  border-radius: 2px;
   padding: 0.5rem 1.25rem;
+  font-family: var(--rw-font-sans);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .contract-decision-save-btn:disabled {
-  background: #94a3b8;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .contract-decision-save-btn:not(:disabled):hover {
-  background: #2563eb;
+  background: var(--rw-accent);
+  border-color: var(--rw-accent);
 }
 
 .contract-decision-cancel-btn {
-  background: none;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  background: var(--rw-bg-paper);
+  border: 1px solid #e7e2da;
+  border-radius: 2px;
   padding: 0.5rem 1rem;
+  font-family: var(--rw-font-sans);
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--rw-ink-soft);
   cursor: pointer;
 }
 
 .contract-decision-cancel-btn:hover {
-  background: #f1f5f9;
+  background: var(--rw-bg-paper-soft);
+  border-color: var(--rw-ink-faint);
+  color: var(--rw-ink);
 }

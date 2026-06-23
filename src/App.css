@@ -140,14 +140,19 @@
   gap: 10px;
 }
 
+/* Sober D port: warm paper-soft notice strip above the dark StatusBar.
+   Oxblood (--rw-accent) marks the info glyph; warm #e7e2da rule. The
+   sessionStorage dismissal behaviour lives in DisclaimerBanner.tsx and is
+   intentionally untouched (publication compliance — must reappear each
+   session). */
 .disclaimer-wrap {
   position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 16px 6px 32px;
-  background: #f7fbfa;
-  border-bottom: 1px solid #d9e1ea;
+  background: var(--rw-bg-paper-soft);
+  border-bottom: 1px solid #e7e2da;
 }
 
 .disclaimer-btn {
@@ -159,20 +164,20 @@
   padding: 3px 4px;
   border: 0;
   background: transparent;
-  color: #344054;
+  color: var(--rw-ink-soft);
+  font-family: var(--rw-font-sans);
   font-size: 0.83rem;
   cursor: pointer;
-  border-radius: 4px;
   text-align: left;
 }
 
 .disclaimer-btn svg {
   flex: 0 0 auto;
-  color: #0f766e;
+  color: var(--rw-accent);
 }
 
 .disclaimer-btn:hover {
-  color: #0f766e;
+  color: var(--rw-ink);
 }
 
 .disclaimer-popup {
@@ -182,13 +187,14 @@
   z-index: 200;
   max-width: 420px;
   padding: 12px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+  background: var(--rw-bg-paper);
+  border: 1px solid #e7e2da;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(26, 22, 18, 0.12);
+  font-family: var(--rw-font-sans);
   font-size: 0.84rem;
   line-height: 1.5;
-  color: #344054;
+  color: var(--rw-ink-soft);
 }
 
 .disclaimer-popup p {
@@ -200,15 +206,14 @@
   padding: 2px 6px;
   border: 0;
   background: transparent;
-  color: #9ca3af;
+  color: var(--rw-ink-faint);
   font-size: 0.85rem;
   cursor: pointer;
-  border-radius: 4px;
   line-height: 1;
 }
 
 .disclaimer-dismiss:hover {
-  color: #374151;
+  color: var(--rw-ink);
 }
 
 /* `.invalid-link-banner*` rules removed in R3.2 — the share-link recovery
@@ -266,48 +271,63 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: 0.82rem;
-  color: #667085;
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
   font-weight: 600;
   list-style: none;
   user-select: none;
   padding: 4px 0;
 }
 .toolbar-advanced > summary::-webkit-details-marker { display: none; }
-.toolbar-advanced[open] > summary { color: #344054; margin-bottom: 6px; }
+.toolbar-advanced[open] > summary { color: var(--rw-ink); margin-bottom: 6px; }
 .toolbar-advanced[open] { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 
 .toolbar-risk-summary {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: #eef6ff;
-  color: #2563eb;
-  font-size: 0.76rem;
-  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 2px;
+  border: 1px solid #e7e2da;
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink-faint);
+  font-family: var(--rw-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.3px;
+  font-weight: 600;
 }
 
 .segmented {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   padding: 4px;
-  border: 1px solid #c9d7e5;
-  border-radius: 8px;
-  background: #f4f7fb;
+  border: 1px solid #e7e2da;
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
 }
 
 .segmented button {
   border: 0;
-  border-radius: 6px;
+  border-radius: 2px;
   padding: 9px 12px;
-  color: #344054;
+  color: var(--rw-ink-soft);
   background: transparent;
-  font-weight: 700;
+  font-family: var(--rw-font-sans);
+  font-weight: 500;
   cursor: pointer;
+  transition: background 0.1s, color 0.1s;
 }
 
-.segmented button.active {
-  color: #ffffff;
-  background: #2563eb;
+.segmented button:hover {
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink);
+}
+
+.segmented button.active,
+.segmented button.active:hover {
+  color: var(--rw-bg-paper);
+  background: var(--rw-ink);
+  font-weight: 600;
 }
 
 .scenario-controls {
@@ -341,40 +361,45 @@
 .netto-belastung-preset {
   min-height: 40px;
   padding: 8px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 7px;
-  background: #ffffff;
-  color: #344054;
-  font-weight: 700;
+  border: 1px solid #e7e2da;
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink-soft);
+  font-family: var(--rw-font-sans);
+  font-weight: 500;
   cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
 }
 
 .netto-belastung-preset:hover {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: var(--rw-ink-faint);
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink);
 }
 
 .netto-belastung-preset.active {
-  border-color: #2563eb;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: var(--rw-ink);
+  background: var(--rw-bg-paper-soft);
+  color: var(--rw-ink);
+  font-weight: 600;
 }
 
 .scenario-add-btn {
   padding: 8px 14px;
-  border: 1px dashed #94a3b8;
-  border-radius: 8px;
-  background: transparent;
-  color: #334155;
+  border: 1px dashed var(--rw-rule-soft);
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
+  color: var(--rw-accent);
+  font-family: var(--rw-font-sans);
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
 }
 
 .scenario-add-btn:hover {
-  border-color: #475569;
-  color: #172033;
-  background: #f1f5f9;
+  border-color: var(--rw-accent);
+  color: var(--rw-accent);
+  background: var(--rw-accent-bg);
 }
 
 .scenario-custom-edit {
@@ -382,8 +407,9 @@
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+  font-family: var(--rw-font-sans);
   font-size: 0.8125rem;
-  color: #475569;
+  color: var(--rw-ink-soft);
 }
 
 .scenario-custom-edit label {
@@ -394,46 +420,53 @@
 
 .scenario-custom-edit em {
   font-style: normal;
-  color: #64748b;
+  color: var(--rw-ink-faint);
 }
 
 .scenario-custom-edit input[type="number"] {
   width: 70px;
   padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid #e7e2da;
+  border-radius: 2px;
   font-size: 0.875rem;
-  color: #172033;
-  background: #ffffff;
+  color: var(--rw-ink);
+  background: var(--rw-bg-paper);
 }
 
 .scenario-custom-edit input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--rw-ink);
+  box-shadow: 0 0 0 3px rgba(138, 46, 46, 0.15);
 }
 
 .scenario-remove-btn {
   padding: 6px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: transparent;
-  color: #475569;
+  border: 1px solid #e7e2da;
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink-soft);
+  font-family: var(--rw-font-sans);
   font-size: 0.8125rem;
   cursor: pointer;
 }
 
 .scenario-remove-btn:hover {
-  border-color: #ef4444;
-  color: #b91c1c;
+  border-color: var(--rw-accent);
+  color: var(--rw-accent);
+  background: #fdf6f6;
 }
 
 .toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #344054;
-  font-weight: 700;
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink-soft);
+  font-weight: 600;
+}
+
+.toggle input[type="checkbox"] {
+  accent-color: var(--rw-accent);
 }
 
 .monte-carlo-toolbar-fields {
@@ -448,18 +481,19 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #475569;
+  color: var(--rw-ink-soft);
+  font-family: var(--rw-font-sans);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .monte-carlo-toolbar-fields input[type="number"] {
   width: 76px;
   padding: 5px 7px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  color: #172033;
-  background: #ffffff;
+  border: 1px solid #e7e2da;
+  border-radius: 2px;
+  color: var(--rw-ink);
+  background: var(--rw-bg-paper);
   font-size: 0.82rem;
 }
 
@@ -469,17 +503,17 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border: 1px solid #cbd5e1;
-  border-radius: 7px;
-  background: #ffffff;
-  color: #344054;
+  border: 1px solid #e7e2da;
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink-soft);
   cursor: pointer;
 }
 
 .monte-carlo-seed-btn:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-  background: #eff6ff;
+  border-color: var(--rw-ink-faint);
+  color: var(--rw-ink);
+  background: var(--rw-bg-paper-soft);
 }
 
 .monte-carlo-toolbar-fields label:first-child input[type="number"] {
@@ -492,7 +526,7 @@
 
 .monte-carlo-toolbar-fields em {
   font-style: normal;
-  color: #64748b;
+  color: var(--rw-ink-faint);
 }
 
 .chart-panel,

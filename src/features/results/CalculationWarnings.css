@@ -1,7 +1,7 @@
 .warnings-panel {
   border: 1px solid var(--rw-rule-soft);
-  border-radius: 8px;
-  background: #ffffff;
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
   padding: 18px;
 }
 
@@ -46,7 +46,7 @@
   gap: 4px;
   padding: 10px 12px;
   border: 1px solid var(--rw-rule-soft);
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 .warning-item-header {
@@ -71,7 +71,7 @@
 .badge {
   flex: 0 0 auto;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: 2px;
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;

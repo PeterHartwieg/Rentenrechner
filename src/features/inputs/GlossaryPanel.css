@@ -6,8 +6,9 @@
 
 .glossary-intro {
   margin: 0 10px 8px;
+  font-family: var(--rw-font-sans);
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--rw-ink-faint);
   line-height: 1.4;
 }
 
@@ -15,22 +16,26 @@
   width: calc(100% - 20px);
   margin: 0 10px 8px;
   padding: 6px 10px;
+  font-family: var(--rw-font-sans);
   font-size: 0.82rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #172033;
+  border: 1px solid #e7e2da;
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
+  color: var(--rw-ink);
 }
 
 .glossary-search:focus {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--rw-accent);
   outline-offset: -1px;
 }
 
 .glossary-result-count {
   margin: 0 10px 6px;
-  font-size: 0.72rem;
-  color: #64748b;
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
 }
 
 .glossary-groups {
@@ -42,11 +47,12 @@
 
 .glossary-group-title {
   margin: 4px 0 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #475569;
+  letter-spacing: 0.5px;
+  color: var(--rw-ink-faint);
 }
 
 .glossary-list {
@@ -58,9 +64,9 @@
 
 .glossary-entry {
   padding: 7px 9px;
-  border-radius: 5px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
+  border: 1px solid #e7e2da;
 }
 
 .glossary-entry dt {
@@ -72,26 +78,30 @@
 }
 
 .glossary-plain {
+  font-family: var(--rw-font-sans);
   font-size: 0.82rem;
   font-weight: 700;
-  color: #172033;
+  color: var(--rw-ink);
 }
 
 .glossary-expert {
+  font-family: var(--rw-font-sans);
   font-size: 0.7rem;
   font-weight: 500;
-  color: #64748b;
+  color: var(--rw-ink-faint);
   font-style: italic;
 }
 
 .glossary-entry dd {
   margin: 0;
+  font-family: var(--rw-font-sans);
   font-size: 0.78rem;
   line-height: 1.45;
-  color: #334155;
+  color: var(--rw-ink-soft);
 }
 
 .glossary-ref {
-  font-size: 0.72rem;
-  color: #64748b;
+  font-family: var(--rw-font-mono);
+  font-size: 0.66rem;
+  color: var(--rw-ink-faint);
 }
