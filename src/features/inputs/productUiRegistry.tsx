@@ -206,6 +206,8 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
             p: Partial<AltersvorsorgedepotInstance>,
           ) => void
         }
+        profile={ctx.profile}
+        activeRules={ctx.activeRules}
       />
     ),
   },

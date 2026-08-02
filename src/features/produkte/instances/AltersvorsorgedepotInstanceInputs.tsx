@@ -12,37 +12,71 @@
  * (no glidepath). Matches the deleted card exactly.
  */
 
+import type { GermanRules, PersonalProfile } from '../../../domain'
 import type { AltersvorsorgedepotInstance } from '../../../domain/instances'
 import {
   CombineField,
-  DraftNumberInput,
   CombineNativeInput,
   CombineNativeSelect,
   CommonContractFields,
+  DraftNumberInput,
 } from './_shared'
 import { makeInstancePatcher } from './instancePatch'
+import { RangeNumberField } from '../../../ui/RangeNumberField'
+import { buildAvdBeitragsstufen } from '../../inputs/avdBeitragsstufen'
+import { maxAvdMonthlyOwnContribution } from '../../../engine/altersvorsorgedepot'
+import { childBirthYearsUnder25InYear } from '../../../engine/childEligibility'
+import { defaultAssumptions } from '../../../data/defaultScenario'
 
 interface Props {
   instance: AltersvorsorgedepotInstance
   patchInstance: (patch: Partial<AltersvorsorgedepotInstance>) => void
+  profile: PersonalProfile
+  activeRules: GermanRules
 }
 
 export function AltersvorsorgedepotInstanceInputs({
   instance,
   patchInstance,
+  profile,
+  activeRules,
 }: Props) {
   const onCommonChange = makeInstancePatcher(instance, patchInstance)
+
+  // The generic 0–5 000 EUR range this replaces had no relation to the
+  // statutory AVD limits. Levels and ceiling come from the same helpers the
+  // compare-mode panel and the contribution sync use.
+  const instanceEligibility = instance.eligibility
+    ?? defaultAssumptions.altersvorsorgedepot.eligibility
+  const eligibility = {
+    ...instanceEligibility,
+    eligibleChildren: childBirthYearsUnder25InYear(
+      profile.childBirthYears,
+      activeRules.year,
+    ).length,
+  }
+  const stufen = buildAvdBeitragsstufen(activeRules, eligibility)
+  const vertragsrahmen = maxAvdMonthlyOwnContribution(
+    eligibility,
+    activeRules,
+    !eligibility.careerStarterBonusUsed,
+  )
+  // Raise the bound for a stored contract that already exceeds the frame
+  // rather than silently rewriting the user's contract data on open.
+  const maxOwn = Math.max(vertragsrahmen, instance.monthlyOwnContribution ?? 0)
 
   return (
     <div className="combine-instance-fields">
       <CommonContractFields instance={instance} onChange={onCommonChange} />
-      <DraftNumberInput
-        label="Eigenbeitrag (EUR/Monat)"
-        value={instance.monthlyOwnContribution}
+      <RangeNumberField
+        label="Wie viel zahlst du selbst ein?"
+        value={instance.monthlyOwnContribution ?? 0}
         min={0}
-        max={5000}
-        step={10}
+        max={maxOwn}
+        step={5}
+        suffix="EUR/Monat"
         disabled={instance.status === 'paid_up'}
+        choices={stufen.map((s) => ({ value: s.value, label: s.label, hint: s.hint }))}
         onCommit={(v) => patchInstance({ monthlyOwnContribution: v })}
       />
       <DraftNumberInput
