@@ -1,0 +1,65 @@
+/* AVD contribution block: the RangeNumberField plus its funding ledger.
+   Tokens only — no new colours. */
+
+.avd-contribution {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.avd-ledger {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--rw-bg-paper-soft);
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.avd-ledger__row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.82rem;
+}
+
+.avd-ledger__row > dt {
+  color: var(--rw-ink-soft);
+  margin: 0;
+}
+
+/* Dotted leader between label and figure. */
+.avd-ledger__row > dt::after {
+  content: '';
+  display: inline-block;
+}
+
+.avd-ledger__row > dd {
+  margin: 0 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.avd-ledger__value--plus {
+  color: var(--rw-accent);
+}
+
+.avd-ledger__row--total {
+  border-top: 1px solid var(--rw-rule-soft);
+  padding-top: 7px;
+  margin-top: 2px;
+  font-size: 0.88rem;
+}
+
+.avd-ledger__row--total > dt {
+  font-weight: 700;
+  color: var(--rw-ink);
+}
+
+.avd-ledger__row--total > dd {
+  font-weight: 700;
+}

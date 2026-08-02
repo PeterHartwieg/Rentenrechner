@@ -112,7 +112,37 @@ export function useCalculatorState() {
     (targetNet: number) => {
       const target = normalizeMonthlyNettoBelastung(targetNet)
       setAssumptions((current) =>
-        syncMonthlyContributions(target, current, profile, de2026Rules),
+        // Typing a net amount anywhere — the global control or any product's
+        // own field — is an implicit "steer by net again", so any pinned AVD
+        // Eigenbeitrag is released here. Doing it in the same setState keeps
+        // the transition atomic: no intermediate render where the mode and the
+        // amount disagree, and no second simulation + Monte Carlo pass.
+        syncMonthlyContributions(
+          target,
+          { ...current, contributionInput: { kind: 'net' } },
+          profile,
+          de2026Rules,
+        ),
+      )
+    },
+    [profile],
+  )
+
+  const setAvdOwnContribution = useCallback(
+    (monthlyOwn: number) => {
+      setAssumptions((current) =>
+        syncMonthlyContributions(
+          0, // ignored: the anchor is derived from the pinned Eigenbeitrag
+          {
+            ...current,
+            contributionInput: {
+              kind: 'avd-own',
+              monthlyOwn: normalizeMonthlyNettoBelastung(monthlyOwn),
+            },
+          },
+          profile,
+          de2026Rules,
+        ),
       )
     },
     [profile],
@@ -125,6 +155,7 @@ export function useCalculatorState() {
     setAssumptions,
     resetToDefaults,
     setSyncedMonthlyContribution,
+    setAvdOwnContribution,
     invalidLink,
     dismissInvalidLink: () => setInvalidLink(false),
   }

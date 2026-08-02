@@ -253,7 +253,41 @@ describe('RangeNumberField — accessibility and privacy', () => {
   })
 
   it('marks the whole group QA-sensitive, not just the numeric field', () => {
-    const { container } = setup({ choices: undefined })
+    window.history.replaceState(null, '', '/?qa=1')
+    const { container } = render(
+      <QaFeedbackProvider>
+        <RangeNumberField
+          label="Eigenbeitrag"
+          value={150}
+          min={0}
+          max={525}
+          onCommit={vi.fn()}
+          feedbackTargetId="inputs.avd.monthlyOwnContribution"
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(
+      container.querySelector('fieldset.range-number-field')?.getAttribute('data-qa-sensitive'),
+    ).toBe('true')
+  })
+
+  it('emits no QA target when QA mode is off', () => {
+    const { container } = render(
+      <QaFeedbackProvider>
+        <RangeNumberField
+          label="Eigenbeitrag"
+          value={150}
+          min={0}
+          max={525}
+          choices={CHOICES}
+          onCommit={vi.fn()}
+          feedbackTargetId="inputs.avd.monthlyOwnContribution"
+        />
+      </QaFeedbackProvider>,
+    )
+    expect(container.querySelector('[data-qa-target]')).toBeNull()
+    // `data-qa-sensitive` stays put — it is inert when QA is off and must be
+    // present the moment QA is switched on, matching NumberField.
     expect(
       container.querySelector('fieldset.range-number-field')?.getAttribute('data-qa-sensitive'),
     ).toBe('true')

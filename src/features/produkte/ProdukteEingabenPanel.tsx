@@ -145,6 +145,8 @@ interface ProdukteEingabenPanelCompareProps {
   tarifgebunden: boolean
   onTarifgebundenChange: (next: boolean) => void
   onSyncMonthlyContribution: (targetNet: number) => void
+  /** Compare-mode only: pins the AVD Eigenbeitrag. */
+  onAvdOwnContributionChange?: (monthlyOwn: number) => void
 }
 
 interface ProdukteEingabenPanelCombineProps {
@@ -200,6 +202,7 @@ function ComparePanel({
   tarifgebunden,
   onTarifgebundenChange,
   onSyncMonthlyContribution,
+  onAvdOwnContributionChange,
 }: ProdukteEingabenPanelCompareProps) {
   // `onProfileChange` is part of the panel's public API; compare-mode does
   // not render an inline profile editor, so silence the unused-binding lint
@@ -320,6 +323,7 @@ function ComparePanel({
                       assumptions,
                       onAssumptionsChange,
                       onSyncMonthlyContribution,
+                      onAvdOwnContributionChange,
                       profile,
                       simulation,
                       selectedResults,

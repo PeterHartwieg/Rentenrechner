@@ -28,6 +28,13 @@ export interface RangeNumberFieldProps {
   /** Optional quick-choice cards rendered above the slider. */
   choices?: readonly RangeQuickChoice[]
   /**
+   * Accessible name for the exact numeric field. Defaults to "Exakter Betrag".
+   * Must differ from `label`: the legend already names the group, and repeating
+   * it renders the same words twice and gives two sibling controls the same
+   * accessible name.
+   */
+  exactLabel?: string
+  /**
    * Fires when the user settles on a value: pointer release, keyboard release,
    * card click, or numeric-field commit. Deliberately **not** per slider frame.
    */
@@ -108,6 +115,7 @@ export function RangeNumberField({
   suffix,
   disabled,
   choices,
+  exactLabel,
   onCommit,
   feedbackTargetId,
 }: RangeNumberFieldProps) {
@@ -170,6 +178,9 @@ export function RangeNumberField({
   // The slider position, the selected card and aria-valuetext all disclose the
   // contribution just as plainly as the numeric field does, so the whole group
   // is redacted rather than only the inner NumberField.
+  // Always set, matching NumberField: the attribute is inert when QA mode is
+  // off and the redaction pass needs it present the moment QA is switched on.
+  // Only `data-qa-target` is gated on QA mode.
   qaProps['data-qa-sensitive'] = 'true'
 
   return (
@@ -268,7 +279,7 @@ export function RangeNumberField({
         </div>
 
         <NumberField
-          label={`${label} (genauer Wert)`}
+          label={exactLabel ?? `${label} (genauer Wert)`}
           value={shown}
           min={min}
           max={max}

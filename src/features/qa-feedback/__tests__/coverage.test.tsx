@@ -798,9 +798,23 @@ describe('Issue 16: AltersvorsorgedepotInputs — leaf-level QA targets present'
         />
       </QaFeedbackProvider>,
     )
-    expect(container.querySelector('[data-qa-target="inputs.avd.monthlyNetCost"]')).not.toBeNull()
+    // Renamed with the contribution redesign: the panel's primary field is now
+    // the Eigenbeitrag (the statutory AVD thresholds apply to it), not the
+    // derived net cost.
+    expect(
+      container.querySelector('[data-qa-target="inputs.avd.monthlyOwnContribution"]'),
+    ).not.toBeNull()
     expect(container.querySelector('[data-qa-target="inputs.avd.subtype"]')).not.toBeNull()
     expect(container.querySelector('[data-qa-target="inputs.avd.payoutMode"]')).not.toBeNull()
+    // Beitragsstufen carry the card index, never the amount — QA target ids
+    // reach the report unredacted, so a value here would leak the contribution.
+    const choices = container.querySelectorAll(
+      '[data-qa-target^="inputs.avd.monthlyOwnContribution.choice."]',
+    )
+    expect(choices.length).toBeGreaterThan(0)
+    for (const el of choices) {
+      expect(el.getAttribute('data-qa-target')).toMatch(/\.choice\.\d+$/)
+    }
   })
 
   it('QA targets are absent when QA mode is off', () => {
