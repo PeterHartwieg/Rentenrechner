@@ -34,6 +34,8 @@ export interface SimulationContext {
   insuranceTaxMode: 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'
   basisrenteFunding: BasisrenteFundingResult
   altersvorsorgedepotFunding: AltersvorsorgedepotFundingResult
+  /** Combine-mode per-year AVD funding after household bonus allocation. */
+  altersvorsorgedepotFundingSchedule?: readonly AltersvorsorgedepotFundingResult[]
   riesterFunding: RiesterFundingResult
   /**
    * Combine-mode per-year Riester funding schedule, owned by
@@ -172,6 +174,8 @@ export interface BuildContextOverrides {
   basisrenteFundingOverride?: BasisrenteFundingResult
   /** Pre-computed Altersvorsorgedepot funding for the active instance. */
   altersvorsorgedepotFundingOverride?: AltersvorsorgedepotFundingResult
+  /** Portfolio-owned per-year AVD funding for the active instance. */
+  altersvorsorgedepotFundingScheduleOverride?: readonly AltersvorsorgedepotFundingResult[]
   /** Pre-computed Riester funding for the active instance. */
   riesterFundingOverride?: RiesterFundingResult
   /** Portfolio-owned per-year Riester funding for the active instance. */
@@ -285,6 +289,8 @@ export function buildContext(
     insuranceTaxMode,
     basisrenteFunding,
     altersvorsorgedepotFunding,
+    altersvorsorgedepotFundingSchedule:
+      overrides?.altersvorsorgedepotFundingScheduleOverride,
     riesterFunding,
     riesterFundingSchedule: overrides?.riesterFundingScheduleOverride,
     statutoryPension: grvProjection,

@@ -17,6 +17,10 @@ import { defaultAssumptions } from '../../data/defaultScenario'
 import { monthlyPayoutFromCapital } from '../../engine/payoutMath'
 import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
 import { childBirthYearsUnder25InYear } from '../../engine/childEligibility'
+import {
+  buildPortfolioFunding,
+  hasUsedCareerStarterBonus,
+} from '../../engine/portfolioFunding'
 import { newInstanceId } from '../workspaceIdentity'
 import {
   type CandidateDraft,
@@ -29,20 +33,76 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const profile = g.workspace.baseline.profile
   const wsa = g.workspace.baseline.assumptions
   const gross = g.marginalMonthlyEUR
+  if (gross <= 0) return null
   const baseAvd = defaultAssumptions.altersvorsorgedepot
+  const careerStarterBonusAlreadyUsed = hasUsedCareerStarterBonus(wsa, g.rules)
   const effectiveEligibility = {
     ...baseAvd.eligibility,
     ageAtContractStart: profile.age,
-    careerStarterBonusUsed: false,
+    careerStarterBonusUsed: careerStarterBonusAlreadyUsed,
     eligibleChildren: childBirthYearsUnder25InYear(
       profile.childBirthYears,
       g.rules.year,
     ).length,
   }
+  const newInstanceIdStr = newInstanceId('altersvorsorgedepot')
+  const makeNewInstance = (monthlyOwnContribution: number): AltersvorsorgedepotInstance => ({
+    instanceId: newInstanceIdStr,
+    label: 'Neues Altersvorsorgedepot',
+    status: 'active',
+    contractStartYear: g.rules.year,
+    evidenceMap: {},
+    ...baseAvd,
+    eligibility: effectiveEligibility,
+    monthlyOwnContribution,
+  })
+  const capWithoutBonus = maxAvdMonthlyOwnContribution(
+    effectiveEligibility,
+    g.rules,
+    false,
+  )
+  const capWithBonus = maxAvdMonthlyOwnContribution(
+    effectiveEligibility,
+    g.rules,
+    true,
+  )
+  let candidateReceivesCareerStarterBonus = false
+  if (!careerStarterBonusAlreadyUsed) {
+    const prospectiveFundingAt = (monthlyOwnContribution: number) => {
+      const probe = makeNewInstance(monthlyOwnContribution)
+      return buildPortfolioFunding(
+        {
+          ...g.workspace,
+          baseline: {
+            ...g.workspace.baseline,
+            assumptions: {
+              ...wsa,
+              altersvorsorgedepot: [...wsa.altersvorsorgedepot, probe],
+            },
+          },
+        },
+        g.rules,
+      )
+    }
+    let prospectiveFunding = prospectiveFundingAt(Math.min(gross, capWithoutBonus))
+    candidateReceivesCareerStarterBonus =
+      prospectiveFunding.altersvorsorgedepotByInstanceId[newInstanceIdStr]
+        ?.careerStarterBonusAnnual > 0
+    const portfolioAllocatedCareerStarterBonus = [
+      ...Object.values(prospectiveFunding.altersvorsorgedepotByInstanceId),
+      ...Object.values(prospectiveFunding.riesterByInstanceId),
+    ].some((funding) => funding.careerStarterBonusAnnual > 0)
+    if (!candidateReceivesCareerStarterBonus && !portfolioAllocatedCareerStarterBonus) {
+      prospectiveFunding = prospectiveFundingAt(Math.min(gross, capWithBonus))
+      candidateReceivesCareerStarterBonus =
+        prospectiveFunding.altersvorsorgedepotByInstanceId[newInstanceIdStr]
+          ?.careerStarterBonusAnnual > 0
+    }
+  }
   const capMonthly = maxAvdMonthlyOwnContribution(
     effectiveEligibility,
     g.rules,
-    !effectiveEligibility.careerStarterBonusUsed,
+    candidateReceivesCareerStarterBonus,
   )
   const cappedToRemaining = gross > capMonthly
   const sized = Math.min(gross, capMonthly)
@@ -55,7 +115,6 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const payoutYears = Math.max(1, wsa.retirementEndAge - profile.retirementAge)
   const grossPayout = monthlyPayoutFromCapital(capital, netReturn, payoutYears)
 
-  const newInstanceIdStr = newInstanceId('altersvorsorgedepot')
   // Net capital — issue 67. AVD is a §22 Nr. 5 EStG certified pension: at
   // most ~30 % of capital is permissible as a partial lump sum (the rest must
   // be annuitised). Representing the full capital as a net lump sum would
@@ -74,16 +133,7 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
     label: 'Neues Altersvorsorgedepot',
   })
 
-  const newInstance: AltersvorsorgedepotInstance = {
-    instanceId: newInstanceIdStr,
-    label: 'Neues Altersvorsorgedepot',
-    status: 'active',
-    contractStartYear: g.rules.year,
-    evidenceMap: {},
-    ...baseAvd,
-    eligibility: effectiveEligibility,
-    monthlyOwnContribution: sized,
-  }
+  const newInstance = makeNewInstance(sized)
 
   return {
     id: 'new_avd',

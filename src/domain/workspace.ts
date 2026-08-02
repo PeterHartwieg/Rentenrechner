@@ -107,6 +107,11 @@ export interface PortfolioFunding {
   basisrenteByInstanceId: Record<string, BasisrenteFundingResult>
   /** Map of altersvorsorgedepot instance id → funding result. */
   altersvorsorgedepotByInstanceId: Record<string, AltersvorsorgedepotFundingResult>
+  /** Portfolio-owned per-year AVD funding after one-time bonus allocation. */
+  altersvorsorgedepotYearlyByInstanceId: Record<
+    string,
+    AltersvorsorgedepotFundingResult[]
+  >
   /** Map of riester instance id → funding result. */
   riesterByInstanceId: Record<string, RiesterFundingResult>
   /**

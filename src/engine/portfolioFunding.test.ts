@@ -32,7 +32,10 @@ import {
 } from './portfolioFunding'
 import { calculateBavFunding, calculateSalaryResult } from './salary'
 import { calculateBasisrenteFunding } from './basisrente'
-import { calculateAvdFunding } from './altersvorsorgedepot'
+import {
+  calculateAvdFunding,
+  maxAvdMonthlyOwnContribution,
+} from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'
 import { simulatePortfolio } from './portfolioAdapter'
 import type {
@@ -367,6 +370,196 @@ describe('buildPortfolioFunding — AVD', () => {
     expect(funding.altersvorsorgedepotByInstanceId['avd-paidup'].annualOwnContribution).toBe(0)
     // Zero state allowance (eligibility zeroed).
     expect(funding.altersvorsorgedepotByInstanceId['avd-paidup'].totalAllowanceAnnual).toBe(0)
+  })
+
+  it('grants the one-time career-starter bonus to only one AVD contract and releases it after year one', () => {
+    const ws = makeBaseWorkspace()
+    const base = ws.baseline.assumptions.altersvorsorgedepot[0]
+    const makeEligibleAvd = (
+      instanceId: string,
+      contractStartYear: number,
+    ): AltersvorsorgedepotInstance => ({
+      ...base,
+      instanceId,
+      label: instanceId,
+      contractStartYear,
+      monthlyOwnContribution: 100,
+      eligibility: {
+        ...base.eligibility,
+        directlyEligible: true,
+        ageAtContractStart: 23,
+        careerStarterBonusUsed: false,
+      },
+    })
+    const earlier = makeEligibleAvd('avd-career-earlier', 2026)
+    const later = makeEligibleAvd('avd-career-later', 2027)
+    ws.baseline.assumptions.altersvorsorgedepot = [later, earlier]
+    ws.baseline.assumptions.riester = []
+
+    const { perInstance, portfolioFunding } = simulatePortfolio(ws, de2026Rules)
+    const earlierSchedule =
+      portfolioFunding.altersvorsorgedepotYearlyByInstanceId[earlier.instanceId]
+    const laterSchedule =
+      portfolioFunding.altersvorsorgedepotYearlyByInstanceId[later.instanceId]
+
+    expect(
+      earlierSchedule[0].careerStarterBonusAnnual +
+        laterSchedule[0].careerStarterBonusAnnual,
+    ).toBeCloseTo(de2026Rules.altersvorsorgedepot.careerStarterBonus, 8)
+    expect(earlierSchedule[0].careerStarterBonusAnnual).toBeCloseTo(
+      de2026Rules.altersvorsorgedepot.careerStarterBonus,
+      8,
+    )
+    expect(laterSchedule[0].careerStarterBonusAnnual).toBe(0)
+    expect(earlierSchedule[1].careerStarterBonusAnnual).toBe(0)
+    expect(laterSchedule[1].careerStarterBonusAnnual).toBe(0)
+
+    for (const instance of [earlier, later]) {
+      const schedule =
+        portfolioFunding.altersvorsorgedepotYearlyByInstanceId[instance.instanceId]
+      const result = perInstance[instance.instanceId][0]
+      for (const yearIndex of [0, 1]) {
+        const expectedProductContribution =
+          schedule[yearIndex].totalContractContributionAnnual +
+          schedule[yearIndex].guenstigerpruefungBenefitAnnual
+        expect(result.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
+          expectedProductContribution,
+          8,
+        )
+      }
+    }
+  })
+
+  it('does not grant an AVD career-starter bonus after a surrendered Riester contract used it', () => {
+    const ws = makeBaseWorkspace()
+    const avd = ws.baseline.assumptions.altersvorsorgedepot[0]
+    avd.monthlyOwnContribution = 100
+    avd.eligibility = {
+      ...avd.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+    ws.baseline.assumptions.riester[0].eligibility = {
+      ...ws.baseline.assumptions.riester[0].eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: true,
+    }
+    ws.baseline.assumptions.riester[0].status = 'surrendered'
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+
+    expect(
+      funding.altersvorsorgedepotByInstanceId[avd.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBe(0)
+  })
+
+  it('allocates the bonus to the contract with the largest realised allowance claim', () => {
+    const ws = makeBaseWorkspace()
+    const avd = ws.baseline.assumptions.altersvorsorgedepot[0]
+    avd.contractStartYear = 2026
+    avd.monthlyOwnContribution = 100
+    avd.eligibility = {
+      ...avd.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+    const riester = ws.baseline.assumptions.riester[0]
+    riester.contractStartYear = 2025
+    riester.monthlyOwnContribution = de2026Rules.riester.sockelbetrag / 12
+    riester.eligibility = {
+      ...riester.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const avdFunding =
+      funding.altersvorsorgedepotByInstanceId[avd.instanceId]
+    const riesterFunding = funding.riesterByInstanceId[riester.instanceId]
+
+    expect(avdFunding.careerStarterBonusAnnual).toBeCloseTo(
+      de2026Rules.altersvorsorgedepot.careerStarterBonus,
+      8,
+    )
+    expect(riesterFunding.careerStarterBonusAnnual).toBe(0)
+  })
+
+  it('does not allocate the bonus to an AVD contract whose cap would absorb it', () => {
+    const ws = makeBaseWorkspace()
+    const base = ws.baseline.assumptions.altersvorsorgedepot[0]
+    const eligibility = {
+      ...base.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+    const capped: AltersvorsorgedepotInstance = {
+      ...base,
+      instanceId: 'avd-capped-career-bonus',
+      label: 'AVD capped',
+      contractStartYear: 2025,
+      monthlyOwnContribution: maxAvdMonthlyOwnContribution(
+        eligibility,
+        de2026Rules,
+        false,
+      ),
+      eligibility,
+    }
+    const uncapped: AltersvorsorgedepotInstance = {
+      ...base,
+      instanceId: 'avd-uncapped-career-bonus',
+      label: 'AVD uncapped',
+      contractStartYear: 2026,
+      monthlyOwnContribution: 100,
+      eligibility,
+    }
+    ws.baseline.assumptions.altersvorsorgedepot = [capped, uncapped]
+    ws.baseline.assumptions.riester = []
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+
+    expect(
+      funding.altersvorsorgedepotByInstanceId[capped.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBe(0)
+    expect(
+      funding.altersvorsorgedepotByInstanceId[uncapped.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBeCloseTo(de2026Rules.altersvorsorgedepot.careerStarterBonus, 8)
+  })
+
+  it('ignores an age-ineligible legacy used flag when an eligible contract is added', () => {
+    const ws = makeBaseWorkspace()
+    const legacy = ws.baseline.assumptions.altersvorsorgedepot[0]
+    expect(legacy.eligibility.careerStarterBonusUsed).toBe(true)
+    expect(legacy.eligibility.ageAtContractStart).toBeGreaterThan(
+      de2026Rules.altersvorsorgedepot.careerStarterMaxAge,
+    )
+    const eligible: AltersvorsorgedepotInstance = {
+      ...legacy,
+      instanceId: 'avd-valid-career-starter',
+      label: 'AVD valid career starter',
+      monthlyOwnContribution: 100,
+      eligibility: {
+        ...legacy.eligibility,
+        directlyEligible: true,
+        ageAtContractStart: 23,
+        careerStarterBonusUsed: false,
+      },
+    }
+    ws.baseline.assumptions.altersvorsorgedepot.push(eligible)
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+
+    expect(
+      funding.altersvorsorgedepotByInstanceId[eligible.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBeCloseTo(de2026Rules.altersvorsorgedepot.careerStarterBonus, 8)
   })
 })
 
@@ -980,10 +1173,12 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
 
   it('multi-instance schedule releases the one-time career-starter bonus after year one', () => {
     const ws = makeTwoRiesterWorkspace(100, 100)
-    ws.baseline.assumptions.riester[0].eligibility = {
-      ...ws.baseline.assumptions.riester[0].eligibility,
-      ageAtContractStart: 23,
-      careerStarterBonusUsed: false,
+    for (const instance of ws.baseline.assumptions.riester) {
+      instance.eligibility = {
+        ...instance.eligibility,
+        ageAtContractStart: 23,
+        careerStarterBonusUsed: false,
+      }
     }
     const funding = buildPortfolioFunding(ws, de2026Rules)
     const yearOne = [
