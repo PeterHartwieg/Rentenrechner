@@ -15,8 +15,14 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import { RangeNumberField, type RangeNumberFieldProps } from './RangeNumberField'
+import { QaFeedbackProvider } from '../features/qa-feedback/QaFeedbackProvider'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  sessionStorage.clear()
+  document.documentElement.removeAttribute('data-qa-mode')
+  window.history.replaceState(null, '', '/')
+})
 
 const CHOICES = [
   { value: 10, label: 'Mindestbeitrag' },
@@ -133,8 +139,31 @@ describe('RangeNumberField — quick choices', () => {
     expect(screen.queryByRole('radio', { checked: true })).toBeNull()
   })
 
-  it('encodes the card index in the QA target, never the amount', () => {
+  it('emits no QA attributes outside QA mode (inert contract)', () => {
     setup({ feedbackTargetId: 'inputs.avd.monthlyOwnContribution' })
+    for (const card of screen.getAllByRole('radio')) {
+      expect(card.getAttribute('data-qa-target')).toBeNull()
+    }
+  })
+
+  it('encodes the card index in the QA target, never the amount', () => {
+    window.history.replaceState(null, '', '/?qa=1')
+    const onCommit = vi.fn()
+    render(
+      <QaFeedbackProvider>
+        <RangeNumberField
+          label="Eigenbeitrag"
+          value={150}
+          min={0}
+          max={525}
+          step={5}
+          suffix="€"
+          choices={CHOICES}
+          onCommit={onCommit}
+          feedbackTargetId="inputs.avd.monthlyOwnContribution"
+        />
+      </QaFeedbackProvider>,
+    )
     const cards = screen.getAllByRole('radio')
     const targets = cards.map((c) => c.getAttribute('data-qa-target'))
     expect(targets).toEqual([

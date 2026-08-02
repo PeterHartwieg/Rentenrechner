@@ -2,7 +2,7 @@ import './forms.css'
 import './RangeNumberField.css'
 import { useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { NumberField } from './NumberField'
-import { useFeedbackTarget } from '../features/qa-feedback'
+import { qaTarget, useFeedbackTarget, useQaMode } from '../features/qa-feedback'
 import { formatNumber } from '../utils/format'
 
 export interface RangeQuickChoice {
@@ -121,6 +121,7 @@ export function RangeNumberField({
     label,
     precision: 'section',
   })
+  const { enabled: qaEnabled } = useQaMode()
 
   const shown = dragValue ?? value
   const selectionTolerance = step > 0 ? step / 2 : 0.005
@@ -198,7 +199,10 @@ export function RangeNumberField({
                 }
                 // Index, never the amount — QA target ids are exported to the
                 // report unredacted, so encoding the value would leak it.
-                data-qa-target={feedbackTargetId ? `${feedbackTargetId}.choice.${index}` : undefined}
+                // qaTarget keeps the inert contract: no attrs outside QA mode.
+                {...(feedbackTargetId
+                  ? qaTarget(qaEnabled, `${feedbackTargetId}.choice.${index}`)
+                  : {})}
                 onClick={() => selectChoice(index)}
                 onKeyDown={(event) => {
                   if (

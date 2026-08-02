@@ -11,7 +11,13 @@ const BASE = defaultAssumptions.altersvorsorgedepot.eligibility
 describe('buildAvdBeitragsstufen — values derive from the rules', () => {
   it('keeps the four statutory levels pinned for directly eligible savers', () => {
     const stufen = buildAvdBeitragsstufen(RULES, BASE)
-    expect(stufen.map((s) => s.value)).toEqual([10, 30, 150, 525])
+    const avd = RULES.altersvorsorgedepot
+    expect(stufen.map((s) => s.value)).toEqual([
+      avd.minimumOwnContributionAnnual / 12,
+      avd.basicAllowanceTier1MaxContribution / 12,
+      avd.basicAllowanceTier2MaxContribution / 12,
+      (avd.contractContributionCapAnnual - avd.basicAllowanceMax) / 12,
+    ])
     expect(stufen.map((s) => s.label)).toEqual([
       'Mindestbeitrag',
       'Ende der 50 %-Stufe',
