@@ -28,6 +28,7 @@ import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2, buildWorkspaceJson, parseWorkspaceJson } from '../storage'
 import { simulateRetirementComparison } from './simulate'
+import { calculateRiesterFunding } from './riester'
 import {
   NEUTRALISED_ALTERSVORSORGEDEPOT,
   NEUTRALISED_BASISRENTE,
@@ -1250,6 +1251,7 @@ describe('PortfolioAdapter — PortfolioFunding shape', () => {
     expect(portfolioFunding.basisrenteByInstanceId).toBeDefined()
     expect(portfolioFunding.altersvorsorgedepotByInstanceId).toBeDefined()
     expect(portfolioFunding.riesterByInstanceId).toBeDefined()
+    expect(portfolioFunding.riesterYearlyByInstanceId).toBeDefined()
     expect(Array.isArray(portfolioFunding.notes)).toBe(true)
   })
 })
@@ -1379,6 +1381,71 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     // but materially smaller than if no transfer occurred.
     for (const r of perInstance['riester-src']) {
       expect(r.capitalAtRetirement).toBeGreaterThan(0)
+    }
+  })
+
+  it('Riester provider transfer conserves household capital with guarantees enabled', () => {
+    const workspace = rich()
+    const sourceId = 'riester-provider-source'
+    const targetId = 'riester-provider-target'
+    const source: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: sourceId,
+      currentValueEUR: 50_000,
+      monthlyOwnContribution: 100,
+    }
+    const target: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: targetId,
+      currentValueEUR: 0,
+      monthlyOwnContribution: 100,
+    }
+    const withoutTransfer: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          riester: [source, target],
+        },
+      },
+    }
+    const event = {
+      type: 'certified' as const,
+      year: de2026Rules.year,
+      sourceInstanceId: sourceId,
+      targetInstanceId: targetId,
+      amountEUR: 50_000,
+    }
+    const withTransfer: Workspace = {
+      ...withoutTransfer,
+      baseline: {
+        ...withoutTransfer.baseline,
+        assumptions: {
+          ...withoutTransfer.baseline.assumptions,
+          riester: [
+            { ...source, transferEvents: [event] },
+            { ...target, transferEvents: [event] },
+          ],
+        },
+      },
+    }
+
+    const baselineResults = simulatePortfolio(withoutTransfer, de2026Rules).perInstance
+    const transferResults = simulatePortfolio(withTransfer, de2026Rules).perInstance
+    for (let index = 0; index < baselineResults[sourceId].length; index += 1) {
+      const baselineHouseholdCapital =
+        baselineResults[sourceId][index].capitalAtRetirement +
+        baselineResults[targetId][index].capitalAtRetirement
+      const transferHouseholdCapital =
+        transferResults[sourceId][index].capitalAtRetirement +
+        transferResults[targetId][index].capitalAtRetirement
+      // Compare proportionally: the two 40-year accumulation paths can differ by
+      // sub-cent IEEE-754 residue even though household capital is conserved.
+      expect(
+        Math.abs(transferHouseholdCapital - baselineHouseholdCapital) /
+          Math.max(1, baselineHouseholdCapital),
+      ).toBeLessThan(1e-9)
     }
   })
 
@@ -2227,6 +2294,174 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
       }
     }
   })
+
+  it('Riester yearly funding uses the aggregate post-bAV salary baseline', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const firstBav: BavInstance = {
+      ...workspace.baseline.assumptions.bav[0],
+      instanceId: 'bav-salary-first',
+      monthlyGrossConversion: 200,
+    }
+    const secondBav: BavInstance = {
+      ...firstBav,
+      instanceId: 'bav-salary-second',
+      monthlyGrossConversion: 300,
+    }
+    const riester: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: 'riester-aggregate-salary',
+      monthlyOwnContribution: 100,
+    }
+    workspace.baseline.assumptions.bav = [firstBav, secondBav]
+    workspace.baseline.assumptions.riester = [riester]
+
+    const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
+    const result = perInstance[riester.instanceId][0]
+    const scheduledYearOne =
+      portfolioFunding.riesterYearlyByInstanceId[riester.instanceId][0]
+    const scheduledYearTwo =
+      portfolioFunding.riesterYearlyByInstanceId[riester.instanceId][1]
+    const expectedYearTwo = calculateRiesterFunding(
+      de2026Rules,
+      portfolioFunding.salaryForOtherFunding,
+      { ...riester, monthlyOwnContribution: scheduledYearTwo.monthlyOwnContribution },
+      workspace.baseline.profile,
+      { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
+    )
+    const firstBavOnlyYearTwo = calculateRiesterFunding(
+      de2026Rules,
+      portfolioFunding.bavByInstanceId[firstBav.instanceId].salaryWithBav,
+      { ...riester, monthlyOwnContribution: scheduledYearTwo.monthlyOwnContribution },
+      workspace.baseline.profile,
+      { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
+    )
+
+    expect(scheduledYearTwo.guenstigerpruefungBenefitAnnual).toBeCloseTo(
+      expectedYearTwo.guenstigerpruefungBenefitAnnual,
+      8,
+    )
+    expect(scheduledYearTwo.guenstigerpruefungBenefitAnnual).not.toBeCloseTo(
+      firstBavOnlyYearTwo.guenstigerpruefungBenefitAnnual,
+      8,
+    )
+    expect(result.rows[0].yearlyUserCost).toBeCloseTo(
+      scheduledYearOne.monthlyNetCost * 12,
+      8,
+    )
+    expect(result.rows[1].yearlyUserCost).toBeCloseTo(
+      scheduledYearTwo.monthlyNetCost * 12,
+      8,
+    )
+  })
+
+  it('AVD yearly funding uses the aggregate post-bAV salary baseline', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const firstBav: BavInstance = {
+      ...workspace.baseline.assumptions.bav[0],
+      instanceId: 'bav-avd-salary-first',
+      monthlyGrossConversion: 200,
+    }
+    const secondBav: BavInstance = {
+      ...firstBav,
+      instanceId: 'bav-avd-salary-second',
+      monthlyGrossConversion: 300,
+    }
+    const avd: AltersvorsorgedepotInstance = {
+      ...workspace.baseline.assumptions.altersvorsorgedepot[0],
+      instanceId: 'avd-aggregate-salary',
+      monthlyOwnContribution: 100,
+    }
+    workspace.baseline.assumptions.bav = [firstBav, secondBav]
+    workspace.baseline.assumptions.altersvorsorgedepot = [avd]
+
+    const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
+    const result = perInstance[avd.instanceId][0]
+    const accepted = portfolioFunding.altersvorsorgedepotByInstanceId[avd.instanceId]
+
+    expect(result.rows[0].yearlyUserCost).toBeCloseTo(
+      accepted.monthlyNetCost * 12,
+      8,
+    )
+  })
+
+  it('Riester releases one-time career-starter cap headroom after year one', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const riester: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: 'riester-yearly-cap',
+      monthlyOwnContribution: 170,
+      eligibility: {
+        ...workspace.baseline.assumptions.riester[0].eligibility,
+        ageAtContractStart: 20,
+        careerStarterBonusUsed: false,
+      },
+    }
+    workspace.baseline.assumptions.bav = []
+    workspace.baseline.assumptions.riester = [riester]
+
+    const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
+    const result = perInstance[riester.instanceId][0]
+    const acceptedYearOne = portfolioFunding.riesterByInstanceId[riester.instanceId]
+    const schedule = portfolioFunding.riesterYearlyByInstanceId[riester.instanceId]
+    expect(schedule).toHaveLength(
+      workspace.baseline.profile.retirementAge - workspace.baseline.profile.age,
+    )
+    expect(schedule[0]).toEqual(acceptedYearOne)
+    const expectedYearOneProductAnnual =
+      acceptedYearOne.annualOwnContribution +
+      acceptedYearOne.totalAllowanceAnnual +
+      acceptedYearOne.guenstigerpruefungBenefitAnnual
+    expect(result.rows[0].yearlyProductContribution).toBeCloseTo(
+      expectedYearOneProductAnnual,
+      8,
+    )
+    const yearTwoOwnMonthly = (
+      de2026Rules.riester.annualCapInclAllowances -
+      de2026Rules.riester.grundzulage
+    ) / 12
+    const expectedYearTwoFunding = calculateRiesterFunding(
+      de2026Rules,
+      portfolioFunding.salaryForOtherFunding,
+      { ...riester, monthlyOwnContribution: yearTwoOwnMonthly },
+      workspace.baseline.profile,
+      { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
+    )
+    const yearTwoFunding = schedule[1]
+    expect(yearTwoFunding.monthlyOwnContribution).toBeCloseTo(yearTwoOwnMonthly, 2)
+    expect(yearTwoFunding.totalAllowanceAnnual).toBeCloseTo(
+      expectedYearTwoFunding.totalAllowanceAnnual,
+      3,
+    )
+    expect(yearTwoFunding.guenstigerpruefungBenefitAnnual).toBeCloseTo(
+      expectedYearTwoFunding.guenstigerpruefungBenefitAnnual,
+      3,
+    )
+    expect(yearTwoFunding.monthlyNetCost).toBeCloseTo(
+      expectedYearTwoFunding.monthlyNetCost,
+      3,
+    )
+    const expectedYearTwoProductAnnual =
+      yearTwoFunding.annualOwnContribution +
+      yearTwoFunding.totalAllowanceAnnual +
+      yearTwoFunding.guenstigerpruefungBenefitAnnual
+
+    expect(result.rows[1].yearlyProductContribution).toBeCloseTo(
+      expectedYearTwoProductAnnual,
+      2,
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -2368,7 +2603,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       type: 'certified',
       year: de2026Rules.year + 3,
       sourceInstanceId: 'riester-legacy-src',
-      targetInstanceId: 'avd-legacy-tgt',
+      targetInstanceId: 'altersvorsorgedepot-legacy-tgt',
       amountEUR: 15_000,
     }
 
@@ -2382,7 +2617,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     }
     const avdNoEvent: AltersvorsorgedepotInstance = {
       ...baseAvd,
-      instanceId: 'avd-legacy-tgt',
+      instanceId: 'altersvorsorgedepot-legacy-tgt',
       label: 'AVD (target, no event yet)',
       transferEvents: [],
     }
@@ -2408,7 +2643,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       i => i.instanceId === 'riester-legacy-src',
     )
     const reloadedAvd = reloaded!.baseline.assumptions.altersvorsorgedepot.find(
-      i => i.instanceId === 'avd-legacy-tgt',
+      i => i.instanceId === 'altersvorsorgedepot-legacy-tgt',
     )
     expect(reloadedRiester?.transferEvents).toHaveLength(1)
     // The target must now also carry the event after backfill.
@@ -2416,7 +2651,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     expect(reloadedAvd?.transferEvents?.[0]).toMatchObject({
       type: 'certified',
       sourceInstanceId: 'riester-legacy-src',
-      targetInstanceId: 'avd-legacy-tgt',
+      targetInstanceId: 'altersvorsorgedepot-legacy-tgt',
       amountEUR: 15_000,
     })
 
@@ -2432,7 +2667,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
             i.instanceId === 'riester-legacy-src' ? { ...i, transferEvents: [] } : i,
           ),
           altersvorsorgedepot: reloaded!.baseline.assumptions.altersvorsorgedepot.map(i =>
-            i.instanceId === 'avd-legacy-tgt' ? { ...i, transferEvents: [] } : i,
+            i.instanceId === 'altersvorsorgedepot-legacy-tgt' ? { ...i, transferEvents: [] } : i,
           ),
         },
       },
@@ -2440,8 +2675,8 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     const noEventResult = simulatePortfolio(noEventWs, de2026Rules).perInstance
     const basisIdx = 1
     const avdGain =
-      reloadedResult['avd-legacy-tgt'][basisIdx].capitalAtRetirement -
-      noEventResult['avd-legacy-tgt'][basisIdx].capitalAtRetirement
+      reloadedResult['altersvorsorgedepot-legacy-tgt'][basisIdx].capitalAtRetirement -
+      noEventResult['altersvorsorgedepot-legacy-tgt'][basisIdx].capitalAtRetirement
     // The target gained capital from the injection.
     expect(avdGain).toBeGreaterThan(0)
     // The source lost capital from the withdrawal.
@@ -2463,7 +2698,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       type: 'certified',
       year: de2026Rules.year + 4,
       sourceInstanceId: 'riester-tgt-only-src',
-      targetInstanceId: 'avd-tgt-only-tgt',
+      targetInstanceId: 'altersvorsorgedepot-tgt-only-tgt',
       amountEUR: 12_000,
     }
 
@@ -2477,7 +2712,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     }
     const avdTgtOnly: AltersvorsorgedepotInstance = {
       ...baseAvd,
-      instanceId: 'avd-tgt-only-tgt',
+      instanceId: 'altersvorsorgedepot-tgt-only-tgt',
       label: 'AVD (target-only legacy)',
       transferEvents: [event],
     }
@@ -2503,14 +2738,14 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       i => i.instanceId === 'riester-tgt-only-src',
     )
     const reloadedAvd = reloaded!.baseline.assumptions.altersvorsorgedepot.find(
-      i => i.instanceId === 'avd-tgt-only-tgt',
+      i => i.instanceId === 'altersvorsorgedepot-tgt-only-tgt',
     )
     // The source must now also carry the event after backfill.
     expect(reloadedRiester?.transferEvents).toHaveLength(1)
     expect(reloadedRiester?.transferEvents?.[0]).toMatchObject({
       type: 'certified',
       sourceInstanceId: 'riester-tgt-only-src',
-      targetInstanceId: 'avd-tgt-only-tgt',
+      targetInstanceId: 'altersvorsorgedepot-tgt-only-tgt',
       amountEUR: 12_000,
     })
     expect(reloadedAvd?.transferEvents).toHaveLength(1)
@@ -2527,7 +2762,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
             i.instanceId === 'riester-tgt-only-src' ? { ...i, transferEvents: [] } : i,
           ),
           altersvorsorgedepot: reloaded!.baseline.assumptions.altersvorsorgedepot.map(i =>
-            i.instanceId === 'avd-tgt-only-tgt' ? { ...i, transferEvents: [] } : i,
+            i.instanceId === 'altersvorsorgedepot-tgt-only-tgt' ? { ...i, transferEvents: [] } : i,
           ),
         },
       },
@@ -2535,8 +2770,8 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     const noEventResult = simulatePortfolio(noEventWs, de2026Rules).perInstance
     const basisIdx = 1
     const avdGain =
-      reloadedResult['avd-tgt-only-tgt'][basisIdx].capitalAtRetirement -
-      noEventResult['avd-tgt-only-tgt'][basisIdx].capitalAtRetirement
+      reloadedResult['altersvorsorgedepot-tgt-only-tgt'][basisIdx].capitalAtRetirement -
+      noEventResult['altersvorsorgedepot-tgt-only-tgt'][basisIdx].capitalAtRetirement
     expect(avdGain).toBeGreaterThan(0)
     const riesterLoss =
       noEventResult['riester-tgt-only-src'][basisIdx].capitalAtRetirement -
@@ -2555,7 +2790,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       type: 'certified',
       year: de2026Rules.year + 2,
       sourceInstanceId: 'riester-idem',
-      targetInstanceId: 'avd-idem',
+      targetInstanceId: 'altersvorsorgedepot-idem',
       amountEUR: 10_000,
     }
 
@@ -2574,7 +2809,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
           }],
           altersvorsorgedepot: [{
             ...baseAvd,
-            instanceId: 'avd-idem',
+            instanceId: 'altersvorsorgedepot-idem',
             label: 'AVD (idem)',
             transferEvents: [event],
           }],
@@ -2590,7 +2825,9 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     expect(loaded2).not.toBeNull()
 
     const riester2 = loaded2!.baseline.assumptions.riester.find(i => i.instanceId === 'riester-idem')
-    const avd2 = loaded2!.baseline.assumptions.altersvorsorgedepot.find(i => i.instanceId === 'avd-idem')
+    const avd2 = loaded2!.baseline.assumptions.altersvorsorgedepot.find(
+      i => i.instanceId === 'altersvorsorgedepot-idem',
+    )
     // No duplicates after two parse round-trips.
     expect(riester2?.transferEvents).toHaveLength(1)
     expect(avd2?.transferEvents).toHaveLength(1)

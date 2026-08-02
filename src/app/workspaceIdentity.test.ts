@@ -154,6 +154,23 @@ describe('addInstanceToWorkspace', () => {
     expect(ws5.baseline.assumptions.etf).toHaveLength(1)
   })
 
+  it('seeds new Riester and AVD eligibility from the workspace profile age', () => {
+    const workspace = deepCloneScenario(defaultWorkspace)
+    workspace.baseline.profile.age = 23
+
+    const withRiester = addInstanceToWorkspace(workspace, 'riester')
+    const withAvd = addInstanceToWorkspace(workspace, 'altersvorsorgedepot')
+
+    expect(withRiester.baseline.assumptions.riester[0].eligibility).toMatchObject({
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    })
+    expect(withAvd.baseline.assumptions.altersvorsorgedepot[0].eligibility).toMatchObject({
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    })
+  })
+
   it('versicherung instanceId follows versicherung-${random8} format', () => {
     const ws = addInstanceToWorkspace(defaultWorkspace, 'versicherung')
     expect(ws.baseline.assumptions.insurance[0].instanceId).toMatch(/^versicherung-[a-z0-9]{8}$/)

@@ -1,27 +1,22 @@
 import { useViewport } from './useViewport'
-import packageJson from '../../../package.json'
-
 /**
  * Slim, dark mono status bar fixed at the top of every page. Three internal
  * viewport variants:
- *   - desktop: full text (rentenwiki.de · Gemeinnütziges Projekt · source · build).
+ *   - desktop: full text (rentenwiki.de · independent project · source · build).
  *   - tablet:  full text, tighter horizontal padding.
- *   - phone:   URL + version only.
+ *   - phone:   URL + build date only.
  *
- * Version comes from package.json. Build date is injected by Vite (see
- * vite.config.ts `define`) so the prerendered HTML and the hydrated
- * bundle agree on the same UTC date — without that pin the value would
- * recompute at client load time and drift across UTC midnight.
+ * Build date is injected by Vite (see vite.config.ts `define`) so the
+ * prerendered HTML and the hydrated bundle agree on the same UTC date.
  *
- * The public-facing string deliberately says "Open Source" (not the
- * GitHub repo path) so the chrome doesn't leak the internal working
- * name (CLAUDE.md "Brand in public copy" P0 guardrail).
+ * PolyForm Noncommercial is source-available, not an OSI open-source licence.
+ * Keep the public label precise and avoid implying recognised charitable
+ * status unless the project actually obtains it.
  */
 declare const __RW_BUILD_DATE__: string
 
-const VERSION = packageJson.version
 const BUILD_DATE = __RW_BUILD_DATE__
-const SOURCE_LABEL = 'Open Source'
+const SOURCE_LABEL = 'Quellcode offen'
 
 export function StatusBar() {
   const viewport = useViewport()
@@ -30,7 +25,7 @@ export function StatusBar() {
     return (
       <div className="rw-status-bar rw-status-bar--phone" role="contentinfo" aria-label="Site-Statusleiste">
         <span className="rw-status-bar__dim">rentenwiki.de</span>
-        <span className="rw-status-bar__dim">v{VERSION} · {BUILD_DATE}</span>
+        <span className="rw-status-bar__dim">Stand {BUILD_DATE}</span>
       </div>
     )
   }
@@ -44,11 +39,11 @@ export function StatusBar() {
     >
       <span className="rw-status-bar__dim">rentenwiki.de</span>
       <span className="rw-status-bar__sep">·</span>
-      <span className="rw-status-bar__dim">Gemeinnütziges Projekt</span>
+      <span className="rw-status-bar__dim">Unabhängiges Projekt</span>
       <span className="rw-status-bar__sep">·</span>
       <span className="rw-status-bar__dim">{SOURCE_LABEL}</span>
       <span className="rw-status-bar__trailing rw-status-bar__dim">
-        v{VERSION} · {BUILD_DATE}
+        Stand {BUILD_DATE}
       </span>
     </div>
   )

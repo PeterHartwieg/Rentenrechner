@@ -18,15 +18,10 @@
  * (populated from the modal answer) or from the instance's contractual terms.
  */
 
-import type {
-  BavFundingResult,
-  GermanRules,
-  PayoutMode,
-  PersonalProfile,
-} from '../../domain'
+import type { PayoutMode } from '../../domain'
 import type { BavInstance } from '../../domain/instances'
 import { defaultAssumptions } from '../../data/defaultScenario'
-import { calculateBavFunding, calculateSalaryResult } from '../../engine/salary'
+import { buildPortfolioFunding } from '../../engine/portfolioFunding'
 import { computeGrossMonthlyPayout } from '../../engine/payoutMath'
 import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from '../../engine/bavPayout'
 import { newInstanceId } from '../workspaceIdentity'
@@ -56,89 +51,6 @@ export function monthlyEmployerContributionForOffer(
     monthlyGrossConversion * offer.employerMatchPercent +
     offer.fixedMonthlyEUR
   return offer.monthlyCapEUR !== undefined ? Math.min(raw, offer.monthlyCapEUR) : raw
-}
-
-function bavOfferFunding(
-  profile: PersonalProfile,
-  rules: GermanRules,
-  bav: BavInstance,
-  offer: ResolvedBavOffer,
-): BavFundingResult {
-  const annualGrossConversion = bav.monthlyGrossConversion * 12
-  const monthlyEmployerContribution = monthlyEmployerContributionForOffer(
-    bav.monthlyGrossConversion,
-    offer,
-  )
-  const annualEmployerContribution = monthlyEmployerContribution * 12
-  const taxFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
-  const svFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.socialSecurityFreePctOfPensionCap
-  const totalBavContributionAnnual = annualGrossConversion + annualEmployerContribution
-  const effectiveTaxFreeConversion = Math.max(
-    0,
-    Math.min(annualGrossConversion, taxFreeLimit - annualEmployerContribution),
-  )
-  const effectiveSvFreeConversion = Math.max(
-    0,
-    Math.min(annualGrossConversion, svFreeLimit - annualEmployerContribution),
-  )
-  const salaryWithoutBav = calculateSalaryResult(profile, rules, 0)
-  const salaryWithBav = calculateSalaryResult(
-    profile,
-    rules,
-    annualGrossConversion,
-    effectiveTaxFreeConversion,
-    effectiveSvFreeConversion,
-  )
-  const annualNetCost = salaryWithoutBav.annualNet - salaryWithBav.annualNet
-  const annualTaxAndSvSavings = annualGrossConversion - annualNetCost
-  const taxFreePortionAnnual = Math.min(totalBavContributionAnnual, taxFreeLimit)
-  const svFreePortionAnnual = Math.min(totalBavContributionAnnual, svFreeLimit)
-  const yearsToRetirement = Math.max(0, profile.retirementAge - profile.age)
-  const rvBbg = rules.socialSecurity.pensionCapYear
-  const lostPensionableBase =
-    Math.min(profile.grossSalaryYear, rvBbg) -
-    Math.min(profile.grossSalaryYear - effectiveSvFreeConversion, rvBbg)
-  const estimatedMonthlyGrvReduction =
-    yearsToRetirement *
-    (lostPensionableBase / rules.socialSecurity.durchschnittsentgelt) *
-    rules.socialSecurity.aktuellerRentenwert
-
-  return {
-    monthlyGrossConversion: bav.monthlyGrossConversion,
-    annualGrossConversion,
-    monthlyNetCost: annualNetCost / 12,
-    annualNetCost,
-    monthlyTaxAndSvSavings: annualTaxAndSvSavings / 12,
-    annualTaxAndSvSavings,
-    monthlyStatutoryEmployerSubsidy: 0,
-    monthlyStatutoryEmployerSubsidyUncapped: 0,
-    monthlyStatutoryEmployerSubsidyCap: 0,
-    monthlyStatutoryEmployerSubsidyCapApplied: false,
-    monthlyContractualEmployerContribution: monthlyEmployerContribution,
-    monthlyEmployerContribution,
-    annualEmployerContribution,
-    employerSocialSecuritySavingAnnual: 0,
-    salaryWithoutBav,
-    salaryWithBav,
-    totalBavContributionAnnual,
-    taxFreePortionAnnual,
-    svFreePortionAnnual,
-    taxableOverflowAnnual: Math.max(0, totalBavContributionAnnual - taxFreeLimit),
-    svLiableOverflowAnnual: Math.max(0, totalBavContributionAnnual - svFreeLimit),
-    estimatedMonthlyGrvReduction,
-  }
-}
-
-function fundingForBavCandidate(
-  profile: PersonalProfile,
-  rules: GermanRules,
-  bav: BavInstance,
-  offer?: ResolvedBavOffer,
-): BavFundingResult {
-  if (offer?.hasOffer || offer?.standardAssumption) {
-    return bavOfferFunding(profile, rules, bav, offer)
-  }
-  return calculateBavFunding(profile, rules, bav)
 }
 
 function resolveBavOfferFromInstance(target: BavInstance): ResolvedBavOffer {
@@ -206,89 +118,109 @@ function makeBavCandidateForTarget(
   const targetOffer = offerForBavTarget(baseTarget, isNewInstance, g.bavOffer)
   const target = applyBavOfferToTarget(baseTarget, targetOffer)
   const activatesOffer = baseTarget.status === 'offered'
-  // Existing aggregate gross conversion across active bAV instances (single-employer
-  // V1 assumption: §3 Nr. 63 + SvEV cap shared across one person's bAV portfolio).
-  const usedMonthly = wsa.bav
-    .filter((b) => b.status === 'active')
-    .reduce((s, b) => s + (b.monthlyGrossConversion ?? 0), 0)
-  const capMonthly = (g.rules.socialSecurity.pensionCapYear * g.rules.bav.taxFreePctOfPensionCap) / 12
-  const remainingCapMonthly = Math.max(0, capMonthly - usedMonthly)
-  if (remainingCapMonthly <= 0) return null
+  const currentTargetMonthly = baseTarget.status === 'active'
+    ? baseTarget.monthlyGrossConversion
+    : 0
 
-  const neutralEmployerTerms = {
-    contractualMatchPercent: 0,
-    contractualFixedMonthly: 0,
+  const fundingAtDelta = (delta: number) => {
+    const monthlyGrossConversion = currentTargetMonthly + delta
+    let trialTarget: BavInstance = {
+      ...target,
+      status: 'active',
+      monthlyGrossConversion,
+    }
+    // The workspace schema has no employer-offer cap field. Materialise the
+    // capped offer as its exact fixed contribution for this trial so the
+    // authoritative funding pass still owns aggregate cap and salary effects.
+    if (targetOffer) {
+      trialTarget = {
+        ...trialTarget,
+        statutoryMinimumSubsidyEnabled: false,
+        contractualMatchPercent: 0,
+        contractualFixedMonthly: monthlyEmployerContributionForOffer(
+          monthlyGrossConversion,
+          targetOffer,
+        ),
+      }
+    }
+    const hasTarget = wsa.bav.some((instance) => instance.instanceId === baseTarget.instanceId)
+    const bav = hasTarget
+      ? wsa.bav.map((instance) =>
+          instance.instanceId === baseTarget.instanceId ? trialTarget : instance,
+        )
+      : [...wsa.bav, trialTarget]
+    return buildPortfolioFunding({
+      ...g.workspace,
+      baseline: {
+        ...g.workspace.baseline,
+        assumptions: { ...wsa, bav },
+      },
+    }, g.rules)
   }
-  const fundingForNetCost = (monthlyGrossConversion: number) =>
-    activatesOffer
-      ? calculateBavFunding(profile, g.rules, {
-          ...target,
-          ...neutralEmployerTerms,
-          monthlyGrossConversion,
-        })
-      : fundingForBavCandidate(profile, g.rules, {
-          ...target,
-          monthlyGrossConversion,
-        }, targetOffer)
 
-  // Bisection: solve for the marginal gross conversion (delta on top of
-  // existing) such that
-  //   forward(usedMonthly + delta).monthlyNetCost
-  //     - forward(usedMonthly).monthlyNetCost  ≈  marginalMonthlyEUR.
-  // The previous approach solved against an isolated bAV (gross=delta only);
-  // that under-counts the SV-saving step when usedMonthly already pushes part
-  // of the income below the BBG, so the returned delta was off for users with
-  // existing bAV. Now we bisect on the actual marginal net cost.
-  const baselineNetCost = fundingForNetCost(usedMonthly).monthlyNetCost
-  const forwardMarginalNet = (delta: number) =>
-    fundingForNetCost(usedMonthly + delta).monthlyNetCost -
-      baselineNetCost
-  // grossDelta = forward(used + delta) − forward(used); marginal, not isolated.
-  const grossDelta = (() => {
-    if (g.marginalMonthlyEUR <= 0) return 0
+  // When the user supplies updated offer terms for an already-active bAV,
+  // compare delta 0 and delta N under that same regime. Otherwise the
+  // candidate would attribute the whole employer-term switch to the next
+  // marginal euro. Offered contracts intentionally keep the untouched
+  // baseline because activation itself is part of that candidate.
+  const baselineFunding = targetOffer && !isNewInstance && !activatesOffer
+    ? fundingAtDelta(0)
+    : g.portfolioFunding
+  const baselineHeadroom = baselineFunding.headroom.bav
+  if (baselineHeadroom.remainingAnnual <= 0 || baselineHeadroom.constrained) return null
+
+  // Find the largest target top-up that does not cause the portfolio funding
+  // pass to redistribute already accepted contributions.
+  let loCap = 0
+  let hiCap = baselineHeadroom.remainingAnnual / 12
+  for (let i = 0; i < 50; i++) {
+    const mid = (loCap + hiCap) / 2
+    if (fundingAtDelta(mid).headroom.bav.constrained) hiCap = mid
+    else loCap = mid
+  }
+  const maxGrossDelta = loCap
+  if (maxGrossDelta <= 0) return null
+
+  const forwardMarginalNet = (delta: number) => Math.max(
+    0,
+    fundingAtDelta(delta).headroom.bav.monthlyNetCost - baselineHeadroom.monthlyNetCost,
+  )
+  const maxNetCost = forwardMarginalNet(maxGrossDelta)
+  const cappedToRemaining = maxNetCost < g.marginalMonthlyEUR - 0.01
+  let gross = maxGrossDelta
+  if (!cappedToRemaining) {
     let lo = 0
-    let hi = Math.max(100, g.marginalMonthlyEUR * 4)
-    for (let i = 0; i < 10 && forwardMarginalNet(hi) < g.marginalMonthlyEUR; i++) hi *= 2
+    let hi = maxGrossDelta
     for (let i = 0; i < 50; i++) {
       const mid = (lo + hi) / 2
-      const net = forwardMarginalNet(mid)
-      if (Math.abs(net - g.marginalMonthlyEUR) < 0.01) return mid
-      if (net < g.marginalMonthlyEUR) lo = mid
+      if (forwardMarginalNet(mid) < g.marginalMonthlyEUR) lo = mid
       else hi = mid
     }
-    return (lo + hi) / 2
-  })()
-  const cappedToRemaining = grossDelta > remainingCapMonthly
-  const gross = Math.min(grossDelta, remainingCapMonthly)
+    gross = (lo + hi) / 2
+  }
 
   // Marginal funding: the delta the candidate adds vs. the existing baseline.
   // `netCash` is the user's marginal net cash out-of-pocket; `totalMonthly`
   // is the marginal product contribution (delta gross + delta employer share)
   // used for the candidate's capital projection.
-  const fundingBaseline = fundingForNetCost(usedMonthly)
-  const fundingTotalForNet = fundingForNetCost(usedMonthly + gross)
-  const fundingTotal = activatesOffer
-    ? fundingForBavCandidate(profile, g.rules, {
-        ...target,
-        monthlyGrossConversion: gross,
-      }, targetOffer)
-    : fundingForBavCandidate(profile, g.rules, {
-        ...target,
-        monthlyGrossConversion: usedMonthly + gross,
-      }, targetOffer)
-  const netCash = Math.max(0, fundingTotalForNet.monthlyNetCost - fundingBaseline.monthlyNetCost)
+  const prospectiveFunding = fundingAtDelta(gross)
+  const netCash = Math.max(
+    0,
+    prospectiveFunding.headroom.bav.monthlyNetCost - baselineHeadroom.monthlyNetCost,
+  )
 
   // Project capital: marginal contribution = (Δgross + Δemployer share). Use
   // simple FV at basis scenario return minus average accumulation fee. The
   // production simulator does year-by-year fees + Beitragsdynamik; the
   // recommender's "what does another €X buy" only needs candidate ranking.
-  const totalMonthly = activatesOffer
-    ? gross + fundingTotal.monthlyEmployerContribution
-    : (fundingTotal.monthlyGrossConversion - fundingBaseline.monthlyGrossConversion) +
-      (fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution)
-  const monthlyEmployerContributionEUR = activatesOffer
-    ? fundingTotal.monthlyEmployerContribution
-    : fundingTotal.monthlyEmployerContribution - fundingBaseline.monthlyEmployerContribution
+  const totalMonthly = Math.max(
+    0,
+    (prospectiveFunding.headroom.bav.fundedAnnual - baselineHeadroom.fundedAnnual) / 12,
+  )
+  const monthlyEmployerContributionEUR = Math.max(
+    0,
+    (prospectiveFunding.headroom.bav.employerAnnual - baselineHeadroom.employerAnnual) / 12,
+  )
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
   const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
   const capital = projectMonthlyContributionFV(totalMonthly, netReturn, g.yearsToRetirement)

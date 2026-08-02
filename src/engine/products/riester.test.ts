@@ -251,6 +251,45 @@ describe('calculateRiesterFunding — career-starter bonus in first year', () =>
     // grundzulage (175) + bonus (200) = 375 (no children in default profile)
     expect(rf.totalAllowanceAnnual).toBeCloseTo(375, 2)
   })
+
+  it('compare-mode singleton applies the one-time bonus only in year one', () => {
+    const lowIncomeProfile = { ...defaultProfile, grossSalaryYear: 10_000 }
+    const comparison = simulateRetirementComparison(
+      lowIncomeProfile,
+      {
+        ...allVisibleAssumptions,
+        riester: riesterWithBonus,
+      },
+      rules,
+    )
+    const product = comparison.products.find(
+      (entry) => entry.productId === 'riester' && entry.scenarioId === 'basis',
+    )!
+    const yearTwoFunding = calculateRiesterFunding(
+      rules,
+      comparison.bavFunding.salaryWithBav,
+      riesterWithBonus,
+      lowIncomeProfile,
+      { contributionYear: rules.year + 1, isFirstContributionYear: false },
+    )
+
+    expect(comparison.riesterFunding.careerStarterBonusAnnual).toBe(
+      rules.riester.careerStarterBonus,
+    )
+    expect(yearTwoFunding.careerStarterBonusAnnual).toBe(0)
+    expect(product.rows[0].yearlyProductContribution).toBeCloseTo(
+      comparison.riesterFunding.annualOwnContribution +
+        comparison.riesterFunding.totalAllowanceAnnual +
+        comparison.riesterFunding.guenstigerpruefungBenefitAnnual,
+      8,
+    )
+    expect(product.rows[1].yearlyProductContribution).toBeCloseTo(
+      yearTwoFunding.annualOwnContribution +
+        yearTwoFunding.totalAllowanceAnnual +
+        yearTwoFunding.guenstigerpruefungBenefitAnnual,
+      8,
+    )
+  })
 })
 
 describe('calculateRiesterFunding — Sockelbetrag minimum contribution', () => {

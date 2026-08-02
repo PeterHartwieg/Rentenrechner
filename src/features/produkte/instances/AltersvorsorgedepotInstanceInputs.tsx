@@ -45,6 +45,38 @@ export function AltersvorsorgedepotInstanceInputs({
         disabled={instance.status === 'paid_up'}
         onCommit={(v) => patchInstance({ monthlyOwnContribution: v })}
       />
+      <DraftNumberInput
+        label="Alter zu Beginn des ersten Beitragsjahres"
+        value={instance.eligibility.ageAtContractStart}
+        min={0}
+        max={100}
+        step={1}
+        onCommit={(v) =>
+          patchInstance({
+            eligibility: {
+              ...instance.eligibility,
+              ageAtContractStart: Math.max(0, Math.round(v)),
+            },
+          })
+        }
+      />
+      <CombineField label="Berufseinsteiger-Bonus">
+        <label className="combine-checkbox-field">
+          <CombineNativeInput
+            type="checkbox"
+            checked={instance.eligibility.careerStarterBonusUsed}
+            onChange={(e) =>
+              patchInstance({
+                eligibility: {
+                  ...instance.eligibility,
+                  careerStarterBonusUsed: (e.target as HTMLInputElement).checked,
+                },
+              })
+            }
+          />
+          bereits erhalten
+        </label>
+      </CombineField>
       <CombineField label="Depottyp">
         <CombineNativeSelect
           value={instance.subtype}

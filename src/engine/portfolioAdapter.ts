@@ -117,9 +117,11 @@ export function simulatePortfolio(
     ? portfolioFunding.bavByInstanceId[firstActiveBav.instanceId]
     : undefined
   const withBavFundingAnchor = (overrides: BuildContextOverrides): BuildContextOverrides =>
-    bavFundingAnchor
-      ? { bavFundingOverride: bavFundingAnchor, ...overrides }
-      : overrides
+    ({
+      ...(bavFundingAnchor ? { bavFundingOverride: bavFundingAnchor } : {}),
+      salaryForOtherFundingOverride: portfolioFunding.salaryForOtherFunding,
+      ...overrides,
+    })
 
   // Collect all transfer events once so per-instance lookup is O(1).
   const { outboundBy, inboundBy } = collectTransferEvents(wsa)
@@ -191,6 +193,8 @@ export function simulatePortfolio(
   }))
   runFor(wsa.riester, simulateRiester, (inst) => withBavFundingAnchor({
     riesterFundingOverride: portfolioFunding.riesterByInstanceId[inst.instanceId],
+    riesterFundingScheduleOverride:
+      portfolioFunding.riesterYearlyByInstanceId[inst.instanceId],
   }))
 
   // §20 Abs. 9 EStG grants ONE saver allowance per taxpayer per year (€1 000

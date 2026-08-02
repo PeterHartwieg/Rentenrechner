@@ -1,5 +1,8 @@
 import type { AltersvorsorgedepotProductResult, ReturnScenario } from '../../domain'
-import type { SimulationContext } from '../simulationContext'
+import {
+  guaranteePrincipalAfterTransfers,
+  type SimulationContext,
+} from '../simulationContext'
 import {
   buildProductResult,
 } from '../buildResult'
@@ -47,7 +50,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
   const fundingForYear = (yearIndex: number) =>
     calculateAvdFunding(
       rules,
-      ctx.bavFunding.salaryWithBav,
+      ctx.salaryForOtherFunding,
       avd,
       {
         profile,
@@ -116,7 +119,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
         ? {
             label: `${Math.round(guaranteePct * 100)}% Garantie`,
             floorCapital: (projection) =>
-              (projection.totalProductContributions + (transferInitialCapital ?? 0)) * guaranteePct,
+              guaranteePrincipalAfterTransfers(
+                projection.totalProductContributions + (transferInitialCapital ?? 0),
+                ctx.instanceCapitalPolicy,
+              ) * guaranteePct,
           }
         : undefined,
     policy: mergeInstanceCapitalPolicy(ctx, {

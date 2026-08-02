@@ -4,57 +4,47 @@ For each screen section: the component file, co-located CSS, and what state it r
 
 ## App-level routing
 
-`App.tsx` is split into a tiny `App` component that consults `useRoute()` and a
-`Calculator` component that renders the existing dashboard at `/`. Two static
-legal routes are served in-app:
+`App.tsx` is the route dispatcher and lazy-load boundary. `Calculator.tsx`
+renders the saved compare/combine workspace at `/`; first-time visitors see
+the landing page. Static public pages are described by
+`src/seo/publicRouteRegistry.ts`, while the router also owns workspace flows
+and a dynamic contract-detail route:
 
-```
-App.tsx  (route detector)
-├── /            → Calculator   (the rest of this document)
-├── /impressum   → ImpressumPage    (src/features/legal/)
-└── /datenschutz → DatenschutzPage  (src/features/legal/)
+```text
+App.tsx  (route detector + lazy boundaries)
+├── /                         → LandingPage or Calculator
+├── /eingaben[/produkte]      → two-step input flow
+├── /vergleich/details        → VergleichDetailPage
+├── /kapital                  → KapitalPage
+├── /vertrag/:instanceId      → VertragDetailPage (dynamic, not prerendered)
+├── /artikel, /methode        → editorial hub / methodology
+├── calculator/topic routes   → prerendered pages from publicRouteRegistry
+├── /impressum, /datenschutz  → legal pages
+└── unknown path              → PageNotFound
 ```
 
-Routing is implemented by [`useRoute.ts`](../../src/app/useRoute.ts) — a ~30-line
-pathname-based hook (no react-router dependency). SPA fallback for static hosts
-lives in `public/_redirects` (Netlify) and `vercel.json` at
-repo root. Add a route by extending the `Route` union and `KNOWN_ROUTES` array,
-then dispatching in `App.tsx`.
+Routing is implemented by [`useRoute.ts`](../../src/app/useRoute.ts) as a typed
+tagged union with `pathToRoute`, `routeToPath`, and `ROUTES` constructors (no
+react-router dependency). Static routes are prerendered and served through the
+Cloudflare Worker; host fallbacks also live in `public/_redirects` and
+`vercel.json`. Add a route to the union, both conversion functions, the App
+dispatch, and—when public/indexable—the public route registry.
 
 ## Calculator layout overview
 
-```
+```text
 Calculator
-├── DisclaimerBanner            (session-only, never persisted)
-├── WorkspaceTabs               (Eingaben / Vergleich / Details & Export)
-├── JourneyStepper              (when guided-setup journey is active)
-├── workspace
-│   ├── vergleichView           (default)
-│   │   ├── ScenarioToolbar
-│   │   ├── ComparisonPicker
-│   │   ├── DecisionSummary
-│   │   ├── MonteCarloHighlights
-│   │   ├── SummaryMetrics
-│   │   ├── ProductEditCards
-│   │   ├── ResultWaterfalls
-│   │   ├── CapitalChart
-│   │   ├── PensionChart
-│   │   └── BreakEvenChart
-│   ├── detailsView
-│   │   ├── FeeDragChart
-│   │   ├── MonteCarloPanel
-│   │   ├── SensitivityPanel
-│   │   ├── FairnessPanel
-│   │   ├── CalculationWarnings
-│   │   ├── AssumptionReviewPanel
-│   │   ├── DetailComparisonTable
-│   │   ├── CashflowTable
-│   │   └── AssumptionsPanel
-│   └── angebotView
-│       └── InputsPanel         (ProfileInputs, GRVInputs, plus per-product inputs dispatched through `productUiRegistry`, plus glossary + scenario library)
+├── compare mode
+│   └── VergleichPage           (linear six-product comparison + actions)
+├── combine mode
+│   ├── ScenarioToolbar
+│   ├── MeinPlanPage            (linear portfolio view)
+│   ├── contribution recommender modal
+│   └── CombineDetailView + assumptions
+├── InventoryWizard             (fixed overlay when starting a portfolio)
 ├── PrintReport                 (display:none on screen; first child = disclaimer block)
 ├── LegalFooter                 (Impressum / Datenschutzerklärung / Lizenz)
-└── GuidedSetup overlay         (when first-run / re-opened)
+└── inputs/details/capital      (separate routes, not workspace tabs)
 ```
 
 ## Component map

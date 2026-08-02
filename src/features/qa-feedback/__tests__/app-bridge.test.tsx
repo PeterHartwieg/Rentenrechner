@@ -45,11 +45,15 @@ describe('App — wires QA workspace-context ref', () => {
       { timeout: 8000 },
     )
 
-    const ctx = getQaWorkspaceContext()
     // Workspace-tabs collapse: Calculator stamps a stable `'vergleich'`
     // constant into the QA context (the live tab id is gone). Pin the
     // exact value so a regression to `''` / `'angebot'` / a stale tab id
-    // would fail this assertion.
-    expect(ctx.activeView).toBe('vergleich')
-  })
+    // would fail this assertion. The shell can paint before Calculator's
+    // passive effect runs under a saturated parallel test worker, so wait on
+    // the bridge itself rather than assuming the effect already flushed.
+    await waitFor(
+      () => expect(getQaWorkspaceContext().activeView).toBe('vergleich'),
+      { timeout: 8000 },
+    )
+  }, 20_000)
 })

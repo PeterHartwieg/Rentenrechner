@@ -22,8 +22,11 @@ import {
   type RecommendNextEuroInput,
 } from '../recommender'
 import { runCombineSimulation } from '../useCombineSimulation'
+import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
+import { defaultAssumptions } from '../../data/defaultScenario'
 import { makeAvdCandidate } from './altersvorsorgedepot'
 import { buildBerndWorkspace, buildGeneratorContext } from './testHelpers'
+import type { AltersvorsorgedepotInstance } from '../../domain/instances'
 
 describe('makeAvdCandidate — visible candidate behavior', () => {
   it('always emits a NEW-instance candidate when marginal > 0', () => {
@@ -45,11 +48,61 @@ describe('makeAvdCandidate — visible candidate behavior', () => {
 
   it('clamps the gross to the AltZertG per-contract monthly cap', () => {
     const ws = buildBerndWorkspace()
-    const capMonthly = de2026Rules.altersvorsorgedepot.contractContributionCapAnnual / 12
+    const capMonthly = maxAvdMonthlyOwnContribution(
+      defaultAssumptions.altersvorsorgedepot.eligibility,
+      de2026Rules,
+    )
     const g = buildGeneratorContext(ws, capMonthly + 200)
     const draft = makeAvdCandidate(g)!
     expect(draft.grossMonthlyEUR).toBeCloseTo(capMonthly, 4)
     expect(draft.cappedToRemaining).toBe(true)
+  })
+
+  it('reserves profile-based child allowances when sizing the contract cap', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile.childBirthYears = [2018]
+    const eligibility = {
+      ...defaultAssumptions.altersvorsorgedepot.eligibility,
+      ageAtContractStart: ws.baseline.profile.age,
+      eligibleChildren: 1,
+    }
+    const capMonthly = maxAvdMonthlyOwnContribution(
+      eligibility,
+      de2026Rules,
+      !eligibility.careerStarterBonusUsed,
+    )
+    const capWithoutChildren = maxAvdMonthlyOwnContribution(
+      { ...eligibility, eligibleChildren: 0 },
+      de2026Rules,
+      !eligibility.careerStarterBonusUsed,
+    )
+    const draft = makeAvdCandidate(buildGeneratorContext(ws, capWithoutChildren + 100))!
+
+    expect(capMonthly).toBeLessThan(capWithoutChildren)
+    expect(draft.grossMonthlyEUR).toBeCloseTo(capMonthly, 8)
+    expect(draft.grossMonthlyEUR).toBeLessThan(capWithoutChildren)
+    expect(draft.cappedToRemaining).toBe(true)
+    expect(
+      (draft.newInstance as AltersvorsorgedepotInstance).eligibility.eligibleChildren,
+    ).toBe(1)
+  })
+
+  it('uses profile age and reserves an unused first-year career-starter bonus', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile.age = 23
+    const eligibility = {
+      ...defaultAssumptions.altersvorsorgedepot.eligibility,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+    const firstYearCap = maxAvdMonthlyOwnContribution(eligibility, de2026Rules, true)
+    const laterYearCap = maxAvdMonthlyOwnContribution(eligibility, de2026Rules, false)
+    const draft = makeAvdCandidate(buildGeneratorContext(ws, laterYearCap + 100))!
+    const created = draft.newInstance as AltersvorsorgedepotInstance
+
+    expect(firstYearCap).toBeLessThan(laterYearCap)
+    expect(draft.grossMonthlyEUR).toBeCloseTo(firstYearCap, 8)
+    expect(created.eligibility.ageAtContractStart).toBe(23)
   })
 
   it('does NOT clamp when marginal stays below the per-contract cap', () => {
@@ -135,6 +188,30 @@ describe('makeAvdCandidate — materialized what-if effects', () => {
     ]
     expect(added.monthlyOwnContribution).toBeCloseTo(cand!.grossMonthlyEUR, 1)
     expect(added.status).toBe('active')
+  })
+
+  it('preserves the career-starter eligibility used to size a saved AVD candidate', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile.age = 23
+    const laterYearCap = maxAvdMonthlyOwnContribution(
+      {
+        ...defaultAssumptions.altersvorsorgedepot.eligibility,
+        ageAtContractStart: 23,
+        careerStarterBonusUsed: false,
+      },
+      de2026Rules,
+      false,
+    )
+    const candidates = recommendNextEuro(buildInput(ws, laterYearCap + 100))
+    const cand = candidates.find((c) => c.productId === 'altersvorsorgedepot')
+    expect(cand).toBeDefined()
+
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, cand!)
+    const added = whatIf.assumptions.altersvorsorgedepot.at(-1)!
+
+    expect(added.monthlyOwnContribution).toBeCloseTo(cand!.grossMonthlyEUR, 8)
+    expect(added.eligibility.ageAtContractStart).toBe(23)
+    expect(added.eligibility.careerStarterBonusUsed).toBe(false)
   })
 
   it('what-if carries origin=recommender', () => {

@@ -152,6 +152,23 @@ describe('makeBavCandidate — reasons', () => {
     expect(draft.cappedToRemaining).toBe(false)
   })
 
+  it('fixed employer funding consumes cap headroom before employee gross reaches the headline cap', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.assumptions.bav = ws.baseline.assumptions.bav.map((instance) => ({
+      ...instance,
+      monthlyGrossConversion: 600,
+      statutoryMinimumSubsidyEnabled: false,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 75,
+    }))
+    const g = buildGeneratorContext(ws, 100)
+    const draft = makeBavCandidate(g)!
+
+    expect(draft.cappedToRemaining).toBe(true)
+    expect(draft.grossMonthlyEUR).toBeLessThan(2)
+    expect(draft.grossMonthlyEUR).toBeGreaterThan(0)
+  })
+
   it('marks usesStandardAssumptions when no real offer is supplied (Anna fallback)', () => {
     const ws = buildAnnaWorkspace()
     ws.baseline.assumptions.bav = []
@@ -181,6 +198,33 @@ describe('makeBavCandidate — reasons', () => {
 })
 
 describe('makeBavCandidate — ranking inputs', () => {
+  it('uses the modal offer symmetrically for an existing active bAV baseline', () => {
+    const ws = buildBerndWorkspace()
+    const g = buildGeneratorContext(ws, 100, {
+      hasOffer: true,
+      standardAssumption: false,
+      employerMatchPercent: 0.5,
+      fixedMonthlyEUR: 0,
+      effectiveCostAnnual: 0.008,
+      durchfuehrungsweg: 'direktversicherung_3_63',
+      payoutMode: 'leibrente',
+      rentenfaktor: 30,
+    })
+    const draft = makeBavCandidate(g)
+
+    expect(draft).not.toBeNull()
+    expect(draft!.isNewInstance).toBe(false)
+    expect(draft!.netCashOutEUR).toBeCloseTo(100, 1)
+    expect(draft!.monthlyEmployerContributionEUR).toBeCloseTo(
+      draft!.grossMonthlyEUR * 0.5,
+      4,
+    )
+    expect(draft!.mcInputs.monthlyContribution).toBeCloseTo(
+      draft!.grossMonthlyEUR * 1.5,
+      4,
+    )
+  })
+
   it('mcInputs.monthlyContribution includes the employer share when an offer is supplied', () => {
     const ws = buildAnnaWorkspace()
     ws.baseline.assumptions.bav = []

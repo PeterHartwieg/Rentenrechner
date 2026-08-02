@@ -164,7 +164,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
               Was bekommst du <em className="landing-headline-accent">wirklich</em> an Rente?
             </h1>
             <p className="landing-subline">
-              Trage deine Verträge ein. Wir rechnen aus, wieviel pro Monat im Alter
+              Trage deine Verträge ein. Wir rechnen aus, wie viel pro Monat im Alter
               auf deinem Konto landet, in heutiger Kaufkraft und in Euro {RULES_YEAR + 39}.
               Ohne Werbung, ohne Provisionen. Der Quellcode ist offen, jede Annahme
               ist erklärt.

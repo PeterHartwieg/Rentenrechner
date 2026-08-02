@@ -1,5 +1,8 @@
 import type { RiesterProductResult, ReturnScenario } from '../../domain'
-import type { SimulationContext } from '../simulationContext'
+import {
+  guaranteePrincipalAfterTransfers,
+  type SimulationContext,
+} from '../simulationContext'
 import {
   buildProductResult,
 } from '../buildResult'
@@ -50,10 +53,14 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     effectiveMonthlyOwnContribution +
     riesterFunding.guenstigerpruefungBenefitAnnual / 12 +
     riesterFunding.totalAllowanceAnnual / 12
-  const fundingForYear = (yearIndex: number) =>
-    calculateRiesterFunding(
+  const yearlyFundingCache = new Map<number, ReturnType<typeof calculateRiesterFunding>>()
+  const calculateFundingForYear = (yearIndex: number) => {
+    const scheduled = ctx.riesterFundingSchedule?.[yearIndex]
+    if (scheduled) return scheduled
+
+    return calculateRiesterFunding(
       rules,
-      ctx.bavFunding.salaryWithBav,
+      ctx.salaryForOtherFunding,
       scaledRiester,
       profile,
       {
@@ -62,6 +69,14 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
           yearIndex === 0 && !riester.eligibility.careerStarterBonusUsed,
       },
     )
+  }
+  const fundingForYear = (yearIndex: number) => {
+    const cached = yearlyFundingCache.get(yearIndex)
+    if (cached) return cached
+    const funding = calculateFundingForYear(yearIndex)
+    yearlyFundingCache.set(yearIndex, funding)
+    return funding
+  }
   const yearlySavings = Array.from({ length: yearsToRetirement }).reduce<number>(
     (sum, _, yearIndex) => {
       const funding = fundingForYear(yearIndex)
@@ -86,7 +101,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
         ? {
             label: `${Math.round(guaranteePct * 100)}% Beitragsgarantie`,
             floorCapital: (projection) =>
-              (projection.totalProductContributions + riester.existingCapital) * guaranteePct,
+              guaranteePrincipalAfterTransfers(
+                projection.totalProductContributions + riester.existingCapital,
+                ctx.instanceCapitalPolicy,
+              ) * guaranteePct,
           }
         : undefined,
     policy: withMarketReturnPolicy(
@@ -101,7 +119,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
           return {
             monthlyUserCost: funding.monthlyNetCost,
             monthlyProductContribution:
-              effectiveMonthlyOwnContribution +
+              funding.monthlyOwnContribution +
               funding.guenstigerpruefungBenefitAnnual / 12 +
               funding.totalAllowanceAnnual / 12,
           }

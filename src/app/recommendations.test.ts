@@ -16,6 +16,7 @@ import { productReason, sensitivityHint } from '../features/results/decisionLogi
 import { de2026Rules } from '../rules/de2026'
 import { makeCombinedResult } from '../test/factories'
 import { defaultWorkspace } from '../storage'
+import { buildPortfolioFunding } from '../engine/portfolioFunding'
 
 // ---------------------------------------------------------------------------
 // Minimal factories
@@ -507,17 +508,19 @@ describe('bav_cap_remaining rule', () => {
     expect(atom!.context['nextLeverProductId']).toBeUndefined()
   })
 
-  it('Bernd-shape: usedPct ≈ 0.65 when monthly gross ≈ 65% of cap', () => {
-    // BAV_CAP_MONTHLY = 676. 440/676 ≈ 0.651
+  it('Bernd-shape: cap usage includes employer funding', () => {
     const bavInst = makeBavInstance({ instanceId: 'bav-bernd', monthlyGrossConversion: 440 })
     const input = makeCapInput({ bav: [bavInst] })
     const atoms = runRules(input)
     const atom = atoms.find((a) => a.id === 'bav_cap_remaining')!
     expect(atom).toBeDefined()
-    const usedPct = ctxNumber(atom.context, 'usedPct')
-    expect(usedPct).toBeGreaterThan(0.64)
-    expect(usedPct).toBeLessThan(0.67)
-    expect(ctxNumber(atom.context, 'remainingMonthly')).toBeCloseTo(BAV_CAP_MONTHLY - 440, 2)
+    const funding = buildPortfolioFunding(input.workspace!, de2026Rules)
+    expect(funding.headroom.bav.employerAnnual).toBeGreaterThan(0)
+    expect(ctxNumber(atom.context, 'usedPct')).toBeCloseTo(funding.headroom.bav.usedPct, 8)
+    expect(ctxNumber(atom.context, 'remainingMonthly')).toBeCloseTo(
+      funding.headroom.bav.remainingAnnual / 12,
+      8,
+    )
     expect(atom.priority).toBe('medium')
   })
 
@@ -544,7 +547,9 @@ describe('bav_cap_remaining rule', () => {
     const surrendered = makeBavInstance({ instanceId: 'bav-gone', status: 'surrendered', monthlyGrossConversion: 800 })
     const input = makeCapInput({ bav: [active, surrendered] })
     const atom = runRules(input).find((a) => a.id === 'bav_cap_remaining')!
-    expect(ctxNumber(atom.context, 'usedPct')).toBeCloseTo(200 * 12 / (BAV_CAP_MONTHLY * 12), 4)
+    const funding = buildPortfolioFunding(input.workspace!, de2026Rules)
+    expect(ctxNumber(atom.context, 'usedPct')).toBeCloseTo(funding.headroom.bav.usedPct, 8)
+    expect(funding.bavByInstanceId['bav-gone']).toBeUndefined()
   })
 
   it('single-instance and multi-instance with same total → identical usedPct', () => {
@@ -630,15 +635,21 @@ describe('riester_cap_remaining rule', () => {
     expect(ctxNumber(atom.context, 'allowanceCovered')).toBe(0)
   })
 
-  it('Riester instance with direct eligibility: allowanceCovered includes Grundzulage', () => {
+  it('Riester instance with direct eligibility: allowanceCovered is the earned Grundzulage share', () => {
     const riesterInst = makeRiesterInstance({ monthlyOwnContribution: 100 })
     const input = makeCapInput({ riester: [riesterInst] })
     const atom = runRules(input).find((a) => a.id === 'riester_cap_remaining')!
-    // Directly eligible: allowanceCovered = grundzulage (175 EUR)
-    expect(ctxNumber(atom.context, 'allowanceCovered')).toBe(de2026Rules.riester.grundzulage)
-    // own = 100×12 = 1200; allowance = 175; total = 1375; cap = 2100; topUp = 2100 - 1200 - 175 = 725
+    const funding = buildPortfolioFunding(input.workspace!, de2026Rules)
+    const actualAllowance = funding.riesterByInstanceId[riesterInst.instanceId].totalAllowanceAnnual
+    expect(actualAllowance).toBeLessThan(de2026Rules.riester.grundzulage)
+    expect(ctxNumber(atom.context, 'allowanceCovered')).toBeCloseTo(actualAllowance, 8)
+    // Top-up sizing reserves the full allowance that the higher contribution
+    // will earn, rather than today's smaller prorated amount.
     expect(ctxNumber(atom.context, 'topUpToCap')).toBeCloseTo(
-      de2026Rules.riester.annualCapInclAllowances - 100 * 12 - de2026Rules.riester.grundzulage, 1,
+      de2026Rules.riester.annualCapInclAllowances -
+        100 * 12 -
+        de2026Rules.riester.grundzulage,
+      1,
     )
   })
 
@@ -652,7 +663,7 @@ describe('riester_cap_remaining rule', () => {
     expect(atom.priority).toBe('high')
   })
 
-  it('BLOCKER: two Riester instances both directlyEligible → allowanceCovered = ONE Grundzulage (not doubled)', () => {
+  it('BLOCKER: two Riester instances use one prorated household allowance (not doubled)', () => {
     // Regression: V1 single-person assumption — all instances belong to the same person.
     const inst1 = makeRiesterInstance({
       instanceId: 'riester-1',
@@ -666,18 +677,29 @@ describe('riester_cap_remaining rule', () => {
     })
     const input = makeCapInput({ riester: [inst1, inst2] })
     const atom = runRules(input).find((a) => a.id === 'riester_cap_remaining')!
-    // Must equal ONE Grundzulage, not 2×175 = 350
-    expect(ctxNumber(atom.context, 'allowanceCovered')).toBe(de2026Rules.riester.grundzulage)
+    const funding = buildPortfolioFunding(input.workspace!, de2026Rules)
+    const actualAllowances = Object.values(funding.riesterByInstanceId).map(
+      (entry) => entry.totalAllowanceAnnual,
+    )
+    expect(ctxNumber(atom.context, 'allowanceCovered')).toBeCloseTo(
+      Math.max(...actualAllowances),
+      8,
+    )
+    expect(ctxNumber(atom.context, 'allowanceCovered')).toBeLessThan(de2026Rules.riester.grundzulage)
   })
 
-  it('one Riester instance directlyEligible → allowanceCovered = Grundzulage (unchanged)', () => {
+  it('one Riester instance reports its prorated allowance', () => {
     const inst = makeRiesterInstance({ monthlyOwnContribution: 50 })
     const input = makeCapInput({ riester: [inst] })
     const atom = runRules(input).find((a) => a.id === 'riester_cap_remaining')!
-    expect(ctxNumber(atom.context, 'allowanceCovered')).toBe(de2026Rules.riester.grundzulage)
+    const funding = buildPortfolioFunding(input.workspace!, de2026Rules)
+    expect(ctxNumber(atom.context, 'allowanceCovered')).toBeCloseTo(
+      funding.riesterByInstanceId[inst.instanceId].totalAllowanceAnnual,
+      8,
+    )
   })
 
-  it('N3/Karin-shape: directlyEligible + two children born 2010 and 2014 → allowanceCovered = 175 + 2 × 300 = 775', () => {
+  it('N3/Karin-shape: child allowances are contribution-prorated', () => {
     // childBirthYears [2010, 2014]: both ≥ 2008 → childAllowancePost2007 (€300 each)
     const inst = makeRiesterInstance({ monthlyOwnContribution: 50 })
     // Override workspace so profile has two children born 2010 and 2014
@@ -695,11 +717,36 @@ describe('riester_cap_remaining rule', () => {
       combinedResult: makeCombinedResult(),
     }
     const atom = runRules(input).find((a) => a.id === 'riester_cap_remaining')!
-    expect(ctxNumber(atom.context, 'allowanceCovered')).toBe(
+    const funding = buildPortfolioFunding(wsWithChildren, de2026Rules)
+    const actualAllowance = funding.riesterByInstanceId[inst.instanceId].totalAllowanceAnnual
+    expect(ctxNumber(atom.context, 'allowanceCovered')).toBeCloseTo(actualAllowance, 8)
+    expect(actualAllowance).toBeLessThan(
       de2026Rules.riester.grundzulage + 2 * de2026Rules.riester.childAllowancePost2007,
     )
-    // 175 + 300 + 300 = 775
-    expect(ctxNumber(atom.context, 'allowanceCovered')).toBe(775)
+  })
+
+  it('reports the prorated Riester allowance actually produced by portfolio funding', () => {
+    const inst = makeRiesterInstance({ monthlyOwnContribution: 60 })
+    const ws = makeWorkspace({ riester: [inst] })
+    const wsWithChildren: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        profile: { ...ws.baseline.profile, grossSalaryYear: 60_000, childBirthYears: [2010, 2014] },
+      },
+    }
+    const funding = buildPortfolioFunding(wsWithChildren, de2026Rules)
+    const input: RuleEngineInput = {
+      workspace: wsWithChildren,
+      simulationResult: { products: [] },
+      combinedResult: makeCombinedResult(),
+      portfolioFunding: funding,
+    }
+    const atom = runRules(input).find((candidate) => candidate.id === 'riester_cap_remaining')!
+    const actualAllowance = funding.riesterByInstanceId[inst.instanceId].totalAllowanceAnnual
+
+    expect(actualAllowance).toBeLessThan(775)
+    expect(ctxNumber(atom.context, 'allowanceCovered')).toBeCloseTo(actualAllowance, 8)
   })
 })
 
@@ -726,9 +773,11 @@ describe('avd_cap_remaining rule', () => {
     const atoms = runRules(input).filter((a) => a.id === 'avd_cap_remaining')
     expect(atoms).toHaveLength(1)
     const atom = atoms[0]
-    const capMonthly = de2026Rules.altersvorsorgedepot.contractContributionCapAnnual / 12
-    expect(ctxNumber(atom.context, 'usedPct')).toBeCloseTo(200 / capMonthly, 4)
-    expect(ctxNumber(atom.context, 'remainingMonthly')).toBeCloseTo(capMonthly - 200, 2)
+    const funding = buildPortfolioFunding(input.workspace!, de2026Rules)
+    const headroom = funding.headroom.altersvorsorgedepotByInstanceId['avd-test']
+    expect(headroom.allowanceAnnual).toBeGreaterThan(0)
+    expect(ctxNumber(atom.context, 'usedPct')).toBeCloseTo(headroom.usedPct, 8)
+    expect(ctxNumber(atom.context, 'remainingMonthly')).toBeCloseTo(headroom.remainingAnnual / 12, 8)
     expect(atom.context['instanceId']).toBe('avd-test')
   })
 
@@ -750,7 +799,11 @@ describe('avd_cap_remaining rule', () => {
     expect(atoms).toHaveLength(2)
     const atom1 = atoms.find((a) => a.context['instanceId'] === 'avd-1')!
     const atom2 = atoms.find((a) => a.context['instanceId'] === 'avd-2')!
-    expect(ctxNumber(atom1.context, 'usedPct')).toBeCloseTo(200 / capMonthly, 4)
+    const funding = buildPortfolioFunding(input.workspace!, de2026Rules)
+    expect(ctxNumber(atom1.context, 'usedPct')).toBeCloseTo(
+      funding.headroom.altersvorsorgedepotByInstanceId['avd-1'].usedPct,
+      8,
+    )
     expect(ctxNumber(atom2.context, 'usedPct')).toBe(1)
     expect(atom2.priority).toBe('high')
   })

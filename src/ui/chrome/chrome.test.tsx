@@ -37,8 +37,9 @@ describe('StatusBar', () => {
     const bar = container.querySelector('.rw-status-bar--desktop')
     expect(bar).toBeInTheDocument()
     expect(bar?.textContent).toContain('rentenwiki.de')
-    expect(bar?.textContent).toContain('Gemeinnütziges Projekt')
-    expect(bar?.textContent).toContain('Open Source')
+    expect(bar?.textContent).toContain('Unabhängiges Projekt')
+    expect(bar?.textContent).toContain('Quellcode offen')
+    expect(bar?.textContent).not.toContain('v0.0.0')
     // P0 guardrail: the internal working name must not appear in public chrome.
     expect(bar?.textContent).not.toContain('Rentenrechner')
   })
@@ -50,13 +51,14 @@ describe('StatusBar', () => {
     expect(container.querySelector('.rw-status-bar--desktop')).not.toBeInTheDocument()
   })
 
-  it('compacts to URL + version on phone', () => {
+  it('compacts to URL + build date on phone', () => {
     mockViewport('phone')
     const { container } = render(<StatusBar />)
     const bar = container.querySelector('.rw-status-bar--phone')
     expect(bar).toBeInTheDocument()
     expect(bar?.textContent).toContain('rentenwiki.de')
-    expect(bar?.textContent).not.toContain('Gemeinnütziges Projekt')
+    expect(bar?.textContent).not.toContain('Unabhängiges Projekt')
+    expect(bar?.textContent).toContain('Stand ')
   })
 })
 

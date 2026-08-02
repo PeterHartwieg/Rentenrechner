@@ -6,6 +6,7 @@ import type {
   GermanRules,
   PersonalProfile,
   RiesterFundingResult,
+  SalaryResult,
   ScenarioAssumptions,
   StatutoryPensionResult,
 } from '../domain'
@@ -25,6 +26,8 @@ export interface SimulationContext {
   payoutYear: number
   yearsToRetirement: number
   bavFunding: BavFundingResult
+  /** Salary result after all active bAV instances; singleton path uses bavFunding.salaryWithBav. */
+  salaryForOtherFunding: SalaryResult
   bavLumpSumTaxMode: BavLumpSumTaxMode
   /** Derived from contract start year, runtime, and retirement age — excludes 'ertragsanteil'
    *  (that mode is set internally by netInsurancePayout when payoutMode === 'leibrente'). */
@@ -32,6 +35,12 @@ export interface SimulationContext {
   basisrenteFunding: BasisrenteFundingResult
   altersvorsorgedepotFunding: AltersvorsorgedepotFundingResult
   riesterFunding: RiesterFundingResult
+  /**
+   * Combine-mode per-year Riester funding schedule, owned by
+   * `buildPortfolioFunding`. Singleton compare mode leaves this undefined and
+   * derives each year from its single assumption block.
+   */
+  riesterFundingSchedule?: readonly RiesterFundingResult[]
   statutoryPension: StatutoryPensionResult
   /**
    * Gross GRV pension at retirement (EUR/month). Threaded into every product's
@@ -117,6 +126,26 @@ export interface InstanceCapitalPolicy {
 }
 
 /**
+ * Adjust a product's guaranteed principal for capital moved by transfer events.
+ * The source must not keep guaranteeing principal it transferred away, while a
+ * guaranteed target contract inherits the injected principal.
+ */
+export function guaranteePrincipalAfterTransfers(
+  basePrincipal: number,
+  policy?: InstanceCapitalPolicy,
+): number {
+  const injected = policy?.capitalInjections?.reduce(
+    (sum, entry) => sum + entry.amount,
+    0,
+  ) ?? 0
+  const withdrawn = policy?.capitalWithdrawals?.reduce(
+    (sum, entry) => sum + entry.amount,
+    0,
+  ) ?? 0
+  return Math.max(0, basePrincipal + injected - withdrawn)
+}
+
+/**
  * Optional overrides for buildContext (Group G issue 03 — additive only).
  *
  * Used by `simulatePortfolio` to inject pre-computed funding shares for the
@@ -145,6 +174,10 @@ export interface BuildContextOverrides {
   altersvorsorgedepotFundingOverride?: AltersvorsorgedepotFundingResult
   /** Pre-computed Riester funding for the active instance. */
   riesterFundingOverride?: RiesterFundingResult
+  /** Portfolio-owned per-year Riester funding for the active instance. */
+  riesterFundingScheduleOverride?: readonly RiesterFundingResult[]
+  /** Aggregate post-bAV salary baseline for combine-mode downstream funding. */
+  salaryForOtherFundingOverride?: SalaryResult
   /**
    * Per-instance starting capital + transfer-event injections / withdrawals.
    * Built by `buildInstanceCapitalPolicy` in `portfolioTransfer.ts` and forwarded
@@ -189,6 +222,8 @@ export function buildContext(
 ): SimulationContext {
   const bavFunding = overrides?.bavFundingOverride
     ?? calculateBavFunding(profile, rules, assumptions.bav)
+  const salaryForOtherFunding =
+    overrides?.salaryForOtherFundingOverride ?? bavFunding.salaryWithBav
   const payoutYear = rules.year + (profile.retirementAge - profile.age)
   const contractRuntimeYears = payoutYear - assumptions.insurance.contractStartYear
   const insuranceTaxMode = deriveInsuranceTaxMode(
@@ -216,19 +251,19 @@ export function buildContext(
   const basisrenteFunding = overrides?.basisrenteFundingOverride
     ?? calculateBasisrenteFunding(
       rules,
-      bavFunding.salaryWithBav,
+      salaryForOtherFunding,
       assumptions.basisrente,
       pensionSystemAnnualContributionOverride,
     )
   const altersvorsorgedepotFunding = overrides?.altersvorsorgedepotFundingOverride
     ?? calculateAvdFunding(
       rules,
-      bavFunding.salaryWithBav,
+      salaryForOtherFunding,
       assumptions.altersvorsorgedepot,
       { profile },
     )
   const riesterFunding = overrides?.riesterFundingOverride
-    ?? calculateRiesterFunding(rules, bavFunding.salaryWithBav, assumptions.riester, profile)
+    ?? calculateRiesterFunding(rules, salaryForOtherFunding, assumptions.riester, profile)
 
   const grvProjection = projectStatutoryPension(
     profile,
@@ -245,11 +280,13 @@ export function buildContext(
     payoutYear,
     yearsToRetirement: profile.retirementAge - profile.age,
     bavFunding,
+    salaryForOtherFunding,
     bavLumpSumTaxMode,
     insuranceTaxMode,
     basisrenteFunding,
     altersvorsorgedepotFunding,
     riesterFunding,
+    riesterFundingSchedule: overrides?.riesterFundingScheduleOverride,
     statutoryPension: grvProjection,
     grvGrossMonthlyPension: grvProjection.grossMonthlyPension,
     retirementHealthStatus: assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr',

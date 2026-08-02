@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { migrateV1ToV2 } from '../storage'
 import type { Workspace } from '../domain/workspace'
-import type { BasisrenteInstance, AltersvorsorgedepotInstance, RiesterInstance, EtfInstance } from '../domain/instances'
+import type { BavInstance, BasisrenteInstance, AltersvorsorgedepotInstance, RiesterInstance, EtfInstance } from '../domain/instances'
 import {
   weiterfuehrenWhatIf,
   beitragsfreiWhatIf,
@@ -350,6 +350,34 @@ describe('compatibleTransferTargets', () => {
     // AVD → Riester should NOT be in the list.
     expect(targets).toHaveLength(0)
   })
+
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    '%s → same product: returns a certified provider-change target',
+    (slot) => {
+      const ws = makeRiesterAvdWorkspace()
+      const source = ws.baseline.assumptions[slot][0]
+      const target = {
+        ...source,
+        instanceId: `${slot}-provider-target`,
+      }
+      ;(ws.baseline.assumptions[slot] as Array<typeof target>).push(target)
+
+      const targets = compatibleTransferTargets(ws, source)
+      const providerTarget = targets.find(
+        (candidate) => candidate.kind === 'existing' &&
+          candidate.targetInstance.instanceId === target.instanceId,
+      )
+
+      expect(providerTarget).toBeDefined()
+      expect(providerTarget!.eventType).toBe('certified')
+      if (slot === 'riester') {
+        expect(targets[0].kind).toBe('existing')
+        if (targets[0].kind === 'existing') {
+          expect(targets[0].targetInstance.instanceId).toMatch(/^altersvorsorgedepot-/)
+        }
+      }
+    },
+  )
 
   it('pAV → ETF: returns surrender_reinvest event type', () => {
     const karinWs = makeKarinWorkspace()
@@ -794,6 +822,41 @@ describe('beitragErhoehenWhatIf (B1)', () => {
     expect(capAtom).toBeUndefined()
   })
 
+  it('bAV: aggregate employer-funded portfolio can hit the cap while the target contract stays individually below it', () => {
+    const ws = makeBavHighSalaryWorkspace()
+    const first: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-cap-first',
+      monthlyGrossConversion: 200,
+      statutoryMinimumSubsidyEnabled: false,
+      contractualMatchPercent: 0.15,
+    }
+    const second: BavInstance = {
+      ...first,
+      instanceId: 'bav-cap-second',
+      monthlyGrossConversion: 300,
+    }
+    const portfolio: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: { ...ws.baseline.assumptions, bav: [first, second] },
+      },
+    }
+
+    const decision = beitragErhoehenWhatIf(portfolio, first.instanceId, 350)!
+    const capAtom = decision.atoms.find((atom) => atom.id === 'funding_cap_hit')
+    expect(350 * 12).toBeLessThan(
+      de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap,
+    )
+    expect(capAtom).toBeDefined()
+    expect(capAtom!.context.proposedAnnualEUR).toBe(350 * 12)
+    expect(capAtom!.context.proposedAnnualEUR).toBeLessThan(capAtom!.context.capAnnualEUR as number)
+    expect(capAtom!.context.householdRequestedAnnualEUR).toBeGreaterThan(
+      capAtom!.context.capAnnualEUR as number,
+    )
+  })
+
   it('Riester: emits funding_cap_hit when proposed exceeds 2 100 €/yr (> 175 €/mo)', () => {
     const ws = makeRiesterAvdWorkspace()
     const instanceId = ws.baseline.assumptions.riester[0].instanceId
@@ -804,6 +867,37 @@ describe('beitragErhoehenWhatIf (B1)', () => {
     expect(capAtom).toBeDefined()
     expect(capAtom!.context.capAnnualEUR).toBe(2_100)
     expect(capAtom!.context.proposedAnnualEUR).toBeCloseTo(176 * 12, 1)
+    expect(capAtom!.context.householdRequestedAnnualEUR).toBeCloseTo(
+      176 * 12 + de2026Rules.riester.grundzulage,
+      1,
+    )
+  })
+
+  it('paid-up bAV increase is evaluated as a reactivated contribution', () => {
+    const ws = makeBavHighSalaryWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    ws.baseline.assumptions.bav[0].status = 'paid_up'
+
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 800)!
+    expect(decision.atoms.some((atom) => atom.id === 'funding_cap_hit')).toBe(true)
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.bav[0].status).toBe('active')
+    expect(applied.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(800)
+  })
+
+  it('does not apply a stale contribution increase after a contract is surrendered', () => {
+    const ws = makeBavHighSalaryWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    const originalContribution = ws.baseline.assumptions.bav[0].monthlyGrossConversion
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 800)!
+    ws.baseline.assumptions.bav[0].status = 'surrendered'
+
+    const applied = applyContractDecision(ws, decision)
+
+    expect(applied.baseline.assumptions.bav[0].status).toBe('surrendered')
+    expect(applied.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(
+      originalContribution,
+    )
   })
 
   it('AVD: emits funding_cap_hit when proposed exceeds contractContributionCapAnnual / 12', () => {

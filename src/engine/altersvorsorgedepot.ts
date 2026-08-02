@@ -2,8 +2,8 @@
  * Altersvorsorgedepot 2027 engine (#66–#71).
  *
  * The Altersvorsorgedepot is a certified, locked, tax-subsidized old-age product
- * introduced by the Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent
- * expected 2026-05-08). It replaces the old Riester scheme for new contracts from 2027.
+ * introduced by the Altersvorsorgereformgesetz vom 26.05.2026
+ * (BGBl. 2026 I Nr. 156). It replaces the old Riester scheme for new contracts from 2027.
  *
  * Key characteristics:
  * - State allowances during accumulation (tiered basic + child + career-starter).
@@ -21,7 +21,7 @@
  *   documented choice as Basisrente. See ALTERSVORSORGEDEPOT_2027_RESEARCH.md.
  *
  * Sources:
- *   Altersvorsorgereformgesetz; Bundesrat Drucksache 206/26; ALTERSVORSORGEDEPOT_2027_RESEARCH.md.
+ *   Altersvorsorgereformgesetz (BGBl. 2026 I Nr. 156); ALTERSVORSORGEDEPOT_2027_RESEARCH.md.
  */
 
 import type {
@@ -51,7 +51,7 @@ import { childBirthYearsUnder25InYear } from './childEligibility'
  * Maximum: 540 EUR/year at 1 800 EUR own contribution.
  * Below 120 EUR minimum own contribution: zero.
  *
- * §10a EStG i.d.F. Altersvorsorgereformgesetz; Bundesrat Drucksache 206/26.
+ * §10a EStG i.d.F. Altersvorsorgereformgesetz (BGBl. 2026 I Nr. 156).
  */
 export function computeBasicAllowance(ownContributionAnnual: number, rules: GermanRules): number {
   const avd = rules.altersvorsorgedepot

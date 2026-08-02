@@ -1,4 +1,5 @@
 import type { PersonalProfile, ReturnScenario } from './profile'
+import type { SalaryResult } from './salary'
 import type { StatutoryPensionAssumptions } from './products/grv'
 import type { BavFundingResult } from './products/bav'
 import type { BasisrenteFundingResult } from './products/basisrente'
@@ -109,10 +110,64 @@ export interface PortfolioFunding {
   /** Map of riester instance id → funding result. */
   riesterByInstanceId: Record<string, RiesterFundingResult>
   /**
+   * Map of Riester instance id → authoritative funding result for each
+   * accumulation year. This keeps changing allowances and the shared §10a cap
+   * in the portfolio funding boundary instead of re-deriving them in the
+   * product simulator.
+   */
+  riesterYearlyByInstanceId: Record<string, RiesterFundingResult[]>
+  /**
+   * Authoritative combine-mode funding headroom. Simulation, recommendation,
+   * and contract-decision surfaces consume this snapshot instead of
+   * reconstructing statutory caps from raw workspace inputs.
+   */
+  headroom: PortfolioFundingHeadroom
+  /**
+   * Household salary after all accepted active bAV employee conversions.
+   * Downstream Schicht-1 / Riester / AVD funding and marginal recommenders
+   * share this exact salary baseline.
+   */
+  salaryForOtherFunding: SalaryResult
+  /**
    * Free-form portfolio-level notes surfaced to the UI for portfolio-wide
    * caveats that don't belong on a single instance (e.g. cap-driven funding
    * adjustments). Sparerpauschbetrag cross-instance sharing is no longer a
    * note — it is applied downstream in `applyCrossInstanceSparerpauschbetrag`.
    */
   notes: string[]
+}
+
+export interface SharedFundingHeadroom {
+  capAnnual: number
+  /** Amount requested before portfolio-level cap apportionment. */
+  requestedAnnual: number
+  /** Amount accepted by the combine-mode funding pass. */
+  fundedAnnual: number
+  /** Additional own contribution that can be added without exceeding the cap. */
+  remainingAnnual: number
+  usedPct: number
+  constrained: boolean
+}
+
+export interface BavFundingHeadroom extends SharedFundingHeadroom {
+  employeeAnnual: number
+  employerAnnual: number
+  /** Household marginal payroll cost of all accepted bAV conversions. */
+  monthlyNetCost: number
+}
+
+export interface BasisrenteFundingHeadroom extends SharedFundingHeadroom {
+  pensionSystemAnnual: number
+  productAnnual: number
+}
+
+export interface SubsidisedFundingHeadroom extends SharedFundingHeadroom {
+  allowanceAnnual: number
+}
+
+export interface PortfolioFundingHeadroom {
+  bav: BavFundingHeadroom
+  basisrente: BasisrenteFundingHeadroom
+  riester: SubsidisedFundingHeadroom
+  altersvorsorgedepotByInstanceId: Record<string, SubsidisedFundingHeadroom>
 }

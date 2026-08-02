@@ -238,13 +238,38 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
         ? personalDetails.manualMonthlyGrossPension
         : null
 
+  const ageAtContractStart = (contractStartYear: number) =>
+    Math.max(0, effectiveAge + contractStartYear - CURRENT_YEAR)
+  const riesterInstances = toArray(riesterDraft).map((draft) => {
+    const instance = riesterDraftToInstance(draft)
+    return {
+      ...instance,
+      eligibility: {
+        ...instance.eligibility,
+        ageAtContractStart: ageAtContractStart(draft.contractStartYear),
+        careerStarterBonusUsed: draft.contractStartYear < CURRENT_YEAR,
+      },
+    }
+  })
+  const avdInstances = toArray(avdDraft).map((draft) => {
+    const instance = avdDraftToInstance(draft)
+    return {
+      ...instance,
+      eligibility: {
+        ...instance.eligibility,
+        ageAtContractStart: ageAtContractStart(draft.contractStartYear),
+        careerStarterBonusUsed: draft.contractStartYear < CURRENT_YEAR,
+      },
+    }
+  })
+
   const assumptionsV2: WorkspaceAssumptionsV2 = {
     bav: toArray(bavDraft).map(bavDraftToInstance),
     etf: toArray(etfDraft).map(etfDraftToInstance),
     insurance: toArray(pavDraft).map(pavDraftToInstance),
     basisrente: toArray(basisrenteDraft).map(basisrenteDraftToInstance),
-    altersvorsorgedepot: toArray(avdDraft).map(avdDraftToInstance),
-    riester: toArray(riesterDraft).map(riesterDraftToInstance),
+    altersvorsorgedepot: avdInstances,
+    riester: riesterInstances,
     statutoryPension: {
       ...defaultAssumptions.statutoryPension,
       pensionBaselineType: pensionBaseline,

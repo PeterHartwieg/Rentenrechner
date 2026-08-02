@@ -8,8 +8,7 @@ export interface GermanRules {
   entlastungsbetragAlleinerziehendePro: number
   /**
    * Altersvorsorgedepot 2027 constants.
-   * Source: Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent expected 2026-05-08).
-   * Values are from the Bundestag-adopted text (Bundesrat Drucksache 206/26).
+   * Source: Altersvorsorgereformgesetz vom 26.05.2026 (BGBl. 2026 I Nr. 156).
    */
   altersvorsorgedepot: {
     /** First year new AVD contracts are available (2027). */
@@ -124,6 +123,8 @@ export interface GermanRules {
     sockelbetrag: number
     /** §10a EStG annual deductible cap including own contributions + allowances (2,100 EUR). */
     annualCapInclAllowances: number
+    /** AltZertG: payout plan must run at least through this age (85). */
+    payoutPlanMinEndAge: number
   }
   capitalGains: {
     taxRate: number

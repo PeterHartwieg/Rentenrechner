@@ -222,10 +222,10 @@ describe('StatusBar on /impressum', () => {
     const bar = document.querySelector('.rw-status-bar--desktop')
     expect(bar).toBeInTheDocument()
     expect(bar?.textContent).toContain('rentenwiki.de')
-    expect(bar?.textContent).toContain('Gemeinnütziges Projekt')
+    expect(bar?.textContent).toContain('Unabhängiges Projekt')
   })
 
-  it('compacts to URL + version on phone', () => {
+  it('compacts to URL + build date on phone', () => {
     mockViewport('phone')
     render(<StatusBar />)
     const bar = document.querySelector('.rw-status-bar--phone')

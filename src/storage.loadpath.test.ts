@@ -309,7 +309,7 @@ describe('D — malformed share-URL v2 workspace returns null (not defaults)', (
     expect(parseWorkspaceJson(v3Payload)).toBeNull()
   })
 
-  it('parseWorkspaceJson returns null for a workspace with an invalid transfer-event target', () => {
+  it('parseWorkspaceJson drops an invalid transfer-event target without losing the workspace', () => {
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       defaultAssumptions as unknown as Record<string, unknown>,
@@ -326,8 +326,9 @@ describe('D — malformed share-URL v2 workspace returns null (not defaults)', (
       },
     ]
     const json = buildWorkspaceJson(ws)
-    // Validation must reject this workspace (target instance doesn't exist).
-    expect(parseWorkspaceJson(json)).toBeNull()
+    const parsed = parseWorkspaceJson(json)
+    expect(parsed).not.toBeNull()
+    expect(parsed!.baseline.assumptions.etf[0].transferEvents).toEqual([])
   })
 
   it('parseWorkspaceJson returns null for corrupt JSON', () => {
@@ -445,7 +446,7 @@ describe('D2 — what-if validation runs before transfer-event backfill', () => 
 // ---------------------------------------------------------------------------
 
 describe('D3 — transfer events require both source and target instances to exist', () => {
-  it('parseWorkspaceJson returns null for a transfer with a missing sourceInstanceId', () => {
+  it('parseWorkspaceJson drops a transfer with a missing sourceInstanceId', () => {
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       {
@@ -465,7 +466,9 @@ describe('D3 — transfer events require both source and target instances to exi
       },
     ]
     const json = buildWorkspaceJson(ws)
-    expect(parseWorkspaceJson(json)).toBeNull()
+    const parsed = parseWorkspaceJson(json)
+    expect(parsed).not.toBeNull()
+    expect(parsed!.baseline.assumptions.etf[0].transferEvents).toEqual([])
   })
 })
 // ---------------------------------------------------------------------------
