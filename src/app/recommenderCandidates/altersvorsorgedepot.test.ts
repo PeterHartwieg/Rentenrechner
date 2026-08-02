@@ -26,6 +26,7 @@ import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { makeAvdCandidate } from './altersvorsorgedepot'
 import { buildBerndWorkspace, buildGeneratorContext } from './testHelpers'
+import type { AltersvorsorgedepotInstance } from '../../domain/instances'
 
 describe('makeAvdCandidate — visible candidate behavior', () => {
   it('always emits a NEW-instance candidate when marginal > 0', () => {
@@ -55,6 +56,23 @@ describe('makeAvdCandidate — visible candidate behavior', () => {
     const draft = makeAvdCandidate(g)!
     expect(draft.grossMonthlyEUR).toBeCloseTo(capMonthly, 4)
     expect(draft.cappedToRemaining).toBe(true)
+  })
+
+  it('reserves profile-based child allowances when sizing the contract cap', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile.childBirthYears = [2018]
+    const eligibility = {
+      ...defaultAssumptions.altersvorsorgedepot.eligibility,
+      eligibleChildren: 1,
+    }
+    const capMonthly = maxAvdMonthlyOwnContribution(eligibility, de2026Rules)
+    const draft = makeAvdCandidate(buildGeneratorContext(ws, capMonthly + 25))!
+
+    expect(draft.grossMonthlyEUR).toBeCloseTo(capMonthly, 8)
+    expect(draft.cappedToRemaining).toBe(true)
+    expect(
+      (draft.newInstance as AltersvorsorgedepotInstance).eligibility.eligibleChildren,
+    ).toBe(1)
   })
 
   it('does NOT clamp when marginal stays below the per-contract cap', () => {

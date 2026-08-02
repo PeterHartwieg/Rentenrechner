@@ -92,4 +92,16 @@ export interface RiesterFundingResult {
   guenstigerpruefungBenefitAnnual: number
   /** Net monthly cost = own contribution minus Günstigerprüfung extra refund / 12. */
   monthlyNetCost: number
+  /**
+   * Combine-mode allocation marker. Multiple Riester contracts belong to the
+   * same saver, so the household allowance and §10a benefit are calculated
+   * once and assigned to one instance. Undefined on the singleton path.
+   */
+  receivesPortfolioAllowance?: boolean
+  /** Aggregate own contribution used for that household calculation. */
+  portfolioHouseholdOwnContributionMonthly?: number
+  /** Pro-rata share of the household §10a Günstigerprüfung benefit. */
+  portfolioTaxBenefitShare?: number
+  /** Eligibility of the contract selected for the household calculation. */
+  portfolioHouseholdEligibility?: RiesterEligibility
 }

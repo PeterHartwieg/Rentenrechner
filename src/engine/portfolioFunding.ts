@@ -454,36 +454,150 @@ export function buildPortfolioFunding(
   const allRiester = wsa.riester.filter(r => r.status !== 'surrendered' && r.status !== 'offered')
   const activeRiester = allRiester.filter(r => r.status === 'active')
   const paidUpRiester = allRiester.filter(r => r.status === 'paid_up')
-  const totalRiesterGrossMonthly = activeRiester.reduce(
-    (s, r) => s + (r.monthlyOwnContribution ?? 0),
+  const activeRiesterSingletons = activeRiester.map((instance) => ({
+    instance,
+    singleton: stripInstanceCommonKeys(
+      instance as unknown as Record<string, unknown>,
+    ) as unknown as RiesterAssumptions,
+  }))
+  // §10a EStG caps own contributions plus allowances at €2,100 per saver.
+  // V1 instances all belong to that saver: calculate the household benefit
+  // from aggregate own contributions and assign it to the eligible contract
+  // with the largest allowance claim. Other contracts retain only their own
+  // contributions. The simulator carries this allocation through every year.
+  // Calculate both parts inside the scale pass: allowance proration changes
+  // with the accepted own contribution, so scaling own contributions alone can
+  // leave the simulated contract inflow above the cap.
+  const riesterCapAnnual = rules.riester.annualCapInclAllowances
+
+  function calculateActiveRiester(
+    entries: typeof activeRiesterSingletons,
+  ): Record<string, RiesterFundingResult> {
+    const householdOwnMonthly = entries.reduce(
+      (sum, { singleton }) => sum + singleton.monthlyOwnContribution,
+      0,
+    )
+    const householdCandidates = entries.map(({ instance, singleton }) => ({
+      instanceId: instance.instanceId,
+      eligibility: singleton.eligibility,
+      funding: calculateRiesterFunding(
+        rules,
+        salaryForOtherFunding,
+        { ...singleton, monthlyOwnContribution: householdOwnMonthly },
+        profile,
+      ),
+    }))
+    const recipient = householdCandidates.reduce<(typeof householdCandidates)[number] | undefined>(
+      (best, candidate) =>
+        !best || candidate.funding.totalAllowanceAnnual > best.funding.totalAllowanceAnnual
+          ? candidate
+          : best,
+      undefined,
+    )
+
+    return Object.fromEntries(entries.map(({ instance, singleton }) => {
+      const ownFunding = calculateRiesterFunding(
+        rules,
+        salaryForOtherFunding,
+        singleton,
+        profile,
+      )
+      const receivesPortfolioAllowance = instance.instanceId === recipient?.instanceId
+      const portfolioTaxBenefitShare = householdOwnMonthly > 0
+        ? ownFunding.monthlyOwnContribution / householdOwnMonthly
+        : 0
+      const allocatedTaxBenefitAnnual =
+        (recipient?.funding.guenstigerpruefungBenefitAnnual ?? 0) *
+        portfolioTaxBenefitShare
+      const allocatedSpecialExpenseAnnual =
+        (recipient?.funding.specialExpenseDeductibleAnnual ?? 0) *
+        portfolioTaxBenefitShare
+      const allocated = receivesPortfolioAllowance && recipient
+        ? {
+            ...ownFunding,
+            grundzulageAnnual: recipient.funding.grundzulageAnnual,
+            childAllowanceAnnual: recipient.funding.childAllowanceAnnual,
+            careerStarterBonusAnnual: recipient.funding.careerStarterBonusAnnual,
+            totalAllowanceAnnual: recipient.funding.totalAllowanceAnnual,
+            minEigenbeitragAnnual: recipient.funding.minEigenbeitragAnnual,
+            meetsMinContribution: recipient.funding.meetsMinContribution,
+            prorationFactor: recipient.funding.prorationFactor,
+            specialExpenseDeductibleAnnual:
+              allocatedSpecialExpenseAnnual,
+            guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
+            monthlyNetCost: Math.max(
+              0,
+              ownFunding.monthlyOwnContribution -
+                allocatedTaxBenefitAnnual / 12,
+            ),
+          }
+        : {
+            ...ownFunding,
+            grundzulageAnnual: 0,
+            childAllowanceAnnual: 0,
+            careerStarterBonusAnnual: 0,
+            totalAllowanceAnnual: 0,
+            specialExpenseDeductibleAnnual: allocatedSpecialExpenseAnnual,
+            guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
+            monthlyNetCost: Math.max(
+              0,
+              ownFunding.monthlyOwnContribution - allocatedTaxBenefitAnnual / 12,
+            ),
+          }
+
+      return [instance.instanceId, {
+        ...allocated,
+        receivesPortfolioAllowance,
+        portfolioHouseholdOwnContributionMonthly: householdOwnMonthly,
+        portfolioTaxBenefitShare,
+        portfolioHouseholdEligibility: recipient?.eligibility,
+      }]
+    }))
+  }
+
+  function calculateActiveRiesterAtScale(scale: number): Record<string, RiesterFundingResult> {
+    return calculateActiveRiester(activeRiesterSingletons.map(({ instance, singleton }) => ({
+      instance,
+      singleton: scale === 1
+        ? singleton
+        : {
+            ...singleton,
+            monthlyOwnContribution: singleton.monthlyOwnContribution * scale,
+          },
+    })))
+  }
+
+  const aggregateRiesterContractAnnual = (
+    entries: Record<string, RiesterFundingResult>,
+  ): number => Object.values(entries).reduce(
+    (sum, funding) =>
+      sum + funding.annualOwnContribution + funding.totalAllowanceAnnual,
     0,
   )
-  // §10a EStG cap is 2,100 EUR/year incl. allowances. Each instance helper applies
-  // the cap inside; we scale here so two instances at the cap each don't both claim
-  // the full deduction. Use a coarse aggregate scaling: when total annual own
-  // contributions exceed the cap, scale each instance proportionally.
-  const riesterCapAnnual = rules.riester.annualCapInclAllowances
-  const totalRiesterAnnual = totalRiesterGrossMonthly * 12
-  const riesterScale =
-    totalRiesterAnnual > riesterCapAnnual && totalRiesterAnnual > 0
-      ? riesterCapAnnual / totalRiesterAnnual
-      : 1
 
-  const riesterByInstanceId: Record<string, RiesterFundingResult> = {}
-  for (const inst of activeRiester) {
-    const singleton = stripInstanceCommonKeys(
-      inst as unknown as Record<string, unknown>,
-    ) as unknown as RiesterAssumptions
-    const scaledSingleton: RiesterAssumptions = riesterScale === 1
-      ? singleton
-      : { ...singleton, monthlyOwnContribution: singleton.monthlyOwnContribution * riesterScale }
-    riesterByInstanceId[inst.instanceId] = calculateRiesterFunding(
-      rules,
-      salaryForOtherFunding,
-      scaledSingleton,
-      profile,
-    )
+  const requestedRiesterByInstanceId = calculateActiveRiesterAtScale(1)
+  const requestedRiesterAnnual = aggregateRiesterContractAnnual(
+    requestedRiesterByInstanceId,
+  )
+  const needsRiesterScaling = requestedRiesterAnnual > riesterCapAnnual
+  let riesterScale = 1
+  if (needsRiesterScaling) {
+    let lo = 0
+    let hi = 1
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2
+      const aggregate = aggregateRiesterContractAnnual(
+        calculateActiveRiesterAtScale(mid),
+      )
+      if (aggregate <= riesterCapAnnual) lo = mid
+      else hi = mid
+    }
+    riesterScale = lo
   }
+
+  const riesterByInstanceId = riesterScale === 1
+    ? requestedRiesterByInstanceId
+    : calculateActiveRiesterAtScale(riesterScale)
   for (const inst of paidUpRiester) {
     const singleton = stripInstanceCommonKeys(
       inst as unknown as Record<string, unknown>,
@@ -519,30 +633,44 @@ export function buildPortfolioFunding(
   )
   const requestedBasisrenteProductAnnual = totalBasisrenteAnnual
 
-  // V1: all Riester contracts belong to one person. Use the largest actual,
-  // contribution-prorated allowance produced by an active contract instead
-  // of summing the same person's Grund-/Kinderzulage once per contract.
-  const riesterAllowanceAnnual = activeRiester.reduce((max, instance) => {
-    const funding = riesterByInstanceId[instance.instanceId]
-    return Math.max(max, funding?.totalAllowanceAnnual ?? 0)
-  }, 0)
-  // A top-up can increase the allowance itself. Reserve the saturated
-  // household allowance when sizing additional own contribution, otherwise
-  // `own + current prorated allowance + remaining` can exceed the §10a cap.
-  const saturatedRiesterAllowanceAnnual = activeRiester.reduce((max, instance) => {
-    const singleton = stripInstanceCommonKeys(
-      instance as unknown as Record<string, unknown>,
-    ) as unknown as RiesterAssumptions
-    const saturatedFunding = calculateRiesterFunding(
-      rules,
-      salaryForOtherFunding,
-      { ...singleton, monthlyOwnContribution: riesterCapAnnual / 12 },
-      profile,
-    )
-    return Math.max(max, saturatedFunding.totalAllowanceAnnual)
-  }, 0)
-  const requestedRiesterAnnual = totalRiesterAnnual + riesterAllowanceAnnual
-  const fundedRiesterAnnual = Math.min(riesterCapAnnual, requestedRiesterAnnual)
+  const riesterAllowanceAnnual = activeRiester.reduce(
+    (sum, instance) =>
+      sum + (riesterByInstanceId[instance.instanceId]?.totalAllowanceAnnual ?? 0),
+    0,
+  )
+  const fundedRiesterAnnual = aggregateRiesterContractAnnual(riesterByInstanceId)
+
+  // The recommender adds to the first active Riester contract. Find the exact
+  // additional own contribution that remains after its allowance changes,
+  // using the same aggregate function as the simulation funding pass.
+  let remainingRiesterAnnual = 0
+  if (!needsRiesterScaling && activeRiesterSingletons.length > 0) {
+    const targetId = activeRiesterSingletons[0].instance.instanceId
+    const aggregateWithTopUp = (additionalOwnAnnual: number): number => {
+      const entries = activeRiesterSingletons.map(({ instance, singleton }) => {
+        const topUpMonthly = instance.instanceId === targetId
+          ? additionalOwnAnnual / 12
+          : 0
+        return {
+          instance,
+          singleton: {
+            ...singleton,
+            monthlyOwnContribution: singleton.monthlyOwnContribution + topUpMonthly,
+          },
+        }
+      })
+      return aggregateRiesterContractAnnual(calculateActiveRiester(entries))
+    }
+
+    let lo = 0
+    let hi = riesterCapAnnual
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2
+      if (aggregateWithTopUp(mid) <= riesterCapAnnual) lo = mid
+      else hi = mid
+    }
+    remainingRiesterAnnual = lo
+  }
 
   const altersvorsorgedepotHeadroomByInstanceId = Object.fromEntries(
     activeAvd.map((instance) => {
@@ -624,14 +752,11 @@ export function buildPortfolioFunding(
         capAnnual: riesterCapAnnual,
         requestedAnnual: requestedRiesterAnnual,
         fundedAnnual: fundedRiesterAnnual,
-        remainingAnnual: Math.max(
-          0,
-          riesterCapAnnual - totalRiesterAnnual - saturatedRiesterAllowanceAnnual,
-        ),
+        remainingAnnual: remainingRiesterAnnual,
         usedPct: riesterCapAnnual > 0
           ? Math.min(1, fundedRiesterAnnual / riesterCapAnnual)
           : 0,
-        constrained: requestedRiesterAnnual > riesterCapAnnual || riesterScale < 1,
+        constrained: needsRiesterScaling || riesterScale < 1,
         allowanceAnnual: riesterAllowanceAnnual,
       },
       altersvorsorgedepotByInstanceId: altersvorsorgedepotHeadroomByInstanceId,

@@ -16,6 +16,7 @@ import type { AltersvorsorgedepotInstance } from '../../domain/instances'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { monthlyPayoutFromCapital } from '../../engine/payoutMath'
 import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
+import { childBirthYearsUnder25InYear } from '../../engine/childEligibility'
 import { newInstanceId } from '../workspaceIdentity'
 import {
   type CandidateDraft,
@@ -28,15 +29,22 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const profile = g.workspace.baseline.profile
   const wsa = g.workspace.baseline.assumptions
   const gross = g.marginalMonthlyEUR
+  const baseAvd = defaultAssumptions.altersvorsorgedepot
+  const effectiveEligibility = {
+    ...baseAvd.eligibility,
+    eligibleChildren: childBirthYearsUnder25InYear(
+      profile.childBirthYears,
+      g.rules.year,
+    ).length,
+  }
   const capMonthly = maxAvdMonthlyOwnContribution(
-    defaultAssumptions.altersvorsorgedepot.eligibility,
+    effectiveEligibility,
     g.rules,
   )
   const cappedToRemaining = gross > capMonthly
   const sized = Math.min(gross, capMonthly)
   if (sized <= 0) return null
 
-  const baseAvd = defaultAssumptions.altersvorsorgedepot
   const fees = (baseAvd.fees.wrapperAssetFee ?? 0) + (baseAvd.fees.fundAssetFee ?? 0)
   const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
   const capital = projectMonthlyContributionFV(sized, netReturn, g.yearsToRetirement)
@@ -70,6 +78,7 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
     contractStartYear: g.rules.year,
     evidenceMap: {},
     ...baseAvd,
+    eligibility: effectiveEligibility,
     monthlyOwnContribution: sized,
   }
 

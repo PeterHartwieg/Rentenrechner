@@ -76,6 +76,21 @@ describe('buildPortfolioFunding — subsidised-product top-up headroom', () => {
     expect(funding.headroom.riester.remainingAnnual).toBeCloseTo(1_325, 8)
   })
 
+  it('Riester funding scales own contribution when own plus allowance exceeds the cap', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.assumptions.riester[0].monthlyOwnContribution = 170
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const accepted = funding.riesterByInstanceId['riester-singleton']
+    const acceptedAnnual = accepted.annualOwnContribution + accepted.totalAllowanceAnnual
+
+    expect(accepted.monthlyOwnContribution).toBeLessThan(170)
+    expect(acceptedAnnual).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+    expect(funding.headroom.riester.fundedAnnual).toBeCloseTo(acceptedAnnual, 8)
+    expect(funding.headroom.riester.remainingAnnual).toBe(0)
+    expect(funding.headroom.riester.constrained).toBe(true)
+  })
+
   it('AVD remainingAnnual reserves the saturated allowance at the contract cap', () => {
     const ws = makeBaseWorkspace()
     const funding = buildPortfolioFunding(ws, de2026Rules)
@@ -934,12 +949,18 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
     expect(fundA.monthlyOwnContribution).toBeLessThan(100)
     expect(fundB.monthlyOwnContribution).toBeLessThan(100)
 
-    // Each should be approximately half the cap monthly = 2100/24 ≈ 87.5 EUR/month.
-    expect(fundA.monthlyOwnContribution).toBeCloseTo(RIESTER_CAP_ANNUAL / 24, 0)
-    expect(fundB.monthlyOwnContribution).toBeCloseTo(RIESTER_CAP_ANNUAL / 24, 0)
+    // Allowances are part of the cap, so accepted own contribution is below
+    // half of €2,100/monthly once both prorated allowance flows are included.
+    expect(fundA.monthlyOwnContribution).toBeLessThan(RIESTER_CAP_ANNUAL / 24)
+    expect(fundB.monthlyOwnContribution).toBeLessThan(RIESTER_CAP_ANNUAL / 24)
+    const acceptedAnnual = [fundA, fundB].reduce(
+      (sum, entry) => sum + entry.annualOwnContribution + entry.totalAllowanceAnnual,
+      0,
+    )
+    expect(acceptedAnnual).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
   })
 
-  it('two instances above cap: combined allowances ≤ single full-allowance entitlement', () => {
+  it('two instances share one household allowance instead of doubling it', () => {
     // Full Grundzulage = 175 EUR/year (no children, bonus used). Two instances
     // at 100 EUR/month each → after proportional scaling allowances should sum
     // to at most 175 EUR (one household entitlement), not 350 EUR (doubled).
@@ -950,22 +971,46 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
 
     const combinedGrundzulage = fundA.grundzulageAnnual + fundB.grundzulageAnnual
 
-    // Each instance has its own allowance entitlement (§79 Satz 1: per eligible person,
-    // not per household). Two directly eligible spouses with separate contracts can
-    // each receive the Grundzulage. In the typical one-person scenario (both instances
-    // belong to the same saver), the allowance IS doubled in the funding result — this
-    // is a known modeling limitation — but the KEY fix is that the contribution to
-    // each contract is capped, so total capital does not double the subsidy benefit.
-    // We assert: combined allowances ≤ 2 × full entitlement (175 × 2 = 350 EUR) with
-    // proration matching the scaled contribution.
     const grundzulagePerInstance = de2026Rules.riester.grundzulage
-    // With scaling to ~87.5 EUR/month and minRequired ~1925 EUR/year:
-    // prorationFactor ≈ (87.5×12) / 1925 ≈ 0.545 → grundzulage ≈ 95 EUR each.
-    // Strict bound: each prorated allowance must be less than the full 175 EUR.
-    expect(fundA.grundzulageAnnual).toBeLessThanOrEqual(grundzulagePerInstance)
-    expect(fundB.grundzulageAnnual).toBeLessThanOrEqual(grundzulagePerInstance)
-    // And together they must not exceed 2 × 175.
-    expect(combinedGrundzulage).toBeLessThanOrEqual(grundzulagePerInstance * 2 + 0.01)
+    expect(combinedGrundzulage).toBeLessThanOrEqual(grundzulagePerInstance + 0.01)
+    expect(
+      [fundA, fundB].filter((entry) => entry.receivesPortfolioAllowance),
+    ).toHaveLength(1)
+    expect(fundA.portfolioHouseholdOwnContributionMonthly).toBeCloseTo(
+      fundA.monthlyOwnContribution + fundB.monthlyOwnContribution,
+      8,
+    )
+  })
+
+  it('apportions the household tax benefit without truncating it on a small first contract', () => {
+    const ws = makeTwoRiesterWorkspace(5, 150)
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const fundA = funding.riesterByInstanceId['riester-cap-a']
+    const fundB = funding.riesterByInstanceId['riester-cap-b']
+    const householdOwnMonthly = fundA.monthlyOwnContribution + fundB.monthlyOwnContribution
+    const household = calculateRiesterFunding(
+      de2026Rules,
+      funding.salaryForOtherFunding,
+      {
+        ...defaultAssumptions.riester,
+        eligibility: ws.baseline.assumptions.riester[0].eligibility,
+        monthlyOwnContribution: householdOwnMonthly,
+      },
+      ws.baseline.profile,
+    )
+
+    expect(fundA.monthlyNetCost + fundB.monthlyNetCost).toBeCloseTo(
+      householdOwnMonthly - household.guenstigerpruefungBenefitAnnual / 12,
+      8,
+    )
+    expect(
+      fundA.guenstigerpruefungBenefitAnnual + fundB.guenstigerpruefungBenefitAnnual,
+    ).toBeCloseTo(household.guenstigerpruefungBenefitAnnual, 8)
+
+    const single = makeSingleRiesterWorkspace(householdOwnMonthly)
+    const singleFunding = buildPortfolioFunding(single, de2026Rules)
+      .riesterByInstanceId['riester-single-ref']
+    expect(singleFunding.monthlyNetCost).toBeCloseTo(household.monthlyNetCost, 8)
   })
 
   it('two instances under cap: no scaling — contributions and capital unaffected', () => {

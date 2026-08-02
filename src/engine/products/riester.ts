@@ -50,11 +50,23 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     effectiveMonthlyOwnContribution +
     riesterFunding.guenstigerpruefungBenefitAnnual / 12 +
     riesterFunding.totalAllowanceAnnual / 12
-  const fundingForYear = (yearIndex: number) =>
-    calculateRiesterFunding(
+  const fundingForYear = (yearIndex: number) => {
+    const receivesPortfolioAllowance = riesterFunding.receivesPortfolioAllowance
+    const householdOwnMonthly =
+      riesterFunding.portfolioHouseholdOwnContributionMonthly ??
+      effectiveMonthlyOwnContribution
+    const portfolioTaxBenefitShare = riesterFunding.portfolioTaxBenefitShare ?? 1
+    const calculated = calculateRiesterFunding(
       rules,
       ctx.bavFunding.salaryWithBav,
-      scaledRiester,
+      receivesPortfolioAllowance !== undefined
+        ? {
+            ...scaledRiester,
+            eligibility:
+              riesterFunding.portfolioHouseholdEligibility ?? scaledRiester.eligibility,
+            monthlyOwnContribution: householdOwnMonthly,
+          }
+        : scaledRiester,
       profile,
       {
         contributionYear: rules.year + yearIndex,
@@ -62,6 +74,30 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
           yearIndex === 0 && !riester.eligibility.careerStarterBonusUsed,
       },
     )
+    if (receivesPortfolioAllowance === undefined) return calculated
+    const allocatedTaxBenefitAnnual =
+      calculated.guenstigerpruefungBenefitAnnual * portfolioTaxBenefitShare
+    const allocatedSpecialExpenseAnnual =
+      calculated.specialExpenseDeductibleAnnual * portfolioTaxBenefitShare
+    return {
+      ...calculated,
+      monthlyOwnContribution: effectiveMonthlyOwnContribution,
+      annualOwnContribution: effectiveMonthlyOwnContribution * 12,
+      grundzulageAnnual: receivesPortfolioAllowance ? calculated.grundzulageAnnual : 0,
+      childAllowanceAnnual:
+        receivesPortfolioAllowance ? calculated.childAllowanceAnnual : 0,
+      careerStarterBonusAnnual:
+        receivesPortfolioAllowance ? calculated.careerStarterBonusAnnual : 0,
+      totalAllowanceAnnual:
+        receivesPortfolioAllowance ? calculated.totalAllowanceAnnual : 0,
+      specialExpenseDeductibleAnnual: allocatedSpecialExpenseAnnual,
+      guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
+      monthlyNetCost: Math.max(
+        0,
+        effectiveMonthlyOwnContribution - allocatedTaxBenefitAnnual / 12,
+      ),
+    }
+  }
   const yearlySavings = Array.from({ length: yearsToRetirement }).reduce<number>(
     (sum, _, yearIndex) => {
       const funding = fundingForYear(yearIndex)
