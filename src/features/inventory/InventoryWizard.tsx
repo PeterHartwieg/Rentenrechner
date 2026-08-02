@@ -1114,6 +1114,7 @@ export function InventoryWizard({
               draft={draft}
               onChange={makeDraftChange(setAvdDrafts, i)}
               setEvidence={makeSetEvidence(setAvdDrafts, i)}
+              childBirthYears={personalDetails.childBirthYears}
             />
           </div>
         ))

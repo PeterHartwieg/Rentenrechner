@@ -12,39 +12,53 @@
  * (no glidepath). Matches the deleted card exactly.
  */
 
+import type { GermanRules, PersonalProfile } from '../../../domain'
 import type { AltersvorsorgedepotInstance } from '../../../domain/instances'
 import {
   CombineField,
   CombineNativeInput,
   CombineNativeSelect,
   CommonContractFields,
+  DraftNumberInput,
 } from './_shared'
 import { makeInstancePatcher } from './instancePatch'
 import { RangeNumberField } from '../../../ui/RangeNumberField'
 import { buildAvdBeitragsstufen } from '../../inputs/avdBeitragsstufen'
 import { maxAvdMonthlyOwnContribution } from '../../../engine/altersvorsorgedepot'
-import { de2026Rules } from '../../../rules/de2026'
+import { childBirthYearsUnder25InYear } from '../../../engine/childEligibility'
 import { defaultAssumptions } from '../../../data/defaultScenario'
 
 interface Props {
   instance: AltersvorsorgedepotInstance
   patchInstance: (patch: Partial<AltersvorsorgedepotInstance>) => void
+  profile: PersonalProfile
+  activeRules: GermanRules
 }
 
 export function AltersvorsorgedepotInstanceInputs({
   instance,
   patchInstance,
+  profile,
+  activeRules,
 }: Props) {
   const onCommonChange = makeInstancePatcher(instance, patchInstance)
 
   // The generic 0–5 000 EUR range this replaces had no relation to the
   // statutory AVD limits. Levels and ceiling come from the same helpers the
   // compare-mode panel and the contribution sync use.
-  const eligibility = instance.eligibility ?? defaultAssumptions.altersvorsorgedepot.eligibility
-  const stufen = buildAvdBeitragsstufen(de2026Rules, eligibility)
+  const instanceEligibility = instance.eligibility
+    ?? defaultAssumptions.altersvorsorgedepot.eligibility
+  const eligibility = {
+    ...instanceEligibility,
+    eligibleChildren: childBirthYearsUnder25InYear(
+      profile.childBirthYears,
+      activeRules.year,
+    ).length,
+  }
+  const stufen = buildAvdBeitragsstufen(activeRules, eligibility)
   const vertragsrahmen = maxAvdMonthlyOwnContribution(
     eligibility,
-    de2026Rules,
+    activeRules,
     !eligibility.careerStarterBonusUsed,
   )
   // Raise the bound for a stored contract that already exceeds the frame

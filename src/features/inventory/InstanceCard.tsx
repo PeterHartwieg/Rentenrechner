@@ -41,6 +41,7 @@ import { DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './f
 import { RangeNumberField } from '../../ui/RangeNumberField'
 import { buildAvdBeitragsstufen } from '../inputs/avdBeitragsstufen'
 import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
+import { childBirthYearsUnder25InYear } from '../../engine/childEligibility'
 import { de2026Rules } from '../../rules/de2026'
 import { defaultAssumptions } from '../../data/defaultScenario'
 
@@ -835,12 +836,23 @@ const AVD_SUBTYPE_OPTIONS: readonly { value: AltersvorsorgedepotSubtype; label: 
   { value: 'guarantee_100', label: 'Mit 100 % Kapitalgarantie' },
 ] as const
 
-export function AvdCard({ draft, onChange, setEvidence }: BaseProps<AvdDraft>) {
+export function AvdCard({
+  draft,
+  onChange,
+  setEvidence,
+  childBirthYears,
+}: BaseProps<AvdDraft> & { childBirthYears: readonly number[] }) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
   // Same helpers the compare-mode panel and the sync clamp use, so the levels
   // and the ceiling cannot drift between surfaces.
-  const eligibility = defaultAssumptions.altersvorsorgedepot.eligibility
+  const eligibility = {
+    ...defaultAssumptions.altersvorsorgedepot.eligibility,
+    eligibleChildren: childBirthYearsUnder25InYear(
+      childBirthYears,
+      de2026Rules.year,
+    ).length,
+  }
   const stufen = buildAvdBeitragsstufen(de2026Rules, eligibility)
   const vertragsrahmen = maxAvdMonthlyOwnContribution(
     eligibility,

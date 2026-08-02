@@ -11,8 +11,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { AltersvorsorgedepotInstanceInputs } from './AltersvorsorgedepotInstanceInputs'
-import { defaultAssumptions } from '../../../data/defaultScenario'
+import { defaultAssumptions, defaultProfile } from '../../../data/defaultScenario'
 import type { AltersvorsorgedepotInstance } from '../../../domain/instances'
+import type { GermanRules, PersonalProfile } from '../../../domain'
+import { de2026Rules } from '../../../rules/de2026'
 
 afterEach(() => {
   cleanup()
@@ -33,10 +35,19 @@ function makeInstance(over: Partial<AltersvorsorgedepotInstance> = {}): Altersvo
   } as AltersvorsorgedepotInstance
 }
 
-function setup(over: Partial<AltersvorsorgedepotInstance> = {}) {
+function setup(
+  over: Partial<AltersvorsorgedepotInstance> = {},
+  profile: PersonalProfile = defaultProfile,
+  activeRules: GermanRules = de2026Rules,
+) {
   const patchInstance = vi.fn()
   render(
-    <AltersvorsorgedepotInstanceInputs instance={makeInstance(over)} patchInstance={patchInstance} />,
+    <AltersvorsorgedepotInstanceInputs
+      instance={makeInstance(over)}
+      patchInstance={patchInstance}
+      profile={profile}
+      activeRules={activeRules}
+    />,
   )
   return { patchInstance }
 }
@@ -58,6 +69,32 @@ describe('AltersvorsorgedepotInstanceInputs — statutory bounds', () => {
     const { patchInstance } = setup()
     fireEvent.click(screen.getByText('Mindestbeitrag'))
     expect(patchInstance).toHaveBeenCalledWith({ monthlyOwnContribution: 10 })
+  })
+
+  it('derives the Vertragsrahmen from eligible children in the household profile', () => {
+    const { patchInstance } = setup(
+      {},
+      { ...defaultProfile, childBirthYears: [de2026Rules.year] },
+    )
+
+    expect(screen.getByRole('slider')).toHaveAttribute('max', '500')
+    fireEvent.click(screen.getByText('Vertragsrahmen'))
+    expect(patchInstance).toHaveBeenCalledWith({ monthlyOwnContribution: 500 })
+  })
+
+  it('derives statutory levels and the ceiling from the active rules', () => {
+    const alternateRules: GermanRules = {
+      ...de2026Rules,
+      altersvorsorgedepot: {
+        ...de2026Rules.altersvorsorgedepot,
+        contractContributionCapAnnual: 6_000,
+      },
+    }
+    const { patchInstance } = setup({}, defaultProfile, alternateRules)
+
+    expect(screen.getByRole('slider')).toHaveAttribute('max', '455')
+    fireEvent.click(screen.getByText('Vertragsrahmen'))
+    expect(patchInstance).toHaveBeenCalledWith({ monthlyOwnContribution: 455 })
   })
 })
 
