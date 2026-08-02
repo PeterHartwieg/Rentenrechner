@@ -38,6 +38,11 @@ import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { EvidenceBadge } from './EvidenceBadge'
 import { InvField, InvNumber, InvSelect, InvText } from './fields'
 import { DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
+import { RangeNumberField } from '../../ui/RangeNumberField'
+import { buildAvdBeitragsstufen } from '../inputs/avdBeitragsstufen'
+import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
+import { de2026Rules } from '../../rules/de2026'
+import { defaultAssumptions } from '../../data/defaultScenario'
 
 // ---------------------------------------------------------------------------
 // Internal shared primitives
@@ -81,9 +86,16 @@ const STATUS_OPTIONS: readonly { value: InstanceStatus; label: string }[] = [
 interface UniversalFieldsProps<T extends ProductDraftState> extends BaseProps<T> {
   /** When true, hides Vertragsbeginn and uses Depot/Sparplan-flavored copy. */
   isEtf?: boolean
+  /**
+   * Suppresses the generic monthly-contribution field so a product can render
+   * its own. Used by AVD, whose contribution is bounded by statutory thresholds
+   * that the generic 0–50 000 EUR field knows nothing about. The product-level
+   * replacement must keep marking `monthlyContribution` as `user_confirmed`.
+   */
+  omitContribution?: boolean
 }
 
-function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvidence, isEtf }: UniversalFieldsProps<T>) {
+function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvidence, isEtf, omitContribution }: UniversalFieldsProps<T>) {
   const update = (patch: Partial<ProductDraftState>) =>
     onChange({ ...draft, ...patch } as T)
 
@@ -145,20 +157,22 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
         )}
       </InvField>
 
-      <InvField label={isEtf ? 'Monatliche Sparrate (EUR)' : 'Monatlicher Beitrag (EUR)'}>
-        <InvNumber
-          value={draft.monthlyContribution}
-          min={0}
-          max={50_000}
-          step={10}
-          suffix="EUR/Monat"
-          disabled={draft.status === 'paid_up'}
-          onChange={(n) => {
-            update({ monthlyContribution: n })
-            setEvidence?.('monthlyContribution', 'user_confirmed')
-          }}
-        />
-      </InvField>
+      {!omitContribution && (
+        <InvField label={isEtf ? 'Monatliche Sparrate (EUR)' : 'Monatlicher Beitrag (EUR)'}>
+          <InvNumber
+            value={draft.monthlyContribution}
+            min={0}
+            max={50_000}
+            step={10}
+            suffix="EUR/Monat"
+            disabled={draft.status === 'paid_up'}
+            onChange={(n) => {
+              update({ monthlyContribution: n })
+              setEvidence?.('monthlyContribution', 'user_confirmed')
+            }}
+          />
+        </InvField>
+      )}
 
       <InvField label="Status">
         <InvSelect
@@ -824,9 +838,47 @@ const AVD_SUBTYPE_OPTIONS: readonly { value: AltersvorsorgedepotSubtype; label: 
 export function AvdCard({ draft, onChange, setEvidence }: BaseProps<AvdDraft>) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 
+  // Same helpers the compare-mode panel and the sync clamp use, so the levels
+  // and the ceiling cannot drift between surfaces.
+  const eligibility = defaultAssumptions.altersvorsorgedepot.eligibility
+  const stufen = buildAvdBeitragsstufen(de2026Rules, eligibility)
+  const vertragsrahmen = maxAvdMonthlyOwnContribution(
+    eligibility,
+    de2026Rules,
+    !eligibility.careerStarterBonusUsed,
+  )
+  // A stored contract may already exceed the Vertragsrahmen — the field this
+  // replaces allowed up to 50 000 EUR. Raise the bound to the stored value
+  // rather than clamping it: silently rewriting a user's contract data on open
+  // is worse than showing a number the statutory ceiling will cap later, which
+  // the funding result already flags.
+  const maxOwn = Math.max(vertragsrahmen, draft.monthlyContribution ?? 0)
+
   return (
     <div className="inventory-instance-card" data-testid="instance-card-altersvorsorgedepot">
-      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
+      <UniversalFields
+        draft={draft}
+        onChange={onChange}
+        setEvidence={setEvidence}
+        omitContribution
+      />
+
+      <div className="inventory-field">
+        <RangeNumberField
+          label="Wie viel zahlst du selbst ein?"
+          value={draft.monthlyContribution ?? 0}
+          min={0}
+          max={maxOwn}
+          step={5}
+          suffix="EUR/Monat"
+          disabled={draft.status === 'paid_up'}
+          choices={stufen.map((s) => ({ value: s.value, label: s.label, hint: s.hint }))}
+          onCommit={(monthlyOwn) => {
+            onChange({ ...draft, monthlyContribution: monthlyOwn })
+            setEvidence?.('monthlyContribution', 'user_confirmed')
+          }}
+        />
+      </div>
 
       <p className="inventory-instance-section-heading">AVD-spezifisch</p>
       <div className="inventory-field-grid">
