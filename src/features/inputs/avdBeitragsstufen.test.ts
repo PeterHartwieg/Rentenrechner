@@ -2,15 +2,54 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { de2026Rules } from '../../rules/de2026'
 import { defaultAssumptions } from '../../data/defaultScenario'
+import { computeAvdAllowances } from '../../engine/altersvorsorgedepot'
 import { buildAvdBeitragsstufen } from './avdBeitragsstufen'
 
 const RULES = de2026Rules
 const BASE = defaultAssumptions.altersvorsorgedepot.eligibility
 
 describe('buildAvdBeitragsstufen — values derive from the rules', () => {
-  it('produces the four statutory levels for the default eligibility', () => {
+  it('keeps the four statutory levels pinned for directly eligible savers', () => {
     const stufen = buildAvdBeitragsstufen(RULES, BASE)
     expect(stufen.map((s) => s.value)).toEqual([10, 30, 150, 525])
+    expect(stufen.map((s) => s.label)).toEqual([
+      'Mindestbeitrag',
+      'Ende der 50 %-Stufe',
+      'Volle Grundzulage',
+      'Vertragsrahmen',
+    ])
+    const fullBasic = computeAvdAllowances(stufen[2].value * 12, BASE, RULES)
+    expect(fullBasic.basicAllowanceAnnual).toBe(RULES.altersvorsorgedepot.basicAllowanceMax)
+  })
+
+  it('offers only the applicable allowance level for an indirect saver', () => {
+    const indirectOnly = {
+      ...BASE,
+      directlyEligible: false,
+      indirectSpouseEligible: true,
+    }
+
+    const stufen = buildAvdBeitragsstufen(RULES, indirectOnly)
+
+    expect(stufen.map((s) => s.value)).toEqual([
+      RULES.altersvorsorgedepot.minimumOwnContributionAnnual / 12,
+      RULES.altersvorsorgedepot.indirectSpouseBasicAllowanceMax
+        / RULES.altersvorsorgedepot.basicAllowanceTier1Rate
+        / 12,
+      (RULES.altersvorsorgedepot.contractContributionCapAnnual
+        - RULES.altersvorsorgedepot.indirectSpouseBasicAllowanceMax) / 12,
+    ])
+    expect(stufen.map((s) => s.label)).toEqual([
+      'Mindestbeitrag',
+      'Volle mittelbare Zulage',
+      'Vertragsrahmen',
+    ])
+    expect(stufen.some((s) => s.label.includes('Grundzulage'))).toBe(false)
+    const fullIndirect = computeAvdAllowances(stufen[1].value * 12, indirectOnly, RULES)
+    expect(fullIndirect.basicAllowanceAnnual).toBe(0)
+    expect(fullIndirect.indirectSpouseAllowanceAnnual).toBe(
+      RULES.altersvorsorgedepot.indirectSpouseBasicAllowanceMax,
+    )
   })
 
   it('tracks the rules rather than hardcoded numbers', () => {
@@ -72,10 +111,10 @@ describe('buildAvdBeitragsstufen — Vertragsrahmen tracks eligibility', () => {
     expect(stufen.at(-1)?.value).toBeCloseTo(508.3333, 3)
   })
 
-  it('accounts for indirect spouse eligibility', () => {
-    const spouse = { ...BASE, indirectSpouseEligible: true }
+  it('accounts for indirect-only spouse eligibility', () => {
+    const spouse = { ...BASE, directlyEligible: false, indirectSpouseEligible: true }
     const stufen = buildAvdBeitragsstufen(RULES, spouse)
-    expect(stufen.at(-1)?.value).toBeCloseTo(510.4167, 3)
+    expect(stufen.at(-1)?.value).toBeCloseTo(555.4167, 3)
   })
 })
 

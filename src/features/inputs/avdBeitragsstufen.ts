@@ -38,12 +38,16 @@ type Eligibility = AltersvorsorgedepotAssumptions['eligibility']
  * `cappedAtContractMax` warning rendered next to it.
  *
  * Levels, in ascending order:
- *   - Mindestbeitrag       — the annual eligibility floor; below it every
- *                            allowance is zero.
- *   - Ende der N-%-Stufe   — the last euro still matched at the tier-1 rate.
- *   - Volle Grundzulage    — where the basic allowance reaches its maximum.
- *   - Vertragsrahmen       — the largest Eigenbeitrag the AltZertG contract
- *                            ceiling still admits, allowances included.
+ *   - Mindestbeitrag           — the annual eligibility floor; below it every
+ *                                allowance is zero.
+ *   - Ende der N-%-Stufe       — direct savers only; the last euro still
+ *                                matched at the tier-1 rate.
+ *   - Volle Grundzulage        — direct savers only; where their basic
+ *                                allowance reaches its maximum.
+ *   - Volle mittelbare Zulage  — indirect-only savers; where their applicable
+ *                                capped allowance reaches its maximum.
+ *   - Vertragsrahmen           — the largest Eigenbeitrag the AltZertG contract
+ *                                ceiling still admits, allowances included.
  *
  * Levels at or above the Vertragsrahmen are dropped and duplicates collapsed,
  * so a saver with many children (whose ceiling falls below the full-allowance
@@ -60,31 +64,59 @@ export function buildAvdBeitragsstufen(
     !eligibility.careerStarterBonusUsed,
   )
 
-  const candidates: AvdBeitragsstufe[] = [
-    {
+  const candidates: AvdBeitragsstufe[] = []
+
+  if (eligibility.directlyEligible || eligibility.indirectSpouseEligible) {
+    candidates.push({
       value: avd.minimumOwnContributionAnnual / 12,
       label: 'Mindestbeitrag',
       hint: `Erreicht die Förderschwelle von ${avd.minimumOwnContributionAnnual} € im Jahr — darunter gibt es keine Zulage.`,
-    },
-    {
-      value: avd.basicAllowanceTier1MaxContribution / 12,
-      // The percentage is a statutory value too, so it is derived rather than
-      // written out. Note this is the *end* of the tier, not the point of
-      // highest Förderquote — the quota is identical at every lower level.
-      label: `Ende der ${formatPercent(avd.basicAllowanceTier1Rate, 0)}-Stufe`,
-      hint: `Bis ${avd.basicAllowanceTier1MaxContribution} € im Jahr legt der Staat ${formatPercent(avd.basicAllowanceTier1Rate, 0)} drauf, darüber weniger.`,
-    },
-    {
-      value: avd.basicAllowanceTier2MaxContribution / 12,
-      label: 'Volle Grundzulage',
-      hint: `Schöpft die Grundzulage von ${avd.basicAllowanceMax} € im Jahr vollständig aus.`,
-    },
-    {
-      value: vertragsrahmen,
-      label: 'Vertragsrahmen',
-      hint: `Nutzt die Vertragsobergrenze von ${avd.contractContributionCapAnnual} € im Jahr aus (Eigenbeitrag plus Zulagen).`,
-    },
-  ]
+    })
+  }
+
+  if (eligibility.directlyEligible) {
+    candidates.push(
+      {
+        value: avd.basicAllowanceTier1MaxContribution / 12,
+        // The percentage is a statutory value too, so it is derived rather than
+        // written out. Note this is the *end* of the tier, not the point of
+        // highest Förderquote — the quota is identical at every lower level.
+        label: `Ende der ${formatPercent(avd.basicAllowanceTier1Rate, 0)}-Stufe`,
+        hint: `Bis ${avd.basicAllowanceTier1MaxContribution} € im Jahr legt der Staat ${formatPercent(avd.basicAllowanceTier1Rate, 0)} drauf, darüber weniger.`,
+      },
+      {
+        value: avd.basicAllowanceTier2MaxContribution / 12,
+        label: 'Volle Grundzulage',
+        hint: `Schöpft die Grundzulage von ${avd.basicAllowanceMax} € im Jahr vollständig aus.`,
+      },
+    )
+  } else if (eligibility.indirectSpouseEligible) {
+    const indirectAllowanceMax = Math.min(
+      avd.indirectSpouseBasicAllowanceMax,
+      avd.basicAllowanceMax,
+    )
+    const tier1AllowanceMax =
+      avd.basicAllowanceTier1MaxContribution * avd.basicAllowanceTier1Rate
+    const annualContributionForIndirectMax = indirectAllowanceMax <= tier1AllowanceMax
+      ? indirectAllowanceMax / avd.basicAllowanceTier1Rate
+      : avd.basicAllowanceTier1MaxContribution
+        + (indirectAllowanceMax - tier1AllowanceMax) / avd.basicAllowanceTier2Rate
+
+    candidates.push({
+      value: Math.max(
+        avd.minimumOwnContributionAnnual,
+        Math.min(annualContributionForIndirectMax, avd.basicAllowanceTier2MaxContribution),
+      ) / 12,
+      label: 'Volle mittelbare Zulage',
+      hint: `Schöpft die mittelbare Zulage von ${indirectAllowanceMax} € im Jahr vollständig aus.`,
+    })
+  }
+
+  candidates.push({
+    value: vertragsrahmen,
+    label: 'Vertragsrahmen',
+    hint: `Nutzt die Vertragsobergrenze von ${avd.contractContributionCapAnnual} € im Jahr aus (Eigenbeitrag plus Zulagen).`,
+  })
 
   const out: AvdBeitragsstufe[] = []
   for (const stufe of candidates) {
