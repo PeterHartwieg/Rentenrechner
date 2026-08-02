@@ -97,6 +97,7 @@ export function buildGeneratorContext(
     yearsToRetirement,
     baselinePerInstance: bundle.perInstance,
     baselineCombined,
+    portfolioFunding: bundle.portfolioFunding,
     combineCtx,
     bavOffer,
   }

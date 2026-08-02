@@ -10,7 +10,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import './RecommenderCard.css'
 import { useFeedbackTarget, qaTarget, useQaMode } from '../../features/qa-feedback'
-import type { Workspace } from '../../domain/workspace'
+import type { PortfolioFunding, Workspace } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
 import {
@@ -66,6 +66,7 @@ interface Props {
   workspace: Workspace
   baselineCombined: CombinedResult
   baselinePerInstance: Record<string, ProductResult[]>
+  portfolioFunding?: PortfolioFunding
   grvGrossMonthlyPension: number
   marginalMonthlyEUR: number
   bavOffer?: BavEmployerOfferInput
@@ -83,6 +84,7 @@ export function RecommenderCard({
   workspace,
   baselineCombined,
   baselinePerInstance,
+  portfolioFunding,
   grvGrossMonthlyPension,
   marginalMonthlyEUR,
   bavOffer,
@@ -106,6 +108,7 @@ export function RecommenderCard({
       marginalMonthlyEUR,
       baselinePerInstance,
       baselineCombined,
+      portfolioFunding,
       grvGrossMonthlyPension,
       selectedScenarioId,
       bavOffer,
@@ -115,6 +118,7 @@ export function RecommenderCard({
     marginalMonthlyEUR,
     baselinePerInstance,
     baselineCombined,
+    portfolioFunding,
     grvGrossMonthlyPension,
     selectedScenarioId,
     bavOffer,

@@ -20,14 +20,15 @@
  */
 
 import type { GermanRules, ProductResult } from '../domain'
-import type { Workspace } from '../domain/workspace'
+import type { PortfolioFunding, Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { activeRules } from '../rules'
 import { halbeinkuenfteMinAgeForContractStartYear } from '../rules/legalConstants'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from '../engine/insurancePayout'
 import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
+import { buildPortfolioFunding } from '../engine/portfolioFunding'
 import { childBirthYearsUnder25InYear } from '../engine/childEligibility'
-import { defaultHaircutFor } from './contractDecisions'
+import { defaultHaircutFor } from './contractPolicy'
 import { PRODUCT_EVIDENCE_FIELDS } from './evidence'
 
 // ---------------------------------------------------------------------------
@@ -124,6 +125,8 @@ export interface RuleEngineInput {
   simulationResult: RuleEngineSimulationView
   /** Combine-mode aggregate (issue 08); omit for compare-mode callers. */
   combinedResult?: CombinedResult
+  /** Authoritative combine-mode statutory funding snapshot. */
+  portfolioFunding?: PortfolioFunding
   /** Per-value evidence snapshot (issue 09); omit if not yet available. */
   evidence?: EvidenceSnapshot
   /** Reserved for issue 12 cap/headroom rules. */
@@ -343,24 +346,15 @@ const BAV_NEARLY_FULL_THRESHOLD = 0.95
  * independent §3 Nr. 63 limit) is a P2 schema extension.
  */
 const bavCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
-  if (!input.combinedResult || !input.workspace) return null
-  const rules = activeRules
-  const wsa = input.workspace.baseline.assumptions
-
-  const capAnnual = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
-  const capMonthly = capAnnual / 12
-
-  const activeBav = wsa.bav.filter((b) => b.status === 'active')
-  const usedMonthly = activeBav.reduce((s, b) => s + (b.monthlyGrossConversion ?? 0), 0)
-  const usedPct = Math.min(1, capAnnual > 0 ? (usedMonthly * 12) / capAnnual : 0)
-  const remainingMonthly = Math.max(0, capMonthly - usedMonthly)
+  if (!input.combinedResult || !input.portfolioFunding) return null
+  const { usedPct, remainingAnnual } = input.portfolioFunding.headroom.bav
 
   return {
     id: 'bav_cap_remaining',
     priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
     context: {
       usedPct,
-      remainingMonthly,
+      remainingMonthly: remainingAnnual / 12,
       ...(usedPct >= BAV_NEARLY_FULL_THRESHOLD ? { nextLeverProductId: 'basisrente' as const } : {}),
     },
   }
@@ -369,40 +363,12 @@ const bavCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
 /**
  * §10 Abs. 3 EStG Schicht-1 cap remaining after pension-system contributions.
  *
- * Pension-system contributions = GRV employee + employer contributions estimated
- * from the profile salary so the rule stays pure without re-running salary.
+ * The snapshot includes pension-system contributions and uses the exact
+ * household post-bAV salary from combine simulation.
  */
 const basisrenteCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
-  if (!input.combinedResult || !input.workspace) return null
-  const rules = activeRules
-  const profile = input.workspace.baseline.profile
-  const wsa = input.workspace.baseline.assumptions
-
-  const schicht1Cap = rules.basisrente.schicht1CapSingle
-  const pensionType = wsa.statutoryPension.pensionBaselineType ?? 'grv'
-
-  let annualPensionContributions: number
-  if (pensionType === 'beamtenpension' || pensionType === 'none') {
-    annualPensionContributions = 0
-  } else if (pensionType === 'versorgungswerk') {
-    annualPensionContributions =
-      ((wsa.statutoryPension.versorgungswerkMonthlyContribution ?? 0) +
-       (wsa.statutoryPension.versorgungswerkEmployerMonthly ?? 0)) * 12
-  } else {
-    // GRV: employee + employer pension contributions.
-    // V1 estimate; matches portfolioAdapter math when no PKV/Versorgungswerk.
-    // Revisit when CombinedResult exposes annualPensionContributions.
-    const pensionBase = Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear)
-    annualPensionContributions =
-      pensionBase * (rules.socialSecurity.pensionEmployeeRate + rules.socialSecurity.pensionEmployerRate)
-  }
-
-  const activeBasisrente = wsa.basisrente.filter((b) => b.status === 'active')
-  const usedAnnual = activeBasisrente.reduce((s, b) => s + (b.monthlyGrossContribution ?? 0) * 12, 0)
-  const remainingCapAnnual = Math.max(0, schicht1Cap - annualPensionContributions)
-  const totalUsedAnnual = annualPensionContributions + usedAnnual
-  const usedPct = Math.min(1, schicht1Cap > 0 ? totalUsedAnnual / schicht1Cap : 0)
-  const remainingAnnual = Math.max(0, remainingCapAnnual - usedAnnual)
+  if (!input.combinedResult || !input.portfolioFunding) return null
+  const { usedPct, remainingAnnual } = input.portfolioFunding.headroom.basisrente
 
   return {
     id: 'basisrente_cap_remaining',
@@ -423,47 +389,27 @@ const basisrenteCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null =
  * person-link and compute Grundzulage per group.
  */
 const riesterCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
-  if (!input.combinedResult || !input.workspace) return null
-  const rules = activeRules
-
-  const profile = input.workspace.baseline.profile
-  const wsa = input.workspace.baseline.assumptions
-  const capAnnual = rules.riester.annualCapInclAllowances
-
-  const riesterInstances = wsa.riester.filter((r) => r.status === 'active')
-  if (riesterInstances.length === 0) {
+  if (!input.combinedResult || !input.portfolioFunding) return null
+  const { workspace, portfolioFunding } = input
+  const activeCount = workspace?.baseline.assumptions.riester.filter(
+    (instance) => instance.status === 'active',
+  ).length ?? 0
+  const headroom = portfolioFunding.headroom.riester
+  if (activeCount === 0) {
     return {
       id: 'riester_cap_remaining',
       priority: 'medium',
-      context: { usedPct: 0, allowanceCovered: 0, topUpToCap: capAnnual },
+      context: { usedPct: 0, allowanceCovered: 0, topUpToCap: headroom.capAnnual },
     }
   }
 
-  // One Grundzulage per person (§84 EStG): eligible if any active instance is directly or
-  // indirectly eligible. All instances belong to the same person in V1.
-  const directlyEligibleAny = riesterInstances.some((inst) => inst.eligibility.directlyEligible === true)
-  const indirectlyEligibleAny = riesterInstances.some(
-    (inst) => (inst.eligibility.indirectSpouseEligible ?? false) === true,
-  )
-  const grundzulage = (directlyEligibleAny || indirectlyEligibleAny) ? rules.riester.grundzulage : 0
-  const kinderzulageTotal = computeKinderzulagen(profile.childBirthYears, rules.riester)
-  const allowanceCovered = grundzulage + kinderzulageTotal
-
-  const ownContributionAnnual = riesterInstances.reduce(
-    (s, r) => s + (r.monthlyOwnContribution ?? 0) * 12,
-    0,
-  )
-  const usedAnnual = Math.min(capAnnual, ownContributionAnnual + allowanceCovered)
-  const usedPct = Math.min(1, capAnnual > 0 ? usedAnnual / capAnnual : 0)
-  const topUpToCap = Math.max(0, capAnnual - ownContributionAnnual - allowanceCovered)
-
   return {
     id: 'riester_cap_remaining',
-    priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
+    priority: headroom.usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
     context: {
-      usedPct,
-      allowanceCovered,
-      topUpToCap,
+      usedPct: headroom.usedPct,
+      allowanceCovered: headroom.allowanceAnnual,
+      topUpToCap: headroom.remainingAnnual,
     },
   }
 }
@@ -479,26 +425,18 @@ const riesterCapRemainingRule: Rule = (input: RuleEngineInput): Atom | null => {
  * Empty workspace (zero AVD instances) → zero atoms (not one usedPct=0 atom).
  */
 const avdCapRemainingRule: Rule = (input: RuleEngineInput): Atom[] | null => {
-  if (!input.combinedResult || !input.workspace) return null
-  const rules = activeRules
-
-  const wsa = input.workspace.baseline.assumptions
-  const capAnnual = rules.altersvorsorgedepot.contractContributionCapAnnual
-  const capMonthly = capAnnual / 12
-
-  const activeAvd = wsa.altersvorsorgedepot.filter((a) => a.status === 'active')
-
-  // Zero instances → zero atoms (per-instance semantics: no contract = nothing to report).
-  if (activeAvd.length === 0) return []
-
-  return activeAvd.map((avd): Atom => {
-    const usedMonthly = avd.monthlyOwnContribution ?? 0
-    const usedPct = Math.min(1, capAnnual > 0 ? (usedMonthly * 12) / capAnnual : 0)
-    const remainingMonthly = Math.max(0, capMonthly - usedMonthly)
+  if (!input.combinedResult || !input.portfolioFunding) return null
+  return Object.entries(
+    input.portfolioFunding.headroom.altersvorsorgedepotByInstanceId,
+  ).map(([instanceId, headroom]): Atom => {
     return {
       id: 'avd_cap_remaining',
-      priority: usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
-      context: { instanceId: avd.instanceId, usedPct, remainingMonthly },
+      priority: headroom.usedPct >= BAV_NEARLY_FULL_THRESHOLD ? 'high' : 'medium',
+      context: {
+        instanceId,
+        usedPct: headroom.usedPct,
+        remainingMonthly: headroom.remainingAnnual / 12,
+      },
     }
   })
 }
@@ -982,10 +920,15 @@ const RULES: Rule[] = [
 // ---------------------------------------------------------------------------
 
 export function runRules(input: RuleEngineInput, rules: Rule[] = RULES): Atom[] {
+  const resolvedInput = input.workspace && input.combinedResult && !input.portfolioFunding
+    ? {
+        ...input,
+        portfolioFunding: buildPortfolioFunding(input.workspace, activeRules),
+      }
+    : input
   return rules.flatMap((rule) => {
-    const out = rule(input)
+    const out = rule(resolvedInput)
     if (out == null) return []
     return Array.isArray(out) ? out : [out]
   })
 }
-

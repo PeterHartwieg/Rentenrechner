@@ -329,7 +329,7 @@ export const publicRouteRegistry = {
     summary:
       'Modelliert Riester-Förderung (Zulagen plus Sonderausgabenabzug § 10a EStG mit ' +
       'Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte 2026.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
@@ -360,7 +360,7 @@ export const publicRouteRegistry = {
       'Modelliert das Altersvorsorgedepot (AVD), das neue Schicht-2-Depotprodukt ohne ' +
       'Versicherungsmantel: Anlage, eigener Förderpfad nach Altersvorsorgereformgesetz, ' +
       'nachgelagerte Auszahlung.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
@@ -390,7 +390,7 @@ export const publicRouteRegistry = {
     summary:
       'Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform ' +
       '(Versicherung oder Depot), Übertragungsmöglichkeiten und nachgelagerte Auszahlung.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
@@ -528,7 +528,7 @@ export const publicRouteRegistry = {
     summary:
       'Portfolio-Modus für mehrere Vorsorgeverträge gleichzeitig (ETF, bAV, Riester, ' +
       'Basisrente, AVD, private Rente) mit Transfer-Ereignissen und Haushaltsperspektive.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,

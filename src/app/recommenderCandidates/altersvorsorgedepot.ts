@@ -15,6 +15,7 @@
 import type { AltersvorsorgedepotInstance } from '../../domain/instances'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { monthlyPayoutFromCapital } from '../../engine/payoutMath'
+import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
 import { newInstanceId } from '../workspaceIdentity'
 import {
   type CandidateDraft,
@@ -27,7 +28,10 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const profile = g.workspace.baseline.profile
   const wsa = g.workspace.baseline.assumptions
   const gross = g.marginalMonthlyEUR
-  const capMonthly = g.rules.altersvorsorgedepot.contractContributionCapAnnual / 12
+  const capMonthly = maxAvdMonthlyOwnContribution(
+    defaultAssumptions.altersvorsorgedepot.eligibility,
+    g.rules,
+  )
   const cappedToRemaining = gross > capMonthly
   const sized = Math.min(gross, capMonthly)
   if (sized <= 0) return null

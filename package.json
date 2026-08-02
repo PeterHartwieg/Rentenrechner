@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "workers/qa-submit",
+    "workers/simulate"
+  ],
   "scripts": {
     "dev": "vite",
     "prebuild": "node scripts/generate-og-images.mjs",

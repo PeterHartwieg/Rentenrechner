@@ -65,7 +65,7 @@ import type {
   ProductId,
   ProductResult,
 } from '../domain'
-import type { Scenario, Workspace, WhatIfScenario } from '../domain/workspace'
+import type { PortfolioFunding, Scenario, Workspace, WhatIfScenario } from '../domain/workspace'
 import type {
   BavInstance,
   BasisrenteInstance,
@@ -73,6 +73,7 @@ import type {
   RiesterInstance,
 } from '../domain/instances'
 import { combinePortfolio, type CombinedResult } from '../engine/portfolioCombine'
+import { buildPortfolioFunding } from '../engine/portfolioFunding'
 import { buildCombineContext, type CombineContext } from '../engine/combineContext'
 import { runRules, type Atom } from './recommendations'
 import { SeededNormal, generateMarketReturnPath } from '../engine/monteCarlo'
@@ -747,6 +748,8 @@ export interface RecommendNextEuroInput {
   baselinePerInstance: Record<string, ProductResult[]>
   /** Combined baseline (for the selected scenario). */
   baselineCombined: CombinedResult
+  /** Funding/headroom snapshot from the same combine simulation as the baseline. */
+  portfolioFunding?: PortfolioFunding
   /** Statutory pension monthly gross (selected scenario). */
   grvGrossMonthlyPension: number
   /**
@@ -780,6 +783,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
   const mcSeedBase = wsa.monteCarlo?.seed ?? 2026
   const mcVolatility = wsa.monteCarlo?.annualVolatility ?? 0.15
   const bavOffer = resolveBavOffer(input.bavOffer)
+  const portfolioFunding = input.portfolioFunding ?? buildPortfolioFunding(workspace, rules)
 
   const g: GeneratorContext = {
     workspace,
@@ -789,6 +793,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
     yearsToRetirement,
     baselinePerInstance: input.baselinePerInstance,
     baselineCombined: input.baselineCombined,
+    portfolioFunding,
     combineCtx,
     bavOffer,
   }
@@ -826,6 +831,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       workspace,
       simulationResult: { products: basisInstanceResults(input.baselinePerInstance, basis.scenarioId) },
       combinedResult: combined,
+      portfolioFunding,
       marginalBudgetEUR: marginalMonthlyEUR,
     }).filter((a) => isCandidateRelevantAtom(a, d))
     if (d.cappedToRemaining) {

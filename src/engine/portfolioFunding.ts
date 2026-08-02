@@ -39,9 +39,10 @@ import type {
 import type { PortfolioFunding, Workspace } from '../domain/workspace'
 import { calculateBavFunding, calculateSalaryResult } from './salary'
 import { calculateBasisrenteFunding } from './basisrente'
-import { calculateAvdFunding } from './altersvorsorgedepot'
+import { calculateAvdFunding, maxAvdMonthlyOwnContribution } from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'
 import { stripInstanceCommonKeys } from './portfolioProjection'
+import { childBirthYearsUnder25InYear } from './childEligibility'
 
 // ---------------------------------------------------------------------------
 // Paid-up funding helpers
@@ -243,7 +244,7 @@ export function buildPortfolioFunding(
   }
 
   // Quick check at full scale (s=1) to decide whether bisection is needed.
-  const aggregateAtFullScale = totalEmployeeGrossMonthly > 0
+  const aggregateAtFullScale = activeBavSingletons.length > 0
     ? computeAggregateBavTotal(1)
     : 0
   const needsBavScaling = aggregateAtFullScale > bavTaxFreeLimitAnnual
@@ -491,11 +492,146 @@ export function buildPortfolioFunding(
     )
   }
 
+  // -------------------------------------------------------------------------
+  // Authoritative headroom snapshot
+  // -------------------------------------------------------------------------
+  // Keep cap presentation and marginal-decision consumers on the same
+  // portfolio pass as simulation. No caller should need to reconstruct these
+  // aggregates from raw instance contributions.
+  const totalBavAnnual = Object.values(bavByInstanceId).reduce(
+    (sum, funding) => sum + funding.totalBavContributionAnnual,
+    0,
+  )
+  const fundedBavAnnual = Math.min(bavTaxFreeLimitAnnual, totalBavAnnual)
+  const bavEmployerAnnual = Object.values(bavByInstanceId).reduce(
+    (sum, funding) => sum + funding.annualEmployerContribution,
+    0,
+  )
+  const salaryWithoutBav = calculateSalaryResult(profile, rules, 0)
+
+  const fundedBasisrenteProductAnnual = Object.values(basisrenteByInstanceId).reduce(
+    (sum, funding) => sum + funding.annualGrossContribution,
+    0,
+  )
+  const requestedBasisrenteProductAnnual = totalBasisrenteAnnual
+
+  // V1: all Riester contracts belong to one person. Use the largest actual,
+  // contribution-prorated allowance produced by an active contract instead
+  // of summing the same person's Grund-/Kinderzulage once per contract.
+  const riesterAllowanceAnnual = activeRiester.reduce((max, instance) => {
+    const funding = riesterByInstanceId[instance.instanceId]
+    return Math.max(max, funding?.totalAllowanceAnnual ?? 0)
+  }, 0)
+  // A top-up can increase the allowance itself. Reserve the saturated
+  // household allowance when sizing additional own contribution, otherwise
+  // `own + current prorated allowance + remaining` can exceed the §10a cap.
+  const saturatedRiesterAllowanceAnnual = activeRiester.reduce((max, instance) => {
+    const singleton = stripInstanceCommonKeys(
+      instance as unknown as Record<string, unknown>,
+    ) as unknown as RiesterAssumptions
+    const saturatedFunding = calculateRiesterFunding(
+      rules,
+      salaryForOtherFunding,
+      { ...singleton, monthlyOwnContribution: riesterCapAnnual / 12 },
+      profile,
+    )
+    return Math.max(max, saturatedFunding.totalAllowanceAnnual)
+  }, 0)
+  const requestedRiesterAnnual = totalRiesterAnnual + riesterAllowanceAnnual
+  const fundedRiesterAnnual = Math.min(riesterCapAnnual, requestedRiesterAnnual)
+
+  const altersvorsorgedepotHeadroomByInstanceId = Object.fromEntries(
+    activeAvd.map((instance) => {
+      const funding = altersvorsorgedepotByInstanceId[instance.instanceId]
+      const requestedAnnual = funding.annualOwnContribution + funding.totalAllowanceAnnual
+      const fundedAnnual = funding.totalContractContributionAnnual
+      const capAnnual = rules.altersvorsorgedepot.contractContributionCapAnnual
+      const effectiveEligibility = {
+        ...instance.eligibility,
+        eligibleChildren: childBirthYearsUnder25InYear(
+          profile.childBirthYears,
+          rules.year,
+        ).length,
+      }
+      const maximumOwnAnnual = maxAvdMonthlyOwnContribution(
+        effectiveEligibility,
+        rules,
+        !instance.eligibility.careerStarterBonusUsed,
+      ) * 12
+      return [instance.instanceId, {
+        capAnnual,
+        requestedAnnual,
+        fundedAnnual,
+        remainingAnnual: Math.max(0, maximumOwnAnnual - funding.annualOwnContribution),
+        usedPct: capAnnual > 0 ? Math.min(1, fundedAnnual / capAnnual) : 0,
+        constrained: funding.cappedAtContractMax,
+        allowanceAnnual: funding.totalAllowanceAnnual,
+      }]
+    }),
+  )
+
   return {
     bavByInstanceId,
     basisrenteByInstanceId,
     altersvorsorgedepotByInstanceId,
     riesterByInstanceId,
+    salaryForOtherFunding,
+    headroom: {
+      bav: {
+        capAnnual: bavTaxFreeLimitAnnual,
+        requestedAnnual: aggregateAtFullScale,
+        fundedAnnual: fundedBavAnnual,
+        remainingAnnual: Math.max(0, bavTaxFreeLimitAnnual - fundedBavAnnual),
+        usedPct: bavTaxFreeLimitAnnual > 0
+          ? Math.min(1, fundedBavAnnual / bavTaxFreeLimitAnnual)
+          : 0,
+        constrained: needsBavScaling,
+        employeeAnnual: totalEmployeeGrossAnnual,
+        employerAnnual: bavEmployerAnnual,
+        monthlyNetCost: Math.max(
+          0,
+          (salaryWithoutBav.annualNet - salaryForOtherFunding.annualNet) / 12,
+        ),
+      },
+      basisrente: {
+        capAnnual: rules.basisrente.schicht1CapSingle,
+        requestedAnnual:
+          annualPensionContributionsTowardsCap + requestedBasisrenteProductAnnual,
+        fundedAnnual:
+          annualPensionContributionsTowardsCap + fundedBasisrenteProductAnnual,
+        remainingAnnual: Math.max(
+          0,
+          rules.basisrente.schicht1CapSingle -
+            annualPensionContributionsTowardsCap -
+            fundedBasisrenteProductAnnual,
+        ),
+        usedPct: rules.basisrente.schicht1CapSingle > 0
+          ? Math.min(
+              1,
+              (annualPensionContributionsTowardsCap + fundedBasisrenteProductAnnual) /
+                rules.basisrente.schicht1CapSingle,
+            )
+          : 0,
+        constrained: basisrenteScale < 1,
+        pensionSystemAnnual: annualPensionContributionsTowardsCap,
+        productAnnual: fundedBasisrenteProductAnnual,
+      },
+      riester: {
+        capAnnual: riesterCapAnnual,
+        requestedAnnual: requestedRiesterAnnual,
+        fundedAnnual: fundedRiesterAnnual,
+        remainingAnnual: Math.max(
+          0,
+          riesterCapAnnual - totalRiesterAnnual - saturatedRiesterAllowanceAnnual,
+        ),
+        usedPct: riesterCapAnnual > 0
+          ? Math.min(1, fundedRiesterAnnual / riesterCapAnnual)
+          : 0,
+        constrained: requestedRiesterAnnual > riesterCapAnnual || riesterScale < 1,
+        allowanceAnnual: riesterAllowanceAnnual,
+      },
+      altersvorsorgedepotByInstanceId: altersvorsorgedepotHeadroomByInstanceId,
+    },
     notes,
   }
 }

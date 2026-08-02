@@ -19,7 +19,7 @@ import type {
   ProductId,
   ProductResult,
 } from '../../domain'
-import type { Workspace } from '../../domain/workspace'
+import type { PortfolioFunding, Workspace } from '../../domain/workspace'
 import type {
   BavInstance,
   BasisrenteInstance,
@@ -73,6 +73,7 @@ export interface GeneratorContext {
   yearsToRetirement: number
   baselinePerInstance: Record<string, ProductResult[]>
   baselineCombined: CombinedResult
+  portfolioFunding: PortfolioFunding
   combineCtx: CombineContext
   bavOffer: ResolvedBavOffer
 }

@@ -63,6 +63,35 @@ function makeBaseWorkspace(): Workspace {
 // Riester §10a cap: 2 100 EUR/year
 const RIESTER_CAP_ANNUAL = de2026Rules.riester.annualCapInclAllowances
 
+describe('buildPortfolioFunding — subsidised-product top-up headroom', () => {
+  it('Riester remainingAnnual reserves the full allowance earned by the top-up', () => {
+    const ws = makeBaseWorkspace()
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+
+    // 50 EUR/month own contribution is 600 EUR/year. At the suggested top-up
+    // point the full 175 EUR Grundzulage is earned, leaving 2,100 - 600 - 175.
+    expect(funding.headroom.riester.allowanceAnnual).toBeLessThan(
+      de2026Rules.riester.grundzulage,
+    )
+    expect(funding.headroom.riester.remainingAnnual).toBeCloseTo(1_325, 8)
+  })
+
+  it('AVD remainingAnnual reserves the saturated allowance at the contract cap', () => {
+    const ws = makeBaseWorkspace()
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const headroom = funding.headroom.altersvorsorgedepotByInstanceId[
+      'altersvorsorgedepot-singleton'
+    ]
+
+    // Default AVD: 100 EUR/month own contribution. The full basic allowance
+    // is 540 EUR, so maximum own is 6,300 EUR/year and the top-up is 5,100.
+    expect(headroom.allowanceAnnual).toBeLessThan(
+      de2026Rules.altersvorsorgedepot.basicAllowanceMax,
+    )
+    expect(headroom.remainingAnnual).toBeCloseTo(5_100, 8)
+  })
+})
+
 // ---------------------------------------------------------------------------
 // 1 & 2. bAV funding — single instance and two-instance cap aggregation
 // ---------------------------------------------------------------------------
@@ -516,6 +545,16 @@ describe('buildPortfolioFunding — multi-bAV cap including employer contributio
     const totalBavAnnual = fundA.totalBavContributionAnnual + fundB.totalBavContributionAnnual
     const bavCapAnnual = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
     expect(totalBavAnnual).toBeLessThanOrEqual(bavCapAnnual + 0.01)
+    expect(funding.headroom.bav.constrained).toBe(true)
+    expect(funding.headroom.bav.fundedAnnual).toBeCloseTo(
+      Math.min(totalBavAnnual, bavCapAnnual),
+      8,
+    )
+    expect(funding.headroom.bav.employerAnnual).toBeCloseTo(
+      fundA.annualEmployerContribution + fundB.annualEmployerContribution,
+      8,
+    )
+    expect(funding.headroom.bav.remainingAnnual).toBeLessThan(0.02)
   })
 
   it('two bAV instances with contractual employer match: total funding capped at §3 Nr. 63 limit', () => {
@@ -590,6 +629,30 @@ describe('buildPortfolioFunding — multi-bAV cap including employer contributio
     expect(fundA.monthlyGrossConversion).toBeCloseTo(100, 2)
     expect(fundB.monthlyGrossConversion).toBeCloseTo(100, 2)
   })
+
+  it('employer-only funding exhausts headroom even when employee conversion is zero', () => {
+    const ws = makeBaseWorkspace()
+    const employerOnly: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-employer-only',
+      monthlyGrossConversion: 0,
+      statutoryMinimumSubsidyEnabled: false,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 700,
+    }
+    const testWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: { ...ws.baseline.assumptions, bav: [employerOnly] },
+      },
+    }
+
+    const funding = buildPortfolioFunding(testWs, de2026Rules)
+    expect(funding.headroom.bav.requestedAnnual).toBe(700 * 12)
+    expect(funding.headroom.bav.constrained).toBe(true)
+    expect(funding.headroom.bav.remainingAnnual).toBe(0)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -663,6 +726,12 @@ describe('buildPortfolioFunding — downstream salary baseline accuracy', () => 
     // leaving more Schicht-1 headroom. Basisrente contribution should be
     // the same or higher in the two-bAV case (never lower from headroom reduction).
     expect(basisTwoAnnual).toBeGreaterThanOrEqual(basisOneAnnual - 0.01)
+    expect(fundingTwo.headroom.basisrente.pensionSystemAnnual).toBeLessThan(
+      fundingOne.headroom.basisrente.pensionSystemAnnual,
+    )
+    expect(fundingTwo.headroom.basisrente.remainingAnnual).toBeGreaterThan(
+      fundingOne.headroom.basisrente.remainingAnnual,
+    )
   })
 
   it('two bAV instances: downstream AVD funding uses combined post-bAV salary', () => {

@@ -31,6 +31,7 @@ import type {
   InstanceCommon,
   TransferEvent,
 } from '../domain/instances'
+import type { GermanRules } from '../domain/rules'
 import type { ProductId } from '../domain/products/common'
 import { deepCloneScenario } from './portfolioState'
 import { runRules, type Atom } from './recommendations'
@@ -38,6 +39,10 @@ import type { AtomId } from './recommendations'
 import { avdDraftToInstance } from '../features/inventory/inventoryHelpers'
 import { newInstanceId } from './workspaceIdentity'
 import { de2026Rules } from '../rules/de2026'
+import { buildPortfolioFunding } from '../engine/portfolioFunding'
+import { defaultHaircutFor } from './contractPolicy'
+
+export { DEFAULT_HAIRCUT_BY_PREFIX, defaultHaircutFor } from './contractPolicy'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -129,21 +134,6 @@ export type WorkspaceDelta =
  * ETF 0 %:       ETF index funds have no surrender penalty (liquid market).
  * Basisrente:    capital payout legally prohibited — never generate a kuendigen option.
  */
-export const DEFAULT_HAIRCUT_BY_PREFIX: Record<string, number> = {
-  'versicherung-': 0.10, // pAV
-  'bav-': 0.05,           // bAV
-  'riester-': 0.15,       // Riester
-  'altersvorsorgedepot-': 0.10, // AVD
-  'etf-': 0.00,           // ETF (no penalty)
-}
-
-export function defaultHaircutFor(instanceId: string): number {
-  for (const [prefix, pct] of Object.entries(DEFAULT_HAIRCUT_BY_PREFIX)) {
-    if (instanceId.startsWith(prefix)) return pct
-  }
-  return 0.10 // fallback
-}
-
 // ---------------------------------------------------------------------------
 // Product type detection helpers
 // ---------------------------------------------------------------------------
@@ -372,22 +362,65 @@ export function defaultBeitragErhoehenEUR(currentMonthlyEUR: number): number {
   return Math.round((currentMonthlyEUR * 1.5) / 10) * 10
 }
 
-/**
- * Annual statutory funding cap for each product slot.
- * Insurance and ETF have no relevant statutory cap → Infinity.
- */
-function fundingCapAnnualFor(slot: ProductSlot): number {
-  switch (slot) {
-    case 'bav':
-      return de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
-    case 'basisrente':
-      return de2026Rules.basisrente.schicht1CapSingle
-    case 'riester':
-      return 2_100
-    case 'altersvorsorgedepot':
-      return de2026Rules.altersvorsorgedepot.contractContributionCapAnnual
-    default:
-      return Infinity
+function prospectiveFundingCap(
+  workspace: Workspace,
+  slot: ProductSlot,
+  instanceId: string,
+  newMonthlyEUR: number,
+  rules: GermanRules,
+): {
+  capAnnualEUR: number
+  proposedAnnualEUR: number
+  householdRequestedAnnualEUR: number
+  constrained: boolean
+} | null {
+  if (slot === 'etf' || slot === 'insurance') return null
+
+  const baseline = deepCloneScenario(workspace.baseline)
+  const assumptions = baseline.assumptions
+  if (slot === 'bav') {
+    assumptions.bav = assumptions.bav.map((instance) =>
+      instance.instanceId === instanceId
+        ? { ...instance, status: 'active', monthlyGrossConversion: newMonthlyEUR }
+        : instance,
+    )
+  } else if (slot === 'basisrente') {
+    assumptions.basisrente = assumptions.basisrente.map((instance) =>
+      instance.instanceId === instanceId
+        ? { ...instance, status: 'active', monthlyGrossContribution: newMonthlyEUR }
+        : instance,
+    )
+  } else if (slot === 'altersvorsorgedepot') {
+    assumptions.altersvorsorgedepot = assumptions.altersvorsorgedepot.map((instance) =>
+      instance.instanceId === instanceId
+        ? { ...instance, status: 'active', monthlyOwnContribution: newMonthlyEUR }
+        : instance,
+    )
+  } else {
+    assumptions.riester = assumptions.riester.map((instance) =>
+      instance.instanceId === instanceId
+        ? { ...instance, status: 'active', monthlyOwnContribution: newMonthlyEUR }
+        : instance,
+    )
+  }
+
+  const prospective = buildPortfolioFunding(
+    { ...workspace, baseline },
+    rules,
+  )
+  const headroom = slot === 'bav'
+    ? prospective.headroom.bav
+    : slot === 'basisrente'
+      ? prospective.headroom.basisrente
+      : slot === 'riester'
+        ? prospective.headroom.riester
+        : prospective.headroom.altersvorsorgedepotByInstanceId[instanceId]
+  if (!headroom) return null
+  return {
+    capAnnualEUR: headroom.capAnnual,
+    proposedAnnualEUR: newMonthlyEUR * 12,
+    householdRequestedAnnualEUR: headroom.requestedAnnual,
+    constrained: headroom.constrained,
   }
 }
 
@@ -397,15 +430,15 @@ function fundingCapAnnualFor(slot: ProductSlot): number {
  * Returns `null` when the instance has `status === 'surrendered'` or
  * `status === 'offered'` — those contracts cannot receive new contributions.
  *
- * Emits `funding_cap_hit` (priority `high`) when `newMonthlyEUR × 12`
- * exceeds the relevant statutory cap.  The applier writes `newMonthlyEUR`
- * verbatim — no auto-clamp — so the simulation naturally reflects cap
- * consequences (lost Zulagen, no §3 Nr. 63 deferral on excess, etc.).
+ * Emits `funding_cap_hit` (priority `high`) when the prospective portfolio
+ * funding pass constrains the increase. The applier writes `newMonthlyEUR`
+ * verbatim — no auto-clamp — so simulation reflects the cap consequence.
  */
 export function beitragErhoehenWhatIf(
   workspace: Workspace,
   instanceId: string,
   newMonthlyEUR: number,
+  rules: GermanRules = de2026Rules,
 ): ContractDecision | null {
   const instance = findInstanceById(workspace, instanceId)
   if (!instance) return null
@@ -433,15 +466,22 @@ export function beitragErhoehenWhatIf(
   // Suppress non-increases: proposed amount must be strictly above the current one.
   if (newMonthlyEUR <= oldEUR) return null
 
-  // Funding-cap check.
+  // Funding-cap check. The prospective workspace goes through the same
+  // portfolio funding pass as combine simulation, so other contracts,
+  // employer bAV contributions, pension-system contributions, and allowances
+  // are part of the warning.
   const atoms: Atom[] = []
-  const capAnnualEUR = fundingCapAnnualFor(slot)
-  const proposedAnnualEUR = newMonthlyEUR * 12
-  if (isFinite(capAnnualEUR) && proposedAnnualEUR > capAnnualEUR) {
+  const cap = prospectiveFundingCap(workspace, slot, instanceId, newMonthlyEUR, rules)
+  if (cap?.constrained) {
     atoms.push({
       id: 'funding_cap_hit',
       priority: 'high',
-      context: { instanceId, capAnnualEUR, proposedAnnualEUR },
+      context: {
+        instanceId,
+        capAnnualEUR: cap.capAnnualEUR,
+        proposedAnnualEUR: cap.proposedAnnualEUR,
+        householdRequestedAnnualEUR: cap.householdRequestedAnnualEUR,
+      },
     })
   }
 

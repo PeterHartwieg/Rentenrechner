@@ -105,7 +105,7 @@ export const CALCULATION_WARNINGS: { category: string; status: WarningStatus; no
   {
     category: 'Altersvorsorgedepot (Schicht 2)',
     status: 'vereinfacht',
-    note: 'Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat-Zustimmung erwartet 2026-05-08). Modelliert: Grundzulage (Zweistufenformel, max. 540 EUR), Kinderzulage (100 %, max. 300 EUR/Kind), Berufseinsteiger-Bonus (200 EUR einmalig), indirekter Ehegatte (max. 175 EUR), §10a Günstigerprüfung. Standarddepot-Gleitpfad: 5 Jahre vor Rentenbeginn max. 50 % Risikoanlage, 2 Jahre vor Rentenbeginn max. 30 %. Effektivkosten-Warnung bei > 1,0 pp. Auszahlung: §22 Nr. 5 EStG (volle Progression, kein Besteuerungsanteil), KV/PV freiwillig-Pfad §240 SGB V. Nicht modelliert: Altvertrag-Riester-Fortführung (#62); Wohn-Riester; Kleinbetragsrenten-Kommutierung. Konstanten aus Bundesrat-Drucksache 206/26 — prüfen nach BGBl.-Veröffentlichung. (#66–#71)',
+    note: 'Altersvorsorgereformgesetz (Bundestag-Beschluss 2026-03-27; Bundesrat-Zustimmung 2026-05-08; Produktstart ab 2027). Modelliert: Grundzulage (Zweistufenformel, max. 540 EUR), Kinderzulage (100 %, max. 300 EUR/Kind), Berufseinsteiger-Bonus (200 EUR einmalig), indirekter Ehegatte (max. 175 EUR), §10a Günstigerprüfung. Standarddepot-Gleitpfad: 5 Jahre vor Rentenbeginn max. 50 % Risikoanlage, 2 Jahre vor Rentenbeginn max. 30 %. Effektivkosten-Warnung bei > 1,0 pp. Auszahlung: §22 Nr. 5 EStG (volle Progression, kein Besteuerungsanteil), KV/PV freiwillig-Pfad §240 SGB V. Nicht modelliert: Altvertrag-Riester-Fortführung (#62); Wohn-Riester; Kleinbetragsrenten-Kommutierung. Konstanten aus Bundesrat-Drucksache 206/26 — prüfen nach BGBl.-Veröffentlichung. (#66–#71)',
   },
   {
     category: 'Rendite-Szenarien',
@@ -119,4 +119,3 @@ export const BADGE_LABEL: Record<WarningStatus, string> = {
   vereinfacht: '⚠ vereinfacht',
   'nicht-modelliert': '✗ nicht modelliert',
 }
-

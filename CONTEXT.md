@@ -49,6 +49,7 @@ naming code, tests, issues, and ADRs.
 | **Provenance kind** | Display-layer confidence label (`'user' \| 'confirmed' \| 'model' \| 'default'`) used by `ProvLabel` / `FieldWithProv` in `src/features/results/provenance.tsx`. |
 | **Recommendation atom** | Smallest unit of recommender output: `{ id, priority, context }`. Pure rules in `src/app/recommendations.ts`; German copy templates in `src/content/recommendationCopy.ts`. |
 | **Combine context** | Statutory pension + tax + KV/PV routing decisions shared by combine simulation and the recommender. Built by `buildCombineContext` in `src/engine/combineContext.ts`. |
+| **Funding headroom** | Authoritative combine-mode snapshot of requested, accepted, and remaining statutory funding budgets. Built with per-instance funding by `buildPortfolioFunding`; simulation, recommendation atoms, candidate sizing, and contract warnings consume the same snapshot. |
 | **Schicht 1 / 2 / 3** | The German three-pillar retirement layering: Schicht 1 = Basisrente / GRV, Schicht 2 = Riester / AVD / bAV, Schicht 3 = ETF / private insurance. |
 
 ## Module ownership map

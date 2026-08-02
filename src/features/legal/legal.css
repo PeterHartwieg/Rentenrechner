@@ -223,28 +223,6 @@
   color: var(--rw-ink);
 }
 
-/* TEMPORARY — QA activator button (VITE_QA_FOOTER_BUTTON flag).
-   Remove once the soft-launch QA window closes.
-   Cleanup: .scratch/qa-feedback-mode/issues/18-temporary-footer-button-to-activate-qa.md */
-.app-footer-qa-hint {
-  white-space: nowrap;
-}
-
-.app-footer-qa-button {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: var(--rw-ink-soft);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.app-footer-qa-button:hover {
-  color: var(--rw-ink);
-}
-
 /* ── Responsive ────────────────────────────────────────────────────────── */
 
 @media (max-width: 1023px) {
@@ -275,9 +253,6 @@
     align-items: flex-start;
   }
 
-  .app-footer-qa-hint {
-    white-space: normal;
-  }
 }
 
 @media (max-width: 639px) {

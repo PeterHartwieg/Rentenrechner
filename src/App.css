@@ -82,7 +82,8 @@
   --rw-ink-faint: #7a7268;
   --rw-ink-editorial: #1a1612;
   --rw-ink-editorial-soft: #5b5147;
-  --rw-ink-editorial-faint: #9c9183;
+  /* Meets WCAG AA for small text on both editorial cream backgrounds. */
+  --rw-ink-editorial-faint: #70665c;
 
   /* Lines */
   --rw-rule: #1a1a1a;

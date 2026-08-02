@@ -2368,7 +2368,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       type: 'certified',
       year: de2026Rules.year + 3,
       sourceInstanceId: 'riester-legacy-src',
-      targetInstanceId: 'avd-legacy-tgt',
+      targetInstanceId: 'altersvorsorgedepot-legacy-tgt',
       amountEUR: 15_000,
     }
 
@@ -2382,7 +2382,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     }
     const avdNoEvent: AltersvorsorgedepotInstance = {
       ...baseAvd,
-      instanceId: 'avd-legacy-tgt',
+      instanceId: 'altersvorsorgedepot-legacy-tgt',
       label: 'AVD (target, no event yet)',
       transferEvents: [],
     }
@@ -2408,7 +2408,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       i => i.instanceId === 'riester-legacy-src',
     )
     const reloadedAvd = reloaded!.baseline.assumptions.altersvorsorgedepot.find(
-      i => i.instanceId === 'avd-legacy-tgt',
+      i => i.instanceId === 'altersvorsorgedepot-legacy-tgt',
     )
     expect(reloadedRiester?.transferEvents).toHaveLength(1)
     // The target must now also carry the event after backfill.
@@ -2416,7 +2416,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     expect(reloadedAvd?.transferEvents?.[0]).toMatchObject({
       type: 'certified',
       sourceInstanceId: 'riester-legacy-src',
-      targetInstanceId: 'avd-legacy-tgt',
+      targetInstanceId: 'altersvorsorgedepot-legacy-tgt',
       amountEUR: 15_000,
     })
 
@@ -2432,7 +2432,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
             i.instanceId === 'riester-legacy-src' ? { ...i, transferEvents: [] } : i,
           ),
           altersvorsorgedepot: reloaded!.baseline.assumptions.altersvorsorgedepot.map(i =>
-            i.instanceId === 'avd-legacy-tgt' ? { ...i, transferEvents: [] } : i,
+            i.instanceId === 'altersvorsorgedepot-legacy-tgt' ? { ...i, transferEvents: [] } : i,
           ),
         },
       },
@@ -2440,8 +2440,8 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     const noEventResult = simulatePortfolio(noEventWs, de2026Rules).perInstance
     const basisIdx = 1
     const avdGain =
-      reloadedResult['avd-legacy-tgt'][basisIdx].capitalAtRetirement -
-      noEventResult['avd-legacy-tgt'][basisIdx].capitalAtRetirement
+      reloadedResult['altersvorsorgedepot-legacy-tgt'][basisIdx].capitalAtRetirement -
+      noEventResult['altersvorsorgedepot-legacy-tgt'][basisIdx].capitalAtRetirement
     // The target gained capital from the injection.
     expect(avdGain).toBeGreaterThan(0)
     // The source lost capital from the withdrawal.
@@ -2463,7 +2463,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       type: 'certified',
       year: de2026Rules.year + 4,
       sourceInstanceId: 'riester-tgt-only-src',
-      targetInstanceId: 'avd-tgt-only-tgt',
+      targetInstanceId: 'altersvorsorgedepot-tgt-only-tgt',
       amountEUR: 12_000,
     }
 
@@ -2477,7 +2477,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     }
     const avdTgtOnly: AltersvorsorgedepotInstance = {
       ...baseAvd,
-      instanceId: 'avd-tgt-only-tgt',
+      instanceId: 'altersvorsorgedepot-tgt-only-tgt',
       label: 'AVD (target-only legacy)',
       transferEvents: [event],
     }
@@ -2503,14 +2503,14 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       i => i.instanceId === 'riester-tgt-only-src',
     )
     const reloadedAvd = reloaded!.baseline.assumptions.altersvorsorgedepot.find(
-      i => i.instanceId === 'avd-tgt-only-tgt',
+      i => i.instanceId === 'altersvorsorgedepot-tgt-only-tgt',
     )
     // The source must now also carry the event after backfill.
     expect(reloadedRiester?.transferEvents).toHaveLength(1)
     expect(reloadedRiester?.transferEvents?.[0]).toMatchObject({
       type: 'certified',
       sourceInstanceId: 'riester-tgt-only-src',
-      targetInstanceId: 'avd-tgt-only-tgt',
+      targetInstanceId: 'altersvorsorgedepot-tgt-only-tgt',
       amountEUR: 12_000,
     })
     expect(reloadedAvd?.transferEvents).toHaveLength(1)
@@ -2527,7 +2527,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
             i.instanceId === 'riester-tgt-only-src' ? { ...i, transferEvents: [] } : i,
           ),
           altersvorsorgedepot: reloaded!.baseline.assumptions.altersvorsorgedepot.map(i =>
-            i.instanceId === 'avd-tgt-only-tgt' ? { ...i, transferEvents: [] } : i,
+            i.instanceId === 'altersvorsorgedepot-tgt-only-tgt' ? { ...i, transferEvents: [] } : i,
           ),
         },
       },
@@ -2535,8 +2535,8 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     const noEventResult = simulatePortfolio(noEventWs, de2026Rules).perInstance
     const basisIdx = 1
     const avdGain =
-      reloadedResult['avd-tgt-only-tgt'][basisIdx].capitalAtRetirement -
-      noEventResult['avd-tgt-only-tgt'][basisIdx].capitalAtRetirement
+      reloadedResult['altersvorsorgedepot-tgt-only-tgt'][basisIdx].capitalAtRetirement -
+      noEventResult['altersvorsorgedepot-tgt-only-tgt'][basisIdx].capitalAtRetirement
     expect(avdGain).toBeGreaterThan(0)
     const riesterLoss =
       noEventResult['riester-tgt-only-src'][basisIdx].capitalAtRetirement -
@@ -2555,7 +2555,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
       type: 'certified',
       year: de2026Rules.year + 2,
       sourceInstanceId: 'riester-idem',
-      targetInstanceId: 'avd-idem',
+      targetInstanceId: 'altersvorsorgedepot-idem',
       amountEUR: 10_000,
     }
 
@@ -2574,7 +2574,7 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
           }],
           altersvorsorgedepot: [{
             ...baseAvd,
-            instanceId: 'avd-idem',
+            instanceId: 'altersvorsorgedepot-idem',
             label: 'AVD (idem)',
             transferEvents: [event],
           }],
@@ -2590,7 +2590,9 @@ describe('PortfolioAdapter — collectTransferEvents routes by inst.id (issue 16
     expect(loaded2).not.toBeNull()
 
     const riester2 = loaded2!.baseline.assumptions.riester.find(i => i.instanceId === 'riester-idem')
-    const avd2 = loaded2!.baseline.assumptions.altersvorsorgedepot.find(i => i.instanceId === 'avd-idem')
+    const avd2 = loaded2!.baseline.assumptions.altersvorsorgedepot.find(
+      i => i.instanceId === 'altersvorsorgedepot-idem',
+    )
     // No duplicates after two parse round-trips.
     expect(riester2?.transferEvents).toHaveLength(1)
     expect(avd2?.transferEvents).toHaveLength(1)

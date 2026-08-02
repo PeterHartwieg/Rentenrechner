@@ -16,8 +16,6 @@
  */
 
 import { calculateRiesterFunding, solveRiesterOwnFromNet } from '../../engine/riester'
-import { calculateSalaryResult } from '../../engine/salary'
-import { computeKinderzulagen } from '../recommendations'
 import {
   type CandidateDraft,
   type GeneratorContext,
@@ -30,7 +28,7 @@ export function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft |
   const target = wsa.riester.find((r) => r.status !== 'surrendered' && r.status !== 'offered')
   if (!target) return null
   const profile = g.workspace.baseline.profile
-  const salary = calculateSalaryResult(profile, g.rules, 0)
+  const salary = g.portfolioFunding.salaryForOtherFunding
 
   const isolatedOwn = solveRiesterOwnFromNet(
     g.marginalMonthlyEUR,
@@ -41,22 +39,8 @@ export function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft |
   )
   if (isolatedOwn <= 0) return null
 
-  // Clamp to §10a annual cap (€2,100 incl. allowances). `usedAnnual` therefore
-  // must include Grundzulage + Kinderzulagen so the comparison is apples-to-
-  // apples with the cap (matches `riesterCapRemainingRule` in recommendations.ts).
-  const capAnnual = g.rules.riester.annualCapInclAllowances
-  const ownAnnual = wsa.riester
-    .filter((r) => r.status !== 'surrendered' && r.status !== 'offered')
-    .reduce((s, r) => s + (r.monthlyOwnContribution ?? 0) * 12, 0)
-  const activeRiesterInstances = wsa.riester.filter((r) => r.status !== 'surrendered' && r.status !== 'offered')
-  const grundzulageEligible = activeRiesterInstances.some(
-    (inst) => inst.eligibility.directlyEligible === true || inst.eligibility.indirectSpouseEligible === true,
-  )
-  const grundzulage = grundzulageEligible ? g.rules.riester.grundzulage : 0
-  const kinderzulageTotal = computeKinderzulagen(profile.childBirthYears, g.rules.riester)
-  const usedAnnual = ownAnnual + grundzulage + kinderzulageTotal
-  const remainingAnnual = Math.max(0, capAnnual - usedAnnual)
-  const remainingMonthly = remainingAnnual / 12
+  // Clamp to the same household-level §10a headroom snapshot as simulation.
+  const remainingMonthly = g.portfolioFunding.headroom.riester.remainingAnnual / 12
   const cappedToRemaining = isolatedOwn > remainingMonthly
   const own = Math.min(isolatedOwn, remainingMonthly)
   if (own <= 0) return null

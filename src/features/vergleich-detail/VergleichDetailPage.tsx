@@ -371,7 +371,7 @@ function EmptyComparisonState({ navigate }: EmptyComparisonProps) {
           <h1 className="vd-empty-title">Noch keine Produkte ausgewählt</h1>
           <p className="vd-empty-body">
             Wähle im Vergleich mindestens ein Produkt aus, um die Aufschlüsselung
-            pro Euro zu sehen — wer wieviel zahlt, was Kosten und Steuer
+            pro Euro zu sehen — wer wie viel zahlt, was Kosten und Steuer
             wegnehmen und was monatlich im Alter übrig bleibt.
           </p>
           <a

@@ -22,6 +22,8 @@ import {
   type RecommendNextEuroInput,
 } from '../recommender'
 import { runCombineSimulation } from '../useCombineSimulation'
+import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
+import { defaultAssumptions } from '../../data/defaultScenario'
 import { makeAvdCandidate } from './altersvorsorgedepot'
 import { buildBerndWorkspace, buildGeneratorContext } from './testHelpers'
 
@@ -45,7 +47,10 @@ describe('makeAvdCandidate — visible candidate behavior', () => {
 
   it('clamps the gross to the AltZertG per-contract monthly cap', () => {
     const ws = buildBerndWorkspace()
-    const capMonthly = de2026Rules.altersvorsorgedepot.contractContributionCapAnnual / 12
+    const capMonthly = maxAvdMonthlyOwnContribution(
+      defaultAssumptions.altersvorsorgedepot.eligibility,
+      de2026Rules,
+    )
     const g = buildGeneratorContext(ws, capMonthly + 200)
     const draft = makeAvdCandidate(g)!
     expect(draft.grossMonthlyEUR).toBeCloseTo(capMonthly, 4)

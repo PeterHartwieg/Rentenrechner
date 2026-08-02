@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Workspace } from '../../domain/workspace'
+import type { PortfolioFunding, Workspace } from '../../domain/workspace'
 import { useFeedbackTarget } from '../../features/qa-feedback'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { ProductResult } from '../../domain/results'
@@ -18,6 +18,7 @@ interface Props {
   workspace: Workspace
   baselineCombined: CombinedResult
   baselinePerInstance: Record<string, ProductResult[]>
+  portfolioFunding?: PortfolioFunding
   grvGrossMonthlyPension: number
   selectedScenarioId?: string
   onClose: () => void
@@ -28,6 +29,7 @@ export function LueckeSchliessenModal({
   workspace,
   baselineCombined,
   baselinePerInstance,
+  portfolioFunding,
   grvGrossMonthlyPension,
   selectedScenarioId,
   onClose,
@@ -340,6 +342,7 @@ export function LueckeSchliessenModal({
               workspace={workspace}
               baselineCombined={baselineCombined}
               baselinePerInstance={baselinePerInstance}
+              portfolioFunding={portfolioFunding}
               grvGrossMonthlyPension={grvGrossMonthlyPension}
               marginalMonthlyEUR={safeBudget}
               bavOffer={bavOffer}

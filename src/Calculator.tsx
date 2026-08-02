@@ -414,6 +414,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
               workspace={portfolioState.workspace}
               baselineCombined={combineBasisResult}
               baselinePerInstance={combineSimulation.perInstance}
+              portfolioFunding={combineSimulation.portfolioFunding}
               grvGrossMonthlyPension={combineSimulation.statutoryPension.grossMonthlyPension}
               selectedScenarioId={combineSelectedScenarioId}
               onClose={() => setShowLueckeModal(false)}
