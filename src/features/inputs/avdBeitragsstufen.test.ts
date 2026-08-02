@@ -53,7 +53,7 @@ describe('buildAvdBeitragsstufen — values derive from the rules', () => {
   })
 
   it('tracks the rules rather than hardcoded numbers', () => {
-    // Halve the statutory thresholds; every level must halve with them. A
+    // Double the statutory thresholds; every level must double with them. A
     // literal 10/30/150 in the module would survive this and fail here.
     const doubled = {
       ...RULES,
@@ -116,6 +116,25 @@ describe('buildAvdBeitragsstufen — Vertragsrahmen tracks eligibility', () => {
     const stufen = buildAvdBeitragsstufen(RULES, spouse)
     expect(stufen.at(-1)?.value).toBeCloseTo(555.4167, 3)
   })
+
+  it('preserves the Vertragsrahmen label when the ceiling matches another level', () => {
+    const collidingRules = {
+      ...RULES,
+      altersvorsorgedepot: {
+        ...RULES.altersvorsorgedepot,
+        contractContributionCapAnnual:
+          RULES.altersvorsorgedepot.basicAllowanceTier2MaxContribution
+          + RULES.altersvorsorgedepot.basicAllowanceMax,
+      },
+    }
+
+    const stufen = buildAvdBeitragsstufen(collidingRules, BASE)
+
+    expect(stufen.at(-1)?.value).toBe(
+      RULES.altersvorsorgedepot.basicAllowanceTier2MaxContribution / 12,
+    )
+    expect(stufen.at(-1)?.label).toBe('Vertragsrahmen')
+  })
 })
 
 describe('buildAvdBeitragsstufen — degenerate ceilings', () => {
@@ -123,7 +142,8 @@ describe('buildAvdBeitragsstufen — degenerate ceilings', () => {
     // Enough children that the ceiling falls below the full-allowance level.
     const manyKids = { ...BASE, eligibleChildren: 20 }
     const stufen = buildAvdBeitragsstufen(RULES, manyKids)
-    const ceiling = stufen.at(-1)?.value ?? 0
+    expect(stufen.length).toBeGreaterThan(0)
+    const ceiling = stufen.at(-1)!.value
     for (const s of stufen) {
       expect(s.value).toBeLessThanOrEqual(ceiling)
     }

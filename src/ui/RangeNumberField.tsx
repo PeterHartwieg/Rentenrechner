@@ -3,6 +3,7 @@ import './RangeNumberField.css'
 import { useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { NumberField } from './NumberField'
 import { useFeedbackTarget } from '../features/qa-feedback'
+import { formatNumber } from '../utils/format'
 
 export interface RangeQuickChoice {
   /** Value written when the card is chosen. */
@@ -13,7 +14,7 @@ export interface RangeQuickChoice {
   hint?: string
 }
 
-interface RangeNumberFieldProps {
+export interface RangeNumberFieldProps {
   /** Group label. Rendered as a `<legend>`, not a `<label>` — see note below. */
   label: string
   value: number
@@ -35,12 +36,38 @@ interface RangeNumberFieldProps {
   feedbackTargetId?: string
 }
 
+function decimalPlaces(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  const [coefficient, exponentPart] = value.toString().toLowerCase().split('e')
+  const fractionDigits = coefficient.split('.')[1]?.length ?? 0
+  const exponent = Number(exponentPart ?? 0)
+  return Math.max(0, fractionDigits - exponent)
+}
+
 /** Snap to the step grid and clamp into range. */
-function quantise(raw: number, min: number, max: number, step: number): number {
+function quantise(
+  raw: number,
+  min: number,
+  max: number,
+  step: number,
+  decimals?: number,
+): number {
   if (!Number.isFinite(raw)) return min
   const clamped = Math.min(max, Math.max(min, raw))
   if (!(step > 0)) return clamped
-  const snapped = min + Math.round((clamped - min) / step) * step
+  const precision = Math.min(
+    12,
+    Math.max(
+      0,
+      Math.trunc(decimals ?? 0),
+      decimalPlaces(min),
+      decimalPlaces(max),
+      decimalPlaces(step),
+    ),
+  )
+  const snapped = Number(
+    (min + Math.round((clamped - min) / step) * step).toFixed(precision),
+  )
   return Math.min(max, Math.max(min, snapped))
 }
 
@@ -88,6 +115,7 @@ export function RangeNumberField({
   const sliderId = `${groupId}-slider`
   const [dragValue, setDragValue] = useState<number | null>(null)
   const dragValueRef = useRef<number | null>(null)
+  const choiceRefs = useRef<(HTMLButtonElement | null)[]>([])
   const { targetProps } = useFeedbackTarget({
     id: feedbackTargetId ?? '',
     label,
@@ -96,6 +124,10 @@ export function RangeNumberField({
 
   const shown = dragValue ?? value
   const selectionTolerance = step > 0 ? step / 2 : 0.005
+  const displayDecimals = decimals ?? decimalPlaces(step)
+  const selectedIndex = choices
+    ? choices.findIndex((choice) => Math.abs(shown - choice.value) < selectionTolerance)
+    : -1
 
   const setDrag = (next: number | null) => {
     dragValueRef.current = next
@@ -106,6 +138,29 @@ export function RangeNumberField({
     const pending = dragValueRef.current
     setDrag(null)
     if (pending !== null && pending !== value) onCommit(pending)
+  }
+
+  const selectChoice = (index: number, focus = false) => {
+    const choice = choices?.[index]
+    if (!choice) return
+    setDrag(null)
+    if (focus) choiceRefs.current[index]?.focus()
+    onCommit(quantise(choice.value, min, max, step, decimals))
+  }
+
+  const moveChoiceFocus = (from: number, key: string) => {
+    if (!choices || choices.length === 0) return
+    let next: number | null = null
+    if (key === 'ArrowRight' || key === 'ArrowDown') {
+      next = (from + 1) % choices.length
+    } else if (key === 'ArrowLeft' || key === 'ArrowUp') {
+      next = (from - 1 + choices.length) % choices.length
+    } else if (key === 'Home') {
+      next = 0
+    } else if (key === 'End') {
+      next = choices.length - 1
+    }
+    if (next !== null) selectChoice(next, true)
   }
 
   const qaProps: Record<string, unknown> = feedbackTargetId ? { ...targetProps } : {}
@@ -121,16 +176,19 @@ export function RangeNumberField({
       {choices && choices.length > 0 && (
         <div className="range-number-field__choices" role="radiogroup" aria-label={label}>
           {choices.map((choice, index) => {
-            const selected = Math.abs(shown - choice.value) < selectionTolerance
+            const selected = index === selectedIndex
             return (
               <button
                 key={choice.label}
                 type="button"
                 role="radio"
+                ref={(element) => {
+                  choiceRefs.current[index] = element
+                }}
                 aria-checked={selected}
                 // Roving tabindex: only the selected card (or the first, when
                 // none matches) is in the tab order, as radio groups require.
-                tabIndex={selected || (index === 0 && !choices.some((c) => Math.abs(shown - c.value) < selectionTolerance)) ? 0 : -1}
+                tabIndex={selected || (selectedIndex === -1 && index === 0) ? 0 : -1}
                 className={
                   selected
                     ? 'range-number-field__choice range-number-field__choice--selected'
@@ -139,16 +197,23 @@ export function RangeNumberField({
                 // Index, never the amount — QA target ids are exported to the
                 // report unredacted, so encoding the value would leak it.
                 data-qa-target={feedbackTargetId ? `${feedbackTargetId}.choice.${index}` : undefined}
-                onClick={() => {
-                  setDrag(null)
-                  onCommit(quantise(choice.value, min, max, step))
+                onClick={() => selectChoice(index)}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === 'ArrowRight'
+                    || event.key === 'ArrowDown'
+                    || event.key === 'ArrowLeft'
+                    || event.key === 'ArrowUp'
+                    || event.key === 'Home'
+                    || event.key === 'End'
+                  ) {
+                    event.preventDefault()
+                    moveChoiceFocus(index, event.key)
+                  }
                 }}
               >
                 <span className="range-number-field__choice-value">
-                  {choice.value.toLocaleString('de-DE', {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  })}
+                  {formatNumber(choice.value, displayDecimals)}
                   {suffix ? ` ${suffix}` : ''}
                 </span>
                 <span className="range-number-field__choice-label">{choice.label}</span>
@@ -170,16 +235,15 @@ export function RangeNumberField({
             max={max}
             step={step}
             value={shown}
-            aria-label={label}
-            aria-valuetext={`${shown.toLocaleString('de-DE', {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: decimals ?? 0,
-            })}${suffix ? ` ${suffix}` : ''}`}
+            aria-label={`${label} (Schieberegler)`}
+            aria-valuetext={`${formatNumber(shown, displayDecimals)}${suffix ? ` ${suffix}` : ''}`}
             onPointerDown={(event: ReactPointerEvent<HTMLInputElement>) => {
               // Capture so a release outside the track still reaches us.
               event.currentTarget.setPointerCapture?.(event.pointerId)
             }}
-            onChange={(event) => setDrag(quantise(Number(event.target.value), min, max, step))}
+            onChange={(event) => {
+              setDrag(quantise(Number(event.target.value), min, max, step, decimals))
+            }}
             onPointerUp={commitDrag}
             onPointerCancel={commitDrag}
             onKeyUp={commitDrag}
@@ -187,18 +251,18 @@ export function RangeNumberField({
           />
           <div className="range-number-field__bounds" aria-hidden="true">
             <span>
-              {min.toLocaleString('de-DE')}
+              {formatNumber(min, displayDecimals)}
               {suffix ? ` ${suffix}` : ''}
             </span>
             <span>
-              {max.toLocaleString('de-DE', { maximumFractionDigits: 0 })}
+              {formatNumber(max, displayDecimals)}
               {suffix ? ` ${suffix}` : ''}
             </span>
           </div>
         </div>
 
         <NumberField
-          label={label}
+          label={`${label} (genauer Wert)`}
           value={shown}
           min={min}
           max={max}
@@ -208,7 +272,7 @@ export function RangeNumberField({
           disabled={disabled}
           onCommit={(raw) => {
             setDrag(null)
-            onCommit(quantise(Number(raw), min, max, step))
+            onCommit(quantise(Number(raw), min, max, step, decimals))
           }}
         />
       </div>

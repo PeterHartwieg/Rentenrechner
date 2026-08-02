@@ -37,6 +37,11 @@ type Eligibility = AltersvorsorgedepotAssumptions['eligibility']
  * function a different child count makes the Vertragsrahmen card contradict the
  * `cappedAtContractMax` warning rendered next to it.
  *
+ * `AltersvorsorgedepotEligibility` does not expose an explicit first-
+ * contribution-year flag, so the contract ceiling approximates it with
+ * `!eligibility.careerStarterBonusUsed`. Add such a flag to eligibility if the
+ * UI later supports distinguishing an unused bonus from the first year.
+ *
  * Levels, in ascending order:
  *   - Mindestbeitrag           — the annual eligibility floor; below it every
  *                                allowance is zero.
@@ -124,7 +129,13 @@ export function buildAvdBeitragsstufen(
     // Anything at or beyond the ceiling is either unreachable or the ceiling
     // itself; the Vertragsrahmen entry represents that endpoint.
     if (stufe.value > vertragsrahmen) continue
-    if (out.some((s) => Math.abs(s.value - stufe.value) < 0.005)) continue
+    const collision = out.findIndex((existing) => Math.abs(existing.value - stufe.value) < 0.005)
+    if (collision >= 0) {
+      // The later ceiling candidate must keep its user-facing endpoint label;
+      // other near-equal candidates retain the existing first-entry behavior.
+      if (stufe.label === 'Vertragsrahmen') out[collision] = stufe
+      continue
+    }
     out.push(stufe)
   }
   return out

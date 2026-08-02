@@ -14,7 +14,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
-import { RangeNumberField } from './RangeNumberField'
+import { RangeNumberField, type RangeNumberFieldProps } from './RangeNumberField'
 
 afterEach(() => cleanup())
 
@@ -24,9 +24,9 @@ const CHOICES = [
   { value: 150, label: 'Volle Grundzulage' },
 ]
 
-function setup(over: Partial<Parameters<typeof RangeNumberField>[0]> = {}) {
+function setup(over: Partial<RangeNumberFieldProps> = {}) {
   const onCommit = vi.fn()
-  render(
+  const result = render(
     <RangeNumberField
       label="Eigenbeitrag"
       value={150}
@@ -39,7 +39,7 @@ function setup(over: Partial<Parameters<typeof RangeNumberField>[0]> = {}) {
       {...over}
     />,
   )
-  return { onCommit }
+  return { onCommit, ...result }
 }
 
 describe('RangeNumberField — commit timing', () => {
@@ -131,6 +131,27 @@ describe('RangeNumberField — quick choices', () => {
       expect(t).not.toMatch(/\b(10|30|150)\b/)
     }
   })
+
+  it('moves focus and selection with radio-group navigation keys', () => {
+    const { onCommit } = setup()
+    const cards = screen.getAllByRole('radio')
+
+    const expectMove = (from: HTMLElement, key: string, to: HTMLElement, value: number) => {
+      from.focus()
+      onCommit.mockClear()
+      fireEvent.keyDown(from, { key })
+      expect(document.activeElement).toBe(to)
+      expect(onCommit).toHaveBeenCalledWith(value)
+    }
+
+    expectMove(cards[0], 'ArrowRight', cards[1], 30)
+    expectMove(cards[1], 'ArrowDown', cards[2], 150)
+    expectMove(cards[2], 'ArrowRight', cards[0], 10)
+    expectMove(cards[0], 'ArrowLeft', cards[2], 150)
+    expectMove(cards[2], 'ArrowUp', cards[1], 30)
+    expectMove(cards[1], 'Home', cards[0], 10)
+    expectMove(cards[0], 'End', cards[2], 150)
+  })
 })
 
 describe('RangeNumberField — numeric field and bounds', () => {
@@ -149,21 +170,19 @@ describe('RangeNumberField — numeric field and bounds', () => {
     fireEvent.blur(box)
     expect(onCommit).toHaveBeenCalledWith(145)
   })
+
+  it('rounds fractional steps without floating-point drift', () => {
+    const { onCommit } = setup({ value: 0.2, min: 0, max: 1, step: 0.1, decimals: 1 })
+    const box = screen.getByRole('spinbutton')
+    fireEvent.change(box, { target: { value: '0.3' } })
+    fireEvent.blur(box)
+    expect(onCommit).toHaveBeenCalledWith(0.3)
+  })
 })
 
 describe('RangeNumberField — accessibility and privacy', () => {
   it('groups with a fieldset/legend and does not nest labels', () => {
-    const { container } = render(
-      <RangeNumberField
-        label="Eigenbeitrag"
-        value={150}
-        min={0}
-        max={525}
-        step={5}
-        choices={CHOICES}
-        onCommit={vi.fn()}
-      />,
-    )
+    const { container } = setup()
     const fieldset = container.querySelector('fieldset.range-number-field')
     expect(fieldset).not.toBeNull()
     expect(fieldset?.querySelector('legend')?.textContent).toBe('Eigenbeitrag')
@@ -175,6 +194,14 @@ describe('RangeNumberField — accessibility and privacy', () => {
     expect(screen.getByRole('slider').getAttribute('aria-valuetext')).toBe('150 €')
   })
 
+  it('gives the slider and exact numeric field distinct accessible names', () => {
+    setup()
+    expect(screen.getByRole('slider')).toHaveAccessibleName('Eigenbeitrag (Schieberegler)')
+    expect(screen.getByRole('spinbutton')).toHaveAccessibleName(
+      /Eigenbeitrag \(genauer Wert\)/,
+    )
+  })
+
   it('keeps exactly one card in the tab order', () => {
     setup({ value: 150 })
     const tabbable = screen.getAllByRole('radio').filter((c) => c.getAttribute('tabindex') === '0')
@@ -182,9 +209,7 @@ describe('RangeNumberField — accessibility and privacy', () => {
   })
 
   it('marks the whole group QA-sensitive, not just the numeric field', () => {
-    const { container } = render(
-      <RangeNumberField label="Eigenbeitrag" value={150} min={0} max={525} onCommit={vi.fn()} />,
-    )
+    const { container } = setup({ choices: undefined })
     expect(
       container.querySelector('fieldset.range-number-field')?.getAttribute('data-qa-sensitive'),
     ).toBe('true')

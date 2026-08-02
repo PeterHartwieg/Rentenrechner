@@ -36,9 +36,9 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  /* Touch target: comfortably above the 44px minimum on mobile. */
+  /* Touch target: meets the 44px minimum on mobile. */
   min-height: 44px;
-  transition: border-color 0.1s, background 0.1s;
+  transition: border-color 0.1s, background 0.1s, box-shadow 0.1s;
 }
 
 .range-number-field__choice:hover:not(:disabled) {
@@ -53,6 +53,7 @@
 .range-number-field__choice--selected {
   border-color: var(--rw-ink);
   background: var(--rw-bg-paper-soft);
+  box-shadow: inset 3px 0 0 var(--rw-accent);
 }
 
 .range-number-field__choice-value {
@@ -90,7 +91,7 @@
   min-width: 0;
   /* The numeric field carries its own label spacing; nudge the slider down so
      the two controls sit on the same optical line. */
-  padding-top: 22px;
+  padding-top: var(--rw-field-label-height, 22px);
 }
 
 .range-number-field__slider input[type='range'] {
