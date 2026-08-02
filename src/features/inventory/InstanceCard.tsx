@@ -42,7 +42,7 @@ import { RangeNumberField } from '../../ui/RangeNumberField'
 import { buildAvdBeitragsstufen } from '../inputs/avdBeitragsstufen'
 import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
 import { childBirthYearsUnder25InYear } from '../../engine/childEligibility'
-import { de2026Rules } from '../../rules/de2026'
+import { activeRules } from '../../rules'
 import { defaultAssumptions } from '../../data/defaultScenario'
 
 // ---------------------------------------------------------------------------
@@ -850,13 +850,13 @@ export function AvdCard({
     ...defaultAssumptions.altersvorsorgedepot.eligibility,
     eligibleChildren: childBirthYearsUnder25InYear(
       childBirthYears,
-      de2026Rules.year,
+      activeRules.year,
     ).length,
   }
-  const stufen = buildAvdBeitragsstufen(de2026Rules, eligibility)
+  const stufen = buildAvdBeitragsstufen(activeRules, eligibility)
   const vertragsrahmen = maxAvdMonthlyOwnContribution(
     eligibility,
-    de2026Rules,
+    activeRules,
     !eligibility.careerStarterBonusUsed,
   )
   // A stored contract may already exceed the Vertragsrahmen — the field this
