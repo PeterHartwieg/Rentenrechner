@@ -73,9 +73,12 @@ describe('buildAvdBeitragsstufen — values derive from the rules', () => {
       },
     }
     const stufen = buildAvdBeitragsstufen(doubled, BASE)
-    expect(stufen[0].value).toBe(20)
-    expect(stufen[1].value).toBe(60)
-    expect(stufen[2].value).toBe(300)
+    // Expectations derive from the perturbed rules object, not 2026 literals,
+    // so a statutory-value change never requires touching this test.
+    const d = doubled.altersvorsorgedepot
+    expect(stufen[0].value).toBe(d.minimumOwnContributionAnnual / 12)
+    expect(stufen[1].value).toBe(d.basicAllowanceTier1MaxContribution / 12)
+    expect(stufen[2].value).toBe(d.basicAllowanceTier2MaxContribution / 12)
   })
 
   it('derives the tier-1 percentage in the label instead of writing it out', () => {
