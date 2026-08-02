@@ -1,4 +1,4 @@
-import type { PersonalProfile, ScenarioAssumptions } from './domain'
+import type { ContributionInput, PersonalProfile, ScenarioAssumptions } from './domain'
 import type { Workspace, WorkspaceAssumptionsV2, Scenario } from './domain/workspace'
 import type {
   BavInstance,
@@ -122,6 +122,21 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
+function readContributionInput(rawAssumptions: Record<string, unknown>): ContributionInput | undefined {
+  const rawInput = rawAssumptions.contributionInput
+  if (!isPlainRecord(rawInput)) return undefined
+  if (rawInput.kind === 'net') return { kind: 'net' }
+  if (
+    rawInput.kind === 'avd-own' &&
+    typeof rawInput.monthlyOwn === 'number' &&
+    Number.isFinite(rawInput.monthlyOwn) &&
+    rawInput.monthlyOwn >= 0
+  ) {
+    return { kind: 'avd-own', monthlyOwn: rawInput.monthlyOwn }
+  }
+  return undefined
+}
+
 /**
  * Apply post-merge migrations that read raw legacy keys (only present in
  * pre-#51 saves) and copy them onto the current schema fields if they were
@@ -146,18 +161,9 @@ function applyPostMergeMigrations(
   // *is* the default — plain net mode). Without this the field would be dropped
   // on every load, share-link ingest and scenario-library round-trip, silently
   // reverting a pinned AVD Eigenbeitrag to net mode.
-  const rawInput = rawAssumptions.contributionInput
-  if (isPlainRecord(rawInput)) {
-    if (rawInput.kind === 'net') {
-      merged.contributionInput = { kind: 'net' }
-    } else if (
-      rawInput.kind === 'avd-own' &&
-      typeof rawInput.monthlyOwn === 'number' &&
-      Number.isFinite(rawInput.monthlyOwn) &&
-      rawInput.monthlyOwn >= 0
-    ) {
-      merged.contributionInput = { kind: 'avd-own', monthlyOwn: rawInput.monthlyOwn }
-    }
+  const contributionInput = readContributionInput(rawAssumptions)
+  if (contributionInput !== undefined) {
+    merged.contributionInput = contributionInput
     // Anything else (unknown kind, malformed payload) falls through to net mode
     // rather than failing the whole load — a corrupt input mode should not cost
     // the user their saved scenario.
@@ -221,6 +227,18 @@ export const defaultWorkspace: Workspace = {
   },
   whatIfs: [],
   pinnedComparisonIds: [],
+}
+
+function mergeWorkspaceWithDefaults(rawWorkspace: Record<string, unknown>): Workspace {
+  const merged = mergeDeep(rawWorkspace, defaultWorkspace)
+  const rawBaseline = rawWorkspace.baseline
+  if (!isPlainRecord(rawBaseline) || !isPlainRecord(rawBaseline.assumptions)) return merged
+
+  const contributionInput = readContributionInput(rawBaseline.assumptions)
+  if (contributionInput !== undefined) {
+    merged.baseline.assumptions.contributionInput = contributionInput
+  }
+  return merged
 }
 
 // ---------------------------------------------------------------------------
@@ -643,7 +661,7 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
     // every what-if and its `derivedFromBaselineSnapshot` (issue 08 contract
     // gap). Without a deep validation pass first, malformed v2 payloads would
     // either throw or silently survive into the load result.
-    const merged = mergeDeep(obj, defaultWorkspace)
+    const merged = mergeWorkspaceWithDefaults(obj)
     if (merged.schemaVersion !== 2) return null
     const validated = validateWorkspace(merged)
     if (validated === null) return null
@@ -705,7 +723,7 @@ export function parseStateFromJson(
 
   // v2 workspace payload: extract singleton via the inverse projection.
   if (isV2Shape(obj)) {
-    const merged = mergeDeep(obj, defaultWorkspace)
+    const merged = mergeWorkspaceWithDefaults(obj)
     if (merged.schemaVersion !== 2) return null
     const singleton = workspaceToSingletonAssumptions(merged)
     const profileMerged = mergeDeep(

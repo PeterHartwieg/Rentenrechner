@@ -12,7 +12,13 @@
 
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
-import { migrateAndValidateState } from './storage'
+import {
+  buildStateJson,
+  buildWorkspaceJson,
+  migrateAndValidateState,
+  parseStateFromJson,
+  parseWorkspaceJson,
+} from './storage'
 import { singletonViewOfWorkspace } from './engine/portfolioProjection'
 import { defaultWorkspace } from './storage'
 
@@ -44,6 +50,40 @@ describe('contributionInput survives the load pipeline', () => {
     const result = migrateAndValidateState(defaultProfile, legacy)
     expect(result).not.toBeNull()
     expect(result?.assumptions.contributionInput).toBeUndefined()
+  })
+
+  it('round-trips a pinned AVD Eigenbeitrag through v1 singleton serialization', () => {
+    const assumptions = {
+      ...defaultAssumptions,
+      contributionInput: { kind: 'avd-own' as const, monthlyOwn: 150 },
+    }
+
+    const result = parseStateFromJson(buildStateJson(defaultProfile, assumptions))
+
+    expect(result?.assumptions.contributionInput).toEqual({
+      kind: 'avd-own',
+      monthlyOwn: 150,
+    })
+  })
+
+  it('round-trips a pinned AVD Eigenbeitrag through v2 workspace serialization', () => {
+    const workspace = {
+      ...defaultWorkspace,
+      baseline: {
+        ...defaultWorkspace.baseline,
+        assumptions: {
+          ...defaultWorkspace.baseline.assumptions,
+          contributionInput: { kind: 'avd-own' as const, monthlyOwn: 150 },
+        },
+      },
+    }
+
+    const result = parseWorkspaceJson(buildWorkspaceJson(workspace))
+
+    expect(result?.baseline.assumptions.contributionInput).toEqual({
+      kind: 'avd-own',
+      monthlyOwn: 150,
+    })
   })
 
   it.each([
