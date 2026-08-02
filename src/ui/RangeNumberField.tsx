@@ -145,7 +145,9 @@ export function RangeNumberField({
     if (!choice) return
     setDrag(null)
     if (focus) choiceRefs.current[index]?.focus()
-    onCommit(quantise(choice.value, min, max, step, decimals))
+    // Choices are rule-derived thresholds, so their exact values carry domain
+    // meaning even when they do not land on the slider/input step grid.
+    onCommit(Math.min(max, Math.max(min, choice.value)))
   }
 
   const moveChoiceFocus = (from: number, key: string) => {

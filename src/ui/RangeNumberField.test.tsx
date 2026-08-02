@@ -106,6 +106,21 @@ describe('RangeNumberField — quick choices', () => {
     expect(onCommit).toHaveBeenCalledWith(10)
   })
 
+  it('commits an off-grid rule-derived choice exactly', () => {
+    const exactMonthlyAllowanceThreshold = 350 / 12
+    const { onCommit } = setup({
+      step: 1,
+      choices: [{
+        value: exactMonthlyAllowanceThreshold,
+        label: 'Volle mittelbare Zulage',
+      }],
+    })
+
+    fireEvent.click(screen.getByText('Volle mittelbare Zulage'))
+
+    expect(onCommit).toHaveBeenCalledWith(exactMonthlyAllowanceThreshold)
+  })
+
   it('marks a card selected within half a step, not on strict equality', () => {
     // 149.73 is the kind of engine-derived float the bound value really carries.
     setup({ value: 149.73 })

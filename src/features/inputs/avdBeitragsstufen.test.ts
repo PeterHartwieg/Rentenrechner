@@ -135,6 +135,22 @@ describe('buildAvdBeitragsstufen — Vertragsrahmen tracks eligibility', () => {
     )
     expect(stufen.at(-1)?.label).toBe('Vertragsrahmen')
   })
+
+  it('solves the Vertragsrahmen before allowance saturation for 20 children', () => {
+    const manyKids = { ...BASE, eligibleChildren: 20 }
+    const stufen = buildAvdBeitragsstufen(RULES, manyKids)
+    const vertragsrahmen = stufen.at(-1)
+
+    expect(vertragsrahmen?.label).toBe('Vertragsrahmen')
+    expect(vertragsrahmen?.value).toBeCloseTo(50, 10)
+
+    const annualOwnContribution = vertragsrahmen!.value * 12
+    const allowances = computeAvdAllowances(annualOwnContribution, manyKids, RULES)
+    expect(annualOwnContribution + allowances.totalAllowanceAnnual).toBeCloseTo(
+      RULES.altersvorsorgedepot.contractContributionCapAnnual,
+      8,
+    )
+  })
 })
 
 describe('buildAvdBeitragsstufen — degenerate ceilings', () => {
