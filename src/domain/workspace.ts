@@ -5,6 +5,7 @@ import type { BasisrenteFundingResult } from './products/basisrente'
 import type { AltersvorsorgedepotFundingResult } from './products/altersvorsorgedepot'
 import type { RiesterFundingResult } from './products/riester'
 import type { ProductId } from './products/common'
+import type { ContributionInput } from './results'
 import type { MonteCarloAssumptions } from './monteCarlo'
 import type {
   BavInstance,
@@ -37,6 +38,13 @@ export interface WorkspaceAssumptionsV2 {
   compareSubMode?: 'equal_cash' | 'equal_input'
   /** Monthly net out-of-pocket comparison anchor (EUR/month). Default 200. */
   equalInputAmountEUR?: number
+  /**
+   * Compare-mode contribution-input mode, carried through the workspace so it
+   * survives the singleton↔workspace projection. See
+   * `ScenarioAssumptions.contributionInput`. Combine mode does not use it —
+   * there each instance's `monthlyOwnContribution` is a real input already.
+   */
+  contributionInput?: ContributionInput
   visibleInstanceIds?: string[]
 }
 

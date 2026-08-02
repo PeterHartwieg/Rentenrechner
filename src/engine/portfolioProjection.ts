@@ -563,6 +563,10 @@ export function singletonViewOfWorkspace(
     // projection. Undefined → callers get today's `equal_cash` behaviour.
     compareSubMode: wsa.compareSubMode,
     equalInputAmountEUR: wsa.equalInputAmountEUR,
+    // Round-trip the compare-mode contribution-input mode. Copied by name like
+    // every field here, so a new field that is not listed silently disappears
+    // on projection.
+    contributionInput: wsa.contributionInput,
     statutoryPension: wsa.statutoryPension,
     bav: defaultsForEmptySlots.bav,
     etf: defaultsForEmptySlots.etf,

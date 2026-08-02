@@ -118,6 +118,10 @@ function applyPreMergeMigrations(rawAssumptions: Record<string, unknown>): void 
   }
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
 /**
  * Apply post-merge migrations that read raw legacy keys (only present in
  * pre-#51 saves) and copy them onto the current schema fields if they were
@@ -134,6 +138,29 @@ function applyPostMergeMigrations(
   if (rawAssumptions.compareSubMode === 'equal_cash') {
     merged.compareSubMode = 'equal_cash'
     merged.equalInputAmountEUR = undefined
+  }
+
+  // `contributionInput` needs the same explicit carry as compareSubMode above,
+  // and for the same reason: `mergeDeep` only walks keys present in the
+  // defaults, and `defaultAssumptions` deliberately omits this one (its absence
+  // *is* the default — plain net mode). Without this the field would be dropped
+  // on every load, share-link ingest and scenario-library round-trip, silently
+  // reverting a pinned AVD Eigenbeitrag to net mode.
+  const rawInput = rawAssumptions.contributionInput
+  if (isPlainRecord(rawInput)) {
+    if (rawInput.kind === 'net') {
+      merged.contributionInput = { kind: 'net' }
+    } else if (
+      rawInput.kind === 'avd-own' &&
+      typeof rawInput.monthlyOwn === 'number' &&
+      Number.isFinite(rawInput.monthlyOwn) &&
+      rawInput.monthlyOwn >= 0
+    ) {
+      merged.contributionInput = { kind: 'avd-own', monthlyOwn: rawInput.monthlyOwn }
+    }
+    // Anything else (unknown kind, malformed payload) falls through to net mode
+    // rather than failing the whole load — a corrupt input mode should not cost
+    // the user their saved scenario.
   }
 
   const savedBav = rawAssumptions.bav as Record<string, unknown> | undefined
