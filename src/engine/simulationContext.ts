@@ -120,6 +120,26 @@ export interface InstanceCapitalPolicy {
 }
 
 /**
+ * Adjust a product's guaranteed principal for capital moved by transfer events.
+ * The source must not keep guaranteeing principal it transferred away, while a
+ * guaranteed target contract inherits the injected principal.
+ */
+export function guaranteePrincipalAfterTransfers(
+  basePrincipal: number,
+  policy?: InstanceCapitalPolicy,
+): number {
+  const injected = policy?.capitalInjections?.reduce(
+    (sum, entry) => sum + entry.amount,
+    0,
+  ) ?? 0
+  const withdrawn = policy?.capitalWithdrawals?.reduce(
+    (sum, entry) => sum + entry.amount,
+    0,
+  ) ?? 0
+  return Math.max(0, basePrincipal + injected - withdrawn)
+}
+
+/**
  * Optional overrides for buildContext (Group G issue 03 — additive only).
  *
  * Used by `simulatePortfolio` to inject pre-computed funding shares for the

@@ -1,5 +1,8 @@
 import type { RiesterProductResult, ReturnScenario } from '../../domain'
-import type { SimulationContext } from '../simulationContext'
+import {
+  guaranteePrincipalAfterTransfers,
+  type SimulationContext,
+} from '../simulationContext'
 import {
   buildProductResult,
 } from '../buildResult'
@@ -173,7 +176,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
         ? {
             label: `${Math.round(guaranteePct * 100)}% Beitragsgarantie`,
             floorCapital: (projection) =>
-              (projection.totalProductContributions + riester.existingCapital) * guaranteePct,
+              guaranteePrincipalAfterTransfers(
+                projection.totalProductContributions + riester.existingCapital,
+                ctx.instanceCapitalPolicy,
+              ) * guaranteePct,
           }
         : undefined,
     policy: withMarketReturnPolicy(

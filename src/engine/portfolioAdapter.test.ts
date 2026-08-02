@@ -1383,6 +1383,66 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     }
   })
 
+  it('Riester provider transfer conserves household capital with guarantees enabled', () => {
+    const workspace = rich()
+    const sourceId = 'riester-provider-source'
+    const targetId = 'riester-provider-target'
+    const source: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: sourceId,
+      currentValueEUR: 50_000,
+      monthlyOwnContribution: 100,
+    }
+    const target: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: targetId,
+      currentValueEUR: 0,
+      monthlyOwnContribution: 100,
+    }
+    const withoutTransfer: Workspace = {
+      ...workspace,
+      baseline: {
+        ...workspace.baseline,
+        assumptions: {
+          ...workspace.baseline.assumptions,
+          riester: [source, target],
+        },
+      },
+    }
+    const event = {
+      type: 'certified' as const,
+      year: de2026Rules.year,
+      sourceInstanceId: sourceId,
+      targetInstanceId: targetId,
+      amountEUR: 50_000,
+    }
+    const withTransfer: Workspace = {
+      ...withoutTransfer,
+      baseline: {
+        ...withoutTransfer.baseline,
+        assumptions: {
+          ...withoutTransfer.baseline.assumptions,
+          riester: [
+            { ...source, transferEvents: [event] },
+            { ...target, transferEvents: [event] },
+          ],
+        },
+      },
+    }
+
+    const baselineResults = simulatePortfolio(withoutTransfer, de2026Rules).perInstance
+    const transferResults = simulatePortfolio(withTransfer, de2026Rules).perInstance
+    for (let index = 0; index < baselineResults[sourceId].length; index += 1) {
+      const baselineHouseholdCapital =
+        baselineResults[sourceId][index].capitalAtRetirement +
+        baselineResults[targetId][index].capitalAtRetirement
+      const transferHouseholdCapital =
+        transferResults[sourceId][index].capitalAtRetirement +
+        transferResults[targetId][index].capitalAtRetirement
+      expect(transferHouseholdCapital).toBeCloseTo(baselineHouseholdCapital, 6)
+    }
+  })
+
   it('certified bAV → bAV transfer between two same-Durchführungsweg instances respects routing', () => {
     const workspace = rich()
     // bavA has monthlyGrossConversion=0 so the year-5 withdrawal is the only

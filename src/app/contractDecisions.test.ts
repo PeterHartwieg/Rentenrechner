@@ -351,6 +351,34 @@ describe('compatibleTransferTargets', () => {
     expect(targets).toHaveLength(0)
   })
 
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    '%s → same product: returns a certified provider-change target',
+    (slot) => {
+      const ws = makeRiesterAvdWorkspace()
+      const source = ws.baseline.assumptions[slot][0]
+      const target = {
+        ...source,
+        instanceId: `${slot}-provider-target`,
+      }
+      ;(ws.baseline.assumptions[slot] as Array<typeof target>).push(target)
+
+      const targets = compatibleTransferTargets(ws, source)
+      const providerTarget = targets.find(
+        (candidate) => candidate.kind === 'existing' &&
+          candidate.targetInstance.instanceId === target.instanceId,
+      )
+
+      expect(providerTarget).toBeDefined()
+      expect(providerTarget!.eventType).toBe('certified')
+      if (slot === 'riester') {
+        expect(targets[0].kind).toBe('existing')
+        if (targets[0].kind === 'existing') {
+          expect(targets[0].targetInstance.instanceId).toMatch(/^altersvorsorgedepot-/)
+        }
+      }
+    },
+  )
+
   it('pAV → ETF: returns surrender_reinvest event type', () => {
     const karinWs = makeKarinWorkspace()
     // Add an ETF instance for pAV to transfer to.

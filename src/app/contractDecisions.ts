@@ -652,16 +652,12 @@ export function kuendigenWhatIf(
  *   - Riester → AVD:              certified (AltZertG §1 Abs. 1 Nr. 4 explicit transfer path).
  *                                  If no AVD exists: emits a virtual "Neuen AVD anlegen" target.
  *   - AVD → Riester:              NOT allowed (AltZertG only allows Riester→AVD, not reverse).
- *   - AVD → AVD:                  REMOVED — no certified-transfer path between same-type AltZertG
- *                                  contracts; surrender_reinvest into certified products is
- *                                  validator-rejected (CERTIFIED_TARGET_PRODUCTS in scenarioSchema).
+ *   - AVD → AVD:                  certified provider/contract change (§3 Nr. 55c EStG).
  *   - bAV → bAV (same DFW):       certified (§4 BetrAVG Übertragung).
  *   - bAV → bAV (diff DFW):       REMOVED — cross-DFW is a surrender + new contribution, not a
  *                                  transfer; validator rejects surrender_reinvest into bAV.
  *   - Basisrente → Basisrente:    certified (§10 Abs. 2 Satz 3 EStG provider change).
- *   - Riester → Riester:          REMOVED — no statutory transfer mechanism; user must surrender
- *                                  + start fresh. Validator would reject surrender_reinvest into
- *                                  a certified product.
+ *   - Riester → Riester:          certified provider/contract change (§3 Nr. 55c EStG).
  *   - pAV → pAV:                  REMOVED — surrender_reinvest into pAV would bypass that
  *                                  product's own contribution path; validator rejects it.
  *   - pAV → ETF:                  surrender_reinvest (valid; ETF is not a certified product).
@@ -686,8 +682,8 @@ export function compatibleTransferTargets(
     return targets
   }
 
-  // Riester source: AVD instances are certified (AltZertG); surrender_reinvest only into ETF.
-  // Riester→Riester and Riester→other certified products are excluded (validator-rejected).
+  // Riester source: same-product provider changes and Riester→AVD are certified;
+  // surrender_reinvest is available only into ETF.
   if (sourceSlot === 'riester') {
     const activeAvd = wsa.altersvorsorgedepot.filter((i) => i.status !== 'surrendered' && i.status !== 'offered')
     if (activeAvd.length > 0) {
@@ -698,6 +694,12 @@ export function compatibleTransferTargets(
       // No AVD exists yet — offer a virtual "Neuen AVD anlegen" target.
       targets.push({ kind: 'create_new', productId: 'altersvorsorgedepot', eventType: 'certified' })
     }
+    // Keep the reform's Riester→AVD path ahead of provider-change targets: the
+    // decision UI shows only the first two transfer cards.
+    for (const inst of wsa.riester) {
+      if (inst.instanceId === sourceId || inst.status === 'surrendered' || inst.status === 'offered') continue
+      targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
+    }
     // Riester → ETF: surrender_reinvest is valid (ETF is not a certified product).
     for (const inst of wsa.etf) {
       if (inst.status === 'surrendered' || inst.status === 'offered') continue
@@ -706,10 +708,13 @@ export function compatibleTransferTargets(
     return targets
   }
 
-  // AVD source: AVD → Riester NOT allowed per AltZertG.
-  // AVD → other AVD and AVD → certified products excluded (validator-rejected surrender_reinvest).
-  // No valid certified or surrender_reinvest transfer targets for AVD.
+  // AVD source: same-product provider changes are certified. AVD → Riester
+  // remains excluded; the reform does not permit a return to the old regime.
   if (sourceSlot === 'altersvorsorgedepot') {
+    for (const inst of wsa.altersvorsorgedepot) {
+      if (inst.instanceId === sourceId || inst.status === 'surrendered' || inst.status === 'offered') continue
+      targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
+    }
     return targets
   }
 

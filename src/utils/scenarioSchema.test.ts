@@ -969,6 +969,34 @@ describe('validateTransferEvent — both source and target must exist', () => {
     ])
   })
 
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'preserves a certified %s provider transfer between distinct contracts',
+    (slot) => {
+      const ws = makeWorkspaceWithTwoInstances()
+      const source = ws.baseline.assumptions[slot][0]
+      const event = {
+        type: 'certified' as const,
+        year: 2030,
+        sourceInstanceId: source.instanceId,
+        targetInstanceId: `${slot}-provider-target`,
+        amountEUR: 1000,
+      }
+      const target = {
+        ...source,
+        instanceId: event.targetInstanceId,
+        transferEvents: [event],
+      }
+      source.transferEvents = [event]
+      ;(ws.baseline.assumptions[slot] as Array<typeof target>).push(target)
+
+      const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+
+      expect(validated).not.toBeNull()
+      expect(validated![slot][0].transferEvents).toEqual(source.transferEvents)
+      expect(validated![slot][1].transferEvents).toEqual(target.transferEvents)
+    },
+  )
+
   it.each(['bav', 'basisrente', 'riester'] as const)(
     'drops a certified %s self-target transfer',
     (slot) => {

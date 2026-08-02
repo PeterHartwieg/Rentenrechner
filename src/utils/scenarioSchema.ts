@@ -136,7 +136,9 @@ const VALID_TRANSFER_TYPES = ['certified', 'surrender_reinvest'] as const
 
 /** Exhaustive certified-transfer pairings modelled by contractDecisions. */
 const LEGAL_CERTIFIED_PAIRINGS = new Set([
+  'riester→riester',
   'riester→altersvorsorgedepot',
+  'altersvorsorgedepot→altersvorsorgedepot',
   'basisrente→basisrente',
   'bav→bav',
 ])
