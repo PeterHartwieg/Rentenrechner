@@ -200,8 +200,9 @@ export function buildPortfolioFunding(
   // all other instances.
   //
   // Fix (bisection-based cap enforcement):
-  //   We find the employee-gross scale factor `s` via bisection such that
-  //   sum_i(calculateBavFunding(employee_i × s).totalBavContributionAnnual) ≤ cap.
+  //   We find the contribution scale factor `s` via bisection such that
+  //   sum_i(calculateBavFunding(employee_i × s, fixedEmployer_i × s)
+  //     .totalBavContributionAnnual) ≤ cap.
   //   A simple proportional scale (cap / aggregate_at_s=1) would overshoot
   //   slightly because employer contributions (statutory subsidy capped by
   //   employer SV savings) are not perfectly linear in the employee gross when
@@ -227,18 +228,17 @@ export function buildPortfolioFunding(
       inst as unknown as Record<string, unknown>,
     ) as unknown as BavAssumptions,
   )
-  const totalEmployeeGrossMonthly = activeBavSingletons.reduce(
-    (s, singleton) => s + singleton.monthlyGrossConversion,
-    0,
-  )
-
   // Helper: compute aggregate totalBavContributionAnnual for a given scale.
   // Used both for the "needs scaling?" check and inside the bisection loop.
   function computeAggregateBavTotal(scale: number): number {
     return activeBavSingletons.reduce((sum, singleton) => {
       const scaled: BavAssumptions = scale === 1
         ? singleton
-        : { ...singleton, monthlyGrossConversion: singleton.monthlyGrossConversion * scale }
+        : {
+            ...singleton,
+            monthlyGrossConversion: singleton.monthlyGrossConversion * scale,
+            contractualFixedMonthly: singleton.contractualFixedMonthly * scale,
+          }
       return sum + calculateBavFunding(profile, rules, scaled).totalBavContributionAnnual
     }, 0)
   }
@@ -250,7 +250,7 @@ export function buildPortfolioFunding(
   const needsBavScaling = aggregateAtFullScale > bavTaxFreeLimitAnnual
 
   let bavScale = 1
-  if (needsBavScaling && totalEmployeeGrossMonthly > 0) {
+  if (needsBavScaling) {
     // Bisection: find `s` ∈ (0, 1] such that computeAggregateBavTotal(s) ≤ bavCap.
     // aggregate(s) is monotone increasing in s → bisection converges.
     let lo = 0
@@ -278,7 +278,11 @@ export function buildPortfolioFunding(
     const singleton = activeBavSingletons[i]
     const scaledSingleton: BavAssumptions = bavScale === 1
       ? singleton
-      : { ...singleton, monthlyGrossConversion: singleton.monthlyGrossConversion * bavScale }
+      : {
+          ...singleton,
+          monthlyGrossConversion: singleton.monthlyGrossConversion * bavScale,
+          contractualFixedMonthly: singleton.contractualFixedMonthly * bavScale,
+        }
     bavByInstanceId[inst.instanceId] = calculateBavFunding(profile, rules, scaledSingleton)
   }
   for (const inst of paidUpBav) {

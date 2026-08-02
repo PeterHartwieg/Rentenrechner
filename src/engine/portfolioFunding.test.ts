@@ -649,9 +649,17 @@ describe('buildPortfolioFunding — multi-bAV cap including employer contributio
     }
 
     const funding = buildPortfolioFunding(testWs, de2026Rules)
+    const accepted = funding.bavByInstanceId['bav-employer-only']
     expect(funding.headroom.bav.requestedAnnual).toBe(700 * 12)
     expect(funding.headroom.bav.constrained).toBe(true)
-    expect(funding.headroom.bav.remainingAnnual).toBe(0)
+    expect(funding.headroom.bav.remainingAnnual).toBeLessThan(0.01)
+    expect(accepted.totalBavContributionAnnual).toBeLessThanOrEqual(
+      funding.headroom.bav.capAnnual + 0.01,
+    )
+    expect(accepted.annualEmployerContribution).toBeCloseTo(
+      funding.headroom.bav.capAnnual,
+      1,
+    )
   })
 })
 
