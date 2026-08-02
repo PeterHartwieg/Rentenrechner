@@ -106,6 +106,14 @@ export interface UseAngabenStateApi {
    * in combine-mode (per-instance `monthlyContribution` is the source of truth there).
    */
   setSyncedMonthlyContribution: ((targetNet: number) => void) | undefined
+  /**
+   * Compare-mode only. Pins the AVD Eigenbeitrag and lets the sync derive the
+   * shared anchor from it, in one atomic state update. The statutory AVD
+   * thresholds apply to the Eigenbeitrag, which is why it — not the net cost —
+   * is what the AVD panel lets the user steer. `undefined` in combine-mode,
+   * where each instance's `monthlyOwnContribution` is already a real input.
+   */
+  setAvdOwnContribution: ((monthlyOwn: number) => void) | undefined
   // ------- Combine-mode-only workspace surface (mirror `usePortfolioState` subset) -------
   /** The full workspace (combine-mode only). `undefined` in compare-mode. */
   workspace: Workspace | undefined
@@ -545,7 +553,34 @@ export function useAngabenState(): UseAngabenStateApi {
     (targetNet: number) => {
       const target = normalizeMonthlyNettoBelastung(targetNet)
       setCompareAssumptions((current) =>
-        syncMonthlyContributions(target, current, compareProfile, de2026Rules),
+        // See useCalculatorState: entering a net amount releases a pinned AVD
+        // Eigenbeitrag, atomically in the same state update.
+        syncMonthlyContributions(
+          target,
+          { ...current, contributionInput: { kind: 'net' } },
+          compareProfile,
+          de2026Rules,
+        ),
+      )
+    },
+    [compareProfile],
+  )
+
+  const setAvdOwnContribution = useCallback(
+    (monthlyOwn: number) => {
+      setCompareAssumptions((current) =>
+        syncMonthlyContributions(
+          0, // ignored: the anchor is derived from the pinned Eigenbeitrag
+          {
+            ...current,
+            contributionInput: {
+              kind: 'avd-own',
+              monthlyOwn: normalizeMonthlyNettoBelastung(monthlyOwn),
+            },
+          },
+          compareProfile,
+          de2026Rules,
+        ),
       )
     },
     [compareProfile],
@@ -652,6 +687,7 @@ export function useAngabenState(): UseAngabenStateApi {
     // Compare-mode-only convenience setters
     resetToDefaults: isCombine ? undefined : resetToDefaults,
     setSyncedMonthlyContribution: isCombine ? undefined : setSyncedMonthlyContribution,
+    setAvdOwnContribution: isCombine ? undefined : setAvdOwnContribution,
     // Combine-mode-only workspace surface
     workspace: isCombine && workspace ? workspace : undefined,
     baseline: isCombine && workspace ? workspace.baseline : undefined,

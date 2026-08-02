@@ -296,6 +296,7 @@ function CompareBody({
       assumptions={assumptions}
       onAssumptionsChange={setAssumptions}
       onSyncMonthlyContribution={setSyncedMonthlyContribution}
+      onAvdOwnContributionChange={angabenState.setAvdOwnContribution}
       simulation={simulation}
       selectedResults={selectedResults}
       kvdrMember={taxModes.kvdrMember}

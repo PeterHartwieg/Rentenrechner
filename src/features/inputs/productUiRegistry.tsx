@@ -58,6 +58,11 @@ export interface ProductInputsContext {
   readonly bavMinAnnual: number
   readonly bavMinMonthly: number
   readonly bavEntitlementMax: number
+  /**
+   * Compare-mode only: pins the AVD Eigenbeitrag instead of the net anchor.
+   * Optional so panels that have not adopted the mode keep working.
+   */
+  readonly onAvdOwnContributionChange?: (monthlyOwn: number) => void
 }
 
 /**
@@ -192,6 +197,7 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
         assumptions={ctx.assumptions}
         onAssumptionsChange={ctx.onAssumptionsChange}
         onSyncMonthlyContribution={ctx.onSyncMonthlyContribution}
+        onAvdOwnContributionChange={ctx.onAvdOwnContributionChange}
         profile={ctx.profile}
         avdFunding={ctx.simulation.altersvorsorgedepotFunding}
         avdProductResult={ctx.selectedResults.find((r) => r.productId === 'altersvorsorgedepot')}
