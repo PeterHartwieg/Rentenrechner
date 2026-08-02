@@ -960,6 +960,22 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
       0,
     )
     expect(acceptedAnnual).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+
+    const scheduleA = funding.riesterYearlyByInstanceId['riester-cap-a']
+    const scheduleB = funding.riesterYearlyByInstanceId['riester-cap-b']
+    expect(scheduleA).toHaveLength(
+      ws.baseline.profile.retirementAge - ws.baseline.profile.age,
+    )
+    scheduleA.forEach((entryA, yearIndex) => {
+      const entryB = scheduleB[yearIndex]
+      expect(
+        entryA.annualOwnContribution + entryA.totalAllowanceAnnual +
+          entryB.annualOwnContribution + entryB.totalAllowanceAnnual,
+      ).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+      expect(
+        [entryA, entryB].filter((entry) => entry.receivesPortfolioAllowance),
+      ).toHaveLength(1)
+    })
   })
 
   it('two instances share one household allowance instead of doubling it', () => {

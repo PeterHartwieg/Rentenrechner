@@ -193,6 +193,8 @@ export function simulatePortfolio(
   }))
   runFor(wsa.riester, simulateRiester, (inst) => withBavFundingAnchor({
     riesterFundingOverride: portfolioFunding.riesterByInstanceId[inst.instanceId],
+    riesterFundingScheduleOverride:
+      portfolioFunding.riesterYearlyByInstanceId[inst.instanceId],
   }))
 
   // §20 Abs. 9 EStG grants ONE saver allowance per taxpayer per year (€1 000

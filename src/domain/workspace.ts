@@ -102,6 +102,13 @@ export interface PortfolioFunding {
   /** Map of riester instance id → funding result. */
   riesterByInstanceId: Record<string, RiesterFundingResult>
   /**
+   * Map of Riester instance id → authoritative funding result for each
+   * accumulation year. This keeps changing allowances and the shared §10a cap
+   * in the portfolio funding boundary instead of re-deriving them in the
+   * product simulator.
+   */
+  riesterYearlyByInstanceId: Record<string, RiesterFundingResult[]>
+  /**
    * Authoritative combine-mode funding headroom. Simulation, recommendation,
    * and contract-decision surfaces consume this snapshot instead of
    * reconstructing statutory caps from raw workspace inputs.

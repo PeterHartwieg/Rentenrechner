@@ -1251,6 +1251,7 @@ describe('PortfolioAdapter — PortfolioFunding shape', () => {
     expect(portfolioFunding.basisrenteByInstanceId).toBeDefined()
     expect(portfolioFunding.altersvorsorgedepotByInstanceId).toBeDefined()
     expect(portfolioFunding.riesterByInstanceId).toBeDefined()
+    expect(portfolioFunding.riesterYearlyByInstanceId).toBeDefined()
     expect(Array.isArray(portfolioFunding.notes)).toBe(true)
   })
 })
@@ -2379,6 +2380,11 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
     const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
     const result = perInstance[riester.instanceId][0]
     const acceptedYearOne = portfolioFunding.riesterByInstanceId[riester.instanceId]
+    const schedule = portfolioFunding.riesterYearlyByInstanceId[riester.instanceId]
+    expect(schedule).toHaveLength(
+      workspace.baseline.profile.retirementAge - workspace.baseline.profile.age,
+    )
+    expect(schedule[0]).toEqual(acceptedYearOne)
     const expectedYearOneProductAnnual =
       acceptedYearOne.annualOwnContribution +
       acceptedYearOne.totalAllowanceAnnual +
@@ -2391,12 +2397,26 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
       de2026Rules.riester.annualCapInclAllowances -
       de2026Rules.riester.grundzulage
     ) / 12
-    const yearTwoFunding = calculateRiesterFunding(
+    const expectedYearTwoFunding = calculateRiesterFunding(
       de2026Rules,
       portfolioFunding.salaryForOtherFunding,
       { ...riester, monthlyOwnContribution: yearTwoOwnMonthly },
       workspace.baseline.profile,
       { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
+    )
+    const yearTwoFunding = schedule[1]
+    expect(yearTwoFunding.monthlyOwnContribution).toBeCloseTo(yearTwoOwnMonthly, 2)
+    expect(yearTwoFunding.totalAllowanceAnnual).toBeCloseTo(
+      expectedYearTwoFunding.totalAllowanceAnnual,
+      3,
+    )
+    expect(yearTwoFunding.guenstigerpruefungBenefitAnnual).toBeCloseTo(
+      expectedYearTwoFunding.guenstigerpruefungBenefitAnnual,
+      3,
+    )
+    expect(yearTwoFunding.monthlyNetCost).toBeCloseTo(
+      expectedYearTwoFunding.monthlyNetCost,
+      3,
     )
     const expectedYearTwoProductAnnual =
       yearTwoFunding.annualOwnContribution +

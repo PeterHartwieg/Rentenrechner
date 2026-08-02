@@ -472,7 +472,9 @@ export function buildPortfolioFunding(
 
   function calculateActiveRiester(
     entries: typeof activeRiesterSingletons,
+    yearIndex = 0,
   ): Record<string, RiesterFundingResult> {
+    const contributionYear = rules.year + yearIndex
     const householdOwnMonthly = entries.reduce(
       (sum, { singleton }) => sum + singleton.monthlyOwnContribution,
       0,
@@ -485,6 +487,11 @@ export function buildPortfolioFunding(
         salaryForOtherFunding,
         { ...singleton, monthlyOwnContribution: householdOwnMonthly },
         profile,
+        {
+          contributionYear,
+          isFirstContributionYear:
+            yearIndex === 0 && !singleton.eligibility.careerStarterBonusUsed,
+        },
       ),
     }))
     const recipient = householdCandidates.reduce<(typeof householdCandidates)[number] | undefined>(
@@ -502,6 +509,11 @@ export function buildPortfolioFunding(
         salaryForOtherFunding,
         singleton,
         profile,
+        {
+          contributionYear,
+          isFirstContributionYear:
+            yearIndex === 0 && !singleton.eligibility.careerStarterBonusUsed,
+        },
       )
       const receivesPortfolioAllowance = instance.instanceId === recipient?.instanceId
       const portfolioTaxBenefitShare = householdOwnMonthly > 0
@@ -524,7 +536,10 @@ export function buildPortfolioFunding(
     }))
   }
 
-  function calculateActiveRiesterAtScale(scale: number): Record<string, RiesterFundingResult> {
+  function calculateActiveRiesterAtScale(
+    scale: number,
+    yearIndex = 0,
+  ): Record<string, RiesterFundingResult> {
     return calculateActiveRiester(activeRiesterSingletons.map(({ instance, singleton }) => ({
       instance,
       singleton: scale === 1
@@ -533,7 +548,7 @@ export function buildPortfolioFunding(
             ...singleton,
             monthlyOwnContribution: singleton.monthlyOwnContribution * scale,
           },
-    })))
+    })), yearIndex)
   }
 
   const aggregateRiesterContractAnnual = (
@@ -544,54 +559,87 @@ export function buildPortfolioFunding(
     0,
   )
 
-  const requestedRiesterByInstanceId = calculateActiveRiesterAtScale(1)
-  const requestedRiesterAnnual = aggregateRiesterContractAnnual(
-    requestedRiesterByInstanceId,
-  )
-  const needsRiesterScaling = requestedRiesterAnnual > riesterCapAnnual
-  let riesterScale = 1
-  if (needsRiesterScaling) {
-    let lo = 0
-    let hi = 1
-    for (let i = 0; i < 60; i++) {
-      const mid = (lo + hi) / 2
-      const aggregate = aggregateRiesterContractAnnual(
-        calculateActiveRiesterAtScale(mid),
-      )
-      if (aggregate <= riesterCapAnnual) {
-        lo = mid
-        if (riesterCapAnnual - aggregate < 0.001) break
-      } else hi = mid
-    }
-    riesterScale = lo
-  }
-
-  const acceptedRiesterByInstanceId = riesterScale === 1
-    ? requestedRiesterByInstanceId
-    : calculateActiveRiesterAtScale(riesterScale)
   const householdRequestedOwnMonthly = activeRiesterSingletons.reduce(
     (sum, { singleton }) => sum + singleton.monthlyOwnContribution,
     0,
   )
-  const riesterByInstanceId: Record<string, RiesterFundingResult> = Object.fromEntries(
-    activeRiesterSingletons.map(({ instance, singleton }) => [
-      instance.instanceId,
-      {
-        ...acceptedRiesterByInstanceId[instance.instanceId],
-        portfolioRequestedOwnContributionMonthly: singleton.monthlyOwnContribution,
-        portfolioHouseholdRequestedOwnContributionMonthly: householdRequestedOwnMonthly,
-      },
-    ]),
+
+  function calculateRiesterYear(yearIndex: number): {
+    acceptedByInstanceId: Record<string, RiesterFundingResult>
+    requestedAnnual: number
+    needsScaling: boolean
+  } {
+    const requestedByInstanceId = calculateActiveRiesterAtScale(1, yearIndex)
+    const requestedAnnual = aggregateRiesterContractAnnual(requestedByInstanceId)
+    const needsScaling = requestedAnnual > riesterCapAnnual
+    let scale = 1
+    if (needsScaling) {
+      let lo = 0
+      let hi = 1
+      for (let i = 0; i < 60; i++) {
+        const mid = (lo + hi) / 2
+        const aggregate = aggregateRiesterContractAnnual(
+          calculateActiveRiesterAtScale(mid, yearIndex),
+        )
+        if (aggregate <= riesterCapAnnual) {
+          lo = mid
+          if (riesterCapAnnual - aggregate < 0.001) break
+        } else hi = mid
+      }
+      scale = lo
+    }
+
+    const accepted = scale === 1
+      ? requestedByInstanceId
+      : calculateActiveRiesterAtScale(scale, yearIndex)
+    const acceptedByInstanceId = Object.fromEntries(
+      activeRiesterSingletons.map(({ instance, singleton }) => [
+        instance.instanceId,
+        {
+          ...accepted[instance.instanceId],
+          portfolioRequestedOwnContributionMonthly: singleton.monthlyOwnContribution,
+          portfolioHouseholdRequestedOwnContributionMonthly: householdRequestedOwnMonthly,
+        },
+      ]),
+    )
+
+    return {
+      acceptedByInstanceId,
+      requestedAnnual,
+      needsScaling,
+    }
+  }
+
+  const yearsToRetirement = Math.max(1, profile.retirementAge - profile.age)
+  const riesterYears = Array.from(
+    { length: yearsToRetirement },
+    (_, yearIndex) => calculateRiesterYear(yearIndex),
   )
+  const currentRiesterYear = riesterYears[0]
+  const requestedRiesterAnnual = currentRiesterYear.requestedAnnual
+  const needsRiesterScaling = currentRiesterYear.needsScaling
+  const riesterByInstanceId: Record<string, RiesterFundingResult> = {
+    ...currentRiesterYear.acceptedByInstanceId,
+  }
+  const riesterYearlyByInstanceId: Record<string, RiesterFundingResult[]> =
+    Object.fromEntries(activeRiesterSingletons.map(({ instance }) => [
+      instance.instanceId,
+      riesterYears.map((year) => year.acceptedByInstanceId[instance.instanceId]),
+    ]))
   for (const inst of paidUpRiester) {
     const singleton = stripInstanceCommonKeys(
       inst as unknown as Record<string, unknown>,
     ) as unknown as RiesterAssumptions
-    riesterByInstanceId[inst.instanceId] = paidUpRiesterFunding(
+    const funding = paidUpRiesterFunding(
       rules,
       salaryForOtherFunding,
       singleton,
       (r, s, si) => calculateRiesterFunding(r, s, si, profile),
+    )
+    riesterByInstanceId[inst.instanceId] = funding
+    riesterYearlyByInstanceId[inst.instanceId] = Array.from(
+      { length: yearsToRetirement },
+      () => funding,
     )
   }
 
@@ -695,6 +743,7 @@ export function buildPortfolioFunding(
     basisrenteByInstanceId,
     altersvorsorgedepotByInstanceId,
     riesterByInstanceId,
+    riesterYearlyByInstanceId,
     salaryForOtherFunding,
     headroom: {
       bav: {
@@ -744,7 +793,7 @@ export function buildPortfolioFunding(
         usedPct: riesterCapAnnual > 0
           ? Math.min(1, fundedRiesterAnnual / riesterCapAnnual)
           : 0,
-        constrained: needsRiesterScaling || riesterScale < 1,
+        constrained: needsRiesterScaling,
         allowanceAnnual: riesterAllowanceAnnual,
       },
       altersvorsorgedepotByInstanceId: altersvorsorgedepotHeadroomByInstanceId,

@@ -1,8 +1,8 @@
 # Finanzfluss-AVD-Audit — Design-Referenzmockups
 
-Standalone HTML mockups (Design Components) for the frontend changes proposed in
-`docs/finanzfluss-avd-frontend-audit.md`. Open directly in a browser
-(keep `support.js` next to them).
+Standalone, network-free HTML mockups (Design Components) for the frontend
+changes proposed in `docs/finanzfluss-avd-frontend-audit.md`. Open directly in
+a browser (keep `support.js` and `react-runtime.js` next to them).
 
 ## Files
 
@@ -25,7 +25,9 @@ Standalone HTML mockups (Design Components) for the frontend changes proposed in
   Sparform grid, right rail, footer). ETF row's Sparrate is live-coupled to
   the AVD Netto-Aufwand (fair-comparison invariant).
 
-- **support.js** — runtime for the .dc.html files. Not for production use.
+- **support.js** — offline-only runtime for the .dc.html files. Not for production use.
+- **react-runtime.js** — locally bundled React runtime used only by these mockups.
+  Rebuild from `react-runtime.source.ts` with the command documented in that file.
 
 ## Implementation notes
 

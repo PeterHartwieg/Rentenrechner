@@ -1,4 +1,5 @@
-// GENERATED from dc-runtime/src/*.ts — do not edit. Rebuild with `cd dc-runtime && bun run build`.
+// Vendored dc-runtime snapshot, adapted to use local-only resources. Do not
+// restore CDN loaders or network fallbacks: repository mockups must work offline.
 "use strict";
 (() => {
   var __defProp = Object.defineProperty;
@@ -155,13 +156,6 @@
     runtime.markFetched(rootName);
     runtime.setRootName(rootName);
     runtime.adoptParsed(rootName, parsed);
-    if (!window.__resources) {
-      fetch(location.href).then((res) => res.ok ? res.text() : "").then((t) => {
-        const raw = t ? parseDcText(t) : null;
-        if (raw?.template) runtime.updateHtml(rootName, raw.template);
-      }).catch(() => {
-      });
-    }
     const dc = doc.querySelector("x-dc");
     const hostEl = doc.createElement("div");
     hostEl.id = "dc-root";
@@ -1139,19 +1133,6 @@
     return b instanceof Blob ? b : null;
   }
 
-  // src/cdn.ts
-  var REACT_URL = "https://unpkg.com/react@18.3.1/umd/react.production.min.js";
-  var REACT_SRI = "sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z";
-  var REACT_DOM_URL = "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js";
-  var REACT_DOM_SRI = "sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1";
-  var BABEL_URL = "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js";
-  var BABEL_SRI = "sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y";
-  function cdnScriptFor(url, sri) {
-    const res = window.__resources;
-    const v = res ? res[url] : void 0;
-    return typeof v === "string" && v ? { src: v } : { src: url, integrity: sri };
-  }
-
   // src/external.ts
   var isCustomElementName = (n) => !n.includes(".") && n.includes("-");
   function isRenderableType(g) {
@@ -1170,25 +1151,13 @@
   var GLOBAL_POLL_TIMEOUT_MS = 3e4;
   function createExternalModules(onResolved) {
     const cache = /* @__PURE__ */ new Map();
-    let babelLoading = null;
     const reportedMissing = /* @__PURE__ */ new Map();
     const polling = /* @__PURE__ */ new Set();
     function ensureBabel() {
       if (window.Babel) return Promise.resolve();
-      if (babelLoading) return babelLoading;
-      const babel = cdnScriptFor(BABEL_URL, BABEL_SRI);
-      babelLoading = new Promise((res, rej) => {
-        const s = document.createElement("script");
-        s.src = babel.src;
-        if (babel.integrity) {
-          s.integrity = babel.integrity;
-          s.crossOrigin = "anonymous";
-        }
-        s.onload = () => res();
-        s.onerror = rej;
-        document.head.appendChild(s);
-      });
-      return babelLoading;
+      return Promise.reject(
+        new Error("dc-runtime: Babel imports are disabled in offline mockups")
+      );
     }
     const pending = /* @__PURE__ */ new Map();
     function load(kind, url, after) {
@@ -1203,10 +1172,7 @@
       const p = ready.then(() => {
         const pre = bundledBlob(url);
         if (pre) return pre.text();
-        return fetch(url).then((r) => {
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          return r.text();
-        });
+        throw new Error("dc-runtime: external resources are disabled in offline mockups");
       }).then((src) => {
         const code = kind === "jsx" ? window.Babel.transform(src, {
           filename: url,
@@ -1369,6 +1335,12 @@
     let designDocMode = null;
     let canvasStyleEl = null;
     let appTheme = "light";
+    const isRemoteResource = (value) => /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(
+      String(value || "").trim()
+    );
+    const hasRemoteCssUrl = (value) => /url\(\s*["']?(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(
+      String(value || "")
+    );
     try {
       const ds = doc.documentElement.dataset.theme;
       appTheme = ds === "dark" || ds === "light" ? ds : new URLSearchParams(doc.defaultView?.location.search ?? "").get(
@@ -1434,6 +1406,14 @@
           const child = raw[i];
           const tag = child.tagName;
           const mayBePartial = streaming && !helmetClosed && i === raw.length - 1;
+          const resourceUrl = child.getAttribute("src") || child.getAttribute("href");
+          if (
+            isRemoteResource(resourceUrl) ||
+            (tag === "STYLE" && hasRemoteCssUrl(child.textContent))
+          ) {
+            console.error("[dc-runtime] remote helmet resource blocked");
+            continue;
+          }
           if (tag === "SCRIPT") {
             if (mayBePartial) continue;
             const key = "SCRIPT|" + (child.getAttribute("src") || child.textContent || "");
@@ -1648,19 +1628,7 @@
       const pre = res ? res[url] : void 0;
       const target = typeof pre === "string" && pre ? pre : url;
       const blob = bundledBlob(target);
-      (blob ? blob.text() : fetch(target).then((res2) => {
-        if (!res2.ok) {
-          console.error(
-            '[dc-runtime] sibling fetch for "' + name + '" failed:',
-            url,
-            "returned",
-            res2.status,
-            "\u2014 the reference renders as an empty placeholder."
-          );
-          return "";
-        }
-        return res2.text();
-      })).then((t) => {
+      (blob ? blob.text() : Promise.resolve("")).then((t) => {
         if (!t) return;
         const parsed = parseDcText(t);
         if (!parsed) {
@@ -1820,30 +1788,12 @@
     s.textContent = "x-dc{display:none!important}";
     document.head.appendChild(s);
   }
-  function loadScript(src, integrity) {
-    return new Promise((resolve2, reject) => {
-      //! nosemgrep: create-script-element
-      const s = document.createElement("script");
-      s.src = src;
-      if (integrity) {
-        s.integrity = integrity;
-        s.crossOrigin = "anonymous";
-      }
-      s.async = false;
-      s.onload = () => resolve2();
-      s.onerror = () => reject(new Error(`failed to load ${src}`));
-      document.head.appendChild(s);
-    });
-  }
   function loadReactUmd() {
     const w = window;
     if (w.React && w.ReactDOM) return Promise.resolve();
-    const react = cdnScriptFor(REACT_URL, REACT_SRI);
-    const reactDom = cdnScriptFor(REACT_DOM_URL, REACT_DOM_SRI);
-    return Promise.all([
-      loadScript(react.src, react.integrity),
-      loadScript(reactDom.src, reactDom.integrity)
-    ]).then(() => void 0);
+    return Promise.reject(
+      new Error("dc-runtime: load react-runtime.js before support.js")
+    );
   }
   function init() {
     const runtime = createRuntime(document);

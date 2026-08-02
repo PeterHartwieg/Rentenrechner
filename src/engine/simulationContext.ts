@@ -35,6 +35,12 @@ export interface SimulationContext {
   basisrenteFunding: BasisrenteFundingResult
   altersvorsorgedepotFunding: AltersvorsorgedepotFundingResult
   riesterFunding: RiesterFundingResult
+  /**
+   * Combine-mode per-year Riester funding schedule, owned by
+   * `buildPortfolioFunding`. Singleton compare mode leaves this undefined and
+   * derives each year from its single assumption block.
+   */
+  riesterFundingSchedule?: readonly RiesterFundingResult[]
   statutoryPension: StatutoryPensionResult
   /**
    * Gross GRV pension at retirement (EUR/month). Threaded into every product's
@@ -168,6 +174,8 @@ export interface BuildContextOverrides {
   altersvorsorgedepotFundingOverride?: AltersvorsorgedepotFundingResult
   /** Pre-computed Riester funding for the active instance. */
   riesterFundingOverride?: RiesterFundingResult
+  /** Portfolio-owned per-year Riester funding for the active instance. */
+  riesterFundingScheduleOverride?: readonly RiesterFundingResult[]
   /** Aggregate post-bAV salary baseline for combine-mode downstream funding. */
   salaryForOtherFundingOverride?: SalaryResult
   /**
@@ -278,6 +286,7 @@ export function buildContext(
     basisrenteFunding,
     altersvorsorgedepotFunding,
     riesterFunding,
+    riesterFundingSchedule: overrides?.riesterFundingScheduleOverride,
     statutoryPension: grvProjection,
     grvGrossMonthlyPension: grvProjection.grossMonthlyPension,
     retirementHealthStatus: assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr',

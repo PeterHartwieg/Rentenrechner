@@ -7,7 +7,6 @@ import {
   buildProductResult,
 } from '../buildResult'
 import {
-  allocateRiesterHouseholdFunding,
   afterTaxRiesterLumpSum,
   calculateRiesterFunding,
 } from '../riester'
@@ -56,93 +55,19 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     riesterFunding.totalAllowanceAnnual / 12
   const yearlyFundingCache = new Map<number, ReturnType<typeof calculateRiesterFunding>>()
   const calculateFundingForYear = (yearIndex: number) => {
-    const receivesPortfolioAllowance = riesterFunding.receivesPortfolioAllowance
-    if (receivesPortfolioAllowance === undefined) {
-      return calculateRiesterFunding(
-        rules,
-        ctx.salaryForOtherFunding,
-        scaledRiester,
-        profile,
-        {
-          contributionYear: rules.year + yearIndex,
-          isFirstContributionYear:
-            yearIndex === 0 && !riester.eligibility.careerStarterBonusUsed,
-        },
-      )
-    }
+    const scheduled = ctx.riesterFundingSchedule?.[yearIndex]
+    if (scheduled) return scheduled
 
-    const householdEligibility =
-      riesterFunding.portfolioHouseholdEligibility ?? scaledRiester.eligibility
-    const requestedHouseholdOwnMonthly =
-      riesterFunding.portfolioHouseholdRequestedOwnContributionMonthly ??
-      riesterFunding.portfolioHouseholdOwnContributionMonthly ??
-      effectiveMonthlyOwnContribution
-    const requestedOwnMonthly =
-      riesterFunding.portfolioRequestedOwnContributionMonthly ??
-      effectiveMonthlyOwnContribution
-    const portfolioTaxBenefitShare = riesterFunding.portfolioTaxBenefitShare ?? 1
-    const householdOptions = {
-      contributionYear: rules.year + yearIndex,
-      isFirstContributionYear:
-        yearIndex === 0 && !householdEligibility.careerStarterBonusUsed,
-    }
-    const calculateHousehold = (monthlyOwnContribution: number) =>
-      calculateRiesterFunding(
-        rules,
-        ctx.salaryForOtherFunding,
-        {
-          ...scaledRiester,
-          eligibility: householdEligibility,
-          monthlyOwnContribution,
-        },
-        profile,
-        householdOptions,
-      )
-
-    let yearlyScale = 1
-    const requestedHouseholdFunding = calculateHousehold(requestedHouseholdOwnMonthly)
-    if (
-      requestedHouseholdOwnMonthly * 12 +
-        requestedHouseholdFunding.totalAllowanceAnnual >
-      rules.riester.annualCapInclAllowances
-    ) {
-      let lo = 0
-      let hi = 1
-      for (let i = 0; i < 60; i++) {
-        const mid = (lo + hi) / 2
-        const householdOwnMonthly = requestedHouseholdOwnMonthly * mid
-        const funding = calculateHousehold(householdOwnMonthly)
-        const acceptedAnnual =
-          householdOwnMonthly * 12 + funding.totalAllowanceAnnual
-        if (acceptedAnnual <= rules.riester.annualCapInclAllowances) {
-          lo = mid
-          if (rules.riester.annualCapInclAllowances - acceptedAnnual < 0.001) break
-        } else hi = mid
-      }
-      yearlyScale = lo
-    }
-
-    const yearlyHouseholdOwnMonthly = requestedHouseholdOwnMonthly * yearlyScale
-    const yearlyOwnMonthly = requestedOwnMonthly * yearlyScale
-    const householdFunding = yearlyScale === 1
-      ? requestedHouseholdFunding
-      : calculateHousehold(yearlyHouseholdOwnMonthly)
-    const ownFunding = calculateRiesterFunding(
+    return calculateRiesterFunding(
       rules,
       ctx.salaryForOtherFunding,
-      { ...scaledRiester, monthlyOwnContribution: yearlyOwnMonthly },
+      scaledRiester,
       profile,
       {
         contributionYear: rules.year + yearIndex,
         isFirstContributionYear:
-          yearIndex === 0 && !scaledRiester.eligibility.careerStarterBonusUsed,
+          yearIndex === 0 && !riester.eligibility.careerStarterBonusUsed,
       },
-    )
-    return allocateRiesterHouseholdFunding(
-      ownFunding,
-      householdFunding,
-      receivesPortfolioAllowance,
-      portfolioTaxBenefitShare,
     )
   }
   const fundingForYear = (yearIndex: number) => {
