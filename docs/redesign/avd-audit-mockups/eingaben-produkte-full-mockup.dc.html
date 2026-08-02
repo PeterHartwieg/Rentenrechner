@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body { margin:0; background:#f8f4eb; font-family:'IBM Plex Sans',system-ui,sans-serif; color:#111111; }
+a { color:#111111; } a:hover { color:#8a2e2e; }
+input[type=range], input[type=checkbox], input[type=radio] { accent-color:#8a2e2e; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline:2px solid #8a2e2e; outline-offset:2px; }
+</style>
+</helmet>
+<div style="min-height:100vh; display:flex; flex-direction:column; background:#f8f4eb;">
+
+  <!-- StatusBar -->
+  <div style="background:#111111; color:#ffffff; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.4px; display:flex; align-items:center; gap:16px; padding:6px 56px;">
+    <span style="opacity:0.7;">rentenwiki.de</span>
+    <span style="opacity:0.45;">·</span>
+    <span style="opacity:0.7;">Gemeinnütziges Projekt</span>
+    <span style="opacity:0.45;">·</span>
+    <span style="opacity:0.7;">Open Source</span>
+    <span style="margin-left:auto; opacity:0.7;">v1.x · 2026-08-02</span>
+  </div>
+
+  <!-- AppHeader -->
+  <header style="background:#f8f4eb; border-bottom:2px solid #1a1a1a; padding:24px 56px 20px;">
+    <div style="display:flex; align-items:baseline; justify-content:space-between; gap:24px;">
+      <div style="min-width:0; display:flex; flex-direction:column; gap:4px;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; color:#7a7268; text-transform:uppercase;">Altersvorsorge verstehen</div>
+        <h1 style="margin:0; font-size:32px; font-weight:600; letter-spacing:-0.4px; color:#111111;">RentenWiki</h1>
+      </div>
+      <nav style="display:flex; gap:0; font-size:13px; flex-shrink:0;">
+        <a href="#" style="padding:4px 14px; border-bottom:2px solid transparent; margin-bottom:-2px; color:#4a4a4a; text-decoration:none;">Startseite</a>
+        <a href="#" style="padding:4px 14px; border-bottom:2px solid #1a1a1a; margin-bottom:-2px; color:#111111; font-weight:600; text-decoration:none;">Angaben</a>
+        <a href="#" style="padding:4px 14px; border-bottom:2px solid transparent; margin-bottom:-2px; color:#4a4a4a; text-decoration:none;">Vergleich</a>
+        <a href="#" style="padding:4px 14px; border-bottom:2px solid transparent; margin-bottom:-2px; color:#4a4a4a; text-decoration:none;">Artikel</a>
+        <a href="#" style="padding:4px 14px; border-bottom:2px solid transparent; margin-bottom:-2px; color:#4a4a4a; text-decoration:none;">Methode</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Disclaimer banner -->
+  <div style="display:flex; align-items:center; gap:8px; padding:6px 56px; background:#f2e6e2; border-bottom:1px solid #1a1a1a;">
+    <span style="color:#8a2e2e; font-size:13px; font-weight:700;">ⓘ</span>
+    <span style="font-size:13px; color:#8a2e2e;">Keine Anlage-, Steuer- oder Rechtsberatung — alle Ergebnisse sind Modellrechnungen.</span>
+    <span style="margin-left:auto; color:#7a7268; font-size:14px; cursor:pointer;">✕</span>
+  </div>
+
+  <!-- Page body -->
+  <div style="flex:1; width:100%; max-width:1180px; margin:0 auto; padding:36px 56px 32px; display:flex; flex-direction:column; gap:24px; box-sizing:border-box;">
+
+    <nav style="display:flex; align-items:center; gap:10px; font-size:12.5px; color:#4a4a4a;">
+      <a href="#" style="color:#111111; text-decoration:underline; text-underline-offset:2px;">Startseite</a>
+      <span style="color:#7a7268;">›</span>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.5px; text-transform:uppercase; color:#7a7268;">Verträge</span>
+    </nav>
+
+    <div style="display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:40px; align-items:start;">
+
+      <!-- ===== Article body ===== -->
+      <article style="min-width:0; max-width:760px;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.4px; text-transform:uppercase; color:#7a7268;">Mein Plan · Schritt 2 von 2</div>
+
+        <!-- DStepIndicator -->
+        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a; margin:18px 0 4px;">
+          <div style="display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px 16px; border-right:1px solid #d8d2c7;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:0.4px; font-weight:600; color:#111111;">I.</span>
+            <span style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+              <span style="font-size:14px; font-weight:600; color:#111111; line-height:1.2;">Deine Angaben</span>
+              <span style="font-size:12px; color:#7a7268; line-height:1.3;">Person, Einkommen, Renteneintritt</span>
+            </span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase; color:#4a4a4a; font-weight:600; white-space:nowrap;">Erledigt</span>
+          </div>
+          <div style="display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px 16px; background:#ffffff;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:0.4px; font-weight:600; color:#111111;">II.</span>
+            <span style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+              <span style="font-size:14px; font-weight:600; color:#111111; line-height:1.2;">Verträge &amp; Sparformen</span>
+              <span style="font-size:12px; color:#7a7268; line-height:1.3;">Was du heute schon hast</span>
+            </span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase; color:#8a2e2e; font-weight:600; white-space:nowrap;">In Arbeit</span>
+          </div>
+        </div>
+
+        <h1 style="margin:20px 0 0; font-weight:600; font-size:38px; letter-spacing:-0.4px; line-height:1.1; color:#111111;">Deine Verträge und Sparformen</h1>
+        <p style="margin:14px 0 0; font-weight:400; font-size:15.5px; line-height:1.55; color:#4a4a4a; max-width:640px;">Erfasse hier alle Verträge, die du heute schon hast — gesetzliche Rente, ETF-Sparpläne, Betriebs- oder Privatrenten. Fehlt eine Sparform, lässt du sie einfach weg. Du kannst Einträge jederzeit ergänzen oder entfernen.</p>
+
+        <div style="margin-top:24px; display:flex; flex-direction:column; gap:22px;">
+
+          <!-- § 1 Gesetzliche Rente -->
+          <div style="border-top:1px solid #1a1a1a; padding-top:14px;">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:24px; margin-bottom:12px;">
+              <span style="font-size:13px; font-weight:600; color:#111111;">§ 1 · Gesetzliche Rente</span>
+              <span style="font-size:11.5px; color:#7a7268; max-width:480px; text-align:right; line-height:1.45;">Aus deiner DRV-Renteninformation — jährlich per Post oder online.</span>
+            </div>
+            <div style="border:1px solid #1a1a1a; background:#ffffff; display:grid; grid-template-columns:minmax(0,1fr) 240px;">
+              <div style="padding:14px 18px; min-width:0;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px;">
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase; color:#7a7268; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Gesetzliche Rente · DRV</span>
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.6px; border:1px solid #d8d2c7; padding:1px 8px; color:#4a4a4a; text-transform:uppercase; white-space:nowrap; flex-shrink:0;">Aus Profil</span>
+                </div>
+                <div style="font-size:16px; font-weight:600; color:#111111; letter-spacing:-0.2px;">Gesetzliche Rente (GRV)</div>
+                <div style="margin-top:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:5px 24px;">
+                  <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Entgeltpunkte bisher</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">8,4 EP</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Prognose bei 67</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">45,1 EP</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Rente mtl. (brutto)</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">1.918 €</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Rentenbeginn</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">67 Jahre</span></div>
+                </div>
+              </div>
+              <div style="padding:14px 16px; background:#f6f4ef; border-left:1px solid #d8d2c7; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+                <div style="font-size:11.5px; color:#7a7268; line-height:1.45;">Diese Werte fließen direkt in dein Ergebnis ein.</div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  <button style="background:#ffffff; border:1px solid #1a1a1a; padding:7px 10px; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; color:#111111; text-align:left;">Werte prüfen</button>
+                  <button style="background:transparent; border:1px solid #d8d2c7; padding:7px 10px; font:inherit; font-size:12.5px; font-weight:400; cursor:pointer; color:#4a4a4a; text-align:left;">Manuell überschreiben</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- § 2 Deine Verträge -->
+          <div style="border-top:1px solid #1a1a1a; padding-top:14px;">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:24px; margin-bottom:12px;">
+              <span style="font-size:13px; font-weight:600; color:#111111;">§ 2 · Deine Verträge</span>
+              <span style="font-size:11.5px; color:#7a7268; max-width:480px; text-align:right; line-height:1.45;">Sparrate, Kosten, Beginn — meist Seite 1 der Police.</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+
+              <!-- ETF row (collapsed) -->
+              <div style="border:1px solid #1a1a1a; background:#ffffff; display:grid; grid-template-columns:minmax(0,1fr) 240px;">
+                <div style="padding:14px 18px; min-width:0;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px;">
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase; color:#7a7268; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">ETF-Sparplan · Schicht 3</span>
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.6px; border:1px solid #d8d2c7; padding:1px 8px; color:#4a4a4a; text-transform:uppercase; white-space:nowrap; flex-shrink:0;">Aktiv</span>
+                  </div>
+                  <div style="font-size:16px; font-weight:600; color:#111111; letter-spacing:-0.2px;">ETF-Depot (Vergleichsbasis)</div>
+                  <div style="margin-top:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:5px 24px;">
+                    <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Sparrate (netto)</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">{{ fNetto }} € mtl.</span></div>
+                    <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">TER</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">0,20 % p.a.</span></div>
+                  </div>
+                  <div style="margin-top:10px; font-size:11.5px; color:#7a7268; font-style:italic;">Sparrate ist an den AVD-Netto-Aufwand gekoppelt (fairer Vergleich).</div>
+                </div>
+                <div style="padding:14px 16px; background:#f6f4ef; border-left:1px solid #d8d2c7; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+                  <div style="font-size:11.5px; color:#7a7268; line-height:1.45;">Diese Werte fließen direkt in dein Ergebnis ein.</div>
+                  <div style="display:flex; flex-direction:column; gap:6px;">
+                    <button style="background:#ffffff; border:1px solid #1a1a1a; padding:7px 10px; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; color:#111111; text-align:left;">Bearbeiten</button>
+                    <button style="background:transparent; border:1px solid #d8d2c7; padding:7px 10px; font:inherit; font-size:12.5px; font-weight:400; cursor:pointer; color:#8a2e2e; text-align:left;">Entfernen</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AVD row (open, redesigned editor) -->
+              <div style="display:flex; flex-direction:column;">
+                <div style="border:1px solid #1a1a1a; background:#ffffff; display:grid; grid-template-columns:minmax(0,1fr) 240px;">
+                  <div style="padding:14px 18px; min-width:0;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px;">
+                      <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.6px; text-transform:uppercase; color:#7a7268; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Altersvorsorgedepot · Schicht 2 · ab 2027</span>
+                      <span style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.6px; border:1px solid #8a2e2e; padding:1px 8px; color:#8a2e2e; text-transform:uppercase; white-space:nowrap; flex-shrink:0;">In Bearbeitung</span>
+                    </div>
+                    <div style="font-size:16px; font-weight:600; color:#111111; letter-spacing:-0.2px;">Altersvorsorgedepot</div>
+                    <div style="margin-top:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:5px 24px;">
+                      <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Eigenbeitrag</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">{{ fMonthly }} € mtl.</span></div>
+                      <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Zulagen</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">{{ fZulageRow }} €/Jahr</span></div>
+                      <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Produktvariante</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">Standarddepot</span></div>
+                      <div style="display:flex; justify-content:space-between; gap:8px; font-size:12.5px; border-bottom:1px dotted #d8d2c7; padding:3px 0; min-width:0;"><span style="color:#4a4a4a; flex-shrink:0;">Auszahlung</span><span style="font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; text-align:right; white-space:nowrap;">Entnahmeplan bis 85</span></div>
+                    </div>
+                  </div>
+                  <div style="padding:14px 16px; background:#f6f4ef; border-left:1px solid #d8d2c7; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+                    <div style="font-size:11.5px; color:#7a7268; line-height:1.45;">Diese Werte fließen direkt in dein Ergebnis ein.</div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                      <button style="background:#ffffff; border:1px solid #1a1a1a; padding:7px 10px; font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; color:#111111; text-align:left;">Einklappen ↑</button>
+                      <button style="background:transparent; border:1px solid #d8d2c7; padding:7px 10px; font:inherit; font-size:12.5px; font-weight:400; cursor:pointer; color:#8a2e2e; text-align:left;">Entfernen</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Inline editor disclosure: NEW AvdContributionField -->
+                <div style="border:1px solid #1a1a1a; border-top:none; background:#ffffff; padding:18px; display:flex; flex-direction:column; gap:16px;">
+
+                  <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="display:flex; align-items:baseline; gap:8px;">
+                      <span style="font-size:15px; font-weight:700; color:#111111;">Wie viel zahlst du selbst ein?</span>
+                      <span style="font-size:12px; color:#7a7268;">Eigenbeitrag · monatlich</span>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+                      <sc-for list="{{ stufen }}" as="s" hint-placeholder-count="4">
+                        <button onClick="{{ s.onSelect }}" style="{{ s.cardStyle }}">
+                          <span style="font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600; color:#111111;">{{ s.eur }}</span>
+                          <span style="font-size:12px; font-weight:600; color:#4a4a4a; line-height:1.25;">{{ s.label }}</span>
+                          <span style="font-size:11px; font-weight:400; color:#7a7268; line-height:1.3;">{{ s.sub }}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:minmax(0,1fr) 150px; gap:14px; align-items:center;">
+                      <div style="display:flex; flex-direction:column; gap:4px;">
+                        <input type="range" min="0" max="{{ sliderMax }}" step="5" value="{{ monthly }}" onChange="{{ onSlider }}" style="width:100%; margin:0; height:28px; cursor:pointer;">
+                        <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#7a7268;">
+                          <span>0 €</span>
+                          <span>{{ sliderMaxLabel }}</span>
+                        </div>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:8px; border:1px solid #1a1a1a; background:#ffffff; padding:8px 12px; min-height:24px;">
+                        <input type="number" min="0" max="{{ sliderMax }}" step="5" value="{{ monthly }}" onChange="{{ onExact }}" style="flex:1; width:100%; min-width:0; border:0; background:transparent; font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:500; color:#111111; padding:0;">
+                        <span style="flex:0 0 auto; font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#7a7268;">€ mtl.</span>
+                      </div>
+                    </div>
+
+                    <div style="background:#f6f4ef; border:1px solid #e7e2da; padding:12px 14px; display:flex; flex-direction:column; gap:6px;">
+                      <sc-for list="{{ ledger }}" as="row" hint-placeholder-count="3">
+                        <div style="display:flex; align-items:baseline; gap:10px; font-size:13px;">
+                          <span style="color:#4a4a4a;">{{ row.k }}</span>
+                          <span style="flex:1; border-bottom:1px dotted #d8d2c7; transform:translateY(-3px);"></span>
+                          <span style="{{ row.vStyle }}">{{ row.v }}</span>
+                        </div>
+                      </sc-for>
+                      <div style="display:flex; align-items:baseline; gap:10px; font-size:14px; border-top:1px solid #d8d2c7; padding-top:7px; margin-top:2px;">
+                        <span style="font-weight:700; color:#111111;">Netto-Aufwand nach Steuer</span>
+                        <span style="flex:1;"></span>
+                        <span style="font-family:'JetBrains Mono',monospace; font-weight:600; color:#8a2e2e;">{{ fNetto }} € mtl.</span>
+                      </div>
+                      <p style="margin:2px 0 0; font-size:11.5px; line-height:1.45; color:#7a7268;">Faire Vergleichsbasis gegenüber ETF &amp; Co. — wird automatisch übernommen.</p>
+                    </div>
+                    <sc-if value="{{ capWarn }}" hint-placeholder-val="{{ false }}">
+                      <p style="margin:0; font-size:12.5px; line-height:1.45; color:#b0653a;">{{ capWarn }}</p>
+                    </sc-if>
+                  </div>
+
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px 24px;">
+                    <label style="display:flex; flex-direction:column; gap:4px;">
+                      <span style="font-size:12.5px; font-weight:500; color:#4a4a4a; letter-spacing:0.1px;">Förderberechtigte Kinder</span>
+                      <div style="display:flex; align-items:center; gap:8px; border:1px solid #1a1a1a; background:#ffffff; padding:8px 12px;">
+                        <input type="number" min="0" max="10" step="1" value="{{ children }}" onChange="{{ onChildren }}" style="flex:1; width:100%; min-width:0; border:0; background:transparent; font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:500; color:#111111; padding:0;">
+                        <span style="flex:0 0 auto; font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#7a7268;">Kinder</span>
+                      </div>
+                    </label>
+                    <label style="display:flex; flex-direction:column; gap:4px;">
+                      <span style="font-size:12.5px; font-weight:500; color:#4a4a4a; letter-spacing:0.1px;">Auszahlungsform</span>
+                      <div style="display:flex; align-items:center; gap:8px; border:1px solid #1a1a1a; background:#ffffff; padding:8px 12px;">
+                        <select defaultValue="certified_payout_plan" style="flex:1; width:100%; min-width:0; border:0; background:transparent; font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:500; color:#111111; padding:0; appearance:none;">
+                          <option value="certified_payout_plan">Entnahmeplan bis mind. Alter 85</option>
+                          <option value="lifelong_annuity">Lebenslange Leibrente</option>
+                        </select>
+                        <span style="flex:0 0 auto; color:#7a7268; font-size:11px;">▾</span>
+                      </div>
+                    </label>
+                    <label style="display:inline-flex; align-items:center; gap:8px; border:1px solid #1a1a1a; background:#ffffff; padding:8px 12px; font-size:13.5px; color:#111111; cursor:pointer;">
+                      <input type="checkbox" defaultChecked="{{ true }}" style="width:16px; height:16px;">
+                      <span>Direkt förderberechtigt (Pflichtversichert)</span>
+                    </label>
+                    <label style="display:inline-flex; align-items:center; gap:8px; border:1px solid #1a1a1a; background:#ffffff; padding:8px 12px; font-size:13.5px; color:#111111; cursor:pointer;">
+                      <input type="checkbox" style="width:16px; height:16px;">
+                      <span>Mittelbar berechtigt (über Ehegatte)</span>
+                    </label>
+                  </div>
+
+                  <details style="border:1px solid #d8d2c7; background:#ffffff; margin:0;">
+                    <summary style="display:flex; align-items:baseline; gap:8px; padding:8px 12px; cursor:pointer; user-select:none; list-style:none; font-size:13px;">
+                      <span style="color:#8a2e2e; font-size:10px;">▶</span>
+                      <span style="font-weight:700; color:#8a2e2e;">Erweitert</span>
+                      <span style="margin-left:auto; font-size:12px; color:#7a7268;">Standarddepot · Kosten 0,50 % p.a. · kein Teilkapital · Aktien 100 %</span>
+                    </summary>
+                    <div style="padding:8px 14px 16px; display:flex; flex-direction:column; gap:12px;">
+                      <p style="margin:0; font-size:12px; color:#7a7268; line-height:1.5;">Produktvariante, Aktien-Anteil, Sicherheitsrendite, Teilkapital, Übertragungskosten, andere Renteneinkommen und Kosten — Standardwerte, nur bei Bedarf anpassen.</p>
+                    </div>
+                  </details>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- § 3 Weitere Sparformen -->
+          <div style="border-top:1px solid #1a1a1a; padding-top:14px;">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:24px; margin-bottom:12px;">
+              <span style="font-size:13px; font-weight:600; color:#111111;">§ 3 · Weitere Sparformen hinzufügen</span>
+              <span style="font-size:11.5px; color:#7a7268; max-width:480px; text-align:right; line-height:1.45;">Fehlt eine Sparform, lässt du sie einfach weg.</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px;">
+              <button style="border:1px solid #1a1a1a; background:#ffffff; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font:inherit; text-align:left; width:100%;">
+                <span style="display:flex; flex-direction:column; min-width:0;">
+                  <span style="font-size:13.5px; font-weight:600; color:#111111; letter-spacing:-0.1px;">Betriebliche Altersvorsorge</span>
+                  <span style="font-size:11.5px; color:#7a7268; margin-top:2px; line-height:1.35;">Entgeltumwandlung über den Arbeitgeber</span>
+                </span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:18px; color:#111111; line-height:1; flex-shrink:0;">+</span>
+              </button>
+              <button style="border:1px solid #1a1a1a; background:#ffffff; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font:inherit; text-align:left; width:100%;">
+                <span style="display:flex; flex-direction:column; min-width:0;">
+                  <span style="font-size:13.5px; font-weight:600; color:#111111; letter-spacing:-0.1px;">Private Rentenversicherung</span>
+                  <span style="font-size:11.5px; color:#7a7268; margin-top:2px; line-height:1.35;">Fonds- oder ETF-Police (Schicht 3)</span>
+                </span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:18px; color:#111111; line-height:1; flex-shrink:0;">+</span>
+              </button>
+              <button style="border:1px solid #1a1a1a; background:#ffffff; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font:inherit; text-align:left; width:100%;">
+                <span style="display:flex; flex-direction:column; min-width:0;">
+                  <span style="font-size:13.5px; font-weight:600; color:#111111; letter-spacing:-0.1px;">Basisrente (Rürup)</span>
+                  <span style="font-size:11.5px; color:#7a7268; margin-top:2px; line-height:1.35;">Schicht 1, hoher Sonderausgabenabzug</span>
+                </span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:18px; color:#111111; line-height:1; flex-shrink:0;">+</span>
+              </button>
+              <button style="border:1px solid #1a1a1a; background:#ffffff; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; font:inherit; text-align:left; width:100%;">
+                <span style="display:flex; flex-direction:column; min-width:0;">
+                  <span style="font-size:13.5px; font-weight:600; color:#111111; letter-spacing:-0.1px;">Riester (Altvertrag)</span>
+                  <span style="font-size:11.5px; color:#7a7268; margin-top:2px; line-height:1.35;">Bestehende Verträge laufen weiter</span>
+                </span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:18px; color:#111111; line-height:1; flex-shrink:0;">+</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer buttons -->
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:36px; padding-top:18px; border-top:2px solid #1a1a1a;">
+          <button style="font:inherit; font-size:13.5px; font-weight:500; letter-spacing:0.1px; padding:10px 16px; min-height:40px; border:1px solid #111111; background:#111111; color:#ffffff; cursor:pointer; border-radius:0; white-space:nowrap;">Speichern und Plan ansehen</button>
+          <button style="font:inherit; font-size:13.5px; font-weight:500; letter-spacing:0.1px; padding:10px 16px; min-height:40px; border:1px solid #1a1a1a; background:#ffffff; color:#111111; cursor:pointer; border-radius:0; white-space:nowrap;">← Zurück zu Schritt 1</button>
+          <button style="margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:0.5px; padding:10px 16px; min-height:40px; border:1px solid #1a1a1a; background:#ffffff; color:#111111; cursor:pointer; border-radius:0; white-space:nowrap;">Als JSON exportieren ↓</button>
+        </div>
+
+        <details style="margin-top:24px; border-top:1px solid #1a1a1a; padding-top:16px;">
+          <summary style="cursor:pointer; font-size:13px; font-weight:600; color:#111111; padding:6px 0;">Glossar einblenden</summary>
+        </details>
+      </article>
+
+      <!-- ===== Right rail ===== -->
+      <aside style="display:flex; flex-direction:column; gap:16px; align-self:start;">
+        <div style="border:1px solid #d8d2c7; padding:14px 18px; background:#f6f4ef;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.5px; text-transform:uppercase; color:#7a7268; margin-bottom:10px; font-weight:600;">Welche Unterlagen du brauchst</div>
+          <ul style="list-style:none; padding:0; margin:0; font-size:13px; line-height:1.5; color:#4a4a4a;">
+            <li style="padding:8px 0 8px;"><span style="font-weight:600; color:#111111; display:block; font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.3px; text-transform:uppercase; margin-bottom:4px;">DRV-Rentenauskunft</span><span>jährlich per Post, oder online bei eservice-drv.de.</span></li>
+            <li style="padding:8px 0; border-top:1px solid #d8d2c7;"><span style="font-weight:600; color:#111111; display:block; font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.3px; text-transform:uppercase; margin-bottom:4px;">Vertragsunterlagen</span><span>Sparrate, Kosten, Beginn — meist Seite 1 der Police.</span></li>
+            <li style="padding:8px 0; border-top:1px solid #d8d2c7;"><span style="font-weight:600; color:#111111; display:block; font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.3px; text-transform:uppercase; margin-bottom:4px;">Depot-Kontoauszug</span><span>für ISIN und aktuelle Sparrate.</span></li>
+            <li style="padding:8px 0; border-top:1px solid #d8d2c7;"><span style="font-weight:600; color:#111111; display:block; font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.3px; text-transform:uppercase; margin-bottom:4px;">bAV-Bescheinigung</span><span>vom Arbeitgeber oder Versorgungsträger.</span></li>
+          </ul>
+        </div>
+        <div style="border:1px solid #d8d2c7; padding:14px 18px; background:#f6f4ef;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.5px; text-transform:uppercase; color:#7a7268; margin-bottom:10px; font-weight:600;">Was wir hier nicht abfragen</div>
+          <ul style="list-style:none; padding:0; margin:0; font-size:13px; line-height:1.55; color:#4a4a4a;">
+            <li style="padding:6px 0 6px; display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:baseline;"><span style="font-family:'JetBrains Mono',monospace; color:#8a2e2e; font-weight:600;">×</span>Bestandstarife mit Garantiezins vor 2005</li>
+            <li style="padding:6px 0; border-top:1px solid #d8d2c7; display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:baseline;"><span style="font-family:'JetBrains Mono',monospace; color:#8a2e2e; font-weight:600;">×</span>Im Ausland bestehende Verträge</li>
+            <li style="padding:6px 0; border-top:1px solid #d8d2c7; display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:baseline;"><span style="font-family:'JetBrains Mono',monospace; color:#8a2e2e; font-weight:600;">×</span>Erbschaften oder erwartete Schenkungen</li>
+            <li style="padding:6px 0; border-top:1px solid #d8d2c7; display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:baseline;"><span style="font-family:'JetBrains Mono',monospace; color:#8a2e2e; font-weight:600;">×</span>Kapitalbildende Lebensversicherungen (Schicht 4)</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- LegalFooter -->
+  <footer style="margin-top:auto; border-top:1px solid #d8d2c7; background:#f8f4eb; padding:18px 56px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+    <span style="font-size:12px; color:#7a7268; line-height:1.5; max-width:560px;">RentenWiki ersetzt keine Anlage-, Steuer- oder Rechtsberatung. Alle Berechnungen sind Modellrechnungen auf Basis der Regelwerte 2026.</span>
+    <span style="margin-left:auto; display:flex; align-items:center; gap:14px; font-size:12.5px;">
+      <a href="#" style="color:#111111; text-decoration:underline; text-underline-offset:2px;">Impressum</a>
+      <a href="#" style="color:#111111; text-decoration:underline; text-underline-offset:2px;">Datenschutzerklärung</a>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.4px; padding:2px 8px; border:1px solid #d8d2c7; color:#7a7268; white-space:nowrap;">Lizenz: PolyForm Noncommercial 1.0.0</span>
+    </span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;marginalRate&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:0.39,&quot;min&quot;:0.2,&quot;max&quot;:0.45,&quot;step&quot;:0.01,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Beispielrechnung&quot;,&quot;unit&quot;:&quot;Grenzsteuersatz&quot;}}">
+class Component extends DCLogic {
+  state = { monthly: 150, children: 0 }
+  fmt(n, dec = 0) {
+    return n.toLocaleString('de-DE', { minimumFractionDigits: dec, maximumFractionDigits: dec })
+  }
+  renderVals() {
+    const R = { minAnnual: 120, t1Max: 360, t1: 0.5, t2Max: 1800, t2: 0.25, basicMax: 540, childMax: 300, contractCap: 6840, soCap: 1800 }
+    const mr = this.props.marginalRate ?? 0.39
+    const { monthly, children } = this.state
+    const annual = monthly * 12
+    const eligible = annual >= R.minAnnual
+    const basic = eligible ? Math.min(R.basicMax, R.t1 * Math.min(annual, R.t1Max) + R.t2 * Math.max(0, Math.min(annual, R.t2Max) - R.t1Max)) : 0
+    const child = eligible ? children * R.childMax : 0
+    const taxBenefit = eligible ? Math.max(0, mr * Math.min(annual, R.soCap) - basic) : 0
+    const netto = monthly - taxBenefit / 12
+    const maxZulage = R.basicMax + children * R.childMax
+    const vr = Math.floor((R.contractCap - maxZulage) / 12 / 5) * 5
+    const setMonthly = (v) => this.setState({ monthly: Math.max(0, Math.min(vr, Math.round(v))) })
+    const cardBase = 'display:flex; flex-direction:column; align-items:flex-start; gap:3px; padding:10px 11px; border-radius:0; font:inherit; text-align:left; cursor:pointer; transition:border-color 0.1s, background 0.1s;'
+    const stufenDef = [
+      { v: 10, label: 'Mindestbeitrag', sub: 'erreicht die 120 €/Jahr Förderschwelle' },
+      { v: 30, label: 'Höchste Förderquote', sub: 'Ende der 50 %-Zulagenstufe' },
+      { v: 150, label: 'Volle Grundzulage', sub: 'schöpft 540 € Zulage/Jahr aus' },
+      { v: vr, label: 'Vertragsrahmen', sub: 'nutzt die 6.840 €/Jahr Obergrenze' },
+    ]
+    const stufen = stufenDef.map((s) => ({
+      eur: this.fmt(s.v) + ' €', label: s.label, sub: s.sub,
+      onSelect: () => setMonthly(s.v),
+      cardStyle: monthly === s.v
+        ? cardBase + ' border:1px solid #111111; background:#f6f4ef;'
+        : cardBase + ' border:1px solid #d8d2c7; background:#ffffff;',
+    }))
+    const vSt = "font-family:'JetBrains Mono',monospace; font-weight:500; color:#111111; font-variant-numeric:tabular-nums;"
+    const vStPlus = "font-family:'JetBrains Mono',monospace; font-weight:500; color:#2c6e49; font-variant-numeric:tabular-nums;"
+    const ledger = [
+      { k: 'Eigenbeitrag', v: this.fmt(monthly, 2) + ' € mtl.', vStyle: vSt },
+      { k: 'Grundzulage (Staat)', v: '+ ' + this.fmt(basic) + ' €/Jahr', vStyle: vStPlus },
+    ]
+    if (children > 0) ledger.push({ k: 'Kinderzulage (' + children + (children === 1 ? ' Kind' : ' Kinder') + ')', v: '+ ' + this.fmt(child) + ' €/Jahr', vStyle: vStPlus })
+    if (taxBenefit > 0) ledger.push({ k: 'Steuervorteil (Günstigerprüfung)', v: '+ ' + this.fmt(taxBenefit) + ' €/Jahr', vStyle: vStPlus })
+    if (!eligible) ledger.push({ k: 'Keine Zulage', v: 'unter 120 €/Jahr Eigenbeitrag', vStyle: "font-family:'JetBrains Mono',monospace; font-weight:500; color:#b0653a;" })
+    const capWarn = annual + basic + child > R.contractCap
+      ? 'AltZertG-Vertragsobergrenze erreicht: max. 6.840 €/Jahr (Eigenbeitrag + Zulagen).'
+      : null
+    return {
+      monthly, children, stufen, ledger, capWarn,
+      sliderMax: vr,
+      sliderMaxLabel: this.fmt(vr) + ' € (Vertragsrahmen)',
+      fMonthly: this.fmt(monthly),
+      fZulageRow: this.fmt(basic + child),
+      fNetto: this.fmt(netto, 2),
+      onSlider: (e) => setMonthly(Number(e.target.value)),
+      onExact: (e) => { const n = Number(e.target.value); if (Number.isFinite(n)) setMonthly(n) },
+      onChildren: (e) => { const n = Math.max(0, Math.min(10, Math.round(Number(e.target.value) || 0))); this.setState({ children: n }) },
+    }
+  }
+}
+</script>
+</body>
+</html>
