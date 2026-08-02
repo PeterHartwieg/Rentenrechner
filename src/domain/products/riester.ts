@@ -104,7 +104,7 @@ export interface RiesterFundingResult {
   portfolioRequestedOwnContributionMonthly?: number
   /** Raw household own contribution before the current-year cap scale. */
   portfolioHouseholdRequestedOwnContributionMonthly?: number
-  /** Pro-rata share of the household §10a Günstigerprüfung benefit. */
+  /** Dimensionless pro-rata factor (0–1) applied to the household §10a benefit. */
   portfolioTaxBenefitShare?: number
   /** Eligibility of the contract selected for the household calculation. */
   portfolioHouseholdEligibility?: RiesterEligibility

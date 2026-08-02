@@ -857,6 +857,21 @@ describe('beitragErhoehenWhatIf (B1)', () => {
     expect(applied.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(800)
   })
 
+  it('does not apply a stale contribution increase after a contract is surrendered', () => {
+    const ws = makeBavHighSalaryWorkspace()
+    const instanceId = ws.baseline.assumptions.bav[0].instanceId
+    const originalContribution = ws.baseline.assumptions.bav[0].monthlyGrossConversion
+    const decision = beitragErhoehenWhatIf(ws, instanceId, 800)!
+    ws.baseline.assumptions.bav[0].status = 'surrendered'
+
+    const applied = applyContractDecision(ws, decision)
+
+    expect(applied.baseline.assumptions.bav[0].status).toBe('surrendered')
+    expect(applied.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(
+      originalContribution,
+    )
+  })
+
   it('AVD: emits funding_cap_hit when proposed exceeds contractContributionCapAnnual / 12', () => {
     const ws = makeRiesterAvdWorkspace()
     const instanceId = ws.baseline.assumptions.altersvorsorgedepot[0].instanceId

@@ -32,6 +32,8 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const baseAvd = defaultAssumptions.altersvorsorgedepot
   const effectiveEligibility = {
     ...baseAvd.eligibility,
+    ageAtContractStart: profile.age,
+    careerStarterBonusUsed: false,
     eligibleChildren: childBirthYearsUnder25InYear(
       profile.childBirthYears,
       g.rules.year,
@@ -40,6 +42,7 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const capMonthly = maxAvdMonthlyOwnContribution(
     effectiveEligibility,
     g.rules,
+    !effectiveEligibility.careerStarterBonusUsed,
   )
   const cappedToRemaining = gross > capMonthly
   const sized = Math.min(gross, capMonthly)

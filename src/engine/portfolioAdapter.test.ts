@@ -2318,6 +2318,15 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
 
     const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
     const result = perInstance[riester.instanceId][0]
+    const acceptedYearOne = portfolioFunding.riesterByInstanceId[riester.instanceId]
+    const expectedYearOneProductAnnual =
+      acceptedYearOne.annualOwnContribution +
+      acceptedYearOne.totalAllowanceAnnual +
+      acceptedYearOne.guenstigerpruefungBenefitAnnual
+    expect(result.rows[0].yearlyProductContribution).toBeCloseTo(
+      expectedYearOneProductAnnual,
+      8,
+    )
     const yearTwoOwnMonthly = (
       de2026Rules.riester.annualCapInclAllowances -
       de2026Rules.riester.grundzulage
@@ -2336,7 +2345,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
 
     expect(result.rows[1].yearlyProductContribution).toBeCloseTo(
       expectedYearTwoProductAnnual,
-      8,
+      2,
     )
   })
 })

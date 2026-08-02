@@ -2,6 +2,7 @@ import { activeRules } from '../../rules'
 
 export const AVD_SPECIAL_EXPENSE_OWN_CAP = activeRules.altersvorsorgedepot.specialExpenseOwnContributionCap.toLocaleString('de-DE')
 export const AVD_ALLOWANCE_TIER_2_MAX = activeRules.altersvorsorgedepot.basicAllowanceTier2MaxContribution.toLocaleString('de-DE')
+export const AVD_ALLOWANCE_TIER_1_MAX = activeRules.altersvorsorgedepot.basicAllowanceTier1MaxContribution.toLocaleString('de-DE')
 
 ## Was der Portfolio-Modus löst, was er nicht kann
 
@@ -38,7 +39,7 @@ Sechs Vorsorgewege werden in der Kombinations-Sicht einzeln pro Vertrag erfasst 
 
 **Altersvorsorgedepot (2. Schicht).** Neues Schicht-2-Produkt aus dem Altersvorsorgereformgesetz (Bundestags-Beschluss 27. März 2026, Bundesrat-Zustimmung 8. Mai 2026, Produktstart ab 2027). Eigene Förderlogik, abweichend von Riester:
 
-- Grundzulage zweistufig: 50 % auf die ersten 360 € Eigenbeitrag (max. 180 €) plus 25 % auf den Anteil von 360 € bis {AVD_ALLOWANCE_TIER_2_MAX} € (max. 360 €), in Summe gedeckelt bei 540 € pro Jahr.
+- Grundzulage zweistufig: 50 % auf die ersten {AVD_ALLOWANCE_TIER_1_MAX} € Eigenbeitrag (max. 180 €) plus 25 % auf den Anteil von {AVD_ALLOWANCE_TIER_1_MAX} € bis {AVD_ALLOWANCE_TIER_2_MAX} € (max. 360 €), in Summe gedeckelt bei 540 € pro Jahr.
 - Kinderzulage: bis zu 300 € pro Kind und Jahr (100 % des Eigenbeitrags, gedeckelt auf 300 €). Bei Eigenbeiträgen unter 300 € pro Jahr fällt die Kinderzulage entsprechend niedriger aus.
 - Berufseinsteiger-Bonus: 200 € einmalig für Verträge mit Beginn bis Alter 24.
 - Eigenbeitrags-Cap pro Vertrag: {AVD_SPECIAL_EXPENSE_OWN_CAP} € pro Jahr (eigener Cap nach geändertem § 10a EStG, nicht der Riester-§-10a-Rahmen).

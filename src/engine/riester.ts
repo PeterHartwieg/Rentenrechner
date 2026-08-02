@@ -287,6 +287,48 @@ export function calculateRiesterFunding(
 }
 
 /**
+ * Allocates one household Riester allowance/tax calculation back to a single
+ * contract while preserving that contract's own minimum-contribution fields.
+ * One recipient receives the household allowance fields; every contract gets
+ * its pro-rata share of the household §10a tax benefit.
+ */
+export function allocateRiesterHouseholdFunding(
+  ownFunding: RiesterFundingResult,
+  householdFunding: RiesterFundingResult,
+  receivesPortfolioAllowance: boolean,
+  portfolioTaxBenefitShare: number,
+): RiesterFundingResult {
+  const allocatedTaxBenefitAnnual =
+    householdFunding.guenstigerpruefungBenefitAnnual * portfolioTaxBenefitShare
+  const allocatedSpecialExpenseAnnual =
+    householdFunding.specialExpenseDeductibleAnnual * portfolioTaxBenefitShare
+  return {
+    ...ownFunding,
+    grundzulageAnnual:
+      receivesPortfolioAllowance ? householdFunding.grundzulageAnnual : 0,
+    childAllowanceAnnual:
+      receivesPortfolioAllowance ? householdFunding.childAllowanceAnnual : 0,
+    careerStarterBonusAnnual:
+      receivesPortfolioAllowance ? householdFunding.careerStarterBonusAnnual : 0,
+    totalAllowanceAnnual:
+      receivesPortfolioAllowance ? householdFunding.totalAllowanceAnnual : 0,
+    ...(receivesPortfolioAllowance
+      ? {
+          minEigenbeitragAnnual: householdFunding.minEigenbeitragAnnual,
+          meetsMinContribution: householdFunding.meetsMinContribution,
+          prorationFactor: householdFunding.prorationFactor,
+        }
+      : {}),
+    specialExpenseDeductibleAnnual: allocatedSpecialExpenseAnnual,
+    guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
+    monthlyNetCost: Math.max(
+      0,
+      ownFunding.monthlyOwnContribution - allocatedTaxBenefitAnnual / 12,
+    ),
+  }
+}
+
+/**
  * Inverse of calculateRiesterFunding: given a target monthly net cost
  * (out-of-pocket after the Günstigerprüfung refund), return the
  * monthlyOwnContribution that produces that net. Used by the input-sync layer

@@ -3,6 +3,8 @@ import { activeRules, RULES_YEAR } from '../../rules'
 export const AVD_SPECIAL_EXPENSE_OWN_CAP = activeRules.altersvorsorgedepot.specialExpenseOwnContributionCap.toLocaleString('de-DE')
 export const AVD_CONTRACT_CONTRIBUTION_CAP = activeRules.altersvorsorgedepot.contractContributionCapAnnual.toLocaleString('de-DE')
 export const AVD_ALLOWANCE_TIER_2_MAX = activeRules.altersvorsorgedepot.basicAllowanceTier2MaxContribution.toLocaleString('de-DE')
+export const AVD_ALLOWANCE_TIER_1_MAX = activeRules.altersvorsorgedepot.basicAllowanceTier1MaxContribution.toLocaleString('de-DE')
+export const AVD_ALLOWANCE_TIER_2_WIDTH = (activeRules.altersvorsorgedepot.basicAllowanceTier2MaxContribution - activeRules.altersvorsorgedepot.basicAllowanceTier1MaxContribution).toLocaleString('de-DE')
 
 ## Was das Altersvorsorgedepot ist
 
@@ -33,8 +35,8 @@ Der Rechner setzt die im Altersvorsorgereformgesetz vorgesehenen Parameter um:
 - **Eigenbeitrags-Cap für die Förderung:** bis zu {AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€ pro Jahr werden für die Zulagenberechnung herangezogen; die vertragliche Beitragsobergrenze liegt bei {AVD_CONTRACT_CONTRIBUTION_CAP}&nbsp;€ (Beiträge oberhalb {AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€ sind möglich, aber nicht zulagenrelevant).
 - **Mindesteigenbeitrag:** 120&nbsp;€ pro Jahr (Sockelbetrag).
 - **Zweistufige Grundzulage:**
-  - Stufe 1: 50&nbsp;% Förderquote auf die ersten 360&nbsp;€ Eigenbeitrag (maximal 180&nbsp;€).
-  - Stufe 2: 25&nbsp;% Förderquote auf den Anteil von 360&nbsp;€ bis {AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€ Eigenbeitrag (maximal 360&nbsp;€).
+  - Stufe 1: 50&nbsp;% Förderquote auf die ersten {AVD_ALLOWANCE_TIER_1_MAX}&nbsp;€ Eigenbeitrag (maximal 180&nbsp;€).
+  - Stufe 2: 25&nbsp;% Förderquote auf den Anteil von {AVD_ALLOWANCE_TIER_1_MAX}&nbsp;€ bis {AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€ Eigenbeitrag (maximal 360&nbsp;€).
   - Beide Stufen zusammen sind auf insgesamt 540&nbsp;€ pro Person und Jahr gedeckelt.
 - **Mittelbar förderberechtigte Ehepartner:** maximale Grundzulage 175&nbsp;€ pro Jahr.
 - **Kinderzulage:** bis zu 300&nbsp;€ pro Kind und Jahr (100&nbsp;% des Eigenbeitrags, gedeckelt auf 300&nbsp;€). Bei Eigenbeiträgen unter 300&nbsp;€ pro Jahr fällt die Kinderzulage entsprechend niedriger aus. Voraussetzung: Kindergeldbezug für das jeweilige Kind.
@@ -59,7 +61,7 @@ Der Rechner setzt die im Altersvorsorgereformgesetz vorgesehenen Parameter um:
 | Produktform | Versicherung, Banksparplan, Fondssparplan, Wohn-Riester | Wertpapierdepot ohne Versicherungsmantel |
 | Kapitalgarantie | Pflicht zu Rentenbeginn (AltZertG §&nbsp;1) | Keine; Marktrisiko trägt der Anleger |
 | Glidepath | produktabhängig | gesetzlich vorgeschrieben (≤ 50&nbsp;% Risiko 5 Jahre vorher, ≤ 30&nbsp;% 2 Jahre vorher) |
-| Zulagenstruktur | §§&nbsp;84, 85 EStG: 175&nbsp;€ Grundzulage, 185/300&nbsp;€ Kinderzulage | Zweistufige Förderung: 50&nbsp;% auf erste 360&nbsp;€, 25&nbsp;% auf weitere 1.440&nbsp;€ (360,01–{AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€), max. 540&nbsp;€ Grundzulage; bis zu 300&nbsp;€ Kinderzulage (beitragsanteilig) |
+| Zulagenstruktur | §§&nbsp;84, 85 EStG: 175&nbsp;€ Grundzulage, 185/300&nbsp;€ Kinderzulage | Zweistufige Förderung: 50&nbsp;% auf erste {AVD_ALLOWANCE_TIER_1_MAX}&nbsp;€, 25&nbsp;% auf weitere {AVD_ALLOWANCE_TIER_2_WIDTH}&nbsp;€ ({AVD_ALLOWANCE_TIER_1_MAX},01–{AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€), max. 540&nbsp;€ Grundzulage; bis zu 300&nbsp;€ Kinderzulage (beitragsanteilig) |
 | Sonderausgabenabzug | §&nbsp;10a EStG (Altvertragsregime): Eigenbeitrag plus Zulagen bis 2.100&nbsp;€ pro Jahr, Günstigerprüfung | §&nbsp;10a EStG (nach Altersvorsorgereformgesetz): Eigenbeitrag bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr plus zugehörige Zulagen, Günstigerprüfung. Vertragsbezogene Beitragsobergrenze {AVD_CONTRACT_CONTRIBUTION_CAP}&nbsp;€ pro Jahr (oberhalb {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ keine zusätzliche Förderung). |
 | Sockelbeitrag | 60&nbsp;€/Jahr | 120&nbsp;€/Jahr |
 | Auszahlung | Leibrente oder Auszahlplan bis 85 | Teilkapital bis 30&nbsp;%, Auszahlplan mindestens bis 85; Beginn 65 bis 70 |
@@ -82,8 +84,8 @@ Förderung für ein Beitragsjahr ab 2027 (Modell nach beschlossener Fassung):
 
 | Position | Betrag |
 |----------|--------|
-| Stufe 1: 50&nbsp;% × min(360&nbsp;€, 360&nbsp;€) | 180,00&nbsp;€ |
-| Stufe 2: 25&nbsp;% × min(1.440&nbsp;€, {AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€) | 360,00&nbsp;€ |
+| Stufe 1: 50&nbsp;% × min({AVD_ALLOWANCE_TIER_1_MAX}&nbsp;€, {AVD_ALLOWANCE_TIER_1_MAX}&nbsp;€) | 180,00&nbsp;€ |
+| Stufe 2: 25&nbsp;% × min({AVD_ALLOWANCE_TIER_2_WIDTH}&nbsp;€, {AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€) | 360,00&nbsp;€ |
 | Zwischensumme aus Stufen | 540,00&nbsp;€ |
 | Grundzulage gedeckelt bei 540&nbsp;€/Jahr | 540,00&nbsp;€ |
 | Kinderzulage | 0,00&nbsp;€ |

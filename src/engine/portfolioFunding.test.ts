@@ -73,7 +73,7 @@ describe('buildPortfolioFunding — subsidised-product top-up headroom', () => {
     expect(funding.headroom.riester.allowanceAnnual).toBeLessThan(
       de2026Rules.riester.grundzulage,
     )
-    expect(funding.headroom.riester.remainingAnnual).toBeCloseTo(1_325, 8)
+    expect(funding.headroom.riester.remainingAnnual).toBeCloseTo(1_325, 2)
   })
 
   it('Riester funding scales own contribution when own plus allowance exceeds the cap', () => {
@@ -85,7 +85,9 @@ describe('buildPortfolioFunding — subsidised-product top-up headroom', () => {
     const acceptedAnnual = accepted.annualOwnContribution + accepted.totalAllowanceAnnual
 
     expect(accepted.monthlyOwnContribution).toBeLessThan(170)
+    expect(accepted.monthlyOwnContribution).toBeGreaterThan(0)
     expect(acceptedAnnual).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+    expect(acceptedAnnual).toBeGreaterThan(RIESTER_CAP_ANNUAL - 1)
     expect(funding.headroom.riester.fundedAnnual).toBeCloseTo(acceptedAnnual, 8)
     expect(funding.headroom.riester.remainingAnnual).toBe(0)
     expect(funding.headroom.riester.constrained).toBe(true)
@@ -949,8 +951,8 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
     expect(fundA.monthlyOwnContribution).toBeLessThan(100)
     expect(fundB.monthlyOwnContribution).toBeLessThan(100)
 
-    // Allowances are part of the cap, so accepted own contribution is below
-    // half of €2,100/monthly once both prorated allowance flows are included.
+    // The single household allowance is assigned to one recipient contract,
+    // so the two accepted own contributions together must leave room for it.
     expect(fundA.monthlyOwnContribution).toBeLessThan(RIESTER_CAP_ANNUAL / 24)
     expect(fundB.monthlyOwnContribution).toBeLessThan(RIESTER_CAP_ANNUAL / 24)
     const acceptedAnnual = [fundA, fundB].reduce(

@@ -3,37 +3,57 @@ import { describe, expect, it } from 'vitest'
 
 const headers = readFileSync(new URL('../../public/_headers', import.meta.url), 'utf8')
 
-function parseHeaderBlock(path: string): Record<string, string> {
-  const lines = headers.split(/\r?\n/)
+function parseHeaderBlock(path: string, source = headers): Record<string, string> {
+  const lines = source.split(/\r?\n/)
   const start = lines.findIndex((line) => line.trim() === path)
 
   if (start < 0) throw new Error(`Missing ${path} header block`)
 
   const entries: Array<[string, string]> = []
+  const seenNames = new Set<string>()
   for (const line of lines.slice(start + 1)) {
     if (line.trim() === '') continue
     if (!/^\s/.test(line)) break
 
     const separator = line.indexOf(':')
     if (separator < 0) throw new Error(`Malformed header in ${path}: ${line.trim()}`)
-    entries.push([line.slice(0, separator).trim(), line.slice(separator + 1).trim()])
+    const name = line.slice(0, separator).trim()
+    const normalizedName = name.toLowerCase()
+    if (seenNames.has(normalizedName)) {
+      throw new Error(`Duplicate header in ${path}: ${name}`)
+    }
+    seenNames.add(normalizedName)
+    entries.push([name, line.slice(separator + 1).trim()])
   }
 
   return Object.fromEntries(entries)
 }
 
 function parseContentSecurityPolicy(value: string): Record<string, string[]> {
-  return Object.fromEntries(
-    value.split(';').map((rawDirective) => {
-      const [name, ...sources] = rawDirective.trim().split(/\s+/)
-      return [name, sources]
-    }),
-  )
+  const directives = new Map<string, string[]>()
+  for (const rawDirective of value.split(';')) {
+    const [rawName, ...sources] = rawDirective.trim().split(/\s+/)
+    const name = rawName.toLowerCase()
+    if (directives.has(name)) {
+      throw new Error(`Duplicate CSP directive: ${rawName}`)
+    }
+    directives.set(name, sources)
+  }
+  return Object.fromEntries(directives)
 }
 
 const baselineHeaders = parseHeaderBlock('/*')
 
 describe('production security headers', () => {
+  it('rejects duplicate header names and CSP directives case-insensitively', () => {
+    expect(() => parseHeaderBlock('/*', '/*\n  X-Test: strict\n  x-test: permissive')).toThrow(
+      /Duplicate header/,
+    )
+    expect(() => parseContentSecurityPolicy(
+      "script-src 'self'; SCRIPT-SRC 'unsafe-inline'",
+    )).toThrow(/Duplicate CSP directive/)
+  })
+
   it('prevents framing, MIME sniffing, and unnecessary browser capabilities', () => {
     expect(baselineHeaders).toEqual({
       'Content-Security-Policy': expect.any(String),

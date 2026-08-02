@@ -991,32 +991,32 @@ function applyIncreaseContribution(
 
   if (slot === 'bav') {
     const idx = wsa.bav.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
+    if (idx >= 0 && (wsa.bav[idx].status === 'active' || wsa.bav[idx].status === 'paid_up')) {
       wsa.bav[idx] = { ...wsa.bav[idx], status: 'active', monthlyGrossConversion: newMonthlyEUR }
     }
   } else if (slot === 'etf') {
     const idx = wsa.etf.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
+    if (idx >= 0 && (wsa.etf[idx].status === 'active' || wsa.etf[idx].status === 'paid_up')) {
       wsa.etf[idx] = { ...wsa.etf[idx], status: 'active', monthlyContribution: newMonthlyEUR }
     }
   } else if (slot === 'insurance') {
     const idx = wsa.insurance.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
+    if (idx >= 0 && (wsa.insurance[idx].status === 'active' || wsa.insurance[idx].status === 'paid_up')) {
       wsa.insurance[idx] = { ...wsa.insurance[idx], status: 'active', monthlyContribution: newMonthlyEUR }
     }
   } else if (slot === 'basisrente') {
     const idx = wsa.basisrente.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
+    if (idx >= 0 && (wsa.basisrente[idx].status === 'active' || wsa.basisrente[idx].status === 'paid_up')) {
       wsa.basisrente[idx] = { ...wsa.basisrente[idx], status: 'active', monthlyGrossContribution: newMonthlyEUR }
     }
   } else if (slot === 'altersvorsorgedepot') {
     const idx = wsa.altersvorsorgedepot.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
+    if (idx >= 0 && (wsa.altersvorsorgedepot[idx].status === 'active' || wsa.altersvorsorgedepot[idx].status === 'paid_up')) {
       wsa.altersvorsorgedepot[idx] = { ...wsa.altersvorsorgedepot[idx], status: 'active', monthlyOwnContribution: newMonthlyEUR }
     }
   } else if (slot === 'riester') {
     const idx = wsa.riester.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
+    if (idx >= 0 && (wsa.riester[idx].status === 'active' || wsa.riester[idx].status === 'paid_up')) {
       wsa.riester[idx] = { ...wsa.riester[idx], status: 'active', monthlyOwnContribution: newMonthlyEUR }
     }
   }

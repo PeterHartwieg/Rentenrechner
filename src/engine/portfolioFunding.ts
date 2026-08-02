@@ -40,7 +40,7 @@ import type { PortfolioFunding, Workspace } from '../domain/workspace'
 import { calculateBavFunding, calculateSalaryResult } from './salary'
 import { calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding, maxAvdMonthlyOwnContribution } from './altersvorsorgedepot'
-import { calculateRiesterFunding } from './riester'
+import { allocateRiesterHouseholdFunding, calculateRiesterFunding } from './riester'
 import { stripInstanceCommonKeys } from './portfolioProjection'
 import { childBirthYearsUnder25InYear } from './childEligibility'
 
@@ -494,6 +494,7 @@ export function buildPortfolioFunding(
           : best,
       undefined,
     )
+    if (!recipient) return {}
 
     return Object.fromEntries(entries.map(({ instance, singleton }) => {
       const ownFunding = calculateRiesterFunding(
@@ -506,51 +507,19 @@ export function buildPortfolioFunding(
       const portfolioTaxBenefitShare = householdOwnMonthly > 0
         ? ownFunding.monthlyOwnContribution / householdOwnMonthly
         : 0
-      const allocatedTaxBenefitAnnual =
-        (recipient?.funding.guenstigerpruefungBenefitAnnual ?? 0) *
-        portfolioTaxBenefitShare
-      const allocatedSpecialExpenseAnnual =
-        (recipient?.funding.specialExpenseDeductibleAnnual ?? 0) *
-        portfolioTaxBenefitShare
-      const allocated = receivesPortfolioAllowance && recipient
-        ? {
-            ...ownFunding,
-            grundzulageAnnual: recipient.funding.grundzulageAnnual,
-            childAllowanceAnnual: recipient.funding.childAllowanceAnnual,
-            careerStarterBonusAnnual: recipient.funding.careerStarterBonusAnnual,
-            totalAllowanceAnnual: recipient.funding.totalAllowanceAnnual,
-            minEigenbeitragAnnual: recipient.funding.minEigenbeitragAnnual,
-            meetsMinContribution: recipient.funding.meetsMinContribution,
-            prorationFactor: recipient.funding.prorationFactor,
-            specialExpenseDeductibleAnnual:
-              allocatedSpecialExpenseAnnual,
-            guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
-            monthlyNetCost: Math.max(
-              0,
-              ownFunding.monthlyOwnContribution -
-                allocatedTaxBenefitAnnual / 12,
-            ),
-          }
-        : {
-            ...ownFunding,
-            grundzulageAnnual: 0,
-            childAllowanceAnnual: 0,
-            careerStarterBonusAnnual: 0,
-            totalAllowanceAnnual: 0,
-            specialExpenseDeductibleAnnual: allocatedSpecialExpenseAnnual,
-            guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
-            monthlyNetCost: Math.max(
-              0,
-              ownFunding.monthlyOwnContribution - allocatedTaxBenefitAnnual / 12,
-            ),
-          }
+      const allocated = allocateRiesterHouseholdFunding(
+        ownFunding,
+        recipient.funding,
+        receivesPortfolioAllowance,
+        portfolioTaxBenefitShare,
+      )
 
       return [instance.instanceId, {
         ...allocated,
         receivesPortfolioAllowance,
         portfolioHouseholdOwnContributionMonthly: householdOwnMonthly,
         portfolioTaxBenefitShare,
-        portfolioHouseholdEligibility: recipient?.eligibility,
+        portfolioHouseholdEligibility: recipient.eligibility,
       }]
     }))
   }
@@ -589,8 +558,10 @@ export function buildPortfolioFunding(
       const aggregate = aggregateRiesterContractAnnual(
         calculateActiveRiesterAtScale(mid),
       )
-      if (aggregate <= riesterCapAnnual) lo = mid
-      else hi = mid
+      if (aggregate <= riesterCapAnnual) {
+        lo = mid
+        if (riesterCapAnnual - aggregate < 0.001) break
+      } else hi = mid
     }
     riesterScale = lo
   }
@@ -680,8 +651,11 @@ export function buildPortfolioFunding(
     let hi = riesterCapAnnual
     for (let i = 0; i < 60; i++) {
       const mid = (lo + hi) / 2
-      if (aggregateWithTopUp(mid) <= riesterCapAnnual) lo = mid
-      else hi = mid
+      const aggregate = aggregateWithTopUp(mid)
+      if (aggregate <= riesterCapAnnual) {
+        lo = mid
+        if (riesterCapAnnual - aggregate < 0.001) break
+      } else hi = mid
     }
     remainingRiesterAnnual = lo
   }
