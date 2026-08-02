@@ -215,7 +215,7 @@ describe('makeAvdCandidate — materialized what-if effects', () => {
     expect(added.eligibility.careerStarterBonusUsed).toBe(false)
   })
 
-  it('reserves the available bonus when sizing a candidate beside an eligible contract', () => {
+  it('uses prospective portfolio allocation to size a candidate beside an eligible contract', () => {
     const ws = buildBerndWorkspace()
     ws.baseline.profile.age = 23
     ws.baseline.assumptions.riester = []
@@ -244,7 +244,8 @@ describe('makeAvdCandidate — materialized what-if effects', () => {
     )!
     const created = draft.newInstance as AltersvorsorgedepotInstance
 
-    expect(draft.grossMonthlyEUR).toBeCloseTo(firstYearCap, 8)
+    expect(firstYearCap).toBeLessThan(laterYearCap)
+    expect(draft.grossMonthlyEUR).toBeCloseTo(laterYearCap, 8)
     expect(created.eligibility.careerStarterBonusUsed).toBe(false)
 
     ws.baseline.assumptions.altersvorsorgedepot.push(created)
@@ -256,6 +257,10 @@ describe('makeAvdCandidate — materialized what-if effects', () => {
     expect(
       funded.filter((entry) => entry.careerStarterBonusAnnual > 0),
     ).toHaveLength(1)
+    expect(
+      funding.altersvorsorgedepotByInstanceId[existing.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBeCloseTo(de2026Rules.altersvorsorgedepot.careerStarterBonus, 8)
   })
 
   it('carries historical career-starter use from a surrendered contract', () => {
