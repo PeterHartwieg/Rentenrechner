@@ -47,7 +47,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
   const fundingForYear = (yearIndex: number) =>
     calculateAvdFunding(
       rules,
-      ctx.bavFunding.salaryWithBav,
+      ctx.salaryForOtherFunding,
       avd,
       {
         profile,

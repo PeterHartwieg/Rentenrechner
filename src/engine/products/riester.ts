@@ -50,39 +50,82 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     effectiveMonthlyOwnContribution +
     riesterFunding.guenstigerpruefungBenefitAnnual / 12 +
     riesterFunding.totalAllowanceAnnual / 12
-  const fundingForYear = (yearIndex: number) => {
+  const yearlyFundingCache = new Map<number, ReturnType<typeof calculateRiesterFunding>>()
+  const calculateFundingForYear = (yearIndex: number) => {
     const receivesPortfolioAllowance = riesterFunding.receivesPortfolioAllowance
-    const householdOwnMonthly =
+    if (receivesPortfolioAllowance === undefined) {
+      return calculateRiesterFunding(
+        rules,
+        ctx.salaryForOtherFunding,
+        scaledRiester,
+        profile,
+        {
+          contributionYear: rules.year + yearIndex,
+          isFirstContributionYear:
+            yearIndex === 0 && !riester.eligibility.careerStarterBonusUsed,
+        },
+      )
+    }
+
+    const householdEligibility =
+      riesterFunding.portfolioHouseholdEligibility ?? scaledRiester.eligibility
+    const requestedHouseholdOwnMonthly =
+      riesterFunding.portfolioHouseholdRequestedOwnContributionMonthly ??
       riesterFunding.portfolioHouseholdOwnContributionMonthly ??
       effectiveMonthlyOwnContribution
+    const requestedOwnMonthly =
+      riesterFunding.portfolioRequestedOwnContributionMonthly ??
+      effectiveMonthlyOwnContribution
     const portfolioTaxBenefitShare = riesterFunding.portfolioTaxBenefitShare ?? 1
-    const calculated = calculateRiesterFunding(
-      rules,
-      ctx.bavFunding.salaryWithBav,
-      receivesPortfolioAllowance !== undefined
-        ? {
-            ...scaledRiester,
-            eligibility:
-              riesterFunding.portfolioHouseholdEligibility ?? scaledRiester.eligibility,
-            monthlyOwnContribution: householdOwnMonthly,
-          }
-        : scaledRiester,
-      profile,
-      {
-        contributionYear: rules.year + yearIndex,
-        isFirstContributionYear:
-          yearIndex === 0 && !riester.eligibility.careerStarterBonusUsed,
-      },
-    )
-    if (receivesPortfolioAllowance === undefined) return calculated
+    const calculateHousehold = (monthlyOwnContribution: number) =>
+      calculateRiesterFunding(
+        rules,
+        ctx.salaryForOtherFunding,
+        {
+          ...scaledRiester,
+          eligibility: householdEligibility,
+          monthlyOwnContribution,
+        },
+        profile,
+        {
+          contributionYear: rules.year + yearIndex,
+          isFirstContributionYear:
+            yearIndex === 0 && !householdEligibility.careerStarterBonusUsed,
+        },
+      )
+
+    let yearlyScale = 1
+    const requestedHouseholdFunding = calculateHousehold(requestedHouseholdOwnMonthly)
+    if (
+      requestedHouseholdOwnMonthly * 12 +
+        requestedHouseholdFunding.totalAllowanceAnnual >
+      rules.riester.annualCapInclAllowances
+    ) {
+      let lo = 0
+      let hi = 1
+      for (let i = 0; i < 60; i++) {
+        const mid = (lo + hi) / 2
+        const householdOwnMonthly = requestedHouseholdOwnMonthly * mid
+        const funding = calculateHousehold(householdOwnMonthly)
+        const acceptedAnnual =
+          householdOwnMonthly * 12 + funding.totalAllowanceAnnual
+        if (acceptedAnnual <= rules.riester.annualCapInclAllowances) lo = mid
+        else hi = mid
+      }
+      yearlyScale = lo
+    }
+
+    const yearlyHouseholdOwnMonthly = requestedHouseholdOwnMonthly * yearlyScale
+    const yearlyOwnMonthly = requestedOwnMonthly * yearlyScale
+    const calculated = calculateHousehold(yearlyHouseholdOwnMonthly)
     const allocatedTaxBenefitAnnual =
       calculated.guenstigerpruefungBenefitAnnual * portfolioTaxBenefitShare
     const allocatedSpecialExpenseAnnual =
       calculated.specialExpenseDeductibleAnnual * portfolioTaxBenefitShare
     return {
       ...calculated,
-      monthlyOwnContribution: effectiveMonthlyOwnContribution,
-      annualOwnContribution: effectiveMonthlyOwnContribution * 12,
+      monthlyOwnContribution: yearlyOwnMonthly,
+      annualOwnContribution: yearlyOwnMonthly * 12,
       grundzulageAnnual: receivesPortfolioAllowance ? calculated.grundzulageAnnual : 0,
       childAllowanceAnnual:
         receivesPortfolioAllowance ? calculated.childAllowanceAnnual : 0,
@@ -94,9 +137,16 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
       guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
       monthlyNetCost: Math.max(
         0,
-        effectiveMonthlyOwnContribution - allocatedTaxBenefitAnnual / 12,
+        yearlyOwnMonthly - allocatedTaxBenefitAnnual / 12,
       ),
     }
+  }
+  const fundingForYear = (yearIndex: number) => {
+    const cached = yearlyFundingCache.get(yearIndex)
+    if (cached) return cached
+    const funding = calculateFundingForYear(yearIndex)
+    yearlyFundingCache.set(yearIndex, funding)
+    return funding
   }
   const yearlySavings = Array.from({ length: yearsToRetirement }).reduce<number>(
     (sum, _, yearIndex) => {
@@ -137,7 +187,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
           return {
             monthlyUserCost: funding.monthlyNetCost,
             monthlyProductContribution:
-              effectiveMonthlyOwnContribution +
+              funding.monthlyOwnContribution +
               funding.guenstigerpruefungBenefitAnnual / 12 +
               funding.totalAllowanceAnnual / 12,
           }

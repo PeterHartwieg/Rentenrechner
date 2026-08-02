@@ -100,6 +100,10 @@ export interface RiesterFundingResult {
   receivesPortfolioAllowance?: boolean
   /** Aggregate own contribution used for that household calculation. */
   portfolioHouseholdOwnContributionMonthly?: number
+  /** Raw per-instance own contribution before the current-year cap scale. */
+  portfolioRequestedOwnContributionMonthly?: number
+  /** Raw household own contribution before the current-year cap scale. */
+  portfolioHouseholdRequestedOwnContributionMonthly?: number
   /** Pro-rata share of the household §10a Günstigerprüfung benefit. */
   portfolioTaxBenefitShare?: number
   /** Eligibility of the contract selected for the household calculation. */

@@ -595,9 +595,23 @@ export function buildPortfolioFunding(
     riesterScale = lo
   }
 
-  const riesterByInstanceId = riesterScale === 1
+  const acceptedRiesterByInstanceId = riesterScale === 1
     ? requestedRiesterByInstanceId
     : calculateActiveRiesterAtScale(riesterScale)
+  const householdRequestedOwnMonthly = activeRiesterSingletons.reduce(
+    (sum, { singleton }) => sum + singleton.monthlyOwnContribution,
+    0,
+  )
+  const riesterByInstanceId: Record<string, RiesterFundingResult> = Object.fromEntries(
+    activeRiesterSingletons.map(({ instance, singleton }) => [
+      instance.instanceId,
+      {
+        ...acceptedRiesterByInstanceId[instance.instanceId],
+        portfolioRequestedOwnContributionMonthly: singleton.monthlyOwnContribution,
+        portfolioHouseholdRequestedOwnContributionMonthly: householdRequestedOwnMonthly,
+      },
+    ]),
+  )
   for (const inst of paidUpRiester) {
     const singleton = stripInstanceCommonKeys(
       inst as unknown as Record<string, unknown>,

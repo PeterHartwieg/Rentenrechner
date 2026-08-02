@@ -1,8 +1,11 @@
-import { RULES_YEAR } from '../../rules'
+import { activeRules, RULES_YEAR } from '../../rules'
+
+export const AVD_SPECIAL_EXPENSE_OWN_CAP = activeRules.altersvorsorgedepot.specialExpenseOwnContributionCap.toLocaleString('de-DE')
+export const AVD_CONTRACT_CONTRIBUTION_CAP = activeRules.altersvorsorgedepot.contractContributionCapAnnual.toLocaleString('de-DE')
 
 ## Riester oder AVD: die Kernunterschiede
 
-Riester (Bestand) und das ab 2027 startende Altersvorsorgedepot (AVD) gehören beide zur zweiten Schicht der deutschen Altersvorsorge. Leistungen aus **geförderten** Beiträgen werden in der Auszahlphase nach §&nbsp;22 Nr.&nbsp;5 Satz&nbsp;1 EStG voll nachgelagert besteuert. Für nicht geförderte Beiträge gilt dagegen die differenzierte Besteuerung nach §&nbsp;22 Nr.&nbsp;5 Satz&nbsp;2 EStG. Das ist beim AVD besonders relevant: Eigenbeiträge werden nur bis 1.800&nbsp;€ pro Jahr gefördert, während Einzahlungen einschließlich Zulagen bis 6.840&nbsp;€ möglich sind. RentenWiki.de modelliert die AVD-Auszahlung derzeit konservativ voll steuerpflichtig und kann den nicht geförderten Anteil noch nicht separat ausweisen.
+Riester (Bestand) und das ab 2027 startende Altersvorsorgedepot (AVD) gehören beide zur zweiten Schicht der deutschen Altersvorsorge. Leistungen aus **geförderten** Beiträgen werden in der Auszahlphase nach §&nbsp;22 Nr.&nbsp;5 Satz&nbsp;1 EStG voll nachgelagert besteuert. Für nicht geförderte Beiträge gilt dagegen die differenzierte Besteuerung nach §&nbsp;22 Nr.&nbsp;5 Satz&nbsp;2 EStG. Das ist beim AVD besonders relevant: Eigenbeiträge werden nur bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr gefördert, während Einzahlungen einschließlich Zulagen bis {AVD_CONTRACT_CONTRIBUTION_CAP}&nbsp;€ möglich sind. RentenWiki.de modelliert die AVD-Auszahlung derzeit konservativ voll steuerpflichtig und kann den nicht geförderten Anteil noch nicht separat ausweisen.
 
 In der Ansparphase unterscheidet sich die Förderlogik: Beide Produkte nutzen einen Sonderausgabenabzug nach §&nbsp;10a EStG mit Günstigerprüfung. Riester arbeitet zusätzlich mit festen Zulagen nach §&nbsp;84 EStG und §&nbsp;85 EStG; das AVD ersetzt die feste Grundzulage durch eine zweistufige beitragsabhängige Förderung und nutzt einen geänderten §&nbsp;10a-Rahmen mit eigenem Eigenbeitrags-Cap.
 
@@ -37,7 +40,7 @@ In der Ansparphase unterscheidet sich die Förderlogik: Beide Produkte nutzen ei
 | Kinderzulage | 185&nbsp;€ pro Kind/Jahr für Kinder vor 2008 geboren, 300&nbsp;€ pro Kind/Jahr ab 2008 (§&nbsp;85 EStG) | bis zu 300&nbsp;€ pro Kind/Jahr (100&nbsp;% des Eigenbeitrags, gedeckelt auf 300&nbsp;€) |
 | Berufseinsteiger-Bonus | einmalig bis Vertragsalter 24 (§&nbsp;84 EStG) | einmalig bis Vertragsalter 24 |
 | Eigenbeitrags-Regel | Mindesteigenbeitrag §&nbsp;86 EStG: max(60&nbsp;€, min(4&nbsp;% Brutto-Vorjahr, 2.100&nbsp;€) − Zulagenanspruch) | Sockelbetrag 120&nbsp;€ pro Jahr (kein einkommensproportionaler Anteil); Förder-Cap auf Eigenbeitragsseite niedriger als bei Riester, vertragsbezogene Beitragsobergrenze höher |
-| Sonderausgabenabzug | §&nbsp;10a EStG (Altvertragsregime): Eigenbeitrag plus Zulagen bis 2.100&nbsp;€ pro Jahr, Günstigerprüfung | §&nbsp;10a EStG (nach Altersvorsorgereformgesetz): Eigenbeitrag bis 1.800&nbsp;€ pro Jahr plus zugehörige Zulagen, Günstigerprüfung |
+| Sonderausgabenabzug | §&nbsp;10a EStG (Altvertragsregime): Eigenbeitrag plus Zulagen bis 2.100&nbsp;€ pro Jahr, Günstigerprüfung | §&nbsp;10a EStG (nach Altersvorsorgereformgesetz): Eigenbeitrag bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr plus zugehörige Zulagen, Günstigerprüfung |
 | Standarddepot-Kosten | abhängig vom Anbieter | gesetzlicher Effektivkosten-Deckel für das Standarddepot |
 | Auszahlbeginn | Vertragsmodalität | frühestens 65, spätestens 70 Jahre |
 | Teilkapital | Wohn-Riester separat geregelt | begrenzte Teilkapitalauszahlung möglich |
@@ -54,7 +57,7 @@ Die Vorstellung, beide Produkte hätten dieselbe Förderung, trifft nicht zu.
 
 **Riester** kombiniert eine fixe Grundzulage nach §&nbsp;84 EStG mit einer Kinderzulage nach §&nbsp;85 EStG und einem Sonderausgabenabzug nach §&nbsp;10a EStG. Die Günstigerprüfung beim Finanzamt entscheidet automatisch, ob die Zulagen oder der zusätzliche Steuervorteil aus dem Sonderausgabenabzug höher ausfällt; ausgezahlt wird die Differenz. Wer den vollen Mindesteigenbeitrag von 4&nbsp;% des Brutto-Vorjahresentgelts (mindestens den Sockelbetrag) abzüglich Zulagen leistet, erhält die volle Zulage.
 
-**Das AVD** behält den Sonderausgabenabzug nach §&nbsp;10a EStG mit Günstigerprüfung, formuliert ihn aber neu (Altersvorsorgereformgesetz): abzugsfähig sind Eigenbeiträge bis 1.800&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen. Anstelle der festen Riester-Grundzulage tritt eine zweistufige beitragsabhängige Grundzulage:
+**Das AVD** behält den Sonderausgabenabzug nach §&nbsp;10a EStG mit Günstigerprüfung, formuliert ihn aber neu (Altersvorsorgereformgesetz): abzugsfähig sind Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen. Anstelle der festen Riester-Grundzulage tritt eine zweistufige beitragsabhängige Grundzulage:
 
 - 50&nbsp;% Förderquote auf das untere Beitragsband (die ersten Eigenbeitrags-Euros).
 - 25&nbsp;% Förderquote auf das obere Beitragsband bis zum Förder-Cap.
@@ -84,7 +87,7 @@ Per Altersvorsorgereformgesetz wird die Übertragung Riester nach AVD ausdrückl
 Für eine vergleichbare Konstellation (Anfang 30, ein Kind mit Geburtsjahr ab 2008, mittleres rentenversicherungspflichtiges Vorjahresentgelt, geplanter Renteneintritt mit 67) ergeben sich folgende strukturelle Unterschiede:
 
 - **Riester:** Grundzulage und Kinderzulage sind fixe Beträge; der Sonderausgabenabzug nach §&nbsp;10a EStG (Eigenbeitrag plus Zulagen, bis 2.100&nbsp;€ pro Jahr) greift zusätzlich, soweit die Steuerersparnis aus dem Abzug die Zulagen übersteigt. Der Mindesteigenbeitrag richtet sich nach §&nbsp;86 EStG: max(60&nbsp;€, min(4&nbsp;% Brutto-Vorjahr, 2.100&nbsp;€) − Zulagenanspruch).
-- **AVD:** Die Grundzulage ergibt sich aus der zweistufigen Förderquote (50&nbsp;% auf das untere Beitragsband, 25&nbsp;% auf das obere); der zugehörige Sonderausgabenabzug nach §&nbsp;10a EStG (Altersvorsorgereformgesetz) berücksichtigt Eigenbeiträge bis 1.800&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen, ebenfalls mit Günstigerprüfung. Die Kinderzulage ist einheitlich (kein Vor-2008/Ab-2008-Unterschied) und beitragsproportional gedeckelt.
+- **AVD:** Die Grundzulage ergibt sich aus der zweistufigen Förderquote (50&nbsp;% auf das untere Beitragsband, 25&nbsp;% auf das obere); der zugehörige Sonderausgabenabzug nach §&nbsp;10a EStG (Altersvorsorgereformgesetz) berücksichtigt Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen, ebenfalls mit Günstigerprüfung. Die Kinderzulage ist einheitlich (kein Vor-2008/Ab-2008-Unterschied) und beitragsproportional gedeckelt.
 
 Welche Förderlogik im konkreten Fall mehr Zulage und mehr Steuerentlastung erzeugt, hängt von Eigenbeitrag, Brutto-Vorjahr, Anzahl und Alter der Kinder sowie dem persönlichen Steuersatz ab. Für die Gesamtbetrachtung kommen Produktkosten, Garantie versus Marktchance und Auszahlweg hinzu. Konkrete Zahlen liefert der Rechner mit den eigenen Eingaben.
 
@@ -96,7 +99,7 @@ Diese Seite vergleicht die Produkteigenschaften auf Basis der vom Bundestag besc
 
 ### Haben Riester und AVD wirklich nicht dieselbe Förderung?
 
-Nein, die Mechanik unterscheidet sich. Beide Produkte nutzen einen Sonderausgabenabzug nach §&nbsp;10a EStG mit Günstigerprüfung; die Cap-Formel ist jedoch verschieden: Riester (Altvertragsregime) berücksichtigt Eigenbeitrag plus Zulagen bis 2.100&nbsp;€ pro Jahr, das AVD (nach Altersvorsorgereformgesetz) Eigenbeitrag bis 1.800&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen. Riester arbeitet zusätzlich mit fester Grundzulage und nach Geburtsjahr gestaffelter Kinderzulage; das AVD nutzt eine zweistufige Förderquote (50&nbsp;% / 25&nbsp;%) und eine einheitliche, beitragsproportional gedeckelte Kinderzulage. Identisch sind die nachgelagerte Besteuerung nach §&nbsp;22 Nr.&nbsp;5 EStG und das KV/PV-Routing (kein bAV-Versorgungsbezug nach §&nbsp;229 SGB&nbsp;V).
+Nein, die Mechanik unterscheidet sich. Beide Produkte nutzen einen Sonderausgabenabzug nach §&nbsp;10a EStG mit Günstigerprüfung; die Cap-Formel ist jedoch verschieden: Riester (Altvertragsregime) berücksichtigt Eigenbeitrag plus Zulagen bis 2.100&nbsp;€ pro Jahr, das AVD (nach Altersvorsorgereformgesetz) Eigenbeitrag bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen. Riester arbeitet zusätzlich mit fester Grundzulage und nach Geburtsjahr gestaffelter Kinderzulage; das AVD nutzt eine zweistufige Förderquote (50&nbsp;% / 25&nbsp;%) und eine einheitliche, beitragsproportional gedeckelte Kinderzulage. Identisch sind die nachgelagerte Besteuerung nach §&nbsp;22 Nr.&nbsp;5 EStG und das KV/PV-Routing (kein bAV-Versorgungsbezug nach §&nbsp;229 SGB&nbsp;V).
 
 ### Welches Produkt hat geringere Kosten?
 

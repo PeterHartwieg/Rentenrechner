@@ -28,6 +28,7 @@ import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2, buildWorkspaceJson, parseWorkspaceJson } from '../storage'
 import { simulateRetirementComparison } from './simulate'
+import { calculateRiesterFunding } from './riester'
 import {
   NEUTRALISED_ALTERSVORSORGEDEPOT,
   NEUTRALISED_BASISRENTE,
@@ -2226,6 +2227,117 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
         expect(combineR!.afterTaxLumpSum).toBe(null)
       }
     }
+  })
+
+  it('Riester yearly funding uses the aggregate post-bAV salary baseline', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const firstBav: BavInstance = {
+      ...workspace.baseline.assumptions.bav[0],
+      instanceId: 'bav-salary-first',
+      monthlyGrossConversion: 200,
+    }
+    const secondBav: BavInstance = {
+      ...firstBav,
+      instanceId: 'bav-salary-second',
+      monthlyGrossConversion: 300,
+    }
+    const riester: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: 'riester-aggregate-salary',
+      monthlyOwnContribution: 100,
+    }
+    workspace.baseline.assumptions.bav = [firstBav, secondBav]
+    workspace.baseline.assumptions.riester = [riester]
+
+    const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
+    const result = perInstance[riester.instanceId][0]
+    const accepted = portfolioFunding.riesterByInstanceId[riester.instanceId]
+
+    expect(result.rows[0].yearlyUserCost).toBeCloseTo(
+      accepted.monthlyNetCost * 12,
+      8,
+    )
+  })
+
+  it('AVD yearly funding uses the aggregate post-bAV salary baseline', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const firstBav: BavInstance = {
+      ...workspace.baseline.assumptions.bav[0],
+      instanceId: 'bav-avd-salary-first',
+      monthlyGrossConversion: 200,
+    }
+    const secondBav: BavInstance = {
+      ...firstBav,
+      instanceId: 'bav-avd-salary-second',
+      monthlyGrossConversion: 300,
+    }
+    const avd: AltersvorsorgedepotInstance = {
+      ...workspace.baseline.assumptions.altersvorsorgedepot[0],
+      instanceId: 'avd-aggregate-salary',
+      monthlyOwnContribution: 100,
+    }
+    workspace.baseline.assumptions.bav = [firstBav, secondBav]
+    workspace.baseline.assumptions.altersvorsorgedepot = [avd]
+
+    const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
+    const result = perInstance[avd.instanceId][0]
+    const accepted = portfolioFunding.altersvorsorgedepotByInstanceId[avd.instanceId]
+
+    expect(result.rows[0].yearlyUserCost).toBeCloseTo(
+      accepted.monthlyNetCost * 12,
+      8,
+    )
+  })
+
+  it('Riester releases one-time career-starter cap headroom after year one', () => {
+    const baseV1 = makeRichV1()
+    const workspace = migrateV1ToV2(
+      baseV1.profile as unknown as Record<string, unknown>,
+      baseV1.assumptions as unknown as Record<string, unknown>,
+    )
+    const riester: RiesterInstance = {
+      ...workspace.baseline.assumptions.riester[0],
+      instanceId: 'riester-yearly-cap',
+      monthlyOwnContribution: 170,
+      eligibility: {
+        ...workspace.baseline.assumptions.riester[0].eligibility,
+        ageAtContractStart: 20,
+        careerStarterBonusUsed: false,
+      },
+    }
+    workspace.baseline.assumptions.bav = []
+    workspace.baseline.assumptions.riester = [riester]
+
+    const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
+    const result = perInstance[riester.instanceId][0]
+    const yearTwoOwnMonthly = (
+      de2026Rules.riester.annualCapInclAllowances -
+      de2026Rules.riester.grundzulage
+    ) / 12
+    const yearTwoFunding = calculateRiesterFunding(
+      de2026Rules,
+      portfolioFunding.salaryForOtherFunding,
+      { ...riester, monthlyOwnContribution: yearTwoOwnMonthly },
+      workspace.baseline.profile,
+      { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
+    )
+    const expectedYearTwoProductAnnual =
+      yearTwoFunding.annualOwnContribution +
+      yearTwoFunding.totalAllowanceAnnual +
+      yearTwoFunding.guenstigerpruefungBenefitAnnual
+
+    expect(result.rows[1].yearlyProductContribution).toBeCloseTo(
+      expectedYearTwoProductAnnual,
+      8,
+    )
   })
 })
 

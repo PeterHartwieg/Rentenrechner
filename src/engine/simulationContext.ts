@@ -6,6 +6,7 @@ import type {
   GermanRules,
   PersonalProfile,
   RiesterFundingResult,
+  SalaryResult,
   ScenarioAssumptions,
   StatutoryPensionResult,
 } from '../domain'
@@ -25,6 +26,8 @@ export interface SimulationContext {
   payoutYear: number
   yearsToRetirement: number
   bavFunding: BavFundingResult
+  /** Salary result after all active bAV instances; singleton path uses bavFunding.salaryWithBav. */
+  salaryForOtherFunding: SalaryResult
   bavLumpSumTaxMode: BavLumpSumTaxMode
   /** Derived from contract start year, runtime, and retirement age — excludes 'ertragsanteil'
    *  (that mode is set internally by netInsurancePayout when payoutMode === 'leibrente'). */
@@ -145,6 +148,8 @@ export interface BuildContextOverrides {
   altersvorsorgedepotFundingOverride?: AltersvorsorgedepotFundingResult
   /** Pre-computed Riester funding for the active instance. */
   riesterFundingOverride?: RiesterFundingResult
+  /** Aggregate post-bAV salary baseline for combine-mode downstream funding. */
+  salaryForOtherFundingOverride?: SalaryResult
   /**
    * Per-instance starting capital + transfer-event injections / withdrawals.
    * Built by `buildInstanceCapitalPolicy` in `portfolioTransfer.ts` and forwarded
@@ -189,6 +194,8 @@ export function buildContext(
 ): SimulationContext {
   const bavFunding = overrides?.bavFundingOverride
     ?? calculateBavFunding(profile, rules, assumptions.bav)
+  const salaryForOtherFunding =
+    overrides?.salaryForOtherFundingOverride ?? bavFunding.salaryWithBav
   const payoutYear = rules.year + (profile.retirementAge - profile.age)
   const contractRuntimeYears = payoutYear - assumptions.insurance.contractStartYear
   const insuranceTaxMode = deriveInsuranceTaxMode(
@@ -216,19 +223,19 @@ export function buildContext(
   const basisrenteFunding = overrides?.basisrenteFundingOverride
     ?? calculateBasisrenteFunding(
       rules,
-      bavFunding.salaryWithBav,
+      salaryForOtherFunding,
       assumptions.basisrente,
       pensionSystemAnnualContributionOverride,
     )
   const altersvorsorgedepotFunding = overrides?.altersvorsorgedepotFundingOverride
     ?? calculateAvdFunding(
       rules,
-      bavFunding.salaryWithBav,
+      salaryForOtherFunding,
       assumptions.altersvorsorgedepot,
       { profile },
     )
   const riesterFunding = overrides?.riesterFundingOverride
-    ?? calculateRiesterFunding(rules, bavFunding.salaryWithBav, assumptions.riester, profile)
+    ?? calculateRiesterFunding(rules, salaryForOtherFunding, assumptions.riester, profile)
 
   const grvProjection = projectStatutoryPension(
     profile,
@@ -245,6 +252,7 @@ export function buildContext(
     payoutYear,
     yearsToRetirement: profile.retirementAge - profile.age,
     bavFunding,
+    salaryForOtherFunding,
     bavLumpSumTaxMode,
     insuranceTaxMode,
     basisrenteFunding,

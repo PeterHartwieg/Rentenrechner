@@ -14,6 +14,10 @@
  */
 
 import type { Atom, AtomId } from '../app/recommendations'
+import { activeRules } from '../rules'
+
+const AVD_CONTRACT_CONTRIBUTION_CAP =
+  activeRules.altersvorsorgedepot.contractContributionCapAnnual.toLocaleString('de-DE')
 
 // ---------------------------------------------------------------------------
 // Context accessor helpers
@@ -229,7 +233,7 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
     const usedPct = ctxNumber(atom.context, 'usedPct')
     const remainingMonthly = ctxNumber(atom.context, 'remainingMonthly')
     const usedPctDisplay = Math.round(usedPct * 100)
-    let body = `Du nutzt ${usedPctDisplay} % des AVD-Vertragsrahmens (6.840 €/Jahr). `
+    let body = `Du nutzt ${usedPctDisplay} % des AVD-Vertragsrahmens (${AVD_CONTRACT_CONTRIBUTION_CAP} €/Jahr). `
     if (remainingMonthly > 0) {
       body += `Noch ${Math.round(remainingMonthly)} €/Monat Spielraum bis zur Vertragsobergrenze.`
     } else {
@@ -362,11 +366,23 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
   funding_cap_hit: (atom) => {
     const capAnnualEUR = ctxNumber(atom.context, 'capAnnualEUR')
     const proposedAnnualEUR = ctxNumber(atom.context, 'proposedAnnualEUR')
+    const householdRequestedAnnualEUR = ctxNumber(
+      atom.context,
+      'householdRequestedAnnualEUR',
+    )
+    const combinedOnlyBreach =
+      proposedAnnualEUR <= capAnnualEUR && householdRequestedAnnualEUR > capAnnualEUR
     return {
       headline: 'Über dem gesetzlichen Förderdeckel',
       body:
-        `Der vorgeschlagene Beitrag (${Math.round(proposedAnnualEUR).toLocaleString('de-DE')} €/Jahr) ` +
-        `übersteigt den gesetzlichen Förderrahmen (${Math.round(capAnnualEUR).toLocaleString('de-DE')} €/Jahr). ` +
+        (combinedOnlyBreach
+          ? `Der vorgeschlagene Beitrag liegt für sich innerhalb des Förderrahmens. ` +
+            `Zusammen mit den übrigen auf diesen Förderrahmen angerechneten Beträgen ` +
+            `(zum Beispiel Zulagen, Arbeitgeberanteil, gesetzliche Rentenbeiträge oder weitere Verträge) ` +
+            `würden jedoch ${Math.round(householdRequestedAnnualEUR).toLocaleString('de-DE')} €/Jahr ` +
+            `auf den Förderrahmen von ${Math.round(capAnnualEUR).toLocaleString('de-DE')} €/Jahr treffen. `
+          : `Der vorgeschlagene Beitrag (${Math.round(proposedAnnualEUR).toLocaleString('de-DE')} €/Jahr) ` +
+            `übersteigt den gesetzlichen Förderrahmen (${Math.round(capAnnualEUR).toLocaleString('de-DE')} €/Jahr). `) +
         'Beiträge oberhalb des Deckels sind zwar möglich, verlieren aber die steuerlichen Vorteile ' +
         '(z. B. §-3-Nr.-63-Befreiung bei bAV, Sonderausgabenabzug bei Rürup/Riester/AVD). ' +
         'Die Modellrechnung zeigt die Auswirkung — du entscheidest, ob der höhere Beitrag trotzdem sinnvoll ist.',

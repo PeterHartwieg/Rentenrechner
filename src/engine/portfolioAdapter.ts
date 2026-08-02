@@ -117,9 +117,11 @@ export function simulatePortfolio(
     ? portfolioFunding.bavByInstanceId[firstActiveBav.instanceId]
     : undefined
   const withBavFundingAnchor = (overrides: BuildContextOverrides): BuildContextOverrides =>
-    bavFundingAnchor
-      ? { bavFundingOverride: bavFundingAnchor, ...overrides }
-      : overrides
+    ({
+      ...(bavFundingAnchor ? { bavFundingOverride: bavFundingAnchor } : {}),
+      salaryForOtherFundingOverride: portfolioFunding.salaryForOtherFunding,
+      ...overrides,
+    })
 
   // Collect all transfer events once so per-instance lookup is O(1).
   const { outboundBy, inboundBy } = collectTransferEvents(wsa)
