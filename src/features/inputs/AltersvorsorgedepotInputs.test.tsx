@@ -89,6 +89,21 @@ describe('AltersvorsorgedepotInputs — the Eigenbeitrag is the primary input', 
     expect(screen.getByText('Vertragsrahmen')).toBeTruthy()
     expect(screen.getByRole('slider')).toHaveAttribute('max', '525')
   })
+
+  it('derives the ceiling and quick choices from eligible profile children', () => {
+    const { onAvdOwnContributionChange } = setup({
+      profile: {
+        ...defaultProfile,
+        childBirthYears: [de2026Rules.year - 5, de2026Rules.year - 3],
+      },
+    })
+
+    expect(defaultAssumptions.altersvorsorgedepot.eligibility.eligibleChildren).toBe(0)
+    expect(screen.getByRole('slider')).toHaveAttribute('max', '475')
+
+    fireEvent.click(screen.getByText('Vertragsrahmen'))
+    expect(onAvdOwnContributionChange).toHaveBeenCalledWith(475)
+  })
 })
 
 describe('AltersvorsorgedepotInputs — the ledger reads the engine, never recomputes', () => {

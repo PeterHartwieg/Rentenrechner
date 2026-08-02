@@ -163,7 +163,11 @@ describe('syncMonthlyContributions — pinned AVD Eigenbeitrag', () => {
     },
   )
 
-  it('re-clamps the pinned Eigenbeitrag when eligibility lowers the ceiling', () => {
+  it('re-clamps the pinned Eigenbeitrag when profile eligibility lowers the ceiling', () => {
+    const profile = {
+      ...defaultProfile,
+      childBirthYears: [RULES.year - 5, RULES.year - 3],
+    }
     const twoKids: ScenarioAssumptions = pinned(525, {
       altersvorsorgedepot: {
         ...defaultAssumptions.altersvorsorgedepot,
@@ -176,7 +180,7 @@ describe('syncMonthlyContributions — pinned AVD Eigenbeitrag', () => {
     const ceiling = avdMaxMonthlyOwn(twoKids, RULES)
     expect(ceiling).toBeCloseTo(475, 6)
 
-    const result = syncMonthlyContributions(0, twoKids, defaultProfile, RULES)
+    const result = syncMonthlyContributions(0, twoKids, profile, RULES)
     expect(result.altersvorsorgedepot.monthlyOwnContribution).toBeCloseTo(475, 6)
     expect(result.contributionInput).toEqual({ kind: 'avd-own', monthlyOwn: ceiling })
   })

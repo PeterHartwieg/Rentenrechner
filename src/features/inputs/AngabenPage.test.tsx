@@ -9,6 +9,7 @@ import { pathToRoute, ROUTES, detectSavedMode } from '../../app/useRoute'
 import { AngabenPage } from './AngabenPage'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
 import { RULES_YEAR } from '../../rules'
+import { de2026Rules } from '../../rules/de2026'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { addInstanceToWorkspace } from '../../features/inventory/inventoryHelpers'
@@ -16,6 +17,7 @@ import type { Workspace } from '../../domain/workspace'
 import { useAngabenState } from '../../app/useAngabenState'
 import { buildShareUrl } from '../../utils/urlShare'
 import { eachViewport, mockViewport } from '../../test/viewport'
+import { simulateRetirementComparison } from '../../engine/simulate'
 
 // PR 2 of the Direction D /eingaben redesign split this page in two. § 5
 // (Produkt-Eingaben / Meine Verträge) moved to `/eingaben/produkte`
@@ -1210,6 +1212,47 @@ describe('useAngabenState — no-op setters must not bump lastEditedAt (CodeRabb
     expect(rawV2).not.toBeNull()
     const parsed = JSON.parse(rawV2!) as Workspace
     expect(parsed.baseline.lastEditedAt).toBeGreaterThan(FIXED_TS)
+  })
+})
+
+describe('useAngabenState — pinned AVD Eigenbeitrag', () => {
+  it('uses profile-derived child eligibility for the shared compare-mode anchor', () => {
+    const profile = {
+      ...defaultProfile,
+      childBirthYears: [RULES_YEAR - 5, RULES_YEAR - 3],
+    }
+    const assumptions: Parameters<typeof buildStateJson>[1] = {
+      ...defaultAssumptions,
+      visibleProducts: ['etf', 'bav', 'altersvorsorgedepot'],
+      altersvorsorgedepot: {
+        ...defaultAssumptions.altersvorsorgedepot,
+        eligibility: {
+          ...defaultAssumptions.altersvorsorgedepot.eligibility,
+          eligibleChildren: 0,
+        },
+      },
+    }
+    localStorage.setItem(STORAGE_KEY_V1, buildStateJson(profile, assumptions))
+
+    const { result } = renderHook(() => useAngabenState())
+    act(() => {
+      result.current.setAvdOwnContribution?.(150)
+    })
+
+    const simulation = simulateRetirementComparison(
+      result.current.profile,
+      result.current.assumptions,
+      de2026Rules,
+    )
+    const basisRows = simulation.products.filter((row) => row.scenarioId === 'basis')
+    const avd = basisRows.find((row) => row.productId === 'altersvorsorgedepot')
+    const etf = basisRows.find((row) => row.productId === 'etf')
+
+    expect(avd).toBeDefined()
+    expect(etf).toBeDefined()
+    // The pinned anchor is a fixed point over statutory whole-euro tax
+    // rounding; CLAUDE.md documents a measured residual below €0.10/month.
+    expect(Math.abs(etf!.monthlyUserCost - avd!.monthlyUserCost)).toBeLessThan(0.1)
   })
 })
 

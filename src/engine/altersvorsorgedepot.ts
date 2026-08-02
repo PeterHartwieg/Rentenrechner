@@ -193,6 +193,26 @@ export interface AvdFundingOptions {
   filingStatus?: 'single' | 'married'
 }
 
+/**
+ * Resolve the eligibility used by AVD funding for a contribution year.
+ * Profile child birth years are authoritative when a profile is available;
+ * the stored eligibility count remains the fallback for profile-less callers.
+ */
+export function resolveAvdEligibility(
+  eligibility: AltersvorsorgedepotAssumptions['eligibility'],
+  profile: PersonalProfile | undefined,
+  contributionYear: number,
+): AltersvorsorgedepotAssumptions['eligibility'] {
+  if (!profile) return eligibility
+  return {
+    ...eligibility,
+    eligibleChildren: childBirthYearsUnder25InYear(
+      profile.childBirthYears,
+      contributionYear,
+    ).length,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Full AVD funding calculation (§10a Günstigerprüfung)
 // ---------------------------------------------------------------------------
@@ -220,13 +240,11 @@ export function calculateAvdFunding(
   const avdRules = rules.altersvorsorgedepot
   const annualOwnContribution = avd.monthlyOwnContribution * 12
   const contributionYear = options.contributionYear ?? rules.year
-  const profileEligibleChildren = options.profile
-    ? childBirthYearsUnder25InYear(options.profile.childBirthYears, contributionYear).length
-    : avd.eligibility.eligibleChildren
-  const effectiveEligibility = {
-    ...avd.eligibility,
-    eligibleChildren: profileEligibleChildren,
-  }
+  const effectiveEligibility = resolveAvdEligibility(
+    avd.eligibility,
+    options.profile,
+    contributionYear,
+  )
   const isFirstContributionYear =
     options.isFirstContributionYear ?? !avd.eligibility.careerStarterBonusUsed
 

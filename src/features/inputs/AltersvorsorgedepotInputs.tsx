@@ -13,7 +13,10 @@ import type {
 import { NumberField } from '../../ui/NumberField'
 import { RangeNumberField } from '../../ui/RangeNumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
-import { validateAvdPayoutAge } from '../../engine/altersvorsorgedepot'
+import {
+  resolveAvdEligibility,
+  validateAvdPayoutAge,
+} from '../../engine/altersvorsorgedepot'
 import { avdMaxMonthlyOwn } from '../../utils/syncContributions'
 import { buildAvdBeitragsstufen } from './avdBeitragsstufen'
 import { useFeedbackTarget } from '../qa-feedback'
@@ -67,8 +70,13 @@ export function AltersvorsorgedepotInputs({
   })
   // Ceiling and levels come from the same helpers the sync clamps with, so the
   // slider bound and the cappedAtContractMax warning can never disagree.
-  const maxOwn = avdMaxMonthlyOwn(assumptions, rules)
-  const beitragsstufen = buildAvdBeitragsstufen(rules, avd.eligibility)
+  const effectiveEligibility = resolveAvdEligibility(
+    avd.eligibility,
+    profile,
+    rules.year,
+  )
+  const maxOwn = avdMaxMonthlyOwn(assumptions, rules, profile)
+  const beitragsstufen = buildAvdBeitragsstufen(rules, effectiveEligibility)
 
   // Every figure below is read straight off `avdFunding`. The panel must not
   // re-derive allowances or the Guenstigerpruefung: the engine applies the

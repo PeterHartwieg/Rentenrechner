@@ -40,6 +40,7 @@ import { solveBasisrenteGrossFromNet } from '../engine/basisrente'
 import {
   calculateAvdFunding,
   maxAvdMonthlyOwnContribution,
+  resolveAvdEligibility,
   solveAvdOwnFromNet,
 } from '../engine/altersvorsorgedepot'
 import { solveRiesterOwnFromNet } from '../engine/riester'
@@ -62,11 +63,17 @@ const ANCHOR_MAX_ITERATIONS = 20
 export function avdMaxMonthlyOwn(
   current: ScenarioAssumptions,
   rules: GermanRules,
+  profile?: PersonalProfile,
 ): number {
-  return maxAvdMonthlyOwnContribution(
+  const eligibility = resolveAvdEligibility(
     current.altersvorsorgedepot.eligibility,
+    profile,
+    rules.year,
+  )
+  return maxAvdMonthlyOwnContribution(
+    eligibility,
     rules,
-    !current.altersvorsorgedepot.eligibility.careerStarterBonusUsed,
+    !eligibility.careerStarterBonusUsed,
   )
 }
 
@@ -121,10 +128,15 @@ function anchorForPinnedAvdOwn(
       ...current.bav,
       monthlyGrossConversion: bavGross,
     })
-    return calculateAvdFunding(rules, bavFunding.salaryWithBav, {
-      ...current.altersvorsorgedepot,
-      monthlyOwnContribution: monthlyOwn,
-    }).monthlyNetCost
+    return calculateAvdFunding(
+      rules,
+      bavFunding.salaryWithBav,
+      {
+        ...current.altersvorsorgedepot,
+        monthlyOwnContribution: monthlyOwn,
+      },
+      { profile },
+    ).monthlyNetCost
   }
 
   let anchor = netCostAt(0)
@@ -147,7 +159,7 @@ export function syncMonthlyContributions(
   profile: PersonalProfile,
   rules: GermanRules,
 ): ScenarioAssumptions {
-  const avdMaxMonthly = avdMaxMonthlyOwn(current, rules)
+  const avdMaxMonthly = avdMaxMonthlyOwn(current, rules, profile)
 
   // A pinned AVD Eigenbeitrag only steers the comparison while AVD is part of
   // it. `simulateRetirementComparison` builds the funding context even for
