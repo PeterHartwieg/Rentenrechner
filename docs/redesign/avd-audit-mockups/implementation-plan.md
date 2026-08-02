@@ -32,7 +32,8 @@ das Risiko klein.
 
 Das ist der Kern und er steht so nicht im Audit-Dokument.
 
-`useSimulationResult` ([src/app/useSimulationResult.ts:45](../../../src/app/useSimulationResult.ts)) berechnet **bei jedem Render** alle
+`useSimulationResult` ([src/app/useSimulationResult.ts:45](../../../src/app/useSimulationResult.ts)) berechnet in einem `useMemo` über
+`[profile, assumptions]` — also bei jeder Eingabeänderung — alle
 Produktbeiträge neu aus dem einen Anker `equalInputAmountEUR`:
 
 ```
@@ -44,10 +45,13 @@ activeAssumptions = syncMonthlyContributions(equalInputAmountEUR, assumptions, p
 `altersvorsorgedepot.monthlyOwnContribution` und `riester.monthlyOwnContribution`.
 
 Folge: **`assumptions.altersvorsorgedepot.monthlyOwnContribution` ist im
-Vergleichsmodus kein Eingabewert, sondern ein abgeleiteter Wert.** Was ein
-Nutzer dort hineinschriebe, würde beim nächsten Simulationslauf überschrieben.
-Ein simples Feld-Tauschen (Netto-Aufwand raus, Eigenbeitrag rein) funktioniert
-deshalb nicht.
+Vergleichsmodus kein Eingabewert, sondern ein abgeleiteter Wert.** Ein direkt
+hineingeschriebener Wert bliebe zwar im State und im localStorage stehen
+([useCalculatorState.ts:96](../../../src/app/useCalculatorState.ts)), würde aber von
+`activeAssumptions` sofort verdeckt und beim nächsten
+`setSyncedMonthlyContribution` bzw. beim `harmonizeOnLoad` nach einem Reload
+([useCalculatorState.ts:57](../../../src/app/useCalculatorState.ts)) überschrieben. Ein simples
+Feld-Tauschen (Netto-Aufwand raus, Eigenbeitrag rein) funktioniert deshalb nicht.
 
 Dazu kommt eine messbare Drift. Gemessen: Eigenbeitrag vorwärts in Netto
 rechnen, Netto als Anker setzen, Eigenbeitrag zurücklesen:
@@ -67,9 +71,12 @@ neu löst, damit `salaryWithBav` verschiebt und die AVD-Günstigerprüfung
 anschließend auf einer anderen Steuerbasis rechnet. Je größer der Anker, desto
 größer die Verschiebung.
 
-Ohne Gegenmaßnahme würde eine angeklickte Beitragsstufe „150 €" sofort auf
-149,73 € springen, die Karte sich selbst abwählen und der Slider vom
-5er-Raster fallen.
+Sichtbar wird die Drift nicht sofort: `NumberField` rendert
+`Number(value.toFixed(decimals))` ([NumberField.tsx:99](../../../src/ui/NumberField.tsx)), 149,728
+erscheint also als „150". Die realen Symptome sind (a) die Beitragsstufen-Karte
+wählt sich selbst ab, sobald die Auswahl per `===` geprüft wird — genau das tut
+das Mockup —, und (b) ab etwa 300 € wird die Drift auch bei 0 Nachkommastellen
+sichtbar (300 → 298).
 
 **Zweite Folge, die in die Copy muss:** ein Klick auf eine AVD-Beitragsstufe
 schreibt den globalen Anker um und damit alle anderen Produkte. Gemessen:
@@ -79,41 +86,70 @@ Basisrente 194,75 €, Riester 172,92 €. Das ist im Einklang mit der
 Fair-Comparison-Invariante und mit dem Mockup-Hinweis („wird automatisch
 übernommen"), aber die aktuelle Formulierung erwähnt nur ETF.
 
-#### Zwei Umsetzungswege
+#### Der Umsetzungsweg
 
-**Weg C — Anker-Rückwärtssuche (empfohlen).** Der Anker bleibt die einzige
-Wahrheit. Ein neuer reiner Helper sucht denjenigen Anker, dessen
-Sync-Ergebnis exakt den gewünschten Eigenbeitrag liefert:
+Zwei Wege wurden geprüft. **Weg B ist der richtige**; Weg C ist verworfen.
 
-```
-solveAnchorForAvdOwn(targetOwn, assumptions, profile, rules) → anchorEUR
-```
+**Verworfen — Weg C: Anker-Rückwärtssuche.** Der Anker bliebe die einzige
+Wahrheit, ein Helper `solveAnchorForAvdOwn` würde per Bisektion über
+`syncMonthlyContributions` denjenigen Anker suchen, der den gewünschten
+Eigenbeitrag liefert. Das scheitert an zwei Plateaus, die eine grobe
+25er-Abtastung übersieht:
 
-Gemessen (Bisektion über `syncMonthlyContributions`, Startwert aus der
-Vorwärtsrechnung):
+1. **Förderschwelle bei 120 €/Jahr.** `calculateAvdFunding` gewährt den §10a-
+   Steuervorteil auch *unterhalb* des Mindestbeitrags — die Eligibility-Prüfung
+   sitzt nur in den Zulagen (`computeBasicAllowance`,
+   [altersvorsorgedepot.ts:58](../../../src/engine/altersvorsorgedepot.ts)), nicht in der
+   Günstigerprüfung. Gemessen springt der Netto-Aufwand deshalb:
+   `net(9,99 €) = 6,24 €`, `net(10 €) = 9,42 €`. Anker zwischen 6,24 € und
+   9,42 € haben **kein Urbild**; alle Anker von 6,25 € bis 9,00 € liefern
+   `own = 10,0000`.
+2. **AltZertG-Deckel.** Ab Anker ≈ 502,58 € liefert jeder Anker `own = 525,0000`
+   (Clamp in [syncContributions.ts:56](../../../src/utils/syncContributions.ts)).
 
-| Ziel-Eigenbeitrag | gefundener Anker | erreicht | Fehler | Zeit |
-|---:|---:|---:|---:|---:|
-| 10 € | 7,14 € | 10,0000 € | 0,0000 | 1,8 ms |
-| 30 € | 27,86 € | 30,0259 € | +0,0259 | 4,1 ms |
-| 150 € | 122,76 € | 150,0038 € | +0,0038 | 1,1 ms |
-| 300 € | 274,50 € | 299,9908 € | −0,0092 | 5,7 ms |
-| 525 € | 502,58 € | 525,0000 € | 0,0000 | 0,1 ms |
+Bisektion konvergiert dort zwar, die Lösung ist aber nicht eindeutig — und die
+gewählte Lösung verletzt genau die Invariante, die der PR zu wahren behauptet:
+für Ziel 10 € fand die Suche Anker **7,14 €**, während der AVD real **9,42 €**
+netto kostet. Alle anderen Produkte würden also 7,14 € investieren.
+Ausgerechnet an den beiden Karten, die die Oberfläche am prominentesten
+bewirbt (Mindestbeitrag und Vertragsrahmen), wäre der Vergleich unfair.
 
-Die Abbildung Anker → Eigenbeitrag ist monoton (geprüft über 0–600 € in
-25er-Schritten), Bisektion ist also zulässig. Restfehler bleibt unter 0,03 €
-und ist bei Anzeige mit 0 Nachkommastellen unsichtbar. 40 Sync-Läufe (ein
-Slider-Drag) kosten 2,4 ms — der Slider darf live rechnen.
+**Gewählt — Weg B: Eigenbeitrag festschreiben, Anker vorwärts ableiten.**
 
-Kein Schema-Wechsel, keine Storage-Migration, kein neuer persistierter Zustand.
+- Neues optionales Feld `equalInputOriginProductId?: ProductId` in
+  `ScenarioAssumptions`. Steht es auf `'altersvorsorgedepot'`, lässt
+  `syncMonthlyContributions` `altersvorsorgedepot.monthlyOwnContribution`
+  unangetastet und löst nur die übrigen Produkte aus dem Anker.
+- Der Anker ist dann per Definition der echte Netto-Aufwand des AVD. Weil die
+  Gehaltsbasis selbst vom Anker abhängt, ist er ein Fixpunkt
+  `a = net_{salary(a)}(own)` — gelöst durch einfache Iteration, **keine**
+  Inversion, deshalb auch keine Unstetigkeit.
 
-**Weg B — Herkunft des Ankers persistieren (Rückfalloption).** Ein optionales
-`equalInputOriginProductId` in `ScenarioAssumptions`; ist es
-`'altersvorsorgedepot'`, lässt `syncMonthlyContributions` den gespeicherten
-Eigenbeitrag unangetastet und löst nur die übrigen Produkte. Exakt auf den
-Cent, kostet aber Schemafeld, `scenarioSchema`-Erweiterung,
-`migrateAndValidateState`-Pfad und Share-URL-Round-Trip. Nur nehmen, wenn der
-Restfehler aus Weg C sich als störend erweist.
+Gemessen:
+
+| Eigenbeitrag | Anker | Iterationen | selbstkonsistent | Zeit |
+|---:|---:|---:|---|---:|
+| 10 € | 9,2500 € | 1 | ja | 1,3 ms |
+| 30 € | 27,9167 € | 2 | ja | 0,1 ms |
+| 150 € | 122,7500 € | 2 | ja | 0,3 ms |
+| 300 € | 274,5000 € | 3 | ja | 0,2 ms |
+| 525 € | 500,6667 € | 2 | ja | 0,2 ms |
+| 9 € (unter Mindestbeitrag) | 5,5833 € | 2 | ja | 0,1 ms |
+
+Der Eigenbeitrag trifft exakt, der Anker ist an jedem Punkt gleich dem
+tatsächlichen Netto-Aufwand, es gibt keine unerreichbaren Ziele und keine
+Plateaus. Zum Vergleich an den beiden kritischen Karten: Weg C hätte bei
+10 € den Anker auf 7,14 € gesetzt (statt 9,25 €) und bei 525 € auf 502,58 €
+(statt 500,67 €) — einmal zu niedrig, einmal zu hoch.
+
+Zusätzlicher Vorteil: der gewählte Eigenbeitrag ist **persistent**. Bei Weg C
+wäre nur der Anker gespeichert; jede spätere Änderung an Gehalt, bAV, Kindern
+oder Berechtigung hätte den Eigenbeitrag stillschweigend von der gewählten
+Stufe weggezogen.
+
+Preis: ein optionales Schemafeld mit `scenarioSchema`-Eintrag,
+`migrateAndValidateState`-Pfad und Share-URL-Round-Trip. Das ist der Aufwand
+wert.
 
 ### 1.3 Was aus den Mockups **nicht** übernommen werden darf
 
@@ -192,7 +228,59 @@ gehören unter „Erweitert" bzw. direkt unter die Auszahlungsform.
 - **Copy-Katalog:** nur `landing.copy.json` ist migriert; AVD-Texte bleiben
   vorerst inline. Kein Katalogaufwand.
 
-### 1.6 Bewusst außerhalb des Umfangs
+### 1.6 Weitere Fallstricke (aus dem Gegenreview)
+
+1. **Kinder haben zwei Quellen — und die Eingabe im AVD-Panel verliert.**
+   `buildContext` reicht `{ profile }` an `calculateAvdFunding`
+   ([simulationContext.ts:231](../../../src/engine/simulationContext.ts)); die Funktion
+   überschreibt dann `eligibility.eligibleChildren` mit
+   `childBirthYearsUnder25InYear(profile.childBirthYears, …)`
+   ([altersvorsorgedepot.ts:200](../../../src/engine/altersvorsorgedepot.ts)). Gemessen: mit
+   `eligibleChildren = 2` und leerem `profile.childBirthYears` liefert die
+   Funktion **600 € Kinderzulage ohne** und **0 € mit** Profil-Option — das
+   Profil gewinnt. `syncMonthlyContributions`, `solveAvdOwnFromNet` und
+   `maxAvdMonthlyOwnContribution` benutzen dagegen `eligibility.eligibleChildren`.
+   Das Feld „Förderberechtigte Kinder" im AVD-Panel ist damit für die simulierte
+   Kinderzulage praktisch wirkungslos. **Vor PR 3 zu entscheiden:** Welche
+   Quelle gilt? `buildAvdBeitragsstufen` muss die *effektive* Berechtigung
+   bekommen, sonst widerspricht die Vertragsrahmen-Karte dem
+   `cappedAtContractMax`-Hinweis daneben.
+
+2. **Live-Rechnen am Slider ist nicht gratis.** Die 2,4 ms für 40 Sync-Läufe
+   messen nur den Solver. Jeder Anker-Schreibvorgang löst zusätzlich die volle
+   `simulateRetirementComparison` **plus 1 000 Monte-Carlo-Läufe** aus
+   (`monteCarlo.enabled: true, runs: 1_000`,
+   [defaultScenario.ts:128](../../../src/data/defaultScenario.ts)). Der Slider muss lokal
+   ziehen und erst beim Loslassen committen — das ist in PR 2 zu entscheiden,
+   nicht in PR 4 zu entdecken.
+
+3. **Der globale Ankerwert wird sichtbar „krumm".** `NettoBelastungControl` in
+   Schritt 1 zeigt `equalInputAmountEUR`. Nach Klick auf die 150-€-Stufe steht
+   dort 122,75 €. Das ist rechnerisch richtig, braucht aber eine Erklärung.
+
+4. **QA-Screenshot-Schwärzung.** `NumberField` setzt `data-qa-sensitive="true"`
+   per Default ([NumberField.tsx:95](../../../src/ui/NumberField.tsx)). Slider-Position,
+   ausgewählte Karte und `aria-valuetext` verraten den Beitrag genauso — das
+   ganze `RangeNumberField` ist als sensitiv zu markieren.
+
+5. **Ledger unterhalb des Mindestbeitrags.** Wegen Fallstrick 1.2/1 zeigt die
+   Engine dort „Zulage 0 € / Steuervorteil +X €". Entweder Copy dafür schreiben
+   oder die fehlende Eligibility-Prüfung in der Günstigerprüfung als eigene
+   Engine-Frage aufmachen — **nicht** im UI wegkaschieren.
+
+6. **Commit-Semantik ändert sich.** Heute synchronisiert das Netto-Feld bei
+   *jedem Tastendruck* ([AltersvorsorgedepotInputs.tsx:108](../../../src/features/inputs/AltersvorsorgedepotInputs.tsx),
+   `NumberField` `onChange`). Mit Commit-auf-Blur löst „150" nicht mehr
+   zwischendurch bei „1" und „15" aus. Das ist eine Verbesserung, aber eine
+   Verhaltensänderung — nicht „Semantik bewahren".
+
+Geprüft und **nicht** betroffen: Share-URL, Scenario-Library, CSV/PDF-Export
+(`printReportRows.ts` sagt bereits „Eigenbeitrag pro Monat"), Recommender
+(setzt `monthlyOwnContribution` auf Engine-Ebene), `workers/simulate`,
+Monte-Carlo-Verteilung, Oracle-Snapshots. Das gehört so in den PR-4-Text, weil
+die Cron-Guardrails die betroffene Fläche verlangen.
+
+### 1.7 Bewusst außerhalb des Umfangs
 
 - **Riester.** Strukturell identisch (Grundzulage, Günstigerprüfung,
   `solveRiesterOwnFromNet`, `monthlyOwnContribution`) und der offensichtliche
@@ -214,25 +302,38 @@ reine Zulieferung ohne sichtbare Änderung; erst PR 4 verändert die Oberfläche
 Jeder PR-Text nennt gemäß Cron-Dispatch-Guardrails die berührte Invariante,
 die betroffene sichtbare Fläche und die Testdatei.
 
-### PR 1 — Anker-Rückwärtssuche (kein UI)
+### PR 1 — Anker-Herkunft + Vorwärts-Fixpunkt (kein UI)
 
-**Neu:** `solveAnchorForAvdOwn(targetOwn, assumptions, profile, rules)` in
-`src/utils/syncContributions.ts` (kanonischer Ort; `src/app/syncContributions.ts`
-re-exportiert).
+**Ändert:** `src/domain` (`ScenarioAssumptions`), `src/utils/syncContributions.ts`
+(kanonischer Ort; `src/app/syncContributions.ts` re-exportiert),
+`src/utils/scenarioSchema.ts`, `src/storage.ts`.
 
-- Bisektion über `syncMonthlyContributions`, Startwert aus
-  `calculateAvdFunding(...).monthlyNetCost`, Abbruch bei 0,005 € oder 60 Runden.
-- Obergrenze aus `maxAvdMonthlyOwnContribution` — oberhalb davon gibt es keinen
-  Anker mehr, die Funktion gibt den Anker der Obergrenze zurück und signalisiert
-  die Kappung.
-- Keine Rundung im Rückgabewert (Engine-Grenze).
+1. Optionales `equalInputOriginProductId?: ProductId` in `ScenarioAssumptions`.
+   Fehlt es (alle Bestandsstände, alle Share-Links), verhält sich alles exakt
+   wie heute — deshalb keine Versionsanhebung, nur ein `mergeDeep`-taugliches
+   optionales Feld plus Schema-Eintrag und Share-URL-Round-Trip.
+2. `syncMonthlyContributions` überspringt für das Origin-Produkt das
+   Rücklösen und übernimmt dessen gespeicherten Wert unverändert.
+3. Neu: `anchorForPinnedAvdOwn(own, assumptions, profile, rules)` — Fixpunkt
+   `a = net_{salary(a)}(own)`, einfache Iteration, Abbruch bei 1e-6 oder
+   20 Runden (gemessen: 1–3 Runden). Keine Rundung im Rückgabewert
+   (Engine-Grenze).
 
-**Tests:** `src/utils/syncContributions.test.ts` — Round-Trip für 10 / 30 / 150 /
-300 / 525 € mit Toleranz 0,05 €; Monotonie; Verhalten bei 0 und oberhalb der
-Vertragsobergrenze; Kinder = 2; Berufseinsteigerbonus offen.
+**Tests:** `src/utils/syncContributions.test.ts`
+- Selbstkonsistenz: für 10 / 30 / 150 / 300 / 525 € gilt
+  `anchor === calculateAvdFunding(salary(anchor), own).monthlyNetCost`.
+  Das ist der Regressionstest gegen den Weg-C-Fehler.
+- Eigenbeitrag bleibt exakt erhalten, wenn `equalInputOriginProductId` gesetzt ist.
+- Ohne das Feld ist das Ergebnis bit-identisch zu heute (Nicht-Regression für
+  bAV / Basisrente / Riester).
+- Randfälle: 0 €, 9 € (unter Mindestbeitrag), oberhalb der Vertragsobergrenze,
+  Kinder = 2, Berufseinsteigerbonus offen.
+- Storage: Round-Trip durch `migrateAndValidateState` und die Share-URL; alter
+  Stand ohne Feld lädt unverändert.
 
-**Invariante:** Fair-Comparison-Invariante (Compare-Mode) — der Anker bleibt der
-einzige Netto-Bezug, alle Produkte investieren weiterhin denselben Netto.
+**Invariante:** Fair-Comparison-Invariante (Compare-Mode) — der Anker ist nach
+diesem PR *per Konstruktion* der echte Netto-Aufwand des Origin-Produkts, alle
+übrigen Produkte investieren genau diesen Betrag.
 **Fläche:** noch keine.
 
 ### PR 2 — `RangeNumberField` (kein Konsument)
@@ -246,9 +347,12 @@ RangeNumberField
 └── NumberField (exakt: onCommit)
 ```
 
-- Slider und Zahlenfeld teilen `value` / `min` / `max` / `step`; Slider schreibt
-  live, Feld committet — die Draft-Semantik von `NumberField` bleibt unberührt,
-  weil `RangeNumberField` es komponiert statt es zu ersetzen.
+- Slider und Zahlenfeld teilen `value` / `min` / `max` / `step`;
+  `RangeNumberField` komponiert `NumberField`, statt es zu ersetzen.
+- **Der Slider zieht auf lokalem State und committet erst beim Loslassen**
+  (`onPointerUp` / `onKeyUp`, plus `onChange` für die Live-Anzeige). Grund:
+  jeder Commit löst Simulation + 1 000 Monte-Carlo-Läufe aus (Fallstrick 1.6/2).
+  Das ist Teil der Komponenten-API, nicht eine spätere Optimierung.
 - Auswahlzustand der Karten über Toleranz (`Math.abs(value − option.value) < tol`,
   Default `step / 2`), **nicht** über `===`. Ohne das flackert die Auswahl bei
   jedem Restfehler aus PR 1.
@@ -256,7 +360,9 @@ RangeNumberField
   `aria-describedby`, `aria-valuetext` mit Einheit („150 Euro monatlich"),
   Karten als `role="radio"` in einer `radiogroup`.
 - `feedbackTargetId` durchreichen; Karten bekommen Leaf-Targets
-  `<id>.stufe.<value>`.
+  `<id>.stufe.<value>`. Das **gesamte** Control trägt `data-qa-sensitive="true"` —
+  Slider-Position und `aria-valuetext` verraten den Beitrag genauso wie das
+  Zahlenfeld (Fallstrick 1.6/4).
 - CSS in `src/ui/forms.css` mit bestehenden Tokens; ggf. `--rw-positive` und
   `--rw-rule-faint` in `src/App.css` ergänzen (Befund 1.3.6).
 
@@ -273,8 +379,13 @@ vorhanden/abwesend je nach QA-Modus.
 **Neu:** `src/features/inputs/avdBeitragsstufen.ts` — reine Funktion, React-frei:
 
 ```
-buildAvdBeitragsstufen(rules, eligibility) → { value, label, sub }[]
+buildAvdBeitragsstufen(rules, effectiveEligibility) → { value, label, sub }[]
 ```
+
+**Vorbedingung:** Fallstrick 1.6/1 muss entschieden sein. Die Funktion bekommt
+die *effektive* Berechtigung (Kinderzahl aus derselben Quelle, die
+`calculateAvdFunding` benutzt), sonst widerspricht die Vertragsrahmen-Karte dem
+`cappedAtContractMax`-Hinweis direkt daneben.
 
 - Werte aus `rules.altersvorsorgedepot` abgeleitet (Befund 1.3.1), Obergrenze
   über `maxAvdMonthlyOwnContribution` (Befund 1.3.2).
@@ -298,8 +409,10 @@ Modul (Regression gegen den P0).
    `avdFunding.monthlyOwnContribution` (also der aus dem Anker abgeleitete,
    simulationsgleiche Wert) — **nicht** `assumptions.…monthlyOwnContribution`
    (Befund 1.2).
-2. Änderung schreibt über `solveAnchorForAvdOwn` (PR 1) in
-   `onSyncMonthlyContribution`.
+2. Änderung schreibt `monthlyOwnContribution` **und** setzt
+   `equalInputOriginProductId = 'altersvorsorgedepot'`, der Anker kommt aus
+   `anchorForPinnedAvdOwn` (PR 1). Wer danach den globalen Netto-Beitrag in
+   Schritt 1 anfasst, setzt das Origin-Feld wieder zurück.
 3. Darunter das Ledger: Eigenbeitrag → Grundzulage → Kinderzulage →
    Berufseinsteigerbonus → Günstigerprüfung → **Netto-Aufwand nach Steuer**,
    alle Werte direkt aus `avdFunding`, keine Nachrechnung im Panel
@@ -338,6 +451,13 @@ und die AVD-Karte in `src/features/inventory/InstanceCard.tsx`.
   Eingabewert pro Instanz. `solveAnchorForAvdOwn` wird hier nicht benutzt.
 - Beitragsfreie Verträge (`status === 'paid_up'`) bleiben deaktiviert, inklusive
   Slider und Karten.
+- **Bestandsdaten-Risiko:** das heutige Feld erlaubt `max 5000`
+  ([AltersvorsorgedepotInstanceInputs.tsx:41](../../../src/features/produkte/instances/AltersvorsorgedepotInstanceInputs.tsx)),
+  der Vertragsrahmen liegt bei ~525 €. Gespeicherte Instanzen können darüber
+  liegen und würden beim nächsten Bearbeiten gekappt. Entweder Werte oberhalb
+  des Rahmens zulassen (Slider endet am Rahmen, Zahlenfeld nicht) und mit dem
+  `cappedAtContractMax`-Hinweis erklären, oder die Kappung bewusst und einmalig
+  mit sichtbarem Hinweis vollziehen. Nicht stillschweigend clampen.
 - Bestandsaufnahme: Leitfrage „Wie viel zahlst du selbst ein?", zwei Karten
   (30 € / 150 €) plus Slider, Evidence-Badge unverändert.
 
@@ -361,20 +481,33 @@ aktueller Vertragswert, belegbasierte Werte — die bleiben reine Zahlenfelder.
 ## Reihenfolge und Abhängigkeiten
 
 ```
-PR 1 (Anker-Suche) ─┐
-PR 2 (Primitive)  ──┼─→ PR 4 (Vergleichsmodus) ─→ PR 5 (Kombi + Wizard) ─→ PR 6
-PR 3 (Stufen)     ──┘
+PR 1 (Anker-Herkunft) ──────────────→ PR 4 (Vergleichsmodus) ─┐
+PR 2 (Primitive)  ─┬──────────────────────────────────────────┼─→ PR 6
+PR 3 (Stufen)     ─┴──→ PR 5 (Kombi + Wizard) ────────────────┘
 ```
 
-PR 1–3 sind unabhängig voneinander und parallelisierbar. PR 4 ist der einzige
-PR mit Risiko für bestehende Nutzer und sollte allein reviewt werden.
+PR 1–3 sind unabhängig voneinander und parallelisierbar. **PR 5 hängt nur an
+PR 2 + PR 3, nicht an PR 4** — der Kombi-Modus benutzt den Anker gar nicht und
+kann parallel zu PR 4 laufen.
+
+PR 4 **und** PR 5 tragen Nutzerrisiko: PR 4 dreht die Bedeutung des
+Primärfeldes im Vergleichsmodus um, PR 5 verengt die Grenzen eines
+Bestandsfeldes. Beide einzeln reviewen.
+
+**Vor dem Start zu klären:**
+1. Fallstrick 1.6/1 — welche Kinderquelle gilt? Blockiert die Signatur von PR 3.
+2. Fallstrick 1.6/5 — Günstigerprüfung unterhalb des Mindestbeitrags: Copy oder
+   Engine-Frage? Blockiert den Ledger-Text in PR 4.
+3. PR-5-Bestandsdaten: kappen oder zulassen?
 
 ## Berührte Dateien im Überblick
 
 | Datei | PR | Art |
 |---|---|---|
+| `src/domain` (`ScenarioAssumptions`) | 1 | optionales Feld |
 | `src/utils/syncContributions.ts` | 1 | erweitern |
 | `src/utils/syncContributions.test.ts` | 1 | neu/erweitern |
+| `src/utils/scenarioSchema.ts`, `src/storage.ts` | 1 | Feld durchreichen |
 | `src/ui/RangeNumberField.tsx` + Test | 2 | neu |
 | `src/ui/forms.css`, ggf. `src/App.css` | 2 | erweitern |
 | `src/features/inputs/avdBeitragsstufen.ts` + Test | 3 | neu |
@@ -386,3 +519,10 @@ PR mit Risiko für bestehende Nutzer und sollte allein reviewt werden.
 Nicht angefasst: `src/engine/altersvorsorgedepot.ts` (die benötigten Helfer
 `maxAvdMonthlyOwnContribution`, `solveAvdOwnFromNet`, `calculateAvdFunding`
 existieren bereits), `src/rules/*`, alle Oracle-Snapshots.
+
+**Konfliktlage:** auf dem aktuellen Branch sind neben den Riester-Dateien auch
+`src/engine/portfolioFunding.ts`, `src/app/recommenderCandidates/altersvorsorgedepot.ts`,
+`src/app/contractDecisions.ts`, `src/engine/products/altersvorsorgedepot.ts` und
+beide Mockup-HTML-Dateien in Arbeit. Die PRs 1–5 berühren keine davon, aber
+PR 1 liegt nahe genug an der Funding-Kette, dass die laufende Arbeit erst
+landen sollte.
