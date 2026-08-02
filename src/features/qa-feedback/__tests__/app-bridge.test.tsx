@@ -51,8 +51,9 @@ describe('App — wires QA workspace-context ref', () => {
     // would fail this assertion. The shell can paint before Calculator's
     // passive effect runs under a saturated parallel test worker, so wait on
     // the bridge itself rather than assuming the effect already flushed.
-    await waitFor(() => {
-      expect(getQaWorkspaceContext().activeView).toBe('vergleich')
-    })
-  })
+    await waitFor(
+      () => expect(getQaWorkspaceContext().activeView).toBe('vergleich'),
+      { timeout: 8000 },
+    )
+  }, 20_000)
 })

@@ -956,7 +956,17 @@ describe('validateTransferEvent — both source and target must exist', () => {
       },
     ]
     ws.baseline.assumptions.bav.push(target)
-    expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).not.toBeNull()
+    const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.bav[0].transferEvents).toEqual([
+      {
+        type: 'certified',
+        year: 2030,
+        sourceInstanceId: source.instanceId,
+        targetInstanceId: target.instanceId,
+        amountEUR: 1000,
+      },
+    ])
   })
 
   it.each(['bav', 'basisrente', 'riester'] as const)(

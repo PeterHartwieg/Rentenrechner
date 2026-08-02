@@ -36,10 +36,10 @@
 
 # Baseline browser hardening for every route and static asset. The application
 # is same-origin except for the opt-in QA submission Worker and its Turnstile
-# challenge. Inline styles are required by Recharts and inline scripts by the
-# prerendered JSON-LD blocks.
+# challenge. Inline styles are required by Recharts. Prerendered JSON-LD is
+# non-executable metadata and does not require blanket inline-script execution.
 /*
-  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-src https://challenges.cloudflare.com; connect-src 'self' https://qa.rentenwiki.de https://challenges.cloudflare.com
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-src https://challenges.cloudflare.com; connect-src 'self' https://qa.rentenwiki.de https://challenges.cloudflare.com
   Cross-Origin-Opener-Policy: same-origin
   Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
   Referrer-Policy: strict-origin-when-cross-origin

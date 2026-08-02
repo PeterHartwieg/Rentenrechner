@@ -10,7 +10,7 @@ the landing page. Static public pages are described by
 `src/seo/publicRouteRegistry.ts`, while the router also owns workspace flows
 and a dynamic contract-detail route:
 
-```
+```text
 App.tsx  (route detector + lazy boundaries)
 ├── /                         → LandingPage or Calculator
 ├── /eingaben[/produkte]      → two-step input flow
@@ -32,7 +32,7 @@ dispatch, and—when public/indexable—the public route registry.
 
 ## Calculator layout overview
 
-```
+```text
 Calculator
 ├── compare mode
 │   └── VergleichPage           (linear six-product comparison + actions)

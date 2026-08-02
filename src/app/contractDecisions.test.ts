@@ -852,6 +852,9 @@ describe('beitragErhoehenWhatIf (B1)', () => {
 
     const decision = beitragErhoehenWhatIf(ws, instanceId, 800)!
     expect(decision.atoms.some((atom) => atom.id === 'funding_cap_hit')).toBe(true)
+    const applied = applyContractDecision(ws, decision)
+    expect(applied.baseline.assumptions.bav[0].status).toBe('active')
+    expect(applied.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(800)
   })
 
   it('AVD: emits funding_cap_hit when proposed exceeds contractContributionCapAnnual / 12', () => {

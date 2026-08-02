@@ -977,6 +977,10 @@ function createMinimalInstance(
  *   basisrente       → `monthlyGrossContribution`
  *   altersvorsorgedepot → `monthlyOwnContribution`
  *   riester          → `monthlyOwnContribution`
+ *
+ * Applying a positive contribution decision also reactivates a paid-up
+ * instance. The prospective funding pass evaluates the same transition, so
+ * persisted state and the preview must not diverge.
  */
 function applyIncreaseContribution(
   wsa: Workspace['baseline']['assumptions'],
@@ -988,32 +992,32 @@ function applyIncreaseContribution(
   if (slot === 'bav') {
     const idx = wsa.bav.findIndex((i) => i.instanceId === instanceId)
     if (idx >= 0) {
-      wsa.bav[idx] = { ...wsa.bav[idx], monthlyGrossConversion: newMonthlyEUR }
+      wsa.bav[idx] = { ...wsa.bav[idx], status: 'active', monthlyGrossConversion: newMonthlyEUR }
     }
   } else if (slot === 'etf') {
     const idx = wsa.etf.findIndex((i) => i.instanceId === instanceId)
     if (idx >= 0) {
-      wsa.etf[idx] = { ...wsa.etf[idx], monthlyContribution: newMonthlyEUR }
+      wsa.etf[idx] = { ...wsa.etf[idx], status: 'active', monthlyContribution: newMonthlyEUR }
     }
   } else if (slot === 'insurance') {
     const idx = wsa.insurance.findIndex((i) => i.instanceId === instanceId)
     if (idx >= 0) {
-      wsa.insurance[idx] = { ...wsa.insurance[idx], monthlyContribution: newMonthlyEUR }
+      wsa.insurance[idx] = { ...wsa.insurance[idx], status: 'active', monthlyContribution: newMonthlyEUR }
     }
   } else if (slot === 'basisrente') {
     const idx = wsa.basisrente.findIndex((i) => i.instanceId === instanceId)
     if (idx >= 0) {
-      wsa.basisrente[idx] = { ...wsa.basisrente[idx], monthlyGrossContribution: newMonthlyEUR }
+      wsa.basisrente[idx] = { ...wsa.basisrente[idx], status: 'active', monthlyGrossContribution: newMonthlyEUR }
     }
   } else if (slot === 'altersvorsorgedepot') {
     const idx = wsa.altersvorsorgedepot.findIndex((i) => i.instanceId === instanceId)
     if (idx >= 0) {
-      wsa.altersvorsorgedepot[idx] = { ...wsa.altersvorsorgedepot[idx], monthlyOwnContribution: newMonthlyEUR }
+      wsa.altersvorsorgedepot[idx] = { ...wsa.altersvorsorgedepot[idx], status: 'active', monthlyOwnContribution: newMonthlyEUR }
     }
   } else if (slot === 'riester') {
     const idx = wsa.riester.findIndex((i) => i.instanceId === instanceId)
     if (idx >= 0) {
-      wsa.riester[idx] = { ...wsa.riester[idx], monthlyOwnContribution: newMonthlyEUR }
+      wsa.riester[idx] = { ...wsa.riester[idx], status: 'active', monthlyOwnContribution: newMonthlyEUR }
     }
   }
 }
