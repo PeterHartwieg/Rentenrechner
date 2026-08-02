@@ -190,6 +190,30 @@ describe('makeAvdCandidate — materialized what-if effects', () => {
     expect(added.status).toBe('active')
   })
 
+  it('preserves the career-starter eligibility used to size a saved AVD candidate', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile.age = 23
+    const laterYearCap = maxAvdMonthlyOwnContribution(
+      {
+        ...defaultAssumptions.altersvorsorgedepot.eligibility,
+        ageAtContractStart: 23,
+        careerStarterBonusUsed: false,
+      },
+      de2026Rules,
+      false,
+    )
+    const candidates = recommendNextEuro(buildInput(ws, laterYearCap + 100))
+    const cand = candidates.find((c) => c.productId === 'altersvorsorgedepot')
+    expect(cand).toBeDefined()
+
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, cand!)
+    const added = whatIf.assumptions.altersvorsorgedepot.at(-1)!
+
+    expect(added.monthlyOwnContribution).toBeCloseTo(cand!.grossMonthlyEUR, 8)
+    expect(added.eligibility.ageAtContractStart).toBe(23)
+    expect(added.eligibility.careerStarterBonusUsed).toBe(false)
+  })
+
   it('what-if carries origin=recommender', () => {
     const ws = buildBerndWorkspace()
     const candidates = recommendNextEuro(buildInput(ws, 200))

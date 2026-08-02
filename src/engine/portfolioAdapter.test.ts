@@ -1440,7 +1440,12 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
       const transferHouseholdCapital =
         transferResults[sourceId][index].capitalAtRetirement +
         transferResults[targetId][index].capitalAtRetirement
-      expect(transferHouseholdCapital).toBeCloseTo(baselineHouseholdCapital, 6)
+      // Compare proportionally: the two 40-year accumulation paths can differ by
+      // sub-cent IEEE-754 residue even though household capital is conserved.
+      expect(
+        Math.abs(transferHouseholdCapital - baselineHouseholdCapital) /
+          Math.max(1, baselineHouseholdCapital),
+      ).toBeLessThan(1e-9)
     }
   })
 
@@ -2316,10 +2321,39 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
 
     const { perInstance, portfolioFunding } = simulatePortfolio(workspace, de2026Rules)
     const result = perInstance[riester.instanceId][0]
-    const accepted = portfolioFunding.riesterByInstanceId[riester.instanceId]
+    const scheduledYearOne =
+      portfolioFunding.riesterYearlyByInstanceId[riester.instanceId][0]
+    const scheduledYearTwo =
+      portfolioFunding.riesterYearlyByInstanceId[riester.instanceId][1]
+    const expectedYearTwo = calculateRiesterFunding(
+      de2026Rules,
+      portfolioFunding.salaryForOtherFunding,
+      { ...riester, monthlyOwnContribution: scheduledYearTwo.monthlyOwnContribution },
+      workspace.baseline.profile,
+      { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
+    )
+    const firstBavOnlyYearTwo = calculateRiesterFunding(
+      de2026Rules,
+      portfolioFunding.bavByInstanceId[firstBav.instanceId].salaryWithBav,
+      { ...riester, monthlyOwnContribution: scheduledYearTwo.monthlyOwnContribution },
+      workspace.baseline.profile,
+      { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
+    )
 
+    expect(scheduledYearTwo.guenstigerpruefungBenefitAnnual).toBeCloseTo(
+      expectedYearTwo.guenstigerpruefungBenefitAnnual,
+      8,
+    )
+    expect(scheduledYearTwo.guenstigerpruefungBenefitAnnual).not.toBeCloseTo(
+      firstBavOnlyYearTwo.guenstigerpruefungBenefitAnnual,
+      8,
+    )
     expect(result.rows[0].yearlyUserCost).toBeCloseTo(
-      accepted.monthlyNetCost * 12,
+      scheduledYearOne.monthlyNetCost * 12,
+      8,
+    )
+    expect(result.rows[1].yearlyUserCost).toBeCloseTo(
+      scheduledYearTwo.monthlyNetCost * 12,
       8,
     )
   })

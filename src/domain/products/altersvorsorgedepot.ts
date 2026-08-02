@@ -2,7 +2,7 @@ import type { FeeModel } from '../fees'
 
 /**
  * Altersvorsorgedepot subtype — determines guarantee level and investment constraints.
- * Source: Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent expected 2026-05-08).
+ * Source: Altersvorsorgereformgesetz vom 26.05.2026 (BGBl. 2026 I Nr. 156).
  *
  * - depot_no_guarantee: Standard no-guarantee depot; full equity risk allowed (SRI ≤ 5).
  * - standarddepot: Standarddepot-Vertrag with mandatory two-bucket allocation and 1.0 pp RIY cap.

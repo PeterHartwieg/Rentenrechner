@@ -167,6 +167,27 @@ export function AltersvorsorgedepotInputs({
       </div>
 
       <div className="field-grid">
+        <NumberField
+          label="Alter zu Beginn des ersten Beitragsjahres"
+          feedbackTargetId="inputs.avd.ageAtContractStart"
+          value={avd.eligibility.ageAtContractStart}
+          min={0}
+          max={100}
+          step={1}
+          suffix="Jahre"
+          onChange={(value) =>
+            onAssumptionsChange((current) => ({
+              ...current,
+              altersvorsorgedepot: {
+                ...current.altersvorsorgedepot,
+                eligibility: {
+                  ...current.altersvorsorgedepot.eligibility,
+                  ageAtContractStart: Math.max(0, Math.round(Number(value))),
+                },
+              },
+            }))
+          }
+        />
         <label className="field field-inline">
           <input
             type="checkbox"
@@ -204,6 +225,25 @@ export function AltersvorsorgedepotInputs({
             }
           />
           <span>Mittelbar berechtigt (über Ehegatte)</span>
+        </label>
+        <label className="field field-inline">
+          <input
+            type="checkbox"
+            checked={avd.eligibility.careerStarterBonusUsed}
+            onChange={(event) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                altersvorsorgedepot: {
+                  ...current.altersvorsorgedepot,
+                  eligibility: {
+                    ...current.altersvorsorgedepot.eligibility,
+                    careerStarterBonusUsed: event.target.checked,
+                  },
+                },
+              }))
+            }
+          />
+          <span>Berufseinsteiger-Bonus bereits erhalten</span>
         </label>
       </div>
 

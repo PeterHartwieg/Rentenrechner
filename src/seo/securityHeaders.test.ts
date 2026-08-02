@@ -5,9 +5,11 @@ const headers = readFileSync(new URL('../../public/_headers', import.meta.url), 
 
 function parseHeaderBlock(path: string, source = headers): Record<string, string> {
   const lines = source.split(/\r?\n/)
+  const matchingBlocks = lines.filter((line) => line.trim() === path).length
   const start = lines.findIndex((line) => line.trim() === path)
 
-  if (start < 0) throw new Error(`Missing ${path} header block`)
+  if (matchingBlocks === 0) throw new Error(`Missing ${path} header block`)
+  if (matchingBlocks > 1) throw new Error(`Duplicate ${path} header block`)
 
   const entries: Array<[string, string]> = []
   const seenNames = new Set<string>()
@@ -46,6 +48,10 @@ const baselineHeaders = parseHeaderBlock('/*')
 
 describe('production security headers', () => {
   it('rejects duplicate header names and CSP directives case-insensitively', () => {
+    expect(() => parseHeaderBlock(
+      '/*',
+      '/*\n  X-Test: strict\n/*\n  X-Test: permissive',
+    )).toThrow(/Duplicate \/\* header block/)
     expect(() => parseHeaderBlock('/*', '/*\n  X-Test: strict\n  x-test: permissive')).toThrow(
       /Duplicate header/,
     )

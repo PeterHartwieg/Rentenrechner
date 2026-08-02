@@ -978,6 +978,41 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
     })
   })
 
+  it('multi-instance schedule releases the one-time career-starter bonus after year one', () => {
+    const ws = makeTwoRiesterWorkspace(100, 100)
+    ws.baseline.assumptions.riester[0].eligibility = {
+      ...ws.baseline.assumptions.riester[0].eligibility,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const yearOne = [
+      funding.riesterYearlyByInstanceId['riester-cap-a'][0],
+      funding.riesterYearlyByInstanceId['riester-cap-b'][0],
+    ]
+    const yearTwo = [
+      funding.riesterYearlyByInstanceId['riester-cap-a'][1],
+      funding.riesterYearlyByInstanceId['riester-cap-b'][1],
+    ]
+    const aggregateOwnAnnual = (entries: typeof yearOne) =>
+      entries.reduce((sum, entry) => sum + entry.annualOwnContribution, 0)
+    const aggregateFundedAnnual = (entries: typeof yearOne) =>
+      entries.reduce(
+        (sum, entry) => sum + entry.annualOwnContribution + entry.totalAllowanceAnnual,
+        0,
+      )
+
+    expect(
+      yearOne.reduce((sum, entry) => sum + entry.careerStarterBonusAnnual, 0),
+    ).toBeCloseTo(de2026Rules.riester.careerStarterBonus, 2)
+    expect(
+      yearTwo.reduce((sum, entry) => sum + entry.careerStarterBonusAnnual, 0),
+    ).toBe(0)
+    expect(aggregateOwnAnnual(yearTwo)).toBeGreaterThan(aggregateOwnAnnual(yearOne))
+    expect(aggregateFundedAnnual(yearOne)).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+    expect(aggregateFundedAnnual(yearTwo)).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+  })
+
   it('two instances share one household allowance instead of doubling it', () => {
     // Full Grundzulage = 175 EUR/year (no children, bonus used). Two instances
     // at 100 EUR/month each → after proportional scaling allowances should sum

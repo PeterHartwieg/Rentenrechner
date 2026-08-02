@@ -154,6 +154,12 @@ export interface RecommendedCandidate {
   /** Set when adding to an existing instance. */
   targetInstanceId?: string
   /**
+   * Exact instance assumptions used to size a new candidate. Retained so saving
+   * the plan cannot reconstruct different eligibility or contract inputs from
+   * global defaults.
+   */
+  newInstance?: CandidateDraft['newInstance']
+  /**
    * Gross monthly contribution (EUR/month) sized so net cash out-of-pocket ≈
    * marginalMonthlyEUR (or clamped to the statutory cap remainder).
    */
@@ -891,6 +897,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       productId: d.productId,
       isNewInstance: d.isNewInstance,
       targetInstanceId: d.targetInstanceId,
+      newInstance: d.newInstance,
       grossMonthlyEUR: d.grossMonthlyEUR,
       netCashOutEUR: d.netCashOutEUR,
       medianNettoRente: median,
@@ -1057,13 +1064,15 @@ function applyCandidateToAssumptions(
       fees: { ...defaultAssumptions.basisrente.fees },
     } as BasisrenteInstance)
   } else if (candidate.productId === 'altersvorsorgedepot') {
+    const sizedInstance = candidate.newInstance as AltersvorsorgedepotInstance | undefined
     wsa.altersvorsorgedepot.push({
+      ...defaultAssumptions.altersvorsorgedepot,
+      ...sizedInstance,
       instanceId: newInstanceId('altersvorsorgedepot'),
       label: candidate.label,
       status: 'active',
-      contractStartYear: new Date().getFullYear(),
-      evidenceMap: {},
-      ...defaultAssumptions.altersvorsorgedepot,
+      contractStartYear: sizedInstance?.contractStartYear ?? new Date().getFullYear(),
+      evidenceMap: sizedInstance?.evidenceMap ?? {},
       monthlyOwnContribution: candidate.grossMonthlyEUR,
     } as AltersvorsorgedepotInstance)
   } else if (candidate.productId === 'bav') {

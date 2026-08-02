@@ -20,6 +20,10 @@
  */
 
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
+import type {
+  AltersvorsorgedepotInstance,
+  RiesterInstance,
+} from '../domain/instances'
 import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
 
 // ---------------------------------------------------------------------------
@@ -92,7 +96,28 @@ export function addInstanceToWorkspace(
   const wsKey = entry.wsKey as keyof WorkspaceAssumptionsV2
   const currentArray = wsa[wsKey] as unknown[]
   const n = currentArray.length + 1
-  const newInst = entry.createDefault(CURRENT_YEAR, n, newInstanceId)
+  let newInst = entry.createDefault(CURRENT_YEAR, n, newInstanceId)
+  if (productId === 'riester') {
+    const riester = newInst as RiesterInstance
+    newInst = {
+      ...riester,
+      eligibility: {
+        ...riester.eligibility,
+        ageAtContractStart: workspace.baseline.profile.age,
+        careerStarterBonusUsed: false,
+      },
+    }
+  } else if (productId === 'altersvorsorgedepot') {
+    const avd = newInst as AltersvorsorgedepotInstance
+    newInst = {
+      ...avd,
+      eligibility: {
+        ...avd.eligibility,
+        ageAtContractStart: workspace.baseline.profile.age,
+        careerStarterBonusUsed: false,
+      },
+    }
+  }
 
   const updated: WorkspaceAssumptionsV2 = {
     ...wsa,

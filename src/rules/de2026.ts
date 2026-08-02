@@ -15,10 +15,8 @@ export const de2026Rules: GermanRules = {
   // https://www.gesetze-im-internet.de/estg/__24b.html
   entlastungsbetragAlleinerziehende: 4_260,
   entlastungsbetragAlleinerziehendePro: 240,
-  // Altersvorsorgedepot 2027 — Altersvorsorgereformgesetz (Bundestag 2026-03-27).
-  // Constants from Bundesrat Drucksache 206/26 (Bundestag-adopted text).
-  // Bundesrat consent expected 2026-05-08; re-verify against BGBl. before relying on
-  // any constant that might change in the Bundesrat consent step.
+  // Altersvorsorgedepot 2027 — Altersvorsorgereformgesetz vom 26.05.2026
+  // (BGBl. 2026 I Nr. 156; verkündet 2026-05-29).
   altersvorsorgedepot: {
     productStartYear: 2027,
     specialExpenseOwnContributionCap: 1_800,
@@ -139,6 +137,8 @@ export const de2026Rules: GermanRules = {
     sockelbetrag: 60,
     // §10a Abs. 1 EStG: annual Sonderausgabenabzug cap = 2,100 EUR (own contribution + allowances).
     annualCapInclAllowances: 2_100,
+    // AltZertG: an Auszahlungsplan must run at least through age 85.
+    payoutPlanMinEndAge: 85,
   },
   capitalGains: {
     taxRate: 0.25,

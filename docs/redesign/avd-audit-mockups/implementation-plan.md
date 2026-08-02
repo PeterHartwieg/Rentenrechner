@@ -37,7 +37,7 @@ Das ist der Kern und er steht so nicht im Audit-Dokument.
 `[profile, assumptions]` — also bei jeder Eingabeänderung — alle
 Produktbeiträge neu aus dem einen Anker `equalInputAmountEUR`:
 
-```
+```ts
 activeAssumptions = syncMonthlyContributions(equalInputAmountEUR, assumptions, profile, rules)
 ```
 
@@ -178,7 +178,7 @@ Plateaus. Zum Vergleich an den beiden kritischen Karten: Weg C hätte bei
 erreichen die Toleranz 1e-6 nie, sondern laufen in einen 2-Zyklus mit
 Amplitude **exakt 1/12 € = 0,0833**:
 
-```
+```text
 own=35:   31,8333 ↔ 31,7500
 own=55:   47,4167 ↔ 47,3333
 own=72,5: 61,2083 ↔ 61,1250
@@ -629,7 +629,7 @@ Instanz mit Evidence; Mobile/Touch.
 
 ## Reihenfolge
 
-```
+```text
 PR 0 (Engine/Recht, eigener Track)
    └─→ PR 1 (State + Anker) ─┐
        PR 2 (Control+Stufen) ─┼─→ PR 3 (Vergleichsmodus)

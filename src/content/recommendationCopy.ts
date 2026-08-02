@@ -19,6 +19,35 @@ import { activeRules } from '../rules'
 const AVD_CONTRACT_CONTRIBUTION_CAP =
   activeRules.altersvorsorgedepot.contractContributionCapAnnual.toLocaleString('de-DE')
 
+function formatVisibleExceedance(
+  requestedAnnualEUR: number,
+  capAnnualEUR: number,
+): { requested: string; cap: string } {
+  const roundedRequested = Math.round(requestedAnnualEUR)
+  const roundedCap = Math.round(capAnnualEUR)
+  if (roundedRequested > roundedCap) {
+    return {
+      requested: roundedRequested.toLocaleString('de-DE'),
+      cap: roundedCap.toLocaleString('de-DE'),
+    }
+  }
+
+  // Preserve a visible strict inequality when whole-euro display rounding would
+  // otherwise make an exact (typically sub-euro) breach look self-contradictory.
+  const requestedCents = Math.ceil(requestedAnnualEUR * 100) / 100
+  const capCents = Math.floor(capAnnualEUR * 100) / 100
+  return {
+    requested: requestedCents.toLocaleString('de-DE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+    cap: capCents.toLocaleString('de-DE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Context accessor helpers
 // ---------------------------------------------------------------------------
@@ -372,6 +401,10 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
     )
     const combinedOnlyBreach =
       proposedAnnualEUR <= capAnnualEUR && householdRequestedAnnualEUR > capAnnualEUR
+    const displayedExceedance = formatVisibleExceedance(
+      combinedOnlyBreach ? householdRequestedAnnualEUR : proposedAnnualEUR,
+      capAnnualEUR,
+    )
     return {
       headline: 'Über dem gesetzlichen Förderdeckel',
       body:
@@ -379,10 +412,10 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
           ? `Der vorgeschlagene Beitrag liegt für sich innerhalb des Förderrahmens. ` +
             `Zusammen mit den übrigen auf diesen Förderrahmen angerechneten Beträgen ` +
             `(zum Beispiel Zulagen, Arbeitgeberanteil, gesetzliche Rentenbeiträge oder weitere Verträge) ` +
-            `würden jedoch ${Math.round(householdRequestedAnnualEUR).toLocaleString('de-DE')} €/Jahr ` +
-            `auf den Förderrahmen von ${Math.round(capAnnualEUR).toLocaleString('de-DE')} €/Jahr treffen. `
-          : `Der vorgeschlagene Beitrag (${Math.round(proposedAnnualEUR).toLocaleString('de-DE')} €/Jahr) ` +
-            `übersteigt den gesetzlichen Förderrahmen (${Math.round(capAnnualEUR).toLocaleString('de-DE')} €/Jahr). `) +
+            `würden insgesamt ${displayedExceedance.requested} €/Jahr ` +
+            `angerechnet und den Förderrahmen von ${displayedExceedance.cap} €/Jahr überschreiten. `
+          : `Der vorgeschlagene Beitrag (${displayedExceedance.requested} €/Jahr) ` +
+            `übersteigt den gesetzlichen Förderrahmen (${displayedExceedance.cap} €/Jahr). `) +
         'Beiträge oberhalb des Deckels sind zwar möglich, verlieren aber die steuerlichen Vorteile ' +
         '(z. B. §-3-Nr.-63-Befreiung bei bAV, Sonderausgabenabzug bei Rürup/Riester/AVD). ' +
         'Die Modellrechnung zeigt die Auswirkung — du entscheidest, ob der höhere Beitrag trotzdem sinnvoll ist.',

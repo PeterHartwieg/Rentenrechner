@@ -212,6 +212,27 @@ export function RiesterInputs({
           <span className="erweitert-assumption">{erweitertSummary}</span>
         </summary>
         <div className="erweitert-content">
+          <NumberField
+            label="Alter zu Beginn des ersten Beitragsjahres"
+            feedbackTargetId="inputs.riester.ageAtContractStart"
+            value={assumptions.riester.eligibility.ageAtContractStart}
+            min={0}
+            max={100}
+            step={1}
+            suffix="Jahre"
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                riester: {
+                  ...current.riester,
+                  eligibility: {
+                    ...current.riester.eligibility,
+                    ageAtContractStart: Math.max(0, Math.round(Number(value))),
+                  },
+                },
+              }))
+            }
+          />
           <label className="field field-inline">
             <input
               type="checkbox"

@@ -128,6 +128,17 @@ describe('renderAtom', () => {
     expect(result.body).not.toContain('Der vorgeschlagene Beitrag (4.200 €/Jahr) übersteigt')
   })
 
+  it('funding_cap_hit keeps a sub-euro breach visible after display rounding', () => {
+    const result = renderAtom(makeAtom('funding_cap_hit', {
+      capAnnualEUR: 8_112,
+      proposedAnnualEUR: 4_200,
+      householdRequestedAnnualEUR: 8_112.004,
+    }))
+
+    expect(result.body).toContain('8.112,01 €/Jahr')
+    expect(result.body).toContain('Förderrahmen von 8.112,00 €/Jahr überschreiten')
+  })
+
   it('reason_high_fees body differs by productId — basisrente vs versicherung vs default', () => {
     const basisrente = renderAtom(makeAtom('reason_high_fees', { productId: 'basisrente' }))
     const versicherung = renderAtom(makeAtom('reason_high_fees', { productId: 'versicherung' }))

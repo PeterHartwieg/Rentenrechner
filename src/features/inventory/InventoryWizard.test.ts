@@ -407,6 +407,47 @@ describe('per-product draft → instance Layer-1 fields', () => {
     expect(avd.subtype).toBe('depot_no_guarantee')
   })
 
+  it('derives career-starter eligibility from profile age and contract year', () => {
+    const currentYear = new Date().getFullYear()
+    const ws = buildWorkspaceFromDraft({
+      grvDraft: makeGrvDraft(),
+      bavDraft: null,
+      pavDraft: null,
+      riesterDraft: makeRiesterDraft({ contractStartYear: currentYear - 5 }),
+      basisrenteDraft: null,
+      avdDraft: {
+        productId: 'altersvorsorgedepot',
+        status: 'active',
+        contractStartYear: currentYear,
+        currentValueEUR: 0,
+        monthlyContribution: 200,
+        subtype: 'standarddepot',
+        useGlidepath: true,
+      },
+      etfDraft: null,
+      grossSalaryYear: 40_000,
+      personalDetails: {
+        birthYear: currentYear - 23,
+        grossSalaryYear: 40_000,
+        ehegattensplitting: false,
+        retirementAge: 67,
+        publicHealthInsurance: true,
+        childBirthYears: [],
+        pensionBaseline: 'grv',
+        manualMonthlyGrossPension: 0,
+      },
+    })
+
+    expect(ws.baseline.assumptions.altersvorsorgedepot[0].eligibility).toMatchObject({
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    })
+    expect(ws.baseline.assumptions.riester[0].eligibility).toMatchObject({
+      ageAtContractStart: 18,
+      careerStarterBonusUsed: true,
+    })
+  })
+
   it('ETF: terPct 0.07 → annualAssetFee 0.0007', () => {
     const ws = buildWorkspaceFromDraft({
       grvDraft: makeGrvDraft(),

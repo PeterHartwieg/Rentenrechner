@@ -1,8 +1,45 @@
-import { activeRules } from '../../rules'
+import { activeRules, RULES_YEAR } from '../../rules'
+import { legalConstants } from '../../rules/legalConstants'
 
 export const AVD_SPECIAL_EXPENSE_OWN_CAP = activeRules.altersvorsorgedepot.specialExpenseOwnContributionCap.toLocaleString('de-DE')
+export const AVD_CONTRACT_CONTRIBUTION_CAP = activeRules.altersvorsorgedepot.contractContributionCapAnnual.toLocaleString('de-DE')
 export const AVD_ALLOWANCE_TIER_2_MAX = activeRules.altersvorsorgedepot.basicAllowanceTier2MaxContribution.toLocaleString('de-DE')
 export const AVD_ALLOWANCE_TIER_1_MAX = activeRules.altersvorsorgedepot.basicAllowanceTier1MaxContribution.toLocaleString('de-DE')
+export const AVD_TIER_1_RATE = (activeRules.altersvorsorgedepot.basicAllowanceTier1Rate * 100).toLocaleString('de-DE')
+export const AVD_TIER_2_RATE = (activeRules.altersvorsorgedepot.basicAllowanceTier2Rate * 100).toLocaleString('de-DE')
+export const AVD_TIER_1_ALLOWANCE_MAX = (activeRules.altersvorsorgedepot.basicAllowanceTier1MaxContribution * activeRules.altersvorsorgedepot.basicAllowanceTier1Rate).toLocaleString('de-DE')
+export const AVD_TIER_2_ALLOWANCE_MAX = ((activeRules.altersvorsorgedepot.basicAllowanceTier2MaxContribution - activeRules.altersvorsorgedepot.basicAllowanceTier1MaxContribution) * activeRules.altersvorsorgedepot.basicAllowanceTier2Rate).toLocaleString('de-DE')
+export const AVD_BASIC_ALLOWANCE_MAX = activeRules.altersvorsorgedepot.basicAllowanceMax.toLocaleString('de-DE')
+export const AVD_MINIMUM_OWN_CONTRIBUTION = activeRules.altersvorsorgedepot.minimumOwnContributionAnnual.toLocaleString('de-DE')
+export const AVD_INDIRECT_SPOUSE_ALLOWANCE_MAX = activeRules.altersvorsorgedepot.indirectSpouseBasicAllowanceMax.toLocaleString('de-DE')
+export const AVD_CHILD_ALLOWANCE_RATE = (activeRules.altersvorsorgedepot.childAllowanceRate * 100).toLocaleString('de-DE')
+export const AVD_CHILD_ALLOWANCE_MAX = activeRules.altersvorsorgedepot.childAllowanceMax.toLocaleString('de-DE')
+export const AVD_CAREER_STARTER_BONUS = activeRules.altersvorsorgedepot.careerStarterBonus.toLocaleString('de-DE')
+export const AVD_CAREER_STARTER_AGE_LIMIT = (activeRules.altersvorsorgedepot.careerStarterMaxAge + 1).toLocaleString('de-DE')
+export const AVD_PRODUCT_START_YEAR = String(activeRules.altersvorsorgedepot.productStartYear)
+export const SAVER_ALLOWANCE_SINGLE = activeRules.capitalGains.saverAllowance.toLocaleString('de-DE')
+export const SAVER_ALLOWANCE_MARRIED = (activeRules.capitalGains.saverAllowance * 2).toLocaleString('de-DE')
+export const BAV_TAX_FREE_RATE = (activeRules.bav.taxFreePctOfPensionCap * 100).toLocaleString('de-DE')
+export const BAV_SOCIAL_FREE_RATE = (activeRules.bav.socialSecurityFreePctOfPensionCap * 100).toLocaleString('de-DE')
+export const BAV_TAX_FREE_CAP = (activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap).toLocaleString('de-DE')
+export const BAV_TAX_FREE_CAP_MONTH = (activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap / 12).toLocaleString('de-DE')
+export const BAV_SOCIAL_FREE_CAP = (activeRules.socialSecurity.pensionCapYear * activeRules.bav.socialSecurityFreePctOfPensionCap).toLocaleString('de-DE')
+export const BAV_EMPLOYER_SUBSIDY_RATE = (activeRules.bav.statutoryEmployerSubsidyPct * 100).toLocaleString('de-DE')
+export const BAV_LUMP_SUM_SPREAD_MONTHS = legalConstants.bav.versorgungsbezugSpreadingMonths.toLocaleString('de-DE')
+export const BASISRENTE_CAP_SINGLE = activeRules.basisrente.schicht1CapSingle.toLocaleString('de-DE')
+export const BASISRENTE_CAP_MARRIED = (activeRules.basisrente.schicht1CapSingle * 2).toLocaleString('de-DE')
+export const BASISRENTE_DEDUCTIBLE_RATE = (activeRules.basisrente.deductibleFraction * 100).toLocaleString('de-DE')
+export const RIESTER_BASIC_ALLOWANCE = activeRules.riester.grundzulage.toLocaleString('de-DE')
+export const RIESTER_CHILD_ALLOWANCE_PRE_2008 = activeRules.riester.childAllowancePre2008.toLocaleString('de-DE')
+export const RIESTER_CHILD_ALLOWANCE_POST_2007 = activeRules.riester.childAllowancePost2007.toLocaleString('de-DE')
+export const RIESTER_SPECIAL_EXPENSE_CAP = activeRules.riester.annualCapInclAllowances.toLocaleString('de-DE')
+export const RIESTER_MINIMUM_RATE = (activeRules.riester.minEigenbeitragPct * 100).toLocaleString('de-DE')
+export const RIESTER_MINIMUM_CONTRIBUTION = activeRules.riester.sockelbetrag.toLocaleString('de-DE')
+export const RIESTER_CAP_INCOME_THRESHOLD = (activeRules.riester.annualCapInclAllowances / activeRules.riester.minEigenbeitragPct).toLocaleString('de-DE')
+export const RETIREMENT_KV_PV_CAP_MONTH = activeRules.socialSecurity.healthAndCareCapMonth.toLocaleString('de-DE', { minimumFractionDigits: 2 })
+export const BAV_DEMO_OWN_ANNUAL = (250 * 12).toLocaleString('de-DE')
+export const BAV_DEMO_EMPLOYER_ANNUAL = (250 * 12 * activeRules.bav.statutoryEmployerSubsidyPct).toLocaleString('de-DE')
+export const BAV_DEMO_CAP_USE = Math.round((250 * 12 * (1 + activeRules.bav.statutoryEmployerSubsidyPct)) / (activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap) * 100).toLocaleString('de-DE')
 
 ## Was der Portfolio-Modus löst, was er nicht kann
 
@@ -12,7 +49,7 @@ Mehrere Vorsorgeverträge zusammen einplanen statt einzeln vergleichen. RentenWi
 
 - Du hast mehr als ein Vorsorgeprodukt nebeneinander (z. B. bAV plus ETF-Sparplan plus alter Riester-Vertrag).
 - Du überlegst, einen alten Vertrag beitragsfrei zu stellen, zu kündigen oder das Kapital in ein anderes Produkt umzuschichten.
-- Du willst wissen, ob dein nächster Sparbeitrag in die bAV, in die Basisrente, in einen ETF oder in das ab 2027 startende Altersvorsorgedepot fließen sollte.
+- Du willst wissen, ob dein nächster Sparbeitrag in die bAV, in die Basisrente, in einen ETF oder in das ab {AVD_PRODUCT_START_YEAR} startende Altersvorsorgedepot fließen sollte.
 - Du planst die Auswirkung von Förderrahmen (§ 3 Nr. 63 EStG, § 10 Abs. 3 EStG, § 10a EStG) und KV/PV-Beiträgen in der Rente realistisch durchzurechnen, nicht nur überschlägig.
 
 Wenn du nur die Steuer auf deine gesetzliche Rente berechnen willst, ist [Rente netto berechnen](/rente-netto-berechnen) der direktere Einstieg.
@@ -29,23 +66,23 @@ Wenn dir Unterlagen fehlen, kannst du den Rechner zuerst mit Schätzwerten füll
 
 Sechs Vorsorgewege werden in der Kombinations-Sicht einzeln pro Vertrag erfasst und gemeinsam ausgewertet:
 
-**ETF-Sparplan (3. Schicht).** Aktienfonds-Sparen ohne staatliche Förderung in der Ansparphase. Vorabpauschale nach § 18 InvStG, in der Entnahmephase Abgeltungsteuer (§ 20 EStG). Sparer-Pauschbetrag § 20 Abs. 9 EStG: 1.000 € pro Jahr (Single), 2.000 € (verheiratet); bei mehreren ETF-Verträgen wird der Pauschbetrag aufgeteilt.
+**ETF-Sparplan (3. Schicht).** Aktienfonds-Sparen ohne staatliche Förderung in der Ansparphase. Vorabpauschale nach § 18 InvStG, in der Entnahmephase Abgeltungsteuer (§ 20 EStG). Sparer-Pauschbetrag § 20 Abs. 9 EStG: {SAVER_ALLOWANCE_SINGLE} € pro Jahr (Single), {SAVER_ALLOWANCE_MARRIED} € (verheiratet); bei mehreren ETF-Verträgen wird der Pauschbetrag aufgeteilt.
 
-**Betriebliche Altersvorsorge (2. Schicht).** Steuerfrei nach § 3 Nr. 63 EStG bis 8 % der Beitragsbemessungsgrenze West (8.112 €/Jahr in 2026, also 676 €/Monat). SV-frei nach § 1 SvEV bis 4 % der BBG (4.056 €/Jahr in 2026). Arbeitgeberzuschuss mindestens 15 % auf Neuverträge (§ 1a Abs. 1a BetrAVG), soweit der Arbeitgeber SV spart. In der Auszahlphase: volle nachgelagerte Besteuerung; KV/PV nach § 229 SGB V, bei Kapitalleistung 1/120-Verteilung über 120 Monate.
+**Betriebliche Altersvorsorge (2. Schicht).** Steuerfrei nach § 3 Nr. 63 EStG bis {BAV_TAX_FREE_RATE} % der Beitragsbemessungsgrenze West ({BAV_TAX_FREE_CAP} €/Jahr in {RULES_YEAR}, also {BAV_TAX_FREE_CAP_MONTH} €/Monat). SV-frei nach § 1 SvEV bis {BAV_SOCIAL_FREE_RATE} % der BBG ({BAV_SOCIAL_FREE_CAP} €/Jahr in {RULES_YEAR}). Arbeitgeberzuschuss mindestens {BAV_EMPLOYER_SUBSIDY_RATE} % auf Neuverträge (§ 1a Abs. 1a BetrAVG), soweit der Arbeitgeber SV spart. In der Auszahlphase: volle nachgelagerte Besteuerung; KV/PV nach § 229 SGB V, bei Kapitalleistung 1/{BAV_LUMP_SUM_SPREAD_MONTHS}-Verteilung über {BAV_LUMP_SUM_SPREAD_MONTHS} Monate.
 
 **Private Rentenversicherung (3. Schicht).** Beiträge nicht steuerlich absetzbar. Steuerregime in der Auszahlphase ist abhängig von Vertragsbeginn und Auszahlart: Verträge vor 2005 weitgehend steuerfrei, Verträge ab 2005 als Halbeinkünfte-Methode oder Abgeltungsteuer (§ 20 Abs. 1 Nr. 6 EStG), bei Verrentung Ertragsanteil (§ 22 Nr. 1 Satz 3 a EStG). Versicherungsmantel-Gebühr separat ausweisen.
 
-**Basisrente / Rürup-Rente (1. Schicht).** Beiträge zu 100 % als Sonderausgaben absetzbar (§ 10 Abs. 1 Nr. 2 i.V.m. Abs. 3 EStG). Höchstbetrag 2026: 30.826 € (Einzel), 61.652 € (verheiratet). Auszahlung ausschließlich als lebenslange Leibrente, kein Kapitalwahlrecht. Volle nachgelagerte Besteuerung wie gesetzliche Rente. KV/PV-Behandlung wie Leibrente aus privater Versicherung (§ 240 SGB V Bemessung bei freiwillig Versicherten).
+**Basisrente / Rürup-Rente (1. Schicht).** Beiträge zu {BASISRENTE_DEDUCTIBLE_RATE} % als Sonderausgaben absetzbar (§ 10 Abs. 1 Nr. 2 i.V.m. Abs. 3 EStG). Höchstbetrag {RULES_YEAR}: {BASISRENTE_CAP_SINGLE} € (Einzel), {BASISRENTE_CAP_MARRIED} € (verheiratet). Auszahlung ausschließlich als lebenslange Leibrente, kein Kapitalwahlrecht. Volle nachgelagerte Besteuerung wie gesetzliche Rente. KV/PV-Behandlung wie Leibrente aus privater Versicherung (§ 240 SGB V Bemessung bei freiwillig Versicherten).
 
-**Altersvorsorgedepot (2. Schicht).** Neues Schicht-2-Produkt aus dem Altersvorsorgereformgesetz (Bundestags-Beschluss 27. März 2026, Bundesrat-Zustimmung 8. Mai 2026, Produktstart ab 2027). Eigene Förderlogik, abweichend von Riester:
+**Altersvorsorgedepot (2. Schicht).** Neues Schicht-2-Produkt aus dem Altersvorsorgereformgesetz (Bundestags-Beschluss 27. März 2026, Bundesrat-Zustimmung 8. Mai 2026, Produktstart ab {AVD_PRODUCT_START_YEAR}). Eigene Förderlogik, abweichend von Riester:
 
-- Grundzulage zweistufig: 50 % auf die ersten {AVD_ALLOWANCE_TIER_1_MAX} € Eigenbeitrag (max. 180 €) plus 25 % auf den Anteil von {AVD_ALLOWANCE_TIER_1_MAX} € bis {AVD_ALLOWANCE_TIER_2_MAX} € (max. 360 €), in Summe gedeckelt bei 540 € pro Jahr.
-- Kinderzulage: bis zu 300 € pro Kind und Jahr (100 % des Eigenbeitrags, gedeckelt auf 300 €). Bei Eigenbeiträgen unter 300 € pro Jahr fällt die Kinderzulage entsprechend niedriger aus.
-- Berufseinsteiger-Bonus: 200 € einmalig für Verträge mit Beginn bis Alter 24.
-- Eigenbeitrags-Cap pro Vertrag: {AVD_SPECIAL_EXPENSE_OWN_CAP} € pro Jahr (eigener Cap nach geändertem § 10a EStG, nicht der Riester-§-10a-Rahmen).
+- Grundzulage zweistufig: {AVD_TIER_1_RATE} % auf die ersten {AVD_ALLOWANCE_TIER_1_MAX} € Eigenbeitrag (max. {AVD_TIER_1_ALLOWANCE_MAX} €) plus {AVD_TIER_2_RATE} % auf den Anteil von {AVD_ALLOWANCE_TIER_1_MAX} € bis {AVD_ALLOWANCE_TIER_2_MAX} € (max. {AVD_TIER_2_ALLOWANCE_MAX} €), in Summe gedeckelt bei {AVD_BASIC_ALLOWANCE_MAX} € pro Jahr. Ab Beitragsjahr {AVD_PRODUCT_START_YEAR} setzt die Zulage mindestens {AVD_MINIMUM_OWN_CONTRIBUTION} € Eigenbeitrag pro Jahr voraus; bei mittelbarer Berechtigung beträgt die Grundzulage höchstens {AVD_INDIRECT_SPOUSE_ALLOWANCE_MAX} € pro Jahr.
+- Kinderzulage: bis zu {AVD_CHILD_ALLOWANCE_MAX} € pro Kind und Jahr ({AVD_CHILD_ALLOWANCE_RATE} % des Eigenbeitrags, gedeckelt auf {AVD_CHILD_ALLOWANCE_MAX} €). Bei Eigenbeiträgen unter {AVD_CHILD_ALLOWANCE_MAX} € pro Jahr fällt die Kinderzulage entsprechend niedriger aus; auch sie setzt mindestens {AVD_MINIMUM_OWN_CONTRIBUTION} € Eigenbeitrag pro Jahr voraus.
+- Berufseinsteiger-Bonus: {AVD_CAREER_STARTER_BONUS} € einmalig, wenn zu Beginn des Beitragsjahres das {AVD_CAREER_STARTER_AGE_LIMIT}. Lebensjahr noch nicht vollendet ist. Der Rechner verwendet dafür das Alter zu Beginn des ersten Beitragsjahres und berücksichtigt, ob der Bonus bereits verbraucht wurde.
+- Sonderausgabenabzug: Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP} € pro Jahr plus die zugehörigen Zulagen nach geändertem § 10a EStG. Die separate vertragsbezogene Beitragsobergrenze beträgt {AVD_CONTRACT_CONTRIBUTION_CAP} € pro Jahr.
 - Auszahlungsbesteuerung nach § 22 Nr. 5 EStG.
 
-**Riester-Vertrag (2. Schicht).** Bestehende Verträge laufen weiter; Neuabschlüsse ab 2027 sind nach dem Altersvorsorgereformgesetz nicht mehr vorgesehen. Grundzulage 175 €/Jahr (§ 84 EStG). Kinderzulage 185 €/Jahr für Kinder vor 2008 geboren, 300 €/Jahr ab 2008 (§ 85 EStG). Sonderausgabenabzug nach § 10a EStG bis 2.100 € jährlich (eigene Beiträge plus Zulagen). Mindesteigenbeitrag nach § 86 EStG: max(60 € Sockelbetrag, min(4 % des rentenversicherungspflichtigen Vorjahres-Brutto, 2.100 €) − Zulagenanspruch); bei hohem Vorjahres-Brutto (über rund 52.500 €) deckelt die 2.100-€-Grenze den geforderten Eigenbeitrag. Auszahlung nach § 22 Nr. 5 EStG.
+**Riester-Vertrag (2. Schicht).** Bestehende Verträge laufen weiter; Neuabschlüsse ab {AVD_PRODUCT_START_YEAR} sind nach dem Altersvorsorgereformgesetz nicht mehr vorgesehen. Grundzulage {RIESTER_BASIC_ALLOWANCE} €/Jahr (§ 84 EStG). Kinderzulage {RIESTER_CHILD_ALLOWANCE_PRE_2008} €/Jahr für Kinder vor 2008 geboren, {RIESTER_CHILD_ALLOWANCE_POST_2007} €/Jahr ab 2008 (§ 85 EStG). Sonderausgabenabzug nach § 10a EStG bis {RIESTER_SPECIAL_EXPENSE_CAP} € jährlich (eigene Beiträge plus Zulagen). Mindesteigenbeitrag nach § 86 EStG: max({RIESTER_MINIMUM_CONTRIBUTION} € Sockelbetrag, min({RIESTER_MINIMUM_RATE} % des rentenversicherungspflichtigen Vorjahres-Brutto, {RIESTER_SPECIAL_EXPENSE_CAP} €) − Zulagenanspruch); bei hohem Vorjahres-Brutto (über rund {RIESTER_CAP_INCOME_THRESHOLD} €) deckelt die {RIESTER_SPECIAL_EXPENSE_CAP}-€-Grenze den geforderten Eigenbeitrag. Auszahlung nach § 22 Nr. 5 EStG.
 
 ## Was berechnet RentenWiki.de?
 
@@ -59,7 +96,7 @@ Pro Vertrag wird je nach Vertragsstatus simuliert:
 In der Auszahlphase werden alle Verträge gemeinsam durch die Steuer- und KV/PV-Logik geschickt:
 
 - Die nachgelagerte Besteuerung der gesetzlichen Rente, der bAV, der Basisrente und der geförderten Auszahlungen aus Riester und Altersvorsorgedepot läuft durch dieselbe Pipeline.
-- KV/PV-Beiträge sind auf die monatliche Beitragsbemessungsgrenze von 5.812,50 € gedeckelt; bei Überschreitung wird proportional über alle Einkunftsquellen verteilt.
+- KV/PV-Beiträge sind auf die monatliche Beitragsbemessungsgrenze von {RETIREMENT_KV_PV_CAP_MONTH} € gedeckelt; bei Überschreitung wird proportional über alle Einkunftsquellen verteilt.
 - Der Sparer-Pauschbetrag wird über mehrere ETF-Verträge anteilig aufgeteilt.
 - Die §-3-Nr.-63-EStG- und §-1-SvEV-Grenzen für die bAV werden im Modell jahresweise gegen die summierte Förderung aller bAV-Verträge geprüft.
 
@@ -82,15 +119,15 @@ Markus, 43, Bruttogehalt 75.000 € pro Jahr, geplanter Renteneintritt mit 67. V
 
 | Vertrag | Status | Monatlicher Beitrag |
 |---|---|---|
-| bAV nach § 3 Nr. 63 EStG (Direktversicherung) | aktiv | 250 € Brutto-Umwandlung + 15 % AG-Zuschuss |
+| bAV nach § 3 Nr. 63 EStG (Direktversicherung) | aktiv | 250 € Brutto-Umwandlung + {BAV_EMPLOYER_SUBSIDY_RATE} % AG-Zuschuss |
 | ETF-Sparplan | aktiv | 300 € netto |
 | Riester-Vertrag (Altvertrag) | beitragsfrei | Bestand ruht, keine Beiträge |
 
 Was der Rechner ausgibt:
 
-1. Der § 3 Nr. 63 EStG-Rahmen 2026 (8.112 € jährlich) ist mit 3.000 € Eigenumwandlung plus rund 450 € Arbeitgeberzuschuss zu rund 43 % ausgeschöpft. Eine Erhöhung der Umwandlung um 200 € pro Monat wäre noch steuer- und teilweise SV-frei.
-2. Der Sparer-Pauschbetrag von 1.000 € im ETF-Sparplan ist je nach laufender Vorabpauschale teilweise oder vollständig genutzt.
-3. Der beitragsfreie Riester-Vertrag kann nach § 93 Abs. 1a EStG ohne Förderschaden in ein Altersvorsorgedepot übertragen werden, sobald dieses ab 2027 verfügbar ist. Der Rechner stellt die Modellwirkung gegenüber: Riester-Bestand bleibt liegen vs. Übertrag mit Glidepath-Logik im Altersvorsorgedepot.
+1. Der § 3 Nr. 63 EStG-Rahmen {RULES_YEAR} ({BAV_TAX_FREE_CAP} € jährlich) ist mit {BAV_DEMO_OWN_ANNUAL} € Eigenumwandlung plus rund {BAV_DEMO_EMPLOYER_ANNUAL} € Arbeitgeberzuschuss zu rund {BAV_DEMO_CAP_USE} % ausgeschöpft. Eine Erhöhung der Umwandlung um 200 € pro Monat wäre noch steuer- und teilweise SV-frei.
+2. Der Sparer-Pauschbetrag von {SAVER_ALLOWANCE_SINGLE} € im ETF-Sparplan ist je nach laufender Vorabpauschale teilweise oder vollständig genutzt.
+3. Der beitragsfreie Riester-Vertrag kann nach § 93 Abs. 1a EStG ohne Förderschaden in ein Altersvorsorgedepot übertragen werden, sobald dieses ab {AVD_PRODUCT_START_YEAR} verfügbar ist. Der Rechner stellt die Modellwirkung gegenüber: Riester-Bestand bleibt liegen vs. Übertrag mit Glidepath-Logik im Altersvorsorgedepot.
 
 Markus speichert diese Konstellation als Basisszenario und legt ein Was-wäre-wenn an, in dem die bAV-Umwandlung um 200 € erhöht und der Riester-Vertrag in ein Altersvorsorgedepot übertragen wird. Der Vergleich zweier Szenarien zeigt die Modell-Differenz in Nettorente, Steuerlast und KV-Belastung.
 
@@ -118,13 +155,13 @@ Nein. Alle Eingaben bleiben im lokalen Speicher des Browsers (localStorage). Es 
 
 ## Quellen
 
-- Einkommensteuergesetz: § 3 Nr. 63 (bAV-Steuerfreiheit), § 10 Abs. 1 Nr. 2 und Abs. 3 (Basisrente-Sonderausgabenabzug), § 10a (Riester-Sonderausgabenabzug), § 18 InvStG (Vorabpauschale), § 20 (Kapitalerträge, Sparer-Pauschbetrag), § 22 Nr. 1 Satz 3 a (Leibrenten), § 22 Nr. 5 (geförderte Verträge), § 84, § 85, § 93 (Riester-Zulagen, Übertragung).
+- Einkommensteuergesetz: § 3 Nr. 63 (bAV-Steuerfreiheit), § 10 Abs. 1 Nr. 2 und Abs. 3 (Basisrente-Sonderausgabenabzug), § 10a (Sonderausgabenabzug für Riester und Altersvorsorgedepot), § 18 InvStG (Vorabpauschale), § 20 (Kapitalerträge, Sparer-Pauschbetrag), § 22 Nr. 1 Satz 3 a (Leibrenten), § 22 Nr. 5 (geförderte Verträge), § 84, § 85, § 93 (Riester-Zulagen, Übertragung).
 - Sozialgesetzbuch V, §§ 226, 229, 237, 240 (KV-Beiträge auf Renten und Versorgungsbezüge, freiwillige Mitgliedschaft).
 - Sozialgesetzbuch XI, §§ 55, 55a (Pflegeversicherungs-Beiträge).
 - Betriebsrentengesetz § 1a Abs. 1a (Arbeitgeberzuschuss zur Entgeltumwandlung).
 - Sozialversicherungsentgeltverordnung § 1 (SV-Freistellung der bAV bis 4 % BBG West).
 - Verordnung über maßgebende Rechengrößen der Sozialversicherung 2026 (BGBl. 2025 I Nr. 278).
-- Altersvorsorgereformgesetz (Bundestags-Beschluss 27. März 2026, Bundesrat-Drucksache 206/26).
+- [Altersvorsorgereformgesetz vom 26. Mai 2026 (BGBl. 2026 I Nr. 156)](https://www.recht.bund.de/bgbl/1/2026/156/regelungstext.pdf), wesentliche AVD-Regelungen ab 1. Januar {AVD_PRODUCT_START_YEAR}.
 - Wachstumschancengesetz (BGBl. 2024 I Nr. 108): abgeflachte Progression der Besteuerungsanteile.
 - Deutsche Rentenversicherung Bund: *Rentenversicherung in Zahlen 2025/2026*.
 - GKV-Spitzenverband: *Beitragssatz-Übersicht 2026*.
