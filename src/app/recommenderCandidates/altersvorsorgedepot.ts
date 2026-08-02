@@ -17,6 +17,7 @@ import { defaultAssumptions } from '../../data/defaultScenario'
 import { monthlyPayoutFromCapital } from '../../engine/payoutMath'
 import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
 import { childBirthYearsUnder25InYear } from '../../engine/childEligibility'
+import { hasUsedCareerStarterBonus } from '../../engine/portfolioFunding'
 import { newInstanceId } from '../workspaceIdentity'
 import {
   type CandidateDraft,
@@ -30,10 +31,11 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const wsa = g.workspace.baseline.assumptions
   const gross = g.marginalMonthlyEUR
   const baseAvd = defaultAssumptions.altersvorsorgedepot
+  const careerStarterBonusAlreadyUsed = hasUsedCareerStarterBonus(wsa, g.rules)
   const effectiveEligibility = {
     ...baseAvd.eligibility,
     ageAtContractStart: profile.age,
-    careerStarterBonusUsed: false,
+    careerStarterBonusUsed: careerStarterBonusAlreadyUsed,
     eligibleChildren: childBirthYearsUnder25InYear(
       profile.childBirthYears,
       g.rules.year,
@@ -42,7 +44,7 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const capMonthly = maxAvdMonthlyOwnContribution(
     effectiveEligibility,
     g.rules,
-    !effectiveEligibility.careerStarterBonusUsed,
+    !careerStarterBonusAlreadyUsed,
   )
   const cappedToRemaining = gross > capMonthly
   const sized = Math.min(gross, capMonthly)

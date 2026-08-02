@@ -47,8 +47,11 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
   const avdMonthlyContribution =
     altersvorsorgedepotFunding.totalContractContributionAnnual / 12 +
     altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual / 12
-  const fundingForYear = (yearIndex: number) =>
-    calculateAvdFunding(
+  const fundingForYear = (yearIndex: number) => {
+    const scheduled = ctx.altersvorsorgedepotFundingSchedule?.[yearIndex]
+    if (scheduled) return scheduled
+
+    return calculateAvdFunding(
       rules,
       ctx.salaryForOtherFunding,
       avd,
@@ -59,6 +62,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
           yearIndex === 0 && !avd.eligibility.careerStarterBonusUsed,
       },
     )
+  }
   const yearlySavings = Array.from({ length: yearsToRetirement }).reduce<number>(
     (sum, _, yearIndex) => {
       const funding = fundingForYear(yearIndex)

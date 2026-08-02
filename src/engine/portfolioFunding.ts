@@ -16,7 +16,7 @@
  *     exceeds the remaining cap after GRV/Versorgungswerk contributions.
  *   - Riester §10a EStG: proportional scaling when aggregate exceeds the
  *     2 100 EUR/year cap incl. allowances.
- *   - AVD (AltZertG): per-contract cap; no cross-instance scaling needed.
+ *   - AVD (AltZertG): per-contract cap plus one career-starter bonus per saver.
  *
  * Projection helpers live in `portfolioProjection.ts`.
  * Transfer/capital policy lives in `portfolioTransfer.ts`.
@@ -144,6 +144,36 @@ export function paidUpRiesterFunding(
 // ---------------------------------------------------------------------------
 // Portfolio-aware funding pre-step
 // ---------------------------------------------------------------------------
+
+/**
+ * Whether the saver has legally consumed the once-per-lifetime career-starter
+ * bonus. Legacy compare-mode defaults set the display flag even for contracts
+ * whose start age was above the statutory limit, so the flag alone is not
+ * authoritative. Offered contracts are proposals rather than completed use;
+ * surrendered contracts still preserve valid historical use.
+ */
+export function hasUsedCareerStarterBonus(
+  assumptions: Workspace['baseline']['assumptions'],
+  rules: GermanRules,
+): boolean {
+  const avdUsed = assumptions.altersvorsorgedepot.some(
+    (instance) =>
+      instance.status !== 'offered' &&
+      instance.eligibility.careerStarterBonusUsed &&
+      instance.eligibility.directlyEligible &&
+      instance.eligibility.ageAtContractStart <=
+        rules.altersvorsorgedepot.careerStarterMaxAge,
+  )
+  const riesterUsed = assumptions.riester.some(
+    (instance) =>
+      instance.status !== 'offered' &&
+      instance.eligibility.careerStarterBonusUsed &&
+      instance.eligibility.directlyEligible &&
+      instance.eligibility.ageAtContractStart <=
+        rules.riester.careerStarterMaxAge,
+  )
+  return avdUsed || riesterUsed
+}
 
 /**
  * Aggregate cross-instance shared budgets BEFORE per-instance simulation.
@@ -421,20 +451,160 @@ export function buildPortfolioFunding(
   const allAvd = wsa.altersvorsorgedepot.filter(a => a.status !== 'surrendered' && a.status !== 'offered')
   const activeAvd = allAvd.filter(a => a.status === 'active')
   const paidUpAvd = allAvd.filter(a => a.status === 'paid_up')
+  const allRiester = wsa.riester.filter(r => r.status !== 'surrendered' && r.status !== 'offered')
+  const activeRiester = allRiester.filter(r => r.status === 'active')
+  const paidUpRiester = allRiester.filter(r => r.status === 'paid_up')
+  const accumulationYears = Math.max(1, profile.retirementAge - profile.age)
+  // `careerStarterBonusUsed` records historical use. Surrendering or replacing
+  // the contract does not restore the saver's once-per-lifetime entitlement.
+  const careerStarterBonusAlreadyUsed = hasUsedCareerStarterBonus(wsa, rules)
+  const householdRiesterOwnMonthly = activeRiester.reduce(
+    (sum, instance) => sum + instance.monthlyOwnContribution,
+    0,
+  )
+  const careerStarterCandidates = careerStarterBonusAlreadyUsed
+    ? []
+    : [
+        ...activeAvd
+          .map((instance) => {
+            const singleton = stripInstanceCommonKeys(
+              instance as unknown as Record<string, unknown>,
+            ) as unknown as AltersvorsorgedepotAssumptions
+            const withBonus = calculateAvdFunding(
+              rules,
+              salaryForOtherFunding,
+              singleton,
+              {
+                profile,
+                contributionYear: rules.year,
+                isFirstContributionYear: true,
+              },
+            )
+            const withoutBonus = calculateAvdFunding(
+              rules,
+              salaryForOtherFunding,
+              singleton,
+              {
+                profile,
+                contributionYear: rules.year,
+                isFirstContributionYear: false,
+              },
+            )
+            return {
+              instanceId: instance.instanceId,
+              contractStartYear: instance.contractStartYear,
+              allowanceClaimAnnual: withBonus.totalAllowanceAnnual,
+              careerStarterBonusAnnual: withBonus.careerStarterBonusAnnual,
+              realisedBenefitAnnual:
+                withBonus.totalContractContributionAnnual +
+                withBonus.guenstigerpruefungBenefitAnnual -
+                withoutBonus.totalContractContributionAnnual -
+                withoutBonus.guenstigerpruefungBenefitAnnual,
+            }
+          })
+          .filter(
+            (candidate) =>
+              candidate.careerStarterBonusAnnual > 0 &&
+              candidate.realisedBenefitAnnual >= 0,
+          ),
+        ...activeRiester
+          .map((instance) => {
+            const singleton = stripInstanceCommonKeys(
+              instance as unknown as Record<string, unknown>,
+            ) as unknown as RiesterAssumptions
+            const withBonus = calculateRiesterFunding(
+              rules,
+              salaryForOtherFunding,
+              {
+                ...singleton,
+                monthlyOwnContribution: householdRiesterOwnMonthly,
+              },
+              profile,
+              {
+                contributionYear: rules.year,
+                isFirstContributionYear: true,
+              },
+            )
+            const withoutBonus = calculateRiesterFunding(
+              rules,
+              salaryForOtherFunding,
+              {
+                ...singleton,
+                monthlyOwnContribution: householdRiesterOwnMonthly,
+              },
+              profile,
+              {
+                contributionYear: rules.year,
+                isFirstContributionYear: false,
+              },
+            )
+            return {
+              instanceId: instance.instanceId,
+              contractStartYear: instance.contractStartYear,
+              allowanceClaimAnnual: withBonus.totalAllowanceAnnual,
+              careerStarterBonusAnnual: withBonus.careerStarterBonusAnnual,
+              realisedBenefitAnnual:
+                withBonus.annualOwnContribution +
+                withBonus.totalAllowanceAnnual +
+                withBonus.guenstigerpruefungBenefitAnnual -
+                withoutBonus.annualOwnContribution -
+                withoutBonus.totalAllowanceAnnual -
+                withoutBonus.guenstigerpruefungBenefitAnnual,
+            }
+          })
+          .filter(
+            (candidate) =>
+              candidate.careerStarterBonusAnnual > 0 &&
+              candidate.realisedBenefitAnnual >= 0,
+          ),
+      ].sort(
+        (left, right) =>
+          right.realisedBenefitAnnual - left.realisedBenefitAnnual ||
+          right.allowanceClaimAnnual - left.allowanceClaimAnnual ||
+          left.contractStartYear - right.contractStartYear ||
+          left.instanceId.localeCompare(right.instanceId),
+      )
+  const careerStarterBonusRecipientId = careerStarterCandidates[0]?.instanceId
+  const eligibilityForCareerStarterAllocation = <T extends { careerStarterBonusUsed: boolean }>(
+    instanceId: string,
+    eligibility: T,
+  ): T => ({
+    ...eligibility,
+    careerStarterBonusUsed:
+      eligibility.careerStarterBonusUsed || instanceId !== careerStarterBonusRecipientId,
+  })
   // AVD has a per-contract contributionCap (6840 EUR/year for 2026). The cap is
   // per-contract, not per-portfolio, so we don't scale across instances.
-  // §10a deduction is handled inside the funding helper.
+  // §10a deduction is handled inside the funding helper. The career-starter
+  // bonus belongs to the saver, so only the recipient with the largest realised
+  // increase in contract funding plus tax benefit may claim it across all active
+  // AVD and Riester contracts. This prevents a capped contract from absorbing it.
   const altersvorsorgedepotByInstanceId: Record<string, AltersvorsorgedepotFundingResult> = {}
+  const altersvorsorgedepotYearlyByInstanceId: Record<
+    string,
+    AltersvorsorgedepotFundingResult[]
+  > = {}
   for (const inst of activeAvd) {
-    const singleton = stripInstanceCommonKeys(
+    const rawSingleton = stripInstanceCommonKeys(
       inst as unknown as Record<string, unknown>,
     ) as unknown as AltersvorsorgedepotAssumptions
-    altersvorsorgedepotByInstanceId[inst.instanceId] = calculateAvdFunding(
-      rules,
-      salaryForOtherFunding,
-      singleton,
-      { profile },
+    const singleton: AltersvorsorgedepotAssumptions = {
+      ...rawSingleton,
+      eligibility: eligibilityForCareerStarterAllocation(
+        inst.instanceId,
+        rawSingleton.eligibility,
+      ),
+    }
+    const schedule = Array.from({ length: accumulationYears }, (_, yearIndex) =>
+      calculateAvdFunding(rules, salaryForOtherFunding, singleton, {
+        profile,
+        contributionYear: rules.year + yearIndex,
+        isFirstContributionYear:
+          yearIndex === 0 && !singleton.eligibility.careerStarterBonusUsed,
+      }),
     )
+    altersvorsorgedepotByInstanceId[inst.instanceId] = schedule[0]
+    altersvorsorgedepotYearlyByInstanceId[inst.instanceId] = schedule
   }
   for (const inst of paidUpAvd) {
     const singleton = stripInstanceCommonKeys(
@@ -446,19 +616,29 @@ export function buildPortfolioFunding(
       singleton,
       calculateAvdFunding,
     )
+    altersvorsorgedepotYearlyByInstanceId[inst.instanceId] = Array.from(
+      { length: accumulationYears },
+      () => altersvorsorgedepotByInstanceId[inst.instanceId],
+    )
   }
 
   // -------------------------------------------------------------------------
   // Riester aggregation (§10a / §86 + allowances)
   // -------------------------------------------------------------------------
-  const allRiester = wsa.riester.filter(r => r.status !== 'surrendered' && r.status !== 'offered')
-  const activeRiester = allRiester.filter(r => r.status === 'active')
-  const paidUpRiester = allRiester.filter(r => r.status === 'paid_up')
   const activeRiesterSingletons = activeRiester.map((instance) => ({
     instance,
-    singleton: stripInstanceCommonKeys(
-      instance as unknown as Record<string, unknown>,
-    ) as unknown as RiesterAssumptions,
+    singleton: (() => {
+      const singleton = stripInstanceCommonKeys(
+        instance as unknown as Record<string, unknown>,
+      ) as unknown as RiesterAssumptions
+      return {
+        ...singleton,
+        eligibility: eligibilityForCareerStarterAllocation(
+          instance.instanceId,
+          singleton.eligibility,
+        ),
+      }
+    })(),
   }))
   // §10a EStG caps own contributions plus allowances at €2,100 per saver.
   // V1 instances all belong to that saver: calculate the household benefit
@@ -610,9 +790,8 @@ export function buildPortfolioFunding(
     }
   }
 
-  const yearsToRetirement = Math.max(1, profile.retirementAge - profile.age)
   const riesterYears = Array.from(
-    { length: yearsToRetirement },
+    { length: accumulationYears },
     (_, yearIndex) => calculateRiesterYear(yearIndex),
   )
   const currentRiesterYear = riesterYears[0]
@@ -638,7 +817,7 @@ export function buildPortfolioFunding(
     )
     riesterByInstanceId[inst.instanceId] = funding
     riesterYearlyByInstanceId[inst.instanceId] = Array.from(
-      { length: yearsToRetirement },
+      { length: accumulationYears },
       () => funding,
     )
   }
@@ -715,7 +894,10 @@ export function buildPortfolioFunding(
       const fundedAnnual = funding.totalContractContributionAnnual
       const capAnnual = rules.altersvorsorgedepot.contractContributionCapAnnual
       const effectiveEligibility = {
-        ...instance.eligibility,
+        ...eligibilityForCareerStarterAllocation(
+          instance.instanceId,
+          instance.eligibility,
+        ),
         eligibleChildren: childBirthYearsUnder25InYear(
           profile.childBirthYears,
           rules.year,
@@ -724,7 +906,7 @@ export function buildPortfolioFunding(
       const maximumOwnAnnual = maxAvdMonthlyOwnContribution(
         effectiveEligibility,
         rules,
-        !instance.eligibility.careerStarterBonusUsed,
+        !effectiveEligibility.careerStarterBonusUsed,
       ) * 12
       return [instance.instanceId, {
         capAnnual,
@@ -742,6 +924,7 @@ export function buildPortfolioFunding(
     bavByInstanceId,
     basisrenteByInstanceId,
     altersvorsorgedepotByInstanceId,
+    altersvorsorgedepotYearlyByInstanceId,
     riesterByInstanceId,
     riesterYearlyByInstanceId,
     salaryForOtherFunding,

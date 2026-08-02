@@ -23,6 +23,7 @@ import {
 } from '../recommender'
 import { runCombineSimulation } from '../useCombineSimulation'
 import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
+import { buildPortfolioFunding } from '../../engine/portfolioFunding'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { makeAvdCandidate } from './altersvorsorgedepot'
 import { buildBerndWorkspace, buildGeneratorContext } from './testHelpers'
@@ -212,6 +213,68 @@ describe('makeAvdCandidate — materialized what-if effects', () => {
     expect(added.monthlyOwnContribution).toBeCloseTo(cand!.grossMonthlyEUR, 8)
     expect(added.eligibility.ageAtContractStart).toBe(23)
     expect(added.eligibility.careerStarterBonusUsed).toBe(false)
+  })
+
+  it('reserves the available bonus when sizing a candidate beside an eligible contract', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile.age = 23
+    ws.baseline.assumptions.riester = []
+    const existing = ws.baseline.assumptions.altersvorsorgedepot[0]
+    existing.status = 'active'
+    existing.monthlyOwnContribution = 100
+    existing.eligibility = {
+      ...existing.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+
+    const firstYearCap = maxAvdMonthlyOwnContribution(
+      existing.eligibility,
+      de2026Rules,
+      true,
+    )
+    const laterYearCap = maxAvdMonthlyOwnContribution(
+      existing.eligibility,
+      de2026Rules,
+      false,
+    )
+    const draft = makeAvdCandidate(
+      buildGeneratorContext(ws, laterYearCap + 100),
+    )!
+    const created = draft.newInstance as AltersvorsorgedepotInstance
+
+    expect(draft.grossMonthlyEUR).toBeCloseTo(firstYearCap, 8)
+    expect(created.eligibility.careerStarterBonusUsed).toBe(false)
+
+    ws.baseline.assumptions.altersvorsorgedepot.push(created)
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const funded = Object.values(funding.altersvorsorgedepotByInstanceId)
+    expect(
+      funded.reduce((sum, entry) => sum + entry.careerStarterBonusAnnual, 0),
+    ).toBeCloseTo(de2026Rules.altersvorsorgedepot.careerStarterBonus, 8)
+    expect(
+      funded.filter((entry) => entry.careerStarterBonusAnnual > 0),
+    ).toHaveLength(1)
+  })
+
+  it('carries historical career-starter use from a surrendered contract', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile.age = 23
+    ws.baseline.assumptions.riester = []
+    const historical = ws.baseline.assumptions.altersvorsorgedepot[0]
+    historical.status = 'surrendered'
+    historical.eligibility = {
+      ...historical.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: true,
+    }
+
+    const draft = makeAvdCandidate(buildGeneratorContext(ws, 100))!
+    const created = draft.newInstance as AltersvorsorgedepotInstance
+
+    expect(created.eligibility.careerStarterBonusUsed).toBe(true)
   })
 
   it('what-if carries origin=recommender', () => {

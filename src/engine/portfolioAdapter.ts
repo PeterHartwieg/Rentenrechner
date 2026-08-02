@@ -190,6 +190,8 @@ export function simulatePortfolio(
   }))
   runFor(wsa.altersvorsorgedepot, simulateAvd, (inst) => withBavFundingAnchor({
     altersvorsorgedepotFundingOverride: portfolioFunding.altersvorsorgedepotByInstanceId[inst.instanceId],
+    altersvorsorgedepotFundingScheduleOverride:
+      portfolioFunding.altersvorsorgedepotYearlyByInstanceId[inst.instanceId],
   }))
   runFor(wsa.riester, simulateRiester, (inst) => withBavFundingAnchor({
     riesterFundingOverride: portfolioFunding.riesterByInstanceId[inst.instanceId],
