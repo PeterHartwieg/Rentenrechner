@@ -151,6 +151,9 @@ describe('buildAvdBeitragsstufen — Vertragsrahmen tracks eligibility', () => {
     const vertragsrahmen = stufen.at(-1)
 
     expect(vertragsrahmen?.label).toBe('Vertragsrahmen')
+    // Hand-computed golden for the 2026 rules (600*12 own + 6240 allowances
+    // = 6840 cap). The rules-independent invariant is asserted below; this
+    // golden only pins the concrete value so a solver regression is obvious.
     expect(vertragsrahmen?.value).toBeCloseTo(50, 10)
 
     const annualOwnContribution = vertragsrahmen!.value * 12
