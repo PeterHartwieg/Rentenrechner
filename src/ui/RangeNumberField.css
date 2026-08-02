@@ -1,0 +1,140 @@
+/* RangeNumberField — quick-choice cards + slider + exact numeric field.
+   Uses only existing Sober D tokens from App.css. */
+
+.range-number-field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.range-number-field > legend {
+  padding: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--rw-ink);
+}
+
+.range-number-field__choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.range-number-field__choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 11px;
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 2px;
+  background: var(--rw-bg-paper);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* Touch target: meets the 44px minimum on mobile. */
+  min-height: 44px;
+  transition: border-color 0.1s, background 0.1s, box-shadow 0.1s;
+}
+
+.range-number-field__choice:hover:not(:disabled) {
+  border-color: var(--rw-ink);
+}
+
+.range-number-field__choice:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+.range-number-field__choice--selected {
+  border-color: var(--rw-ink);
+  background: var(--rw-bg-paper-soft);
+  box-shadow: inset 3px 0 0 var(--rw-accent);
+}
+
+.range-number-field__choice-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--rw-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.range-number-field__choice-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--rw-ink-soft);
+  line-height: 1.25;
+}
+
+.range-number-field__choice-hint {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--rw-ink-faint);
+  line-height: 1.3;
+}
+
+.range-number-field__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 14px;
+  align-items: start;
+}
+
+.range-number-field__slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  /* The numeric field carries its own label spacing; nudge the slider down so
+     the two controls sit on the same optical line. */
+  padding-top: var(--rw-field-label-height, 22px);
+}
+
+.range-number-field__slider input[type='range'] {
+  width: 100%;
+  margin: 0;
+  /* Generous hit area for touch without changing the visual track. */
+  height: 28px;
+  cursor: pointer;
+  accent-color: var(--rw-accent);
+}
+
+.range-number-field__slider input[type='range']:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+.range-number-field__bounds {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--rw-font-mono);
+  font-size: 0.68rem;
+  color: var(--rw-ink-faint);
+}
+
+.range-number-field:disabled .range-number-field__choice,
+.range-number-field:disabled .range-number-field__slider input[type='range'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Stack on narrow viewports — a 150px numeric column beside a slider leaves
+   neither usable on a phone. */
+@media (max-width: 560px) {
+  .range-number-field__row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .range-number-field__slider {
+    padding-top: 0;
+  }
+
+  .range-number-field__choices {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}

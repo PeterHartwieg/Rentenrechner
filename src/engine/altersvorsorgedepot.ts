@@ -138,11 +138,10 @@ export function computeAvdAllowances(
  * Maximum monthly own contribution before the AltZertG contract cap
  * (`contractContributionCapAnnual`, 6 840 EUR/year for 2026) is breached.
  *
- * The cap limits own + allowances. Allowances saturate at own ≥ 1 800 EUR/year
- * (the basic allowance is fully claimed there; child/spouse/career-bonus
- * allowances also saturate or are constants). For any own ≥ 1 800 the allowance
- * sum is fixed at the saturated value, so the maximum permitted own is
- * `(cap − allowanceSaturated) / 12`.
+ * The cap limits own + allowances. Solve that boundary against
+ * `computeAvdAllowances`: with many children the boundary can fall below the
+ * own contribution at which the basic allowance saturates, so subtracting the
+ * saturated allowance sum would understate the permitted contribution.
  *
  * Used by the input-sync layer to clamp AVD's value when another product's
  * monthly net cost would push AVD over the contract ceiling, and by UI warnings.
@@ -153,15 +152,38 @@ export function maxAvdMonthlyOwnContribution(
   isFirstContributionYear = false,
 ): number {
   const avdRules = rules.altersvorsorgedepot
-  // Evaluate allowances at the saturation point — any own contribution above this
-  // produces the same allowance sum.
-  const saturated = computeAvdAllowances(
-    avdRules.basicAllowanceTier2MaxContribution,
+  const cap = avdRules.contractContributionCapAnnual
+  const totalContractContribution = (annualOwnContribution: number) =>
+    annualOwnContribution
+    + computeAvdAllowances(
+      annualOwnContribution,
+      eligibility,
+      rules,
+      isFirstContributionYear,
+    ).totalAllowanceAnnual
+
+  const saturationOwnContribution = avdRules.basicAllowanceTier2MaxContribution
+  const saturationAllowances = computeAvdAllowances(
+    saturationOwnContribution,
     eligibility,
     rules,
     isFirstContributionYear,
-  )
-  return Math.max(0, (avdRules.contractContributionCapAnnual - saturated.totalAllowanceAnnual) / 12)
+  ).totalAllowanceAnnual
+  if (saturationOwnContribution + saturationAllowances <= cap) {
+    return Math.max(0, (cap - saturationAllowances) / 12)
+  }
+
+  // Own contribution plus allowances is monotone, so bisection finds the
+  // largest admissible own contribution below allowance saturation without
+  // introducing display rounding into the engine.
+  let lo = 0
+  let hi = saturationOwnContribution
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2
+    if (totalContractContribution(mid) <= cap) lo = mid
+    else hi = mid
+  }
+  return lo / 12
 }
 
 export interface AvdFundingOptions {
