@@ -187,6 +187,7 @@ function projectSingletonAssumptionsToWorkspace(
     visibleProducts: next.visibleProducts,
     compareSubMode: next.compareSubMode ?? wsa.compareSubMode,
     equalInputAmountEUR: next.equalInputAmountEUR ?? wsa.equalInputAmountEUR,
+    contributionInput: next.contributionInput ?? wsa.contributionInput,
   }
 
   // Per-instance asymmetric field: bAV-Brutto. Write to the first active bAV

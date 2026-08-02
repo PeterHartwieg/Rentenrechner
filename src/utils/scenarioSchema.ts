@@ -110,7 +110,25 @@ export function validateAssumptions(input: unknown): ScenarioAssumptions | null 
   for (const pid of a.visibleProducts) {
     if (!PRODUCT_IDS.includes(pid)) return null
   }
+  if (!validateContributionInput(a.contributionInput)) return null
   return a
+}
+
+/**
+ * Validate the optional compare-mode contribution-input mode.
+ *
+ * Absent is valid and means plain net mode. A pinned Eigenbeitrag is bounded
+ * generously here (the exact statutory ceiling depends on eligibility and is
+ * re-clamped by `syncMonthlyContributions` on every call); this layer only
+ * rejects shapes that would produce NaN downstream.
+ */
+function validateContributionInput(input: unknown): boolean {
+  if (input === undefined) return true
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return false
+  const c = input as Record<string, unknown>
+  if (c.kind === 'net') return true
+  if (c.kind === 'avd-own') return inRange(c.monthlyOwn, 0, 100_000)
+  return false
 }
 
 export function validateState(
@@ -308,6 +326,7 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
   for (const pid of a.visibleProducts) {
     if (!PRODUCT_IDS.includes(pid)) return null
   }
+  if (!validateContributionInput(a.contributionInput)) return null
 
   // Collect all instance ids across every product array for transfer-event target validation.
   // Duplicate instanceId values across product arrays are rejected — they indicate a corrupt

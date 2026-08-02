@@ -237,7 +237,8 @@ export function runComparison(
   const data: ComparisonResponse = {
     detailLevel,
     effectiveScenarioId,
-    effectiveMonthlyNettoBelastungEur: normalizeMonthlyNettoBelastung(nettoBelastung),
+    effectiveMonthlyNettoBelastungEur:
+      syncedAssumptions.equalInputAmountEUR ?? normalizeMonthlyNettoBelastung(nettoBelastung),
     productManifest: clonedManifest,
     statutoryPension: toStatutoryPensionSummary(simulation.statutoryPension),
     fundingSummaries: toFundingSummaries(simulation),
