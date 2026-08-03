@@ -276,6 +276,10 @@
   overflow-wrap: break-word;
   word-break: normal;
   line-height: 1.5;
+  /* Override the global `th, td { white-space: nowrap }` rule in App.css.
+     Article tables carry long prose cells; without this every MDX table
+     overflows its fixed-layout columns and text overlaps visually. */
+  white-space: normal;
 }
 
 .article-body th {
