@@ -305,6 +305,9 @@ describe('#57 accumulationRiy — ETF', () => {
     const etf = sim.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')!
     // 0.2% TER → RIY should be close to 0.2%
     expect(etf.accumulationRiy).toBeCloseTo(0.002, 2)
+    // Pin the pre-glidepath-fix value: products whose gross path is the
+    // scenario return must retain their established RIY.
+    expect(etf.accumulationRiy).toBe(0.0027719923033285437)
   })
 })
 

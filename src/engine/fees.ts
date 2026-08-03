@@ -17,7 +17,9 @@
  * produces the same terminal capital as the actual fee-laden product.
  *
  * Scope: accumulation phase only (investor payments → terminal capital). Does not
- * include retirement payout-phase fees or taxes.
+ * include retirement payout-phase fees. When the caller supplies a product-specific
+ * zero-fee capital, both projections keep the same tax accrual policy (including
+ * Vorabpauschale): taxes remain on both sides so the reported reduction isolates fees.
  *
  * Method: bisection on the beginning-of-period annuity future-value formula.
  * The closed-form FV is a good proxy for the simulation because the dominant fee
@@ -35,6 +37,7 @@ export function computeRIY(
   months: number,
   grossAnnualReturn: number,
   capitalWithFees: number,
+  capitalWithoutFees?: number,
 ): number {
   if (months <= 0 || monthlyContribution <= 0 || capitalWithFees <= 0) return 0
 
@@ -46,25 +49,45 @@ export function computeRIY(
     return (monthlyContribution * (Math.pow(1 + r_m, months) - 1) / r_m) * (1 + r_m)
   }
 
-  const fvAtGross = fv(grossAnnualReturn)
+  const solveAnnualReturn = (targetCapital: number, upperBound: number): number | null => {
+    let lo = -0.999
+    let hi = upperBound
+
+    if (fv(lo) > targetCapital || fv(hi) < targetCapital) return null
+
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2
+      if (fv(mid) < targetCapital) lo = mid
+      else hi = mid
+    }
+
+    return (lo + hi) / 2
+  }
+
+  // A product-specific zero-fee terminal capital lets callers preserve a
+  // custom gross return path (for example the AVD Standarddepot glidepath).
+  // Both terminal capitals are converted through the same annuity convention,
+  // so allocation drag is not mislabeled as cost.
+  const effectiveGrossAnnualReturn = capitalWithoutFees === undefined
+    ? grossAnnualReturn
+    : solveAnnualReturn(capitalWithoutFees, Math.max(grossAnnualReturn, 1))
+
+  if (effectiveGrossAnnualReturn === null) return 0
+
+  const fvAtGross = fv(effectiveGrossAnnualReturn)
 
   // If capital with fees equals or exceeds the no-fee gross FV (e.g. large employer subsidy
   // relative to fees), fees are effectively zero or negative — report 0.
   if (capitalWithFees >= fvAtGross) return 0
 
-  // Bisection: fv is monotone increasing in r.
-  // We want fv(r_net) = capitalWithFees, r_net < grossAnnualReturn.
-  let lo = -0.999
-  let hi = grossAnnualReturn
+  // Bisection: fv is monotone increasing in r. We want fv(r_net) to match the
+  // fee-bearing capital while staying below the product's effective gross rate.
+  const effectiveNetAnnualReturn = solveAnnualReturn(
+    capitalWithFees,
+    effectiveGrossAnnualReturn,
+  )
 
-  // Sanity: if even fv(-99.9%) > capitalWithFees the problem has no solution — return 0.
-  if (fv(lo) > capitalWithFees) return 0
-
-  for (let i = 0; i < 60; i++) {
-    const mid = (lo + hi) / 2
-    if (fv(mid) < capitalWithFees) lo = mid
-    else hi = mid
-  }
-
-  return Math.max(0, grossAnnualReturn - (lo + hi) / 2)
+  return effectiveNetAnnualReturn === null
+    ? 0
+    : Math.max(0, effectiveGrossAnnualReturn - effectiveNetAnnualReturn)
 }

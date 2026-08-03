@@ -77,4 +77,24 @@ describe('computeRIY (#57)', () => {
     const riyHigh = computeRIY(c, months, grossReturn, capitalHighFee)
     expect(riyHigh).toBeGreaterThan(riyLow)
   })
+
+  it('uses the product zero-fee capital instead of counting return-path drag as cost', () => {
+    const c = 300
+    const months = 12 * 39
+    const scenarioReturn = 0.05
+    const productGrossReturn = 0.04
+    const productNetReturn = 0.035
+    const r_m = (r: number) => Math.pow(1 + r, 1 / 12) - 1
+    const fv = (r: number) => (c * (Math.pow(1 + r_m(r), months) - 1) / r_m(r)) * (1 + r_m(r))
+
+    const riy = computeRIY(
+      c,
+      months,
+      scenarioReturn,
+      fv(productNetReturn),
+      fv(productGrossReturn),
+    )
+
+    expect(riy).toBeCloseTo(0.005, 10)
+  })
 })
