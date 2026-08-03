@@ -85,6 +85,9 @@ export function withMarketReturnPolicy(
   return {
     ...merged,
     yearlyReturn: merged?.yearlyReturn ?? yearlyReturn,
+    // Monte-Carlo paths never surface accumulationRiy; flagging them lets
+    // buildProductResult skip the zero-fee reference rerun per path.
+    stochasticReturnPath: true,
   }
 }
 

@@ -50,6 +50,12 @@ export interface ProductPayoutFields {
 export interface BuildProductPolicy {
   yearlyReturn?: (yearIndex: number) => number
   /**
+   * Set by `withMarketReturnPolicy` when `yearlyReturn` follows a stochastic
+   * Monte-Carlo market path. RIY is never read from MC results, so
+   * `buildProductResult` skips the zero-fee reference rerun for these paths.
+   */
+  stochasticReturnPath?: boolean
+  /**
    * `saverAllowanceOverride(yearIndex)` (0-based contract year) lets combine-mode
    * share the §20 Abs. 9 EStG Sparerpauschbetrag across multiple ETF instances
    * per year (allocation owned by `portfolioAllowance.ts`). Default behaviour
@@ -215,11 +221,12 @@ export function buildProductResult<
     fees: params.fees,
     policy: accumulationPolicy,
   })
-  const zeroFeeProjection = hasCustomGrossReturnPath(
-    accumulationPolicy,
-    params.scenario.annualReturn,
-    monthsToRetirement,
-  )
+  const zeroFeeProjection = !params.policy?.stochasticReturnPath
+    && hasCustomGrossReturnPath(
+      accumulationPolicy,
+      params.scenario.annualReturn,
+      monthsToRetirement,
+    )
     ? projectAccumulation({
         productId: params.productId,
         currentAge: params.profile.age,
