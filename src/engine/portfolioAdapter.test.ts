@@ -2123,10 +2123,9 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
   // AVD is chosen over Riester because AVD has no Kinderzulage complexity and its
   // funding (§10 Sonderausgaben) is computed identically in both compare-mode
   // (via `buildContext` → `calculateAvdFunding`) and combine-mode (via
-  // `altersvorsorgedepotFundingOverride`). A length-1 workspace must produce
-  // byte-identical financial outcomes because both code paths derive funding from
-  // the same singleton-shaped assumptions.
-  it('AVD length-1: capitalAtRetirement and netMonthlyPayout match compare-mode', () => {
+  // `altersvorsorgedepotFundingOverride`). The primary instance in a multi-instance
+  // workspace must preserve the singleton financial outcome and fee-only RIY.
+  it('AVD multi-instance: primary result matches compare-mode with fee-only RIY', () => {
     const baseV1 = makeRichV1()
     const workspace = migrateV1ToV2(
       baseV1.profile as unknown as Record<string, unknown>,
@@ -2141,13 +2140,31 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
     const compareAvd = compareResult.products.find(p => p.productId === 'altersvorsorgedepot')
     expect(compareAvd).toBeDefined()
 
-    // Combine-mode: single AVD instance — no monthlyContribution override needed;
+    const compareBasisAvd = compareResult.products.find(
+      p => p.productId === 'altersvorsorgedepot' && p.scenarioId === 'basis',
+    )
+    expect(compareBasisAvd).toBeDefined()
+    // Default Standarddepot fees are 0.3% wrapper + 0.2% fund. The mandatory
+    // allocation/glidepath must not be counted as cost in the UI's RIY metric.
+    expect(compareBasisAvd!.accumulationRiy).toBeGreaterThanOrEqual(0.005)
+    expect(compareBasisAvd!.accumulationRiy).toBeLessThan(0.006)
+    expect(compareBasisAvd!.accumulationRiy).toBeLessThan(
+      de2026Rules.altersvorsorgedepot.standarddepotEffektivkostenCap,
+    )
+
+    // Combine-mode: two AVD instances — no monthlyContribution override needed;
     // AVD funding is passed via altersvorsorgedepotFundingOverride which derives from
-    // the same calculateAvdFunding call as in compare-mode.
+    // the same calculateAvdFunding call as in compare-mode. The peer instance makes
+    // this a genuine multi-instance regression per the paired-test guardrail.
     const avdInst: AltersvorsorgedepotInstance = {
       ...workspace.baseline.assumptions.altersvorsorgedepot[0],
       instanceId: 'avd-equiv',
       label: 'AVD equiv',
+    }
+    const avdPeer: AltersvorsorgedepotInstance = {
+      ...avdInst,
+      instanceId: 'avd-riy-peer',
+      label: 'AVD RIY peer',
     }
     const ws: Workspace = {
       ...workspace,
@@ -2155,7 +2172,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
         ...workspace.baseline,
         assumptions: {
           ...workspace.baseline.assumptions,
-          altersvorsorgedepot: [avdInst],
+          altersvorsorgedepot: [avdInst, avdPeer],
         },
       },
     }
@@ -2170,12 +2187,30 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
       // no rounding divergence is expected.
       expect(combineR!.capitalAtRetirement).toBe(compareR.capitalAtRetirement)
       expect(combineR!.netMonthlyPayout).toBe(compareR.netMonthlyPayout)
+      expect(combineR!.accumulationRiy).toBe(compareR.accumulationRiy)
+      if (compareR.scenarioId === 'basis') {
+        expect(combineR!.accumulationRiy).toBeGreaterThanOrEqual(0.005)
+        expect(combineR!.accumulationRiy).toBeLessThan(0.006)
+        expect(combineR!.accumulationRiy).toBeLessThan(
+          de2026Rules.altersvorsorgedepot.standarddepotEffektivkostenCap,
+        )
+      }
       if (compareR.afterTaxLumpSum !== null) {
         expect(combineR!.afterTaxLumpSum).toBe(compareR.afterTaxLumpSum!)
       } else {
         expect(combineR!.afterTaxLumpSum).toBe(null)
       }
     }
+
+    const peerBasisAvd = perInstance['avd-riy-peer'].find(
+      r => r.scenarioId === 'basis',
+    )
+    expect(peerBasisAvd).toBeDefined()
+    expect(peerBasisAvd!.accumulationRiy).toBeGreaterThanOrEqual(0.005)
+    expect(peerBasisAvd!.accumulationRiy).toBeLessThan(0.006)
+    expect(peerBasisAvd!.accumulationRiy).toBeLessThan(
+      de2026Rules.altersvorsorgedepot.standarddepotEffektivkostenCap,
+    )
   })
 
   // ---------------------------------------------------------------------------

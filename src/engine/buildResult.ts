@@ -50,6 +50,12 @@ export interface ProductPayoutFields {
 export interface BuildProductPolicy {
   yearlyReturn?: (yearIndex: number) => number
   /**
+   * Set by `withMarketReturnPolicy` when `yearlyReturn` follows a stochastic
+   * Monte-Carlo market path. RIY is never read from MC results, so
+   * `buildProductResult` skips the zero-fee reference rerun for these paths.
+   */
+  stochasticReturnPath?: boolean
+  /**
    * `saverAllowanceOverride(yearIndex)` (0-based contract year) lets combine-mode
    * share the §20 Abs. 9 EStG Sparerpauschbetrag across multiple ETF instances
    * per year (allocation owned by `portfolioAllowance.ts`). Default behaviour
@@ -128,6 +134,23 @@ function applyCapitalGuarantee(
   }
 }
 
+function hasCustomGrossReturnPath(
+  policy: AccumulationPolicy | undefined,
+  scenarioAnnualReturn: number,
+  months: number,
+): boolean {
+  if (!policy?.yearlyReturn) return false
+
+  const years = Math.ceil(months / 12)
+  for (let yearIndex = 0; yearIndex < years; yearIndex += 1) {
+    if (Math.abs(policy.yearlyReturn(yearIndex) - scenarioAnnualReturn) > 1e-12) {
+      return true
+    }
+  }
+
+  return false
+}
+
 export function buildProductResult<
   TPayoutFields extends ProductPayoutFields,
 >(
@@ -198,6 +221,28 @@ export function buildProductResult<
     fees: params.fees,
     policy: accumulationPolicy,
   })
+  const zeroFeeProjection = !params.policy?.stochasticReturnPath
+    && hasCustomGrossReturnPath(
+      accumulationPolicy,
+      params.scenario.annualReturn,
+      monthsToRetirement,
+    )
+    ? projectAccumulation({
+        productId: params.productId,
+        currentAge: params.profile.age,
+        months: monthsToRetirement,
+        monthlyUserCost: params.monthlyUserCost,
+        monthlyProductContribution: params.monthlyProductContribution,
+        monthlyEmployerContribution: params.monthlyEmployerContribution,
+        annualReturn: params.scenario.annualReturn,
+        inflationRate: params.assumptions.inflationRate,
+        scenario: params.scenario,
+        fees: zeroFeeModel,
+        // Keep the complete policy, including Vorabpauschale. Taxes therefore
+        // remain in both projections and RIY isolates fees from return-path drag.
+        policy: accumulationPolicy,
+      })
+    : undefined
   const rawCapitalAtRetirement = projection.capital
   const guaranteeFloor =
     params.guarantee
@@ -253,6 +298,7 @@ export function buildProductResult<
       monthsToRetirement,
       params.scenario.annualReturn,
       effectiveProjection.capital,
+      zeroFeeProjection?.capital,
     ),
     rows: effectiveProjection.rows,
     ...payout,
