@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode, type SetStateAction }
 import './AngabenPage.css'
 import { LegalFooter } from '../legal/LegalFooter'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
-import { RULES_YEAR, activeRules } from '../../rules'
+import { RULES_YEAR } from '../../rules'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import type { Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
@@ -196,17 +196,6 @@ function CompareModeAnnahmenSection({
   )
 }
 
-// Static labelling for the GKV vs PKV radio (cross-year — kept inline as copy).
-const FAMILIENSTAND_DEFAULT = 'ledig'
-const BUNDESLAND_DEFAULT = 'Berlin'
-
-// §3 Nr. 63 EStG contribution-cap headroom for the bAV-Brutto hint. Computed
-// at module-eval time — `activeRules` is a module-level constant, so the
-// value is fixed for the lifetime of the bundle. Mirrors `RESOLVED_RENDITEN`
-// above; no React memo / effect is needed.
-const BAV_TAX_FREE_MONTHLY =
-  (activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap) / 12
-
 /**
  * `/eingaben` — Deine Angaben (PR 5).
  *
@@ -245,16 +234,17 @@ const BAV_TAX_FREE_MONTHLY =
  * The mode-detection heuristic and the workspace-projection strategy live in
  * `src/app/useAngabenState.ts` — extend behaviour there, not here.
  *
- * `familienstand` and `bundesland` remain ephemeral on this page in BOTH
- * modes — they are not part of `PersonalProfile` / `ScenarioAssumptions` and
- * extending those types is a P0 storage-shape change (per CLAUDE.md
- * "Storage path bypassing `migrateAndValidateState`"). `retirementHealthStatus`
- * lives on `assumptions.statutoryPension` and DOES persist via the active
- * store in both modes.
+ * Every control on this page is bound to a persisted engine input (since the
+ * input-followups cleanup there are no page-local Familienstand/Bundesland
+ * strings and no interactive Kirchensteuer control — § 1 now carries the
+ * salary Steuerklasse select bound to `profile.taxClass`; saved `churchTax`
+ * values stay valid in storage but no surface offers the control).
+ * `retirementHealthStatus` lives on `assumptions.statutoryPension` and
+ * persists via the active store in both modes.
  *
  * Statutory values rendered on this page (return scenarios, Sparer-
  * Pauschbetrag, Bezugsgröße, etc.) are read from `activeRules` and
- * `defaultAssumptions`. Paragraph citations (`§ 3 Nr. 63`, `§ 32a Abs. 5`)
+ * `defaultAssumptions`. Paragraph citations (`§ 3 Nr. 63`, `§ 39b EStG`)
  * are acceptable as literals — they reference statutes by name, not values.
  *
  * JSON-LD: emitted into the document head by the SSG `renderRouteHeadHtml`
@@ -286,16 +276,6 @@ export function AngabenPage({ navigate }: Props) {
   // for a given component instance) while avoiding allocating scenario-
   // library state in combine-mode.
   const setSyncedMonthlyContribution = angabenState.setSyncedMonthlyContribution
-  // `familienstand` and `bundesland` are NOT part of `PersonalProfile`, so
-  // they remain ephemeral on this page in BOTH modes and reset to the
-  // defaults on every reload / route change. Routing them through the
-  // calculator state would require extending `PersonalProfile`'s shape —
-  // a P0 storage-shape change per CLAUDE.md's "Storage path bypassing
-  // `migrateAndValidateState`" P1 guardrail. The visible storage copy below
-  // honestly names which fields persist (and which do not) so the copy and
-  // reality cannot drift.
-  const [familienstand, setFamilienstand] = useState<string>(FAMILIENSTAND_DEFAULT)
-  const [bundesland, setBundesland] = useState<string>(BUNDESLAND_DEFAULT)
   // `retirementHealthStatus` lives on `assumptions.statutoryPension`, so the
   // page reads it directly from the persisted scenario and writes it back via
   // `setAssumptions`. Fall back to 'kvdr' if the persisted scenario does not
@@ -419,21 +399,16 @@ export function AngabenPage({ navigate }: Props) {
             <AngabenPersonSection
               profile={profile}
               setProfile={setProfile}
-              familienstand={familienstand}
-              setFamilienstand={setFamilienstand}
-              bundesland={bundesland}
-              setBundesland={setBundesland}
               num={SECTIONS[0].n}
               id={SECTIONS[0].id}
               title={SECTIONS[0].title}
             />
 
             <AngabenEinkommenSection
+              mode={mode}
               profile={profile}
               setProfile={setProfile}
               assumptions={assumptions}
-              setAssumptions={setAssumptions}
-              bavTaxFreeMonthly={BAV_TAX_FREE_MONTHLY}
               num={SECTIONS[1].n}
               id={SECTIONS[1].id}
               title={SECTIONS[1].title}
@@ -515,8 +490,6 @@ export function AngabenPage({ navigate }: Props) {
                   className="angaben-footer__btn angaben-footer__btn--secondary"
                   onClick={() => {
                   resetToDefaults()
-                  setFamilienstand(FAMILIENSTAND_DEFAULT)
-                  setBundesland(BUNDESLAND_DEFAULT)
                 }}
                 >
                   Standardwerte wiederherstellen
@@ -550,8 +523,8 @@ export function AngabenPage({ navigate }: Props) {
                   <span className="angaben-aside-list-key">§ Person</span>
                   <span className="angaben-aside-list-val">
                     Geburtsjahr und Renteneintritt steuern Kohortenwerte
-                    (§ 22 Nr. 1, § 19 Abs. 2 EStG). Familienstand schaltet das
-                    Ehegattensplitting (§ 32a Abs. 5 EStG).
+                    (§ 22 Nr. 1, § 19 Abs. 2 EStG). Die Steuerklasse steuert
+                    die Lohnsteuer im Ansparzeitraum (§ 39b EStG).
                   </span>
                 </li>
                 <li className="angaben-aside-list-item">
@@ -587,14 +560,13 @@ export function AngabenPage({ navigate }: Props) {
               bodyId="angaben-aside-datenhaltung"
             >
               <p className="angaben-aside-body">
-                <strong>Lokal im Browser.</strong> Alter, Einkommen,
-                Renteneintrittsalter und die Renditeannahmen werden im
-                localStorage gespeichert; Familienstand und Bundesland gelten
-                nur für die laufende Sitzung und werden nicht persistiert.
-                Keine Server-Übertragung, kein Account, keine Cookies, keine
-                Identifier. Du kannst den Browser-Speicher jederzeit über die
-                Einstellungen deines Browsers leeren — damit ist auch der
-                gespeicherte RentenWiki-Stand entfernt.
+                <strong>Lokal im Browser.</strong> Alter, Steuerklasse,
+                Einkommen, Renteneintrittsalter und die Renditeannahmen werden
+                im localStorage gespeichert. Keine Server-Übertragung, kein
+                Account, keine Cookies, keine Identifier. Du kannst den
+                Browser-Speicher jederzeit über die Einstellungen deines
+                Browsers leeren — damit ist auch der gespeicherte
+                RentenWiki-Stand entfernt.
               </p>
               <p className="angaben-aside-body">
                 Methodische Details und die zugehörigen Paragrafen findest du auf{' '}

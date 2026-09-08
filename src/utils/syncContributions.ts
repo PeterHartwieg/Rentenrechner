@@ -49,6 +49,43 @@ export function normalizeMonthlyNettoBelastung(value: number): number {
   return Math.max(0, Number.isFinite(value) ? value : 0)
 }
 
+/**
+ * Resolve the Netto-Belastung anchor from stored state on load.
+ *
+ * - Normal path: read `equalInputAmountEUR` (the public anchor), clamped.
+ * - Legacy path: old saves with `compareSubMode: 'equal_cash'` and no
+ *   `equalInputAmountEUR` fall back to the current bAV's net cost so the
+ *   user's existing bAV contribution is preserved as the anchor.
+ * - Fallback: very old states without the field entirely use the bAV net cost.
+ *
+ * Canonical for every consumer that needs "which budget does the user actually
+ * steer": the compare-mode load path (`useCalculatorState.harmonizeOnLoad`)
+ * and the § 2 read-only bAV gross display (`AngabenEinkommenSection`) must not
+ * drift — the display historically read `equalInputAmountEUR ?? 0`, which
+ * showed 0 EUR for valid `equal_cash` legacy saves (storage clears the paired
+ * anchor on load) while the dashboard derived ~200 EUR from the bAV net cost.
+ *
+ * In pinned AVD-own mode the sync helper derives the anchor from the pinned
+ * Eigenbeitrag and ignores the target passed in, so callers can feed this
+ * resolver's output straight into `syncMonthlyContributions` in every mode.
+ */
+export function resolveNettoBelastungTarget(
+  profile: PersonalProfile,
+  assumptions: ScenarioAssumptions,
+  rules: GermanRules,
+): number {
+  if (
+    assumptions.compareSubMode === 'equal_cash' &&
+    assumptions.equalInputAmountEUR === undefined
+  ) {
+    return calculateBavFunding(profile, rules, assumptions.bav).monthlyNetCost
+  }
+  if (assumptions.equalInputAmountEUR !== undefined) {
+    return normalizeMonthlyNettoBelastung(assumptions.equalInputAmountEUR)
+  }
+  return calculateBavFunding(profile, rules, assumptions.bav).monthlyNetCost
+}
+
 /** Convergence tolerance for the pinned-Eigenbeitrag anchor fixed point (EUR/month). */
 const ANCHOR_TOLERANCE_EUR = 1e-6
 

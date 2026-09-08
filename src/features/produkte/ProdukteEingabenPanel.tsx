@@ -23,9 +23,8 @@ import type {
   InsuranceInstance,
   RiesterInstance,
 } from '../../domain/instances'
-import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { activeRules } from '../../rules'
-import { besteuerungsanteilGrv } from '../../rules/legalConstants'
 import { getProductMeta, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import {
   PRIMARY_PRODUCT_IDS,
@@ -33,6 +32,14 @@ import {
 } from '../../content/triggers'
 import { de2026Rules } from '../../rules/de2026'
 import { computeBavMinimumEntitlement } from '../../engine/bavWarnings'
+import {
+  GRV_CARD_ACCENT,
+  GRV_CARD_KIND,
+  GRV_CARD_TITLE,
+  GRV_SECTION_NOTE,
+  buildGrvCardFields,
+  grvProvenanceLabel,
+} from './grvCard'
 import { GRVInputs } from '../inputs/GRVInputs'
 import {
   PRODUCT_UI_REGISTRY,
@@ -229,22 +236,24 @@ function ComparePanel({
       data-mode="compare"
       aria-label="Verträge und Sparformen"
     >
-      {/* § 1 — Gesetzliche Rente. Single DRV card with live values. */}
-      <DProduktSection
-        legend="§ 1 · Gesetzliche Rente"
-        note="Pflicht für die meisten Angestellten. Werte aus deiner DRV-Rentenauskunft übernommen."
-      >
+      {/* § 1 — Gesetzliche Rente. Single DRV card with live values. Copy +
+          provenance come from the shared `grvCard` module so both modes stay
+          in lockstep (input-followups plan 3: no import / upload claims). */}
+      <DProduktSection legend="§ 1 · Gesetzliche Rente" note={GRV_SECTION_NOTE}>
         <DProduktRow
-          kind="DRV · Schicht 1 · Pflicht"
-          title="Rentenauskunft der Deutschen Rentenversicherung"
-          status="übernommen"
-          fields={buildGrvFieldsCompare(profile, assumptions, simulation)}
-          primary="PDF erneut hochladen"
-          primaryDisabled
-          primaryTitle="Bald verfügbar — OCR-Upload kommt mit einem späteren Release."
-          secondary={grvOverrideOpen ? 'Schließen' : 'Manuell überschreiben'}
-          onSecondary={() => setGrvOverrideOpen((v) => !v)}
-          accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
+          kind={GRV_CARD_KIND}
+          title={GRV_CARD_TITLE}
+          status={grvProvenanceLabel(assumptions.statutoryPension.manualMonthlyGross)}
+          fields={buildGrvCardFields({
+            currentEntgeltpunkte: assumptions.statutoryPension.currentEntgeltpunkte,
+            projectedEntgeltpunkte: simulation.statutoryPension.projectedEntgeltpunkte,
+            grossMonthlyPension: simulation.statutoryPension.grossMonthlyPension,
+            retirementAge: profile.retirementAge,
+            age: profile.age,
+          })}
+          primary={grvOverrideOpen ? 'Schließen' : 'Manuell überschreiben'}
+          onPrimary={() => setGrvOverrideOpen((v) => !v)}
+          accent={GRV_CARD_ACCENT}
         />
         {grvOverrideOpen && (
           <div
@@ -470,41 +479,38 @@ function CombinePanel({
           inputs-only view (combine-mode has its own simulation pipeline via
           `useCombineSimulation`, but the page-level caller decides whether to
           run it before mounting this panel). */}
-      <DProduktSection
-        legend="§ 1 · Gesetzliche Rente"
-        note="Pflicht für die meisten Angestellten. Werte aus deiner DRV-Rentenauskunft übernommen."
-      >
-        {/* CR-PR4-R1-5: gate the secondary CTA label/handler on the same
-            condition as the disclosure body — without `onPatchBaseline` /
-            `statutoryPensionResult` the disclosure cannot mount, so the
-            "Schließen" / "Manuell überschreiben" toggle was a dead control. */}
+      <DProduktSection legend="§ 1 · Gesetzliche Rente" note={GRV_SECTION_NOTE}>
+        {/* CR-PR4-R1-5: gate the edit affordance on the same condition as the
+            disclosure body — without `onPatchBaseline` /
+            `statutoryPensionResult` the disclosure cannot mount, so a visible
+            edit CTA would be a dead control. The upload CTA is gone entirely
+            (no upload path exists; input-followups plan 3). */}
         {(() => {
           const canOverrideGrv =
             onPatchBaseline !== undefined && statutoryPensionResult !== undefined
           return (
             <DProduktRow
-              kind="DRV · Schicht 1 · Pflicht"
-              title="Rentenauskunft der Deutschen Rentenversicherung"
-              status="übernommen"
-              fields={buildGrvFieldsCombine(
-                baseline.profile,
-                assumptions,
-                statutoryPensionResult,
-              )}
-              primary="PDF erneut hochladen"
-              primaryDisabled
-              primaryTitle="Bald verfügbar — OCR-Upload kommt mit einem späteren Release."
-              secondary={
+              kind={GRV_CARD_KIND}
+              title={GRV_CARD_TITLE}
+              status={grvProvenanceLabel(assumptions.statutoryPension.manualMonthlyGross)}
+              fields={buildGrvCardFields({
+                currentEntgeltpunkte: assumptions.statutoryPension.currentEntgeltpunkte,
+                projectedEntgeltpunkte: statutoryPensionResult?.projectedEntgeltpunkte,
+                grossMonthlyPension: statutoryPensionResult?.grossMonthlyPension,
+                retirementAge: baseline.profile.retirementAge,
+                age: baseline.profile.age,
+              })}
+              primary={
                 canOverrideGrv
                   ? grvOverrideOpen
                     ? 'Schließen'
                     : 'Manuell überschreiben'
                   : undefined
               }
-              onSecondary={
+              onPrimary={
                 canOverrideGrv ? () => setGrvOverrideOpen((v) => !v) : undefined
               }
-              accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
+              accent={GRV_CARD_ACCENT}
             />
           )
         })()}
@@ -692,108 +698,10 @@ function CombinePanel({
 }
 
 // ---------------------------------------------------------------------------
-// Pure field builders.
+// Pure field builders. The § 1 DRV card copy + field rows live in the shared
+// `grvCard` module (consumed by both modes); the builders below cover the
+// per-contract rows only.
 // ---------------------------------------------------------------------------
-
-function buildGrvFieldsCompare(
-  profile: PersonalProfile,
-  assumptions: ScenarioAssumptions,
-  simulation: SimulationResult,
-): readonly ProduktRowField[] {
-  const standDate = new Date().toLocaleDateString('de-DE', {
-    month: '2-digit',
-    year: 'numeric',
-  })
-  const standDisplay = standDate.replace(/[./]/g, ' / ')
-
-  const currentEp = assumptions.statutoryPension.currentEntgeltpunkte
-  const projectedEp = simulation.statutoryPension.projectedEntgeltpunkte
-  const grossMonthly = simulation.statutoryPension.grossMonthlyPension
-  const rentenwert = activeRules.socialSecurity.aktuellerRentenwert
-  const retirementYear =
-    activeRules.year + (profile.retirementAge - profile.age)
-  const besteuerungsanteil = besteuerungsanteilGrv(retirementYear)
-
-  return [
-    { key: 'Stand', value: standDisplay },
-    {
-      key: 'Bisherige Entgeltpunkte',
-      value: `${formatNumber(currentEp, 2)} EP`,
-    },
-    {
-      key: `Voraussichtlich mit ${profile.retirementAge}`,
-      value: `${formatNumber(projectedEp, 2)} EP`,
-    },
-    {
-      key: 'Heutiger Rentenwert (West)',
-      value: formatCurrency(rentenwert, 2),
-    },
-    {
-      key: 'Brutto-Rente, geschätzt',
-      value: `${formatCurrency(grossMonthly, 0)}/Mon.`,
-    },
-    {
-      key: 'Steuerlich erfasst ab',
-      value: `${retirementYear} (${formatPercent(besteuerungsanteil, 0)})`,
-    },
-  ]
-}
-
-/**
- * Combine-mode DRV-card field builder. Mirrors the compare-mode helper but
- * sources values from `baseline.profile` + `baseline.assumptions.statutoryPension`.
- * Projected EP and gross monthly are read from the optional
- * `statutoryPensionResult`; when absent we render an em-dash placeholder so
- * the user can still see the inputs (current EP + Rentenwert + Stand) without
- * an active simulation.
- */
-function buildGrvFieldsCombine(
-  profile: PersonalProfile,
-  assumptions: WorkspaceAssumptionsV2,
-  statutoryPensionResult?: SimulationResult['statutoryPension'],
-): readonly ProduktRowField[] {
-  const standDate = new Date().toLocaleDateString('de-DE', {
-    month: '2-digit',
-    year: 'numeric',
-  })
-  const standDisplay = standDate.replace(/[./]/g, ' / ')
-
-  const currentEp = assumptions.statutoryPension.currentEntgeltpunkte
-  const rentenwert = activeRules.socialSecurity.aktuellerRentenwert
-  const retirementYear =
-    activeRules.year + (profile.retirementAge - profile.age)
-  const besteuerungsanteil = besteuerungsanteilGrv(retirementYear)
-  const projectedEp = statutoryPensionResult?.projectedEntgeltpunkte
-  const grossMonthly = statutoryPensionResult?.grossMonthlyPension
-
-  return [
-    { key: 'Stand', value: standDisplay },
-    {
-      key: 'Bisherige Entgeltpunkte',
-      value: `${formatNumber(currentEp, 2)} EP`,
-    },
-    {
-      key: `Voraussichtlich mit ${profile.retirementAge}`,
-      value:
-        projectedEp !== undefined ? `${formatNumber(projectedEp, 2)} EP` : '—',
-    },
-    {
-      key: 'Heutiger Rentenwert (West)',
-      value: formatCurrency(rentenwert, 2),
-    },
-    {
-      key: 'Brutto-Rente, geschätzt',
-      value:
-        grossMonthly !== undefined
-          ? `${formatCurrency(grossMonthly, 0)}/Mon.`
-          : '—',
-    },
-    {
-      key: 'Steuerlich erfasst ab',
-      value: `${retirementYear} (${formatPercent(besteuerungsanteil, 0)})`,
-    },
-  ]
-}
 
 function buildContractFieldsCompare(
   productId: ProductId,

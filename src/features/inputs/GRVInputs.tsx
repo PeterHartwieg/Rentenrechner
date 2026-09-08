@@ -83,7 +83,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
       <div className="subsection-heading">
         <h3>{SECTION_TITLES[baselineType]}</h3>
         <p>
-          {baselineType === 'grv' && 'Basisschutz aus der gesetzlichen Rente — geschätzt oder aus der Renteninformation.'}
+          {baselineType === 'grv' && 'Basisschutz aus der gesetzlichen Rente — als Schätzung berechnet oder manuell eingegeben.'}
           {baselineType === 'versorgungswerk' && 'Berufsständische Altersversorgung (z. B. Ärzte-, Anwalts-, Architektenversorgung) — ersetzt die GRV für kammerpflichtige Berufe.'}
           {baselineType === 'beamtenpension' && 'Versorgung nach Beamtenversorgungsgesetz — prozentual vom letzten Grundgehalt (Ruhegehaltssatz). Geben Sie den Betrag aus Ihrer Versorgungsauskunft ein.'}
           {baselineType === 'none' && 'Kein gesetzliches Pflichtversicherungssystem modelliert (z. B. dauerhaft befreite Selbstständige).'}
@@ -133,11 +133,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                 }
               >
                 <option value="ep">Schätzen (Entgeltpunkte)</option>
-                <option value="manual">
-                  {baselineType === 'versorgungswerk'
-                    ? 'Aus Versorgungsauskunft (manuell)'
-                    : 'Aus Renteninformation (manuell)'}
-                </option>
+                <option value="manual">Manuell eingegeben</option>
               </select>
             </label>
           )}
@@ -147,9 +143,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
               label={
                 baselineType === 'beamtenpension'
                   ? 'Bruttopension (Versorgungsauskunft)'
-                  : baselineType === 'versorgungswerk'
-                  ? 'Progn. Bruttorente (Versorgungsauskunft)'
-                  : 'Progn. Bruttorente (Renteninformation)'
+                  : 'Progn. Bruttorente (manuell)'
               }
               feedbackTargetId="inputs.grv.manualMonthlyGross"
               value={sp.manualMonthlyGross ?? 0}

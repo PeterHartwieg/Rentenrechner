@@ -3,5 +3,6 @@
 // avoid upward app-layer dependencies.
 export {
   normalizeMonthlyNettoBelastung,
+  resolveNettoBelastungTarget,
   syncMonthlyContributions,
 } from '../utils/syncContributions'

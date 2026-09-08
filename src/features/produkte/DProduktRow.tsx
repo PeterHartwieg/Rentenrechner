@@ -18,8 +18,11 @@ interface Props {
   status?: string
   /** Optional italic accent line below the fields. */
   accent?: ReactNode
-  /** Primary CTA label (right sidebar, paper background). */
-  primary: string
+  /** Primary CTA label (right sidebar, paper background). Omit to render no
+   *  primary affordance at all — used by the DRV card when the disclosure
+   *  behind the only sensible action cannot mount (combine-mode without a
+   *  baseline patcher / statutory-pension result). */
+  primary?: string
   /** Primary CTA click handler. */
   onPrimary?: () => void
   /** Optional secondary CTA label. */
@@ -89,15 +92,17 @@ export function DProduktRow({
           Diese Werte fließen direkt in dein Mein-Plan-Ergebnis ein.
         </div>
         <div className="d-produkt-row__aside-actions">
-          <button
-            type="button"
-            className="d-produkt-row__btn d-produkt-row__btn--primary"
-            onClick={onPrimary}
-            disabled={primaryDisabled}
-            title={primaryTitle}
-          >
-            {primary}
-          </button>
+          {primary && (
+            <button
+              type="button"
+              className="d-produkt-row__btn d-produkt-row__btn--primary"
+              onClick={onPrimary}
+              disabled={primaryDisabled}
+              title={primaryTitle}
+            >
+              {primary}
+            </button>
+          )}
           {secondary && (
             <button
               type="button"
