@@ -208,6 +208,21 @@ export const legalConstants = {
     /** §39b Abs. 2 Satz 2 EStG: lower scaling factor for the Steuerklasse V/VI tariff formula 2 × (f(1.25x) − f(0.75x)). */
     taxClassVVILowerFactor: 0.75,
   },
+  soli: {
+    /**
+     * §4 SolzG 1995: Solidaritätszuschlag rate on the assessed income tax
+     * (5.5 % — stable since 1998; cited in TAX_SOCIAL_SECURITY_2026_RESEARCH.md
+     * "Soli rate"). The §3 Abs. 3 SolzG Freigrenze itself is year-specific and
+     * lives in the active year file (`incomeTax.solidarityFreeTax`).
+     */
+    rate: 0.055,
+    /**
+     * §4 SolzG 1995: Milderungszone slope — inside the zone the soli is capped
+     * at 11.9 % of the income tax exceeding the Freigrenze (cited in
+     * TAX_SOCIAL_SECURITY_2026_RESEARCH.md "Soli Milderungszone rate").
+     */
+    milderungszoneRate: 0.119,
+  },
 } as const
 
 export function halbeinkuenfteMinAgeForContractStartYear(contractStartYear: number): number {

@@ -61,6 +61,34 @@ export interface GermanRules {
     firstProgressionEnd: number
     secondProgressionEnd: number
     topTaxStart: number
+    /**
+     * §32a Abs. 1 Satz 2 EStG Grundtarif formula coefficients. These are
+     * re-issued together with the zone boundaries every assessment period,
+     * so they are year-specific rules data — the engine consumes them via
+     * `calculateIncomeTax2026` and contains no tariff literals of its own.
+     */
+    tariff: {
+      /** Zone b (first progression): linear y-coefficient (914.51 for 2026). */
+      zoneBLinear: number
+      /** Zone b (first progression): additive constant (1 400). */
+      zoneBConstant: number
+      /** Zone c (second progression): linear z-coefficient (173.10 for 2026). */
+      zoneCLinear: number
+      /** Zone c (second progression): quadratic multiplier (2 397). */
+      zoneCQuadratic: number
+      /** Zone c (second progression): additive constant (1 034.87). */
+      zoneCConstant: number
+      /** Zone d (proportional): marginal rate (0.42 for 2026). */
+      proportionalRate: number
+      /** Zone d (proportional): fixed deduction (11 135.63). */
+      proportionalDeduction: number
+      /** Zone e (top): marginal rate (0.45 for 2026). */
+      topRate: number
+      /** Zone e (top): fixed deduction (19 470.38). */
+      topRateDeduction: number
+      /** Denominator scaling (x − zone start) into the y/z progression variables (10 000). */
+      progressionDenominator: number
+    }
     /** §3 Abs. 3 SolzG: Soli-Freigrenze for Einzelveranlagung. */
     solidarityFreeTax: number
     /** §3 Abs. 3 SolzG: Soli-Freigrenze for Zusammenveranlagung (= 2 × Einzelveranlagung). */
