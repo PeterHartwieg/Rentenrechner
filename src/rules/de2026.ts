@@ -219,8 +219,12 @@ export const de2026RulesMetadata: RuleSetMetadata = {
       area: 'incomeTax.solidarityFreeTax',
       statute: '§3 Abs. 3 SolzG 1995 — Soli-Freigrenze 2026 (JStG 2024 uplift, 1.1.2026)',
       source:
-        'Citation as used in this repo: https://www.gesetze-im-internet.de/solzg_1995/__3.html; ' +
-        'soli outputs pinned via bmfEinkommensteuerRechner2026GoldenCases (captured 2026-05-02)',
+        'Citation as used in this repo: https://www.gesetze-im-internet.de/solzg_1995/__3.html. ' +
+        'Tightest golden pin: payroll2026GoldenCases "stk1-gkv-100k" — soli 345 EUR on ' +
+        '23 248 EUR income tax bounds the Freigrenze to (18 213, 20 350] via the 11.9 % ' +
+        'Milderungszone (23 248 − 20 350) × 0.119 ≈ 345. The BMF ' +
+        'Einkommensteuer-Rechner captures (captured 2026-05-02) only bound it loosely ' +
+        '(no case lands inside the Milderungszone)',
       effectiveFrom: '2026-01-01',
       pinnedBy: 'external-golden',
     },
@@ -248,7 +252,7 @@ export const de2026RulesMetadata: RuleSetMetadata = {
       statute: '§32d Abs. 1 EStG — Abgeltungsteuer 25 %',
       source:
         'Citation as used in this repo: https://www.gesetze-im-internet.de/estg/__32d.html; ' +
-        'literal tripwire in the tax engine tests, no external capture',
+        'literal tripwire in src/engine/tax.test.ts, no external capture',
       pinnedBy: 'statutory-pin',
     },
     {
@@ -256,15 +260,15 @@ export const de2026RulesMetadata: RuleSetMetadata = {
       statute: '§4 SolzG 1995 — Solidaritätszuschlag on capital-gains tax',
       source:
         'Aliased to legalConstants.soli.rate (one 5.5 % definition across tax paths); ' +
-        'see the "soli" area. Pinned as a literal tripwire in the tax engine tests',
+        'see the "soli" area. Pinned as a literal tripwire in src/engine/tax.test.ts',
       pinnedBy: 'statutory-pin',
     },
     {
       area: 'capitalGains.saverAllowance',
       statute: '§20 Abs. 9 EStG — Sparerpauschbetrag 1 000 EUR (single; 2 × for joint assessment)',
       source:
-        'Citation as used in this repo: https://www.gesetze-im-internet.de/estg/__20_.html; ' +
-        'literal tripwire in the tax engine tests, no external capture',
+        'Citation as used in this repo: https://www.gesetze-im-internet.de/estg/__20.html; ' +
+        'literal tripwire in src/engine/tax.test.ts, no external capture',
       pinnedBy: 'statutory-pin',
     },
   ],

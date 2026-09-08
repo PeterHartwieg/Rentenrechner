@@ -19,14 +19,14 @@
  * underlying law changes.
  */
 import { de2026Rules as activeRules, de2026RulesMetadata } from './de2026'
-import { legalConstants } from './legalConstants'
+import { legalRuleData } from './legalConstants'
 import { ruleSetFingerprint, ruleSetIdentity } from './ruleMetadata'
 import type { RuleSetIdentity, RuleSetMetadata } from './ruleMetadata'
 
 export { activeRules }
 export { de2026RulesMetadata }
-export { legalConstants } from './legalConstants'
-export type { LegalConstants } from './legalConstants'
+export { legalConstants, legalRuleData } from './legalConstants'
+export type { LegalConstants, LegalRuleData } from './legalConstants'
 export {
   canonicalRuleSetSnapshot,
   PROJECTION_ASSUMPTION,
@@ -56,22 +56,23 @@ export const activeRulesMetadata: RuleSetMetadata = de2026RulesMetadata
 /**
  * Compact identity stamp for results produced by the currently compiled rule
  * content: year ID + same-year revision + content fingerprint over the year
- * rules AND the cross-year `legalConstants`. Re-derive via
- * `ruleSetIdentity(activeRules, legalConstants, activeRulesMetadata)`; a
+ * rules AND the `legalRuleData` catalog (every exported cross-year rule
+ * datum). Re-derive via
+ * `ruleSetIdentity(activeRules, legalRuleData, activeRulesMetadata)`; a
  * stored stamp whose fingerprint differs from the current one was produced
- * under different rule content (same-year amendment, or a `legalConstants`
+ * under different rule content (same-year amendment, or a cross-year
  * amendment without a revision bump).
  */
 export const activeRuleSetIdentity: RuleSetIdentity = ruleSetIdentity(
   activeRules,
-  legalConstants,
+  legalRuleData,
   de2026RulesMetadata,
 )
 
 /**
  * Judge a stored result's identity stamp against what this build compiles.
  * Every field must match: `ruleSetId` AND `ruleYear` AND `revision` AND
- * `contentFingerprint` (recomputed from the active rules + legalConstants).
+ * `contentFingerprint` (recomputed from the active rules + legalRuleData).
  * Any mismatch — including a stamp from the right year and revision but a
  * different fingerprint, which is what an unannounced value amendment
  * produces — returns null. Callers must surface null as "produced under
@@ -81,6 +82,6 @@ export function rulesMetadataById(identity: RuleSetIdentity): RuleSetMetadata | 
   if (identity.ruleSetId !== de2026RulesMetadata.ruleSetId) return null
   if (identity.ruleYear !== de2026RulesMetadata.ruleYear) return null
   if (identity.revision !== de2026RulesMetadata.revision) return null
-  if (identity.contentFingerprint !== ruleSetFingerprint(activeRules, legalConstants)) return null
+  if (identity.contentFingerprint !== ruleSetFingerprint(activeRules, legalRuleData)) return null
   return de2026RulesMetadata
 }

@@ -236,6 +236,34 @@ export const legalConstants = {
      */
     milderungszoneRate: 0.119,
   },
+  care: {
+    /**
+     * §55 Abs. 3a SGB XI (as cited in this repo): 0.25 contribution-rate
+     * percentage points of Beitragsabschlag per further child under 25,
+     * beyond the first qualifying child. Value moved from
+     * src/engine/salary.ts (#376 review). Do NOT change without a
+     * law-amendment citation.
+     */
+    beitragsabschlagPerFurtherChild: 0.0025,
+    /**
+     * §55 Abs. 3a SGB XI (as cited in this repo): the Beitragsabschlag caps
+     * at 1.0 percentage points — i.e. 4 further children beyond the first.
+     * Value moved from src/engine/salary.ts (#376 review). Do NOT change
+     * without a law-amendment citation.
+     */
+    beitragsabschlagMaxFurtherChildren: 4,
+  },
+  childEligibility: {
+    /**
+     * Under-25 window: children count toward child-related relief only
+     * through the year they turn 25 (Kinderbegriff per §55 Abs. 3a SGB XI for
+     * Pflege relief, as cited in this repo; the same window gates child
+     * allowances in the Riester/AVD funding paths). Value moved from
+     * src/engine/childEligibility.ts (#376 review). Do NOT change without a
+     * law-amendment citation.
+     */
+    under25WindowYears: 25,
+  },
 } as const
 
 /**
@@ -323,3 +351,35 @@ export function ertragsanteilByAge(age: number): number {
   const clamped = Math.max(0, Math.min(89, Math.floor(age)))
   return table[clamped] ?? 0.01
 }
+
+// ---------------------------------------------------------------------------
+// Rule-data catalog — the complete set of exported non-function data
+// ---------------------------------------------------------------------------
+
+/**
+ * Catalog of EVERY exported non-function rule datum in this module: the
+ * `legalConstants` groups plus the standalone Pauschbeträge, the InvStG
+ * Teilfreistellung, and the childless-surcharge age below. The rule-set
+ * content identity (`ruleSetFingerprint`) hashes this catalog alongside the
+ * year rules, so an amendment to any exported value moves the fingerprint —
+ * see `ruleMetadata.ts`.
+ *
+ * Exhaustiveness is enforced by a test (`ruleMetadata.test.ts`), so a future
+ * `export const` here must be added to this catalog or the identity silently
+ * misses it.
+ *
+ * NOT covered (code, not data): the functions of this module —
+ * `besteuerungsanteilGrv`, `versorgungsfreibetrag`,
+ * `halbeinkuenfteMinAgeForContractStartYear`, `ertragsanteilByAge` — whose
+ * behavior is pinned only by the engine revision.
+ */
+export const legalRuleData = {
+  legalConstants,
+  werbungskostenPauschalVersorgungsbezuege,
+  werbungskostenPauschalRenten,
+  sonderausgabenPauschbetrag,
+  aktienfondsTeilfreistellungPrivat,
+  pvBeitragszuschlagKinderloseMinAge,
+} as const
+
+export type LegalRuleData = typeof legalRuleData

@@ -15,7 +15,7 @@
  */
 
 import type { GermanRules } from '../domain'
-import type { LegalConstants } from './legalConstants'
+import type { LegalRuleData } from './legalConstants'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,9 +104,10 @@ export interface RuleSetIdentity {
   ruleYear: number
   revision: number
   /**
-   * Content fingerprint of the compiled year rules AND the cross-year
-   * `legalConstants` value object (`ruleSetFingerprint`). Amendments to
-   * either move it.
+   * Content fingerprint of the compiled year rules AND every exported
+   * cross-year rule datum (the `legalRuleData` catalog in
+   * `legalConstants.ts`) via `ruleSetFingerprint`. Amendments to either
+   * move it.
    */
   contentFingerprint: string
 }
@@ -179,18 +180,19 @@ export const REPLAY_LIMITATIONS: readonly string[] = [
 
 /**
  * Canonical serialization of the rule content this engine compiles: the year
- * rules AND the cross-year `legalConstants` value object, keys sorted
- * recursively, arrays in order, numbers via JSON round-trip. Two (rules,
- * constants) pairs serialize identically iff they carry the same values
- * regardless of key order.
+ * rules AND the `legalRuleData` catalog — every exported non-function datum
+ * of `legalConstants.ts` — keys sorted recursively, arrays in order, numbers
+ * via JSON round-trip. Two (rules, catalog) pairs serialize identically iff
+ * they carry the same values regardless of key order.
  *
  * Scope note: this covers rule DATA. The cross-year cohort FUNCTIONS in
  * `legalConstants.ts` (`besteuerungsanteilGrv`, `versorgungsfreibetrag`,
- * `ertragsanteilByAge`) are code, not data — their behavior is pinned only by
- * the engine revision, never by this snapshot.
+ * `ertragsanteilByAge`, `halbeinkuenfteMinAgeForContractStartYear`) are code,
+ * not data — their behavior is pinned only by the engine revision, never by
+ * this snapshot.
  */
-export function canonicalRuleSetSnapshot(rules: GermanRules, constants: LegalConstants): string {
-  return canonicalize({ legalConstants: constants, rules })
+export function canonicalRuleSetSnapshot(rules: GermanRules, legalData: LegalRuleData): string {
+  return canonicalize({ legalData, rules })
 }
 
 function canonicalize(value: unknown): string {
@@ -207,16 +209,24 @@ function canonicalize(value: unknown): string {
 }
 
 /**
- * Content fingerprint of the compiled rule content: two FNV-1a rounds
- * (different offset bases) over the canonical snapshot of the year rules and
- * the cross-year `legalConstants`, 16 hex chars. A quick change detector that
- * moves whenever EITHER input is amended (same-year value change, soli
- * slope, §39b cap, §1a divisor, …) — always pair it with the stored snapshot
- * and the engine revision for exact replay (see REPLAY_LIMITATIONS).
+ * Content fingerprint of the compiled rule content: two domain-separated
+ * FNV-1a rounds over the canonical snapshot of the year rules and the
+ * `legalRuleData` catalog, 16 hex chars. A quick change detector that moves
+ * whenever EITHER input is amended (same-year value change, soli slope,
+ * §39b cap, §1a divisor, Pauschbeträge, InvStG Teilfreistellung, …) — always
+ * pair it with the stored snapshot and the engine revision for exact replay
+ * (see REPLAY_LIMITATIONS).
+ *
+ * Honesty note: two 32-bit FNV passes over the same input are a change
+ * detector, not a collision-resistant 64-bit hash. Equal fingerprints strongly
+ * suggest equal content; they prove nothing.
  */
-export function ruleSetFingerprint(rules: GermanRules, constants: LegalConstants): string {
-  const canonical = canonicalRuleSetSnapshot(rules, constants)
-  return fnv1a32(0x811c9dc5, canonical) + fnv1a32(0x01935a97, canonical)
+export function ruleSetFingerprint(rules: GermanRules, legalData: LegalRuleData): string {
+  const canonical = canonicalRuleSetSnapshot(rules, legalData)
+  return (
+    fnv1a32(0x811c9dc5, `rules-identity/1:${canonical}`) +
+    fnv1a32(0x01935a97, `rules-identity/2:${canonical}`)
+  )
 }
 
 function fnv1a32(offsetBasis: number, input: string): string {
@@ -228,16 +238,16 @@ function fnv1a32(offsetBasis: number, input: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
-/** Compose the identity stamp from a rule set, the cross-year constants, and its metadata. */
+/** Compose the identity stamp from a rule set, the cross-year rule data, and its metadata. */
 export function ruleSetIdentity(
   rules: GermanRules,
-  constants: LegalConstants,
+  legalData: LegalRuleData,
   metadata: RuleSetMetadata,
 ): RuleSetIdentity {
   return {
     ruleSetId: metadata.ruleSetId,
     ruleYear: metadata.ruleYear,
     revision: metadata.revision,
-    contentFingerprint: ruleSetFingerprint(rules, constants),
+    contentFingerprint: ruleSetFingerprint(rules, legalData),
   }
 }

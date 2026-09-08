@@ -44,7 +44,11 @@ export function careEmployeeRateForChildren(
   // the Beitragsabschlag. Having any child at all (regardless of age) exempts the
   // member from the Kinderlosenzuschlag.
   const qualifying = childBirthYearsUnder25InYear(bornByNow, currentYear).length
-  const discount = Math.min(Math.max(0, qualifying - 1), 4) * 0.0025
+  const discount =
+    Math.min(
+      Math.max(0, qualifying - 1),
+      legalConstants.care.beitragsabschlagMaxFurtherChildren,
+    ) * legalConstants.care.beitragsabschlagPerFurtherChild
   return Math.max(0, rules.socialSecurity.careEmployeeBaseRate - discount)
 }
 

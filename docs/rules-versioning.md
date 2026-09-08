@@ -48,17 +48,25 @@ as the values it describes.
 - `CalculationModelVersion` — stable `id` plus integer `version` of the
   implemented formula, independent of the coefficients fed into it.
 - `RuleSetIdentity` — `{ ruleSetId, ruleYear, revision, contentFingerprint }`
-  via `ruleSetIdentity(rules, constants, metadata)`. The fingerprint is a dual
-  FNV-1a digest over `canonicalRuleSetSnapshot(rules, constants)` — the year
-  rules **and** the cross-year `legalConstants` value object, recursively
-  key-sorted — so it is deterministic, independent of key insertion order, and
-  moves when EITHER input is amended (soli slope, §39b cap, §1a divisor
-  included). It is a **change detector**, not a reproduction mechanism: equal
-  fingerprints strongly suggest equal inputs, but you cannot reconstruct rule
-  values from a fingerprint. The snapshot covers rule *data* only — the
-  cross-year cohort functions (`besteuerungsanteilGrv`,
-  `versorgungsfreibetrag`, `ertragsanteilByAge`) are code, and their behavior
-  is pinned only by the engine revision.
+  via `ruleSetIdentity(rules, legalData, metadata)`. The fingerprint is a dual
+  FNV-1a digest (domain-separated rounds) over
+  `canonicalRuleSetSnapshot(rules, legalData)` — the year rules **and** the
+  `legalRuleData` catalog, which enumerates EVERY exported non-function datum
+  of `legalConstants.ts` (the `legalConstants` groups, the Werbungskosten- and
+  Sonderausgaben-Pauschbeträge, the §20 InvStG Teilfreistellung, the childless
+  PV-surcharge age). Serialization is recursive key-sorted, so the fingerprint
+  is deterministic and independent of key insertion order, and it moves when
+  EITHER input is amended (soli slope, §39b cap, §1a divisor, Pauschbeträge,
+  Teilfreistellung — all included). An exhaustiveness test
+  (`ruleMetadata.test.ts`, "rule-data catalog exhaustiveness") fails if a new
+  `export const` appears in `legalConstants.ts` without a catalog entry, so
+  "covers all exported rule data" cannot silently rot. It is a **change
+  detector**, not a reproduction mechanism and not a collision-proof hash:
+  equal fingerprints strongly suggest equal inputs, but you cannot reconstruct
+  rule values from a fingerprint. The snapshot covers rule *data* only — the
+  cross-year functions (`besteuerungsanteilGrv`, `versorgungsfreibetrag`,
+  `ertragsanteilByAge`, `halbeinkuenfteMinAgeForContractStartYear`) are code,
+  and their behavior is pinned only by the engine revision.
 
 `de2026RulesMetadata.scope` is deliberately narrow: the provenance covers the
 tax areas routed through `src/engine/tax.ts` (tariff, soli, capital gains)
@@ -131,10 +139,14 @@ legislation of either kind.
    step), bump `revision` in that year file's metadata. The `ruleSetId` stays
    the same — it names the year, not the revision — so the revision field is
    the only way to distinguish the two value sets. The same rule applies to
-   **cross-year `legalConstants.ts` amendments**: the value moves the content
-   fingerprint (the snapshot covers it), so bump `revision` in the active
-   year file's metadata in the same commit — `rulesMetadataById` then rejects
-   every stamp from before the amendment instead of silently accepting it.
+   **cross-year amendments**: every exported rule datum in
+   `legalConstants.ts` (groups and standalone exports alike) is part of the
+   fingerprint via the `legalRuleData` catalog, so bump `revision` in the
+   active year file's metadata in the same commit — `rulesMetadataById` then
+   rejects every stamp from before the amendment instead of silently
+   accepting it. Amendments to the cohort FUNCTIONS require a `revision` too
+   (they change computed results) even though the functions themselves are
+   not hashed — they are covered by the engine revision, not the snapshot.
 5. **Keep the old year file** if historical replay is wanted. A retired year
    file is acceptable — `rulesMetadataById` then returns `null` for it and
    consumers must show "produced under different rules".
@@ -202,18 +214,26 @@ changes the output and breaks at least one official capture.
 
 ## Statutory-literal inventory status
 
-The focused scan of `src/engine/**` non-test code after #376 found two
-literals, both now centralized (behavior-preserving, each with its citation
-and a consumption/mutation test):
+Centralized during #376 and its review rounds (behavior-preserving; each with
+its citation, a pin, and a consumption/mutation test):
 
 | Location | Literal | Now lives in | Test |
 |----------|---------|--------------|------|
 | `src/engine/salary.ts` (`calculateVorsorgepauschale2026`) | `1_900` | `legalConstants.payrollTax.vorsorgepauschaleKvPvAvCap` (§39b EStG PAP cap on KV + PV + AV) | `src/engine/salary.test.ts` — cap binds at 16 000 gross, −100 cap drops VPA by exactly 100 |
 | `src/engine/bavWarnings.ts` (`computeBavMinimumEntitlement`) | `160` | `legalConstants.bav.minimumEntitlementDivisor` (§1a Abs. 1 S. 1 BetrAVG) | `src/engine/bavWarnings.test.ts` — doubling the divisor halves the minimum conversion |
+| `src/engine/salary.ts` (`careEmployeeRateForChildren`) | `0.0025`, `4` | `legalConstants.care.beitragsabschlagPerFurtherChild` / `beitragsabschlagMaxFurtherChildren` (§55 Abs. 3a SGB XI) | `src/engine/salary.test.ts` — discount schedule + mutation wiring |
+| `src/engine/childEligibility.ts` | `25` | `legalConstants.childEligibility.under25WindowYears` (Kinderbegriff, §55 Abs. 3a SGB XI as cited in this repo) | `src/engine/childEligibility.test.ts` — window boundary + mutation wiring |
+
+Scope of the underlying scans: the #376 sweep covered the tax / soli paths
+(`tax.ts`) and the payroll / bAV paths found in review; the §55 Abs. 3a SGB XI
+pair above was found by independent review, not by that sweep. Treat the
+engine as *believed clean*, not proven clean — a fresh full sweep over
+`src/engine/**` non-test code belongs in the next annual-update checklist.
 
 Not items: `capitalGains.solidarityRate` is aliased to
 `legalConstants.soli.rate` (one 5.5 % definition, #376); comment-only value
 mentions (e.g. `riester.ts` "4 % / 2 100") restate `src/rules/` values for
 readers and are fine. Any new engine literal found by review is a P0 per
 `CLAUDE.md`; put year-dependent values in `de2026.ts`, statute-fixed values
-in `legalConstants.ts`.
+in `legalConstants.ts` — and if in `legalConstants.ts`, add the export to the
+`legalRuleData` catalog (the exhaustiveness test enforces it).

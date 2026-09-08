@@ -87,6 +87,18 @@ describe('statutory pins for the centralized tariff + soli constants (#376)', ()
   it('capital-gains soli rate is the same cross-year constant, not a second 5.5 % literal', () => {
     expect(de2026Rules.capitalGains.solidarityRate).toBe(legalConstants.soli.rate)
   })
+
+  it('Abgeltungsteuer is 25 % — §32d Abs. 1 EStG', () => {
+    // Statutory basis: §32d Abs. 1 EStG.
+    // Do NOT change this without a law-amendment citation.
+    expect(de2026Rules.capitalGains.taxRate).toBe(0.25)
+  })
+
+  it('Sparerpauschbetrag is 1 000 EUR — §20 Abs. 9 EStG (single; 2 × joint)', () => {
+    // Statutory basis: §20 Abs. 9 Satz 1 EStG (Einzelveranlagung).
+    // Do NOT change this without a law-amendment citation.
+    expect(de2026Rules.capitalGains.saverAllowance).toBe(1_000)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -112,6 +124,9 @@ describe('injected tariff parameters steer the output (#376)', () => {
     expect(horner).toBeCloseTo(expanded, 6)
     const actual = calculateIncomeTax2026(15_000, de2026Rules)
     expect(actual).toBe(Math.floor(horner))
+    // For the statutory value set the two association orders agree closely
+    // enough that the floored outputs must coincide too.
+    expect(actual).toBe(Math.floor(expanded))
   })
 
   it('zone c follows the injected coefficients (longhand expectation)', () => {

@@ -10,8 +10,8 @@ import {
   ruleSetIdentity,
   rulesMetadataById,
 } from './index'
-import { legalConstants } from './legalConstants'
-import type { LegalConstants } from './legalConstants'
+import { legalConstants, legalRuleData } from './legalConstants'
+import type { LegalRuleData } from './legalConstants'
 import { PROJECTION_ASSUMPTION, REPLAY_LIMITATIONS, TAX_CALCULATION_MODEL } from './ruleMetadata'
 
 /** Deep clone with every object's keys inserted in reverse order. */
@@ -24,8 +24,17 @@ function reversedKeyOrder(value: unknown): unknown {
   return value
 }
 
-// Mutable views over the exported (readonly-typed) constant objects, restored
-// after every test so mutations never leak into sibling tests in this file.
+/**
+ * Mutable view over the readonly-typed catalog — mutations are restored
+ * below. Primitives are widened because the `as const` literals (102, 0.3,
+ * 23, …) must accept amendment values in the mutation tests.
+ */
+type MutableCatalog = {
+  -readonly [K in keyof LegalRuleData]: LegalRuleData[K] extends object
+    ? LegalRuleData[K]
+    : number | string
+}
+const catalogRef = legalRuleData as MutableCatalog
 const soliRef = legalConstants.soli as { rate: number; milderungszoneRate: number }
 const capRef = legalConstants.payrollTax as { vorsorgepauschaleKvPvAvCap: number }
 const bavRef = legalConstants.bav as { minimumEntitlementDivisor: number }
@@ -33,11 +42,21 @@ const originals = {
   slope: soliRef.milderungszoneRate,
   cap: capRef.vorsorgepauschaleKvPvAvCap,
   divisor: bavRef.minimumEntitlementDivisor,
+  wkv: legalRuleData.werbungskostenPauschalVersorgungsbezuege,
+  wkr: legalRuleData.werbungskostenPauschalRenten,
+  pauschbetrag: legalRuleData.sonderausgabenPauschbetrag,
+  teilfreistellung: legalRuleData.aktienfondsTeilfreistellungPrivat,
+  kinderloseMinAge: legalRuleData.pvBeitragszuschlagKinderloseMinAge,
 }
 afterEach(() => {
   soliRef.milderungszoneRate = originals.slope
   capRef.vorsorgepauschaleKvPvAvCap = originals.cap
   bavRef.minimumEntitlementDivisor = originals.divisor
+  catalogRef.werbungskostenPauschalVersorgungsbezuege = originals.wkv
+  catalogRef.werbungskostenPauschalRenten = originals.wkr
+  catalogRef.sonderausgabenPauschbetrag = originals.pauschbetrag
+  catalogRef.aktienfondsTeilfreistellungPrivat = originals.teilfreistellung
+  catalogRef.pvBeitragszuschlagKinderloseMinAge = originals.kinderloseMinAge
 })
 
 /**
@@ -49,7 +68,7 @@ afterEach(() => {
  * carries source/effective-date provenance for the covered tax areas only (per
  * field where the golden pins a single field), keeps the replay caveats honest
  * (no implemented output preservation), and gives the runner a content
- * fingerprint that covers BOTH the year rules and the cross-year legalConstants.
+ * fingerprint covering the year rules AND every exported cross-year rule datum.
  */
 describe('active rule-set metadata (#376)', () => {
   it('tracks the active rule year — drift here means a year swap without metadata', () => {
@@ -103,8 +122,10 @@ describe('active rule-set metadata (#376)', () => {
 
   it('narrows capitalGains golden coverage to the basiszins field (#376 review)', () => {
     // capitalGains2026GoldenValues pins ONLY basiszins — the Abgeltungsteuer
-    // rate, Sparerpauschbetrag, and soli alias have no external capture, so
-    // they must not ride on the golden pin.
+    // rate and Sparerpauschbetrag have no external capture, so they must not
+    // ride on the golden pin. taxRate/saverAllowance carry their own literal
+    // tripwires in src/engine/tax.test.ts ("statutory-pin"); the soli alias
+    // is pinned through the same constant.
     const byArea = new Map(activeRulesMetadata.areas.map(area => [area.area, area]))
     expect(byArea.get('capitalGains.basiszins')?.pinnedBy).toBe('external-golden')
     expect(byArea.get('capitalGains.basiszins')?.effectiveFrom).toBe('2026-01-01')
@@ -113,7 +134,7 @@ describe('active rule-set metadata (#376)', () => {
       'capitalGains.saverAllowance',
       'capitalGains.solidarityRate',
     ]) {
-      expect(byArea.get(area)?.pinnedBy, area).not.toBe('external-golden')
+      expect(byArea.get(area)?.pinnedBy, area).toBe('statutory-pin')
     }
     // The old coarse whole-group entry must not come back.
     expect(byArea.has('capitalGains')).toBe(false)
@@ -157,6 +178,20 @@ describe('active rule-set metadata (#376)', () => {
   })
 })
 
+describe('rule-data catalog exhaustiveness (#376 review round 3)', () => {
+  it('legalRuleData covers every exported non-function datum of legalConstants.ts', async () => {
+    // The identity snapshot hashes the catalog — an exported value missing
+    // from it would be amendable without moving the fingerprint. This guard
+    // fails when a new `export const` appears without a catalog entry.
+    const mod = (await import('./legalConstants')) as Record<string, unknown>
+    const dataExports = Object.keys(mod)
+      .filter(key => typeof mod[key] !== 'function')
+      .filter(key => key !== 'legalRuleData') // the catalog itself
+      .sort()
+    expect(Object.keys(legalRuleData).sort()).toEqual(dataExports)
+  })
+})
+
 describe('rule-set content identity (#376)', () => {
   it('stamps ruleSetId, ruleYear, revision, and a 16-hex fingerprint', () => {
     expect(activeRuleSetIdentity.ruleSetId).toBe(activeRulesMetadata.ruleSetId)
@@ -164,29 +199,29 @@ describe('rule-set content identity (#376)', () => {
     expect(activeRuleSetIdentity.revision).toBe(activeRulesMetadata.revision)
     expect(activeRuleSetIdentity.contentFingerprint).toMatch(/^[0-9a-f]{16}$/)
     expect(activeRuleSetIdentity.contentFingerprint).toBe(
-      ruleSetFingerprint(activeRules, legalConstants),
+      ruleSetFingerprint(activeRules, legalRuleData),
     )
   })
 
   it('fingerprint is deterministic and independent of key insertion order (both inputs)', () => {
     const reorderedRules = reversedKeyOrder(activeRules) as GermanRules
-    const reorderedConstants = reversedKeyOrder(legalConstants) as unknown as LegalConstants
-    expect(canonicalRuleSetSnapshot(reorderedRules, reorderedConstants)).toBe(
-      canonicalRuleSetSnapshot(activeRules, legalConstants),
+    const reorderedData = reversedKeyOrder(legalRuleData) as unknown as LegalRuleData
+    expect(canonicalRuleSetSnapshot(reorderedRules, reorderedData)).toBe(
+      canonicalRuleSetSnapshot(activeRules, legalRuleData),
     )
-    expect(ruleSetFingerprint(reorderedRules, reorderedConstants)).toBe(
-      ruleSetFingerprint(activeRules, legalConstants),
+    expect(ruleSetFingerprint(reorderedRules, reorderedData)).toBe(
+      ruleSetFingerprint(activeRules, legalRuleData),
     )
   })
 
   it('fingerprint changes when a year-rule value changes, including nested fields', () => {
-    const base = ruleSetFingerprint(activeRules, legalConstants)
+    const base = ruleSetFingerprint(activeRules, legalRuleData)
 
     const shiftedAllowance: GermanRules = {
       ...activeRules,
       incomeTax: { ...activeRules.incomeTax, basicAllowance: activeRules.incomeTax.basicAllowance + 1 },
     }
-    expect(ruleSetFingerprint(shiftedAllowance, legalConstants)).not.toBe(base)
+    expect(ruleSetFingerprint(shiftedAllowance, legalRuleData)).not.toBe(base)
 
     const shiftedRentenwert: GermanRules = {
       ...activeRules,
@@ -195,36 +230,54 @@ describe('rule-set content identity (#376)', () => {
         aktuellerRentenwert: activeRules.socialSecurity.aktuellerRentenwert + 0.01,
       },
     }
-    expect(ruleSetFingerprint(shiftedRentenwert, legalConstants)).not.toBe(base)
+    expect(ruleSetFingerprint(shiftedRentenwert, legalRuleData)).not.toBe(base)
   })
 
-  // The constants this slice made load-bearing (§4 SolzG slope, §39b cap,
-  // §1a BetrAVG divisor) are hashed via the `legalConstants` object — each
-  // amendment below must measurably move the fingerprint, or the identity
-  // stamp is blind to exactly the changes the engine consumes.
+  // The constants this slice made load-bearing are hashed via the catalog —
+  // each amendment below must measurably move the fingerprint, or the
+  // identity stamp is blind to exactly the changes the engine consumes.
   it('fingerprint moves when the soli Milderungszone slope (§4 SolzG) is amended', () => {
-    const base = ruleSetFingerprint(activeRules, legalConstants)
+    const base = ruleSetFingerprint(activeRules, legalRuleData)
     soliRef.milderungszoneRate = originals.slope + 0.006
-    expect(ruleSetFingerprint(activeRules, legalConstants)).not.toBe(base)
+    expect(ruleSetFingerprint(activeRules, legalRuleData)).not.toBe(base)
   })
 
   it('fingerprint moves when the §39b KV/PV/AV cap is amended', () => {
-    const base = ruleSetFingerprint(activeRules, legalConstants)
+    const base = ruleSetFingerprint(activeRules, legalRuleData)
     capRef.vorsorgepauschaleKvPvAvCap = originals.cap - 100
-    expect(ruleSetFingerprint(activeRules, legalConstants)).not.toBe(base)
+    expect(ruleSetFingerprint(activeRules, legalRuleData)).not.toBe(base)
   })
 
   it('fingerprint moves when the §1a BetrAVG divisor is amended', () => {
-    const base = ruleSetFingerprint(activeRules, legalConstants)
+    const base = ruleSetFingerprint(activeRules, legalRuleData)
     bavRef.minimumEntitlementDivisor = originals.divisor * 2
-    expect(ruleSetFingerprint(activeRules, legalConstants)).not.toBe(base)
+    expect(ruleSetFingerprint(activeRules, legalRuleData)).not.toBe(base)
   })
 
-  it('ruleSetIdentity derives its fingerprint from the constants it is handed', () => {
-    const base = ruleSetIdentity(activeRules, legalConstants, activeRulesMetadata)
+  // The five standalone exports (outside the legalConstants object) that the
+  // round-2 fingerprint missed — each must move the fingerprint now.
+  it.each([
+    ['werbungskostenPauschalVersorgungsbezuege', 104] as const,
+    ['werbungskostenPauschalRenten', 104] as const,
+    ['aktienfondsTeilfreistellungPrivat', 0.25] as const,
+    ['pvBeitragszuschlagKinderloseMinAge', 25] as const,
+  ])('fingerprint moves when legalRuleData.%s is amended', (field, amended) => {
+    const base = ruleSetFingerprint(activeRules, legalRuleData)
+    ;(catalogRef[field] as number) = amended
+    expect(ruleSetFingerprint(activeRules, legalRuleData)).not.toBe(base)
+  })
+
+  it('fingerprint moves when sonderausgabenPauschbetrag is amended', () => {
+    const base = ruleSetFingerprint(activeRules, legalRuleData)
+    catalogRef.sonderausgabenPauschbetrag = { single: 36, married: 74 }
+    expect(ruleSetFingerprint(activeRules, legalRuleData)).not.toBe(base)
+  })
+
+  it('ruleSetIdentity derives its fingerprint from the catalog it is handed', () => {
+    const base = ruleSetIdentity(activeRules, legalRuleData, activeRulesMetadata)
     expect(base).toEqual(activeRuleSetIdentity)
     capRef.vorsorgepauschaleKvPvAvCap = originals.cap - 100
-    const amended = ruleSetIdentity(activeRules, legalConstants, activeRulesMetadata)
+    const amended = ruleSetIdentity(activeRules, legalRuleData, activeRulesMetadata)
     expect(amended.contentFingerprint).not.toBe(base.contentFingerprint)
     expect(amended.revision).toBe(base.revision) // revision alone did not move — the fingerprint did
   })
@@ -275,13 +328,27 @@ describe('rulesMetadataById judges a full stamp (#376 review)', () => {
       // mandatory `revision` bump in the same commit is for.
       const restamped = {
         ...activeRuleSetIdentity,
-        contentFingerprint: ruleSetFingerprint(activeRules, legalConstants),
+        contentFingerprint: ruleSetFingerprint(activeRules, legalRuleData),
       }
       expect(rulesMetadataById(restamped)).toBe(activeRulesMetadata)
     } finally {
       soliRef.milderungszoneRate = originals.slope
     }
     // Restored — the original stamp is valid again.
+    expect(rulesMetadataById(activeRuleSetIdentity)).toBe(activeRulesMetadata)
+  })
+
+  it('an unannounced §20 InvStG Teilfreistellung amendment rejects pre-amendment stamps', () => {
+    // The round-2 fingerprint missed this standalone export entirely — a
+    // 30 % → 25 % amendment would have changed every ETF payout while
+    // `rulesMetadataById` kept accepting old stamps. It must not.
+    expect(rulesMetadataById(activeRuleSetIdentity)).toBe(activeRulesMetadata)
+    catalogRef.aktienfondsTeilfreistellungPrivat = 0.25
+    try {
+      expect(rulesMetadataById(activeRuleSetIdentity)).toBeNull()
+    } finally {
+      catalogRef.aktienfondsTeilfreistellungPrivat = originals.teilfreistellung
+    }
     expect(rulesMetadataById(activeRuleSetIdentity)).toBe(activeRulesMetadata)
   })
 })

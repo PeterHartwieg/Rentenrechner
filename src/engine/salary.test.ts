@@ -3,7 +3,7 @@ import type { PersonalProfile } from '../domain'
 import { defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { legalConstants } from '../rules/legalConstants'
-import { calculateVorsorgepauschale2026 } from './salary'
+import { calculateVorsorgepauschale2026, careEmployeeRateForChildren } from './salary'
 
 /**
  * Profile chosen so the §39b EStG KV + PV + AV Teilbetrag cap actually binds:
@@ -83,6 +83,39 @@ describe('calculateVorsorgepauschale2026 — §39b KV/PV/AV Teilbetrag cap', () 
       expect(calculateVorsorgepauschale2026(16_000, cappedProfile, de2026Rules)).toBeCloseTo(expected, 9)
     } finally {
       capRef.vorsorgepauschaleKvPvAvCap = original
+    }
+  })
+})
+
+describe('careEmployeeRateForChildren — §55 Abs. 3a SGB XI constants', () => {
+  it('discounts 0.25 pp per further child under 25, capped at 4 further children', () => {
+    // Base rate 1.8 %; two under-25 children → one discount step (0.018 − 0.0025).
+    expect(careEmployeeRateForChildren([2020, 2022], 2026, de2026Rules)).toBeCloseTo(0.0155, 9)
+    // Five under-25 children → capped at four discount steps (0.018 − 0.0100).
+    expect(careEmployeeRateForChildren([2015, 2016, 2017, 2018, 2019], 2026, de2026Rules)).toBeCloseTo(
+      0.008,
+      9,
+    )
+    // No children → childless rate (Kinderlosenzuschlag), no discount path.
+    expect(careEmployeeRateForChildren([], 2026, de2026Rules)).toBeCloseTo(0.024, 9)
+  })
+
+  it('consumes legalConstants.care — doubling the per-child discount doubles its effect', () => {
+    const careRef = legalConstants.care as {
+      beitragsabschlagPerFurtherChild: number
+      beitragsabschlagMaxFurtherChildren: number
+    }
+    const original = careRef.beitragsabschlagPerFurtherChild
+    const baseline = careEmployeeRateForChildren([2020, 2022], 2026, de2026Rules)
+    careRef.beitragsabschlagPerFurtherChild = original * 2
+    try {
+      // One discount step is now worth 0.5 pp instead of 0.25 pp.
+      expect(careEmployeeRateForChildren([2020, 2022], 2026, de2026Rules)).toBeCloseTo(
+        baseline - 0.0025,
+        9,
+      )
+    } finally {
+      careRef.beitragsabschlagPerFurtherChild = original
     }
   })
 })
