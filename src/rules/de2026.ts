@@ -1,4 +1,11 @@
 import type { GermanRules } from '../domain'
+import { legalConstants } from './legalConstants'
+import {
+  PROJECTION_ASSUMPTION,
+  REPLAY_LIMITATIONS,
+  TAX_CALCULATION_MODEL,
+} from './ruleMetadata'
+import type { RuleSetMetadata } from './ruleMetadata'
 
 // Cohort helpers (besteuerungsanteilGrv, versorgungsfreibetrag) and
 // Pauschbetrag constants live in `legalConstants.ts` — they are cross-year
@@ -47,6 +54,22 @@ export const de2026Rules: GermanRules = {
     firstProgressionEnd: 17_799,
     secondProgressionEnd: 69_878,
     topTaxStart: 277_826,
+    // §32a Abs. 1 Satz 2 EStG Grundtarif formula coefficients for 2026, named
+    // by their role in the expanded polynomial (quadratic / linear / constant).
+    // Re-issued with the zone boundaries every assessment period; pinned by
+    // the BMF tariff goldens in src/test/externalGoldenFixtures.ts.
+    tariff: {
+      zoneBQuadratic: 914.51,
+      zoneBLinear: 1_400,
+      zoneCQuadratic: 173.1,
+      zoneCLinear: 2_397,
+      zoneCConstant: 1_034.87,
+      proportionalRate: 0.42,
+      proportionalDeduction: 11_135.63,
+      topRate: 0.45,
+      topRateDeduction: 19_470.38,
+      progressionDenominator: 10_000,
+    },
     // §3 Abs. 3 SolzG: Soli-Freigrenze 2026.
     // Einzelveranlagung 20,350 EUR; Zusammenveranlagung 40,700 EUR (= 2 × Einzelveranlagung).
     // Source: SolzG 1995 i.d.F. d. JStG 2024 (Anhebung 1.1.2026).
@@ -142,9 +165,113 @@ export const de2026Rules: GermanRules = {
   },
   capitalGains: {
     taxRate: 0.25,
-    solidarityRate: 0.055,
+    // Aliases `legalConstants.soli.rate` — one 5.5 % definition across tax paths.
+    solidarityRate: legalConstants.soli.rate,
     saverAllowance: 1_000,
     // BMF Basiszins nach §203 BewG für Vorabpauschale 2026: 3.20 % (BMF-Schreiben 2026-01-13)
     basiszins: 0.032,
   },
+}
+
+// ---------------------------------------------------------------------------
+// Provenance metadata for this rule set (#376).
+//
+// Kept next to the values it describes so the annual update touches both in
+// one commit. When de2027.ts is added, copy this block and update ruleSetId,
+// ruleYear, revision, effectiveFrom and the sources. Any same-year amendment
+// bumps `revision` and re-points the affected `source` in the same commit.
+// Scope covers the tax areas routed through src/engine/tax.ts only. Shape
+// and shared caveats: `ruleMetadata.ts`.
+// ---------------------------------------------------------------------------
+
+export const de2026RulesMetadata: RuleSetMetadata = {
+  ruleSetId: 'de2026',
+  ruleYear: 2026,
+  revision: 1,
+  calculationModel: TAX_CALCULATION_MODEL,
+  scope:
+    'Covers the tax areas routed through src/engine/tax.ts and their rule inputs ' +
+    '(income-tax tariff, solidarity surcharge, capital gains). Not a snapshot of the ' +
+    'whole engine: other rule areas carry inline citations in this file, and payroll / ' +
+    'retirement / cohort logic lives in its own modules with their own citations.',
+  areas: [
+    {
+      area: 'incomeTax',
+      statute: '§32a EStG — Grundfreibetrag and zone boundaries for assessment period 2026',
+      source:
+        'Pinned via BMF tariff and BMF Einkommensteuer-Rechner captures recorded 2026-05-02 ' +
+        '(src/test/externalGoldenFixtures.ts); citation as used in this repo: ' +
+        'https://www.gesetze-im-internet.de/estg/__32a.html',
+      effectiveFrom: '2026-01-01',
+      pinnedBy: 'external-golden',
+    },
+    {
+      area: 'incomeTax.tariff',
+      statute: '§32a Abs. 1 Satz 2 EStG — per-zone Grundtarif formula coefficients',
+      source:
+        'Pinned via the same BMF captures (incomeTax2026GoldenCases / ' +
+        'bmfEinkommensteuerRechner2026GoldenCases); coefficients are held in the year file ' +
+        'because they are re-issued with the zone boundaries every assessment period',
+      effectiveFrom: '2026-01-01',
+      pinnedBy: 'external-golden',
+    },
+    {
+      area: 'incomeTax.solidarityFreeTax',
+      statute: '§3 Abs. 3 SolzG 1995 — Soli-Freigrenze 2026 (JStG 2024 uplift, 1.1.2026)',
+      source:
+        'Citation as used in this repo: https://www.gesetze-im-internet.de/solzg_1995/__3.html. ' +
+        'Tightest golden pin: payroll2026GoldenCases "stk1-gkv-100k" — soli 345 EUR on ' +
+        '23 248 EUR income tax bounds the Freigrenze to (18 213, 20 350] via the 11.9 % ' +
+        'Milderungszone (23 248 − 20 350) × 0.119 ≈ 345. The BMF ' +
+        'Einkommensteuer-Rechner captures (captured 2026-05-02) only bound it loosely ' +
+        '(no case lands inside the Milderungszone)',
+      effectiveFrom: '2026-01-01',
+      pinnedBy: 'external-golden',
+    },
+    {
+      area: 'soli',
+      statute: '§4 SolzG 1995 — 5.5 % rate and 11.9 % Milderungszone slope',
+      source:
+        'Cross-year constants in legalConstants.ts; cited in TAX_SOCIAL_SECURITY_2026_RESEARCH.md ' +
+        '("Soli rate", "Soli Milderungszone rate"). Pinned as literal tripwires in the tax engine tests',
+      pinnedBy: 'statutory-pin',
+    },
+    {
+      area: 'capitalGains.basiszins',
+      statute: '§203 Abs. 2 BewG — Basiszins für die Vorabpauschale 2026',
+      source:
+        'Pinned via capitalGains2026GoldenValues (field "basiszins") and ' +
+        'etfVorabpauschaleGoldenCases in src/test/externalGoldenFixtures.ts; ' +
+        'BMF-Schreiben vom 2026-01-13 (Basiszins 3.20 %). The other capitalGains ' +
+        'fields are NOT golden-covered — see their own entries',
+      effectiveFrom: '2026-01-01',
+      pinnedBy: 'external-golden',
+    },
+    {
+      area: 'capitalGains.taxRate',
+      statute: '§32d Abs. 1 EStG — Abgeltungsteuer 25 %',
+      source:
+        'Citation as used in this repo: https://www.gesetze-im-internet.de/estg/__32d.html; ' +
+        'literal tripwire in src/engine/tax.test.ts, no external capture',
+      pinnedBy: 'statutory-pin',
+    },
+    {
+      area: 'capitalGains.solidarityRate',
+      statute: '§4 SolzG 1995 — Solidaritätszuschlag on capital-gains tax',
+      source:
+        'Aliased to legalConstants.soli.rate (one 5.5 % definition across tax paths); ' +
+        'see the "soli" area. Pinned as a literal tripwire in src/engine/tax.test.ts',
+      pinnedBy: 'statutory-pin',
+    },
+    {
+      area: 'capitalGains.saverAllowance',
+      statute: '§20 Abs. 9 EStG — Sparerpauschbetrag 1 000 EUR (single; 2 × for joint assessment)',
+      source:
+        'Citation as used in this repo: https://www.gesetze-im-internet.de/estg/__20.html; ' +
+        'literal tripwire in src/engine/tax.test.ts, no external capture',
+      pinnedBy: 'statutory-pin',
+    },
+  ],
+  projectionAssumption: PROJECTION_ASSUMPTION,
+  replayLimitations: REPLAY_LIMITATIONS,
 }

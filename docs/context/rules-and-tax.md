@@ -6,16 +6,21 @@ For each legal / rule area: the source file, the rule file, and the research doc
 
 | File | What it contains | When to edit |
 |------|-----------------|--------------|
-| `src/rules/de2026.ts` | All 2026 statutory values: BBG (RV/KV), GKV/PV rates, GKV additional rate, Rentenwert, Basiszins, Besteuerungsanteil cohort table, Versorgungsfreibetrag table, Ertragsanteil table, AVD allowance constants, Riester constants | Once a year when BBG-Bekanntmachung and rate updates are published |
-| `src/rules/legalConstants.ts` | Cross-year structural constants: 1/120 SGB V spreading factor, §34 EStG Fünftelregelung divisor, §20 Abs. 1 Nr. 6 / §52 Abs. 28 age split by contract year, 12-year runtime threshold, halbeinkünfte factor 0.5 | Only when underlying law changes, not on the annual cycle |
-| `src/rules/index.ts` | Re-exports `activeRules` and `legalConstants`; swap to a new year by changing one line | To add a new rule year |
+| `src/rules/de2026.ts` | All 2026 statutory values: BBG (RV/KV), GKV/PV rates, GKV additional rate, Rentenwert, Basiszins, §32a tariff zones **and formula coefficients** (`incomeTax.tariff`), Soli-Freigrenzen, AVD allowance constants, Riester constants — plus the co-located `de2026RulesMetadata` provenance block | Once a year when BBG-Bekanntmachung and rate updates are published |
+| `src/rules/legalConstants.ts` | Cross-year structural constants: 1/120 SGB V spreading factor, §34 EStG Fünftelregelung divisor, §20 Abs. 1 Nr. 6 / §52 Abs. 28 age split by contract year, 12-year runtime threshold, halbeinkünfte factor 0.5, Soli rate 5.5 % and Milderungszone 11.9 % (`soli`), §39b PAP KV+PV+AV cap (`payrollTax.vorsorgepauschaleKvPvAvCap`), §1a BetrAVG divisor (`bav.minimumEntitlementDivisor`), §55 Abs. 3a SGB XI Beitragsabschlag + under-25 child window (`care` / `childEligibility`), cohort lookup functions (`besteuerungsanteilGrv`, `versorgungsfreibetrag`, `ertragsanteilByAge`), standalone §9a/§10c Pauschbeträge and §20 InvStG Teilfreistellung — the `legalRuleData` catalog enumerates every exported non-function datum for the content fingerprint | Functions: only on law amendment; data: amend together with a `revision` bump |
+| `src/rules/ruleMetadata.ts` | Calculation-model id/version (`TAX_CALCULATION_MODEL`), provenance types, projection-assumption and replay-limitation caveats | Only when the implemented formula (algorithm) changes — bump the model version |
+| `src/rules/index.ts` | Re-exports `activeRules` and `legalConstants`; swap to a new year by changing one line; exports `activeRulesMetadata` + `rulesMetadataById` for the scenario runner / UI | To add a new rule year |
+
+Workflow for annual updates, algorithm changes, and the metadata contract —
+including what a ruleSetId does and does not guarantee for historical replay:
+[`../rules-versioning.md`](../rules-versioning.md).
 
 ## Engine files by legal area
 
 | Legal area | Engine file | Key function |
 |-----------|-------------|-------------|
-| Income tax (§32a EStG tariff) | `src/engine/tax.ts` | `calculateIncomeTax2026` |
-| Solidarity surcharge (§3 SolZG Milderungszone) | `src/engine/tax.ts` | `calculateSolidarityTax` |
+| Income tax (§32a EStG tariff) | `src/engine/tax.ts` | `calculateIncomeTax2026` — zones from `rules.incomeTax`, formula coefficients from `rules.incomeTax.tariff` (no engine literals) |
+| Solidarity surcharge (§3/§4 SolZG Milderungszone) | `src/engine/tax.ts` | `calculateSolidarityTax` — rate + slope from `legalConstants.soli`, Freigrenze from `rules.incomeTax` |
 | Capital gains tax (§20 EStG + InvStG §20 partial exemption) | `src/engine/tax.ts` | `calculateCapitalGainsTax` |
 | Payroll tax / Vorsorgepauschale (§39b EStG) | `src/engine/salary.ts` | `calculateSalaryResult`, `calculateVorsorgepauschale2026` |
 | bAV salary conversion limits (§3 Nr. 63 EStG, §1 SvEV) | `src/engine/salary.ts` | `calculateBavFunding` |

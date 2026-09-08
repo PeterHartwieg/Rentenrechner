@@ -61,6 +61,34 @@ export interface GermanRules {
     firstProgressionEnd: number
     secondProgressionEnd: number
     topTaxStart: number
+    /**
+     * §32a Abs. 1 Satz 2 EStG Grundtarif formula coefficients, named by
+     * their role in the expanded polynomial. Year-specific rules data —
+     * values live in the active year file; the engine holds no tariff
+     * literals of its own.
+     */
+    tariff: {
+      /** First progression zone: coefficient of the squared progression term (y²). */
+      zoneBQuadratic: number
+      /** First progression zone: coefficient of the linear progression term (y). */
+      zoneBLinear: number
+      /** Second progression zone: coefficient of the squared progression term (z²). */
+      zoneCQuadratic: number
+      /** Second progression zone: coefficient of the linear progression term (z). */
+      zoneCLinear: number
+      /** Second progression zone: additive constant. */
+      zoneCConstant: number
+      /** Proportional zone: marginal rate. */
+      proportionalRate: number
+      /** Proportional zone: fixed deduction from the proportional amount. */
+      proportionalDeduction: number
+      /** Top zone: marginal rate. */
+      topRate: number
+      /** Top zone: fixed deduction from the top-rate amount. */
+      topRateDeduction: number
+      /** Denominator scaling (x − zone start) into the progression variables. */
+      progressionDenominator: number
+    }
     /** §3 Abs. 3 SolzG: Soli-Freigrenze for Einzelveranlagung. */
     solidarityFreeTax: number
     /** §3 Abs. 3 SolzG: Soli-Freigrenze for Zusammenveranlagung (= 2 × Einzelveranlagung). */
