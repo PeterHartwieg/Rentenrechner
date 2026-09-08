@@ -641,3 +641,50 @@
     margin-top: 4px;
   }
 }
+
+/* Assumptions and tested changes stay next to the headline, also on phones. */
+.mein-plan-context {
+  padding: 16px 18px;
+  border-left: 2px solid var(--rw-rule);
+  background: var(--rw-bg-paper-soft);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--rw-ink-soft);
+}
+
+.mein-plan-context h2 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.mein-plan-context p {
+  margin: 0 0 10px;
+}
+
+.mein-plan-context strong {
+  color: var(--rw-ink);
+  font-weight: 600;
+}
+
+.mein-plan-context-change {
+  padding-top: 10px;
+  border-top: 1px solid var(--rw-rule-soft);
+}
+
+.mein-plan-context-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.mein-plan-context-links a {
+  color: var(--rw-ink);
+  text-underline-offset: 3px;
+}
+
+.mein-plan-context-links a:focus-visible {
+  outline: 2px solid var(--rw-ink);
+  outline-offset: 3px;
+}

@@ -16,6 +16,7 @@ import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { RightRailAccordion } from '../../ui/chrome/RightRailAccordion'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { largestTestedChange, summarizeContractEvidence } from './calculationContext'
 import {
   sensitivityIfReturnScenario,
   sensitivityIfRetirementAge,
@@ -179,6 +180,9 @@ export function MeinPlanPage({
     })
   }, [workspace, combinedForScenario, hasContractRows, rules, selectedScenarioId])
 
+  const largestChange = largestTestedChange(sensitivityRows)
+  const evidence = summarizeContractEvidence(buildProductSlots(wsa))
+
   return (
     <div className="mein-plan-shell">
       <div className="mein-plan-main">
@@ -189,9 +193,9 @@ export function MeinPlanPage({
             <h1 className="mein-plan-title">Mein Plan</h1>
 
             <p className="mein-plan-lead">
-              Auf Basis deiner Angaben sind mit einem Renteneintritt mit{' '}
+              Auf Basis deiner Angaben ergeben sich bei einem Renteneintritt mit{' '}
               <strong>{profile.retirementAge} Jahren</strong> aus allen aktiven
-              Quellen voraussichtlich folgende Beträge zu erwarten. Alle Zahlen
+              Quellen im Modell folgende Beträge. Alle Zahlen
               sind <em>nach Steuer und Krankenversicherung</em> und basieren auf
               dem Szenario <strong>{selectedScenarioLabel}</strong>.
             </p>
@@ -199,7 +203,7 @@ export function MeinPlanPage({
             {/* Headline figure — oxblood mono, single value. */}
             <div className="mein-plan-headline">
               <div className="mein-plan-headline-figure">
-                <span className="mein-plan-headline-label">Voraussichtlich, pro Monat</span>
+                <span className="mein-plan-headline-label">Im gewählten Szenario, pro Monat</span>
                 <span className="mein-plan-headline-value">{formatCurrency(projectedMonthly, 0)}</span>
               </div>
               <div className="mein-plan-headline-aside">
@@ -235,6 +239,67 @@ export function MeinPlanPage({
                 </a>
               </div>
             </div>
+
+            <section className="mein-plan-context" aria-labelledby="mein-plan-context-title">
+              <h2 id="mein-plan-context-title">Wie belastbar ist diese Zahl?</h2>
+              <p>
+                <strong>Eine Modellrechnung.</strong> Das Szenario zeigt, was sich
+                unter deinen Annahmen ergibt. Es ist keine Vorhersage oder
+                garantierte Auszahlung.
+              </p>
+              <p>
+                <strong>Regelstand {rules.year}.</strong> Die Rechnung nutzt die im
+                Modell hinterlegten Steuer- und Sozialregeln. Künftige
+                Gesetzesänderungen sind damit nicht abgesichert.
+              </p>
+              <p>
+                <strong>Vertragsangaben.</strong>{' '}
+                {evidence.contracts > 0 ? (
+                  <>
+                    {evidence.hasExplicitEstimates && <>Einzelne Angaben sind ausdrücklich als Schätzwert markiert. </>}
+                    {evidence.hasConfirmedInputs
+                      ? 'Für einzelne Angaben sind Bestätigungen oder Belege vermerkt. '
+                      : 'Es ist keine ausdrückliche Bestätigung zu Vertragsangaben gespeichert. '}
+                    Ohne gespeicherte Quellenbestätigung können Angaben auch
+                    Standardwerte oder selbst eingegebene Werte sein. Prüfe sie
+                    anhand deiner Unterlagen.
+                  </>
+                ) : (
+                  <>Noch keine Vertragsangaben im Plan.</>
+                )}
+              </p>
+              <p className="mein-plan-context-change">
+                {largestChange ? (
+                  Math.abs(largestChange.result.headlineDelta) < 1 ? (
+                    <>Die berechneten Varianten ändern die nominale monatliche Netto-Rente jeweils um weniger als 1 €.</>
+                  ) : (
+                    <>
+                      <strong>Größte getestete Änderung (nominal): {formatDelta(largestChange.result.headlineDelta)}</strong>
+                      {' '}bei „{largestChange.summaryLabel}“.
+                      {largestChange.result.note && <> {formatNote(largestChange.result.note)}</>}
+                    </>
+                  )
+                ) : (
+                  <>Für eine Zusammenfassung liegt noch keine auswertbare Variante vor.</>
+                )}
+                {' '}Inflation kann die Kaufkraft auch bei unveränderter nominaler
+                Auszahlung mindern. Jede Variante ändert eine Annahme einzeln. Daraus folgt keine
+                Wahrscheinlichkeit und keine Ober- oder Untergrenze für deine Rente.
+              </p>
+              <div className="mein-plan-context-links">
+                <a href={`#${SECTION_SENSITIVITAET.id}`}>Getestete Änderungen ansehen ↓</a>
+                <a
+                  href={routeToPath(ROUTES.methode)}
+                  onClick={(event) => {
+                    if (!navigate || !shouldUseSpaNavigation(event)) return
+                    event.preventDefault()
+                    navigate(ROUTES.methode)
+                  }}
+                >
+                  Methode und Grenzen →
+                </a>
+              </div>
+            </section>
 
             {/* § 1 Zusammensetzung */}
             <section className="mein-plan-section" aria-labelledby={SECTION_ZUSAMMEN.id}>
@@ -315,9 +380,11 @@ export function MeinPlanPage({
               </div>
 
               <p className="mein-plan-sens-intro">
-                Wie reagiert deine voraussichtliche Netto-Rente, wenn sich eine
+                Wie reagiert deine berechnete Netto-Rente, wenn sich eine
                 einzelne Annahme verschiebt? Jede Zeile zeigt die Differenz zum
-                aktuellen Szenario — gerundet auf volle Euro.
+                aktuellen Szenario — gerundet auf volle Euro. Die Beträge sind
+                nominal; Inflation kann die Kaufkraft auch bei unveränderter
+                monatlicher Auszahlung mindern.
               </p>
 
               {sensitivityRows.length > 0 ? (
@@ -539,6 +606,7 @@ type SlotInstance = {
   instanceId: string
   label?: string
   status: InstanceCommon['status']
+  evidenceMap: InstanceCommon['evidenceMap']
   monthlyContribution?: number
   monthlyGrossConversion?: number
   monthlyGrossContribution?: number
@@ -814,6 +882,7 @@ function ZusammenRowView({
 
 interface SensitivityRow {
   id: string
+  summaryLabel: string
   /** What the user sees: "… die Börse über die gesamte Laufzeit nur 3 % p.a. bringt". */
   condition: ReactNode
   /** Result of the perturbation. Caller renders the sign + value. */
@@ -852,6 +921,7 @@ function buildSensitivityRows({
   if (konservativScenario && scenarioId !== SENSITIVITY_RETURN_KONSERVATIV_ID) {
     out.push({
       id: 'rendite-konservativ',
+      summaryLabel: `Rendite ${formatPercent(konservativScenario.annualReturn, 1)} p. a.`,
       condition: (
         <>
           … die Märkte über die gesamte Laufzeit nur{' '}
@@ -871,12 +941,14 @@ function buildSensitivityRows({
 
   // Row 2: Renteneintritt 70 statt aktuell
   const currentAge = workspace.baseline.profile.retirementAge
+  const testedRetirementAge = Math.min(SENSITIVITY_RETIREMENT_AGE_DELAY, wsa.retirementEndAge - 1)
   if (currentAge !== SENSITIVITY_RETIREMENT_AGE_DELAY) {
     out.push({
       id: 'renteneintritt-70',
+      summaryLabel: `Renteneintritt mit ${testedRetirementAge} Jahren`,
       condition: (
         <>
-          … du mit <strong>{SENSITIVITY_RETIREMENT_AGE_DELAY} Jahren</strong>{' '}
+          … du mit <strong>{testedRetirementAge} Jahren</strong>{' '}
           in Rente gehst (statt aktuell {currentAge})
         </>
       ),
@@ -894,6 +966,7 @@ function buildSensitivityRows({
   if (wsa.inflationRate !== SENSITIVITY_INFLATION_RATE) {
     out.push({
       id: 'inflation-3',
+      summaryLabel: `Inflation ${formatPercent(SENSITIVITY_INFLATION_RATE, 1)}`,
       condition: (
         <>
           … die Inflation dauerhaft{' '}
@@ -914,6 +987,7 @@ function buildSensitivityRows({
   // Row 4: ETF-Beitrag +100 €/Monat
   out.push({
     id: 'etf-bump',
+    summaryLabel: `Erster ETF-Sparplan +${formatCurrency(SENSITIVITY_ETF_CONTRIBUTION_BUMP_EUR, 0)} pro Monat`,
     condition: (
       <>
         … du den ersten ETF-Sparplan um{' '}

@@ -161,7 +161,10 @@ implement.yml (Claude Code Action, Sonnet) — Stage 2
     ↓
 [PR opened — pull_request.opened]
     ↓
-parallel reviews:
+parallel checks and reviews:
+  - pr-verify.yml (pure Actions — no Claude)
+        runs npm run verify on the PR's exact head SHA
+        every pull request: any head branch, forks included
   - Codex GitHub integration auto-reviews (P0/P1 only — silent on routine)
   - claude-review.yml (Claude Code Action, Opus 4.7)
         posts formal review with body marker [Claude Review]
@@ -462,6 +465,35 @@ commit. If the test is wrong, escalate via `ready-for-human` instead of
 silently rewriting it — that's a Stage 1 escape that needs human
 inspection.
 
+### `pr-verify.yml`
+
+| Trigger | Permissions | Model |
+|---------|-------------|-------|
+| `pull_request.opened/synchronize/reopened` (all head branches) + `workflow_dispatch` (`pr_number` / `head_sha` / `head_ref`) | `contents:read` | None (pure shell) |
+
+Standalone `npm run verify` (lint + tests + worker checks + build) on the
+PR's **exact head SHA** — `github.event.pull_request.head.sha` on events,
+`inputs.head_sha` on manual dispatch. Runs for **every** pull request:
+agent branches, `codex/*`, maintainer feature branches, and forks. No
+branch gate, no Claude tokens.
+
+Fork-safe by construction: it uses the `pull_request` event (never
+`pull_request_target`), declares `permissions: contents: read`, and
+references no secrets — a fork PR's code executes with a read-only token
+and no access to credentials.
+
+Two consumers depend on this check: `claude-review.yml` reads it via
+`gh pr checks` (a failed verify is an automatic "Request changes"), and
+`review-loop.yml` re-checks it before `gh pr merge`. Both workflows keep
+their own `agent/issue-*` / `automation/retro-curate-*` scoping, so only
+the agent merge flow — not verification — is limited to agent branches.
+
+`scripts/automation/pr-verify-scope.test.mjs` pins this contract:
+re-introducing a branch gate, a `pull_request_target` trigger, a secret
+reference, or a broader permission fails the test suite, and arbitrary
+non-agent branch names are evaluated through the same predicate logic the
+gate used to apply.
+
 ### `claude-review.yml`
 
 | Trigger | Permissions | Model |
@@ -579,6 +611,7 @@ which issues would be reset without mutating labels.
 | Submit QA feedback as the maintainer (skip dedup) | Open the calculator with `?qa=1&dev=<your-code>` once per browser tab. Triage routes via category B. The code is set as the `MAINTAINER_DEV_CODE` Wrangler secret on `rentenwiki-qa-submit`. |
 | Override an auto-promote that's misclassified | Remove `ready-for-agent` and add `needs-info` or `ready-for-human`. If Codex Stage 1 already ran (branch + investigation comment exist) and you want to halt before the fix: remove `ready-for-PR` if it's been applied. If `implement.yml` already opened a PR, close the PR — review loop won't re-open it. |
 | Re-fire a stuck Claude review | `git commit --allow-empty -m "kick" && git push` to the PR branch — fires `pull_request.synchronize` |
+| Verify a non-agent PR manually (e.g. after a rebase) | `gh workflow run pr-verify.yml -f pr_number=<N> -f head_sha=<sha> -f head_ref=<branch>` — events already cover every PR, so this only matters for a re-check of a specific SHA |
 | Re-fire a stuck Codex review | `gh pr comment N --body "@codex review"` |
 | Halt mid-pipeline | Remove `ready-for-agent` (only effective before the Codex app claims it); remove `ready-for-PR` (only effective before `implement.yml` fires); close the PR (loop won't re-open it) |
 | Self-escalation | If implementer or loop can't make progress, it labels linked issue `ready-for-human`, removes `in-progress-by-agent`, posts a status comment, and stops. Watch your `ready-for-human` queue. |
@@ -789,7 +822,9 @@ the diffs.
    approvals. Best case (most common): zero Claude tokens.
 6. **`npm run verify` split out of `claude-review.yml`.** New
    `pr-verify.yml` runs lint+test+build on every agent PR — pure
-   Actions, no Claude. The reviewer reads the result via
+   Actions, no Claude. (Initial scope was agent branches only; widened to
+   **all** pull requests on 2026-09-08 — see the `pr-verify.yml` section
+   under "Automation surfaces".) The reviewer reads the result via
    `gh pr checks --json` instead of running verify itself (and lost the
    `Bash(npm:*)` / `Bash(npx:*)` allow-list as a result). Saves the
    reviewer Opus session minutes-of-waiting + parsing of verify output.
