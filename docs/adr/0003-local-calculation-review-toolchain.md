@@ -29,15 +29,30 @@ may be added for this (backend boundary), and no telemetry may be introduced.
    `--complex`. No heuristic selects the expensive panel.
 3. **Fail-closed verdict gate.** A review counts only with proven completion,
    matching provider-reported model, an exact restated PR head SHA, and a
-   well-formed non-contradictory verdict. Anything malformed, truncated, or
-   missing fails the run and is recorded honestly in the receipt.
-4. **Receipts are local and earned.** Machine-readable receipts are written
-   only by the tooling into a gitignored local dir. Approval-shaped files
-   found inside a PR diff are untrusted and excluded from reviewer context.
-   Reviewer identity is the command + model — never a person; the tooling
-   never fabricates a human approval.
-5. **Publish is explicit and stale-gated.** `--publish` re-fetches the PR
-   head and refuses to label a moved PR. Commit status context is fixed at
+   well-formed non-contradictory verdict (`approve` with a blocker/major
+   finding or an unresolved question is rejected). Identity evidence is
+   honest about its provenance: native `modelUsage` keys for claude/grok,
+   the CLI's own rollout session file for codex — never a fabricated
+   attestation. Anything malformed, truncated, or missing fails the run and
+   is recorded honestly in the receipt.
+4. **Reviewers run sandboxed, receipts are local and earned.** Each reviewer
+   runs in a detached worktree pinned to the reviewed SHA with its CLI's
+   config/customization surfaces disabled (claude `--safe-mode --restricted`;
+   codex config/hook/plugin isolation plus an MCP-disable preflight; grok a
+   `grok inspect --json` discovery preflight that rejects project-owned
+   hooks/plugins/MCP/LSP), and a worktree-mutation check voids any reviewer
+   that wrote. Receipts are written only by the tooling into a gitignored
+   local dir; approval-shaped files inside a PR diff are untrusted and
+   excluded from reviewer context. Reviewer identity is command + model +
+   provider-reported identity — never a person; the tooling never fabricates
+   a human approval, and publishing re-derives the decision from the
+   in-memory records and requires the records to constitute exactly the
+   requested panel.
+5. **Publish is explicit, stale-gated, and verify-gated.** `--publish`
+   re-fetches the PR head and base and refuses to label a moved PR; an
+   approval additionally requires the GitHub-Actions-owned `verify` check
+   run to have concluded success on that exact SHA (the newest run wins; a
+   newer pending run blocks). Commit status context is fixed at
    `calculation-review`. No merge path exists in the toolchain.
 6. **Source freshness is deterministic and honest.** The catalog reuses
    `validationSources` ids (drift-pinned by tests) plus explicit research-doc

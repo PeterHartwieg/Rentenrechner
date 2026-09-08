@@ -2,11 +2,25 @@
 // Fake reviewer CLI for tests. NEVER contacts a model or the network.
 //
 // Driven by two env vars:
-//   FAKE_REVIEW_CLI  = claude | grok | codex   (output shape to emit)
+//   FAKE_REVIEW_CLI  = claude | grok | codex | codex-mcp (output shape to emit)
 //   FAKE_REVIEW_MODE = success | wrong-sha | wrong-model | reject |
 //                      blocker-approve | malformed | truncated |
 //                      exit-1 | timeout | write-worktree |
 //                      grok-thought-only
+//
+// Output shapes mirror the sanitized live envelopes in
+// /tmp/rentenwiki-assurance-orchestration/ci-{grok,opus}-adapter-envelope.json:
+//   claude → { type:"result", subtype:"success", is_error:false, num_turns,
+//              modelUsage: { "claude-opus-5": {...} }, result }
+//   grok   → { stopReason:"end_turn", num_turns,
+//              modelUsage: { "grok-4.6-build": {...} }, text }
+//   codex  → JSONL thread.started/turn.started/item.completed/turn.completed
+//            (NO model identity — the rollout session file carries it).
+//   codex-mcp → the native `codex mcp list --json` shape
+//            [{name, enabled}] — servers report enabled:true until the
+//            invocation carries `-c mcp_servers.<name>.enabled=false`
+//            overrides, then false, so the runner's re-verify loop is
+//            exercised for real.
 //
 // Reads the prompt from --prompt-file (grok) or stdin (claude/codex) so the
 // tests also exercise prompt delivery.
@@ -53,12 +67,12 @@ function finding(partial = {}) {
     applicableDate: '2026-01-01',
     interpretation: 'The statute means X; the code computes Y.',
     counterexampleOrTest: 'Salary 100000, age 67 -> expect 42000, engine returns 41000. Test: …',
-    uncertainty: 'none',
+    uncertainty: 'Riester Kinderzuschlag opt-out behavior for 2027 is unresolved.',
     ...partial,
   }
 }
 
-const REPORT_MODES = new Set(['success', 'wrong-sha', 'wrong-model', 'reject', 'blocker-approve', 'grok-thought-only'])
+const REPORT_MODES = new Set(['success', 'wrong-sha', 'wrong-model', 'reject', 'blocker-approve'])
 
 function reportText(prompt) {
   const anchor = anchorFromPrompt(prompt)
@@ -68,7 +82,11 @@ function reportText(prompt) {
       verdict = verdictJson({ ...anchor, sha: 'f'.repeat(40) })
       break
     case 'reject':
-      verdict = verdictJson(anchor, { verdict: 'reject', findings: [finding()] })
+      verdict = verdictJson(anchor, {
+        verdict: 'reject',
+        findings: [finding()],
+        unresolved: ['Whether the §10 Abs. 3 cap applies before or after the employer subsidy.'],
+      })
       break
     case 'blocker-approve':
       verdict = verdictJson(anchor, { findings: [finding({ severity: 'blocker' })] })
@@ -87,6 +105,13 @@ function requestedModel(fallback) {
   return fallback
 }
 
+// The provider never reports the alias back verbatim: claude returns a family
+// id (optionally with a context suffix), so the alias map must translate.
+function claudeReportedModel(requested) {
+  const model = requested === 'opus' ? 'claude-opus-5' : requested
+  return `${model}[1m]`
+}
+
 function emitClaude(prompt) {
   if (mode === 'malformed') {
     process.stdout.write('this is not json')
@@ -96,15 +121,13 @@ function emitClaude(prompt) {
     process.stdout.write('{"type":"result","subtype":"success","is_error":false,"result":"partial')
     return
   }
-  // Echo the requested model back with a context-window suffix, the way the
-  // real CLI reports it — the parser must normalize that away.
-  const model = mode === 'wrong-model' ? 'claude-sonnet-5' : `${requestedModel('claude-opus-4-6')}-reported[1m]`
+  const reported = mode === 'wrong-model' ? 'claude-sonnet-5[1m]' : claudeReportedModel(requestedModel('opus'))
   const payload = {
     type: 'result',
     subtype: 'success',
     is_error: false,
     num_turns: 3,
-    model,
+    modelUsage: { [reported]: { input_tokens: 10, output_tokens: 5 } },
     result: REPORT_MODES.has(mode) ? reportText(prompt) : 'no structured reply',
   }
   process.stdout.write(JSON.stringify(payload))
@@ -112,25 +135,30 @@ function emitClaude(prompt) {
 
 function emitGrok(prompt) {
   if (mode === 'malformed') {
-    process.stdout.write('{"model":"grok-4.6","response":')
+    process.stdout.write('{"stopReason":"end_turn","text":')
     return
   }
+  const modelKey = mode === 'wrong-model' ? 'grok-3' : 'grok-4.6-build'
   if (mode === 'grok-thought-only') {
     const anchor = anchorFromPrompt(prompt)
+    // A verdict that exists ONLY inside the thought field must not count:
+    // no native `text`, so the parser must fail regardless of content.
     process.stdout.write(
       JSON.stringify({
-        model: 'grok-4.6',
+        stopReason: 'end_turn',
+        num_turns: 2,
+        modelUsage: { [modelKey]: {} },
         thought: `Internal draft. Verdict: approve. ${JSON.stringify(verdictJson(anchor))}`,
-        usage: { turns: 2 },
       }),
     )
     return
   }
   const payload = {
-    model: mode === 'wrong-model' ? 'grok-3' : requestedModel('grok-4.6'),
-    response: REPORT_MODES.has(mode) ? reportText(prompt) : 'no structured reply',
+    stopReason: 'end_turn',
+    num_turns: 2,
+    modelUsage: { [modelKey]: { input_tokens: 10, output_tokens: 5 } },
+    text: REPORT_MODES.has(mode) ? reportText(prompt) : 'no structured reply',
     thought: 'Draft thoughts that must never be read as the verdict.',
-    usage: { turns: 2 },
   }
   process.stdout.write(JSON.stringify(payload))
 }
@@ -140,12 +168,65 @@ function emitCodex(prompt) {
   if (mode === 'write-worktree' && lastMessageFile) {
     writeFileSync('fake-reviewer-artifact.txt', 'the reviewer must never do this')
   }
-  const model = mode === 'wrong-model' ? 'gpt-5' : requestedModel('gpt-6-astra')
-  process.stdout.write(`${JSON.stringify({ type: 'session_configured', model })}\n`)
-  process.stdout.write(`${JSON.stringify({ type: 'task_complete' })}\n`)
+  const threadId = process.env.FAKE_CODEX_THREAD_ID ?? '01a082a3-fc89-74c3-8171-be21bf04c4c7'
+  // Mirrors the verified live probe: no model identity on stdout at all.
+  process.stdout.write(`${JSON.stringify({ type: 'thread.started', thread_id: threadId })}\n`)
+  process.stdout.write(`${JSON.stringify({ type: 'turn.started' })}\n`)
+  process.stdout.write(
+    `${JSON.stringify({ type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: 'working' } })}\n`,
+  )
+  process.stdout.write(
+    `${JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 10, output_tokens: 5 } })}\n`,
+  )
   if (lastMessageFile && REPORT_MODES.has(mode)) {
     writeFileSync(lastMessageFile, reportText(prompt), 'utf8')
   }
+}
+
+// Native `codex mcp list --json` shape. Servers configured in project/user
+// config appear enabled until the disable overrides are present in argv —
+// exactly the two-step preflight the runner performs.
+function emitCodexMcp() {
+  const overridden = process.argv.some(
+    (arg, index) => arg === '-c' && /^mcp_servers\..+\.enabled=false$/.test(process.argv[index + 1] ?? ''),
+  )
+  const servers = ['node_repl', 'computer-use'].map((name) => ({ name, enabled: !overridden }))
+  process.stdout.write(JSON.stringify(servers))
+}
+
+// Native `grok inspect --json` discovery shape (abbreviated to the fields the
+// preflight reads). FAKE_GROK_PROJECT_HOOK=1 plants a project-owned hook the
+// way a hostile PR would, to exercise the fail-closed path.
+function emitGrokInspect() {
+  const hooks = [
+    {
+      event: 'session_start',
+      hookType: 'command',
+      target: '/Users/operator/.claude/setup/sync.sh',
+      source: { type: 'user', path: '/Users/operator/.claude' },
+    },
+  ]
+  if (process.env.FAKE_GROK_PROJECT_HOOK === '1') {
+    hooks.push({
+      event: 'pre_tool_use',
+      hookType: 'command',
+      target: './.grok/hooks/pwn.sh',
+      source: { type: 'project', path: process.cwd() },
+    })
+  }
+  process.stdout.write(
+    JSON.stringify({
+      grokVersion: '1.0.4',
+      channel: 'stable',
+      cwd: process.cwd(),
+      projectRoot: process.cwd(),
+      projectTrusted: true,
+      hooks,
+      plugins: [],
+      mcpServers: [],
+      lspServers: [],
+    }),
+  )
 }
 
 const prompt = readPrompt()
@@ -161,3 +242,5 @@ if (mode === 'timeout') {
 if (cli === 'claude') emitClaude(prompt)
 else if (cli === 'grok') emitGrok(prompt)
 else if (cli === 'codex') emitCodex(prompt)
+else if (cli === 'codex-mcp') emitCodexMcp()
+else if (cli === 'grok-inspect') emitGrokInspect()

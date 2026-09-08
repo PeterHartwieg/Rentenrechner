@@ -2,10 +2,54 @@ import { describe, expect, it } from 'vitest'
 
 import {
   REVIEW_DOMAINS,
+  classifyPath,
   contextFilesForImpact,
   isUntrustedContextPath,
   mapImpact,
 } from './lib/impactMap.mjs'
+
+describe('classifyPath — meaningful rules beat the cosmetic extension allowlist', () => {
+  it('executable/worker/API surfaces are meaningful regardless of extension', () => {
+    // These were previously narrowed away by their extensions; they carry
+    // executable logic, defaults, oracle baselines, or review gates.
+    expect(classifyPath('workers/simulate/src/index.mjs')).toBe('meaningful')
+    expect(classifyPath('workers/qa-submit/package.json')).toBe('meaningful')
+    expect(classifyPath('scripts/review/review-run.mjs')).toBe('meaningful')
+    expect(classifyPath('.github/workflows/pr-verify.yml')).toBe('meaningful')
+    expect(classifyPath('package.json')).toBe('meaningful')
+    expect(classifyPath('public/_redirects')).toBe('meaningful')
+    expect(classifyPath('src/content/recommendationCopy.ts')).toBe('meaningful')
+    expect(classifyPath('src/engine/tax.ts')).toBe('meaningful')
+  })
+
+  it('assurance and review-bar files are meaningful even though they are prose', () => {
+    expect(classifyPath('AGENTS.md')).toBe('meaningful')
+    expect(classifyPath('CLAUDE.md')).toBe('meaningful')
+    expect(classifyPath('docs/validation.md')).toBe('meaningful')
+    expect(classifyPath('docs/automation/calculation-review-toolchain.md')).toBe('meaningful')
+    expect(classifyPath('docs/adr/0003-local-calculation-review-toolchain.md')).toBe('meaningful')
+    expect(classifyPath('README.md')).toBe('meaningful')
+  })
+
+  it('pure prose docs, styling, and static assets stay cosmetic', () => {
+    expect(classifyPath('docs/context/ui.md')).toBe('cosmetic')
+    expect(classifyPath('src/features/results/PrintReport.css')).toBe('cosmetic')
+    expect(classifyPath('notes/architecture.md')).toBe('cosmetic')
+    expect(classifyPath('docs/architecture/diagram.svg')).toBe('cosmetic')
+  })
+
+  it('the styling carve-out never reaches executable extensions', () => {
+    // The narrow case is styling only — a .css rule must not swallow the
+    // .mjs/.json/.yml/src-content files the meaningful rules exist for.
+    expect(classifyPath('workers/simulate/styles.css')).toBe('cosmetic')
+    expect(classifyPath('scripts/review/PrintReport.css')).toBe('cosmetic')
+  })
+
+  it('anything unclassified falls back to full review scope', () => {
+    expect(classifyPath('weird-config.toml')).toBe('unclassified')
+    expect(classifyPath('src/someNewDirectory/mystery.ts')).toBe('meaningful') // src/ is a known meaningful prefix
+  })
+})
 
 describe('mapImpact — conservative mapping', () => {
   it('maps shared engine changes to broad scope across all domains', () => {
@@ -13,13 +57,7 @@ describe('mapImpact — conservative mapping', () => {
     expect(impact.breadth).toBe('broad')
     expect(impact.domains).toEqual(REVIEW_DOMAINS)
     expect(impact.focusDomains).toEqual(['tax-payroll', 'kv-pv'])
-  })
-
-  it('maps rules changes to broad scope with no narrowing', () => {
-    const impact = mapImpact(['src/rules/de2026.ts'])
-    expect(impact.breadth).toBe('broad')
-    expect(impact.domains).toEqual(REVIEW_DOMAINS)
-    expect(impact.focusDomains).toContain('tax-payroll')
+    expect(impact.meaningfulCategories).toContain('engine/rules/statutory values')
   })
 
   it('combine-mode files focus household interactions but stay broad', () => {
@@ -28,17 +66,18 @@ describe('mapImpact — conservative mapping', () => {
     expect(impact.focusDomains).toEqual(['household-interactions'])
   })
 
-  it('falls back to broad for unclassified paths (never silently narrow)', () => {
-    const impact = mapImpact(['src/someNewDirectory/mystery.ts'])
+  it('falls back to broad for unclassified paths and says so explicitly', () => {
+    const impact = mapImpact(['weird-config.toml'])
     expect(impact.breadth).toBe('broad')
     expect(impact.domains).toEqual(REVIEW_DOMAINS)
-    expect(impact.rationale).toMatch(/conservative fallback/)
+    expect(impact.rationale).toMatch(/unclassified path\(s\) fall back to full scope/)
   })
 
-  it('treats cosmetic-only changes as narrow', () => {
+  it('treats presentational-only changes as narrow', () => {
     const impact = mapImpact(['src/features/results/PrintReport.css', 'docs/context/ui.md'])
     expect(impact.breadth).toBe('narrow')
     expect(impact.domains).toEqual([])
+    expect(impact.rationale).toMatch(/presentational/)
   })
 
   it('one calculation-bearing file forces the whole change broad', () => {
@@ -47,9 +86,26 @@ describe('mapImpact — conservative mapping', () => {
     expect(impact.domains).toEqual(REVIEW_DOMAINS)
   })
 
-  it('tooling and docs are narrow even when they live in scripts/', () => {
-    expect(mapImpact(['scripts/review/review-run.mjs']).breadth).toBe('narrow')
-    expect(mapImpact(['README.md']).breadth).toBe('narrow')
+  it('worker, tooling, CI, and security/config scopes are meaningful, never labelled cosmetic', () => {
+    for (const files of [
+      ['workers/simulate/src/index.mjs'],
+      ['scripts/review/review-run.mjs'],
+      ['.github/workflows/pr-verify.yml'],
+      ['public/_redirects'],
+      ['wrangler.jsonc'],
+      ['AGENTS.md'],
+    ]) {
+      const impact = mapImpact(files)
+      expect(impact.breadth).toBe('broad')
+      expect(impact.rationale).not.toMatch(/cosmetic|presentational/)
+      expect(impact.meaningfulCategories.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('a mixed change (cosmetic file + meaningful file) stays broad with both facts in the rationale', () => {
+    const impact = mapImpact(['docs/context/ui.md', '.github/workflows/review-loop.yml'])
+    expect(impact.breadth).toBe('broad')
+    expect(impact.rationale).toMatch(/tooling \/ review gates/)
   })
 
   it('requires at least one changed file', () => {

@@ -36,11 +36,17 @@ export function buildReceipt({ prInfo, impact, panel, reviews, decision, options
       focusDomains: impact.focusDomains,
       rationale: impact.rationale,
     },
-    panel: { kind: panel.kind, note: panel.note },
+    // reviewers are carried in the receipt so a later publisher can prove the
+    // records it was handed ARE the requested panel (no dropped reviewer).
+    panel: { kind: panel.kind, note: panel.note, reviewers: panel.reviewers ?? [] },
     reviewers: reviews.map((review) => ({
       reviewer: review.reviewer,
       requestedModel: review.model,
       providerReportedModels: review.parse?.reportedModels ?? [],
+      // Honest provenance of the identity claim: "native-model-usage-keys"
+      // (claude/grok envelope keys) or "cli-session-turn-context" (codex
+      // rollout session file). Never a server-side attestation.
+      identityEvidence: review.parse?.meta?.identityEvidence ?? null,
       command: review.command ?? null,
       verdict: review.verdict?.ok ? review.verdict.verdict.verdict : null,
       confidence: review.verdict?.ok ? review.verdict.verdict.confidence ?? null : null,

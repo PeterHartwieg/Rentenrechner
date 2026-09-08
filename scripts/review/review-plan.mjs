@@ -30,6 +30,7 @@ async function main() {
           title: plan.prInfo.title,
           url: plan.prInfo.url,
           headSha: plan.prInfo.headSha,
+          baseSha: plan.prInfo.baseSha,
           baseRefName: plan.prInfo.baseRefName,
           diffDigest: plan.prInfo.diffDigest,
           files: plan.prInfo.files,
@@ -51,6 +52,7 @@ async function main() {
 
   console.log(`PR #${plan.prInfo.pr}: ${plan.prInfo.title}`)
   console.log(`Head SHA : ${plan.prInfo.headSha}`)
+  console.log(`Base     : ${plan.prInfo.baseRefName} @ ${plan.prInfo.baseSha}`)
   console.log(`Diff     : ${plan.prInfo.files.length} files, digest ${plan.prInfo.diffDigest.slice(0, 16)}…`)
   console.log(`Scope    : ${plan.impact.breadth} — ${plan.impact.rationale}`)
   console.log(`Panel    : ${plan.panel.kind} (${plan.panel.note})`)

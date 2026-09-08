@@ -109,11 +109,41 @@ describe('validateVerdict', () => {
     expect(result.reason).toMatch(/contradictory/)
   })
 
+  it('rejects approve with a major finding too — majors demand action', () => {
+    const result = validateVerdict({ verdict: verdict({ findings: [finding({ severity: 'major' })] }), ...ANCHOR })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toMatch(/approve with a major finding/)
+  })
+
+  it('rejects approve carrying unresolved questions — those must downgrade to needs-human', () => {
+    const result = validateVerdict({ verdict: verdict({ unresolved: ['Is the 2027 cap final?'] }), ...ANCHOR })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toMatch(/unresolved question/)
+  })
+
+  it('rejects non-string or empty unresolved entries', () => {
+    expect(
+      validateVerdict({ verdict: verdict({ unresolved: [null] }), ...ANCHOR }).reason,
+    ).toMatch(/unresolved 0 is not a non-empty string/)
+    expect(
+      validateVerdict({ verdict: verdict({ unresolved: ['   '] }), ...ANCHOR }).reason,
+    ).toMatch(/unresolved 0 is not a non-empty string/)
+  })
+
   it('accepts reject/needs-human with complete findings', () => {
     expect(
       validateVerdict({ verdict: verdict({ verdict: 'reject', findings: [finding()] }), ...ANCHOR }).ok,
     ).toBe(true)
     expect(validateVerdict({ verdict: verdict({ verdict: 'needs-human' }), ...ANCHOR }).ok).toBe(true)
+  })
+
+  it('accepts needs-human that carries unresolved questions (that is what it is for)', () => {
+    expect(
+      validateVerdict({
+        verdict: verdict({ verdict: 'needs-human', unresolved: ['Is the 2027 cap final?'] }),
+        ...ANCHOR,
+      }).ok,
+    ).toBe(true)
   })
 })
 

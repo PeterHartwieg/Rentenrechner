@@ -2,15 +2,28 @@
 //
 // The mapping errs toward breadth. Two tiers only:
 //
-// - 'broad'   — the change can move computed numbers or the rules they come
-//               from. All five calculation domains are in scope, because the
-//               shared engine feeds every product and both simulation modes.
-// - 'narrow'  — cosmetic-only surfaces (CSS, content copy, docs, static
-//               assets, dev tooling, tests). No calculation domain in scope;
-//               reviewers are told the change is presentational.
+// - 'broad'   — the change can move computed numbers, alter executable
+//               logic/defaults, shift oracle baselines, or touch security
+//               and the review gates themselves. All five calculation
+//               domains are in scope when calculation is plausible, because
+//               the shared engine feeds every product and both simulation
+//               modes. Worker/API, tooling, and assurance-scope changes are
+//               broad WITHOUT being called cosmetic: their rationale names
+//               the meaningful category instead.
+// - 'narrow'  — presentational-only paths: styling, prose docs, static
+//               assets. No executable logic in scope.
 //
-// Anything NOT matched by the narrow table is broad. That fallback is the
-// whole point: an unclassified path must never silently shrink the review.
+// PRECEDENCE: meaningful-path rules are checked FIRST and always beat the
+// cosmetic extension allowlist. `workers/**`, `scripts/**`, `.github/**`,
+// `public/**`, `src/**` (including src/content/), and the assurance/config
+// files listed below are meaningful regardless of extension — a .yml, .mjs,
+// or .json file can carry rules, defaults, oracle baselines, or review-gate
+// logic, and must never be narrowed away by its extension alone. The single
+// carve-out is pure styling (`.css` et al.) inside those prefixes: styles
+// carry no logic, and they are the narrow case the classifier exists to find.
+//
+// Anything NOT classified is broad. That fallback is the whole point: an
+// unclassified path must never silently shrink the review.
 //
 // Domain ids are shared with the source-freshness catalog (sourceCatalog.mjs)
 // so a stale research source and the PRs it affects speak the same language.
@@ -31,17 +44,86 @@ export const DOMAIN_LABELS = {
   'household-interactions': 'Household interactions (combine mode, transfers, statutory pension)',
 }
 
-// Files where a change cannot alter computed output. Paths are prefix-matched
-// exactly as written; extension rules are matched on the file name.
-const NARROW_PREFIXES = [
-  'docs/',
-  'public/',
-  'scripts/',
-  'workers/', // worker scopes are separate npm workspaces with their own tests
-  'src/content/',
+// Meaningful prefixes, checked before any extension rule. Order within the
+// list is irrelevant; the precedence over cosmetic extensions is absolute.
+const MEANINGFUL_PREFIXES = [
+  'src/', // engine, rules, app, features, domain, content, test — all executable or default-bearing
+  'workers/', // worker/API executable logic and their configs
+  'scripts/', // dev tooling — including this review toolchain itself
+  '.github/', // workflows = review gates and CI behavior
+  'public/', // redirects, manifests, prerendered route surface
+  'docs/automation/', // review-gate and pipeline design docs
+  'docs/adr/', // architectural decisions the review bar leans on
+  'docs/agents/', // agent process docs (review bar mirror)
 ]
 
-const NARROW_EXTENSIONS = ['.css', '.md', '.mdx', '.html', '.json', '.yml', '.yaml', '.mjs']
+// Single files whose change is never presentational: assurance docs, the
+// review bar itself, and build/security config.
+const MEANINGFUL_FILES = new Set([
+  'AGENTS.md',
+  'CLAUDE.md',
+  'CONTEXT.md',
+  'README.md',
+  'BACKLOG.md',
+  'LICENSE.md',
+  'COMMERCIAL_LICENSE.md',
+  'docs/validation.md',
+  'package.json',
+  'package-lock.json',
+  'eslint.config.js',
+  'vite.config.ts',
+  'tsconfig.json',
+  'tsconfig.node.json',
+  'wrangler.jsonc',
+  'vercel.json',
+  'netlify.toml',
+])
+
+// Extension-only allowlist. Only reachable for paths that matched NO
+// meaningful rule above.
+const COSMETIC_EXTENSIONS = ['.css', '.md', '.mdx', '.html', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.webp']
+
+// Styling is presentational even when it lives inside a meaningful prefix
+// (src/features/*.css). Deliberately narrow: the meaningful rules still beat
+// this carve-out for anything executable — .mjs, .json, .yml, src/content/.
+const STYLING_EXTENSIONS = ['.css', '.scss', '.sass', '.less', '.styl']
+
+// Files where a change cannot alter computed output AND carry none of the
+// meaningful categories above.
+const COSMETIC_PREFIXES = ['docs/']
+
+export const MEANINGFUL_CATEGORIES = {
+  'engine-rules': 'engine/rules/statutory values',
+  'worker-api': 'worker/API executable logic',
+  'tooling-review-gates': 'dev tooling / review gates / CI',
+  'assurance-config': 'assurance docs or build/security config',
+  'application-code': 'application code (UI/state/display logic)',
+}
+
+function matchesPrefix(path, prefixes) {
+  return prefixes.some((prefix) => path === prefix || path.startsWith(prefix))
+}
+
+function matchesExtension(path, extensions) {
+  return extensions.some((ext) => path.endsWith(ext))
+}
+
+// Classifies one path. 'meaningful' beats 'cosmetic' unconditionally — the
+// only exception is pure styling inside a meaningful prefix, which carries no
+// logic and is the narrow case the two-tier mapping exists for.
+export function classifyPath(path) {
+  if (MEANINGFUL_FILES.has(path)) return 'meaningful'
+  if (matchesPrefix(path, MEANINGFUL_PREFIXES)) {
+    if (matchesExtension(path, STYLING_EXTENSIONS)) return 'cosmetic'
+    return 'meaningful'
+  }
+  if (matchesPrefix(path, COSMETIC_PREFIXES) || matchesExtension(path, COSMETIC_EXTENSIONS)) return 'cosmetic'
+  return 'unclassified'
+}
+
+export function isUntrustedContextPath(path) {
+  return UNTRUSTED_CONTEXT_PATTERNS.some((pattern) => pattern.test(path))
+}
 
 // Files that identify WHICH domains a broad change most affects. Focus hints
 // never reduce scope; they only order the reviewer prompt.
@@ -133,23 +215,6 @@ export const UNTRUSTED_CONTEXT_PATTERNS = [
   /^\.review\//,
 ]
 
-function matchesPrefix(path, prefixes) {
-  return prefixes.some((prefix) => path === prefix || path.startsWith(prefix))
-}
-
-function matchesExtension(path, extensions) {
-  return extensions.some((ext) => path.endsWith(ext))
-}
-
-export function isNarrowPath(path) {
-  if (matchesExtension(path, NARROW_EXTENSIONS)) return true
-  return matchesPrefix(path, NARROW_PREFIXES)
-}
-
-export function isUntrustedContextPath(path) {
-  return UNTRUSTED_CONTEXT_PATTERNS.some((pattern) => pattern.test(path))
-}
-
 export function focusDomainsForPaths(paths) {
   const focused = new Set()
   for (const path of paths) {
@@ -162,29 +227,56 @@ export function focusDomainsForPaths(paths) {
   return REVIEW_DOMAINS.filter((domain) => focused.has(domain))
 }
 
+function meaningfulCategory(path) {
+  if (path.startsWith('src/engine/') || path.startsWith('src/rules/') || path === 'src/storage.ts') {
+    return MEANINGFUL_CATEGORIES['engine-rules']
+  }
+  if (path.startsWith('workers/')) return MEANINGFUL_CATEGORIES['worker-api']
+  if (path.startsWith('scripts/') || path.startsWith('.github/')) return MEANINGFUL_CATEGORIES['tooling-review-gates']
+  if (MEANINGFUL_FILES.has(path) || path.startsWith('docs/')) return MEANINGFUL_CATEGORIES['assurance-config']
+  return MEANINGFUL_CATEGORIES['application-code']
+}
+
 // Main entry: map changed file paths to review scope.
-// Returns { breadth, domains, focusDomains, rationale, untrustedContextPaths }.
+// Returns { breadth, domains, focusDomains, rationale, meaningfulCategories,
+// untrustedContextPaths }.
 export function mapImpact(files) {
   if (!Array.isArray(files) || files.length === 0) {
     throw new Error('impact mapping requires at least one changed file')
   }
 
   const untrustedContextPaths = files.filter(isUntrustedContextPath)
-  const narrow = files.every(isNarrowPath)
+  const classifications = files.map((path) => ({ path, kind: classifyPath(path) }))
+  const narrow = classifications.every(({ kind }) => kind === 'cosmetic')
   const focusDomains = focusDomainsForPaths(files)
   const domains = narrow ? [] : [...REVIEW_DOMAINS]
 
-  const rationale = narrow
-    ? 'all changed paths are cosmetic-only (CSS, copy, docs, static assets, dev tooling); no calculation domain in scope'
-    : focusDomains.length > 0
-      ? `calculation-bearing paths detected (focus: ${focusDomains.join(', ')}); shared engine means all domains are in scope`
-      : 'unclassified path(s) present; conservative fallback treats the change as calculation-bearing across all domains'
+  const meaningfulPaths = classifications.filter(({ kind }) => kind === 'meaningful').map(({ path }) => path)
+  const unclassifiedPaths = classifications.filter(({ kind }) => kind === 'unclassified').map(({ path }) => path)
+  const meaningfulCategories = [...new Set(meaningfulPaths.map(meaningfulCategory))]
+
+  let rationale
+  if (narrow) {
+    rationale =
+      'all changed paths are presentational (styling, prose docs, static assets); no executable logic, statutory rules, worker/API, or review-gate surface in scope'
+  } else {
+    const parts = []
+    if (meaningfulCategories.length > 0) parts.push(`meaningful scope: ${meaningfulCategories.join(', ')}`)
+    if (unclassifiedPaths.length > 0) {
+      parts.push(`unclassified path(s) fall back to full scope: ${unclassifiedPaths.join(', ')}`)
+    }
+    if (focusDomains.length > 0) parts.push(`calculation focus: ${focusDomains.join(', ')}`)
+    rationale =
+      (parts.join('; ') ||
+        'calculation-bearing change') + '; the shared engine means all five domains stay in scope'
+  }
 
   return {
     breadth: narrow ? 'narrow' : 'broad',
     domains,
     focusDomains,
     rationale,
+    meaningfulCategories,
     untrustedContextPaths,
   }
 }

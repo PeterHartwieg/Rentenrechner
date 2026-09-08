@@ -5,8 +5,12 @@
 // SHA, mandates the finding fields required by issue #382 (source + applicable
 // date, interpretation, counterexample or test, unresolved uncertainty), and
 // ends with the structured verdict JSON every parser expects.
-
-import { readFileSync } from 'node:fs'
+//
+// Context is read at the reviewed SHA (the caller reads from the pinned
+// review worktree). Required context that is unavailable at that SHA fails
+// the review — a review without its mapped context is not a review. Bounded
+// per-file excerpting stays explicit: truncated excerpts carry a visible
+// truncation marker in the prompt.
 
 // Hard cap on the assembled prompt. Exceeding it aborts the review instead of
 // silently shipping a truncated diff to reviewers.
@@ -68,7 +72,7 @@ export function buildReviewPrompt({ prInfo, impact, contextExcerpts, panelNote }
     `# Calculation review — ${prInfo.title}\n`,
     `PR: #${prInfo.pr}${prInfo.url ? ` (${prInfo.url})` : ''}`,
     `Head SHA (RESTATE THIS EXACTLY in your verdict): \`${prInfo.headSha}\``,
-    `Base branch: ${prInfo.baseRefName}`,
+    `Base branch: ${prInfo.baseRefName}${prInfo.baseSha ? ` @ \`${prInfo.baseSha}\`` : ''}`,
     `Diff digest (sha256): \`${prInfo.diffDigest}\``,
     `Review scope: ${scope}`,
     `Mapped focus domains: ${focus}`,
@@ -115,20 +119,26 @@ export function buildReviewPrompt({ prInfo, impact, contextExcerpts, panelNote }
   return prompt
 }
 
-// Reads context files from the repo and turns them into truncated excerpts.
-// Missing files are skipped with a note rather than failing the review — the
-// diff itself is the primary evidence.
-export function collectContextExcerpts({ paths, readText = defaultRead, maxLines = MAX_CONTEXT_LINES_PER_FILE }) {
+// Turns context files (read by the caller at the reviewed SHA) into bounded
+// excerpts. A file that cannot be read at the reviewed SHA fails the review:
+// the mapping said reviewers need it, so an unavailable file is missing
+// required content, not a skippable nice-to-have.
+export function collectContextExcerpts({ paths, readText, maxLines = MAX_CONTEXT_LINES_PER_FILE }) {
+  if (typeof readText !== 'function') {
+    throw new Error('collectContextExcerpts requires an explicit readText (context must be read at the reviewed SHA)')
+  }
   const excerpts = []
   for (const path of paths) {
     let text
     try {
       text = readText(path)
-    } catch {
-      excerpts.push({ path, text: '(file not present — skipped)', lines: 0, truncated: false })
-      continue
+    } catch (error) {
+      throw new Error(
+        `required context file "${path}" is not available at the reviewed SHA (${error.message}); ` +
+          'refusing to review without mapped context',
+      )
     }
-    const allLines = text.split('\n')
+    const allLines = String(text).split('\n')
     // A trailing newline is not a line of content.
     const lines = allLines[allLines.length - 1] === '' ? allLines.slice(0, -1) : allLines
     const truncated = lines.length > maxLines
@@ -140,8 +150,4 @@ export function collectContextExcerpts({ paths, readText = defaultRead, maxLines
     })
   }
   return excerpts
-}
-
-function defaultRead(path) {
-  return readFileSync(path, 'utf8')
 }

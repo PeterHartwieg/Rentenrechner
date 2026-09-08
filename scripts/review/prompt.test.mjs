@@ -1,7 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 
 import { MAX_PROMPT_CHARS, buildReviewPrompt, collectContextExcerpts } from './lib/prompt.mjs'
 import { REVIEW_DOMAINS, mapImpact } from './lib/impactMap.mjs'
@@ -28,6 +25,16 @@ describe('buildReviewPrompt', () => {
 
   it('pins the exact head SHA with a restate instruction', () => {
     expect(prompt).toContain(`Head SHA (RESTATE THIS EXACTLY in your verdict): \`${'a'.repeat(40)}\``)
+  })
+
+  it('pins the base SHA so reviewers know what the diff is against', () => {
+    const withBase = buildReviewPrompt({
+      prInfo: { ...prInfo, baseSha: 'b'.repeat(40) },
+      impact,
+      contextExcerpts: [],
+    })
+    expect(withBase).toContain(`Base branch: main @ \`${'b'.repeat(40)}\``)
+    expect(prompt).toContain('Base branch: main') // absent base SHA degrades honestly
   })
 
   it('includes the full diff and context excerpts', () => {
@@ -81,23 +88,32 @@ describe('buildReviewPrompt', () => {
 })
 
 describe('collectContextExcerpts', () => {
-  it('reads files, reports truncation, skips missing files without failing', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'rw-prompt-'))
-    try {
-      writeFileSync(join(dir, 'present.md'), 'line1\nline2\n', 'utf8')
-      const excerpts = collectContextExcerpts({
-        paths: ['present.md', 'absent.md'],
+  it('reads every mapped file through the caller-supplied readText', () => {
+    const excerpts = collectContextExcerpts({
+      paths: ['AGENTS.md', 'src/engine/tax.ts'],
+      readText: (path) => `content of ${path}\n`,
+    })
+    expect(excerpts).toHaveLength(2)
+    expect(excerpts[0]).toMatchObject({ path: 'AGENTS.md', truncated: false, lines: 1 })
+    expect(excerpts[1].text).toBe('content of src/engine/tax.ts\n')
+  })
+
+  it('fails the review when required context is unavailable at the reviewed SHA', () => {
+    // The mapping said reviewers need this file. Silently shipping the review
+    // without it would be a weaker review than the plan promised.
+    expect(() =>
+      collectContextExcerpts({
+        paths: ['AGENTS.md', 'docs/validation.md'],
         readText: (path) => {
-          if (path === 'absent.md') throw new Error('ENOENT')
-          return 'line1\nline2\n'
+          if (path === 'docs/validation.md') throw new Error('ENOENT')
+          return 'ok\n'
         },
-      })
-      expect(excerpts).toHaveLength(2)
-      expect(excerpts[0]).toMatchObject({ path: 'present.md', truncated: false, lines: 2 })
-      expect(excerpts[1]).toMatchObject({ path: 'absent.md', text: '(file not present — skipped)' })
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
+      }),
+    ).toThrow(/required context file "docs\/validation\.md" is not available at the reviewed SHA/)
+  })
+
+  it('requires an explicit readText — context must come from the pinned SHA', () => {
+    expect(() => collectContextExcerpts({ paths: ['AGENTS.md'] })).toThrow(/requires an explicit readText/)
   })
 
   it('truncates long files at the line cap and says so', () => {

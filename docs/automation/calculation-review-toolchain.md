@@ -17,13 +17,17 @@ reviews *changes* against statutory sources before merge.
    PR head SHA + changed files via `gh`, maps the change to review scope,
    names the panel and the context files. Read-only, no model calls.
 2. **Run** (`npm run review:run -- --pr <n> [--complex] [--publish]`) —
-   captures diff + curated context into a prompt file, runs the panel, parses
+   captures diff + curated context into a prompt file, checks out the exact
+   head SHA into a detached throwaway worktree, runs the panel there, parses
    each native result JSON, gates on the verdict contract, writes a local
    machine-readable receipt.
-3. **Publish** (optional, explicit `--publish` or
-   `npm run review:publish -- --receipt <path>`) — re-fetches the PR head and
-   sets the `calculation-review` commit status via `gh`. Rejects stale heads.
-   Never merges.
+3. **Publish** (optional, explicit `--publish` on `review:run`) — re-checks
+   the PR head **and** base refs via `gh` immediately before writing
+   (`STALE_HEAD` / `PR_MOVED` abort), requires the `verify` GitHub Actions
+   check run to have succeeded on that exact SHA (approvals only), then sets
+   the `calculation-review` commit status. The run is published from memory —
+   there is no "publish an old receipt file" path, so a file on disk can never
+   manufacture a decision. Never merges.
 4. **Sources** (`npm run review:sources [-- --json] [-- --fail-on-stale]`) —
    deterministic source-freshness report over the source-review catalog.
 
@@ -64,6 +68,9 @@ Two tiers only:
 
 Anything not matched by the narrow table is broad. The conservative fallback
 is the point: an unclassified path must never silently shrink the review.
+One carve-out: styling files (`.css`/`.scss`/… ) inside an otherwise
+meaningful prefix count as cosmetic — meaningful prefixes beat file
+extensions, and this is the only place an extension narrows a prefix.
 Domain ids are shared with the source-freshness catalog.
 
 Files that look like review receipts or approvals (`*receipt*`, `*approval*`,
@@ -88,13 +95,33 @@ link is not legal approval.
 
 ### Read-only enforcement
 
-Belt and braces: read-only tool flags per CLI (`claude --tools Read,Grep,Glob`
-+ `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` so no MCP server is
-configured at all; `codex exec -s read-only`; grok runs with
-`--disable-web-search` and a turn cap — its help does not pin tool-allowlist
-names in this version, so the enforcement there is the prompt plus the
-worktree check), and a `git status --porcelain` snapshot around every reviewer
-run. Any worktree mutation voids that review.
+Belt and braces — per CLI, both a tool allowlist **and** a config-isolation
+flag, because a read-only tool allowlist alone does not stop a PR from
+planting hooks or project plugins that run when the CLI starts:
+
+- **claude** runs with `--safe-mode` (every customization surface disabled —
+  CLAUDE.md, skills, plugins, hooks, MCP, custom agents; auth, model
+  selection, and permissions still work) plus `--restricted` (ignores
+  user/project/local settings files, confines file tools to the review
+  worktree, refuses bypassPermissions), on top of the explicit
+  `--tools Read,Grep,Glob` + `--allowedTools Read,Grep,Glob` allowlist and a
+  strict empty MCP config (`--strict-mcp-config --mcp-config '{"mcpServers":{}}'`).
+- **grok** has no safe-mode flag in this build (1.0.4), so the runner first
+  runs the CLI's own discovery report, `grok inspect --json`, **inside the
+  review worktree** and fails closed if it lists any hook/plugin/MCP/LSP
+  server owned by the project (or with no ownership source at all). The
+  review itself runs with `--no-memory`, `--no-subagents`, a
+  `read_file,grep,list_dir` allowlist, `--deny MCPTool`, and web search off.
+- **codex** runs `mcp list --json` twice — once plain, once with
+  `-c mcp_servers.<server>.enabled=false` overrides for every configured
+  server — and refuses to proceed while any server stays enabled. It also
+  runs with `--disable plugins --disable apps --disable hooks
+  --ignore-user-config --ignore-rules` and `-s read-only`. Unsafe server
+  names are rejected outright, never interpolated into argv.
+
+Around every reviewer run: a `git status --porcelain` + HEAD snapshot before
+and after. Any worktree mutation or HEAD move voids that review — and one
+voided reviewer invalidates the whole run.
 
 ### Fail-closed parsing (`lib/adapters.mjs`, `lib/verdicts.mjs`)
 
@@ -108,11 +135,20 @@ that reviewer and therefore the whole panel (`adjudicatePanel` returns
   `type=result, subtype=success, is_error=false`; grok result text present
   with no error/truncation/turn-limit markers in metadata; codex JSONL events
   parsed + non-empty `--output-last-message` file),
-- provider-reported model identity matches the requested model
-  (alias-aware, bracket-suffix tolerant),
+- provider-reported model identity matches the requested model. For claude
+  and grok the identity comes from the native result envelope's `modelUsage`
+  keys (`identityEvidence: native-model-usage-keys`); for codex — whose
+  stdout carries no model identity — it comes from the CLI's own rollout
+  session file (`$CODEX_HOME/sessions/.../rollout-…-<thread>.jsonl`,
+  `session_meta` + `turn_context` only; evidence kind
+  `cli-session-turn-context`, timestamped inside the review invocation
+  window). Accept lists are explicit per model with no fuzzy fallback, so
+  the Opus slot can never be satisfied by a Fable id and vice versa,
 - the reply contains a parseable verdict block that restates the exact PR
-  number and head SHA, uses only enumerated values, and is not contradictory
-  (`approve` + `blocker` finding is rejected),
+  number and head SHA, uses only enumerated values, and is not
+  contradictory: `approve` with a **blocker or major** finding is rejected,
+  as is `approve` carrying **unresolved questions** (those must downgrade to
+  needs-human), and every `unresolved` entry must be a non-empty string,
 - every finding carries all required fields.
 
 Grok-specific: result text is read only from known result fields
@@ -127,24 +163,39 @@ One bad reviewer invalidates the run; it never downgrades to approve.
 
 Each run writes `.review-receipts/pr-<n>-<sha8>-<timestamp>.json`
 (gitignored, local-only) containing: schema version, PR + exact head SHA +
-diff digest (sha256), impact mapping, panel, per-reviewer record (requested
-model **and** provider-reported identity, verdict, findings, unresolved
-questions, failure reasons), the panel decision, and deterministic-verification
-metadata. The tool never runs tests itself; `--verify-commit <sha>` records
-the caller's attestation as a claim, clearly labelled. Approval-shaped files
-inside a PR diff are never trusted as receipts — receipts are only what this
-tooling wrote locally.
+diff digest (sha256), impact mapping, the requested panel **with its reviewer
+list**, per-reviewer record (requested model **and** provider-reported
+identity + the evidence kind it came from, verdict, findings, unresolved
+questions, failure reasons), the panel decision, and
+deterministic-verification metadata. The tool never runs tests itself;
+`--verify-commit <sha>` records the caller's attestation as a claim, clearly
+labelled. Approval-shaped files inside a PR diff are never trusted as
+receipts — receipts are only what this tooling wrote locally.
+
+Publishing re-derives the decision from the in-memory reviewer records and
+refuses if the receipt does not match the run (decision, PR, head SHA, diff
+digest, reviewer count, **and** that the records constitute exactly the
+requested panel) — a doctored or stale receipt file can never publish.
 
 ### Publish gating (`lib/publish.mjs`)
 
-`--publish` re-fetches `headRefOid` via `gh` immediately before writing. If
-the PR moved since the receipt was written, publish aborts with `STALE_HEAD`
-and writes nothing. Otherwise it sets a commit status on the exact reviewed
-SHA with context `calculation-review` and a state mapped honestly from the
-decision (`approve→success`, `reject→failure`, `needs-human→neutral`,
-`invalid→error`), plus an optional concise PR comment (`--comment`) that
-identifies reviewers by model — never by person, never as a human approval.
-The toolchain contains no merge path.
+`--publish` re-fetches `headRefOid` **and** `baseRefOid` via `gh` immediately
+before writing; either having moved aborts with `STALE_HEAD` / `PR_MOVED` and
+writes nothing. An approving decision additionally requires the `verify`
+check run on the exact reviewed SHA to have concluded `success`, and only
+check runs owned by the GitHub Actions app (id 15368) count — a third-party
+check merely *named* `verify` is not our deterministic verification. The gate
+judges the **latest** run by `started_at` (paginated, `per_page=100`): a
+newer queued/in-progress run blocks even if an older run succeeded, while a
+re-run heals an older failure. Anything short of that fails closed with
+`VERIFY_NOT_SUCCESSFUL` and nothing is written.
+
+The commit status context is `calculation-review`, mapped honestly from the
+decision (`approve→success`, `reject→failure`, `needs-human→failure` — GitHub
+has no neutral state and the gate must fail closed — `invalid→error`), plus
+an optional concise PR comment (`--comment`) that identifies reviewers by
+model — never by person, never as a human approval. The toolchain contains
+no merge path.
 
 ## Source freshness process
 
@@ -201,11 +252,8 @@ npm run review:plan -- --pr 123 --complex --json
 # full review, local receipt only
 npm run review:run -- --pr 123 --verify-commit $(git rev-parse HEAD)
 
-# full review, then publish status + comment (gated on exact head)
+# full review, then publish status + comment (gated on exact head + verify check)
 npm run review:run -- --pr 123 --publish --comment
-
-# publish an older receipt later
-npm run review:publish -- --receipt .review-receipts/pr-123-<sha8>-<ts>.json
 
 # freshness
 npm run review:sources
@@ -248,18 +296,22 @@ reviewer latency (minutes, not seconds); publish adds two `gh` calls.
 
 ## Known quirks / limitations
 
-- Claude CLI in this build (2.1.263) exposes no `--max-turns`; the wall-clock
-  timeout is the only turn guard for that reviewer (fail-closed either way).
+- `--max-turns 35` works in the installed claude build (2.1.263) even though
+  `--help` omits it; the wall-clock timeout remains the backstop.
 - `codex exec` receives the prompt on stdin (argv would risk ARG_MAX on big
-  diffs); its provider model identity is read from the `--json` event stream
-  and a run without one fails closed rather than being trusted.
+  diffs); its provider model identity is not in the `--json` event stream at
+  all — it is read from the rollout session file the CLI itself writes, and
+  a run without one fails closed rather than being trusted.
 - Grok's native JSON field names are not documented beyond `--help`, so the
   parser accepts a conservative allowlist of result fields and fails closed
-  on anything it does not recognize.
+  on anything it does not recognize. Its config-discovery posture relies on
+  `grok inspect --json` (the CLI's own machine-readable report); if a future
+  version changes that shape, the preflight fails closed.
 - The impact map is intentionally coarse: `src/features/**` code counts as
   calculation-bearing because display-layer row builders compute numbers.
-- Reviewers see the repo as of their run; a PR that changes mid-review is
-  caught by the publish gate, not by the reviewers themselves.
+- Reviewers run in a detached worktree pinned to the reviewed SHA, so a PR
+  that changes mid-review cannot leak into an in-flight run; a moved PR is
+  caught by the publish re-check, and the worktree is removed in a `finally`.
 
 ## Adapting to other projects
 

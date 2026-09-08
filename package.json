@@ -22,7 +22,6 @@
     "repo:stats": "node scripts/repo-stats.mjs",
     "review:plan": "node scripts/review/review-plan.mjs",
     "review:run": "node scripts/review/review-run.mjs",
-    "review:publish": "node scripts/review/review-publish.mjs",
     "review:sources": "vite-node scripts/review/review-sources.ts",
     "prerender": "node scripts/prerender.mjs",
     "og:generate": "node scripts/generate-og-images.mjs",

@@ -1,46 +1,85 @@
 // Per-CLI adapters: command-line construction + native output parsing.
 //
-// Argument shapes are pinned to the CLIs' own --help output (checked against
-// claude 2.1.263, grok 1.0.4, codex-cli 0.153.4):
+// Argument shapes are pinned to the CLIs' own --help output and to the
+// parent's verified working invocations (checked against claude 2.1.263,
+// grok 1.0.4, codex-cli 0.153.4):
 //
-//   claude -p --output-format json --model <m> --tools "Read,Grep,Glob"
-//          --strict-mcp-config --mcp-config '{"mcpServers":{}}'   (stdin: prompt)
-//   grok   --prompt-file <f> --output-format json -m <m> --max-turns <n>
-//          --disable-web-search                                    (prompt file)
-//   codex  exec --json -s read-only -m <m> --output-last-message <f> -
+//   claude -p --output-format json --model <m> --max-turns 35
+//          --tools Read,Grep,Glob --permission-mode dontAsk
+//          --allowedTools Read,Grep,Glob
+//          --strict-mcp-config --mcp-config '{"mcpServers":{}}'  (stdin: prompt)
+//          (--max-turns works in this build even though --help omits it)
+//   grok   --prompt-file <f> --output-format json -m <m> --max-turns 60
+//          --disable-web-search --no-subagents
+//          --tools read_file,grep,list_dir --deny MCPTool
+//          --permission-mode dontAsk --allow Read --allow Grep   (prompt file)
+//          (--disable-web-search alone leaves mutating tools available —
+//           the explicit tool allowlist + MCPTool deny are required)
+//   codex  exec --json -s read-only -m <m> --output-last-message <f>
+//          --disable plugins --disable apps --disable hooks
+//          --ignore-user-config --ignore-rules [-c mcp_servers.<n>.enabled=false] -
 //                                                                 (stdin: prompt)
 //
-// All parsers fail closed: any missing field, non-success status, unknown
-// shape, model mismatch, or truncation marker voids the review instead of
-// being interpreted generously.
+// Provider-reported model identity lives in the native result envelopes'
+// `modelUsage` OBJECT KEYS (verified live: claude → "claude-opus-5"; grok →
+// "grok-4.6-build"). Codex stdout has no
+// model identity at all — its identity comes from the CLI rollout session
+// file, see codexSession.mjs.
+//
+// All parsers fail closed and read POSITIVE completion evidence only. Any
+// missing field, non-success status, unknown shape, or model mismatch voids
+// the review. Thought/draft/reasoning fields in reviewer output are never
+// read — not even for failure detection — so they can never become a verdict.
+
+import { parseCodexExecEvents } from './codexSession.mjs'
 
 export const CLAUDE_READONLY_TOOLS = 'Read,Grep,Glob'
+export const CLAUDE_MAX_TURNS = 35
 export const EMPTY_MCP_CONFIG = '{"mcpServers":{}}'
+export const GROK_READONLY_TOOLS = 'read_file,grep,list_dir'
 export const GROK_MAX_TURNS = 60
-export const GROK_ALLOWED_THOUGHT_NEVER_FIELDS = [
-  'thought',
-  'thinking',
-  'draft',
-  'reasoning',
-  'analysis',
-  'scratchpad',
-]
 
-// Fields a Grok native JSON verdict may be read from. Everything else — in
-// particular the thought/draft fields above — is ignored for verdict purposes.
-export const GROK_RESULT_TEXT_FIELDS = ['result', 'response', 'content', 'final', 'text', 'output']
+// Explicit accept lists per requested model. There is deliberately NO
+// substring/fuzzy fallback: a reported id is accepted only if it appears
+// here, so the Opus slot can never be satisfied by a Fable or Sonnet id and
+// vice versa. `claude-opus-*` is prefix-matched deliberately — it is the
+// documented Opus family id shape ("claude-opus-5" observed live).
+const IDENTITY_RULES = {
+  opus: (reported) => reported.startsWith('claude-opus-'),
+  'claude-fable-5-1': (reported) => reported === 'claude-fable-5-1',
+  'grok-4.6': (reported) => reported === 'grok-4.6' || reported === 'grok-4.6-build',
+  'gpt-6-astra': (reported) => reported === 'gpt-6-astra',
+}
 
-const COMPLETION_FAILURE_MARKERS =
-  /(max[_ -]?turns|turn[_ -]?limit|truncat|length[_ -]?limit|aborted|cancelled|canceled)/i
+export function normalizeModelToken(model) {
+  return String(model ?? '')
+    .toLowerCase()
+    .replace(/\[[^\]]*\]/g, '') // e.g. "claude-fable-5-1[1m]" context suffixes
+    .trim()
+}
 
-const CODEX_STDERR_FAILURE_MARKERS =
-  /(stream disconnected|unexpected status|rate limit|unauthorized|forbidden|context window)/i
+export function identityAccepts(requested, reported) {
+  const rule = IDENTITY_RULES[normalizeModelToken(requested)]
+  if (!rule) return false
+  return rule(normalizeModelToken(reported))
+}
+
+// Reads the modelUsage OBJECT KEYS from a native result envelope — the
+// verified location of provider-reported identity. Returns [] when the
+// envelope has no usable modelUsage map.
+export function collectModelUsageKeys(json) {
+  const usage = json?.modelUsage
+  if (usage === null || typeof usage !== 'object' || Array.isArray(usage)) return []
+  return Object.keys(usage).filter((key) => key.length > 0)
+}
 
 // --- Argument builders ------------------------------------------------------
 
 // Single place that assembles the final argv per reviewer kind so tests can
-// pin the exact shapes against the CLIs' documented flags.
-export function buildReviewerInvocation({ reviewer, model, promptFile, outputLastMessageFile }) {
+// pin the exact shapes against the CLIs' documented flags. `codexMcpArgs`
+// carries the per-server disable overrides produced by the MCP preflight
+// (adapters stays pure — the preflight itself spawns in runner.mjs).
+export function buildReviewerInvocation({ reviewer, model, promptFile, outputLastMessageFile, codexMcpArgs = [] }) {
   switch (reviewer) {
     case 'claude':
       return {
@@ -50,7 +89,20 @@ export function buildReviewerInvocation({ reviewer, model, promptFile, outputLas
           'json',
           '--model',
           model,
+          '--max-turns',
+          String(CLAUDE_MAX_TURNS),
+          // --safe-mode disables every customization surface a PR could plant
+          // (CLAUDE.md, skills, plugins, hooks, MCP, custom agents); auth and
+          // model selection still work. --restricted additionally ignores
+          // user/project/local settings files, confines file tools to the
+          // review worktree, and refuses bypassPermissions.
+          '--safe-mode',
+          '--restricted',
           '--tools',
+          CLAUDE_READONLY_TOOLS,
+          '--permission-mode',
+          'dontAsk',
+          '--allowedTools',
           CLAUDE_READONLY_TOOLS,
           '--strict-mcp-config',
           '--mcp-config',
@@ -70,12 +122,43 @@ export function buildReviewerInvocation({ reviewer, model, promptFile, outputLas
           '--max-turns',
           String(GROK_MAX_TURNS),
           '--disable-web-search',
+          '--no-subagents',
+          '--no-memory',
+          '--tools',
+          GROK_READONLY_TOOLS,
+          '--deny',
+          'MCPTool',
+          '--permission-mode',
+          'dontAsk',
+          '--allow',
+          'Read',
+          '--allow',
+          'Grep',
         ],
         inputMode: 'prompt-file',
       }
     case 'codex':
       return {
-        args: ['exec', '--json', '-s', 'read-only', '-m', model, '--output-last-message', outputLastMessageFile, '-'],
+        args: [
+          'exec',
+          '--json',
+          '-s',
+          'read-only',
+          '-m',
+          model,
+          '--output-last-message',
+          outputLastMessageFile,
+          '--disable',
+          'plugins',
+          '--disable',
+          'apps',
+          '--disable',
+          'hooks',
+          '--ignore-user-config',
+          '--ignore-rules',
+          ...codexMcpArgs,
+          '-',
+        ],
         inputMode: 'stdin',
       }
     default:
@@ -83,40 +166,9 @@ export function buildReviewerInvocation({ reviewer, model, promptFile, outputLas
   }
 }
 
-// --- Model identity ---------------------------------------------------------
-
-export function normalizeModelToken(model) {
-  return String(model ?? '')
-    .toLowerCase()
-    .replace(/\[[^\]]*\]/g, '') // e.g. "claude-fable-5-1[1m]" context suffixes
-    .trim()
-}
-
-export function modelMatches(reported, requested) {
-  const a = normalizeModelToken(reported)
-  const b = normalizeModelToken(requested)
-  if (!a || !b) return false
-  return a.includes(b) || b.includes(a)
-}
-
-// Walks a parsed object and collects every string value stored under a "model"
-// key. Deterministic, depth-limited, and never follows arrays beyond a sane
-// bound — used to read the PROVIDER-reported identity, never to extract the
-// verdict itself.
-export function collectReportedModels(node, results = [], depth = 0) {
-  if (results.length > 32 || depth > 8 || node === null || typeof node !== 'object') return results
-  if (Array.isArray(node)) {
-    for (const item of node.slice(0, 64)) collectReportedModels(item, results, depth + 1)
-    return results
-  }
-  for (const [key, value] of Object.entries(node)) {
-    if (key === 'model' && typeof value === 'string') results.push(value)
-    else if (value !== null && typeof value === 'object') collectReportedModels(value, results, depth + 1)
-  }
-  return results
-}
-
-// --- Claude parser ----------------------------------------------------------
+// --- Claude parser -----------------------------------------------------------
+// Verified live envelope: { type: "result", subtype: "success", is_error:
+// false, num_turns: N, modelUsage: { "claude-opus-5": {...} }, result: "..." }.
 
 export function parseClaudeReviewerOutput({ stdout, exitCode, requestedModel }) {
   if (exitCode !== 0) return fail(`claude exited with code ${exitCode}`)
@@ -141,57 +193,31 @@ export function parseClaudeReviewerOutput({ stdout, exitCode, requestedModel }) 
   if (typeof json.result !== 'string' || json.result.trim().length === 0) {
     return fail('claude result text is missing or empty')
   }
-  const reportedModels = collectReportedModels(json)
-  if (!reportedModels.some((reported) => modelMatches(reported, requestedModel))) {
+  const reportedModels = collectModelUsageKeys(json)
+  if (reportedModels.length === 0) {
+    return fail('claude result envelope carries no modelUsage identity — refusing to attribute the review')
+  }
+  if (!reportedModels.every((reported) => identityAccepts(requestedModel, reported))) {
     return fail(
       `claude model identity mismatch: requested "${requestedModel}", provider reported ${JSON.stringify(reportedModels)}`,
       { reportedModels },
     )
   }
-  return { ok: true, text: json.result, reportedModels, meta: { subtype: json.subtype, numTurns: json.num_turns } }
-}
-
-// --- Grok parser ------------------------------------------------------------
-
-// Reads the review text from allowed fields ONLY. Thought/draft fields are
-// never consulted — a verdict that exists solely inside them does not exist.
-export function extractGrokResultText(json) {
-  if (json === null || typeof json !== 'object' || Array.isArray(json)) return null
-
-  if (Array.isArray(json.messages)) {
-    const assistantMessages = json.messages.filter(
-      (m) => m && typeof m === 'object' && m.role === 'assistant' && typeof m.content === 'string',
-    )
-    const last = assistantMessages[assistantMessages.length - 1]
-    if (last && last.content.trim()) return last.content
+  return {
+    ok: true,
+    text: json.result,
+    reportedModels,
+    meta: { subtype: json.subtype, numTurns: json.num_turns, identityEvidence: 'native-model-usage-keys' },
   }
-
-  for (const field of GROK_RESULT_TEXT_FIELDS) {
-    const value = json[field]
-    if (typeof value === 'string' && value.trim()) return value
-  }
-  return null
 }
 
-function hasPresentThoughtFields(json) {
-  return GROK_ALLOWED_THOUGHT_NEVER_FIELDS.filter((field) => {
-    const value = json?.[field]
-    return (typeof value === 'string' && value.trim().length > 0) || (value && typeof value === 'object')
-  })
-}
-
-// Metadata projection: everything EXCEPT the result text and the thought
-// fields. Failure markers are only trusted from metadata, never from review
-// content (a reviewer may legitimately quote the word "truncation" in a
-// finding about the code).
-function grokMetadataProjection(json) {
-  const skip = new Set([...GROK_RESULT_TEXT_FIELDS, ...GROK_ALLOWED_THOUGHT_NEVER_FIELDS, 'messages'])
-  const projection = {}
-  for (const [key, value] of Object.entries(json)) {
-    if (!skip.has(key)) projection[key] = value
-  }
-  return JSON.stringify(projection)
-}
+// --- Grok parser --------------------------------------------------------------
+// Verified live envelope: { stopReason: "end_turn", num_turns: N, modelUsage:
+// { "grok-4.6-build": {...} }, text: "..." }. The review text is read ONLY
+// from the native `text` field; thought/draft/reasoning-style fields are
+// never consulted, so a verdict that exists only inside them does not exist.
+// `stopReason === "end_turn"` is REQUIRED: absence of failure markers alone
+// is not completion.
 
 export function parseGrokReviewerOutput({ stdout, exitCode, requestedModel }) {
   if (exitCode !== 0) return fail(`grok exited with code ${exitCode}`)
@@ -204,77 +230,66 @@ export function parseGrokReviewerOutput({ stdout, exitCode, requestedModel }) {
   if (json === null || typeof json !== 'object' || Array.isArray(json)) {
     return fail('grok output JSON is not an object')
   }
-
-  const presentThoughtFields = hasPresentThoughtFields(json)
-  const text = extractGrokResultText(json)
-  if (!text) {
-    return fail(
-      presentThoughtFields.length > 0
-        ? `grok produced no verdict-bearing result text (only ${presentThoughtFields.join(', ')} fields — thought/draft text is never used as a verdict)`
-        : 'grok produced no result text in any known result field',
-    )
-  }
-
   if (json.error) {
     const detail = typeof json.error === 'string' ? json.error : JSON.stringify(json.error)
     return fail(`grok reported an error: ${detail}`)
   }
-  const metadata = grokMetadataProjection(json)
-  const marker = metadata.match(COMPLETION_FAILURE_MARKERS)
-  if (marker) {
-    return fail(`grok metadata indicates incomplete run ("${marker[0]}") — refusing to treat as a completed review`)
+  if (typeof json.text !== 'string' || json.text.trim().length === 0) {
+    return fail('grok native result text is missing or empty — thought/draft text is never used as a verdict')
   }
-
-  const reportedModels = collectReportedModels(json)
-  if (!reportedModels.some((reported) => modelMatches(reported, requestedModel))) {
+  if (json.stopReason !== 'end_turn') {
+    return fail(
+      json.stopReason === undefined || json.stopReason === null
+        ? 'grok result carries no stopReason — cannot prove the turn ended normally'
+        : `grok stopReason "${json.stopReason}" is not a normal end_turn — run did not complete`,
+    )
+  }
+  const reportedModels = collectModelUsageKeys(json)
+  if (reportedModels.length === 0) {
+    return fail('grok result envelope carries no modelUsage identity — refusing to attribute the review')
+  }
+  if (!reportedModels.every((reported) => identityAccepts(requestedModel, reported))) {
     return fail(
       `grok model identity mismatch: requested "${requestedModel}", provider reported ${JSON.stringify(reportedModels)}`,
       { reportedModels },
     )
   }
-
-  return { ok: true, text, reportedModels, meta: { thoughtFieldsPresent: presentThoughtFields } }
+  return {
+    ok: true,
+    text: json.text,
+    reportedModels,
+    meta: { stopReason: json.stopReason, numTurns: json.num_turns ?? null, identityEvidence: 'native-model-usage-keys' },
+  }
 }
 
-// --- Codex parser -----------------------------------------------------------
+// --- Codex parser ---------------------------------------------------------------
+// Verified live stdout: thread.started(thread_id) → turn.started →
+// item.completed(agent_message) → turn.completed(usage). NO model identity in
+// stdout — identity is verified against the CLI rollout session file in
+// runner.mjs via codexSession.verifyCodexIdentity; this parser only proves
+// the run completed and carries the thread id that pins that session.
 
-export function parseCodexReviewerOutput({ stdout, stderr = '', lastMessage, exitCode, requestedModel }) {
+export function parseCodexReviewerOutput({ stdout, exitCode, lastMessage }) {
   if (exitCode !== 0) return fail(`codex exited with code ${exitCode}`)
 
-  const lines = stdout.split('\n').map((line) => line.trim()).filter(Boolean)
-  const events = []
-  for (const line of lines) {
-    try {
-      events.push(JSON.parse(line))
-    } catch {
-      return fail('codex event stream contains a non-JSON line (possible truncation)')
-    }
-  }
-  if (events.length === 0) {
-    return fail('codex event stream is empty — cannot prove the run happened')
-  }
-
-  const reportedModels = events.flatMap((event) => collectReportedModels(event))
-  if (reportedModels.length === 0) {
-    return fail('codex event stream carries no provider model identity — refusing to attribute the review')
-  }
-  if (!reportedModels.some((reported) => modelMatches(reported, requestedModel))) {
-    return fail(
-      `codex model identity mismatch: requested "${requestedModel}", provider reported ${JSON.stringify(reportedModels)}`,
-      { reportedModels },
-    )
-  }
+  const events = parseCodexExecEvents(stdout)
+  if (!events.ok) return fail(events.reason)
 
   if (typeof lastMessage !== 'string' || lastMessage.trim().length === 0) {
     return fail('codex final message file is empty or missing (possible truncation or turn limit)')
   }
 
-  const stderrMarker = stderr.match(CODEX_STDERR_FAILURE_MARKERS)
-  if (stderrMarker) {
-    return fail(`codex stderr indicates a provider failure ("${stderrMarker[0]}")`)
+  return {
+    ok: true,
+    text: lastMessage,
+    reportedModels: [], // filled by the rollout identity check — stdout has none
+    meta: {
+      threadId: events.threadId,
+      turnStartedCount: events.turnStartedCount,
+      eventCount: events.eventCount,
+      identityEvidence: 'pending-rollout-check',
+    },
   }
-
-  return { ok: true, text: lastMessage, reportedModels, meta: { eventCount: events.length } }
 }
 
 function fail(reason, extra = {}) {

@@ -134,8 +134,32 @@ export function validateVerdict({ verdict, pr, headSha }) {
     }
   }
 
-  if (verdict.verdict === 'approve' && verdict.findings.some((f) => f.severity === 'blocker')) {
-    return { ok: false, reason: 'contradictory verdict: approve with a blocker finding' }
+  for (const [index, question] of verdict.unresolved.entries()) {
+    if (typeof question !== 'string' || question.trim().length === 0) {
+      return { ok: false, reason: `unresolved ${index} is not a non-empty string` }
+    }
+  }
+
+  // An approving verdict must not carry anything that demands action: blockers
+  // AND majors contradict approval, and unresolved questions mean the reviewer
+  // could not finish deciding — none of that may silently green-light a PR.
+  if (verdict.verdict === 'approve') {
+    const blockerOrMajor = verdict.findings.filter((f) => f.severity === 'blocker' || f.severity === 'major')
+    if (blockerOrMajor.length > 0) {
+      return {
+        ok: false,
+        reason:
+          `contradictory verdict: approve with ${blockerOrMajor.map((f) => `a ${f.severity} finding`).join(' and ')}`,
+      }
+    }
+    if (verdict.unresolved.length > 0) {
+      return {
+        ok: false,
+        reason:
+          `contradictory verdict: approve with ${verdict.unresolved.length} unresolved question(s) — ` +
+          'settle them or downgrade the verdict to needs-human',
+      }
+    }
   }
 
   return { ok: true, verdict }
