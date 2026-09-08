@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
+import { SUPPORT_PAGE_URL } from '../../content/support'
 
 interface MobileSheetProps {
   open: boolean
@@ -28,7 +29,7 @@ const ITEMS: readonly SheetItem[] = [
   { label: 'Datenschutz', route: ROUTES.datenschutz },
   { label: 'Impressum', route: ROUTES.impressum },
   { label: 'GitHub', href: 'https://github.com/PeterHartwieg/Rentenrechner' },
-  { label: 'Spenden', href: 'https://github.com/sponsors/PeterHartwieg' },
+  { label: 'Projekt unterstützen', href: SUPPORT_PAGE_URL },
 ]
 
 /**

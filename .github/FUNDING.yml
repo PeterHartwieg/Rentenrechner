@@ -1,0 +1,3 @@
+# The website explains how contributions fund ongoing project development.
+# Keep this stable when changing the payment provider or checkout link.
+custom: ['https://rentenwiki.de/#unterstuetzen']

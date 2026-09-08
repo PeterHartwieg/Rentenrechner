@@ -110,12 +110,14 @@ describe('MethodePage — /methode route content', () => {
     expect(github!.getAttribute('target')).toBe('_blank')
   })
 
-  it('renders the GitHub Sponsors donation link in the licence card', () => {
+  it('links the licence card to the project development pledge', () => {
     const { container } = render(<MethodePage />)
     const sponsorLinks = Array.from(container.querySelectorAll('a')).filter((a) =>
-      (a.getAttribute('href') ?? '').includes('github.com/sponsors/PeterHartwieg'),
+      a.getAttribute('href') === '#unterstuetzen',
     )
     expect(sponsorLinks.length).toBeGreaterThan(0)
+    expect(container.querySelector('#unterstuetzen')).not.toBeNull()
+    expect(container.textContent).toContain('zurück in die Weiterentwicklung von RentenWiki.de')
   })
 
   it('renders the commercial-license contact email', () => {

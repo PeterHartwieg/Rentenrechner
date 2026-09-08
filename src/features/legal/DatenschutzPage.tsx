@@ -13,6 +13,7 @@ import { DISMISS_KEY } from '../workspace/DisclaimerBanner'
 import { LegalLayout } from './LegalLayout'
 import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 import { publicRouteRegistry } from '../../seo/publicRouteRegistry'
+import { SUPPORT_PAYMENT_URL } from '../../content/support'
 
 interface Props {
   navigate: (target: Route) => void
@@ -63,12 +64,12 @@ export function DatenschutzPage({ navigate }: Props) {
       </section>
 
       <section {...bodyProps}>
-        <h2>2. Grundsatz: keine Erhebung personenbezogener Daten</h2>
+        <h2>2. Grundsatz: Berechnungsdaten bleiben lokal</h2>
         <p>
           Diese Anwendung ist ein <strong>rein clientseitig laufender
           Rechner</strong>. Sämtliche Berechnungen finden ausschließlich im
           Browser des Nutzers statt. Es werden{' '}
-          <strong>keine personenbezogenen Daten</strong> an den Anbieter
+          <strong>keine Eingaben oder Berechnungsergebnisse</strong> an den Anbieter
           übertragen, gespeichert oder ausgewertet. Es gibt:
         </p>
         <ul>
@@ -341,6 +342,37 @@ export function DatenschutzPage({ navigate }: Props) {
           . Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.
         </p>
       </section>
+      {SUPPORT_PAYMENT_URL && (
+        <section id="projekt-unterstuetzen">
+          <h2>10. Freiwillige Unterstützung über Stripe</h2>
+          <p>
+            Der Link „Projekt unterstützen“ öffnet eine externe Zahlungsseite
+            von Stripe. Auf RentenWiki.de sind weder ein Zahlungsformular noch
+            Stripe-Skripte eingebunden. Erst wenn Sie dem Link folgen, wird
+            eine Verbindung zu Stripe hergestellt. Eingaben, Ergebnisse und
+            gespeicherte Szenarien des Rechners werden nicht übermittelt;
+            der Link überträgt auch keinen Referrer.
+          </p>
+          <p>
+            Auf der Zahlungsseite verarbeitet Stripe die dort eingegebenen
+            Kontakt- und Zahlungsdaten sowie technische Verbindungsdaten.
+            Als Zahlungsempfänger kann Peter Hartwieg Angaben zur Zahlung
+            einsehen, etwa Name, E-Mail-Adresse, Betrag und Zahlungsstatus.
+            Diese werden zur Abwicklung und Dokumentation der Unterstützung
+            verwendet, nicht für Werbung oder zur Verknüpfung mit Ihren
+            Berechnungsdaten.
+          </p>
+          <p>
+            Weitere Informationen zu Stripe, zur Datenaufbewahrung und zu
+            internationalen Datenübermittlungen finden Sie in der{' '}
+            <a href="https://stripe.com/de/privacy" target="_blank" rel="noopener noreferrer">
+              Datenschutzerklärung von Stripe
+            </a>
+            . Die Unterstützung ist unabhängig von der Nutzung des Rechners
+            und vollständig freiwillig.
+          </p>
+        </section>
+      )}
     </LegalLayout>
   )
 }
