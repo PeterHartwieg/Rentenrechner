@@ -12,6 +12,22 @@ The validation goal is therefore:
 3. Keep full-simulation snapshots for regression protection, not as the primary
    proof of legal correctness.
 
+## Source freshness and review routing
+
+The "Official References" table below is mirrored into a machine-readable
+source-review catalog with per-source capture and review dates:
+
+```bash
+npm run review:sources    # deterministic freshness report (-- --json / -- --fail-on-stale)
+```
+
+The catalog reuses the `validationSources` ids from
+`src/test/externalGoldenFixtures.ts` plus the root research docs; unknown
+review dates are shown as null, never guessed. The monthly audit procedure
+and the local pre-merge calculation review toolchain are documented in
+[`docs/automation/calculation-review-toolchain.md`](automation/calculation-review-toolchain.md)
+(issue #382).
+
 ## Current External Golden Suite
 
 External golden fixtures live in `src/test/externalGoldenFixtures.ts`.
