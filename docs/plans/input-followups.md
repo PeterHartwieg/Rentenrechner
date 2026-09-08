@@ -1,8 +1,12 @@
 # Plans for the remaining input findings
 
-Prepared 2026-09-08 after the €500 persistence fix in PR #373 (merged as ffa40ee920046a071542227a25403e1df8d605a2). These plans are separate from the production hotfix. Reviewed against the released source via the `claude-glm` CLI using `glm-5.3-flash`; factual corrections and the recommended delivery order are incorporated below. See [the independent review](input-followups-glm-review.md). These are implementation plans; no follow-up code has been changed or deployed.
+Prepared 2026-09-08 after the €500 persistence fix in PR #373 (merged as ffa40ee920046a071542227a25403e1df8d605a2). These plans are separate from the production hotfix. Reviewed against the released source via the `claude-glm` CLI using `glm-5.3-flash`; factual corrections and the recommended delivery order are incorporated below. See [the independent review](input-followups-glm-review.md).
+
+**Implementation status (2026-09-08): all three immediate fixes are implemented on `codex/input-followup-plans`; independent code reviews are pending.** Delivery followed the recommended order (plan 3 → 2 → 1), plus four corrections from the supervising review (legacy-anchor display resolution, neutral tax-class labels, single currency + anchor-only hint on the bAV metric, `modellbasierte` typo). `npm run verify` passes (208 test files, 3913 tests). The separate hardening item in plan 2 (scenario-library harmonization) and the household/church-tax feature in plan 1 remain open.
 
 ## 1. Make personal-information controls match supported calculations
+
+**Implemented.** § 1 now carries the Steuerklasse I–VI select bound to `profile.taxClass` (neutral labels, salary-phase hint, explicit joint-assessment limitation note); the Familienstand/Bundesland dropdowns, Kirchensteuer checkbox, and their effect claims are removed; the § Person aside and the Datenhaltung disclosure state only what persists and what the engine consumes. Saved `churchTax` values still load untouched. Regression coverage in `AngabenPage.test.tsx` (persistence in both modes, removed controls, legacy `churchTax: true` survival, funding-vs-statutory-pension split, no partner created).
 
 ### Confirmed problem
 
@@ -40,6 +44,8 @@ Decision for the owner: the recommended first release restores truthful, functio
 
 ## 2. Eliminate the conflicting bAV gross input in compare mode
 
+**Implemented.** Compare mode renders the bAV gross as a read-only metric re-derived with `syncMonthlyContributions` over the canonical `resolveNettoBelastungTarget` anchor (now exported from `src/utils/syncContributions.ts` and shared with `useCalculatorState`), so legacy `equal_cash` saves without an anchor show the same gross the dashboard derives. Combine mode renders a pointer to Schritt 2 instead of the field, and the singleton→workspace projection no longer writes `bav.monthlyGrossConversion` onto the first active contract. Regression coverage in `AngabenPage.test.tsx` (read-only metric, live anchor tracking, pinned AVD-own, legacy `equal_cash` display = dashboard, combine per-contract values surviving a Schritt-1 save). The separate hardening item below is still open.
+
 ### Confirmed problem
 
 `AngabenEinkommenSection.tsx` directly edits `bav.monthlyGrossConversion`. Compare mode's authoritative amount is `equalInputAmountEUR` / the contribution-input anchor, and `harmonizeOnLoad` / `syncMonthlyContributions` recompute gross from that amount. Browser reproduction with net €500: gross shows about €741, the user enters €500 gross, opens the comparison, then returns to approximately €741.
@@ -67,6 +73,8 @@ Introduce an explicit gross input mode, with a durable anchor and well-defined b
 - Currency display uses shared formatters; no engine rounding. Run regression tests at the page/state seam, then `npm run verify` and both-mode browser checks.
 
 ## 3. Show honest provenance for statutory pension figures
+
+**Implemented.** Compare and combine branches share `src/features/produkte/grvCard.ts` (card copy, input-mode provenance badge, `Wertejahr` Berechnungsstand); the DRV card dropped every import/upload claim, the edit toggle is the primary action in compare mode, and combine keeps the `canOverrideGrv` gate so no dead CTA renders. `GRVInputs` labels the manual field "Manuell eingegeben". Regression coverage in `ProdukteEingabenPanel.test.tsx` and `DProduktRow.test.tsx`.
 
 ### Confirmed problem
 
