@@ -15,6 +15,7 @@
  */
 
 import type { GermanRules } from '../domain'
+import type { LegalConstants } from './legalConstants'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,7 +103,11 @@ export interface RuleSetIdentity {
   ruleSetId: string
   ruleYear: number
   revision: number
-  /** Content fingerprint of the compiled rule set (`ruleSetFingerprint`). */
+  /**
+   * Content fingerprint of the compiled year rules AND the cross-year
+   * `legalConstants` value object (`ruleSetFingerprint`). Amendments to
+   * either move it.
+   */
   contentFingerprint: string
 }
 
@@ -162,9 +167,10 @@ export const REPLAY_LIMITATIONS: readonly string[] = [
   'This metadata documents the tax areas routed through src/engine/tax.ts; it does not ' +
     'snapshot the whole engine. Historical replay needs the full engine revision ' +
     'regardless of how complete this metadata is.',
-  'When the calculation-model version changes, old outputs are not recomputed or ' +
-    'migrated: they stay bound to the model version they were produced under, and a ' +
-    'runner comparing them against a new-model rerun must expect differences.',
+  'When the calculation-model version changes, the application has nothing to carry ' +
+    'over: it stores inputs, not outputs, so scenarios simply recompute under the new ' +
+    'model. Only a runner that separately stored stamped outputs could compare results ' +
+    'across model versions — nothing in this codebase does that today.',
 ]
 
 // ---------------------------------------------------------------------------
@@ -172,12 +178,19 @@ export const REPLAY_LIMITATIONS: readonly string[] = [
 // ---------------------------------------------------------------------------
 
 /**
- * Canonical serialization of a rule set: object keys sorted recursively,
- * arrays in order, numbers via JSON round-trip. Two rule sets serialize
- * identically iff they carry the same values regardless of key order.
+ * Canonical serialization of the rule content this engine compiles: the year
+ * rules AND the cross-year `legalConstants` value object, keys sorted
+ * recursively, arrays in order, numbers via JSON round-trip. Two (rules,
+ * constants) pairs serialize identically iff they carry the same values
+ * regardless of key order.
+ *
+ * Scope note: this covers rule DATA. The cross-year cohort FUNCTIONS in
+ * `legalConstants.ts` (`besteuerungsanteilGrv`, `versorgungsfreibetrag`,
+ * `ertragsanteilByAge`) are code, not data — their behavior is pinned only by
+ * the engine revision, never by this snapshot.
  */
-export function canonicalRuleSetSnapshot(rules: GermanRules): string {
-  return canonicalize(rules)
+export function canonicalRuleSetSnapshot(rules: GermanRules, constants: LegalConstants): string {
+  return canonicalize({ legalConstants: constants, rules })
 }
 
 function canonicalize(value: unknown): string {
@@ -194,13 +207,15 @@ function canonicalize(value: unknown): string {
 }
 
 /**
- * Content fingerprint of a rule set: two FNV-1a rounds (different offset
- * bases) over the canonical snapshot, 16 hex chars. A quick change detector
- * that lets a runner notice same-year amendments — always pair it with the
- * stored snapshot for exact replay (see REPLAY_LIMITATIONS).
+ * Content fingerprint of the compiled rule content: two FNV-1a rounds
+ * (different offset bases) over the canonical snapshot of the year rules and
+ * the cross-year `legalConstants`, 16 hex chars. A quick change detector that
+ * moves whenever EITHER input is amended (same-year value change, soli
+ * slope, §39b cap, §1a divisor, …) — always pair it with the stored snapshot
+ * and the engine revision for exact replay (see REPLAY_LIMITATIONS).
  */
-export function ruleSetFingerprint(rules: GermanRules): string {
-  const canonical = canonicalRuleSetSnapshot(rules)
+export function ruleSetFingerprint(rules: GermanRules, constants: LegalConstants): string {
+  const canonical = canonicalRuleSetSnapshot(rules, constants)
   return fnv1a32(0x811c9dc5, canonical) + fnv1a32(0x01935a97, canonical)
 }
 
@@ -213,12 +228,16 @@ function fnv1a32(offsetBasis: number, input: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
-/** Compose the identity stamp from a rule set and its metadata. */
-export function ruleSetIdentity(rules: GermanRules, metadata: RuleSetMetadata): RuleSetIdentity {
+/** Compose the identity stamp from a rule set, the cross-year constants, and its metadata. */
+export function ruleSetIdentity(
+  rules: GermanRules,
+  constants: LegalConstants,
+  metadata: RuleSetMetadata,
+): RuleSetIdentity {
   return {
     ruleSetId: metadata.ruleSetId,
     ruleYear: metadata.ruleYear,
     revision: metadata.revision,
-    contentFingerprint: ruleSetFingerprint(rules),
+    contentFingerprint: ruleSetFingerprint(rules, constants),
   }
 }

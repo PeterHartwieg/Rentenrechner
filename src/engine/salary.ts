@@ -130,7 +130,8 @@ export function calculatePkv257Subsidy(
 // GKV: KV Teilbetrag uses ermäßigter Beitragssatz (§243 SGB V) per §39b(2)Nr.3 EStG.
 // PKV: KV/PV Teilbeträge = employee's annual PKV/pPV premiums minus the tax-free
 // employer subsidy (§39b(2) Nr. 3 EStG, mirrored by the BMF Lohnsteuerrechner).
-// AV Teilbetrag is included up to the 1,900 EUR cap (KV + PV + AV ≤ 1,900 EUR).
+// AV Teilbetrag is included only while KV + PV + AV stay within the annual
+// §39b cap (legalConstants.payrollTax.vorsorgepauschaleKvPvAvCap).
 export function calculateVorsorgepauschale2026(
   steuerlichArbeitslohn: number,
   profile: PersonalProfile,

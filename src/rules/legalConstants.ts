@@ -238,6 +238,13 @@ export const legalConstants = {
   },
 } as const
 
+/**
+ * Type of the `legalConstants` value object. The rule-set content identity
+ * (`ruleSetFingerprint`) hashes this object alongside the year rules, so an
+ * amendment here moves the fingerprint — see `ruleMetadata.ts`.
+ */
+export type LegalConstants = typeof legalConstants
+
 export function halbeinkuenfteMinAgeForContractStartYear(contractStartYear: number): number {
   const {
     halbeinkuenfteMinAgePre2012Contracts,

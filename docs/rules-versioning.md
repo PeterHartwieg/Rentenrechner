@@ -48,18 +48,27 @@ as the values it describes.
 - `CalculationModelVersion` — stable `id` plus integer `version` of the
   implemented formula, independent of the coefficients fed into it.
 - `RuleSetIdentity` — `{ ruleSetId, ruleYear, revision, contentFingerprint }`
-  via `ruleSetIdentity(rules, metadata)`. The fingerprint is a dual FNV-1a
-  digest over `canonicalRuleSetSnapshot(rules)` (recursive key-sorted
-  serialization), so it is deterministic and independent of key insertion
-  order. It is a **change detector**, not a reproduction mechanism: equal
+  via `ruleSetIdentity(rules, constants, metadata)`. The fingerprint is a dual
+  FNV-1a digest over `canonicalRuleSetSnapshot(rules, constants)` — the year
+  rules **and** the cross-year `legalConstants` value object, recursively
+  key-sorted — so it is deterministic, independent of key insertion order, and
+  moves when EITHER input is amended (soli slope, §39b cap, §1a divisor
+  included). It is a **change detector**, not a reproduction mechanism: equal
   fingerprints strongly suggest equal inputs, but you cannot reconstruct rule
-  values from a fingerprint.
+  values from a fingerprint. The snapshot covers rule *data* only — the
+  cross-year cohort functions (`besteuerungsanteilGrv`,
+  `versorgungsfreibetrag`, `ertragsanteilByAge`) are code, and their behavior
+  is pinned only by the engine revision.
 
 `de2026RulesMetadata.scope` is deliberately narrow: the provenance covers the
 tax areas routed through `src/engine/tax.ts` (tariff, soli, capital gains)
 plus their rule inputs. It is **not** a snapshot of the whole engine —
 funding formulas, cohort algorithms, payout cascades, and rounding points
-outside that file are not attested by this metadata.
+outside that file are not attested by this metadata. Areas are per field where
+the golden coverage is per field: `capitalGains.basiszins` is
+`external-golden` (the only capital-gains field with an external capture),
+while `capitalGains.taxRate` / `saverAllowance` / `solidarityRate` are
+`statutory-pin`.
 
 Consumers:
 
@@ -68,11 +77,13 @@ Consumers:
   plus `calculationModel: { id, version }`, all taken from
   `activeRulesMetadata` / `activeRuleSetIdentity`. For replayable captures the
   runner should additionally record the producing git SHA and
-  `canonicalRuleSetSnapshot(activeRules)` — the metadata alone does not carry
-  the values. To judge a stored result later, call
-  `rulesMetadataById(ruleSetId)`: a non-null return means *this build speaks
-  for that rule set*; `null` means the result was produced under a different
-  or retired rule set and must be surfaced as such, never silently recomputed.
+  `canonicalRuleSetSnapshot(activeRules, legalConstants)` — the metadata alone
+  does not carry the values. To judge a stored stamp later, pass the whole
+  `RuleSetIdentity` to `rulesMetadataById(stamp)`: every field must match this
+  build (ID, year, revision, and a fingerprint recomputed from the active
+  rules + legalConstants), and `null` on any mismatch means the result was
+  produced under different rule content and must be surfaced as such, never
+  silently recomputed.
 - **UI** — the same metadata can back a "Rechtsstand / Berechnungsmodell"
   line. Quote `areas[].source` verbatim; do not reword citations into claims
   of fresh verification.
@@ -119,7 +130,11 @@ legislation of either kind.
    publication (a Nachtrag, a corrected Bekanntmachung, a mid-year Basiszins
    step), bump `revision` in that year file's metadata. The `ruleSetId` stays
    the same — it names the year, not the revision — so the revision field is
-   the only way to distinguish the two value sets.
+   the only way to distinguish the two value sets. The same rule applies to
+   **cross-year `legalConstants.ts` amendments**: the value moves the content
+   fingerprint (the snapshot covers it), so bump `revision` in the active
+   year file's metadata in the same commit — `rulesMetadataById` then rejects
+   every stamp from before the amendment instead of silently accepting it.
 5. **Keep the old year file** if historical replay is wanted. A retired year
    file is acceptable — `rulesMetadataById` then returns `null` for it and
    consumers must show "produced under different rules".
@@ -139,10 +154,12 @@ a new zone. Then:
    updates — those are rule-set data.
 2. Re-pin the behavior with external goldens that exercise the new shape
    before merging.
-3. Stored results keep the model version they were produced under; the runner
-   compares versions instead of silently recomputing. Engine rounding policy
-   does not change as part of an algorithm change (display rounding stays at
-   the UI boundary).
+3. Nothing in the application preserves outputs, so an algorithm change
+   simply recomputes every scenario under the new model. Only the future
+   runner, if it stores stamped outputs, can compare results across model
+   versions — it must compare versions instead of silently recomputing.
+   Engine rounding policy does not change as part of an algorithm change
+   (display rounding stays at the UI boundary).
 
 ## What the metadata does not do
 
@@ -163,7 +180,10 @@ says this explicitly; the short form:
   rule set; they are not year rule files.
 - The metadata's provenance is scoped to the tax areas named in `scope`; it
   does not snapshot the whole engine.
-- Model-version changes never retroactively rewrite stored results.
+- There is no implemented mechanism that carries old outputs across a
+  calculation-model change — nothing stores outputs, so nothing is preserved,
+  migrated, or "kept bound" to a model version. Stamps only describe
+  provenance.
 
 ## Verification posture
 

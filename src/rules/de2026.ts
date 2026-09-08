@@ -233,13 +233,39 @@ export const de2026RulesMetadata: RuleSetMetadata = {
       pinnedBy: 'statutory-pin',
     },
     {
-      area: 'capitalGains',
-      statute: '§32d EStG (Abgeltungsteuer), §20 Abs. 9 EStG (Sparerpauschbetrag), §203 BewG (Basiszins)',
+      area: 'capitalGains.basiszins',
+      statute: '§203 Abs. 2 BewG — Basiszins für die Vorabpauschale 2026',
       source:
-        'Pinned via capitalGains2026GoldenValues and etfVorabpauschaleGoldenCases ' +
-        '(BMF-Schreiben 2026-01-13 for the Basiszins)',
+        'Pinned via capitalGains2026GoldenValues (field "basiszins") and ' +
+        'etfVorabpauschaleGoldenCases in src/test/externalGoldenFixtures.ts; ' +
+        'BMF-Schreiben vom 2026-01-13 (Basiszins 3.20 %). The other capitalGains ' +
+        'fields are NOT golden-covered — see their own entries',
       effectiveFrom: '2026-01-01',
       pinnedBy: 'external-golden',
+    },
+    {
+      area: 'capitalGains.taxRate',
+      statute: '§32d Abs. 1 EStG — Abgeltungsteuer 25 %',
+      source:
+        'Citation as used in this repo: https://www.gesetze-im-internet.de/estg/__32d.html; ' +
+        'literal tripwire in the tax engine tests, no external capture',
+      pinnedBy: 'statutory-pin',
+    },
+    {
+      area: 'capitalGains.solidarityRate',
+      statute: '§4 SolzG 1995 — Solidaritätszuschlag on capital-gains tax',
+      source:
+        'Aliased to legalConstants.soli.rate (one 5.5 % definition across tax paths); ' +
+        'see the "soli" area. Pinned as a literal tripwire in the tax engine tests',
+      pinnedBy: 'statutory-pin',
+    },
+    {
+      area: 'capitalGains.saverAllowance',
+      statute: '§20 Abs. 9 EStG — Sparerpauschbetrag 1 000 EUR (single; 2 × for joint assessment)',
+      source:
+        'Citation as used in this repo: https://www.gesetze-im-internet.de/estg/__20_.html; ' +
+        'literal tripwire in the tax engine tests, no external capture',
+      pinnedBy: 'statutory-pin',
     },
   ],
   projectionAssumption: PROJECTION_ASSUMPTION,
