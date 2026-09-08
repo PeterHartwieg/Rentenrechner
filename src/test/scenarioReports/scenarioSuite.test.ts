@@ -157,12 +157,27 @@ describe('external golden anchoring', () => {
 
 describe('scenario families exercise the intended engine branches', () => {
   it('contract vintage covers the full tax-mode triangle, each leg in its own branch', () => {
-    // The engine's own mode derivation, fed the literals of the frozen cases:
-    // 1990 + eligible + long runtime → pre2005; 2010, runtime 27, payout 67 →
-    // halbeinkuenfte; 2045, runtime 8 → abgeltungsteuer.
-    expect(deriveInsuranceTaxMode(1990, 27, 67, true)).toBe('pre2005')
-    expect(deriveInsuranceTaxMode(2010, 27, 67, false)).toBe('halbeinkuenfte')
-    expect(deriveInsuranceTaxMode(2045, 8, 67, false)).toBe('abgeltungsteuer')
+    // Branch identity is DERIVED FROM THE FROZEN INPUTS with the engine's own
+    // formula (simulationContext: payoutYear = rules.year + retirementAge −
+    // age) — if a frozen case is ever switched to another vintage, the derived
+    // mode must move with it or this assertion fails.
+    const expectedModeOf = (caseId: string) => {
+      const input = caseById(`compare-contract-vintage/${caseId}`).input
+      if (input.kind !== 'compare') throw new Error('unexpected case kind')
+      const runtime =
+        activeRules.year +
+        (input.profile.retirementAge - input.profile.age) -
+        input.assumptions.insurance.contractStartYear
+      return deriveInsuranceTaxMode(
+        input.assumptions.insurance.contractStartYear,
+        runtime,
+        input.profile.retirementAge,
+        input.assumptions.insurance.oldContractTaxFreeEligible,
+      )
+    }
+    expect(expectedModeOf('pre2005-kapitalverzehr')).toBe('pre2005')
+    expect(expectedModeOf('halbeinkuenfte-kapitalverzehr')).toBe('halbeinkuenfte')
+    expect(expectedModeOf('abgeltungsteuer-kapitalverzehr')).toBe('abgeltungsteuer')
 
     const stages = extractStages(
       caseById('compare-contract-vintage/pre2005-kapitalverzehr').input,
@@ -247,15 +262,23 @@ describe('scenario families exercise the intended engine branches', () => {
     )
     // A PKV holder (publicHealthInsurance: false) owes no GKV retirement
     // contributions on the gated channels: the GRV KVdR half-rate and the
-    // freiwillig/other-Versorgungsbezug channels gate on that flag. The bAV
-    // Versorgungsbezug channel is NOT gated — §229 SGB V spreading applies
-    // regardless — and this case pins exactly that split.
+    // freiwillig/other-Versorgungsbezug channels gate on that flag, and the
+    // KVdR sibling proves the gate has something to switch off.
     expect(kvdr['kvPv.basis.aggregate.statutoryPensionKvMonthly']).toBeGreaterThan(0)
     expect(pkv['kvPv.basis.aggregate.statutoryPensionKvMonthly']).toBe(0)
     expect(pkv['kvPv.basis.aggregate.freiwilligOtherKvMonthly']).toBe(0)
     expect(pkv['kvPv.basis.aggregate.otherVersorgungsbezuegeKvMonthly']).toBe(0)
+    // KNOWN DEFECT #390 — asserted for MEMBERSHIP ONLY, observationally.
+    // In combine mode the bAV Versorgungsbezug channel still charges KV/PV
+    // although the shared compare-mode monthly primitive gates it on
+    // publicHealthInsurance, and the bundle-level GRV stage contradicts the
+    // zero aggregate. This is NOT an approved modeling choice and NOT an
+    // expected legal result; the baseline freezes the defect so the fix in
+    // the #390 PR is a deliberate, reviewed baseline update. Do not read the
+    // positive assertions below as desirable.
     expect(pkv['kvPv.basis.aggregate.bavKvMonthly']).toBeGreaterThan(0)
     expect(pkv['kvPv.basis.aggregate.bavPvMonthly']).toBeGreaterThan(0)
+    expect(pkv['baseline.statutoryPension.kvPvMonthly']).toBeGreaterThan(0)
     expect(pkv['net.basis.monthlyNetIncome']).toBeGreaterThan(
       kvdr['net.basis.monthlyNetIncome'] as number,
     )

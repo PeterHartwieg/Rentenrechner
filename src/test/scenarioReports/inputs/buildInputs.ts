@@ -354,17 +354,20 @@ function compareContractVintageFamily(): Record<string, CaseInput> {
         }),
       }),
     ),
-    // Late contract (start 2045): runtime (2045→2053) ≈ 8 < 12 years, so the
-    // Halbeinkünfte conditions fail and the full gain falls under §20 Abs. 2
-    // EStG Abgeltungsteuer — the third leg of the vintage triangle.
+    // Current contract (start 2026) with early retirement at 60: runtime
+    // (2026→2046) = 20 years ≥ 12, but the payout lands below the
+    // Halbeinkünfte minimum age (62 for ≥2012 contracts), so the full gain
+    // falls under §20 Abs. 2 EStG Abgeltungsteuer — the third leg of the
+    // vintage triangle, without a future contract-start mismatch.
     'abgeltungsteuer-kapitalverzehr': cloneInput(
       compareInput({
+        profile: { retirementAge: 60 },
         assumptions: (a) => ({
           ...a,
           visibleProducts: ['etf', 'versicherung'],
           insurance: {
             ...a.insurance,
-            contractStartYear: 2045,
+            contractStartYear: 2026,
             oldContractTaxFreeEligible: false,
             payoutMode: 'kapitalverzehr',
           },

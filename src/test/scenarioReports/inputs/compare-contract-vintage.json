@@ -567,7 +567,7 @@
     "kind": "compare",
     "profile": {
       "age": 40,
-      "retirementAge": 67,
+      "retirementAge": 60,
       "grossSalaryYear": 60000,
       "taxClass": 1,
       "childBirthYears": [],
@@ -725,7 +725,7 @@
         "monthlyOtherRetirementIncome": 0
       },
       "insurance": {
-        "contractStartYear": 2045,
+        "contractStartYear": 2026,
         "oldContractTaxFreeEligible": false,
         "monthlyOtherRetirementIncome": 0,
         "capitalGuarantee": {

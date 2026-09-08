@@ -226,7 +226,7 @@ const CASE_META: CaseMeta[] = [
     familyLabel: 'C · Vergleich — Vertragsalter',
     caseId: 'abgeltungsteuer-kapitalverzehr',
     purpose:
-      'Late contract (start 2045, runtime ≈ 8 < 12 years) with capital payout: fails the Halbeinkünfte conditions, so the full gain is taxed at §20 Abs. 2 EStG Abgeltungsteuer — pins the third leg of the vintage triangle (pre2005 / halbeinkuenfte / abgeltungsteuer).',
+      'Current contract (start 2026) with early retirement at 60: runtime 20 ≥ 12 years but the payout lands below the Halbeinkünfte minimum age (62 for ≥2012 contracts), so the full gain is taxed at §20 Abs. 2 EStG Abgeltungsteuer — pins the third leg of the vintage triangle (pre2005 / halbeinkuenfte / abgeltungsteuer).',
     provenance: 'internal-regression',
   },
   // D — horizons and returns
@@ -343,7 +343,7 @@ const CASE_META: CaseMeta[] = [
     familyLabel: 'I · Kombination — Krankenversicherungsstatus',
     caseId: 'pkv',
     purpose:
-      'PKV holder (publicHealthInsurance: false, PKV/PV premiums 450/120 EUR): the gated statutory retirement KV/PV channels — GRV KVdR half-rate, freiwillig §240 base, sonstige Versorgungsbezüge — must be zero, while the bAV Versorgungsbezug channel (§229 SGB V, not gated on publicHealthInsurance) still charges KV/PV. The KVdR sibling proves the gate has something to switch off.',
+      'PKV holder (publicHealthInsurance: false, PKV/PV premiums 450/120 EUR). KNOWN DEFECT, tracked as GitHub issue #390 and recorded here OBSERVATIONALLY: the gated statutory retirement KV/PV channels (GRV KVdR half-rate, freiwillig §240 base, sonstige Versorgungsbezüge) are zero as the engine supports — but in combine mode the bAV Versorgungsbezug channel still charges KV/PV although the shared compare-mode monthly primitive gates it, and the bundle-level baseline.statutoryPension.kvPvMonthly contradicts the zero aggregate. This case FREEZES the defect for regression detection; it is NOT an approved modeling choice and NOT an expected legal result. The KVdR sibling proves the gate has something to switch off.',
     provenance: 'internal-regression',
   },
   // J — paid-up
