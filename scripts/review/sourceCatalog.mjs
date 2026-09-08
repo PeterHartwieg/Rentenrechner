@@ -96,3 +96,11 @@ export const GOLDEN_SOURCE_AREAS = {
   'estg-riester-allowance-rules': ['funding-eligibility'],
   'drv-zfa-riester-rechner': ['funding-eligibility'],
 }
+
+// Review records for golden sources, keyed by validationSources id. Golden
+// sources start with NO review records — dates are only ever added by a real
+// monthly audit (docs/automation/calculation-review-toolchain.md), never
+// fabricated. Shape per id: { lastReviewed: 'YYYY-MM-DD', note?: string }.
+// `note` should say what was checked and where the evidence lives (e.g. the
+// golden fixture id + commit, or the audit note in a research doc).
+export const GOLDEN_SOURCE_REVIEWS = {}

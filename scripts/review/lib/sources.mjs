@@ -56,10 +56,32 @@ export function parseResearchDocHeaders(text) {
 // entries from src/test/externalGoldenFixtures.ts — reused, not duplicated).
 // researchDocEntries: [{ path, label, areas, headers: { lastCaptured, lastReviewed } }]
 // goldenAreas: { [validationSourceId]: string[] }
-export function buildCatalog({ goldenSources, researchDocEntries, goldenAreas }) {
+// goldenReviews: { [validationSourceId]: { lastReviewed, note? } } — explicit
+// review records for golden sources, kept in sourceCatalog.mjs. Capture and
+// review stay distinct: a fresh capture date never satisfies the review
+// column, and an empty record set (the honest initial state) renders every
+// golden source as "never-reviewed" instead of inventing dates.
+export function buildCatalog({ goldenSources, researchDocEntries, goldenAreas, goldenReviews = {} }) {
+  const knownIds = new Set(goldenSources.map((source) => source.id))
+  for (const [id, record] of Object.entries(goldenReviews)) {
+    if (!knownIds.has(id)) {
+      throw new Error(`golden review record references unknown golden source id "${id}" — keys must match validationSources ids`)
+    }
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      throw new Error(`golden review record for "${id}" must be an object with lastReviewed`)
+    }
+    if (typeof record.lastReviewed !== 'string' || !ISO_DATE.test(record.lastReviewed)) {
+      throw new Error(`golden review record for "${id}" has an invalid lastReviewed date "${record.lastReviewed}" — use YYYY-MM-DD`)
+    }
+    if (record.note !== undefined && typeof record.note !== 'string') {
+      throw new Error(`golden review record for "${id}" has a non-string note`)
+    }
+  }
+
   const entries = []
 
   for (const source of goldenSources) {
+    const review = goldenReviews[source.id]
     entries.push({
       id: source.id,
       kind: 'golden-source',
@@ -67,7 +89,8 @@ export function buildCatalog({ goldenSources, researchDocEntries, goldenAreas })
       areas: goldenAreas[source.id] ?? [],
       location: source.url,
       lastCaptured: source.capturedAt ?? null,
-      lastReviewed: null, // no review record exists for fixture captures
+      lastReviewed: review?.lastReviewed ?? null,
+      reviewNote: review?.note ?? null,
     })
   }
 
@@ -80,6 +103,7 @@ export function buildCatalog({ goldenSources, researchDocEntries, goldenAreas })
       location: doc.path,
       lastCaptured: doc.headers.lastCaptured,
       lastReviewed: doc.headers.lastReviewed,
+      reviewNote: null,
     })
   }
 

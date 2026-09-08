@@ -58,6 +58,8 @@ export async function runReviewerProcess({ command, args, input, timeoutMs, cwd,
 
     let stdout = ''
     let stderr = ''
+    let stdoutOverflow = false
+    let stderrOverflow = false
     let timedOut = false
     let settled = false
 
@@ -79,11 +81,17 @@ export async function runReviewerProcess({ command, args, input, timeoutMs, cwd,
 
     child.stdout.setEncoding('utf8')
     child.stderr.setEncoding('utf8')
+    // Caps are a safety valve, not a lossy truncation: any chunk beyond the
+    // cap (even partially) marks the run as overflowed and the run is
+    // rejected after exit — a truncated codex event stream could otherwise
+    // look complete (early valid events) while a later failure is dropped.
     child.stdout.on('data', (chunk) => {
-      if (stdout.length < STDOUT_CAP_CHARS) stdout += chunk
+      if (stdout.length + chunk.length > STDOUT_CAP_CHARS) stdoutOverflow = true
+      if (stdout.length < STDOUT_CAP_CHARS) stdout += chunk.slice(0, STDOUT_CAP_CHARS - stdout.length)
     })
     child.stderr.on('data', (chunk) => {
-      if (stderr.length < STDERR_CAP_CHARS) stderr += chunk
+      if (stderr.length + chunk.length > STDERR_CAP_CHARS) stderrOverflow = true
+      if (stderr.length < STDERR_CAP_CHARS) stderr += chunk.slice(0, STDERR_CAP_CHARS - stderr.length)
     })
 
     child.on('error', (error) => {
@@ -99,6 +107,11 @@ export async function runReviewerProcess({ command, args, input, timeoutMs, cwd,
       clearTimeout(timer)
       if (timedOut) {
         reject(new Error(`${command} timed out after ${timeoutMs}ms and was killed`))
+        return
+      }
+      if (stdoutOverflow || stderrOverflow) {
+        const which = [stdoutOverflow && 'stdout', stderrOverflow && 'stderr'].filter(Boolean).join(' and ')
+        reject(new Error(`${command} ${which} exceeded the ${STDOUT_CAP_CHARS}/${STDERR_CAP_CHARS}-char capture cap — output would be truncated, so the run is rejected instead of trusted`))
         return
       }
       resolve({ exitCode: code ?? 1, stdout, stderr, timedOut })

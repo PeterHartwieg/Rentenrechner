@@ -45,8 +45,9 @@ const PARSERS = {
 }
 
 // gh runner returns the raw stdout STRING (same contract as the injected
-// fakes and makeSubprocessRun) — callers parse text, not {stdout, stderr}.
-const defaultGhRun = makeSubprocessRun
+// fakes) — callers parse text, not {stdout, stderr}. Note: makeSubprocessRun
+// is a factory; this calls it once to get the actual runner.
+const defaultGhRun = makeSubprocessRun()
 
 function defaultRunGit(args, { cwd } = {}) {
   return promisify(execFile)('git', args, { encoding: 'utf8', cwd, maxBuffer: 16 * 1024 * 1024 })

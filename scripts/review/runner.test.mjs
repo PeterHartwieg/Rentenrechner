@@ -115,6 +115,43 @@ describe('runReviewerProcess', () => {
       }),
     ).rejects.toThrow(/failed to (run|start) \/nonexistent\/reviewer-binary/)
   })
+
+  it('rejects the run when stdout overflows the capture cap (no silent truncation)', async () => {
+    // One chunk overshooting the cap still counts as overflow.
+    await expect(
+      runReviewerProcess({
+        command: process.execPath,
+        args: ['-e', 'process.stdout.write("x".repeat(11_000_000))'],
+        input: undefined,
+        timeoutMs: 30_000,
+        cwd: process.cwd(),
+      }),
+    ).rejects.toThrow(/exceeded the .* capture cap/)
+  }, 60_000)
+
+  it('rejects the run when stderr alone overflows the capture cap', async () => {
+    await expect(
+      runReviewerProcess({
+        command: process.execPath,
+        args: ['-e', 'process.stderr.write("e".repeat(201_000))'],
+        input: undefined,
+        timeoutMs: 30_000,
+        cwd: process.cwd(),
+      }),
+    ).rejects.toThrow(/stderr exceeded/)
+  }, 60_000)
+
+  it('accepts output just under the cap', async () => {
+    const result = await runReviewerProcess({
+      command: process.execPath,
+      args: ['-e', 'process.stdout.write("x".repeat(1000))'],
+      input: undefined,
+      timeoutMs: 30_000,
+      cwd: process.cwd(),
+    })
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toHaveLength(1000)
+  }, 60_000)
 })
 
 describe('executeReviewer — worktree guard', () => {

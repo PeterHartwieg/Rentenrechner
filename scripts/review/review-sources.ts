@@ -14,7 +14,7 @@ import { join } from 'node:path'
 
 import { validationSources } from '../../src/test/externalGoldenFixtures'
 import { assessFreshness, buildCatalog, parseResearchDocHeaders, renderFreshnessReport, DEFAULT_POLICY } from './lib/sources.mjs'
-import { GOLDEN_SOURCE_AREAS, RESEARCH_DOCS } from './sourceCatalog.mjs'
+import { GOLDEN_SOURCE_AREAS, GOLDEN_SOURCE_REVIEWS, RESEARCH_DOCS } from './sourceCatalog.mjs'
 import { repoRootFromArgv } from './lib/repoRoot.mjs'
 
 const args = process.argv.slice(2)
@@ -37,6 +37,7 @@ const catalog = buildCatalog({
   goldenSources: validationSources,
   researchDocEntries,
   goldenAreas: GOLDEN_SOURCE_AREAS,
+  goldenReviews: GOLDEN_SOURCE_REVIEWS,
 })
 
 const now = new Date()
