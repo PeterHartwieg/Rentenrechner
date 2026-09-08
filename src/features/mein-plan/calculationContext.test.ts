@@ -42,23 +42,34 @@ describe('largestTestedChange', () => {
 })
 
 describe('summarizeContractEvidence', () => {
-  it('keeps missing evidence separate from explicitly estimated fields', () => {
+  it('does not infer estimated inputs or unknown-origin counts from an empty map', () => {
     expect(summarizeContractEvidence([{
-      id: 'etf',
-      instances: [{ status: 'active', evidenceMap: { monthlyContribution: 'model_estimate' } }],
-    }])).toEqual({ contracts: 1, estimated: 1, unknown: 1 })
+      id: 'etf', instances: [{ status: 'active', evidenceMap: {} }],
+    }])).toEqual({ contracts: 1, hasExplicitEstimates: false, hasConfirmedInputs: false })
   })
 
-  it('uses only tracked fields of active or paid-up contracts', () => {
+  it('recognizes explicit estimates independently of registry key names', () => {
+    expect(summarizeContractEvidence([{
+      id: 'bav', instances: [{ status: 'active', evidenceMap: { kostenQuote: 'model_estimate' } }],
+    }])).toEqual({ contracts: 1, hasExplicitEstimates: true, hasConfirmedInputs: false })
+  })
+
+  it.each(['statement', 'user_confirmed'] as const)('recognizes recorded %s without inventing estimates', (state) => {
+    expect(summarizeContractEvidence([{
+      id: 'etf', instances: [{ status: 'active', evidenceMap: { monthlyContribution: state } }],
+    }])).toEqual({ contracts: 1, hasExplicitEstimates: false, hasConfirmedInputs: true })
+  })
+
+  it('includes paid-up contracts and ignores offered or surrendered evidence', () => {
     expect(summarizeContractEvidence([{
       id: 'etf',
       instances: [
-        { status: 'active', evidenceMap: { monthlyContribution: 'statement', annualAssetFee: 'user_confirmed', unrelated: 'model_estimate' } },
-        { status: 'paid_up', evidenceMap: {} },
-        { status: 'offered', evidenceMap: {} },
-        { status: 'surrendered', evidenceMap: {} },
+        { status: 'active', evidenceMap: {} },
+        { status: 'paid_up', evidenceMap: { annualAssetFee: 'model_estimate' } },
+        { status: 'offered', evidenceMap: { monthlyContribution: 'statement' } },
+        { status: 'surrendered', evidenceMap: { monthlyContribution: 'user_confirmed' } },
       ],
-    }])).toEqual({ contracts: 2, estimated: 0, unknown: 2 })
-    expect(summarizeContractEvidence([])).toEqual({ contracts: 0, estimated: 0, unknown: 0 })
+    }])).toEqual({ contracts: 2, hasExplicitEstimates: true, hasConfirmedInputs: false })
+    expect(summarizeContractEvidence([])).toEqual({ contracts: 0, hasExplicitEstimates: false, hasConfirmedInputs: false })
   })
 })

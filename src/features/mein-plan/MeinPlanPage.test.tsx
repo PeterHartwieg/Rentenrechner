@@ -73,7 +73,7 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     expect(context.textContent).toContain('keine Vorhersage')
     expect(context.textContent).toContain(`Regelstand ${props.rules.year}`)
     expect(context.textContent).toContain('Künftige Gesetzesänderungen')
-    expect(context.textContent).toContain('mit unbekannter Herkunft')
+    expect(context.textContent).toContain('Standardwerte oder selbst eingegebene Werte')
     expect(context.textContent).toContain('keine Wahrscheinlichkeit')
     const sensitivityLink = getByRole('link', { name: 'Getestete Änderungen ansehen ↓' })
     expect(sensitivityLink.getAttribute('href')).toBe('#mein-plan-sensitivitaet')
@@ -102,7 +102,7 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
       }))
       const { getByRole } = render(<MeinPlanPage {...props} />)
       const note = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
-      expect(note.textContent).toMatch(/Größte getestete Änderung: −400\s*€ \/ Mon./)
+      expect(note.textContent).toMatch(/Größte getestete Änderung \(nominal\): −400\s*€ \/ Mon./)
       expect(note.textContent).toContain('Rendite')
       spies.forEach((spy) => expect(spy).toHaveBeenCalledTimes(1))
     } finally {
@@ -129,6 +129,58 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
       expect(note.textContent).not.toContain('Größte getestete Änderung')
     } finally {
       spies.forEach((spy) => spy.mockRestore())
+    }
+  })
+
+  it.each([
+    [{}, false, false],
+    [{ kostenQuote: 'model_estimate' }, true, false],
+    [{ monthlyContribution: 'statement' }, false, true],
+    [{ monthlyContribution: 'user_confirmed' }, false, true],
+  ] as const)('explains recorded evidence without an inferred missing-field count (%j)', (evidenceMap, estimated, confirmed) => {
+    let ws: Workspace = { ...structuredClone(defaultWorkspace), mode: 'combine' }
+    ws = addInstanceToWorkspace(ws, 'etf')
+    ws.baseline.assumptions.etf[0].evidenceMap = { ...evidenceMap }
+    const { getByRole } = render(<MeinPlanPage {...buildProps(ws)} />)
+    const text = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' }).textContent
+    expect(text).not.toContain('unbekannter Herkunft')
+    expect(text?.includes('ausdrücklich als Schätzwert markiert')).toBe(estimated)
+    expect(text?.includes('Bestätigungen oder Belege vermerkt')).toBe(confirmed)
+    expect(text).toContain('Standardwerte oder selbst eingegebene Werte')
+    if (!confirmed) expect(text).toContain('keine ausdrückliche Bestätigung')
+  })
+
+  it('keeps purchasing-power uncertainty visible when inflation is the only tested nominal no-op', () => {
+    const ws = buildCombineWorkspace()
+    ws.baseline.profile.retirementAge = 70
+    ws.baseline.assumptions.etf.forEach((instance) => { instance.status = 'paid_up' })
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const { container, getByRole } = render(<MeinPlanPage
+      {...buildProps(ws)}
+      selectedScenarioId="konservativ"
+      selectedScenarioLabel="Konservativ"
+      combinedForScenario={bundle.combinedByScenarioId.konservativ}
+    />)
+    const note = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+    expect(container.querySelectorAll('.mein-plan-sens-row')).toHaveLength(2)
+    expect(note.textContent).toContain('nominale monatliche Netto-Rente jeweils um weniger als 1 €')
+    expect(note.textContent).toContain('Inflation kann die Kaufkraft auch bei unveränderter nominaler Auszahlung mindern')
+  })
+
+  it('labels the actual clamped retirement age consistently in summary and row', () => {
+    const ws = buildCombineWorkspace()
+    ws.baseline.assumptions.retirementEndAge = 70
+    const spy = vi.spyOn(sensitivitySelectors, 'sensitivityIfRetirementAge').mockReturnValue({
+      headlineDelta: 99999, perturbedProjectedMonthly: 100000, perInstanceDelta: {}, note: 'retirement_age_clamped',
+    })
+    try {
+      const { container, getByRole } = render(<MeinPlanPage {...buildProps(ws)} />)
+      expect(getByRole('region', { name: 'Wie belastbar ist diese Zahl?' }).textContent)
+        .toContain('Renteneintritt mit 69 Jahren')
+      expect(container.querySelector('[data-row-id="renteneintritt-70"]')?.textContent)
+        .toContain('du mit 69 Jahren in Rente gehst')
+    } finally {
+      spy.mockRestore()
     }
   })
 

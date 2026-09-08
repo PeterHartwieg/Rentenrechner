@@ -1,6 +1,5 @@
 import type { InstanceCommon } from '../../domain/instances'
 import type { ProductId } from '../../domain'
-import { PRODUCT_EVIDENCE_FIELDS } from '../../utils/evidence'
 import { evidenceStateToProvKind } from '../results/provenanceHelpers'
 import type { SensitivityRowResult } from './sensitivitySelectors'
 
@@ -22,24 +21,27 @@ export function largestTestedChange<T extends { result: SensitivityRowResult }>(
   return largest
 }
 
-/** Missing evidence remains unknown, distinct from an explicit model estimate. */
+/**
+ * Read only recorded markers. Evidence keys vary between input paths, so missing
+ * registry keys cannot establish either a field count or an unknown origin.
+ */
 export function summarizeContractEvidence(slots: readonly {
   id: ProductId
   instances: readonly Pick<InstanceCommon, 'status' | 'evidenceMap'>[]
 }[]) {
   let contracts = 0
-  let estimated = 0
-  let unknown = 0
+  let hasExplicitEstimates = false
+  let hasConfirmedInputs = false
   for (const slot of slots) {
     for (const instance of slot.instances) {
       if (instance.status !== 'active' && instance.status !== 'paid_up') continue
       contracts += 1
-      for (const field of PRODUCT_EVIDENCE_FIELDS[slot.id]) {
-        const kind = evidenceStateToProvKind(instance.evidenceMap?.[field])
-        if (kind === 'model') estimated += 1
-        if (kind === 'default') unknown += 1
+      for (const state of Object.values(instance.evidenceMap ?? {})) {
+        const kind = evidenceStateToProvKind(state)
+        if (kind === 'model') hasExplicitEstimates = true
+        if (kind === 'confirmed') hasConfirmedInputs = true
       }
     }
   }
-  return { contracts, estimated, unknown }
+  return { contracts, hasExplicitEstimates, hasConfirmedInputs }
 }

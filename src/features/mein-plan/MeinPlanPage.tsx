@@ -256,9 +256,13 @@ export function MeinPlanPage({
                 <strong>Vertragsangaben.</strong>{' '}
                 {evidence.contracts > 0 ? (
                   <>
-                    Bei den berücksichtigten Feldern: {evidence.estimated} als
-                    Schätzwert markiert, {evidence.unknown} mit unbekannter Herkunft.
-                    Prüfe Angaben wie Kosten und Rentenfaktor anhand deiner Unterlagen.
+                    {evidence.hasExplicitEstimates && <>Einzelne Angaben sind ausdrücklich als Schätzwert markiert. </>}
+                    {evidence.hasConfirmedInputs
+                      ? 'Für einzelne Angaben sind Bestätigungen oder Belege vermerkt. '
+                      : 'Es ist keine ausdrückliche Bestätigung zu Vertragsangaben gespeichert. '}
+                    Ohne gespeicherte Quellenbestätigung können Angaben auch
+                    Standardwerte oder selbst eingegebene Werte sein. Prüfe sie
+                    anhand deiner Unterlagen.
                   </>
                 ) : (
                   <>Noch keine Vertragsangaben im Plan.</>
@@ -267,10 +271,10 @@ export function MeinPlanPage({
               <p className="mein-plan-context-change">
                 {largestChange ? (
                   Math.abs(largestChange.result.headlineDelta) < 1 ? (
-                    <>Die berechneten Varianten ändern die monatliche Netto-Rente jeweils um weniger als 1 €.</>
+                    <>Die berechneten Varianten ändern die nominale monatliche Netto-Rente jeweils um weniger als 1 €.</>
                   ) : (
                     <>
-                      <strong>Größte getestete Änderung: {formatDelta(largestChange.result.headlineDelta)}</strong>
+                      <strong>Größte getestete Änderung (nominal): {formatDelta(largestChange.result.headlineDelta)}</strong>
                       {' '}bei „{largestChange.summaryLabel}“.
                       {largestChange.result.note && <> {formatNote(largestChange.result.note)}</>}
                     </>
@@ -278,7 +282,8 @@ export function MeinPlanPage({
                 ) : (
                   <>Für eine Zusammenfassung liegt noch keine auswertbare Variante vor.</>
                 )}
-                {' '}Jede Variante ändert eine Annahme einzeln. Daraus folgt keine
+                {' '}Inflation kann die Kaufkraft auch bei unveränderter nominaler
+                Auszahlung mindern. Jede Variante ändert eine Annahme einzeln. Daraus folgt keine
                 Wahrscheinlichkeit und keine Ober- oder Untergrenze für deine Rente.
               </p>
               <div className="mein-plan-context-links">
@@ -375,7 +380,7 @@ export function MeinPlanPage({
               </div>
 
               <p className="mein-plan-sens-intro">
-                Wie reagiert deine voraussichtliche Netto-Rente, wenn sich eine
+                Wie reagiert deine berechnete Netto-Rente, wenn sich eine
                 einzelne Annahme verschiebt? Jede Zeile zeigt die Differenz zum
                 aktuellen Szenario — gerundet auf volle Euro. Die Beträge sind
                 nominal; Inflation kann die Kaufkraft auch bei unveränderter
@@ -936,13 +941,14 @@ function buildSensitivityRows({
 
   // Row 2: Renteneintritt 70 statt aktuell
   const currentAge = workspace.baseline.profile.retirementAge
+  const testedRetirementAge = Math.min(SENSITIVITY_RETIREMENT_AGE_DELAY, wsa.retirementEndAge - 1)
   if (currentAge !== SENSITIVITY_RETIREMENT_AGE_DELAY) {
     out.push({
       id: 'renteneintritt-70',
-      summaryLabel: `Renteneintritt mit ${Math.min(SENSITIVITY_RETIREMENT_AGE_DELAY, wsa.retirementEndAge - 1)} Jahren`,
+      summaryLabel: `Renteneintritt mit ${testedRetirementAge} Jahren`,
       condition: (
         <>
-          … du mit <strong>{SENSITIVITY_RETIREMENT_AGE_DELAY} Jahren</strong>{' '}
+          … du mit <strong>{testedRetirementAge} Jahren</strong>{' '}
           in Rente gehst (statt aktuell {currentAge})
         </>
       ),
