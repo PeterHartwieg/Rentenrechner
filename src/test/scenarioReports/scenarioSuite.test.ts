@@ -58,7 +58,7 @@ describe('scenario suite replay (INTERNAL REGRESSION)', () => {
     expect(result.totalStages).toBeGreaterThan(5_000)
   })
 
-  it('shows matching rules provenance (year rules AND legalConstants)', () => {
+  it('shows matching rules provenance (year rules, legalRuleData AND cohort schedules)', () => {
     expect(capturedRulesIdentityJson()).not.toBeNull()
     expect(result.rulesProvenanceStatus).toBe('match')
     expect(result.ok).toBe(true)
@@ -66,16 +66,21 @@ describe('scenario suite replay (INTERNAL REGRESSION)', () => {
   })
 
   it('records complete rules + engine provenance at capture time', () => {
-    // The provenance file must identify MORE than the year JSON: cross-year
-    // legalConstants (cohort tables, Fünftelregelung, 1/120) and the
-    // calculation-source digest of the capturing engine state.
+    // The provenance file must identify MORE than the year JSON: the central
+    // RuleSetIdentity stamp (#376 — year ID, revision, content fingerprint over
+    // the year rules AND the legalRuleData catalog), the canonical snapshot
+    // sha, the evaluated cohort schedules, and the calculation-source digest
+    // of the capturing engine state.
     expect(CAPTURED_PROVENANCE).toBeDefined()
     expect(CAPTURED_PROVENANCE?.label).toBe('INTERNAL REGRESSION')
     expect(CAPTURED_PROVENANCE?.engineSources.digestSha).toMatch(/^[0-9a-f]{16}$/)
-    expect(CAPTURED_PROVENANCE?.rulesIdentity.fingerprint.legalConstants).toBeDefined()
+    expect(CAPTURED_PROVENANCE?.rulesIdentity.ruleSet.ruleSetId).toBe(`de${activeRules.year}`)
+    expect(CAPTURED_PROVENANCE?.rulesIdentity.ruleSet.contentFingerprint).toMatch(/^[0-9a-f]{16}$/)
+    expect(CAPTURED_PROVENANCE?.rulesIdentity.snapshotSha).toMatch(/^[0-9a-f]{16}$/)
     expect(
-      Object.keys(CAPTURED_PROVENANCE?.rulesIdentity.fingerprint.besteuerungsanteilGrvByRetirementYear ?? {})
-        .length,
+      Object.keys(
+        CAPTURED_PROVENANCE?.rulesIdentity.cohortSchedules.besteuerungsanteilGrvByRetirementYear ?? {},
+      ).length,
     ).toBeGreaterThanOrEqual(56)
     expect(CAPTURED_PROVENANCE?.rulesIdentity.activeRules.year).toBe(activeRules.year)
   })

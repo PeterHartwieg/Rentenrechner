@@ -16,9 +16,10 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { StageMap } from './types'
+import type { ScenarioReport, StageDiff, StageMap, SuiteRunResult } from './types'
 import {
   MissingBaselineError,
+  SUITE_TOLERANCE,
   buildRegistryEntries,
   diffStageMaps,
   resolveExternalAnchorExpected,
@@ -28,6 +29,7 @@ import {
   valuesEqual,
   provenanceStatusOf,
 } from './suite'
+import { assembleReport, toMarkdownReport } from './report'
 import { extractStages } from './stages'
 import { activeRules } from '../../rules'
 import { de2026Rules } from '../../rules/de2026'
@@ -85,6 +87,9 @@ describe('injected error detection', () => {
     const diffs = diffStageMaps(liveStages, tampered, suiteCase.tolerance)
     expect(diffs).toHaveLength(1)
     expect(diffs[0].path).toBe('accumulation.bav.basis.capitalAtRetirement')
+    expect(diffs[0].kind).toBe('value-changed')
+    expect(diffs[0].expectedPresent).toBe(true)
+    expect(diffs[0].actualPresent).toBe(true)
     expect(diffs[0].delta).toBeCloseTo(50, 9)
     expect(diffs[0].expected).toBe(liveStages['accumulation.bav.basis.capitalAtRetirement'])
   })
@@ -128,6 +133,11 @@ describe('shape and finiteness failures', () => {
     const diffs = diffStageMaps(liveStages, withDeletion, suiteCase.tolerance)
     expect(diffs).toHaveLength(1)
     expect(diffs[0].path).toBe(nullValuedPath)
+    // Removed, not value-changed: the kind is what keeps the identical
+    // null/null pair from rendering as an ordinary value change.
+    expect(diffs[0].kind).toBe('removed')
+    expect(diffs[0].expectedPresent).toBe(true)
+    expect(diffs[0].actualPresent).toBe(false)
     expect(diffs[0].expected).toBe(null)
     expect(diffs[0].actual).toBe(null)
   })
@@ -137,6 +147,9 @@ describe('shape and finiteness failures', () => {
     const diffs = diffStageMaps(liveStages, withAddition, suiteCase.tolerance)
     expect(diffs).toHaveLength(1)
     expect(diffs[0].path).toBe('brand.new.stage')
+    expect(diffs[0].kind).toBe('added')
+    expect(diffs[0].expectedPresent).toBe(false)
+    expect(diffs[0].actualPresent).toBe(true)
     expect(diffs[0].expected).toBe(null)
   })
 
@@ -213,5 +226,101 @@ describe('input and provenance rejection', () => {
     expect(driftRun.rulesProvenanceStatus).toBe('drift')
     expect(driftRun.rulesSnapshotDrift).toBe(true)
     expect(driftRun.ok).toBe(false)
+  })
+})
+
+describe('markdown rendering of change kinds', () => {
+  /** Builds a minimal one-case failing report around the given diffs. */
+  function reportWithDiffs(diffs: StageDiff[]): { report: ScenarioReport; run: SuiteRunResult } {
+    const run: SuiteRunResult = {
+      cases: [
+        {
+          caseId: suiteCase.id,
+          familyId: suiteCase.familyId,
+          familyLabel: suiteCase.familyLabel,
+          mode: suiteCase.mode,
+          provenance: suiteCase.provenance,
+          purpose: suiteCase.purpose,
+          ok: false,
+          stageCount: 1,
+          firstDivergence: diffs[0],
+          diffs,
+          anchorFailures: [],
+          unsupported: [],
+        },
+      ],
+      totalCases: 1,
+      failedCases: 1,
+      totalStages: 1,
+      ok: false,
+      rulesIdentityJson: '{}',
+      rulesSnapshotDrift: false,
+      rulesProvenanceStatus: 'match',
+    }
+    const identity = {
+      baseline: {
+        sha: 'a'.repeat(40),
+        engineSourcesDigestSha: '0123456789abcdef',
+        engineSourcesDirty: false,
+        engineDirtyPaths: [],
+        baseShaCapturedAt: '2026-09-08T00:00:00.000Z',
+      },
+      evaluated: {
+        sha: 'b'.repeat(40),
+        engineSourcesDigestSha: '0123456789abcdef',
+        engineSourcesDirty: false,
+        engineDirtyPaths: [],
+      },
+      baselineRulesSnapshotSha: '0123456789abcdef',
+      liveRulesSnapshotSha: '0123456789abcdef',
+    }
+    return { report: assembleReport(run, identity, '2026-09-08T00:00:00.000Z'), run }
+  }
+
+  it('labels a REMOVED null-valued stage "entfernt" instead of showing identical dashes', () => {
+    const removedNull: StageDiff = {
+      path: 'kvPv.basis.aggregate.freiwilligOtherKvMonthly',
+      kind: 'removed',
+      expectedPresent: true,
+      actualPresent: false,
+      expected: null,
+      actual: null,
+      delta: null,
+      tolerance: SUITE_TOLERANCE,
+    }
+    const { report, run } = reportWithDiffs([removedNull])
+    const markdown = toMarkdownReport(report, run)
+    // Without the Art column this row would read `— | — | n/a` — visually
+    // indistinguishable from a value change between two nulls.
+    expect(markdown).toContain('| entfernt |')
+    expect(markdown).toContain('`kvPv.basis.aggregate.freiwilligOtherKvMonthly` | entfernt |')
+    expect(markdown).toContain('`kvPv.basis.aggregate.freiwilligOtherKvMonthly` (entfernt)')
+  })
+
+  it('labels added and value-changed stages distinctly', () => {
+    const added: StageDiff = {
+      path: 'brand.new.stage',
+      kind: 'added',
+      expectedPresent: false,
+      actualPresent: true,
+      expected: null,
+      actual: 42,
+      delta: null,
+      tolerance: SUITE_TOLERANCE,
+    }
+    const changed: StageDiff = {
+      path: 'net.etf.basis.netMonthlyPayout',
+      kind: 'value-changed',
+      expectedPresent: true,
+      actualPresent: true,
+      expected: 1000,
+      actual: 1050,
+      delta: 50,
+      tolerance: SUITE_TOLERANCE,
+    }
+    const { report, run } = reportWithDiffs([changed, added])
+    const markdown = toMarkdownReport(report, run)
+    expect(markdown).toContain('`brand.new.stage` | neu |')
+    expect(markdown).toContain('`net.etf.basis.netMonthlyPayout` | geändert |')
   })
 })

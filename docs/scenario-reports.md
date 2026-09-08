@@ -30,10 +30,10 @@ Every captured value is an **INTERNAL REGRESSION** anchor:
 |------|------|
 | `src/test/scenarioReports/inputs/<family>.json` | Frozen synthetic inputs (14 families / 26 cases). Generated once by `npm run scenario:inputs`; routine tests never call `defaultScenario`. |
 | `src/test/scenarioReports/baselines/family-<family>.json` | Frozen expected stage values per case, captured ONCE at the recorded revision. |
-| `src/test/scenarioReports/baselines/provenance.json` | Capture identity: base SHA, engine-source digest, complete rules identity (year rules **and** evaluated cohort schedules), capture reason. |
+| `src/test/scenarioReports/baselines/provenance.json` | Capture identity: base SHA, engine-source digest, complete rules identity (`RuleSetIdentity` + canonical snapshot sha + year rules **and** evaluated cohort schedules), capture reason. |
 | `src/test/scenarioReports/suite.ts` | Registry (case metadata + purposes), runner, diff engine, provenance gate. |
 | `src/test/scenarioReports/stages.ts` | Stage extraction per entry point + explicit unsupported-stage declarations. |
-| `src/test/scenarioReports/rulesFingerprint.ts` | Rules identity: evaluates every cross-year cohort schedule over its legal span so formula changes cannot hide behind a JSON dump. |
+| `src/test/scenarioReports/rulesFingerprint.ts` | Evaluated cohort schedules: freezes every cross-year cohort function's outputs over its legal span so formula changes cannot hide behind a JSON dump. Cross-year *data* is covered by the `legalRuleData` catalog via `ruleSetIdentity` (src/rules/ruleMetadata.ts). |
 | `src/test/scenarioReports/report.ts` | Report assembly + Markdown emitter (pure). |
 | `scripts/scenario-{capture-inputs,report,update-baseline}.ts`, `scripts/scenarioGitState.ts` | CLI wrappers (vite-node): input generation, report writing, baseline capture, engine identity. |
 | `src/test/scenarioReports/scenarioSuite.test.ts` | The `npm test` / `npm run verify` hook: full replay fails on any unexpected divergence. |
@@ -86,15 +86,23 @@ committed revision.
 
 ## Rules identity: rule-year change vs model change
 
-`provenance.json` freezes the complete rules identity:
+`provenance.json` freezes the complete rules identity, reusing the central rule
+metadata (`src/rules/ruleMetadata.ts`):
 
-- `activeRules` — the active year file (`src/rules/de2026.ts` today, via
-  `src/rules/index.ts`), and
-- `fingerprint` — all cross-year constants from `src/rules/legalConstants.ts`
-  **plus the evaluated cohort schedules** (§22 Besteuerungsanteil, §19 Abs. 2
-  Versorgungsfreibetrag, §22 Ertragsanteil, Halbeinkünfte minimum ages) over their
-  full legal spans. Functions do not survive JSON, so their evaluated outputs are
-  frozen instead; the source digest additionally pins the literal implementation.
+- `ruleSet` — the compact `RuleSetIdentity` stamp:
+  `ruleSetIdentity(rules, legalRuleData, activeRulesMetadata)` → `ruleSetId`,
+  `ruleYear`, `revision`, and a `contentFingerprint` over the year rules AND the
+  `legalRuleData` catalog (every exported non-function datum of
+  `legalConstants.ts`);
+- `snapshotSha` — sha256-16 prefix of
+  `canonicalRuleSetSnapshot(rules, legalRuleData)`;
+- `activeRules` — the full year file (`src/rules/de2026.ts` today, via
+  `src/rules/index.ts`) as the replayable snapshot proper; and
+- `cohortSchedules` — the evaluated cohort functions (§22 Besteuerungsanteil,
+  §19 Abs. 2 Versorgungsfreibetrag, §22 Ertragsanteil, Halbeinkünfte minimum
+  ages) over their full legal spans. Functions do not survive JSON, so their
+  evaluated outputs are frozen instead; the engine-source digest additionally
+  pins the literal implementation.
 
 The gate is three-valued: `match`, `drift`, or `missing`. Missing provenance is a
 failing gate — it never counts as a clean run.

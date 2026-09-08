@@ -48,6 +48,22 @@ function formatStageValue(value: number | boolean | null): string {
   return formatNumber(value)
 }
 
+/**
+ * German label for the diff kind. Without it, a removed (or added) nullable
+ * stage would render as `— | —` — visually identical to a value change whose
+ * sides happen to be null.
+ */
+function kindLabel(kind: StageDiff['kind']): string {
+  switch (kind) {
+    case 'value-changed':
+      return 'geändert'
+    case 'removed':
+      return 'entfernt'
+    case 'added':
+      return 'neu'
+  }
+}
+
 /** Assembles the JSON-serializable report from a suite run. */
 export function assembleReport(
   result: SuiteRunResult,
@@ -109,14 +125,14 @@ function diffLine(diff: StageDiff): string {
       ? 'n/a'
       : `${diff.delta >= 0 ? '+' : ''}${formatNumber(diff.delta)}`
   return (
-    `| \`${diff.path}\` | ${formatStageValue(diff.expected)} | ` +
+    `| \`${diff.path}\` | ${kindLabel(diff.kind)} | ${formatStageValue(diff.expected)} | ` +
     `${formatStageValue(diff.actual)} | ${delta} | ${diff.tolerance} |`
   )
 }
 
 const DIFF_TABLE_HEADER = [
-  '| Betroffene Stufe (Pfad) | Erwartet (Basis-Revision) | Aktuell | Delta | Toleranz |',
-  '|---|---:|---:|---:|---:|',
+  '| Betroffene Stufe (Pfad) | Art | Erwartet (Basis-Revision) | Aktuell | Delta | Toleranz |',
+  '|---|---|---:|---:|---:|---:|',
 ].join('\n')
 
 function identityLine(engine: EngineIdentity & { baseShaCapturedAt?: string }): string {
@@ -200,7 +216,7 @@ export function toMarkdownReport(report: ScenarioReport, run: SuiteRunResult): s
     for (const c of failing) {
       const first = c.firstDivergence ?? c.replayDrift
       lines.push(
-        `| \`${c.caseId}\` | ${first ? `\`${first.path}\`` : '_ohne Stufen-Delta (Anker/Wiedergabe)_'} | ` +
+        `| \`${c.caseId}\` | ${first ? `\`${first.path}\` (${kindLabel(first.kind)})` : '_ohne Stufen-Delta (Anker/Wiedergabe)_'} | ` +
           `${first ? formatStageValue(first.expected) : '—'} | ` +
           `${first ? formatStageValue(first.actual) : '—'} | ` +
           `${first?.delta !== null && first?.delta !== undefined ? formatNumber(first.delta) : 'n/a'} |`,
@@ -250,7 +266,7 @@ export function toMarkdownReport(report: ScenarioReport, run: SuiteRunResult): s
         lines.push(diffLine(diff))
       }
       if (c.diffs.length > 40) {
-        lines.push(`| … ${c.diffs.length - 40} weitere | | | | |`)
+        lines.push(`| … ${c.diffs.length - 40} weitere | | | | | |`)
       }
     }
     lines.push('')

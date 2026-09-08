@@ -85,11 +85,11 @@ Consumers:
   plus `calculationModel: { id, version }`, all taken from
   `activeRulesMetadata` / `activeRuleSetIdentity`. For replayable captures the
   runner should additionally record the producing git SHA and
-  `canonicalRuleSetSnapshot(activeRules, legalConstants)` — the metadata alone
+  `canonicalRuleSetSnapshot(activeRules, legalRuleData)` — the metadata alone
   does not carry the values. To judge a stored stamp later, pass the whole
   `RuleSetIdentity` to `rulesMetadataById(stamp)`: every field must match this
   build (ID, year, revision, and a fingerprint recomputed from the active
-  rules + legalConstants), and `null` on any mismatch means the result was
+  rules + legalRuleData), and `null` on any mismatch means the result was
   produced under different rule content and must be surfaced as such, never
   silently recomputed.
 - **UI** — the same metadata can back a "Rechtsstand / Berechnungsmodell"

@@ -147,9 +147,29 @@ export interface SuiteCase {
   externalAnchors?: ExternalAnchorCheck[]
 }
 
-/** One divergent stage between baseline and current engine output. */
+/** What kind of divergence a StageDiff records. */
+export type StageDiffKind =
+  /** Path known on both sides, values differ beyond tolerance. */
+  | 'value-changed'
+  /** The baseline knows the path but the engine no longer emits it. */
+  | 'removed'
+  /** The engine emits a path the baseline does not know. */
+  | 'added'
+
+/**
+ * One divergent stage between baseline and current engine output.
+ *
+ * Removed and added paths both carry `null` on the "absent" side — `kind` (and
+ * the presence flags) are what distinguish them from an explicit null value in
+ * the JSON and the Markdown report.
+ */
 export interface StageDiff {
   path: string
+  kind: StageDiffKind
+  /** False when the baseline does not know this path. */
+  expectedPresent: boolean
+  /** False when the engine stopped emitting this path. */
+  actualPresent: boolean
   expected: number | boolean | null
   actual: number | boolean | null
   delta: number | null

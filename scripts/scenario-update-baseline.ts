@@ -122,9 +122,11 @@ const provenance = {
   notes:
     `Erfasst mit: npm run scenario:update -- --reason "${reason}"` +
     (engineState.dirty ? ` --allow-dirty-reason "${allowDirtyReason?.trim()}"` : '') +
-    '. rulesIdentity friert activeRules (Jahreswerte) UND legalConstants (Kohortentabellen, ' +
-    'Fünftelregelung, 1/120 SGB V) als kanonisches JSON ein; engineSources.digestSha identifiziert ' +
-    'den Rechenwerktcode der Basis-Revision (sha256-Präfix). ' +
+    '. rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, ' +
+    'Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des ' +
+    'kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot ' +
+    'sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; ' +
+    'engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). ' +
     'Rules-Identität dieser Erfassung: ' + contentSha256(rulesJson) + '. ' +
     'Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise.',
 }

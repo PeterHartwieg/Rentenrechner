@@ -16,13 +16,21 @@
  * The runner never auto-accepts divergence — an unexpected delta fails the suite.
  */
 
+import { createHash } from 'node:crypto'
 import type { GermanRules } from '../../domain'
-import { activeRules } from '../../rules'
+import {
+  activeRules,
+  activeRulesMetadata,
+  canonicalRuleSetSnapshot,
+  legalRuleData,
+  ruleSetIdentity,
+} from '../../rules'
+import type { RuleSetIdentity } from '../../rules'
 import {
   bavContributionLimitGoldenValues,
 } from '../externalGoldenFixtures'
-import { rulesFingerprint } from './rulesFingerprint'
-import type { RulesFingerprint } from './rulesFingerprint'
+import { cohortScheduleFingerprint } from './rulesFingerprint'
+import type { CohortScheduleFingerprint } from './rulesFingerprint'
 import type {
   CaseInput,
   CaseRunResult,
@@ -74,12 +82,14 @@ const BASELINES_BY_FAMILY: Record<string, Record<string, StageMap>> = Object.fro
 /**
  * Shape of `baselines/provenance.json` — written once by the capture command.
  *
- * The rules identity is deliberately COMPLETE: it freezes the active year file
- * (`activeRules`, i.e. `src/rules/de2026.ts` today) AND the cross-year
- * `legalConstants` module (cohort tables for §22 Besteuerungsanteil /
- * Versorgungsfreibetrag, Fünftelregelung, 1/120 SGB V spreading, …). A year-JSON
- * alone would not pin the cohort implementation, so both are captured as
- * canonical JSON plus the engine-source digest of the capturing revision.
+ * The rules identity is deliberately COMPLETE and reuses the central rule
+ * metadata (#376): the compact `RuleSetIdentity` stamp (ruleSetId, ruleYear,
+ * revision, contentFingerprint over the year rules AND the `legalRuleData`
+ * catalog — every exported non-function datum of `legalConstants.ts`), the
+ * snapshot sha of `canonicalRuleSetSnapshot(rules, legalRuleData)`, the full
+ * year-rules JSON as the replayable snapshot proper, and the EVALUATED cohort
+ * schedules (see rulesFingerprint.ts) — the code-shaped part no JSON snapshot
+ * can see. Plus the engine-source digest of the capturing revision.
  */
 export interface ScenarioProvenanceFile {
   label: 'INTERNAL REGRESSION'
@@ -96,9 +106,14 @@ export interface ScenarioProvenanceFile {
     allowDirtyReason?: string
   }
   rulesIdentity: {
+    /** Compact identity stamp from src/rules/ruleMetadata.ts. */
+    ruleSet: RuleSetIdentity
+    /** sha256-16 prefix of `canonicalRuleSetSnapshot(rules, legalRuleData)`. */
+    snapshotSha: string
+    /** Evaluated cohort schedules (code the JSON snapshot cannot see). */
+    cohortSchedules: CohortScheduleFingerprint
+    /** Full year-rules JSON — the replayable snapshot proper. */
     activeRules: GermanRules
-    /** Evaluated cohort schedules + all cross-year constants (see rulesFingerprint.ts). */
-    fingerprint: RulesFingerprint
   }
   /** Human-readable capture notes (rules year, entry points used, reason). */
   notes: string
@@ -480,11 +495,16 @@ export function diffStageMaps(
   for (const [path, expectedValue] of Object.entries(expected)) {
     // Presence is compared separately: a deleted path whose baseline value was
     // null must still fail — "missing" and "explicit null" are different facts.
-    const present = path in actual
-    const actualValue = present ? actual[path] : null
-    if (!present || !valuesEqual(expectedValue, actualValue, tolerance)) {
+    // `kind` records which of the two happened, so a removed null-valued path
+    // never renders as an ordinary value change.
+    const actualPresent = path in actual
+    const actualValue = actualPresent ? actual[path] : null
+    if (!actualPresent || !valuesEqual(expectedValue, actualValue, tolerance)) {
       diffs.push({
         path,
+        kind: actualPresent ? 'value-changed' : 'removed',
+        expectedPresent: true,
+        actualPresent,
         expected: expectedValue,
         actual: actualValue,
         delta: deltaOf(expectedValue, actualValue),
@@ -495,7 +515,16 @@ export function diffStageMaps(
   // Engine started emitting a stage the baseline does not know: shape drift.
   for (const [path, actualValue] of Object.entries(actual)) {
     if (path in expected) continue
-    diffs.push({ path, expected: null, actual: actualValue, delta: null, tolerance })
+    diffs.push({
+      path,
+      kind: 'added',
+      expectedPresent: false,
+      actualPresent: true,
+      expected: null,
+      actual: actualValue,
+      delta: null,
+      tolerance,
+    })
   }
   return diffs
 }
@@ -515,16 +544,40 @@ function deltaOf(
 // ---------------------------------------------------------------------------
 
 /**
- * Canonical rules identity of a run: the active year rules AND the cross-year
- * legalConstants module (cohort tables included). Both must match the capture
- * for stage deltas to be attributable to a model change alone.
+ * Canonical rules identity of a run, built from the central rule metadata
+ * (#376): the compact `RuleSetIdentity` stamp (`ruleSetId`, `ruleYear`,
+ * `revision`, `contentFingerprint` over the year rules AND the `legalRuleData`
+ * catalog via `ruleSetIdentity(rules, legalRuleData, activeRulesMetadata)`),
+ * the snapshot sha of `canonicalRuleSetSnapshot(rules, legalRuleData)`, the
+ * evaluated cohort schedules (code no JSON snapshot can see), and the full
+ * year-rules JSON. Every part must match the capture for stage deltas to be
+ * attributable to a model change alone.
  *
  * The rules argument is ALWAYS the caller's choice — the suite never silently
  * substitutes a global default, so a custom run reports exactly the rules it
- * was given.
+ * was given. `activeRulesMetadata` always describes the compiled year file;
+ * when a caller passes different rules, the content fingerprint, snapshot sha
+ * and rules JSON are the parts that move.
+ *
+ * NOTE on key order: `capturedRulesIdentityJson` reassembles this object from
+ * the stored provenance — the literal key order here and there must stay
+ * identical, or stored-vs-live comparison would false-positive on ordering.
  */
 export function rulesIdentityJson(rules: GermanRules): string {
-  return JSON.stringify({ activeRules: rules, fingerprint: rulesFingerprint() })
+  return JSON.stringify({
+    ruleSet: ruleSetIdentity(rules, legalRuleData, activeRulesMetadata),
+    snapshotSha: snapshotShaOf(rules),
+    cohortSchedules: cohortScheduleFingerprint(),
+    activeRules: rules,
+  })
+}
+
+/** sha256-16 prefix of the canonical rule snapshot (rules + legalRuleData). */
+function snapshotShaOf(rules: GermanRules): string {
+  return createHash('sha256')
+    .update(canonicalRuleSetSnapshot(rules, legalRuleData))
+    .digest('hex')
+    .slice(0, 16)
 }
 
 /** Rules this checkout would use in production (`src/rules/index.ts`). */
@@ -534,10 +587,13 @@ export function activeRulesSnapshotJson(): string {
 
 /** Canonical rules identity captured at the base revision, or null if absent. */
 export function capturedRulesIdentityJson(): string | null {
-  return CAPTURED_PROVENANCE
+  const identity = CAPTURED_PROVENANCE?.rulesIdentity
+  return identity
     ? JSON.stringify({
-        activeRules: CAPTURED_PROVENANCE.rulesIdentity.activeRules,
-        fingerprint: CAPTURED_PROVENANCE.rulesIdentity.fingerprint,
+        ruleSet: identity.ruleSet,
+        snapshotSha: identity.snapshotSha,
+        cohortSchedules: identity.cohortSchedules,
+        activeRules: identity.activeRules,
       })
     : null
 }
