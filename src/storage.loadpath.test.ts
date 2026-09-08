@@ -105,6 +105,42 @@ function makeV1Json(
 // ---------------------------------------------------------------------------
 
 describe('A — valid v2 workspace load', () => {
+  it('loads current compare edits without overwriting the older workspace', () => {
+    const ws = makeValidV2Workspace()
+    ws.mode = 'compare'
+    saveWorkspace(ws)
+    const workspaceJson = mem.store[STORAGE_KEY_V2]
+    mem.store[STORAGE_KEY_V1] = makeV1Json(
+      { ...defaultProfile, age: 42 },
+      { ...defaultAssumptions, equalInputAmountEUR: 500 },
+    )
+    expect(loadSavedState()?.assumptions.equalInputAmountEUR).toBe(500)
+    expect(loadSavedState()?.profile.age).toBe(42)
+    expect(mem.store[STORAGE_KEY_V2]).toBe(workspaceJson)
+  })
+
+  it('keeps a combine workspace authoritative when a compare save also exists', () => {
+    const ws = makeValidV2Workspace()
+    ws.mode = 'combine'
+    ws.baseline.profile.age = 39
+    saveWorkspace(ws)
+    mem.store[STORAGE_KEY_V1] = makeV1Json({ ...defaultProfile, age: 42 })
+    expect(loadSavedState()?.profile.age).toBe(39)
+    expect(loadSavedWorkspace()?.baseline.profile.age).toBe(39)
+  })
+
+  it.each([undefined, 'not json', makeV1Json({ ...defaultProfile, age: -1 })])(
+    'recovers a compare workspace when the singleton save is missing or invalid (%s)',
+    (rawV1) => {
+      const ws = makeValidV2Workspace()
+      ws.mode = 'compare'
+      ws.baseline.profile.age = 39
+      saveWorkspace(ws)
+      if (rawV1 !== undefined) mem.store[STORAGE_KEY_V1] = rawV1
+      expect(loadSavedState()?.profile.age).toBe(39)
+    },
+  )
+
   it('parseWorkspaceJson returns a valid Workspace for a well-formed v2 JSON', () => {
     const ws = makeValidV2Workspace()
     const json = buildWorkspaceJson(ws)

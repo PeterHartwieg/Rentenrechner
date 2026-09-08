@@ -23,8 +23,9 @@ import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from './storageKeys'
 //   STORAGE_KEY_V2  — workspace write path (portfolioState / saveWorkspace).
 //                     Full Workspace object with schemaVersion: 2.
 //
-// Read order: both loadSavedState and loadSavedWorkspace prefer STORAGE_KEY_V2,
-// then fall back to STORAGE_KEY_V1 with v1→v2 migration applied.
+// Read order: loadSavedWorkspace prefers STORAGE_KEY_V2. loadSavedState uses
+// V1 for compare-mode edits when available; combine-mode reads V2. Both retain
+// the other format as a migration/recovery fallback.
 //
 // The compare-mode writer (useCalculatorState) intentionally keeps writing to
 // STORAGE_KEY_V1. Combine/workspace mode writes STORAGE_KEY_V2 via saveWorkspace().
@@ -756,11 +757,12 @@ export function buildStateJson(
  * Load the saved state from localStorage as a singleton { profile, assumptions }
  * pair for use by the compare-mode engine path (simulateRetirementComparison).
  *
- * Read order:
- *   1. STORAGE_KEY_V2 — parse + validate via parseWorkspaceJson, then project
- *      to singleton via workspaceToSingletonAssumptions + validateState.
- *   2. STORAGE_KEY_V1 — parse + migrate via parseStateFromJson (includes
- *      migrateAndValidateState).
+ * A valid combine-mode workspace owns the state. In compare-mode, prefer the
+ * validated V1 save, which is where useCalculatorState and useAngabenState
+ * write edits. A V2 compare workspace is only a fallback for missing/invalid
+ * V1 data; otherwise its older snapshot would undo edits on every navigation.
+ * V2 reads use parseWorkspaceJson and singleton projection; V1 reads use
+ * parseStateFromJson (including migrateAndValidateState).
  *
  * If the v2 key is present but invalid (malformed JSON, failed validation,
  * future schemaVersion), falls through to the v1 key rather than returning
@@ -768,11 +770,16 @@ export function buildStateJson(
  */
 export function loadSavedState(): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
   try {
-    // Prefer v2 key.
+    // V2 determines the mode, but compare-mode edits live in V1.
     const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
     if (rawV2) {
       const workspace = parseWorkspaceJson(rawV2)
       if (workspace) {
+        if (workspace.mode === 'compare') {
+          const rawV1 = localStorage.getItem(STORAGE_KEY_V1)
+          const comparison = rawV1 ? parseStateFromJson(rawV1) : null
+          if (comparison) return comparison
+        }
         const singleton = workspaceToSingletonAssumptions(workspace)
         const profile = mergeDeep(workspace.baseline.profile, defaultProfile)
         return validateState(profile, singleton)
