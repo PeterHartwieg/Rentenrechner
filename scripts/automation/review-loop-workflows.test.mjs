@@ -2,16 +2,23 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 describe('review-loop workflow handoff', () => {
-  it('runs verify and Claude review for agent and retro-curation PR branches', () => {
+  it('keeps Claude review scoped to agent and retro-curation PR branches', () => {
     const claudeReview = readFileSync('.github/workflows/claude-review.yml', 'utf8')
+
+    expect(claudeReview).toContain("startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-')")
+    expect(claudeReview).toContain(
+      "startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'automation/retro-curate-')",
+    )
+  })
+
+  it('runs pr-verify for every pull request without a branch gate', () => {
     const prVerify = readFileSync('.github/workflows/pr-verify.yml', 'utf8')
 
-    for (const workflow of [claudeReview, prVerify]) {
-      expect(workflow).toContain("startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-')")
-      expect(workflow).toContain(
-        "startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'automation/retro-curate-')",
-      )
-    }
+    // pr-verify widened to ALL pull requests (issue #375); the agent merge
+    // flows above keep their own scoping. Asserting on the whole file is
+    // enough here — no job-level or trigger-level branch filter may exist.
+    expect(prVerify).not.toContain('startsWith(')
+    expect(prVerify).not.toMatch(/^\s+(branches|branches-ignore|paths|paths-ignore):/m)
   })
 
   it('runs the review loop and sweep for agent and retro-curation PR branches', () => {
