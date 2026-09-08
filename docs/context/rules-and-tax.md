@@ -31,8 +31,9 @@ including what a ruleSetId does and does not guarantee for historical replay:
 | Basisrente Schicht-1 cap (§10 Abs. 3 EStG) | `src/engine/basisrente.ts` | `calculateBasisrenteFunding` |
 | KV/PV on Versorgungsbezüge (§229 SGB V, §226(2), §57 SGB XI) | `src/engine/bavPayout.ts`, `src/engine/retirementPayout.ts` | `netBavPayout`, `afterTaxBavLumpSum`, shared KV/PV helpers |
 | KVdR (§249a SGB V half-rate) | `src/engine/grv.ts`, `src/engine/bavPayout.ts` | `projectStatutoryPension`, `netBavPayout` |
-| §22 Nr. 1 Satz 3a Ertragsanteil (private RV Leibrente) | `src/engine/insurancePayout.ts`, `src/rules/de2026.ts` | `netInsurancePayout` + ertragsanteilByAge table |
+| §22 Nr. 1 Satz 3a Ertragsanteil (private RV Leibrente) | `src/engine/insurancePayout.ts`, `src/rules/de2026.ts` | `classifyInsuranceMonthlyIncome` + ertragsanteilByAge table |
 | Insurance tax mode (§20 Abs. 1 Nr. 6, §52 Abs. 28 EStG) | `src/engine/insurancePayout.ts` | `deriveInsuranceTaxMode` + `halbeinkuenfteMinAgeForContractStartYear` |
+| Private RV monthly classification (both modes) | `src/engine/insurancePayout.ts` | `classifyInsuranceMonthlyIncome` — compare (`netInsurancePayout`) and combine (`portfolioCombine`) share one implementation |
 | bAV lump-sum tax routing (§34 Abs. 2, §22 Nr. 5 EStG) | `src/engine/bavPayout.ts` | `afterTaxBavLumpSum`, `deriveBavLumpSumTaxMode` |
 | Certified §22 Nr. 5 payout tax (AVD / Riester) | `src/engine/certifiedPensionPayout.ts` | `netCertifiedPensionPayout`, `afterTaxCertifiedPensionLumpSum` |
 | ETF Vorabpauschale (InvStG §18, §19) | `src/engine/accumulation.ts`, `src/engine/etfPayout.ts` | `projectAccumulation` (`etfVorabpauschale` param), `etfPayoutSchedule` |

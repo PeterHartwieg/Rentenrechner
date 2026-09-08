@@ -734,14 +734,16 @@ describe('combinePortfolio — regression #65: pAV gain ratio uses totalContribu
     // True cost basis (totalContributionsBeforeFees) = 100,000 EUR.
     // Capital at retirement = 100,000 EUR → zero real gain.
     //
-    // The bug: portfolioCombine.ts computePavTaxableAnnual reads
+    // The bug: portfolioCombine.ts's per-instance pAV taxable-base computation
+    // (at the time `computePavTaxableAnnual`, today shared via
+    // `classifyInsuranceMonthlyIncome`) reads
     // `result.totalProductContributions` (= 50,000 EUR, regular contributions only)
     // as the cost basis. This gives gainRatio = 0.5, taxableAnnual = 6,000 EUR,
     // and privateInsuranceTaxable = 3,000 EUR (after halbeinkuenfte 0.5 factor).
     //
     // The fix: expose `totalContributionsBeforeFees` on ProductResult (sum of
     // totalProductContributions + injectedPrincipal from transfer events) and use
-    // it in computePavTaxableAnnual. With totalContributionsBeforeFees = 100,000
+    // it as the classifier's cost basis. With totalContributionsBeforeFees = 100,000
     // (= capitalAtRetirement), gainRatio = 0 → taxableAnnual = 0.
     const ws = makeWorkspaceFromV1(0, false, true, 0, 0, 0)
     const baseIns = ws.baseline.assumptions.insurance[0]

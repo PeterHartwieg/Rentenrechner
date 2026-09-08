@@ -65,6 +65,7 @@ behaviour; tests live next to the module unless noted.
 | Salary, BMF PAP Vorsorgepauschale, bAV two-pass funding | `src/engine/salary.ts` |
 | Retirement-phase tax (cohort tables, Versorgungsfreibetrag, Ehegattensplitting) | `src/engine/retirementTax.ts` |
 | Monthly retirement net-payout cascade (bAV/pAV/AVD/Riester/Basisrente) | `src/engine/retirementPayout.ts` |
+| Private-insurance monthly income classification (effective tax mode + taxable annual; shared by compare and combine) | `src/engine/insurancePayout.ts` (`classifyInsuranceMonthlyIncome`) |
 | Accumulation, fee drag, ETF Vorabpauschale | `src/engine/accumulation.ts` |
 | Salary-phase §10 Sonderausgaben tax-delta primitives | `src/engine/salaryPhaseFunding.ts` |
 | Monte Carlo return paths | `src/engine/marketReturns.ts`, `src/engine/monteCarlo.ts` |
