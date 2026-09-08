@@ -15,6 +15,7 @@ import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from
 import { addInstanceToWorkspace } from '../../features/inventory/inventoryHelpers'
 import type { Workspace } from '../../domain/workspace'
 import { useAngabenState } from '../../app/useAngabenState'
+import { useCalculatorState } from '../../app/useCalculatorState'
 import { buildShareUrl } from '../../utils/urlShare'
 import { eachViewport, mockViewport } from '../../test/viewport'
 import { simulateRetirementComparison } from '../../engine/simulate'
@@ -447,6 +448,38 @@ describe('AngabenPage — right-rail accordion a11y', () => {
 // dashboard picks them up on the next mount.
 // ---------------------------------------------------------------------------
 describe('AngabenPage — compare-mode state wiring (useCalculatorState)', () => {
+  it('keeps a €500 contribution and profile edits across navigation when a compare workspace exists', () => {
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({
+      ...structuredClone(defaultWorkspace),
+      mode: 'compare',
+    }))
+    const page = render(<AngabenPage navigate={vi.fn()} />)
+    fireEvent.change(page.getByRole('spinbutton', { name: 'Alter Jahre' }), {
+      target: { value: '42' },
+    })
+    const contribution = page.getByRole('spinbutton', { name: 'Netto-Beitrag EUR mtl.' })
+    fireEvent.change(contribution, { target: { value: '500' } })
+    fireEvent.blur(contribution)
+    expect(contribution).toHaveValue(500)
+    fireEvent.click(page.getByRole('button', { name: 'Speichern und weiter zu Verträgen' }))
+    page.unmount()
+
+    // Step 2 and the comparison each remount their own state hook.
+    const products = renderHook(() => useAngabenState())
+    expect(products.result.current.assumptions.equalInputAmountEUR).toBe(500)
+    expect(products.result.current.profile.age).toBe(42)
+    products.unmount()
+    const comparison = renderHook(() => useCalculatorState())
+    expect(comparison.result.current.assumptions.equalInputAmountEUR).toBe(500)
+    expect(comparison.result.current.profile.age).toBe(42)
+    const simulation = simulateRetirementComparison(
+      comparison.result.current.profile,
+      comparison.result.current.assumptions,
+      de2026Rules,
+    )
+    expect(simulation.bavFunding.monthlyNetCost).toBeCloseTo(500, 2)
+  })
+
   /**
    * Find the "Alter" NumberField. The section component renders the label as
    * the first `<span>` child of the wrapping `<label>` — we read every label
