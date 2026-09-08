@@ -128,3 +128,17 @@ For release confidence, combine:
 - end-to-end product snapshots,
 - manual review of assumptions displayed in the UI,
 - and a yearly statutory-value update audit.
+
+## Scenario Report Suite (Issue #377)
+
+Between the external golden layer and the release audits sits a local
+**scenario-report suite**: 26 frozen synthetic scenarios (compare mode, combine
+mode, seeded Monte Carlo) replayed through the existing engine entry points and
+compared stage-by-stage against baselines captured once at a recorded engine
+revision. It detects unintended numeric drift, not legal correctness — all
+captured values are labelled INTERNAL REGRESSION.
+
+See [`docs/scenario-reports.md`](scenario-reports.md) for commands, the
+clean-source capture workflow, the rules-identity gate (year rules + cohort
+fingerprint), and the rule-change vs model-change workflow. Run it with
+`npm run scenario:report`; it also fails `npm test` on unexpected divergence.

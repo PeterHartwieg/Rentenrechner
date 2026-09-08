@@ -90,7 +90,10 @@ npx tsc --noEmit        # type-check only
 npm run dev             # dev server
 npm run build           # production build
 npm run repo:stats      # file/symbol inventory
+npm run scenario:report # scenario-report suite → artifacts/ (exit 1 on drift; see docs/scenario-reports.md)
 ```
+
+**Scenario baselines are deliberate.** `src/test/scenarioReports/` replays frozen synthetic inputs against the engine and fails on any unexpected stage divergence. Baselines update only via `npm run scenario:update -- --reason "..."` on a clean tree — never auto-accept; captured values are INTERNAL REGRESSION anchors, not legal proof.
 
 **Build-artifact side effect:** `npm run verify` (and `npm run build`) regenerates `public/og/*.png` via `scripts/generate-og-images.mjs`. These PNGs appear as dirty/unstaged files after every build run. Do not stage or commit them; they are derived artifacts, not source changes. Before staging a fix commit, run `git checkout -- public/og/` to discard them.
 

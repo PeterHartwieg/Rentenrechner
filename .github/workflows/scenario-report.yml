@@ -1,0 +1,46 @@
+name: Scenario Report
+
+# Issue #377 — local scenario-report suite.
+# Runs the suite and uploads the report artifact EVEN ON FAILURE, so a red run
+# still ships its diagnostic (first divergent stage per case). Gate enforcement
+# also happens in `npm test` inside `npm run verify`; this workflow exists for
+# the artifact.
+#
+# Note: pr-verify.yml is the universal verification workflow; this file is
+# additive on purpose so changes to one do not affect the other.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  scenario-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run scenario report suite
+        run: npm run scenario:report
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-report
+          path: |
+            artifacts/scenario-report.json
+            artifacts/scenario-report.md
+          if-no-files-found: warn
+          retention-days: 30

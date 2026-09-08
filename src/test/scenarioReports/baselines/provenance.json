@@ -1,0 +1,537 @@
+{
+  "label": "INTERNAL REGRESSION",
+  "baseSha": "a64e6efb54ed732f002997cd37ad30b2bd9be1b2",
+  "baseShaCapturedAt": "2026-09-08T19:42:02.112Z",
+  "engineSources": {
+    "digestSha": "ea6586b8c11eef25",
+    "dirty": false,
+    "paths": []
+  },
+  "rulesIdentity": {
+    "activeRules": {
+      "year": 2026,
+      "employeeAllowance": 1230,
+      "specialExpensesAllowance": 36,
+      "entlastungsbetragAlleinerziehende": 4260,
+      "entlastungsbetragAlleinerziehendePro": 240,
+      "altersvorsorgedepot": {
+        "productStartYear": 2027,
+        "specialExpenseOwnContributionCap": 1800,
+        "contractContributionCapAnnual": 6840,
+        "minimumOwnContributionAnnual": 120,
+        "basicAllowanceTier1MaxContribution": 360,
+        "basicAllowanceTier1Rate": 0.5,
+        "basicAllowanceTier2MaxContribution": 1800,
+        "basicAllowanceTier2Rate": 0.25,
+        "basicAllowanceMax": 540,
+        "indirectSpouseBasicAllowanceMax": 175,
+        "careerStarterBonus": 200,
+        "careerStarterMaxAge": 24,
+        "childAllowanceRate": 1,
+        "childAllowanceMax": 300,
+        "standarddepotEffektivkostenCap": 0.01,
+        "glidepathHighRiskMax5YearsBefore": 0.5,
+        "glidepathHighRiskMax2YearsBefore": 0.3,
+        "payoutMinAge": 65,
+        "payoutMaxFirstAge": 70,
+        "partialCapitalMaxPct": 0.3,
+        "payoutPlanMinEndAge": 85,
+        "transferCostOldProviderWithin5YearsEUR": 150,
+        "transferCostNewProviderEUR": 150
+      },
+      "incomeTax": {
+        "basicAllowance": 12348,
+        "firstProgressionEnd": 17799,
+        "secondProgressionEnd": 69878,
+        "topTaxStart": 277826,
+        "solidarityFreeTax": 20350,
+        "solidarityFreeTaxMarried": 40700
+      },
+      "socialSecurity": {
+        "pensionCapYear": 101400,
+        "healthCareCapYear": 69750,
+        "pensionEmployeeRate": 0.093,
+        "pensionEmployerRate": 0.093,
+        "unemploymentEmployeeRate": 0.013,
+        "unemploymentEmployerRate": 0.013,
+        "healthGeneralRate": 0.146,
+        "healthReducedRate": 0.14,
+        "careEmployeeBaseRate": 0.018,
+        "careEmployeeChildlessRate": 0.024,
+        "careEmployerRate": 0.018,
+        "careRetirementChildlessRate": 0.042,
+        "kvFreibetragVersorgungMonthly": 197.75,
+        "healthAndCareCapMonth": 5812.5,
+        "bezugsgroesseMonthly": 3955,
+        "durchschnittsentgelt": 51944,
+        "aktuellerRentenwert": 42.52
+      },
+      "bav": {
+        "taxFreePctOfPensionCap": 0.08,
+        "socialSecurityFreePctOfPensionCap": 0.04,
+        "statutoryEmployerSubsidyPct": 0.15
+      },
+      "basisrente": {
+        "schicht1CapSingle": 30826,
+        "deductibleFraction": 1
+      },
+      "riester": {
+        "grundzulage": 175,
+        "childAllowancePre2008": 185,
+        "childAllowancePost2007": 300,
+        "careerStarterBonus": 200,
+        "careerStarterMaxAge": 24,
+        "minEigenbeitragPct": 0.04,
+        "sockelbetrag": 60,
+        "annualCapInclAllowances": 2100,
+        "payoutPlanMinEndAge": 85
+      },
+      "capitalGains": {
+        "taxRate": 0.25,
+        "solidarityRate": 0.055,
+        "saverAllowance": 1000,
+        "basiszins": 0.032
+      }
+    },
+    "fingerprint": {
+      "legalConstants": {
+        "insurance": {
+          "pre2005YearBoundary": 2005,
+          "halbeinkuenfteMinRuntimeYears": 12,
+          "halbeinkuenfteMinAgePre2012Contracts": 60,
+          "halbeinkuenfteRaisedMinAgeContractStartYear": 2012,
+          "halbeinkuenfteMinAgePost2011Contracts": 62,
+          "halbeinkuenfteFactor": 0.5
+        },
+        "bav": {
+          "versorgungsbezugSpreadingMonths": 120,
+          "fuenftelregelungDivisor": 5
+        },
+        "basisrente": {
+          "minPayoutAge": 62
+        },
+        "payrollTax": {
+          "taxClassVVIUpperFactor": 1.25,
+          "taxClassVVILowerFactor": 0.75
+        }
+      },
+      "standaloneConstants": {
+        "werbungskostenPauschalVersorgungsbezuege": 102,
+        "werbungskostenPauschalRenten": 102,
+        "sonderausgabenPauschbetrag": {
+          "single": 36,
+          "married": 72
+        },
+        "aktienfondsTeilfreistellungPrivat": 0.3,
+        "pvBeitragszuschlagKinderloseMinAge": 23
+      },
+      "besteuerungsanteilGrvByRetirementYear": {
+        "2005": 0.5,
+        "2006": 0.52,
+        "2007": 0.54,
+        "2008": 0.56,
+        "2009": 0.58,
+        "2010": 0.6,
+        "2011": 0.62,
+        "2012": 0.64,
+        "2013": 0.66,
+        "2014": 0.6799999999999999,
+        "2015": 0.7,
+        "2016": 0.72,
+        "2017": 0.74,
+        "2018": 0.76,
+        "2019": 0.78,
+        "2020": 0.8,
+        "2021": 0.81,
+        "2022": 0.8200000000000001,
+        "2023": 0.825,
+        "2024": 0.83,
+        "2025": 0.835,
+        "2026": 0.84,
+        "2027": 0.845,
+        "2028": 0.85,
+        "2029": 0.855,
+        "2030": 0.86,
+        "2031": 0.865,
+        "2032": 0.87,
+        "2033": 0.875,
+        "2034": 0.88,
+        "2035": 0.885,
+        "2036": 0.8899999999999999,
+        "2037": 0.895,
+        "2038": 0.8999999999999999,
+        "2039": 0.9049999999999999,
+        "2040": 0.9099999999999999,
+        "2041": 0.9149999999999999,
+        "2042": 0.9199999999999999,
+        "2043": 0.9249999999999999,
+        "2044": 0.9299999999999999,
+        "2045": 0.9349999999999999,
+        "2046": 0.94,
+        "2047": 0.945,
+        "2048": 0.95,
+        "2049": 0.955,
+        "2050": 0.96,
+        "2051": 0.965,
+        "2052": 0.97,
+        "2053": 0.975,
+        "2054": 0.98,
+        "2055": 0.985,
+        "2056": 0.99,
+        "2057": 0.995,
+        "2058": 1,
+        "2059": 1,
+        "2060": 1
+      },
+      "versorgungsfreibetragByRetirementYear": {
+        "2005": {
+          "prozent": 0.4,
+          "hoechstbetrag": 3000,
+          "zuschlag": 900
+        },
+        "2006": {
+          "prozent": 0.384,
+          "hoechstbetrag": 2880,
+          "zuschlag": 864
+        },
+        "2007": {
+          "prozent": 0.368,
+          "hoechstbetrag": 2760,
+          "zuschlag": 828
+        },
+        "2008": {
+          "prozent": 0.35200000000000004,
+          "hoechstbetrag": 2640,
+          "zuschlag": 792
+        },
+        "2009": {
+          "prozent": 0.336,
+          "hoechstbetrag": 2520,
+          "zuschlag": 756
+        },
+        "2010": {
+          "prozent": 0.32,
+          "hoechstbetrag": 2400,
+          "zuschlag": 720
+        },
+        "2011": {
+          "prozent": 0.30400000000000005,
+          "hoechstbetrag": 2280,
+          "zuschlag": 684
+        },
+        "2012": {
+          "prozent": 0.28800000000000003,
+          "hoechstbetrag": 2160,
+          "zuschlag": 648
+        },
+        "2013": {
+          "prozent": 0.272,
+          "hoechstbetrag": 2040,
+          "zuschlag": 612
+        },
+        "2014": {
+          "prozent": 0.256,
+          "hoechstbetrag": 1920,
+          "zuschlag": 576
+        },
+        "2015": {
+          "prozent": 0.24000000000000002,
+          "hoechstbetrag": 1800,
+          "zuschlag": 540
+        },
+        "2016": {
+          "prozent": 0.22400000000000003,
+          "hoechstbetrag": 1680,
+          "zuschlag": 504
+        },
+        "2017": {
+          "prozent": 0.20800000000000002,
+          "hoechstbetrag": 1560,
+          "zuschlag": 468
+        },
+        "2018": {
+          "prozent": 0.192,
+          "hoechstbetrag": 1440,
+          "zuschlag": 432
+        },
+        "2019": {
+          "prozent": 0.17600000000000002,
+          "hoechstbetrag": 1320,
+          "zuschlag": 396
+        },
+        "2020": {
+          "prozent": 0.16000000000000003,
+          "hoechstbetrag": 1200,
+          "zuschlag": 360
+        },
+        "2021": {
+          "prozent": 0.152,
+          "hoechstbetrag": 1140,
+          "zuschlag": 342
+        },
+        "2022": {
+          "prozent": 0.14400000000000002,
+          "hoechstbetrag": 1080,
+          "zuschlag": 324
+        },
+        "2023": {
+          "prozent": 0.14,
+          "hoechstbetrag": 1050,
+          "zuschlag": 315
+        },
+        "2024": {
+          "prozent": 0.136,
+          "hoechstbetrag": 1020,
+          "zuschlag": 306
+        },
+        "2025": {
+          "prozent": 0.132,
+          "hoechstbetrag": 990,
+          "zuschlag": 297
+        },
+        "2026": {
+          "prozent": 0.128,
+          "hoechstbetrag": 960,
+          "zuschlag": 288
+        },
+        "2027": {
+          "prozent": 0.12400000000000001,
+          "hoechstbetrag": 930,
+          "zuschlag": 279
+        },
+        "2028": {
+          "prozent": 0.12000000000000001,
+          "hoechstbetrag": 900,
+          "zuschlag": 270
+        },
+        "2029": {
+          "prozent": 0.11600000000000002,
+          "hoechstbetrag": 870,
+          "zuschlag": 261
+        },
+        "2030": {
+          "prozent": 0.11200000000000002,
+          "hoechstbetrag": 840,
+          "zuschlag": 252
+        },
+        "2031": {
+          "prozent": 0.10800000000000001,
+          "hoechstbetrag": 810,
+          "zuschlag": 243
+        },
+        "2032": {
+          "prozent": 0.10400000000000001,
+          "hoechstbetrag": 780,
+          "zuschlag": 234
+        },
+        "2033": {
+          "prozent": 0.1,
+          "hoechstbetrag": 750,
+          "zuschlag": 225
+        },
+        "2034": {
+          "prozent": 0.09600000000000002,
+          "hoechstbetrag": 720,
+          "zuschlag": 216
+        },
+        "2035": {
+          "prozent": 0.09200000000000001,
+          "hoechstbetrag": 690,
+          "zuschlag": 207
+        },
+        "2036": {
+          "prozent": 0.08800000000000001,
+          "hoechstbetrag": 660,
+          "zuschlag": 198
+        },
+        "2037": {
+          "prozent": 0.08400000000000002,
+          "hoechstbetrag": 630,
+          "zuschlag": 189
+        },
+        "2038": {
+          "prozent": 0.08000000000000002,
+          "hoechstbetrag": 600,
+          "zuschlag": 180
+        },
+        "2039": {
+          "prozent": 0.07600000000000001,
+          "hoechstbetrag": 570,
+          "zuschlag": 171
+        },
+        "2040": {
+          "prozent": 0.07200000000000001,
+          "hoechstbetrag": 540,
+          "zuschlag": 162
+        },
+        "2041": {
+          "prozent": 0.068,
+          "hoechstbetrag": 510,
+          "zuschlag": 153
+        },
+        "2042": {
+          "prozent": 0.06400000000000002,
+          "hoechstbetrag": 480,
+          "zuschlag": 144
+        },
+        "2043": {
+          "prozent": 0.06000000000000001,
+          "hoechstbetrag": 450,
+          "zuschlag": 135
+        },
+        "2044": {
+          "prozent": 0.05600000000000001,
+          "hoechstbetrag": 420,
+          "zuschlag": 126
+        },
+        "2045": {
+          "prozent": 0.05200000000000002,
+          "hoechstbetrag": 390,
+          "zuschlag": 117
+        },
+        "2046": {
+          "prozent": 0.048000000000000015,
+          "hoechstbetrag": 360,
+          "zuschlag": 108
+        },
+        "2047": {
+          "prozent": 0.04400000000000001,
+          "hoechstbetrag": 330,
+          "zuschlag": 99
+        },
+        "2048": {
+          "prozent": 0.04000000000000001,
+          "hoechstbetrag": 300,
+          "zuschlag": 90
+        },
+        "2049": {
+          "prozent": 0.036000000000000004,
+          "hoechstbetrag": 270,
+          "zuschlag": 81
+        },
+        "2050": {
+          "prozent": 0.032000000000000015,
+          "hoechstbetrag": 240,
+          "zuschlag": 72
+        },
+        "2051": {
+          "prozent": 0.02800000000000001,
+          "hoechstbetrag": 210,
+          "zuschlag": 63
+        },
+        "2052": {
+          "prozent": 0.024000000000000007,
+          "hoechstbetrag": 180,
+          "zuschlag": 54
+        },
+        "2053": {
+          "prozent": 0.020000000000000018,
+          "hoechstbetrag": 150,
+          "zuschlag": 45
+        },
+        "2054": {
+          "prozent": 0.016000000000000014,
+          "hoechstbetrag": 120,
+          "zuschlag": 36
+        },
+        "2055": {
+          "prozent": 0.01200000000000001,
+          "hoechstbetrag": 90,
+          "zuschlag": 27
+        },
+        "2056": {
+          "prozent": 0.008000000000000007,
+          "hoechstbetrag": 60,
+          "zuschlag": 18
+        },
+        "2057": {
+          "prozent": 0.0040000000000000036,
+          "hoechstbetrag": 30,
+          "zuschlag": 9
+        },
+        "2058": {
+          "prozent": 0,
+          "hoechstbetrag": 0,
+          "zuschlag": 0
+        },
+        "2059": {
+          "prozent": 0,
+          "hoechstbetrag": 0,
+          "zuschlag": 0
+        },
+        "2060": {
+          "prozent": 0,
+          "hoechstbetrag": 0,
+          "zuschlag": 0
+        }
+      },
+      "ertragsanteilByPayoutAge": {
+        "55": 0.26,
+        "56": 0.26,
+        "57": 0.25,
+        "58": 0.24,
+        "59": 0.24,
+        "60": 0.23,
+        "61": 0.22,
+        "62": 0.21,
+        "63": 0.2,
+        "64": 0.19,
+        "65": 0.18,
+        "66": 0.18,
+        "67": 0.17,
+        "68": 0.17,
+        "69": 0.15,
+        "70": 0.15,
+        "71": 0.14,
+        "72": 0.14,
+        "73": 0.13,
+        "74": 0.13,
+        "75": 0.11
+      },
+      "halbeinkuenfteMinAgeByContractStartYear": {
+        "1990": 60,
+        "1991": 60,
+        "1992": 60,
+        "1993": 60,
+        "1994": 60,
+        "1995": 60,
+        "1996": 60,
+        "1997": 60,
+        "1998": 60,
+        "1999": 60,
+        "2000": 60,
+        "2001": 60,
+        "2002": 60,
+        "2003": 60,
+        "2004": 60,
+        "2005": 60,
+        "2006": 60,
+        "2007": 60,
+        "2008": 60,
+        "2009": 60,
+        "2010": 60,
+        "2011": 60,
+        "2012": 62,
+        "2013": 62,
+        "2014": 62,
+        "2015": 62,
+        "2016": 62,
+        "2017": 62,
+        "2018": 62,
+        "2019": 62,
+        "2020": 62,
+        "2021": 62,
+        "2022": 62,
+        "2023": 62,
+        "2024": 62,
+        "2025": 62,
+        "2026": 62,
+        "2027": 62,
+        "2028": 62,
+        "2029": 62,
+        "2030": 62
+      }
+    }
+  },
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"v2 provenance: add evaluated cohort-schedule fingerprint to rules identity (engine output unchanged)\". rulesIdentity friert activeRules (Jahreswerte) UND legalConstants (Kohortentabellen, Fünftelregelung, 1/120 SGB V) als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerktcode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: 3729f1ddb05d998b. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+}
