@@ -1622,28 +1622,67 @@ describe('AngabenPage — § 1 Steuerklasse + unsupported controls removed (inpu
     expect(parsed.mode).toBe('combine')
   })
 
-  it('offers no Familienstand, Bundesland, or Kirchensteuer control and no unsupported-effect hint', () => {
-    const { container } = render(<AngabenPage />)
-    const text = container.textContent ?? ''
+  /** Shared § 1 assertions (Opus-5 review correction): the removed controls
+   *  stay removed, church tax stays an honest exclusion, and the copy never
+   *  unconditionally claims joint retirement taxation is unsupported —
+   *  combine mode wires it (CombineHaushaltSection → baseline.partner). The
+   *  tax-class hint must instead scope itself to the salary phase. */
+  function expectTruthfulPersonSection(container: HTMLElement): void {
     // Scope to the § 1 Person section — later sections legitimately own other
     // controls (e.g. § 4 scenario toggles).
     const personSection = container.querySelector('section.angaben-section')!
+    const personText = personSection.textContent ?? ''
     const labels = Array.from(
       personSection.querySelectorAll('.angaben-field-label'),
     ).map((l) => l.textContent ?? '')
     expect(labels.join(' | ')).not.toMatch(/Familienstand|Bundesland|Kirchensteuer/)
     expect(personSection.querySelectorAll('input[type="checkbox"]').length).toBe(0)
     expect(personSection.querySelectorAll('select').length).toBe(1)
-    // No copy claims splitting or regional church-tax effects.
-    expect(text).not.toContain('§ 32a Abs. 5')
+
+    // The tax-class selector is scoped to the salary phase: it affects
+    // Lohnsteuer/Förderwirkung and explicitly does NOT choose the joint
+    // retirement assessment (that switch lives in combine mode's household
+    // controls). The caps themselves do not move with the class, so the old
+    // "Förderhöchstbeträge" claim is gone too.
+    expect(personText).toContain('wählt keine gemeinsame Veranlagung')
+    expect(personText).toContain('Förderwirkung')
+    expect(personText).not.toContain('Förderhöchstbeträge')
+
+    // No unconditional exclusion of Ehegattensplitting anywhere in § 1 —
+    // combine mode supports it through the shared retirement-tax pipeline.
+    expect(personText).not.toContain('Ehegattensplitting')
+    expect(personText).not.toContain('§ 32a Abs. 5')
+
+    // The honest limitations stay: church tax is genuinely not calculated,
+    // and the surface is not a complete household tax return.
+    const limitation =
+      container.querySelector('[data-testid="angaben-person-limitation"]')
+        ?.textContent ?? ''
+    expect(limitation).toContain('Kirchensteuer wird nicht berechnet')
+    expect(limitation).toContain('keine vollständige Steuererklärung')
+  }
+
+  it('compare-mode: § 1 offers only supported controls and truthful scope copy', () => {
+    const { container } = render(<AngabenPage />)
+    expectTruthfulPersonSection(container)
+    // No stale page-level claims (aside + Datenhaltung included).
+    const text = container.textContent ?? ''
     expect(text).not.toContain('Splittingtarif')
     expect(text).not.toContain('Bayern/BW')
     expect(text).not.toMatch(/Kirchensteuersatz/)
-    // The honest-scope note replaces them.
-    expect(
-      container.querySelector('[data-testid="angaben-person-limitation"]')
-        ?.textContent ?? '',
-    ).toContain('nicht enthalten')
+  })
+
+  it('combine-mode: § 1 offers only supported controls and truthful scope copy', () => {
+    // Same contract in combine mode — the mode whose household controls DO
+    // wire joint retirement taxation, which is exactly why § 1 must not
+    // claim splitting is excluded.
+    const ws: Workspace = {
+      ...cloneWorkspace(),
+      mode: 'combine',
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+    const { container } = render(<AngabenPage />)
+    expectTruthfulPersonSection(container)
   })
 
   it('still loads a legacy profile with churchTax: true and preserves the stored value', () => {

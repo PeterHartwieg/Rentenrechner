@@ -119,10 +119,11 @@ export function AngabenEinkommenSection({
         </div>
 
         {mode === 'compare' ? (
-          <label
-            className="angaben-field"
-            data-testid="angaben-bav-gross-derived"
-          >
+          // A <div>, not a <label>: this metric contains no labelable form
+          // control, and a label without one invites assistive tech to
+          // announce a broken input. The `.angaben-field` class keeps the
+          // visual receipt layout identical to the editable fields around it.
+          <div className="angaben-field" data-testid="angaben-bav-gross-derived">
             <span className="angaben-field-label">bAV-Brutto (berechnet)</span>
             <span className="angaben-field-shell">
               <span>{formatCurrency(derivedBavGross, 0)}</span>
@@ -134,7 +135,7 @@ export function AngabenEinkommenSection({
                 änderst du den monatlichen Vergleichsbetrag.
               </span>
             </span>
-          </label>
+          </div>
         ) : (
           <p
             className="angaben-field-hint"

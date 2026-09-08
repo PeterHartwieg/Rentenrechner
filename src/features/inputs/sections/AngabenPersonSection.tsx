@@ -129,9 +129,8 @@ export function AngabenPersonSection({
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
               Wirkt auf die Lohnsteuer in der Ansparphase (§ 39b EStG) und damit
-              auf Nettolohn und Förderhöchstbeträge. Die gemeinsame
-              Veranlagung im Ruhestand (Ehegattensplitting) und die
-              Kirchensteuer werden nicht berechnet.
+              auf Nettolohn und Förderwirkung. Sie wählt keine gemeinsame
+              Veranlagung für die Besteuerung im Ruhestand.
             </span>
           </span>
         </label>
@@ -193,12 +192,16 @@ export function AngabenPersonSection({
         </div>
       </div>
 
-      {/* Honest-scope note (input-followups plan 1): one concise line instead
-          of the removed Familienstand/Bundesland/Kirchensteuer hints. */}
+      {/* Honest-scope note (input-followups plan 1 + review correction): one
+          concise line instead of the removed Familienstand/Bundesland/
+          Kirchensteuer hints. Church tax stays an explicit exclusion — no
+          calculation path consumes it. Joint retirement taxation is NOT
+          excluded here: combine mode's wired household controls route through
+          the shared retirement-tax pipeline, so an unconditional "kein
+          Ehegattensplitting" would contradict that surface. */}
       <p className="angaben-field-hint" data-testid="angaben-person-limitation">
-        Diese Rechnung erstellt keine vollständige gemeinsame
-        Steuererklärung des Haushalts — Ehegattensplitting und Kirchensteuer
-        sind nicht enthalten.
+        Die Kirchensteuer wird nicht berechnet, und diese Rechnung ist keine
+        vollständige Steuererklärung des Haushalts.
       </p>
     </section>
   )
