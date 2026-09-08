@@ -30,7 +30,7 @@ Every captured value is an **INTERNAL REGRESSION** anchor:
 |------|------|
 | `src/test/scenarioReports/inputs/<family>.json` | Frozen synthetic inputs (14 families / 26 cases). Generated once by `npm run scenario:inputs`; routine tests never call `defaultScenario`. |
 | `src/test/scenarioReports/baselines/family-<family>.json` | Frozen expected stage values per case, captured ONCE at the recorded revision. |
-| `src/test/scenarioReports/baselines/provenance.json` | Capture identity: base SHA, engine-source digest, complete rules identity (`RuleSetIdentity` + canonical snapshot sha + year rules **and** evaluated cohort schedules), capture reason. |
+| `src/test/scenarioReports/baselines/provenance.json` | Capture identity: base SHA, engine-source digest, complete replayable rules identity (`RuleSetIdentity` + snapshot sha + full year rules + full `legalRuleData` values + evaluated cohort schedules), capture reason. |
 | `src/test/scenarioReports/suite.ts` | Registry (case metadata + purposes), runner, diff engine, provenance gate. |
 | `src/test/scenarioReports/stages.ts` | Stage extraction per entry point + explicit unsupported-stage declarations. |
 | `src/test/scenarioReports/rulesFingerprint.ts` | Evaluated cohort schedules: freezes every cross-year cohort function's outputs over its legal span so formula changes cannot hide behind a JSON dump. Cross-year *data* is covered by the `legalRuleData` catalog via `ruleSetIdentity` (src/rules/ruleMetadata.ts). |
@@ -97,7 +97,9 @@ metadata (`src/rules/ruleMetadata.ts`):
 - `snapshotSha` — sha256-16 prefix of
   `canonicalRuleSetSnapshot(rules, legalRuleData)`;
 - `activeRules` — the full year file (`src/rules/de2026.ts` today, via
-  `src/rules/index.ts`) as the replayable snapshot proper; and
+  `src/rules/index.ts`) as the replayable snapshot proper;
+- `legalRuleData` — the full cross-year rule values (the `legalRuleData`
+  catalog, verbatim — not only their hash), so replay needs no other source; and
 - `cohortSchedules` — the evaluated cohort functions (§22 Besteuerungsanteil,
   §19 Abs. 2 Versorgungsfreibetrag, §22 Ertragsanteil, Halbeinkünfte minimum
   ages) over their full legal spans. Functions do not survive JSON, so their

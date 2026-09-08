@@ -25,7 +25,7 @@ import {
   legalRuleData,
   ruleSetIdentity,
 } from '../../rules'
-import type { RuleSetIdentity } from '../../rules'
+import type { LegalRuleData, RuleSetIdentity } from '../../rules'
 import {
   bavContributionLimitGoldenValues,
 } from '../externalGoldenFixtures'
@@ -87,9 +87,11 @@ const BASELINES_BY_FAMILY: Record<string, Record<string, StageMap>> = Object.fro
  * revision, contentFingerprint over the year rules AND the `legalRuleData`
  * catalog — every exported non-function datum of `legalConstants.ts`), the
  * snapshot sha of `canonicalRuleSetSnapshot(rules, legalRuleData)`, the full
- * year-rules JSON as the replayable snapshot proper, and the EVALUATED cohort
- * schedules (see rulesFingerprint.ts) — the code-shaped part no JSON snapshot
- * can see. Plus the engine-source digest of the capturing revision.
+ * year-rules JSON AND the full `legalRuleData` values as the replayable
+ * snapshot proper (hashes detect change; the values enable replay), and the
+ * EVALUATED cohort schedules (see rulesFingerprint.ts) — the code-shaped part
+ * no JSON snapshot can see. Plus the engine-source digest of the capturing
+ * revision.
  */
 export interface ScenarioProvenanceFile {
   label: 'INTERNAL REGRESSION'
@@ -114,6 +116,11 @@ export interface ScenarioProvenanceFile {
     cohortSchedules: CohortScheduleFingerprint
     /** Full year-rules JSON — the replayable snapshot proper. */
     activeRules: GermanRules
+    /**
+     * Full cross-year rule data (the `legalRuleData` catalog, verbatim) —
+     * the values behind `snapshotSha`, so replay needs no other source.
+     */
+    legalRuleData: LegalRuleData
   }
   /** Human-readable capture notes (rules year, entry points used, reason). */
   notes: string
@@ -549,9 +556,11 @@ function deltaOf(
  * `revision`, `contentFingerprint` over the year rules AND the `legalRuleData`
  * catalog via `ruleSetIdentity(rules, legalRuleData, activeRulesMetadata)`),
  * the snapshot sha of `canonicalRuleSetSnapshot(rules, legalRuleData)`, the
- * evaluated cohort schedules (code no JSON snapshot can see), and the full
- * year-rules JSON. Every part must match the capture for stage deltas to be
- * attributable to a model change alone.
+ * evaluated cohort schedules (code no JSON snapshot can see), the full
+ * year-rules JSON, and the full `legalRuleData` values — so the frozen
+ * identity is a complete replayable snapshot, not only hashes. Every part
+ * must match the capture for stage deltas to be attributable to a model
+ * change alone.
  *
  * The rules argument is ALWAYS the caller's choice — the suite never silently
  * substitutes a global default, so a custom run reports exactly the rules it
@@ -569,6 +578,7 @@ export function rulesIdentityJson(rules: GermanRules): string {
     snapshotSha: snapshotShaOf(rules),
     cohortSchedules: cohortScheduleFingerprint(),
     activeRules: rules,
+    legalRuleData,
   })
 }
 
@@ -594,6 +604,7 @@ export function capturedRulesIdentityJson(): string | null {
         snapshotSha: identity.snapshotSha,
         cohortSchedules: identity.cohortSchedules,
         activeRules: identity.activeRules,
+        legalRuleData: identity.legalRuleData,
       })
     : null
 }

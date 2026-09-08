@@ -22,7 +22,7 @@ import {
   runSuite,
 } from './suite'
 import { extractStages } from './stages'
-import { activeRules } from '../../rules'
+import { activeRules, legalRuleData } from '../../rules'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
 
 const registry = buildRegistry()
@@ -69,8 +69,9 @@ describe('scenario suite replay (INTERNAL REGRESSION)', () => {
     // The provenance file must identify MORE than the year JSON: the central
     // RuleSetIdentity stamp (#376 — year ID, revision, content fingerprint over
     // the year rules AND the legalRuleData catalog), the canonical snapshot
-    // sha, the evaluated cohort schedules, and the calculation-source digest
-    // of the capturing engine state.
+    // sha, the evaluated cohort schedules, the FULL cross-year rule values
+    // (hashes detect change; values enable replay), and the calculation-source
+    // digest of the capturing engine state.
     expect(CAPTURED_PROVENANCE).toBeDefined()
     expect(CAPTURED_PROVENANCE?.label).toBe('INTERNAL REGRESSION')
     expect(CAPTURED_PROVENANCE?.engineSources.digestSha).toMatch(/^[0-9a-f]{16}$/)
@@ -83,6 +84,19 @@ describe('scenario suite replay (INTERNAL REGRESSION)', () => {
       ).length,
     ).toBeGreaterThanOrEqual(56)
     expect(CAPTURED_PROVENANCE?.rulesIdentity.activeRules.year).toBe(activeRules.year)
+  })
+
+  it('freezes the actual legalRuleData values, not only their hash', () => {
+    const capturedData = CAPTURED_PROVENANCE?.rulesIdentity.legalRuleData
+    expect(capturedData).toBeDefined()
+    // Every catalogue key present:
+    expect(Object.keys(capturedData ?? {}).sort()).toEqual(Object.keys(legalRuleData).sort())
+    // And the values verbatim — deep equality against the live catalog:
+    expect(capturedData).toEqual(legalRuleData)
+    // Spot checks that the frozen entries are the real cross-year data:
+    expect(capturedData?.legalConstants.soli).toEqual(legalRuleData.legalConstants.soli)
+    expect(typeof capturedData?.sonderausgabenPauschbetrag.single).toBe('number')
+    expect(typeof capturedData?.aktienfondsTeilfreistellungPrivat).toBe('number')
   })
 
   it('produces only finite stage values', () => {

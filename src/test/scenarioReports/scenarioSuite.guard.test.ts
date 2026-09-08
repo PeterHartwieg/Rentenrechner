@@ -227,6 +227,25 @@ describe('input and provenance rejection', () => {
     expect(driftRun.rulesSnapshotDrift).toBe(true)
     expect(driftRun.ok).toBe(false)
   })
+
+  it('rejects a MODIFIED cross-year snapshot in the captured identity', () => {
+    // A captured legalRuleData value that no longer matches the live catalog
+    // must trip the drift gate — the frozen values are the snapshot, so a
+    // same-year amendment cannot hide behind an unchanged fingerprint field.
+    const captured = JSON.parse(rulesIdentityJson(activeRules)) as {
+      legalRuleData: { sonderausgabenPauschbetrag: { single: number; married: number } }
+    }
+    captured.legalRuleData.sonderausgabenPauschbetrag.single += 999
+    expect(provenanceStatusOf(JSON.stringify(captured), rulesIdentityJson(activeRules))).toBe('drift')
+  })
+
+  it('rejects a captured identity whose cross-year snapshot is MISSING', () => {
+    // A provenance file from before the legalRuleData freeze (hash-only
+    // identity) must not silently count as a match.
+    const captured = JSON.parse(rulesIdentityJson(activeRules)) as Record<string, unknown>
+    delete captured.legalRuleData
+    expect(provenanceStatusOf(JSON.stringify(captured), rulesIdentityJson(activeRules))).toBe('drift')
+  })
 })
 
 describe('markdown rendering of change kinds', () => {
