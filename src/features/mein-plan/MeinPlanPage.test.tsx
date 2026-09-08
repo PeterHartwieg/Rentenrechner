@@ -65,6 +65,82 @@ function buildProps(workspace: Workspace = buildCombineWorkspace()) {
 }
 
 describe('MeinPlanPage — Sober D combine-mode surface', () => {
+  it('places scenario limits, live rule year and accessible detail links next to the headline', () => {
+    const navigate = vi.fn()
+    const props = buildProps()
+    const { container, getByRole } = render(<MeinPlanPage {...props} navigate={navigate} />)
+    const context = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+    expect(context.textContent).toContain('keine Vorhersage')
+    expect(context.textContent).toContain(`Regelstand ${props.rules.year}`)
+    expect(context.textContent).toContain('Künftige Gesetzesänderungen')
+    expect(context.textContent).toContain('mit unbekannter Herkunft')
+    expect(context.textContent).toContain('keine Wahrscheinlichkeit')
+    const sensitivityLink = getByRole('link', { name: 'Getestete Änderungen ansehen ↓' })
+    expect(sensitivityLink.getAttribute('href')).toBe('#mein-plan-sensitivitaet')
+    expect(container.querySelector('#mein-plan-sensitivitaet')).not.toBeNull()
+    const methodLink = getByRole('link', { name: 'Methode und Grenzen →' })
+    expect(methodLink.getAttribute('href')).toBe('/methode')
+    fireEvent.click(methodLink, { ctrlKey: true })
+    expect(navigate).not.toHaveBeenCalled()
+    fireEvent.click(methodLink)
+    expect(navigate).toHaveBeenCalledWith(ROUTES.methode)
+  })
+
+  it('summarizes the existing sensitivity results without additional selector calls', () => {
+    const props = buildProps()
+    const spies = [
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfReturnScenario'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfRetirementAge'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfInflation'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfEtfBump'),
+    ]
+    try {
+      spies.forEach((spy, index) => spy.mockReturnValue({
+        headlineDelta: index === 0 ? -400 : 100,
+        perturbedProjectedMonthly: 2000,
+        perInstanceDelta: {},
+      }))
+      const { getByRole } = render(<MeinPlanPage {...props} />)
+      const note = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+      expect(note.textContent).toMatch(/Größte getestete Änderung: −400\s*€ \/ Mon./)
+      expect(note.textContent).toContain('Rendite')
+      spies.forEach((spy) => expect(spy).toHaveBeenCalledTimes(1))
+    } finally {
+      spies.forEach((spy) => spy.mockRestore())
+    }
+  })
+
+  it.each([0, -0.4])('explains tested small changes (%s) without implying certainty', (delta) => {
+    const props = buildProps()
+    const spies = [
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfReturnScenario'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfRetirementAge'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfInflation'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfEtfBump'),
+    ]
+    try {
+      spies.forEach((spy) => spy.mockReturnValue({
+        headlineDelta: delta, perturbedProjectedMonthly: 2000, perInstanceDelta: {},
+      }))
+      const { getByRole } = render(<MeinPlanPage {...props} />)
+      const note = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+      expect(note.textContent).toContain('jeweils um weniger als 1 €')
+      expect(note.textContent).toContain('keine Ober- oder Untergrenze')
+      expect(note.textContent).not.toContain('Größte getestete Änderung')
+    } finally {
+      spies.forEach((spy) => spy.mockRestore())
+    }
+  })
+
+  it('does not turn unavailable sensitivity into a zero-risk claim', () => {
+    const props = buildProps()
+    const { getByRole } = render(<MeinPlanPage {...props} combinedForScenario={undefined} />)
+    const context = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+    expect(context.textContent).toContain('noch keine auswertbare Variante')
+    expect(context.textContent).not.toContain('Größte getestete Änderung')
+    expect(context.textContent).not.toContain('weniger als 1 €')
+  })
+
   it('renders the lead statement, headline figure, and both § sections', () => {
     const props = buildProps()
     const { container } = render(<MeinPlanPage {...props} />)
