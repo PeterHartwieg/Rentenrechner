@@ -29,7 +29,8 @@
     "copy:inventory": "vite-node scripts/copy-inventory.ts",
     "copy:missing": "vite-node scripts/copy-missing.ts",
     "copy:scan": "vite-node scripts/copy-scan.ts",
-    "copy:editor": "vite --open /__copy-editor/"
+    "copy:editor": "vite --open /__copy-editor/",
+    "mutation:pilot": "stryker run ./stryker.pilot.json"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
@@ -46,6 +47,8 @@
     "@fontsource/newsreader": "^5.2.10",
     "@mdx-js/rollup": "^3.1.1",
     "@resvg/resvg-js": "^2.6.2",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/mdx": "^2.0.13",
@@ -56,6 +59,7 @@
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "fast-check": "^4.9.0",
     "globals": "^17.5.0",
     "jsdom": "^29.1.1",
     "remark-gfm": "^4.0.1",
