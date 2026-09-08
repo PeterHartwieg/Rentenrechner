@@ -62,31 +62,31 @@ export interface GermanRules {
     secondProgressionEnd: number
     topTaxStart: number
     /**
-     * §32a Abs. 1 Satz 2 EStG Grundtarif formula coefficients. These are
-     * re-issued together with the zone boundaries every assessment period,
-     * so they are year-specific rules data — the engine consumes them via
-     * `calculateIncomeTax2026` and contains no tariff literals of its own.
+     * §32a Abs. 1 Satz 2 EStG Grundtarif formula coefficients, named by
+     * their role in the expanded polynomial. Year-specific rules data —
+     * values live in the active year file; the engine holds no tariff
+     * literals of its own.
      */
     tariff: {
-      /** Zone b (first progression): linear y-coefficient (914.51 for 2026). */
+      /** First progression zone: coefficient of the squared progression term (y²). */
+      zoneBQuadratic: number
+      /** First progression zone: coefficient of the linear progression term (y). */
       zoneBLinear: number
-      /** Zone b (first progression): additive constant (1 400). */
-      zoneBConstant: number
-      /** Zone c (second progression): linear z-coefficient (173.10 for 2026). */
-      zoneCLinear: number
-      /** Zone c (second progression): quadratic multiplier (2 397). */
+      /** Second progression zone: coefficient of the squared progression term (z²). */
       zoneCQuadratic: number
-      /** Zone c (second progression): additive constant (1 034.87). */
+      /** Second progression zone: coefficient of the linear progression term (z). */
+      zoneCLinear: number
+      /** Second progression zone: additive constant. */
       zoneCConstant: number
-      /** Zone d (proportional): marginal rate (0.42 for 2026). */
+      /** Proportional zone: marginal rate. */
       proportionalRate: number
-      /** Zone d (proportional): fixed deduction (11 135.63). */
+      /** Proportional zone: fixed deduction from the proportional amount. */
       proportionalDeduction: number
-      /** Zone e (top): marginal rate (0.45 for 2026). */
+      /** Top zone: marginal rate. */
       topRate: number
-      /** Zone e (top): fixed deduction (19 470.38). */
+      /** Top zone: fixed deduction from the top-rate amount. */
       topRateDeduction: number
-      /** Denominator scaling (x − zone start) into the y/z progression variables (10 000). */
+      /** Denominator scaling (x − zone start) into the progression variables. */
       progressionDenominator: number
     }
     /** §3 Abs. 3 SolzG: Soli-Freigrenze for Einzelveranlagung. */

@@ -1,16 +1,20 @@
 /**
  * Calculation-model and rules provenance metadata.
  *
- * This module gives the upcoming scenario runner and UI a way to stamp every
- * result with WHAT produced it — which rule set, which algorithm version —
- * and to look that information up again later. It is deliberately small:
- * plain data types plus shared model-level constants, no engine code.
+ * Gives the scenario runner and UI a way to stamp every result with WHAT
+ * produced it — which rule set, which revision, which algorithm version,
+ * which content fingerprint — and to look that up later. Plain data types
+ * plus small deterministic helpers; no engine code.
  *
- * What it is NOT: a replay mechanism. Carrying an ID does not reconstruct the
- * law of another year — see `REPLAY_LIMITATIONS`. Per-rule-set provenance
- * lives in the year file itself (`de2026.ts` → `de2026RulesMetadata`) so the
- * provenance is updated in the same commit as the values it describes.
+ * What it is NOT: a replay mechanism. Nothing in the application preserves
+ * historical outputs — inputs are stored and recalculated under the current
+ * rules. Reproducing an old number needs the exact engine revision plus a
+ * complete rule snapshot; see `REPLAY_LIMITATIONS`. Per-rule-set provenance
+ * lives in the year file (`de2026.ts` → `de2026RulesMetadata`) so provenance
+ * moves in the same commit as the values it describes.
  */
+
+import type { GermanRules } from '../domain'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,16 +70,40 @@ export interface RuleAreaProvenance {
 
 /** Provenance for one compiled rule set (one year file). */
 export interface RuleSetMetadata {
-  /** Stable ID of the year file, e.g. 'de2026'. */
+  /** Stable ID of the year file, e.g. 'de2026' — identifies the YEAR only. */
   ruleSetId: string
   /** The calendar year the statutory values are issued for. */
   ruleYear: number
+  /**
+   * Monotonic revision WITHIN the rule year. Same-year amendments (a
+   * Stichtagsnovelle, a re-published value) bump this and update `source`
+   * in the same commit. Two results sharing `ruleSetId` but differing in
+   * `revision` were produced under different rules.
+   */
+  revision: number
   /** Algorithm that consumed this rule set. */
   calculationModel: CalculationModelVersion
-  /** Source / effective-date provenance for the areas this rule set covers. */
+  /**
+   * Which parts of the engine this provenance covers. Deliberately narrow:
+   * these entries cover the areas routed through `src/engine/tax.ts` and
+   * their rule inputs. They are NOT a claim that every engine formula or
+   * every field of the rule set is documented here — other areas carry
+   * inline citations in the year file comments.
+   */
+  scope: string
+  /** Source / effective-date provenance for the covered areas. */
   areas: readonly RuleAreaProvenance[]
   projectionAssumption: string
   replayLimitations: readonly string[]
+}
+
+/** Compact identity stamp a runner records alongside each result. */
+export interface RuleSetIdentity {
+  ruleSetId: string
+  ruleYear: number
+  revision: number
+  /** Content fingerprint of the compiled rule set (`ruleSetFingerprint`). */
+  contentFingerprint: string
 }
 
 // ---------------------------------------------------------------------------
@@ -86,38 +114,111 @@ export const TAX_CALCULATION_MODEL: CalculationModelVersion = {
   id: 'de-est-grundtarif-zone-formula',
   version: 1,
   summary:
-    'Five-zone §32a EStG Grundtarif evaluated on full euros of zvE with per-zone ' +
-    'coefficients from the active rule set (statutory floor per zone); solidarity ' +
-    'surcharge as min(ESt × 5.5 %, (ESt − Freigrenze) × 11.9 %) above the year-specific ' +
+    'Five-zone §32a EStG Grundtarif evaluated on full euros of zvE, coefficients taken ' +
+    'from the active rule set with a statutory floor per zone; solidarity surcharge as ' +
+    'the lesser of the flat rate and the Milderungszone amount above the year-specific ' +
     'Freigrenze. Version bumps only on algorithm change — zone restructuring, a new ' +
     'rounding step, a different formula shape — never on annual coefficient updates.',
 }
 
 /**
- * Rule year vs. projection horizon: the engine projects decades past the rule
- * year while carrying the active rule set forward unchanged. Results for years
- * > `ruleYear` are holding assumptions, not legislation.
+ * Rule year vs. projection horizon. The projection runs decades past the
+ * rule year, but that does NOT mean every future-year value is simply held
+ * constant: the active set already models enacted multi-year schedules
+ * (cohort tables progressing to 2058, product start years, age splits by
+ * contract year). Beyond those enacted schedules, values are held at
+ * rule-year level as a holding assumption; future amendments are unknown
+ * and not predicted.
  */
 export const PROJECTION_ASSUMPTION =
-  'Projection years after the rule year reuse the active rule set unchanged. The ' +
-  'engine does not predict future legislation: values applied beyond `ruleYear` are ' +
-  'a documented holding assumption, not law. Results must not be read as year-specific ' +
-  'legislation for any year past the rule year.'
+  'The engine projects decades past the rule year using two kinds of future-year ' +
+  'values. (1) Enacted schedules the rules already model — e.g. the Besteuerungsanteil ' +
+  'and Versorgungsfreibetrag cohort tables running to 2058, the AVD product start year, ' +
+  'insurance age splits by contract year — are legislated values and are applied to ' +
+  'their years. (2) Everything beyond such enacted schedules reuses the active rule ' +
+  'year unchanged as a documented holding assumption. Neither kind is a prediction of ' +
+  'future legislation, and results for years past the rule year must not be presented ' +
+  'as verified year-specific law.'
 
 /**
- * Why a ruleSetId alone does not guarantee historical replay. Kept at model
- * level because these hold for every year file the engine can compile.
+ * Why a ruleSetId alone never guarantees historical replay. Kept at model
+ * level because these hold for every year file this engine can compile.
  */
 export const REPLAY_LIMITATIONS: readonly string[] = [
-  'A result stamped with a ruleSetId is reproducible only while the matching year file ' +
-    'is compiled into the bundle (src/rules/index.ts swaps the active set atomically); ' +
-    'older year files may be retired, after which the ID identifies but cannot reproduce.',
-  'The ID documents which rule set produced a result — it does not reconstruct historical ' +
-    'law. Replaying a result from another rule year requires that year file with verified ' +
-    'values, plus its own external goldens.',
-  'Cross-year cohort tables (besteuerungsanteilGrv, versorgungsfreibetrag, ertragsanteilByAge ' +
-    'in legalConstants.ts) are parametrised over retirement years inside a single rule set; ' +
-    'they are not a substitute for year rule files.',
-  'When the calculation-model version changes, stored results stay valid for the model ' +
-    'version they were stamped with; they are not silently recomputed under the new model.',
+  'Nothing in the application preserves historical outputs: scenarios are stored as ' +
+    'inputs and recalculated under the currently compiled rules. A result is reproduced ' +
+    'only by recomputing it under the producing rule set.',
+  'Reproducing a past result requires the exact engine revision (git SHA) plus a ' +
+    'complete rule snapshot from that revision — the year file AND all cross-year ' +
+    'legalConstants and cohort algorithms (besteuerungsanteilGrv, versorgungsfreibetrag, ' +
+    'ertragsanteilByAge) AND the engine formula code as of that revision. Matching the ' +
+    'year file alone is not sufficient.',
+  'The ruleSetId identifies a rule YEAR, not revisions within it: same-year amendments ' +
+    'change values without changing the ID. Pair the ID with `revision` and the runtime ' +
+    '`contentFingerprint` (see `RuleSetIdentity`) to tell them apart.',
+  'A content fingerprint is a change detector, not a reproduction mechanism: it says ' +
+    'two rule sets differ, and pairs with a stored snapshot (`canonicalRuleSetSnapshot`) ' +
+    'plus the engine revision for any attempt at exact replay.',
+  'This metadata documents the tax areas routed through src/engine/tax.ts; it does not ' +
+    'snapshot the whole engine. Historical replay needs the full engine revision ' +
+    'regardless of how complete this metadata is.',
+  'When the calculation-model version changes, old outputs are not recomputed or ' +
+    'migrated: they stay bound to the model version they were produced under, and a ' +
+    'runner comparing them against a new-model rerun must expect differences.',
 ]
+
+// ---------------------------------------------------------------------------
+// Content identity helpers — deterministic, dependency-free, synchronous
+// ---------------------------------------------------------------------------
+
+/**
+ * Canonical serialization of a rule set: object keys sorted recursively,
+ * arrays in order, numbers via JSON round-trip. Two rule sets serialize
+ * identically iff they carry the same values regardless of key order.
+ */
+export function canonicalRuleSetSnapshot(rules: GermanRules): string {
+  return canonicalize(rules)
+}
+
+function canonicalize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalize).join(',')}]`
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    )
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalize(v)}`).join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+/**
+ * Content fingerprint of a rule set: two FNV-1a rounds (different offset
+ * bases) over the canonical snapshot, 16 hex chars. A quick change detector
+ * that lets a runner notice same-year amendments — always pair it with the
+ * stored snapshot for exact replay (see REPLAY_LIMITATIONS).
+ */
+export function ruleSetFingerprint(rules: GermanRules): string {
+  const canonical = canonicalRuleSetSnapshot(rules)
+  return fnv1a32(0x811c9dc5, canonical) + fnv1a32(0x01935a97, canonical)
+}
+
+function fnv1a32(offsetBasis: number, input: string): string {
+  let hash = offsetBasis
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+/** Compose the identity stamp from a rule set and its metadata. */
+export function ruleSetIdentity(rules: GermanRules, metadata: RuleSetMetadata): RuleSetIdentity {
+  return {
+    ruleSetId: metadata.ruleSetId,
+    ruleYear: metadata.ruleYear,
+    revision: metadata.revision,
+    contentFingerprint: ruleSetFingerprint(rules),
+  }
+}

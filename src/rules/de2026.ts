@@ -54,23 +54,15 @@ export const de2026Rules: GermanRules = {
     firstProgressionEnd: 17_799,
     secondProgressionEnd: 69_878,
     topTaxStart: 277_826,
-    // §32a Abs. 1 Satz 2 EStG Grundtarif — formula coefficients for 2026.
-    // Zones (x = zu versteuerndes Einkommen, floored to full euros):
-    //   a: x ≤ 12 348                      → 0
-    //   b: ≤ 17 799   est = (c1·y + c2)·y,          y = (x − 12 348)/10 000
-    //   c: ≤ 69 878   est = (c3·z + c4)·z + c5,     z = (x − 17 799)/10 000
-    //   d: ≤ 277 825  est = r·x − d1               (r = 0.42)
-    //   e: ≥ 277 826  est = tr·x − d2              (tr = 0.45)
-    // The coefficients are re-issued with the zone boundaries every assessment
-    // period, so they live in the year file (not legalConstants). Values are
-    // pinned by the BMF tariff / Einkommensteuer-Rechner goldens in
-    // `src/test/externalGoldenFixtures.ts` (captured 2026-05-02); see
-    // `RuleAreaProvenance` in `ruleMetadata.ts` for the cited sources.
+    // §32a Abs. 1 Satz 2 EStG Grundtarif formula coefficients for 2026, named
+    // by their role in the expanded polynomial (quadratic / linear / constant).
+    // Re-issued with the zone boundaries every assessment period; pinned by
+    // the BMF tariff goldens in src/test/externalGoldenFixtures.ts.
     tariff: {
-      zoneBLinear: 914.51,
-      zoneBConstant: 1_400,
-      zoneCLinear: 173.1,
-      zoneCQuadratic: 2_397,
+      zoneBQuadratic: 914.51,
+      zoneBLinear: 1_400,
+      zoneCQuadratic: 173.1,
+      zoneCLinear: 2_397,
       zoneCConstant: 1_034.87,
       proportionalRate: 0.42,
       proportionalDeduction: 11_135.63,
@@ -173,8 +165,7 @@ export const de2026Rules: GermanRules = {
   },
   capitalGains: {
     taxRate: 0.25,
-    // Same cross-year §4 SolzG rate as `legalConstants.soli.rate`; aliased so
-    // the capital-gains pipeline has exactly one 5.5 % definition.
+    // Aliases `legalConstants.soli.rate` — one 5.5 % definition across tax paths.
     solidarityRate: legalConstants.soli.rate,
     saverAllowance: 1_000,
     // BMF Basiszins nach §203 BewG für Vorabpauschale 2026: 3.20 % (BMF-Schreiben 2026-01-13)
@@ -186,16 +177,23 @@ export const de2026Rules: GermanRules = {
 // Provenance metadata for this rule set (#376).
 //
 // Kept next to the values it describes so the annual update touches both in
-// one commit. When de2027.ts is added, copy this block, update `ruleSetId` /
-// `ruleYear` / `effectiveFrom`, and re-point the sources at that year's
-// captures. Update an area's `source` in the same commit that changes its
-// values. Shape and shared constants: `ruleMetadata.ts`.
+// one commit. When de2027.ts is added, copy this block and update ruleSetId,
+// ruleYear, revision, effectiveFrom and the sources. Any same-year amendment
+// bumps `revision` and re-points the affected `source` in the same commit.
+// Scope covers the tax areas routed through src/engine/tax.ts only. Shape
+// and shared caveats: `ruleMetadata.ts`.
 // ---------------------------------------------------------------------------
 
 export const de2026RulesMetadata: RuleSetMetadata = {
   ruleSetId: 'de2026',
   ruleYear: 2026,
+  revision: 1,
   calculationModel: TAX_CALCULATION_MODEL,
+  scope:
+    'Covers the tax areas routed through src/engine/tax.ts and their rule inputs ' +
+    '(income-tax tariff, solidarity surcharge, capital gains). Not a snapshot of the ' +
+    'whole engine: other rule areas carry inline citations in this file, and payroll / ' +
+    'retirement / cohort logic lives in its own modules with their own citations.',
   areas: [
     {
       area: 'incomeTax',

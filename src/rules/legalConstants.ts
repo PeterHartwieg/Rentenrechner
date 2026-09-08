@@ -197,6 +197,12 @@ export const legalConstants = {
     versorgungsbezugSpreadingMonths: 120,
     /** §34 Abs. 1 EStG Fünftelregelung divisor: tax = 5 × (T(other + lumpSum/5) − T(other)). */
     fuenftelregelungDivisor: 5,
+    /**
+     * §1a Abs. 1 Satz 1 BetrAVG: minimum entitlement = 1/160 of the ANNUAL
+     * Bezugsgröße West (§18 Abs. 1 SGB IV; value from the rules). Citation
+     * moved from src/engine/bavWarnings.ts (#376 review).
+     */
+    minimumEntitlementDivisor: 160,
   },
   basisrente: {
     /** §10 Abs. 1 Nr. 2 b Doppelbuchst. aa EStG / AltZertG §2: earliest old-age payout age for a certified Basisrentenvertrag. */
@@ -207,6 +213,13 @@ export const legalConstants = {
     taxClassVVIUpperFactor: 1.25,
     /** §39b Abs. 2 Satz 2 EStG: lower scaling factor for the Steuerklasse V/VI tariff formula 2 × (f(1.25x) − f(0.75x)). */
     taxClassVVILowerFactor: 0.75,
+    /**
+     * §39b EStG (PAP): the AV Teilbetrag counts toward the Vorsorgepauschale
+     * only while KV + PV + AV Teilbeträge stay within this annual cap. As
+     * described in TAX_SOCIAL_SECURITY_2026_RESEARCH.md §2; literal moved
+     * from src/engine/salary.ts (#376 review).
+     */
+    vorsorgepauschaleKvPvAvCap: 1_900,
   },
   soli: {
     /**

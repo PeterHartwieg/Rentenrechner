@@ -4,26 +4,11 @@ import { legalConstants } from '../rules/legalConstants'
 const floorEuro = (value: number) => Math.floor(Math.max(0, value))
 
 /**
- * §32a EStG Einkommensteuer-Grundtarif.
- *
- * Every tariff input — zone boundaries and formula coefficients — comes from
- * the active rule set (`rules.incomeTax`); this function holds no statutory
- * literals of its own. The coefficients are re-issued per assessment period
- * together with the zone boundaries, so they live in the year file
- * (`src/rules/de2026.ts` → `incomeTax.tariff`), not in `legalConstants.ts`.
- *
- * Formula (x = zu versteuerndes Einkommen, floored to full euros):
- *   a: x ≤ basicAllowance              → 0
- *   b: ≤ firstProgressionEnd   est = (c1·y + c2)·y,        y = (x − basicAllowance)/10 000
- *   c: ≤ secondProgressionEnd  est = (c3·z + c4)·z + c5,   z = (x − firstProgressionEnd)/10 000
- *   d: < topTaxStart           est = 0.42·x − d1
- *   e: ≥ topTaxStart           est = 0.45·x − d2
- *
- * The `Math.floor` at every zone end is statutory tariff rounding (the
- * formula applies to the zu versteuerndes Einkommen floored to full euros
- * and yields full euros), not display rounding. This floor behavior and the
- * zone-boundary comparisons are pinned by the BMF tariff goldens in
- * `src/test/externalGoldenFixtures.ts`.
+ * §32a EStG Einkommensteuer-Grundtarif. All zone boundaries and formula
+ * coefficients come from the active rule set (`rules.incomeTax`); see
+ * `de2026.ts` and the provenance in `ruleMetadata.ts`. The Math.floor per
+ * zone is statutory tariff rounding, not display rounding, and is pinned by
+ * the BMF goldens in `src/test/externalGoldenFixtures.ts`.
  *
  * The function name keeps its historical "2026" suffix for compatibility;
  * the assessment period is fully determined by the passed rule set.
@@ -42,12 +27,12 @@ export function calculateIncomeTax2026(
 
   if (x <= firstProgressionEnd) {
     const y = (x - basicAllowance) / tariff.progressionDenominator
-    return Math.floor((tariff.zoneBLinear * y + tariff.zoneBConstant) * y)
+    return Math.floor((tariff.zoneBQuadratic * y + tariff.zoneBLinear) * y)
   }
 
   if (x <= secondProgressionEnd) {
     const z = (x - firstProgressionEnd) / tariff.progressionDenominator
-    return Math.floor((tariff.zoneCLinear * z + tariff.zoneCQuadratic) * z + tariff.zoneCConstant)
+    return Math.floor((tariff.zoneCQuadratic * z + tariff.zoneCLinear) * z + tariff.zoneCConstant)
   }
 
   if (x < topTaxStart) {
@@ -58,16 +43,10 @@ export function calculateIncomeTax2026(
 }
 
 /**
- * Solidaritätszuschlag (§3, §4 SolzG 1995).
- *
- * Rate and Milderungszone slope are cross-year statutory constants
- * (`legalConstants.soli`); the Freigrenze is year-specific
- * (`rules.incomeTax.solidarityFreeTax*`, §3 Abs. 3 SolzG).
- *
- * Formula: 0 below the Freigrenze; above it the lesser of
- *   regular     = ESt × 5.5 %
- *   transition  = (ESt − Freigrenze) × 11.9 %   (Milderungszone)
- * floored implicitly at 0 by the outer max.
+ * Solidaritätszuschlag. Rate and Milderungszone slope are cross-year
+ * constants (`legalConstants.soli`); the Freigrenze is year-specific
+ * (`rules.incomeTax.solidarityFreeTax*`). Below the Freigrenze: 0; above it,
+ * the lesser of the flat rate and the Milderungszone amount.
  */
 export function calculateSolidarityTax(
   incomeTax: number,

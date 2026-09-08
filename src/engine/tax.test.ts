@@ -63,10 +63,10 @@ describe('calculateIncomeTax2026 — official BMF 2026 tariff goldens via the ac
 describe('statutory pins for the centralized tariff + soli constants (#376)', () => {
   it('2026 tariff coefficients live in the year file, byte-identical to §32a Abs. 1 Satz 2', () => {
     expect(de2026Rules.incomeTax.tariff).toEqual({
-      zoneBLinear: 914.51,
-      zoneBConstant: 1_400,
-      zoneCLinear: 173.1,
-      zoneCQuadratic: 2_397,
+      zoneBQuadratic: 914.51,
+      zoneBLinear: 1_400,
+      zoneCQuadratic: 173.1,
+      zoneCLinear: 2_397,
       zoneCConstant: 1_034.87,
       proportionalRate: 0.42,
       proportionalDeduction: 11_135.63,
@@ -96,15 +96,27 @@ describe('statutory pins for the centralized tariff + soli constants (#376)', ()
 describe('injected tariff parameters steer the output (#376)', () => {
   it('zone b follows the injected coefficients (longhand expectation)', () => {
     const x = 15_000
-    const modified = withTariff({ zoneBLinear: 950, zoneBConstant: 1_500 })
+    const modified = withTariff({ zoneBQuadratic: 950, zoneBLinear: 1_500 })
     const y = (x - de2026Rules.incomeTax.basicAllowance) / 10_000
     expect(calculateIncomeTax2026(x, modified)).toBe(Math.floor((950 * y + 1_500) * y))
     expect(calculateIncomeTax2026(x, modified)).not.toBe(calculateIncomeTax2026(x, de2026Rules))
   })
 
+  it('coefficient names match their role in the expanded polynomial', () => {
+    const { tariff } = de2026Rules.incomeTax
+    const y = (15_000 - de2026Rules.incomeTax.basicAllowance) / tariff.progressionDenominator
+    // Engine evaluates the Horner form; the names must read correctly in the
+    // expanded form too — same algebra, different association order.
+    const horner = (tariff.zoneBQuadratic * y + tariff.zoneBLinear) * y
+    const expanded = tariff.zoneBQuadratic * y * y + tariff.zoneBLinear * y
+    expect(horner).toBeCloseTo(expanded, 6)
+    const actual = calculateIncomeTax2026(15_000, de2026Rules)
+    expect(actual).toBe(Math.floor(horner))
+  })
+
   it('zone c follows the injected coefficients (longhand expectation)', () => {
     const x = 30_000
-    const modified = withTariff({ zoneCLinear: 200, zoneCQuadratic: 2_500, zoneCConstant: 1_200 })
+    const modified = withTariff({ zoneCQuadratic: 200, zoneCLinear: 2_500, zoneCConstant: 1_200 })
     const z = (x - de2026Rules.incomeTax.firstProgressionEnd) / 10_000
     expect(calculateIncomeTax2026(x, modified)).toBe(
       Math.floor((200 * z + 2_500) * z + 1_200),
@@ -171,10 +183,10 @@ describe('injected tariff parameters steer the output (#376)', () => {
 
   it('each injected coefficient change breaks at least one official BMF capture', () => {
     const perturbations: Array<[string, GermanRules]> = [
-      ['zoneBLinear +40', withTariff({ zoneBLinear: 914.51 + 40 })],
-      ['zoneBConstant +200', withTariff({ zoneBConstant: 1_600 })],
-      ['zoneCLinear +20', withTariff({ zoneCLinear: 193.1 })],
-      ['zoneCQuadratic +500', withTariff({ zoneCQuadratic: 2_897 })],
+      ['zoneBQuadratic +40', withTariff({ zoneBQuadratic: 914.51 + 40 })],
+      ['zoneBLinear +200', withTariff({ zoneBLinear: 1_600 })],
+      ['zoneCQuadratic +20', withTariff({ zoneCQuadratic: 193.1 })],
+      ['zoneCLinear +500', withTariff({ zoneCLinear: 2_897 })],
       ['zoneCConstant +500', withTariff({ zoneCConstant: 1_534.87 })],
       ['proportionalRate +2 pp', withTariff({ proportionalRate: 0.44 })],
       ['proportionalDeduction +1 000', withTariff({ proportionalDeduction: 12_135.63 })],

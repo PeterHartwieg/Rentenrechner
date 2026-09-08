@@ -165,10 +165,14 @@ export function calculateVorsorgepauschale2026(
     ? kvBase * careEmployeeRateForChildren(profile.childBirthYears, rules.year, rules)
     : 0
 
-  // AV Teilbetrag: only included if KV + PV + AV does not exceed 1,900 EUR
+  // AV Teilbetrag: only included while KV + PV + AV stays within the §39b cap
+  // (legalConstants.payrollTax.vorsorgepauschaleKvPvAvCap).
   const kvpvSum = kvTeilbetrag + pvTeilbetrag
   const avActual = rvBase * rules.socialSecurity.unemploymentEmployeeRate
-  const avTeilbetrag = Math.max(0, Math.min(avActual, 1_900 - kvpvSum))
+  const avTeilbetrag = Math.max(
+    0,
+    Math.min(avActual, legalConstants.payrollTax.vorsorgepauschaleKvPvAvCap - kvpvSum),
+  )
 
   return rvTeilbetrag + kvTeilbetrag + pvTeilbetrag + avTeilbetrag
 }
