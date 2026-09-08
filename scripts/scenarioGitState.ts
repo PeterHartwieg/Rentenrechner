@@ -55,7 +55,8 @@ export interface EngineSourceState {
 /**
  * Digests every calculation-source file (path + bytes) and compares the file
  * list against git's committed state. Files that git reports as modified,
- * staged, or untracked inside the source directories mark the state dirty.
+ * staged, untracked, or renamed inside the source directories mark the state
+ * dirty.
  */
 export function engineSourceState(): EngineSourceState {
   const hash = createHash('sha256')
@@ -68,19 +69,17 @@ export function engineSourceState(): EngineSourceState {
     }
   }
 
-  const dirtyPaths = new Set<string>()
+  let dirtyPaths = new Set<string>()
   try {
-    const porcelain = execSync('git status --porcelain', {
+    // -z: NUL-separated records, paths NOT quoted — the only machine-safe
+    // format. Renames/copies (`R`, `C`) carry the ORIGINAL path as an
+    // additional record after the entry, which a line-based `--porcelain`
+    // parse (`old -> new`) cannot split reliably.
+    const porcelain = execSync('git status --porcelain=v1 -z', {
       cwd: REPO_ROOT,
       encoding: 'utf8',
     })
-    for (const line of porcelain.split('\n')) {
-      if (line.length < 4) continue
-      const path = line.slice(3).trim().replace(/^"|"$/g, '')
-      if (ENGINE_SOURCE_DIRS.some((dir) => path === dir || path.startsWith(`${dir}/`))) {
-        dirtyPaths.add(path)
-      }
-    }
+    dirtyPaths = new Set(dirtyCalculationPaths(porcelain.split('\0')))
   } catch {
     // Not a git checkout — the digest still identifies the content.
     dirtyPaths.add('(git status unavailable)')
@@ -91,6 +90,32 @@ export function engineSourceState(): EngineSourceState {
     dirty: dirtyPaths.size > 0,
     paths: [...dirtyPaths].sort(),
   }
+}
+
+/**
+ * Extracts the calculation-source paths from `git status --porcelain=v1 -z`
+ * records. Each record is `XY <path>`; rename/copy records (`R`, `C` in
+ * either column) are followed by one extra record holding the ORIGINAL path —
+ * both endpoints are checked, since a rename in or out of a source directory
+ * changes the committed-state comparison either way.
+ */
+export function dirtyCalculationPaths(records: readonly string[]): string[] {
+  const dirty = new Set<string>()
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i]
+    if (record.length < 4) continue
+    const status = record.slice(0, 2)
+    const paths = [record.slice(3).trim()]
+    if (status.includes('R') || status.includes('C')) {
+      paths.push((records[++i] ?? '').trim())
+    }
+    for (const path of paths) {
+      if (ENGINE_SOURCE_DIRS.some((dir) => path === dir || path.startsWith(`${dir}/`))) {
+        dirty.add(path)
+      }
+    }
+  }
+  return [...dirty].sort()
 }
 
 export function gitHeadSha(): string {

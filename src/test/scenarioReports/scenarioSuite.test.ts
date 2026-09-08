@@ -23,6 +23,7 @@ import {
 } from './suite'
 import { extractStages } from './stages'
 import { activeRules, legalRuleData } from '../../rules'
+import { deriveInsuranceTaxMode } from '../../engine/insurancePayout'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
 
 const registry = buildRegistry()
@@ -36,7 +37,7 @@ function caseById(id: string) {
 
 describe('scenario suite replay (INTERNAL REGRESSION)', () => {
   it('reproduces every captured baseline', () => {
-    expect(result.totalCases).toBe(26)
+    expect(result.totalCases).toBe(27)
     expect(result.ok).toBe(true)
     if (!result.ok) {
       const failing = result.cases.filter((c) => !c.ok)
@@ -155,17 +156,50 @@ describe('external golden anchoring', () => {
 })
 
 describe('scenario families exercise the intended engine branches', () => {
-  it('contract vintage selects the pre-2005 tax-free branch (income tax 0)', () => {
+  it('contract vintage covers the full tax-mode triangle, each leg in its own branch', () => {
+    // The engine's own mode derivation, fed the literals of the frozen cases:
+    // 1990 + eligible + long runtime → pre2005; 2010, runtime 27, payout 67 →
+    // halbeinkuenfte; 2045, runtime 8 → abgeltungsteuer.
+    expect(deriveInsuranceTaxMode(1990, 27, 67, true)).toBe('pre2005')
+    expect(deriveInsuranceTaxMode(2010, 27, 67, false)).toBe('halbeinkuenfte')
+    expect(deriveInsuranceTaxMode(2045, 8, 67, false)).toBe('abgeltungsteuer')
+
     const stages = extractStages(
       caseById('compare-contract-vintage/pre2005-kapitalverzehr').input,
       activeRules,
     ).stages
     expect(stages['tax.lumpSum.versicherung.basis.incomeTax']).toBe(0)
+
     const halbeinkuenfte = extractStages(
       caseById('compare-contract-vintage/halbeinkuenfte-kapitalverzehr').input,
       activeRules,
     ).stages
     expect(halbeinkuenfte['tax.lumpSum.versicherung.basis.incomeTax']).toBeGreaterThan(0)
+
+    // The Abgeltungsteuer leg must produce a DIFFERENT tax than the
+    // Halbeinkünfte leg — a same-value copy would silently re-pin the same
+    // branch under a different name.
+    const abgeltungsteuer = extractStages(
+      caseById('compare-contract-vintage/abgeltungsteuer-kapitalverzehr').input,
+      activeRules,
+    ).stages
+    expect(abgeltungsteuer['tax.lumpSum.versicherung.basis.incomeTax']).toBeGreaterThan(0)
+    expect(abgeltungsteuer['tax.lumpSum.versicherung.basis.incomeTax']).not.toBe(
+      halbeinkuenfte['tax.lumpSum.versicherung.basis.incomeTax'],
+    )
+    // The Leibrente case pays an annuity: the payout flows through the §22
+    // Nr. 1 Ertragsanteil pipeline, while the hypothetical capital deduction
+    // the engine still reports matches this vintage's Halbeinkünfte mode —
+    // NOT the Abgeltungsteuer figure.
+    const leibrente = extractStages(
+      caseById('compare-contract-vintage/leibrente-ertragsanteil').input,
+      activeRules,
+    ).stages
+    expect(leibrente['tax.lumpSum.versicherung.basis.incomeTax']).toBe(
+      halbeinkuenfte['tax.lumpSum.versicherung.basis.incomeTax'],
+    )
+    expect(leibrente['net.versicherung.basis.netMonthlyPayout']).toBeGreaterThan(0)
+    expect(leibrente['payout.versicherung.basis.grossMonthlyPayout']).toBeGreaterThan(0)
   })
 
   it('capital guarantee bites under the negative-return path', () => {
@@ -195,7 +229,7 @@ describe('scenario families exercise the intended engine branches', () => {
     expect(stages['accumulation.ins-1.basis.monthlyUserCost']).toBe(0)
   })
 
-  it('health statuses change the household KV/PV base (pkv ≡ kvdr by design)', () => {
+  it('health statuses change the household KV/PV base; PKV zeroes statutory KV', () => {
     const kvdr = extractStages(
       caseById('combine-health-statuses/kvdr').input,
       activeRules,
@@ -211,9 +245,19 @@ describe('scenario families exercise the intended engine branches', () => {
     expect(freiwillig['net.basis.monthlyNetIncome']).toBeLessThan(
       kvdr['net.basis.monthlyNetIncome'] as number,
     )
-    // Documented modeling choice: PKV and KVdR coincide on the modeled paths.
-    expect(pkv['kvPv.basis.aggregate.totalKvMonthly']).toBe(
-      kvdr['kvPv.basis.aggregate.totalKvMonthly'],
+    // A PKV holder (publicHealthInsurance: false) owes no GKV retirement
+    // contributions on the gated channels: the GRV KVdR half-rate and the
+    // freiwillig/other-Versorgungsbezug channels gate on that flag. The bAV
+    // Versorgungsbezug channel is NOT gated — §229 SGB V spreading applies
+    // regardless — and this case pins exactly that split.
+    expect(kvdr['kvPv.basis.aggregate.statutoryPensionKvMonthly']).toBeGreaterThan(0)
+    expect(pkv['kvPv.basis.aggregate.statutoryPensionKvMonthly']).toBe(0)
+    expect(pkv['kvPv.basis.aggregate.freiwilligOtherKvMonthly']).toBe(0)
+    expect(pkv['kvPv.basis.aggregate.otherVersorgungsbezuegeKvMonthly']).toBe(0)
+    expect(pkv['kvPv.basis.aggregate.bavKvMonthly']).toBeGreaterThan(0)
+    expect(pkv['kvPv.basis.aggregate.bavPvMonthly']).toBeGreaterThan(0)
+    expect(pkv['net.basis.monthlyNetIncome']).toBeGreaterThan(
+      kvdr['net.basis.monthlyNetIncome'] as number,
     )
   })
 
@@ -241,7 +285,7 @@ describe('scenario families exercise the intended engine branches', () => {
   })
 
   it('reduces the 0 % ETF pot to contributions + initial capital − fees', () => {
-    const input = caseById('combine-zero-return/two-bav-two-etf').input
+    const input = caseById('combine-zero-return/two-bav-one-etf').input
     if (input.kind !== 'combine') throw new Error('unexpected case kind')
     const stages = extractStages(input, activeRules).stages
     const initialCapital =
@@ -284,5 +328,25 @@ describe('scenario families exercise the intended engine branches', () => {
       Object.values(bundle.perInstance).flatMap((rs) => rs.map((r) => r.instanceId)),
     )
     expect(Object.keys(combined.byInstance).sort()).toEqual([...simulated].sort())
+  })
+
+  it('married splitting flag changes the aggregate tax (proven by a no-partner control)', () => {
+    // The case models ONE earner with the hasPartner flag — the partner's
+    // salary and contracts do NOT enter the simulation. This control proves
+    // the flag itself (not unmodeled partner income) drives the difference.
+    const input = caseById('combine-married-splitting/single-earner-splitting').input
+    if (input.kind !== 'combine') throw new Error('unexpected case kind')
+    const withPartner = extractStages(input, activeRules).stages
+
+    const control = JSON.parse(JSON.stringify(input)) as CaseInput
+    if (control.kind !== 'combine') throw new Error('unexpected case kind')
+    delete (control.workspace.baseline as { partner?: unknown }).partner
+    const withoutPartner = extractStages(control, activeRules).stages
+
+    expect(withPartner['tax.basis.aggregate.einkommensteuer']).not.toBe(
+      withoutPartner['tax.basis.aggregate.einkommensteuer'],
+    )
+    expect(withPartner['tax.basis.aggregate.einkommensteuer']).toBeGreaterThan(0)
+    expect(withoutPartner['tax.basis.aggregate.einkommensteuer']).toBeGreaterThan(0)
   })
 })

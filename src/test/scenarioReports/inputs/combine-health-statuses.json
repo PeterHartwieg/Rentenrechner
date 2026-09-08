@@ -456,10 +456,10 @@
           "taxClass": 1,
           "childBirthYears": [],
           "churchTax": false,
-          "publicHealthInsurance": true,
+          "publicHealthInsurance": false,
           "healthAdditionalContributionPct": 2.9,
-          "pkvMonthlyPremium": 0,
-          "pPVMonthlyPremium": 0,
+          "pkvMonthlyPremium": 450,
+          "pPVMonthlyPremium": 120,
           "desiredNetMonthlyPension": 0
         },
         "assumptions": {

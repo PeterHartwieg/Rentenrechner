@@ -1,5 +1,5 @@
 {
-  "two-earner-household": {
+  "single-earner-splitting": {
     "funding.headroom.bav.present": true,
     "funding.headroom.bav.capAnnual": 8112,
     "funding.headroom.bav.requestedAnnual": 2760,

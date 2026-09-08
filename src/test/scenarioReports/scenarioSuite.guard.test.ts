@@ -30,6 +30,7 @@ import {
   provenanceStatusOf,
 } from './suite'
 import { assembleReport, toMarkdownReport } from './report'
+import { dirtyCalculationPaths } from '../../../scripts/scenarioGitState'
 import { extractStages } from './stages'
 import { activeRules } from '../../rules'
 import { de2026Rules } from '../../rules/de2026'
@@ -245,6 +246,58 @@ describe('input and provenance rejection', () => {
     const captured = JSON.parse(rulesIdentityJson(activeRules)) as Record<string, unknown>
     delete captured.legalRuleData
     expect(provenanceStatusOf(JSON.stringify(captured), rulesIdentityJson(activeRules))).toBe('drift')
+  })
+})
+
+describe('git porcelain -z dirty-path parsing', () => {
+  it('parses rename records with their NEW path (and the original)', () => {
+    // `git status --porcelain=v1 -z`: `R  <new>\0<old>\0`. A line-based parse
+    // of `R  old -> new` would keep only the raw string and miss `src/engine/…`.
+    const records = [
+      'R  src/engine/tax-new.ts',
+      'src/engine/tax-old.ts',
+      ' M src/app/useRoute.ts',
+    ]
+    expect(dirtyCalculationPaths(records)).toEqual([
+      'src/app/useRoute.ts',
+      'src/engine/tax-new.ts',
+      'src/engine/tax-old.ts',
+    ])
+  })
+
+  it('flags a rename out of a source directory via its ORIGINAL path', () => {
+    const records = ['R  docs/moved.md', 'src/rules/de2026.ts']
+    expect(dirtyCalculationPaths(records)).toEqual(['src/rules/de2026.ts'])
+  })
+
+  it('ignores renames and modifications outside the calculation sources', () => {
+    const records = [
+      'R  docs/a.md',
+      'README.md',
+      ' M src/test/scenarioReports/suite.ts',
+      '?? scripts/new-script.ts',
+      ' D src/utils/notes.md',
+    ]
+    expect(dirtyCalculationPaths(records)).toEqual(['src/utils/notes.md'])
+  })
+
+  it('treats every ordinary modification status inside the sources as dirty', () => {
+    const records = [
+      'M  src/engine/tax.ts',
+      ' D src/rules/index.ts',
+      'A  src/domain/x.ts',
+      '?? src/data/new.json',
+      'C  src/app/copy.ts',
+      'src/app/original.ts',
+    ]
+    expect(dirtyCalculationPaths(records)).toEqual([
+      'src/app/copy.ts',
+      'src/app/original.ts',
+      'src/data/new.json',
+      'src/domain/x.ts',
+      'src/engine/tax.ts',
+      'src/rules/index.ts',
+    ])
   })
 })
 

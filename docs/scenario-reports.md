@@ -28,7 +28,7 @@ Every captured value is an **INTERNAL REGRESSION** anchor:
 
 | Path | Role |
 |------|------|
-| `src/test/scenarioReports/inputs/<family>.json` | Frozen synthetic inputs (14 families / 26 cases). Generated once by `npm run scenario:inputs`; routine tests never call `defaultScenario`. |
+| `src/test/scenarioReports/inputs/<family>.json` | Frozen synthetic inputs (14 families / 27 cases). Generated once by `npm run scenario:inputs`; routine tests never call `defaultScenario`. |
 | `src/test/scenarioReports/baselines/family-<family>.json` | Frozen expected stage values per case, captured ONCE at the recorded revision. |
 | `src/test/scenarioReports/baselines/provenance.json` | Capture identity: base SHA, engine-source digest, complete replayable rules identity (`RuleSetIdentity` + snapshot sha + full year rules + full `legalRuleData` values + evaluated cohort schedules), capture reason. |
 | `src/test/scenarioReports/suite.ts` | Registry (case metadata + purposes), runner, diff engine, provenance gate. |
@@ -50,7 +50,7 @@ npm run scenario:capture -- --reason "..."   # inputs + baselines in one step
 npm test                           # includes the suite as a vitest file
 ```
 
-The suite adds ~2 s to `npm test` (26 cases, ~5 700 stages; Monte Carlo is seeded
+The suite adds ~2 s to `npm test` (27 cases, ~5 900 stages; Monte Carlo is seeded
 and limited to 200 runs).
 
 ## Baseline updates are deliberate

@@ -336,7 +336,11 @@ function compareContractVintageFamily(): Record<string, CaseInput> {
         }),
       }),
     ),
-    'abgeltungsteuer-leibrente': cloneInput(
+    // 2026 vintage, Leibrente: runtime (2026→2053) = 27 years ≥ 12 and payout
+    // at 67 ≥ 62, so the CAPITAL-payout mode for this vintage would be
+    // Halbeinkünfte — this case pins the §22 Nr. 1 Ertragsanteil annuity
+    // override instead. NOT an Abgeltungsteuer case (see the sibling below).
+    'leibrente-ertragsanteil': cloneInput(
       compareInput({
         assumptions: (a) => ({
           ...a,
@@ -346,6 +350,23 @@ function compareContractVintageFamily(): Record<string, CaseInput> {
             contractStartYear: 2026,
             oldContractTaxFreeEligible: false,
             payoutMode: 'leibrente',
+          },
+        }),
+      }),
+    ),
+    // Late contract (start 2045): runtime (2045→2053) ≈ 8 < 12 years, so the
+    // Halbeinkünfte conditions fail and the full gain falls under §20 Abs. 2
+    // EStG Abgeltungsteuer — the third leg of the vintage triangle.
+    'abgeltungsteuer-kapitalverzehr': cloneInput(
+      compareInput({
+        assumptions: (a) => ({
+          ...a,
+          visibleProducts: ['etf', 'versicherung'],
+          insurance: {
+            ...a.insurance,
+            contractStartYear: 2045,
+            oldContractTaxFreeEligible: false,
+            payoutMode: 'kapitalverzehr',
           },
         }),
       }),
@@ -547,6 +568,15 @@ function combineHealthStatusesFamily(): Record<string, CaseInput> {
     pkv: cloneInput(
       workspaceInput({
         ...shared,
+        // A real PKV holder in this app is publicHealthInsurance: false —
+        // every statutory retirement KV/PV channel gates on that flag, not on
+        // the retirementHealthStatus. Meaningful PKV/PV premiums so the
+        // salary-phase PKV branch carries real inputs.
+        profile: {
+          publicHealthInsurance: false,
+          pkvMonthlyPremium: 450,
+          pPVMonthlyPremium: 120,
+        },
         visibleProducts: [...ALL_PRODUCTS],
         statutoryPensionOverrides: { retirementHealthStatus: 'pkv' },
       }),
@@ -675,7 +705,11 @@ function combineTransferSurrenderFamily(): Record<string, CaseInput> {
 
 function combineMarriedSplittingFamily(): Record<string, CaseInput> {
   return {
-    'two-earner-household': cloneInput(
+    // ONE modeled earner: the partner profile (tax class 5, 20 k EUR) carries
+    // the hasPartner flag that switches the aggregate pipeline onto §32a
+    // Abs. 5 EStG splitting, but the partner's salary and contracts do NOT
+    // enter the simulation.
+    'single-earner-splitting': cloneInput(
       workspaceInput({
         partner: {
           ...BASE_PROFILE,
@@ -701,7 +735,7 @@ function combineMarriedSplittingFamily(): Record<string, CaseInput> {
 
 function combineZeroReturnFamily(): Record<string, CaseInput> {
   return {
-    'two-bav-two-etf': cloneInput(
+    'two-bav-one-etf': cloneInput(
       workspaceInput({
         instances: {
           bav: [

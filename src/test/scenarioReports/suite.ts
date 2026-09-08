@@ -216,9 +216,17 @@ const CASE_META: CaseMeta[] = [
   {
     familyId: 'compare-contract-vintage',
     familyLabel: 'C · Vergleich — Vertragsalter',
-    caseId: 'abgeltungsteuer-leibrente',
+    caseId: 'leibrente-ertragsanteil',
     purpose:
-      '2026 vintage contract paid as Leibrente: pins the §22 Nr. 1 Ertragsanteil override for new contracts (tax mode would otherwise be Abgeltungsteuer).',
+      '2026-vintage contract paid as Leibrente: runtime (2026→2053) ≥ 12 years and payout at 67, so the capital-payout mode for this vintage would be Halbeinkünfte — this case pins the §22 Nr. 1 Ertragsanteil annuity override instead. NOT an Abgeltungsteuer case (see the sibling below).',
+    provenance: 'internal-regression',
+  },
+  {
+    familyId: 'compare-contract-vintage',
+    familyLabel: 'C · Vergleich — Vertragsalter',
+    caseId: 'abgeltungsteuer-kapitalverzehr',
+    purpose:
+      'Late contract (start 2045, runtime ≈ 8 < 12 years) with capital payout: fails the Halbeinkünfte conditions, so the full gain is taxed at §20 Abs. 2 EStG Abgeltungsteuer — pins the third leg of the vintage triangle (pre2005 / halbeinkuenfte / abgeltungsteuer).',
     provenance: 'internal-regression',
   },
   // D — horizons and returns
@@ -335,7 +343,7 @@ const CASE_META: CaseMeta[] = [
     familyLabel: 'I · Kombination — Krankenversicherungsstatus',
     caseId: 'pkv',
     purpose:
-      'Retirement health status PKV: pins that PKV and KVdR coincide in the modeled KV/PV paths (both zero on AVD/Riester/Basisrente payouts as sonstige Einkünfte; bAV Versorgungsbezug KV/PV still applies as a documented modeling choice) — the pin guards against accidental divergence between the two statuses.',
+      'PKV holder (publicHealthInsurance: false, PKV/PV premiums 450/120 EUR): the gated statutory retirement KV/PV channels — GRV KVdR half-rate, freiwillig §240 base, sonstige Versorgungsbezüge — must be zero, while the bAV Versorgungsbezug channel (§229 SGB V, not gated on publicHealthInsurance) still charges KV/PV. The KVdR sibling proves the gate has something to switch off.',
     provenance: 'internal-regression',
   },
   // J — paid-up
@@ -368,18 +376,18 @@ const CASE_META: CaseMeta[] = [
   {
     familyId: 'combine-married-splitting',
     familyLabel: 'M · Kombination — Ehegattensplitting',
-    caseId: 'two-earner-household',
+    caseId: 'single-earner-splitting',
     purpose:
-      'Married couple (tax classes 1 + 5) with bAV + Basisrente: pins §32a Abs. 5 EStG splitting in the aggregate retirement-tax pipeline.',
+      'ONE modeled earner with the married flag: hasPartner (partner profile: tax class 5, 20 k EUR, no partner contracts) switches the aggregate retirement-tax pipeline onto §32a Abs. 5 EStG splitting. The partner salary is NOT modeled — the splitting branch is proven by the no-partner control test, not by two-earner income.',
     provenance: 'internal-regression',
   },
   // N — zero return in combine mode
   {
     familyId: 'combine-zero-return',
     familyLabel: 'N · Kombination — Nullrendite',
-    caseId: 'two-bav-two-etf',
+    caseId: 'two-bav-one-etf',
     purpose:
-      'Combine-mode household at 0 % return: isolates funding, fee and aggregation effects from market growth on the portfolio path.',
+      'Combine-mode household (two bAV + one ETF with existing capital) at 0 % return: isolates funding, fee and aggregation effects from market growth on the portfolio path.',
     provenance: 'internal-regression',
   },
 ]
