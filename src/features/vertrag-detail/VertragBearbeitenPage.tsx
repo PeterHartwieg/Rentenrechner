@@ -149,12 +149,15 @@ export function VertragBearbeitenPage({ instanceId, navigate }: Props) {
     save: () => {
       if (!found || !contractDraft.valid) return false
       const { patch, inputStatus, evidenceMap } = contractDraft.toPatch()
-      portfolioState.updateInstance(
+      // `updateInstance` refuses a patch the load path would drop; stay on the
+      // form so the user's edit is not silently lost.
+      const written = portfolioState.updateInstance(
         productId,
         instanceId,
         { ...patch, evidenceMap } as Partial<AnyInstance>,
         inputStatus,
       )
+      if (!written) return false
       navigate(ROUTES.home)
       return true
     },

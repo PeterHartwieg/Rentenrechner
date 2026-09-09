@@ -56,6 +56,22 @@ import {
 } from './onboardingDraft'
 import { DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
 import { legalConstants } from '../../rules/legalConstants'
+import { AVD_UI_SELECTABLE_PAYOUT_MODES } from '../../engine/products/altersvorsorgedepot.validation'
+import type { AltersvorsorgedepotPayoutMode } from '../../domain'
+import {
+  ACQUISITION_COST_SPREAD_YEARS_BOUNDS,
+  AGE_AT_CONTRACT_START_BOUNDS,
+  CONTRACT_START_YEAR_BOUNDS,
+  CONTRACTUAL_MATCH_PERCENT_BOUNDS,
+  CONTRIBUTION_GROWTH_BOUNDS,
+  ELIGIBLE_CHILDREN_BOUNDS,
+  PAYOUT_PLAN_END_AGE_BOUNDS,
+  RENTENFAKTOR_BOUNDS,
+  SURRENDER_HAIRCUT_BOUNDS,
+  ZEITRENTE_YEARS_BOUNDS,
+  type NumericBound,
+} from '../../domain/validation/bounds'
+import { INSTANCE_VALIDATOR_BY_PRODUCT } from '../../utils/scenarioSchema'
 
 // ---------------------------------------------------------------------------
 // Field specs
@@ -121,6 +137,12 @@ export interface ContractFieldSpec {
   readonly section: ContractFieldSection
   readonly min?: number
   readonly max?: number
+  /**
+   * `true` when the persisted validator uses `intInRange`. `step: 1` is only a
+   * browser hint — the editor form renders `noValidate` and writes `Number(raw)`
+   * on every keystroke, so integrality has to be enforced in `validateDraft`.
+   */
+  readonly integer?: boolean
   readonly step?: number
   readonly options?: readonly { readonly value: string; readonly label: string }[]
   /** `true` when the UI must offer a "Weiß ich nicht" control. */
@@ -151,11 +173,24 @@ const AVD_SUBTYPE_OPTIONS = [
   { value: 'guarantee_100', label: '100 % Beitragsgarantie' },
 ] as const
 
-const AVD_PAYOUT_OPTIONS = [
-  { value: 'lifelong_annuity', label: 'Lebenslange Rente' },
-  { value: 'certified_payout_plan', label: 'Auszahlplan (zertifiziert)' },
-  { value: 'hybrid_80_annuity', label: '80 % Rente + 20 % variabel' },
-] as const
+const AVD_PAYOUT_LABELS: Record<AltersvorsorgedepotPayoutMode, string> = {
+  lifelong_annuity: 'Lebenslange Rente',
+  certified_payout_plan: 'Auszahlplan (zertifiziert)',
+  hybrid_80_annuity: '80 % Rente + 20 % variabel',
+}
+
+/**
+ * Only the modes the engine models end-to-end. `hybrid_80_annuity` is gated
+ * (gh#63: the 80 % lifelong sleeve is truncated at `payoutEndAge` by every
+ * chart consumer until `BaseProductResult` carries
+ * `lifelongMonthlyPayoutAfterEnd`). The list is *derived* from
+ * `AVD_UI_SELECTABLE_PAYOUT_MODES` rather than retyped, so lifting the gate is
+ * one edit in the validation module.
+ */
+const AVD_PAYOUT_OPTIONS = AVD_UI_SELECTABLE_PAYOUT_MODES.map((value) => ({
+  value: value as string,
+  label: AVD_PAYOUT_LABELS[value],
+}))
 
 const BASISRENTE_PAYOUT_OPTIONS = [
   { value: 'leibrente', label: 'Lebenslange Rente (gesetzlich vorgeschrieben)' },
@@ -240,7 +275,8 @@ function contractStartYearSpec(section: ContractFieldSection): ContractFieldSpec
     unit: 'year',
     section,
     min: 1950,
-    max: 2100,
+    max: CONTRACT_START_YEAR_BOUNDS.max,
+    integer: true,
     step: 1,
     supportsUnknown: true,
     unknownMode: 'explicit-unknown',
@@ -353,8 +389,9 @@ const FEE_SPECS: readonly ContractFieldSpec[] = [
     kind: 'number',
     unit: 'years',
     section: 'fees',
-    min: 1,
+    min: ACQUISITION_COST_SPREAD_YEARS_BOUNDS.min,
     max: 10,
+    integer: true,
     step: 1,
     supportsUnknown: false,
     unknownMode: 'none',
@@ -384,8 +421,8 @@ function rentenfaktorSpec(visibleWhen?: (draft: ContractDraft) => boolean): Cont
     kind: 'number',
     unit: 'none',
     section: 'details',
-    min: 0,
-    max: 200,
+    min: RENTENFAKTOR_BOUNDS.min,
+    max: RENTENFAKTOR_BOUNDS.max,
     step: 0.1,
     supportsUnknown: true,
     unknownMode: 'explicit-unknown',
@@ -402,8 +439,9 @@ function zeitrenteYearsSpec(visibleWhen: (draft: ContractDraft) => boolean): Con
     kind: 'number',
     unit: 'years',
     section: 'details',
-    min: 1,
-    max: 60,
+    min: ZEITRENTE_YEARS_BOUNDS.min,
+    max: ZEITRENTE_YEARS_BOUNDS.max,
+    integer: true,
     step: 1,
     supportsUnknown: false,
     unknownMode: 'none',
@@ -419,8 +457,8 @@ const contributionGrowthSpec: ContractFieldSpec = {
   kind: 'number',
   unit: 'ratio',
   section: 'details',
-  min: 0,
-  max: 0.2,
+  min: CONTRIBUTION_GROWTH_BOUNDS.min,
+  max: CONTRIBUTION_GROWTH_BOUNDS.max,
   step: 0.005,
   supportsUnknown: false,
   unknownMode: 'none',
@@ -458,8 +496,9 @@ function eligibilitySpecs(withChildren: boolean): readonly ContractFieldSpec[] {
       kind: 'number',
       unit: 'age',
       section: 'details',
-      min: 14,
-      max: 80,
+      min: Math.max(14, AGE_AT_CONTRACT_START_BOUNDS.min),
+      max: Math.min(80, AGE_AT_CONTRACT_START_BOUNDS.max),
+      integer: true,
       step: 1,
       supportsUnknown: false,
       unknownMode: 'none',
@@ -485,14 +524,36 @@ function eligibilitySpecs(withChildren: boolean): readonly ContractFieldSpec[] {
       kind: 'number',
       unit: 'count',
       section: 'details',
-      min: 0,
-      max: 12,
+      min: ELIGIBLE_CHILDREN_BOUNDS.min,
+      max: Math.min(12, ELIGIBLE_CHILDREN_BOUNDS.max),
+      integer: true,
       step: 1,
       supportsUnknown: false,
       unknownMode: 'none',
     })
   }
   return specs
+}
+
+/**
+ * The persisted-validator bound each editor field inherits, keyed by spec id.
+ *
+ * The specs above read their `min` / `max` / `integer` from these constants;
+ * this table exists so `contractDraft.bounds.test.ts` can walk every entry and
+ * assert the spec never widens the bound it derives from. A field absent here
+ * is bounded only by the editor (the validator accepts anything finite for it).
+ */
+export const SHARED_FIELD_BOUNDS: Readonly<Record<string, NumericBound>> = {
+  contractStartYear: CONTRACT_START_YEAR_BOUNDS,
+  rentenfaktor: RENTENFAKTOR_BOUNDS,
+  zeitrenteYears: ZEITRENTE_YEARS_BOUNDS,
+  annualContributionGrowthRate: CONTRIBUTION_GROWTH_BOUNDS,
+  contractualMatchPercent: CONTRACTUAL_MATCH_PERCENT_BOUNDS,
+  surrenderHaircutPct: SURRENDER_HAIRCUT_BOUNDS,
+  payoutPlanEndAge: PAYOUT_PLAN_END_AGE_BOUNDS,
+  'eligibility.ageAtContractStart': AGE_AT_CONTRACT_START_BOUNDS,
+  'eligibility.eligibleChildren': ELIGIBLE_CHILDREN_BOUNDS,
+  'fees.acquisitionCostSpreadYears': ACQUISITION_COST_SPREAD_YEARS_BOUNDS,
 }
 
 // --- per-product tables ----------------------------------------------------
@@ -554,8 +615,8 @@ const BAV_SPECS: readonly ContractFieldSpec[] = [
     kind: 'number',
     unit: 'ratio',
     section: 'details',
-    min: 0,
-    max: 2,
+    min: CONTRACTUAL_MATCH_PERCENT_BOUNDS.min,
+    max: CONTRACTUAL_MATCH_PERCENT_BOUNDS.max,
     step: 0.01,
     supportsUnknown: true,
     unknownMode: 'explicit-unknown',
@@ -635,8 +696,8 @@ const VERSICHERUNG_SPECS: readonly ContractFieldSpec[] = [
     kind: 'number',
     unit: 'ratio',
     section: 'details',
-    min: 0,
-    max: 1,
+    min: SURRENDER_HAIRCUT_BOUNDS.min,
+    max: SURRENDER_HAIRCUT_BOUNDS.max,
     step: 0.01,
     supportsUnknown: false,
     unknownMode: 'none',
@@ -747,8 +808,9 @@ const AVD_SPECS: readonly ContractFieldSpec[] = [
     kind: 'number',
     unit: 'age',
     section: 'details',
-    min: 85,
-    max: 100,
+    min: Math.max(85, PAYOUT_PLAN_END_AGE_BOUNDS.min),
+    max: Math.min(100, PAYOUT_PLAN_END_AGE_BOUNDS.max),
+    integer: true,
     step: 1,
     supportsUnknown: false,
     unknownMode: 'none',
@@ -1100,37 +1162,93 @@ export type ContractDraftErrors = Record<string, string>
 export function validateDraft(draft: ContractDraft): ContractDraftErrors {
   const errors: ContractDraftErrors = {}
 
-  for (const spec of visibleFieldSpecs(draft)) {
+  // Every spec is checked, not just the visible ones: `draftToInstancePatch`
+  // writes the whole spec table, so a value hidden behind a `visibleWhen`
+  // predicate (a Zeitrente runtime left over from before the user switched to
+  // Leibrente) still persists and still has to survive the load path. A
+  // violation on a hidden field is reported form-level, prefixed with the
+  // field's label, because there is no input on screen to attach it to.
+  for (const spec of fieldSpecs(draft.productId)) {
+    const visible = !spec.visibleWhen || spec.visibleWhen(draft)
+
     if (draft.pending.includes(spec.id)) {
-      errors[spec.id] = 'Bitte einen Wert eintragen oder „Weiß ich nicht" wählen.'
+      if (visible) errors[spec.id] = 'Bitte einen Wert eintragen oder „Weiß ich nicht" wählen.'
       continue
     }
     const field = draft.fields[spec.id]
     if (!field || field.status === 'unknown') continue
-    const value = field.value
 
-    if (spec.kind === 'number') {
-      if (typeof value !== 'number' || !Number.isFinite(value)) {
-        errors[spec.id] = 'Bitte eine Zahl eintragen.'
-        continue
-      }
-      if (spec.min !== undefined && value < spec.min) {
-        errors[spec.id] = `Wert darf nicht kleiner als ${spec.min} sein.`
-        continue
-      }
-      if (spec.max !== undefined && value > spec.max) {
-        errors[spec.id] = `Wert darf nicht größer als ${spec.max} sein.`
-      }
-      continue
-    }
+    const message = fieldError(spec, field.value)
+    if (!message) continue
+    if (visible) errors[spec.id] = message
+    else errors[FORM_ERROR_KEY] = `${spec.label}: ${message}`
+  }
 
-    if (spec.kind === 'select') {
-      const allowed = spec.options?.some((option) => option.value === value)
-      if (!allowed) errors[spec.id] = 'Bitte eine der angebotenen Optionen wählen.'
-    }
+  // Last gate: the instance this draft would produce must pass the *persisted*
+  // validator — the same function `validateWorkspaceAssumptions` runs on load.
+  // The per-field checks above should already cover every case; this catches
+  // anything the spec table cannot express (cross-field invariants, a field the
+  // editor does not expose that the base instance carries in a bad state) before
+  // it is written to localStorage.
+  if (Object.keys(errors).length === 0 && !draftPassesInstanceValidator(draft)) {
+    errors[FORM_ERROR_KEY] =
+      'Diese Angaben ergeben keinen gültigen Vertrag und können nicht gespeichert werden.'
   }
 
   return errors
+}
+
+/** One field's violation, or `undefined` when the value is acceptable. */
+function fieldError(spec: ContractFieldSpec, value: ContractFieldValue): string | undefined {
+  if (spec.kind === 'number') {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return 'Bitte eine Zahl eintragen.'
+    if (spec.min !== undefined && value < spec.min) {
+      return `Wert darf nicht kleiner als ${spec.min} sein.`
+    }
+    if (spec.max !== undefined && value > spec.max) {
+      return `Wert darf nicht größer als ${spec.max} sein.`
+    }
+    // The persisted validator uses `intInRange` for this field. Without this
+    // check a fractional value passes the editor, persists, and is rejected on
+    // the next load — which drops the contract.
+    if (spec.integer && !Number.isInteger(value)) return 'Bitte eine ganze Zahl eintragen.'
+    return undefined
+  }
+
+  if (spec.kind === 'select') {
+    const allowed = spec.options?.some((option) => option.value === value)
+    if (!allowed) return 'Bitte eine der angebotenen Optionen wählen.'
+  }
+
+  return undefined
+}
+
+/**
+ * Error key for a whole-draft failure that belongs to no single field. Rendered
+ * as a form-level message; `isDraftValid` treats it like any other error.
+ */
+export const FORM_ERROR_KEY = '_form'
+
+/**
+ * The instance this draft would persist, complete enough for the per-product
+ * instance validator: base ∪ patch, plus the identity fields
+ * `draftToNewInstance` would stamp.
+ */
+export function draftToCandidateInstance(draft: ContractDraft): Record<string, unknown> {
+  const { patch, inputStatus, evidenceMap } = draftToInstancePatch(draft)
+  const base = draft.base as Record<string, unknown>
+  const instanceId =
+    typeof base.instanceId === 'string' && base.instanceId !== ''
+      ? base.instanceId
+      : `${draft.productId}-draft001`
+  const labelValue = draftFieldValue(draft, 'label')
+  const label = typeof labelValue === 'string' ? labelValue : ''
+  return { ...base, ...patch, instanceId, label, evidenceMap, inputStatus }
+}
+
+/** `true` when the draft's projected instance passes the persisted validator. */
+export function draftPassesInstanceValidator(draft: ContractDraft): boolean {
+  return INSTANCE_VALIDATOR_BY_PRODUCT[draft.productId](draftToCandidateInstance(draft))
 }
 
 /** `true` when no field carries an error. */

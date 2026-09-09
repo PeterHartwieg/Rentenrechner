@@ -140,6 +140,20 @@ describe('buildExportCsv', () => {
     expect(headerRow).toContain('Datenqualität')
   })
 
+  it('compare-mode singleton export is untouched by the combine suppression (#395)', () => {
+    // Paired with the combine-mode blocked cases below: `buildExportCsv` has no
+    // `householdTotalBlocked` option at all, so the compare path keeps writing a
+    // Netto-Rente for every product.
+    const csv = buildExportCsv(BASE_OPTS)
+    const lines = csv.split('\n')
+    const headerIdx = lines.findIndex((l) => l.startsWith('Detailvergleich')) + 1
+    const netCol = lines[headerIdx].split(',').indexOf('Netto-Rente mtl. (EUR)')
+    expect(netCol).toBeGreaterThan(-1)
+    const dataRow = lines[headerIdx + 1].split(',')
+    expect(dataRow[netCol]).not.toBe('')
+    expect(Number(dataRow[netCol])).toBeGreaterThan(0)
+  })
+
   it('discloses the active inflation assumption', () => {
     const csv = buildExportCsv(BASE_OPTS)
     expect(csv).toContain('Aktive Annahmen')
@@ -794,6 +808,13 @@ describe('buildCombinePortfolioCsv — suppressed household total', () => {
     scenarioLabels: { basis: 'Basis' },
   }
 
+  /** Data rows of the section whose title sits at `titleIndex` (header + rows). */
+  function sectionRows(lines: string[], titleIndex: number): string[] {
+    const out: string[] = []
+    for (let i = titleIndex + 2; i < lines.length && lines[i] !== ''; i++) out.push(lines[i])
+    return out
+  }
+
   function incomeRow(csv: string): string[] {
     const lines = csv.split('\n')
     const idx = lines.findIndex((l) => l === 'Kombiniertes Renteneinkommen')
@@ -815,8 +836,9 @@ describe('buildCombinePortfolioCsv — suppressed household total', () => {
     )
     expect(cols[1]).toBe('')
     expect(cols[1]).not.toBe('0.00')
-    // The statutory column is untouched — only the household total is suppressed.
-    expect(cols[2]).toBe('1100.00')
+    // Issue #395: the statutory net is a component of the same blocked total,
+    // so it is blanked too — never exported as an approximated figure.
+    expect(cols[2]).toBe('')
   })
 
   it('names the missing inputs in the Hinweis block', () => {
@@ -829,6 +851,47 @@ describe('buildCombinePortfolioCsv — suppressed household total', () => {
     expect(csv).toContain(
       'Netto-Gesamtrente nicht berechnet – fehlende Angaben: Gesetzliche Rente unbekannt.',
     )
+  })
+
+  it('blanks every per-instance Netto-Rente cell in a multi-contract plan (#395)', () => {
+    // Combine, two contracts, statutory-pension step skipped: the per-contract
+    // nets are back-allocated shares of the blocked household total, so they are
+    // blank too. Beitrag / Kapital / Brutto-Rente stay — they are per-contract
+    // figures the user did supply.
+    const csv = buildCombinePortfolioCsv({
+      ...TWO_INSTANCE_OPTS,
+      householdTotalBlocked: {
+        reasonLabels: ['Die Angaben zu deiner gesetzlichen Rente stehen noch aus.'],
+      },
+    })
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const header = lines[idx + 1].split(',')
+    const netCol = header.indexOf('Netto-Rente mtl. (EUR)')
+    const grossCol = header.indexOf('Brutto-Rente mtl. (EUR)')
+    expect(netCol).toBeGreaterThan(-1)
+
+    const rows = sectionRows(lines, idx)
+    expect(rows).toHaveLength(2)
+    for (const row of rows) {
+      const cols = row.split(',')
+      expect(cols[netCol]).toBe('')
+      expect(cols[grossCol]).not.toBe('')
+    }
+    // And the combined section's statutory column.
+    const incomeIdx = lines.findIndex((l) => l === 'Kombiniertes Renteneinkommen')
+    expect(lines[incomeIdx + 2].split(',')[2]).toBe('')
+    expect(csv).toContain('Netto-Gesamtrente nicht berechnet')
+  })
+
+  it('keeps every per-instance Netto-Rente cell when nothing blocks', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const netCol = lines[idx + 1].split(',').indexOf('Netto-Rente mtl. (EUR)')
+    const rows = sectionRows(lines, idx)
+    expect(rows).toHaveLength(2)
+    for (const row of rows) expect(row.split(',')[netCol]).not.toBe('')
   })
 
   it('exports "Keine Angabe" for a row without any evidence metadata', () => {

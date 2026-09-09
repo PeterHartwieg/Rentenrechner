@@ -8,7 +8,7 @@
  * staleness together.
  */
 
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { EtfInstance } from '../domain/instances'
 import type { WhatIfScenario, Workspace } from '../domain/workspace'
@@ -219,6 +219,48 @@ describe('updateInstance', () => {
     })
     // The neighbouring contract is untouched.
     expect(result.current.workspace.baseline.assumptions.etf[1].monthlyContribution).toBe(150)
+  })
+
+  it('refuses a patch the load path would reject, leaving the instance untouched', () => {
+    // 0.15 is inside the old editor bound (0.2) and outside the ETF validator's
+    // (`inRange(0, 0.1)`). Persisting it would drop the contract on next load.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { result } = renderHook(() => usePortfolioState())
+    act(() => result.current.replaceWorkspace(populatedWorkspace()))
+
+    let written: boolean | null = null
+    act(() => {
+      written = result.current.updateInstance('etf', 'etf-aaaa1111', {
+        annualContributionGrowthRate: 0.15,
+      })
+    })
+
+    expect(written).toBe(false)
+    expect(
+      result.current.workspace.baseline.assumptions.etf[0].annualContributionGrowthRate,
+    ).not.toBe(0.15)
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('refuses to add an instance the load path would reject', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { result } = renderHook(() => usePortfolioState())
+    let added: { instanceId: string } | null = null
+    act(() => {
+      added = result.current.addPopulatedInstance('etf', {
+        ...etf('etf-bad00001', 100),
+        annualContributionGrowthRate: 0.15,
+      })
+    })
+
+    expect(added).toBeNull()
+    expect(
+      result.current.workspace.baseline.assumptions.etf.some(
+        (i) => i.instanceId === 'etf-bad00001',
+      ),
+    ).toBe(false)
+    warn.mockRestore()
   })
 
   it('is a no-op for an unknown id — including on a compare-mode workspace with no instances', () => {

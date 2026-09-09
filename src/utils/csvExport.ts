@@ -202,11 +202,16 @@ export interface CombinePortfolioCsvOptions {
   inflationRate?: number
   /**
    * Set by the caller when `selectResultReadiness` says the household total may
-   * not be shown (`canShowHouseholdTotal === false`). The Netto-Einkommen cell
-   * is then emitted **blank** — never 0, never a placeholder — and one Hinweis
-   * line names the missing inputs (lead decision §10.3). The PDF mirror in
-   * `PrintReport.tsx` renders '—' instead of an empty cell for the same state:
-   * an empty printed cell reads as a layout bug, a dash in a CSV as data.
+   * not be shown (`canShowHouseholdTotal === false`). Every net retirement-income
+   * cell is then emitted **blank** — never 0, never a placeholder — and one
+   * Hinweis line names the missing inputs (lead decision §10.3). That covers the
+   * combined Netto-Einkommen, the statutory-pension net beside it and the
+   * per-instance Netto-Rente column: those are components of the same blocked
+   * total, and exporting one of them still hands the user an approximated
+   * figure for a plan the app has declared incomplete (issue #395). The PDF
+   * mirror in `PrintReport.tsx` renders '—' instead of an empty cell for the
+   * same state: an empty printed cell reads as a layout bug, a dash in a CSV as
+   * data.
    *
    * `reasonLabels` are the German blocking-reason labels; pass
    * `householdTotalBlockedLabels(readiness)` from `app/resultReadiness.ts`.
@@ -249,7 +254,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
     lines.push(csvRow(
       scenarioLabels[scenarioId] ?? scenarioId,
       blocked ? '' : n(combined.monthlyNetIncome),
-      n(combined.statutoryPensionMonthlyNet),
+      blocked ? '' : n(combined.statutoryPensionMonthlyNet),
     ))
   }
 
@@ -275,7 +280,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
       n(row.monthlyProductContribution),
       n(row.capitalAtRetirement),
       n(row.grossMonthlyPayout),
-      n(row.netMonthlyPayout),
+      blocked ? '' : n(row.netMonthlyPayout),
       n(row.totalFees),
       formatExportProvenance(undefined, row.inputConfidence),
     ))

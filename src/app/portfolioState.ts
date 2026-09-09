@@ -52,6 +52,7 @@ import { addArchivedEntry } from '../data/scenarioLibrary'
 import { singletonViewOfWorkspace } from '../engine/portfolioAdapter'
 import { defaultAssumptions } from '../data/defaultScenario'
 import { PRODUCT_REGISTRY } from '../engine/productRegistry'
+import { INSTANCE_VALIDATOR_BY_PRODUCT } from '../utils/scenarioSchema'
 
 /** Union of all per-product instance types for `addPopulatedInstance`. */
 export type AnyInstance =
@@ -500,7 +501,7 @@ export interface UsePortfolioStateApi {
     productId: MultiInstanceProductId,
     instance: AnyInstance,
     status?: InputStatusMap,
-  ) => { instanceId: string; undo: WorkspaceUndo }
+  ) => { instanceId: string; undo: WorkspaceUndo } | null
   /**
    * Patch an existing instance in place. `patch` is shallow-merged, so nested
    * objects (`fees`, `eligibility`) must arrive complete — which is what
@@ -512,13 +513,26 @@ export interface UsePortfolioStateApi {
     instanceId: string,
     patch: Partial<AnyInstance>,
     status?: InputStatusMap,
-  ) => void
+  ) => boolean
   /**
    * Remove an instance from the baseline by productId + instanceId, cleaning up
    * every reference to it in the same transaction (see
    * `removeInstanceFromWorkspace`). Returns the undo handle.
    */
   removeInstance: (productId: MultiInstanceProductId, instanceId: string) => WorkspaceUndo
+}
+
+/**
+ * One line when a write is refused because the resulting instance would not
+ * survive the load path. The editor already blocks this via `validateDraft`;
+ * reaching here means a caller bypassed it, so make the refusal visible rather
+ * than dropping the edit silently.
+ */
+function warnRejectedInstance(productId: string, instanceId: string): void {
+  console.warn(
+    `[portfolioState] Vertrag ${instanceId} (${productId}) nicht gespeichert: ` +
+      'die Angaben verletzen das gespeicherte Schema.',
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -866,7 +880,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
       productId: MultiInstanceProductId,
       instance: AnyInstance,
       status?: InputStatusMap,
-    ): { instanceId: string; undo: WorkspaceUndo } => {
+    ): { instanceId: string; undo: WorkspaceUndo } | null => {
       const w = getWorkspaceSnapshot()
       const wsa = w.baseline.assumptions
       const wsKey = INVENTORY_PRODUCT_REGISTRY[productId].wsKey
@@ -883,6 +897,13 @@ export function usePortfolioState(): UsePortfolioStateApi {
       const withStatus: AnyInstance = status
         ? { ...labelled, inputStatus: { ...(labelled.inputStatus ?? {}), ...status } }
         : labelled
+      // Never persist an instance the load path would reject: a single invalid
+      // instance is dropped on the next load, so writing one silently discards
+      // what the user just typed. Callers surface the refusal instead.
+      if (!INSTANCE_VALIDATOR_BY_PRODUCT[productId](withStatus)) {
+        warnRejectedInstance(productId, instanceId)
+        return null
+      }
       const updated: WorkspaceAssumptionsV2 = {
         ...wsa,
         [wsKey]: [...currentArray, withStatus],
@@ -907,7 +928,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
       const wsa = w.baseline.assumptions
       const wsKey = INVENTORY_PRODUCT_REGISTRY[productId].wsKey
       const currentArray = (wsa[wsKey] ?? []) as unknown as AnyInstance[]
-      if (!currentArray.some((i) => i.instanceId === instanceId)) return
+      if (!currentArray.some((i) => i.instanceId === instanceId)) return false
       const nextArray = currentArray.map((existing) => {
         if (existing.instanceId !== instanceId) return existing
         // `instanceId` is identity, never patchable — a patch that carried a
@@ -918,11 +939,18 @@ export function usePortfolioState(): UsePortfolioStateApi {
           ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
           : merged
       })
+      const patched = nextArray.find((i) => i.instanceId === instanceId)
+      // Same persisted-schema gate as `addPopulatedInstance`.
+      if (!patched || !INSTANCE_VALIDATOR_BY_PRODUCT[productId](patched)) {
+        warnRejectedInstance(productId, instanceId)
+        return false
+      }
       const updated: WorkspaceAssumptionsV2 = { ...wsa, [wsKey]: nextArray }
       commit('Vertrag geändert', {
         ...w,
         baseline: { ...w.baseline, assumptions: updated, lastEditedAt: Date.now() },
       })
+      return true
     },
     [commit],
   )

@@ -109,6 +109,28 @@ describe('durationOfInstance', () => {
       ),
     ).toEqual({ kind: 'lifelong' })
   })
+
+  it('AVD hybrid_80_annuity is a finite plan, never "Lebenslang" (gh#63)', () => {
+    // The mode is no longer selectable, but legacy workspaces carry it. The
+    // engine drains the pot over `payoutPlanEndAge`; reporting it as lifelong
+    // would promise an income the model stops paying.
+    expect(
+      durationOfInstance(
+        'altersvorsorgedepot',
+        instance({ payoutMode: 'hybrid_80_annuity', payoutPlanEndAge: 85 }),
+        67,
+        90,
+      ),
+    ).toEqual({ kind: 'avd-plan', endAge: 85 })
+    expect(
+      durationOfInstance(
+        'altersvorsorgedepot',
+        instance({ payoutMode: 'hybrid_80_annuity', payoutPlanEndAge: 92 }),
+        67,
+        90,
+      ),
+    ).not.toEqual({ kind: 'lifelong' })
+  })
 })
 
 describe('selectPlanSummary', () => {

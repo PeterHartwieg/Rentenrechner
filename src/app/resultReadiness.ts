@@ -37,6 +37,7 @@ export type ReadinessCode =
   | 'instance-capital-unknown'
   | 'instance-contribution-unknown'
   | 'pkv-premium-unknown'
+  | 'salary-unknown'
   | 'retirement-age-unknown'
   | 'simulation-error'
   | 'assumed-fees'
@@ -183,6 +184,19 @@ export function selectResultReadiness(
       severity: 'blocking',
       label: 'Dein geplantes Renteneintrittsalter fehlt.',
       target: { route: ROUTES.eingaben, anchor: 'profile-retirementAge' },
+    })
+  }
+  // An explicitly declined salary is a blocker, not an assumption: it drives
+  // future Entgeltpunkte (§70 SGB VI), the payroll/bAV funding pass and the
+  // §10 / 4 % Schicht-1 and Riester caps. The onboarding wizard refuses to
+  // leave it unanswered; the edit surface offers "Weiß ich nicht", and the
+  // household total must not be presented as complete afterwards.
+  if (scenarioStatus('profile.grossSalaryYear') === 'unknown') {
+    reasons.push({
+      code: 'salary-unknown',
+      severity: 'blocking',
+      label: 'Dein Bruttoeinkommen ist als „weiß ich nicht" markiert.',
+      target: { route: ROUTES.eingaben, anchor: 'profile-grossSalaryYear' },
     })
   }
   if (profile.publicHealthInsurance === false) {

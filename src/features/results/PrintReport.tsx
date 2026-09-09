@@ -605,6 +605,7 @@ function CombinePrintReport({
         perInstance,
         scenarioId: basisScenarioId,
         combinedForScenario: basisCombined,
+        householdTotalBlocked: householdTotalBlocked !== undefined,
       })
     : []
 
@@ -691,13 +692,23 @@ function CombinePrintReport({
             </td>
             <td className="pr-col-right">
               <div className="pr-section-title">Gesetzliche Rente</div>
+              {/* Issue #395: when the household total is blocked, the statutory
+                  projection is an approximation over inputs the user has not
+                  supplied. It is suppressed here for the same reason the total
+                  is — a labelled EUR figure reads as an answer. */}
               <table className="pr-kv">
                 <tbody>
-                  <KvRow label="Bruttorente">{formatCurrency(grv.grossMonthlyPension, 0)}/Monat</KvRow>
-                  <KvRow label="Nettorente">
-                    <strong>{formatCurrency(grv.netMonthlyPension, 0)}/Monat</strong>
+                  <KvRow label="Bruttorente">
+                    {householdTotalBlocked ? '—' : `${formatCurrency(grv.grossMonthlyPension, 0)}/Monat`}
                   </KvRow>
-                  <KvRow label="Entgeltpunkte">{formatNumber(grv.projectedEntgeltpunkte, 1)} EP</KvRow>
+                  <KvRow label="Nettorente">
+                    <strong>
+                      {householdTotalBlocked ? '—' : `${formatCurrency(grv.netMonthlyPension, 0)}/Monat`}
+                    </strong>
+                  </KvRow>
+                  <KvRow label="Entgeltpunkte">
+                    {householdTotalBlocked ? '—' : `${formatNumber(grv.projectedEntgeltpunkte, 1)} EP`}
+                  </KvRow>
                 </tbody>
               </table>
             </td>
@@ -751,7 +762,11 @@ function CombinePrintReport({
                       ? '—'
                       : `${formatCurrency(c.monthlyNetIncome, 0)}/Monat`}
                   </td>
-                  <td className="pr-num">{formatCurrency(c.statutoryPensionMonthlyNet, 0)}/Monat</td>
+                  <td className="pr-num">
+                    {householdTotalBlocked
+                      ? '—'
+                      : `${formatCurrency(c.statutoryPensionMonthlyNet, 0)}/Monat`}
+                  </td>
                 </tr>
               )
             })}
@@ -813,7 +828,7 @@ function CombinePrintReport({
                   <td className="pr-num">{formatCurrency(r.capitalAtRetirement, 0)}</td>
                   <td className="pr-num">{formatCurrency(r.grossMonthlyPayout, 0)}</td>
                   <td className="pr-num">
-                    {formatCurrency(netMonthly, 0)}
+                    {householdTotalBlocked ? '—' : formatCurrency(netMonthly, 0)}
                     <ConfidenceIndicator state={r.inputConfidence} />
                   </td>
                   <td className="pr-num">{formatPercent(r.accumulationRiy, 2)}</td>
@@ -834,6 +849,7 @@ function CombinePrintReport({
           rows={zusammenRows}
           retirementAge={profile.retirementAge}
           sensitivityRows={sensitivityRows}
+          householdTotalBlocked={householdTotalBlocked !== undefined}
         />
       )}
 
@@ -1216,10 +1232,18 @@ function ZusammensetzungSection({
   rows,
   retirementAge,
   sensitivityRows,
+  householdTotalBlocked = false,
 }: {
   rows: ReadonlyArray<PrintZusammenRow>
   retirementAge: number
   sensitivityRows?: ReadonlyArray<PrintSensitivityRow>
+  /**
+   * Issue #395: every row amount is a share of the blocked household total.
+   * Printing one of them would re-introduce the approximation the total was
+   * suppressed to avoid, so the amount and share columns render '—'. The rows
+   * themselves stay so the user still sees which contracts are in the plan.
+   */
+  householdTotalBlocked?: boolean
 }) {
   return (
     <section className="pr-section">
@@ -1257,8 +1281,12 @@ function ZusammensetzungSection({
                     ? 'beitragsfrei'
                     : `${formatCurrency(row.contributionMonthly, 0)}/Mon.`}
               </td>
-              <td className="pr-num">{formatCurrency(row.monthlyNet, 0)}/Mon.</td>
-              <td className="pr-num">{formatPercent(row.share, 1)}</td>
+              <td className="pr-num">
+                {householdTotalBlocked ? '—' : `${formatCurrency(row.monthlyNet, 0)}/Mon.`}
+              </td>
+              <td className="pr-num">
+                {householdTotalBlocked ? '—' : formatPercent(row.share, 1)}
+              </td>
             </tr>
           ))}
         </tbody>

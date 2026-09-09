@@ -71,14 +71,19 @@ export function durationOfInstance(
       // Capital payout is legally prohibited; the mode is a literal 'leibrente'.
       return { kind: 'lifelong' }
     case 'altersvorsorgedepot': {
-      if (payoutMode === 'certified_payout_plan') {
-        const endAge = Math.max(
-          instance.payoutPlanEndAge ?? 0,
-          rules.altersvorsorgedepot.payoutPlanMinEndAge,
-        )
-        return { kind: 'avd-plan', endAge }
-      }
-      return { kind: 'lifelong' }
+      // Only `lifelong_annuity` actually runs for life. `certified_payout_plan`
+      // ends at `payoutPlanEndAge`; so does `hybrid_80_annuity` as the engine
+      // models it today (the 80 % lifelong sleeve is truncated at
+      // `payoutPlanEndAge` — gh#63). The hybrid mode is no longer selectable
+      // (`AVD_UI_SELECTABLE_PAYOUT_MODES`), but legacy workspaces may still
+      // carry it, and reporting "Lebenslang" for a payout the engine stops at
+      // 85 would be the one thing this module exists to prevent.
+      if (payoutMode === 'lifelong_annuity') return { kind: 'lifelong' }
+      const endAge = Math.max(
+        instance.payoutPlanEndAge ?? 0,
+        rules.altersvorsorgedepot.payoutPlanMinEndAge,
+      )
+      return { kind: 'avd-plan', endAge }
     }
     case 'etf':
       return { kind: 'drawdown-shared-horizon', endAge: retirementEndAge, sharedWith: [] }

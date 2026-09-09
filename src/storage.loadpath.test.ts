@@ -411,7 +411,7 @@ describe('D2 — what-if validation runs before transfer-event backfill', () => 
     }
   }
 
-  it('returns null when a what-if has a malformed product instance (invalid status enum)', () => {
+  it('drops a malformed product instance (invalid status enum) but keeps the what-if', () => {
     const ws = makeValidV2Workspace()
     const wi = makeValidWhatIf(ws.baseline)
     // Add a bav instance with an invalid status enum.
@@ -428,7 +428,13 @@ describe('D2 — what-if validation runs before transfer-event backfill', () => 
     ]
     ws.whatIfs = [wi]
     const json = buildWorkspaceJson(ws)
-    expect(parseWorkspaceJson(json)).toBeNull()
+    const parsed = parseWorkspaceJson(json)
+    // A single bad instance is dropped, not fatal: rejecting the workspace here
+    // would replace every contract, profile answer and alternative with
+    // defaults, which the write-through store then persists.
+    expect(parsed).not.toBeNull()
+    expect(parsed!.whatIfs[0].assumptions.bav.map((b) => b.instanceId)).not.toContain('bav-bad')
+    expect(parsed!.baseline.assumptions.bav).toHaveLength(ws.baseline.assumptions.bav.length)
   })
 
   it('returns null when a what-if has a malformed assumptions field (out-of-range inflationRate)', () => {

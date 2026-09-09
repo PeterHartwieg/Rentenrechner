@@ -15,6 +15,7 @@ import { migrateV1ToV2 } from '../storage'
 import type { Workspace } from '../domain/workspace'
 import { runCombineSimulation, type CombineSimulationBundle } from './useCombineSimulation'
 import { householdTotalBlockedLabels, selectResultReadiness } from './resultReadiness'
+import { ROUTES } from './useRoute'
 
 function makeWorkspace(): Workspace {
   const v1 = {
@@ -59,6 +60,31 @@ describe('selectResultReadiness', () => {
     expect(readiness.status).toBe('available')
     expect(readiness.reasons).toHaveLength(0)
     expect(readiness.canShowHouseholdTotal).toBe(true)
+  })
+
+  it('blocks on an explicitly unknown gross salary', () => {
+    // The edit surface lets the user decline the salary; onboarding does not.
+    // The declined value still drives future Entgeltpunkte, the payroll pass
+    // and the Schicht-1 / Riester caps, so the total must not be presented as
+    // complete — same treatment as an unknown PKV premium.
+    const ws = makeWorkspace()
+    clearContracts(ws)
+    ws.baseline.assumptions.inputStatus = { 'profile.grossSalaryYear': 'unknown' }
+    const readiness = selectResultReadiness(ws, bundleFor(ws))
+    expect(readiness.status).toBe('incomplete')
+    expect(readiness.blocking.map((r) => r.code)).toContain('salary-unknown')
+    expect(readiness.canShowHouseholdTotal).toBe(false)
+    const reason = readiness.blocking.find((r) => r.code === 'salary-unknown')!
+    expect(reason.label).toContain('Bruttoeinkommen')
+    expect(reason.target.route).toEqual(ROUTES.eingaben)
+  })
+
+  it('does not block on a salary the user actually entered', () => {
+    const ws = makeWorkspace()
+    clearContracts(ws)
+    ws.baseline.assumptions.inputStatus = { 'profile.grossSalaryYear': 'entered' }
+    const readiness = selectResultReadiness(ws, bundleFor(ws))
+    expect(readiness.blocking.map((r) => r.code)).not.toContain('salary-unknown')
   })
 
   it('blocks on an explicitly unknown statutory-pension figure', () => {

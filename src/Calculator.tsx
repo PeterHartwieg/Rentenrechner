@@ -620,7 +620,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
         <summary>Details &amp; Export</summary>
         <div className="rw-plan-disclosure__body">
           {!readiness.canShowHouseholdTotal && (
-            <p>Diese Zahlen rechnen vorläufig mit Modellwerten für unbekannte Angaben; die Gesamtsumme oben bleibt offen.</p>
+            <p>Solange Angaben fehlen, bleiben die Netto-Renten und die Gesamtsumme offen; die übrigen Werte rechnen vorläufig mit Modellwerten.</p>
           )}
           <CombineDetailView
             workspace={portfolioState.workspace}
@@ -628,6 +628,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
             selectedScenarioId={combineBasisScenarioId}
             selectedScenarioLabel={combineBasisLabel}
             combinedForScenario={combineSimulation.combinedByScenarioId[combineBasisScenarioId]}
+            householdTotalBlocked={householdTotalBlocked !== undefined}
             onExportCsv={handleExportCsvCombine}
             onPrint={() => window.print()}
           />

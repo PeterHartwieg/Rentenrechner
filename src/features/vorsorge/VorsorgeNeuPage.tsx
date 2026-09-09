@@ -172,7 +172,12 @@ export function VorsorgeNeuPage({ navigate }: Props) {
       if (!selectedProductId || !contractDraft.valid) return false
       const { inputStatus } = contractDraft.toPatch()
       const instance = draftToNewInstance(contractDraft.draft) as unknown as AnyInstance
-      portfolioState.addPopulatedInstance(draftProductId, instance, inputStatus)
+      // `addPopulatedInstance` refuses an instance the load path would drop.
+      // Stay on the form in that case rather than navigating away from an edit
+      // that was never written.
+      if (portfolioState.addPopulatedInstance(draftProductId, instance, inputStatus) === null) {
+        return false
+      }
       navigate(ROUTES.home)
       return true
     },

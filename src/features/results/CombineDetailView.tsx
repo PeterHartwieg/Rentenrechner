@@ -58,6 +58,14 @@ interface CombineDetailViewProps {
    * a result for the selected scenario (renders the per-instance fallback).
    */
   combinedForScenario?: CombinedResult | undefined
+  /**
+   * `true` when `selectResultReadiness` suppressed the household total. The
+   * "Netto-Rente mtl." column then renders '—': every value in it is a share of
+   * that blocked total, back-allocated from the aggregate tax + KV/PV pipeline,
+   * so printing one is the same approximation the total was withheld to avoid
+   * (issue #395). Every other column is per-contract and stays.
+   */
+  householdTotalBlocked?: boolean
   onExportCsv: () => void
   onPrint: () => void
 }
@@ -83,6 +91,7 @@ export function CombineDetailView({
   selectedScenarioId,
   selectedScenarioLabel,
   combinedForScenario,
+  householdTotalBlocked = false,
   onExportCsv,
   onPrint,
 }: CombineDetailViewProps) {
@@ -132,7 +141,11 @@ export function CombineDetailView({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <CombineDetailRowView key={row.instanceId} row={row} />
+                <CombineDetailRowView
+                  key={row.instanceId}
+                  row={row}
+                  householdTotalBlocked={householdTotalBlocked}
+                />
               ))}
             </tbody>
           </table>
@@ -142,7 +155,13 @@ export function CombineDetailView({
   )
 }
 
-function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
+function CombineDetailRowView({
+  row,
+  householdTotalBlocked,
+}: {
+  row: CombineDetailRow
+  householdTotalBlocked: boolean
+}) {
   // `getProductMeta` is typed as `T | undefined` against an arbitrary string,
   // but `row.productId` is the registry-derived `ProductId` union — every
   // member of which has a metadata entry. Fall back defensively so a future
@@ -208,7 +227,11 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
       <td>{capital !== undefined ? formatCurrency(capital, 0) : '–'}</td>
       <td>{riy !== undefined ? formatPercent(riy, 2) : '–'}</td>
       <td title={netCellTitle} aria-label={netCellTitle}>
-        {monthlyNet !== undefined ? formatCurrency(monthlyNet, 0) : '–'}
+        {householdTotalBlocked
+          ? '—'
+          : monthlyNet !== undefined
+            ? formatCurrency(monthlyNet, 0)
+            : '–'}
         {breakEvenAge !== undefined && (
           <span className="break-even-note">
             {' '}(Break-even Alter {Math.round(breakEvenAge)})

@@ -37,6 +37,19 @@ function saveIncompletePlan(): void {
   localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
 }
 
+/** Two contracts, statutory-pension step skipped — the multi-instance case. */
+function saveIncompletePlanWithTwoContracts(): void {
+  let workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  workspace = { ...workspace, mode: 'combine' }
+  workspace = addInstanceToWorkspace(workspace, 'bav')
+  workspace = addInstanceToWorkspace(workspace, 'etf')
+  workspace.baseline.assumptions.statutoryPension = {
+    ...workspace.baseline.assumptions.statutoryPension,
+    pensionEntryMethod: { kind: 'skipped' },
+  }
+  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
+}
+
 function saveCompletePlan(): void {
   let workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
   workspace = { ...workspace, mode: 'combine' }
@@ -109,6 +122,62 @@ describe('Calculator — readiness reaches the export layer', () => {
     const report = document.querySelector('#print-report')
     expect(report?.textContent).toContain('Netto-Gesamtrente nicht berechnet')
     expect(report?.textContent).toContain('Die Angaben zu deiner gesetzlichen Rente stehen noch aus.')
+  })
+
+  it('prints a dash — never a figure — for every net a blocked total is made of', async () => {
+    // Combine, two contracts, statutory-pension step skipped. The GRV block, the
+    // "Gesetzl. Rente netto" column, the per-contract net column and the
+    // Zusammensetzung amounts are all shares of the blocked household total.
+    saveIncompletePlanWithTwoContracts()
+    render(<App />)
+    await waitFor(() => expect(document.querySelector('#print-report')).not.toBeNull(), {
+      timeout: 8000,
+    })
+    const report = document.querySelector('#print-report') as HTMLElement
+
+    // Profile block: the labelled statutory projection.
+    const grvRows = Array.from(report.querySelectorAll('.pr-kv tr'))
+    const nettoRow = grvRows.find((tr) => tr.textContent?.startsWith('Nettorente'))
+    expect(nettoRow?.textContent).toContain('—')
+    expect(nettoRow?.textContent).not.toMatch(/\d/)
+
+    // Combined-income table: statutory column.
+    const incomeSection = Array.from(report.querySelectorAll('section')).find((el) =>
+      el.textContent?.includes('Kombiniertes Renteneinkommen je Szenario'),
+    )!
+    const firstRow = incomeSection.querySelectorAll('tbody tr')[0]
+    const cells = firstRow.querySelectorAll('td')
+    expect(cells[1].textContent).toBe('—')
+    expect(cells[2].textContent).toBe('—')
+
+    // Zusammensetzung: every row amount plus its share.
+    const zusammen = Array.from(report.querySelectorAll('section')).find((el) =>
+      el.textContent?.includes('Zusammensetzung'),
+    )!
+    const zusammenRows = zusammen.querySelectorAll('tbody tr')
+    expect(zusammenRows.length).toBeGreaterThan(1)
+    for (const row of Array.from(zusammenRows)) {
+      const tds = row.querySelectorAll('td')
+      expect(tds[2].textContent).toBe('—')
+      expect(tds[3].textContent).toBe('—')
+    }
+
+    // The Hinweis line stays: the reader is told why, not left with a blank.
+    expect(report.textContent).toContain('Netto-Gesamtrente nicht berechnet')
+  })
+
+  it('prints the statutory net as a figure when nothing blocks', async () => {
+    saveCompletePlan()
+    render(<App />)
+    await waitFor(() => expect(document.querySelector('#print-report')).not.toBeNull(), {
+      timeout: 8000,
+    })
+    const report = document.querySelector('#print-report') as HTMLElement
+    const nettoRow = Array.from(report.querySelectorAll('.pr-kv tr')).find((tr) =>
+      tr.textContent?.startsWith('Nettorente'),
+    )
+    expect(nettoRow?.textContent).toMatch(/\d/)
+    expect(nettoRow?.textContent).not.toContain('—')
   })
 
   it('emits no suppression notice when the total is allowed', async () => {

@@ -343,6 +343,36 @@ export function validateRiesterInstance(inst: unknown): boolean {
 }
 
 /**
+ * Per-product instance validators, keyed by `ProductId`.
+ *
+ * The persisted-schema gate, exposed as a table so writers (the contract
+ * editor, `usePortfolioState`'s instance mutators) can run the *same* check
+ * before they persist. Editor bounds that drift wider than these validators
+ * used to produce a workspace that failed on the next load; both sides now
+ * share this entry point.
+ */
+export const INSTANCE_VALIDATOR_BY_PRODUCT: Record<ProductId, (inst: unknown) => boolean> = {
+  bav: validateBavInstance,
+  etf: validateEtfInstance,
+  versicherung: validateInsuranceInstance,
+  basisrente: validateBasisrenteInstance,
+  altersvorsorgedepot: validateAltersvorsorgedepotInstance,
+  riester: validateRiesterInstance,
+}
+
+/**
+ * Instances dropped by the last `validateWorkspaceAssumptions` call, so the
+ * warning is emitted once per load rather than once per instance.
+ */
+function warnDroppedInstances(instanceIds: readonly string[]): void {
+  if (instanceIds.length === 0) return
+  console.warn(
+    `[storage] ${instanceIds.length} ungültige(r) Vertrag/Verträge beim Laden verworfen: ` +
+      `${instanceIds.join(', ')}. Die übrigen Angaben bleiben erhalten.`,
+  )
+}
+
+/**
  * Validate a WorkspaceAssumptionsV2 object.
  * Returns the typed object or null on failure.
  */
@@ -393,46 +423,44 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
 
   // Validate each product's instance array. The product prefix is part of the
   // persisted identity contract and must agree with the array containing it.
+  // A single malformed instance is *dropped*, not fatal. Rejecting the whole
+  // workspace here means `loadInitialWorkspace` falls back to defaults and the
+  // next mutation overwrites the user's contracts, profile and saved
+  // alternatives — a silent, irrecoverable loss. Same sanitise-not-reject
+  // posture as the transfer-event filter below.
+  const dropped: string[] = []
+  const keepValid = <T,>(instances: T[], expected: ProductId): T[] =>
+    instances.filter((inst) => {
+      if (
+        hasExpectedProductPrefix(inst, expected) &&
+        INSTANCE_VALIDATOR_BY_PRODUCT[expected](inst)
+      ) return true
+      const id = (inst as Record<string, unknown> | null)?.instanceId
+      dropped.push(typeof id === 'string' && id ? id : `${expected} (ohne Kennung)`)
+      return false
+    })
+
   if (!Array.isArray(a.bav)) return null
-  for (const inst of a.bav) {
-    if (!hasExpectedProductPrefix(inst, 'bav')) return null
-    if (!validateBavInstance(inst)) return null
-  }
-
   if (!Array.isArray(a.etf)) return null
-  for (const inst of a.etf) {
-    if (!hasExpectedProductPrefix(inst, 'etf')) return null
-    if (!validateEtfInstance(inst)) return null
-  }
-
   if (!Array.isArray(a.insurance)) return null
-  for (const inst of a.insurance) {
-    if (!hasExpectedProductPrefix(inst, 'versicherung')) return null
-    if (!validateInsuranceInstance(inst)) return null
-  }
-
   if (!Array.isArray(a.basisrente)) return null
-  for (const inst of a.basisrente) {
-    if (!hasExpectedProductPrefix(inst, 'basisrente')) return null
-    if (!validateBasisrenteInstance(inst)) return null
-  }
-
   if (!Array.isArray(a.altersvorsorgedepot)) return null
-  for (const inst of a.altersvorsorgedepot) {
-    if (!hasExpectedProductPrefix(inst, 'altersvorsorgedepot')) return null
-    if (!validateAltersvorsorgedepotInstance(inst)) return null
-  }
-
   if (!Array.isArray(a.riester)) return null
-  for (const inst of a.riester) {
-    if (!hasExpectedProductPrefix(inst, 'riester')) return null
-    if (!validateRiesterInstance(inst)) return null
-  }
+
+  const bav = keepValid(a.bav, 'bav')
+  const etf = keepValid(a.etf, 'etf')
+  const insurance = keepValid(a.insurance, 'versicherung')
+  const basisrente = keepValid(a.basisrente, 'basisrente')
+  const altersvorsorgedepot = keepValid(a.altersvorsorgedepot, 'altersvorsorgedepot')
+  const riester = keepValid(a.riester, 'riester')
+  warnDroppedInstances(dropped)
 
   // Transfer legality is event-scoped. A stale event can arise after a user
   // edits or removes a contract; discard that event rather than rejecting the
   // entire persisted workspace and falling back to an empty default.
-  const bavById = new Map(a.bav.map((inst) => [inst.instanceId, inst]))
+  const bavById = new Map(bav.map((inst) => [inst.instanceId, inst]))
+  // A transfer event pointing at a dropped instance is itself unusable.
+  for (const id of dropped) allInstanceIds.delete(id)
   const sanitizeInstances = <T extends InstanceCommon>(instances: T[]): T[] => {
     return instances.map((instance) => {
       // Additive input-status metadata: drop unusable entries, keep the instance.
@@ -463,12 +491,12 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
   const sanitizedWorkspaceAssumptions: WorkspaceAssumptionsV2 = {
     ...a,
     statutoryPension: sanitizeStatutoryPension(a.statutoryPension),
-    bav: sanitizeInstances(a.bav),
-    etf: sanitizeInstances(a.etf),
-    insurance: sanitizeInstances(a.insurance),
-    basisrente: sanitizeInstances(a.basisrente),
-    altersvorsorgedepot: sanitizeInstances(a.altersvorsorgedepot),
-    riester: sanitizeInstances(a.riester),
+    bav: sanitizeInstances(bav),
+    etf: sanitizeInstances(etf),
+    insurance: sanitizeInstances(insurance),
+    basisrente: sanitizeInstances(basisrente),
+    altersvorsorgedepot: sanitizeInstances(altersvorsorgedepot),
+    riester: sanitizeInstances(riester),
   }
   if (workspaceInputStatus === undefined) delete sanitizedWorkspaceAssumptions.inputStatus
   else sanitizedWorkspaceAssumptions.inputStatus = workspaceInputStatus

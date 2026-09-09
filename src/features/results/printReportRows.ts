@@ -537,6 +537,8 @@ interface BuildPrintVertragBlocksInput {
   perInstance: Record<string, ProductResult[]>
   scenarioId: string
   combinedForScenario: CombinedResult | undefined
+  /** `true` when `selectResultReadiness` suppressed the household total (#395). */
+  householdTotalBlocked?: boolean
 }
 
 /**
@@ -553,6 +555,7 @@ export function buildPrintVertragBlocks({
   perInstance,
   scenarioId,
   combinedForScenario,
+  householdTotalBlocked = false,
 }: BuildPrintVertragBlocksInput): PrintVertragBlock[] {
   const wsa = workspace.baseline.assumptions
   const profile = workspace.baseline.profile
@@ -601,6 +604,9 @@ export function buildPrintVertragBlocks({
         {
           label: 'Netto-Rente',
           value: netMonthly,
+          // Issue #395: a per-contract net is a share of the household total.
+          // When that total is blocked, print a dash — not an approximation.
+          displayOverride: householdTotalBlocked ? '—' : undefined,
           sublabel: 'pro Monat',
         },
       ]
