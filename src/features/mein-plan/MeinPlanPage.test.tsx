@@ -69,6 +69,134 @@ function buildProps(workspace: Workspace = buildCombineWorkspace()) {
 }
 
 describe('MeinPlanPage — Sober D combine-mode surface', () => {
+  it('places scenario limits, live rule year and accessible detail links next to the headline', () => {
+    const navigate = vi.fn()
+    const props = buildProps()
+    const { container, getByRole } = render(<MeinPlanPage {...props} navigate={navigate} />)
+    const context = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+    expect(context.textContent).toContain('keine Vorhersage')
+    expect(context.textContent).toContain(`Regelstand ${props.rules.year}`)
+    expect(context.textContent).toContain('Künftige Gesetzesänderungen')
+    expect(context.textContent).toContain('Standardwerte oder selbst eingegebene Werte')
+    expect(context.textContent).toContain('keine Wahrscheinlichkeit')
+    const sensitivityLink = getByRole('link', { name: 'Getestete Änderungen ansehen ↓' })
+    expect(sensitivityLink.getAttribute('href')).toBe('#mein-plan-sensitivitaet')
+    expect(container.querySelector('#mein-plan-sensitivitaet')).not.toBeNull()
+    const methodLink = getByRole('link', { name: 'Methode und Grenzen →' })
+    expect(methodLink.getAttribute('href')).toBe('/methode')
+    fireEvent.click(methodLink, { ctrlKey: true })
+    expect(navigate).not.toHaveBeenCalled()
+    fireEvent.click(methodLink)
+    expect(navigate).toHaveBeenCalledWith(ROUTES.methode)
+  })
+
+  it('summarizes the existing sensitivity results without additional selector calls', () => {
+    const props = buildProps()
+    const spies = [
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfReturnScenario'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfRetirementAge'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfInflation'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfEtfBump'),
+    ]
+    try {
+      spies.forEach((spy, index) => spy.mockReturnValue({
+        headlineDelta: index === 0 ? -400 : 100,
+        perturbedProjectedMonthly: 2000,
+        perInstanceDelta: {},
+      }))
+      const { getByRole } = render(<MeinPlanPage {...props} />)
+      const note = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+      expect(note.textContent).toMatch(/Größte getestete Änderung \(nominal\): −400\s*€ \/ Mon./)
+      expect(note.textContent).toContain('Rendite')
+      spies.forEach((spy) => expect(spy).toHaveBeenCalledTimes(1))
+    } finally {
+      spies.forEach((spy) => spy.mockRestore())
+    }
+  })
+
+  it.each([0, -0.4])('explains tested small changes (%s) without implying certainty', (delta) => {
+    const props = buildProps()
+    const spies = [
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfReturnScenario'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfRetirementAge'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfInflation'),
+      vi.spyOn(sensitivitySelectors, 'sensitivityIfEtfBump'),
+    ]
+    try {
+      spies.forEach((spy) => spy.mockReturnValue({
+        headlineDelta: delta, perturbedProjectedMonthly: 2000, perInstanceDelta: {},
+      }))
+      const { getByRole } = render(<MeinPlanPage {...props} />)
+      const note = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+      expect(note.textContent).toContain('jeweils um weniger als 1 €')
+      expect(note.textContent).toContain('keine Ober- oder Untergrenze')
+      expect(note.textContent).not.toContain('Größte getestete Änderung')
+    } finally {
+      spies.forEach((spy) => spy.mockRestore())
+    }
+  })
+
+  it.each([
+    [{}, false, false],
+    [{ kostenQuote: 'model_estimate' }, true, false],
+    [{ monthlyContribution: 'statement' }, false, true],
+    [{ monthlyContribution: 'user_confirmed' }, false, true],
+  ] as const)('explains recorded evidence without an inferred missing-field count (%j)', (evidenceMap, estimated, confirmed) => {
+    let ws: Workspace = { ...structuredClone(defaultWorkspace), mode: 'combine' }
+    ws = addInstanceToWorkspace(ws, 'etf')
+    ws.baseline.assumptions.etf[0].evidenceMap = { ...evidenceMap }
+    const { getByRole } = render(<MeinPlanPage {...buildProps(ws)} />)
+    const text = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' }).textContent
+    expect(text).not.toContain('unbekannter Herkunft')
+    expect(text?.includes('ausdrücklich als Schätzwert markiert')).toBe(estimated)
+    expect(text?.includes('Bestätigungen oder Belege vermerkt')).toBe(confirmed)
+    expect(text).toContain('Standardwerte oder selbst eingegebene Werte')
+    if (!confirmed) expect(text).toContain('keine ausdrückliche Bestätigung')
+  })
+
+  it('keeps purchasing-power uncertainty visible when inflation is the only tested nominal no-op', () => {
+    const ws = buildCombineWorkspace()
+    ws.baseline.profile.retirementAge = 70
+    ws.baseline.assumptions.etf.forEach((instance) => { instance.status = 'paid_up' })
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const { container, getByRole } = render(<MeinPlanPage
+      {...buildProps(ws)}
+      selectedScenarioId="konservativ"
+      selectedScenarioLabel="Konservativ"
+      combinedForScenario={bundle.combinedByScenarioId.konservativ}
+    />)
+    const note = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+    expect(container.querySelectorAll('.mein-plan-sens-row')).toHaveLength(2)
+    expect(note.textContent).toContain('nominale monatliche Netto-Rente jeweils um weniger als 1 €')
+    expect(note.textContent).toContain('Inflation kann die Kaufkraft auch bei unveränderter nominaler Auszahlung mindern')
+  })
+
+  it('labels the actual clamped retirement age consistently in summary and row', () => {
+    const ws = buildCombineWorkspace()
+    ws.baseline.assumptions.retirementEndAge = 70
+    const spy = vi.spyOn(sensitivitySelectors, 'sensitivityIfRetirementAge').mockReturnValue({
+      headlineDelta: 99999, perturbedProjectedMonthly: 100000, perInstanceDelta: {}, note: 'retirement_age_clamped',
+    })
+    try {
+      const { container, getByRole } = render(<MeinPlanPage {...buildProps(ws)} />)
+      expect(getByRole('region', { name: 'Wie belastbar ist diese Zahl?' }).textContent)
+        .toContain('Renteneintritt mit 69 Jahren')
+      expect(container.querySelector('[data-row-id="renteneintritt-70"]')?.textContent)
+        .toContain('du mit 69 Jahren in Rente gehst')
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('does not turn unavailable sensitivity into a zero-risk claim', () => {
+    const props = buildProps()
+    const { getByRole } = render(<MeinPlanPage {...props} combinedForScenario={undefined} />)
+    const context = getByRole('region', { name: 'Wie belastbar ist diese Zahl?' })
+    expect(context.textContent).toContain('noch keine auswertbare Variante')
+    expect(context.textContent).not.toContain('Größte getestete Änderung')
+    expect(context.textContent).not.toContain('weniger als 1 €')
+  })
+
   it('renders the lead statement, headline figure, and both § sections', () => {
     const props = buildProps()
     const { container } = render(<MeinPlanPage {...props} />)

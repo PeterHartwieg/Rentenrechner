@@ -3,6 +3,7 @@ import type {
   BasisrenteFundingResult,
   BavFundingResult,
   BavLumpSumTaxMode,
+  EtfAssumptions,
   GermanRules,
   PersonalProfile,
   RiesterFundingResult,
@@ -301,4 +302,112 @@ export function buildContext(
     insuranceMonthlyUserCostOverride: overrides?.insuranceMonthlyUserCostOverride,
     etfSaverAllowanceOverride: overrides?.etfSaverAllowanceOverride,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Narrow per-product calculation context — ETF (issue #380)
+// ---------------------------------------------------------------------------
+
+/**
+ * Assumption slice the ETF simulator actually reads. `ScenarioAssumptions`
+ * satisfies this structurally, so the compare-mode adapter can forward the
+ * full object without copying; the combine-mode adapter passes exactly the
+ * three fields the simulator consumes (no neutralised bAV / Basisrente /
+ * AVD / Riester / insurance / statutory-pension inputs).
+ */
+export interface EtfCalculationAssumptions {
+  etf: EtfAssumptions
+  inflationRate: number
+  retirementEndAge: number
+}
+
+/**
+ * Narrow typed calculation context for the ETF simulator — first product
+ * migrated off the six-product `SimulationContext` (issue #380).
+ *
+ * The interface is the complete, closed set of inputs the ETF calculation
+ * consumes: profile (ages), rules, the ETF assumption slice, the payout
+ * horizon, an explicit monthly net user cost, and the three per-instance
+ * add-ons (market path, capital policy, shared saver allowance). Everything
+ * else `buildContext` computes — bAV two-pass funding, Basisrente / AVD /
+ * Riester funding, GRV projection, lump-sum tax modes — is irrelevant to the
+ * ETF math and is deliberately absent, so the combine-mode per-instance path
+ * no longer has to fabricate neutralised unrelated-product inputs to reach it.
+ *
+ * Build via `buildEtfCalculationContext` (explicit inputs, combine path) or
+ * `etfContextFrom` (adapter over the full compare-mode context). Both
+ * converge on the same shape; the ETF simulator accepts nothing else.
+ */
+export interface EtfCalculationContext {
+  profile: PersonalProfile
+  rules: GermanRules
+  assumptions: EtfCalculationAssumptions
+  /** Calendar years from today to `profile.retirementAge`. Derived, not passed. */
+  yearsToRetirement: number
+  /**
+   * Monthly net cash the user pays into THIS ETF contract (EUR/month).
+   * Compare mode: the fair-comparison anchor `bavFunding.monthlyNetCost`.
+   * Combine mode: the instance's own `monthlyContribution` (0 when paid-up or
+   * unset — matching the previous neutralised-bAV fallback, which was 0).
+   */
+  monthlyUserCost: number
+  /** Stochastic Monte-Carlo market path (see `SimulationContext.marketReturnPath`). */
+  marketReturnPath?: readonly number[]
+  /** Per-instance transfer/capital policy (see `SimulationContext.instanceCapitalPolicy`). */
+  instanceCapitalPolicy?: InstanceCapitalPolicy
+  /** Per-year §20 Abs. 9 EStG shared allowance (see `SimulationContext.etfSaverAllowanceOverride`). */
+  saverAllowanceOverride?: (yearIndex: number) => number
+}
+
+export interface BuildEtfCalculationContextInput {
+  profile: PersonalProfile
+  rules: GermanRules
+  assumptions: EtfCalculationAssumptions
+  monthlyUserCost: number
+  marketReturnPath?: readonly number[]
+  instanceCapitalPolicy?: InstanceCapitalPolicy
+  saverAllowanceOverride?: (yearIndex: number) => number
+}
+
+/**
+ * Build the narrow ETF context from explicit inputs — the combine-mode entry.
+ *
+ * `yearsToRetirement` is derived here from the profile with the same formula
+ * `buildContext` uses, so the two adapters cannot drift.
+ */
+export function buildEtfCalculationContext(
+  input: BuildEtfCalculationContextInput,
+): EtfCalculationContext {
+  return {
+    profile: input.profile,
+    rules: input.rules,
+    assumptions: input.assumptions,
+    yearsToRetirement: input.profile.retirementAge - input.profile.age,
+    monthlyUserCost: input.monthlyUserCost,
+    marketReturnPath: input.marketReturnPath,
+    instanceCapitalPolicy: input.instanceCapitalPolicy,
+    saverAllowanceOverride: input.saverAllowanceOverride,
+  }
+}
+
+/**
+ * Compare-mode adapter: extract the narrow ETF context from a full
+ * `SimulationContext`.
+ *
+ * This is the single place the fair-comparison invariant is expressed for the
+ * ETF: absent a combine-mode override, ETF invests the bAV net-cost anchor.
+ * Compare mode never sets `etfMonthlyUserCostOverride`, so the fallback keeps
+ * the invariant; combine mode passes its real per-instance amount via
+ * `buildEtfCalculationContext` instead.
+ */
+export function etfContextFrom(ctx: SimulationContext): EtfCalculationContext {
+  return buildEtfCalculationContext({
+    profile: ctx.profile,
+    rules: ctx.rules,
+    assumptions: ctx.assumptions,
+    monthlyUserCost: ctx.etfMonthlyUserCostOverride ?? ctx.bavFunding.monthlyNetCost,
+    marketReturnPath: ctx.marketReturnPath,
+    instanceCapitalPolicy: ctx.instanceCapitalPolicy,
+    saverAllowanceOverride: ctx.etfSaverAllowanceOverride,
+  })
 }

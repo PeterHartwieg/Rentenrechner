@@ -12,6 +12,22 @@ The validation goal is therefore:
 3. Keep full-simulation snapshots for regression protection, not as the primary
    proof of legal correctness.
 
+## Source freshness and review routing
+
+The "Official References" table below is mirrored into a machine-readable
+source-review catalog with per-source capture and review dates:
+
+```bash
+npm run review:sources    # deterministic freshness report (-- --json / -- --fail-on-stale)
+```
+
+The catalog reuses the `validationSources` ids from
+`src/test/externalGoldenFixtures.ts` plus the root research docs; unknown
+review dates are shown as null, never guessed. The monthly audit procedure
+and the local pre-merge calculation review toolchain are documented in
+[`docs/automation/calculation-review-toolchain.md`](automation/calculation-review-toolchain.md)
+(issue #382).
+
 ## Current External Golden Suite
 
 External golden fixtures live in `src/test/externalGoldenFixtures.ts`.
@@ -128,3 +144,17 @@ For release confidence, combine:
 - end-to-end product snapshots,
 - manual review of assumptions displayed in the UI,
 - and a yearly statutory-value update audit.
+
+## Scenario Report Suite (Issue #377)
+
+Between the external golden layer and the release audits sits a local
+**scenario-report suite**: 26 frozen synthetic scenarios (compare mode, combine
+mode, seeded Monte Carlo) replayed through the existing engine entry points and
+compared stage-by-stage against baselines captured once at a recorded engine
+revision. It detects unintended numeric drift, not legal correctness — all
+captured values are labelled INTERNAL REGRESSION.
+
+See [`docs/scenario-reports.md`](scenario-reports.md) for commands, the
+clean-source capture workflow, the rules-identity gate (year rules + cohort
+fingerprint), and the rule-change vs model-change workflow. Run it with
+`npm run scenario:report`; it also fails `npm test` on unexpected divergence.

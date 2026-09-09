@@ -44,7 +44,11 @@ export function careEmployeeRateForChildren(
   // the Beitragsabschlag. Having any child at all (regardless of age) exempts the
   // member from the Kinderlosenzuschlag.
   const qualifying = childBirthYearsUnder25InYear(bornByNow, currentYear).length
-  const discount = Math.min(Math.max(0, qualifying - 1), 4) * 0.0025
+  const discount =
+    Math.min(
+      Math.max(0, qualifying - 1),
+      legalConstants.care.beitragsabschlagMaxFurtherChildren,
+    ) * legalConstants.care.beitragsabschlagPerFurtherChild
   return Math.max(0, rules.socialSecurity.careEmployeeBaseRate - discount)
 }
 
@@ -130,7 +134,8 @@ export function calculatePkv257Subsidy(
 // GKV: KV Teilbetrag uses ermäßigter Beitragssatz (§243 SGB V) per §39b(2)Nr.3 EStG.
 // PKV: KV/PV Teilbeträge = employee's annual PKV/pPV premiums minus the tax-free
 // employer subsidy (§39b(2) Nr. 3 EStG, mirrored by the BMF Lohnsteuerrechner).
-// AV Teilbetrag is included up to the 1,900 EUR cap (KV + PV + AV ≤ 1,900 EUR).
+// AV Teilbetrag is included only while KV + PV + AV stay within the annual
+// §39b cap (legalConstants.payrollTax.vorsorgepauschaleKvPvAvCap).
 export function calculateVorsorgepauschale2026(
   steuerlichArbeitslohn: number,
   profile: PersonalProfile,
@@ -165,10 +170,14 @@ export function calculateVorsorgepauschale2026(
     ? kvBase * careEmployeeRateForChildren(profile.childBirthYears, rules.year, rules)
     : 0
 
-  // AV Teilbetrag: only included if KV + PV + AV does not exceed 1,900 EUR
+  // AV Teilbetrag: only included while KV + PV + AV stays within the §39b cap
+  // (legalConstants.payrollTax.vorsorgepauschaleKvPvAvCap).
   const kvpvSum = kvTeilbetrag + pvTeilbetrag
   const avActual = rvBase * rules.socialSecurity.unemploymentEmployeeRate
-  const avTeilbetrag = Math.max(0, Math.min(avActual, 1_900 - kvpvSum))
+  const avTeilbetrag = Math.max(
+    0,
+    Math.min(avActual, legalConstants.payrollTax.vorsorgepauschaleKvPvAvCap - kvpvSum),
+  )
 
   return rvTeilbetrag + kvTeilbetrag + pvTeilbetrag + avTeilbetrag
 }

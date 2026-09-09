@@ -13,7 +13,7 @@ Each product has a self-contained module here. To touch a product, read only its
 
 ## Adding a product
 
-1. Create `<product>.ts` — export `metadata` (with `id: '<id>' as const`) and `simulate(ctx, scenario)`.
+1. Create `<product>.ts` — export `metadata` (with `id: '<id>' as const`) and `simulate(ctx, scenario)`. `ctx` is the full `SimulationContext` by default (see `../simulationContext.ts`); only define a narrow per-product context once the product's funding needs are fully known (ETF is the one precedent — ADR-0003).
 2. Create `<product>.validation.ts` — export `validate<Product>(assumptions)`.
 3. Create `<product>.test.ts` — use factories from `src/test/factories.ts`.
 4. Add the per-product domain types in `src/domain/products/<product>.ts` (assumptions + result), and add the new result variant to the `ProductResult` union and the new key to `ScenarioAssumptions` in `src/domain/results.ts`.
@@ -24,7 +24,7 @@ Each product has a self-contained module here. To touch a product, read only its
 
 | File | Purpose |
 |------|---------|
-| `../simulationContext.ts` | `SimulationContext` interface; `buildContext` computes pre-scenario funding results |
+| `../simulationContext.ts` | `SimulationContext` interface; `buildContext` computes pre-scenario funding results. Also hosts the narrow per-product contexts (`EtfCalculationContext` + `buildEtfCalculationContext` / `etfContextFrom`) — see `docs/adr/0003-narrow-per-product-calculation-contexts.md`; the other five products still take the full context |
 | `../buildResult.ts` | `buildProductResult` — runs accumulation + payout/tax pipeline; assembles `ProductResult` |
 | `../../domain/validation/primitives.ts` | `isFiniteNumber`, `inRange`, `intInRange`, `validateFees` |
 | `../productRegistry.ts` | Single product registry for metadata, simulator, assumptions key, and validator |

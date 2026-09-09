@@ -26,6 +26,14 @@ Source-available under [PolyForm Noncommercial 1.0.0](LICENSE.md). Personal, res
 
 **Commercial use requires a separate paid license.** Insurance brokers, investment advisors, employers, and any other commercial use must contact `peter@hartwieg.com` — see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
 
+## Support development
+
+[RentenWiki.de unterstützen](https://rentenwiki.de/#unterstuetzen)
+
+Alle Unterstützungsbeiträge fließen nach Abzug der Zahlungsgebühren zurück in die Weiterentwicklung von RentenWiki.de. Deine Unterstützung ist freiwillig. Die öffentliche Nutzung bleibt kostenlos.
+
+All contributions, after payment processing fees, go back into developing RentenWiki.de. Support does not grant a commercial license.
+
 ## Development
 
 ```bash

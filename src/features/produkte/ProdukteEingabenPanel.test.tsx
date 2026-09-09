@@ -17,10 +17,11 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import type { ScenarioAssumptions } from '../../domain'
+import type { ScenarioAssumptions, SimulationResult } from '../../domain'
 import type { Scenario, Workspace } from '../../domain/workspace'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
+import { activeRules } from '../../rules'
 import { simulateRetirementComparison } from '../../engine/simulate'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { INVENTORY_PRODUCT_REGISTRY } from '../inventory/inventoryProductRegistry'
@@ -32,6 +33,40 @@ afterEach(() => cleanup())
 
 function makeSimulation(assumptions: ScenarioAssumptions = defaultAssumptions) {
   return simulateRetirementComparison(defaultProfile, assumptions, de2026Rules)
+}
+
+/** Props for the compare panel over an explicit assumptions object. */
+function comparePropsFor(
+  assumptions: ScenarioAssumptions,
+  overrides: DefaultPropsOverrides = {},
+): ProdukteEingabenPanelProps {
+  const visibleProducts = overrides.visibleProducts ?? assumptions.visibleProducts
+  const simulation = makeSimulation(assumptions)
+  const selectedResults = simulation.products.filter(
+    (r) => r.scenarioId === 'basis' && visibleProducts.includes(r.productId),
+  )
+  return {
+    mode: 'compare',
+    profile: defaultProfile,
+    assumptions: { ...assumptions, visibleProducts: [...visibleProducts] },
+    onProfileChange: vi.fn(),
+    onAssumptionsChange: overrides.onAssumptionsChange ?? vi.fn(),
+    simulation,
+    selectedResults,
+    kvdrMember: true,
+    bavLumpSumTaxMode: 'voll_versorgungsbezug',
+    insuranceTaxMode: 'halbeinkuenfte',
+    tarifgebunden: false,
+    onTarifgebundenChange: vi.fn(),
+    onSyncMonthlyContribution: vi.fn(),
+  }
+}
+
+/** First `.d-produkt-row` in the panel = the § 1 DRV card. */
+function drvCard(container: HTMLElement): HTMLElement {
+  const card = container.querySelector('.d-produkt-row')
+  expect(card).not.toBeNull()
+  return card as HTMLElement
 }
 
 interface DefaultPropsOverrides {
@@ -78,16 +113,14 @@ describe('ProdukteEingabenPanel — § 1 DRV card (live data)', () => {
   it('renders the DRV section legend and the row title', () => {
     const { getByText } = render(<ProdukteEingabenPanel {...defaultProps()} />)
     expect(getByText('§ 1 · Gesetzliche Rente')).toBeTruthy()
-    expect(
-      getByText('Deine gesetzliche Rente'),
-    ).toBeTruthy()
+    expect(getByText('Gesetzliche Rentenversicherung')).toBeTruthy()
   })
 
-  it('renders the "Stand", "Bisherige Entgeltpunkte" and "Heutiger Rentenwert (West)" rows with live values', () => {
+  it('renders the "Berechnungsstand", "Bisherige Entgeltpunkte" and "Heutiger Rentenwert (West)" rows with live values', () => {
     const { getByText, container } = render(
       <ProdukteEingabenPanel {...defaultProps()} />,
     )
-    expect(getByText('Stand')).toBeTruthy()
+    expect(getByText('Berechnungsstand')).toBeTruthy()
     expect(getByText('Bisherige Entgeltpunkte')).toBeTruthy()
     expect(getByText('Heutiger Rentenwert (West)')).toBeTruthy()
     expect(getByText('Brutto-Rente, geschätzt')).toBeTruthy()
@@ -114,6 +147,153 @@ describe('ProdukteEingabenPanel — § 1 DRV card (live data)', () => {
     expect(queryByTestId('produkte-grv-disclosure')).toBeNull()
     fireEvent.click(getByRole('button', { name: 'Manuell überschreiben' }))
     expect(queryByTestId('produkte-grv-disclosure')).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Input-followups plan 3 — honest GRV provenance. There is no upload path, so
+// a brand-new session must contain no "übernommen" / "DRV-PDF" /
+// "erneut hochladen" claim on the GRV card. The card labels its inputs as the
+// user's own entries ("Manuell eingegeben", including an explicit zero) or a
+// model estimate ("Schätzung"); projected rows stay estimates either way. The
+// old browser-month "Stand" cell became "Berechnungsstand: Wertejahr <year>"
+// so it can no longer read like a document date. Both panel branches consume
+// the shared `grvCard` module, so each assertion below runs against compare
+// AND combine.
+// ---------------------------------------------------------------------------
+
+describe('ProdukteEingabenPanel — § 1 DRV card honest provenance (plan 3)', () => {
+  const FORBIDDEN_CLAIMS = ['übernommen', 'DRV-PDF', 'erneut hochladen', 'Rentenauskunft']
+
+  it('compare: a brand-new session carries no import / upload claim', () => {
+    const { container } = render(<ProdukteEingabenPanel {...defaultProps()} />)
+    const text = container.textContent ?? ''
+    for (const claim of FORBIDDEN_CLAIMS) {
+      expect(text).not.toContain(claim)
+    }
+  })
+
+  it('combine: a brand-new session carries no import / upload claim', () => {
+    const { container } = render(
+      <ProdukteEingabenPanel {...makeCombineProps()} />,
+    )
+    const text = container.textContent ?? ''
+    for (const claim of FORBIDDEN_CLAIMS) {
+      expect(text).not.toContain(claim)
+    }
+  })
+
+  it('renders "Berechnungsstand" with the statutory rule year, not the browser date', () => {
+    const { container } = render(<ProdukteEingabenPanel {...defaultProps()} />)
+    const stand = Array.from(
+      drvCard(container).querySelectorAll('.d-produkt-row__field'),
+    ).find(
+      (field) =>
+        field.querySelector('.d-produkt-row__field-key')?.textContent ===
+        'Berechnungsstand',
+    )
+    expect(stand).toBeDefined()
+    expect(
+      stand!.querySelector('.d-produkt-row__field-val')?.textContent,
+    ).toBe(`Wertejahr ${activeRules.year}`)
+    // No date-shaped value: the card must not invent a DRV statement date.
+    expect(stand!.querySelector('.d-produkt-row__field-val')?.textContent).not.toMatch(
+      /\d{2}\s?\/\s?\d{2,4}/,
+    )
+  })
+
+  it('compare: estimated mode reads "Schätzung"; manual mode (positive and explicit zero) reads "Manuell eingegeben"', () => {
+    // Estimated (default Entgeltpunkte baseline).
+    const estimated = render(<ProdukteEingabenPanel {...defaultProps()} />)
+    expect(drvCard(estimated.container).querySelector('.d-produkt-row__status')?.textContent).toBe(
+      'Schätzung',
+    )
+    estimated.unmount()
+
+    for (const manualGross of [1_450, 0]) {
+      const assumptions: ScenarioAssumptions = {
+        ...defaultAssumptions,
+        statutoryPension: {
+          ...defaultAssumptions.statutoryPension,
+          manualMonthlyGross: manualGross,
+        },
+      }
+      const manual = render(
+        <ProdukteEingabenPanel {...comparePropsFor(assumptions)} />,
+      )
+      expect(
+        drvCard(manual.container).querySelector('.d-produkt-row__status')
+          ?.textContent,
+      ).toBe('Manuell eingegeben')
+      // Never a verified-document label, and projections stay estimates.
+      const text = manual.container.textContent ?? ''
+      expect(text).not.toContain('Bestätigt')
+      expect(text).toContain('geschätzt')
+      manual.unmount()
+    }
+  })
+
+  it('combine: the same provenance decision drives the card badge', () => {
+    const ws = buildCombineWorkspaceWithInstances()
+    const manualWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: {
+          ...ws.baseline.assumptions,
+          statutoryPension: {
+            ...ws.baseline.assumptions.statutoryPension,
+            manualMonthlyGross: 1_200,
+          },
+        },
+      },
+    }
+    const manual = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({
+          baseline: manualWs.baseline,
+          assumptions: manualWs.baseline.assumptions,
+        })}
+      />,
+    )
+    expect(drvCard(manual.container).querySelector('.d-produkt-row__status')?.textContent).toBe(
+      'Manuell eingegeben',
+    )
+    manual.unmount()
+  })
+
+  it('combine: no edit CTA renders on the DRV card when the disclosure cannot mount', () => {
+    // CR-PR4-R1-5 gate: without `onPatchBaseline` / `statutoryPensionResult`
+    // the disclosure cannot open, so the card must show no dead edit affordance.
+    const { container } = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({
+          onPatchBaseline: undefined,
+          statutoryPensionResult: undefined,
+        })}
+      />,
+    )
+    const actions = drvCard(container).querySelectorAll('button')
+    expect(actions.length).toBe(0)
+  })
+
+  it('combine: the gated edit action still opens the functioning GRV fields', () => {
+    const onPatchBaseline = vi.fn()
+    const statutoryPensionResult = {
+      projectedEntgeltpunkte: 50.25,
+      grossMonthlyPension: 2_100,
+    } as SimulationResult['statutoryPension']
+    const { getAllByRole, queryByTestId } = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({ onPatchBaseline, statutoryPensionResult })}
+      />,
+    )
+    fireEvent.click(getAllByRole('button', { name: 'Manuell überschreiben' })[0]!)
+    expect(queryByTestId('produkte-grv-disclosure')).not.toBeNull()
+    // The disclosure labels manual input honestly (shared GRVInputs selector).
+    expect(queryByTestId('produkte-grv-disclosure')!.textContent).toContain(
+      'Manuell eingegeben',
+    )
   })
 })
 
@@ -665,7 +845,8 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
       <ProdukteEingabenPanel {...makeCombineProps({ baseline: ws.baseline, assumptions: ws.baseline.assumptions })} />,
     )
     const statusBadges = container.querySelectorAll('.d-produkt-row__status')
-    // First badge is the statutory pension provenance; subsequent badges are per-instance "aktiv".
+    // First badge is the DRV card's provenance label; subsequent badges are
+    // per-instance "aktiv".
     const allLabels = Array.from(statusBadges).map((b) => b.textContent ?? '')
     expect(allLabels.filter((s) => s === 'aktiv').length).toBeGreaterThanOrEqual(3)
   })
@@ -715,9 +896,7 @@ describe('ProdukteEingabenPanel — § 1 combine-mode DRV card', () => {
       <ProdukteEingabenPanel {...makeCombineProps()} />,
     )
     expect(getByText('§ 1 · Gesetzliche Rente')).toBeTruthy()
-    expect(
-      getByText('Deine gesetzliche Rente'),
-    ).toBeTruthy()
+    expect(getByText('Gesetzliche Rentenversicherung')).toBeTruthy()
     // Without a simulation result the projected EP / gross monthly cells show
     // an em-dash placeholder.
     const fieldValues = Array.from(
@@ -843,7 +1022,9 @@ describe('statutory pension provenance on the products input surface', () => {
     [{ kind: 'points', entgeltpunkte: 13 }, 'Entgeltpunkte angegeben'],
     [{ kind: 'projected-gross', monthlyGrossEUR: 1500 }, 'Prognose angegeben'],
     [{ kind: 'skipped' }, 'Noch offen'],
-    [undefined, 'Angenommen'],
+    // No recorded entry method: falls back to the shared `grvCard` label,
+    // which reads the input mode only (here: no manual value → estimate).
+    [undefined, 'Schätzung'],
   ] as const
 
   for (const mode of ['compare', 'combine'] as const) {
@@ -864,4 +1045,19 @@ describe('statutory pension provenance on the products input surface', () => {
       }
     })
   }
+
+  it('falls back to "Manuell eingegeben" when a manual gross exists without a recorded entry method', () => {
+    const assumptions = structuredClone(defaultAssumptions)
+    assumptions.statutoryPension.pensionEntryMethod = undefined
+    assumptions.statutoryPension.manualMonthlyGross = 1800
+    const { container } = render(
+      <ProdukteEingabenPanel {...defaultProps()} assumptions={assumptions} />,
+    )
+    const section = container.querySelector('.d-produkt-section')!
+    expect(section.querySelector('.d-produkt-row__status')?.textContent).toBe(
+      'Manuell eingegeben',
+    )
+    expect(section.textContent).not.toMatch(/Rentenauskunft|PDF|hochladen/)
+  })
 })
+

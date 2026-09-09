@@ -51,7 +51,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
   },
   test: {
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**'],
+    // Default per-file isolation is load-bearing: several engine/rules tests
+    // mutate the shared `legalConstants` singleton (always restored per test).
+    // If `isolate: false` is ever adopted, those mutations would leak across
+    // files — restructure those tests first.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**', '**/.stryker-tmp/**'],
     setupFiles: ['./src/vitest.setup.ts'],
   },
 })

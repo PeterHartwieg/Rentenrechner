@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
-import { calculateBavFunding } from '../engine/salary'
 import { STORAGE_KEY_V1, buildStateJson, loadSavedState } from '../storage'
 import { readUrlState } from '../utils/urlShare'
 import { safeSetItem } from '../utils/safeStorage'
 import {
   normalizeMonthlyNettoBelastung,
+  resolveNettoBelastungTarget,
   syncMonthlyContributions,
 } from './syncContributions'
 
@@ -29,37 +29,18 @@ function loadInitialState(): LoadResult {
 }
 
 /**
- * Resolve the Netto-Belastung anchor from stored state on load.
- *
- * - Normal path: read `equalInputAmountEUR` (the public anchor).
- * - Legacy path: old saves with `compareSubMode: 'equal_cash'` and no
- *   `equalInputAmountEUR` fall back to the current bAV's net cost so the
- *   user's existing bAV contribution is preserved as the anchor.
- */
-function resolveNettoBelastungTarget(
-  profile: PersonalProfile,
-  assumptions: ScenarioAssumptions,
-): number {
-  if (assumptions.compareSubMode === 'equal_cash' && assumptions.equalInputAmountEUR === undefined) {
-    return calculateBavFunding(profile, de2026Rules, assumptions.bav).monthlyNetCost
-  }
-  if (assumptions.equalInputAmountEUR !== undefined) {
-    return normalizeMonthlyNettoBelastung(assumptions.equalInputAmountEUR)
-  }
-  return calculateBavFunding(profile, de2026Rules, assumptions.bav).monthlyNetCost
-}
-
-/**
  * Re-harmonize monthly contribution fields on load. New/default state anchors
  * on the stored public Netto-Belastung value; very old states without that
- * field fall back to the current bAV's true monthly netto.
+ * field fall back to the current bAV's true monthly netto. The anchor
+ * resolution itself is canonical in `src/utils/syncContributions.ts` so the
+ * `/eingaben` § 2 derived bAV gross display resolves the identical target.
  */
 function harmonizeOnLoad(
   profile: PersonalProfile,
   assumptions: ScenarioAssumptions,
 ): ScenarioAssumptions {
   return syncMonthlyContributions(
-    resolveNettoBelastungTarget(profile, assumptions),
+    resolveNettoBelastungTarget(profile, assumptions, de2026Rules),
     assumptions,
     profile,
     de2026Rules,

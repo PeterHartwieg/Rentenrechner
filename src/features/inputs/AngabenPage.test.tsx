@@ -14,9 +14,15 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { addInstanceToWorkspace } from '../../features/inventory/inventoryHelpers'
 import type { Workspace } from '../../domain/workspace'
+import type { ScenarioAssumptions } from '../../domain'
 import { useAngabenState } from '../../app/useAngabenState'
 import { useCalculatorState } from '../../app/useCalculatorState'
 import { buildShareUrl } from '../../utils/urlShare'
+import {
+  resolveNettoBelastungTarget,
+  syncMonthlyContributions,
+} from '../../utils/syncContributions'
+import { formatCurrency } from '../../utils/format'
 import { eachViewport, mockViewport } from '../../test/viewport'
 import { simulateRetirementComparison } from '../../engine/simulate'
 
@@ -194,8 +200,11 @@ describe('AngabenPage — /eingaben route content', () => {
     expect(items.length).toBe(4)
     const text = Array.from(items).map((i) => i.textContent ?? '').join(' ')
     expect(text).toContain('§ 22 Nr. 1')
-    expect(text).toContain('§ 32a Abs. 5')
+    // Steuerklasse drives the § 39b salary-phase Lohnsteuer — the aside no
+    // longer claims Familienstand activates Ehegattensplitting (§ 32a Abs. 5).
+    expect(text).toContain('Steuerklasse')
     expect(text).toContain('§ 39b EStG')
+    expect(text).not.toContain('§ 32a Abs. 5')
     // "MSCI-World-Renditen" (hyphenated compound) in the right-rail body.
     expect(text).toMatch(/MSCI[‐‑–—\- ]?World/)
     expect(text).toContain('nominale Modellannahme vor Inflation')
@@ -287,25 +296,25 @@ describe('AngabenPage — /eingaben route content', () => {
     expect(parsed.profile.age).toBe(defaultProfile.age)
   })
 
-  it('"Standardwerte wiederherstellen" also resets local-only familienstand to default (CR1)', () => {
-    // familienstand is ephemeral local state (not persisted in STORAGE_KEY_V1).
-    // Change it to a non-default value, click reset, assert the select returns
-    // to the default ('ledig'). This guards the CR1 fix: the reset handler must
-    // call setFamilienstand(FAMILIENSTAND_DEFAULT) in addition to resetToDefaults().
+  it('"Standardwerte wiederherstellen" resets the Steuerklasse select to default (input-followups plan 1)', () => {
+    // Steuerklasse is a persisted `profile.taxClass` field. Change it to a
+    // non-default value, click reset, assert the select returns to the
+    // default (class 1) AND the persisted envelope carries the default too —
+    // resetToDefaults() writes defaults back to STORAGE_KEY_V1.
     const { container, getByRole } = render(<AngabenPage />)
 
-    // Find the Familienstand <select> and change it to something non-default.
-    const familienstandSelect = container.querySelector<HTMLSelectElement>(
-      'select',
-    )
-    expect(familienstandSelect).not.toBeNull()
-    fireEvent.change(familienstandSelect!, { target: { value: 'verheiratet' } })
-    expect(familienstandSelect!.value).toBe('verheiratet')
+    const taxClassSelect = container.querySelector<HTMLSelectElement>('select')
+    expect(taxClassSelect).not.toBeNull()
+    fireEvent.change(taxClassSelect!, { target: { value: '3' } })
+    expect(taxClassSelect!.value).toBe('3')
 
     fireEvent.click(getByRole('button', { name: 'Standardwerte wiederherstellen' }))
 
-    // After reset, familienstand must be back to the default ('ledig').
-    expect(familienstandSelect!.value).toBe('ledig')
+    expect(taxClassSelect!.value).toBe('1')
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_V1)!) as {
+      profile: { taxClass: number }
+    }
+    expect(parsed.profile.taxClass).toBe(defaultProfile.taxClass)
   })
 
   it('hides "Standardwerte wiederherstellen" in combine-mode', () => {
@@ -1290,6 +1299,473 @@ describe('useAngabenState — pinned AVD Eigenbeitrag', () => {
     // The pinned anchor is a fixed point over statutory whole-euro tax
     // rounding; CLAUDE.md documents a measured residual below €0.10/month.
     expect(Math.abs(etf!.monthlyUserCost - avd!.monthlyUserCost)).toBeLessThan(0.1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Input-followups plan 2 — bAV-Brutto ownership on /eingaben § 2 (Einkommen).
+//
+// Before the fix, § 2 rendered `assumptions.bav.monthlyGrossConversion` as a
+// plain editable NumberField in BOTH modes. In compare mode that field fought
+// the contribution sync: `syncMonthlyContributions` back-solves the bAV gross
+// from the shared Netto-Beitrag anchor, so a typed gross was silently reverted
+// on the next sync (stale-gross bug). In combine mode the singleton projection
+// routed the edit onto the FIRST active bAV instance — or dropped it when no
+// instance existed — an ambiguous proxy for a per-contract field.
+//
+// The fix: compare mode shows the gross as a read-only metric re-derived with
+// the canonical `syncMonthlyContributions` helper (no second funding formula —
+// fair-comparison invariant); combine mode shows no bAV control at all and
+// points at Schritt 2. These tests pin both behaviours at the page boundary.
+// ---------------------------------------------------------------------------
+describe('AngabenPage — bAV-Brutto ownership (input-followups plan 2)', () => {
+  function findNumberInput(container: HTMLElement, prefix: string): HTMLInputElement {
+    const labels = Array.from(container.querySelectorAll('label.field'))
+    for (const label of labels) {
+      const span = label.querySelector('span')
+      if (span && (span.textContent ?? '').trim().startsWith(prefix)) {
+        const input = label.querySelector('input[type="number"]')
+        if (input) return input as HTMLInputElement
+      }
+    }
+    throw new Error(`NumberField "${prefix}" not found in rendered AngabenPage`)
+  }
+
+  function cloneWorkspace(): Workspace {
+    return JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  }
+
+  /** Re-derive the bAV gross exactly the way the section displays it: from
+   *  the canonical anchor resolution + profile with the canonical sync
+   *  helper. */
+  function deriveGrossFromEnvelope(raw: string): number {
+    const parsed = JSON.parse(raw) as {
+      profile: typeof defaultProfile
+      assumptions: typeof defaultAssumptions
+    }
+    const target = resolveNettoBelastungTarget(
+      parsed.profile,
+      parsed.assumptions,
+      de2026Rules,
+    )
+    return syncMonthlyContributions(
+      target,
+      parsed.assumptions,
+      parsed.profile,
+      de2026Rules,
+    ).bav.monthlyGrossConversion
+  }
+
+  it('compare-mode: § 2 shows the bAV gross as a read-only metric derived from the anchor', () => {
+    const { container, getByRole, queryByRole } = render(<AngabenPage />)
+    const contribution = getByRole('spinbutton', { name: 'Netto-Beitrag EUR mtl.' })
+    fireEvent.change(contribution, { target: { value: '500' } })
+    fireEvent.blur(contribution)
+
+    // No editable bAV gross control exists — not an <input> inside the
+    // metric, and no spinbutton carries the label anywhere on the page.
+    expect(queryByRole('spinbutton', { name: /bAV-Brutto/ })).toBeNull()
+    const metric = container.querySelector('[data-testid="angaben-bav-gross-derived"]')
+    expect(metric).not.toBeNull()
+    expect(metric!.querySelector('input')).toBeNull()
+
+    // The displayed value equals the single-funding-formula derivation from
+    // the persisted anchor — never a stale stored `monthlyGrossConversion`.
+    const raw = localStorage.getItem(STORAGE_KEY_V1)
+    expect(raw).not.toBeNull()
+    expect(metric!.textContent).toContain(
+      formatCurrency(deriveGrossFromEnvelope(raw!), 0),
+    )
+
+    // Fair-comparison invariant intact: the anchor is the net cost every
+    // compare-mode product invests after the save.
+    const parsed = JSON.parse(raw!) as {
+      profile: typeof defaultProfile
+      assumptions: typeof defaultAssumptions
+    }
+    const simulation = simulateRetirementComparison(
+      parsed.profile,
+      parsed.assumptions,
+      de2026Rules,
+    )
+    expect(simulation.bavFunding.monthlyNetCost).toBeCloseTo(500, 2)
+  })
+
+  it('compare-mode: a valid legacy equal_cash save without an anchor shows the dashboard-derived gross, not 0', () => {
+    // Storage's post-merge migration keeps `compareSubMode: 'equal_cash'` but
+    // clears the paired `equalInputAmountEUR`, so valid legacy saves load with
+    // NO anchor. The dashboard's load path then falls back to the existing
+    // bAV net cost (`resolveNettoBelastungTarget`). The § 2 display must
+    // resolve the identical target — it used to read
+    // `equalInputAmountEUR ?? 0` and showed 0 EUR for these saves.
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      buildStateJson(defaultProfile, {
+        ...defaultAssumptions,
+        compareSubMode: 'equal_cash',
+      }),
+    )
+    const { container } = render(<AngabenPage />)
+    const displayed =
+      container.querySelector('[data-testid="angaben-bav-gross-derived"]')
+        ?.textContent ?? ''
+    expect(displayed).not.toBe('')
+
+    // `/` remounts the compare-mode store; derive its gross the same way.
+    const comparison = renderHook(() => useCalculatorState())
+    const dashboardGross = syncMonthlyContributions(
+      resolveNettoBelastungTarget(
+        comparison.result.current.profile,
+        comparison.result.current.assumptions,
+        de2026Rules,
+      ),
+      comparison.result.current.assumptions,
+      comparison.result.current.profile,
+      de2026Rules,
+    ).bav.monthlyGrossConversion
+    comparison.unmount()
+
+    // Sanity: the legacy fallback actually produced a non-zero anchor.
+    expect(dashboardGross).toBeGreaterThan(0)
+    expect(displayed).toContain(formatCurrency(dashboardGross, 0))
+  })
+
+  it('compare-mode: the displayed gross tracks the anchor live (240 ≠ 500)', () => {
+    // 240 (not the 200 default) so the first edit is a real state change —
+    // no-op setter calls are legitimately skipped and never hit storage.
+    const { container, getByRole } = render(<AngabenPage />)
+    const contribution = getByRole('spinbutton', { name: 'Netto-Beitrag EUR mtl.' })
+    const metricText = () =>
+      container.querySelector('[data-testid="angaben-bav-gross-derived"]')
+        ?.textContent ?? ''
+
+    fireEvent.change(contribution, { target: { value: '240' } })
+    fireEvent.blur(contribution)
+    const rawAt240 = localStorage.getItem(STORAGE_KEY_V1)!
+    const at240 = metricText()
+
+    fireEvent.change(contribution, { target: { value: '500' } })
+    fireEvent.blur(contribution)
+    const at500 = metricText()
+
+    expect(at240).not.toBe(at500)
+    expect(at240).toContain(formatCurrency(deriveGrossFromEnvelope(rawAt240), 0))
+    expect(at500).toContain(
+      formatCurrency(deriveGrossFromEnvelope(localStorage.getItem(STORAGE_KEY_V1)!), 0),
+    )
+  })
+
+  it('compare-mode: with a pinned AVD Eigenbeitrag the displayed gross derives from the pin, not the stored value', () => {
+    // Seed a sentinel gross that the pin-based derivation would never produce.
+    // If the display ever regresses to reading the stored
+    // `bav.monthlyGrossConversion`, it shows 999 EUR and this test fails.
+    const assumptions: ScenarioAssumptions = {
+      ...defaultAssumptions,
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 999 },
+      contributionInput: { kind: 'avd-own', monthlyOwn: 150 },
+      visibleProducts: ['etf', 'bav', 'altersvorsorgedepot'],
+    }
+    // In avd-own mode `syncMonthlyContributions` derives the anchor FROM the
+    // pinned Eigenbeitrag and ignores the targetNet argument — passing 0
+    // proves the pin (not the anchor) drives the expected value.
+    const expected = syncMonthlyContributions(
+      0,
+      assumptions,
+      defaultProfile,
+      de2026Rules,
+    ).bav.monthlyGrossConversion
+    expect(expected).not.toBe(999)
+    localStorage.setItem(STORAGE_KEY_V1, buildStateJson(defaultProfile, assumptions))
+
+    const { container } = render(<AngabenPage />)
+    const metric = container.querySelector('[data-testid="angaben-bav-gross-derived"]')
+    expect(metric).not.toBeNull()
+    expect(metric!.textContent).toContain(formatCurrency(expected, 0))
+  })
+
+  it('combine-mode: Schritt 1 renders no bAV gross input even with zero bAV contracts', () => {
+    const ws: Workspace = {
+      ...cloneWorkspace(),
+      mode: 'combine',
+      baseline: {
+        ...cloneWorkspace().baseline,
+        assumptions: { ...cloneWorkspace().baseline.assumptions, bav: [] },
+      },
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+
+    const { container, queryByRole } = render(<AngabenPage />)
+    expect(queryByRole('spinbutton', { name: /bAV-Brutto/ })).toBeNull()
+    expect(container.querySelector('[data-testid="angaben-bav-gross-derived"]')).toBeNull()
+    // The pointer to Schritt 2 replaces the field — the user is never left
+    // wondering where per-contract gross values are edited.
+    expect(
+      container.querySelector('[data-testid="angaben-bav-combine-hint"]'),
+    ).not.toBeNull()
+  })
+
+  it('combine-mode: per-contract monthlyGrossConversion values survive a Schritt-1 edit + save', () => {
+    let ws = cloneWorkspace()
+    ws = { ...ws, mode: 'combine' }
+    ws = addInstanceToWorkspace(ws, 'bav')
+    ws = addInstanceToWorkspace(ws, 'bav')
+    ws.baseline.assumptions.bav[0] = {
+      ...ws.baseline.assumptions.bav[0],
+      label: 'bAV Vertrag A',
+      monthlyGrossConversion: 300,
+    }
+    ws.baseline.assumptions.bav[1] = {
+      ...ws.baseline.assumptions.bav[1],
+      label: 'bAV Vertrag B',
+      monthlyGrossConversion: 400,
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+
+    const { container, queryByRole } = render(<AngabenPage />)
+    // No singleton bAV editor on Schritt 1 that could proxy-write one of the
+    // two contracts.
+    expect(queryByRole('spinbutton', { name: /bAV-Brutto/ })).toBeNull()
+
+    // A genuine Schritt-1 edit + save must not touch per-contract fields.
+    fireEvent.change(findNumberInput(container, 'Kapital aufgebraucht bis'), {
+      target: { value: '93' },
+    })
+
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_V2)!) as Workspace
+    expect(
+      parsed.baseline.assumptions.bav.map((i) => i.monthlyGrossConversion).sort(),
+    ).toEqual([300, 400])
+    expect(parsed.baseline.assumptions.retirementEndAge).toBe(93)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Input-followups plan 1 — § 1 Person only offers supported controls.
+//
+// The former Familienstand / Bundesland dropdowns changed page-local strings
+// that never reached the engine while their hints promised splitting and
+// regional church tax; the Kirchensteuer checkbox persisted a field no
+// calculation consumes. All three are gone. The salary **Steuerklasse**
+// select replaces them: `profile.taxClass` was always persisted and validated
+// (scenarioSchema.ts:34) and drives the § 39b Lohnsteuer in
+// `calculateSalaryResult` — it just had no UI until now.
+//
+// Pinned here: the select persists through the real store in both modes, the
+// unsupported controls are gone (with their unsupported-effect hints), the
+// legacy `churchTax` storage field still loads untouched, and a tax-class
+// change moves the salary-phase funding while leaving the statutory-pension
+// projection (and the filing status) alone.
+// ---------------------------------------------------------------------------
+describe('AngabenPage — § 1 Steuerklasse + unsupported controls removed (input-followups plan 1)', () => {
+  function findNumberInput(container: HTMLElement, prefix: string): HTMLInputElement {
+    const labels = Array.from(container.querySelectorAll('label.field'))
+    for (const label of labels) {
+      const span = label.querySelector('span')
+      if (span && (span.textContent ?? '').trim().startsWith(prefix)) {
+        const input = label.querySelector('input[type="number"]')
+        if (input) return input as HTMLInputElement
+      }
+    }
+    throw new Error(`NumberField "${prefix}" not found in rendered AngabenPage`)
+  }
+
+  function findTaxClassSelect(container: HTMLElement): HTMLSelectElement {
+    const labels = Array.from(container.querySelectorAll('label.angaben-field'))
+    for (const label of labels) {
+      const span = label.querySelector('.angaben-field-label')
+      if (span && (span.textContent ?? '').startsWith('Steuerklasse')) {
+        const select = label.querySelector('select')
+        if (select) return select as HTMLSelectElement
+      }
+    }
+    throw new Error('Steuerklasse select not found in rendered AngabenPage')
+  }
+
+  function cloneWorkspace(): Workspace {
+    return JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  }
+
+  it('renders a Steuerklasse select with all six classes bound to profile.taxClass (compare)', () => {
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      buildStateJson({ ...defaultProfile, taxClass: 3 }, defaultAssumptions),
+    )
+    const { container } = render(<AngabenPage />)
+    const select = findTaxClassSelect(container)
+    // Hydrated from the persisted profile.
+    expect(select.value).toBe('3')
+    // Six statutory classes, values 1–6.
+    const values = Array.from(select.options).map((o) => o.value)
+    expect(values).toEqual(['1', '2', '3', '4', '5', '6'])
+
+    // Editing persists through STORAGE_KEY_V1.
+    fireEvent.change(select, { target: { value: '5' } })
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_V1)!) as {
+      profile: { taxClass: number }
+    }
+    expect(parsed.profile.taxClass).toBe(5)
+  })
+
+  it('persists the Steuerklasse to baseline.profile in combine-mode', () => {
+    const ws: Workspace = {
+      ...cloneWorkspace(),
+      mode: 'combine',
+      baseline: {
+        ...cloneWorkspace().baseline,
+        profile: { ...cloneWorkspace().baseline.profile, taxClass: 1 },
+      },
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+    const { container } = render(<AngabenPage />)
+    const select = findTaxClassSelect(container)
+    expect(select.value).toBe('1')
+
+    fireEvent.change(select, { target: { value: '3' } })
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_V2)!) as Workspace
+    expect(parsed.baseline.profile.taxClass).toBe(3)
+    expect(parsed.mode).toBe('combine')
+  })
+
+  /** Shared § 1 assertions (Opus-5 review correction): the removed controls
+   *  stay removed, church tax stays an honest exclusion, and the copy never
+   *  unconditionally claims joint retirement taxation is unsupported —
+   *  combine mode wires it (CombineHaushaltSection → baseline.partner). The
+   *  tax-class hint must instead scope itself to the salary phase. */
+  function expectTruthfulPersonSection(container: HTMLElement): void {
+    // Scope to the § 1 Person section — later sections legitimately own other
+    // controls (e.g. § 4 scenario toggles).
+    const personSection = container.querySelector('section.angaben-section')!
+    const personText = personSection.textContent ?? ''
+    const labels = Array.from(
+      personSection.querySelectorAll('.angaben-field-label'),
+    ).map((l) => l.textContent ?? '')
+    expect(labels.join(' | ')).not.toMatch(/Familienstand|Bundesland|Kirchensteuer/)
+    expect(personSection.querySelectorAll('input[type="checkbox"]').length).toBe(0)
+    expect(personSection.querySelectorAll('select').length).toBe(1)
+
+    // The tax-class selector is scoped to the salary phase: it affects
+    // Lohnsteuer/Förderwirkung and explicitly does NOT choose the joint
+    // retirement assessment (that switch lives in combine mode's household
+    // controls). The caps themselves do not move with the class, so the old
+    // "Förderhöchstbeträge" claim is gone too.
+    expect(personText).toContain('wählt keine gemeinsame Veranlagung')
+    expect(personText).toContain('Förderwirkung')
+    expect(personText).not.toContain('Förderhöchstbeträge')
+
+    // No unconditional exclusion of Ehegattensplitting anywhere in § 1 —
+    // combine mode supports it through the shared retirement-tax pipeline.
+    expect(personText).not.toContain('Ehegattensplitting')
+    expect(personText).not.toContain('§ 32a Abs. 5')
+
+    // The honest limitations stay: church tax is genuinely not calculated,
+    // and the surface is not a complete household tax return.
+    const limitation =
+      container.querySelector('[data-testid="angaben-person-limitation"]')
+        ?.textContent ?? ''
+    expect(limitation).toContain('Kirchensteuer wird nicht berechnet')
+    expect(limitation).toContain('keine vollständige Steuererklärung')
+  }
+
+  it('compare-mode: § 1 offers only supported controls and truthful scope copy', () => {
+    const { container } = render(<AngabenPage />)
+    expectTruthfulPersonSection(container)
+    // No stale page-level claims (aside + Datenhaltung included).
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('Splittingtarif')
+    expect(text).not.toContain('Bayern/BW')
+    expect(text).not.toMatch(/Kirchensteuersatz/)
+  })
+
+  it('combine-mode: § 1 offers only supported controls and truthful scope copy', () => {
+    // Same contract in combine mode — the mode whose household controls DO
+    // wire joint retirement taxation, which is exactly why § 1 must not
+    // claim splitting is excluded.
+    const ws: Workspace = {
+      ...cloneWorkspace(),
+      mode: 'combine',
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+    const { container } = render(<AngabenPage />)
+    expectTruthfulPersonSection(container)
+  })
+
+  it('still loads a legacy profile with churchTax: true and preserves the stored value', () => {
+    // The UI no longer offers the control, but old saved profiles must load
+    // without wiping state and the field must survive a fresh edit + save —
+    // no storage migration, no reinterpretation.
+    localStorage.setItem(
+      STORAGE_KEY_V1,
+      buildStateJson({ ...defaultProfile, churchTax: true }, defaultAssumptions),
+    )
+    const { container } = render(<AngabenPage />)
+    expect(findNumberInput(container, 'Alter').value).toBe(
+      String(defaultProfile.age),
+    )
+
+    fireEvent.change(findNumberInput(container, 'Alter'), {
+      target: { value: String(defaultProfile.age) === '44' ? '45' : '44' },
+    })
+
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_V1)!) as {
+      profile: { churchTax: boolean; age: number }
+    }
+    expect(parsed.profile.churchTax).toBe(true)
+    expect(parsed.profile.age).toBe(
+      String(defaultProfile.age) === '44' ? 45 : 44,
+    )
+  })
+
+  it('tax class 1 → 3 changes salary-phase funding but not the statutory-pension projection, and creates no partner', () => {
+    // Save with class 1, re-load through the real compare-mode store, run the
+    // simulation. Then repeat with class 3 seeded. Assertions run on the
+    // post-save/post-navigation boundary (fresh mount + engine call), not on
+    // the same render.
+    const runWithTaxClass = (taxClass: 1 | 3) => {
+      localStorage.setItem(
+        STORAGE_KEY_V1,
+        buildStateJson({ ...defaultProfile, taxClass }, defaultAssumptions),
+      )
+      const comparison = renderHook(() => useCalculatorState())
+      const simulation = simulateRetirementComparison(
+        comparison.result.current.profile,
+        comparison.result.current.assumptions,
+        de2026Rules,
+      )
+      comparison.unmount()
+      return simulation
+    }
+
+    const class1 = runWithTaxClass(1)
+    const class3 = runWithTaxClass(3)
+
+    // Salary-phase funding moves: the same net anchor back-solves a different
+    // bAV gross under the § 39b class-III tariff.
+    expect(class3.bavFunding.monthlyGrossConversion).not.toBeCloseTo(
+      class1.bavFunding.monthlyGrossConversion,
+      0,
+    )
+    // The statutory-pension projection is gross-salary-driven — the tax class
+    // must not touch it.
+    expect(class3.statutoryPension.grossMonthlyPension).toBeCloseTo(
+      class1.statutoryPension.grossMonthlyPension,
+      6,
+    )
+  })
+
+  it('selecting a tax class creates no partner in the combine-mode workspace', () => {
+    const ws = cloneWorkspace()
+    ws.mode = 'combine'
+    delete ws.baseline.partner
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+
+    const { container } = render(<AngabenPage />)
+    fireEvent.change(findTaxClassSelect(container), { target: { value: '3' } })
+
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_V2)!) as Workspace
+    // Steuerklasse is a salary-phase input — the retirement filing status
+    // pipeline (`buildCombineContext` derives it from partner presence) must
+    // see no partner appear just because the user picked class III.
+    expect(parsed.baseline.partner).toBeUndefined()
   })
 })
 

@@ -1,9 +1,12 @@
+import { legalConstants } from '../rules/legalConstants'
+
 /**
  * Shared child-year predicates for contribution-year calculations.
  *
  * Future/planned children are dated events: they only affect a calculation once
  * the modeled contribution year reaches their birth year. Child allowances and
- * Pflege discounts also use the under-25 window in the relevant year.
+ * Pflege discounts also use the under-25 window in the relevant year
+ * (`legalConstants.childEligibility.under25WindowYears`).
  */
 
 export function childBirthYearsBornByYear(
@@ -18,6 +21,7 @@ export function childBirthYearsUnder25InYear(
   contributionYear: number,
 ): number[] {
   return childBirthYearsBornByYear(childBirthYears, contributionYear).filter(
-    (year) => contributionYear - year < 25,
+    (year) =>
+      contributionYear - year < legalConstants.childEligibility.under25WindowYears,
   )
 }

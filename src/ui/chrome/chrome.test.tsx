@@ -452,7 +452,16 @@ describe('MobileNav', () => {
 describe('MobileSheet', () => {
   it('lists overflow menu items when open', () => {
     render(<MobileSheet open onClose={() => {}} navigate={() => {}} />)
-    for (const label of ['Start', 'Angaben', 'Artikel', 'Methode', 'Datenschutz', 'Impressum', 'GitHub', 'Spenden']) {
+    for (const label of [
+      'Start',
+      'Angaben',
+      'Artikel',
+      'Methode',
+      'Datenschutz',
+      'Impressum',
+      'GitHub',
+      'Projekt unterstützen',
+    ]) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
   })

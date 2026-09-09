@@ -7,7 +7,7 @@ Stack: React + TypeScript + Vite. Frontend-only today; small backend planned for
 
 ## About this project
 
-**Public, free tool.** Anyone can use the hosted version at no cost. Donations (Stripe / GitHub Sponsors) cover hosting.
+**Public, free tool.** Anyone can use the hosted version at no cost. All voluntary contributions, after payment processing fees, go back into developing the project. Payment setup and provider choice are documented in `docs/donation-setup.md`; the verified checkout URL lives in `src/content/support.ts`.
 
 **Source-available, non-commercial license.** Code is published under **PolyForm Noncommercial 1.0.0**. Personal, research, and internal-evaluation use is free. **Insurance brokers, investment advisors, employers, and any other commercial use require a separate paid license** — contact `peter@hartwieg.com`.
 
@@ -54,7 +54,7 @@ Read by the Codex GitHub review integration (and the Claude reviewer in `.github
 - **Retirement tax bypassing `calculateRetirementTax`.** All retirement-phase taxable income (cohort-based Versorgungsfreibetrag + Besteuerungsanteil, Werbungskosten, Sonderausgaben, Ehegattensplitting) goes through that single pipeline. Extend it; don't bypass it.
 - **Monthly retirement payouts bypassing `calculateMonthlyRetirementPayout`.** bAV / pAV / certified pension / Basisrente monthly payouts share that one cascade for marginal retirement tax + KV/PV. Lump-sum helpers stay separate; do not fold them in.
 - **`PRODUCT_REGISTRY` bypassed.** New product missing a registry entry; or hardcoded product list / colors / order outside the registry. `ProductId` is derived from `metadata.id` literals — never a hand-maintained union.
-- **`SimulationContext` / `buildContext` bypassed.** Product simulators must consume `ctx`, never call funding helpers (bAV, Basisrente, AVD, Riester) directly. Combine mode also routes through `portfolioFunding.ts` and `combineContext.ts` so recommender + combine cannot drift.
+- **`SimulationContext` / `buildContext` bypassed.** Product simulators must consume `ctx`, never call funding helpers (bAV, Basisrente, AVD, Riester) directly. Combine mode also routes through `portfolioFunding.ts` and `combineContext.ts` so recommender + combine cannot drift. A narrow per-product context is the sanctioned alternative **only** when it is defined and built in `simulationContext.ts` with an adapter from the full context (ETF first — ADR-0003); a simulator assembling its own inputs or calling funding helpers is still P1.
 - **Storage path bypassing `migrateAndValidateState`.** Compare-mode localStorage and the scenario library both go through that single migrate+validate pipeline (`src/storage.ts`). Direct `localStorage.getItem` / `JSON.parse` of saved state is P1.
 - **`AccumulationPolicy` extension point ignored.** New accumulation behavior (per-year override, glidepath, contribution growth, initial capital) belongs in `AccumulationPolicy`, not as new top-level options on `ScenarioAssumptions`.
 - **Statutory pension / KV/PV routing diverges between recommender and combine simulation.** Both must consume `combineContext.ts` (`buildCombineContext`). Local re-derivation is P1.
@@ -220,7 +220,7 @@ Cross-cutting decisions you'll keep hitting:
 Product-specific gotchas (will surprise you when first opening these simulators):
 
 - **bAV lump-sum tax routing depends on Durchführungsweg.** `deriveBavLumpSumTaxMode` is the single source of truth. §3 Nr. 63 → full marginal rate (no Fünftelregelung); §40b a.F. eligible → tax-free; Direktzusage / Unterstützungskasse → Fünftelregelung. KV/PV via §229 SGB V 1/120 spreading applies to all modes.
-- **Private insurance tax mode is auto-derived** by `deriveInsuranceTaxMode(contractStartYear, runtimeYears, retirementAge)` → `pre2005 | halbeinkuenfte | abgeltungsteuer`. For `payoutMode === 'leibrente'`, `netInsurancePayout` overrides this with §22 Nr. 1 Satz 3 a EStG Ertragsanteil for **all** contract eras (even pre-2005).
+- **Private insurance monthly income classification is shared across modes.** The contract's capital-payout tax mode is auto-derived by `deriveInsuranceTaxMode(contractStartYear, runtimeYears, retirementAge)` → `pre2005 | halbeinkuenfte | abgeltungsteuer`. The effective monthly classification — Ertragsanteil override for `payoutMode === 'leibrente'` in **all** contract eras (even pre-2005), gain ratio with loss floor otherwise, `taxableAnnual: 0` for pre-2005 capital payouts — is owned by `classifyInsuranceMonthlyIncome` (`src/engine/insurancePayout.ts`). Compare mode consumes it via `netInsurancePayout` / `netInsurancePayoutFull`; combine mode consumes it in `portfolioCombine` when building per-instance private-insurance tax lines. Do not re-derive the mode/base locally in either mode.
 - **KVdR vs. freiwillig changes the KV side of payouts.** `netBavPayout(..., kvdrMember)`: KVdR applies §226(2) Freibetrag; freiwillig (§240 SGB V) applies KV on full amount. PV is the same in both.
 
 ## Current state

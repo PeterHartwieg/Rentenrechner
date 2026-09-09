@@ -3,6 +3,7 @@ import { ROUTES, routeToPath } from '../../app/useRoute'
 import './legal.css'
 import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
+import { ProjectSupport } from './ProjectSupport'
 
 interface Props {
   navigate: (target: Route) => void
@@ -39,6 +40,7 @@ export function LegalFooter({ navigate }: Props) {
 
   return (
     <footer className="app-footer" {...containerTargetProps}>
+      <ProjectSupport />
       <div className="app-footer__method">
         <span>[1] Annahme: 5 % Rendite p.a., 2 % Inflation</span>
         <span>[2] Steuern nach Stand 2026 (§22 EStG)</span>

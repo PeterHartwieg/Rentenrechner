@@ -70,6 +70,7 @@ behaviour; tests live next to the module unless noted.
 | Salary, BMF PAP Vorsorgepauschale, bAV two-pass funding | `src/engine/salary.ts` |
 | Retirement-phase tax (cohort tables, Versorgungsfreibetrag, Ehegattensplitting) | `src/engine/retirementTax.ts` |
 | Monthly retirement net-payout cascade (bAV/pAV/AVD/Riester/Basisrente) | `src/engine/retirementPayout.ts` |
+| Private-insurance monthly income classification (effective tax mode + taxable annual; shared by compare and combine) | `src/engine/insurancePayout.ts` (`classifyInsuranceMonthlyIncome`) |
 | Accumulation, fee drag, ETF Vorabpauschale | `src/engine/accumulation.ts` |
 | Salary-phase §10 Sonderausgaben tax-delta primitives | `src/engine/salaryPhaseFunding.ts` |
 | Monte Carlo return paths | `src/engine/marketReturns.ts`, `src/engine/monteCarlo.ts` |
@@ -81,7 +82,7 @@ behaviour; tests live next to the module unless noted.
 | Concern | Module |
 |---------|--------|
 | Compare-mode top-level | `src/engine/simulate.ts` (`simulateRetirementComparison`) |
-| Pre-scenario funding context (bAV, Basisrente, AVD, Riester) | `src/engine/simulationContext.ts` (`buildContext`) |
+| Pre-scenario funding context (bAV, Basisrente, AVD, Riester) | `src/engine/simulationContext.ts` (`buildContext`; plus `EtfCalculationContext` — the first narrow per-product context, ADR-0003) |
 | Combine-mode top-level | `src/engine/portfolioCombine.ts` (`combinePortfolio`) |
 | Combine-mode adapter (per-instance projection + simulation orchestration) | `src/engine/portfolioAdapter.ts` (thin) |
 
@@ -224,6 +225,7 @@ should be flagged in review.
 | Change storage migration / load path | `src/storage.ts` (sections clearly marked) |
 | Plan future schema changes | `docs/portfolio-schema-design.md` |
 | Audit oracle / integration coverage | `docs/golden-coverage-audit.md` |
+| Extend property tests / run the mutation pilot | `docs/property-and-mutation-testing.md` |
 | Update annual statutory values | `src/rules/de2026.ts` |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/` |
 | Extend the printable A4 report (compare or combine mode) | `src/features/results/PrintReport.tsx`, plus row builders in `src/features/results/printReportRows.ts` |

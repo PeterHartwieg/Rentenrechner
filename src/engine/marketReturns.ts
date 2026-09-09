@@ -1,6 +1,17 @@
 import type { ReturnScenario } from '../domain'
 import type { BuildProductPolicy } from './buildResult'
-import type { SimulationContext } from './simulationContext'
+import type { InstanceCapitalPolicy } from './simulationContext'
+
+/**
+ * Structural slice of `SimulationContext` the market-return helpers read
+ * (issue #380): the stochastic path and the per-instance capital policy.
+ * Both the full compare-mode context and the narrow `EtfCalculationContext`
+ * satisfy it, so the helpers work unchanged in either pipeline.
+ */
+export interface MarketReturnContext {
+  marketReturnPath?: readonly number[]
+  instanceCapitalPolicy?: InstanceCapitalPolicy
+}
 
 export type SequenceOfReturnsPath = {
   id: 'good-early' | 'bad-early' | 'shuffled-baseline'
@@ -56,7 +67,7 @@ export function buildSequenceOfReturnsPaths(params: {
 }
 
 export function marketReturnAt(
-  ctx: SimulationContext,
+  ctx: MarketReturnContext,
   scenario: ReturnScenario,
   yearIndex: number,
   yearOffset = 0,
@@ -65,7 +76,7 @@ export function marketReturnAt(
 }
 
 export function marketReturnPolicy(
-  ctx: SimulationContext,
+  ctx: MarketReturnContext,
   scenario: ReturnScenario,
   yearOffset = 0,
 ): ((yearIndex: number) => number) | undefined {
@@ -74,7 +85,7 @@ export function marketReturnPolicy(
 }
 
 export function withMarketReturnPolicy(
-  ctx: SimulationContext,
+  ctx: MarketReturnContext,
   scenario: ReturnScenario,
   policy?: BuildProductPolicy,
   yearOffset = 0,
@@ -101,7 +112,7 @@ export function withMarketReturnPolicy(
  * be at most one source today, but concatenation is safer than precedence.
  */
 export function mergeInstanceCapitalPolicy(
-  ctx: SimulationContext,
+  ctx: MarketReturnContext,
   policy?: BuildProductPolicy,
 ): BuildProductPolicy | undefined {
   const inst = ctx.instanceCapitalPolicy

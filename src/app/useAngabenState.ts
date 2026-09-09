@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
-import type { BavInstance } from '../domain/instances'
 import type {
   Scenario,
   WhatIfScenario,
@@ -168,30 +167,23 @@ const SINGLETON_VIEW_DEFAULTS = {
  *
  * Workspace-level fields (`inflationRate`, `retirementEndAge`, `monteCarlo`,
  * `statutoryPension`, `returnScenarios`, `visibleProducts`, the compareSubMode
- * legacy round-trip pair) map 1:1.
+ * legacy round-trip pair, the contribution-input pair) map 1:1.
  *
- * The per-product slots are asymmetric: in compare-mode `assumptions.bav` is a
- * single `BavAssumptions` object; in combine-mode `assumptions.bav` is a
- * `BavInstance[]` (one element per contract the user owns). The page's
- * `AngabenEinkommenSection` reads/writes `assumptions.bav.monthlyGrossConversion`
- * — a per-instance field. We honour this by writing the field onto the *first*
- * active bAV instance when one exists. If the user has zero bAV instances the
- * edit is dropped silently (the field still renders with the
- * `defaultAssumptions.bav` value from `singletonViewOfWorkspace`, but the
- * workspace has no instance to receive the change). The storage copy on the
- * AngabenPage names this asymmetry honestly so the user is never surprised.
- *
- * No other per-product field is edited by the four `/eingaben` sections today,
- * so the projection only touches `bav.monthlyGrossConversion`. If future PRs
- * add per-instance edits (ETF contribution, Riester monthly, etc.), extend
- * this projection to cover them.
+ * **Per-product slots are never written here** (input-followups plan 2). The
+ * projection used to route `bav.monthlyGrossConversion` onto the *first*
+ * active bAV instance — or silently drop the edit with zero instances — which
+ * made a singleton-shaped field write look like a per-contract edit. In
+ * combine mode every per-instance field is edited through its own contract
+ * surface (Schritt 2 instance disclosures, `/vertrag/:instanceId`) via
+ * `patchInstance` → `onPatchBaseline`; a singleton projection must not become
+ * an ambiguous proxy writer. If a future surface needs singleton↔instance
+ * mapping, it needs an explicit, mode-labelled design — not this projection.
  */
 function projectSingletonAssumptionsToWorkspace(
   next: ScenarioAssumptions,
   wsa: WorkspaceAssumptionsV2,
 ): WorkspaceAssumptionsV2 {
-  // Workspace-level fields — direct mapping.
-  let updated: WorkspaceAssumptionsV2 = {
+  return {
     ...wsa,
     inflationRate: next.inflationRate,
     retirementEndAge: next.retirementEndAge,
@@ -203,34 +195,6 @@ function projectSingletonAssumptionsToWorkspace(
     equalInputAmountEUR: next.equalInputAmountEUR ?? wsa.equalInputAmountEUR,
     contributionInput: next.contributionInput ?? wsa.contributionInput,
   }
-
-  // Per-instance asymmetric field: bAV-Brutto. Write to the first active bAV
-  // instance if any. Mirrors `singletonViewOfWorkspace`'s `firstActive`
-  // selector so the read+write paths agree on which instance is "the" bAV.
-  const firstBavActiveIdx = wsa.bav.findIndex(
-    (i) => i.status === 'active' || i.status === 'paid_up',
-  )
-  if (firstBavActiveIdx >= 0) {
-    const existing = wsa.bav[firstBavActiveIdx]
-    // Only rewrite when the value actually changed — avoids re-render thrash.
-    if (existing.monthlyGrossConversion !== next.bav.monthlyGrossConversion) {
-      const updatedInstance: BavInstance = {
-        ...existing,
-        monthlyGrossConversion: next.bav.monthlyGrossConversion,
-      }
-      updated = {
-        ...updated,
-        bav: updated.bav.map((inst, idx) =>
-          idx === firstBavActiveIdx ? updatedInstance : inst,
-        ),
-      }
-    }
-  }
-  // If no active bAV instance exists, the edit is dropped. The user sees the
-  // field reset to the default on the next render via singletonViewOfWorkspace.
-  // The storage copy on AngabenPage names this asymmetry.
-
-  return updated
 }
 
 /**
@@ -356,11 +320,9 @@ function computeInitialAngabenState(): InitialAngabenState {
  * Combine-mode write strategy: profile maps 1:1 onto `baseline.profile`;
  * workspace-level assumptions fields (`inflationRate`, `retirementEndAge`,
  * `monteCarlo`, `statutoryPension`, `returnScenarios`, `visibleProducts`)
- * map 1:1 onto `baseline.assumptions`. The per-instance
- * `bav.monthlyGrossConversion` field writes onto the first active bAV
- * instance; with zero bAV instances the edit is dropped (the user has no
- * contract to receive the value). The page's storage copy names this
- * asymmetry.
+ * map 1:1 onto `baseline.assumptions`. Per-instance fields are never written
+ * here (input-followups plan 2) — per-contract bAV values live in Schritt 2
+ * and `/vertrag/:instanceId`.
  *
  * Storage shape: byte-identical with what the rest of the app reads/writes.
  * The v2 workspace `schemaVersion: 2` is unchanged; no new top-level fields

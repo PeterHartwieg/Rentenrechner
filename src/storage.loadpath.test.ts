@@ -133,11 +133,19 @@ describe('A — valid v2 workspace load', () => {
     expect(loadSavedWorkspace()?.baseline.profile.age).toBe(39)
   })
 
-  it.each([undefined, 'not json', makeV1Json({ ...defaultProfile, age: -1 })])(
-    'derives the comparison singleton from a combine plan when no valid V1 save exists (%s)',
-    (rawV1) => {
+  // Both workspace modes are covered: the fallback is about a missing or
+  // unusable V1 save, not about which mode the workspace is in.
+  it.each(
+    (['combine', 'compare'] as const).flatMap((mode) =>
+      [undefined, 'not json', makeV1Json({ ...defaultProfile, age: -1 })].map(
+        (rawV1) => [mode, rawV1] as const,
+      ),
+    ),
+  )(
+    'derives the comparison singleton from a %s workspace when no valid V1 save exists (%s)',
+    (mode, rawV1) => {
       const ws = makeValidV2Workspace()
-      ws.mode = 'combine'
+      ws.mode = mode
       ws.baseline.profile.age = 39
       saveWorkspace(ws)
       if (rawV1 !== undefined) mem.store[STORAGE_KEY_V1] = rawV1

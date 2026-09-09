@@ -197,6 +197,12 @@ export const legalConstants = {
     versorgungsbezugSpreadingMonths: 120,
     /** §34 Abs. 1 EStG Fünftelregelung divisor: tax = 5 × (T(other + lumpSum/5) − T(other)). */
     fuenftelregelungDivisor: 5,
+    /**
+     * §1a Abs. 1 Satz 1 BetrAVG: minimum entitlement = 1/160 of the ANNUAL
+     * Bezugsgröße West (§18 Abs. 1 SGB IV; value from the rules). Citation
+     * moved from src/engine/bavWarnings.ts (#376 review).
+     */
+    minimumEntitlementDivisor: 160,
   },
   basisrente: {
     /** §10 Abs. 1 Nr. 2 b Doppelbuchst. aa EStG / AltZertG §2: earliest old-age payout age for a certified Basisrentenvertrag. */
@@ -207,8 +213,65 @@ export const legalConstants = {
     taxClassVVIUpperFactor: 1.25,
     /** §39b Abs. 2 Satz 2 EStG: lower scaling factor for the Steuerklasse V/VI tariff formula 2 × (f(1.25x) − f(0.75x)). */
     taxClassVVILowerFactor: 0.75,
+    /**
+     * §39b EStG (PAP): the AV Teilbetrag counts toward the Vorsorgepauschale
+     * only while KV + PV + AV Teilbeträge stay within this annual cap. As
+     * described in TAX_SOCIAL_SECURITY_2026_RESEARCH.md §2; literal moved
+     * from src/engine/salary.ts (#376 review).
+     */
+    vorsorgepauschaleKvPvAvCap: 1_900,
+  },
+  soli: {
+    /**
+     * §4 SolzG 1995: Solidaritätszuschlag rate on the assessed income tax
+     * (5.5 % — stable since 1998; cited in TAX_SOCIAL_SECURITY_2026_RESEARCH.md
+     * "Soli rate"). The §3 Abs. 3 SolzG Freigrenze itself is year-specific and
+     * lives in the active year file (`incomeTax.solidarityFreeTax`).
+     */
+    rate: 0.055,
+    /**
+     * §4 SolzG 1995: Milderungszone slope — inside the zone the soli is capped
+     * at 11.9 % of the income tax exceeding the Freigrenze (cited in
+     * TAX_SOCIAL_SECURITY_2026_RESEARCH.md "Soli Milderungszone rate").
+     */
+    milderungszoneRate: 0.119,
+  },
+  care: {
+    /**
+     * §55 Abs. 3a SGB XI (as cited in this repo): 0.25 contribution-rate
+     * percentage points of Beitragsabschlag per further child under 25,
+     * beyond the first qualifying child. Value moved from
+     * src/engine/salary.ts (#376 review). Do NOT change without a
+     * law-amendment citation.
+     */
+    beitragsabschlagPerFurtherChild: 0.0025,
+    /**
+     * §55 Abs. 3a SGB XI (as cited in this repo): the Beitragsabschlag caps
+     * at 1.0 percentage points — i.e. 4 further children beyond the first.
+     * Value moved from src/engine/salary.ts (#376 review). Do NOT change
+     * without a law-amendment citation.
+     */
+    beitragsabschlagMaxFurtherChildren: 4,
+  },
+  childEligibility: {
+    /**
+     * Under-25 window: children count toward child-related relief only
+     * through the year they turn 25 (Kinderbegriff per §55 Abs. 3a SGB XI for
+     * Pflege relief, as cited in this repo; the same window gates child
+     * allowances in the Riester/AVD funding paths). Value moved from
+     * src/engine/childEligibility.ts (#376 review). Do NOT change without a
+     * law-amendment citation.
+     */
+    under25WindowYears: 25,
   },
 } as const
+
+/**
+ * Type of the `legalConstants` value object. The rule-set content identity
+ * (`ruleSetFingerprint`) hashes this object alongside the year rules, so an
+ * amendment here moves the fingerprint — see `ruleMetadata.ts`.
+ */
+export type LegalConstants = typeof legalConstants
 
 export function halbeinkuenfteMinAgeForContractStartYear(contractStartYear: number): number {
   const {
@@ -288,3 +351,35 @@ export function ertragsanteilByAge(age: number): number {
   const clamped = Math.max(0, Math.min(89, Math.floor(age)))
   return table[clamped] ?? 0.01
 }
+
+// ---------------------------------------------------------------------------
+// Rule-data catalog — the complete set of exported non-function data
+// ---------------------------------------------------------------------------
+
+/**
+ * Catalog of EVERY exported non-function rule datum in this module: the
+ * `legalConstants` groups plus the standalone Pauschbeträge, the InvStG
+ * Teilfreistellung, and the childless-surcharge age below. The rule-set
+ * content identity (`ruleSetFingerprint`) hashes this catalog alongside the
+ * year rules, so an amendment to any exported value moves the fingerprint —
+ * see `ruleMetadata.ts`.
+ *
+ * Exhaustiveness is enforced by a test (`ruleMetadata.test.ts`), so a future
+ * `export const` here must be added to this catalog or the identity silently
+ * misses it.
+ *
+ * NOT covered (code, not data): the functions of this module —
+ * `besteuerungsanteilGrv`, `versorgungsfreibetrag`,
+ * `halbeinkuenfteMinAgeForContractStartYear`, `ertragsanteilByAge` — whose
+ * behavior is pinned only by the engine revision.
+ */
+export const legalRuleData = {
+  legalConstants,
+  werbungskostenPauschalVersorgungsbezuege,
+  werbungskostenPauschalRenten,
+  sonderausgabenPauschbetrag,
+  aktienfondsTeilfreistellungPrivat,
+  pvBeitragszuschlagKinderloseMinAge,
+} as const
+
+export type LegalRuleData = typeof legalRuleData
