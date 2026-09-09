@@ -85,6 +85,61 @@ describe('buildReviewPrompt', () => {
     expect(prompt).toContain(`Mapped focus domains: ${impact.focusDomains.join(', ')}`)
     expect(impact.domains).toEqual(REVIEW_DOMAINS)
   })
+
+  it('separates statutory evidence from engineering evidence', () => {
+    // A tooling finding must not have to invent a statute, and a legal
+    // finding must not be able to skip one.
+    expect(prompt).toMatch(/Name the source and the date it applies from for every LEGAL claim/)
+    expect(prompt).toMatch(
+      /finding about engineering quality[\s\S]*may cite the repository itself[\s\S]*official API\/CLI documentation instead of a statute/,
+    )
+    expect(prompt).toMatch(/required only when the finding asserts something about the law/)
+    // The verdict contract spells out both shapes of the same two fields.
+    expect(prompt).toMatch(/for an engineering claim the repository file\/invariant/)
+    expect(prompt).toMatch(/for an engineering claim or a labelled limitation: "unspecified"/)
+  })
+
+  it('keeps unrelated legal uncertainty a labelled limitation, not a manufactured blocker', () => {
+    expect(prompt).toMatch(/UNRELATED to this diff is a labelled limitation/)
+    expect(prompt).toMatch(/Do not manufacture it into a blocker or major finding against this PR/)
+    expect(prompt).toMatch(/do not invent law status either way/)
+  })
+})
+
+describe('buildReviewPrompt — scope wording per breadth', () => {
+  const base = { ...prInfo, files: ['src/engine/someUnmappedEngine.ts'] }
+
+  it('states BROAD with an explicit "no focus mapped" instruction, never "cosmetic"', () => {
+    // Live finding: labelling an unmapped broad change "cosmetic-only" told
+    // reviewers a payout-tax PR was presentational.
+    const unmapped = mapImpact(base.files)
+    expect(unmapped.focusDomains).toEqual([])
+    const prompt = buildReviewPrompt({ prInfo: base, impact: unmapped, contextExcerpts: [] })
+
+    expect(prompt).toContain('Review scope: BROAD — all five calculation domains are in scope.')
+    expect(prompt).toContain(
+      'Mapped focus domains: none mapped — scope remains BROAD: review every calculation domain below, not only the listed files',
+    )
+    expect(prompt).not.toMatch(/cosmetic/)
+  })
+
+  it('labels a genuinely presentational change narrow and still asks for number-moving doubts', () => {
+    const files = ['src/features/results/PrintReport.css', 'docs/context/ui.md']
+    const narrow = mapImpact(files)
+    const prompt = buildReviewPrompt({ prInfo: { ...prInfo, files }, impact: narrow, contextExcerpts: [] })
+
+    expect(prompt).toContain('Review scope: NARROW — cosmetic-only change')
+    expect(prompt).toContain('Mapped focus domains: none (narrow, presentational)')
+    expect(prompt).toMatch(/flag anything that looks like it could still affect numbers/)
+  })
+
+  it('carries a payout-engine change with its mapped focus domain', () => {
+    const files = ['src/engine/etfPayout.ts']
+    const impact = mapImpact(files)
+    const prompt = buildReviewPrompt({ prInfo: { ...prInfo, files }, impact, contextExcerpts: [] })
+    expect(prompt).toContain('Review scope: BROAD')
+    expect(prompt).toContain('Mapped focus domains: investment-insurance')
+  })
 })
 
 describe('collectContextExcerpts', () => {

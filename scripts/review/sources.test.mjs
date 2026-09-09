@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from 'node:fs'
 // review catalog honest about what it reuses.
 import { validationSources } from '../../src/test/externalGoldenFixtures'
 
-import { GOLDEN_SOURCE_AREAS, RESEARCH_DOCS } from './sourceCatalog.mjs'
+import { GOLDEN_SOURCE_AREAS, GOLDEN_SOURCE_REVIEWS, RESEARCH_DOCS } from './sourceCatalog.mjs'
 import {
   DEFAULT_POLICY,
   assessFreshness,
@@ -89,6 +89,90 @@ describe('catalog <-> validationSources reuse', () => {
   it('every golden source area set references known domains', () => {
     for (const areas of Object.values(GOLDEN_SOURCE_AREAS)) {
       for (const area of areas) expect(REVIEW_DOMAINS).toContain(area)
+    }
+  })
+})
+
+describe('explicit golden source review records', () => {
+  const goldenSources = [
+    { id: 'src-a', label: 'Source A', url: 'https://example.de/a', capturedAt: '2026-05-02' },
+    { id: 'src-b', label: 'Source B', url: 'https://example.de/b', capturedAt: '2026-05-02' },
+  ]
+  const build = (goldenReviews) =>
+    buildCatalog({
+      goldenSources,
+      researchDocEntries: [],
+      goldenAreas: { 'src-a': ['tax-payroll'], 'src-b': [] },
+      goldenReviews,
+    })
+
+  it('carries a valid review record onto the entry and into the assessment', () => {
+    const [a, b] = build({
+      'src-a': { lastReviewed: '2026-08-20', note: 'checked against golden fixture bmf-est-2026-tariff @ abc1234' },
+    })
+    expect(a.lastReviewed).toBe('2026-08-20')
+    expect(a.reviewNote).toBe('checked against golden fixture bmf-est-2026-tariff @ abc1234')
+    // A record for one source never spills onto its neighbours.
+    expect(b.lastReviewed).toBeNull()
+    expect(b.reviewNote).toBeNull()
+
+    const [assessedA, assessedB] = assessFreshness([a, b], { now: NOW })
+    expect(assessedA.reviewStatus).toBe('fresh')
+    expect(assessedB.reviewStatus).toBe('never-reviewed')
+  })
+
+  it('accepts a record without a note but rejects a non-string note', () => {
+    expect(build({ 'src-a': { lastReviewed: '2026-08-20' } })[0].reviewNote).toBeNull()
+    expect(() => build({ 'src-a': { lastReviewed: '2026-08-20', note: 42 } })).toThrow(/non-string note/)
+  })
+
+  it('rejects a record for an unknown golden source id (silent typo = silent gap)', () => {
+    expect(() => build({ 'src-typo': { lastReviewed: '2026-08-20' } })).toThrow(
+      /unknown golden source id "src-typo"/,
+    )
+  })
+
+  it('rejects malformed review dates instead of rendering them', () => {
+    for (const bad of ['2026-8-20', '20.08.2026', 'yesterday', '', '2026-08-20T00:00:00Z']) {
+      expect(() => build({ 'src-a': { lastReviewed: bad } }), bad).toThrow(/invalid lastReviewed date/)
+    }
+    expect(() => build({ 'src-a': { lastReviewed: undefined } })).toThrow(/invalid lastReviewed date/)
+    expect(() => build({ 'src-a': {} })).toThrow(/invalid lastReviewed date/)
+  })
+
+  it('rejects records that are not objects carrying lastReviewed', () => {
+    expect(() => build({ 'src-a': '2026-08-20' })).toThrow(/must be an object with lastReviewed/)
+    expect(() => build({ 'src-a': ['2026-08-20'] })).toThrow(/must be an object with lastReviewed/)
+    expect(() => build({ 'src-a': null })).toThrow(/must be an object with lastReviewed/)
+  })
+
+  it('never fabricates a review date from the capture date', () => {
+    const [a] = build({})
+    expect(a.lastCaptured).toBe('2026-05-02')
+    expect(a.lastReviewed).toBeNull()
+  })
+
+  it('the shipped catalog only contains records a real audit could have written', () => {
+    // Records are added by the monthly audit procedure
+    // (docs/automation/calculation-review-toolchain.md), never generated.
+    // Whatever is present must reference a real fixture id and a real date;
+    // an empty record set is the honest initial state.
+    const catalog = buildCatalog({
+      goldenSources: validationSources,
+      researchDocEntries: [],
+      goldenAreas: GOLDEN_SOURCE_AREAS,
+      goldenReviews: GOLDEN_SOURCE_REVIEWS,
+    })
+    for (const [id, record] of Object.entries(GOLDEN_SOURCE_REVIEWS)) {
+      const fixture = validationSources.find((s) => s.id === id)
+      expect(fixture, id).toBeDefined()
+      expect(record.lastReviewed).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      // A review is an act on a date, not a copy of the capture date.
+      expect(record.note, id).toEqual(expect.any(String))
+    }
+    for (const entry of catalog) {
+      const record = GOLDEN_SOURCE_REVIEWS[entry.id]
+      expect(entry.lastReviewed).toBe(record ? record.lastReviewed : null)
     }
   })
 })

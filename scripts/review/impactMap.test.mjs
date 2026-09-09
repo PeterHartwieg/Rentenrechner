@@ -27,7 +27,7 @@ describe('classifyPath — meaningful rules beat the cosmetic extension allowlis
     expect(classifyPath('CLAUDE.md')).toBe('meaningful')
     expect(classifyPath('docs/validation.md')).toBe('meaningful')
     expect(classifyPath('docs/automation/calculation-review-toolchain.md')).toBe('meaningful')
-    expect(classifyPath('docs/adr/0003-local-calculation-review-toolchain.md')).toBe('meaningful')
+    expect(classifyPath('docs/adr/0004-local-calculation-review-toolchain.md')).toBe('meaningful')
     expect(classifyPath('README.md')).toBe('meaningful')
   })
 
@@ -106,6 +106,41 @@ describe('mapImpact — conservative mapping', () => {
     const impact = mapImpact(['docs/context/ui.md', '.github/workflows/review-loop.yml'])
     expect(impact.breadth).toBe('broad')
     expect(impact.rationale).toMatch(/tooling \/ review gates/)
+  })
+
+  it('maps engine-root payout channels to investment/insurance focus (live gap #382)', () => {
+    // These sit OUTSIDE src/engine/products/ and were unmapped, so a
+    // payout-tax change surfaced with no focus domains at all.
+    for (const path of [
+      'src/engine/etfPayout.ts',
+      'src/engine/insurancePayout.ts',
+      'src/engine/bavPayout.ts',
+      'src/engine/certifiedPensionPayout.ts',
+      'src/engine/payoutMath.ts',
+    ]) {
+      const impact = mapImpact([path])
+      expect(impact.breadth, path).toBe('broad')
+      expect(impact.focusDomains, path).toContain('investment-insurance')
+      expect(impact.rationale, path).toMatch(/calculation focus/)
+    }
+  })
+
+  it('maps the captured statutory oracle fixtures to every domain', () => {
+    // Golden fixtures are the oracle baselines: moving one can shift what
+    // "correct" means in all five domains at once.
+    const impact = mapImpact(['src/test/externalGoldenFixtures.ts'])
+    expect(impact.breadth).toBe('broad')
+    expect(impact.focusDomains).toEqual(REVIEW_DOMAINS)
+  })
+
+  it('keeps a broad change with no mapped focus broad, and never calls it cosmetic', () => {
+    // Unmapped-but-meaningful: the honest label is "broad, no focus hints",
+    // not "presentational".
+    const impact = mapImpact(['src/engine/someUnmappedEngine.ts'])
+    expect(impact.breadth).toBe('broad')
+    expect(impact.domains).toEqual(REVIEW_DOMAINS)
+    expect(impact.focusDomains).toEqual([])
+    expect(impact.rationale).not.toMatch(/cosmetic|presentational/)
   })
 
   it('requires at least one changed file', () => {

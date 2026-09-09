@@ -6,6 +6,8 @@ installed and logged in on the operator's machine. It is not a GitHub
 automation: no workflow, no backend, no telemetry, no credentials handling —
 the CLIs keep using their own existing login state in place.
 
+Decision record: [`ADR-0004`](../adr/0004-local-calculation-review-toolchain.md).
+
 Pair with [`issue-to-merge-pipeline.md`](issue-to-merge-pipeline.md) (GitHub-side
 automation) and [`docs/validation.md`](../validation.md) (external golden
 suite). The two are complementary: goldens pin captured values; this toolchain
@@ -14,8 +16,9 @@ reviews *changes* against statutory sources before merge.
 ## What it does
 
 1. **Plan** (`npm run review:plan -- --pr <n> [--complex]`) — reads the exact
-   PR head SHA + changed files via `gh`, maps the change to review scope,
-   names the panel and the context files. Read-only, no model calls.
+   PR head SHA, the **live base-branch head**, and the changed files via
+   `gh`, maps the change to review scope, names the panel and the context
+   files. Read-only, no model calls.
 2. **Run** (`npm run review:run -- --pr <n> [--complex] [--publish]`) —
    captures diff + curated context into a prompt file, checks out the exact
    head SHA into a detached throwaway worktree, runs the panel there, parses
@@ -40,7 +43,7 @@ Exit codes for `review:run`: `0` approve · `2` decision reject or needs-human �
 
 | Panel | Reviewers | When |
 |---|---|---|
-| `routine` (default) | Grok 4.6 (`~/.grok/bin/grok`) + Opus (`~/.local/bin/claude`, alias `opus`) | every calculation-bearing PR |
+| `routine` (default) | Grok 4.6 (`~/.grok/bin/grok`) + Claude Opus (`~/.local/bin/claude`, requested as the `opus` alias; the provider-reported primary model must be a `claude-opus-*` id) | every calculation-bearing PR |
 | `complex` | Fable 5.1 (`claude-fable-5-1`, exact id) + GPT-6-Astra (`codex exec`) + Grok 4.6 | rare; **only** via explicit `--complex` |
 
 The complex panel is unreachable without the literal flag — no heuristic picks
@@ -54,6 +57,26 @@ missing binary fails with a message naming the env var and the expected
 default location. The toolchain never reads, copies, or prints auth files —
 each CLI uses its own credential store, untouched.
 
+### PR anchor: head SHA + live base head (`lib/prInfo.mjs`)
+
+Every review is pinned to two commits, both read via `gh`:
+
+- **head** — `gh pr view --json headRefOid`. Reviewers must restate it, the
+  worktree is checked out at it, verdicts must match it, publish re-checks it.
+- **base** — the commit the base branch currently points at, read from the
+  branch endpoint (`gh api repos/{owner}/{repo}/branches/<name> --jq .commit.sha`).
+  The PR record's own `baseRefOid` / `base.sha` is the merge snapshot GitHub
+  last computed for the PR; it was observed stale (pointing at `7c92d5a`)
+  while `main` had already advanced to `d7d9ec1`. That snapshot is still
+  captured, but only as provenance (`baseSnapshotSha`) — it is never the
+  review base. Branch names are percent-encoded so a slashed branch stays one
+  path segment.
+
+The anchor is read **before** the diff is pulled and re-read after; any
+movement of head, live base, or the PR's own base snapshot in between aborts
+with `PR_MOVED` rather than reviewing a diff stitched from two states.
+`--publish` repeats the same read immediately before writing.
+
 ### Conservative impact mapping (`lib/impactMap.mjs`)
 
 Two tiers only:
@@ -63,11 +86,21 @@ Two tiers only:
   investment/insurance, household interactions), because the shared engine
   feeds every product and both simulation modes. Domain *focus* hints are
   added to the prompt but never reduce scope.
-- **narrow** — cosmetic-only paths (CSS, content copy, docs, static assets,
-  dev tooling). No calculation domain in scope.
+- **narrow** — presentational-only paths (styling, prose docs, static
+  assets). No calculation domain in scope. Dev tooling, worker/API code,
+  workflows, and assurance docs are **not** narrow: they carry logic,
+  defaults, or the review gates themselves.
 
 Anything not matched by the narrow table is broad. The conservative fallback
 is the point: an unclassified path must never silently shrink the review.
+A broad change with **no** mapped focus domain is labelled exactly that in
+the prompt ("none mapped — scope remains BROAD"), never "cosmetic-only": on
+the first live panel run that mislabel presented a payout-tax PR as
+presentational. Engine-root payout channels (`etfPayout.ts`,
+`insurancePayout.ts`, `bavPayout.ts`, `certifiedPensionPayout.ts`,
+`payoutMath.ts`) sit outside `src/engine/products/` and are mapped explicitly
+to investment/insurance for that reason; the captured statutory oracle
+fixtures (`src/test/externalGoldenFixtures.ts`) map to all five domains.
 One carve-out: styling files (`.css`/`.scss`/… ) inside an otherwise
 meaningful prefix count as cosmetic — meaningful prefixes beat file
 extensions, and this is the only place an extension narrows a prefix.
@@ -89,6 +122,19 @@ written to the OS temp dir, never the repo. It requires every reviewer to:
 - end with one structured verdict JSON block
   (`{ pr, headSha, verdict: approve|reject|needs-human, confidence, findings[],
   unresolved[] }`).
+
+**Statutory vs engineering evidence.** Statute + applicable date are required
+only when a finding asserts something about the law. A finding about
+engineering quality — code structure, invariants, tests, tooling, API
+behavior — cites the repository itself (file path plus the CONTEXT.md /
+CLAUDE.md invariant it protects) or official API/CLI documentation, and sets
+`applicableDate` to `"unspecified"`. Demanding a statute for a tooling finding
+would only produce invented citations.
+
+**Pre-existing legal uncertainty** that is unrelated to the diff is a
+*labelled limitation*: reviewers report it under `unresolved` (or as an info
+finding) so it stays visible, and must neither manufacture it into a
+blocker/major finding against the PR nor invent a law status either way.
 
 It also states the read-only/no-subagent/no-write rules and that a reachable
 link is not legal approval.
@@ -123,6 +169,33 @@ Around every reviewer run: a `git status --porcelain` + HEAD snapshot before
 and after. Any worktree mutation or HEAD move voids that review — and one
 voided reviewer invalidates the whole run.
 
+### Checkout containment (`lib/contextGuard.mjs`)
+
+The review checkout is PR-controlled content, including which paths are
+symlinks — git tracks them, so a diff could ship
+`AGENTS.md -> ../../../private-notes.md` and the context reader would hand
+operator-private text to a model. Two independent, fail-closed guards:
+
+- `assertNoSymlinksUnder` walks the review tree **before** any context read
+  or reviewer spawn and refuses the review if it finds a single symlink
+  (`UNSAFE_REVIEW_TREE`, naming the offending paths). Nothing in this repo is
+  a tracked symlink, so the blunt rule is the safe rule. The worktree's
+  `.git` pointer file is the one exemption.
+- `containedReadText` reads each context file through a canonical path proven
+  to resolve inside the worktree root: relative paths only, no `..` escape,
+  no symlinked component below the root, and a `realpath` re-check after
+  resolution. This covers plain `..` escapes (no symlink needed) and any link
+  planted after the scan. The root itself may sit behind a symlinked prefix
+  (macOS `/var -> /private/var`) — canonicalising it cannot defeat the
+  containment check that follows.
+
+Per-reviewer clocks: `startedAt`/`completedAt` are taken from the injected
+clock immediately around **each** reviewer's own preflight+spawn, not from
+the panel's shared timestamp. Reusing the panel start would bind every
+reviewer to it, and a legitimately long first run (Fable) would push the next
+reviewer's (Astra) rollout session file outside the codex identity window and
+fail a valid review.
+
 ### Fail-closed parsing (`lib/adapters.mjs`, `lib/verdicts.mjs`)
 
 A reviewer counts only when ALL of the following hold; anything else fails
@@ -135,14 +208,22 @@ that reviewer and therefore the whole panel (`adjudicatePanel` returns
   `type=result, subtype=success, is_error=false`; grok result text present
   with no error/truncation/turn-limit markers in metadata; codex JSONL events
   parsed + non-empty `--output-last-message` file),
-- provider-reported model identity matches the requested model. For claude
-  and grok the identity comes from the native result envelope's `modelUsage`
-  keys (`identityEvidence: native-model-usage-keys`); for codex — whose
-  stdout carries no model identity — it comes from the CLI's own rollout
-  session file (`$CODEX_HOME/sessions/.../rollout-…-<thread>.jsonl`,
+- provider-reported model identity matches the requested model. For **claude**
+  the reviewing model is the `model` field of the native assistant messages
+  in the `stream-json --verbose` stream: every actual assistant message must
+  carry it, they must all agree, and they must match the requested model.
+  The final result's `modelUsage` keys are recorded separately — a key that
+  is not the requested model (e.g. `claude-haiku-4-5-20251001` handling side
+  requests) is logged as an `auxiliaryModels` fact, not an identity failure,
+  but the primary model must still appear among the keys or the usage map
+  contradicts the assistant stream (evidence kind
+  `native-assistant-message-models`). For **grok** the identity is the result
+  envelope's `modelUsage` object keys (`native-model-usage-keys`). For
+  codex — whose stdout carries no model identity — it comes from the CLI's
+  own rollout session file (`$CODEX_HOME/sessions/.../rollout-…-<thread>.jsonl`,
   `session_meta` + `turn_context` only; evidence kind
-  `cli-session-turn-context`, timestamped inside the review invocation
-  window). Accept lists are explicit per model with no fuzzy fallback, so
+  `cli-session-turn-context`, timestamped inside **that reviewer's own**
+  invocation window, see per-reviewer clocks above). Accept lists are explicit per model with no fuzzy fallback, so
   the Opus slot can never be satisfied by a Fable id and vice versa,
 - the reply contains a parseable verdict block that restates the exact PR
   number and head SHA, uses only enumerated values, and is not
@@ -165,8 +246,10 @@ Each run writes `.review-receipts/pr-<n>-<sha8>-<timestamp>.json`
 (gitignored, local-only) containing: schema version, PR + exact head SHA +
 diff digest (sha256), impact mapping, the requested panel **with its reviewer
 list**, per-reviewer record (requested model **and** provider-reported
-identity + the evidence kind it came from, verdict, findings, unresolved
-questions, failure reasons), the panel decision, and
+identity + the evidence kind it came from, any auxiliary usage models seen
+alongside the primary one, that reviewer's own start/finish timestamps,
+verdict, findings, unresolved questions, failure reasons), the panel
+decision, and
 deterministic-verification metadata. The tool never runs tests itself;
 `--verify-commit <sha>` records the caller's attestation as a claim, clearly
 labelled. Approval-shaped files inside a PR diff are never trusted as
@@ -179,9 +262,11 @@ requested panel) — a doctored or stale receipt file can never publish.
 
 ### Publish gating (`lib/publish.mjs`)
 
-`--publish` re-fetches `headRefOid` **and** `baseRefOid` via `gh` immediately
-before writing; either having moved aborts with `STALE_HEAD` / `PR_MOVED` and
-writes nothing. An approving decision additionally requires the `verify`
+`--publish` re-fetches the head SHA **and** the live base-branch head via
+`gh` immediately before writing; either having moved aborts with
+`STALE_HEAD` / `PR_MOVED` and writes nothing. Using the live branch head (not
+the PR's frozen base snapshot) is what makes "the base moved" detectable at
+all. An approving decision additionally requires the `verify`
 check run on the exact reviewed SHA to have concluded `success`, and only
 check runs owned by the GitHub Actions app (id 15368) count — a third-party
 check merely *named* `verify` is not our deterministic verification. The gate
@@ -214,6 +299,15 @@ no merge path.
 - `lastCaptured` and `lastReviewed` are tracked as **distinct** dates. Unknown
   review dates stay `null` and render as "null (no record)" — absence of
   evidence never masquerades as a recent review.
+- A golden source gets a review date **only** from an explicit record in
+  `GOLDEN_SOURCE_REVIEWS` (`sourceCatalog.mjs`), keyed by `validationSources`
+  id: `{ lastReviewed: 'YYYY-MM-DD', note?: string }`, where `note` says what
+  was checked and where the evidence lives. The catalog validates every
+  record — unknown id, non-object record, missing/malformed date, non-string
+  note all throw instead of rendering a guess — and a source with no record
+  keeps `lastReviewed: null` rather than inheriting its capture date. The
+  set starts **empty**: dates are written by a real audit (below), never
+  generated. Pinned by `sources.test.mjs`.
 - Policy: captures and reviews go stale after 6 months
   (`DEFAULT_POLICY` in `lib/sources.mjs`). The report is deterministic for a
   given `now`; `--fail-on-stale` turns it into a check a local heartbeat can
@@ -234,8 +328,11 @@ only *detects* staleness, the audit is the human/agent process):
    dates, update `src/rules/` values, add/adjust a golden fixture with
    capture date + notes, run `npm run verify`.
 4. After reviewing an item against the implementation **without** a drift:
-   record the review (add a dated review line to the doc header, or a dated
-   note in the golden fixture) so `lastReviewed` stops being null.
+   record the review so `lastReviewed` stops being null — for a research doc
+   add a dated `Last reviewed:` header line; for a golden source add a
+   `GOLDEN_SOURCE_REVIEWS` entry with that date and a note naming the
+   evidence (fixture id + commit, or the audit note in a research doc).
+   Only a review that actually happened gets a date.
 5. Escalate consequential unresolved questions as GitHub issues instead of
    guessing; link them from the research doc.
 
@@ -263,34 +360,32 @@ npm run review:sources -- --json --fail-on-stale
 Everything runs offline except `gh` (GitHub API, read-only except the
 explicit publish call) and the model CLIs you explicitly invoke.
 
-## Known model assumptions and open questions
+## Known modeling gaps (pointer, not a copy)
 
-The toolchain reviews code against sources; it does **not** fix known
-modeling gaps. These remain open, deliberately documented rather than
-silently assumed away:
+The toolchain reviews code against sources; it does **not** fix known modeling
+gaps, and it deliberately does **not** restate them here. A copied list of
+legal caveats goes stale the moment the underlying doc is updated, and a stale
+caveat in a review doc is worse than none — reviewers would weigh it as
+current.
 
-- **KV/PV proportional apportionment over BBG** — a documented modeling
-  choice; no statute mandates priority for single-member cases
-  (`CONTEXT.md` → cross-cutting invariants).
-- **bAV cap/subsidy from year-1 inputs** held constant under
-  Beitragsdynamik — documented approximation (`CLAUDE.md`).
-- **AVD 2027 constants** pending final BGBl. publication
-  (`docs/validation.md` Priority Backlog #5;
-  `ALTERSVORSORGEDEPOT_2027_RESEARCH.md` caveat).
-- **DRV Rentenschätzer** still showing 40.79 EUR/EP while the app uses the
-  announced 42.52 EUR/EP from 2026-07-01 (`docs/validation.md` backlog #1).
-- **AVD Günstigerprüfung eligibility gate** missing (#363).
-- **bAV offer (Angebot) default conversion double-counted** by the
-  recommender (#349).
-- **Statutory parameter versioning** as a broader fix for year-coupling
-  (#376) and the Riester Kinderzuschlag opt-out (#371) remain feature work.
+The single sources of truth are:
 
-The golden fixtures and this catalog pin what *is* verified; everything above
-stays visible until closed by its own issue.
+- [`docs/validation.md`](../validation.md) — golden-suite coverage and the
+  priority backlog of known divergences.
+- `CONTEXT.md` / `CLAUDE.md` — cross-cutting modeling choices and documented
+  approximations.
+- The root `*_RESEARCH.md` docs and `LEGAL_REVIEW.md` /
+  `LEGAL_IMPLEMENTATION_AUDIT_2026.md` — per-area caveats with their own
+  dates, which `npm run review:sources` tracks.
+- Open GitHub issues for anything consequential and unresolved.
+
+Reviewers are told the same thing in the prompt: an existing legal
+uncertainty unrelated to the diff is a labelled limitation to report under
+`unresolved`, not a finding to manufacture against the PR.
 
 ## Cost model
 
-Routine review = 2 model runs (Grok 4.6 + Opus) over a bounded prompt
+Routine review = 2 model runs (Grok 4.6 + Claude Opus) over a bounded prompt
 (≤ 600 k chars, typically far less). Complex = 3 runs. The dominant cost is
 reviewer latency (minutes, not seconds); publish adds two `gh` calls.
 
