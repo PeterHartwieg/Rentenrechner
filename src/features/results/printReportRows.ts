@@ -352,7 +352,8 @@ export const PRINT_METHODE_BULLETS: ReadonlyArray<PrintMethodeBullet> = [
     body:
       `Drei Szenarien (${PRINT_RENDITEN}) als nominale, langfristige Marktrenditen p. a. vor Inflation und Kosten; ` +
       'Inflation wird separat abgezogen. Modellannahmen, orientiert an langfristigen Aktienmarktrenditen, ' +
-      'nicht extern validiert. Alle Produkte rechnen je Szenario mit derselben Marktrendite.',
+      'nicht extern validiert. Alle Produkte rechnen je Szenario mit derselben Marktrendite; ' +
+      'das Altersvorsorgedepot mischt sie mit seinem Sicherheitsanteil und Gleitpfad.',
   },
   {
     label: 'Steuermodell',
