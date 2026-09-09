@@ -53,6 +53,18 @@ function etfInstance(overrides: Partial<EtfInstance> = {}): EtfInstance {
 // ---------------------------------------------------------------------------
 
 describe('CONTRACT_FIELD_SPECS', () => {
+  it('includes the child allowance claim only in eligibility specs with children', () => {
+    const id = 'eligibility.claimsChildAllowance'
+    // withChildren is a product-level flag: AVD true, Riester false.
+    expect(fieldSpecs('altersvorsorgedepot').find((spec) => spec.id === id)).toMatchObject({
+      labelKey: 'contract.eligibility.claimsChildAllowance',
+      kind: 'boolean',
+      section: 'details',
+      supportsUnknown: false,
+    })
+    expect(fieldSpecs('riester').some((spec) => spec.id === id)).toBe(false)
+  })
+
   it('declares a core current value and a core contribution for every product', () => {
     for (const [productId, specs] of Object.entries(CONTRACT_FIELD_SPECS)) {
       const core = specs.filter((s) => s.core).map((s) => s.id)
@@ -103,6 +115,22 @@ describe('CONTRACT_FIELD_SPECS', () => {
 // ---------------------------------------------------------------------------
 
 describe('draftFromInstance', () => {
+  it('defaults the child allowance claim to true and preserves explicit toggles', () => {
+    const id = 'eligibility.claimsChildAllowance'
+    const instance = INVENTORY_PRODUCT_REGISTRY.altersvorsorgedepot.createDefault(
+      2026, 1, () => 'avd-test0001',
+    )
+    const draft = draftFromInstance('altersvorsorgedepot', instance)
+    expect(draftFieldValue(draft, id)).toBe(true)
+    for (const checked of [false, true]) {
+      const { patch } = draftToInstancePatch(patchDraftField(draft, id, checked))
+      expect(patch).toMatchObject({ eligibility: { claimsChildAllowance: checked } })
+      expect(draftFieldValue(draftFromInstance('altersvorsorgedepot', {
+        ...instance, ...patch,
+      }), id)).toBe(checked)
+    }
+  })
+
   it('reads a legacy instance with no metadata as entirely assumed, values intact', () => {
     const instance = bavInstance({ monthlyGrossConversion: 250, currentValueEUR: 4200 })
     const draft = draftFromInstance('bav', instance)

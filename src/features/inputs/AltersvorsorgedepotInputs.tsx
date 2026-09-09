@@ -10,6 +10,7 @@ import type {
   ProductResult,
   ScenarioAssumptions,
 } from '../../domain'
+import { InfoTip } from '../../ui/InfoTip'
 import { NumberField } from '../../ui/NumberField'
 import { RangeNumberField } from '../../ui/RangeNumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
@@ -279,6 +280,29 @@ export function AltersvorsorgedepotInputs({
           />
           <span>Mittelbar berechtigt (über Ehegatte)</span>
         </label>
+        {profile.childBirthYears.length > 0 && (
+          <label className="field field-inline">
+            <input
+              type="checkbox"
+              checked={avd.eligibility.claimsChildAllowance ?? true}
+              onChange={(event) => {
+                const checked = event.target.checked
+                onAssumptionsChange((current) => ({
+                  ...current,
+                  altersvorsorgedepot: {
+                    ...current.altersvorsorgedepot,
+                    eligibility: {
+                      ...current.altersvorsorgedepot.eligibility,
+                      claimsChildAllowance: checked,
+                    },
+                  },
+                }))
+              }}
+            />
+            <span>Kinderzulage in diesem Vertrag berücksichtigen</span>
+            <InfoTip text="Die Kinderzulage bekommt nur ein Elternteil (§ 85 EStG, standardmäßig die Mutter). Abwählen, wenn sie im Vertrag der anderen Person läuft. Deine Kinder bleiben für die Pflegeversicherung erfasst." />
+          </label>
+        )}
         <label className="field field-inline">
           <input
             type="checkbox"

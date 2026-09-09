@@ -115,3 +115,42 @@ describe('AltersvorsorgedepotInstanceInputs — legacy and paid-up contracts', (
     for (const card of screen.getAllByRole('radio')) expect(card).toBeDisabled()
   })
 })
+
+describe('AltersvorsorgedepotInstanceInputs — Kinderzulage', () => {
+  const profile = { ...defaultProfile, childBirthYears: [de2026Rules.year] }
+  const name = /Kinderzulage in diesem Vertrag berücksichtigen/
+
+  it('checks the claim by default for a profile with children', () => {
+    setup({}, profile)
+    expect(screen.getByRole('checkbox', { name })).toBeChecked()
+  })
+
+  it('patches only the contract eligibility when unchecked', () => {
+    const { patchInstance } = setup({}, profile)
+    fireEvent.click(screen.getByRole('checkbox', { name }))
+    expect(patchInstance).toHaveBeenCalledExactlyOnceWith({
+      eligibility: {
+        ...defaultAssumptions.altersvorsorgedepot.eligibility,
+        claimsChildAllowance: false,
+      },
+    })
+    expect(profile.childBirthYears).toEqual([de2026Rules.year])
+  })
+
+  it('honours a saved opt-out and writes true when checked again', () => {
+    const { patchInstance } = setup({
+      eligibility: { ...defaultAssumptions.altersvorsorgedepot.eligibility, claimsChildAllowance: false },
+    }, profile)
+    const checkbox = screen.getByRole('checkbox', { name })
+    expect(checkbox).not.toBeChecked()
+    fireEvent.click(checkbox)
+    expect(patchInstance).toHaveBeenCalledExactlyOnceWith({
+      eligibility: { ...defaultAssumptions.altersvorsorgedepot.eligibility, claimsChildAllowance: true },
+    })
+  })
+
+  it('hides the claim when the profile has no children', () => {
+    setup({}, { ...defaultProfile, childBirthYears: [] })
+    expect(screen.queryByRole('checkbox', { name })).not.toBeInTheDocument()
+  })
+})

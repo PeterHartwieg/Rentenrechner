@@ -12,6 +12,7 @@
  * (no glidepath). Matches the deleted card exactly.
  */
 
+import { InfoTip } from '../../../ui/InfoTip'
 import type { GermanRules, PersonalProfile } from '../../../domain'
 import type { AltersvorsorgedepotInstance } from '../../../domain/instances'
 import {
@@ -111,6 +112,27 @@ export function AltersvorsorgedepotInstanceInputs({
           bereits erhalten
         </label>
       </CombineField>
+      {profile.childBirthYears.length > 0 && (
+        <CombineField
+          label="Kinderzulage in diesem Vertrag berücksichtigen"
+          labelSuffix={<InfoTip text="Die Kinderzulage bekommt nur ein Elternteil (§ 85 EStG, standardmäßig die Mutter). Abwählen, wenn sie im Vertrag der anderen Person läuft. Deine Kinder bleiben für die Pflegeversicherung erfasst." />}
+        >
+          <label className="combine-checkbox-field">
+            <CombineNativeInput
+              type="checkbox"
+              checked={instance.eligibility.claimsChildAllowance ?? true}
+              onChange={(e) =>
+                patchInstance({
+                  eligibility: {
+                    ...instance.eligibility,
+                    claimsChildAllowance: (e.target as HTMLInputElement).checked,
+                  },
+                })
+              }
+            />
+          </label>
+        </CombineField>
+      )}
       <CombineField label="Depottyp">
         <CombineNativeSelect
           value={instance.subtype}
