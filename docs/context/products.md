@@ -20,7 +20,7 @@ For each product: simulator, validator, domain types, tests, UI input, engine he
 |---------|----------------|-----------------|
 | ETF | `src/engine/accumulation.ts`, `src/engine/etfPayout.ts` | `projectAccumulation`, `afterTaxInvestmentCapital`, `etfPayoutSchedule` |
 | bAV | `src/engine/salary.ts`, `src/engine/bavPayout.ts` | `calculateBavFunding` (two-pass), `netBavPayout`, `afterTaxBavLumpSum` |
-| Private RV | `src/engine/insurancePayout.ts` | `netInsurancePayout`, `afterTaxInsuranceLumpSum`, `deriveInsuranceTaxMode` |
+| Private RV | `src/engine/insurancePayout.ts` | `classifyInsuranceMonthlyIncome`, `netInsurancePayout`, `afterTaxInsuranceLumpSum`, `deriveInsuranceTaxMode` |
 | Basisrente | `src/engine/basisrente.ts` | `calculateBasisrenteFunding`, `netBasisrentePayout` |
 | AVD | `src/engine/altersvorsorgedepot.ts`, `src/engine/certifiedPensionPayout.ts` | `calculateAvdFunding`, payout wrappers |
 | Riester | `src/engine/riester.ts`, `src/engine/certifiedPensionPayout.ts` | `calculateRiesterFunding`, payout wrappers |
@@ -30,7 +30,7 @@ For each product: simulator, validator, domain types, tests, UI input, engine he
 
 - **ETF**: Vorabpauschale (InvStG §18); Abgeltungsteuer on gain; partial exemption (InvStG §20); kapitalverzehr payout.
 - **bAV**: §3 Nr. 63 EStG salary conversion; §1a BetrAVG employer subsidy; §22 Nr. 5 EStG payout tax; §229 SGB V KV/PV as Versorgungsbezug.
-- **Private RV**: Tax mode from contract start year + runtime; Ertragsanteil for Leibrente (§22 Nr. 1 Satz 3a EStG); paid-up/surrender scenario.
+- **Private RV**: Tax mode from contract start year + runtime; monthly income classification shared by both modes via `classifyInsuranceMonthlyIncome` (Ertragsanteil for Leibrente, §22 Nr. 1 Satz 3a EStG); paid-up/surrender scenario.
 - **Basisrente**: §10 Abs. 3 EStG Schicht-1 deductible; payout tax = GRV Besteuerungsanteil; capital payout prohibited.
 - **AVD**: §10a/AVD Reform 2026 allowances; Standarddepot glidepath; §22 Nr. 5 EStG payout; partial capital option.
 - **Riester**: §84–§86 EStG allowances; §10a Günstigerprüfung; §22 Nr. 5 EStG payout; ≤30% partial lump sum (§93 Abs. 2 EStG).

@@ -55,7 +55,6 @@
 import type {
   GermanRules,
   InsuranceTaxMode,
-  PayoutMode,
   PersonalProfile,
   ProductResult,
   RetirementIncomeComponents,
@@ -76,8 +75,8 @@ import {
   calculateProfileRetirementKvPv,
   type RetirementHealthStatus,
 } from './retirementPayout'
-import { ertragsanteilByAge, legalConstants } from '../rules/legalConstants'
-import { deriveInsuranceTaxMode } from './insurancePayout'
+import { legalConstants } from '../rules/legalConstants'
+import { classifyInsuranceMonthlyIncome, deriveInsuranceTaxMode } from './insurancePayout'
 
 // ---------------------------------------------------------------------------
 // Result types
@@ -262,8 +261,20 @@ function buildPerSourceLines(
     } else if (result.productId === 'versicherung') {
       const inst = insById.get(id)
       if (!inst) continue
-      const taxMode = derivePavInsuranceTaxModeForCombine(inst, ctx)
-      const taxableAnnual = computePavTaxableAnnual(result, inst, ctx.profile.retirementAge, taxMode)
+      // Shared monthly income classification (§22 Ertragsanteil override for
+      // Leibrente; gain ratio over `totalContributionsBeforeFees` otherwise,
+      // so transferred principal does not inflate the gain). The same pure
+      // helper classifies compare-mode payouts inside `netInsurancePayout` —
+      // both modes must classify identical contracts alike.
+      const contractTaxMode = derivePavContractTaxModeForCombine(inst, ctx)
+      const { effectiveTaxMode: taxMode, taxableAnnual } = classifyInsuranceMonthlyIncome({
+        grossMonthlyPayout: grossMonthly,
+        capital: result.capitalAtRetirement,
+        totalContributions: result.totalContributionsBeforeFees,
+        contractTaxMode,
+        payoutMode: inst.payoutMode,
+        retirementAge: ctx.profile.retirementAge,
+      })
       // KV/PV: pAV is NOT a Versorgungsbezug (§229 SGB V). KVdR pays nothing;
       // freiwillig pays §240 SGB V on the full payout (capped at BBG aggregate).
       const kvPvChannel: PerSourceLine['kvPvChannel'] = isFreiwillig ? 'freiwillig_other' : 'none'
@@ -331,21 +342,18 @@ function buildPerSourceLines(
 }
 
 /**
- * Derive the InsuranceTaxMode for a private-insurance instance in combine-mode.
+ * Resolve the contract's capital-payout `InsuranceTaxMode` for a
+ * private-insurance instance in combine-mode: vintage + calendar-year runtime
+ * at payout + minimum payout age (§20 Abs. 1 Nr. 6 / §52 Abs. 28 EStG).
  *
- * Mirrors `deriveInsuranceTaxMode` + the Leibrente override applied inside
- * `netInsurancePayout`. Used so each instance's progressive-base contribution
- * uses the contract's own vintage-aware mode.
+ * The §22 Nr. 1 Satz 3 a EStG Ertragsanteil override for Leibrente — and the
+ * annual taxable amount — are owned by the shared
+ * `classifyInsuranceMonthlyIncome` classifier (same as compare mode).
  */
-function derivePavInsuranceTaxModeForCombine(
+function derivePavContractTaxModeForCombine(
   instance: InsuranceInstance,
   ctx: CombineContext,
 ): InsuranceTaxMode {
-  const payoutMode: PayoutMode = instance.payoutMode
-  if (payoutMode === 'leibrente') {
-    // §22 Nr. 1 Satz 3 a EStG Ertragsanteil applies to ALL private Leibrenten.
-    return 'ertragsanteil'
-  }
   const contractRuntimeYears = ctx.retirementYear - instance.contractStartYear
   return deriveInsuranceTaxMode(
     instance.contractStartYear,
@@ -353,36 +361,6 @@ function derivePavInsuranceTaxModeForCombine(
     ctx.profile.retirementAge,
     instance.oldContractTaxFreeEligible,
   )
-}
-
-/**
- * Compute the per-instance pAV `taxableAnnual` consistent with the existing
- * `netInsurancePayout` math (Ertragsanteil for Leibrente; gain ratio otherwise).
- *
- * Uses `result.totalContributionsBeforeFees` (regular contributions + injected transfer
- * principal) as the cost basis so that surrender_reinvest transfers into pAV do not
- * inflate the taxable gain.
- */
-function computePavTaxableAnnual(
-  result: ProductResult,
-  _instance: InsuranceInstance,
-  retirementAge: number,
-  taxMode: InsuranceTaxMode,
-): number {
-  const grossAnnual = result.grossMonthlyPayout * 12
-  if (taxMode === 'ertragsanteil') {
-    return grossAnnual * ertragsanteilByAge(retirementAge)
-  }
-  if (taxMode === 'pre2005') {
-    return 0
-  }
-  // halbeinkuenfte / abgeltungsteuer: gain-ratio method
-  const capital = result.capitalAtRetirement
-  const totalContributions = result.totalContributionsBeforeFees
-  const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
-  return grossAnnual * gainRatio
-  // Note: for `instance.payoutMode === 'leibrente'` we already returned above;
-  // for the other modes the gain-ratio applies.
 }
 
 // ---------------------------------------------------------------------------
