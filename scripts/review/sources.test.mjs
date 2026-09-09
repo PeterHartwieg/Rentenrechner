@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 
 // Vitest resolves the TS import; this is the drift guard that keeps the
 // review catalog honest about what it reuses.
 import { validationSources } from '../../src/test/externalGoldenFixtures'
 
 import { GOLDEN_SOURCE_AREAS, GOLDEN_SOURCE_REVIEWS, RESEARCH_DOCS } from './sourceCatalog.mjs'
+import { classifyPath } from './lib/impactMap.mjs'
 import {
   DEFAULT_POLICY,
   assessFreshness,
@@ -94,6 +95,21 @@ describe('catalog <-> validationSources reuse', () => {
       expect(doc.areas.length).toBeGreaterThan(0)
       for (const area of doc.areas) expect(REVIEW_DOMAINS).toContain(area)
       readFileSync(doc.path, 'utf8') // must be readable
+    }
+  })
+
+  it('every root statutory doc in the repo IS catalogued (reverse drift guard)', () => {
+    // The impact map derives its statutory-source list from this catalog, so
+    // an uncatalogued root research/legal doc would be classified by the .md
+    // extension allowlist — i.e. cosmetic — and skip calculation review.
+    const catalogued = new Set(RESEARCH_DOCS.map((doc) => doc.path))
+    const onDisk = readdirSync(process.cwd()).filter(
+      (name) => /_RESEARCH\.md$/.test(name) || /^LEGAL_.*\.md$/.test(name),
+    )
+    expect(onDisk.length).toBeGreaterThan(0)
+    for (const name of onDisk) {
+      expect(catalogued.has(name), `${name} is not in RESEARCH_DOCS`).toBe(true)
+      expect(classifyPath(name), name).toBe('meaningful')
     }
   })
 
