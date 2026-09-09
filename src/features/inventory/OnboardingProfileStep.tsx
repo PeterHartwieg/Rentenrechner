@@ -3,7 +3,8 @@ import type { UseOnboardingDraftApi } from './useOnboardingDraft'
 import { type EmploymentKind, type ProfileDraftErrors } from './onboardingDraft'
 import { OnboardingDisclosure, OnboardingNumberField } from './OnboardingFields'
 
-export function OnboardingProfileStep({ draft, errors }: {
+export function OnboardingProfileStep({ draft, errors, mode }: {
+  mode: 'onboarding' | 'edit'
   draft: UseOnboardingDraftApi
   errors: ProfileDraftErrors
 }) {
@@ -11,6 +12,7 @@ export function OnboardingProfileStep({ draft, errors }: {
   const { profile, pension, setProfileValue, patchProfile, patchPension, setFieldUnknown } = draft
   const numberField = (key: 'age' | 'grossSalaryYear' | 'retirementAge' | 'pkvMonthlyPremium' | 'pPVMonthlyPremium', label: string) => (
     <OnboardingNumberField label={label} field={profile[key]} error={errors[key]}
+      hideAssumed={mode === 'onboarding'} placeholder={key === 'age' ? 'z. B. 35' : key === 'grossSalaryYear' ? 'z. B. 60000' : undefined}
       step={key === 'pkvMonthlyPremium' || key === 'pPVMonthlyPremium' ? 0.01 : 1}
       onValue={(value) => setProfileValue(key, value)} onUnknown={() => setFieldUnknown('profile', key)} />
   )

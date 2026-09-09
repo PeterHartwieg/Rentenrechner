@@ -116,6 +116,11 @@ describe('draftFromInstance', () => {
 // ---------------------------------------------------------------------------
 
 describe('newDraft', () => {
+  it('leaves the name field empty rather than prefilling the generated "#1" label', () => {
+    const draft = newDraft('etf', { currentYear: 2026 })
+    expect(draft.fields.label.value).toBe('')
+  })
+
   it('leaves the two core fields unanswered and everything else assumed', () => {
     const draft = newDraft('etf', { currentYear: 2026 })
     expect(draftFieldState(draft, 'currentValueEUR')).toBe('empty')
@@ -279,7 +284,7 @@ describe('draftToInstancePatch', () => {
 })
 
 describe('draftToNewInstance', () => {
-  it('produces a complete instance, with the registry label fallback', () => {
+  it('produces a complete instance, named after the product (never "#1")', () => {
     const draft = patchDraftField(
       patchDraftField(newDraft('etf', { currentYear: 2026 }), 'currentValueEUR', 1000),
       'monthlyContribution',
@@ -288,7 +293,7 @@ describe('draftToNewInstance', () => {
     const instance = draftToNewInstance(draft, () => 'etf-abc12345') as unknown as EtfInstance
 
     expect(instance.instanceId).toBe('etf-abc12345')
-    expect(instance.label).toBe('ETF #1')
+    expect(instance.label).toBe('ETF-Depot')
     expect(instance.monthlyContribution).toBe(250)
     expect(instance.currentValueEUR).toBe(1000)
     // Fields the editor never exposes still arrive populated from the registry.
@@ -307,6 +312,20 @@ describe('draftToNewInstance', () => {
     )
     const instance = draftToNewInstance(draft, () => 'etf-abc12345') as { label: string }
     expect(instance.label).toBe('Weltdepot')
+  })
+
+  it('prefers the Anbieter over the plain product name', () => {
+    const draft = patchDraftField(
+      patchDraftField(
+        patchDraftField(newDraft('etf', { currentYear: 2026 }), 'currentValueEUR', 0),
+        'monthlyContribution',
+        100,
+      ),
+      'anbieter',
+      'Trade Republic',
+    )
+    const instance = draftToNewInstance(draft, () => 'etf-abc12345') as { label: string }
+    expect(instance.label).toBe('ETF – Trade Republic')
   })
 })
 

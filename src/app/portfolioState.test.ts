@@ -259,18 +259,37 @@ describe('portfolioState helpers — applyDisambiguatingLabel', () => {
     } as AnyInstance
   }
 
-  it('appends #N when no provider name was supplied', () => {
-    const result = applyDisambiguatingLabel(makeEtf(), 2)
+  it('names the only contract of a product after the product itself', () => {
+    const result = applyDisambiguatingLabel('etf', makeEtf(), 1)
+    expect(result.label).toBe('ETF-Depot')
+  })
+
+  it('appends #N from the second contract of the same product on', () => {
+    const result = applyDisambiguatingLabel('etf', makeEtf(), 2)
     expect(result.label).toBe('ETF-Depot #2')
   })
 
+  it('never doubles the suffix on an already-numbered generated label', () => {
+    const result = applyDisambiguatingLabel('etf', makeEtf({ label: 'ETF #1' }), 1)
+    expect(result.label).toBe('ETF-Depot')
+  })
+
+  it('leaves a label the user typed untouched', () => {
+    const result = applyDisambiguatingLabel('etf', makeEtf({ label: 'Weltdepot' }), 2)
+    expect(result.label).toBe('Weltdepot')
+  })
+
   it('keeps the provider-named label intact when an Anbieter was supplied', () => {
-    const result = applyDisambiguatingLabel(makeEtf({ label: 'ETF – Trade Republic', anbieter: 'Trade Republic' }), 2)
+    const result = applyDisambiguatingLabel(
+      'etf',
+      makeEtf({ label: 'ETF – Trade Republic', anbieter: 'Trade Republic' }),
+      2,
+    )
     expect(result.label).toBe('ETF – Trade Republic')
   })
 
   it('treats a whitespace-only Anbieter as missing', () => {
-    const result = applyDisambiguatingLabel(makeEtf({ anbieter: '   ' }), 3)
+    const result = applyDisambiguatingLabel('etf', makeEtf({ anbieter: '   ' }), 3)
     expect(result.label).toBe('ETF-Depot #3')
   })
 })

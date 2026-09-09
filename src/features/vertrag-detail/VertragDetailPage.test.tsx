@@ -89,20 +89,78 @@ describe('VertragDetailPage — combine-mode drill-in surface', () => {
     expect(status).not.toBeNull()
   })
 
-  it('"Angaben bearbeiten" deep-links Schritt 2 (Verträge / Produkte) (PR #344 R2 Codex CX3)', () => {
-    // The right-rail "Angaben bearbeiten" CTA on Vertrag-Detail sits next to
-    // the per-contract Vertragsdaten table. After the /eingaben split, Schritt
-    // 1 (/eingaben) shows only Person / Einkommen / Annahmen — the contract
-    // editor moved to Schritt 2 (/eingaben/produkte). The CTA must point at
-    // Schritt 2 so the link's intent ("edit this contract's numbers") opens
-    // the right surface, not the wrong page with no editor visible.
+  it('"Angaben bearbeiten" deep-links this contract\'s editor', () => {
+    // The right-rail CTA sits next to the per-contract Vertragsdaten table, so
+    // its intent is "edit this contract's numbers". Only the contract editor
+    // can do that — the product list on /eingaben/produkte cannot.
     const { bavId } = seedCombineWorkspaceWithBav()
     const { container } = render(
       <VertragDetailPage instanceId={bavId} navigate={() => {}} />,
     )
     const editLink = container.querySelector<HTMLAnchorElement>('.vertrag-metadata-edit')
     expect(editLink).not.toBeNull()
-    expect(editLink!.getAttribute('href')).toBe('/eingaben/produkte')
+    expect(editLink!.getAttribute('href')).toBe(`/vertrag/${bavId}/bearbeiten`)
+  })
+
+  it('labels an explicitly unknown field "Unbekannt", not "Standardwert"', () => {
+    const { workspace, bavId } = seedCombineWorkspaceWithBav()
+    workspace.baseline.assumptions.bav[0].inputStatus = { currentValueEUR: 'unknown' }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
+
+    const { container } = render(
+      <VertragDetailPage instanceId={bavId} navigate={() => {}} />,
+    )
+    const rows = Array.from(container.querySelectorAll('.vertrag-provenance-row'))
+    const capitalRow = rows.find((r) =>
+      r.textContent?.includes('Aktueller Vertragswert'),
+    )
+    expect(capitalRow?.textContent).toContain('Unbekannt')
+    expect(capitalRow?.textContent).not.toContain('Standardwert')
+  })
+
+  it('warns above the KPI strip when a core field is unknown, and links to the editor', () => {
+    const { workspace, bavId } = seedCombineWorkspaceWithBav()
+    workspace.baseline.assumptions.bav[0].inputStatus = { currentValueEUR: 'unknown' }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
+
+    const { container } = render(
+      <VertragDetailPage instanceId={bavId} navigate={() => {}} />,
+    )
+    const note = container.querySelector('.vertrag-missing-note')
+    expect(note).not.toBeNull()
+    expect(note!.textContent).toContain('Für diesen Vertrag fehlen Angaben')
+    expect(note!.textContent).toContain('Aktueller Vertragswert: unbekannt')
+    expect(note!.textContent).toContain('rechnen mit dem Modellwert')
+    const link = note!.querySelector<HTMLAnchorElement>('.vertrag-missing-note-link')
+    expect(link!.getAttribute('href')).toBe(`/vertrag/${bavId}/bearbeiten`)
+
+    // The note precedes the numbers it qualifies.
+    const strip = container.querySelector('.vertrag-kpi-strip')
+    expect(strip).not.toBeNull()
+    expect(note!.compareDocumentPosition(strip!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('names an unknown contribution in the note as well', () => {
+    const { workspace, bavId } = seedCombineWorkspaceWithBav()
+    workspace.baseline.assumptions.bav[0].inputStatus = {
+      monthlyGrossConversion: 'unknown',
+    }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(workspace))
+
+    const { container } = render(
+      <VertragDetailPage instanceId={bavId} navigate={() => {}} />,
+    )
+    expect(container.querySelector('.vertrag-missing-note')!.textContent).toContain(
+      'Bruttoumwandlung pro Monat: unbekannt',
+    )
+  })
+
+  it('shows no note when every core field is answered', () => {
+    const { bavId } = seedCombineWorkspaceWithBav()
+    const { container } = render(
+      <VertragDetailPage instanceId={bavId} navigate={() => {}} />,
+    )
+    expect(container.querySelector('.vertrag-missing-note')).toBeNull()
   })
 
   it('falls back to the empty state when :instanceId does not match a workspace instance', () => {

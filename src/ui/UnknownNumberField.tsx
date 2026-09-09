@@ -13,12 +13,13 @@ export interface UnknownNumberFieldProps {
   min?: number
   max?: number
   unit?: string
+  placeholder?: string
   disabled?: boolean
 }
 
 /** The parent retains the previous numeric value when status becomes unknown. */
 export function UnknownNumberField({
-  label, value, status, onChange, decimals, step = 1, min, max, unit, disabled,
+  label, value, status, onChange, decimals, step = 1, min, max, unit, disabled, placeholder,
 }: UnknownNumberFieldProps) {
   const id = useId()
   const [draft, setDraft] = useState<string | null>(null)
@@ -47,6 +48,7 @@ export function UnknownNumberField({
       <div className="unknown-number-field__input">
         <input
           id={id} type="number" inputMode="decimal" value={text}
+          placeholder={placeholder}
           step={step} min={min} max={max} disabled={disabled}
           aria-describedby={description} aria-invalid={outOfRange || undefined}
           onChange={(event) => {

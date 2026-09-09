@@ -14,7 +14,7 @@ export function OnboardingDisclosure({ title, children }: { title: string; child
 }
 
 export function OnboardingNumberField({
-  label, field, onValue, onUnknown, error, hint, step = 1,
+  label, field, onValue, onUnknown, error, hint, step = 1, hideAssumed = false, placeholder,
 }: {
   label: string
   field: Field<number>
@@ -23,6 +23,8 @@ export function OnboardingNumberField({
   error?: string
   hint?: string
   step?: number
+  hideAssumed?: boolean
+  placeholder?: string
 }) {
   const id = useId()
   return (
@@ -30,7 +32,8 @@ export function OnboardingNumberField({
       aria-invalid={!!error || undefined} aria-describedby={error ? `${id}-error` : undefined}>
       <UnknownNumberField
         label={label}
-        value={previousFieldValue(field) ?? null}
+        value={hideAssumed && field.status === 'assumed' ? null : previousFieldValue(field) ?? null}
+        placeholder={placeholder}
         status={field.status}
         step={step}
         onChange={(value, status) => {

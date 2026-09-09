@@ -51,3 +51,14 @@ Companion to `state-contract.md` §10 and `ui-journey-map.md` §5. Code observat
 - 2D: alternatives buttons temporarily route to `/eingaben/produkte`; flip to `ROUTES.alternativen` once the Phase 3 UI lands.
 - 2B-UI: removal undo cannot travel with navigation; Phase 4 derives the plan's `notification` from `portfolioState.lastUndo` (label + undo) in Calculator → PlanOverview so "Vorsorge entfernt · Rückgängig" appears on the plan after the redirect.
 - 2B-UI: reselecting the same product in the picker may retain the previous draft (minor; reset on product change in Phase 4).
+
+## Browser verification findings (lead, desktop 1280 + phone 390/320, dev server)
+
+1. BLOCKER (fixed separately): instance added on `/vorsorge/neu` not persisted; per-mount workspace state + effect persistence raced with navigation. Fix: shared module store + synchronous write-through.
+2. Fresh onboarding prefills 28 / 75.000 / Berufsstart 20 as "Angenommen". Decision: onboarding mode shows empty required fields (placeholders "z. B. 35"), commit rejects assumed core fields (age, income, career start when method = career). Edit mode keeps showing stored values.
+3. Fresh plan inherits `inflationRate: 0` from the compare defaults, so "In heutigen Euro" equals nominal. Decision: `createFreshOnboardingScenario` sets inflationRate 0.02 (assumed, shown in "Angaben & Annahmen prüfen"); PlanOverview says "In heutigen Euro" only when inflationRate > 0, otherwise "Ohne Inflationsannahme (nominal)".
+4. Accessibility: product choice buttons on `/vorsorge/neu` and source-row buttons on the plan have no accessible name; the comparison budget input's label is not associated (name reads "200").
+5. `ScenarioToolbar` segmented return-scenario buttons overflow at 320 px inside "Annahmen & Risiko".
+6. Dark mode: the app has no dark theme (no `prefers-color-scheme` rules anywhere); pre-existing, out of scope. New components use tokens only.
+7. Dev server returns 404 for direct loads of any non-root path (pre-existing; production Worker serves prerendered/fallback HTML). Direct-load checks run against `npm run preview` (wrangler).
+8. `/vergleich` for a plan-only user seeds its first setup from the plan projection (no V1 state yet). Acceptable: it is a default, never an overwrite; the explicit seed button re-copies on demand.

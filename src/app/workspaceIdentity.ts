@@ -25,7 +25,72 @@ import type {
   InstanceCommon,
   RiesterInstance,
 } from '../domain/instances'
-import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
+import {
+  INVENTORY_PRODUCT_REGISTRY,
+  type MultiInstanceProductId,
+} from '../features/inventory/inventoryProductRegistry'
+import { getProductMeta } from '../engine/productRegistry'
+
+// ---------------------------------------------------------------------------
+// Default instance labels
+// ---------------------------------------------------------------------------
+
+/**
+ * The plain product name a contract carries when the user typed neither a name
+ * nor an Anbieter — the same wording the product picker shows
+ * (`PRODUCT_REGISTRY` metadata label), so "ETF-Depot" in the picker stays
+ * "ETF-Depot" on the plan.
+ */
+export function productBaseLabel(productId: MultiInstanceProductId): string {
+  return (
+    getProductMeta(productId)?.label ?? INVENTORY_PRODUCT_REGISTRY[productId].displayName
+  )
+}
+
+/**
+ * The default label for the `n`-th contract of a product.
+ *
+ * The first one is the plain product name; a second contract of the same
+ * product gets " #2" so the two are distinguishable. A provider name always
+ * wins over the counter — "ETF – Trade Republic" needs no number.
+ *
+ * Never produces "#1": that suffix reads as a numbering scheme the user did not
+ * ask for while there is nothing to disambiguate.
+ */
+export function defaultInstanceLabel(
+  productId: MultiInstanceProductId,
+  n: number,
+  anbieter?: string,
+): string {
+  const provider = anbieter?.trim()
+  if (provider) return INVENTORY_PRODUCT_REGISTRY[productId].labelFallback(n, provider)
+  const base = productBaseLabel(productId)
+  return n > 1 ? `${base} #${n}` : base
+}
+
+/**
+ * `true` when the label looks generated rather than typed — the plain product
+ * name, the same name with a "#N" suffix, or the legacy registry fallback
+ * ("ETF #2"). Only such labels may be renumbered; anything the user typed is
+ * left alone.
+ */
+export function isGeneratedInstanceLabel(
+  productId: MultiInstanceProductId,
+  label: string,
+): boolean {
+  const trimmed = label.trim()
+  if (trimmed === '') return true
+  const legacyBase = INVENTORY_PRODUCT_REGISTRY[productId]
+    .labelFallback(1)
+    .replace(/\s*#1$/, '')
+  for (const base of [productBaseLabel(productId), legacyBase]) {
+    if (trimmed === base) return true
+    if (trimmed.startsWith(`${base} #`) && /^#\d+$/.test(trimmed.slice(base.length + 1))) {
+      return true
+    }
+  }
+  return false
+}
 
 /** Every per-product instance-array key on `WorkspaceAssumptionsV2`. */
 const INSTANCE_ARRAY_KEYS = Object.values(INVENTORY_PRODUCT_REGISTRY).map(
@@ -126,7 +191,13 @@ export function addInstanceToWorkspace(
   const wsKey = entry.wsKey as keyof WorkspaceAssumptionsV2
   const currentArray = wsa[wsKey] as unknown[]
   const n = currentArray.length + 1
-  let newInst = entry.createDefault(CURRENT_YEAR, n, newInstanceId)
+  // The registry default labels every instance "ETF #n" — including the first.
+  // One contract of a product is named after the product; the counter starts at
+  // the second one.
+  let newInst = {
+    ...entry.createDefault(CURRENT_YEAR, n, newInstanceId),
+    label: defaultInstanceLabel(productId, n),
+  }
   if (productId === 'riester') {
     const riester = newInst as RiesterInstance
     newInst = {

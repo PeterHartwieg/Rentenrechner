@@ -40,7 +40,7 @@ import type { InputStatus, InputStatusMap } from '../../domain/inputStatus'
 import type { Workspace } from '../../domain/workspace'
 import { resolveInputStatus, inputStatusToEvidenceState } from '../results/provenanceHelpers'
 import { CONTRIBUTION_FIELD_BY_PRODUCT } from '../../app/resultReadiness'
-import { newInstanceId } from '../../app/workspaceIdentity'
+import { defaultInstanceLabel, newInstanceId } from '../../app/workspaceIdentity'
 import {
   INVENTORY_PRODUCT_REGISTRY,
   type MultiInstanceProductId,
@@ -968,6 +968,11 @@ export function newDraft(
   const currentYear = context.currentYear ?? new Date().getFullYear()
   const entry = INVENTORY_PRODUCT_REGISTRY[productId]
   const base = entry.createDefault(currentYear, 1, () => '') as unknown as InstanceLike
+  // The registry default carries a generated name ("ETF #1"). A brand-new
+  // contract has no name until the user types one — otherwise the generated
+  // string looks like the user's own input and survives into the workspace as
+  // "ETF #1", which then gets numbered a second time on add.
+  setAtPath(base, 'label', '')
 
   if (context.age !== undefined && getAtPath(base, 'eligibility') !== undefined) {
     setAtPath(base, 'eligibility.ageAtContractStart', context.age)
@@ -1236,7 +1241,6 @@ export function draftToNewInstance(
   makeId: (productId: string) => string = newInstanceId,
 ): Record<string, unknown> {
   const { patch, inputStatus, evidenceMap } = draftToInstancePatch(draft)
-  const entry = INVENTORY_PRODUCT_REGISTRY[draft.productId]
   const instanceId = makeId(draft.productId)
   const labelValue = draftFieldValue(draft, 'label')
   const anbieterValue = draftFieldValue(draft, 'anbieter')
@@ -1244,7 +1248,7 @@ export function draftToNewInstance(
   const label =
     typeof labelValue === 'string' && labelValue.trim() !== ''
       ? labelValue
-      : entry.labelFallback(1, anbieter)
+      : defaultInstanceLabel(draft.productId, 1, anbieter)
 
   return {
     ...draft.base,

@@ -71,6 +71,23 @@
   color: var(--rw-ink-soft);
 }
 
+.vertrag-missing-note {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--rw-accent);
+  background: var(--rw-accent-bg);
+  font-family: var(--rw-font-sans);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--rw-ink);
+}
+
+.vertrag-missing-note-link {
+  color: var(--rw-accent);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
 .vertrag-backline {
   margin-top: 16px;
   display: flex;

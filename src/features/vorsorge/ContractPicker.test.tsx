@@ -22,7 +22,7 @@ describe('contract picker container', () => {
     view.unmount()
     for (const { metadata } of PRODUCT_REGISTRY) {
       const current = render(<VorsorgeNeuPage navigate={navigate} />)
-      fireEvent.click(screen.getByRole('button', { name: new RegExp(metadata.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }))
+      fireEvent.click(screen.getByRole('button', { name: metadata.label }))
       expect(navigate).toHaveBeenLastCalledWith(ROUTES.vorsorgeNeu, `?produkt=${metadata.id}`)
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(metadata.label)
       current.unmount()

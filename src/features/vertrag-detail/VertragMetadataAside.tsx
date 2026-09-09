@@ -55,19 +55,16 @@ export function VertragMetadataAside({ instance, productId, navigate }: Props) {
           </tbody>
         </table>
 
-        {/* PR #344 R2 (Codex CX3): retarget to Schritt 2. The Vertrag-Detail
-            right-rail "Angaben bearbeiten" link sits next to the per-contract
-            Vertragsdaten table — the user's intent is to edit the contract,
-            and after the /eingaben split the contract editor lives on
-            /eingaben/produkte. Schritt 1 (/eingaben) only carries Person /
-            Einkommen / Annahmen, so the old target showed the wrong page. */}
+        {/* The link next to the Vertragsdaten table means "edit this
+            contract", so it goes to this contract's editor — not to the
+            product list on /eingaben, which cannot change these values. */}
         <a
           className="vertrag-metadata-edit"
-          href={routeToPath(ROUTES.eingabenProdukte)}
+          href={routeToPath(ROUTES.vertragBearbeiten(instance.instanceId))}
           onClick={(event) => {
             if (!shouldUseSpaNavigation(event)) return
             event.preventDefault()
-            navigate(ROUTES.eingabenProdukte)
+            navigate(ROUTES.vertragBearbeiten(instance.instanceId))
           }}
         >
           Angaben bearbeiten

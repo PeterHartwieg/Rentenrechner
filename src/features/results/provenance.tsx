@@ -40,6 +40,15 @@ const PROV_LABELS: Record<ProvKind, string> = {
   unknown: 'Unbekannt',
 }
 
+/**
+ * The pill for a `ProvKind` that a caller already resolved — the only way to
+ * render `'unknown'`, which the boolean props below cannot express. Surfaces
+ * that read `InputStatus` (via `inputStatusToProvKind`) use this one.
+ */
+export function ProvKindLabel({ kind }: { kind: ProvKind }) {
+  return <span className={`pec-prov pec-prov--${kind}`}>{PROV_LABELS[kind]}</span>
+}
+
 export function ProvLabel({
   isModified,
   isModel = false,
@@ -56,8 +65,7 @@ export function ProvLabel({
       : isModel
         ? 'model'
         : 'default'
-  const label = PROV_LABELS[kind]
-  return <span className={`pec-prov pec-prov--${kind}`}>{label}</span>
+  return <ProvKindLabel kind={kind} />
 }
 
 interface FieldWithProvProps {

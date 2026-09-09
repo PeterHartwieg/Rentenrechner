@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { ROUTES } from '../../app/useRoute'
 import { productAvailabilityCopy } from '../../content/productAvailabilityCopy'
 import type { ProductId } from '../../domain'
@@ -14,6 +15,7 @@ const hints: Partial<Record<ProductId, string>> = {
 }
 
 export function ContractPicker(props: ContractPickerProps & { retirementEndAge: number }) {
+  const id = useId()
   const availability = productAvailabilityCopy.altersvorsorgedepot
   const avdHint = typeof availability === 'function' ? undefined : availability.note ?? availability.label
   if (props.selectedProductId && props.selectedProduct) {
@@ -37,8 +39,8 @@ export function ContractPicker(props: ContractPickerProps & { retirementEndAge: 
       <div className="contract-picker__choices">
         {props.availableProducts.map((product) => (
           <button key={product.id} type="button" className="contract-picker__choice"
-            onClick={() => props.onSelectProduct(product.id)}>
-            <strong>{product.label}</strong>
+            aria-labelledby={`${id}-${product.id}`} onClick={() => props.onSelectProduct(product.id)}>
+            <strong id={`${id}-${product.id}`}>{product.label}</strong>
             <span>{product.id === 'altersvorsorgedepot' ? avdHint : hints[product.id]}</span>
             <span className="contract-picker__arrow" aria-hidden="true">→</span>
           </button>

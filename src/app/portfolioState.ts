@@ -42,6 +42,8 @@ import {
   newInstanceId,
   newScenarioId,
   deepCloneScenario,
+  defaultInstanceLabel,
+  isGeneratedInstanceLabel,
 } from './workspaceIdentity'
 import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
 import { scenarioDiff, applyDiff } from './scenarioDiff'
@@ -61,14 +63,24 @@ export type AnyInstance =
   | RiesterInstance
 
 /**
- * When the user did not enter a provider name, the draft converter produces a
- * generic label (e.g. "ETF-Depot", "bAV", "Riester-Rente") that would repeat
- * for every blank-provider add. Append a "#N" suffix where N is the count
- * after the new instance lands, matching addInstanceToWorkspace's behaviour.
+ * Give a freshly added contract the label it should carry once it lands in the
+ * workspace.
+ *
+ * The rule (browser-verification finding 1, which produced "ETF #1 #1"):
+ *
+ *  - a provider name wins — "ETF – Trade Republic" is never numbered;
+ *  - a label the user typed is never rewritten;
+ *  - a generated label is the plain product name for the only contract of that
+ *    product, and gains " #N" from the second one on.
  */
-export function applyDisambiguatingLabel<T extends AnyInstance>(instance: T, count: number): T {
+export function applyDisambiguatingLabel<T extends AnyInstance>(
+  productId: MultiInstanceProductId,
+  instance: T,
+  count: number,
+): T {
   if (instance.anbieter && instance.anbieter.trim() !== '') return instance
-  return { ...instance, label: `${instance.label} #${count}` }
+  if (!isGeneratedInstanceLabel(productId, instance.label ?? '')) return instance
+  return { ...instance, label: defaultInstanceLabel(productId, count) }
 }
 
 // Re-export so existing callers (tests, recommender, ContractDecisionMenu, etc.)
@@ -742,6 +754,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
           ? instance.instanceId
           : newInstanceId(productId)
       const labelled = applyDisambiguatingLabel(
+        productId,
         { ...instance, instanceId },
         currentArray.length + 1,
       )

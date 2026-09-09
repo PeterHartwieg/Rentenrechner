@@ -470,7 +470,7 @@ export function useAlternativenFlow({
         decision: contract?.allowedDecisions.includes('contribution')
           ? 'contribution'
           : (contract?.allowedDecisions[0] ?? 'contribution'),
-        newContribution: contract?.contributionMonthly ?? null,
+        newContribution: contract?.contributionStatus === 'unknown' ? null : contract?.contributionMonthly ?? null,
       })
     },
     [contracts, invalidatePreview],

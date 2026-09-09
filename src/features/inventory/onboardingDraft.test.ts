@@ -23,6 +23,8 @@ import {
   unknownField,
   validatePensionDraft,
   validateProfileDraft,
+  FRESH_ONBOARDING_INFLATION_RATE,
+  REQUIRE_ENTERED_MESSAGE,
   type PensionDraft,
   type ProfileDraft,
 } from './onboardingDraft'
@@ -627,7 +629,8 @@ describe('adapters — method semantics', () => {
 describe('createFreshOnboardingScenario', () => {
   it('marks nothing as entered and carries no contracts', () => {
     const scenario = createFreshOnboardingScenario()
-    expect(scenario.assumptions.inputStatus).toBeUndefined()
+    // The only seeded status is the inflation assumption — never an answer.
+    expect(scenario.assumptions.inputStatus).toEqual({ 'assumptions.inflationRate': 'assumed' })
     expect(scenario.assumptions.bav).toEqual([])
     expect(scenario.assumptions.etf).toEqual([])
     expect(scenario.assumptions.visibleProducts).toEqual([])
@@ -648,5 +651,153 @@ describe('createFreshOnboardingScenario', () => {
     expect(b.profile.childBirthYears).toEqual([])
     a.assumptions.statutoryPension.currentEntgeltpunkte = 99
     expect(b.assumptions.statutoryPension.currentEntgeltpunkte).not.toBe(99)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// requireEntered — onboarding mode rejects untouched defaults
+// ---------------------------------------------------------------------------
+
+describe('requireEntered', () => {
+  it('rejects an assumed age and income, and clears once they are typed', () => {
+    const { profile } = draftsOf(baseScenario())
+    expect(profile.age.status).toBe('assumed')
+
+    const errors = validateProfileDraft(profile, { requireEntered: true })
+    expect(errors.age).toBe(REQUIRE_ENTERED_MESSAGE)
+    expect(errors.grossSalaryYear).toBe(REQUIRE_ENTERED_MESSAGE)
+
+    const answered = setDraftFieldValue(
+      setDraftFieldValue(profile, 'age', 35),
+      'grossSalaryYear',
+      58_000,
+    )
+    expect(validateProfileDraft(answered, { requireEntered: true })).toEqual({})
+  })
+
+  it('leaves edit mode untouched — the same assumed draft still validates', () => {
+    const { profile } = draftsOf(baseScenario())
+    expect(validateProfileDraft(profile)).toEqual({})
+    expect(validateProfileDraft(profile, { requireEntered: false })).toEqual({})
+  })
+
+  it('keeps the more specific range message instead of "Bitte eintragen."', () => {
+    const { profile } = draftsOf(baseScenario())
+    const tooYoung = setDraftFieldValue(profile, 'age', 12)
+    expect(validateProfileDraft(tooYoung, { requireEntered: true }).age).not.toBe(
+      REQUIRE_ENTERED_MESSAGE,
+    )
+  })
+
+  it('does not require the optional profile fields', () => {
+    const { profile } = draftsOf(baseScenario())
+    const answered = setDraftFieldValue(
+      setDraftFieldValue(profile, 'age', 35),
+      'grossSalaryYear',
+      58_000,
+    )
+    const errors = validateProfileDraft(answered, { requireEntered: true })
+    expect(errors.retirementAge).toBeUndefined()
+    expect(errors.desiredNetMonthlyPension).toBeUndefined()
+    expect(errors.pkvMonthlyPremium).toBeUndefined()
+  })
+
+  it('rejects an explicit unknown on a required field too', () => {
+    const { profile } = draftsOf(baseScenario())
+    const declined = markFieldUnknown(setDraftFieldValue(profile, 'age', 35), 'grossSalaryYear')
+    expect(validateProfileDraft(declined, { requireEntered: true }).grossSalaryYear).toBe(
+      REQUIRE_ENTERED_MESSAGE,
+    )
+  })
+
+  it('rejects the assumed career start, per method', () => {
+    const scenario = baseScenario()
+    const profile = setDraftFieldValue(profileDraftFromScenario(scenario), 'age', 35)
+    const pension: PensionDraft = { ...pensionDraftFromScenario(scenario), method: 'career' }
+    expect(pension.careerStartAge.status).toBe('assumed')
+
+    expect(validatePensionDraft(pension, profile, { requireEntered: true }).careerStartAge).toBe(
+      REQUIRE_ENTERED_MESSAGE,
+    )
+    // Edit mode keeps accepting the stored default.
+    expect(validatePensionDraft(pension, profile).careerStartAge).toBeUndefined()
+
+    const typed = setDraftFieldValue(pension, 'careerStartAge', 22)
+    expect(validatePensionDraft(typed, profile, { requireEntered: true })).toEqual({})
+    // Pauses are optional even in onboarding mode.
+    expect(typed.pauseYears.status).toBe('assumed')
+  })
+
+  it('requires the active method\'s own input for years, points and gross', () => {
+    const scenario = baseScenario()
+    const profile = setDraftFieldValue(profileDraftFromScenario(scenario), 'age', 40)
+    const base = pensionDraftFromScenario(scenario)
+
+    const years: PensionDraft = { ...base, method: 'years' }
+    expect(validatePensionDraft(years, profile, { requireEntered: true }).contributionYears).toBe(
+      REQUIRE_ENTERED_MESSAGE,
+    )
+
+    const points: PensionDraft = { ...base, method: 'points' }
+    expect(validatePensionDraft(points, profile, { requireEntered: true }).entgeltpunkte).toBe(
+      REQUIRE_ENTERED_MESSAGE,
+    )
+
+    const document: PensionDraft = { ...base, method: 'document' }
+    expect(validatePensionDraft(document, profile, { requireEntered: true }).monthlyGrossEUR).toBe(
+      REQUIRE_ENTERED_MESSAGE,
+    )
+    // A figure read off the Renteninformation is an answer, not a default.
+    const fromDocument = setDraftFieldValue(document, 'monthlyGrossEUR', 1_450, 'document')
+    expect(validatePensionDraft(fromDocument, profile, { requireEntered: true })).toEqual({})
+  })
+
+  it('never requires anything for "Später ergänzen" or "keine Pflichtversorgung"', () => {
+    const scenario = baseScenario()
+    const profile = setDraftFieldValue(profileDraftFromScenario(scenario), 'age', 40)
+    const base = pensionDraftFromScenario(scenario)
+
+    const skipped: PensionDraft = { ...base, method: 'skipped' }
+    expect(validatePensionDraft(skipped, profile, { requireEntered: true })).toEqual({})
+
+    const none: PensionDraft = { ...base, system: 'none', method: 'points' }
+    expect(validatePensionDraft(none, profile, { requireEntered: true })).toEqual({})
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Fresh-scenario inflation assumption
+// ---------------------------------------------------------------------------
+
+describe('fresh-scenario inflation assumption', () => {
+  it('seeds 2 % and marks it assumed', () => {
+    const scenario = createFreshOnboardingScenario()
+    expect(FRESH_ONBOARDING_INFLATION_RATE).toBe(0.02)
+    expect(scenario.assumptions.inflationRate).toBe(0.02)
+    expect(scenario.assumptions.inputStatus?.['assumptions.inflationRate']).toBe('assumed')
+  })
+
+  it('committing does not touch the stored inflation rate', () => {
+    const scenario = baseScenario()
+    // A user who already set their own inflation assumption.
+    const stored: Scenario = {
+      ...scenario,
+      assumptions: {
+        ...scenario.assumptions,
+        inflationRate: 0.035,
+        inputStatus: { ...scenario.assumptions.inputStatus, 'assumptions.inflationRate': 'entered' },
+      },
+    }
+    const { profile, pension } = draftsOf(stored)
+    const next = applyOnboardingToScenario(
+      stored,
+      setDraftFieldValue(profile, 'age', 36),
+      pension,
+      de2026Rules,
+    )
+
+    expect(next.assumptions.inflationRate).toBe(0.035)
+    expect(next.assumptions.inputStatus?.['assumptions.inflationRate']).toBe('entered')
+    expect(next.profile.age).toBe(36)
   })
 })

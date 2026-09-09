@@ -52,6 +52,16 @@ describe('sanitizeInputStatusMap', () => {
     const all = Object.fromEntries(RESERVED_INPUT_STATUS_KEYS.map((k) => [k, 'entered']))
     expect(sanitizeInputStatusMap(all, { restrictToReservedKeys: true })).toEqual(all)
   })
+
+  it('keeps the inflation assumption a fresh plan seeds', () => {
+    expect(RESERVED_INPUT_STATUS_KEYS).toContain('assumptions.inflationRate')
+    expect(
+      sanitizeInputStatusMap(
+        { 'assumptions.inflationRate': 'assumed' },
+        { restrictToReservedKeys: true },
+      ),
+    ).toEqual({ 'assumptions.inflationRate': 'assumed' })
+  })
 })
 
 describe('isInputStatus', () => {

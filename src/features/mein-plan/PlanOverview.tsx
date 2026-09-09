@@ -38,6 +38,7 @@ export interface PlanOverviewProps {
 
 export function PlanOverview(props: PlanOverviewProps) {
   const { summary, retirementAge, hasStarted, hasContracts, moneyBasis, assumptions, notification } = props
+  const hasInflation = assumptions.inflationRate > 0
   const canShow = !!summary?.readiness.canShowHouseholdTotal
     && summary.readiness.status !== 'error' && summary.readiness.status !== 'incomplete'
   const total = summary && (moneyBasis === 'real' ? summary.netMonthlyTotalReal : summary.netMonthlyTotalNominal)
@@ -60,7 +61,7 @@ export function PlanOverview(props: PlanOverviewProps) {
             <p className="plan-overview__kicker">{canShow ? 'Geschätzt aus deinen Angaben' : summary?.readiness.status === 'error' ? 'Berechnung nicht möglich' : 'Noch offen'}</p>
             {canShow && total !== null && Number.isFinite(total) && <p className="plan-overview__number">{formatCurrency(total)}</p>}
             <p>Gesamt · netto pro Monat ab {retirementAge}</p>
-            <p className="plan-overview__muted">{moneyBasis === 'real' ? 'In heutigen Euro' : 'Zum Rentenbeginn (nominal)'}</p>
+            <p className="plan-overview__muted">{!hasInflation ? 'Ohne Inflationsannahme (nominal)' : moneyBasis === 'real' ? 'In heutigen Euro' : 'Zum Rentenbeginn (nominal)'}</p>
             <p className="plan-overview__muted">Deine erfassten Renten nach Steuern und Krankenversicherung</p>
           </div>
           {gap && <aside className="plan-overview__target">
@@ -91,7 +92,7 @@ export function PlanOverview(props: PlanOverviewProps) {
           {summary?.rows.map((row) => {
             const amount = moneyBasis === 'real' ? row.netMonthlyReal : row.netMonthlyNominal
             return <li key={row.key}>
-              <button type="button" className="plan-overview__source" onClick={() => props.onEditSource(row)}>
+              <button type="button" className="plan-overview__source" aria-label={`${row.label} bearbeiten`} onClick={() => props.onEditSource(row)}>
                 <span><strong>{row.label}</strong><small><PlanDurationText duration={row.duration} /></small><small>{row.status === 'assumed' ? 'Angenommen' : formatInputStatusForExport(row.status)}</small></span>
                 <span className="plan-overview__amount">{canShow && row.status !== 'unknown' && Number.isFinite(amount) ? formatCurrency(amount) : '—'}</span>
                 <span aria-hidden="true">›</span>
@@ -115,7 +116,7 @@ export function PlanOverview(props: PlanOverviewProps) {
           <p>{assumptions.age} Jahre · {formatCurrency(assumptions.grossSalaryYear)} Jahreseinkommen vor Steuern · Rente ab {assumptions.retirementAge}.</p>
           <p>Rentenangabe: {assumptions.pensionMethodLabel}</p>
           <p>Inflation: {formatPercent(assumptions.inflationRate)} pro Jahr</p>
-          <button type="button" className="plan-overview__link" onClick={props.onToggleMoneyBasis} aria-pressed={moneyBasis === 'nominal'}>Beträge zum Rentenbeginn (nominal) anzeigen</button>
+          {hasInflation && <button type="button" className="plan-overview__link" onClick={props.onToggleMoneyBasis} aria-pressed={moneyBasis === 'nominal'}>Beträge zum Rentenbeginn (nominal) anzeigen</button>}
           <div className="plan-overview__actions">
             <button type="button" className="plan-overview__secondary" onClick={props.onOpenMethode}>Weitere Annahmen &amp; Rechenweg</button>
             <button type="button" className="plan-overview__secondary" onClick={props.onOpenDuration}>Auszahlungen im Alter</button>

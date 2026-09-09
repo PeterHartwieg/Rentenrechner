@@ -70,9 +70,10 @@ describe('PlanOverview', () => {
     expect(screen.getByText('Geschätzt aus deinen Angaben')).toBeVisible()
     expect(screen.getByText(money(1800))).toBeVisible()
     expect(screen.getByRole('list', { name: 'Verwendete Annahmen' })).toHaveTextContent(assumption.label)
-    const pension = screen.getByRole('button', { name: /Gesetzliche Rente/ })
+    const pension = screen.getByRole('button', { name: 'Gesetzliche Rente bearbeiten' })
     expect(pension).toHaveTextContent('Lebenslang')
     expect(pension).toHaveTextContent('lt. Beleg')
+    expect(screen.getByRole('button', { name: 'Mein Depot bearbeiten' })).toBeVisible()
     fireEvent.click(pension)
     expect(p.onEditSource).toHaveBeenCalledWith(summary.rows[0])
     fireEvent.click(screen.getByRole('button', { name: 'Dauer ansehen →' }))
@@ -102,6 +103,7 @@ describe('PlanOverview', () => {
     const { rerender } = render(<PlanOverview {...p} />)
     fireEvent.click(screen.getByText('Angaben & Annahmen prüfen'))
     const toggle = screen.getByRole('button', { name: 'Beträge zum Rentenbeginn (nominal) anzeigen' })
+    expect(screen.getByText('In heutigen Euro')).toBeVisible()
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(toggle)
     expect(p.onToggleMoneyBasis).toHaveBeenCalledOnce()
@@ -110,6 +112,15 @@ describe('PlanOverview', () => {
     expect(screen.getByText(money(2500))).toBeVisible()
     expect(screen.getByText(money(500))).toBeVisible()
     expect(screen.getByText('Zum Rentenbeginn (nominal)')).toBeVisible()
+  })
+
+  it.each(['real', 'nominal'] as const)('labels zero inflation as nominal and hides the toggle for %s', (moneyBasis) => {
+    const p = props({ moneyBasis })
+    render(<PlanOverview {...p} assumptions={{ ...p.assumptions, inflationRate: 0 }} />)
+    expect(screen.getByText('Ohne Inflationsannahme (nominal)')).toBeVisible()
+    expect(screen.queryByText('In heutigen Euro')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Angaben & Annahmen prüfen'))
+    expect(screen.queryByRole('button', { name: 'Beträge zum Rentenbeginn (nominal) anzeigen' })).not.toBeInTheDocument()
   })
 
   it('keeps deeper sections collapsed and exposes notification undo', () => {

@@ -101,7 +101,7 @@ describe('selectResultReadiness', () => {
     expect(readiness.status).toBe('available')
   })
 
-  it('blocks on an unknown contract value and links to that contract', () => {
+  it('blocks on an unknown contract value and links to that contract editor', () => {
     const ws = makeWorkspace()
     const inst = ws.baseline.assumptions.bav[0]
     inst.inputStatus = { currentValueEUR: 'unknown' }
@@ -109,8 +109,24 @@ describe('selectResultReadiness', () => {
     const reason = readiness.blocking.find((r) => r.code === 'instance-capital-unknown')
     expect(reason).toBeDefined()
     expect(reason?.instanceId).toBe(inst.instanceId)
-    expect(reason?.target.route).toEqual({ kind: 'vertrag', instanceId: inst.instanceId })
+    expect(reason?.target.route).toEqual({
+      kind: 'vertrag-bearbeiten',
+      instanceId: inst.instanceId,
+    })
     expect(readiness.canShowHouseholdTotal).toBe(false)
+  })
+
+  it('links an unknown contribution to the contract editor as well', () => {
+    const ws = makeWorkspace()
+    const inst = ws.baseline.assumptions.bav[0]
+    inst.inputStatus = { monthlyGrossConversion: 'unknown' }
+    const reason = selectResultReadiness(ws, bundleFor(ws)).blocking.find(
+      (r) => r.code === 'instance-contribution-unknown',
+    )
+    expect(reason?.target.route).toEqual({
+      kind: 'vertrag-bearbeiten',
+      instanceId: inst.instanceId,
+    })
   })
 
   it('blocks on an unknown PKV premium only for privately insured users', () => {

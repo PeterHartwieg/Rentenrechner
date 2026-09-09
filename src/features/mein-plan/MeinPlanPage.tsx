@@ -234,8 +234,8 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
           <summary>Ich weiß noch keinen Betrag</summary>
           <p>Deine heutigen monatlichen Ausgaben können ein Startpunkt sein. Du kannst die Wunschrente auch einfach weglassen.</p>
         </details>
-        <NumberField label="Deine Wunschrente (€)" value={Number(targetDraft)}
-          step={1} decimals={2} onChange={setTargetDraft} />
+        <NumberField label="Deine Wunschrente (€)" value={targetDraft === '' ? null : Number(targetDraft)}
+          step={1} decimals={2} allowEmpty onChange={(value) => setTargetDraft(value === null ? '' : String(value))} />
         {targetDraft !== '' && (!Number.isFinite(Number(targetDraft)) || Number(targetDraft) < 0)
           && <p role="alert">Bitte gib einen Betrag ab 0 € ein.</p>}
         <div className="plan-overview__actions">

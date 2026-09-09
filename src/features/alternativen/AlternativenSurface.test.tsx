@@ -113,6 +113,31 @@ describe('AlternativenSurface', () => {
     expect(screen.getByRole('heading', { name: 'Vorher und nachher' })).toHaveFocus()
   })
 
+  it('requires a visibly labelled numeric contribution without unknown or provenance controls', () => {
+    const props = host()
+    render(<InteractiveHost initial={props} />)
+    const input = screen.getByRole('spinbutton', { name: 'Neuer monatlicher Beitrag in €' })
+    expect(screen.getByText('Neuer monatlicher Beitrag in €')).toBeVisible()
+    expect(input).toBeRequired()
+    expect(input).toHaveAttribute('min', '0')
+    expect(input).toHaveAttribute('step', '1')
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByText('Weiß ich nicht')).not.toBeInTheDocument()
+    expect(screen.queryByText('Von dir angegeben')).not.toBeInTheDocument()
+
+    fireEvent.change(input, { target: { value: '' } })
+    fireEvent.blur(input)
+    expect(input).toHaveValue(null)
+    expect(props.setContribution).toHaveBeenLastCalledWith(null)
+    fireEvent.click(screen.getByRole('button', { name: 'Vorher und nachher ansehen' }))
+    expect(props.runPreview).not.toHaveBeenCalled()
+
+    fireEvent.change(input, { target: { value: '-1' } })
+    expect(input).toBeInvalid()
+    fireEvent.click(screen.getByRole('button', { name: 'Vorher und nachher ansehen' }))
+    expect(props.runPreview).not.toHaveBeenCalled()
+  })
+
   it('renders real totals, signed delta, source contributions and the snapshot retirement age', () => {
     render(<AlternativenSurface {...host({ preview })} />)
     expect(screen.getByText('1.800 €')).toBeInTheDocument()
@@ -208,17 +233,21 @@ describe('AlternativenSurface', () => {
     expect(props.runPreview).toHaveBeenCalledOnce()
   })
 
-  it('keeps unknown contribution blank, supports entered zero, and labels bAV gross contributions', () => {
+  it.each([null, 200])('keeps an unknown source contribution (%s) editable, supports zero, and labels bAV gross contributions', (contributionMonthly) => {
     const props = host()
-    props.contracts[0] = { ...props.contracts[0], productId: 'bav', contributionKind: 'grossConversion', contributionMonthly: null, allowedDecisions: ['contribution', 'paid_up'] }
+    props.contracts[0] = { ...props.contracts[0], productId: 'bav', contributionKind: 'grossConversion', contributionMonthly, contributionStatus: 'unknown', allowedDecisions: ['contribution', 'paid_up'] }
     props.draft.newContribution = null
     render(<InteractiveHost initial={props} />)
     const input = screen.getByRole('spinbutton', { name: 'Neuer monatlicher Bruttobeitrag zur bAV in €' })
     expect(input).toHaveValue(null)
+    expect(input).toBeEnabled()
+    expect(input).toBeRequired()
     expect(screen.getByText('Bisher: unbekannt')).toBeInTheDocument()
     fireEvent.change(input, { target: { value: '0' } })
     expect(input).toHaveValue(0)
     expect(props.setContribution).toHaveBeenCalledWith(0)
+    expect(input).toBeValid()
+    expect(screen.getByText('Bisher: unbekannt')).toBeInTheDocument()
     fireEvent.change(screen.getByRole('combobox', { name: 'Änderung' }), { target: { value: 'paid_up' } })
     expect(props.setDecision).toHaveBeenCalledWith('paid_up')
     expect(props.invalidatePreview).toHaveBeenCalledTimes(2)

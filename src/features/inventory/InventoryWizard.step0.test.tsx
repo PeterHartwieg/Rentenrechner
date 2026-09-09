@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { InventoryWizard, type InventoryWizardProps } from './InventoryWizard'
 import { createFreshOnboardingScenario } from './onboardingDraft'
 import { hasStartedPlan } from '../../app/portfolioState'
@@ -37,8 +37,39 @@ describe('two-step onboarding', () => {
     expect(hasStartedPlan({ ...defaultWorkspace, baseline: result })).toBe(true)
   })
 
+  it('requires fresh profile answers and a career start before completing onboarding', () => {
+    const props = setup()
+    expect(screen.getByPlaceholderText('z. B. 35')).toHaveValue(null)
+    expect(screen.getByPlaceholderText('z. B. 60000')).toHaveValue(null)
+    next()
+    expect(screen.getByRole('alert')).toHaveTextContent('Bitte eintragen.')
+    for (const label of ['Dein Alter', 'Jahreseinkommen brutto (€)']) {
+      expect(within(screen.getByRole('group', { name: `Angabe: ${label}` })).getByText('Bitte eintragen.')).toBeVisible()
+    }
+    expect(screen.queryByTestId('onboarding-pension-step')).not.toBeInTheDocument()
+    expect(props.onComplete).not.toHaveBeenCalled()
+    change('Dein Alter', '35')
+    change('Jahreseinkommen brutto (€)', '60000')
+    next()
+    expect(screen.getByPlaceholderText('z. B. 22')).toHaveValue(null)
+    complete()
+    expect(screen.getByRole('alert')).toHaveTextContent('Bitte eintragen.')
+    expect(props.onComplete).not.toHaveBeenCalled()
+    change('Mit welchem Alter hast du angefangen zu arbeiten?', '22')
+    complete()
+    expect(props.onComplete).toHaveBeenCalledOnce()
+  })
+
+  it('shows stored assumed values in edit mode', () => {
+    const { scenario } = setup({ mode: 'edit' })
+    expect(screen.getByLabelText('Dein Alter')).toHaveValue(scenario.profile.age)
+    expect(screen.getByLabelText('Jahreseinkommen brutto (€)')).toHaveValue(scenario.profile.grossSalaryYear)
+  })
+
   it('skipped pension keeps engine values and marks the pension inputs unknown', () => {
     const props = setup()
+    change('Dein Alter', '35')
+    change('Jahreseinkommen brutto (€)', '60000')
     next()
     fireEvent.click(screen.getByLabelText('Später ergänzen'))
     expect(screen.getByText(/Die Gesamtrente bleibt offen/)).toBeDefined()
@@ -51,6 +82,8 @@ describe('two-step onboarding', () => {
 
   it('saves an unknown PKV premium without replacing its engine value with zero', () => {
     const props = setup()
+    change('Dein Alter', '35')
+    change('Jahreseinkommen brutto (€)', '60000')
     change('Krankenversicherung', 'pkv')
     fireEvent.click(screen.getByLabelText('Private Krankenversicherung (€/Monat): Weiß ich nicht'))
     fireEvent.click(screen.getByLabelText('Private Pflegeversicherung (€/Monat): Weiß ich nicht'))
@@ -66,6 +99,7 @@ describe('two-step onboarding', () => {
 
   it('typing zero after unknown restores an entered value', () => {
     const props = setup()
+    change('Dein Alter', '35')
     fireEvent.click(screen.getByLabelText('Jahreseinkommen brutto (€): Weiß ich nicht'))
     change('Jahreseinkommen brutto (€)', '0')
     next()
@@ -77,6 +111,7 @@ describe('two-step onboarding', () => {
 
   it('preserves raw profile values on back and switches the self-employed income label', () => {
     setup()
+    change('Dein Alter', '35')
     change('Deine Tätigkeit', 'self_employed')
     change('Gewinn vor Steuern pro Jahr (€)', '72000')
     next()

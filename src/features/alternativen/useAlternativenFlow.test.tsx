@@ -82,6 +82,22 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('contracts', () => {
+  it('does not seed an alternative from a retained unknown source contribution', () => {
+    const ws = seedWorkspace()
+    ws.baseline.assumptions.etf[0].inputStatus = { monthlyContribution: 'unknown' }
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+    const { result } = renderFlow()
+
+    act(() => result.current.flow.selectContract(A))
+    expect(result.current.flow.contracts[0].contributionStatus).toBe('unknown')
+    expect(result.current.flow.draft.newContribution).toBeNull()
+
+    act(() => result.current.flow.setContribution(0))
+    expect(result.current.flow.draft.newContribution).toBe(0)
+    expect(result.current.portfolioState.workspace.baseline.assumptions.etf[0].monthlyContribution).toBe(200)
+    expect(result.current.portfolioState.workspace.baseline.assumptions.etf[0].inputStatus?.monthlyContribution).toBe('unknown')
+  })
+
   it('lists every countable contract with its own contribution field', () => {
     seedWorkspace()
     const { result } = renderFlow()

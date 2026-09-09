@@ -232,7 +232,9 @@ export function selectResultReadiness(
   for (const { productId, instance } of listWorkspaceInstances(wsa)) {
     if (!isCountedInstance(instance)) continue
     const label = instanceLabel(instance, productId)
-    const target = { route: ROUTES.vertrag(instance.instanceId) }
+    // The editor, not the read-only detail page: a blocking reason is a
+    // request to fill something in, so the link must land where the user can.
+    const target = { route: ROUTES.vertragBearbeiten(instance.instanceId) }
 
     if (statusOf(instance, 'currentValueEUR') === 'unknown') {
       reasons.push({

@@ -58,7 +58,10 @@ describe('comparison journey with real compare-state handlers', () => {
     edit()
     expect(screen.queryByRole('button', { name: 'Angaben aus meinem Plan verwenden' })).not.toBeInTheDocument()
     for (const [name, value] of [['Alter', '42'], ['Jahreseinkommen brutto (€)', '81000'], ['Was möchtest du monatlich selbst zahlen (€)?', '240']]) {
-      const input = screen.getByRole('spinbutton', { name })
+      const input = screen.getByLabelText(name)
+      expect(input).toBe(screen.getByRole('spinbutton', { name }))
+      expect(input).toHaveAttribute('id')
+      expect((input as HTMLInputElement).labels?.[0]).toHaveAttribute('for', input.id)
       fireEvent.change(input, { target: { value } })
       fireEvent.blur(input)
     }

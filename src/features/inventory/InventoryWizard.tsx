@@ -17,7 +17,7 @@ export interface InventoryWizardProps {
 
 /** Two short drafts; only a successful commit hands a scenario to the host. */
 export function InventoryWizard({ scenario, initialStep = 'profile', mode, onComplete, onDismiss }: InventoryWizardProps) {
-  const draft = useOnboardingDraft({ scenario, initialStep })
+  const draft = useOnboardingDraft({ scenario, initialStep, requireEntered: mode === 'onboarding' })
   const { step, setStep, errors, commit, patchPension } = draft
   const [attempt, setAttempt] = useState(0)
   const summaryRef = useRef<HTMLDivElement>(null)
@@ -84,8 +84,8 @@ export function InventoryWizard({ scenario, initialStep = 'profile', mode, onCom
               {!profileStep && Object.keys(errors.profile).length > 0 && <button type="button" className="onboarding-text-button" onClick={() => setStep('profile')}>Persönliche Angaben prüfen</button>}
               {profileStep && !nextStep && Object.keys(errors.pension).length > 0 && <button type="button" className="onboarding-text-button" onClick={() => setStep('pension')}>Rentenangaben prüfen</button>}
             </div>}
-            {profileStep ? <OnboardingProfileStep draft={draft} errors={errors.profile} />
-              : <OnboardingPensionStep draft={draft} errors={errors.pension} />}
+            {profileStep ? <OnboardingProfileStep draft={draft} mode={mode} errors={errors.profile} />
+              : <OnboardingPensionStep draft={draft} mode={mode} errors={errors.pension} />}
           </div>
           <footer className="inventory-footer">
             <div className="inventory-footer-actions">

@@ -53,6 +53,16 @@ export interface UseOnboardingDraftOptions {
   initialStep?: OnboardingStep
   /** Rule set override; defaults to the active `de2026Rules` inside the pure helpers. */
   rules?: GermanRules
+  /**
+   * Onboarding mode: core fields still carrying a model default (`assumed`) are
+   * rejected with `REQUIRE_ENTERED_MESSAGE` ("Bitte eintragen."), keyed by field
+   * so the UI can show it inline. Affects `errors`, `isComplete` and `commit`
+   * alike.
+   *
+   * Defaults to `false` — the edit-from-plan case keeps validating stored
+   * values that were never explicitly confirmed.
+   */
+  requireEntered?: boolean
 }
 
 export interface OnboardingDraftErrors {
@@ -91,6 +101,7 @@ export function useOnboardingDraft({
   scenario,
   initialStep = 'profile',
   rules,
+  requireEntered = false,
 }: UseOnboardingDraftOptions): UseOnboardingDraftApi {
   const [step, setStep] = useState<OnboardingStep>(initialStep)
   const [profile, setProfile] = useState<ProfileDraft>(() => profileDraftFromScenario(scenario))
@@ -160,10 +171,10 @@ export function useOnboardingDraft({
 
   const errors = useMemo<OnboardingDraftErrors>(
     () => ({
-      profile: validateProfileDraft(profile),
-      pension: validatePensionDraft(pension, profile),
+      profile: validateProfileDraft(profile, { requireEntered }),
+      pension: validatePensionDraft(pension, profile, { requireEntered }),
     }),
-    [profile, pension],
+    [profile, pension, requireEntered],
   )
 
   const isComplete = isValid(errors.profile) && isValid(errors.pension)
@@ -174,10 +185,10 @@ export function useOnboardingDraft({
   )
 
   const commit = useCallback((): Scenario | null => {
-    if (!isValid(validateProfileDraft(profile))) return null
-    if (!isValid(validatePensionDraft(pension, profile))) return null
+    if (!isValid(validateProfileDraft(profile, { requireEntered }))) return null
+    if (!isValid(validatePensionDraft(pension, profile, { requireEntered }))) return null
     return applyOnboardingToScenario(scenarioRef.current, profile, pension, rules)
-  }, [profile, pension, rules])
+  }, [profile, pension, rules, requireEntered])
 
   return {
     step,

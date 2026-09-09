@@ -128,6 +128,50 @@ describe('addPopulatedInstance', () => {
   })
 })
 
+describe('addPopulatedInstance — contract labels', () => {
+  /** What the contract editor hands over when the user typed no name. */
+  function generated(instanceId: string): EtfInstance {
+    return { ...etf(instanceId, 200), label: 'ETF-Depot', anbieter: undefined }
+  }
+
+  it('names the first contract of a product after the product, without a #1', () => {
+    const { result } = renderHook(() => usePortfolioState())
+    act(() => {
+      result.current.addPopulatedInstance('etf', generated('etf-first0001'))
+    })
+    expect(result.current.workspace.baseline.assumptions.etf[0].label).toBe('ETF-Depot')
+  })
+
+  it('numbers the second contract of the same product', () => {
+    const { result } = renderHook(() => usePortfolioState())
+    act(() => {
+      result.current.addPopulatedInstance('etf', generated('etf-first0001'))
+    })
+    act(() => {
+      result.current.addPopulatedInstance('etf', generated('etf-secnd002'))
+    })
+    expect(
+      result.current.workspace.baseline.assumptions.etf.map((i) => i.label),
+    ).toEqual(['ETF-Depot', 'ETF-Depot #2'])
+  })
+
+  it('never rewrites a label the user typed', () => {
+    const { result } = renderHook(() => usePortfolioState())
+    act(() => {
+      result.current.addPopulatedInstance('etf', generated('etf-first0001'))
+    })
+    act(() => {
+      result.current.addPopulatedInstance('etf', {
+        ...generated('etf-secnd002'),
+        label: 'Weltdepot',
+      })
+    })
+    expect(
+      result.current.workspace.baseline.assumptions.etf.map((i) => i.label),
+    ).toEqual(['ETF-Depot', 'Weltdepot'])
+  })
+})
+
 describe('shared workspace store', () => {
   it('makes a commit from one mount visible to another, and persists it synchronously', () => {
     // Two mounts is the route change in miniature: `/vorsorge/neu` commits and

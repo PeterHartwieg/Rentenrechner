@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ROUTES } from '../../app/useRoute'
-import { UnknownNumberField } from '../../ui/UnknownNumberField'
+import { NumberField } from '../../ui/NumberField'
 import { formatCurrency } from '../../utils/format'
 import type { AlternativenHostProps } from './AlternativenPage'
 import { ALTERNATIVEN_COPY } from './useAlternativenFlow'
@@ -134,11 +134,11 @@ export function AlternativenSurface(props: AlternativenHostProps) {
           {!contract.allowedDecisions.length ? <p>Für diese Sparform ist keine weitere Beitragsänderung verfügbar.</p> : draft.decision === 'paid_up'
             ? <p>Das vorhandene Guthaben bleibt bestehen.</p>
             : <>
-              <UnknownNumberField key={contract.instanceId}
+              <NumberField key={contract.instanceId}
                 label={contract.contributionKind === 'grossConversion' ? 'Neuer monatlicher Bruttobeitrag zur bAV in €' : 'Neuer monatlicher Beitrag in €'}
-                value={draft.newContribution} status={draft.newContribution === null ? 'unknown' : 'entered'} min={0} step={1} decimals={2}
+                value={draft.newContribution} min={0} step={1} decimals={2} allowEmpty required
                 onChange={(value) => edit(() => props.setContribution(value))} />
-              <p className="alternativen__muted">Bisher: {contract.contributionMonthly === null ? 'unbekannt' : `${formatCurrency(contract.contributionMonthly)} / Monat`}</p>
+              <p className="alternativen__muted">Bisher: {contract.contributionStatus === 'unknown' || contract.contributionMonthly === null ? 'unbekannt' : `${formatCurrency(contract.contributionMonthly)} / Monat`}</p>
             </>}
         </>}
         <button type="submit" className="alternativen__primary" disabled={!!contract && !contract.allowedDecisions.length}>Vorher und nachher ansehen</button>

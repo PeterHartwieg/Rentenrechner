@@ -365,14 +365,50 @@ function outOfRange(value: number, min: number, max: number): boolean {
 }
 
 /**
+ * Validation options shared by both steps.
+ *
+ * `requireEntered` is the onboarding-mode switch (lead decision, "Browser
+ * verification findings" §2): a first-time user must actually answer the core
+ * questions instead of silently confirming the seeded defaults. Edit mode
+ * leaves it off, so a stored `assumed` value keeps validating.
+ */
+export interface OnboardingValidationOptions {
+  /**
+   * When `true`, core fields still carrying a model default (`assumed`) are
+   * rejected with `REQUIRE_ENTERED_MESSAGE`. Defaults to `false`.
+   */
+  requireEntered?: boolean
+}
+
+/** Error text for a core field the user has not answered yet (onboarding mode). */
+export const REQUIRE_ENTERED_MESSAGE = 'Bitte eintragen.'
+
+/**
+ * `true` when the field still holds a value the user has never supplied — a
+ * model default (`assumed`) or an explicit decline (`unknown`). Only `entered`
+ * and `document` count as answered.
+ */
+function isUnanswered(field: Field<unknown>): boolean {
+  return field.status === 'assumed' || field.status === 'unknown'
+}
+
+/**
  * Validate the profile step. Impossible values are **rejected with a message**,
  * never clipped to the nearest bound — the user has to see what went wrong.
  *
  * Age and retirement age must be answered; everything else may stay explicitly
  * unknown (an unknown PKV premium is what later blocks the household total via
  * `selectResultReadiness`, not what blocks saving).
+ *
+ * With `requireEntered` (onboarding mode) the two core fields — `age` and
+ * `grossSalaryYear` — must additionally carry a real answer: a value still
+ * marked `assumed` is a prefilled default nobody looked at, and committing it
+ * would produce a plan built on numbers the user never gave.
  */
-export function validateProfileDraft(draft: ProfileDraft): ProfileDraftErrors {
+export function validateProfileDraft(
+  draft: ProfileDraft,
+  options: OnboardingValidationOptions = {},
+): ProfileDraftErrors {
   const errors: ProfileDraftErrors = {}
 
   const age = fieldValue(draft.age)
@@ -412,7 +448,33 @@ export function validateProfileDraft(draft: ProfileDraft): ProfileDraftErrors {
     errors.desiredNetMonthlyPension = 'Bitte gib eine Wunschrente zwischen 0 € und 100.000 € an.'
   }
 
+  if (options.requireEntered) {
+    // A range error is more specific than "please fill this in" — keep it.
+    for (const key of REQUIRED_PROFILE_FIELDS) {
+      if (errors[key] === undefined && isUnanswered(draft[key])) {
+        errors[key] = REQUIRE_ENTERED_MESSAGE
+      }
+    }
+  }
+
   return errors
+}
+
+/** The profile fields onboarding mode insists on. */
+const REQUIRED_PROFILE_FIELDS = ['age', 'grossSalaryYear'] as const satisfies readonly ProfileFieldKey[]
+
+/**
+ * The pension fields onboarding mode insists on, per entry method. Methods not
+ * listed (`skipped`, and every method under `system === 'none'`) require
+ * nothing — postponing is a valid answer.
+ */
+const REQUIRED_PENSION_FIELDS_BY_METHOD: Record<PensionMethod, readonly PensionFieldKey[]> = {
+  document: ['monthlyGrossEUR'],
+  'projected-gross': ['monthlyGrossEUR'],
+  career: ['careerStartAge'],
+  years: ['contributionYears'],
+  points: ['entgeltpunkte'],
+  skipped: [],
 }
 
 /**
@@ -472,6 +534,7 @@ export function activePensionFields(
 export function validatePensionDraft(
   draft: PensionDraft,
   profile: ProfileDraft,
+  options: OnboardingValidationOptions = {},
 ): PensionDraftErrors {
   const errors: PensionDraftErrors = {}
   const age = fieldValue(profile.age)
@@ -555,6 +618,17 @@ export function validatePensionDraft(
     if (employer !== null && outOfRange(employer, 0, MAX_VW_CONTRIBUTION)) {
       errors.versorgungswerkEmployerMonthly =
         'Bitte gib einen Monatsbeitrag zwischen 0 € und 10.000 € an.'
+    }
+  }
+
+  if (options.requireEntered && draft.system !== 'none') {
+    for (const key of REQUIRED_PENSION_FIELDS_BY_METHOD[draft.method]) {
+      // Only fields the active method actually commits, and never overwriting a
+      // more specific message.
+      if (!isActive(key)) continue
+      if (errors[key] === undefined && isUnanswered(draft[key])) {
+        errors[key] = REQUIRE_ENTERED_MESSAGE
+      }
     }
   }
 
@@ -746,6 +820,8 @@ const KEY_DESIRED = 'profile.desiredNetMonthlyPension'
 const KEY_BASELINE_TYPE = 'statutoryPension.pensionBaselineType'
 const KEY_EP = 'statutoryPension.currentEntgeltpunkte'
 const KEY_MANUAL_GROSS = 'statutoryPension.manualMonthlyGross'
+/** Reserved assumption key; `applyOnboardingToScenario` never rewrites it. */
+const KEY_INFLATION_RATE = 'assumptions.inflationRate'
 
 /**
  * Read the persisted status for a scenario-level key.
@@ -1092,9 +1168,21 @@ function statusOfField<T>(field: Field<T>): InputStatus {
 // ---------------------------------------------------------------------------
 
 /**
+ * Inflation a fresh plan starts from, as a decimal (2 % p.a.).
+ *
+ * The compare defaults use 0, which would make "in heutigen Euro" identical to
+ * the nominal figure and quietly overstate every long-horizon result. A fresh
+ * plan therefore seeds a real assumption and marks it `assumed`, so the
+ * "Angaben & Annahmen prüfen" disclosure can show it as a model value the user
+ * has not reviewed.
+ */
+export const FRESH_ONBOARDING_INFLATION_RATE = 0.02
+
+/**
  * A scenario for a first-time user: the existing defaults, no contracts, and
- * **nothing marked entered**. The status map stays empty, so every field
- * resolves to `'assumed'` — opening the wizard confirms nothing.
+ * **nothing marked entered**. Every profile and pension field resolves to
+ * `'assumed'` — opening the wizard confirms nothing. The one seeded status is
+ * `assumptions.inflationRate`, which is explicitly an assumption, not an answer.
  */
 export function createFreshOnboardingScenario(now: Date = new Date()): Scenario {
   return {
@@ -1109,11 +1197,12 @@ export function createFreshOnboardingScenario(now: Date = new Date()): Scenario 
       altersvorsorgedepot: [],
       riester: [],
       statutoryPension: { ...defaultAssumptions.statutoryPension },
-      inflationRate: defaultAssumptions.inflationRate,
+      inflationRate: FRESH_ONBOARDING_INFLATION_RATE,
       retirementEndAge: defaultAssumptions.retirementEndAge,
       returnScenarios: defaultAssumptions.returnScenarios.map((s) => ({ ...s })),
       monteCarlo: { ...defaultAssumptions.monteCarlo },
       visibleProducts: [],
+      inputStatus: { [KEY_INFLATION_RATE]: 'assumed' },
     },
     createdAt: now.toISOString(),
     origin: 'baseline',

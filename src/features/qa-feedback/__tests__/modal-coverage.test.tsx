@@ -584,6 +584,13 @@ describe('InventoryWizard — dialog and step QA targets (issue 17)', () => {
       </QaFeedbackProvider>,
     )
 
+    // Onboarding mode refuses to advance while the core answers are defaults,
+    // so answer them first (see `requireEntered` in `useOnboardingDraft`).
+    fireEvent.change(screen.getByLabelText('Dein Alter'), { target: { value: '35' } })
+    fireEvent.change(screen.getByLabelText('Jahreseinkommen brutto (€)'), {
+      target: { value: '60000' },
+    })
+
     // Navigate to step 1 (no QA interception since QA mode is off).
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }))
 

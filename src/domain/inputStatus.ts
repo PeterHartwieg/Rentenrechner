@@ -27,7 +27,7 @@ export type InputStatus = 'unknown' | 'assumed' | 'entered' | 'document'
 /**
  * Field-path → status. Per-instance maps are keyed exactly like `evidenceMap`
  * (bare field names); scenario-level maps use the namespaced reserved keys
- * below (`profile.*` / `statutoryPension.*`).
+ * below (`profile.*` / `statutoryPension.*` / `assumptions.*`).
  */
 export type InputStatusMap = Record<string, InputStatus>
 
@@ -80,14 +80,24 @@ export const STATUTORY_PENSION_INPUT_STATUS_KEYS = [
   'statutoryPension.manualMonthlyGross',
 ] as const
 
+/**
+ * Reserved scenario-level keys for `assumptions.*` — model assumptions that are
+ * not profile facts but still need a provenance marker, because the UI shows
+ * them in "Angaben & Annahmen prüfen" and must tell a reviewed value apart from
+ * a seeded default.
+ */
+export const ASSUMPTION_INPUT_STATUS_KEYS = ['assumptions.inflationRate'] as const
+
 /** Every reserved scenario-level key. Per-instance maps are NOT restricted. */
 export const RESERVED_INPUT_STATUS_KEYS = [
   ...PROFILE_INPUT_STATUS_KEYS,
   ...STATUTORY_PENSION_INPUT_STATUS_KEYS,
+  ...ASSUMPTION_INPUT_STATUS_KEYS,
 ] as const
 
 export type ProfileInputStatusKey = (typeof PROFILE_INPUT_STATUS_KEYS)[number]
 export type StatutoryPensionInputStatusKey = (typeof STATUTORY_PENSION_INPUT_STATUS_KEYS)[number]
+export type AssumptionInputStatusKey = (typeof ASSUMPTION_INPUT_STATUS_KEYS)[number]
 export type ReservedInputStatusKey = (typeof RESERVED_INPUT_STATUS_KEYS)[number]
 
 const RESERVED_KEY_SET: ReadonlySet<string> = new Set(RESERVED_INPUT_STATUS_KEYS)

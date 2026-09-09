@@ -4,7 +4,8 @@ import { pensionMethodsForSystem, type PensionDraftErrors, type PensionSystem, t
 import { formatCurrency, formatNumber } from '../../utils/format'
 import { OnboardingDisclosure, OnboardingNumberField } from './OnboardingFields'
 
-export function OnboardingPensionStep({ draft, errors }: {
+export function OnboardingPensionStep({ draft, errors, mode }: {
+  mode: 'onboarding' | 'edit'
   draft: UseOnboardingDraftApi
   errors: PensionDraftErrors
 }) {
@@ -27,7 +28,8 @@ export function OnboardingPensionStep({ draft, errors }: {
   const numberField = (
     key: 'monthlyGrossEUR' | 'careerStartAge' | 'pauseYears' | 'contributionYears' | 'entgeltpunkte' | 'versorgungswerkMonthlyContribution' | 'versorgungswerkEmployerMonthly',
     label: string, hint?: string, step = key === 'monthlyGrossEUR' || key === 'versorgungswerkMonthlyContribution' || key === 'versorgungswerkEmployerMonthly' ? 0.01 : 1,
-  ) => <OnboardingNumberField key={key} label={label} field={pension[key]} error={errors[key]} hint={hint} step={step}
+  ) => <OnboardingNumberField key={key} label={label} field={pension[key]} error={errors[key]}
+      hideAssumed={mode === 'onboarding'} placeholder={key === 'careerStartAge' ? 'z. B. 22' : undefined} hint={hint} step={step}
     onValue={(value) => setPensionValue(key, value)} onUnknown={() => setFieldUnknown('pension', key)} />
 
   const systemSelect = <label className="onboarding-select" htmlFor={`${id}-system`}>Deine Altersversorgung
