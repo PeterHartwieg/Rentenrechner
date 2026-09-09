@@ -13,6 +13,7 @@ repo, not just operate it on this one.
 | Doc | Workflows | Status |
 |-----|-----------|--------|
 | [`issue-to-merge-pipeline.md`](issue-to-merge-pipeline.md) | `triage.yml`, `investigate.yml`, `implement.yml`, `pr-verify.yml`, `claude-review.yml`, `review-loop.yml`, `review-loop-sweep.yml`, `retro-curate.yml` | ✅ Live |
+| [`calculation-review-toolchain.md`](calculation-review-toolchain.md) | none — local CLI tooling (`scripts/review/`, issue #382) | ✅ Built, awaiting live proof |
 
 The QA-feedback "feedback loop" originally planned as a separate workflow
 is now folded into `triage.yml` as an 8-step decision tree (see the
