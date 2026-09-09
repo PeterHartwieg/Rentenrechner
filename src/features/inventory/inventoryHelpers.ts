@@ -24,7 +24,7 @@
 import type { GermanRules, PersonalProfile, StatutoryPensionAssumptions } from '../../domain'
 import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../../domain/workspace'
 import { de2026Rules } from '../../rules/de2026'
-import { legalConstants } from '../../rules/legalConstants'
+import { legacyEpSeedDurchschnittsentgelt } from '../../rules/legacyArtefacts'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { defaultWorkspace } from '../../storage'
@@ -109,7 +109,7 @@ export function detectLegacyEpSeed({
   const freshEstimate = estimateEpFromYears(years, profile.grossSalaryYear, rules)
   const oldEstimate = years * (
     Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear) /
-    legalConstants.legacyEpSeedDurchschnittsentgelt
+    legacyEpSeedDurchschnittsentgelt
   )
   const stored = statutoryPension.currentEntgeltpunkte
   const tolerance = 0.005

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { PensionEntryMethod } from '../../domain/inputStatus'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
-import { legalConstants } from '../../rules/legalConstants'
+import { legacyEpSeedDurchschnittsentgelt } from '../../rules/legacyArtefacts'
 import { detectLegacyEpSeed, estimateEpFromYears } from './inventoryHelpers'
 
 describe('detectLegacyEpSeed', () => {
   const profile = { ...defaultProfile, age: 45, grossSalaryYear: 50_000 }
   const years = 20
-  const oldSeed = years * profile.grossSalaryYear / legalConstants.legacyEpSeedDurchschnittsentgelt
+  const oldSeed = years * profile.grossSalaryYear / legacyEpSeedDurchschnittsentgelt
   const freshEstimate = estimateEpFromYears(years, profile.grossSalaryYear, de2026Rules)
   const methods: PensionEntryMethod[] = [
     { kind: 'years', contributionYears: years },
@@ -49,7 +49,7 @@ describe('detectLegacyEpSeed', () => {
       statutoryPension: {
         ...defaultAssumptions.statutoryPension,
         pensionEntryMethod: methods[0],
-        currentEntgeltpunkte: years * cap / legalConstants.legacyEpSeedDurchschnittsentgelt,
+        currentEntgeltpunkte: years * cap / legacyEpSeedDurchschnittsentgelt,
       },
       profile: { ...profile, grossSalaryYear: cap * 2 },
       rules: de2026Rules,
@@ -72,7 +72,7 @@ describe('detectLegacyEpSeed', () => {
         ...de2026Rules,
         socialSecurity: {
           ...de2026Rules.socialSecurity,
-          durchschnittsentgelt: legalConstants.legacyEpSeedDurchschnittsentgelt * 1.004,
+          durchschnittsentgelt: legacyEpSeedDurchschnittsentgelt * 1.004,
         },
       },
     })).toEqual({ legacy: false })

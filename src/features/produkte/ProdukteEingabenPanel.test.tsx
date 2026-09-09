@@ -22,7 +22,7 @@ import type { Scenario, Workspace } from '../../domain/workspace'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import { activeRules } from '../../rules'
-import { legalConstants } from '../../rules/legalConstants'
+import { legacyEpSeedDurchschnittsentgelt } from '../../rules/legacyArtefacts'
 import { formatNumber } from '../../utils/format'
 import { simulateRetirementComparison } from '../../engine/simulate'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
@@ -639,7 +639,7 @@ describe('ProdukteEingabenPanel — legacy EP seed notice', () => {
       ...baseline.assumptions.statutoryPension,
       manualMonthlyGross: null,
       pensionEntryMethod: { kind: 'career', careerStartAge: 22, pauseYears: 3 },
-      currentEntgeltpunkte: 20 * baseline.profile.grossSalaryYear / legalConstants.legacyEpSeedDurchschnittsentgelt,
+      currentEntgeltpunkte: 20 * baseline.profile.grossSalaryYear / legacyEpSeedDurchschnittsentgelt,
     }
     return baseline
   }
