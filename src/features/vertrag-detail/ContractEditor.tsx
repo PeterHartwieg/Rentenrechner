@@ -1,7 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ContractEditorHostProps } from './VertragBearbeitenPage'
 import { draftFieldValue } from '../inventory/contractDraft'
-import { ContractEditorField } from './ContractEditorField'
+import { ContractEditorEvidence, ContractEditorField } from './ContractEditorField'
 import './ContractEditor.css'
 
 export interface ContractEditorProps extends Pick<ContractEditorHostProps,
@@ -13,6 +13,7 @@ export interface ContractEditorProps extends Pick<ContractEditorHostProps,
   back: () => void
   onEditSharedHorizon: () => void
   onOpenFurtherInputs: () => void
+  onOpenDetail?: () => void
   remove?: () => void
   productHint?: string
 }
@@ -44,6 +45,11 @@ export function ContractEditor(props: ContractEditorProps) {
         <p className="contract-editor__kicker">{props.mode === 'new' ? 'Vorsorge ergänzen' : 'Vorsorge bearbeiten'}</p>
         <h1 id={`${id}-title`}>{props.productLabel}</h1>
         <p>Trage ein, was du weißt. Unbekannte Werte bleiben offen.</p>
+        {props.mode === 'edit' && props.onOpenDetail && (
+          <button type="button" className="contract-editor__link contract-editor__detail-link" onClick={props.onOpenDetail}>
+            Ergebnis im Detail ansehen →
+          </button>
+        )}
         {props.productHint && <p className="contract-editor__note">{props.productHint}</p>}
       </header>
       <form ref={form} noValidate onSubmit={(event) => {
@@ -85,6 +91,10 @@ export function ContractEditor(props: ContractEditorProps) {
               <p>Im Kostenblatt deines Depots oder Vertrags. Bei Versicherungen können mehrere Kostenarten genannt sein. Übernimm die einzelnen Angaben aus deinen Unterlagen; bestätige nur Werte, die du kennst.</p>
             </details>
             <div className="contract-editor__grid">{costs.map(renderField)}</div>
+          </fieldset>
+          <fieldset>
+            <legend>Angaben aus Belegen</legend>
+            {fieldSpecs.map((spec) => <ContractEditorEvidence key={spec.id} draft={draft} spec={spec} patchField={props.patchField} />)}
           </fieldset>
           {sharedHorizon && <p className="contract-editor__note">
             Die gemeinsame Entnahmedauer bis Alter {props.retirementEndAge} gilt für alle Depots und Kapitalverzehr-Verträge.{' '}

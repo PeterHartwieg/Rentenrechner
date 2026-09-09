@@ -55,6 +55,7 @@ import {
   type FieldStatus,
 } from './onboardingDraft'
 import { DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
+import { legalConstants } from '../../rules/legalConstants'
 
 // ---------------------------------------------------------------------------
 // Field specs
@@ -606,7 +607,11 @@ const VERSICHERUNG_SPECS: readonly ContractFieldSpec[] = [
     section: 'details',
     supportsUnknown: false,
     unknownMode: 'none',
-    visibleWhen: (d) => (numberOf(d, 'contractStartYear') ?? 9999) <= 2004,
+    // §52 Abs. 28 EStG a.F.: the old-contract regime covers contracts concluded
+    // *before* the boundary year, mirroring `deriveInsuranceTaxMode`.
+    visibleWhen: (d) =>
+      (numberOf(d, 'contractStartYear') ?? 9999) <
+      legalConstants.insurance.pre2005YearBoundary,
   },
   {
     id: 'payoutMode',

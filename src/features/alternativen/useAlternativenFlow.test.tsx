@@ -62,6 +62,19 @@ function renderFlow() {
   return renderHook(() => useHarness())
 }
 
+/** Same harness, but with the return scenario as a rendered prop. */
+function useScenarioHarness(scenarioId: string) {
+  const portfolioState = usePortfolioState()
+  const baselineSimulation = useCombineSimulation(portfolioState.workspace)
+  const flow = useAlternativenFlow({
+    workspace: portfolioState.workspace,
+    portfolioState,
+    baselineSimulation,
+    scenarioId,
+  })
+  return { portfolioState, flow }
+}
+
 /** Select contract A, ask for a lower contribution, and compute the preview. */
 function draftAndPreview(
   result: { current: ReturnType<typeof useHarness> },
@@ -306,6 +319,42 @@ describe('saveAlternative', () => {
 
     expect(result.current.flow.saved[0].status).toBe('missing-source')
     expect(result.current.flow.saved[0].canApply).toBe(false)
+  })
+})
+
+describe('frozen pair cache', () => {
+  it('recomputes a saved alternative when the return scenario changes', () => {
+    seedWorkspace()
+    const { result, rerender } = renderHook(
+      ({ scenarioId }: { scenarioId: string }) => useScenarioHarness(scenarioId),
+      { initialProps: { scenarioId: 'basis' } },
+    )
+    act(() => result.current.flow.selectContract(A))
+    act(() => result.current.flow.setContribution(400))
+    act(() => result.current.flow.runPreview())
+    act(() => {
+      result.current.flow.saveAlternative()
+    })
+
+    const basis = result.current.flow.saved[0]
+    expect(basis.after).not.toBeNull()
+
+    // A lower-return scenario must produce a different pair. Keyed on the
+    // what-if object alone, the cache handed back the 'basis' pair here.
+    rerender({ scenarioId: 'konservativ' })
+    const konservativ = result.current.flow.saved[0]
+    expect(konservativ.after!.netMonthlyTotalNominal).not.toBe(
+      basis.after!.netMonthlyTotalNominal,
+    )
+    expect(konservativ.before!.netMonthlyTotalNominal).not.toBe(
+      basis.before!.netMonthlyTotalNominal,
+    )
+
+    // Switching back returns the original pair, so the cache still caches.
+    rerender({ scenarioId: 'basis' })
+    expect(result.current.flow.saved[0].after!.netMonthlyTotalNominal).toBe(
+      basis.after!.netMonthlyTotalNominal,
+    )
   })
 })
 

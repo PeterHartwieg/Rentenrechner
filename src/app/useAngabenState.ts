@@ -463,15 +463,20 @@ export function useAngabenState(): UseAngabenStateApi {
     safeSetItem(STORAGE_KEY_V1, buildStateJson(compareProfile, compareAssumptions))
   }, [isCombine, workspace, compareProfile, compareAssumptions])
 
-  // Persistence effect. Single dispatch by mode via `persistNow`. Compare-mode
-  // writes a v1 envelope to STORAGE_KEY_V1; combine-mode writes the full
-  // workspace to STORAGE_KEY_V2 via `saveWorkspace`. `persistNow` closes over
-  // every mutation that should trigger a save (combine-mode `workspace`,
-  // compare-mode `compareProfile` + `compareAssumptions`), so it is the only
-  // data dependency the effect needs. The first-run skip stays HERE — only the
-  // write body moved into `persistNow`, so the combine-mode `lastEditedAt`
-  // concern (skip the no-op mount write unless `persistOnMount` flags a
-  // load-bearing share-URL import) is unchanged.
+  // Persistence effect — compare-mode only. It writes the v1 envelope to
+  // STORAGE_KEY_V1, which has no other writer while this hook is mounted.
+  //
+  // Combine-mode is deliberately NOT persisted here: every workspace mutation
+  // goes through the shared store in `portfolioState.ts`, which writes through
+  // to STORAGE_KEY_V2 synchronously inside `setWorkspaceStore`. Running
+  // `persistNow()` from this effect as well serialised the very same snapshot a
+  // second time on every edit (Codex P2). `persistNow` keeps its combine branch
+  // for the one case the store cannot cover: the "Speichern und …" CTA of a
+  // visitor who changed nothing, and therefore never triggered a store write.
+  //
+  // The first-run skip stays HERE: the mount-time write is a no-op except for
+  // the load-bearing compare-mode share-URL import flagged by
+  // `initial.persistOnMount`.
   useEffect(() => {
     if (isFirstEffectRun.current) {
       isFirstEffectRun.current = false
@@ -482,8 +487,9 @@ export function useAngabenState(): UseAngabenStateApi {
       // share-URL import). This is intentionally restricted to compare-mode:
       // the combine-mode branch always sets `persistOnMount: false`.
     }
+    if (isCombine) return
     persistNow()
-  }, [persistNow, initial.persistOnMount])
+  }, [isCombine, persistNow, initial.persistOnMount])
 
   // Setters: same shape as `useCalculatorState` so section components do not
   // change. In combine-mode they route through `setWorkspaceState` with the

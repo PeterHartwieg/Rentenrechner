@@ -127,7 +127,7 @@ export function OnboardingPensionStep({ draft, errors, mode, showErrors }: {
         <label className="onboarding-select" htmlFor={`${id}-retirement-health`}>Krankenversicherung im Ruhestand
           <select id={`${id}-retirement-health`} value={pension.retirementHealthStatus.value ?? ''}
             onChange={(event) => setPensionValue('retirementHealthStatus', event.target.value as RetirementHealthStatusValue)}>
-            <option value="" disabled>Bitte auswählen</option>
+            {!pension.retirementHealthStatus.value && <option value="" disabled>Bitte auswählen</option>}
             <option value="kvdr">Gesetzlich pflichtversichert (KVdR)</option>
             <option value="freiwillig_gkv">Freiwillig gesetzlich versichert</option>
             <option value="pkv">Privat versichert</option>

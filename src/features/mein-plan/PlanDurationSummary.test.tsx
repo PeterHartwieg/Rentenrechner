@@ -20,6 +20,7 @@ describe('Plan duration copy', () => {
   it('lists affected sources, consequences and both navigation actions', () => {
     const row = (key: string, duration: DurationDescriptor): PlanSourceRow => ({
       key, label: key, status: 'assumed', netMonthlyNominal: 100, netMonthlyReal: 70, duration,
+      contributionMonthly: null, contributionStatus: null, contributionLabel: '', provenanceLabel: 'Angenommen',
     })
     const rows = [
       row('Rente', { kind: 'lifelong' }),

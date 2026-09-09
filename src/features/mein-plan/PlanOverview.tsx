@@ -44,6 +44,12 @@ export function PlanOverview(props: PlanOverviewProps) {
   const total = summary && (moneyBasis === 'real' ? summary.netMonthlyTotalReal : summary.netMonthlyTotalNominal)
   const limited = summary?.rows.filter((row) => row.duration.kind !== 'lifelong') ?? []
   const gap = canShow ? summary?.gap : undefined
+  const targetMonthly = gap
+    ? moneyBasis === 'real' ? gap.targetMonthly
+      : summary && summary.deflator > 0 ? gap.targetMonthly / summary.deflator : null
+    : null
+  const targetGap = gap && (moneyBasis === 'real' ? gap.gapReal : gap.gapNominal)
+  const targetBasis = moneyBasis === 'real' ? 'in heutigen Euro' : 'zum Rentenbeginn (nominal)'
   return (
     <section className="plan-overview">
       {notification && <div className="plan-overview__notice" role="status">
@@ -65,10 +71,9 @@ export function PlanOverview(props: PlanOverviewProps) {
             <p className="plan-overview__muted">Deine erfassten Renten nach Steuern und Krankenversicherung</p>
           </div>
           {gap && <aside className="plan-overview__target">
-            <p>Dein Wunsch: {formatCurrency(gap.targetMonthly)}</p>
-            <small>In heutigen Euro</small>
-            <p><strong>{gap.gapReal > 0
-              ? `Zur Wunschrente fehlen rechnerisch ${formatCurrency(gap.gapReal)} pro Monat.`
+            <p>Dein Wunsch: {targetMonthly !== null ? formatCurrency(targetMonthly) : '—'} · {targetBasis}</p>
+            <p><strong>{targetGap !== undefined && targetGap > 0
+              ? `Zur Wunschrente fehlen rechnerisch ${formatCurrency(targetGap)} pro Monat.`
               : 'Dein Wunsch ist in dieser Schätzung erreicht.'}</strong></p>
             <button type="button" className="plan-overview__link" onClick={props.onEditTarget}>Wunsch ändern</button>
           </aside>}
@@ -88,12 +93,20 @@ export function PlanOverview(props: PlanOverviewProps) {
           <p>{limited.length === 1 ? <>{limited[0].label}: <PlanDurationText duration={limited[0].duration} />.</> : <>{limited.length} Auszahlungen enden zeitlich.</>} Danach fällt dieser Teil weg.</p>
           <button type="button" className="plan-overview__link" onClick={props.onOpenDuration}>Dauer ansehen →</button>
         </div>}
+        {!canShow && summary?.readiness.status !== 'error' && <p className="plan-overview__muted">Einzelbeträge erscheinen, sobald alle Angaben vorliegen. Steuern und Krankenversicherung hängen von allen Renten zusammen ab.</p>}
         <ul className="plan-overview__sources" aria-label="Deine Rentenquellen">
           {summary?.rows.map((row) => {
             const amount = moneyBasis === 'real' ? row.netMonthlyReal : row.netMonthlyNominal
             return <li key={row.key}>
               <button type="button" className="plan-overview__source" aria-label={`${row.label} bearbeiten`} onClick={() => props.onEditSource(row)}>
-                <span><strong>{row.label}</strong><small><PlanDurationText duration={row.duration} /></small><small>{row.status === 'assumed' ? 'Angenommen' : formatInputStatusForExport(row.status)}</small></span>
+                <span>
+                  <strong>{row.label}</strong>
+                  <small><PlanDurationText duration={row.duration} /></small>
+                  {row.contributionStatus === 'unknown'
+                    ? <small>{row.contributionLabel}: unbekannt</small>
+                    : row.contributionMonthly != null && <small>{row.contributionLabel}: {formatCurrency(row.contributionMonthly)} / Monat</small>}
+                  <small>{row.provenanceLabel ?? (row.status === 'assumed' ? 'Angenommen' : formatInputStatusForExport(row.status))}</small>
+                </span>
                 <span className="plan-overview__amount">{canShow && row.status !== 'unknown' && Number.isFinite(amount) ? formatCurrency(amount) : '—'}</span>
                 <span aria-hidden="true">›</span>
               </button>

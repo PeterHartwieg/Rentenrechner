@@ -443,7 +443,7 @@ describe('CombineDetailView — back-allocated netto from combinedForScenario (#
           productId: 'etf',
           monthlyGross: 1000,
           monthlyNet: 900,
-          taxShareAnnual: 1200, // 100 €/mo
+          taxShareAnnual: 250,
           kvPvShare: 45,
         },
       },
@@ -471,10 +471,8 @@ describe('CombineDetailView — back-allocated netto from combinedForScenario (#
     const title = nettoCell?.getAttribute('title') ?? ''
     expect(title).toContain('Steuer')
     expect(title).toContain('KV/PV')
-    // taxShareAnnual = 1200, /12 = 100 €/mo → formatCurrency(100, 0)
-    expect(title).toContain(formatCurrency(100, 0))
-    // kvPvShare = 45 €/mo → formatCurrency(45, 0)
-    expect(title).toContain(formatCurrency(45, 0))
+    expect(title.replace(/\s/g, ' ')).toBe('Steuer 21 €/mo (250 €/Jahr) · KV/PV 45 €/mo')
+    expect(title).not.toMatch(/€\s*€/)
   })
 })
 

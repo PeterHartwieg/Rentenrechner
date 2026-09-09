@@ -204,7 +204,9 @@ export interface CombinePortfolioCsvOptions {
    * Set by the caller when `selectResultReadiness` says the household total may
    * not be shown (`canShowHouseholdTotal === false`). The Netto-Einkommen cell
    * is then emitted **blank** — never 0, never a placeholder — and one Hinweis
-   * line names the missing inputs (lead decision §10.3).
+   * line names the missing inputs (lead decision §10.3). The PDF mirror in
+   * `PrintReport.tsx` renders '—' instead of an empty cell for the same state:
+   * an empty printed cell reads as a layout bug, a dash in a CSV as data.
    *
    * `reasonLabels` are the German blocking-reason labels; pass
    * `householdTotalBlockedLabels(readiness)` from `app/resultReadiness.ts`.

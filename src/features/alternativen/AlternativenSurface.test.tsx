@@ -27,7 +27,7 @@ function summary(amount: number, ready = true): PlanSummary {
 }
 const description = {
   instanceId: 'etf-1', instanceLabel: 'Mein Depot', productId: 'etf' as const, decision: 'contribution' as const,
-  beforeContributionMonthly: 200, afterContributionMonthly: 300,
+  changed: true, beforeContributionMonthly: 200, afterContributionMonthly: 300,
   sourceRevision: { baselineId: workspace.baseline.id, createdAt: whatIf.createdAt, snapshotTime: 1000 },
 }
 const preview = { whatIf, before: summary(1800), after: summary(1900), delta: 100, description }
@@ -146,6 +146,7 @@ describe('AlternativenSurface', () => {
     expect(screen.getByText('Danach: 300 € / Monat')).toBeInTheDocument()
     expect(screen.getByText('Gesamt · netto pro Monat ab 65 · in heutigen Euro')).toBeInTheDocument()
     expect(screen.queryByText('9.999 €')).not.toBeInTheDocument()
+    expect(screen.getByText('Die Änderung gilt erst, wenn du sie in deinen Plan übernimmst.')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Vorher und nachher' }).parentElement).toHaveAttribute('aria-live', 'polite')
   })
 
@@ -164,6 +165,8 @@ describe('AlternativenSurface', () => {
     expect(props.openSaved).toHaveBeenCalledWith(item.id)
     expect(screen.getByRole('heading', { level: 1, name: item.label })).toBeInTheDocument()
     expect(screen.getByText('Gespeicherte Alternative')).toBeInTheDocument()
+    expect(screen.getByText('Die Änderung gilt erst, wenn du sie in deinen Plan übernimmst.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(props.apply).not.toHaveBeenCalled()
   })
 
@@ -172,6 +175,7 @@ describe('AlternativenSurface', () => {
       rebase: vi.fn<AlternativenHostProps['rebase']>(() => ({ ok: true, undo: {} as never })) })
     render(<InteractiveHost initial={props} />)
     expect(screen.getByRole('alert')).toHaveTextContent('Dein Plan hat sich seit dem Speichern geändert.')
+    expect(screen.queryByText('Die Änderung gilt erst, wenn du sie in deinen Plan übernimmst.')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /in meinen Plan übernehmen/ })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Gespeicherten Stand ansehen' }))
     expect(screen.getByRole('heading', { name: 'Vorher und nachher' })).toHaveFocus()
@@ -182,6 +186,8 @@ describe('AlternativenSurface', () => {
     expect(screen.getByText('2.100 €')).toBeInTheDocument()
     expect(screen.getByText('2.200 €')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Beitrag in meinen Plan übernehmen' })).toBeInTheDocument()
+    expect(screen.getByText('Die Änderung gilt erst, wenn du sie in deinen Plan übernimmst.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(props.apply).not.toHaveBeenCalled()
   })
 
@@ -192,14 +198,24 @@ describe('AlternativenSurface', () => {
     expect(screen.getByRole('button', { name: 'Neue Änderung ausprobieren' })).toBeInTheDocument()
   })
 
-  it('shows and focuses an apply failure', () => {
-    const props = host({ saved: [item], openWhatIfId: item.id,
+  it.each(['saved', 'preview'] as const)('returns to the plan immediately after applying a %s alternative', (view) => {
+    const props = host({ ...(view === 'saved' ? { saved: [item], openWhatIfId: item.id } : { preview }),
+      apply: vi.fn<AlternativenHostProps['apply']>(() => ({ ok: true, undo: {} as never })) })
+    render(<AlternativenSurface {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Beitrag in meinen Plan übernehmen' }))
+    expect(props.apply).toHaveBeenCalledWith(item.id)
+    expect(props.onReturnToPlan).toHaveBeenCalledOnce()
+  })
+
+  it.each(['saved', 'preview'] as const)('stays and focuses an apply failure for a %s alternative', (view) => {
+    const props = host({ ...(view === 'saved' ? { saved: [item], openWhatIfId: item.id } : { preview }),
       apply: vi.fn<AlternativenHostProps['apply']>(() => ({ ok: false, reason: 'stale', message: ALTERNATIVEN_COPY.stale })) })
     render(<AlternativenSurface {...props} />)
     fireEvent.click(screen.getByRole('button', { name: 'Beitrag in meinen Plan übernehmen' }))
     expect(props.apply).toHaveBeenCalledWith(item.id)
     expect(screen.getByRole('alert')).toHaveTextContent(ALTERNATIVEN_COPY.stale)
     expect(screen.getByRole('alert')).toHaveFocus()
+    expect(props.onReturnToPlan).not.toHaveBeenCalled()
   })
 
   it('renders saved rows with dates, stale badges, open and remove actions', () => {

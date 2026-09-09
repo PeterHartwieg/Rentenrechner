@@ -599,6 +599,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
       <details className="rw-plan-disclosure">
         <summary>Details &amp; Export</summary>
         <div className="rw-plan-disclosure__body">
+          {!readiness.canShowHouseholdTotal && (
+            <p>Diese Zahlen rechnen vorläufig mit Modellwerten für unbekannte Angaben; die Gesamtsumme oben bleibt offen.</p>
+          )}
           <CombineDetailView
             workspace={portfolioState.workspace}
             perInstance={combineSimulation.perInstance}

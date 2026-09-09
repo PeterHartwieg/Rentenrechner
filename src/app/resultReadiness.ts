@@ -315,8 +315,9 @@ export function selectResultReadiness(
 
 /**
  * German one-liners for a suppressed household total, ready for the export
- * Hinweis section (lead decision §10.3: blank cell + one Hinweis line, never a
- * zero and never a placeholder number).
+ * Hinweis section (lead decision §10.3: PDF renders '—' with the Hinweis line,
+ * CSV an empty cell with the same line — never a zero and never a placeholder
+ * number).
  */
 export function householdTotalBlockedLabels(readiness: ResultReadiness): string[] {
   return readiness.canShowHouseholdTotal ? [] : readiness.blocking.map((r) => r.label)

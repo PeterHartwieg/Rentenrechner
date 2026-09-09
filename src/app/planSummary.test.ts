@@ -176,6 +176,100 @@ describe('selectPlanSummary', () => {
     expect(summary2.rows.find((r) => r.instanceId === inst.instanceId)?.status).toBe('unknown')
   })
 
+  it('carries each contract\'s own contribution field, status and product label', () => {
+    const ws = makeWorkspace()
+    const etf = ws.baseline.assumptions.etf[0]
+    etf.monthlyContribution = 250
+    etf.inputStatus = { currentValueEUR: 'entered', monthlyContribution: 'document' }
+    const bav = ws.baseline.assumptions.bav[0]
+    bav.monthlyGrossConversion = 200
+    const summary = selectPlanSummary(ws, runCombineSimulation(ws, de2026Rules), 'basis')
+
+    const etfRow = summary.rows.find((r) => r.instanceId === etf.instanceId)
+    expect(etfRow?.contributionMonthly).toBe(250)
+    expect(etfRow?.contributionStatus).toBe('document')
+    expect(etfRow?.contributionLabel).toBe('Sparrate')
+    expect(etfRow?.provenanceLabel).toBe('Von dir angegeben') // worst status wins
+
+    // Product-specific field and wording, not a generic "Beitrag".
+    const bavRow = summary.rows.find((r) => r.instanceId === bav.instanceId)
+    expect(bavRow?.contributionMonthly).toBe(200)
+    expect(bavRow?.contributionLabel).toBe('Bruttobeitrag')
+  })
+
+  it('reports no contribution for a beitragsfreier Vertrag or the statutory row', () => {
+    const ws = makeWorkspace()
+    const etf = ws.baseline.assumptions.etf[0]
+    etf.status = 'paid_up'
+    const summary = selectPlanSummary(ws, runCombineSimulation(ws, de2026Rules), 'basis')
+
+    const etfRow = summary.rows.find((r) => r.instanceId === etf.instanceId)
+    expect(etfRow?.contributionMonthly).toBeNull()
+    expect(etfRow?.contributionStatus).toBeNull()
+
+    const statutory = summary.rows.find((r) => r.key === 'statutory')
+    expect(statutory?.contributionMonthly).toBeNull()
+    expect(statutory?.contributionStatus).toBeNull()
+    expect(statutory?.contributionLabel).toBe('')
+  })
+
+  it('derives the statutory provenance line from how the pension was entered', () => {
+    const ws = makeWorkspace()
+    const sp = ws.baseline.assumptions.statutoryPension
+    const provenance = (): string | undefined =>
+      selectPlanSummary(ws, runCombineSimulation(ws, de2026Rules), 'basis').rows.find(
+        (r) => r.key === 'statutory',
+      )?.provenanceLabel
+
+    sp.pensionEntryMethod = { kind: 'career', careerStartAge: 22, pauseYears: 0 }
+    expect(provenance()).toBe('Grob aus Berufsstart geschätzt')
+    sp.pensionEntryMethod = { kind: 'document', monthlyGrossEUR: 1400 }
+    expect(provenance()).toBe('lt. Renteninformation')
+    sp.pensionEntryMethod = { kind: 'years', contributionYears: 30 }
+    expect(provenance()).toBe('Beitragsjahre angegeben')
+    sp.pensionEntryMethod = { kind: 'points', entgeltpunkte: 30 }
+    expect(provenance()).toBe('Entgeltpunkte angegeben')
+    sp.pensionEntryMethod = { kind: 'projected-gross', monthlyGrossEUR: 1400 }
+    expect(provenance()).toBe('Prognose angegeben')
+    sp.pensionEntryMethod = { kind: 'skipped' }
+    expect(provenance()).toBe('Noch offen')
+  })
+
+  it('states a contract row\'s provenance in plain German, worst status first', () => {
+    const ws = makeWorkspace()
+    const etf = ws.baseline.assumptions.etf[0]
+    const label = (): string | undefined =>
+      selectPlanSummary(ws, runCombineSimulation(ws, de2026Rules), 'basis').rows.find(
+        (r) => r.instanceId === etf.instanceId,
+      )?.provenanceLabel
+
+    etf.inputStatus = { currentValueEUR: 'document', monthlyContribution: 'document' }
+    expect(label()).toBe('lt. Beleg')
+    etf.inputStatus = { currentValueEUR: 'document', monthlyContribution: 'assumed' }
+    expect(label()).toBe('Angenommen')
+    etf.inputStatus = { currentValueEUR: 'unknown', monthlyContribution: 'entered' }
+    expect(label()).toBe('Unbekannt')
+  })
+
+  it('routes contract rows to the editor and the statutory row to /eingaben', () => {
+    const ws = makeWorkspace()
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const summary = selectPlanSummary(ws, bundle, 'basis')
+
+    // The row's accessible name says "bearbeiten", so it must open the editor,
+    // not the read-only detail view.
+    const etfId = ws.baseline.assumptions.etf[0].instanceId
+    expect(summary.rows.find((r) => r.instanceId === etfId)?.target).toEqual({
+      kind: 'vertrag-bearbeiten',
+      instanceId: etfId,
+    })
+    for (const row of summary.rows.filter((r) => r.instanceId)) {
+      expect(row.target).toEqual({ kind: 'vertrag-bearbeiten', instanceId: row.instanceId })
+    }
+    // The statutory baseline has no contract editor — it stays on /eingaben.
+    expect(summary.rows.find((r) => r.key === 'statutory')?.target).toEqual({ kind: 'eingaben' })
+  })
+
   it('emits the Wunschrente gap only for an explicit target and a showable total', () => {
     const ws = makeWorkspace()
     const bundle = runCombineSimulation(ws, de2026Rules)

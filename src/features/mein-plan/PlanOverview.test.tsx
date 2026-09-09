@@ -9,6 +9,7 @@ import { PlanOverview, type PlanOverviewProps } from './PlanOverview'
 afterEach(cleanup)
 
 const money = (value: number) => formatCurrency(value).replace(/\u00a0/g, ' ')
+const blockedSourcesHint = 'Einzelbeträge erscheinen, sobald alle Angaben vorliegen. Steuern und Krankenversicherung hängen von allen Renten zusammen ab.'
 
 const reason: ReadinessReason = {
   code: 'pension-entry-skipped', severity: 'blocking', label: 'Deine Rentenangabe fehlt.',
@@ -21,8 +22,8 @@ const assumption: ReadinessReason = {
 const summary: PlanSummary = {
   netMonthlyTotalNominal: 2500, netMonthlyTotalReal: 1800, deflator: 0.72, yearsUntilRetirement: 25,
   rows: [
-    { key: 'statutory', label: 'Gesetzliche Rente', netMonthlyNominal: 2000, netMonthlyReal: 1440, status: 'document', duration: { kind: 'lifelong' } },
-    { key: 'etf-1', instanceId: 'etf-1', label: 'Mein Depot', netMonthlyNominal: 500, netMonthlyReal: 360, status: 'assumed', duration: { kind: 'drawdown-shared-horizon', endAge: 92, sharedWith: [] } },
+    { key: 'statutory', label: 'Gesetzliche Rente', netMonthlyNominal: 2000, netMonthlyReal: 1440, status: 'document', duration: { kind: 'lifelong' }, contributionMonthly: null, contributionStatus: null, contributionLabel: '', provenanceLabel: 'lt. Renteninformation' },
+    { key: 'etf-1', instanceId: 'etf-1', label: 'Mein Depot', netMonthlyNominal: 500, netMonthlyReal: 360, status: 'assumed', duration: { kind: 'drawdown-shared-horizon', endAge: 92, sharedWith: [] }, contributionMonthly: 250, contributionStatus: 'entered', contributionLabel: 'Sparrate', provenanceLabel: 'Angenommen' },
   ],
   readiness: { status: 'estimated', reasons: [assumption], blocking: [], assumptions: [assumption], canShowHouseholdTotal: true },
 }
@@ -55,6 +56,9 @@ describe('PlanOverview', () => {
     } } })
     render(<PlanOverview {...p} />)
     expect(screen.getByText('Noch offen')).toBeVisible()
+    const hint = screen.getByText(blockedSourcesHint)
+    expect(hint).toBeVisible()
+    expect(hint.nextElementSibling).toBe(screen.getByRole('list', { name: 'Deine Rentenquellen' }))
     expect(screen.queryByText(money(1800))).not.toBeInTheDocument()
     expect(screen.queryByText(money(1440))).not.toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
@@ -68,11 +72,12 @@ describe('PlanOverview', () => {
     render(<PlanOverview {...p} />)
     expect(screen.getByRole('heading', { name: 'Deine Rente im Überblick' })).toBeVisible()
     expect(screen.getByText('Geschätzt aus deinen Angaben')).toBeVisible()
+    expect(screen.queryByText(blockedSourcesHint)).not.toBeInTheDocument()
     expect(screen.getByText(money(1800))).toBeVisible()
     expect(screen.getByRole('list', { name: 'Verwendete Annahmen' })).toHaveTextContent(assumption.label)
     const pension = screen.getByRole('button', { name: 'Gesetzliche Rente bearbeiten' })
     expect(pension).toHaveTextContent('Lebenslang')
-    expect(pension).toHaveTextContent('lt. Beleg')
+    expect(pension).toHaveTextContent('lt. Renteninformation')
     expect(screen.getByRole('button', { name: 'Mein Depot bearbeiten' })).toBeVisible()
     fireEvent.click(pension)
     expect(p.onEditSource).toHaveBeenCalledWith(summary.rows[0])
@@ -85,17 +90,82 @@ describe('PlanOverview', () => {
     ] as const) { fireEvent.click(screen.getByRole('button', { name })); expect(callback).toHaveBeenCalledOnce() }
   })
 
-  it('shows the target gap in its explicitly labelled today-euro basis', () => {
+  it.each([0, 250.75])('shows a formatted monthly contribution of %s independently of the payout money basis', (contributionMonthly) => {
+    const p = props({ summary: { ...summary, rows: [summary.rows[0], { ...summary.rows[1], contributionMonthly }] } })
+    const { rerender } = render(<PlanOverview {...p} />)
+    const depot = screen.getByRole('button', { name: 'Mein Depot bearbeiten' })
+    expect(within(depot).getByText(`Sparrate: ${money(contributionMonthly)} / Monat`)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Gesetzliche Rente bearbeiten' }).querySelectorAll('small')).toHaveLength(2)
+    rerender(<PlanOverview {...p} moneyBasis="nominal" />)
+    expect(within(depot).getByText(`Sparrate: ${money(contributionMonthly)} / Monat`)).toBeVisible()
+  })
+
+  it.each([null, 250])('shows an unknown contribution instead of the stored amount %s', (contributionMonthly) => {
+    render(<PlanOverview {...props({ summary: { ...summary, rows: [{
+      ...summary.rows[1], contributionMonthly, contributionStatus: 'unknown', contributionLabel: 'Eigenbeitrag',
+    }] } })} />)
+    const depot = screen.getByRole('button', { name: 'Mein Depot bearbeiten' })
+    expect(within(depot).getByText('Eigenbeitrag: unbekannt')).toBeVisible()
+    expect(depot).not.toHaveTextContent('/ Monat')
+  })
+
+  it('omits the contribution line for a contract without a monthly contribution', () => {
+    render(<PlanOverview {...props({ summary: { ...summary, rows: [{
+      ...summary.rows[1], contributionMonthly: null, contributionStatus: null,
+    }] } })} />)
+    expect(screen.getByRole('button', { name: 'Mein Depot bearbeiten' })).not.toHaveTextContent('Sparrate:')
+  })
+
+  it('uses the career-estimate provenance instead of the statutory row status', () => {
+    render(<PlanOverview {...props({ summary: { ...summary, rows: [{
+      ...summary.rows[0], status: 'assumed', provenanceLabel: 'Grob aus Berufsstart geschätzt',
+    }] } })} />)
+    const pension = screen.getByRole('button', { name: 'Gesetzliche Rente bearbeiten' })
+    expect(within(pension).getByText('Grob aus Berufsstart geschätzt')).toBeVisible()
+    expect(pension).not.toHaveTextContent('Angenommen')
+  })
+
+  it.each([
+    ['assumed', 'Angenommen'], ['unknown', 'Unbekannt'], ['entered', 'Bestätigt'], ['document', 'lt. Beleg'],
+  ] as const)('falls back to the legacy label for %s when provenance is absent', (status, label) => {
+    const row = { ...summary.rows[1], status }
+    Reflect.deleteProperty(row, 'provenanceLabel')
+    render(<PlanOverview {...props({ summary: { ...summary, rows: [row] } })} />)
+    expect(within(screen.getByRole('button', { name: 'Mein Depot bearbeiten' })).getByText(label)).toBeVisible()
+  })
+
+  it('keeps the target and gap on the same money basis as the headline', () => {
     const p = props({ targetMonthly: 2000, summary: { ...summary, gap: { targetMonthly: 2000, gapNominal: 278, gapReal: 200 } } })
     const { rerender } = render(<PlanOverview {...p} />)
     const aside = screen.getByRole('complementary')
-    expect(aside).toHaveTextContent(`Dein Wunsch: ${money(2000)}`)
+    expect(screen.getByText(money(1800))).toBeVisible()
+    expect(aside).toHaveTextContent(`Dein Wunsch: ${money(2000)} · in heutigen Euro`)
     expect(aside).toHaveTextContent(`Zur Wunschrente fehlen rechnerisch ${money(200)} pro Monat.`)
     fireEvent.click(within(aside).getByRole('button', { name: 'Wunsch ändern' }))
     expect(p.onEditTarget).toHaveBeenCalledOnce()
     rerender(<PlanOverview {...p} moneyBasis="nominal" />)
-    expect(within(aside).getByText('In heutigen Euro')).toBeVisible()
-    expect(aside).toHaveTextContent(money(200))
+    expect(screen.getByText(money(2500))).toBeVisible()
+    expect(aside).toHaveTextContent(`Dein Wunsch: ${money(2000 / summary.deflator)} · zum Rentenbeginn (nominal)`)
+    expect(aside).toHaveTextContent(`Zur Wunschrente fehlen rechnerisch ${money(278)} pro Monat.`)
+    expect(aside).not.toHaveTextContent('in heutigen Euro')
+  })
+
+  it.each(['real', 'nominal'] as const)('shows an achieved target on the %s basis', (moneyBasis) => {
+    render(<PlanOverview {...props({ moneyBasis, summary: {
+      ...summary, gap: { targetMonthly: 1800, gapReal: 0, gapNominal: 0 },
+    } })} />)
+    const aside = screen.getByRole('complementary')
+    expect(aside).toHaveTextContent('Dein Wunsch ist in dieser Schätzung erreicht.')
+    expect(aside).not.toHaveTextContent('Zur Wunschrente fehlen')
+  })
+
+  it.each([0, -1])('does not re-inflate the target with an invalid deflator of %s', (deflator) => {
+    render(<PlanOverview {...props({ moneyBasis: 'nominal', summary: {
+      ...summary, deflator, gap: { targetMonthly: 2000, gapReal: 200, gapNominal: 278 },
+    } })} />)
+    const aside = screen.getByRole('complementary')
+    expect(aside).toHaveTextContent('Dein Wunsch: — · zum Rentenbeginn (nominal)')
+    expect(aside).toHaveTextContent(`Zur Wunschrente fehlen rechnerisch ${money(278)} pro Monat.`)
   })
 
   it('switches displayed totals and rows through the controlled money-basis callback', () => {
@@ -138,6 +208,7 @@ describe('PlanOverview', () => {
   it('distinguishes a simulation error from missing input', () => {
     render(<PlanOverview {...props({ summary: { ...summary, readiness: { ...summary.readiness, status: 'error', canShowHouseholdTotal: false } } })} />)
     expect(screen.getByText('Berechnung nicht möglich')).toBeVisible()
+    expect(screen.queryByText(blockedSourcesHint)).not.toBeInTheDocument()
     expect(screen.queryByText('Für deine Gesamtrente fehlen noch Angaben.')).not.toBeInTheDocument()
   })
 })

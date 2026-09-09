@@ -1013,7 +1013,7 @@ details[open] .inv-layer3-summary::before {
 .onboarding-estimate dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .onboarding-estimate > p { font-size: 0.9rem; line-height: 1.5; }
 .onboarding-modal .inventory-footer { flex-direction: column; align-items: stretch; gap: 12px; padding: 16px 24px; border-top-width: 1px; }
-.onboarding-modal .inventory-footer-actions { justify-content: space-between; flex-wrap: wrap; }
+.onboarding-modal .inventory-footer-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .onboarding-modal .inventory-footer-actions button { min-height: 44px; white-space: normal; }
 .onboarding-modal .inventory-validation-errors { display: block; padding: 16px; }
 .onboarding-modal .inventory-validation-errors p { margin: 0; font-weight: 600; }
@@ -1023,10 +1023,12 @@ details[open] .inv-layer3-summary::before {
   .rw-modal-slot:has(.onboarding-modal) { align-items: stretch; }
   .onboarding-modal { width: 100%; height: 100%; padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
   .onboarding-modal .rw-modal-slot__header { padding: 16px; }
-  .onboarding-modal .inventory-body { padding: 20px 16px; }
+  /* Leave scroll room for the sticky actions, including wrapped labels and
+     the disclaimer, so the final expanded disclosure clears the footer. */
+  .onboarding-modal .inventory-body { padding: 20px 16px calc(160px + env(safe-area-inset-bottom, 0px)); }
   .onboarding-grid { grid-template-columns: minmax(0, 1fr); }
   .onboarding-modal .inventory-footer { padding: 12px 16px; }
-  .onboarding-modal .inventory-footer-actions { flex-direction: column-reverse; align-items: stretch; gap: 8px; }
+  .onboarding-modal .inventory-footer-actions { align-items: stretch; gap: 8px; }
   .onboarding-modal .inventory-footer-actions button { justify-content: center; width: 100%; }
   .onboarding-modal .rw-modal-slot__body { min-height: 0; }
 }

@@ -179,7 +179,7 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
   // this contract. Only rendered when the combined share is available.
   const combinedShare = row.combinedShare
   const netCellTitle = combinedShare != null
-    ? `Steuer ${formatCurrency(combinedShare.taxShareAnnual / 12, 0)} €/mo (${formatCurrency(combinedShare.taxShareAnnual, 0)} €/Jahr) · KV/PV ${formatCurrency(combinedShare.kvPvShare, 0)} €/mo`
+    ? `Steuer ${formatCurrency(combinedShare.taxShareAnnual / 12, 0)}/mo (${formatCurrency(combinedShare.taxShareAnnual, 0)}/Jahr) · KV/PV ${formatCurrency(combinedShare.kvPvShare, 0)}/mo`
     : undefined
 
   // Provenance pill: lowest-confidence input across all consumed fields for this

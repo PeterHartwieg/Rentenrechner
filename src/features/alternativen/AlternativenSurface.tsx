@@ -51,8 +51,7 @@ export function AlternativenSurface(props: AlternativenHostProps) {
       focusRequested.current = true
       setError(result.message)
     } else {
-      setError(null)
-      props.invalidatePreview()
+      props.onReturnToPlan()
     }
   }
   function applyPreview() {
@@ -107,6 +106,7 @@ export function AlternativenSurface(props: AlternativenHostProps) {
       {(open.status === 'shape-drift' || open.status === 'missing-source') && <p role="alert" className="alternativen__notice">{open.blockReason ?? (open.status === 'shape-drift' ? ALTERNATIVEN_COPY.shapeDrift : ALTERNATIVEN_COPY.missingSource)}</p>}
       <div aria-live="polite" aria-atomic="true">
         <AlternativeComparison before={open.before} after={open.after} description={open.description}
+          showApplyNote={open.status === 'current'}
           retirementAge={savedScenario?.derivedFromBaselineSnapshot.profile.retirementAge}
           heading={reviewId === open.id && open.status === 'current' ? 'Änderung prüfen' : 'Vorher und nachher'} headingRef={resultHeading} />
       </div>

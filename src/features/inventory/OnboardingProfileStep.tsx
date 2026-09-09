@@ -37,7 +37,7 @@ export function OnboardingProfileStep({ draft, errors, mode, showErrors }: {
                 patchPension('method', 'projected-gross')
               }
             }}>
-            <option value="" disabled>Bitte auswählen</option>
+            {!profile.employment.value && <option value="" disabled>Bitte auswählen</option>}
             <option value="employee">Angestellt</option>
             <option value="self_employed">Selbstständig</option>
             <option value="civil_servant">Verbeamtet</option>
@@ -47,7 +47,7 @@ export function OnboardingProfileStep({ draft, errors, mode, showErrors }: {
         <label className="onboarding-select" htmlFor={`${id}-health`}>Krankenversicherung
           <select id={`${id}-health`} value={profile.publicHealthInsurance.value === null ? '' : profile.publicHealthInsurance.value ? 'gkv' : 'pkv'}
             onChange={(event) => setProfileValue('publicHealthInsurance', event.target.value === 'gkv')}>
-            <option value="" disabled>Bitte auswählen</option>
+            {profile.publicHealthInsurance.value === null && <option value="" disabled>Bitte auswählen</option>}
             <option value="gkv">Gesetzlich</option>
             <option value="pkv">Privat</option>
           </select>

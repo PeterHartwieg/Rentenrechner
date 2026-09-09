@@ -372,18 +372,54 @@ interface PreviewState {
   preview: AlternativenPreview
 }
 
+interface FrozenPair {
+  before: PlanSummary | null
+  after: PlanSummary | null
+}
+
 /**
- * Frozen before/after pairs, keyed by scenario identity.
+ * Frozen before/after pairs, keyed by everything the pair is computed from:
+ * the what-if object, the rules table, and the return-scenario id.
  *
  * A `WeakMap` rather than a hook-local ref: it is read while the `saved` memo
- * runs, the entries are a pure function of the immutable scenario object, and
- * a removed or rebased what-if is collected with its entry. A rebase or a
- * freeze produces a new object and therefore a fresh, correct computation.
+ * runs, the entries are a pure function of those three inputs, and a removed
+ * or rebased what-if is collected with its entry. A rebase or a freeze
+ * produces a new object and therefore a fresh, correct computation.
+ *
+ * The nesting is what keeps the cache honest: keyed on the what-if alone, a
+ * switch to another return scenario (or another rules year) returned the pair
+ * computed for the previous one. The two outer levels are weak so entries die
+ * with their what-if / rules object; only the innermost `scenarioId` map is
+ * strong, and it is bounded by the handful of return-scenario ids.
  */
 const frozenPairCache = new WeakMap<
   WhatIfScenario,
-  { before: PlanSummary | null; after: PlanSummary | null }
+  WeakMap<GermanRules, Map<string, FrozenPair>>
 >()
+
+/** Read the memoised pair for (whatIf, rules, scenarioId), computing it once. */
+function frozenPairFor(
+  whatIf: WhatIfScenario,
+  rules: GermanRules,
+  scenarioId: string,
+  compute: () => FrozenPair,
+): FrozenPair {
+  let byRules = frozenPairCache.get(whatIf)
+  if (!byRules) {
+    byRules = new WeakMap<GermanRules, Map<string, FrozenPair>>()
+    frozenPairCache.set(whatIf, byRules)
+  }
+  let byScenarioId = byRules.get(rules)
+  if (!byScenarioId) {
+    byScenarioId = new Map<string, FrozenPair>()
+    byRules.set(rules, byScenarioId)
+  }
+  const cached = byScenarioId.get(scenarioId)
+  if (cached) return cached
+  const computed = compute()
+  byScenarioId.set(scenarioId, computed)
+  return computed
+}
 
 const EMPTY_DRAFT: AlternativenDraft = {
   instanceId: null,
@@ -561,8 +597,7 @@ export function useAlternativenFlow({
 
   const saved = useMemo<SavedAlternative[]>(() => {
     return workspace.whatIfs.map((whatIf) => {
-      let frozen = frozenPairCache.get(whatIf)
-      if (!frozen) {
+      const frozen = frozenPairFor(whatIf, rules, scenarioId, () => {
         const before = summariseScenario(
           workspace,
           whatIf.derivedFromBaselineSnapshot,
@@ -570,13 +605,12 @@ export function useAlternativenFlow({
           rules,
         )
         const afterRaw = summariseScenario(workspace, whatIf, scenarioId, rules)
-        frozen = {
+        return {
           before,
           after:
             afterRaw && before ? withDeflator(afterRaw, before.deflator) : afterRaw,
         }
-        frozenPairCache.set(whatIf, frozen)
-      }
+      })
       const status = whatIfStatus(whatIf, workspace)
       return {
         id: whatIf.id,

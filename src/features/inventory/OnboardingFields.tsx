@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from 'react'
 import { UnknownNumberField } from '../../ui/UnknownNumberField'
+import { NumberField } from '../../ui/NumberField'
 import { previousFieldValue, type Field } from './onboardingDraft'
 
 /** Closed disclosures have no hidden tab stops; the hook retains their values. */
@@ -30,6 +31,13 @@ export function OnboardingNumberField({
   const id = useId()
   const [blurredWithValue, setBlurredWithValue] = useState(false)
   const shownError = showErrors || blurredWithValue ? error : undefined
+  const unknown = field.status === 'unknown'
+  const value = previousFieldValue(field)
+  const onboardingValue = field.status === 'assumed' || unknown || !Number.isFinite(value) ? null : value ?? null
+  const provenance = unknown ? 'Unbekannt' : onboardingValue !== null
+    ? field.status === 'document' ? 'lt. Beleg' : 'Von dir angegeben'
+    : undefined
+  const description = [shownError && `${id}-error`, hideAssumed && provenance && `${id}-provenance`].filter(Boolean).join(' ') || undefined
   return (
     <div className="onboarding-field" role="group" aria-label={`Angabe: ${label}`}
       onBlur={(event) => {
@@ -38,8 +46,21 @@ export function OnboardingNumberField({
           setBlurredWithValue(true)
         }
       }}
-      aria-invalid={!!shownError || undefined} aria-describedby={shownError ? `${id}-error` : undefined}>
-      <UnknownNumberField
+      aria-invalid={!!shownError || undefined} aria-describedby={description}>
+      {hideAssumed ? <div className="unknown-number-field" data-qa-sensitive="true">
+        <NumberField label={label} value={onboardingValue} allowEmpty step={step} placeholder={placeholder}
+          onChange={(next) => onValue(next ?? Number.NaN)} />
+        <label className="unknown-number-field__unknown" htmlFor={`${id}-unknown`}>
+          <input id={`${id}-unknown`} type="checkbox" checked={unknown}
+            aria-label={`${label}: Weiß ich nicht`} aria-describedby={provenance ? `${id}-provenance` : undefined}
+            onChange={(event) => {
+              if (event.target.checked) onUnknown()
+              else onValue(value ?? Number.NaN)
+            }} />
+          Weiß ich nicht
+        </label>
+        {provenance && <small id={`${id}-provenance`} className={`unknown-number-field__hint${unknown ? ' pec-prov--unknown' : ''}`}>{provenance}</small>}
+      </div> : <UnknownNumberField
         label={label}
         value={hideAssumed && field.status === 'assumed' ? null : previousFieldValue(field) ?? null}
         placeholder={placeholder}
@@ -50,7 +71,7 @@ export function OnboardingNumberField({
           // An empty input stays invalid and editable. It is never confirmed as zero.
           else onValue(value ?? Number.NaN)
         }}
-      />
+      />}
       {hint && <p className="onboarding-hint">{hint}</p>}
       {shownError && <p id={`${id}-error`} className="inventory-field-error">{shownError}</p>}
     </div>

@@ -35,6 +35,7 @@ export function ContractEditorHost(props: ContractEditorHostProps) {
       <ContractEditor {...props} mode="edit" productLabel={props.productLabel ?? ''}
         retirementEndAge={props.workspace.baseline.assumptions.retirementEndAge}
         back={props.cancel}
+        onOpenDetail={props.onOpenDetail}
         onEditSharedHorizon={() => props.navigate(ROUTES.eingaben)}
         onOpenFurtherInputs={() => props.navigate(ROUTES.eingabenProdukte)}
         remove={() => {

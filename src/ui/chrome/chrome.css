@@ -398,7 +398,8 @@
   position: relative;
   background: var(--rw-bg-paper);
   border-top: 1px solid var(--rw-rule-soft);
-  padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+  /* Keep the last menu entry above the persistent phone navigation. */
+  padding: 12px 0 calc(16px + var(--rw-mobile-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
   max-height: 70vh;
   overflow-y: auto;
   border-top-left-radius: 12px;

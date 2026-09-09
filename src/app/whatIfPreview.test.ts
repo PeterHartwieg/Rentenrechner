@@ -137,6 +137,7 @@ describe('describeWhatIf', () => {
     expect(described.instanceId).toBe('etf-bbbb2222')
     expect(described.productId).toBe('etf')
     expect(described.decision).toBe('contribution')
+    expect(described.changed).toBe(true)
     expect(described.beforeContributionMonthly).toBe(150)
     expect(described.afterContributionMonthly).toBe(400)
     expect(described.sourceRevision.createdAt).toBe(whatIf.createdAt)
@@ -147,6 +148,40 @@ describe('describeWhatIf', () => {
     const described = describeWhatIf(whatIf)
     expect(described.decision).toBe('paid_up')
     expect(described.instanceId).toBe('bav-cccc3333')
+    expect(described.changed).toBe(true)
+  })
+
+  it('keeps contract, decision and both amounts when the contribution is unchanged', () => {
+    // 150 -> 150 leaves no diff to read; the before/after still have to show
+    // the real amount instead of degrading to "unbekannt".
+    const whatIf = buildContributionWhatIf(workspace(), 'etf-bbbb2222', {
+      kind: 'contribution',
+      monthly: 150,
+    })!
+    const described = describeWhatIf(whatIf)
+
+    expect(described.instanceId).toBe('etf-bbbb2222')
+    expect(described.productId).toBe('etf')
+    expect(described.decision).toBe('contribution')
+    expect(described.changed).toBe(false)
+    expect(described.beforeContributionMonthly).toBe(150)
+    expect(described.afterContributionMonthly).toBe(150)
+  })
+
+  it('marks an unchanged contribution alternative in its label', () => {
+    const unchanged = buildContributionWhatIf(workspace(), 'etf-bbbb2222', {
+      kind: 'contribution',
+      monthly: 150,
+    })!
+    expect(unchanged.label).toBe(
+      `${whatIfLabel('Depot 2222', { kind: 'contribution', monthly: 150 })} (unverändert)`,
+    )
+
+    const changed = buildContributionWhatIf(workspace(), 'etf-bbbb2222', {
+      kind: 'contribution',
+      monthly: 400,
+    })!
+    expect(changed.label).not.toContain('unverändert')
   })
 
   it('reports "other" for a fork that changes nothing per-contract', () => {
@@ -156,6 +191,7 @@ describe('describeWhatIf', () => {
     const described = describeWhatIf(whatIf)
     expect(described.decision).toBe('other')
     expect(described.instanceId).toBeNull()
+    expect(described.changed).toBe(false)
   })
 })
 

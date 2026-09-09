@@ -44,11 +44,13 @@
 .contract-editor__primary { background: var(--rw-ink); color: var(--rw-bg-paper); }
 .contract-editor__secondary { background: var(--rw-bg-paper); color: var(--rw-ink); }
 .contract-editor__primary:hover { background: var(--rw-accent); border-color: var(--rw-accent); }
-.contract-editor__link, .contract-editor__evidence {
+.contract-editor__link {
   min-height: 44px; padding: 8px 0; border: 0; background: transparent;
   color: var(--rw-ink); text-align: left; text-decoration: underline; text-underline-offset: 3px;
 }
-.contract-editor .contract-editor__evidence { align-self: flex-start; font-size: 0.78rem; color: var(--rw-ink-soft); }
+.contract-editor__evidence { padding-block: 8px; font-size: 0.85rem; color: var(--rw-ink-soft); }
+.contract-editor__evidence > span { font-weight: 600; color: var(--rw-ink); }
+.contract-editor .contract-editor__detail-link { color: var(--rw-ink-soft); font-size: 0.9rem; }
 .contract-editor a { color: var(--rw-ink); text-underline-offset: 3px; }
 .contract-editor__errors { padding: 16px; margin-bottom: 24px; border: 1px solid var(--rw-accent); }
 .contract-editor__errors ul { margin: 8px 0 0; padding-left: 20px; }

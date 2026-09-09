@@ -4,16 +4,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { defaultWorkspace, saveWorkspace, loadSavedWorkspace } from '../../storage'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { ROUTES } from '../../app/useRoute'
 import { useContractDraft } from '../inventory/useContractDraft'
 import { INVENTORY_PRODUCT_REGISTRY, type MultiInstanceProductId } from '../inventory/inventoryProductRegistry'
 import type { ContractDraftPatch } from '../inventory/contractDraft'
 import { ContractEditor } from './ContractEditor'
 import { VertragBearbeitenPage } from './VertragBearbeitenPage'
 
-function Harness({ productId = 'etf', onSave = () => {}, onCancel = () => {} }: {
+function Harness({ productId = 'etf', onSave = () => {}, onCancel = () => {}, onOpenDetail }: {
   productId?: MultiInstanceProductId
   onSave?: (patch: ContractDraftPatch) => void
   onCancel?: () => void
+  onOpenDetail?: () => void
 }) {
   const api = useContractDraft({ productId, instance: null, workspace: defaultWorkspace })
   const [open, setOpen] = useState(true)
@@ -21,6 +23,7 @@ function Harness({ productId = 'etf', onSave = () => {}, onCancel = () => {} }: 
   return <ContractEditor {...api} fieldSpecs={api.visibleSpecs} mode="new"
     productLabel={PRODUCT_REGISTRY.find((entry) => entry.metadata.id === productId)!.metadata.label}
     retirementEndAge={96} onEditSharedHorizon={vi.fn()} onOpenFurtherInputs={vi.fn()} back={vi.fn()}
+    onOpenDetail={onOpenDetail}
     cancel={() => { api.reset(); setOpen(false); onCancel() }}
     save={() => { if (!api.valid) return false; onSave(api.toPatch()); return true }} />
 }
@@ -30,12 +33,20 @@ const monthly = () => screen.getByRole('spinbutton', { name: 'Monatliche Sparrat
 const unknownCapital = () => screen.getByRole('checkbox', { name: 'Aktueller Wert (€): Weiß ich nicht' })
 const submit = () => fireEvent.click(screen.getByRole('button', { name: 'Zum Plan hinzufügen' }))
 const type = (element: HTMLElement, value: string) => fireEvent.change(element, { target: { value } })
+const documentLabel = 'Ich habe diesen Wert aus einem Beleg (z. B. Kontoauszug, Vertragsunterlagen) übernommen'
+const documentCheckbox = (field: string) => within(screen.getByRole('group', { name: field }))
+  .getByRole('checkbox', { name: documentLabel })
 
 afterEach(cleanup)
 
 beforeEach(() => localStorage.clear())
 
 describe('contract editor with real draft hook', () => {
+  it('does not offer result details for a new contract even when a callback is supplied', () => {
+    render(<Harness onOpenDetail={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Ergebnis im Detail ansehen →' })).not.toBeInTheDocument()
+  })
+
   it('starts with empty required core fields, not unknown, and focuses the error summary on failed save', () => {
     const onSave = vi.fn()
     render(<Harness onSave={onSave} />)
@@ -101,7 +112,7 @@ describe('contract editor with real draft hook', () => {
     type(name, 'Mein Depot')
     const fee = screen.getByRole('spinbutton', { name: 'Laufende Fondskosten p.a. (TER) (%)' })
     type(fee, '0.35')
-    fireEvent.click(within(fee.closest('[data-contract-field]') as HTMLElement).getByRole('button', { name: 'Wert aus Beleg bestätigen' }))
+    fireEvent.click(documentCheckbox('Laufende Fondskosten p.a. (TER)'))
     expect(fee).toHaveAccessibleDescription('lt. Beleg')
     fireEvent.click(screen.getByText('Kosten & Auszahlung'))
     expect(disclosure).not.toHaveAttribute('open')
@@ -113,6 +124,45 @@ describe('contract editor with real draft hook', () => {
     expect(onSave.mock.calls[0][0].patch.annualAssetFee).toBeCloseTo(0.0035)
     expect(onSave.mock.calls[0][0].inputStatus.annualAssetFee).toBe('document')
     expect(onSave.mock.calls[0][0].patch.label).toBe('Mein Depot')
+  })
+
+  it('confirms individual minimum fields only inside the disclosure and unchecks back to entered', () => {
+    const onSave = vi.fn()
+    render(<Harness onSave={onSave} />)
+    type(capital(), '0'); type(monthly(), '100')
+    for (const checkbox of screen.getAllByRole('checkbox', { name: documentLabel })) {
+      expect(checkbox).not.toBeVisible()
+    }
+    expect(screen.queryByRole('button', { name: 'Wert aus Beleg bestätigen' })).not.toBeInTheDocument()
+    expect(monthly()).toHaveAccessibleDescription('von dir')
+    fireEvent.click(screen.getByText('Kosten & Auszahlung'))
+    const checkbox = documentCheckbox('Monatliche Sparrate')
+    expect(checkbox.closest('details')).toBe(screen.getByText('Kosten & Auszahlung').closest('details'))
+    expect(checkbox).toHaveAccessibleDescription('Monatliche Sparrate')
+    expect(checkbox).not.toBeChecked()
+    fireEvent.click(checkbox)
+    expect(checkbox).toBeChecked()
+    expect(monthly()).toHaveAccessibleDescription('lt. Beleg')
+    expect(capital()).toHaveAccessibleDescription('von dir')
+    submit()
+    expect(onSave.mock.lastCall![0].inputStatus.monthlyContribution).toBe('document')
+    fireEvent.click(checkbox)
+    expect(checkbox).not.toBeChecked()
+    expect(monthly()).toHaveAccessibleDescription('von dir')
+    submit()
+    expect(onSave.mock.lastCall![0].inputStatus.monthlyContribution).toBe('entered')
+    expect(onSave.mock.lastCall![0].patch.monthlyContribution).toBe(100)
+  })
+
+  it('offers no document confirmation for blank or unknown values and accepts entered zero', () => {
+    render(<Harness />)
+    fireEvent.click(screen.getByText('Kosten & Auszahlung'))
+    expect(screen.queryByRole('group', { name: 'Monatliche Sparrate' })).not.toBeInTheDocument()
+    type(monthly(), '0')
+    fireEvent.click(documentCheckbox('Monatliche Sparrate'))
+    expect(monthly()).toHaveAccessibleDescription('lt. Beleg')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Monatliche Sparrate (€): Weiß ich nicht' }))
+    expect(screen.queryByRole('group', { name: 'Monatliche Sparrate' })).not.toBeInTheDocument()
   })
 
   it('opens details on invalid cost input and preserves the blank after blur', () => {
@@ -181,6 +231,18 @@ describe('contract editor with real draft hook', () => {
     expect(screen.getByRole('spinbutton', { name: 'Auszahlplan bis Alter' })).toBeInTheDocument()
     expect(screen.queryByText(/Die gemeinsame Entnahmedauer/)).not.toBeInTheDocument()
   })
+})
+
+it('opens result details for an existing instance through the host callback', () => {
+  const workspace = structuredClone(defaultWorkspace)
+  workspace.baseline.assumptions.etf = [INVENTORY_PRODUCT_REGISTRY.etf.createDefault(2026, 1, () => 'etf-detail')]
+  saveWorkspace(workspace)
+  const navigate = vi.fn()
+  render(<VertragBearbeitenPage instanceId="etf-detail" navigate={navigate} />)
+  const button = screen.getByRole('button', { name: 'Ergebnis im Detail ansehen →' })
+  expect(button).toHaveTextContent('Ergebnis im Detail ansehen →')
+  fireEvent.click(button)
+  expect(navigate).toHaveBeenCalledExactlyOnceWith(ROUTES.vertrag('etf-detail'))
 })
 
 it('removing through the real container keeps an undo action after the instance disappears', () => {

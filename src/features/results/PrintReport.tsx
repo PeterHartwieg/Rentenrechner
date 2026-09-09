@@ -136,9 +136,11 @@ interface Props {
   compareAllProductsSimulation?: ReturnType<typeof simulateRetirementComparison>
   /**
    * Set by the caller when `selectResultReadiness` says the household total may
-   * not be shown. The combine-mode "Netto-Einkommen mtl." cell then renders
-   * blank (never 0, never a placeholder) and a Hinweis line names the missing
-   * inputs — the print mirror of the CSV suppression (lead decision §10.3).
+   * not be shown. The two export surfaces suppress it differently on purpose
+   * (lead decision §10.3): PDF renders `—` plus the Hinweis line naming the
+   * missing inputs; CSV emits an empty cell plus the same Hinweis line. Never 0,
+   * never a number — a blank cell in the printed table would read as a layout
+   * bug, while a dash in a CSV would be parsed as data.
    *
    * Omitted → today's behaviour, so existing callers are unchanged.
    */

@@ -9,7 +9,13 @@
 import { describe, expect, it } from 'vitest'
 import { defaultWorkspace } from '../../storage'
 import { addInstanceToWorkspace } from '../../app/workspaceIdentity'
-import type { BavInstance, EtfInstance, RiesterInstance } from '../../domain/instances'
+import type {
+  BavInstance,
+  EtfInstance,
+  InsuranceInstance,
+  RiesterInstance,
+} from '../../domain/instances'
+import { legalConstants } from '../../rules/legalConstants'
 import {
   CONTRACT_FIELD_SPECS,
   contractDraftDirty,
@@ -31,6 +37,10 @@ import { INVENTORY_PRODUCT_REGISTRY } from './inventoryProductRegistry'
 function bavInstance(overrides: Partial<BavInstance> = {}): BavInstance {
   const base = INVENTORY_PRODUCT_REGISTRY.bav.createDefault(2026, 1, () => 'bav-test0001')
   return { ...base, ...overrides }
+}
+
+function insuranceInstance(): InsuranceInstance {
+  return INVENTORY_PRODUCT_REGISTRY.versicherung.createDefault(2026, 1, () => 'pav-test0001')
 }
 
 function etfInstance(overrides: Partial<EtfInstance> = {}): EtfInstance {
@@ -73,6 +83,18 @@ describe('CONTRACT_FIELD_SPECS', () => {
 
     const leibrente = patchDraftField(draft, 'payoutMode', 'leibrente')
     expect(visibleFieldSpecs(leibrente).map((s) => s.id)).toContain('rentenfaktor')
+  })
+
+  it('offers the pAV old-contract question only below the §52 Abs. 28 boundary year', () => {
+    const draft = draftFromInstance('versicherung', insuranceInstance())
+    const has = (year: number) =>
+      visibleFieldSpecs(patchDraftField(draft, 'contractStartYear', year))
+        .map((s) => s.id)
+        .includes('oldContractTaxFreeEligible')
+
+    expect(legalConstants.insurance.pre2005YearBoundary).toBe(2005)
+    expect(has(2004)).toBe(true)
+    expect(has(2005)).toBe(false)
   })
 })
 

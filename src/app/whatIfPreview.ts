@@ -32,7 +32,7 @@ import {
 
 /** The two changes the "try a change" flow offers (implementation plan, "Alternatives"). */
 export type WhatIfChange =
-  | { kind: 'contribution'; monthly: number }
+  | { kind: 'contribution'; monthly: number; /** Set by `buildContributionWhatIf`. */ unchanged?: boolean }
   | { kind: 'paid_up' }
 
 function findEntry(
@@ -56,9 +56,9 @@ function contributionOf(
 
 /** German label for a preview, per the §4 copy table. */
 export function whatIfLabel(instanceLabel: string, change: WhatIfChange): string {
-  return change.kind === 'paid_up'
-    ? `${instanceLabel}: keine weiteren Beiträge`
-    : `${instanceLabel}: ${formatCurrency(change.monthly)} Beitrag / Monat`
+  if (change.kind === 'paid_up') return `${instanceLabel}: keine weiteren Beiträge`
+  const amount = `${formatCurrency(change.monthly)} Beitrag / Monat`
+  return `${instanceLabel}: ${amount}${change.unchanged ? ' (unverändert)' : ''}`
 }
 
 /**
@@ -77,7 +77,13 @@ export function buildContributionWhatIf(
 ): WhatIfScenario | null {
   const entry = findEntry(workspace, instanceId)
   if (!entry) return null
-  const label = whatIfLabel(entry.instance.label || instanceId, change)
+  const unchanged =
+    change.kind === 'contribution' &&
+    contributionOf(entry.productId, entry.instance) === change.monthly
+  const label = whatIfLabel(
+    entry.instance.label || instanceId,
+    change.kind === 'contribution' ? { ...change, unchanged } : change,
+  )
 
   if (change.kind === 'paid_up') {
     // Reuse the shipped decision rather than re-deriving what "beitragsfrei"
@@ -113,6 +119,13 @@ export interface WhatIfDescription {
   instanceLabel: string | null
   productId: ProductId | null
   decision: WhatIfDecisionKind
+  /**
+   * Whether the alternative actually differs from its snapshot. `false` for an
+   * alternative that re-states the contribution the contract already has — the
+   * decision kind is still reported, so the UI can say "unverändert" instead of
+   * "unbekannt".
+   */
+  changed: boolean
   /** Monthly contribution in the frozen baseline snapshot. */
   beforeContributionMonthly: number | null
   /** Monthly contribution inside the alternative. */
@@ -132,6 +145,56 @@ export interface WhatIfDescription {
   }
 }
 
+interface WhatIfSubject {
+  instanceId: string
+  instanceLabel: string | null
+  decision: Exclude<WhatIfDecisionKind, 'other'>
+}
+
+/**
+ * Which contract a saved alternative is about.
+ *
+ * A real diff identifies it unambiguously, so that is tried first. When the
+ * alternative changes nothing — the user re-stated the contribution they
+ * already pay — there is no diff to read, and the subject is recovered from the
+ * fork label (`whatIfLabel` writes `"<Vertrag>: …"`). That fallback is what
+ * keeps an unchanged alternative from degrading to "unbekannt / unbekannt".
+ */
+function findSubject(
+  whatIf: WhatIfScenario,
+  before: Map<string, { productId: ProductId; instance: AnyWorkspaceInstance }>,
+  after: Map<string, { productId: ProductId; instance: AnyWorkspaceInstance }>,
+): WhatIfSubject | null {
+  for (const [instanceId, entry] of after) {
+    const previous = before.get(instanceId)
+    if (!previous) continue
+    if (previous.instance.status !== 'paid_up' && entry.instance.status === 'paid_up') {
+      return { instanceId, instanceLabel: entry.instance.label ?? null, decision: 'paid_up' }
+    }
+  }
+  for (const [instanceId, entry] of after) {
+    const previous = before.get(instanceId)
+    if (!previous) continue
+    const from = contributionOf(previous.productId, previous.instance)
+    const to = contributionOf(entry.productId, entry.instance)
+    if (from !== null && to !== null && from !== to) {
+      return { instanceId, instanceLabel: entry.instance.label ?? null, decision: 'contribution' }
+    }
+  }
+
+  const label = whatIf.label ?? ''
+  for (const [instanceId, entry] of after) {
+    const name = entry.instance.label || instanceId
+    if (!name || !label.startsWith(`${name}:`)) continue
+    return {
+      instanceId,
+      instanceLabel: entry.instance.label ?? null,
+      decision: label.includes('keine weiteren Beiträge') ? 'paid_up' : 'contribution',
+    }
+  }
+  return null
+}
+
 /**
  * Recover what a saved alternative actually changed, by diffing it against its
  * own frozen snapshot.
@@ -145,6 +208,9 @@ export function describeWhatIf(whatIf: WhatIfScenario): WhatIfDescription {
   const before = new Map(
     listWorkspaceInstances(snapshot.assumptions).map((e) => [e.instance.instanceId, e]),
   )
+  const after = new Map(
+    listWorkspaceInstances(whatIf.assumptions).map((e) => [e.instance.instanceId, e]),
+  )
 
   const sourceRevision = {
     baselineId: whatIf.derivedFromBaselineId,
@@ -153,39 +219,44 @@ export function describeWhatIf(whatIf: WhatIfScenario): WhatIfDescription {
     frozenAt: whatIf.frozenAt,
   }
 
-  for (const after of listWorkspaceInstances(whatIf.assumptions)) {
-    const previous = before.get(after.instance.instanceId)
-    if (!previous) continue
-
-    const beforeContribution = contributionOf(previous.productId, previous.instance)
-    const afterContribution = contributionOf(after.productId, after.instance)
-    const paidUp =
-      previous.instance.status !== 'paid_up' && after.instance.status === 'paid_up'
-    const contributionChanged =
-      beforeContribution !== null &&
-      afterContribution !== null &&
-      beforeContribution !== afterContribution
-
-    if (!paidUp && !contributionChanged) continue
-
+  const subject = findSubject(whatIf, before, after)
+  if (!subject) {
     return {
-      instanceId: after.instance.instanceId,
-      instanceLabel: after.instance.label || previous.instance.label || null,
-      productId: after.productId,
-      decision: paidUp ? 'paid_up' : 'contribution',
-      beforeContributionMonthly: beforeContribution,
-      afterContributionMonthly: afterContribution,
+      instanceId: null,
+      instanceLabel: null,
+      productId: null,
+      decision: 'other',
+      changed: false,
+      beforeContributionMonthly: null,
+      afterContributionMonthly: null,
       sourceRevision,
     }
   }
 
+  // Both amounts are read straight off the two instances, never off the diff:
+  // an alternative that re-states the current contribution (150 -> 150) still
+  // has a before and an after to show, it just has not changed anything.
+  const previous = before.get(subject.instanceId) ?? null
+  const current = after.get(subject.instanceId) ?? null
+  const beforeContribution = previous
+    ? contributionOf(previous.productId, previous.instance)
+    : null
+  const afterContribution = current ? contributionOf(current.productId, current.instance) : null
+  const changed =
+    subject.decision === 'paid_up' ||
+    (beforeContribution !== null &&
+      afterContribution !== null &&
+      beforeContribution !== afterContribution)
+
   return {
-    instanceId: null,
-    instanceLabel: null,
-    productId: null,
-    decision: 'other',
-    beforeContributionMonthly: null,
-    afterContributionMonthly: null,
+    instanceId: subject.instanceId,
+    instanceLabel:
+      current?.instance.label || previous?.instance.label || subject.instanceLabel || null,
+    productId: current?.productId ?? previous?.productId ?? null,
+    decision: subject.decision,
+    changed,
+    beforeContributionMonthly: beforeContribution,
+    afterContributionMonthly: afterContribution,
     sourceRevision,
   }
 }

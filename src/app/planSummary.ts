@@ -23,7 +23,7 @@
  */
 
 import type { GermanRules } from '../domain'
-import type { InputStatus } from '../domain/inputStatus'
+import type { InputStatus, PensionEntryMethod } from '../domain/inputStatus'
 import type { Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import type { ProductId } from '../engine/productRegistry'
@@ -134,6 +134,21 @@ export interface PlanSourceRow {
   status: InputStatus
   duration: DurationDescriptor
   target?: Route
+  /**
+   * What the user pays into this contract each month — the instance's own
+   * contribution field per `CONTRIBUTION_FIELD_BY_PRODUCT`. `null` when the
+   * field is unset or does not apply (statutory row, beitragsfreie Verträge).
+   *
+   * The next three fields are always populated by `selectPlanSummary`; they are
+   * declared optional only so hand-written row literals stay valid.
+   */
+  contributionMonthly?: number | null
+  /** Input status of that contribution field; `null` when there is none. */
+  contributionStatus?: InputStatus | null
+  /** Product-specific name for the contribution ("Sparrate", "Eigenbeitrag", …). */
+  contributionLabel?: string
+  /** One plain-German line saying where this row's number comes from. */
+  provenanceLabel?: string
 }
 
 export interface PlanSummary {
@@ -163,6 +178,65 @@ function worstStatus(statuses: InputStatus[]): InputStatus {
 
 function statusOfInstanceField(instance: AnyWorkspaceInstance, key: string): InputStatus {
   return resolveInputStatus(instance.inputStatus, instance.evidenceMap?.[key], key)
+}
+
+/**
+ * Product-specific name for the monthly contribution the user steers.
+ *
+ * Deliberately not the engine field name: "Bruttobeitrag" (bAV, Entgeltumwandlung
+ * before tax and SV) and "Eigenbeitrag" (Riester / AVD, the part the saver pays
+ * next to the Zulage) mean different money than a plain "Beitrag".
+ */
+export const CONTRIBUTION_LABEL_BY_PRODUCT: Record<ProductId, string> = {
+  etf: 'Sparrate',
+  bav: 'Bruttobeitrag',
+  versicherung: 'Beitrag',
+  basisrente: 'Beitrag',
+  riester: 'Eigenbeitrag',
+  altersvorsorgedepot: 'Eigenbeitrag',
+}
+
+/**
+ * Plain-German provenance line for a contract row.
+ *
+ * Separate from `formatInputStatusForExport` on purpose: exports use the
+ * evidence vocabulary ("Bestätigt" / "Schätzwert"), the plan surface speaks to
+ * the user in the second person.
+ */
+function provenanceLabelOfStatus(status: InputStatus): string {
+  switch (status) {
+    case 'unknown':
+      return 'Unbekannt'
+    case 'assumed':
+      return 'Angenommen'
+    case 'document':
+      return 'lt. Beleg'
+    default:
+      return 'Von dir angegeben'
+  }
+}
+
+/** Provenance line for the statutory row — driven by how the pension was entered. */
+function statutoryProvenanceLabel(
+  method: PensionEntryMethod | undefined,
+  status: InputStatus,
+): string {
+  switch (method?.kind) {
+    case 'career':
+      return 'Grob aus Berufsstart geschätzt'
+    case 'document':
+      return 'lt. Renteninformation'
+    case 'years':
+      return 'Beitragsjahre angegeben'
+    case 'points':
+      return 'Entgeltpunkte angegeben'
+    case 'projected-gross':
+      return 'Prognose angegeben'
+    case 'skipped':
+      return 'Noch offen'
+    default:
+      return provenanceLabelOfStatus(status)
+  }
 }
 
 function statutoryRowLabel(
@@ -229,6 +303,13 @@ export function selectPlanSummary(
     status: statutoryStatus,
     duration: { kind: 'lifelong' },
     target: ROUTES.eingaben,
+    contributionMonthly: null,
+    contributionStatus: null,
+    contributionLabel: '',
+    provenanceLabel: statutoryProvenanceLabel(
+      wsa.statutoryPension.pensionEntryMethod,
+      statutoryStatus,
+    ),
   })
 
   // Contract rows — nets exclusively from the aggregate `byInstance` map.
@@ -261,10 +342,21 @@ export function selectPlanSummary(
     const label = instance.label?.trim().length
       ? instance.label
       : (getProductMeta(productId)?.label ?? productId)
+    const contributionField = CONTRIBUTION_FIELD_BY_PRODUCT[productId]
     const statuses: InputStatus[] = [statusOfInstanceField(instance, 'currentValueEUR')]
-    if (instance.status !== 'paid_up') {
-      statuses.push(statusOfInstanceField(instance, CONTRIBUTION_FIELD_BY_PRODUCT[productId]))
+    // A beitragsfreier Vertrag has no contribution to report or to grade.
+    const contributesMonthly = instance.status !== 'paid_up'
+    if (contributesMonthly) {
+      statuses.push(statusOfInstanceField(instance, contributionField))
     }
+    const rawContribution = (instance as unknown as Record<string, unknown>)[
+      contributionField
+    ]
+    const contributionMonthly =
+      contributesMonthly && typeof rawContribution === 'number' && Number.isFinite(rawContribution)
+        ? rawContribution
+        : null
+    const rowStatus = worstStatus(statuses)
     rows.push({
       key: instance.instanceId,
       instanceId: instance.instanceId,
@@ -272,9 +364,15 @@ export function selectPlanSummary(
       label,
       netMonthlyNominal: nominal,
       netMonthlyReal: nominal * deflator,
-      status: worstStatus(statuses),
+      status: rowStatus,
       duration,
-      target: ROUTES.vertrag(instance.instanceId),
+      target: ROUTES.vertragBearbeiten(instance.instanceId),
+      contributionMonthly,
+      contributionStatus: contributesMonthly
+        ? statusOfInstanceField(instance, contributionField)
+        : null,
+      contributionLabel: CONTRIBUTION_LABEL_BY_PRODUCT[productId],
+      provenanceLabel: provenanceLabelOfStatus(rowStatus),
     })
   })
 

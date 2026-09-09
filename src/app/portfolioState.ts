@@ -386,8 +386,15 @@ export interface UsePortfolioStateApi {
    * is not an apply permission.
    */
   applyWhatIf: (id: string) => ApplyWhatIfResult
-  /** Restore the workspace captured in an undo handle. */
-  undo: (handle: WorkspaceUndo) => void
+  /**
+   * Restore the workspace captured in an undo handle.
+   *
+   * Undo is one level deep, so only the newest handle is honoured: returns
+   * `false` (and changes nothing) when a later mutation has superseded
+   * `handle` — restoring it would silently discard that mutation. `true` when
+   * the workspace was restored.
+   */
+  undo: (handle: WorkspaceUndo) => boolean
   /**
    * The most recent undoable mutation, or `null`. One level, in memory, and
    * superseded by the next mutation — the status bar shows it until consumed.
@@ -693,9 +700,15 @@ export function usePortfolioState(): UsePortfolioStateApi {
     [commit],
   )
 
-  const undo = useCallback((handle: WorkspaceUndo) => {
+  // Only the newest handle may be undone. A surface that holds a handle across
+  // a later mutation (the contract editor keeps one while it shows "entfernt")
+  // would otherwise restore a snapshot taken *before* that mutation and discard
+  // it silently. Undo is one level deep, so a superseded handle is refused.
+  const undo = useCallback((handle: WorkspaceUndo): boolean => {
+    if (!lastUndoHandle || lastUndoHandle.id !== handle.id) return false
     setWorkspaceStore(handle.previous)
-    if (lastUndoHandle && lastUndoHandle.id === handle.id) publishLastUndo(null)
+    publishLastUndo(null)
+    return true
   }, [])
 
   const freezeWhatIf = useCallback((id: string) => {

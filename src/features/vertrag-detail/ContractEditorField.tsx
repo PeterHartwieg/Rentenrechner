@@ -111,12 +111,24 @@ export function ContractEditorField({ draft, spec, patchField, setFieldUnknown, 
         {state === 'entered' && !pending ? <ProvLabel isModified /> : statusText}
       </small>
       {error && <p id={`${id}-error`} className="contract-editor__error">{error}</p>}
-      {spec.kind === 'number' && numericValue !== null && Number.isFinite(numericValue) && state !== 'unknown' && (
-        <button type="button" className="contract-editor__evidence"
-          onClick={() => patchField(spec.id, numericValue, state === 'document' ? 'assumed' : 'document')}>
-          {state === 'document' ? 'Als Annahme markieren' : 'Wert aus Beleg bestätigen'}
-        </button>
-      )}
+    </div>
+  )
+}
+
+export function ContractEditorEvidence({ draft, spec, patchField }: Pick<Props, 'draft' | 'spec' | 'patchField'>) {
+  const id = useId()
+  const state = draftFieldState(draft, spec.id)
+  const value = draftFieldValue(draft, spec.id)
+  if (spec.kind !== 'number' || typeof value !== 'number' || !Number.isFinite(value) || state === 'unknown') return null
+
+  return (
+    <div className="contract-editor__evidence" role="group" aria-labelledby={`${id}-field`}>
+      <span id={`${id}-field`}>{spec.label}</span>
+      <label className="contract-editor__check" htmlFor={id}>
+        <input id={id} type="checkbox" checked={state === 'document'} aria-describedby={`${id}-field`}
+          onChange={(event) => patchField(spec.id, value, event.target.checked ? 'document' : 'entered')} />
+        <span>Ich habe diesen Wert aus einem Beleg (z. B. Kontoauszug, Vertragsunterlagen) übernommen</span>
+      </label>
     </div>
   )
 }

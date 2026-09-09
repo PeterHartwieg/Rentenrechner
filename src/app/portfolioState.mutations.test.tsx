@@ -296,9 +296,36 @@ describe('removeInstance', () => {
     act(() => {
       undo = result.current.removeInstance('etf', 'etf-aaaa1111')
     })
-    act(() => result.current.undo(undo!))
+    let restored = false
+    act(() => { restored = result.current.undo(undo!) })
 
+    expect(restored).toBe(true)
     expect(result.current.workspace).toEqual(initial)
+  })
+
+  it('refuses a handle a later mutation has superseded', () => {
+    // The contract editor keeps a handle alive while it shows "entfernt".
+    // Restoring it after another edit would discard that edit silently.
+    const { result } = renderHook(() => usePortfolioState())
+    act(() => result.current.replaceWorkspace(populatedWorkspace()))
+
+    let stale: WorkspaceUndo | null = null
+    act(() => {
+      stale = result.current.removeInstance('etf', 'etf-aaaa1111')
+    })
+    act(() => {
+      result.current.removeInstance('etf', 'etf-bbbb2222')
+    })
+    const afterSecondRemove = result.current.workspace
+
+    let restored = true
+    act(() => { restored = result.current.undo(stale!) })
+
+    expect(restored).toBe(false)
+    expect(result.current.workspace).toBe(afterSecondRemove)
+    // The newest handle is still on offer.
+    expect(result.current.lastUndo?.label).toBe('Vertrag entfernt')
+    expect(result.current.lastUndo?.id).not.toBe(stale!.id)
   })
 })
 

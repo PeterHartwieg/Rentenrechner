@@ -306,6 +306,17 @@ export interface PlanSourceRow {
   status: InputStatus            // worst status across the row's inputs
   duration: DurationDescriptor
   target?: Route                 // ROUTES.vertrag(instanceId)
+  // Always populated by selectPlanSummary; optional only so row literals stay valid.
+  contributionMonthly?: number | null   // CONTRIBUTION_FIELD_BY_PRODUCT value; null for the
+                                        // statutory row and for beitragsfreie Verträge
+  contributionStatus?: InputStatus | null
+  contributionLabel?: string     // 'Sparrate' | 'Bruttobeitrag' | 'Beitrag' | 'Eigenbeitrag' | ''
+  provenanceLabel?: string       // plain German: statutory row from pensionEntryMethod
+                                 // ('Grob aus Berufsstart geschätzt', 'lt. Renteninformation',
+                                 // 'Beitragsjahre angegeben', 'Entgeltpunkte angegeben',
+                                 // 'Prognose angegeben', 'Noch offen'); contract rows from the
+                                 // worst status ('Unbekannt' | 'Angenommen' |
+                                 // 'Von dir angegeben' | 'lt. Beleg')
 }
 
 export interface PlanSummary {
@@ -534,7 +545,7 @@ plumbing; Astra owns visible composition — sequence, never parallel), `MeinPla
 
 1. **`mergeDeep` union-key change: approved.** Iterate the union of saved and default keys; saved-only keys copy verbatim; keys present in defaults keep today's type-checked merge. Required tests as listed in §2.4, plus a test that `readContributionInput` behaviour is unchanged (retire it only if the union merge makes its test pass unchanged).
 2. **`scenarioDiff` stays index-based.** `applyWhatIf` and `rebaseWhatIf` both refuse when any product array's `instanceId` sequence differs from the snapshot (`'shape-drift'`); the UI explains and offers "Neue Änderung ausprobieren". No instanceId-keyed diff in this project.
-3. **Export suppression.** Blocked household total exports as an empty cell, and the export's Hinweis section gains one line: `Netto-Gesamtrente nicht berechnet – fehlende Angaben: <labels>`. Never 0, never a placeholder number.
+3. **Export suppression.** A blocked household total is suppressed differently per surface: **PDF: `—`** in the cell, **CSV: empty cell**. Both add one Hinweis line: `Netto-Gesamtrente nicht berechnet – fehlende Angaben: <labels>`. Never 0, never a placeholder number. (A blank cell in the printed table reads as a layout bug; a dash in a CSV would be parsed as data.)
 4. **Labels.** Absent metadata → `Keine Angabe`; explicit unknown → `Unbekannt`. UI badge for unknown: `Unbekannt`; for assumed: `Angenommen`.
 5. **2A collects PKV premiums** (`pkvMonthlyPremium`, `pPVMonthlyPremium`, each with an explicit unknown) when `publicHealthInsurance === false`, and `versorgungswerkMonthlyContribution` when the pension baseline is Versorgungswerk. Both go through the draft adapters (Opus) and the pension/personal editor UI (Astra).
 6. **Widen the wizard `PensionBaseline` union to include `'none'`** (Opus, 2A mechanical).
@@ -882,8 +893,8 @@ onEditPension?: () => void                      // → wizard, initialStep 'pens
 `Calculator.tsx` computes `selectResultReadiness(workspace, combineSimulation, combineSimulation.error)`
 and passes `householdTotalBlockedLabels(readiness)` into both export paths:
 `PrintReport.combineHouseholdTotalBlocked` and a local `handleExportCsvCombine` that calls
-`buildCombinePortfolioCsv({ …, householdTotalBlocked })`. A blocked total exports as an empty cell
-plus the Hinweis line, never a number. Pinned by `Calculator.readiness-export.test.tsx`.
+`buildCombinePortfolioCsv({ …, householdTotalBlocked })`. A blocked total exports as `—` in the PDF
+and as an empty cell in the CSV, both with the Hinweis line, never a number. Pinned by `Calculator.readiness-export.test.tsx`.
 
 ### Deviations from the brief
 
