@@ -32,7 +32,7 @@ import type {
 } from '../domain/instances'
 import {
   defaultWorkspace,
-  loadSavedWorkspace,
+  loadSavedWorkspaceWithSource,
   saveWorkspace,
 } from '../storage'
 import { hasShareStateInUrl } from '../utils/urlShareDetect'
@@ -98,7 +98,27 @@ export { newScenarioId, deepCloneScenario }
  * override is session-scoped (in-memory only).
  */
 export function loadInitialWorkspace(): Workspace {
-  const saved = loadSavedWorkspace() ?? deepCloneScenario(defaultWorkspace)
+  const loaded = loadSavedWorkspaceWithSource()
+  // A workspace migrated from STORAGE_KEY_V1 carries one `${productId}-singleton`
+  // instance per product slot the *comparison* filled — ETF and private
+  // Rentenversicherung unconditionally, because their contribution is derived
+  // from the bAV net cost rather than stored. Those are a projection of the
+  // comparison, never contracts the user entered, and only a combine-mode
+  // write reaches STORAGE_KEY_V2, so a v1-only save can never hold a real one.
+  //
+  // Dropping them at hydration rather than at render is what makes the rule
+  // hold: the store is the workspace every mutation reads and writes back, so
+  // a phantom left in it is persisted by the first real edit — which is how a
+  // user who visited `/vergleich` before adding their first ETF-Depot ended up
+  // with "ETF-Depot", "ETF-Depot #2" and six contracts they never entered.
+  // `hasStartedPlan` / `withoutPlanInstances` still guard the render path for
+  // workspaces this function did not produce.
+  const saved =
+    loaded === null
+      ? deepCloneScenario(defaultWorkspace)
+      : loaded.source === 'v1'
+        ? withoutPlanInstances(loaded.workspace)
+        : loaded.workspace
   if (hasShareStateInUrl() && saved.mode === 'combine') {
     return { ...saved, mode: 'compare' }
   }

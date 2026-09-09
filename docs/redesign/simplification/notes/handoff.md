@@ -38,3 +38,11 @@ Branch `codex/fix-comparison-input-reset`, commits after `1786fc2`. Not deployed
 ## Final surface sweep (Astra, Playwright, all routes)
 
 Report: `docs/redesign/simplification/reviews/final-surface-sweep.md`. Every route rendered with an H1; no JavaScript errors, no missing assets; all six product editors, persistence after reload, alternatives, comparison with 0/1/2/6 products, exports and share link worked. Findings F1–F8 were fixed in commit "Fix final-sweep findings" (compare-only visitors saw a plan built from migration-derived instances; `/vergleich/details` and `/kapital` lost the comparison context; legacy product page removal had no undo; false DRV/PDF provenance copy; overflow at 320 px; Recharts mount warning; contradictory limit/return copy; English residues). Finding L (article body links do a full document load, 404 on the Vite dev server only) is a dev-server artefact; the production preview served those pages.
+
+## Re-check after the sweep fixes
+
+Report: `docs/redesign/simplification/reviews/final-surface-recheck.md` (HEAD `ddfc203`). F1a, F1b, F2, F4, F6, F7, F8 confirmed fixed; full smoke (onboarding, ETF, alternative preview/save/apply/undo, comparison) with zero console warnings, errors or page errors. Residuals (footer source footnote, one "realer Median" explanation, 320 px overflow on the contract detail and on `/methode`) fixed in commit `0abaf77`; the lead re-measured `/methode` at 320 px (scrollWidth 320) and the footer no longer names a DRV-Renteninformation.
+
+## Phantom instances from the v1 fallback (found during the lead's final check)
+
+`migrateV1ToV2` synthesises `*-singleton` instances for a compare-only (v1) visitor. They were hidden at render time but still lived in the store, so the first real contract was persisted next to them. `loadInitialWorkspace` now strips migration-derived instances when the source is v1 (`src/app/portfolioState.v1Fallback.test.tsx`).

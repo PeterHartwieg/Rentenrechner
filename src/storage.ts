@@ -845,7 +845,19 @@ export function loadSavedState(): { profile: PersonalProfile; assumptions: Scena
 }
 
 /**
- * Load the saved Workspace from localStorage.
+ * Which localStorage key a loaded workspace came from.
+ *
+ * `'v1'` means the workspace is a *migration* of the compare-mode singleton
+ * envelope, not a saved plan: every instance in it was synthesised by
+ * `migrateV1ToV2` from a product slot the comparison happened to fill. Callers
+ * that feed the combine-mode plan must treat those instances as absent (see
+ * `loadInitialWorkspace`).
+ */
+export type WorkspaceSource = 'v1' | 'v2'
+
+/**
+ * Load the saved Workspace from localStorage, together with the key it came
+ * from.
  *
  * Read order:
  *   1. STORAGE_KEY_V2 — merge, backfill, and fully validate via parseWorkspaceJson.
@@ -858,13 +870,13 @@ export function loadSavedState(): { profile: PersonalProfile; assumptions: Scena
  * If both keys are absent or invalid, returns null. Callers should fall back
  * to defaultWorkspace in that case.
  */
-export function loadSavedWorkspace(): Workspace | null {
+export function loadSavedWorkspaceWithSource(): { workspace: Workspace; source: WorkspaceSource } | null {
   try {
     // Prefer v2 key.
     const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
     if (rawV2) {
       const workspace = parseWorkspaceJson(rawV2)
-      if (workspace) return workspace
+      if (workspace) return { workspace, source: 'v2' }
       // V2 key present but unparseable — fall through to v1 fallback.
     }
 
@@ -889,10 +901,20 @@ export function loadSavedWorkspace(): Workspace | null {
       obj.assumptions as Record<string, unknown>,
     )
     if (!v1migrated) return null
-    return validateWorkspace(v1migrated)
+    const validated = validateWorkspace(v1migrated)
+    return validated === null ? null : { workspace: validated, source: 'v1' }
   } catch {
     return null
   }
+}
+
+/**
+ * Load the saved Workspace from localStorage. Thin wrapper over
+ * `loadSavedWorkspaceWithSource` for callers that do not care which key the
+ * workspace came from.
+ */
+export function loadSavedWorkspace(): Workspace | null {
+  return loadSavedWorkspaceWithSource()?.workspace ?? null
 }
 
 /**
