@@ -29,7 +29,11 @@ import {
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
 } from './workspaceIdentity'
-import { rebaseWhatIf as rebaseWhatIfPure } from './portfolioState'
+import {
+  rebaseWhatIf as rebaseWhatIfPure,
+  updateWorkspaceStore,
+  useWorkspaceValue,
+} from './portfolioState'
 import type { MultiInstanceProductId } from './portfolioState'
 import {
   normalizeMonthlyNettoBelastung,
@@ -363,6 +367,18 @@ function computeInitialAngabenState(): InitialAngabenState {
  * for compare-mode; combine-mode goes through `parseWorkspaceJson` (which
  * runs `validateWorkspace`).
  */
+/**
+ * Functional updater over the shared workspace store, in the shape the
+ * combine-mode mutators below were written against. Module-level so it is
+ * referentially stable across renders. Only the combine-mode branch reaches it
+ * — the mutators that call it are `undefined` on the compare-mode API surface.
+ */
+function setWorkspaceState(
+  updater: (prev: Workspace | null) => Workspace | null,
+): void {
+  updateWorkspaceStore((prev) => updater(prev) ?? prev)
+}
+
 export function useAngabenState(): UseAngabenStateApi {
   // Initial state — runs once. Captures mode, profile, assumptions, and the
   // underlying workspace (combine-mode only).
@@ -384,9 +400,17 @@ export function useAngabenState(): UseAngabenStateApi {
   // immediately reflected in the § 4 receipt without any extra synchronisation
   // effect. Codex R2 P1: this is what eliminates the parallel-store data loss
   // — there is exactly one store per mode, owned by this hook.
-  const [workspace, setWorkspaceState] = useState<Workspace | null>(initial.workspace)
-
+  //
+  // The workspace itself lives in the shared module-level store owned by
+  // `portfolioState.ts` (see "Workspace store"), NOT in per-mount `useState`.
+  // Two writers on STORAGE_KEY_V2 — this hook and `usePortfolioState` — meant
+  // whichever component unmounted last wrote its own stale snapshot back over
+  // the other's edits. Reading and writing the one store removes that race and
+  // makes an edit here visible to `/` without a reload.
   const isCombine = initial.mode === 'combine'
+  const storeWorkspace = useWorkspaceValue()
+  const workspace: Workspace | null = isCombine ? storeWorkspace : null
+
 
   // Derive the canonical `profile` + `assumptions` for the active mode. In
   // combine-mode we re-derive on every render via `singletonViewOfWorkspace`;
@@ -428,6 +452,9 @@ export function useAngabenState(): UseAngabenStateApi {
   // frozen what-ifs.
   const persistNow = useCallback(() => {
     if (isCombine) {
+      // The shared workspace store persists write-through on every mutation,
+      // so this only has to cover the "user changed nothing" case that still
+      // needs a saved-mode marker.
       if (!workspace) return
       saveWorkspace(workspace)
       return

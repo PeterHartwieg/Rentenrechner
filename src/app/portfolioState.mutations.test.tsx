@@ -12,12 +12,13 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { EtfInstance } from '../domain/instances'
 import type { WhatIfScenario, Workspace } from '../domain/workspace'
-import { defaultWorkspace } from '../storage'
+import { defaultWorkspace, loadSavedWorkspace } from '../storage'
 import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
 import type { WorkspaceUndo } from './portfolioState'
 import {
   clearWorkspaceUndo,
   deepCloneScenario,
+  resetPortfolioStore,
   forkBaselineScenario,
   productArrayShapeMatches,
   usePortfolioState,
@@ -75,6 +76,9 @@ function contributionWhatIf(ws: Workspace, index: number, monthly: number): What
 
 beforeEach(() => {
   localStorage.clear()
+  // The workspace is a module-level store shared by every route's hook mount;
+  // drop it so this test hydrates from the just-cleared storage.
+  resetPortfolioStore()
   // The undo handle is module-level so it survives a route change (the plan and
   // the contract editor mount separate hooks); drop it between tests.
   clearWorkspaceUndo()
@@ -121,6 +125,29 @@ describe('addPopulatedInstance', () => {
 
     expect(result.current.workspace.baseline.assumptions.etf).toHaveLength(0)
     expect(result.current.lastUndo).toBeNull()
+  })
+})
+
+describe('shared workspace store', () => {
+  it('makes a commit from one mount visible to another, and persists it synchronously', () => {
+    // Two mounts is the route change in miniature: `/vorsorge/neu` commits and
+    // navigates, and the plan's own hook must see that commit rather than
+    // re-reading (and re-writing) the pre-commit storage value.
+    const plan = renderHook(() => usePortfolioState())
+    const editor = renderHook(() => usePortfolioState())
+
+    act(() => {
+      editor.result.current.addPopulatedInstance('etf', etf('etf-new00001', 150))
+    })
+
+    expect(plan.result.current.workspace.baseline.assumptions.etf).toHaveLength(1)
+    expect(plan.result.current.workspace).toBe(editor.result.current.workspace)
+    // Persisted inside the setter — not in an effect the committing component
+    // has to stay mounted for.
+    editor.unmount()
+    const saved = loadSavedWorkspace()
+    expect(saved?.baseline.assumptions.etf).toHaveLength(1)
+    expect(saved?.baseline.assumptions.etf[0].monthlyContribution).toBe(150)
   })
 })
 

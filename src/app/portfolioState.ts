@@ -14,7 +14,7 @@
  *   - `useCalculatorState`: compare-mode keeps the singleton API.
  */
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import type {
   Scenario,
   WhatIfScenario,
@@ -460,85 +460,139 @@ export function clearWorkspaceUndo(): void {
   publishLastUndo(null)
 }
 
-export function usePortfolioState(): UsePortfolioStateApi {
-  const [workspace, setWorkspace] = useState<Workspace>(() => loadInitialWorkspace())
+// ---------------------------------------------------------------------------
+// Workspace store (module-level, write-through)
+//
+// The workspace used to live in per-mount `useState` with a persist `useEffect`.
+// Every route that mounts `usePortfolioState` (`/`, `/vorsorge/neu`,
+// `/vertrag/:id/bearbeiten`, `/alternativen`, `/eingaben`) therefore owned a
+// private copy, and a handler that committed and then navigated in the same
+// tick unmounted before its persist effect ran — the next route's fresh mount
+// re-read the *stale* storage value and its own effect wrote that back, eating
+// the commit ("Vertrag hinzugefügt" with an empty plan).
+//
+// One module-level store fixes both halves: every mount observes the same
+// value via `useSyncExternalStore`, and each mutation persists synchronously
+// inside the setter, so no commit depends on the committing component still
+// being mounted. `storageError` rides along as a published flag rather than
+// per-mount state. Mirrors the `lastUndo` store above.
+// ---------------------------------------------------------------------------
 
-  // Skip the first-effect-run no-op write. On the mount tick `workspace`
-  // equals the value we just lazy-initialised from storage, so writing it
-  // back is purely a no-op — but the v2 load pipeline (`parseWorkspaceJson`
-  // → `mergeDeep` against `defaultWorkspace`) only iterates keys present on
-  // the *default* shape, so any saved field that is not enumerated in the
-  // default (today: `baseline.lastEditedAt`, used by `BaselineStaleBadge` to
-  // decide whether what-ifs are stale) gets dropped on the round trip and
-  // re-persisted as `undefined`. That falsely invalidates every what-if as
-  // soon as a `/eingaben` mount + the dashboard share the same workspace
-  // (`AngabenProduktSection` + `Calculator`). Mirrors the same first-mount
-  // skip in `useAngabenState`; pinned by `AngabenPage.test.tsx`
-  // "does NOT bump baseline.lastEditedAt on mount".
-  const isFirstEffectRun = useRef(true)
-  const [storageError, setStorageError] = useState(false)
+let workspaceStore: Workspace | null = null
+let storageErrorFlag = false
+const workspaceListeners = new Set<() => void>()
+
+function emitWorkspace(): void {
+  for (const listener of workspaceListeners) listener()
+}
+
+export function subscribeWorkspace(listener: () => void): () => void {
+  workspaceListeners.add(listener)
+  return () => { workspaceListeners.delete(listener) }
+}
+
+/**
+ * The live workspace. Lazily initialised from storage once per page load —
+ * later mounts reuse the in-memory value rather than re-reading localStorage,
+ * which is what makes a commit survive an immediate route change.
+ */
+export function getWorkspaceSnapshot(): Workspace {
+  if (workspaceStore === null) workspaceStore = loadInitialWorkspace()
+  return workspaceStore
+}
+
+function getStorageErrorSnapshot(): boolean {
+  return storageErrorFlag
+}
+
+/**
+ * Publish a new workspace and persist it synchronously. `storageError` is
+ * derived from `saveWorkspace`'s boolean, exactly as the old persist effect
+ * did.
+ */
+export function setWorkspaceStore(next: Workspace): void {
+  if (next === getWorkspaceSnapshot()) return
+  workspaceStore = next
+  storageErrorFlag = !saveWorkspace(next)
+  emitWorkspace()
+}
+
+/** Read-modify-write against the live workspace, in one atomic step. */
+export function updateWorkspaceStore(updater: (prev: Workspace) => Workspace): Workspace {
+  const next = updater(getWorkspaceSnapshot())
+  setWorkspaceStore(next)
+  return next
+}
+
+/**
+ * Test seam: drop the in-memory workspace (and the pending undo handle) so a
+ * test that seeds localStorage in `beforeEach` gets a store hydrated from its
+ * own fixture. Called globally from `src/vitest.setup.ts`.
+ */
+export function resetPortfolioStore(): void {
+  // Deliberately silent: notifying here would make any component still mounted
+  // from the previous test re-read `getWorkspaceSnapshot()`, which re-hydrates
+  // the store from the localStorage the test is about to clear. Dropping the
+  // value is enough — the next mount reads the fresh fixture.
+  workspaceStore = null
+  storageErrorFlag = false
+  lastUndoHandle = null
+}
+
+/** Subscribe to the shared workspace. */
+export function useWorkspaceValue(): Workspace {
+  return useSyncExternalStore(subscribeWorkspace, getWorkspaceSnapshot, getWorkspaceSnapshot)
+}
+
+export function usePortfolioState(): UsePortfolioStateApi {
+  const workspace = useWorkspaceValue()
+  const storageError = useSyncExternalStore(
+    subscribeWorkspace,
+    getStorageErrorSnapshot,
+    getStorageErrorSnapshot,
+  )
   const lastUndo = useSyncExternalStore(
     subscribeLastUndo,
     () => lastUndoHandle,
     () => null,
   )
 
-  // Mutations that must return an undo handle synchronously need the workspace
-  // they are about to replace, which a functional `setState` updater cannot
-  // hand back. The ref tracks the latest committed workspace so those mutations
-  // read a value and write a value in one atomic `setWorkspace` call. It is
-  // synced in an effect (never during render) and written directly by `commit`,
-  // so a second mutation in the same tick still sees the first one's result.
-  const workspaceRef = useRef(workspace)
-  useEffect(() => {
-    workspaceRef.current = workspace
-  }, [workspace])
-
   /**
-   * Commit a fully-formed workspace in exactly one `setWorkspace`, recording an
+   * Commit a fully-formed workspace in exactly one store write, recording an
    * undo handle for the state it replaced. Every §5 mutation goes through here,
    * which is what makes the atomicity and one-level-undo rules structural
    * rather than a convention.
    */
   const commit = useCallback((label: string, next: Workspace): WorkspaceUndo => {
-    const previous = workspaceRef.current
-    workspaceRef.current = next
+    const previous = getWorkspaceSnapshot()
     const undo: WorkspaceUndo = { id: newUndoId(), label, createdAt: Date.now(), previous }
-    setWorkspace(next)
+    setWorkspaceStore(next)
     publishLastUndo(undo)
     return undo
   }, [])
-
-  useEffect(() => {
-    if (isFirstEffectRun.current) {
-      isFirstEffectRun.current = false
-      return
-    }
-    setStorageError(!saveWorkspace(workspace))
-  }, [workspace])
 
   const replaceWorkspace = useCallback((next: Workspace) => {
     // Not a `commit`: no undo handle is recorded, so the pending one must go —
     // it snapshots a workspace that predates this write and undoing it would
     // silently discard the newer edit.
     publishLastUndo(null)
-    setWorkspace(next)
+    setWorkspaceStore(next)
   }, [])
 
   const setMode = useCallback((mode: Workspace['mode']) => {
     publishLastUndo(null)
-    setWorkspace((w) => ({ ...w, mode }))
+    updateWorkspaceStore((w) => ({ ...w, mode }))
   }, [])
 
   const setBaseline = useCallback((scenario: Scenario) => {
     publishLastUndo(null)
-    setWorkspace((w) => ({ ...w, baseline: scenario }))
+    updateWorkspaceStore((w) => ({ ...w, baseline: scenario }))
   }, [])
 
   const patchBaseline = useCallback(
     (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => {
       publishLastUndo(null)
-      setWorkspace((w) => ({
+      updateWorkspaceStore((w) => ({
         ...w,
         baseline: { ...w.baseline, ...patch, lastEditedAt: Date.now() },
       }))
@@ -548,13 +602,13 @@ export function usePortfolioState(): UsePortfolioStateApi {
 
   const addWhatIf = useCallback((whatIf: WhatIfScenario) => {
     publishLastUndo(null)
-    setWorkspace((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
+    updateWorkspaceStore((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
   }, [])
 
   const updateWhatIf = useCallback(
     (id: string, patch: Partial<Omit<WhatIfScenario, 'id'>>) => {
       publishLastUndo(null)
-      setWorkspace((w) => ({
+      updateWorkspaceStore((w) => ({
         ...w,
         whatIfs: w.whatIfs.map((wi) => (wi.id === id ? { ...wi, ...patch } : wi)),
       }))
@@ -564,7 +618,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
 
   const removeWhatIf = useCallback(
     (id: string): WorkspaceUndo => {
-      const w = workspaceRef.current
+      const w = getWorkspaceSnapshot()
       return commit('Alternative entfernt', {
         ...w,
         whatIfs: w.whatIfs.filter((wi) => wi.id !== id),
@@ -577,7 +631,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
   const forkBaseline = useCallback(
     (label: string, origin: Scenario['origin'] = 'manual'): WhatIfScenario => {
       const whatIf = forkBaselineScenario(workspace.baseline, label, origin)
-      setWorkspace((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
+      updateWorkspaceStore((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
       return whatIf
     },
     [workspace.baseline],
@@ -585,7 +639,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
 
   const tryRebaseWhatIfCallback = useCallback(
     (id: string): RebaseWhatIfResult => {
-      const w = workspaceRef.current
+      const w = getWorkspaceSnapshot()
       const whatIf = w.whatIfs.find((wi) => wi.id === id)
       if (!whatIf) return { ok: false, reason: 'not-found' }
       if (!productArrayShapeMatches(whatIf.derivedFromBaselineSnapshot, w.baseline)) {
@@ -609,7 +663,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
 
   const applyWhatIfCallback = useCallback(
     (id: string): ApplyWhatIfResult => {
-      const w = workspaceRef.current
+      const w = getWorkspaceSnapshot()
       const whatIf = w.whatIfs.find((wi) => wi.id === id)
       if (!whatIf) return { ok: false, reason: 'not-found' }
       // Drift is reported ahead of staleness: it is the more specific failure
@@ -628,13 +682,12 @@ export function usePortfolioState(): UsePortfolioStateApi {
   )
 
   const undo = useCallback((handle: WorkspaceUndo) => {
-    workspaceRef.current = handle.previous
-    setWorkspace(handle.previous)
+    setWorkspaceStore(handle.previous)
     if (lastUndoHandle && lastUndoHandle.id === handle.id) publishLastUndo(null)
   }, [])
 
   const freezeWhatIf = useCallback((id: string) => {
-    setWorkspace((w) => ({
+    updateWorkspaceStore((w) => ({
       ...w,
       whatIfs: w.whatIfs.map((wi) =>
         wi.id === id ? { ...wi, frozenAt: Date.now() } : wi,
@@ -645,10 +698,10 @@ export function usePortfolioState(): UsePortfolioStateApi {
   const archiveAndRestart = useCallback((): SavedScenario => {
     const currentYear = new Date().getFullYear()
     const archiveName = `Baseline ${currentYear}`
-    // We read the current workspace synchronously from the React state ref
-    // pattern is not available here, so we capture via a closure over the
-    // workspace variable (which is the current render's snapshot).
-    const currentWorkspace = workspace
+    // Read the live workspace from the store rather than this render's
+    // closure, so an archive that follows another mutation in the same tick
+    // still sees that mutation's result.
+    const currentWorkspace = getWorkspaceSnapshot()
     const projectedAssumptions = singletonViewOfWorkspace(currentWorkspace, {
       bav: defaultAssumptions.bav,
       etf: defaultAssumptions.etf,
@@ -662,16 +715,16 @@ export function usePortfolioState(): UsePortfolioStateApi {
       currentWorkspace.baseline.profile,
       projectedAssumptions,
     )
-    setWorkspace((w) => ({
+    updateWorkspaceStore((w) => ({
       ...w,
       whatIfs: [],
     }))
     return archived
-  }, [workspace])
+  }, [])
 
   const addInstance = useCallback((productId: MultiInstanceProductId) => {
     publishLastUndo(null)
-    setWorkspace((w) => addInstanceToWorkspace(w, productId))
+    updateWorkspaceStore((w) => addInstanceToWorkspace(w, productId))
   }, [])
 
   const addPopulatedInstance = useCallback(
@@ -680,7 +733,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
       instance: AnyInstance,
       status?: InputStatusMap,
     ): { instanceId: string; undo: WorkspaceUndo } => {
-      const w = workspaceRef.current
+      const w = getWorkspaceSnapshot()
       const wsa = w.baseline.assumptions
       const wsKey = INVENTORY_PRODUCT_REGISTRY[productId].wsKey
       const currentArray = (wsa[wsKey] ?? []) as unknown as AnyInstance[]
@@ -715,7 +768,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
       patch: Partial<AnyInstance>,
       status?: InputStatusMap,
     ) => {
-      const w = workspaceRef.current
+      const w = getWorkspaceSnapshot()
       const wsa = w.baseline.assumptions
       const wsKey = INVENTORY_PRODUCT_REGISTRY[productId].wsKey
       const currentArray = (wsa[wsKey] ?? []) as unknown as AnyInstance[]
@@ -743,7 +796,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
     (productId: MultiInstanceProductId, instanceId: string): WorkspaceUndo =>
       commit(
         'Vertrag entfernt',
-        removeInstanceFromWorkspace(workspaceRef.current, productId, instanceId),
+        removeInstanceFromWorkspace(getWorkspaceSnapshot(), productId, instanceId),
       ),
     [commit],
   )
