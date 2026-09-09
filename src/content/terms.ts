@@ -11,7 +11,7 @@
  */
 
 /** Shared hint for the per-contract Kinderzulage claim switch. */
-export const CHILD_ALLOWANCE_CLAIM_HINT = 'Die Kinderzulage bekommt nur ein Elternteil: bei verheirateten, nicht dauernd getrennt lebenden Eltern die Mutter, auf gemeinsamen Antrag der Vater; sonst wer das Kindergeld erhält (§ 85 EStG). Abwählen, wenn sie im Vertrag der anderen Person läuft. Deine Kinder bleiben für die Pflegeversicherung erfasst.'
+export const CHILD_ALLOWANCE_CLAIM_HINT = 'Die Kinderzulage bekommt pro Kind nur ein Elternteil: grundsätzlich, wem das Kindergeld zusteht; Ehegatten können sie auf gemeinsamen Antrag dem anderen Elternteil zuordnen (§ 85 Abs. 2 EStG). Abwählen, wenn sie im Vertrag der anderen Person läuft. Deine Kinder bleiben für die Pflegeversicherung erfasst.'
 
 export interface Term {
   id: string
