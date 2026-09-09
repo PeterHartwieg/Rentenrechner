@@ -54,7 +54,25 @@ const SECTION_WENDEPUNKTE = {
 // modes have a renderable surface. When neither mode has any contracts /
 // visible products, the chips list collapses and a single empty-state
 // paragraph guides the user to add data on `/eingaben`.
+//
+// Source selection: the saved workspace mode is only the DEFAULT. A caller
+// may name its origin with `?quelle=vergleich`, which pins the page to the
+// compare-mode data (and returns the back-link to `/vergleich`). Without it,
+// the "Kapital im Verlauf" link on `/vergleich` dropped a user with a saved
+// plan onto their plan's numbers — a different contribution, silently. The
+// param stays a query string on purpose: the `Route` union carries no
+// payload, matching how `/vergleich/details` reads `?scenario=`.
 // ---------------------------------------------------------------------------
+
+/** Read `?quelle=` once per mount. Defensive against a malformed query. */
+function readQuelleParam(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return new URLSearchParams(window.location.search).get('quelle')
+  } catch {
+    return null
+  }
+}
 
 export function KapitalPage({ navigate }: Props) {
   // ---- 1. Hook prelude — runs unconditionally. ----------------------------
@@ -83,8 +101,10 @@ export function KapitalPage({ navigate }: Props) {
 
   // ---- 2. Mode-specific data sourcing. ------------------------------------
   // `workspace.mode` is the canonical mode signal (PR 286 hardening); do NOT
-  // fall back to `detectSavedMode()`.
-  const isCombine = workspace.mode === 'combine'
+  // fall back to `detectSavedMode()`. An explicit `?quelle=vergleich` from the
+  // comparison overrides it — see the source-selection note above.
+  const fromVergleich = useMemo(() => readQuelleParam() === 'vergleich', [])
+  const isCombine = workspace.mode === 'combine' && !fromVergleich
 
   const scenarioId = useMemo(() => {
     const scenarios = workspace.baseline.assumptions.returnScenarios
@@ -215,26 +235,32 @@ export function KapitalPage({ navigate }: Props) {
 
   const productColors = useMemo(() => buildChartColorMap(selectedResults), [selectedResults])
 
+  // The back-link returns to wherever the user came from: the comparison when
+  // it named itself, the plan otherwise.
+  const backTarget = fromVergleich
+    ? { route: ROUTES.vergleich, label: '← Zurück zum Vergleich', kicker: 'Vergleich' }
+    : { route: ROUTES.home, label: '← Zurück zum Plan', kicker: 'Mein Plan' }
+
   // ---- 6. Render. ---------------------------------------------------------
   return (
     <div className="kapital-shell">
       <div className="kapital-main">
         <article className="kapital-body">
           <div className="kapital-kicker">
-            Mein Plan › Verlauf {profile.age} → {horizonAge}
+            {backTarget.kicker} › Verlauf {profile.age} → {horizonAge}
           </div>
           <h1 className="kapital-headline">Kapital und Auszahlungen über das Leben</h1>
           <div className="kapital-backline">
             <a
-              href={routeToPath(ROUTES.home)}
+              href={routeToPath(backTarget.route)}
               className="kapital-backlink"
               onClick={(event) => {
                 if (!shouldUseSpaNavigation(event)) return
                 event.preventDefault()
-                navigate(ROUTES.home)
+                navigate(backTarget.route)
               }}
             >
-              ← Zurück zum Plan
+              {backTarget.label}
             </a>
           </div>
 

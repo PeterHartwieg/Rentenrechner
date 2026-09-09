@@ -182,6 +182,8 @@
 
 /* --- Sections -------------------------------------------------------- */
 .methode-section {
+  min-width: 0;
+  max-width: 100%;
   margin-top: 32px;
 }
 
@@ -505,7 +507,7 @@
   }
 
   .methode-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 24px;
   }
 
@@ -529,7 +531,7 @@
   /* Definition lists collapse to vertical pairs at phone width so the long
      statutory descriptions stop fighting with the narrow value column. */
   .methode-deflist li {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
 
@@ -537,6 +539,9 @@
      MDX tables. We render header rows visually-hidden and use `data-label` on
      each `<td>` to surface the column label inline. */
   .methode-table thead {
+    display: block;
+    min-width: 0;
+    max-width: 1px;
     position: absolute;
     width: 1px;
     height: 1px;
@@ -592,4 +597,17 @@
   .methode-table-num {
     text-align: left;
   }
+}
+
+/* Constrain the live chart and its data table to the article column. */
+.methode-body .chart-panel,
+.methode-body .table-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.methode-body,
+.methode-aside {
+  overflow-wrap: anywhere;
 }

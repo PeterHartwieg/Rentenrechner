@@ -121,6 +121,7 @@
 
 /* --- Center (article body) ------------------------------------------- */
 .article-body {
+  overflow-wrap: anywhere;
   min-width: 0;
   max-width: 720px;
 }
@@ -487,7 +488,7 @@
   }
 
   .article-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 24px;
   }
 
@@ -519,4 +520,22 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Keep wide article tables and code locally scrollable at narrow widths. */
+.article-table-scroll,
+.article-body pre {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.article-table-scroll table {
+  display: table;
+  table-layout: auto;
+}
+
+.article-aside {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

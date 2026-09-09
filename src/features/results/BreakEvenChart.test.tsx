@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { StrictMode } from 'react'
 import { cleanup, render } from '@testing-library/react'
 import { BreakEvenChart } from './BreakEvenChart'
 import { lifecyclePickerLabel } from './lifecycleLabels'
@@ -9,6 +10,7 @@ import { formatCurrency } from '../../utils/format'
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 function lifecycleResult(productId: string, label: string): LifecycleSeriesResult {
@@ -138,6 +140,27 @@ const minimalEtfResult: LifecycleSeriesResult = {
 }
 
 const PRODUCT_COLORS: Record<string, string> = { etf: '#3b82f6' }
+
+it('mounts without invalid-size warnings before layout is available', () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { container } = render(
+    <StrictMode>
+      <BreakEvenChart
+        selectedResults={[minimalEtfResult]}
+        productColors={PRODUCT_COLORS}
+        startAge={40}
+        retirementAge={67}
+        retirementEndAge={85}
+      />
+    </StrictMode>,
+  )
+  const messages = [...warn.mock.calls, ...error.mock.calls].flat().join(' ')
+  expect(messages).not.toContain('width(-1)')
+  expect(container.querySelector('.chart-size-placeholder')).not.toBeNull()
+  expect(container.querySelector('.recharts-surface')).toBeNull()
+  expect(container.querySelector('table.sr-only')).not.toBeNull()
+})
 
 const sampleGrvContribTimeline = [
   { ageYears: 40, employeeAnnualEUR: 5_580 },

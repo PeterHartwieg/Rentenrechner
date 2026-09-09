@@ -7,7 +7,8 @@ import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
 import { VergleichDetailPage } from './VergleichDetailPage'
 import { defaultWorkspace, STORAGE_KEY_V2 } from '../../storage'
-import type { Workspace } from '../../domain'
+import type { ProductId, Workspace } from '../../domain'
+import { PRODUCT_IDS as ALL_PRODUCT_IDS } from '../../engine/productRegistry'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
 beforeEach(() => {
@@ -42,15 +43,15 @@ function inShell(node: ReactElement, path: string = '/vergleich/details') {
 }
 
 /**
- * Seed STORAGE_KEY_V2 with `mode: 'compare'` so `usePortfolioState` reports
- * compare-mode and the page renders the card grid instead of the combine
- * empty state. `useCalculatorState` falls back to its built-in
- * `defaultAssumptions` / `defaultProfile` when no v1 state is present — the
- * default `visibleProducts` covers all six products.
+ * Seed STORAGE_KEY_V2 with `mode: 'compare'` and an explicit comparison
+ * selection. The page renders one card per selected product, so tests that
+ * count cards state the selection they expect.
  */
-function seedCompareMode(): void {
+function seedCompareMode(visibleProducts: ProductId[] = [...ALL_PRODUCT_IDS]): void {
   const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
-  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({ ...ws, mode: 'compare' }))
+  ws.mode = 'compare'
+  ws.baseline.assumptions.visibleProducts = visibleProducts
+  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
 }
 
 describe('VergleichDetailPage — compare-mode per-product breakdown surface', () => {
@@ -62,9 +63,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     const grid = container.querySelector('.vd-card-grid')
     expect(grid).not.toBeNull()
     const cards = container.querySelectorAll('.vd-card')
-    // R1 cross-page consistency: /vergleich/details always renders all 6 cards
-    // for logged-in users, regardless of assumptions.visibleProducts selection.
-    // Mirrors the always-6 contract of /vergleich.
+    // One card per compared product — the seed selects all six.
     expect(cards.length).toBe(6)
   })
 
@@ -117,19 +116,23 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     }
   })
 
-  it('falls back to the combine-mode empty state when saved mode is combine', () => {
+  it('renders the comparison even when the saved workspace mode is combine (F1b)', () => {
+    // The drill-in belongs to the comparison journey. A user with a saved plan
+    // reaches it from /vergleich, so a "nur im Vergleichs-Modus" empty state
+    // would strand them on the surface they just navigated into.
     const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({ ...ws, mode: 'combine' }))
+    ws.mode = 'combine'
+    ws.baseline.assumptions.visibleProducts = ['etf', 'bav']
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
-    expect(container.querySelector('.vd-empty')).not.toBeNull()
-    expect(container.textContent ?? '').toContain('Vergleichs-Modus')
-    // No card grid in the fallback.
-    expect(container.querySelector('.vd-card-grid')).toBeNull()
+    expect(container.querySelector('.vd-empty')).toBeNull()
+    expect(container.textContent ?? '').not.toContain('Vergleichs-Modus')
+    expect(container.querySelectorAll('.vd-card').length).toBe(2)
   })
 
   it('exposes accessible empty-state copy (no aria-hidden on body text)', () => {
-    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({ ...ws, mode: 'combine' }))
+    // Empty comparison selection → the "Noch keine Produkte ausgewählt" state.
+    seedCompareMode([])
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
     const body = container.querySelector('.vd-empty-body')
     expect(body).not.toBeNull()
@@ -173,12 +176,14 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     expect(document.title).toBe('Wohin geht das Geld? Vergleich im Detail | RentenWiki.de')
   })
 
-  it('renders a back-link to the home route as a real anchor', () => {
+  it('renders a back-link to /vergleich as a real anchor', () => {
+    // F1b: "Zurück zum Vergleich" must return to the comparison, not to `/`
+    // (which is the plan, and drops a compare-only visitor onto onboarding).
     seedCompareMode()
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
     const backlink = container.querySelector<HTMLAnchorElement>('.vd-backlink')
     expect(backlink).not.toBeNull()
-    expect(backlink!.getAttribute('href')).toBe('/')
+    expect(backlink!.getAttribute('href')).toBe('/vergleich')
   })
 
   it('lead paragraph cites live Beitrag / Laufzeit / Renteneintritt with € + Jahre + age', () => {
@@ -206,22 +211,14 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
 // visible)". The page seeds ETF + bAV + Versicherung so SEO crawlers and
 // first-time visitors see a populated grid instead of an empty state.
 //
-// R1 cross-page consistency (Codex PR 329 R2): saved-state with empty
-// visibleProducts is no longer demo — it goes to the all-6 path to match
-// /vergleich's always-6 contract. Demo fires only when savedMode === null
-// (no saved state = first-time visitor / SEO prerender).
+// Demo fires only when savedMode === null (no saved state = first-time
+// visitor / SEO prerender). With saved state the page renders the user's own
+// comparison selection — including its empty state when nothing is selected.
 // ---------------------------------------------------------------------------
 
-/**
- * Seed compare-mode with `visibleProducts: []`. Under the R1 cross-page
- * consistency fix, this is the non-demo logged-in-user path (saved state
- * exists, so isDemo = false). The page forces all 6 products regardless.
- */
+/** Seed compare-mode with an empty comparison (saved state, nothing selected). */
 function seedCompareModeWithoutComparison(): void {
-  const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
-  ws.mode = 'compare'
-  ws.baseline.assumptions.visibleProducts = []
-  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+  seedCompareMode([])
 }
 
 describe('VergleichDetailPage — demo-mode (R3.3 audit decision Q4)', () => {
@@ -237,62 +234,45 @@ describe('VergleichDetailPage — demo-mode (R3.3 audit decision Q4)', () => {
     expect(cards.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('renders all 6 cards (not demo) when saved compare-mode has empty visibleProducts', () => {
-    // R1 cross-page consistency: saved state with empty visibleProducts is now
-    // the all-6 non-demo path — not the demo path. The kicker shows the live
-    // copy ("Vergleich › Wohin geht das Geld"), not "Beispielrechnung", and
-    // all 6 product cards render to match /vergleich.
+  it('shows the empty-comparison state (not demo) when saved state selects nothing', () => {
+    // Saved state exists, so the demo seed must not fire; with nothing
+    // selected the page offers the "Noch keine Produkte ausgewählt" state.
     seedCompareModeWithoutComparison()
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
-    // Kicker must show the live (non-demo) copy — the user has saved state.
-    const kicker = container.querySelector('.vd-kicker')
-    expect(kicker?.textContent ?? '').not.toContain('Beispielrechnung')
-    expect(kicker?.textContent ?? '').toContain('Vergleich')
-    // H1 stays identical across demo and live paths.
-    expect(container.querySelector('.vd-headline')?.textContent ?? '').toBe('Wohin geht jeder Euro?')
-    // All 6 products render — the empty visibleProducts is overridden by PRODUCT_IDS.
-    const cards = container.querySelectorAll('.vd-card')
-    expect(cards.length).toBe(6)
+    expect(container.textContent ?? '').not.toContain('Beispielrechnung')
+    expect(container.querySelector('.vd-empty')).not.toBeNull()
+    expect(container.querySelector('.vd-card-grid')).toBeNull()
   })
 
-  // Regression test (PR 329 R3): a logged-in user with a non-empty subset of
-  // visibleProducts should still see all 6 cards on /vergleich/details,
-  // matching the always-6 contract of /vergleich. This was the inconsistency
-  // flagged by Codex P2.
-  it('renders all 6 cards even when assumptions.visibleProducts is a subset', () => {
-    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
-    ws.mode = 'compare'
-    ws.baseline.assumptions.visibleProducts = ['etf', 'bav']
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+  it('renders exactly the compared products when visibleProducts is a subset (F1b)', () => {
+    // The detail page must agree with the comparison it drills into: a
+    // two-product comparison opens two breakdown cards, not six.
+    seedCompareMode(['etf', 'bav'])
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
-    // The detail page must always render 6 cards regardless of the user's
-    // product selection on /eingaben. Cross-page consistency with /vergleich.
     const cards = container.querySelectorAll('.vd-card')
-    expect(cards.length).toBe(6)
+    expect(cards.length).toBe(2)
     // Kicker shows the live (non-demo) copy.
     const kicker = container.querySelector('.vd-kicker')
     expect(kicker?.textContent ?? '').not.toContain('Beispielrechnung')
+    expect(kicker?.textContent ?? '').toContain('Vergleich')
   })
 
-  it('demo branch still surfaces the Zurück-zum-Vergleich back-link', () => {
+  it('the empty-comparison state points back to /vergleich', () => {
     seedCompareModeWithoutComparison()
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
-    const backlink = container.querySelector<HTMLAnchorElement>('.vd-backlink')
-    expect(backlink).not.toBeNull()
-    expect(backlink!.getAttribute('href')).toBe('/')
+    const cta = container.querySelector<HTMLAnchorElement>('.vd-empty-cta')
+    expect(cta).not.toBeNull()
+    expect(cta!.getAttribute('href')).toBe('/vergleich')
   })
 
-  it('combine-mode still renders the combine empty state (demo path does NOT swap in)', () => {
-    // Audit guard: demo seed only applies in compare-mode. Combine-mode users
-    // keep the existing dedicated empty state pointing them at Mein Plan /
-    // Vertrag-Detail.
+  it('a combine-mode workspace still renders its comparison, not a mode empty state', () => {
     const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
     ws.mode = 'combine'
-    ws.baseline.assumptions.visibleProducts = []
+    ws.baseline.assumptions.visibleProducts = ['etf']
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
-    expect(container.querySelector('.vd-empty')).not.toBeNull()
-    expect(container.querySelector('.vd-card-grid')).toBeNull()
+    expect(container.querySelector('.vd-card-grid')).not.toBeNull()
+    expect(container.querySelectorAll('.vd-card').length).toBe(1)
   })
 })
 

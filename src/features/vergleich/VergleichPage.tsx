@@ -86,6 +86,11 @@ export function VergleichPage({
 
   const scenarioQuery = `?scenario=${encodeURIComponent(effectiveScenarioId)}`
   const drillInHref = `${routeToPath(ROUTES.vergleichDetail)}${scenarioQuery}`
+  // `/kapital` is dual-source (compare vs. plan) and picks its source from the
+  // saved workspace mode by default. A user arriving from the comparison must
+  // see the comparison, so the link names its origin explicitly.
+  const kapitalQuery = '?quelle=vergleich'
+  const kapitalHref = `${routeToPath(ROUTES.kapital)}${kapitalQuery}`
 
   return (
     <section className="vergleich-shell" aria-label="Vergleich">
@@ -140,12 +145,12 @@ export function VergleichPage({
             </a>
             <a
               className="vergleich-drilldown__link"
-              href={routeToPath(ROUTES.kapital)}
+              href={kapitalHref}
               onClick={(event) => {
                 if (!navigate) return
                 if (!shouldUseSpaNavigation(event)) return
                 event.preventDefault()
-                navigate(ROUTES.kapital)
+                navigate(ROUTES.kapital, kapitalQuery)
               }}
             >
               Kapital im Verlauf →

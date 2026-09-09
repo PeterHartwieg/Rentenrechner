@@ -41,7 +41,7 @@ interface DefaultPropsOverrides {
 
 function defaultProps(
   overrides: DefaultPropsOverrides = {},
-): ProdukteEingabenPanelProps {
+): Extract<ProdukteEingabenPanelProps, { mode: 'compare' }> {
   const visibleProducts = overrides.visibleProducts ?? defaultAssumptions.visibleProducts
   const assumptions: ScenarioAssumptions = {
     ...defaultAssumptions,
@@ -79,7 +79,7 @@ describe('ProdukteEingabenPanel — § 1 DRV card (live data)', () => {
     const { getByText } = render(<ProdukteEingabenPanel {...defaultProps()} />)
     expect(getByText('§ 1 · Gesetzliche Rente')).toBeTruthy()
     expect(
-      getByText('Rentenauskunft der Deutschen Rentenversicherung'),
+      getByText('Deine gesetzliche Rente'),
     ).toBeTruthy()
   })
 
@@ -665,7 +665,7 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
       <ProdukteEingabenPanel {...makeCombineProps({ baseline: ws.baseline, assumptions: ws.baseline.assumptions })} />,
     )
     const statusBadges = container.querySelectorAll('.d-produkt-row__status')
-    // First badge is DRV "übernommen"; subsequent badges are per-instance "aktiv".
+    // First badge is the statutory pension provenance; subsequent badges are per-instance "aktiv".
     const allLabels = Array.from(statusBadges).map((b) => b.textContent ?? '')
     expect(allLabels.filter((s) => s === 'aktiv').length).toBeGreaterThanOrEqual(3)
   })
@@ -716,7 +716,7 @@ describe('ProdukteEingabenPanel — § 1 combine-mode DRV card', () => {
     )
     expect(getByText('§ 1 · Gesetzliche Rente')).toBeTruthy()
     expect(
-      getByText('Rentenauskunft der Deutschen Rentenversicherung'),
+      getByText('Deine gesetzliche Rente'),
     ).toBeTruthy()
     // Without a simulation result the projected EP / gross monthly cells show
     // an em-dash placeholder.
@@ -832,4 +832,36 @@ describe('ProdukteEingabenPanel — CX-PR4-1 registry-derived order (R0)', () =>
     // The tile count must equal the registry-derived multi-instance product count.
     expect(tiles.length).toBe(registryOrder.length)
   })
+})
+
+
+describe('statutory pension provenance on the products input surface', () => {
+  const methods = [
+    [{ kind: 'career', careerStartAge: 22, pauseYears: 0 }, 'Grob aus Berufsstart geschätzt'],
+    [{ kind: 'document', monthlyGrossEUR: 1500 }, 'lt. Renteninformation'],
+    [{ kind: 'years', contributionYears: 13 }, 'Beitragsjahre angegeben'],
+    [{ kind: 'points', entgeltpunkte: 13 }, 'Entgeltpunkte angegeben'],
+    [{ kind: 'projected-gross', monthlyGrossEUR: 1500 }, 'Prognose angegeben'],
+    [{ kind: 'skipped' }, 'Noch offen'],
+    [undefined, 'Angenommen'],
+  ] as const
+
+  for (const mode of ['compare', 'combine'] as const) {
+    it.each(methods)(`${mode}: labels %j as %s without implying an upload`, (method, label) => {
+      const assumptions = structuredClone(defaultAssumptions)
+      assumptions.statutoryPension.pensionEntryMethod = method
+      const baseline = structuredClone(defaultWorkspace.baseline)
+      baseline.assumptions.statutoryPension.pensionEntryMethod = method
+      const props = mode === 'compare'
+        ? { ...defaultProps(), assumptions }
+        : makeCombineProps({ baseline, assumptions: baseline.assumptions })
+      const { container } = render(<ProdukteEingabenPanel {...props} />)
+      const section = container.querySelector('.d-produkt-section')!
+      expect(section.querySelector('.d-produkt-row__status')?.textContent).toBe(label)
+      expect(section.textContent).not.toMatch(/DRV-PDF|übernommen|erneut hochladen/)
+      if (method?.kind !== 'document') {
+        expect(section.textContent).not.toMatch(/Rentenauskunft|Renteninformation|PDF|Upload|hochladen/)
+      }
+    })
+  }
 })

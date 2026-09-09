@@ -1,3 +1,4 @@
+import type { PensionEntryMethod } from '../../domain/inputStatus'
 import type { ProductId } from '../../domain'
 import { activeRules } from '../../rules'
 
@@ -23,4 +24,15 @@ export const sparformDescriptions: Record<ProductId, string> = {
   basisrente: 'Rürup · Schicht 1 · steuerlich gefördert',
   altersvorsorgedepot: `Schicht 2 · staatlich zertifiziertes Aktiendepot ab ${activeRules.altersvorsorgedepot.productStartYear}`,
   riester: 'Schicht 2 · staatliche Zulagen & Steuer',
+}
+
+/** Same method labels as the plan summary; a missing method is only an assumption. */
+export const pensionEntryLabels: Record<PensionEntryMethod['kind'] | 'assumed', string> = {
+  career: 'Grob aus Berufsstart geschätzt',
+  document: 'lt. Renteninformation',
+  years: 'Beitragsjahre angegeben',
+  points: 'Entgeltpunkte angegeben',
+  'projected-gross': 'Prognose angegeben',
+  skipped: 'Noch offen',
+  assumed: 'Angenommen',
 }

@@ -108,21 +108,73 @@ export function loadInitialWorkspace(): Workspace {
 /**
  * Has the user actually started a personal plan?
  *
- * A freshly-defaulted workspace (and the one synthesised from a legacy
- * compare-only v1 save) carries no contracts and no baseline edit stamp. The
- * `/` dispatch uses this to decide between the plan's "not started" state and
- * the populated plan, and `/vergleich` uses it to decide whether offering
+ * The `/` dispatch uses this to decide between the plan's "not started" state
+ * and the populated plan, and `/vergleich` uses it to decide whether offering
  * "Angaben aus meinem Plan verwenden" makes sense.
+ *
+ * Two signals:
+ *
+ *  1. `baseline.lastEditedAt` — every workspace mutation stamps it, including
+ *     the wizard's `onComplete`, and only combine-mode writes reach
+ *     STORAGE_KEY_V2, so a compare-only session can never produce one. This
+ *     is the primary signal.
+ *  2. Contracts in a workspace already tagged `mode: 'combine'` — the safety
+ *     net for a legacy save that predates the edit stamp.
+ *
+ * The mode tag alone is not enough: the landing page's combine CTA flips the
+ * mode *before* the wizard opens, and the wizard has to open in onboarding
+ * mode, not edit mode.
+ *
+ * Counting instance arrays unconditionally is what produced the "six assumed contracts and a
+ * 4.568 € total" surprise for a visitor who only ever used `/vergleich`:
+ * compare-mode persists a v1 envelope, `loadSavedWorkspace` falls back to it,
+ * and `migrateV1ToV2` synthesises one instance per meaningful product slot
+ * (ETF + private Rente unconditionally). Those instances are a projection of
+ * the comparison, not contracts the user entered — so they must not decide
+ * whether a plan exists. A real contract always arrives through
+ * `addInstanceToWorkspace` / `addPopulatedInstance`, both of which stamp
+ * `lastEditedAt`, so nothing the user actually created is missed.
  *
  * Pure and React-free so route dispatch and tests can call it directly.
  */
 export function hasStartedPlan(workspace: Workspace): boolean {
+  if (workspace.baseline.lastEditedAt !== undefined) return true
+  if (workspace.mode !== 'combine') return false
   const wsa = workspace.baseline.assumptions
   for (const entry of PRODUCT_REGISTRY) {
     const raw = (wsa as unknown as Record<string, unknown>)[entry.assumptionsKey]
     if (Array.isArray(raw) && raw.length > 0) return true
   }
-  return workspace.baseline.lastEditedAt !== undefined
+  return false
+}
+
+/**
+ * Strip every product instance from a workspace's baseline.
+ *
+ * Used by the `/` plan surface for the not-started state: the workspace that
+ * `loadInitialWorkspace` hands back may carry compare-mode-derived instances
+ * (see `hasStartedPlan`), and neither the simulation, the readiness verdict
+ * nor `selectPlanSummary` may be computed against those — they would report a
+ * household total for contracts the user never entered.
+ *
+ * Returns the same reference when there is nothing to strip, so callers can
+ * use it inside `useMemo` without churning downstream dependencies.
+ */
+export function withoutPlanInstances(workspace: Workspace): Workspace {
+  const wsa = workspace.baseline.assumptions
+  const cleared: Record<string, unknown> = {}
+  for (const entry of PRODUCT_REGISTRY) {
+    const raw = (wsa as unknown as Record<string, unknown>)[entry.assumptionsKey]
+    if (Array.isArray(raw) && raw.length > 0) cleared[entry.assumptionsKey] = []
+  }
+  if (Object.keys(cleared).length === 0) return workspace
+  return {
+    ...workspace,
+    baseline: {
+      ...workspace.baseline,
+      assumptions: { ...wsa, ...cleared } as WorkspaceAssumptionsV2,
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -479,6 +531,51 @@ export function clearWorkspaceUndo(): void {
   publishLastUndo(null)
 }
 
+/**
+ * Commit a fully-formed workspace in one store write and record the undo
+ * handle for the state it replaced.
+ *
+ * Module-level so surfaces that do not mount `usePortfolioState` — currently
+ * `useAngabenState`'s combine-mode mutators, which drive `/eingaben/produkte`
+ * — commit through the same seam. Before this existed, "Entfernen" on that
+ * page wrote straight through `updateWorkspaceStore` and left no handle, so
+ * the removal had no "Rückgängig" anywhere.
+ */
+export function commitWorkspace(label: string, next: Workspace): WorkspaceUndo {
+  const previous = getWorkspaceSnapshot()
+  const undo: WorkspaceUndo = { id: newUndoId(), label, createdAt: Date.now(), previous }
+  setWorkspaceStore(next)
+  publishLastUndo(undo)
+  return undo
+}
+
+/**
+ * Undo a handle. Only the newest one may be undone (see the hook's `undo`).
+ */
+export function undoWorkspace(handle: WorkspaceUndo): boolean {
+  if (!lastUndoHandle || lastUndoHandle.id !== handle.id) return false
+  setWorkspaceStore(handle.previous)
+  publishLastUndo(null)
+  return true
+}
+
+/**
+ * Subscribe to the pending undo handle without pulling in the full
+ * `usePortfolioState` API. Used by surfaces that only need to render the
+ * "… · Rückgängig" status line (e.g. the `/eingaben/produkte` panel).
+ */
+export function useWorkspaceUndoNotice(): {
+  lastUndo: WorkspaceUndo | null
+  undo: (handle: WorkspaceUndo) => boolean
+} {
+  const lastUndo = useSyncExternalStore(
+    subscribeLastUndo,
+    () => lastUndoHandle,
+    () => null,
+  )
+  return { lastUndo, undo: undoWorkspace }
+}
+
 // ---------------------------------------------------------------------------
 // Workspace store (module-level, write-through)
 //
@@ -582,13 +679,10 @@ export function usePortfolioState(): UsePortfolioStateApi {
    * which is what makes the atomicity and one-level-undo rules structural
    * rather than a convention.
    */
-  const commit = useCallback((label: string, next: Workspace): WorkspaceUndo => {
-    const previous = getWorkspaceSnapshot()
-    const undo: WorkspaceUndo = { id: newUndoId(), label, createdAt: Date.now(), previous }
-    setWorkspaceStore(next)
-    publishLastUndo(undo)
-    return undo
-  }, [])
+  const commit = useCallback(
+    (label: string, next: Workspace): WorkspaceUndo => commitWorkspace(label, next),
+    [],
+  )
 
   const replaceWorkspace = useCallback((next: Workspace) => {
     // Not a `commit`: no undo handle is recorded, so the pending one must go —
@@ -704,12 +798,7 @@ export function usePortfolioState(): UsePortfolioStateApi {
   // a later mutation (the contract editor keeps one while it shows "entfernt")
   // would otherwise restore a snapshot taken *before* that mutation and discard
   // it silently. Undo is one level deep, so a superseded handle is refused.
-  const undo = useCallback((handle: WorkspaceUndo): boolean => {
-    if (!lastUndoHandle || lastUndoHandle.id !== handle.id) return false
-    setWorkspaceStore(handle.previous)
-    publishLastUndo(null)
-    return true
-  }, [])
+  const undo = useCallback((handle: WorkspaceUndo): boolean => undoWorkspace(handle), [])
 
   const freezeWhatIf = useCallback((id: string) => {
     updateWorkspaceStore((w) => ({

@@ -1,3 +1,4 @@
+import { activeRules } from '../../../rules'
 import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
@@ -21,8 +22,7 @@ interface Props {
   assumptions: ScenarioAssumptions
   setAssumptions: Dispatch<SetStateAction<ScenarioAssumptions>>
   /** Derived from `activeRules.socialSecurity.pensionCapYear * activeRules.bav.taxFreePctOfPensionCap / 12`.
-   *  Computed in `AngabenPage` and passed in so the rules dependency lives
-   *  exactly once at the page boundary. */
+   *  Computed in `AngabenPage`; the separate SV limit below uses the same active rules. */
   bavTaxFreeMonthly: number
   num: string
   id: string
@@ -93,8 +93,10 @@ export function AngabenEinkommenSection({
           />
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              Voll steuer- und SV-frei bis ca. {formatCurrency(bavTaxFreeMonthly, 0)}/Monat
-              (§ 3 Nr. 63 EStG)
+              Steuerfrei bis {formatCurrency(bavTaxFreeMonthly, 0)}/Monat
+              (§ 3 Nr. 63 EStG); SV-frei bis{' '}
+              {formatCurrency(activeRules.socialSecurity.pensionCapYear * activeRules.bav.socialSecurityFreePctOfPensionCap / 12, 0)}/Monat
+              (§ 1 SvEV). Beide Grenzen gelten für den Gesamtbeitrag einschließlich Arbeitgeberzuschuss.
             </span>
           </span>
         </div>

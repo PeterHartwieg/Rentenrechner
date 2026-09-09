@@ -1,3 +1,4 @@
+import { MeasuredResponsiveContainer } from '../../ui/charts/MeasuredResponsiveContainer'
 import '../../ui/charts.css'
 import './BreakEvenChart.css'
 import { Fragment, useCallback, useMemo, useState } from 'react'
@@ -7,7 +8,6 @@ import {
   LineChart,
   ReferenceDot,
   ReferenceLine,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -292,7 +292,7 @@ export function BreakEvenChart({
 
       <div className="break-even-frame-wrap">
         <div className="chart-frame break-even-frame">
-          <ResponsiveContainer width="100%" height="100%" onResize={handleChartResize}>
+          <MeasuredResponsiveContainer onResize={handleChartResize}>
             <LineChart data={data} margin={density.margins}>
               <CartesianGrid strokeDasharray="4 4" />
               <XAxis
@@ -463,7 +463,7 @@ export function BreakEvenChart({
                 )
               })}
             </LineChart>
-          </ResponsiveContainer>
+          </MeasuredResponsiveContainer>
         </div>
         <div className="lifecycle-legend lifecycle-legend--overlay" aria-hidden="true" {...legendTargetProps}>
           <span

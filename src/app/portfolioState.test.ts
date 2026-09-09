@@ -24,10 +24,12 @@ import {
   newScenarioId,
   rebaseWhatIfStub,
   rebaseWhatIf,
+  hasStartedPlan,
+  withoutPlanInstances,
   applyDisambiguatingLabel,
   type AnyInstance,
 } from './portfolioState'
-import type { Scenario, WhatIfScenario } from '../domain/workspace'
+import type { Scenario, WhatIfScenario, Workspace } from '../domain/workspace'
 
 // ---------------------------------------------------------------------------
 // newScenarioId / deepCloneScenario
@@ -368,5 +370,87 @@ describe('loadInitialWorkspace — share URL overrides saved combine workspace',
 
     const loaded = loadInitialWorkspace()
     expect(loaded.mode).toBe('compare')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// F1a — what counts as a started plan.
+//
+// A compare-only session persists a v1 envelope; `loadSavedWorkspace` falls
+// back to it and `migrateV1ToV2` projects it into one instance per meaningful
+// product slot. Those instances are a projection of the comparison, not
+// contracts the user entered, so they must not make `/` claim a plan exists.
+// ---------------------------------------------------------------------------
+
+describe('hasStartedPlan', () => {
+  function workspaceWithEtfInstance(): Workspace {
+    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+    ws.baseline.assumptions.etf = [
+      {
+        instanceId: 'etf-singleton',
+        label: 'ETF-Depot',
+        status: 'active',
+        contractStartYear: 2026,
+        evidenceMap: {},
+      },
+    ] as unknown as Workspace['baseline']['assumptions']['etf']
+    return ws
+  }
+
+  it('is false for a freshly defaulted workspace', () => {
+    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+    expect(hasStartedPlan(ws)).toBe(false)
+  })
+
+  it('is false for compare-mode instances synthesised by the v1 migration', () => {
+    const ws = workspaceWithEtfInstance()
+    expect(ws.mode).toBe('compare')
+    expect(ws.baseline.lastEditedAt).toBeUndefined()
+    expect(hasStartedPlan(ws)).toBe(false)
+  })
+
+  it('is false for a combine-mode workspace that holds nothing yet', () => {
+    // The landing page's combine CTA flips the mode before the wizard opens;
+    // the wizard must still mount in onboarding mode.
+    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+    expect(hasStartedPlan({ ...ws, mode: 'combine' })).toBe(false)
+  })
+
+  it('is true for a combine-mode workspace that holds a contract', () => {
+    // Safety net for a legacy save that predates the edit stamp.
+    const ws = workspaceWithEtfInstance()
+    expect(hasStartedPlan({ ...ws, mode: 'combine' })).toBe(true)
+  })
+
+  it('is true for a baseline that carries an edit stamp', () => {
+    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+    ws.baseline.lastEditedAt = Date.now()
+    expect(hasStartedPlan(ws)).toBe(true)
+  })
+})
+
+describe('withoutPlanInstances', () => {
+  it('clears every product slot', () => {
+    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+    ws.baseline.assumptions.etf = [
+      {
+        instanceId: 'etf-singleton',
+        label: 'ETF-Depot',
+        status: 'active',
+        contractStartYear: 2026,
+        evidenceMap: {},
+      },
+    ] as unknown as Workspace['baseline']['assumptions']['etf']
+    const stripped = withoutPlanInstances(ws)
+    expect(stripped.baseline.assumptions.etf).toEqual([])
+    // Non-instance assumptions survive.
+    expect(stripped.baseline.assumptions.inflationRate).toBe(
+      ws.baseline.assumptions.inflationRate,
+    )
+  })
+
+  it('returns the same reference when there is nothing to strip', () => {
+    const ws: Workspace = JSON.parse(JSON.stringify(defaultWorkspace))
+    expect(withoutPlanInstances(ws)).toBe(ws)
   })
 })

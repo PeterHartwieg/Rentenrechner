@@ -34,6 +34,7 @@ import {
 import { de2026Rules } from '../../rules/de2026'
 import { computeBavMinimumEntitlement } from '../../engine/bavWarnings'
 import { GRVInputs } from '../inputs/GRVInputs'
+import { useWorkspaceUndoNotice } from '../../app/portfolioState'
 import {
   PRODUCT_UI_REGISTRY,
   type ProductInputsContext,
@@ -45,7 +46,7 @@ import {
 import { DProduktSection } from './DProduktSection'
 import { DProduktRow, type ProduktRowField } from './DProduktRow'
 import { DSparformOption } from './DSparformOption'
-import { sparformDescriptions } from './sparformDescriptions'
+import { pensionEntryLabels, sparformDescriptions } from './sparformDescriptions'
 
 /**
  * `ProdukteEingabenPanel` — Sober D body for `/eingaben/produkte`.
@@ -232,19 +233,19 @@ function ComparePanel({
       {/* § 1 — Gesetzliche Rente. Single DRV card with live values. */}
       <DProduktSection
         legend="§ 1 · Gesetzliche Rente"
-        note="Pflicht für die meisten Angestellten. Werte aus deiner DRV-Rentenauskunft übernommen."
+        note="Pflicht für die meisten Angestellten. Grundlage sind deine Angaben oder Modellannahmen."
       >
         <DProduktRow
           kind="DRV · Schicht 1 · Pflicht"
-          title="Rentenauskunft der Deutschen Rentenversicherung"
-          status="übernommen"
+          title="Deine gesetzliche Rente"
+          status={pensionEntryLabels[assumptions.statutoryPension.pensionEntryMethod?.kind ?? 'assumed']}
           fields={buildGrvFieldsCompare(profile, assumptions, simulation)}
-          primary="PDF erneut hochladen"
+          primary="Automatisch einlesen"
           primaryDisabled
-          primaryTitle="Bald verfügbar — OCR-Upload kommt mit einem späteren Release."
+          primaryTitle="Automatisches Einlesen ist noch nicht verfügbar."
           secondary={grvOverrideOpen ? 'Schließen' : 'Manuell überschreiben'}
           onSecondary={() => setGrvOverrideOpen((v) => !v)}
-          accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
+          accent="Änderungen ersetzen die bisher verwendeten Angaben oder Annahmen zur gesetzlichen Rente."
         />
         {grvOverrideOpen && (
           <div
@@ -383,6 +384,24 @@ function ComparePanel({
 // Entfernen / Optionen affordances back to the page-level mutators.
 // ---------------------------------------------------------------------------
 
+/**
+ * "Vertrag entfernt · Rückgängig" for the combine panel. Reads the shared
+ * one-level undo handle from the workspace store, so it also surfaces a
+ * removal made on another surface in the same session.
+ */
+function UndoNotice() {
+  const { lastUndo, undo } = useWorkspaceUndoNotice()
+  if (!lastUndo) return null
+  return (
+    <div className="produkte-eingaben-panel__undo" role="status">
+      <span>{lastUndo.label}</span>
+      <button type="button" onClick={() => undo(lastUndo)}>
+        Rückgängig
+      </button>
+    </div>
+  )
+}
+
 function CombinePanel({
   baseline,
   assumptions,
@@ -463,6 +482,11 @@ function CombinePanel({
       data-mode="combine"
       aria-label="Verträge und Sparformen"
     >
+      {/* Undo status line. "Entfernen" below commits through the shared
+          workspace store, which records a one-level undo handle; this is the
+          local surface for it so a removal can be reversed without first
+          navigating back to the plan. Renders only while a handle is pending. */}
+      <UndoNotice />
       {/* § 1 — Gesetzliche Rente. Same DRV card shape; combine-mode sources
           values from `baseline.profile` + `baseline.assumptions.statutoryPension`.
           When the parent provides a `statutoryPensionResult`, the projected EP
@@ -472,7 +496,7 @@ function CombinePanel({
           run it before mounting this panel). */}
       <DProduktSection
         legend="§ 1 · Gesetzliche Rente"
-        note="Pflicht für die meisten Angestellten. Werte aus deiner DRV-Rentenauskunft übernommen."
+        note="Pflicht für die meisten Angestellten. Grundlage sind deine Angaben oder Modellannahmen."
       >
         {/* CR-PR4-R1-5: gate the secondary CTA label/handler on the same
             condition as the disclosure body — without `onPatchBaseline` /
@@ -484,16 +508,16 @@ function CombinePanel({
           return (
             <DProduktRow
               kind="DRV · Schicht 1 · Pflicht"
-              title="Rentenauskunft der Deutschen Rentenversicherung"
-              status="übernommen"
+              title="Deine gesetzliche Rente"
+              status={pensionEntryLabels[assumptions.statutoryPension.pensionEntryMethod?.kind ?? 'assumed']}
               fields={buildGrvFieldsCombine(
                 baseline.profile,
                 assumptions,
                 statutoryPensionResult,
               )}
-              primary="PDF erneut hochladen"
+              primary="Automatisch einlesen"
               primaryDisabled
-              primaryTitle="Bald verfügbar — OCR-Upload kommt mit einem späteren Release."
+              primaryTitle="Automatisches Einlesen ist noch nicht verfügbar."
               secondary={
                 canOverrideGrv
                   ? grvOverrideOpen
@@ -504,7 +528,7 @@ function CombinePanel({
               onSecondary={
                 canOverrideGrv ? () => setGrvOverrideOpen((v) => !v) : undefined
               }
-              accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
+              accent="Änderungen ersetzen die bisher verwendeten Angaben oder Annahmen zur gesetzlichen Rente."
             />
           )
         })()}

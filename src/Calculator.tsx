@@ -31,7 +31,7 @@ import { useCalculatorState } from './app/useCalculatorState'
 import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
 import type { WorkspaceUiState } from './app/useWorkspaceUiState'
-import { hasStartedPlan, usePortfolioState } from './app/portfolioState'
+import { hasStartedPlan, usePortfolioState, withoutPlanInstances } from './app/portfolioState'
 import type { Route } from './app/useRoute'
 import { ROUTES } from './app/useRoute'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
@@ -185,7 +185,28 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     setQaWorkspaceContext(QA_WORKSPACE_CONTEXT)
   }, [])
 
-  const combineSimulation = useCombineSimulation(portfolioState.workspace)
+  // Which workspace the plan surface computes on.
+  //
+  // `loadInitialWorkspace` may hand back instances that the user never
+  // entered: a compare-only session persists a v1 envelope, and
+  // `migrateV1ToV2` projects it into one instance per meaningful product
+  // slot. `hasStartedPlan` already refuses to call that a plan; the
+  // simulation, the readiness verdict and `selectPlanSummary` must not be
+  // computed against those instances either, or the not-started state would
+  // sit on a household total for contracts that do not exist.
+  //
+  // `withoutPlanInstances` returns the same reference when there is nothing
+  // to strip, so a real plan keeps its memo identities.
+  const planNotStarted = !hasStartedPlan(portfolioState.workspace)
+  const planWorkspace = useMemo(
+    () =>
+      planNotStarted
+        ? withoutPlanInstances(portfolioState.workspace)
+        : portfolioState.workspace,
+    [planNotStarted, portfolioState.workspace],
+  )
+
+  const combineSimulation = useCombineSimulation(planWorkspace)
   // Workspace-tabs collapse: `useScenarioLibrary` was wired into the
   // `InputsPanel` that moved to `/eingaben` § 5; the singleton scenario lib
   // is now mounted there. The dashboard no longer needs it.
@@ -208,7 +229,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   // only place that promotes the workspace to `'combine'`.
   const [isShareView] = useState(() => hasShareStateInUrl())
   const isCombineMode = !isShareView
-  const planNotStarted = !hasStartedPlan(portfolioState.workspace)
   const combineProfile = portfolioState.workspace.baseline.profile
   // In combine mode, resolve the effective scenario id against workspace
   // assumptions (not singleton) so custom scenarios added via the toolbar pill
@@ -398,19 +418,19 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   const readiness = useMemo(
     () =>
       selectResultReadiness(
-        portfolioState.workspace,
+        planWorkspace,
         combineSimulation,
         combineSimulation.error,
       ),
-    [portfolioState.workspace, combineSimulation],
+    [planWorkspace, combineSimulation],
   )
   const planSummary = useMemo(
     () =>
-      selectPlanSummary(portfolioState.workspace, combineSimulation, combineBasisScenarioId, {
+      selectPlanSummary(planWorkspace, combineSimulation, combineBasisScenarioId, {
         simulationError: combineSimulation.error,
         rules: de2026Rules,
       }),
-    [portfolioState.workspace, combineSimulation, combineBasisScenarioId],
+    [planWorkspace, combineSimulation, combineBasisScenarioId],
   )
   const householdTotalBlocked = useMemo(() => {
     if (readiness.canShowHouseholdTotal) return undefined
@@ -486,7 +506,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
       {isCombineMode && (
         <div className="mein-plan-host">
           <MeinPlanPage
-            workspace={portfolioState.workspace}
+            workspace={planWorkspace}
             perInstance={combineSimulation.perInstance}
             selectedScenarioId={combineBasisScenarioId}
             selectedScenarioLabel={combineBasisLabel}

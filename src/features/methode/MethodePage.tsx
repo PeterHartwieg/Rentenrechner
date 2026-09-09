@@ -155,9 +155,9 @@ export function MethodePage({ navigate }: Props) {
   // Look up by `id` (NOT by index — per CLAUDE.md the array order is
   // [konservativ, basis, optimistisch] but is not part of the contract).
   const renditeRows: ReadonlyArray<readonly [string, number, string]> = [
-    ['konservativ', RESOLVED_RENDITEN.konservativ, 'MSCI World rollierend 30 J., 10er-Quantil'],
-    ['Basis', RESOLVED_RENDITEN.basis, 'Realer Median MSCI World 1900–2025 (~ 5,2 % real)'],
-    ['optimistisch', RESOLVED_RENDITEN.optimistisch, 'MSCI World rollierend 30 J., 90er-Quantil'],
+    ['konservativ', RESOLVED_RENDITEN.konservativ, 'Niedrige Modellannahme vor Inflation'],
+    ['Basis', RESOLVED_RENDITEN.basis, 'Mittlere Modellannahme vor Inflation'],
+    ['optimistisch', RESOLVED_RENDITEN.optimistisch, 'Hohe Modellannahme vor Inflation'],
   ]
 
   // ─── Statutorische Werte (RULES_YEAR) ─────────────────────────────────
@@ -256,8 +256,8 @@ export function MethodePage({ navigate }: Props) {
               <p className="methode-section-lead">
                 Drei Marktszenarien für die kapitalmarktgebundenen Produkte
                 (ETF, fondsgebundene Versicherung, bAV-Fonds, Altersvorsorgedepot).
-                Werte sind reale, langfristige Renditen p. a.; Inflation wird in
-                der Auszahlphase getrennt ausgewiesen.
+                Werte sind nominale, langfristige Renditeannahmen p. a.
+                Die heutige Kaufkraft wird separat mit der Inflationsrate berechnet.
               </p>
               <table
                 className="methode-table"
@@ -269,7 +269,7 @@ export function MethodePage({ navigate }: Props) {
                     <th scope="col" className="methode-table-num">
                       Rendite p. a.
                     </th>
-                    <th scope="col">Hergeleitet aus</th>
+                    <th scope="col">Einordnung</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -289,7 +289,7 @@ export function MethodePage({ navigate }: Props) {
                       <td data-label="Rendite p. a." className="methode-table-num">
                         {formatPercent(rate, 1)}
                       </td>
-                      <td data-label="Hergeleitet aus" className="methode-table-note">
+                      <td data-label="Einordnung" className="methode-table-note">
                         {source}
                       </td>
                     </tr>
@@ -367,11 +367,11 @@ export function MethodePage({ navigate }: Props) {
                   </span>
                 </li>
                 <li>
-                  <span className="methode-deflist-key">Lump-Sum-Auszahlung</span>
+                  <span className="methode-deflist-key">Einmalige Kapitalauszahlung</span>
                   <span className="methode-deflist-val">
                     Fünftelregelung § 34 EStG für Direktzusage / Unterstützungskasse;
                     §-3-Nr.-63-bAV wird voll versteuert. KV/PV greift via § 229
-                    SGB V mit Spreading auf{' '}
+                    SGB V mit Verteilung auf{' '}
                     {legalConstants.bav.versorgungsbezugSpreadingMonths} Monate.
                   </span>
                 </li>

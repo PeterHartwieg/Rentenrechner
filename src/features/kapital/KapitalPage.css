@@ -33,6 +33,8 @@
 }
 
 .kapital-body {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -130,6 +132,9 @@
 /* ---- Chart wrapper ----------------------------------------------------- */
 
 .kapital-chart-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
   border: 1px solid var(--kapital-rule);
   background: var(--rw-bg-paper);
   padding: 8px 0 0;

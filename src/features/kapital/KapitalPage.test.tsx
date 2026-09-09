@@ -186,3 +186,54 @@ describe('KapitalPage — viewport sweep', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// F2 — explicit source selection via `?quelle=vergleich`.
+//
+// `/kapital` is dual-source. Picking the source from the saved workspace mode
+// alone meant the "Kapital im Verlauf" link on `/vergleich` showed a user's
+// personal plan — a different monthly contribution than the comparison they
+// were reading. The link now names its origin.
+// ---------------------------------------------------------------------------
+
+describe('KapitalPage — source selection', () => {
+  it('renders the comparison (not the plan) when the URL carries ?quelle=vergleich', () => {
+    // A combine workspace with zero contracts: the plan source has nothing to
+    // chart, so the empty state is the plan's tell. With the comparison as the
+    // source, the seeded `visibleProducts` produce chips instead.
+    seedCombineMode()
+    window.history.pushState(null, '', '/kapital?quelle=vergleich')
+    const { container } = render(inShell(<KapitalPage navigate={() => {}} />))
+    expect(container.querySelector('.kapital-empty')).toBeNull()
+    expect(container.querySelector('.kapital-chart-wrap')).not.toBeNull()
+    expect(container.querySelector('.kapital-kicker')?.textContent ?? '').toContain('Vergleich')
+  })
+
+  it('back-link returns to /vergleich when the comparison is the source', () => {
+    seedCombineMode()
+    window.history.pushState(null, '', '/kapital?quelle=vergleich')
+    const { container } = render(inShell(<KapitalPage navigate={() => {}} />))
+    const backlink = container.querySelector<HTMLAnchorElement>('.kapital-backlink')
+    expect(backlink!.getAttribute('href')).toBe('/vergleich')
+    expect(backlink!.textContent ?? '').toContain('Zurück zum Vergleich')
+  })
+
+  it('keeps the plan as the source (and the plan back-link) without the param', () => {
+    seedCombineMode()
+    window.history.pushState(null, '', '/kapital')
+    const { container } = render(inShell(<KapitalPage navigate={() => {}} />))
+    // Plan source: the default combine workspace holds no contracts.
+    expect(container.querySelector('.kapital-empty')).not.toBeNull()
+    const backlink = container.querySelector<HTMLAnchorElement>('.kapital-backlink')
+    expect(backlink!.getAttribute('href')).toBe('/')
+    expect(container.querySelector('.kapital-kicker')?.textContent ?? '').toContain('Mein Plan')
+  })
+
+  it('ignores an unknown ?quelle value', () => {
+    seedCombineMode()
+    window.history.pushState(null, '', '/kapital?quelle=irgendwas')
+    const { container } = render(inShell(<KapitalPage navigate={() => {}} />))
+    expect(container.querySelector('.kapital-empty')).not.toBeNull()
+    expect(container.querySelector<HTMLAnchorElement>('.kapital-backlink')!.getAttribute('href')).toBe('/')
+  })
+})

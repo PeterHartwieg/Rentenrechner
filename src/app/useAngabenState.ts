@@ -30,6 +30,8 @@ import {
   removeInstanceFromWorkspace,
 } from './workspaceIdentity'
 import {
+  commitWorkspace,
+  getWorkspaceSnapshot,
   rebaseWhatIf as rebaseWhatIfPure,
   updateWorkspaceStore,
   useWorkspaceValue,
@@ -644,10 +646,16 @@ export function useAngabenState(): UseAngabenStateApi {
     setWorkspaceState((w) => (w ? addInstanceToWorkspace(w, productId) : w))
   }, [])
 
+  // Removal is the one mutation here that must be reversible: it destroys a
+  // contract the user entered. Routing it through `commitWorkspace` (rather
+  // than the plain store write the other mutators use) records the shared
+  // one-level undo handle, so the plan — and the § 2 status line on
+  // `/eingaben/produkte` — can offer "Rückgängig" afterwards.
   const removeInstance = useCallback(
     (productId: MultiInstanceProductId, instanceId: string) => {
-      setWorkspaceState((w) =>
-        w ? removeInstanceFromWorkspace(w, productId, instanceId) : w,
+      commitWorkspace(
+        'Vertrag entfernt',
+        removeInstanceFromWorkspace(getWorkspaceSnapshot(), productId, instanceId),
       )
     },
     [],
