@@ -10,11 +10,20 @@
  *
  * Every expectation below is a FROZEN PRE-CHANGE value (see
  * `etfContextParity.fixture.ts`): captured from the engine BEFORE the
- * migration, with full float precision, asserted with `toBe`/`toEqual`.
- * These are internal regression anchors — do not regenerate to make a
- * failing test pass. The combined fixtures cover the interaction cases the
- * issue calls out: multi-ETF allowance sharing, transfer events (certified +
- * surrender_reinvest), a paid-up instance, and a seeded Monte-Carlo path.
+ * migration, with full float precision. These are internal regression
+ * anchors — do not regenerate to make a failing test pass. The combined
+ * fixtures cover the interaction cases the issue calls out: multi-ETF
+ * allowance sharing, transfer events (certified + surrender_reinvest), a
+ * paid-up instance, and a seeded Monte-Carlo path.
+ *
+ * Fixture comparison uses `expectMatchesFixture` (below) rather than
+ * `toEqual`: identical IEEE-754 double *operations* are not reproducible
+ * bit-for-bit across platforms once transcendentals (`Math.pow` for compound
+ * growth) are involved, so the same engine code yields last-digit differences
+ * between macOS and Linux/Node 22. The comparator keeps structure, strings,
+ * booleans, `null`, integers and structural zeros EXACT and allows only a
+ * last-digit float drift (see `FLOAT_ULP_TOLERANCE`). Neither the engine nor
+ * the fixture rounds anything.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -38,6 +47,109 @@ import { ETF_PARITY_FIXTURE } from './etfContextParity.fixture'
 import type { EtfInstance, InsuranceInstance, TransferEvent } from '../domain/instances'
 import type { Workspace } from '../domain/workspace'
 import type { EtfProductResult, ProductId, ProductResult } from '../domain'
+
+// ---------------------------------------------------------------------------
+// Portable fixture comparator
+// ---------------------------------------------------------------------------
+
+/**
+ * Relative float tolerance, in units of `Number.EPSILON` (1 unit ≈ 1 ulp of
+ * the mantissa). The largest drift actually observed between the macOS freeze
+ * and Linux/Node 22 for these fixtures is ~19 units (a `taxDue` cent amount);
+ * 64 leaves ~3× headroom while still rejecting anything above the 15th
+ * significant digit. A euro amount of €100 000 may differ by ~1.5e-9 €.
+ */
+const FLOAT_ULP_TOLERANCE = 64
+
+/**
+ * Absolute floor for the tolerance, in the unit of the compared leaf (euros
+ * for every monetary field here). It exists solely for values that are the
+ * residual of catastrophic cancellation — e.g. the payout-phase
+ * `capitalAtEnd` of the final year, ~4.5e-9 €, which is the difference of two
+ * ~1.2e4 € numbers and therefore carries no significant digits at all (the
+ * observed drift there is 1.4e-10 €). A billionth of a euro can never hide a
+ * meaningful monetary error, and it stays below the relative bound for every
+ * leaf above ~4.5e4 €.
+ */
+const FLOAT_ABSOLUTE_FLOOR = 1e-9
+
+function numbersMatch(actual: number, expected: number): boolean {
+  if (Object.is(actual, expected)) return true
+  if (!Number.isFinite(actual) || !Number.isFinite(expected)) return false
+  // Discrete quantities — counts, ages, calendar/contract years, whole-euro
+  // statutory constants such as the €1 000 Sparerpauschbetrag — are produced
+  // by exact integer arithmetic and must reproduce exactly.
+  if (Number.isInteger(actual) && Number.isInteger(expected)) return false
+  // Structural zeros (no employer contribution, clamped cost basis) likewise.
+  if (expected === 0) return false
+  const tolerance = Math.max(
+    FLOAT_ABSOLUTE_FLOOR,
+    Math.max(Math.abs(actual), Math.abs(expected)) * FLOAT_ULP_TOLERANCE * Number.EPSILON,
+  )
+  return Math.abs(actual - expected) <= tolerance
+}
+
+function fail(path: string, actual: unknown, expected: unknown, why: string): never {
+  throw new Error(
+    `parity mismatch at ${path}: ${why}\n  expected (frozen): ${String(expected)}\n  actual   (current): ${String(actual)}`,
+  )
+}
+
+/**
+ * Recursive fixture comparison. Structure, strings, booleans and `null` are
+ * compared exactly; numbers via `numbersMatch`. The fixture was captured
+ * through JSON, so keys whose value was `undefined` are absent from it — an
+ * absent fixture key therefore requires the actual value to be `undefined`,
+ * while a fixture key with a defined value that is missing (or `undefined`)
+ * on the actual side fails.
+ */
+function expectMatchesFixture(actual: unknown, expected: unknown, path = '$'): void {
+  if (expected === undefined) {
+    if (actual !== undefined) fail(path, actual, expected, 'expected no value')
+    return
+  }
+  if (expected === null) {
+    if (actual !== null) fail(path, actual, expected, 'expected null')
+    return
+  }
+  if (typeof expected === 'number') {
+    if (typeof actual !== 'number') fail(path, actual, expected, 'expected a number')
+    if (!numbersMatch(actual, expected)) fail(path, actual, expected, 'number differs beyond tolerance')
+    return
+  }
+  if (typeof expected === 'string' || typeof expected === 'boolean') {
+    if (!Object.is(actual, expected)) fail(path, actual, expected, `expected an exact ${typeof expected}`)
+    return
+  }
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual)) fail(path, actual, '[array]', 'expected an array')
+    if (actual.length !== expected.length) {
+      fail(`${path}.length`, actual.length, expected.length, 'array length differs')
+    }
+    expected.forEach((item, i) => expectMatchesFixture(actual[i], item, `${path}[${i}]`))
+    return
+  }
+  if (typeof expected === 'object') {
+    if (typeof actual !== 'object' || actual === null || Array.isArray(actual)) {
+      fail(path, actual, '[object]', 'expected an object')
+    }
+    const actualRecord = actual as Record<string, unknown>
+    const expectedRecord = expected as Record<string, unknown>
+    for (const key of Object.keys(expectedRecord)) {
+      expectMatchesFixture(actualRecord[key], expectedRecord[key], `${path}.${key}`)
+    }
+    for (const key of Object.keys(actualRecord)) {
+      if (key in expectedRecord) continue
+      // JSON capture dropped `undefined`-valued optional fields; anything
+      // else that appeared since the freeze is a real structural change.
+      if (actualRecord[key] !== undefined) {
+        fail(`${path}.${key}`, actualRecord[key], '<absent>', 'unexpected extra value')
+      }
+    }
+    return
+  }
+  fail(path, actual, expected, 'unsupported fixture value type')
+}
 
 // ---------------------------------------------------------------------------
 // Helpers — the exact workspaces the pre-change freeze ran
@@ -192,14 +304,73 @@ function makeCombineWorkspace(): Workspace {
 }
 
 // ---------------------------------------------------------------------------
+// 0. The comparator itself — it must still catch real regressions
+// ---------------------------------------------------------------------------
+
+describe('ETF parity comparator — still fails on real deviations', () => {
+  const stage = ETF_PARITY_FIXTURE.compareDefault.etf[0]
+
+  it('accepts only last-digit drift on a float leaf', () => {
+    const capital = stage.capitalAtRetirement // ≈ 9.2e4 €
+    // One ulp up: platform drift, tolerated.
+    expectMatchesFixture(
+      { ...stage, capitalAtRetirement: capital + Number.EPSILON * capital },
+      stage,
+    )
+    // One cent: a meaningful numeric error, rejected.
+    expect(() =>
+      expectMatchesFixture({ ...stage, capitalAtRetirement: capital + 0.01 }, stage),
+    ).toThrow(/capitalAtRetirement/)
+    // Even 1e-8 € — a millionth of a cent — is already ~7× the €92 000 bound.
+    expect(() =>
+      expectMatchesFixture({ ...stage, capitalAtRetirement: capital + 1e-8 }, stage),
+    ).toThrow(/beyond tolerance/)
+  })
+
+  it('rejects a missing defined stage, field or array element', () => {
+    const withoutCapital: Record<string, unknown> = { ...stage }
+    delete withoutCapital.capitalAtRetirement
+    expect(() => expectMatchesFixture(withoutCapital, stage)).toThrow(/capitalAtRetirement/)
+    expect(() => expectMatchesFixture({ ...stage, capitalAtRetirement: undefined }, stage))
+      .toThrow(/capitalAtRetirement/)
+    expect(() => expectMatchesFixture([], ETF_PARITY_FIXTURE.compareDefault.etf))
+      .toThrow(/length/)
+    expect(() => expectMatchesFixture(null, stage)).toThrow(/expected an object/)
+  })
+
+  it('keeps discrete values, structural zeros, strings and booleans exact', () => {
+    expect(() => expectMatchesFixture({ ...stage, rowCount: stage.rowCount + 1 }, stage))
+      .toThrow(/rowCount/)
+    expect(() => expectMatchesFixture({ ...stage, totalEmployerContributions: 1e-12 }, stage))
+      .toThrow(/totalEmployerContributions/)
+    expect(() => expectMatchesFixture({ ...stage, scenarioId: 'basis' }, stage))
+      .toThrow(/scenarioId/)
+    expect(() => expectMatchesFixture({ ...stage, guaranteeApplied: true }, stage))
+      .toThrow(/guaranteeApplied/)
+  })
+
+  it('treats absent optional fields as undefined, but not as free-form extras', () => {
+    // The JSON-captured fixture has no `instanceId` key for compare mode.
+    expect('instanceId' in stage).toBe(false)
+    expectMatchesFixture({ ...stage, instanceId: undefined }, stage)
+    expect(() => expectMatchesFixture({ ...stage, instanceId: 'etf-core' }, stage))
+      .toThrow(/instanceId/)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // 1. Compare mode — registry entry adapts the full SimulationContext
 // ---------------------------------------------------------------------------
 
 describe('ETF narrow context — compare-mode parity (frozen pre-change)', () => {
-  it('default ETF assumptions reproduce the pre-change engine byte-identically', () => {
+  it('default ETF assumptions reproduce the pre-change engine', () => {
     const actual = makeCompareDump({})
-    expect(actual.bavMonthlyNetCost).toBe(ETF_PARITY_FIXTURE.compareDefault.bavMonthlyNetCost)
-    expect(actual.etf).toEqual(ETF_PARITY_FIXTURE.compareDefault.etf)
+    expectMatchesFixture(
+      actual.bavMonthlyNetCost,
+      ETF_PARITY_FIXTURE.compareDefault.bavMonthlyNetCost,
+      '$.bavMonthlyNetCost',
+    )
+    expectMatchesFixture(actual.etf, ETF_PARITY_FIXTURE.compareDefault.etf, '$.compareDefault.etf')
   })
 
   it('Beitragsdynamik + fee + Teilfreistellung variant reproduces the pre-change engine', () => {
@@ -208,7 +379,7 @@ describe('ETF narrow context — compare-mode parity (frozen pre-change)', () =>
       annualAssetFee: 0.01,
       equityPartialExemption: 0.25,
     })
-    expect(actual.etf).toEqual(ETF_PARITY_FIXTURE.compareGrowth.etf)
+    expectMatchesFixture(actual.etf, ETF_PARITY_FIXTURE.compareGrowth.etf, '$.compareGrowth.etf')
   })
 })
 
@@ -221,7 +392,7 @@ describe('ETF narrow context — combine-mode parity (frozen pre-change)', () =>
     const { perInstance } = simulatePortfolio(makeCombineWorkspace(), de2026Rules)
     for (const id of ['etf-core', 'etf-side', 'etf-old'] as const) {
       const actual = (perInstance[id] ?? []).map(frozenView)
-      expect(actual).toEqual(ETF_PARITY_FIXTURE.combineEtf[id])
+      expectMatchesFixture(actual, ETF_PARITY_FIXTURE.combineEtf[id], `$.combineEtf.${id}`)
     }
   })
 
@@ -288,11 +459,16 @@ describe('ETF narrow context — seeded Monte Carlo parity (frozen pre-change)',
     })
     expect(mc?.seed).toBe(ETF_PARITY_FIXTURE.monteCarlo.seed)
     expect(mc?.runs).toBe(ETF_PARITY_FIXTURE.monteCarlo.runs)
-    expect(mc?.summaries.find(s => s.productId === 'etf') ?? null)
-      .toEqual(ETF_PARITY_FIXTURE.monteCarlo.etfSummary)
-    expect(
+    expectMatchesFixture(
+      mc?.summaries.find(s => s.productId === 'etf') ?? null,
+      ETF_PARITY_FIXTURE.monteCarlo.etfSummary,
+      '$.monteCarlo.etfSummary',
+    )
+    expectMatchesFixture(
       (mc?.yearlyBands ?? []).filter(b => b.productId === 'etf' && [1, 20, 39].includes(b.year)),
-    ).toEqual(ETF_PARITY_FIXTURE.monteCarlo.etfBands)
+      ETF_PARITY_FIXTURE.monteCarlo.etfBands,
+      '$.monteCarlo.etfBands',
+    )
   })
 })
 

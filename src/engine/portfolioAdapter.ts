@@ -182,7 +182,8 @@ export function simulatePortfolio(
   // monthly cost, capital policy, optional shared allowance). No
   // `projectInstanceToScenarioAssumptions`, no `buildContext` funding
   // pre-pass, therefore no neutralised bAV / Basisrente / AVD / Riester
-  // inputs. Numbers are pinned byte-identical by `etfContextParity.test.ts`.
+  // inputs. Numbers are pinned against the pre-change engine freeze by
+  // `etfContextParity.test.ts` (full precision, last-digit drift only).
   // ---------------------------------------------------------------------------
   const buildEtfInstanceContext = (
     inst: EtfInstance,

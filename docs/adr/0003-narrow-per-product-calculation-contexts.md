@@ -82,14 +82,18 @@ where amounts come from.
 
 ## Parity
 
-Behavior is preserved byte-identically, pinned by
-`src/engine/etfContextParity.test.ts` against
+Behavior is preserved, pinned by `src/engine/etfContextParity.test.ts` against
 `src/engine/etfContextParity.fixture.ts` — values frozen from the engine
 **before** the migration (compare mode default + Beitragsdynamik variant; a
 combine workspace with three ETF instances including a paid-up contract,
 certified and `surrender_reinvest` transfers, joint assessment; a seeded
-Monte-Carlo run), asserted at full float precision. The scenario-report suite
-reproduces its captured baseline unchanged.
+Monte-Carlo run), asserted at full float precision. Neither engine nor fixture
+rounds; the comparison keeps structure, strings, booleans, integers and
+structural zeros exact and tolerates only last-digit float drift (64
+`Number.EPSILON` units relative, ~19 observed), because identical double
+operations involving `Math.pow` are not bit-reproducible between macOS and
+Linux/Node 22. The scenario-report suite reproduces its captured baseline
+unchanged.
 
 One subtlety is documented rather than changed: a combine-mode ETF instance
 without `monthlyContribution` previously fell through to

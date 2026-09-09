@@ -8,7 +8,10 @@
  * `etfContextParity.test.ts`. The fixture exists so the ETF adapter migration
  * (six-product `SimulationContext` → narrow `EtfCalculationContext`) can be
  * proven behavior-preserving: the test asserts the migrated code reproduces
- * these numbers EXACTLY (full float precision, `toBe`).
+ * these numbers at full float precision — structure, strings, booleans,
+ * integers and structural zeros exactly, floats up to a last-digit
+ * cross-platform drift (`FLOAT_ULP_TOLERANCE` in `etfContextParity.test.ts`).
+ * Nothing here is rounded.
  *
  * Do not regenerate or hand-edit these values to make a test pass. If a
  * change intentionally alters engine math, the fixture must be re-frozen from
