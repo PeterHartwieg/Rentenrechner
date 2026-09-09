@@ -178,8 +178,12 @@ export function detectLegacyEpSeed({
   const cappedSalary = Math.min(profile.grossSalaryYear, legacyEpSeedPensionCapYear)
   const ratio = cappedSalary / legacyEpSeedDurchschnittsentgelt
   const impliedYears = ratio > 0 ? stored / ratio : NaN
-  const years = Math.round(impliedYears)
-  if (!Number.isFinite(impliedYears) || stored <= 0 || years < 1 || years > 60) {
+  // The old wizard advertised whole years but never quantised the input, so a
+  // legacy seed may come from a fractional year count (12.5). Quantise to
+  // hundredths; the exact-reconstruction test below still rejects anything
+  // that was not written by the old estimator.
+  const years = Math.round(impliedYears * 100) / 100
+  if (!Number.isFinite(impliedYears) || stored <= 0 || years <= 0 || years > 60) {
     return { legacy: false }
   }
   // Exact-reconstruction test: a seed the old estimator wrote was serialized at

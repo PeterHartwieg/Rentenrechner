@@ -134,6 +134,16 @@ describe('detectLegacyEpSeed', () => {
       })
     })
 
+    it('detects a seed written from fractional contribution years (the old wizard never quantised)', () => {
+      const seed = 12.5 * (Math.min(50_000, legacyEpSeedPensionCapYear) /
+        legacyEpSeedDurchschnittsentgelt)
+      const result = detectAbsent(50_000, { currentEntgeltpunkte: seed })
+      expect(result).toEqual({
+        legacy: true,
+        freshEstimate: estimateEpFromYears(12.5, 50_000, de2026Rules),
+      })
+    })
+
     it('still detects a seed that has been through a JSON round-trip', () => {
       const stored = JSON.parse(JSON.stringify(
         years * (Math.min(50_000, legacyEpSeedPensionCapYear) /
