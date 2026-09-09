@@ -335,11 +335,32 @@ the PR's frozen base snapshot) is what makes "the base moved" detectable at
 all. An approving decision additionally requires the `verify`
 check run on the exact reviewed SHA to have concluded `success`, and only
 check runs owned by the GitHub Actions app (id 15368) count — a third-party
-check merely *named* `verify` is not our deterministic verification. The gate
-judges the **latest** run by `started_at` (paginated, `per_page=100`): a
-newer queued/in-progress run blocks even if an older run succeeded, while a
-re-run heals an older failure. Anything short of that fails closed with
-`VERIFY_NOT_SUCCESSFUL` and nothing is written.
+check merely *named* `verify` is not our deterministic verification. Runs
+belonging to a different `head_sha` void the evidence outright.
+
+**Which run decides the SHA** (`selectDecisiveVerifyRun`, `per_page=100`).
+Ordering is derived only from fields the REST API documents for a check run
+(`status`, `conclusion`, `started_at`, `head_sha`). Check-run `id` is *not*
+used as a clock — ids are identifiers, not a documented ordering guarantee —
+and neither is the array order of `check_runs`, which the API does not
+document either. In order:
+
+1. **Any** run that is not `completed` blocks, with no timestamp comparison
+   at all. A queued run has `started_at: null` until it starts, so the old
+   "sort by `started_at`, take the first" rule sorted the newest re-run last
+   and let an older success through while verification was still pending.
+   A run in flight means the SHA's state is unknown.
+2. A single completed run is decisive; no ordering is needed.
+3. Several completed runs are ordered by `started_at`. A completed run
+   without a parseable `started_at` makes the order unknowable → refuse.
+4. Runs tied on the newest `started_at` are decisive only if they agree on
+   the conclusion (then the order cannot change the answer). Disagreeing
+   ties → refuse.
+
+So a re-run still heals an older failure, and a newer failed or cancelled run
+still overrides an older success. Anything else — including "we cannot tell
+which run is newest" — fails closed with `VERIFY_NOT_SUCCESSFUL`, and nothing
+is written. Uncertain evidence is refused rather than resolved by guesswork.
 
 The commit status context is `calculation-review`, mapped honestly from the
 decision (`approve→success`, `reject→failure`, `needs-human→failure` — GitHub

@@ -7,6 +7,7 @@ import {
   ownerRepoFromUrl,
   publishRunStatus,
   renderReceiptComment,
+  selectDecisiveVerifyRun,
   verifyCheckOnSha,
 } from './lib/publish.mjs'
 import { adjudicatePanel } from './lib/verdicts.mjs'
@@ -218,6 +219,156 @@ describe('verifyCheckOnSha — skipped is not success', () => {
     })
     const result = await verifyCheckOnSha({ run, ownerRepo: 'PeterHartwieg/Rentenrechner', sha: HEAD })
     expect(result.conclusion).toBe('success')
+  })
+})
+
+// Realistic Actions check-run shapes: numeric id, per-commit head_sha, the
+// Actions app id, and the timestamps the REST API documents for a check run.
+// A queued run genuinely has `started_at: null` until it starts — that is the
+// case that used to slip through.
+const verifyRun = (overrides) => ({
+  id: 100,
+  name: REQUIRED_VERIFY_CHECK,
+  head_sha: HEAD,
+  app: { id: 15368 },
+  status: 'completed',
+  conclusion: 'success',
+  started_at: '2026-09-09T00:00:00Z',
+  completed_at: '2026-09-09T00:07:00Z',
+  ...overrides,
+})
+
+describe('verifyCheckOnSha — which run decides the SHA', () => {
+  const verify = (checkRuns) =>
+    verifyCheckOnSha({ run: fakeGh({ checkRuns }).run, ownerRepo: 'PeterHartwieg/Rentenrechner', sha: HEAD })
+
+  it('blocks a newer queued re-run whose started_at is still null (root reproduction)', async () => {
+    // Sorting by started_at put the null-dated queued run LAST, so the older
+    // success was published while verification was still pending.
+    const checkRuns = [
+      verifyRun({ id: 102, status: 'queued', conclusion: null, started_at: null, completed_at: null }),
+      verifyRun({ id: 101, status: 'completed', conclusion: 'success', started_at: '2026-09-09T00:00:00Z' }),
+    ]
+    await expect(verify(checkRuns)).rejects.toMatchObject({ code: 'VERIFY_NOT_SUCCESSFUL' })
+    await expect(verify(checkRuns)).rejects.toThrow(/is still queued/)
+    // Array order must not change the answer either.
+    await expect(verify([...checkRuns].reverse())).rejects.toMatchObject({ code: 'VERIFY_NOT_SUCCESSFUL' })
+  })
+
+  it('blocks an in_progress re-run with no started_at as well', async () => {
+    await expect(
+      verify([
+        verifyRun({ id: 201, conclusion: 'success', started_at: '2026-09-09T01:00:00Z' }),
+        verifyRun({ id: 202, status: 'in_progress', conclusion: null, started_at: null, completed_at: null }),
+      ]),
+    ).rejects.toThrow(/is still in_progress/)
+  })
+
+  it('refuses when completed runs tie on started_at and disagree', async () => {
+    // Two runs claiming the same start second cannot be ordered from the
+    // fields the API gives us; uncertain evidence is refused, not resolved.
+    await expect(
+      verify([
+        verifyRun({ id: 301, conclusion: 'failure', started_at: '2026-09-09T02:00:00Z', completed_at: '2026-09-09T02:05:00Z' }),
+        verifyRun({ id: 302, conclusion: 'success', started_at: '2026-09-09T02:00:00Z', completed_at: '2026-09-09T02:09:00Z' }),
+      ]),
+    ).rejects.toThrow(/sharing the newest "started_at" with differing conclusions/)
+  })
+
+  it('accepts a tie when every tied run says success (order cannot change the answer)', async () => {
+    const result = await verify([
+      verifyRun({ id: 401, conclusion: 'success', started_at: '2026-09-09T03:00:00Z' }),
+      verifyRun({ id: 402, conclusion: 'success', started_at: '2026-09-09T03:00:00Z' }),
+      verifyRun({ id: 400, conclusion: 'failure', started_at: '2026-09-09T01:00:00Z' }),
+    ])
+    expect(result.conclusion).toBe('success')
+  })
+
+  it('refuses when several completed runs exist and one carries no usable started_at', async () => {
+    await expect(
+      verify([
+        verifyRun({ id: 501, conclusion: 'success', started_at: '2026-09-09T04:00:00Z' }),
+        verifyRun({ id: 502, conclusion: 'failure', started_at: null }),
+      ]),
+    ).rejects.toThrow(/cannot be established/)
+
+    await expect(
+      verify([
+        verifyRun({ id: 511, conclusion: 'success', started_at: '2026-09-09T04:00:00Z' }),
+        verifyRun({ id: 512, conclusion: 'failure', started_at: 'not-a-timestamp' }),
+      ]),
+    ).rejects.toThrow(/cannot be established/)
+  })
+
+  it('rejects when the newest completed run failed, even though an older one succeeded', async () => {
+    await expect(
+      verify([
+        verifyRun({ id: 601, conclusion: 'success', started_at: '2026-09-09T05:00:00Z' }),
+        verifyRun({ id: 602, conclusion: 'failure', started_at: '2026-09-09T06:00:00Z' }),
+      ]),
+    ).rejects.toThrow(/concluded "failure"/)
+
+    await expect(
+      verify([
+        verifyRun({ id: 611, conclusion: 'success', started_at: '2026-09-09T05:00:00Z' }),
+        verifyRun({ id: 612, conclusion: 'cancelled', started_at: '2026-09-09T06:00:00Z' }),
+      ]),
+    ).rejects.toThrow(/concluded "cancelled"/)
+  })
+
+  it('still accepts the latest genuinely successful run after earlier attempts', async () => {
+    const result = await verify([
+      verifyRun({ id: 701, conclusion: 'failure', started_at: '2026-09-09T07:00:00Z', completed_at: '2026-09-09T07:04:00Z' }),
+      verifyRun({ id: 703, conclusion: 'success', started_at: '2026-09-09T09:00:00Z', completed_at: '2026-09-09T09:06:00Z' }),
+      verifyRun({ id: 702, conclusion: 'cancelled', started_at: '2026-09-09T08:00:00Z', completed_at: '2026-09-09T08:01:00Z' }),
+    ])
+    expect(result).toEqual({ name: REQUIRED_VERIFY_CHECK, conclusion: 'success', evidenceKind: 'actions-check-run' })
+  })
+
+  it('keeps the app-id and head-SHA guards while checking every candidate', async () => {
+    // A foreign check named "verify" is still invisible…
+    await expect(
+      verify([
+        verifyRun({ id: 801, app: { id: 999999 }, conclusion: 'success', started_at: '2026-09-09T10:00:00Z' }),
+      ]),
+    ).rejects.toThrow(/no completed "verify" check run found/)
+
+    // …and a run belonging to another SHA voids the evidence even when it is
+    // not the one selection would have picked.
+    await expect(
+      verify([
+        verifyRun({ id: 802, conclusion: 'success', started_at: '2026-09-09T11:00:00Z' }),
+        verifyRun({ id: 803, head_sha: 'e'.repeat(40), conclusion: 'success', started_at: '2026-09-09T10:00:00Z' }),
+      ]),
+    ).rejects.toThrow(/check run head e{40} does not match/)
+  })
+})
+
+describe('selectDecisiveVerifyRun', () => {
+  it('never infers order from array position or id', () => {
+    // Same two runs, both orders, ids in both directions: the answer is the
+    // run with the newest started_at, or a refusal — never element 0.
+    const older = verifyRun({ id: 999, conclusion: 'failure', started_at: '2026-09-09T00:00:00Z' })
+    const newer = verifyRun({ id: 2, conclusion: 'success', started_at: '2026-09-09T01:00:00Z' })
+    for (const runs of [[older, newer], [newer, older]]) {
+      const selected = selectDecisiveVerifyRun(runs)
+      expect(selected.ok).toBe(true)
+      expect(selected.run.id).toBe(2)
+    }
+  })
+
+  it('treats a single completed run as decisive without needing a timestamp', () => {
+    const only = verifyRun({ started_at: undefined, completed_at: undefined })
+    expect(selectDecisiveVerifyRun([only])).toEqual({ ok: true, run: only })
+  })
+
+  it('reports pending runs by their actual status', () => {
+    const result = selectDecisiveVerifyRun([
+      verifyRun({ id: 1, status: 'waiting', conclusion: null, started_at: null }),
+      verifyRun({ id: 2, conclusion: 'success' }),
+    ])
+    expect(result.ok).toBe(false)
+    expect(result.reason).toMatch(/is still waiting/)
   })
 })
 

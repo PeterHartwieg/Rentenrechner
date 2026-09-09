@@ -82,8 +82,12 @@ may be added for this (backend boundary), and no telemetry may be introduced.
    advanced. `--publish` re-fetches the PR head and that live base and
    refuses to label a moved PR; an
    approval additionally requires the GitHub-Actions-owned `verify` check
-   run to have concluded success on that exact SHA (the newest run wins; a
-   newer pending run blocks). Commit status context is fixed at
+   run to have concluded success on that exact SHA. Any run still in flight
+   blocks, the newest completed run decides, and a state where "which run is
+   newest" cannot be established from the fields the REST API documents
+   (`status`, `conclusion`, `started_at`) is refused rather than guessed —
+   run ids and response order are not treated as a clock. Commit status
+   context is fixed at
    `calculation-review`. No merge path exists in the toolchain.
 6. **Source freshness is deterministic and honest.** The catalog reuses
    `validationSources` ids (drift-pinned by tests) plus explicit research-doc
