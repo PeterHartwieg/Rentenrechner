@@ -346,6 +346,60 @@ describe('claude parser (verified stream-json --verbose shape)', () => {
     expect(parsed.reason).toMatch(/did not complete/)
   })
 
+  it('accepts a trailing system event after the result (claude >= 2.1.x task_summary)', () => {
+    const withTrailingSystem = [
+      CLAUDE_STREAM(),
+      JSON.stringify({ type: 'system', subtype: 'task_summary', summary: 'reviewed the diff' }),
+    ].join('\n')
+    const parsed = parseClaudeReviewerOutput({
+      stdout: withTrailingSystem,
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(parsed.ok).toBe(true)
+    expect(parsed.text).toBe('verdict text')
+  })
+
+  it('still fails closed when the stream ends with a system event and carries NO result', () => {
+    const noResult = [
+      CLAUDE_STREAM({ withResult: false }),
+      JSON.stringify({ type: 'system', subtype: 'task_summary', summary: 'interrupted' }),
+    ].join('\n')
+    const parsed = parseClaudeReviewerOutput({ stdout: noResult, exitCode: 0, requestedModel: 'opus' })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/did not complete/)
+  })
+
+  it('accepts a system post_turn_summary interleaved between assistant events', () => {
+    const interleaved = [
+      JSON.stringify({ type: 'system', subtype: 'init', model: 'claude-opus-5[1m]' }),
+      JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-5[1m]', content: 'reading' } }),
+      JSON.stringify({ type: 'system', subtype: 'post_turn_summary', turns: 3 }),
+      JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-5[1m]', content: 'concluding' } }),
+      JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        num_turns: 12,
+        modelUsage: { 'claude-opus-5[1m]': { input_tokens: 10, output_tokens: 5 } },
+        result: 'verdict text',
+      }),
+    ].join('\n')
+    const parsed = parseClaudeReviewerOutput({ stdout: interleaved, exitCode: 0, requestedModel: 'opus' })
+    expect(parsed.ok).toBe(true)
+    expect(parsed.meta.assistantMessageCount).toBe(2)
+  })
+
+  it('fails closed when a non-system event trails the result event', () => {
+    const trailingAssistant = [
+      CLAUDE_STREAM(),
+      JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-5[1m]', content: 'more' } }),
+    ].join('\n')
+    const parsed = parseClaudeReviewerOutput({ stdout: trailingAssistant, exitCode: 0, requestedModel: 'opus' })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/after the result event/)
+  })
+
   it('fails closed on a partial JSON line', () => {
     const parsed = parseClaudeReviewerOutput({
       stdout: `${CLAUDE_STREAM()}\n{"type":"result","subtype":"succ`,

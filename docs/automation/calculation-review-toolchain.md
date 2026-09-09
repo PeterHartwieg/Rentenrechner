@@ -290,7 +290,10 @@ that reviewer and therefore the whole panel (`adjudicatePanel` returns
 - process exit code 0 and no timeout (default 30 min per reviewer,
   SIGTERM then SIGKILL),
 - native result JSON parses and shows real completion (claude
-  `type=result, subtype=success, is_error=false`; grok result text present
+  `type=result, subtype=success, is_error=false` — the parser takes the LAST
+  `result` event and tolerates the trailing `system` bookkeeping events that
+  claude CLI >= 2.1.x emits after it (e.g. `task_summary`), while any other
+  trailing event type still fails closed; grok result text present
   with no error/truncation/turn-limit markers in metadata; codex JSONL events
   parsed + non-empty `--output-last-message` file),
 - provider-reported model identity matches the requested model. For **claude**
@@ -529,7 +532,8 @@ uncertainty unrelated to the diff is a labelled limitation to report as an
 ## Cost model
 
 Routine review = 2 model runs (Grok 4.6 + Claude Opus) over a bounded prompt
-(≤ 600 k chars, typically far less). Complex = 3 runs. The dominant cost is
+(≤ 2 M chars, typically far less — the cap sits at 2 M because the panel's
+Opus reviewer runs with a 1M-token context and Grok 4.6 is comparably roomy). Complex = 3 runs. The dominant cost is
 reviewer latency (minutes, not seconds); publish adds two `gh` calls.
 
 ## Known quirks / limitations

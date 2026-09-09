@@ -81,6 +81,15 @@ describe('buildReviewPrompt', () => {
     expect(() => buildReviewPrompt({ prInfo: huge, impact, contextExcerpts: [] })).toThrow(/refusing to review a truncated diff/)
   })
 
+  it('caps the prompt at 2 M chars — the panel runs a 1M-context Opus reviewer and Grok 4.6', () => {
+    expect(MAX_PROMPT_CHARS).toBe(2_000_000)
+  })
+
+  it('accepts a large-but-complete diff below the cap (the 1.75 M-char PR that used to be refused)', () => {
+    const large = { ...prInfo, diffText: 'x'.repeat(1_750_000) }
+    expect(() => buildReviewPrompt({ prInfo: large, impact, contextExcerpts: [] })).not.toThrow()
+  })
+
   it('communicates scope breadth and focus domains', () => {
     expect(prompt).toContain('Review scope: BROAD')
     expect(prompt).toContain(`Mapped focus domains: ${impact.focusDomains.join(', ')}`)
