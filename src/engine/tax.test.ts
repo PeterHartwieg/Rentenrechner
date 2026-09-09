@@ -6,7 +6,7 @@ import {
   bmfEinkommensteuerRechner2026GoldenCases,
   incomeTax2026GoldenCases,
 } from '../test/externalGoldenFixtures'
-import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
+import { calculateCapitalGainsTax, calculateIncomeTax2026, calculateSolidarityTax } from './tax'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -333,5 +333,31 @@ describe('statutory floor and zone continuity are preserved (#376)', () => {
       )
       expect(jump, `boundary ${boundary}`).toBeLessThanOrEqual(2)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Capital gains — Abgeltungsteuer × Teilfreistellung × Sparerpauschbetrag
+// ---------------------------------------------------------------------------
+
+describe('calculateCapitalGainsTax — Sparerpauschbetrag and Teilfreistellung algebra', () => {
+  it('a gain below the saver allowance is tax-free', () => {
+    // 600 EUR gain, 1 000 EUR allowance → nothing taxable.
+    expect(calculateCapitalGainsTax(600, de2026Rules)).toBe(0)
+  })
+
+  it('applies 25 % + 5.5 % soli to the gain above the default allowance', () => {
+    // 2 000 − 1 000 = 1 000 EUR taxable → 250 EUR tax + 13.75 EUR soli.
+    expect(calculateCapitalGainsTax(2_000, de2026Rules)).toBeCloseTo(263.75, 9)
+  })
+
+  it('honors an explicit zero allowance', () => {
+    // 5 000 EUR taxable → 1 250 EUR tax + 68.75 EUR soli.
+    expect(calculateCapitalGainsTax(5_000, de2026Rules, 0, 0)).toBeCloseTo(1_318.75, 9)
+  })
+
+  it('scales the gain by the partial exemption before taxing it', () => {
+    // 5 000 × (1 − 0.3) = 3 500 EUR taxable → 875 EUR tax + 48.125 EUR soli.
+    expect(calculateCapitalGainsTax(5_000, de2026Rules, 0.3, 0)).toBeCloseTo(923.125, 9)
   })
 })

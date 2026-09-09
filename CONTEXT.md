@@ -207,6 +207,7 @@ should be flagged in review.
 | Change storage migration / load path | `src/storage.ts` (sections clearly marked) |
 | Plan future schema changes | `docs/portfolio-schema-design.md` |
 | Audit oracle / integration coverage | `docs/golden-coverage-audit.md` |
+| Extend property tests / run the mutation pilot | `docs/property-and-mutation-testing.md` |
 | Update annual statutory values | `src/rules/de2026.ts` |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/` |
 | Extend the printable A4 report (compare or combine mode) | `src/features/results/PrintReport.tsx`, plus row builders in `src/features/results/printReportRows.ts` |

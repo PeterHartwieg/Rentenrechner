@@ -55,7 +55,7 @@ export default defineConfig({
     // mutate the shared `legalConstants` singleton (always restored per test).
     // If `isolate: false` is ever adopted, those mutations would leak across
     // files — restructure those tests first.
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**', '**/.stryker-tmp/**'],
     setupFiles: ['./src/vitest.setup.ts'],
   },
 })
