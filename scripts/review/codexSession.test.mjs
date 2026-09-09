@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  CODEX_MCP_CONFIG_FAILURE_CATEGORY,
+  CODEX_MCP_CONFIG_FAILURE_MESSAGE,
   assertNoMcpServersEnabled,
   buildCodexMcpDisableArgs,
+  classifyCodexNativeFailure,
   extractCodexSessionMetadata,
   findCodexRolloutFile,
   parseCodexMcpList,
@@ -182,39 +185,115 @@ describe('verifyCodexIdentity', () => {
 })
 
 describe('codex MCP preflight parsing (parent-verified shapes)', () => {
-  it('parses the observed native list output', () => {
-    expect(parseCodexMcpList('[{"name":"computer-use","enabled":false},{"name":"node_repl","enabled":true}]')).toEqual([
-      { name: 'computer-use', enabled: false },
-      { name: 'node_repl', enabled: true },
+  const stdioEntry = {
+    name: 'node_repl',
+    enabled: true,
+    transport: { type: 'stdio', command: '/opt/mcp/node-repl', env: { NPM_TOKEN: 'npm_s3cr3t' } },
+  }
+  const httpEntry = {
+    name: 'computer-use',
+    enabled: false,
+    transport: { type: 'streamable_http', url: 'https://mcp.example.test/sse', auth: { token: 'bearer-s3cr3t' } },
+  }
+
+  it('retains only name, enabled and transport.type — never command/url/env/auth payloads', () => {
+    const parsed = parseCodexMcpList(JSON.stringify([stdioEntry, httpEntry]))
+    expect(parsed).toEqual([
+      { name: 'node_repl', enabled: true, transport: { type: 'stdio' } },
+      { name: 'computer-use', enabled: false, transport: { type: 'streamable_http' } },
     ])
+    expect(JSON.stringify(parsed)).not.toContain('s3cr3t')
+    expect(JSON.stringify(parsed)).not.toContain('mcp.example.test')
   })
 
   it('fails closed on unexpected shapes', () => {
     expect(() => parseCodexMcpList('{"servers":[]}')).toThrow(/unexpected shape/)
     expect(() => parseCodexMcpList('not json')).toThrow(/malformed/)
-    expect(() => parseCodexMcpList('[{"name":"x"}]')).toThrow(/missing usable/)
-    expect(() => parseCodexMcpList('[{"name":"x","enabled":"yes"}]')).toThrow(/missing usable/)
+    expect(() => parseCodexMcpList('[{"name":"x","transport":{"type":"stdio"}}]')).toThrow(/missing usable/)
+    expect(() => parseCodexMcpList('[{"name":"x","enabled":"yes","transport":{"type":"stdio"}}]')).toThrow(
+      /missing usable/,
+    )
   })
 
-  it('builds TOML-safe disable overrides for every configured server', () => {
-    expect(buildCodexMcpDisableArgs([{ name: 'node_repl', enabled: true }, { name: 'computer-use', enabled: false }])).toEqual([
+  it('fails closed when an entry carries no usable transport type', () => {
+    expect(() => parseCodexMcpList('[{"name":"x","enabled":true}]')).toThrow(/transport\.type/)
+    expect(() => parseCodexMcpList('[{"name":"x","enabled":true,"transport":"stdio"}]')).toThrow(/transport\.type/)
+    expect(() => parseCodexMcpList('[{"name":"x","enabled":true,"transport":{}}]')).toThrow(/transport\.type/)
+  })
+
+  it('never quotes an unparseable entry back (it may carry credentials)', () => {
+    const error = (() => {
+      try {
+        parseCodexMcpList(JSON.stringify([{ enabled: true, transport: { type: 'stdio', env: { TOKEN: 's3cr3t' } } }]))
+        return null
+      } catch (thrown) {
+        return thrown
+      }
+    })()
+    expect(error?.message).toMatch(/missing usable/)
+    expect(error.message).not.toContain('s3cr3t')
+  })
+
+  it('builds a COMPLETE inert disabled definition per server, matching its transport type', () => {
+    // `codex exec --ignore-user-config` drops the original definitions, so a
+    // bare enabled=false would leave a transport-less table behind.
+    expect(
+      buildCodexMcpDisableArgs([
+        { name: 'node_repl', enabled: true, transport: { type: 'stdio' } },
+        { name: 'computer-use', enabled: false, transport: { type: 'streamable_http' } },
+      ]),
+    ).toEqual([
       '-c',
       'mcp_servers.node_repl.enabled=false',
       '-c',
+      'mcp_servers.node_repl.command="/usr/bin/false"',
+      '-c',
       'mcp_servers.computer-use.enabled=false',
+      '-c',
+      'mcp_servers.computer-use.url="http://127.0.0.1:9"',
     ])
   })
 
   it('rejects unsafe server names instead of interpolating them into config', () => {
-    expect(() => buildCodexMcpDisableArgs([{ name: 'x.enabled=true\r\n[other]', enabled: true }])).toThrow(
+    expect(() =>
+      buildCodexMcpDisableArgs([{ name: 'x.enabled=true\r\n[other]', enabled: true, transport: { type: 'stdio' } }]),
+    ).toThrow(/not a safe config key/)
+    expect(() => buildCodexMcpDisableArgs([{ name: '', enabled: true, transport: { type: 'stdio' } }])).toThrow(
       /not a safe config key/,
     )
-    expect(() => buildCodexMcpDisableArgs([{ name: '', enabled: true }])).toThrow(/not a safe config key/)
+  })
+
+  it('fails closed on an unknown or missing transport type instead of guessing a definition', () => {
+    expect(() => buildCodexMcpDisableArgs([{ name: 'sse_server', enabled: true, transport: { type: 'sse' } }])).toThrow(
+      /cannot replace with an inert definition/,
+    )
+    expect(() => buildCodexMcpDisableArgs([{ name: 'bare', enabled: true }])).toThrow(
+      /cannot replace with an inert definition/,
+    )
   })
 
   it('asserts the post-disable list has nothing enabled', () => {
     expect(() => assertNoMcpServersEnabled([{ name: 'a', enabled: false }, { name: 'b', enabled: false }])).not.toThrow()
     expect(() => assertNoMcpServersEnabled([])).not.toThrow()
     expect(() => assertNoMcpServersEnabled([{ name: 'node_repl', enabled: true }])).toThrow(/still enabled/)
+  })
+})
+
+describe('classifyCodexNativeFailure', () => {
+  it('maps the known config/invalid-transport failure to one fixed, payload-free message', () => {
+    const stderr =
+      'Error: failed to parse config: mcp_servers.node_repl: invalid transport — expected `command` (stdio)\n' +
+      'context: command=/opt/mcp/node-repl NPM_TOKEN=npm_s3cr3t Authorization: Bearer bearer-s3cr3t\n'
+    const diagnosed = classifyCodexNativeFailure(stderr)
+    expect(diagnosed.category).toBe(CODEX_MCP_CONFIG_FAILURE_CATEGORY)
+    expect(diagnosed.message).toBe(CODEX_MCP_CONFIG_FAILURE_MESSAGE)
+    expect(JSON.stringify(diagnosed)).not.toContain('s3cr3t')
+    expect(JSON.stringify(diagnosed)).not.toContain('/opt/mcp/node-repl')
+  })
+
+  it('leaves every other failure unclassified rather than guessing', () => {
+    expect(classifyCodexNativeFailure('stream error: connection reset by peer')).toBeNull()
+    expect(classifyCodexNativeFailure('')).toBeNull()
+    expect(classifyCodexNativeFailure(undefined)).toBeNull()
   })
 })

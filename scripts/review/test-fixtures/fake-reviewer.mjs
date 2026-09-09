@@ -24,11 +24,25 @@
 //              modelUsage: { "grok-4.6-build": {...} }, text }
 //   codex  → JSONL thread.started/turn.started/item.completed/turn.completed
 //            (NO model identity — the rollout session file carries it).
+//            Under `--ignore-user-config` the fixture reproduces the native
+//            config-parse failure: the user/project server definitions are
+//            gone, so an `mcp_servers.<name>` table left without a transport
+//            (`command` for stdio / `url` for streamable_http) exits 1 with an
+//            invalid-transport error instead of starting a turn.
 //   codex-mcp → the native `codex mcp list --json` shape
-//            [{name, enabled}] — servers report enabled:true until the
-//            invocation carries `-c mcp_servers.<name>.enabled=false`
-//            overrides, then false, so the runner's re-verify loop is
-//            exercised for real.
+//            [{name, enabled, transport:{type,...}}] — realistic stdio and
+//            streamable_http servers carrying command/url/env payloads that
+//            must never be retained. `mcp list` takes no
+//            `--ignore-user-config`, so the invocation's
+//            `-c mcp_servers.<name>...` overrides MERGE over them: servers
+//            report enabled:true until an `enabled=false` override arrives,
+//            so the runner's re-verify loop is exercised for real.
+//
+// Extra env knobs for the MCP preflight paths:
+//   FAKE_MCP_TRANSPORT      = transport type reported for the first server
+//                             ("none" omits the transport object entirely)
+//   FAKE_MCP_INJECT_NAME    = server name the checkout's config plants
+//   FAKE_MCP_STAY_ENABLED=1 = a server that ignores the disable override
 //
 // Reads the prompt from --prompt-file (grok) or stdin (claude/codex) so the
 // tests also exercise prompt delivery.
@@ -213,7 +227,67 @@ function emitGrok(prompt) {
   process.stdout.write(JSON.stringify(payload))
 }
 
+// --- MCP config emulation ------------------------------------------------------
+
+// The servers a user/project codex config registers, with the payload fields
+// the real CLI reports back. `mcp list` merges the invocation's `-c` overrides
+// over these; `exec --ignore-user-config` does not see them at all.
+const CONFIGURED_MCP_SERVERS = [
+  {
+    name: 'node_repl',
+    enabled: true,
+    transport: { type: 'stdio', command: '/opt/mcp/node-repl', args: ['--serve'], env: { NPM_TOKEN: 'npm_s3cr3t' } },
+  },
+  {
+    name: 'computer-use',
+    enabled: true,
+    transport: { type: 'streamable_http', url: 'https://mcp.example.test/sse', auth: { token: 'bearer-s3cr3t' } },
+  },
+]
+
+const MCP_OVERRIDE_RE = /^mcp_servers\.([A-Za-z0-9_-]+)\.(enabled|command|url)=(.*)$/
+
+// Parses `-c mcp_servers.<name>.<key>=<value>` pairs out of argv the way the
+// CLI's own config layer would, into one table per server name.
+function mcpOverrides() {
+  const overrides = new Map()
+  process.argv.forEach((arg, index) => {
+    if (arg !== '-c') return
+    const match = MCP_OVERRIDE_RE.exec(process.argv[index + 1] ?? '')
+    if (!match) return
+    const [, name, key, rawValue] = match
+    const value = rawValue.startsWith('"') && rawValue.endsWith('"') ? rawValue.slice(1, -1) : rawValue
+    const table = overrides.get(name) ?? {}
+    table[key] = key === 'enabled' ? value === 'true' : value
+    overrides.set(name, table)
+  })
+  return overrides
+}
+
+function configuredMcpServers() {
+  const typeOverride = process.env.FAKE_MCP_TRANSPORT
+  const nameOverride = process.env.FAKE_MCP_INJECT_NAME
+  if (!typeOverride && nameOverride === undefined) return CONFIGURED_MCP_SERVERS
+  const [first, ...rest] = CONFIGURED_MCP_SERVERS
+  const transport = typeOverride === 'none' ? null : { ...first.transport, type: typeOverride ?? first.transport.type }
+  return [{ ...first, name: nameOverride ?? first.name, transport }, ...rest]
+}
+
 function emitCodex(prompt) {
+  // `--ignore-user-config` drops every user/project server definition, so the
+  // only MCP config left is what the invocation declares. A table with no
+  // transport is invalid config and the native CLI refuses to start the turn.
+  if (process.argv.includes('--ignore-user-config')) {
+    for (const [name, table] of mcpOverrides()) {
+      if (table.command === undefined && table.url === undefined) {
+        process.stderr.write(
+          `Error: failed to parse config: mcp_servers.${name}: invalid transport — ` +
+            'expected `command` (stdio) or `url` (streamable_http)\n',
+        )
+        process.exit(1)
+      }
+    }
+  }
   const lastMessageFile = argValue('--output-last-message')
   if (mode === 'write-worktree' && lastMessageFile) {
     writeFileSync('fake-reviewer-artifact.txt', 'the reviewer must never do this')
@@ -233,14 +307,28 @@ function emitCodex(prompt) {
   }
 }
 
-// Native `codex mcp list --json` shape. Servers configured in project/user
-// config appear enabled until the disable overrides are present in argv —
-// exactly the two-step preflight the runner performs.
+// Native `codex mcp list --json` shape. `mcp list` has no
+// `--ignore-user-config`, so the configured servers are always present and the
+// invocation's `-c` overrides merge over them — exactly the two-step preflight
+// the runner performs. The reported transport type follows the merged
+// definition, so an override carrying the wrong field for the server's type
+// shows up as a changed type rather than being silently accepted.
 function emitCodexMcp() {
-  const overridden = process.argv.some(
-    (arg, index) => arg === '-c' && /^mcp_servers\..+\.enabled=false$/.test(process.argv[index + 1] ?? ''),
-  )
-  const servers = ['node_repl', 'computer-use'].map((name) => ({ name, enabled: !overridden }))
+  const overrides = mcpOverrides()
+  const stayEnabled = process.env.FAKE_MCP_STAY_ENABLED === '1'
+  const servers = configuredMcpServers().map((server) => {
+    const override = overrides.get(server.name) ?? {}
+    const enabled = stayEnabled ? true : (override.enabled ?? server.enabled)
+    if (override.command !== undefined) {
+      return { name: server.name, enabled, transport: { type: 'stdio', command: override.command } }
+    }
+    if (override.url !== undefined) {
+      return { name: server.name, enabled, transport: { type: 'streamable_http', url: override.url } }
+    }
+    return server.transport === null
+      ? { name: server.name, enabled }
+      : { name: server.name, enabled, transport: server.transport }
+  })
   process.stdout.write(JSON.stringify(servers))
 }
 

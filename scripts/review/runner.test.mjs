@@ -4,8 +4,9 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { runReviewerProcess, executeReviewer } from './lib/runner.mjs'
+import { codexMcpPreflight, runReviewerProcess, executeReviewer } from './lib/runner.mjs'
 import { buildReviewerInvocation, parseClaudeReviewerOutput, parseCodexReviewerOutput, parseGrokReviewerOutput } from './lib/adapters.mjs'
+import { CODEX_MCP_CONFIG_FAILURE_CATEGORY, CODEX_MCP_CONFIG_FAILURE_MESSAGE } from './lib/codexSession.mjs'
 
 // Tests in this file spawn only `node` running the local fake reviewer
 // fixture. No model CLI and no network is ever contacted.
@@ -236,41 +237,154 @@ describe('executeReviewer — temp cleanup ordering', () => {
   })
 })
 
+// The complete inert disabled definitions the preflight produces for the
+// fixture's two configured servers (one stdio, one streamable_http).
+const COMPLETE_DISABLED_ARGS = [
+  '-c',
+  'mcp_servers.node_repl.enabled=false',
+  '-c',
+  'mcp_servers.node_repl.command="/usr/bin/false"',
+  '-c',
+  'mcp_servers.computer-use.enabled=false',
+  '-c',
+  'mcp_servers.computer-use.url="http://127.0.0.1:9"',
+]
+
+describe('codexMcpPreflight — against the native `mcp list` shape', () => {
+  const preflight = (env = {}) =>
+    codexMcpPreflight({
+      command: process.execPath,
+      cwd: WORKTREE,
+      timeoutMs: 20_000,
+      spawnImpl: fixtureSpawn({ cli: 'codex-mcp', env }),
+    })
+
+  it('builds a complete inert disabled definition per server and re-reads them as disabled', async () => {
+    const result = await preflight()
+    expect(result.ok, result.reason).toBe(true)
+    expect(result.codexMcpArgs).toEqual(COMPLETE_DISABLED_ARGS)
+    expect(result.configuredServers).toEqual(['node_repl', 'computer-use'])
+    // Only name/enabled/transport.type survive the parser — no command, url,
+    // env, or auth payload reaches the preflight result.
+    expect(JSON.stringify(result)).not.toContain('s3cr3t')
+    expect(JSON.stringify(result)).not.toContain('mcp.example.test')
+  })
+
+  it('fails closed when the re-read still reports an enabled server', async () => {
+    const result = await preflight({ FAKE_MCP_STAY_ENABLED: '1' })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toMatch(/still enabled/)
+  })
+
+  it('fails closed on a transport type it cannot make inert', async () => {
+    const result = await preflight({ FAKE_MCP_TRANSPORT: 'sse' })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toMatch(/cannot replace with an inert definition/)
+  })
+
+  it('rejects an injected unsafe server name instead of interpolating it into config', async () => {
+    const result = await preflight({ FAKE_MCP_INJECT_NAME: 'x.command="/bin/sh"\n[other]' })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toMatch(/not a safe config key/)
+  })
+
+  it('fails closed when a listed server carries no transport type', async () => {
+    const result = await preflight({ FAKE_MCP_TRANSPORT: 'none' })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toMatch(/transport\.type/)
+  })
+
+  it('reports the known config failure with a fixed message and never quotes native stderr', async () => {
+    const result = await codexMcpPreflight({
+      command: process.execPath,
+      cwd: WORKTREE,
+      timeoutMs: 20_000,
+      spawnImpl: (command, args, options) =>
+        spawn(
+          process.execPath,
+          [
+            '-e',
+            'process.stderr.write("Error: failed to parse config: mcp_servers.node_repl: invalid transport\\n' +
+              'command=/opt/mcp/node-repl NPM_TOKEN=npm_s3cr3t Authorization: Bearer bearer-s3cr3t\\n"); process.exit(1)',
+          ],
+          options,
+        ),
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toContain(CODEX_MCP_CONFIG_FAILURE_MESSAGE)
+    expect(result.category).toBe(CODEX_MCP_CONFIG_FAILURE_CATEGORY)
+    expect(result.reason).not.toContain('s3cr3t')
+    expect(result.reason).not.toContain('/opt/mcp/node-repl')
+    expect(result.reason).not.toContain('failed to parse config')
+  })
+})
+
 describe('executeReviewer — codex MCP preflight + rollout identity', () => {
-  it('passes preflight MCP disable overrides into the invocation and attributes identity from the rollout file', async () => {
+  // Spawns the fixture as the codex CLI, choosing the output shape from the
+  // argv the runner actually built: `mcp list` is the preflight, `exec` the
+  // review. This is the argument/executor seam the transport bug lived in.
+  function codexCliSpawn(env = {}) {
+    return (command, args, options) =>
+      spawn(process.execPath, [FIXTURE, ...args], {
+        ...options,
+        env: {
+          ...options.env,
+          FAKE_REVIEW_CLI: args[0] === 'mcp' ? 'codex-mcp' : 'codex',
+          FAKE_REVIEW_MODE: 'success',
+          FAKE_CODEX_THREAD_ID: THREAD,
+          ...env,
+        },
+      })
+  }
+
+  it('passes complete inert disabled definitions into the invocation — valid under --ignore-user-config, originals absent', async () => {
     const seenCodexArgs = []
     const sessionsDir = codexSessionsFixture()
     const result = await executeReviewer(
       baseArgs({
         reviewer: 'codex',
         model: 'gpt-6-astra',
-        spawnImpl: fixtureSpawn({ cli: 'codex', mode: 'success', env: { FAKE_CODEX_THREAD_ID: THREAD } }),
+        spawnImpl: codexCliSpawn(),
         parseOutput: parseCodexReviewerOutput,
         buildInvocation: (ctx) => {
           seenCodexArgs.push(ctx.codexMcpArgs)
-          return {
-            ...buildReviewerInvocation(ctx),
-            args: [FIXTURE, ...buildReviewerInvocation(ctx).args],
-          }
+          return buildReviewerInvocation(ctx)
         },
+        // No preflight stub: the overrides come from the REAL preflight
+        // reading the native list shape, not from a stub that could hand the
+        // executor something invalid.
+        codexSessionsDir: sessionsDir,
+        startedAt: new Date(Date.now() - 60_000),
+      }),
+    )
+    // Both transports are declared completely, so codex parses the config and
+    // runs the turn even though the user/project definitions are gone.
+    expect(seenCodexArgs[0]).toEqual(COMPLETE_DISABLED_ARGS)
+    expect(result.ok, result.reason).toBe(true)
+    expect(result.reportedModels).toEqual(['gpt-6-astra'])
+    expect(result.meta.identityEvidence).toBe('cli-session-turn-context')
+  })
+
+  it('regression: bare enabled=false overrides fail config parsing, reported as a fixed payload-free diagnosis', async () => {
+    const result = await executeReviewer(
+      baseArgs({
+        reviewer: 'codex',
+        model: 'gpt-6-astra',
+        spawnImpl: codexCliSpawn(),
+        parseOutput: parseCodexReviewerOutput,
+        buildInvocation: (ctx) => buildReviewerInvocation(ctx),
         preflight: async () => ({
           ok: true,
           codexMcpArgs: ['-c', 'mcp_servers.node_repl.enabled=false', '-c', 'mcp_servers.computer-use.enabled=false'],
           configuredServers: ['node_repl', 'computer-use'],
         }),
-        codexSessionsDir: sessionsDir,
+        codexSessionsDir: codexSessionsFixture(),
         startedAt: new Date(Date.now() - 60_000),
       }),
     )
-    expect(seenCodexArgs[0]).toEqual([
-      '-c',
-      'mcp_servers.node_repl.enabled=false',
-      '-c',
-      'mcp_servers.computer-use.enabled=false',
-    ])
-    expect(result.ok).toBe(true)
-    expect(result.reportedModels).toEqual(['gpt-6-astra'])
-    expect(result.meta.identityEvidence).toBe('cli-session-turn-context')
+    expect(result.ok).toBe(false)
+    expect(result.reason).toContain(CODEX_MCP_CONFIG_FAILURE_MESSAGE)
+    expect(result.reason).not.toContain('failed to parse config')
   })
 
   it('fails closed without spawning the reviewer when MCP servers stay enabled', async () => {
