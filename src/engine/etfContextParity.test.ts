@@ -21,9 +21,17 @@
  * bit-for-bit across platforms once transcendentals (`Math.pow` for compound
  * growth) are involved, so the same engine code yields last-digit differences
  * between macOS and Linux/Node 22. The comparator keeps structure, strings,
- * booleans, `null`, integers and structural zeros EXACT and allows only a
- * last-digit float drift (see `FLOAT_ULP_TOLERANCE`). Neither the engine nor
- * the fixture rounds anything.
+ * booleans, `null`, every frozen integer and every structural zero EXACT and
+ * allows only a last-digit float drift (see `FLOAT_ULP_TOLERANCE`). Neither
+ * the engine nor the fixture rounds anything.
+ *
+ * On the optional fields: `toEqual` already treats an absent key and an
+ * `undefined` value as equal, so the `instanceId: undefined` /
+ * `rawCapitalAtRetirement: undefined` lines in the CI diff were incidental
+ * display noise — the numeric last-digit differences were the actual failure.
+ * The comparator still checks those keys explicitly, which is stricter than
+ * `toEqual` in the direction that matters: a frozen field with a defined value
+ * that has silently disappeared from the result fails.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -56,8 +64,9 @@ import type { EtfProductResult, ProductId, ProductResult } from '../domain'
  * Relative float tolerance, in units of `Number.EPSILON` (1 unit ≈ 1 ulp of
  * the mantissa). The largest drift actually observed between the macOS freeze
  * and Linux/Node 22 for these fixtures is ~19 units (a `taxDue` cent amount);
- * 64 leaves ~3× headroom while still rejecting anything above the 15th
- * significant digit. A euro amount of €100 000 may differ by ~1.5e-9 €.
+ * 64 leaves ~3× headroom. 64 × `Number.EPSILON` ≈ 1.4e-14 relative, i.e. the
+ * leaves must still agree to roughly 14 significant digits — a €100 000
+ * amount may differ by ~1.4e-9 €.
  */
 const FLOAT_ULP_TOLERANCE = 64
 
@@ -76,12 +85,18 @@ const FLOAT_ABSOLUTE_FLOOR = 1e-9
 function numbersMatch(actual: number, expected: number): boolean {
   if (Object.is(actual, expected)) return true
   if (!Number.isFinite(actual) || !Number.isFinite(expected)) return false
-  // Discrete quantities — counts, ages, calendar/contract years, whole-euro
-  // statutory constants such as the €1 000 Sparerpauschbetrag — are produced
-  // by exact integer arithmetic and must reproduce exactly.
-  if (Number.isInteger(actual) && Number.isInteger(expected)) return false
-  // Structural zeros (no employer contribution, clamped cost basis) likewise.
-  if (expected === 0) return false
+  // Every integer in this fixture is a discrete quantity — counts, ages,
+  // calendar/contract years, the Monte-Carlo seed/runs, the €1 000
+  // Sparerpauschbetrag, structural zeros (no employer contribution, clamped
+  // cost basis), and contribution sums that are exact by construction
+  // (€250 × 12 × 39 = €117 000). The one non-obvious case is the paid-up
+  // instance's year-1 `cumulativeVorabpauschale` = 672 (€30 000 × Basiszins ×
+  // 0.7): a product of exactly representable doubles with no transcendental in
+  // the chain, hence bit-identical on every platform. So no integer-valued
+  // leaf here needs tolerance, and the test on `expected` (not on both sides)
+  // is what makes the documented exactness real: a frozen integer perturbed by
+  // a fraction must fail rather than slip under the relative bound.
+  if (Number.isInteger(expected)) return false
   const tolerance = Math.max(
     FLOAT_ABSOLUTE_FLOOR,
     Math.max(Math.abs(actual), Math.abs(expected)) * FLOAT_ULP_TOLERANCE * Number.EPSILON,
@@ -347,6 +362,22 @@ describe('ETF parity comparator — still fails on real deviations', () => {
       .toThrow(/scenarioId/)
     expect(() => expectMatchesFixture({ ...stage, guaranteeApplied: true }, stage))
       .toThrow(/guaranteeApplied/)
+  })
+
+  it('rejects a tiny fractional perturbation of a frozen integer', () => {
+    // The relative bound would swallow these; frozen integers are exact.
+    const combineStage = ETF_PARITY_FIXTURE.combineEtf['etf-core'][0]
+    expect(Number.isInteger(combineStage.totalUserCost)).toBe(true) // €250 × 12 × 39
+    expect(() =>
+      expectMatchesFixture(
+        { ...combineStage, totalUserCost: combineStage.totalUserCost - 1e-9 },
+        combineStage,
+      ),
+    ).toThrow(/totalUserCost/)
+    expect(() => expectMatchesFixture({ ...stage, rowCount: stage.rowCount + 1e-12 }, stage))
+      .toThrow(/rowCount/)
+    expect(() => expectMatchesFixture({ ...stage, payoutEndAge: stage.payoutEndAge - 1e-13 }, stage))
+      .toThrow(/payoutEndAge/)
   })
 
   it('treats absent optional fields as undefined, but not as free-form extras', () => {

@@ -88,11 +88,12 @@ Behavior is preserved, pinned by `src/engine/etfContextParity.test.ts` against
 combine workspace with three ETF instances including a paid-up contract,
 certified and `surrender_reinvest` transfers, joint assessment; a seeded
 Monte-Carlo run), asserted at full float precision. Neither engine nor fixture
-rounds; the comparison keeps structure, strings, booleans, integers and
-structural zeros exact and tolerates only last-digit float drift (64
-`Number.EPSILON` units relative, ~19 observed), because identical double
-operations involving `Math.pow` are not bit-reproducible between macOS and
-Linux/Node 22. The scenario-report suite reproduces its captured baseline
+rounds; the comparison keeps structure, strings, booleans, every frozen
+integer and every structural zero exact and tolerates only last-digit float
+drift — 64 `Number.EPSILON` units relative (≈1.4e-14, i.e. ~14 significant
+digits; ~19 units observed) with a 1e-9 € absolute floor for cancellation
+residuals — because identical double operations involving `Math.pow` are not
+bit-reproducible between macOS and Linux/Node 22. The scenario-report suite reproduces its captured baseline
 unchanged.
 
 One subtlety is documented rather than changed: a combine-mode ETF instance
