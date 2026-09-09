@@ -141,13 +141,20 @@ export function detectLegacyEpSeed({
   const stored = statutoryPension.currentEntgeltpunkte
   const tolerance = 0.005
 
+  // 'entered' and 'document' both mean the user owns the value (typed, or read
+  // off a Renteninformation) — neither can be a wizard seed, in either branch.
+  const epStatus = resolveInputStatus(inputStatus, undefined, EP_INPUT_STATUS_KEY)
+  if (epStatus === 'entered' || epStatus === 'document') return { legacy: false }
+
   if (method?.kind === 'years' || method?.kind === 'career') {
     const years = method.kind === 'years'
       ? method.contributionYears
       : profile.age - method.careerStartAge - method.pauseYears
     const freshEstimate = estimateEpFromYears(years, profile.grossSalaryYear, rules)
+    // Frozen legacy cap, not the live BBG: the seed was written by the old
+    // estimator, so it must be reconstructed with the values that estimator used.
     const oldEstimate = years * (
-      Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear) /
+      Math.min(profile.grossSalaryYear, legacyEpSeedPensionCapYear) /
       legacyEpSeedDurchschnittsentgelt
     )
     if (
@@ -167,10 +174,6 @@ export function detectLegacyEpSeed({
   // Absent method: Entgeltpunkte only exist in the GRV; every other baseline
   // stores a manual figure or nothing at all.
   if ((statutoryPension.pensionBaselineType ?? 'grv') !== 'grv') return { legacy: false }
-  // 'entered' and 'document' both mean the user owns the value (typed, or read
-  // off a Renteninformation) — neither can be a wizard seed.
-  const status = resolveInputStatus(inputStatus, undefined, EP_INPUT_STATUS_KEY)
-  if (status === 'entered' || status === 'document') return { legacy: false }
 
   const cappedSalary = Math.min(profile.grossSalaryYear, legacyEpSeedPensionCapYear)
   const ratio = cappedSalary / legacyEpSeedDurchschnittsentgelt
