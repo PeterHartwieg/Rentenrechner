@@ -48,12 +48,21 @@ Exit codes for `review:run`: `0` approve · `2` decision reject or needs-human �
 
 The complex panel is unreachable without the literal flag — no heuristic picks
 it. Both entrypoints parse the flag through the same helper
-(`assertExplicitComplexFlag`): a bare `--complex` and the documented
-`--complex true` escalate, absence stays routine, and **any other
+(`assertExplicitComplexFlag`): a bare `--complex`, `--complex true` and
+`--complex=true` escalate, absence stays routine, and **any other
 value-bearing form is rejected loudly** rather than silently downgraded — an
 explicit escalation request must never be answered with a cheaper panel.
-Pinned at the entrypoints, not just on the helper (`panels.test.mjs`,
-`cli.test.mjs`).
+
+Argv handling backs that up (`lib/cliArgs.mjs`). `--name=value` is parsed as a
+flag with a value (without it, `--complex=true` produced a flag literally
+*named* `complex=true`, left `flags.complex` undefined, and read as "routine
+was requested"). Each entrypoint declares the flags it accepts and rejects
+anything else — unknown/misspelled flags (`--complexx=true`) and stray
+positional arguments — **before** any GitHub call or reviewer spawn, so a typo
+cannot quietly shrink the requested panel. Boolean flags (`--publish`,
+`--comment`, `--json`) follow the same rule: present is on, absent is off, a
+value other than `true` is an error rather than a quiet no-op. Pinned at the
+entrypoints, not just on the helpers (`panels.test.mjs`, `cli.test.mjs`).
 
 ### Executable configuration
 

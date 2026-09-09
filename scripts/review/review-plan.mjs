@@ -10,20 +10,27 @@ import { describeReviewerBin } from './lib/binPaths.mjs'
 import { DOMAIN_LABELS } from './lib/impactMap.mjs'
 import { planReview } from './lib/orchestrate.mjs'
 import { assertExplicitComplexFlag } from './lib/panels.mjs'
-import { parseFlags, requirePositiveInt } from './lib/cliArgs.mjs'
+import { assertKnownFlags, booleanFlag, parseFlags, requirePositiveInt } from './lib/cliArgs.mjs'
+
+const USAGE = 'usage: npm run review:plan -- --pr <number> [--complex] [--json]'
+const ALLOWED_FLAGS = ['pr', 'complex', 'json']
 
 async function main() {
-  const { flags } = parseFlags(process.argv.slice(2))
+  const { flags, positional } = parseFlags(process.argv.slice(2))
+  // Validated before anything is read from GitHub: an unusable argv must not
+  // reach the network, and must never resolve to a quieter default.
+  assertKnownFlags({ flags, positional, allowed: ALLOWED_FLAGS, usage: USAGE })
   if (!flags.pr) {
-    console.error('usage: npm run review:plan -- --pr <number> [--complex] [--json]')
+    console.error(USAGE)
     process.exit(1)
   }
   const pr = requirePositiveInt(flags, 'pr')
   const complex = assertExplicitComplexFlag(flags.complex)
+  const json = booleanFlag(flags, 'json')
 
   const plan = await planReview({ pr, complex, repoRoot: process.cwd() })
 
-  if (flags.json) {
+  if (json) {
     console.log(
       JSON.stringify(
         {

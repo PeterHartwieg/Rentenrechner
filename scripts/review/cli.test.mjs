@@ -60,11 +60,49 @@ describe('review:plan entrypoint — --complex wiring', () => {
     expect(stdout).not.toMatch(/Panel {4}: routine/)
   })
 
+  it('selects the complex panel for `--complex=true` (root reproduction: silently routine)', async () => {
+    // parseFlags used to produce a flag literally named `complex=true`, so
+    // flags.complex stayed undefined and the guard read "routine requested".
+    const { stdout } = await runPlan(['--pr', '42', '--complex=true', '--json'])
+    expect(JSON.parse(stdout).panel.kind).toBe('complex')
+  })
+
+  it('accepts `=` syntax for the ordinary flags too', async () => {
+    const { stdout } = await runPlan(['--pr=42', '--json=true'])
+    expect(JSON.parse(stdout).pr).toBe(42)
+    expect(JSON.parse(stdout).panel.kind).toBe('routine')
+  })
+
   it('rejects a value-bearing --complex instead of downgrading to routine', async () => {
-    const error = await runPlan(['--pr', '42', '--complex', 'bogus', '--json']).catch((e) => e)
+    for (const args of [
+      ['--pr', '42', '--complex', 'bogus', '--json'],
+      ['--pr', '42', '--complex=bogus', '--json'],
+      ['--pr', '42', '--complex=false', '--json'],
+      ['--pr', '42', '--complex=0', '--json'],
+    ]) {
+      const error = await runPlan(args).catch((e) => e)
+      expect(error.code, args.join(' ')).toBe(1)
+      expect(error.stderr, args.join(' ')).toMatch(/--complex is a boolean flag and takes no value/)
+      expect(error.stdout, args.join(' ')).not.toMatch(/routine|complex/)
+    }
+  })
+
+  it('rejects a misspelled flag instead of running the routine panel', async () => {
+    writeFileSync(ghLog, '', 'utf8')
+    for (const typo of ['--complexx=true', '--complx', '--Complex=true', '--comple x']) {
+      const error = await runPlan(['--pr', '42', typo, '--json']).catch((e) => e)
+      expect(error.code, typo).toBe(1)
+      expect(error.stderr, typo).toMatch(/unknown flag\(s\)|unexpected argument\(s\)/)
+      expect(error.stdout, typo).not.toMatch(/routine|complex/)
+    }
+    // Rejected before any GitHub call.
+    expect(readFileSync(ghLog, 'utf8')).toBe('')
+  })
+
+  it('rejects a stray positional argument rather than guessing what it meant', async () => {
+    const error = await runPlan(['42', '--complex', '--json']).catch((e) => e)
     expect(error.code).toBe(1)
-    expect(error.stderr).toMatch(/--complex is a boolean flag and takes no value/)
-    expect(error.stdout).not.toMatch(/routine/)
+    expect(error.stderr).toMatch(/unexpected argument\(s\): 42/)
   })
 })
 
@@ -93,11 +131,14 @@ describe('review:run entrypoint — --complex wiring', () => {
     expect(calls[0].complex).toBe(false)
   })
 
-  it('passes complex: true for a bare --complex and for `--complex true`', async () => {
+  it('passes complex: true for the bare, spaced and `=` forms alike', async () => {
     for (const argv of [
       ['--pr', '42', '--complex'],
       ['--pr', '42', '--complex', 'true'],
       ['--complex', 'true', '--pr', '42'],
+      ['--pr', '42', '--complex=true'],
+      ['--pr=42', '--complex=true'],
+      ['--complex=true', '--pr', '42'],
     ]) {
       const { execute, calls } = stubExecute()
       await reviewRunMain({ argv, execute, log: () => {} })
@@ -106,22 +147,85 @@ describe('review:run entrypoint — --complex wiring', () => {
   })
 
   it('rejects a value-bearing --complex before any review starts', async () => {
+    for (const argv of [
+      ['--pr', '42', '--complex', 'bogus'],
+      ['--pr', '42', '--complex=bogus'],
+      ['--pr', '42', '--complex=false'],
+    ]) {
+      const { execute, calls } = stubExecute()
+      await expect(reviewRunMain({ argv, execute, log: () => {} }), argv.join(' ')).rejects.toThrow(
+        /--complex is a boolean flag and takes no value/,
+      )
+      expect(calls, argv.join(' ')).toHaveLength(0)
+    }
+  })
+
+  it('rejects a misspelled or unsupported flag instead of running a quieter panel', async () => {
+    for (const argv of [
+      ['--pr', '42', '--complexx=true'],
+      ['--pr', '42', '--complx'],
+      ['--pr', '42', '--publsh'],
+      ['--pr', '42', '--complex', 'extra-arg-after-flag-value', '--publish'],
+    ]) {
+      const { execute, calls } = stubExecute()
+      await expect(reviewRunMain({ argv, execute, log: () => {} }), argv.join(' ')).rejects.toThrow(
+        /unknown flag\(s\)|--complex is a boolean flag/,
+      )
+      expect(calls, argv.join(' ')).toHaveLength(0)
+    }
+  })
+
+  it('rejects a stray positional argument', async () => {
     const { execute, calls } = stubExecute()
-    await expect(reviewRunMain({ argv: ['--pr', '42', '--complex', 'bogus'], execute, log: () => {} })).rejects.toThrow(
-      /--complex is a boolean flag and takes no value/,
+    await expect(reviewRunMain({ argv: ['42', '--complex'], execute, log: () => {} })).rejects.toThrow(
+      /unexpected argument\(s\): 42/,
     )
     expect(calls).toHaveLength(0)
   })
 
-  it('runs as a process: a rejected --complex exits 1 and never calls gh', async () => {
-    writeFileSync(ghLog, '', 'utf8')
+  it('still reads the value-taking flags, in both syntaxes', async () => {
+    const { execute, calls } = stubExecute()
+    await reviewRunMain({
+      argv: ['--pr', '42', '--publish', '--comment=true', '--verify-commit=' + 'c'.repeat(40), '--timeout-minutes', '5'],
+      execute,
+      log: () => {},
+    })
+    expect(calls[0]).toMatchObject({
+      pr: 42,
+      complex: false,
+      publish: true,
+      comment: true,
+      verifyCommit: 'c'.repeat(40),
+      timeoutMs: 5 * 60 * 1000,
+    })
+  })
+
+  it('rejects a value-bearing boolean flag rather than quietly not doing it', async () => {
+    const { execute, calls } = stubExecute()
+    await expect(reviewRunMain({ argv: ['--pr', '42', '--publish=yes'], execute, log: () => {} })).rejects.toThrow(
+      /--publish is a boolean flag and takes no value/,
+    )
+    expect(calls).toHaveLength(0)
+  })
+
+  it('runs as a process: rejected complex forms exit 1 and never call gh', async () => {
     const RUN_CLI = new URL('./review-run.mjs', import.meta.url).pathname
-    const error = await execFileP(process.execPath, [RUN_CLI, '--pr', '42', '--complex', 'bogus'], {
-      encoding: 'utf8',
-      env: { ...process.env, PATH: `${shimDir}:${process.env.PATH}`, FAKE_GH_LOG: ghLog },
-    }).catch((e) => e)
-    expect(error.code).toBe(1)
-    expect(error.stderr).toMatch(/--complex is a boolean flag and takes no value/)
-    expect(readFileSync(ghLog, 'utf8')).toBe('')
+    for (const [args, expected] of [
+      [['--pr', '42', '--complex', 'bogus'], /--complex is a boolean flag and takes no value/],
+      [['--pr', '42', '--complex=bogus'], /--complex is a boolean flag and takes no value/],
+      [['--pr', '42', '--complexx=true'], /unknown flag\(s\): --complexx/],
+      [['42', '--complex'], /unexpected argument\(s\): 42/],
+    ]) {
+      writeFileSync(ghLog, '', 'utf8')
+      const error = await execFileP(process.execPath, [RUN_CLI, ...args], {
+        encoding: 'utf8',
+        env: { ...process.env, PATH: `${shimDir}:${process.env.PATH}`, FAKE_GH_LOG: ghLog },
+      }).catch((e) => e)
+      expect(error.code, args.join(' ')).toBe(1)
+      expect(error.stderr, args.join(' ')).toMatch(expected)
+      // No GitHub call, no reviewer: rejected before any of that.
+      expect(readFileSync(ghLog, 'utf8'), args.join(' ')).toBe('')
+      expect(error.stdout, args.join(' ')).not.toMatch(/Panel/)
+    }
   })
 })

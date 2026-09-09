@@ -28,9 +28,12 @@ may be added for this (backend boundary), and no telemetry may be introduced.
    Complex =
    Fable 5.1 + GPT-6-Astra + Grok 4.6, reachable only via literal
    `--complex`. No heuristic selects the expensive panel, and both
-   entrypoints share one flag parser: a value-bearing `--complex <x>` other
-   than the documented `true` is rejected rather than silently downgraded to
-   the routine panel.
+   entrypoints share one flag parser: `--complex`, `--complex true` and
+   `--complex=true` all escalate, while a value-bearing form other than the
+   documented `true` is rejected rather than silently downgraded to the
+   routine panel. The entrypoints also reject unknown flags and stray
+   positional arguments before any GitHub or model call, so a misspelling
+   cannot read as "the cheaper panel was requested".
 3. **Fail-closed verdict gate.** A review counts only with proven completion,
    matching provider-reported model, an exact restated PR head SHA, and a
    well-formed non-contradictory verdict (`approve` with a blocker/major

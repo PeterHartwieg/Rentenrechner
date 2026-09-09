@@ -19,25 +19,30 @@ import { pathToFileURL } from 'node:url'
 import { executeReview, DEFAULT_REVIEWER_TIMEOUT_MS } from './lib/orchestrate.mjs'
 import { makeSubprocessRun } from './lib/ghRun.mjs'
 import { assertExplicitComplexFlag } from './lib/panels.mjs'
-import { parseFlags, requirePositiveInt } from './lib/cliArgs.mjs'
+import { assertKnownFlags, booleanFlag, parseFlags, requirePositiveInt } from './lib/cliArgs.mjs'
 
 const PUBLISH_FAILURE_CODES = new Set(['STALE_HEAD', 'PR_MOVED', 'VERIFY_NOT_SUCCESSFUL'])
+
+const USAGE =
+  'usage: npm run review:run -- --pr <number> [--complex] [--publish] [--comment] ' +
+  '[--verify-commit <sha>] [--timeout-minutes <n>]'
+const ALLOWED_FLAGS = ['pr', 'complex', 'publish', 'comment', 'verify-commit', 'timeout-minutes']
 
 // `execute` is injectable so tests can pin what THIS entrypoint passes on
 // (argv → review options), not just what the helpers do in isolation.
 export async function main({ argv = process.argv.slice(2), execute = executeReview, log = console.log } = {}) {
-  const { flags } = parseFlags(argv)
+  const { flags, positional } = parseFlags(argv)
+  // Validated before anything is read from GitHub and before any reviewer is
+  // spawned: an unusable argv must never resolve to a quieter default panel.
+  assertKnownFlags({ flags, positional, allowed: ALLOWED_FLAGS, usage: USAGE })
   if (!flags.pr) {
-    console.error(
-      'usage: npm run review:run -- --pr <number> [--complex] [--publish] [--comment] ' +
-        '[--verify-commit <sha>] [--timeout-minutes <n>]',
-    )
+    console.error(USAGE)
     return { exitCode: 1, result: null }
   }
   const pr = requirePositiveInt(flags, 'pr')
   const complex = assertExplicitComplexFlag(flags.complex)
-  const publish = flags.publish === true
-  const comment = flags.comment === true
+  const publish = booleanFlag(flags, 'publish')
+  const comment = booleanFlag(flags, 'comment')
   const verifyCommit = typeof flags['verify-commit'] === 'string' ? flags['verify-commit'] : null
   const timeoutMinutes = flags['timeout-minutes'] ? Number(flags['timeout-minutes']) : NaN
   const timeoutMs = Number.isFinite(timeoutMinutes) && timeoutMinutes > 0
