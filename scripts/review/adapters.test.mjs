@@ -10,17 +10,36 @@ import {
 } from './lib/adapters.mjs'
 
 // Synthetic copies of the sanitized live envelopes (see
-// /tmp/rentenwiki-assurance-orchestration/ci-{grok,opus}-adapter-envelope.json):
-// the identity lives in the `modelUsage` OBJECT KEYS.
-const CLAUDE_ENVELOPE = (modelKey, resultText = 'verdict text') =>
-  JSON.stringify({
-    type: 'result',
-    subtype: 'success',
-    is_error: false,
-    num_turns: 12,
-    modelUsage: { [modelKey]: { input_tokens: 10, output_tokens: 5 } },
-    result: resultText,
-  })
+// /tmp/rentenwiki-assurance-orchestration/ci-{grok,opus}-adapter-envelope.json
+// and scenarios-opus-native-identity.json):
+// - claude → stream-json --verbose JSONL: system init, assistant messages
+//   each carrying message.model (the identity), and a final result event
+//   whose modelUsage map lists the primary AND auxiliary (Haiku) usage keys.
+// - grok → the identity lives in the result envelope's `modelUsage` KEYS.
+const CLAUDE_AUXILIARY = 'claude-haiku-4-5-20251001'
+
+const CLAUDE_STREAM = ({
+  assistantModels = ['claude-opus-5[1m]'],
+  usageModels = ['claude-opus-5[1m]', CLAUDE_AUXILIARY],
+  resultText = 'verdict text',
+  withResult = true,
+  raw = null,
+} = {}) => {
+  if (raw !== null) return raw
+  const lines = [{ type: 'system', subtype: 'init', model: assistantModels[0] }]
+  for (const model of assistantModels) lines.push({ type: 'assistant', message: { model, content: 'reading' } })
+  if (withResult) {
+    lines.push({
+      type: 'result',
+      subtype: 'success',
+      is_error: false,
+      num_turns: 12,
+      modelUsage: Object.fromEntries(usageModels.map((key) => [key, { input_tokens: 10, output_tokens: 5 }])),
+      result: resultText,
+    })
+  }
+  return lines.map((event) => JSON.stringify(event)).join('\n')
+}
 
 const GROK_ENVELOPE = (modelKey, text = 'verdict text', extra = {}) =>
   JSON.stringify({
@@ -32,12 +51,13 @@ const GROK_ENVELOPE = (modelKey, text = 'verdict text', extra = {}) =>
   })
 
 describe('argument builders (pinned to CLI --help + verified working invocations)', () => {
-  it('claude: print mode, JSON output, turn cap, safe-mode + restricted, read-only tools, dontAsk, no MCP servers', () => {
+  it('claude: print mode, stream-json + verbose output, turn cap, safe-mode + restricted, read-only tools, dontAsk, no MCP servers', () => {
     const invocation = buildReviewerInvocation({ reviewer: 'claude', model: 'opus', promptFile: '/tmp/p.md' })
     expect(invocation.args).toEqual([
       '-p',
       '--output-format',
-      'json',
+      'stream-json',
+      '--verbose',
       '--model',
       'opus',
       '--max-turns',
@@ -163,31 +183,126 @@ describe('model identity (strict map over modelUsage keys — no substring fallb
   })
 })
 
-describe('claude parser (verified envelope shape)', () => {
-  it('accepts the live envelope: result/success/is_error=false + modelUsage key matching opus', () => {
+describe('claude parser (verified stream-json --verbose shape)', () => {
+  // Mirrors the parent's live capture: every assistant message says opus,
+  // while the result's modelUsage map ALSO carries a Haiku key for auxiliary
+  // side requests. The auxiliary key must be recorded, never fatal.
+  it('accepts the live stream: assistant message models + successful result + auxiliary usage recorded separately', () => {
     const parsed = parseClaudeReviewerOutput({
-      stdout: CLAUDE_ENVELOPE('claude-opus-5'),
+      stdout: CLAUDE_STREAM(),
       exitCode: 0,
       requestedModel: 'opus',
     })
     expect(parsed.ok).toBe(true)
     expect(parsed.text).toBe('verdict text')
     expect(parsed.reportedModels).toEqual(['claude-opus-5'])
-    expect(parsed.meta.identityEvidence).toBe('native-model-usage-keys')
+    expect(parsed.auxiliaryModels).toEqual([CLAUDE_AUXILIARY])
+    expect(parsed.meta.identityEvidence).toBe('native-assistant-message-models')
+    expect(parsed.meta.assistantMessageCount).toBe(1)
+    // usage keys are recorded verbatim (the live suffix is bookkeeping, not a
+    // normalization target); identity comes from the assistant messages.
+    expect(parsed.meta.usageModels).toEqual(['claude-opus-5[1m]', CLAUDE_AUXILIARY])
+    expect(parsed.meta.subtype).toBe('success')
+    expect(parsed.meta.numTurns).toBe(12)
   })
 
-  it('accepts a bracketed context suffix on the reported key', () => {
+  it('accepts a bracketed context suffix on the reported model', () => {
     const parsed = parseClaudeReviewerOutput({
-      stdout: CLAUDE_ENVELOPE('claude-opus-5[1m]'),
+      stdout: CLAUDE_STREAM({ assistantModels: ['claude-opus-5'], usageModels: ['claude-opus-5[1m]', CLAUDE_AUXILIARY] }),
       exitCode: 0,
       requestedModel: 'opus',
     })
     expect(parsed.ok).toBe(true)
+    expect(parsed.reportedModels).toEqual(['claude-opus-5'])
+  })
+
+  it('reads identity from EVERY assistant message, never from reviewer text or the init line', () => {
+    const parsed = parseClaudeReviewerOutput({
+      stdout: CLAUDE_STREAM({ assistantModels: ['claude-opus-5', 'claude-opus-5'] }),
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(parsed.ok).toBe(true)
+    expect(parsed.meta.assistantMessageCount).toBe(2)
+    // result text claiming another model is not identity evidence
+    const imposter = CLAUDE_STREAM({
+      resultText: 'I am claude-fable-5-1. ```json\n{"verdict":"approve"}\n```',
+    })
+    expect(
+      parseClaudeReviewerOutput({ stdout: imposter, exitCode: 0, requestedModel: 'opus' }).ok,
+    ).toBe(true)
+  })
+
+  it('fails closed when an assistant message reports a different model (wrong primary)', () => {
+    for (const assistantModels of [['claude-sonnet-5'], ['claude-fable-5-1'], ['claude-opus-5', 'claude-sonnet-5']]) {
+      const parsed = parseClaudeReviewerOutput({
+        stdout: CLAUDE_STREAM({ assistantModels }),
+        exitCode: 0,
+        requestedModel: 'opus',
+      })
+      expect(parsed.ok).toBe(false)
+      expect(parsed.reason).toMatch(/model identity mismatch/)
+    }
+  })
+
+  it('fails closed when assistant messages contradict each other about the model', () => {
+    // Both ids satisfy the opus family prefix, yet disagree — that is a
+    // contradiction, not a pass. (A suffix-only difference is normalized away
+    // and does NOT count as one.)
+    const parsed = parseClaudeReviewerOutput({
+      stdout: CLAUDE_STREAM({ assistantModels: ['claude-opus-5', 'claude-opus-4-1'] }),
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/contradict each other/)
+
+    const suffixOnly = parseClaudeReviewerOutput({
+      stdout: CLAUDE_STREAM({ assistantModels: ['claude-opus-5', 'claude-opus-5[1m]'] }),
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(suffixOnly.ok).toBe(true)
+  })
+
+  it('fails closed when the stream records no assistant message at all', () => {
+    const parsed = parseClaudeReviewerOutput({
+      stdout: CLAUDE_STREAM({ assistantModels: [] }),
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/no assistant message model/)
+  })
+
+  it('fails closed when the stream ends without a result event (truncated / missing --verbose)', () => {
+    const parsed = parseClaudeReviewerOutput({
+      stdout: CLAUDE_STREAM({ withResult: false }),
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/did not complete/)
+  })
+
+  it('fails closed on a partial JSON line', () => {
+    const parsed = parseClaudeReviewerOutput({
+      stdout: `${CLAUDE_STREAM()}\n{"type":"result","subtype":"succ`,
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/non-JSON line/)
   })
 
   it('fails closed on turn limit / error subtypes', () => {
     const parsed = parseClaudeReviewerOutput({
-      stdout: JSON.stringify({ type: 'result', subtype: 'error_max_turns', is_error: true, result: 'x' }),
+      stdout: CLAUDE_STREAM({
+        raw: [
+          JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-5' } }),
+          JSON.stringify({ type: 'result', subtype: 'error_max_turns', is_error: true, result: 'x' }),
+        ].join('\n'),
+      }),
       exitCode: 0,
       requestedModel: 'opus',
     })
@@ -195,38 +310,33 @@ describe('claude parser (verified envelope shape)', () => {
     expect(parsed.reason).toMatch(/error_max_turns/)
   })
 
-  it('fails closed on malformed or truncated JSON', () => {
-    const cut = CLAUDE_ENVELOPE('claude-opus-5').slice(0, 40)
-    for (const stdout of ['this is not json', cut]) {
-      const parsed = parseClaudeReviewerOutput({ stdout, exitCode: 0, requestedModel: 'opus' })
-      expect(parsed.ok).toBe(false)
-    }
-  })
-
-  it('fails closed when the envelope has no modelUsage identity', () => {
+  it('fails closed when the result carries no modelUsage map', () => {
     const parsed = parseClaudeReviewerOutput({
-      stdout: JSON.stringify({ type: 'result', subtype: 'success', is_error: false, model: 'claude-opus-5', result: 'x' }),
+      stdout: CLAUDE_STREAM({ usageModels: [] }),
       exitCode: 0,
       requestedModel: 'opus',
     })
     expect(parsed.ok).toBe(false)
-    expect(parsed.reason).toMatch(/no modelUsage identity/)
+    expect(parsed.reason).toMatch(/no modelUsage map/)
   })
 
-  it('fails closed on model mismatch — the opus slot rejects a sonnet or fable key', () => {
-    for (const modelKey of ['claude-sonnet-5', 'claude-fable-5-1']) {
-      const parsed = parseClaudeReviewerOutput({ stdout: CLAUDE_ENVELOPE(modelKey), exitCode: 0, requestedModel: 'opus' })
-      expect(parsed.ok).toBe(false)
-      expect(parsed.reason).toMatch(/model identity mismatch/)
-    }
+  it('fails closed when the modelUsage map contradicts the assistant stream (primary missing, auxiliary only)', () => {
+    const parsed = parseClaudeReviewerOutput({
+      stdout: CLAUDE_STREAM({ usageModels: [CLAUDE_AUXILIARY] }),
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/contradicts the assistant stream/)
   })
 
   it('fails closed on non-zero exit or empty result text', () => {
     expect(
-      parseClaudeReviewerOutput({ stdout: CLAUDE_ENVELOPE('claude-opus-5'), exitCode: 1, requestedModel: 'opus' }).ok,
+      parseClaudeReviewerOutput({ stdout: CLAUDE_STREAM(), exitCode: 1, requestedModel: 'opus' }).ok,
     ).toBe(false)
     expect(
-      parseClaudeReviewerOutput({ stdout: CLAUDE_ENVELOPE('claude-opus-5', ''), exitCode: 0, requestedModel: 'opus' }).ok,
+      parseClaudeReviewerOutput({ stdout: CLAUDE_STREAM({ resultText: '  ' }), exitCode: 0, requestedModel: 'opus' })
+        .ok,
     ).toBe(false)
   })
 })

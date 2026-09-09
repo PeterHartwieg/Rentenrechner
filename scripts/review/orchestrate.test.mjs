@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { spawn } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -57,11 +57,19 @@ afterEach(() => rmSync(WORKTREE, { recursive: true, force: true }))
 // Fake git: `worktree add` is accepted (the directory already exists via
 // makeWorktreeDir), snapshots answer for the worktree, removal clears it. The
 // status mirrors any artifact a misbehaving reviewer actually wrote.
-function fakeRunGit() {
+function fakeRunGit({ baseContained = true } = {}) {
   const calls = []
   const run = async (args, { cwd } = {}) => {
     calls.push(args.join(' '))
     if (args[0] === 'worktree' && args[1] === 'add') return { stdout: `Preparing worktree (detached HEAD ${args[3]})\n` }
+    if (args[0] === 'merge-base' && args[1] === '--is-ancestor') {
+      if (!baseContained) {
+        const error = new Error(`Command failed: git ${args.join(' ')}\n`)
+        error.code = 1 // exit code 1 = "not an ancestor", not a tooling failure
+        throw error
+      }
+      return { stdout: '' }
+    }
     if (args[0] === 'rev-parse' && cwd === WORKTREE) return { stdout: `${SHA}\n` }
     if (args[0] === 'status') {
       return { stdout: existsSync(join(WORKTREE, 'fake-reviewer-artifact.txt')) ? '?? fake-reviewer-artifact.txt\n' : '' }
@@ -76,18 +84,28 @@ function fakeRunGit() {
   return { run, calls }
 }
 
-// Fake gh: two `pr view` calls anchor the review; any later view (the publish
-// re-check) reports the CURRENT refs so stale/moved cases can be simulated.
-function fakeGh({ currentHead = SHA, currentBase = BASE, checkRuns = [] } = {}) {
+// Fake gh: two `pr view` calls + two branch-API calls anchor the review; any
+// later call (the publish re-check) reports the CURRENT refs so stale/moved
+// cases can be simulated.
+function fakeGh({
+  currentHead = SHA,
+  snapshotBase = BASE,
+  currentSnapshotBase = BASE,
+  liveBase = BASE,
+  liveBaseAfter,
+  liveBaseMovesAtCall = Infinity,
+  checkRuns = [],
+} = {}) {
   const calls = []
   let views = 0
+  let branchCalls = 0
   const run = async (command, args) => {
     calls.push([command, ...args].join(' '))
     expect(command).toBe('gh')
     if (args[0] === 'pr' && args[1] === 'view') {
       views += 1
       const head = views > 2 ? currentHead : SHA
-      const base = views > 2 ? currentBase : BASE
+      const base = views > 2 ? currentSnapshotBase : snapshotBase
       return JSON.stringify({
         number: 42,
         headRefOid: head,
@@ -97,6 +115,10 @@ function fakeGh({ currentHead = SHA, currentBase = BASE, checkRuns = [] } = {}) 
         title: 'Fix BBG cap',
         url: PR_URL,
       })
+    }
+    if (args[0] === 'api' && args[1]?.startsWith('repos/') && args.includes('.commit.sha')) {
+      branchCalls += 1
+      return branchCalls >= liveBaseMovesAtCall ? (liveBaseAfter ?? liveBase) : liveBase
     }
     if (args[0] === 'pr' && args[1] === 'diff' && args.includes('--name-only')) return 'src/engine/tax.ts\n'
     if (args[0] === 'pr' && args[1] === 'diff') return DIFF
@@ -108,6 +130,7 @@ function fakeGh({ currentHead = SHA, currentBase = BASE, checkRuns = [] } = {}) 
   return {
     run,
     calls,
+    branchCalls: () => branchCalls,
     statusWrites: () => calls.filter((call) => call.includes('/statuses/')),
     comments: () => calls.filter((call) => call.startsWith('gh pr comment')),
   }
@@ -164,10 +187,26 @@ function codexSessionsFixture({ model = 'gpt-6-astra', now = NOW } = {}) {
   return sessionsDir
 }
 
-async function runPipeline({ complex = false, modes = {}, publish = false, comment = false, verifyCommit = null, gh, codexModel } = {}) {
+async function runPipeline({
+  complex = false,
+  modes = {},
+  publish = false,
+  comment = false,
+  verifyCommit = null,
+  gh,
+  codexModel,
+  codexSessionNow = NOW,
+  clock,
+  makeWorktreeDir,
+} = {}) {
   const fake = gh ?? fakeGh()
   const git = fakeRunGit()
   const saved = []
+  const spawned = []
+  const spawnImpl = (command, args, options) => {
+    spawned.push(`${command} ${args.join(' ')}`)
+    return pipelineSpawn(modes)(command, args, options)
+  }
   try {
     const result = await executeReview({
       pr: 42,
@@ -178,20 +217,21 @@ async function runPipeline({ complex = false, modes = {}, publish = false, comme
       verifyCommit,
       timeoutMs: 30_000,
       ghRun: fake.run ?? fake,
-      spawnImpl: pipelineSpawn(modes),
+      spawnImpl,
       runGit: git.run,
-      codexSessionsDir: codexSessionsFixture({ model: codexModel }),
+      codexSessionsDir: codexSessionsFixture({ model: codexModel, now: codexSessionNow }),
       now: NOW,
-      makeWorktreeDir: () => WORKTREE,
+      clock,
+      makeWorktreeDir: makeWorktreeDir ?? (() => WORKTREE),
       save: ({ receipt }) => {
         saved.push(receipt)
         return `/fake/receipt-${saved.length}.json`
       },
     })
-    return { ...result, saved, git }
+    return { ...result, saved, git, spawned }
   } catch (error) {
     // Attach the fakes so failure-path tests can assert on what happened.
-    throw Object.assign(error, { git, saved })
+    throw Object.assign(error, { git, saved, spawned })
   }
 }
 
@@ -206,10 +246,76 @@ describe('planReview', () => {
     expect(plan.contextPaths).toContain('AGENTS.md')
   })
 
+  it('plans against the LIVE base head and records the PR base snapshot separately', async () => {
+    // Observed live on PR #391: baseRefOid frozen at 7c92d5a while main was
+    // already at d7d9ec1. The review must pin the branch target, and the
+    // receipt must show both facts.
+    const plan = await planReview({
+      pr: 42,
+      repoRoot: process.cwd(),
+      ghRun: fakeGh({ snapshotBase: '7'.repeat(40), liveBase: BASE }).run,
+    })
+    expect(plan.prInfo.baseSha).toBe(BASE)
+    expect(plan.prInfo.baseSnapshotSha).toBe('7'.repeat(40))
+  })
+
   it('plans the complex panel only when explicitly requested', async () => {
     const plan = await planReview({ pr: 42, complex: true, repoRoot: process.cwd(), ghRun: fakeGh().run })
     expect(plan.panel.kind).toBe('complex')
     expect(plan.panel.reviewers.map((r) => r.reviewer)).toEqual(['claude', 'codex', 'grok'])
+  })
+})
+
+describe('executeReview — pre-flight aborts before any reviewer runs', () => {
+  it('aborts with PR_MOVED when the live base advances while the diff is captured', async () => {
+    const gh = fakeGh({ liveBase: BASE, liveBaseAfter: 'e'.repeat(40), liveBaseMovesAtCall: 2 })
+    const error = await runPipeline({ gh }).catch((e) => e)
+    expect(error.code).toBe('PR_MOVED')
+    expect(error.message).toMatch(/base [0-9a-f]{8}→[0-9a-f]{8}/)
+    expect(error.saved).toHaveLength(0)
+    expect(error.spawned).toHaveLength(0)
+  })
+
+  it('aborts with BASE_NOT_CONTAINED when the reviewed head does not contain the live base', async () => {
+    const git = fakeRunGit({ baseContained: false })
+    const saved = []
+    const error = await executeReview({
+      pr: 42,
+      repoRoot: process.cwd(),
+      timeoutMs: 30_000,
+      ghRun: fakeGh().run,
+      spawnImpl: pipelineSpawn({}),
+      runGit: git.run,
+      codexSessionsDir: codexSessionsFixture(),
+      now: NOW,
+      makeWorktreeDir: () => WORKTREE,
+      save: ({ receipt }) => {
+        saved.push(receipt)
+        return '/fake/never.json'
+      },
+    }).catch((e) => e)
+    expect(error.code).toBe('BASE_NOT_CONTAINED')
+    expect(error.message).toMatch(/does not contain the live base/)
+    expect(saved).toHaveLength(0)
+    expect(git.calls.some((call) => call.startsWith('merge-base --is-ancestor'))).toBe(true)
+  })
+
+  it('refuses a checkout that carries a symlink before reading context or spawning reviewers', async () => {
+    const error = await runPipeline({
+      // The "worktree" the pipeline is handed already contains a planted
+      // link — the shape git tracks when a PR adds a symlink file.
+      makeWorktreeDir: () => {
+        const link = join(WORKTREE, 'CONTEXT.md')
+        rmSync(link, { force: true })
+        symlinkSync('/etc/hostname', link)
+        return WORKTREE
+      },
+    }).catch((e) => e)
+    expect(error.code).toBe('UNSAFE_REVIEW_TREE')
+    expect(error.message).toMatch(/symlinked path\(s\).*CONTEXT\.md/s)
+    // Nothing was read into a prompt and no reviewer started.
+    expect(error.saved).toHaveLength(0)
+    expect(error.spawned).toHaveLength(0)
   })
 })
 
@@ -250,7 +356,7 @@ describe('executeReview — routine panel', () => {
   it('fails closed on malformed reviewer output', async () => {
     const result = await runPipeline({ modes: { claude: 'malformed' } })
     expect(result.decision).toBe('invalid')
-    expect(result.reasons.join('\n')).toMatch(/not valid JSON/)
+    expect(result.reasons.join('\n')).toMatch(/non-JSON line/)
   }, 60_000)
 
   it('voids the whole run when a reviewer dirties the review worktree', async () => {
@@ -270,10 +376,17 @@ describe('executeReview — complex panel', () => {
     const codex = result.receipt.reviewers.find((r) => r.reviewer === 'codex')
     expect(codex.providerReportedModels).toEqual(['gpt-6-astra'])
     expect(codex.identityEvidence).toBe('cli-session-turn-context')
-    // The claude/grok identity comes from the native modelUsage keys.
-    for (const reviewer of result.receipt.reviewers.filter((r) => r.reviewer !== 'codex')) {
-      expect(reviewer.identityEvidence).toBe('native-model-usage-keys')
-    }
+    // Identity comes from each CLI's own native metadata: claude's assistant
+    // messages, grok's modelUsage keys.
+    const claude = result.receipt.reviewers.find((r) => r.reviewer === 'claude')
+    expect(claude.identityEvidence).toBe('native-assistant-message-models')
+    expect(claude.providerReportedModels).toEqual(['claude-fable-5-1'])
+    // Haiku appears in the usage map for side requests — recorded as
+    // auxiliary, never as the reviewer.
+    expect(claude.auxiliaryUsageModels).toEqual(['claude-haiku-4-5-20251001'])
+    const grok = result.receipt.reviewers.find((r) => r.reviewer === 'grok')
+    expect(grok.identityEvidence).toBe('native-model-usage-keys')
+    expect(grok.auxiliaryUsageModels).toEqual([])
     // The preflight really ran `mcp list` twice against the fixture.
     const codexPre = result.reviews.find((r) => r.reviewer === 'codex').command
     expect(codexPre).toBe(process.execPath)
@@ -283,6 +396,52 @@ describe('executeReview — complex panel', () => {
     const result = await runPipeline({ complex: true, codexModel: 'gpt-5.6-sol' })
     expect(result.decision).toBe('invalid')
     expect(result.reasons.join('\n')).toMatch(/codex model identity mismatch/)
+  }, 90_000)
+
+  it('attributes codex identity to its OWN invocation window when a long first reviewer pushes the clock past 10 minutes', async () => {
+    // A Fable-first complex panel where the first reviewer runs 12 minutes:
+    // codex starts afterwards, so its rollout file is named at +12min. With
+    // one panel-wide timestamp this was misattributed; with per-reviewer
+    // windows it is cleanly accepted, and the tolerance itself is unchanged.
+    const TWELVE_MIN = 12 * 60 * 1000
+    const ticks = [
+      NOW, // panel start
+      NOW, // claude start
+      new Date(NOW.getTime() + TWELVE_MIN), // claude complete
+      new Date(NOW.getTime() + TWELVE_MIN), // codex start
+      new Date(NOW.getTime() + TWELVE_MIN + 60_000), // codex complete
+      new Date(NOW.getTime() + TWELVE_MIN + 60_000), // grok start
+      new Date(NOW.getTime() + TWELVE_MIN + 120_000), // grok complete
+    ]
+    let tick = 0
+    const clock = () => ticks[Math.min(tick++, ticks.length - 1)]
+    const result = await runPipeline({
+      complex: true,
+      clock,
+      codexSessionNow: new Date(NOW.getTime() + TWELVE_MIN),
+    })
+    expect(result.decision, JSON.stringify(result.reasons, null, 2)).toBe('approve')
+    const byReviewer = Object.fromEntries(result.receipt.reviewers.map((r) => [r.reviewer, r]))
+    expect(byReviewer.codex.accepted).toBe(true)
+    expect(byReviewer.codex.startedAt).toBe(new Date(NOW.getTime() + TWELVE_MIN).toISOString())
+    expect(byReviewer.codex.completedAt).toBe(new Date(NOW.getTime() + TWELVE_MIN + 60_000).toISOString())
+    expect(byReviewer.claude.completedAt).toBe(new Date(NOW.getTime() + TWELVE_MIN).toISOString())
+    // The panel timestamp stays at the panel start, separate from every
+    // reviewer's invocation window.
+    expect(result.receipt.generatedAt).toBe(NOW.toISOString())
+  }, 90_000)
+
+  it('still rejects a rollout from ANOTHER run — the clock injection widens nothing', async () => {
+    // Same advancing clock, but the rollout file is named at the PANEL start
+    // (a session from 12 minutes earlier): outside codex's own invocation
+    // window, so identity must fail closed.
+    const TWELVE_MIN = 12 * 60 * 1000
+    const ticks = [NOW, NOW, new Date(NOW.getTime() + TWELVE_MIN), new Date(NOW.getTime() + TWELVE_MIN), new Date(NOW.getTime() + TWELVE_MIN + 60_000)]
+    let tick = 0
+    const clock = () => ticks[Math.min(tick++, ticks.length - 1)]
+    const result = await runPipeline({ complex: true, clock, codexSessionNow: NOW })
+    expect(result.decision).toBe('invalid')
+    expect(result.reasons.join('\n')).toMatch(/codex|rollout|no codex rollout session file/)
   }, 90_000)
 })
 
@@ -315,6 +474,16 @@ describe('executeReview — publish path', () => {
     expect(gh.statusWrites()).toHaveLength(0)
   }, 60_000)
 
+  it('refuses to publish when the LIVE base advanced after the review (PR_MOVED)', async () => {
+    // Branch call #3 is the publish re-check: main moved on while the panel
+    // ran, so the reviewed diff no longer sits on the current base.
+    const gh = fakeGh({ liveBaseAfter: 'e'.repeat(40), liveBaseMovesAtCall: 3, checkRuns: [VERIFY_SUCCESS] })
+    const error = await runPipeline({ publish: true, gh }).catch((e) => e)
+    expect(error.code).toBe('PR_MOVED')
+    expect(error.message).toMatch(/base moved since the review/)
+    expect(gh.statusWrites()).toHaveLength(0)
+  }, 60_000)
+
   it('refuses to publish an approve without a successful verify check on the SHA', async () => {
     const gh = fakeGh({ checkRuns: [] })
     const error = await runPipeline({ publish: true, gh }).catch((e) => e)
@@ -341,6 +510,17 @@ describe('receipt contents from the pipeline', () => {
       expect(reviewer.providerReportedModels.length).toBeGreaterThan(0)
       expect(reviewer.command).toBe(process.execPath)
     }
+  }, 60_000)
+
+  it('records the live base and the PR base snapshot as distinct facts, plus per-reviewer timing', async () => {
+    const result = await runPipeline({ gh: fakeGh({ snapshotBase: '7'.repeat(40), liveBase: BASE }) })
+    expect(result.receipt.baseSha).toBe(BASE)
+    expect(result.receipt.baseSnapshotSha).toBe('7'.repeat(40))
+    for (const reviewer of result.receipt.reviewers) {
+      expect(reviewer.startedAt).toBe(NOW.toISOString())
+      expect(reviewer.completedAt).toBe(NOW.toISOString())
+    }
+    expect(result.receipt.generatedAt).toBe(NOW.toISOString())
   }, 60_000)
 })
 

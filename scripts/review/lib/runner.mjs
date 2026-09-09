@@ -42,6 +42,10 @@ function defaultRunGit(args, { cwd } = {}) {
   return promisify(execFile)('git', args, { encoding: 'utf8', cwd, maxBuffer: 16 * 1024 * 1024 })
 }
 
+function defaultClock() {
+  return new Date()
+}
+
 export function defaultCodexSessionsDir() {
   return join(process.env.CODEX_HOME ?? join(homedir(), '.codex'), 'sessions')
 }
@@ -182,6 +186,30 @@ export async function removeReviewWorktree({ path, runGit = defaultRunGit, repoR
   rmSync(path, { recursive: true, force: true })
 }
 
+// Verifies the reviewed head actually CONTAINS the live base commit — the
+// reviewed diff was produced on top of what main currently is. `git
+// merge-base --is-ancestor` exits 1 (not 0/128) when the first commit is not
+// an ancestor of the second; that specific outcome is the review-blocking
+// answer, any other failure is a tooling error. A head that does not contain
+// the live base reviews a diff main has already moved past.
+export async function assertHeadContainsBase({ headSha, baseSha, cwd, runGit = defaultRunGit }) {
+  let result
+  try {
+    result = await runGit(['merge-base', '--is-ancestor', baseSha, headSha], { cwd })
+  } catch (error) {
+    if (error?.code === 1) {
+      const reviewError = new Error(
+        `reviewed head ${headSha.slice(0, 8)} does not contain the live base ${baseSha.slice(0, 8)} — ` +
+          'rebase the branch onto the current base branch before requesting a calculation review',
+      )
+      reviewError.code = 'BASE_NOT_CONTAINED'
+      throw reviewError
+    }
+    throw new Error(`git merge-base --is-ancestor failed in ${cwd}: ${error.message}`)
+  }
+  return { contained: true, output: result.stdout }
+}
+
 function defaultMakeTempDir(prefix) {
   return mkdtempSync(join(tmpdir(), prefix))
 }
@@ -310,6 +338,14 @@ export async function codexMcpPreflight({ command, cwd, timeoutMs = PREFLIGHT_TI
 // (codex: MCP preflight), spawn, worktree guard, output parse, and — for
 // codex — identity attribution from the CLI's own rollout session file.
 // Temp files are read BEFORE removal; removal happens in `finally`.
+//
+// Timing: `clock` is the single injected time source. `startedAt` is captured
+// from it just BEFORE the reviewer's preflight+spawn and `completedAt` just
+// after the process exits — per reviewer. The panel's shared timestamp lives
+// in the orchestrator; reusing it here would bind every reviewer to the
+// panel start, and a valid long first run (Fable) would push the next
+// reviewer's (Astra) session file outside the codex identity window. Explicit
+// `startedAt`/`now` arguments still win, for tests that pin a fixed instant.
 export async function executeReviewer({
   reviewer,
   model,
@@ -324,13 +360,15 @@ export async function executeReviewer({
   runGit,
   preflight = defaultReviewerPreflight,
   codexSessionsDir = defaultCodexSessionsDir(),
-  startedAt = new Date(),
-  now = new Date(),
+  clock = defaultClock,
+  startedAt,
+  now,
   realpathImpl,
   statImpl = statSync,
   listDirImpl = readdirSync,
   existsImpl = existsSync,
 }) {
+  const invocationStartedAt = startedAt ?? clock()
   const dir = mkdtempSync(join(tmpdir(), `rentenwiki-review-${reviewer}-`))
   try {
     const promptFile = join(dir, 'prompt.md')
@@ -376,6 +414,7 @@ export async function executeReviewer({
     } catch (error) {
       return { ok: false, reason: error.message }
     }
+    const invocationCompletedAt = now ?? clock()
 
     let after
     try {
@@ -407,8 +446,8 @@ export async function executeReviewer({
         model,
         worktreePath,
         codexSessionsDir,
-        startedAt,
-        now,
+        startedAt: invocationStartedAt,
+        now: invocationCompletedAt,
         realpathImpl,
         statImpl,
         listDirImpl,
@@ -423,7 +462,16 @@ export async function executeReviewer({
       }
     }
 
-    return { ...parsed, meta: { ...(parsed.meta ?? {}), exitCode: result.exitCode, worktreeUnchanged: true } }
+    return {
+      ...parsed,
+      meta: {
+        ...(parsed.meta ?? {}),
+        exitCode: result.exitCode,
+        worktreeUnchanged: true,
+        startedAt: invocationStartedAt.toISOString(),
+        completedAt: invocationCompletedAt.toISOString(),
+      },
+    }
   } finally {
     cleanupDir(dir)
   }

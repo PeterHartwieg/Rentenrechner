@@ -5,13 +5,21 @@
 //   FAKE_REVIEW_CLI  = claude | grok | codex | codex-mcp (output shape to emit)
 //   FAKE_REVIEW_MODE = success | wrong-sha | wrong-model | reject |
 //                      blocker-approve | malformed | truncated |
+//                      no-result | mixed-assistants | no-assistant |
+//                      usage-without-primary |
 //                      exit-1 | timeout | write-worktree |
 //                      grok-thought-only
 //
 // Output shapes mirror the sanitized live envelopes in
-// /tmp/rentenwiki-assurance-orchestration/ci-{grok,opus}-adapter-envelope.json:
-//   claude → { type:"result", subtype:"success", is_error:false, num_turns,
-//              modelUsage: { "claude-opus-5": {...} }, result }
+// /tmp/rentenwiki-assurance-orchestration/ci-{grok,opus}-adapter-envelope.json
+// and the stream-json capture in scenarios-opus-native-identity.json:
+//   claude → JSONL events (stream-json --verbose): system init, assistant
+//            messages each carrying message.model, and a final
+//            { type:"result", subtype:"success", is_error:false, num_turns,
+//              modelUsage: { primary + auxiliary keys }, result }. The
+//              auxiliary `claude-haiku-4-5-20251001` key is present in the
+//              success mode exactly as observed live — it is usage
+//              bookkeeping, never the reviewer's identity.
 //   grok   → { stopReason:"end_turn", num_turns,
 //              modelUsage: { "grok-4.6-build": {...} }, text }
 //   codex  → JSONL thread.started/turn.started/item.completed/turn.completed
@@ -112,6 +120,15 @@ function claudeReportedModel(requested) {
   return `${model}[1m]`
 }
 
+const CLAUDE_AUXILIARY_MODEL = 'claude-haiku-4-5-20251001'
+
+function emitClaudeLine(event) {
+  process.stdout.write(`${JSON.stringify(event)}\n`)
+}
+
+// Native stream-json --verbose shape: one JSON object per line. Assistant
+// messages carry the actual reviewer model; the final result event carries a
+// modelUsage map that ALSO lists auxiliary models used for side requests.
 function emitClaude(prompt) {
   if (mode === 'malformed') {
     process.stdout.write('this is not json')
@@ -121,16 +138,49 @@ function emitClaude(prompt) {
     process.stdout.write('{"type":"result","subtype":"success","is_error":false,"result":"partial')
     return
   }
-  const reported = mode === 'wrong-model' ? 'claude-sonnet-5[1m]' : claudeReportedModel(requestedModel('opus'))
-  const payload = {
+  emitClaudeLine({ type: 'system', subtype: 'init', model: claudeReportedModel(requestedModel('opus')) })
+  if (mode === 'no-assistant') {
+    // No assistant message at all: nothing to attribute the review to.
+    emitClaudeLine({
+      type: 'result',
+      subtype: 'success',
+      is_error: false,
+      num_turns: 1,
+      modelUsage: { [CLAUDE_AUXILIARY_MODEL]: {} },
+      result: 'no structured reply',
+    })
+    return
+  }
+  if (mode === 'mixed-assistants') {
+    emitClaudeLine({ type: 'assistant', message: { model: 'claude-opus-5' } })
+    emitClaudeLine({ type: 'assistant', message: { model: 'claude-sonnet-5' } })
+  } else {
+    const assistantModel = mode === 'wrong-model' ? 'claude-sonnet-5[1m]' : claudeReportedModel(requestedModel('opus'))
+    emitClaudeLine({ type: 'assistant', message: { model: assistantModel } })
+  }
+  if (mode === 'no-result') {
+    // Stream ends after the assistant message — no result event, so the run
+    // cannot be proven complete (this is what --verbose normally prevents).
+    return
+  }
+  const usageModels =
+    mode === 'usage-without-primary'
+      ? { [CLAUDE_AUXILIARY_MODEL]: { input_tokens: 10, output_tokens: 5 } }
+      : {
+          [CLAUDE_AUXILIARY_MODEL]: { input_tokens: 10, output_tokens: 5 },
+          [mode === 'wrong-model' ? 'claude-sonnet-5[1m]' : claudeReportedModel(requestedModel('opus'))]: {
+            input_tokens: 10,
+            output_tokens: 5,
+          },
+        }
+  emitClaudeLine({
     type: 'result',
     subtype: 'success',
     is_error: false,
     num_turns: 3,
-    modelUsage: { [reported]: { input_tokens: 10, output_tokens: 5 } },
+    modelUsage: usageModels,
     result: REPORT_MODES.has(mode) ? reportText(prompt) : 'no structured reply',
-  }
-  process.stdout.write(JSON.stringify(payload))
+  })
 }
 
 function emitGrok(prompt) {

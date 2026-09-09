@@ -83,12 +83,17 @@ function makeReceipt(reviews, decision) {
   })
 }
 
-function fakeGh({ headRefOid = HEAD, baseRefOid = BASE, checkRuns = [], comment = true } = {}) {
+function fakeGh({ headRefOid = HEAD, baseRefOid = BASE, liveBase = BASE, checkRuns = [], comment = true } = {}) {
   const log = []
   const run = async (command, args) => {
     log.push([command, ...args])
     if (command === 'gh' && args[0] === 'pr' && args[1] === 'view') {
       return JSON.stringify({ number: 42, headRefOid, baseRefOid, headRefName: 'x', baseRefName: 'main', title: 't' })
+    }
+    // The base branch ref API — publish re-checks the LIVE base, not the PR
+    // record's snapshot.
+    if (command === 'gh' && args[0] === 'api' && args[1]?.includes('/branches/') && args.includes('.commit.sha')) {
+      return `${liveBase}\n`
     }
     if (command === 'gh' && args[0] === 'api' && args[1]?.includes('/check-runs')) {
       return JSON.stringify({ total_count: checkRuns.length, check_runs: checkRuns })
@@ -295,10 +300,12 @@ describe('publishRunStatus', () => {
     expect(log.some((c) => c[2]?.includes('/statuses/'))).toBe(false)
   })
 
-  it('refuses to publish when the PR BASE moved (PR_MOVED) and writes nothing', async () => {
+  it('refuses to publish when the LIVE base moved (PR_MOVED) and writes nothing', async () => {
     const reviews = validatedReviews()
     const receipt = makeReceipt(reviews, 'approve')
-    const { run, log } = fakeGh({ baseRefOid: 'e'.repeat(40), checkRuns: [VERIFY_SUCCESS] })
+    // The PR record's snapshot stays frozen; only the branch API shows main
+    // advancing — exactly the drift the live-base re-check exists to catch.
+    const { run, log } = fakeGh({ liveBase: 'e'.repeat(40), checkRuns: [VERIFY_SUCCESS] })
     const error = await publishRunStatus({ run, prInfo: PR_INFO, reviews, receipt }).catch((e) => e)
     expect(error.code).toBe('PR_MOVED')
     expect(log.some((c) => c[2]?.includes('/statuses/'))).toBe(false)

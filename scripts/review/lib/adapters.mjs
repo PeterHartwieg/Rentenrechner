@@ -4,11 +4,13 @@
 // parent's verified working invocations (checked against claude 2.1.263,
 // grok 1.0.4, codex-cli 0.153.4):
 //
-//   claude -p --output-format json --model <m> --max-turns 35
+//   claude -p --output-format stream-json --verbose --model <m> --max-turns 35
 //          --tools Read,Grep,Glob --permission-mode dontAsk
 //          --allowedTools Read,Grep,Glob
 //          --strict-mcp-config --mcp-config '{"mcpServers":{}}'  (stdin: prompt)
-//          (--max-turns works in this build even though --help omits it)
+//          (--max-turns works in this build even though --help omits it;
+//           --verbose is required for stream-json to emit the final result
+//           event at all)
 //   grok   --prompt-file <f> --output-format json -m <m> --max-turns 60
 //          --disable-web-search --no-subagents
 //          --tools read_file,grep,list_dir --deny MCPTool
@@ -20,11 +22,18 @@
 //          --ignore-user-config --ignore-rules [-c mcp_servers.<n>.enabled=false] -
 //                                                                 (stdin: prompt)
 //
-// Provider-reported model identity lives in the native result envelopes'
-// `modelUsage` OBJECT KEYS (verified live: claude → "claude-opus-5"; grok →
-// "grok-4.6-build"). Codex stdout has no
-// model identity at all — its identity comes from the CLI rollout session
-// file, see codexSession.mjs.
+// Provider-reported model identity comes from each CLI's OWN native
+// metadata, never from the reviewer's text. For claude it is the `model`
+// field of every native assistant message in the `stream-json --verbose`
+// event stream (verified live against the sanitized parent log
+// /tmp/rentenwiki-assurance-orchestration/scenarios-opus-native-identity.json:
+// every assistant message `claude-opus-5`, while the final result's
+// `modelUsage` map additionally carries `claude-haiku-4-5-20251001` —
+// auxiliary usage for side requests, NOT the reviewer). Those usage keys are
+// recorded separately and never satisfy identity by themselves. For grok the
+// identity is the result envelope's `modelUsage` OBJECT KEYS (verified live:
+// "grok-4.6-build"). Codex stdout has no model identity at all — its
+// identity comes from the CLI rollout session file, see codexSession.mjs.
 //
 // All parsers fail closed and read POSITIVE completion evidence only. Any
 // missing field, non-success status, unknown shape, or model mismatch voids
@@ -86,7 +95,11 @@ export function buildReviewerInvocation({ reviewer, model, promptFile, outputLas
         args: [
           '-p',
           '--output-format',
-          'json',
+          'stream-json',
+          // stream-json only emits the final result event together with
+          // --verbose; without it the stream would end after the last
+          // assistant message and every run would look truncated.
+          '--verbose',
           '--model',
           model,
           '--max-turns',
@@ -167,47 +180,113 @@ export function buildReviewerInvocation({ reviewer, model, promptFile, outputLas
 }
 
 // --- Claude parser -----------------------------------------------------------
-// Verified live envelope: { type: "result", subtype: "success", is_error:
-// false, num_turns: N, modelUsage: { "claude-opus-5": {...} }, result: "..." }.
+// Verified live shape (stream-json + verbose, claude 2.1.263): one JSON event
+// per line — a `system` init line, `assistant` lines each carrying
+// `message.model` plus the message content, `user` tool-result lines, and a
+// final `{ type: "result", subtype: "success", is_error: false, num_turns,
+// modelUsage: {...}, result: "..." }` event.
+//
+// Identity: every ACTUAL assistant message's `message.model` must be present
+// and must all agree and all match the requested model. The result's
+// `modelUsage` keys are a separate bookkeeping fact: keys that do not match
+// the requested model (auxiliary models such as Haiku handling side requests)
+// are recorded as `auxiliaryModels` and are NOT an identity failure — but the
+// primary model must still appear among them, or the usage map contradicts
+// the assistant stream. Anything missing, partial, contradictory, or
+// truncated fails closed. Reviewer text is never treated as identity.
+
+function splitStreamJsonEvents(stdout, { onFail }) {
+  const events = []
+  for (const line of String(stdout ?? '').split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    let event
+    try {
+      event = JSON.parse(trimmed)
+    } catch {
+      return onFail('claude event stream contains a non-JSON line (possible truncation or non-JSON error text)')
+    }
+    if (event === null || typeof event !== 'object' || Array.isArray(event)) {
+      return onFail('claude event stream contains a non-object JSON line')
+    }
+    events.push(event)
+  }
+  return events
+}
 
 export function parseClaudeReviewerOutput({ stdout, exitCode, requestedModel }) {
   if (exitCode !== 0) return fail(`claude exited with code ${exitCode}`)
-  let json
-  try {
-    json = JSON.parse(stdout)
-  } catch {
-    return fail('claude output is not valid JSON (possible truncation or non-JSON error text)')
+
+  const events = splitStreamJsonEvents(stdout, {
+    onFail: (reason) => fail(reason),
+  })
+  if (!Array.isArray(events)) return events
+
+  const assistantModels = events
+    .filter((event) => event.type === 'assistant')
+    .map((event) => event.message?.model)
+    .filter((model) => model !== undefined)
+  if (assistantModels.length === 0) {
+    return fail('claude stream records no assistant message model — cannot attribute the review to a model')
   }
-  if (json === null || typeof json !== 'object' || Array.isArray(json)) {
-    return fail('claude output JSON is not an object')
+  for (const reported of assistantModels) {
+    if (typeof reported !== 'string' || !identityAccepts(requestedModel, reported)) {
+      return fail(
+        `claude model identity mismatch: requested "${requestedModel}", assistant messages reported ${JSON.stringify(assistantModels)}`,
+        { reportedModels: [String(reported)] },
+      )
+    }
   }
-  if (json.type !== 'result') {
-    return fail(`claude output has unexpected type "${json.type}" — treating as incomplete`)
-  }
-  if (json.subtype !== 'success') {
-    return fail(`claude did not complete successfully (subtype: ${json.subtype}; turn limit or error)`)
-  }
-  if (json.is_error === true) {
-    return fail('claude reported is_error=true despite success subtype')
-  }
-  if (typeof json.result !== 'string' || json.result.trim().length === 0) {
-    return fail('claude result text is missing or empty')
-  }
-  const reportedModels = collectModelUsageKeys(json)
-  if (reportedModels.length === 0) {
-    return fail('claude result envelope carries no modelUsage identity — refusing to attribute the review')
-  }
-  if (!reportedModels.every((reported) => identityAccepts(requestedModel, reported))) {
+  const primaryModels = [...new Set(assistantModels.map((model) => normalizeModelToken(model)))]
+  if (primaryModels.length > 1) {
     return fail(
-      `claude model identity mismatch: requested "${requestedModel}", provider reported ${JSON.stringify(reportedModels)}`,
-      { reportedModels },
+      `claude assistant messages contradict each other about the reviewing model: ${JSON.stringify(primaryModels)}`,
+      { reportedModels: primaryModels },
     )
   }
+
+  const result = events.at(-1)
+  if (result?.type !== 'result') {
+    return fail(
+      `claude stream ends with "${result?.type ?? 'nothing'}" instead of a result event — run did not complete (possible truncation)`,
+    )
+  }
+  if (result.subtype !== 'success') {
+    return fail(`claude did not complete successfully (subtype: ${result.subtype}; turn limit or error)`)
+  }
+  if (result.is_error === true) {
+    return fail('claude reported is_error=true despite success subtype')
+  }
+  if (typeof result.result !== 'string' || result.result.trim().length === 0) {
+    return fail('claude result text is missing or empty')
+  }
+
+  const usageModels = collectModelUsageKeys(result)
+  if (usageModels.length === 0) {
+    return fail('claude result carries no modelUsage map — refusing a review without usage metadata')
+  }
+  if (!usageModels.some((key) => identityAccepts(requestedModel, key))) {
+    return fail(
+      `claude modelUsage map ${JSON.stringify(usageModels)} contradicts the assistant stream ` +
+        `(no entry for requested "${requestedModel}")`,
+      { reportedModels: primaryModels },
+    )
+  }
+  const auxiliaryModels = usageModels.filter((key) => !identityAccepts(requestedModel, key))
+
   return {
     ok: true,
-    text: json.result,
-    reportedModels,
-    meta: { subtype: json.subtype, numTurns: json.num_turns, identityEvidence: 'native-model-usage-keys' },
+    text: result.result,
+    reportedModels: primaryModels,
+    auxiliaryModels,
+    meta: {
+      subtype: result.subtype,
+      numTurns: result.num_turns,
+      identityEvidence: 'native-assistant-message-models',
+      assistantMessageCount: assistantModels.length,
+      usageModels,
+      auxiliaryModels,
+    },
   }
 }
 

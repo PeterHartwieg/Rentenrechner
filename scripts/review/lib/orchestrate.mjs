@@ -4,10 +4,13 @@
 // reads) so tests drive the full pipeline with fakes and never touch the
 // network or a real model CLI.
 //
-// Execution shape: capture PR head+base atomically → map impact → create a
-// clean detached worktree at the exact head SHA → read mapped context FROM
-// THAT SHA → run the panel inside the worktree → validate verdicts →
-// adjudicate → save a local receipt → optionally publish (in-memory only).
+// Execution shape: capture PR head + LIVE base atomically → map impact →
+// create a clean detached worktree at the exact head SHA → require the head
+// to contain the live base → reject symlink-bearing trees → read mapped
+// context FROM THAT SHA through contained reads → run the panel inside the
+// worktree (each reviewer with its own invocation timestamps) → validate
+// verdicts → adjudicate → save a local receipt → optionally publish
+// (in-memory only).
 
 import { existsSync, readFileSync } from 'node:fs'
 import { execFile } from 'node:child_process'
@@ -28,10 +31,12 @@ import {
   parseGrokReviewerOutput,
 } from './adapters.mjs'
 import {
+  assertHeadContainsBase,
   createReviewWorktree,
   executeReviewer,
   removeReviewWorktree,
 } from './runner.mjs'
+import { assertNoSymlinksUnder, containedReadText } from './contextGuard.mjs'
 import { adjudicatePanel, extractVerdictBlock, validateVerdict } from './verdicts.mjs'
 import { buildReceipt, saveReceipt } from './receipts.mjs'
 import { publishRunStatus } from './publish.mjs'
@@ -82,9 +87,14 @@ export async function executeReview({
   runGit = defaultRunGit,
   codexSessionsDir,
   now = new Date(),
+  clock,
   save = saveReceipt,
   makeWorktreeDir,
 }) {
+  // One panel timestamp for receipt bookkeeping; each reviewer gets its OWN
+  // invocation start/completion from the same injected clock.
+  const panelClock = clock ?? (() => now)
+  const panelStartedAt = panelClock()
   const { prInfo, impact, panel, contextPaths } = await planReview({ pr, complex, repoRoot, ghRun })
 
   // Reviewers work in a clean detached worktree pinned to the exact head SHA.
@@ -95,9 +105,24 @@ export async function executeReview({
     ...(makeWorktreeDir ? { makeTempDir: makeWorktreeDir } : {}),
   })
   try {
+    // The reviewed head must contain the LIVE base commit — a diff against a
+    // main that has already moved on is not reviewable. merge-base runs
+    // inside the worktree, which shares the repo's object store.
+    await assertHeadContainsBase({
+      headSha: prInfo.headSha,
+      baseSha: prInfo.baseSha,
+      cwd: worktree.path,
+      runGit,
+    })
+
+    // Refuse a checkout that carries any symlink BEFORE reading context or
+    // starting a reviewer: a tracked symlink can point outside the checkout.
+    assertNoSymlinksUnder(worktree.path)
+
     const excerpts = collectContextExcerpts({
       paths: contextPaths,
-      readText: (path) => readFileSync(join(worktree.path, path), 'utf8'),
+      readText: (path) =>
+        containedReadText({ rootPath: worktree.path, path, readText: (p) => readFileSync(p, 'utf8') }),
     })
     const prompt = buildReviewPrompt({
       prInfo,
@@ -122,8 +147,7 @@ export async function executeReview({
         spawnImpl,
         runGit,
         codexSessionsDir,
-        startedAt: now,
-        now,
+        clock: panelClock,
       })
 
       let verdict = null
@@ -134,7 +158,15 @@ export async function executeReview({
           : { ok: false, reason: extracted.reason }
       }
 
-      reviews.push({ reviewer: entry.reviewer, model: entry.model, command: bin.command, parse: parsed, verdict })
+      reviews.push({
+        reviewer: entry.reviewer,
+        model: entry.model,
+        command: bin.command,
+        parse: parsed,
+        verdict,
+        startedAt: parsed.meta?.startedAt ?? null,
+        completedAt: parsed.meta?.completedAt ?? null,
+      })
     }
 
     const adjudication = adjudicatePanel(reviews)
@@ -146,14 +178,14 @@ export async function executeReview({
       reviews,
       decision: adjudication.decision,
       options: { verifyCommit },
-      generatedAt: now,
+      generatedAt: panelStartedAt,
     })
     const receiptPath = save({ receipt, repoRoot })
 
     let published = null
     if (publish) {
       published = await publishRunStatus({ run: ghRun, prInfo, reviews, receipt, comment })
-      receipt.published = { ...published, at: now.toISOString() }
+      receipt.published = { ...published, at: panelClock().toISOString() }
     }
 
     return {

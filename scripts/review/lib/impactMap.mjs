@@ -127,24 +127,57 @@ export function isUntrustedContextPath(path) {
 
 // Files that identify WHICH domains a broad change most affects. Focus hints
 // never reduce scope; they only order the reviewer prompt.
+//
+// ALL_DOMAIN_PATTERNS covers paths that feed every calculation domain at
+// once: the year rule files (BBGs feed tax/payroll AND KV/PV AND the bAV
+// caps, Basiszins feeds Vorabpauschale, Rechengrößen feed GRV
+// Entgeltpunkte), the shared accumulation→payout pipeline, and the captured
+// statutory oracle fixtures. Mapping them to all five domains keeps the
+// prompt honest: a broad change to one of these must NOT be presented as
+// unfocused-but-cosmetic.
+const ALL_DOMAIN_PATTERNS = [
+  'src/rules/',
+  'src/engine/buildResult.ts',
+  'src/engine/simulate.ts',
+  'src/test/externalGoldenFixtures.ts',
+]
+
+// Payout-channel engines at the engine root (they sit OUTSIDE
+// src/engine/products/ and were previously unmapped, so e.g.
+// `src/engine/etfPayout.ts` surfaced as "cosmetic-only" in the prompt while
+// being a broad, tax-bearing change).
+const PAYOUT_ENGINE_PATTERNS = [
+  'src/engine/etfPayout.ts',
+  'src/engine/insurancePayout.ts',
+  'src/engine/bavPayout.ts',
+  'src/engine/certifiedPensionPayout.ts',
+  'src/engine/payoutMath.ts',
+]
+
 const DOMAIN_FOCUS_MATCHERS = [
   {
     domain: 'tax-payroll',
     patterns: [
+      ...ALL_DOMAIN_PATTERNS,
       'src/engine/tax.ts',
       'src/engine/salary.ts',
-      'src/rules/',
       'src/engine/salaryPhaseFunding.ts',
       'TAX_SOCIAL_SECURITY_2026_RESEARCH.md',
     ],
   },
   {
     domain: 'kv-pv',
-    patterns: ['src/engine/retirementPayout.ts', 'src/engine/retirementTax.ts', 'src/engine/salary.ts'],
+    patterns: [
+      ...ALL_DOMAIN_PATTERNS,
+      'src/engine/retirementPayout.ts',
+      'src/engine/retirementTax.ts',
+      'src/engine/salary.ts',
+    ],
   },
   {
     domain: 'funding-eligibility',
     patterns: [
+      ...ALL_DOMAIN_PATTERNS,
       'src/engine/simulationContext.ts',
       'src/engine/portfolioFunding.ts',
       'src/engine/portfolioTransfer.ts',
@@ -159,18 +192,24 @@ const DOMAIN_FOCUS_MATCHERS = [
   {
     domain: 'investment-insurance',
     patterns: [
+      ...ALL_DOMAIN_PATTERNS,
+      ...PAYOUT_ENGINE_PATTERNS,
       'src/engine/accumulation.ts',
       'src/engine/fees.ts',
       'src/engine/marketReturns.ts',
       'src/engine/monteCarlo.ts',
       'src/engine/portfolioAllowance.ts',
       'src/engine/productPayout.ts',
+      'src/engine/riester.ts',
+      'src/engine/basisrente.ts',
+      'src/engine/altersvorsorgedepot.ts',
       'src/engine/products/',
     ],
   },
   {
     domain: 'household-interactions',
     patterns: [
+      ...ALL_DOMAIN_PATTERNS,
       'src/engine/portfolioCombine.ts',
       'src/engine/combineContext.ts',
       'src/engine/portfolioAdapter.ts',

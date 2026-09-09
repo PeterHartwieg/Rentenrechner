@@ -28,6 +28,12 @@ export function buildReceipt({ prInfo, impact, panel, reviews, decision, options
     prUrl: prInfo.url,
     headSha: prInfo.headSha,
     baseRefName: prInfo.baseRefName,
+    // The LIVE base commit the review was pinned against (branch ref target),
+    // plus what the PR record itself reported — kept distinct so a stale PR
+    // snapshot is visible in the receipt instead of silently standing in for
+    // the branch.
+    baseSha: prInfo.baseSha ?? null,
+    baseSnapshotSha: prInfo.baseSnapshotSha ?? null,
     diffDigest: prInfo.diffDigest,
     diffFiles: prInfo.files,
     impact: {
@@ -43,11 +49,23 @@ export function buildReceipt({ prInfo, impact, panel, reviews, decision, options
       reviewer: review.reviewer,
       requestedModel: review.model,
       providerReportedModels: review.parse?.reportedModels ?? [],
-      // Honest provenance of the identity claim: "native-model-usage-keys"
-      // (claude/grok envelope keys) or "cli-session-turn-context" (codex
-      // rollout session file). Never a server-side attestation.
+      // Models that appear in the provider's usage metadata but did NOT
+      // produce the review (e.g. a CLI's auxiliary model handling side
+      // requests). Bookkeeping only — never identity evidence.
+      auxiliaryUsageModels: review.parse?.auxiliaryModels ?? review.parse?.meta?.auxiliaryModels ?? [],
+      // Honest provenance of the identity claim:
+      // "native-assistant-message-models" (claude stream-json assistant
+      // messages), "native-model-usage-keys" (grok envelope keys), or
+      // "cli-session-turn-context" (codex rollout session file). Never a
+      // server-side attestation.
       identityEvidence: review.parse?.meta?.identityEvidence ?? null,
       command: review.command ?? null,
+      // Per-reviewer invocation window (from the injected clock) — distinct
+      // from the receipt's panel-level generatedAt. This is what makes the
+      // timing reproducible: a long first reviewer must not push a later
+      // reviewer's identity evidence outside its own window.
+      startedAt: review.startedAt ?? null,
+      completedAt: review.completedAt ?? null,
       verdict: review.verdict?.ok ? review.verdict.verdict.verdict : null,
       confidence: review.verdict?.ok ? review.verdict.verdict.confidence ?? null : null,
       findings: review.verdict?.ok ? review.verdict.verdict.findings ?? [] : [],

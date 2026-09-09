@@ -11,6 +11,7 @@ import { buildReviewerInvocation, parseClaudeReviewerOutput, parseCodexReviewerO
 // fixture. No model CLI and no network is ever contacted.
 
 const FIXTURE = new URL('./test-fixtures/fake-reviewer.mjs', import.meta.url).pathname
+const RUN_START = new Date('2026-09-08T12:00:00Z')
 const SHA = 'a'.repeat(40)
 const THREAD = '01a082a3-fc89-74c3-8171-be21bf04c4c7'
 
@@ -157,12 +158,19 @@ describe('runReviewerProcess', () => {
 describe('executeReviewer — worktree guard', () => {
   it('runs a claude-shaped review in a clean worktree at the reviewed SHA', async () => {
     const result = await executeReviewer(
-      baseArgs({ spawnImpl: fixtureSpawn({ cli: 'claude' }), parseOutput: parseClaudeReviewerOutput }),
+      baseArgs({
+        spawnImpl: fixtureSpawn({ cli: 'claude' }),
+        parseOutput: parseClaudeReviewerOutput,
+        clock: () => RUN_START,
+      }),
     )
     expect(result.ok).toBe(true)
     expect(result.text).toContain('"verdict": "approve"')
     expect(result.meta.worktreeUnchanged).toBe(true)
-    expect(result.meta.identityEvidence).toBe('native-model-usage-keys')
+    expect(result.meta.identityEvidence).toBe('native-assistant-message-models')
+    // Per-reviewer timing is stamped from the injected clock.
+    expect(result.meta.startedAt).toBe(RUN_START.toISOString())
+    expect(result.meta.completedAt).toBe(RUN_START.toISOString())
   })
 
   it('refuses to run when the worktree HEAD is not the reviewed SHA', async () => {

@@ -85,13 +85,18 @@ export const GOLDEN_SOURCE_AREAS = {
   'bmf-est-2026-tariff': ['tax-payroll'],
   'bmf-lohnsteuerrechner-2026': ['tax-payroll', 'kv-pv'],
   'bmf-einkommensteuerrechner-2026': ['tax-payroll'],
-  'bmas-sv-rechengroessen-2026': ['tax-payroll', 'kv-pv', 'funding-eligibility'],
+  // SVBezGrV 2026 also sets the vorläufige Durchschnittsentgelt, which feeds
+  // GRV Entgeltpunkte (SGB VI §64) — hence household-interactions.
+  'bmas-sv-rechengroessen-2026': ['tax-payroll', 'kv-pv', 'funding-eligibility', 'household-interactions'],
   'bmas-rentenwert-2026': ['household-interactions'],
   'drv-rentenschaetzer-current-2026': ['household-interactions'],
   'sgb-vi-rentenformel': ['household-interactions'],
   'estg-retirement-cohort-tables': ['tax-payroll', 'kv-pv'],
   'bayern-alterseinkuenfte-rechner-2026': ['tax-payroll', 'kv-pv'],
-  'estg-bav-contribution-limits': ['funding-eligibility'],
+  // §3 Nr. 63 EStG is the TAX-FREE side and §1 SvEvG the social-insurance-
+  // free side of the same conversion limit, so this source underpins the tax
+  // and KV/PV surfaces as well as the funding caps.
+  'estg-bav-contribution-limits': ['funding-eligibility', 'tax-payroll', 'kv-pv'],
   'bmf-vorabpauschale-basiszins-2026': ['investment-insurance'],
   'estg-riester-allowance-rules': ['funding-eligibility'],
   'drv-zfa-riester-rechner': ['funding-eligibility'],
