@@ -238,6 +238,98 @@ const verifyRun = (overrides) => ({
   ...overrides,
 })
 
+// Serves the check-runs endpoint page by page, honouring the `page=` query
+// the caller actually sends, so a test can prove the request is paginated
+// rather than assuming it. `totalCount` defaults to the real number of runs.
+function pagedGh({ pages, totalCount, totals = null }) {
+  const log = []
+  const run = async (command, args) => {
+    log.push([command, ...args])
+    if (command === 'gh' && args[0] === 'api' && args[1]?.includes('/check-runs')) {
+      const page = Number(new URL(`https://api.github.com/${args[1]}`).searchParams.get('page') ?? '1')
+      const runs = pages[page - 1] ?? []
+      const total = totals ? totals[page - 1] : (totalCount ?? pages.flat().length)
+      return JSON.stringify({ total_count: total, check_runs: runs })
+    }
+    return ''
+  }
+  return { run, log, checkRunCalls: () => log.filter((c) => c[1] === 'api' && c[2]?.includes('/check-runs')) }
+}
+
+describe('verifyCheckOnSha — how the check runs are CAPTURED', () => {
+  const verifyWith = (gh) => verifyCheckOnSha({ run: gh.run, ownerRepo: 'PeterHartwieg/Rentenrechner', sha: HEAD })
+
+  it('asks for filter=all and the verify check by name, explicitly and per page', async () => {
+    // GitHub documents `filter` as defaulting to `latest`, which filters by
+    // completed_at — a queued re-run has none, so the run that must BLOCK is
+    // the one a default request is most likely to omit. The gate must not
+    // depend on the default.
+    const gh = pagedGh({ pages: [[verifyRun({})]] })
+    await verifyWith(gh)
+    const [path] = gh.checkRunCalls().map((call) => call[2])
+    const query = new URL(`https://api.github.com/${path}`).searchParams
+    expect(path).toContain(`repos/PeterHartwieg/Rentenrechner/commits/${HEAD}/check-runs`)
+    expect(query.get('filter')).toBe('all')
+    expect(query.get('check_name')).toBe(REQUIRED_VERIFY_CHECK)
+    expect(query.get('per_page')).toBe('100')
+    expect(query.get('page')).toBe('1')
+  })
+
+  it('pages until every run is collected — a queued re-run on page 2 still blocks an older success', async () => {
+    const gh = pagedGh({
+      pages: [
+        [verifyRun({ id: 101, status: 'completed', conclusion: 'success', started_at: '2026-09-09T00:00:00Z' })],
+        [verifyRun({ id: 102, status: 'queued', conclusion: null, started_at: null, completed_at: null })],
+      ],
+      totalCount: 2,
+    })
+    await expect(verifyWith(gh)).rejects.toThrow(/is still queued/)
+    expect(gh.checkRunCalls()).toHaveLength(2)
+    expect(new URL(`https://api.github.com/${gh.checkRunCalls()[1][2]}`).searchParams.get('page')).toBe('2')
+  })
+
+  it('refuses when the pages do not add up to total_count — an incomplete list can hide a pending run', async () => {
+    const gh = pagedGh({ pages: [[verifyRun({ id: 1 })], []], totalCount: 3 })
+    await expect(verifyWith(gh)).rejects.toThrow(/could not be read completely/)
+  })
+
+  it('refuses when total_count changes between pages (the set moved while being read)', async () => {
+    const gh = pagedGh({
+      pages: [[verifyRun({ id: 1 })], [verifyRun({ id: 2, started_at: '2026-09-09T03:00:00Z' })]],
+      totals: [3, 2],
+    })
+    await expect(verifyWith(gh)).rejects.toThrow(/changed while they were being read/)
+  })
+
+  it('refuses a page whose shape cannot prove completeness', async () => {
+    const cases = [
+      ['[]', /unexpected shape/],
+      ['{"check_runs":[]}', /no usable "total_count"/],
+      ['{"total_count":1}', /no "check_runs" list/],
+      ['not json', /malformed JSON/],
+    ]
+    for (const [body, expected] of cases) {
+      const run = async (command, args) => (args[1]?.includes('/check-runs') ? body : '')
+      await expect(
+        verifyCheckOnSha({ run, ownerRepo: 'PeterHartwieg/Rentenrechner', sha: HEAD }),
+        body,
+      ).rejects.toThrow(expected)
+    }
+  })
+
+  it('stops at one page when the first page already holds every run', async () => {
+    const gh = pagedGh({ pages: [[verifyRun({})]] })
+    await verifyWith(gh)
+    expect(gh.checkRunCalls()).toHaveLength(1)
+  })
+
+  it('reports "no verify check run" when the filtered query legitimately returns none', async () => {
+    const gh = pagedGh({ pages: [[]], totalCount: 0 })
+    await expect(verifyWith(gh)).rejects.toMatchObject({ code: 'VERIFY_NOT_SUCCESSFUL' })
+    await expect(verifyWith(gh)).rejects.toThrow(/no completed "verify" check run found/)
+  })
+})
+
 describe('verifyCheckOnSha — which run decides the SHA', () => {
   const verify = (checkRuns) =>
     verifyCheckOnSha({ run: fakeGh({ checkRuns }).run, ownerRepo: 'PeterHartwieg/Rentenrechner', sha: HEAD })

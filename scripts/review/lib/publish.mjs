@@ -176,6 +176,103 @@ function epochOrNull(value) {
   return Number.isNaN(parsed) ? null : parsed
 }
 
+export const CHECK_RUNS_PER_PAGE = 100
+// A single commit having more than 1 000 `verify` check runs is not a state
+// this gate should try to reason about; it stops and refuses instead.
+export const CHECK_RUNS_MAX_PAGES = 10
+
+// Builds one page request for the check-runs endpoint.
+//
+// `filter=all` is EXPLICIT. GitHub's "List check runs for a Git reference"
+// documents `filter` as defaulting to `latest`, which filters check runs by
+// their `completed_at` timestamp — so exactly the run this gate must honour
+// (a queued re-run, which has no `completed_at` and no `started_at` yet) is
+// the one a default request is most likely to omit. Asking for `all` is what
+// makes "a newer pending run blocks an older success" a property of the
+// request, not only of the local selection rule.
+//
+// `check_name` narrows server-side to the deterministic check, so pagination
+// cannot push a `verify` run off the end behind dozens of unrelated checks.
+// The GitHub-Actions app-id filter stays local: a third-party check may carry
+// the same name, and only our own Actions run is evidence.
+export function checkRunsRequestPath({ ownerRepo, sha, page = 1 }) {
+  const query = new URLSearchParams({
+    filter: 'all',
+    check_name: REQUIRED_VERIFY_CHECK,
+    per_page: String(CHECK_RUNS_PER_PAGE),
+    page: String(page),
+  })
+  return `repos/${ownerRepo}/commits/${sha}/check-runs?${query.toString()}`
+}
+
+// Collects EVERY `verify` check run on the SHA, page by page, and fails
+// closed on any incompleteness rather than judging a partial list:
+//
+// - a malformed page, a missing/non-numeric `total_count`, or a `check_runs`
+//   that is not an array → refuse,
+// - a `total_count` that changes between pages (the set moved while we read
+//   it) → refuse: the snapshot is not coherent,
+// - fewer runs collected than `total_count` once the pages run dry or the
+//   page cap is hit → refuse.
+//
+// Pagination is done with explicit `page=` requests rather than
+// `gh api --paginate` so the completeness check is ours: `--paginate`
+// concatenates one JSON object per page, and a truncated or short read would
+// otherwise be indistinguishable from a complete one.
+export async function fetchVerifyCheckRuns({ run, ownerRepo, sha }) {
+  const collected = []
+  let expectedTotal = null
+
+  for (let page = 1; page <= CHECK_RUNS_MAX_PAGES; page++) {
+    let raw
+    try {
+      raw = await run('gh', [
+        'api',
+        checkRunsRequestPath({ ownerRepo, sha, page }),
+        '-H',
+        'Accept: application/vnd.github+json',
+      ])
+    } catch (error) {
+      throw new Error(`could not read check runs for ${sha.slice(0, 8)}: ${error.message}`)
+    }
+    let parsed
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      throw new Error('check-runs API returned malformed JSON')
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('check-runs API returned an unexpected shape (not a result object)')
+    }
+    if (!Number.isInteger(parsed.total_count) || parsed.total_count < 0) {
+      throw new Error('check-runs API returned no usable "total_count" — the run list cannot be proven complete')
+    }
+    if (!Array.isArray(parsed.check_runs)) {
+      throw new Error('check-runs API returned no "check_runs" list — the run list cannot be proven complete')
+    }
+    if (expectedTotal === null) expectedTotal = parsed.total_count
+    else if (parsed.total_count !== expectedTotal) {
+      throw new Error(
+        `check runs for ${sha.slice(0, 8)} changed while they were being read ` +
+          `(total_count ${expectedTotal} → ${parsed.total_count}) — refusing to judge an incoherent snapshot`,
+      )
+    }
+
+    collected.push(...parsed.check_runs)
+    if (collected.length >= expectedTotal) break
+    if (parsed.check_runs.length === 0) break // no further pages, yet the total says otherwise
+  }
+
+  if (expectedTotal === null || collected.length < expectedTotal) {
+    throw new Error(
+      `check runs for ${sha.slice(0, 8)} could not be read completely ` +
+        `(${collected.length} of ${expectedTotal ?? 'unknown'} returned) — an incomplete list can hide a pending ` +
+        'run, so the evidence is refused rather than judged',
+    )
+  }
+  return collected
+}
+
 // Reads the deterministic verify check run for the exact head SHA and
 // requires the run that decides that SHA — see selectDecisiveVerifyRun — to
 // have concluded `success`. A queued/in_progress run blocks an older success:
@@ -183,24 +280,7 @@ function epochOrNull(value) {
 // GitHub Actions runs count (app id 15368) — a third-party check that happens
 // to be named `verify` proves nothing about `npm run verify`.
 export async function verifyCheckOnSha({ run, ownerRepo, sha }) {
-  let raw
-  try {
-    raw = await run('gh', [
-      'api',
-      `repos/${ownerRepo}/commits/${sha}/check-runs?per_page=100`,
-      '-H',
-      'Accept: application/vnd.github+json',
-    ])
-  } catch (error) {
-    throw new Error(`could not read check runs for ${sha.slice(0, 8)}: ${error.message}`)
-  }
-  let parsed
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    throw new Error('check-runs API returned malformed JSON')
-  }
-  const runs = Array.isArray(parsed?.check_runs) ? parsed.check_runs : []
+  const runs = await fetchVerifyCheckRuns({ run, ownerRepo, sha })
   const verifyRuns = runs.filter((r) => r?.name === REQUIRED_VERIFY_CHECK && r.app?.id === GITHUB_ACTIONS_APP_ID)
 
   if (verifyRuns.length === 0) {

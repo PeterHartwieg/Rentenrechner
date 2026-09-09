@@ -82,7 +82,11 @@ may be added for this (backend boundary), and no telemetry may be introduced.
    advanced. `--publish` re-fetches the PR head and that live base and
    refuses to label a moved PR; an
    approval additionally requires the GitHub-Actions-owned `verify` check
-   run to have concluded success on that exact SHA. Any run still in flight
+   run to have concluded success on that exact SHA. The run list is captured
+   explicitly (`filter=all&check_name=verify`, paged, refused if it cannot be
+   proven complete) rather than relying on the API's default `filter=latest`,
+   which filters by `completed_at` and can omit the queued re-run that must
+   block. Any run still in flight
    blocks, the newest completed run decides, and a state where "which run is
    newest" cannot be established from the fields the REST API documents
    (`status`, `conclusion`, `started_at`) is refused rather than guessed —

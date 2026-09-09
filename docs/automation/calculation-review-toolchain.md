@@ -338,7 +338,23 @@ check runs owned by the GitHub Actions app (id 15368) count — a third-party
 check merely *named* `verify` is not our deterministic verification. Runs
 belonging to a different `head_sha` void the evidence outright.
 
-**Which run decides the SHA** (`selectDecisiveVerifyRun`, `per_page=100`).
+**How the runs are captured** (`fetchVerifyCheckRuns`). The request is
+explicit about everything the answer depends on:
+`repos/{owner}/{repo}/commits/<sha>/check-runs?filter=all&check_name=verify&per_page=100&page=<n>`.
+`filter=all` matters: GitHub documents `filter` as defaulting to `latest`,
+which filters check runs by their `completed_at` timestamp — and a queued
+re-run has no `completed_at`, so the very run that must block an approval is
+the one a default request is most likely to omit. `check_name` narrows
+server-side so pagination cannot push a `verify` run off the end behind
+unrelated checks; the GitHub-Actions app-id filter stays local, because a
+third-party check may share the name. Pages are requested explicitly (rather
+than via `gh api --paginate`, which concatenates one JSON object per page)
+so completeness is checked here: a malformed page, a missing `total_count`,
+a `total_count` that changes between pages, or fewer runs collected than
+`total_count` all refuse the evidence. An incomplete list can hide a pending
+run, so it is never judged.
+
+**Which run decides the SHA** (`selectDecisiveVerifyRun`).
 Ordering is derived only from fields the REST API documents for a check run
 (`status`, `conclusion`, `started_at`, `head_sha`). Check-run `id` is *not*
 used as a clock — ids are identifiers, not a documented ordering guarantee —
