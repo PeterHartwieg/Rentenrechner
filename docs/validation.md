@@ -92,17 +92,18 @@ return path itself is never deflated.
 
 The band is oriented on long-run historical MSCI World returns: that is what
 the `/eingaben` Annahmen section tells users ("Renditeannahmen orientieren sich
-an historischen MSCI-World-Renditen"), and the print report's Methode section
-words it more strongly ("Hergeleitet aus rollierenden 30-Jahres-Fenstern (MSCI
-World) und dem realen Median MSCI World 1900–2025",
-`src/features/results/printReportRows.ts`). Neither statement is backed by a
-recorded dataset, period, or publication in this repository, so nothing about
-the three rates is citable. They are therefore absent from `validationSources`
-in `src/test/externalGoldenFixtures.ts` and are not covered by the golden
-tests. Do not add a fixture entry for them — that array is reserved for
-official sources with URLs and capture dates. If the MSCI World orientation is
-ever pinned to a specific series, record it here first and soften or source
-the print-report wording in the same change.
+an historischen MSCI-World-Renditen"). The print report's Methode section
+(`src/features/results/printReportRows.ts`) now states the same nominal,
+not-externally-validated framing. No dataset, period, or publication behind
+the three rates is recorded in this repository, so their derivation is not
+citable. They are therefore absent from `validationSources` in
+`src/test/externalGoldenFixtures.ts` and are not covered by the external-oracle
+golden tests. Internal regression snapshots (`simulate.integration.test.ts`,
+`src/test/scenarioReports/`) do pin their current values as regression anchors,
+not as validation. Do not add a fixture entry for them — that array is reserved
+for official sources with URLs and capture dates. If the MSCI World orientation
+is ever pinned to a specific series, record it here first and source the
+print-report wording in the same change.
 
 All products in a comparison share the same scenario per run, so the rate is a
 market assumption, not a product property. Compare mode keeps every product on
