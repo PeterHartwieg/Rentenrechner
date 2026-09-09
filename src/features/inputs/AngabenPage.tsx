@@ -546,10 +546,9 @@ export function AngabenPage({ navigate }: Props) {
                 <li className="angaben-aside-list-item">
                   <span className="angaben-aside-list-key">§ Annahmen</span>
                   <span className="angaben-aside-list-val">
-                    Renditeannahmen folgen historischen MSCI-World-Renditen über
-                    30 Jahre rollierend (konservativ = 10er-Quantil, Basis = realer
-                    Median, optimistisch = 90er-Quantil). Inflation:
-                    EZB-Mittelfrist-Ziel 2 %.
+                    Renditeannahmen orientieren sich an historischen MSCI-World-Renditen.
+                    Das Basis-Szenario ist eine nominale Modellannahme vor Inflation.
+                    Die heutige Kaufkraft wird separat mit der Inflationsrate berechnet.
                   </span>
                 </li>
               </ul>

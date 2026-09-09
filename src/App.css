@@ -1166,3 +1166,18 @@ th {
     display: none !important;
   }
 }
+
+/* Keep return scenarios inside the plan disclosure on narrow phones. */
+@media (max-width: 360px) {
+  .scenario-controls .segmented {
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    overflow-x: visible;
+  }
+
+  .scenario-controls .segmented button {
+    width: 100%;
+    white-space: normal;
+  }
+}

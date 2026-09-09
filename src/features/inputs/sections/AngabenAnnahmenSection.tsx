@@ -88,8 +88,8 @@ export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
       </div>
       <p className="angaben-section-lead">
         Renditeannahmen für die kapitalmarktgebundenen Produkte und
-        Inflationsmodellierung. Voreinstellungen folgen MSCI-World-Werten
-        über 30-jährige Rolling-Fenster.
+        Inflationsmodellierung. Die Renditen sind nominale Modellannahmen.
+        Die heutige Kaufkraft wird separat mit der Inflationsrate berechnet.
       </p>
 
       <div className="angaben-fields">
@@ -97,11 +97,11 @@ export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
           <span className="angaben-field-label">Konservatives Szenario</span>
           <span className="angaben-field-shell">
             <span>{formatPercent(resolvedRenditen.konservativ, 1)}</span>
-            <span className="angaben-field-suffix">real p.a.</span>
+            <span className="angaben-field-suffix">nominal p.a.</span>
           </span>
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              10er-Quantil rollierend 30 J., MSCI World
+              Niedrige Modellannahme vor Inflation
             </span>
           </span>
         </label>
@@ -110,11 +110,11 @@ export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
           <span className="angaben-field-label">Basis-Szenario</span>
           <span className="angaben-field-shell">
             <span>{formatPercent(resolvedRenditen.basis, 1)}</span>
-            <span className="angaben-field-suffix">real p.a.</span>
+            <span className="angaben-field-suffix">nominal p.a.</span>
           </span>
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              Realer Median MSCI World 1900–2025 (~ 5,2 % real)
+              Mittlere Modellannahme vor Inflation
             </span>
           </span>
         </label>
@@ -123,11 +123,11 @@ export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
           <span className="angaben-field-label">Optimistisches Szenario</span>
           <span className="angaben-field-shell">
             <span>{formatPercent(resolvedRenditen.optimistisch, 1)}</span>
-            <span className="angaben-field-suffix">real p.a.</span>
+            <span className="angaben-field-suffix">nominal p.a.</span>
           </span>
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              90er-Quantil rollierend 30 J., MSCI World
+              Hohe Modellannahme vor Inflation
             </span>
           </span>
         </label>
@@ -213,7 +213,7 @@ export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
             />
             <span className="angaben-field-meta">
               <span className="angaben-field-hint">
-                Reduziert reale Werte in der Auszahlphase
+                Rechnet zukünftige Beträge in heutige Kaufkraft um
               </span>
             </span>
           </div>

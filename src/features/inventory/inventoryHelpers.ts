@@ -21,7 +21,9 @@
  *  - CombineDashboardSidebar.tsx (bavOfferDraftToInstance)
  */
 
+import type { GermanRules } from '../../domain'
 import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../../domain/workspace'
+import { de2026Rules } from '../../rules/de2026'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { defaultWorkspace } from '../../storage'
@@ -59,19 +61,110 @@ import type {
 
 /**
  * Estimate Entgeltpunkte from years worked × current gross salary.
- * EP/year = min(salary, BBG) / Durchschnittsentgelt
- * Uses 2026 statutory values (de2026.ts: pensionCapYear = 101_400,
- * durchschnittsentgelt = 47_079).
+ * EP/year = min(salary, Beitragsbemessungsgrenze) / Durchschnittsentgelt
+ *
+ * Statutory values come from the active rule set (`rules.socialSecurity`), the
+ * same denominator `projectStatutoryPension` uses (`engine/grv.ts`). Until the
+ * simplification project this helper hardcoded `durchschnittsentgelt = 47_079`
+ * while the active 2026 value is `51_944`, so the wizard seeded
+ * `currentEntgeltpunkte` about 10.3 % too high before simulation. Reading the
+ * rules corrects the estimate downward by 9.37 %.
+ *
+ * Rough UI estimate only: it assumes today's salary for every past year and
+ * reconstructs no credited education, caring, child-rearing or unemployment
+ * periods. It is not an official contribution record.
  */
-export function estimateEpFromYears(years: number, grossSalaryYear: number): number {
+export function estimateEpFromYears(
+  years: number,
+  grossSalaryYear: number,
+  rules: GermanRules = de2026Rules,
+): number {
   if (!Number.isFinite(years) || years <= 0) return 0
   if (!Number.isFinite(grossSalaryYear) || grossSalaryYear <= 0) return 0
-  const BBG = 101_400
-  const DURCHSCHNITTSENTGELT = 47_079
-  const cappedSalary = Math.min(grossSalaryYear, BBG)
-  return DURCHSCHNITTSENTGELT > 0
-    ? Math.max(0, years * (cappedSalary / DURCHSCHNITTSENTGELT))
+  const bbg = rules.socialSecurity.pensionCapYear
+  const durchschnittsentgelt = rules.socialSecurity.durchschnittsentgelt
+  const cappedSalary = Math.min(grossSalaryYear, bbg)
+  return durchschnittsentgelt > 0
+    ? Math.max(0, years * (cappedSalary / durchschnittsentgelt))
     : 0
+}
+
+// ---------------------------------------------------------------------------
+// Career-based pension estimate (simplification project §7)
+// ---------------------------------------------------------------------------
+
+export interface CareerEstimateInput {
+  currentAge: number
+  careerStartAge: number
+  pauseYears?: number
+  grossSalaryYear: number
+}
+
+export type CareerEstimateResult =
+  | {
+      ok: true
+      contributionYears: number
+      entgeltpunkte: number
+      monthlyGrossEUR: number
+      assumptions: {
+        durchschnittsentgelt: number
+        beitragsbemessungsgrenze: number
+        aktuellerRentenwert: number
+      }
+    }
+  | { ok: false; code: 'start-after-now' | 'pauses-exceed-career' | 'no-salary' }
+
+/** Youngest age at which contribution years are plausible (Ausbildungsbeginn). */
+const MIN_CAREER_START_AGE = 14
+
+/**
+ * Rough career-based estimate of the statutory pension earned *so far*.
+ *
+ * `contributionYears = currentAge − careerStartAge − pauseYears`, fed into the
+ * rules-backed `estimateEpFromYears`. Impossible ranges are **rejected, never
+ * clipped**, so the UI can explain the problem instead of silently inventing a
+ * plausible number.
+ *
+ * `monthlyGrossEUR` values the earned Entgeltpunkte at today's Rentenwert; it
+ * is the amount earned to date, not a projection to retirement (the engine's
+ * `projectStatutoryPension` adds the remaining years).
+ */
+export function estimateCareerPension(
+  input: CareerEstimateInput,
+  rules: GermanRules = de2026Rules,
+): CareerEstimateResult {
+  const { currentAge, careerStartAge, grossSalaryYear } = input
+  const pauseYears = input.pauseYears ?? 0
+
+  if (!Number.isFinite(grossSalaryYear) || grossSalaryYear <= 0) {
+    return { ok: false, code: 'no-salary' }
+  }
+  if (
+    !Number.isFinite(currentAge) ||
+    !Number.isFinite(careerStartAge) ||
+    careerStartAge < MIN_CAREER_START_AGE ||
+    careerStartAge > currentAge
+  ) {
+    return { ok: false, code: 'start-after-now' }
+  }
+  const careerSpan = currentAge - careerStartAge
+  if (!Number.isFinite(pauseYears) || pauseYears < 0 || pauseYears > careerSpan) {
+    return { ok: false, code: 'pauses-exceed-career' }
+  }
+
+  const contributionYears = careerSpan - pauseYears
+  const entgeltpunkte = estimateEpFromYears(contributionYears, grossSalaryYear, rules)
+  return {
+    ok: true,
+    contributionYears,
+    entgeltpunkte,
+    monthlyGrossEUR: entgeltpunkte * rules.socialSecurity.aktuellerRentenwert,
+    assumptions: {
+      durchschnittsentgelt: rules.socialSecurity.durchschnittsentgelt,
+      beitragsbemessungsgrenze: rules.socialSecurity.pensionCapYear,
+      aktuellerRentenwert: rules.socialSecurity.aktuellerRentenwert,
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------

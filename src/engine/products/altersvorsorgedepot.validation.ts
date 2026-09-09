@@ -4,6 +4,12 @@ import type {
   AltersvorsorgedepotSubtype,
 } from '../../domain'
 import { inRange, intInRange, isFiniteNumber, validateFees } from '../../domain/validation/primitives'
+import {
+  AGE_AT_CONTRACT_START_BOUNDS,
+  ELIGIBLE_CHILDREN_BOUNDS,
+  PAYOUT_PLAN_END_AGE_BOUNDS,
+  RENTENFAKTOR_BOUNDS,
+} from '../../domain/validation/bounds'
 
 const VALID_AVD_SUBTYPES: readonly AltersvorsorgedepotSubtype[] = [
   'depot_no_guarantee',
@@ -42,8 +48,16 @@ export function validateAltersvorsorgedepot(avd: AltersvorsorgedepotAssumptions)
   if (!e || typeof e !== 'object') return false
   if (typeof e.directlyEligible !== 'boolean') return false
   if (typeof e.indirectSpouseEligible !== 'boolean') return false
-  if (!intInRange(e.eligibleChildren, 0, 20)) return false
-  if (!intInRange(e.ageAtContractStart, 0, 120)) return false
+  if (!intInRange(
+      e.eligibleChildren,
+      ELIGIBLE_CHILDREN_BOUNDS.min,
+      ELIGIBLE_CHILDREN_BOUNDS.max,
+    )) return false
+  if (!intInRange(
+      e.ageAtContractStart,
+      AGE_AT_CONTRACT_START_BOUNDS.min,
+      AGE_AT_CONTRACT_START_BOUNDS.max,
+    )) return false
   if (typeof e.careerStarterBonusUsed !== 'boolean') return false
   // allocation / returns
   if (!inRange(avd.riskAllocationPct, 0, 1)) return false
@@ -51,11 +65,15 @@ export function validateAltersvorsorgedepot(avd: AltersvorsorgedepotAssumptions)
   if (!inRange(avd.lowRiskAnnualReturn, -0.5, 0.5)) return false
   // payout
   if (!VALID_AVD_PAYOUT_MODES.includes(avd.payoutMode)) return false
-  if (!intInRange(avd.payoutPlanEndAge, 60, 120)) return false
+  if (!intInRange(
+      avd.payoutPlanEndAge,
+      PAYOUT_PLAN_END_AGE_BOUNDS.min,
+      PAYOUT_PLAN_END_AGE_BOUNDS.max,
+    )) return false
   if (!inRange(avd.partialCapitalPct, 0, 0.3)) return false
   if (!inRange(avd.transferCostEUR, 0, 1_000)) return false
   if (!isFiniteNumber(avd.monthlyOtherRetirementIncome) || avd.monthlyOtherRetirementIncome < 0) return false
-  if (!inRange(avd.rentenfaktor, 0, 100)) return false
+  if (!inRange(avd.rentenfaktor, RENTENFAKTOR_BOUNDS.min, RENTENFAKTOR_BOUNDS.max)) return false
   if (!avd.fees || typeof avd.fees !== 'object') return false
   if (!validateFees(avd.fees)) return false
   if (!isFiniteNumber(avd.riesterTransferCapital) || avd.riesterTransferCapital < 0) return false

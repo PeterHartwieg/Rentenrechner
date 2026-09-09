@@ -313,7 +313,8 @@
 
 @media (max-width: 480px) {
   .mc-table-wrap {
-    overflow-x: visible;
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .mc-table,
@@ -344,6 +345,8 @@
   }
 
   .mc-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;

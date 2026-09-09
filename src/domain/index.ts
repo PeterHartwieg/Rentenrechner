@@ -1,5 +1,6 @@
 export * from './fees'
 export * from './profile'
+export * from './inputStatus'
 export * from './rules'
 export * from './salary'
 export * from './retirementTax'

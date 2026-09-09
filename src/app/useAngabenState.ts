@@ -28,7 +28,13 @@ import {
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
 } from './workspaceIdentity'
-import { rebaseWhatIf as rebaseWhatIfPure } from './portfolioState'
+import {
+  commitWorkspace,
+  getWorkspaceSnapshot,
+  rebaseWhatIf as rebaseWhatIfPure,
+  updateWorkspaceStore,
+  useWorkspaceValue,
+} from './portfolioState'
 import type { MultiInstanceProductId } from './portfolioState'
 import {
   normalizeMonthlyNettoBelastung,
@@ -325,6 +331,18 @@ function computeInitialAngabenState(): InitialAngabenState {
  * for compare-mode; combine-mode goes through `parseWorkspaceJson` (which
  * runs `validateWorkspace`).
  */
+/**
+ * Functional updater over the shared workspace store, in the shape the
+ * combine-mode mutators below were written against. Module-level so it is
+ * referentially stable across renders. Only the combine-mode branch reaches it
+ * — the mutators that call it are `undefined` on the compare-mode API surface.
+ */
+function setWorkspaceState(
+  updater: (prev: Workspace | null) => Workspace | null,
+): void {
+  updateWorkspaceStore((prev) => updater(prev) ?? prev)
+}
+
 export function useAngabenState(): UseAngabenStateApi {
   // Initial state — runs once. Captures mode, profile, assumptions, and the
   // underlying workspace (combine-mode only).
@@ -346,9 +364,17 @@ export function useAngabenState(): UseAngabenStateApi {
   // immediately reflected in the § 4 receipt without any extra synchronisation
   // effect. Codex R2 P1: this is what eliminates the parallel-store data loss
   // — there is exactly one store per mode, owned by this hook.
-  const [workspace, setWorkspaceState] = useState<Workspace | null>(initial.workspace)
-
+  //
+  // The workspace itself lives in the shared module-level store owned by
+  // `portfolioState.ts` (see "Workspace store"), NOT in per-mount `useState`.
+  // Two writers on STORAGE_KEY_V2 — this hook and `usePortfolioState` — meant
+  // whichever component unmounted last wrote its own stale snapshot back over
+  // the other's edits. Reading and writing the one store removes that race and
+  // makes an edit here visible to `/` without a reload.
   const isCombine = initial.mode === 'combine'
+  const storeWorkspace = useWorkspaceValue()
+  const workspace: Workspace | null = isCombine ? storeWorkspace : null
+
 
   // Derive the canonical `profile` + `assumptions` for the active mode. In
   // combine-mode we re-derive on every render via `singletonViewOfWorkspace`;
@@ -390,6 +416,9 @@ export function useAngabenState(): UseAngabenStateApi {
   // frozen what-ifs.
   const persistNow = useCallback(() => {
     if (isCombine) {
+      // The shared workspace store persists write-through on every mutation,
+      // so this only has to cover the "user changed nothing" case that still
+      // needs a saved-mode marker.
       if (!workspace) return
       saveWorkspace(workspace)
       return
@@ -398,15 +427,20 @@ export function useAngabenState(): UseAngabenStateApi {
     safeSetItem(STORAGE_KEY_V1, buildStateJson(compareProfile, compareAssumptions))
   }, [isCombine, workspace, compareProfile, compareAssumptions])
 
-  // Persistence effect. Single dispatch by mode via `persistNow`. Compare-mode
-  // writes a v1 envelope to STORAGE_KEY_V1; combine-mode writes the full
-  // workspace to STORAGE_KEY_V2 via `saveWorkspace`. `persistNow` closes over
-  // every mutation that should trigger a save (combine-mode `workspace`,
-  // compare-mode `compareProfile` + `compareAssumptions`), so it is the only
-  // data dependency the effect needs. The first-run skip stays HERE — only the
-  // write body moved into `persistNow`, so the combine-mode `lastEditedAt`
-  // concern (skip the no-op mount write unless `persistOnMount` flags a
-  // load-bearing share-URL import) is unchanged.
+  // Persistence effect — compare-mode only. It writes the v1 envelope to
+  // STORAGE_KEY_V1, which has no other writer while this hook is mounted.
+  //
+  // Combine-mode is deliberately NOT persisted here: every workspace mutation
+  // goes through the shared store in `portfolioState.ts`, which writes through
+  // to STORAGE_KEY_V2 synchronously inside `setWorkspaceStore`. Running
+  // `persistNow()` from this effect as well serialised the very same snapshot a
+  // second time on every edit (Codex P2). `persistNow` keeps its combine branch
+  // for the one case the store cannot cover: the "Speichern und …" CTA of a
+  // visitor who changed nothing, and therefore never triggered a store write.
+  //
+  // The first-run skip stays HERE: the mount-time write is a no-op except for
+  // the load-bearing compare-mode share-URL import flagged by
+  // `initial.persistOnMount`.
   useEffect(() => {
     if (isFirstEffectRun.current) {
       isFirstEffectRun.current = false
@@ -417,8 +451,9 @@ export function useAngabenState(): UseAngabenStateApi {
       // share-URL import). This is intentionally restricted to compare-mode:
       // the combine-mode branch always sets `persistOnMount: false`.
     }
+    if (isCombine) return
     persistNow()
-  }, [persistNow, initial.persistOnMount])
+  }, [isCombine, persistNow, initial.persistOnMount])
 
   // Setters: same shape as `useCalculatorState` so section components do not
   // change. In combine-mode they route through `setWorkspaceState` with the
@@ -573,10 +608,16 @@ export function useAngabenState(): UseAngabenStateApi {
     setWorkspaceState((w) => (w ? addInstanceToWorkspace(w, productId) : w))
   }, [])
 
+  // Removal is the one mutation here that must be reversible: it destroys a
+  // contract the user entered. Routing it through `commitWorkspace` (rather
+  // than the plain store write the other mutators use) records the shared
+  // one-level undo handle, so the plan — and the § 2 status line on
+  // `/eingaben/produkte` — can offer "Rückgängig" afterwards.
   const removeInstance = useCallback(
     (productId: MultiInstanceProductId, instanceId: string) => {
-      setWorkspaceState((w) =>
-        w ? removeInstanceFromWorkspace(w, productId, instanceId) : w,
+      commitWorkspace(
+        'Vertrag entfernt',
+        removeInstanceFromWorkspace(getWorkspaceSnapshot(), productId, instanceId),
       )
     },
     [],

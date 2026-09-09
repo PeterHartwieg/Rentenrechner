@@ -12,9 +12,13 @@ import type { CopyEntry } from './types'
 
 describe('copy catalog — loaded entries', () => {
   it('exposes the migrated landing strings by stable key', () => {
-    expect(copy.de('landing.cta.combine')).toBe('Plan erstellen')
-    expect(copy.de('landing.cta.compare')).toBe('Vergleich starten')
-    expect(copy.de('landing.hero.kicker')).toContain('Plane deine Rente unabhängig')
+    expect(copy.de('landing.cta.combine')).toBe('Meine Rente einschätzen')
+    expect(copy.de('landing.cta.compare')).toBe('Sparformen vergleichen')
+    expect(copy.de('landing.cta.resume')).toBe('Meinen Plan fortsetzen')
+    expect(copy.de('landing.hero.kicker')).toBe('Deine Vorsorge. Verständlich.')
+    expect(copy.de('landing.hero.heading')).toBe('Was bleibt dir im Ruhestand?')
+    expect(copy.de('landing.hero.lead')).toContain('Ein erster Überblick')
+    expect(copy.de('landing.hero.microcopy')).toBe('Ohne Anmeldung.')
   })
 
   it('has at least 10 representative entries (spike target: 10–20)', () => {
@@ -58,7 +62,7 @@ describe('copy catalog — fail-loud on missing key', () => {
 
   it('en() returns the translation when present, undefined when not (no throw)', () => {
     // Slice 5 adds en to the short labels; step bodies stay untranslated.
-    expect(copy.en('landing.cta.combine')).toBe('Create my plan')
+    expect(copy.en('landing.cta.combine')).toBe('Estimate my retirement income')
     expect(copy.en('landing.step.beschreiben.body')).toBeUndefined()
   })
 

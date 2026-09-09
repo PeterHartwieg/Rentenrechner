@@ -105,6 +105,46 @@ describe('PrintReport', () => {
     )
   }
 
+  // Blocked household total (simplification project, lead decision §10.3):
+  // the combined-income cell must render as a dash, never as a number, and the
+  // Hinweis line must name what is missing.
+  function renderCombineWithBlockedTotal(reasonLabels: string[] | null) {
+    const bavResult: ProductResult = {
+      ...(makeSimulation('model_estimate').products[0] as ProductResult),
+      productId: 'bav',
+      label: 'bAV Direktversicherung A',
+      instanceId: 'bav-1',
+    } as unknown as ProductResult
+    return render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('model_estimate')}
+        combineMode={true}
+        portfolio={{
+          perInstance: { 'bav-1': [bavResult] },
+          combinedByScenarioId: { basis: makeCombined(2200) },
+          scenarioLabels: { basis: 'Basis' },
+        }}
+        combineHouseholdTotalBlocked={reasonLabels ? { reasonLabels } : undefined}
+      />
+    )
+  }
+
+  it('prints the combined net when the household total is not blocked', () => {
+    const { container } = renderCombineWithBlockedTotal(null)
+    expect(container.textContent).toContain('2.200')
+    expect(container.textContent).not.toContain('Netto-Gesamtrente nicht berechnet')
+  })
+
+  it('suppresses the combined net and names the missing inputs when blocked', () => {
+    const { container } = renderCombineWithBlockedTotal(['Gesetzliche Rente unbekannt.'])
+    expect(container.textContent).not.toContain('2.200')
+    expect(container.textContent).toContain(
+      'Netto-Gesamtrente nicht berechnet – fehlende Angaben: Gesetzliche Rente unbekannt.',
+    )
+  })
+
   it('renders .pr-confidence-estimate for a product with model_estimate inputConfidence (combine-mode)', () => {
     const { container } = renderCombineWithEvidence('model_estimate')
     const indicator = container.querySelector('.pr-confidence-estimate')
@@ -129,11 +169,13 @@ describe('PrintReport', () => {
     expect(indicator?.textContent).toContain('lt. Beleg')
   })
 
-  it('renders .pr-confidence-default with "Unbekannt" when inputConfidence is undefined (combine-mode)', () => {
+  it('renders .pr-confidence-default with "Keine Angabe" when inputConfidence is undefined (combine-mode)', () => {
     const { container } = renderCombineWithEvidence(undefined)
     const indicator = container.querySelector('.pr-confidence-default')
     expect(indicator).not.toBeNull()
-    expect(indicator?.textContent).toContain('Unbekannt')
+    // Absent evidence exports as "Keine Angabe"; "Unbekannt" is reserved for an
+    // explicit user "weiß ich nicht" (InputStatus 'unknown').
+    expect(indicator?.textContent).toContain('Keine Angabe')
   })
 
   it('.pr-disclaimer-top is the FIRST child of #print-report', () => {

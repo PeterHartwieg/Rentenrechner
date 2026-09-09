@@ -642,6 +642,27 @@
   }
 }
 
+/* Overview owns its gutters; the legacy receipt grid stays on the old path. */
+.mein-plan-overview-host { min-width: 0; }
+.mein-plan-view-back { max-width: 960px; margin: 0 auto; padding: 16px 40px 0; }
+.mein-plan-view-back button { font: inherit; cursor: pointer; }
+.mein-plan-view-back button:focus-visible { outline: 2px solid var(--rw-accent); outline-offset: 4px; }
+.mein-plan-target-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--rw-rule);
+  background: var(--rw-bg-paper-soft);
+}
+.mein-plan-target-editor h2 { margin: 0; font-size: 1.25rem; }
+.mein-plan-target-editor .field { max-width: 360px; }
+.mein-plan-target-editor button:disabled { opacity: 0.55; cursor: default; }
+@media (max-width: 639px) {
+  .mein-plan-view-back { padding: 12px 16px 0; }
+  .mein-plan-target-editor { padding: 16px; }
+}
+
 /* Assumptions and tested changes stay next to the headline, also on phones. */
 .mein-plan-context {
   padding: 16px 18px;

@@ -6,6 +6,11 @@ import {
   validateCapitalGuarantee,
   validateFees,
 } from '../../domain/validation/primitives'
+import {
+  AGE_AT_CONTRACT_START_BOUNDS,
+  RENTENFAKTOR_BOUNDS,
+  ZEITRENTE_YEARS_BOUNDS,
+} from '../../domain/validation/bounds'
 
 const VALID_RIESTER_PAYOUT_MODES: readonly string[] = ['leibrente', 'zeitrente']
 
@@ -19,14 +24,18 @@ export function validateRiester(r: RiesterAssumptions): boolean {
   // indirectSpouseEligible is optional for backwards compatibility; reject only
   // when present and of the wrong type.
   if (e.indirectSpouseEligible !== undefined && typeof e.indirectSpouseEligible !== 'boolean') return false
-  if (!intInRange(e.ageAtContractStart, 0, 120)) return false
+  if (!intInRange(
+      e.ageAtContractStart,
+      AGE_AT_CONTRACT_START_BOUNDS.min,
+      AGE_AT_CONTRACT_START_BOUNDS.max,
+    )) return false
   if (typeof e.careerStarterBonusUsed !== 'boolean') return false
   if (!validateCapitalGuarantee(r.capitalGuarantee)) return false
   // payout
   if (!VALID_RIESTER_PAYOUT_MODES.includes(r.payoutMode)) return false
-  if (!inRange(r.rentenfaktor, 0, 100)) return false
+  if (!inRange(r.rentenfaktor, RENTENFAKTOR_BOUNDS.min, RENTENFAKTOR_BOUNDS.max)) return false
   if (typeof r.rentenfaktorConfirmed !== 'boolean') return false
-  if (!intInRange(r.zeitrenteYears, 1, 50)) return false
+  if (!intInRange(r.zeitrenteYears, ZEITRENTE_YEARS_BOUNDS.min, ZEITRENTE_YEARS_BOUNDS.max)) return false
   if (!inRange(r.partialCapitalPct, 0, 0.3)) return false
   if (!isFiniteNumber(r.monthlyOtherRetirementIncome) || r.monthlyOtherRetirementIncome < 0) return false
   if (!r.fees || typeof r.fees !== 'object') return false

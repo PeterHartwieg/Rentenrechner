@@ -8,6 +8,7 @@ import type { RiesterFundingResult, RiesterAssumptions } from './products/rieste
 import type { StatutoryPensionResult, StatutoryPensionAssumptions } from './products/grv'
 import type { EtfAssumptions } from './products/etf'
 import type { MonteCarloAssumptions } from './monteCarlo'
+import type { InputStatusMap } from './inputStatus'
 import type { EvidenceState } from './instances'
 
 export interface YearlyProjection {
@@ -211,6 +212,13 @@ export interface ScenarioAssumptions {
    * / statutory pension have no editable contribution at all.
    */
   contributionInput?: ContributionInput
+  /**
+   * Scenario-level input status for profile and statutory-pension fields (the
+   * v1 singleton twin of `WorkspaceAssumptionsV2.inputStatus`). Reserved keys
+   * live in `src/domain/inputStatus.ts`. Optional and additive; absent
+   * resolves to `'assumed'`.
+   */
+  inputStatus?: InputStatusMap
 }
 
 /**

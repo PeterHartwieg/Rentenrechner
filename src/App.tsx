@@ -101,6 +101,20 @@ const KapitalPage = lazy(() =>
 const VergleichDetailPage = lazy(() =>
   import('./features/vergleich-detail/VergleichDetailPage').then((m) => ({ default: m.VergleichDetailPage })),
 )
+const VergleichJourneyPage = lazy(() =>
+  import('./features/vergleich/VergleichJourneyPage').then((m) => ({ default: m.VergleichJourneyPage })),
+)
+const VorsorgeNeuPage = lazy(() =>
+  import('./features/vorsorge/VorsorgeNeuPage').then((m) => ({ default: m.VorsorgeNeuPage })),
+)
+const VertragBearbeitenPage = lazy(() =>
+  import('./features/vertrag-detail/VertragBearbeitenPage').then((m) => ({
+    default: m.VertragBearbeitenPage,
+  })),
+)
+const AlternativenPage = lazy(() =>
+  import('./features/alternativen/AlternativenPage').then((m) => ({ default: m.AlternativenPage })),
+)
 
 function App() {
   const { route, navigate } = useRoute()
@@ -165,16 +179,23 @@ function App() {
 
   function handleLandingChoice(choice: LandingChoice) {
     // Scrub ?view=landing from the URL so back-button + refresh land cleanly
-    // on the chosen dashboard view, not back on the picker.
+    // on the chosen destination, not back on the picker.
     if (typeof window !== 'undefined' && appViewFromUrl(window.location.search) !== null) {
       window.history.replaceState(null, '', routeToPath(ROUTES.home))
     }
-    // The dashboard's mode + (compare-mode) visibleProducts seed + (combine-
-    // mode) wizard launch all happen inside Calculator's pendingChoice
-    // useEffect. We only flip the view here so the lazy boundary
-    // unsuspends and Calculator mounts.
+    // The choice's `visibleProducts` seed (topic preselection) rides along in
+    // `pendingChoice`; each destination consumes it in its own mount effect.
     setPendingChoice(choice)
-    setCalculatorView(choice.kind)
+    if (choice.kind === 'compare') {
+      // The comparison is its own route now. `/` stays the plan, so picking
+      // "Vergleich" must not flip the home view into a compare dashboard —
+      // that is what used to make the two surfaces fight over one URL.
+      navigate(ROUTES.vergleich)
+      return
+    }
+    // Combine: `/` hosts the plan. Calculator's pendingChoice effect sets the
+    // workspace mode and opens the onboarding wizard, as before.
+    setCalculatorView('combine')
   }
 
   // Workspace-tabs collapse: the legacy `rw-dashboard-meta__home-btn`
@@ -253,6 +274,34 @@ function App() {
       // invalid-id and compare-mode empty states; App.tsx only routes the
       // tagged variant and forwards the instance id.
       body = <VertragDetailPage instanceId={route.instanceId} navigate={navigate} />
+      break
+    case 'vertrag-bearbeiten':
+      // Editable sibling of the drill-in. Resolves the instance across the
+      // workspace product arrays and renders the same empty state for an
+      // unknown id.
+      body = <VertragBearbeitenPage instanceId={route.instanceId} navigate={navigate} />
+      break
+    case 'vorsorge-neu':
+      // "Vertrag hinzufügen" from the plan. `?produkt=<ProductId>` (read by
+      // the container, not carried in the Route variant) skips the picker.
+      body = <VorsorgeNeuPage navigate={navigate} />
+      break
+    case 'alternativen':
+      // Saved "Was wäre wenn"-Alternativen for the plan. `?id=<whatIfId>`
+      // (read by the container, not carried in the Route variant) opens one.
+      body = <AlternativenPage navigate={navigate} />
+      break
+    case 'vergleich':
+      // Independent comparison journey. Uses the compare-mode singleton
+      // state and never touches the combine workspace, so `/` (the personal
+      // plan) and `/vergleich` cannot overwrite each other.
+      body = (
+        <VergleichJourneyPage
+          navigate={navigate}
+          pendingChoice={pendingChoice}
+          onPendingChoiceConsumed={() => setPendingChoice(null)}
+        />
+      )
       break
     case 'kapital':
       // Full-page lifecycle chart + Wendepunkte table (PR 8). Dual-source:

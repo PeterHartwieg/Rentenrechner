@@ -1,3 +1,4 @@
+import { MeasuredResponsiveContainer } from '../../ui/charts/MeasuredResponsiveContainer'
 import '../../ui/charts.css'
 import './FeeDragChart.css'
 import { useCallback, useState } from 'react';
@@ -5,7 +6,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -103,7 +103,7 @@ export function FeeDragChart({
       </div>
       <div className="fee-drag-chart-wrap">
         <div className="chart-frame small">
-          <ResponsiveContainer width="100%" height="100%" onResize={handleChartResize}>
+          <MeasuredResponsiveContainer onResize={handleChartResize}>
             <BarChart
               data={buildFeeDragChartData(selectedResults, retirementAge, comparisonEndAge)}
               margin={density.margins}
@@ -129,7 +129,7 @@ export function FeeDragChart({
               <Bar dataKey="Netto-Rendite" stackId="a" fill="#22c55e" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               <Bar dataKey="Gebühren gesamt" stackId="b" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
-          </ResponsiveContainer>
+          </MeasuredResponsiveContainer>
         </div>
         <div className="fee-drag-legend fee-drag-legend--overlay" {...legendTargetProps}>
           {LEGEND_ITEMS.map(({ color, label }) => {

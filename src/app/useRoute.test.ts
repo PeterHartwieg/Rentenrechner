@@ -197,3 +197,59 @@ describe('pathToRoute / routeToPath — /eingaben/produkte (PR 2)', () => {
     expect(routeToPath(ROUTES.eingaben)).toBe('/eingaben')
   })
 })
+
+
+// ---------------------------------------------------------------------------
+// Simplification 2C/2D — `/vergleich`, `/vorsorge/neu`,
+// `/vertrag/:instanceId/bearbeiten`.
+// ---------------------------------------------------------------------------
+
+describe('pathToRoute / routeToPath — simplification routes', () => {
+  it('round-trips /vergleich without shadowing /vergleich/details', () => {
+    expect(pathToRoute('/vergleich')).toEqual({ kind: 'vergleich' })
+    expect(pathToRoute('/vergleich/details')).toEqual({ kind: 'vergleich-detail' })
+    expect(routeToPath(ROUTES.vergleich)).toBe('/vergleich')
+    expect(routeToPath(ROUTES.vergleichDetail)).toBe('/vergleich/details')
+  })
+
+  it('round-trips /vorsorge/neu', () => {
+    expect(pathToRoute('/vorsorge/neu')).toEqual({ kind: 'vorsorge-neu' })
+    expect(routeToPath(ROUTES.vorsorgeNeu)).toBe('/vorsorge/neu')
+  })
+
+  it('round-trips /alternativen', () => {
+    expect(pathToRoute('/alternativen')).toEqual({ kind: 'alternativen' })
+    expect(routeToPath(ROUTES.alternativen)).toBe('/alternativen')
+    // `?id=<whatIfId>` is the container's business — it never enters the path.
+    expect(routeToPath(ROUTES.alternativen)).not.toContain('?')
+  })
+
+  it('matches /vertrag/:id/bearbeiten before the bare /vertrag/:id prefix', () => {
+    // The bare pattern's `(.+)` is greedy: without ordering, the instance id
+    // would come back as `etf-1/bearbeiten`.
+    expect(pathToRoute('/vertrag/etf-1/bearbeiten')).toEqual({
+      kind: 'vertrag-bearbeiten',
+      instanceId: 'etf-1',
+    })
+    expect(pathToRoute('/vertrag/etf-1')).toEqual({ kind: 'vertrag', instanceId: 'etf-1' })
+  })
+
+  it('round-trips a colon-bearing instance id through the editor route', () => {
+    const id = 'bav-2026:1f3a'
+    const path = routeToPath(ROUTES.vertragBearbeiten(id))
+    expect(path).toBe('/vertrag/bav-2026%3A1f3a/bearbeiten')
+    expect(pathToRoute(path)).toEqual({ kind: 'vertrag-bearbeiten', instanceId: id })
+  })
+
+  it('keeps the decodeURIComponent guard on the editor route', () => {
+    // A malformed percent-escape must fall through to 404, not throw out of
+    // the router and take the initial render with it.
+    expect(pathToRoute('/vertrag/%E0%A4%A/bearbeiten')).toEqual(ROUTES.notFound)
+  })
+
+  it('tolerates a trailing slash on the new static routes', () => {
+    expect(pathToRoute('/vergleich/')).toEqual({ kind: 'vergleich' })
+    expect(pathToRoute('/vorsorge/neu/')).toEqual({ kind: 'vorsorge-neu' })
+    expect(pathToRoute('/alternativen/')).toEqual({ kind: 'alternativen' })
+  })
+})

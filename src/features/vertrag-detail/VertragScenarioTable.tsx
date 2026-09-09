@@ -104,21 +104,23 @@ export function VertragScenarioTable({
       </div>
 
       {rows.length > 0 ? (
-        <table className="vertrag-scenario-table">
-          <thead>
-            <tr>
-              <th>Szenario</th>
-              <th>Was sich ändert</th>
-              <th className="vertrag-num">Netto-Rente</th>
-              <th className="vertrag-num">Δ ggü. heute</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <ScenarioRowView key={row.id} row={row} />
-            ))}
-          </tbody>
-        </table>
+        <div className="vertrag-table-scroll" role="region" aria-label="Vertragsszenarien" tabIndex={0}>
+          <table className="vertrag-scenario-table">
+            <thead>
+              <tr>
+                <th>Szenario</th>
+                <th>Was sich ändert</th>
+                <th className="vertrag-num">Netto-Rente</th>
+                <th className="vertrag-num">Δ ggü. heute</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <ScenarioRowView key={row.id} row={row} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <p className="vertrag-scenario-empty">
           Für diesen Vertrag stehen derzeit keine Szenarien zur Verfügung — vermutlich ist er bereits gekündigt oder das Angebot ist noch nicht aktiviert.

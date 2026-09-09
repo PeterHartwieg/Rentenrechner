@@ -140,6 +140,20 @@ describe('buildExportCsv', () => {
     expect(headerRow).toContain('Datenqualität')
   })
 
+  it('compare-mode singleton export is untouched by the combine suppression (#395)', () => {
+    // Paired with the combine-mode blocked cases below: `buildExportCsv` has no
+    // `householdTotalBlocked` option at all, so the compare path keeps writing a
+    // Netto-Rente for every product.
+    const csv = buildExportCsv(BASE_OPTS)
+    const lines = csv.split('\n')
+    const headerIdx = lines.findIndex((l) => l.startsWith('Detailvergleich')) + 1
+    const netCol = lines[headerIdx].split(',').indexOf('Netto-Rente mtl. (EUR)')
+    expect(netCol).toBeGreaterThan(-1)
+    const dataRow = lines[headerIdx + 1].split(',')
+    expect(dataRow[netCol]).not.toBe('')
+    expect(Number(dataRow[netCol])).toBeGreaterThan(0)
+  })
+
   it('discloses the active inflation assumption', () => {
     const csv = buildExportCsv(BASE_OPTS)
     expect(csv).toContain('Aktive Annahmen')
@@ -778,5 +792,119 @@ describe('buildCombinePortfolioCsv — gh#59 byInstance net regression', () => {
     const nettoRente = Number(cols[7])
     // Falls back to per-instance value (400) when byInstance has no entry.
     expect(nettoRente).toBeCloseTo(BAV_PER_INSTANCE_NET, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Blocked household total (simplification project, lead decision §10.3):
+// the Netto-Einkommen cell is blank — never 0, never a placeholder — and one
+// Hinweis line names the missing inputs.
+// ---------------------------------------------------------------------------
+
+describe('buildCombinePortfolioCsv — suppressed household total', () => {
+  const baseOpts = {
+    perInstance: { 'bav-1': [FIXTURE_BAV_INSTANCE_RESULT] },
+    combinedByScenarioId: { basis: FIXTURE_COMBINED },
+    scenarioLabels: { basis: 'Basis' },
+  }
+
+  /** Data rows of the section whose title sits at `titleIndex` (header + rows). */
+  function sectionRows(lines: string[], titleIndex: number): string[] {
+    const out: string[] = []
+    for (let i = titleIndex + 2; i < lines.length && lines[i] !== ''; i++) out.push(lines[i])
+    return out
+  }
+
+  function incomeRow(csv: string): string[] {
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Kombiniertes Renteneinkommen')
+    expect(idx).toBeGreaterThanOrEqual(0)
+    return lines[idx + 2].split(',')
+  }
+
+  it('emits the aggregated net when nothing blocks', () => {
+    const cols = incomeRow(buildCombinePortfolioCsv(baseOpts))
+    expect(cols[1]).toBe('2345.67')
+  })
+
+  it('emits an empty cell — not 0 — when the total is blocked', () => {
+    const cols = incomeRow(
+      buildCombinePortfolioCsv({
+        ...baseOpts,
+        householdTotalBlocked: { reasonLabels: ['Aktueller Wert von „ETF" ist unbekannt.'] },
+      }),
+    )
+    expect(cols[1]).toBe('')
+    expect(cols[1]).not.toBe('0.00')
+    // Issue #395: the statutory net is a component of the same blocked total,
+    // so it is blanked too — never exported as an approximated figure.
+    expect(cols[2]).toBe('')
+  })
+
+  it('names the missing inputs in the Hinweis block', () => {
+    const csv = buildCombinePortfolioCsv({
+      ...baseOpts,
+      householdTotalBlocked: { reasonLabels: ['Gesetzliche Rente unbekannt.'] },
+    })
+    const lines = csv.split('\n')
+    expect(lines[0]).toBe('Hinweis')
+    expect(csv).toContain(
+      'Netto-Gesamtrente nicht berechnet – fehlende Angaben: Gesetzliche Rente unbekannt.',
+    )
+  })
+
+  it('blanks every per-instance Netto-Rente cell in a multi-contract plan (#395)', () => {
+    // Combine, two contracts, statutory-pension step skipped: the per-contract
+    // nets are back-allocated shares of the blocked household total, so they are
+    // blank too. Beitrag / Kapital / Brutto-Rente stay — they are per-contract
+    // figures the user did supply.
+    const csv = buildCombinePortfolioCsv({
+      ...TWO_INSTANCE_OPTS,
+      householdTotalBlocked: {
+        reasonLabels: ['Die Angaben zu deiner gesetzlichen Rente stehen noch aus.'],
+      },
+    })
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const header = lines[idx + 1].split(',')
+    const netCol = header.indexOf('Netto-Rente mtl. (EUR)')
+    const grossCol = header.indexOf('Brutto-Rente mtl. (EUR)')
+    expect(netCol).toBeGreaterThan(-1)
+
+    const rows = sectionRows(lines, idx)
+    expect(rows).toHaveLength(2)
+    for (const row of rows) {
+      const cols = row.split(',')
+      expect(cols[netCol]).toBe('')
+      expect(cols[grossCol]).not.toBe('')
+    }
+    // And the combined section's statutory column.
+    const incomeIdx = lines.findIndex((l) => l === 'Kombiniertes Renteneinkommen')
+    expect(lines[incomeIdx + 2].split(',')[2]).toBe('')
+    expect(csv).toContain('Netto-Gesamtrente nicht berechnet')
+  })
+
+  it('keeps every per-instance Netto-Rente cell when nothing blocks', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const netCol = lines[idx + 1].split(',').indexOf('Netto-Rente mtl. (EUR)')
+    const rows = sectionRows(lines, idx)
+    expect(rows).toHaveLength(2)
+    for (const row of rows) expect(row.split(',')[netCol]).not.toBe('')
+  })
+
+  it('exports "Keine Angabe" for a row without any evidence metadata', () => {
+    const csv = buildCombinePortfolioCsv({
+      ...baseOpts,
+      perInstance: {
+        'bav-1': [{ ...FIXTURE_BAV_INSTANCE_RESULT, inputConfidence: undefined }],
+      },
+    })
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const row = lines.slice(idx + 2).find((l) => l.startsWith('bav-1,'))
+    expect(row).toBeDefined()
+    expect(row!.split(',')[9]).toBe('Keine Angabe')
   })
 })

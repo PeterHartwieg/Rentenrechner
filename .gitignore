@@ -47,3 +47,4 @@ reports
 
 # Local calculation-review receipts (issue #382) — machine-readable, per-machine, never committed
 .review-receipts/
+.playwright-mcp/

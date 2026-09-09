@@ -7,6 +7,7 @@ import type {
 } from '../../domain'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../../domain/workspace'
 import type { InstanceCommon, EvidenceState } from '../../domain/instances'
+import type { InputStatusMap } from '../../domain/inputStatus'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import {
   buildVergleichDetailCardData,
@@ -25,7 +26,11 @@ import {
 import { PRODUCT_REGISTRY, getProductMeta } from '../../engine/productRegistry'
 import { legalConstants } from '../../rules/legalConstants'
 import { formatCurrency, formatPercent } from '../../utils/format'
-import { evidenceStateToProvKind, formatEvidenceStateForExport } from './provenanceHelpers'
+import {
+  formatExportProvenance,
+  inputStatusToProvKind,
+  resolveInputStatus,
+} from './provenanceHelpers'
 import { buildLifecycleLineSeries, type LifecycleSeriesResult } from './breakEvenSeries'
 import { buildWendepunkte, type WendepunktRow } from '../kapital/wendepunkte'
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon'
@@ -501,8 +506,8 @@ export interface PrintVertragKpi {
 /** A single provenance-list line in the print "Vertrag im Detail" block. */
 export interface PrintVertragProvenanceRow {
   readonly label: string
-  /** German evidence label routed through `formatEvidenceStateForExport` (`'Bestätigt'`
-   *  / `'lt. Beleg'` / `'Schätzwert'` / `'Unbekannt'`). */
+  /** German label routed through `formatExportProvenance` (`'Bestätigt'` /
+   *  `'lt. Beleg'` / `'Schätzwert'` / `'Unbekannt'` / `'Keine Angabe'`). */
   readonly evidenceLabel: string
   /** Underlying evidence kind for the print's coloured pill (matches PrintReport.css). */
   readonly evidenceKind: 'confirmed' | 'model' | 'default'
@@ -532,6 +537,8 @@ interface BuildPrintVertragBlocksInput {
   perInstance: Record<string, ProductResult[]>
   scenarioId: string
   combinedForScenario: CombinedResult | undefined
+  /** `true` when `selectResultReadiness` suppressed the household total (#395). */
+  householdTotalBlocked?: boolean
 }
 
 /**
@@ -548,6 +555,7 @@ export function buildPrintVertragBlocks({
   perInstance,
   scenarioId,
   combinedForScenario,
+  householdTotalBlocked = false,
 }: BuildPrintVertragBlocksInput): PrintVertragBlock[] {
   const wsa = workspace.baseline.assumptions
   const profile = workspace.baseline.profile
@@ -596,6 +604,9 @@ export function buildPrintVertragBlocks({
         {
           label: 'Netto-Rente',
           value: netMonthly,
+          // Issue #395: a per-contract net is a share of the household total.
+          // When that total is blocked, print a dash — not an approximation.
+          displayOverride: householdTotalBlocked ? '—' : undefined,
           sublabel: 'pro Monat',
         },
       ]
@@ -743,6 +754,7 @@ type SlotInstance = {
   monthlyOwnContribution?: number
   anbieter?: string
   evidenceMap?: Record<string, EvidenceState>
+  inputStatus?: InputStatusMap
 }
 
 /**
@@ -907,12 +919,22 @@ function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
 function buildProvenanceRows(instance: SlotInstance, productId: ProductId): PrintVertragProvenanceRow[] {
   const fields = fieldsFor(productId)
   const evidence = instance.evidenceMap ?? {}
+  const statusMap = instance.inputStatus
   return fields.map((field) => {
     const state = evidence[field.evidenceKey]
-    const kind = evidenceStateToProvKind(state)
+    const explicitStatus = statusMap?.[field.evidenceKey]
+    // `inputStatus` wins when present; otherwise the legacy evidence state
+    // decides. "No metadata at all" keeps the neutral pill and prints
+    // `Keine Angabe` — it must not be dressed up as a reviewed model value.
+    const kind =
+      explicitStatus !== undefined || state !== undefined
+        ? inputStatusToProvKind(resolveInputStatus(statusMap, state, field.evidenceKey))
+        : 'default'
     return {
       label: field.label,
-      evidenceLabel: formatEvidenceStateForExport(state),
+      evidenceLabel: formatExportProvenance(explicitStatus, state),
+      // The print stylesheet has three pill classes; an explicit 'unknown'
+      // rides the neutral one and stays distinguishable through its label.
       evidenceKind: kind === 'model' ? 'model' : kind === 'confirmed' ? 'confirmed' : 'default',
     }
   })

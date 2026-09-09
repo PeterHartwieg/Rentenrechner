@@ -1,24 +1,24 @@
 [
   {
     "key": "landing.hero.kicker",
-    "de": "Plane deine Rente unabhängig",
-    "en": "An open look at your retirement provision",
+    "de": "Deine Vorsorge. Verständlich.",
+    "en": "Your retirement. Made clear.",
     "surface": "landing",
     "risk": "normal",
     "description": "Mono kicker above the homepage H1."
   },
   {
     "key": "landing.cta.combine",
-    "de": "Plan erstellen",
-    "en": "Create my plan",
+    "de": "Meine Rente einschätzen",
+    "en": "Estimate my retirement income",
     "surface": "landing",
     "risk": "normal",
     "description": "Primary CTA label — opens the combine-mode inventory wizard."
   },
   {
     "key": "landing.cta.compare",
-    "de": "Vergleich starten",
-    "en": "Start comparison",
+    "de": "Sparformen vergleichen",
+    "en": "Compare savings options",
     "surface": "landing",
     "risk": "normal",
     "description": "Secondary CTA label — opens compare mode."
@@ -29,49 +29,52 @@
     "en": "How it works",
     "surface": "landing",
     "risk": "normal",
-    "description": "aria-label for the 3-step process list."
+    "description": "Accessible label for two onboarding steps plus optional contracts."
   },
   {
     "key": "landing.step.beschreiben.heading",
-    "de": "Du beschreibst deine Situation.",
+    "de": "Über dich",
     "surface": "landing",
     "risk": "normal",
-    "description": "Step I heading."
+    "description": "Step I heading.",
+    "en": "About you"
   },
   {
     "key": "landing.step.beschreiben.body",
-    "de": "Geburtsjahr, Brutto, Familienstand, bestehende Verträge. Alles bleibt in deinem Browser. Deine Daten werden nicht extern verarbeitet.",
+    "de": "Ein paar Angaben zu Alter, Einkommen und Krankenversicherung.",
     "surface": "landing",
     "risk": "normal",
-    "description": "Step I body — privacy reassurance."
+    "description": "Step I body — minimum profile details."
   },
   {
     "key": "landing.step.rechnen.heading",
-    "de": "Der Rechner zeigt dir transparent die Möglichkeiten.",
+    "de": "Deine Rente",
     "surface": "landing",
     "risk": "normal",
-    "description": "Step II heading."
+    "description": "Step II heading.",
+    "en": "Your pension"
   },
   {
     "key": "landing.step.rechnen.body",
-    "de": "Gesetzliche Rente, ETF-Sparpläne, Betriebs- und Privatrenten. Jede Annahme ist erklärt und kann geändert werden.",
+    "de": "Nutze deine Renteninformation, schätze grob oder ergänze die Angabe später.",
     "surface": "landing",
     "risk": "normal",
-    "description": "Step II body — what is calculated."
+    "description": "Step II body — pension input can be deferred."
   },
   {
     "key": "landing.step.entscheiden.heading",
-    "de": "Du entscheidest informiert.",
+    "de": "Verträge sind optional",
     "surface": "landing",
     "risk": "normal",
-    "description": "Step III heading."
+    "description": "Optional contracts after the two onboarding steps.",
+    "en": "Contracts are optional"
   },
   {
     "key": "landing.step.entscheiden.body",
-    "de": "Wir nennen kein „bestes“ Produkt. Du siehst die Zahlen zu jeder Option und entscheidest selbst.",
+    "de": "Nach zwei kurzen Schritten siehst du deinen Plan. Bestehende Verträge kannst du danach ergänzen.",
     "surface": "landing",
     "risk": "normal",
-    "description": "Step III body — no recommendation framing (not-advice posture)."
+    "description": "Optional contracts after the two onboarding steps."
   },
   {
     "key": "landing.featured.kicker",
@@ -79,7 +82,7 @@
     "en": "Featured articles",
     "surface": "landing",
     "risk": "normal",
-    "description": "Kicker above the featured-articles right-rail card."
+    "description": "Kicker above featured articles below the hero."
   },
   {
     "key": "landing.aside.aria",
@@ -87,12 +90,12 @@
     "en": "Recommended content and site operator",
     "surface": "landing",
     "risk": "normal",
-    "description": "aria-label for the right-rail aside region."
+    "description": "Accessible label for articles and site operator below the hero."
   },
   {
     "key": "landing.about.kicker",
-    "de": "Wer steht hinter RentenWiki",
-    "en": "Who is behind RentenWiki",
+    "de": "Wer steht hinter RentenWiki.de",
+    "en": "Who is behind RentenWiki.de",
     "surface": "landing",
     "risk": "brand",
     "description": "Kicker on the 'who runs this' panel. Brand-sensitive: names the public brand (RentenWiki) — must never regress to a 'Rentenrechner' reference."
@@ -104,5 +107,109 @@
     "surface": "landing",
     "risk": "normal",
     "description": "Heading for the topic-page hub navigation."
+  },
+  {
+    "key": "landing.hero.heading",
+    "de": "Was bleibt dir im Ruhestand?",
+    "en": "What will you have in retirement?",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Homepage H1."
+  },
+  {
+    "key": "landing.hero.lead",
+    "de": "Ein erster Überblick mit wenigen Angaben. Details ergänzt du, wenn du möchtest.",
+    "en": "A first overview with just a few details. Add more whenever you like.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Introductory hero copy."
+  },
+  {
+    "key": "landing.cta.resume",
+    "de": "Meinen Plan fortsetzen",
+    "en": "Continue my plan",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Primary CTA for any saved mode; fires the combine choice so the app resumes the saved plan."
+  },
+  {
+    "key": "landing.hero.microcopy",
+    "de": "Ohne Anmeldung.",
+    "en": "No sign-up required.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Reassurance below the hero actions."
+  },
+  {
+    "key": "landing.example.aria",
+    "de": "Ergebnisvorschau mit Beispielwerten",
+    "en": "Result preview with example values",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Accessible label for the static example aside."
+  },
+  {
+    "key": "landing.example.heading",
+    "de": "So kann ein Ergebnis aussehen",
+    "en": "Here is what a result could look like",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Labels the preview as an example before showing numbers."
+  },
+  {
+    "key": "landing.example.total",
+    "de": "ca. 2.450 €",
+    "en": "approx. €2,450",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Fixed illustrative total, never a personal calculation."
+  },
+  {
+    "key": "landing.example.label",
+    "de": "Gesamt · netto pro Monat",
+    "en": "Total · net per month",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Scope of the illustrative total."
+  },
+  {
+    "key": "landing.example.basis",
+    "de": "Mit 67 · heutige Kaufkraft",
+    "en": "At 67 · today’s purchasing power",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Fixed age and money basis for the illustrative total."
+  },
+  {
+    "key": "landing.example.pension",
+    "de": "Gesetzliche Rente",
+    "en": "Statutory pension",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "First illustrative income source."
+  },
+  {
+    "key": "landing.example.etf",
+    "de": "ETF-Depot",
+    "en": "ETF portfolio",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Second illustrative income source."
+  },
+  {
+    "key": "landing.example.bav",
+    "de": "Betriebsrente",
+    "en": "Workplace pension",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Third illustrative income source."
+  },
+  {
+    "key": "landing.example.note",
+    "de": "Frei gewähltes Beispiel · nicht dein Ergebnis",
+    "en": "Arbitrary example · not your result",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "Explicit example disclaimer; this aside never reads or writes saved state."
   }
 ]

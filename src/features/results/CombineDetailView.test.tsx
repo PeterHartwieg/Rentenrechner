@@ -86,6 +86,33 @@ function defaultProps(workspace: Workspace) {
   }
 }
 
+describe('CombineDetailView — blocked household total (#395)', () => {
+  it('dashes the Netto-Rente column and leaves the per-contract columns alone', () => {
+    const ws = makeBaseWorkspace()
+    const props = defaultProps(ws)
+    const { container } = render(
+      <CombineDetailView {...props} householdTotalBlocked />
+    )
+    const rows = Array.from(container.querySelectorAll('tbody tr'))
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      const cells = row.querySelectorAll('td')
+      // Column 5 is "Netto-Rente mtl."; column 3 is "Kapital z. Renteneintritt".
+      // The break-even note may follow the value; the figure itself is gone.
+      expect(cells[5].textContent).toMatch(/^—/)
+      expect(cells[5].textContent).not.toMatch(/^[\d.,]/)
+      expect(cells[3].textContent).not.toBe('—')
+    }
+  })
+
+  it('renders the net figure when nothing blocks', () => {
+    const ws = makeBaseWorkspace()
+    const { container } = render(<CombineDetailView {...defaultProps(ws)} />)
+    const cells = container.querySelectorAll('tbody tr')[0].querySelectorAll('td')
+    expect(cells[5].textContent).not.toMatch(/^—/)
+  })
+})
+
 describe('CombineDetailView — multi-instance row rendering (#28)', () => {
   it('renders one row per active instance, including multiple instances of the same product', () => {
     const ws = makeBaseWorkspace()
@@ -443,7 +470,7 @@ describe('CombineDetailView — back-allocated netto from combinedForScenario (#
           productId: 'etf',
           monthlyGross: 1000,
           monthlyNet: 900,
-          taxShareAnnual: 1200, // 100 €/mo
+          taxShareAnnual: 250,
           kvPvShare: 45,
         },
       },
@@ -471,10 +498,8 @@ describe('CombineDetailView — back-allocated netto from combinedForScenario (#
     const title = nettoCell?.getAttribute('title') ?? ''
     expect(title).toContain('Steuer')
     expect(title).toContain('KV/PV')
-    // taxShareAnnual = 1200, /12 = 100 €/mo → formatCurrency(100, 0)
-    expect(title).toContain(formatCurrency(100, 0))
-    // kvPvShare = 45 €/mo → formatCurrency(45, 0)
-    expect(title).toContain(formatCurrency(45, 0))
+    expect(title.replace(/\s/g, ' ')).toBe('Steuer 21 €/mo (250 €/Jahr) · KV/PV 45 €/mo')
+    expect(title).not.toMatch(/€\s*€/)
   })
 })
 

@@ -1,5 +1,8 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import './MeinPlanPage.css'
+import { PlanOverview } from './PlanOverview'
+import { PlanDurationSummary } from './PlanDurationSummary'
+import { NumberField } from '../../ui/NumberField'
 import type { GermanRules } from '../../domain'
 import type { PersonalProfile } from '../../domain'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../../domain/workspace'
@@ -9,6 +12,8 @@ import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { InstanceCommon } from '../../domain/instances'
 import type { PensionBaselineType } from '../../domain/products/grv'
 import type { Route } from '../../app/useRoute'
+import type { PlanSourceRow, PlanSummary } from '../../app/planSummary'
+import type { ResultReadiness } from '../../app/resultReadiness'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { getProductMeta } from '../../app/productPresentation'
@@ -61,7 +66,236 @@ export interface MeinPlanPageProps {
   combinedForScenario: CombinedResult | undefined
   rules: GermanRules
   /** SPA navigator, used by the receipt edit link → `/eingaben`. */
-  navigate?: (target: Route) => void
+  navigate?: (target: Route, search?: string, hash?: string) => void
+
+  // -------------------------------------------------------------------------
+  // Simplification phase 2D — plumbing supplied by `Calculator.tsx`.
+  //
+  // Optional for legacy callers; summary selects the overview surface.
+  // -------------------------------------------------------------------------
+
+  /**
+   * One scoped household total plus its source rows, money basis and target
+   * gap, already resolved for `selectedScenarioId`. Carries `readiness` too,
+   * so a consumer that has `summary` does not need the separate prop.
+   */
+  summary?: PlanSummary
+  /**
+   * Whether the household total may be shown at all, and why not. Blocking
+   * reasons must suppress the total — never approximate it.
+   */
+  readiness?: ResultReadiness
+  /**
+   * True when the workspace holds no contracts and the baseline has never been
+   * edited. The page renders its "not started" state; it must NOT open the
+   * onboarding wizard by itself.
+   */
+  planNotStarted?: boolean
+  /** "Vertrag hinzufügen" → `/vorsorge/neu`. */
+  onAddContract?: () => void
+  /** Edit one source row → its `target`, else `/vertrag/:id/bearbeiten`. */
+  onEditSource?: (row: PlanSourceRow) => void
+  /** Edit the person → onboarding step 'profile'. */
+  onEditProfile?: () => void
+  /** Edit the pension baseline → onboarding step 'pension'. */
+  onEditPension?: () => void
+  /** Wunschrente in heutigen Euro; undefined removes it, 0 stays explicit. */
+  onSetTarget?: (value: number | undefined) => void
+  /**
+   * One-level undo status for the last workspace mutation, derived by the host
+   * from `portfolioState.lastUndo`. Shown on the plan so a contract removed on
+   * `/vertrag/:id/bearbeiten` is still undoable after the redirect back here.
+   */
+  notification?: { message: string; onUndo?: () => void }
+}
+
+/** New default surface; legacy callers retain their existing layout. */
+export function MeinPlanPage(props: MeinPlanPageProps) {
+  if (!props.summary) return <LegacyMeinPlanPage {...props} />
+  return <OverviewMeinPlanPage {...props} summary={props.summary} />
+}
+
+function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary }) {
+  const { workspace, navigate, planNotStarted, onSetTarget } = props
+  const { profile, assumptions } = workspace.baseline
+  const summary = props.readiness ? { ...props.summary, readiness: props.readiness } : props.summary
+  const [moneyBasis, setMoneyBasis] = useState<'real' | 'nominal'>('real')
+  const [showDuration, setShowDuration] = useState(false)
+  const [editingTarget, setEditingTarget] = useState(false)
+  const [targetDraft, setTargetDraft] = useState('')
+  const [analysisOpen, setAnalysisOpen] = useState(() =>
+    typeof window !== 'undefined' && window.location.hash === '#mein-plan-sensitivitaet')
+  const targetEditorRef = useRef<HTMLFormElement>(null)
+  const durationRef = useRef<HTMLDivElement>(null)
+  const overviewRef = useRef<HTMLDivElement>(null)
+  const restoreOverviewFocus = useRef(false)
+  const hasContracts = summary.rows.some((row) => row.instanceId !== undefined)
+  const canShow = summary.readiness.canShowHouseholdTotal
+    && summary.readiness.status !== 'error' && summary.readiness.status !== 'incomplete'
+  const sensitivityRows = useMemo(() => {
+    if (!analysisOpen || planNotStarted || !canShow || !hasContracts || !props.combinedForScenario) return []
+    return buildSensitivityRows({
+      workspace, baselineCombined: props.combinedForScenario,
+      rules: props.rules, scenarioId: props.selectedScenarioId,
+    })
+  }, [analysisOpen, planNotStarted, canShow, hasContracts, workspace, props.combinedForScenario, props.rules, props.selectedScenarioId])
+
+  useEffect(() => {
+    function openFragment() {
+      if (window.location.hash === '#mein-plan-sensitivitaet') {
+        setAnalysisOpen(true)
+        setShowDuration(false)
+      }
+    }
+    window.addEventListener('hashchange', openFragment)
+    window.addEventListener('rentenwiki:navigated', openFragment)
+    return () => {
+      window.removeEventListener('hashchange', openFragment)
+      window.removeEventListener('rentenwiki:navigated', openFragment)
+    }
+  }, [])
+  useEffect(() => {
+    if (analysisOpen && !showDuration && window.location.hash === '#mein-plan-sensitivitaet') {
+      document.getElementById('mein-plan-sensitivitaet')?.scrollIntoView()
+    }
+  }, [analysisOpen, showDuration])
+  useEffect(() => {
+    if (editingTarget) targetEditorRef.current?.querySelector('input')?.focus()
+  }, [editingTarget])
+  useEffect(() => {
+    if (showDuration) {
+      durationRef.current?.focus()
+      restoreOverviewFocus.current = true
+    } else if (restoreOverviewFocus.current) {
+      overviewRef.current?.focus()
+      restoreOverviewFocus.current = false
+    }
+  }, [showDuration])
+
+  const editProfile = () => props.onEditProfile ? props.onEditProfile() : navigate?.(ROUTES.eingaben)
+  const editPension = () => props.onEditPension ? props.onEditPension() : navigate?.(ROUTES.eingabenProdukte)
+  const openKapital = () => navigate?.(ROUTES.kapital)
+  const openAlternatives = () => navigate?.(ROUTES.alternativen)
+  const saveTarget = (value: number | undefined) => {
+    onSetTarget?.(value)
+    setEditingTarget(false)
+  }
+  const pensionMethod = assumptions.statutoryPension.pensionEntryMethod?.kind
+  const pensionMethodLabel = assumptions.statutoryPension.pensionBaselineType === 'none'
+    ? 'Keine Pflichtrente'
+    : pensionMethod === 'document' ? 'Aus der Renteninformation'
+      : pensionMethod === 'career' ? 'Grob aus Berufsstart und Pausen geschätzt'
+        : pensionMethod === 'years' ? 'Aus Beitragsjahren geschätzt'
+          : pensionMethod === 'points' ? 'Aus Entgeltpunkten berechnet'
+            : pensionMethod === 'projected-gross' ? 'Monatliche Bruttorente angegeben'
+              : pensionMethod === 'skipped' ? 'Noch offen' : 'Bisherige Angaben / Modellannahmen'
+
+  if (showDuration && !planNotStarted) return <div className="mein-plan-shell mein-plan-overview-host" ref={durationRef} tabIndex={-1}>
+    <div className="mein-plan-view-back">
+      <button type="button" className="plan-overview__link" onClick={() => setShowDuration(false)}>← Zurück zum Plan</button>
+    </div>
+    <PlanDurationSummary rows={summary.rows} onOpenKapital={openKapital}
+      onEditSharedHorizon={() => navigate?.(ROUTES.eingaben, undefined, '#renteneintritt')} />
+  </div>
+
+  return <div className="mein-plan-shell mein-plan-overview-host" ref={overviewRef} tabIndex={-1}>
+    <PlanOverview
+      summary={summary}
+      retirementAge={profile.retirementAge}
+      hasStarted={!planNotStarted}
+      hasContracts={hasContracts}
+      savedAlternativeCount={workspace.whatIfs.length}
+      notification={props.notification}
+      moneyBasis={moneyBasis}
+      onToggleMoneyBasis={() => setMoneyBasis((basis) => basis === 'real' ? 'nominal' : 'real')}
+      targetMonthly={profile.desiredNetMonthlyPension}
+      assumptions={{ age: profile.age, grossSalaryYear: profile.grossSalaryYear,
+        retirementAge: profile.retirementAge, inflationRate: assumptions.inflationRate, pensionMethodLabel }}
+      onStart={editProfile}
+      onAddContract={() => props.onAddContract ? props.onAddContract() : navigate?.(ROUTES.vorsorgeNeu)}
+      onEditSource={(row) => {
+        if (props.onEditSource) props.onEditSource(row)
+        else if (row.instanceId) navigate?.(ROUTES.vertragBearbeiten(row.instanceId))
+        else editPension()
+      }}
+      onEditProfile={editProfile}
+      onEditPension={editPension}
+      onEditTarget={() => {
+        setTargetDraft(profile.desiredNetMonthlyPension?.toString() ?? '0')
+        setEditingTarget(true)
+      }}
+      targetEditor={editingTarget ? <form className="mein-plan-target-editor" ref={targetEditorRef}
+        aria-labelledby="mein-plan-target-title" onSubmit={(event) => {
+          event.preventDefault()
+          if (targetDraft.trim() !== '' && Number.isFinite(Number(targetDraft)) && Number(targetDraft) >= 0) saveTarget(Number(targetDraft))
+        }}>
+        <h2 id="mein-plan-target-title">Wie viel möchtest du haben?</h2>
+        <p>Optional · wie viel du heute pro Monat zum Leben brauchen würdest. In heutigen Euro.</p>
+        <details className="plan-overview__details">
+          <summary>Ich weiß noch keinen Betrag</summary>
+          <p>Deine heutigen monatlichen Ausgaben können ein Startpunkt sein. Du kannst die Wunschrente auch einfach weglassen.</p>
+        </details>
+        <NumberField label="Deine Wunschrente (€)" value={targetDraft === '' ? null : Number(targetDraft)}
+          step={1} decimals={2} allowEmpty onChange={(value) => setTargetDraft(value === null ? '' : String(value))} />
+        {targetDraft !== '' && (!Number.isFinite(Number(targetDraft)) || Number(targetDraft) < 0)
+          && <p role="alert">Bitte gib einen Betrag ab 0 € ein.</p>}
+        <div className="plan-overview__actions">
+          <button type="submit" className="plan-overview__primary"
+            disabled={!onSetTarget || targetDraft.trim() === '' || !Number.isFinite(Number(targetDraft)) || Number(targetDraft) < 0}>Wunsch übernehmen</button>
+          <button type="button" className="plan-overview__secondary" disabled={!onSetTarget}
+            onClick={() => saveTarget(undefined)}>Ohne Wunschrente fortfahren</button>
+          <button type="button" className="plan-overview__link" onClick={() => setEditingTarget(false)}>Abbrechen</button>
+        </div>
+      </form> : undefined}
+      onOpenDuration={() => setShowDuration(true)}
+      onOpenKapital={openKapital}
+      onOpenMethode={() => navigate?.(ROUTES.methode)}
+      onOpenEingaben={() => navigate?.(ROUTES.eingaben)}
+      onTryAlternative={openAlternatives}
+      onOpenSavedAlternatives={openAlternatives}
+      onNavigateReason={(reason) => navigate?.(reason.target.route, undefined, reason.target.anchor ? `#${reason.target.anchor}` : undefined)}
+      analysisOpen={analysisOpen}
+      onAnalysisToggle={setAnalysisOpen}
+    >
+      {canShow ? <SensitivitySection rows={sensitivityRows} /> : <section id="mein-plan-sensitivitaet">
+        <p>Für weitere Auswertungen fehlen noch vollständige Ergebnisse.</p>
+      </section>}
+    </PlanOverview>
+  </div>
+}
+
+function SensitivitySection({ rows }: { rows: SensitivityRow[] }) {
+  return (
+    <section className="mein-plan-section" aria-labelledby={SECTION_SENSITIVITAET.id}>
+      <div className="mein-plan-section-head">
+        <span className="mein-plan-section-num">{SECTION_SENSITIVITAET.n}</span>
+        <h2 id={SECTION_SENSITIVITAET.id} className="mein-plan-section-title">
+          {SECTION_SENSITIVITAET.title}
+        </h2>
+      </div>
+
+      <p className="mein-plan-sens-intro">
+        Wie reagiert deine berechnete Netto-Rente, wenn sich eine
+        einzelne Annahme verschiebt? Jede Zeile zeigt die Differenz zum
+        aktuellen Szenario zum Rentenbeginn (nominal) — gerundet auf volle Euro.
+        Inflation kann die Kaufkraft auch bei unveränderter monatlicher
+        Auszahlung mindern.
+      </p>
+
+      {rows.length > 0 ? (
+        <ul className="mein-plan-sens-list">
+          {rows.map((row) => (
+            <SensitivityRowView key={row.id} row={row} />
+          ))}
+        </ul>
+      ) : (
+        <p className="mein-plan-zusammen-empty">
+          Sensitivitäts­zeilen werden nach dem ersten Vertrag im Plan
+          berechnet.
+        </p>
+      )}
+    </section>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +323,7 @@ export interface MeinPlanPageProps {
 // pipeline (the `/` WebPage block). We do NOT emit a second copy inline.
 // ---------------------------------------------------------------------------
 
-export function MeinPlanPage({
+function LegacyMeinPlanPage({
   workspace,
   perInstance,
   selectedScenarioId,
@@ -371,35 +605,7 @@ export function MeinPlanPage({
             </section>
 
             {/* § 2 Sensitivität */}
-            <section className="mein-plan-section" aria-labelledby={SECTION_SENSITIVITAET.id}>
-              <div className="mein-plan-section-head">
-                <span className="mein-plan-section-num">{SECTION_SENSITIVITAET.n}</span>
-                <h2 id={SECTION_SENSITIVITAET.id} className="mein-plan-section-title">
-                  {SECTION_SENSITIVITAET.title}
-                </h2>
-              </div>
-
-              <p className="mein-plan-sens-intro">
-                Wie reagiert deine berechnete Netto-Rente, wenn sich eine
-                einzelne Annahme verschiebt? Jede Zeile zeigt die Differenz zum
-                aktuellen Szenario — gerundet auf volle Euro. Die Beträge sind
-                nominal; Inflation kann die Kaufkraft auch bei unveränderter
-                monatlicher Auszahlung mindern.
-              </p>
-
-              {sensitivityRows.length > 0 ? (
-                <ul className="mein-plan-sens-list">
-                  {sensitivityRows.map((row) => (
-                    <SensitivityRowView key={row.id} row={row} />
-                  ))}
-                </ul>
-              ) : (
-                <p className="mein-plan-zusammen-empty">
-                  Sensitivitäts­zeilen werden nach dem ersten Vertrag im Plan
-                  berechnet.
-                </p>
-              )}
-            </section>
+            <SensitivitySection rows={sensitivityRows} />
           </article>
 
           {/* Right-rail receipt — phone folds via RightRailAccordion.

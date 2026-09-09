@@ -76,7 +76,7 @@ interface DefaultPropsOverrides {
 
 function defaultProps(
   overrides: DefaultPropsOverrides = {},
-): ProdukteEingabenPanelProps {
+): Extract<ProdukteEingabenPanelProps, { mode: 'compare' }> {
   const visibleProducts = overrides.visibleProducts ?? defaultAssumptions.visibleProducts
   const assumptions: ScenarioAssumptions = {
     ...defaultAssumptions,
@@ -1012,3 +1012,52 @@ describe('ProdukteEingabenPanel — CX-PR4-1 registry-derived order (R0)', () =>
     expect(tiles.length).toBe(registryOrder.length)
   })
 })
+
+
+describe('statutory pension provenance on the products input surface', () => {
+  const methods = [
+    [{ kind: 'career', careerStartAge: 22, pauseYears: 0 }, 'Grob aus Berufsstart geschätzt'],
+    [{ kind: 'document', monthlyGrossEUR: 1500 }, 'lt. Renteninformation'],
+    [{ kind: 'years', contributionYears: 13 }, 'Beitragsjahre angegeben'],
+    [{ kind: 'points', entgeltpunkte: 13 }, 'Entgeltpunkte angegeben'],
+    [{ kind: 'projected-gross', monthlyGrossEUR: 1500 }, 'Prognose angegeben'],
+    [{ kind: 'skipped' }, 'Noch offen'],
+    // No recorded entry method: falls back to the shared `grvCard` label,
+    // which reads the input mode only (here: no manual value → estimate).
+    [undefined, 'Schätzung'],
+  ] as const
+
+  for (const mode of ['compare', 'combine'] as const) {
+    it.each(methods)(`${mode}: labels %j as %s without implying an upload`, (method, label) => {
+      const assumptions = structuredClone(defaultAssumptions)
+      assumptions.statutoryPension.pensionEntryMethod = method
+      const baseline = structuredClone(defaultWorkspace.baseline)
+      baseline.assumptions.statutoryPension.pensionEntryMethod = method
+      const props = mode === 'compare'
+        ? { ...defaultProps(), assumptions }
+        : makeCombineProps({ baseline, assumptions: baseline.assumptions })
+      const { container } = render(<ProdukteEingabenPanel {...props} />)
+      const section = container.querySelector('.d-produkt-section')!
+      expect(section.querySelector('.d-produkt-row__status')?.textContent).toBe(label)
+      expect(section.textContent).not.toMatch(/DRV-PDF|übernommen|erneut hochladen/)
+      if (method?.kind !== 'document') {
+        expect(section.textContent).not.toMatch(/Rentenauskunft|Renteninformation|PDF|Upload|hochladen/)
+      }
+    })
+  }
+
+  it('falls back to "Manuell eingegeben" when a manual gross exists without a recorded entry method', () => {
+    const assumptions = structuredClone(defaultAssumptions)
+    assumptions.statutoryPension.pensionEntryMethod = undefined
+    assumptions.statutoryPension.manualMonthlyGross = 1800
+    const { container } = render(
+      <ProdukteEingabenPanel {...defaultProps()} assumptions={assumptions} />,
+    )
+    const section = container.querySelector('.d-produkt-section')!
+    expect(section.querySelector('.d-produkt-row__status')?.textContent).toBe(
+      'Manuell eingegeben',
+    )
+    expect(section.textContent).not.toMatch(/Rentenauskunft|PDF|hochladen/)
+  })
+})
+

@@ -3,12 +3,11 @@ import './VergleichDetailPage.css'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
-import { usePortfolioState } from '../../app/portfolioState'
 import { useCalculatorState } from '../../app/useCalculatorState'
 import { useSimulationResult } from '../../app/useSimulationResult'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
 import { detectSavedMode } from '../../app/useRoute'
-import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { PRIMARY_PRODUCT_IDS } from '../../content/triggers'
 import { formatCurrency } from '../../utils/format'
@@ -51,13 +50,17 @@ interface Props {
 // ---------------------------------------------------------------------------
 // VergleichDetailPage — `/vergleich/details` per-product breakdown (PR 10).
 //
-// Compare-mode-only drill-in from `VergleichPage`. Renders one card per
-// product in `assumptions.visibleProducts`, ordered by registry sort. Each
+// Drill-in from `VergleichPage`. Renders one card per product in the compare
+// singleton's `assumptions.visibleProducts`, ordered by registry sort. Each
 // card stacks three sections — Ansparphase / Mit {retirementAge} / Im Alter
 // — built by `buildVergleichDetailCardData` from a single `ProductResult`.
 //
-// Hooks always run unconditionally so empty-state branches still observe the
-// Rules of Hooks. Mode gate uses `workspace.mode` (not `detectSavedMode()`).
+// The page is NOT gated on `workspace.mode`: it belongs to the comparison
+// journey, whose state is the compare singleton, and a user with a saved plan
+// reaches it from `/vergleich` like everybody else.
+//
+// Hooks always run unconditionally so the empty-state branch still observes
+// the Rules of Hooks.
 //
 // Engine boundary: this page consumes the existing
 // `useSimulationResult` bundle — no new engine entry points, no schema
@@ -87,51 +90,46 @@ function buildDemoAssumptions(): ScenarioAssumptions {
 
 export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScenario }: Props) {
   // ---- 1. Hook prelude — runs unconditionally before any early return. ----
-  const portfolioState = usePortfolioState()
   const compareState = useCalculatorState()
   const { profile: liveProfile, assumptions: liveAssumptions } = compareState
 
-  // Demo-mode gate. Combine-mode users always see the existing dedicated
-  // empty state (Mein Plan / Vertrag-Detail). For compare-mode the page
-  // swaps in a default-assumption demo run when EITHER:
-  //   1. the user has no saved state at all (`detectSavedMode()` is null —
-  //      first-time visitor or fresh prerender), OR
-  //   2. saved state is present but `visibleProducts` is empty (existing
-  //      compare-mode user cleared the comparison picker).
-  // The "no saved state" branch is what SEO crawlers + the SSG prerender
-  // pass hit, so they index a populated card grid with all primary
-  // products. Audit decision Q4 (locked 2026-05-21): "no saved state OR
-  // empty visible-products → live default-assumption demo run".
+  // Demo-mode gate: with no saved state at all (`detectSavedMode()` is null —
+  // first-time visitor or fresh prerender) the page renders a live
+  // default-assumption demo run, so SEO crawlers and the SSG prerender pass
+  // index a populated card grid instead of an empty state. Audit decision Q4
+  // (locked 2026-05-21).
   //
   // `detectSavedMode()` is a pure synchronous read of localStorage that the
   // existing router code already calls on initial paint; reusing it here
   // adds no new I/O. Memoised so re-renders don't re-read storage.
-  const isCombineMode = portfolioState.workspace.mode === 'combine'
+  //
+  // The page renders the comparison, always. Gating on `workspace.mode` sent
+  // every user with a saved plan to a "nur im Vergleichs-Modus" empty state
+  // even though they arrived from `/vergleich` — the comparison and the plan
+  // are separate surfaces, and the drill-in belongs to the comparison. Its
+  // data source is the compare singleton (`useCalculatorState`), which is
+  // exactly what `/vergleich` renders, so the mode tag is irrelevant here.
   const savedMode = useMemo(() => detectSavedMode(), [])
   // Demo-mode fires ONLY when there is no saved state at all (first-time
   // visitor / SEO prerender). Saved-state with empty visibleProducts is now
-  // handled by the all-6 branch below instead of the demo branch, so crawlers
-  // and first-time visitors still see PRIMARY_PRODUCT_IDS (3 cards) while
-  // logged-in users always see 6 cards — matching /vergleich's contract.
-  const isDemo = !isCombineMode && savedMode === null
+  // handled by the live branch below, so crawlers and first-time visitors
+  // still see PRIMARY_PRODUCT_IDS while returning users see exactly the
+  // products their comparison has selected.
+  const isDemo = savedMode === null
 
   const profile: PersonalProfile = isDemo ? defaultProfile : liveProfile
   // Memoise the demo assumptions so the simulation hook's dep array stays
   // stable across renders (avoids re-running `simulateRetirementComparison`
   // on every parent re-render when the page is in demo mode).
   const demoAssumptions = useMemo(() => buildDemoAssumptions(), [])
-  // R1 cross-page consistency (Codex PR 329 R2): force all 6 products on
-  // /vergleich/details so it matches the always-6 contract of /vergleich.
-  // Demo-mode (no saved state) stays at PRIMARY_PRODUCT_IDS for SEO.
-  // PR R2 will rewrite the card layout; this plumbing remains.
-  const allProductsAssumptions = useMemo(
-    () => ({ ...liveAssumptions, visibleProducts: [...PRODUCT_IDS] }),
-    [liveAssumptions],
-  )
-  const assumptions = isDemo ? demoAssumptions : allProductsAssumptions
+  // The drill-in shows what the comparison shows: the products the user
+  // selected. Forcing all six here made a two-product comparison open onto
+  // six breakdown cards, so the detail page disagreed with the page the user
+  // came from. Demo-mode (no saved state) keeps PRIMARY_PRODUCT_IDS for SEO.
+  const assumptions = isDemo ? demoAssumptions : liveAssumptions
 
-  // Compare-mode simulation. We must call this even when we're going to render
-  // the combine-mode empty state — Rules of Hooks require a stable call order.
+  // Compare-mode simulation. Called unconditionally so the empty-state branch
+  // below keeps a stable hook order.
   // The cost is the standard `simulateRetirementComparison` pass, which the
   // existing compare-mode `Calculator` already runs. The hook receives the
   // live `selectedScenarioId` so the simulation pipeline picks the same
@@ -213,19 +211,7 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
     assumptions,
   ])
 
-  // ---- 2. Empty states. ---------------------------------------------------
-  if (isCombineMode) {
-    return (
-      <EmptyState
-        title="Wohin geht das Geld — nur im Vergleichs-Modus"
-        body="Diese Detailansicht zerlegt die sechs Sparformen gegeneinander. Im Plan-Modus rechnest du mit deinen tatsächlichen Verträgen — die Aufschlüsselung pro Vertrag findest du auf der Vertrag-Detail-Seite, erreichbar über Mein Plan."
-        ctaLabel="Zu Mein Plan wechseln"
-        ctaTarget={ROUTES.home}
-        navigate={navigate}
-      />
-    )
-  }
-
+  // ---- 2. Empty state. ----------------------------------------------------
   // Defensive: if the demo seed itself produces zero cards (e.g. registry
   // filter mismatch) we surface the legacy empty state so the page never
   // renders an empty grid silently. This branch should never fire in
@@ -284,12 +270,12 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
 
           <div className="vd-backline">
             <a
-              href={routeToPath(ROUTES.home)}
+              href={routeToPath(ROUTES.vergleich)}
               className="vd-backlink"
               onClick={(event) => {
                 if (!shouldUseSpaNavigation(event)) return
                 event.preventDefault()
-                navigate(ROUTES.home)
+                navigate(ROUTES.vergleich)
               }}
             >
               ← Zurück zum Vergleich
@@ -319,43 +305,6 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
 }
 
 // ---------------------------------------------------------------------------
-// EmptyState — combine-mode user landing on the compare-only surface.
-// ---------------------------------------------------------------------------
-
-interface EmptyStateProps {
-  title: string
-  body: string
-  ctaLabel: string
-  ctaTarget: Route
-  navigate: (target: Route) => void
-}
-
-function EmptyState({ title, body, ctaLabel, ctaTarget, navigate }: EmptyStateProps) {
-  return (
-    <div className="vd-shell">
-      <div className="vd-main">
-        <article className="vd-empty">
-          <h1 className="vd-empty-title">{title}</h1>
-          <p className="vd-empty-body">{body}</p>
-          <a
-            href={routeToPath(ctaTarget)}
-            className="vd-empty-cta"
-            onClick={(event) => {
-              if (!shouldUseSpaNavigation(event)) return
-              event.preventDefault()
-              navigate(ctaTarget)
-            }}
-          >
-            {ctaLabel}
-          </a>
-        </article>
-      </div>
-      <LegalFooter navigate={navigate} />
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // EmptyComparisonState — compare-mode user with no visibleProducts selected.
 // ---------------------------------------------------------------------------
 
@@ -375,12 +324,12 @@ function EmptyComparisonState({ navigate }: EmptyComparisonProps) {
             wegnehmen und was monatlich im Alter übrig bleibt.
           </p>
           <a
-            href={routeToPath(ROUTES.home)}
+            href={routeToPath(ROUTES.vergleich)}
             className="vd-empty-cta"
             onClick={(event) => {
               if (!shouldUseSpaNavigation(event)) return
               event.preventDefault()
-              navigate(ROUTES.home)
+              navigate(ROUTES.vergleich)
             }}
           >
             Zurück zum Vergleich

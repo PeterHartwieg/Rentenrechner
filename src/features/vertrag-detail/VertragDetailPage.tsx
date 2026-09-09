@@ -13,6 +13,7 @@ import { ErrorStatePanel } from '../../ui/chrome/ErrorStatePanel'
 import { VertragKpiStrip } from './VertragKpiStrip'
 import { VertragScenarioTable } from './VertragScenarioTable'
 import { VertragProvenanceList } from './VertragProvenanceList'
+import { missingCoreFields } from './vertragProvenanceFields'
 import { VertragMetadataAside } from './VertragMetadataAside'
 import { VertragFeeImpact } from './VertragFeeImpact'
 import { LegalFooter } from '../legal/LegalFooter'
@@ -181,6 +182,11 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
   }
   const h1 = instance.label?.trim().length ? instance.label : productLabel
 
+  // Core fields the user declined. The page still renders numbers — they are
+  // the model's, not the user's — so it has to say so above the KPI strip
+  // rather than letting a plausible Netto-Rente pass for an answer.
+  const missing = missingCoreFields(instance, slotInfo.slot)
+
   return (
     <div className="vertrag-shell">
       <div className="vertrag-main">
@@ -212,6 +218,25 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
                 angelegt: {formatStartYear(instance.contractStartYear)}
               </span>
             </div>
+
+            {missing.length > 0 && (
+              <p className="vertrag-missing-note" role="note">
+                Für diesen Vertrag fehlen Angaben (
+                {missing.map((f) => `${f.label}: unbekannt`).join(', ')}). Die Zahlen unten
+                sind vorläufig und rechnen mit dem Modellwert.{' '}
+                <a
+                  className="vertrag-missing-note-link"
+                  href={routeToPath(ROUTES.vertragBearbeiten(instance.instanceId))}
+                  onClick={(event) => {
+                    if (!shouldUseSpaNavigation(event)) return
+                    event.preventDefault()
+                    navigate(ROUTES.vertragBearbeiten(instance.instanceId))
+                  }}
+                >
+                  Angaben ergänzen
+                </a>
+              </p>
+            )}
 
             <VertragKpiStrip
               instance={instance}

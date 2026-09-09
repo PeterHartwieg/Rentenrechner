@@ -23,8 +23,11 @@
 // truncation marker in the prompt.
 
 // Hard cap on the assembled prompt. Exceeding it aborts the review instead of
-// silently shipping a truncated diff to reviewers.
-export const MAX_PROMPT_CHARS = 600_000
+// silently shipping a truncated diff to reviewers. The routine panel runs a
+// 1M-context Opus reviewer and Grok 4.6, both of which swallow prompts well
+// past the old 600k limit — a large-but-complete diff is worth more to them
+// than a refused review.
+export const MAX_PROMPT_CHARS = 2_000_000
 const MAX_CONTEXT_LINES_PER_FILE = 240
 
 const VERDICT_CONTRACT = `## Required output

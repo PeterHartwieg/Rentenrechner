@@ -107,15 +107,15 @@ describe('addInstanceToWorkspace', () => {
     expect(ws2.baseline.assumptions.bav).toHaveLength(2)
   })
 
-  it('labels the first bAV instance "bAV #1"', () => {
+  it('labels the only bAV instance after the product, without a #1', () => {
     const ws = addInstanceToWorkspace(defaultWorkspace, 'bav')
-    expect(ws.baseline.assumptions.bav[0].label).toBe('bAV #1')
+    expect(ws.baseline.assumptions.bav[0].label).toBe('Betriebliche Altersvorsorge (bAV)')
   })
 
   it('labels the second bAV instance with "#2" suffix', () => {
     const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
     const ws2 = addInstanceToWorkspace(ws1, 'bav')
-    expect(ws2.baseline.assumptions.bav[1].label).toMatch(/#2/)
+    expect(ws2.baseline.assumptions.bav[1].label).toBe('Betriebliche Altersvorsorge (bAV) #2')
   })
 
   it('instanceId follows ${productId}-${random8} format', () => {

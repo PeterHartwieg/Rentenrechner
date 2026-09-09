@@ -9,7 +9,7 @@
  *     calling onCommit).
  *   - Blurring an empty draft does not call onCommit (engine value is preserved).
  *   - Blurring a valid draft does call onCommit with that value.
- *   - onChange fires on every keystroke, including empty string.
+ *   - onChange emits numbers; clearing emits null only with allowEmpty.
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -65,7 +65,7 @@ describe('NumberField — Backspace / lone-zero clearing (#04)', () => {
     expect(onCommit).toHaveBeenCalledWith('200')
   })
 
-  it('calls onChange with empty string when field is cleared (live-preview callers)', () => {
+  it('does not call onChange when the field is cleared by default', () => {
     const onChange = vi.fn()
     render(
       <NumberField label="Test" value={0} onChange={onChange} />,
@@ -74,7 +74,7 @@ describe('NumberField — Backspace / lone-zero clearing (#04)', () => {
 
     fireEvent.change(input, { target: { value: '' } })
 
-    expect(onChange).toHaveBeenCalledWith('')
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('does not call onCommit when blurring a non-numeric draft', () => {
@@ -90,6 +90,45 @@ describe('NumberField — Backspace / lone-zero clearing (#04)', () => {
     fireEvent.blur(input)
 
     expect(onCommit).not.toHaveBeenCalled()
+  })
+})
+
+describe('NumberField — nullable values', () => {
+  afterEach(() => cleanup())
+
+  it('renders null as empty and forwards required and placeholder', () => {
+    render(<NumberField label="Beitrag" value={null} required placeholder="Beitrag eingeben" />)
+    const input = screen.getByRole('spinbutton', { name: 'Beitrag' })
+    expect(input).toHaveValue(null)
+    expect(input).toBeRequired()
+    expect(input).toHaveAttribute('placeholder', 'Beitrag eingeben')
+    expect(input).toBeInvalid()
+  })
+
+  it('emits numbers, including zero, without allowEmpty', () => {
+    const onChange = vi.fn()
+    render(<NumberField label="Beitrag" value={100} onChange={onChange} />)
+    const input = screen.getByRole('spinbutton')
+    fireEvent.change(input, { target: { value: '12.5' } })
+    expect(onChange).toHaveBeenLastCalledWith(12.5)
+    fireEvent.change(input, { target: { value: '0' } })
+    expect(onChange).toHaveBeenLastCalledWith(0)
+  })
+
+  it('emits null only with allowEmpty and keeps the controlled empty value on blur', () => {
+    const onChange = vi.fn()
+    const onCommit = vi.fn()
+    const { rerender } = render(<NumberField label="Beitrag" value={100} min={1} allowEmpty onChange={onChange} onCommit={onCommit} />)
+    const input = screen.getByRole('spinbutton')
+    fireEvent.change(input, { target: { value: '' } })
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(null)
+    expect(screen.queryByText(/Minimum/)).not.toBeInTheDocument()
+    rerender(<NumberField label="Beitrag" value={null} min={1} allowEmpty onChange={onChange} onCommit={onCommit} />)
+    fireEvent.blur(input)
+    expect(input).toHaveValue(null)
+    expect(onCommit).not.toHaveBeenCalled()
+    fireEvent.change(input, { target: { value: '0' } })
+    expect(onChange).toHaveBeenLastCalledWith(0)
   })
 })
 

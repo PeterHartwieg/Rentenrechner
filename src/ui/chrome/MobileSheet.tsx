@@ -1,12 +1,14 @@
 import { useEffect } from 'react'
-import type { Route } from '../../app/useRoute'
+import type { AppView, Route } from '../../app/useRoute'
 import { ROUTES } from '../../app/useRoute'
 import { SUPPORT_PAGE_URL } from '../../content/support'
+import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
 
 interface MobileSheetProps {
   open: boolean
   onClose: () => void
-  navigate: (target: Route) => void
+  navigate: (target: Route, search?: string) => void
+  appView?: AppView | null
   /**
    * Current route. Used to mark the matching sheet item as active so the
    * overflow menu communicates "you are here" — matches the Sober D
@@ -20,12 +22,16 @@ interface MobileSheetProps {
 interface SheetItem {
   label: string
   route?: Route
+  navId?: ChromeNavId
+  search?: string
   href?: string
 }
 
 const ITEMS: readonly SheetItem[] = [
-  { label: 'Methode', route: ROUTES.methode },
-  { label: 'Annahmen', route: ROUTES.eingaben },
+  { label: 'Start', route: ROUTES.home, search: '?view=landing', navId: 'home' },
+  { label: 'Angaben', route: ROUTES.eingaben, navId: 'angaben' },
+  { label: 'Artikel', route: ROUTES.artikel, navId: 'artikel' },
+  { label: 'Methode', route: ROUTES.methode, navId: 'method' },
   { label: 'Datenschutz', route: ROUTES.datenschutz },
   { label: 'Impressum', route: ROUTES.impressum },
   { label: 'GitHub', href: 'https://github.com/PeterHartwieg/Rentenrechner' },
@@ -34,15 +40,11 @@ const ITEMS: readonly SheetItem[] = [
 
 /**
  * Slide-up sheet from the bottom of the viewport, used as the overflow
- * destination for hamburger-menu links on phone. The five most important
- * destinations live in the bottom MobileNav; everything else (legal,
- * external) lands here.
- *
- * R1.1: Methode + Annahmen now route to `/methode` and `/eingaben`
- * respectively (Annahmen folds into Section 4 of /eingaben per PR 5).
+ * destination for hamburger-menu links on phone. Mein Plan and Vergleich
+ * live in the bottom MobileNav; all secondary destinations land here.
  * External http(s) hrefs still open in a new tab.
  */
-export function MobileSheet({ open, onClose, navigate, route }: MobileSheetProps) {
+export function MobileSheet({ open, onClose, navigate, route, appView }: MobileSheetProps) {
   useEffect(() => {
     if (!open) return
     function onEsc(event: KeyboardEvent) {
@@ -54,9 +56,13 @@ export function MobileSheet({ open, onClose, navigate, route }: MobileSheetProps
 
   if (!open) return null
 
+  const search = typeof window !== 'undefined' ? window.location.search : ''
+  const active = route ? activeChromeNavId(route, search, appView) : null
+
   function handleItemClick(item: SheetItem) {
     if (item.route) {
-      navigate(item.route)
+      if (item.search !== undefined) navigate(item.route, item.search)
+      else navigate(item.route)
       onClose()
       return
     }
@@ -81,7 +87,7 @@ export function MobileSheet({ open, onClose, navigate, route }: MobileSheetProps
             const isActive =
               route !== undefined &&
               item.route !== undefined &&
-              item.route.kind === route.kind
+              (item.navId ? item.navId === active : item.route.kind === route.kind)
             const className = `rw-mobile-sheet__item${
               isActive ? ' rw-mobile-sheet__item--active' : ''
             }`

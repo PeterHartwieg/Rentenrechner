@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import { mockViewport, eachViewport } from '../../test/viewport'
 import { StatusBar } from './StatusBar'
 import { AppHeader } from './AppHeader'
@@ -79,16 +79,21 @@ describe('activeChromeNavId (URL override + appView resolver)', () => {
     expect(activeChromeNavId(ROUTES.home, '?view=landing', 'combine')).toBe('home')
   })
 
-  it('maps / + appView=compare to "compare" (dashboard view → Vergleich tab)', () => {
-    // Returning compare-mode user on bare `/` sees the dashboard, so the
-    // Vergleich tab is the right active surface.
-    expect(activeChromeNavId(ROUTES.home, '', 'compare')).toBe('compare')
+  it('maps / + appView=compare to "plan" (2D: `/` is the plan for every saved mode)', () => {
+    // A saved-compare user landing on `/` now gets the plan's not-started
+    // state, not the comparison — so the plan tab is the active surface.
+    expect(activeChromeNavId(ROUTES.home, '', 'compare')).toBe('plan')
   })
 
-  it('maps / + appView=combine to "compare" (dashboard view → Mein Plan tab)', () => {
-    // The 'compare' id is shared by both labels; render-time chooses
-    // "Mein Plan" for combine and "Vergleich" for compare.
-    expect(activeChromeNavId(ROUTES.home, '', 'combine')).toBe('compare')
+  it('maps / + appView=combine to "plan"', () => {
+    expect(activeChromeNavId(ROUTES.home, '', 'combine')).toBe('plan')
+  })
+
+  it('keeps /vergleich on the compare tab regardless of appView', () => {
+    // The comparison is its own destination now; a combine-mode user who
+    // opens it must still see the Vergleich tab lit.
+    expect(activeChromeNavId(ROUTES.vergleich, '')).toBe('compare')
+    expect(activeChromeNavId(ROUTES.vergleich, '', 'combine')).toBe('compare')
   })
 
   it('maps / + appView=landing to "home" (fresh user → Startseite)', () => {
@@ -101,11 +106,13 @@ describe('activeChromeNavId (URL override + appView resolver)', () => {
     expect(activeChromeNavId(ROUTES.artikel, '?view=landing')).toBe('artikel')
   })
 
-  it('drill-in routes still highlight the compare/Mein-Plan tab', () => {
-    // vertrag / kapital / vergleich-detail are dashboard drill-ins; their
-    // chrome should read as "you are on your work", not "homepage".
-    expect(activeChromeNavId(ROUTES.vertrag('etf:abcd'), '')).toBe('compare')
-    expect(activeChromeNavId(ROUTES.kapital, '')).toBe('compare')
+  it('routes plan drill-ins to the plan tab and comparison drill-ins to the compare tab', () => {
+    // vertrag / vertrag-bearbeiten / vorsorge-neu / kapital are reached from
+    // Mein Plan; vergleich-detail is reached from the comparison.
+    expect(activeChromeNavId(ROUTES.vertrag('etf:abcd'), '')).toBe('plan')
+    expect(activeChromeNavId(ROUTES.vertragBearbeiten('etf:abcd'), '')).toBe('plan')
+    expect(activeChromeNavId(ROUTES.vorsorgeNeu, '')).toBe('plan')
+    expect(activeChromeNavId(ROUTES.kapital, '')).toBe('plan')
     expect(activeChromeNavId(ROUTES.vergleichDetail, '')).toBe('compare')
   })
 
@@ -125,22 +132,29 @@ describe('activeChromeNavId (URL override + appView resolver)', () => {
 })
 
 describe('AppHeader', () => {
-  it('renders kicker + H1 + 5-tab nav on desktop', () => {
+  it('renders kicker + H1 + 6-tab nav on desktop', () => {
     mockViewport('desktop')
     render(<AppHeader route={R('/')} kicker="TEST" title="Hallo" navigate={() => {}} />)
     expect(screen.getByText('TEST')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Hallo' })).toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: /Hauptnavigation/ })
     expect(nav).toBeInTheDocument()
-    // PR 5: "Mein Plan" placeholder replaced by clickable "Angaben"
-    // (routes to /eingaben). The Annahmen tab is no longer in chrome;
-    // it folds into § 4 of /eingaben.
-    for (const label of ['Startseite', 'Angaben', 'Vergleich', 'Artikel', 'Methode']) {
+    // 2D: "Mein Plan" and "Vergleich" are two separate tabs with fixed
+    // labels and distinct destinations. The Annahmen tab is still gone
+    // (it folds into § 4 of /eingaben).
+    for (const label of ['Startseite', 'Angaben', 'Mein Plan', 'Vergleich', 'Artikel', 'Methode']) {
       expect(nav.textContent).toContain(label)
     }
-    // Sanity: the old placeholder copy and the Annahmen tab must not return.
-    expect(nav.textContent).not.toContain('Mein Plan')
     expect(nav.textContent).not.toContain('Annahmen')
+  })
+
+  it('puts Mein Plan and Vergleich first with primary styling on desktop', () => {
+    mockViewport('desktop')
+    render(<AppHeader route={R('/')} appView="combine" navigate={() => {}} />)
+    const links = within(screen.getByRole('navigation', { name: 'Hauptnavigation' })).getAllByRole('link')
+    expect(links.map((link) => link.textContent)).toEqual(['Mein Plan', 'Vergleich', 'Startseite', 'Angaben', 'Artikel', 'Methode'])
+    for (const link of links.slice(0, 2)) expect(link).toHaveClass('rw-app-header__nav-item--primary')
+    for (const link of links.slice(2)) expect(link).not.toHaveClass('rw-app-header__nav-item--primary')
   })
 
   it('highlights Startseite as active when route is /', () => {
@@ -172,9 +186,10 @@ describe('AppHeader', () => {
 
   it('opens the mobile sheet when hamburger is pressed', () => {
     mockViewport('phone')
-    render(<AppHeader route={R('/')} title="Hallo" navigate={() => {}} />)
+    render(<AppHeader route={R('/')} title="Hallo" appView="combine" navigate={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: /Menü öffnen/ }))
     expect(screen.getByRole('dialog', { name: /Weitere Menüpunkte/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start' })).not.toHaveAttribute('aria-current')
   })
 
   it('navigate is called with ?view=landing when Startseite is clicked on desktop', () => {
@@ -234,57 +249,68 @@ describe('AppHeader', () => {
     expect(active?.textContent).toBe('Angaben')
   })
 
-  it('renders Vergleich as a real anchor with href=/ on desktop (saved-mode aware)', () => {
-    // The Vergleich tab now routes to bare `/` — App.tsx's saved-mode
-    // logic chooses between compare dashboard, combine dashboard, or the
-    // landing page based on the user's localStorage state.
+  it('renders Vergleich as a real anchor with href=/vergleich on desktop', () => {
+    // 2D: the Vergleich tab points at its own route. `/` is Mein Plan.
     mockViewport('desktop')
     render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
     const tab = screen.getByText('Vergleich')
     expect(tab.tagName).toBe('A')
-    expect(tab.getAttribute('href')).toBe('/')
+    expect(tab.getAttribute('href')).toBe('/vergleich')
     expect(tab.classList.contains('rw-app-header__nav-item--placeholder')).toBe(false)
   })
 
-  it('SPA-navigates to ROUTES.home with no search when Vergleich is clicked on desktop', () => {
+  it('renders Mein Plan as a real anchor with href=/ on desktop', () => {
+    mockViewport('desktop')
+    render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
+    const tab = screen.getByText('Mein Plan')
+    expect(tab.tagName).toBe('A')
+    expect(tab.getAttribute('href')).toBe('/')
+  })
+
+  it('SPA-navigates to ROUTES.vergleich when Vergleich is clicked on desktop', () => {
     mockViewport('desktop')
     const navigate = vi.fn()
     render(<AppHeader route={R('/impressum')} title="" navigate={navigate} />)
     fireEvent.click(screen.getByText('Vergleich'))
-    // Vergleich defers to saved-mode logic — no search override is passed.
+    expect(navigate).toHaveBeenCalledWith(R('/vergleich'))
+  })
+
+  it('SPA-navigates to ROUTES.home when Mein Plan is clicked on desktop', () => {
+    mockViewport('desktop')
+    const navigate = vi.fn()
+    render(<AppHeader route={R('/impressum')} title="" navigate={navigate} />)
+    fireEvent.click(screen.getByText('Mein Plan'))
     expect(navigate).toHaveBeenCalledWith(R('/'))
   })
 
-  it('renders the tab as "Mein Plan" when appView is combine (label swap)', () => {
+  it('keeps both labels visible regardless of saved mode (no label swap)', () => {
     mockViewport('desktop')
-    render(<AppHeader route={R('/')} title="" appView="combine" navigate={() => {}} />)
-    const nav = screen.getByRole('navigation', { name: /Hauptnavigation/ })
-    expect(nav.textContent).toContain('Mein Plan')
-    expect(nav.textContent).not.toContain('Vergleich')
+    for (const appView of ['compare', 'combine'] as const) {
+      cleanup()
+      render(<AppHeader route={R('/')} title="" appView={appView} navigate={() => {}} />)
+      const nav = screen.getByRole('navigation', { name: /Hauptnavigation/ })
+      expect(nav.textContent).toContain('Mein Plan')
+      expect(nav.textContent).toContain('Vergleich')
+    }
   })
 
-  it('renders the tab as "Vergleich" when appView is compare', () => {
+  it('lights up Mein Plan on bare / for both saved modes', () => {
     mockViewport('desktop')
-    render(<AppHeader route={R('/')} title="" appView="compare" navigate={() => {}} />)
-    const nav = screen.getByRole('navigation', { name: /Hauptnavigation/ })
-    expect(nav.textContent).toContain('Vergleich')
-    expect(nav.textContent).not.toContain('Mein Plan')
+    for (const appView of ['compare', 'combine'] as const) {
+      cleanup()
+      stubLocationSearch('')
+      render(<AppHeader route={R('/')} title="" appView={appView} navigate={() => {}} />)
+      const active = document.querySelector('.rw-app-header__nav-item--active')
+      expect(active?.textContent).toBe('Mein Plan')
+    }
   })
 
-  it('lights up the dashboard tab when appView is compare (bare /)', () => {
+  it('lights up Vergleich on /vergleich', () => {
     mockViewport('desktop')
     stubLocationSearch('')
-    render(<AppHeader route={R('/')} title="" appView="compare" navigate={() => {}} />)
+    render(<AppHeader route={R('/vergleich')} title="" appView="combine" navigate={() => {}} />)
     const active = document.querySelector('.rw-app-header__nav-item--active')
     expect(active?.textContent).toBe('Vergleich')
-  })
-
-  it('lights up Mein Plan when appView is combine (bare /)', () => {
-    mockViewport('desktop')
-    stubLocationSearch('')
-    render(<AppHeader route={R('/')} title="" appView="combine" navigate={() => {}} />)
-    const active = document.querySelector('.rw-app-header__nav-item--active')
-    expect(active?.textContent).toBe('Mein Plan')
   })
 
   it('phone variant no longer renders the "seit 2024" status string (R1.1, C2/Q5)', () => {
@@ -362,146 +388,133 @@ describe('AppHeader', () => {
 describe('MobileNav', () => {
   beforeEach(() => mockViewport('phone'))
 
-  it('renders all five tabs', () => {
+  it('renders exactly the two primary destinations', () => {
     render(<MobileNav route={R('/')} navigate={() => {}} />)
     const nav = screen.getByRole('navigation', { name: /Mobile Hauptnavigation/ })
-    // PR 5: "Plan" placeholder replaced by clickable "Angaben"
-    // (routes to /eingaben). Annahmen tab is removed (folds into § 4).
-    for (const label of ['Start', 'Angaben', 'Vergleich', 'Artikel', 'Methode']) {
-      expect(nav.textContent).toContain(label)
-    }
-    expect(nav.textContent).not.toContain('Annahmen')
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Mein Plan', 'Vergleich'])
+    expect(within(nav).getByRole('link', { name: 'Mein Plan' })).toHaveAttribute('href', '/')
+    expect(within(nav).getByRole('link', { name: 'Vergleich' })).toHaveAttribute('href', '/vergleich')
   })
 
-  it('marks Start as active when route is /', () => {
-    render(<MobileNav route={R('/')} navigate={() => {}} />)
-    const active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Start')
-  })
-
-  it('keeps the unbuilt tabs as inert placeholders (PR 5: Vergleich only)', () => {
-    render(<MobileNav route={R('/')} navigate={() => {}} />)
-    const placeholders = document.querySelectorAll('.rw-mobile-nav__tab--placeholder')
-    // PR 3 promoted Artikel; PR 4 promoted Methode; PR 5 promotes Angaben.
-    // Only Vergleich remains as an inert placeholder (PR 9 will ship it).
-    expect(placeholders.length).toBe(1)
-  })
-
-  it('navigates home with ?view=landing when Start is tapped', () => {
-    // Mirrors the desktop Startseite-fix: Start now forces the
-    // landing/mode-picker via the ?view=landing URL override so the label
-    // matches its behaviour for returning users.
+  it.each([
+    ['Mein Plan', '/'],
+    ['Vergleich', '/vergleich'],
+  ])('navigates from %s to %s', (label, path) => {
     const navigate = vi.fn()
     render(<MobileNav route={R('/impressum')} navigate={navigate} />)
-    fireEvent.click(screen.getByText('Start'))
-    expect(navigate).toHaveBeenCalledWith(R('/'), '?view=landing')
+    fireEvent.click(screen.getByRole('link', { name: label }))
+    expect(navigate).toHaveBeenCalledWith(R(path))
   })
 
-  it('navigates to /artikel when Artikel is tapped (PR 3)', () => {
-    const navigate = vi.fn()
-    render(<MobileNav route={R('/')} navigate={navigate} />)
-    fireEvent.click(screen.getByText('Artikel'))
-    expect(navigate).toHaveBeenCalledWith(R('/artikel'))
-  })
+  it.each(['/', '/eingaben', '/eingaben/produkte', '/artikel', '/bav-rechner', '/methode', '/impressum'])(
+    'leaves both tabs inactive on secondary route %s', (path) => {
+      render(<MobileNav route={R(path)} navigate={() => {}} />)
+      expect(document.querySelector('[aria-current="page"]')).toBeNull()
+    },
+  )
 
-  it('highlights Artikel as active on a clustered topic route', () => {
-    render(<MobileNav route={R('/bav-rechner')} navigate={() => {}} />)
-    const active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Artikel')
-  })
-
-  it('navigates to /methode when Methode is tapped (PR 4)', () => {
-    const navigate = vi.fn()
-    render(<MobileNav route={R('/')} navigate={navigate} />)
-    fireEvent.click(screen.getByText('Methode'))
-    expect(navigate).toHaveBeenCalledWith(R('/methode'))
-  })
-
-  it('highlights Methode as active when route is /methode (PR 4)', () => {
-    render(<MobileNav route={R('/methode')} navigate={() => {}} />)
-    const active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Methode')
-  })
-
-  it('navigates to /eingaben when Angaben is tapped (PR 5)', () => {
-    const navigate = vi.fn()
-    render(<MobileNav route={R('/')} navigate={navigate} />)
-    fireEvent.click(screen.getByText('Angaben'))
-    expect(navigate).toHaveBeenCalledWith(R('/eingaben'))
-  })
-
-  it('highlights Angaben as active when route is /eingaben (PR 5)', () => {
-    render(<MobileNav route={R('/eingaben')} navigate={() => {}} />)
-    const active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Angaben')
-  })
-
-  // Phone parity with the desktop Startseite-fix: /?view=landing lights up
-  // Start (the canonical landing-page tab), not the Vergleich placeholder.
-  it('lights up Start on phone bottom-tab when URL is /?view=landing', () => {
+  it('leaves both tabs inactive when the landing override is present', () => {
     stubLocationSearch('?view=landing')
-    render(<MobileNav route={R('/')} navigate={() => {}} />)
-    const active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Start')
-    const allActive = document.querySelectorAll('.rw-mobile-nav__tab--active')
-    expect(allActive.length).toBe(1)
+    render(<MobileNav route={R('/')} appView="combine" navigate={() => {}} />)
+    expect(document.querySelector('[aria-current="page"]')).toBeNull()
   })
 
-  it('lights up Start when URL is / with no search param (R1.1 baseline on phone)', () => {
-    stubLocationSearch('')
-    render(<MobileNav route={R('/')} navigate={() => {}} />)
-    const active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Start')
+  it('lights up Mein Plan on bare / for both saved modes', () => {
+    for (const appView of ['compare', 'combine'] as const) {
+      cleanup()
+      render(<MobileNav route={R('/')} navigate={() => {}} appView={appView} />)
+      expect(screen.getByRole('link', { name: 'Mein Plan' })).toHaveAttribute('aria-current', 'page')
+      expect(screen.getByRole('link', { name: 'Vergleich' })).not.toHaveAttribute('aria-current')
+    }
   })
 
-  it('lights up the dashboard placeholder when appView=compare (bare /)', () => {
-    stubLocationSearch('')
-    render(<MobileNav route={R('/')} navigate={() => {}} appView="compare" />)
-    const active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Vergleich')
+  it.each([
+    ['/vergleich', 'Vergleich'],
+    ['/vergleich/details', 'Vergleich'],
+    ['/vertrag/etf:abcd', 'Mein Plan'],
+    ['/kapital', 'Mein Plan'],
+  ])('marks the primary destination on %s', (path, label) => {
+    render(<MobileNav route={R(path)} navigate={() => {}} />)
+    expect(screen.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page')
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1)
   })
 
-  it('renders the dashboard placeholder as "Mein Plan" when appView=combine', () => {
-    stubLocationSearch('')
-    render(<MobileNav route={R('/')} navigate={() => {}} appView="combine" />)
-    const active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Mein Plan')
-    // Sanity: the static "Vergleich" label is not also present.
-    const nav = document.querySelector('.rw-mobile-nav')
-    expect(nav?.textContent).not.toContain('Vergleich')
-  })
-
-  it('applies aria-current="page" to the active bottom-tab link', () => {
-    render(<MobileNav route={R('/methode')} navigate={() => {}} />)
-    const current = document.querySelector('[aria-current="page"]')
-    expect(current?.textContent).toBe('Methode')
-  })
-
-  // PR #298 R1 — same stale-state regression as the AppHeader test above:
-  // MobileNav must re-derive the active tab on parent re-render even when
-  // `handleLandingChoice`'s replaceState skips the navigated event.
-  //
-  // After the Startseite-fix both the before- and after-states light up
-  // Start (landing → Start; bare `/` → Start). The test still pins the
-  // synchronous-search-read behaviour.
-  it('re-reads search synchronously on parent re-render after replaceState (PR298 R1)', () => {
+  it('re-reads search synchronously when the parent changes landing to plan', () => {
     stubLocationSearch('?view=landing')
-    const { rerender } = render(<MobileNav route={R('/')} navigate={() => {}} />)
-    let active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Start')
+    const { rerender } = render(<MobileNav route={R('/')} appView="combine" navigate={() => {}} />)
+    expect(document.querySelector('[aria-current="page"]')).toBeNull()
     stubLocationSearch('')
-    rerender(<MobileNav route={R('/')} navigate={() => {}} />)
-    active = document.querySelector('.rw-mobile-nav__tab--active')
-    expect(active?.textContent).toBe('Start')
+    rerender(<MobileNav route={R('/')} appView="combine" navigate={() => {}} />)
+    expect(screen.getByRole('link', { name: 'Mein Plan' })).toHaveAttribute('aria-current', 'page')
   })
 })
 
 describe('MobileSheet', () => {
   it('lists overflow menu items when open', () => {
     render(<MobileSheet open onClose={() => {}} navigate={() => {}} />)
-    for (const label of ['Methode', 'Annahmen', 'Datenschutz', 'Impressum', 'GitHub', 'Projekt unterstützen']) {
+    for (const label of [
+      'Start',
+      'Angaben',
+      'Artikel',
+      'Methode',
+      'Datenschutz',
+      'Impressum',
+      'GitHub',
+      'Projekt unterstützen',
+    ]) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
+  })
+
+  it('routes Start to the landing page even with a saved plan', () => {
+    const navigate = vi.fn()
+    const onClose = vi.fn()
+    render(<MobileSheet open onClose={onClose} navigate={navigate} route={R('/')} appView="combine" />)
+    expect(screen.getByRole('button', { name: 'Start' })).not.toHaveAttribute('aria-current')
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    expect(navigate).toHaveBeenCalledWith(ROUTES.home, '?view=landing')
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('routes Artikel to its hub and closes the menu', () => {
+    const navigate = vi.fn()
+    const onClose = vi.fn()
+    render(<MobileSheet open onClose={onClose} navigate={navigate} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Artikel' }))
+    expect(navigate).toHaveBeenCalledWith(ROUTES.artikel)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    ['/eingaben/produkte', 'Angaben'],
+    ['/bav-rechner', 'Artikel'],
+  ])('highlights the parent menu item on %s', (path, label) => {
+    render(<MobileSheet open onClose={() => {}} navigate={() => {}} route={R(path)} />)
+    expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-current', 'page')
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1)
+  })
+
+  it('highlights Start when the landing override is present', () => {
+    stubLocationSearch('?view=landing')
+    render(<MobileSheet open onClose={() => {}} navigate={() => {}} route={R('/')} appView="combine" />)
+    expect(screen.getByRole('button', { name: 'Start' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('closes on Escape and removes its key listener when closed', () => {
+    const onClose = vi.fn()
+    const { rerender } = render(<MobileSheet open onClose={onClose} navigate={() => {}} />)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+    rerender(<MobileSheet open={false} onClose={onClose} navigate={() => {}} />)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('closes when the backdrop button is activated', () => {
+    const onClose = vi.fn()
+    render(<MobileSheet open onClose={onClose} navigate={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Menü schließen' }))
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('renders nothing when closed', () => {
@@ -527,11 +540,11 @@ describe('MobileSheet', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('routes Annahmen → /eingaben (R1.1, C4)', () => {
+  it('routes Angaben → /eingaben', () => {
     const navigate = vi.fn()
     const onClose = vi.fn()
     render(<MobileSheet open onClose={onClose} navigate={navigate} />)
-    fireEvent.click(screen.getByText('Annahmen'))
+    fireEvent.click(screen.getByText('Angaben'))
     expect(navigate).toHaveBeenCalledWith(R('/eingaben'))
     expect(onClose).toHaveBeenCalled()
   })
@@ -560,9 +573,7 @@ describe('MobileSheet', () => {
   })
 
   it('marks no item active when current route does not match any sheet item', () => {
-    // `/artikel` is a top-nav destination, not a sheet item — nothing
-    // should highlight even though the sheet is open.
-    render(<MobileSheet open onClose={() => {}} navigate={() => {}} route={R('/artikel')} />)
+    render(<MobileSheet open onClose={() => {}} navigate={() => {}} route={R('/vergleich')} />)
     expect(document.querySelector('.rw-mobile-sheet__item--active')).toBeNull()
   })
 })
@@ -713,11 +724,11 @@ describe('AppShell composition', () => {
     expect(active?.textContent).toBe('Startseite')
   })
 
-  it('lights up Vergleich tab end-to-end when appView=compare flows through AppShell', () => {
+  it('lights up Vergleich tab end-to-end when the route is /vergleich', () => {
     mockViewport('desktop')
     stubLocationSearch('')
     render(
-      <AppShell route={R('/')} navigate={() => {}} title="Demo" appView="compare">
+      <AppShell route={R('/vergleich')} navigate={() => {}} title="Demo" appView="compare">
         <div>body</div>
       </AppShell>,
     )

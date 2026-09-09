@@ -1,5 +1,6 @@
 import type { EtfAssumptions } from '../../domain'
 import { inRange, isFiniteNumber } from '../../domain/validation/primitives'
+import { CONTRIBUTION_GROWTH_BOUNDS } from '../../domain/validation/bounds'
 
 const VALID_PARTIAL_EXEMPTIONS = [0, 0.15, 0.3, 0.6, 0.8] as const
 
@@ -7,5 +8,9 @@ export function validateEtf(etf: EtfAssumptions): boolean {
   if (!inRange(etf.annualAssetFee, 0, 0.5)) return false
   if (!isFiniteNumber(etf.equityPartialExemption)) return false
   if (!(VALID_PARTIAL_EXEMPTIONS as readonly number[]).includes(etf.equityPartialExemption)) return false
-  return inRange(etf.annualContributionGrowthRate, 0, 0.1)
+  return inRange(
+    etf.annualContributionGrowthRate,
+    CONTRIBUTION_GROWTH_BOUNDS.min,
+    CONTRIBUTION_GROWTH_BOUNDS.max,
+  )
 }

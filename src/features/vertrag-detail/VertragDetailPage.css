@@ -19,6 +19,7 @@
 }
 
 .vertrag-main {
+  overflow-wrap: anywhere;
   flex: 1;
   width: 100%;
   max-width: 1180px;
@@ -71,6 +72,23 @@
   color: var(--rw-ink-soft);
 }
 
+.vertrag-missing-note {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--rw-accent);
+  background: var(--rw-accent-bg);
+  font-family: var(--rw-font-sans);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--rw-ink);
+}
+
+.vertrag-missing-note-link {
+  color: var(--rw-accent);
+  text-decoration: underline;
+  white-space: normal;
+}
+
 .vertrag-backline {
   margin-top: 16px;
   display: flex;
@@ -101,12 +119,13 @@
 /* --- KPI strip --------------------------------------------------------- */
 .vertrag-kpi-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-top: 1px solid var(--rw-rule);
   border-bottom: 1px solid var(--rw-rule);
 }
 
 .vertrag-kpi-tile {
+  min-width: 0;
   padding: 18px 16px;
   border-left: 1px solid var(--rw-rule-soft);
 }
@@ -174,6 +193,20 @@
 }
 
 /* --- Scenario table --------------------------------------------------- */
+.vertrag-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* These tables wrap independently of the shared comparison-table nowrap. */
+.vertrag-scenario-table th,
+.vertrag-scenario-table td,
+.vertrag-metadata-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .vertrag-scenario-table {
   width: 100%;
   border-collapse: collapse;
@@ -264,6 +297,8 @@
 
 .vertrag-provenance-row {
   display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   align-items: baseline;
   justify-content: space-between;
   padding: 8px 0;
@@ -275,8 +310,20 @@
   color: var(--rw-ink);
 }
 
+/* Keep the shared fee chart inside the contract column at phone widths. */
+.vertrag-body .fee-drag-chart-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.vertrag-body .section-heading > div {
+  min-width: 0;
+}
+
 /* --- Metadata aside --------------------------------------------------- */
 .vertrag-metadata-aside {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -383,7 +430,7 @@
   }
 
   .vertrag-kpi-strip {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .vertrag-kpi-tile {

@@ -190,7 +190,11 @@ export function buildReviewerInvocation({ reviewer, model, promptFile, outputLas
 // per line — a `system` init line, `assistant` lines each carrying
 // `message.model` plus the message content, `user` tool-result lines, and a
 // final `{ type: "result", subtype: "success", is_error: false, num_turns,
-// modelUsage: {...}, result: "..." }` event.
+// modelUsage: {...}, result: "..." }` event. Since claude 2.1.x the result is
+// no longer necessarily the last line — the CLI emits `system` bookkeeping
+// events around it (`system post_turn_summary` before, `system task_summary`
+// after). The parser reads the LAST `result` event and tolerates trailing
+// `system` events; any other trailing event type still fails closed.
 //
 // Identity: EVERY assistant event must carry `message.model`; one that omits
 // it fails the run rather than being filtered out of the check. The models
@@ -260,10 +264,24 @@ export function parseClaudeReviewerOutput({ stdout, exitCode, requestedModel }) 
     )
   }
 
-  const result = events.at(-1)
+  // The result event is not always the LAST line: claude >= 2.1.x emits
+  // trailing `system` bookkeeping events after it (observed: `system
+  // post_turn_summary` before the result and `system task_summary` after it).
+  // Take the last `result` event and tolerate `system` events after it — any
+  // other trailing event type still means the stream is not a completed run.
+  const lastResultIndex = events.findLastIndex((event) => event?.type === 'result')
+  const result = lastResultIndex === -1 ? undefined : events[lastResultIndex]
+  const trailing = lastResultIndex === -1 ? [] : events.slice(lastResultIndex + 1)
+  const unexpectedTrailing = trailing.filter((event) => event?.type !== 'system')
   if (result?.type !== 'result') {
     return fail(
-      `claude stream ends with "${result?.type ?? 'nothing'}" instead of a result event — run did not complete (possible truncation)`,
+      `claude stream ends with "${events.at(-1)?.type ?? 'nothing'}" instead of a result event — run did not complete (possible truncation)`,
+    )
+  }
+  if (unexpectedTrailing.length > 0) {
+    return fail(
+      `claude stream continues with "${unexpectedTrailing[0].type}" after the result event — ` +
+        'only trailing system events are expected after a completed run',
     )
   }
   if (result.subtype !== 'success') {

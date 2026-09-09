@@ -1,3 +1,4 @@
+import { MeasuredResponsiveContainer } from '../../ui/charts/MeasuredResponsiveContainer'
 import '../../ui/charts.css'
 import './MonteCarloPanel.css'
 import { useCallback, useMemo, useState } from 'react'
@@ -5,7 +6,6 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -213,7 +213,7 @@ export function MonteCarloPanel({ result }: Props) {
       </div>
 
       <div className="chart-frame small">
-        <ResponsiveContainer width="100%" height="100%" onResize={handleChartResize}>
+        <MeasuredResponsiveContainer onResize={handleChartResize}>
           <LineChart data={chartData} margin={density.margins}>
             <CartesianGrid strokeDasharray="4 4" />
             <XAxis
@@ -285,7 +285,7 @@ export function MonteCarloPanel({ result }: Props) {
               dot={false}
             />
           </LineChart>
-        </ResponsiveContainer>
+        </MeasuredResponsiveContainer>
       </div>
 
       <p className="mc-table-note">

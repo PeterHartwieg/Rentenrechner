@@ -62,9 +62,13 @@ describe('estimateEpFromYears', () => {
   })
 
   it('scales linearly with years', () => {
-    const ep5 = estimateEpFromYears(5, 47_079)
-    const ep10 = estimateEpFromYears(10, 47_079)
-    // At Durchschnittsentgelt salary, EP/year ≈ 1.0
+    // 51_944 EUR is the ACTIVE de2026 Durchschnittsentgelt. The helper used to
+    // hardcode the obsolete 47_079; it now reads `rules.socialSecurity`, the
+    // same denominator `projectStatutoryPension` uses, so 1 year at the
+    // Durchschnittsentgelt is exactly 1 EP again.
+    const ep5 = estimateEpFromYears(5, 51_944)
+    const ep10 = estimateEpFromYears(10, 51_944)
+    expect(ep5).toBeCloseTo(5, 5)
     expect(ep10).toBeCloseTo(ep5 * 2, 5)
   })
 
@@ -204,11 +208,14 @@ describe('buildWorkspaceFromDraft — Anna (clean-slate, no contracts)', () => {
       basisrenteDraft: null,
       avdDraft: null,
       etfDraft: null,
-      grossSalaryYear: 47_079, // = Durchschnittsentgelt → 1 EP/year
+      grossSalaryYear: 51_944, // = active de2026 Durchschnittsentgelt → 1 EP/year
     })
 
     const ep = ws.baseline.assumptions.statutoryPension.currentEntgeltpunkte
-    // At Durchschnittsentgelt, 10 years ≈ 10 EP (±rounding)
+    // At the Durchschnittsentgelt, 10 years ≈ 10 EP (±rounding). The constant
+    // changed from the obsolete hardcoded 47_079 to the active de2026 value
+    // 51_944 when `estimateEpFromYears` started reading the rule set; the old
+    // literal overstated EP by 10.33 %.
     expect(ep).toBeCloseTo(10, 1)
   })
 

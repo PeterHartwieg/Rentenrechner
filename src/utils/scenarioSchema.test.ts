@@ -825,13 +825,33 @@ describe('validateWorkspaceAssumptions — strict monteCarlo / statutoryPension 
     expect(validateWorkspaceAssumptions(patched)).toBeNull()
   })
 
-  it('rejects an instance whose product prefix does not match its array', () => {
+  it('drops an out-of-range instance and keeps every other contract (issue #395 sibling)', () => {
+    const a = makeWorkspaceAssumptions()
+    // A rentenfaktor the editor used to accept (its spec allowed 200) but the
+    // bAV validator rejects (`inRange(0, 100)`).
+    const patched = {
+      ...a,
+      bav: [{ ...a.bav[0], rentenfaktor: 120 }],
+    }
+    const result = validateWorkspaceAssumptions(patched)
+    expect(result).not.toBeNull()
+    expect(result!.bav).toHaveLength(0)
+    expect(result!.etf).toHaveLength(a.etf.length)
+    expect(result!.insurance).toHaveLength(a.insurance.length)
+    expect(result!.riester).toHaveLength(a.riester.length)
+  })
+
+  it('drops an instance whose product prefix does not match its array, keeping the rest', () => {
     const a = makeWorkspaceAssumptions()
     const patched = {
       ...a,
       etf: [{ ...a.etf[0], instanceId: 'versicherung-wrong-slot' }],
     }
-    expect(validateWorkspaceAssumptions(patched)).toBeNull()
+    const result = validateWorkspaceAssumptions(patched)
+    expect(result).not.toBeNull()
+    expect(result!.etf).toHaveLength(0)
+    // The user's other contracts survive the misfiled one.
+    expect(result!.bav).toHaveLength(a.bav.length)
   })
 })
 

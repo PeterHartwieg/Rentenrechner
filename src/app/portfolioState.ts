@@ -14,8 +14,14 @@
  *   - `useCalculatorState`: compare-mode keeps the singleton API.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Scenario, WhatIfScenario, Workspace } from '../domain/workspace'
+import { useCallback, useSyncExternalStore } from 'react'
+import type {
+  Scenario,
+  WhatIfScenario,
+  Workspace,
+  WorkspaceAssumptionsV2,
+} from '../domain/workspace'
+import type { InputStatusMap } from '../domain/inputStatus'
 import type {
   BavInstance,
   EtfInstance,
@@ -26,21 +32,27 @@ import type {
 } from '../domain/instances'
 import {
   defaultWorkspace,
-  loadSavedWorkspace,
+  loadSavedWorkspaceWithSource,
   saveWorkspace,
 } from '../storage'
 import { hasShareStateInUrl } from '../utils/urlShareDetect'
 import {
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
+  newInstanceId,
   newScenarioId,
   deepCloneScenario,
+  defaultInstanceLabel,
+  isGeneratedInstanceLabel,
 } from './workspaceIdentity'
+import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
 import { scenarioDiff, applyDiff } from './scenarioDiff'
 import type { SavedScenario } from '../data/scenarioLibrary'
 import { addArchivedEntry } from '../data/scenarioLibrary'
 import { singletonViewOfWorkspace } from '../engine/portfolioAdapter'
 import { defaultAssumptions } from '../data/defaultScenario'
+import { PRODUCT_REGISTRY } from '../engine/productRegistry'
+import { INSTANCE_VALIDATOR_BY_PRODUCT } from '../utils/scenarioSchema'
 
 /** Union of all per-product instance types for `addPopulatedInstance`. */
 export type AnyInstance =
@@ -52,14 +64,24 @@ export type AnyInstance =
   | RiesterInstance
 
 /**
- * When the user did not enter a provider name, the draft converter produces a
- * generic label (e.g. "ETF-Depot", "bAV", "Riester-Rente") that would repeat
- * for every blank-provider add. Append a "#N" suffix where N is the count
- * after the new instance lands, matching addInstanceToWorkspace's behaviour.
+ * Give a freshly added contract the label it should carry once it lands in the
+ * workspace.
+ *
+ * The rule (browser-verification finding 1, which produced "ETF #1 #1"):
+ *
+ *  - a provider name wins — "ETF – Trade Republic" is never numbered;
+ *  - a label the user typed is never rewritten;
+ *  - a generated label is the plain product name for the only contract of that
+ *    product, and gains " #N" from the second one on.
  */
-export function applyDisambiguatingLabel<T extends AnyInstance>(instance: T, count: number): T {
+export function applyDisambiguatingLabel<T extends AnyInstance>(
+  productId: MultiInstanceProductId,
+  instance: T,
+  count: number,
+): T {
   if (instance.anbieter && instance.anbieter.trim() !== '') return instance
-  return { ...instance, label: `${instance.label} #${count}` }
+  if (!isGeneratedInstanceLabel(productId, instance.label ?? '')) return instance
+  return { ...instance, label: defaultInstanceLabel(productId, count) }
 }
 
 // Re-export so existing callers (tests, recommender, ContractDecisionMenu, etc.)
@@ -77,11 +99,103 @@ export { newScenarioId, deepCloneScenario }
  * override is session-scoped (in-memory only).
  */
 export function loadInitialWorkspace(): Workspace {
-  const saved = loadSavedWorkspace() ?? deepCloneScenario(defaultWorkspace)
+  const loaded = loadSavedWorkspaceWithSource()
+  // A workspace migrated from STORAGE_KEY_V1 carries one `${productId}-singleton`
+  // instance per product slot the *comparison* filled — ETF and private
+  // Rentenversicherung unconditionally, because their contribution is derived
+  // from the bAV net cost rather than stored. Those are a projection of the
+  // comparison, never contracts the user entered, and only a combine-mode
+  // write reaches STORAGE_KEY_V2, so a v1-only save can never hold a real one.
+  //
+  // Dropping them at hydration rather than at render is what makes the rule
+  // hold: the store is the workspace every mutation reads and writes back, so
+  // a phantom left in it is persisted by the first real edit — which is how a
+  // user who visited `/vergleich` before adding their first ETF-Depot ended up
+  // with "ETF-Depot", "ETF-Depot #2" and six contracts they never entered.
+  // `hasStartedPlan` / `withoutPlanInstances` still guard the render path for
+  // workspaces this function did not produce.
+  const saved =
+    loaded === null
+      ? deepCloneScenario(defaultWorkspace)
+      : loaded.source === 'v1'
+        ? withoutPlanInstances(loaded.workspace)
+        : loaded.workspace
   if (hasShareStateInUrl() && saved.mode === 'combine') {
     return { ...saved, mode: 'compare' }
   }
   return saved
+}
+
+/**
+ * Has the user actually started a personal plan?
+ *
+ * The `/` dispatch uses this to decide between the plan's "not started" state
+ * and the populated plan, and `/vergleich` uses it to decide whether offering
+ * "Angaben aus meinem Plan verwenden" makes sense.
+ *
+ * Two signals:
+ *
+ *  1. `baseline.lastEditedAt` — every workspace mutation stamps it, including
+ *     the wizard's `onComplete`, and only combine-mode writes reach
+ *     STORAGE_KEY_V2, so a compare-only session can never produce one. This
+ *     is the primary signal.
+ *  2. Contracts in a workspace already tagged `mode: 'combine'` — the safety
+ *     net for a legacy save that predates the edit stamp.
+ *
+ * The mode tag alone is not enough: the landing page's combine CTA flips the
+ * mode *before* the wizard opens, and the wizard has to open in onboarding
+ * mode, not edit mode.
+ *
+ * Counting instance arrays unconditionally is what produced the "six assumed contracts and a
+ * 4.568 € total" surprise for a visitor who only ever used `/vergleich`:
+ * compare-mode persists a v1 envelope, `loadSavedWorkspace` falls back to it,
+ * and `migrateV1ToV2` synthesises one instance per meaningful product slot
+ * (ETF + private Rente unconditionally). Those instances are a projection of
+ * the comparison, not contracts the user entered — so they must not decide
+ * whether a plan exists. A real contract always arrives through
+ * `addInstanceToWorkspace` / `addPopulatedInstance`, both of which stamp
+ * `lastEditedAt`, so nothing the user actually created is missed.
+ *
+ * Pure and React-free so route dispatch and tests can call it directly.
+ */
+export function hasStartedPlan(workspace: Workspace): boolean {
+  if (workspace.baseline.lastEditedAt !== undefined) return true
+  if (workspace.mode !== 'combine') return false
+  const wsa = workspace.baseline.assumptions
+  for (const entry of PRODUCT_REGISTRY) {
+    const raw = (wsa as unknown as Record<string, unknown>)[entry.assumptionsKey]
+    if (Array.isArray(raw) && raw.length > 0) return true
+  }
+  return false
+}
+
+/**
+ * Strip every product instance from a workspace's baseline.
+ *
+ * Used by the `/` plan surface for the not-started state: the workspace that
+ * `loadInitialWorkspace` hands back may carry compare-mode-derived instances
+ * (see `hasStartedPlan`), and neither the simulation, the readiness verdict
+ * nor `selectPlanSummary` may be computed against those — they would report a
+ * household total for contracts the user never entered.
+ *
+ * Returns the same reference when there is nothing to strip, so callers can
+ * use it inside `useMemo` without churning downstream dependencies.
+ */
+export function withoutPlanInstances(workspace: Workspace): Workspace {
+  const wsa = workspace.baseline.assumptions
+  const cleared: Record<string, unknown> = {}
+  for (const entry of PRODUCT_REGISTRY) {
+    const raw = (wsa as unknown as Record<string, unknown>)[entry.assumptionsKey]
+    if (Array.isArray(raw) && raw.length > 0) cleared[entry.assumptionsKey] = []
+  }
+  if (Object.keys(cleared).length === 0) return workspace
+  return {
+    ...workspace,
+    baseline: {
+      ...workspace.baseline,
+      assumptions: { ...wsa, ...cleared } as WorkspaceAssumptionsV2,
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -148,6 +262,119 @@ export function rebaseWhatIf(
   } as WhatIfScenario
 }
 
+// ---------------------------------------------------------------------------
+// Undo, staleness and shape drift (pure; state contract §5)
+// ---------------------------------------------------------------------------
+
+/**
+ * One level of undo for a workspace mutation.
+ *
+ * Deliberately a whole-workspace snapshot rather than an inverse operation:
+ * removing a contract touches instance arrays, transfer events on *other*
+ * contracts, pins, visibility and what-if staleness at once, and only a full
+ * snapshot restores all of that together. In-memory and session-scoped — never
+ * persisted (lead decision "Target and undo").
+ */
+export interface WorkspaceUndo {
+  id: string
+  /** German, supplied by the caller ("Vertrag entfernt"). */
+  label: string
+  createdAt: number
+  /** The workspace as it was immediately before the mutation. */
+  previous: Workspace
+}
+
+let undoCounter = 0
+
+function newUndoId(): string {
+  undoCounter += 1
+  return `undo-${Date.now().toString(36)}-${undoCounter}`
+}
+
+/** Why `applyWhatIf` refused. */
+export type WhatIfApplyFailure = 'stale' | 'shape-drift' | 'not-found'
+
+export type ApplyWhatIfResult =
+  | { ok: true; undo: WorkspaceUndo }
+  | { ok: false; reason: WhatIfApplyFailure }
+
+export type RebaseWhatIfResult =
+  | { ok: true; undo: WorkspaceUndo }
+  | { ok: false; reason: 'not-found' | 'shape-drift' }
+
+/**
+ * The point in time a what-if's frozen baseline snapshot represents.
+ *
+ * `forkBaselineScenario` clones the baseline wholesale, so the snapshot carries
+ * the *baseline's* `createdAt` — which never moves. Re-basing replaces the
+ * snapshot with a clone of the current baseline, and that clone carries the
+ * baseline's `lastEditedAt`. Taking the later of the two is what makes "and has
+ * not been rebased" work: without it a rebase could never clear staleness.
+ */
+export function whatIfSnapshotTime(whatIf: WhatIfScenario): number {
+  const snapshot = whatIf.derivedFromBaselineSnapshot
+  const createdAt = Date.parse(snapshot.createdAt)
+  return Math.max(Number.isFinite(createdAt) ? createdAt : 0, snapshot.lastEditedAt ?? 0)
+}
+
+/**
+ * `true` when the baseline moved after the what-if's snapshot was taken.
+ *
+ * Same convention as the existing `BaselineStaleBadge`: only a real timestamp
+ * counts as an edit. Freezing does **not** clear staleness — keeping a snapshot
+ * is a viewing decision, not an apply permission (journey map §2).
+ */
+export function whatIfIsStale(whatIf: WhatIfScenario, baseline: Scenario): boolean {
+  const editedAt = baseline.lastEditedAt ?? 0
+  if (editedAt <= 0) return false
+  return editedAt > whatIfSnapshotTime(whatIf)
+}
+
+/**
+ * `true` when both scenarios hold the same contracts, in the same order, in
+ * every product array.
+ *
+ * `scenarioDiff` matches array entries **by index**, so a delta computed against
+ * a snapshot with a different instance sequence would be written onto the wrong
+ * contract. Apply and rebase both refuse rather than silently corrupting a
+ * neighbouring contract.
+ */
+export function productArrayShapeMatches(a: Scenario, b: Scenario): boolean {
+  for (const entry of PRODUCT_REGISTRY) {
+    const key = entry.assumptionsKey as string
+    const left = (a.assumptions as unknown as Record<string, unknown>)[key]
+    const right = (b.assumptions as unknown as Record<string, unknown>)[key]
+    if (!Array.isArray(left) || !Array.isArray(right)) continue
+    if (left.length !== right.length) return false
+    for (let i = 0; i < left.length; i++) {
+      const leftId = (left[i] as { instanceId?: string } | undefined)?.instanceId
+      const rightId = (right[i] as { instanceId?: string } | undefined)?.instanceId
+      if (leftId !== rightId) return false
+    }
+  }
+  return true
+}
+
+/**
+ * Apply a what-if's user deltas onto the given baseline.
+ *
+ * The diff is taken against the what-if's own snapshot, never against the live
+ * baseline, so only the fields the user actually changed are written. Baseline
+ * identity (`id`, `label`, `createdAt`, `origin`) is preserved.
+ */
+export function applyWhatIfToBaseline(whatIf: WhatIfScenario, baseline: Scenario): Scenario {
+  const deltas = scenarioDiff(whatIf.derivedFromBaselineSnapshot, whatIf)
+  const applied = applyDiff(deepCloneScenario(baseline), deltas)
+  return {
+    ...applied,
+    id: baseline.id,
+    label: baseline.label,
+    createdAt: baseline.createdAt,
+    origin: baseline.origin,
+    lastEditedAt: Date.now(),
+  }
+}
+
 /**
  * @deprecated Use `rebaseWhatIf` instead. This stub only refreshes the
  * snapshot and is kept for backward compatibility with issue 03 tests.
@@ -177,6 +404,13 @@ export type MultiInstanceProductId =
 
 export interface UsePortfolioStateApi {
   workspace: Workspace
+  /**
+   * True when the last workspace persist attempt failed (quota exceeded,
+   * storage disabled by the browser). `saveWorkspace` returns a boolean since
+   * Phase 1; before that the failure was swallowed and the user silently lost
+   * their edits on reload. The shell surfaces this as a visible warning.
+   */
+  storageError: boolean
   baseline: Scenario
   whatIfs: WhatIfScenario[]
   mode: Workspace['mode']
@@ -193,7 +427,8 @@ export interface UsePortfolioStateApi {
   patchBaseline: (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void
   addWhatIf: (whatIf: WhatIfScenario) => void
   updateWhatIf: (id: string, patch: Partial<Omit<WhatIfScenario, 'id'>>) => void
-  removeWhatIf: (id: string) => void
+  /** Remove a saved alternative. Returns the undo handle (§5). */
+  removeWhatIf: (id: string) => WorkspaceUndo
   /**
    * Fork a new what-if from the current baseline. Sets
    * `derivedFromBaselineId` and `derivedFromBaselineSnapshot` (a frozen
@@ -208,6 +443,36 @@ export interface UsePortfolioStateApi {
    * `derivedFromBaselineId` + `derivedFromBaselineSnapshot`.
    */
   rebaseWhatIf: (id: string) => void
+  /**
+   * Same as `rebaseWhatIf`, but reports what happened. Refuses with
+   * `'shape-drift'` when the contract sequence moved since the snapshot was
+   * taken — an index-matched diff would then be re-applied onto the wrong
+   * contract. The plain `rebaseWhatIf` is a no-op in that case.
+   */
+  tryRebaseWhatIf: (id: string) => RebaseWhatIfResult
+  /**
+   * Apply a saved alternative's deltas onto the current baseline.
+   *
+   * Only the fields the user changed inside the what-if are written. Refuses
+   * when the alternative is out of date (`'stale'` — rebase and review first)
+   * or when the contract sequence drifted (`'shape-drift'`). A frozen snapshot
+   * is not an apply permission.
+   */
+  applyWhatIf: (id: string) => ApplyWhatIfResult
+  /**
+   * Restore the workspace captured in an undo handle.
+   *
+   * Undo is one level deep, so only the newest handle is honoured: returns
+   * `false` (and changes nothing) when a later mutation has superseded
+   * `handle` — restoring it would silently discard that mutation. `true` when
+   * the workspace was restored.
+   */
+  undo: (handle: WorkspaceUndo) => boolean
+  /**
+   * The most recent undoable mutation, or `null`. One level, in memory, and
+   * superseded by the next mutation — the status bar shows it until consumed.
+   */
+  lastUndo: WorkspaceUndo | null
   /**
    * Freeze a what-if to its current materialised state. Stamps `frozenAt` so
    * the "Baseline hat sich geändert" badge suppresses itself until the next
@@ -232,54 +497,249 @@ export interface UsePortfolioStateApi {
    * Unlike `addInstance`, this preserves user-entered draft values instead of
    * inserting engine defaults.
    */
-  addPopulatedInstance: (productId: MultiInstanceProductId, instance: AnyInstance) => void
+  addPopulatedInstance: (
+    productId: MultiInstanceProductId,
+    instance: AnyInstance,
+    status?: InputStatusMap,
+  ) => { instanceId: string; undo: WorkspaceUndo } | null
   /**
-   * Remove an instance from the baseline by productId + instanceId. Pinned
-   * comparison ids referencing the removed instance are cleaned up.
+   * Patch an existing instance in place. `patch` is shallow-merged, so nested
+   * objects (`fees`, `eligibility`) must arrive complete — which is what
+   * `draftToInstancePatch` produces. `status` is merged into the instance's
+   * `inputStatus`; keys it does not mention survive untouched.
    */
-  removeInstance: (productId: MultiInstanceProductId, instanceId: string) => void
+  updateInstance: (
+    productId: MultiInstanceProductId,
+    instanceId: string,
+    patch: Partial<AnyInstance>,
+    status?: InputStatusMap,
+  ) => boolean
+  /**
+   * Remove an instance from the baseline by productId + instanceId, cleaning up
+   * every reference to it in the same transaction (see
+   * `removeInstanceFromWorkspace`). Returns the undo handle.
+   */
+  removeInstance: (productId: MultiInstanceProductId, instanceId: string) => WorkspaceUndo
+}
+
+/**
+ * One line when a write is refused because the resulting instance would not
+ * survive the load path. The editor already blocks this via `validateDraft`;
+ * reaching here means a caller bypassed it, so make the refusal visible rather
+ * than dropping the edit silently.
+ */
+function warnRejectedInstance(productId: string, instanceId: string): void {
+  console.warn(
+    `[portfolioState] Vertrag ${instanceId} (${productId}) nicht gespeichert: ` +
+      'die Angaben verletzen das gespeicherte Schema.',
+  )
+}
+
+// ---------------------------------------------------------------------------
+// One-level undo store (lead decision: "one level, in memory, shown until
+// consumed or superseded by the next mutation. Not persisted.")
+//
+// The handle deliberately lives *outside* React state. Two hosts mount their
+// own `usePortfolioState` (the plan, and `/vertrag/:id/bearbeiten`), and a
+// contract removed in the editor redirects back to the plan — so a per-mount
+// `useState` would drop the handle exactly when the user needs it. The store is
+// module-level and never persisted, so a reload still discards it.
+// ---------------------------------------------------------------------------
+
+let lastUndoHandle: WorkspaceUndo | null = null
+const lastUndoListeners = new Set<() => void>()
+
+function subscribeLastUndo(listener: () => void): () => void {
+  lastUndoListeners.add(listener)
+  return () => { lastUndoListeners.delete(listener) }
+}
+
+function publishLastUndo(next: WorkspaceUndo | null): void {
+  if (lastUndoHandle === next) return
+  lastUndoHandle = next
+  for (const listener of lastUndoListeners) listener()
+}
+
+/** Test seam: drops the pending handle so module state cannot leak between tests. */
+export function clearWorkspaceUndo(): void {
+  publishLastUndo(null)
+}
+
+/**
+ * Commit a fully-formed workspace in one store write and record the undo
+ * handle for the state it replaced.
+ *
+ * Module-level so surfaces that do not mount `usePortfolioState` — currently
+ * `useAngabenState`'s combine-mode mutators, which drive `/eingaben/produkte`
+ * — commit through the same seam. Before this existed, "Entfernen" on that
+ * page wrote straight through `updateWorkspaceStore` and left no handle, so
+ * the removal had no "Rückgängig" anywhere.
+ */
+export function commitWorkspace(label: string, next: Workspace): WorkspaceUndo {
+  const previous = getWorkspaceSnapshot()
+  const undo: WorkspaceUndo = { id: newUndoId(), label, createdAt: Date.now(), previous }
+  setWorkspaceStore(next)
+  publishLastUndo(undo)
+  return undo
+}
+
+/**
+ * Undo a handle. Only the newest one may be undone (see the hook's `undo`).
+ */
+export function undoWorkspace(handle: WorkspaceUndo): boolean {
+  if (!lastUndoHandle || lastUndoHandle.id !== handle.id) return false
+  setWorkspaceStore(handle.previous)
+  publishLastUndo(null)
+  return true
+}
+
+/**
+ * Subscribe to the pending undo handle without pulling in the full
+ * `usePortfolioState` API. Used by surfaces that only need to render the
+ * "… · Rückgängig" status line (e.g. the `/eingaben/produkte` panel).
+ */
+export function useWorkspaceUndoNotice(): {
+  lastUndo: WorkspaceUndo | null
+  undo: (handle: WorkspaceUndo) => boolean
+} {
+  const lastUndo = useSyncExternalStore(
+    subscribeLastUndo,
+    () => lastUndoHandle,
+    () => null,
+  )
+  return { lastUndo, undo: undoWorkspace }
+}
+
+// ---------------------------------------------------------------------------
+// Workspace store (module-level, write-through)
+//
+// The workspace used to live in per-mount `useState` with a persist `useEffect`.
+// Every route that mounts `usePortfolioState` (`/`, `/vorsorge/neu`,
+// `/vertrag/:id/bearbeiten`, `/alternativen`, `/eingaben`) therefore owned a
+// private copy, and a handler that committed and then navigated in the same
+// tick unmounted before its persist effect ran — the next route's fresh mount
+// re-read the *stale* storage value and its own effect wrote that back, eating
+// the commit ("Vertrag hinzugefügt" with an empty plan).
+//
+// One module-level store fixes both halves: every mount observes the same
+// value via `useSyncExternalStore`, and each mutation persists synchronously
+// inside the setter, so no commit depends on the committing component still
+// being mounted. `storageError` rides along as a published flag rather than
+// per-mount state. Mirrors the `lastUndo` store above.
+// ---------------------------------------------------------------------------
+
+let workspaceStore: Workspace | null = null
+let storageErrorFlag = false
+const workspaceListeners = new Set<() => void>()
+
+function emitWorkspace(): void {
+  for (const listener of workspaceListeners) listener()
+}
+
+export function subscribeWorkspace(listener: () => void): () => void {
+  workspaceListeners.add(listener)
+  return () => { workspaceListeners.delete(listener) }
+}
+
+/**
+ * The live workspace. Lazily initialised from storage once per page load —
+ * later mounts reuse the in-memory value rather than re-reading localStorage,
+ * which is what makes a commit survive an immediate route change.
+ */
+export function getWorkspaceSnapshot(): Workspace {
+  if (workspaceStore === null) workspaceStore = loadInitialWorkspace()
+  return workspaceStore
+}
+
+function getStorageErrorSnapshot(): boolean {
+  return storageErrorFlag
+}
+
+/**
+ * Publish a new workspace and persist it synchronously. `storageError` is
+ * derived from `saveWorkspace`'s boolean, exactly as the old persist effect
+ * did.
+ */
+export function setWorkspaceStore(next: Workspace): void {
+  if (next === getWorkspaceSnapshot()) return
+  workspaceStore = next
+  storageErrorFlag = !saveWorkspace(next)
+  emitWorkspace()
+}
+
+/** Read-modify-write against the live workspace, in one atomic step. */
+export function updateWorkspaceStore(updater: (prev: Workspace) => Workspace): Workspace {
+  const next = updater(getWorkspaceSnapshot())
+  setWorkspaceStore(next)
+  return next
+}
+
+/**
+ * Test seam: drop the in-memory workspace (and the pending undo handle) so a
+ * test that seeds localStorage in `beforeEach` gets a store hydrated from its
+ * own fixture. Called globally from `src/vitest.setup.ts`.
+ */
+export function resetPortfolioStore(): void {
+  // Deliberately silent: notifying here would make any component still mounted
+  // from the previous test re-read `getWorkspaceSnapshot()`, which re-hydrates
+  // the store from the localStorage the test is about to clear. Dropping the
+  // value is enough — the next mount reads the fresh fixture.
+  workspaceStore = null
+  storageErrorFlag = false
+  lastUndoHandle = null
+}
+
+/** Subscribe to the shared workspace. */
+export function useWorkspaceValue(): Workspace {
+  return useSyncExternalStore(subscribeWorkspace, getWorkspaceSnapshot, getWorkspaceSnapshot)
 }
 
 export function usePortfolioState(): UsePortfolioStateApi {
-  const [workspace, setWorkspace] = useState<Workspace>(() => loadInitialWorkspace())
+  const workspace = useWorkspaceValue()
+  const storageError = useSyncExternalStore(
+    subscribeWorkspace,
+    getStorageErrorSnapshot,
+    getStorageErrorSnapshot,
+  )
+  const lastUndo = useSyncExternalStore(
+    subscribeLastUndo,
+    () => lastUndoHandle,
+    () => null,
+  )
 
-  // Skip the first-effect-run no-op write. On the mount tick `workspace`
-  // equals the value we just lazy-initialised from storage, so writing it
-  // back is purely a no-op — but the v2 load pipeline (`parseWorkspaceJson`
-  // → `mergeDeep` against `defaultWorkspace`) only iterates keys present on
-  // the *default* shape, so any saved field that is not enumerated in the
-  // default (today: `baseline.lastEditedAt`, used by `BaselineStaleBadge` to
-  // decide whether what-ifs are stale) gets dropped on the round trip and
-  // re-persisted as `undefined`. That falsely invalidates every what-if as
-  // soon as a `/eingaben` mount + the dashboard share the same workspace
-  // (`AngabenProduktSection` + `Calculator`). Mirrors the same first-mount
-  // skip in `useAngabenState`; pinned by `AngabenPage.test.tsx`
-  // "does NOT bump baseline.lastEditedAt on mount".
-  const isFirstEffectRun = useRef(true)
-
-  useEffect(() => {
-    if (isFirstEffectRun.current) {
-      isFirstEffectRun.current = false
-      return
-    }
-    saveWorkspace(workspace)
-  }, [workspace])
+  /**
+   * Commit a fully-formed workspace in exactly one store write, recording an
+   * undo handle for the state it replaced. Every §5 mutation goes through here,
+   * which is what makes the atomicity and one-level-undo rules structural
+   * rather than a convention.
+   */
+  const commit = useCallback(
+    (label: string, next: Workspace): WorkspaceUndo => commitWorkspace(label, next),
+    [],
+  )
 
   const replaceWorkspace = useCallback((next: Workspace) => {
-    setWorkspace(next)
+    // Not a `commit`: no undo handle is recorded, so the pending one must go —
+    // it snapshots a workspace that predates this write and undoing it would
+    // silently discard the newer edit.
+    publishLastUndo(null)
+    setWorkspaceStore(next)
   }, [])
 
   const setMode = useCallback((mode: Workspace['mode']) => {
-    setWorkspace((w) => ({ ...w, mode }))
+    publishLastUndo(null)
+    updateWorkspaceStore((w) => ({ ...w, mode }))
   }, [])
 
   const setBaseline = useCallback((scenario: Scenario) => {
-    setWorkspace((w) => ({ ...w, baseline: scenario }))
+    publishLastUndo(null)
+    updateWorkspaceStore((w) => ({ ...w, baseline: scenario }))
   }, [])
 
   const patchBaseline = useCallback(
     (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => {
-      setWorkspace((w) => ({
+      publishLastUndo(null)
+      updateWorkspaceStore((w) => ({
         ...w,
         baseline: { ...w.baseline, ...patch, lastEditedAt: Date.now() },
       }))
@@ -288,12 +748,14 @@ export function usePortfolioState(): UsePortfolioStateApi {
   )
 
   const addWhatIf = useCallback((whatIf: WhatIfScenario) => {
-    setWorkspace((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
+    publishLastUndo(null)
+    updateWorkspaceStore((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
   }, [])
 
   const updateWhatIf = useCallback(
     (id: string, patch: Partial<Omit<WhatIfScenario, 'id'>>) => {
-      setWorkspace((w) => ({
+      publishLastUndo(null)
+      updateWorkspaceStore((w) => ({
         ...w,
         whatIfs: w.whatIfs.map((wi) => (wi.id === id ? { ...wi, ...patch } : wi)),
       }))
@@ -301,34 +763,79 @@ export function usePortfolioState(): UsePortfolioStateApi {
     [],
   )
 
-  const removeWhatIf = useCallback((id: string) => {
-    setWorkspace((w) => ({
-      ...w,
-      whatIfs: w.whatIfs.filter((wi) => wi.id !== id),
-      pinnedComparisonIds: w.pinnedComparisonIds.filter((p) => p !== id),
-    }))
-  }, [])
+  const removeWhatIf = useCallback(
+    (id: string): WorkspaceUndo => {
+      const w = getWorkspaceSnapshot()
+      return commit('Alternative entfernt', {
+        ...w,
+        whatIfs: w.whatIfs.filter((wi) => wi.id !== id),
+        pinnedComparisonIds: w.pinnedComparisonIds.filter((p) => p !== id),
+      })
+    },
+    [commit],
+  )
 
   const forkBaseline = useCallback(
     (label: string, origin: Scenario['origin'] = 'manual'): WhatIfScenario => {
       const whatIf = forkBaselineScenario(workspace.baseline, label, origin)
-      setWorkspace((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
+      updateWorkspaceStore((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
       return whatIf
     },
     [workspace.baseline],
   )
 
-  const rebaseWhatIfCallback = useCallback((id: string) => {
-    setWorkspace((w) => ({
-      ...w,
-      whatIfs: w.whatIfs.map((wi) =>
-        wi.id === id ? rebaseWhatIf(wi, w.baseline) : wi,
-      ),
-    }))
-  }, [])
+  const tryRebaseWhatIfCallback = useCallback(
+    (id: string): RebaseWhatIfResult => {
+      const w = getWorkspaceSnapshot()
+      const whatIf = w.whatIfs.find((wi) => wi.id === id)
+      if (!whatIf) return { ok: false, reason: 'not-found' }
+      if (!productArrayShapeMatches(whatIf.derivedFromBaselineSnapshot, w.baseline)) {
+        return { ok: false, reason: 'shape-drift' }
+      }
+      const undo = commit('Alternative neu berechnet', {
+        ...w,
+        whatIfs: w.whatIfs.map((wi) => (wi.id === id ? rebaseWhatIf(wi, w.baseline) : wi)),
+      })
+      return { ok: true, undo }
+    },
+    [commit],
+  )
+
+  const rebaseWhatIfCallback = useCallback(
+    (id: string) => {
+      tryRebaseWhatIfCallback(id)
+    },
+    [tryRebaseWhatIfCallback],
+  )
+
+  const applyWhatIfCallback = useCallback(
+    (id: string): ApplyWhatIfResult => {
+      const w = getWorkspaceSnapshot()
+      const whatIf = w.whatIfs.find((wi) => wi.id === id)
+      if (!whatIf) return { ok: false, reason: 'not-found' }
+      // Drift is reported ahead of staleness: it is the more specific failure
+      // and the one a rebase cannot fix, so the user needs to hear it first.
+      if (!productArrayShapeMatches(whatIf.derivedFromBaselineSnapshot, w.baseline)) {
+        return { ok: false, reason: 'shape-drift' }
+      }
+      if (whatIfIsStale(whatIf, w.baseline)) return { ok: false, reason: 'stale' }
+      const undo = commit('Alternative übernommen', {
+        ...w,
+        baseline: applyWhatIfToBaseline(whatIf, w.baseline),
+      })
+      return { ok: true, undo }
+    },
+    [commit],
+  )
+
+  // Only the newest handle may be undone. A surface that holds a handle across
+  // a later mutation (the contract editor keeps one while it shows "entfernt")
+  // would otherwise restore a snapshot taken *before* that mutation and discard
+  // it silently. Undo is one level deep, so a superseded handle is refused.
+  const undo = useCallback((handle: WorkspaceUndo): boolean => undoWorkspace(handle), [])
 
   const freezeWhatIf = useCallback((id: string) => {
-    setWorkspace((w) => ({
+    updateWorkspaceStore((w) => ({
       ...w,
       whatIfs: w.whatIfs.map((wi) =>
         wi.id === id ? { ...wi, frozenAt: Date.now() } : wi,
@@ -339,10 +846,10 @@ export function usePortfolioState(): UsePortfolioStateApi {
   const archiveAndRestart = useCallback((): SavedScenario => {
     const currentYear = new Date().getFullYear()
     const archiveName = `Baseline ${currentYear}`
-    // We read the current workspace synchronously from the React state ref
-    // pattern is not available here, so we capture via a closure over the
-    // workspace variable (which is the current render's snapshot).
-    const currentWorkspace = workspace
+    // Read the live workspace from the store rather than this render's
+    // closure, so an archive that follows another mutation in the same tick
+    // still sees that mutation's result.
+    const currentWorkspace = getWorkspaceSnapshot()
     const projectedAssumptions = singletonViewOfWorkspace(currentWorkspace, {
       bav: defaultAssumptions.bav,
       etf: defaultAssumptions.etf,
@@ -356,92 +863,111 @@ export function usePortfolioState(): UsePortfolioStateApi {
       currentWorkspace.baseline.profile,
       projectedAssumptions,
     )
-    setWorkspace((w) => ({
+    updateWorkspaceStore((w) => ({
       ...w,
       whatIfs: [],
     }))
     return archived
-  }, [workspace])
+  }, [])
 
   const addInstance = useCallback((productId: MultiInstanceProductId) => {
-    setWorkspace((w) => addInstanceToWorkspace(w, productId))
+    publishLastUndo(null)
+    updateWorkspaceStore((w) => addInstanceToWorkspace(w, productId))
   }, [])
 
   const addPopulatedInstance = useCallback(
-    (productId: MultiInstanceProductId, instance: AnyInstance) => {
-      setWorkspace((w) => {
-        const wa = w.baseline.assumptions
-        let updated: typeof wa
-        switch (productId) {
-          case 'bav':
-            updated = {
-              ...wa,
-              bav: [...wa.bav, applyDisambiguatingLabel(instance as BavInstance, wa.bav.length + 1)],
-            }
-            break
-          case 'versicherung':
-            updated = {
-              ...wa,
-              insurance: [
-                ...wa.insurance,
-                applyDisambiguatingLabel(instance as InsuranceInstance, wa.insurance.length + 1),
-              ],
-            }
-            break
-          case 'etf':
-            updated = {
-              ...wa,
-              etf: [...wa.etf, applyDisambiguatingLabel(instance as EtfInstance, wa.etf.length + 1)],
-            }
-            break
-          case 'basisrente':
-            updated = {
-              ...wa,
-              basisrente: [
-                ...wa.basisrente,
-                applyDisambiguatingLabel(instance as BasisrenteInstance, wa.basisrente.length + 1),
-              ],
-            }
-            break
-          case 'altersvorsorgedepot':
-            updated = {
-              ...wa,
-              altersvorsorgedepot: [
-                ...wa.altersvorsorgedepot,
-                applyDisambiguatingLabel(
-                  instance as AltersvorsorgedepotInstance,
-                  wa.altersvorsorgedepot.length + 1,
-                ),
-              ],
-            }
-            break
-          case 'riester':
-            updated = {
-              ...wa,
-              riester: [
-                ...wa.riester,
-                applyDisambiguatingLabel(instance as RiesterInstance, wa.riester.length + 1),
-              ],
-            }
-            break
-          default:
-            return w
-        }
-        return {
-          ...w,
-          baseline: { ...w.baseline, assumptions: updated, lastEditedAt: Date.now() },
-        }
+    (
+      productId: MultiInstanceProductId,
+      instance: AnyInstance,
+      status?: InputStatusMap,
+    ): { instanceId: string; undo: WorkspaceUndo } | null => {
+      const w = getWorkspaceSnapshot()
+      const wsa = w.baseline.assumptions
+      const wsKey = INVENTORY_PRODUCT_REGISTRY[productId].wsKey
+      const currentArray = (wsa[wsKey] ?? []) as unknown as AnyInstance[]
+      const instanceId =
+        instance.instanceId && instance.instanceId !== ''
+          ? instance.instanceId
+          : newInstanceId(productId)
+      const labelled = applyDisambiguatingLabel(
+        productId,
+        { ...instance, instanceId },
+        currentArray.length + 1,
+      )
+      const withStatus: AnyInstance = status
+        ? { ...labelled, inputStatus: { ...(labelled.inputStatus ?? {}), ...status } }
+        : labelled
+      // Never persist an instance the load path would reject: a single invalid
+      // instance is dropped on the next load, so writing one silently discards
+      // what the user just typed. Callers surface the refusal instead.
+      if (!INSTANCE_VALIDATOR_BY_PRODUCT[productId](withStatus)) {
+        warnRejectedInstance(productId, instanceId)
+        return null
+      }
+      const updated: WorkspaceAssumptionsV2 = {
+        ...wsa,
+        [wsKey]: [...currentArray, withStatus],
+      }
+      const undo = commit('Vertrag hinzugefügt', {
+        ...w,
+        baseline: { ...w.baseline, assumptions: updated, lastEditedAt: Date.now() },
       })
+      return { instanceId, undo }
     },
-    [],
+    [commit],
   )
 
-  const removeInstance = useCallback((productId: MultiInstanceProductId, instanceId: string) => {
-    setWorkspace((w) => removeInstanceFromWorkspace(w, productId, instanceId))
-  }, [])
+  const updateInstance = useCallback(
+    (
+      productId: MultiInstanceProductId,
+      instanceId: string,
+      patch: Partial<AnyInstance>,
+      status?: InputStatusMap,
+    ) => {
+      const w = getWorkspaceSnapshot()
+      const wsa = w.baseline.assumptions
+      const wsKey = INVENTORY_PRODUCT_REGISTRY[productId].wsKey
+      const currentArray = (wsa[wsKey] ?? []) as unknown as AnyInstance[]
+      if (!currentArray.some((i) => i.instanceId === instanceId)) return false
+      const nextArray = currentArray.map((existing) => {
+        if (existing.instanceId !== instanceId) return existing
+        // `instanceId` is identity, never patchable — a patch that carried a
+        // different one would silently orphan every transfer event and pin
+        // pointing at this contract.
+        const merged = { ...existing, ...patch, instanceId } as AnyInstance
+        return status
+          ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
+          : merged
+      })
+      const patched = nextArray.find((i) => i.instanceId === instanceId)
+      // Same persisted-schema gate as `addPopulatedInstance`.
+      if (!patched || !INSTANCE_VALIDATOR_BY_PRODUCT[productId](patched)) {
+        warnRejectedInstance(productId, instanceId)
+        return false
+      }
+      const updated: WorkspaceAssumptionsV2 = { ...wsa, [wsKey]: nextArray }
+      commit('Vertrag geändert', {
+        ...w,
+        baseline: { ...w.baseline, assumptions: updated, lastEditedAt: Date.now() },
+      })
+      return true
+    },
+    [commit],
+  )
+
+  const removeInstance = useCallback(
+    (productId: MultiInstanceProductId, instanceId: string): WorkspaceUndo =>
+      commit(
+        'Vertrag entfernt',
+        removeInstanceFromWorkspace(getWorkspaceSnapshot(), productId, instanceId),
+      ),
+    [commit],
+  )
+
 
   return {
     workspace,
+    storageError,
     baseline: workspace.baseline,
     whatIfs: workspace.whatIfs,
     mode: workspace.mode,
@@ -454,10 +980,15 @@ export function usePortfolioState(): UsePortfolioStateApi {
     removeWhatIf,
     forkBaseline,
     rebaseWhatIf: rebaseWhatIfCallback,
+    tryRebaseWhatIf: tryRebaseWhatIfCallback,
+    applyWhatIf: applyWhatIfCallback,
+    undo,
+    lastUndo,
     freezeWhatIf,
     archiveAndRestart,
     addInstance,
     addPopulatedInstance,
+    updateInstance,
     removeInstance,
   }
 }

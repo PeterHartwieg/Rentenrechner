@@ -22,9 +22,104 @@
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type {
   AltersvorsorgedepotInstance,
+  InstanceCommon,
   RiesterInstance,
 } from '../domain/instances'
-import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
+import {
+  INVENTORY_PRODUCT_REGISTRY,
+  type MultiInstanceProductId,
+} from '../features/inventory/inventoryProductRegistry'
+import { getProductMeta } from '../engine/productRegistry'
+
+// ---------------------------------------------------------------------------
+// Default instance labels
+// ---------------------------------------------------------------------------
+
+/**
+ * The plain product name a contract carries when the user typed neither a name
+ * nor an Anbieter — the same wording the product picker shows
+ * (`PRODUCT_REGISTRY` metadata label), so "ETF-Depot" in the picker stays
+ * "ETF-Depot" on the plan.
+ */
+export function productBaseLabel(productId: MultiInstanceProductId): string {
+  return (
+    getProductMeta(productId)?.label ?? INVENTORY_PRODUCT_REGISTRY[productId].displayName
+  )
+}
+
+/**
+ * The default label for the `n`-th contract of a product.
+ *
+ * The first one is the plain product name; a second contract of the same
+ * product gets " #2" so the two are distinguishable. A provider name always
+ * wins over the counter — "ETF – Trade Republic" needs no number.
+ *
+ * Never produces "#1": that suffix reads as a numbering scheme the user did not
+ * ask for while there is nothing to disambiguate.
+ */
+export function defaultInstanceLabel(
+  productId: MultiInstanceProductId,
+  n: number,
+  anbieter?: string,
+): string {
+  const provider = anbieter?.trim()
+  if (provider) return INVENTORY_PRODUCT_REGISTRY[productId].labelFallback(n, provider)
+  const base = productBaseLabel(productId)
+  return n > 1 ? `${base} #${n}` : base
+}
+
+/**
+ * `true` when the label looks generated rather than typed — the plain product
+ * name, the same name with a "#N" suffix, or the legacy registry fallback
+ * ("ETF #2"). Only such labels may be renumbered; anything the user typed is
+ * left alone.
+ */
+export function isGeneratedInstanceLabel(
+  productId: MultiInstanceProductId,
+  label: string,
+): boolean {
+  const trimmed = label.trim()
+  if (trimmed === '') return true
+  const legacyBase = INVENTORY_PRODUCT_REGISTRY[productId]
+    .labelFallback(1)
+    .replace(/\s*#1$/, '')
+  for (const base of [productBaseLabel(productId), legacyBase]) {
+    if (trimmed === base) return true
+    if (trimmed.startsWith(`${base} #`) && /^#\d+$/.test(trimmed.slice(base.length + 1))) {
+      return true
+    }
+  }
+  return false
+}
+
+/** Every per-product instance-array key on `WorkspaceAssumptionsV2`. */
+const INSTANCE_ARRAY_KEYS = Object.values(INVENTORY_PRODUCT_REGISTRY).map(
+  (entry) => entry.wsKey,
+) as readonly (keyof WorkspaceAssumptionsV2)[]
+
+/** Walk every instance in a workspace-assumptions object. */
+function eachInstanceArray(
+  wsa: WorkspaceAssumptionsV2,
+): { key: keyof WorkspaceAssumptionsV2; instances: InstanceCommon[] }[] {
+  return INSTANCE_ARRAY_KEYS.map((key) => ({
+    key,
+    instances: (Array.isArray(wsa[key]) ? wsa[key] : []) as unknown as InstanceCommon[],
+  }))
+}
+
+/** `true` when any instance in the scenario carries the given id. */
+function scenarioReferencesInstance(wsa: WorkspaceAssumptionsV2, instanceId: string): boolean {
+  return eachInstanceArray(wsa).some(({ instances }) =>
+    instances.some(
+      (instance) =>
+        instance.instanceId === instanceId ||
+        (instance.transferEvents ?? []).some(
+          (event) =>
+            event.sourceInstanceId === instanceId || event.targetInstanceId === instanceId,
+        ),
+    ),
+  )
+}
 
 // ---------------------------------------------------------------------------
 // ID generation
@@ -96,7 +191,13 @@ export function addInstanceToWorkspace(
   const wsKey = entry.wsKey as keyof WorkspaceAssumptionsV2
   const currentArray = wsa[wsKey] as unknown[]
   const n = currentArray.length + 1
-  let newInst = entry.createDefault(CURRENT_YEAR, n, newInstanceId)
+  // The registry default labels every instance "ETF #n" — including the first.
+  // One contract of a product is named after the product; the counter starts at
+  // the second one.
+  let newInst = {
+    ...entry.createDefault(CURRENT_YEAR, n, newInstanceId),
+    label: defaultInstanceLabel(productId, n),
+  }
   if (productId === 'riester') {
     const riester = newInst as RiesterInstance
     newInst = {
@@ -126,7 +227,7 @@ export function addInstanceToWorkspace(
 
   return {
     ...workspace,
-    baseline: { ...workspace.baseline, assumptions: updated },
+    baseline: { ...workspace.baseline, assumptions: updated, lastEditedAt: Date.now() },
   }
 }
 
@@ -135,7 +236,18 @@ export function addInstanceToWorkspace(
  * new workspace without mutating the original.  A no-op if the id is not
  * found.
  *
- * Pinned comparison ids that referenced the removed instance are cleaned up.
+ * Reference cleanup happens in this one transaction (state contract §5):
+ *
+ *  1. the instance leaves its product array;
+ *  2. `transferEvents` on **every other** instance that named the removed id as
+ *     source or target are dropped — otherwise they dangle until the next
+ *     reload sweeps them via `isUsableTransferEvent`, and a re-added id could
+ *     silently reactivate a transfer the user never asked for;
+ *  3. `pinnedComparisonIds` and `visibleInstanceIds` lose the id;
+ *  4. what-ifs that referenced the id are **marked stale, never deleted** — the
+ *     `frozenAt` marker is cleared so the existing "Baseline hat sich geändert"
+ *     badge fires and the user reviews before applying;
+ *  5. `baseline.lastEditedAt` is stamped.
  *
  * The workspace array key is resolved via `INVENTORY_PRODUCT_REGISTRY` (issue 09)
  * so the product switch is eliminated here too.
@@ -148,17 +260,36 @@ export function removeInstanceFromWorkspace(
   const wsa = workspace.baseline.assumptions
   const entry = INVENTORY_PRODUCT_REGISTRY[productId]
   const wsKey = entry.wsKey as keyof WorkspaceAssumptionsV2
-  const currentArray = wsa[wsKey] as Array<{ instanceId: string }>
-  const filtered = currentArray.filter((i) => i.instanceId !== instanceId)
 
-  const updated: WorkspaceAssumptionsV2 = {
-    ...wsa,
-    [wsKey]: filtered,
+  const updated: WorkspaceAssumptionsV2 = { ...wsa }
+  for (const { key, instances } of eachInstanceArray(wsa)) {
+    const kept = key === wsKey ? instances.filter((i) => i.instanceId !== instanceId) : instances
+    const cleaned = kept.map((instance) => {
+      const events = instance.transferEvents
+      if (!events || events.length === 0) return instance
+      const remaining = events.filter(
+        (event) =>
+          event.sourceInstanceId !== instanceId && event.targetInstanceId !== instanceId,
+      )
+      return remaining.length === events.length ? instance : { ...instance, transferEvents: remaining }
+    })
+    ;(updated as unknown as Record<string, unknown>)[key as string] = cleaned
+  }
+
+  if (wsa.visibleInstanceIds) {
+    updated.visibleInstanceIds = wsa.visibleInstanceIds.filter((id) => id !== instanceId)
   }
 
   return {
     ...workspace,
-    baseline: { ...workspace.baseline, assumptions: updated },
+    baseline: { ...workspace.baseline, assumptions: updated, lastEditedAt: Date.now() },
+    whatIfs: workspace.whatIfs.map((whatIf) =>
+      whatIf.frozenAt !== undefined &&
+      (scenarioReferencesInstance(whatIf.assumptions, instanceId) ||
+        scenarioReferencesInstance(whatIf.derivedFromBaselineSnapshot.assumptions, instanceId))
+        ? { ...whatIf, frozenAt: undefined }
+        : whatIf,
+    ),
     pinnedComparisonIds: workspace.pinnedComparisonIds.filter((id) => id !== instanceId),
   }
 }

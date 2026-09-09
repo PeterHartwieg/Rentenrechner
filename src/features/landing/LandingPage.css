@@ -1,7 +1,6 @@
 /* ==========================================================================
-   LandingPage — Editorial A (PR 2).
-   Cream background, Newsreader serif headline, oxblood italic accent, three
-   viewport breakpoints. Tokens defined in src/App.css.
+   LandingPage — editorial hero with a static result example.
+   Cream background and Newsreader serif; colors follow existing theme tokens.
    ========================================================================== */
 
 .landing-shell {
@@ -15,6 +14,9 @@
 
 .landing-main {
   flex: 1;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-wrap: anywhere;
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
@@ -29,7 +31,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 64px;
-  align-items: start;
+  align-items: center;
 }
 
 /* --- Hero (left) ----------------------------------------------------- */
@@ -55,12 +57,7 @@
   letter-spacing: -1.2px;
   line-height: 1.04;
   color: var(--rw-ink-editorial);
-  max-width: 760px;
-}
-
-.landing-headline-accent {
-  font-style: italic;
-  color: var(--rw-accent);
+  max-width: 12ch;
 }
 
 .landing-subline {
@@ -76,7 +73,8 @@
 /* --- CTA row --------------------------------------------------------- */
 .landing-cta-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 12px;
   margin-top: 28px;
 }
@@ -94,6 +92,7 @@
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   min-height: 44px;
+  max-width: 100%;
 }
 
 .landing-btn--primary {
@@ -110,22 +109,98 @@
 .landing-btn--secondary {
   background: transparent;
   color: var(--rw-ink-editorial);
-  border: 1px solid var(--rw-ink-editorial);
+  border: 1px solid transparent;
+  padding-inline: 0;
+  font-weight: 400;
+  text-align: left;
 }
 
 .landing-btn--secondary:hover {
-  background: var(--rw-ink-editorial);
-  color: var(--rw-bg-cream);
+  color: var(--rw-accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
-/* --- 3-step row ------------------------------------------------------ */
+.landing-btn:focus-visible,
+.landing-lang-switch button:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 4px;
+}
+
+.landing-microcopy,
+.landing-example-note {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--rw-ink-editorial-soft);
+}
+
+.landing-microcopy {
+  margin: 10px 0 0;
+}
+
+/* --- Static example ------------------------------------------------- */
+.landing-example {
+  min-width: 0;
+  padding: 28px;
+  border: 1px solid var(--rw-rule-cream);
+  background: var(--rw-bg-cream);
+}
+
+.landing-example .landing-aside-kicker {
+  margin: 0 0 22px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.landing-example-total {
+  font-family: var(--rw-font-serif);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.landing-example-label {
+  margin: 12px 0 24px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.landing-example-label span {
+  color: var(--rw-ink-editorial-soft);
+}
+
+.landing-example-rows {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.landing-example-rows > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--rw-rule-cream);
+}
+
+.landing-example-rows dd {
+  margin: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.landing-example-note {
+  margin: 14px 0 0;
+}
+
+/* --- Two steps + optional contracts ------------------------------------------------------ */
 .landing-steps {
   list-style: none;
-  margin: 48px 0 0;
+  margin: 0;
   padding: 24px 0 0;
   border-top: 1px solid var(--rw-rule-cream);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 32px;
 }
 
@@ -160,13 +235,11 @@
   color: var(--rw-ink-editorial-soft);
 }
 
-/* --- Aside (right): featured articles + about RentenWiki ------------- */
+/* --- Articles and about, below the entry journey -------------------- */
 .landing-aside {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  position: sticky;
-  top: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
 }
 
 .landing-aside-card {
@@ -175,7 +248,7 @@
 }
 
 .landing-aside-card--featured {
-  background: #fffcf4;
+  background: var(--rw-bg-cream);
 }
 
 .landing-aside-kicker {
@@ -338,7 +411,7 @@
 }
 
 /* ==========================================================================
-   Tablet — 640–1023 px. Layout stays 2-column but tighter.
+   Tablet — 650–1023 px. Layout stays 2-column but tighter.
    ========================================================================== */
 @media (max-width: 1023px) {
   .landing-main {
@@ -356,7 +429,6 @@
   }
 
   .landing-steps {
-    margin-top: 32px;
     gap: 20px;
   }
 
@@ -370,9 +442,9 @@
 }
 
 /* ==========================================================================
-   Phone — <640 px. Stack vertically, full-width CTAs.
+   Phone — <650 px. Stack vertically, full-width CTAs.
    ========================================================================== */
-@media (max-width: 639px) {
+@media (max-width: 649px) {
   .landing-main {
     padding: 28px 16px 32px;
     gap: 32px;
@@ -384,9 +456,8 @@
   }
 
   .landing-headline {
-    /* Canvas MStartseite: H1 ~25 px; 1.55rem ≈ 24.8 px at base 16 px. */
-    font-size: 1.55rem;
-    letter-spacing: -0.4px;
+    font-size: clamp(2.2rem, 8vw, 3.2rem);
+    letter-spacing: -0.8px;
   }
 
   .landing-subline {
@@ -397,20 +468,23 @@
     flex-direction: column;
   }
 
-  .landing-cta-row .landing-btn {
+  .landing-cta-row .landing-btn--primary {
     width: 100%;
   }
 
   .landing-steps {
     grid-template-columns: 1fr;
     gap: 18px;
-    margin-top: 28px;
+    margin-top: 0;
     padding-top: 18px;
   }
 
   .landing-aside {
-    position: static;
-    order: 2; /* below the steps on phone */
+    grid-template-columns: 1fr;
+  }
+
+  .landing-example {
+    padding: 22px 18px;
   }
 
   .landing-hub-heading {
@@ -435,15 +509,15 @@
   font: inherit;
   font-size: 0.8rem;
   padding: 4px 12px;
-  border: 1px solid #d8d4c8;
+  border: 1px solid var(--rw-rule-cream);
   border-radius: 999px;
   background: transparent;
-  color: #6b6b6b;
+  color: var(--rw-ink-editorial-soft);
   cursor: pointer;
 }
 
 .landing-lang-switch button.is-active {
-  background: #1c1c1c;
-  color: #fff;
-  border-color: #1c1c1c;
+  background: var(--rw-ink-editorial);
+  color: var(--rw-bg-cream);
+  border-color: var(--rw-ink-editorial);
 }

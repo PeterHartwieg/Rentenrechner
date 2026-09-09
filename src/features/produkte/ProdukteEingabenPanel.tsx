@@ -41,6 +41,7 @@ import {
   grvProvenanceLabel,
 } from './grvCard'
 import { GRVInputs } from '../inputs/GRVInputs'
+import { useWorkspaceUndoNotice } from '../../app/portfolioState'
 import {
   PRODUCT_UI_REGISTRY,
   type ProductInputsContext,
@@ -52,7 +53,8 @@ import {
 import { DProduktSection } from './DProduktSection'
 import { DProduktRow, type ProduktRowField } from './DProduktRow'
 import { DSparformOption } from './DSparformOption'
-import { sparformDescriptions } from './sparformDescriptions'
+import { pensionEntryLabels, sparformDescriptions } from './sparformDescriptions'
+import type { PensionEntryMethod } from '../../domain/inputStatus'
 
 /**
  * `ProdukteEingabenPanel` — Sober D body for `/eingaben/produkte`.
@@ -84,6 +86,26 @@ import { sparformDescriptions } from './sparformDescriptions'
  * disclaimer of its own; the global `<DisclaimerBanner>` upstream stays
  * session-only. No public copy mentions "Rentenrechner".
  */
+
+/**
+ * Provenance badge for the § 1 GRV card.
+ *
+ * `grvCard.grvProvenanceLabel` decides from `manualMonthlyGross` alone, which
+ * is all the compare-only path can know. The start journey additionally
+ * records *how* the user supplied the baseline (`pensionEntryMethod`:
+ * Renteninformation, Berufsstart, Beitragsjahre, Entgeltpunkte, Prognose,
+ * übersprungen), so prefer that label when it exists — same provenance
+ * contract, just a more specific statement of the user's own source. Falls
+ * back to the shared two-value label when the method was never recorded.
+ */
+function grvStatusLabel(statutoryPension: {
+  pensionEntryMethod?: PensionEntryMethod
+  manualMonthlyGross?: number | null
+}): string {
+  const method = statutoryPension.pensionEntryMethod?.kind
+  if (method) return pensionEntryLabels[method]
+  return grvProvenanceLabel(statutoryPension.manualMonthlyGross)
+}
 
 /** All registered comparable product ids in canonical sort order. */
 const ALL_COMPARABLE_PRODUCT_IDS: readonly ProductId[] = [
@@ -243,7 +265,7 @@ function ComparePanel({
         <DProduktRow
           kind={GRV_CARD_KIND}
           title={GRV_CARD_TITLE}
-          status={grvProvenanceLabel(assumptions.statutoryPension.manualMonthlyGross)}
+          status={grvStatusLabel(assumptions.statutoryPension)}
           fields={buildGrvCardFields({
             currentEntgeltpunkte: assumptions.statutoryPension.currentEntgeltpunkte,
             projectedEntgeltpunkte: simulation.statutoryPension.projectedEntgeltpunkte,
@@ -392,6 +414,24 @@ function ComparePanel({
 // Entfernen / Optionen affordances back to the page-level mutators.
 // ---------------------------------------------------------------------------
 
+/**
+ * "Vertrag entfernt · Rückgängig" for the combine panel. Reads the shared
+ * one-level undo handle from the workspace store, so it also surfaces a
+ * removal made on another surface in the same session.
+ */
+function UndoNotice() {
+  const { lastUndo, undo } = useWorkspaceUndoNotice()
+  if (!lastUndo) return null
+  return (
+    <div className="produkte-eingaben-panel__undo" role="status">
+      <span>{lastUndo.label}</span>
+      <button type="button" onClick={() => undo(lastUndo)}>
+        Rückgängig
+      </button>
+    </div>
+  )
+}
+
 function CombinePanel({
   baseline,
   assumptions,
@@ -472,6 +512,11 @@ function CombinePanel({
       data-mode="combine"
       aria-label="Verträge und Sparformen"
     >
+      {/* Undo status line. "Entfernen" below commits through the shared
+          workspace store, which records a one-level undo handle; this is the
+          local surface for it so a removal can be reversed without first
+          navigating back to the plan. Renders only while a handle is pending. */}
+      <UndoNotice />
       {/* § 1 — Gesetzliche Rente. Same DRV card shape; combine-mode sources
           values from `baseline.profile` + `baseline.assumptions.statutoryPension`.
           When the parent provides a `statutoryPensionResult`, the projected EP
@@ -492,7 +537,7 @@ function CombinePanel({
             <DProduktRow
               kind={GRV_CARD_KIND}
               title={GRV_CARD_TITLE}
-              status={grvProvenanceLabel(assumptions.statutoryPension.manualMonthlyGross)}
+              status={grvStatusLabel(assumptions.statutoryPension)}
               fields={buildGrvCardFields({
                 currentEntgeltpunkte: assumptions.statutoryPension.currentEntgeltpunkte,
                 projectedEntgeltpunkte: statutoryPensionResult?.projectedEntgeltpunkte,

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { activeRules } from '../../../rules'
 import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
@@ -132,7 +133,22 @@ export function AngabenEinkommenSection({
             <span className="angaben-field-meta">
               <span className="angaben-field-hint">
                 Wird aus dem Netto-Beitrag (§ 4 Annahmen) abgeleitet — dort
-                änderst du den monatlichen Vergleichsbetrag.
+                änderst du den monatlichen Vergleichsbetrag. Steuerfrei bis{' '}
+                {formatCurrency(
+                  (activeRules.socialSecurity.pensionCapYear *
+                    activeRules.bav.taxFreePctOfPensionCap) /
+                    12,
+                  0,
+                )}
+                /Monat (§ 3 Nr. 63 EStG); SV-frei bis{' '}
+                {formatCurrency(
+                  (activeRules.socialSecurity.pensionCapYear *
+                    activeRules.bav.socialSecurityFreePctOfPensionCap) /
+                    12,
+                  0,
+                )}
+                /Monat (§ 1 SvEV). Beide Grenzen gelten für den Gesamtbeitrag
+                einschließlich Arbeitgeberzuschuss.
               </span>
             </span>
           </div>
