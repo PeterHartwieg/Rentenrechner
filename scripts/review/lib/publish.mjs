@@ -102,13 +102,86 @@ export function assertReceiptMatchesRun({ receipt, prInfo, reviews }) {
   return rederived
 }
 
+// Picks the check run that decides the SHA's verification state, or refuses.
+//
+// The old rule sorted by `started_at` descending and read element 0. A queued
+// run has no `started_at` yet (the API returns null until it starts), so the
+// empty-string fallback sorted it LAST and an older success was published
+// while a newer re-run was still queued — the exact opposite of the contract.
+//
+// Ordering is therefore never inferred from evidence the API does not give
+// us. Check-run `id` is NOT used as a clock: GitHub documents ids as
+// identifiers, not as a monotonic ordering guarantee, and the array order of
+// `check_runs` is not documented either. The rules below use only fields the
+// REST API documents for a check run (`status`, `conclusion`, `started_at`,
+// `head_sha`), and any situation where "which run is newest" cannot be
+// established from those fails closed instead of guessing:
+//
+// 1. ANY run that is not `completed` blocks. Verification for this SHA is in
+//    flight and its outcome is unknown, so no timestamp comparison is needed
+//    or attempted — this is what fixes the null-`started_at` queued re-run.
+// 2. A single completed run needs no ordering: it is decisive.
+// 3. Several completed runs are ordered by `started_at`. A completed run
+//    without a parseable `started_at` makes the order unknowable → refuse.
+// 4. If the newest `started_at` is tied between runs that disagree about the
+//    conclusion, the order is unknowable → refuse. A tie where every run
+//    agrees is decided by that shared conclusion, because the order cannot
+//    change the answer.
+//
+// Returns { ok: true, run } or { ok: false, reason }.
+export function selectDecisiveVerifyRun(candidates) {
+  const pending = candidates.filter((entry) => entry.status !== 'completed')
+  if (pending.length > 0) {
+    const statuses = [...new Set(pending.map((entry) => String(entry.status ?? 'unknown')))].join('/')
+    return {
+      ok: false,
+      reason:
+        `is still ${statuses} — an older successful run cannot back an approval while a newer ` +
+        'verification is pending',
+    }
+  }
+
+  if (candidates.length === 1) return { ok: true, run: candidates[0] }
+
+  const timed = candidates.map((entry) => ({ entry, startedAt: epochOrNull(entry.started_at) }))
+  const undated = timed.filter((item) => item.startedAt === null)
+  if (undated.length > 0) {
+    return {
+      ok: false,
+      reason:
+        `has ${candidates.length} completed runs and ${undated.length} of them carry no usable "started_at" ` +
+        '— which run is newest cannot be established, so the evidence is refused rather than assumed',
+    }
+  }
+
+  const newest = Math.max(...timed.map((item) => item.startedAt))
+  const tied = timed.filter((item) => item.startedAt === newest)
+  if (tied.length > 1) {
+    const conclusions = [...new Set(tied.map((item) => String(item.entry.conclusion)))]
+    if (conclusions.length > 1) {
+      return {
+        ok: false,
+        reason:
+          `has ${tied.length} runs sharing the newest "started_at" with differing conclusions ` +
+          `(${conclusions.join(', ')}) — which one is newest cannot be established, so the evidence is refused`,
+      }
+    }
+  }
+  return { ok: true, run: tied[0].entry }
+}
+
+function epochOrNull(value) {
+  if (typeof value !== 'string' || value.trim().length === 0) return null
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
 // Reads the deterministic verify check run for the exact head SHA and
-// requires the MOST RECENT `verify` run — completed or still running — to
-// conclude `success`. A newer queued/in_progress run blocks an older success:
-// the SHA's verification state is whatever the latest run says, not what an
-// earlier attempt said. Only GitHub Actions runs count (app id 15368) — a
-// third-party check that happens to be named `verify` proves nothing about
-// `npm run verify`.
+// requires the run that decides that SHA — see selectDecisiveVerifyRun — to
+// have concluded `success`. A queued/in_progress run blocks an older success:
+// the SHA's verification state is not settled while a run is in flight. Only
+// GitHub Actions runs count (app id 15368) — a third-party check that happens
+// to be named `verify` proves nothing about `npm run verify`.
 export async function verifyCheckOnSha({ run, ownerRepo, sha }) {
   let raw
   try {
@@ -128,9 +201,7 @@ export async function verifyCheckOnSha({ run, ownerRepo, sha }) {
     throw new Error('check-runs API returned malformed JSON')
   }
   const runs = Array.isArray(parsed?.check_runs) ? parsed.check_runs : []
-  const verifyRuns = runs
-    .filter((r) => r?.name === REQUIRED_VERIFY_CHECK && r.app?.id === GITHUB_ACTIONS_APP_ID)
-    .sort((a, b) => String(b.started_at ?? '').localeCompare(String(a.started_at ?? '')))
+  const verifyRuns = runs.filter((r) => r?.name === REQUIRED_VERIFY_CHECK && r.app?.id === GITHUB_ACTIONS_APP_ID)
 
   if (verifyRuns.length === 0) {
     const error = new Error(
@@ -141,20 +212,23 @@ export async function verifyCheckOnSha({ run, ownerRepo, sha }) {
     throw error
   }
 
-  const latest = verifyRuns[0]
-  if (latest.status !== 'completed') {
-    const error = new Error(
-      `latest "${REQUIRED_VERIFY_CHECK}" check on ${sha.slice(0, 8)} is still ${latest.status} — ` +
-        'an older successful run cannot back an approval while a newer verification is pending',
-    )
+  // The endpoint is per-commit, so every run it returns must belong to this
+  // SHA. One that does not is an anomaly, and an anomaly in the evidence is
+  // not evidence — checked across ALL candidates, before any selection.
+  const foreign = verifyRuns.find((entry) => entry.head_sha !== sha)
+  if (foreign) {
+    const error = new Error(`"${REQUIRED_VERIFY_CHECK}" check run head ${foreign.head_sha} does not match ${sha}`)
     error.code = 'VERIFY_NOT_SUCCESSFUL'
     throw error
   }
-  if (latest.head_sha !== sha) {
-    const error = new Error(`"${REQUIRED_VERIFY_CHECK}" check run head ${latest.head_sha} does not match ${sha}`)
+
+  const selection = selectDecisiveVerifyRun(verifyRuns)
+  if (!selection.ok) {
+    const error = new Error(`"${REQUIRED_VERIFY_CHECK}" check on ${sha.slice(0, 8)} ${selection.reason}`)
     error.code = 'VERIFY_NOT_SUCCESSFUL'
     throw error
   }
+  const latest = selection.run
   if (latest.conclusion !== 'success') {
     const error = new Error(
       `"${REQUIRED_VERIFY_CHECK}" check on ${sha.slice(0, 8)} concluded "${latest.conclusion}" — ` +
