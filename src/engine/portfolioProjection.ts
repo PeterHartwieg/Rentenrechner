@@ -401,6 +401,26 @@ export function applyPaidUpOverridesToProjection(
 }
 
 // ---------------------------------------------------------------------------
+// Per-product instance slices (issue #380 — narrow per-instance ETF path)
+// ---------------------------------------------------------------------------
+
+/**
+ * Project a single ETF instance into the `EtfAssumptions` slice the ETF
+ * simulator consumes. Extracted from `projectInstanceToScenarioAssumptions`
+ * so the narrow per-instance ETF path (`EtfCalculationContext`) can build its
+ * assumption slice without reconstructing the six-product singleton shape.
+ *
+ * The instance's per-instance `monthlyContribution` rides along inertly —
+ * `EtfAssumptions` has no such field and the simulator never reads it; the
+ * adapter passes the contribution explicitly as `monthlyUserCost`. Keeping it
+ * here (instead of stripping) preserves the projected-singleton shape the
+ * compare-mode round-trip tests pin.
+ */
+export function projectEtfInstanceToAssumptions(instance: EtfInstance): EtfAssumptions {
+  return stripInstanceCommonKeys(instance as unknown as Record<string, unknown>) as unknown as EtfAssumptions
+}
+
+// ---------------------------------------------------------------------------
 // `projectInstanceToScenarioAssumptions`
 // ---------------------------------------------------------------------------
 
@@ -448,8 +468,7 @@ export function projectInstanceToScenarioAssumptions(
       bav = stripInstanceCommonKeys(instance as unknown as Record<string, unknown>) as unknown as BavAssumptions
       break
     case 'etf': {
-      const stripped = stripInstanceCommonKeys(instance as unknown as Record<string, unknown>) as unknown as EtfAssumptions
-      etf = stripped
+      etf = projectEtfInstanceToAssumptions(instance as EtfInstance)
       break
     }
     case 'insurance': {

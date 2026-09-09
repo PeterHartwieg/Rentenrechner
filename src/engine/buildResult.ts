@@ -5,7 +5,6 @@ import type {
   PersonalProfile,
   ProductId,
   ReturnScenario,
-  ScenarioAssumptions,
 } from '../domain'
 import { projectAccumulation, type AccumulationPolicy } from './accumulation'
 import { computeRIY } from './fees'
@@ -28,6 +27,18 @@ export interface ProductPayoutContext {
   monthsToRetirement: number
   payoutYears: number
   payoutReturn: number
+}
+
+/**
+ * Structural assumption slice `buildProductResult` actually reads (issue #380):
+ * inflation for the real-value columns and the payout horizon. Declared
+ * structurally so every simulator can keep forwarding its full
+ * `ScenarioAssumptions`, while narrow per-product contexts (ETF first) only
+ * have to carry these two fields.
+ */
+export interface PayoutHorizonAssumptions {
+  inflationRate: number
+  retirementEndAge: number
 }
 
 export interface ProductPayoutFields {
@@ -91,7 +102,8 @@ export interface BuildProductResultParams<
   scenario: ReturnScenario
   profile: PersonalProfile
   rules: GermanRules
-  assumptions: ScenarioAssumptions
+  /** Structural slice — see `PayoutHorizonAssumptions`. */
+  assumptions: PayoutHorizonAssumptions
   monthlyUserCost: number
   monthlyProductContribution: number
   monthlyEmployerContribution: number
