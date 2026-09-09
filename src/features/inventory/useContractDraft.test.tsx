@@ -28,6 +28,26 @@ function bavInstance() {
 }
 
 describe('useContractDraft', () => {
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'uses the profile to gate the existing %s contract child allowance claim',
+    (productId) => {
+      for (const childBirthYears of [[], [2020]]) {
+        const ws = workspace()
+        ws.baseline.profile.childBirthYears = childBirthYears
+        const instance = INVENTORY_PRODUCT_REGISTRY[productId].createDefault(
+          2026, 1, () => 'claim-test0001',
+        ) as unknown as Record<string, unknown>
+        const { result, unmount } = renderHook(() =>
+          useContractDraft({ productId, instance, workspace: ws }),
+        )
+        expect(result.current.visibleSpecs.some((spec) =>
+          spec.id === 'eligibility.claimsChildAllowance',
+        )).toBe(childBirthYears.length > 0)
+        unmount()
+      }
+    },
+  )
+
   it('seeds an existing contract as assumed with its values intact', () => {
     const { result } = renderHook(() =>
       useContractDraft({ productId: 'bav', instance: bavInstance(), workspace: workspace() }),

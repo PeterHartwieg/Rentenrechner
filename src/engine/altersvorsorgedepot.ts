@@ -85,8 +85,9 @@ export function computeChildAllowance(
  * Returns: basic, child, career-starter bonus (one-time → capped to first year only
  * when `isFirstContributionYear = true`), indirect spouse allowance.
  *
- * §85 Abs. 2 EStG one-parent rule: `eligibility.claimsChildAllowance === false`
- * suppresses the child allowance on this contract (another person holds the claim).
+ * AVD-Reformgesetz, analog § 85 Abs. 2 EStG one-parent rule:
+ * `eligibility.claimsChildAllowance === false` suppresses the child allowance
+ * on this contract (another person holds the claim).
  */
 export function computeAvdAllowances(
   ownContributionAnnual: number,

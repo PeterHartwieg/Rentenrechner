@@ -27,6 +27,7 @@ import {
   fieldSpecs,
   isDraftValid,
   newDraft,
+  newDraftFromWorkspace,
   patchDraftField,
   setDraftFieldUnknown,
   validateDraft,
@@ -53,17 +54,28 @@ function etfInstance(overrides: Partial<EtfInstance> = {}): EtfInstance {
 // ---------------------------------------------------------------------------
 
 describe('CONTRACT_FIELD_SPECS', () => {
-  it('includes the child allowance claim only in eligibility specs with children', () => {
-    const id = 'eligibility.claimsChildAllowance'
-    // withChildren is a product-level flag: AVD true, Riester false.
-    expect(fieldSpecs('altersvorsorgedepot').find((spec) => spec.id === id)).toMatchObject({
-      labelKey: 'contract.eligibility.claimsChildAllowance',
-      kind: 'boolean',
-      section: 'details',
-      supportsUnknown: false,
-    })
-    expect(fieldSpecs('riester').some((spec) => spec.id === id)).toBe(false)
-  })
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'shows the %s child allowance claim only for profiles with children',
+    (productId) => {
+      const id = 'eligibility.claimsChildAllowance'
+      for (const childBirthYears of [[], [2020]]) {
+        const workspace = structuredClone(defaultWorkspace)
+        workspace.baseline.profile.childBirthYears = childBirthYears
+        const draft = newDraftFromWorkspace(productId, workspace, 2026)
+        const spec = visibleFieldSpecs(draft).find((field) => field.id === id)
+        if (childBirthYears.length > 0) {
+          expect(spec).toMatchObject({
+            labelKey: 'contract.eligibility.claimsChildAllowance',
+            kind: 'boolean',
+            section: 'details',
+            supportsUnknown: false,
+          })
+        } else {
+          expect(spec).toBeUndefined()
+        }
+      }
+    },
+  )
 
   it('declares a core current value and a core contribution for every product', () => {
     for (const [productId, specs] of Object.entries(CONTRACT_FIELD_SPECS)) {

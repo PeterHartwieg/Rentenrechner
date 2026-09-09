@@ -63,7 +63,9 @@ export interface UseContractDraftApi {
 
 function seedDraft(options: UseContractDraftOptions): ContractDraft {
   return options.instance
-    ? draftFromInstance(options.productId, options.instance)
+    ? draftFromInstance(
+      options.productId, options.instance, options.workspace.baseline.profile.childBirthYears.length > 0,
+    )
     : newDraftFromWorkspace(options.productId, options.workspace, options.currentYear)
 }
 

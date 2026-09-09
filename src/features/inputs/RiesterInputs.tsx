@@ -1,3 +1,4 @@
+import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../content/terms'
 import '../../ui/forms.css'
 import type React from 'react'
 import type {
@@ -142,7 +143,7 @@ export function RiesterInputs({
               }}
             />
             <span>Kinderzulage in diesem Vertrag berücksichtigen</span>
-            <InfoTip text="Die Kinderzulage bekommt nur ein Elternteil (§ 85 EStG, standardmäßig die Mutter). Abwählen, wenn sie im Vertrag der anderen Person läuft. Deine Kinder bleiben für die Pflegeversicherung erfasst." />
+            <InfoTip text={CHILD_ALLOWANCE_CLAIM_HINT} />
           </label>
         )}
       </div>

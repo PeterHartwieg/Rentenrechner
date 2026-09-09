@@ -12,6 +12,7 @@
  * (no glidepath). Matches the deleted card exactly.
  */
 
+import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../../content/terms'
 import { InfoTip } from '../../../ui/InfoTip'
 import type { GermanRules, PersonalProfile } from '../../../domain'
 import type { AltersvorsorgedepotInstance } from '../../../domain/instances'
@@ -115,7 +116,7 @@ export function AltersvorsorgedepotInstanceInputs({
       {profile.childBirthYears.length > 0 && (
         <CombineField
           label="Kinderzulage in diesem Vertrag berücksichtigen"
-          labelSuffix={<InfoTip text="Die Kinderzulage bekommt nur ein Elternteil (§ 85 EStG, standardmäßig die Mutter). Abwählen, wenn sie im Vertrag der anderen Person läuft. Deine Kinder bleiben für die Pflegeversicherung erfasst." />}
+          labelSuffix={<InfoTip text={CHILD_ALLOWANCE_CLAIM_HINT} />}
         >
           <label className="combine-checkbox-field">
             <CombineNativeInput
