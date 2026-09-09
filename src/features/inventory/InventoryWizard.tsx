@@ -84,8 +84,8 @@ export function InventoryWizard({ scenario, initialStep = 'profile', mode, onCom
               {!profileStep && Object.keys(errors.profile).length > 0 && <button type="button" className="onboarding-text-button" onClick={() => setStep('profile')}>Persönliche Angaben prüfen</button>}
               {profileStep && !nextStep && Object.keys(errors.pension).length > 0 && <button type="button" className="onboarding-text-button" onClick={() => setStep('pension')}>Rentenangaben prüfen</button>}
             </div>}
-            {profileStep ? <OnboardingProfileStep draft={draft} mode={mode} errors={errors.profile} />
-              : <OnboardingPensionStep draft={draft} mode={mode} errors={errors.pension} />}
+            {profileStep ? <OnboardingProfileStep draft={draft} mode={mode} errors={errors.profile} showErrors={mode === 'edit' || attempt > 0} />
+              : <OnboardingPensionStep draft={draft} mode={mode} errors={errors.pension} showErrors={mode === 'edit' || attempt > 0} />}
           </div>
           <footer className="inventory-footer">
             <div className="inventory-footer-actions">

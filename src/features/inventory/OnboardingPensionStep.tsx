@@ -4,10 +4,11 @@ import { pensionMethodsForSystem, type PensionDraftErrors, type PensionSystem, t
 import { formatCurrency, formatNumber } from '../../utils/format'
 import { OnboardingDisclosure, OnboardingNumberField } from './OnboardingFields'
 
-export function OnboardingPensionStep({ draft, errors, mode }: {
+export function OnboardingPensionStep({ draft, errors, mode, showErrors }: {
   mode: 'onboarding' | 'edit'
   draft: UseOnboardingDraftApi
   errors: PensionDraftErrors
+  showErrors: boolean
 }) {
   const id = useId()
   const { pension, profile, patchPension, setPensionValue, setFieldUnknown, estimate } = draft
@@ -28,7 +29,7 @@ export function OnboardingPensionStep({ draft, errors, mode }: {
   const numberField = (
     key: 'monthlyGrossEUR' | 'careerStartAge' | 'pauseYears' | 'contributionYears' | 'entgeltpunkte' | 'versorgungswerkMonthlyContribution' | 'versorgungswerkEmployerMonthly',
     label: string, hint?: string, step = key === 'monthlyGrossEUR' || key === 'versorgungswerkMonthlyContribution' || key === 'versorgungswerkEmployerMonthly' ? 0.01 : 1,
-  ) => <OnboardingNumberField key={key} label={label} field={pension[key]} error={errors[key]}
+  ) => <OnboardingNumberField key={key} label={label} field={pension[key]} error={errors[key]} showErrors={showErrors}
       hideAssumed={mode === 'onboarding'} placeholder={key === 'careerStartAge' ? 'z. B. 22' : undefined} hint={hint} step={step}
     onValue={(value) => setPensionValue(key, value)} onUnknown={() => setFieldUnknown('pension', key)} />
 
@@ -52,7 +53,7 @@ export function OnboardingPensionStep({ draft, errors, mode }: {
       {profile.employment.value !== 'employee' || system !== 'grv' ? systemSelect
         : <OnboardingDisclosure title="Andere Altersversorgung">{systemSelect}</OnboardingDisclosure>}
       {system === 'grv' && <>
-        <fieldset className="onboarding-methods" aria-describedby={errors.method ? `${id}-method-error` : undefined}>
+        <fieldset className="onboarding-methods" aria-describedby={showErrors && errors.method ? `${id}-method-error` : undefined}>
           <legend>Gesetzliche Rente</legend>
           <label className="onboarding-choice"><input type="radio" name={`${id}-method`} checked={method === 'document' || method === 'projected-gross'}
             onChange={() => patchPension('method', 'document')} />Renteninformation liegt vor</label>
@@ -103,7 +104,7 @@ export function OnboardingPensionStep({ draft, errors, mode }: {
           {numberField('versorgungswerkEmployerMonthly', 'Arbeitgeberbeitrag zum Versorgungswerk (€/Monat)')}
         </div>}
       </>}
-      {errors.method && <p id={`${id}-method-error`} className="inventory-field-error">{errors.method}</p>}
+      {showErrors && errors.method && <p id={`${id}-method-error`} className="inventory-field-error">{errors.method}</p>}
       {system !== 'none' && method === 'skipped' && <p className="onboarding-hint">Das ist okay. Ergänze zuerst, was du schon weißt. Die Gesamtrente bleibt offen.</p>}
       {system === 'none' && <p className="onboarding-hint">Du hast keine Pflichtversorgung angegeben. Weitere Vorsorge kannst du in deinem Plan ergänzen.</p>}
       {system !== 'none' && method !== 'skipped' && Object.keys(errors).length === 0 && (

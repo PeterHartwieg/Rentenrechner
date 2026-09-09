@@ -14,22 +14,31 @@ export function OnboardingDisclosure({ title, children }: { title: string; child
 }
 
 export function OnboardingNumberField({
-  label, field, onValue, onUnknown, error, hint, step = 1, hideAssumed = false, placeholder,
+  label, field, onValue, onUnknown, error, showErrors, hint, step = 1, hideAssumed = false, placeholder,
 }: {
   label: string
   field: Field<number>
   onValue: (value: number) => void
   onUnknown: () => void
   error?: string
+  showErrors: boolean
   hint?: string
   step?: number
   hideAssumed?: boolean
   placeholder?: string
 }) {
   const id = useId()
+  const [blurredWithValue, setBlurredWithValue] = useState(false)
+  const shownError = showErrors || blurredWithValue ? error : undefined
   return (
     <div className="onboarding-field" role="group" aria-label={`Angabe: ${label}`}
-      aria-invalid={!!error || undefined} aria-describedby={error ? `${id}-error` : undefined}>
+      onBlur={(event) => {
+        // Unknown toggles and empty inputs do not reveal a pristine field's errors.
+        if (event.target instanceof HTMLInputElement && event.target.type === 'number' && event.target.value.trim() !== '') {
+          setBlurredWithValue(true)
+        }
+      }}
+      aria-invalid={!!shownError || undefined} aria-describedby={shownError ? `${id}-error` : undefined}>
       <UnknownNumberField
         label={label}
         value={hideAssumed && field.status === 'assumed' ? null : previousFieldValue(field) ?? null}
@@ -43,7 +52,7 @@ export function OnboardingNumberField({
         }}
       />
       {hint && <p className="onboarding-hint">{hint}</p>}
-      {error && <p id={`${id}-error`} className="inventory-field-error">{error}</p>}
+      {shownError && <p id={`${id}-error`} className="inventory-field-error">{shownError}</p>}
     </div>
   )
 }
