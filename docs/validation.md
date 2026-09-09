@@ -90,12 +90,19 @@ values are derived afterwards as `capital / (1 + inflationRate) ** years`
 (`src/engine/accumulation.ts`, `src/engine/buildResult.ts`); the nominal
 return path itself is never deflated.
 
-No external oracle stands behind 3 % / 5 % / 7 %. They are a plausible band
-for a broadly diversified, equity-heavy portfolio over 30+ years, and no
-external source is claimed for them. They are therefore absent from
-`validationSources` in `src/test/externalGoldenFixtures.ts` and are not
-covered by the golden tests. Do not add a fixture entry for them — that array
-is reserved for official sources with URLs and capture dates.
+The band is oriented on long-run historical MSCI World returns: that is what
+the `/eingaben` Annahmen section tells users ("Renditeannahmen orientieren sich
+an historischen MSCI-World-Renditen"), and the print report's Methode section
+words it more strongly ("Hergeleitet aus rollierenden 30-Jahres-Fenstern (MSCI
+World) und dem realen Median MSCI World 1900–2025",
+`src/features/results/printReportRows.ts`). Neither statement is backed by a
+recorded dataset, period, or publication in this repository, so nothing about
+the three rates is citable. They are therefore absent from `validationSources`
+in `src/test/externalGoldenFixtures.ts` and are not covered by the golden
+tests. Do not add a fixture entry for them — that array is reserved for
+official sources with URLs and capture dates. If the MSCI World orientation is
+ever pinned to a specific series, record it here first and soften or source
+the print-report wording in the same change.
 
 All products in a comparison share the same scenario per run, so the rate is a
 market assumption, not a product property. Compare mode keeps every product on
@@ -103,12 +110,17 @@ the selected scenario (see CLAUDE.md → "Fair-comparison invariant"), and the
 Monte Carlo panel gives all visible products the same market path per run
 while product fees, taxes, and payout modes diverge normally.
 
-Users see the scenarios in two places:
+Users see the scenarios in these places:
 
+- `/eingaben`, Annahmen section (`src/features/inputs/sections/AngabenAnnahmenSection.tsx`):
+  all three default rates plus the MSCI World orientation sentence
 - `/methode`, § 1 "Renditeannahmen" (`src/features/methode/MethodePage.tsx`)
-- the scenario toolbar above the results (`src/features/workspace/ScenarioToolbar.tsx`,
-  mounted for both compare and combine mode), which also hosts the `custom`
-  scenario
+- compare mode: the Rendite strip on `/vergleich`
+  (`src/features/vergleich/VergleichRenditeStrip.tsx`) selects among the defaults
+- combine mode: the scenario toolbar above the results
+  (`src/features/workspace/ScenarioToolbar.tsx`, mounted only in the combine
+  branch of `Calculator.tsx`), which also hosts the `custom` scenario
+- the print report's Methode section (`src/features/results/printReportRows.ts`)
 
 ## Tolerances
 
