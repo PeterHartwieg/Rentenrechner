@@ -703,12 +703,12 @@ export const publicRouteRegistry = {
     title: 'Datenschutzerklärung | RentenWiki.de',
     metaDescription:
       'Datenschutzerklärung von RentenWiki.de: lokale Speicherung im Browser, ' +
-      'keine Server-seitige Datenverarbeitung, kein Tracking, keine Cookies.',
+      'freiwillige Projektunterstützung und optionales QA-Feedback. Kein Tracking.',
     h1: 'Datenschutzerklärung',
     summary:
       'Beschreibt die Datenverarbeitung von RentenWiki.de: lokale Speicherung ' +
-      'im Browser, keine Server-Verarbeitung, kein Tracking, keine Cookies.',
-    dateModified: '2026-05-05',
+      'im Browser, freiwillige Projektunterstützung und optionales QA-Feedback.',
+    dateModified: '2026-09-09',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: false,

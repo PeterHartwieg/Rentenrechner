@@ -499,7 +499,7 @@ describe('MobileNav', () => {
 describe('MobileSheet', () => {
   it('lists overflow menu items when open', () => {
     render(<MobileSheet open onClose={() => {}} navigate={() => {}} />)
-    for (const label of ['Methode', 'Annahmen', 'Datenschutz', 'Impressum', 'GitHub', 'Spenden']) {
+    for (const label of ['Methode', 'Annahmen', 'Datenschutz', 'Impressum', 'GitHub', 'Projekt unterstützen']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
   })

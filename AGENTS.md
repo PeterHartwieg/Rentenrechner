@@ -7,7 +7,7 @@ Stack: React + TypeScript + Vite. Frontend-only today; small backend planned for
 
 ## About this project
 
-**Public, free tool.** Anyone can use the hosted version at no cost. Donations (Stripe / GitHub Sponsors) cover hosting.
+**Public, free tool.** Anyone can use the hosted version at no cost. All voluntary contributions, after payment processing fees, go back into developing the project. Payment setup and provider choice are documented in `docs/donation-setup.md`; the verified checkout URL lives in `src/content/support.ts`.
 
 **Source-available, non-commercial license.** Code is published under **PolyForm Noncommercial 1.0.0**. Personal, research, and internal-evaluation use is free. **Insurance brokers, investment advisors, employers, and any other commercial use require a separate paid license** — contact `peter@hartwieg.com`.
 

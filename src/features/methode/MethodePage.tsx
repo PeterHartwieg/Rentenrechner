@@ -19,6 +19,7 @@ import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { MethodeMonteCarloSection } from './MethodeMonteCarloSection'
+import { SUPPORT_PLEDGE } from '../../content/support'
 
 interface Props {
   navigate?: (target: Route) => void
@@ -686,16 +687,13 @@ export function MethodePage({ navigate }: Props) {
                 .
               </p>
               <p className="methode-aside-body">
-                Spenden:{' '}
+                {SUPPORT_PLEDGE}{' '}
                 <a
                   className="methode-aside-link"
-                  href="https://github.com/sponsors/PeterHartwieg"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#unterstuetzen"
                 >
-                  GitHub Sponsors
-                </a>{' '}
-                finanziert das Hosting.
+                  Projekt unterstützen
+                </a>
               </p>
             </div>
 
