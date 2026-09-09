@@ -297,6 +297,14 @@ export function MethodePage({ navigate }: Props) {
                   ))}
                 </tbody>
               </table>
+              <p className="methode-section-lead">
+                Alle Produkte im Vergleich rechnen mit derselben Marktrendite je Szenario.
+                Unterschiede im Ergebnis entstehen durch Kosten, Beitragsgarantien,
+                Steuern in Anspar- und Auszahlungsphase, Zulagen und Arbeitgeberzuschüsse
+                sowie die Auszahlungsform, nicht durch unterschiedliche Renditeannahmen.
+                So siehst du, welcher Mantel bei gleichem Geld und gleichem Markt
+                im Modell mehr übrig lässt.
+              </p>
 
               {/* Live Monte-Carlo panel (relocated from Vergleich pane dispatcher
                   in PR 9). Renders the user's saved compare-mode simulation
@@ -622,6 +630,8 @@ export function MethodePage({ navigate }: Props) {
                   Individuelle Versicherungsverträge mit garantierten
                   Rechnungszinsen oder Bestandstarifen vor 2005 — der Rechner
                   unterstellt die statutorischen Voreinstellungen.
+                  Klassische Tarife mit Garantiezins und Überschussbeteiligung
+                  bildet das Modell derzeit nicht ab.
                 </li>
                 <li>
                   Steuerliche Auswirkungen von Auslandsbezug, doppelter
