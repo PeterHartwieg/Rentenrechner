@@ -31,7 +31,11 @@ may be added for this (backend boundary), and no telemetry may be introduced.
 3. **Fail-closed verdict gate.** A review counts only with proven completion,
    matching provider-reported model, an exact restated PR head SHA, and a
    well-formed non-contradictory verdict (`approve` with a blocker/major
-   finding or an unresolved question is rejected). Identity evidence is
+   finding or an unresolved question is rejected). The prompt is written to
+   match that gate exactly: `unresolved` is reserved for consequential
+   questions about the reviewed diff, while pre-existing limitations
+   unrelated to the diff are `info` findings — otherwise a known limitation
+   would block a PR that did not touch it. Identity evidence is
    honest about its provenance and about which model actually did the work:
    for claude the reviewing model is read from the `model` field of the
    native assistant messages themselves, with the result envelope's
@@ -76,8 +80,10 @@ may be added for this (backend boundary), and no telemetry may be introduced.
    review dates stay null. A golden source gets a review date only from an
    explicit, validated review record written by a real audit
    (`GOLDEN_SOURCE_REVIEWS`); an unknown id or a malformed date fails the
-   report instead of rendering a guess. The monthly audit is a documented
-   procedure; the
+   report instead of rendering a guess. Dates must be real calendar dates
+   (UTC round-trip, so `2026-02-31` cannot roll over into a measurable day),
+   and a date in the future relative to the report clock is never "fresh".
+   The monthly audit is a documented procedure; the
    operator may wire a local heartbeat (`--fail-on-stale`) once the toolchain
    is proven live. Branch protection is configured by the operator
    separately, after live proof.

@@ -10,6 +10,7 @@ import {
   DEFAULT_POLICY,
   assessFreshness,
   buildCatalog,
+  isRealCalendarDate,
   parseResearchDocHeaders,
   renderFreshnessReport,
 } from './lib/sources.mjs'
@@ -39,6 +40,16 @@ describe('research doc header parsing', () => {
       lastCaptured: null,
       lastReviewed: '2026-04-27',
     })
+  })
+
+  it('treats an impossible header date as no date at all (typo != evidence)', () => {
+    // Parsed prose degrades to "no record"; curated review records fail loudly.
+    expect(parseResearchDocHeaders('Last researched: 2026-02-31\nLast reviewed: 2026-04-31')).toEqual({
+      lastCaptured: null,
+      lastReviewed: null,
+    })
+    // A valid header alongside a broken one still counts.
+    expect(parseResearchDocHeaders('Last reviewed: 2026-02-31\nLast audited: 2026-02-28').lastReviewed).toBe('2026-02-28')
   })
 
   it('keeps unknown review dates null instead of borrowing the capture date', () => {
@@ -140,6 +151,22 @@ describe('explicit golden source review records', () => {
     expect(() => build({ 'src-a': {} })).toThrow(/invalid lastReviewed date/)
   })
 
+  it('rejects impossible calendar dates that merely LOOK well-formed', () => {
+    // `new Date('2026-02-31')` rolls over to 2026-03-03: a shape check alone
+    // would measure — and could label fresh — a day that never existed.
+    for (const impossible of ['2026-02-31', '2026-02-30', '2026-04-31', '2026-13-01', '2026-00-10', '2026-06-00', '2025-02-29']) {
+      expect(() => build({ 'src-a': { lastReviewed: impossible } }), impossible).toThrow(
+        /invalid lastReviewed date .* use a real calendar date/,
+      )
+    }
+  })
+
+  it('accepts real leap days and month ends', () => {
+    for (const good of ['2024-02-29', '2026-02-28', '2026-01-31', '2026-12-31']) {
+      expect(build({ 'src-a': { lastReviewed: good } })[0].lastReviewed, good).toBe(good)
+    }
+  })
+
   it('rejects records that are not objects carrying lastReviewed', () => {
     expect(() => build({ 'src-a': '2026-08-20' })).toThrow(/must be an object with lastReviewed/)
     expect(() => build({ 'src-a': ['2026-08-20'] })).toThrow(/must be an object with lastReviewed/)
@@ -219,6 +246,34 @@ describe('assessFreshness', () => {
     expect(sevenMonths[0].captureStatus).toBe('stale')
   })
 
+  it('never labels a future date fresh', () => {
+    // Nobody captured or reviewed anything on a day that has not happened.
+    const assessment = assessFreshness(
+      [
+        { id: 'ahead', label: 'Ahead of the clock', areas: [], location: 'u', lastCaptured: '2027-01-01', lastReviewed: '2026-12-24' },
+        { id: 'today', label: 'Captured today', areas: [], location: 'u', lastCaptured: '2026-09-08', lastReviewed: null },
+      ],
+      { now: NOW },
+    )
+    expect(assessment[0].captureStatus).toBe('future-dated')
+    expect(assessment[0].reviewStatus).toBe('future-dated')
+    expect(assessment[0].needsAttention).toBe(true)
+    // The report shows the offending date rather than hiding it.
+    expect(renderFreshnessReport(assessment, { now: NOW })).toContain('capture future-dated; review future-dated')
+
+    // The clock's own day is not the future.
+    expect(assessment[1].captureStatus).toBe('fresh')
+  })
+
+  it('never labels an impossible date fresh either', () => {
+    const [entry] = assessFreshness(
+      [{ id: 'x', label: 'Typo', areas: [], location: 'u', lastCaptured: '2026-02-31', lastReviewed: null }],
+      { now: NOW },
+    )
+    expect(entry.captureStatus).toBe('invalid-date')
+    expect(entry.needsAttention).toBe(true)
+  })
+
   it('refuses to run without a concrete clock (determinism)', () => {
     expect(() => assessFreshness(entries, { now: undefined })).toThrow(/concrete now Date/)
     expect(() => assessFreshness(entries, { now: new Date('not-a-date') })).toThrow(/concrete now Date/)
@@ -261,5 +316,16 @@ describe('renderFreshnessReport', () => {
 describe('default policy', () => {
   it('is explicit and bounded', () => {
     expect(DEFAULT_POLICY).toEqual({ captureStaleAfterMonths: 6, reviewStaleAfterMonths: 6 })
+  })
+})
+
+describe('isRealCalendarDate', () => {
+  it('accepts only real, ISO-shaped calendar dates', () => {
+    for (const good of ['2026-09-09', '2024-02-29', '2000-02-29', '1999-12-31']) {
+      expect(isRealCalendarDate(good), good).toBe(true)
+    }
+    for (const bad of ['2026-02-31', '2025-02-29', '1900-02-29', '2026-13-01', '2026-00-01', '2026-06-00', '2026-6-9', '2026/06/09', '', null, undefined, 20260609]) {
+      expect(isRealCalendarDate(bad), String(bad)).toBe(false)
+    }
   })
 })

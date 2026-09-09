@@ -132,9 +132,28 @@ CLAUDE.md invariant it protects) or official API/CLI documentation, and sets
 would only produce invented citations.
 
 **Pre-existing legal uncertainty** that is unrelated to the diff is a
-*labelled limitation*: reviewers report it under `unresolved` (or as an info
-finding) so it stays visible, and must neither manufacture it into a
-blocker/major finding against the PR nor invent a law status either way.
+*labelled limitation*: reviewers report it as an **`info` finding** so it
+stays visible, and must neither manufacture it into a blocker/major finding
+against the PR nor invent a law status either way. It must **not** go under
+`unresolved` — the gate rejects every `approve` carrying unresolved
+questions, so parking an unrelated limitation there would fail a PR for
+something it did not change.
+
+**`unresolved` is reserved** for consequential questions about *this* diff
+that the reviewer could not settle and that need a human decision. That
+treatment is deliberately unchanged: a real unresolved question still forces
+`needs-human` or `reject`.
+
+The wording is pinned to the validator (`lib/verdicts.mjs`) by tests in
+`prompt.test.mjs`, so the prompt can never instruct reviewers to produce
+output the gate rejects. The three rules that must agree:
+
+| Reply shape | Gate |
+|---|---|
+| `approve` + `blocker` **or** `major` finding | rejected as contradictory |
+| `approve` + any non-empty `unresolved` | rejected as contradictory |
+| `approve` / `needs-human` + `info`/`minor` findings, empty `unresolved` | valid |
+| `needs-human` + **empty** findings array + real `unresolved` questions | valid — never invent finding fields to fill the array |
 
 It also states the read-only/no-subagent/no-write rules and that a reachable
 link is not legal approval.
@@ -308,6 +327,16 @@ no merge path.
   keeps `lastReviewed: null` rather than inheriting its capture date. The
   set starts **empty**: dates are written by a real audit (below), never
   generated. Pinned by `sources.test.mjs`.
+- Dates are validated as **real calendar dates**, not just `YYYY-MM-DD`
+  shaped: `2026-02-31` matches the shape but `new Date()` rolls it over to
+  2026-03-03, which would then be measured — and possibly labelled fresh —
+  as a day that never existed. `isRealCalendarDate` round-trips through UTC
+  and rejects it. Curated review records fail loudly; an impossible date in a
+  research-doc header degrades to "no record" instead of crashing the report.
+- A date **in the future** relative to the report's injected `now` is never
+  fresh: it renders as `future-dated` (an impossible date as `invalid-date`)
+  and needs attention. Nobody captured or reviewed anything on a day that has
+  not happened.
 - Policy: captures and reviews go stale after 6 months
   (`DEFAULT_POLICY` in `lib/sources.mjs`). The report is deterministic for a
   given `now`; `--fail-on-stale` turns it into a check a local heartbeat can
@@ -380,8 +409,9 @@ The single sources of truth are:
 - Open GitHub issues for anything consequential and unresolved.
 
 Reviewers are told the same thing in the prompt: an existing legal
-uncertainty unrelated to the diff is a labelled limitation to report under
-`unresolved`, not a finding to manufacture against the PR.
+uncertainty unrelated to the diff is a labelled limitation to report as an
+`info` finding — not a finding to manufacture against the PR, and not an
+`unresolved` question that would block it.
 
 ## Cost model
 

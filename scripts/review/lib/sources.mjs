@@ -10,6 +10,11 @@
 //
 // A reachable link is never treated as legal approval, and neither is a
 // recent capture date. The report says so on every render.
+//
+// Dates are validated as real calendar dates (not just YYYY-MM-DD shaped) and
+// measured against the injected clock: an impossible date renders as
+// `invalid-date` and a date in the future as `future-dated`. Neither is ever
+// `fresh`, and both need attention.
 
 export const DEFAULT_POLICY = {
   captureStaleAfterMonths: 6,
@@ -17,6 +22,21 @@ export const DEFAULT_POLICY = {
 }
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
+
+// A shape check is not a date check: "2026-02-31" matches the regex, and
+// `new Date('2026-02-31')` silently rolls over to 2026-03-03 — a date that
+// would then be measured, and possibly labelled fresh, as if it existed.
+// Round-tripping through UTC is the cheap way to reject it: the parsed
+// components must come back out unchanged.
+export function isRealCalendarDate(value) {
+  const match = typeof value === 'string' ? value.match(ISO_DATE) : null
+  if (!match) return false
+  const [, year, month, day] = match.map(Number)
+  const utc = new Date(Date.UTC(year, month - 1, day))
+  return (
+    utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day
+  )
+}
 
 // Header vocabulary used across the root *_RESEARCH.md / LEGAL_*.md docs.
 // "Last researched" and "Targeted update" count as CAPTURE activity;
@@ -41,9 +61,13 @@ function latestDate(dates) {
 export function parseResearchDocHeaders(text) {
   const pick = (patterns) =>
     latestDate(
+      // A header carrying an impossible date (typo) is treated as NO date:
+      // the doc then renders as "no record" instead of contributing a date
+      // that never existed. Parsed prose degrades; curated records below
+      // fail loudly.
       patterns.map((pattern) => {
         const match = text.match(pattern)
-        return match && ISO_DATE.test(match[1]) ? match[1] : null
+        return match && isRealCalendarDate(match[1]) ? match[1] : null
       }),
     )
   return {
@@ -70,8 +94,11 @@ export function buildCatalog({ goldenSources, researchDocEntries, goldenAreas, g
     if (!record || typeof record !== 'object' || Array.isArray(record)) {
       throw new Error(`golden review record for "${id}" must be an object with lastReviewed`)
     }
-    if (typeof record.lastReviewed !== 'string' || !ISO_DATE.test(record.lastReviewed)) {
-      throw new Error(`golden review record for "${id}" has an invalid lastReviewed date "${record.lastReviewed}" — use YYYY-MM-DD`)
+    if (typeof record.lastReviewed !== 'string' || !isRealCalendarDate(record.lastReviewed)) {
+      throw new Error(
+        `golden review record for "${id}" has an invalid lastReviewed date "${record.lastReviewed}" — ` +
+          'use a real calendar date in YYYY-MM-DD form',
+      )
     }
     if (record.note !== undefined && typeof record.note !== 'string') {
       throw new Error(`golden review record for "${id}" has a non-string note`)
@@ -116,9 +143,18 @@ function monthsBetween(fromIso, toDate) {
   return (toDate.getTime() - from.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
 }
 
+// A date that is not a real calendar date, or that lies in the future
+// relative to the report's clock, is never "fresh": nobody captured or
+// reviewed anything on a day that has not happened (or does not exist). Both
+// cases surface as their own status and need attention — silently treating
+// them as fresh is exactly the failure mode the null-review-date rule exists
+// to prevent.
 function statusFor(dateIso, staleAfterMonths, now, missingStatus) {
   if (!dateIso) return missingStatus
-  return monthsBetween(dateIso, now) >= staleAfterMonths ? 'stale' : 'fresh'
+  if (!isRealCalendarDate(dateIso)) return 'invalid-date'
+  const months = monthsBetween(dateIso, now)
+  if (months < 0) return 'future-dated'
+  return months >= staleAfterMonths ? 'stale' : 'fresh'
 }
 
 export function assessFreshness(entries, { now, policy = DEFAULT_POLICY } = {}) {
