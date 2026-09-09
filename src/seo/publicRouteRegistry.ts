@@ -708,7 +708,7 @@ export const publicRouteRegistry = {
     summary:
       'Beschreibt die Datenverarbeitung von RentenWiki.de: lokale Speicherung ' +
       'im Browser, freiwillige Projektunterstützung und optionales QA-Feedback.',
-    dateModified: '2026-09-08',
+    dateModified: '2026-09-09',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: false,

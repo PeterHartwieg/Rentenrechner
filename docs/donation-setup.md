@@ -1,8 +1,12 @@
 # Project support setup
 
-Status: **draft, payment account activation pending** (8 September 2026).
-No live checkout has been created or verified. Do not merge/publish this
-change until the activation steps below are complete.
+Status: **live Stripe checkout active**, verified 9 September 2026.
+
+Public contribution link: https://buy.stripe.com/9B6dR32A0gfi0bx4NxcIE00
+
+Stripe Payment Link ID: `plink_1UDegc9rzdMM6w6Xdp7YsPcQ`. Peter completed
+registration and live-account activation. The public checkout was inspected
+without submitting a payment.
 
 ## Provider decision
 
@@ -47,14 +51,13 @@ donation receipt. A contribution does not buy a commercial license.
 - Link to `https://rentenwiki.de/datenschutz/` and `https://rentenwiki.de/impressum/` where supported. Verify the actual checkout data collection against the privacy copy before publishing.
 - Do not misclassify the activity as a charity or select tax exemptions without a factual basis. Peter must supply any required account, tax and payout details.
 
-## Activation
+## Verification and maintenance
 
-1. Peter signs in to an existing appropriate Stripe account, or completes registration, account verification and payout-bank setup. The browser account-opening policy requires user handoff for a new financial account. The accessible command-line 1Password vault had no Stripe/PayPal credentials; the native 1Password app was locked.
-2. Create the live Payment Link with the configuration above. Verify that its public checkout shows the correct recipient, EUR, a freely chosen amount, one-off payment and the development pledge. Do not make a real payment as part of verification.
-3. Set `SUPPORT_PAYMENT_URL` in `src/content/support.ts` to the verified live URL. It is deliberately `null` until then: no invented, test or inactive checkout is shown to visitors.
-4. Review the payment-data section of the privacy page against the activated account's actual settings and record applicable retention/legal basis if required by those settings. It is only rendered once the live payment link is configured.
-5. Run `npm run verify`; inspect the support section on desktop and phone and open the external checkout from the final build.
-6. Merge the PR, verify production deployment, and enable/verify repository Settings → General → Features → Sponsorships. Confirm the Sponsor button displays the support URL on the default branch.
+1. The live Payment Link is active and offers a suggested €5, minimum €1, no maximum, and EUR customer-chosen one-off contributions. Managed Payments, automatic tax collection, additional customer-name/address/phone collection, paid invoice PDFs and adding the link to a Stripe profile were left off. Existing payment methods remain available.
+2. `SUPPORT_PAYMENT_URL` in `src/content/support.ts` contains the verified live URL. It is a public checkout URL, not a credential. Never replace it with a test link or append calculator state.
+3. Public business branding uses RentenWiki.de, with `peter@hartwieg.com` for support and the website's Impressum and privacy URLs. Stripe may collect payment-method details even though optional extra collection is disabled. The website privacy section describes this and statutory retention separately from local calculator data.
+4. For future changes, inspect the public checkout, amount controls and pledge; do not submit a real payment without an explicit payment instruction. Run `npm run verify` and check desktop/phone layouts before release.
+5. Merge through the repository's normal checks, verify the production deployment, and confirm GitHub's Sponsor button displays the support URL on the default branch.
 
 The repository's `.github/FUNDING.yml` and README use the stable public
 URL `https://rentenwiki.de/#unterstuetzen`. This points to the project-use
@@ -64,3 +67,5 @@ no calculator state or identifiers appended. No payment SDK, webhook,
 backend, cookie, tracking request or account is added to the calculator.
 
 GitHub's configuration is documented in [Displaying a sponsor button](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository).
+
+Privacy sources: [Stripe privacy policy](https://stripe.com/de/privacy), [Stripe service provider in Europe](https://support.stripe.com/questions/stripe-service-provider-in-ireland?locale=en-GB), [GDPR Article 6](https://eur-lex.europa.eu/eli/reg/2016/679/oj/?locale=de), and [§ 147 AO](https://www.gesetze-im-internet.de/ao_1977/__147.html).

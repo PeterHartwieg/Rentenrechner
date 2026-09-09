@@ -13,22 +13,16 @@ export function ProjectSupport() {
         </p>
       </div>
       <div className="project-support__action">
-        {SUPPORT_PAYMENT_URL ? (
-          <>
-            <a
-              className="project-support__link"
-              href={SUPPORT_PAYMENT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              referrerPolicy="no-referrer"
-            >
-              Projekt unterstützen ↗
-            </a>
-            <span>Einmalig · Betrag frei wählen · über Stripe</span>
-          </>
-        ) : (
-          <span>Die Online-Unterstützung wird gerade eingerichtet.</span>
-        )}
+        <a
+          className="project-support__link"
+          href={SUPPORT_PAYMENT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          referrerPolicy="no-referrer"
+        >
+          Projekt unterstützen ↗
+        </a>
+        <span>Einmalig · Betrag frei wählen · über Stripe</span>
       </div>
     </section>
   )
