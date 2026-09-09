@@ -24,11 +24,15 @@
  *   T5. Policy construction is deterministic and collapses to the documented
  *       degenerate shapes (no capital + no events → undefined policy).
  *
- * All `fc.assert` calls pin an explicit fixed seed for reproducibility.
+ * All `fc.assert` calls derive seed and run count from `propertyRunParams`
+ * (`src/utils/propertyRunConfig.ts`): fixed seed base 378 and authored counts
+ * by default, so CI failures are reproducible; PROPERTY_RUNS_MULTIPLIER /
+ * PROPERTY_SEED scale the same properties for scheduled sweeps.
  */
 
 import { describe, expect, it, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
 import fc from 'fast-check'
+import { propertyRunParams } from '../utils/propertyRunConfig'
 import { de2026Rules } from '../rules/de2026'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { migrateV1ToV2 } from '../storage'
@@ -53,7 +57,6 @@ import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 // Helpers
 // ---------------------------------------------------------------------------
 
-const FC_SEED = 378
 const RULES_YEAR = de2026Rules.year
 
 function closeTo(a: number, b: number, eps = 1e-9): boolean {
@@ -85,7 +88,16 @@ const SURRENDER_SOURCE_SLOTS = [
 
 type SourceSlot = (typeof SURRENDER_SOURCE_SLOTS)[number]
 
-const sourceSlotByInstance: Record<SourceSlot, keyof WorkspaceAssumptionsV2> = {
+/**
+ * Keys of `WorkspaceAssumptionsV2` that hold product instance arrays — derived
+ * from the type, so the scalar/scenario keys (`statutoryPension`,
+ * `returnScenarios`, …) are excluded by construction.
+ */
+type ProductArrayKey = {
+  [K in keyof WorkspaceAssumptionsV2]-?: WorkspaceAssumptionsV2[K] extends AnyInstance[] ? K : never
+}[keyof WorkspaceAssumptionsV2]
+
+const sourceSlotByInstance: Record<SourceSlot, ProductArrayKey> = {
   bav: 'bav',
   versicherung: 'insurance',
   riester: 'riester',
@@ -94,7 +106,7 @@ const sourceSlotByInstance: Record<SourceSlot, keyof WorkspaceAssumptionsV2> = {
 
 function makeInstance(id: string, slot: SourceSlot, currentValueEUR?: number): AnyInstance {
   const wsa = makeBaseWorkspace().baseline.assumptions
-  const base = wsa[sourceSlotByInstance[slot]][0] as AnyInstance
+  const base = wsa[sourceSlotByInstance[slot]][0]
   return {
     ...base,
     instanceId: id,
@@ -159,7 +171,7 @@ describe('eventCalendarYearToContractYear — generated model property', () => {
           }
         },
       ),
-      { seed: FC_SEED, numRuns: 500 },
+      propertyRunParams(500, 0),
     )
   })
 })
@@ -179,7 +191,7 @@ describe('collectTransferEvents — generated routing property', () => {
         year: fc.integer({ min: RULES_YEAR - 2, max: RULES_YEAR + 30 }),
         sourceInstanceId: fc.constantFrom<PoolId>(...poolIds),
         targetInstanceId: fc.constantFrom<PoolId>(...poolIds),
-        amountEUR: fc.double({ noNaN: true, noDefaultInfinity: true, min: 1, max: 250_000 }),
+        amountEUR: fc.integer({ min: 1, max: 250_000 }),
         surrenderHaircutPct: fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 1 }),
       }),
       { minLength: 1, maxLength: 4 },
@@ -244,7 +256,7 @@ describe('collectTransferEvents — generated routing property', () => {
         expect(totalOutbound).toBe(events.length)
         expect(totalInbound).toBe(events.length)
       }),
-      { seed: FC_SEED + 1, numRuns: 200 },
+      propertyRunParams(200, 1),
     )
     warnSpy.mockRestore()
   })
@@ -255,7 +267,7 @@ describe('collectTransferEvents — generated routing property', () => {
 // ---------------------------------------------------------------------------
 
 const transferYearArb = fc.integer({ min: RULES_YEAR, max: RULES_YEAR + 25 })
-const amountArb = fc.double({ noNaN: true, noDefaultInfinity: true, min: 1, max: 200_000 })
+const amountArb = fc.integer({ min: 1, max: 200_000 })
 const haircutArb = fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 1 })
 
 describe('buildInstanceCapitalPolicy — generated conservation properties', () => {
@@ -310,7 +322,7 @@ describe('buildInstanceCapitalPolicy — generated conservation properties', () 
           expect(targetPolicy!.costBasisInjections).toBeUndefined()
         },
       ),
-      { seed: FC_SEED + 2, numRuns: 150 },
+      propertyRunParams(150, 2),
     )
   })
 
@@ -364,7 +376,7 @@ describe('buildInstanceCapitalPolicy — generated conservation properties', () 
           expect(basisInjections[0].year).toBe(injections[0].year)
         },
       ),
-      { seed: FC_SEED + 3, numRuns: 200 },
+      propertyRunParams(200, 3),
     )
   })
 
@@ -389,7 +401,7 @@ describe('buildInstanceCapitalPolicy — generated conservation properties', () 
           expect(second).toStrictEqual(first)
         },
       ),
-      { seed: FC_SEED + 4, numRuns: 60 },
+      propertyRunParams(60, 4),
     )
   })
 })

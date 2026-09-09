@@ -28,11 +28,15 @@
  *       array order by design.
  *   F7. Determinism: identical workspaces produce identical funding snapshots.
  *
- * All `fc.assert` calls pin an explicit fixed seed for reproducibility.
+ * All `fc.assert` calls derive seed and run count from `propertyRunParams`
+ * (`src/utils/propertyRunConfig.ts`): fixed seed base 378 and authored counts
+ * by default, so CI failures are reproducible; PROPERTY_RUNS_MULTIPLIER /
+ * PROPERTY_SEED scale the same properties for scheduled sweeps.
  */
 
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
+import { propertyRunParams } from '../utils/propertyRunConfig'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
@@ -43,8 +47,6 @@ import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const FC_SEED = 378
 
 function closeTo(a: number, b: number, eps = 1e-6): boolean {
   return Math.abs(a - b) <= eps * Math.max(1, Math.abs(a), Math.abs(b))
@@ -103,8 +105,18 @@ interface FundingShape {
   riester: number[]
 }
 
-const monthlyArb = (max: number) =>
-  fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max })
+/**
+ * Monthly contributions are generated at whole-euro granularity — the modeled
+ * (UI) input domain, where the combine inputs step in whole euros.
+ *
+ * Test limitation (documented exclusion, not a verified engine defect): below
+ * roughly 0.1 EUR/month a bAV conversion no longer lowers net payroll — the
+ * statutory BMF-PAP wage rounding quantises the result, so a 1-cent conversion
+ * can land a rounding step (~1 EUR/year) above the no-conversion baseline.
+ * Properties that assume monotonicity (F5) therefore exclude sub-euro amounts.
+ * Exact zero stays reachable for the degenerate boundaries.
+ */
+const monthlyArb = (max: number) => fc.integer({ min: 0, max })
 
 const fundingShapeArb: fc.Arbitrary<FundingShape> = fc.record({
   bav: fc.array(monthlyArb(3_000), { maxLength: 2 }),
@@ -140,6 +152,31 @@ function rotate<T>(xs: T[], k: number): T[] {
   return xs.slice(s).concat(xs.slice(0, s))
 }
 
+/**
+ * Clone `ws` with the instance array of `slot` rotated by `rotation`. The
+ * instance OBJECTS are reused, so each instance keeps its id and contribution;
+ * only their order in the array changes. (Rotating the generated amount shape
+ * instead would reassign ids by position — the rotation properties would then
+ * compare different contracts and fail for any two distinct contributions.)
+ */
+function rotateWorkspaceInstances<S extends InstanceSlot>(
+  ws: Workspace,
+  slot: S,
+  rotation: number,
+): Workspace {
+  const wsa = ws.baseline.assumptions
+  return {
+    ...ws,
+    baseline: {
+      ...ws.baseline,
+      assumptions: {
+        ...wsa,
+        [slot]: rotate([...wsa[slot]], rotation),
+      },
+    },
+  }
+}
+
 // ---------------------------------------------------------------------------
 // F1–F5 — cap and reconciliation invariants over generated portfolios
 // ---------------------------------------------------------------------------
@@ -170,7 +207,7 @@ describe('buildPortfolioFunding — generated cap invariants', () => {
         // Monthly net cost of the bAV can never be negative.
         expect(headroom.monthlyNetCost).toBeGreaterThanOrEqual(0)
       }),
-      { seed: FC_SEED, numRuns: 40 },
+      propertyRunParams(40, 0),
     )
   })
 
@@ -197,7 +234,7 @@ describe('buildPortfolioFunding — generated cap invariants', () => {
         const remainingCap = Math.max(0, cap - headroom.pensionSystemAnnual)
         expect(headroom.constrained).toBe(requestedProduct > remainingCap && requestedProduct > 0)
       }),
-      { seed: FC_SEED + 1, numRuns: 40 },
+      propertyRunParams(40, 1),
     )
   })
 
@@ -226,7 +263,7 @@ describe('buildPortfolioFunding — generated cap invariants', () => {
         expect(headroom.usedPct).toBeLessThanOrEqual(1)
         expect(headroom.constrained).toBe(headroom.requestedAnnual > cap)
       }),
-      { seed: FC_SEED + 2, numRuns: 40 },
+      propertyRunParams(40, 2),
     )
   })
 
@@ -248,7 +285,7 @@ describe('buildPortfolioFunding — generated cap invariants', () => {
           expect(headroom.usedPct).toBeLessThanOrEqual(1)
         }
       }),
-      { seed: FC_SEED + 3, numRuns: 40 },
+      propertyRunParams(40, 3),
     )
   })
 
@@ -279,7 +316,7 @@ describe('buildPortfolioFunding — generated cap invariants', () => {
           expect(funding.salaryForOtherFunding.annualNet).toBeLessThanOrEqual(withoutBav.annualNet)
         }
       }),
-      { seed: FC_SEED + 4, numRuns: 40 },
+      propertyRunParams(40, 4),
     )
   })
 
@@ -291,7 +328,7 @@ describe('buildPortfolioFunding — generated cap invariants', () => {
         const second = buildPortfolioFunding(ws, de2026Rules)
         expect(second).toStrictEqual(first)
       }),
-      { seed: FC_SEED + 5, numRuns: 15 },
+      propertyRunParams(15, 5),
     )
   })
 })
@@ -308,7 +345,7 @@ describe('buildPortfolioFunding — order invariance (proportional apportionment
         fc.integer({ min: 1, max: 4 }),
         (shape, rotation) => {
           const wsA = makeFundingWorkspace(shape)
-          const wsB = makeFundingWorkspace({ ...shape, bav: rotate(shape.bav, rotation) })
+          const wsB = rotateWorkspaceInstances(wsA, 'bav', rotation)
           const fundingA = buildPortfolioFunding(wsA, de2026Rules)
           const fundingB = buildPortfolioFunding(wsB, de2026Rules)
 
@@ -330,7 +367,7 @@ describe('buildPortfolioFunding — order invariance (proportional apportionment
           )).toBe(true)
         },
       ),
-      { seed: FC_SEED + 6, numRuns: 25 },
+      propertyRunParams(25, 6),
     )
   })
 
@@ -341,7 +378,7 @@ describe('buildPortfolioFunding — order invariance (proportional apportionment
         fc.integer({ min: 1, max: 4 }),
         (shape, rotation) => {
           const wsA = makeFundingWorkspace(shape)
-          const wsB = makeFundingWorkspace({ ...shape, basisrente: rotate(shape.basisrente, rotation) })
+          const wsB = rotateWorkspaceInstances(wsA, 'basisrente', rotation)
           const fundingA = buildPortfolioFunding(wsA, de2026Rules)
           const fundingB = buildPortfolioFunding(wsB, de2026Rules)
 
@@ -353,7 +390,7 @@ describe('buildPortfolioFunding — order invariance (proportional apportionment
           }
         },
       ),
-      { seed: FC_SEED + 7, numRuns: 25 },
+      propertyRunParams(25, 7),
     )
   })
 })

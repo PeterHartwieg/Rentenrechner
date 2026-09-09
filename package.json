@@ -13,6 +13,8 @@
     "build": "tsc -b && vite build && npm run prerender",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
+    "test:properties": "vitest run src/engine/portfolioAllowance.property.test.ts src/engine/portfolioFunding.property.test.ts src/engine/portfolioTransfer.property.test.ts src/engine/portfolioCombine.property.test.ts",
+    "properties:config": "vite-node scripts/property-run-config.ts",
     "preview": "npm run build && wrangler dev",
     "worker:typecheck": "npm --prefix workers/qa-submit run typecheck && npm --prefix workers/simulate run typecheck",
     "worker:test": "npm --prefix workers/qa-submit run test && npm --prefix workers/simulate run test",

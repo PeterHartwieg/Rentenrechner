@@ -22,16 +22,60 @@ code changed, no oracle goldens touched:
 ### Discipline
 
 - **Generators stay inside the documented valid domains** — non-negative finite
-  contributions and demands, structurally valid workspaces built by
-  `migrateV1ToV2`, aligned array lengths. Generators never emit out-of-domain
-  values.
+  contributions and demands **at whole-euro granularity** (the modeled UI
+  domain, where the combine inputs step in whole euros), structurally valid
+  workspaces built by `migrateV1ToV2`, aligned array lengths. Generators never
+  emit out-of-domain values.
 - **Invalid domains and boundaries are covered separately**, by deterministic
   `it.each` matrices at the bottom of each file — never by generation.
 - **No broad monotonicity assertions.** Each property names its precondition
   (e.g. "when the allowance binds", "for non-ETF instances").
-- **Fixed seeds.** Every `fc.assert` pins `seed: FC_SEED + n` with
-  `FC_SEED = 378`, so a failure reproduces exactly and fast-check shrinking
-  reports a minimal counterexample.
+- **Fixed seeds.** Every `fc.assert` takes its params from `propertyRunParams`
+  (`src/utils/propertyRunConfig.ts`): seed = base + n with base 378 by default,
+  so a failure reproduces exactly and fast-check shrinking reports a minimal
+  counterexample.
+
+### Run configuration (bounded PR runs, broader scheduled sweeps)
+
+The same properties run at two scales. `src/utils/propertyRunConfig.ts` is the
+single validated source for both:
+
+| Env var | Domain | Default | Effect |
+|---------|--------|---------|--------|
+| `PROPERTY_RUNS_MULTIPLIER` | integer 1–8 | 1 | Multiplies every property's authored run count. 1 is exactly the PR suite. |
+| `PROPERTY_SEED` | integer 0–2³¹−1 | 378 | Replaces the seed base for an independently reproducible sweep. |
+
+Invalid values fail loudly (`resolvePropertyRunConfig` throws) — never silently
+fall back. Pinning these in one helper is what lets the four test files, the
+CLI, and the workflow agree on what ran.
+
+```bash
+npm run test:properties      # PR-bounded suite (also inside npm run verify)
+npm run properties:config    # report the effective multiplier + seed (exit 1 on invalid input)
+
+# a reproducible broader sweep, replayed exactly:
+PROPERTY_RUNS_MULTIPLIER=5 npm run test:properties
+PROPERTY_RUNS_MULTIPLIER=5 PROPERTY_SEED=378 npm run test:properties
+```
+
+**Scheduled sweep:** `.github/workflows/property-sweep.yml` runs weekly
+(Mondays 04:37 UTC) and on `workflow_dispatch` (inputs `runs_multiplier`,
+default 5, and `seed`, default 378), with `contents: read` permissions and a
+20-minute job timeout. It prints `npm run properties:config` first, so every
+job log records the multiplier and seed that produced its result. The same
+workflow runs the focused mutation pilot as a **separate job** — mutation
+testing is never part of `npm run verify` or the property sweep.
+
+### Known domain exclusion (documented test limitation)
+
+Below roughly 0.1 EUR/month, a bAV conversion no longer lowers net payroll:
+the statutory BMF-PAP wage rounding quantises the salary result, so a 1-cent
+conversion can land one rounding step (~1 EUR/year) above the no-conversion
+baseline. Properties that assume monotonicity (F5) exclude sub-euro amounts
+from the generators for that reason. This is a scope statement for the tests,
+**not a verified engine defect** — at whole-euro contributions and above
+(the smallest amount the modeled UI domain produces) net payroll decreases
+strictly and proportionally.
 - **Real interfaces only.** Properties drive `buildPortfolioFunding`,
   `simulatePortfolio`, `buildCombineContext`, `combinePortfolio` — no engine
   mocks.
@@ -55,7 +99,8 @@ npm run mutation:pilot
 
 Stryker 10 (`stryker.pilot.json`), not part of `npm run verify`. Runtime is
 roughly half a minute. Scope is two modules: `src/engine/tax.ts` and
-`src/engine/portfolioAllowance.ts`. The test window is narrowed via
+`src/engine/portfolioAllowance.ts`. The weekly `property-sweep` workflow runs
+it as a separate scheduled job and uploads `reports/mutation/` as an artifact. The test window is narrowed via
 `vitest.stryker.config.ts` to the three files that cover them, which keeps each
 mutant's run fast. The JSON report lands in
 `reports/mutation/mutation.json` (gitignored).

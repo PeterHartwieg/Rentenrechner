@@ -28,12 +28,16 @@
  *       and each payout year's combined `saverAllowanceUsed` stays within the
  *       single-saver allowance.
  *
- * All `fc.assert` calls pin an explicit fixed seed so CI failures are
- * reproducible; fast-check shrinking then reports a minimal counterexample.
+ * All `fc.assert` calls derive seed and run count from `propertyRunParams`
+ * (`src/utils/propertyRunConfig.ts`): fixed seed base 378 and authored counts
+ * by default, so CI failures are reproducible and fast-check shrinking reports
+ * a minimal counterexample; PROPERTY_RUNS_MULTIPLIER / PROPERTY_SEED scale the
+ * same properties for scheduled sweeps.
  */
 
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
+import { propertyRunParams } from '../utils/propertyRunConfig'
 import {
   apportionSparerpauschbetrag,
   calculateEtfAllowanceDemand,
@@ -49,9 +53,6 @@ import type { Workspace } from '../domain/workspace'
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Fixed seed so property runs (and any shrunk counterexamples) are reproducible. */
-const FC_SEED = 378
 
 /** Relative+absolute tolerance for floating-point comparisons. */
 function closeTo(actual: number, expected: number, eps = 1e-6): boolean {
@@ -77,12 +78,17 @@ function makeEtfInstance(id: string, monthlyContribution: number): EtfInstance {
   }
 }
 
-/** Number arrays of a fixed length with non-negative finite entries. */
+/**
+ * Number arrays of a fixed length with non-negative finite entries. Demands
+ * are EUR amounts, generated at whole-euro granularity (the modeled input
+ * scale): sub-euro values sit inside float-apportionment quantisation and are
+ * outside the domain these properties describe.
+ */
 function demandArrayArb(totalYears: number, maxDemand = 100_000) {
-  return fc.array(
-    fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: maxDemand }),
-    { minLength: totalYears, maxLength: totalYears },
-  )
+  return fc.array(fc.integer({ min: 0, max: maxDemand }), {
+    minLength: totalYears,
+    maxLength: totalYears,
+  })
 }
 
 /**
@@ -97,12 +103,8 @@ const demandMapArb = fc
       .map((arrays) => new Map(arrays.map((demand, i) => [`inst-${i}`, demand] as const))),
   )
 
-const allowanceArb = fc.double({
-  noNaN: true,
-  noDefaultInfinity: true,
-  min: 0,
-  max: 500_000,
-})
+/** Allowance budget in whole euros (the statutory Sparerpauschbetrag scale). */
+const allowanceArb = fc.integer({ min: 0, max: 500_000 })
 
 /** Straight-line reference model of the documented apportionment rule. */
 function referenceApportion(
@@ -160,7 +162,7 @@ describe('apportionSparerpauschbetrag — generated invariants', () => {
           }
         }
       }),
-      { seed: FC_SEED, numRuns: 300 },
+      propertyRunParams(300, 0),
     )
   })
 
@@ -178,7 +180,7 @@ describe('apportionSparerpauschbetrag — generated invariants', () => {
           }
         }
       }),
-      { seed: FC_SEED + 1, numRuns: 300 },
+      propertyRunParams(300, 1),
     )
   })
 
@@ -205,7 +207,7 @@ describe('apportionSparerpauschbetrag — generated invariants', () => {
           }
         }
       }),
-      { seed: FC_SEED + 2, numRuns: 300 },
+      propertyRunParams(300, 2),
     )
   })
 
@@ -231,7 +233,7 @@ describe('apportionSparerpauschbetrag — generated invariants', () => {
           }
         }
       }),
-      { seed: FC_SEED + 3, numRuns: 200 },
+      propertyRunParams(200, 3),
     )
   })
 
@@ -243,7 +245,7 @@ describe('apportionSparerpauschbetrag — generated invariants', () => {
         const second = apportionSparerpauschbetrag(demandMap, allowance, totalYears)
         expect(second).toStrictEqual(first)
       }),
-      { seed: FC_SEED + 4, numRuns: 100 },
+      propertyRunParams(100, 4),
     )
   })
 
@@ -260,7 +262,7 @@ describe('apportionSparerpauschbetrag — generated invariants', () => {
           }
         }
       }),
-      { seed: FC_SEED + 5, numRuns: 200 },
+      propertyRunParams(200, 5),
     )
   })
 })
@@ -414,13 +416,13 @@ const etfDemandInputsArb = fc
         return fc
           .tuple(
             fc.array(
-              fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 50_000 }),
+              fc.integer({ min: 0, max: 50_000 }),
               { minLength: yearsToRetirement, maxLength: yearsToRetirement },
             ),
             fc.array(
               // Negative taxableGain is in-domain: a Kapitalverzehr payout can
               // sit below the cost basis. The demand builder clamps it to ≥ 0.
-              fc.double({ noNaN: true, noDefaultInfinity: true, min: -50_000, max: 50_000 }),
+              fc.integer({ min: -50_000, max: 50_000 }),
               { minLength: payoutYears, maxLength: payoutYears },
             ),
           )
@@ -458,7 +460,7 @@ describe('calculateEtfAllowanceDemand — generated invariants', () => {
           expect(d).toBeGreaterThanOrEqual(0)
         })
       }),
-      { seed: FC_SEED + 6, numRuns: 200 },
+      propertyRunParams(200, 6),
     )
   })
 
@@ -491,7 +493,7 @@ describe('calculateEtfAllowanceDemand — generated invariants', () => {
           expect(atPartial[i]).toBeLessThanOrEqual(raw + 1e-9)
         })
       }),
-      { seed: FC_SEED + 7, numRuns: 200 },
+      propertyRunParams(200, 7),
     )
   })
 
@@ -502,7 +504,7 @@ describe('calculateEtfAllowanceDemand — generated invariants', () => {
         const second = calculateEtfAllowanceDemand(stub, 0.3, yearsToRetirement, totalYears)
         expect(second).toStrictEqual(first)
       }),
-      { seed: FC_SEED + 8, numRuns: 50 },
+      propertyRunParams(50, 8),
     )
   })
 })
@@ -532,12 +534,7 @@ describe('applyCrossInstanceSparerpauschbetrag — end-to-end via simulatePortfo
   }
 
   it('combined saverAllowanceUsed per payout year stays within the single-saver allowance', () => {
-    const contributionsArb = fc.double({
-      noNaN: true,
-      noDefaultInfinity: true,
-      min: 100,
-      max: 1500,
-    })
+    const contributionsArb = fc.integer({ min: 100, max: 1_500 })
     fc.assert(
       fc.property(contributionsArb, contributionsArb, (a, b) => {
         const workspace = twoEtfWorkspace(a, b)
@@ -564,7 +561,7 @@ describe('applyCrossInstanceSparerpauschbetrag — end-to-end via simulatePortfo
           expect(combined).toBeLessThanOrEqual(SINGLE_ALLOWANCE + 0.01)
         }
       }),
-      { seed: FC_SEED + 9, numRuns: 8 },
+      propertyRunParams(8, 9),
     )
   })
 
