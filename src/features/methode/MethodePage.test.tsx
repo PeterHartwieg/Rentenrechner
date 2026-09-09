@@ -43,7 +43,15 @@ describe('MethodePage — /methode route content', () => {
   it('explains the shared market return directly below the return assumptions table', () => {
     const { getByRole } = render(<MethodePage />)
     const table = getByRole('table', { name: 'Renditeannahmen je Szenario' })
-    expect(table.nextElementSibling?.textContent).toContain('derselben Marktrendite')
+    expect(table.nextElementSibling?.textContent).toContain(
+      'Die Szenariorendite ist die angenommene Rendite des risikobehafteten Markts und gilt je Szenario für alle Produkte gleichermaßen.',
+    )
+    expect(table.nextElementSibling?.textContent).toContain(
+      'beim Altersvorsorgedepot zusätzlich durch die eigene Aufteilung zwischen Risiko- und Sicherheitsanteil',
+    )
+    expect(table.nextElementSibling?.textContent).toContain(
+      'Rendite des Sicherheitsanteils und den gesetzlichen Glidepath',
+    )
   })
 
   it('renders every § section as an h2 with a stable slug id', () => {

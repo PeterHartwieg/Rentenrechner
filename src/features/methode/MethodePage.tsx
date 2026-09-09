@@ -298,12 +298,19 @@ export function MethodePage({ navigate }: Props) {
                 </tbody>
               </table>
               <p className="methode-section-lead">
-                Alle Produkte im Vergleich rechnen mit derselben Marktrendite je Szenario.
+                Die Szenariorendite ist die angenommene Rendite des risikobehafteten
+                Markts und gilt je Szenario für alle Produkte gleichermaßen.
                 Unterschiede im Ergebnis entstehen durch Kosten, Beitragsgarantien,
                 Steuern in Anspar- und Auszahlungsphase, Zulagen und Arbeitgeberzuschüsse
-                sowie die Auszahlungsform, nicht durch unterschiedliche Renditeannahmen.
-                So siehst du, welcher Mantel bei gleichem Geld und gleichem Markt
-                im Modell mehr übrig lässt.
+                sowie die Auszahlungsform und beim Altersvorsorgedepot zusätzlich durch
+                die eigene Aufteilung zwischen Risiko- und Sicherheitsanteil, die
+                Rendite des Sicherheitsanteils und den gesetzlichen Glidepath.
+                Im Vergleich wird für alle Produkte derselbe monatliche Nettoaufwand
+                angesetzt, soweit ihre jeweiligen Beitrags- und Fördergrenzen es zulassen;
+                beim Altersvorsorgedepot ist der Eigenbeitrag auf die im Modell hinterlegte
+                Vertragsobergrenze begrenzt.
+                So siehst du innerhalb dieser Grenzen, welcher Mantel bei gleichem
+                Nettoaufwand und gleichem Markt im Modell mehr übrig lässt.
               </p>
 
               {/* Live Monte-Carlo panel (relocated from Vergleich pane dispatcher
