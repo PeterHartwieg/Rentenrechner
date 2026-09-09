@@ -150,6 +150,17 @@ describe('AltersvorsorgedepotInputs — the ledger reads the engine, never recom
 })
 
 describe('AltersvorsorgedepotInputs — progressive disclosure', () => {
+  it('names the child allowance checkbox without the tooltip text', () => {
+    setup({ profile: { ...defaultProfile, childBirthYears: [de2026Rules.year - 5] } })
+
+    const name = 'Kinderzulage in diesem Vertrag berücksichtigen'
+    expect(screen.getByRole('checkbox', { name })).toHaveAccessibleName(name)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erklärung anzeigen' }))
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name })).toHaveAccessibleName(name)
+  })
+
   it('keeps eligibility, children and payout form visible', () => {
     setup()
     expect(screen.getByText('Förderberechtigte Kinder')).toBeTruthy()

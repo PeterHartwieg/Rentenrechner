@@ -28,9 +28,10 @@ export interface RiesterEligibility {
    */
   indirectSpouseEligible?: boolean
   /**
-   * §85 Abs. 2 EStG: the Kinderzulage is allocated to one parent only (mother by
-   * default, father on joint application). `false` = another person holds the
-   * claim, so this contract receives no Kinderzulage and the §86
+   * §85 Abs. 2 EStG: the Kinderzulage follows the Kindergeld entitlement; spouses
+   * can assign it to the other parent on joint application.
+   * `false` = another person holds the claim, so this contract receives no
+   * Kinderzulage and the §86
    * Mindesteigenbeitrag is computed without it. `undefined` = true (back-compat
    * for stored state; no migration needed).
    */

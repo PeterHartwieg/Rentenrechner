@@ -282,27 +282,29 @@ export function AltersvorsorgedepotInputs({
           <span>Mittelbar berechtigt (über Ehegatte)</span>
         </label>
         {profile.childBirthYears.length > 0 && (
-          <label className="field field-inline">
-            <input
-              type="checkbox"
-              checked={avd.eligibility.claimsChildAllowance ?? true}
-              onChange={(event) => {
-                const checked = event.target.checked
-                onAssumptionsChange((current) => ({
-                  ...current,
-                  altersvorsorgedepot: {
-                    ...current.altersvorsorgedepot,
-                    eligibility: {
-                      ...current.altersvorsorgedepot.eligibility,
-                      claimsChildAllowance: checked,
+          <div className="field field-inline">
+            <label className="field-inline">
+              <input
+                type="checkbox"
+                checked={avd.eligibility.claimsChildAllowance ?? true}
+                onChange={(event) => {
+                  const checked = event.target.checked
+                  onAssumptionsChange((current) => ({
+                    ...current,
+                    altersvorsorgedepot: {
+                      ...current.altersvorsorgedepot,
+                      eligibility: {
+                        ...current.altersvorsorgedepot.eligibility,
+                        claimsChildAllowance: checked,
+                      },
                     },
-                  },
-                }))
-              }}
-            />
-            <span>Kinderzulage in diesem Vertrag berücksichtigen</span>
+                  }))
+                }}
+              />
+              <span>Kinderzulage in diesem Vertrag berücksichtigen</span>
+            </label>
             <InfoTip text={CHILD_ALLOWANCE_CLAIM_HINT} />
-          </label>
+          </div>
         )}
         <label className="field field-inline">
           <input

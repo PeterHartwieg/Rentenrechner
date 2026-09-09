@@ -124,27 +124,29 @@ export function RiesterInputs({
           <span>Mittelbar berechtigt (über Ehegatte)</span>
         </label>
         {profile.childBirthYears.length > 0 && (
-          <label className="field field-inline">
-            <input
-              type="checkbox"
-              checked={assumptions.riester.eligibility.claimsChildAllowance ?? true}
-              onChange={(event) => {
-                const checked = event.target.checked
-                onAssumptionsChange((current) => ({
-                  ...current,
-                  riester: {
-                    ...current.riester,
-                    eligibility: {
-                      ...current.riester.eligibility,
-                      claimsChildAllowance: checked,
+          <div className="field field-inline">
+            <label className="field-inline">
+              <input
+                type="checkbox"
+                checked={assumptions.riester.eligibility.claimsChildAllowance ?? true}
+                onChange={(event) => {
+                  const checked = event.target.checked
+                  onAssumptionsChange((current) => ({
+                    ...current,
+                    riester: {
+                      ...current.riester,
+                      eligibility: {
+                        ...current.riester.eligibility,
+                        claimsChildAllowance: checked,
+                      },
                     },
-                  },
-                }))
-              }}
-            />
-            <span>Kinderzulage in diesem Vertrag berücksichtigen</span>
+                  }))
+                }}
+              />
+              <span>Kinderzulage in diesem Vertrag berücksichtigen</span>
+            </label>
             <InfoTip text={CHILD_ALLOWANCE_CLAIM_HINT} />
-          </label>
+          </div>
         )}
       </div>
 
