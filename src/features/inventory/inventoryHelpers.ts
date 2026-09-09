@@ -21,10 +21,19 @@
  *  - CombineDashboardSidebar.tsx (bavOfferDraftToInstance)
  */
 
-import type { GermanRules, PersonalProfile, StatutoryPensionAssumptions } from '../../domain'
+import type {
+  GermanRules,
+  InputStatusMap,
+  PersonalProfile,
+  StatutoryPensionAssumptions,
+} from '../../domain'
 import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../../domain/workspace'
 import { de2026Rules } from '../../rules/de2026'
-import { legacyEpSeedDurchschnittsentgelt } from '../../rules/legacyArtefacts'
+import {
+  legacyEpSeedDurchschnittsentgelt,
+  legacyEpSeedPensionCapYear,
+} from '../../rules/legacyArtefacts'
+import { resolveInputStatus } from '../results/provenanceHelpers'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { defaultWorkspace } from '../../storage'
@@ -90,38 +99,96 @@ export function estimateEpFromYears(
     : 0
 }
 
-/** Detect an unchanged pre-#394 estimate without migrating user-entered EP. */
+/** Reserved scenario-level input-status key for the Entgeltpunkte (`domain/inputStatus.ts`). */
+const EP_INPUT_STATUS_KEY = 'statutoryPension.currentEntgeltpunkte'
+
+/**
+ * Detect an unchanged pre-#394 estimate without migrating user-entered EP.
+ *
+ * Two payload shapes reach this detector:
+ *
+ * 1. **Method recorded** — `pensionEntryMethod` is `years` / `career`, so the
+ *    year count that seeded the estimate is stored next to it. Both estimates
+ *    are recomputed from it directly.
+ * 2. **Method absent** — payloads saved before `pensionEntryMethod` existed
+ *    (the same commit that fixed the denominator) carry only the seeded
+ *    `currentEntgeltpunkte`. The year count is recovered by inverting the
+ *    defective estimator: a legacy seed divided by
+ *    `min(salary, legacyEpSeedPensionCapYear) / legacyEpSeedDurchschnittsentgelt`
+ *    is an exact integer, which a hand-typed Entgeltpunkte value is not.
+ *    Detection additionally requires a GRV baseline and an Entgeltpunkte value
+ *    the user has not marked as their own (`inputStatus`, resolved like
+ *    `onboardingDraft.ts` does — absent means `assumed`, never `entered`).
+ */
 export function detectLegacyEpSeed({
   statutoryPension,
   profile,
   rules,
+  inputStatus,
 }: {
   statutoryPension: StatutoryPensionAssumptions
   profile: PersonalProfile
   rules: GermanRules
+  /** Scenario-level input statuses; an `'entered'` EP value suppresses detection. */
+  inputStatus?: InputStatusMap
 }): { legacy: true; freshEstimate: number } | { legacy: false } {
   const method = statutoryPension.pensionEntryMethod
-  if (method?.kind !== 'years' && method?.kind !== 'career') return { legacy: false }
-
-  const years = method.kind === 'years'
-    ? method.contributionYears
-    : profile.age - method.careerStartAge - method.pauseYears
-  const freshEstimate = estimateEpFromYears(years, profile.grossSalaryYear, rules)
-  const oldEstimate = years * (
-    Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear) /
-    legacyEpSeedDurchschnittsentgelt
-  )
   const stored = statutoryPension.currentEntgeltpunkte
   const tolerance = 0.005
-  if (
-    Number.isFinite(stored) && Number.isFinite(freshEstimate) &&
-    Number.isFinite(oldEstimate) && freshEstimate > 0 && oldEstimate > 0 &&
-    Math.abs(stored - oldEstimate) <= oldEstimate * tolerance &&
-    Math.abs(stored - freshEstimate) > freshEstimate * tolerance
-  ) {
-    return { legacy: true, freshEstimate }
+
+  if (method?.kind === 'years' || method?.kind === 'career') {
+    const years = method.kind === 'years'
+      ? method.contributionYears
+      : profile.age - method.careerStartAge - method.pauseYears
+    const freshEstimate = estimateEpFromYears(years, profile.grossSalaryYear, rules)
+    const oldEstimate = years * (
+      Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear) /
+      legacyEpSeedDurchschnittsentgelt
+    )
+    if (
+      Number.isFinite(stored) && Number.isFinite(freshEstimate) &&
+      Number.isFinite(oldEstimate) && freshEstimate > 0 && oldEstimate > 0 &&
+      Math.abs(stored - oldEstimate) <= oldEstimate * tolerance &&
+      Math.abs(stored - freshEstimate) > freshEstimate * tolerance
+    ) {
+      return { legacy: true, freshEstimate }
+    }
+    return { legacy: false }
   }
-  return { legacy: false }
+  // Any other recorded method (points, document, projected-gross, skipped)
+  // owns its value — nothing here was seeded from the defective estimator.
+  if (method !== undefined) return { legacy: false }
+
+  // Absent method: Entgeltpunkte only exist in the GRV; every other baseline
+  // stores a manual figure or nothing at all.
+  if ((statutoryPension.pensionBaselineType ?? 'grv') !== 'grv') return { legacy: false }
+  if (resolveInputStatus(inputStatus, undefined, EP_INPUT_STATUS_KEY) === 'entered') {
+    return { legacy: false }
+  }
+
+  const ratio =
+    Math.min(profile.grossSalaryYear, legacyEpSeedPensionCapYear) / legacyEpSeedDurchschnittsentgelt
+  const impliedYears = ratio > 0 ? stored / ratio : NaN
+  const years = Math.round(impliedYears)
+  const drift = Math.max(Math.abs(impliedYears) * 1e-6, 1e-9)
+  if (
+    !Number.isFinite(impliedYears) || stored <= 0 ||
+    years < 1 || years > 60 ||
+    Math.abs(impliedYears - years) > drift
+  ) {
+    return { legacy: false }
+  }
+  const freshEstimate = estimateEpFromYears(years, profile.grossSalaryYear, rules)
+  // Same 0.5 % guard as the recorded-method branch: the notice must vanish
+  // once the fresh estimate has been applied, and stay quiet should the
+  // active denominator ever coincide with the legacy one.
+  if (
+    !Number.isFinite(freshEstimate) || freshEstimate <= 0 ||
+    Math.abs(stored - freshEstimate) <= freshEstimate * tolerance
+  ) {
+    return { legacy: false }
+  }
+  return { legacy: true, freshEstimate }
 }
 
 // ---------------------------------------------------------------------------

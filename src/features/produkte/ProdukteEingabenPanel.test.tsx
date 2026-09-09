@@ -665,6 +665,31 @@ describe('ProdukteEingabenPanel — legacy EP seed notice', () => {
       .toBe('Grob aus Berufsstart geschätzt')
   })
 
+  it('also fires for a save that predates pensionEntryMethod (no method, no input status)', () => {
+    // A pre-#394 save persisted only the seeded Entgeltpunkte — no recorded
+    // entry method and no inputStatus entry — so the detector must recover
+    // the year count from the value alone.
+    const baseline = legacyBaseline()
+    baseline.assumptions.statutoryPension.pensionEntryMethod = undefined
+    const onPatchBaseline = vi.fn()
+    const freshEstimate = estimateEpFromYears(20, baseline.profile.grossSalaryYear, activeRules)
+    const { container, getByRole } = render(
+      <ProdukteEingabenPanel {...makeCombineProps({ baseline, onPatchBaseline })} />,
+    )
+    expect(drvCard(container).textContent).toContain('veralteten Durchschnittsentgelt')
+    expect(drvCard(container).textContent).toContain(formatNumber(freshEstimate, 1))
+    fireEvent.click(getByRole('button', { name: 'Neu schätzen' }))
+    expect(onPatchBaseline).toHaveBeenCalledExactlyOnceWith({
+      assumptions: {
+        ...baseline.assumptions,
+        statutoryPension: {
+          ...baseline.assumptions.statutoryPension,
+          currentEntgeltpunkte: freshEstimate,
+        },
+      },
+    })
+  })
+
   it.each(['fresh', 'manual', 'changed'] as const)('omits the notice for a %s seed', (kind) => {
     const baseline = legacyBaseline()
     const pension = baseline.assumptions.statutoryPension

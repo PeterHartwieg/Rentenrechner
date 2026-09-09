@@ -14,3 +14,13 @@
  * defect and offer a re-estimate. Never use it in a calculation.
  */
 export const legacyEpSeedDurchschnittsentgelt = 47_079
+
+/**
+ * Pre-#394 hardcoded Entgeltpunkte cap (Beitragsbemessungsgrenze) that the
+ * inventory wizard's estimate was capped at, alongside the denominator above.
+ * It coincides with the 2026 `pensionCapYear` (101 400 EUR), but unlike the
+ * rule value it is frozen — retained only so `detectLegacyEpSeed` can invert
+ * the defective estimator for payloads that predate `pensionEntryMethod`.
+ * Never use it in a calculation.
+ */
+export const legacyEpSeedPensionCapYear = 101_400

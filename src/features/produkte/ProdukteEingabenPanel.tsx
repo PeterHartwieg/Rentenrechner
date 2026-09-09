@@ -448,6 +448,7 @@ function CombinePanel({
     statutoryPension: assumptions.statutoryPension,
     profile: baseline.profile,
     rules: activeRules,
+    inputStatus: assumptions.inputStatus,
   })
   // CX-PR4-2 R1: track which instance rows have their inline editor open.
   // Same useState<Set<…>> shape as compare-mode's `expandedRows` so a future

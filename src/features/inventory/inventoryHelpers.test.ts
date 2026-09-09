@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { PensionEntryMethod } from '../../domain/inputStatus'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
-import { legacyEpSeedDurchschnittsentgelt } from '../../rules/legacyArtefacts'
+import { legacyEpSeedDurchschnittsentgelt, legacyEpSeedPensionCapYear } from '../../rules/legacyArtefacts'
 import { detectLegacyEpSeed, estimateEpFromYears } from './inventoryHelpers'
 
 describe('detectLegacyEpSeed', () => {
@@ -80,5 +80,77 @@ describe('detectLegacyEpSeed', () => {
 
   it('ignores a zero-year seed', () => {
     expect(detect(0, { kind: 'years', contributionYears: 0 })).toEqual({ legacy: false })
+  })
+
+  // Payloads saved before `pensionEntryMethod` existed: the wizard seeded EP
+  // from an integer year count and persisted nothing else, so the year count
+  // has to be recovered by inverting the defective estimator.
+  describe('without a recorded pensionEntryMethod', () => {
+    const years = 20
+
+    interface LegacyOverrides {
+      currentEntgeltpunkte?: number
+      pensionBaselineType?: 'beamtenpension'
+    }
+
+    function legacyPayload(grossSalaryYear: number, overrides: LegacyOverrides = {}) {
+      return {
+        ...defaultAssumptions.statutoryPension,
+        pensionEntryMethod: undefined,
+        currentEntgeltpunkte:
+          years * Math.min(grossSalaryYear, legacyEpSeedPensionCapYear) /
+          legacyEpSeedDurchschnittsentgelt,
+        ...overrides,
+      }
+    }
+
+    function detectAbsent(
+      grossSalaryYear: number,
+      overrides?: LegacyOverrides,
+      inputStatus?: Record<string, 'entered'>,
+    ) {
+      return detectLegacyEpSeed({
+        statutoryPension: legacyPayload(grossSalaryYear, overrides),
+        profile: { ...profile, grossSalaryYear },
+        rules: de2026Rules,
+        inputStatus,
+      })
+    }
+
+    it('recognises a historical payload whose only trace is the seeded Entgeltpunkte', () => {
+      expect(detectAbsent(50_000)).toEqual({
+        legacy: true,
+        freshEstimate: estimateEpFromYears(years, 50_000, de2026Rules),
+      })
+    })
+
+    it('recovers the year count for salaries above the legacy cap', () => {
+      const result = detectAbsent(150_000)
+      expect(result).toEqual({
+        legacy: true,
+        freshEstimate: estimateEpFromYears(years, 150_000, de2026Rules),
+      })
+    })
+
+    it('ignores Entgeltpunkte the user entered', () => {
+      expect(detectAbsent(50_000, undefined, {
+        'statutoryPension.currentEntgeltpunkte': 'entered',
+      })).toEqual({ legacy: false })
+    })
+
+    it('ignores a value whose implied year count is not an integer', () => {
+      expect(detectAbsent(50_000, { currentEntgeltpunkte: 23.7 })).toEqual({ legacy: false })
+    })
+
+    it('ignores non-GRV baselines — they have no Entgeltpunkte equivalent', () => {
+      expect(detectAbsent(50_000, { pensionBaselineType: 'beamtenpension' })).toEqual({ legacy: false })
+    })
+
+    it('goes quiet once the fresh estimate has been applied', () => {
+      const result = detectAbsent(50_000)
+      if (!result.legacy) throw new Error('expected the historical payload to be detected')
+      expect(detectAbsent(50_000, { currentEntgeltpunkte: result.freshEstimate }))
+        .toEqual({ legacy: false })
+    })
   })
 })
