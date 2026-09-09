@@ -66,6 +66,50 @@ npm run verify
 | Retirement taxation calculator | [Bayerisches LfSt Alterseinkuenfte-Rechner 2026](https://www.steuerberechnung.bayern.de/Alterseinkuenfte-Rechner/2026/aekr_formular.asp?VLG=1) | Calculator-backed end-to-end captures for GRV-only, bAV-Versorgungsbezug-only, GRV+bAV combined, GRV+private-Leibrente Ertragsanteil routing, and married/Splitting GRV+bAV cases |
 | Real entitlement data | [Digitale Rentenuebersicht](https://www.rentenuebersicht.de/DE/02_funktionsweise/wie_funktioniert_es_node.html) | Manual user-data cross-check only |
 
+## Return Scenarios (Modelling Assumptions, Not Externally Validated)
+
+The three return scenarios in `defaultAssumptions.returnScenarios`
+(`src/data/defaultScenario.ts`) are **not** externally validated. They are
+modelling assumptions chosen by the maintainer:
+
+| Id | Label | Nominal return p. a. |
+|----|-------|----------------------|
+| `konservativ` | Konservativ | 3 % |
+| `basis` | Basis | 5 % |
+| `optimistisch` | Optimistisch | 7 % |
+
+A fourth id, `custom`, is not part of the defaults. The scenario toolbar adds
+it when the user creates an own scenario ("+ Eigenes Szenario", labelled
+`Eigenes`, default 6 %) and edits its rate.
+
+These rates are nominal, before inflation. The engine applies inflation
+separately through `inflationRate` on `ScenarioAssumptions`: the stored default
+is `0` (inflation modelling off), and enabling the inflation toggle pre-fills
+2 % (`DEFAULT_EXPERT_INFLATION_RATE` in `src/data/defaultScenario.ts`). Real
+values are derived afterwards as `capital / (1 + inflationRate) ** years`
+(`src/engine/accumulation.ts`, `src/engine/buildResult.ts`); the nominal
+return path itself is never deflated.
+
+No external oracle stands behind 3 % / 5 % / 7 %. They are a plausible band
+for a broadly diversified, equity-heavy portfolio over 30+ years, and no
+external source is claimed for them. They are therefore absent from
+`validationSources` in `src/test/externalGoldenFixtures.ts` and are not
+covered by the golden tests. Do not add a fixture entry for them — that array
+is reserved for official sources with URLs and capture dates.
+
+All products in a comparison share the same scenario per run, so the rate is a
+market assumption, not a product property. Compare mode keeps every product on
+the selected scenario (see CLAUDE.md → "Fair-comparison invariant"), and the
+Monte Carlo panel gives all visible products the same market path per run
+while product fees, taxes, and payout modes diverge normally.
+
+Users see the scenarios in two places:
+
+- `/methode`, § 1 "Renditeannahmen" (`src/features/methode/MethodePage.tsx`)
+- the scenario toolbar above the results (`src/features/workspace/ScenarioToolbar.tsx`,
+  mounted for both compare and combine mode), which also hosts the `custom`
+  scenario
+
 ## Tolerances
 
 Use tight tolerances when the official reference is a formula or published table.
