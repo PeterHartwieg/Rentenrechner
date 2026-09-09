@@ -66,6 +66,63 @@ npm run verify
 | Retirement taxation calculator | [Bayerisches LfSt Alterseinkuenfte-Rechner 2026](https://www.steuerberechnung.bayern.de/Alterseinkuenfte-Rechner/2026/aekr_formular.asp?VLG=1) | Calculator-backed end-to-end captures for GRV-only, bAV-Versorgungsbezug-only, GRV+bAV combined, GRV+private-Leibrente Ertragsanteil routing, and married/Splitting GRV+bAV cases |
 | Real entitlement data | [Digitale Rentenuebersicht](https://www.rentenuebersicht.de/DE/02_funktionsweise/wie_funktioniert_es_node.html) | Manual user-data cross-check only |
 
+## Return Scenarios (Modelling Assumptions, Not Externally Validated)
+
+The three return scenarios in `defaultAssumptions.returnScenarios`
+(`src/data/defaultScenario.ts`) are **not** externally validated. They are
+modelling assumptions chosen by the maintainer:
+
+| Id | Label | Nominal return p. a. |
+|----|-------|----------------------|
+| `konservativ` | Konservativ | 3 % |
+| `basis` | Basis | 5 % |
+| `optimistisch` | Optimistisch | 7 % |
+
+A fourth id, `custom`, is not part of the defaults. The scenario toolbar adds
+it when the user creates an own scenario ("+ Eigenes Szenario", labelled
+`Eigenes`, default 6 %) and edits its rate.
+
+These rates are nominal, before inflation. The engine applies inflation
+separately through `inflationRate` on `ScenarioAssumptions`: the stored default
+is `0` (inflation modelling off), and enabling the inflation toggle pre-fills
+2 % (`DEFAULT_EXPERT_INFLATION_RATE` in `src/data/defaultScenario.ts`). Real
+values are derived afterwards as `capital / (1 + inflationRate) ** years`
+(`src/engine/accumulation.ts`, `src/engine/buildResult.ts`); the nominal
+return path itself is never deflated.
+
+The band is oriented on long-run historical MSCI World returns: that is what
+the `/eingaben` Annahmen section tells users ("Renditeannahmen orientieren sich
+an historischen MSCI-World-Renditen"). The print report's Methode section
+(`src/features/results/printReportRows.ts`) now states the same nominal,
+not-externally-validated framing. No dataset, period, or publication behind
+the three rates is recorded in this repository, so their derivation is not
+citable. They are therefore absent from `validationSources` in
+`src/test/externalGoldenFixtures.ts` and are not covered by the external-oracle
+golden tests. Internal regression snapshots (`simulate.integration.test.ts`,
+`src/test/scenarioReports/`) do pin their current values as regression anchors,
+not as validation. Do not add a fixture entry for them — that array is reserved
+for official sources with URLs and capture dates. If the MSCI World orientation
+is ever pinned to a specific series, record it here first and source the
+print-report wording in the same change.
+
+All products in a comparison share the same scenario per run, so the rate is a
+market assumption, not a product property. Compare mode keeps every product on
+the selected scenario (see CLAUDE.md → "Fair-comparison invariant"), and the
+Monte Carlo panel gives all visible products the same market path per run
+while product fees, taxes, and payout modes diverge normally.
+
+Users see the scenarios in these places:
+
+- `/eingaben`, Annahmen section (`src/features/inputs/sections/AngabenAnnahmenSection.tsx`):
+  all three default rates plus the MSCI World orientation sentence
+- `/methode`, § 1 "Renditeannahmen" (`src/features/methode/MethodePage.tsx`)
+- compare mode: the Rendite strip on `/vergleich`
+  (`src/features/vergleich/VergleichRenditeStrip.tsx`) selects among the defaults
+- combine mode: the scenario toolbar above the results
+  (`src/features/workspace/ScenarioToolbar.tsx`, mounted only in the combine
+  branch of `Calculator.tsx`), which also hosts the `custom` scenario
+- the print report's Methode section (`src/features/results/printReportRows.ts`)
+
 ## Tolerances
 
 Use tight tolerances when the official reference is a formula or published table.

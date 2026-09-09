@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { buildPrintProContraRows } from './printReportRows'
+import { buildPrintProContraRows, PRINT_METHODE_BULLETS } from './printReportRows'
 import { PRODUCT_IDS } from '../../engine/productRegistry'
 import type { ProductId } from '../../domain'
 
@@ -47,6 +47,14 @@ function stripComments(source: string): string {
 const CODE = stripComments(SOURCE)
 
 describe('printReportRows static content', () => {
+  it('describes return scenarios as nominal modelling assumptions without an external derivation', () => {
+    const bullet = PRINT_METHODE_BULLETS.find((entry) => entry.label === 'Renditeannahmen')
+    expect(bullet?.body).toContain('nominal')
+    expect(bullet?.body).toContain('nicht extern validiert')
+    expect(bullet?.body).not.toContain('MSCI')
+    expect(bullet?.body).not.toContain('Hergeleitet')
+  })
+
   it('does not import per-product after-tax lump-sum helpers (no tax-mode dispatch)', () => {
     // These four helpers are the canonical compare-mode tax routing
     // primitives. They are dispatched once in `exportProjection.ts` and

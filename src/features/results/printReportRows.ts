@@ -24,6 +24,7 @@ import {
   getAvailabilityEntry,
 } from '../vergleich-detail/vergleichDetailAvailability'
 import { PRODUCT_REGISTRY, getProductMeta } from '../../engine/productRegistry'
+import { defaultAssumptions } from '../../data/defaultScenario'
 import { legalConstants } from '../../rules/legalConstants'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import {
@@ -315,8 +316,8 @@ export function buildPrintWohinRows({
 /**
  * A single bullet of methodology copy in the printed § Methode block.
  *
- * Pure copy structure — no engine values are interpolated by the print
- * helpers. Statutory figures appear on `/methode` itself; the print block
+ * Pure copy structure — default return assumptions are formatted for display.
+ * Statutory figures appear on `/methode` itself; the print block
  * is a navigation pointer + scope summary, not a re-render of the page.
  */
 export interface PrintMethodeBullet {
@@ -325,6 +326,14 @@ export interface PrintMethodeBullet {
   /** One-sentence body copy. */
   readonly body: string
 }
+
+const PRINT_RENDITEN = ['konservativ', 'basis', 'optimistisch'].map((id) => {
+  const scenario = defaultAssumptions.returnScenarios.find((s) => s.id === id)
+  if (!scenario) {
+    throw new Error(`printReportRows: missing return scenario "${id}" in defaultAssumptions.returnScenarios`)
+  }
+  return `${id} ${formatPercent(scenario.annualReturn, 0)}`
+}).join(', ')
 
 /**
  * Static methodology bullets shared by compare-mode AND combine-mode print.
@@ -341,8 +350,10 @@ export const PRINT_METHODE_BULLETS: ReadonlyArray<PrintMethodeBullet> = [
   {
     label: 'Renditeannahmen',
     body:
-      'Drei Szenarien (konservativ, basis, optimistisch) als reale, langfristige Renditen p. a. ' +
-      'Hergeleitet aus rollierenden 30-Jahres-Fenstern (MSCI World) und dem realen Median MSCI World 1900–2025.',
+      `Drei Szenarien (${PRINT_RENDITEN}) als nominale, langfristige Marktrenditen p. a. vor Inflation und Kosten; ` +
+      'Inflation wird separat abgezogen. Modellannahmen, orientiert an langfristigen Aktienmarktrenditen, ' +
+      'nicht extern validiert. Alle Produkte rechnen je Szenario mit derselben Marktrendite; ' +
+      'das Altersvorsorgedepot mischt sie mit seinem Sicherheitsanteil und Gleitpfad.',
   },
   {
     label: 'Steuermodell',

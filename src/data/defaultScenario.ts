@@ -120,6 +120,9 @@ export const defaultAssumptions: ScenarioAssumptions = {
   // Compatibility field from the old compare sub-mode. It now stores the
   // single public monthly Netto-Belastung anchor.
   equalInputAmountEUR: DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
+  // Nominal modelling assumptions, not externally validated; see
+  // docs/validation.md "Return Scenarios (Modelling Assumptions, Not
+  // Externally Validated)".
   returnScenarios: [
     { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
     { id: 'basis', label: 'Basis', annualReturn: 0.05 },
