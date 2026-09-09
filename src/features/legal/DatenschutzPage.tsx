@@ -342,17 +342,17 @@ export function DatenschutzPage({ navigate }: Props) {
         </p>
       </section>
       <section id="projekt-unterstuetzen">
-        <h2>10. Freiwillige Unterstützung über Stripe</h2>
+        <h2>10. Freiwillige Unterstützung über PayPal</h2>
         <p>
           Der Link „Projekt unterstützen“ öffnet eine externe Zahlungsseite
-          von Stripe. Auf RentenWiki.de sind weder ein Zahlungsformular noch
-          Stripe-Skripte eingebunden. Erst wenn Sie dem Link folgen, wird
-          eine Verbindung zu Stripe hergestellt. Eingaben, Ergebnisse und
+          von PayPal. Auf RentenWiki.de sind weder ein Zahlungsformular noch
+          PayPal-Skripte eingebunden. Erst wenn Sie dem Link folgen, wird
+          eine Verbindung zu PayPal hergestellt. Eingaben, Ergebnisse und
           gespeicherte Szenarien des Rechners werden nicht übermittelt;
           der Link überträgt auch keinen Referrer.
         </p>
         <p>
-          Auf der Zahlungsseite verarbeitet Stripe die dort eingegebenen
+          Auf der Zahlungsseite verarbeitet PayPal die dort eingegebenen
           Kontakt- und Zahlungsdaten sowie technische Verbindungsdaten.
           Als Zahlungsempfänger kann Peter Hartwieg Angaben zur Zahlung
           einsehen, etwa Name, E-Mail-Adresse, Betrag und Zahlungsstatus.
@@ -361,7 +361,8 @@ export function DatenschutzPage({ navigate }: Props) {
           Berechnungsdaten.
         </p>
         <p>
-          Dienstleister ist Stripe Payments Europe, Limited (Irland).
+          Dienstleister ist PayPal (Europe) S.à r.l. et Cie, S.C.A.,
+          22–24 Boulevard Royal, L-2449 Luxemburg.
           Die Verarbeitung zur Abwicklung Ihrer Unterstützung erfolgt auf
           Grundlage von Art. 6 Abs. 1 lit. b DSGVO; gesetzlich vorgeschriebene
           Aufbewahrung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. c DSGVO.
@@ -374,10 +375,10 @@ export function DatenschutzPage({ navigate }: Props) {
           Aufbewahrungsgrund besteht.
         </p>
         <p>
-          Weitere Informationen zu Stripe, zur Datenaufbewahrung und zu
+          Weitere Informationen zu PayPal, zur Datenaufbewahrung und zu
           internationalen Datenübermittlungen finden Sie in der{' '}
-          <a href="https://stripe.com/de/privacy" target="_blank" rel="noopener noreferrer">
-            Datenschutzerklärung von Stripe
+          <a href="https://www.paypal.com/de/legalhub/paypal/privacy-full" target="_blank" rel="noopener noreferrer">
+            Datenschutzerklärung von PayPal
           </a>
           . Die Unterstützung ist unabhängig von der Nutzung des Rechners
           und vollständig freiwillig.
