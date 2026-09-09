@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { PensionEntryMethod } from '../../domain/inputStatus'
+import type { InputStatus, PensionEntryMethod } from '../../domain/inputStatus'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import { legacyEpSeedDurchschnittsentgelt, legacyEpSeedPensionCapYear } from '../../rules/legacyArtefacts'
@@ -97,9 +97,11 @@ describe('detectLegacyEpSeed', () => {
       return {
         ...defaultAssumptions.statutoryPension,
         pensionEntryMethod: undefined,
+        // Same operation order as the pre-#394 estimator — the seed is matched
+        // bit-exactly now, so the order matters.
         currentEntgeltpunkte:
-          years * Math.min(grossSalaryYear, legacyEpSeedPensionCapYear) /
-          legacyEpSeedDurchschnittsentgelt,
+          years * (Math.min(grossSalaryYear, legacyEpSeedPensionCapYear) /
+            legacyEpSeedDurchschnittsentgelt),
         ...overrides,
       }
     }
@@ -107,7 +109,7 @@ describe('detectLegacyEpSeed', () => {
     function detectAbsent(
       grossSalaryYear: number,
       overrides?: LegacyOverrides,
-      inputStatus?: Record<string, 'entered'>,
+      inputStatus?: Record<string, InputStatus>,
     ) {
       return detectLegacyEpSeed({
         statutoryPension: legacyPayload(grossSalaryYear, overrides),
@@ -132,9 +134,44 @@ describe('detectLegacyEpSeed', () => {
       })
     })
 
+    it('still detects a seed that has been through a JSON round-trip', () => {
+      const stored = JSON.parse(JSON.stringify(
+        years * (Math.min(50_000, legacyEpSeedPensionCapYear) /
+          legacyEpSeedDurchschnittsentgelt),
+      )) as number
+      expect(detectAbsent(50_000, { currentEntgeltpunkte: stored })).toEqual({
+        legacy: true,
+        freshEstimate: estimateEpFromYears(years, 50_000, de2026Rules),
+      })
+    })
+
+    it('accepts the exact value the old estimator wrote for the recovered year count', () => {
+      const seedYears = 39
+      const stored =
+        seedYears * (Math.min(81_000, legacyEpSeedPensionCapYear) /
+          legacyEpSeedDurchschnittsentgelt)
+      expect(detectAbsent(81_000, { currentEntgeltpunkte: stored })).toEqual({
+        legacy: true,
+        freshEstimate: estimateEpFromYears(seedYears, 81_000, de2026Rules),
+      })
+    })
+
+    it('ignores a hand-typed value that inverts to a near-integer year count', () => {
+      // Reviewer counterexample against the former 1e-6 drift band: 67.1 is a
+      // hand-typed Entgeltpunkte figure, yet it inverts to 39.0000111 years.
+      // Only the exact old-estimator value may pass now.
+      expect(detectAbsent(81_000, { currentEntgeltpunkte: 67.1 })).toEqual({ legacy: false })
+    })
+
     it('ignores Entgeltpunkte the user entered', () => {
       expect(detectAbsent(50_000, undefined, {
         'statutoryPension.currentEntgeltpunkte': 'entered',
+      })).toEqual({ legacy: false })
+    })
+
+    it('ignores Entgeltpunkte read off a document', () => {
+      expect(detectAbsent(50_000, undefined, {
+        'statutoryPension.currentEntgeltpunkte': 'document',
       })).toEqual({ legacy: false })
     })
 

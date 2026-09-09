@@ -113,12 +113,17 @@ const EP_INPUT_STATUS_KEY = 'statutoryPension.currentEntgeltpunkte'
  * 2. **Method absent** — payloads saved before `pensionEntryMethod` existed
  *    (the same commit that fixed the denominator) carry only the seeded
  *    `currentEntgeltpunkte`. The year count is recovered by inverting the
- *    defective estimator: a legacy seed divided by
- *    `min(salary, legacyEpSeedPensionCapYear) / legacyEpSeedDurchschnittsentgelt`
- *    is an exact integer, which a hand-typed Entgeltpunkte value is not.
- *    Detection additionally requires a GRV baseline and an Entgeltpunkte value
- *    the user has not marked as their own (`inputStatus`, resolved like
- *    `onboardingDraft.ts` does — absent means `assumed`, never `entered`).
+ *    defective estimator and must reconstruct it exactly: the old estimator
+ *    serialized its result at full double precision, so re-running
+ *    `years * min(salary, legacyEpSeedPensionCapYear) /
+ *    legacyEpSeedDurchschnittsentgelt` on the rounded count matches the stored
+ *    value to within a few ULPs, while a hand-typed or rounded Entgeltpunkte
+ *    value misses by many orders of magnitude — even when it happens to invert
+ *    to a near-integer year count. Detection additionally requires a GRV
+ *    baseline and an Entgeltpunkte value the user did not supply themselves —
+ *    both `'entered'` (typed) and `'document'` (read off a Renteninformation)
+ *    suppress it (`inputStatus`, resolved like `onboardingDraft.ts` does —
+ *    absent means `assumed`, never user-owned).
  */
 export function detectLegacyEpSeed({
   statutoryPension,
@@ -129,7 +134,7 @@ export function detectLegacyEpSeed({
   statutoryPension: StatutoryPensionAssumptions
   profile: PersonalProfile
   rules: GermanRules
-  /** Scenario-level input statuses; an `'entered'` EP value suppresses detection. */
+  /** Scenario-level input statuses; an `'entered'` or `'document'` EP value suppresses detection. */
   inputStatus?: InputStatusMap
 }): { legacy: true; freshEstimate: number } | { legacy: false } {
   const method = statutoryPension.pensionEntryMethod
@@ -162,20 +167,25 @@ export function detectLegacyEpSeed({
   // Absent method: Entgeltpunkte only exist in the GRV; every other baseline
   // stores a manual figure or nothing at all.
   if ((statutoryPension.pensionBaselineType ?? 'grv') !== 'grv') return { legacy: false }
-  if (resolveInputStatus(inputStatus, undefined, EP_INPUT_STATUS_KEY) === 'entered') {
-    return { legacy: false }
-  }
+  // 'entered' and 'document' both mean the user owns the value (typed, or read
+  // off a Renteninformation) — neither can be a wizard seed.
+  const status = resolveInputStatus(inputStatus, undefined, EP_INPUT_STATUS_KEY)
+  if (status === 'entered' || status === 'document') return { legacy: false }
 
-  const ratio =
-    Math.min(profile.grossSalaryYear, legacyEpSeedPensionCapYear) / legacyEpSeedDurchschnittsentgelt
+  const cappedSalary = Math.min(profile.grossSalaryYear, legacyEpSeedPensionCapYear)
+  const ratio = cappedSalary / legacyEpSeedDurchschnittsentgelt
   const impliedYears = ratio > 0 ? stored / ratio : NaN
   const years = Math.round(impliedYears)
-  const drift = Math.max(Math.abs(impliedYears) * 1e-6, 1e-9)
-  if (
-    !Number.isFinite(impliedYears) || stored <= 0 ||
-    years < 1 || years > 60 ||
-    Math.abs(impliedYears - years) > drift
-  ) {
+  if (!Number.isFinite(impliedYears) || stored <= 0 || years < 1 || years > 60) {
+    return { legacy: false }
+  }
+  // Exact-reconstruction test: a seed the old estimator wrote was serialized at
+  // full double precision, so re-running its operation order on the rounded
+  // year count reproduces the stored value to within a few ULPs. A hand-typed
+  // value misses by far more — even when it inverts to a near-integer year
+  // count, so no drift band is warranted here.
+  const reconstructed = years * (cappedSalary / legacyEpSeedDurchschnittsentgelt)
+  if (Math.abs(stored - reconstructed) > 4 * Number.EPSILON * Math.abs(reconstructed)) {
     return { legacy: false }
   }
   const freshEstimate = estimateEpFromYears(years, profile.grossSalaryYear, rules)
