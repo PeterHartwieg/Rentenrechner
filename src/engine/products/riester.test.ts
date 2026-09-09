@@ -183,6 +183,66 @@ describe('calculateRiesterFunding — dated child allowance timing', () => {
   })
 })
 
+describe('calculateRiesterFunding — §85 Abs. 2 EStG Kinderzulage opt-out (#371)', () => {
+  // Two children: 2005 (pre-2008 rate) + 2010 (post-2007 rate), both under 25
+  // in the contribution year. 60 000 EUR salary: min(4% × 60 000, 2 100) = 2 100
+  // for both cases, so the Mindesteigenbeitrag delta is exactly the removed Zulage.
+  const profile = {
+    ...defaultProfile,
+    grossSalaryYear: 60_000,
+    childBirthYears: [2005, 2010],
+  }
+  const eligibility = {
+    directlyEligible: true,
+    ageAtContractStart: 30,
+    careerStarterBonusUsed: true,
+  }
+
+  function funding(claimsChildAllowance?: boolean) {
+    const riester = {
+      ...defaultRiesterAssumptions,
+      monthlyOwnContribution: 200, // 2 400 EUR/year ≥ Mindesteigenbeitrag in both cases
+      eligibility:
+        claimsChildAllowance === undefined
+          ? eligibility
+          : { ...eligibility, claimsChildAllowance },
+    }
+    return calculateRiesterFunding(
+      rules,
+      calculateSalaryResult(profile, rules),
+      riester,
+      profile,
+    )
+  }
+
+  it('grants the full Kinderzulage when the flag is undefined (default)', () => {
+    const rf = funding()
+    expect(rf.childAllowanceAnnual).toBe(
+      r.childAllowancePre2008 + r.childAllowancePost2007,
+    )
+  })
+
+  it('drops only the Kinderzulage when another parent holds the claim', () => {
+    const rf = funding(false)
+    expect(rf.childAllowanceAnnual).toBe(0)
+    expect(rf.grundzulageAnnual).toBe(r.grundzulage)
+    expect(rf.careerStarterBonusAnnual).toBe(0)
+    expect(rf.totalAllowanceAnnual).toBe(r.grundzulage)
+  })
+
+  it('raises the Mindesteigenbeitrag by exactly the removed Kinderzulage', () => {
+    const withClaim = funding()
+    const withoutClaim = funding(false)
+    const removed = withClaim.childAllowanceAnnual
+    expect(removed).toBeGreaterThan(0)
+    // Neither case hits the Sockelbetrag floor or prorates, so the §86
+    // requirement rises one-to-one with the lost allowance claim.
+    expect(withoutClaim.minEigenbeitragAnnual - withClaim.minEigenbeitragAnnual).toBeCloseTo(removed, 8)
+    expect(withClaim.meetsMinContribution).toBe(true)
+    expect(withoutClaim.meetsMinContribution).toBe(true)
+  })
+})
+
 describe('calculateRiesterFunding — proration when contribution below minimum', () => {
   // Profile: 75k EUR salary. minRequired = 1925 EUR/year.
   // annualOwnContribution = 600 EUR (50 EUR/month * 12) < 1925 -> proration applies.

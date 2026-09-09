@@ -39,6 +39,14 @@ export interface AltersvorsorgedepotEligibility {
   indirectSpouseEligible: boolean
   /** Number of children with Kindergeld attribution for child allowance. */
   eligibleChildren: number
+  /**
+   * §85 Abs. 2 EStG: the Kinderzulage is allocated to one parent only (mother by
+   * default, father on joint application). `false` = another person holds the
+   * claim, so this contract receives no Kinderzulage (100 % of own contribution,
+   * max 300 EUR/child). `undefined` = true (back-compat for stored state; no
+   * migration needed).
+   */
+  claimsChildAllowance?: boolean
   /** Age at the start of the contribution year (for career-starter bonus check). */
   ageAtContractStart: number
   /** True when the one-time 200 EUR career-starter bonus has already been used. */

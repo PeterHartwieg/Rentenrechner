@@ -27,6 +27,14 @@ export interface RiesterEligibility {
    * Optional for backwards compatibility with existing stored state.
    */
   indirectSpouseEligible?: boolean
+  /**
+   * §85 Abs. 2 EStG: the Kinderzulage is allocated to one parent only (mother by
+   * default, father on joint application). `false` = another person holds the
+   * claim, so this contract receives no Kinderzulage and the §86
+   * Mindesteigenbeitrag is computed without it. `undefined` = true (back-compat
+   * for stored state; no migration needed).
+   */
+  claimsChildAllowance?: boolean
   /** Age at the start of the first contribution year (for career-starter bonus check). */
   ageAtContractStart: number
   /** True when the one-time 200 EUR Berufseinsteiger-Bonus (§84 EStG) has already been paid. */

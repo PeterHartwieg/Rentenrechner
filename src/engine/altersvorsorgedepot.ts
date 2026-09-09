@@ -84,6 +84,9 @@ export function computeChildAllowance(
  *
  * Returns: basic, child, career-starter bonus (one-time → capped to first year only
  * when `isFirstContributionYear = true`), indirect spouse allowance.
+ *
+ * §85 Abs. 2 EStG one-parent rule: `eligibility.claimsChildAllowance === false`
+ * suppresses the child allowance on this contract (another person holds the claim).
  */
 export function computeAvdAllowances(
   ownContributionAnnual: number,
@@ -103,9 +106,11 @@ export function computeAvdAllowances(
     ? computeBasicAllowance(ownContributionAnnual, rules)
     : 0
 
-  const child = eligibility.directlyEligible
-    ? computeChildAllowance(ownContributionAnnual, eligibility.eligibleChildren, rules)
-    : 0
+  const child =
+    eligibility.directlyEligible &&
+    eligibility.claimsChildAllowance !== false
+      ? computeChildAllowance(ownContributionAnnual, eligibility.eligibleChildren, rules)
+      : 0
 
   // Career-starter bonus: one-time, only in first contribution year, age ≤ careerStarterMaxAge.
   const careerStarter =
