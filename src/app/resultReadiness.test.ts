@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
+import type { EtfInstance } from '../domain/instances'
 import type { Workspace } from '../domain/workspace'
 import { runCombineSimulation, type CombineSimulationBundle } from './useCombineSimulation'
 import { householdTotalBlockedLabels, selectResultReadiness } from './resultReadiness'
@@ -41,6 +42,28 @@ function clearContracts(ws: Workspace): void {
 
 function bundleFor(ws: Workspace): CombineSimulationBundle {
   return runCombineSimulation(ws, de2026Rules)
+}
+
+/** One ETF contract with every readiness-relevant input marked as entered. */
+function enteredEtfInstance(): EtfInstance {
+  return {
+    instanceId: 'etf-entered',
+    label: 'ETF-Depot',
+    status: 'active',
+    contractStartYear: new Date().getFullYear(),
+    currentValueEUR: 25000,
+    monthlyContribution: 200,
+    annualAssetFee: 0.002,
+    equityPartialExemption: defaultAssumptions.etf.equityPartialExemption,
+    annualContributionGrowthRate: 0,
+    evidenceMap: {},
+    // `fees` is the derived fee key stamped by the contract editor.
+    inputStatus: {
+      currentValueEUR: 'entered',
+      monthlyContribution: 'entered',
+      fees: 'entered',
+    },
+  }
 }
 
 describe('selectResultReadiness', () => {
@@ -125,6 +148,36 @@ describe('selectResultReadiness', () => {
     expect(readiness.reasons.map((r) => r.code)).not.toContain('statutory-pension-unknown')
     expect(readiness.reasons.map((r) => r.code)).not.toContain('pension-entry-skipped')
     expect(readiness.status).toBe('available')
+  })
+
+  it('never reports an assumed payout mode for ETF — the field does not exist there', () => {
+    const ws = makeWorkspace()
+    clearContracts(ws)
+    ws.baseline.assumptions.etf.push(enteredEtfInstance())
+    ws.baseline.assumptions.statutoryPension = {
+      ...ws.baseline.assumptions.statutoryPension,
+      pensionBaselineType: 'none',
+      pensionEntryMethod: { kind: 'skipped' },
+    }
+    const readiness = selectResultReadiness(ws, bundleFor(ws))
+    // An assumption reason must name a field the user could actually enter;
+    // ETF has no payout-mode input, so the reason must not appear. The shared
+    // Entnahmeende stays — the user really can edit it in the editor.
+    expect(readiness.reasons.map((r) => r.code)).not.toContain('assumed-payout-mode')
+    expect(readiness.assumptions.map((r) => r.code)).toEqual(['shared-drawdown-horizon'])
+    // `estimated`, not `available`: the Entnahmeende is still an assumption.
+    // A fully entered ETF plan must stop failing readiness over a field it
+    // does not have — it does not become assumption-free altogether.
+    expect(readiness.status).toBe('estimated')
+  })
+
+  it('still reports an assumed payout mode for a contract that has the field', () => {
+    const ws = makeWorkspace()
+    const inst = ws.baseline.assumptions.bav[0]
+    inst.inputStatus = { ...inst.inputStatus, payoutMode: 'assumed' }
+    const readiness = selectResultReadiness(ws, bundleFor(ws))
+    expect(readiness.assumptions.map((r) => r.code)).toContain('assumed-payout-mode')
+    expect(readiness.status).toBe('estimated')
   })
 
   it('blocks on an unknown contract value and links to that contract editor', () => {
