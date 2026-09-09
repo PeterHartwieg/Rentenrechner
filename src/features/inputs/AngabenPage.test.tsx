@@ -198,6 +198,8 @@ describe('AngabenPage — /eingaben route content', () => {
     expect(text).toContain('§ 39b EStG')
     // "MSCI-World-Renditen" (hyphenated compound) in the right-rail body.
     expect(text).toMatch(/MSCI[‐‑–—\- ]?World/)
+    expect(text).toContain('nominale Modellannahme vor Inflation')
+    expect(text).not.toContain('realer Median')
   })
 
   it('renders the not-advice disclaimer when wrapped in AppShell (compliance)', () => {

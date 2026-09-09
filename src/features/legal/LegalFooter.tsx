@@ -42,7 +42,7 @@ export function LegalFooter({ navigate }: Props) {
       <div className="app-footer__method">
         <span>[1] Annahme: 5 % Rendite p.a., 2 % Inflation</span>
         <span>[2] Steuern nach Stand 2026 (§22 EStG)</span>
-        <span>[3] GRV-Werte: DRV-Renteninformation</span>
+        <span>[3] Rentenwert und Beitragsbemessungsgrenzen: BMAS, Stand 2026</span>
         <a
           href={routeToPath(ROUTES.methode)}
           className="app-footer__method-link"

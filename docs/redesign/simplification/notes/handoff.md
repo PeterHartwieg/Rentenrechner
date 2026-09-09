@@ -34,3 +34,7 @@ Branch `codex/fix-comparison-input-reset`, commits after `1786fc2`. Not deployed
 - Share links (`?s=`) stay compare-only; the plan surface has no copy-link.
 - Dev server returns 404 for direct loads of non-root paths (pre-existing; production serves prerendered/fallback HTML).
 - Astra's `npx tsc --noEmit` checks were no-ops in this repo (root tsconfig has no files); `tsc -b` was run by the lead and Opus agents before each commit.
+
+## Final surface sweep (Astra, Playwright, all routes)
+
+Report: `docs/redesign/simplification/reviews/final-surface-sweep.md`. Every route rendered with an H1; no JavaScript errors, no missing assets; all six product editors, persistence after reload, alternatives, comparison with 0/1/2/6 products, exports and share link worked. Findings F1–F8 were fixed in commit "Fix final-sweep findings" (compare-only visitors saw a plan built from migration-derived instances; `/vergleich/details` and `/kapital` lost the comparison context; legacy product page removal had no undo; false DRV/PDF provenance copy; overflow at 320 px; Recharts mount warning; contradictory limit/return copy; English residues). Finding L (article body links do a full document load, 404 on the Vite dev server only) is a dev-server artefact; the production preview served those pages.

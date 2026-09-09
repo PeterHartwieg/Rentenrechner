@@ -52,7 +52,7 @@ describe('LegalFooter', () => {
     renderFooter()
     expect(screen.getByText(/Annahme: 5 % Rendite/)).toBeInTheDocument()
     expect(screen.getByText(/Steuern nach Stand 2026/)).toBeInTheDocument()
-    expect(screen.getByText(/GRV-Werte: DRV-Renteninformation/)).toBeInTheDocument()
+    expect(screen.getByText(/Rentenwert und Beitragsbemessungsgrenzen: BMAS, Stand 2026/)).toBeInTheDocument()
   })
 
   it('renders the methodology destination as a real link', () => {

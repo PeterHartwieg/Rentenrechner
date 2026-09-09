@@ -1,0 +1,27 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - button "Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung. Weitere Details anzeigen." [ref=e5] [cursor=pointer]:
+      - strong [ref=e8]: Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.
+    - button "Hinweis für diese Sitzung ausblenden" [ref=e9] [cursor=pointer]: ✕
+  - contentinfo "Site-Statusleiste" [ref=e10]:
+    - generic [ref=e11]: rentenwiki.de
+    - generic [ref=e12]: ·
+    - generic [ref=e13]: Unabhängiges Projekt
+    - generic [ref=e14]: ·
+    - generic [ref=e15]: Quellcode offen
+    - generic [ref=e16]: Stand 2026-09-09
+  - banner [ref=e17]:
+    - navigation "Hauptnavigation" [ref=e19]:
+      - link "Mein Plan" [ref=e20] [cursor=pointer]:
+        - /url: /
+      - link "Vergleich" [ref=e21] [cursor=pointer]:
+        - /url: /vergleich
+      - link "Startseite" [ref=e22] [cursor=pointer]:
+        - /url: /?view=landing
+      - link "Angaben" [ref=e23] [cursor=pointer]:
+        - /url: /eingaben
+      - link "Artikel" [ref=e24] [cursor=pointer]:
+        - /url: /artikel
+      - link "Methode" [ref=e25] [cursor=pointer]:
+        - /url: /methode
+  - main [ref=e26]

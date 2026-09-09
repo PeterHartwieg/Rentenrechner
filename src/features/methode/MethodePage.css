@@ -285,11 +285,17 @@
   line-height: 1.5;
 }
 
+/* Override the shared table-cell nowrap, including source text and refs. */
+.methode-table th,
+.methode-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .methode-table-num {
   text-align: right;
   font-family: var(--rw-font-mono);
   font-size: 0.86rem;
-  white-space: nowrap;
 }
 
 .methode-table-note {
@@ -321,6 +327,7 @@
 
 /* --- Footnote refs --------------------------------------------------- */
 .methode-footnote-ref {
+  white-space: normal;
   font-family: var(--rw-font-mono);
   font-size: 0.7rem;
   color: var(--rw-ink-faint);
@@ -330,6 +337,8 @@
 
 /* --- Inline code ----------------------------------------------------- */
 .methode-code {
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-family: var(--rw-font-mono);
   font-size: 0.85em;
   background: var(--rw-bg-paper-soft);
