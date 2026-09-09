@@ -21,9 +21,10 @@
  *  - CombineDashboardSidebar.tsx (bavOfferDraftToInstance)
  */
 
-import type { GermanRules } from '../../domain'
+import type { GermanRules, PersonalProfile, StatutoryPensionAssumptions } from '../../domain'
 import type { Workspace, Scenario, WorkspaceAssumptionsV2 } from '../../domain/workspace'
 import { de2026Rules } from '../../rules/de2026'
+import { legalConstants } from '../../rules/legalConstants'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { defaultWorkspace } from '../../storage'
@@ -87,6 +88,40 @@ export function estimateEpFromYears(
   return durchschnittsentgelt > 0
     ? Math.max(0, years * (cappedSalary / durchschnittsentgelt))
     : 0
+}
+
+/** Detect an unchanged pre-#394 estimate without migrating user-entered EP. */
+export function detectLegacyEpSeed({
+  statutoryPension,
+  profile,
+  rules,
+}: {
+  statutoryPension: StatutoryPensionAssumptions
+  profile: PersonalProfile
+  rules: GermanRules
+}): { legacy: true; freshEstimate: number } | { legacy: false } {
+  const method = statutoryPension.pensionEntryMethod
+  if (method?.kind !== 'years' && method?.kind !== 'career') return { legacy: false }
+
+  const years = method.kind === 'years'
+    ? method.contributionYears
+    : profile.age - method.careerStartAge - method.pauseYears
+  const freshEstimate = estimateEpFromYears(years, profile.grossSalaryYear, rules)
+  const oldEstimate = years * (
+    Math.min(profile.grossSalaryYear, rules.socialSecurity.pensionCapYear) /
+    legalConstants.legacyEpSeedDurchschnittsentgelt
+  )
+  const stored = statutoryPension.currentEntgeltpunkte
+  const tolerance = 0.005
+  if (
+    Number.isFinite(stored) && Number.isFinite(freshEstimate) &&
+    Number.isFinite(oldEstimate) && freshEstimate > 0 && oldEstimate > 0 &&
+    Math.abs(stored - oldEstimate) <= oldEstimate * tolerance &&
+    Math.abs(stored - freshEstimate) > freshEstimate * tolerance
+  ) {
+    return { legacy: true, freshEstimate }
+  }
+  return { legacy: false }
 }
 
 // ---------------------------------------------------------------------------

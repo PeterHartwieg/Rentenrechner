@@ -23,7 +23,7 @@ import type {
   InsuranceInstance,
   RiesterInstance,
 } from '../../domain/instances'
-import { formatCurrency, formatPercent } from '../../utils/format'
+import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
 import { activeRules } from '../../rules'
 import { getProductMeta, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import {
@@ -41,6 +41,7 @@ import {
   grvProvenanceLabel,
 } from './grvCard'
 import { GRVInputs } from '../inputs/GRVInputs'
+import { detectLegacyEpSeed } from '../inventory/inventoryHelpers'
 import { useWorkspaceUndoNotice } from '../../app/portfolioState'
 import {
   PRODUCT_UI_REGISTRY,
@@ -443,6 +444,11 @@ function CombinePanel({
   onOpenDecisionMenu,
 }: ProdukteEingabenPanelCombineProps) {
   const [grvOverrideOpen, setGrvOverrideOpen] = useState(false)
+  const legacyEpSeed = detectLegacyEpSeed({
+    statutoryPension: assumptions.statutoryPension,
+    profile: baseline.profile,
+    rules: activeRules,
+  })
   // CX-PR4-2 R1: track which instance rows have their inline editor open.
   // Same useState<Set<…>> shape as compare-mode's `expandedRows` so a future
   // refactor that lifts the disclosure pattern into a shared helper sees
@@ -555,7 +561,34 @@ function CombinePanel({
               onPrimary={
                 canOverrideGrv ? () => setGrvOverrideOpen((v) => !v) : undefined
               }
-              accent={GRV_CARD_ACCENT}
+              accent={
+                <>
+                  {GRV_CARD_ACCENT}
+                  {legacyEpSeed.legacy && (
+                    <div>
+                      Deine Entgeltpunkte wurden mit einem veralteten Durchschnittsentgelt geschätzt.{' '}
+                      Neu geschätzt wären es {formatNumber(legacyEpSeed.freshEstimate, 1)} Punkte.{' '}
+                      {onPatchBaseline && (
+                        <button
+                          type="button"
+                          className="d-produkt-row__btn d-produkt-row__btn--secondary"
+                          onClick={() => onPatchBaseline({
+                            assumptions: {
+                              ...assumptions,
+                              statutoryPension: {
+                                ...assumptions.statutoryPension,
+                                currentEntgeltpunkte: legacyEpSeed.freshEstimate,
+                              },
+                            },
+                          })}
+                        >
+                          Neu schätzen
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              }
             />
           )
         })()}

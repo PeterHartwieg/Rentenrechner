@@ -22,11 +22,13 @@ import type { Scenario, Workspace } from '../../domain/workspace'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import { activeRules } from '../../rules'
+import { legalConstants } from '../../rules/legalConstants'
+import { formatNumber } from '../../utils/format'
 import { simulateRetirementComparison } from '../../engine/simulate'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { INVENTORY_PRODUCT_REGISTRY } from '../inventory/inventoryProductRegistry'
 import { defaultWorkspace } from '../../storage'
-import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
+import { addInstanceToWorkspace, estimateEpFromYears } from '../inventory/inventoryHelpers'
 import { ProdukteEingabenPanel, type ProdukteEingabenPanelProps } from './ProdukteEingabenPanel'
 
 afterEach(() => cleanup())
@@ -629,6 +631,58 @@ function makeCombineProps(
   }
 }
 
+describe('ProdukteEingabenPanel — legacy EP seed notice', () => {
+  function legacyBaseline(): Scenario {
+    const baseline = structuredClone(defaultWorkspace.baseline)
+    baseline.profile = { ...baseline.profile, age: 45, grossSalaryYear: 50_000 }
+    baseline.assumptions.statutoryPension = {
+      ...baseline.assumptions.statutoryPension,
+      manualMonthlyGross: null,
+      pensionEntryMethod: { kind: 'career', careerStartAge: 22, pauseYears: 3 },
+      currentEntgeltpunkte: 20 * baseline.profile.grossSalaryYear / legalConstants.legacyEpSeedDurchschnittsentgelt,
+    }
+    return baseline
+  }
+
+  it('renders on the statutory row, patches the full-precision estimate, and disappears after applying', () => {
+    const baseline = legacyBaseline()
+    const onPatchBaseline = vi.fn()
+    const props = makeCombineProps({ baseline, onPatchBaseline })
+    const freshEstimate = estimateEpFromYears(20, baseline.profile.grossSalaryYear, activeRules)
+    const { container, getByRole, queryByText, rerender } = render(<ProdukteEingabenPanel {...props} />)
+    expect(drvCard(container).textContent).toContain(
+      `Deine Entgeltpunkte wurden mit einem veralteten Durchschnittsentgelt geschätzt. Neu geschätzt wären es ${formatNumber(freshEstimate, 1)} Punkte.`,
+    )
+    fireEvent.click(getByRole('button', { name: 'Neu schätzen' }))
+    const assumptions = {
+      ...baseline.assumptions,
+      statutoryPension: { ...baseline.assumptions.statutoryPension, currentEntgeltpunkte: freshEstimate },
+    }
+    expect(onPatchBaseline).toHaveBeenCalledExactlyOnceWith({ assumptions })
+    rerender(<ProdukteEingabenPanel {...props} baseline={{ ...baseline, assumptions }} assumptions={assumptions} />)
+    expect(queryByText(/veralteten Durchschnittsentgelt/)).toBeNull()
+    expect(drvCard(container).querySelector('.d-produkt-row__status')?.textContent)
+      .toBe('Grob aus Berufsstart geschätzt')
+  })
+
+  it.each(['fresh', 'manual', 'changed'] as const)('omits the notice for a %s seed', (kind) => {
+    const baseline = legacyBaseline()
+    const pension = baseline.assumptions.statutoryPension
+    if (kind === 'fresh') {
+      pension.currentEntgeltpunkte = estimateEpFromYears(20, baseline.profile.grossSalaryYear, activeRules)
+    } else if (kind === 'manual') {
+      pension.pensionEntryMethod = { kind: 'points', entgeltpunkte: pension.currentEntgeltpunkte }
+    } else {
+      pension.currentEntgeltpunkte *= 1.01
+    }
+    const { queryByText, queryByRole } = render(
+      <ProdukteEingabenPanel {...makeCombineProps({ baseline, onPatchBaseline: vi.fn() })} />,
+    )
+    expect(queryByText(/veralteten Durchschnittsentgelt/)).toBeNull()
+    expect(queryByRole('button', { name: 'Neu schätzen' })).toBeNull()
+  })
+})
+
 describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
   it('renders one row per workspace instance across all multi-instance products', () => {
     const ws = buildCombineWorkspaceWithInstances()
@@ -1060,4 +1114,3 @@ describe('statutory pension provenance on the products input surface', () => {
     expect(section.textContent).not.toMatch(/Rentenauskunft|PDF|hochladen/)
   })
 })
-

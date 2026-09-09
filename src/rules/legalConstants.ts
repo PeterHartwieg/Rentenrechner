@@ -178,6 +178,8 @@ export const werbungskostenPauschalRenten = 102
 export const sonderausgabenPauschbetrag = { single: 36, married: 72 }
 
 export const legalConstants = {
+  /** Pre-#394 hardcoded EP denominator, retained only to detect legacy seeds. */
+  legacyEpSeedDurchschnittsentgelt: 47_079,
   insurance: {
     /** Boundary year for old-contract tax-free treatment per §52 Abs. 28 EStG a.F. */
     pre2005YearBoundary: 2005,
